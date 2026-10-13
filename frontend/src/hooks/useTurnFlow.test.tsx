@@ -107,7 +107,6 @@ function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unkn
   const turn = useTurnFlow({
     saveId: 'save-1',
     fictionalDate,
-    characterName: 'Gorhorn',
     busyUntil,
     characterThinking,
     endedAt,
@@ -268,10 +267,16 @@ describe('handleSubmit — turno normal exitoso', () => {
     expect(result.current.lastInitiativeRoll).toEqual({ ganador: 'jugador', jugador: jugadorSide, npc: npcSide })
   })
 
-  it('level up añade una entrada extra de subida de nivel', async () => {
+  it('level up: la línea de subida llega del backend y sale antes del golpe gratis que la sigue (P117/QA-70)', async () => {
     mockClassify.mockResolvedValueOnce(baseClassifyResponse())
     mockNarrate.mockResolvedValueOnce(
-      baseNarrateResponse({ progression: { xpDelta: 100, newXp: 100, newLevel: 2, leveledUp: true, attributePointsGained: 1 } }),
+      baseNarrateResponse({
+        progression: { xpDelta: 100, newXp: 100, newLevel: 2, leveledUp: true, attributePointsGained: 1 },
+        intercambiosExtra: [
+          { logEntryId: 'l1', text: 'Gorhorn sube a nivel 2. Gana 1 puntos de atributo para repartir.', combate: false, esSubidaDeNivel: true },
+          { logEntryId: 'l2', text: 'Guchapo 3 te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: Muerto.', combate: true },
+        ],
+      }),
     )
     const { result } = renderHook(() => useHarness())
 
@@ -279,7 +284,11 @@ describe('handleSubmit — turno normal exitoso', () => {
 
     expect(result.current.level).toBe(2)
     expect(result.current.pendingAttributePoints).toBe(1)
-    expect(result.current.characterLog.some((e) => e.isLevelUp)).toBe(true)
+    const subidas = result.current.characterLog.filter((e) => e.isLevelUp)
+    expect(subidas).toHaveLength(1)
+    const ids = result.current.characterLog.map((e) => e.id)
+    expect(ids.indexOf('l1')).toBeLessThan(ids.indexOf('l2'))
+    expect(result.current.characterLog.find((e) => e.id === 'l1')?.combate).toBe(false)
   })
 })
 

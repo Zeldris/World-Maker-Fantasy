@@ -3,8 +3,22 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CAMPOS_CON_NOMBRE_DE_HABILIDAD, nombreActualDeHabilidad } from './habilidadesRenombradas.js';
 
-// Los comentarios del esquema parten frases entre líneas («por NOMBRE de» / «/// `SavedAction`»).
-const ESQUEMA = readFileSync(join(import.meta.dirname, '../../prisma/schema.prisma'), 'utf8').replace(/\s*\n\s*\/\/\/\s*/g, ' ');
+const ESQUEMA = readFileSync(join(import.meta.dirname, '../../prisma/schema.prisma'), 'utf8').split('\n');
+
+/// «Modelo.campo» de cada campo marcado con «Guarda nombres de habilidad (QA-68)».
+function camposMarcados(): string[] {
+  const marcados: string[] = [];
+  let modelo = '';
+  ESQUEMA.forEach((linea, i) => {
+    const m = /^model (\w+) \{/.exec(linea);
+    if (m) modelo = m[1]!;
+    if (linea.includes('Guarda nombres de habilidad (QA-68)')) {
+      const campo = ESQUEMA.slice(i + 1).find((l) => !l.trim().startsWith('///'));
+      marcados.push(`${modelo}.${/^\s+(\w+)\s/.exec(campo ?? '')?.[1]}`);
+    }
+  });
+  return marcados.sort();
+}
 
 describe('habilidades renombradas (P100, QA-68)', () => {
   it('el nombre viejo pasa al nuevo y el resto se queda igual', () => {
@@ -12,9 +26,7 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(nombreActualDeHabilidad('Esquivar')).toBe('Esquivar');
   });
 
-  it('cada campo del esquema que guarda una habilidad «por NOMBRE» está en la lista de los que se renombran', () => {
-    // Además de `SavedAction.name` (el propio nombre), los campos marcados en el esquema.
-    const marcados = ESQUEMA.match(/por NOMBRE de `SavedAction`/g)?.length ?? 0;
-    expect(CAMPOS_CON_NOMBRE_DE_HABILIDAD.length - 1).toBe(marcados);
+  it('los campos marcados en el esquema son exactamente los que se renombran', () => {
+    expect(camposMarcados()).toEqual([...CAMPOS_CON_NOMBRE_DE_HABILIDAD].sort());
   });
 });

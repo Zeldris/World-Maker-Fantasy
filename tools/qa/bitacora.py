@@ -3,7 +3,8 @@
 
 Las dos cuentas escribían en la misma celda: acabó con dos tareas y dos «Siguiente» que se
 contradecían. Cada fila se llama «Tarea en curso · `<rama>`» y su texto no pasa de TOPE caracteres
-(unas 5 líneas, `CLAUDE.md`). Lo corre `.githooks/pre-push`.
+(unas 5 líneas, `CLAUDE.md`), y no hay dos filas de la misma rama. Lo corre `.githooks/pre-push` sobre
+la bitácora de cada commit que se sube (con la ruta como argumento).
 """
 import re
 import sys
@@ -24,6 +25,9 @@ for fila in filas:
     rama, texto = m.group(1), m.group(2).strip()
     if len(texto) > TOPE:
         fallos.append(f"«Tarea en curso» de {rama}: {len(texto)} caracteres (tope {TOPE}); lo hecho va a «Hecho recientemente»")
+ramas = [m.group(1) for f in filas if (m := re.match(r"\| \*\*Tarea en curso · `([^`]+)`\*\*", f))]
+for rama in sorted({r for r in ramas if ramas.count(r) > 1}):
+    fallos.append(f"dos filas «Tarea en curso» para {rama}: cada rama tiene una sola")
 for f in fallos:
     print(f"bitácora: {f}")
 sys.exit(1 if fallos else 0)

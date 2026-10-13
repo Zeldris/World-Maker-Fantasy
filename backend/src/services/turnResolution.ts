@@ -21,7 +21,7 @@
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
-import { repartirIntercambios, lineasTrasElGolpe, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
+import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -374,6 +374,9 @@ export interface KingdomFoundedInfo {
   nameLocked: boolean;
 }
 
+/// Una entrada del diario tras la narración del turno, tal como la recibe el frontend.
+export type LineaDelTurno = { logEntryId: string; text: string; combate: boolean; combatExchange?: CombatExchangeDisplay; esSubidaDeNivel?: boolean };
+
 export interface NarrateAndPersistResult {
   narration: NarrationResult;
   progression: ProgressionResult;
@@ -552,9 +555,11 @@ export interface NarrateAndPersistResult {
   /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
   /// combatExchange.ts), null si no hubo intercambio.
   combatExchangeDisplay: CombatExchangeDisplay | null;
-  /// P55 (QA-27): en un combate de grupo, el resto de ataques que recibió la jugadora este turno
-  /// (el primero ya va en `combatExchangeDisplay`). Cada uno es su propia entrada del diario.
-  intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[];
+  /// Las entradas del diario que siguen a la narración del turno, en el orden en que se guardaron
+  /// (`lineasTrasElGolpe`): subida de nivel, desbloqueos, el resto de ataques que recibió la jugadora
+  /// en un combate de grupo (P55; el primero ya va en `combatExchangeDisplay`), golpes gratis y la
+  /// brújula. El frontend las pinta tal cual (P117/QA-70), así se ven igual que tras recargar.
+  intercambiosExtra: LineaDelTurno[];
   /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (petición explícita,
   /// misma revisión: "cuando seleccione una habilidad esta se refleje en la narración con su
   /// descripción") — null en texto libre sin botón o sin intercambio.
@@ -3144,7 +3149,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
   let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
   const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
-  const intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[] = [];
+  const intercambiosExtra: LineaDelTurno[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
   // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
@@ -6551,6 +6556,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       golpesGratis: golpesSinTiradaContraJugadora,
     });
     for (const linea of lineas) {
+      const { combate, combatExchange } = marcasDeLinea(linea);
       const entrada = await tx.logEntry.create({
         data: {
           saveId,
@@ -6559,12 +6565,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
-          ...(linea.tipo === 'aviso' ? { isPlayerAction: false } : { combate: true }),
-          ...(linea.tipo === 'intercambio' ? { combatExchange: linea.combatExchange as unknown as Prisma.InputJsonValue } : {}),
+          combate,
+          ...(combatExchange ? { combatExchange: combatExchange as unknown as Prisma.InputJsonValue } : {}),
         },
       });
-      if (linea.tipo === 'intercambio') intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combatExchange: linea.combatExchange });
-      if (linea.tipo === 'golpeGratis') intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto });
+      intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combate, ...(combatExchange ? { combatExchange } : {}), ...(linea.tipo === 'subidaDeNivel' ? { esSubidaDeNivel: true } : {}) });
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija

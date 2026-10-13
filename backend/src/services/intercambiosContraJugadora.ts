@@ -32,13 +32,17 @@ export const CONDICION_EN_TEXTO: Record<CondicionFisica, string> = {
 
 /// Una línea del diario tras la narración principal del turno.
 export type LineaTrasElGolpe =
-  | { tipo: 'aviso'; texto: string }
+  | { tipo: 'subidaDeNivel'; texto: string }
+  | { tipo: 'desbloqueo'; texto: string }
   | { tipo: 'intercambio'; texto: string; combatExchange: CombatExchangeDisplay }
-  | { tipo: 'golpeGratis'; texto: string };
+  | { tipo: 'golpeGratis'; texto: string }
+  | { tipo: 'brujula'; texto: string };
 
 /// P117 (QA-27, QA-70): en qué orden van al diario las líneas que siguen a la narración del turno.
 /// La subida de nivel y sus desbloqueos los gana el golpe de la jugadora, así que van antes que los
-/// ataques que recibe después (con o sin tirada): antes la subida salía tras «Estado: Muerto».
+/// ataques que recibe después (con o sin tirada): antes la subida salía tras «Estado: Muerto». La
+/// brújula, al final, para no partir el bloque del combate. El frontend las pinta en este orden al
+/// momento (`intercambiosExtra` de la respuesta del turno), igual que tras recargar.
 export function lineasTrasElGolpe(p: {
   brujula: string | null;
   subidaDeNivel: string | null;
@@ -47,9 +51,8 @@ export function lineasTrasElGolpe(p: {
   golpesGratis: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[];
 }): LineaTrasElGolpe[] {
   return [
-    ...(p.brujula ? [{ tipo: 'aviso' as const, texto: p.brujula }] : []),
-    ...(p.subidaDeNivel ? [{ tipo: 'aviso' as const, texto: p.subidaDeNivel }] : []),
-    ...p.desbloqueos.map((texto) => ({ tipo: 'aviso' as const, texto })),
+    ...(p.subidaDeNivel ? [{ tipo: 'subidaDeNivel' as const, texto: p.subidaDeNivel }] : []),
+    ...p.desbloqueos.map((texto) => ({ tipo: 'desbloqueo' as const, texto })),
     ...p.intercambiosAparte.map((extra) => ({
       tipo: 'intercambio' as const,
       texto: `${extra.atacanteNombre} te ataca.`,
@@ -59,5 +62,21 @@ export function lineasTrasElGolpe(p: {
       tipo: 'golpeGratis' as const,
       texto: `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`,
     })),
+    ...(p.brujula ? [{ tipo: 'brujula' as const, texto: p.brujula }] : []),
   ];
+}
+
+/// Lo que cada tipo de línea guarda de más en su `LogEntry`: las del combate van marcadas como
+/// combate (fondo rojo); la subida de nivel, los desbloqueos y la brújula, no.
+export function marcasDeLinea(linea: LineaTrasElGolpe): { combate: boolean; combatExchange?: CombatExchangeDisplay } {
+  switch (linea.tipo) {
+    case 'intercambio':
+      return { combate: true, combatExchange: linea.combatExchange };
+    case 'golpeGratis':
+      return { combate: true };
+    case 'subidaDeNivel':
+    case 'desbloqueo':
+    case 'brujula':
+      return { combate: false };
+  }
 }

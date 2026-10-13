@@ -40,9 +40,10 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
   por mundo o región pasan por `lugaresVisibles` (`mundoPartida.ts`). Lo vigila
   `backend/src/scripts/locationConDuena.test.ts` para `location.create`.
 - **Renombrar algo que las partidas guardan por nombre** (`QA-68`, retro del 2026-10-13) cambia todos
-  los campos que lo guardan, no solo el principal. Habilidades: los que lista
-  `CAMPOS_CON_NOMBRE_DE_HABILIDAD` (`habilidadesRenombradas.ts`), marcados en el esquema con «por NOMBRE
-  de `SavedAction`». Pasó con P100: las barras (`SkillBar.abilityNames`) se quedaban con el nombre viejo.
+  los campos que lo guardan, no solo el principal. Habilidades: un campo nuevo que guarde nombres de
+  habilidad lleva en el esquema «Guarda nombres de habilidad (QA-68)» y su función en `RENOMBRAR`
+  (`habilidadesRenombradas.ts`); el test de ese archivo exige que coincidan. Pasó con P100: las barras
+  (`SkillBar.abilityNames`) se quedaban con el nombre viejo.
 
 ## Un dato, un sitio
 

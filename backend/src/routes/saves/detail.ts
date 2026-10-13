@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { HABILIDADES_RENOMBRADAS, nombreActualDeHabilidad } from '../../services/habilidadesRenombradas.js';
+import { renombrarHabilidadesDePartida } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
@@ -108,23 +108,17 @@ export async function detailRoutes(app: FastifyInstance) {
       }
     }
 
-    // P100 (QA-27): habilidades renombradas en el catálogo. Las partidas las identifican por nombre
-    // (SavedAction y la lista de activas en combate), así que se renombran las dos al leer.
-    {
-      const renombrar = save.savedActions.filter((a) => HABILIDADES_RENOMBRADAS[a.name]);
-      const activas = (save.activeCombatAbilityNames ?? []).some((n) => HABILIDADES_RENOMBRADAS[n]);
-      // Las barras de habilidades también guardan nombres (`SkillBar.abilityNames`).
-      const barras = save.skillBars.filter((b) => b.abilityNames.some((n) => HABILIDADES_RENOMBRADAS[n]));
-      if (renombrar.length > 0 || activas || barras.length > 0) {
-        await prisma.$transaction([
-          ...renombrar.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { name: HABILIDADES_RENOMBRADAS[a.name] } })),
-          ...barras.map((b) => prisma.skillBar.update({ where: { id: b.id }, data: { abilityNames: b.abilityNames.map(nombreActualDeHabilidad) } })),
-          prisma.save.update({ where: { id: save.id }, data: { activeCombatAbilityNames: save.activeCombatAbilityNames.map(nombreActualDeHabilidad) } }),
-        ]);
-        save.activeCombatAbilityNames = save.activeCombatAbilityNames.map(nombreActualDeHabilidad);
-        save.skillBars = save.skillBars.map((b) => ({ ...b, abilityNames: b.abilityNames.map(nombreActualDeHabilidad) }));
-        save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
-      }
+    // P100 (QA-27), QA-68: habilidades renombradas en el catálogo. Las partidas las guardan por
+    // nombre en varios campos; se renombran todos al leer y se relee lo que se usa aquí.
+    if (await prisma.$transaction((tx) => renombrarHabilidadesDePartida(tx, save.id))) {
+      const [fresca, barras, acciones] = await Promise.all([
+        prisma.save.findUniqueOrThrow({ where: { id: save.id }, select: { activeCombatAbilityNames: true } }),
+        prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ slotIndex: 'asc' }] }),
+        prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } }),
+      ]);
+      save.activeCombatAbilityNames = fresca.activeCombatAbilityNames;
+      save.skillBars = barras;
+      save.savedActions = acciones;
     }
 
     // B19 (pruebas 2026-09-28): partidas que subieron de nivel con especialización elegida antes de

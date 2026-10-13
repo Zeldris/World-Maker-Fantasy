@@ -1092,25 +1092,30 @@ usuaria `QA-62`…`QA-65`; la quinta propuesta, regresiones en la ronda, no entr
 Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
 [propuestas](../registros/retro-2026-10-12-qa27-tercera.md), aprobadas todas por la usuaria el 2026-10-13):
 
-- ~~**QA-66 · El push dice qué sube**~~ ✅ 2026-10-13: `.githooks/pre-push` lista los commits de cada rama
-  que sube y avisa si no sube ninguno. Motivo: una cadena `&&` cortada por `grep -c` (sale con 1 al contar
+- ~~**QA-66 · El push dice qué sube**~~ ✅ 2026-10-13: `.githooks/pre-push` lista los commits que sube y
+  que no están en ninguna rama remota conocida, y avisa si no sube ninguno. Motivo: una cadena `&&` cortada por `grep -c` (sale con 1 al contar
   0) dejó P115 sin commit, y el push vacío dijo «todo en verde».
 - ~~**QA-67 · Sin `@default` en un campo obligatorio**~~ ✅ 2026-10-13: regla en «Un fallo que vuelve» de
-  `REVIEW.md`; fuera `logEntryConHora.test.ts`, que ya cubre el compilador. Motivo: P87, el test que leía
+  `REVIEW.md`; fuera `logEntryConHora.test.ts`, que ya cubre el compilador, y
+  `esquemaCamposObligatorios.test.ts` falla si `LogEntry.fictionalMinutes` vuelve a tener `@default`. Motivo: P87, el test que leía
   el código no vio 7 creaciones que `tsc` sacó al quitar el `@default(0)`.
-- ~~**QA-68 · Renombres en todos los campos**~~ ✅ 2026-10-13: `CAMPOS_CON_NOMBRE_DE_HABILIDAD`
-  (`habilidadesRenombradas.ts`), su test contra las marcas «por NOMBRE» del esquema y regla en «Cada
-  partida, lo suyo» de `REVIEW.md`. Motivo: P100 no renombraba las barras de habilidades.
+- ~~**QA-68 · Renombres en todos los campos**~~ ✅ 2026-10-13: `renombrarHabilidadesDePartida`
+  (`habilidadesRenombradas.ts`, la llama `detail.ts`), con una función por campo de
+  `CAMPOS_CON_NOMBRE_DE_HABILIDAD`: acciones guardadas, cinturón de combate, barras y usos por combate
+  de `NpcState`. Los campos llevan en el esquema «Guarda nombres de habilidad (QA-68)» y el test exige
+  que marcas y lista coincidan. Regla en «Cada partida, lo suyo» de `REVIEW.md`. Motivo: P100 no
+  renombraba las barras de habilidades.
 - ~~**QA-69 · Una fila «Tarea en curso» por rama**~~ ✅ 2026-10-13: la bitácora tiene una fila «Tarea en
-  curso · `<rama>`» por cuenta; `tools/qa/bitacora.py` (en `pre-push`) exige la rama en el nombre y 600
-  caracteres como mucho; `CLAUDE.md` lo dice. Motivo: las dos cuentas escribían en la misma celda y se
+  curso · `<rama>`» por cuenta; `tools/qa/bitacora.py` (en `pre-push`, sobre la bitácora del commit que
+  se sube) exige la rama en el nombre, una sola fila por rama y 600 caracteres como mucho; `CLAUDE.md` lo dice. Motivo: las dos cuentas escribían en la misma celda y se
   contradecían.
 - ~~**QA-70 · Test del orden del diario en un turno**~~ ✅ 2026-10-13: el orden de las líneas tras la
   narración del turno lo decide `lineasTrasElGolpe` (`intercambiosContraJugadora.ts`) y lo prueba su test:
   brújula, subida de nivel, desbloqueos de clase y de oficio, ataques recibidos con tirada y golpes gratis.
   `turnResolution` crea primero las habilidades nuevas y luego escribe las líneas en ese orden. Los
-  ataques con tirada también pasan tras la subida de nivel. Motivo: P117 se arregló dos veces y no
-  tenía test.
+  ataques con tirada también pasan tras la subida de nivel y la brújula va al final. El frontend las
+  pinta al momento en ese orden (`intercambiosExtra` de la respuesta, también la subida de nivel), así
+  que se ve igual que tras recargar. Motivo: P117 se arregló dos veces y no tenía test.
 ---
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
