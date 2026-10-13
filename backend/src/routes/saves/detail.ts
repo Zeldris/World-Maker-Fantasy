@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { renombrarHabilidadesDePartida } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
@@ -105,6 +106,19 @@ export async function detailRoutes(app: FastifyInstance) {
         await prisma.$transaction(desfasadas.map((a) => prisma.savedAction.update({ where: { id: a.id }, data: { description: catalogo.get(a.name)! } })));
         save.savedActions = await prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } });
       }
+    }
+
+    // P100 (QA-27), QA-68: habilidades renombradas en el catálogo. Las partidas las guardan por
+    // nombre en varios campos; se renombran todos al leer y se relee lo que se usa aquí.
+    if (await prisma.$transaction((tx) => renombrarHabilidadesDePartida(tx, save.id))) {
+      const [fresca, barras, acciones] = await Promise.all([
+        prisma.save.findUniqueOrThrow({ where: { id: save.id }, select: { activeCombatAbilityNames: true } }),
+        prisma.skillBar.findMany({ where: { saveId: save.id }, orderBy: [{ slotIndex: 'asc' }] }),
+        prisma.savedAction.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } }),
+      ]);
+      save.activeCombatAbilityNames = fresca.activeCombatAbilityNames;
+      save.skillBars = barras;
+      save.savedActions = acciones;
     }
 
     // B19 (pruebas 2026-09-28): partidas que subieron de nivel con especialización elegida antes de

@@ -196,6 +196,16 @@ export async function requestTurnClassify(params: {
   return response.json()
 }
 
+/// Una entrada del diario tras la narración del turno (ver `intercambiosExtra`).
+export interface LineaDelTurno {
+  logEntryId: string
+  text: string
+  /// Del combate (fondo rojo): ataques de más y golpes gratis. Las respuestas viejas no lo traen.
+  combate?: boolean
+  combatExchange?: CombatExchangeInfo
+  esSubidaDeNivel?: boolean
+}
+
 export interface NarrateResponse {
   narration: {
     narration: string
@@ -314,9 +324,10 @@ export interface NarrateResponse {
   /// valor sacaste tú y el del enemigo, y por qué perdiste o ganaste"). null si no hubo
   /// intercambio mecánico real este turno.
   combatExchangeDisplay: CombatExchangeInfo | null
-  /// P55 (QA-27): el resto de ataques que recibió la jugadora este turno en un combate de grupo,
-  /// cada uno con su entrada del diario. Opcional: un backend viejo no lo manda.
-  intercambiosExtra?: { logEntryId: string; text: string; combatExchange?: CombatExchangeInfo }[]
+  /// Entradas del diario que siguen a la narración, en el orden en que se guardaron (P117/QA-70):
+  /// subida de nivel, desbloqueos, ataques de más de un combate de grupo (P55), golpes gratis y brújula.
+  /// Opcional: un backend viejo no lo manda.
+  intercambiosExtra?: LineaDelTurno[]
   /// Rediseño del turno de combate (2026-07-29, "quiero que sea más claro cuando es turno de
   /// ataque... indicándome qué salió en los dados"): tirada real de iniciativa que decidió quién
   /// actúa en el PRÓXIMO intercambio. null si se forzó sin dados (aturdimiento/intimidación) o si
@@ -1189,6 +1200,8 @@ export interface ZonePointInfo {
   /// pinta un icono de grupo distinto y abre un modal de desglose en vez del modal normal de un
   /// solo NPC cuando este campo está presente.
   companion?: { slug: string; nombre: string }
+  /// P106 (QA-27): objetivo de una misión activa (aunque siga sin descubrir).
+  objetivoMision?: boolean
 }
 /// NPCs presentados de forma determinista (2026-08-26, "no aparecen en la zona y sí tienen que
 /// salir") — a diferencia de `ZonePointInfo` (catálogo fijo, con posición real curada), estos
@@ -1258,6 +1271,10 @@ export interface ZonaSalidaInfo {
   alcanzable: boolean
   /// QA-27 (P7): puerta de una zona interior — `ENTRAR` desde fuera, `SALIR` desde dentro.
   puerta?: 'ENTRAR' | 'SALIR'
+  /// P115 (QA-27): minutos de camino hasta el destino.
+  minutos?: number
+  /// P115: el destino tiene nombre para la jugadora (ya estuvo o lleva el mapa de la región).
+  conocida?: boolean
 }
 
 export interface ZonaResponse {

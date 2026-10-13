@@ -117,9 +117,10 @@ export function JugadorMarker({ x, y, escala, angulo, quieto, sombra }: { x: num
   const msPaso = useMsPaso()
   // ZON-14 (hito 0.1) — la estrella negra pasa a ficha propia (zona/FichaZona.tsx · FichaJugador).
   return (
-    <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
+    // P115 (QA-27): los clics pasan a lo que hay debajo; sobre una salida, la ficha tapaba su icono y
+    // había que acertar en el borde para abrirla.
+    <g pointerEvents="none" data-testid="jugador-zona" style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }}>
       <FichaJugador escala={escala} angulo={angulo} quieto={quieto} sombra={sombra} />
-      <title>Tú estás aquí</title>
     </g>
   )
 }
@@ -168,12 +169,12 @@ export const GridOverlay = memo(function GridOverlay() {
 /// flecha apuntando hacia afuera dentro de un círculo, "puerta hacia otra región". Sin `transform`
 /// animado (a diferencia de `ZonePointMarker`) — una salida nunca se mueve, es un punto fijo del
 /// propio mapa, como la cuadrícula.
-export function SalidaMarker({ x, y, escala, texto }: { x: number; y: number; escala: number; texto: string }) {
+export function SalidaMarker({ x, y, escala, texto, dyEtiqueta }: { x: number; y: number; escala: number; texto: string; dyEtiqueta?: number }) {
   // B6 (pruebas 2026-09-28): la flecha gira hacia su rumbo real. ZON-17 (hito 0.1): estandarte con el
   // destino escrito (zona/FichaZona.tsx · EstandarteSalida).
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)` }}>
-      <EstandarteSalida escala={escala} angulo={anguloSalida({ x, y })} texto={texto} />
+      <EstandarteSalida escala={escala} angulo={anguloSalida({ x, y })} texto={texto} dyEtiqueta={dyEtiqueta} />
     </g>
   )
 }

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { nombreActualDeHabilidad } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { attributeCapForLevel } from '../../services/progression.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
@@ -141,7 +142,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // este guard, fijar la clase ahora la duplicaría. Comparado por nombre (igual que el resto
       // del motor identifica una SavedAction "de serie" — no hay otro id compartido entre el
       // catálogo estático de habilidades y la fila ya persistida).
-      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
+      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => nombreActualDeHabilidad(a.name)));
 
       const nuevasHabilidades = Array.from({ length: save.level }, (_, i) => i + 1)
         .flatMap((lvl) => classAbilityUnlocksFor(save.characterName, lvl, clase))
@@ -156,6 +157,7 @@ export async function progressionRoutes(app: FastifyInstance) {
           channel: 'CHARACTER',
           text: `${save.characterName} asume su clase: ${enumLabel(clase)}.`,
           timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
           // Bug real (2026-09-05, ver comentario completo en schema.prisma § isSystemMessage) —
           // texto fijo determinista, nunca generado por el LLM: sin esto, el turno SIGUIENTE lo
           // recibía como "tu propia narración del turno anterior" y podía repetirlo literalmente.
@@ -215,7 +217,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // Mismo guard anti-duplicado que `/saves/:id/clase` — por si alguna habilidad de esta rama
       // ya existiera por otro camino (ninguno conocido hoy para especialización, pero el mismo
       // criterio defensivo del endpoint hermano se mantiene por consistencia).
-      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => a.name));
+      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => nombreActualDeHabilidad(a.name)));
 
       const nuevasHabilidades = especializacionAbilityUnlocksFor(save.clase!, especializacion, save.level)
         .filter((ability) => !yaTiene.has(ability.name))
@@ -229,6 +231,7 @@ export async function progressionRoutes(app: FastifyInstance) {
           channel: 'CHARACTER',
           text: `${save.characterName} se especializa: ${especializacion}.`,
           timeLabel: save.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
           isSystemMessage: true,
         },
       });

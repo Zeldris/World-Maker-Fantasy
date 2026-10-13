@@ -8,7 +8,7 @@ export interface BaseAttackAbility {
 }
 
 /// "Ataque base" (rediseño de la vista de combate, 2026-07-28, petición explícita: "todos los
-/// elementos con los que podamos combatir tengan siempre una habilidad tipo 'Ataque base' que
+/// elementos con los que podamos combatir tengan siempre una habilidad tipo 'Ataque Básico' que
 /// varía según los atributos y se describe según el arma que tenga equipada... y si no tienen
 /// como la fauna utiliza la extremidad principal que usa para atacar"). Calculada, no guardada en
 /// BD — todo combatiente (jugador, NPC, fauna) tiene siempre una, nunca falta en su ficha.
@@ -29,7 +29,7 @@ export function baseAttackFor(params: { attributes: AttributeBlock; weaponNames:
   if (weaponNames.length > 0) {
     return {
       icon: '⚔️',
-      name: 'Ataque base',
+      name: 'Ataque Básico',
       description: `Golpe directo con ${weaponNames.join(' y ')}.`,
       preferredAttribute,
     };
@@ -37,14 +37,14 @@ export function baseAttackFor(params: { attributes: AttributeBlock; weaponNames:
   if (ataqueNatural) {
     return {
       icon: '🩸',
-      name: 'Ataque base',
+      name: 'Ataque Básico',
       description: ataqueNatural,
       preferredAttribute,
     };
   }
   return {
     icon: '👊',
-    name: 'Ataque base',
+    name: 'Ataque Básico',
     description: 'Golpe improvisado, cuerpo a cuerpo, sin arma ni ventaja natural.',
     preferredAttribute,
   };

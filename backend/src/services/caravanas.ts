@@ -65,7 +65,7 @@ async function sacarDeAlmacen(tx: Tx, donde: { saveId: string } | { factionId: s
 
 async function registrarEnReino(tx: Tx, saveId: string, text: string) {
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
-  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? undefined } });
+  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
 }
 
 /// 47e: el lugar por donde pasa ahora una caravana de fondo de `faccion` (punto «Caravana de …» de

@@ -276,7 +276,7 @@ describe('PATCH /saves/:id/clase', () => {
     // bucle `1..level` de progression.ts debe seguir concediéndolo (test de arriba ya confirma el
     // caso nivel 3/Guerrero; este fija el caso límite nivel 2, un solo nivel por encima de 1).
     const desde1hasta2 = Array.from({ length: 2 }, (_, i) => i + 1).flatMap((lvl) => classAbilityUnlocksFor('Sael Vhorn', lvl, 'CAZADOR'));
-    expect(desde1hasta2.map((a) => a.name)).toEqual(['Analisis Salvaje']);
+    expect(desde1hasta2.map((a) => a.name)).toEqual(['Análisis Salvaje']);
   });
 
   // Bug real encontrado ANTES de reproducirse en la partida real de la usuaria (2026-08-29): una

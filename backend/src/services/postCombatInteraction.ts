@@ -19,6 +19,8 @@ export interface PostCombatInteractionCandidate {
   name: string;
   condicionFisica: string;
   saqueado: boolean;
+  /// P97 (QA-27): sin raza = fauna (se desuella, no se saquea).
+  raza?: string | null;
 }
 
 export interface PostCombatInteractionTarget {
@@ -26,14 +28,20 @@ export interface PostCombatInteractionTarget {
   name: string;
   condicionFisica: 'MUERTO';
   saqueado: boolean;
+  esFauna: boolean;
 }
 
 /// Solo por NOMBRE (no el alias completo de catálogo) — igual que `explicitTarget` en turn.ts para
 /// un objetivo citado entre comillas; suficiente para un atajo mecánico opcional, sin necesitar una
 /// consulta nueva a la lista de aliases de cada NPC.
+/// P97 (QA-27): el texto que manda el propio botón «Saquear» de esta ficha. Nombra al cadáver, así
+/// que sin esta excepción volvía a abrir la misma ficha en bucle y nunca llegaba a saquear.
+export const PREFIJO_SAQUEO_DESDE_FICHA = 'Saqueo el cuerpo de ';
+
 export function detectsPostCombatInteraction(action: string, npcsInScene: PostCombatInteractionCandidate[]): PostCombatInteractionTarget | null {
+  if (action.startsWith(PREFIJO_SAQUEO_DESDE_FICHA)) return null;
   const normalizedAction = normalizeText(action);
   const target = npcsInScene.find((n) => n.condicionFisica === 'MUERTO' && matchesAliasBoundary(normalizedAction, normalizeText(n.name)));
   if (!target) return null;
-  return { slug: target.slug, name: target.name, condicionFisica: 'MUERTO', saqueado: target.saqueado };
+  return { slug: target.slug, name: target.name, condicionFisica: 'MUERTO', saqueado: target.saqueado, esFauna: !target.raza };
 }

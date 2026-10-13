@@ -404,6 +404,10 @@ export function GameModals() {
               setPostCombatTarget(null)
               handleSubmit(`Saqueo el cuerpo de '${target.name}'.`)
             }}
+            onDesollar={() => {
+              setPostCombatTarget(null)
+              setHarvestModal({ oficio: 'desollador', label: 'Desollar' })
+            }}
           />
           </Capa>
         )}

@@ -1251,7 +1251,6 @@ export function useGameViewState() {
     onCazaPorTexto: (r) => cazaPorTextoRef.current(r),
     saveId,
     fictionalDate,
-    characterName,
     busyUntil,
     characterThinking,
     endedAt,

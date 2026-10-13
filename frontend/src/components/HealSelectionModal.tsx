@@ -121,6 +121,13 @@ export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCa
             // los de solo energía ("Raciones de viaje") no tienen techo, seguir cargando energía
             // siempre tiene sentido.
             const blockedByIleso = previewAtIleso && !!item.curaHasta
+            // P118 (QA-27): «cura hasta grave» estando ya Grave no cura nada; sin energía que dar, no
+            // se ofrece (antes salía activo y no hacía nada).
+            const sinEfecto =
+              !!item.curaHasta &&
+              !item.curaEnergia &&
+              value === 0 &&
+              applySequentialHeals(previewCondicion, [{ curaHasta: item.curaHasta, curaUnPaso: !!item.curaUnPaso }]) === previewCondicion
             return (
               <div
                 key={item.id}
@@ -141,10 +148,14 @@ export function HealSelectionModal({ inventory, condicionFisica, onConfirm, onCa
                 <QuantityStepper
                   value={value}
                   max={max}
-                  tope={blockedByIleso ? value : max}
+                  tope={blockedByIleso || sinEfecto ? value : max}
                   onChange={(n) => setQuantity(item.id, n, max)}
                   etiqueta={item.name}
-                  motivoTope="Ya estarías ileso con lo marcado — no hace falta más"
+                  motivoTope={
+                    sinEfecto && !blockedByIleso
+                      ? `Estando ${CONDICION_LABEL[previewCondicion].toLowerCase()}, esto ya no te cura más`
+                      : 'Ya estarías ileso con lo marcado — no hace falta más'
+                  }
                 />
               </div>
             )

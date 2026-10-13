@@ -6,7 +6,7 @@ import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
-import {
+import { deNombre, nombreDeEncuentro,
   MAX_VUELTAS_MODO_DINAMICO,
   MINUTOS_POR_VUELTA_MODO_DINAMICO,
   resumenModoDinamicoParaLog,
@@ -305,7 +305,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // ofreciendo Combatir/Huir (ver `narrarAperturaCombateForzado`, dynamicMode.ts), nunca
       // conversación LLM ni el guion de Gistera (ella nunca es AGRESIVO/ENEMIGO por diseño).
       const turno = combateForzado
-        ? narrarAperturaCombateForzado(targetName)
+        ? narrarAperturaCombateForzado(targetName, cantidad)
         : esGistera
           ? narrarVueltaGistera(1, null)
           : // Guion determinista de Gistera Koh (2026-09-09, ver comentario de `narrarVueltaGistera`,
@@ -449,7 +449,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       }
       const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_VUELTA_MODO_DINAMICO);
       const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
-      const text = `${save.characterName} logra alejarse de ${pending.targetName} sin que llegue a haber combate.`;
+      const text = `${save.characterName} logra alejarse ${deNombre(nombreDeEncuentro(pending.targetName, pending.cantidad))} sin que llegue a haber combate.`;
       // Huir vuelve a la ENTRADA de la zona, igual que las dos huidas de session.ts (antes el
       // jugador se quedaba pegado al agresor y el siguiente paso volvía a toparse con él).
       await prisma.$transaction([

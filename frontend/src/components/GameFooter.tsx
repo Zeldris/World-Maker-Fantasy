@@ -1,4 +1,6 @@
 import type { ComponentProps, ReactNode, Ref } from 'react'
+import { textoTrasCaer } from '../lib/muertes'
+import type { Dificultad } from '../types'
 import { ChatComposer, type ChatComposerHandle } from './ChatComposer'
 import { SkillBarMenu, type SkillHudView } from './SkillBarMenu'
 import { SkillBarHud } from './SkillBarHud'
@@ -17,6 +19,9 @@ interface GameFooterProps {
   characterName: string | null
   onResolverMuerte: () => void
   resolviendoMuerte: boolean
+  /// P119: para decir, al caer, cuántas muertes lleva.
+  deathCount: number
+  dificultad: Dificultad
   /// Composer de combate ya montado (lo arma GameView con el estado de useCombatFlow).
   combatComposer: ReactNode
   /// Aviso de presas sin desollar, o null si no toca.
@@ -47,6 +52,8 @@ export function GameFooter({
   characterName,
   onResolverMuerte,
   resolviendoMuerte,
+  deathCount,
+  dificultad,
   combatComposer,
   desollar,
   conHabilidades,
@@ -82,6 +89,7 @@ export function GameFooter({
     return (
       <div className="animate-entry-in-slow border-t border-iron-800 bg-wood-950/90 px-4 py-5 text-center">
         <div className="animate-line-extend mx-auto mb-3 h-px w-24 origin-center bg-accent-700" />
+        <p className="mb-3 text-sm text-wood-200">{textoTrasCaer(characterName, deathCount, dificultad)}</p>
         <button
           type="button"
           onClick={onResolverMuerte}

@@ -198,8 +198,10 @@ export function GameView() {
                 {' '}
                 (<span className="font-semibold text-wood-200">{formatFictionalDuration(busyDuracionMinutos)}</span> en {worldName})
               </>
-            ) : null}{' '}
-            (sobre las {new Date(busyUntil).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}), se resolverá solo.
+            ) : null}
+            {/* P86 (QA-27): aquí iba la hora real del ordenador («sobre las 17:38»), que al lado de la
+                duración en el juego se leía como hora del juego. Basta la cuenta atrás. */}
+            , se resolverá solo.
           </span>
           <button type="button"
             onClick={handleCancelTransit}
@@ -255,6 +257,8 @@ export function GameView() {
         characterName={characterName}
         onResolverMuerte={handleResolveDeath}
         resolviendoMuerte={resolvingDeath}
+        deathCount={deathCount}
+        dificultad={dificultad}
         combatComposer={
             // Rework 2026-07-24, recortado en el rediseño de la vista de combate (2026-07-28): sigue
             // sustituyendo al ChatComposer normal en el mismo sitio, pero ahora solo es el input de

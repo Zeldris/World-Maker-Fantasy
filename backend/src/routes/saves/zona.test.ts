@@ -37,6 +37,7 @@ const findManyQuest = vi.fn();
 // no tocan Locations conectadas por LocationLink.
 const findManyLocationLink = vi.fn();
 const findManyLocationVisit = vi.fn();
+const findFirstInventoryItem = vi.fn(async (): Promise<unknown> => null);
 const findFirstZonePoint = vi.fn().mockResolvedValue(null);
 // Iconos de parcela (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — vacío por defecto: la
 // mayoría de tests de este archivo no prueban zonas-interior con Parcela sembrada.
@@ -90,6 +91,8 @@ vi.mock('../../lib/prisma.js', () => ({
     factionRelation: { findMany: async () => [] },
     // P88 (QA-27): ¿zona de inicio? Sin fila, no lo es (el movimiento se comporta como antes).
     location: { findUnique: async () => null },
+    // P115 (QA-27): ¿lleva el mapa de la región? Por defecto, no.
+    inventoryItem: { findFirst: (...args: unknown[]) => findFirstInventoryItem(...(args as [])) },
   },
 }));
 
@@ -221,6 +224,49 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const slugs = (res.json().dinamicos as { slug: string }[]).map((d) => d.slug);
     expect(slugs).toEqual(['gistera-koh']);
+  });
+
+  it('P106 (QA-27): el NPC objetivo de una misión activa lleva su marca en el mapa', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: {
+        id: 'loc1',
+        slug: 'restos-de-maktor',
+        name: 'Los Restos de Maktor',
+        zonePoints: [{ id: 'zpo', x: 400, y: 130, tipo: 'NPC', targetSlug: 'orco-guardia', label: null, activo: true, cantidad: 1, factionSlug: null }],
+      },
+      worldState: { fictionalMinutes: 600, factionsStatus: {}, agenda: null },
+    });
+    findManyNpc.mockResolvedValueOnce([{ id: 'npc-orco', slug: 'orco-guardia', name: 'Orco de guardia', faction: null, temperamento: 'CAUTELOSO' }]);
+    findManyQuest.mockImplementation(async (args: { where?: { targetNpcId?: unknown } }) => (args?.where?.targetNpcId ? [{ targetNpcId: 'npc-orco' }] : []));
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const punto = (res.json().puntos as { targetSlug: string; objetivoMision?: boolean }[]).find((p) => p.targetSlug === 'orco-guardia');
+    expect(punto?.objetivoMision).toBe(true);
+  });
+
+  it('P107 (QA-27): un NPC fijo del mapa toma la facción del propio NPC, no «Sin facción»', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      currentLocation: {
+        id: 'loc1',
+        slug: 'restos-de-maktor',
+        name: 'Los Restos de Maktor',
+        zonePoints: [{ id: 'zpo', x: 400, y: 130, tipo: 'NPC', targetSlug: 'orco-guardia', label: null, activo: true, cantidad: 1, factionSlug: null }],
+      },
+      worldState: { fictionalMinutes: 600, factionsStatus: { 'Clan Serhu': 500 }, agenda: null },
+    });
+    findManyNpc.mockResolvedValueOnce([{ slug: 'orco-guardia', name: 'Orco de guardia', faction: 'Clan Serhu', temperamento: 'CAUTELOSO' }]);
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    const punto = (res.json().puntos as { targetSlug: string; color: string }[]).find((p) => p.targetSlug === 'orco-guardia');
+    expect(punto?.color).toBe('ENEMIGO');
   });
 
   it('con ZonePoints reales: resuelve nombres de FAUNA/RECURSO y devuelve posiciones', async () => {
@@ -903,6 +949,28 @@ describe('GET /saves/:id/zona', () => {
       expect(salidas[0].visitada).toBe(true);
       expect(salidas[0].description).toBe('Descripción completa real.');
       expect(salidas[0].teaser).toBe('breve'); // se devuelve igual, el frontend decide cuál mostrar
+    });
+
+    it('P115 (QA-27): con el mapa de la región, una salida sin visitar dice su destino; siempre, cuánto se tarda', async () => {
+      findUniqueSave.mockResolvedValueOnce({
+        id: 's1', worldId: 'w1', zonaPosX: null, zonaPosY: null,
+        currentLocation: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, zonePoints: [] },
+      });
+      loadSessionFactsMock.mockResolvedValueOnce([]);
+      detectNpcsInSceneMock.mockResolvedValueOnce([]);
+      findManyLocationLink.mockResolvedValueOnce([
+        {
+          minutosBase: 90,
+          from: { id: 'loc1', slug: 'hondonada-del-eco', name: 'La Hondonada del Eco', x: 0, y: 0, teaser: null, description: 'x' },
+          to: { id: 'loc2', slug: 'pilares-rotos', name: 'Paso de los Pilares Rotos', x: 0, y: 10, teaser: 'breve', description: 'y' },
+        },
+      ]);
+      findManyLocationVisit.mockResolvedValueOnce([]);
+      findFirstInventoryItem.mockResolvedValueOnce({ id: 'mapa' });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+      const [salida] = res.json().salidas;
+      expect(salida).toMatchObject({ visitada: false, conocida: true, minutos: 90 });
     });
 
     // Umbral de proximidad (2026-09-20, petición explícita de Álvaro: "la salida de una zona debe

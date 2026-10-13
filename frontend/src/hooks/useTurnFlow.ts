@@ -29,7 +29,6 @@ import type {
 interface UseTurnFlowParams {
   saveId: string | null
   fictionalDate: string
-  characterName: string | null
   busyUntil: string | null
   /// UX-3 (hito 0.1) — turno o respuesta del narrador ya en curso (lo marcan también combate,
   /// misiones y la reconexión, no solo este hook).
@@ -114,7 +113,6 @@ export function useTurnFlow(params: UseTurnFlowParams) {
   const {
     saveId,
     fictionalDate,
-    characterName,
     busyUntil,
     characterThinking,
     endedAt,
@@ -461,7 +459,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             professionXpGain: professionXpGains[0] ?? undefined,
           },
         ]
-        // P55 (QA-27): los demás ataques que recibió en el combate de grupo que abre este turno.
+        // P55 (QA-27), P117/QA-70: lo que sigue a la narración, en el orden en que lo guardó el backend
+        // (subida de nivel, desbloqueos, los demás ataques del combate de grupo, golpes gratis, brújula).
         for (const extra of intercambiosExtra ?? []) {
           next.push({
             id: extra.logEntryId,
@@ -469,8 +468,9 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             text: extra.text,
             timeLabel: newTimeLabel,
             createdAt: new Date().toISOString(),
-            combate: true,
+            combate: extra.combate ?? true,
             combatExchange: extra.combatExchange,
+            isLevelUp: extra.esSubidaDeNivel,
           })
         }
         // Misión completada (2026-08-13) — ver el mismo bloque en handleCombatTurnResolved: fila
@@ -494,24 +494,10 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         setKingdomFoundedInfo(newKingdomFounded)
       }
       setXp(progression.newXp)
+      // La línea «sube a nivel» llega del backend en `intercambiosExtra`, en su sitio (P117/QA-70).
       if (progression.leveledUp) {
         setLevel(progression.newLevel)
         setPendingAttributePoints((prev) => prev + progression.attributePointsGained)
-        const attributeNote =
-          progression.attributePointsGained > 0
-            ? ` Gana ${progression.attributePointsGained} puntos de atributo para repartir.`
-            : ''
-        setCharacterLog((prev) => [
-          ...prev,
-          {
-            id: `levelup-${Date.now()}`,
-            channel: 'character',
-            text: `${characterName} sube a nivel ${progression.newLevel}.${attributeNote}`,
-            timeLabel: newTimeLabel,
-            createdAt: new Date().toISOString(),
-            isLevelUp: true,
-          },
-        ])
       }
     } catch (err) {
       if (isEndedGameError(err)) {

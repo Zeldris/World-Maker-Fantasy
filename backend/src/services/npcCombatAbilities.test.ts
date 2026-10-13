@@ -8,7 +8,7 @@ describe('npcCombatAbilitiesFor', () => {
   it('siempre incluye Ataque base + Esquivar/Defenderse genéricos, aunque el NPC no tenga clase/raza/racial (p.ej. NPC social)', () => {
     const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: null, ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse']);
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque Básico', 'Esquivar', 'Defenderse']);
   });
 
   it('Esquivar/Defenderse genéricos son gratis (energyCost 0) y siempre AGUANTE, como el fallback del jugador', () => {
@@ -25,7 +25,7 @@ describe('npcCombatAbilitiesFor', () => {
   it('rediseño 2026-07-31/2026-08-15: Ataque base cuesta ENERGY_COST_ATAQUE_BASICO (ya no gratis), Esquivar cuesta 5 sin regenerar, Defenderse gratis y regenera 5', () => {
     const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: null, ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.find((a) => a.name === 'Ataque base')).toMatchObject({ energyCost: ENERGY_COST_ATAQUE_BASICO, energyRegen: 0 });
+    expect(abilities.find((a) => a.name === 'Ataque Básico')).toMatchObject({ energyCost: ENERGY_COST_ATAQUE_BASICO, energyRegen: 0 });
     expect(abilities.find((a) => a.name === 'Esquivar')).toMatchObject({ energyCost: 5, energyRegen: 0 });
     expect(abilities.find((a) => a.name === 'Defenderse')).toMatchObject({ energyCost: 0, energyRegen: 5 });
   });
@@ -37,7 +37,7 @@ describe('npcCombatAbilitiesFor', () => {
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.some((a) => a.name === 'Firmeza Férrea')).toBe(true);
     expect(abilities.some((a) => a.name === 'Instinto Guerrero')).toBe(false); // nivel 4, todavía no
-    expect(abilities.some((a) => a.name === 'Analisis Salvaje')).toBe(false); // Cazador
+    expect(abilities.some((a) => a.name === 'Análisis Salvaje')).toBe(false); // Cazador
   });
 
   it('a nivel 8, un Guerrero sin especialización tiene las 3 de tronco (el hueco de nivel 8 se quedó bloqueado, sin desbloqueo)', () => {
@@ -56,7 +56,7 @@ describe('npcCombatAbilitiesFor', () => {
     const npc: NpcForCombatAbilities = { level: 8, attributes: ATTRS, raza: null, clase: 'CAZADOR', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.some((a) => a.name === 'Compañero cazador')).toBe(false);
-    expect(abilities.some((a) => a.name === 'Analisis Salvaje')).toBe(true);
+    expect(abilities.some((a) => a.name === 'Análisis Salvaje')).toBe(true);
     expect(abilities.some((a) => a.name === 'Barrido Salvaje')).toBe(true);
     expect(abilities.some((a) => a.name === 'Instinto de Supervivencia')).toBe(true);
     expect(abilities.some((a) => a.name === 'Golpe Certero')).toBe(true);
@@ -80,7 +80,7 @@ describe('npcCombatAbilitiesFor', () => {
     const abilities = npcCombatAbilitiesFor(npc, []);
     expect(abilities.some((a) => a.name === 'Sangre del Estallido')).toBe(false);
     expect(abilities.some((a) => a.name === 'Piel de Guerra')).toBe(false);
-    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Esquivar', 'Defenderse']);
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque Básico', 'Esquivar', 'Defenderse']);
   });
 
   it('con raza Y clase asignadas (ej. Orco Enfurecido real, GUERRERO/BERSERKER), usa solo las de clase — nunca la racial activa vieja', () => {
@@ -101,7 +101,7 @@ describe('npcCombatAbilitiesFor', () => {
       habilidadesRaciales: [{ icon: '🧶', name: 'Lana Espesa', description: 'x', categoria: 'defensa', preferredAttribute: 'fuerza', level: 1, effects: ['AGUANTE'] }],
     };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    expect(abilities.map((a) => a.name)).toEqual(['Ataque base', 'Lana Espesa', 'Esquivar', 'Defenderse']);
+    expect(abilities.map((a) => a.name)).toEqual(['Ataque Básico', 'Lana Espesa', 'Esquivar', 'Defenderse']);
   });
 
   // Sistema de categorías de raza de fauna (2026-09-02) — la habilidad racial específica ahora
@@ -139,7 +139,7 @@ describe('npcCombatAbilitiesFor', () => {
       habilidadesRaciales: [],
     };
     const abilities = npcCombatAbilitiesFor(npc, []);
-    const ataqueBase = abilities.find((a) => a.name === 'Ataque base')!;
+    const ataqueBase = abilities.find((a) => a.name === 'Ataque Básico')!;
     expect(ataqueBase.description).toBe('Topetazo torpe con su cornamenta ramificada, casi siempre sin intención real de dañar.');
   });
 });
@@ -159,7 +159,7 @@ describe('chooseNpcAbility', () => {
   // roles, ver el siguiente test.
   it('atacando, con solo una de clase (rol:\'defensa\'), solo queda Ataque base en el pool — nunca elige una defensiva/utilidad aunque el random señale otra', () => {
     const result = chooseNpcAbility(abilities, 'ataque', 999, () => 0.99);
-    expect(result.name).toBe('Ataque base');
+    expect(result.name).toBe('Ataque Básico');
     expect(result.rol).toBe('ataque');
   });
 
@@ -203,7 +203,7 @@ describe('chooseNpcAbility', () => {
     // la práctica, pero `chooseNpcAbility` en sí debe seguir cubriendo el hueco si algún día un
     // roster viniera sin ninguna.
     const soloAtaque: NpcCombatAbility[] = [
-      { name: 'Ataque base', description: 'Golpe improvisado, cuerpo a cuerpo, sin arma ni ventaja natural.', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
+      { name: 'Ataque Básico', description: 'Golpe improvisado, cuerpo a cuerpo, sin arma ni ventaja natural.', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
     ];
     expect(chooseNpcAbility(soloAtaque, 'defensa', 999, () => 0.1)).toEqual(soloAtaque[0]);
   });
@@ -213,11 +213,11 @@ describe('chooseNpcAbility', () => {
   it('excluye Analizar rival (effect:ANALISIS) del roster elegible, atacando y defendiendo', () => {
     const roster: NpcCombatAbility[] = [
       { name: 'Analizar rival', description: 'x', attribute: 'inteligencia', effects: ['ANALISIS'], rol: 'utilidad', energyCost: 0, energyRegen: 0 },
-      { name: 'Ataque base', description: 'x', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
+      { name: 'Ataque Básico', description: 'x', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
     ];
     for (const r of [0, 0.5, 0.99]) {
-      expect(chooseNpcAbility(roster, 'ataque', 999, () => r).name).toBe('Ataque base');
-      expect(chooseNpcAbility(roster, 'defensa', 999, () => r).name).toBe('Ataque base');
+      expect(chooseNpcAbility(roster, 'ataque', 999, () => r).name).toBe('Ataque Básico');
+      expect(chooseNpcAbility(roster, 'defensa', 999, () => r).name).toBe('Ataque Básico');
     }
   });
 });
@@ -232,7 +232,7 @@ describe('chooseNpcAbility — sistema de fatiga simétrico (2026-07-30)', () =>
     const result = chooseNpcAbility(abilities, 'ataque', 0, () => 0);
     expect(result.rol).toBe('ataque');
     expect(result).toEqual({
-      name: 'Ataque base',
+      name: 'Ataque Básico',
       description: expect.any(String),
       attribute: expect.any(String),
       effects: [],
@@ -264,10 +264,10 @@ describe('chooseNpcAbility — tope de usos por combate (maxUsesPerCombat)', () 
   it('descarta una habilidad que ya agotó su tope de usos, aunque el random la habría elegido', () => {
     const roster: NpcCombatAbility[] = [
       { name: 'Golpe Certero', description: 'x', attribute: 'fuerza', effects: ['LETAL', 'LIMITADA'], rol: 'ataque', energyCost: 0, energyRegen: 0, maxUsesPerCombat: 1 },
-      { name: 'Ataque base', description: 'x', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
+      { name: 'Ataque Básico', description: 'x', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
     ];
     const result = chooseNpcAbility(roster, 'ataque', 999, () => 0, { 'Golpe Certero': 1 });
-    expect(result.name).toBe('Ataque base');
+    expect(result.name).toBe('Ataque Básico');
   });
 
   it('con el contador todavía por debajo del tope, sigue siendo elegible', () => {
@@ -280,9 +280,9 @@ describe('chooseNpcAbility — tope de usos por combate (maxUsesPerCombat)', () 
 
   it('sin maxUsesPerCombat (null/undefined), nunca se descarta por muchos usos que acumule usageCounts', () => {
     const roster: NpcCombatAbility[] = [
-      { name: 'Ataque base', description: 'x', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
+      { name: 'Ataque Básico', description: 'x', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 },
     ];
-    const result = chooseNpcAbility(roster, 'ataque', 999, () => 0, { 'Ataque base': 50 });
-    expect(result.name).toBe('Ataque base');
+    const result = chooseNpcAbility(roster, 'ataque', 999, () => 0, { 'Ataque Básico': 50 });
+    expect(result.name).toBe('Ataque Básico');
   });
 });

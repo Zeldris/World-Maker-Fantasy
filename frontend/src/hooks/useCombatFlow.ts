@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { CombatNpcDisplay } from '../components/CombatComposer'
-import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir, type EnciclopediaResponse } from '../lib/api'
+import { requestTurnClassify, requestTurnNarrate, requestFlee, requestHuirEnCurso, requestCerrarCombate, requestMatar, postCapturar, dejarVivir, type EnciclopediaResponse, type LineaDelTurno } from '../lib/api'
 import { isTurnLockedError, npcInSceneToCombatDisplay, combatKeyFor, combatDisplayNameFor, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { combatDifficultyFor, type CombatDifficulty } from '../lib/combatDifficulty'
 import { cancelarTirada, duracionTirada, temporizadorTirada } from '../lib/duracionTirada'
@@ -721,7 +721,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
     playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null
     combatExchangeDisplay: CombatExchangeInfo | null
-    intercambiosExtra?: { logEntryId: string; text: string; combatExchange?: CombatExchangeInfo }[]
+    intercambiosExtra?: LineaDelTurno[]
     nextInitiativeRoll: InitiativeRollInfo | null
     newQuestInfo?: { title: string; objetivo: string } | null
     newQuestOfferInfo?: { title: string; description: string } | null
@@ -762,8 +762,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           professionXpGain: params.professionXpGains?.[0] ?? undefined,
         },
       ]
-      // P55 (QA-27): los demás ataques que recibió en un combate de grupo, cada uno con sus dados
-      // (mismas filas que guarda el backend, así se ven igual tras recargar).
+      // P55 (QA-27), P117/QA-70: lo que sigue a la narración (subida de nivel, desbloqueos, los demás
+      // ataques del combate de grupo con sus dados, golpes gratis, brújula), mismas filas y orden que
+      // guarda el backend, así se ve igual tras recargar.
       for (const extra of params.intercambiosExtra ?? []) {
         next.push({
           id: extra.logEntryId,
@@ -771,8 +772,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           text: extra.text,
           timeLabel: params.timeLabel,
           createdAt: new Date().toISOString(),
-          combate: true,
+          combate: extra.combate ?? true,
           combatExchange: extra.combatExchange,
+          isLevelUp: extra.esSubidaDeNivel,
         })
       }
       // Misión completada (2026-08-13) — LogEntry REAL aparte, nunca fusionada con la narración

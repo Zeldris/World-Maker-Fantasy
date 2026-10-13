@@ -32,9 +32,16 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
     await prisma.savedAction.create({
       data: { saveId, name: 'Viajar', promptText: 'x', category: 'general', icon: '🧭', isStarting: true, description: 'Requiere montura (todavía sin implementar) — por ahora…' },
     });
+    await prisma.savedAction.create({ data: { saveId, name: 'Analisis Salvaje', promptText: 'x', category: 'combate', icon: '🔎', description: 'x' } });
+    await prisma.save.update({ where: { id: saveId }, data: { activeCombatAbilityNames: ['Analisis Salvaje'], activeCombatAbilityNamesConfigured: true } });
+    await prisma.skillBar.create({ data: { saveId, slotIndex: 0, name: 'Barra 1', abilityNames: ['Viajar', 'Analisis Salvaje'] } });
+    // QA-68: el contador de usos por combate también guarda nombres de habilidad.
+    const guchapo = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'guchapo' } });
+    await prisma.npcState.create({ data: { saveId, npcId: guchapo.id, scope: hondonada.id, abilityUsesThisEncounter: { 'Analisis Salvaje': 1, Mordisco: 2 } } });
   });
 
   afterAll(async () => {
+    await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.skillBar.deleteMany({ where: { saveId } });
     await prisma.savedAction.deleteMany({ where: { saveId } });
     await prisma.worldState.deleteMany({ where: { saveId } });
@@ -50,5 +57,17 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
     const catalogo = startingAbilitiesFor('Gorhorn').find((a) => a.name === 'Viajar');
     expect(viajar?.description).toBe(catalogo?.description);
     expect(viajar?.description).not.toMatch(/sin implementar/);
+  });
+
+  it('P100: «Analisis Salvaje» pasa a «Análisis Salvaje», también en las activas de combate, las barras y los usos por combate', async () => {
+    const app = Fastify();
+    await app.register(detailRoutes);
+    await app.inject({ method: 'GET', url: `/saves/${saveId}` });
+    const nombres = (await prisma.savedAction.findMany({ where: { saveId, category: 'combate' } })).map((a) => a.name);
+    expect(nombres).toContain('Análisis Salvaje');
+    expect(nombres).not.toContain('Analisis Salvaje');
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).activeCombatAbilityNames).toEqual(['Análisis Salvaje']);
+    expect((await prisma.skillBar.findFirstOrThrow({ where: { saveId, slotIndex: 0 } })).abilityNames).toEqual(['Viajar', 'Análisis Salvaje']);
+    expect((await prisma.npcState.findFirstOrThrow({ where: { saveId } })).abilityUsesThisEncounter).toEqual({ 'Análisis Salvaje': 1, Mordisco: 2 });
   });
 });

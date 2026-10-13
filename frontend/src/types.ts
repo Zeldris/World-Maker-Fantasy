@@ -959,6 +959,8 @@ export interface PostCombatInteractionInfo {
   name: string
   condicionFisica: 'MUERTO'
   saqueado: boolean
+  /// P97 (QA-27): fauna: se desuella (panel de Desollar), no se saquea.
+  esFauna?: boolean
 }
 
 /// Fase 2 de efectos de clase (2026-08-27, AUMENTO/DEBILIDAD con duración real por turnos — ver

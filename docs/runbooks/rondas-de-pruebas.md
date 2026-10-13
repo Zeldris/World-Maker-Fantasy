@@ -9,9 +9,11 @@ retro del 2026-10-09). Herramientas: [`tools/playwright-e2e/`](../../tools/playw
 
 1. **Lo arreglado en la ronda que solo tiene tests**: verlo funcionar jugando y apuntarlo como
    comprobado en el registro.
-2. **Lo del hito en curso** (en `0.3`: Reino, población y ganadería, defensa, compañeros, «Charlar con
-   NPC», campamentos, comercio). La fila del hito en
-   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice qué es.
+2. **Todo lo implementado, del `0.1` al hito en curso** (usuaria, 2026-10-13: hasta probarlo todo no
+   se vuelve al roadmap). Las filas de
+   [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dicen qué entra en cada
+   uno; lo que ya está probado en vivo, en
+   [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
 3. Lo que el roadmap no tiene (p. ej. «Crear desde cero» en la creación de personaje) no se prueba.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la

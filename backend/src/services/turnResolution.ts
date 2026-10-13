@@ -21,7 +21,7 @@
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
-import { repartirIntercambios, CONDICION_EN_TEXTO, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
+import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -374,6 +374,9 @@ export interface KingdomFoundedInfo {
   nameLocked: boolean;
 }
 
+/// Una entrada del diario tras la narración del turno, tal como la recibe el frontend.
+export type LineaDelTurno = { logEntryId: string; text: string; combate: boolean; combatExchange?: CombatExchangeDisplay; esSubidaDeNivel?: boolean };
+
 export interface NarrateAndPersistResult {
   narration: NarrationResult;
   progression: ProgressionResult;
@@ -552,9 +555,11 @@ export interface NarrateAndPersistResult {
   /// las dos tiradas reales del intercambio de ESTE turno (ver `CombatExchangeDisplay`,
   /// combatExchange.ts), null si no hubo intercambio.
   combatExchangeDisplay: CombatExchangeDisplay | null;
-  /// P55 (QA-27): en un combate de grupo, el resto de ataques que recibió la jugadora este turno
-  /// (el primero ya va en `combatExchangeDisplay`). Cada uno es su propia entrada del diario.
-  intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[];
+  /// Las entradas del diario que siguen a la narración del turno, en el orden en que se guardaron
+  /// (`lineasTrasElGolpe`): subida de nivel, desbloqueos, el resto de ataques que recibió la jugadora
+  /// en un combate de grupo (P55; el primero ya va en `combatExchangeDisplay`), golpes gratis y la
+  /// brújula. El frontend las pinta tal cual (P117/QA-70), así se ven igual que tras recargar.
+  intercambiosExtra: LineaDelTurno[];
   /// Mismo hueco exacto que `npcAbilityUsed` pero para el lado del jugador (petición explícita,
   /// misma revisión: "cuando seleccione una habilidad esta se refleje en la narración con su
   /// descripción") — null en texto libre sin botón o sin intercambio.
@@ -3144,7 +3149,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
   let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
   const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
-  const intercambiosExtra: { logEntryId: string; text: string; combatExchange?: CombatExchangeDisplay }[] = [];
+  const intercambiosExtra: LineaDelTurno[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
   // falla y no escapa, pierde su próximo golpe (la iniciativa pasa a la jugadora, como un aturdimiento).
@@ -4959,7 +4964,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Marca de cooldown (2026-09-06, hallazgo 11) — solo se actualiza cuando el descanso SE APLICÓ
   // de verdad (`restAttempted`), no en cada intento; un intento bloqueado por el propio cooldown
   // no reinicia el contador (mismo criterio que `dispersadoDesdeMinutes`, cazar.ts).
-  const nuevoLastRestAtMinutes = restAttempted ? fictionalMinutesActuales : params.lastRestAtMinutes;
+  // P84 (QA-27): el enfriamiento cuenta desde que ACABA el descanso; antes, desde que empezaba, y
+  // tras uno de 8 h ya no había enfriamiento y se podían encadenar.
+  const nuevoLastRestAtMinutes = restAttempted ? advanceFictionalMinutes(fictionalMinutesActuales, minutosDeEsteTurno) : params.lastRestAtMinutes;
   // Reglas de curación (2026-07-29, ajustado 2026-09-06): sin objeto médico, el techo es la propia
   // condición actual — ninguna mejora "porque sí" pasa (ver healCeilingFor/death.ts). Descansar ya
   // no forma parte de esta fórmula en absoluto.
@@ -6406,7 +6413,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           channel: 'CHARACTER',
           text: `El camino hacia ${travelInterruptionOriginalDestinationName} se corta antes de tiempo — ${quienSaleAlPaso ? `te sale al paso ${quienSaleAlPaso}` : 'algo te sale al paso'}.`,
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
           travelInterrupted: true,
@@ -6424,7 +6431,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           saveId,
           channel: 'CHARACTER',
           text: quienSaleAlPaso ? `Te sale al paso ${quienSaleAlPaso} mientras estás ocupado con esto.` : 'Algo te sale al paso mientras estás ocupado con esto.',
-          timeLabel,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextBeforeMainLogCreatedAt(),
           travelInterrupted: true,
@@ -6477,7 +6484,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // persistir esto, recargar durante un combate abierto perdía el banner de quién tiene la
         // iniciativa para el próximo intercambio.
         initiativeRoll: nextInitiativeRoll ? (nextInitiativeRoll as unknown as Prisma.InputJsonValue) : undefined,
-        timeLabel,
+        timeLabel: nuevaFictionalDateLabel,
         xpDelta: xpTurno > 0 ? xpTurno : undefined,
         // UX 2026-09-01 (ver comentario de la columna en schema.prisma) — desglose de `xpDelta`
         // para que el frontend separe el chip de hito/capítulo del de XP normal tras recargar.
@@ -6492,66 +6499,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       },
     });
 
-    // P55 (QA-27): cada ataque de más que recibió la jugadora en un combate de grupo, con sus dados.
-    // Sin esto, se podía caer tras ganar el único intercambio que se veía.
-    for (const extra of intercambiosContraJugadoraExtra) {
-      const combatExchange = { ...extra.display, rivalNombre: extra.atacanteNombre };
-      const text = `${extra.atacanteNombre} te ataca.`;
-      const entrada = await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text,
-          combatExchange: combatExchange as unknown as Prisma.InputJsonValue,
-          timeLabel,
-          fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
-          combate: true,
-        },
-      });
-      intercambiosExtra.push({ logEntryId: entrada.id, text, combatExchange });
-    }
-    // P55 (QA-27): los golpes gratis no tienen tirada, pero también dejan su línea en el diario.
-    for (const golpe of golpesSinTiradaContraJugadora) {
-      const text = `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`;
-      const entrada = await tx.logEntry.create({
-        data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, createdAt: nextAfterMainLogCreatedAt(), combate: true },
-      });
-      intercambiosExtra.push({ logEntryId: entrada.id, text });
-    }
-
-    if (compassNarrationLine) {
-      // Brújula (2026-08-15) — LogEntry aparte, construido a mano, NUNCA pasado por el Narrador:
-      // todo el contenido (dirección/destino/terreno) ya se sabe con certeza mecánica. Mismo
-      // patrón que la recompensa de misión de arriba, orden garantizado tras `mainLogEntry` vía
-      // `nextAfterMainLogCreatedAt`.
-      await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text: compassNarrationLine,
-          isPlayerAction: false,
-          timeLabel,
-          fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
-        },
-      });
-    }
-
+    // Primero lo que cambia la partida (habilidades nuevas); luego, las líneas del diario en su orden.
+    const desbloqueos: string[] = [];
     if (result.leveledUp) {
-      const attributeNote =
-        result.attributePointsGained > 0 ? ` Gana ${result.attributePointsGained} puntos de atributo para repartir.` : '';
-      await tx.logEntry.create({
-        data: {
-          saveId,
-          channel: 'CHARACTER',
-          text: `${characterName} sube a nivel ${result.newLevel}.${attributeNote}`,
-          timeLabel,
-          fictionalMinutes: nuevoFictionalMinutes,
-          createdAt: nextAfterMainLogCreatedAt(),
-        },
-      });
-
       // Habilidades de clase por nivel (roadmap de Fable, 2026-07-21) — se itera cada nivel
       // cruzado en este turno (no solo el final) para no saltarse un desbloqueo si una subida
       // de XP grande adelanta varios niveles de golpe. `isStarting: true`: son de diseño, no
@@ -6560,16 +6510,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       for (let lvl = params.currentLevel + 1; lvl <= result.newLevel; lvl++) {
         for (const ability of abilityUnlocksAlSubirANivel(characterName, lvl, params.clase, params.especializacion)) {
           await tx.savedAction.create({ data: savedActionDataFromAbility(saveId, ability) });
-          await tx.logEntry.create({
-            data: {
-              saveId,
-              channel: 'CHARACTER',
-              text: `${characterName} desbloquea la habilidad de clase «${ability.name}».`,
-              timeLabel,
-              fictionalMinutes: nuevoFictionalMinutes,
-              createdAt: nextAfterMainLogCreatedAt(),
-            },
-          });
+          desbloqueos.push(`${characterName} desbloquea la habilidad de clase «${ability.name}».`);
         }
       }
 
@@ -6598,16 +6539,37 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           isStarting: true,
         },
       });
-      await tx.logEntry.create({
+      desbloqueos.push(`${characterName} desbloquea la habilidad de oficio «${ability.name}» (nivel ${nivel} de ${oficio}).`);
+    }
+
+    // Brújula (2026-08-15): construida a mano, nunca pasa por el Narrador. P55 (QA-27): cada ataque
+    // de más que recibió la jugadora en un combate de grupo (con sus dados) y los golpes gratis (sin
+    // tirada). P117/QA-70: el orden lo decide `lineasTrasElGolpe`, todas tras `mainLogEntry` vía
+    // `nextAfterMainLogCreatedAt`.
+    const lineas = lineasTrasElGolpe({
+      brujula: compassNarrationLine ?? null,
+      subidaDeNivel: result.leveledUp
+        ? `${characterName} sube a nivel ${result.newLevel}.${result.attributePointsGained > 0 ? ` Gana ${result.attributePointsGained} puntos de atributo para repartir.` : ''}`
+        : null,
+      desbloqueos,
+      intercambiosAparte: intercambiosContraJugadoraExtra,
+      golpesGratis: golpesSinTiradaContraJugadora,
+    });
+    for (const linea of lineas) {
+      const { combate, combatExchange } = marcasDeLinea(linea);
+      const entrada = await tx.logEntry.create({
         data: {
           saveId,
           channel: 'CHARACTER',
-          text: `${characterName} desbloquea la habilidad de oficio «${ability.name}» (nivel ${nivel} de ${oficio}).`,
-          timeLabel,
+          text: linea.texto,
+          timeLabel: nuevaFictionalDateLabel,
           fictionalMinutes: nuevoFictionalMinutes,
           createdAt: nextAfterMainLogCreatedAt(),
+          combate,
+          ...(combatExchange ? { combatExchange: combatExchange as unknown as Prisma.InputJsonValue } : {}),
         },
       });
+      intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combate, ...(combatExchange ? { combatExchange } : {}), ...(linea.tipo === 'subidaDeNivel' ? { esSubidaDeNivel: true } : {}) });
     }
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
@@ -6678,7 +6640,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
             saveId,
             channel: 'CHARACTER',
             text: whisperText(characterName, outcome.avisoUltimaVez),
-            timeLabel,
+            timeLabel: nuevaFictionalDateLabel,
             fictionalMinutes: nuevoFictionalMinutes,
             createdAt: nextAfterMainLogCreatedAt(),
           },
@@ -7203,7 +7165,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         } as object;
         const resumedTransitId = await prisma.$transaction(async (tx) => {
           await tx.logEntry.create({
-            data: { saveId, channel: 'CHARACTER', text: resumeText, timeLabel: freshWorldState?.fictionalDateLabel ?? timeLabel },
+            data: { saveId, channel: 'CHARACTER', text: resumeText, timeLabel: freshWorldState?.fictionalDateLabel ?? timeLabel, fictionalMinutes: freshWorldState?.fictionalMinutes ?? nuevoFictionalMinutes },
           });
           const resumedTransit = await tx.characterTransit.upsert({
             where: { saveId },
