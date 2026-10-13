@@ -28,6 +28,7 @@ import { applyInventoryDelta } from '../lib/gameViewHelpers'
 
 import { useGameView } from './GameViewContext'
 import { Presencia } from '../components/Presencia'
+import { FinDePartidaModal } from '../components/FinDePartidaModal'
 
 /// BAS-5 (hito 0.2): las capas modales de la partida (detalle, Reino, clase, recolectar, viajar,
 /// zona, modo dinámico…), sacadas de `GameView`. Leen el estado de `GameViewContext`.
@@ -131,11 +132,22 @@ export function GameModals() {
     worldName,
     characterName,
     secondaryAttributes,
+    endedAt,
+    deathCount,
+    fictionalDate,
   } = useGameView()
   if (!saveId || !worldName || !characterName || !characterAttributes || !secondaryAttributes) return null
 
   return (
     <>
+      <Presencia>
+        {endedAt && (
+          <Capa id="fin-de-partida">
+          <FinDePartidaModal characterName={characterName} deathCount={deathCount} fictionalDate={fictionalDate} onIrAPartidas={salirAPartidas} />
+          </Capa>
+        )}
+      </Presencia>
+
       <Presencia>
         {detailTarget && (
           <Capa id="detalle" hija>
