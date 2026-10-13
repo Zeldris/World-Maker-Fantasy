@@ -30,7 +30,7 @@ import { ZONAS_DE_INICIO,
 import { nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
-import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
+import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { createInFlightClaimSet } from '../../lib/inFlightClaimSet.js';
 import { iniciarCaza, type CazaTarget } from '../../services/caza.js';
@@ -746,6 +746,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     nivelJugador: number,
     // P143: celda a la que se camina; `null` = pulsar la propia casilla (petición explícita).
     celdaDestino: { col: number; row: number } | null = null,
+    // Celdas de las entradas ya calculadas en este paso (P116); si no, se calculan aquí.
+    entradasConocidas?: Celda[],
   ): Promise<{
     /// `true` si el objetivo de `ultimoEncuentroSlug` sigue en el radio de `celda` — el caller solo
     /// limpia `Save.zonaUltimoEncuentro` cuando esto es `false` (el jugador ya salió de su radio).
@@ -860,7 +862,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const noCortaElPaso = (tipo: string, temperamento: string, celdaNpc: { col: number; row: number }) =>
       enAsentamiento && !!celdaDestino && tipo === 'NPC' && !esTemperamentoHostil(temperamento) && !celdaAdyacenteOMisma(celdaDestino, celdaNpc);
     // P116 (QA-27): junto a una entrada de la zona (`RADIO_SEGURO_ENTRADA`), la fauna hostil no corta el paso.
-    const enEntradaSegura = enRadioSeguro(celda, await celdasDeEntrada(tx, saveId, locationId));
+    const enEntradaSegura = enRadioSeguro(celda, entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId)));
     const faunaHostilEnEntrada = (tipo: string, temperamento: string) => enEntradaSegura && tipo === 'FAUNA' && esTemperamentoHostil(temperamento);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
     const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
@@ -1285,7 +1287,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       // Persecución (2026-09-17) — `nuevaPosicion` (no `posicionActual`) porque el jugador ya dio
       // este paso antes de que el mundo se mueva (mismo criterio "Mount & Blade" del comentario de
       // arriba: ambos avanzan a la vez, evaluados sobre el estado ya actualizado).
-      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus, momentoActual);
+      // Las entradas de la zona no cambian dentro del paso: una sola vez para el mundo y el encuentro.
+      const entradas = await celdasDeEntrada(tx, save.id, save.currentLocationId!);
+      const zonePointsMovidos = await avanzarZonePointsUnPaso(tx, save.currentLocationId!, save.id, Math.random, nuevaPosicion, factionsStatus, momentoActual, entradas);
 
       // B2 (pruebas 2026-09-28): moverse por la zona no avanzaba el reloj — decenas de pasos y
       // encuentros seguían en "Día 1, 08:00". Cada paso real (una celda, ~50 m) cuesta 1 minuto.
@@ -1314,6 +1318,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         ultimoEncuentroSlug,
         save.level,
         celdaDestino,
+        entradas,
       );
       // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
       // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).

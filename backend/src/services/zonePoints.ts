@@ -620,6 +620,8 @@ export async function avanzarZonePointsUnPaso(
   // Opcional por la misma razón que `jugador`/`factionsStatus`: sin momento conocido, ningún punto
   // se filtra por hora, se comporta exactamente como antes (comportamiento seguro por defecto).
   momento?: MomentoDelDia,
+  // Celdas de las entradas ya calculadas por el caller en este mismo paso (P116); si no, se calculan.
+  entradasConocidas?: Celda[],
 ): Promise<ZonePointPasoResultado[]> {
   await asegurarZonePointsDePartida(tx, saveId, locationId);
   const puntosCrudos = await tx.zonePoint.findMany({
@@ -650,7 +652,7 @@ export async function avanzarZonePointsUnPaso(
   );
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
   // P116 (QA-27): la fauna hostil no persigue ni entra en el radio seguro de las entradas.
-  const entradas = await celdasDeEntrada(tx, saveId, locationId);
+  const entradas = entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId));
   const esZonaDeInicioMov = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
   // B30 (pruebas 2026-09-28): dos grupos de la misma especie deambulando acababan en la MISMA celda
   // (un pin tapaba al otro). Celdas ocupadas en este paso — el tramo de cada callback hasta su
