@@ -42,8 +42,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea).
-7. **Al cerrar una fase o un hito:** `retro`, que lanza Claude sobre toda la fase; sus propuestas
-   se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,
+7. **Tras fusionar cada PR a `main`, y al cerrar una fase o un hito:** `retro` (usuaria, 2026-10-13:
+   siempre después de cada PR), que lanza Claude sobre lo que entró con el PR o sobre toda la fase.
+   Sus propuestas se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,
    `/improve-codebase-architecture`. Lo aceptado entra como tarea con hito.
 
 Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las sustituyen.
@@ -59,7 +60,7 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 | `diagnosing-bugs` | sola ante un bug o test rojo | Primero un test o comando que reproduzca el fallo; luego minimizar, hipótesis, arreglo y test de regresión | Bugs que encuentras jugando (como Matar/Clemente) y tests intermitentes (G16, P3.2) |
 | `/improve-codebase-architecture` | la usuaria o al cerrar fase | Busca módulos que simplificar y los presenta en un informe | Cada pocas fases. Candidatos claros: `turnResolution.ts` (más de 7.000 líneas), `turn.ts` |
 | `codebase-design` | por debajo de la anterior | Vocabulario para diseñar módulos con interfaz pequeña | — |
-| `retro` | Claude, al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Fin de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
+| `retro` | Claude, tras fusionar cada PR a `main` y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Tras cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
 | `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |
 | `pr` | Claude, al abrir un PR a `main` | Descripción del PR: resumen visual del cambio, evidencia antes/después y peligro del merge | Cada PR a `main`, tras `/code-review`. Evidencia: los números de `tsc`, `vitest` y `oxlint` |

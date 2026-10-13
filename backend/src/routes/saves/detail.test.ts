@@ -27,8 +27,13 @@ const findManyCombatParticipant = vi.fn();
 const createManySkillBar = vi.fn();
 const findManySkillBar = vi.fn();
 
+// P100/QA-68: los renombres de habilidades tienen su propio test con base real
+// (detail.habilidadesIniciales.integration.test.ts); aquí, ninguno pendiente.
+vi.mock('../../services/habilidadesRenombradas.js', () => ({ renombrarHabilidadesDePartida: async () => false }));
+
 vi.mock('../../lib/prisma.js', () => ({
   prisma: {
+    $transaction: async (fn: (tx: unknown) => unknown) => fn({}),
     worldState: { findUnique: (...args: unknown[]) => findUniqueWorldState(...args) },
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args), update: async () => ({}) },
     itemCatalog: { findMany: (...args: unknown[]) => findManyItemCatalog(...args) },

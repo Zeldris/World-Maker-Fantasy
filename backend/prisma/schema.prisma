@@ -303,6 +303,7 @@ model Save {
   /// cada vez), así que un id guardado aquí quedaría huérfano al instante. Si el nombre cambia
   /// (p.ej. cambiar de espada a hacha), ese hueco del cinturón queda vacío hasta que el jugador
   /// elija de nuevo — decisión explícita: más predecible que intentar adivinar qué sustituye a qué.
+  /// Guarda nombres de habilidad (QA-68): un renombre pasa por `habilidadesRenombradas.ts`.
   activeCombatAbilityNames           String[] @default([])
   /// false = el jugador nunca ha guardado el cinturón todavía — `resolveActiveCombatAbilityNames`
   /// (combatAbilities.ts) cae al comportamiento por defecto (todas activas mientras quepan) en vez
@@ -1865,6 +1866,7 @@ model SavedAction {
   id                      String          @id @default(cuid())
   saveId                  String
   save                    Save            @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  /// Guarda nombres de habilidad (QA-68): un renombre pasa por `habilidadesRenombradas.ts`.
   name                    String
   promptText              String
   /// Un emoji — icono del botón en el panel de Habilidades.
@@ -2384,6 +2386,7 @@ model SkillBar {
   save         Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
   slotIndex    Int
   name         String   @default("Barra 1")
+  /// Guarda nombres de habilidad (QA-68): un renombre pasa por `habilidadesRenombradas.ts`.
   abilityNames String[] @default([])
   createdAt    DateTime @default(now())
 
@@ -3024,6 +3027,7 @@ model NpcState {
   /// se reutiliza la vuelta a `condicionFisica: ILESO` (descanso/curación entre combates, nunca
   /// durante uno) como frontera real para resetear a `{}`, mismo punto donde ya se limpian
   /// `saqueado`/`analizado`.
+  /// Guarda nombres de habilidad (QA-68): un renombre pasa por `habilidadesRenombradas.ts`.
   abilityUsesThisEncounter    Json            @default("{}")
   /// Fase 2 de efectos de clase (2026-08-26) — ver comentario completo en `Save.activeEffects`,
   /// mismo shape (`ActiveEffect[]`), mismo criterio de reset (vuelta a `condicionFisica: ILESO`).
