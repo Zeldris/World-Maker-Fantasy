@@ -294,10 +294,13 @@ export function useModoDinamico({
       }
       // 'MOSTRAR_OFERTA_MISION'/'CERRAR' no necesitan ninguna acción más — la tarjeta ya se limpió
       // arriba, y la oferta de misión (si la hay) ya vive en su propia tarjeta independiente.
-    } catch {
+    } catch (err) {
+      // El motivo real del backend (p. ej. «Ese encuentro ya no está disponible» con un menú caducado),
+      // mismo criterio que el recurso de arriba.
+      const motivo = err instanceof Error && err.message ? err.message : 'No se pudo continuar — inténtalo de nuevo.'
       setCharacterLog((prev) =>
         prev.map((e) =>
-          e.id === entryId && e.npcInteractionOffer ? { ...e, npcInteractionOffer: { ...e.npcInteractionOffer, busy: false, error: 'No se pudo continuar — inténtalo de nuevo.' } } : e,
+          e.id === entryId && e.npcInteractionOffer ? { ...e, npcInteractionOffer: { ...e.npcInteractionOffer, busy: false, error: motivo } } : e,
         ),
       )
     }

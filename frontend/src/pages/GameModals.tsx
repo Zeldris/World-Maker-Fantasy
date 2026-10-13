@@ -451,7 +451,14 @@ export function GameModals() {
             onDesollarCadaver={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
             onHoraActualizada={setFictionalDate}
             onOfertaDescartada={() =>
-              setCharacterLog((prev) => prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)))
+              // El menú del NPC abierto desde ese encuentro (P142) se va con él, igual que en el backend.
+              setCharacterLog((prev) =>
+                prev.map((e) =>
+                  e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado
+                    ? { ...e, dynamicModeOffer: undefined, ...(e.npcInteractionOffer?.desdeEncuentro ? { npcInteractionOffer: undefined } : {}) }
+                    : e,
+                ),
+              )
             }
             // ZON-5 (hito 0.2, petición de la usuaria): el encuentro sale también junto a su ficha y el
             // mapa no se cierra. Hablar o recolectar se abren encima (el mapa espera debajo y vuelve);

@@ -766,6 +766,21 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(body.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
   });
 
+  it('al descartar el encuentro, se va también el menú del NPC abierto desde él (P142)', async () => {
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        pendingDynamicModeOffer: { tipo: 'NPC', targetSlug: 'test-mover-maestro', targetName: 'Maestro', quienInicia: 'jugador' },
+        pendingNpcInteractionOffer: { npcSlug: 'test-mover-maestro', npcName: 'Maestro', options: ['Charlar', 'Salir'], desdeEncuentro: true },
+      },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    expect(JSON.parse(res.body).ofertaDescartada).toBe(true);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingNpcInteractionOffer).toBeNull();
+  });
+
   it('un AGRESIVO nunca se silencia por ser el último encuentro: sigue cortando el paso', async () => {
     await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

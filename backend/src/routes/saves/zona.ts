@@ -75,6 +75,7 @@ const SAVE_SELECT_PARA_MOVER = {
   zonaCaminoPendiente: true,
   zonaUltimoEncuentro: true,
   pendingDynamicModeOffer: true,
+  pendingNpcInteractionOffer: true,
   currentLocationId: true,
   currentLocation: { select: { id: true } },
   worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
@@ -1265,7 +1266,13 @@ export async function zonaRoutes(app: FastifyInstance) {
       // mismo paso ya pueda toparse con algo nuevo. Las de combate forzado ya se rechazaron arriba.
       const ofertaDescartada = !!save.pendingDynamicModeOffer;
       if (ofertaDescartada) {
-        await tx.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+        // El menú del NPC abierto desde ese encuentro (P142) se va con él: elegir en él ya no tiene
+        // encuentro sobre el que actuar (`/code-review` del PR #53).
+        const menuDelEncuentro = !!(save.pendingNpcInteractionOffer as { desdeEncuentro?: boolean } | null)?.desdeEncuentro;
+        await tx.save.update({
+          where: { id: save.id },
+          data: { pendingDynamicModeOffer: Prisma.JsonNull, ...(menuDelEncuentro ? { pendingNpcInteractionOffer: Prisma.JsonNull } : {}) },
+        });
       }
 
       // El mundo también se mueve — un paso por cada paso del jugador, ANTES de comprobar colisión
