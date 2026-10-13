@@ -48,8 +48,7 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review` **antes de crear** el PR a `main` y `/retro` **después de
-   fusionarlo** (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review` y luego `/retro`, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
 ## Lo que engaña
 
