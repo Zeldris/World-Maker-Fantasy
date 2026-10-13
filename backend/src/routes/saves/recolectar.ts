@@ -448,9 +448,14 @@ async function pasivoCandidatesFor(worldId: string, currentLocationSlug: string 
 
 /// P109 (QA-27): descuenta del punto RECURSO de la zona lo recolectado. A 0 queda inactivo (nunca se
 /// borra: es el punto de catálogo); el recálculo diario (`proximaCantidadPara`) lo repone poco a poco.
-export async function descontarZonePointRecurso(tx: Prisma.TransactionClient, saveId: string, locationId: string, sourceSlug: string, unidades: number): Promise<void> {
+/// Con `zonePointId` (recolectar desde el mapa), de ese punto; sin él (el modal de Recolectar, que no
+/// sale de un punto), del que más tiene de esa fuente.
+export async function descontarZonePointRecurso(tx: Prisma.TransactionClient, saveId: string, locationId: string, sourceSlug: string, unidades: number, zonePointId?: string): Promise<void> {
   if (unidades <= 0) return;
-  const punto = await tx.zonePoint.findFirst({ where: { saveId, locationId, tipo: 'RECURSO', targetSlug: sourceSlug, activo: true }, orderBy: { cantidad: 'desc' } });
+  const punto = await tx.zonePoint.findFirst({
+    where: { saveId, locationId, tipo: 'RECURSO', targetSlug: sourceSlug, activo: true, ...(zonePointId ? { id: zonePointId } : {}) },
+    orderBy: { cantidad: 'desc' },
+  });
   if (!punto) return;
   const cantidad = Math.max(0, punto.cantidad - unidades);
   await tx.zonePoint.update({ where: { id: punto.id }, data: { cantidad, ...(cantidad === 0 ? { activo: false } : {}) } });
@@ -703,6 +708,9 @@ export async function resolverRecoleccion(
   /// Tirada de Explorar ya hecha por el caller (recolectar desde el mapa) — solo para guardarla en
   /// `LogEntry.roll`; nunca cambia el resultado de la recolección.
   primeraTirada?: GatheringRollResult,
+  /// Punto del mapa que se está recolectando (la oferta de Interactuar), para descontar de ese y no
+  /// de otro de la misma fuente (`/code-review` del PR #53).
+  zonePointId?: string,
 ) {
   interface TouchedStack {
     id: string;
@@ -836,7 +844,9 @@ export async function resolverRecoleccion(
               // archivo (`matchesOficioPrefix`), nunca una comparación exacta contra este string.
               const nivelOficio = (save.professionProgress ?? []).find((p) => matchesOficioPrefix(p.professionId, segunda.oficio))?.nivel ?? 1;
               const effectiveAttrs = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-              const { paso, grado, roll: segundaRoll, dificultad } = pasaSegundaTirada(effectiveAttrs, segunda.attribute, alivioForLevel(nivelOficio), yieldRow.item.tier);
+              // P109: la maña de la fuente (Destreza) vale también para la segunda tirada, no solo para Explorar.
+              const atributoSegunda = atributoDeFuente(yieldRow.sourceCategory, yieldRow.metodoObtencion) ?? segunda.attribute;
+              const { paso, grado, roll: segundaRoll, dificultad } = pasaSegundaTirada(effectiveAttrs, atributoSegunda, alivioForLevel(nivelOficio), yieldRow.item.tier);
               segundasTiradas.push({ sourceSlug: sel.sourceSlug, itemSlug: sel.itemSlug, itemName: yieldRow.item.name, roll: segundaRoll, dificultad, grado, paso });
               if (!paso) continue;
               cantidad = cantidadForGrado(grado, cantidad);
@@ -1077,7 +1087,7 @@ export async function resolverRecoleccion(
         // (`descontarZonePointCaza`), el punto pierde lo recolectado; el recálculo diario lo repone.
         if (currentLocationIdParaZona) {
           for (const [sourceSlug, unidades] of unidadesPorFuente) {
-            await descontarZonePointRecurso(tx, save.id, currentLocationIdParaZona, sourceSlug, unidades);
+            await descontarZonePointRecurso(tx, save.id, currentLocationIdParaZona, sourceSlug, unidades, zonePointId);
           }
         }
 
