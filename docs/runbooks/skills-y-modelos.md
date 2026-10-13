@@ -37,7 +37,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está
-   al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61).
+   al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61). Aparte, `main` se trae
+   siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
