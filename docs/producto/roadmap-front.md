@@ -1101,8 +1101,10 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
 - ~~**QA-68 · Renombres en todos los campos**~~ ✅ 2026-10-13: `CAMPOS_CON_NOMBRE_DE_HABILIDAD`
   (`habilidadesRenombradas.ts`), su test contra las marcas «por NOMBRE» del esquema y regla en «Cada
   partida, lo suyo» de `REVIEW.md`. Motivo: P100 no renombraba las barras de habilidades.
-- **QA-69 · Una fila «Tarea en curso» por rama**: la bitácora con una fila por cuenta y un tope de tamaño
-  comprobado en el push. Motivo: las dos cuentas escribían en la misma celda y se contradecían.
+- ~~**QA-69 · Una fila «Tarea en curso» por rama**~~ ✅ 2026-10-13: la bitácora tiene una fila «Tarea en
+  curso · `<rama>`» por cuenta; `tools/qa/bitacora.py` (en `pre-push`) exige la rama en el nombre y 600
+  caracteres como mucho; `CLAUDE.md` lo dice. Motivo: las dos cuentas escribían en la misma celda y se
+  contradecían.
 - **QA-70 · Test del orden del diario en un turno**: subida de nivel, desbloqueos y golpes gratis en su
   orden (`createdAt`). Motivo: P117 se arregló dos veces y no tiene test.
 ---

@@ -90,5 +90,6 @@ prueba y cómo se apunta (`QA-56`).
 Tiene siempre al día: rama de trabajo, hito y fase, tarea en curso con lo hecho y lo pendiente,
 último commit y estado de los tests, siguientes pasos en orden, decisiones de Álvaro que bloquean
 algo, y los comandos para comprobar el estado. Al cerrar una tarea, se mueve a "Hecho
-recientemente" (las 10 últimas; lo más antiguo se borra, el historial ya está en git). La celda «Tarea
-en curso» lleva solo la tarea actual, lo que falta y el siguiente paso: como mucho 5 líneas.
+recientemente" (las 10 últimas; lo más antiguo se borra, el historial ya está en git). Cada rama tiene
+su fila «Tarea en curso · `<rama>`» y solo escribe en la suya: la tarea actual, lo que falta y el
+siguiente paso, como mucho 600 caracteres (lo comprueba el push, `QA-69`).
