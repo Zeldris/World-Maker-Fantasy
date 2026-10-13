@@ -1118,6 +1118,21 @@ Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
   que se ve igual que tras recargar. Motivo: P117 se arregló dos veces y no tenía test.
 ---
 
+Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md), aprobadas todas por la
+usuaria el 2026-10-13):
+
+- **QA-71 · Diario que el frontend escribe por su cuenta**: las líneas que cuentan algo del juego llegan
+  del backend con su `logEntryId`; en el frontend solo quedan avisos de error, y un test lista los
+  prefijos de `id` permitidos. Motivo: P117 se veía mal en vivo por la línea «sube a nivel» del frontend.
+- **QA-72 · Tests de las herramientas de `tools/qa/` y del gancho**, en la CI. Motivo: 4 de los 11
+  hallazgos del `/code-review` del #50 eran de esas herramientas.
+- ~~**QA-73 · `/code-review` al cerrar cada tanda de 3 o más tareas**~~ ✅ 2026-10-13: paso 5 de
+  `skills-y-modelos.md`. Motivo: las dos últimas tandas salieron con 11 y 12 fallos que solo vio la
+  revisión final.
+- ~~**QA-74 · `estado.js` con el nombre en los avisos**~~ ✅ 2026-10-13: los avisos se buscan párrafo a
+  párrafo con `textContent`, que deja los chips de nombre en su frase. Motivo: «  te golpea…» sin quién,
+  parecía un fallo del juego.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

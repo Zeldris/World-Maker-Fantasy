@@ -13,6 +13,9 @@ async (page) => {
   const diario = iDiario >= 0 ? texto.slice(iDiario, iMundo > iDiario ? iMundo : undefined).trim().slice(-900) : '';
   const iCombate = texto.search(/Combate —|COMBATE —/);
   const combate = iCombate >= 0 ? texto.slice(iCombate, iCombate + 700).replace(/\n{2,}/g, '\n') : '';
-  const avisos = (texto.match(/[^\n]*(busca tu atención|te corta el paso|Te topas con|Has caído|Victoria|Derrota|CONVALECIENTE)[^\n]*/gi) || []).slice(-4);
+  // QA-74: los avisos se buscan párrafo a párrafo con `textContent`. En `innerText` los nombres van en
+  // fichas (chips) en otra línea y la frase quedaba sin quién («  te golpea sin que puedas…»).
+  const parrafos = await page.locator('p').evaluateAll((ps) => ps.map((p) => (p.textContent || '').replace(/\s+/g, ' ').trim()));
+  const avisos = parrafos.filter((t) => /busca tu atención|te corta el paso|Te topas con|te golpea|Has caído|Victoria|Derrota|CONVALECIENTE/i.test(t)).slice(-4);
   return ['HUD: ' + hud, 'AVISOS: ' + avisos.join(' | '), 'DIARIO (final):\n' + diario, combate ? 'COMBATE:\n' + combate : ''].filter(Boolean).join('\n\n');
 }
