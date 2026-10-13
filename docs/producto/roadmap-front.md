@@ -687,6 +687,9 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   **Queda:** engancharla al Cronista en segundo plano cuando exista (`CR-12`).
 - **HUD-13 · Etiqueta principal** del personaje bajo su nombre en la cabecera (la de más peso, p. ej.
   "Verdugo de Torgash"), con las demás en el tooltip. **S**
+- **HUD-14 · Aviso al desbloquear algo en la Enciclopedia** (usuaria, 2026-10-13, P146 de `QA-27`):
+  como el aviso de un objeto nuevo en el inventario, uno cuando se desbloquea una ficha nueva de la
+  Enciclopedia, que lleve a ella. **S**
 
 ---
 
