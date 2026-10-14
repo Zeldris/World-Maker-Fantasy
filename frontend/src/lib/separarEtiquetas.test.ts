@@ -36,4 +36,28 @@ describe('separarEtiquetas (P92)', () => {
     )
     expect(dy.get('b')!).toBeLessThan(0)
   })
+
+  // P123 (QA-27): la etiqueta de una salida caía encima de una ficha de fauna y de su «×5».
+  it('una ficha es un obstáculo fijo: la etiqueta que la tapa se aparta, la ficha no se mueve', () => {
+    const dy = separarEtiquetas(
+      [
+        { clave: 'f:p:1', x: 100, y: 100, ancho: 54, alto: 34, fija: true },
+        { clave: 's:salida', x: 90, y: 110, ancho: 120, alto: 18 },
+      ],
+      600,
+    )
+    expect(dy.has('f:p:1')).toBe(false)
+    expect(110 + (dy.get('s:salida') ?? 0)).toBeGreaterThanOrEqual(134)
+  })
+
+  it('la etiqueta de una ficha no se aparta de su propia ficha', () => {
+    const dy = separarEtiquetas(
+      [
+        { clave: 'f:p:1', x: 100, y: 100, ancho: 54, alto: 34, fija: true },
+        { clave: 'p:1', x: 100, y: 120, ancho: 60, alto: 18 },
+      ],
+      600,
+    )
+    expect(dy.has('p:1')).toBe(false)
+  })
 })

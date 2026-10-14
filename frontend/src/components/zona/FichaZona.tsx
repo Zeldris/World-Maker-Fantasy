@@ -242,6 +242,16 @@ export function cajaEtiqueta(clave: string, fx: number, fy: number, escala: numb
   return { clave, x: fx + izq * escala, y: fy + (e.y - 9) * escala, ancho: ancho * escala, alto: 18 * escala }
 }
 
+/// P123 (QA-27): caja (unidades del lienzo) de la ficha misma y de su insignia «×N», para que las
+/// etiquetas no la tapen. Ficha de radio 14 y, con grupo, la insignia arriba a la derecha (9..40, -21..-7).
+export function cajaFicha(clave: string, fx: number, fy: number, escala: number, cantidad = 1) {
+  const conInsignia = cantidad > 1
+  const izq = -14
+  const der = conInsignia ? 40 : 14
+  const arriba = conInsignia ? -21 : -14
+  return { clave, x: fx + izq * escala, y: fy + arriba * escala, ancho: (der - izq) * escala, alto: (13 - arriba) * escala, fija: true }
+}
+
 /// ZON-17 (hito 0.1) — salida de región como estandarte de camino: placa con una flecha grande hacia el
 /// borde (`angulo` en grados, 0 = este) y una etiqueta hacia el interior del mapa con el destino, para
 /// que no se salga del lienzo.

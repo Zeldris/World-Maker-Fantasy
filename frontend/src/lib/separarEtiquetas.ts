@@ -2,7 +2,9 @@
 // pisaban cuando caían cerca, p. ej. dos salidas en la misma esquina y una ficha al lado. Cada caja va en
 // unidades del lienzo; las fijas (salidas) se colocan primero y el resto se aparta en vertical.
 
-export type CajaEtiqueta = { clave: string; x: number; y: number; ancho: number; alto: number }
+/// `fija`: un obstáculo que no se mueve ni se devuelve (P123: la ficha misma, con su «×N»). Su clave es
+/// `f:<clave de su etiqueta>`: la etiqueta de una ficha no se aparta de su propia ficha.
+export type CajaEtiqueta = { clave: string; x: number; y: number; ancho: number; alto: number; fija?: boolean }
 
 const HUECO = 2
 
@@ -16,10 +18,14 @@ export function separarEtiquetas(cajas: CajaEtiqueta[], altoLienzo: number): Map
   const colocadas: CajaEtiqueta[] = []
   const dy = new Map<string, number>()
   for (const caja of cajas) {
+    if (caja.fija) {
+      colocadas.push(caja)
+      continue
+    }
     const actual = { ...caja }
     // Tope de vueltas: con muchas etiquetas juntas, mejor alguna pisada que un bucle sin fin.
     for (let vuelta = 0; vuelta < 12; vuelta++) {
-      const pisada = colocadas.find((c) => sePisan(c, actual))
+      const pisada = colocadas.find((c) => c.clave !== `f:${actual.clave}` && sePisan(c, actual))
       if (!pisada) break
       const abajo = pisada.y + pisada.alto + HUECO
       actual.y = abajo + actual.alto <= altoLienzo ? abajo : pisada.y - actual.alto - HUECO
