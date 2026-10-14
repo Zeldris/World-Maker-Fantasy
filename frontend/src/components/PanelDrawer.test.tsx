@@ -13,7 +13,9 @@ describe('PanelDrawer', () => {
       </PanelDrawer>,
     )
     const panel = container.querySelector('.plank-panel') as HTMLElement
-    expect(panel.className).toContain('max-h-[min(85vh,100%)]')
+    // P144: alto fijo (no solo máximo), igual para todos los paneles, cortos o largos.
+    expect(panel.className).toContain('h-[min(85vh,100%)]')
+    expect(panel.className).not.toContain('max-h-')
     expect(panel.className).toContain('min-h-0')
     expect(getByText('contenido').parentElement?.className).toContain('overflow-y-auto')
   })

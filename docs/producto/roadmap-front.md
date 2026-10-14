@@ -1077,7 +1077,7 @@ usuaria `QA-62`…`QA-65`; la quinta propuesta, regresiones en la ronda, no entr
   del commit de cabeza del PR (`gh api …/check-runs`) y bloquea si alguna no ha terminado en verde;
   paso 6 de `skills-y-modelos.md` (suscribirse y fusionar con el verde) y regla en `CLAUDE.md`. Probado
   sobre el #47 con el backend aún corriendo. Motivo: el #47 se fusionó con el CI corriendo.
-- **QA-63 · Los tiempos límite de `turn.integration`** (🚧 diagnosticado, falta el arreglo): los hooks
+- ~~**QA-63 · Los tiempos límite de `turn.integration`**~~ ✅ 2026-10-14: los `afterEach` de los dos bloques llevan su propio límite de 60 s con el motivo (el salto de 7 días es lo que se prueba; acortarlo dejaría el test sin sentido). Comprobado con el bloque entero 3 veces seguidas: 13/13 cada vez. Diagnóstico de entonces: los hooks
   de «OrdenProduccion» y «Territory.control» pasan de 10 s (también en `main`). Diagnóstico del
   2026-10-12 con `diagnosing-bugs`: el `afterEach` hace `prisma.save.delete`, que
   `vitest.bdReal.setup.ts` envuelve para esperar a `esperarTodoElFondo()`; esos tests saltan 7 días,
