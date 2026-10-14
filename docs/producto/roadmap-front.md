@@ -1139,8 +1139,10 @@ Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md
 usuaria el 2026-10-13):
 
 - **QA-73 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
-  una acción bloqueada, huir antes del combate (P131) y Explorar fallido (P138). Falta jugarlo en huir
-  durante un combate y caza sigilosa fallida, que salen al azar):
+  una acción bloqueada, huir antes del combate (P131), Explorar fallido (P138) y, el 2026-10-14, huir
+  durante un combate (contra Cruzavientos: tirada de Destreza con su dado y la entrada guardada). Falta
+  la caza sigilosa fallida, que solo sale contra una presa 2 niveles por debajo: con Gorhorn a nivel 2 y
+  la fauna más floja a nivel 1, no se puede provocar hasta nivel 3):
   - huir antes y durante el combate y la respuesta a una acción bloqueada devuelven la entrada guardada
     (`logEntry`) y el frontend la pinta tal cual; la huida de durante el combate se guarda ya como combate;
   - Explorar: la línea del dado lleva el id de la entrada guardada y, al caer el dado, se sustituye por
