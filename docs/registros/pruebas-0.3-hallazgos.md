@@ -19,8 +19,11 @@ Separado con la usuaria tras contrastar sus decisiones con los juegos de referen
     P121 (comer saciado por la energía), P128 (pantalla de fin y a tus partidas), P129 (golpes de
     grupo con tirada, tope 2 extra y sin Ileso→Muerto en una ronda), P137 (bandos sin muertes de la
     jugadora), P142 y P143 (menú fijo del NPC y NPC que no cortan el paso en asentamientos amistosos).
-  - Sin decisión pendiente: P123, P124, P125, P126, P130, P132, P133, P134, P135, P136, P139, P140,
-    P141, P144; y `QA-73` (falta jugar huir en combate y caza sigilosa fallida).
+  - Sin decisión pendiente: P124, P125, P126, P133, P134, P136, P139, P140, P141 (reabierto: nombres
+    de oficio); y `QA-73` (falta la caza sigilosa fallida, que pide nivel 3).
+  - Comprobados jugando el 2026-10-14: P96, P109, P123, P130, P132, P135, P137, P144 y huir en combate
+    (`QA-73`). Hallazgos nuevos de esa ronda: P147-P187 (pendientes; decisiones de la usuaria en P164,
+    P172, P179, P184 y P187).
 - **Roadmap** (diseño o desarrollo nuevo, para cuando se vuelva a él): `REI-122` (permiso para fundar),
   `ZON-88` (peligro en el aviso de salida), `ZON-89` (fauna y flora en fichas pequeñas), `HUD-14` (aviso
   de la Enciclopedia). Ya estaban: «Charlar con NPC» enriquecido y `CR-51` (Fase F del `0.3`).

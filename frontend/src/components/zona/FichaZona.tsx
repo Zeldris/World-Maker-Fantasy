@@ -142,11 +142,16 @@ export function FichaZona({ tipo, color, escala, hasCompanion, cantidad = 1, som
   )
 }
 
+/// Ancho de la insignia «×N» (unidades de la ficha).
+export function anchoInsignia(cantidad: number): number {
+  return 9 + `×${cantidad}`.length * 6.2
+}
+
 /// ZON-13 (Z8) — píldora clara con "×N" arriba a la derecha, fuera de la ficha, legible en cualquier
 /// terreno (antes: número de 9 unidades dentro de un círculo de 8 de radio).
 export function InsigniaGrupo({ cantidad }: { cantidad: number }) {
   const texto = `×${cantidad}`
-  const ancho = 9 + texto.length * 6.2
+  const ancho = anchoInsignia(cantidad)
   return (
     <g transform="translate(9, -21)" aria-hidden="true">
       <rect x={0} y={0} width={ancho} height={14} rx={7} fill="var(--color-wood-100)" stroke="var(--color-wood-950)" strokeWidth={1.2} />
@@ -242,14 +247,38 @@ export function cajaEtiqueta(clave: string, fx: number, fy: number, escala: numb
   return { clave, x: fx + izq * escala, y: fy + (e.y - 9) * escala, ancho: ancho * escala, alto: 18 * escala }
 }
 
-/// P123 (QA-27): caja (unidades del lienzo) de la ficha misma y de su insignia «×N», para que las
-/// etiquetas no la tapen. Ficha de radio 14 y, con grupo, la insignia arriba a la derecha (9..40, -21..-7).
-export function cajaFicha(clave: string, fx: number, fy: number, escala: number, cantidad = 1) {
-  const conInsignia = cantidad > 1
-  const izq = -14
-  const der = conInsignia ? 40 : 14
-  const arriba = conInsignia ? -21 : -14
-  return { clave, x: fx + izq * escala, y: fy + arriba * escala, ancho: (der - izq) * escala, alto: (13 - arriba) * escala, fija: true }
+/// P123 (QA-27): caja (unidades del lienzo) de lo que se dibuja de una ficha, para que las etiquetas no
+/// la tapen. Mismas medidas que `FichaZona`/`ZonePointMarker`: placa de radio 15 (los rombos), placas
+/// apiladas detrás desde ×3 (+6, −6), anillo de compañero o de desconocida (r 17.5), la insignia «×N»
+/// (`InsigniaGrupo`, desde (9, −21), alto 14) y el candado o el ⏳ (hasta (22, −18)).
+export function cajaFicha(
+  clave: string,
+  fx: number,
+  fy: number,
+  escala: number,
+  o: { cantidad?: number; anillo?: boolean; candado?: boolean; agotado?: boolean } = {},
+) {
+  const cantidad = o.cantidad ?? 1
+  const r = o.anillo ? 18.5 : 15
+  const izq = -r
+  let der = Math.max(r, cantidad >= 3 ? 21 : 0)
+  let arriba = Math.min(-r, cantidad >= 3 ? -21 : 0)
+  const abajo = r
+  if (cantidad > 1) {
+    der = Math.max(der, 9 + anchoInsignia(cantidad))
+    arriba = Math.min(arriba, -21)
+  }
+  if (o.candado || o.agotado) {
+    der = Math.max(der, 22)
+    arriba = Math.min(arriba, -18)
+  }
+  return { clave, x: fx + izq * escala, y: fy + arriba * escala, ancho: (der - izq) * escala, alto: (abajo - arriba) * escala, fija: true }
+}
+
+/// Caja (unidades del lienzo) de una marca redonda de radio `r` (jugador, viajeros, parcelas), como
+/// obstáculo para las etiquetas.
+export function cajaMarca(clave: string, fx: number, fy: number, escala: number, r: number) {
+  return { clave, x: fx - r * escala, y: fy - r * escala, ancho: 2 * r * escala, alto: 2 * r * escala, fija: true }
 }
 
 /// ZON-17 (hito 0.1) — salida de región como estandarte de camino: placa con una flecha grande hacia el

@@ -60,4 +60,36 @@ describe('separarEtiquetas (P92)', () => {
     )
     expect(dy.has('p:1')).toBe(false)
   })
+
+  // /code-review del 2026-10-14: junto al borde de abajo, al subir por encima de otra ficha caía
+  // encima de la suya propia (la de su ficha solo se perdona en su sitio).
+  it('apartada, la etiqueta de una ficha no cae sobre su propia ficha', () => {
+    const propia = { clave: 'f:p:1', x: 100, y: 540, ancho: 30, alto: 30, fija: true }
+    const vecina = { clave: 'f:p:2', x: 100, y: 572, ancho: 30, alto: 28, fija: true }
+    const etiqueta = { clave: 'p:1', x: 95, y: 572, ancho: 40, alto: 18 }
+    const dy = separarEtiquetas([propia, vecina, etiqueta], 600)
+    const y = etiqueta.y + (dy.get('p:1') ?? 0)
+    const pisa = (c: { y: number; alto: number }) => y < c.y + c.alto && c.y < y + etiqueta.alto
+    expect(dy.has('p:1')).toBe(true)
+    expect(pisa(propia)).toBe(false)
+    expect(pisa(vecina)).toBe(false)
+  })
+
+  // P151 (QA-27): la etiqueta de una salida bajaba ficha tras ficha hasta ~100 px de su flecha.
+  it('no se aparta más de tres alturas de etiqueta; si no cabe, se queda en su sitio', () => {
+    const columna = [0, 1, 2, 3, 4, 5, 6].map((i) => ({ clave: `f:p:${i}`, x: 0, y: 100 + i * 20, ancho: 100, alto: 20, fija: true }))
+    const dy = separarEtiquetas([...columna, { clave: 's:lejos', x: 10, y: 170, ancho: 50, alto: 18 }], 600)
+    expect(dy.has('s:lejos')).toBe(false)
+  })
+
+  it('con hueco cerca, se aparta lo justo', () => {
+    const dy = separarEtiquetas(
+      [
+        { clave: 'f:p:1', x: 0, y: 100, ancho: 100, alto: 20, fija: true },
+        { clave: 's:cerca', x: 10, y: 105, ancho: 50, alto: 18 },
+      ],
+      600,
+    )
+    expect(dy.get('s:cerca')).toBe(17)
+  })
 })
