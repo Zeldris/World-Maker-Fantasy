@@ -3,7 +3,7 @@ import os
 import subprocess
 import unittest
 
-from comun import QA, carpeta, escribir
+from comun import QA, carpeta, escribir, git
 
 
 def comprobar(texto: str) -> subprocess.CompletedProcess:
@@ -34,6 +34,47 @@ class Bitacora(unittest.TestCase):
 
     def test_sin_ninguna_fila_falla(self):
         self.assertEqual(comprobar('| **Hito** | 0.3 |\n').returncode, 1)
+
+
+class Cerradas(unittest.TestCase):
+    """QA-85: lo que se tacha en un roadmap sale tachado en «Hecho recientemente»."""
+
+    def setUp(self):
+        self.repo = carpeta()
+        git(self.repo, 'init', '-q')
+        self.base = self.commit('- **QA-1 · Una**\n- ~~**QA-2 · Dos**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-2`~~\n')
+
+    def commit(self, roadmap: str, bitacora: str) -> str:
+        escribir(os.path.join(self.repo, 'docs/producto/roadmap.md'), roadmap)
+        escribir(os.path.join(self.repo, 'docs/registros/traspaso.md'), bitacora)
+        git(self.repo, 'add', '-A')
+        git(self.repo, 'commit', '-q', '-m', 'c')
+        return git(self.repo, 'rev-parse', 'HEAD')
+
+    def correr(self, sha: str) -> subprocess.CompletedProcess:
+        return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--cerradas', self.base, sha],
+                              cwd=self.repo, capture_output=True, text=True)
+
+    def test_tachada_sin_bitacora_falla(self):
+        sha = self.commit('- ~~**QA-1 · Una**~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n',
+                          '## Hecho recientemente\n\n- `QA-1` diagnosticado\n- ~~`QA-2`~~\n')
+        r = self.correr(sha)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('QA-1', r.stdout)
+
+    def test_tachada_en_hecho_recientemente_pasa(self):
+        sha = self.commit('- ~~**QA-1 · Una**~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n',
+                          '## Hecho recientemente\n\n- ~~`QA-1`~~ hecho\n- ~~`QA-2`~~\n')
+        self.assertEqual(self.correr(sha).returncode, 0)
+
+    def test_un_rango_tachado_cuenta_para_todas(self):
+        sha = self.commit('- ~~`QA-1`…`QA-3`~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n',
+                          '## Hecho recientemente\n\n- ~~`QA-1`…`QA-3`~~\n')
+        self.assertEqual(self.correr(sha).returncode, 0)
+
+    def test_retocar_una_ya_tachada_no_pide_nada(self):
+        sha = self.commit('- **QA-1 · Una**\n- ~~**QA-2 · Dos**~~ ✅ con más texto\n', '## Hecho recientemente\n\n- nada\n')
+        self.assertEqual(self.correr(sha).returncode, 0)
 
 
 if __name__ == '__main__':

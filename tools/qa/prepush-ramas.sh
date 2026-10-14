@@ -4,7 +4,8 @@
 # gancho («ref local, sha local, ref remota, sha remota» por rama) y:
 #   - escribe en $1 los archivos que cambian (QA-35: imágenes);
 #   - escribe en $2 los commits nuevos, uno por línea (QA-66);
-#   - comprueba la bitácora de cada commit nuevo que se sube (QA-69) y sale con 1 si no cumple.
+#   - comprueba la bitácora de cada commit nuevo que se sube (QA-69) y que nombra las tareas que se tachan
+#     en los roadmaps (QA-85); sale con 1 si no cumple.
 # La bitácora se lee con BITACORA_PY (por defecto, la de este repo), para poder probarlo en otro.
 set -uo pipefail
 cambiados="$1"
@@ -23,6 +24,7 @@ while read -r _ sha_local _ sha_remoto; do
     base=$(git merge-base "$sha_local" origin/main 2>/dev/null || echo "")
   fi
   [ -n "$base" ] && git diff --name-only "$base" "$sha_local" >> "$cambiados" 2>/dev/null
+  if [ -n "$base" ]; then python3 "$bitacora_py" --cerradas "$base" "$sha_local" || exit 1; fi
   # Commits nuevos de verdad: los que no están en ninguna rama remota conocida.
   git log --format='  %h %s' "$sha_local" --not --remotes >> "$subidos" 2>/dev/null
   # QA-69: la bitácora tal como va en cada commit nuevo que se sube (no la del directorio de trabajo,

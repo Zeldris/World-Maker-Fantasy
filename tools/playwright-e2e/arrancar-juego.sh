@@ -38,12 +38,22 @@ if [ -z "$($PSQL -c "select 1 from pg_database where datname='$BASE'")" ]; then
 fi
 psql "$URL" -q -c 'create extension if not exists vector'
 (cd backend && npx prisma migrate deploy >/dev/null)
+mkdir -p logs
+# QA-82 (retro del 2026-10-14): el catálogo se vuelve a sembrar cuando cambia, no solo al crear la base;
+# si no, la ronda prueba los arreglos de catálogo con datos viejos (P174). `seed-catalog` se puede
+# repetir: actualiza o crea cada fila y solo borra filas de catálogo, nunca las de una partida.
+HUELLA_CATALOGO="$(cat backend/src/scripts/worldCatalog.ts backend/src/scripts/seed-catalog.ts | sha256sum | cut -d' ' -f1)"
+ARCHIVO_HUELLA="logs/catalogo-$BASE.huella"
 if [ "$nueva" = 1 ]; then
   echo "Sembrando lore y catálogo en $BASE (unos minutos)…"
   (cd backend && npm run --silent reindex-lore >/dev/null && npm run --silent seed-catalog >/dev/null)
+  echo "$HUELLA_CATALOGO" > "$ARCHIVO_HUELLA"
+elif [ "$(cat "$ARCHIVO_HUELLA" 2>/dev/null)" != "$HUELLA_CATALOGO" ]; then
+  echo "El catálogo cambió desde la última siembra: sembrándolo de nuevo en $BASE…"
+  (cd backend && npm run --silent seed-catalog >/dev/null)
+  echo "$HUELLA_CATALOGO" > "$ARCHIVO_HUELLA"
 fi
 
-mkdir -p logs
 # QA-34: se para el backend anterior por su PID (o por el puerto 3001), nunca con `pkill -f`: ese
 # patrón también casa con la orden de quien lanza este script si lleva el texto, y se mata a sí mismo.
 if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || true; fi

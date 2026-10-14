@@ -9,24 +9,30 @@ backend (`npx tsx src/server.ts`, viajes acortados: `TRAVEL_SEGUNDOS_PRIMER_TRAM
 con Chromium (Playwright). Lo determinista (interfaz, movimiento, combate, Reino) se prueba de
 verdad; la calidad narrativa no (las narraciones son del simulador).
 
-## Tanda de arreglos y roadmap (usuaria, 2026-10-13)
+## Estado y roadmap
 
-Separado con la usuaria tras contrastar sus decisiones con los juegos de referencia.
+<!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
+- **Pendientes** (42): P16, P49, P66, P83, P141, P147, P148, P149, P150, P152, P153, P154, P155,
+  P156, P157, P158, P159, P160, P161, P162, P163, P164, P165, P166, P167, P168, P169, P170, P171,
+  P173, P174, P175, P176, P177, P178, P179, P180, P181, P182, P183, P185, P186.
+- **Pendientes de una decisión de la usuaria** (3): P172, P184, P187.
+- **Arreglados en parte** (1): P70.
+- **Arreglados, sin comprobar jugando** (119): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14,
+  P15, P17, P18, P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38,
+  P39, P41, P42, P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61,
+  P62, P63, P64, P65, P67, P68, P69, P72, P73, P74, P76, P77, P78, P79, P80, P81, P82, P84, P85,
+  P86, P87, P88, P90, P91, P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P104, P105,
+  P106, P107, P108, P110, P111, P112, P113, P114, P115, P116, P117, P118, P119, P120, P121, P122,
+  P124, P125, P126, P127, P128, P129, P131, P133, P134, P136, P138, P139, P140, P143, P145, P151.
+- **Comprobados jugando** (9): P96, P109, P123, P130, P132, P135, P137, P142, P144.
+- **Cerrados sin arreglo (no aplica, dato o roadmap)** (13): P5, P10, P22, P23, P30, P34, P40, P48,
+  P59, P71, P75, P89, P146.
+<!-- fin del resumen -->
 
-- **Arreglos** (fallos y reglas ya decididas; tanda de correcciones):
-  - Con decisión: P80 (sin Carisma para fundar), P90 (línea de emboscada), P96 (rematar sin tirada),
-    P109 (Raspar quitina por Destreza; el ×20 que no baja), P116 (radio seguro en las entradas),
-    P121 (comer saciado por la energía), P128 (pantalla de fin y a tus partidas), P129 (golpes de
-    grupo con tirada, tope 2 extra y sin Ileso→Muerto en una ronda), P137 (bandos sin muertes de la
-    jugadora), P142 y P143 (menú fijo del NPC y NPC que no cortan el paso en asentamientos amistosos).
-  - Sin decisión pendiente: P124, P125, P126, P133, P134, P136, P139, P140, P141 (reabierto: nombres
-    de oficio); y `QA-73` (falta la caza sigilosa fallida, que pide nivel 3).
-  - Comprobados jugando el 2026-10-14: P96, P109, P123, P130, P132, P135, P137, P144 y huir en combate
-    (`QA-73`). Hallazgos nuevos de esa ronda: P147-P187 (pendientes; decisiones de la usuaria en P164,
-    P172, P179, P184 y P187).
 - **Roadmap** (diseño o desarrollo nuevo, para cuando se vuelva a él): `REI-122` (permiso para fundar),
   `ZON-88` (peligro en el aviso de salida), `ZON-89` (fauna y flora en fichas pequeñas), `HUD-14` (aviso
-  de la Enciclopedia). Ya estaban: «Charlar con NPC» enriquecido y `CR-51` (Fase F del `0.3`).
+  de la Enciclopedia). Ya estaban: «Charlar con NPC» enriquecido y `CR-51` (Fase F del `0.3`). `QA-73`
+  sigue a medias: falta jugar la caza sigilosa fallida (pide nivel 3).
 
 ## Hallazgos
 
