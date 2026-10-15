@@ -139,6 +139,22 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     expect(filasReales.every((f) => f.lastUpdatedAtMinutes != null)).toBe(true);
   });
 
+  // P152 (QA-27): el punto ancla con etiqueta («Charca de Guchapos ×6») y los repartidos sin ella
+  // («Guchapo ×6») nombraban de dos formas a la misma especie.
+  it('GET /zona nombra todos los grupos de una especie igual, aunque el punto ancla tenga etiqueta', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', label: 'Charca de Prueba', cantidad: 1, activo: true },
+    });
+    // Descubierta: si no, todos salen «???». Sin despiece en el catálogo cuenta como 'npc' (`entityTypeDeSerVivo`).
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'test-grupos-fauna' } });
+    const app = await buildApp();
+    const body = JSON.parse((await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` })).body);
+    const nombres = new Set(body.puntos.filter((p: { tipo: string; targetSlug: string }) => p.tipo === 'FAUNA' && p.targetSlug === 'test-grupos-fauna').map((p: { nombre: string }) => p.nombre));
+    expect(nombres.size).toBe(1);
+    expect(nombres.has('Charca de Prueba')).toBe(false);
+    await prisma.discoveredEntity.deleteMany({ where: { saveId } });
+  });
+
   it('POST /zona/mover contra un grupo devuelve dynamicModeOffer.cantidad y zonePointId del ZonePoint colisionado', async () => {
     await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

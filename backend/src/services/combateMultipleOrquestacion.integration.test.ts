@@ -221,6 +221,8 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     const conVentaja = ronda.intercambiosContraJugadora.filter((i) => i.display.atacante.rollMode === 'ventaja');
     expect(conVentaja.length).toBeGreaterThanOrEqual(1);
     expect(conVentaja[0].atacanteNombre).toBe(enemigo.name);
+    // P153 (QA-27): su chip dice «flanqueo», no «racial».
+    expect(conVentaja[0].display.atacante.ventajaPor).toBe('flanqueo');
 
     await prisma.combatEncounter.delete({ where: { id: encounterId } });
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });

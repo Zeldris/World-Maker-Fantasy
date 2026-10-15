@@ -363,6 +363,8 @@ export interface CombatExchangeSideInfo extends RollInfo {
   rolls?: number[]
   rollMode?: 'normal' | 'ventaja' | 'desventaja'
   racialAdvantageReason?: string
+  /// P153 (QA-27): etiqueta del chip («flanqueo»); sin ella, «racial».
+  ventajaPor?: string
 }
 
 // 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para

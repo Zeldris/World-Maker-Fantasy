@@ -689,7 +689,10 @@ export async function zonaRoutes(app: FastifyInstance) {
       viajeros: (await viajerosAqui(prisma, save.id)).map((v) => ({ id: v.id, nombre: `${v.propia ? 'Tu ' : ''}${v.que}${v.propia ? '' : ` (${v.quien})`}`, ...posicionEnZona(v.id) })),
       puntos: zonePoints.map((p) => {
         const yaDescubierto = descubierto(p.tipo, p.targetSlug);
+        // P152 (QA-27): la fauna se nombra por su especie, como en la tarjeta del encuentro; la etiqueta
+        // del catálogo («Charca de Guchapos») describía el sitio y la misma especie salía con dos nombres.
         const nombreReal =
+          (p.tipo === 'FAUNA' ? npcNameBySlugZonePoint.get(p.targetSlug) : undefined) ??
           p.label ??
           (p.tipo === 'RECURSO'
             ? sourceDisplayNameFor(p.targetSlug)

@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (36): P16, P49, P66, P83, P141, P147, P150, P152, P153, P154, P155, P157, P158,
-  P159, P160, P161, P162, P163, P164, P165, P166, P167, P168, P169, P172, P173, P175, P176, P177,
-  P178, P181, P182, P184, P185, P186, P187.
+- **Pendientes** (34): P16, P49, P66, P83, P141, P147, P150, P154, P155, P157, P158, P159, P160,
+  P161, P162, P163, P164, P165, P166, P167, P168, P169, P172, P173, P175, P176, P177, P178, P181,
+  P182, P184, P185, P186, P187.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (3): P70, P131, P151.
-- **Arreglados, sin comprobar jugando** (112): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (114): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P84, P85, P86, P87, P88, P90, P91,
   P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110, P111,
   P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134, P136,
-  P139, P140, P143, P148, P149, P156, P170, P171, P174, P180, P183.
+  P139, P140, P143, P148, P149, P152, P153, P156, P170, P171, P174, P180, P183.
 - **Comprobados jugando** (22): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -191,8 +191,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P149 | Encuentro con un animal suelto (2026-10-14, El Pozo): «Gorhorn se topa con Guchapo, que le observa con cautela», sin artículo («con un Guchapo»). Con un grupo ya sale «un grupo de 6 Guchapos» (P124). | ✅ 2026-10-15: «se topa con un Guchapo», con el artículo del catálogo (`conIndefinido`, `dynamicMode.ts`, que también usa ya el aviso de quien sale al paso en un viaje; `dynamicMode.test.ts`) |
 | P150 | «Seguir mi camino» tras un encuentro y otro encuentro en el siguiente paso (2026-10-14, El Pozo): «Cazar» en la tarjeta nueva da 409 «Ese grupo ya no está disponible aquí». Causa (log del backend): el frontend manda a la vez `modo-dinamico/ignorar` (de la oferta vieja) y el siguiente `zona/mover`; el paso guarda la oferta nueva y el ignorar, que acaba 30 ms después, la borra. Arreglo propuesto: que ignorar borre solo la oferta que ignora (su targetSlug/zonePointId), como el menú caducado de P142, o esperar al ignorar antes de reanudar. | pendiente (fallo; no bloquea: se puede volver a andar) |
 | P151 | Etiquetas tras P123 (2026-10-14, El Pozo): al apartarse de varias fichas seguidas, la etiqueta «Paso de los Pilares Rotos» acaba ~100 px por debajo de su salida, junto a otro grupo, y ya no se ve de qué flecha es. Habría que limitar cuánto se aparta (o probar a un lado) y, si no cabe, dejarla pegada a la salida. | ✅ 2026-10-14 (arreglo del /code-review): una etiqueta se aparta como mucho 3 alturas; si no cabe más cerca, se queda junto a su salida o ficha (`separarEtiquetas.test.ts`). Sin jugar todavía; falta: comprobarlo jugando, también la etiqueta de la entrada a Hogar Ketg (Colmillo Ceniza). 2026-10-14, Colmillo Ceniza: «Entrar en Hogar Ketg - Ketg'lukar» queda entre el icono de la casa y la flecha de entrada, y no se sabe de cuál es |
-| P152 | Lista del mapa de zona (2026-10-14, El Pozo): un grupo de la misma especie sale como «Charca de Guchapos ×6» y otro como «Guchapo ×6»; misma especie, dos nombres. | pendiente (texto) |
-| P153 | Combate de grupo (2026-10-14, 6 Guchapos): el ataque de más de un Guchapo, con la ventaja de P129, sale con el chip «▲ racial». La ventaja no es racial: `combateMultiple.ts` la mete en `racialAdvantageReason` («Ataca mientras peleas con otro rival: ventaja») y `CombatExchangeBadge` pinta «racial» para cualquier razón. Falta un chip propio (p. ej. «▲ flanqueo»). | pendiente (texto) |
+| P152 | Lista del mapa de zona (2026-10-14, El Pozo): un grupo de la misma especie sale como «Charca de Guchapos ×6» y otro como «Guchapo ×6»; misma especie, dos nombres. | ✅ 2026-10-15: la fauna de la lista se nombra por su especie, como en el encuentro; la etiqueta del catálogo era del punto ancla y los grupos repartidos no la tenían (`zona.ts`; `zonaGrupos.integration.test.ts`, rojo sin arreglo) |
+| P153 | Combate de grupo (2026-10-14, 6 Guchapos): el ataque de más de un Guchapo, con la ventaja de P129, sale con el chip «▲ racial». La ventaja no es racial: `combateMultiple.ts` la mete en `racialAdvantageReason` («Ataca mientras peleas con otro rival: ventaja») y `CombatExchangeBadge` pinta «racial» para cualquier razón. Falta un chip propio (p. ej. «▲ flanqueo»). | ✅ 2026-10-15: el chip dice «▲ flanqueo» (`ventajaPor` viaja con la tirada; sin él, «racial»; `CombatExchangeBadge.test.tsx` y `combateMultipleOrquestacion.integration.test.ts`) |
 | P154 | Muerte en un combate de grupo (2026-10-14): mientras el panel dice «Derrota · Has caído en combate», el HUD sigue en «Convaleciente 25» hasta pulsar «Salir»; entonces pasa a «Muerto 0». | pendiente (menor) |
 | P155 | Defensa en combate (2026-10-14): la tirada de Gorhorn enseña «(6 −2 heridas = 4 ×1.5≈6/2)» sin decir qué es el «×1.5» ni por qué su Destreza es 6 (en la huida, 10). Falta la explicación (tooltip o texto) de ese multiplicador y del atributo rebajado. | pendiente (texto) |
 | P156 | Aviso de muerte (2026-10-14): dice «despierta donde descansó por última vez», pero Gorhorn descansó 2 h junto al pozo de El Pozo de Cauce Viejo y despertó en La Hondonada del Eco. Por diseño, solo descansar en una construcción propia mueve el punto de reaparición (`turnResolution.ts`, «Punto de guardado»); el texto debería decirlo («donde descansó por última vez en un campamento o construcción tuya»). | ✅ 2026-10-15: «despierta donde descansó por última vez en un campamento o una construcción suya» (`muertes.ts`; `muertes.test.ts`, `GameFooter.test.tsx`) |
