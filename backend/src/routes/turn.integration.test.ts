@@ -450,6 +450,52 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
 // el atajo de `detectsPostCombatInteraction` (turn.ts, solo para `!enCombate`), que está pensado
 // para UN único objetivo citado en texto libre, no para un barrido de varios a la vez. Fixture
 // propio (no reutiliza el describe de arriba) para no interferir con su secuencia de saqueo.
+// P167 (QA-27): tras «Responder» (un turno de texto libre), la tarjeta del encuentro seguía con
+// Interactuar, Responder e Ignorar activos: la oferta pacífica seguía pendiente.
+describe('Un turno de texto libre deja respondida la oferta pacífica pendiente (P167)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingDynamicModeOffer: { tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'npc' },
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('la oferta se borra y la respuesta lo dice', async () => {
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    const action = 'Le digo a la cazadora serhu: Saludos.';
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll } });
+    expect(narrateRes.statusCode).toBe(200);
+    const cuerpo = lastNdjsonLine(narrateRes.payload) as unknown as { ofertaDescartada?: true; dynamicModeOffer: { targetSlug: string } | null };
+    expect(cuerpo.ofertaDescartada).toBe(true);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const pendiente = save.pendingDynamicModeOffer as { targetSlug: string } | null;
+    expect(pendiente?.targetSlug ?? null).not.toBe('cazadora-serhu');
+  }, 60_000);
+});
+
 // P148 (QA-27): al rematar a un convaleciente salía «Orco enfurecido se defiende con…» encima de
 // «no puede defenderse: el golpe acierta sin tirada». Un golpe de gracia no trae defensa del NPC.
 describe('Golpe de gracia sin defensa del NPC (P148)', () => {

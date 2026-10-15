@@ -296,6 +296,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         newQuestOfferInfo,
         npcInteractionOffer,
         dynamicModeOffer,
+        ofertaDescartada,
         questCompletedInfo,
         factionRepChange,
         professionXpGains,
@@ -424,8 +425,11 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         discoveredLocationSlug ? { entityType: 'location', entitySlug: discoveredLocationSlug } : undefined,
       )
       setCharacterLog((prev) => {
+        // P167 (QA-27): la oferta pacífica que había queda respondida con este turno: su tarjeta pierde
+        // los botones (como al alejarse andando, `onOfertaDescartada`).
+        const previas = ofertaDescartada ? prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)) : prev
         const next = [
-          ...prev,
+          ...previas,
           {
             id: logEntryId,
             channel: 'character' as const,

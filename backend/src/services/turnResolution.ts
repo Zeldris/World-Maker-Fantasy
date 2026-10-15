@@ -507,6 +507,9 @@ export interface NarrateAndPersistResult {
   /// ofertas que nunca se aceptan. `null` en la inmensa mayoría de turnos — nunca se ofrece si
   /// este turno terminó en combate o si ya hay un modo dinámico en curso.
   dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string } | null;
+  /// P167 (QA-27): este turno dejó respondida la oferta pacífica que había (la jugadora actuó por su
+  /// cuenta, p. ej. tras «Responder»); el frontend retira los botones de su tarjeta.
+  ofertaDescartada?: true;
   /// Retomar viaje truncado por un evento de interrupción (ronda de correcciones 2026-08-28, P3.2)
   /// — cuando este turno resuelve el evento sin dejar combate activo, el motor dispara solo la
   /// continuación del viaje original (nuevo `CharacterTransit`, mismo mecanismo diferido de
@@ -7251,6 +7254,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     }
   }
+  // P167 (QA-27): actuar por tu cuenta deja respondida la oferta pacífica de antes (como alejarse
+  // andando, P135): su tarjeta no se queda con Interactuar, Responder e Ignorar activos. Una de combate
+  // forzado no se toca (no deja escribir), ni la que este mismo turno acaba de poner.
+  let ofertaDescartada = false;
+  if (!interruptionCandidateForOffer) {
+    const previa = (await prisma.save.findUnique({ where: { id: saveId }, select: { pendingDynamicModeOffer: true } }))?.pendingDynamicModeOffer as { combateForzado?: boolean; targetSlug?: string } | null;
+    const esLaNueva = !!dynamicModeOffer && previa?.targetSlug === dynamicModeOffer.targetSlug;
+    if (previa && !previa.combateForzado && !esLaNueva) {
+      if (!dynamicModeOffer) await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+      ofertaDescartada = true;
+    }
+  }
   const professionProgress = freshProfessionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp }));
   const territories = territoryRows.map((t) => ({
     id: t.id,
@@ -7319,6 +7334,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestOfferInfo,
     npcInteractionOffer,
     dynamicModeOffer,
+    ...(ofertaDescartada ? { ofertaDescartada: true as const } : {}),
     travelResumed,
     questCompletedInfo,
     factionRepChange,

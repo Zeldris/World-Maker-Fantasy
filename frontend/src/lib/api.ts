@@ -285,6 +285,8 @@ export interface NarrateResponse {
   /// el candidato; la narración de la primera vuelta ocurre al pulsar Interactuar
   /// (`POST /saves/:id/modo-dinamico/interactuar`), no aquí. `null` en la inmensa mayoría de turnos.
   dynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
+  /// P167 (QA-27): el turno dejó respondida la oferta pacífica que había; su tarjeta pierde los botones.
+  ofertaDescartada?: true
   /// Notificación de misión COMPLETADA (2026-08-13) — `logEntryId`/`text` son los de la LogEntry
   /// real ya persistida por el backend (questRewardNarrationFor), para insertarla tal cual con
   /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la

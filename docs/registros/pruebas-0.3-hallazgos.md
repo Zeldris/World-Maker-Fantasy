@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (26): P16, P49, P66, P83, P141, P147, P150, P154, P155, P158, P162, P164, P165,
-  P166, P167, P168, P169, P172, P177, P178, P181, P182, P184, P185, P186, P187.
+- **Pendientes** (25): P16, P49, P66, P83, P141, P147, P150, P154, P155, P158, P162, P164, P165,
+  P166, P168, P169, P172, P177, P178, P181, P182, P184, P185, P186, P187.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (3): P70, P131, P151.
-- **Arreglados, sin comprobar jugando** (122): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (123): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P84, P85, P86, P87, P88, P90, P91,
   P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110, P111,
   P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134, P136,
-  P139, P140, P143, P148, P149, P152, P153, P156, P157, P159, P160, P161, P163, P170, P171, P173,
-  P174, P175, P176, P180, P183.
+  P139, P140, P143, P148, P149, P152, P153, P156, P157, P159, P160, P161, P163, P167, P170, P171,
+  P173, P174, P175, P176, P180, P183.
 - **Comprobados jugando** (22): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -206,7 +206,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P164 | Viajar por texto libre (2026-10-14): con el mapa de zona, por el que ya se anda casilla a casilla y de zona a zona por sus salidas, escribir «Voy a Colmillo Ceniza» para saltar a otra zona ya no tiene sentido. Decisión de la usuaria: el viaje directo a una zona sin pasar una a una por las de en medio solo vale con una montura que lo permita (enlaza con las monturas, `CR-57`, hito `0.4`); a pie, el texto libre no debe mover de zona. | decidido por la usuaria 2026-10-14; pendiente (diseño: quitar el viaje a pie por texto libre y dejarlo para la montura) |
 | P165 | NPC sin descubrir con nombre (2026-10-14, Colmillo Ceniza): el mapa de zona y su lista siguen en «???», pero la tarjeta del encuentro, la narración («Cazadora Serhu se acerca a Gorhorn…») y «Responder» ya lo llaman «Cazadora Serhu». O se descubre al toparse con él (y el mapa lo nombra) o todo dice «una orca desconocida». | pendiente (fallo menor). Con los recursos pasa igual: el «???» de Colmillo Ceniza sale en la tarjeta como «Recinto de múrgoles domados a la vista» y en el mapa y la lista sigue «???» (en La Hondonada, la Veta de Yerreo sí se nombraba al llegar). Y al revés en Hogar Ketg: la tarjeta dice «orco desconocido», pero su respuesta a «¿Qué se cuenta?» sale firmada como «Maestro Alquimista Serhu» |
 | P166 | Encuentros pacíficos con tirada de sorpresa (2026-10-14, El Pozo y Colmillo Ceniza): con un grupo de 6 Escorantes y con la Cazadora Serhu, la narración dice «se acerca a Gorhorn antes de que este reaccione» y sale «¿Quién ve a quién primero?» (Gorhorn perdió, 9 vs 20 y 6 vs 23). Pero la tarjeta es la de siempre («busca tu atención», con Ignorar y Seguir mi camino) y perder no cambia nada. O la tirada tiene consecuencia, o en un encuentro tranquilo sobra; y el texto de emboscada no casa con «busca tu atención». Lo mismo con el Guchapo: tarjeta «busca tu atención» y texto «le observa con cautela». | pendiente (diseño y texto) |
-| P167 | Tarjeta de encuentro tras «Responder» (2026-10-14, Colmillo Ceniza): después de hablarle a la Cazadora Serhu, la tarjeta del diario sigue con Interactuar, Responder e Ignorar activos, como si no se hubiera hecho nada. | pendiente (menor) |
+| P167 | Tarjeta de encuentro tras «Responder» (2026-10-14, Colmillo Ceniza): después de hablarle a la Cazadora Serhu, la tarjeta del diario sigue con Interactuar, Responder e Ignorar activos, como si no se hubiera hecho nada. | ✅ 2026-10-15: un turno de texto libre deja respondida la oferta pacífica que había, como alejarse andando (P135): el backend la borra y avisa con `ofertaDescartada`, y el diario quita los botones de su tarjeta (`turnResolution.ts`, `useTurnFlow.ts`; `turn.integration.test.ts`, rojo sin arreglo). Falta verlo jugando |
 | P168 | Recuadro de selección del mapa de zona (2026-10-14): al pulsar una ficha, el recuadro de la casilla sale desplazado media casilla (a la izquierda del «???» de La Hondonada, arriba a la derecha del NPC de Colmillo Ceniza) y no rodea la ficha pulsada. | pendiente (menor) |
 | P169 | Panel Mapa, pestaña «Mapa» (2026-10-14): al pasar de «Zona» a «Mapa» se abre desplazado hacia abajo, con las pestañas y el título de la región fuera de la vista; parece que no hay forma de volver a «Zona» hasta subir con la rueda. | pendiente (menor) |
 | P170 | Duración de las salidas (2026-10-14): «una hora y media de camino» para viajes de 1 h 40 (La Hondonada → El Pozo) y de 1 h 20 (El Pozo → Colmillo Ceniza). El redondeo a la media hora (`duracionDeCamino`) suena a cifra exacta; mejor «algo más de hora y media» o redondear a 10 minutos. | ✅ 2026-10-15: redondeo a los 10 minutos («una hora y 40 minutos de camino»; `rumboSalida.test.ts`) |
