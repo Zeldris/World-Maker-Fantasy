@@ -245,11 +245,19 @@ export function textoDeSuceso<T extends TipoSuceso>(tipo: T, datos: DatosSuceso[
 
 /// Importancia final (§ 6.3): base del tipo, +1 si el jugador es AUTOR, +1 si toca a un NPC del
 /// núcleo jugable, +1 si abre o cierra un hilo; entre 1 y 10.
+/// P175 (QA-27): vencer o matar a fauna sin bando (no a un personaje con nombre) resta esto: un Guchapo
+/// muerto no es noticia para un clan de cazadores; una fiera con bando o un personaje, sí.
+export const MENOS_POR_FAUNA_MENOR = 3;
+
 export function importanciaDeSuceso(
   tipo: TipoSuceso,
-  modificadores: { jugadorAutor: boolean; afectaNucleoJugable: boolean; tocaHilo: boolean },
+  modificadores: { jugadorAutor: boolean; afectaNucleoJugable: boolean; tocaHilo: boolean; victimaFaunaMenor?: boolean },
 ): number {
   const base = CATALOGO_SUCESOS[tipo].importanciaBase;
-  const extra = (modificadores.jugadorAutor ? 1 : 0) + (modificadores.afectaNucleoJugable ? 1 : 0) + (modificadores.tocaHilo ? 1 : 0);
+  const extra =
+    (modificadores.jugadorAutor ? 1 : 0) +
+    (modificadores.afectaNucleoJugable ? 1 : 0) +
+    (modificadores.tocaHilo ? 1 : 0) -
+    (modificadores.victimaFaunaMenor && (tipo === 'MUERTE_CAUSADA' || tipo === 'COMBATE_GANADO') ? MENOS_POR_FAUNA_MENOR : 0);
   return Math.max(1, Math.min(10, base + extra));
 }

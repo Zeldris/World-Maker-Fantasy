@@ -47,6 +47,10 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
   const npcIds = s.actores.filter((a) => a.entidadTipo === 'NPC').map((a) => a.entidadId);
   const afectaNucleoJugable =
     npcIds.length > 0 && (await db.npc.count({ where: { id: { in: npcIds }, nucleoJugable: true } })) > 0;
+  // P175 (QA-27): ¿la víctima es fauna sin bando? (no un personaje con nombre, que sí es noticia).
+  const victimaId = s.actores.find((a) => a.entidadTipo === 'NPC' && a.papel === 'VICTIMA')?.entidadId;
+  const victima = victimaId ? await db.npc.findUnique({ where: { id: victimaId }, select: { kind: true, faction: true } }) : null;
+  const victimaFaunaMenor = !!victima && victima.kind !== 'PRINCIPAL' && !victima.faction;
 
   // Mismo actor con el mismo papel dos veces = una sola fila (clave primaria compuesta).
   const actores = Array.from(new Map(s.actores.map((a) => [`${a.entidadTipo}|${a.entidadId}|${a.papel}`, a])).values());
@@ -59,7 +63,7 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
       fictionalMinutes: s.fictionalMinutes,
       regionSlug: s.regionSlug ?? null,
       locationId: s.locationId ?? null,
-      importancia: importanciaDeSuceso(s.tipo, { jugadorAutor, afectaNucleoJugable, tocaHilo: !!s.tocaHilo }),
+      importancia: importanciaDeSuceso(s.tipo, { jugadorAutor, afectaNucleoJugable, tocaHilo: !!s.tocaHilo, victimaFaunaMenor }),
       origen: s.origen,
       datos: s.datos as unknown as Prisma.InputJsonValue,
       texto: textoDeSuceso(s.tipo, s.datos),
