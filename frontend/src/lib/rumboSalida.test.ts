@@ -32,4 +32,11 @@ describe('duracionDeCamino (P115)', () => {
     expect(duracionDeCamino(1440)).toBe('un día de camino')
     expect(duracionDeCamino(4320)).toBe('unos 3 días de camino')
   })
+
+  // P170 (QA-27): 1 h 40 y 1 h 20 salían las dos como «una hora y media».
+  it('redondea a los 10 minutos', () => {
+    expect(duracionDeCamino(100)).toBe('una hora y 40 minutos de camino')
+    expect(duracionDeCamino(80)).toBe('una hora y 20 minutos de camino')
+    expect(duracionDeCamino(124)).toBe('unas 2 horas de camino')
+  })
 })

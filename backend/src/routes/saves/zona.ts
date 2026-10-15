@@ -28,7 +28,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { aNombre, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, conIndefinido, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -815,7 +815,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, raza: true, genero: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, raza: true, genero: true, articulo: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
@@ -901,6 +901,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           kind: n.kind,
           raza: n.raza,
           genero: n.genero,
+          articulo: n.articulo,
           temperamento: n.temperamento,
           faction: n.faction,
           tipo: (n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA') as 'NPC' | 'FAUNA',
@@ -921,7 +922,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // tenía ningún caso real que lo siguiera necesitando).
     // CR-16: quien te guarda rencor te corta el paso como un agresivo.
     const rencoresColision = await npcsConRencor(tx, saveId, [...puntosVivos.map((p) => npcBySlug.get(p.targetSlug)?.id), ...dinamicosConPosicionColision.map((d) => d.id)].filter((x): x is string => !!x), fictionalMinutes);
-    let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
+    let colision: { targetSlug: string; targetName: string; temperamento: string; articulo?: string | null; genero?: string | null } | null = null;
     // QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`, death.ts): nada hostil corta el paso.
     // Se consulta solo si hace falta.
     let enGraciaCache: boolean | null = null;
@@ -960,7 +961,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           ultimoEncuentroSigueCerca = true;
           continue;
         }
-        colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
+        colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento, articulo: nombre === nombreReal ? npc?.articulo : null, genero: npc?.genero };
         colisionTipo = punto.tipo === 'NPC' ? 'NPC' : 'FAUNA';
         destrezaColision = (npc?.attributes as { destreza?: number } | null)?.destreza ?? 10;
         nivelNpcColision = npc?.level ?? 1;
@@ -981,7 +982,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             ultimoEncuentroSigueCerca = true;
             continue;
           }
-          colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento };
+          colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento, articulo: nombreDinamico === dinamico.targetName ? dinamico.articulo : null, genero: dinamico.genero };
           colisionTipo = dinamico.tipo;
           destrezaColision = dinamico.attributes.destreza;
           nivelNpcColision = dinamico.level;
@@ -1078,7 +1079,11 @@ export async function zonaRoutes(app: FastifyInstance) {
         // (el nombre de especie ya viene en singular de catálogo, "un grupo de N" no necesita
         // pluralizarlo). Solo aplica a FAUNA — un NPC (identidad única) nunca se agrupa.
         const nombreEncuentro =
-          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}` : nombreEnFrase(colision.targetName);
+          colisionTipo === 'FAUNA' && colisionCantidad > 1
+            ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}`
+            : colisionTipo === 'FAUNA'
+              ? conIndefinido(colision.targetName, colision.articulo, colision.genero) // P149: «con un Guchapo»
+              : nombreEnFrase(colision.targetName);
         const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee

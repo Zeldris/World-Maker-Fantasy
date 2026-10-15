@@ -159,6 +159,14 @@ export function nombreEnFrase(nombre: string, alInicio = false): string {
   return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
 
+/// P149 (QA-27): un nombre de catálogo con artículo (`Npc.articulo`: especies y roles, no nombres
+/// propios) con el indefinido delante («un Guchapo», «una Orca de guardia»); sin artículo, como en
+/// `nombreEnFrase`. `genero` 'F' manda sobre el artículo.
+export function conIndefinido(nombre: string, articulo: string | null | undefined, genero?: string | null): string {
+  if (!articulo) return nombreEnFrase(nombre);
+  return `${genero === 'F' || articulo === 'la' ? 'una' : 'un'} ${nombre}`;
+}
+
 /// P141 (QA-27): a quién se dirige la jugadora al «Responder» («al orco desconocido», «a alguien»,
 /// «a Gistera Koh»). Viaja en la oferta (`aQuien`): el frontend no lo vuelve a calcular.
 export function aNombre(nombre: string): string {

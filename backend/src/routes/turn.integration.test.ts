@@ -449,6 +449,59 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
 // el atajo de `detectsPostCombatInteraction` (turn.ts, solo para `!enCombate`), que está pensado
 // para UN único objetivo citado en texto libre, no para un barrido de varios a la vez. Fixture
 // propio (no reutiliza el describe de arriba) para no interferir con su secuencia de saqueo.
+// P148 (QA-27): al rematar a un convaleciente salía «Orco enfurecido se defiende con…» encima de
+// «no puede defenderse: el golpe acierta sin tirada». Un golpe de gracia no trae defensa del NPC.
+describe('Golpe de gracia sin defensa del NPC (P148)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el golpe a un convaleciente no trae la defensa del NPC', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    type Cuerpo = { npcAbilityUsed: unknown; combatExchangeDisplay?: { golpeDeGracia?: true } | null };
+    let golpeDeGracia: Cuerpo | null = null;
+    for (let turno = 0; turno < 6 && !golpeDeGracia; turno++) {
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      const cuerpo = lastNdjsonLine(narrateRes.payload) as unknown as Cuerpo;
+      if (cuerpo.combatExchangeDisplay?.golpeDeGracia) golpeDeGracia = cuerpo;
+    }
+    expect(golpeDeGracia).not.toBeNull();
+    expect(golpeDeGracia?.npcAbilityUsed).toBeNull();
+    const estado = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(estado).not.toBeNull();
+  }, 60_000);
+});
+
 describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de combate', () => {
   let saveId: string;
   let npcId: string;

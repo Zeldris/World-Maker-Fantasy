@@ -81,7 +81,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
@@ -1395,7 +1395,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         }
         exchangeNarrationBlock = `${characterName} completa su canalización de "${canalizacion.abilityName}" contra ${npcParaIntercambio.name}. ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpearCanalizacion)}`;
         combatExchangeRoll = exchange.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -1645,9 +1646,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           if (abilityEffects.includes('AUMENTO')) nuevosJugadorActiveEffects = pushActiveEffect(nuevosJugadorActiveEffects, nuevoEfecto);
           if (abilityEffects.includes('DEBILIDAD')) nuevosNpcActiveEffects = pushActiveEffect(nuevosNpcActiveEffects, nuevoEfecto);
         }
-        exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
+        exchangeNarrationBlock = `${exchange.golpeDeGracia ? '' : `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). `}${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -6410,7 +6412,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       ? npcsInSceneWithInterruption.find((n) => n.id === travelInterruptionNpcId && n.kind !== 'PRINCIPAL')
       : undefined;
     const quienSaleAlPaso = interruptor
-      ? `${interruptor.articulo ? `${interruptor.genero === 'F' || interruptor.articulo === 'la' ? 'una' : 'un'} ` : ''}${interruptor.name}`
+      ? conIndefinido(interruptor.name, interruptor.articulo, interruptor.genero)
       : null;
     if (travelInterruptionOriginalDestinationName) {
       await tx.logEntry.create({
