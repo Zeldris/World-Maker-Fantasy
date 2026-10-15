@@ -18,7 +18,7 @@ import { scopeFor } from '../npcScene.js';
 import { registrarFinDeMision } from './emisores.js';
 import { aplicarEfecto, type CtxEfecto } from './efectos.js';
 import { LIENZO_ALTO, LIENZO_ANCHO } from '../zonaPosicion.js';
-import { MAX_SECUNDARIAS_ACTIVAS, type HuecosMision, type Recompensa } from './misiones.js';
+import { bando, MAX_SECUNDARIAS_ACTIVAS, type HuecosMision, type Recompensa } from './misiones.js';
 
 /// Vale dentro o fuera de una transacción (la caza avanza desde `decrementPopulationOnDeath`).
 type Tx = Prisma.TransactionClient | PrismaClient;
@@ -98,7 +98,7 @@ export async function aceptarMision(prisma: PrismaClient, saveId: string, mision
         await aplicarEfecto(ctx, { tipo: 'situarNpc', npcId: npc.id, locationId: huecos.lugar.id, condicion: 'ILESO' });
         const x = Math.round(80 + random() * (LIENZO_ANCHO - 160));
         const y = Math.round(80 + random() * (LIENZO_ALTO - 160));
-        await aplicarEfecto(ctx, { tipo: 'crearPuntoZona', locationId: huecos.lugar.id, puntoTipo: 'NPC', targetSlug: npc.slug, x, y, label: `Partida de ${huecos.enemiga.nombre}` });
+        await aplicarEfecto(ctx, { tipo: 'crearPuntoZona', locationId: huecos.lugar.id, puntoTipo: 'NPC', targetSlug: npc.slug, x, y, label: `Partida ${bando(huecos.enemiga.nombre, 'de')}` });
       }
       huecos.grupo = grupo.map((n) => n.id);
     }
@@ -146,7 +146,7 @@ export async function cumplirMision(tx: Tx, quest: Quest): Promise<boolean> {
     ...(h.enemiga ? [{ faccion: h.enemiga.nombre, delta: r.reputacionConEnemiga }] : []),
   ]);
   await registrarFinDeMision(tx, { saveId: quest.saveId, titulo: quest.title, estado: 'COMPLETADA', fictionalMinutes: ahora });
-  await escribir(tx, quest.saveId, `Misión completada: «${quest.title}» — +${r.xp} XP, ${r.goirnos} Goirnos; ${h.faccion.nombre} lo recordará.`, ahora);
+  await escribir(tx, quest.saveId, `Misión completada: «${quest.title}» — +${r.xp} XP, ${r.goirnos} Goirnos; ${bando(h.faccion.nombre, '', true)} lo recordará.`, ahora);
   return true;
 }
 
@@ -159,7 +159,7 @@ export async function cerrarSinCumplir(tx: Tx, quest: Quest, estado: 'FALLIDA' |
   await aplicarReputacion(tx, quest.saveId, [{ faccion: h.faccion.nombre, delta: recompensaDe(quest).reputacionAlFallar }]);
   await registrarFinDeMision(tx, { saveId: quest.saveId, titulo: quest.title, estado, fictionalMinutes: ahora });
   const motivo = estado === 'FALLIDA' ? 'se acabó el plazo' : 'la has dejado';
-  await escribir(tx, quest.saveId, `Misión ${estado === 'FALLIDA' ? 'fallida' : 'abandonada'}: «${quest.title}» (${motivo}). ${h.faccion.nombre} no lo olvidará.`, ahora);
+  await escribir(tx, quest.saveId, `Misión ${estado === 'FALLIDA' ? 'fallida' : 'abandonada'}: «${quest.title}» (${motivo}). ${bando(h.faccion.nombre, '', true)} no lo olvidará.`, ahora);
   return true;
 }
 
@@ -190,15 +190,19 @@ export async function avanzarCaza(tx: Tx, saveId: string, especieSlug: string, r
 /// P183 (QA-27): por qué no se puede entregar ahora (o null si se puede). Lo usan la entrega y el
 /// resumen de la partida (`detail.ts`), para que el botón diga lo mismo que el servidor.
 export function motivoNoEntregable(huecos: unknown, currentLocationId: string | null, llevados: number): string | null {
-  const h = huecos as HuecosQuest;
+  const h = (huecos ?? {}) as Partial<HuecosQuest>;
+  // Una misión vieja o mal guardada sin objeto no puede romper el resumen de la partida.
+  if (!h.objeto) return 'Este encargo no dice qué hay que entregar';
   if (h.entregaEn && currentLocationId !== h.entregaEn) return 'Tienes que entregarlo donde aceptaste el encargo';
-  if (llevados === 0) return `No llevas ${h.objeto!.nombre}`;
+  if (llevados === 0) return `No llevas ${h.objeto.nombre}`;
   return null;
 }
 
-/// Lo que cuenta como «llevado» para una entrega: en la mochila, sin equipar ni prestado.
+/// Lo que cuenta como «llevado» para una entrega: en la mochila, sin equipar ni prestado. La consulta de
+/// la entrega usa el mismo filtro.
+const LLEVADO = { slot: null, companionId: null, subjectId: null } as const;
 export const llevadoParaEntregar = (i: { slot: string | null; companionId: string | null; subjectId: string | null }) =>
-  i.slot === null && i.companionId === null && i.subjectId === null;
+  i.slot === LLEVADO.slot && i.companionId === LLEVADO.companionId && i.subjectId === LLEVADO.subjectId;
 
 /// Entregar: la jugadora entrega los objetos donde aceptó la misión.
 export async function entregarMision(prisma: PrismaClient, saveId: string, questId: string): Promise<void> {
@@ -209,7 +213,7 @@ export async function entregarMision(prisma: PrismaClient, saveId: string, quest
     const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
     const faltan = (quest.cantidad ?? 1) - quest.progreso;
     const objetos = await tx.inventoryItem.findMany({
-      where: { saveId, catalogSlug: h.objeto!.slug, slot: null, companionId: null, subjectId: null },
+      where: { saveId, catalogSlug: h.objeto?.slug ?? '', ...LLEVADO },
       select: { id: true }, orderBy: { createdAt: 'asc' }, take: faltan,
     });
     const motivo = motivoNoEntregable(quest.huecos, save.currentLocationId, objetos.length);

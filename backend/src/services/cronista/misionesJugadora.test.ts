@@ -3,6 +3,11 @@ import { llevadoParaEntregar, motivoNoEntregable } from './misionesJugadora.js';
 
 /// P183 (QA-27): el motivo por el que no se puede entregar sale de un solo sitio (entrega y resumen).
 describe('motivoNoEntregable', () => {
+  it('sin objeto en los huecos no rompe: da un motivo (code-review)', () => {
+    expect(motivoNoEntregable({}, 'lugar-1', 0)).toBe('Este encargo no dice qué hay que entregar');
+    expect(motivoNoEntregable(null, 'lugar-1', 0)).toBe('Este encargo no dice qué hay que entregar');
+  });
+
   const huecos = { entregaEn: 'lugar-1', objeto: { slug: 'madera-jumba', nombre: 'Madera Jumba' } };
 
   it('fuera del lugar donde se aceptó, eso primero', () => {

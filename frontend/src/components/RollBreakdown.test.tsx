@@ -9,4 +9,8 @@ describe('RollBreakdown', () => {
     expect(container.textContent).toContain('×1.5 tipo')
     expect(container.querySelector('[title^="Ventaja de tipo"]')).not.toBeNull()
   })
+  it('por debajo de ×1 la explicación dice desventaja', () => {
+    const { container } = render(<RollBreakdown side={{ value: 6, multiplicador: 0.5 }} valorCrudo={6} valorEfectivo={3} />)
+    expect(container.querySelector('[title^="Desventaja de tipo"]')).not.toBeNull()
+  })
 })

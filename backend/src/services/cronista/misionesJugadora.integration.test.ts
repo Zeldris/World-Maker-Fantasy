@@ -102,7 +102,7 @@ describe('misiones secundarias de la jugadora (CR-40 40e)', () => {
     const combatir = await aceptarMision(prisma, saveId, (await aviso('feg-ger', { tipo: 'COMBATIR', motivo: 'CONFLICTO', enemiga: { slug: 'clan-serhu', nombre: 'Clan Serhu' }, lugar: { id: campo.id, nombre: campo.name } })).id);
     const grupo = (combatir.huecos as { grupo: string[] }).grupo;
     expect(grupo.length).toBeGreaterThan(0);
-    expect(await prisma.zonePoint.count({ where: { saveId, locationId: campo.id, label: 'Partida de Clan Serhu' } })).toBe(grupo.length);
+    expect(await prisma.zonePoint.count({ where: { saveId, locationId: campo.id, label: 'Partida del Clan Serhu' } })).toBe(grupo.length);
     const repSerhu = await rep('Clan Serhu');
     await prisma.npcState.updateMany({ where: { saveId, npcId: { in: grupo }, scope: campo.id }, data: { condicionFisica: 'MUERTO' } });
     await revisarMisiones(prisma, saveId);

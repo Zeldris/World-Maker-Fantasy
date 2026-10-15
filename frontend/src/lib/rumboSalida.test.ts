@@ -38,5 +38,8 @@ describe('duracionDeCamino (P115)', () => {
     expect(duracionDeCamino(100)).toBe('una hora y 40 minutos de camino')
     expect(duracionDeCamino(80)).toBe('una hora y 20 minutos de camino')
     expect(duracionDeCamino(124)).toBe('unas 2 horas de camino')
+    // code-review: el redondeo no puede dejar «60 minutos» ni «24 horas».
+    expect(duracionDeCamino(58)).toBe('una hora de camino')
+    expect(duracionDeCamino(1436)).toBe('un día de camino')
   })
 })

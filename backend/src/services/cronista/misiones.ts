@@ -146,7 +146,9 @@ const PALABRA_FEMENINA = new Set(['concordia', 'tribu', 'hermandad', 'orden', 'l
 export function bando(nombre: string, prep: '' | 'a' | 'de' | 'para' = '', alInicio = false): string {
   const primera = nombre.split(' ')[0]!.toLowerCase();
   const articulo = PALABRA_MASCULINA.has(primera) ? 'el' : PALABRA_FEMENINA.has(primera) ? 'la' : '';
-  let texto = articulo ? `${articulo} ${nombre}` : nombre;
+  // Un nombre que ya trae artículo («Los del Obelisco») lo lleva en minúscula a mitad de frase.
+  const propio = /^(El|La|Los|Las) /.test(nombre) ? nombre.charAt(0).toLowerCase() + nombre.slice(1) : nombre;
+  let texto = articulo ? `${articulo} ${nombre}` : propio;
   if (prep) texto = `${prep} ${texto}`.replace(/^a el /, 'al ').replace(/^de el /, 'del ');
   return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
 }
@@ -158,7 +160,7 @@ const TITULO: Record<TipoMision, (h: HuecosMision) => string> = {
   ELIMINAR: (h) => `Acabar con ${h.objetivoNpc!.nombre}`,
   EXPLORAR: (h) => `Explorar ${h.lugar!.nombre}`,
   AYUDAR: (h) => `Socorrer a ${h.objetivoNpc!.nombre}`,
-  COMBATIR: (h) => `Hacer frente a ${h.enemiga!.nombre} en ${h.lugar!.nombre}`,
+  COMBATIR: (h) => `Hacer frente ${bando(h.enemiga!.nombre, 'a')} en ${h.lugar!.nombre}`,
 };
 
 /// Cuerpo de cada tipo: varias frases, todas con los mismos huecos.
@@ -172,7 +174,7 @@ const CUERPO: Record<TipoMision, ((h: HuecosMision) => string)[]> = {
     (h) => `Los ${h.especie!.nombre} se han multiplicado en ${h.region}. ${bando(h.faccion.nombre, '', true)} paga por ${h.cantidad} piezas.`,
   ],
   ELIMINAR: [
-    (h) => `${h.objetivoNpc!.nombre}${h.enemiga ? `, de ${h.enemiga.nombre},` : ''} es una amenaza ${bando(h.faccion.nombre, 'para')}. Quieren que deje de serlo.`,
+    (h) => `${h.objetivoNpc!.nombre}${h.enemiga ? `, ${bando(h.enemiga.nombre, 'de')},` : ''} es una amenaza ${bando(h.faccion.nombre, 'para')}. Quieren que deje de serlo.`,
     (h) => `Se busca a ${h.objetivoNpc!.nombre}${h.enemiga ? ` (${h.enemiga.nombre})` : ''}. ${bando(h.faccion.nombre, '', true)} recompensará a quien acabe con él.`,
   ],
   EXPLORAR: [
@@ -185,7 +187,7 @@ const CUERPO: Record<TipoMision, ((h: HuecosMision) => string)[]> = {
   ],
   COMBATIR: [
     (h) => `Una partida de ${h.enemiga!.nombre} ronda ${h.lugar!.nombre}. ${bando(h.faccion.nombre, '', true)} quiere que alguien la haga retroceder.`,
-    (h) => `${h.enemiga!.nombre} se ha dejado ver en ${h.lugar!.nombre}, demasiado cerca. Hay que plantarles cara.`,
+    (h) => `${bando(h.enemiga!.nombre, '', true)} se ha dejado ver en ${h.lugar!.nombre}, demasiado cerca. Hay que plantarles cara.`,
   ],
 };
 

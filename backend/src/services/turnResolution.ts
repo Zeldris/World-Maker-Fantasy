@@ -7197,6 +7197,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
   }
 
+  // P167 (QA-27): la oferta pacífica que había ANTES de que este turno ponga otra (ver más abajo).
+  const ofertaPreviaAlTurno = interruptionCandidateForOffer
+    ? null
+    : await prisma.save.findUnique({ where: { id: saveId }, select: { pendingDynamicModeOffer: true, pendingNpcInteractionOffer: true } });
   let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string } | null = null;
   // Franja 1b (2026-09-08) — si este mismo turno ya ofreció Interactuar por interrupción de viaje
   // (más arriba, `interruptionCandidateForOffer`), no evaluar TAMBIÉN la oferta ambiental: pisaría
@@ -7258,13 +7262,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // andando, P135): su tarjeta no se queda con Interactuar, Responder e Ignorar activos. Una de combate
   // forzado no se toca (no deja escribir), ni la que este mismo turno acaba de poner.
   let ofertaDescartada = false;
-  if (!interruptionCandidateForOffer) {
-    const previa = (await prisma.save.findUnique({ where: { id: saveId }, select: { pendingDynamicModeOffer: true } }))?.pendingDynamicModeOffer as { combateForzado?: boolean; targetSlug?: string } | null;
-    const esLaNueva = !!dynamicModeOffer && previa?.targetSlug === dynamicModeOffer.targetSlug;
-    if (previa && !previa.combateForzado && !esLaNueva) {
-      if (!dynamicModeOffer) await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
-      ofertaDescartada = true;
-    }
+  const previa = ofertaPreviaAlTurno?.pendingDynamicModeOffer as { combateForzado?: boolean } | null | undefined;
+  if (previa && !previa.combateForzado) {
+    // Como al alejarse andando (`zona.ts`): también el menú del NPC abierto desde ese encuentro (P142).
+    const menuDelEncuentro = !!(ofertaPreviaAlTurno?.pendingNpcInteractionOffer as { desdeEncuentro?: boolean } | null)?.desdeEncuentro;
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { ...(dynamicModeOffer ? {} : { pendingDynamicModeOffer: Prisma.JsonNull }), ...(menuDelEncuentro ? { pendingNpcInteractionOffer: Prisma.JsonNull } : {}) },
+    });
+    ofertaDescartada = true;
   }
   const professionProgress = freshProfessionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp }));
   const territories = territoryRows.map((t) => ({

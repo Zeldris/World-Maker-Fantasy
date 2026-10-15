@@ -427,7 +427,13 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       setCharacterLog((prev) => {
         // P167 (QA-27): la oferta pacífica que había queda respondida con este turno: su tarjeta pierde
         // los botones (como al alejarse andando, `onOfertaDescartada`).
-        const previas = ofertaDescartada ? prev.map((e) => (e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado ? { ...e, dynamicModeOffer: undefined } : e)) : prev
+        const previas = ofertaDescartada
+          ? prev.map((e) =>
+              e.dynamicModeOffer && !e.dynamicModeOffer.combateForzado
+                ? { ...e, dynamicModeOffer: undefined, ...(e.npcInteractionOffer?.desdeEncuentro ? { npcInteractionOffer: undefined } : {}) }
+                : e,
+            )
+          : prev
         const next = [
           ...previas,
           {

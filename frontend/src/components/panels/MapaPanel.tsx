@@ -182,8 +182,9 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
   // se abría con las pestañas y el título fuera de la vista). Se vuelve a las pestañas.
   const pestanasRef = useRef<HTMLDivElement>(null)
   const elegirPestana = (id: 'zona' | 'mapa') => {
+    if (id === mapaTab) return
     setMapaTab(id)
-    pestanasRef.current?.scrollIntoView?.({ block: 'start' })
+    pestanasRef.current?.scrollIntoView?.({ block: 'nearest' })
   }
   // CR-46: expediciones visibles, al abrir el mapa de Berig (best-effort: sin ellas el mapa sigue igual).
   const [expediciones, setExpediciones] = useState<ExpedicionEnMapa[]>([])

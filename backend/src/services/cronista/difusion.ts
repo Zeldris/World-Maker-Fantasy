@@ -236,11 +236,22 @@ export async function preguntarNoticias(prisma: PrismaClient, saveId: string, np
 }
 
 /// P175 (QA-27): «vence a X» y luego «da muerte a X» son el mismo combate contado dos veces; como
-/// noticia basta la muerte. Quita la victoria de una víctima que también tiene su muerte en la lista.
-export function sinVictoriaYaContada<S extends { tipo: string; actores: { entidadTipo: string; entidadId: string; papel: string }[] }>(sucesos: S[]): S[] {
+/// noticia basta la muerte. Quita la victoria sobre una víctima cuya muerte está en la lista y llegó
+/// poco después (el mismo combate); una victoria de días antes sobre quien luego murió es otra noticia.
+const MISMO_COMBATE_MINUTOS = 60;
+export function sinVictoriaYaContada<S extends { tipo: string; fictionalMinutes: number; actores: { entidadTipo: string; entidadId: string; papel: string }[] }>(sucesos: S[]): S[] {
   const victima = (s: S) => s.actores.find((a) => a.entidadTipo === 'NPC' && a.papel === 'VICTIMA')?.entidadId;
-  const muertas = new Set(sucesos.filter((s) => s.tipo === 'MUERTE_CAUSADA').map(victima).filter(Boolean));
-  return sucesos.filter((s) => s.tipo !== 'COMBATE_GANADO' || !muertas.has(victima(s)));
+  const muertes = new Map<string, number>();
+  for (const s of sucesos) {
+    const v = s.tipo === 'MUERTE_CAUSADA' ? victima(s) : undefined;
+    if (v) muertes.set(v, s.fictionalMinutes);
+  }
+  return sucesos.filter((s) => {
+    if (s.tipo !== 'COMBATE_GANADO') return true;
+    const v = victima(s);
+    const muerte = v ? muertes.get(v) : undefined;
+    return muerte === undefined || muerte - s.fictionalMinutes > MISMO_COMBATE_MINUTOS || muerte < s.fictionalMinutes;
+  });
 }
 
 /// Lo que cuenta alguien que sabe lo de `quien` (su región y su facción): una vez al día por

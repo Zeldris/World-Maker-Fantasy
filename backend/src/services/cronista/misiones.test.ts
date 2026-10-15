@@ -76,7 +76,8 @@ describe('bando', () => {
   });
   it('los nombres propios y los que ya llevan artículo van tal cual', () => {
     expect(bando('Feg Ger', 'para')).toBe('para Feg Ger');
-    expect(bando('Los del Obelisco', 'de')).toBe('de Los del Obelisco');
+    expect(bando('Los del Obelisco', 'de')).toBe('de los del Obelisco');
+    expect(bando('Los del Obelisco', '', true)).toBe('Los del Obelisco');
   });
 });
 
