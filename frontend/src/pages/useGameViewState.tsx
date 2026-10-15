@@ -821,7 +821,9 @@ export function useGameViewState() {
         .catch(() => setAvisosAbiertos((prev) => (prev?.cargando ? { titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false } : prev)))
     },
     mostrarOfertaNpc: (npcName, aviso) =>
-      setAvisosAbiertos({ titulo: `Trabajo de ${npcName}`, avisos: aviso ? [aviso] : [], vacio: `${npcName} no tiene ningún encargo para ti ahora mismo.`, cargando: false }),
+      // P180 (QA-27): «Trabajo de Orco desconocido» ponía el nombre en mayúscula a media frase; el título es
+      // la pregunta y el nombre va debajo.
+      setAvisosAbiertos({ titulo: '¿Tienes trabajo?', subtitulo: npcName, avisos: aviso ? [aviso] : [], vacio: `${npcName} no tiene ningún encargo para ti ahora mismo.`, cargando: false }),
   }
   async function handleAceptarAviso(avisoId: string) {
     if (!saveId) return

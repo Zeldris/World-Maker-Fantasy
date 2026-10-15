@@ -828,6 +828,8 @@ export interface QuestInfo {
   tipoMision?: string | null
   progreso?: number
   cantidad?: number | null
+  /// P183 (QA-27): por qué no se puede «Entregar» ahora (null o ausente: se puede). Lo decide el servidor.
+  entregaBloqueada?: string | null
   /// Minuto de ficción en que vence.
   venceEn?: number | null
   /// Quién la encarga (NPC con nombre o facción).

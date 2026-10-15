@@ -38,4 +38,15 @@ describe('MisionesPanel — misiones del motor', () => {
     expect(queryByRole('button', { name: 'Entregar' })).toBeNull()
     expect(queryByRole('button', { name: 'Abandonar' })).toBeTruthy()
   })
+
+  // P183 (QA-27): con 0/7 y sin la madera, «Entregar» daba 409 al pulsarlo.
+  it('Entregar va desactivado con el motivo que da el servidor', () => {
+    const onEntregar = vi.fn(async () => {})
+    const { getByRole, getByText } = render(<MisionesPanel quests={[{ ...entregar, entregaBloqueada: 'No llevas Madera Jumba' }]} onEntregar={onEntregar} onAbandonar={async () => {}} />)
+    const boton = getByRole('button', { name: 'Entregar' }) as HTMLButtonElement
+    expect(boton.disabled).toBe(true)
+    expect(getByText('No llevas Madera Jumba')).toBeTruthy()
+    fireEvent.click(boton)
+    expect(onEntregar).not.toHaveBeenCalled()
+  })
 })

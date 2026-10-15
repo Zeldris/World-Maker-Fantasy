@@ -187,6 +187,19 @@ export async function avanzarCaza(tx: Tx, saveId: string, especieSlug: string, r
   }
 }
 
+/// P183 (QA-27): por qué no se puede entregar ahora (o null si se puede). Lo usan la entrega y el
+/// resumen de la partida (`detail.ts`), para que el botón diga lo mismo que el servidor.
+export function motivoNoEntregable(huecos: unknown, currentLocationId: string | null, llevados: number): string | null {
+  const h = huecos as HuecosQuest;
+  if (h.entregaEn && currentLocationId !== h.entregaEn) return 'Tienes que entregarlo donde aceptaste el encargo';
+  if (llevados === 0) return `No llevas ${h.objeto!.nombre}`;
+  return null;
+}
+
+/// Lo que cuenta como «llevado» para una entrega: en la mochila, sin equipar ni prestado.
+export const llevadoParaEntregar = (i: { slot: string | null; companionId: string | null; subjectId: string | null }) =>
+  i.slot === null && i.companionId === null && i.subjectId === null;
+
 /// Entregar: la jugadora entrega los objetos donde aceptó la misión.
 export async function entregarMision(prisma: PrismaClient, saveId: string, questId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
@@ -194,13 +207,13 @@ export async function entregarMision(prisma: PrismaClient, saveId: string, quest
     if (!quest) throw new ErrorMision('No hay ninguna entrega pendiente con ese id', 404);
     const h = huecosDe(quest);
     const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
-    if (h.entregaEn && save.currentLocationId !== h.entregaEn) throw new ErrorMision('Tienes que entregarlo donde aceptaste el encargo');
     const faltan = (quest.cantidad ?? 1) - quest.progreso;
     const objetos = await tx.inventoryItem.findMany({
       where: { saveId, catalogSlug: h.objeto!.slug, slot: null, companionId: null, subjectId: null },
       select: { id: true }, orderBy: { createdAt: 'asc' }, take: faltan,
     });
-    if (objetos.length === 0) throw new ErrorMision(`No llevas ${h.objeto!.nombre}`);
+    const motivo = motivoNoEntregable(quest.huecos, save.currentLocationId, objetos.length);
+    if (motivo) throw new ErrorMision(motivo);
     await tx.inventoryItem.deleteMany({ where: { id: { in: objetos.map((o) => o.id) } } });
     const progreso = quest.progreso + objetos.length;
     await tx.quest.update({ where: { id: quest.id }, data: { progreso } });

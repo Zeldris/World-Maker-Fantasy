@@ -7,7 +7,8 @@ export const LIMITE_MUERTES: Record<Exclude<Dificultad, 'NOVATO'>, number> = { M
 export function textoTrasCaer(nombre: string | null, deathCount: number, dificultad: Dificultad): string {
   const quien = nombre ?? 'Tu personaje'
   const cuenta = dificultad === 'NOVATO' ? '' : ` (muerte ${deathCount} de ${LIMITE_MUERTES[dificultad]})`
-  // Lo decide `/death/resolve` al aceptar: donde descansó, si no en su punto de partida (si ya superó la
+  // Lo decide `/death/resolve` al aceptar: donde descansó (P156: solo cuenta un campamento o una
+  // construcción propia, `descansarCampamento.ts` y el «Punto de guardado» de `turnResolution.ts`), si no en su punto de partida (si ya superó la
   // primera prueba) y, sin ninguna de las dos, la partida empieza de nuevo.
-  return `${quien} ha caído${cuenta}. Al aceptar, despierta donde descansó por última vez o, si nunca descansó, en su punto de partida. Si además nunca superó su primera prueba, todo habrá sido una pesadilla y empezará de nuevo.`
+  return `${quien} ha caído${cuenta}. Al aceptar, despierta donde descansó por última vez en un campamento o una construcción suya o, si nunca lo hizo, en su punto de partida. Si además nunca superó su primera prueba, todo habrá sido una pesadilla y empezará de nuevo.`
 }
