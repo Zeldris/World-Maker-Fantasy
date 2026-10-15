@@ -10,6 +10,7 @@ import { resolveDueTransits, startEagerTransitResolution } from '../workers/worl
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
 import { detailRoutes } from './saves/detail.js';
+import { energiaMaxFor } from '../services/energy.js';
 import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { sessionRoutes } from './saves/session.js';
@@ -3662,7 +3663,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     // `buildApp()` (arriba en este archivo) solo registra `turnRoutes` — death/resolve vive en
     // `deathRoutes`, mismo patrón que `buildAppWithDetail` más abajo en este archivo.
     // QA-27 P82: el encuentro forzado que quedó pendiente no sobrevive a la muerte.
-    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
+    // P157 (QA-27): con la energía baja al morir, se reaparece con la energía llena.
+    await prisma.save.update({ where: { id: saveId }, data: { energia: 5, pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
     const deathApp = Fastify();
     await deathApp.register(deathRoutes);
     const resolveRes = await deathApp.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
@@ -3671,6 +3673,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
 
     const savedAfterResolve = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(savedAfterResolve.condicionFisica).toBe('ILESO');
+    expect(savedAfterResolve.energia).toBeGreaterThan(5);
+    expect(savedAfterResolve.energia).toBe(energiaMaxFor((savedAfterResolve.attributes as { constitucion: number }).constitucion));
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
     expect(savedAfterResolve.pendingDynamicModeOffer).toBeNull();
     expect([savedAfterResolve.zonaPosX, savedAfterResolve.zonaPosY]).toEqual([75, 75]);

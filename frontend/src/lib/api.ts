@@ -1108,6 +1108,8 @@ export async function confirmarRecoleccion(
   /// Fase 10 (2026-09-29) — segunda tirada de tier alto por objeto afectado (también dentro de
   /// `logEntry.roll.segundas`); llega aunque `logEntry` sea null (todas las segundas fallaron).
   segundasTiradas?: SegundaTiradaInfo[]
+  /// P161 (QA-27): energía tras recolectar, si recuperó algo con el rato que pasó.
+  energia?: number
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
@@ -1384,6 +1386,8 @@ export interface MoverZonaResultado {
   /// F9-2 (2026-09-29) — reloj tras el paso (1 min/paso); ausente si el camino estaba vacío.
   fictionalMinutes?: number
   fictionalDateLabel?: string
+  /// P161 (QA-27): energía tras el paso, si la recuperó (el HUD no la refrescaba al andar).
+  energia?: number
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
@@ -2270,6 +2274,8 @@ export interface DynamicModeRecursoResultado {
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll }
+  /// P161 (QA-27): energía tras recolectar, si recuperó algo.
+  energia?: number
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {

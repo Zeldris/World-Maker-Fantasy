@@ -6588,8 +6588,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let finalDeathCount = params.deathCount;
     let finalEndedAt: Date | undefined;
     let finDePartidaResult = false;
-    // Sistema de fatiga: un respawn sobrevivible reaparece con la energía llena, mismo criterio
-    // que la condición física vuelve a ILESO.
+    // Sistema de fatiga: un respawn sobrevivible reaparece con la energía llena (P157: lo hace
+    // `/death/resolve`, por donde pasa ya toda reaparición).
     // B11 (pruebas 2026-09-28): regeneración pasiva fuera de combate por el tiempo transcurrido.
     let finalEnergia = enCombate ? nuevaEnergia : Math.min(energiaMax, nuevaEnergia + energiaPasivaEntre(fictionalMinutesActuales, nuevoFictionalMinutes));
 

@@ -112,7 +112,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       const selections = candidato.yields.map((y) => ({ sourceSlug: targetSlug, itemSlug: y.itemSlug, cantidad: y.cantidadMaxima }));
       const resultado = await resolverRecoleccion(save, selections, true, undefined, zonePointId);
       const logEntryFinal = resultado.logEntry ?? (await registrarFallo(`${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`, null, false));
-      return { exito: resultado.logEntry !== null, narration: logEntryFinal.text, abilityName: ability.ability.name, segundasTiradas: resultado.segundasTiradas, items: resultado.items, updatedItems: resultado.updatedItems, logEntry: logEntryFinal };
+      return { exito: resultado.logEntry !== null, narration: logEntryFinal.text, abilityName: ability.ability.name, segundasTiradas: resultado.segundasTiradas, items: resultado.items, updatedItems: resultado.updatedItems, logEntry: logEntryFinal, ...(resultado.energia !== undefined ? { energia: resultado.energia } : {}) };
     }
 
     const roll = gatheringRollFor(
@@ -161,6 +161,8 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
       items: resultado.items,
       updatedItems: resultado.updatedItems,
       logEntry: logEntryFinal,
+      // P160/P161 (QA-27): la energía recuperada mientras recolectaba, para el HUD.
+      ...(resultado.energia !== undefined ? { energia: resultado.energia } : {}),
     };
   });
 }

@@ -21,6 +21,7 @@ interface ZonaMovimientoModalProps {
   onOfertaDescartada?: () => void
   /// F9-2 — nueva hora de la cabecera tras cada paso, ver `ZonaPanel`.
   onHoraActualizada?: (fictionalDateLabel: string) => void
+  onEnergiaActualizada?: (energia: number) => void
   /// Cadáveres en el mapa (Fase 5, 2026-09-28) — ver `ZonaPanel`.
   onSaquearCadaver?: (npcSlug: string) => void
   onDesollarCadaver?: (npcSlug: string) => void
@@ -43,7 +44,7 @@ interface ZonaMovimientoModalProps {
 /// izquierda (70%) y el resto del contenido a la derecha (30%) con su propio scroll — petición
 /// explícita de Álvaro: "aprovechemos el espacio horizontal... así no teniendo que scrollear",
 /// aplicado SOLO aquí, no en el tab Mapa informativo.
-export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento, ofertaEnMapa }: ZonaMovimientoModalProps) {
+export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento, ofertaEnMapa }: ZonaMovimientoModalProps) {
   return (
     // MOD-1 (hito 0.2): sobre ModalShell tamaño xl, sin scroll propio (el mapa gestiona el suyo).
     <ModalShell title="🧭 Moverte por la zona" tamano="xl" onClose={onClose} etiquetaCerrar="Cerrar" disableOverlayClose cuerpoSinScroll>
@@ -61,6 +62,7 @@ export function ZonaMovimientoModal({ saveId, onEncuentroZona, onClose, onViajar
             onRefreshSave={onRefreshSave}
             onOfertaDescartada={onOfertaDescartada}
             onHoraActualizada={onHoraActualizada}
+            onEnergiaActualizada={onEnergiaActualizada}
             onSaquearCadaver={onSaquearCadaver}
             onDesollarCadaver={onDesollarCadaver}
             ofertaEnMapa={ofertaEnMapa}

@@ -4,6 +4,9 @@ import { prisma } from '../../lib/prisma.js';
 import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
 import { initialLocationSlugFor } from '../../services/travel.js';
 import { awakensText } from '../../services/death.js';
+import { energiaMaxFor } from '../../services/energy.js';
+import { effectiveAttributes } from '../../services/equipment.js';
+import type { AttributeBlock } from '../../services/dice.js';
 import { restartSaveTransactionBody } from './shared.js';
 
 /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31, petición explícita: "te pondra un
@@ -30,7 +33,7 @@ export async function deathRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>('/saves/:id/death/resolve', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      include: { world: true, worldState: true },
+      include: { world: true, worldState: true, inventoryItems: { where: { slot: { not: null } } } },
     });
     if (!save) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -89,6 +92,9 @@ export async function deathRoutes(app: FastifyInstance) {
           data: {
             condicionFisica: 'ILESO',
             salud: 100,
+            // P157 (QA-27): se reaparece con la energía llena, como con la condición; era la única regla
+            // del respawn que no llegaba aquí (volvía con lo que tenía al morir).
+            energia: energiaMaxFor(effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).constitucion),
             currentLocationId: respawnLocationId,
             pendingDeathResolution: false,
             // QA-27 P82: al reaparecer no sigue nada de donde murió — ni el encuentro que lo mató

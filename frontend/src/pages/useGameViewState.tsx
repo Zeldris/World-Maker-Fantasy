@@ -1329,6 +1329,7 @@ export function useGameViewState() {
     enciclopediaIndex,
     setCharacterLog,
     setFictionalDate,
+    setEnergia,
     setCombateIniciado,
     setActiveDynamicMode,
     setInventory,

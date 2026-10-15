@@ -81,6 +81,7 @@ interface ZonaPanelProps {
   /// F9-2 (2026-09-29) — el paso avanza el reloj (B2): el backend devuelve la hora nueva y la
   /// cabecera del juego se actualiza en cada paso, sin esperar al siguiente turno.
   onHoraActualizada?: (fictionalDateLabel: string) => void
+  onEnergiaActualizada?: (energia: number) => void
   /// Cadáveres en el mapa (Fase 5, 2026-09-28) — abren el modal real de Saquear/Desollar (en
   /// GameView). `undefined` en la vista informativa: el pin se ve, sin acción.
   onSaquearCadaver?: (npcSlug: string) => void
@@ -136,7 +137,7 @@ export function salidaEnCasillaDelJugador(data: Pick<ZonaResponse, 'jugador' | '
   return data.salidas.find((s) => { const c = celdaDePixel(s); return c.col === celda.col && c.row === celda.row }) ?? null
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
@@ -212,7 +213,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const {
     moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual, caminoRestante,
   } = useMovimientoZona({
-    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
+    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
     onEncuentroEnMapa: ofertaEnMapa ? setEncuentroMapa : undefined,
   })
   // ZON-5: al volver a andar, la tarjeta del encuentro anterior sobra (alejarse ya la descarta).
