@@ -13,6 +13,12 @@ interface AprenderOficioModalProps {
   onCancel: () => void
 }
 
+/// P181 (QA-27): primero lo que se puede aprender, luego lo bloqueado y al final lo ya aprendido.
+function ordenarMaestros(maestros: AprenderOficioMaestro[]): AprenderOficioMaestro[] {
+  const rango = (m: AprenderOficioMaestro) => (m.puedeAprender ? 0 : m.yaAprendido ? 2 : 1)
+  return [...maestros].sort((a, b) => rango(a) - rango(b))
+}
+
 /// "Aprender oficio de un Maestro" (2026-08-31, "Trabajador de Reino" — cierra el hueco real de
 /// que los oficios solo se sembraban al crear personaje, sin ningún camino en partida). Mismo
 /// patrón que EntregaModal.tsx, pero un solo paso — solo hay que elegir CON QUIÉN, el "qué" es fijo
@@ -53,7 +59,10 @@ export function AprenderOficioModal({ saveId, onAprendido, onCancel }: AprenderO
         <p className="text-xs text-wood-500">No hay ningún Maestro de oficio aquí.</p>
       ) : (
         <div className="space-y-2">
-          {maestros.map((maestro) => (
+          {/* P181 (QA-27): con todo bloqueado o ya aprendido, la lista entera de botones apagados no decía
+              nada; se dice de entrada y primero va lo que sí se puede aprender. */}
+          {!maestros.some((m) => m.puedeAprender) && <p className="text-xs text-wood-400">Nadie aquí puede enseñarte nada todavía.</p>}
+          {ordenarMaestros(maestros).map((maestro) => (
             <div key={maestro.npcSlug} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 p-2.5">
               <Miniatura nombre={maestro.name} entityType="npc" slug={maestro.npcSlug} icono="👤" />
               <div className="mr-auto">
@@ -62,14 +71,16 @@ export function AprenderOficioModal({ saveId, onAprendido, onCancel }: AprenderO
                   {maestro.yaAprendido ? 'Ya conoces este oficio.' : maestro.motivoBloqueo ?? `Cuesta 🪙 ${maestro.costeGoirnos}`}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleAprender(maestro)}
-                disabled={!!aprendiendo || !maestro.puedeAprender}
-                className="tactile shrink-0 rounded-lg border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {aprendiendo === maestro.npcSlug ? 'Aprendiendo...' : 'Aprender'}
-              </button>
+              {!maestro.yaAprendido && (
+                <button
+                  type="button"
+                  onClick={() => handleAprender(maestro)}
+                  disabled={!!aprendiendo || !maestro.puedeAprender}
+                  className="tactile shrink-0 rounded-lg border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:border-iron-700 disabled:text-wood-600 disabled:hover:bg-transparent"
+                >
+                  {aprendiendo === maestro.npcSlug ? 'Aprendiendo...' : 'Aprender'}
+                </button>
+              )}
             </div>
           ))}
         </div>

@@ -181,7 +181,7 @@ export interface NpcInScene {
   interactionTypes: NpcInteractionType[];
   /// `professionId` que enseña, si es Maestro de oficio (schema.prisma § Npc.teachesProfession) —
   /// null en el resto. Se proyecta aquí para no repetir la consulta de `aprenderOficio.ts` al
-  /// decidir si ofrecer "Aprender profesión" en el menú contextual.
+  /// decidir si ofrecer "Aprender oficio" en el menú contextual.
   teachesProfession: string | null;
 }
 
