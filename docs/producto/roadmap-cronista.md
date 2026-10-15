@@ -2027,6 +2027,24 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   por días o semanas, Personajes, Facciones, Lugares y Línea temporal, filtro por familia, `INT-1`, `INT-2`
   e `INT-3`); 20b ✅ 2026-10-05 (`EnTuPartida.tsx` en la ficha de la Enciclopedia de un NPC, una facción
   o un lugar, con `GET /saves/:id/leyendas/ficha/:ficha/:slug`; no aparece si no se sabe nada).
+- **CR-69** Rumores que viajan con quien los vio (usuaria, 2026-10-15, de `QA-27` P179 y P184; contrastado
+  con los seis juegos, con más peso para BG3): hoy una noticia se extiende sola por importancia y
+  distancia (`conocimiento.ts`), sin nadie que la lleve, y el bando de la víctima sabe quién fue aunque
+  nadie lo viera. Modelo aprobado:
+  1. Sin testigos solo se sabe lo que se ve después (que el orco murió o no vuelve), no quién fue ni
+     cómo.
+  2. El testigo va a su asentamiento con el tiempo de viaje real y lo cuenta allí; si muere por el
+     camino, el rumor muere con él (BG3: el civil corre a avisar a los guardias y, si se le calla, no
+     hay denuncia; X4 y Medieval Dynasty: solo cuenta lo que se ve).
+  3. En el asentamiento lo saben su gente y su bando, sale en su tablón y se va olvidando (BG3: la
+     denuncia es local y se olvida; Bellwright: la confianza es de cada aldea; D&D 5e: un rumor tarda
+     en asentarse según el tamaño del lugar). Solo lo importante (≥ 7) pasa a otros pueblos con los
+     viajeros que van de uno a otro, con el retraso por distancia.
+  4. Lo enorme (9-10: una guerra, la muerte de un líder) se sabe en todas partes (BG3: los grandes
+     momentos del guion), pero quién fue solo si hubo testigo.
+  5. Los NPC comentan lo que hizo la jugadora («he oído que acabaste con el Orco enfurecido») solo si
+     les ha llegado así.
+  Toca `cronista/conocimiento.ts`, `difusion.ts`, `testigos.ts` y `viajeros.ts`; va con `CR-68`. **L**
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
