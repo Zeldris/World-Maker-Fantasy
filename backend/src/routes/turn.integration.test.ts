@@ -2887,9 +2887,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     });
   }
 
+  // QA-63: borrar la partida espera al avance diario de fondo (`vitest.bdReal.setup.ts`), y tras un
+  // salto de 7 días ese avance tarda 6-21 s; con el límite de 10 s de los hooks fallaba. El salto es lo
+  // que se prueba, así que el borrado tiene su propio límite.
   afterEach(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-  });
+  }, 60_000);
 
   // `doTurn` (definido más abajo) fuerza `enCombate: true` en las dos llamadas — un guard real de
   // turn.ts ("acción de combate clasificada como banda larga... forzada a instantánea") colapsa
@@ -3006,9 +3009,12 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     });
   }
 
+  // QA-63: borrar la partida espera al avance diario de fondo (`vitest.bdReal.setup.ts`), y tras un
+  // salto de 7 días ese avance tarda 6-21 s; con el límite de 10 s de los hooks fallaba. El salto es lo
+  // que se prueba, así que el borrado tiene su propio límite.
   afterEach(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-  });
+  }, 60_000);
 
   // Fase C del hito 0.1 (2026-10-01, test intermitente en CI): NO pasar por `/turn/classify`. Con banda
   // 'larga', classify crea un `CharacterTransit` y lanza `startEagerTransitResolution` en segundo

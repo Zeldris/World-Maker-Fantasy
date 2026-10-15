@@ -47,5 +47,72 @@ class MarcaHallazgo(unittest.TestCase):
         self.assertTrue(lineas[i - 1].startswith('| P2 |'))
 
 
+INICIO = '<!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->'
+CON_RESUMEN = f"""# Ronda
+
+{INICIO}
+- viejo
+<!-- fin del resumen -->
+
+| P | Hallazgo | Estado |
+|---|---|---|
+| P1 | Uno | pendiente |
+| P2 | Dos | ✅ hecho; «queda pendiente: nada» citado |
+| P3 | Tres | ✅ hecho. Comprobado jugando el día 2 |
+| P4 | Cuatro | pendiente (decisión de la usuaria) |
+| P5 | Cinco | no aplica |
+| P6 | Seis | texto ✅; pendiente: la imagen |
+"""
+
+
+class Resumen(unittest.TestCase):
+    """QA-84: el resumen de la cabecera sale de la tabla."""
+
+    def setUp(self):
+        self.repo = carpeta()
+        git(self.repo, 'init', '-q')
+        self.ruta = os.path.join(self.repo, 'registro.md')
+        escribir(self.ruta, CON_RESUMEN)
+
+    def correr(self, *args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(['python3', os.path.join(QA, 'marca-hallazgo.py'), *args, '--registro', self.ruta],
+                              cwd=self.repo, capture_output=True, text=True)
+
+    def test_agrupa_por_estado(self):
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertNotIn('- viejo', texto)
+        self.assertIn('- **Pendientes** (1): P1.', texto)
+        self.assertIn('- **Arreglados, sin comprobar jugando** (1): P2.', texto)
+        self.assertIn('- **Comprobados jugando** (1): P3.', texto)
+        self.assertIn('- **Pendientes de una decisión de la usuaria** (1): P4.', texto)
+        self.assertIn('- **Cerrados sin arreglo (no aplica, dato o roadmap)** (1): P5.', texto)
+        self.assertIn('- **Arreglados en parte** (1): P6.', texto)
+
+    def test_otras_formas_de_decir_comprobado_parte_y_decision(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ comprobado |
+| P8 | Ocho | ✅ hecho. Comprobado en vivo. |
+| P9 | Nueve | ✅ comprobado (en parte) |
+| P10 | Diez | Pendiente de que la usuaria confirme |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Comprobados jugando** (3): P3, P7, P8.', texto)
+        self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
+        self.assertIn('- **Pendientes de una decisión de la usuaria** (2): P4, P10.', texto)
+
+    def test_comprobar_sin_marcas_falla(self):
+        escribir(self.ruta, CON_RESUMEN.replace(INICIO, '<!-- resumen -->'))
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('faltan las marcas', r.stderr)
+
+    def test_comprobar_falla_si_no_coincide_y_marcar_lo_rehace(self):
+        self.assertNotEqual(self.correr('--resumen', '--comprobar').returncode, 0)
+        self.assertEqual(self.correr('P1', 'pendiente', '✅ hecho').returncode, 0)
+        self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
+        self.assertIn('- **Pendientes** (0): ninguno.', leer(self.ruta))
+
+
 if __name__ == '__main__':
     unittest.main()

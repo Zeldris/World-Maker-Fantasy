@@ -1077,7 +1077,7 @@ usuaria `QA-62`…`QA-65`; la quinta propuesta, regresiones en la ronda, no entr
   del commit de cabeza del PR (`gh api …/check-runs`) y bloquea si alguna no ha terminado en verde;
   paso 6 de `skills-y-modelos.md` (suscribirse y fusionar con el verde) y regla en `CLAUDE.md`. Probado
   sobre el #47 con el backend aún corriendo. Motivo: el #47 se fusionó con el CI corriendo.
-- **QA-63 · Los tiempos límite de `turn.integration`** (🚧 diagnosticado, falta el arreglo): los hooks
+- ~~**QA-63 · Los tiempos límite de `turn.integration`**~~ ✅ 2026-10-14: los `afterEach` de los dos bloques llevan su propio límite de 60 s con el motivo (el salto de 7 días es lo que se prueba; acortarlo dejaría el test sin sentido). Comprobado con el bloque entero 3 veces seguidas: 13/13 cada vez. Diagnóstico de entonces: los hooks
   de «OrdenProduccion» y «Territory.control» pasan de 10 s (también en `main`). Diagnóstico del
   2026-10-12 con `diagnosing-bugs`: el `afterEach` hace `prisma.save.delete`, que
   `vitest.bdReal.setup.ts` envuelve para esperar a `esperarTodoElFondo()`; esos tests saltan 7 días,
@@ -1139,8 +1139,10 @@ Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md
 usuaria el 2026-10-13):
 
 - **QA-73 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
-  una acción bloqueada, huir antes del combate (P131) y Explorar fallido (P138). Falta jugarlo en huir
-  durante un combate y caza sigilosa fallida, que salen al azar):
+  una acción bloqueada, huir antes del combate (P131), Explorar fallido (P138) y, el 2026-10-14, huir
+  durante un combate (contra Cruzavientos: tirada de Destreza con su dado y la entrada guardada). Falta
+  la caza sigilosa fallida, que solo sale contra una presa 2 niveles por debajo: con Gorhorn a nivel 2 y
+  la fauna más floja a nivel 1, no se puede provocar hasta nivel 3):
   - huir antes y durante el combate y la respuesta a una acción bloqueada devuelven la entrada guardada
     (`logEntry`) y el frontend la pinta tal cual; la huida de durante el combate se guarda ya como combate;
   - Explorar: la línea del dado lleva el id de la entrada guardada y, al caer el dado, se sustituye por
@@ -1188,6 +1190,29 @@ Retro del PR #54 (2026-10-13), aprobada por la usuaria (1 de 2):
   (`skills-y-modelos.md`) pide repasarla antes del commit de un arreglo. Motivo: 4 de los 12 hallazgos
   del `/code-review` del #54 eran reglas de `REVIEW.md` que solo se leen al revisar (una regla aplicada a
   medias en P137, P90 y P132, y una copia en el frontend de lo que decide el backend).
+
+Retro del PR de la ronda `QA-27` del 2026-10-14 (P147-P187) y de los 8 arreglos de su `/code-review`,
+aprobada por la usuaria (las 6):
+
+- ~~**QA-82 · El catálogo de la base de juego, al día**~~ ✅ 2026-10-14: `arrancar-juego.sh` guarda una
+  huella de `seed-catalog.ts` y todo lo que importa (`huella-catalogo.py`, en `logs/`) y vuelve a sembrar
+  el catálogo cuando cambia (unos 7 s). Motivo: P174, la ronda probó P136 con el catálogo de antes del arreglo.
+- ~~**QA-83 · El efecto secundario de un arreglo de la rama se arregla antes del PR**~~ ✅ 2026-10-14:
+  paso 4 de `rondas-de-pruebas.md`. Motivo: P151 (de P123) se vio jugando y quedó «pendiente» hasta que
+  lo cogió el `/code-review`.
+- ~~**QA-84 · El resumen del registro de hallazgos sale de la tabla**~~ ✅ 2026-10-14:
+  `marca-hallazgo.py` rehace el resumen de la cabecera al escribir; `--resumen` lo rehace y
+  `--resumen --comprobar` lo mira en la CI. Motivo: las listas a mano se quedaron desfasadas (`/code-review`).
+- ~~**QA-85 · Tarea tachada, tarea en la bitácora**~~ ✅ 2026-10-14: `bitacora.py --cerradas` (desde el
+  pre-push, desde lo que ya tiene la rama remota) falla si una tarea pasa a tachada en un roadmap y no
+  sale tachada en «Hecho recientemente»; no cuentan las movidas de hito («→»), lo nombrado dentro de un
+  título ni lo ya cerrado en `main`.
+  Motivo: `QA-63` cerrada en los roadmaps y «diagnosticado» en la bitácora.
+- ~~**QA-86 · Capturas y datos de la partida en el runbook**~~ ✅ 2026-10-14: `shot('nombre')` y `psql`
+  contra `tarkor_juego` en «Con qué se juega». Motivo: un envoltorio propio de capturas, una carpeta
+  `shots/` suelta y seis scripts temporales de Prisma para consultar la partida.
+- ~~**QA-87 · Moverse por el mapa de zona**~~ ✅ 2026-10-14: línea en el runbook; el viaje directo es de
+  las monturas. Motivo: P164.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

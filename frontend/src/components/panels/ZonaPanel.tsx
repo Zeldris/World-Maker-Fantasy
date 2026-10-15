@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { CapasContext } from '../../context/capasContext'
 import { ViajerosAqui } from './ViajerosAqui'
 import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
@@ -8,7 +8,7 @@ import { separarEtiquetas } from '../../lib/separarEtiquetas'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
+import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
 import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
@@ -367,6 +367,43 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return acciones
   }
 
+  // ZON-19: nombres visibles de las fichas. P92 (QA-27): las etiquetas se apartan en vertical si se
+  // pisan. P123: antes que todo, las fichas mismas (con su «×N», anillo o candado), el jugador, los
+  // viajeros y las parcelas, como obstáculos fijos, para que ninguna etiqueta, tampoco la de una salida,
+  // los tape. Se recalcula solo si cambian la zona, la escala o qué nombres se ven (no a cada hover).
+  const etiquetasFichas = data?.disponible
+    ? [
+        ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
+        ...(data.dinamicos ?? []).map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
+      ].filter((e) => nombreVisible(e.clave, e, e.sel))
+    : []
+  const clavesVisibles = etiquetasFichas.map((e) => e.clave).join('|')
+  const dyEtiquetas = useMemo(() => {
+    if (!data?.disponible) return new Map<string, number>()
+    const visibles = new Set(clavesVisibles.split('|'))
+    const dinamicosZona = data.dinamicos ?? []
+    const nombres = [
+      ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre })),
+      ...dinamicosZona.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre })),
+    ].filter((e) => visibles.has(e.clave))
+    return separarEtiquetas(
+      [
+        ...data.puntos.map((p) =>
+          cajaFicha(`f:p:${p.id}`, p.x, p.y, escala, { cantidad: p.cantidad ?? 1, anillo: !!p.companion || !p.descubierto, candado: p.nivelRequerido !== undefined, agotado: p.agotado }),
+        ),
+        ...dinamicosZona.map((d) => cajaFicha(`f:d:${d.slug}`, d.x, d.y, escala, { anillo: !d.descubierto })),
+        ...(data.jugador ? [cajaMarca('m:jugador', data.jugador.x, data.jugador.y, escala, 22)] : []),
+        ...(data.viajeros ?? []).map((v) => cajaMarca(`m:v:${v.id}`, v.x, v.y, escala, 12)),
+        ...data.parcelas.map((p) => cajaMarca(`m:pa:${p.id}`, p.x, p.y, escala, 12)),
+        ...data.salidas.map((s) => cajaEtiqueta(`s:${s.locationId}`, s.x, s.y, escala, etiquetaDeEstandarte(anguloSalida(s)), etiquetaSalida(s))),
+        ...nombres
+          .map((e) => cajaEtiqueta(e.clave, e.x, e.y, escala, { x: 0, y: 24, anchor: anclaEtiqueta(e.x, e.nombre, escala) }, e.nombre))
+          .sort((a, b) => a.y - b.y),
+      ],
+      ALTO_LIENZO_ZONA,
+    )
+  }, [data, escala, clavesVisibles])
+
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {
@@ -377,22 +414,6 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // ZON-50/ZON-33: hostiles conocidos (el backend solo los marca si ya están descubiertos).
   const hostiles = data.puntos.filter((p) => p.hostil)
   const dinamicos = data.dinamicos ?? []
-  // ZON-19: nombres visibles de las fichas. P92 (QA-27): los de las salidas mandan y los de las fichas
-  // se apartan en vertical si los pisan.
-  const etiquetasFichas = [
-    ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
-    ...dinamicos.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
-  ].filter((e) => nombreVisible(e.clave, e, e.sel))
-  const dyEtiquetas = separarEtiquetas(
-    [
-      ...data.salidas.map((s) => cajaEtiqueta(`s:${s.locationId}`, s.x, s.y, escala, etiquetaDeEstandarte(anguloSalida(s)), etiquetaSalida(s))),
-      ...etiquetasFichas
-        .map((e) => cajaEtiqueta(e.clave, e.x, e.y, escala, { x: 0, y: 24, anchor: anclaEtiqueta(e.x, e.nombre, escala) }, e.nombre))
-        .sort((a, b) => a.y - b.y),
-    ],
-    ALTO_LIENZO_ZONA,
-  )
-
   // Layout de 2 columnas (2026-09-09) — solo cuando `columnasAncho` (ZonaMovimientoModal): mapa a
   // la izquierda, todo el contenido (control regional/mensaje/leyenda/listas) a la derecha con su
   // propio scroll, para aprovechar el ancho del modal sin tener que scrollear la página entera.
