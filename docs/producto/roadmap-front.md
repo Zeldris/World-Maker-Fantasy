@@ -1214,6 +1214,18 @@ aprobada por la usuaria (las 6):
 - ~~**QA-87 · Moverse por el mapa de zona**~~ ✅ 2026-10-14: línea en el runbook; el viaje directo es de
   las monturas. Motivo: P164.
 
+Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
+[registro](../registros/retro-2026-10-15-hallazgos-qa27.md)), aprobada por la usuaria (las 2):
+
+- ~~**QA-88 · Los tests de lo que cambia, en el push**~~ ✅ 2026-10-15: `tools/qa/tests-relacionados.sh`
+  desde `.githooks/pre-push` pasa `vitest related` sobre los archivos cambiados (backend, solo el proyecto
+  `unit`; frontend, todo). Para la rama entera, cerca de un minuto. Motivo: P160 rompió 13 tests de
+  `recolectar.test.ts` y se vio al pasar la suite completa; con el arreglo quitado, el script sale en rojo
+  con esos 13.
+- ~~**QA-89 · Lo que sale de una columna JSON se comprueba**~~ ✅ 2026-10-15: regla en `REVIEW.md` («Un
+  dato, un sitio»). Motivo: `motivoNoEntregable` tumbaba `GET /saves` con `h.objeto!` (lo cogió el
+  `/code-review`).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
