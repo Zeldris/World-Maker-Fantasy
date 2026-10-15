@@ -334,7 +334,7 @@ describe('GET /saves/:id/zona', () => {
       // RECURSO nunca tiene facción por diseño (2026-09-09) — INERTE (gris), no SIN_FACCION
       // (naranja, reservado a NPC/FAUNA/EDIFICIO independientes) — ver zonePointColorFor.
       { id: 'zp2', x: 400, y: 470, tipo: 'RECURSO', targetSlug: 'yerreo', nombre: expect.any(String), cantidad: 1, color: 'INERTE', descubierto: true, hostil: false, agotado: false },
-      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'escorante', nombre: 'Etiqueta a mano', cantidad: 3, color: 'SIN_FACCION', descubierto: true, hostil: false }, // label manda sobre el nombre real
+      { id: 'zp3', x: 100, y: 100, tipo: 'FAUNA', targetSlug: 'escorante', nombre: 'Escorante', cantidad: 3, color: 'SIN_FACCION', descubierto: true, hostil: false }, // P152: la fauna, por su especie aunque el punto tenga etiqueta
     ]);
     expect(body.dinamicos).toEqual([]);
   });

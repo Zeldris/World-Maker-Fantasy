@@ -957,10 +957,12 @@ export async function resolverRecoleccion(
             });
             if (result.count === 0) continue;
             sourcesTouchedThisRequest.add(sel.sourceSlug);
-            unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
             anyNonCaza = true;
           }
           unitsRemaining -= cantidad;
+          // P173 (QA-27): lo concedido baja el punto del mapa en todas las ramas que no son caza (la caza
+          // tiene el suyo); antes solo minar/talar/extraer lo sumaba y «Recoger» dejaba el ×20.
+          if (yieldRow.metodoObtencion !== 'CAZA') unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
 
           const catalogItem = yieldRow.item;
           const alreadyTouched = touched.get(catalogItem.slug);
