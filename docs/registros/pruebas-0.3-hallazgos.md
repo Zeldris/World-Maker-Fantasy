@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (20): P16, P49, P66, P83, P141, P147, P150, P154, P155, P158, P164, P165, P166,
-  P172, P177, P178, P184, P185, P186, P187.
+- **Pendientes** (19): P16, P49, P66, P83, P141, P147, P150, P154, P155, P164, P165, P166, P172,
+  P177, P178, P184, P185, P186, P187.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (3): P70, P131, P151.
-- **Arreglados, sin comprobar jugando** (128): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (129): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P84, P85, P86, P87, P88, P90, P91,
   P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110, P111,
   P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134, P136,
-  P139, P140, P143, P148, P149, P152, P153, P156, P157, P159, P160, P161, P162, P163, P167, P168,
-  P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183.
+  P139, P140, P143, P148, P149, P152, P153, P156, P157, P158, P159, P160, P161, P162, P163, P167,
+  P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183.
 - **Comprobados jugando** (22): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -197,7 +197,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P155 | Defensa en combate (2026-10-14): la tirada de Gorhorn enseña «(6 −2 heridas = 4 ×1.5≈6/2)» sin decir qué es el «×1.5» ni por qué su Destreza es 6 (en la huida, 10). Falta la explicación (tooltip o texto) de ese multiplicador y del atributo rebajado. | pendiente (texto) |
 | P156 | Aviso de muerte (2026-10-14): dice «despierta donde descansó por última vez», pero Gorhorn descansó 2 h junto al pozo de El Pozo de Cauce Viejo y despertó en La Hondonada del Eco. Por diseño, solo descansar en una construcción propia mueve el punto de reaparición (`turnResolution.ts`, «Punto de guardado»); el texto debería decirlo («donde descansó por última vez en un campamento o construcción tuya»). | ✅ 2026-10-15: «despierta donde descansó por última vez en un campamento o una construcción suya» (`muertes.ts`; `muertes.test.ts`, `GameFooter.test.tsx`) |
 | P157 | Reaparecer tras morir en un combate de grupo (2026-10-14): vuelve con 23/77 de energía, no llena. `turnResolution.ts` rellena la energía al reaparecer («un respawn sobrevivible reaparece con la energía llena»), pero la muerte en el combate de grupo se resuelve por `/death/resolve` (`routes/saves/death.ts`), que no la toca. Dos caminos, dos reglas (QA-78). | ✅ 2026-10-15: `/death/resolve` deja la energía al máximo (con el equipo puesto), como la condición; toda reaparición pasa ya por ahí (`death.ts`; `turn.integration.test.ts`, rojo sin arreglo) |
-| P158 | Tarjeta de recolección (2026-10-14, Pared de arcilla): enseña la tirada («12 +5 = 17 · Recolección · Destreza») pero no la dificultad contra la que tira ni el grado que sacó (claro / con coste / fallo), que son los que deciden cuánto sale (`gradoForRecurso`, `recolectar.ts`). Sin eso, el 17 no dice nada. Las tiradas de combate sí enseñan contra qué. | pendiente (texto) |
+| P158 | Tarjeta de recolección (2026-10-14, Pared de arcilla): enseña la tirada («12 +5 = 17 · Recolección · Destreza») pero no la dificultad contra la que tira ni el grado que sacó (claro / con coste / fallo), que son los que deciden cuánto sale (`gradoForRecurso`, `recolectar.ts`). Sin eso, el 17 no dice nada. Las tiradas de combate sí enseñan contra qué. | ✅ 2026-10-15: al recolectar desde el mapa, la tirada dice contra qué tiró y qué sacó («vs 15 · Éxito parcial»), con el recurso principal de la fuente (`conDificultadDeFuente`, `recolectar.ts`; se guarda en el diario). El modal de Recolectar, que tira para varias fuentes a la vez, sigue sin dificultad única (`ExtendedRollBadge.test.tsx`, `dynamicModeRecurso.integration.test.ts`, rojo sin arreglo) |
 | P159 | Lista del mapa de zona (2026-10-14, La Hondonada): tras recolectar en la Pared de arcilla, su fila salta del primer puesto al último. La lista se reordena con cada cambio; mejor un orden estable (por distancia o por nombre). | ✅ 2026-10-15: `GET /zona` devuelve los puntos ordenados por id (`zona.ts`); sin orden, la base los daba como los tuviera guardados (`zonaGrupos.integration.test.ts`, rojo sin arreglo) |
 | P160 | Energía al recolectar (2026-10-14, La Hondonada): recolectar adelanta el reloj (3 trozos de quitina = 14 min; 1 manojo de salvia = 10 min) pero no da la energía pasiva de ese rato (1 punto cada 10 min, `energiaPasivaEntre`). Andar sí la da (B11, `zona.ts`) y `turnResolution` también; `recolectar.ts` avanza `fictionalMinutes` por su cuenta y se la salta. De 16:31 a 17:07 tocaban +3 y entró +1. Dos caminos, dos reglas (QA-78): mejor un único «pasa el tiempo» que lo aplique todo. | ✅ 2026-10-15: recolectar suma la energía pasiva del rato que pasa, con la misma función que andar (`sumarEnergiaPasiva`, `energiaPasiva.ts`, que además calcula el máximo con el equipo, como el resto del juego; `recolectar.integration.test.ts`, rojo sin arreglo) |
 | P161 | HUD de energía (2026-10-14, La Hondonada): tras andar por el mapa de zona y recolectar, el HUD sigue en 23/77 y la partida ya tiene 24 (consulta a la base de datos a las 17:07). La energía que da el paso (B11) no refresca el HUD. | ✅ 2026-10-15: andar y recolectar (desde el modal y desde el mapa) devuelven la energía nueva y el HUD la pinta (`onEnergiaActualizada`, `setEnergia`; `useMovimientoZona.test.ts`). Falta verlo jugando |

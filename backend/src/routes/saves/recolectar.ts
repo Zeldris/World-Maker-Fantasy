@@ -500,6 +500,15 @@ export function gatheringRollFor(save: GatheringRollInputs, oficio: string, rand
 /// la fuente entera, una misma fuente puede dar varios objetos de distinto tier) se filtra/recorta
 /// según su propio grado — una fuente que se queda sin ningún yield tras esto desaparece del todo
 /// del listado (fallo total de la tirada para ese recurso concreto).
+/// P158 (QA-27): la dificultad y el grado de la tirada contra el recurso principal de una fuente (el
+/// primero que pide tirada), para enseñarlos en la tarjeta. Sin ninguno que pida tirada, la tirada tal cual.
+export function conDificultadDeFuente(candidato: SourceCandidate, roll: GatheringRollResult): GatheringRollResult {
+  const principal = candidato.yields.find((y) => !y.sinTirada);
+  if (!principal) return roll;
+  const dificultad = dificultadForTier(principal.tier);
+  return { ...roll, dificultad, grado: gradoForRecurso(roll.result, dificultad) };
+}
+
 export function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollResult): SourceCandidate[] {
   return candidates
     .map((c) => ({

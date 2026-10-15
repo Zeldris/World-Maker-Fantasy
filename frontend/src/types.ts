@@ -76,6 +76,9 @@ export interface GatheringRollInfo {
   usedRoll: number
   result: number
   advantage: boolean
+  /// P158 (QA-27): contra qué tiró y qué sacó (solo al recolectar una fuente desde el mapa).
+  dificultad?: number
+  grado?: 'fallo' | 'con_coste' | 'claro'
 }
 
 /// Fuente recolectable "ya localizada" o recién "explorada" (rediseño de profesiones, 2026-08-07)

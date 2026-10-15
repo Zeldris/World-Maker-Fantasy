@@ -202,6 +202,9 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.roll.attribute).toBe('destreza');
+      // P158 (QA-27): la tirada dice contra qué tiró y qué sacó.
+      expect(typeof body.roll.dificultad).toBe('number');
+      expect(body.roll.grado).toBe('claro');
       expect(body.exito).toBe(true);
       const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
       expect(despues.cantidad).toBeLessThan(20);

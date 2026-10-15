@@ -28,6 +28,14 @@ export function GatheringRollBadge({ roll, label }: { roll: GatheringRollInfo; l
         🎲{roll.rolls.length > 1 ? roll.rolls.join('/') : roll.rolls[0]} + {bono} = {roll.result}
       </span>
       {roll.advantage && <span title="Ventaja por Suerte: se queda con el mejor de los dos dados">🍀</span>}
+      {/* P158 (QA-27): contra qué tiró y qué sacó, que es lo que decide cuánto sale. */}
+      {roll.dificultad !== undefined && roll.grado && (
+        <>
+          <span>vs {roll.dificultad}</span>
+          <span className="text-wood-600">·</span>
+          <span className="font-semibold">{GRADO_LABEL[roll.grado]}</span>
+        </>
+      )}
     </span>
   )
 }
