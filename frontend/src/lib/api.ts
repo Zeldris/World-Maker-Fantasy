@@ -1182,6 +1182,8 @@ export interface ZonePointInfo {
   /// `zonePointColorFor`, backend).
   cantidad: number
   color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE'
+  /// P176 (QA-27): de quién es (solo los edificios).
+  faccion?: string
   /// Hallazgo 34 (2026-09-07) — false si la partida todavía no lo ha descubierto en la ficción
   /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
   /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).

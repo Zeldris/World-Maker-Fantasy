@@ -9,7 +9,7 @@ import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
 import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
-import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
+import { COLOR_HEX, disposicionDe, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
@@ -334,7 +334,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return (data.dinamicos ?? []).find((d) => d.slug === clave.slice(2)) ?? null
   }
   function infoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): InfoFicha {
-    const detalles = [TIPO_LABEL[punto.tipo], DISPOSICION_LABEL[punto.color]]
+    const detalles = [TIPO_LABEL[punto.tipo], disposicionDe(punto)]
     if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
     if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
     // ZON-16/ZON-58: lo desconocido, agotado o con candado, también en la tarjeta.

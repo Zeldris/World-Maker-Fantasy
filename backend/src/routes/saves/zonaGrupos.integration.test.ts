@@ -155,6 +155,27 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     await prisma.discoveredEntity.deleteMany({ where: { saveId } });
   });
 
+  // P159 (QA-27): tras recolectar, el punto tocado saltaba al final de la lista: sin orden, la base
+  // devuelve las filas como las tenga. La lista sale ordenada por id, se guarden como se guarden.
+  it('GET /zona devuelve los puntos ordenados por id, no en el orden en que estén guardados', async () => {
+    const punto = (id: string, x: number) => ({ id, locationId, saveId, x, y: 25, tipo: 'FAUNA' as const, targetSlug: 'test-grupos-fauna', cantidad: 3, activo: true, lastUpdatedAtMinutes: 480 });
+    await prisma.zonePoint.create({ data: punto('p159-c', 275) });
+    await prisma.zonePoint.create({ data: punto('p159-a', 75) });
+    await prisma.zonePoint.create({ data: punto('p159-b', 175) });
+    const app = await buildApp();
+    const ids = JSON.parse((await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` })).body).puntos.map((p: { id: string }) => p.id) as string[];
+    expect(ids.filter((id) => id.startsWith('p159-'))).toEqual(['p159-a', 'p159-b', 'p159-c']);
+  });
+
+  // P176 (QA-27): un edificio del clan salía solo con «Neutro», sin decir de quién es.
+  it('GET /zona dice de qué bando es un edificio', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 75, y: 75, tipo: 'EDIFICIO', targetSlug: 'test-herreria', label: 'Herrería de Prueba', factionSlug: 'Clan Serhu', cantidad: 1, activo: true } });
+    const app = await buildApp();
+    const body = JSON.parse((await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` })).body);
+    const edificio = body.puntos.find((p: { targetSlug: string }) => p.targetSlug === 'test-herreria');
+    expect(edificio.faccion).toBe('Clan Serhu');
+  });
+
   it('POST /zona/mover contra un grupo devuelve dynamicModeOffer.cantidad y zonePointId del ZonePoint colisionado', async () => {
     await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

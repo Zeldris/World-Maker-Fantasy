@@ -16,4 +16,12 @@ describe('Notificaciones', () => {
     expect(alPulsar).toHaveBeenCalledOnce()
     expect(onDescartar).toHaveBeenCalledWith(7)
   })
+
+  // P163 (QA-27): arriba a la derecha tapaba el «›» del panel El Mundo y la barra lateral.
+  it('en escritorio va por debajo de la cabecera de los paneles y a la izquierda de la barra lateral', () => {
+    const { container } = render(<Notificaciones notificaciones={[{ id: 1, veces: 1, tipo: 'moss', icono: '🎒', texto: 'Obtienes Salvia' }]} onDescartar={() => {}} />)
+    const pila = container.firstElementChild as HTMLElement
+    expect(pila.className).toContain('md:top-36')
+    expect(pila.className).toContain('md:right-24')
+  })
 })

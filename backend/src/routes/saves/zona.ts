@@ -687,7 +687,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       regionControl,
       // CR-63 (63e): los viajeros de paso por aquí, en su celda.
       viajeros: (await viajerosAqui(prisma, save.id)).map((v) => ({ id: v.id, nombre: `${v.propia ? 'Tu ' : ''}${v.que}${v.propia ? '' : ` (${v.quien})`}`, ...posicionEnZona(v.id) })),
-      puntos: zonePoints.map((p) => {
+      // P159 (QA-27): orden estable (por id, que sale en orden de creación). Sin orden, Postgres devolvía
+      // al final la fila recién actualizada y la lista saltaba al recolectar.
+      puntos: [...zonePoints].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map((p) => {
         const yaDescubierto = descubierto(p.tipo, p.targetSlug);
         // P152 (QA-27): la fauna se nombra por su especie, como en la tarjeta del encuentro; la etiqueta
         // del catálogo («Charca de Guchapos») describía el sitio y la misma especie salía con dos nombres.
@@ -700,6 +702,7 @@ export async function zonaRoutes(app: FastifyInstance) {
               ? p.targetSlug
               : (npcNameBySlugZonePoint.get(p.targetSlug) ?? p.targetSlug));
         const companion = p.tipo === 'NPC' ? companionsByOwnerSlug.get(p.targetSlug) : undefined;
+        const faccionDelPunto = p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? (p.tipo === 'EDIFICIO' ? faccionDeLosEdificios : null);
         return {
           id: p.id,
           x: p.x,
@@ -712,7 +715,9 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad: p.cantidad,
           // P107: la facción se ve aunque no se sepa quién es (como los dinámicos de arriba y en X4,
           // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
-          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? (p.tipo === 'EDIFICIO' ? faccionDeLosEdificios : null), factionsStatus, p.tipo),
+          color: zonePointColorFor(faccionDelPunto, factionsStatus, p.tipo),
+          // P176 (QA-27): de quién es un edificio; el color solo decía cómo te ve su bando («Neutro»).
+          ...(p.tipo === 'EDIFICIO' && faccionDelPunto ? { faccion: faccionDelPunto } : {}),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es

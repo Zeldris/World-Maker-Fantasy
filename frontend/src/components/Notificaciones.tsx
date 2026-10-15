@@ -9,11 +9,12 @@ const BORDE: Record<TipoNotificacion, string> = {
 }
 
 /// HUD-6 (hito 0.2) — pila de notificaciones arriba a la derecha. No tapa los modales (va por
-/// debajo de las capas) ni roba el foco; cada una se puede cerrar.
+/// debajo de las capas) ni roba el foco; cada una se puede cerrar. P163 (QA-27): por debajo de la
+/// cabecera de los paneles y a la izquierda de la barra lateral (antes tapaba el «›» de El Mundo).
 export function Notificaciones({ notificaciones, onDescartar }: { notificaciones: Notificacion[]; onDescartar: (id: number) => void }) {
   if (notificaciones.length === 0) return null
   return (
-    <div aria-live="polite" className="pointer-events-none fixed right-3 top-20 z-40 flex w-72 flex-col gap-2">
+    <div aria-live="polite" className="pointer-events-none fixed right-3 top-20 z-40 flex w-72 flex-col gap-2 md:right-24 md:top-36">
       {notificaciones.map((n) => (
         <div
           key={n.id}
