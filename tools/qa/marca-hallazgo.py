@@ -15,7 +15,7 @@ cuentas que anotan a la vez no repitan número. Registro por defecto: el del hit
 QA-84 (retro del 2026-10-14): el resumen de la cabecera (qué hallazgos siguen pendientes, cuáles están
 arreglados y cuáles comprobados jugando) sale de la tabla, entre `INICIO_RESUMEN` y `FIN_RESUMEN`: las
 dos primeras formas lo rehacen al escribir, `--resumen` lo rehace solo y `--resumen --comprobar` (CI)
-falla si no coincide con la tabla. Un registro sin esas marcas no tiene resumen.
+falla si no coincide con la tabla o faltan las marcas. Sin marcas, escribir no genera resumen.
 """
 import glob
 import os
@@ -68,18 +68,23 @@ GRUPOS = [
 
 
 def grupo(estado: str) -> str:
-    """En qué grupo del resumen cae un hallazgo, por el texto de su estado (lo citado entre «» no cuenta)."""
+    """En qué grupo del resumen cae un hallazgo, por el texto de su estado (lo citado entre «» no cuenta).
+
+    Lo que queda de un arreglo va tras «pendiente:» o «falta:», o lo marca «(en parte)»; lo jugado,
+    «comprobado jugando», «comprobado en vivo» o «✅ comprobado»."""
     t = re.sub(r'«[^»]*»', '', estado).strip()
     bajo = t.lower()
     if 'reabierto' in bajo:
         return 'pendiente'
-    if re.search(r'comprobad[oa]s? jugando', bajo):
-        return 'comprobado'
     if re.match(r'(no aplica|dato\b|→ roadmap|🧭|va al roadmap|pasa al roadmap)', bajo):
         return 'cerrado'
     if '✅' in t:
-        return 'parte' if re.search(r'\b(pendiente|falta):', bajo) else 'arreglado'  # lo que queda, tras «pendiente:»
-    if re.search(r'decisi[oó]n de la usuaria', bajo):
+        if re.search(r'\b(pendiente|falta):|\(en parte\)', bajo):
+            return 'parte'
+        if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b', bajo):
+            return 'comprobado'
+        return 'arreglado'
+    if re.search(r'decisi[oó]n de la usuaria|que la usuaria (confirme|decida)', bajo):
         return 'decision'
     return 'pendiente'
 
@@ -124,6 +129,8 @@ def main(args: list[str]) -> None:
     if args[:1] == ['--resumen']:
         nuevas = con_resumen(lineas)
         if args[1:] == ['--comprobar']:
+            if INICIO_RESUMEN not in lineas or FIN_RESUMEN not in lineas:
+                sys.exit(f'{ruta}: faltan las marcas del resumen (`{INICIO_RESUMEN}` y `{FIN_RESUMEN}`, cada una en su línea)')
             if nuevas != lineas:
                 sys.exit(f'{ruta}: el resumen no coincide con la tabla; rehazlo con `python3 tools/qa/marca-hallazgo.py --resumen`')
             return

@@ -1195,8 +1195,8 @@ Retro del PR de la ronda `QA-27` del 2026-10-14 (P147-P187) y de los 8 arreglos 
 aprobada por la usuaria (las 6):
 
 - ~~**QA-82 · El catálogo de la base de juego, al día**~~ ✅ 2026-10-14: `arrancar-juego.sh` guarda una
-  huella de `worldCatalog.ts` y `seed-catalog.ts` (`logs/catalogo-tarkor_juego.huella`) y vuelve a sembrar
-  el catálogo cuando cambia. Motivo: P174, la ronda probó P136 con el catálogo de antes del arreglo.
+  huella de `seed-catalog.ts` y todo lo que importa (`huella-catalogo.py`, en `logs/`) y vuelve a sembrar
+  el catálogo cuando cambia (unos 7 s). Motivo: P174, la ronda probó P136 con el catálogo de antes del arreglo.
 - ~~**QA-83 · El efecto secundario de un arreglo de la rama se arregla antes del PR**~~ ✅ 2026-10-14:
   paso 4 de `rondas-de-pruebas.md`. Motivo: P151 (de P123) se vio jugando y quedó «pendiente» hasta que
   lo cogió el `/code-review`.
@@ -1204,7 +1204,9 @@ aprobada por la usuaria (las 6):
   `marca-hallazgo.py` rehace el resumen de la cabecera al escribir; `--resumen` lo rehace y
   `--resumen --comprobar` lo mira en la CI. Motivo: las listas a mano se quedaron desfasadas (`/code-review`).
 - ~~**QA-85 · Tarea tachada, tarea en la bitácora**~~ ✅ 2026-10-14: `bitacora.py --cerradas` (desde el
-  pre-push) falla si una tarea pasa a tachada en un roadmap y no sale tachada en «Hecho recientemente».
+  pre-push, desde lo que ya tiene la rama remota) falla si una tarea pasa a tachada en un roadmap y no
+  sale tachada en «Hecho recientemente»; no cuentan las movidas de hito («→»), lo nombrado dentro de un
+  título ni lo ya cerrado en `main`.
   Motivo: `QA-63` cerrada en los roadmaps y «diagnosticado» en la bitácora.
 - ~~**QA-86 · Capturas y datos de la partida en el runbook**~~ ✅ 2026-10-14: `shot('nombre')` y `psql`
   contra `tarkor_juego` en «Con qué se juega». Motivo: un envoltorio propio de capturas, una carpeta

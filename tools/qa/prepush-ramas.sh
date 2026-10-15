@@ -24,7 +24,9 @@ while read -r _ sha_local _ sha_remoto; do
     base=$(git merge-base "$sha_local" origin/main 2>/dev/null || echo "")
   fi
   [ -n "$base" ] && git diff --name-only "$base" "$sha_local" >> "$cambiados" 2>/dev/null
-  if [ -n "$base" ]; then python3 "$bitacora_py" --cerradas "$base" "$sha_local" || exit 1; fi
+  # QA-85: solo desde lo que ya tiene la rama remota; desde main pediría tareas que ya salieron de
+  # «Hecho recientemente» (guarda las 10 últimas).
+  if [ "$base" = "$sha_remoto" ]; then python3 "$bitacora_py" --cerradas "$base" "$sha_local" || exit 1; fi
   # Commits nuevos de verdad: los que no están en ninguna rama remota conocida.
   git log --format='  %h %s' "$sha_local" --not --remotes >> "$subidos" 2>/dev/null
   # QA-69: la bitácora tal como va en cada commit nuevo que se sube (no la del directorio de trabajo,

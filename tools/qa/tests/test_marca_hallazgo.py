@@ -89,6 +89,24 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Cerrados sin arreglo (no aplica, dato o roadmap)** (1): P5.', texto)
         self.assertIn('- **Arreglados en parte** (1): P6.', texto)
 
+    def test_otras_formas_de_decir_comprobado_parte_y_decision(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ comprobado |
+| P8 | Ocho | ✅ hecho. Comprobado en vivo. |
+| P9 | Nueve | ✅ comprobado (en parte) |
+| P10 | Diez | Pendiente de que la usuaria confirme |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Comprobados jugando** (3): P3, P7, P8.', texto)
+        self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
+        self.assertIn('- **Pendientes de una decisión de la usuaria** (2): P4, P10.', texto)
+
+    def test_comprobar_sin_marcas_falla(self):
+        escribir(self.ruta, CON_RESUMEN.replace(INICIO, '<!-- resumen -->'))
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('faltan las marcas', r.stderr)
+
     def test_comprobar_falla_si_no_coincide_y_marcar_lo_rehace(self):
         self.assertNotEqual(self.correr('--resumen', '--comprobar').returncode, 0)
         self.assertEqual(self.correr('P1', 'pendiente', '✅ hecho').returncode, 0)

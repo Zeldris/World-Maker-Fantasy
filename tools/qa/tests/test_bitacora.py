@@ -72,6 +72,28 @@ class Cerradas(unittest.TestCase):
                           '## Hecho recientemente\n\n- ~~`QA-1`…`QA-3`~~\n')
         self.assertEqual(self.correr(sha).returncode, 0)
 
+    def test_una_movida_de_hito_no_es_una_cerrada(self):
+        sha = self.commit('- ~~**QA-1 · Una**~~ → pasa al `0.4`\n- ~~**QA-2 · Dos**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-2`~~\n')
+        self.assertEqual(self.correr(sha).returncode, 0)
+
+    def test_lo_que_nombra_el_titulo_no_cuenta(self):
+        sha = self.commit('- ~~**QA-1 · Una (ver QA-9)**~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n',
+                          '## Hecho recientemente\n\n- ~~`QA-1`~~\n- ~~`QA-2`~~\n')
+        self.assertEqual(self.correr(sha).returncode, 0)
+
+    def test_rango_con_raya(self):
+        sha = self.commit('- ~~`QA-1`–`QA-3`~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-1`…`QA-3`~~\n')
+        self.assertEqual(self.correr(sha).returncode, 0)
+        sha = self.commit('- ~~`QA-1`–`QA-3`~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n- ~~`QA-4`–`QA-6`~~\n', '## Hecho recientemente\n\n- ~~`QA-1`…`QA-3`~~\n- ~~`QA-4`~~\n')
+        r = self.correr(sha)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('QA-5', r.stdout)
+
+    def test_lo_cerrado_en_main_no_se_pide_a_la_rama(self):
+        sha = self.commit('- ~~**QA-1 · Una**~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-2`~~\n')
+        git(self.repo, 'update-ref', 'refs/remotes/origin/main', sha)
+        self.assertEqual(self.correr(sha).returncode, 0)
+
     def test_retocar_una_ya_tachada_no_pide_nada(self):
         sha = self.commit('- **QA-1 · Una**\n- ~~**QA-2 · Dos**~~ ✅ con más texto\n', '## Hecho recientemente\n\n- nada\n')
         self.assertEqual(self.correr(sha).returncode, 0)

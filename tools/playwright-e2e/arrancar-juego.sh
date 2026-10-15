@@ -40,9 +40,10 @@ psql "$URL" -q -c 'create extension if not exists vector'
 (cd backend && npx prisma migrate deploy >/dev/null)
 mkdir -p logs
 # QA-82 (retro del 2026-10-14): el catálogo se vuelve a sembrar cuando cambia, no solo al crear la base;
-# si no, la ronda prueba los arreglos de catálogo con datos viejos (P174). `seed-catalog` se puede
+# si no, la ronda prueba los arreglos de catálogo con datos viejos (P174). La huella cubre seed-catalog y
+# todo lo que importa (`huella-catalogo.py`; se pasa de largo, pero sembrar tarda unos 7 s). `seed-catalog` se puede
 # repetir: actualiza o crea cada fila y solo borra filas de catálogo, nunca las de una partida.
-HUELLA_CATALOGO="$(cat backend/src/scripts/worldCatalog.ts backend/src/scripts/seed-catalog.ts | sha256sum | cut -d' ' -f1)"
+HUELLA_CATALOGO="$(python3 tools/playwright-e2e/huella-catalogo.py)"
 ARCHIVO_HUELLA="logs/catalogo-$BASE.huella"
 if [ "$nueva" = 1 ]; then
   echo "Sembrando lore y catálogo en $BASE (unos minutos)…"

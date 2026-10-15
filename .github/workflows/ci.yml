@@ -23,8 +23,8 @@ jobs:
       - run: python3 tools/roadmap/cobertura.py
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
-      # QA-84: el resumen de la cabecera del registro de hallazgos coincide con su tabla.
-      - run: python3 tools/qa/marca-hallazgo.py --resumen --comprobar
+      # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
+      - run: for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
 
   backend:
     runs-on: ubuntu-24.04  # QA-28: trae Postgres 16

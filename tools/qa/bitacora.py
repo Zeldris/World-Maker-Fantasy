@@ -21,34 +21,58 @@ ROADMAPS = "docs/producto/"
 RUTA_BITACORA = "docs/registros/traspaso.md"
 
 
+ID = r"[A-Z]+-\d+[a-z]?"
+RANGO = r"\s*(?:…|\.\.\.|–|—|\ba\b)\s*"
+SEPARADOR = rf"(?:{RANGO}|\s*(?:,|\by\b)\s*)"
+
+
 def ids_tachados(texto: str) -> set[str]:
-    """Identificadores (`QA-63`) dentro de un tachado, con los rangos `QA-77`…`QA-80` desplegados."""
+    """Tareas cerradas en un texto: los identificadores con los que empieza cada tachado (`~~QA-80 · …~~`,
+    `~~`QA-62`, `QA-64`~~`), con los rangos (`QA-77`…`QA-80`) desplegados. Un tachado seguido de «→» es
+    una tarea movida a otro hito, no cerrada, y lo que se nombra dentro del título (`(ver QA-5)`) no cuenta."""
     ids: set[str] = set()
-    for tramo in re.findall(r"~~(.*?)~~", texto):
-        for a, b in re.findall(r"([A-Z]+-\d+)`?\s*…\s*`?([A-Z]+-\d+)", tramo):
-            pa, na = a.rsplit("-", 1)
-            pb, nb = b.rsplit("-", 1)
-            if pa == pb and int(na) < int(nb):
+    for m in re.finditer(r"~~(.*?)~~(\s*→)?", texto):
+        if m.group(2):
+            continue
+        tramo = re.sub(r"[*`]", "", m.group(1))
+        cabeza = re.match(rf"\s*({ID}(?:{SEPARADOR}{ID})*)", tramo)
+        if not cabeza:
+            continue
+        run = cabeza.group(1)
+        ids |= set(re.findall(ID, run))
+        for a, b in re.findall(rf"({ID}){RANGO}({ID})", run):
+            (pa, na), (pb, nb) = a.rsplit("-", 1), b.rsplit("-", 1)
+            if pa == pb and na.isdigit() and nb.isdigit() and int(na) < int(nb):
                 ids |= {f"{pa}-{n}" for n in range(int(na), int(nb) + 1)}
-        ids |= set(re.findall(r"\b([A-Z]+-\d+)\b", tramo))
     return ids
 
 
+def git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], capture_output=True, text=True)
+
+
 def cerradas_sin_bitacora(base: str, sha: str) -> list[str]:
-    """Tareas tachadas en los roadmaps entre `base` y `sha` que no salen tachadas en «Hecho recientemente»."""
-    diff = subprocess.run(["git", "diff", "-U0", base, sha, "--", ROADMAPS], capture_output=True, text=True).stdout
+    """Tareas tachadas en los roadmaps entre `base` y `sha` que no salen tachadas en «Hecho recientemente».
+    Las que ya están tachadas en `origin/main` (llegan con un merge de main, `QA-72`) son de otra rama."""
+    diff = git("diff", "-U0", base, sha, "--", ROADMAPS).stdout
     quitadas = "\n".join(l[1:] for l in diff.splitlines() if l.startswith("-") and not l.startswith("---"))
     puestas = "\n".join(l[1:] for l in diff.splitlines() if l.startswith("+") and not l.startswith("+++"))
     nuevas = ids_tachados(puestas) - ids_tachados(quitadas)
+    for ruta in git("diff", "--name-only", base, sha, "--", ROADMAPS).stdout.split():
+        en_main = git("show", f"origin/main:{ruta}")
+        if en_main.returncode == 0:
+            nuevas -= ids_tachados(en_main.stdout)
     if not nuevas:
         return []
-    r = subprocess.run(["git", "show", f"{sha}:{RUTA_BITACORA}"], capture_output=True, text=True)
+    r = git("show", f"{sha}:{RUTA_BITACORA}")
     bitacora = r.stdout if r.returncode == 0 else ""
     hecho = bitacora.split("## Hecho recientemente", 1)[1].split("\n## ", 1)[0] if "## Hecho recientemente" in bitacora else ""
     return sorted(nuevas - ids_tachados(hecho))
 
 
 if sys.argv[1:2] == ["--cerradas"]:
+    if len(sys.argv) != 4:
+        sys.exit("Uso: python3 tools/qa/bitacora.py --cerradas <commit base> <commit>")
     faltan = cerradas_sin_bitacora(sys.argv[2], sys.argv[3])
     for t in faltan:
         print(f"bitácora: {t} se tacha en el roadmap; apúntala tachada en «Hecho recientemente» de la bitácora")
