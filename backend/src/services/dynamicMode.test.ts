@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aNombre, decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado } from './dynamicMode.js';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -123,6 +123,19 @@ describe('nombreOcultoPorRaza', () => {
 });
 
 /// P141 (QA-27): «Responder» a un NPC sin descubrir: «Le digo al orco desconocido:».
+// P149 (QA-27): «se topa con Guchapo» iba sin artículo.
+describe('conIndefinido', () => {
+  it('pone un/una a lo que tiene artículo de catálogo', () => {
+    expect(conIndefinido('Guchapo', 'el')).toBe('un Guchapo');
+    expect(conIndefinido('Orca de guardia', 'la')).toBe('una Orca de guardia');
+    expect(conIndefinido('Escorante', 'el', 'F')).toBe('una Escorante');
+  });
+  it('sin artículo (nombre propio u oculto) lo deja como nombreEnFrase', () => {
+    expect(conIndefinido('Gistera Koh', null)).toBe('Gistera Koh');
+    expect(conIndefinido('Orco desconocido', null)).toBe('el orco desconocido');
+  });
+});
+
 describe('aNombre', () => {
   it('con artículo y contracción si no es un nombre propio; si lo es, tal cual', () => {
     expect(aNombre('Orco desconocido')).toBe('al orco desconocido');

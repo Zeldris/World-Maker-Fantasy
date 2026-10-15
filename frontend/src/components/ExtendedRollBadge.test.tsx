@@ -47,6 +47,14 @@ describe('ExtendedRollBadge (modo estático)', () => {
     expect(segundas.textContent).toContain('Fallo')
   })
 
+  // P158 (QA-27): «12 +5 = 17 · Recolección · Destreza» sin decir contra qué tiraba ni qué sacó.
+  it('recolección desde el mapa: la tirada dice contra qué tiró y el grado', () => {
+    render(<ExtendedRollBadge roll={{ kind: 'recoleccion', tirada: gathering({ dificultad: 15, grado: 'con_coste' }) }} />)
+    const tirada = screen.getByTestId('recoleccion-tirada').textContent
+    expect(tirada).toContain('vs 15')
+    expect(tirada).toContain('Éxito parcial')
+  })
+
   it('recolección con ventaja por Suerte: muestra los dos dados', () => {
     render(<ExtendedRollBadge roll={{ kind: 'recoleccion', tirada: gathering({ rolls: [4, 17], usedRoll: 17, advantage: true, result: 29 }) }} />)
     expect(screen.getByTestId('recoleccion-tirada').textContent).toContain('🎲4/17')

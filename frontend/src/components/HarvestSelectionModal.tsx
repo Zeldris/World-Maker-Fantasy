@@ -14,7 +14,8 @@ interface HarvestSelectionModalProps {
   oficioLabel: string
   inventoryUsed: number
   inventoryCapacity: number
-  onConfirm: (created: InventoryItemInfo[], updated: { id: string; name: string }[], logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll } | null) => void
+  /// P161 (QA-27): `energia`, la que tiene tras el rato de recolectar, si recuperó algo.
+  onConfirm: (created: InventoryItemInfo[], updated: { id: string; name: string }[], logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll } | null, energia?: number) => void
   onCancel: () => void
   /// Recolección por texto libre redirigida al modal real (Pieza 6d, 2026-09-03) — el jugador
   /// citó esta fuente concreta ("Mino Yerreo") antes de que el guard determinista lo mandara aquí;
@@ -130,7 +131,7 @@ export function HarvestSelectionModal({
         setConfirming(false)
         return
       }
-      onConfirm(res.items, res.updatedItems, res.logEntry)
+      onConfirm(res.items, res.updatedItems, res.logEntry, res.energia)
     } catch {
       setError('No se pudo recolectar — puede que otra acción se haya adelantado.')
       setConfirming(false)

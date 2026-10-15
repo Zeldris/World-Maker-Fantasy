@@ -66,6 +66,7 @@ export function GameModals() {
     setProfessionProgress,
     savedActions,
     setFictionalDate,
+    setEnergia,
     professionRecipes,
     confirmingExit,
     setConfirmingExit,
@@ -242,7 +243,8 @@ export function GameModals() {
               characterAttributes,
               inventory.filter((i) => i.slot !== null),
             )}
-            onConfirm={(created, updated, logEntry) => {
+            onConfirm={(created, updated, logEntry, energiaTras) => {
+              if (energiaTras !== undefined) setEnergia(energiaTras)
               // Bug real jugando en vivo (2026-08-07, "no acumula los items"): recolectar el mismo
               // objeto dos veces creaba dos filas sueltas en vez de sumar a la pila ya existente —
               // mismo patrón exacto que `applyInventoryDelta` ya resuelve para crafteo/construcción.
@@ -462,6 +464,7 @@ export function GameModals() {
             }}
             onDesollarCadaver={() => setHarvestModal({ oficio: 'desollador', label: 'Desollar' })}
             onHoraActualizada={setFictionalDate}
+            onEnergiaActualizada={setEnergia}
             onOfertaDescartada={() =>
               // El menú del NPC abierto desde ese encuentro (P142) se va con él, igual que en el backend.
               setCharacterLog((prev) =>

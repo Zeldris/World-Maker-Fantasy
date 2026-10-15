@@ -9,7 +9,7 @@ import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
 import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
-import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
+import { COLOR_HEX, disposicionDe, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
@@ -81,6 +81,7 @@ interface ZonaPanelProps {
   /// F9-2 (2026-09-29) — el paso avanza el reloj (B2): el backend devuelve la hora nueva y la
   /// cabecera del juego se actualiza en cada paso, sin esperar al siguiente turno.
   onHoraActualizada?: (fictionalDateLabel: string) => void
+  onEnergiaActualizada?: (energia: number) => void
   /// Cadáveres en el mapa (Fase 5, 2026-09-28) — abren el modal real de Saquear/Desollar (en
   /// GameView). `undefined` en la vista informativa: el pin se ve, sin acción.
   onSaquearCadaver?: (npcSlug: string) => void
@@ -136,7 +137,7 @@ export function salidaEnCasillaDelJugador(data: Pick<ZonaResponse, 'jugador' | '
   return data.salidas.find((s) => { const c = celdaDePixel(s); return c.col === celda.col && c.row === celda.row }) ?? null
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
@@ -212,13 +213,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const {
     moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual, caminoRestante,
   } = useMovimientoZona({
-    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
+    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
     onEncuentroEnMapa: ofertaEnMapa ? setEncuentroMapa : undefined,
   })
   // ZON-5: al volver a andar, la tarjeta del encuentro anterior sobra (alejarse ya la descarta).
   useEffect(() => {
     if (movimientoEnCurso) setEncuentroMapa(null)
   }, [movimientoEnCurso])
+  // P182 (QA-27): cuando salta un encuentro, el menú de la ficha que estaba abierto se cierra: salían los
+  // dos a la vez, uno encima del otro.
+  useEffect(() => {
+    if (encuentroMapa) setMenuFicha(null)
+  }, [encuentroMapa])
   // ZON-35: Espacio para y reanuda (fuera de los campos de texto).
   const pararReanudarRef = useRef<() => void>(() => {})
   pararReanudarRef.current = () => (movimientoEnCurso ? parar() : reanudar())
@@ -334,7 +340,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return (data.dinamicos ?? []).find((d) => d.slug === clave.slice(2)) ?? null
   }
   function infoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): InfoFicha {
-    const detalles = [TIPO_LABEL[punto.tipo], DISPOSICION_LABEL[punto.color]]
+    const detalles = [TIPO_LABEL[punto.tipo], disposicionDe(punto)]
     if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
     if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
     // ZON-16/ZON-58: lo desconocido, agotado o con candado, también en la tarjeta.
@@ -560,7 +566,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               })()}
               {/* ZON-30/31/32/34 (capa de ruta, bajo las fichas): celda bajo el cursor; sin andar, la ruta
                   prevista con su coste; andando o parado, la ruta que queda y la bandera de destino. */}
-              {celdaCursor && !soloConsulta && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
+              {/* P168 (QA-27): sobre una ficha (o con su menú abierto) no se pinta: la ficha no va centrada en su
+                  casilla y el recuadro salía desplazado, sin rodearla; la ficha ya se resalta sola. */}
+              {celdaCursor && !soloConsulta && !claveBajoRaton && !menuFicha && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
               {data.jugador && !soloConsulta && destinoPendiente && (
                 <>
                   <LineaRuta desde={data.jugador} puntos={caminoRestante} escala={escala} tipo="en-curso" />

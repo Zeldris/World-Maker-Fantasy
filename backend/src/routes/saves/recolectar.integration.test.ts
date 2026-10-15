@@ -356,3 +356,51 @@ describe('Recolectar: candidateSourcesFor respeta harvestSourceHomeLocationSlug 
     expect(enHondonada.candidates.some((c) => c.sourceSlug === 'flor-de-ceniza')).toBe(false);
   });
 });
+
+// P160/P161 (QA-27): recolectar hace pasar el tiempo; la energía pasiva de ese rato se sumaba al andar
+// pero no al recolectar, y el HUD no se enteraba.
+describe('Recolectar recupera la energía pasiva del rato que pasa', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'agujas-iman' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba P160',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        energia: 10,
+      },
+    });
+    saveId = save.id;
+    // A las 07:59: cualquier rato recolectando cruza al menos una marca de 10 minutos.
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: 479 } });
+    await asegurarMundoDePartida(prisma, saveId);
+    await prisma.worldPopulation.updateMany({ where: { saveId, targetType: 'RECURSO', targetSlug: 'roca-pilares-rotos' }, data: { lastHarvestedAt: null, lastHarvestedLocationId: null } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sube la energía y la devuelve en la respuesta', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/recolectar/confirmar`,
+      payload: { selections: [{ sourceSlug: 'roca-pilares-rotos', itemSlug: 'piedra', cantidad: 3 }] },
+    });
+    expect(res.statusCode).toBe(200);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.energia).toBeGreaterThan(10);
+    expect(JSON.parse(res.body).energia).toBe(save.energia);
+  }, 15_000);
+});

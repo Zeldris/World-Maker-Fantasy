@@ -715,7 +715,7 @@ export function resolverIntercambioCompleto(
     difficulty: dificultadAtacanteAjustada,
     condicionFisica: atacante.condicionFisica,
     rol: atacanteRol,
-    ...(ventajaAtacante ? { rollMode: 'ventaja' as const, racialAdvantageReason: 'Ataca mientras peleas con otro rival: ventaja' } : {}),
+    ...(ventajaAtacante ? { rollMode: 'ventaja' as const, racialAdvantageReason: 'Ataca mientras peleas con otro rival: ventaja', ventajaPor: 'flanqueo' } : {}),
   };
   const defensorExch: ExchangeParticipant = {
     attributes: defensor.attributes,

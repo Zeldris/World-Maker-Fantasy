@@ -15,6 +15,8 @@ export interface OpcionesMovimientoZona {
   onClose?: () => void
   onOfertaDescartada?: () => void
   onHoraActualizada?: (fictionalDateLabel: string) => void
+  /// P161 (QA-27): la energía que recupera el paso, para el HUD.
+  onEnergiaActualizada?: (energia: number) => void
   /// ZON-36: duración de cada paso según la velocidad elegida en Ajustes (600, 250 o 0 ms).
   msPorPaso?: number
   /// ZON-5 (hito 0.2): si se da, un encuentro con oferta NO cierra el mapa: se avisa aquí (para pintar
@@ -28,7 +30,7 @@ const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const mismaCelda = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.floor(a.x / 50) === Math.floor(b.x / 50) && Math.floor(a.y / 50) === Math.floor(b.y / 50)
 
-export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso = MS_POR_VELOCIDAD.normal, onEncuentroEnMapa }: OpcionesMovimientoZona) {
+export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, msPorPaso = MS_POR_VELOCIDAD.normal, onEncuentroEnMapa }: OpcionesMovimientoZona) {
   // Sistema de movimiento por cuadrícula (2026-09-08) — mensaje simple de colisión/aviso ("por
   // ahora, acabaremos metiendo una animación" — placeholder consciente hasta que Franja 3 conecte
   // esto con combate/Interactuar real). `movimientoEnCurso` deshabilita nuevos clics mientras se
@@ -100,6 +102,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
         setCaminoRestante(resultado.caminoRestante)
         if (resultado.ofertaDescartada) onOfertaDescartada?.()
         if (resultado.fictionalDateLabel) onHoraActualizada?.(resultado.fictionalDateLabel)
+        if (resultado.energia !== undefined) onEnergiaActualizada?.(resultado.energia)
         // Sincronización real del mundo (2026-09-09, bug real: "los elementos se mueven, pero no...
         // a la vez que muevo yo") — el backend ya movió la fauna/NPC este mismo paso
         // (`avanzarZonePointsUnPaso`); se fusiona aquí sobre `puntos` para que se anime en el mismo

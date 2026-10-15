@@ -85,7 +85,7 @@ export async function npcInteractionRoutes(app: FastifyInstance) {
       // Traducción de la opción elegida a una señal que el frontend ya sabe interpretar — cada
       // rama reutiliza un flujo YA EXISTENTE y probado (aprenderOficio.ts/companeros.ts/combate),
       // esta ruta no reimplementa ninguna de esas mecánicas, solo decide cuál abrir.
-      if (opcion === 'Aprender profesión') return { accion: 'ABRIR_APRENDER_OFICIO' as const };
+      if (opcion === 'Aprender oficio') return { accion: 'ABRIR_APRENDER_OFICIO' as const };
       if (opcion === 'Reclutar') return { accion: 'ABRIR_RECLUTAR' as const };
       if (opcion === 'Combatir') return { accion: 'FORZAR_COMBATE' as const, npcSlug: offer.npcSlug };
       // CR-12: ayudar a un malherido (ver `ayudarNpc.ts`).

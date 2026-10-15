@@ -9,7 +9,7 @@ import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../.
 import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
-import { energiaMaxFor, energiaPasivaEntre } from '../../services/energy.js';
+import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix, metodoPrincipalDeFuente } from '../../services/harvestAbilities.js';
 import { RECOLECCION_COOLDOWN_MS } from './recolectar.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
@@ -28,7 +28,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { aNombre, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, conIndefinido, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -687,9 +687,14 @@ export async function zonaRoutes(app: FastifyInstance) {
       regionControl,
       // CR-63 (63e): los viajeros de paso por aquí, en su celda.
       viajeros: (await viajerosAqui(prisma, save.id)).map((v) => ({ id: v.id, nombre: `${v.propia ? 'Tu ' : ''}${v.que}${v.propia ? '' : ` (${v.quien})`}`, ...posicionEnZona(v.id) })),
-      puntos: zonePoints.map((p) => {
+      // P159 (QA-27): orden estable (por id, que sale en orden de creación). Sin orden, Postgres devolvía
+      // al final la fila recién actualizada y la lista saltaba al recolectar.
+      puntos: [...zonePoints].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map((p) => {
         const yaDescubierto = descubierto(p.tipo, p.targetSlug);
+        // P152 (QA-27): la fauna se nombra por su especie, como en la tarjeta del encuentro; la etiqueta
+        // del catálogo («Charca de Guchapos») describía el sitio y la misma especie salía con dos nombres.
         const nombreReal =
+          (p.tipo === 'FAUNA' ? npcNameBySlugZonePoint.get(p.targetSlug) : undefined) ??
           p.label ??
           (p.tipo === 'RECURSO'
             ? sourceDisplayNameFor(p.targetSlug)
@@ -697,6 +702,7 @@ export async function zonaRoutes(app: FastifyInstance) {
               ? p.targetSlug
               : (npcNameBySlugZonePoint.get(p.targetSlug) ?? p.targetSlug));
         const companion = p.tipo === 'NPC' ? companionsByOwnerSlug.get(p.targetSlug) : undefined;
+        const faccionDelPunto = p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? (p.tipo === 'EDIFICIO' ? faccionDeLosEdificios : null);
         return {
           id: p.id,
           x: p.x,
@@ -709,7 +715,9 @@ export async function zonaRoutes(app: FastifyInstance) {
           cantidad: p.cantidad,
           // P107: la facción se ve aunque no se sepa quién es (como los dinámicos de arriba y en X4,
           // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
-          color: zonePointColorFor(p.factionSlug ?? npcFactionBySlugZonePoint.get(p.targetSlug) ?? (p.tipo === 'EDIFICIO' ? faccionDeLosEdificios : null), factionsStatus, p.tipo),
+          color: zonePointColorFor(faccionDelPunto, factionsStatus, p.tipo),
+          // P176 (QA-27): de quién es un edificio; el color solo decía cómo te ve su bando («Neutro»).
+          ...(p.tipo === 'EDIFICIO' && faccionDelPunto ? { faccion: faccionDelPunto } : {}),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es
@@ -815,7 +823,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcs = puntos.length
       ? await tx.npc.findMany({
           where: { worldId, slug: { in: puntos.map((p) => p.targetSlug) } },
-          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, raza: true, genero: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
+          select: { id: true, slug: true, name: true, temperamento: true, faction: true, kind: true, attributes: true, level: true, raza: true, genero: true, articulo: true, muertoEnMundo: true, npcStates: { where: { saveId, muerto: true }, select: { id: true } } },
         })
       : [];
     const npcBySlug = new Map(npcs.map((n) => [n.slug, n]));
@@ -901,6 +909,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           kind: n.kind,
           raza: n.raza,
           genero: n.genero,
+          articulo: n.articulo,
           temperamento: n.temperamento,
           faction: n.faction,
           tipo: (n.kind === 'PRINCIPAL' ? 'NPC' : 'FAUNA') as 'NPC' | 'FAUNA',
@@ -921,7 +930,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // tenía ningún caso real que lo siguiera necesitando).
     // CR-16: quien te guarda rencor te corta el paso como un agresivo.
     const rencoresColision = await npcsConRencor(tx, saveId, [...puntosVivos.map((p) => npcBySlug.get(p.targetSlug)?.id), ...dinamicosConPosicionColision.map((d) => d.id)].filter((x): x is string => !!x), fictionalMinutes);
-    let colision: { targetSlug: string; targetName: string; temperamento: string } | null = null;
+    let colision: { targetSlug: string; targetName: string; temperamento: string; articulo?: string | null; genero?: string | null } | null = null;
     // QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`, death.ts): nada hostil corta el paso.
     // Se consulta solo si hace falta.
     let enGraciaCache: boolean | null = null;
@@ -960,7 +969,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           ultimoEncuentroSigueCerca = true;
           continue;
         }
-        colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento };
+        colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento, articulo: nombre === nombreReal ? npc?.articulo : null, genero: npc?.genero };
         colisionTipo = punto.tipo === 'NPC' ? 'NPC' : 'FAUNA';
         destrezaColision = (npc?.attributes as { destreza?: number } | null)?.destreza ?? 10;
         nivelNpcColision = npc?.level ?? 1;
@@ -981,7 +990,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             ultimoEncuentroSigueCerca = true;
             continue;
           }
-          colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento };
+          colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento, articulo: nombreDinamico === dinamico.targetName ? dinamico.articulo : null, genero: dinamico.genero };
           colisionTipo = dinamico.tipo;
           destrezaColision = dinamico.attributes.destreza;
           nivelNpcColision = dinamico.level;
@@ -1078,7 +1087,11 @@ export async function zonaRoutes(app: FastifyInstance) {
         // (el nombre de especie ya viene en singular de catálogo, "un grupo de N" no necesita
         // pluralizarlo). Solo aplica a FAUNA — un NPC (identidad única) nunca se agrupa.
         const nombreEncuentro =
-          colisionTipo === 'FAUNA' && colisionCantidad > 1 ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}` : nombreEnFrase(colision.targetName);
+          colisionTipo === 'FAUNA' && colisionCantidad > 1
+            ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}`
+            : colisionTipo === 'FAUNA'
+              ? conIndefinido(colision.targetName, colision.articulo, colision.genero) // P149: «con un Guchapo»
+              : nombreEnFrase(colision.targetName);
         const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
@@ -1318,13 +1331,9 @@ export async function zonaRoutes(app: FastifyInstance) {
       const minutosTrasPaso = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_PASO_ZONA);
       const etiquetaTrasPaso = formatFictionalDate(minutosTrasPaso);
       await tx.worldState.updateMany({ where: { saveId: save.id }, data: { fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso } });
-      // B11 — la regeneración pasiva de energía también corre al caminar (mismo reloj).
-      const energiaGanada = energiaPasivaEntre(save.worldState?.fictionalMinutes ?? 480, minutosTrasPaso);
-      if (energiaGanada > 0) {
-        const constitucion = (save.attributes as { constitucion?: number } | null)?.constitucion ?? 10;
-        const actual = await tx.save.findUnique({ where: { id: save.id }, select: { energia: true } });
-        if (actual) await tx.save.update({ where: { id: save.id }, data: { energia: Math.min(energiaMaxFor(constitucion), actual.energia + energiaGanada) } });
-      }
+      // B11 — la regeneración pasiva de energía también corre al caminar (mismo reloj; P160: la misma
+      // función que al recolectar). P161: la energía nueva vuelve en la respuesta, para el HUD.
+      const energiaTrasPaso = await sumarEnergiaPasiva(tx, save.id, save.worldState?.fictionalMinutes ?? 480, minutosTrasPaso);
 
       const { ultimoEncuentroSigueCerca, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
         tx,
@@ -1373,7 +1382,7 @@ export async function zonaRoutes(app: FastifyInstance) {
 
       // `llegado`: este paso es el último del trayecto, haya o no encuentro (P135: un encuentro deja
       // `caminoRestante` vacío aunque falte camino, y el frontend no puede deducirlo del píxel pulsado).
-      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, llegado: restoCamino.length === 0, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso };
+      return { jugador: nuevaPosicion, caminoRestante: caminoRestantePixel, llegado: restoCamino.length === 0, colision, dynamicModeOffer, logEntry, zonePointsMovidos, ofertaDescartada, fictionalMinutes: minutosTrasPaso, fictionalDateLabel: etiquetaTrasPaso, ...(energiaTrasPaso !== null ? { energia: energiaTrasPaso } : {}) };
     });
 
     return resultado;

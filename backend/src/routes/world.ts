@@ -4,6 +4,7 @@ import type { AttributeBlock, Attribute } from '../services/dice.js';
 import { prisma } from '../lib/prisma.js';
 import {
   harvestSourceAliases,
+  zonePoints,
   harvestSourceDescriptions,
   harvestSourcesThatAreFaunaWithoutNpc,
   harvestSourceRegion,
@@ -33,6 +34,12 @@ import {
   type SexoVariantesEntry,
 } from '../services/sexDimorphism.js';
 import type { Npc } from '@prisma/client';
+
+/// P162 (QA-27): nombre de los puntos de recurso del mapa por fuente (`zonePoints.label`), como alias.
+const ETIQUETAS_DE_PUNTO = zonePoints.reduce((m, p) => {
+  if (p.tipo === 'RECURSO' && p.label) m.set(p.targetSlug, [...new Set([...(m.get(p.targetSlug) ?? []), p.label.toLowerCase()])]);
+  return m;
+}, new Map<string, string[]>());
 
 interface VarianteSexoOut {
   sexo: 'macho' | 'hembra';
@@ -179,7 +186,9 @@ function buildFaunaFloraSection(ctx: EnciclopediaBuildContext) {
   return Array.from(ctx.sourceDisplayNameBySlug.entries()).map(([sourceSlug, sourceName]) => ({
     sourceSlug,
     sourceName,
-    aliases: harvestSourceAliases[sourceSlug] ?? [],
+    // P162 (QA-27): también el nombre de sus puntos en el mapa («Veta de Yerreo»): la narración los usa
+    // y, sin él, «Veta» y «Yerreo» salían como dos chips (la regex de la Enciclopedia prueba lo más largo primero).
+    aliases: [...(harvestSourceAliases[sourceSlug] ?? []), ...(ETIQUETAS_DE_PUNTO.get(sourceSlug) ?? [])],
     // `cazable` (mecánica real, ver harvest.ts): solo true si existe Npc con este slug — no
     // tocar, condiciona si hace falta derrotarlo antes de poder despiezarlo.
     cazable: ctx.npcSlugs.has(sourceSlug),

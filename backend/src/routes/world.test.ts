@@ -417,6 +417,8 @@ describe('GET /world/:slug/enciclopedia', () => {
     const murgol = body.faunaFlora.find((e: { sourceSlug: string }) => e.sourceSlug === 'murgoles-domados-campamento');
     expect(murgol).toBeDefined();
     expect(murgol.esFauna).toBe(true);
+    // P162 (QA-27): el nombre de su punto en el mapa también es alias, para enlazarlo entero.
+    expect(murgol.aliases).toContain('recinto de múrgoles domados');
   });
 
   it('cada raza con variantes regionales expone su propio sexo cruzado con región', async () => {

@@ -16,6 +16,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { advanceFictionalMinutes, formatFictionalDate, estacionFor, climaFor, climaSeveridadAlMenos } from '../../services/worldClock.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
+import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
 import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } from '../../services/dice.js';
 import type { GatheringRollResult, AttributeBlock, Attribute, GradoRecurso } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
@@ -499,6 +500,15 @@ export function gatheringRollFor(save: GatheringRollInputs, oficio: string, rand
 /// la fuente entera, una misma fuente puede dar varios objetos de distinto tier) se filtra/recorta
 /// según su propio grado — una fuente que se queda sin ningún yield tras esto desaparece del todo
 /// del listado (fallo total de la tirada para ese recurso concreto).
+/// P158 (QA-27): la dificultad y el grado de la tirada contra el recurso más fácil de una fuente que
+/// pide tirada (el que decide si se saca algo), para enseñarlos en la tarjeta. Sin ninguno, la tirada tal cual.
+export function conDificultadDeFuente(candidato: SourceCandidate, roll: GatheringRollResult): GatheringRollResult {
+  const conTirada = candidato.yields.filter((y) => !y.sinTirada);
+  if (conTirada.length === 0) return roll;
+  const dificultad = Math.min(...conTirada.map((y) => dificultadForTier(y.tier)));
+  return { ...roll, dificultad, grado: gradoForRecurso(roll.result, dificultad) };
+}
+
 export function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollResult): SourceCandidate[] {
   return candidates
     .map((c) => ({
@@ -956,10 +966,12 @@ export async function resolverRecoleccion(
             });
             if (result.count === 0) continue;
             sourcesTouchedThisRequest.add(sel.sourceSlug);
-            unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
             anyNonCaza = true;
           }
           unitsRemaining -= cantidad;
+          // P173 (QA-27): lo concedido baja el punto del mapa en todas las ramas que no son caza (la caza
+          // tiene el suyo); antes solo minar/talar/extraer lo sumaba y «Recoger» dejaba el ×20.
+          if (yieldRow.metodoObtencion !== 'CAZA') unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
 
           const catalogItem = yieldRow.item;
           const alreadyTouched = touched.get(catalogItem.slug);
@@ -1015,6 +1027,7 @@ export async function resolverRecoleccion(
         // cooldown, población agotada a mitad de bucle).
         let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null = null;
         let nuevoFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+        let energiaTrasRecolectar: number | null = null;
         let nuevaFictionalDateLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
         if (touched.size > 0) {
           const resumen = [...touched.values()]
@@ -1030,6 +1043,8 @@ export async function resolverRecoleccion(
             where: { saveId: save.id },
             data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
           });
+          // P160 (QA-27): el rato que pasa recolectando también recupera energía, como al andar.
+          energiaTrasRecolectar = await sumarEnergiaPasiva(tx, save.id, save.worldState?.fictionalMinutes ?? 480, nuevoFictionalMinutes);
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const logRoll: RecoleccionLogRoll | undefined =
             primeraTirada || segundasTiradas.length > 0
@@ -1091,7 +1106,7 @@ export async function resolverRecoleccion(
           }
         }
 
-        return { touched, logEntry, segundasTiradas, recompensas };
+        return { touched, logEntry, segundasTiradas, recompensas, energia: energiaTrasRecolectar };
       });
 
       // Hecho de sesión (fuera de la transacción, igual que `appendSessionFacts` en /explorar —
@@ -1144,5 +1159,5 @@ export async function resolverRecoleccion(
         }
       }
 
-  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas };
+  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas, ...(touched.energia !== null ? { energia: touched.energia } : {}) };
 }

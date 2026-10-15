@@ -212,7 +212,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'punto de agua',
     description:
-      'Uno de los pocos puntos de agua permanentes de la región, sobre la corriente subterránea que siguen los Corredores de Cauce — cruce de viajeros para bien o para mal. Actualmente hay construido un pozo antiguo que es utilizado por el clan serhu.',
+      'Uno de los pocos puntos de agua permanentes de la región, sobre la corriente subterránea que siguen los Corredores de Cauce — cruce de viajeros para bien o para mal. Actualmente hay construido un pozo antiguo que es utilizado por el Clan Serhu.',
     aliases: ['el pozo de cauce viejo'],
     x: 13.5,
     y: 0,

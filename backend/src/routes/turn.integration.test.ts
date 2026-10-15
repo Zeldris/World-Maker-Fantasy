@@ -10,6 +10,7 @@ import { resolveDueTransits, startEagerTransitResolution } from '../workers/worl
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
 import { detailRoutes } from './saves/detail.js';
+import { energiaMaxFor } from '../services/energy.js';
 import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { sessionRoutes } from './saves/session.js';
@@ -449,6 +450,105 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
 // el atajo de `detectsPostCombatInteraction` (turn.ts, solo para `!enCombate`), que está pensado
 // para UN único objetivo citado en texto libre, no para un barrido de varios a la vez. Fixture
 // propio (no reutiliza el describe de arriba) para no interferir con su secuencia de saqueo.
+// P167 (QA-27): tras «Responder» (un turno de texto libre), la tarjeta del encuentro seguía con
+// Interactuar, Responder e Ignorar activos: la oferta pacífica seguía pendiente.
+describe('Un turno de texto libre deja respondida la oferta pacífica pendiente (P167)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingDynamicModeOffer: { tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'npc' },
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('la oferta se borra y la respuesta lo dice', async () => {
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    const action = 'Le digo a la cazadora serhu: Saludos.';
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll } });
+    expect(narrateRes.statusCode).toBe(200);
+    const cuerpo = lastNdjsonLine(narrateRes.payload) as unknown as { ofertaDescartada?: true; dynamicModeOffer: { targetSlug: string } | null };
+    expect(cuerpo.ofertaDescartada).toBe(true);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const pendiente = save.pendingDynamicModeOffer as { targetSlug: string } | null;
+    expect(pendiente?.targetSlug ?? null).not.toBe('cazadora-serhu');
+  }, 60_000);
+});
+
+// P148 (QA-27): al rematar a un convaleciente salía «Orco enfurecido se defiende con…» encima de
+// «no puede defenderse: el golpe acierta sin tirada». Un golpe de gracia no trae defensa del NPC.
+describe('Golpe de gracia sin defensa del NPC (P148)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el golpe a un convaleciente no trae la defensa del NPC', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    type Cuerpo = { npcAbilityUsed: unknown; combatExchangeDisplay?: { golpeDeGracia?: true } | null };
+    let golpeDeGracia: Cuerpo | null = null;
+    for (let turno = 0; turno < 6 && !golpeDeGracia; turno++) {
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      const cuerpo = lastNdjsonLine(narrateRes.payload) as unknown as Cuerpo;
+      if (cuerpo.combatExchangeDisplay?.golpeDeGracia) golpeDeGracia = cuerpo;
+    }
+    expect(golpeDeGracia).not.toBeNull();
+    expect(golpeDeGracia?.npcAbilityUsed).toBeNull();
+    const estado = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(estado).not.toBeNull();
+  }, 60_000);
+});
+
 describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de combate', () => {
   let saveId: string;
   let npcId: string;
@@ -3609,7 +3709,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     // `buildApp()` (arriba en este archivo) solo registra `turnRoutes` — death/resolve vive en
     // `deathRoutes`, mismo patrón que `buildAppWithDetail` más abajo en este archivo.
     // QA-27 P82: el encuentro forzado que quedó pendiente no sobrevive a la muerte.
-    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
+    // P157 (QA-27): con la energía baja al morir, se reaparece con la energía llena.
+    await prisma.save.update({ where: { id: saveId }, data: { energia: 5, pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
     const deathApp = Fastify();
     await deathApp.register(deathRoutes);
     const resolveRes = await deathApp.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
@@ -3618,6 +3719,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
 
     const savedAfterResolve = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(savedAfterResolve.condicionFisica).toBe('ILESO');
+    expect(savedAfterResolve.energia).toBeGreaterThan(5);
+    expect(savedAfterResolve.energia).toBe(energiaMaxFor((savedAfterResolve.attributes as { constitucion: number }).constitucion));
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
     expect(savedAfterResolve.pendingDynamicModeOffer).toBeNull();
     expect([savedAfterResolve.zonaPosX, savedAfterResolve.zonaPosY]).toEqual([75, 75]);

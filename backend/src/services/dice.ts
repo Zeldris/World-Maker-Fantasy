@@ -107,6 +107,10 @@ export interface GatheringRollResult {
   usedRoll: number
   result: number
   advantage: boolean
+  /// P158 (QA-27): contra qué tiró y qué sacó, cuando la tirada es de una sola fuente (recolectar desde
+  /// el mapa). Sin ellos, «12 +5 = 17» no decía si era mucho o poco.
+  dificultad?: number
+  grado?: GradoRecurso
 }
 
 export function rollGathering(

@@ -285,6 +285,8 @@ export interface NarrateResponse {
   /// el candidato; la narración de la primera vuelta ocurre al pulsar Interactuar
   /// (`POST /saves/:id/modo-dinamico/interactuar`), no aquí. `null` en la inmensa mayoría de turnos.
   dynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
+  /// P167 (QA-27): el turno dejó respondida la oferta pacífica que había; su tarjeta pierde los botones.
+  ofertaDescartada?: true
   /// Notificación de misión COMPLETADA (2026-08-13) — `logEntryId`/`text` son los de la LogEntry
   /// real ya persistida por el backend (questRewardNarrationFor), para insertarla tal cual con
   /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la
@@ -1108,6 +1110,8 @@ export async function confirmarRecoleccion(
   /// Fase 10 (2026-09-29) — segunda tirada de tier alto por objeto afectado (también dentro de
   /// `logEntry.roll.segundas`); llega aunque `logEntry` sea null (todas las segundas fallaron).
   segundasTiradas?: SegundaTiradaInfo[]
+  /// P161 (QA-27): energía tras recolectar, si recuperó algo con el rato que pasó.
+  energia?: number
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
@@ -1182,6 +1186,8 @@ export interface ZonePointInfo {
   /// `zonePointColorFor`, backend).
   cantidad: number
   color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE'
+  /// P176 (QA-27): de quién es (solo los edificios).
+  faccion?: string
   /// Hallazgo 34 (2026-09-07) — false si la partida todavía no lo ha descubierto en la ficción
   /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
   /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).
@@ -1382,6 +1388,8 @@ export interface MoverZonaResultado {
   /// F9-2 (2026-09-29) — reloj tras el paso (1 min/paso); ausente si el camino estaba vacío.
   fictionalMinutes?: number
   fictionalDateLabel?: string
+  /// P161 (QA-27): energía tras el paso, si la recuperó (el HUD no la refrescaba al andar).
+  energia?: number
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
@@ -2268,6 +2276,8 @@ export interface DynamicModeRecursoResultado {
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll }
+  /// P161 (QA-27): energía tras recolectar, si recuperó algo.
+  energia?: number
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {

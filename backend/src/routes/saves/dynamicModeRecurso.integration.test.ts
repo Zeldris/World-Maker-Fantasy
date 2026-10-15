@@ -202,12 +202,38 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.roll.attribute).toBe('destreza');
+      // P158 (QA-27): la tirada dice contra qué tiró y qué sacó.
+      expect(typeof body.roll.dificultad).toBe('number');
+      expect(body.roll.grado).toBe('claro');
       expect(body.exito).toBe(true);
       const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
       expect(despues.cantidad).toBeLessThan(20);
     } finally {
       azar.mockRestore();
       await prisma.zonePoint.delete({ where: { id: punto.id } });
+    }
+  });
+
+  // P173 (QA-27): «Recoger» (PASIVO) daba la leche y el recinto seguía en ×20: solo minar/talar/extraer
+  // bajaba el punto.
+  it('Recoger leche del recinto: el punto del mapa pierde lo recogido', async () => {
+    const colmillo = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-serhu', world: { slug: 'helek-sirik' } } });
+    const antes = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: colmillo.id, pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', targetName: 'Recinto de múrgoles domados' } } });
+    const punto = await prisma.zonePoint.create({
+      data: { locationId: colmillo.id, saveId, x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', cantidad: 20, activo: true, lastUpdatedAtMinutes: 480 },
+    });
+    const azar = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/murgoles-domados-campamento` });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).exito).toBe(true);
+      expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } })).cantidad).toBeLessThan(20);
+    } finally {
+      azar.mockRestore();
+      await prisma.zonePoint.delete({ where: { id: punto.id } });
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: antes.currentLocationId } });
     }
   });
 

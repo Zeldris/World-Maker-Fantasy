@@ -28,6 +28,8 @@ interface UseModoDinamicoParams {
   enciclopediaIndex: EnciclopediaIndex
   setCharacterLog: Dispatch<SetStateAction<LogEntry[]>>
   setFictionalDate: Dispatch<SetStateAction<string>>
+  /// P161 (QA-27): la energía que recupera el rato de recolectar, para el HUD.
+  setEnergia?: Dispatch<SetStateAction<number>>
   setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
   setActiveDynamicMode: ReturnType<typeof useActionModalsState>['setActiveDynamicMode']
   setInventory: Dispatch<SetStateAction<InventoryItemInfo[]>>
@@ -64,6 +66,7 @@ export function useModoDinamico({
   enciclopediaIndex,
   setCharacterLog,
   setFictionalDate,
+  setEnergia,
   setCombateIniciado,
   setActiveDynamicMode,
   setInventory,
@@ -234,6 +237,7 @@ export function useModoDinamico({
       // El backend guarda siempre el intento, también el fallido (`registrarFallo`).
       setCharacterLog((prev) => (prev.some((e) => e.id === guardada.id) ? prev.map((e) => (e.id === guardada.id ? guardada : e)) : [...prev, guardada]))
       setFictionalDate(resultado.logEntry.timeLabel)
+      if (resultado.energia !== undefined) setEnergia?.(resultado.energia)
     } catch (err) {
       // El backend explica el motivo real del rechazo (nivel de oficio insuficiente, recurso
       // agotado...) — mostrarlo tal cual (2026-09-28: antes un genérico "inténtalo de nuevo" que

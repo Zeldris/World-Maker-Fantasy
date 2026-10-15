@@ -138,6 +138,9 @@ export interface ExchangeParticipant {
   /// ambos van juntos, nunca uno sin el otro.
   rollMode?: RollMode;
   racialAdvantageReason?: string;
+  /// P153 (QA-27): la etiqueta del chip de la ventaja; sin ella, «racial». La de P129 (golpear a quien
+  /// ya pelea con otro) no es racial: «flanqueo».
+  ventajaPor?: string;
 }
 
 export interface ExchangeSideResult extends RollResult {
@@ -166,6 +169,8 @@ export interface ExchangeSideResult extends RollResult {
   rolls: number[];
   rollMode: RollMode;
   racialAdvantageReason?: string;
+  /// P153: ver `ExchangeParticipant.ventajaPor`.
+  ventajaPor?: string;
   /// Bug real (2026-08-28, "en los cálculos de la tirada tampoco se está viendo" — jugando en
   /// vivo): `ExchangeParticipant.attributeBonus` (habilidad de arma/clase, +2/+4) ya se sumaba
   /// dentro de `valorEfectivo`/`result` desde siempre, pero nunca viajaba expuesto — mismo hueco
@@ -282,6 +287,7 @@ export function rollAttributeCheck(self: ExchangeParticipant, multiplicador: num
     rolls,
     rollMode: self.rollMode ?? 'normal',
     racialAdvantageReason: self.racialAdvantageReason,
+    ...(self.ventajaPor ? { ventajaPor: self.ventajaPor } : {}),
     attributeBonus: self.attributeBonus ?? 0,
     result,
     difficulty: self.difficulty,

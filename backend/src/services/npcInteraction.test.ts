@@ -33,12 +33,12 @@ describe('opcionesDisponiblesPara', () => {
     expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Combatir', 'Salir']);
   });
 
-  it('MAESTRO_OFICIO con teachesProfession: ofrece Aprender profesión', () => {
+  it('MAESTRO_OFICIO con teachesProfession: ofrece Aprender oficio', () => {
     const npc = npcFixture({ interactionTypes: ['MAESTRO_OFICIO'], teachesProfession: 'herrero-orcos-llanuras' });
-    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Aprender profesión', 'Combatir', 'Salir']);
+    expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Aprender oficio', 'Combatir', 'Salir']);
   });
 
-  it('MAESTRO_OFICIO sin teachesProfession (catálogo inconsistente): no ofrece Aprender profesión', () => {
+  it('MAESTRO_OFICIO sin teachesProfession (catálogo inconsistente): no ofrece Aprender oficio', () => {
     const npc = npcFixture({ interactionTypes: ['MAESTRO_OFICIO'], teachesProfession: null });
     expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: false })).toEqual(['Charlar', 'Combatir', 'Salir']);
   });
@@ -82,7 +82,7 @@ describe('opcionesDisponiblesPara', () => {
     });
     expect(opcionesDisponiblesPara(npc, { hayMisionOfertadaDeEsteNpc: true, tituloMisionOfertada: 'La deuda de Ulkha' })).toEqual([
       'Charlar',
-      'Aprender profesión',
+      'Aprender oficio',
       'Misión: La deuda de Ulkha',
       'Ayudar',
       'Reclutar',

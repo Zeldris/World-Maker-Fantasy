@@ -182,5 +182,16 @@ describe('useMovimientoZona', () => {
       expect(alLlegar).not.toHaveBeenCalled()
     })
   })
-})
 
+  // P161 (QA-27): al andar se recupera energía, pero el HUD seguía con la de antes.
+  it('pasa al HUD la energía que devuelve cada paso', async () => {
+    vi.mocked(moverEnZona).mockResolvedValue({ jugador: { x: 50, y: 0 }, caminoRestante: [], zonePointsMovidos: [], energia: 24 } as never)
+    vi.mocked(getZona).mockResolvedValue({ disponible: true } as never)
+    const onEnergiaActualizada = vi.fn()
+    const { result } = renderHook(() => useMovimientoZona({ saveId: 's1', setData: vi.fn(), msPorPaso: 0, onEnergiaActualizada }))
+    await act(async () => {
+      await result.current.moverA({ x: 50, y: 0 })
+    })
+    expect(onEnergiaActualizada).toHaveBeenCalledWith(24)
+  })
+})

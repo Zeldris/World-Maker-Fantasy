@@ -81,7 +81,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
@@ -507,6 +507,9 @@ export interface NarrateAndPersistResult {
   /// ofertas que nunca se aceptan. `null` en la inmensa mayoría de turnos — nunca se ofrece si
   /// este turno terminó en combate o si ya hay un modo dinámico en curso.
   dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string } | null;
+  /// P167 (QA-27): este turno dejó respondida la oferta pacífica que había (la jugadora actuó por su
+  /// cuenta, p. ej. tras «Responder»); el frontend retira los botones de su tarjeta.
+  ofertaDescartada?: true;
   /// Retomar viaje truncado por un evento de interrupción (ronda de correcciones 2026-08-28, P3.2)
   /// — cuando este turno resuelve el evento sin dejar combate activo, el motor dispara solo la
   /// continuación del viaje original (nuevo `CharacterTransit`, mismo mecanismo diferido de
@@ -1395,7 +1398,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         }
         exchangeNarrationBlock = `${characterName} completa su canalización de "${canalizacion.abilityName}" contra ${npcParaIntercambio.name}. ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpearCanalizacion)}`;
         combatExchangeRoll = exchange.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -1645,9 +1649,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           if (abilityEffects.includes('AUMENTO')) nuevosJugadorActiveEffects = pushActiveEffect(nuevosJugadorActiveEffects, nuevoEfecto);
           if (abilityEffects.includes('DEBILIDAD')) nuevosNpcActiveEffects = pushActiveEffect(nuevosNpcActiveEffects, nuevoEfecto);
         }
-        exchangeNarrationBlock = `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
+        exchangeNarrationBlock = `${exchange.golpeDeGracia ? '' : `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). `}${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -6410,7 +6415,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       ? npcsInSceneWithInterruption.find((n) => n.id === travelInterruptionNpcId && n.kind !== 'PRINCIPAL')
       : undefined;
     const quienSaleAlPaso = interruptor
-      ? `${interruptor.articulo ? `${interruptor.genero === 'F' || interruptor.articulo === 'la' ? 'una' : 'un'} ` : ''}${interruptor.name}`
+      ? conIndefinido(interruptor.name, interruptor.articulo, interruptor.genero)
       : null;
     if (travelInterruptionOriginalDestinationName) {
       await tx.logEntry.create({
@@ -6586,8 +6591,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     let finalDeathCount = params.deathCount;
     let finalEndedAt: Date | undefined;
     let finDePartidaResult = false;
-    // Sistema de fatiga: un respawn sobrevivible reaparece con la energía llena, mismo criterio
-    // que la condición física vuelve a ILESO.
+    // Sistema de fatiga: un respawn sobrevivible reaparece con la energía llena (P157: lo hace
+    // `/death/resolve`, por donde pasa ya toda reaparición).
     // B11 (pruebas 2026-09-28): regeneración pasiva fuera de combate por el tiempo transcurrido.
     let finalEnergia = enCombate ? nuevaEnergia : Math.min(energiaMax, nuevaEnergia + energiaPasivaEntre(fictionalMinutesActuales, nuevoFictionalMinutes));
 
@@ -7192,6 +7197,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
   }
 
+  // P167 (QA-27): la oferta pacífica que había ANTES de que este turno ponga otra (ver más abajo).
+  const ofertaPreviaAlTurno = interruptionCandidateForOffer
+    ? null
+    : await prisma.save.findUnique({ where: { id: saveId }, select: { pendingDynamicModeOffer: true, pendingNpcInteractionOffer: true } });
   let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string } | null = null;
   // Franja 1b (2026-09-08) — si este mismo turno ya ofreció Interactuar por interrupción de viaje
   // (más arriba, `interruptionCandidateForOffer`), no evaluar TAMBIÉN la oferta ambiental: pisaría
@@ -7248,6 +7257,20 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         });
       }
     }
+  }
+  // P167 (QA-27): actuar por tu cuenta deja respondida la oferta pacífica de antes (como alejarse
+  // andando, P135): su tarjeta no se queda con Interactuar, Responder e Ignorar activos. Una de combate
+  // forzado no se toca (no deja escribir), ni la que este mismo turno acaba de poner.
+  let ofertaDescartada = false;
+  const previa = ofertaPreviaAlTurno?.pendingDynamicModeOffer as { combateForzado?: boolean } | null | undefined;
+  if (previa && !previa.combateForzado) {
+    // Como al alejarse andando (`zona.ts`): también el menú del NPC abierto desde ese encuentro (P142).
+    const menuDelEncuentro = !!(ofertaPreviaAlTurno?.pendingNpcInteractionOffer as { desdeEncuentro?: boolean } | null)?.desdeEncuentro;
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { ...(dynamicModeOffer ? {} : { pendingDynamicModeOffer: Prisma.JsonNull }), ...(menuDelEncuentro ? { pendingNpcInteractionOffer: Prisma.JsonNull } : {}) },
+    });
+    ofertaDescartada = true;
   }
   const professionProgress = freshProfessionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp }));
   const territories = territoryRows.map((t) => ({
@@ -7317,6 +7340,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     newQuestOfferInfo,
     npcInteractionOffer,
     dynamicModeOffer,
+    ...(ofertaDescartada ? { ofertaDescartada: true as const } : {}),
     travelResumed,
     questCompletedInfo,
     factionRepChange,
