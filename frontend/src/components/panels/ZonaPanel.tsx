@@ -220,6 +220,11 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   useEffect(() => {
     if (movimientoEnCurso) setEncuentroMapa(null)
   }, [movimientoEnCurso])
+  // P182 (QA-27): cuando salta un encuentro, el menú de la ficha que estaba abierto se cierra: salían los
+  // dos a la vez, uno encima del otro.
+  useEffect(() => {
+    if (encuentroMapa) setMenuFicha(null)
+  }, [encuentroMapa])
   // ZON-35: Espacio para y reanuda (fuera de los campos de texto).
   const pararReanudarRef = useRef<() => void>(() => {})
   pararReanudarRef.current = () => (movimientoEnCurso ? parar() : reanudar())
@@ -561,7 +566,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               })()}
               {/* ZON-30/31/32/34 (capa de ruta, bajo las fichas): celda bajo el cursor; sin andar, la ruta
                   prevista con su coste; andando o parado, la ruta que queda y la bandera de destino. */}
-              {celdaCursor && !soloConsulta && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
+              {/* P168 (QA-27): sobre una ficha (o con su menú abierto) no se pinta: la ficha no va centrada en su
+                  casilla y el recuadro salía desplazado, sin rodearla; la ficha ya se resalta sola. */}
+              {celdaCursor && !soloConsulta && !claveBajoRaton && !menuFicha && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
               {data.jugador && !soloConsulta && destinoPendiente && (
                 <>
                   <LineaRuta desde={data.jugador} puntos={caminoRestante} escala={escala} tipo="en-curso" />

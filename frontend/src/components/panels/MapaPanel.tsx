@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   beriRegions,
   llanurasNodePositions,
@@ -178,6 +178,13 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
   // nivel superior el mismo día, pero ahora vive DENTRO del botón Mapa de siempre, no en NavTabs.ts).
   // Mismo patrón visual que el tab Era Común/Semillas de EnciclopediaPanel.tsx.
   const [mapaTab, setMapaTab] = useState<'zona' | 'mapa'>('zona')
+  // P169 (QA-27): al cambiar de pestaña, el panel seguía desplazado donde estaba (con «Zona» alta, «Mapa»
+  // se abría con las pestañas y el título fuera de la vista). Se vuelve a las pestañas.
+  const pestanasRef = useRef<HTMLDivElement>(null)
+  const elegirPestana = (id: 'zona' | 'mapa') => {
+    setMapaTab(id)
+    pestanasRef.current?.scrollIntoView?.({ block: 'start' })
+  }
   // CR-46: expediciones visibles, al abrir el mapa de Berig (best-effort: sin ellas el mapa sigue igual).
   const [expediciones, setExpediciones] = useState<ExpedicionEnMapa[]>([])
   const [alcances, setAlcances] = useState<AlcanceTorre[]>([])
@@ -271,7 +278,7 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-1 rounded-lg border border-iron-800 bg-wood-950/40 p-1">
+      <div ref={pestanasRef} className="flex gap-1 rounded-lg border border-iron-800 bg-wood-950/40 p-1">
         {(
           [
             { id: 'zona', label: 'Zona' },
@@ -280,7 +287,7 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
         ).map((tab) => (
           <button type="button"
             key={tab.id}
-            onClick={() => setMapaTab(tab.id)}
+            onClick={() => elegirPestana(tab.id)}
             className={`tactile flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               mapaTab === tab.id ? 'bg-accent2-500/10 text-accent2-300' : 'text-wood-400 hover:text-wood-200'
             }`}
