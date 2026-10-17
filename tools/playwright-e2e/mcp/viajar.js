@@ -20,7 +20,8 @@ async (page) => {
   const salida = [];
   for (let i = 0; i < 120; i++) {
     await page.waitForTimeout(1000);
-    const confirmar = page.getByRole('button', { name: /^(Viajar|Entrar|Salir)$/ });
+    // Solo en el diálogo de la salida: un menú de NPC abierto en el diario también tiene «Salir».
+    const confirmar = page.locator('[role=dialog]').getByRole('button', { name: /^(Viajar|Entrar|Salir)$/ });
     if (await confirmar.count()) {
       salida.push('SALIDA: ' + (await page.locator('[role=dialog]').last().innerText().catch(() => '')).replace(/\n+/g, ' · ').slice(0, 200));
       await confirmar.last().click();
