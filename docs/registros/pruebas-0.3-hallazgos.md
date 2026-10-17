@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (18): P16, P49, P66, P83, P141, P147, P150, P154, P164, P165, P166, P172, P177,
-  P178, P184, P185, P186, P187.
+- **Pendientes** (17): P16, P49, P66, P83, P141, P147, P150, P164, P165, P166, P172, P177, P178,
+  P184, P185, P186, P187.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (4): P70, P131, P151, P155.
-- **Arreglados, sin comprobar jugando** (129): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (130): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P84, P85, P86, P87, P88, P90, P91,
   P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110, P111,
   P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134, P136,
-  P139, P140, P143, P148, P149, P152, P153, P156, P157, P158, P159, P160, P161, P162, P163, P167,
-  P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183.
+  P139, P140, P143, P148, P149, P152, P153, P154, P156, P157, P158, P159, P160, P161, P162, P163,
+  P167, P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183.
 - **Comprobados jugando** (22): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -193,7 +193,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P151 | Etiquetas tras P123 (2026-10-14, El Pozo): al apartarse de varias fichas seguidas, la etiqueta «Paso de los Pilares Rotos» acaba ~100 px por debajo de su salida, junto a otro grupo, y ya no se ve de qué flecha es. Habría que limitar cuánto se aparta (o probar a un lado) y, si no cabe, dejarla pegada a la salida. | ✅ 2026-10-14 (arreglo del /code-review): una etiqueta se aparta como mucho 3 alturas; si no cabe más cerca, se queda junto a su salida o ficha (`separarEtiquetas.test.ts`). Sin jugar todavía; falta: comprobarlo jugando, también la etiqueta de la entrada a Hogar Ketg (Colmillo Ceniza). 2026-10-14, Colmillo Ceniza: «Entrar en Hogar Ketg - Ketg'lukar» queda entre el icono de la casa y la flecha de entrada, y no se sabe de cuál es |
 | P152 | Lista del mapa de zona (2026-10-14, El Pozo): un grupo de la misma especie sale como «Charca de Guchapos ×6» y otro como «Guchapo ×6»; misma especie, dos nombres. | ✅ 2026-10-15: la fauna de la lista se nombra por su especie, como en el encuentro; la etiqueta del catálogo era del punto ancla y los grupos repartidos no la tenían (`zona.ts`; `zonaGrupos.integration.test.ts`, rojo sin arreglo) |
 | P153 | Combate de grupo (2026-10-14, 6 Guchapos): el ataque de más de un Guchapo, con la ventaja de P129, sale con el chip «▲ racial». La ventaja no es racial: `combateMultiple.ts` la mete en `racialAdvantageReason` («Ataca mientras peleas con otro rival: ventaja») y `CombatExchangeBadge` pinta «racial» para cualquier razón. Falta un chip propio (p. ej. «▲ flanqueo»). | ✅ 2026-10-15: el chip dice «▲ flanqueo» (`ventajaPor` viaja con la tirada; sin él, «racial»; `CombatExchangeBadge.test.tsx` y `combateMultipleOrquestacion.integration.test.ts`) |
-| P154 | Muerte en un combate de grupo (2026-10-14): mientras el panel dice «Derrota · Has caído en combate», el HUD sigue en «Convaleciente 25» hasta pulsar «Salir»; entonces pasa a «Muerto 0». | pendiente (menor) |
+| P154 | Muerte en un combate de grupo (2026-10-14): mientras el panel dice «Derrota · Has caído en combate», el HUD sigue en «Convaleciente 25» hasta pulsar «Salir»; entonces pasa a «Muerto 0». | ✅ 2026-10-17: al morir, el HUD pasa a «Muerto» en el acto, con el panel de «Derrota» (antes esperaba a unos dados que el panel ya tapaba; `useCombatFlow.test.tsx`) |
 | P155 | Defensa en combate (2026-10-14): la tirada de Gorhorn enseña «(6 −2 heridas = 4 ×1.5≈6/2)» sin decir qué es el «×1.5» ni por qué su Destreza es 6 (en la huida, 10). Falta la explicación (tooltip o texto) de ese multiplicador y del atributo rebajado. | ✅ 2026-10-15 (en parte): el multiplicador sale como «×1.5 tipo», con su explicación al pasar el ratón (ventaja de tipo en la rueda de atributos; `RollBreakdown.tsx`; `RollBreakdown.test.tsx`). Falta: por qué la Destreza salía 6 en la defensa y 10 en la huida (hay que verlo con los datos de una partida) |
 | P156 | Aviso de muerte (2026-10-14): dice «despierta donde descansó por última vez», pero Gorhorn descansó 2 h junto al pozo de El Pozo de Cauce Viejo y despertó en La Hondonada del Eco. Por diseño, solo descansar en una construcción propia mueve el punto de reaparición (`turnResolution.ts`, «Punto de guardado»); el texto debería decirlo («donde descansó por última vez en un campamento o construcción tuya»). | ✅ 2026-10-15: «despierta donde descansó por última vez en un campamento o una construcción suya» (`muertes.ts`; `muertes.test.ts`, `GameFooter.test.tsx`) |
 | P157 | Reaparecer tras morir en un combate de grupo (2026-10-14): vuelve con 23/77 de energía, no llena. `turnResolution.ts` rellena la energía al reaparecer («un respawn sobrevivible reaparece con la energía llena»), pero la muerte en el combate de grupo se resuelve por `/death/resolve` (`routes/saves/death.ts`), que no la toca. Dos caminos, dos reglas (QA-78). | ✅ 2026-10-15: `/death/resolve` deja la energía al máximo (con el equipo puesto), como la condición; toda reaparición pasa ya por ahí (`death.ts`; `turn.integration.test.ts`, rojo sin arreglo) |
