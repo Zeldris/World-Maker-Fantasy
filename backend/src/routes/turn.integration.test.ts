@@ -49,6 +49,10 @@ const generateQuestResponseNarration = vi.fn(async (ctx: { characterName: string
   return `${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} la misión: ${ctx.questTitle}.`;
 });
 
+// P164: ir por varios tramos de una vez es cosa de una montura; los viajes largos de abajo la llevan.
+const tieneMontura = vi.fn(async (..._args: unknown[]) => false);
+vi.mock('../services/monturas.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('../services/monturas.js')>()), tieneMontura: (...a: unknown[]) => tieneMontura(...a) }));
+
 vi.mock('../services/narrador.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/narrador.js')>();
   return {
@@ -6431,6 +6435,8 @@ describe('Destino inventado sin alias real ("hacia el norte"): no se persiste un
 /// travelInterruption.test.ts). `busyUntil` adelantado a mano (en vez de esperar la compresión
 /// real de tiempo) para que `resolveDueTransits()` lo recoja al momento, sin sleeps.
 describe('Viaje largo interrumpido a mitad de camino (integración real, solo LLM mockeado)', () => {
+  beforeAll(() => tieneMontura.mockResolvedValue(true));
+  afterAll(() => tieneMontura.mockResolvedValue(false));
   let saveId: string;
   let worldId: string;
   let originId: string;
@@ -6541,6 +6547,14 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     await prisma.npc.delete({ where: { id: interruptionNpcId } });
     await prisma.locationLink.deleteMany({ where: { OR: [{ fromId: originId }, { fromId: midId }] } });
     await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
+  });
+
+  // P164 (usuaria, 2026-10-17): la lista de «Viajar» (varias zonas de una vez) es cosa de una montura.
+  it('sin montura, un viaje elegido de varios tramos no sale', async () => {
+    tieneMontura.mockResolvedValueOnce(false);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true } });
+    expect(res.json().blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos/);
   });
 
   it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito, y guarda el destino original para retomarlo', async () => {
@@ -6655,6 +6669,8 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
 /// SIN ninguna oferta de Interactuar (`pickTravelInterruption` no filtra por temperamento, así que
 /// el filtro tiene que vivir en turnResolution.ts, no en la selección del candidato).
 describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar en vez del aviso mudo de antes', () => {
+  beforeAll(() => tieneMontura.mockResolvedValue(true));
+  afterAll(() => tieneMontura.mockResolvedValue(false));
   let saveId: string;
   let worldId: string;
   let originId: string;

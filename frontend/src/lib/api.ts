@@ -1154,7 +1154,8 @@ export interface TravelDestinationInfo {
   minutos: number | null
   banda: 'corta' | 'extendida' | 'larga' | null
 }
-export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; destinations: TravelDestinationInfo[] }> {
+/// P164: `montura` (CR-57): sin ella, la lista se ve pero no se puede ir directo (`motivoSinMontura`).
+export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; montura?: boolean; motivoSinMontura?: string; destinations: TravelDestinationInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/destinos-viaje`)
 }
 

@@ -724,7 +724,9 @@ export async function zonaRoutes(app: FastifyInstance) {
           // donde el color de la facción se ve antes de escanear); el nombre sigue oculto.
           color: zonePointColorFor(faccionDelPunto, factionsStatus, p.tipo),
           // P176 (QA-27): de quién es un edificio; el color solo decía cómo te ve su bando («Neutro»).
-          ...(p.tipo === 'EDIFICIO' && faccionDelPunto ? { faccion: faccionDelPunto } : {}),
+          // P172/P187: y de quién es lo que tiene dueño (el recinto, el ganado del clan): cogerlo o cazarlo
+          // delante de los suyos cuesta reputación, así que la ficha lo dice.
+          ...((p.tipo === 'EDIFICIO' || p.factionSlug) && faccionDelPunto ? { faccion: faccionDelPunto } : {}),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es

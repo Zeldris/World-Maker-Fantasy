@@ -71,6 +71,7 @@ import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
 import { ambitoPoblacion } from '../services/mundoPartida.js';
 import { enGraciaTrasRenacer } from '../services/death.js';
+import { tieneMontura } from '../services/monturas.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -883,9 +884,9 @@ export async function turnRoutes(app: FastifyInstance) {
 
     // P164 (QA-27, decidido por la usuaria 2026-10-14): con el mapa de zona se va de una zona a otra por sus
     // salidas, casilla a casilla; escribir «Voy a Colmillo Ceniza» ya no salta de zona. Ir directo a otra
-    // zona sin pasar por las de en medio será cosa de una montura (CR-57). Lo elegido en el mapa (una
-    // salida o la lista de «Viajar») sí viaja.
-    if (travel && !viajeElegido) {
+    // zona sin pasar por las de en medio es cosa de una montura (CR-57): lo elegido en el mapa viaja si
+    // es un solo tramo (una salida de la zona) o si se lleva montura (la lista de «Viajar»).
+    if (travel && !(viajeElegido && (travel.path.length <= 2 || (await tieneMontura(prisma, saveId))))) {
       if (preview) travel = null;
       else return resolveBlockedTurn(`A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`);
     }
