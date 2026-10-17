@@ -203,6 +203,28 @@ describe('POST /saves/:id/zona/cazar', () => {
     expect(saveTrasCaza.pendingDynamicModeOffer).toBeNull();
   });
 
+  // P187 (QA-27, usuaria 2026-10-15): el ganado de un bando se puede cazar, pero si alguien suyo lo ve,
+  // resta mucha reputación con él (más que coger su leche, P172).
+  it('cazar un animal del Clan Serhu delante de una cazadora del clan resta mucha reputación con él (P187)', async () => {
+    const punto = await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia del clan', lastUpdatedAtMinutes: 480, factionSlug: 'Clan Serhu' },
+    });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 600, y: 200, tipo: 'NPC', targetSlug: 'cazadora-serhu', cantidad: 1, activo: true } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba', zonePointId: punto.id, cantidad: 1 } },
+    });
+    const repDe = async () => ((await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).factionsStatus as Record<string, number> | null)?.['Clan Serhu'] ?? 2500;
+    const repInicial = await repDe();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const app = await buildApp();
+    const body = JSON.parse((await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { zonePointId: punto.id } })).body);
+    expect(body.exito).toBe(true);
+    expect(await repDe()).toBe(repInicial - 100);
+    expect(body.logEntry.text).toContain('Alguien del Clan Serhu lo ha visto matar a uno de sus animales.');
+    await prisma.worldState.update({ where: { saveId }, data: { factionsStatus: {} } });
+  });
+
   it('caza sigilosa fallida (d100 por encima de la probabilidad): devuelve la tirada y el texto de ataque de frente, sin matar', async () => {
     const punto = await prisma.zonePoint.create({
       data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia Débil de Prueba', lastUpdatedAtMinutes: 480 },

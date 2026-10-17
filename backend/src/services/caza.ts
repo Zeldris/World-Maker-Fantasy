@@ -15,6 +15,7 @@ import { ambitoPoblacion } from './mundoPartida.js';
 import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
 import { nombreDeEncuentro } from './dynamicMode.js';
 import { sinComillasSueltas } from './accionCitada.js';
+import { aprovecharseDeLoAjeno } from './cronista/testigos.js';
 
 /// Servicio de caza (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — extraído del
 /// núcleo de `POST /saves/:id/cazar/confirmar` (`cazar.ts`, todo lo que corre TRAS elegir
@@ -186,6 +187,16 @@ export async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveI
   }
 }
 
+/// P187 (QA-27, decidido por la usuaria 2026-10-15): cazar un animal de un bando (`ZonePoint.factionSlug`)
+/// se puede, pero si alguien de ese bando lo ve, resta mucha reputación con él. Solo cuando la jugadora
+/// sale a cazar (no en una emboscada, ni en las cacerías de NPC o viajeros). La frase para el diario, o null.
+async function cazaDeLoAjeno(tx: Prisma.TransactionClient, saveId: string, worldId: string, zonePointIds: string[]): Promise<string | null> {
+  if (zonePointIds.length === 0) return null;
+  const punto = await tx.zonePoint.findFirst({ where: { id: { in: zonePointIds }, saveId, factionSlug: { not: null } }, select: { factionSlug: true, locationId: true } });
+  if (!punto) return null;
+  return (await aprovecharseDeLoAjeno(tx, { saveId, worldId, locationId: punto.locationId, faccion: punto.factionSlug, que: 'cazar' }))?.frase ?? null;
+}
+
 /// Caza limpia sin combate — SOLO cuando el jugador seleccionó una única especie y esa presa es
 /// débil de verdad (mismo criterio EXACTO que el código original: nunca mira `cantidadObjetivo`,
 /// mata siempre a UN único individuo, aunque el grupo real tenga más). `zonePointId` (si lo hay)
@@ -226,6 +237,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
   // Condición de carrera real (auditoría 2026-09-01, ver comentario original completo en
   // `cazar.ts`) — `SELECT ... FOR UPDATE` sobre `Save` + relectura de `pendingCombatNpcSlugs`
   // dentro de la transacción antes de escribir nada.
+  let fraseAjena: string | null = null;
   const logEntry = await prisma.$transaction(async (tx) => {
     const freshSave = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
     if (freshSave.pendingCombatNpcSlugs.includes(npc.slug)) return null;
@@ -254,7 +266,8 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     }
     await decrementPopulationOnDeath(tx, save.id, null, npc.slug, save.region);
     await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
-    const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: cazaLimpia as unknown as Prisma.InputJsonValue } });
+    fraseAjena = zonePointId ? await cazaDeLoAjeno(tx, save.id, save.worldId, [zonePointId]) : null;
+    const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text: fraseAjena ? `${text} ${fraseAjena}` : text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: cazaLimpia as unknown as Prisma.InputJsonValue } });
     await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
     // Grupos de fauna reales (Fase 2) — la caza limpia siempre enfrenta a UN único individuo
     // (nunca al grupo entero, ver comentario de cabecera de esta función); el punto del que salió
@@ -280,7 +293,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     resuelveSinCombate: true,
     exito: true,
     combate: { npcs: [{ slug: npc.slug, name: npc.name, condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [] }] },
-    logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString(), roll: cazaLimpia },
+    logEntry: { id: logEntry.id, text: fraseAjena ? `${text} ${fraseAjena}` : text, timeLabel, createdAt: logEntry.createdAt.toISOString(), roll: cazaLimpia },
     cazaLimpia,
   };
 }
@@ -296,6 +309,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
   const hayGrupoReal = targets.some((t) => t.cantidadObjetivo > 1);
   const especiesDispersadas: string[] = [];
   const tiradasGrupo: TiradaGrupoInfo[] = [];
+  let fraseAjenaCaza: string | null = null;
   let logEntryGrupo: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll } | undefined;
 
   if (hayGrupoReal) {
@@ -402,6 +416,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
       }
       // Grupos de fauna reales (Fase 2) — el/los `ZonePoint` de origen pierden los individuos
       // realmente enfrentados, en la misma transacción que crea el combate.
+      if (!emboscada) fraseAjenaCaza = await cazaDeLoAjeno(tx, save.id, save.worldId, [...enfrentadosPorZonePoint.keys()]);
       for (const [zonePointId, enfrentados] of enfrentadosPorZonePoint) {
         await descontarZonePointCaza(tx, save.id, zonePointId, enfrentados);
       }
@@ -447,11 +462,13 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
     const conPunto = targets.filter((t) => t.zonePointId);
     if (conPunto.length > 0) {
       await prisma.$transaction(async (tx) => {
+        if (!emboscada) fraseAjenaCaza = await cazaDeLoAjeno(tx, save.id, save.worldId, conPunto.map((t) => t.zonePointId!));
         for (const t of conPunto) await descontarZonePointCaza(tx, save.id, t.zonePointId!, 1);
       });
     }
   }
 
+  if (fraseAjenaCaza) varianceClauses.push(fraseAjenaCaza);
   const names = targets.map((t) => t.npc.name);
   const citados = names.map((n) => `'${n}'`).join(', ');
   // P90 (QA-27): emboscada = el grupo vio antes a la jugadora; ella no eligió salir a cazar.

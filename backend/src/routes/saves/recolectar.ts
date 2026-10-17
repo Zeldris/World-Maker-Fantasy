@@ -24,6 +24,7 @@ import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { posicionDeObjetivo, moverJugadorA } from '../../services/zonaPosicion.js';
 import { ambitoPoblacion, poblacionDeCatalogo, type FiltroPoblacion } from '../../services/mundoPartida.js';
+import { aprovecharseDeLoAjeno } from '../../services/cronista/testigos.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -1034,7 +1035,19 @@ export async function resolverRecoleccion(
             .map((s) => (s.harvestedThisTurn > 1 ? `${s.catalogName} (${s.harvestedThisTurn})` : s.catalogName))
             .join(', ');
           const verbo = anyCaza && !anyNonCaza ? 'despieza una presa cercana' : 'recolecta en la zona';
-          const text = `${save.characterName} ${verbo}: ${resumen}.`;
+          // P172 (QA-27): lo que es de un bando (`ZonePoint.factionSlug`, p. ej. el recinto de múrgoles del
+          // Clan Serhu) se puede coger, pero si alguien de ese bando lo ve, resta reputación con él.
+          const lugarRecoleccion = save.currentLocation?.id ?? null;
+          const puntoAjeno = lugarRecoleccion
+            ? await tx.zonePoint.findFirst({
+                where: { saveId: save.id, locationId: lugarRecoleccion, tipo: 'RECURSO', targetSlug: { in: [...unidadesPorFuente.keys()] }, factionSlug: { not: null }, ...(zonePointId ? { id: zonePointId } : {}) },
+                select: { factionSlug: true },
+              })
+            : null;
+          const robo = puntoAjeno && lugarRecoleccion
+            ? await aprovecharseDeLoAjeno(tx, { saveId: save.id, worldId: save.worldId, locationId: lugarRecoleccion, faccion: puntoAjeno.factionSlug, que: 'coger' })
+            : null;
+          const text = `${save.characterName} ${verbo}: ${resumen}.${robo ? ` ${robo.frase}` : ''}`;
           const totalUnidades = [...touched.values()].reduce((sum, s) => sum + s.harvestedThisTurn, 0);
           const minutosCoste = minutosRecoleccionFor(totalUnidades);
           nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, minutosCoste);

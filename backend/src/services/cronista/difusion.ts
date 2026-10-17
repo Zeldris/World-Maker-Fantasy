@@ -238,6 +238,19 @@ export async function preguntarNoticias(prisma: PrismaClient, saveId: string, np
   }, { maxWait: 10_000, timeout: 20_000 });
 }
 
+/// P184 (QA-27, decidido por la usuaria 2026-10-15; paso 1 de CR-69): lo que corre de un suceso por el
+/// mundo (bandos, «¿Qué se cuenta?»). De una muerte que nadie vio solo se sabe que la víctima murió, no
+/// quién la mató ni cómo: hasta ahora el bando de la víctima publicaba «Gorhorn da muerte al Orco
+/// enfurecido» aunque nadie del clan estuviera allí. Con un testigo, el texto entero.
+export function textoQueCorre(s: { tipo: string; texto: string; noticia?: unknown; datos?: unknown; actores: { papel: string }[] }): string {
+  const completo = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
+  if (s.tipo !== 'MUERTE_CAUSADA' || s.actores.some((a) => a.papel === 'TESTIGO')) return completo;
+  const d = s.datos as { victima?: string; articuloVictima?: string | null } | null;
+  if (!d?.victima) return completo;
+  const victima = d.articuloVictima ? `${d.articuloVictima.charAt(0).toUpperCase()}${d.articuloVictima.slice(1)} ${d.victima}` : d.victima;
+  return `${victima} ha muerto; nadie sabe a manos de quién.`;
+}
+
 /// P175 (QA-27): «vence a X» y luego «da muerte a X» son el mismo combate contado dos veces; como
 /// noticia basta la muerte. Quita la victoria sobre una víctima cuya muerte está en la lista y llegó
 /// poco después (el mismo combate); una victoria de días antes sobre quien luego murió es otra noticia.
@@ -281,7 +294,7 @@ export async function contarNoticias(
       OR: [{ conocimientos: { none: {} } }, { conocimientos: { some: { confirmado: false } } }],
     },
     select: {
-      id: true, tipo: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true,
+      id: true, tipo: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, datos: true,
       actores: { select: { entidadTipo: true, entidadId: true, papel: true } }, conocimientos: { select: { id: true } },
     },
   });
@@ -302,7 +315,7 @@ export async function contarNoticias(
     const hecho = cuentaComoHecho(a, quien);
     const r = await conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: hecho, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null, fuente });
     if (!r) continue;
-    const texto = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
+    const texto = textoQueCorre(s);
     frases.push(hecho ? texto : comoRumor(texto));
   }
   if (frases.length === 0) return { frase: p.sinNada ?? `${nombre}: «Por aquí no se habla de otra cosa que del tiempo.»`, contadas: 0 };
@@ -337,7 +350,7 @@ export async function leerBandos(prisma: PrismaClient, saveId: string, buildingI
     const ahora = (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
     const sucesos = await tx.suceso.findMany({
       where: { saveId, ...difundible, importancia: { gte: IMPORTANCIA_BANDO }, fictionalMinutes: { gte: ahora - DIAS_BANDO * MINUTOS_DIA, lte: ahora } },
-      select: { id: true, tipo: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, actores: { select: { entidadTipo: true, entidadId: true, papel: true } } },
+      select: { id: true, tipo: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, datos: true, actores: { select: { entidadTipo: true, entidadId: true, papel: true } } },
       orderBy: { fictionalMinutes: 'desc' },
     });
     const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
@@ -350,6 +363,6 @@ export async function leerBandos(prisma: PrismaClient, saveId: string, buildingI
     for (const s of bandos) {
       await conocer(tx, { saveId, sucesoId: s.id, via: 'BANDO', confirmado: true, minutos: ahora, escribirNoticia: true, fuente: buildingId });
     }
-    return bandos.map((s) => ({ sucesoId: s.id, texto: (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto, pasoEn: s.fictionalMinutes }));
+    return bandos.map((s) => ({ sucesoId: s.id, texto: textoQueCorre(s), pasoEn: s.fictionalMinutes }));
   }, { maxWait: 10_000, timeout: 20_000 });
 }
