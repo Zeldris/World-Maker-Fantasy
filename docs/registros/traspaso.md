@@ -12,9 +12,9 @@ cada commit.**
 |---|---|
 | **Actualizado** | 2026-10-17 |
 | **Ramas de trabajo** | Una por cuenta, cada una con su fila «Tarea en curso» (`QA-69`): `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06, `CR-55`) y `claude/wonderful-volta-662qt8`. Las skills de `.claude/skills/` van versionadas (`git add -f`); a `main` se pasa **por pull request**. |
-| **Último commit en `main`** | Fusión del PR #59 (2026-10-15, `907db0b`, CI en verde): hallazgos de `QA-27` (tandas 1 y 2), `CR-69` al roadmap y la retro `QA-88`, `QA-89`. Antes: PR #58 (`2383839`), PR #52 (`e461496`) y PR #51. |
+| **Último commit en `main`** | Fusión del PR #60 (2026-10-17, `0bacec8`, CI en verde): hallazgos de `QA-27` (tandas 2 y 3), su `/code-review` y la retro `QA-90`…`QA-93`. Antes: PR #59 (`907db0b`), PR #58 (`2383839`) y PR #52. |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
-| **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Hallazgos de `QA-27` (P147-P187) y su `/code-review`, hechos; PR a `main` (usuaria, 2026-10-17). Abiertos: P16 y lo que queda de P186 y P155 (reproducir), P49, P66 y P70 (arte). **Siguiente:** jugar lo arreglado (`rondas-de-pruebas.md`). |
+| **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Ronda de pruebas del 2026-10-17 (`QA-27`), partida `cmvcunmm300017d64k8qxe0t3`: comprobados 12 del PR #60 y P197 (arreglado); reabierto P177; nuevos P188-P206; su retro `QA-94`…`QA-97` hecha. **Siguiente:** arreglar P206, P177 y P188, y seguir jugando desde el Hogar Ketg (misión de las Agujas, P184). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | Hechos P136, P139, P134, P124, su `/code-review` y las 3 propuestas de la retro (`retro-2026-10-13-pr56.md`). **Siguiente:** PR a `main` y fusionar con el CI en verde. Quedan P144, P123 y jugar `QA-73` (necesitan el navegador). |
 | **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-17, tras el `/code-review` de los hallazgos de `QA-27`): backend `tsc` 0, `vitest` completo 293 archivos / 3599; frontend `tsc -b` 0, `vitest` 145 / 643, `oxlint` 0 errores; todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
@@ -109,6 +109,8 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-17** — Ronda de pruebas de `QA-27` tras el PR #60 (12 comprobados, P177 reabierto, P188-P206) y su retro ~~`QA-94`…`QA-97`~~: avisos de React que fallan los tests (con el arreglo de P197), «directamente a main» no quita la retro, `viajar.js` y `puntos.js`, y las consultas SQL de la ronda.
+- **2026-10-17** — PR #60 en `main` (CI en verde): hallazgos de `QA-27`, tandas 2 y 3, su `/code-review` y la retro ~~`QA-90`…`QA-93`~~.
 - **2026-10-17** — Hallazgos de `QA-27`, tanda 3 (P147, P154, P141, P165, P150, P177, P186, P166, P172, P184, P187, P178, P185, P164, P83), los arreglos de su `/code-review` y su retro ~~`QA-90`…`QA-93`~~ (instantánea de las plantillas del catálogo, retro exigida por `revisado.sh`, resumen de hallazgos por el último estado y `tools/zona/rejilla.sh`).
 - **2026-10-15** — PR #59 en `main` (CI en verde): hallazgos de `QA-27`, tandas 1 y 2, `CR-69` al roadmap y la retro ~~`QA-88`, `QA-89`~~.
 - **2026-10-15** — Hallazgos de `QA-27`, tandas 1 y 2 (P148, P149, P152, P153, P155 en parte, P156-P163, P167-P171, P173, P175, P176, P180-P183), los arreglos de su `/code-review` y su retro ~~`QA-88`, `QA-89`~~ (tests de lo que cambia en el push y regla de columnas JSON en `REVIEW.md`).
@@ -117,5 +119,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-14** — ~~`QA-63`~~ (los `afterEach` de `turn.integration.test.ts` con 60 s, 3 pasadas seguidas en verde) y de `QA-27` P144 (Reputación y Misiones a la misma altura) y P123 (las etiquetas no tapan fichas, jugador ni viajeros; tope de desplazamiento por P151), comprobados jugando. Ronda de pruebas del 2026-10-14: hallazgos P147-P187.
 - **2026-10-13** — PR #54 en `main` (CI en verde): arreglos del `/code-review` del #53, `QA-77`…`QA-80` y de `QA-27` P128, P137, P90, P130, P132, P126, P141 y P140, con los arreglos de su `/code-review`.
 - **2026-10-13** — Arreglos del `/code-review` del PR #53 (12) y su retro: ~~`QA-77`…`QA-80`~~ (`/code-review` antes de crear el PR, una regla en todos sus caminos, test de comprobaciones de las rutas de partida y el test de `factionRelations` con la base local).
-- **2026-10-13** — ~~`QA-73`…`QA-76`~~ (retro del PR #50): el diario solo inventa líneas de error en el frontend, tests de `tools/qa` y del gancho en la CI, `/code-review` al cerrar cada tanda, avisos con nombre en `estado.js`.
-- **2026-10-13** — ~~`QA-71`, `QA-72`~~ (retro del PR #51): criterios de comprobación en los documentos reutilizables y traer `main` siempre al empezar una tarea y al fusionar un PR (merge, no rebase).

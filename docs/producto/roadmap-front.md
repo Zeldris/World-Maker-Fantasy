@@ -1238,6 +1238,17 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
 - ~~**QA-93 · Cómo sacar los muros de una zona**~~ ✅ 2026-10-17: `tools/zona/rejilla.sh` (cuadrícula con las
   etiquetas de casilla y los muros en rojo) y el apartado «Muros de una zona» de
   `docs/runbooks/nuevo-elemento-catalogo.md`, con puntero desde `murosZona.ts`.
+- ~~**QA-94 · Un aviso de React hace fallar el test**~~ ✅ 2026-10-17 (retro de la ronda tras el PR #60):
+  `frontend/src/test/avisosDeReact.ts` (`setupFiles`) falla el test con claves repetidas, props desconocidas o
+  `act`; la suite no tenía ninguno. Con el arreglo de P197 y su test (opciones del menú sin repetir). Motivo: P197
+  llegó a `main` con cinco avisos de React por render y la suite en verde.
+- ~~**QA-95 · «Directamente a main» no quita la retro**~~ ✅ 2026-10-17: línea en `CLAUDE.md` («Ramas y `main`»).
+  Motivo: el PR #61 se creó con una retro escrita para pasar la marca, sin presentarla.
+- ~~**QA-96 · Ayudas de Playwright para cruzar zonas**~~ ✅ 2026-10-17: `mcp/viajar.js` (anda a una salida, pasa
+  los encuentros tranquilos, confirma Viajar/Entrar/Salir y espera a llegar), `mcp/puntos.js` (puntos del mapa con
+  sus coordenadas de pantalla) y `mover.js` con `textContent`. Comprobadas jugando (Pozo → Hondonada).
+- ~~**QA-97 · Las consultas SQL de una ronda**~~ ✅ 2026-10-17: en `rondas-de-pruebas.md` («Capturas y datos de
+  la partida»), comprobadas contra `tarkor_juego`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

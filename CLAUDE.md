@@ -89,7 +89,8 @@ prueba y cómo se apunta (`QA-56`).
   en la bitácora nada más empezar).
 - **A `main` solo se sube cuando el usuario lo confirma.** Al hacerlo, se apunta en la bitácora.
 - **Se fusiona solo con el CI del PR en verde** (usuaria, 2026-10-12), también cuando pide «fusiona
-  directamente»: eso quita esperar a más revisiones, no al CI. El gancho de `QA-50` lo comprueba (`QA-62`).
+  directamente»: eso quita esperar a más revisiones, no al CI ni la `/retro` presentada a la usuaria antes del PR
+  (`QA-95`). El gancho de `QA-50` lo comprueba (`QA-62`).
 - **Antes de crear un PR a `main` (nunca ya fusionado, `QA-77`), `/code-review --max-findings all`**
   del diff contra `main`, los arreglos subidos, `bash tools/qa/revisado.sh` y la descripción con la skill `pr`
   ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de

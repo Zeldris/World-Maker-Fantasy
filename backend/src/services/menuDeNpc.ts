@@ -59,8 +59,9 @@ export async function opcionesDeMenu(db: Db, saveId: string, npcSlug: string): P
 
 export async function abrirMenuDeNpc(db: PrismaClient, saveId: string, npcSlug: string, npcName: string, desde: 'encuentro' | 'edificio' = 'encuentro'): Promise<MenuDeNpc | null> {
   const options = await opcionesDeMenu(db, saveId, npcSlug);
-  // P178: en un edificio no hay escena libre detrás («Charlar» no haría nada); sí un botón para cerrar.
-  const opciones = desde === 'edificio' ? [...options.filter((o) => o !== 'Charlar'), 'Salir'] : options;
+  // P178: en un edificio no hay escena libre detrás («Charlar» no haría nada); sí un botón para cerrar,
+  // uno solo aunque el menú ya lo traiga (P197).
+  const opciones = desde === 'edificio' ? [...options.filter((o) => o !== 'Charlar' && o !== 'Salir'), 'Salir'] : options;
   if (opciones.length === 0 || (desde === 'edificio' && opciones.length === 1)) return null;
   const menu: MenuDeNpc = { npcSlug, npcName, options: opciones, desdeEncuentro: desde === 'encuentro' };
   await db.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: { ...menu } } });

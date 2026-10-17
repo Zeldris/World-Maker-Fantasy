@@ -64,6 +64,8 @@ describe('edificios del mapa: ficha e Interactuar (P178)', () => {
     const body = res.json();
     expect(body.menu).toMatchObject({ npcSlug: 'maestro-herrero-serhu', npcName: 'Orco desconocido', desdeEncuentro: false });
     expect(body.menu.options).toContain('Salir');
+    // P197 (QA-94): el menú de un maestro ya trae «Salir»; abierto desde su edificio no sale dos veces.
+    expect(new Set(body.menu.options).size).toBe(body.menu.options.length);
     expect(body.menu.options).not.toContain('Charlar');
     expect(body.menu.options).not.toContain('¿Tienes trabajo?');
     expect(body.logEntry.text).toBe('Herrería del Clan Serhu: el orco desconocido atiende a Gorhorn P178.');
