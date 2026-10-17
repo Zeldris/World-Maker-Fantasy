@@ -1050,10 +1050,16 @@ export async function zonaRoutes(app: FastifyInstance) {
         // decide además si el jugador puede elegir (lo vio primero) o el combate se abre
         // directamente (el agresivo lo vio primero) — ver `narrarAperturaCombateForzado`,
         // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
-        const iniciativa = tirarQuienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10);
-        const quienInicia = iniciativa.quienInicia;
+        // P166/P177 (QA-27, decidido por la usuaria 2026-10-17): la tirada solo va con alguien hostil, que
+        // es cuando decide si puedes huir. Con alguien tranquilo (también dentro de un poblado) no hay
+        // sorpresa: te topas con él y punto, como en BG3 y D&D (sorpresa solo al esconderse o emboscar) y
+        // como en X4, Manor Lords, Medieval Dynasty o Bellwright, que no tiran nada al cruzarte con alguien.
+        // La fauna cautelosa sigue tirando por dentro para ver si reconoce a un «Cazador temido» (CR-14).
+        const faunaCautelosa = colisionTipo === 'FAUNA' && colision.temperamento === 'CAUTELOSO';
+        const iniciativa = combateForzado || faunaCautelosa ? tirarQuienIniciaEncuentro(destrezaJugador, destrezaColision ?? 10) : null;
+        const quienInicia: 'jugador' | 'npc' = combateForzado && iniciativa ? iniciativa.quienInicia : 'jugador';
         // CR-14 (Q4): la fauna cautelosa que reconoce a un «Cazador temido» antes de que se acerque, huye.
-        if (colisionTipo === 'FAUNA' && colision.temperamento === 'CAUTELOSO' && quienInicia === 'npc' && (await etiquetasActivas(tx, saveId)).has('CAZADOR_TEMIDO')) {
+        if (faunaCautelosa && iniciativa?.quienInicia === 'npc' && (await etiquetasActivas(tx, saveId)).has('CAZADOR_TEMIDO')) {
           const textoHuida = `${nombreEnFrase(colision.targetName, true)} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
           const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
           // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
@@ -1118,11 +1124,13 @@ export async function zonaRoutes(app: FastifyInstance) {
             : `${nombreEncuentroInicio} se acerca a ${characterName} antes de que este reaccione.`;
         // Fase 10 (2026-09-29) — la tirada opuesta Destreza vs Destreza se guarda en `LogEntry.roll`
         // (discriminada por `kind`) para que la tarjeta la muestre también tras una recarga.
-        const logRoll: IniciativaEncuentroLogRoll = { kind: 'iniciativa-encuentro', quienInicia, jugador: iniciativa.jugador, npc: iniciativa.npc, npcName: colision.targetName };
+        // P166: solo la de un encuentro hostil, la única que se juega.
+        const logRoll: IniciativaEncuentroLogRoll | null =
+          combateForzado && iniciativa ? { kind: 'iniciativa-encuentro', quienInicia, jugador: iniciativa.jugador, npc: iniciativa.npc, npcName: colision.targetName } : null;
         const created = await tx.logEntry.create({
-          data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: logRoll as unknown as Prisma.InputJsonValue },
+          data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true, ...(logRoll ? { roll: logRoll as unknown as Prisma.InputJsonValue } : {}) },
         });
-        logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString(), roll: logRoll };
+        logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString(), ...(logRoll ? { roll: logRoll } : {}) };
         // B31 (pruebas 2026-09-28): toparse con fauna/NPC genérico lo descubre en la partida — antes
         // el log ya lo nombraba pero su pin seguía "???". Un PRINCIPAL no descubierto conserva el
         // nombre oculto (se descubre por la historia, `nombreVisibleColision`).

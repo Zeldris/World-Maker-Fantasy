@@ -449,31 +449,18 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', temperamento: 'CAUTELOSO' });
-    // "¿Quién ve a quién primero?" (2026-09-17) — tirada real (Destreza jugador=10 por defecto del
-    // fixture vs. destreza real de `test-mover-pacifico`), no determinista aquí: se comprueba el
-    // resto del shape con `toMatchObject` y solo que `quienInicia` sea uno de los 2 valores válidos.
-    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
-    expect(['jugador', 'npc']).toContain(body.dynamicModeOffer.quienInicia);
+    // P166 (QA-27, usuaria 2026-10-17): con alguien tranquilo no hay «¿Quién ve a quién primero?»: te
+    // topas con él, sin tirada (solo la hay con alguien hostil, más abajo).
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba', quienInicia: 'jugador' });
     // Regresión (2026-09-09, hallazgo real jugando en vivo: la oferta quedaba persistida en BD
     // pero invisible en el log, porque LogPanel.tsx solo la pinta colgada de una LogEntry
     // concreta) — el encuentro debe dejar su propio LogEntry real determinista, no solo la oferta.
-    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('Fauna Pacífica de Prueba') });
+    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('se topa con') });
+    expect(body.logEntry.roll).toBeUndefined();
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();
     expect(logRow!.saveId).toBe(saveId);
-    // Fase 10 (2026-09-29) — "¿quién ve a quién primero?": las dos tiradas viajan en la entrada
-    // del encuentro y se guardan en `LogEntry.roll` (tirada opuesta Destreza vs Destreza).
-    expect(body.logEntry.roll).toMatchObject({
-      kind: 'iniciativa-encuentro',
-      quienInicia: body.dynamicModeOffer.quienInicia,
-      jugador: { attribute: 'destreza', value: 10 },
-      npcName: 'Fauna Pacífica de Prueba',
-    });
-    const { jugador, npc } = body.logEntry.roll;
-    expect(jugador.result).toBe(jugador.roll + jugador.bono);
-    expect(npc.result).toBe(npc.roll + npc.bono);
-    expect(body.logEntry.roll.quienInicia).toBe(jugador.result >= npc.result ? 'jugador' : 'npc');
-    expect((logRow!.roll as { kind: string }).kind).toBe('iniciativa-encuentro');
+    expect(logRow!.roll).toBeNull();
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
@@ -482,8 +469,9 @@ describe('POST /saves/:id/zona/mover', () => {
   // QA-27 (P3, 2026-10-09, jugando): la tirada de «quién ve a quién primero» usaba la Destreza sin
   // el equipo, mientras la huida y el combate sí la sumaban (Gorhorn: +3 en una y +5 en la otra).
   it('«¿quién ve a quién primero?» cuenta la Destreza del equipo puesto', async () => {
+    // Con alguien hostil, el único encuentro que tira (P166).
     await prisma.zonePoint.create({
-      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
     const item = await prisma.inventoryItem.create({
       data: { saveId, name: 'Pantalones de prueba', description: 'Prueba', slot: 'ARMADURA_INFERIOR', statBonuses: { destreza: 4 } },
