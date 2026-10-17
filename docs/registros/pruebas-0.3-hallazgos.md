@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (5): P16, P49, P66, P83, P141.
+- **Pendientes** (4): P16, P49, P66, P141.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (4): P70, P131, P151, P155.
-- **Arreglados, sin comprobar jugando** (142): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (143): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
-  P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P84, P85, P86, P87, P88, P90, P91,
-  P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110, P111,
-  P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134, P136,
-  P139, P140, P143, P147, P148, P149, P150, P152, P153, P154, P156, P157, P158, P159, P160, P161,
-  P162, P163, P164, P165, P166, P167, P168, P169, P170, P171, P172, P173, P174, P175, P176, P177,
-  P178, P180, P181, P182, P183, P184, P185, P186, P187.
+  P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P83, P84, P85, P86, P87, P88, P90,
+  P91, P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110,
+  P111, P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134,
+  P136, P139, P140, P143, P147, P148, P149, P150, P152, P153, P154, P156, P157, P158, P159, P160,
+  P161, P162, P163, P164, P165, P166, P167, P168, P169, P170, P171, P172, P173, P174, P175, P176,
+  P177, P178, P180, P181, P182, P183, P184, P185, P186, P187.
 - **Comprobados jugando** (22): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -122,7 +122,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P80 | Gorhorn (Carisma 6) no puede fundar su Reino: «Fundar ayuntamiento» pide Carisma 10, además de materiales (14 de piedra, 6 de leña, 6 de hueso, 8 de resina, 2 de mena, 8 de fibra). Su motivación es restaurar el nombre de los Maktor y la tarjeta del Reino le invita a fundarlo, pero con su Carisma no puede hasta subirlo 4 puntos. ¿Es lo previsto para el personaje preseleccionado? | 2026-10-13 decidido por la usuaria: quitar el requisito de Carisma (arreglo ✅ 2026-10-13: el ayuntamiento pequeño ya no pide Carisma, solo materiales; test con rojo sin arreglo); el permiso del dueño de la tierra por reputación, como la licencia de parcela de X4, va al roadmap (REI-122) |
 | P81 | Habilidades → Reino: «Construir jaula pequeña/mediana/grande» salen activas y su aviso no dice qué necesitan (el campamento y el ayuntamiento sí: «Necesita: leña 0/6…»). Al construirla: «No es el momento ni el lugar para eso. Gorhorn lo deja para más adelante, cuando reúna lo que le falta», sin decir qué falta. | ✅ 2026-10-12 las jaulas tienen su receta en el panel: salen desactivadas y el aviso dice qué falta («Necesita: leña 0/4, cuerda de tendón 0/2.»), comprobado en vivo |
 | P82 | Muerte en bucle al reaparecer: Gorhorn reaparece en la Hondonada del Eco (375, 225), la zona de inicio, y en la casilla de al lado (425, 225) hay un grupo de 4 Kirelon Arenoso AGRESIVOS de nivel 8. Hay 6 grupos de Kirelon repartidos por la Hondonada. La 3.ª muerte fue así: al moverse, «un grupo de 5 Kirelon Arenoso te corta el paso», con «Pelear puede matarte en un solo turno»; actúan primero, sin opción de huir, y lo matan en un turno. Tras reaparecer, la oferta forzada sigue pendiente (`pendingDynamicModeOffer`, quienInicia npc): la siguiente es la 4.ª muerte, la permanente. Posible causa: P50 reparte los grupos nuevos por toda la zona, también junto al punto de reaparición. A la Hondonada solo se llega con nivel 1-2. | ✅ 2026-10-12 (bloqueante; la usuaria pidió arreglarlo): al reaparecer se borra el encuentro pendiente (`death.ts`); tras un RENACER, 60 minutos de juego en los que nada hostil corta el paso (`GRACIA_TRAS_RENACER_MINUTOS`, `zona.ts`); los grupos nuevos de especies hostiles no se colocan a menos de 3 casillas de la jugadora (`zonePoints.ts`). Tras el `/code-review`: al reaparecer también se resetean la posición en la zona (esquina 75,75), el camino a medias y lo pendiente, y la gracia (`enGraciaTrasRenacer`, services/death.ts) vale también para interrupciones de viaje y agresivos en escena. Tests en `zonaMover.integration.test.ts` y `turn.integration.test.ts`. La partida de prueba ya tenía la oferta guardada de antes del arreglo. |
-| P83 | Mandar como acción solo un objeto del inventario (chip «Pico de minero», sin verbo) da «Gorhorn busca en su memoria y no encuentra nada parecido a Pico de minero — ni planta, ni mineral, ni nada que pueda arrancarse de la tierra»: lo trata como algo que recolectar, no como algo que ya lleva. (Tercera tanda, 2026-10-12.) | pendiente (texto; dato para `NAR-12`) |
+| P83 | Mandar como acción solo un objeto del inventario (chip «Pico de minero», sin verbo) da «Gorhorn busca en su memoria y no encuentra nada parecido a Pico de minero — ni planta, ni mineral, ni nada que pueda arrancarse de la tierra»: lo trata como algo que recolectar, no como algo que ya lleva. (Tercera tanda, 2026-10-12.) | ✅ 2026-10-17: el verbo de recolectar se busca fuera del nombre citado: «Pico de minero» ya no cuenta como «minar» y un chip suelto de un objeto que se lleva no se toma por buscar un recurso (`playerActionValidation.test.ts`). Qué hacer con un objeto mandado sin verbo sigue siendo cosa de `NAR-12`. |
 | P84 | Descansos encadenados: «Descanso ocho horas» dos veces seguidas se aceptan las dos (Día 1 21:13 → Día 2 05:13 → 13:13). El enfriamiento de 3 h cuenta desde que EMPIEZA el descanso (`lastRestAtMinutes` = 1273, el inicio), así que tras uno de 8 h ya no hay enfriamiento. Debería contar desde que acaba. | ✅ 2026-10-12 el enfriamiento cuenta desde que acaba el descanso (`lastRestAtMinutes` = hora final); ya no se encadenan |
 | P85 | La narración del final de una acción larga lleva la hora de inicio: el resultado del descanso sale con «Día 1, 21:13» aunque el reloj ya marca Día 2, 05:13. | ✅ 2026-10-12 las entradas del resultado llevan la hora final (`nuevaFictionalDateLabel`), la misma que su `fictionalMinutes` |
 | P86 | La barra de espera mezcla relojes: «vuelve en ~5 min (8 h en Helek Sirik) (sobre las 17:38)». 17:38 es la hora real del ordenador, pero al lado de la duración en el juego se lee como hora del juego (que es 05:13). | ✅ 2026-10-12 la barra de espera ya no enseña la hora real del ordenador; basta la cuenta atrás y la duración en el juego |

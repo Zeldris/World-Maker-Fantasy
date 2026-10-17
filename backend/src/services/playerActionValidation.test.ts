@@ -381,6 +381,10 @@ describe('fabricatedNpcNarrationFor', () => {
 });
 
 describe('detectsFabricatedHarvestSourceClaim', () => {
+  // P83 (QA-27): un chip de un objeto que se lleva, sin verbo, no es intentar recolectarlo.
+  it('el nombre citado no cuenta como verbo («Pico de minero» no es «minar»)', () => {
+    expect(detectsFabricatedHarvestSourceClaim("'Pico de minero'")).toBeNull();
+  });
   it('detecta un nombre citado entre comillas que no existe en ningún catálogo de recolección', () => {
     expect(detectsFabricatedHarvestSourceClaim("Recolecto 'flor de cristal lunar'.")).toEqual({ quotedName: 'flor de cristal lunar' });
   });
