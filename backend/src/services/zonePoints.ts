@@ -318,7 +318,7 @@ export async function asegurarZonePointsDePartida(
   return clonarPlantillasConCandado(tx, saveId, locationId);
 }
 
-type PuntoComparable = { tipo: string; targetSlug: string | null; x: number; y: number };
+type PuntoComparable = { tipo: string; targetSlug: string | null; x: number; y: number; factionSlug?: string | null };
 
 /// QA-27: un punto de FAUNA ambiental (ver `FAUNA_AMBIENTAL`, worldCatalog.ts) no va en el mapa.
 export function esPuntoVigente(p: { tipo: string; targetSlug: string | null }): boolean {
@@ -331,8 +331,9 @@ export function esPuntoVigente(p: { tipo: string; targetSlug: string | null }): 
 /// la partida es nuevo del catálogo. RECURSO y EDIFICIO nunca se mueven ni se borran de una
 /// partida, así que se comparan por (tipo, targetSlug, x, y). Partida sin filas → todas.
 export function plantillasQueFaltan<P extends PuntoComparable>(existentes: PuntoComparable[], plantillas: P[]): P[] {
+  // P187 (QA-27): el ganado de un bando (FAUNA con `factionSlug`) es otra cosa que la fauna salvaje de su especie.
   const clave = (p: PuntoComparable) =>
-    p.tipo === 'FAUNA' || p.tipo === 'NPC' ? `${p.tipo}|${p.targetSlug}` : `${p.tipo}|${p.targetSlug}|${p.x}|${p.y}`;
+    p.tipo === 'FAUNA' || p.tipo === 'NPC' ? `${p.tipo}|${p.targetSlug}${p.factionSlug ? `|${p.factionSlug}` : ''}` : `${p.tipo}|${p.targetSlug}|${p.x}|${p.y}`;
   const tiene = new Set(existentes.map(clave));
   return plantillas.filter((p) => !tiene.has(clave(p)));
 }
@@ -445,7 +446,9 @@ export async function recalcularZonePointsDeLocation(
   // FAUNA — reconciliación por grupos (Fase 1).
   const esZonaDeInicio = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
   const faunaPorSlug = new Map<string, (typeof puntos)[number][]>();
-  for (const punto of puntos.filter((p) => p.tipo === 'FAUNA')) {
+  // P187 (QA-27): el ganado de un bando (FAUNA con `factionSlug`, los múrgoles del Clan Serhu) es un rebaño
+  // fijo del tamaño del catálogo que baja al cazarlo: no se reparte por la población salvaje de su especie.
+  for (const punto of puntos.filter((p) => p.tipo === 'FAUNA' && !p.factionSlug)) {
     const filas = faunaPorSlug.get(punto.targetSlug) ?? [];
     filas.push(punto);
     faunaPorSlug.set(punto.targetSlug, filas);

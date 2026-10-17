@@ -1,9 +1,9 @@
 // P185 (QA-27): casillas del mapa de zona por las que no se pasa (muros, empalizadas), por Location.
 // Sin ellas, el camino al Pozo atravesaba la empalizada de Colmillo Ceniza, que solo tiene una puerta
 // (como el navmesh de BG3 o los muros de Manor Lords). Se sacan de la ilustración de cada zona, casilla
-// a casilla (16×12 de 50 px), dejando abiertas las puertas; una casilla con un punto del catálogo nunca
-// es muro (el punto se pone dentro o fuera). `calcularCamino` (zonaPosicion.ts) las rodea, y `GET /zona`
-// las manda al frontend para la ruta prevista.
+// a casilla (16×12 de 50 px), dejando abiertas las puertas. Un punto puede caer sobre un muro (el recinto
+// de múrgoles, pegado a la empalizada) si tiene al lado una casilla libre desde la que interactuar.
+// `calcularCamino` (zonaPosicion.ts) las rodea, y `GET /zona` las manda al frontend para la ruta prevista.
 import type { Celda } from './zonaPosicion.js';
 
 const MUROS_POR_LOCATION: Record<string, [number, number][]> = {

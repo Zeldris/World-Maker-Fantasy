@@ -11805,6 +11805,8 @@ export interface ZonePointInput {
   /// P172/P187 (QA-27): de qué bando es (nombre, como `Npc.faction`): coger o cazar lo suyo delante de
   /// los suyos resta reputación con él (`aprovecharseDeLoAjeno`). Sin él, de nadie.
   factionSlug?: string;
+  /// P187: cuántos hay (un rebaño con dueño, que no sigue la población salvaje). Sin él, 1.
+  cantidad?: number;
 }
 
 export const zonePoints: ZonePointInput[] = [
@@ -11855,12 +11857,13 @@ export const zonePoints: ZonePointInput[] = [
   // interior (viven en el Ketg'sedsar de verdad, coherente con su lore — "reciben a quien cruza la
   // entrada") — sus puntos NPC pasan a `campamento-serhu-interior`.
   { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'ketg-sedsar', label: 'Ketg\'sedsar — el Salón del Colmillo Ceniza' },
-  // P185 (QA-27): una casilla más arriba (y 460 → 425), dentro de la empalizada: en (8,9) caía sobre las estacas.
-  { locationSlug: 'campamento-serhu', x: 400, y: 425, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados', factionSlug: 'Clan Serhu' },
+  // P185 (QA-27): cae sobre las estacas (8,9); se recoge desde la casilla de dentro, al lado. No se mueve: las
+  // partidas ya empezadas tienen su copia aquí (un recurso se copia por su posición) y saldría dos veces.
+  { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados', factionSlug: 'Clan Serhu' },
   // P187 (QA-27, usuaria 2026-10-17): el ganado del clan, cazable, en su corral (arriba a la derecha de la
   // ilustración, fuera de la empalizada). Es la especie `murgol` (su ficha y la Enciclopedia llevan al Múrgol
   // genérico) con dueño: cazarlo delante de los suyos resta mucha reputación (`aprovecharseDeLoAjeno`).
-  { locationSlug: 'campamento-serhu', x: 625, y: 125, tipo: 'FAUNA', targetSlug: 'murgol', label: 'Múrgoles del clan', factionSlug: 'Clan Serhu' },
+  { locationSlug: 'campamento-serhu', x: 625, y: 125, tipo: 'FAUNA', targetSlug: 'murgol', label: 'Múrgoles del clan', factionSlug: 'Clan Serhu', cantidad: 6 },
   // Cazadora Serhu (hallazgo 4, 2026-09-15): único NPC con homeLocationSlug en el exterior de
   // Karot Veku sin ZonePoint — "sale a cazar o vigilar los alrededores del campamento" (bio real),
   // coherente con estar fuera de la empalizada en vez de en el interior con los demás.

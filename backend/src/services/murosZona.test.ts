@@ -35,9 +35,13 @@ describe('muros de Colmillo Ceniza', () => {
   const muros = murosDe('campamento-serhu');
   const recorrido = (origen: Celda, destino: Celda) => calcularCamino(origen, destino, muros);
 
-  it('ningún punto del catálogo cae sobre un muro de su zona', () => {
+  it('todo punto del catálogo se alcanza: si cae sobre un muro, tiene al lado una casilla libre', () => {
     for (const p of zonePoints) {
-      expect(murosDe(p.locationSlug).has(claveCelda(celdaDePixel(p))), `${p.locationSlug} ${p.targetSlug}`).toBe(false);
+      const muros = murosDe(p.locationSlug);
+      const c = celdaDePixel(p);
+      if (!muros.has(claveCelda(c))) continue;
+      const vecinas = [-1, 0, 1].flatMap((dc) => [-1, 0, 1].map((dr) => ({ col: c.col + dc, row: c.row + dr })));
+      expect(vecinas.some((v) => !muros.has(claveCelda(v))), `${p.locationSlug} ${p.targetSlug}`).toBe(true);
     }
   });
 
