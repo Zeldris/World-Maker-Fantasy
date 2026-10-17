@@ -189,7 +189,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     // "Comer/Beber" (2026-09-04) — mismo patrón que healItemUses.
     // P90/P130: de una caza, lo que el backend guarda en el diario como acción de la jugadora (`null`
     // en una emboscada: no hay acción suya). Sin él, la acción tal cual.
-    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[]; accionEnDiario?: string | null },
+    // P164: `viajeElegido`, el viaje sale del mapa (una salida o «Viajar»), no del texto escrito.
+    extras?: { healItemUses?: { itemId: string; quantity: number }[]; hambreSedItemUses?: { itemId: string; quantity: number }[]; accionEnDiario?: string | null; viajeElegido?: boolean },
   ) {
     if (!action || !saveId || busyUntil || endedAt || pendingDeathResolution) return
     if (turnoEnCursoRef.current || characterThinkingRef.current) return
@@ -217,7 +218,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       // transit como siempre), pero el propio backend se salta Ollama/tabla si encuentra la
       // caché, sin que el frontend tenga que decidir nada ni arriesgar quedarse sin "transit" por
       // reutilizar la respuesta cruda del preview.
-      const classifyResult: ClassifyResponse = await requestTurnClassify({ saveId, action })
+      const classifyResult: ClassifyResponse = await requestTurnClassify({ saveId, action, ...(extras?.viajeElegido ? { viajeElegido: true } : {}) })
       const { classification, roll, travel } = classifyResult
 
       if (classifyResult.blocked) {

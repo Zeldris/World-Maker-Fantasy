@@ -1065,6 +1065,12 @@ export function useGameViewState() {
     handleSubmit(actionText)
   }
 
+  // P164 (QA-27): un destino de la lista de «Viajar» viaja (está a un tramo); escrito a mano, no.
+  function handleViajeElegido(actionText: string) {
+    setSimpleModal(null)
+    handleSubmit(actionText, { viajeElegido: true })
+  }
+
   function closeSimpleModal() {
     setSimpleModal(null)
   }
@@ -1786,6 +1792,7 @@ export function useGameViewState() {
     handleEntityQuickInsert,
     handleOpenHarvestSuggestion,
     handleSimpleModalSelect,
+    handleViajeElegido,
     closeSimpleModal,
     handleAttachItem,
     handleEquipItem,

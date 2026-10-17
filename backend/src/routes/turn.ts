@@ -85,6 +85,9 @@ interface ClassifyBody {
   /// `preferredAttribute`, ese atributo gana sobre la heurística de palabra clave
   /// (tabulatedAttackAttribute) para decidir con qué se tira.
   savedActionId?: string;
+  /// P164 (QA-27): el viaje lo eligió la jugadora en el mapa (una salida de la zona o la lista de «Viajar»),
+  /// no lo escribió. A pie, el texto libre no cambia de zona.
+  viajeElegido?: boolean;
 }
 
 interface NarrateBody {
@@ -550,7 +553,7 @@ async function resolveClassificationForTurn(params: {
 /// el coste de narrar — el resultado se genera en diferido vía `CharacterTransit` (worldTick).
 export async function turnRoutes(app: FastifyInstance) {
   app.post<{ Body: ClassifyBody }>('/turn/classify', async (request, reply) => {
-    const { saveId, action, enCombate, preview, savedActionId } = request.body;
+    const { saveId, action, enCombate, preview, savedActionId, viajeElegido } = request.body;
     if (!saveId || !action) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action' });
     }
@@ -876,6 +879,15 @@ export async function turnRoutes(app: FastifyInstance) {
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Error clasificando el turno' });
+    }
+
+    // P164 (QA-27, decidido por la usuaria 2026-10-14): con el mapa de zona se va de una zona a otra por sus
+    // salidas, casilla a casilla; escribir «Voy a Colmillo Ceniza» ya no salta de zona. Ir directo a otra
+    // zona sin pasar por las de en medio será cosa de una montura (CR-57). Lo elegido en el mapa (una
+    // salida o la lista de «Viajar») sí viaja.
+    if (travel && !viajeElegido) {
+      if (preview) travel = null;
+      else return resolveBlockedTurn(`A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`);
     }
 
     // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` decide su `produccion` solo por

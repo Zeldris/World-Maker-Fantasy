@@ -108,6 +108,7 @@ export function GameModals() {
     handleSaveSkillBarEdit,
     handleResponderEscribiendo,
     handleSimpleModalSelect,
+    handleViajeElegido,
     closeSimpleModal,
     handleEquipItem,
     handleUnequipItem,
@@ -286,7 +287,7 @@ export function GameModals() {
       <Presencia>
         {simpleModal === 'travel' && saveId && (
           <Capa id="viajar">
-          <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+          <TravelDestinationModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
           </Capa>
         )}
       </Presencia>
@@ -444,7 +445,7 @@ export function GameModals() {
             // hubiera escrito él mismo (el motor de viaje determinista decide el resto).
             onViajarA={(actionText) => {
               setZonaModalOpen(false)
-              handleSubmit(actionText)
+              handleSubmit(actionText, { viajeElegido: true })
             }}
             bloqueoTurno={bloqueoTurno}
             bloqueoMovimiento={permisoMover.motivo}

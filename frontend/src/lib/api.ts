@@ -170,6 +170,8 @@ export async function requestTurnClassify(params: {
   /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2) — id de la
   /// SavedAction seleccionada en CombatModal.tsx, si la hay.
   savedActionId?: string
+  /// P164: viaje elegido en el mapa (salida o «Viajar»); el texto escrito a pie no cambia de zona.
+  viajeElegido?: boolean
 }): Promise<ClassifyResponse> {
   const response = await fetch(`${API_URL}/turn/classify`, {
     method: 'POST',
