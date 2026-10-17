@@ -4,8 +4,8 @@ Lo revisado: lo que entra con el PR #60 (rama `claude/frontend-improvements-road
 PR #59, 62 archivos): P154, P141, P165, P150, P177, P186, P166, P172, P184, P187, P178, P185, P147, P164 y P83,
 las decisiones de diseño de la usuaria del 2026-10-17 y los 19 hallazgos de su `/code-review`.
 
-**Estado (2026-10-17): pendiente de que la usuaria decida.** Lo que confirme se aplica en la rama antes de
-fusionar. De más a menos grave.
+**Estado (2026-10-17): aprobadas las cuatro por la usuaria y aplicadas en la rama antes de fusionar** como
+~~`QA-90`~~ (1), ~~`QA-91`~~ (2), ~~`QA-92`~~ (3) y ~~`QA-93`~~ (4). De más a menos grave.
 
 ## 1. Mover un punto del catálogo duplica el punto en las partidas ya empezadas
 

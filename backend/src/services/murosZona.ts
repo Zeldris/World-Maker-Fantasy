@@ -4,6 +4,7 @@
 // a casilla (16×12 de 50 px), dejando abiertas las puertas. Un punto puede caer sobre un muro (el recinto
 // de múrgoles, pegado a la empalizada) si tiene al lado una casilla libre desde la que interactuar.
 // `calcularCamino` (zonaPosicion.ts) las rodea, y `GET /zona` las manda al frontend para la ruta prevista.
+// Cómo sacarlas de la ilustración y comprobarlas: docs/runbooks/nuevo-elemento-catalogo.md § «Muros de una zona».
 import { claveCelda, type Celda } from './zonaPosicion.js';
 
 const MUROS_POR_LOCATION: Record<string, [number, number][]> = {

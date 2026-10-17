@@ -109,6 +109,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-17** — Hallazgos de `QA-27`, tanda 3 (P147, P154, P141, P165, P150, P177, P186, P166, P172, P184, P187, P178, P185, P164, P83), los arreglos de su `/code-review` y su retro ~~`QA-90`…`QA-93`~~ (instantánea de las plantillas del catálogo, retro exigida por `revisado.sh`, resumen de hallazgos por el último estado y `tools/zona/rejilla.sh`).
 - **2026-10-15** — PR #59 en `main` (CI en verde): hallazgos de `QA-27`, tandas 1 y 2, `CR-69` al roadmap y la retro ~~`QA-88`, `QA-89`~~.
 - **2026-10-15** — Hallazgos de `QA-27`, tandas 1 y 2 (P148, P149, P152, P153, P155 en parte, P156-P163, P167-P171, P173, P175, P176, P180-P183), los arreglos de su `/code-review` y su retro ~~`QA-88`, `QA-89`~~ (tests de lo que cambia en el push y regla de columnas JSON en `REVIEW.md`).
 - **2026-10-15** — PR #58 en `main` (CI en verde): ronda de pruebas del 2026-10-14 (P147-P187), etiquetas del mapa de zona (P123, P151), P144, ~~`QA-63`~~ y la retro ~~`QA-82`…`QA-87`~~ con los arreglos de sus dos `/code-review`.
@@ -118,4 +119,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-13** — Arreglos del `/code-review` del PR #53 (12) y su retro: ~~`QA-77`…`QA-80`~~ (`/code-review` antes de crear el PR, una regla en todos sus caminos, test de comprobaciones de las rutas de partida y el test de `factionRelations` con la base local).
 - **2026-10-13** — ~~`QA-73`…`QA-76`~~ (retro del PR #50): el diario solo inventa líneas de error en el frontend, tests de `tools/qa` y del gancho en la CI, `/code-review` al cerrar cada tanda, avisos con nombre en `estado.js`.
 - **2026-10-13** — ~~`QA-71`, `QA-72`~~ (retro del PR #51): criterios de comprobación en los documentos reutilizables y traer `main` siempre al empezar una tarea y al fusionar un PR (merge, no rebase).
-- **2026-10-13** — Documentos reutilizables (fuera del roadmap) en `main` con el PR #51: `docs/arquitectura/reutilizables/` (imágenes con FLUX.2 klein 4B, voces con qwentts.cpp, agente local con Aider y Qwen3). Con su `/code-review` (15 hallazgos) y el CI en verde.

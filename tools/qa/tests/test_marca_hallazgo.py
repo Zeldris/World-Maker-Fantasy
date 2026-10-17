@@ -101,6 +101,25 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
         self.assertIn('- **Pendientes de una decisión de la usuaria** (2): P4, P10.', texto)
 
+    def test_reabierto_manda_el_ultimo_estado_y_en_parte_sin_parentesis(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ hecho. Reabierto en la ronda 3 |
+| P8 | Ocho | Reabierto en la ronda 3. ✅ arreglado de nuevo |
+| P9 | Nueve | ✅ hecho en parte: falta el texto |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Pendientes** (2): P1, P7.', texto)
+        self.assertIn('- **Arreglados, sin comprobar jugando** (2): P2, P8.', texto)
+        self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
+
+    def test_comprobar_avisa_de_un_estado_contradictorio(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | No aplica. ✅ hecho |\n| P8 | Ocho | ✅ 2026-10-13 (decisión de la usuaria): así |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        r = self.correr('--resumen', '--comprobar')
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('P7 se contradice', r.stderr)
+        self.assertNotIn('P8', r.stderr)
+
     def test_comprobar_sin_marcas_falla(self):
         escribir(self.ruta, CON_RESUMEN.replace(INICIO, '<!-- resumen -->'))
         r = self.correr('--resumen', '--comprobar')
