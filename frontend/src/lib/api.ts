@@ -2252,7 +2252,9 @@ export async function responderModoDinamico(saveId: string, respuesta: string): 
   })
 }
 
-export async function ignorarModoDinamico(saveId: string): Promise<{
+/// `targetSlug` (P150): la oferta sin abrir que se ignora; sin él, se limpia lo que haya (salir de una
+/// conversación en curso).
+export async function ignorarModoDinamico(saveId: string, targetSlug?: string): Promise<{
   ok: boolean
   /// Franja 0 (2026-09-15, hallazgo real jugando en vivo: "cerrar Interactuar no deja rastro en
   /// el log") — el backend ya creaba este LogEntry al salir de una conversación en curso, pero
@@ -2260,7 +2262,10 @@ export async function ignorarModoDinamico(saveId: string): Promise<{
   /// resumir (ignorar una oferta sin llegar a abrirla).
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, { method: 'POST' })
+  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, {
+    method: 'POST',
+    ...(targetSlug ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetSlug }) } : {}),
+  })
 }
 
 /// "Interactuar" sobre RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA

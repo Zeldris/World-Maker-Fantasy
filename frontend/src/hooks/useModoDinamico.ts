@@ -193,11 +193,13 @@ export function useModoDinamico({
   }
 
   function handleDismissDynamicModeOffer(entryId: string) {
+    // P150 (QA-27): se dice qué oferta se ignora; si el paso siguiente ya ha puesto otra, esa no se borra.
+    const targetSlug = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer?.targetSlug
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
     // Best-effort: "ignorar" no tiene consecuencia visible si falla (la oferta ya no se muestra),
     // solo se registra en consola para no perder el rastro por completo si el backend queda con
     // `pendingDynamicMode` huérfano.
-    ignorarModoDinamico(saveId!).catch((err) => console.error('ignorarModoDinamico falló', err))
+    ignorarModoDinamico(saveId!, targetSlug).catch((err) => console.error('ignorarModoDinamico falló', err))
   }
 
   // RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de `handleInteractuarModoDinamico`
