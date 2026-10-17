@@ -97,6 +97,10 @@ const SAVE_SELECT_PARA_MOVER = {
 /// (mismo convenio que el resto de sufijos de imagen) — este mapa hace ese único ajuste.
 const ESTACION_A_SLUG: Record<string, EstacionSlug> = { PRIMAVERA: 'primavera', VERANO: 'verano', OTONO: 'otono', INVIERNO: 'invierno' };
 
+/// P177 (QA-27): minutos de juego que un NPC (no hostil) con el que ya te has encontrado tarda en
+/// volver a salirte al paso en la misma zona.
+export const ENFRIAMIENTO_ENCUENTRO_MINUTOS = 60;
+
 /// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
 /// por cada `Parcela` sembrada en la Location actual (solo zonas-interior de Capital/Cuartel
 /// Avanzado tienen alguna; el resto de zonas del mundo siempre devuelven `[]`, mismo criterio de
@@ -105,6 +109,7 @@ const ESTACION_A_SLUG: Record<string, EstacionSlug> = { PRIMAVERA: 'primavera', 
 /// real (candidatas, `blockedReason`) se pide aparte, bajo demanda, vía `GET
 /// /saves/:id/parcelas/:parcelaId` (mismo criterio que `ZonaSalidaInfo`: el mapa solo pinta iconos,
 /// el modal de detalle hace su propia llamada).
+
 export interface ZonaParcelaInfo {
   id: string;
   x: number;
@@ -804,7 +809,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     /// B7 (2026-09-28): recurso visto que el jugador todavía no sabe aprovechar — solo se registra
     /// como descubrimiento (sin oferta); el caller lo guarda como "último encuentro" para no repetir
     /// el aviso a cada paso mientras siga cerca.
-    avistadoSinOferta?: { targetSlug: string };
+    avistadoSinOferta?: { targetSlug: string; tipo?: string };
   }> {
     const puntosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
     // Gate de aparición narrativa (ver `zonePointVisiblePara`, zonePoints.ts) — un `ZonePoint` cuya
@@ -1052,7 +1057,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           const textoHuida = `${nombreEnFrase(colision.targetName, true)} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
           const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
           // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
-          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug } };
+          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug, tipo: colisionTipo ?? undefined } };
         }
         dynamicModeOffer = {
           tipo: colisionTipo!,
@@ -1168,7 +1173,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             });
             logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
             await recordEntityDiscoveries({ saveId, worldId, mentionedText: sourceDisplayNameFor(punto.targetSlug) }, tx);
-            return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug } };
+            return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug, tipo: 'RECURSO' } };
           }
         }
         // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
@@ -1240,10 +1245,16 @@ export async function zonaRoutes(app: FastifyInstance) {
     const destrezaJugador = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).destreza ?? 10;
     // Último encuentro ya ofrecido (2026-09-28) — solo cuenta si fue en ESTA Location (un slug de
     // otra zona no debe silenciar nada aquí).
-    const ultimoEncuentro = save.zonaUltimoEncuentro as { targetSlug: string; locationId: string } | null;
+    const ultimoEncuentro = save.zonaUltimoEncuentro as { targetSlug: string; locationId: string; minutos?: number; tipo?: string } | null;
     const ultimoEncuentroSlug = ultimoEncuentro && ultimoEncuentro.locationId === save.currentLocationId ? ultimoEncuentro.targetSlug : null;
-    const marcaUltimoEncuentro = (offer: { targetSlug: string } | null) =>
-      offer ? ({ targetSlug: offer.targetSlug, locationId: save.currentLocationId! } as unknown as Prisma.InputJsonValue) : undefined;
+    const minutosAhora = save.worldState?.fictionalMinutes ?? 480;
+    const marcaUltimoEncuentro = (offer: { targetSlug: string; tipo?: string } | null) =>
+      offer ? ({ targetSlug: offer.targetSlug, locationId: save.currentLocationId!, minutos: minutosAhora, ...(offer.tipo ? { tipo: offer.tipo } : {}) } as unknown as Prisma.InputJsonValue) : undefined;
+    // P177 (QA-27): tras toparte con alguien (ignorado o no), ese mismo NPC o fauna no vuelve a salirte al
+    // paso hasta que pase un rato, aunque te alejes y vuelvas: antes salía tres veces en 10 minutos en
+    // Hogar Ketg. Un recurso sí se vuelve a ofrecer al volver (se va a por él).
+    const ultimoEncuentroEnfriando =
+      ultimoEncuentro?.minutos != null && ultimoEncuentro.tipo !== undefined && ultimoEncuentro.tipo !== 'RECURSO' && minutosAhora - ultimoEncuentro.minutos < ENFRIAMIENTO_ENCUENTRO_MINUTOS;
 
     // Camino ya en curso hacia el mismo destino (varias llamadas seguidas del frontend animando
     // paso a paso) vs. un destino NUEVO (el jugador clicó en otro sitio a mitad de camino) — en
@@ -1352,12 +1363,12 @@ export async function zonaRoutes(app: FastifyInstance) {
         entradas,
       );
       // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
-      // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer).
+      // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer), pasado el rato de P177.
       const zonaUltimoEncuentro = dynamicModeOffer
         ? marcaUltimoEncuentro(dynamicModeOffer)
         : avistadoSinOferta
           ? marcaUltimoEncuentro(avistadoSinOferta)
-          : save.zonaUltimoEncuentro && !ultimoEncuentroSigueCerca
+          : save.zonaUltimoEncuentro && !ultimoEncuentroSigueCerca && !ultimoEncuentroEnfriando
           ? Prisma.JsonNull
           : undefined;
 
