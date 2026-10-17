@@ -7,7 +7,9 @@
 // comercio en persona (`CR-51`), como «Comerciar».
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { nombreVisibleDeNpc } from './dynamicMode.js';
-import { npcVivoEnPartida } from './mundoPartida.js';
+import { npcSinCaerEnPartida } from './mundoPartida.js';
+import { opcionesDeMenu } from './menuDeNpc.js';
+import { OPCION_TRABAJO } from './npcInteraction.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -49,16 +51,23 @@ export async function edificioDelPunto(db: Db, saveId: string, zonePointId: stri
 type EdificioConFaccion = NonNullable<Awaited<ReturnType<typeof edificioDelPunto>>>['edificio'];
 
 /// Quién lleva un edificio: el maestro de su oficio en su facción (`Npc.teachesProfession` = `Building.kind`),
-/// o, en su salón (`sede`), el líder de la facción. Vivo en la partida.
-export async function encargadoDe(db: Db, saveId: string, worldId: string, edificio: NonNullable<EdificioConFaccion>) {
+/// o, en su salón (`sede`), el líder de la facción. Vivo en la partida; si hay varios, el que está en este
+/// lugar. `aqui`: si ahora tiene su punto en el lugar del edificio. Lo usan la ficha y «Interactuar».
+export async function encargadoDe(db: Db, saveId: string, worldId: string, edificio: NonNullable<EdificioConFaccion>, locationId: string) {
   const faccion = edificio.faction?.name;
   if (!faccion) return null;
-  const vivo = { AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' as const } } } }] };
-  if (edificio.kind === 'sede') {
-    const lider = edificio.faction?.liderNpcId;
-    return lider ? db.npc.findFirst({ where: { id: lider, ...vivo } }) : null;
-  }
-  return db.npc.findFirst({ where: { worldId, faction: faccion, teachesProfession: edificio.kind, ...vivo }, orderBy: { slug: 'asc' } });
+  const candidatos =
+    edificio.kind === 'sede'
+      ? edificio.faction?.liderNpcId
+        ? await db.npc.findMany({ where: { id: edificio.faction.liderNpcId, ...npcSinCaerEnPartida(saveId) } })
+        : []
+      : await db.npc.findMany({ where: { worldId, faction: faccion, teachesProfession: edificio.kind, ...npcSinCaerEnPartida(saveId) }, orderBy: { slug: 'asc' } });
+  if (candidatos.length === 0) return null;
+  const presentes = new Set(
+    (await db.zonePoint.findMany({ where: { saveId, locationId, tipo: 'NPC', activo: true, targetSlug: { in: candidatos.map((n) => n.slug) } }, select: { targetSlug: true } })).map((p) => p.targetSlug),
+  );
+  const npc = candidatos.find((n) => presentes.has(n.slug)) ?? candidatos[0]!;
+  return { npc, aqui: presentes.has(npc.slug) };
 }
 
 export async function fichaDeEdificio(db: Db, saveId: string, zonePointId: string): Promise<FichaEdificio | null> {
@@ -75,16 +84,23 @@ export async function fichaDeEdificio(db: Db, saveId: string, zonePointId: strin
   if (edificio.equiposMilicia > 0) detallesEstado.push(`${edificio.equiposMilicia} ${edificio.equiposMilicia === 1 ? 'equipo' : 'equipos'} de milicia`);
   if (edificio._count.guarnicion > 0) detallesEstado.push(`guarnición de ${edificio._count.guarnicion}`);
 
-  const npc = await encargadoDe(db, saveId, save.worldId, edificio);
+  const llevado = await encargadoDe(db, saveId, save.worldId, edificio, punto.locationId);
   let encargado: FichaEdificio['encargado'] = null;
-  if (npc) {
-    const { nombre: visible } = await nombreVisibleDeNpc(db, saveId, npc);
-    const aqui = (await db.zonePoint.count({ where: { saveId, locationId: punto.locationId, tipo: 'NPC', targetSlug: npc.slug, activo: true } })) > 0;
-    encargado = { slug: npc.slug, nombre: visible, aqui };
-  }
   const ofrece: OfertaDeEdificio[] = [];
-  if (npc?.teachesProfession) ofrece.push({ label: 'Aprender su oficio', disponible: !!encargado?.aqui, ...(encargado?.aqui ? {} : { motivo: 'Quien lo lleva no está ahora' }) });
-  if (npc) ofrece.push({ label: 'Encargos', disponible: !!encargado?.aqui, ...(encargado?.aqui ? {} : { motivo: 'Quien lo lleva no está ahora' }) });
+  if (llevado) {
+    const { npc, aqui } = llevado;
+    const { nombre: visible } = await nombreVisibleDeNpc(db, saveId, npc);
+    encargado = { slug: npc.slug, nombre: visible, aqui };
+    // Lo mismo que daría su menú ahora (oficio, encargos según tu reputación…).
+    const opciones = aqui ? await opcionesDeMenu(db, saveId, npc.slug) : [];
+    const oferta = (label: string, opcion: string, tiene: boolean) => {
+      if (!tiene) return;
+      const disponible = opciones.includes(opcion);
+      ofrece.push({ label, disponible, ...(disponible ? {} : { motivo: aqui ? 'Ahora no te lo ofrece' : 'Quien lo lleva no está ahora' }) });
+    };
+    oferta('Aprender su oficio', 'Aprender oficio', !!npc.teachesProfession);
+    oferta('Encargos', OPCION_TRABAJO, true);
+  }
   if (edificio.kind !== 'sede') ofrece.push({ label: 'Comerciar', disponible: false, motivo: COMERCIAR_PENDIENTE });
 
   return {

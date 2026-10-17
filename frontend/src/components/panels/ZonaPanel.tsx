@@ -432,6 +432,19 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
 
   // P185: las casillas por las que no se pasa; la ruta prevista las rodea como el motor.
   const murosZona = useMemo(() => new Set((data?.muros ?? []).map(claveCelda)), [data?.muros])
+  // `/code-review`: resuelta la tarjeta (p. ej. «Salir» del menú de un edificio), el encuentro se olvida; si
+  // no, la ruta prevista y los menús de las fichas seguían ocultos hasta volver a andar. Solo tras haberla
+  // visto: justo al ponerla, la entrada del diario puede no haber llegado todavía.
+  const tarjetaVigente = !!encuentroMapa && !!ofertaEnMapa?.(encuentroMapa.entryId)
+  const tarjetaVistaRef = useRef(false)
+  useEffect(() => {
+    if (!encuentroMapa) {
+      tarjetaVistaRef.current = false
+      return
+    }
+    if (tarjetaVigente) tarjetaVistaRef.current = true
+    else if (tarjetaVistaRef.current) setEncuentroMapa(null)
+  }, [encuentroMapa, tarjetaVigente])
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {

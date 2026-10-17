@@ -1,7 +1,7 @@
 // Testigos de una muerte (CR-11, hito 0.2 — decisión de la entrevista: solo testigos, sin parentesco).
 // Testigo = NPC con nombre, vivo, con un punto activo de la partida en el mismo lugar en que ocurre.
 import type { Prisma } from '@prisma/client';
-import { npcVivoEnPartida } from '../mundoPartida.js';
+import { npcSinCaerEnPartida } from '../mundoPartida.js';
 import { bando } from './misiones.js';
 import { applyFactionRepDelta, parseFactionsStatus, type FactionRepChangeInfo } from '../reputation.js';
 
@@ -10,7 +10,7 @@ export async function testigosEnLugar(tx: Prisma.TransactionClient, saveId: stri
   if (puntos.length === 0) return [];
   const npcs = await tx.npc.findMany({
     where: {
-      worldId, kind: 'PRINCIPAL', slug: { in: puntos.map((p) => p.targetSlug) }, id: { not: victimaId }, AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } }],
+      worldId, kind: 'PRINCIPAL', slug: { in: puntos.map((p) => p.targetSlug) }, id: { not: victimaId }, ...npcSinCaerEnPartida(saveId),
     },
     select: { id: true },
     orderBy: { slug: 'asc' },
@@ -26,7 +26,7 @@ export async function testigosDelBando(tx: Prisma.TransactionClient, saveId: str
   if (puntos.length === 0) return [];
   const npcs = await tx.npc.findMany({
     where: {
-      worldId, faction: faccion, slug: { in: puntos.map((p) => p.targetSlug) }, AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } }],
+      worldId, faction: faccion, slug: { in: puntos.map((p) => p.targetSlug) }, ...npcSinCaerEnPartida(saveId),
     },
     select: { id: true },
     orderBy: { slug: 'asc' },

@@ -35,10 +35,11 @@ export async function edificiosRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'Tienes que acercarte más al edificio' });
     }
     const nombreEdificio = edificio?.name ?? punto.label ?? punto.targetSlug;
-    const npc = edificio ? await encargadoDe(prisma, save.id, save.worldId, edificio) : null;
-    const aqui = npc ? (await prisma.zonePoint.count({ where: { saveId: save.id, locationId: punto.locationId, tipo: 'NPC', targetSlug: npc.slug, activo: true } })) > 0 : false;
+    // El mismo encargado (y el mismo «está aquí») que enseña la ficha.
+    const llevado = edificio ? await encargadoDe(prisma, save.id, save.worldId, edificio, punto.locationId) : null;
+    const npc = llevado?.npc;
     // Sin artículo delante del nombre del edificio: el catálogo no lo guarda y no se adivina por el nombre.
-    if (!npc || !aqui) return { menu: null, motivo: `${nombreEdificio}: no hay nadie atendiendo ahora mismo.` };
+    if (!npc || !llevado.aqui) return { menu: null, motivo: `${nombreEdificio}: no hay nadie atendiendo ahora mismo.` };
     const { nombre } = await nombreVisibleDeNpc(prisma, save.id, npc);
     const menu = await abrirMenuDeNpc(prisma, save.id, npc.slug, nombre, 'edificio');
     if (!menu) return { menu: null, motivo: `${nombreEnFrase(nombre, true)} no tiene nada que ofrecerte aquí.` };

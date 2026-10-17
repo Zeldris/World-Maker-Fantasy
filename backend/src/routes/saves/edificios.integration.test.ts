@@ -50,7 +50,8 @@ describe('edificios del mapa: ficha e Interactuar (P178)', () => {
     // Sin descubrir, por su raza (P165).
     expect(ficha.encargado).toEqual({ slug: 'maestro-herrero-serhu', nombre: 'Orco desconocido', aqui: true });
     expect(ficha.ofrece).toContainEqual({ label: 'Comerciar', disponible: false, motivo: COMERCIAR_PENDIENTE });
-    expect(ficha.ofrece).toContainEqual({ label: 'Encargos', disponible: true });
+    // Lo mismo que dará su menú: en esta partida el clan no escucha propuestas, así que sin encargos (`/code-review`).
+    expect(ficha.ofrece).toContainEqual({ label: 'Encargos', disponible: false, motivo: 'Ahora no te lo ofrece' });
   });
 
   it('Interactuar: lejos, 409; al lado, el menú de quien lo lleva, sin «Charlar» y con «Salir»', async () => {
@@ -64,6 +65,7 @@ describe('edificios del mapa: ficha e Interactuar (P178)', () => {
     expect(body.menu).toMatchObject({ npcSlug: 'maestro-herrero-serhu', npcName: 'Orco desconocido', desdeEncuentro: false });
     expect(body.menu.options).toContain('Salir');
     expect(body.menu.options).not.toContain('Charlar');
+    expect(body.menu.options).not.toContain('¿Tienes trabajo?');
     expect(body.logEntry.text).toBe('Herrería del Clan Serhu: el orco desconocido atiende a Gorhorn P178.');
     const guardado = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(guardado.pendingNpcInteractionOffer).toMatchObject({ npcSlug: 'maestro-herrero-serhu', desdeEncuentro: false });

@@ -10,13 +10,13 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-10-15 |
+| **Actualizado** | 2026-10-17 |
 | **Ramas de trabajo** | Una por cuenta, cada una con su fila «Tarea en curso» (`QA-69`): `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06, `CR-55`) y `claude/wonderful-volta-662qt8`. Las skills de `.claude/skills/` van versionadas (`git add -f`); a `main` se pasa **por pull request**. |
 | **Último commit en `main`** | Fusión del PR #59 (2026-10-15, `907db0b`, CI en verde): hallazgos de `QA-27` (tandas 1 y 2), `CR-69` al roadmap y la retro `QA-88`, `QA-89`. Antes: PR #58 (`2383839`), PR #52 (`e461496`) y PR #51. |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
-| **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Hallazgos de `QA-27` (P147-P187): hechos los que no piden jugar ni arte. Abiertos: P16 y lo que queda de P186 y P155 (reproducir), P49, P66 y P70 (arte). **Siguiente:** `/code-review` del diff contra `main` y luego jugar lo arreglado (usuaria, 2026-10-17). |
+| **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Hallazgos de `QA-27` (P147-P187) y su `/code-review`, hechos; PR a `main` (usuaria, 2026-10-17). Abiertos: P16 y lo que queda de P186 y P155 (reproducir), P49, P66 y P70 (arte). **Siguiente:** jugar lo arreglado (`rondas-de-pruebas.md`). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | Hechos P136, P139, P134, P124, su `/code-review` y las 3 propuestas de la retro (`retro-2026-10-13-pr56.md`). **Siguiente:** PR a `main` y fusionar con el CI en verde. Quedan P144, P123 y jugar `QA-73` (necesitan el navegador). |
-| **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-15, tras el `/code-review` de los hallazgos de `QA-27`): frontend `tsc -b` 0, `vitest` 143 archivos / 632 tests, `oxlint` 0 errores; backend `tsc` 0, `vitest` completo 290 archivos / 3571 tests, todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
+| **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-17, tras el `/code-review` de los hallazgos de `QA-27`): backend `tsc` 0, `vitest` completo 293 archivos / 3599; frontend `tsc -b` 0, `vitest` 145 / 643, `oxlint` 0 errores; todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
 ## Dónde está todo (para saber qué sigue)
 
