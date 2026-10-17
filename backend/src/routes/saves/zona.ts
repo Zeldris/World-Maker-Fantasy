@@ -1131,6 +1131,10 @@ export async function zonaRoutes(app: FastifyInstance) {
           await recordEntityDiscoveries({ saveId, worldId, mentionedText: colision.targetName, npcSlugsInScene: [colision.targetSlug] }, tx);
         }
       }
+      // P186 (QA-27): con otra oferta o conversación ya abierta, toparse con alguien que no es hostil no
+      // da tarjeta ni aviso; devolver la colisión cortaba el viaje en seco (sin «Reanudar» ni mensaje) y
+      // había que volver a pulsar. Se pasa de largo, como con un encuentro ya silenciado.
+      if (!dynamicModeOffer && !combateForzado) colision = null;
     }
 
     // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de

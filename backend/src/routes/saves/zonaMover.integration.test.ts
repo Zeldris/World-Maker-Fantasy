@@ -756,6 +756,22 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(tarde.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
   });
 
+  // P186 (QA-27): tras una escena, con la conversación aún abierta, el primer clic en una salida daba un
+  // paso y paraba sin aviso ni «Reanudar» al toparse con alguien pacífico: había que volver a pulsar.
+  it('con una conversación abierta, alguien pacífico en el camino no corta el viaje (P186)', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 125, y: 75, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 75 }] },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: { tipo: 'NPC', targetSlug: 'otra-persona', targetName: 'Otra persona', vuelta: 1 } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: Prisma.JsonNull } });
+    const body = JSON.parse(res.body);
+    expect(body.colision).toBeNull();
+    expect(body.dynamicModeOffer).toBeNull();
+    expect(body.caminoRestante.length).toBeGreaterThan(0);
+  });
+
   it('pulsar la propia casilla (camino vacío) ofrece el encuentro aunque sea el último ya ofrecido', async () => {
     await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },

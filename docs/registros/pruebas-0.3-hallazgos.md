@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (14): P16, P49, P66, P83, P141, P147, P164, P166, P172, P178, P184, P185, P186,
-  P187.
+- **Pendientes** (13): P16, P49, P66, P83, P141, P147, P164, P166, P172, P178, P184, P185, P187.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (4): P70, P131, P151, P155.
-- **Arreglados, sin comprobar jugando** (133): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (134): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P84, P85, P86, P87, P88, P90, P91,
   P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110, P111,
   P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134, P136,
   P139, P140, P143, P148, P149, P150, P152, P153, P154, P156, P157, P158, P159, P160, P161, P162,
-  P163, P165, P167, P168, P169, P170, P171, P173, P174, P175, P176, P177, P180, P181, P182, P183.
+  P163, P165, P167, P168, P169, P170, P171, P173, P174, P175, P176, P177, P180, P181, P182, P183,
+  P186.
 - **Comprobados jugando** (22): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -225,5 +225,5 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P183 | Misiones, «Entregar» con 0/7 (2026-10-14): el botón está activo con el progreso en 0/7; al pulsarlo, el servidor responde 409 y sale «No llevas Madera Jumba». El progreso ya viene del servidor: el botón podría ir desactivado con ese texto como explicación. | ✅ 2026-10-15: «Entregar» va desactivado con el motivo que da el servidor (`motivoNoEntregable` en `misionesJugadora.ts`, el mismo para la entrega y para `detail.ts`; `misionesJugadora.test.ts`, `MisionesPanel.test.tsx`) |
 | P184 | Bandos del Clan Serhu y la misión de Gistera Koh (2026-10-14): «Acabar con el Orco Enfurecido» la encarga Gistera Koh, «expulsada del Clan Serhu», contra el guerrero que la persigue; y el Poste del Clan Serhu publica «Gorhorn da muerte al Orco enfurecido» como una hazaña más. Si el guerrero era del clan (o cazaba a su expulsada por encargo del clan), para el Serhu debería ser una ofensa, no una noticia neutra. Duda de lore. | decidido por la usuaria 2026-10-15: el orco es del Clan Serhu, pero donde muere no hay nadie del clan que lo vea; sin testigos, el bando solo sabe que ese orco murió, no quién lo mató ni cómo. Hoy `conocimiento.ts` hace que el bando de la víctima lo sepa todo al momento. Quién fue solo llega con un testigo, igual que en P172 y P187. Pendiente (arreglo) |
 | P185 | Rutas a través de la empalizada (2026-10-14, Colmillo Ceniza): el camino a la salida de El Pozo atraviesa la empalizada del campamento (entra y sale por donde no hay puerta). El trazado por casillas no sabe qué es muro; en Hogar Ketg la salida sí está en la puerta. Falta marcar como no transitables las casillas de los muros (como el navmesh de BG3 o los muros de Manor Lords). | pendiente (fallo) |
-| P186 | Clic en una salida tras una escena (2026-10-14, Colmillo Ceniza): tras cerrar la escena del Múrgol («Continuar»), el primer clic en la salida de El Pozo solo pinta la ruta («13 pasos · 13 min · llegas a las 21:50»), sin el botón Reanudar y sin andar; hace falta un segundo clic. Además, Gorhorn aparece dentro de la empalizada (en la casilla del Ketg'sedsar), no donde estaba al empezar la escena. | pendiente (fallo menor) |
+| P186 | Clic en una salida tras una escena (2026-10-14, Colmillo Ceniza): tras cerrar la escena del Múrgol («Continuar»), el primer clic en la salida de El Pozo solo pinta la ruta («13 pasos · 13 min · llegas a las 21:50»), sin el botón Reanudar y sin andar; hace falta un segundo clic. Además, Gorhorn aparece dentro de la empalizada (en la casilla del Ketg'sedsar), no donde estaba al empezar la escena. | ✅ 2026-10-17 en parte: con una conversación aún abierta, toparse con alguien pacífico por el camino ya no corta el viaje en seco (daba un paso y paraba sin aviso ni «Reanudar»); se pasa de largo, como con un encuentro silenciado (`zonaMover.integration.test.ts`). Queda lo de Gorhorn en la casilla del Ketg'sedsar: es la regla de que hablar con un NPC te acerca a él (`turnResolution.ts`, `dialogueTarget`), que tomó al Ketg'sedsar como interlocutor en la escena del Múrgol; hay que reproducirlo jugando. |
 | P187 | Múrgoles del clan como fauna salvaje (2026-10-14, Colmillo Ceniza): un Múrgol que ronda fuera de la empalizada sale como encuentro de fauna («Múrgol busca tu atención», tirada de sorpresa, «se aleja dando por terminado el encuentro»). Si son el ganado domado del clan, ¿se pueden cazar? ¿Hay castigo? Mismo tema que P172. | decidido por la usuaria 2026-10-15: se pueden cazar, pero si lo ve alguien del bando dueño se pierde mucha reputación con él (más que por coger la leche, P172). Pendiente (arreglo) |
