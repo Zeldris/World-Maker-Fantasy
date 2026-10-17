@@ -886,9 +886,16 @@ export async function turnRoutes(app: FastifyInstance) {
     // salidas, casilla a casilla; escribir «Voy a Colmillo Ceniza» ya no salta de zona. Ir directo a otra
     // zona sin pasar por las de en medio es cosa de una montura (CR-57): lo elegido en el mapa viaja si
     // es un solo tramo (una salida de la zona) o si se lleva montura (la lista de «Viajar»).
-    if (travel && !(viajeElegido && (travel.path.length <= 2 || (await tieneMontura(prisma, saveId))))) {
-      if (preview) travel = null;
-      else return resolveBlockedTurn(`A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`);
+    // Una salida es un camino directo al destino (aunque el más corto en minutos pase por otra zona).
+    const porUnCamino = async (t: TravelResolution) =>
+      t.path.length <= 2 || (!!save.currentLocationId && (await prisma.locationLink.count({ where: { fromId: save.currentLocationId, toId: t.toLocationId } })) > 0);
+    if (travel && !(viajeElegido && ((await porUnCamino(travel)) || (await tieneMontura(prisma, saveId))))) {
+      const aviso = `A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`;
+      if (!preview) return resolveBlockedTurn(aviso);
+      // La vista previa no promete el viaje que el envío va a bloquear.
+      travel = null;
+      classification = { requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: aviso, banda: 'instantanea', duracionEstimadaMinutos: 0 };
+      roll = undefined;
     }
 
     // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` decide su `produccion` solo por

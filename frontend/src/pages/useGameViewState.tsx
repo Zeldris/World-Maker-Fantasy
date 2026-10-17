@@ -1060,12 +1060,8 @@ export function useGameViewState() {
 
   // Cierre + envío compartidos por los 3 modales de `simpleModal` (auditoría de deuda técnica
   // 2026-08-18) — los tres resuelven igual: un único texto de acción que pasa por el turno normal.
-  function handleSimpleModalSelect(actionText: string) {
-    setSimpleModal(null)
-    handleSubmit(actionText)
-  }
-
-  // P164 (QA-27): un destino de la lista de «Viajar» viaja (está a un tramo); escrito a mano, no.
+  // P164 (QA-27): un destino elegido de una lista («Viajar», «Volver al campamento») es un viaje elegido: a un
+  // tramo va; a varios, con montura (el motor lo decide). Escrito a mano, no.
   function handleViajeElegido(actionText: string) {
     setSimpleModal(null)
     handleSubmit(actionText, { viajeElegido: true })
@@ -1791,7 +1787,6 @@ export function useGameViewState() {
     handleEntityDetailNavigate,
     handleEntityQuickInsert,
     handleOpenHarvestSuggestion,
-    handleSimpleModalSelect,
     handleViajeElegido,
     closeSimpleModal,
     handleAttachItem,

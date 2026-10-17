@@ -43,7 +43,9 @@ export const REP_CAZAR_GANADO_AJENO = -100;
 /// dueño o sin testigos, nada (se puede coger y cazar; solo cuesta si te ven).
 export async function aprovecharseDeLoAjeno(
   tx: Prisma.TransactionClient,
-  p: { saveId: string; worldId: string; locationId: string; faccion: string | null; que: 'coger' | 'cazar' },
+  /// `cazar`: lo vio caer (caza limpia); `atacar`: lo vio ir a por ellos (la caza que acaba en combate, cuente
+  /// lo que cuente luego el combate).
+  p: { saveId: string; worldId: string; locationId: string; faccion: string | null; que: 'coger' | 'cazar' | 'atacar' },
 ): Promise<{ frase: string; cambio: FactionRepChangeInfo } | null> {
   if (!p.faccion) return null;
   const testigos = await testigosDelBando(tx, p.saveId, p.worldId, p.locationId, p.faccion);
@@ -56,6 +58,8 @@ export async function aprovecharseDeLoAjeno(
   const frase =
     p.que === 'coger'
       ? `Alguien ${bando(p.faccion, 'de')} lo ha visto llevarse lo que es suyo.`
-      : `Alguien ${bando(p.faccion, 'de')} lo ha visto matar a uno de sus animales.`;
+      : p.que === 'cazar'
+        ? `Alguien ${bando(p.faccion, 'de')} lo ha visto matar a uno de sus animales.`
+        : `Alguien ${bando(p.faccion, 'de')} lo ha visto ir a por sus animales.`;
   return { frase, cambio };
 }

@@ -190,11 +190,11 @@ export async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveI
 /// P187 (QA-27, decidido por la usuaria 2026-10-15): cazar un animal de un bando (`ZonePoint.factionSlug`)
 /// se puede, pero si alguien de ese bando lo ve, resta mucha reputación con él. Solo cuando la jugadora
 /// sale a cazar (no en una emboscada, ni en las cacerías de NPC o viajeros). La frase para el diario, o null.
-async function cazaDeLoAjeno(tx: Prisma.TransactionClient, saveId: string, worldId: string, zonePointIds: string[]): Promise<string | null> {
+async function cazaDeLoAjeno(tx: Prisma.TransactionClient, saveId: string, worldId: string, zonePointIds: string[], que: 'cazar' | 'atacar' = 'cazar'): Promise<string | null> {
   if (zonePointIds.length === 0) return null;
   const punto = await tx.zonePoint.findFirst({ where: { id: { in: zonePointIds }, saveId, factionSlug: { not: null } }, select: { factionSlug: true, locationId: true } });
   if (!punto) return null;
-  return (await aprovecharseDeLoAjeno(tx, { saveId, worldId, locationId: punto.locationId, faccion: punto.factionSlug, que: 'cazar' }))?.frase ?? null;
+  return (await aprovecharseDeLoAjeno(tx, { saveId, worldId, locationId: punto.locationId, faccion: punto.factionSlug, que }))?.frase ?? null;
 }
 
 /// Caza limpia sin combate — SOLO cuando el jugador seleccionó una única especie y esa presa es
@@ -416,7 +416,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
       }
       // Grupos de fauna reales (Fase 2) — el/los `ZonePoint` de origen pierden los individuos
       // realmente enfrentados, en la misma transacción que crea el combate.
-      if (!emboscada) fraseAjenaCaza = await cazaDeLoAjeno(tx, save.id, save.worldId, [...enfrentadosPorZonePoint.keys()]);
+      if (!emboscada) fraseAjenaCaza = await cazaDeLoAjeno(tx, save.id, save.worldId, [...enfrentadosPorZonePoint.keys()], 'atacar');
       for (const [zonePointId, enfrentados] of enfrentadosPorZonePoint) {
         await descontarZonePointCaza(tx, save.id, zonePointId, enfrentados);
       }
@@ -462,7 +462,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
     const conPunto = targets.filter((t) => t.zonePointId);
     if (conPunto.length > 0) {
       await prisma.$transaction(async (tx) => {
-        if (!emboscada) fraseAjenaCaza = await cazaDeLoAjeno(tx, save.id, save.worldId, conPunto.map((t) => t.zonePointId!));
+        if (!emboscada) fraseAjenaCaza = await cazaDeLoAjeno(tx, save.id, save.worldId, conPunto.map((t) => t.zonePointId!), 'atacar');
         for (const t of conPunto) await descontarZonePointCaza(tx, save.id, t.zonePointId!, 1);
       });
     }

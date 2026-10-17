@@ -1108,7 +1108,8 @@ export async function confirmarRecoleccion(
   /// Registro escrito determinista de lo recolectado (petición explícita, 2026-08-07: "un texto
   /// de narración que no dependa de la AI") — null si la petición no consiguió nada de verdad
   /// (capacidad llena, cooldown, población agotada a mitad de camino).
-  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll } | null
+  /// P172: `factionRepChange`, si alguien del bando dueño te vio llevártelo (su aviso, como en un turno).
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll; factionRepChange?: { faction: string; delta: number; newValue: number } } | null
   /// Fase 10 (2026-09-29) — segunda tirada de tier alto por objeto afectado (también dentro de
   /// `logEntry.roll.segundas`); llega aunque `logEntry` sea null (todas las segundas fallaron).
   segundasTiradas?: SegundaTiradaInfo[]
@@ -2285,7 +2286,7 @@ export interface DynamicModeRecursoResultado {
   segundasTiradas?: SegundaTiradaInfo[]
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
-  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll }
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll; factionRepChange?: { faction: string; delta: number; newValue: number } }
   /// P161 (QA-27): energía tras recolectar, si recuperó algo.
   energia?: number
 }

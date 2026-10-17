@@ -409,13 +409,11 @@ function lineaRecta(origen: Celda, destino: Celda): Celda[] {
   return camino;
 }
 
-const claveDe = (c: Celda) => `${c.col},${c.row}`;
-
 /// P185: un paso de `a` a `b` (vecinas) choca con un muro si `b` lo es o si es en diagonal y corta la
 /// esquina de uno (así no se cuela nadie entre dos estacas en diagonal).
 function pasoBloqueado(a: Celda, b: Celda, muros: ReadonlySet<string>): boolean {
-  if (muros.has(claveDe(b))) return true;
-  if (a.col !== b.col && a.row !== b.row) return muros.has(claveDe({ col: b.col, row: a.row })) || muros.has(claveDe({ col: a.col, row: b.row }));
+  if (muros.has(claveCelda(b))) return true;
+  if (a.col !== b.col && a.row !== b.row) return muros.has(claveCelda({ col: b.col, row: a.row })) || muros.has(claveCelda({ col: a.col, row: b.row }));
   return false;
 }
 
@@ -426,7 +424,7 @@ function pasoBloqueado(a: Celda, b: Celda, muros: ReadonlySet<string>): boolean 
 export function calcularCamino(origen: Celda, destino: Celda, muros: ReadonlySet<string> = new Set()): Celda[] {
   const recta = lineaRecta(origen, destino);
   if (muros.size === 0 || recta.every((c, i) => !pasoBloqueado(i === 0 ? origen : recta[i - 1]!, c, muros))) return recta;
-  const previa = new Map<string, Celda | null>([[claveDe(origen), null]]);
+  const previa = new Map<string, Celda | null>([[claveCelda(origen), null]]);
   const cola: Celda[] = [origen];
   const distancia = (c: Celda) => Math.max(Math.abs(c.col - destino.col), Math.abs(c.row - destino.row));
   // A igual distancia en pasos, la que queda más de frente (en línea recta).
@@ -443,18 +441,18 @@ export function calcularCamino(origen: Celda, destino: Celda, muros: ReadonlySet
         if (dc === 0 && dr === 0) continue;
         const v = { col: actual.col + dc, row: actual.row + dr };
         if (v.col < 0 || v.row < 0 || v.col >= GRID_COLS || v.row >= GRID_ROWS) continue;
-        if (previa.has(claveDe(v)) || pasoBloqueado(actual, v, muros)) continue;
+        if (previa.has(claveCelda(v)) || pasoBloqueado(actual, v, muros)) continue;
         vecinas.push(v);
       }
     }
     vecinas.sort((a, b) => cercania(a) - cercania(b));
     for (const v of vecinas) {
-      previa.set(claveDe(v), actual);
+      previa.set(claveCelda(v), actual);
       cola.push(v);
     }
   }
   const camino: Celda[] = [];
-  for (let c: Celda | null | undefined = mejor; c && claveDe(c) !== claveDe(origen); c = previa.get(claveDe(c))) camino.unshift(c);
+  for (let c: Celda | null | undefined = mejor; c && claveCelda(c) !== claveCelda(origen); c = previa.get(claveCelda(c))) camino.unshift(c);
   return camino;
 }
 

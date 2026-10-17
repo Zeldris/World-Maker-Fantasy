@@ -20,6 +20,7 @@ import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
 import { ambitoPoblacion, copiaDeFila } from './mundoPartida.js';
 import { celdasDeEntrada, enRadioSeguro } from './entradasZona.js';
+import { murosDe } from './murosZona.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -631,6 +632,8 @@ export async function avanzarZonePointsUnPaso(
     where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
   });
   if (puntosCrudos.length === 0) return [];
+  // P185 (QA-27): ni la fauna ni los NPC cruzan los muros (la empalizada de Colmillo Ceniza).
+  const muros = murosDe((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug);
   // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
   // punto gateado sin su misión aceptada todavía no "patrulla": narrativamente no está en la zona.
   const questSlugsAceptados = await questSlugsAceptadosPara(tx, saveId);
@@ -677,7 +680,7 @@ export async function avanzarZonePointsUnPaso(
       const faunaHostil = esAgresivoEfectivo && punto.tipo === 'FAUNA';
       const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
       // P116: desde fuera, la fauna hostil no pisa el radio seguro de una entrada (espera este paso).
-      const noPuedeEntrar = (celda: Celda) => faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas);
+      const noPuedeEntrar = (celda: Celda) => muros.has(claveCelda(celda)) || (faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas));
       const objetivoPersecucion = persigue && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
 
       if (objetivoPersecucion) {

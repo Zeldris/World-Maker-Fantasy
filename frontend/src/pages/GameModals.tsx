@@ -107,7 +107,6 @@ export function GameModals() {
     handleUpdateHabilidad,
     handleSaveSkillBarEdit,
     handleResponderEscribiendo,
-    handleSimpleModalSelect,
     handleViajeElegido,
     closeSimpleModal,
     handleEquipItem,
@@ -280,7 +279,7 @@ export function GameModals() {
       <Presencia>
         {simpleModal === 'camp' && saveId && (
           <Capa id="campamento">
-          <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+          <CampSelectionModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
           </Capa>
         )}
       </Presencia>
@@ -440,7 +439,7 @@ export function GameModals() {
             saveId={saveId}
             onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
             onClose={() => setZonaModalOpen(false)}
-            // Icono de salida de región (2026-09-17) — mismo patrón que `handleSimpleModalSelect`:
+            // Icono de salida de región (2026-09-17) — mismo patrón que `handleViajeElegido`:
             // cierra el modal de zona y manda el texto por el turno normal, como si el jugador lo
             // hubiera escrito él mismo (el motor de viaje determinista decide el resto).
             onViajarA={(actionText) => {

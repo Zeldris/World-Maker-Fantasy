@@ -83,11 +83,15 @@ export async function alcanceDeSucesos(tx: Tx, saveId: string, sucesos: SucesoBa
 
 /// Texto y metadatos de la noticia de un suceso: la que guardó su emisor o la frase del suceso.
 async function textoDeNoticia(tx: Tx, sucesoId: string): Promise<{ texto: string; meta: MetaNoticia; pasoEn: number }> {
-  const s = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true, familia: true, noticia: true, fictionalMinutes: true, importancia: true } });
+  const s = await tx.suceso.findUniqueOrThrow({
+    where: { id: sucesoId },
+    select: { tipo: true, texto: true, datos: true, familia: true, noticia: true, fictionalMinutes: true, importancia: true, actores: { select: { papel: true } } },
+  });
   const emisor = s.noticia as NoticiaDeSuceso | null;
   const categoria = categoriaDeFamilia(s.familia);
   const meta: MetaNoticia = { ...(categoria ? { categoria } : {}), ...(emisor?.meta ?? {}), nivel: nivelDeImportancia(s.importancia) };
-  return { texto: emisor?.texto ?? s.texto, meta, pasoEn: s.fictionalMinutes };
+  // P184: lo que llega de oídas, por un NPC o un bando, es lo que corre por el mundo (sin autor si nadie lo vio).
+  return { texto: textoQueCorre(s), meta, pasoEn: s.fictionalMinutes };
 }
 
 /// Apunta que el personaje sabe un suceso. Devuelve NUEVO, CONFIRMADO (era rumor y ya no) o null

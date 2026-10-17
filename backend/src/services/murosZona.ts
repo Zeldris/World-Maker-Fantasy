@@ -4,7 +4,7 @@
 // a casilla (16×12 de 50 px), dejando abiertas las puertas. Un punto puede caer sobre un muro (el recinto
 // de múrgoles, pegado a la empalizada) si tiene al lado una casilla libre desde la que interactuar.
 // `calcularCamino` (zonaPosicion.ts) las rodea, y `GET /zona` las manda al frontend para la ruta prevista.
-import type { Celda } from './zonaPosicion.js';
+import { claveCelda, type Celda } from './zonaPosicion.js';
 
 const MUROS_POR_LOCATION: Record<string, [number, number][]> = {
   // Empalizada del Colmillo Ceniza (zona/campamento-serhu-mapa.png): la elipse de estacas; la puerta, abajo
@@ -15,7 +15,7 @@ const MUROS_POR_LOCATION: Record<string, [number, number][]> = {
   ],
 };
 
-export const claveCelda = (c: Celda) => `${c.col},${c.row}`;
+export { claveCelda };
 
 export function murosDe(locationSlug: string | null | undefined): ReadonlySet<string> {
   return new Set((locationSlug ? (MUROS_POR_LOCATION[locationSlug] ?? []) : []).map(([col, row]) => claveCelda({ col, row })));

@@ -18,12 +18,16 @@ export async function edificiosRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; zonePointId: string } }>('/saves/:id/zona/edificio/:zonePointId/interactuar', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, worldId: true, endedAt: true, pendingDeathResolution: true, pendingDynamicMode: true, zonaPosX: true, zonaPosY: true, currentLocationId: true, characterName: true, worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } } },
+      select: { id: true, worldId: true, endedAt: true, pendingDeathResolution: true, pendingDynamicMode: true, pendingDynamicModeOffer: true, pendingCombatNpcSlugs: true, zonaPosX: true, zonaPosY: true, currentLocationId: true, characterName: true, worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } } },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
     if (save.pendingDynamicMode) return reply.status(409).send({ error: 'Ya hay una conversación en curso' });
+    // Alguien hostil que te corta el paso, o un combate, va antes que la tienda (`/code-review`).
+    if ((save.pendingDynamicModeOffer as { combateForzado?: boolean } | null)?.combateForzado || ((save.pendingCombatNpcSlugs as string[] | null) ?? []).length > 0) {
+      return reply.status(409).send({ error: 'Ahora no: alguien no te deja marcharte' });
+    }
     const encontrado = await edificioDelPunto(prisma, save.id, request.params.zonePointId);
     if (!encontrado || encontrado.punto.locationId !== save.currentLocationId) return reply.status(404).send({ error: 'Ese edificio no está aquí' });
     const { punto, edificio } = encontrado;
