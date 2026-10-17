@@ -13,6 +13,7 @@ import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix, metodoPrincipalDeFuente } from '../../services/harvestAbilities.js';
 import { RECOLECCION_COOLDOWN_MS } from './recolectar.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
+import { murosComoCeldas, murosDe } from '../../services/murosZona.js';
 
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
 const MINUTOS_POR_PASO_ZONA = 1;
@@ -79,7 +80,7 @@ const SAVE_SELECT_PARA_MOVER = {
   pendingDynamicModeOffer: true,
   pendingNpcInteractionOffer: true,
   currentLocationId: true,
-  currentLocation: { select: { id: true } },
+  currentLocation: { select: { id: true, slug: true } },
   worldState: { select: { factionsStatus: true, fictionalMinutes: true, fictionalDateLabel: true } },
   characterName: true,
   // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del jugador para `quienIniciaEncuentro`.
@@ -644,6 +645,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         salidas,
         parcelas,
         tablon,
+        muros: murosComoCeldas(locationSlug),
       };
     }
 
@@ -742,6 +744,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       salidas,
       parcelas,
       tablon,
+      // P185 (QA-27): las casillas por las que no se pasa, para que la ruta prevista las rodee igual.
+      muros: murosComoCeldas(locationSlug),
     };
   });
 
@@ -1276,7 +1280,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const caminoPendientePrevio = (save.zonaCaminoPendiente as { x: number; y: number }[] | null) ?? null;
     const siguePreviamenteHaciaEsteDestino =
       caminoPendientePrevio && caminoPendientePrevio.length > 0 && mismaCelda(celdaDePixel(caminoPendientePrevio[caminoPendientePrevio.length - 1]), celdaDestino);
-    const caminoCeldas = siguePreviamenteHaciaEsteDestino ? caminoPendientePrevio!.map((p) => celdaDePixel(p)) : calcularCamino(celdaActual, celdaDestino);
+    const caminoCeldas = siguePreviamenteHaciaEsteDestino ? caminoPendientePrevio!.map((p) => celdaDePixel(p)) : calcularCamino(celdaActual, celdaDestino, murosDe(save.currentLocation?.slug));
 
     // Bug real (2026-09-08, reproducido jugando en vivo: "llego a la celda adyacente de Gistera,
     // clico su misma celda de nuevo, y no pasa nada") — `calcularCamino` devuelve `[]` en cuanto

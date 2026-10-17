@@ -14,7 +14,7 @@ import { COLOR_HEX, disposicionDe, distanciaEnCeldas, regionControlDisplay, TIPO
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
-import { celdaDePixel, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, type Celda } from '../../lib/zonaRuta'
+import { celdaDePixel, claveCelda, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, type Celda } from '../../lib/zonaRuta'
 import { MarcaObjetivoMision, BanderaDestino, CeldaResaltada, CeldasEnRiesgo, EtiquetaCoste, LineaRuta, RadioAmenaza, RutaPatrulla } from '../zona/RutaZona'
 import { MenuFicha, TarjetaEncuentro, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
 import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
@@ -430,6 +430,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     )
   }, [data, escala, clavesVisibles])
 
+  // P185: las casillas por las que no se pasa; la ruta prevista las rodea como el motor.
+  const murosZona = useMemo(() => new Set((data?.muros ?? []).map(claveCelda)), [data?.muros])
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {
@@ -600,7 +602,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {data.jugador && !soloConsulta && !movimientoEnCurso && !bloqueoMovimiento && celdaCursor && !menuFicha && !encuentroMapa &&
                 (() => {
                   const destino = pixelDeCelda(celdaCursor)
-                  const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes)
+                  const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes, murosZona)
                   if (ruta.pasos === 0) return null
                   // ZON-33: celdas en el radio de un hostil conocido; en rojo entera si acaba en encuentro seguro.
                   const riesgo = riesgoDeRuta(ruta.puntos, hostiles)

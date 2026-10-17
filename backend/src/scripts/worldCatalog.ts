@@ -11855,7 +11855,8 @@ export const zonePoints: ZonePointInput[] = [
   // interior (viven en el Ketg'sedsar de verdad, coherente con su lore — "reciben a quien cruza la
   // entrada") — sus puntos NPC pasan a `campamento-serhu-interior`.
   { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'ketg-sedsar', label: 'Ketg\'sedsar — el Salón del Colmillo Ceniza' },
-  { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados', factionSlug: 'Clan Serhu' },
+  // P185 (QA-27): una casilla más arriba (y 460 → 425), dentro de la empalizada: en (8,9) caía sobre las estacas.
+  { locationSlug: 'campamento-serhu', x: 400, y: 425, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados', factionSlug: 'Clan Serhu' },
   // Cazadora Serhu (hallazgo 4, 2026-09-15): único NPC con homeLocationSlug en el exterior de
   // Karot Veku sin ZonePoint — "sale a cazar o vigilar los alrededores del campamento" (bio real),
   // coherente con estar fuera de la empalizada en vez de en el interior con los demás.

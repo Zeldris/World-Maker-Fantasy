@@ -1287,6 +1287,8 @@ export interface ZonaSalidaInfo {
 
 export interface ZonaResponse {
   disponible: boolean
+  /// P185 (QA-27): casillas por las que no se pasa (muros, empalizadas), para la ruta prevista.
+  muros?: { col: number; row: number }[]
   locationSlug?: string
   locationName?: string
   /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera

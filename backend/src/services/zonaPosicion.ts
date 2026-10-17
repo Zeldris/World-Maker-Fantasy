@@ -381,12 +381,12 @@ export function celdaAdyacenteOMisma(a: Celda, b: Celda): boolean {
   return Math.abs(a.col - b.col) <= 1 && Math.abs(a.row - b.row) <= 1;
 }
 
-/// Puro — camino de celdas desde `origen` (EXCLUSIVE) hasta `destino` (INCLUSIVE), algoritmo de
+/// Puro — línea recta de celdas desde `origen` (EXCLUSIVE) hasta `destino` (INCLUSIVE), algoritmo de
 /// línea de Bresenham (determinista, sin diagonales "imposibles" — cada paso avanza como mucho 1
 /// celda en cada eje, nunca salta dos a la vez). Mismo criterio "el motor decide, nunca el LLM" —
 /// el jugador solo dice A DÓNDE quiere ir (clic en el lienzo), el camino real siempre lo calcula
 /// esta función, nunca coordenadas que el jugador teclee paso a paso.
-export function calcularCamino(origen: Celda, destino: Celda): Celda[] {
+function lineaRecta(origen: Celda, destino: Celda): Celda[] {
   const camino: Celda[] = [];
   let { col, row } = origen;
   const dCol = Math.abs(destino.col - origen.col);
@@ -406,6 +406,55 @@ export function calcularCamino(origen: Celda, destino: Celda): Celda[] {
     }
     camino.push({ col, row });
   }
+  return camino;
+}
+
+const claveDe = (c: Celda) => `${c.col},${c.row}`;
+
+/// P185: un paso de `a` a `b` (vecinas) choca con un muro si `b` lo es o si es en diagonal y corta la
+/// esquina de uno (así no se cuela nadie entre dos estacas en diagonal).
+function pasoBloqueado(a: Celda, b: Celda, muros: ReadonlySet<string>): boolean {
+  if (muros.has(claveDe(b))) return true;
+  if (a.col !== b.col && a.row !== b.row) return muros.has(claveDe({ col: b.col, row: a.row })) || muros.has(claveDe({ col: a.col, row: b.row }));
+  return false;
+}
+
+/// Camino de celdas de `origen` (exclusive) a `destino` (inclusive). Sin muros en medio, la línea recta
+/// de Bresenham de siempre. P185 (QA-27): con `muros` (casillas por las que no se pasa, `murosZona.ts`) en
+/// medio, el camino más corto que los rodea (búsqueda en anchura, 8 direcciones); si el destino es un muro
+/// o no se puede llegar, hasta la casilla alcanzable más cercana a él.
+export function calcularCamino(origen: Celda, destino: Celda, muros: ReadonlySet<string> = new Set()): Celda[] {
+  const recta = lineaRecta(origen, destino);
+  if (muros.size === 0 || recta.every((c, i) => !pasoBloqueado(i === 0 ? origen : recta[i - 1]!, c, muros))) return recta;
+  const previa = new Map<string, Celda | null>([[claveDe(origen), null]]);
+  const cola: Celda[] = [origen];
+  const distancia = (c: Celda) => Math.max(Math.abs(c.col - destino.col), Math.abs(c.row - destino.row));
+  // A igual distancia en pasos, la que queda más de frente (en línea recta).
+  const cercania = (c: Celda) => distancia(c) * 1000 + (c.col - destino.col) ** 2 + (c.row - destino.row) ** 2;
+  let mejor = origen;
+  while (cola.length > 0) {
+    const actual = cola.shift()!;
+    if (cercania(actual) < cercania(mejor)) mejor = actual;
+    if (actual.col === destino.col && actual.row === destino.row) break;
+    // Primero las vecinas que acercan al destino, para que el rodeo no zigzaguee.
+    const vecinas: Celda[] = [];
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        if (dc === 0 && dr === 0) continue;
+        const v = { col: actual.col + dc, row: actual.row + dr };
+        if (v.col < 0 || v.row < 0 || v.col >= GRID_COLS || v.row >= GRID_ROWS) continue;
+        if (previa.has(claveDe(v)) || pasoBloqueado(actual, v, muros)) continue;
+        vecinas.push(v);
+      }
+    }
+    vecinas.sort((a, b) => cercania(a) - cercania(b));
+    for (const v of vecinas) {
+      previa.set(claveDe(v), actual);
+      cola.push(v);
+    }
+  }
+  const camino: Celda[] = [];
+  for (let c: Celda | null | undefined = mejor; c && claveDe(c) !== claveDe(origen); c = previa.get(claveDe(c))) camino.unshift(c);
   return camino;
 }
 

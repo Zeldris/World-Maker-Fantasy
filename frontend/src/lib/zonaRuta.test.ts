@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcularCamino, celdaDePixel, horaDeLlegada, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste } from './zonaRuta'
+import { calcularCamino, celdaDePixel, horaDeLlegada, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, claveCelda } from './zonaRuta'
 
 /// ZON-31/32/86 (hito 0.2) — ruta prevista en el cliente, espejo del motor: mismos casos que
 /// `backend/src/services/zonaPosicion.test.ts` (calcularCamino).
@@ -49,3 +49,23 @@ describe('zonaRuta', () => {
   })
 })
 
+
+/// P185 (QA-27): mismos casos que `murosZona.test.ts` del backend (la ruta prevista rodea los muros igual).
+describe('calcularCamino con muros (P185)', () => {
+  const muro = (...celdas: [number, number][]) => new Set(celdas.map(([col, row]) => claveCelda({ col, row })))
+  it('rodea un muro y llega, sin pisarlo', () => {
+    const muros = muro([2, 0], [2, 1], [2, 2])
+    const camino = calcularCamino({ col: 0, row: 1 }, { col: 4, row: 1 }, muros)
+    expect(camino.at(-1)).toEqual({ col: 4, row: 1 })
+    expect(camino.some((c) => muros.has(claveCelda(c)))).toBe(false)
+  })
+  it('no se cuela en diagonal entre dos muros que se tocan en la esquina', () => {
+    expect(calcularCamino({ col: 0, row: 0 }, { col: 1, row: 1 }, muro([1, 0], [0, 1]))).toEqual([])
+  })
+  it('si el destino es un muro, va a la casilla libre más cercana', () => {
+    expect(calcularCamino({ col: 0, row: 1 }, { col: 3, row: 1 }, muro([3, 0], [3, 1], [3, 2])).at(-1)).toEqual({ col: 2, row: 1 })
+  })
+  it('sin muros en medio, la recta de siempre', () => {
+    expect(calcularCamino({ col: 0, row: 0 }, { col: 3, row: 0 }, muro([5, 5]))).toEqual(calcularCamino({ col: 0, row: 0 }, { col: 3, row: 0 }))
+  })
+})
