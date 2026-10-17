@@ -7247,7 +7247,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const candidato = decideOfertaModoDinamico(zonePointsParaOferta);
       if (candidato) {
         const targetName = await dynamicModeCandidateNameFor(prisma, candidato);
-        dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName) } : {}) };
+        // P141: el artículo de catálogo del NPC («a la Cazadora Serhu»), solo si se le llama por su nombre real.
+        const articuloNpc =
+          candidato.tipo === 'NPC'
+            ? (await prisma.npc.findFirst({ where: { slug: candidato.targetSlug, name: targetName }, select: { articulo: true } }))?.articulo
+            : null;
+        dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName, articuloNpc) } : {}) };
         // Bug real 2026-08-28 ("oferta de modo dinámico no sobrevive a una recarga") — persistir la
         // oferta en `Save.pendingDynamicModeOffer` para que `GET /saves/:id` pueda reconstruirla
         // tras F5, igual que `pendingDynamicMode` ya hace con la conversación EN CURSO.

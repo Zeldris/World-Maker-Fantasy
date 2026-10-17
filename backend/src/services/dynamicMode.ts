@@ -168,8 +168,12 @@ export function conIndefinido(nombre: string, articulo: string | null | undefine
 }
 
 /// P141 (QA-27): a quién se dirige la jugadora al «Responder» («al orco desconocido», «a alguien»,
-/// «a Gistera Koh»). Viaja en la oferta (`aQuien`): el frontend no lo vuelve a calcular.
-export function aNombre(nombre: string): string {
+/// «a Gistera Koh»). Viaja en la oferta (`aQuien`): el frontend no lo vuelve a calcular. Un nombre de
+/// catálogo con artículo (`Npc.articulo`: roles y especies, no nombres propios) lo lleva delante: «a la
+/// Cazadora Serhu», «al Maestro Alquimista Serhu»; un nombre propio va tal cual.
+export function aNombre(nombre: string, articulo?: string | null): string {
+  if (articulo === 'el') return `al ${nombre}`;
+  if (articulo) return `a ${articulo} ${nombre}`;
   const enFrase = nombreEnFrase(nombre);
   return enFrase.startsWith('el ') ? `al ${enFrase.slice(3)}` : `a ${enFrase}`;
 }

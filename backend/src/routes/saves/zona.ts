@@ -1058,7 +1058,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
-          ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName) } : {}),
+          ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName, colision.articulo) } : {}),
           // P124: el plural para la tarjeta de un grupo («Un grupo de 6 Guchapos»).
           ...(colisionTipo === 'FAUNA' && colisionCantidad > 1 ? { nombrePlural: pluralDeEspecie(colision.targetName) } : {}),
           quienInicia,

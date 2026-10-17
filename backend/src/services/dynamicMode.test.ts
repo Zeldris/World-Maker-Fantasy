@@ -142,6 +142,9 @@ describe('aNombre', () => {
     expect(aNombre('Orca desconocida')).toBe('a la orca desconocida');
     expect(aNombre('Alguien')).toBe('a alguien');
     expect(aNombre('Gistera Koh')).toBe('a Gistera Koh');
+    // P141 (reabierto el 2026-10-14): un nombre de oficio no es un nombre propio.
+    expect(aNombre('Cazadora Serhu', 'la')).toBe('a la Cazadora Serhu');
+    expect(aNombre('Maestro Alquimista Serhu', 'el')).toBe('al Maestro Alquimista Serhu');
   });
 });
 
