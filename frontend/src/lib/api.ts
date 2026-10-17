@@ -2311,6 +2311,31 @@ export type NpcInteractionAccion =
   /// CR-32: proponer que se una o que te informe; la entrada lleva la tirada de Carisma.
   | { accion: 'PROPUESTA'; logEntry: LogEntry; unido: boolean }
 
+/// P178 (QA-27): ficha de un edificio del mapa (de quién es, cómo está, quién lo lleva y qué ofrece).
+export interface FichaEdificio {
+  zonePointId: string
+  nombre: string
+  descripcion: string | null
+  nivel: number | null
+  faccion: string | null
+  estado: string
+  detallesEstado: string[]
+  encargado: { slug: string; nombre: string; aqui: boolean } | null
+  ofrece: { label: string; disponible: boolean; motivo?: string }[]
+}
+
+export async function getFichaEdificio(saveId: string, zonePointId: string): Promise<FichaEdificio> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona/edificio/${zonePointId}`)
+}
+
+/// P178: «Interactuar» junto a un edificio: el menú de quien lo lleva, o por qué no lo hay.
+export async function interactuarEdificio(
+  saveId: string,
+  zonePointId: string,
+): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: false }; logEntry: LogEntry } | { menu: null; motivo: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona/edificio/${zonePointId}/interactuar`, { method: 'POST' })
+}
+
 /// P142: menú fijo del NPC del encuentro del mapa; `null` si no tiene (se abre la escena libre).
 export async function abrirMenuNpc(saveId: string, npcSlug: string): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: true } | null }> {
   return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/abrir`, { method: 'POST' })

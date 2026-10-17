@@ -480,8 +480,10 @@ export function GameModals() {
             // solo se cierra para escribir una respuesta o cuando empieza un combate (efecto de abajo).
             ofertaEnMapa={(entryId) => {
               const entrada = characterLog.find((e) => e.id === entryId)
-              // P142: abierto el menú del NPC desde esta tarjeta, se enseña en su lugar.
-              if (entrada?.npcInteractionOffer?.desdeEncuentro) return presentacionMenuNpc(entryId, entrada.npcInteractionOffer, handleChooseNpcInteraction)
+              // P142: abierto el menú del NPC desde esta tarjeta, se enseña en su lugar. P178: también el de
+              // quien lleva un edificio, que no tiene encuentro detrás.
+              if (entrada?.npcInteractionOffer && (entrada.npcInteractionOffer.desdeEncuentro || !entrada.dynamicModeOffer))
+                return presentacionMenuNpc(entryId, entrada.npcInteractionOffer, handleChooseNpcInteraction)
               const offer = entrada?.dynamicModeOffer
               if (!offer) return null
               const cerrarMapa = () => setZonaModalOpen(false)

@@ -1,8 +1,9 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { CapasContext } from '../../context/capasContext'
 import { ViajerosAqui } from './ViajerosAqui'
-import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
+import { getZona, resolveImageUrl, recogerDroppedItem, interactuarEdificio, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
+import { EdificioFichaModal } from '../EdificioFichaModal'
 import { anguloSalida, etiquetaSalida } from '../../lib/rumboSalida'
 import { separarEtiquetas } from '../../lib/separarEtiquetas'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
@@ -353,10 +354,29 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     }
     return { nombre: punto.nombre, detalles }
   }
+  // P178 (QA-27): «Interactuar» junto a un edificio abre el menú de quien lo lleva (antes, pulsar tu casilla
+  // sacaba al NPC más cercano), junto al edificio; si no hay nadie, lo dice el mapa.
+  async function handleInteractuarEdificio(punto: ZonePointInfo) {
+    try {
+      const r = await interactuarEdificio(saveId, punto.id)
+      if (!r.menu) {
+        setMensajeMovimiento(r.motivo)
+        return
+      }
+      onEncuentroZona?.({ ...r.logEntry, npcInteractionOffer: { ...r.menu, busy: false } })
+      setEncuentroMapa({ entryId: r.logEntry.id, zonePointId: punto.id })
+    } catch (err) {
+      setMensajeMovimiento(err instanceof Error && err.message ? err.message : 'No se pudo interactuar con el edificio.')
+    }
+  }
+  function esEdificio(punto: ZonePointInfo | ZonaDinamicoInfo): punto is ZonePointInfo {
+    return 'id' in punto && punto.tipo === 'EDIFICIO'
+  }
   function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
     const acciones: AccionFicha[] = []
     const ir = irHastaPin(punto)
-    if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
+    if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
+    else if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
     if ('droppedItemId' in punto && punto.droppedItemId) {
       const id = punto.droppedItemId
       acciones.push({ label: 'Recoger', onClick: () => void handleRecoger(id) })
@@ -822,7 +842,17 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       )}
       {selectedPoint &&
         ('id' in selectedPoint ? (
-          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
+          selectedPoint.tipo === 'EDIFICIO' ? (
+            <EdificioFichaModal
+              saveId={saveId}
+              point={selectedPoint}
+              onClose={() => setSelectedPoint(null)}
+              onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
+              onIrHasta={irHastaPin(selectedPoint)}
+            />
+          ) : (
+            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
+          )
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}
