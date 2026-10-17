@@ -34,6 +34,23 @@ sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas 
 - Para mirar la partida por dentro, SQL contra la base de juego:
   `psql postgresql://tarkor:tarkor@localhost:5432/tarkor_juego -c '<consulta>'` (tablas con el nombre
   del modelo entre comillas, p. ej. `"Save"`, `"ZonePoint"`; columnas en camelCase).
+- Las consultas de cada ronda (`QA-97`, retro del 2026-10-17), con `D=postgresql://tarkor:tarkor@localhost:5432/tarkor_juego`
+  y `S=<id de la partida>`:
+
+  ```sh
+  # Dónde está (zona y px del mapa) y a qué hora (minutos desde el día 1 a las 00:00)
+  psql $D -c "select l.slug, s.\"zonaPosX\", s.\"zonaPosY\", w.\"fictionalMinutes\" from \"Save\" s join \"Location\" l on l.id = s.\"currentLocationId\" join \"WorldState\" w on w.\"saveId\" = s.id where s.id = '$S'"
+  # Reputación con cada bando (vacía = la de partida)
+  psql $D -c "select \"factionsStatus\" from \"WorldState\" where \"saveId\" = '$S'"
+  # Últimas líneas del diario
+  psql $D -c "select \"createdAt\"::time, left(text, 120) from \"LogEntry\" where \"saveId\" = '$S' order by \"createdAt\" desc limit 10"
+  # Puntos de una zona (posición en px del mapa de 800×600, dueño)
+  psql $D -c "select zp.tipo, zp.\"targetSlug\", zp.x, zp.y, zp.cantidad, zp.\"factionSlug\" from \"ZonePoint\" zp join \"Location\" l on l.id = zp.\"locationId\" where zp.\"saveId\" = '$S' and l.slug = '<slug>'"
+  # Coordenadas de las zonas del catálogo (y crece hacia el norte: sirve para saber por qué salida se va)
+  psql $D -c "select slug, x, y from \"Location\" where \"saveId\" is null and slug in ('<slug>', '<slug>')"
+  # El último encuentro (enfriamiento de P177)
+  psql $D -c "select \"zonaUltimoEncuentro\" from \"Save\" where id = '$S'"
+  ```
 
 ## Cómo se juega
 
@@ -71,4 +88,6 @@ sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas 
   «[simulado]» (`QA-60`).
 - `GET /saves` y «la última partida» de la base de los tests pueden ser de un test en marcha: juega
   en `tarkor_juego` y saca el id de la partida de la URL (`/solitario/partida/<id>`).
+- `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
+  arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.

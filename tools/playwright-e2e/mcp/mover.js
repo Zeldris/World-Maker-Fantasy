@@ -19,7 +19,7 @@ async (page) => {
   const tarjeta = page.getByTestId('encuentro-en-mapa');
   for (let i = 0; i < 30; i++) {
     await page.waitForTimeout(1000);
-    if (await tarjeta.count()) { aviso = (await tarjeta.first().innerText()).replace(/\n+/g, ' · '); break; }
+    if (await tarjeta.count()) { aviso = ((await tarjeta.first().textContent()) || "").replace(/\n+/g, ' · '); break; }
     if (/Combate —/.test(await page.locator('body').innerText())) { aviso = 'COMBATE abierto (te vieron primero): usa combate.js'; break; }
     if (!(await page.getByRole('button', { name: 'Parar' }).count())) break;
   }

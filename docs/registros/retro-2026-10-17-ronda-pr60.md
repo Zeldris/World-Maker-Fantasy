@@ -4,8 +4,8 @@ Lo revisado: lo que entra con el PR #61, la ronda de `QA-27` jugada justo despu�
 (comprobados P147, P150, P154, P164-P166, P172, P178, P185-P187; reabierto P177; nuevos P188-P205), y cómo se
 llegó a crear ese PR.
 
-**Estado (2026-10-17): pendiente de que la usuaria decida.** Lo que confirme se aplica en la rama antes de
-fusionar el PR #61. De más a menos grave.
+**Estado (2026-10-17): aprobadas las cuatro por la usuaria y aplicadas en la rama antes de fusionar el PR #61**,
+como ~~`QA-94`~~ (1, con el arreglo de P197), ~~`QA-95`~~ (2), ~~`QA-96`~~ (3) y ~~`QA-97`~~ (4). De más a menos grave.
 
 ## 1. Dos efectos secundarios del PR #60 llegaron a `main` sin que nada los parara
 

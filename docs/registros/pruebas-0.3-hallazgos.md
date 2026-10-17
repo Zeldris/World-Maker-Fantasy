@@ -13,7 +13,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
 - **Pendientes** (22): P16, P49, P66, P177, P188, P189, P190, P191, P192, P193, P194, P195, P196,
-  P197, P198, P199, P200, P201, P202, P203, P204, P205.
+  P198, P199, P200, P201, P202, P203, P204, P205, P206.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (132): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -24,9 +24,9 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P111, P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134,
   P136, P139, P140, P141, P143, P148, P149, P152, P153, P156, P157, P158, P159, P160, P161, P162,
   P163, P167, P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183, P184.
-- **Comprobados jugando** (32): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
+- **Comprobados jugando** (33): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145, P147, P150, P154, P164, P165, P166, P172,
-  P178, P185, P187.
+  P178, P185, P187, P197.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (14): P5, P10, P22, P23, P30, P34, P40, P48,
   P59, P71, P75, P89, P146, P179.
 <!-- fin del resumen -->
@@ -237,7 +237,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P194 | El menú de un punto da la distancia en línea recta («a 8 celdas») y la ruta prevista en pasos («22 pasos»): con muros no coinciden, y «celdas» es palabra de la cuadrícula, no del juego | pendiente |
 | P195 | La ficha de Ketg'sedsar pone «Quién lo lleva: Orca desconocida», y su descripción ya nombra a la Terk'ikar Ulkha Ketg y al Kort'ikar Torgash Ketg | pendiente |
 | P196 | El aviso en el mapa de un animal suelto dice «Guchapo busca tu atención», sin artículo (el diario sí: «se topa con un Guchapo») | pendiente |
-| P197 | El menú del herrero abierto desde su edificio trae dos «Salir» (y React avisa de claves repetidas). Causa: `abrirMenuDeNpc` con `desde: 'edificio'` añade «Salir» (`menuDeNpc.ts:63`), pero el menú de un maestro ya lo traía. Efecto de P178 | pendiente |
+| P197 | El menú del herrero abierto desde su edificio trae dos «Salir» (y React avisa de claves repetidas). Causa: `abrirMenuDeNpc` con `desde: 'edificio'` añade «Salir» (`menuDeNpc.ts:63`), pero el menú de un maestro ya lo traía. Efecto de P178 | ✅ 2026-10-17: en un edificio, «Salir» se quita del menú antes de añadirlo, así que sale uno solo (`menuDeNpc.ts`; `edificios.integration.test.ts` comprueba que las opciones no se repiten, rojo sin el arreglo). Y `QA-94` hace fallar cualquier test del frontend con un aviso de React como el de este menú. Comprobado jugando el 2026-10-17: el menú de la Herrería, con un solo «Salir». |
 | P198 | Con el mapa de zona abierto, la tarjeta del menú de un NPC (8 opciones) solo enseña 4: las demás (Pedirle que te informe, Combatir, Salir) quedan fuera de la tarjeta, sin barra ni rueda, y Escape no la cierra. Al cerrar el mapa, el menú del diario sí está entero (Hogar Ketg, la Herrería) | pendiente |
 | P199 | «Gorhorn se topa con Cazadora Serhu.»: sin artículo, cuando P141 ya da «la Cazadora Serhu» (el oficio lleva artículo). Pasa en la línea del diario de toparse con alguien y en la tarjeta («Cazadora Serhu busca tu atención»), como P196 con la fauna | pendiente |
 | P200 | El encargo del herrero sin descubrir (Hogar Ketg) dice su nombre: la tarjeta «¿Tienes trabajo?» tiene de subtítulo «Orco desconocido», pero el texto empieza «Maestro Herrero Serhu: «Se habla de…»» y en Misiones pone «Encarga: Maestro Herrero Serhu». Como P165, pero en el texto de la misión | pendiente |
@@ -246,3 +246,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P203 | Cruzar el Pozo de Cauce Viejo para por un encuentro casi a cada paso (Escorantes, Guchapos, Telda Común…): de la entrada a la salida del oeste, 4-6 tarjetas de «Seguir mi camino». Con P177 a medias se suman los repetidos | pendiente |
 | P204 | Al llegar a la salida del oeste del Pozo se abren a la vez la tarjeta de un encuentro (sin «Seguir mi camino») y el diálogo «Viajar», uno encima del otro | pendiente |
 | P205 | Ronda cortada en el Paso de los Pilares Rotos, camino de Las Agujas Imán (misión del herrero): un grupo de 5 Cruzavientos (nivel 5) corta el paso a Gorhorn (nivel 2) en la salida del noroeste. Queda por jugar: la misión de explorar, P184 y lo demás sin comprobar | pendiente |
+| P206 | Con un grupo hostil cortando el paso (5 Cruzavientos, Pilares Rotos; HUD «Te cortan el paso»), pulsar una salida del mapa de zona y «Viajar» saca a Gorhorn de la zona sin pelear ni huir: llega al Pozo dos horas después. El HUD siguió en «Te cortan el paso» hasta el turno siguiente | pendiente |
