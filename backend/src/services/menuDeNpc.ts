@@ -26,14 +26,15 @@ export function tieneMenu(npc: NpcInScene): boolean {
   return npc.slug !== 'gistera-koh' && (npc.interactionTypes.length > 0 || estaMalherido(npc));
 }
 
-/// `desdeEncuentro`: abierto desde la tarjeta del mapa (ver `/elegir` § P142).
-export interface MenuDeNpc { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: true }
+/// `desdeEncuentro`: abierto desde la tarjeta del mapa (ver `/elegir` § P142); `false`, desde un edificio
+/// (P178), sin encuentro detrás.
+export interface MenuDeNpc { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: boolean }
 
 /// Menú del NPC del encuentro del mapa, guardado como `pendingNpcInteractionOffer` para que
 /// `/elegir` lo resuelva igual que el del turno. `null` si el NPC no tiene menú: la tarjeta abre
 /// entonces la escena libre de siempre. `npcName` es el que ya enseña la tarjeta (puede ser el
 /// nombre oculto si aún no se ha presentado).
-export async function abrirMenuDeNpc(db: PrismaClient, saveId: string, npcSlug: string, npcName: string): Promise<MenuDeNpc | null> {
+export async function abrirMenuDeNpc(db: PrismaClient, saveId: string, npcSlug: string, npcName: string, desde: 'encuentro' | 'edificio' = 'encuentro'): Promise<MenuDeNpc | null> {
   const save = await db.save.findUniqueOrThrow({
     where: { id: saveId },
     select: { worldId: true, currentLocationId: true, worldState: { select: { factionsStatus: true } } },
@@ -52,8 +53,10 @@ export async function abrirMenuDeNpc(db: PrismaClient, saveId: string, npcSlug: 
     puedeContarNoticias: propuestas,
     puedeReclutar: propuestas,
   });
-  if (options.length === 0) return null;
-  const menu: MenuDeNpc = { npcSlug, npcName, options, desdeEncuentro: true };
+  // P178: en un edificio no hay escena libre detrás («Charlar» no haría nada); sí un botón para cerrar.
+  const opciones = desde === 'edificio' ? [...options.filter((o) => o !== 'Charlar'), 'Salir'] : options;
+  if (opciones.length === 0 || (desde === 'edificio' && opciones.length === 1)) return null;
+  const menu: MenuDeNpc = { npcSlug, npcName, options: opciones, desdeEncuentro: desde === 'encuentro' };
   await db.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: { ...menu } } });
   return menu;
 }

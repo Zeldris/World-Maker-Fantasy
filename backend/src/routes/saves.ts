@@ -32,6 +32,7 @@ import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { aprenderOficioRoutes } from './saves/aprenderOficio.js';
 import { npcInteractionRoutes } from './saves/npcInteraction.js';
+import { edificiosRoutes } from './saves/edificios.js';
 import { libroRoutes } from './saves/libro.js';
 import { leyendasRoutes } from './saves/leyendas.js';
 import { comercioRoutes } from './saves/comercio.js';
@@ -84,6 +85,7 @@ export async function savesRoutes(app: FastifyInstance) {
   await app.register(entregaRoutes);
   await app.register(aprenderOficioRoutes);
   await app.register(npcInteractionRoutes);
+  await app.register(edificiosRoutes);
   // Libro de Sucesos, vista de administración (CR-4, hito 0.2).
   await app.register(libroRoutes);
   // Leyendas de la partida (CR-19, hito 0.2): solo lo que sabe el personaje.
