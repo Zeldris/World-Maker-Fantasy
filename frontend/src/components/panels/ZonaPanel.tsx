@@ -9,7 +9,7 @@ import { separarEtiquetas } from '../../lib/separarEtiquetas'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
+import { DefsFichas, EtiquetaNombre, InsigniaGrupo, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
 import { COLOR_HEX, disposicionDe, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
@@ -662,7 +662,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   onMouseLeave={() => setClaveBajoRaton(null)}
                   className="cursor-pointer"
                 >
-                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} desconocido={!p.descubierto} agotado={p.agotado} nivelRequerido={p.nivelRequerido} />
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} desconocido={!p.descubierto} agotado={p.agotado} nivelRequerido={p.nivelRequerido} insignia={false} />
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
@@ -692,6 +692,19 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 </g>
               ))}
               {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
+              {/* P147 (QA-27): las insignias «×N» de los grupos, por encima de todas las fichas y del personaje
+                  (antes las tapaba una ficha pegada o el propio marcador), con la animación de su ficha. */}
+              <g pointerEvents="none">
+                {data.puntos
+                  .filter((p) => p.cantidad > 1)
+                  .map((p) => (
+                    <g key={`insignia:${p.id}`} data-testid="insignia-grupo" style={{ transform: `translate(${p.x}px, ${p.y}px)`, transition: `transform ${msPasoActual}ms linear` }} opacity={p.agotado ? 0.45 : 1}>
+                      <g transform={`scale(${escala})`}>
+                        <InsigniaGrupo cantidad={p.cantidad} />
+                      </g>
+                    </g>
+                  ))}
+              </g>
               {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
                   tapan), con la misma animación de desplazamiento que su ficha. */}
               <g pointerEvents="none">

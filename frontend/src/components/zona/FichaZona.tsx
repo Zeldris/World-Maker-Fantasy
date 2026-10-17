@@ -111,11 +111,14 @@ interface FichaZonaProps {
   sombra?: boolean
   /// Contenido extra en píxeles de pantalla, dentro de la misma escala (etiqueta de nombre).
   children?: ReactNode
+  /// P147 (QA-27): `false` cuando el mapa pinta la insignia «×N» en su capa de arriba (otra ficha o el
+  /// personaje la tapaban).
+  insignia?: boolean
 }
 
 /// Ficha completa en coordenadas de pantalla (0,0 = su centro). Quien la usa la coloca con un
 /// `<g transform=translate>` en coordenadas del lienzo (ver `MarcadorZona`).
-export function FichaZona({ tipo, color, escala, hasCompanion, cantidad = 1, sombra = true, children }: FichaZonaProps) {
+export function FichaZona({ tipo, color, escala, hasCompanion, cantidad = 1, sombra = true, children, insignia = true }: FichaZonaProps) {
   const anillo = tipo === 'OBJETO' ? COLOR_DISPOSICION.INERTE : tipo === 'CADAVER' ? 'var(--color-danger-500)' : color
   return (
     <g transform={`scale(${escala})`}>
@@ -136,7 +139,7 @@ export function FichaZona({ tipo, color, escala, hasCompanion, cantidad = 1, som
       <g transform={tipo === 'RECURSO' || tipo === 'OBJETO' ? 'scale(0.85)' : undefined}>
         <Pictograma tipo={tipo} />
       </g>
-      {cantidad > 1 && <InsigniaGrupo cantidad={cantidad} />}
+      {insignia && cantidad > 1 && <InsigniaGrupo cantidad={cantidad} />}
       {children}
     </g>
   )
