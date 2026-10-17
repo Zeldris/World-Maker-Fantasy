@@ -574,7 +574,10 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
   /// frontend 2026-08-27, B.5 — "el único modal de elección de la app sin vía de escape") sigue
   /// limpiando `pendingDynamicMode`, para que el jugador pueda abandonarla en cualquier vuelta sin
   /// esperar a que el LLM decida cerrarla él solo.
-  app.post<{ Params: { id: string } }>('/saves/:id/modo-dinamico/ignorar', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: { targetSlug?: string } | undefined }>('/saves/:id/modo-dinamico/ignorar', async (request, reply) => {
+    // P150 (QA-27): la oferta que se ignora. «Seguir mi camino» manda el ignorar y el paso siguiente a la
+    // vez; si el paso pone otra oferta antes, ignorar la vieja no la puede borrar.
+    const targetSlugIgnorado = typeof request.body?.targetSlug === 'string' ? request.body.targetSlug : null;
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
       select: {
@@ -625,10 +628,18 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // Hallazgo 47 (2026-09-15) — convertida de `$transaction([...])` (batch de escrituras) a
       // callback para poder meter `marcarNpcConocidoRapido` DENTRO, atómico con el cierre.
       const logEntryCreado = await prisma.$transaction(async (tx) => {
-        await tx.save.update({
-          where: { id: save.id },
-          data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
-        });
+        if (targetSlugIgnorado && !pending) {
+          // Escritura condicional: solo si la oferta guardada sigue siendo esa (la nueva del paso no se toca).
+          await tx.save.updateMany({
+            where: { id: save.id, pendingDynamicModeOffer: { path: ['targetSlug'], equals: targetSlugIgnorado } },
+            data: { pendingDynamicModeOffer: Prisma.JsonNull },
+          });
+        } else {
+          await tx.save.update({
+            where: { id: save.id },
+            data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull },
+          });
+        }
         if (marcaComoConocido) {
           await marcarNpcConocidoRapido(tx, save.id, pending!.targetSlug);
         }

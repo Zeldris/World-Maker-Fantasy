@@ -49,6 +49,10 @@ const generateQuestResponseNarration = vi.fn(async (ctx: { characterName: string
   return `${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} la misión: ${ctx.questTitle}.`;
 });
 
+// P164: ir por varios tramos de una vez es cosa de una montura; los viajes largos de abajo la llevan.
+const tieneMontura = vi.fn(async (..._args: unknown[]) => false);
+vi.mock('../services/monturas.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('../services/monturas.js')>()), tieneMontura: (...a: unknown[]) => tieneMontura(...a) }));
+
 vi.mock('../services/narrador.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/narrador.js')>();
   return {
@@ -6431,6 +6435,8 @@ describe('Destino inventado sin alias real ("hacia el norte"): no se persiste un
 /// travelInterruption.test.ts). `busyUntil` adelantado a mano (en vez de esperar la compresión
 /// real de tiempo) para que `resolveDueTransits()` lo recoja al momento, sin sleeps.
 describe('Viaje largo interrumpido a mitad de camino (integración real, solo LLM mockeado)', () => {
+  beforeAll(() => tieneMontura.mockResolvedValue(true));
+  afterAll(() => tieneMontura.mockResolvedValue(false));
   let saveId: string;
   let worldId: string;
   let originId: string;
@@ -6543,12 +6549,20 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
   });
 
+  // P164 (usuaria, 2026-10-17): la lista de «Viajar» (varias zonas de una vez) es cosa de una montura.
+  it('sin montura, un viaje elegido de varios tramos no sale', async () => {
+    tieneMontura.mockResolvedValueOnce(false);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true } });
+    expect(res.json().blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos/);
+  });
+
   it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito, y guarda el destino original para retomarlo', async () => {
     const app = await buildApp();
     const classifyRes = await app.inject({
       method: 'POST',
       url: '/turn/classify',
-      payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false },
+      payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true },
     });
     expect(classifyRes.statusCode).toBe(200);
     const body = classifyRes.json();
@@ -6655,6 +6669,8 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
 /// SIN ninguna oferta de Interactuar (`pickTravelInterruption` no filtra por temperamento, así que
 /// el filtro tiene que vivir en turnResolution.ts, no en la selección del candidato).
 describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar en vez del aviso mudo de antes', () => {
+  beforeAll(() => tieneMontura.mockResolvedValue(true));
+  afterAll(() => tieneMontura.mockResolvedValue(false));
   let saveId: string;
   let worldId: string;
   let originId: string;
@@ -6759,7 +6775,7 @@ describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar e
     const classifyRes = await (await buildApp()).inject({
       method: 'POST',
       url: '/turn/classify',
-      payload: { saveId, action: 'Viajo hacia la zona de prueba pacífica destino', enCombate: false },
+      payload: { saveId, action: 'Viajo hacia la zona de prueba pacífica destino', enCombate: false, viajeElegido: true },
     });
     expect(classifyRes.statusCode).toBe(200);
 
@@ -6841,7 +6857,7 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
   it('primer viaje al destino: discoveredLocationSlug trae el slug real del destino', async () => {
     const app = await buildApp();
     const action = 'Viajo hacia la zona de prueba destino descubrimiento';
-    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false, viajeElegido: true } });
     expect(classifyRes.statusCode).toBe(200);
     const { classification, roll, travel } = classifyRes.json();
     expect(travel?.toLocationId).toBe(destId);
@@ -6856,9 +6872,25 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
     expect(body.discoveredLocationSlug).toBe('test-descubrimiento-destino');
   }, 15_000);
 
+  // P164 (QA-27, usuaria 2026-10-14): a pie, escribir «Viajo hacia…» ya no salta de zona; se va por las
+  // salidas del mapa de zona (o eligiéndolo en «Viajar»). Saltar de zona sin pasar por las de en medio,
+  // con montura (CR-57).
+  it('escrito a pie, el viaje no cambia de zona y lo dice', async () => {
+    const app = await buildApp();
+    const antes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } })).currentLocationId;
+    // Hacia la zona en la que no está (el test anterior puede haberle dejado en el destino).
+    const hacia = antes === destId ? 'origen' : 'destino';
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: `Viajo hacia la zona de prueba ${hacia} descubrimiento`, enCombate: false } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia /);
+    expect(body.travel).toBeUndefined();
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } })).currentLocationId).toBe(antes);
+  });
+
   it('segunda vez en el mismo destino (ya visitado): discoveredLocationSlug es null', async () => {
     const app = await buildApp();
-    const backRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba origen descubrimiento', enCombate: false } });
+    const backRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba origen descubrimiento', enCombate: false, viajeElegido: true } });
     const backBody = backRes.json();
     await app.inject({
       method: 'POST',
@@ -6867,7 +6899,7 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
     });
 
     const action = 'Viajo hacia la zona de prueba destino descubrimiento';
-    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false, viajeElegido: true } });
     const { classification, roll, travel } = classifyRes.json();
     const narrateRes = await app.inject({
       method: 'POST',

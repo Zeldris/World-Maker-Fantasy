@@ -20,6 +20,7 @@ import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
 import { ambitoPoblacion, copiaDeFila } from './mundoPartida.js';
 import { celdasDeEntrada, enRadioSeguro } from './entradasZona.js';
+import { murosDe } from './murosZona.js';
 
 export type ZonePointColor = 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE';
 
@@ -318,7 +319,7 @@ export async function asegurarZonePointsDePartida(
   return clonarPlantillasConCandado(tx, saveId, locationId);
 }
 
-type PuntoComparable = { tipo: string; targetSlug: string | null; x: number; y: number };
+type PuntoComparable = { tipo: string; targetSlug: string | null; x: number; y: number; factionSlug?: string | null };
 
 /// QA-27: un punto de FAUNA ambiental (ver `FAUNA_AMBIENTAL`, worldCatalog.ts) no va en el mapa.
 export function esPuntoVigente(p: { tipo: string; targetSlug: string | null }): boolean {
@@ -331,8 +332,9 @@ export function esPuntoVigente(p: { tipo: string; targetSlug: string | null }): 
 /// la partida es nuevo del catálogo. RECURSO y EDIFICIO nunca se mueven ni se borran de una
 /// partida, así que se comparan por (tipo, targetSlug, x, y). Partida sin filas → todas.
 export function plantillasQueFaltan<P extends PuntoComparable>(existentes: PuntoComparable[], plantillas: P[]): P[] {
+  // P187 (QA-27): el ganado de un bando (FAUNA con `factionSlug`) es otra cosa que la fauna salvaje de su especie.
   const clave = (p: PuntoComparable) =>
-    p.tipo === 'FAUNA' || p.tipo === 'NPC' ? `${p.tipo}|${p.targetSlug}` : `${p.tipo}|${p.targetSlug}|${p.x}|${p.y}`;
+    p.tipo === 'FAUNA' || p.tipo === 'NPC' ? `${p.tipo}|${p.targetSlug}${p.factionSlug ? `|${p.factionSlug}` : ''}` : `${p.tipo}|${p.targetSlug}|${p.x}|${p.y}`;
   const tiene = new Set(existentes.map(clave));
   return plantillas.filter((p) => !tiene.has(clave(p)));
 }
@@ -445,7 +447,9 @@ export async function recalcularZonePointsDeLocation(
   // FAUNA — reconciliación por grupos (Fase 1).
   const esZonaDeInicio = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
   const faunaPorSlug = new Map<string, (typeof puntos)[number][]>();
-  for (const punto of puntos.filter((p) => p.tipo === 'FAUNA')) {
+  // P187 (QA-27): el ganado de un bando (FAUNA con `factionSlug`, los múrgoles del Clan Serhu) es un rebaño
+  // fijo del tamaño del catálogo que baja al cazarlo: no se reparte por la población salvaje de su especie.
+  for (const punto of puntos.filter((p) => p.tipo === 'FAUNA' && !p.factionSlug)) {
     const filas = faunaPorSlug.get(punto.targetSlug) ?? [];
     filas.push(punto);
     faunaPorSlug.set(punto.targetSlug, filas);
@@ -628,6 +632,8 @@ export async function avanzarZonePointsUnPaso(
     where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
   });
   if (puntosCrudos.length === 0) return [];
+  // P185 (QA-27): ni la fauna ni los NPC cruzan los muros (la empalizada de Colmillo Ceniza).
+  const muros = murosDe((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug);
   // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
   // punto gateado sin su misión aceptada todavía no "patrulla": narrativamente no está en la zona.
   const questSlugsAceptados = await questSlugsAceptadosPara(tx, saveId);
@@ -674,7 +680,7 @@ export async function avanzarZonePointsUnPaso(
       const faunaHostil = esAgresivoEfectivo && punto.tipo === 'FAUNA';
       const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
       // P116: desde fuera, la fauna hostil no pisa el radio seguro de una entrada (espera este paso).
-      const noPuedeEntrar = (celda: Celda) => faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas);
+      const noPuedeEntrar = (celda: Celda) => muros.has(claveCelda(celda)) || (faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas));
       const objetivoPersecucion = persigue && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
 
       if (objetivoPersecucion) {

@@ -449,31 +449,18 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.colision).toMatchObject({ targetSlug: 'test-mover-pacifico', temperamento: 'CAUTELOSO' });
-    // "¿Quién ve a quién primero?" (2026-09-17) — tirada real (Destreza jugador=10 por defecto del
-    // fixture vs. destreza real de `test-mover-pacifico`), no determinista aquí: se comprueba el
-    // resto del shape con `toMatchObject` y solo que `quienInicia` sea uno de los 2 valores válidos.
-    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
-    expect(['jugador', 'npc']).toContain(body.dynamicModeOffer.quienInicia);
+    // P166 (QA-27, usuaria 2026-10-17): con alguien tranquilo no hay «¿Quién ve a quién primero?»: te
+    // topas con él, sin tirada (solo la hay con alguien hostil, más abajo).
+    expect(body.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba', quienInicia: 'jugador' });
     // Regresión (2026-09-09, hallazgo real jugando en vivo: la oferta quedaba persistida en BD
     // pero invisible en el log, porque LogPanel.tsx solo la pinta colgada de una LogEntry
     // concreta) — el encuentro debe dejar su propio LogEntry real determinista, no solo la oferta.
-    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('Fauna Pacífica de Prueba') });
+    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('se topa con') });
+    expect(body.logEntry.roll).toBeUndefined();
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();
     expect(logRow!.saveId).toBe(saveId);
-    // Fase 10 (2026-09-29) — "¿quién ve a quién primero?": las dos tiradas viajan en la entrada
-    // del encuentro y se guardan en `LogEntry.roll` (tirada opuesta Destreza vs Destreza).
-    expect(body.logEntry.roll).toMatchObject({
-      kind: 'iniciativa-encuentro',
-      quienInicia: body.dynamicModeOffer.quienInicia,
-      jugador: { attribute: 'destreza', value: 10 },
-      npcName: 'Fauna Pacífica de Prueba',
-    });
-    const { jugador, npc } = body.logEntry.roll;
-    expect(jugador.result).toBe(jugador.roll + jugador.bono);
-    expect(npc.result).toBe(npc.roll + npc.bono);
-    expect(body.logEntry.roll.quienInicia).toBe(jugador.result >= npc.result ? 'jugador' : 'npc');
-    expect((logRow!.roll as { kind: string }).kind).toBe('iniciativa-encuentro');
+    expect(logRow!.roll).toBeNull();
 
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', targetName: 'Fauna Pacífica de Prueba' });
@@ -482,8 +469,9 @@ describe('POST /saves/:id/zona/mover', () => {
   // QA-27 (P3, 2026-10-09, jugando): la tirada de «quién ve a quién primero» usaba la Destreza sin
   // el equipo, mientras la huida y el combate sí la sumaban (Gorhorn: +3 en una y +5 en la otra).
   it('«¿quién ve a quién primero?» cuenta la Destreza del equipo puesto', async () => {
+    // Con alguien hostil, el único encuentro que tira (P166).
     await prisma.zonePoint.create({
-      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
     });
     const item = await prisma.inventoryItem.create({
       data: { saveId, name: 'Pantalones de prueba', description: 'Prueba', slot: 'ARMADURA_INFERIOR', statBonuses: { destreza: 4 } },
@@ -704,7 +692,7 @@ describe('POST /saves/:id/zona/mover', () => {
     const primero = await mover(375, 25);
     expect(primero.jugador).toEqual({ x: 75, y: 25 });
     expect(primero.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
-    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toEqual({ targetSlug: 'test-mover-recurso', locationId });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toMatchObject({ targetSlug: 'test-mover-recurso', locationId, tipo: 'RECURSO' });
 
     // "Ignorar" limpia la oferta pendiente (lo que hace /modo-dinamico/ignorar).
     await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
@@ -725,6 +713,51 @@ describe('POST /saves/:id/zona/mover', () => {
     const vuelta = await mover(25, 25);
     expect(vuelta.jugador).toEqual({ x: 175, y: 25 });
     expect(vuelta.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+  });
+
+  // P177 (QA-27): el mismo NPC salía tres veces en 10 minutos tras «Ignorar» y «Seguir mi camino».
+  it('un ser vivo con el que ya te topaste no vuelve a salir al paso al volver hasta que pasa un rato (P177)', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 125, y: 75, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 75 }] },
+    });
+    const app = await buildApp();
+    const mover = async (x: number, y: number) =>
+      JSON.parse((await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x, y } } })).body);
+
+    const primero = await mover(375, 25);
+    expect(primero.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+
+    // Se aleja fuera de su radio y vuelve: no sale otra vez.
+    for (let i = 0; i < 3; i++) await mover(375, 25);
+    const vuelta = await mover(25, 25);
+    expect(vuelta.dynamicModeOffer).toBeNull();
+
+    // Pasado el rato, sí.
+    const ultimo = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro as { minutos: number };
+    await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { ...ultimo, minutos: ultimo.minutos - 61 } } });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 225, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull } });
+    await mover(375, 25); // un paso más, fuera de su radio: ahora sí se olvida
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toBeNull();
+    await mover(25, 25);
+    const tarde = await mover(25, 25);
+    expect(tarde.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+  });
+
+  // P186 (QA-27): tras una escena, con la conversación aún abierta, el primer clic en una salida daba un
+  // paso y paraba sin aviso ni «Reanudar» al toparse con alguien pacífico: había que volver a pulsar.
+  it('con una conversación abierta, alguien pacífico en el camino no corta el viaje (P186)', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 125, y: 75, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 75 }] },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: { tipo: 'NPC', targetSlug: 'otra-persona', targetName: 'Otra persona', vuelta: 1 } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: Prisma.JsonNull } });
+    const body = JSON.parse(res.body);
+    expect(body.colision).toBeNull();
+    expect(body.dynamicModeOffer).toBeNull();
+    expect(body.caminoRestante.length).toBeGreaterThan(0);
   });
 
   it('pulsar la propia casilla (camino vacío) ofrece el encuentro aunque sea el último ya ofrecido', async () => {

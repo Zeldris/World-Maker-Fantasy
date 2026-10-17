@@ -67,19 +67,25 @@ GRUPOS = [
 ]
 
 
+def sin_citas(estado: str) -> str:
+    return re.sub(r'«[^»]*»', '', estado).strip()
+
+
 def grupo(estado: str) -> str:
     """En qué grupo del resumen cae un hallazgo, por el texto de su estado (lo citado entre «» no cuenta).
 
-    Lo que queda de un arreglo va tras «pendiente:» o «falta:», o lo marca «(en parte)»; lo jugado,
-    «comprobado jugando», «comprobado en vivo» o «✅ comprobado»."""
-    t = re.sub(r'«[^»]*»', '', estado).strip()
+    Lo que queda de un arreglo va tras «pendiente:» o «falta:», o lo marca «en parte» (con o sin paréntesis);
+    lo jugado, «comprobado jugando», «comprobado en vivo» o «✅ comprobado». «Reabierto» solo cuenta si no
+    le sigue un ✅: manda el último estado (QA-92)."""
+    t = sin_citas(estado)
     bajo = t.lower()
-    if 'reabierto' in bajo:
+    reabierto = bajo.rfind('reabierto')
+    if reabierto >= 0 and '✅' not in t[reabierto:]:
         return 'pendiente'
     if re.match(r'(no aplica|dato\b|→ roadmap|🧭|va al roadmap|pasa al roadmap)', bajo):
         return 'cerrado'
     if '✅' in t:
-        if re.search(r'\b(pendiente|falta):|\(en parte\)', bajo):
+        if re.search(r'\b(pendiente|falta):|\ben parte\b', bajo):
             return 'parte'
         if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b', bajo):
             return 'comprobado'
@@ -87,6 +93,15 @@ def grupo(estado: str) -> str:
     if re.search(r'decisi[oó]n de la usuaria|que la usuaria (confirme|decida)', bajo):
         return 'decision'
     return 'pendiente'
+
+
+def contradictorio(estado: str) -> bool:
+    """Un estado con ✅ que a la vez empieza por cerrado sin arreglo o dice que espera a la usuaria (QA-92).
+    «✅ (decisión de la usuaria)» no lo es: es lo que ella decidió."""
+    t = sin_citas(estado)
+    bajo = t.lower()
+    return '✅' in t and bool(re.match(r'(no aplica|→ roadmap|va al roadmap|pasa al roadmap)', bajo)
+                             or re.search(r'pendiente de (una |la )?decisi[oó]n|que la usuaria (confirme|decida)', bajo))
 
 
 def partir(linea: str) -> tuple[str, str]:
@@ -131,6 +146,11 @@ def main(args: list[str]) -> None:
         if args[1:] == ['--comprobar']:
             if INICIO_RESUMEN not in lineas or FIN_RESUMEN not in lineas:
                 sys.exit(f'{ruta}: faltan las marcas del resumen (`{INICIO_RESUMEN}` y `{FIN_RESUMEN}`, cada una en su línea)')
+            for linea in lineas:
+                m = re.match(r'^\| (P\d+) \|', linea)
+                if m and contradictorio(partir(linea)[1]):
+                    print(f'{ruta}: aviso: el estado de {m.group(1)} se contradice (✅ y cerrado o pendiente de la usuaria)',
+                          file=sys.stderr)
             if nuevas != lineas:
                 sys.exit(f'{ruta}: el resumen no coincide con la tabla; rehazlo con `python3 tools/qa/marca-hallazgo.py --resumen`')
             return

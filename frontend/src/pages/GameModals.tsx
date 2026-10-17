@@ -107,7 +107,7 @@ export function GameModals() {
     handleUpdateHabilidad,
     handleSaveSkillBarEdit,
     handleResponderEscribiendo,
-    handleSimpleModalSelect,
+    handleViajeElegido,
     closeSimpleModal,
     handleEquipItem,
     handleUnequipItem,
@@ -279,14 +279,14 @@ export function GameModals() {
       <Presencia>
         {simpleModal === 'camp' && saveId && (
           <Capa id="campamento">
-          <CampSelectionModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+          <CampSelectionModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
           </Capa>
         )}
       </Presencia>
       <Presencia>
         {simpleModal === 'travel' && saveId && (
           <Capa id="viajar">
-          <TravelDestinationModal saveId={saveId} onSelect={handleSimpleModalSelect} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+          <TravelDestinationModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
           </Capa>
         )}
       </Presencia>
@@ -439,12 +439,12 @@ export function GameModals() {
             saveId={saveId}
             onEncuentroZona={(entry) => setCharacterLog((prev) => [...prev, entry])}
             onClose={() => setZonaModalOpen(false)}
-            // Icono de salida de región (2026-09-17) — mismo patrón que `handleSimpleModalSelect`:
+            // Icono de salida de región (2026-09-17) — mismo patrón que `handleViajeElegido`:
             // cierra el modal de zona y manda el texto por el turno normal, como si el jugador lo
             // hubiera escrito él mismo (el motor de viaje determinista decide el resto).
             onViajarA={(actionText) => {
               setZonaModalOpen(false)
-              handleSubmit(actionText)
+              handleSubmit(actionText, { viajeElegido: true })
             }}
             bloqueoTurno={bloqueoTurno}
             bloqueoMovimiento={permisoMover.motivo}
@@ -480,8 +480,10 @@ export function GameModals() {
             // solo se cierra para escribir una respuesta o cuando empieza un combate (efecto de abajo).
             ofertaEnMapa={(entryId) => {
               const entrada = characterLog.find((e) => e.id === entryId)
-              // P142: abierto el menú del NPC desde esta tarjeta, se enseña en su lugar.
-              if (entrada?.npcInteractionOffer?.desdeEncuentro) return presentacionMenuNpc(entryId, entrada.npcInteractionOffer, handleChooseNpcInteraction)
+              // P142: abierto el menú del NPC desde esta tarjeta, se enseña en su lugar. P178: también el de
+              // quien lleva un edificio, que no tiene encuentro detrás.
+              if (entrada?.npcInteractionOffer && (entrada.npcInteractionOffer.desdeEncuentro || !entrada.dynamicModeOffer))
+                return presentacionMenuNpc(entryId, entrada.npcInteractionOffer, handleChooseNpcInteraction)
               const offer = entrada?.dynamicModeOffer
               if (!offer) return null
               const cerrarMapa = () => setZonaModalOpen(false)

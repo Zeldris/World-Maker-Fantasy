@@ -42,6 +42,19 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
       datos: { faccionA: 'Los de prueba', faccionB: 'Los otros' },
     });
 
+  // P184 (QA-27): de una muerte que nadie vio, la entrada de «El mundo» tampoco dice quién fue.
+  it('una muerte sin testigos llega a «El mundo» sin autor', async () => {
+    const id = await registrarSuceso(prisma, {
+      saveId, tipo: 'MUERTE_CAUSADA', fictionalMinutes: await ahora(), regionSlug: 'cienaga-troncal', origen: 'MUNDO',
+      actores: [{ entidadTipo: 'NPC', entidadId: 'p184-autor', papel: 'AUTOR' }, { entidadTipo: 'NPC', entidadId: 'p184-victima', papel: 'VICTIMA' }],
+      datos: { personaje: 'Un bandido', victima: 'Orco enfurecido', articuloVictima: 'el' },
+    });
+    expect(await conocer(prisma, { saveId, sucesoId: id, via: 'NPC', confirmado: true, minutos: await ahora(), escribirNoticia: true })).toBe('NUEVO');
+    const c = await prisma.conocimiento.findUniqueOrThrow({ where: { saveId_sucesoId: { saveId, sucesoId: id } } });
+    const entrada = await prisma.logEntry.findUniqueOrThrow({ where: { id: c.logEntryId! } });
+    expect(entrada.text).toBe('El Orco enfurecido ha muerto; nadie sabe a manos de quién.');
+  });
+
   it('lo de importancia ≥ 7 de una región vecina llega al día siguiente, como rumor y enlazado a su suceso', async () => {
     const id = await alianza('cienaga-troncal');
     expect(await difundir(prisma, saveId)).toBe(0);

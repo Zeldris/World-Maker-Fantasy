@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma.js';
 import { buildNpcInScene, scopeFor, hasPendingLoot, type NpcInScene } from '../../services/npcScene.js';
 import { buildAdjacency, shortestPath, minutosConDestreza, bandaForMinutos } from '../../services/travel.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { SIN_MONTURA, tieneMontura } from '../../services/monturas.js';
 
 /// Paneles de habilidades generales nuevos (2026-08-17, comentarios dejados en
 /// startingAbilities.ts): "Volver al campamento", "Viajar" y "Saquear" (fuera de combate). Cada
@@ -93,8 +94,12 @@ export async function panelsRoutes(app: FastifyInstance) {
       }
     }
 
+    // P164 (QA-27): ir directo desde esta lista es cosa de una montura (`CR-57`).
+    const montura = await tieneMontura(prisma, save.id);
     return {
       hasMap: hasLlanurasMap,
+      montura,
+      ...(montura ? {} : { motivoSinMontura: SIN_MONTURA }),
       destinations: [...destinationsById.values()].map((l) => {
         const minutos = minutosById.get(l.id) ?? null;
         return { locationSlug: l.slug, locationName: l.name, region: l.region, minutos, banda: minutos != null ? bandaForMinutos(minutos) : null };

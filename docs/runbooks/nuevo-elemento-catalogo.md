@@ -105,6 +105,22 @@ Patrón ya consolidado en `weaponAbilities.ts`/`classAbilities.ts`/`berigLore.ts
 - `description`: es la que se inyecta al Narrador al llegar/estar ahí (`turnResolution.ts`) — ya
   bien resuelta, sin cambios de este runbook.
 
+## 4bis. Muros de una zona (`MUROS_POR_LOCATION`, `backend/src/services/murosZona.ts`)
+
+Las casillas por las que no se pasa (empalizadas, muros, acantilados) del mapa de zona: 16×12 casillas de
+50 px sobre un lienzo de 800×600. Se sacan de la ilustración `backend/uploads/images/zona/<slug>-mapa.png`
+(`QA-93`, retro del 2026-10-17; el primero fue la empalizada del Colmillo Ceniza, P185).
+
+1. **Ver la cuadrícula:** `bash tools/zona/rejilla.sh <slug> <carpeta>` deja `<slug>-rejilla.png` con la
+   rejilla y la etiqueta `x,y` de cada casilla sobre la ilustración (necesita ImageMagick, `convert`).
+2. **Apuntar los muros:** una casilla es muro si el obstáculo la tapa más o menos entera; se añaden como
+   `[x, y]` en la entrada `'<slug>'` de `MUROS_POR_LOCATION`.
+3. **Comprobar:** el mismo comando pinta en rojo las casillas que ya tiene `murosZona.ts`. Se mira que el
+   rojo siga al obstáculo sin huecos en diagonal (el camino no corta esquinas, pero un hueco recto deja pasar).
+4. **La puerta queda abierta**, con la casilla de fuera que lleva a ella (la pasarela del Colmillo Ceniza:
+   (12,9) y (12,10)). Un punto de la zona puede caer sobre un muro solo si tiene al lado una casilla libre
+   desde la que interactuar (lo comprueba `murosZona.test.ts`).
+
 ## 5. Personaje jugable alternativo (`BERIG_PERSONAJES`, `berigLore.ts`)
 
 - `aliases?: string[]`: nombre de pila si el nombre completo tiene apellido ("Dessa" para "Dessa

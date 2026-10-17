@@ -27,6 +27,8 @@ interface TravelDestinationModalProps {
 export function TravelDestinationModal({ saveId, onSelect, onCancel, bloqueoTurno }: TravelDestinationModalProps) {
   const [loading, setLoading] = useState(true)
   const [hasMap, setHasMap] = useState(false)
+  // P164 (QA-27, usuaria 2026-10-17): ir directo desde esta lista es cosa de una montura (CR-57).
+  const [sinMontura, setSinMontura] = useState<string | null>(null)
   const [destinations, setDestinations] = useState<TravelDestinationInfo[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +36,7 @@ export function TravelDestinationModal({ saveId, onSelect, onCancel, bloqueoTurn
     getDestinosViaje(saveId)
       .then((res) => {
         setHasMap(res.hasMap)
+        setSinMontura(res.montura === false ? (res.motivoSinMontura ?? 'Necesitas una montura') : null)
         setDestinations(res.destinations)
       })
       .catch(() => setError('No se pudo comprobar los destinos disponibles.'))
@@ -55,12 +58,13 @@ export function TravelDestinationModal({ saveId, onSelect, onCancel, bloqueoTurn
       ) : (
         <div className="space-y-2">
           {bloqueoTurno && <p className="text-2xs text-wood-500">🔒 {bloqueoTurno}</p>}
+          {sinMontura && <p className="text-2xs text-wood-500">🐎 {sinMontura}.</p>}
           {destinations.map((d) => (
             <button type="button"
               data-opcion
               key={d.locationSlug}
-              disabled={!!bloqueoTurno}
-              title={bloqueoTurno ?? undefined}
+              disabled={!!bloqueoTurno || !!sinMontura}
+              title={bloqueoTurno ?? sinMontura ?? undefined}
               onClick={() => onSelect(`Viajo hacia ${d.locationName}.`)}
               className="tactile flex w-full items-center justify-between gap-3 rounded-lg border border-wood-600/40 bg-wood-950/40 p-3 text-left text-xs text-wood-300 shadow-sm transition-colors hover:border-accent-600/60 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
             >

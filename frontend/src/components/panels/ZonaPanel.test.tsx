@@ -185,6 +185,22 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     expect(getByTestId('tarjeta-ficha').textContent).toBe('Aullador rojoFauna · Enemigo · ×3 · a 4 celdas')
   })
 
+  // P147 (QA-27): la insignia «×N» de un grupo quedaba tapada por una ficha pegada o por el personaje.
+  it('la insignia «×N» se pinta por encima de todas las fichas y del personaje', async () => {
+    const { container, getAllByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const insignia = getAllByTestId('insignia-grupo')[0]!
+    expect(insignia.textContent).toBe('×3')
+    // Lo que va después en el SVG se pinta encima.
+    const jugador = getAllByTestId('jugador-zona').find((j) => j.closest('svg') === insignia.closest('svg'))!
+    expect(jugador.compareDocumentPosition(insignia) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const fichas = [...container.querySelectorAll('g.cursor-pointer')]
+    expect(fichas.every((f) => f.compareDocumentPosition(insignia) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
+    // Y la ficha ya no lleva la suya dentro.
+    const aullador = fichas.find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    expect([...aullador.querySelectorAll('text')].some((t) => t.textContent === '×3')).toBe(false)
+  })
+
   it('al pulsarla, menú pegado con sus acciones; «Ver ficha completa» abre el modal de siempre', async () => {
     const { container, getByRole, findByRole, queryByRole } = render(<ZonaPanel saveId="s1" />)
     await act(async () => {})

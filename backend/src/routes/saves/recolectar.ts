@@ -24,6 +24,8 @@ import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { posicionDeObjetivo, moverJugadorA } from '../../services/zonaPosicion.js';
 import { ambitoPoblacion, poblacionDeCatalogo, type FiltroPoblacion } from '../../services/mundoPartida.js';
+import { aprovecharseDeLoAjeno } from '../../services/cronista/testigos.js';
+import type { FactionRepChangeInfo } from '../../services/reputation.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -1025,7 +1027,7 @@ export async function resolverRecoleccion(
         // turnos: nunca inventar prosa por IA para algo que ya se sabe con certeza mecánica. Solo
         // si de verdad se consiguió algo (no todas las peticiones tienen éxito: capacidad llena,
         // cooldown, población agotada a mitad de bucle).
-        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null = null;
+        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll; factionRepChange?: FactionRepChangeInfo } | null = null;
         let nuevoFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
         let energiaTrasRecolectar: number | null = null;
         let nuevaFictionalDateLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
@@ -1034,7 +1036,22 @@ export async function resolverRecoleccion(
             .map((s) => (s.harvestedThisTurn > 1 ? `${s.catalogName} (${s.harvestedThisTurn})` : s.catalogName))
             .join(', ');
           const verbo = anyCaza && !anyNonCaza ? 'despieza una presa cercana' : 'recolecta en la zona';
-          const text = `${save.characterName} ${verbo}: ${resumen}.`;
+          // P172 (QA-27): lo que es de un bando (`ZonePoint.factionSlug`, p. ej. el recinto de múrgoles del
+          // Clan Serhu) se puede coger, pero si alguien de ese bando lo ve, resta reputación con él.
+          const lugarRecoleccion = save.currentLocation?.id ?? null;
+          // El mismo punto del que se descuenta (`descontarZonePointRecurso`): el de la oferta o, si no, el activo
+          // con más cantidad; solo cuenta si ese tiene dueño.
+          const puntoAjeno = lugarRecoleccion
+            ? await tx.zonePoint.findFirst({
+                where: { saveId: save.id, locationId: lugarRecoleccion, tipo: 'RECURSO', targetSlug: { in: [...unidadesPorFuente.keys()] }, activo: true, ...(zonePointId ? { id: zonePointId } : {}) },
+                orderBy: { cantidad: 'desc' },
+                select: { factionSlug: true },
+              })
+            : null;
+          const robo = puntoAjeno?.factionSlug && lugarRecoleccion
+            ? await aprovecharseDeLoAjeno(tx, { saveId: save.id, worldId: save.worldId, locationId: lugarRecoleccion, faccion: puntoAjeno.factionSlug, que: 'coger' })
+            : null;
+          const text = `${save.characterName} ${verbo}: ${resumen}.${robo ? ` ${robo.frase}` : ''}`;
           const totalUnidades = [...touched.values()].reduce((sum, s) => sum + s.harvestedThisTurn, 0);
           const minutosCoste = minutosRecoleccionFor(totalUnidades);
           nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, minutosCoste);
@@ -1062,7 +1079,8 @@ export async function resolverRecoleccion(
               ...(logRoll ? { roll: logRoll as unknown as Prisma.InputJsonValue } : {}),
             },
           });
-          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes, ...(logRoll ? { roll: logRoll } : {}) };
+          // P172: el cambio de reputación, para su aviso (como en un turno); no se guarda en la entrada.
+          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes, ...(logRoll ? { roll: logRoll } : {}), ...(robo ? { factionRepChange: robo.cambio } : {}) };
         }
 
         // Cierre de misión "conseguir Z" (bug real, auditoría 2026-08-11 "pruebas por API"): este

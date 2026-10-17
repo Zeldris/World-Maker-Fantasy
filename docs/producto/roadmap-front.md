@@ -1225,6 +1225,19 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
 - ~~**QA-89 · Lo que sale de una columna JSON se comprueba**~~ ✅ 2026-10-15: regla en `REVIEW.md` («Un
   dato, un sitio»). Motivo: `motivoNoEntregable` tumbaba `GET /saves` con `h.objeto!` (lo cogió el
   `/code-review`).
+- ~~**QA-90 · Las plantillas que copian las partidas no se mueven sin pensarlo**~~ ✅ 2026-10-17 (retro del PR #60):
+  `posicionesPlantillas.test.ts` (instantánea de la posición de cada RECURSO y EDIFICIO del catálogo) y regla en
+  `REVIEW.md` («Un fallo que vuelve»). Motivo: mover el recinto de múrgoles lo duplicaba en las partidas viejas.
+- ~~**QA-91 · Sin retro no hay marca de revisión**~~ ✅ 2026-10-17: `tools/qa/revisado.sh` exige una
+  `docs/registros/retro-*.md` añadida en la rama con su `**Estado` decidido por la usuaria. Motivo: el PR #60 se
+  creó con una retro corta y sin presentar.
+- ~~**QA-92 · El resumen del registro de hallazgos lee el último estado**~~ ✅ 2026-10-17: en
+  `marca-hallazgo.py`, «reabierto» solo cuenta sin un ✅ detrás, «en parte» vale con o sin paréntesis y
+  `--comprobar` avisa de un estado contradictorio (tests en `tools/qa/tests/`). Motivo: P141, P164, P186 y P187
+  salían en el grupo equivocado.
+- ~~**QA-93 · Cómo sacar los muros de una zona**~~ ✅ 2026-10-17: `tools/zona/rejilla.sh` (cuadrícula con las
+  etiquetas de casilla y los muros en rojo) y el apartado «Muros de una zona» de
+  `docs/runbooks/nuevo-elemento-catalogo.md`, con puntero desde `murosZona.ts`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

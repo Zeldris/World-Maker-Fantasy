@@ -164,6 +164,12 @@ describe('reconciliarGrupos', () => {
 });
 
 describe('plantillasQueFaltan (resincronización aditiva de ZonePoint por partida)', () => {
+  it('el ganado de un bando no se confunde con la fauna salvaje de su especie (P187)', () => {
+    const salvaje = { tipo: 'FAUNA', targetSlug: 'murgol', x: 75, y: 25 };
+    const rebano = { tipo: 'FAUNA', targetSlug: 'murgol', x: 625, y: 125, factionSlug: 'Clan Serhu' };
+    expect(plantillasQueFaltan([salvaje], [rebano])).toEqual([rebano]);
+    expect(plantillasQueFaltan([salvaje, rebano], [rebano])).toEqual([]);
+  });
   const p = (tipo: string, targetSlug: string, x = 0, y = 0) => ({ tipo, targetSlug, x, y });
 
   it('partida sin filas → todas las plantillas', () => {

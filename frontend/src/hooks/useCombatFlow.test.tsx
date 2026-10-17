@@ -412,6 +412,19 @@ describe('submitCombatAction — camino feliz', () => {
     expect(result.current.lastInitiativeRoll).toBe(iniciativa)
   })
 
+  // P154 (QA-27): al morir, el panel dice «Derrota» en el acto; el HUD seguía en «Convaleciente» esperando
+  // a que aterrizaran unos dados que el panel ya no enseña.
+  it('al morir, la condición se aplica en el acto, sin esperar a los dados del golpe (P154)', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({ condicionFisica: 'MUERTO', justDied: true, combatExchangeDisplay: { atacanteEsJugador: false } as never }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    expect(result.current.combat.combatEnded).toBe(true)
+    expect(result.current.condicionFisica).toBe('MUERTO')
+  })
+
   it('en subida de nivel, suma pendingAttributePoints y actualiza level', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(

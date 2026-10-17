@@ -217,6 +217,19 @@ describe('handleSubmit — guards', () => {
   })
 })
 
+// P164 (QA-27): el viaje elegido en el mapa (salida o «Viajar») lo dice; escrito a mano, no.
+describe('handleSubmit — viaje elegido (P164)', () => {
+  it('manda viajeElegido solo cuando el viaje sale del mapa', async () => {
+    mockClassify.mockResolvedValue(baseClassifyResponse())
+    mockNarrate.mockResolvedValue(baseNarrateResponse())
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.turn.handleSubmit('Viajo hacia El Pozo.', { viajeElegido: true }))
+    expect(mockClassify).toHaveBeenLastCalledWith({ saveId: expect.any(String), action: 'Viajo hacia El Pozo.', viajeElegido: true })
+    await act(() => result.current.turn.handleSubmit('Voy a El Pozo'))
+    expect(mockClassify).toHaveBeenLastCalledWith({ saveId: expect.any(String), action: 'Voy a El Pozo' })
+  })
+})
+
 describe('handleSubmit — turno normal exitoso', () => {
   it('narra, actualiza condición física/xp, y añade la entrada al log', async () => {
     mockClassify.mockResolvedValueOnce(baseClassifyResponse())

@@ -2045,6 +2045,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   5. Los NPC comentan lo que hizo la jugadora («he oído que acabaste con el Orco enfurecido») solo si
      les ha llegado así.
   Toca `cronista/conocimiento.ts`, `difusion.ts`, `testigos.ts` y `viajeros.ts`; va con `CR-68`. **L**
+  🚧 2026-10-17, del punto 1 solo el texto: una muerte sin testigos corre por bandos y «¿Qué se cuenta?»
+  sin autor (`textoQueCorre`, de `QA-27` P184). Falta que el bando de la víctima no la tenga como
+  propia sin testigo (`alcanceDeSucesos`) y los puntos 2-5.
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 

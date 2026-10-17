@@ -176,6 +176,16 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
     expect(edificio.faccion).toBe('Clan Serhu');
   });
 
+  // P172/P187: lo que tiene dueño (un recurso o ganado de un bando) también lo dice en su ficha.
+  it('GET /zona dice de quién es un recurso con dueño, y no lo dice de uno sin él', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 125, y: 75, tipo: 'RECURSO', targetSlug: 'test-recinto', label: 'Recinto de Prueba', factionSlug: 'Clan Serhu', cantidad: 1, activo: true } });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 175, y: 75, tipo: 'RECURSO', targetSlug: 'test-veta', label: 'Veta de Prueba', cantidad: 1, activo: true } });
+    const app = await buildApp();
+    const body = JSON.parse((await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` })).body);
+    expect(body.puntos.find((p: { targetSlug: string }) => p.targetSlug === 'test-recinto').faccion).toBe('Clan Serhu');
+    expect(body.puntos.find((p: { targetSlug: string }) => p.targetSlug === 'test-veta').faccion).toBeUndefined();
+  });
+
   it('POST /zona/mover contra un grupo devuelve dynamicModeOffer.cantidad y zonePointId del ZonePoint colisionado', async () => {
     await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-grupos-fauna', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

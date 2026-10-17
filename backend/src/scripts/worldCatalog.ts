@@ -3099,6 +3099,8 @@ export const npcs: NpcInput[] = [
   {
     slug: 'cazadora-serhu',
     name: 'Cazadora Serhu',
+    articulo: 'la',
+    genero: 'F',
     kind: 'PLANTILLA',
     aliases: ['cazadora serhu'],
     faction: 'Clan Serhu',
@@ -3256,7 +3258,6 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'F',
     role: 'Mesok\'ikar del Clan Serhu, unico chamán de la tribu y guía espiritual de los suyos.',
-    articulo: 'la',
     level: 18,
     attributes: { fuerza: 16, destreza: 18, constitucion: 18, inteligencia: 16, voluntad: 14, carisma: 10, magia: 22 },
     bio: "Orca del Clan Serhu — pintura ritual en tonos ocre marcándole el rostro y los brazos, tótems de hueso y pluma trenzados en el pelo. Única Mesok'ikar del clan; media entre los vivos, los espíritus y las Gargantúas que guían la migración.",
@@ -3280,7 +3281,6 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'M',
     role: 'Mano derecha del Kort\'ikar del Clan Serhu, encargada de la seguridad y la vigilancia de los suyos.',
-    articulo: 'el',
     level: 18,
     attributes: { fuerza: 24, destreza: 14, constitucion: 18, inteligencia: 6, voluntad: 20, carisma: 10, magia: 0 },
     bio: 'Orco del Clan Serhu — masivo incluso para su raza, cicatrices de duelos visibles en los antebrazos. Responde directamente ante Torgash Ketg; se ocupa de la seguridad del campamento y de que las patrullas cumplan su ronda.',
@@ -3304,7 +3304,6 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'M',
     role: 'Uno de los guardias de las murallas que perdio a su padre en manos de Torgash Ketg y acabo sometido.',
-    articulo: 'el',
     level: 12,
     attributes: { fuerza: 12, destreza: 12, constitucion: 14, inteligencia: 10, voluntad: 18, carisma: 12, magia: 0 },
     bio: 'Guerrero sometido por los Ketg, su familia son de una larga sucesion de antiguos guerrerores que en el pasad eran fieles a los Maktor.Hermano de Tirag Susig',
@@ -3332,7 +3331,6 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'F',
     role: 'Cazadora y exploradora para el clan Serhu.',
-    articulo: 'la',
     level: 12,
     attributes: { fuerza: 12, destreza: 12, constitucion: 14, inteligencia: 10, voluntad: 18, carisma: 12, magia: 0 },
     // Erratas corregidas (C9): "sometido" → "sometida" (concuerda con Tirag, femenino),
@@ -3362,7 +3360,6 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'M',
     role: 'Aullador rojo, compañero de la cazadora Tirag Susig',
-    articulo: 'el',
     level: 10,
     attributes: { fuerza: 8, destreza: 15, constitucion: 9, inteligencia: 9, voluntad: 9, carisma: 6, magia: 0 },
     bio: 'Aullador rojo con una mecha blanca de pelo en la cabeza que lo distingue del resto de su especie. Domesticado por Tirag Susig, la sigue de cerca en cada partida de caza — donde una jauría entera huiría de un orco adulto, él se queda, entrenado para dar la cara junto a ella.',
@@ -3393,6 +3390,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-herrero-serhu',
     name: 'Maestro Herrero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro herrero', 'el herrero de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3418,6 +3416,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'herrero-serhu',
     name: 'Herrero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['herrero serhu'],
     faction: 'Clan Serhu',
@@ -3441,6 +3440,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'herrera-serhu',
     name: 'Herrera Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['herrera serhu'],
     faction: 'Clan Serhu',
@@ -3464,6 +3464,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-curtidora-serhu',
     name: 'Maestra Curtidora Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra curtidora', 'la curtidora de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3489,6 +3490,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'curtidora-serhu',
     name: 'Curtidora Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['curtidora serhu'],
     faction: 'Clan Serhu',
@@ -3512,6 +3514,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'curtidor-serhu',
     name: 'Curtidor Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['curtidor serhu'],
     faction: 'Clan Serhu',
@@ -3535,6 +3538,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-cocinero-serhu',
     name: 'Maestro Cocinero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro cocinero', 'el cocinero de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3560,6 +3564,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'cocinero-serhu',
     name: 'Cocinero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['cocinero serhu'],
     faction: 'Clan Serhu',
@@ -3588,6 +3593,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-herborista-serhu',
     name: 'Maestra Herborista Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra herborista', 'la herborista de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3614,6 +3620,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-alquimista-serhu',
     name: 'Maestro Alquimista Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro alquimista', 'el alquimista de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3640,6 +3647,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-domador-serhu',
     name: 'Maestro Domador Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro domador', 'el domador de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3665,6 +3673,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'ganadero-serhu',
     name: 'Ganadero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['ganadero serhu'],
     faction: 'Clan Serhu',
@@ -3689,6 +3698,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-desollador-serhu',
     name: 'Maestro Desollador Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro desollador', 'el desollador de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3714,6 +3724,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'desolladora-serhu',
     name: 'Desolladora Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['desolladora serhu'],
     faction: 'Clan Serhu',
@@ -3737,6 +3748,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-peletero-serhu',
     name: 'Maestro Peletero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro peletero', 'el peletero de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3762,6 +3774,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'peletero-serhu',
     name: 'Peletero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['peletero serhu'],
     faction: 'Clan Serhu',
@@ -3786,6 +3799,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-primeros-auxilios-serhu',
     name: 'Maestra de Primeros Auxilios Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra de primeros auxilios', 'la sanadora de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3817,6 +3831,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-pescador-serhu',
     name: 'Maestro Pescador Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro pescador', 'el pescador de Playa de Ceniza Blanca'],
     faction: 'Clan Serhu',
@@ -3842,6 +3857,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'pescador-serhu',
     name: 'Pescador Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['pescador serhu'],
     faction: 'Clan Serhu',
@@ -3865,6 +3881,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'pescadora-serhu',
     name: 'Pescadora Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['pescadora serhu'],
     faction: 'Clan Serhu',
@@ -3889,6 +3906,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-carpintero-serhu',
     name: 'Maestro Carpintero Serhu',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro carpintero', 'el carpintero de Karot Veku'],
     faction: 'Clan Serhu',
@@ -3915,6 +3933,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-sastre-serhu',
     name: 'Maestra Sastre Serhu',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra sastre', 'la sastre de Karot Veku'],
     faction: 'Clan Serhu',
@@ -4201,7 +4220,6 @@ export const npcs: NpcInput[] = [
     faction: 'Clan Serhu',
     genero: 'M',
     role: 'Gargantúa sometido, compañero de la Terk\'ikar Ulkha Ketg',
-    articulo: 'el',
     level: 18,
     attributes: { fuerza: 22, destreza: 7, constitucion: 24, inteligencia: 5, voluntad: 10, carisma: 3, magia: 0 },
     bio: 'Macho Gargantúa adulto, de piel más oscura que la del resto de su manada, con una cicatriz vieja que le cierra el ojo izquierdo. Sometido por Ulkha Ketg hace años, la sigue allá donde va — guía y protege las migraciones del Clan Serhu bajo su mando. Dócil con Ulkha y con quien ella señale, pero conserva todo el peligro de su especie si algo la amenaza de verdad.',
@@ -4230,6 +4248,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'yovenne-tal',
     name: 'Archimagistrada Yovenne Tal',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     // Meseta del Orden — "Fuera del núcleo jugable actual... Gorhorn no ha estado aquí" (ver su
     // entrada de región más arriba). Auditoría 2026-08-14, ver comentario de `nucleoJugable`.
@@ -4267,6 +4286,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'vrask-ombra',
     name: 'General Vrask Ombra',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     // Meseta del Orden — fuera del núcleo jugable actual, mismo motivo que Yovenne Tal arriba.
     nucleoJugable: false,
@@ -4335,7 +4355,6 @@ export const npcs: NpcInput[] = [
     aliases: ['dessa kaltrenn', 'dessa', 'kaltrenn'],
     faction: null,
     genero: 'F',
-    articulo: 'la',
     role: 'Desertora de la guardia menor de Berig',
     level: 4,
     attributes: { fuerza: 13, destreza: 12, constitucion: 12, inteligencia: 11, voluntad: 15, carisma: 9, magia: 3 },
@@ -4361,7 +4380,6 @@ export const npcs: NpcInput[] = [
     aliases: ['yerin slaad', 'yerin'],
     faction: 'Keseg Sael',
     genero: 'M',
-    articulo: 'el',
     role: 'Mensajero de Keseg Sael',
     level: 3,
     attributes: { fuerza: 6, destreza: 11, constitucion: 6, inteligencia: 10, voluntad: 14, carisma: 6, magia: 4 },
@@ -4532,6 +4550,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-peletera-helsig',
     name: 'Maestra Peletera Helsig',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra peletera helsig'],
     faction: 'Clan Helsig',
@@ -4557,6 +4576,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'peletera-helsig',
     name: 'Peletera Helsig',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['peletera helsig'],
     faction: 'Clan Helsig',
@@ -4582,6 +4602,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-herrera-helsig',
     name: 'Maestra Herrera Helsig',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra herrera helsig'],
     faction: 'Clan Helsig',
@@ -4607,6 +4628,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-cocinero-helsig',
     name: 'Maestro Cocinero Helsig',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro cocinero helsig'],
     faction: 'Clan Helsig',
@@ -4632,6 +4654,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-minero-helsig',
     name: 'Maestro Minero Helsig',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro minero helsig'],
     faction: 'Clan Helsig',
@@ -4657,6 +4680,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestro-herborista-helsig',
     name: 'Maestro Herborista Helsig',
+    articulo: 'el',
     kind: 'PRINCIPAL',
     aliases: ['maestro herborista helsig'],
     faction: 'Clan Helsig',
@@ -4682,6 +4706,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'maestra-alquimista-helsig',
     name: 'Maestra Alquimista Helsig',
+    articulo: 'la',
     kind: 'PRINCIPAL',
     aliases: ['maestra alquimista helsig'],
     faction: 'Clan Helsig',
@@ -4930,7 +4955,6 @@ export const npcs: NpcInput[] = [
     aliases: ['tarsen vold', 'primer censor', 'primer censor tarsen vold'],
     faction: 'Concordia de Hierro',
     genero: 'M',
-    articulo: 'el',
     role: 'Primer Censor de la Concordia de Hierro, líder de la facción radical',
     level: 7,
     attributes: { fuerza: 9, destreza: 9, constitucion: 11, inteligencia: 16, voluntad: 15, carisma: 12, magia: 3 },
@@ -5139,7 +5163,6 @@ export const npcs: NpcInput[] = [
     aliases: ['aven tessk', 'aven'],
     faction: 'Keseg Sael',
     genero: 'M',
-    articulo: 'el',
     role: 'Portavoz del cónclave de Keseg Sael',
     level: 16,
     attributes: { fuerza: 5, destreza: 8, constitucion: 6, inteligencia: 18, voluntad: 18, carisma: 9, magia: 4 },
@@ -11779,6 +11802,11 @@ export interface ZonePointInput {
   // varios ZonePoint a la vez. Omitido = usa la plantilla GENERAL inferida en tiempo real del lore
   // del Npc (faunaCategoria/temperamento/role/kind/medio) — nunca queda sin ninguna asignada.
   plantillaEspecifica?: string;
+  /// P172/P187 (QA-27): de qué bando es (nombre, como `Npc.faction`): coger o cazar lo suyo delante de
+  /// los suyos resta reputación con él (`aprovecharseDeLoAjeno`). Sin él, de nadie.
+  factionSlug?: string;
+  /// P187: cuántos hay (un rebaño con dueño, que no sigue la población salvaje). Sin él, 1.
+  cantidad?: number;
 }
 
 export const zonePoints: ZonePointInput[] = [
@@ -11829,7 +11857,13 @@ export const zonePoints: ZonePointInput[] = [
   // interior (viven en el Ketg'sedsar de verdad, coherente con su lore — "reciben a quien cruza la
   // entrada") — sus puntos NPC pasan a `campamento-serhu-interior`.
   { locationSlug: 'campamento-serhu', x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'ketg-sedsar', label: 'Ketg\'sedsar — el Salón del Colmillo Ceniza' },
-  { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados' },
+  // P185 (QA-27): cae sobre las estacas (8,9); se recoge desde la casilla de dentro, al lado. No se mueve: las
+  // partidas ya empezadas tienen su copia aquí (un recurso se copia por su posición) y saldría dos veces.
+  { locationSlug: 'campamento-serhu', x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', label: 'Recinto de múrgoles domados', factionSlug: 'Clan Serhu' },
+  // P187 (QA-27, usuaria 2026-10-17): el ganado del clan, cazable, en su corral (arriba a la derecha de la
+  // ilustración, fuera de la empalizada). Es la especie `murgol` (su ficha y la Enciclopedia llevan al Múrgol
+  // genérico) con dueño: cazarlo delante de los suyos resta mucha reputación (`aprovecharseDeLoAjeno`).
+  { locationSlug: 'campamento-serhu', x: 625, y: 125, tipo: 'FAUNA', targetSlug: 'murgol', label: 'Múrgoles del clan', factionSlug: 'Clan Serhu', cantidad: 6 },
   // Cazadora Serhu (hallazgo 4, 2026-09-15): único NPC con homeLocationSlug en el exterior de
   // Karot Veku sin ZonePoint — "sale a cazar o vigilar los alrededores del campamento" (bio real),
   // coherente con estar fuera de la empalizada en vez de en el interior con los demás.

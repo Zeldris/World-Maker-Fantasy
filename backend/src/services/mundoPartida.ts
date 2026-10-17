@@ -180,6 +180,12 @@ export function npcSinMorirEnPartida(saveId: string): Prisma.NpcWhereInput {
   return { AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, scope: '', condicionFisica: 'MUERTO' } } } }] };
 }
 
+/// P172/P178: vivo y sin haber caído en ningún sitio de la partida (cualquier ámbito: un NPC de plantilla
+/// guarda su estado por lugar). Testigos de un bando y quien lleva un edificio.
+export function npcSinCaerEnPartida(saveId: string): Prisma.NpcWhereInput {
+  return { AND: [npcVivoEnPartida(saveId), { NOT: { npcStates: { some: { saveId, condicionFisica: 'MUERTO' } } } }] };
+}
+
 /// CR-13: `Npc` que existen en una partida: los del catálogo y los nacidos en ella (sin mirar si
 /// viven). Para listados del mundo entero (Enciclopedia, descubrimientos).
 export function npcDeLaPartida(saveId: string): Prisma.NpcWhereInput {
