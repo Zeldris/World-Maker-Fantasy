@@ -11,6 +11,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
+import { nombreEnFrase, nombreVisibleDeNpc } from '../dynamicMode.js';
 import { TABLON_RECIPE_KEY } from './tablones.js';
 import { nivelDeImportancia } from './leyendas.js';
 import { aliadasDelReino, categoriaDeFamilia, comoRumor, enMitadDeFrase, escribir, type MetaNoticia } from './noticias.js';
@@ -228,10 +229,12 @@ export async function preguntarNoticias(prisma: PrismaClient, saveId: string, np
     const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true, currentLocation: { select: { region: true } } } });
     const npc = await tx.npc.findFirst({
       where: { worldId: save.worldId, slug: npcSlug, kind: { not: 'PLANTILLA' }, faction: { not: null }, ...npcSinMorirEnPartida(saveId) },
-      select: { name: true, faction: true },
+      select: { slug: true, name: true, kind: true, raza: true, genero: true, faction: true },
     });
     if (!npc) return null;
-    return contarNoticias(tx, { saveId, nombre: npc.name, fuente: npcSlug, quien: { region: save.currentLocation?.region ?? null, faccion: npc.faction } });
+    // P165 (QA-27): quien la tarjeta llama «orco desconocido» no firma con su nombre real.
+    const { nombre } = await nombreVisibleDeNpc(tx, saveId, npc);
+    return contarNoticias(tx, { saveId, nombre: nombreEnFrase(nombre, true), fuente: npcSlug, quien: { region: save.currentLocation?.region ?? null, faccion: npc.faction } });
   }, { maxWait: 10_000, timeout: 20_000 });
 }
 

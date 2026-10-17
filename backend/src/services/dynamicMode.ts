@@ -147,6 +147,19 @@ export function nombreOcultoPorRaza(raza: string | null | undefined, genero: str
   return genero === 'F' ? `${par[1]} desconocida` : `${par[0]} desconocido`;
 }
 
+/// P165 (QA-27): el nombre con que la jugadora ve a un NPC. Uno con nombre propio (`PRINCIPAL`) sin
+/// descubrir va por su raza («Orco desconocido»), en todos los sitios que lo nombran: el mapa, la
+/// colisión, la oferta del turno y lo que cuenta. Un rol o especie no es spoiler: su nombre de catálogo.
+export async function nombreVisibleDeNpc(
+  db: Pick<PrismaClient, 'discoveredEntity'>,
+  saveId: string,
+  npc: { slug: string; name: string; kind: string; raza?: string | null; genero?: string | null },
+): Promise<{ nombre: string; oculto: boolean }> {
+  if (npc.kind !== 'PRINCIPAL') return { nombre: npc.name, oculto: false };
+  const visto = await db.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: npc.slug }, select: { id: true } });
+  return visto ? { nombre: npc.name, oculto: false } : { nombre: nombreOcultoPorRaza(npc.raza, npc.genero), oculto: true };
+}
+
 /// P63 (QA-27): dentro de una frase, el nombre oculto por raza lleva artículo («el orco desconocido
 /// no tiene intención…»), no se lee como nombre propio. Cualquier otro nombre pasa tal cual.
 export function nombreEnFrase(nombre: string, alInicio = false): string {

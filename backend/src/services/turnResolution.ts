@@ -81,7 +81,8 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, decideOfertaModoDinamico, dynamicModeCandidateNameFor, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { nombrarOferta } from './ofertaNombre.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
@@ -7246,12 +7247,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const zonePointsParaOferta = zonePointsRaw.map((p) => ({ ...p, temperamento: temperamentoPorSlug.get(p.targetSlug) ?? null }));
       const candidato = decideOfertaModoDinamico(zonePointsParaOferta);
       if (candidato) {
-        const targetName = await dynamicModeCandidateNameFor(prisma, candidato);
-        // P141: el artículo de catálogo del NPC («a la Cazadora Serhu»), solo si se le llama por su nombre real.
-        const articuloNpc =
-          candidato.tipo === 'NPC'
-            ? (await prisma.npc.findFirst({ where: { slug: candidato.targetSlug, name: targetName }, select: { articulo: true } }))?.articulo
-            : null;
+        // P141/P165 (QA-27): nombre visible, artículo y descubrimiento de lo que nombra la tarjeta.
+        const { targetName, articuloNpc } = await nombrarOferta(prisma, { saveId, worldId }, candidato);
         dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName, articuloNpc) } : {}) };
         // Bug real 2026-08-28 ("oferta de modo dinámico no sobrevive a una recarga") — persistir la
         // oferta en `Save.pendingDynamicModeOffer` para que `GET /saves/:id` pueda reconstruirla
