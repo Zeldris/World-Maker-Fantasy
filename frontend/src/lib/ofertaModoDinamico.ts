@@ -133,3 +133,16 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
     ],
   }
 }
+
+/// Alto de la tarjeta con hasta dos filas de botones y sin aviso.
+const ALTO_BASE_TARJETA_PX = 190
+/// Alto de cada fila de botones de la tarjeta (caben dos por fila) y del aviso de riesgo o de bando.
+const ALTO_FILA_BOTONES_PX = 34
+const ALTO_AVISO_PX = 44
+
+/// P198 (QA-27): la tarjeta crece con sus opciones (el menú de un NPC trae hasta 8) y con el aviso; antes,
+/// con alto fijo, lo que no cabía quedaba fuera, sin barra. Si aun así no cabe, hace scroll.
+export function altoDeTarjeta(presentacion: Pick<PresentacionOferta, 'actions' | 'warning'>): number {
+  const filas = Math.ceil(presentacion.actions.length / 2)
+  return Math.min(560, ALTO_BASE_TARJETA_PX + Math.max(0, filas - 2) * ALTO_FILA_BOTONES_PX + (presentacion.warning ? ALTO_AVISO_PX : 0))
+}

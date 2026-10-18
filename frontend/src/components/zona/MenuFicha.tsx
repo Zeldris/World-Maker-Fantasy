@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { OfferCard } from '../OfferCard'
-import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
+import { altoDeTarjeta, type PresentacionOferta } from '../../lib/ofertaModoDinamico'
 
 // ZON-40/ZON-41 (hito 0.2, decisión de la usuaria en la ronda de la Fase F) — tarjeta flotante al
 // pasar el ratón por una ficha del mapa de zona y menú pegado a la ficha al pulsarla, en lugar del
@@ -98,17 +98,6 @@ export function MenuFicha({ x, y, escala, info, acciones, onClose }: { x: number
 }
 
 const ANCHO_ENCUENTRO_PX = 270
-const ALTO_ENCUENTRO_PX = 190
-/// Alto de cada fila de botones de la tarjeta (caben dos por fila) y del aviso de riesgo o de bando.
-const ALTO_FILA_BOTONES_PX = 34
-const ALTO_AVISO_PX = 44
-
-/// P198 (QA-27): la tarjeta crece con sus opciones (el menú de un NPC trae hasta 8) y con el aviso; antes,
-/// con alto fijo, lo que no cabía quedaba fuera, sin barra. Si aun así no cabe, hace scroll.
-export function altoDeTarjeta(presentacion: Pick<PresentacionOferta, 'actions' | 'warning'>): number {
-  const filas = Math.ceil(presentacion.actions.length / 2)
-  return Math.min(560, ALTO_ENCUENTRO_PX + Math.max(0, filas - 2) * ALTO_FILA_BOTONES_PX + (presentacion.warning ? ALTO_AVISO_PX : 0))
-}
 
 /// ZON-5 (hito 0.2): la tarjeta de un encuentro, pegada a su ficha en el mapa (la misma que sale en
 /// el registro, con sus mismas acciones). El mapa ya no se cierra al chocar con algo.
