@@ -220,6 +220,32 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
     }, 20_000);
   });
 
+  // P191 (QA-27): si el dado deja menos de los marcados, el diario lo dice en tercera persona y con
+  // frase entera; la primera persona («solo consigo acorralar») es para el narrador.
+  describe('menos de los marcados (P191)', () => {
+    let saveId: string;
+    beforeAll(async () => {
+      saveId = await crearSave(1, 'Gorhorn de prueba (caza.ts, P191)');
+    });
+    afterAll(() => limpiarSave(saveId));
+
+    it('el diario dice «solo consigue acorralar a 2 de los 3 …» en tercera persona', async () => {
+      const save = await saveParaCaza(saveId, 1);
+      const targets: CazaTarget[] = [{ npc: zenseCeniza, cantidadObjetivo: 3, cantidadElegida: 3 }];
+      // random=0 -> roll=1 -> delta -1 -> cantidadReal=2.
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      try {
+        const resultado = await iniciarCaza({ save, targets });
+        if ('error' in resultado || resultado.resuelveSinCombate) throw new Error('esperaba combate');
+        expect(resultado.logEntry?.text).toContain(`${save.characterName} solo consigue acorralar a 2 de los 3 Zenses Ceniza que había marcado.`);
+        expect(resultado.logEntry?.text).not.toContain('consigo');
+        expect(resultado.actionText).toContain('solo consigo acorralar a 2');
+      } finally {
+        randomSpy.mockRestore();
+      }
+    }, 20_000);
+  });
+
   /// Cobertura trasladada (checklist 2026-09-01) — cazar 5 individuos a la vez parte el bando
   /// ENEMIGO en un `CombatEncounter` jugable (≤4) y el resto en uno autónomo ya resuelto.
   describe('sub-partición >4v4', () => {
