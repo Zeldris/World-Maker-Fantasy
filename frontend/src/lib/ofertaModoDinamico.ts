@@ -67,6 +67,32 @@ export function presentacionMenuNpc(entryId: string, menu: MenuNpc, onChoose?: (
   }
 }
 
+function riesgoDeOferta(offer: OfertaModoDinamico): PresentacionOferta['warning'] {
+  if (!offer.riesgoCaza || offer.riesgoCaza.riesgo === 'bajo' || !(offer.combateForzado || offer.tipo === 'FAUNA')) return undefined
+  return {
+    nivel: offer.riesgoCaza.riesgo,
+    // QA-27 P27: si te cortan el paso, el riesgo es de pelear, no de cazar.
+    text: `${
+      offer.combateForzado
+        ? offer.riesgoCaza.riesgo === 'mortal'
+          ? 'Pelear puede matarte en un solo turno.'
+          : 'Pelear es peligroso.'
+        : offer.riesgoCaza.riesgo === 'mortal'
+          ? 'Cazar esto puede matarte en un solo turno.'
+          : 'Cazar esto es peligroso.'
+    } ${offer.riesgoCaza.motivo}`.trim(),
+  }
+}
+
+/// P190 (QA-27): lo de un bando (su rebaño, su recinto) lo dice el aviso antes de tocarlo, con lo que cuesta
+/// que te vean, como el aviso de robo de Medieval Dynasty o Bellwright; va delante del riesgo, si lo hay.
+function avisoDeBando(offer: OfertaModoDinamico, riesgo: PresentacionOferta['warning']): PresentacionOferta['warning'] {
+  if (!offer.deBando) return riesgo
+  const accion = offer.tipo === 'RECURSO' ? 'cogerlo' : 'cazarlo'
+  const texto = `Es ${offer.deBando.deQuien}: si te ven ${accion}, perderás reputación con ellos (${offer.deBando.reputacion}).`
+  return { nivel: riesgo?.nivel ?? 'alto', text: riesgo ? `${texto} ${riesgo.text}` : texto }
+}
+
 export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h: ManejadoresOferta): PresentacionOferta {
   // Grupos de fauna reales (Fase 1, 2026-09-28) — «Un grupo de N {nombre}» cuando el punto
   // colisionado representa más de un individuo (nunca NPC/RECURSO, que no se agrupan).
@@ -82,22 +108,7 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
         : offer.tipo === 'RECURSO'
           ? 'Hay algo cerca que podrías recolectar.'
           : 'Hay algo cerca con lo que puedes interactuar.',
-    warning:
-      offer.riesgoCaza && offer.riesgoCaza.riesgo !== 'bajo' && (offer.combateForzado || offer.tipo === 'FAUNA')
-        ? {
-            nivel: offer.riesgoCaza.riesgo,
-            // QA-27 P27: si te cortan el paso, el riesgo es de pelear, no de cazar.
-            text: `${
-              offer.combateForzado
-                ? offer.riesgoCaza.riesgo === 'mortal'
-                  ? 'Pelear puede matarte en un solo turno.'
-                  : 'Pelear es peligroso.'
-                : offer.riesgoCaza.riesgo === 'mortal'
-                  ? 'Cazar esto puede matarte en un solo turno.'
-                  : 'Cazar esto es peligroso.'
-            } ${offer.riesgoCaza.motivo}`.trim(),
-          }
-        : undefined,
+    warning: avisoDeBando(offer, riesgoDeOferta(offer)),
     error: offer.error,
     actions: [
       {

@@ -563,6 +563,8 @@ export interface LogEntry {
     /// P196/P199: quién protagoniza el aviso, ya en frase («La Cazadora Serhu», «Un Guchapo»). Ausente
     /// en un grupo, un recurso y las ofertas guardadas antes (se usa `targetName`).
     quien?: string
+    /// P190: de qué bando es (su rebaño, su recinto) y cuánta reputación cuesta si te ven cazarlo o cogerlo.
+    deBando?: { faccion: string; deQuien: string; reputacion: number }
     busy?: boolean
     error?: string
     /// "¿Quién ve a quién primero?" (2026-09-17) — solo presente cuando la oferta viene de una

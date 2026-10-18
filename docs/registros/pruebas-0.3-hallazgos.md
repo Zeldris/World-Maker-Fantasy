@@ -12,19 +12,19 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (15): P16, P49, P66, P177, P188, P189, P190, P192, P193, P198, P202, P203, P204,
-  P205, P206.
+- **Pendientes** (14): P16, P49, P66, P177, P188, P189, P192, P193, P198, P202, P203, P204, P205,
+  P206.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
-- **Arreglados, sin comprobar jugando** (139): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (140): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P83, P84, P85, P86, P87, P88, P90,
   P91, P92, P93, P94, P95, P97, P98, P99, P100, P101, P102, P103, P105, P106, P107, P108, P110,
   P111, P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134,
   P136, P139, P140, P141, P143, P148, P149, P152, P153, P156, P157, P158, P159, P160, P161, P162,
-  P163, P167, P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183, P184, P191,
-  P194, P195, P196, P199, P200, P201.
+  P163, P167, P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183, P184, P190,
+  P191, P194, P195, P196, P199, P200, P201.
 - **Comprobados jugando** (33): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145, P147, P150, P154, P164, P165, P166, P172,
   P178, P185, P187, P197.
@@ -231,7 +231,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P187 | Múrgoles del clan como fauna salvaje (2026-10-14, Colmillo Ceniza): un Múrgol que ronda fuera de la empalizada sale como encuentro de fauna («Múrgol busca tu atención», tirada de sorpresa, «se aleja dando por terminado el encuentro»). Si son el ganado domado del clan, ¿se pueden cazar? ¿Hay castigo? Mismo tema que P172. | ✅ 2026-10-17 (comprobado jugando el 2026-10-17: cazar «Múrgoles del clan» 2450 → 2350): cazar un animal de un bando (punto FAUNA con `factionSlug`) delante de alguien suyo resta 100 de reputación con él (caza limpia, en grupo y 1 contra 1; no en una emboscada; `zonaCazar.integration.test.ts`). El ganado: punto de fauna «Múrgoles del clan» (especie `murgol`, su ficha y la Enciclopedia llevan al Múrgol genérico) del Clan Serhu en su corral, fuera de la empalizada (usuaria, 2026-10-17); la ficha de lo que tiene dueño dice de quién es (`zonaGrupos.integration.test.ts`). |
 | P188 | Las insignias «×N» (P147) quedan por encima del menú contextual de un punto (el «×6» del rebaño tapa el título del menú) y del oscurecido del diálogo «Viajar» de una salida: la capa de insignias va sobre todo el mapa, también sobre lo que se abre encima. Efecto de P147 | pendiente |
 | P189 | El rebaño del clan («Múrgoles del clan», Colmillo Ceniza) sale del corral: empieza en (625,125), dentro del cercado del norte, y en una hora de juego está en (325,25), en el borde del mapa fuera de la empalizada. Un rebaño con dueño vaga como fauna salvaje | pendiente |
-| P190 | El aviso del rebaño del clan dice «Un grupo de 6 Múrgoles busca tu atención», sin decir que es del Clan Serhu ni que cazarlo cuesta reputación (−100); el recinto, igual al recogerlo (−50). La jugadora se entera después, por el diario | pendiente |
+| P190 | El aviso del rebaño del clan dice «Un grupo de 6 Múrgoles busca tu atención», sin decir que es del Clan Serhu ni que cazarlo cuesta reputación (−100); el recinto, igual al recogerlo (−50). La jugadora se entera después, por el diario | ✅ 2026-10-18: la tarjeta de un rebaño o un recinto de un bando avisa antes de tocarlo: «Es del Clan Serhu: si te ven cazarlo, perderás reputación con ellos (-100).» (cogerlo, -50), como el aviso de robo de Medieval Dynasty o Bellwright (`deBando` en la oferta). El modal de detalle del recurso, todavía sin el aviso. `zonaMover.integration.test.ts` y `ofertaModoDinamico.test.ts`, rojos sin el arreglo |
 | P191 | Al empezar la caza del rebaño, el diario dice «Con Múrgol, aunque al final solo consigo acorralar a 5 de los que había marcado.»: frase sin principio y en primera persona | ✅ 2026-10-18: el diario lo cuenta en tercera persona y con frase entera («Gorhorn solo consigue acorralar a 5 de los 6 Múrgoles que había marcado.», `groupVarianceDiario`); la primera persona queda para el narrador. `caza.integration.test.ts` (P191), rojo sin el arreglo |
 | P192 | El mismo aviso dice «Solo 4 alcanzan a Gorhorn a la vez; el otro queda fuera de su alcance», pero en esa ronda le atacan 5 («Múrgol te ataca» ×5) y lo matan antes de su primer turno | pendiente |
 | P193 | El recinto de múrgoles, sobre la empalizada, se ordeña desde fuera del poblado: Gorhorn llegó a la casilla (7,10), al sur de las estacas, y recogió la leche desde allí (P185 deja interactuar desde cualquier casilla libre de al lado) | pendiente |
