@@ -12,10 +12,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (12): P16, P49, P66, P177, P188, P189, P192, P193, P203, P204, P205, P206.
+- **Pendientes** (11): P16, P49, P66, P177, P188, P189, P192, P193, P203, P205, P206.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
-- **Arreglados, sin comprobar jugando** (142): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (143): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P83, P84, P85, P86, P87, P88, P90,
@@ -23,7 +23,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P111, P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134,
   P136, P139, P140, P141, P143, P148, P149, P152, P153, P156, P157, P158, P159, P160, P161, P162,
   P163, P167, P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183, P184, P190,
-  P191, P194, P195, P196, P198, P199, P200, P201, P202.
+  P191, P194, P195, P196, P198, P199, P200, P201, P202, P204.
 - **Comprobados jugando** (33): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145, P147, P150, P154, P164, P165, P166, P172,
   P178, P185, P187, P197.
@@ -244,6 +244,6 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P201 | La misión de explorar Las Agujas Imán acaba con «Que la caza sea limpia.», frase de un encargo de caza | ✅ 2026-10-18: «Que la caza sea limpia.» solo cierra los encargos de caza (`CIERRE_DE_CAZA`); los demás de los orcos, «El clan recuerda a quien cumple.» o «Que vuelvas con honor.». Las misiones ya publicadas guardan su texto. `misiones.test.ts`, rojo sin el arreglo |
 | P202 | Escape no cierra la tarjeta «¿Tienes trabajo?» ni el menú de un NPC abierto en el mapa de zona; el aviso del Poste de cacería sí se cierra con Escape | ✅ 2026-10-18: Escape cierra la tarjeta del mapa con su «Salir» o su «Ignorar» (con alguien que te corta el paso, nada). Y un modal se cierra con Escape aunque el foco se haya quedado fuera (en `body`, al desaparecer el botón que lo abrió), solo el de encima: la causa probable de que «¿Tienes trabajo?» no se cerrara; falta comprobarlo jugando. `TarjetaEncuentro.test.tsx` y `ModalShell.test.tsx`, rojos sin el arreglo |
 | P203 | Cruzar el Pozo de Cauce Viejo para por un encuentro casi a cada paso (Escorantes, Guchapos, Telda Común…): de la entrada a la salida del oeste, 4-6 tarjetas de «Seguir mi camino». Con P177 a medias se suman los repetidos | pendiente |
-| P204 | Al llegar a la salida del oeste del Pozo se abren a la vez la tarjeta de un encuentro (sin «Seguir mi camino») y el diálogo «Viajar», uno encima del otro | pendiente |
+| P204 | Al llegar a la salida del oeste del Pozo se abren a la vez la tarjeta de un encuentro (sin «Seguir mi camino») y el diálogo «Viajar», uno encima del otro | ✅ 2026-10-18: con la tarjeta de un encuentro en el mapa, el aviso «Viajar» de la salida espera a que se resuelva y sale después, no encima. Causa probable: el aviso se abre al llegar y el encuentro entra justo después, ya sin trayecto (por eso sin «Seguir mi camino»); falta jugarlo. `ZonaPanel.test.tsx`, rojo sin el arreglo |
 | P205 | Ronda cortada en el Paso de los Pilares Rotos, camino de Las Agujas Imán (misión del herrero): un grupo de 5 Cruzavientos (nivel 5) corta el paso a Gorhorn (nivel 2) en la salida del noroeste. Queda por jugar: la misión de explorar, P184 y lo demás sin comprobar | pendiente |
 | P206 | Con un grupo hostil cortando el paso (5 Cruzavientos, Pilares Rotos; HUD «Te cortan el paso»), pulsar una salida del mapa de zona y «Viajar» saca a Gorhorn de la zona sin pelear ni huir: llega al Pozo dos horas después. El HUD siguió en «Te cortan el paso» hasta el turno siguiente | pendiente |

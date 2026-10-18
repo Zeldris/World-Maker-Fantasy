@@ -895,7 +895,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           />
         ))}
       {selectedGroup && <ZoneGroupDetailModal point={selectedGroup} onClose={() => setSelectedGroup(null)} />}
-      {selectedSalida && (
+      {/* P204 (QA-27): con la tarjeta de un encuentro en el mapa, el aviso de viaje espera a que se resuelva. */}
+      {selectedSalida && !encuentroMapa && (
         <ZonaSalidaModal
           salida={selectedSalida}
           onCancel={() => setSelectedSalida(null)}
