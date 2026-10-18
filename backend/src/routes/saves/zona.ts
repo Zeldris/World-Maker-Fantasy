@@ -29,7 +29,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { aNombre, conIndefinido, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, conDefinido, conIndefinido, quienEnAviso, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -790,6 +790,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: string;
           targetName: string;
           aQuien?: string;
+          /// P196/P199: quién protagoniza el aviso («La Cazadora Serhu», «Un Guchapo»; `quienEnAviso`).
+          quien?: string;
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado, ausente
@@ -1031,6 +1033,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: string;
           targetName: string;
           aQuien?: string;
+          /// P196/P199: quién protagoniza el aviso («La Cazadora Serhu», «Un Guchapo»; `quienEnAviso`).
+          quien?: string;
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           zonePointId?: string;
@@ -1076,6 +1080,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
           ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName, colision.articulo) } : {}),
+          ...(colisionTipo && colisionCantidad <= 1 ? { quien: quienEnAviso(colisionTipo, colision.targetName, colision.articulo, colision.genero) } : {}),
           // P124: el plural para la tarjeta de un grupo («Un grupo de 6 Guchapos»).
           ...(colisionTipo === 'FAUNA' && colisionCantidad > 1 ? { nombrePlural: pluralDeEspecie(colision.targetName) } : {}),
           quienInicia,
@@ -1108,7 +1113,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}`
             : colisionTipo === 'FAUNA'
               ? conIndefinido(colision.targetName, colision.articulo, colision.genero) // P149: «con un Guchapo»
-              : nombreEnFrase(colision.targetName);
+              : conDefinido(colision.targetName, colision.articulo); // P199: «con la Cazadora Serhu»
         const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee

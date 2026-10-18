@@ -560,6 +560,9 @@ export interface LogEntry {
     /// P141: a quién se dirige «Responder», ya en frase («al orco desconocido»). Solo NPC; ausente
     /// en ofertas guardadas antes (se usa «a <targetName>»).
     aQuien?: string
+    /// P196/P199: quién protagoniza el aviso, ya en frase («La Cazadora Serhu», «Un Guchapo»). Ausente
+    /// en un grupo, un recurso y las ofertas guardadas antes (se usa `targetName`).
+    quien?: string
     busy?: boolean
     error?: string
     /// "¿Quién ve a quién primero?" (2026-09-17) — solo presente cuando la oferta viene de una

@@ -10,10 +10,11 @@ export async function nombrarOferta(
   prisma: PrismaClient,
   partida: { saveId: string; worldId: string },
   candidato: DynamicModeCandidato,
-): Promise<{ targetName: string; articuloNpc: string | null }> {
+): Promise<{ targetName: string; articuloNpc: string | null; generoNpc: string | null }> {
   const { saveId, worldId } = partida;
   let targetName = await dynamicModeCandidateNameFor(prisma, candidato);
   let articuloNpc: string | null = null;
+  let generoNpc: string | null = null;
   let oculto = false;
   if (candidato.tipo === 'NPC') {
     const npc = await prisma.npc.findFirst({
@@ -27,8 +28,13 @@ export async function nombrarOferta(
       // El artículo de catálogo («a la Cazadora Serhu»), solo si se le llama por su nombre real.
       articuloNpc = visible.oculto ? null : npc.articulo;
     }
+  } else if (candidato.tipo === 'FAUNA') {
+    // P196: el artículo de la especie para el aviso («Un Guchapo busca tu atención»).
+    const especie = await prisma.npc.findFirst({ where: { worldId, slug: candidato.targetSlug }, select: { articulo: true, genero: true } });
+    articuloNpc = especie?.articulo ?? null;
+    generoNpc = especie?.genero ?? null;
   }
   if (candidato.tipo === 'RECURSO') await recordEntityDiscoveries({ saveId, worldId, mentionedText: targetName });
   else if (!oculto) await recordEntityDiscoveries({ saveId, worldId, mentionedText: targetName, npcSlugsInScene: [candidato.targetSlug] });
-  return { targetName, articuloNpc };
+  return { targetName, articuloNpc, generoNpc };
 }

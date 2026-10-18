@@ -180,6 +180,22 @@ export function conIndefinido(nombre: string, articulo: string | null | undefine
   return `${genero === 'F' || articulo === 'la' ? 'una' : 'un'} ${nombre}`;
 }
 
+/// P199 (QA-27): un nombre de catálogo con artículo con su artículo definido delante («la Cazadora
+/// Serhu», «el Maestro Herrero Serhu»); sin artículo, como en `nombreEnFrase` («el orco desconocido»,
+/// «Gistera Koh»).
+export function conDefinido(nombre: string, articulo: string | null | undefined): string {
+  return articulo ? `${articulo} ${nombre}` : nombreEnFrase(nombre);
+}
+
+/// P196/P199 (QA-27): quién protagoniza el aviso de un encuentro, al principio de la frase: un NPC con
+/// el definido («La Cazadora Serhu busca tu atención»), un animal con el indefinido («Un Guchapo busca
+/// tu atención»), como el diario («se topa con un Guchapo»). Un recurso no lleva (`undefined`).
+export function quienEnAviso(tipo: 'NPC' | 'FAUNA' | 'RECURSO', nombre: string, articulo?: string | null, genero?: string | null): string | undefined {
+  if (tipo === 'RECURSO') return undefined;
+  const enFrase = tipo === 'NPC' ? conDefinido(nombre, articulo) : conIndefinido(nombre, articulo, genero);
+  return enFrase.charAt(0).toUpperCase() + enFrase.slice(1);
+}
+
 /// P141 (QA-27): a quién se dirige la jugadora al «Responder» («al orco desconocido», «a alguien»,
 /// «a Gistera Koh»). Viaja en la oferta (`aQuien`): el frontend no lo vuelve a calcular. Un nombre de
 /// catálogo con artículo (`Npc.articulo`: roles y especies, no nombres propios) lo lleva delante: «a la

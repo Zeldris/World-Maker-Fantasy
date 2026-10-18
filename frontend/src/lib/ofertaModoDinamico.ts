@@ -70,7 +70,7 @@ export function presentacionMenuNpc(entryId: string, menu: MenuNpc, onChoose?: (
 export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h: ManejadoresOferta): PresentacionOferta {
   // Grupos de fauna reales (Fase 1, 2026-09-28) — «Un grupo de N {nombre}» cuando el punto
   // colisionado representa más de un individuo (nunca NPC/RECURSO, que no se agrupan).
-  const nombre = offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.nombrePlural ?? offer.targetName}` : offer.targetName
+  const nombre = offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.nombrePlural ?? offer.targetName}` : (offer.quien ?? offer.targetName)
   return {
     tone: offer.combateForzado ? 'danger' : 'accent2',
     icon: offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? iconoRecurso(offer.metodo) : '💬',

@@ -74,6 +74,8 @@ describe('POST /saves/:id/zona/mover', () => {
         name: 'Fauna Pacífica de Prueba',
         aliases: ['fauna pacifica de prueba'],
         role: 'Fauna de prueba',
+        articulo: 'la',
+        genero: 'F',
         level: 1,
         attributes: { fuerza: 4, destreza: 6, constitucion: 4, inteligencia: 2, voluntad: 4, carisma: 2, magia: 0 },
         bio: 'x',
@@ -455,7 +457,9 @@ describe('POST /saves/:id/zona/mover', () => {
     // Regresión (2026-09-09, hallazgo real jugando en vivo: la oferta quedaba persistida en BD
     // pero invisible en el log, porque LogPanel.tsx solo la pinta colgada de una LogEntry
     // concreta) — el encuentro debe dejar su propio LogEntry real determinista, no solo la oferta.
-    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('se topa con') });
+    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('se topa con una Fauna Pacífica de Prueba') });
+    // P196: el aviso lleva el artículo, como el diario («Una Fauna Pacífica de Prueba busca tu atención»).
+    expect(body.dynamicModeOffer.quien).toBe('Una Fauna Pacífica de Prueba');
     expect(body.logEntry.roll).toBeUndefined();
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();

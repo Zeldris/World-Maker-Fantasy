@@ -81,7 +81,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { nombrarOferta } from './ofertaNombre.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
@@ -507,7 +507,7 @@ export interface NarrateAndPersistResult {
   /// (`POST /saves/:id/modo-dinamico/interactuar`), para no gastar una llamada a Ollama en
   /// ofertas que nunca se aceptan. `null` en la inmensa mayoría de turnos — nunca se ofrece si
   /// este turno terminó en combate o si ya hay un modo dinámico en curso.
-  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string } | null;
+  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string; quien?: string } | null;
   /// P167 (QA-27): este turno dejó respondida la oferta pacífica que había (la jugadora actuó por su
   /// cuenta, p. ej. tras «Responder»); el frontend retira los botones de su tarjeta.
   ofertaDescartada?: true;
@@ -7202,7 +7202,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const ofertaPreviaAlTurno = interruptionCandidateForOffer
     ? null
     : await prisma.save.findUnique({ where: { id: saveId }, select: { pendingDynamicModeOffer: true, pendingNpcInteractionOffer: true } });
-  let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string } | null = null;
+  let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string; quien?: string } | null = null;
   // Franja 1b (2026-09-08) — si este mismo turno ya ofreció Interactuar por interrupción de viaje
   // (más arriba, `interruptionCandidateForOffer`), no evaluar TAMBIÉN la oferta ambiental: pisaría
   // `pendingDynamicModeOffer` recién escrito con un candidato distinto sin que el jugador llegara a
@@ -7248,8 +7248,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const candidato = decideOfertaModoDinamico(zonePointsParaOferta);
       if (candidato) {
         // P141/P165 (QA-27): nombre visible, artículo y descubrimiento de lo que nombra la tarjeta.
-        const { targetName, articuloNpc } = await nombrarOferta(prisma, { saveId, worldId }, candidato);
-        dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName, articuloNpc) } : {}) };
+        const { targetName, articuloNpc, generoNpc } = await nombrarOferta(prisma, { saveId, worldId }, candidato);
+        const quien = quienEnAviso(candidato.tipo, targetName, articuloNpc, generoNpc);
+        dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName, articuloNpc) } : {}), ...(quien ? { quien } : {}) };
         // Bug real 2026-08-28 ("oferta de modo dinámico no sobrevive a una recarga") — persistir la
         // oferta en `Save.pendingDynamicModeOffer` para que `GET /saves/:id` pueda reconstruirla
         // tras F5, igual que `pendingDynamicMode` ya hace con la conversación EN CURSO.
