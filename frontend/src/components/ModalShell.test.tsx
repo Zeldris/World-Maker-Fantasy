@@ -26,6 +26,23 @@ describe('MOD-1 — ModalShell', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  // P202 (QA-27): con el foco fuera (p. ej. en `body`, al desaparecer el botón que lo abrió), Escape cierra
+  // el modal de encima, y solo ese.
+  it('Escape con el foco fuera cierra solo el modal de encima', () => {
+    const abajo = vi.fn()
+    const encima = vi.fn()
+    render(
+      <>
+        <ModalShell title="Mapa" onClose={abajo}><p>mapa</p></ModalShell>
+        <ModalShell title="¿Tienes trabajo?" onClose={encima}><p>aviso</p></ModalShell>
+      </>,
+    )
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(encima).toHaveBeenCalledTimes(1)
+    expect(abajo).not.toHaveBeenCalled()
+  })
+
   it('con closeDisabled no cierra ni con Escape ni con la ✕', () => {
     const onClose = vi.fn()
     const { getByRole } = render(
