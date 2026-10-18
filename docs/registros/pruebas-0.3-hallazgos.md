@@ -12,11 +12,11 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (17): P16, P49, P66, P177, P188, P189, P190, P192, P193, P194, P195, P198, P202,
-  P203, P204, P205, P206.
+- **Pendientes** (16): P16, P49, P66, P177, P188, P189, P190, P192, P193, P194, P198, P202, P203,
+  P204, P205, P206.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
-- **Arreglados, sin comprobar jugando** (137): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (138): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P25, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42,
   P43, P44, P45, P46, P47, P50, P51, P52, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64,
   P65, P67, P68, P69, P72, P74, P76, P77, P78, P79, P80, P82, P83, P84, P85, P86, P87, P88, P90,
@@ -24,7 +24,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P111, P112, P114, P115, P116, P117, P118, P119, P121, P124, P125, P126, P128, P129, P133, P134,
   P136, P139, P140, P141, P143, P148, P149, P152, P153, P156, P157, P158, P159, P160, P161, P162,
   P163, P167, P168, P169, P170, P171, P173, P174, P175, P176, P180, P181, P182, P183, P184, P191,
-  P196, P199, P200, P201.
+  P195, P196, P199, P200, P201.
 - **Comprobados jugando** (33): P4, P6, P7, P8, P73, P81, P96, P104, P109, P113, P120, P122, P123,
   P127, P130, P132, P135, P137, P138, P142, P144, P145, P147, P150, P154, P164, P165, P166, P172,
   P178, P185, P187, P197.
@@ -236,7 +236,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P192 | El mismo aviso dice «Solo 4 alcanzan a Gorhorn a la vez; el otro queda fuera de su alcance», pero en esa ronda le atacan 5 («Múrgol te ataca» ×5) y lo matan antes de su primer turno | pendiente |
 | P193 | El recinto de múrgoles, sobre la empalizada, se ordeña desde fuera del poblado: Gorhorn llegó a la casilla (7,10), al sur de las estacas, y recogió la leche desde allí (P185 deja interactuar desde cualquier casilla libre de al lado) | pendiente |
 | P194 | El menú de un punto da la distancia en línea recta («a 8 celdas») y la ruta prevista en pasos («22 pasos»): con muros no coinciden, y «celdas» es palabra de la cuadrícula, no del juego | pendiente |
-| P195 | La ficha de Ketg'sedsar pone «Quién lo lleva: Orca desconocida», y su descripción ya nombra a la Terk'ikar Ulkha Ketg y al Kort'ikar Torgash Ketg | pendiente |
+| P195 | La ficha de Ketg'sedsar pone «Quién lo lleva: Orca desconocida», y su descripción ya nombra a la Terk'ikar Ulkha Ketg y al Kort'ikar Torgash Ketg | ✅ 2026-10-18: quien nombra entero la descripción de un edificio («sede de la Terk'ikar Ulkha Ketg», «El Maestro Herrero Serhu funde mena…») queda citado al leer su ficha: la ficha, el mapa y su menú lo llaman por su nombre. Y «Herrería del Clan Serhu: el Maestro Herrero Serhu atiende a Gorhorn», con artículo (P199). `edificios.integration.test.ts`, rojo sin el arreglo |
 | P196 | El aviso en el mapa de un animal suelto dice «Guchapo busca tu atención», sin artículo (el diario sí: «se topa con un Guchapo») | ✅ 2026-10-18: el aviso lleva el artículo, como el diario: «Un Guchapo busca tu atención» (`quienEnAviso`, que el backend manda en la oferta como `quien`; también en «te corta el paso»). `zonaMover.integration.test.ts` y `ofertaModoDinamico.test.ts`, rojos sin el arreglo |
 | P197 | El menú del herrero abierto desde su edificio trae dos «Salir» (y React avisa de claves repetidas). Causa: `abrirMenuDeNpc` con `desde: 'edificio'` añade «Salir» (`menuDeNpc.ts:63`), pero el menú de un maestro ya lo traía. Efecto de P178 | ✅ 2026-10-17: en un edificio, «Salir» se quita del menú antes de añadirlo, así que sale uno solo (`menuDeNpc.ts`; `edificios.integration.test.ts` comprueba que las opciones no se repiten, rojo sin el arreglo). Y `QA-94` hace fallar cualquier test del frontend con un aviso de React como el de este menú. Comprobado jugando el 2026-10-17: el menú de la Herrería, con un solo «Salir». |
 | P198 | Con el mapa de zona abierto, la tarjeta del menú de un NPC (8 opciones) solo enseña 4: las demás (Pedirle que te informe, Combatir, Salir) quedan fuera de la tarjeta, sin barra ni rueda, y Escape no la cierra. Al cerrar el mapa, el menú del diario sí está entero (Hogar Ketg, la Herrería) | pendiente |

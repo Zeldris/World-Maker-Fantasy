@@ -47,11 +47,24 @@ describe('edificios del mapa: ficha e Interactuar (P178)', () => {
     expect(res.statusCode).toBe(200);
     const ficha = res.json();
     expect(ficha).toMatchObject({ nombre: 'Herrería del Clan Serhu', faccion: 'Clan Serhu', estado: 'En pie', nivel: 1 });
-    // Sin descubrir, por su raza (P165).
-    expect(ficha.encargado).toEqual({ slug: 'maestro-herrero-serhu', nombre: 'Orco desconocido', aqui: true });
+    // P195: sin descubrir iría por su raza (P165), pero la descripción de la herrería lo nombra («El Maestro
+    // Herrero Serhu funde mena…»): leerla lo deja citado.
+    expect(ficha.encargado).toEqual({ slug: 'maestro-herrero-serhu', nombre: 'Maestro Herrero Serhu', aqui: true });
+    expect(await prisma.discoveredEntity.count({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-herrero-serhu' } })).toBe(1);
     expect(ficha.ofrece).toContainEqual({ label: 'Comerciar', disponible: false, motivo: COMERCIAR_PENDIENTE });
     // Lo mismo que dará su menú: en esta partida el clan no escucha propuestas, así que sin encargos (`/code-review`).
     expect(ficha.ofrece).toContainEqual({ label: 'Encargos', disponible: false, motivo: 'Ahora no te lo ofrece' });
+  });
+
+  // P195 (QA-27): la descripción del salón nombra a la Terk'ikar; leerla la deja citada y la ficha la llama
+  // por su nombre, no «Orca desconocida».
+  it('quien nombra la descripción del edificio sale por su nombre en «Quién lo lleva»', async () => {
+    const salon = (await prisma.zonePoint.create({ data: { locationId, saveId, x: 400, y: 300, tipo: 'EDIFICIO', targetSlug: 'ketg-sedsar', label: "Ketg'sedsar", activo: true } })).id;
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 420, y: 300, tipo: 'NPC', targetSlug: 'ulkha-ketg', activo: true } });
+    const app = await buildApp();
+    const ficha = (await app.inject({ method: 'GET', url: `/saves/${saveId}/zona/edificio/${salon}` })).json();
+    expect(ficha.descripcion).toContain('Ulkha Ketg');
+    expect(ficha.encargado?.nombre).toBe('Ulkha Ketg');
   });
 
   it('Interactuar: lejos, 409; al lado, el menú de quien lo lleva, sin «Charlar» y con «Salir»', async () => {
@@ -62,13 +75,14 @@ describe('edificios del mapa: ficha e Interactuar (P178)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/edificio/${herreria}/interactuar` });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.menu).toMatchObject({ npcSlug: 'maestro-herrero-serhu', npcName: 'Orco desconocido', desdeEncuentro: false });
+    // P195: ya citado al leer la ficha de su herrería (test de arriba), su menú lo llama por su nombre.
+    expect(body.menu).toMatchObject({ npcSlug: 'maestro-herrero-serhu', npcName: 'Maestro Herrero Serhu', desdeEncuentro: false });
     expect(body.menu.options).toContain('Salir');
     // P197 (QA-94): el menú de un maestro ya trae «Salir»; abierto desde su edificio no sale dos veces.
     expect(new Set(body.menu.options).size).toBe(body.menu.options.length);
     expect(body.menu.options).not.toContain('Charlar');
     expect(body.menu.options).not.toContain('¿Tienes trabajo?');
-    expect(body.logEntry.text).toBe('Herrería del Clan Serhu: el orco desconocido atiende a Gorhorn P178.');
+    expect(body.logEntry.text).toBe('Herrería del Clan Serhu: el Maestro Herrero Serhu atiende a Gorhorn P178.');
     const guardado = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(guardado.pendingNpcInteractionOffer).toMatchObject({ npcSlug: 'maestro-herrero-serhu', desdeEncuentro: false });
   });

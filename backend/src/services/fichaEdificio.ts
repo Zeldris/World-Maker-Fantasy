@@ -89,6 +89,11 @@ export async function fichaDeEdificio(db: Db, saveId: string, zonePointId: strin
   const ofrece: OfertaDeEdificio[] = [];
   if (llevado) {
     const { npc, aqui } = llevado;
+    // P195 (QA-27): si la descripción del edificio ya lo nombra entero («sede de la Terk'ikar Ulkha Ketg»),
+    // leerla lo deja citado en la Enciclopedia: la ficha, el mapa y su menú lo llaman ya por su nombre.
+    if (edificio.description?.includes(npc.name)) {
+      await db.discoveredEntity.createMany({ data: [{ saveId, entityType: 'npc', entitySlug: npc.slug }], skipDuplicates: true });
+    }
     const { nombre: visible } = await nombreVisibleDeNpc(db, saveId, npc);
     encargado = { slug: npc.slug, nombre: visible, aqui };
     // Lo mismo que daría su menú ahora (oficio, encargos según tu reputación…).
