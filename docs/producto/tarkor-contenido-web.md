@@ -12,7 +12,7 @@ los documentos del repositorio a fecha **2026-10-18**. Las cifras salen del cat�
 (Caves of Qud, Wildermyth, RimWorld, Dwarf Fortress, Medieval Dynasty, Baldur's Gate 3). Suelen llevar:
 - ficha rápida;
 - gancho en una frase;
-- pilares con cifras concretas («más de 70 facciones», «más de 300 objetos»);
+- pilares con cifras concretas (en Tarkor: «9 facciones vivas», «245 objetos»);
 - cómo se juega;
 - mundo, razas, clases, bestiario, oficios y construcción;
 - hoja de ruta, requisitos, capturas, preguntas frecuentes y contacto o prensa.
@@ -209,22 +209,22 @@ calor, suerte (que da ventaja) y honor.
 | Mago | No orcos | Poder de la magia, Poder de la Semilla | 7 escuelas y 12 ramas de Semilla 🛠️ (sin habilidades jugables todavía: hoy son **8 clases jugables**) |
 
 **Equipo:**
-- **Armas:** 22 tipos. Cada una pone a prueba un atributo:
-  - Fuerza: hachas, mazas, picas;
-  - Destreza: dagas, espadas, arcos, ballestas, hondas, redes;
+- **Armas:** 23 tipos. Cada una pone a prueba un atributo:
+  - Fuerza: hachas, mazas y garrotes (a una o dos manos), picas y lanzas;
+  - Destreza: cuchillos, dagas, espadas, arcos corto y largo, ballestas, hondas, redes y guantes;
   - Constitución: el escudo;
   - Voluntad: la vara;
-  - Magia: báculos y grimorios.
+  - Magia: báculos, bastones y grimorios.
 - **Armadura** por peso: ligera (Magia e Inteligencia), media (Destreza y Voluntad) y pesada (Fuerza y
   Constitución).
-- **24 ranuras de equipo**, incluidas las cosméticas.
+- **21 ranuras de equipo**: 12 de equipo, 6 de consumibles y 3 cosméticas.
 - **245 objetos** en el catálogo, con tiers de rareza del 1 al 9. La economía es pequeña: nada pasa de
   80 Goirnos.
 
 **Progresión:**
 - Niveles del **1 al 40**. La experiencia sigue la tabla exacta de D&D 5e hasta el nivel 20 y una curva
   propia después.
-- Puntos de atributo en los niveles 4, 8, 12, 16 y 19, y luego cada 4.
+- Puntos de atributo en los niveles 4, 8, 12, 16, 19, 24, 28, 32, 36 y 40.
 - Hay experiencia por éxitos en tiradas, por hitos, por misiones y por el reino.
 - Los oficios suben de nivel por separado.
 
@@ -241,13 +241,14 @@ calor, suerte (que da ventaja) y honor.
 - **Combate 1 contra 1 o de grupo**, hasta 4 por bando:
   - cada combatiente tira su iniciativa;
   - los emparejamientos («enganches») se fijan por ronda;
-  - quien te ataca sin ser tu duelo tira con ventaja (flanqueo), como mucho 2 por ronda;
+  - quien ataca sin ser tu duelo tira con ventaja (flanqueo); contra ti, como mucho 2 de más por ronda;
   - una ronda que empiezas Ileso no te deja peor que Convaleciente.
 - **Golpe de gracia:** rematar a un enemigo convaleciente acierta siempre, como el crítico automático
   contra un inconsciente en D&D 5e y BG3.
-- **17 efectos de habilidad:** Ataque, Aturdimiento, Intimidación, Aguante, Análisis, Invocación,
-  Debilidad, Aumento, Limpiar, Canalizar, Curación, Reflejar, Expulsar, Control, Múltiple, Letal y
-  Desviar.
+- **28 efectos de habilidad:** Ataque, Aturdimiento, Intimidación, Aguante, Análisis, Invocación,
+  Debilidad, Aumento, Limpiar, Canalizar, Curación, Reflejar, Expulsar, Control, Múltiple, Letal,
+  Desviar, Provocación, Ocultación, Contra, Refractar, Recuperación, Purificar, Compañero, Limitada,
+  Conversión, Marcar y Área.
 - **Después del combate:**
   - con un enemigo convaleciente: matar, capturar o dejar vivir con clemencia;
   - con los cuerpos: saquear y desollar;
@@ -364,7 +365,7 @@ calor, suerte (que da ventaja) y honor.
 | Objetos | 245 |
 | Lugares y rutas | 72 y 35 |
 | Oficios | 12 en las Llanuras |
-| Efectos de habilidad | 17 |
+| Efectos de habilidad | 28 |
 | Niveles | 1-40 |
 | Tests automáticos | Unos 4.200 (3.599 de backend y 643 de frontend) |
 | IA en tu equipo | 100 % |
@@ -403,7 +404,7 @@ Todo corre en el equipo del jugador. Sin login, con un único usuario implícito
 | Capa | Tecnología |
 |---|---|
 | Interfaz | React 19, TypeScript, Vite, Tailwind CSS 4 |
-| Motor | Node.js, Fastify 5, TypeScript, Prisma 6 (67 modelos, 237 migraciones) |
+| Motor | Node.js, Fastify 5, TypeScript, Prisma 6 (67 modelos, 236 migraciones) |
 | Datos | PostgreSQL con pgvector (embeddings) |
 | IA | Ollama, con modelos locales |
 | Instalador | Tauri v2 (Rust): NSIS para Windows y AppImage para Linux |
@@ -413,7 +414,7 @@ Todo corre en el equipo del jugador. Sin login, con un único usuario implícito
 
 | Papel | Modelo | Qué hace |
 |---|---|---|
-| Narrador | Llama 3.1 8B (`tarkor-narrador-llama31`, contexto de 16k, temperatura 0,15) | Cuenta el resultado ya fijado del turno |
+| Narrador | Llama 3.1 8B (`tarkor-narrador-llama31`, cuantizado q4_K_M, contexto de 8k; temperatura 0 en las salidas JSON y más alta en la narración libre) | Cuenta el resultado ya fijado del turno |
 | Cronista y clasificador | Qwen 2.5 1.5B instruct | Decide atributo, dificultad y duración de una acción libre; redacta sucesos del mundo |
 | Sugerencias | Qwen 3.5 4B | Propone tres acciones posibles |
 | Embeddings | nomic-embed-text | Búsqueda semántica (RAG) en el lore y en los hechos de la partida |
