@@ -349,8 +349,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if ('agotado' in punto && punto.agotado) detalles.push('agotado por ahora')
     if ('nivelRequerido' in punto && punto.nivelRequerido) detalles.push(`pide nivel ${punto.nivelRequerido} de oficio`)
     if (data?.jugador) {
+      // P194 (QA-27): en pasos, por el mismo camino que la ruta prevista (rodea los muros), no en línea recta.
       const d = distanciaEnCeldas(data.jugador, punto)
-      detalles.push(d === 0 ? 'aquí' : `a ${d} ${d === 1 ? 'celda' : 'celdas'}`)
+      const pasos = d === 0 ? 0 : rutaPrevista(data.jugador, punto, undefined, murosZona).pasos || d
+      detalles.push(pasos === 0 ? 'aquí' : `a ${pasos} ${pasos === 1 ? 'paso' : 'pasos'}`)
     }
     return { nombre: punto.nombre, detalles }
   }

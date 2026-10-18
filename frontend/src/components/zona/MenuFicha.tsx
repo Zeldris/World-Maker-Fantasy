@@ -10,7 +10,7 @@ import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
 
 export interface InfoFicha {
   nombre: string
-  /// «Fauna · Enemigo · ×3 · a 4 celdas».
+  /// «Fauna · Enemigo · ×3 · a 4 pasos».
   detalles: string[]
 }
 

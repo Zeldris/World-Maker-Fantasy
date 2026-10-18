@@ -8,6 +8,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
 
 import { getZona, moverEnZona } from '../../lib/api'
 import { ZonaPanel, salidaEnCasillaDelJugador } from './ZonaPanel'
+import { claveCelda, rutaPrevista } from '../../lib/zonaRuta'
 import { CapasContext } from '../../context/capasContext'
 
 /// Z-A (hito 0.1, roadmap-front-zona.md) — ZON-20 (leyenda en el mapa) y ZON-62 (cuadrícula bajo demanda).
@@ -181,8 +182,21 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     await act(async () => {})
     const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
     fireEvent.mouseEnter(ficha)
-    // Aullador en la celda (3, 2); el personaje en la (7, 6): 4 celdas.
-    expect(getByTestId('tarjeta-ficha').textContent).toBe('Aullador rojoFauna · Enemigo · ×3 · a 4 celdas')
+    // Aullador en la celda (3, 2); el personaje en la (7, 6): 4 pasos (P194: en pasos, como la ruta).
+    expect(getByTestId('tarjeta-ficha').textContent).toBe('Aullador rojoFauna · Enemigo · ×3 · a 4 pasos')
+  })
+
+  // P194 (QA-27): con muros por medio, la tarjeta da los pasos del camino, los mismos que la ruta prevista.
+  it('con un muro por medio, la distancia son los pasos del camino que lo rodea', async () => {
+    const muros = Array.from({ length: 11 }, (_, row) => ({ col: 5, row }))
+    vi.mocked(getZona).mockResolvedValue({ ...zona, muros } as never)
+    const { container, getByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.mouseEnter(ficha)
+    const pasos = rutaPrevista(zona.jugador, { x: 175, y: 125 }, undefined, new Set(muros.map(claveCelda))).pasos
+    expect(pasos).toBeGreaterThan(4)
+    expect(getByTestId('tarjeta-ficha').textContent).toBe(`Aullador rojoFauna · Enemigo · ×3 · a ${pasos} pasos`)
   })
 
   // P147 (QA-27): la insignia «×N» de un grupo quedaba tapada por una ficha pegada o por el personaje.
