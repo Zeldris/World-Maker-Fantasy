@@ -202,12 +202,74 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug', () => {
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.roll.attribute).toBe('destreza');
+      // P158 (QA-27): la tirada dice contra qué tiró y qué sacó.
+      expect(typeof body.roll.dificultad).toBe('number');
+      expect(body.roll.grado).toBe('claro');
       expect(body.exito).toBe(true);
       const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
       expect(despues.cantidad).toBeLessThan(20);
     } finally {
       azar.mockRestore();
       await prisma.zonePoint.delete({ where: { id: punto.id } });
+    }
+  });
+
+  // P173 (QA-27): «Recoger» (PASIVO) daba la leche y el recinto seguía en ×20: solo minar/talar/extraer
+  // bajaba el punto.
+  it('Recoger leche del recinto: el punto del mapa pierde lo recogido', async () => {
+    const colmillo = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-serhu', world: { slug: 'helek-sirik' } } });
+    const antes = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: colmillo.id, pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', targetName: 'Recinto de múrgoles domados' } } });
+    const punto = await prisma.zonePoint.create({
+      data: { locationId: colmillo.id, saveId, x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', cantidad: 20, activo: true, lastUpdatedAtMinutes: 480 },
+    });
+    const azar = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/murgoles-domados-campamento` });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).exito).toBe(true);
+      expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } })).cantidad).toBeLessThan(20);
+    } finally {
+      azar.mockRestore();
+      await prisma.zonePoint.delete({ where: { id: punto.id } });
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: antes.currentLocationId } });
+    }
+  });
+
+  // P172 (QA-27, usuaria 2026-10-15): lo de un bando se puede coger, pero si alguien suyo lo ve, resta
+  // reputación con él. Sin testigos, nada.
+  it('coger la leche del recinto del Clan Serhu delante de una cazadora del clan resta reputación con él (P172)', async () => {
+    const colmillo = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-serhu', world: { slug: 'helek-sirik' } } });
+    const antes = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
+    const repDe = async () => ((await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).factionsStatus as Record<string, number> | null)?.['Clan Serhu'];
+    const recoger = async () => {
+      await prisma.worldPopulation.updateMany({ where: { targetSlug: 'murgoles-domados-campamento', OR: [{ saveId }, { saveId: null }] }, data: { lastHarvestedAt: null } });
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: colmillo.id, pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', targetName: 'Recinto de múrgoles domados' } } });
+      const app = await buildApp();
+      return JSON.parse((await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/murgoles-domados-campamento` })).body);
+    };
+    const recinto = await prisma.zonePoint.create({
+      data: { locationId: colmillo.id, saveId, x: 400, y: 460, tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', cantidad: 20, activo: true, lastUpdatedAtMinutes: 480, factionSlug: 'Clan Serhu' },
+    });
+    const azar = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    let testigo: { id: string } | null = null;
+    try {
+      // Sin nadie del clan delante: se coge y no pasa nada.
+      const repInicial = await repDe();
+      const sinTestigos = await recoger();
+      expect(sinTestigos.exito).toBe(true);
+      expect(await repDe()).toBe(repInicial);
+      // Con la cazadora del clan en el lugar: resta y lo dice.
+      testigo = await prisma.zonePoint.create({ data: { locationId: colmillo.id, saveId, x: 620, y: 200, tipo: 'NPC', targetSlug: 'cazadora-serhu', cantidad: 1, activo: true } });
+      const visto = await recoger();
+      expect(visto.exito).toBe(true);
+      expect(await repDe()).toBe((repInicial ?? 2500) - 50);
+      expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'Alguien del Clan Serhu lo ha visto llevarse lo que es suyo.' } } })).toBe(1);
+    } finally {
+      azar.mockRestore();
+      await prisma.zonePoint.deleteMany({ where: { id: { in: [recinto.id, ...(testigo ? [testigo.id] : [])] } } });
+      await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: antes.currentLocationId } });
     }
   });
 

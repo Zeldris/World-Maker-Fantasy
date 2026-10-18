@@ -228,6 +228,20 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     expect(logCountDespues).toBe(logCountAntes);
   });
 
+  // P150 (QA-27): «Seguir mi camino» manda el ignorar de la oferta vieja y el paso siguiente a la vez; el
+  // paso guardaba la oferta nueva y el ignorar, que acababa después, la borraba (409 al pulsar «Cazar»).
+  it('ignorar una oferta concreta no borra la nueva que ya puso el paso siguiente (P150)', async () => {
+    const app = await buildApp();
+    const nueva = { tipo: 'FAUNA', targetSlug: 'cornante', targetName: 'Cornante' };
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: Prisma.JsonNull, pendingDynamicModeOffer: nueva } });
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar`, payload: { targetSlug: 'guchapo' } });
+    expect(res.statusCode).toBe(200);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingDynamicModeOffer).toEqual(nueva);
+    // La misma oferta sí se borra.
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar`, payload: { targetSlug: 'cornante' } });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingDynamicModeOffer).toBeNull();
+  });
+
   // Bug real jugando en vivo (2026-09-28): "Ignorar" en "X te corta el paso" era una huida gratis.
   it('ignorar una oferta de combate forzado (AGRESIVO/ENEMIGO) sin abrir: 409 y la oferta sigue pendiente', async () => {
     const oferta = { tipo: 'NPC', targetSlug: 'orco-enfurecido-hondonada', targetName: 'Alguien', quienInicia: 'npc', combateForzado: true };

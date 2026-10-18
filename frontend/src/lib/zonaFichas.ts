@@ -108,6 +108,12 @@ export const DISPOSICION_LABEL: Record<ZonePointInfo['color'], string> = {
   INERTE: 'Salvaje',
 }
 
+/// P176 (QA-27): la disposición con el bando dueño delante, si se sabe («Clan Serhu · Neutro»): sola,
+/// «Neutro» en un edificio del clan parecía que no era de nadie.
+export function disposicionDe(punto: { color: ZonePointInfo['color']; faccion?: string }): string {
+  return punto.faccion ? `${punto.faccion} · ${DISPOSICION_LABEL[punto.color]}` : DISPOSICION_LABEL[punto.color]
+}
+
 /// Distancia en celdas (de 50) entre dos puntos del lienzo: cuántos pasos hay como mínimo.
 export function distanciaEnCeldas(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.max(Math.abs(Math.floor(a.x / 50) - Math.floor(b.x / 50)), Math.abs(Math.floor(a.y / 50) - Math.floor(b.y / 50)))

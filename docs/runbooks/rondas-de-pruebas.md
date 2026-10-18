@@ -24,6 +24,34 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
 «salgo a cazar») y qué está ya probado en vivo:
 [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
 
+**Moverse** (`QA-87`, usuaria, 2026-10-14): dentro de una zona y de una a otra, por el mapa de zona y
+sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas (P164).
+
+**Capturas y datos de la partida** (`QA-86`):
+
+- Cada orden de `orden.sh` tiene `shot('nombre')`, que guarda en `tools/playwright-e2e/shots/` y
+  devuelve la ruta: `orden.sh "await page.getByText('Mapa').click(); return await shot('r1-mapa')"`.
+- Para mirar la partida por dentro, SQL contra la base de juego:
+  `psql postgresql://tarkor:tarkor@localhost:5432/tarkor_juego -c '<consulta>'` (tablas con el nombre
+  del modelo entre comillas, p. ej. `"Save"`, `"ZonePoint"`; columnas en camelCase).
+- Las consultas de cada ronda (`QA-97`, retro del 2026-10-17), con `D=postgresql://tarkor:tarkor@localhost:5432/tarkor_juego`
+  y `S=<id de la partida>`:
+
+  ```sh
+  # Dónde está (zona y px del mapa) y a qué hora (minutos desde el día 1 a las 00:00)
+  psql $D -c "select l.slug, s.\"zonaPosX\", s.\"zonaPosY\", w.\"fictionalMinutes\" from \"Save\" s join \"Location\" l on l.id = s.\"currentLocationId\" join \"WorldState\" w on w.\"saveId\" = s.id where s.id = '$S'"
+  # Reputación con cada bando (vacía = la de partida)
+  psql $D -c "select \"factionsStatus\" from \"WorldState\" where \"saveId\" = '$S'"
+  # Últimas líneas del diario
+  psql $D -c "select \"createdAt\"::time, left(text, 120) from \"LogEntry\" where \"saveId\" = '$S' order by \"createdAt\" desc limit 10"
+  # Puntos de una zona (posición en px del mapa de 800×600, dueño)
+  psql $D -c "select zp.tipo, zp.\"targetSlug\", zp.x, zp.y, zp.cantidad, zp.\"factionSlug\" from \"ZonePoint\" zp join \"Location\" l on l.id = zp.\"locationId\" where zp.\"saveId\" = '$S' and l.slug = '<slug>'"
+  # Coordenadas de las zonas del catálogo (y crece hacia el norte: sirve para saber por qué salida se va)
+  psql $D -c "select slug, x, y from \"Location\" where \"saveId\" is null and slug in ('<slug>', '<slug>')"
+  # El último encuentro (enfriamiento de P177)
+  psql $D -c "select \"zonaUltimoEncuentro\" from \"Save\" where id = '$S'"
+  ```
+
 ## Cómo se juega
 
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
@@ -35,11 +63,14 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de
    interfaz, con la causa si se ve. Con `tools/qa/marca-hallazgo.py` (`QA-42`, `QA-47`):
    `--nuevo "<hallazgo>" "<estado>"` añade la fila con el siguiente número, y
-   `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado.
+   `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado; las dos rehacen el resumen de la cabecera
+   (`QA-84`). Lo comprobado jugando se marca con «Comprobado jugando» en el estado.
 4. **La ronda no escribe código** (`QA-45`, petición de la usuaria del 2026-10-12): la prioridad es
    probar. Solo se arregla un fallo **bloqueante** (no se puede seguir jugando, o el juego hace algo
    imposible), con su test y comprobado en vivo; que el test falle sin el arreglo se comprueba con
-   `tools/qa/rojo-sin-arreglo.sh` (`QA-58`). Lo demás va al registro como «pendiente»; las
+   `tools/qa/rojo-sin-arreglo.sh` (`QA-58`). También se arregla, antes del PR, el efecto secundario de
+   un arreglo de esta misma rama que aún no está en `main` (`QA-83`; p. ej. P151, de P123): es parte
+   de ese arreglo y se vuelve a jugar. Lo demás va al registro como «pendiente»; las
    mejoras y el diseño, al roadmap como tarea con hito. Las retros y los arreglos de lo apuntado se
    hacen antes o después de la ronda, no en medio. Si el MCP de Playwright no conecta,
    `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las mismas ayudas: `orden.sh --ayuda
@@ -57,4 +88,6 @@ Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, n
   «[simulado]» (`QA-60`).
 - `GET /saves` y «la última partida» de la base de los tests pueden ser de un test en marcha: juega
   en `tarkor_juego` y saca el id de la partida de la URL (`/solitario/partida/<id>`).
+- `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
+  arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.

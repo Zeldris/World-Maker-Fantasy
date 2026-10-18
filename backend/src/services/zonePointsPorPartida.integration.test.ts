@@ -120,6 +120,22 @@ describe('ZonePoint por partida (Postgres real)', () => {
     expect({ x: plantilla.x, y: plantilla.y }).toEqual({ x: 75, y: 25 });
   });
 
+  // P187 (QA-27): el ganado de un bando es un rebaño fijo; no se reparte por la población salvaje de su especie.
+  it('recalcular no reparte ni cambia un rebaño con dueño de la misma especie', async () => {
+    const rebano = await prisma.zonePoint.create({
+      data: { locationId, saveId: saveB, x: 625, y: 125, tipo: 'FAUNA', targetSlug: 'test-por-partida-fauna', label: 'Rebaño de prueba', factionSlug: 'Clan Serhu', cantidad: 6, activo: true },
+    });
+    try {
+      await recalcularZonePointsDeLocation(prisma, worldId, saveB, locationId, 'Zona de Pruebas', 480);
+      const despues = await prisma.zonePoint.findUniqueOrThrow({ where: { id: rebano.id } });
+      expect({ cantidad: despues.cantidad, activo: despues.activo }).toEqual({ cantidad: 6, activo: true });
+      expect(await prisma.zonePoint.count({ where: { saveId: saveB, locationId, factionSlug: 'Clan Serhu' } })).toBe(1);
+    } finally {
+      await prisma.zonePoint.deleteMany({ where: { saveId: saveB, locationId } });
+      await prisma.zonePoint.create({ data: { locationId, saveId: saveB, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-por-partida-fauna', cantidad: 1, activo: true } });
+    }
+  });
+
   it('recalcular grupos en la partida A reparte solo A; B y plantilla intactas', async () => {
     await recalcularZonePointsDeLocation(prisma, worldId, saveA, locationId, 'Zona de Pruebas', 480);
     const filasA = await prisma.zonePoint.findMany({ where: { saveId: saveA, locationId, tipo: 'FAUNA' } });

@@ -71,6 +71,7 @@ import { detectDeterministicCraft, detectsCraftIntent, CRAFTING_RECIPES } from '
 import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, buildingTierFor } from '../services/construction.js';
 import { ambitoPoblacion } from '../services/mundoPartida.js';
 import { enGraciaTrasRenacer } from '../services/death.js';
+import { tieneMontura } from '../services/monturas.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -85,6 +86,9 @@ interface ClassifyBody {
   /// `preferredAttribute`, ese atributo gana sobre la heurística de palabra clave
   /// (tabulatedAttackAttribute) para decidir con qué se tira.
   savedActionId?: string;
+  /// P164 (QA-27): el viaje lo eligió la jugadora en el mapa (una salida de la zona o la lista de «Viajar»),
+  /// no lo escribió. A pie, el texto libre no cambia de zona.
+  viajeElegido?: boolean;
 }
 
 interface NarrateBody {
@@ -550,7 +554,7 @@ async function resolveClassificationForTurn(params: {
 /// el coste de narrar — el resultado se genera en diferido vía `CharacterTransit` (worldTick).
 export async function turnRoutes(app: FastifyInstance) {
   app.post<{ Body: ClassifyBody }>('/turn/classify', async (request, reply) => {
-    const { saveId, action, enCombate, preview, savedActionId } = request.body;
+    const { saveId, action, enCombate, preview, savedActionId, viajeElegido } = request.body;
     if (!saveId || !action) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action' });
     }
@@ -876,6 +880,22 @@ export async function turnRoutes(app: FastifyInstance) {
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ error: 'Error clasificando el turno' });
+    }
+
+    // P164 (QA-27, decidido por la usuaria 2026-10-14): con el mapa de zona se va de una zona a otra por sus
+    // salidas, casilla a casilla; escribir «Voy a Colmillo Ceniza» ya no salta de zona. Ir directo a otra
+    // zona sin pasar por las de en medio es cosa de una montura (CR-57): lo elegido en el mapa viaja si
+    // es un solo tramo (una salida de la zona) o si se lleva montura (la lista de «Viajar»).
+    // Una salida es un camino directo al destino (aunque el más corto en minutos pase por otra zona).
+    const porUnCamino = async (t: TravelResolution) =>
+      t.path.length <= 2 || (!!save.currentLocationId && (await prisma.locationLink.count({ where: { fromId: save.currentLocationId, toId: t.toLocationId } })) > 0);
+    if (travel && !(viajeElegido && ((await porUnCamino(travel)) || (await tieneMontura(prisma, saveId))))) {
+      const aviso = `A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`;
+      if (!preview) return resolveBlockedTurn(aviso);
+      // La vista previa no promete el viaje que el envío va a bloquear.
+      travel = null;
+      classification = { requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: aviso, banda: 'instantanea', duracionEstimadaMinutos: 0 };
+      roll = undefined;
     }
 
     // Bug real (auditoría en vivo, 2026-09-01): `computeDuration` decide su `produccion` solo por
@@ -1356,6 +1376,7 @@ export async function turnRoutes(app: FastifyInstance) {
         newQuestOfferInfo,
         npcInteractionOffer,
         dynamicModeOffer,
+        ofertaDescartada,
         travelResumed,
         questCompletedInfo,
         factionRepChange,
@@ -1469,6 +1490,7 @@ export async function turnRoutes(app: FastifyInstance) {
         newQuestOfferInfo,
         npcInteractionOffer,
         dynamicModeOffer,
+        ofertaDescartada,
         travelResumed,
         questCompletedInfo,
         factionRepChange,

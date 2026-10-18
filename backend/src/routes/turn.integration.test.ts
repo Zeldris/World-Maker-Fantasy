@@ -10,6 +10,7 @@ import { resolveDueTransits, startEagerTransitResolution } from '../workers/worl
 import { recolectarRoutes } from './saves/recolectar.js';
 import { panelsRoutes } from './saves/panels.js';
 import { detailRoutes } from './saves/detail.js';
+import { energiaMaxFor } from '../services/energy.js';
 import { deathRoutes } from './saves/death.js';
 import { entregaRoutes } from './saves/entrega.js';
 import { sessionRoutes } from './saves/session.js';
@@ -47,6 +48,10 @@ const narrateAction = vi.fn(async (ctx: { onNarrationChunk?: (d: string) => void
 const generateQuestResponseNarration = vi.fn(async (ctx: { characterName: string; questTitle: string; accepted: boolean }) => {
   return `${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} la misión: ${ctx.questTitle}.`;
 });
+
+// P164: ir por varios tramos de una vez es cosa de una montura; los viajes largos de abajo la llevan.
+const tieneMontura = vi.fn(async (..._args: unknown[]) => false);
+vi.mock('../services/monturas.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('../services/monturas.js')>()), tieneMontura: (...a: unknown[]) => tieneMontura(...a) }));
 
 vi.mock('../services/narrador.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/narrador.js')>();
@@ -449,6 +454,105 @@ describe('Misión de apertura: combate contra el Orco Enfurecido (integración r
 // el atajo de `detectsPostCombatInteraction` (turn.ts, solo para `!enCombate`), que está pensado
 // para UN único objetivo citado en texto libre, no para un barrido de varios a la vez. Fixture
 // propio (no reutiliza el describe de arriba) para no interferir con su secuencia de saqueo.
+// P167 (QA-27): tras «Responder» (un turno de texto libre), la tarjeta del encuentro seguía con
+// Interactuar, Responder e Ignorar activos: la oferta pacífica seguía pendiente.
+describe('Un turno de texto libre deja respondida la oferta pacífica pendiente (P167)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        pendingDynamicModeOffer: { tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'npc' },
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('la oferta se borra y la respuesta lo dice', async () => {
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    const action = 'Le digo a la cazadora serhu: Saludos.';
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll } });
+    expect(narrateRes.statusCode).toBe(200);
+    const cuerpo = lastNdjsonLine(narrateRes.payload) as unknown as { ofertaDescartada?: true; dynamicModeOffer: { targetSlug: string } | null };
+    expect(cuerpo.ofertaDescartada).toBe(true);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const pendiente = save.pendingDynamicModeOffer as { targetSlug: string } | null;
+    expect(pendiente?.targetSlug ?? null).not.toBe('cazadora-serhu');
+  }, 60_000);
+});
+
+// P148 (QA-27): al rematar a un convaleciente salía «Orco enfurecido se defiende con…» encima de
+// «no puede defenderse: el golpe acierta sin tirada». Un golpe de gracia no trae defensa del NPC.
+describe('Golpe de gracia sin defensa del NPC (P148)', () => {
+  let saveId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    npcId = npc.id;
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el golpe a un convaleciente no trae la defensa del NPC', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    type Cuerpo = { npcAbilityUsed: unknown; combatExchangeDisplay?: { golpeDeGracia?: true } | null };
+    let golpeDeGracia: Cuerpo | null = null;
+    for (let turno = 0; turno < 6 && !golpeDeGracia; turno++) {
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      const cuerpo = lastNdjsonLine(narrateRes.payload) as unknown as Cuerpo;
+      if (cuerpo.combatExchangeDisplay?.golpeDeGracia) golpeDeGracia = cuerpo;
+    }
+    expect(golpeDeGracia).not.toBeNull();
+    expect(golpeDeGracia?.npcAbilityUsed).toBeNull();
+    const estado = await prisma.npcState.findFirst({ where: { saveId, npcId } });
+    expect(estado).not.toBeNull();
+  }, 60_000);
+});
+
 describe('Saquear zona: GET /saves/:id/saquear-zona + saqueo fuera del panel de combate', () => {
   let saveId: string;
   let npcId: string;
@@ -2887,9 +2991,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     });
   }
 
+  // QA-63: borrar la partida espera al avance diario de fondo (`vitest.bdReal.setup.ts`), y tras un
+  // salto de 7 días ese avance tarda 6-21 s; con el límite de 10 s de los hooks fallaba. El salto es lo
+  // que se prueba, así que el borrado tiene su propio límite.
   afterEach(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-  });
+  }, 60_000);
 
   // `doTurn` (definido más abajo) fuerza `enCombate: true` en las dos llamadas — un guard real de
   // turn.ts ("acción de combate clasificada como banda larga... forzada a instantánea") colapsa
@@ -3006,9 +3113,12 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
     });
   }
 
+  // QA-63: borrar la partida espera al avance diario de fondo (`vitest.bdReal.setup.ts`), y tras un
+  // salto de 7 días ese avance tarda 6-21 s; con el límite de 10 s de los hooks fallaba. El salto es lo
+  // que se prueba, así que el borrado tiene su propio límite.
   afterEach(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-  });
+  }, 60_000);
 
   // Fase C del hito 0.1 (2026-10-01, test intermitente en CI): NO pasar por `/turn/classify`. Con banda
   // 'larga', classify crea un `CharacterTransit` y lanza `startEagerTransitResolution` en segundo
@@ -3603,7 +3713,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
     // `buildApp()` (arriba en este archivo) solo registra `turnRoutes` — death/resolve vive en
     // `deathRoutes`, mismo patrón que `buildAppWithDetail` más abajo en este archivo.
     // QA-27 P82: el encuentro forzado que quedó pendiente no sobrevive a la muerte.
-    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
+    // P157 (QA-27): con la energía baja al morir, se reaparece con la energía llena.
+    await prisma.save.update({ where: { id: saveId }, data: { energia: 5, pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', quienInicia: 'npc', combateForzado: true } } });
     const deathApp = Fastify();
     await deathApp.register(deathRoutes);
     const resolveRes = await deathApp.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
@@ -3612,6 +3723,8 @@ describe('Respawn tras morir: vuelve al último campamento, no se queda donde mu
 
     const savedAfterResolve = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(savedAfterResolve.condicionFisica).toBe('ILESO');
+    expect(savedAfterResolve.energia).toBeGreaterThan(5);
+    expect(savedAfterResolve.energia).toBe(energiaMaxFor((savedAfterResolve.attributes as { constitucion: number }).constitucion));
     expect(savedAfterResolve.pendingDeathResolution).toBe(false);
     expect(savedAfterResolve.pendingDynamicModeOffer).toBeNull();
     expect([savedAfterResolve.zonaPosX, savedAfterResolve.zonaPosY]).toEqual([75, 75]);
@@ -6322,6 +6435,8 @@ describe('Destino inventado sin alias real ("hacia el norte"): no se persiste un
 /// travelInterruption.test.ts). `busyUntil` adelantado a mano (en vez de esperar la compresión
 /// real de tiempo) para que `resolveDueTransits()` lo recoja al momento, sin sleeps.
 describe('Viaje largo interrumpido a mitad de camino (integración real, solo LLM mockeado)', () => {
+  beforeAll(() => tieneMontura.mockResolvedValue(true));
+  afterAll(() => tieneMontura.mockResolvedValue(false));
   let saveId: string;
   let worldId: string;
   let originId: string;
@@ -6434,12 +6549,20 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
   });
 
+  // P164 (usuaria, 2026-10-17): la lista de «Viajar» (varias zonas de una vez) es cosa de una montura.
+  it('sin montura, un viaje elegido de varios tramos no sale', async () => {
+    tieneMontura.mockResolvedValueOnce(false);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true } });
+    expect(res.json().blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos/);
+  });
+
   it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito, y guarda el destino original para retomarlo', async () => {
     const app = await buildApp();
     const classifyRes = await app.inject({
       method: 'POST',
       url: '/turn/classify',
-      payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false },
+      payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true },
     });
     expect(classifyRes.statusCode).toBe(200);
     const body = classifyRes.json();
@@ -6546,6 +6669,8 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
 /// SIN ninguna oferta de Interactuar (`pickTravelInterruption` no filtra por temperamento, así que
 /// el filtro tiene que vivir en turnResolution.ts, no en la selección del candidato).
 describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar en vez del aviso mudo de antes', () => {
+  beforeAll(() => tieneMontura.mockResolvedValue(true));
+  afterAll(() => tieneMontura.mockResolvedValue(false));
   let saveId: string;
   let worldId: string;
   let originId: string;
@@ -6650,7 +6775,7 @@ describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar e
     const classifyRes = await (await buildApp()).inject({
       method: 'POST',
       url: '/turn/classify',
-      payload: { saveId, action: 'Viajo hacia la zona de prueba pacífica destino', enCombate: false },
+      payload: { saveId, action: 'Viajo hacia la zona de prueba pacífica destino', enCombate: false, viajeElegido: true },
     });
     expect(classifyRes.statusCode).toBe(200);
 
@@ -6732,7 +6857,7 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
   it('primer viaje al destino: discoveredLocationSlug trae el slug real del destino', async () => {
     const app = await buildApp();
     const action = 'Viajo hacia la zona de prueba destino descubrimiento';
-    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false, viajeElegido: true } });
     expect(classifyRes.statusCode).toBe(200);
     const { classification, roll, travel } = classifyRes.json();
     expect(travel?.toLocationId).toBe(destId);
@@ -6747,9 +6872,25 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
     expect(body.discoveredLocationSlug).toBe('test-descubrimiento-destino');
   }, 15_000);
 
+  // P164 (QA-27, usuaria 2026-10-14): a pie, escribir «Viajo hacia…» ya no salta de zona; se va por las
+  // salidas del mapa de zona (o eligiéndolo en «Viajar»). Saltar de zona sin pasar por las de en medio,
+  // con montura (CR-57).
+  it('escrito a pie, el viaje no cambia de zona y lo dice', async () => {
+    const app = await buildApp();
+    const antes = (await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } })).currentLocationId;
+    // Hacia la zona en la que no está (el test anterior puede haberle dejado en el destino).
+    const hacia = antes === destId ? 'origen' : 'destino';
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: `Viajo hacia la zona de prueba ${hacia} descubrimiento`, enCombate: false } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia /);
+    expect(body.travel).toBeUndefined();
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } })).currentLocationId).toBe(antes);
+  });
+
   it('segunda vez en el mismo destino (ya visitado): discoveredLocationSlug es null', async () => {
     const app = await buildApp();
-    const backRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba origen descubrimiento', enCombate: false } });
+    const backRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba origen descubrimiento', enCombate: false, viajeElegido: true } });
     const backBody = backRes.json();
     await app.inject({
       method: 'POST',
@@ -6758,7 +6899,7 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
     });
 
     const action = 'Viajo hacia la zona de prueba destino descubrimiento';
-    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false, viajeElegido: true } });
     const { classification, roll, travel } = classifyRes.json();
     const narrateRes = await app.inject({
       method: 'POST',

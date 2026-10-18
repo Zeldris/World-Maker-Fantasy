@@ -72,8 +72,19 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   porque otra la repite) se decide contra la base: en una lista paginada, la vecina puede caer en
   otra página.
 
+- **Lo que sale de una columna JSON se comprueba** (`QA-89`, retro de los hallazgos de `QA-27`). Un
+  campo `Json` (los `huecos` de una misión, `pendingDynamicModeOffer`, `pendingNpcInteractionOffer`)
+  llega con el tipo que se le pone con `as`, no con el que tiene: una fila vieja o a medias puede no
+  traer el campo. Lo que se lee de ahí va con `?.` y un camino para cuando falta, sin `!`; con más
+  razón en una ruta que pinta la partida entera. `motivoNoEntregable` tumbaba `GET /saves` con
+  `h.objeto!.nombre` en una misión sin objeto.
+
 ## Un fallo que vuelve
 
+- **Una plantilla del catálogo que las partidas ya copiaron no se mueve ni se renombra** sin decir qué pasa
+  con sus copias (`QA-90`, retro del 2026-10-17). Las partidas copian recursos y edificios por (tipo, slug, x, y):
+  moverla deja dos puntos en las partidas viejas. Pasó con el recinto de múrgoles (P185); lo vigila
+  `posicionesPlantillas.test.ts`.
 - **Un hallazgo ya arreglado que vuelve** (`QA-64`, retro del 2026-10-12) se arregla en la raíz: el diff
   dice qué función crea el dato, enumera a quién la llama y cubre cada camino con un test (o explica por
   qué un camino no lo necesita). Pasó con P32: se arregló camino a camino dos veces, y la revisión del

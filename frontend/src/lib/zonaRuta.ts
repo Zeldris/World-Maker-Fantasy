@@ -27,8 +27,7 @@ export function pixelDeCelda(c: Celda): { x: number; y: number } {
   return { x: c.col * CELDA_PX + CELDA_PX / 2, y: c.row * CELDA_PX + CELDA_PX / 2 }
 }
 
-/// Camino de celdas de `origen` (exclusive) a `destino` (inclusive), línea de Bresenham.
-export function calcularCamino(origen: Celda, destino: Celda): Celda[] {
+function lineaRecta(origen: Celda, destino: Celda): Celda[] {
   const camino: Celda[] = []
   let { col, row } = origen
   const dCol = Math.abs(destino.col - origen.col)
@@ -48,6 +47,50 @@ export function calcularCamino(origen: Celda, destino: Celda): Celda[] {
     }
     camino.push({ col, row })
   }
+  return camino
+}
+
+export const claveCelda = (c: Celda) => `${c.col},${c.row}`
+
+function pasoBloqueado(a: Celda, b: Celda, muros: ReadonlySet<string>): boolean {
+  if (muros.has(claveCelda(b))) return true
+  if (a.col !== b.col && a.row !== b.row) return muros.has(claveCelda({ col: b.col, row: a.row })) || muros.has(claveCelda({ col: a.col, row: b.row }))
+  return false
+}
+
+/// Camino de celdas de `origen` (exclusive) a `destino` (inclusive). Sin muros en medio, la línea recta de
+/// Bresenham; P185: con `muros` (casillas por las que no se pasa, de `GET /zona`) en medio, el camino más
+/// corto que los rodea, o hasta la casilla alcanzable más cercana si el destino es muro.
+export function calcularCamino(origen: Celda, destino: Celda, muros: ReadonlySet<string> = new Set()): Celda[] {
+  const recta = lineaRecta(origen, destino)
+  if (muros.size === 0 || recta.every((c, i) => !pasoBloqueado(i === 0 ? origen : recta[i - 1]!, c, muros))) return recta
+  const previa = new Map<string, Celda | null>([[claveCelda(origen), null]])
+  const cola: Celda[] = [origen]
+  const distancia = (c: Celda) => Math.max(Math.abs(c.col - destino.col), Math.abs(c.row - destino.row))
+  const cercania = (c: Celda) => distancia(c) * 1000 + (c.col - destino.col) ** 2 + (c.row - destino.row) ** 2
+  let mejor = origen
+  while (cola.length > 0) {
+    const actual = cola.shift()!
+    if (cercania(actual) < cercania(mejor)) mejor = actual
+    if (actual.col === destino.col && actual.row === destino.row) break
+    const vecinas: Celda[] = []
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        if (dc === 0 && dr === 0) continue
+        const v = { col: actual.col + dc, row: actual.row + dr }
+        if (v.col < 0 || v.row < 0 || v.col >= COLUMNAS || v.row >= FILAS) continue
+        if (previa.has(claveCelda(v)) || pasoBloqueado(actual, v, muros)) continue
+        vecinas.push(v)
+      }
+    }
+    vecinas.sort((a, b) => cercania(a) - cercania(b))
+    for (const v of vecinas) {
+      previa.set(claveCelda(v), actual)
+      cola.push(v)
+    }
+  }
+  const camino: Celda[] = []
+  for (let c: Celda | null | undefined = mejor; c && claveCelda(c) !== claveCelda(origen); c = previa.get(claveCelda(c))) camino.unshift(c)
   return camino
 }
 
@@ -77,8 +120,8 @@ export interface RutaPrevista {
 }
 
 /// Ruta prevista del personaje (en píxeles del lienzo) a un punto, con su coste.
-export function rutaPrevista(desde: { x: number; y: number }, hasta: { x: number; y: number }, ahora?: number): RutaPrevista {
-  const celdas = calcularCamino(celdaDePixel(desde), celdaDePixel(hasta))
+export function rutaPrevista(desde: { x: number; y: number }, hasta: { x: number; y: number }, ahora?: number, muros?: ReadonlySet<string>): RutaPrevista {
+  const celdas = calcularCamino(celdaDePixel(desde), celdaDePixel(hasta), muros)
   const minutos = celdas.length * MINUTOS_POR_PASO
   return {
     puntos: celdas.map(pixelDeCelda),

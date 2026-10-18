@@ -76,6 +76,9 @@ export interface GatheringRollInfo {
   usedRoll: number
   result: number
   advantage: boolean
+  /// P158 (QA-27): contra qué tiró y qué sacó (solo al recolectar una fuente desde el mapa).
+  dificultad?: number
+  grado?: 'fallo' | 'con_coste' | 'claro'
 }
 
 /// Fuente recolectable "ya localizada" o recién "explorada" (rediseño de profesiones, 2026-08-07)
@@ -363,6 +366,8 @@ export interface CombatExchangeSideInfo extends RollInfo {
   rolls?: number[]
   rollMode?: 'normal' | 'ventaja' | 'desventaja'
   racialAdvantageReason?: string
+  /// P153 (QA-27): etiqueta del chip («flanqueo»); sin ella, «racial».
+  ventajaPor?: string
 }
 
 // 'independiente' (bug real, 2026-08-13: faltaba en este type — el backend YA lo manda para
@@ -828,6 +833,8 @@ export interface QuestInfo {
   tipoMision?: string | null
   progreso?: number
   cantidad?: number | null
+  /// P183 (QA-27): por qué no se puede «Entregar» ahora (null o ausente: se puede). Lo decide el servidor.
+  entregaBloqueada?: string | null
   /// Minuto de ficción en que vence.
   venceEn?: number | null
   /// Quién la encarga (NPC con nombre o facción).

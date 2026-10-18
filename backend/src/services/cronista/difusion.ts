@@ -11,6 +11,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
+import { nombreEnFrase, nombreVisibleDeNpc } from '../dynamicMode.js';
 import { TABLON_RECIPE_KEY } from './tablones.js';
 import { nivelDeImportancia } from './leyendas.js';
 import { aliadasDelReino, categoriaDeFamilia, comoRumor, enMitadDeFrase, escribir, type MetaNoticia } from './noticias.js';
@@ -82,11 +83,15 @@ export async function alcanceDeSucesos(tx: Tx, saveId: string, sucesos: SucesoBa
 
 /// Texto y metadatos de la noticia de un suceso: la que guardó su emisor o la frase del suceso.
 async function textoDeNoticia(tx: Tx, sucesoId: string): Promise<{ texto: string; meta: MetaNoticia; pasoEn: number }> {
-  const s = await tx.suceso.findUniqueOrThrow({ where: { id: sucesoId }, select: { texto: true, familia: true, noticia: true, fictionalMinutes: true, importancia: true } });
+  const s = await tx.suceso.findUniqueOrThrow({
+    where: { id: sucesoId },
+    select: { tipo: true, texto: true, datos: true, familia: true, noticia: true, fictionalMinutes: true, importancia: true, actores: { select: { papel: true } } },
+  });
   const emisor = s.noticia as NoticiaDeSuceso | null;
   const categoria = categoriaDeFamilia(s.familia);
   const meta: MetaNoticia = { ...(categoria ? { categoria } : {}), ...(emisor?.meta ?? {}), nivel: nivelDeImportancia(s.importancia) };
-  return { texto: emisor?.texto ?? s.texto, meta, pasoEn: s.fictionalMinutes };
+  // P184: lo que llega de oídas, por un NPC o un bando, es lo que corre por el mundo (sin autor si nadie lo vio).
+  return { texto: textoQueCorre(s), meta, pasoEn: s.fictionalMinutes };
 }
 
 /// Apunta que el personaje sabe un suceso. Devuelve NUEVO, CONFIRMADO (era rumor y ya no) o null
@@ -228,11 +233,45 @@ export async function preguntarNoticias(prisma: PrismaClient, saveId: string, np
     const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true, currentLocation: { select: { region: true } } } });
     const npc = await tx.npc.findFirst({
       where: { worldId: save.worldId, slug: npcSlug, kind: { not: 'PLANTILLA' }, faction: { not: null }, ...npcSinMorirEnPartida(saveId) },
-      select: { name: true, faction: true },
+      select: { slug: true, name: true, kind: true, raza: true, genero: true, faction: true },
     });
     if (!npc) return null;
-    return contarNoticias(tx, { saveId, nombre: npc.name, fuente: npcSlug, quien: { region: save.currentLocation?.region ?? null, faccion: npc.faction } });
+    // P165 (QA-27): quien la tarjeta llama «orco desconocido» no firma con su nombre real.
+    const { nombre } = await nombreVisibleDeNpc(tx, saveId, npc);
+    return contarNoticias(tx, { saveId, nombre: nombreEnFrase(nombre, true), fuente: npcSlug, quien: { region: save.currentLocation?.region ?? null, faccion: npc.faction } });
   }, { maxWait: 10_000, timeout: 20_000 });
+}
+
+/// P184 (QA-27, decidido por la usuaria 2026-10-15; paso 1 de CR-69): lo que corre de un suceso por el
+/// mundo (bandos, «¿Qué se cuenta?»). De una muerte que nadie vio solo se sabe que la víctima murió, no
+/// quién la mató ni cómo: hasta ahora el bando de la víctima publicaba «Gorhorn da muerte al Orco
+/// enfurecido» aunque nadie del clan estuviera allí. Con un testigo, el texto entero.
+export function textoQueCorre(s: { tipo: string; texto: string; noticia?: unknown; datos?: unknown; actores: { papel: string }[] }): string {
+  const completo = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
+  if (s.tipo !== 'MUERTE_CAUSADA' || s.actores.some((a) => a.papel === 'TESTIGO')) return completo;
+  const d = s.datos as { victima?: string; articuloVictima?: string | null } | null;
+  if (!d?.victima) return completo;
+  const victima = d.articuloVictima ? `${d.articuloVictima.charAt(0).toUpperCase()}${d.articuloVictima.slice(1)} ${d.victima}` : d.victima;
+  return `${victima} ha muerto; nadie sabe a manos de quién.`;
+}
+
+/// P175 (QA-27): «vence a X» y luego «da muerte a X» son el mismo combate contado dos veces; como
+/// noticia basta la muerte. Quita la victoria sobre una víctima cuya muerte está en la lista y llegó
+/// poco después (el mismo combate); una victoria de días antes sobre quien luego murió es otra noticia.
+const MISMO_COMBATE_MINUTOS = 60;
+export function sinVictoriaYaContada<S extends { tipo: string; fictionalMinutes: number; actores: { entidadTipo: string; entidadId: string; papel: string }[] }>(sucesos: S[]): S[] {
+  const victima = (s: S) => s.actores.find((a) => a.entidadTipo === 'NPC' && a.papel === 'VICTIMA')?.entidadId;
+  const muertes = new Map<string, number>();
+  for (const s of sucesos) {
+    const v = s.tipo === 'MUERTE_CAUSADA' ? victima(s) : undefined;
+    if (v) muertes.set(v, s.fictionalMinutes);
+  }
+  return sucesos.filter((s) => {
+    if (s.tipo !== 'COMBATE_GANADO') return true;
+    const v = victima(s);
+    const muerte = v ? muertes.get(v) : undefined;
+    return muerte === undefined || muerte - s.fictionalMinutes > MISMO_COMBATE_MINUTOS || muerte < s.fictionalMinutes;
+  });
 }
 
 /// Lo que cuenta alguien que sabe lo de `quien` (su región y su facción): una vez al día por
@@ -259,12 +298,12 @@ export async function contarNoticias(
       OR: [{ conocimientos: { none: {} } }, { conocimientos: { some: { confirmado: false } } }],
     },
     select: {
-      id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true,
-      actores: { select: { entidadTipo: true, entidadId: true } }, conocimientos: { select: { id: true } },
+      id: true, tipo: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, datos: true,
+      actores: { select: { entidadTipo: true, entidadId: true, papel: true } }, conocimientos: { select: { id: true } },
     },
   });
   const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
-  const candidatos = sucesos
+  const candidatos = sinVictoriaYaContada(sucesos)
     .filter((s) => {
       const a = alcance.get(s.id)!;
       if (!npcSabe(a, quien, (ahora - s.fictionalMinutes) / MINUTOS_DIA)) return false;
@@ -280,7 +319,7 @@ export async function contarNoticias(
     const hecho = cuentaComoHecho(a, quien);
     const r = await conocer(tx, { saveId, sucesoId: s.id, via: 'NPC', confirmado: hecho, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null, fuente });
     if (!r) continue;
-    const texto = (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto;
+    const texto = textoQueCorre(s);
     frases.push(hecho ? texto : comoRumor(texto));
   }
   if (frases.length === 0) return { frase: p.sinNada ?? `${nombre}: «Por aquí no se habla de otra cosa que del tiempo.»`, contadas: 0 };
@@ -315,11 +354,11 @@ export async function leerBandos(prisma: PrismaClient, saveId: string, buildingI
     const ahora = (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0;
     const sucesos = await tx.suceso.findMany({
       where: { saveId, ...difundible, importancia: { gte: IMPORTANCIA_BANDO }, fictionalMinutes: { gte: ahora - DIAS_BANDO * MINUTOS_DIA, lte: ahora } },
-      select: { id: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, actores: { select: { entidadTipo: true, entidadId: true } } },
+      select: { id: true, tipo: true, importancia: true, regionSlug: true, locationId: true, noticia: true, fictionalMinutes: true, texto: true, datos: true, actores: { select: { entidadTipo: true, entidadId: true, papel: true } } },
       orderBy: { fictionalMinutes: 'desc' },
     });
     const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
-    const bandos = sucesos
+    const bandos = sinVictoriaYaContada(sucesos)
       .filter((s) => {
         const a = alcance.get(s.id)!;
         return (!!region && a.origenes.includes(region)) || (!!faccion && a.facciones.includes(faccion));
@@ -328,6 +367,6 @@ export async function leerBandos(prisma: PrismaClient, saveId: string, buildingI
     for (const s of bandos) {
       await conocer(tx, { saveId, sucesoId: s.id, via: 'BANDO', confirmado: true, minutos: ahora, escribirNoticia: true, fuente: buildingId });
     }
-    return bandos.map((s) => ({ sucesoId: s.id, texto: (s.noticia as NoticiaDeSuceso | null)?.texto ?? s.texto, pasoEn: s.fictionalMinutes }));
+    return bandos.map((s) => ({ sucesoId: s.id, texto: textoQueCorre(s), pasoEn: s.fictionalMinutes }));
   }, { maxWait: 10_000, timeout: 20_000 });
 }

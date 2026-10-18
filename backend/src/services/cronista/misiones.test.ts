@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cantidadPorExceso, dificultadDe, hayExceso, recompensaDe, textoDeMision, validarHuecos, TIPOS_MISION, PLAZO_DIAS, type HuecosMision } from './misiones.js';
+import { bando, cantidadPorExceso, dificultadDe, hayExceso, recompensaDe, textoDeMision, validarHuecos, TIPOS_MISION, PLAZO_DIAS, type HuecosMision } from './misiones.js';
 
 const serhu = { slug: 'clan-serhu', nombre: 'Clan Serhu', pueblo: 'orcos' };
 const base = (h: Partial<HuecosMision>): HuecosMision => ({ tipo: 'CAZAR', motivo: 'EXCESO_FAUNA', faccion: serhu, region: 'Las Llanuras del Viento Rojo', cantidad: 5, plazoDias: 5, especie: { slug: 'canizor', nombre: 'canizores' }, ...h });
@@ -63,5 +63,28 @@ describe('misiones secundarias: plantillas cerradas (CR-40 40a)', () => {
     expect(cantidadPorExceso(1100, 1200)).toBe(7);
     expect(cantidadPorExceso(1200, 1200)).toBe(8);
     expect(cantidadPorExceso(970, 1200)).toBe(3);
+  });
+});
+
+// P180 (QA-27): «7 × Madera Jumba para Clan Serhu», «Clan Serhu anda escasa de…».
+describe('bando', () => {
+  it('pone el artículo y contrae la preposición', () => {
+    expect(bando('Clan Serhu', 'para')).toBe('para el Clan Serhu');
+    expect(bando('Clan Serhu', 'a', true)).toBe('Al Clan Serhu');
+    expect(bando('Clan Serhu', 'de')).toBe('del Clan Serhu');
+    expect(bando('Concordia de Hierro', '', true)).toBe('La Concordia de Hierro');
+  });
+  it('los nombres propios y los que ya llevan artículo van tal cual', () => {
+    expect(bando('Feg Ger', 'para')).toBe('para Feg Ger');
+    expect(bando('Los del Obelisco', 'de')).toBe('de los del Obelisco');
+    expect(bando('Los del Obelisco', '', true)).toBe('Los del Obelisco');
+  });
+});
+
+describe('textoDeMision de ENTREGAR (P180)', () => {
+  it('con artículo y sin género del bando', () => {
+    const h = base({ tipo: 'ENTREGAR', motivo: 'CARENCIA', cantidad: 7, objeto: { slug: 'madera-jumba', nombre: 'Madera Jumba' } });
+    expect(textoDeMision(h, 0).titulo).toBe('7 × Madera Jumba para el Clan Serhu');
+    expect(textoDeMision(h, 1).descripcion).toMatch(/^Al Clan Serhu le falta Madera Jumba: pide 7/);
   });
 });

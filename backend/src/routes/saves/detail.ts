@@ -25,6 +25,7 @@ import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesP
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
+import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -651,6 +652,16 @@ export async function detailRoutes(app: FastifyInstance) {
       venceEn: q.venceEn,
       encarga: (q.huecos as { npc?: { nombre: string }; faccion?: { nombre: string } } | null)?.npc?.nombre ?? (q.huecos as { faccion?: { nombre: string } } | null)?.faccion?.nombre ?? null,
       recompensa: q.recompensa,
+      // P183 (QA-27): el botón «Entregar» va desactivado con el mismo motivo que daría el servidor.
+      ...(q.tipoMision === 'ENTREGAR' && q.status === 'ACTIVA'
+        ? {
+            entregaBloqueada: motivoNoEntregable(
+              q.huecos,
+              save.currentLocationId,
+              save.inventoryItems.filter((i) => i.catalogSlug === (q.huecos as { objeto?: { slug: string } } | null)?.objeto?.slug && llevadoParaEntregar(i)).length,
+            ),
+          }
+        : {}),
         };
       }),
       combateIniciado,

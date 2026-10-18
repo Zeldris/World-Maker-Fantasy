@@ -821,7 +821,9 @@ export function useGameViewState() {
         .catch(() => setAvisosAbiertos((prev) => (prev?.cargando ? { titulo: 'Tablón de avisos', avisos: [], vacio: 'No se pudo leer el tablón.', cargando: false } : prev)))
     },
     mostrarOfertaNpc: (npcName, aviso) =>
-      setAvisosAbiertos({ titulo: `Trabajo de ${npcName}`, avisos: aviso ? [aviso] : [], vacio: `${npcName} no tiene ningún encargo para ti ahora mismo.`, cargando: false }),
+      // P180 (QA-27): «Trabajo de Orco desconocido» ponía el nombre en mayúscula a media frase; el título es
+      // la pregunta y el nombre va debajo.
+      setAvisosAbiertos({ titulo: '¿Tienes trabajo?', subtitulo: npcName, avisos: aviso ? [aviso] : [], vacio: `${npcName} no tiene ningún encargo para ti ahora mismo.`, cargando: false }),
   }
   async function handleAceptarAviso(avisoId: string) {
     if (!saveId) return
@@ -1058,9 +1060,11 @@ export function useGameViewState() {
 
   // Cierre + envío compartidos por los 3 modales de `simpleModal` (auditoría de deuda técnica
   // 2026-08-18) — los tres resuelven igual: un único texto de acción que pasa por el turno normal.
-  function handleSimpleModalSelect(actionText: string) {
+  // P164 (QA-27): un destino elegido de una lista («Viajar», «Volver al campamento») es un viaje elegido: a un
+  // tramo va; a varios, con montura (el motor lo decide). Escrito a mano, no.
+  function handleViajeElegido(actionText: string) {
     setSimpleModal(null)
-    handleSubmit(actionText)
+    handleSubmit(actionText, { viajeElegido: true })
   }
 
   function closeSimpleModal() {
@@ -1327,6 +1331,7 @@ export function useGameViewState() {
     enciclopediaIndex,
     setCharacterLog,
     setFictionalDate,
+    setEnergia,
     setCombateIniciado,
     setActiveDynamicMode,
     setInventory,
@@ -1782,7 +1787,7 @@ export function useGameViewState() {
     handleEntityDetailNavigate,
     handleEntityQuickInsert,
     handleOpenHarvestSuggestion,
-    handleSimpleModalSelect,
+    handleViajeElegido,
     closeSimpleModal,
     handleAttachItem,
     handleEquipItem,

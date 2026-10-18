@@ -44,7 +44,7 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/elegir', () => {
   beforeEach(async () => {
     await prisma.save.update({
       where: { id: saveId },
-      data: { pendingNpcInteractionOffer: { npcSlug: 'un-maestro', npcName: 'Un Maestro', options: ['Charlar', 'Aprender profesión', 'Combatir', 'Salir'] } },
+      data: { pendingNpcInteractionOffer: { npcSlug: 'un-maestro', npcName: 'Un Maestro', options: ['Charlar', 'Aprender oficio', 'Combatir', 'Salir'] } },
     });
   });
 
@@ -79,12 +79,12 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/elegir', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('Aprender profesión: limpia la oferta y responde ABRIR_APRENDER_OFICIO', async () => {
+  it('Aprender oficio: limpia la oferta y responde ABRIR_APRENDER_OFICIO', async () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
       url: `/saves/${saveId}/npc-interaction/un-maestro/elegir`,
-      payload: { opcion: 'Aprender profesión' },
+      payload: { opcion: 'Aprender oficio' },
     });
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body)).toEqual({ accion: 'ABRIR_APRENDER_OFICIO' });
@@ -182,7 +182,7 @@ describe('POST /saves/:id/npc-interaction/:npcSlug/abrir', () => {
     expect(res.statusCode).toBe(200);
     const { menu } = JSON.parse(res.body) as { menu: { npcName: string; options: string[] } };
     expect(menu.npcName).toBe('Alguien');
-    expect(menu.options).toEqual(expect.arrayContaining(['Charlar', 'Aprender profesión', 'Combatir', 'Salir']));
+    expect(menu.options).toEqual(expect.arrayContaining(['Charlar', 'Aprender oficio', 'Combatir', 'Salir']));
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.pendingNpcInteractionOffer).toMatchObject({ npcSlug: 'maestro-cocinero-serhu', desdeEncuentro: true });
   });

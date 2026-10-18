@@ -28,6 +28,8 @@ interface UseModoDinamicoParams {
   enciclopediaIndex: EnciclopediaIndex
   setCharacterLog: Dispatch<SetStateAction<LogEntry[]>>
   setFictionalDate: Dispatch<SetStateAction<string>>
+  /// P161 (QA-27): la energía que recupera el rato de recolectar, para el HUD.
+  setEnergia?: Dispatch<SetStateAction<number>>
   setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
   setActiveDynamicMode: ReturnType<typeof useActionModalsState>['setActiveDynamicMode']
   setInventory: Dispatch<SetStateAction<InventoryItemInfo[]>>
@@ -64,6 +66,7 @@ export function useModoDinamico({
   enciclopediaIndex,
   setCharacterLog,
   setFictionalDate,
+  setEnergia,
   setCombateIniciado,
   setActiveDynamicMode,
   setInventory,
@@ -190,11 +193,13 @@ export function useModoDinamico({
   }
 
   function handleDismissDynamicModeOffer(entryId: string) {
+    // P150 (QA-27): se dice qué oferta se ignora; si el paso siguiente ya ha puesto otra, esa no se borra.
+    const targetSlug = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer?.targetSlug
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
     // Best-effort: "ignorar" no tiene consecuencia visible si falla (la oferta ya no se muestra),
     // solo se registra en consola para no perder el rastro por completo si el backend queda con
     // `pendingDynamicMode` huérfano.
-    ignorarModoDinamico(saveId!).catch((err) => console.error('ignorarModoDinamico falló', err))
+    ignorarModoDinamico(saveId!, targetSlug).catch((err) => console.error('ignorarModoDinamico falló', err))
   }
 
   // RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de `handleInteractuarModoDinamico`
@@ -234,6 +239,7 @@ export function useModoDinamico({
       // El backend guarda siempre el intento, también el fallido (`registrarFallo`).
       setCharacterLog((prev) => (prev.some((e) => e.id === guardada.id) ? prev.map((e) => (e.id === guardada.id ? guardada : e)) : [...prev, guardada]))
       setFictionalDate(resultado.logEntry.timeLabel)
+      if (resultado.energia !== undefined) setEnergia?.(resultado.energia)
     } catch (err) {
       // El backend explica el motivo real del rechazo (nivel de oficio insuficiente, recurso
       // agotado...) — mostrarlo tal cual (2026-09-28: antes un genérico "inténtalo de nuevo" que

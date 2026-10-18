@@ -137,40 +137,57 @@ export function recompensaDe(h: Pick<HuecosMision, 'tipo' | 'cantidad' | 'npc' |
 
 // ─────────────────────────── Textos (Q10: plantillas, sin IA) ───────────────────────────
 
+const PALABRA_MASCULINA = new Set(['clan', 'reino', 'consejo', 'gremio', 'pueblo', 'campamento', 'linaje']);
+const PALABRA_FEMENINA = new Set(['concordia', 'tribu', 'hermandad', 'orden', 'liga', 'guardia', 'compañía', 'casa', 'manada']);
+
+/// P180 (QA-27): un bando con su artículo y la preposición contraída («para el Clan Serhu», «al Clan
+/// Serhu», «del Clan Serhu», «la Concordia de Hierro»). Los nombres propios («Feg Ger») y los que ya
+/// lo llevan («Los del Obelisco») van tal cual.
+export function bando(nombre: string, prep: '' | 'a' | 'de' | 'para' = '', alInicio = false): string {
+  const primera = nombre.split(' ')[0]!.toLowerCase();
+  const articulo = PALABRA_MASCULINA.has(primera) ? 'el' : PALABRA_FEMENINA.has(primera) ? 'la' : '';
+  // Un nombre que ya trae artículo («Los del Obelisco») lo lleva en minúscula a mitad de frase.
+  const propio = /^(El|La|Los|Las) /.test(nombre) ? nombre.charAt(0).toLowerCase() + nombre.slice(1) : nombre;
+  let texto = articulo ? `${articulo} ${nombre}` : propio;
+  if (prep) texto = `${prep} ${texto}`.replace(/^a el /, 'al ').replace(/^de el /, 'del ');
+  return alInicio ? texto.charAt(0).toUpperCase() + texto.slice(1) : texto;
+}
+
+
 const TITULO: Record<TipoMision, (h: HuecosMision) => string> = {
-  ENTREGAR: (h) => `${h.cantidad} × ${h.objeto!.nombre} para ${h.faccion.nombre}`,
+  ENTREGAR: (h) => `${h.cantidad} × ${h.objeto!.nombre} ${bando(h.faccion.nombre, 'para')}`,
   CAZAR: (h) => `Cazar ${h.especie!.nombre} en ${h.region}`,
   ELIMINAR: (h) => `Acabar con ${h.objetivoNpc!.nombre}`,
   EXPLORAR: (h) => `Explorar ${h.lugar!.nombre}`,
   AYUDAR: (h) => `Socorrer a ${h.objetivoNpc!.nombre}`,
-  COMBATIR: (h) => `Hacer frente a ${h.enemiga!.nombre} en ${h.lugar!.nombre}`,
+  COMBATIR: (h) => `Hacer frente ${bando(h.enemiga!.nombre, 'a')} en ${h.lugar!.nombre}`,
 };
 
 /// Cuerpo de cada tipo: varias frases, todas con los mismos huecos.
 const CUERPO: Record<TipoMision, ((h: HuecosMision) => string)[]> = {
   ENTREGAR: [
-    (h) => `Hacen falta ${h.cantidad} de ${h.objeto!.nombre}. Quien los traiga a ${h.faccion.nombre} será bien pagado.`,
-    (h) => `${h.faccion.nombre} anda escasa de ${h.objeto!.nombre}: pide ${h.cantidad} antes de que se acabe el plazo.`,
+    (h) => `Hacen falta ${h.cantidad} de ${h.objeto!.nombre}. Quien los traiga ${bando(h.faccion.nombre, 'a')} será bien pagado.`,
+    (h) => `${bando(h.faccion.nombre, 'a', true)} le falta ${h.objeto!.nombre}: pide ${h.cantidad} antes de que se acabe el plazo.`,
   ],
   CAZAR: [
     (h) => `Hay demasiados ${h.especie!.nombre} en ${h.region} y ya no dejan pasto ni presa para nadie. Hay que abatir ${h.cantidad}.`,
-    (h) => `Los ${h.especie!.nombre} se han multiplicado en ${h.region}. ${h.faccion.nombre} paga por ${h.cantidad} piezas.`,
+    (h) => `Los ${h.especie!.nombre} se han multiplicado en ${h.region}. ${bando(h.faccion.nombre, '', true)} paga por ${h.cantidad} piezas.`,
   ],
   ELIMINAR: [
-    (h) => `${h.objetivoNpc!.nombre}${h.enemiga ? `, de ${h.enemiga.nombre},` : ''} es una amenaza para ${h.faccion.nombre}. Quieren que deje de serlo.`,
-    (h) => `Se busca a ${h.objetivoNpc!.nombre}${h.enemiga ? ` (${h.enemiga.nombre})` : ''}. ${h.faccion.nombre} recompensará a quien acabe con él.`,
+    (h) => `${h.objetivoNpc!.nombre}${h.enemiga ? `, ${bando(h.enemiga.nombre, 'de')},` : ''} es una amenaza ${bando(h.faccion.nombre, 'para')}. Quieren que deje de serlo.`,
+    (h) => `Se busca a ${h.objetivoNpc!.nombre}${h.enemiga ? ` (${h.enemiga.nombre})` : ''}. ${bando(h.faccion.nombre, '', true)} recompensará a quien acabe con él.`,
   ],
   EXPLORAR: [
-    (h) => `Se habla de ${h.lugar!.nombre}, en ${h.region}. ${h.faccion.nombre} quiere saber qué hay allí de verdad.`,
-    (h) => `Nadie de ${h.faccion.nombre} ha vuelto a ${h.lugar!.nombre} en mucho tiempo. Que alguien vaya y lo cuente.`,
+    (h) => `Se habla de ${h.lugar!.nombre}, en ${h.region}. ${bando(h.faccion.nombre, '', true)} quiere saber qué hay allí de verdad.`,
+    (h) => `Nadie ${bando(h.faccion.nombre, 'de')} ha vuelto a ${h.lugar!.nombre} en mucho tiempo. Que alguien vaya y lo cuente.`,
   ],
   AYUDAR: [
     (h) => `${h.objetivoNpc!.nombre} está malherido en ${h.lugar!.nombre}. Hay que llegar antes de que sea tarde.`,
-    (h) => `Llegan noticias de ${h.objetivoNpc!.nombre}, herido en ${h.lugar!.nombre}. ${h.faccion.nombre} pide que alguien lo socorra.`,
+    (h) => `Llegan noticias de ${h.objetivoNpc!.nombre}, herido en ${h.lugar!.nombre}. ${bando(h.faccion.nombre, '', true)} pide que alguien lo socorra.`,
   ],
   COMBATIR: [
-    (h) => `Una partida de ${h.enemiga!.nombre} ronda ${h.lugar!.nombre}. ${h.faccion.nombre} quiere que alguien la haga retroceder.`,
-    (h) => `${h.enemiga!.nombre} se ha dejado ver en ${h.lugar!.nombre}, demasiado cerca. Hay que plantarles cara.`,
+    (h) => `Una partida de ${h.enemiga!.nombre} ronda ${h.lugar!.nombre}. ${bando(h.faccion.nombre, '', true)} quiere que alguien la haga retroceder.`,
+    (h) => `${bando(h.enemiga!.nombre, '', true)} se ha dejado ver en ${h.lugar!.nombre}, demasiado cerca. Hay que plantarles cara.`,
   ],
 };
 

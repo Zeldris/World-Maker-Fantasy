@@ -169,4 +169,17 @@ describe('buscarMenciones', () => {
     expect(mencion.inicio).toBe(11)
     expect(mencion.target.name).toBe('Roca de Llanura Roja')
   })
+
+  // P162 (QA-27): «Gorhorn ve Veta de Yerreo cerca» salía con dos chips, «Veta» (alias suelto de otra
+  // veta) y «Yerreo». Con el nombre del punto como alias, gana el nombre entero.
+  it('el nombre del punto del mapa gana a sus trozos', () => {
+    const fuente = (sourceSlug: string, sourceName: string, aliases: string[]) =>
+      ({ kind: 'flora', sourceSlug, sourceName, aliases, description: 'x', yields: [] }) as unknown as EnciclopediaResponse['faunaFlora'][number]
+    const index = buildEnciclopediaIndex(
+      emptyResponse({ faunaFlora: [fuente('veta-hierro', 'Veta de hierro', ['veta']), fuente('yerreo', 'Yerreo', ['yerreo', 'veta de yerreo'])] }),
+    )
+    const menciones = buscarMenciones(index, 'Gorhorn ve Veta de Yerreo cerca.')
+    expect(menciones.map((m) => m.texto)).toEqual(['Veta de Yerreo'])
+    expect(menciones[0].target.name).toBe('Yerreo')
+  })
 })

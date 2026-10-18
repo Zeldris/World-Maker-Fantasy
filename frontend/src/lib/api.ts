@@ -170,6 +170,8 @@ export async function requestTurnClassify(params: {
   /// Mecánica real de habilidades de clase (checklist 2026-07-21/22, puntos 1-2) — id de la
   /// SavedAction seleccionada en CombatModal.tsx, si la hay.
   savedActionId?: string
+  /// P164: viaje elegido en el mapa (salida o «Viajar»); el texto escrito a pie no cambia de zona.
+  viajeElegido?: boolean
 }): Promise<ClassifyResponse> {
   const response = await fetch(`${API_URL}/turn/classify`, {
     method: 'POST',
@@ -285,6 +287,8 @@ export interface NarrateResponse {
   /// el candidato; la narración de la primera vuelta ocurre al pulsar Interactuar
   /// (`POST /saves/:id/modo-dinamico/interactuar`), no aquí. `null` en la inmensa mayoría de turnos.
   dynamicModeOffer: { tipo: 'NPC' | 'FAUNA'; targetSlug: string; targetName: string } | null
+  /// P167 (QA-27): el turno dejó respondida la oferta pacífica que había; su tarjeta pierde los botones.
+  ofertaDescartada?: true
   /// Notificación de misión COMPLETADA (2026-08-13) — `logEntryId`/`text` son los de la LogEntry
   /// real ya persistida por el backend (questRewardNarrationFor), para insertarla tal cual con
   /// marca visual de "misión completada" en vez de una tarjeta sintética aparte. `null` en la
@@ -1104,10 +1108,13 @@ export async function confirmarRecoleccion(
   /// Registro escrito determinista de lo recolectado (petición explícita, 2026-08-07: "un texto
   /// de narración que no dependa de la AI") — null si la petición no consiguió nada de verdad
   /// (capacidad llena, cooldown, población agotada a mitad de camino).
-  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll } | null
+  /// P172: `factionRepChange`, si alguien del bando dueño te vio llevártelo (su aviso, como en un turno).
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: RecoleccionLogRoll; factionRepChange?: { faction: string; delta: number; newValue: number } } | null
   /// Fase 10 (2026-09-29) — segunda tirada de tier alto por objeto afectado (también dentro de
   /// `logEntry.roll.segundas`); llega aunque `logEntry` sea null (todas las segundas fallaron).
   segundasTiradas?: SegundaTiradaInfo[]
+  /// P161 (QA-27): energía tras recolectar, si recuperó algo con el rato que pasó.
+  energia?: number
 }> {
   return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
@@ -1148,7 +1155,8 @@ export interface TravelDestinationInfo {
   minutos: number | null
   banda: 'corta' | 'extendida' | 'larga' | null
 }
-export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; destinations: TravelDestinationInfo[] }> {
+/// P164: `montura` (CR-57): sin ella, la lista se ve pero no se puede ir directo (`motivoSinMontura`).
+export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; montura?: boolean; motivoSinMontura?: string; destinations: TravelDestinationInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/destinos-viaje`)
 }
 
@@ -1182,6 +1190,8 @@ export interface ZonePointInfo {
   /// `zonePointColorFor`, backend).
   cantidad: number
   color: 'ALIADO' | 'NEUTRO' | 'ENEMIGO' | 'SIN_FACCION' | 'INERTE'
+  /// P176 (QA-27): de quién es (solo los edificios).
+  faccion?: string
   /// Hallazgo 34 (2026-09-07) — false si la partida todavía no lo ha descubierto en la ficción
   /// (`DiscoveredEntity`); el modal de detalle debe ocultar "Ver en la Enciclopedia" en ese caso,
   /// aunque exista ficha real. `EDIFICIO` siempre `true` (nunca tiene ficha que ocultar).
@@ -1281,6 +1291,8 @@ export interface ZonaSalidaInfo {
 
 export interface ZonaResponse {
   disponible: boolean
+  /// P185 (QA-27): casillas por las que no se pasa (muros, empalizadas), para la ruta prevista.
+  muros?: { col: number; row: number }[]
   locationSlug?: string
   locationName?: string
   /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera
@@ -1382,6 +1394,8 @@ export interface MoverZonaResultado {
   /// F9-2 (2026-09-29) — reloj tras el paso (1 min/paso); ausente si el camino estaba vacío.
   fictionalMinutes?: number
   fictionalDateLabel?: string
+  /// P161 (QA-27): energía tras el paso, si la recuperó (el HUD no la refrescaba al andar).
+  energia?: number
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
@@ -2244,7 +2258,9 @@ export async function responderModoDinamico(saveId: string, respuesta: string): 
   })
 }
 
-export async function ignorarModoDinamico(saveId: string): Promise<{
+/// `targetSlug` (P150): la oferta sin abrir que se ignora; sin él, se limpia lo que haya (salir de una
+/// conversación en curso).
+export async function ignorarModoDinamico(saveId: string, targetSlug?: string): Promise<{
   ok: boolean
   /// Franja 0 (2026-09-15, hallazgo real jugando en vivo: "cerrar Interactuar no deja rastro en
   /// el log") — el backend ya creaba este LogEntry al salir de una conversación en curso, pero
@@ -2252,7 +2268,10 @@ export async function ignorarModoDinamico(saveId: string): Promise<{
   /// resumir (ignorar una oferta sin llegar a abrirla).
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, { method: 'POST' })
+  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, {
+    method: 'POST',
+    ...(targetSlug ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetSlug }) } : {}),
+  })
 }
 
 /// "Interactuar" sobre RECURSO (2026-09-08, "Ver qué hay en la zona") — a diferencia de NPC/FAUNA
@@ -2267,7 +2286,9 @@ export interface DynamicModeRecursoResultado {
   segundasTiradas?: SegundaTiradaInfo[]
   items?: InventoryItemInfo[]
   updatedItems?: { id: string; name: string }[]
-  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll }
+  logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll; factionRepChange?: { faction: string; delta: number; newValue: number } }
+  /// P161 (QA-27): energía tras recolectar, si recuperó algo.
+  energia?: number
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {
@@ -2295,6 +2316,31 @@ export type NpcInteractionAccion =
   | { accion: 'SIN_TRABAJO'; texto: string }
   /// CR-32: proponer que se una o que te informe; la entrada lleva la tirada de Carisma.
   | { accion: 'PROPUESTA'; logEntry: LogEntry; unido: boolean }
+
+/// P178 (QA-27): ficha de un edificio del mapa (de quién es, cómo está, quién lo lleva y qué ofrece).
+export interface FichaEdificio {
+  zonePointId: string
+  nombre: string
+  descripcion: string | null
+  nivel: number | null
+  faccion: string | null
+  estado: string
+  detallesEstado: string[]
+  encargado: { slug: string; nombre: string; aqui: boolean } | null
+  ofrece: { label: string; disponible: boolean; motivo?: string }[]
+}
+
+export async function getFichaEdificio(saveId: string, zonePointId: string): Promise<FichaEdificio> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona/edificio/${zonePointId}`)
+}
+
+/// P178: «Interactuar» junto a un edificio: el menú de quien lo lleva, o por qué no lo hay.
+export async function interactuarEdificio(
+  saveId: string,
+  zonePointId: string,
+): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: false }; logEntry: LogEntry } | { menu: null; motivo: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/zona/edificio/${zonePointId}/interactuar`, { method: 'POST' })
+}
 
 /// P142: menú fijo del NPC del encuentro del mapa; `null` si no tiene (se abre la escena libre).
 export async function abrirMenuNpc(saveId: string, npcSlug: string): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: true } | null }> {

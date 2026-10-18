@@ -1,7 +1,7 @@
 import type { ZonePointInfo, ZonaDinamicoInfo } from '../lib/api'
 import { useEnciclopediaLink } from '../context/useEnciclopediaLink'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
-import { DISPOSICION_LABEL, TIPO_LABEL } from '../lib/zonaFichas'
+import { disposicionDe, TIPO_LABEL } from '../lib/zonaFichas'
 
 /// Tipos de pin del mapa de Zona — `ZonePointInfo` (catálogo) + los que solo existen como dinámicos
 /// de la partida: OBJETO (tirado al suelo) y CADAVER (Fase 5, 2026-09-28).
@@ -16,6 +16,7 @@ type ZonePointDetailSource = {
   nombre: string
   tipo: ZonaPinTipo
   color: ZonePointInfo['color']
+  faccion?: string
   cantidad?: number
   /// "Tirar" objetos al suelo de la Zona (2026-09-06) — solo presente cuando `tipo === 'OBJETO'`.
   droppedItemId?: string
@@ -41,7 +42,7 @@ export function ZonePointDetailBody({ point }: { point: ZonePointDetailSource })
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-1.5 text-2xs">
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{TIPO_LABEL[point.tipo]}</span>
-        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{DISPOSICION_LABEL[point.color]}</span>
+        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{disposicionDe(point)}</span>
         {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
       </div>
       {!point.descubierto ? (
@@ -144,7 +145,7 @@ export function ZonePointDetailModal({
     >
       <div className="flex flex-wrap gap-1.5 text-2xs">
         <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{TIPO_LABEL[point.tipo]}</span>
-        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{DISPOSICION_LABEL[point.color]}</span>
+        <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">{disposicionDe(point)}</span>
         {!!point.cantidad && point.cantidad > 1 && <span className="rounded-full border border-iron-700 bg-wood-950/50 px-2.5 py-1 uppercase tracking-wide text-wood-400">×{point.cantidad}</span>}
       </div>
       {!point.descubierto ? (

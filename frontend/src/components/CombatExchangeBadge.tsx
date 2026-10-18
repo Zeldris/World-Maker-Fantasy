@@ -335,7 +335,7 @@ function SideRow({
         {side.racialAdvantageReason && (
           <TooltipAnchor text={side.racialAdvantageReason}>
             <span className={`ml-1 font-mono underline decoration-dotted decoration-wood-700 underline-offset-2 ${side.rollMode === 'ventaja' ? 'text-moss-400' : 'text-danger-400'}`}>
-              {side.rollMode === 'ventaja' ? '▲' : '▼'} racial
+              {side.rollMode === 'ventaja' ? '▲' : '▼'} {side.ventajaPor ?? 'racial'}
             </span>
           </TooltipAnchor>
         )}

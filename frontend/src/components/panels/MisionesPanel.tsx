@@ -40,9 +40,13 @@ function AccionesMision({ quest, onEntregar, onAbandonar }: { quest: QuestInfo; 
       {quest.status === 'ACTIVA' && (
         <div className="flex flex-wrap items-center gap-2">
           {quest.tipoMision === 'ENTREGAR' && onEntregar && (
-            <button type="button" disabled={busy} onClick={() => run(onEntregar)} className="rounded border border-accent-600/60 bg-accent-500/15 px-2.5 py-1 text-xs text-accent-100 hover:bg-accent-500/25 disabled:opacity-50">
-              Entregar
-            </button>
+            <>
+              <button type="button" disabled={busy || !!quest.entregaBloqueada} onClick={() => run(onEntregar)} className="rounded border border-accent-600/60 bg-accent-500/15 px-2.5 py-1 text-xs text-accent-100 hover:bg-accent-500/25 disabled:cursor-not-allowed disabled:opacity-50">
+                Entregar
+              </button>
+              {/* P183 (QA-27): desactivado, con el motivo que daría el servidor (antes, 409 al pulsar). */}
+              {quest.entregaBloqueada && <span className="text-2xs text-wood-400">{quest.entregaBloqueada}</span>}
+            </>
           )}
           {onAbandonar &&
             (confirmarAbandono ? (

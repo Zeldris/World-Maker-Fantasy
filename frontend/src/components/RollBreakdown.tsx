@@ -32,7 +32,14 @@ export function RollBreakdown({ side, valorCrudo, valorEfectivo }: { side: Parti
       </span>
       {hasMultiplicador && (
         <span className="whitespace-nowrap">
-          <span className={side.multiplicador! > 1 ? 'text-moss-400' : 'text-danger-400'}>×{formatMultiplier(side.multiplicador!)}</span>
+          {/* P155 (QA-27): el «×1.5» salía suelto, sin decir de dónde venía; como «heridas» y «hab», con su nombre. */}
+          <span className={side.multiplicador! > 1 ? 'text-moss-400' : 'text-danger-400'} title={
+              side.multiplicador! > 1
+                ? 'Ventaja de tipo: su atributo gana al del rival en la rueda de atributos'
+                : 'Desventaja de tipo: su atributo pierde contra el del rival en la rueda de atributos'
+            }>
+            ×{formatMultiplier(side.multiplicador!)} tipo
+          </span>
           ≈{valorEfectivo}/2)
         </span>
       )}

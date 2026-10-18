@@ -1,19 +1,20 @@
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { CapasContext } from '../../context/capasContext'
 import { ViajerosAqui } from './ViajerosAqui'
-import { getZona, resolveImageUrl, recogerDroppedItem, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
+import { getZona, resolveImageUrl, recogerDroppedItem, interactuarEdificio, type ZonaResponse, type ZonePointInfo, type ZonaDinamicoInfo, type ZonaSalidaInfo } from '../../lib/api'
 import { ZonePointDetailModal, zonaDinamicoToDetailSource } from '../ZonePointDetailModal'
+import { EdificioFichaModal } from '../EdificioFichaModal'
 import { anguloSalida, etiquetaSalida } from '../../lib/rumboSalida'
 import { separarEtiquetas } from '../../lib/separarEtiquetas'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre, anclaEtiqueta, cajaEtiqueta, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
-import { COLOR_HEX, DISPOSICION_LABEL, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
+import { DefsFichas, EtiquetaNombre, InsigniaGrupo, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
+import { COLOR_HEX, disposicionDe, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
 import { useAjustes } from '../../context/useAjustes'
-import { celdaDePixel, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, type Celda } from '../../lib/zonaRuta'
+import { celdaDePixel, claveCelda, pixelDeCelda, riesgoDeRuta, rutaPrevista, tePersigue, textoCoste, type Celda } from '../../lib/zonaRuta'
 import { MarcaObjetivoMision, BanderaDestino, CeldaResaltada, CeldasEnRiesgo, EtiquetaCoste, LineaRuta, RadioAmenaza, RutaPatrulla } from '../zona/RutaZona'
 import { MenuFicha, TarjetaEncuentro, TarjetaFicha, type AccionFicha, type InfoFicha } from '../zona/MenuFicha'
 import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
@@ -81,6 +82,7 @@ interface ZonaPanelProps {
   /// F9-2 (2026-09-29) — el paso avanza el reloj (B2): el backend devuelve la hora nueva y la
   /// cabecera del juego se actualiza en cada paso, sin esperar al siguiente turno.
   onHoraActualizada?: (fictionalDateLabel: string) => void
+  onEnergiaActualizada?: (energia: number) => void
   /// Cadáveres en el mapa (Fase 5, 2026-09-28) — abren el modal real de Saquear/Desollar (en
   /// GameView). `undefined` en la vista informativa: el pin se ve, sin acción.
   onSaquearCadaver?: (npcSlug: string) => void
@@ -136,7 +138,7 @@ export function salidaEnCasillaDelJugador(data: Pick<ZonaResponse, 'jugador' | '
   return data.salidas.find((s) => { const c = celdaDePixel(s); return c.col === celda.col && c.row === celda.row }) ?? null
 }
 
-export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
+export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, columnasAncho = false, onClose, onViajarA, professionRecipes, onRefreshSave, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, onSaquearCadaver, onDesollarCadaver, bloqueoTurno, bloqueoMovimiento = null, ofertaEnMapa }: ZonaPanelProps) {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<ZonaResponse | null>(null)
   // ZON-11 (hito 0.1) — unidades del lienzo por píxel de pantalla: las fichas miden siempre lo mismo.
@@ -212,13 +214,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   const {
     moverA: handleMoverA, movimientoEnCurso, mensajeMovimiento, setMensajeMovimiento, parar, reanudar, cancelar, destinoPendiente, msPasoActual, caminoRestante,
   } = useMovimientoZona({
-    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
+    saveId, setData, bloqueoMovimiento, onEncuentroZona, onClose, onOfertaDescartada, onHoraActualizada, onEnergiaActualizada, msPorPaso: MS_POR_VELOCIDAD[ajustes.velocidadPasoZona],
     onEncuentroEnMapa: ofertaEnMapa ? setEncuentroMapa : undefined,
   })
   // ZON-5: al volver a andar, la tarjeta del encuentro anterior sobra (alejarse ya la descarta).
   useEffect(() => {
     if (movimientoEnCurso) setEncuentroMapa(null)
   }, [movimientoEnCurso])
+  // P182 (QA-27): cuando salta un encuentro, el menú de la ficha que estaba abierto se cierra: salían los
+  // dos a la vez, uno encima del otro.
+  useEffect(() => {
+    if (encuentroMapa) setMenuFicha(null)
+  }, [encuentroMapa])
   // ZON-35: Espacio para y reanuda (fuera de los campos de texto).
   const pararReanudarRef = useRef<() => void>(() => {})
   pararReanudarRef.current = () => (movimientoEnCurso ? parar() : reanudar())
@@ -334,7 +341,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return (data.dinamicos ?? []).find((d) => d.slug === clave.slice(2)) ?? null
   }
   function infoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): InfoFicha {
-    const detalles = [TIPO_LABEL[punto.tipo], DISPOSICION_LABEL[punto.color]]
+    const detalles = [TIPO_LABEL[punto.tipo], disposicionDe(punto)]
     if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
     if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
     // ZON-16/ZON-58: lo desconocido, agotado o con candado, también en la tarjeta.
@@ -347,10 +354,29 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     }
     return { nombre: punto.nombre, detalles }
   }
+  // P178 (QA-27): «Interactuar» junto a un edificio abre el menú de quien lo lleva (antes, pulsar tu casilla
+  // sacaba al NPC más cercano), junto al edificio; si no hay nadie, lo dice el mapa.
+  async function handleInteractuarEdificio(punto: ZonePointInfo) {
+    try {
+      const r = await interactuarEdificio(saveId, punto.id)
+      if (!r.menu) {
+        setMensajeMovimiento(r.motivo)
+        return
+      }
+      onEncuentroZona?.({ ...r.logEntry, npcInteractionOffer: { ...r.menu, busy: false } })
+      setEncuentroMapa({ entryId: r.logEntry.id, zonePointId: punto.id })
+    } catch (err) {
+      setMensajeMovimiento(err instanceof Error && err.message ? err.message : 'No se pudo interactuar con el edificio.')
+    }
+  }
+  function esEdificio(punto: ZonePointInfo | ZonaDinamicoInfo): punto is ZonePointInfo {
+    return 'id' in punto && punto.tipo === 'EDIFICIO'
+  }
   function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
     const acciones: AccionFicha[] = []
     const ir = irHastaPin(punto)
-    if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
+    if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
+    else if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
     if ('droppedItemId' in punto && punto.droppedItemId) {
       const id = punto.droppedItemId
       acciones.push({ label: 'Recoger', onClick: () => void handleRecoger(id) })
@@ -367,6 +393,58 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     return acciones
   }
 
+  // ZON-19: nombres visibles de las fichas. P92 (QA-27): las etiquetas se apartan en vertical si se
+  // pisan. P123: antes que todo, las fichas mismas (con su «×N», anillo o candado), el jugador, los
+  // viajeros y las parcelas, como obstáculos fijos, para que ninguna etiqueta, tampoco la de una salida,
+  // los tape. Se recalcula solo si cambian la zona, la escala o qué nombres se ven (no a cada hover).
+  const etiquetasFichas = data?.disponible
+    ? [
+        ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
+        ...(data.dinamicos ?? []).map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
+      ].filter((e) => nombreVisible(e.clave, e, e.sel))
+    : []
+  const clavesVisibles = etiquetasFichas.map((e) => e.clave).join('|')
+  const dyEtiquetas = useMemo(() => {
+    if (!data?.disponible) return new Map<string, number>()
+    const visibles = new Set(clavesVisibles.split('|'))
+    const dinamicosZona = data.dinamicos ?? []
+    const nombres = [
+      ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre })),
+      ...dinamicosZona.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre })),
+    ].filter((e) => visibles.has(e.clave))
+    return separarEtiquetas(
+      [
+        ...data.puntos.map((p) =>
+          cajaFicha(`f:p:${p.id}`, p.x, p.y, escala, { cantidad: p.cantidad ?? 1, anillo: !!p.companion || !p.descubierto, candado: p.nivelRequerido !== undefined, agotado: p.agotado }),
+        ),
+        ...dinamicosZona.map((d) => cajaFicha(`f:d:${d.slug}`, d.x, d.y, escala, { anillo: !d.descubierto })),
+        ...(data.jugador ? [cajaMarca('m:jugador', data.jugador.x, data.jugador.y, escala, 22)] : []),
+        ...(data.viajeros ?? []).map((v) => cajaMarca(`m:v:${v.id}`, v.x, v.y, escala, 12)),
+        ...data.parcelas.map((p) => cajaMarca(`m:pa:${p.id}`, p.x, p.y, escala, 12)),
+        ...data.salidas.map((s) => cajaEtiqueta(`s:${s.locationId}`, s.x, s.y, escala, etiquetaDeEstandarte(anguloSalida(s)), etiquetaSalida(s))),
+        ...nombres
+          .map((e) => cajaEtiqueta(e.clave, e.x, e.y, escala, { x: 0, y: 24, anchor: anclaEtiqueta(e.x, e.nombre, escala) }, e.nombre))
+          .sort((a, b) => a.y - b.y),
+      ],
+      ALTO_LIENZO_ZONA,
+    )
+  }, [data, escala, clavesVisibles])
+
+  // P185: las casillas por las que no se pasa; la ruta prevista las rodea como el motor.
+  const murosZona = useMemo(() => new Set((data?.muros ?? []).map(claveCelda)), [data?.muros])
+  // `/code-review`: resuelta la tarjeta (p. ej. «Salir» del menú de un edificio), el encuentro se olvida; si
+  // no, la ruta prevista y los menús de las fichas seguían ocultos hasta volver a andar. Solo tras haberla
+  // visto: justo al ponerla, la entrada del diario puede no haber llegado todavía.
+  const tarjetaVigente = !!encuentroMapa && !!ofertaEnMapa?.(encuentroMapa.entryId)
+  const tarjetaVistaRef = useRef(false)
+  useEffect(() => {
+    if (!encuentroMapa) {
+      tarjetaVistaRef.current = false
+      return
+    }
+    if (tarjetaVigente) tarjetaVistaRef.current = true
+    else if (tarjetaVistaRef.current) setEncuentroMapa(null)
+  }, [encuentroMapa, tarjetaVigente])
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {
@@ -377,22 +455,6 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // ZON-50/ZON-33: hostiles conocidos (el backend solo los marca si ya están descubiertos).
   const hostiles = data.puntos.filter((p) => p.hostil)
   const dinamicos = data.dinamicos ?? []
-  // ZON-19: nombres visibles de las fichas. P92 (QA-27): los de las salidas mandan y los de las fichas
-  // se apartan en vertical si los pisan.
-  const etiquetasFichas = [
-    ...data.puntos.map((p) => ({ clave: `p:${p.id}`, x: p.x, y: p.y, nombre: p.nombre, sel: selectedPoint === p || selectedGroup === p })),
-    ...dinamicos.map((d) => ({ clave: `d:${d.slug}`, x: d.x, y: d.y, nombre: d.nombre, sel: selectedPoint === d })),
-  ].filter((e) => nombreVisible(e.clave, e, e.sel))
-  const dyEtiquetas = separarEtiquetas(
-    [
-      ...data.salidas.map((s) => cajaEtiqueta(`s:${s.locationId}`, s.x, s.y, escala, etiquetaDeEstandarte(anguloSalida(s)), etiquetaSalida(s))),
-      ...etiquetasFichas
-        .map((e) => cajaEtiqueta(e.clave, e.x, e.y, escala, { x: 0, y: 24, anchor: anclaEtiqueta(e.x, e.nombre, escala) }, e.nombre))
-        .sort((a, b) => a.y - b.y),
-    ],
-    ALTO_LIENZO_ZONA,
-  )
-
   // Layout de 2 columnas (2026-09-09) — solo cuando `columnasAncho` (ZonaMovimientoModal): mapa a
   // la izquierda, todo el contenido (control regional/mensaje/leyenda/listas) a la derecha con su
   // propio scroll, para aprovechar el ancho del modal sin tener que scrollear la página entera.
@@ -539,7 +601,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               })()}
               {/* ZON-30/31/32/34 (capa de ruta, bajo las fichas): celda bajo el cursor; sin andar, la ruta
                   prevista con su coste; andando o parado, la ruta que queda y la bandera de destino. */}
-              {celdaCursor && !soloConsulta && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
+              {/* P168 (QA-27): sobre una ficha (o con su menú abierto) no se pinta: la ficha no va centrada en su
+                  casilla y el recuadro salía desplazado, sin rodearla; la ficha ya se resalta sola. */}
+              {celdaCursor && !soloConsulta && !claveBajoRaton && !menuFicha && <CeldaResaltada celda={celdaCursor} bloqueada={!!bloqueoMovimiento} />}
               {data.jugador && !soloConsulta && destinoPendiente && (
                 <>
                   <LineaRuta desde={data.jugador} puntos={caminoRestante} escala={escala} tipo="en-curso" />
@@ -551,7 +615,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               {data.jugador && !soloConsulta && !movimientoEnCurso && !bloqueoMovimiento && celdaCursor && !menuFicha && !encuentroMapa &&
                 (() => {
                   const destino = pixelDeCelda(celdaCursor)
-                  const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes)
+                  const ruta = rutaPrevista(data.jugador, destino, data.fictionalMinutes, murosZona)
                   if (ruta.pasos === 0) return null
                   // ZON-33: celdas en el radio de un hostil conocido; en rojo entera si acaba en encuentro seguro.
                   const riesgo = riesgoDeRuta(ruta.puntos, hostiles)
@@ -611,7 +675,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   onMouseLeave={() => setClaveBajoRaton(null)}
                   className="cursor-pointer"
                 >
-                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} desconocido={!p.descubierto} agotado={p.agotado} nivelRequerido={p.nivelRequerido} />
+                  <ZonePointMarker x={p.x} y={p.y} tipo={p.tipo} color={COLOR_HEX[p.color]} escala={escala} hasCompanion={!!p.companion} cantidad={p.cantidad} desconocido={!p.descubierto} agotado={p.agotado} nivelRequerido={p.nivelRequerido} insignia={false} />
                   <title>{`${p.nombre}${p.cantidad > 1 ? ` ×${p.cantidad}` : ''} (${TIPO_LABEL[p.tipo]})${p.companion ? ` — con ${p.companion.nombre}` : ''}`}</title>
                 </g>
               ))}
@@ -641,6 +705,19 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                 </g>
               ))}
               {data.jugador && <JugadorMarker x={data.jugador.x} y={data.jugador.y} escala={escala} angulo={anguloJugador} quieto={!movimientoEnCurso} />}
+              {/* P147 (QA-27): las insignias «×N» de los grupos, por encima de todas las fichas y del personaje
+                  (antes las tapaba una ficha pegada o el propio marcador), con la animación de su ficha. */}
+              <g pointerEvents="none">
+                {data.puntos
+                  .filter((p) => p.cantidad > 1)
+                  .map((p) => (
+                    <g key={`insignia:${p.id}`} data-testid="insignia-grupo" style={{ transform: `translate(${p.x}px, ${p.y}px)`, transition: `transform ${msPasoActual}ms linear` }} opacity={p.agotado ? 0.45 : 1}>
+                      <g transform={`scale(${escala})`}>
+                        <InsigniaGrupo cantidad={p.cantidad} />
+                      </g>
+                    </g>
+                  ))}
+              </g>
               {/* ZON-19 (hito 0.1) — nombres en una capa por encima de todo (ni salidas ni otras fichas los
                   tapan), con la misma animación de desplazamiento que su ficha. */}
               <g pointerEvents="none">
@@ -793,7 +870,17 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
       )}
       {selectedPoint &&
         ('id' in selectedPoint ? (
-          <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
+          selectedPoint.tipo === 'EDIFICIO' ? (
+            <EdificioFichaModal
+              saveId={saveId}
+              point={selectedPoint}
+              onClose={() => setSelectedPoint(null)}
+              onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
+              onIrHasta={irHastaPin(selectedPoint)}
+            />
+          ) : (
+            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
+          )
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}

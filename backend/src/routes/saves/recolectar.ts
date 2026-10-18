@@ -16,6 +16,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { advanceFictionalMinutes, formatFictionalDate, estacionFor, climaFor, climaSeveridadAlMenos } from '../../services/worldClock.js';
 import { alivioForLevel } from '../../services/professionProgress.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
+import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
 import { rollGathering, dificultadForTier, gradoForRecurso, cantidadForGrado } from '../../services/dice.js';
 import type { GatheringRollResult, AttributeBlock, Attribute, GradoRecurso } from '../../services/dice.js';
 import { Prisma } from '@prisma/client';
@@ -23,6 +24,8 @@ import type { Estacion, EstadoClima, MetodoObtencion } from '@prisma/client';
 import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { posicionDeObjetivo, moverJugadorA } from '../../services/zonaPosicion.js';
 import { ambitoPoblacion, poblacionDeCatalogo, type FiltroPoblacion } from '../../services/mundoPartida.js';
+import { aprovecharseDeLoAjeno } from '../../services/cronista/testigos.js';
+import type { FactionRepChangeInfo } from '../../services/reputation.js';
 
 /// Recolección (rediseño de profesiones, 2026-08-07) — lado "recolectora" (minero/talador/
 /// desollador): a diferencia de las de oficio creador (crafting.ts, un solo objeto por texto
@@ -499,6 +502,15 @@ export function gatheringRollFor(save: GatheringRollInputs, oficio: string, rand
 /// la fuente entera, una misma fuente puede dar varios objetos de distinto tier) se filtra/recorta
 /// según su propio grado — una fuente que se queda sin ningún yield tras esto desaparece del todo
 /// del listado (fallo total de la tirada para ese recurso concreto).
+/// P158 (QA-27): la dificultad y el grado de la tirada contra el recurso más fácil de una fuente que
+/// pide tirada (el que decide si se saca algo), para enseñarlos en la tarjeta. Sin ninguno, la tirada tal cual.
+export function conDificultadDeFuente(candidato: SourceCandidate, roll: GatheringRollResult): GatheringRollResult {
+  const conTirada = candidato.yields.filter((y) => !y.sinTirada);
+  if (conTirada.length === 0) return roll;
+  const dificultad = Math.min(...conTirada.map((y) => dificultadForTier(y.tier)));
+  return { ...roll, dificultad, grado: gradoForRecurso(roll.result, dificultad) };
+}
+
 export function applyGatheringRoll(candidates: SourceCandidate[], roll: GatheringRollResult): SourceCandidate[] {
   return candidates
     .map((c) => ({
@@ -956,10 +968,12 @@ export async function resolverRecoleccion(
             });
             if (result.count === 0) continue;
             sourcesTouchedThisRequest.add(sel.sourceSlug);
-            unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
             anyNonCaza = true;
           }
           unitsRemaining -= cantidad;
+          // P173 (QA-27): lo concedido baja el punto del mapa en todas las ramas que no son caza (la caza
+          // tiene el suyo); antes solo minar/talar/extraer lo sumaba y «Recoger» dejaba el ×20.
+          if (yieldRow.metodoObtencion !== 'CAZA') unidadesPorFuente.set(sel.sourceSlug, (unidadesPorFuente.get(sel.sourceSlug) ?? 0) + cantidad);
 
           const catalogItem = yieldRow.item;
           const alreadyTouched = touched.get(catalogItem.slug);
@@ -1013,15 +1027,31 @@ export async function resolverRecoleccion(
         // turnos: nunca inventar prosa por IA para algo que ya se sabe con certeza mecánica. Solo
         // si de verdad se consiguió algo (no todas las peticiones tienen éxito: capacidad llena,
         // cooldown, población agotada a mitad de bucle).
-        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll } | null = null;
+        let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; fictionalMinutes: number; roll?: RecoleccionLogRoll; factionRepChange?: FactionRepChangeInfo } | null = null;
         let nuevoFictionalMinutes = save.worldState?.fictionalMinutes ?? 480;
+        let energiaTrasRecolectar: number | null = null;
         let nuevaFictionalDateLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
         if (touched.size > 0) {
           const resumen = [...touched.values()]
             .map((s) => (s.harvestedThisTurn > 1 ? `${s.catalogName} (${s.harvestedThisTurn})` : s.catalogName))
             .join(', ');
           const verbo = anyCaza && !anyNonCaza ? 'despieza una presa cercana' : 'recolecta en la zona';
-          const text = `${save.characterName} ${verbo}: ${resumen}.`;
+          // P172 (QA-27): lo que es de un bando (`ZonePoint.factionSlug`, p. ej. el recinto de múrgoles del
+          // Clan Serhu) se puede coger, pero si alguien de ese bando lo ve, resta reputación con él.
+          const lugarRecoleccion = save.currentLocation?.id ?? null;
+          // El mismo punto del que se descuenta (`descontarZonePointRecurso`): el de la oferta o, si no, el activo
+          // con más cantidad; solo cuenta si ese tiene dueño.
+          const puntoAjeno = lugarRecoleccion
+            ? await tx.zonePoint.findFirst({
+                where: { saveId: save.id, locationId: lugarRecoleccion, tipo: 'RECURSO', targetSlug: { in: [...unidadesPorFuente.keys()] }, activo: true, ...(zonePointId ? { id: zonePointId } : {}) },
+                orderBy: { cantidad: 'desc' },
+                select: { factionSlug: true },
+              })
+            : null;
+          const robo = puntoAjeno?.factionSlug && lugarRecoleccion
+            ? await aprovecharseDeLoAjeno(tx, { saveId: save.id, worldId: save.worldId, locationId: lugarRecoleccion, faccion: puntoAjeno.factionSlug, que: 'coger' })
+            : null;
+          const text = `${save.characterName} ${verbo}: ${resumen}.${robo ? ` ${robo.frase}` : ''}`;
           const totalUnidades = [...touched.values()].reduce((sum, s) => sum + s.harvestedThisTurn, 0);
           const minutosCoste = minutosRecoleccionFor(totalUnidades);
           nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, minutosCoste);
@@ -1030,6 +1060,8 @@ export async function resolverRecoleccion(
             where: { saveId: save.id },
             data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: nuevaFictionalDateLabel },
           });
+          // P160 (QA-27): el rato que pasa recolectando también recupera energía, como al andar.
+          energiaTrasRecolectar = await sumarEnergiaPasiva(tx, save.id, save.worldState?.fictionalMinutes ?? 480, nuevoFictionalMinutes);
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const logRoll: RecoleccionLogRoll | undefined =
             primeraTirada || segundasTiradas.length > 0
@@ -1047,7 +1079,8 @@ export async function resolverRecoleccion(
               ...(logRoll ? { roll: logRoll as unknown as Prisma.InputJsonValue } : {}),
             },
           });
-          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes, ...(logRoll ? { roll: logRoll } : {}) };
+          // P172: el cambio de reputación, para su aviso (como en un turno); no se guarda en la entrada.
+          logEntry = { id: created.id, text, timeLabel: nuevaFictionalDateLabel, createdAt: created.createdAt.toISOString(), fictionalMinutes: nuevoFictionalMinutes, ...(logRoll ? { roll: logRoll } : {}), ...(robo ? { factionRepChange: robo.cambio } : {}) };
         }
 
         // Cierre de misión "conseguir Z" (bug real, auditoría 2026-08-11 "pruebas por API"): este
@@ -1091,7 +1124,7 @@ export async function resolverRecoleccion(
           }
         }
 
-        return { touched, logEntry, segundasTiradas, recompensas };
+        return { touched, logEntry, segundasTiradas, recompensas, energia: energiaTrasRecolectar };
       });
 
       // Hecho de sesión (fuera de la transacción, igual que `appendSessionFacts` en /explorar —
@@ -1144,5 +1177,5 @@ export async function resolverRecoleccion(
         }
       }
 
-  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas };
+  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas, ...(touched.energia !== null ? { energia: touched.energia } : {}) };
 }

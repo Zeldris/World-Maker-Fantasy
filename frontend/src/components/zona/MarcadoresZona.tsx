@@ -59,7 +59,7 @@ export const MS_POR_PASO_MOVIMIENTO = MS_POR_VELOCIDAD.normal
 /// — ver el comentario de `ZonePointShape` de arriba para el motivo. `children` opcional para poder
 /// insertar el texto de cantidad DENTRO del mismo grupo animado (ver `data.puntos.map` más abajo),
 /// en vez de que cada caller tenga que repetir el `<g>`/`transform` a mano.
-export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, desconocido = false, agotado = false, nivelRequerido, children }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; desconocido?: boolean; agotado?: boolean; nivelRequerido?: number; children?: ReactNode }) {
+export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, cantidad, sombra, desconocido = false, agotado = false, nivelRequerido, children, insignia = true }: { x: number; y: number; tipo: ZonaPinTipo; color: string; escala: number; hasCompanion?: boolean; cantidad?: number; sombra?: boolean; desconocido?: boolean; agotado?: boolean; nivelRequerido?: number; children?: ReactNode; insignia?: boolean }) {
   // ZON-36: la animación dura lo que el paso (según la velocidad elegida).
   const msPaso = useMsPaso()
   // ZON-10/ZON-11 (hito 0.1) — la ficha (placa + pictograma + anillo) vive en zona/FichaZona.tsx y se
@@ -68,7 +68,7 @@ export function ZonePointMarker({ x, y, tipo, color, escala, hasCompanion, canti
   // ZON-58: candado con el nivel de oficio que pide.
   return (
     <g style={{ transform: `translate(${x}px, ${y}px)`, transition: `transform ${msPaso}ms linear` }} opacity={agotado ? 0.45 : 1}>
-      <FichaZona tipo={tipo} color={desconocido ? 'var(--color-wood-400)' : color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra}>
+      <FichaZona tipo={tipo} color={desconocido ? 'var(--color-wood-400)' : color} escala={escala} hasCompanion={hasCompanion} cantidad={cantidad} sombra={sombra} insignia={insignia}>
         {desconocido && (
           <>
             <circle r={17.5} fill="none" stroke="var(--color-wood-300)" strokeWidth={1.2} strokeDasharray="2.5 2.5" />

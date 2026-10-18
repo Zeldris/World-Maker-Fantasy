@@ -52,3 +52,18 @@ describe('catálogo de sucesos', () => {
     expect(importanciaDeSuceso('FACCION_CAE', { jugadorAutor: true, afectaNucleoJugable: true, tocaHilo: true })).toBe(10);
   });
 });
+
+// P175 (QA-27): matar a un Guchapo salía en los bandos del clan como una hazaña.
+describe('importancia de vencer o matar a fauna sin bando', () => {
+  const base = { jugadorAutor: true, afectaNucleoJugable: true, tocaHilo: false };
+  it('baja lo bastante para no llegar a los bandos (5)', () => {
+    expect(importanciaDeSuceso('MUERTE_CAUSADA', { ...base, victimaFaunaMenor: true })).toBeLessThan(5);
+    expect(importanciaDeSuceso('COMBATE_GANADO', { ...base, victimaFaunaMenor: true })).toBeLessThan(5);
+  });
+  it('matar a alguien con bando o con nombre sigue siendo noticia', () => {
+    expect(importanciaDeSuceso('MUERTE_CAUSADA', base)).toBeGreaterThanOrEqual(5);
+  });
+  it('no toca otros sucesos', () => {
+    expect(importanciaDeSuceso('RENACER', { ...base, victimaFaunaMenor: true })).toBe(importanciaDeSuceso('RENACER', base));
+  });
+});

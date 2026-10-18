@@ -387,7 +387,10 @@ export function detectsFabricatedHarvestSourceClaim(action: string): FabricatedH
   if (!quotedMatch) return null;
   const quotedName = quotedMatch[1].trim();
   if (quotedName.length < MIN_QUOTED_NAME_LENGTH) return null;
-  const hasHarvestVerb = (['CAZA', 'TALA', 'MINERIA', 'EXTRACCION'] as const).some((metodo) => matchesVerbForMetodo(action, metodo));
+  // P83 (QA-27): el verbo se busca fuera del nombre citado: un chip «'Pico de minero'» suelto (un objeto
+  // que se lleva) se tomaba por «minar» por la palabra «minero» y contestaba «ni planta, ni mineral».
+  const sinElNombre = action.replace(quotedMatch[0], ' ');
+  const hasHarvestVerb = (['CAZA', 'TALA', 'MINERIA', 'EXTRACCION'] as const).some((metodo) => matchesVerbForMetodo(sinElNombre, metodo));
   if (!hasHarvestVerb) return null;
   return matchHarvestSource(quotedName) === undefined ? { quotedName } : null;
 }

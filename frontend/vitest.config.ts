@@ -18,5 +18,7 @@ export default defineConfig({
     // QA-39 (retro de QA-27, 2026-10-12): todo `src/`. Con una lista de carpetas, un test puesto en
     // otra (`src/data/`) no se ejecutaba y pasaba «en verde» sin probar nada.
     include: ['src/**/*.test.{ts,tsx}'],
+    // QA-94: un aviso de React por la consola hace fallar el test (src/test/avisosDeReact.ts).
+    setupFiles: ['src/test/avisosDeReact.ts'],
   },
 })

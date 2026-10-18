@@ -26,14 +26,17 @@ export function etiquetaSalida(s: { x: number; y: number; nombre: string; visita
 }
 
 /// P115 (QA-27): cuánto se tarda en llegar, en palabras («una hora y media de camino»), redondeado a
-/// la media hora (o a los 5 minutos si no llega a una hora).
+/// los 10 minutos (P170: a la media hora, 1 h 40 salía como «una hora y media»; a los 5 si no llega a
+/// una hora).
 export function duracionDeCamino(minutos: number): string {
-  if (minutos < 60) return `unos ${Math.max(5, Math.round(minutos / 5) * 5)} minutos de camino`
-  if (minutos < 1440) {
-    const medias = Math.round(minutos / 30)
-    const horas = Math.floor(medias / 2)
-    const yMedia = medias % 2 === 1 ? ' y media' : ''
-    return `${horas === 1 ? 'una hora' : `unas ${horas} horas`}${yMedia} de camino`
+  // Se redondea antes de elegir la unidad: 58 minutos son «una hora» y 1436, «un día» (no «24 horas»).
+  if (Math.round(minutos / 5) * 5 < 60) return `unos ${Math.max(5, Math.round(minutos / 5) * 5)} minutos de camino`
+  const redondeo = Math.round(minutos / 10) * 10
+  if (redondeo < 1440) {
+    const horas = Math.floor(redondeo / 60)
+    const resto = redondeo % 60
+    const cola = resto === 0 ? '' : resto === 30 ? ' y media' : ` y ${resto} minutos`
+    return `${horas === 1 ? 'una hora' : `unas ${horas} horas`}${cola} de camino`
   }
   const dias = Math.round(minutos / 1440)
   return `${dias === 1 ? 'un día' : `unos ${dias} días`} de camino`

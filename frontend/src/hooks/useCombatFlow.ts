@@ -387,6 +387,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       // comentario de `combatPlayerJustDied` más arriba: única señal real de que el jugador murió
       // y respawneó DENTRO de este combate, ya que `condicionFisica` vuelve a ILESO tras respawnear.
       if (justDied) setCombatPlayerJustDied(true)
+      // P154 (QA-27): el panel pasa a «Derrota» ya, y tapa los dados que iban a aplicar el golpe: el HUD
+      // se quedaba en la condición de antes hasta pulsar «Salir». Al morir, el resultado va en el acto.
+      if (finDePartida || justDied) applyExchangeResultRef.current?.()
       return true
     } catch (err) {
       // Candado de turno (auditoría de código completa, 2026-08-07) — este intercambio se

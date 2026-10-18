@@ -47,7 +47,7 @@ export function opcionesDisponiblesPara(npc: NpcInScene, params: NpcInteractionO
   const opciones: string[] = ['Charlar'];
 
   if (npc.interactionTypes.includes('MAESTRO_OFICIO') && npc.teachesProfession) {
-    opciones.push('Aprender profesión');
+    opciones.push('Aprender oficio');
   }
 
   if (npc.interactionTypes.includes('NPC_MISION') && params.hayMisionOfertadaDeEsteNpc) {
