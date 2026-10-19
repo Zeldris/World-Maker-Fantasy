@@ -12,8 +12,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (22): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
-  P212, P213, P214, P216, P217, P223, P224, P225, P226.
+- **Pendientes** (23): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+  P212, P213, P214, P216, P217, P223, P224, P225, P226, P227.
 - **Pendientes de una decisión de la usuaria** (3): P215, P218, P220.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (146): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -269,3 +269,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P224 | Ronda Reino (REI-120/121): cuando un súbdito se va o muere, su pareja sigue mostrando «Pareja de <nombre>» (y conserva `parejaId`) hasta la siguiente revisión semanal de familias (`familias.ts:66`); la regla dice que quien pierde a su pareja queda libre en el acto. | pendiente (no bloquea; se arregla fuera de la ronda) |
 | P225 | Reino: si falla la carga de las órdenes de un edificio (`ProduccionSection.tsx:114`), de los topes del almacén (`AlmacenSection.tsx:43`) o de los súbditos (`SubditosSection.tsx:375`), el `catch` deja la lista vacía sin `ErrorBanner`: con un 500 forzado, Producción dice «Sin órdenes activas» como si no hubiera ninguna. Corrales, Partidas y Defensa sí avisan con *Reintentar* (REI-111, jugado 2026-10-19) | pendiente (no bloquea la ronda; arreglo fuera de ella) |
 | P226 | Los rumores de `darNoticia` (`noticias.ts:177`, p. ej. «Se dice que Feg Tusha ha colgado nuevos avisos en…») llevan el texto «Se dice que…» pero no la marca `rumor` en `noticia`: salen en «El mundo» como noticia normal, sin pergamino ni «Desde <región> · pasó el día N» (NAR-9 sí funciona con los rumores de sucesos, `difusion.ts:142`) | pendiente (no bloquea la ronda; arreglo fuera de ella) |
+| P227 | La página declara `<html lang="en">` (`frontend/index.html:2`) en un juego en castellano: los lectores de pantalla leen la narración con voz inglesa y el navegador no separa sílabas en español. Visto al probar Accesibilidad (CFG-28). | pendiente (no bloquea la ronda; arreglo fuera de ella) |

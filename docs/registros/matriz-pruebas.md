@@ -10,15 +10,15 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-1` | Configuración | Botón ⚙️ fijo | jugado | QA-27 (2026-10-09…17) |
 | `CFG-2` | Configuración | `Esc` abre el menú | jugado | QA-27 (2026-10-09…17), Esc → pausa |
 | `CFG-3` | Configuración | Menú de pausa | jugado | QA-27 (2026-10-09…17) |
-| `CFG-4` | Configuración | Panel de configuración | sin jugar |  |
-| `CFG-5` | Configuración | Persistencia | sin jugar |  |
+| `CFG-4` | Configuración | Panel de configuración | jugado | 6 pestañas, Restablecer/Cancelar/Aplicar; Restablecer devuelve todo (también el ritmo del servidor) |
+| `CFG-5` | Configuración | Persistencia | jugado | tras recargar siguen narración, animaciones, contraste y atajo |
 | `CFG-6` | Configuración | `SettingsContext` | no se juega | contexto interno; se ve por CFG-4/5 |
-| `CFG-13` | Configuración | Tamaño y tipografía de la narración | sin jugar |  |
-| `CFG-14` | Configuración | Animaciones | sin jugar |  |
-| `CFG-26` | Configuración | Atajos de teclado reasignables | sin jugar |  |
-| `CFG-28` | Configuración | Alto contraste | sin jugar |  |
-| `CFG-34` | Configuración | Estilo del mundo | sin jugar |  |
-| `CFG-35` | Configuración | Avisos de sucesos | sin jugar |  |
+| `CFG-13` | Configuración | Tamaño y tipografía de la narración | jugado | Grande + Serif: narración 14→16 px, Georgia |
+| `CFG-14` | Configuración | Animaciones | jugado | Reducidas: data-motion y animaciones a none |
+| `CFG-26` | Configuración | Atajos de teclado reasignables | jugado | Leyendas Y→U: U abre Leyendas, Y ya no; vuelve a Y al restablecer |
+| `CFG-28` | Configuración | Alto contraste | jugado | data-contrast=alto; P227 (lang=en) pendiente |
+| `CFG-34` | Configuración | Estilo del mundo | jugado | Caótico se guarda en /ritmo (CAOTICO) |
+| `CFG-35` | Configuración | Avisos de sucesos | jugado | Solo graves: noticia NORMAL y GRAVE en El mundo, solo la GRAVE da aviso |
 | `INT-1` | Cronista en la interfaz | Familias de sucesos con identidad propia | jugado | 2026-10-19: Leyendas con 5 familias, cada una con icono y color propios (Diplomacia, Tus hechos, Facciones, Tu Reino, Crónica); el filtro Diplomacia deja solo sus 6 entradas |
 | `INT-2` | Cronista en la interfaz | Importancia visible | jugado | 2026-10-19: tres niveles (NORMAL sin borde, DESTACADO con borde, GRAVE con borde rojo y sello: «Gorhorn muere», «funda el reino») |
 | `INT-3` | Cronista en la interfaz | Causas enlazadas | jugado | 2026-10-19: «Por qué pasó: Día 1 Gorhorn funda el reino…» en «Fundador» lleva a la causa y la resalta |
