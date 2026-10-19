@@ -492,7 +492,8 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
           ))}
         </ul>
       )}
-      {subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
+      {/* P236 — el texto de vacío solo si la carga fue bien: con la carga fallida no se sabe si hay súbditos. */}
+      {datos && !cargaFallida && subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
       <div className="flex flex-col gap-2">
         {subditos.map((s) => {
           const fila = porId.get(s.id)

@@ -199,4 +199,16 @@ describe('SubditosSection — P230 fallo de carga', () => {
     expect(getSubditos).toHaveBeenCalledTimes(2)
     expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
   })
+
+  it('P236 — con la carga fallida no sale «Aún no vive nadie»; con la carga ok y vacía, sí', async () => {
+    vi.mocked(getSubditos).mockRejectedValueOnce(new Error('500'))
+    const props = { saveId: 's1', subjects: [], companions: [], inventory: [], almacenItems: [], plantillasEquipo: [], onRefreshSave: async () => {} }
+    const fallida = render(<SubditosSection {...props} />)
+    await fallida.findByRole('alert')
+    expect(fallida.queryByText(/Aún no vive nadie/)).toBeNull()
+    cleanup()
+    vi.mocked(getSubditos).mockResolvedValue({ subditos: [], camas: { total: 3, companeros: 0, subditos: 0, libres: 3 } })
+    const ok = render(<SubditosSection {...props} />)
+    expect(await ok.findByText(/Aún no vive nadie/)).toBeTruthy()
+  })
 })
