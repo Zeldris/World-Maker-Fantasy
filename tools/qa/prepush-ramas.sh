@@ -5,7 +5,7 @@
 #   - escribe en $1 los archivos que cambian (QA-35: imágenes);
 #   - escribe en $2 los commits nuevos, uno por línea (QA-66);
 #   - comprueba la bitácora de cada commit nuevo que se sube (QA-69) y que nombra las tareas que se tachan
-#     en los roadmaps (QA-85); sale con 1 si no cumple.
+#     en los roadmaps (QA-85), y su fecha si el commit la cambia (QA-115); sale con 1 si no cumple.
 # La bitácora se lee con BITACORA_PY (por defecto, la de este repo), para poder probarlo en otro.
 set -uo pipefail
 cambiados="$1"
@@ -35,7 +35,10 @@ while read -r _ sha_local _ sha_remoto; do
     git cat-file -e "$commit:docs/registros/traspaso.md" 2>/dev/null || continue
     tmp=$(mktemp)
     git show "$commit:docs/registros/traspaso.md" > "$tmp"
-    python3 "$bitacora_py" "$tmp" || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1; }
+    # QA-115: si el commit cambia la bitácora, su «Actualizado» no es anterior al día del commit.
+    fecha=()
+    git diff-tree --no-commit-id --name-only -r "$commit" | grep -qx docs/registros/traspaso.md && fecha=(--fecha "$(git log -1 --format=%cs "$commit")")
+    python3 "$bitacora_py" "$tmp" "${fecha[@]}" || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1; }
     rm -f "$tmp"
   done
 done

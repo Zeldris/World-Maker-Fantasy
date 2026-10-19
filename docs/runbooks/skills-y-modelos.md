@@ -4,10 +4,10 @@
 cada tipo de tarea. Petición de la usuaria (2026-10-04), tras revisar
 [mattpocock/skills](https://github.com/mattpocock/skills).
 
-**`.claude/` sigue en el `.gitignore`, pero `.claude/skills/` está versionado** (decisión de la
-usuaria, 2026-10-04: subir las skills junto con lo que vaya a `main`). Git sigue los archivos ya
-añadidos aunque la carpeta esté ignorada; una skill **nueva** se añade con
-`git add -f .claude/skills/<nombre>`. Si una skill no está cargada, se sigue su descripción de aquí.
+**`.claude/skills/`, `.claude/hooks/` y `.claude/settings.json` están versionados** (decisión de la usuaria,
+2026-10-04: subir las skills junto con lo que vaya a `main`); el resto de `.claude/` es local y está en el
+`.gitignore` (`QA-112`). Una skill nueva se añade con `git add` normal. Si una skill no está cargada, se sigue su
+descripción de aquí.
 
 ## Cómo se usa: el flujo de una tarea
 

@@ -1291,12 +1291,25 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   comandos. `tools/qa/mapa-agente.py` comprueba en la CI y el pre-push que cada referencia existe. Puntero en
   `CLAUDE.md` y en `docs/README.md`. Se mantiene al día en el mismo commit que cambia lo que nombra.
 - ~~**QA-109 · Compactar antes**~~ ✅ 2026-10-19 (usuaria, `/opt-tokens` previo al PR): `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000`
-  en el `env` de `.claude/settings.json`. La sesión crecía de ~80k a ~780k tokens entre compactaciones (media 420k por
+  en el `env` de `.claude/settings.json`. La sesión crecía de ~76k a ~742k tokens entre compactaciones (media 428k por
   llamada); con el tope en 300k la media baja a ~190k, ~55 % menos de entrada por llamada.
 - ~~**QA-110 · Sesión nueva tras cada PR fusionado**~~ ✅ 2026-10-19 (usuaria): al fusionar, Claude le recuerda a la
   usuaria `/clear` u otra sesión (runbook `skills-y-modelos.md`, paso 6); Claude no puede compactar por su cuenta.
 - ~~**QA-111 · Curva de contexto en `medir.py`**~~ ✅ 2026-10-19 (usuaria): suelo y techo medios entre compactaciones y
   llamadas por tramo, para ver sin cálculos aparte si compensa compactar antes.
+
+**Retro del PR del proceso de pruebas** (2026-10-19, [retro](../registros/retro-2026-10-19-proceso-pruebas.md);
+aprobadas las cuatro por la usuaria):
+
+- ~~**QA-112 · `.claude/` versionado sin `-f`**~~ ✅ 2026-10-19: `.gitignore` con `.claude/*` y excepciones para
+  `settings.json`, `hooks/` y `skills/`; fuera el `.pyc` que subió el `-f`.
+- ~~**QA-113 · Cada herramienta con su test**~~ ✅ 2026-10-19: tests de `mapa-agente.py`, `enlaces-md.py`,
+  `matriz-pruebas.py` y `medir.py`, y `test_herramientas_con_test.py`, que falla si una herramienta nueva de
+  `tools/qa` o de una skill llega sin el suyo (las que piden el juego o Postgres, en una lista con el porqué).
+- ~~**QA-114 · `opt-tokens` mira primero la curva**~~ ✅ 2026-10-19: el paso 1 lee contexto medio y tramos antes de
+  proponer y arregla `medir.py` si las cifras no cuadran; `proyecto.md` con las cifras buenas.
+- ~~**QA-115 · Fecha de la bitácora al día**~~ ✅ 2026-10-19: `bitacora.py --fecha`; el pre-push falla si un commit
+  que cambia la bitácora deja «Actualizado» con un día anterior.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

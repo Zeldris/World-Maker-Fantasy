@@ -18,7 +18,11 @@ Es una **retro de gasto**: como `/retro`, propone cambios en el **entorno** (her
    `--horas N`, `--horas 0` para toda, `--sesion <ruta>`). Da el uso real de la API, el **contexto medio por
    llamada** (lo que cuesta cada llamada de más), y por herramienta y por resultado los tokens que entraron en el
    contexto y los **arrastrados** (cada resultado se reenvía en cada llamada hasta la siguiente compactación).
-   Lee solo su salida, nunca el registro entero.
+   Lee solo su salida, nunca el registro entero. **Lo primero, la curva** (`Contexto medio` y `Tramos entre
+   compactaciones`): contexto medio × llamadas es casi todo el gasto, y un techo muy por encima del suelo dice
+   que se compacta tarde. Esa es la primera propuesta si se cumple, antes que cualquier herramienta. Si una
+   cifra no cuadra con otra (más llamadas que respuestas, uso que se dobla), se arregla `medir.py` antes de
+   proponer nada con ella.
 2. **Leer [`proyecto.md`](proyecto.md)** si existe: las herramientas del proyecto que ya ahorran y los gastos
    conocidos, para no proponer lo que ya hay.
 3. **Buscar el despilfarro**, de más a menos peso. Las palancas, por lo que suelen pesar:

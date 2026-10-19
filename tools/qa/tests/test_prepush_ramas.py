@@ -66,6 +66,17 @@ class PrepushRamas(unittest.TestCase):
         codigo, _, _ = self.correr(sha, CERO)
         self.assertEqual(codigo, 1)
 
+    def test_fecha_vieja_falla_solo_si_el_commit_cambia_la_bitacora(self):
+        """QA-115: el commit de hoy que toca la bitácora la pone al día; uno que no la toca no cuenta."""
+        vieja = '| **Actualizado** | 2000-01-01 |\n' + BITACORA_OK
+        sha = self.commit('docs/registros/traspaso.md', vieja, 'bitácora con fecha vieja')
+        self.assertEqual(self.correr(sha, CERO)[0], 1)
+        hoy = git(self.repo, 'log', '-1', '--format=%cs')
+        git(self.repo, 'reset', '-q', '--hard', 'HEAD~1')
+        self.commit('docs/registros/traspaso.md', f'| **Actualizado** | {hoy} |\n' + BITACORA_OK, 'al día')
+        sha = self.commit('docs/x.md', 'otro cambio', 'sin bitácora')
+        self.assertEqual(self.correr(sha, CERO)[0], 0)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,6 +10,10 @@ QA-85 (retro del 2026-10-14): `bitacora.py --cerradas <base> <sha>` (también de
 que cada tarea que pasa a tachada (`~~…~~`) en un roadmap entre esos dos commits sale también tachada en
 «Hecho recientemente» de la bitácora del último. Se cerró `QA-63` en los roadmaps y la bitácora seguía en
 «diagnosticado».
+
+QA-115 (retro del 2026-10-19): `bitacora.py <ruta> --fecha AAAA-MM-DD` falla si la fila «Actualizado» es
+anterior a esa fecha. El pre-push la pasa con la fecha de cada commit que cambia la bitácora: estuvo dos
+días en 2026-10-17 con commits del 19.
 """
 import re
 import subprocess
@@ -78,10 +82,23 @@ if sys.argv[1:2] == ["--cerradas"]:
         print(f"bitácora: {t} se tacha en el roadmap; apúntala tachada en «Hecho recientemente» de la bitácora")
     sys.exit(1 if faltan else 0)
 
-BITACORA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[2] / RUTA_BITACORA
+args = sys.argv[1:]
+fecha = None
+if "--fecha" in args:
+    i = args.index("--fecha")
+    if i + 1 >= len(args) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args[i + 1]):
+        sys.exit("Uso: python3 tools/qa/bitacora.py [<ruta>] [--fecha AAAA-MM-DD]")
+    fecha = args[i + 1]
+    del args[i:i + 2]
+BITACORA = Path(args[0]) if args else Path(__file__).resolve().parents[2] / RUTA_BITACORA
 
 fallos = []
-filas = [l for l in BITACORA.read_text(encoding="utf-8").splitlines() if l.startswith("| **Tarea en curso")]
+lineas = BITACORA.read_text(encoding="utf-8").splitlines()
+if fecha:
+    actualizado = next((m.group(1) for l in lineas if (m := re.match(r"\| \*\*Actualizado\*\* \| (\d{4}-\d{2}-\d{2})", l))), None)
+    if actualizado and actualizado < fecha:
+        fallos.append(f"«Actualizado» dice {actualizado} y el commit es del {fecha}: pon la fecha del día")
+filas = [l for l in lineas if l.startswith("| **Tarea en curso")]
 if not filas:
     fallos.append("no hay ninguna fila «Tarea en curso · `<rama>`»")
 for fila in filas:
