@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { classifyAction, type ClassificationResult } from '../services/narrador.js';
 import { rollCheck } from '../services/dice.js';
 import type { AttributeBlock, RollResult } from '../services/dice.js';
-import { computeDuration, descansoRechazadoPorEnfriamiento, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration } from '../services/timedActions.js';
+import { computeDuration, descansoRechazadoPorEnfriamiento, detectsRestIntent, duracionExplicitaDeLaAccion, mentionsExplicitDuration, type DurationResult } from '../services/timedActions.js';
 import { narrateAndPersistTurn } from '../services/turnResolution.js';
 import { avanzarSiCruzaDia, enSegundoPlano, esperarSegundoPlano } from '../services/avanceDiario.js';
 import { recordEntityDiscoveries } from '../services/entityDiscovery.js';
@@ -547,6 +547,16 @@ async function resolveClassificationForTurn(params: {
   return { classification, roll, travel, npcsInScene };
 }
 
+/// P231: duración real del turno. Un descanso que el enfriamiento rechaza (P74) cuesta lo de cualquier
+/// acción rechazada (banda instantánea, 1 min): `computeDuration` vuelve a leer la duración escrita
+/// («descansando tres días enteros») y, sin esto, el turno avanzaba igual los tres días con su hambre y sed.
+function duracionDelTurno(p: { action: string; classification: ClassificationResult; attributes: AttributeBlock; roll?: RollResult | null; currentLocationId: string | null; lastRestAtMinutes: number | null; fictionalMinutes: number }): DurationResult {
+  if (descansoRechazadoPorEnfriamiento({ action: p.action, hayViaje: false, hayLugar: !!p.currentLocationId, roll: p.roll, lastRestAtMinutes: p.lastRestAtMinutes, ahoraMinutos: p.fictionalMinutes })) {
+    return { minutos: 1 }; // el suelo de una acción instantánea en `computeDuration`
+  }
+  return computeDuration(p.action, p.classification.banda, p.attributes, p.classification.duracionEstimadaMinutos);
+}
+
 /// Turno de juego, en dos pasos (docs/mecanicas/08-acciones-por-tiempo.md): `/turn/classify` es rápido
 /// (~25s, sin IA de narración) y `/turn/narrate` es el paso lento (30-220s). Separarlos permite
 /// que el frontend muestre un contador visual real con la duración de la acción mientras narrar
@@ -908,7 +918,7 @@ export async function turnRoutes(app: FastifyInstance) {
     const mightBeBuildAttemptForDuration = CONSTRUCTION_RECIPES.some((r) => detectsBuildIntent(r, action));
     const { minutos, produccion } = travel
       ? { minutos: travel.minutos, produccion: undefined }
-      : computeDuration(action, classification.banda, attributes, classification.duracionEstimadaMinutos);
+      : duracionDelTurno({ action, classification, attributes, roll, currentLocationId: save.currentLocationId, lastRestAtMinutes: save.lastRestAtMinutes, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480 });
     const produccionFiltrada = mightBeBuildAttemptForDuration ? undefined : produccion;
 
     if (preview) {
@@ -1287,7 +1297,7 @@ export async function turnRoutes(app: FastifyInstance) {
     const defensa = effectiveDefense(save.inventoryItems);
     const equippedWeapons = equippedWeaponNames(save.inventoryItems);
     const equippedItems = equippedItemsSummary(save.inventoryItems);
-    const duration = travel ? null : computeDuration(action, classification.banda, attributes, classification.duracionEstimadaMinutos);
+    const duration = travel ? null : duracionDelTurno({ action, classification, attributes, roll, currentLocationId: save.currentLocationId, lastRestAtMinutes: save.lastRestAtMinutes, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480 });
     const minutosDeEsteTurno = travel ? travel.minutos : duration!.minutos;
 
     // Streaming (roadmap de velocidad, 2026-07-20, punto 13): NDJSON, una línea por evento —
