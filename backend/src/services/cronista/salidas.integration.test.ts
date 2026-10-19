@@ -5,7 +5,7 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { MINUTOS_POR_ANIO } from './edades.js';
 import { procesarReacciones } from './reacciones.js';
 import { crearSubdito } from './subditos.js';
-import { quienSeVa, revisarSalidas, salidasRecientes, victimaDelHambre } from './salidas.js';
+import { morir, quienSeVa, revisarSalidas, salidasRecientes, victimaDelHambre } from './salidas.js';
 
 const AHORA = 480 + 100 * MINUTOS_POR_ANIO;
 const DIA = 1440;
@@ -93,5 +93,29 @@ describe('salidas y muerte (REI-121) — en una partida', () => {
     expect((await prisma.$transaction((tx) => revisarSalidas(tx, saveId, AHORA + 3 * DIA, () => 0.99))).idos).toEqual([]);
     expect((await prisma.$transaction((tx) => revisarSalidas(tx, saveId, AHORA + 9 * DIA, () => 0.99))).idos).toEqual([otro.id]);
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKey() } })).poblacion).toBe(0);
+  });
+
+  it('P223/P224: al irse o morir, avisa en el canal del Reino y su pareja queda libre en el acto', async () => {
+    const a = await crear(25, { genero: 'F' });
+    const b = await crear(25, { genero: 'M' });
+    const c = await crear(25, { genero: 'F' });
+    const d = await crear(25, { genero: 'M' });
+    await prisma.subject.update({ where: { id: a.id }, data: { parejaId: b.id } });
+    await prisma.subject.update({ where: { id: b.id }, data: { parejaId: a.id } });
+    await prisma.subject.update({ where: { id: c.id }, data: { parejaId: d.id } });
+    await prisma.subject.update({ where: { id: d.id }, data: { parejaId: c.id } });
+    // Muerte (de sed): la pareja de la víctima queda libre y el Reino lo cuenta.
+    await prisma.$transaction((tx) => morir(tx, saveId, a, 'hambre', AHORA));
+    expect((await prisma.subject.findUniqueOrThrow({ where: { id: b.id } })).parejaId).toBeNull();
+    const avisos = async () => (await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM' }, select: { text: true } })).map((l) => l.text);
+    expect(await avisos()).toContain(`${a.name} ha muerto de hambre. ${b.name} se queda sin pareja.`);
+    // Marcha: se va el más descontento; su pareja queda libre.
+    await prisma.subject.updateMany({ where: { saveId, estado: 'ACTIVO' }, data: { felicidad: 90 } });
+    await prisma.subject.update({ where: { id: c.id }, data: { felicidad: 1 } });
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { diasFelicidadBaja: 7 } });
+    const r = await prisma.$transaction((tx) => revisarSalidas(tx, saveId, AHORA + 30 * DIA, () => 0.99));
+    expect(r.idos).toContain(c.id);
+    expect((await prisma.subject.findUniqueOrThrow({ where: { id: d.id } })).parejaId).toBeNull();
+    expect(await avisos()).toContain(`${c.name} se marcha del Reino, descontento. ${d.name} se queda sin pareja.`);
   });
 });

@@ -152,6 +152,19 @@ export async function avanzarSubditos(tx: Tx, saveId: string, dias: number, ahor
   await recalcularPoblacion(tx, saveId, ahora);
 }
 
+/// P223: aviso en el canal del Reino (el que se ve en «El mundo» › Reino) de un suceso de vida de los súbditos.
+export async function avisarEnReino(tx: Tx, saveId: string, text: string): Promise<void> {
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
+  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
+}
+
+/// P224: quien pierde a su pareja (se va o muere) queda libre en el acto. Devuelve el nombre de la pareja, si la había.
+export async function soltarPareja(tx: Tx, saveId: string, subjectId: string): Promise<string | null> {
+  const viudas = await tx.subject.findMany({ where: { saveId, parejaId: subjectId }, select: { id: true, name: true } });
+  if (viudas.length) await tx.subject.updateMany({ where: { id: { in: viudas.map((v) => v.id) } }, data: { parejaId: null } });
+  return viudas[0]?.name ?? null;
+}
+
 /// La región del Reino: la del primer territorio que siga en pie (llegadas y salidas).
 export async function regionDelReino(tx: Tx, saveId: string): Promise<string | null> {
   return (await tx.territory.findFirst({ where: { saveId, control: { not: 'PERDIDO' } }, orderBy: { acquiredAt: 'asc' }, select: { region: true } }))?.region ?? null;

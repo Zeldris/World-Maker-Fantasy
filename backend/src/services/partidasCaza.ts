@@ -18,7 +18,7 @@ import { combatienteDeNpc } from './factionExpeditions.js';
 import { descontarZonePointCaza } from './caza.js';
 import { decrementPopulationOnDeath } from './population.js';
 import { aprovecharAnimal } from './cronista/ganadoReino.js';
-import { recalcularPoblacion } from './cronista/subditos.js';
+import { avisarEnReino, recalcularPoblacion, soltarPareja } from './cronista/subditos.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
@@ -93,7 +93,11 @@ export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[],
       const antes = (await tx.companion.findUnique({ where: { id: h.companionId }, select: { condicionFisica: true } }))?.condicionFisica as CondicionFisica | undefined;
       await tx.companion.update({ where: { id: h.companionId }, data: { condicionFisica: antes ? peor(antes, cond) : cond } });
     }
-    if (h.subjectId && cond === 'MUERTO') await tx.subject.update({ where: { id: h.subjectId }, data: { estado: 'MUERTO' } });
+    if (h.subjectId && cond === 'MUERTO') {
+      await tx.subject.update({ where: { id: h.subjectId }, data: { estado: 'MUERTO' } });
+      const viudo = await soltarPareja(tx, saveId, h.subjectId);
+      await avisarEnReino(tx, saveId, `${h.c.nombre} ha muerto en la caza.${viudo ? ` ${viudo} se queda sin pareja.` : ''}`);
+    }
   }
   const genericosMuertos = new Map<string, number>();
   for (const h of cazadores) if (h.generico && muertos.has(h.c.id)) genericosMuertos.set(h.miembroId, (genericosMuertos.get(h.miembroId) ?? 0) + 1);
