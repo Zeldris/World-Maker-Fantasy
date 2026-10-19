@@ -12,6 +12,12 @@ description: "Retrospective on token spend: measures where a session's tokens we
 Es una **retro de gasto**: como `/retro`, propone cambios en el **entorno** (herramientas, scripts, runbooks,
 `CLAUDE.md`) para que las próximas sesiones gasten menos sin perder calidad. No recorta el trabajo: lo abarata.
 
+**Calidad primero** (usuaria, 2026-10-19, `QA-129`): un ahorro que empeora el resultado no es ahorro. Cada
+propuesta dice qué puede perder (un modelo más barato que falla más, un contexto más corto que olvida una decisión,
+menos revisión que deja pasar fallos) y cómo se vería; si la pérdida es probable, se propone con su contrapeso (una
+revisión, un test, una medida) o no se propone. Al medir un cambio ya aplicado, se mira también lo que costó en
+calidad: hallazgos del `/code-review` o de las rondas que vienen de él, reintentos y trabajo rehecho.
+
 ## Pasos
 
 1. **Medir, no recordar.** `python3 .claude/skills/opt-tokens/medir.py` (sesión más reciente, últimas 24 h;
@@ -48,7 +54,8 @@ Es una **retro de gasto**: como `/retro`, propone cambios en el **entorno** (her
      Un subagente arranca sin contexto: compensa cuando el encargo cabe en un párrafo con las rutas, no cuando
      tiene que redescubrir lo que la sesión ya sabe.
 4. **Proponer**, en orden de ahorro estimado (tokens por sesión, con la cifra del paso 1 que lo justifica), cada
-   propuesta con qué cambia (archivo y forma) y su coste de hacerlo. Lo más barato de aplicar y que más ahorra,
+   propuesta con qué cambia (archivo y forma), su coste de hacerlo y su **riesgo para la calidad** (ninguno, o cuál
+   y con qué contrapeso). Lo más barato de aplicar y que más ahorra,
    primero. Se presentan a la usuaria y **ahí acaba el paso**: ella decide.
 5. **Aplicar lo aprobado** y, si el proyecto tiene `proyecto.md`, apuntar ahí la herramienta o la regla nueva
    para que la próxima pasada no la vuelva a proponer.

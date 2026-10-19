@@ -12,14 +12,23 @@ if [ "$1" = "--ayuda" ]; then
     const [ruta, tk] = process.argv.slice(1);
     let datos;
     try { datos = JSON.parse(tk); } catch (e) { console.error("orden.sh: los parámetros no son JSON: " + e.message); process.exit(1); }
-    console.log(`await page.evaluate((tk) => { window.tk = tk }, ${JSON.stringify(datos)}); const fs = await import("node:fs"); const ayuda = eval(fs.readFileSync(${JSON.stringify(ruta)}, "utf8")); return await ayuda(page);`);
+    console.log(`globalThis.AYUDAS_DIR = ${JSON.stringify(require("node:path").dirname(ruta))}; await page.evaluate((tk) => { window.tk = tk }, ${JSON.stringify(datos)}); const fs = await import("node:fs"); const ayuda = eval(fs.readFileSync(${JSON.stringify(ruta)}, "utf8")); return await ayuda(page);`);
   ' "$AYUDA" "${3:-{\}}")" || exit 1
   set -- "$ORDEN"
 fi
 CLAVE="$(cat "$(dirname "$0")/driver.token" 2>/dev/null)"
 if [ -n "$1" ]; then
-  curl -s -X POST -H "X-Driver-Token: $CLAVE" --data-binary "$1" "localhost:$PUERTO/"
+  RESP="$(curl -s -X POST -H "X-Driver-Token: $CLAVE" --data-binary "$1" "localhost:$PUERTO/")"
 else
-  curl -s -X POST -H "X-Driver-Token: $CLAVE" --data-binary @- "localhost:$PUERTO/"
+  RESP="$(curl -s -X POST -H "X-Driver-Token: $CLAVE" --data-binary @- "localhost:$PUERTO/")"
 fi
-echo
+# QA-128: la respuesta entera se guarda siempre en un archivo; en pantalla, solo las primeras
+# ORDEN_LINEAS (40) líneas. Así una respuesta larga no se pierde ni se vuelve a pedir.
+ARCHIVO="$(cd "$(dirname "$0")" && pwd)/shots/ultima-respuesta.txt"
+mkdir -p "$(dirname "$ARCHIVO")"
+printf '%s\n' "$RESP" > "$ARCHIVO"
+LINEAS="${ORDEN_LINEAS:-40}"
+TOTAL="$(wc -l < "$ARCHIVO")"
+head -n "$LINEAS" "$ARCHIVO"
+[ "$TOTAL" -gt "$LINEAS" ] && echo "… ($TOTAL líneas; entera en $ARCHIVO)"
+exit 0

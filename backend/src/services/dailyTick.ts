@@ -1,3 +1,4 @@
+import { formatFictionalDate } from './worldClock.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { comidaDelReinoDia, datosComidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
@@ -290,4 +291,32 @@ export async function runDailyTick(
     await registrarSuceso(tx, { ...suceso, saveId, origen: 'MUNDO' });
   }
   return result;
+}
+
+/**
+ * Punto común para avanzar el reloj de ficción de una partida (P216/P217): fija `fictionalMinutes` y la
+ * etiqueta, y corre `runDailyTick` una vez por cada medianoche cruzada. Todo avance de reloj fuera del
+ * turno de texto (avance de días del escenario, «Descansar en el campamento») pasa por aquí, para que el
+ * Reino no se quede sin su tick. Si `minutosDespues <= minutosAntes` no hace nada.
+ */
+export async function avanzarRelojConTick(
+  tx: Prisma.TransactionClient,
+  args: { saveId: string; worldId: string; minutosAntes: number; minutosDespues: number },
+): Promise<DailyTickResult> {
+  const { saveId, minutosAntes, minutosDespues } = args;
+  if (minutosDespues <= minutosAntes) return { territoryConsolidatedThisTurn: false };
+  await tx.worldState.update({
+    where: { saveId },
+    data: { fictionalMinutes: minutosDespues, fictionalDateLabel: formatFictionalDate(minutosDespues) },
+  });
+  // Un tramo por medianoche: la producción del Reino y la Casa de curas corren una vez por día, igual
+  // que el consumo (revisión previa al PR de P216).
+  let territoryConsolidatedThisTurn = false;
+  for (let desde = minutosAntes; desde < minutosDespues; ) {
+    const hasta = Math.min(minutosDespues, (Math.floor(desde / 1440) + 1) * 1440);
+    const r = await runDailyTick(tx, { ...args, minutosAntes: desde, minutosDespues: hasta });
+    territoryConsolidatedThisTurn ||= r.territoryConsolidatedThisTurn;
+    desde = hasta;
+  }
+  return { territoryConsolidatedThisTurn };
 }

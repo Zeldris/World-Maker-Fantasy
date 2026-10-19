@@ -64,6 +64,10 @@ class Medir(unittest.TestCase):
         ], horas='2')
         self.assertIn('Tramos entre compactaciones: 1  ·  suelo medio 100  ·  techo medio 300  ·  2 llamadas por tramo'
                       '  (sin el primero, que empezó antes del periodo)', salida)
+        # QA-127: el medio de todo el periodo (575) mezcla el tramo a medias; sin él, el del régimen actual (200).
+        self.assertIn('Contexto medio por llamada: 575 tokens', salida)
+        self.assertIn('Contexto medio sin el primer tramo: 200 tokens', salida)
+        self.assertIn('Por tramo, del más antiguo al último (medio/techo, en miles): 0/0', salida)
 
 
 if __name__ == '__main__':

@@ -12,6 +12,12 @@ description: "Conduct a retrospective on a coding session. Use before creating e
 > se presentan a la usuaria: ella las revisa y decide, y lo aprobado se aplica en la rama antes de
 > crear el PR. Solo las que confirme
 > entran como tarea con hito en su roadmap (`CLAUDE.md`, «Ninguna tarea sin hito»).
+>
+> **Las skills propias, también** (usuaria, 2026-10-19, `QA-130`): cada retro mira cómo rindieron en lo revisado
+> las skills del proyecto (`.claude/skills/`: `opt-tokens`, `orchestrate-dealer`, `selector`, `pr`, esta misma…)
+> y el `/code-review`, y propone mejorarlas donde fallaron o se quedaron cortas: un fallo que la revisión dejó
+> pasar o encontró tarde, un ahorro de `opt-tokens` que costó calidad o no se midió, un paso que se saltó porque
+> la skill no lo pedía con claridad.
 
 A phase has closed, so it is time for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.
 

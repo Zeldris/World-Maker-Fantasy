@@ -81,7 +81,7 @@ export async function revisarFamilias(tx: Tx, saveId: string, ahora: number, ran
     const padre = porId.get(madre.parejaId!);
     if (!padre || !madre.pueblo || !puedeCriar(madre, padre, madre.crias, ahora)) continue;
     if (random() >= (PROB_CRIA_SEMANA[madre.pueblo] ?? 0.08)) continue;
-    if ((await cupoDeCamas(tx, saveId)).libres <= 0) break;
+    if ((await cupoDeCamas(tx, saveId)).libresSubditos <= 0) break;
     const linaje = await linajeParaNacido(tx, { saveId, pueblo: madre.pueblo, madreId: madre.id, padreId: padre.id, ahora, random, entidadTipo: 'SUBDITO' });
     const cria = await crearSubdito(tx, { saveId, worldId, pueblo: madre.pueblo, nacidoEn: ahora, origen: 'NACIDO', padreId: padre.id, madreId: madre.id, linajeId: linaje.id, felicidad: madre.felicidad, ahora, random });
     await tx.subject.updateMany({ where: { id: { in: [madre.id, padre.id] } }, data: { crias: { increment: 1 } } });

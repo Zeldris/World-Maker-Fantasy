@@ -196,6 +196,13 @@ def main():
         print(f'Tramos entre compactaciones: {len(tramos)}  ·  suelo medio {sum(suelos) / len(suelos):,.0f}  ·  techo medio '
               f'{sum(techos) / len(techos):,.0f}  ·  {sum(map(len, tramos)) / len(tramos):,.0f} llamadas por tramo'
               + ('  (sin el primero, que empezó antes del periodo)' if parcial else ''))
+        # QA-127: el contexto medio de arriba mezcla tramos con topes de compactación distintos (si el tope cambió en el
+        # periodo, la media no cuadra con el techo). Cada tramo por separado, los últimos 8, deja ver el régimen actual.
+        print('Por tramo, del más antiguo al último (medio/techo, en miles): ' + '  '.join(
+            f'{sum(t) / len(t) / 1000:,.0f}/{max(t) / 1000:,.0f}' for t in tramos[-8:]))
+        if parcial:
+            sin = [c for t in tramos for c in t]
+            print(f'Contexto medio sin el primer tramo: {sum(sin) / len(sin):,.0f} tokens')
     print()
     print('POR HERRAMIENTA (tokens que metió en el contexto · arrastrados en las llamadas siguientes)')
     for nombre, (n, t, arr, img, err) in sorted(por_tool.items(), key=lambda x: -x[1][2])[: a.top]:

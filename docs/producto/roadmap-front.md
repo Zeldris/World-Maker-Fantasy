@@ -1330,6 +1330,39 @@ aprobadas las cuatro por la usuaria):
 - ~~**QA-120 · Test de los ganchos de `.claude/settings.json`**~~ ✅ 2026-10-19 (retro, segunda vuelta, 6):
   `test_settings.py` exige `matcher` en cada `SessionStart`, solo `recuperar.py --estado` al compactar y que cada
   orden apunte a un archivo que existe.
+- ~~**QA-121 · Sesión directora: skill `orchestrate-dealer`**~~ ✅ 2026-10-19 (usuaria: no depender de `/clear`):
+  la principal parte la tarea y reparte cada trozo a un subagente de contexto limpio que devuelve 15 líneas; tope de
+  compactación a 200k; el `selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
+  la sesión nueva tras cada PR de `QA-110`. De `implement-spec` (Matt Pocock): encargos con punteros y
+  frontera de arreglos en paralelo, cada uno en su worktree. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
+- ~~**QA-122 · Puntos de `/clear`**~~ ✅ 2026-10-19 (usuaria, tras la ronda del Reino con 30 compactaciones): Claude
+  recomienda `/clear` en puntos estables (tarea o tanda cerrada, ronda o bloque de pruebas cerrado, PR fusionado,
+  contexto por encima de ~200k o presupuesto de compactaciones gastado), con la sesión lista antes (commit, push y
+  bitácora con el siguiente paso); nunca entre el `/code-review` y la `/retro`. Tope de compactación de vuelta a 300k
+  y gancho de `SessionStart` para `clear` con `recuperar.py --estado`. Runbook `skills-y-modelos.md`, paso 1.
+
+Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 2026-10-19: todo aprobado):
+
+- ~~**QA-123 · Tope de compactación de vuelta a 200k**~~ ✅ 2026-10-19: con 300k el techo pasó de ~145k a ~220k y el
+  medio por llamada, de ~115k a ~150k. `.claude/settings.json`, runbook `skills-y-modelos.md` paso 1,
+  `orchestrate-dealer` y `selector`.
+- ~~**QA-124 · Rondas en un subagente `sonnet`**~~ ✅ 2026-10-19: la ronda `QA-105` la jugó la principal con Opus
+  (1.150 órdenes de Bash). `rondas-de-pruebas.md` («Quién juega») y la regla de rondas de `orchestrate-dealer`.
+- ~~**QA-125 · Ayudas del driver que fallaban**~~ ✅ 2026-10-19: `interactuar` también pulsa el `menuitem` del menú
+  del NPC del mapa; `opcion` elige por número la n-ésima `[data-opcion]` (el número va en un `span aria-hidden`
+  y no entraba en el nombre del botón); `pelear` nuevo (acercarse, interactuar, «Combatir» y rondas). README de
+  `mcp/`. Pendiente: estrenarlas en la próxima ronda.
+- ~~**QA-126 · `/code-review` de cada arreglo de subagente antes de fusionarlo**~~ ✅ 2026-10-19: los arreglos de
+  P215-P220a llegaron con 9 fallos que solo cazó la revisión del PR. `orchestrate-dealer` (Reglas) y, en el
+  encargo, buscar a todos los que usan lo que se cambia.
+- ~~**QA-127 · `medir.py` por tramo**~~ ✅ 2026-10-19: medio y techo de los últimos 8 tramos y medio sin el primer
+  tramo a medias; el medio de 24 h mezclaba topes distintos. Test en `test_medir.py`.
+- ~~**QA-128 · `orden.sh` guarda la respuesta**~~ ✅ 2026-10-19: entera en `tools/playwright-e2e/shots/ultima-respuesta.txt`
+  (ignorado por git), 40 líneas en pantalla (`ORDEN_LINEAS`).
+- ~~**QA-129 · Calidad primero en `opt-tokens`**~~ ✅ 2026-10-19 (usuaria): cada propuesta dice su riesgo para la
+  calidad y su contrapeso; al medir un cambio aplicado se mira también lo que costó en calidad. `proyecto.md` al día.
+- ~~**QA-130 · La `/retro` revisa las skills propias y el `/code-review`**~~ ✅ 2026-10-19 (usuaria): dónde fallaron
+  o se quedaron cortas en lo revisado, y la mejora.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

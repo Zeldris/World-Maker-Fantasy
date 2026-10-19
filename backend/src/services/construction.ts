@@ -1769,6 +1769,11 @@ export function companionSlotsForRecipeKey(recipeKey: string | null): number {
   return CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey)?.companionSlots ?? 0;
 }
 
+/// true si la `recipeKey` guardada es un Ayuntamiento (pequeño, mediano o grande).
+export function esAyuntamientoRecipeKey(recipeKey: string | null): boolean {
+  return CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey)?.ayuntamientoNivel != null;
+}
+
 /// Oficio que se trabaja dentro de un `Building`, por su `recipeKey` guardada — null si el edificio
 /// no es de oficio (Choza, Campamento, construcciones libres...). Las mejoras (Obrador/Gran obrador)
 /// no cambian la `recipeKey` del edificio (actualizan la misma fila), así que basta con la receta

@@ -725,6 +725,11 @@ export async function getSave(id: string): Promise<SaveDetail> {
   return fetchJson(`${API_URL}/saves/${id}`)
 }
 
+/// P219 (c): condición, Hambre y Sed para el sondeo del HUD, sin la partida entera.
+export async function getSupervivencia(id: string): Promise<Pick<SaveDetail, 'condicionFisica' | 'hambre' | 'sed'>> {
+  return fetchJson(`${API_URL}/saves/${id}/supervivencia`)
+}
+
 export interface SaveSummary {
   id: string
   worldId: string
@@ -1828,6 +1833,19 @@ export interface CamasReino {
   companeros: number
   subditos: number
   libres: number
+  /// P220a: camas temporales del Ayuntamiento (solo súbditos) y cuántos súbditos viven en ellas.
+  temporales?: number
+  enAyuntamiento?: number
+  libresSubditos?: number
+}
+
+/// P220b: un requisito para que llegue alguien, con su estado y su cifra.
+export interface RequisitoLlegada {
+  clave: 'cama' | 'comida' | 'agua' | 'felicidad'
+  nombre: string
+  cumple: boolean
+  cifra: string
+  motivo: string
 }
 
 /// REI-119: quien espera en la puerta del Reino a que lo aceptes o lo rechaces.
@@ -1845,7 +1863,7 @@ export interface SalidaSubdito {
   cuando: number | null
 }
 
-export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] }> {
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
 }
 

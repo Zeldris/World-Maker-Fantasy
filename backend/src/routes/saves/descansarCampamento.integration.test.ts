@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
+import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { descansarCampamentoRoutes } from './descansarCampamento.js';
 
 /// "Descansar en campamento" (2026-09-08) — solo disponible con un Building propio ACTIVO en la
@@ -103,6 +104,21 @@ describe('Descansar en campamento (2026-09-08)', () => {
 
     const log = await prisma.logEntry.findFirst({ where: { saveId, text: { contains: 'descansa en su campamento' } } });
     expect(log).not.toBeNull();
+  });
+
+  it('POST corre el tick diario del Reino al cruzar la medianoche (P217)', async () => {
+    await prisma.building.create({
+      data: { saveId, locationId, recipeKey: 'campamento', name: 'Campamento de prueba', kind: 'campamento', description: 'x', status: 'ACTIVO' },
+    });
+    const ownerKey = ownerKeyFor({ saveId });
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey, poblacion: 10, comida: 400, bebida: 400 } });
+    await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 500 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/descansar-campamento` });
+    expect(res.statusCode).toBe(200);
+    const k = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey } });
+    expect(k.bebida).toBeLessThan(400);
+    await prisma.kingdomStats.delete({ where: { ownerKey } });
   });
 
   it('POST con condicionFisica ya mejor que HERIDO (ILESO): no empeora, se queda ILESO', async () => {

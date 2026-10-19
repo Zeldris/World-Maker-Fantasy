@@ -30,6 +30,7 @@ vi.mock('../../lib/prisma.js', () => ({
 }));
 
 const { recipesStatusRoutes } = await import('./recipesStatus.js');
+const { CONSTRUCTION_RECIPES } = await import('../../services/construction.js');
 
 async function buildApp() {
   const app = Fastify();
@@ -166,5 +167,52 @@ describe('GET /saves/:id/recipes-status', () => {
     expect(choza.blockedReason).toMatch(/Ayuntamiento/);
     expect(choza.met).toBe(false);
     expect(findFirstBuilding).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ recipeKey: 'ayuntamiento', status: 'ACTIVO' }) }));
+  });
+
+  it('P218: las recetas de construcción llevan nombre, requiresAyuntamiento y upgradesRecipeKey', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: null,
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const por = (k: string) => body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === k && r.recipeCategory === 'construccion');
+    for (const k of ['pozo', 'granero', 'cisterna', 'lenera']) {
+      expect(por(k).requiresAyuntamiento).toBe(true);
+      expect(por(k).upgradesRecipeKey).toBeNull();
+      expect(por(k).name).toBeTruthy();
+    }
+    expect(por('pozo').name).toBe('un pozo');
+    expect(por('herreria-obrador').upgradesRecipeKey).toBe('herreria');
+    expect(por('campamento').requiresAyuntamiento).toBe(false);
+  });
+
+  it('P218: oculta las recetas de construcción de otra raza; sin raza en la receta o en el personaje siguen visibles', async () => {
+    const save = (raza: string | null) => ({
+      worldId: 'world1',
+      raza,
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: null,
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    const claves = async (raza: string | null) => {
+      findUniqueSave.mockResolvedValue(save(raza));
+      const app = await buildApp();
+      const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+      return body.recipes.filter((r: { recipeCategory: string }) => r.recipeCategory === 'construccion').map((r: { recipeKey: string }) => r.recipeKey);
+    };
+    const deOrcos = CONSTRUCTION_RECIPES.find((r) => r.raza === 'orcos')!.key;
+    const sinRaza = CONSTRUCTION_RECIPES.find((r) => !r.raza)!.key;
+    const nabieus = await claves('nabieus');
+    expect(nabieus).not.toContain(deOrcos);
+    expect(nabieus).toContain(sinRaza);
+    expect(await claves('orcos')).toContain(deOrcos);
+    expect(await claves(null)).toContain(deOrcos);
   });
 });

@@ -12,6 +12,7 @@ const findManyNpc = vi.fn();
 const findManyNpcState = vi.fn();
 const upsertNpcState = vi.fn();
 const findFirstFaction = vi.fn();
+const findFirstTerritory = vi.fn(async (): Promise<unknown> => null);
 const upsertDiscoveredEntity = vi.fn();
 const updateNpcState = vi.fn();
 // "Tirar" objetos al suelo de la Zona (2026-09-06) — vacío por defecto: la mayoría de tests de este
@@ -85,6 +86,8 @@ vi.mock('../../lib/prisma.js', () => ({
     parcela: { findMany: (...args: unknown[]) => findManyParcela(...args) },
     // CR-40 (40g): tablón de avisos del lugar (ninguno en estos tests).
     building: { findFirst: async () => null },
+    // P214: territorio del Reino de la jugadora en la región (ninguno por defecto).
+    territory: { findFirst: (...args: unknown[]) => findFirstTerritory(...(args as [])) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     worldPopulation: { findMany: (...args: unknown[]) => findManyWorldPopulation(...args) },
     // Fase D (hito 0.1): control de región desde FactionRelation; sin filas, cae a la agenda (como antes).
@@ -422,6 +425,23 @@ describe('GET /saves/:id/zona', () => {
     const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
     const body = res.json();
     expect(body.regionControl).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Clan Helsig' });
+  });
+
+  // P214: la región que forma parte del territorio del Reino de la jugadora no figura como de otro bando.
+  it('P214: región del territorio del Reino de la jugadora muestra al Reino como dueño', async () => {
+    findUniqueSave.mockResolvedValueOnce({
+      id: 's1',
+      worldId: 'w1',
+      kingdomName: 'Maktor',
+      currentLocation: { id: 'loc1', slug: 'restos-de-maktor', name: 'Los Restos de Maktor', region: 'Las Llanuras del Viento Rojo', zonePoints: [] },
+      worldState: { fictionalMinutes: 480, factionsStatus: {}, agenda: [] },
+    });
+    loadSessionFactsMock.mockResolvedValueOnce([]);
+    detectNpcsInSceneMock.mockResolvedValueOnce([]);
+    findFirstTerritory.mockResolvedValueOnce({ id: 't1' });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/zona' });
+    expect(res.json().regionControl).toEqual({ estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: 'Maktor' });
   });
 
   // Fase G del 0.1 (hallazgo G25): estar en el territorio de una facción la descubre (CITADA) —
