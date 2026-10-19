@@ -175,7 +175,9 @@ export async function darNoticia(
   const cuando = entrega(noticia, personaje);
   if (!cuando) return null;
   const texto = cuando.rumor ? comoRumor(noticia.texto) : noticia.texto;
-  const meta = metaDe(noticia);
+  const base = metaDe(noticia);
+  // P226: el rumor lleva la marca (como los de difusion.ts): región donde pasó y minuto en que pasó.
+  const meta: MetaNoticia | null = cuando.rumor ? { ...base, rumor: { region: noticia.region ?? null, pasoEn: ctx.fictionalMinutes } } : base;
   if (cuando.dias === 0) {
     await escribir(tx, ctx.saveId, texto, ctx.fictionalMinutes, meta);
     return cuando;
