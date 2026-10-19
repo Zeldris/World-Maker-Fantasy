@@ -1265,9 +1265,10 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   `docs/registros/matriz-pruebas.md`, una fila por tarea cerrada del `0.0` al `0.3` con bloque y estado (jugado,
   solo tests, sin jugar, no se juega); da «SIN JUGAR: N de M» por bloque y el pre-push exige la fila de cada tarea
   cerrada. Estado inicial clasificado a mano: 123 de 169 sin jugar (el núcleo del `0.1` no tiene ID y no cuenta).
-- **QA-102 · Escenarios preparados y avanzar días** 🚧 en curso: `tools/qa/escenario.sh <nombre>` deja en
-  `tarkor_juego` una partida ya en el estado que se quiere probar (reino fundado con súbditos, bandidos cerca…) y
-  un comando avanza N días con el avance diario de siempre.
+- ~~**QA-102 · Escenarios preparados y avanzar días**~~ ✅ 2026-10-19: `tools/qa/escenario.sh` guarda la base de
+  juego entera como instantánea (`tools/qa/escenarios/<nombre>.dump`, menos de 1 MB, con su línea en el README),
+  la carga con las migraciones y el catálogo de ahora y avanza N días (`scripts/avanzarDias.ts`, el avance diario
+  de siempre: 3 días en 3 s). Se llega jugando una vez y se guarda; las instantáneas las añade cada ronda.
 - **QA-103 · Recorridos que pasan o fallan** 🚧 en curso: cada comprobación jugando deja un recorrido en
   `tools/playwright-e2e/recorridos/`; `recorrer.sh` los pasa y da una línea por recorrido (✓/✗).
 - ~~**QA-104 · Estado en texto**~~ ✅ 2026-10-19: `mcp/estado.js` da en unas 10 líneas HUD, modales, la tarjeta
