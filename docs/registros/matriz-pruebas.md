@@ -19,11 +19,11 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-28` | Configuración | Alto contraste | sin jugar |  |
 | `CFG-34` | Configuración | Estilo del mundo | sin jugar |  |
 | `CFG-35` | Configuración | Avisos de sucesos | sin jugar |  |
-| `INT-1` | Cronista en la interfaz | Familias de sucesos con identidad propia | sin jugar |  |
-| `INT-2` | Cronista en la interfaz | Importancia visible | sin jugar |  |
-| `INT-3` | Cronista en la interfaz | Causas enlazadas | sin jugar |  |
-| `INT-4` | Cronista en la interfaz | Lo desconocido se ve como desconocido | sin jugar |  |
-| `INT-9` | Cronista en la interfaz | Rumor con lugar | sin jugar |  |
+| `INT-1` | Cronista en la interfaz | Familias de sucesos con identidad propia | jugado | 2026-10-19: Leyendas con 5 familias, cada una con icono y color propios (Diplomacia, Tus hechos, Facciones, Tu Reino, Crónica); el filtro Diplomacia deja solo sus 6 entradas |
+| `INT-2` | Cronista en la interfaz | Importancia visible | jugado | 2026-10-19: tres niveles (NORMAL sin borde, DESTACADO con borde, GRAVE con borde rojo y sello: «Gorhorn muere», «funda el reino») |
+| `INT-3` | Cronista en la interfaz | Causas enlazadas | jugado | 2026-10-19: «Por qué pasó: Día 1 Gorhorn funda el reino…» en «Fundador» lleva a la causa y la resalta |
+| `INT-4` | Cronista en la interfaz | Lo desconocido se ve como desconocido | jugado | 2026-10-19: de 119 sucesos de la partida, `/leyendas` da solo los 18 de `Conocimiento`; el rumor llega sin lugar, fecha ni actores («Rumor · lo supiste el día 10 · De oídas») |
+| `INT-9` | Cronista en la interfaz | Rumor con lugar | jugado | 2026-10-19: 📜 sobre El Margen Silencioso en el mapa de Berig; al pulsar la región, su tarjeta enseña el rumor y el pergamino desaparece |
 | `DAD-1` | Dados y tiradas | `key` por tirada en `TameoModal` (H18). S | sin jugar |  |
 | `DAD-2` | Dados y tiradas | Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e | sin jugar |  |
 | `DAD-3` | Dados y tiradas | Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). S | jugado | P166 (tirada de encuentro) |
