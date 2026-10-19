@@ -138,7 +138,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `REI-114` | Reino | Esqueletos de carga en lugar de "Cargando…" (R24). S 2026-10-02: componente `Esqueleto` (p | sin jugar |  |
 | `REI-115` | Reino | Tooltips de explicación en cada indicador, rol y estado (R25). S 2026-10-02: los 8 indicad | sin jugar |  |
 | `REI-116` | Reino | Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). S 2026-10 | sin jugar |  |
-| `REI-118` | Reino | Súbditos como personas (Fase C del `0.3`, Q1-Q3 y Q7 de la usuaria, 2026-10-06): cada pobl | sin jugar |  |
+| `REI-118` | Reino | Súbditos como personas (Fase C del `0.3`, Q1-Q3 y Q7 de la usuaria, 2026-10-06): cada pobl | jugado | 2026-10-19: tarjetas de súbdito con nombre, raza, edad, linaje («de los Riuh»), papel y tarea editables, pareja y crías; Población cuenta súbditos ACTIVO |
 | `REI-119` | Reino | Llegadas (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, | jugado | 2026-10-19: con las 2 camas temporales (P220a) y la lista de requisitos en ✓ (P220b) llega Krarka; tarjeta «Llega a tu puerta» con ACOGER y queda de Trabajadora (Camas 1/2) |
-| `REI-120` | Reino | Parejas y crías (Q5, como Medieval Dynasty): dos adultos del mismo pueblo con felicidad ≥ | sin jugar |  |
-| `REI-121` | Reino | Salidas y muerte (Q6): con la felicidad del Reino 7 días seguidos por debajo de 20, cada s | sin jugar |  |
+| `REI-120` | Reino | Parejas y crías (Q5, como Medieval Dynasty): dos adultos del mismo pueblo con felicidad ≥ | jugado | 2026-10-19: Grosh y Krarka forman pareja («Pareja de X»); con camas llenas no nace nadie en 4 semanas; con cama libre nace Merkar Riuh («recién nacido · cría», padres «· 1 cría»). Sin aviso en el canal (P223) |
+| `REI-121` | Reino | Salidas y muerte (Q6): con la felicidad del Reino 7 días seguidos por debajo de 20, cada s | jugado | 2026-10-19: con felicidad 10 siete días se va Krarka con su cría (tarjeta «↩ … Se fue»); con comida 0 Grosh muere de hambre el día 8 (tarjeta «✝ … Murió de hambre»). Pareja que no se limpia en el acto (P224) |
