@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { edificioDelPunto, encargadoDe, fichaDeEdificio } from '../../services/fichaEdificio.js';
 import { abrirMenuDeNpc } from '../../services/menuDeNpc.js';
-import { nombreEnFrase, nombreVisibleDeNpc } from '../../services/dynamicMode.js';
+import { conDefinido, nombreVisibleDeNpc, quienEnAviso } from '../../services/dynamicMode.js';
 import { celdaAdyacenteOMisma, celdaDePixel } from '../../services/zonaPosicion.js';
 
 /// P178 (QA-27, decidido por la usuaria 2026-10-17): la ficha de un edificio del mapa (`fichaEdificio.ts`) e
@@ -40,13 +40,15 @@ export async function edificiosRoutes(app: FastifyInstance) {
     const npc = llevado?.npc;
     // Sin artículo delante del nombre del edificio: el catálogo no lo guarda y no se adivina por el nombre.
     if (!npc || !llevado.aqui) return { menu: null, motivo: `${nombreEdificio}: no hay nadie atendiendo ahora mismo.` };
-    const { nombre } = await nombreVisibleDeNpc(prisma, save.id, npc);
+    const { nombre, oculto } = await nombreVisibleDeNpc(prisma, save.id, npc);
+    // P199: con su artículo de catálogo («el Maestro Herrero Serhu»), o por su raza («el orco desconocido»).
+    const enFrase = conDefinido(nombre, oculto ? null : npc.articulo);
     const menu = await abrirMenuDeNpc(prisma, save.id, npc.slug, nombre, 'edificio');
-    if (!menu) return { menu: null, motivo: `${nombreEnFrase(nombre, true)} no tiene nada que ofrecerte aquí.` };
+    if (!menu) return { menu: null, motivo: `${quienEnAviso('NPC', nombre, oculto ? null : npc.articulo)} no tiene nada que ofrecerte aquí.` };
     const entrada = await prisma.logEntry.create({
       data: {
         saveId: save.id, channel: 'CHARACTER', isSystemMessage: true,
-        text: `${nombreEdificio}: ${nombreEnFrase(nombre)} atiende a ${save.characterName}.`,
+        text: `${nombreEdificio}: ${enFrase} atiende a ${save.characterName}.`,
         fictionalMinutes: save.worldState?.fictionalMinutes ?? 0, timeLabel: save.worldState?.fictionalDateLabel ?? '',
       },
     });

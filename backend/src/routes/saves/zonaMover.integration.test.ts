@@ -74,6 +74,8 @@ describe('POST /saves/:id/zona/mover', () => {
         name: 'Fauna Pacífica de Prueba',
         aliases: ['fauna pacifica de prueba'],
         role: 'Fauna de prueba',
+        articulo: 'la',
+        genero: 'F',
         level: 1,
         attributes: { fuerza: 4, destreza: 6, constitucion: 4, inteligencia: 2, voluntad: 4, carisma: 2, magia: 0 },
         bio: 'x',
@@ -436,6 +438,17 @@ describe('POST /saves/:id/zona/mover', () => {
   // INOFENSIVO en la MISMA celda debe disparar una acción real: la tarjeta de Interactuar
   // (`pendingDynamicModeOffer`), reutilizando el mismo flujo ya existente (OfferCard →
   // DynamicModeModal) — antes solo dejaba un mensaje de texto plano sin ninguna consecuencia.
+  // P190 (QA-27): el rebaño de un bando avisa de quién es y de lo que cuesta que te vean cazarlo.
+  it('colisión con fauna de un bando: la oferta dice de quién es y cuánta reputación cuesta', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }], factionSlug: 'Clan Serhu' },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).dynamicModeOffer.deBando).toEqual({ faccion: 'Clan Serhu', deQuien: 'del Clan Serhu', reputacion: -100 });
+  });
+
   it('colisión con un ZonePoint PACÍFICO (misma celda): dispara pendingDynamicModeOffer real', async () => {
     await prisma.zonePoint.create({
       data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
@@ -455,7 +468,10 @@ describe('POST /saves/:id/zona/mover', () => {
     // Regresión (2026-09-09, hallazgo real jugando en vivo: la oferta quedaba persistida en BD
     // pero invisible en el log, porque LogPanel.tsx solo la pinta colgada de una LogEntry
     // concreta) — el encuentro debe dejar su propio LogEntry real determinista, no solo la oferta.
-    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('se topa con') });
+    expect(body.logEntry).toMatchObject({ text: expect.stringContaining('se topa con una Fauna Pacífica de Prueba') });
+    // P196: el aviso lleva el artículo, como el diario («Una Fauna Pacífica de Prueba busca tu atención»).
+    expect(body.dynamicModeOffer.quien).toBe('Una Fauna Pacífica de Prueba');
+    expect(body.dynamicModeOffer.deBando).toBeUndefined();
     expect(body.logEntry.roll).toBeUndefined();
     const logRow = await prisma.logEntry.findUnique({ where: { id: body.logEntry.id } });
     expect(logRow).not.toBeNull();

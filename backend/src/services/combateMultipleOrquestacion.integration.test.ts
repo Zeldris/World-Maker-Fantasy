@@ -203,6 +203,32 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
+  // P192 (QA-27, opción A de la usuaria): con un rival más rápido en su duelo, la jugadora sigue teniendo su
+  // turno: ataca con su propio intercambio (antes, su acción caía en `avanzarSinAtacar` y no hacía nada).
+  it('con un rival más rápido en su duelo, la jugadora tira su propio intercambio en su turno', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-jugadora-p192', destreza: 1000, inteligencia: 6 },
+      ]),
+    );
+    // Él primero (la iniciativa lleva dado): su turno ataca a la jugadora.
+    const enc = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    const jugadoraId = enc.participantes.find((p) => p.tipo === 'JUGADOR')!.id;
+    await prisma.combatEncounter.update({ where: { id: encounterId }, data: { ordenIniciativa: [...enc.ordenIniciativa.filter((id) => id !== jugadoraId), jugadoraId] } });
+    const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    if (!ronda.encounterTerminado) {
+      expect(ronda.intercambiosContraJugadora.length).toBe(1);
+      const habilidad: HabilidadParaIntercambio = { name: 'Ataque Básico', description: '', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 5, energyRegen: 0 };
+      const suyo = await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      expect(suyo?.combatExchangeDisplay?.atacanteEsJugador).toBe(true);
+    }
+
+    await prisma.combatEncounter.delete({ where: { id: encounterId } });
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+  }, 30_000);
+
   // P55 (QA-27): con dos enemigos sobre la jugadora, el ataque del segundo también llega al caller.
   // P129 (QA-27): ya no es un golpe gratis: tira contra su defensa, con ventaja.
   it('el ataque de más contra la jugadora tira con ventaja y queda en intercambiosContraJugadora', async () => {

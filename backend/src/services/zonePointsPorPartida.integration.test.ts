@@ -107,6 +107,30 @@ describe('ZonePoint por partida (Postgres real)', () => {
     }
   });
 
+  // P189 (QA-27): un punto sin origen (el catálogo se sembraba sin él) tomaba su posición como origen a cada
+  // paso y vagaba por todo el mapa; el rebaño del clan salía de su corral.
+  it('un punto sin origen se queda en el territorio de su plantilla de catálogo', async () => {
+    const saveC = await nuevaPartida('Gorhorn P189');
+    const plantillaRebano = await prisma.zonePoint.create({ data: { locationId, saveId: null, x: 625, y: 125, tipo: 'FAUNA', targetSlug: 'test-p189-rebano', label: 'Rebaño de prueba', cantidad: 6, activo: true } });
+    try {
+      await asegurarZonePointsDePartida(prisma, saveC, locationId);
+      const fila = await prisma.zonePoint.findFirstOrThrow({ where: { saveId: saveC, locationId, targetSlug: 'test-p189-rebano' } });
+      // QA-100: el clon copia los campos de su plantilla; sin origen en ella, toma su sitio.
+      expect({ x: fila.origenX, y: fila.origenY, label: fila.label, cantidad: fila.cantidad }).toEqual({ x: 625, y: 125, label: 'Rebaño de prueba', cantidad: 6 });
+      // Partida empezada antes del arreglo: la fila sin origen.
+      await prisma.zonePoint.update({ where: { id: fila.id }, data: { origenX: null, origenY: null } });
+      for (let i = 0; i < 30; i++) await avanzarZonePointsUnPaso(prisma, locationId, saveC, () => 0);
+      const tras = await prisma.zonePoint.findUniqueOrThrow({ where: { id: fila.id } });
+      expect({ x: tras.origenX, y: tras.origenY }).toEqual({ x: 625, y: 125 });
+      // A una casilla (TERRITORIO_CORTO) de su sitio: (12, 2).
+      expect(Math.abs(Math.floor(tras.x / 50) - 12)).toBeLessThanOrEqual(1);
+      expect(Math.abs(Math.floor(tras.y / 50) - 2)).toBeLessThanOrEqual(1);
+    } finally {
+      await prisma.save.delete({ where: { id: saveC } });
+      await prisma.zonePoint.delete({ where: { id: plantillaRebano.id } });
+    }
+  });
+
   it('mover en la partida A no cambia la B ni la plantilla', async () => {
     const random = () => 0.5;
     for (let i = 0; i < 2; i++) await avanzarZonePointsUnPaso(prisma, locationId, saveA, random);

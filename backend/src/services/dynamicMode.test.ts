@@ -136,6 +136,20 @@ describe('conIndefinido', () => {
   });
 });
 
+// P196/P199 (QA-27): el artículo en «se topa con» y en el aviso del encuentro.
+describe('conDefinido y quienEnAviso', () => {
+  it('un NPC con el definido, un animal con el indefinido; un nombre propio tal cual', async () => {
+    const { conDefinido, quienEnAviso } = await import('./dynamicMode.js');
+    expect(conDefinido('Cazadora Serhu', 'la')).toBe('la Cazadora Serhu');
+    expect(conDefinido('Orco desconocido', null)).toBe('el orco desconocido');
+    expect(conDefinido('Gistera Koh', null)).toBe('Gistera Koh');
+    expect(quienEnAviso('NPC', 'Cazadora Serhu', 'la')).toBe('La Cazadora Serhu');
+    expect(quienEnAviso('NPC', 'Gistera Koh', null)).toBe('Gistera Koh');
+    expect(quienEnAviso('FAUNA', 'Guchapo', 'el')).toBe('Un Guchapo');
+    expect(quienEnAviso('RECURSO', 'Telda Común', null)).toBeUndefined();
+  });
+});
+
 describe('aNombre', () => {
   it('con artículo y contracción si no es un nombre propio; si lo es, tal cual', () => {
     expect(aNombre('Orco desconocido')).toBe('al orco desconocido');

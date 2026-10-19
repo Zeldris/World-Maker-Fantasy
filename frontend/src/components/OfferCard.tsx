@@ -16,7 +16,8 @@ interface OfferCardProps {
   subtitle?: string
   /// Aviso de riesgo (F9-1, decisión de Álvaro, 2026-09-29) — línea de color entre el subtítulo y las
   /// acciones: ámbar para 'alto', rojo para 'mortal'. Solo informa, nunca bloquea las acciones.
-  warning?: { nivel: 'alto' | 'mortal'; text: string }
+  /// `aviso`: no es un peligro para la vida (lo que cuesta en reputación coger lo de un bando, P190).
+  warning?: { nivel: 'aviso' | 'alto' | 'mortal'; text: string }
   /// Error visible tras un intento fallido (A.7) — nunca sustituye las acciones, se muestra debajo.
   error?: string
   actions: OfferCardAction[]
@@ -61,7 +62,7 @@ export function OfferCard({ tone, icon, title, subtitle, warning, error, actions
       </p>
       {subtitle && <p className="mt-1 text-2xs text-wood-300">{subtitle}</p>}
       {warning && (
-        <p role="alert" data-riesgo={warning.nivel} className={`mt-1 text-2xs font-semibold ${warning.nivel === 'mortal' ? 'text-red-400' : 'text-amber-400'}`}>
+        <p role="alert" data-riesgo={warning.nivel} className={`mt-1 text-2xs font-semibold ${warning.nivel === 'mortal' ? 'text-red-400' : warning.nivel === 'alto' ? 'text-amber-400' : 'text-wood-200'}`}>
           <span aria-hidden="true">⚠️ </span>
           {warning.text}
         </p>

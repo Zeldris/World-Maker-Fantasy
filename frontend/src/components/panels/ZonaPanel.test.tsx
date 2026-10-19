@@ -8,6 +8,7 @@ vi.mock('../../lib/api', async (importOriginal) => {
 
 import { getZona, moverEnZona } from '../../lib/api'
 import { ZonaPanel, salidaEnCasillaDelJugador } from './ZonaPanel'
+import { claveCelda, rutaPrevista } from '../../lib/zonaRuta'
 import { CapasContext } from '../../context/capasContext'
 
 /// Z-A (hito 0.1, roadmap-front-zona.md) — ZON-20 (leyenda en el mapa) y ZON-62 (cuadrícula bajo demanda).
@@ -181,8 +182,21 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     await act(async () => {})
     const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
     fireEvent.mouseEnter(ficha)
-    // Aullador en la celda (3, 2); el personaje en la (7, 6): 4 celdas.
-    expect(getByTestId('tarjeta-ficha').textContent).toBe('Aullador rojoFauna · Enemigo · ×3 · a 4 celdas')
+    // Aullador en la celda (3, 2); el personaje en la (7, 6): 4 pasos (P194: en pasos, como la ruta).
+    expect(getByTestId('tarjeta-ficha').textContent).toBe('Aullador rojoFauna · Enemigo · ×3 · a 4 pasos')
+  })
+
+  // P194 (QA-27): con muros por medio, la tarjeta da los pasos del camino, los mismos que la ruta prevista.
+  it('con un muro por medio, la distancia son los pasos del camino que lo rodea', async () => {
+    const muros = Array.from({ length: 11 }, (_, row) => ({ col: 5, row }))
+    vi.mocked(getZona).mockResolvedValue({ ...zona, muros } as never)
+    const { container, getByTestId } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.mouseEnter(ficha)
+    const pasos = rutaPrevista(zona.jugador, { x: 175, y: 125 }, undefined, new Set(muros.map(claveCelda))).pasos
+    expect(pasos).toBeGreaterThan(4)
+    expect(getByTestId('tarjeta-ficha').textContent).toBe(`Aullador rojoFauna · Enemigo · ×3 · a ${pasos} pasos`)
   })
 
   // P147 (QA-27): la insignia «×N» de un grupo quedaba tapada por una ficha pegada o por el personaje.
@@ -253,6 +267,72 @@ describe('ZonaPanel — ZON-5, encuentro en el mapa', () => {
   afterEach(() => {
     cleanup()
     vi.clearAllMocks()
+  })
+
+  // P204 (QA-27): la tarjeta de un encuentro y el aviso «Viajar» salían a la vez, uno encima del otro.
+  it('con la tarjeta de un encuentro, el aviso de la salida espera a que se resuelva', async () => {
+    const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: true, teaser: null, description: null, imageUrl: null }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
+    vi.mocked(moverEnZona).mockResolvedValue({
+      jugador: { x: 325, y: 325 }, caminoRestante: [], zonePointsMovidos: [],
+      colision: { targetSlug: 'aullador', targetName: 'Aullador rojo', temperamento: 'CAUTELOSO' },
+      dynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'aullador', targetName: 'Aullador rojo', zonePointId: 'p1', cantidad: 3 },
+      logEntry: { id: 'l1', text: 'Un grupo de aulladores.', timeLabel: '', createdAt: '' },
+    } as never)
+    let vigente = true
+    const ofertaEnMapa = vi.fn((entryId: string) =>
+      vigente && entryId === 'l1'
+        ? { tone: 'accent2' as const, icon: '💬', title: 'Un Aullador rojo busca tu atención', subtitle: '', actions: [{ label: 'Ignorar', tone: 'neutral' as const, onClick: vi.fn() }] }
+        : null,
+    )
+    const utils = render(<ZonaPanel saveId="s1" onEncuentroZona={vi.fn()} ofertaEnMapa={ofertaEnMapa} />)
+    await act(async () => {})
+    const svg = [...utils.container.querySelectorAll('svg')].find((e) => e.getAttribute('viewBox') === '0 0 800 600')!
+    fireEvent.click(svg, { clientX: 325, clientY: 325 })
+    await utils.findByTestId('encuentro-en-mapa')
+    const marcador = Array.from(utils.container.querySelectorAll('svg g > title')).find((t) => t.textContent === 'Vado')!.parentElement!
+    await act(async () => {
+      fireEvent.click(marcador)
+    })
+    expect(utils.queryByRole('dialog')).toBeNull()
+    vigente = false
+    utils.rerender(<ZonaPanel saveId="s1" onEncuentroZona={vi.fn()} ofertaEnMapa={ofertaEnMapa} />)
+    await act(async () => {})
+    expect(utils.queryByTestId('encuentro-en-mapa')).toBeNull()
+    expect(utils.getByRole('dialog')).toBeTruthy()
+  })
+
+  // /code-review: tras un combate, el aviso de un clic de antes no salta solo.
+  it('con un encuentro hostil, el aviso de la salida se descarta y no salta al acabar', async () => {
+    const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: true, teaser: null, description: null, imageUrl: null }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
+    vi.mocked(moverEnZona).mockResolvedValue({
+      jugador: { x: 325, y: 325 }, caminoRestante: [], zonePointsMovidos: [],
+      colision: { targetSlug: 'aullador', targetName: 'Aullador rojo', temperamento: 'CAUTELOSO' },
+      dynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'aullador', targetName: 'Aullador rojo', zonePointId: 'p1', cantidad: 3 },
+      logEntry: { id: 'l1', text: 'Un grupo de aulladores.', timeLabel: '', createdAt: '' },
+    } as never)
+    let vigente = true
+    const ofertaEnMapa = vi.fn((entryId: string) =>
+      vigente && entryId === 'l1'
+        ? { tone: 'danger' as const, icon: '⚔️', title: 'Un Aullador rojo te corta el paso', subtitle: '', actions: [{ label: 'Combatir', tone: 'danger' as const, onClick: vi.fn() }] }
+        : null,
+    )
+    const utils = render(<ZonaPanel saveId="s1" onEncuentroZona={vi.fn()} ofertaEnMapa={ofertaEnMapa} />)
+    await act(async () => {})
+    const svg = [...utils.container.querySelectorAll('svg')].find((e) => e.getAttribute('viewBox') === '0 0 800 600')!
+    fireEvent.click(svg, { clientX: 325, clientY: 325 })
+    await utils.findByTestId('encuentro-en-mapa')
+    const marcador = Array.from(utils.container.querySelectorAll('svg g > title')).find((t) => t.textContent === 'Vado')!.parentElement!
+    await act(async () => {
+      fireEvent.click(marcador)
+    })
+    expect(utils.queryByRole('dialog')).toBeNull()
+    vigente = false
+    utils.rerender(<ZonaPanel saveId="s1" onEncuentroZona={vi.fn()} ofertaEnMapa={ofertaEnMapa} />)
+    await act(async () => {})
+    expect(utils.queryByTestId('encuentro-en-mapa')).toBeNull()
+    expect(utils.queryByRole('dialog')).toBeNull()
   })
 
   it('el mapa sigue abierto, la tarjeta sale junto a la ficha y «Seguir mi camino» ignora y continúa', async () => {

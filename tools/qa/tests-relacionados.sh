@@ -20,5 +20,24 @@ for paquete in backend frontend; do
   echo "pre-push: tests relacionados de $paquete (${#archivos[@]} archivos cambiados)…"
   (cd "$paquete" && npx vitest related --run "${proyecto[@]}" --passWithNoTests "${archivos[@]}" > "$log" 2>&1) \
     || { grep -E "FAIL|AssertionError|Error:|Test Files|Tests " "$log" | head -30; echo "pre-push: tests de $paquete en rojo (log completo en $log)"; exit 1; }
+  # QA-98 (retro de P189-P205, 2026-10-19): y los de BD real con el nombre de un archivo cambiado
+  # (`foo.ts` → `foo.integration.test.ts`, o el propio test cambiado). P196 cambió `nombrarOferta` y rompió
+  # `ofertaNombre.integration.test.ts` sin que el pre-push lo viera.
+  if [ "$paquete" = backend ]; then
+    integracion=()
+    for f in "${archivos[@]}"; do
+      case "$f" in
+        *.integration.test.ts) integracion+=("$f") ;;
+        *.ts) [ -f "backend/${f%.ts}.integration.test.ts" ] && integracion+=("${f%.ts}.integration.test.ts") ;;
+      esac
+    done
+    if [ ${#integracion[@]} -gt 0 ]; then
+      mapfile -t integracion < <(printf '%s\n' "${integracion[@]}" | sort -u)
+      log_bd="/tmp/pre-push-integracion.log"
+      echo "pre-push: tests de integración de lo que cambia (${#integracion[@]})…"
+      (cd backend && npx vitest run --project bd-real "${integracion[@]}" > "$log_bd" 2>&1) \
+        || { grep -E "FAIL|AssertionError|Error:|Test Files|Tests " "$log_bd" | head -30; echo "pre-push: tests de integración en rojo (log completo en $log_bd)"; exit 1; }
+    fi
+  fi
 done
 exit 0

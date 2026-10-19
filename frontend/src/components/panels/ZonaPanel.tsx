@@ -349,8 +349,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if ('agotado' in punto && punto.agotado) detalles.push('agotado por ahora')
     if ('nivelRequerido' in punto && punto.nivelRequerido) detalles.push(`pide nivel ${punto.nivelRequerido} de oficio`)
     if (data?.jugador) {
+      // P194 (QA-27): en pasos, por el mismo camino que la ruta prevista (rodea los muros), no en línea recta.
       const d = distanciaEnCeldas(data.jugador, punto)
-      detalles.push(d === 0 ? 'aquí' : `a ${d} ${d === 1 ? 'celda' : 'celdas'}`)
+      const pasos = d === 0 ? 0 : rutaPrevista(data.jugador, punto, undefined, murosZona).pasos || d
+      detalles.push(pasos === 0 ? 'aquí' : `a ${pasos} ${pasos === 1 ? 'paso' : 'pasos'}`)
     }
     return { nombre: punto.nombre, detalles }
   }
@@ -445,6 +447,12 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if (tarjetaVigente) tarjetaVistaRef.current = true
     else if (tarjetaVistaRef.current) setEncuentroMapa(null)
   }, [encuentroMapa, tarjetaVigente])
+  // P204 (`/code-review`): con alguien hostil delante, el aviso de viaje se descarta (no hay viaje que
+  // valga); si no, saltaba solo al acabar el combate, de un clic de antes.
+  const encuentroHostil = !!encuentroMapa && ofertaEnMapa?.(encuentroMapa.entryId)?.tone === 'danger'
+  useEffect(() => {
+    if (encuentroHostil && selectedSalida) setSelectedSalida(null)
+  }, [encuentroHostil, selectedSalida])
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {
@@ -893,7 +901,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           />
         ))}
       {selectedGroup && <ZoneGroupDetailModal point={selectedGroup} onClose={() => setSelectedGroup(null)} />}
-      {selectedSalida && (
+      {/* P204 (QA-27): con la tarjeta de un encuentro en el mapa, el aviso de viaje espera a que se resuelva. */}
+      {selectedSalida && !encuentroMapa && (
         <ZonaSalidaModal
           salida={selectedSalida}
           onCancel={() => setSelectedSalida(null)}

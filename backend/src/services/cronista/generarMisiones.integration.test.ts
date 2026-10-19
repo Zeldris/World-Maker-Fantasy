@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { ofrecerTrabajoDeNpc, renovarTablones } from './generarMisiones.js';
+import { nombreOcultoPorRaza } from '../dynamicMode.js';
 import { validarHuecos, MISIONES_POR_TABLON, type HuecosMision } from './misiones.js';
 
 /// CR-40 40d contra Postgres real: el tablón del Clan Serhu se llena con misiones que salen del mundo
@@ -103,10 +104,14 @@ describe('ofrecerTrabajoDeNpc (CR-40 40f)', () => {
   });
 
   it('el NPC con nombre propone una misión personal de las plantillas; la misma si se le vuelve a preguntar', async () => {
-    const npc = await prisma.npc.findFirstOrThrow({ where: { faction: 'Clan Serhu', kind: { not: 'PLANTILLA' }, slug: { not: 'ulkha-ketg' } }, orderBy: { slug: 'asc' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { faction: 'Clan Serhu', kind: 'PRINCIPAL', slug: { not: 'ulkha-ketg' } }, orderBy: { slug: 'asc' } });
     const aviso = await ofrecerTrabajoDeNpc(prisma, saveId, npc.slug, () => 0.4);
     expect(aviso).not.toBeNull();
-    expect(aviso!.descripcion.startsWith(`${npc.name}: «`)).toBe(true);
+    // P200: sin descubrir, el encargo no dice su nombre (como el menú, P165); descubierto, sí.
+    expect(aviso!.descripcion.startsWith(`${nombreOcultoPorRaza(npc.raza, npc.genero)}: «`)).toBe(true);
+    expect(aviso!.descripcion).not.toContain(npc.name);
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: npc.slug } });
+    expect((await ofrecerTrabajoDeNpc(prisma, saveId, npc.slug, () => 0.4))!.descripcion.startsWith(`${npc.name}: «`)).toBe(true);
     const fila = await prisma.misionOfrecida.findUniqueOrThrow({ where: { id: aviso!.id } });
     expect(fila).toMatchObject({ npcId: npc.id, buildingId: null, estado: 'DISPONIBLE', retiraEn: 5 * 1440 + 1440 });
     const h = fila.huecos as unknown as HuecosMision;

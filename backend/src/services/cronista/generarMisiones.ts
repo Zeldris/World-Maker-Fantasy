@@ -14,6 +14,7 @@
 // o repite tipo y objetivo con otra abierta (Q10). «Ayudar a un malherido» sigue siendo la
 // oportunidad de `CR-12` («Ayudar»), sin aviso propio en el `0.2`.
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { conQuienVisible } from './quienEncarga.js';
 import { stripRegionArticle } from '../population.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
 import { CATEGORIAS_COMESTIBLES } from '../factionExpeditions.js';
@@ -219,7 +220,7 @@ export async function ofrecerTrabajoDeNpc(prisma: PrismaClient, saveId: string, 
     if ((await tx.quest.count({ where: { saveId, status: 'ACTIVA', tipoMision: { not: null }, encargaFaccionId: faccion.id } })) > 0) return null;
     const minutos = save.worldState?.fictionalMinutes ?? 0;
     const vigente = await tx.misionOfrecida.findFirst({ where: { saveId, npcId: npc.id, estado: 'DISPONIBLE', retiraEn: { gt: minutos } } });
-    if (vigente) return { id: vigente.id, titulo: vigente.titulo, descripcion: vigente.descripcion, recompensa: vigente.recompensa };
+    if (vigente) return { id: vigente.id, titulo: vigente.titulo, descripcion: (await conQuienVisible(tx, saveId, vigente.huecos, vigente.descripcion)).descripcion, recompensa: vigente.recompensa };
     const abiertas = await clavesAbiertas(tx, saveId);
     const [h] = escogerParaTablon(await candidatasDeFaccion(tx, saveId, save.worldId, faccion, region, random, { id: npc.id, nombre: npc.name }), 1, abiertas, random);
     if (!h) return null;
@@ -230,6 +231,6 @@ export async function ofrecerTrabajoDeNpc(prisma: PrismaClient, saveId: string, 
         recompensa: recompensaDe(h) as unknown as Prisma.InputJsonValue, creadaEn: minutos, retiraEn: minutos + DIAS_OFERTA_PERSONAL * 1440,
       },
     });
-    return { id: oferta.id, titulo, descripcion, recompensa: oferta.recompensa };
+    return { id: oferta.id, titulo, descripcion: (await conQuienVisible(tx, saveId, h, descripcion)).descripcion, recompensa: oferta.recompensa };
   });
 }

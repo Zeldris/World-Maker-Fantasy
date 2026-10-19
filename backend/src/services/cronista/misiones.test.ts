@@ -38,7 +38,12 @@ describe('misiones secundarias: plantillas cerradas (CR-40 40a)', () => {
   });
 
   it('el pueblo de quien la encarga da el cierre; un NPC lo dice en persona', () => {
-    expect(textoDeMision(base({}), 0).descripcion).toContain('Que la caza sea limpia.');
+    expect(textoDeMision(base({ tipo: 'CAZAR' }), 0).descripcion).toContain('Que la caza sea limpia.');
+    // P201: un encargo que no es de caza no se despide con la caza.
+    for (const v of [0, 1]) {
+      const explorar = textoDeMision(base({ tipo: 'EXPLORAR', lugar: { id: 'l', nombre: 'Las Agujas Imán' }, cantidad: 1 }), v).descripcion;
+      expect(explorar).not.toContain('caza');
+    }
     const personal = textoDeMision(base({ npc: { id: 'n', nombre: 'Ulkha Ketg' } }), 0).descripcion;
     expect(personal.startsWith('Ulkha Ketg: «')).toBe(true);
     expect(textoDeMision(base({ faccion: { ...serhu, pueblo: 'desconocido' } }), 0).descripcion).not.toContain('«');
