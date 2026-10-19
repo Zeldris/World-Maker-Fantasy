@@ -34,13 +34,13 @@ describe('nombrarOferta y la firma de las noticias (P165)', () => {
 
   it('un rol se nombra y queda descubierto, con su artículo', async () => {
     const r = await nombrarOferta(prisma, { saveId, worldId }, { tipo: 'NPC', targetSlug: 'cazadora-serhu' });
-    expect(r).toEqual({ targetName: 'Cazadora Serhu', articuloNpc: 'la' });
+    expect(r).toEqual({ targetName: 'Cazadora Serhu', articuloNpc: 'la', generoNpc: null });
     expect(await descubierto('cazadora-serhu')).toBe(true);
   });
 
   it('un nombre propio sin descubrir va por su raza y no se descubre; firma igual en «¿Qué se cuenta?»', async () => {
     const r = await nombrarOferta(prisma, { saveId, worldId }, { tipo: 'NPC', targetSlug: 'maestro-alquimista-serhu' });
-    expect(r).toEqual({ targetName: 'Orco desconocido', articuloNpc: null });
+    expect(r).toEqual({ targetName: 'Orco desconocido', articuloNpc: null, generoNpc: null });
     expect(await descubierto('maestro-alquimista-serhu')).toBe(false);
     expect((await preguntarNoticias(prisma, saveId, 'maestro-alquimista-serhu'))!.frase).toMatch(/^El orco desconocido/);
   });
