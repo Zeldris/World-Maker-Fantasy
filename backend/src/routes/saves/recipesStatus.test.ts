@@ -187,6 +187,6 @@ describe('GET /saves/:id/recipes-status', () => {
     }
     expect(por('pozo').name).toBe('un pozo');
     expect(por('herreria-obrador').upgradesRecipeKey).toBe('herreria');
-    expect(por('choza').requiresAyuntamiento).toBe(false);
+    expect(por('campamento').requiresAyuntamiento).toBe(false);
   });
 });
