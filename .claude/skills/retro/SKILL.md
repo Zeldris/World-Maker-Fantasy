@@ -4,7 +4,8 @@ description: "Conduct a retrospective on a coding session. Use before creating e
 ---
 
 > **En este repositorio:** la lanza Claude antes de crear cada PR a `main`, tras el `/code-review` y sus
-> arreglos (usuaria, 2026-10-13), y al cerrar cada fase o hito (2026-10-06). Lo que se revisa es lo que va
+> arreglos y tras `/opt-tokens` (usuaria, 2026-10-13 y 2026-10-19; entre lo revisado, también la propia skill
+> `opt-tokens`: si su medida o sus propuestas fallaron o se quedaron cortas), y al cerrar cada fase o hito (2026-10-06). Lo que se revisa es lo que va
 > a entrar con el PR, o la fase entera,
 > que suele cruzar sesiones de las dos cuentas:
 > sus commits, la bitácora y las entradas de sus tareas en los roadmaps. Las propuestas, en español,

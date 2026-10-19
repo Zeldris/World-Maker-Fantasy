@@ -11,8 +11,12 @@ logs/
 /node_modules/
 
 # Configuración local de Claude Code (permisos de sesión, locks) — específica de esta máquina,
-# no del proyecto.
-.claude/
+# no del proyecto. Lo compartido entre las dos cuentas sí se versiona (QA-112): un archivo nuevo de una skill
+# o un gancho se añade con `git add` normal, sin `-f` (que arrastraba también los `__pycache__`).
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/skills/
 
 # Playwright que usa Claude para jugar el frontend real y hacer pruebas en vivo (QA-30, retro del
 # 2026-10-09): los scripts se versionan para que las dos cuentas los compartan; se quedan fuera lo

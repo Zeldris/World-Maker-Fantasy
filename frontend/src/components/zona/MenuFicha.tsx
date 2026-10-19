@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { OfferCard } from '../OfferCard'
-import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
+import { altoDeTarjeta, type PresentacionOferta } from '../../lib/ofertaModoDinamico'
 
 // ZON-40/ZON-41 (hito 0.2, decisión de la usuaria en la ronda de la Fase F) — tarjeta flotante al
 // pasar el ratón por una ficha del mapa de zona y menú pegado a la ficha al pulsarla, en lugar del
@@ -10,7 +10,7 @@ import type { PresentacionOferta } from '../../lib/ofertaModoDinamico'
 
 export interface InfoFicha {
   nombre: string
-  /// «Fauna · Enemigo · ×3 · a 4 celdas».
+  /// «Fauna · Enemigo · ×3 · a 4 pasos».
   detalles: string[]
 }
 
@@ -98,19 +98,43 @@ export function MenuFicha({ x, y, escala, info, acciones, onClose }: { x: number
 }
 
 const ANCHO_ENCUENTRO_PX = 270
-const ALTO_ENCUENTRO_PX = 190
 
 /// ZON-5 (hito 0.2): la tarjeta de un encuentro, pegada a su ficha en el mapa (la misma que sale en
 /// el registro, con sus mismas acciones). El mapa ya no se cierra al chocar con algo.
+/// P202 (QA-27): los botones con que Escape cierra la tarjeta del mapa (el menú de un NPC, un encuentro
+/// tranquilo); con alguien que te corta el paso no hay ninguno y Escape no hace nada.
+const CIERRES_DE_TARJETA = ['Salir', 'Ignorar']
+
 export function TarjetaEncuentro({ x, y, escala, presentacion, bloqueo }: { x: number; y: number; escala: number; presentacion: PresentacionOferta; bloqueo?: string | null }) {
+  const cierre = presentacion.actions.find((a) => CIERRES_DE_TARJETA.includes(a.label) && !a.disabled)
+  // Lo mismo que dejan los botones: nada con el turno bloqueado (resuelta, la tarjeta ya no se pinta).
+  const cerrarRef = useRef<(() => void) | null>(null)
+  cerrarRef.current = bloqueo || !cierre ? null : cierre.onClick
+  const tarjetaRef = useRef<SVGForeignObjectElement>(null)
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => {
+      const cerrar = cerrarRef.current
+      if (e.key !== 'Escape' || e.repeat || !cerrar) return
+      const foco = document.activeElement
+      if (foco instanceof HTMLElement && (foco.tagName === 'INPUT' || foco.tagName === 'TEXTAREA' || foco.isContentEditable)) return
+      // Con otro modal encima (no el mapa que contiene la tarjeta), Escape es para él.
+      const tarjeta = tarjetaRef.current
+      if ([...document.querySelectorAll('[role="dialog"]')].some((d) => !tarjeta || !d.contains(tarjeta))) return
+      e.stopPropagation()
+      e.preventDefault()
+      cerrar()
+    }
+    window.addEventListener('keydown', tecla, true)
+    return () => window.removeEventListener('keydown', tecla, true)
+  }, [])
   const ancho = ANCHO_ENCUENTRO_PX * escala
-  const alto = ALTO_ENCUENTRO_PX * escala
+  const alto = altoDeTarjeta(presentacion) * escala
   const derecha = x + 18 * escala
   const px = derecha + ancho <= 800 ? derecha : Math.max(0, x - 18 * escala - ancho)
   const py = Math.min(600 - alto, Math.max(0, y - 40 * escala))
   return (
-    <foreignObject x={px} y={py} width={ancho} height={alto} onClick={(e) => e.stopPropagation()} data-testid="encuentro-en-mapa">
-      <div style={{ width: ANCHO_ENCUENTRO_PX, transform: `scale(${escala})`, transformOrigin: '0 0' }} className="rounded-lg bg-wood-950/95 shadow-xl [&>div]:mt-0">
+    <foreignObject ref={tarjetaRef} x={px} y={py} width={ancho} height={alto} onClick={(e) => e.stopPropagation()} data-testid="encuentro-en-mapa">
+      <div style={{ width: ANCHO_ENCUENTRO_PX, maxHeight: altoDeTarjeta(presentacion), transform: `scale(${escala})`, transformOrigin: '0 0' }} className="overflow-y-auto rounded-lg bg-wood-950/95 shadow-xl [&>div]:mt-0">
         <OfferCard bloqueo={bloqueo} {...presentacion} />
       </div>
     </foreignObject>

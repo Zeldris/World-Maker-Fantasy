@@ -2,6 +2,8 @@ import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from '../../services/entityD
 import type { FastifyInstance } from 'fastify';
 import { posicionEnZona, viajerosAqui } from '../../services/viajerosCruce.js';
 import { tablonEnLugar } from '../../services/cronista/tablones.js';
+import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from '../../services/cronista/testigos.js';
+import { bando } from '../../services/cronista/misiones.js';
 import { Prisma, type MetodoObtencion } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
@@ -13,7 +15,7 @@ import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix, metodoPrincipalDeFuente } from '../../services/harvestAbilities.js';
 import { RECOLECCION_COOLDOWN_MS } from './recolectar.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
-import { murosComoCeldas, murosDe } from '../../services/murosZona.js';
+import { alcanzableDesde, murosComoCeldas, murosDe } from '../../services/murosZona.js';
 
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
 const MINUTOS_POR_PASO_ZONA = 1;
@@ -29,7 +31,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
-import { aNombre, conIndefinido, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
+import { aNombre, conDefinido, conIndefinido, quienEnAviso, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
 import { parseAgenda, regionControlActual, type RegionControlState } from '../../services/worldAgenda.js';
 import { REGION_OWNING_FACTIONS, effectiveTemperamento } from '../../services/reputation.js';
 import { LIENZO_ANCHO, LIENZO_ALTO, posicionAleatoriaEnLienzo, celdaLibreEnEspiral, claveCelda, celdaDePixel, pixelDeCelda, calcularCamino, celdaAdyacenteOMisma, mismaCelda, tirarQuienIniciaEncuentro, type Celda, type IniciativaEncuentroLogRoll } from '../../services/zonaPosicion.js';
@@ -790,6 +792,11 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: string;
           targetName: string;
           aQuien?: string;
+          /// P196/P199: quién protagoniza el aviso («La Cazadora Serhu», «Un Guchapo»; `quienEnAviso`).
+          quien?: string;
+          /// P190: de qué bando es lo que tienes delante (su rebaño, su recinto) y cuánta reputación cuesta
+          /// si te ven cazarlo o cogerlo (`aprovecharseDeLoAjeno`).
+          deBando?: { faccion: string; deQuien: string; reputacion: number };
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           /// Grupos de fauna reales (Fase 1, 2026-09-28) — id del `ZonePoint` colisionado, ausente
@@ -962,6 +969,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     // (`undefined`/`1`) para un dinámico sin `ZonePoint` propio, ver comentario de la interfaz arriba.
     let colisionZonePointId: string | undefined;
     let colisionCantidad = 1;
+    // P190: el bando dueño del punto colisionado (un rebaño del clan), si lo tiene.
+    let colisionDeBando: string | null = null;
     let ultimoEncuentroSigueCerca = false;
     for (const punto of puntosVivos) {
       const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
@@ -986,6 +995,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         nivelNpcColision = npc?.level ?? 1;
         colisionZonePointId = punto.id;
         colisionCantidad = punto.cantidad;
+        colisionDeBando = punto.tipo === 'FAUNA' ? punto.factionSlug : null;
         break; // Solo el primer encuentro — no acumula varios a la vez.
       }
     }
@@ -1031,6 +1041,11 @@ export async function zonaRoutes(app: FastifyInstance) {
           targetSlug: string;
           targetName: string;
           aQuien?: string;
+          /// P196/P199: quién protagoniza el aviso («La Cazadora Serhu», «Un Guchapo»; `quienEnAviso`).
+          quien?: string;
+          /// P190: de qué bando es lo que tienes delante (su rebaño, su recinto) y cuánta reputación cuesta
+          /// si te ven cazarlo o cogerlo (`aprovecharseDeLoAjeno`).
+          deBando?: { faccion: string; deQuien: string; reputacion: number };
           quienInicia: 'jugador' | 'npc';
           combateForzado?: true;
           zonePointId?: string;
@@ -1071,11 +1086,15 @@ export async function zonaRoutes(app: FastifyInstance) {
           // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
           return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug, tipo: colisionTipo ?? undefined } };
         }
+        // QA-99: la oferta también se arma en la oferta ambiental del turno (`turnResolution.ts`, junto a
+        // `decideOfertaModoDinamico`): un campo o una regla nueva, en las dos.
         dynamicModeOffer = {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,
           targetName: colision.targetName,
           ...(colisionTipo === 'NPC' ? { aQuien: aNombre(colision.targetName, colision.articulo) } : {}),
+          ...(colisionTipo && colisionCantidad <= 1 ? { quien: quienEnAviso(colisionTipo, colision.targetName, colision.articulo, colision.genero) } : {}),
+          ...(colisionDeBando ? { deBando: { faccion: colisionDeBando, deQuien: bando(colisionDeBando, 'de'), reputacion: REP_CAZAR_GANADO_AJENO } } : {}),
           // P124: el plural para la tarjeta de un grupo («Un grupo de 6 Guchapos»).
           ...(colisionTipo === 'FAUNA' && colisionCantidad > 1 ? { nombrePlural: pluralDeEspecie(colision.targetName) } : {}),
           quienInicia,
@@ -1108,7 +1127,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             ? `un grupo de ${colisionCantidad} ${pluralDeEspecie(colision.targetName)}`
             : colisionTipo === 'FAUNA'
               ? conIndefinido(colision.targetName, colision.articulo, colision.genero) // P149: «con un Guchapo»
-              : nombreEnFrase(colision.targetName);
+              : conDefinido(colision.targetName, colision.articulo); // P199: «con la Cazadora Serhu»
         const nombreEncuentroInicio = nombreEncuentro.charAt(0).toUpperCase() + nombreEncuentro.slice(1);
         // LogEntry real determinista (2026-09-09, hallazgo real jugando en vivo: la tarjeta de
         // oferta SIEMPRE se renderiza colgada de una LogEntry concreta — LogPanel.tsx solo lee
@@ -1161,9 +1180,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     // bloque ni se evalúa.
     if (!colision) {
       const recursosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: 'RECURSO', activo: true } });
+      // P193: un recurso sobre las estacas (el recinto de múrgoles) solo se alcanza desde dentro.
       for (const punto of recursosCrudos) {
         const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
-        if (!celdaAdyacenteOMisma(celda, celdaPunto)) continue;
+        if (!celdaAdyacenteOMisma(celda, celdaPunto) || !alcanzableDesde(locationSlugColision, celda, celdaPunto)) continue;
         if (punto.targetSlug === ultimoEncuentroSlug) {
           ultimoEncuentroSigueCerca = true;
           continue;
@@ -1197,7 +1217,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
         // encuentra (mismo framing que ya usa `buildDynamicModeTurnoPrompt` cuando `quienInicia` no
         // aplica, pero aquí ni siquiera hay LLM: `dynamicModeRecurso.ts` narra con texto fijo).
-        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador', zonePointId: punto.id, cantidad: punto.cantidad, metodo: metodoPrincipalDeFuente(yieldsRecurso.map((y) => y.metodoObtencion)) };
+        dynamicModeOffer = { tipo: 'RECURSO', targetSlug: punto.targetSlug, targetName: nombre, quienInicia: 'jugador', zonePointId: punto.id, cantidad: punto.cantidad, metodo: metodoPrincipalDeFuente(yieldsRecurso.map((y) => y.metodoObtencion)), ...(punto.factionSlug ? { deBando: { faccion: punto.factionSlug, deQuien: bando(punto.factionSlug, 'de'), reputacion: REP_COGER_LO_AJENO } } : {}) };
         const text = `${characterName} encuentra ${nombre} cerca.`;
         const created = await tx.logEntry.create({
           data: { saveId, channel: 'CHARACTER', text, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true },

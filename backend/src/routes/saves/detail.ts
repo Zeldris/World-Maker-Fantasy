@@ -26,6 +26,7 @@ import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
+import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -195,6 +196,8 @@ export async function detailRoutes(app: FastifyInstance) {
     const catalogItemBySlug = new Map(catalogItems.map((c) => [c.slug, c]));
     const locationSlugById = new Map(questTargetLocations.map((l) => [l.id, l.slug]));
     const npcHomeLocationSlugById = new Map(questTargetNpcs.map((n) => [n.id, n.homeLocationSlug]));
+    // P200 (QA-27): quien encarga cada misión, con el nombre con que lo ve la jugadora.
+    const encargoVisible = await conQuienVisibleEnLote(prisma, save.id, save.quests.map((q) => ({ id: q.id, huecos: q.huecos, descripcion: q.description })));
 
     const pendingCombatStates = pendingCombatNpcs.length
       ? await prisma.npcState.findMany({
@@ -639,7 +642,7 @@ export async function detailRoutes(app: FastifyInstance) {
         return {
           id: q.id,
           title: q.title,
-          description: q.description,
+          description: encargoVisible.get(q.id)?.descripcion ?? q.description,
           status: q.status,
           objetivo: q.objetivo,
           rewardXp: q.rewardXp,
@@ -650,7 +653,7 @@ export async function detailRoutes(app: FastifyInstance) {
       progreso: q.progreso,
       cantidad: q.cantidad,
       venceEn: q.venceEn,
-      encarga: (q.huecos as { npc?: { nombre: string }; faccion?: { nombre: string } } | null)?.npc?.nombre ?? (q.huecos as { faccion?: { nombre: string } } | null)?.faccion?.nombre ?? null,
+      encarga: encargoVisible.get(q.id)?.encarga ?? null,
       recompensa: q.recompensa,
       // P183 (QA-27): el botón «Entregar» va desactivado con el mismo motivo que daría el servidor.
       ...(q.tipoMision === 'ENTREGAR' && q.status === 'ACTIVA'

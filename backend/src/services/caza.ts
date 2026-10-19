@@ -13,7 +13,7 @@ import { MAX_RONDAS_SUBCOMBATE } from './combateDeFondo.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 import { ambitoPoblacion } from './mundoPartida.js';
 import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
-import { nombreDeEncuentro } from './dynamicMode.js';
+import { nombreDeEncuentro, pluralDeEspecie } from './dynamicMode.js';
 import { sinComillasSueltas } from './accionCitada.js';
 import { aprovecharseDeLoAjeno } from './cronista/testigos.js';
 
@@ -166,6 +166,19 @@ export function groupVarianceClause(cantidadElegida: number, cantidadReal: numbe
     : `aunque al final solo consigo acorralar a ${cantidadReal} de los que había marcado`;
 }
 
+/// P191 (QA-27): la misma variación para el diario, en tercera persona y con frase entera («Gorhorn solo
+/// consigue acorralar a 5 de los 6 Múrgoles que había marcado.»); la de arriba, en primera, va al narrador.
+export function groupVarianceDiario(personaje: string, especie: string, cantidadElegida: number, cantidadReal: number, femenina = false): string | null {
+  if (cantidadReal === cantidadElegida) return null;
+  const plural = pluralDeEspecie(especie);
+  if (cantidadReal === 0) return `El grupo de ${plural} se dispersa antes de que ${personaje} pueda acorralar a ${femenina ? 'ninguna' : 'ninguno'}.`;
+  if (cantidadReal > cantidadElegida) {
+    const extra = cantidadReal - cantidadElegida;
+    return extra === 1 ? `Al acercarse ${personaje}, se suma ${femenina ? 'otra' : 'otro'} ${especie} sin previo aviso.` : `Al acercarse ${personaje}, se suman ${extra} ${plural} más sin previo aviso.`;
+  }
+  return `${personaje} solo consigue acorralar a ${cantidadReal === 1 ? (femenina ? 'una' : 'uno') : cantidadReal} de ${femenina ? 'las' : 'los'} ${cantidadElegida} ${plural} que había marcado.`;
+}
+
 /// Grupos de fauna reales (Fase 2, 2026-09-28) — el `ZonePoint` del que sale un objetivo pierde
 /// exactamente los individuos ENFRENTADOS (nunca los avistados/elegidos: si el grupo se dispersa
 /// sin comprometerse, `enfrentados` puede ser 0 y el punto no pierde nada). Si llega a 0: la fila
@@ -306,6 +319,8 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
 async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], emboscada = false): Promise<IniciarCazaResultado> {
   const currentLocationId = save.currentLocationId;
   const varianceClauses: string[] = [];
+  // P191: la versión de diario de una cláusula de `varianceClauses` cuando no es la misma frase.
+  const enDiario = new Map<string, string>();
   const hayGrupoReal = targets.some((t) => t.cantidadObjetivo > 1);
   const especiesDispersadas: string[] = [];
   const tiradasGrupo: TiradaGrupoInfo[] = [];
@@ -362,7 +377,12 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
         }
         if (zonePointId) enfrentadosPorZonePoint.set(zonePointId, (enfrentadosPorZonePoint.get(zonePointId) ?? 0) + cantidadReal);
         const clause = groupVarianceClause(cantidadElegida, cantidadReal);
-        if (clause) varianceClauses.push(`Con '${npc.name}', ${clause}.`);
+        if (clause) {
+          const conNarrador = `Con '${npc.name}', ${clause}.`;
+          varianceClauses.push(conNarrador);
+          const diario = groupVarianceDiario(save.characterName, npc.name, cantidadElegida, cantidadReal, npc.articulo === 'la' || npc.genero === 'F');
+          if (diario) enDiario.set(conNarrador, diario);
+        }
       } else {
         combatientes.push({ bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scope, destreza: npcAttrs.destreza, inteligencia: npcAttrs.inteligencia, nombre: npc.name });
         if (zonePointId) enfrentadosPorZonePoint.set(zonePointId, (enfrentadosPorZonePoint.get(zonePointId) ?? 0) + 1);
@@ -477,7 +497,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
   // jugadora, quién cae de fondo) va en la entrada de sistema del combate, no pegado a su acción.
   if (logEntryGrupo) {
     const aviso = emboscada ? `${nombreDeEncuentro(names.join(', '), targets.reduce((n, t) => n + t.cantidadObjetivo, 0), true)} te embosca.` : null;
-    const texto = [aviso, logEntryGrupo.text, ...varianceClauses.map(sinComillasSueltas)].filter(Boolean).join(' ');
+    const texto = [aviso, logEntryGrupo.text, ...varianceClauses.map((c) => enDiario.get(c) ?? sinComillasSueltas(c))].filter(Boolean).join(' ');
     await prisma.logEntry.update({ where: { id: logEntryGrupo.id }, data: { text: texto } });
     logEntryGrupo = { ...logEntryGrupo, text: texto };
   }

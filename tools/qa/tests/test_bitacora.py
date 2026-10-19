@@ -6,10 +6,10 @@ import unittest
 from comun import QA, carpeta, escribir, git
 
 
-def comprobar(texto: str) -> subprocess.CompletedProcess:
+def comprobar(texto: str, *args: str) -> subprocess.CompletedProcess:
     ruta = os.path.join(carpeta(), 'traspaso.md')
     escribir(ruta, texto)
-    return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), ruta], capture_output=True, text=True)
+    return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), ruta, *args], capture_output=True, text=True)
 
 
 class Bitacora(unittest.TestCase):
@@ -34,6 +34,25 @@ class Bitacora(unittest.TestCase):
 
     def test_sin_ninguna_fila_falla(self):
         self.assertEqual(comprobar('| **Hito** | 0.3 |\n').returncode, 1)
+
+    def test_fecha_anterior_al_commit_falla(self):
+        """QA-115: con `--fecha`, «Actualizado» no puede ser de un día anterior."""
+        texto = '| **Actualizado** | 2026-10-17 |\n| **Tarea en curso · `a`** | algo |\n'
+        r = comprobar(texto, '--fecha', '2026-10-19')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('«Actualizado» dice 2026-10-17 y el commit es del 2026-10-19', r.stdout)
+        self.assertEqual(comprobar(texto, '--fecha', '2026-10-17').returncode, 0)
+        self.assertEqual(comprobar(texto).returncode, 0)
+
+    def test_fecha_con_formato_suelto_o_sin_fila(self):
+        texto = '|  **Actualizado**  |  `2026-10-17` |\n| **Tarea en curso · `a`** | algo |\n'
+        self.assertIn('dice 2026-10-17', comprobar(texto, '--fecha', '2026-10-19').stdout)
+        r = comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', '2026-10-19')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('falta la fila «| **Actualizado**', r.stdout)
+
+    def test_fecha_mal_escrita_da_uso(self):
+        self.assertIn('Uso', comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', 'ayer').stderr)
 
 
 class Cerradas(unittest.TestCase):

@@ -64,6 +64,10 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   Siete de los doce fallos del PR #53 eran esto: el tope de ronda de P129 en 2 de 6 golpes, la Destreza
   de P109 en una de dos tiradas, la energía de P121 sin tope y `/abrir` sin las comprobaciones de la
   ruta que sustituye.
+- **La oferta de un encuentro se arma en dos sitios** (`QA-99`, retro de P189-P205): la colisión del mapa
+  (`detectarEncuentroEnCelda`, `zona.ts`) y la oferta ambiental del turno (`turnResolution.ts`). Un campo o una
+  regla nueva de la oferta (`quien`, `deBando`, lo que se alcanza desde dónde) va en los dos, o el diff dice por
+  qué no. P190 y P193 llegaron al `/code-review` en uno solo.
 - **Sin copias entre backend y frontend.** Lo que decide el backend viaja en su respuesta (un campo,
   como `currentLocation.puntoDeAgua`); una lista copiada a mano en el frontend se desfasa. Lo mismo con
   el diario: una línea que cuenta algo del juego llega del backend con su `logEntryId`, y el frontend

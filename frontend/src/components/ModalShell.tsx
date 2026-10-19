@@ -74,6 +74,10 @@ export interface ModalShellProps {
   footer?: ReactNode
 }
 
+/// P202 (QA-27): los modales abiertos, del primero al último. Escape cierra el de encima aunque el foco se
+/// haya quedado fuera de él (p. ej. en `body`, al desaparecer el botón que lo abrió).
+const modalesAbiertos: object[] = []
+
 export function ModalShell({
   title,
   subtitle,
@@ -100,6 +104,26 @@ export function ModalShell({
     panelRef.current?.focus()
     return () => {
       if (previo && previo.isConnected) previo.focus()
+    }
+  }, [])
+
+  const cerrarRef = useRef({ onClose, closeDisabled })
+  cerrarRef.current = { onClose, closeDisabled }
+  useEffect(() => {
+    const yo = {}
+    modalesAbiertos.push(yo)
+    const tecla = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || modalesAbiertos[modalesAbiertos.length - 1] !== yo) return
+      // Con el foco dentro de algún modal, lo resuelve su `onKeyDown`.
+      if (document.activeElement instanceof Element && document.activeElement.closest('[role="dialog"]')) return
+      if (cerrarRef.current.closeDisabled) return
+      e.preventDefault()
+      cerrarRef.current.onClose()
+    }
+    window.addEventListener('keydown', tecla)
+    return () => {
+      window.removeEventListener('keydown', tecla)
+      modalesAbiertos.splice(modalesAbiertos.indexOf(yo), 1)
     }
   }, [])
 

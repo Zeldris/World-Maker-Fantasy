@@ -56,3 +56,22 @@ describe('muros de Colmillo Ceniza', () => {
     expect(murosComoCeldas('hondonada-del-eco')).toEqual([]);
   });
 });
+
+// P193 (QA-27): el recinto de múrgoles, sobre las estacas (8,9), se ordeñaba desde fuera, desde (7,10).
+describe('interior de la empalizada (P193)', () => {
+  it('el interior es lo que queda dentro con la puerta cerrada; el recinto solo se alcanza desde dentro', async () => {
+    const { interiorDe, alcanzableDesde } = await import('./murosZona.js');
+    const interior = interiorDe('campamento-serhu');
+    expect(interior.has(claveCelda({ col: 8, row: 8 }))).toBe(true);
+    expect(interior.has(claveCelda({ col: 10, row: 6 }))).toBe(true);
+    expect(interior.has(claveCelda({ col: 7, row: 10 }))).toBe(false);
+    expect(interior.has(claveCelda({ col: 12, row: 10 }))).toBe(false);
+    const recinto = { col: 8, row: 9 };
+    expect(alcanzableDesde('campamento-serhu', { col: 8, row: 8 }, recinto)).toBe(true);
+    expect(alcanzableDesde('campamento-serhu', { col: 7, row: 10 }, recinto)).toBe(false);
+    expect(alcanzableDesde('campamento-serhu', { col: 8, row: 10 }, recinto)).toBe(false);
+    // Un punto que no está sobre un muro, desde cualquier vecina; una zona sin empalizada, igual.
+    expect(alcanzableDesde('campamento-serhu', { col: 2, row: 2 }, { col: 3, row: 3 })).toBe(true);
+    expect(alcanzableDesde('otra-zona', { col: 7, row: 10 }, recinto)).toBe(true);
+  });
+});

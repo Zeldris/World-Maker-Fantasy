@@ -2,7 +2,7 @@
 
 **Actualizado:** 2026-09-29. Todo lo pendiente se ha comprobado contra el código ese día.
 **Versión actual:** Alpha 0 · `v0.0.0-alpha` (etiqueta en `44f8ba3`, 2026-09-29). Ver § Versionado.
-**En curso:** [plan-roadmap-oct-2026.md](plan-roadmap-oct-2026.md) (Ahora + Trimestre 1): fases 1-8 y 10 (tiradas visibles, `c088f1d`) hechas; fase 9 (verificación en vivo) en curso.
+**En curso:** [plan-roadmap-oct-2026.md](plan-roadmap-oct-2026-alpha0.md) (Ahora + Trimestre 1): fases 1-8 y 10 (tiradas visibles, `c088f1d`) hechas; fase 9 (verificación en vivo) en curso.
 **Historial:** lo cerrado antes de esta fecha está en
 [archivo/21-roadmap-2026-09-historico.md](../archivo/21-roadmap-2026-09-historico.md) y en los
 roadmaps anteriores de [archivo/](../archivo/).

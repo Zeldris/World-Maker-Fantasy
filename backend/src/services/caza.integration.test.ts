@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { asegurarMundoDePartida } from './mundoPartida.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCaza, accionEnDiarioDeCaza, esActionTextDeCaza, dispersionCooldownActivo, rollGroupEngagement, rollGroupEngagementDetail, groupVarianceClause, type CazaTarget } from './caza.js';
+import { iniciarCaza, accionEnDiarioDeCaza, esActionTextDeCaza, dispersionCooldownActivo, rollGroupEngagement, rollGroupEngagementDetail, groupVarianceClause, groupVarianceDiario, type CazaTarget } from './caza.js';
 import type { AttributeBlock } from './dice.js';
 
 /// Fase 4 (2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — `cazar.ts` (rutas
@@ -66,6 +66,13 @@ describe('groupVarianceClause', () => {
   it('sale MENOS de lo marcado: solo se consigue acorralar a algunos', () => {
     expect(groupVarianceClause(2, 1)).toBe('aunque al final solo consigo acorralar a uno de los que había marcado');
     expect(groupVarianceClause(4, 2)).toBe('aunque al final solo consigo acorralar a 2 de los que había marcado');
+  });
+
+  // /code-review: el diario concuerda con una especie femenina.
+  it('groupVarianceDiario concuerda en género', () => {
+    expect(groupVarianceDiario('Gorhorn', 'Cabra', 3, 1, true)).toBe('Gorhorn solo consigue acorralar a una de las 3 Cabras que había marcado.');
+    expect(groupVarianceDiario('Gorhorn', 'Cabra', 1, 2, true)).toBe('Al acercarse Gorhorn, se suma otra Cabra sin previo aviso.');
+    expect(groupVarianceDiario('Gorhorn', 'Guchapo', 2, 0)).toBe('El grupo de Guchapos se dispersa antes de que Gorhorn pueda acorralar a ninguno.');
   });
 
   it('fallo total (cantidadReal 0): el grupo entero se dispersa', () => {
@@ -217,6 +224,32 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
 
       const saveTrasCaza = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveTrasCaza.pendingCombatNpcSlugs).toEqual([]);
+    }, 20_000);
+  });
+
+  // P191 (QA-27): si el dado deja menos de los marcados, el diario lo dice en tercera persona y con
+  // frase entera; la primera persona («solo consigo acorralar») es para el narrador.
+  describe('menos de los marcados (P191)', () => {
+    let saveId: string;
+    beforeAll(async () => {
+      saveId = await crearSave(1, 'Gorhorn de prueba (caza.ts, P191)');
+    });
+    afterAll(() => limpiarSave(saveId));
+
+    it('el diario dice «solo consigue acorralar a 2 de los 3 …» en tercera persona', async () => {
+      const save = await saveParaCaza(saveId, 1);
+      const targets: CazaTarget[] = [{ npc: zenseCeniza, cantidadObjetivo: 3, cantidadElegida: 3 }];
+      // random=0 -> roll=1 -> delta -1 -> cantidadReal=2.
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+      try {
+        const resultado = await iniciarCaza({ save, targets });
+        if ('error' in resultado || resultado.resuelveSinCombate) throw new Error('esperaba combate');
+        expect(resultado.logEntry?.text).toContain(`${save.characterName} solo consigue acorralar a 2 de los 3 Zenses Ceniza que había marcado.`);
+        expect(resultado.logEntry?.text).not.toContain('consigo');
+        expect(resultado.actionText).toContain('solo consigo acorralar a 2');
+      } finally {
+        randomSpy.mockRestore();
+      }
     }, 20_000);
   });
 

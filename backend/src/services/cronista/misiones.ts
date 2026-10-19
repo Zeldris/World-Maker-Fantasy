@@ -193,17 +193,23 @@ const CUERPO: Record<TipoMision, ((h: HuecosMision) => string)[]> = {
 
 /// Cómo lo dice cada pueblo (cierre de la frase); para los demás, sin adorno.
 const CIERRE: Record<Pueblo, string[]> = {
-  orcos: ['Que la caza sea limpia.', 'El clan recuerda a quien cumple.'],
+  orcos: ['El clan recuerda a quien cumple.', 'Que vuelvas con honor.'],
   goirntes: ['Consta por escrito: el pago se hará según lo grabado.', 'Que el orden se cumpla.'],
   nabieus: ['No hace falta que se sepa quién lo hizo.', 'Lo que se haga, se callará.'],
   faerus: ['La manada lo olerá en ti.', 'Que el rastro te sea fiel.'],
+};
+
+/// P201 (QA-27): el cierre de un encargo de caza; un pueblo que no está aquí usa el de `CIERRE`.
+const CIERRE_DE_CAZA: Partial<Record<Pueblo, string[]>> = {
+  orcos: ['Que la caza sea limpia.', 'El clan recuerda a quien cumple.'],
 };
 
 /// Puro: título y descripción de la misión. `variante` elige la frase (determinista con la semilla).
 export function textoDeMision(h: HuecosMision, variante: number): { titulo: string; descripcion: string } {
   const cuerpos = CUERPO[h.tipo];
   const cuerpo = cuerpos[Math.abs(variante) % cuerpos.length]!(h);
-  const cierres = CIERRE[h.faccion.pueblo as Pueblo];
+  const pueblo = h.faccion.pueblo as Pueblo;
+  const cierres = (h.tipo === 'CAZAR' ? CIERRE_DE_CAZA[pueblo] : undefined) ?? CIERRE[pueblo];
   const cierre = cierres ? ` ${cierres[Math.abs(variante) % cierres.length]}` : '';
   const quien = h.npc ? `${h.npc.nombre}: «${cuerpo}${cierre}»` : `${cuerpo}${cierre}`;
   return { titulo: TITULO[h.tipo](h), descripcion: `${quien} Plazo: ${h.plazoDias} días.` };

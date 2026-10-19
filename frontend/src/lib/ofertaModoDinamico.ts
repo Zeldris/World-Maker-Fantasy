@@ -42,7 +42,7 @@ export interface PresentacionOferta {
   icon: string
   title: string
   subtitle: string
-  warning?: { nivel: 'alto' | 'mortal'; text: string }
+  warning?: { nivel: 'aviso' | 'alto' | 'mortal'; text: string }
   error?: string
   actions: AccionOferta[]
 }
@@ -67,10 +67,36 @@ export function presentacionMenuNpc(entryId: string, menu: MenuNpc, onChoose?: (
   }
 }
 
+function riesgoDeOferta(offer: OfertaModoDinamico): PresentacionOferta['warning'] {
+  if (!offer.riesgoCaza || offer.riesgoCaza.riesgo === 'bajo' || !(offer.combateForzado || offer.tipo === 'FAUNA')) return undefined
+  return {
+    nivel: offer.riesgoCaza.riesgo,
+    // QA-27 P27: si te cortan el paso, el riesgo es de pelear, no de cazar.
+    text: `${
+      offer.combateForzado
+        ? offer.riesgoCaza.riesgo === 'mortal'
+          ? 'Pelear puede matarte en un solo turno.'
+          : 'Pelear es peligroso.'
+        : offer.riesgoCaza.riesgo === 'mortal'
+          ? 'Cazar esto puede matarte en un solo turno.'
+          : 'Cazar esto es peligroso.'
+    } ${offer.riesgoCaza.motivo}`.trim(),
+  }
+}
+
+/// P190 (QA-27): lo de un bando (su rebaño, su recinto) lo dice el aviso antes de tocarlo, con lo que cuesta
+/// que te vean, como el aviso de robo de Medieval Dynasty o Bellwright; va delante del riesgo, si lo hay.
+function avisoDeBando(offer: OfertaModoDinamico, riesgo: PresentacionOferta['warning']): PresentacionOferta['warning'] {
+  if (!offer.deBando) return riesgo
+  const accion = offer.tipo === 'RECURSO' ? 'cogerlo' : 'cazarlo'
+  const texto = `Es ${offer.deBando.deQuien}: si te ven ${accion}, perderás reputación con ellos (${offer.deBando.reputacion}).`
+  return { nivel: riesgo?.nivel ?? 'aviso', text: riesgo ? `${texto} ${riesgo.text}` : texto }
+}
+
 export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h: ManejadoresOferta): PresentacionOferta {
   // Grupos de fauna reales (Fase 1, 2026-09-28) — «Un grupo de N {nombre}» cuando el punto
   // colisionado representa más de un individuo (nunca NPC/RECURSO, que no se agrupan).
-  const nombre = offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.nombrePlural ?? offer.targetName}` : offer.targetName
+  const nombre = offer.tipo === 'FAUNA' && (offer.cantidad ?? 1) > 1 ? `Un grupo de ${offer.cantidad} ${offer.nombrePlural ?? offer.targetName}` : (offer.quien ?? offer.targetName)
   return {
     tone: offer.combateForzado ? 'danger' : 'accent2',
     icon: offer.combateForzado ? '⚔️' : offer.tipo === 'RECURSO' ? iconoRecurso(offer.metodo) : '💬',
@@ -82,22 +108,7 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
         : offer.tipo === 'RECURSO'
           ? 'Hay algo cerca que podrías recolectar.'
           : 'Hay algo cerca con lo que puedes interactuar.',
-    warning:
-      offer.riesgoCaza && offer.riesgoCaza.riesgo !== 'bajo' && (offer.combateForzado || offer.tipo === 'FAUNA')
-        ? {
-            nivel: offer.riesgoCaza.riesgo,
-            // QA-27 P27: si te cortan el paso, el riesgo es de pelear, no de cazar.
-            text: `${
-              offer.combateForzado
-                ? offer.riesgoCaza.riesgo === 'mortal'
-                  ? 'Pelear puede matarte en un solo turno.'
-                  : 'Pelear es peligroso.'
-                : offer.riesgoCaza.riesgo === 'mortal'
-                  ? 'Cazar esto puede matarte en un solo turno.'
-                  : 'Cazar esto es peligroso.'
-            } ${offer.riesgoCaza.motivo}`.trim(),
-          }
-        : undefined,
+    warning: avisoDeBando(offer, riesgoDeOferta(offer)),
     error: offer.error,
     actions: [
       {
@@ -121,4 +132,17 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
       ...(offer.combateForzado ? [] : [{ label: 'Ignorar', tone: 'neutral' as const, disabled: offer.busy, onClick: () => h.onDismissDynamicModeOffer?.(entryId) }]),
     ],
   }
+}
+
+/// Alto de la tarjeta con hasta dos filas de botones y sin aviso.
+const ALTO_BASE_TARJETA_PX = 190
+/// Alto de cada fila de botones de la tarjeta (caben dos por fila) y del aviso de riesgo o de bando.
+const ALTO_FILA_BOTONES_PX = 34
+const ALTO_AVISO_PX = 44
+
+/// P198 (QA-27): la tarjeta crece con sus opciones (el menú de un NPC trae hasta 8) y con el aviso; antes,
+/// con alto fijo, lo que no cabía quedaba fuera, sin barra. Si aun así no cabe, hace scroll.
+export function altoDeTarjeta(presentacion: Pick<PresentacionOferta, 'actions' | 'warning'>): number {
+  const filas = Math.ceil(presentacion.actions.length / 2)
+  return Math.min(560, ALTO_BASE_TARJETA_PX + Math.max(0, filas - 2) * ALTO_FILA_BOTONES_PX + (presentacion.warning ? ALTO_AVISO_PX : 0))
 }

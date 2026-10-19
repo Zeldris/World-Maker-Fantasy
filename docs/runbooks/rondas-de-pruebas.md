@@ -52,12 +52,32 @@ sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas 
   psql $D -c "select \"zonaUltimoEncuentro\" from \"Save\" where id = '$S'"
   ```
 
+## Una ronda, un bloque (`QA-105`)
+
+Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin saltar de un sitio a otro:
+
+1. **Qué falta**: `python3 tools/qa/matriz-pruebas.py` (resumen por bloque) y `--bloque <Bloque>` (las tareas sin
+   jugar de ese bloque). El bloque, el que tenga menos jugado o el que pida la usuaria.
+2. **Escenario**: `tools/qa/escenario.sh lista`; si ninguno deja cerca lo que se va a probar, se llega jugando una
+   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Lo que tarda días, con
+   `escenario.sh avanzar <partida> <días>`.
+3. **Jugar**: cada comprobación se mira en texto (`orden.sh --ayuda estado`, `QA-104`); captura solo si algo no
+   cuadra o es visual. Lo que vale la pena repetir se escribe como recorrido en
+   `tools/playwright-e2e/recorridos/` (`QA-103`, su cabecera en `recorrer.mjs`) y se pasa con
+   `bash tools/qa/recorrer.sh [filtro]`: una línea por recorrido.
+4. **Apuntar**: hallazgos con `marca-hallazgo.py` (abajo) y, en la matriz, cada tarea jugada como `jugado` con la
+   fecha y el hallazgo o recorrido que lo prueba.
+5. **Cerrar**: arreglos, sus recorridos en verde y el bloque en `jugado` en la matriz. Entonces, el siguiente.
+
 ## Cómo se juega
 
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
-2. Juega paso a paso y **mira la pantalla** en cada paso (captura): botones, textos, mapa, avisos.
+2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
+   visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
+   (usuaria, 2026-10-19), después se mejora `estado.js` o la ayuda que toque para que lo dé en texto la próxima vez
+   (así salieron los cajones, los tooltips y `pulsar.js`).
    Un bucle automático (combate, caminar) solo para repetir algo ya visto; lo nuevo se juega a mano.
 3. Apunta cada hallazgo en el registro de la ronda (`docs/registros/pruebas-<hito>-hallazgos.md`,
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de
@@ -79,7 +99,7 @@ sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas 
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review`, luego `/retro` y lo aprobado de ella, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review`, luego `/opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
 ## Lo que engaña
 
