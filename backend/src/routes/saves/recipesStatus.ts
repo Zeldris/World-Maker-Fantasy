@@ -26,6 +26,12 @@ export interface RecipeStatus {
   /// materiales/atributos YA se cumplen, mismo criterio que turnResolution.ts (si faltan
   /// materiales, ese sigue siendo el problema real a mostrar). null = no aplica o no bloquea.
   blockedReason: string | null;
+  /// P218 — solo en recetas de construcción: lo que el panel Reino › Edificios › Construir necesita
+  /// para ofrecer cada edificio sin una lista a mano en el frontend (nombre, si cuelga del
+  /// Ayuntamiento y qué edificio mejora).
+  name?: string;
+  requiresAyuntamiento?: boolean;
+  upgradesRecipeKey?: string | null;
 }
 
 /// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
@@ -68,6 +74,9 @@ export async function constructionRecipeStatusFor(params: {
     locationOk: true,
     requiredLocationName: null,
     blockedReason,
+    name: recipe.name,
+    requiresAyuntamiento: recipe.requiresAyuntamiento === true,
+    upgradesRecipeKey: recipe.upgradesRecipeKey ?? null,
   };
 }
 

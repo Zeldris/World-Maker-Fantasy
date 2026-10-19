@@ -167,4 +167,26 @@ describe('GET /saves/:id/recipes-status', () => {
     expect(choza.met).toBe(false);
     expect(findFirstBuilding).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ recipeKey: 'ayuntamiento', status: 'ACTIVO' }) }));
   });
+
+  it('P218: las recetas de construcción llevan nombre, requiresAyuntamiento y upgradesRecipeKey', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: null,
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const por = (k: string) => body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === k && r.recipeCategory === 'construccion');
+    for (const k of ['pozo', 'granero', 'cisterna', 'lenera']) {
+      expect(por(k).requiresAyuntamiento).toBe(true);
+      expect(por(k).upgradesRecipeKey).toBeNull();
+      expect(por(k).name).toBeTruthy();
+    }
+    expect(por('pozo').name).toBe('un pozo');
+    expect(por('herreria-obrador').upgradesRecipeKey).toBe('herreria');
+    expect(por('choza').requiresAyuntamiento).toBe(false);
+  });
 });

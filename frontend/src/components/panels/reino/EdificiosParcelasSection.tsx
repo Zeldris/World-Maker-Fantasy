@@ -54,16 +54,50 @@ interface EdificiosParcelasSectionProps {
   bloqueoTurno?: string | null
 }
 
+interface BuildOption { recipeKey: string; label: string; actionText: string; needsCuartel: boolean; status: RecipeStatusInfo | undefined }
+
+/// P218 — «un pozo» -> «Pozo».
+function labelDeReceta(name: string): string {
+  const sinArticulo = name.replace(/^(un|una|el|la)\s+/i, '')
+  return sinArticulo.charAt(0).toUpperCase() + sinArticulo.slice(1)
+}
+
+/// P218 — todo lo que el reino puede levantar sale del catálogo del backend (`recipesStatus`), no de
+/// una lista fija: edificios que cuelgan del Ayuntamiento (Pozo, Granero, Cisterna, Leñera, oficios…)
+/// y las mejoras de un edificio que ya está en pie. Las mejoras de Cuartel se muestran siempre.
+function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: RecipeStatusInfo[]): BuildOption[] {
+  const fijas = new Map(CUARTEL_BUILD_OPTIONS.map((o) => [o.recipeKey, o]))
+  const out: BuildOption[] = []
+  const vistas = new Set<string>()
+  const construcciones = recipesStatus.filter((s) => s.recipeCategory === 'construccion')
+  const candidatas = [...construcciones, ...CUARTEL_BUILD_OPTIONS.filter((o) => !construcciones.some((s) => s.recipeKey === o.recipeKey)).map((o) => ({ recipeKey: o.recipeKey }) as RecipeStatusInfo)]
+  for (const s of candidatas) {
+    if (vistas.has(s.recipeKey)) continue
+    const fija = fijas.get(s.recipeKey)
+    const mejora = s.upgradesRecipeKey && s.upgradesRecipeKey !== 'ayuntamiento' ? s.upgradesRecipeKey : null
+    const delReino = fija || (s.requiresAyuntamiento && !mejora) || (mejora && buildings.some((b) => b.recipeKey === mejora))
+    if (!delReino || !s.recipeKey) continue
+    vistas.add(s.recipeKey)
+    if (fija) {
+      out.push({ ...fija, status: construcciones.includes(s) ? s : undefined })
+    } else if (s.name) {
+      out.push({ recipeKey: s.recipeKey, label: mejora ? `Mejorar a ${labelDeReceta(s.name)}` : labelDeReceta(s.name), actionText: `Me pongo a construir ${s.name}`, needsCuartel: false, status: s })
+    }
+  }
+  return out
+}
+
 /// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`.
 export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild, bloqueoTurno }: EdificiosParcelasSectionProps) {
   const hasCuartel = buildings.some((b) => b.recipeKey === 'cuartel-avanzado')
   const buildButtons = onBuild && (
     <PanelSection title="Construir">
       <div className="flex flex-col gap-2">
-        {CUARTEL_BUILD_OPTIONS.map((opt) => {
-          const status = recipesStatus.find((s) => s.recipeCategory === 'construccion' && s.recipeKey === opt.recipeKey)
+        {opcionesDeConstruccion(buildings, recipesStatus).map((opt) => {
+          const status = opt.status
           const alreadyBuilt = buildings.some((b) => b.recipeKey === opt.recipeKey)
           const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? null
+          const coste = status?.ingredients?.length ? status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(' · ') : null
           return (
             <div key={opt.recipeKey}>
               <button
@@ -75,6 +109,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
               >
                 🏗️ {opt.label}
               </button>
+              {coste && <p className="mt-0.5 px-1 text-2xs text-wood-400">Coste: {coste}</p>}
               {reason && <p className="mt-0.5 px-1 text-2xs text-wood-500">{reason}</p>}
             </div>
           )
