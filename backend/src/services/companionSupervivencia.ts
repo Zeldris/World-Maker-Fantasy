@@ -307,7 +307,7 @@ export async function advanceCompanionSurvival(prisma: PrismaClient): Promise<{ 
 /// P219: texto del aviso cuando la carencia empeora la condición (puro, determinista).
 export function avisoCarenciaPersonaje(comida: number, agua: number): string {
   const causa = comida < UMBRAL_DESCUIDO_PCT && agua < UMBRAL_DESCUIDO_PCT ? 'el hambre y la sed' : comida < UMBRAL_DESCUIDO_PCT ? 'el hambre' : 'la sed';
-  return `Sin comer ni beber lo necesario, ${causa} te debilita y tu estado empeora. Busca alimento y agua.`;
+  return `Sin comer ni beber lo necesario, ${causa} te ${causa === 'el hambre y la sed' ? 'debilitan' : 'debilita'} y tu estado empeora. Busca alimento y agua.`;
 }
 
 /// Hambre/Sed del propio personaje — topado en CONVALECIENTE (ver `condicionPorSupervivencia`).

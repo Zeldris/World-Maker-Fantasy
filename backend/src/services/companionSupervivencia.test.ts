@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  avisoCarenciaPersonaje,
   esDomador,
   felicidadUmbralFor,
   FELICIDAD_UMBRAL_GENERAL,
@@ -221,5 +222,13 @@ describe('condicionPorSupervivencia', () => {
     const sinBono = resolverIntento(iguales, 'carisma', iguales, 'carisma', 0, false, 100, () => 0.5);
     const conMalus = resolverIntento(iguales, 'carisma', iguales, 'carisma', 0, false, 100, () => 0.5, -2);
     expect(conMalus.roll.margen).toBe(sinBono.roll.margen - 2);
+  });
+});
+
+describe('avisoCarenciaPersonaje (P219)', () => {
+  it('concuerda el verbo con la causa', () => {
+    expect(avisoCarenciaPersonaje(0, 0)).toContain('el hambre y la sed te debilitan');
+    expect(avisoCarenciaPersonaje(0, 100)).toContain('el hambre te debilita ');
+    expect(avisoCarenciaPersonaje(100, 0)).toContain('la sed te debilita ');
   });
 });

@@ -12,7 +12,7 @@
 //
 // En `CR-65` el asalto solo lo lanzan los tests; los de verdad llegan con `CR-50` (bandidos) y
 // `CR-37` (guerra), que crean el viajero `ASALTO` y lo traen hasta aquí.
-import type { Prisma } from '@prisma/client';
+import type { CondicionFisica, Prisma } from '@prisma/client';
 import { simularCombateDeFondo, type CombatienteFondo } from './combateDeFondo.js';
 import { baseDePueblo, soldadoGenerico } from './cronista/combatientesFaccion.js';
 import { golpeAEmpalizada, NIVEL_MENOS_MILICIA } from './cronista/defensa.js';
@@ -96,7 +96,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   }
   // CR-37 (Q6): si el personaje está allí, pelea dentro del combate de fondo con su grupo 1 (no
   // muere de fondo; queda como acabe).
-  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, characterName: true, attributes: true, level: true, condicionFisica: true } });
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true, characterName: true, attributes: true, level: true, condicionFisica: true, kingdomName: true } });
   const presente = save.currentLocationId === asentamiento.locationId && save.condicionFisica !== 'CONVALECIENTE' && save.condicionFisica !== 'MUERTO';
   const grupo1 = presente ? await tx.companion.findMany({ where: { saveId, combatGroupSlotIndex: 0, condicionFisica: { notIn: ['MUERTO', 'CONVALECIENTE'] } } }) : [];
   if (presente) {
@@ -172,12 +172,53 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   await licenciarMilicia(tx, saveId, ahora);
 
   const quien = v.factionId ? `La partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : `Los ${(ocupante?.grupo ?? 'bandidos').toLowerCase()}`;
-  const bajas = caidosReino.length > 0 ? ` Caen ${caidosReino.join(', ')}.` : '';
-  const texto = defendido
-    ? `${asentamiento.nombre} aguanta el asalto: ${quien.toLowerCase()} se retira${caidosAsaltantes > 0 ? ` dejando ${caidosAsaltantes} muertos` : ''}.${bajas}`
-    : `${quien} toma ${asentamiento.nombre} y se lleva ${botin!.comida} de comida, ${botin!.goirnos} Goirnos y ${botin!.objetos} cosas del Almacén.${empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${bajas}`;
+  const texto = textoDelAsalto({
+    quien,
+    plural: !v.factionId,
+    lugar: asentamiento.capital ? (save.kingdomName?.trim() || 'la Capital del Reino') : 'el Cuartel avanzado',
+    defendido,
+    caidosAsaltantes,
+    botin,
+    empalizadaCaida,
+    caidosReino,
+    estadoPersonaje: presente ? estado.get(`personaje-${saveId}`)?.condicion ?? null : null,
+    condicionAntes: save.condicionFisica,
+  });
   await avisoDeViajero(tx, { saveId, factionId: null }, texto);
   return { defendido, defensores: defensores.length - milicianos, milicianos, caidosReino, caidosAsaltantes, botin, empalizadaCaida };
+}
+
+/// P221: la línea del asalto. Concuerda con quien asalta (una partida / los bandidos), nombra el
+/// Reino y no el edificio, dice «nada» si no hay botín y, si el personaje estaba allí, cómo sale.
+export function textoDelAsalto(a: {
+  quien: string;
+  plural: boolean;
+  lugar: string;
+  defendido: boolean;
+  caidosAsaltantes: number;
+  botin: Botin | null;
+  empalizadaCaida: boolean;
+  caidosReino: string[];
+  estadoPersonaje: CondicionFisica | null;
+  condicionAntes: CondicionFisica;
+}): string {
+  const v = (sing: string, plur: string) => (a.plural ? plur : sing);
+  const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const bajas = a.caidosReino.length > 0 ? ` ${a.caidosReino.length > 1 ? 'Caen' : 'Cae'} ${a.caidosReino.join(', ')}.` : '';
+  const despues = a.estadoPersonaje ? peor(a.condicionAntes, a.estadoPersonaje) : a.condicionAntes;
+  const tuyo = despues !== a.condicionAntes ? ` Estabas allí y sales ${despues.toLowerCase()}.` : '';
+  if (a.defendido) {
+    return `${mayus(a.lugar)} aguanta el asalto: ${a.quien.charAt(0).toLowerCase()}${a.quien.slice(1)} ${v('se retira', 'se retiran')}${a.caidosAsaltantes > 0 ? ` dejando ${a.caidosAsaltantes} ${a.caidosAsaltantes === 1 ? 'muerto' : 'muertos'}` : ''}.${bajas}${tuyo}`;
+  }
+  const b = a.botin ?? { comida: 0, goirnos: 0, objetos: 0 };
+  const partes = [
+    b.comida > 0 ? `${b.comida} de comida` : null,
+    b.goirnos > 0 ? `${b.goirnos} Goirnos` : null,
+    b.objetos > 0 ? `${b.objetos} ${b.objetos === 1 ? 'cosa' : 'cosas'} del Almacén` : null,
+  ].filter((x): x is string => x !== null);
+  const lista = partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}` : partes[0];
+  const saqueo = lista ? `${v('se lleva', 'se llevan')} ${lista}` : `no ${v('encuentra', 'encuentran')} nada que llevarse`;
+  return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${bajas}${tuyo}`;
 }
 
 /// Un asalto que llega a su destino: si allí hay un asentamiento del Reino, se resuelve de fondo
