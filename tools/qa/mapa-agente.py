@@ -19,11 +19,18 @@ REF = re.compile(r'`((?:b|f|backend|frontend|tools|docs)/[^`\s#]+)(?:#([A-Za-z_]
 SUELTO = re.compile(r'`([a-z]+[A-Z]\w*)`')
 
 
+def texto_de(ruta, cache={}):
+    if ruta not in cache:
+        cache[ruta] = open(ruta, encoding='utf-8').read()
+    return cache[ruta]
+
+
 def define(texto, nombre):
     n = re.escape(nombre)
     return re.search(
         rf'(?:\b(?:function\*?|const|let|var|class|interface|type|enum|model)\s+{n}\b)'  # declaración
-        rf'|(?:^\s*(?:async\s+)?{n}\s*\()',  # función interna o método
+        # método (con o sin modificadores): sus paréntesis van seguidos de `{`, no de `;` como una llamada
+        rf'|(?:^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*(?::[^;{{=]*)?\{{)',
         texto, re.M) is not None
 
 
@@ -53,7 +60,7 @@ def main():
                 if not archivos:
                     continue
                 total += 1
-                if not any(re.search(rf'\b{suelto}\b', open(a, encoding='utf-8').read()) for a in archivos):
+                if not any(re.search(rf'\b{suelto}\b', texto_de(a)) for a in archivos):
                     rotas.append(f'mapa-agente.md:{nl}: {ruta_actual} no define {suelto}')
                 continue
             total += 1
@@ -65,7 +72,7 @@ def main():
             archivos = [a for a in todos if os.path.isfile(a)]
             if not todos:
                 rotas.append(f'mapa-agente.md:{nl}: no existe {ruta}')
-            elif nombre and not any(define(open(a, encoding='utf-8').read(), nombre) for a in archivos):
+            elif nombre and not any(define(texto_de(a), nombre) for a in archivos):
                 rotas.append(f'mapa-agente.md:{nl}: {ruta} no define {nombre}')
             if not nombre or '*' in ruta:
                 archivos = None  # los nombres sueltos solo siguen a una referencia `archivo#función`

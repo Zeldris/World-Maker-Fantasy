@@ -68,6 +68,7 @@ def main():
     usos_tool = {}  # id → (nombre, resumen)
     resultados = []  # (indice_llamada, id, tokens, imagenes, es_error)
     cortes = []  # índice de llamada en el que hubo compactación
+    vistos = set()  # ids de mensaje ya contados
     for linea in open(ruta, encoding='utf-8'):
         try:
             d = json.loads(linea)
@@ -85,7 +86,11 @@ def main():
         m = d.get('message') or {}
         if d.get('type') == 'assistant':
             u = m.get('usage')
-            if u:
+            # Claude Code escribe una línea por bloque (razonamiento, texto, herramienta) de la misma respuesta, y
+            # todas repiten su `usage`: se cuenta una vez por id de mensaje.
+            clave = m.get('id') or d.get('requestId') or d.get('uuid')
+            if u and clave not in vistos:
+                vistos.add(clave)
                 llamadas_api += 1
                 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens'):
                     usos[k] += u.get(k) or 0

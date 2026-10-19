@@ -8,7 +8,7 @@
 //   - `correr({ page, ayuda, api, sql, partida })`: lanza la excepción si algo no cuadra; lo que devuelva
 //     sale junto al ✓. `ayuda(nombre, tk)` corre una ayuda de `mcp/` (texto); `api(ruta, opciones)` llama al
 //     backend; `sql(consulta)` consulta la base de juego.
-import { readdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,6 @@ import { abrirPartida, BACK } from './lib.mjs';
 const aqui = dirname(fileURLToPath(import.meta.url));
 const raiz = join(aqui, '..', '..');
 const URL_JUEGO = 'postgresql://tarkor:tarkor@localhost:5432/tarkor_juego';
-const CARGADO = join(raiz, 'logs', 'escenario-cargado');
 const filtros = process.argv.slice(2);
 
 const sql = (consulta) => execFileSync('psql', [URL_JUEGO, '-Atc', consulta], { encoding: 'utf8' }).trim();
@@ -32,11 +31,10 @@ function partidaDe(escenario) {
   if (!fila) throw new Error(`No hay escenario «${escenario}» (tools/qa/escenario.sh lista)`);
   return fila.split('|')[2].replace(/`/g, '').trim();
 }
+// El escenario se carga antes de cada recorrido: jugar a mano, `escenario.sh` o el recorrido anterior cambian la
+// base, y cada uno tiene que empezar en la instantánea tal cual.
 function cargar(escenario) {
-  const cargado = existsSync(CARGADO) ? readFileSync(CARGADO, 'utf8').trim() : '';
-  if (cargado === escenario) return;
   execFileSync('bash', [join(raiz, 'tools', 'qa', 'escenario.sh'), 'cargar', escenario], { stdio: 'ignore' });
-  writeFileSync(CARGADO, escenario);
 }
 
 const archivos = readdirSync(join(aqui, 'recorridos'))
@@ -45,7 +43,6 @@ const archivos = readdirSync(join(aqui, 'recorridos'))
   .sort();
 const recorridos = [];
 for (const f of archivos) recorridos.push({ nombre: f.replace(/\.mjs$/, ''), ...(await import(join(aqui, 'recorridos', f))).default });
-// Por escenario: cada instantánea se carga una sola vez.
 recorridos.sort((a, b) => (a.escenario ?? '').localeCompare(b.escenario ?? '') || a.nombre.localeCompare(b.nombre));
 
 let fallos = 0;

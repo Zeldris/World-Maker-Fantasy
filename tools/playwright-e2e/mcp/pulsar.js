@@ -15,21 +15,28 @@ async (page) => {
       // Primero lo pulsable entero (botones, pestañas, enlaces) por todo su texto; si no, cualquier elemento por
       // su texto propio.
       // Con una capa abierta (modal o cajón), se busca primero dentro de ella: «Reino» es a la vez una pestaña del
-      // cajón de Habilidades y una de la barra lateral.
+      // cajón de Habilidades y una de la barra lateral. La de arriba es la última en el documento (los modales se
+      // montan al final del body); si el texto no está en ella (un aviso fuera de la capa), en todo el documento.
       const capas = [
         ...document.querySelectorAll('[role="dialog"]'),
         ...Array.from(document.querySelectorAll('.plank-panel')).filter((el) => /\binset-0\b/.test(el.parentElement?.className ?? '')),
-      ].filter((el) => el.offsetParent !== null);
-      const raiz = capas.pop() ?? document;
-      const pulsables = Array.from(raiz.querySelectorAll('button,[role="tab"],[role="button"],a')).filter(
-        (el) => el.offsetParent !== null && (casa(limpio(el.textContent || '')) || casa((el.getAttribute('aria-label') || '').trim())),
-      );
-      const todos = pulsables.length ? pulsables : Array.from((raiz === document ? document.body : raiz).querySelectorAll('*')).filter((el) => {
-        if (el.offsetParent === null) return false;
-        const propio = Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').replace(/\s+/g, ' ').trim();
-        const etiqueta = (el.getAttribute('aria-label') || '').trim();
-        return casa(propio) || casa(etiqueta);
-      });
+      ]
+        .filter((el) => el.offsetParent !== null)
+        .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+      const buscar = (raiz) => {
+        const pulsables = Array.from(raiz.querySelectorAll('button,[role="tab"],[role="button"],a')).filter(
+          (el) => el.offsetParent !== null && (casa(limpio(el.textContent || '')) || casa((el.getAttribute('aria-label') || '').trim())),
+        );
+        return pulsables.length ? pulsables : Array.from((raiz === document ? document.body : raiz).querySelectorAll('*')).filter((el) => {
+          if (el.offsetParent === null) return false;
+          const propio = Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').replace(/\s+/g, ' ').trim();
+          const etiqueta = (el.getAttribute('aria-label') || '').trim();
+          return casa(propio) || casa(etiqueta);
+        });
+      };
+      const arriba = capas.pop();
+      let todos = arriba ? buscar(arriba) : [];
+      if (!todos.length) todos = buscar(document);
       const el = todos.pop();
       if (!el) return null;
       const r = el.getBoundingClientRect();

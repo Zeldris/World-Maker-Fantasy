@@ -6,7 +6,7 @@ Mira los enlaces relativos `[texto](ruta)` y `[texto](ruta#ancla)`: que el archi
 miran. Sale con 1 si hay alguno roto.
 Uso: python3 tools/qa/enlaces-md.py [--solo-archivos]
 """
-import os, re, subprocess, sys
+import os, re, subprocess, sys, urllib.parse
 
 RAIZ = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True).stdout.strip()
 ENLACE = re.compile(r'(?<!\!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
@@ -24,7 +24,7 @@ def anclas_de(ruta, cache={}):
         vistas, dentro_de_codigo = {}, False
         out = set()
         for l in open(ruta, encoding='utf-8'):
-            if l.startswith('```'):
+            if re.match(r'^\s*(```|~~~)', l):
                 dentro_de_codigo = not dentro_de_codigo
             if dentro_de_codigo:
                 continue
@@ -48,7 +48,7 @@ def main():
         ruta = os.path.join(RAIZ, rel)
         dentro_de_codigo = False
         for n, l in enumerate(open(ruta, encoding='utf-8'), 1):
-            if l.lstrip().startswith('```'):
+            if re.match(r'^\s*(```|~~~)', l):
                 dentro_de_codigo = not dentro_de_codigo
             if dentro_de_codigo:
                 continue
@@ -56,6 +56,9 @@ def main():
                 if re.match(r'^[a-z]+:', destino) or destino.startswith('<'):
                     continue
                 camino, _, an = destino.partition('#')
+                # GitHub acepta el ancla en mayúsculas y con los acentos codificados (`%C3%B3`).
+                an = urllib.parse.unquote(an).lower()
+                camino = urllib.parse.unquote(camino)
                 objetivo = os.path.normpath(os.path.join(os.path.dirname(ruta), camino)) if camino else ruta
                 if camino and not os.path.exists(objetivo):
                     rotos.append(f'{rel}:{n}: no existe {camino}')

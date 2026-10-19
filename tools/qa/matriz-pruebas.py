@@ -118,15 +118,24 @@ def main():
         for i in faltan:
             b, q = cerradas[i]
             filas[i] = [b, q, 'jugado' if i in vistos else 'sin jugar', f'registro: {vistos[i]}' if i in vistos else '']
-        for i in sobran:
+        # Una fila que deja de contar como cerrada se quita solo si no tiene nada escrito a mano; si ya se jugó o
+        # tiene prueba, se deja (y `--comprobar` la sigue señalando) para no perderlo por un tachado mal puesto.
+        quitadas = [i for i in sobran if filas[i][2] == 'sin jugar' and not filas[i][3]]
+        for i in quitadas:
             del filas[i]
         escribir(filas)
-        print(f'matriz: {len(faltan)} filas nuevas, {len(sobran)} quitadas (ya no cuentan como cerradas)')
-        sobran = []
+        print(f'matriz: {len(faltan)} filas nuevas, {len(quitadas)} quitadas (ya no cuentan como cerradas)')
+        sobran = [i for i in sobran if i not in quitadas]
+        if sobran:
+            print('Se dejan porque tienen estado o prueba escritos (quítalas a mano si de verdad no cuentan):', ', '.join(sobran))
         faltan = []
     malos = [i for i, f in filas.items() if f[2] not in ESTADOS]
     if '--bloque' in args:
-        b = args[args.index('--bloque') + 1]
+        k = args.index('--bloque') + 1
+        if k >= len(args):
+            print('Uso: matriz-pruebas.py --bloque <Bloque> (p. ej. Reino)')
+            return 2
+        b = args[k]
         for i in sorted(filas, key=orden):
             if filas[i][0] == b and filas[i][2] != 'jugado' and filas[i][2] != 'no se juega':
                 print(f'{i} · {filas[i][1]} ({filas[i][2]})')

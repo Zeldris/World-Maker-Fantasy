@@ -15,24 +15,31 @@ if (!save) {
   console.error(`No hay partida ${saveId}.`);
   process.exit(1);
 }
+// Se comprueban todos los pares antes de meter nada: con uno mal no queda medio inventario dado.
+const lote = [];
 for (const par of pares) {
   const [slug, n] = par.split(':');
   const cantidad = Number(n ?? 1);
   const item = await prisma.itemCatalog.findFirst({ where: { worldId: save.worldId, slug } });
   if (!item || !Number.isInteger(cantidad) || cantidad < 1) {
-    console.error(`«${par}»: no hay objeto con ese slug o la cantidad no vale.`);
+    console.error(`«${par}»: no hay objeto con ese slug o la cantidad no vale. No se ha dado nada.`);
     process.exit(1);
   }
-  await prisma.inventoryItem.createMany({
-    data: Array.from({ length: cantidad }, () => ({
-      saveId,
-      name: item.name,
-      description: item.description,
-      origin: 'escenario de prueba',
-      catalogSlug: item.slug,
-      statBonuses: item.statBonuses ?? Prisma.JsonNull,
-    })),
-  });
-  console.log(`${cantidad} × ${item.name}`);
+  lote.push({ item, cantidad });
 }
+await prisma.$transaction(
+  lote.map(({ item, cantidad }) =>
+    prisma.inventoryItem.createMany({
+      data: Array.from({ length: cantidad }, () => ({
+        saveId,
+        name: item.name,
+        description: item.description,
+        origin: 'escenario de prueba',
+        catalogSlug: item.slug,
+        statBonuses: item.statBonuses ?? Prisma.JsonNull,
+      })),
+    }),
+  ),
+);
+for (const { item, cantidad } of lote) console.log(`${cantidad} × ${item.name}`);
 await prisma.$disconnect();
