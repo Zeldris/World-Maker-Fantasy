@@ -1333,7 +1333,8 @@ aprobadas las cuatro por la usuaria):
 - ~~**QA-121 · Sesión directora: skill `orchestrate-dealer`**~~ ✅ 2026-10-19 (usuaria: no depender de `/clear`):
   la principal parte la tarea y reparte cada trozo a un subagente de contexto limpio que devuelve 15 líneas; tope de
   compactación a 200k; el `selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
-  la sesión nueva tras cada PR de `QA-110`. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
+  la sesión nueva tras cada PR de `QA-110`. De `implement-spec` (Matt Pocock): encargos con punteros y
+  frontera de arreglos en paralelo, cada uno en su worktree. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

@@ -26,10 +26,13 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 1. **Partir.** Con el `selector` ya aplicado, divide la tarea en trozos que un subagente cierre de una vez: un
    arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. Cada trozo, con su criterio de hecho
-   comprobable (un test en verde, un P-número comprobado o abierto, un commit subido).
+   comprobable (un test en verde, un P-número comprobado o abierto, un commit subido) y lo que le bloquea. La
+   **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas).
 2. **Repartir.** Un subagente por trozo con `Agent`, en primer plano (`run_in_background: false`) cuando el
    siguiente trozo depende de él. Modelo y esfuerzo por la escalera del `selector` (`QA-118`): `sonnet` para
-   implementar y jugar, `opus` para depurar algo no obvio. Encargo con esta forma:
+   implementar y jugar, `opus` para depurar algo no obvio. El encargo lleva **punteros**, no copias: dónde está lo que
+   necesita (fila de la bitácora, P-número del registro, fila de la matriz, commit, archivo y función del
+   `docs/mapa-agente.md`), nunca el texto pegado. Con esta forma:
 
    ```text
    Trabajas en Tarkor, rama <rama>. Lee docs/registros/traspaso.md (tu fila) y, si tocas código,
@@ -49,8 +52,12 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 ## Reglas
 
-- **Uno a la vez en la misma rama** cuando escriben: dos subagentes que hacen commit a la vez chocan en la
-  bitácora. En paralelo solo trabajos que no escriben (buscar, leer, medir).
+- **Arreglos de código de la frontera, en paralelo** (idea de `implement-spec` de Matt Pocock): cada subagente con
+  `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree sin tocar la bitácora ni subir, y
+  devuelve su rama. La principal los fusiona uno a uno en la rama de trabajo (`git merge`, tests del paquete
+  tocado), escribe la bitácora y sube. Un conflicto entre dos de ellos lo resuelve un subagente de fusión.
+- **Sin worktree, uno a la vez en la misma rama**: dos subagentes que hacen commit en la rama de trabajo chocan
+  en la bitácora. En paralelo, además, todo lo que no escribe (buscar, leer, medir).
 - **Rondas de pruebas, en serie**: comparten el navegador y la base de juego. Cada tanda deja la partida en un
   estado que la siguiente pueda retomar y lo dice en `FALTA` (pantalla, partida, día).
 - **El subagente no habla con la usuaria**: lo que necesite de ella vuelve como `PREGUNTAS`.
