@@ -130,7 +130,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | sin jugar |  |
 | `REI-40` | Reino | Agrupado por recurso (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, | jugado | 2026-10-19, Súbditos › Almacén: «Raciones de viaje ×1» agrupado, con Retirar y tope; P215 |
 | `REI-41` | Reino | Topes junto al stock (R22): barra `cantidad / tope` por recurso con el tope editable (step | sin jugar |  |
-| `REI-54` | Reino | Llegadas y salidas : cuando la versión mínima de súbditos exista, tarjeta "Llegaron 2 pobl | sin jugar | parcial 2026-10-19: Súbditos sin nadie, sin tarjeta de llegadas (P220); falta jugar la tarjeta y las salidas |
+| `REI-54` | Reino | Llegadas y salidas : cuando la versión mínima de súbditos exista, tarjeta "Llegaron 2 pobl | jugado | 2026-10-19: tras P220, tarjeta «Llega a tu puerta» (ACOGER/Despedir, «Esperará un día tu respuesta»); en Súbditos «↩ Krarka — Se fue: …» y «✝ Grosh — Murió de hambre» |
 | `REI-110` | Reino | Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). S 2026-10-02 (`Nume | sin jugar |  |
 | `REI-111` | Reino | Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). S 2026-10-01 ( | sin jugar |  |
 | `REI-112` | Reino | Topes con `Enter` y confirmación visual (R20). S 2026-10-02 (mismo componente: ✓ al confir | sin jugar |  |
