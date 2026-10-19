@@ -1719,7 +1719,11 @@ function redirigirPorAreaDefensiva(
 /// toque, no vuelve a atacar. Un golpe gratis (el objetivo no le devuelve la mirada) nunca cae
 /// aquí, cada uno de los que lo intentan actúa de verdad, sin oposición real (ver
 /// `ejecutarGolpeGratisYAvanzar`).
-function dueloYaResueltoPorElOtro(ordenIniciativa: string[], actualId: string, defensor: ParticipantRef): boolean {
+/// P192 (QA-27, decidido por la usuaria 2026-10-19): un duelo con la jugadora no cuenta: cada uno actúa en su
+/// turno, como en D&D 5e y BG3. Antes, si su rival tenía más iniciativa, la acción que ella elegía no hacía
+/// nada (`avanzarSinAtacar`) y podía encadenar rondas sin actuar hasta caer.
+function dueloYaResueltoPorElOtro(ordenIniciativa: string[], actualId: string, defensor: ParticipantRef, actualEsJugador = false): boolean {
+  if (actualEsJugador || defensor.tipo === 'JUGADOR') return false;
   if (defensor.objetivoActualId !== actualId) return false; // no es un duelo mutuo con actual
   return ordenIniciativa.indexOf(defensor.id) < ordenIniciativa.indexOf(actualId);
 }
@@ -1995,7 +1999,7 @@ export async function resolverTurnoJugador({
   const defensorId = actual.objetivoActualId;
   const defensorOriginal = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
   if (!defensorOriginal) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
-  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensorOriginal)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensorOriginal, true)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
 
   const esDuelo = defensorOriginal.objetivoActualId === actual.id;
   // AREA real, variante defensiva (2026-09-14) — mismo criterio que `resolverTurnoAutonomo`: el
