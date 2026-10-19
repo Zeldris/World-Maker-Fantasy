@@ -50,11 +50,12 @@ describe('súbditos (REI-118) — reglas puras', () => {
     // Sin camas de verdad: 2 temporales para súbditos, ninguna para compañeros.
     expect(repartirCamas(0, 0, 0, 2)).toMatchObject({ libres: 0, libresSubditos: 2, enAyuntamiento: 0 });
     expect(repartirCamas(0, 0, 2, 2)).toMatchObject({ libres: 0, libresSubditos: 0, enAyuntamiento: 2 });
-    // Con una Choza (2): los súbditos llenan primero las permanentes y el resto vive en el Ayuntamiento.
-    expect(repartirCamas(2, 1, 2, 2)).toMatchObject({ libres: 0, libresSubditos: 1, enAyuntamiento: 1 });
-    // Un súbdito alojado en el Ayuntamiento no quita cama permanente a un compañero.
-    expect(repartirCamas(2, 0, 3, 2)).toMatchObject({ libres: 0, libresSubditos: 1, enAyuntamiento: 1 });
-    expect(repartirCamas(4, 0, 3, 2)).toMatchObject({ libres: 1, libresSubditos: 3, enAyuntamiento: 0 });
+    // Con una Choza (2): los súbditos llenan primero las temporales y la cama permanente queda para un compañero.
+    expect(repartirCamas(2, 1, 2, 2)).toMatchObject({ libres: 1, libresSubditos: 1, enAyuntamiento: 2 });
+    expect(repartirCamas(2, 0, 2, 2)).toMatchObject({ libres: 2, libresSubditos: 2, enAyuntamiento: 2 });
+    // Solo cuando las temporales se llenan pasan a las permanentes.
+    expect(repartirCamas(2, 0, 3, 2)).toMatchObject({ libres: 1, libresSubditos: 1, enAyuntamiento: 2 });
+    expect(repartirCamas(4, 0, 3, 2)).toMatchObject({ libres: 3, libresSubditos: 3, enAyuntamiento: 2 });
     // Sin Ayuntamiento no hay camas temporales.
     expect(repartirCamas(0, 0, 0, 0)).toMatchObject({ libres: 0, libresSubditos: 0 });
   });

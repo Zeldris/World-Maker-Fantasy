@@ -32,6 +32,9 @@ export interface RecipeStatus {
   name?: string;
   requiresAyuntamiento?: boolean;
   upgradesRecipeKey?: string | null;
+  /// Nivel al que deja el edificio que mejora (Obrador 2, Gran obrador 3; revisión previa al PR de
+  /// P218): el panel oculta las mejoras de un nivel ya alcanzado (la mejora no cambia `recipeKey`).
+  nivel?: number | null;
 }
 
 /// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
@@ -77,6 +80,7 @@ export async function constructionRecipeStatusFor(params: {
     name: recipe.name,
     requiresAyuntamiento: recipe.requiresAyuntamiento === true,
     upgradesRecipeKey: recipe.upgradesRecipeKey ?? null,
+    nivel: recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null,
   };
 }
 

@@ -153,6 +153,8 @@ export interface RecipeStatusInfo {
   name?: string
   requiresAyuntamiento?: boolean
   upgradesRecipeKey?: string | null
+  /// Nivel al que deja el edificio que mejora (la mejora no cambia `recipeKey`, sube `tier`).
+  nivel?: number | null
 }
 
 /// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
@@ -702,6 +704,8 @@ export interface InventoryItemInfo {
   /// Habilidad "Comer/Beber" (2026-09-04, panel del mismo nombre) — null en objetos que no sacian
   /// hambre.
   curaHambre?: number | null
+  /// P215: al depositarlo en el Almacén pasa a la Comida del Reino (comida que ninguna receta pide por nombre).
+  pasaAComidaDelReino?: boolean
   /// Puntos porcentuales de Sed que restaura al usarlo (hallazgo 13, revisar-partida-hallazgos.md
   /// 2026-09-06) — mismo criterio que `curaHambre`. Sustituye al viejo botón fijo "Beber agua".
   curaAgua?: number | null

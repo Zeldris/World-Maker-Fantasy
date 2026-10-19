@@ -53,4 +53,21 @@ describe('P218 — Construir ofrece todo lo que cuelga del Ayuntamiento', () => 
     const { getByRole } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={recipesStatus} onBuild={() => {}} />)
     expect(getByRole('button', { name: /Mejorar a Obrador de herrería/ })).toBeTruthy()
   })
+
+  it('una mejora ya hecha no se vuelve a ofrecer (mejorar sube tier, no cambia recipeKey)', () => {
+    const buildings = [{ id: 'b1', recipeKey: 'herreria', tier: 2, name: 'un obrador de herrería', status: 'ACTIVO' }] as unknown as BuildingInfo[]
+    const conNiveles = [
+      receta('herreria-obrador', 'un obrador de herrería', { requiresAyuntamiento: false, upgradesRecipeKey: 'herreria', nivel: 2 }),
+      receta('herreria-gran-obrador', 'un gran obrador de herrería', { requiresAyuntamiento: false, upgradesRecipeKey: 'herreria', nivel: 3 }),
+    ]
+    const { queryByRole } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={conNiveles} onBuild={() => {}} />)
+    expect(queryByRole('button', { name: /Mejorar a Obrador de herrería/ })).toBeNull()
+    expect(queryByRole('button', { name: /Mejorar a Gran obrador/ })).toBeTruthy()
+  })
+
+  it('un edificio del catálogo que ya está en pie se puede repetir si el backend no lo bloquea (Leñera)', () => {
+    const buildings = [{ id: 'b1', recipeKey: 'lenera', name: 'una leñera', status: 'ACTIVO' }] as unknown as BuildingInfo[]
+    const { getByRole } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={[receta('lenera', 'una leñera')]} onBuild={() => {}} />)
+    expect((getByRole('button', { name: /Leñera/ }) as HTMLButtonElement).disabled).toBe(false)
+  })
 })

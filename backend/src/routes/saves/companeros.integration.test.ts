@@ -1263,4 +1263,15 @@ describe('Almacén de Reino: la comida depositada cuenta para la Comida del Rein
     expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
     expect(await prisma.inventoryItem.count({ where: { saveId, catalogSlug: 'racion-viaje' } })).toBe(1);
   });
+
+  it('la ración de carne fresca (ingrediente del Ahumadero y la Cocina) se queda en el Almacén', async () => {
+    const carne = await prisma.inventoryItem.create({ data: { saveId, name: 'Ración de carne fresca', description: 'x', catalogSlug: 'racion-carne' } });
+    const antes = (await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKeyFor({ saveId }) } })).comida;
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/almacen/depositar/${carne.id}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).not.toHaveProperty('comidaSumada');
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKeyFor({ saveId }) } })).comida).toBe(antes);
+    expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: 'racion-carne' } })).toBe(1);
+  });
 });

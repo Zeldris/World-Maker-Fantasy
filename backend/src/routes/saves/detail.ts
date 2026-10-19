@@ -24,11 +24,23 @@ import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbili
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
-import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
+import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
 
 export async function detailRoutes(app: FastifyInstance) {
+  /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
+  /// entera; mismo cálculo que los campos homónimos de GET /saves/:id.
+  app.get<{ Params: { id: string } }>('/saves/:id/supervivencia', async (request, reply) => {
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: { condicionFisica: true, lastAteAtMinutes: true, lastDrankAtMinutes: true, worldState: { select: { fictionalMinutes: true } } },
+    });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    const ahora = save.worldState?.fictionalMinutes ?? 0;
+    return { condicionFisica: save.condicionFisica, hambre: comidaPct(save.lastAteAtMinutes, ahora), sed: aguaPct(save.lastDrankAtMinutes, ahora) };
+  });
+
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
     // Ventana de 24h de juego (rework 2026-07-24, petición explícita: "el log de personaje solo
     // muestre 24h del mundo") — antes esta consulta cargaba TODAS las LogEntry desde el principio
@@ -409,6 +421,8 @@ export async function detailRoutes(app: FastifyInstance) {
           curaEnergia: catalogItem?.curaEnergia ?? null,
           // Habilidad "Comer/Beber" (2026-09-04) — mismo criterio que curaHasta/curaEnergia.
           curaHambre: catalogItem?.curaHambre ?? null,
+          // P215: si al depositarla en el Almacén pasa a la Comida del Reino (no es ingrediente de una receta).
+          pasaAComidaDelReino: !!save.kingdomStats && pasaAComidaDelReino(i.catalogSlug, catalogItem?.curaHambre),
           // Hallazgo 13 (revisar-partida-hallazgos.md 2026-09-06) — mismo criterio que curaHambre.
           curaAgua: catalogItem?.curaAgua ?? null,
           // Imagen real de la Enciclopedia (petición explícita de la usuaria, 2026-07-24: "las

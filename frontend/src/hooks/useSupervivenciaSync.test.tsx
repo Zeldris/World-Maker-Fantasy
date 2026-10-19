@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react'
 import { useSupervivenciaSync } from './useSupervivenciaSync'
 
 vi.mock('../lib/api', () => ({
-  getSave: vi.fn(async () => ({ condicionFisica: 'CONVALECIENTE', hambre: 0, sed: 0 })),
+  getSupervivencia: vi.fn(async () => ({ condicionFisica: 'CONVALECIENTE', hambre: 0, sed: 0 })),
 }))
 
 describe('useSupervivenciaSync (P219 c)', () => {

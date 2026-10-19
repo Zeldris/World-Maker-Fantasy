@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { getSave } from '../lib/api'
+import { getSupervivencia } from '../lib/api'
 import type { CondicionFisica } from '../types'
 
 const SUPERVIVENCIA_INTERVAL_MS = 60_000
@@ -27,7 +27,7 @@ export function useSupervivenciaSync(params: {
     const tick = async () => {
       if (ref.current.characterThinking || ref.current.combatActive) return
       try {
-        const save = await getSave(saveId)
+        const save = await getSupervivencia(saveId)
         // Un turno pudo empezar mientras llegaba la respuesta: no pisar su resultado.
         if (cancelled || ref.current.characterThinking || ref.current.combatActive) return
         ref.current.setCondicionFisica(save.condicionFisica)

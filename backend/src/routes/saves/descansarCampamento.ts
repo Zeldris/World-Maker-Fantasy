@@ -93,7 +93,8 @@ export async function descansarCampamentoRoutes(app: FastifyInstance) {
       return tx.logEntry.create({
         data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: true, isSystemMessage: true },
       });
-    });
+      // El tick diario de un Reino grande pasa de los 5 s por defecto de Prisma: mismo margen que el turno.
+    }, { maxWait: 10_000, timeout: 30_000 });
 
     return { condicionFisica: nuevaCondicion, timeLabel, logEntry: toFrontendLogEntry(logEntry) };
   });

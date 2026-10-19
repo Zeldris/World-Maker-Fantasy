@@ -309,5 +309,14 @@ export async function avanzarRelojConTick(
     where: { saveId },
     data: { fictionalMinutes: minutosDespues, fictionalDateLabel: formatFictionalDate(minutosDespues) },
   });
-  return runDailyTick(tx, args);
+  // Un tramo por medianoche: la producción del Reino y la Casa de curas corren una vez por día, igual
+  // que el consumo (revisión previa al PR de P216).
+  let territoryConsolidatedThisTurn = false;
+  for (let desde = minutosAntes; desde < minutosDespues; ) {
+    const hasta = Math.min(minutosDespues, (Math.floor(desde / 1440) + 1) * 1440);
+    const r = await runDailyTick(tx, { ...args, minutosAntes: desde, minutosDespues: hasta });
+    territoryConsolidatedThisTurn ||= r.territoryConsolidatedThisTurn;
+    desde = hasta;
+  }
+  return { territoryConsolidatedThisTurn };
 }

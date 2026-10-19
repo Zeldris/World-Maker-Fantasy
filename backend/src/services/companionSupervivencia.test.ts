@@ -230,5 +230,8 @@ describe('avisoCarenciaPersonaje (P219)', () => {
     expect(avisoCarenciaPersonaje(0, 0)).toContain('el hambre y la sed te debilitan');
     expect(avisoCarenciaPersonaje(0, 100)).toContain('el hambre te debilita ');
     expect(avisoCarenciaPersonaje(100, 0)).toContain('la sed te debilita ');
+    // La primera frase dice solo lo que falta (revisión previa al PR).
+    expect(avisoCarenciaPersonaje(100, 0)).toMatch(/^Sin beber lo necesario, .* Busca agua\.$/);
+    expect(avisoCarenciaPersonaje(0, 100)).toMatch(/^Sin comer lo necesario, .* Busca alimento\.$/);
   });
 });

@@ -13,6 +13,7 @@ import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { meterEnCorral } from '../../services/cronista/ganadoReino.js';
+import { pasaAComidaDelReino } from '../../services/crafting.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -707,7 +708,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       // y NO queda fila en el Almacén, así Retirar no puede duplicar la comida. Sin Reino fundado
       // (sin KingdomStats) no hay dónde sumar y el objeto se guarda como cualquier otro.
       const plato = item.catalogSlug ? await tx.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: item.catalogSlug }, select: { curaHambre: true } }) : null;
-      if (plato?.curaHambre && plato.curaHambre > 0) {
+      if (plato?.curaHambre && pasaAComidaDelReino(item.catalogSlug, plato.curaHambre)) {
         const comida = Math.max(1, comidaDe(plato.curaHambre, 1));
         const { count } = await tx.kingdomStats.updateMany({ where: { ownerKey: ownerKeyFor({ saveId: request.params.id }) }, data: { comida: { increment: comida } } });
         if (count > 0) return { equipados: 0, comida };

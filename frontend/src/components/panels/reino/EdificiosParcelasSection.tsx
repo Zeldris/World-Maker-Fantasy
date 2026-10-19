@@ -75,7 +75,9 @@ function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: Recipe
     if (vistas.has(s.recipeKey)) continue
     const fija = fijas.get(s.recipeKey)
     const mejora = s.upgradesRecipeKey && s.upgradesRecipeKey !== 'ayuntamiento' ? s.upgradesRecipeKey : null
-    const delReino = fija || (s.requiresAyuntamiento && !mejora) || (mejora && buildings.some((b) => b.recipeKey === mejora))
+    // Una mejora solo se ofrece sobre su edificio y si aún no está en ese nivel: mejorar actualiza la
+    // misma fila (sube `tier`, `recipeKey` sigue siendo el del nivel 1).
+    const delReino = fija || (s.requiresAyuntamiento && !mejora) || (mejora && buildings.some((b) => b.recipeKey === mejora && (b.tier ?? 1) < (s.nivel ?? 2)))
     if (!delReino || !s.recipeKey) continue
     vistas.add(s.recipeKey)
     if (fija) {
@@ -95,7 +97,9 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       <div className="flex flex-col gap-2">
         {opcionesDeConstruccion(buildings, recipesStatus).map((opt) => {
           const status = opt.status
-          const alreadyBuilt = buildings.some((b) => b.recipeKey === opt.recipeKey)
+          // Solo las opciones fijas (Cuartel) se miran aquí; las del catálogo pueden repetirse (Leñeras,
+          // Pozos…) y su tope lo dice el backend en `blockedReason`.
+          const alreadyBuilt = !opt.status?.name && buildings.some((b) => b.recipeKey === opt.recipeKey)
           const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? null
           const coste = status?.ingredients?.length ? status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(' · ') : null
           return (

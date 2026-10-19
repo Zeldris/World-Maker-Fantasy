@@ -725,6 +725,11 @@ export async function getSave(id: string): Promise<SaveDetail> {
   return fetchJson(`${API_URL}/saves/${id}`)
 }
 
+/// P219 (c): condición, Hambre y Sed para el sondeo del HUD, sin la partida entera.
+export async function getSupervivencia(id: string): Promise<Pick<SaveDetail, 'condicionFisica' | 'hambre' | 'sed'>> {
+  return fetchJson(`${API_URL}/saves/${id}/supervivencia`)
+}
+
 export interface SaveSummary {
   id: string
   worldId: string

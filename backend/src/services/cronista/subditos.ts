@@ -101,17 +101,13 @@ export interface CupoDeCamas {
   libresSubditos: number;
 }
 
-/// Puro: reparte las camas. Los súbditos ocupan primero las permanentes que dejan los compañeros y el
-/// resto las temporales del Ayuntamiento.
+/// Puro: reparte las camas. Los súbditos ocupan primero las temporales del Ayuntamiento (solo suyas) y el
+/// resto las permanentes que dejan los compañeros, así no quitan cama a un compañero mientras quede una temporal.
 export function repartirCamas(total: number, companeros: number, subditos: number, temporales: number): CupoDeCamas {
-  const permanentesParaSubditos = Math.max(0, total - companeros);
-  const enPermanentes = Math.min(subditos, permanentesParaSubditos);
-  const enAyuntamiento = Math.min(subditos - enPermanentes, temporales);
-  return {
-    total, companeros, subditos, temporales, enAyuntamiento,
-    libres: Math.max(0, total - companeros - enPermanentes),
-    libresSubditos: Math.max(0, permanentesParaSubditos - enPermanentes) + Math.max(0, temporales - Math.max(0, subditos - enPermanentes)),
-  };
+  const enAyuntamiento = Math.min(subditos, temporales);
+  const enPermanentes = Math.min(subditos - enAyuntamiento, Math.max(0, total - companeros));
+  const libres = Math.max(0, total - companeros - enPermanentes);
+  return { total, companeros, subditos, temporales, enAyuntamiento, libres, libresSubditos: libres + (temporales - enAyuntamiento) };
 }
 
 /// Q2: un único cupo de camas para compañeros (salvo el del Domador) y súbditos activos.
