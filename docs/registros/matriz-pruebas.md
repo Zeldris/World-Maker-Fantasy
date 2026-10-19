@@ -114,7 +114,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-48` | Mundo vivo | 2026-10-05 Pasada de rendimiento del avance diario con el motor completo. S | no se juega | rendimiento |
 | `CR-50` | Mundo vivo | Campamentos de bandidos con cabecilla y refuerzos 2026-10-07 (Bellwright, Medieval Dynasty | sin jugar |  |
 | `CR-52` | Mundo vivo | Linajes y rastros 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`, | sin jugar |  |
-| `CR-53` | Mundo vivo | Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el | sin jugar |  |
+| `CR-53` | Mundo vivo | Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el | sin jugar | parcial 2026-10-19: Pozo jugado (6 leña + 6 piedra, +12 agua/día, «Agua al día +12 / −0»; P216, P217, P218); faltan Granero, Cisterna, Leñera, topes, comida y hambre del Reino |
 | `CR-54` | Mundo vivo | Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20): 2026-10-06 reparto de la tab | sin jugar |  |
 | `CR-55` | Mundo vivo | Ganadería 2026-10-06 (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, deci | sin jugar |  |
 | `CR-56` | Mundo vivo | Usos de la fauna 2026-10-06 (Q10, Q12 de la Fase D; ronda propia aceptada el 2026-10-06, d | sin jugar |  |
@@ -130,7 +130,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | sin jugar |  |
 | `REI-40` | Reino | Agrupado por recurso (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, | jugado | 2026-10-19, Súbditos › Almacén: «Raciones de viaje ×1» agrupado, con Retirar y tope; P215 |
 | `REI-41` | Reino | Topes junto al stock (R22): barra `cantidad / tope` por recurso con el tope editable (step | sin jugar |  |
-| `REI-54` | Reino | Llegadas y salidas : cuando la versión mínima de súbditos exista, tarjeta "Llegaron 2 pobl | sin jugar |  |
+| `REI-54` | Reino | Llegadas y salidas : cuando la versión mínima de súbditos exista, tarjeta "Llegaron 2 pobl | sin jugar | parcial 2026-10-19: Súbditos sin nadie, sin tarjeta de llegadas (P220); falta jugar la tarjeta y las salidas |
 | `REI-110` | Reino | Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). S 2026-10-02 (`Nume | sin jugar |  |
 | `REI-111` | Reino | Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). S 2026-10-01 ( | sin jugar |  |
 | `REI-112` | Reino | Topes con `Enter` y confirmación visual (R20). S 2026-10-02 (mismo componente: ✓ al confir | sin jugar |  |
@@ -139,6 +139,6 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `REI-115` | Reino | Tooltips de explicación en cada indicador, rol y estado (R25). S 2026-10-02: los 8 indicad | sin jugar |  |
 | `REI-116` | Reino | Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). S 2026-10 | sin jugar |  |
 | `REI-118` | Reino | Súbditos como personas (Fase C del `0.3`, Q1-Q3 y Q7 de la usuaria, 2026-10-06): cada pobl | sin jugar |  |
-| `REI-119` | Reino | Llegadas (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, | sin jugar |  |
+| `REI-119` | Reino | Llegadas (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, | sin jugar | parcial 2026-10-19: 9 días sin llegada (0 camas, comida 0) y sin motivo en pantalla (P220); falta jugar la tarjeta «Llega a tu puerta» |
 | `REI-120` | Reino | Parejas y crías (Q5, como Medieval Dynasty): dos adultos del mismo pueblo con felicidad ≥ | sin jugar |  |
 | `REI-121` | Reino | Salidas y muerte (Q6): con la felicidad del Reino 7 días seguidos por debajo de 20, cada s | sin jugar |  |
