@@ -1,4 +1,6 @@
 // QA-46: estado de la partida en texto, sin captura. QA-104 (2026-10-19): en unas 10 líneas lo que hay que
+// mirar (también los cajones que no son `role="dialog"`, con sus botones, y los tooltips, que antes solo daba una captura).
+//
 // mirar en cada paso: HUD (hora, estado, energía), modales abiertos, la tarjeta del encuentro con sus
 // botones, avisos, las últimas líneas del diario y, si hay combate, su panel. La captura, solo si algo no
 // cuadra o la prueba es visual. Uso: browser_run_code_unsafe con filename "tools/playwright-e2e/mcp/estado.js",
@@ -14,6 +16,37 @@ async (page) => {
   const modales = await page
     .locator('[role="dialog"]')
     .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') || el.querySelector('h1,h2,h3')?.textContent?.trim() || '(sin título)'));
+  // Capas que no son `role="dialog"` (el modal de Habilidades, cajones): la superpuesta de encima, con su
+  // título, la pestaña activa y lo que se puede pulsar dentro (antes solo se veía en una captura).
+  const capa = await page.evaluate(() => {
+    // Los cajones y paneles con tablas de madera (`plank-panel`) que no son un modal `role="dialog"`.
+    const arriba = Array.from(document.querySelectorAll('.plank-panel'))
+      .filter((el) => el.offsetParent !== null && !el.closest('[role="dialog"]') && el.querySelector('h1,h2,h3'))
+      // Superpuesto (un cajón sobre la pantalla), no las columnas fijas del juego («Tu personaje», «El mundo»).
+      .filter((el) => /\binset-0\b/.test(el.parentElement?.className ?? ''))
+      .pop();
+    if (!arriba) return '';
+    const titulo = arriba.querySelector('h1,h2,h3')?.textContent?.trim() ?? '';
+    const pulsables = Array.from(arriba.querySelectorAll('button,[role="tab"],[role="button"]'))
+      .filter((el) => el.offsetParent !== null)
+      .map((el) => {
+        const t = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
+        const activa = el.getAttribute('aria-selected') === 'true' || el.getAttribute('aria-pressed') === 'true' ? '*' : '';
+        return el.disabled ? `(${t})` : t + activa;
+      })
+      .filter(Boolean);
+    return titulo ? `${titulo}: ${pulsables.join(' | ')}` : '';
+  });
+  // Lo escrito en el cuadro de acción (las habilidades y menús lo rellenan antes de «Actuar»).
+  const escrito = (
+    await page
+      .locator('textarea, [contenteditable="true"]')
+      .evaluateAll((els) => els.filter((e) => e.offsetParent !== null).map((e) => (e.value ?? e.textContent ?? '').trim()).filter(Boolean))
+  ).join(' | ');
+  // Tooltips a la vista (requisitos de una construcción, explicaciones).
+  const tooltips = await page
+    .locator('[role="tooltip"], .tooltip-portal-title')
+    .evaluateAll((els) => els.filter((el) => el.offsetParent !== null).map((el) => el.textContent.replace(/\s+/g, ' ').trim()));
   // La tarjeta del encuentro en el mapa (`TarjetaEncuentro`): título, aviso y botones.
   const tarjeta = await page
     .locator('[data-testid="encuentro-en-mapa"]')
@@ -33,7 +66,7 @@ async (page) => {
           .split('\n')
           .map((l) => l.trim())
           .filter((l) => l.length > 3)
-          .slice(-lineasDiario)
+          .slice(lineasDiario > 0 ? -lineasDiario : 0, lineasDiario > 0 ? undefined : 0)
           .join('\n')
       : '';
   const iCombate = texto.search(/Combate —|COMBATE —/);
@@ -46,9 +79,12 @@ async (page) => {
   return [
     'HUD: ' + hud,
     modales.length ? 'MODALES: ' + modales.join(' > ') : '',
+    capa ? 'CAPA: ' + capa : '',
+    tooltips.length ? 'TOOLTIP: ' + tooltips.join(' | ') : '',
+    escrito ? 'ESCRITO: ' + escrito : '',
     tarjeta ? 'TARJETA: ' + simulado(tarjeta) : '',
     avisos.length ? 'AVISOS: ' + avisos.join(' | ') : '',
-    'DIARIO:\n' + diario,
+    diario ? 'DIARIO:\n' + diario : '',
     combate ? 'COMBATE:\n' + combate : '',
   ]
     .filter(Boolean)

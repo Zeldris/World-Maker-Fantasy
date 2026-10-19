@@ -16,4 +16,5 @@ parámetros van en la página: antes, `browser_evaluate` con `() => { window.tk 
 | `mover.js` | `x`, `y` | Abre «Moverte por la zona» si hace falta, pulsa ese punto (píxeles de pantalla), acepta «Ir hasta aquí» y espera a llegar o a un encuentro. |
 | `viajar.js` | `x`, `y` | Cruza a otra zona por esa salida: pasa los encuentros tranquilos, confirma «Viajar»/«Entrar»/«Salir» y espera a llegar. Para ante uno hostil o un combate. |
 | `puntos.js` | — | Cada punto del mapa de zona abierto, con su nombre y sus coordenadas de pantalla. |
+| `pulsar.js` | `texto`, `contiene`, `mantener` (ms) | Pulsa con el ratón lo visible con ese texto, también lo que Playwright no da por estable (tarjetas con animación) o no es un botón (pestañas); `mantener` para «Mantén para…». |
 | `captura.js` | `nombre` | Captura en `.playwright-mcp/<nombre>.png`. |

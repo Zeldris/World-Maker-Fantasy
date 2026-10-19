@@ -75,7 +75,9 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
-   visual (botones, textos, mapa, avisos).
+   visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
+   (usuaria, 2026-10-19), después se mejora `estado.js` o la ayuda que toque para que lo dé en texto la próxima vez
+   (así salieron los cajones, los tooltips y `pulsar.js`).
    Un bucle automático (combate, caminar) solo para repetir algo ya visto; lo nuevo se juega a mano.
 3. Apunta cada hallazgo en el registro de la ronda (`docs/registros/pruebas-<hito>-hallazgos.md`,
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de

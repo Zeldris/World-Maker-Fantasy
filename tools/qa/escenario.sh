@@ -8,6 +8,7 @@
 #   escenario.sh guardar <nombre> "<qué tiene>"  guarda la base de juego como tools/qa/escenarios/<nombre>.dump
 #   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego
 #   escenario.sh avanzar <partida> <días>        avanza N días con el avance diario de siempre
+#   escenario.sh dar <partida> <slug>:<n>…        mete objetos del catálogo en su inventario (origen «escenario de prueba»)
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 BASE=tarkor_juego
@@ -43,7 +44,11 @@ case "${1:-}" in
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"
     (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias")
     ;;
+  dar)
+    partida="${2:?falta la partida}"; shift 2
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darObjetos.ts "$partida" "$@")
+    ;;
   *)
-    sed -n '2,12p' "$0"; exit 2
+    sed -n '2,13p' "$0"; exit 2
     ;;
 esac
