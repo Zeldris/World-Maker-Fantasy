@@ -1310,6 +1310,11 @@ aprobadas las cuatro por la usuaria):
   proponer y arregla `medir.py` si las cifras no cuadran; `proyecto.md` con las cifras buenas.
 - ~~**QA-115 · Fecha de la bitácora al día**~~ ✅ 2026-10-19: `bitacora.py --fecha`; el pre-push falla si un commit
   que cambia la bitácora deja «Actualizado» con un día anterior.
+- ~~**QA-116 · Compactar sin perder contexto**~~ ✅ 2026-10-19 (usuaria): `tools/qa/recuperar.py "<regex>"` busca en el
+  registro de la sesión lo de antes de compactar (fragmentos recortados, sin resúmenes, subagentes ni búsquedas
+  previas); `recuperar.py --estado` lo pone el gancho de `SessionStart` tras cada compactación (fila de la
+  bitácora, `git status`, commits, compactaciones llevadas); presupuesto de 1 a 5 compactaciones por tarea en el
+  `selector`, con los cortes al acabar cada sub-bloque.
 - ~~**QA-117 · Planificar con el grande, escribir con el medio**~~ ✅ 2026-10-19 (usuaria): `medir.py` reparte la
   entrada por modelo (sesión principal y subagentes de `<sesión>/subagents/`); `opt-tokens` lo mira; el runbook
   `skills-y-modelos.md` manda la implementación con plan cerrado a un subagente `sonnet` y la revisión a la sesión

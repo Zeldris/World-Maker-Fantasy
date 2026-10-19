@@ -16,7 +16,13 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 `/grill-with-docs`.
 
 1. **Empezar la tarea:** cargar `selector`, clasificar la tarea con su tabla y decir en una línea
-   qué skill y qué modelo pide.
+   qué skill y qué modelo pide, y su presupuesto de compactaciones (1 a 5, `QA-116`).
+   **Compactar sin perder** (`QA-116`): el tope de 300k (`QA-109`) es la red; los cortes buenos son los de fin
+   de sub-bloque, ya con commit y push, que Claude le señala a la usuaria para que haga `/compact`. Tras cada
+   compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
+   `git status`, los últimos commits y las compactaciones llevadas; un detalle de antes (un error, lo que dijo la
+   usuaria) se busca con `python3 tools/qa/recuperar.py "<regex>"`, que lee el registro de la sesión sin
+   cargarlo entero. Una sesión nueva no tiene ese registro: lo que tiene que sobrevivir, a la bitácora.
 2. **Si hay diseño o una decisión abierta:** `grilling` + `domain-modeling` (o `/grill-with-docs` si
    lo lanza la usuaria), con los juegos de referencia. **Toda ronda de diseño, también las de
    detalle (números), se contrasta siempre** con X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval
