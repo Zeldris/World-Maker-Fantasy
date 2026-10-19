@@ -72,8 +72,8 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `ZON-14` | Mapa de zona | Ficha del personaje : retrato o inicial, anillo de cristal `accent` (el color de "tu perso | jugado | QA-27 (2026-10-09…17) |
 | `ZON-17` | Mapa de zona | Salidas como estandartes de camino : flecha grande hacia el borde, placa con el nombre (o | jugado | P6, P164 (salidas) |
 | `ZON-19` | Mapa de zona | Etiquetas de nombre : siempre visibles para los puntos a 2-3 celdas del personaje y para e | jugado | P123, P151 (etiquetas) |
-| `ZON-20` | Mapa de zona | Leyenda compacta fija en una esquina del mapa (BG3), plegable, con las mismas fichas reale | sin jugar |  |
-| `ZON-62` | Mapa de zona | Cuadrícula bajo demanda (Z11): oculta por defecto, visible al mantener `Alt`, al hacer zoo | sin jugar |  |
+| `ZON-20` | Mapa de zona | Leyenda compacta fija en una esquina del mapa (BG3), plegable, con las mismas fichas reale | jugado | 2026-10-19: leyenda plegada abajo a la izquierda; al abrirla, las fichas reales (fauna, recurso, NPC, edificio, suelo, cadáver, tú, salida, parcelas) y los colores de facción |
+| `ZON-62` | Mapa de zona | Cuadrícula bajo demanda (Z11): oculta por defecto, visible al mantener `Alt`, al hacer zoo | jugado | 2026-10-19: oculta al abrir; visible solo mientras se mantiene `Alt`; «▦ Cuadrícula» la fija (`aria-pressed`) y la quita al volver a pulsar |
 | `ZON-80` | Mapa de zona | Partir `ZonaPanel.tsx` | no se juega | refactor |
 | `ZON-81` | Mapa de zona | Capas SVG ordenadas | no se juega | orden de capas; se ve por ZON-10/13 |
 | `ZON-86` | Mapa de zona | Tests | no se juega | tests |
@@ -125,7 +125,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-63` | Mundo vivo | Partidas de caza y captura 2026-10-07 (ronda aceptada el 2026-10-07, decisiones en | sin jugar |  |
 | `CR-65` | Mundo vivo | Defensa del Reino y milicia 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2 | sin jugar |  |
 | `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | sin jugar |  |
-| `NAR-9` | Narrador | Rumores en "El mundo" | sin jugar |  |
+| `NAR-9` | Narrador | Rumores en "El mundo" | jugado | 2026-10-19: un rumor del Cronista sale en pergamino con «Desde El Margen Silencioso · pasó el día 9» y «Ver en Leyendas», que abre Leyendas con la entrada resaltada; los «Se dice que…» de `darNoticia` salen sin estilo (P226) |
 | `PAN-9b` | Paneles | Leyendas de tu partida | jugado | P137 |
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | jugado | 2026-10-19: ⏸ desactiva; «Desactivadas (1)» con Reactivar y Borrar; Borrar pide confirmación «No se puede deshacer» y borra (0 órdenes en la base); límite editable solo en «único» |
 | `REI-40` | Reino | Agrupado por recurso (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, | jugado | 2026-10-19, Súbditos › Almacén: «Raciones de viaje ×1» agrupado, con Retirar y tope; P215 |
