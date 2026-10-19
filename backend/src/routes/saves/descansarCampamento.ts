@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { nextMorning8am, formatFictionalDate } from '../../services/worldClock.js';
+import { avanzarRelojConTick } from '../../services/dailyTick.js';
 import { energiaMaxFor } from '../../services/energy.js';
 import type { CondicionFisica } from '@prisma/client';
 
@@ -44,6 +45,7 @@ export async function descansarCampamentoRoutes(app: FastifyInstance) {
         endedAt: true,
         pendingDeathResolution: true,
         currentLocationId: true,
+        worldId: true,
         characterName: true,
         condicionFisica: true,
         attributes: true,
@@ -86,10 +88,8 @@ export async function descansarCampamentoRoutes(app: FastifyInstance) {
           lastRestAtMinutes: nuevoFictionalMinutes,
         },
       });
-      await tx.worldState.update({
-        where: { saveId: save.id },
-        data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel },
-      });
+      // Reloj + tick diario del Reino (P217): cruza la medianoche, así que corre `runDailyTick`.
+      await avanzarRelojConTick(tx, { saveId: save.id, worldId: save.worldId, minutosAntes: fictionalMinutesActuales, minutosDespues: nuevoFictionalMinutes });
       return tx.logEntry.create({
         data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: true, isSystemMessage: true },
       });
