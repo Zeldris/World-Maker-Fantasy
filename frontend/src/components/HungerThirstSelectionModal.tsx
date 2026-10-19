@@ -214,7 +214,7 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, energia, en
                   value > 0 ? 'border-accent-600/60 bg-accent-500/10' : 'border-iron-700'
                 }`}
               >
-                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono="🍖" />
+                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono="🥤" />
                 <span className="mr-auto min-w-0">
                   <span className="font-semibold text-wood-100">{baseNameOf(item.name)}</span>
                   <span className="ml-1.5 text-2xs text-wood-500">
