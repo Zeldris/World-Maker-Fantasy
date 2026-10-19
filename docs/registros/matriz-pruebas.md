@@ -41,23 +41,23 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `MOD-1` | Interfaz | `ModalShell` único | jugado | QA-27 (2026-10-09…17), todos los modales |
 | `MOD-2` | Interfaz | Estados comunes | jugado | estados cargando/error con Reintentar/éxito en el catálogo y en el modal de Comer en partida |
 | `MOD-3` | Interfaz | Teclado en modales | jugado | P202 (Escape en modales) |
-| `MOD-4` | Interfaz | Modales de ceremonia | sin jugar |  |
+| `MOD-4` | Interfaz | Modales de ceremonia | jugado | modal de clase a tamaño ceremonia; clic corto no confirma, mantener ~1 s llena la barra y fija GUERRERO |
 | `MOD-5` | Interfaz | `QuantityStepper` compartido | jugado | Comer/Beber: −/+, Máx., tope «Ya estarías saciado…» en el title, número editable que se recorta al tope, rueda con foco; al beber vuelve el odre vacío. P228 (icono 🍖 en bebidas) |
 | `MOD-6` | Interfaz | `EntityRow` con miniatura | jugado | sin miniatura en la ficha cae al icono; con thumbnail inyectado pinta <img> 32 px |
 | `UX-1` | Interfaz | `useGamePhase` | no se juega | hook interno; se ve por UX-7/UX-8 |
 | `UX-2` | Interfaz | Matriz de permisos | no se juega | tabla interna; se ve por UX-7/UX-8 |
 | `UX-3` | Interfaz | Guardia en `handleSubmit` | jugado | tres Enter seguidos dan una sola TU ACCIÓN |
 | `UX-4` | Interfaz | Tarjetas del registro con el estado global | jugado | QA-27 (2026-10-09…17), tarjetas del diario |
-| `UX-5` | Interfaz | Paneles en modo consulta | sin jugar |  |
-| `UX-6` | Interfaz | Un narrador a la vez | sin jugar |  |
+| `UX-5` | Interfaz | Paneles en modo consulta | jugado | con el narrador escribiendo, el cajón muestra «👁 Solo consulta: El narrador todavía está escribiendo.» y lo quita al terminar |
+| `UX-6` | Interfaz | Un narrador a la vez | jugado | ambientación en curso (reloj adelantado 10 min): la acción la aborta (/entorno ERR_ABORTED), se quita «El mundo se mueve» y el turno responde |
 | `UX-7` | Interfaz | La brújula y el mapa respetan la fase | jugado | QA-27 (2026-10-09…17), mapa bloqueado en combate |
 | `UX-8` | Interfaz | Bloqueos visibles | jugado | QA-27 (2026-10-09…17), «El narrador todavía está escribiendo» |
 | `UX-9` | Interfaz | Gestor de capas con prioridad | jugado | P188, P202 |
-| `UX-10` | Interfaz | Decisiones en cola | sin jugar |  |
+| `UX-10` | Interfaz | Decisiones en cola | jugado | partida nueva sin clase: aviso «por elegir» en cabecera ~12 s (lectura de la intro) y luego se abre el modal de clase |
 | `UX-11` | Interfaz | Presentación en orden del turno | jugado | QA-27 (2026-10-09…17) |
-| `UX-12` | Interfaz | Qué pasa con el cajón abierto cuando llega algo | sin jugar |  |
+| `UX-12` | Interfaz | Qué pasa con el cajón abierto cuando llega algo | jugado | lo importante avisa «📜 El narrador ha respondido» dentro del cajón; un combate abierto por turno no lo cierra (P232) |
 | `UX-13` | Interfaz | `anyModalOpen` completo | jugado | QA-27 (2026-10-09…17) |
-| `UX-16` | Interfaz | El asistente sobrevive a recargar | sin jugar |  |
+| `UX-16` | Interfaz | El asistente sobrevive a recargar | jugado | asistente conserva mundo y paso 3 al recargar; POST /saves en 500 → aviso con Reintentar y Volver; Reintentar crea la partida |
 | `UX-24` | Interfaz | Ningún error en silencio | jugado | cambiar rol con POST forzado a 500: ErrorBanner con el detalle del backend, Reintentar aplica el cambio y el aviso se va; la carga (GET) falla en silencio (P230) y el classify cae en sondeo (P229) |
 | `UX-29` | Interfaz | El mundo de fondo nunca bloquea | jugado | mientras la gema está encendida el campo de acción sigue libre (aria-disabled=false) |
 | `UX-30` | Interfaz | Solo lo que el personaje sabe | sin jugar |  |
