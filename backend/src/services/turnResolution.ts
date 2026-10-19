@@ -2582,6 +2582,21 @@ const EAT_DRINK_FLAVOR = ['El estómago se calma, al menos por ahora.', 'Las fue
 /// y muerte/descanso (docs/14), LogEntry. Compartido entre el turno síncrono (bandas
 /// instantánea/corta, `POST /turn/narrate`) y la resolución diferida de un `CharacterTransit`
 /// (bandas extendida/larga, `worldTick`) — misma lógica, dos disparadores.
+/// P233: ¿ya hay un COMBATE_PERDIDO de este combate? El combate empieza tras la última acción de la
+/// jugadora fuera de combate (`combate: false`, turn.ts); lo que se perdió antes es de otro combate.
+async function yaPerdioEsteCombate(tx: Prisma.TransactionClient, saveId: string): Promise<boolean> {
+  const ultimaFuera = await tx.logEntry.findFirst({
+    where: { saveId, channel: 'CHARACTER', isPlayerAction: true, combate: false },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  });
+  const perdido = await tx.suceso.findFirst({
+    where: { saveId, tipo: 'COMBATE_PERDIDO', ...(ultimaFuera ? { createdAt: { gt: ultimaFuera.createdAt } } : {}) },
+    select: { id: true },
+  });
+  return !!perdido;
+}
+
 export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Promise<NarrateAndPersistResult> {
   const {
     saveId,
@@ -6614,9 +6629,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     // Libro de Sucesos (CR-3, hito 0.2): caer convaleciente en un combate es perderlo (morir tiene
-    // su propio suceso, más abajo).
-    if (enCombate && proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') {
-      await registrarSuceso(tx, {
+    // su propio suceso, más abajo). P233: morir sin haber caído convaleciente en ESTE combate (de un
+    // golpe, o entrando ya convaleciente de antes) también es perderlo, una sola vez por combate.
+    const actorRivalCombate = enCombate && npcParaIntercambio ? [{ entidadTipo: 'NPC' as const, entidadId: npcParaIntercambio.id, papel: 'AUTOR' as const }] : [];
+    const pierdeEsteCombate =
+      !!enCombate &&
+      ((proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') ||
+        (proposedCondicion === 'MUERTO' && !(await yaPerdioEsteCombate(tx, saveId))));
+    let combatePerdidoId: string | null = null;
+    if (pierdeEsteCombate) {
+      combatePerdidoId = await registrarSuceso(tx, {
         saveId,
         tipo: 'COMBATE_PERDIDO',
         fictionalMinutes: nuevoFictionalMinutes,
@@ -6625,7 +6647,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         actores: [
           { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' },
           // CR-16: quien te vence lo recuerda y sube (estilo Némesis).
-          ...(npcParaIntercambio ? [{ entidadTipo: 'NPC' as const, entidadId: npcParaIntercambio.id, papel: 'AUTOR' as const }] : []),
+          ...actorRivalCombate,
         ],
         datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
       });
@@ -6664,14 +6686,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
       // Libro de Sucesos (CR-3, hito 0.2): la muerte del personaje, y el final si no quedan vidas.
       const actoresMuerte = [{ entidadTipo: 'PERSONAJE' as const, entidadId: saveId, papel: 'VICTIMA' as const }];
+      // P233: en combate, el NPC que mata va también en la muerte (como AUTOR).
       const muerteId = await registrarSuceso(tx, {
         saveId,
         tipo: 'MUERTE_JUGADOR',
         fictionalMinutes: nuevoFictionalMinutes,
         locationId: currentLocationId,
         origen: 'JUGADOR',
-        actores: actoresMuerte,
+        actores: [...actoresMuerte, ...actorRivalCombate],
         datos: { personaje: characterName },
+        ...(combatePerdidoId ? { causas: [combatePerdidoId] } : {}),
       });
       if (outcome.finDePartida) {
         await registrarSuceso(tx, {
