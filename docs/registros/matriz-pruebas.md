@@ -127,16 +127,16 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | sin jugar |  |
 | `NAR-9` | Narrador | Rumores en "El mundo" | sin jugar |  |
 | `PAN-9b` | Paneles | Leyendas de tu partida | jugado | P137 |
-| `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | sin jugar |  |
+| `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | jugado | 2026-10-19: ⏸ desactiva; «Desactivadas (1)» con Reactivar y Borrar; Borrar pide confirmación «No se puede deshacer» y borra (0 órdenes en la base); límite editable solo en «único» |
 | `REI-40` | Reino | Agrupado por recurso (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, | jugado | 2026-10-19, Súbditos › Almacén: «Raciones de viaje ×1» agrupado, con Retirar y tope; P215 |
-| `REI-41` | Reino | Topes junto al stock (R22): barra `cantidad / tope` por recurso con el tope editable (step | sin jugar |  |
+| `REI-41` | Reino | Topes junto al stock (R22): barra `cantidad / tope` por recurso con el tope editable (step | jugado | 2026-10-19: fila del almacén con barra `role="meter"` «1 de 5» al 20 % y tooltip en el tope |
 | `REI-54` | Reino | Llegadas y salidas : cuando la versión mínima de súbditos exista, tarjeta "Llegaron 2 pobl | jugado | 2026-10-19: tras P220, tarjeta «Llega a tu puerta» (ACOGER/Despedir, «Esperará un día tu respuesta»); en Súbditos «↩ Krarka — Se fue: …» y «✝ Grosh — Murió de hambre» |
-| `REI-110` | Reino | Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). S 2026-10-02 (`Nume | sin jugar |  |
+| `REI-110` | Reino | Prioridad: guardar con *debounce* o al soltar, no en cada tecla (R18). S 2026-10-02 (`Nume | jugado | 2026-10-19: escribir la prioridad no manda nada; un solo PATCH `{"prioridad":8}` al salir del campo |
 | `REI-111` | Reino | Todos los `try/finally` de Reino con `catch` y `ErrorBanner` visible (R19). S 2026-10-01 ( | sin jugar |  |
-| `REI-112` | Reino | Topes con `Enter` y confirmación visual (R20). S 2026-10-02 (mismo componente: ✓ al confir | sin jugar |  |
-| `REI-113` | Reino | Sustituir los `<select>` nativos por los selectores del juego (R23). S 2026-10-02: nuevo ` | sin jugar |  |
+| `REI-112` | Reino | Topes con `Enter` y confirmación visual (R20). S 2026-10-02 (mismo componente: ✓ al confir | jugado | 2026-10-19: Enter manda `limite:5` y muestra ✓; Esc deshace; vacío manda `limite:null` |
+| `REI-113` | Reino | Sustituir los `<select>` nativos por los selectores del juego (R23). S 2026-10-02: nuevo ` | jugado | 2026-10-19: ningún `<select>` nativo en las 8 pestañas del Reino |
 | `REI-114` | Reino | Esqueletos de carga en lugar de "Cargando…" (R24). S 2026-10-02: componente `Esqueleto` (p | sin jugar |  |
-| `REI-115` | Reino | Tooltips de explicación en cada indicador, rol y estado (R25). S 2026-10-02: los 8 indicad | sin jugar |  |
+| `REI-115` | Reino | Tooltips de explicación en cada indicador, rol y estado (R25). S 2026-10-02: los 8 indicad | jugado | 2026-10-19: tooltips en Felicidad, Bebida y Visitantes (Visión general), títulos de estado en Edificios y de rol en Súbditos |
 | `REI-116` | Reino | Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). S 2026-10 | sin jugar |  |
 | `REI-118` | Reino | Súbditos como personas (Fase C del `0.3`, Q1-Q3 y Q7 de la usuaria, 2026-10-06): cada pobl | jugado | 2026-10-19: tarjetas de súbdito con nombre, raza, edad, linaje («de los Riuh»), papel y tarea editables, pareja y crías; Población cuenta súbditos ACTIVO |
 | `REI-119` | Reino | Llegadas (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, | jugado | 2026-10-19: con las 2 camas temporales (P220a) y la lista de requisitos en ✓ (P220b) llega Krarka; tarjeta «Llega a tu puerta» con ACOGER y queda de Trabajadora (Camas 1/2) |
