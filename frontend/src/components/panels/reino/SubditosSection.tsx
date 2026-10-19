@@ -3,7 +3,7 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
-import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, cambiarTareaSubdito, responderLlegada, type SubditoInfo, type TareaSubdito, type CamasReino, type CandidatoLlegada, type SalidaSubdito } from '../../../lib/api'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, cambiarTareaSubdito, responderLlegada, type SubditoInfo, type TareaSubdito, type CamasReino, type CandidatoLlegada, type RequisitoLlegada, type SalidaSubdito } from '../../../lib/api'
 import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
@@ -362,7 +362,7 @@ const TAREAS_SUBDITO: { value: TareaSubdito; label: string; descripcion: string 
 /// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
 function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { saveId: string; subjects: SubjectInfo[]; plantillasEquipo: PlantillaEquipoInfo[]; onRefreshSave: () => Promise<void> }) {
   const consulta = useModoConsulta()
-  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] } | null>(null)
+  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] } | null>(null)
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
@@ -428,6 +428,21 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
         <p className="mb-2 text-2xs text-wood-400">
           Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total + (datos.camas.temporales ?? 0)} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'}
           {datos.camas.temporales ? `, ${datos.camas.temporales} temporales del Ayuntamiento solo para súbditos` : ''})
+        </p>
+      )}
+      {/* P220b: todos los requisitos para que llegue alguien, con su estado y su cifra (como en X4). */}
+      {(datos?.requisitosLlegada ?? []).length > 0 && (
+        <p className="mb-2 text-2xs text-wood-400" aria-label="Requisitos para que llegue alguien">
+          Para que llegue alguien:{' '}
+          {datos!.requisitosLlegada!.map((q, i) => (
+            <span key={q.clave}>
+              {i > 0 && ' · '}
+              <span className={q.cumple ? 'text-emerald-400' : 'text-danger-400'} title={q.cumple ? undefined : q.motivo}>
+                {q.nombre} <span aria-label={q.cumple ? 'cumplido' : 'falta'}>{q.cumple ? '✓' : '✗'}</span>
+              </span>{' '}
+              ({q.cifra})
+            </span>
+          ))}
         </p>
       )}
       {/* REI-119 / REI-54: quien llega espera respuesta; si no se le contesta, se va. */}
