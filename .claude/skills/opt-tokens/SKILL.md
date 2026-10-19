@@ -41,8 +41,12 @@ Es una **retro de gasto**: como `/retro`, propone cambios en el **entorno** (her
      escribe una vez (un puntero en un runbook, un escenario, una ayuda) y no se vuelve a pagar.
    - **Contexto fijo.** `CLAUDE.md` y las skills siempre cargadas cuestan en cada llamada: lo que no se usa en
      cada tarea, a un documento con puntero o a una skill que se cargue cuando haga falta (menos de 200 líneas).
-   - **Modelo y razonamiento.** Lo mecánico (jugar una ronda, recorrer, formatear) no necesita el modelo más
-     caro ni el esfuerzo más alto: un subagente con un modelo más barato o menos esfuerzo.
+   - **Modelo y razonamiento.** Mirar `POR MODELO` de `medir.py`: qué parte de la entrada va al modelo grande en
+     la sesión principal y qué subagentes usaron el grande para algo mecánico. Planificar, diseñar y revisar, con
+     el grande; escribir código con un plan ya cerrado, buscar, jugar una ronda o formatear, en un subagente con un
+     modelo más barato o menos esfuerzo, que devuelva el resultado (el diff, el resumen) a la sesión principal.
+     Un subagente arranca sin contexto: compensa cuando el encargo cabe en un párrafo con las rutas, no cuando
+     tiene que redescubrir lo que la sesión ya sabe.
 4. **Proponer**, en orden de ahorro estimado (tokens por sesión, con la cifra del paso 1 que lo justifica), cada
    propuesta con qué cambia (archivo y forma) y su coste de hacerlo. Lo más barato de aplicar y que más ahorra,
    primero. Se presentan a la usuaria y **ahí acaba el paso**: ella decide.

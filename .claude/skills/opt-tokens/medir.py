@@ -6,7 +6,9 @@ Lee el registro de la sesión (`~/.claude/projects/<proyecto>/<sesión>.jsonl`) 
   - por herramienta: cuántas llamadas, los tokens que metieron sus resultados en el contexto y los tokens
     **arrastrados** (cada resultado se vuelve a enviar en cada llamada posterior hasta la siguiente
     compactación: un resultado de 5k tokens con 200 llamadas detrás pesa 1M);
-  - los resultados más pesados, las imágenes, los errores, y lo repetido (mismo archivo leído o misma orden).
+  - los resultados más pesados, las imágenes, los errores, y lo repetido (mismo archivo leído o misma orden);
+  - por modelo, la sesión principal y sus subagentes (`<sesión>/subagents/*.jsonl`): si lo mecánico va al modelo
+    caro o el diseño a uno barato (QA-117).
 
 Uso:
   python3 medir.py                       la sesión más reciente del proyecto actual, últimas 24 h
@@ -50,6 +52,33 @@ def resumen_entrada(nombre, entrada):
         if clave in entrada:
             return f'{clave}={str(entrada[clave])[:110]}'
     return json.dumps(entrada, ensure_ascii=False)[:110]
+
+
+def uso_por_modelo(ruta, desde, por_modelo, quien):
+    """Suma en `por_modelo[(quien, modelo)]` las llamadas, la entrada y la salida de un registro (una vez por
+    respuesta). Devuelve el último modelo visto."""
+    vistos, modelo = set(), None
+    for linea in open(ruta, encoding='utf-8'):
+        try:
+            d = json.loads(linea)
+        except json.JSONDecodeError:
+            continue
+        m = d.get('message') or {}
+        if d.get('type') != 'assistant' or not m.get('usage') or (m.get('model') or '').startswith('<'):
+            continue
+        ts = d.get('timestamp')
+        if desde and ts and dt.datetime.fromisoformat(ts.replace('Z', '+00:00')) < desde:
+            continue
+        clave = m.get('id') or d.get('requestId') or d.get('uuid')
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        u, modelo = m['usage'], m.get('model', '?')
+        p = por_modelo[(quien, modelo)]
+        p[0] += 1
+        p[1] += sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'))
+        p[2] += u.get('output_tokens') or 0
+    return modelo
 
 
 def main():
@@ -162,6 +191,25 @@ def main():
         print('REPETIDO (la misma lectura u orden, idéntica, más de una vez)')
         for n, (nombre, _, resumen) in sorted(rep, reverse=True)[: a.top]:
             print(f'  {n:>3}× {nombre}: {resumen}')
+    # QA-117: qué modelo hizo qué. Lo mecánico (escribir código con un plan cerrado, buscar, jugar una ronda) puede ir a
+    # un subagente con un modelo más barato; el diseño y la revisión, al grande.
+    por_modelo = collections.defaultdict(lambda: [0, 0, 0])  # llamadas, entrada, salida
+    uso_por_modelo(ruta, desde, por_modelo, 'principal')
+    tipos = collections.Counter()
+    for sub in sorted(glob.glob(os.path.join(os.path.splitext(ruta)[0], 'subagents', '*.jsonl'))):
+        try:
+            tipo = json.load(open(sub[:-len('.jsonl')] + '.meta.json', encoding='utf-8')).get('agentType', '?')
+        except (OSError, json.JSONDecodeError):
+            tipo = '?'
+        modelo = uso_por_modelo(sub, desde, por_modelo, 'subagentes')
+        if modelo:
+            tipos[(tipo, modelo)] += 1
+    print()
+    print('POR MODELO (entrada y salida de la API)')
+    for (quien, modelo), (n, ent, sal) in sorted(por_modelo.items(), key=lambda x: (x[0][0] != 'principal', -x[1][1])):
+        print(f'  {quien:<10} {modelo:<28} {n:>5} llamadas  {ent:>13,} entrada  {sal:>10,} salida')
+    if tipos:
+        print('  Subagentes: ' + ' · '.join(f'{n} {t} ({m})' for (t, m), n in tipos.most_common()))
 
 
 if __name__ == '__main__':

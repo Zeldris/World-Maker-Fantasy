@@ -118,4 +118,9 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   Si la tarea pide otro, lo dice en una línea al empezar y sigue (salvo riesgo alto: entonces espera).
 - Claude sí elige el modelo de los **subagentes** que lance (búsquedas, tareas mecánicas). El diseño y
   las decisiones nunca se delegan.
+- **Planificar con el grande, escribir con el medio** (usuaria, 2026-10-19, `QA-117`): con el plan cerrado y escrito
+  (archivos, funciones, tests que tienen que pasar), la implementación acotada va a un subagente `sonnet` con ese
+  plan y la sesión principal revisa su diff antes del commit. Se queda en la sesión principal lo que pide
+  sostener contexto: el bug difícil, el motor con varios sistemas, lo que cambia el plan a mitad. `medir.py`
+  (`POR MODELO`) dice en cada `/opt-tokens` si se está haciendo.
 - En la duda, el de más riesgo.

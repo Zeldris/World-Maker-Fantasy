@@ -1310,6 +1310,10 @@ aprobadas las cuatro por la usuaria):
   proponer y arregla `medir.py` si las cifras no cuadran; `proyecto.md` con las cifras buenas.
 - ~~**QA-115 · Fecha de la bitácora al día**~~ ✅ 2026-10-19: `bitacora.py --fecha`; el pre-push falla si un commit
   que cambia la bitácora deja «Actualizado» con un día anterior.
+- ~~**QA-117 · Planificar con el grande, escribir con el medio**~~ ✅ 2026-10-19 (usuaria): `medir.py` reparte la
+  entrada por modelo (sesión principal y subagentes de `<sesión>/subagents/`); `opt-tokens` lo mira; el runbook
+  `skills-y-modelos.md` manda la implementación con plan cerrado a un subagente `sonnet` y la revisión a la sesión
+  principal. La sesión del 2026-10-19 llevó el 92 % de la entrada en Opus.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

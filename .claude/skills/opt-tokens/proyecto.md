@@ -20,6 +20,8 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones.
 - **Tests de las herramientas** (`QA-113`): `medir.py` tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.
+- **Modelo por tarea** (`QA-117`): `medir.py` reparte la entrada por modelo, sesión principal y subagentes; el
+  runbook `skills-y-modelos.md` manda escribir con un subagente `sonnet` cuando el plan está cerrado.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
 ## Gastos conocidos
@@ -28,6 +30,8 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
   caché leída); en toda la sesión, 15 tramos de suelo ~76k y techo ~742k, unas 440 llamadas por tramo. (Las cifras
   de la primera medida, 543 llamadas y 566k, salían dobladas: `medir.py` contaba cada bloque de una respuesta.) Es la palanca más grande: contexto medio × llamadas
   (`QA-109`, `QA-110`).
+- **Todo con el modelo grande**: en la sesión del 2026-10-19, la principal (Opus) llevó el 92 % de la entrada
+  (2.795M de 3.046M) y 23 de los 61 subagentes también fueron con Opus (`QA-117`).
 - **Rondas de pruebas**: muchas llamadas pequeñas (pulsar, mirar, pulsar). Encadenar pasos en una orden de
   `orden.sh` y mirar el estado al final.
 - **Suites con base real** (backend, ~3.600 tests): la salida entera es grande; filtrar con `grep -E "Test Files|Tests
