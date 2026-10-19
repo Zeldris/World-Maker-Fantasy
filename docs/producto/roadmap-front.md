@@ -1269,12 +1269,13 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   juego entera como instantánea (`tools/qa/escenarios/<nombre>.dump`, menos de 1 MB, con su línea en el README),
   la carga con las migraciones y el catálogo de ahora y avanza N días (`scripts/avanzarDias.ts`, el avance diario
   de siempre: 3 días en 3 s). Se llega jugando una vez y se guarda; las instantáneas las añade cada ronda.
-- **QA-103 · Recorridos que pasan o fallan** 🚧 en curso: cada comprobación jugando deja un recorrido en
-  `tools/playwright-e2e/recorridos/`; `recorrer.sh` los pasa y da una línea por recorrido (✓/✗).
+- ~~**QA-103 · Recorridos que pasan o fallan**~~ ✅ 2026-10-19: `tools/playwright-e2e/recorrer.mjs` y
+  `tools/qa/recorrer.sh` pasan los recorridos de `recorridos/` (cada uno con sus hallazgos y su escenario, que se
+  carga una vez por grupo) y dan una línea por recorrido. El primero, P194 (en verde). Los demás los deja cada ronda.
 - ~~**QA-104 · Estado en texto**~~ ✅ 2026-10-19: `mcp/estado.js` da en unas 10 líneas HUD, modales, la tarjeta
   del encuentro con sus botones, avisos, final del diario y combate; captura solo si algo no cuadra.
-- **QA-105 · Rondas por bloques** 🚧 en curso: en `rondas-de-pruebas.md`, cada ronda coge un bloque de la matriz y
-  lo cierra (escenario, recorridos, arreglos, recorridos en verde).
+- ~~**QA-105 · Rondas por bloques**~~ ✅ 2026-10-19: «Una ronda, un bloque» en `rondas-de-pruebas.md`: qué falta
+  (matriz), escenario, jugar en texto con recorridos, apuntar en el registro y en la matriz, y cerrar el bloque.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

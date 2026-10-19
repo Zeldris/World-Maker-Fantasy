@@ -6,3 +6,4 @@ estado útil lo guarda aquí (`QA-105`).
 
 | Escenario | Partida | Qué tiene | Fecha |
 |---|---|---|---|
+| `hondonada-inicio` | `cmvex1v0300057d0pdjlbezcj` | Gorhorn Cazador nivel 1, recién empezada, día 1 08:00 en la Hondonada del Eco (dificultad Medio) | 2026-10-19 |
