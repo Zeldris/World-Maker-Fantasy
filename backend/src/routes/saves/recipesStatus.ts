@@ -141,7 +141,11 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
 
     const activeRegion = save.currentLocation?.region ?? null;
     const construction: RecipeStatus[] = await Promise.all(
-      CONSTRUCTION_RECIPES.map((recipe) =>
+      // P218 (decisión de la usuaria, 2026-10-19): una receta con `raza` de otra raza que la del
+      // personaje no se lista (misma comparación directa de slugs de BERIG_RAZAS que el resto del
+      // backend con `Save.raza`). Sin `raza` en la receta, o personaje sin raza, siguen visibles.
+      // Solo filtra lo mostrado: el comando de texto no se toca (no está limitado por raza).
+      CONSTRUCTION_RECIPES.filter((recipe) => !recipe.raza || !save.raza || recipe.raza === save.raza).map((recipe) =>
         constructionRecipeStatusFor({
           recipe,
           saveId: save.id,
