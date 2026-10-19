@@ -11,7 +11,7 @@ parámetros van en la página: antes, `browser_evaluate` con `() => { window.tk 
 
 | Archivo | Parámetros (`window.tk`) | Qué hace |
 |---|---|---|
-| `estado.js` | — | HUD, avisos, final del diario y panel de combate, en texto. |
+| `estado.js` | `diario` (líneas, 3) | En unas 10 líneas (`QA-104`): HUD, modales abiertos, la tarjeta del encuentro con sus botones (entre paréntesis, los desactivados), avisos, final del diario y panel de combate. |
 | `turno.js` | `accion` | Escribe la acción en el cuadro que toque (combate o texto libre), espera al turno y devuelve el estado. |
 | `mover.js` | `x`, `y` | Abre «Moverte por la zona» si hace falta, pulsa ese punto (píxeles de pantalla), acepta «Ir hasta aquí» y espera a llegar o a un encuentro. |
 | `viajar.js` | `x`, `y` | Cruza a otra zona por esa salida: pasa los encuentros tranquilos, confirma «Viajar»/«Entrar»/«Salir» y espera a llegar. Para ante uno hostil o un combate. |

@@ -15,7 +15,7 @@ cada commit.**
 | **Último commit en `main`** | Fusión del PR #63 (2026-10-19, `509e011`, CI en verde): hallazgos P189-P204 de `QA-27`, su `/code-review` y la retro ~~`QA-98`…`QA-100`~~. Antes: PR #62 (`7498bfd`), PR #60 (`0bacec8`). |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Ronda de pruebas del 2026-10-17 (`QA-27`), partida `cmvcunmm300017d64k8qxe0t3`: comprobados 12 del PR #60 y P197 (arreglado); reabierto P177; nuevos P188-P206; su retro `QA-94`…`QA-97` hecha. **Siguiente:** arreglar P206, P177 y P188, y seguir jugando desde el Hogar Ketg (misión de las Agujas, P184). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | PR #63 en `main` (P189-P204, 2026-10-19). P203 y lo arreglado sin jugar (P202, P204), a comprobar jugando. **Siguiente:** ronda de pruebas: comprobar lo arreglado sin jugar y jugar lo del Reino del `0.3` (fundar, súbditos, linajes, ganadería, defensa, bandidos, compañeros), aún sin probar. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | Proceso de pruebas (usuaria, 2026-10-19): ~~`QA-101`~~ (matriz: 123 de 169 sin jugar) y ~~`QA-104`~~ hechas; faltan `QA-102` (escenarios y avanzar días), `QA-103` (recorridos) y `QA-105` (rondas por bloques). Luego, ronda del bloque Reino. **Siguiente:** `QA-102`. |
 | **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-17, tras el `/code-review` de los hallazgos de `QA-27`): backend `tsc` 0, `vitest` completo 293 archivos / 3599; frontend `tsc -b` 0, `vitest` 145 / 643, `oxlint` 0 errores; todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
 ## Dónde está todo (para saber qué sigue)
@@ -109,6 +109,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-19** — ~~`QA-101`~~ (matriz de cobertura de las pruebas, `tools/qa/matriz-pruebas.py`) y ~~`QA-104`~~ (`estado.js` en unas 10 líneas).
 - **2026-10-19** — Arreglos de la ronda de la otra cuenta, reparto P189-P205: P189 (la fauna sin territorio: el catálogo no sembraba origen), P190-P196, P198-P202, P204 y P192 (opción A: cada uno actúa en su turno), con los arreglos de su `/code-review` y su retro ~~`QA-98`…`QA-100`~~ (tests de integración en el pre-push, la oferta en sus dos sitios y el origen de los puntos de zona). P203, a volver a jugar.
 - **2026-10-17** — Ronda de pruebas de `QA-27` tras el PR #60 (12 comprobados, P177 reabierto, P188-P206) y su retro ~~`QA-94`…`QA-97`~~: avisos de React que fallan los tests (con el arreglo de P197), «directamente a main» no quita la retro, `viajar.js` y `puntos.js`, y las consultas SQL de la ronda.
 - **2026-10-17** — PR #60 en `main` (CI en verde): hallazgos de `QA-27`, tandas 2 y 3, su `/code-review` y la retro ~~`QA-90`…`QA-93`~~.
@@ -118,4 +119,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-15** — PR #58 en `main` (CI en verde): ronda de pruebas del 2026-10-14 (P147-P187), etiquetas del mapa de zona (P123, P151), P144, ~~`QA-63`~~ y la retro ~~`QA-82`…`QA-87`~~ con los arreglos de sus dos `/code-review`.
 - **2026-10-14** — ~~`QA-82`…`QA-87`~~ (retro de la ronda `QA-27` del 2026-10-14): catálogo de `tarkor_juego` al día al arrancar, efectos secundarios de un arreglo de la rama antes del PR, resumen del registro de hallazgos generado, tarea tachada también en la bitácora (pre-push), capturas y `psql` en el runbook, moverse por el mapa de zona.
 - **2026-10-14** — ~~`QA-63`~~ (los `afterEach` de `turn.integration.test.ts` con 60 s, 3 pasadas seguidas en verde) y de `QA-27` P144 (Reputación y Misiones a la misma altura) y P123 (las etiquetas no tapan fichas, jugador ni viajeros; tope de desplazamiento por P151), comprobados jugando. Ronda de pruebas del 2026-10-14: hallazgos P147-P187.
-- **2026-10-13** — PR #54 en `main` (CI en verde): arreglos del `/code-review` del #53, `QA-77`…`QA-80` y de `QA-27` P128, P137, P90, P130, P132, P126, P141 y P140, con los arreglos de su `/code-review`.

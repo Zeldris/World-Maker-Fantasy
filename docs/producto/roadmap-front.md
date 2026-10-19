@@ -1259,6 +1259,22 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
   (`scripts/plantillaZonePoint.ts`) con su test, y el test de partida comprueba que el clon copia los campos.
   Motivo: P189 (sin origen, ningún animal tenía territorio).
 
+Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo implementado):
+
+- ~~**QA-101 · Matriz de cobertura de las pruebas**~~ ✅ 2026-10-19: `tools/qa/matriz-pruebas.py` y
+  `docs/registros/matriz-pruebas.md`, una fila por tarea cerrada del `0.0` al `0.3` con bloque y estado (jugado,
+  solo tests, sin jugar, no se juega); da «SIN JUGAR: N de M» por bloque y el pre-push exige la fila de cada tarea
+  cerrada. Estado inicial clasificado a mano: 123 de 169 sin jugar (el núcleo del `0.1` no tiene ID y no cuenta).
+- **QA-102 · Escenarios preparados y avanzar días** 🚧 en curso: `tools/qa/escenario.sh <nombre>` deja en
+  `tarkor_juego` una partida ya en el estado que se quiere probar (reino fundado con súbditos, bandidos cerca…) y
+  un comando avanza N días con el avance diario de siempre.
+- **QA-103 · Recorridos que pasan o fallan** 🚧 en curso: cada comprobación jugando deja un recorrido en
+  `tools/playwright-e2e/recorridos/`; `recorrer.sh` los pasa y da una línea por recorrido (✓/✗).
+- ~~**QA-104 · Estado en texto**~~ ✅ 2026-10-19: `mcp/estado.js` da en unas 10 líneas HUD, modales, la tarjeta
+  del encuentro con sus botones, avisos, final del diario y combate; captura solo si algo no cuadra.
+- **QA-105 · Rondas por bloques** 🚧 en curso: en `rondas-de-pruebas.md`, cada ronda coge un bloque de la matriz y
+  lo cierra (escenario, recorridos, arreglos, recorridos en verde).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

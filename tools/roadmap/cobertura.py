@@ -71,26 +71,28 @@ for row in tabla.split('\n'):
     for i in ids: asignado.setdefault(i,set()).add(hito)
 falta=sorted((i for i in defs if i not in asignado), key=lambda x:(x.split('-')[0],int(re.sub(r'\D','',x.split('-')[1]))))
 fantasmas=sorted(i for i in asignado if i not in defs)
-print('definidas',len(defs),'asignadas',len(asignado))
-print('SIN HITO:',len(falta))
-for i in falta: print(' ',i,defs[i][0],defs[i][1])
-print('ASIGNADAS PERO NO DEFINIDAS:',fantasmas)
-# QA-14: los que ya había al activar la comprobación (pendientes de definir en su roadmap); uno nuevo falla.
-FANTASMAS_CONOCIDOS={'CFG-9','CR-49','ZON-5','ZON-16','ZON-18','ZON-30','ZON-31','ZON-32','ZON-33','ZON-34','ZON-35','ZON-36','ZON-38','ZON-40','ZON-41','ZON-50','ZON-51','ZON-53','ZON-58'}
-nuevos=[i for i in fantasmas if i not in FANTASMAS_CONOCIDOS]
-print('NO DEFINIDAS NUEVAS:',nuevos)
-dobles={i:h for i,h in asignado.items() if len(h)>1}
-print('EN VARIOS HITOS:',dobles)
-# QA-20: una fase cerrada lleva su retro.
-retros=[]
-for f in sorted(os.listdir(D)):
-    if not re.match(r'plan-roadmap-[\d.]+\.md$',f): continue
-    for l in open(D+f):
-        m=re.match(r'^\|\s*\*\*([A-Z]) —',l)
-        if not m: continue
-        estado=l.rstrip().rstrip('|').split('|')[-1].strip()
-        cerrada=estado.startswith('✅') or f'Fase {m.group(1)} cerrada' in estado
-        if cerrada and 'retro ✅' not in estado and 'sin retro' not in estado:
-            retros.append(f'{f} Fase {m.group(1)}')
-print('RETRO PENDIENTE:',retros)
-sys.exit(1 if falta or nuevos or retros else 0)
+# QA-101: sin ejecutarse como script (p. ej. desde tools/qa/matriz-pruebas.py), solo calcula `defs` y `asignado`.
+if __name__ == '__main__':
+    print('definidas',len(defs),'asignadas',len(asignado))
+    print('SIN HITO:',len(falta))
+    for i in falta: print(' ',i,defs[i][0],defs[i][1])
+    print('ASIGNADAS PERO NO DEFINIDAS:',fantasmas)
+    # QA-14: los que ya había al activar la comprobación (pendientes de definir en su roadmap); uno nuevo falla.
+    FANTASMAS_CONOCIDOS={'CFG-9','CR-49','ZON-5','ZON-16','ZON-18','ZON-30','ZON-31','ZON-32','ZON-33','ZON-34','ZON-35','ZON-36','ZON-38','ZON-40','ZON-41','ZON-50','ZON-51','ZON-53','ZON-58'}
+    nuevos=[i for i in fantasmas if i not in FANTASMAS_CONOCIDOS]
+    print('NO DEFINIDAS NUEVAS:',nuevos)
+    dobles={i:h for i,h in asignado.items() if len(h)>1}
+    print('EN VARIOS HITOS:',dobles)
+    # QA-20: una fase cerrada lleva su retro.
+    retros=[]
+    for f in sorted(os.listdir(D)):
+        if not re.match(r'plan-roadmap-[\d.]+\.md$',f): continue
+        for l in open(D+f):
+            m=re.match(r'^\|\s*\*\*([A-Z]) —',l)
+            if not m: continue
+            estado=l.rstrip().rstrip('|').split('|')[-1].strip()
+            cerrada=estado.startswith('✅') or f'Fase {m.group(1)} cerrada' in estado
+            if cerrada and 'retro ✅' not in estado and 'sin retro' not in estado:
+                retros.append(f'{f} Fase {m.group(1)}')
+    print('RETRO PENDIENTE:',retros)
+    sys.exit(1 if falta or nuevos or retros else 0)
