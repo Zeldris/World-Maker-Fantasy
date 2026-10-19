@@ -155,4 +155,22 @@ describe('SubditosSection — llegadas (REI-119)', () => {
     })
     expect(responderLlegada).toHaveBeenCalledWith('s1', 'c', true)
   })
+
+  // P220b: el checklist de requisitos de llegada se ve siempre, con el estado y la cifra de cada uno.
+  it('enseña todos los requisitos de llegada con su estado y cifra', async () => {
+    vi.mocked(getSubditos).mockResolvedValue({
+      ahora: 0, subditos: [], camas: { total: 0, companeros: 0, subditos: 0, libres: 0 },
+      requisitosLlegada: [
+        { clave: 'cama', nombre: 'Cama libre', cumple: true, cifra: '0/2', motivo: 'No hay cama libre.' },
+        { clave: 'comida', nombre: 'Comida', cumple: false, cifra: '0', motivo: 'No hay comida.' },
+        { clave: 'agua', nombre: 'Agua', cumple: true, cifra: '12', motivo: 'No hay agua.' },
+        { clave: 'felicidad', nombre: 'Felicidad', cumple: true, cifra: '55, mínimo 40', motivo: 'Poca fama.' },
+      ],
+    })
+    const { findByLabelText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    const lista = await findByLabelText('Requisitos para que llegue alguien')
+    expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (0/2) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
+  })
 })

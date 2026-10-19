@@ -18,14 +18,38 @@ export const DIAS_ENTRE_LLEGADAS = 7;
 export const DIAS_PARA_RESPONDER = 2;
 export const FELICIDAD_PARA_LLEGADAS = 40;
 
+/// Un requisito para que llegue alguien, con su estado y su cifra (P220b: la lista entera se enseña en
+/// Reino › Súbditos, como el checklist de requisitos de X4: Foundations).
+export interface RequisitoLlegada {
+  clave: 'cama' | 'comida' | 'agua' | 'felicidad';
+  nombre: string;
+  cumple: boolean;
+  /// La cifra que se muestra junto al estado («0/2», «12», «55, mínimo 40»).
+  cifra: string;
+  /// Por qué no llega nadie si no se cumple.
+  motivo: string;
+}
+
+type EntradaLlegada = { camasLibres: number; camasTotales?: number; comida: number; bebida: number; felicidad: number; candidatoEsperando: boolean };
+
+/// Puro: todos los requisitos de llegada con su estado (única fuente de los umbrales).
+export function requisitosDeLlegada(r: EntradaLlegada): RequisitoLlegada[] {
+  const cama = r.camasTotales != null ? `${Math.max(0, r.camasTotales - r.camasLibres)}/${r.camasTotales}` : `${r.camasLibres} libres`;
+  return [
+    { clave: 'cama', nombre: 'Cama libre', cumple: r.camasLibres > 0, cifra: cama, motivo: 'No hay cama libre.' },
+    { clave: 'comida', nombre: 'Comida', cumple: r.comida > 0, cifra: String(r.comida), motivo: 'No hay comida.' },
+    { clave: 'agua', nombre: 'Agua', cumple: r.bebida > 0, cifra: String(r.bebida), motivo: 'No hay agua.' },
+    {
+      clave: 'felicidad', nombre: 'Felicidad', cumple: r.felicidad >= FELICIDAD_PARA_LLEGADAS, cifra: `${r.felicidad}, mínimo ${FELICIDAD_PARA_LLEGADAS}`,
+      motivo: `El Reino no da buena fama: la felicidad está por debajo de ${FELICIDAD_PARA_LLEGADAS}.`,
+    },
+  ];
+}
+
 /// Puro: por qué no llega nadie esta semana (o null si puede llegar alguien).
-export function motivoSinLlegada(r: { camasLibres: number; comida: number; bebida: number; felicidad: number; candidatoEsperando: boolean }): string | null {
+export function motivoSinLlegada(r: EntradaLlegada): string | null {
   if (r.candidatoEsperando) return 'Ya hay alguien esperando respuesta.';
-  if (r.camasLibres <= 0) return 'No hay cama libre.';
-  if (r.comida <= 0) return 'No hay comida.';
-  if (r.bebida <= 0) return 'No hay agua.';
-  if (r.felicidad < FELICIDAD_PARA_LLEGADAS) return 'El Reino no da buena fama: la felicidad está por debajo de 40.';
-  return null;
+  return requisitosDeLlegada(r).find((q) => !q.cumple)?.motivo ?? null;
 }
 
 /// Puro: el pueblo de quien llega, al azar según cuántos son (solo pueblos con gente).

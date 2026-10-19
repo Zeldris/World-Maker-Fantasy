@@ -1834,6 +1834,15 @@ export interface CamasReino {
   libresSubditos?: number
 }
 
+/// P220b: un requisito para que llegue alguien, con su estado y su cifra.
+export interface RequisitoLlegada {
+  clave: 'cama' | 'comida' | 'agua' | 'felicidad'
+  nombre: string
+  cumple: boolean
+  cifra: string
+  motivo: string
+}
+
 /// REI-119: quien espera en la puerta del Reino a que lo aceptes o lo rechaces.
 export interface CandidatoLlegada extends SubditoInfo {
   deDonde: string | null
@@ -1849,7 +1858,7 @@ export interface SalidaSubdito {
   cuando: number | null
 }
 
-export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] }> {
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
 }
 

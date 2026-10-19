@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { candidatosDeLlegada, elegirPorPeso, motivoSinLlegada, puebloDeFila, responderLlegada, revisarLlegadas } from './llegadas.js';
+import { candidatosDeLlegada, elegirPorPeso, motivoSinLlegada, puebloDeFila, requisitosDeLlegada, responderLlegada, revisarLlegadas } from './llegadas.js';
 import { cupoDeCamas } from './subditos.js';
 
 describe('llegadas (REI-119) — reglas puras', () => {
@@ -14,6 +14,15 @@ describe('llegadas (REI-119) — reglas puras', () => {
     expect(motivoSinLlegada({ ...base, bebida: 0 })).toMatch(/agua/);
     expect(motivoSinLlegada({ ...base, felicidad: 39 })).toMatch(/40/);
     expect(motivoSinLlegada({ ...base, candidatoEsperando: true })).toMatch(/esperando/);
+  });
+
+  // P220b: la lista entera de requisitos (no solo el primero que falla) y el motivo sale de ella.
+  it('requisitosDeLlegada da todos los requisitos con estado y cifra', () => {
+    const r = requisitosDeLlegada({ ...base, camasLibres: 2, camasTotales: 2, comida: 0, bebida: 12, felicidad: 55 });
+    expect(r.map((q) => [q.clave, q.cumple, q.cifra])).toEqual([['cama', true, '0/2'], ['comida', false, '0'], ['agua', true, '12'], ['felicidad', true, '55, mínimo 40']]);
+    const sin = requisitosDeLlegada({ ...base, camasLibres: 0, camasTotales: 2, comida: 0, bebida: 0, felicidad: 39 });
+    expect(sin.every((q) => !q.cumple)).toBe(true);
+    expect(motivoSinLlegada({ ...base, camasLibres: 0, comida: 0 })).toBe(sin[0]!.motivo);
   });
 
   it('el pueblo sale al azar según cuántos son', () => {

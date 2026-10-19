@@ -7,7 +7,7 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { plazasTrabajadorParaTier } from '../../services/construction.js';
 import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
-import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
+import { candidatosDeLlegada, requisitosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
@@ -919,7 +919,10 @@ export async function companerosRoutes(app: FastifyInstance) {
       datosDeSubditos(prisma, save.id, ahora), cupoDeCamas(prisma, save.id), candidatosDeLlegada(prisma, save.id), salidasRecientes(prisma, save.id, ahora),
     ]);
     const datosCandidatos = await datosDeSubditos(prisma, save.id, ahora, candidatos.map((c) => c.id));
-    return { ahora, subditos, camas, salidas, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
+    // P220b: todos los requisitos de llegada con su estado (mismos umbrales que `motivoSinLlegada`).
+    const stats = await prisma.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { comida: true, bebida: true, felicidad: true } });
+    const requisitosLlegada = stats ? requisitosDeLlegada({ camasLibres: camas.libresSubditos, camasTotales: camas.total + camas.temporales, ...stats, candidatoEsperando: candidatos.length > 0 }) : [];
+    return { ahora, subditos, camas, salidas, requisitosLlegada, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
   });
 
   /// REI-119: aceptar o rechazar a quien llega al Reino.
