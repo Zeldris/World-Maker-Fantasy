@@ -56,7 +56,9 @@ def tareas_cerradas():
         if f not in lineas:
             lineas[f] = open(D + f, encoding='utf-8').readlines()
         l = lineas[f][n - 1]
-        if not ('~~' in l.split(i)[0][-4:] or '✅' in l):
+        # Cerrada: el ID tachado (`~~REI-118~~`, `~~**CR-40`) o «✅ <fecha>». Un ✅ suelto no basta: en las tablas
+        # de roadmap-front-reino.md la columna «Back» lleva ✅ cuando el backend existe, no cuando está hecha.
+        if not ('~~' in l.split(i)[0][-4:] or re.search(r'✅\s*\*?\*?20\d\d-', l)):
             continue
         m = re.search(re.escape(i) + r'[a-z]?\s*·\s*([^*|~]+)', l)
         titulo = (m.group(1) if m else l.split(i, 1)[1]).splitlines()[0]
@@ -110,13 +112,17 @@ def main():
     cerradas = tareas_cerradas()
     filas = leer_matriz()
     faltan = sorted((i for i in cerradas if i not in filas), key=orden)
+    sobran = sorted((i for i in filas if i not in cerradas), key=orden)
     if '--generar' in args:
         vistos = jugado_en_registros(faltan)
         for i in faltan:
             b, q = cerradas[i]
             filas[i] = [b, q, 'jugado' if i in vistos else 'sin jugar', f'registro: {vistos[i]}' if i in vistos else '']
+        for i in sobran:
+            del filas[i]
         escribir(filas)
-        print(f'matriz: {len(faltan)} filas nuevas')
+        print(f'matriz: {len(faltan)} filas nuevas, {len(sobran)} quitadas (ya no cuentan como cerradas)')
+        sobran = []
         faltan = []
     malos = [i for i, f in filas.items() if f[2] not in ESTADOS]
     if '--bloque' in args:
@@ -137,9 +143,11 @@ def main():
         print(f'  {b}: {por[b][0]}/{por[b][1]} jugado')
     if faltan:
         print('FALTAN EN LA MATRIZ (tareas cerradas sin fila; `--generar`):', ', '.join(faltan))
+    if sobran:
+        print('SOBRAN EN LA MATRIZ (no son tareas cerradas; `--generar`):', ', '.join(sobran))
     if malos:
         print('ESTADO DESCONOCIDO:', ', '.join(malos), '— vale:', ', '.join(ESTADOS))
-    return 1 if '--comprobar' in args and (faltan or malos) else 0
+    return 1 if '--comprobar' in args and (faltan or malos or sobran) else 0
 
 
 if __name__ == '__main__':

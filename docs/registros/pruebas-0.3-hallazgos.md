@@ -12,7 +12,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (8): P16, P49, P66, P177, P188, P203, P205, P206.
+- **Pendientes** (15): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+  P212, P213.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (145): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -247,3 +248,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P204 | Al llegar a la salida del oeste del Pozo se abren a la vez la tarjeta de un encuentro (sin «Seguir mi camino») y el diálogo «Viajar», uno encima del otro | ✅ 2026-10-18: con la tarjeta de un encuentro en el mapa, el aviso «Viajar» de la salida espera a que se resuelva y sale después, no encima. Causa probable: el aviso se abre al llegar y el encuentro entra justo después, ya sin trayecto (por eso sin «Seguir mi camino»); falta jugarlo. `ZonaPanel.test.tsx`, rojo sin el arreglo |
 | P205 | Ronda cortada en el Paso de los Pilares Rotos, camino de Las Agujas Imán (misión del herrero): un grupo de 5 Cruzavientos (nivel 5) corta el paso a Gorhorn (nivel 2) en la salida del noroeste. Queda por jugar: la misión de explorar, P184 y lo demás sin comprobar | pendiente |
 | P206 | Con un grupo hostil cortando el paso (5 Cruzavientos, Pilares Rotos; HUD «Te cortan el paso»), pulsar una salida del mapa de zona y «Viajar» saca a Gorhorn de la zona sin pelear ni huir: llega al Pozo dos horas después. El HUD siguió en «Te cortan el paso» hasta el turno siguiente | pendiente |
+| P207 | El cajón de Habilidades no es un `role="dialog"` (como los modales de `ModalShell`) y sus pestañas no dicen cuál está activa (`aria-selected`): un lector de pantalla no lo anuncia como modal ni sabe en qué pestaña está (2026-10-19, reino-fundado) | pendiente |
+| P208 | La narración de fundar el ayuntamiento acaba con la ficha «Roca de Llanura Roja»: la entrada lleva `entityBannerSlug: roca-pilares-rotos` de tipo **fauna**, sacada de la palabra «piedra» de la narración (2026-10-19, reino-fundado) | pendiente. Lo mismo en la narración: «piedra» y «leña» salen como fichas con el icono de flora 🌿 |
+| P209 | Tras fundar el reino, la pestaña «Reino» de «El mundo» sigue diciendo «Todavía no ha pasado nada en tu reino» hasta recargar la página; la entrada del canal KINGDOM (la narración de la fundación) ya estaba en la base (2026-10-19, reino-fundado) | pendiente |
+| P210 | Reino › Visión general recién fundado: «Comida 0» y «Bebida 0» en rojo (bien: no hay nada guardado), pero el almacén dice «comida 60 · agua 60» sin «/» ni decir que es el tope, mientras «materiales 0/60» sí: parece que hay 60 guardados (2026-10-19, reino-fundado) | pendiente |
+| P211 | La entrada a la capital («Hogar de Maktor», salida en (400,450)) se pone donde estaba Gorhorn al fundar, en la misma casilla que la «Veta de Yerreo» (400,470): al pulsar la entrada en el mapa sale el recurso y `viajar.js` no llega a entrar (2026-10-19, reino-fundado) | pendiente |
+| P212 | El edificio de la capital se llama «un pequeño ayuntamiento» (`Building.name`, con artículo y en minúscula, como en la narración) en el mapa de Hogar de Maktor y en Reino; debería ser «Ayuntamiento pequeño» o el nombre de la receta (2026-10-19, reino-fundado) | pendiente |
+| P213 | Parcela vacía de la capital: las opciones de construir salen con el slug de la receta («totem-clan-maktor», «tablon-avisos», «mercado», «pozo», «lenera», «fibreria», «herreria»…) en vez de su nombre; solo la choza sale con nombre («Construir choza de piel y hueso») (2026-10-19, reino-fundado) | pendiente |

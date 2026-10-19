@@ -14,10 +14,17 @@ async (page) => {
       const limpio = (t) => t.replace(/\s+/g, ' ').trim().replace(/^[^\p{L}\p{N}¿¡«]+/u, '');
       // Primero lo pulsable entero (botones, pestañas, enlaces) por todo su texto; si no, cualquier elemento por
       // su texto propio.
-      const pulsables = Array.from(document.querySelectorAll('button,[role="tab"],[role="button"],a')).filter(
+      // Con una capa abierta (modal o cajón), se busca primero dentro de ella: «Reino» es a la vez una pestaña del
+      // cajón de Habilidades y una de la barra lateral.
+      const capas = [
+        ...document.querySelectorAll('[role="dialog"]'),
+        ...Array.from(document.querySelectorAll('.plank-panel')).filter((el) => /\binset-0\b/.test(el.parentElement?.className ?? '')),
+      ].filter((el) => el.offsetParent !== null);
+      const raiz = capas.pop() ?? document;
+      const pulsables = Array.from(raiz.querySelectorAll('button,[role="tab"],[role="button"],a')).filter(
         (el) => el.offsetParent !== null && (casa(limpio(el.textContent || '')) || casa((el.getAttribute('aria-label') || '').trim())),
       );
-      const todos = pulsables.length ? pulsables : Array.from(document.querySelectorAll('body *')).filter((el) => {
+      const todos = pulsables.length ? pulsables : Array.from((raiz === document ? document.body : raiz).querySelectorAll('*')).filter((el) => {
         if (el.offsetParent === null) return false;
         const propio = Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').replace(/\s+/g, ' ').trim();
         const etiqueta = (el.getAttribute('aria-label') || '').trim();
