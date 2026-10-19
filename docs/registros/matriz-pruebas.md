@@ -139,6 +139,6 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `REI-115` | Reino | Tooltips de explicación en cada indicador, rol y estado (R25). S 2026-10-02: los 8 indicad | sin jugar |  |
 | `REI-116` | Reino | Declarar `xpGanada`, `nivelDiplomatico` y `stage` en `DiplomaciaResultado` (R4). S 2026-10 | sin jugar |  |
 | `REI-118` | Reino | Súbditos como personas (Fase C del `0.3`, Q1-Q3 y Q7 de la usuaria, 2026-10-06): cada pobl | sin jugar |  |
-| `REI-119` | Reino | Llegadas (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, | sin jugar | parcial 2026-10-19: 9 días sin llegada (0 camas, comida 0) y sin motivo en pantalla (P220); falta jugar la tarjeta «Llega a tu puerta» |
+| `REI-119` | Reino | Llegadas (Q4): una vez por semana, con cama libre, comida > 0, agua > 0 y felicidad ≥ 40, | jugado | 2026-10-19: con las 2 camas temporales (P220a) y la lista de requisitos en ✓ (P220b) llega Krarka; tarjeta «Llega a tu puerta» con ACOGER y queda de Trabajadora (Camas 1/2) |
 | `REI-120` | Reino | Parejas y crías (Q5, como Medieval Dynasty): dos adultos del mismo pueblo con felicidad ≥ | sin jugar |  |
 | `REI-121` | Reino | Salidas y muerte (Q6): con la felicidad del Reino 7 días seguidos por debajo de 20, cada s | sin jugar |  |
