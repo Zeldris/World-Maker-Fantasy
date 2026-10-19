@@ -30,23 +30,23 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `DAD-4` | Dados y tiradas | Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y | jugado | P153 |
 | `DAD-5` | Dados y tiradas | `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho | jugado | Tameo a 380 px: se desplaza sin scroll manual; con rueda reciente no |
 | `DAD-6` | Dados y tiradas | Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". S | jugado | dado perdedor danger-400 + temblor; «necesitas» wood-400 en código |
-| `BAS-1` | Interfaz | Fuentes empaquetadas | sin jugar |  |
-| `BAS-3` | Interfaz | Foco visible y navegación | sin jugar |  |
+| `BAS-1` | Interfaz | Fuentes empaquetadas | jugado | Cinzel e Inter cargan de /fonts locales; ninguna petición a Google Fonts |
+| `BAS-3` | Interfaz | Foco visible y navegación | jugado | Tab recorre la pantalla con anillo de foco (contorno de 2 px + sombra) en cada parada |
 | `BAS-5` | Interfaz | Partir `GameView.tsx` | no se juega | refactor de GameView |
-| `BAS-7` | Interfaz | Animaciones de salida y de cambio de layout | sin jugar |  |
+| `BAS-7` | Interfaz | Animaciones de salida y de cambio de layout | jugado | drawer sale con drawer-down, modal con modal-out antes de desmontar, pestañas con View Transition |
 | `BAS-8` | Interfaz | Librería de componentes base | no se juega | componentes base; se ven por todo |
-| `BAS-9` | Interfaz | Catálogo visual | sin jugar |  |
-| `HUD-6` | Interfaz | Notificaciones (toasts) | sin jugar |  |
+| `BAS-9` | Interfaz | Catálogo visual | jugado | /admin/ui: chips, barra con fantasma 80→55, pestañas por teclado, fila con stepper, estados de modal (cargando, error con Reintentar, éxito), OfferCard, BotonMantener, tamaños de ModalShell y toasts |
+| `HUD-6` | Interfaz | Notificaciones (toasts) | jugado | toast 📜 de noticia GRAVE con ✕, se cierra y se va solo (visto en CFG-35) |
 | `HUD-12` | Interfaz | "El mundo avanza" | sin jugar |  |
 | `MOD-1` | Interfaz | `ModalShell` único | jugado | QA-27 (2026-10-09…17), todos los modales |
-| `MOD-2` | Interfaz | Estados comunes | sin jugar |  |
+| `MOD-2` | Interfaz | Estados comunes | jugado | estados cargando/error con Reintentar/éxito en el catálogo y en el modal de Comer en partida |
 | `MOD-3` | Interfaz | Teclado en modales | jugado | P202 (Escape en modales) |
 | `MOD-4` | Interfaz | Modales de ceremonia | sin jugar |  |
-| `MOD-5` | Interfaz | `QuantityStepper` compartido | sin jugar |  |
-| `MOD-6` | Interfaz | `EntityRow` con miniatura | sin jugar |  |
+| `MOD-5` | Interfaz | `QuantityStepper` compartido | jugado | Comer/Beber: −/+, Máx., tope «Ya estarías saciado…» en el title, número editable que se recorta al tope, rueda con foco; al beber vuelve el odre vacío. P228 (icono 🍖 en bebidas) |
+| `MOD-6` | Interfaz | `EntityRow` con miniatura | jugado | sin miniatura en la ficha cae al icono; con thumbnail inyectado pinta <img> 32 px |
 | `UX-1` | Interfaz | `useGamePhase` | no se juega | hook interno; se ve por UX-7/UX-8 |
 | `UX-2` | Interfaz | Matriz de permisos | no se juega | tabla interna; se ve por UX-7/UX-8 |
-| `UX-3` | Interfaz | Guardia en `handleSubmit` | sin jugar |  |
+| `UX-3` | Interfaz | Guardia en `handleSubmit` | jugado | tres Enter seguidos dan una sola TU ACCIÓN |
 | `UX-4` | Interfaz | Tarjetas del registro con el estado global | jugado | QA-27 (2026-10-09…17), tarjetas del diario |
 | `UX-5` | Interfaz | Paneles en modo consulta | sin jugar |  |
 | `UX-6` | Interfaz | Un narrador a la vez | sin jugar |  |
@@ -58,12 +58,12 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-12` | Interfaz | Qué pasa con el cajón abierto cuando llega algo | sin jugar |  |
 | `UX-13` | Interfaz | `anyModalOpen` completo | jugado | QA-27 (2026-10-09…17) |
 | `UX-16` | Interfaz | El asistente sobrevive a recargar | sin jugar |  |
-| `UX-24` | Interfaz | Ningún error en silencio | sin jugar |  |
+| `UX-24` | Interfaz | Ningún error en silencio | jugado | cambiar rol con POST forzado a 500: ErrorBanner con el detalle del backend, Reintentar aplica el cambio y el aviso se va; la carga (GET) falla en silencio (P230) y el classify cae en sondeo (P229) |
 | `UX-29` | Interfaz | El mundo de fondo nunca bloquea | sin jugar |  |
 | `UX-30` | Interfaz | Solo lo que el personaje sabe | sin jugar |  |
 | `UX-31` | Interfaz | Varios días de golpe | sin jugar |  |
 | `UX-35` | Interfaz | El turno no espera al día | sin jugar |  |
-| `UX-36` | Interfaz | Leyendas siempre a una tecla | sin jugar |  |
+| `UX-36` | Interfaz | Leyendas siempre a una tecla | jugado | Y abre Leyendas desde la partida |
 | `UX-37` | Interfaz | Responder escribiendo | jugado | P141 (Responder escribiendo) |
 | `UX-38` | Interfaz | Noticias del mundo que se pueden tocar | sin jugar |  |
 | `ZON-10` | Mapa de zona | Fichas con placa oscura + pictograma + anillo de disposición (Foundry VTT). La placa conse | jugado | P123, P147 |
