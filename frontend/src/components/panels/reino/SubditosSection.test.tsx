@@ -174,3 +174,29 @@ describe('SubditosSection — llegadas (REI-119)', () => {
     expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (0/2) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
   })
 })
+
+describe('SubditosSection — P230 fallo de carga', () => {
+  beforeEach(() => {
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si falla la carga avisa con Reintentar y al reintentar muestra los súbditos', async () => {
+    vi.mocked(getSubditos)
+      .mockRejectedValueOnce(new Error('500'))
+      .mockResolvedValue({ subditos: [], camas: { total: 3, companeros: 0, subditos: 0, libres: 3 } })
+    const { findByRole, findByText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('No se pudieron cargar los súbditos.')
+    await act(async () => {
+      fireEvent.click(await findByRole('button', { name: /Reintentar/ }))
+    })
+    expect(getSubditos).toHaveBeenCalledTimes(2)
+    expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
+  })
+})

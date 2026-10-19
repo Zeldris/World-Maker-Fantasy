@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, PlantillaEquipoInfo, SubjectInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
@@ -368,15 +368,30 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
   const { fallo, informar, limpiar } = useErrorConReintento()
   // Cada refresco de la partida trae un `subjects` nuevo: se vuelve a pedir la lista, porque los
   // candidatos, muertes y salidas no cambian los súbditos activos que vienen en la partida.
-  useEffect(() => {
-    let vivo = true
+  // P230 — un fallo al cargar no deja la lista vacía sin aviso: ErrorBanner con Reintentar.
+  const [cargaFallida, setCargaFallida] = useState(false)
+  const peticion = useRef(0)
+  const cargar = useCallback(() => {
+    const id = ++peticion.current
     getSubditos(saveId)
-      .then((r) => vivo && setDatos(r))
-      .catch(() => vivo && setDatos(null))
+      .then((r) => {
+        if (id !== peticion.current) return
+        setCargaFallida(false)
+        setDatos(r)
+      })
+      .catch((e) => {
+        if (id !== peticion.current) return
+        setCargaFallida(true)
+        setDatos(null)
+        informar('No se pudieron cargar los súbditos.', e, cargar)
+      })
+  }, [saveId, informar])
+  useEffect(() => {
+    cargar()
     return () => {
-      vivo = false
+      peticion.current++
     }
-  }, [saveId, subjects, version])
+  }, [cargar, subjects, version])
 
   async function handleRol(id: string, rol: string) {
     setBusy(true)
@@ -419,7 +434,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
 
   const subditos = datos?.subditos ?? []
   const candidatos = datos?.candidatos ?? []
-  if (!datos && subjects.length === 0) return null
+  if (!datos && subjects.length === 0 && !cargaFallida) return null
   const porId = new Map(subjects.map((s) => [s.id, s]))
   return (
     <PanelSection title="Súbditos">
