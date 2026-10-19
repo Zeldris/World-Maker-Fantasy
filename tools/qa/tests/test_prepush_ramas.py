@@ -6,7 +6,9 @@ import unittest
 from comun import ENV_GIT, QA, carpeta, escribir, git, leer
 
 CERO = '0' * 40
-BITACORA_OK = '| **Tarea en curso · `r`** | algo |\n'
+# Una fecha que ningún commit adelanta: cada commit que cambia la bitácora la comprueba (QA-115).
+AL_DIA = '| **Actualizado** | 2999-12-31 |\n'
+BITACORA_OK = AL_DIA + '| **Tarea en curso · `r`** | algo |\n'
 
 
 class PrepushRamas(unittest.TestCase):
@@ -55,25 +57,25 @@ class PrepushRamas(unittest.TestCase):
         self.assertIn('mi commit', subidos)
 
     def test_bitacora_mala_en_el_commit_falla_aunque_en_disco_este_bien(self):
-        sha = self.commit('docs/registros/traspaso.md', '| **Tarea en curso** | sin rama |\n', 'bitácora mala')
+        sha = self.commit('docs/registros/traspaso.md', AL_DIA + '| **Tarea en curso** | sin rama |\n', 'bitácora mala')
         escribir(os.path.join(self.repo, 'docs/registros/traspaso.md'), BITACORA_OK)
         codigo, _, _ = self.correr(sha, CERO)
         self.assertEqual(codigo, 1)
 
     def test_bitacora_mala_en_un_commit_intermedio_falla(self):
-        self.commit('docs/registros/traspaso.md', '| **Tarea en curso · `r`** | a |\n| **Tarea en curso · `r`** | b |\n', 'dos filas')
+        self.commit('docs/registros/traspaso.md', AL_DIA + '| **Tarea en curso · `r`** | a |\n| **Tarea en curso · `r`** | b |\n', 'dos filas')
         sha = self.commit('docs/registros/traspaso.md', BITACORA_OK, 'arreglada')
         codigo, _, _ = self.correr(sha, CERO)
         self.assertEqual(codigo, 1)
 
     def test_fecha_vieja_falla_solo_si_el_commit_cambia_la_bitacora(self):
         """QA-115: el commit de hoy que toca la bitácora la pone al día; uno que no la toca no cuenta."""
-        vieja = '| **Actualizado** | 2000-01-01 |\n' + BITACORA_OK
+        vieja = BITACORA_OK.replace('2999-12-31', '2000-01-01')
         sha = self.commit('docs/registros/traspaso.md', vieja, 'bitácora con fecha vieja')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
-        hoy = git(self.repo, 'log', '-1', '--format=%cs')
+        hoy = git(self.repo, 'log', '-1', '--format=%as')
         git(self.repo, 'reset', '-q', '--hard', 'HEAD~1')
-        self.commit('docs/registros/traspaso.md', f'| **Actualizado** | {hoy} |\n' + BITACORA_OK, 'al día')
+        self.commit('docs/registros/traspaso.md', BITACORA_OK.replace('2999-12-31', hoy), 'al día')
         sha = self.commit('docs/x.md', 'otro cambio', 'sin bitácora')
         self.assertEqual(self.correr(sha, CERO)[0], 0)
 

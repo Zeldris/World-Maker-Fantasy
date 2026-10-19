@@ -19,14 +19,23 @@ Uso:
 Los tokens de un resultado se estiman por su tamaño (caracteres / 3,5; una imagen, ~1.600). El uso de la API es
 el exacto que trae el registro.
 """
-import argparse, collections, datetime as dt, glob, json, os, re, sys
+import argparse, collections, datetime as dt, glob, json, os, re, subprocess, sys
 
 TOKENS_IMAGEN = 1600
 CHARS_POR_TOKEN = 3.5
 
 
+def raiz_del_proyecto():
+    # La misma carpeta de proyecto que `ruta_por_defecto` de tools/qa/recuperar.py: la raíz del repo, aunque se
+    # lance desde una subcarpeta.
+    if os.environ.get('CLAUDE_PROJECT_DIR'):
+        return os.environ['CLAUDE_PROJECT_DIR']
+    r = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True)
+    return r.stdout.strip() or os.getcwd()
+
+
 def ruta_por_defecto():
-    proyecto = re.sub(r'[^A-Za-z0-9]', '-', os.getcwd())
+    proyecto = re.sub(r'[^A-Za-z0-9]', '-', raiz_del_proyecto())
     candidatos = glob.glob(os.path.expanduser(f'~/.claude/projects/{proyecto}/*.jsonl'))
     if not candidatos:
         sys.exit(f'No hay sesiones en ~/.claude/projects/{proyecto}/ (usa --sesion)')
@@ -55,8 +64,8 @@ def resumen_entrada(nombre, entrada):
 
 
 def uso_por_modelo(ruta, desde, por_modelo, quien):
-    """Suma en `por_modelo[(quien, modelo)]` las llamadas, la entrada y la salida de un registro (una vez por
-    respuesta). Devuelve el último modelo visto."""
+    """Suma en `por_modelo[(quien, modelo)]` las llamadas, la entrada y la salida del registro de un subagente (una
+    vez por respuesta). Devuelve el último modelo visto. La sesión principal se suma en el bucle de `main`."""
     vistos, modelo = set(), None
     for linea in open(ruta, encoding='utf-8'):
         try:
@@ -99,6 +108,8 @@ def main():
     resultados = []  # (indice_llamada, id, tokens, imagenes, es_error)
     cortes = []  # índice de llamada en el que hubo compactación
     vistos = set()  # ids de mensaje ya contados
+    por_modelo = collections.defaultdict(lambda: [0, 0, 0])  # (quién, modelo) → llamadas, entrada, salida
+    recortada = False  # con --horas, si la sesión empezó antes del periodo
     for linea in open(ruta, encoding='utf-8'):
         try:
             d = json.loads(linea)
@@ -107,6 +118,7 @@ def main():
         ts = d.get('timestamp')
         if desde and ts:
             if dt.datetime.fromisoformat(ts.replace('Z', '+00:00')) < desde:
+                recortada = True
                 continue
         if d.get('isSidechain'):
             continue
@@ -125,6 +137,9 @@ def main():
                 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens'):
                     usos[k] += u.get(k) or 0
                 contextos.append(sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens')))
+                if not (m.get('model') or '<').startswith('<'):
+                    p = por_modelo[('principal', m['model'])]
+                    p[0] += 1; p[1] += contextos[-1]; p[2] += u.get('output_tokens') or 0
             for b in m.get('content') or []:
                 if isinstance(b, dict) and b.get('type') == 'tool_use':
                     entrada = b.get('input') or {}
@@ -171,11 +186,16 @@ def main():
         if c > inicio:
             tramos.append(contextos[inicio:c])
         inicio = c
+    # Con --horas, el primer tramo empieza a mitad (sin la compactación que lo abrió): su primera llamada no es un suelo.
+    parcial = recortada and (not cortes or cortes[0] > 0) and len(tramos) > 1
+    if parcial:
+        tramos = tramos[1:]
     if tramos:
         suelos = [t[0] for t in tramos]
         techos = [max(t) for t in tramos]
         print(f'Tramos entre compactaciones: {len(tramos)}  ·  suelo medio {sum(suelos) / len(suelos):,.0f}  ·  techo medio '
-              f'{sum(techos) / len(techos):,.0f}  ·  {llamadas_api / len(tramos):,.0f} llamadas por tramo')
+              f'{sum(techos) / len(techos):,.0f}  ·  {sum(map(len, tramos)) / len(tramos):,.0f} llamadas por tramo'
+              + ('  (sin el primero, que empezó antes del periodo)' if parcial else ''))
     print()
     print('POR HERRAMIENTA (tokens que metió en el contexto · arrastrados en las llamadas siguientes)')
     for nombre, (n, t, arr, img, err) in sorted(por_tool.items(), key=lambda x: -x[1][2])[: a.top]:
@@ -193,8 +213,6 @@ def main():
             print(f'  {n:>3}× {nombre}: {resumen}')
     # QA-117: qué modelo hizo qué. Lo mecánico (escribir código con un plan cerrado, buscar, jugar una ronda) puede ir a
     # un subagente con un modelo más barato; el diseño y la revisión, al grande.
-    por_modelo = collections.defaultdict(lambda: [0, 0, 0])  # llamadas, entrada, salida
-    uso_por_modelo(ruta, desde, por_modelo, 'principal')
     tipos = collections.Counter()
     for sub in sorted(glob.glob(os.path.join(os.path.splitext(ruta)[0], 'subagents', '*.jsonl'))):
         try:

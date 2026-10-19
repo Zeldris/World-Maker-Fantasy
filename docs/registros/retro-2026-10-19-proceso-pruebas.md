@@ -5,7 +5,8 @@ el proceso de pruebas (~~`QA-101`~~…~~`QA-107`~~), el mapa del agente (~~`QA-1
 (~~`QA-109`~~…~~`QA-111`~~), su `/code-review` (16 puntos) y la propia skill `opt-tokens`.
 
 **Estado (2026-10-19): aprobadas las cuatro por la usuaria y aplicadas en la rama antes del PR**, como ~~`QA-112`~~ (1),
-~~`QA-113`~~ (2), ~~`QA-114`~~ (3) y ~~`QA-115`~~ (4). De más a menos grave.
+~~`QA-113`~~ (2), ~~`QA-114`~~ (3) y ~~`QA-115`~~ (4). De más a menos grave. La 5 y la 6 (segunda vuelta, sobre
+~~`QA-112`~~…~~`QA-118`~~ y su `/code-review` de 16 puntos), pendientes de la usuaria.
 
 ## 1. `.claude/` ignorado entero: el `-f` subió bytecode
 
@@ -42,3 +43,30 @@ cifras no cuadran, arregla `medir.py` antes de proponer. `proyecto.md` con las c
 
 **Propuesta (comprobación automática).** `bitacora.py --fecha`: el pre-push la pasa con el día de cada commit
 que cambia la bitácora y falla si «Actualizado» es anterior.
+
+## Segunda vuelta: ~~`QA-112`~~…~~`QA-118`~~ y su `/code-review`
+
+El segundo `/code-review` (16 puntos, todos arreglados) cayó casi entero sobre las herramientas recién escritas:
+`recuperar.py` (6), `medir.py` (4), la fecha de la bitácora (4) y los ganchos (2). Los tests de esas herramientas
+pasaban: estaban escritos a la medida de lo que el código hacía, no de lo que trae un registro real.
+
+## 5. Tests de los registros de sesión hechos a mano y a la medida del código
+
+**Qué pasó.** `test_recuperar.py` llamaba al script como `recuperar.py Serhu`, sin `python3` ni ruta, y no traía
+avisos del sistema (`isMeta`, `<system-reminder>`) ni un subagente dentro del registro principal. `recuperar.py`
+filtraba la línea JSON en crudo (comillas y saltos escapados no casaban) y descartaba toda línea que nombrase el
+script; `medir.py` sumaba los subagentes del registro principal en su cuenta por modelo. Cada test tenía su propio
+constructor de líneas y ninguno las copiaba del formato real.
+
+**Propuesta (comprobación automática).** Un único constructor de líneas de registro en `tools/qa/tests/comun.py`,
+copiado de líneas reales (varias líneas por respuesta con el mismo `id`, `isMeta`, `isSidechain` dentro del
+principal, `tool_use` de `Bash` con la orden completa, `compact_boundary`), que usen `test_medir.py` y
+`test_recuperar.py`. El que añada otra herramienta que lea registros parte de él.
+
+## 6. El gancho de arranque también corría al compactar
+
+**Qué pasó.** El `SessionStart` de `session-start.sh` no tenía `matcher` y, tras cada compactación, metía en el
+contexto la instalación y el estado del entorno junto al estado que de verdad hace falta (`recuperar.py --estado`).
+
+**Propuesta (comprobación automática).** Un test de `.claude/settings.json`: cada `SessionStart` lleva `matcher`,
+`compact` solo en el de `recuperar.py --estado`, y cada orden apunta a un archivo que existe.

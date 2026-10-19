@@ -44,6 +44,13 @@ class Bitacora(unittest.TestCase):
         self.assertEqual(comprobar(texto, '--fecha', '2026-10-17').returncode, 0)
         self.assertEqual(comprobar(texto).returncode, 0)
 
+    def test_fecha_con_formato_suelto_o_sin_fila(self):
+        texto = '|  **Actualizado**  |  `2026-10-17` |\n| **Tarea en curso · `a`** | algo |\n'
+        self.assertIn('dice 2026-10-17', comprobar(texto, '--fecha', '2026-10-19').stdout)
+        r = comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', '2026-10-19')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('falta la fila «| **Actualizado**', r.stdout)
+
     def test_fecha_mal_escrita_da_uso(self):
         self.assertIn('Uso', comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', 'ayer').stderr)
 

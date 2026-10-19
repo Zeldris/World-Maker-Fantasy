@@ -37,8 +37,9 @@ while read -r _ sha_local _ sha_remoto; do
     git show "$commit:docs/registros/traspaso.md" > "$tmp"
     # QA-115: si el commit cambia la bitácora, su «Actualizado» no es anterior al día del commit.
     fecha=()
-    git diff-tree --no-commit-id --name-only -r "$commit" | grep -qx docs/registros/traspaso.md && fecha=(--fecha "$(git log -1 --format=%cs "$commit")")
-    python3 "$bitacora_py" "$tmp" "${fecha[@]}" || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1; }
+    git diff-tree --no-commit-id --name-only -r "$commit" | grep -qx docs/registros/traspaso.md && fecha=(--fecha "$(git log -1 --format=%as "$commit")")
+    # La forma `${a[@]+…}` evita el «unbound variable» de un array vacío con `set -u` en bash 3.2 (macOS).
+    python3 "$bitacora_py" "$tmp" ${fecha[@]+"${fecha[@]}"} || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1; }
     rm -f "$tmp"
   done
 done

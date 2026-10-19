@@ -133,6 +133,7 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   encaja: paralelo con base de datos compartida, issues, rebase forzado): cada subagente empieza en el peldaño
   más barato que encaje y sube uno por fallo (`sonnet` low → `sonnet` medium → `opus` medium → `opus` high), con
   dos fallos como tope; un fallo al arrancar no sube ni cuenta; una tanda sin supervisión que no cierra nada
-  para. Al escribir una tarea nueva en un roadmap, se le apunta su peldaño (`modelo: sonnet-medium`), para que la
-  otra cuenta no tenga que decidirlo otra vez. Detalle en el `selector`.
+  para. Al escribir en un roadmap una tarea pendiente que implemente un subagente, se le apunta
+  su peldaño de partida (p. ej. `modelo: sonnet-medium`), para que la otra cuenta no tenga que decidirlo otra vez;
+  las tareas ya cerradas y las del entorno que hace la sesión principal no lo llevan. Detalle en el `selector`.
 - En la duda, el de más riesgo.

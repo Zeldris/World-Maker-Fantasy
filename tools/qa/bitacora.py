@@ -95,8 +95,12 @@ BITACORA = Path(args[0]) if args else Path(__file__).resolve().parents[2] / RUTA
 fallos = []
 lineas = BITACORA.read_text(encoding="utf-8").splitlines()
 if fecha:
-    actualizado = next((m.group(1) for l in lineas if (m := re.match(r"\| \*\*Actualizado\*\* \| (\d{4}-\d{2}-\d{2})", l))), None)
-    if actualizado and actualizado < fecha:
+    # Tolera espacios, negrita o código en la celda; sin la fila no hay fecha que comprobar, y eso también es un fallo.
+    actualizado = next((m.group(1) for l in lineas
+                        if (m := re.match(r"\|\s*\*\*Actualizado\*\*\s*\|\s*[`*]*(\d{4}-\d{2}-\d{2})", l))), None)
+    if not actualizado:
+        fallos.append("falta la fila «| **Actualizado** | AAAA-MM-DD |» con la fecha del día")
+    elif actualizado < fecha:
         fallos.append(f"«Actualizado» dice {actualizado} y el commit es del {fecha}: pon la fecha del día")
 filas = [l for l in lineas if l.startswith("| **Tarea en curso")]
 if not filas:
