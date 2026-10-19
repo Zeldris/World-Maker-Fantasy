@@ -3609,6 +3609,21 @@ describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown 
     expect(classification.banda).toBe('instantanea');
     expect(classification.duracionEstimadaMinutos).toBe(0);
   }, 15_000);
+
+  it('P231: «descansando tres días enteros» rechazado por enfriamiento no salta el día ni gasta hambre y sed', async () => {
+    const app = await buildApp();
+    const action = 'Me quedo descansando tres días enteros';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } });
+    expect(classifyRes.statusCode).toBe(200);
+    expect((classifyRes.json() as { duracionMinutos: number }).duracionMinutos).toBe(1);
+    const wsAntes = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    const res = await doTurn(saveId, action);
+    expect(lastNdjsonLine(res.payload).narration).toEqual({ narration: expect.stringContaining('no está lo bastante cansado'), newFacts: [] });
+    const wsDespues = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    // Como cualquier acción rechazada: el minuto de un intento, no los 4320 pedidos.
+    expect(wsDespues.fictionalMinutes - wsAntes.fictionalMinutes).toBeLessThanOrEqual(1);
+    expect(wsDespues.fictionalDateLabel.split(',')[0]).toBe(wsAntes.fictionalDateLabel.split(',')[0]);
+  }, 15_000);
 });
 
 // Cobertura nueva (auditoría 2026-08-11, "pruebas por API" + duda directa de la usuaria: "ahora
