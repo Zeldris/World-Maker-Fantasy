@@ -66,6 +66,6 @@ describe('resumen de varios días (CR-12)', () => {
 
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 480 + 4 * 1440 } });
     await evaluarConsecuencias(prisma, saveId);
-    expect((await prisma.logEntry.findFirstOrThrow({ where: { saveId, text: 'Se dice que una caravana pasa lejos.' } })).noticia).toEqual({ categoria: 'COMERCIO' });
+    expect((await prisma.logEntry.findFirstOrThrow({ where: { saveId, text: 'Se dice que una caravana pasa lejos.' } })).noticia).toEqual({ categoria: 'COMERCIO', rumor: { region: otra, pasoEn: 480 } });
   });
 });
