@@ -25,6 +25,9 @@ X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval Dynasty, Bellwright y Manor L
 sale cada propuesta; **X4 marca el camino** siempre que se pueda
 ([runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)).
 
+**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza), abre
+[`docs/mapa-agente.md`](docs/mapa-agente.md): funciones de entrada, tests, tablas, interfaz y qué no leer (`QA-108`).
+
 Otras reglas que siguen vigentes: [`AGENTS.md`](AGENTS.md) (lore: nunca editar `docs/rpgtarkor/`
 directamente) y la forma de trabajo de cada plan de hito (p. ej.
 [`docs/producto/plan-roadmap-0.1.md`](docs/producto/plan-roadmap-0.1.md)). Orden y fases de todo

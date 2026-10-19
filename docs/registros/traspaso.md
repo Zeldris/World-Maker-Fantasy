@@ -109,6 +109,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-19** — ~~`QA-108`~~: mapa del agente (`docs/mapa-agente.md`): por sistema, funciones de entrada, tests, tablas, interfaz y trampas; `tools/qa/mapa-agente.py` comprueba sus referencias en la CI y el pre-push.
 - **2026-10-19** — ~~`QA-107`~~: más comprobaciones en la CI (esquema sin migración, build del frontend, escenarios, matriz, bitácora, enlaces de los `.md`, sintaxis de las herramientas). ~~`QA-106`~~: skill `opt-tokens` (retro de gasto con `medir.py`). Primera medida: 543 llamadas en 6 h con 566k tokens de contexto medio.
 - **2026-10-19** — ~~`QA-101`~~, ~~`QA-102`~~, ~~`QA-103`~~, ~~`QA-104`~~ y ~~`QA-105`~~ (proceso de pruebas): matriz de cobertura (`matriz-pruebas.py`), escenarios y avanzar días (`escenario.sh`), recorridos (`recorrer.sh`), `estado.js` en texto y rondas por bloques.
 - **2026-10-19** — Arreglos de la ronda de la otra cuenta, reparto P189-P205: P189 (la fauna sin territorio: el catálogo no sembraba origen), P190-P196, P198-P202, P204 y P192 (opción A: cada uno actúa en su turno), con los arreglos de su `/code-review` y su retro ~~`QA-98`…`QA-100`~~ (tests de integración en el pre-push, la oferta en sus dos sitios y el origen de los puntos de zona). P203, a volver a jugar.
@@ -118,4 +119,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-15** — PR #59 en `main` (CI en verde): hallazgos de `QA-27`, tandas 1 y 2, `CR-69` al roadmap y la retro ~~`QA-88`, `QA-89`~~.
 - **2026-10-15** — Hallazgos de `QA-27`, tandas 1 y 2 (P148, P149, P152, P153, P155 en parte, P156-P163, P167-P171, P173, P175, P176, P180-P183), los arreglos de su `/code-review` y su retro ~~`QA-88`, `QA-89`~~ (tests de lo que cambia en el push y regla de columnas JSON en `REVIEW.md`).
 - **2026-10-15** — PR #58 en `main` (CI en verde): ronda de pruebas del 2026-10-14 (P147-P187), etiquetas del mapa de zona (P123, P151), P144, ~~`QA-63`~~ y la retro ~~`QA-82`…`QA-87`~~ con los arreglos de sus dos `/code-review`.
-- **2026-10-14** — ~~`QA-82`…`QA-87`~~ (retro de la ronda `QA-27` del 2026-10-14): catálogo de `tarkor_juego` al día al arrancar, efectos secundarios de un arreglo de la rama antes del PR, resumen del registro de hallazgos generado, tarea tachada también en la bitácora (pre-push), capturas y `psql` en el runbook, moverse por el mapa de zona.

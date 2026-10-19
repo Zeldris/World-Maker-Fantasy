@@ -12,6 +12,8 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **Recorridos** (`QA-103`): `tools/qa/recorrer.sh`, una línea por comprobación ya escrita.
 - **Matriz de cobertura** (`QA-101`): `tools/qa/matriz-pruebas.py --bloque <Bloque>` dice qué falta sin leer el roadmap.
 - **SQL contra la partida** en vez de navegar la interfaz para mirar datos (`rondas-de-pruebas.md`, `QA-97`).
+- **Mapa del agente** (`QA-108`): `docs/mapa-agente.md` da por sistema las funciones de entrada, tests, tablas e
+  interfaz; si una sesión exploró para encontrar algo que no estaba, se añade ahí.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
 ## Gastos conocidos

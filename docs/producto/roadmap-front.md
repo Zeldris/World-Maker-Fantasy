@@ -1285,6 +1285,11 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   (`tools/qa/comprobar-escenarios.sh`), matriz de cobertura, bitácora (y tareas tachadas en un PR), enlaces de los
   `.md` (`tools/qa/enlaces-md.py`, 3 arreglados) y sintaxis de las herramientas. El nombrado de las imágenes ya estaba
   (`imagenesZona.test.ts`, en los tests del backend).
+- ~~**QA-108 · Mapa del agente**~~ ✅ 2026-10-19 (usuaria): [`docs/mapa-agente.md`](../mapa-agente.md), por sistema
+  (turno, zona y encuentros, combate, reino, súbditos, Cronista, caza, catálogo) las funciones de entrada como
+  `` `ruta#función` ``, sus tests, tablas, cómo llegar en la interfaz y trampas conocidas, más «qué no leer» y los
+  comandos. `tools/qa/mapa-agente.py` comprueba en la CI y el pre-push que cada referencia existe. Puntero en
+  `CLAUDE.md` y en `docs/README.md`. Se mantiene al día en el mismo commit que cambia lo que nombra.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
