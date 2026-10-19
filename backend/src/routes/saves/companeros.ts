@@ -10,7 +10,8 @@ import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } 
 import { candidatosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
-import { esGanado } from '../../services/cronista/ganaderia.js';
+import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
+import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { meterEnCorral } from '../../services/cronista/ganadoReino.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
@@ -687,7 +688,7 @@ export async function companerosRoutes(app: FastifyInstance) {
   /// (§7: "cada súbdito con una plantilla asignada se auto-equipa en cuanto haya en el almacén un
   /// objeto que encaje").
   app.post<{ Params: { id: string; itemId: string } }>('/saves/:id/almacen/depositar/:itemId', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true, pendingDeathResolution: true } });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { worldId: true, endedAt: true, pendingDeathResolution: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
@@ -701,12 +702,22 @@ export async function companerosRoutes(app: FastifyInstance) {
     }
     const result = await prisma.$transaction(async (tx) => {
       await tx.inventoryItem.delete({ where: { id: item.id } });
+      // P215 (2026-10-19): la comida depositada cuenta para la Comida del Reino, como el plato de
+      // una Cocina (`dailyTick.ts`): se convierte en el acto (`curaHambre` 10 = 1 de comida, mínimo 1)
+      // y NO queda fila en el Almacén, así Retirar no puede duplicar la comida. Sin Reino fundado
+      // (sin KingdomStats) no hay dónde sumar y el objeto se guarda como cualquier otro.
+      const plato = item.catalogSlug ? await tx.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: item.catalogSlug }, select: { curaHambre: true } }) : null;
+      if (plato?.curaHambre && plato.curaHambre > 0) {
+        const comida = Math.max(1, comidaDe(plato.curaHambre, 1));
+        const { count } = await tx.kingdomStats.updateMany({ where: { ownerKey: ownerKeyFor({ saveId: request.params.id }) }, data: { comida: { increment: comida } } });
+        if (count > 0) return { equipados: 0, comida };
+      }
       await tx.almacenItem.create({
         data: { saveId: request.params.id, name: item.name, description: item.description, catalogSlug: item.catalogSlug, statBonuses: item.statBonuses ?? undefined },
       });
       return autoEquiparDesdeAlmacen(tx, request.params.id);
     });
-    return { ok: true, autoEquipados: result.equipados };
+    return { ok: true, autoEquipados: result.equipados, ...('comida' in result ? { comidaSumada: result.comida } : {}) };
   });
 
   /// Retirar un objeto del Almacén de vuelta a la mochila personal, sin equiparlo.
