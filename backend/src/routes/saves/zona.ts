@@ -1086,6 +1086,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
           return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug, tipo: colisionTipo ?? undefined } };
         }
+        // QA-99: la oferta también se arma en la oferta ambiental del turno (`turnResolution.ts`, junto a
+        // `decideOfertaModoDinamico`): un campo o una regla nueva, en las dos.
         dynamicModeOffer = {
           tipo: colisionTipo!,
           targetSlug: colision.targetSlug,

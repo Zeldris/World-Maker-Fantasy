@@ -1249,6 +1249,15 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
   sus coordenadas de pantalla) y `mover.js` con `textContent`. Comprobadas jugando (Pozo → Hondonada).
 - ~~**QA-97 · Las consultas SQL de una ronda**~~ ✅ 2026-10-17: en `rondas-de-pruebas.md` («Capturas y datos de
   la partida»), comprobadas contra `tarkor_juego`.
+- ~~**QA-98 · Tests de integración de lo que cambia, en el pre-push**~~ ✅ 2026-10-19 (retro de P189-P205):
+  `tests-relacionados.sh` corre también, del proyecto `bd-real`, el `foo.integration.test.ts` de cada `foo.ts`
+  cambiado y los tests de integración cambiados. Motivo: P196 rompió `ofertaNombre.integration.test.ts` y subió.
+- ~~**QA-99 · La oferta del encuentro, en sus dos sitios**~~ ✅ 2026-10-19: comentario junto a cada construcción
+  (`zona.ts` y `turnResolution.ts`) y regla en `REVIEW.md` («Un dato, un sitio»). Motivo: P190 y P193 quedaron
+  en uno solo hasta el `/code-review`.
+- ~~**QA-100 · El catálogo siembra el origen de los puntos de zona**~~ ✅ 2026-10-19: `datosDePlantillaZonePoint`
+  (`scripts/plantillaZonePoint.ts`) con su test, y el test de partida comprueba que el clon copia los campos.
+  Motivo: P189 (sin origen, ningún animal tenía territorio).
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

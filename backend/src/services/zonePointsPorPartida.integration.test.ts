@@ -115,6 +115,8 @@ describe('ZonePoint por partida (Postgres real)', () => {
     try {
       await asegurarZonePointsDePartida(prisma, saveC, locationId);
       const fila = await prisma.zonePoint.findFirstOrThrow({ where: { saveId: saveC, locationId, targetSlug: 'test-p189-rebano' } });
+      // QA-100: el clon copia los campos de su plantilla; sin origen en ella, toma su sitio.
+      expect({ x: fila.origenX, y: fila.origenY, label: fila.label, cantidad: fila.cantidad }).toEqual({ x: 625, y: 125, label: 'Rebaño de prueba', cantidad: 6 });
       // Partida empezada antes del arreglo: la fila sin origen.
       await prisma.zonePoint.update({ where: { id: fila.id }, data: { origenX: null, origenY: null } });
       for (let i = 0; i < 30; i++) await avanzarZonePointsUnPaso(prisma, locationId, saveC, () => 0);

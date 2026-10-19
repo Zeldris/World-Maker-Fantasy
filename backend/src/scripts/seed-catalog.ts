@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { datosDePlantillaZonePoint } from './plantillaZonePoint.js';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { locations, locationLinks, npcs, fauna, items, harvestYields, factions, historiaEntries, zonePoints, factionBuildings, npcProfessionPotentials, factionRelationsIniciales } from './worldCatalog.js';
@@ -419,9 +420,7 @@ async function main() {
   for (const point of zonePoints) {
     const locationId = locationIdBySlug.get(point.locationSlug);
     if (!locationId) throw new Error(`ZonePoint con locationSlug desconocido: ${point.locationSlug}`);
-    await prisma.zonePoint.create({
-      data: { locationId, saveId: null, x: point.x, y: point.y, origenX: point.x, origenY: point.y, tipo: point.tipo, targetSlug: point.targetSlug, label: point.label ?? null, plantillaEspecifica: point.plantillaEspecifica ?? null, factionSlug: point.factionSlug ?? null, ...(point.cantidad ? { cantidad: point.cantidad } : {}) },
-    });
+    await prisma.zonePoint.create({ data: datosDePlantillaZonePoint(point, locationId) });
   }
 
   // Edificios de facción (ex-FactionBuilding, retirado 2026-09-21 — ver
@@ -511,3 +510,4 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+

@@ -7257,6 +7257,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // P141/P165 (QA-27): nombre visible, artículo y descubrimiento de lo que nombra la tarjeta.
         const { targetName, articuloNpc, generoNpc } = await nombrarOferta(prisma, { saveId, worldId }, candidato);
         const quien = quienEnAviso(candidato.tipo, targetName, articuloNpc, generoNpc);
+        // QA-99: la oferta también se arma al chocar en el mapa (`detectarEncuentroEnCelda`, routes/saves/zona.ts):
+        // un campo o una regla nueva, en las dos.
         // P190: lo de un bando (su rebaño, su recinto) avisa de quién es y de lo que cuesta que te vean.
         const dueno = candidato.tipo === 'NPC' ? null : (zonePointsAlcanzables.find((p) => p.tipo === candidato.tipo && p.targetSlug === candidato.targetSlug && p.factionSlug)?.factionSlug ?? null);
         const deBando = dueno ? { faccion: dueno, deQuien: bando(dueno, 'de'), reputacion: candidato.tipo === 'RECURSO' ? REP_COGER_LO_AJENO : REP_CAZAR_GANADO_AJENO } : null;
