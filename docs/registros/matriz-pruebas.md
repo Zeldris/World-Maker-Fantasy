@@ -86,11 +86,11 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-7` | Mundo vivo | `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. M 2026-10-04. | no se juega | motor; se ve por el paso de días |
 | `CR-8` | Mundo vivo | Script de migración (§ 16). M 2026-10-04: `services/cronista/migrarPartidas.ts` | no se juega | script de migración |
 | `CR-9` | Mundo vivo | Lista cerrada de efectos con sus sucesos. M 2026-10-04 — paso 1: | sin jugar |  |
-| `CR-10` | Mundo vivo | Reacciones inmediatas (tabla § 7.1). M 2026-10-04: `services/cronista/reacciones.ts` | sin jugar |  |
-| `CR-11` | Mundo vivo | Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). M 2026-10-04 (4 reglas | sin jugar |  |
-| `CR-12` | Mundo vivo | Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3); | sin jugar |  |
-| `CR-13` | Mundo vivo | Nacimientos notables y generador de nombres (§ 12.3). M Incluye el efecto `crearNpc` | sin jugar |  |
-| `CR-14` | Mundo vivo | Etiquetas (§ 8.1). 2026-10-06 S Incluye las reacciones de CR-10: etiqueta tras matar a un | sin jugar |  |
+| `CR-10` | Mundo vivo | Reacciones inmediatas (tabla § 7.1). M 2026-10-04: `services/cronista/reacciones.ts` | jugado | Día 44: HAMBRUNA en Maktor → reacción de cohesión → REBELION |
+| `CR-11` | Mundo vivo | Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). M 2026-10-04 (4 reglas | jugado | Día 44: 47 consecuencias (NOTICIA y OPORTUNIDAD_CIERRA disparadas, CARAVANA_ASALTADA caducadas y pendiente) |
+| `CR-12` | Mundo vivo | Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3); | jugado | Día 44: sucesos de fondo (expediciones, tormentas, caravanas, escaramuzas, alianzas, migraciones) en la Crónica; P234, P235 (textos) |
+| `CR-13` | Mundo vivo | Nacimientos notables y generador de nombres (§ 12.3). M Incluye el efecto `crearNpc` | jugado | Día 44: «Nace Merkar Riuh, hijo de Grosh y Krarka» |
+| `CR-14` | Mundo vivo | Etiquetas (§ 8.1). 2026-10-06 S Incluye las reacciones de CR-10: etiqueta tras matar a un | jugado | Etiqueta FUNDADOR al fundar el Reino (ETIQUETA_GANADA) |
 | `CR-15` | Mundo vivo | Aprobación con valores (§ 8.2). 2026-10-06 M 15a 2026-10-06 (`cronista/aprobacion.ts`: val | sin jugar |  |
 | `CR-16` | Mundo vivo | Recuerdos de NPC (§ 8.3). S Incluye las reacciones de CR-10: `recuerdo(testigos, | sin jugar |  |
 | `CR-17` | Mundo vivo | Buscadores de historias e hilos (§ 7.4). 2026-10-06 M (`cronista/hilos.ts`; modelo | sin jugar |  |
@@ -101,8 +101,8 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-22` | Mundo vivo | Callbacks por entidad. S 2026-10-06 | sin jugar |  |
 | `CR-23` | Mundo vivo | Puntuación recencia + importancia + relevancia sobre Libro + crónica. M 2026-10-06 | sin jugar |  |
 | `CR-32` | Mundo vivo | Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a | sin jugar |  |
-| `CR-34` | Mundo vivo | Decisiones de facción 2026-10-05 (34d, expansión, pasa a `CR-39` en el `0.3`; Q20) (IA de | sin jugar |  |
-| `CR-35` | Mundo vivo | Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). M | sin jugar |  |
+| `CR-34` | Mundo vivo | Decisiones de facción 2026-10-05 (34d, expansión, pasa a `CR-39` en el `0.3`; Q20) (IA de | jugado | Día 44: GUERRA_DECLARADA (Serhu con la Concordia contra Helsig y Goshg), TRATADO_COMERCIAL, ESPIONAJE, ALIANZA |
+| `CR-35` | Mundo vivo | Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). M | jugado | Día 44: 22 EXPEDICION_SALE y 21 EXPEDICION_VUELVE |
 | `CR-37` | Mundo vivo | Guerra de una facción contra el Reino de la jugadora 2026-10-08 (`CR-34` Q7, `0.3`): solo | sin jugar |  |
 | `CR-40` | Mundo vivo | Misiones secundarias por motor 2026-10-05 (fusionado en `main` con el PR #16; 40f-2 descar | jugado | P140, P183, P184, P201 (misiones del poste y encargos) |
 | `CR-42` | Mundo vivo | Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero | sin jugar |  |
@@ -112,10 +112,10 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-46` | Mundo vivo | 2026-10-05 (`GET /saves/:id/expediciones/mapa`, `expedicionesMapa.ts`; banderita ⚑ en el m | sin jugar |  |
 | `CR-47` | Mundo vivo | 2026-10-05 Comercio de volumen Reino↔facción. L Pasos: 47a reglas puras, modelo y Mercado | sin jugar |  |
 | `CR-48` | Mundo vivo | 2026-10-05 Pasada de rendimiento del avance diario con el motor completo. S | no se juega | rendimiento |
-| `CR-50` | Mundo vivo | Campamentos de bandidos con cabecilla y refuerzos 2026-10-07 (Bellwright, Medieval Dynasty | sin jugar |  |
-| `CR-52` | Mundo vivo | Linajes y rastros 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`, | sin jugar |  |
+| `CR-50` | Mundo vivo | Campamentos de bandidos con cabecilla y refuerzos 2026-10-07 (Bellwright, Medieval Dynasty | jugado | Día 44: CAMPAMENTO_NUEVO «Se asientan nabieus enloquecidos en La Desembocadura Callada» |
+| `CR-52` | Mundo vivo | Linajes y rastros 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`, | jugado | Leyendas › Linajes: «Los Gorhorn, tu linaje» |
 | `CR-53` | Mundo vivo | Economía de supervivencia del Reino (Fase D del `0.3`; números decididos por la usuaria el | sin jugar | parcial 2026-10-19: Pozo jugado (6 leña + 6 piedra, +12 agua/día, «Agua al día +12 / −0»; P216, P217, P218); faltan Granero, Cisterna, Leñera, topes, comida y hambre del Reino |
-| `CR-54` | Mundo vivo | Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20): 2026-10-06 reparto de la tab | sin jugar |  |
+| `CR-54` | Mundo vivo | Economía de supervivencia de las facciones (Q7-Q8 y Q16-Q20): 2026-10-06 reparto de la tab | jugado | Día 44: 6 HAMBRUNA de facción y REBELION en Maktor |
 | `CR-55` | Mundo vivo | Ganadería 2026-10-06 (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, deci | sin jugar |  |
 | `CR-56` | Mundo vivo | Usos de la fauna 2026-10-06 (Q10, Q12 de la Fase D; ronda propia aceptada el 2026-10-06, d | sin jugar |  |
 | `CR-58` | Mundo vivo | Factura de equipo (Fase D, Q25-Q27). 2026-10-06 (`cronista/facturaEquipo.ts`) | sin jugar |  |
