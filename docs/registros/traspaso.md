@@ -109,6 +109,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-19** — ~~`QA-122`~~: puntos de `/clear` (runbook `skills-y-modelos.md`, paso 1): Claude lo recomienda en puntos estables con la sesión lista (commit, push, bitácora); tope de compactación a 300k y `recuperar.py --estado` también tras `/clear`.
 - **2026-10-19** — ~~`QA-121`~~: skill `orchestrate-dealer`: la sesión principal reparte cada trozo a un subagente de contexto limpio (encargo con criterio de hecho, vuelta en 15 líneas) para trabajar sin `/clear`; compactar a 200k; sustituye la sesión nueva de `QA-110`.
 - **2026-10-19** — ~~`QA-119`~~ y ~~`QA-120`~~ (retro, segunda vuelta): constructor común de registros de sesión para los tests y test de los ganchos de `.claude/settings.json`; antes, los 16 arreglos del segundo `/code-review`.
 - **2026-10-19** — ~~`QA-118`~~: escalera de modelos para subagentes (sube un peldaño por fallo, tope de dos), parar si una tanda no cierra nada y `modelo:` en cada tarea nueva.
@@ -118,4 +119,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-19** — ~~`QA-109`~~, ~~`QA-110`~~ y ~~`QA-111`~~ (`/opt-tokens` previo al PR): compactar a 300k tokens (`.claude/settings.json`), sesión nueva tras cada PR fusionado y curva de contexto en `medir.py`.
 - **2026-10-19** — ~~`QA-108`~~: mapa del agente (`docs/mapa-agente.md`): por sistema, funciones de entrada, tests, tablas, interfaz y trampas; `tools/qa/mapa-agente.py` comprueba sus referencias en la CI y el pre-push.
 - **2026-10-19** — ~~`QA-107`~~: más comprobaciones en la CI (esquema sin migración, build del frontend, escenarios, matriz, bitácora, enlaces de los `.md`, sintaxis de las herramientas). ~~`QA-106`~~: skill `opt-tokens` (retro de gasto con `medir.py`). Primera medida: 543 llamadas en 6 h con 566k tokens de contexto medio.
-- **2026-10-19** — ~~`QA-101`~~, ~~`QA-102`~~, ~~`QA-103`~~, ~~`QA-104`~~ y ~~`QA-105`~~ (proceso de pruebas): matriz de cobertura (`matriz-pruebas.py`), escenarios y avanzar días (`escenario.sh`), recorridos (`recorrer.sh`), `estado.js` en texto y rondas por bloques.

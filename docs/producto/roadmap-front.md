@@ -1335,6 +1335,11 @@ aprobadas las cuatro por la usuaria):
   compactación a 200k; el `selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
   la sesión nueva tras cada PR de `QA-110`. De `implement-spec` (Matt Pocock): encargos con punteros y
   frontera de arreglos en paralelo, cada uno en su worktree. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
+- ~~**QA-122 · Puntos de `/clear`**~~ ✅ 2026-10-19 (usuaria, tras la ronda del Reino con 30 compactaciones): Claude
+  recomienda `/clear` en puntos estables (tarea o tanda cerrada, ronda o bloque de pruebas cerrado, PR fusionado,
+  contexto por encima de ~200k o presupuesto de compactaciones gastado), con la sesión lista antes (commit, push y
+  bitácora con el siguiente paso); nunca entre el `/code-review` y la `/retro`. Tope de compactación de vuelta a 300k
+  y gancho de `SessionStart` para `clear` con `recuperar.py --estado`. Runbook `skills-y-modelos.md`, paso 1.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

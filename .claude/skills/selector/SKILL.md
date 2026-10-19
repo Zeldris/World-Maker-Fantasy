@@ -36,7 +36,7 @@ Reglas:
   en la bitácora.
 - **Sesión directora** (`QA-121`): toda tarea de más de un paso se lleva con `orchestrate-dealer`: la sesión
   principal parte y decide, y cada trozo va a un subagente de contexto limpio. Así no hace falta `/clear` ni
-  `/compact` de la usuaria; la compactación automática (200k) es solo la red.
+  `/compact` de la usuaria; la compactación automática (300k) es la red y entre tareas Claude recomienda un `/clear` (`QA-122`, runbook paso 1).
 - **Presupuesto de compactaciones** (`QA-116`): al empezar, estima cuántas pide la tarea, de 0 a 5 (con el
   reparto de `orchestrate-dealer`, una tarea normal 0-1), y apúntalo en la fila de la bitácora con las que lleva
   la sesión (`recuperar.py --estado`): «presupuesto 1, desde la 15». Si se pasa, el trabajo se está quedando en

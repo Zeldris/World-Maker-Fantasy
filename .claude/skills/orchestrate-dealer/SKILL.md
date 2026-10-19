@@ -8,7 +8,7 @@ description: La sesión principal como orchestrator que reparte el trabajo a sub
 La sesión principal es el **orchestrator**: guarda el plan, las decisiones y el hilo con la usuaria, y reparte cada
 trozo de trabajo a un subagente que empieza con el contexto vacío. Cada reparto es un `/clear` automático: la
 principal solo recibe un resumen corto y crece despacio. Si aun así llega al tope, la compactación automática
-(`CLAUDE_CODE_AUTO_COMPACT_WINDOW`, 200k) y el gancho de `recuperar.py --estado` son la red.
+(`CLAUDE_CODE_AUTO_COMPACT_WINDOW`, 300k), los puntos de `/clear` (`QA-122`) y el gancho de `recuperar.py --estado` son la red.
 
 ## Qué se queda en la principal y qué se reparte
 

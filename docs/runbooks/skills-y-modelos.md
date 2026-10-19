@@ -19,8 +19,18 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    qué skill y qué modelo pide, y su presupuesto de compactaciones (1 a 5, `QA-116`).
    **Sesión directora** (`QA-121`): con `orchestrate-dealer`, la principal reparte cada trozo a un subagente de
    contexto limpio y solo recibe su resumen; se trabaja horas sin `/clear` ni `/compact` de la usuaria.
-   **Compactar sin perder** (`QA-116`): el tope de 200k (`QA-109`, bajado en `QA-121`) es la red. Tras cada
-   compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
+   **Puntos de `/clear`** (`QA-122`, usuaria, 2026-10-19): la compactación automática (tope de 300k) es la red;
+   el corte limpio es un `/clear` en un punto estable. Claude lo recomienda: al cerrar una tarea del roadmap o una
+   tanda de arreglos, al cerrar una ronda o un bloque de pruebas, tras fusionar un PR, y cuando el contexto pasa de
+   ~200k o la tarea ya gastó su presupuesto de compactaciones, siempre entre pasos y nunca a mitad de uno. Entre el
+   `/code-review` y la `/retro` de un PR no se limpia: `/opt-tokens` y la `/retro` leen esta sesión. Antes de
+   recomendarlo deja la sesión lista: todo con commit y push, la fila de la bitácora con el siguiente paso concreto
+   y el estado de los tests, y lo que tenga que sobrevivir (una decisión, un dato a medias) en un `.md`. Entonces
+   dice en una línea «Punto de `/clear`: todo subido (`<commit>`). Escribe `/clear` y después «sigue».»; Claude no
+   puede lanzarlo. Tras el `/clear`, el gancho de `SessionStart` pone el estado (`recuperar.py --estado`) y se sigue
+   por «Al empezar cualquier sesión» de `CLAUDE.md`.
+   **Compactar sin perder** (`QA-116`): el tope de 300k (`QA-109`, bajado a 200k en `QA-121`, vuelto a 300k en
+   `QA-122`) es la red. Tras cada compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
    `git status`, los últimos commits y las compactaciones llevadas; un detalle de antes (un error, lo que dijo la
    usuaria) se busca con `python3 tools/qa/recuperar.py "<regex>"`, que lee el registro de la sesión sin
    cargarlo entero. Una sesión nueva no tiene ese registro: lo que tiene que sobrevivir, a la bitácora.
