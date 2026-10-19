@@ -1276,6 +1276,10 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   del encuentro con sus botones, avisos, final del diario y combate; captura solo si algo no cuadra.
 - ~~**QA-105 · Rondas por bloques**~~ ✅ 2026-10-19: «Una ronda, un bloque» en `rondas-de-pruebas.md`: qué falta
   (matriz), escenario, jugar en texto con recorridos, apuntar en el registro y en la matriz, y cerrar el bloque.
+- ~~**QA-106 · Skill `opt-tokens`**~~ ✅ 2026-10-19 (usuaria): retro de gasto basada en `/retro` y en la guía oficial
+  de costes de Claude Code. `.claude/skills/opt-tokens/medir.py` mide el uso real de la API de la sesión, el contexto
+  medio por llamada y lo que cada herramienta y resultado arrastra; `SKILL.md` lista las palancas y el proceso
+  (medir, buscar, proponer, aplicar lo aprobado); `proyecto.md` es lo propio de Tarkor (en otro proyecto se reescribe).
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
