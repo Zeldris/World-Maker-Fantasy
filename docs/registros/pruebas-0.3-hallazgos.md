@@ -12,8 +12,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (26): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
-  P212, P213, P214, P216, P217, P223, P224, P225, P226, P227, P228, P229, P230.
+- **Pendientes** (27): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+  P212, P213, P214, P216, P217, P223, P224, P225, P226, P227, P228, P229, P230, P231.
 - **Pendientes de una decisión de la usuaria** (3): P215, P218, P220.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (146): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -273,3 +273,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P228 | Comer/Beber: las bebidas (Odre de agua lleno) salen con 🍖, el icono está fijo en la fila de bebida (HungerThirstSelectionModal.tsx:217); los chips del texto también enseñan 🍖 para el odre | pendiente (no bloquea la ronda; arreglo fuera de ella) |
 | P229 | Un 500 de /turn/classify (el backend responde con error, no corte de red) cae al sondeo de reconexión: «Esperando confirmación del narrador…» hasta 72×10 s (~12 min) con la entrada bloqueada y al final «La acción quedó registrada…», que no es cierto (useTurnFlow.ts catch → pollForResolution) | pendiente (no bloquea la ronda; arreglo fuera de ella) |
 | P230 | Un fallo al cargar Súbditos (GET 500) deja la lista vacía sin aviso ni Reintentar: SubditosSection.tsx:373 hace .catch(() => setDatos(null)); el ErrorBanner de UX-24 solo cubre acciones, no cargas | pendiente (no bloquea la ronda; arreglo fuera de ella) |
+| P231 | Descanso rechazado por enfriamiento («no está lo bastante cansado…») avanza igual la duración pedida: «descansando tres días enteros» pasó del Día 36 al 39 y dejó hambre y sed a 0% y la salud en Convaleciente. La rama restBlockedByCooldown (turnResolution.ts:4749) fija el texto, pero la duración sale de la estimación del narrador (narrador.ts:417) | pendiente (no bloquea la ronda; arreglo fuera de ella) |

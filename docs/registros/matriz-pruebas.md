@@ -37,7 +37,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `BAS-8` | Interfaz | Librería de componentes base | no se juega | componentes base; se ven por todo |
 | `BAS-9` | Interfaz | Catálogo visual | jugado | /admin/ui: chips, barra con fantasma 80→55, pestañas por teclado, fila con stepper, estados de modal (cargando, error con Reintentar, éxito), OfferCard, BotonMantener, tamaños de ModalShell y toasts |
 | `HUD-6` | Interfaz | Notificaciones (toasts) | jugado | toast 📜 de noticia GRAVE con ✕, se cierra y se va solo (visto en CFG-35) |
-| `HUD-12` | Interfaz | "El mundo avanza" | sin jugar |  |
+| `HUD-12` | Interfaz | "El mundo avanza" | jugado | con la petición de noticias retrasada 5 s, la gema «El mundo avanza» se enciende de 1,4 a 6,1 s tras el turno y se apaga sola |
 | `MOD-1` | Interfaz | `ModalShell` único | jugado | QA-27 (2026-10-09…17), todos los modales |
 | `MOD-2` | Interfaz | Estados comunes | jugado | estados cargando/error con Reintentar/éxito en el catálogo y en el modal de Comer en partida |
 | `MOD-3` | Interfaz | Teclado en modales | jugado | P202 (Escape en modales) |
@@ -59,13 +59,13 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-13` | Interfaz | `anyModalOpen` completo | jugado | QA-27 (2026-10-09…17) |
 | `UX-16` | Interfaz | El asistente sobrevive a recargar | sin jugar |  |
 | `UX-24` | Interfaz | Ningún error en silencio | jugado | cambiar rol con POST forzado a 500: ErrorBanner con el detalle del backend, Reintentar aplica el cambio y el aviso se va; la carga (GET) falla en silencio (P230) y el classify cae en sondeo (P229) |
-| `UX-29` | Interfaz | El mundo de fondo nunca bloquea | sin jugar |  |
+| `UX-29` | Interfaz | El mundo de fondo nunca bloquea | jugado | mientras la gema está encendida el campo de acción sigue libre (aria-disabled=false) |
 | `UX-30` | Interfaz | Solo lo que el personaje sabe | sin jugar |  |
-| `UX-31` | Interfaz | Varios días de golpe | sin jugar |  |
-| `UX-35` | Interfaz | El turno no espera al día | sin jugar |  |
+| `UX-31` | Interfaz | Varios días de golpe | jugado | «descansar tres días» deja un solo aviso «Mientras pasaban los días… (6 noticias)» plegable; P231: el descanso rechazado avanzó igual los días |
+| `UX-35` | Interfaz | El turno no espera al día | jugado | el turno que cruzó tres días respondió en ~5 s y las noticias llegaron después |
 | `UX-36` | Interfaz | Leyendas siempre a una tecla | jugado | Y abre Leyendas desde la partida |
 | `UX-37` | Interfaz | Responder escribiendo | jugado | P141 (Responder escribiendo) |
-| `UX-38` | Interfaz | Noticias del mundo que se pueden tocar | sin jugar |  |
+| `UX-38` | Interfaz | Noticias del mundo que se pueden tocar | jugado | iconos de categoría, enlace de lugar abre su ficha, y con una oportunidad sembrada la etiqueta «📍 En Las Dunas Ahogadas · hasta el día 41» (también dentro del resumen) |
 | `ZON-10` | Mapa de zona | Fichas con placa oscura + pictograma + anillo de disposición (Foundry VTT). La placa conse | jugado | P123, P147 |
 | `ZON-11` | Mapa de zona | Tamaño mínimo garantizado : las fichas se dibujan a tamaño de pantalla fijo (~28 px de diá | jugado | P123 |
 | `ZON-13` | Mapa de zona | Grupos legibles : insignia "×3" en píldora clara fuera de la ficha; a partir de 3, fichas | jugado | P147 |
