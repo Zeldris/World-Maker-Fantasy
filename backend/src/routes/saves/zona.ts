@@ -264,6 +264,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       select: {
         id: true,
         worldId: true,
+        kingdomName: true,
         zonaPosX: true,
         zonaPosY: true,
         currentLocation: { select: { id: true, slug: true, name: true, region: true, kind: true, x: true, y: true } },
@@ -309,15 +310,24 @@ export async function zonaRoutes(app: FastifyInstance) {
     // migración de schema. `null` si la región no tiene dueño de lore conocido (mismo criterio que
     // `resolveFoundingOutcome`, reputation.ts).
     const duenoOriginal = REGION_OWNING_FACTIONS[region]?.[0] ?? null;
-    const regionControl: RegionControlState | null = duenoOriginal
+    const regionControlLore: RegionControlState | null = duenoOriginal
       ? await regionControlActual(prisma, await ambitoFacciones(prisma, save.id), region, parseAgenda(save.worldState?.agenda), duenoOriginal)
       : null;
+    // P214: si la región es parte del territorio del Reino de la jugadora, el título y `regionControl`
+    // muestran al Reino, no al dueño original (la facción dueña se sigue descubriendo con el control
+    // original, abajo).
+    const territorioPropio = save.kingdomName && regionControlLore
+      ? await prisma.territory.findFirst({ where: { saveId: save.id, region, control: { not: 'PERDIDO' } }, select: { id: true } })
+      : null;
+    const regionControl: RegionControlState | null = territorioPropio && save.kingdomName
+      ? { estado: 'NEUTRAL_O_DUENO_ORIGINAL', duenoActual: save.kingdomName }
+      : regionControlLore;
     // Fase G del 0.1 (hallazgo G25): Diplomacia dice que una facción se descubre «hablando con sus
     // NPC o visitando su territorio», pero estar en «Territorio de Clan Serhu» no descubría nada —
     // con un reino recién fundado no había con quién negociar. Estar en la zona cuenta como
     // visitarla: la facción que la controla queda CITADA (mismo nivel que la cascada de un NPC).
-    if (regionControl?.duenoActual) {
-      const faccionDuena = await prisma.faction.findFirst({ where: { worldId: save.worldId, name: regionControl.duenoActual, saveId: null }, select: { slug: true } });
+    if (regionControlLore?.duenoActual) {
+      const faccionDuena = await prisma.faction.findFirst({ where: { worldId: save.worldId, name: regionControlLore.duenoActual, saveId: null }, select: { slug: true } });
       if (faccionDuena) {
         await prisma.discoveredEntity.upsert({
           where: { saveId_entityType_entitySlug: { saveId: save.id, entityType: 'faction', entitySlug: faccionDuena.slug } },
