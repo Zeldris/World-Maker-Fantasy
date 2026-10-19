@@ -20,7 +20,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # QA-107: `bitacora.py --cerradas` compara con la base del PR
       - run: python3 tools/roadmap/cobertura.py
+      # QA-101/QA-107: cada tarea cerrada de los hitos en prueba tiene su fila en la matriz de cobertura.
+      - run: python3 tools/qa/matriz-pruebas.py --comprobar
+      # QA-69/QA-85/QA-107: la bitácora (filas cortas, una por rama) y, en un PR, cada tarea tachada en un
+      # roadmap también tachada en «Hecho recientemente». Antes solo lo miraba el pre-push.
+      - run: python3 tools/qa/bitacora.py
+      - if: github.event_name == 'pull_request'
+        run: python3 tools/qa/bitacora.py --cerradas ${{ github.event.pull_request.base.sha }} HEAD
+      # QA-107: ningún enlace relativo roto (archivo o ancla) en los .md.
+      - run: python3 tools/qa/enlaces-md.py
+      # QA-107: las herramientas de pruebas no se rompen sin que nadie lo vea hasta la ronda (sintaxis de los
+      # .sh, los .mjs y las ayudas de mcp/; historico/ son scripts archivados que no se ejecutan).
+      - name: Sintaxis de las herramientas
+        run: |
+          for f in $(git ls-files '*.sh' .githooks); do bash -n "$f" || exit 1; done
+          for f in $(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check "$f" || exit 1; done
+          for f in tools/playwright-e2e/mcp/*.js; do node -e "new Function('return (' + require('fs').readFileSync('$f', 'utf8') + ')')" || { echo "$f"; exit 1; }; done
+          python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py')
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
@@ -62,6 +81,10 @@ jobs:
       - name: Extensión pgvector
         run: PGPASSWORD=tarkor psql -h localhost -U tarkor -d tarkor -c 'CREATE EXTENSION IF NOT EXISTS vector'
       - run: npx prisma migrate deploy
+      # QA-107: el esquema y las migraciones dicen lo mismo (un cambio en schema.prisma sin su migración rompería
+      # las partidas al desplegar).
+      - name: Esquema sin migración pendiente
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       # Antes que reindex-lore: los embeddings del RAG se piden a Ollama.
       - name: Ollama simulado
         run: |
@@ -72,6 +95,10 @@ jobs:
       - run: npm run reindex-lore
       - run: npm run seed-catalog
       - run: npm test
+      # QA-102/QA-107: cada escenario de pruebas guardado se restaura y acepta las migraciones de ahora.
+      - name: Escenarios de pruebas
+        working-directory: .
+        run: bash tools/qa/comprobar-escenarios.sh
 
   frontend:
     runs-on: ubuntu-latest
@@ -87,5 +114,6 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc -b
+      # QA-107: `build` es `tsc -b` y el empaquetado de Vite: lo que solo falla al empaquetar también se ve.
+      - run: npm run build
       - run: npm test

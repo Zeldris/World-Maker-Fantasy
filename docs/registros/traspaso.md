@@ -109,7 +109,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
-- **2026-10-19** — ~~`QA-106`~~: skill `opt-tokens` (retro de gasto con `medir.py`). Primera medida: 543 llamadas en 6 h con 566k tokens de contexto medio.
+- **2026-10-19** — ~~`QA-107`~~: más comprobaciones en la CI (esquema sin migración, build del frontend, escenarios, matriz, bitácora, enlaces de los `.md`, sintaxis de las herramientas). ~~`QA-106`~~: skill `opt-tokens` (retro de gasto con `medir.py`). Primera medida: 543 llamadas en 6 h con 566k tokens de contexto medio.
 - **2026-10-19** — ~~`QA-101`~~, ~~`QA-102`~~, ~~`QA-103`~~, ~~`QA-104`~~ y ~~`QA-105`~~ (proceso de pruebas): matriz de cobertura (`matriz-pruebas.py`), escenarios y avanzar días (`escenario.sh`), recorridos (`recorrer.sh`), `estado.js` en texto y rondas por bloques.
 - **2026-10-19** — Arreglos de la ronda de la otra cuenta, reparto P189-P205: P189 (la fauna sin territorio: el catálogo no sembraba origen), P190-P196, P198-P202, P204 y P192 (opción A: cada uno actúa en su turno), con los arreglos de su `/code-review` y su retro ~~`QA-98`…`QA-100`~~ (tests de integración en el pre-push, la oferta en sus dos sitios y el origen de los puntos de zona). P203, a volver a jugar.
 - **2026-10-17** — Ronda de pruebas de `QA-27` tras el PR #60 (12 comprobados, P177 reabierto, P188-P206) y su retro ~~`QA-94`…`QA-97`~~: avisos de React que fallan los tests (con el arreglo de P197), «directamente a main» no quita la retro, `viajar.js` y `puntos.js`, y las consultas SQL de la ronda.

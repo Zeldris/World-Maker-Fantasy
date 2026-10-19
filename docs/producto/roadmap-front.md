@@ -37,7 +37,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 10. [Combate](#10-combate-cmb) — `CMB`
 11. [Atmósfera y opciones gráficas](#11-atmósfera-y-opciones-gráficas-atm) — `ATM`
 12. [Pantallas fuera de la partida](#12-pantallas-fuera-de-la-partida-pre) — `PRE`
-13. [Sonido](#13-sonido-son) — `SON`
+13. [Sonido](#13-sonido-son-p-) — `SON`
 14. [Calidad: cómo se verifica todo esto](#14-calidad-cómo-se-verifica-todo-esto-qa) — `QA`
 15. [Lo que piden el Cronista, la zona y el Reino](#15-lo-que-piden-el-cronista-la-zona-y-el-reino-int) — `INT`
 16. [Orden recomendado](#16-orden-recomendado)
@@ -1280,6 +1280,11 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   de costes de Claude Code. `.claude/skills/opt-tokens/medir.py` mide el uso real de la API de la sesión, el contexto
   medio por llamada y lo que cada herramienta y resultado arrastra; `SKILL.md` lista las palancas y el proceso
   (medir, buscar, proponer, aplicar lo aprobado); `proyecto.md` es lo propio de Tarkor (en otro proyecto se reescribe).
+- ~~**QA-107 · Más comprobaciones en la CI**~~ ✅ 2026-10-19 (usuaria): esquema sin migración pendiente (`prisma migrate
+  diff`), build del frontend (Vite), escenarios de pruebas que se restauran y aceptan las migraciones
+  (`tools/qa/comprobar-escenarios.sh`), matriz de cobertura, bitácora (y tareas tachadas en un PR), enlaces de los
+  `.md` (`tools/qa/enlaces-md.py`, 3 arreglados) y sintaxis de las herramientas. El nombrado de las imágenes ya estaba
+  (`imagenesZona.test.ts`, en los tests del backend).
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

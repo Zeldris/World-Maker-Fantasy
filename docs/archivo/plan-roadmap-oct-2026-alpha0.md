@@ -1,6 +1,6 @@
 # Plan de implementación — roadmap de octubre 2026 (bloque "Ahora" + Trimestre 1)
 
-**Fecha:** 2026-09-28. **Origen:** [21-roadmap.md](21-roadmap.md) (Ahora y Trimestre 1) con las
+**Fecha:** 2026-09-28. **Origen:** [21-roadmap.md](../producto/21-roadmap.md) (Ahora y Trimestre 1) con las
 decisiones de Álvaro de este mismo día. **Reparto:** plan escrito por Opus; cada fase la implementa
 UN subagente Sonnet, una detrás de otra (nunca en paralelo); Opus revisa el diff, corre tests y hace
 commit + push en `claude/wonderful-volta-662qt8` al cerrar cada fase, y tacha el punto en el roadmap.
