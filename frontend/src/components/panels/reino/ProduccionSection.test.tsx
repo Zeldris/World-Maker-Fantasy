@@ -94,3 +94,29 @@ describe('ProduccionSection — P225 fallo de carga', () => {
     expect(getOrdenesProduccion).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('ProduccionSection — carrera al cambiar de edificio', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si cambia building.id con la primera petición sin resolver, gana la segunda', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    let resolverPrimera: (v: unknown) => void = () => {}
+    vi.mocked(getOrdenesProduccion)
+      .mockReturnValueOnce(new Promise((r) => { resolverPrimera = r }) as never)
+      .mockResolvedValue({ ordenes: [orden({ id: 'o2', buildingId: 'b2', recipeKey: 'segunda' })] } as never)
+    const props = { saveId: 's1', companions: [], almacenItems: [], professionRecipes: [], onRefreshSave: async () => {} }
+    const b2 = { id: 'b2', name: 'Otro', status: 'ACTIVO' } as unknown as BuildingInfo
+    const { rerender, findByText, queryByText } = render(<ProduccionSection {...props} buildings={[edificio]} />)
+    rerender(<ProduccionSection {...props} buildings={[b2]} />)
+    await findByText(/segunda/i)
+    await act(async () => {
+      resolverPrimera({ ordenes: [orden({ id: 'o1', recipeKey: 'primera' })] })
+    })
+    expect(queryByText(/primera/i)).toBeNull()
+    expect(queryByText(/segunda/i)).toBeTruthy()
+  })
+})

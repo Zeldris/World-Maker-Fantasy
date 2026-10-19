@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, InventoryItemInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { NumeroGuardable } from '../../NumeroGuardable'
@@ -35,14 +35,21 @@ export function AlmacenSection({
   const grupos = agruparAlmacen(almacenItems)
 
   // P225 — si falla la carga de los topes se avisa con Reintentar (los topes quedan sin cargar).
+  const peticion = useRef(0)
   const cargarLimites = useCallback(() => {
+    const id = ++peticion.current
     getAlmacenLimites(saveId)
-      .then((res) => setLimites(res.limites))
-      .catch((e) => informar('No se pudieron cargar los topes del almacén.', e, cargarLimites))
+      .then((res) => {
+        if (id === peticion.current) setLimites(res.limites)
+      })
+      .catch((e) => id === peticion.current && informar('No se pudieron cargar los topes del almacén.', e, cargarLimites))
   }, [saveId, informar])
 
   useEffect(() => {
     cargarLimites()
+    return () => {
+      peticion.current++
+    }
   }, [cargarLimites])
 
   async function handleDepositar(itemId: string) {

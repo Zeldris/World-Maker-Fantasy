@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NumeroGuardable } from '../../NumeroGuardable'
 import { SelectorJuego } from '../../SelectorJuego'
 import { Esqueleto } from '../../Esqueleto'
@@ -107,11 +107,16 @@ function BuildingProduccionCard({
 
   // P225 — si falla la carga, la lista no se da por vacía: aviso con Reintentar.
   const [cargaFallida, setCargaFallida] = useState(false)
+  const peticion = useRef(0)
   const cargarOrdenes = useCallback(() => {
+    const id = ++peticion.current
     setCargaFallida(false)
     getOrdenesProduccion(saveId, building.id)
-      .then((res) => setOrdenes(res.ordenes))
+      .then((res) => {
+        if (id === peticion.current) setOrdenes(res.ordenes)
+      })
       .catch((e) => {
+        if (id !== peticion.current) return
         setCargaFallida(true)
         informar('No se pudieron cargar las órdenes de producción.', e, cargarOrdenes)
       })
@@ -129,6 +134,7 @@ function BuildingProduccionCard({
       })
     return () => {
       cancelado = true
+      peticion.current++
     }
   }, [saveId, building.id, cargarOrdenes])
 

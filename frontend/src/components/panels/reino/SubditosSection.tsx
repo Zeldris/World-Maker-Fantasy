@@ -370,13 +370,17 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
   // candidatos, muertes y salidas no cambian los súbditos activos que vienen en la partida.
   // P230 — un fallo al cargar no deja la lista vacía sin aviso: ErrorBanner con Reintentar.
   const [cargaFallida, setCargaFallida] = useState(false)
+  const peticion = useRef(0)
   const cargar = useCallback(() => {
+    const id = ++peticion.current
     getSubditos(saveId)
       .then((r) => {
+        if (id !== peticion.current) return
         setCargaFallida(false)
         setDatos(r)
       })
       .catch((e) => {
+        if (id !== peticion.current) return
         setCargaFallida(true)
         setDatos(null)
         informar('No se pudieron cargar los súbditos.', e, cargar)
@@ -384,6 +388,9 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
   }, [saveId, informar])
   useEffect(() => {
     cargar()
+    return () => {
+      peticion.current++
+    }
   }, [cargar, subjects, version])
 
   async function handleRol(id: string, rol: string) {
