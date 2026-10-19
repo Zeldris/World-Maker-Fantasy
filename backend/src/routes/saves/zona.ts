@@ -315,8 +315,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       : null;
     // P214: si la región es parte del territorio del Reino de la jugadora, el título y `regionControl`
     // muestran al Reino, no al dueño original (la facción dueña se sigue descubriendo con el control
-    // original, abajo).
-    const territorioPropio = save.kingdomName && regionControlLore
+    // original, abajo). Una disputa o conquista entre facciones se sigue mostrando tal cual.
+    const territorioPropio = save.kingdomName && regionControlLore?.estado === 'NEUTRAL_O_DUENO_ORIGINAL'
       ? await prisma.territory.findFirst({ where: { saveId: save.id, region, control: { not: 'PERDIDO' } }, select: { id: true } })
       : null;
     const regionControl: RegionControlState | null = territorioPropio && save.kingdomName
