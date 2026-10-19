@@ -28,6 +28,12 @@ Reglas:
   delegan búsquedas o tareas mecánicas; el diseño y las decisiones se quedan en la sesión principal.
 - Con el plan cerrado y escrito, la implementación acotada va a un subagente `sonnet` y la sesión principal
   revisa su diff (`QA-117`).
+- **Escalera de subagentes** (`QA-118`): `sonnet` con esfuerzo `low` → `sonnet` `medium` → `opus` `medium` →
+  `opus` `high`. Se empieza por el peldaño más bajo que encaje (o el `modelo:` de la tarea en su roadmap) y, si el
+  subagente no cierra el encargo, el siguiente intento sube uno. Dos fallos del mismo encargo: se para y se le
+  cuenta a la usuaria. Un subagente que no llega a arrancar (error de la herramienta) se reintenta en el mismo
+  peldaño y no cuenta como fallo. En trabajo largo sin supervisión, una tanda que no cierra nada para y se apunta
+  en la bitácora.
 - **Presupuesto de compactaciones** (`QA-116`): al empezar, estima cuántas pide la tarea, de 1 a 5 (un arreglo
   o un texto, 1; una ronda de un bloque, 2-3; varios sistemas, 4-5), y apúntalo en la fila de la bitácora con
   las que lleva la sesión (`recuperar.py --estado`): «presupuesto 3, desde la 15». Al acabar cada sub-bloque,

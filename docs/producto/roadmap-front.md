@@ -1319,6 +1319,10 @@ aprobadas las cuatro por la usuaria):
   entrada por modelo (sesión principal y subagentes de `<sesión>/subagents/`); `opt-tokens` lo mira; el runbook
   `skills-y-modelos.md` manda la implementación con plan cerrado a un subagente `sonnet` y la revisión a la sesión
   principal. La sesión del 2026-10-19 llevó el 92 % de la entrada en Opus.
+- ~~**QA-118 · Escalera de modelos y topes para subagentes**~~ ✅ 2026-10-19 (usuaria; ideas del workflow
+  `implement-afk`): se empieza en el peldaño más barato y se sube uno por fallo, tope de dos fallos, un fallo al
+  arrancar no cuenta, una tanda sin supervisión que no cierra nada para, y cada tarea nueva lleva su `modelo:` en
+  el roadmap (`selector` y runbook `skills-y-modelos.md`).
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

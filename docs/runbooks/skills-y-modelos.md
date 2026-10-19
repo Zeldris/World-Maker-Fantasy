@@ -129,4 +129,10 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   plan y la sesión principal revisa su diff antes del commit. Se queda en la sesión principal lo que pide
   sostener contexto: el bug difícil, el motor con varios sistemas, lo que cambia el plan a mitad. `medir.py`
   (`POR MODELO`) dice en cada `/opt-tokens` si se está haciendo.
+- **Escalera y topes** (`QA-118`, ideas del workflow `implement-afk` que se revisó el 2026-10-19; el resto no
+  encaja: paralelo con base de datos compartida, issues, rebase forzado): cada subagente empieza en el peldaño
+  más barato que encaje y sube uno por fallo (`sonnet` low → `sonnet` medium → `opus` medium → `opus` high), con
+  dos fallos como tope; un fallo al arrancar no sube ni cuenta; una tanda sin supervisión que no cierra nada
+  para. Al escribir una tarea nueva en un roadmap, se le apunta su peldaño (`modelo: sonnet-medium`), para que la
+  otra cuenta no tenga que decidirlo otra vez. Detalle en el `selector`.
 - En la duda, el de más riesgo.
