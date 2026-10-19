@@ -180,7 +180,11 @@ export function AlmacenSection({
             <div className="mt-2 flex flex-col gap-1.5">
               {depositable.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
-                  <span className="truncate text-xs text-wood-200">{item.name}</span>
+                  <span className="truncate text-xs text-wood-200">
+                    {item.name}
+                    {/* P215: la comida depositada se suma a la Comida del Reino (10 de hambre = 1) y no queda en el almacén. */}
+                    {item.curaHambre ? <span className="ml-1 text-wood-400">(pasa a la Comida del Reino)</span> : null}
+                  </span>
                   <button
                     type="button"
                     onClick={() => handleDepositar(item.id)}

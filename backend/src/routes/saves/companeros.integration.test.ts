@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { companerosRoutes } from './companeros.js';
 import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
+import { ownerKeyFor } from '../../services/reinoOwner.js';
 
 /// Cobertura nueva (auditoría de código 2026-08-25, condición de carrera real): la ruta
 /// `/tameo-pendientes/:npcSlug/confirmar` no pasa por `claimTurnInFlight` (exclusivo de
@@ -1214,5 +1215,52 @@ describe('rolReino de Companion: plantilla y ruta directa (H-1, 2026-09-28)', ()
 
     const ajeno = await app.inject({ method: 'POST', url: `/saves/otra-partida/companeros/${companionId}/rol-reino`, payload: { rolReino: 'guardia' } });
     expect(ajeno.statusCode).toBe(404);
+  });
+});
+
+describe('Almacén de Reino: la comida depositada cuenta para la Comida del Reino (P215, 2026-10-19)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const racion = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId: world.id, slug: 'racion-viaje' } });
+    expect(racion.curaHambre).toBeGreaterThan(0);
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (P215 comida al almacén)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    await prisma.kingdomStats.create({ data: { ownerKey: ownerKeyFor({ saveId }), saveId, comida: 0 } });
+    await prisma.inventoryItem.createMany({ data: [1, 2].map(() => ({ saveId, name: 'Ración de viaje', description: 'x', catalogSlug: 'racion-viaje' })) });
+  });
+
+  afterAll(async () => {
+    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    await prisma.almacenItem.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('depositar una ración suma a la Comida y no deja fila que Retirar pueda duplicar', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const racion = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId: world.id, slug: 'racion-viaje' } });
+    const esperada = Math.max(1, Math.floor(racion.curaHambre! / 10));
+    const item = await prisma.inventoryItem.findFirstOrThrow({ where: { saveId, catalogSlug: 'racion-viaje' } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/almacen/depositar/${item.id}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ ok: true, comidaSumada: esperada });
+    const stats = await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKeyFor({ saveId }) } });
+    expect(stats.comida).toBe(esperada);
+    expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
+    expect(await prisma.inventoryItem.count({ where: { saveId, catalogSlug: 'racion-viaje' } })).toBe(1);
   });
 });
