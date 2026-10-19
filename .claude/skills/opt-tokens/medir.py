@@ -65,6 +65,7 @@ def main():
 
     usos = collections.Counter()
     llamadas_api = 0
+    contextos = []  # contexto de cada llamada, para la curva entre compactaciones
     usos_tool = {}  # id → (nombre, resumen)
     resultados = []  # (indice_llamada, id, tokens, imagenes, es_error)
     cortes = []  # índice de llamada en el que hubo compactación
@@ -94,6 +95,7 @@ def main():
                 llamadas_api += 1
                 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens'):
                     usos[k] += u.get(k) or 0
+                contextos.append(sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens')))
             for b in m.get('content') or []:
                 if isinstance(b, dict) and b.get('type') == 'tool_use':
                     entrada = b.get('input') or {}
@@ -133,6 +135,18 @@ def main():
     print(f'Contexto medio por llamada: {total_in / llamadas_api:,.0f} tokens  →  cada llamada de más cuesta eso '
           f'(a precio de caché, ~{total_in / llamadas_api / 10:,.0f} tokens de entrada normal)')
     print(f'Salida media por llamada: {usos["output_tokens"] / llamadas_api:,.0f} tokens (incluye el razonamiento)')
+    # Curva entre compactaciones (QA-111): el suelo es el contexto fijo (instrucciones, herramientas, resumen) y el
+    # techo, hasta dónde crece antes de compactar. Un techo muy por encima del suelo pide compactar antes.
+    tramos, inicio = [], 0
+    for c in cortes + [llamadas_api]:
+        if c > inicio:
+            tramos.append(contextos[inicio:c])
+        inicio = c
+    if tramos:
+        suelos = [t[0] for t in tramos]
+        techos = [max(t) for t in tramos]
+        print(f'Tramos entre compactaciones: {len(tramos)}  ·  suelo medio {sum(suelos) / len(suelos):,.0f}  ·  techo medio '
+              f'{sum(techos) / len(techos):,.0f}  ·  {llamadas_api / len(tramos):,.0f} llamadas por tramo')
     print()
     print('POR HERRAMIENTA (tokens que metió en el contexto · arrastrados en las llamadas siguientes)')
     for nombre, (n, t, arr, img, err) in sorted(por_tool.items(), key=lambda x: -x[1][2])[: a.top]:

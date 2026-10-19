@@ -50,7 +50,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
-   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea).
+   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Al fusionarlo, Claude le recuerda a la usuaria
+   que empiece una sesión nueva (`/clear` u otra sesión) para la siguiente tarea: arranca en ~70k tokens con la
+   bitácora en vez de arrastrar la conversación entera (`QA-110`).
 7. **Antes de crear cada PR a `main` (tras el `/code-review` y sus arreglos), y al cerrar una fase o un
    hito:** `retro` (usuaria, 2026-10-13), que lanza Claude sobre lo que va a entrar con el PR o sobre toda
    la fase.

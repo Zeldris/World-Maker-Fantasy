@@ -1290,6 +1290,13 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
   `` `ruta#función` ``, sus tests, tablas, cómo llegar en la interfaz y trampas conocidas, más «qué no leer» y los
   comandos. `tools/qa/mapa-agente.py` comprueba en la CI y el pre-push que cada referencia existe. Puntero en
   `CLAUDE.md` y en `docs/README.md`. Se mantiene al día en el mismo commit que cambia lo que nombra.
+- ~~**QA-109 · Compactar antes**~~ ✅ 2026-10-19 (usuaria, `/opt-tokens` previo al PR): `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000`
+  en el `env` de `.claude/settings.json`. La sesión crecía de ~80k a ~780k tokens entre compactaciones (media 420k por
+  llamada); con el tope en 300k la media baja a ~190k, ~55 % menos de entrada por llamada.
+- ~~**QA-110 · Sesión nueva tras cada PR fusionado**~~ ✅ 2026-10-19 (usuaria): al fusionar, Claude le recuerda a la
+  usuaria `/clear` u otra sesión (runbook `skills-y-modelos.md`, paso 6); Claude no puede compactar por su cuenta.
+- ~~**QA-111 · Curva de contexto en `medir.py`**~~ ✅ 2026-10-19 (usuaria): suelo y techo medios entre compactaciones y
+  llamadas por tramo, para ver sin cálculos aparte si compensa compactar antes.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

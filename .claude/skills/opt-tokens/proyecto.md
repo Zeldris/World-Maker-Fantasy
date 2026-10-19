@@ -14,12 +14,17 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **SQL contra la partida** en vez de navegar la interfaz para mirar datos (`rondas-de-pruebas.md`, `QA-97`).
 - **Mapa del agente** (`QA-108`): `docs/mapa-agente.md` da por sistema las funciones de entrada, tests, tablas e
   interfaz; si una sesión exploró para encontrar algo que no estaba, se añade ahí.
+- **Compactar a 300k** (`QA-109`): `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en `.claude/settings.json`; antes el contexto
+  crecía de ~80k a ~780k por tramo (media 420k por llamada).
+- **Sesión nueva tras cada PR fusionado** (`QA-110`, runbook `skills-y-modelos.md`, paso 6).
+- **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
 ## Gastos conocidos
 
 - **Sesiones largas sin compactar**: el 2026-10-19, 543 llamadas en 6 h con 566k tokens de contexto medio (el 99 % de
-  caché leída). Es la palanca más grande: contexto medio × llamadas.
+  caché leída); el contexto llegaba a ~780k antes de compactar. Es la palanca más grande: contexto medio × llamadas
+  (`QA-109`, `QA-110`).
 - **Rondas de pruebas**: muchas llamadas pequeñas (pulsar, mirar, pulsar). Encadenar pasos en una orden de
   `orden.sh` y mirar el estado al final.
 - **Suites con base real** (backend, ~3.600 tests): la salida entera es grande; filtrar con `grep -E "Test Files|Tests
