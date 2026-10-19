@@ -304,13 +304,19 @@ export async function advanceCompanionSurvival(prisma: PrismaClient): Promise<{ 
   return { companionsAfectados };
 }
 
+/// P219: texto del aviso cuando la carencia empeora la condición (puro, determinista).
+export function avisoCarenciaPersonaje(comida: number, agua: number): string {
+  const causa = comida < UMBRAL_DESCUIDO_PCT && agua < UMBRAL_DESCUIDO_PCT ? 'el hambre y la sed' : comida < UMBRAL_DESCUIDO_PCT ? 'el hambre' : 'la sed';
+  return `Sin comer ni beber lo necesario, ${causa} te debilita y tu estado empeora. Busca alimento y agua.`;
+}
+
 /// Hambre/Sed del propio personaje — topado en CONVALECIENTE (ver `condicionPorSupervivencia`).
 /// Nunca mejora la condición aquí, solo la empeora — curar/descansar sigue siendo la única vía
 /// para subir, mismo criterio que el resto de `condicionFisica` (docs/14 § 1).
 export async function advancePlayerSurvival(prisma: PrismaClient): Promise<{ savesAfectados: number }> {
   const saves = await prisma.save.findMany({
     where: { endedAt: null },
-    select: { id: true, condicionFisica: true, lastAteAtMinutes: true, lastDrankAtMinutes: true, worldState: { select: { fictionalMinutes: true } } },
+    select: { id: true, condicionFisica: true, lastAteAtMinutes: true, lastDrankAtMinutes: true, worldState: { select: { fictionalMinutes: true, fictionalDateLabel: true } } },
   });
   let savesAfectados = 0;
   for (const s of saves) {
@@ -320,6 +326,17 @@ export async function advancePlayerSurvival(prisma: PrismaClient): Promise<{ sav
     const nueva = condicionPorSupervivencia(comida, agua, s.condicionFisica);
     if (nueva && nueva !== s.condicionFisica) {
       await prisma.save.update({ where: { id: s.id }, data: { condicionFisica: nueva } });
+      // P219: el cambio de condición por Hambre/Sed no puede ser silencioso: aviso en el diario.
+      await prisma.logEntry.create({
+        data: {
+          saveId: s.id,
+          channel: 'CHARACTER',
+          text: avisoCarenciaPersonaje(comida, agua),
+          timeLabel: s.worldState?.fictionalDateLabel ?? 'Día 1, mañana',
+          fictionalMinutes: nowMinutes,
+          isSystemMessage: true,
+        },
+      });
       savesAfectados++;
     }
   }

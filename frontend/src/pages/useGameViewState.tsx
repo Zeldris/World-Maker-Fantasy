@@ -28,6 +28,7 @@ import { useEnciclopedia } from '../hooks/useEnciclopedia'
 import { useEntityBanner } from '../hooks/useEntityBanner'
 import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
 import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
+import { useSupervivenciaSync } from '../hooks/useSupervivenciaSync'
 import { useRecipesData } from '../hooks/useRecipesData'
 import { useCombatFlow } from '../hooks/useCombatFlow'
 import { useZonaAcciones } from '../hooks/useZonaAcciones'
@@ -562,6 +563,9 @@ export function useGameViewState() {
     buildEntityBanner,
     setWorldLog,
   })
+
+  // P219 (c): condición, Hambre y Sed que el worker cambia en BD entre turnos.
+  useSupervivenciaSync({ saveId, characterThinking, combatActive: !!combateIniciado, setCondicionFisica, setHambre, setSed })
 
   // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
   // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y
