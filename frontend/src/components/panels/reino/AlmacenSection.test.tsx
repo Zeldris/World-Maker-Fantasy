@@ -59,3 +59,25 @@ describe('AlmacenSection — REI-40, REI-41', () => {
     expect(getByRole('button', { name: 'Retirar' })).toBeTruthy()
   })
 })
+
+describe('AlmacenSection — P225 fallo de carga de topes', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si fallan los topes avisa con Reintentar y al reintentar los carga', async () => {
+    vi.mocked(getAlmacenLimites).mockRejectedValueOnce(new Error('500')).mockResolvedValue({ limites: [{ catalogSlug: 'madera', limite: 10 }] })
+    const { findByRole, findByLabelText } = render(
+      <AlmacenSection saveId="s1" inventory={[]} almacenItems={[item('m1', 'Madera', 'madera')]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />,
+    )
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('No se pudieron cargar los topes del almacén.')
+    await act(async () => {
+      fireEvent.click(await findByRole('button', { name: /Reintentar/ }))
+    })
+    expect(getAlmacenLimites).toHaveBeenCalledTimes(2)
+    const tope = (await findByLabelText('Tope de Madera')) as HTMLInputElement
+    await waitFor(() => expect(tope.value).toBe('10'))
+  })
+})

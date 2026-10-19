@@ -71,3 +71,26 @@ describe('ProduccionSection — REI-33', () => {
     expect(actualizarOrdenProduccion).toHaveBeenCalledWith('s1', 'o1', { limite: 4 })
   })
 })
+
+describe('ProduccionSection — P225 fallo de carga', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si falla la carga de órdenes avisa con Reintentar y no dice «Sin órdenes activas»', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    vi.mocked(getOrdenesProduccion).mockRejectedValueOnce(new Error('500')).mockResolvedValue({ ordenes: [orden({})] } as never)
+    const { findByRole, queryByText } = render(
+      <ProduccionSection saveId="s1" buildings={[edificio]} companions={[]} almacenItems={[]} professionRecipes={[]} onRefreshSave={async () => {}} />,
+    )
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('No se pudieron cargar las órdenes de producción.')
+    expect(queryByText('Sin órdenes activas.')).toBeNull()
+    await act(async () => {
+      fireEvent.click(await findByRole('button', { name: /Reintentar/ }))
+    })
+    expect(getOrdenesProduccion).toHaveBeenCalledTimes(2)
+  })
+})

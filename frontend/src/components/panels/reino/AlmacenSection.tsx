@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { AlmacenItemInfo, InventoryItemInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { NumeroGuardable } from '../../NumeroGuardable'
@@ -34,19 +34,16 @@ export function AlmacenSection({
   const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
   const grupos = agruparAlmacen(almacenItems)
 
-  useEffect(() => {
-    let cancelado = false
+  // P225 — si falla la carga de los topes se avisa con Reintentar (los topes quedan sin cargar).
+  const cargarLimites = useCallback(() => {
     getAlmacenLimites(saveId)
-      .then((res) => {
-        if (!cancelado) setLimites(res.limites)
-      })
-      .catch(() => {
-        if (!cancelado) setLimites([])
-      })
-    return () => {
-      cancelado = true
-    }
-  }, [saveId])
+      .then((res) => setLimites(res.limites))
+      .catch((e) => informar('No se pudieron cargar los topes del almacén.', e, cargarLimites))
+  }, [saveId, informar])
+
+  useEffect(() => {
+    cargarLimites()
+  }, [cargarLimites])
 
   async function handleDepositar(itemId: string) {
     setBusy(itemId)

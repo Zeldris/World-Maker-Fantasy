@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NumeroGuardable } from '../../NumeroGuardable'
 import { SelectorJuego } from '../../SelectorJuego'
 import { Esqueleto } from '../../Esqueleto'
@@ -105,15 +105,21 @@ function BuildingProduccionCard({
     setOrdenes(res.ordenes)
   }
 
+  // P225 — si falla la carga, la lista no se da por vacía: aviso con Reintentar.
+  const [cargaFallida, setCargaFallida] = useState(false)
+  const cargarOrdenes = useCallback(() => {
+    setCargaFallida(false)
+    getOrdenesProduccion(saveId, building.id)
+      .then((res) => setOrdenes(res.ordenes))
+      .catch((e) => {
+        setCargaFallida(true)
+        informar('No se pudieron cargar las órdenes de producción.', e, cargarOrdenes)
+      })
+  }, [saveId, building.id, informar])
+
   useEffect(() => {
     let cancelado = false
-    getOrdenesProduccion(saveId, building.id)
-      .then((res) => {
-        if (!cancelado) setOrdenes(res.ordenes)
-      })
-      .catch(() => {
-        if (!cancelado) setOrdenes([])
-      })
+    cargarOrdenes()
     getRecetasProduccionEdificio(saveId, building.id)
       .then((res) => {
         if (!cancelado) setRecetasPermitidas(res.oficio ? res.recipeKeys : null)
@@ -124,7 +130,7 @@ function BuildingProduccionCard({
     return () => {
       cancelado = true
     }
-  }, [saveId, building.id])
+  }, [saveId, building.id, cargarOrdenes])
 
   async function handlePrioridadChange(ordenId: string, prioridad: number): Promise<boolean> {
     setBusy(ordenId)
@@ -241,7 +247,7 @@ function BuildingProduccionCard({
 
       <p className="mt-3 text-2xs uppercase tracking-wide text-wood-500">Órdenes de producción</p>
       {ordenes === null ? (
-        <Esqueleto filas={2} que="órdenes de producción" className="mt-1" />
+        cargaFallida ? null : <Esqueleto filas={2} que="órdenes de producción" className="mt-1" />
       ) : (
         <div className="mt-1 flex flex-col gap-1.5">
           {ordenes.filter((o) => o.activa).length === 0 && trabajadores.length === 0 && (
