@@ -5,7 +5,7 @@
 // camas (el de los edificios con plazas). Los adultos trabajan, o hacen de soldado o vigía; los niños
 // no trabajan ni combaten hasta su madurez.
 import type { Prisma } from '@prisma/client';
-import { companionSlotsForRecipeKey } from '../construction.js';
+import { companionSlotsForRecipeKey, esAyuntamientoRecipeKey } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { edadEnAnios, esAdulto } from './edades.js';
 import { apellidoDe, fundarLinaje, nombreConLinaje, unirALinaje } from './linajes.js';
@@ -81,15 +81,49 @@ export function felicidadHacia(actual: number, reino: number, dias: number): num
 
 // ─────────────────────────── Con base de datos ───────────────────────────
 
+/// P220a (decisión de la usuaria, 2026-10-19): el Ayuntamiento da 2 camas TEMPORALES, solo para súbditos
+/// (nunca para compañeros). Un súbdito alojado ahí solo sirve como parte del Reino: sin cama permanente
+/// no hay compañero que ocupe su sitio, y en cuanto hay una cama de verdad pasa a ella.
+export const CAMAS_TEMPORALES_AYUNTAMIENTO = 2;
+
+export interface CupoDeCamas {
+  /** Camas permanentes (construcciones). */
+  total: number;
+  companeros: number;
+  subditos: number;
+  /** Camas permanentes libres: las únicas que usan los compañeros. */
+  libres: number;
+  /** Camas temporales del Ayuntamiento (solo súbditos): 0 sin Ayuntamiento en pie. */
+  temporales: number;
+  /** Súbditos que no caben en una cama permanente y viven en las temporales. */
+  enAyuntamiento: number;
+  /** Camas libres para un súbdito: permanentes libres + temporales libres. */
+  libresSubditos: number;
+}
+
+/// Puro: reparte las camas. Los súbditos ocupan primero las permanentes que dejan los compañeros y el
+/// resto las temporales del Ayuntamiento.
+export function repartirCamas(total: number, companeros: number, subditos: number, temporales: number): CupoDeCamas {
+  const permanentesParaSubditos = Math.max(0, total - companeros);
+  const enPermanentes = Math.min(subditos, permanentesParaSubditos);
+  const enAyuntamiento = Math.min(subditos - enPermanentes, temporales);
+  return {
+    total, companeros, subditos, temporales, enAyuntamiento,
+    libres: Math.max(0, total - companeros - enPermanentes),
+    libresSubditos: Math.max(0, permanentesParaSubditos - enPermanentes) + Math.max(0, temporales - Math.max(0, subditos - enPermanentes)),
+  };
+}
+
 /// Q2: un único cupo de camas para compañeros (salvo el del Domador) y súbditos activos.
-export async function cupoDeCamas(tx: Tx, saveId: string): Promise<{ total: number; companeros: number; subditos: number; libres: number }> {
+export async function cupoDeCamas(tx: Tx, saveId: string): Promise<CupoDeCamas> {
   const [companeros, subditos, edificios] = await Promise.all([
     tx.companion.count({ where: { saveId, esSlotDomador: false } }),
     tx.subject.count({ where: { saveId, estado: 'ACTIVO' } }),
     tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
   ]);
   const total = edificios.reduce((s, b) => s + companionSlotsForRecipeKey(b.recipeKey), 0);
-  return { total, companeros, subditos, libres: Math.max(0, total - companeros - subditos) };
+  const hayAyuntamiento = edificios.some((b) => esAyuntamientoRecipeKey(b.recipeKey));
+  return repartirCamas(total, companeros, subditos, hayAyuntamiento ? CAMAS_TEMPORALES_AYUNTAMIENTO : 0);
 }
 
 /// La población del Reino (y de cada territorio) = sus súbditos activos. Idempotente.
