@@ -99,7 +99,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review`, luego `/retro` y lo aprobado de ella, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review`, luego `/opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
 ## Lo que engaña
 

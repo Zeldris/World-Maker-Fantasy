@@ -3,7 +3,8 @@ name: opt-tokens
 description: "Retrospective on token spend: measures where a session's tokens went and proposes environment changes that cut it. Use when the user asks to save tokens, after a long or expensive session, or before a testing round."
 ---
 
-> **En este repositorio:** la pide la usuaria cuando quiere gastar menos (2026-10-19). Lo propio del proyecto (sus
+> **En este repositorio:** la lanza Claude antes de cada PR a `main`, tras el `/code-review` y antes de la `/retro`
+> (que revisa también esta skill), y la pide la usuaria cuando quiere gastar menos (2026-10-19). Lo propio del proyecto (sus
 > herramientas y sus gastos conocidos) está en [`proyecto.md`](proyecto.md); en otro proyecto, ese archivo se
 > reescribe y lo demás vale tal cual. Todo en español; las propuestas se presentan a la usuaria y solo lo que
 > confirme entra como tarea con hito en su roadmap (`CLAUDE.md`, «Ninguna tarea sin hito»).

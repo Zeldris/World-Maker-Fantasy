@@ -95,8 +95,9 @@ prueba y cómo se apunta (`QA-56`).
   del diff contra `main`, los arreglos subidos, `bash tools/qa/revisado.sh` y la descripción con la skill `pr`
   ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de
   revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
-- **Antes de crear cada PR a `main`, tras el `/code-review`, `/retro`** (usuaria, 2026-10-13) sobre lo
-  que va a entrar con él. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
+- **Antes de crear cada PR a `main`, tras el `/code-review`, `/opt-tokens` y después `/retro`** (usuaria,
+  2026-10-13 y 2026-10-19) sobre lo que va a entrar con él; la `/retro` revisa también la propia skill
+  `opt-tokens`. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
   antes de crear el PR**, y solo entonces se crea.
 
 ## La bitácora (`docs/registros/traspaso.md`)
