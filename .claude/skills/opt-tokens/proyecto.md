@@ -14,9 +14,9 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **SQL contra la partida** en vez de navegar la interfaz para mirar datos (`rondas-de-pruebas.md`, `QA-97`).
 - **Mapa del agente** (`QA-108`): `docs/mapa-agente.md` da por sistema las funciones de entrada, tests, tablas e
   interfaz; si una sesión exploró para encontrar algo que no estaba, se añade ahí.
-- **Compactar a 300k** (`QA-109`): `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en `.claude/settings.json`; antes el contexto
+- **Compactar a 300k** (`QA-109`; 200k desde `QA-121`, con la sesión directora de `orchestrate-dealer`): `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en `.claude/settings.json`; antes el contexto
   crecía de ~76k a ~742k por tramo (media 428k por llamada).
-- **Sesión nueva tras cada PR fusionado** (`QA-110`, runbook `skills-y-modelos.md`, paso 6).
+- **Sesión directora** (`QA-121`, sustituye la sesión nueva tras cada PR de `QA-110`): skill `orchestrate-dealer`.
 - **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones.
 - **Tests de las herramientas** (`QA-113`): `medir.py` tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.

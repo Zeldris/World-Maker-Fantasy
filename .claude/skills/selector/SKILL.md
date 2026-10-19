@@ -34,12 +34,13 @@ Reglas:
   cuenta a la usuaria. Un subagente que no llega a arrancar (error de la herramienta) se reintenta en el mismo
   peldaño y no cuenta como fallo. En trabajo largo sin supervisión, una tanda que no cierra nada para y se apunta
   en la bitácora.
-- **Presupuesto de compactaciones** (`QA-116`): al empezar, estima cuántas pide la tarea, de 1 a 5 (un arreglo
-  o un texto, 1; una ronda de un bloque, 2-3; varios sistemas, 4-5), y apúntalo en la fila de la bitácora con
-  las que lleva la sesión (`recuperar.py --estado`): «presupuesto 3, desde la 15». Al acabar cada sub-bloque,
-  con commit y push, dile a la usuaria «buen momento para `/compact <qué conservar>`». Si se agota el presupuesto
-  con la tarea a medias, cierra en un punto estable, bitácora al día, y pide sesión nueva: la tarea era más
-  grande y se parte.
+- **Sesión directora** (`QA-121`): toda tarea de más de un paso se lleva con `orchestrate-dealer`: la sesión
+  principal parte y decide, y cada trozo va a un subagente de contexto limpio. Así no hace falta `/clear` ni
+  `/compact` de la usuaria; la compactación automática (200k) es solo la red.
+- **Presupuesto de compactaciones** (`QA-116`): al empezar, estima cuántas pide la tarea, de 0 a 5 (con el
+  reparto de `orchestrate-dealer`, una tarea normal 0-1), y apúntalo en la fila de la bitácora con las que lleva
+  la sesión (`recuperar.py --estado`): «presupuesto 1, desde la 15». Si se pasa, el trabajo se está quedando en
+  la principal: reparte más.
 - En la duda entre dos filas, la de más riesgo.
 - Lo decidido en un `/grill-with-docs` va a su roadmap o a la bitácora (decisiones), igual que
   siempre; el glosario a `GLOSSARY.md` y las decisiones difíciles de revertir a `docs/adr/`.

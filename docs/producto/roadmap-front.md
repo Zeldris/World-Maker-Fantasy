@@ -1330,6 +1330,10 @@ aprobadas las cuatro por la usuaria):
 - ~~**QA-120 · Test de los ganchos de `.claude/settings.json`**~~ ✅ 2026-10-19 (retro, segunda vuelta, 6):
   `test_settings.py` exige `matcher` en cada `SessionStart`, solo `recuperar.py --estado` al compactar y que cada
   orden apunte a un archivo que existe.
+- ~~**QA-121 · Sesión directora: skill `orchestrate-dealer`**~~ ✅ 2026-10-19 (usuaria: no depender de `/clear`):
+  la principal parte la tarea y reparte cada trozo a un subagente de contexto limpio que devuelve 15 líneas; tope de
+  compactación a 200k; el `selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
+  la sesión nueva tras cada PR de `QA-110`. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
