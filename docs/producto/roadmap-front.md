@@ -37,7 +37,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 10. [Combate](#10-combate-cmb) — `CMB`
 11. [Atmósfera y opciones gráficas](#11-atmósfera-y-opciones-gráficas-atm) — `ATM`
 12. [Pantallas fuera de la partida](#12-pantallas-fuera-de-la-partida-pre) — `PRE`
-13. [Sonido](#13-sonido-son) — `SON`
+13. [Sonido](#13-sonido-son-p-) — `SON`
 14. [Calidad: cómo se verifica todo esto](#14-calidad-cómo-se-verifica-todo-esto-qa) — `QA`
 15. [Lo que piden el Cronista, la zona y el Reino](#15-lo-que-piden-el-cronista-la-zona-y-el-reino-int) — `INT`
 16. [Orden recomendado](#16-orden-recomendado)
@@ -1258,6 +1258,78 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
 - ~~**QA-100 · El catálogo siembra el origen de los puntos de zona**~~ ✅ 2026-10-19: `datosDePlantillaZonePoint`
   (`scripts/plantillaZonePoint.ts`) con su test, y el test de partida comprueba que el clon copia los campos.
   Motivo: P189 (sin origen, ningún animal tenía territorio).
+
+Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo implementado):
+
+- ~~**QA-101 · Matriz de cobertura de las pruebas**~~ ✅ 2026-10-19: `tools/qa/matriz-pruebas.py` y
+  `docs/registros/matriz-pruebas.md`, una fila por tarea cerrada del `0.0` al `0.3` con bloque y estado (jugado,
+  solo tests, sin jugar, no se juega); da «SIN JUGAR: N de M» por bloque y el pre-push exige la fila de cada tarea
+  cerrada. Estado inicial clasificado a mano: 123 de 169 sin jugar (el núcleo del `0.1` no tiene ID y no cuenta).
+- ~~**QA-102 · Escenarios preparados y avanzar días**~~ ✅ 2026-10-19: `tools/qa/escenario.sh` guarda la base de
+  juego entera como instantánea (`tools/qa/escenarios/<nombre>.dump`, menos de 1 MB, con su línea en el README),
+  la carga con las migraciones y el catálogo de ahora y avanza N días (`scripts/avanzarDias.ts`, el avance diario
+  de siempre: 3 días en 3 s). Se llega jugando una vez y se guarda; las instantáneas las añade cada ronda.
+- ~~**QA-103 · Recorridos que pasan o fallan**~~ ✅ 2026-10-19: `tools/playwright-e2e/recorrer.mjs` y
+  `tools/qa/recorrer.sh` pasan los recorridos de `recorridos/` (cada uno con sus hallazgos y su escenario, que se
+  carga una vez por grupo) y dan una línea por recorrido. El primero, P194 (en verde). Los demás los deja cada ronda.
+- ~~**QA-104 · Estado en texto**~~ ✅ 2026-10-19: `mcp/estado.js` da en unas 10 líneas HUD, modales, la tarjeta
+  del encuentro con sus botones, avisos, final del diario y combate; captura solo si algo no cuadra.
+- ~~**QA-105 · Rondas por bloques**~~ ✅ 2026-10-19: «Una ronda, un bloque» en `rondas-de-pruebas.md`: qué falta
+  (matriz), escenario, jugar en texto con recorridos, apuntar en el registro y en la matriz, y cerrar el bloque.
+- ~~**QA-106 · Skill `opt-tokens`**~~ ✅ 2026-10-19 (usuaria): retro de gasto basada en `/retro` y en la guía oficial
+  de costes de Claude Code. `.claude/skills/opt-tokens/medir.py` mide el uso real de la API de la sesión, el contexto
+  medio por llamada y lo que cada herramienta y resultado arrastra; `SKILL.md` lista las palancas y el proceso
+  (medir, buscar, proponer, aplicar lo aprobado); `proyecto.md` es lo propio de Tarkor (en otro proyecto se reescribe).
+- ~~**QA-107 · Más comprobaciones en la CI**~~ ✅ 2026-10-19 (usuaria): esquema sin migración pendiente (`prisma migrate
+  diff`), build del frontend (Vite), escenarios de pruebas que se restauran y aceptan las migraciones
+  (`tools/qa/comprobar-escenarios.sh`), matriz de cobertura, bitácora (y tareas tachadas en un PR), enlaces de los
+  `.md` (`tools/qa/enlaces-md.py`, 3 arreglados) y sintaxis de las herramientas. El nombrado de las imágenes ya estaba
+  (`imagenesZona.test.ts`, en los tests del backend).
+- ~~**QA-108 · Mapa del agente**~~ ✅ 2026-10-19 (usuaria): [`docs/mapa-agente.md`](../mapa-agente.md), por sistema
+  (turno, zona y encuentros, combate, reino, súbditos, Cronista, caza, catálogo) las funciones de entrada como
+  `` `ruta#función` ``, sus tests, tablas, cómo llegar en la interfaz y trampas conocidas, más «qué no leer» y los
+  comandos. `tools/qa/mapa-agente.py` comprueba en la CI y el pre-push que cada referencia existe. Puntero en
+  `CLAUDE.md` y en `docs/README.md`. Se mantiene al día en el mismo commit que cambia lo que nombra.
+- ~~**QA-109 · Compactar antes**~~ ✅ 2026-10-19 (usuaria, `/opt-tokens` previo al PR): `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000`
+  en el `env` de `.claude/settings.json`. La sesión crecía de ~76k a ~742k tokens entre compactaciones (media 428k por
+  llamada); con el tope en 300k la media baja a ~190k, ~55 % menos de entrada por llamada.
+- ~~**QA-110 · Sesión nueva tras cada PR fusionado**~~ ✅ 2026-10-19 (usuaria): al fusionar, Claude le recuerda a la
+  usuaria `/clear` u otra sesión (runbook `skills-y-modelos.md`, paso 6); Claude no puede compactar por su cuenta.
+- ~~**QA-111 · Curva de contexto en `medir.py`**~~ ✅ 2026-10-19 (usuaria): suelo y techo medios entre compactaciones y
+  llamadas por tramo, para ver sin cálculos aparte si compensa compactar antes.
+
+**Retro del PR del proceso de pruebas** (2026-10-19, [retro](../registros/retro-2026-10-19-proceso-pruebas.md);
+aprobadas las cuatro por la usuaria):
+
+- ~~**QA-112 · `.claude/` versionado sin `-f`**~~ ✅ 2026-10-19: `.gitignore` con `.claude/*` y excepciones para
+  `settings.json`, `hooks/` y `skills/`; fuera el `.pyc` que subió el `-f`.
+- ~~**QA-113 · Cada herramienta con su test**~~ ✅ 2026-10-19: tests de `mapa-agente.py`, `enlaces-md.py`,
+  `matriz-pruebas.py` y `medir.py`, y `test_herramientas_con_test.py`, que falla si una herramienta nueva de
+  `tools/qa` o de una skill llega sin el suyo (las que piden el juego o Postgres, en una lista con el porqué).
+- ~~**QA-114 · `opt-tokens` mira primero la curva**~~ ✅ 2026-10-19: el paso 1 lee contexto medio y tramos antes de
+  proponer y arregla `medir.py` si las cifras no cuadran; `proyecto.md` con las cifras buenas.
+- ~~**QA-115 · Fecha de la bitácora al día**~~ ✅ 2026-10-19: `bitacora.py --fecha`; el pre-push falla si un commit
+  que cambia la bitácora deja «Actualizado» con un día anterior.
+- ~~**QA-116 · Compactar sin perder contexto**~~ ✅ 2026-10-19 (usuaria): `tools/qa/recuperar.py "<regex>"` busca en el
+  registro de la sesión lo de antes de compactar (fragmentos recortados, sin resúmenes, subagentes ni búsquedas
+  previas); `recuperar.py --estado` lo pone el gancho de `SessionStart` tras cada compactación (fila de la
+  bitácora, `git status`, commits, compactaciones llevadas); presupuesto de 1 a 5 compactaciones por tarea en el
+  `selector`, con los cortes al acabar cada sub-bloque.
+- ~~**QA-117 · Planificar con el grande, escribir con el medio**~~ ✅ 2026-10-19 (usuaria): `medir.py` reparte la
+  entrada por modelo (sesión principal y subagentes de `<sesión>/subagents/`); `opt-tokens` lo mira; el runbook
+  `skills-y-modelos.md` manda la implementación con plan cerrado a un subagente `sonnet` y la revisión a la sesión
+  principal. La sesión del 2026-10-19 llevó el 92 % de la entrada en Opus.
+- ~~**QA-118 · Escalera de modelos y topes para subagentes**~~ ✅ 2026-10-19 (usuaria; ideas del workflow
+  `implement-afk`): se empieza en el peldaño más barato y se sube uno por fallo, tope de dos fallos, un fallo al
+  arrancar no cuenta, una tanda sin supervisión que no cierra nada para, y cada tarea nueva lleva su `modelo:` en
+  el roadmap (`selector` y runbook `skills-y-modelos.md`).
+- ~~**QA-119 · Registros de sesión de prueba con la forma real**~~ ✅ 2026-10-19 (retro, segunda vuelta, 5): un
+  único constructor de líneas en `tools/qa/tests/comun.py` (`respuesta`, `orden`, `resultado`, `aviso`,
+  `compactacion`, `ruido`, `registro`), copiado del formato real, para `test_medir.py`, `test_recuperar.py` y
+  cualquier herramienta nueva que lea registros.
+- ~~**QA-120 · Test de los ganchos de `.claude/settings.json`**~~ ✅ 2026-10-19 (retro, segunda vuelta, 6):
+  `test_settings.py` exige `matcher` en cada `SessionStart`, solo `recuperar.py --estado` al compactar y que cada
+  orden apunte a un archivo que existe.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

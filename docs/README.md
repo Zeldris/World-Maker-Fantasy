@@ -21,6 +21,7 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 | Añadir un elemento al catálogo (NPC, objeto, fauna…) | [runbooks/nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Ampliar lore con OpenCode | [runbooks/ampliar-lore.md](runbooks/ampliar-lore.md) y [borradores-opencode/prompts/00-como-usar.md](borradores-opencode/prompts/00-como-usar.md) |
 | Revisar una partida real buscando fallos | [runbooks/revisar-partida.md](runbooks/revisar-partida.md) |
+| Saber qué código, tests y tablas tocar de un sistema (para agentes) | [mapa-agente.md](mapa-agente.md) |
 | Retomar el trabajo donde lo dejó la última sesión | [registros/traspaso.md](registros/traspaso.md) |
 | Ver hallazgos abiertos | [registros/](#registros--hallazgos-y-checklists-vivos) |
 

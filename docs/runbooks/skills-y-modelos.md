@@ -4,10 +4,10 @@
 cada tipo de tarea. Petición de la usuaria (2026-10-04), tras revisar
 [mattpocock/skills](https://github.com/mattpocock/skills).
 
-**`.claude/` sigue en el `.gitignore`, pero `.claude/skills/` está versionado** (decisión de la
-usuaria, 2026-10-04: subir las skills junto con lo que vaya a `main`). Git sigue los archivos ya
-añadidos aunque la carpeta esté ignorada; una skill **nueva** se añade con
-`git add -f .claude/skills/<nombre>`. Si una skill no está cargada, se sigue su descripción de aquí.
+**`.claude/skills/`, `.claude/hooks/` y `.claude/settings.json` están versionados** (decisión de la usuaria,
+2026-10-04: subir las skills junto con lo que vaya a `main`); el resto de `.claude/` es local y está en el
+`.gitignore` (`QA-112`). Una skill nueva se añade con `git add` normal. Si una skill no está cargada, se sigue su
+descripción de aquí.
 
 ## Cómo se usa: el flujo de una tarea
 
@@ -16,7 +16,13 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 `/grill-with-docs`.
 
 1. **Empezar la tarea:** cargar `selector`, clasificar la tarea con su tabla y decir en una línea
-   qué skill y qué modelo pide.
+   qué skill y qué modelo pide, y su presupuesto de compactaciones (1 a 5, `QA-116`).
+   **Compactar sin perder** (`QA-116`): el tope de 300k (`QA-109`) es la red; los cortes buenos son los de fin
+   de sub-bloque, ya con commit y push, que Claude le señala a la usuaria para que haga `/compact`. Tras cada
+   compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
+   `git status`, los últimos commits y las compactaciones llevadas; un detalle de antes (un error, lo que dijo la
+   usuaria) se busca con `python3 tools/qa/recuperar.py "<regex>"`, que lee el registro de la sesión sin
+   cargarlo entero. Una sesión nueva no tiene ese registro: lo que tiene que sobrevivir, a la bitácora.
 2. **Si hay diseño o una decisión abierta:** `grilling` + `domain-modeling` (o `/grill-with-docs` si
    lo lanza la usuaria), con los juegos de referencia. **Toda ronda de diseño, también las de
    detalle (números), se contrasta siempre** con X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval
@@ -37,8 +43,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    regla llega a todos) y nada que el frontend recalcule de lo que ya decide el backend (QA-81).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. El
-   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, después la `/retro` y lo que la usuaria
-   apruebe de ella, todo **antes de crear** el PR a `main` (pasos 6 y 7) (usuaria, 2026-10-13; sustituye
+   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, después `/opt-tokens` (usuaria,
+   2026-10-19), después la `/retro` (que revisa también la skill `opt-tokens`) y lo que la usuaria apruebe de
+   ellas, todo **antes de crear** el PR a `main` (pasos 6 y 7) (usuaria, 2026-10-13; sustituye
    a `QA-75` y al `/code-review` cada 5-6 hallazgos de `QA-40`). El PR #53 se revisó ya fusionado y
    sus 12 fallos llegaron a `main` (`QA-77`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
@@ -49,7 +56,9 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
    la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
-   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea).
+   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Al fusionarlo, Claude le recuerda a la usuaria
+   que empiece una sesión nueva (`/clear` u otra sesión) para la siguiente tarea: arranca en ~70k tokens con la
+   bitácora en vez de arrastrar la conversación entera (`QA-110`).
 7. **Antes de crear cada PR a `main` (tras el `/code-review` y sus arreglos), y al cerrar una fase o un
    hito:** `retro` (usuaria, 2026-10-13), que lanza Claude sobre lo que va a entrar con el PR o sobre toda
    la fase.
@@ -69,7 +78,8 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 | `diagnosing-bugs` | sola ante un bug o test rojo | Primero un test o comando que reproduzca el fallo; luego minimizar, hipótesis, arreglo y test de regresión | Bugs que encuentras jugando (como Matar/Clemente) y tests intermitentes (G16, P3.2) |
 | `/improve-codebase-architecture` | la usuaria o al cerrar fase | Busca módulos que simplificar y los presenta en un informe | Cada pocas fases. Candidatos claros: `turnResolution.ts` (más de 7.000 líneas), `turn.ts` |
 | `codebase-design` | por debajo de la anterior | Vocabulario para diseñar módulos con interfaz pequeña | — |
-| `retro` | Claude, antes de crear cada PR a `main` (tras el `/code-review`) y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Antes de cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
+| `opt-tokens` | Claude, antes de crear cada PR a `main` (tras el `/code-review`, antes de la `/retro`), o la usuaria con `/opt-tokens` | Mide dónde se fueron los tokens de la sesión (`medir.py`) y propone cómo gastar menos | Las propuestas las confirma la usuaria; lo confirmado entra como tarea con hito |
+| `retro` | Claude, antes de crear cada PR a `main` (tras el `/code-review` y `/opt-tokens`; revisa también la skill `opt-tokens`) y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Antes de cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
 | `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |
 | `pr` | Claude, al abrir un PR a `main` | Descripción del PR: resumen visual del cambio, evidencia antes/después y peligro del merge | Cada PR a `main`, tras `/code-review`. Evidencia: los números de `tsc`, `vitest` y `oxlint` |
@@ -114,4 +124,16 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   Si la tarea pide otro, lo dice en una línea al empezar y sigue (salvo riesgo alto: entonces espera).
 - Claude sí elige el modelo de los **subagentes** que lance (búsquedas, tareas mecánicas). El diseño y
   las decisiones nunca se delegan.
+- **Planificar con el grande, escribir con el medio** (usuaria, 2026-10-19, `QA-117`): con el plan cerrado y escrito
+  (archivos, funciones, tests que tienen que pasar), la implementación acotada va a un subagente `sonnet` con ese
+  plan y la sesión principal revisa su diff antes del commit. Se queda en la sesión principal lo que pide
+  sostener contexto: el bug difícil, el motor con varios sistemas, lo que cambia el plan a mitad. `medir.py`
+  (`POR MODELO`) dice en cada `/opt-tokens` si se está haciendo.
+- **Escalera y topes** (`QA-118`, ideas del workflow `implement-afk` que se revisó el 2026-10-19; el resto no
+  encaja: paralelo con base de datos compartida, issues, rebase forzado): cada subagente empieza en el peldaño
+  más barato que encaje y sube uno por fallo (`sonnet` low → `sonnet` medium → `opus` medium → `opus` high), con
+  dos fallos como tope; un fallo al arrancar no sube ni cuenta; una tanda sin supervisión que no cierra nada
+  para. Al escribir en un roadmap una tarea pendiente que implemente un subagente, se le apunta
+  su peldaño de partida (p. ej. `modelo: sonnet-medium`), para que la otra cuenta no tenga que decidirlo otra vez;
+  las tareas ya cerradas y las del entorno que hace la sesión principal no lo llevan. Detalle en el `selector`.
 - En la duda, el de más riesgo.

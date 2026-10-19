@@ -25,6 +25,9 @@ X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval Dynasty, Bellwright y Manor L
 sale cada propuesta; **X4 marca el camino** siempre que se pueda
 ([runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)).
 
+**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza), abre
+[`docs/mapa-agente.md`](docs/mapa-agente.md): funciones de entrada, tests, tablas, interfaz y qué no leer (`QA-108`).
+
 Otras reglas que siguen vigentes: [`AGENTS.md`](AGENTS.md) (lore: nunca editar `docs/rpgtarkor/`
 directamente) y la forma de trabajo de cada plan de hito (p. ej.
 [`docs/producto/plan-roadmap-0.1.md`](docs/producto/plan-roadmap-0.1.md)). Orden y fases de todo
@@ -95,8 +98,9 @@ prueba y cómo se apunta (`QA-56`).
   del diff contra `main`, los arreglos subidos, `bash tools/qa/revisado.sh` y la descripción con la skill `pr`
   ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de
   revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
-- **Antes de crear cada PR a `main`, tras el `/code-review`, `/retro`** (usuaria, 2026-10-13) sobre lo
-  que va a entrar con él. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
+- **Antes de crear cada PR a `main`, tras el `/code-review`, `/opt-tokens` y después `/retro`** (usuaria,
+  2026-10-13 y 2026-10-19) sobre lo que va a entrar con él; la `/retro` revisa también la propia skill
+  `opt-tokens`. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
   antes de crear el PR**, y solo entonces se crea.
 
 ## La bitácora (`docs/registros/traspaso.md`)
