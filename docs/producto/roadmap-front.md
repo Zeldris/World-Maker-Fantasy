@@ -1323,6 +1323,13 @@ aprobadas las cuatro por la usuaria):
   `implement-afk`): se empieza en el peldaño más barato y se sube uno por fallo, tope de dos fallos, un fallo al
   arrancar no cuenta, una tanda sin supervisión que no cierra nada para, y cada tarea nueva lleva su `modelo:` en
   el roadmap (`selector` y runbook `skills-y-modelos.md`).
+- ~~**QA-119 · Registros de sesión de prueba con la forma real**~~ ✅ 2026-10-19 (retro, segunda vuelta, 5): un
+  único constructor de líneas en `tools/qa/tests/comun.py` (`respuesta`, `orden`, `resultado`, `aviso`,
+  `compactacion`, `ruido`, `registro`), copiado del formato real, para `test_medir.py`, `test_recuperar.py` y
+  cualquier herramienta nueva que lea registros.
+- ~~**QA-120 · Test de los ganchos de `.claude/settings.json`**~~ ✅ 2026-10-19 (retro, segunda vuelta, 6):
+  `test_settings.py` exige `matcher` en cada `SessionStart`, solo `recuperar.py --estado` al compactar y que cada
+  orden apunte a un archivo que existe.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

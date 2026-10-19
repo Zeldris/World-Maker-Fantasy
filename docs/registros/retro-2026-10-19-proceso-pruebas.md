@@ -6,7 +6,7 @@ el proceso de pruebas (~~`QA-101`~~…~~`QA-107`~~), el mapa del agente (~~`QA-1
 
 **Estado (2026-10-19): aprobadas las cuatro por la usuaria y aplicadas en la rama antes del PR**, como ~~`QA-112`~~ (1),
 ~~`QA-113`~~ (2), ~~`QA-114`~~ (3) y ~~`QA-115`~~ (4). De más a menos grave. La 5 y la 6 (segunda vuelta, sobre
-~~`QA-112`~~…~~`QA-118`~~ y su `/code-review` de 16 puntos), pendientes de la usuaria.
+~~`QA-112`~~…~~`QA-118`~~ y su `/code-review` de 16 puntos), aprobadas y aplicadas como ~~`QA-119`~~ y ~~`QA-120`~~.
 
 ## 1. `.claude/` ignorado entero: el `-f` subió bytecode
 

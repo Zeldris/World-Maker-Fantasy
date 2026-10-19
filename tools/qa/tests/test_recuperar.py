@@ -1,45 +1,40 @@
-"""QA-116: tools/qa/recuperar.py, con un registro de sesión de prueba."""
+"""QA-116: tools/qa/recuperar.py, con un registro de sesión de prueba (líneas de `comun`, QA-119)."""
 import json
 import os
 import subprocess
 import unittest
 
-from comun import QA, carpeta, escribir
+from comun import QA, aviso, carpeta, compactacion, orden, registro, respuesta, resultado, ruido, texto, usuaria
 
-
-def linea(tipo: str, contenido, **extra) -> str:
-    return json.dumps({'type': tipo, 'timestamp': '2026-10-19T10:00:00Z', 'message': {'content': contenido}, **extra})
-
-
-REGISTRO = [
-    linea('user', 'el aviso dice Territorio de Clan Serhu'),
-    linea('assistant', [{'type': 'tool_use', 'id': 'toolu_a', 'name': 'Bash', 'input': {'command': 'npx vitest run zona'}}]),
-    linea('user', [{'type': 'tool_result', 'tool_use_id': 'toolu_a', 'content': 'FAIL zona.test.ts: esperaba 3, llegó 4'}]),
-    linea('system', None, subtype='compact_boundary'),
-    linea('user', 'Resumen: se habló de Serhu', isCompactSummary=True),
-    linea('assistant', [{'type': 'text', 'text': 'otra cosa de Serhu'}], isSidechain=True),
+PARTES = [
+    *ruido(),
+    usuaria('el aviso dice "Territorio de Clan Serhu"\nen la cabecera'),
+    respuesta('m1', 100, {'type': 'thinking', 'thinking': '', 'signature': 'x'}, orden('toolu_a', 'npx vitest run zona')),
+    resultado('toolu_a', 'FAIL zona.test.ts: esperaba 3, llegó 4'),
+    *compactacion(),
+    respuesta('m2', 50, texto('otra cosa de Serhu'), isSidechain=True),
     # Una búsqueda anterior con este script y su resultado no se repiten.
-    linea('assistant', [{'type': 'tool_use', 'id': 'toolu_b', 'name': 'Bash', 'input': {'command': 'python3 tools/qa/recuperar.py Serhu'}}]),
-    linea('user', [{'type': 'tool_result', 'tool_use_id': 'toolu_b', 'content': 'usuaria: Territorio de Clan Serhu'}]),
+    respuesta('m3', 60, orden('toolu_b', 'python3 tools/qa/recuperar.py "Serhu" --max 3')),
+    resultado('toolu_b', 'usuaria: Territorio de Clan Serhu'),
     # Nombrar el script no es llamarlo: un diff que lo menciona sí se busca.
-    linea('assistant', [{'type': 'text', 'text': 'cambio en recuperar.py: «Morvath» con comillas'}]),
+    respuesta('m4', 70, texto('cambio en recuperar.py: «Morvath» con comillas')),
     # Lo que inyecta el sistema en un turno de la usuaria no lo dijo ella.
-    linea('user', '<system-reminder>aviso de Morvath</system-reminder>'),
-    linea('user', 'skill cargada sobre Morvath', isMeta=True),
+    usuaria('<system-reminder>aviso de Morvath</system-reminder>'),
+    aviso('skill cargada sobre Morvath'),
 ]
 
 
 class Recuperar(unittest.TestCase):
-    def correr(self, *args: str) -> subprocess.CompletedProcess:
-        ruta = os.path.join(carpeta(), 's.jsonl')
-        escribir(ruta, '\n'.join(REGISTRO) + '\n')
-        return subprocess.run(['python3', os.path.join(QA, 'recuperar.py'), *args, '--sesion', ruta],
-                              capture_output=True, text=True)
+    def correr(self, *args: str, entrada: str | None = None, sesion: bool = True) -> subprocess.CompletedProcess:
+        ruta = registro(os.path.join(carpeta(), 's.jsonl'), *PARTES)
+        return subprocess.run(['python3', os.path.join(QA, 'recuperar.py'), *args, *(['--sesion', ruta] if sesion else [])],
+                              input=entrada.replace('RUTA', ruta) if entrada else None, capture_output=True, text=True)
 
     def test_encuentra_lo_de_antes_de_compactar_sin_resumen_ni_subagentes_ni_busquedas_previas(self):
-        r = self.correr('serhu')
-        self.assertEqual(r.stdout, '[2026-10-19T10:00] usuaria: el aviso dice Territorio de Clan Serhu…\n'
-                                   '1 fragmentos con /serhu/\n')
+        # Con comillas y salto de línea en el texto: en la línea JSON van escapados.
+        r = self.correr('"Territorio de Clan serhu"\nen|resumen')
+        self.assertEqual(r.stdout, '[2026-10-19T10:00] usuaria: el aviso dice "Territorio de Clan Serhu" en la cabecera…\n'
+                                   '1 fragmentos con /"Territorio de Clan serhu"\nen|resumen/\n')
 
     def test_menciones_del_script_y_avisos_del_sistema(self):
         r = self.correr('«Morvath»|aviso de|cargada', '--ancho', '200')
@@ -63,12 +58,9 @@ class Recuperar(unittest.TestCase):
         self.assertIn('python3 tools/qa/recuperar.py "<regex>"', r.stdout)
 
     def test_estado_desde_el_gancho_lee_el_registro_de_la_entrada(self):
-        ruta = os.path.join(carpeta(), 'g.jsonl')
-        escribir(ruta, '\n'.join(REGISTRO) + '\n')
-        r = subprocess.run(['python3', os.path.join(QA, 'recuperar.py'), '--estado'],
-                           input=json.dumps({'transcript_path': ruta}), capture_output=True, text=True)
+        r = self.correr('--estado', entrada=json.dumps({'transcript_path': 'RUTA', 'source': 'compact'}), sesion=False)
         self.assertIn('- Compactaciones en esta sesión: 1', r.stdout)
-        self.assertIn(f'--sesion {ruta}', r.stdout)
+        self.assertRegex(r.stdout, r'--sesion \S+s\.jsonl')
 
     def test_sin_patron_da_la_ayuda(self):
         self.assertEqual(self.correr().returncode, 2)
