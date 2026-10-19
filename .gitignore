@@ -35,6 +35,7 @@ tools/lore-links/
 # Salida del MCP de Playwright (capturas y registros de las rondas de pruebas).
 .playwright-mcp/
 tools/playwright-e2e/driver.token
+tools/playwright-e2e/shots/
 .claude/revision-main.sha
 
 # Bytecode de Python (los tests de tools/qa los regeneran)

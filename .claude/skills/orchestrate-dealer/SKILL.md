@@ -8,7 +8,7 @@ description: La sesión principal como orchestrator que reparte el trabajo a sub
 La sesión principal es el **orchestrator**: guarda el plan, las decisiones y el hilo con la usuaria, y reparte cada
 trozo de trabajo a un subagente que empieza con el contexto vacío. Cada reparto es un `/clear` automático: la
 principal solo recibe un resumen corto y crece despacio. Si aun así llega al tope, la compactación automática
-(`CLAUDE_CODE_AUTO_COMPACT_WINDOW`, 300k), los puntos de `/clear` (`QA-122`) y el gancho de `recuperar.py --estado` son la red.
+(`CLAUDE_CODE_AUTO_COMPACT_WINDOW`, 200k), los puntos de `/clear` (`QA-122`) y el gancho de `recuperar.py --estado` son la red.
 
 ## Qué se queda en la principal y qué se reparte
 
@@ -40,6 +40,7 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    Encargo: <qué, en una o dos frases>.
    Hecho cuando: <criterio comprobable>.
    No hagas: <lo que es de otro trozo o pide decisión de la usuaria>.
+   Si cambias una función o un campo, busca (grep) a todos los que lo usan y ajústalos o dilo en FALTA.
    Si algo pide decidir a la usuaria, para y devuélvelo como pregunta.
    Devuelve como mucho 15 líneas:
    HECHO: … · HALLADO: P-números con una línea cada uno · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
@@ -54,11 +55,14 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 - **Arreglos de código de la frontera, en paralelo** (idea de `implement-spec` de Matt Pocock): cada subagente con
   `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree sin tocar la bitácora ni subir, y
-  devuelve su rama. La principal los fusiona uno a uno en la rama de trabajo (`git merge`, tests del paquete
-  tocado), escribe la bitácora y sube. Un conflicto entre dos de ellos lo resuelve un subagente de fusión.
+  devuelve su rama. Antes de fusionar cada una, un `/code-review` corto de su diff (`QA-126`: los arreglos de la
+  ronda `QA-105` llegaron con 9 fallos que solo cazó la revisión final del PR). La principal los fusiona uno a uno en
+  la rama de trabajo (`git merge`, tests del paquete tocado), escribe la bitácora y sube. Un conflicto entre dos de ellos lo resuelve un subagente de fusión.
 - **Sin worktree, uno a la vez en la misma rama**: dos subagentes que hacen commit en la rama de trabajo chocan
   en la bitácora. En paralelo, además, todo lo que no escribe (buscar, leer, medir).
-- **Rondas de pruebas, en serie**: comparten el navegador y la base de juego. Cada tanda deja la partida en un
+- **Rondas de pruebas, en un subagente `sonnet` y en serie** (`QA-124`: la ronda `QA-105` la jugó la principal con
+  Opus, 1.150 órdenes de Bash): la principal no lanza `orden.sh`; reparte tandas y apunta lo que vuelve. Comparten
+  el navegador y la base de juego. Cada tanda deja la partida en un
   estado que la siguiente pueda retomar y lo dice en `FALTA` (pantalla, partida, día).
 - **El subagente no habla con la usuaria**: lo que necesite de ella vuelve como `PREGUNTAS`.
 - **Medir**: `/opt-tokens` antes de cada PR compara el contexto medio por llamada, las compactaciones y el reparto
