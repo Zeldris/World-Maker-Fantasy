@@ -148,6 +148,11 @@ export interface RecipeStatusInfo {
   /// materiales/atributos YA se cumplen (mismo criterio que el backend). null = no aplica o no
   /// bloquea.
   blockedReason: string | null
+  /// P218 — solo en recetas de construcción (nombre con artículo: «un pozo»), para listar en
+  /// Reino › Edificios › Construir todo lo que cuelga del Ayuntamiento sin una lista a mano.
+  name?: string
+  requiresAyuntamiento?: boolean
+  upgradesRecipeKey?: string | null
 }
 
 /// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
