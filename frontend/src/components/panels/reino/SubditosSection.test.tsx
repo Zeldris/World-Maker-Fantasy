@@ -74,6 +74,16 @@ describe('SubditosSection — súbditos (REI-118)', () => {
     expect(lineaDeSubdito(sub({ pueblo: null, edad: null, linaje: null }))).toBe('')
   })
 
+  it('P220a: las camas temporales del Ayuntamiento se enseñan aparte, solo para súbditos', async () => {
+    vi.mocked(getSubditos).mockResolvedValue({
+      subditos: [], camas: { total: 0, companeros: 0, subditos: 0, libres: 0, temporales: 2, enAyuntamiento: 0, libresSubditos: 2 },
+    })
+    const { findByText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    expect(await findByText('Camas: 0/2 (0 súbditos, 0 compañeros, 2 temporales del Ayuntamiento solo para súbditos)')).toBeTruthy()
+  })
+
   it('las camas compartidas, el rol de un adulto se cambia y una cría no tiene rol', async () => {
     vi.mocked(getSubditos).mockResolvedValue({
       subditos: [sub({ id: 'a', pareja: 'Grosh Ketg', crias: 1 }), sub({ id: 'b', name: 'Doru Ketg', edad: 1, adulto: false })],

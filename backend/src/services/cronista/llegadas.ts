@@ -85,7 +85,7 @@ export async function revisarLlegadas(tx: Tx, saveId: string, ahora: number, ran
   const { ultimaLlegada, ...stats } = reino.stats;
   if (ultimaLlegada != null && ahora - ultimaLlegada < DIAS_ENTRE_LLEGADAS * 1440) return { llegado: null, marchados };
   const motivo = motivoSinLlegada({
-    camasLibres: (await cupoDeCamas(tx, saveId)).libres, ...stats,
+    camasLibres: (await cupoDeCamas(tx, saveId)).libresSubditos, ...stats,
     candidatoEsperando: (await tx.subject.count({ where: { saveId, estado: 'CANDIDATO' } })) > 0,
   });
   if (motivo) return { llegado: null, marchados };
@@ -120,7 +120,7 @@ export async function responderLlegada(tx: Tx, saveId: string, subjectId: string
     await devolver(tx, saveId, s.id);
     return { ok: true, name: s.name };
   }
-  if ((await cupoDeCamas(tx, saveId)).libres <= 0) return { ok: false, motivo: 'No queda cama libre para alojarlo.' };
+  if ((await cupoDeCamas(tx, saveId)).libresSubditos <= 0) return { ok: false, motivo: 'No queda cama libre para alojarlo.' };
   const fila = s.poblacionOrigenId ? await tx.worldPopulation.findUnique({ where: { id: s.poblacionOrigenId }, select: { label: true } }) : null;
   await tx.subject.update({ where: { id: s.id }, data: { estado: 'ACTIVO', desdeMinutes: ahora, hastaMinutes: null, notes: fila ? `Llegó de ${fila.label}.` : '' } });
   await recalcularPoblacion(tx, saveId, ahora);

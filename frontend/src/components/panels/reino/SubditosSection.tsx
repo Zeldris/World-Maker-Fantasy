@@ -426,7 +426,8 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {datos && (
         <p className="mb-2 text-2xs text-wood-400">
-          Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'})
+          Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total + (datos.camas.temporales ?? 0)} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'}
+          {datos.camas.temporales ? `, ${datos.camas.temporales} temporales del Ayuntamiento solo para súbditos` : ''})
         </p>
       )}
       {/* REI-119 / REI-54: quien llega espera respuesta; si no se le contesta, se va. */}

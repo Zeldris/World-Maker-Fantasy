@@ -1828,6 +1828,10 @@ export interface CamasReino {
   companeros: number
   subditos: number
   libres: number
+  /// P220a: camas temporales del Ayuntamiento (solo súbditos) y cuántos súbditos viven en ellas.
+  temporales?: number
+  enAyuntamiento?: number
+  libresSubditos?: number
 }
 
 /// REI-119: quien espera en la puerta del Reino a que lo aceptes o lo rechaces.
