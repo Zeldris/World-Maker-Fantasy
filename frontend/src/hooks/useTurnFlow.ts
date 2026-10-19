@@ -1,6 +1,6 @@
 import { useRef, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import type { ChatComposerHandle } from '../components/ChatComposer'
-import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
+import { BackendHttpError, requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { playerActionEntry } from '../lib/simulateAI'
 import { duracionTirada, temporizadorTirada } from '../lib/duracionTirada'
@@ -447,6 +447,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             // Igual que se ve tras recargar (el diario pinta el intercambio en lugar de la tirada).
             roll: combatExchangeDisplay ? undefined : roll,
             combatExchange: combatExchangeDisplay ?? undefined,
+            // P232 (UX-12): el turno que abre combate es crítico: cierra el cajón de paneles.
+            combate: combate && combate.npcs.length > 0 ? true : undefined,
             createdAt: new Date().toISOString(),
             xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
             // UX 2026-09-01 (ver comentario del mismo campo en types.ts § LogEntry) — separa el
@@ -530,6 +532,20 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             id: `turn-locked-${Date.now()}`,
             channel: 'character',
             text: 'Todavía se está resolviendo tu turno anterior — espera un momento e inténtalo de nuevo.',
+            timeLabel: fictionalDate,
+            createdAt: new Date().toISOString(),
+          },
+        ])
+      } else if (err instanceof BackendHttpError) {
+        // P229: el backend contestó con un error HTTP (5xx) en /turn/classify: el turno no se
+        // resolvió ni se va a resolver, no es un corte de red. Se muestra el error y se desbloquea
+        // la entrada (el `finally`), sin sondeo de reconexión.
+        setCharacterLog((prev) => [
+          ...prev.slice(0, -1),
+          {
+            id: `turn-error-${Date.now()}`,
+            channel: 'character',
+            text: `El narrador no pudo procesar la acción (${err.message}). Inténtalo de nuevo.`,
             timeLabel: fictionalDate,
             createdAt: new Date().toISOString(),
           },

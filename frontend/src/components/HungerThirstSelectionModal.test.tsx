@@ -41,3 +41,16 @@ describe('HungerThirstSelectionModal — saciado', () => {
     expect(screen.getByText('Ya estás saciado — no hace falta comer más.')).toBeTruthy()
   })
 })
+
+/// P228: la bebida lleva el icono de bebida, no el de comida.
+describe('HungerThirstSelectionModal — icono de bebida (P228)', () => {
+  afterEach(cleanup)
+  it('el odre de agua sale con 🥤 y no con 🍖 en su fila', () => {
+    const { container } = render(
+      <HungerThirstSelectionModal inventory={[item('o', 'Odre de agua lleno', { curaAgua: 30 })]} hambre={50} sed={50} onConfirm={vi.fn()} onCancel={vi.fn()} />,
+    )
+    expect(container.textContent).toContain('🥤')
+    const fila = screen.getByText('Odre de agua lleno').closest('div')!
+    expect(fila.textContent).not.toContain('🍖')
+  })
+})

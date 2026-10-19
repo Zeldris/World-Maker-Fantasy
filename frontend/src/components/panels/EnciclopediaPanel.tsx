@@ -1002,12 +1002,12 @@ export function EnciclopediaPanel({ data, loading, recipesStatus, onInsert, onDe
                             <EntryCardGrid
                               items={catItems}
                               keyOf={(item) => item.slug}
-                              icon={(item) => itemIcon(item.category)}
+                              icon={(item) => itemIcon(item.category, item.name)}
                               name={(item) => item.name}
                               tooltip={(item) => item.description}
                               imageUrl={(item) => resolveImageUrl(item.imageUrls.thumbnail)}
                               toDetailTarget={itemToDetailTarget}
-                              toChip={(item) => ({ icon: itemIcon(item.category), label: item.name, description: item.description })}
+                              toChip={(item) => ({ icon: itemIcon(item.category, item.name), label: item.name, description: item.description })}
                               onDetail={onDetail}
                               onInsert={onInsert}
                               discovered={(item) => item.discovered}
