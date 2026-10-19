@@ -24,12 +24,12 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `INT-3` | Cronista en la interfaz | Causas enlazadas | jugado | 2026-10-19: «Por qué pasó: Día 1 Gorhorn funda el reino…» en «Fundador» lleva a la causa y la resalta |
 | `INT-4` | Cronista en la interfaz | Lo desconocido se ve como desconocido | jugado | 2026-10-19: de 119 sucesos de la partida, `/leyendas` da solo los 18 de `Conocimiento`; el rumor llega sin lugar, fecha ni actores («Rumor · lo supiste el día 10 · De oídas») |
 | `INT-9` | Cronista en la interfaz | Rumor con lugar | jugado | 2026-10-19: 📜 sobre El Margen Silencioso en el mapa de Berig; al pulsar la región, su tarjeta enseña el rumor y el pergamino desaparece |
-| `DAD-1` | Dados y tiradas | `key` por tirada en `TameoModal` (H18). S | sin jugar |  |
-| `DAD-2` | Dados y tiradas | Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e | sin jugar |  |
+| `DAD-1` | Dados y tiradas | `key` por tirada en `TameoModal` (H18). S | jugado | Tameo: cada tirada nueva reanima los dados |
+| `DAD-2` | Dados y tiradas | Veredicto de Tameo diferido a `onAllLanded` (H19), como ya hacen Recolección e | jugado | Tameo: veredicto y color tras aterrizar (~5 s) |
 | `DAD-3` | Dados y tiradas | Mostrar siempre `dado + bono = total vs dificultad → Éxito/Fallo` al aterrizar (H20). S | jugado | P166 (tirada de encuentro) |
 | `DAD-4` | Dados y tiradas | Nombres reales en los dos lados (personaje y rival) en vez de "Tú/el enemigo", y | jugado | P153 |
-| `DAD-5` | Dados y tiradas | `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho | sin jugar |  |
-| `DAD-6` | Dados y tiradas | Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". S | sin jugar |  |
+| `DAD-5` | Dados y tiradas | `scrollIntoView` solo si la tirada está fuera de la vista y el jugador no ha hecho | jugado | Tameo a 380 px: se desplaza sin scroll manual; con rueda reciente no |
+| `DAD-6` | Dados y tiradas | Color propio de fallo (`danger-400`) y subir el contraste de "necesitas X". S | jugado | dado perdedor danger-400 + temblor; «necesitas» wood-400 en código |
 | `BAS-1` | Interfaz | Fuentes empaquetadas | sin jugar |  |
 | `BAS-3` | Interfaz | Foco visible y navegación | sin jugar |  |
 | `BAS-5` | Interfaz | Partir `GameView.tsx` | no se juega | refactor de GameView |
