@@ -447,6 +447,12 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if (tarjetaVigente) tarjetaVistaRef.current = true
     else if (tarjetaVistaRef.current) setEncuentroMapa(null)
   }, [encuentroMapa, tarjetaVigente])
+  // P204 (`/code-review`): con alguien hostil delante, el aviso de viaje se descarta (no hay viaje que
+  // valga); si no, saltaba solo al acabar el combate, de un clic de antes.
+  const encuentroHostil = !!encuentroMapa && ofertaEnMapa?.(encuentroMapa.entryId)?.tone === 'danger'
+  useEffect(() => {
+    if (encuentroHostil && selectedSalida) setSelectedSalida(null)
+  }, [encuentroHostil, selectedSalida])
   if (loading) return <p className="text-sm italic text-wood-500">Cargando zona...</p>
   if (error) return <p className="text-sm italic text-wood-500">{error}</p>
   if (!data?.disponible) {

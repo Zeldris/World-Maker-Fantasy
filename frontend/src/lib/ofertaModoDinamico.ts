@@ -42,7 +42,7 @@ export interface PresentacionOferta {
   icon: string
   title: string
   subtitle: string
-  warning?: { nivel: 'alto' | 'mortal'; text: string }
+  warning?: { nivel: 'aviso' | 'alto' | 'mortal'; text: string }
   error?: string
   actions: AccionOferta[]
 }
@@ -90,7 +90,7 @@ function avisoDeBando(offer: OfertaModoDinamico, riesgo: PresentacionOferta['war
   if (!offer.deBando) return riesgo
   const accion = offer.tipo === 'RECURSO' ? 'cogerlo' : 'cazarlo'
   const texto = `Es ${offer.deBando.deQuien}: si te ven ${accion}, perderás reputación con ellos (${offer.deBando.reputacion}).`
-  return { nivel: riesgo?.nivel ?? 'alto', text: riesgo ? `${texto} ${riesgo.text}` : texto }
+  return { nivel: riesgo?.nivel ?? 'aviso', text: riesgo ? `${texto} ${riesgo.text}` : texto }
 }
 
 export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h: ManejadoresOferta): PresentacionOferta {

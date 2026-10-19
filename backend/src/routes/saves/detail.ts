@@ -26,7 +26,7 @@ import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
 import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
-import { conQuienVisible } from '../../services/cronista/quienEncarga.js';
+import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -197,7 +197,7 @@ export async function detailRoutes(app: FastifyInstance) {
     const locationSlugById = new Map(questTargetLocations.map((l) => [l.id, l.slug]));
     const npcHomeLocationSlugById = new Map(questTargetNpcs.map((n) => [n.id, n.homeLocationSlug]));
     // P200 (QA-27): quien encarga cada misión, con el nombre con que lo ve la jugadora.
-    const encargoVisible = new Map(await Promise.all(save.quests.map(async (q) => [q.id, await conQuienVisible(prisma, save.id, q.huecos, q.description)] as const)));
+    const encargoVisible = await conQuienVisibleEnLote(prisma, save.id, save.quests.map((q) => ({ id: q.id, huecos: q.huecos, descripcion: q.description })));
 
     const pendingCombatStates = pendingCombatNpcs.length
       ? await prisma.npcState.findMany({

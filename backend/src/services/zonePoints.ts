@@ -612,7 +612,7 @@ export interface ZonePointPasoResultado {
 /// P189 (QA-27): un punto sin origen (`origenX/Y` null: el catálogo se sembraba sin él) tomaba su posición
 /// de cada paso como origen, así que el radio de su territorio no lo frenaba y vagaba por todo el mapa (el
 /// rebaño del clan, fuera del corral). Se le fija una vez: el sitio de su plantilla de catálogo (mismo
-/// `targetSlug` y `label`) o, si no la hay, donde está ahora. Muta `puntos` para el paso en curso.
+/// `targetSlug` y `label`, la más cercana si hay varias) o, si no la hay, donde está ahora. Muta `puntos` para el paso en curso.
 async function fijarOrigenesSinAncla(
   tx: Prisma.TransactionClient | PrismaClient,
   locationId: string,
@@ -621,9 +621,11 @@ async function fijarOrigenesSinAncla(
   const sinOrigen = puntos.filter((p) => p.origenX == null || p.origenY == null);
   if (sinOrigen.length === 0) return;
   const plantillas = await tx.zonePoint.findMany({ where: { saveId: null, locationId, targetSlug: { in: [...new Set(sinOrigen.map((p) => p.targetSlug))] } }, select: { x: true, y: true, targetSlug: true, label: true } });
-  const sitioDe = new Map(plantillas.map((t) => [`${t.targetSlug}|${t.label ?? ''}`, t]));
   for (const p of sinOrigen) {
-    const sitio = sitioDe.get(`${p.targetSlug}|${p.label ?? ''}`) ?? p;
+    // Con varias plantillas iguales (dos grupos sin `label` de la misma especie), la más cercana.
+    const distancia = (t: { x: number; y: number }) => Math.abs(t.x - p.x) + Math.abs(t.y - p.y);
+    const iguales = plantillas.filter((t) => t.targetSlug === p.targetSlug && (t.label ?? '') === (p.label ?? '')).sort((a, b) => distancia(a) - distancia(b));
+    const sitio = iguales[0] ?? p;
     p.origenX = sitio.x;
     p.origenY = sitio.y;
     await tx.zonePoint.update({ where: { id: p.id }, data: { origenX: sitio.x, origenY: sitio.y } });

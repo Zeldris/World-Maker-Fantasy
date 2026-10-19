@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { OfferCard } from '../OfferCard'
 import { altoDeTarjeta, type PresentacionOferta } from '../../lib/ofertaModoDinamico'
 
@@ -107,24 +107,33 @@ const CIERRES_DE_TARJETA = ['Salir', 'Ignorar']
 
 export function TarjetaEncuentro({ x, y, escala, presentacion, bloqueo }: { x: number; y: number; escala: number; presentacion: PresentacionOferta; bloqueo?: string | null }) {
   const cierre = presentacion.actions.find((a) => CIERRES_DE_TARJETA.includes(a.label) && !a.disabled)
+  // Lo mismo que dejan los botones: nada con el turno bloqueado (resuelta, la tarjeta ya no se pinta).
+  const cerrarRef = useRef<(() => void) | null>(null)
+  cerrarRef.current = bloqueo || !cierre ? null : cierre.onClick
+  const tarjetaRef = useRef<SVGForeignObjectElement>(null)
   useEffect(() => {
-    if (!cierre) return
     const tecla = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
+      const cerrar = cerrarRef.current
+      if (e.key !== 'Escape' || e.repeat || !cerrar) return
+      const foco = document.activeElement
+      if (foco instanceof HTMLElement && (foco.tagName === 'INPUT' || foco.tagName === 'TEXTAREA' || foco.isContentEditable)) return
+      // Con otro modal encima (no el mapa que contiene la tarjeta), Escape es para él.
+      const tarjeta = tarjetaRef.current
+      if ([...document.querySelectorAll('[role="dialog"]')].some((d) => !tarjeta || !d.contains(tarjeta))) return
       e.stopPropagation()
       e.preventDefault()
-      cierre.onClick()
+      cerrar()
     }
     window.addEventListener('keydown', tecla, true)
     return () => window.removeEventListener('keydown', tecla, true)
-  }, [cierre])
+  }, [])
   const ancho = ANCHO_ENCUENTRO_PX * escala
   const alto = altoDeTarjeta(presentacion) * escala
   const derecha = x + 18 * escala
   const px = derecha + ancho <= 800 ? derecha : Math.max(0, x - 18 * escala - ancho)
   const py = Math.min(600 - alto, Math.max(0, y - 40 * escala))
   return (
-    <foreignObject x={px} y={py} width={ancho} height={alto} onClick={(e) => e.stopPropagation()} data-testid="encuentro-en-mapa">
+    <foreignObject ref={tarjetaRef} x={px} y={py} width={ancho} height={alto} onClick={(e) => e.stopPropagation()} data-testid="encuentro-en-mapa">
       <div style={{ width: ANCHO_ENCUENTRO_PX, maxHeight: altoDeTarjeta(presentacion), transform: `scale(${escala})`, transformOrigin: '0 0' }} className="overflow-y-auto rounded-lg bg-wood-950/95 shadow-xl [&>div]:mt-0">
         <OfferCard bloqueo={bloqueo} {...presentacion} />
       </div>

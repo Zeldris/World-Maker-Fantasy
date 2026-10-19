@@ -757,10 +757,9 @@ export interface TurnoAutonomoResultado {
   /// que ya usa el 1v1 clásico — mismos componentes de frontend (`DiceRollReveal`/
   /// `CombatExchangeBadge`) sin ningún cambio en ese lado.
   combatExchangeDisplay: CombatExchangeDisplay | null;
-  /// Fase G del 0.1 (hallazgo G11): true cuando el defensor de este intercambio es la jugadora — su
-  /// turno de la ronda puede no llegar (`dueloYaResueltoPorElOtro`) y este es entonces el único
-  /// intercambio real que la ha tocado; `resolverTurnosAutonomosHastaJugadora` lo recoge para que
-  /// el frontend lo pinte.
+  /// Fase G del 0.1 (hallazgo G11): true cuando el defensor de este intercambio es la jugadora;
+  /// `resolverTurnosAutonomosHastaJugadora` lo recoge para que el frontend pinte los ataques que recibe
+  /// antes de su turno.
   defensorEsJugador?: boolean;
   /// P55 (QA-27): condición en la que deja a la jugadora un golpe gratis (sin tirada). Sin esto, el
   /// diario no lo enseñaba: caía de Ileso a Convaleciente tras ganar su único intercambio visible.
@@ -1722,8 +1721,8 @@ function redirigirPorAreaDefensiva(
 /// P192 (QA-27, decidido por la usuaria 2026-10-19): un duelo con la jugadora no cuenta: cada uno actúa en su
 /// turno, como en D&D 5e y BG3. Antes, si su rival tenía más iniciativa, la acción que ella elegía no hacía
 /// nada (`avanzarSinAtacar`) y podía encadenar rondas sin actuar hasta caer.
-function dueloYaResueltoPorElOtro(ordenIniciativa: string[], actualId: string, defensor: ParticipantRef, actualEsJugador = false): boolean {
-  if (actualEsJugador || defensor.tipo === 'JUGADOR') return false;
+function dueloYaResueltoPorElOtro(ordenIniciativa: string[], actualId: string, defensor: ParticipantRef): boolean {
+  if (defensor.tipo === 'JUGADOR') return false;
   if (defensor.objetivoActualId !== actualId) return false; // no es un duelo mutuo con actual
   return ordenIniciativa.indexOf(defensor.id) < ordenIniciativa.indexOf(actualId);
 }
@@ -1999,7 +1998,7 @@ export async function resolverTurnoJugador({
   const defensorId = actual.objetivoActualId;
   const defensorOriginal = defensorId ? encounter.participantes.find((p) => p.id === defensorId) : null;
   if (!defensorOriginal) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
-  if (dueloYaResueltoPorElOtro(encounter.ordenIniciativa, actual.id, defensorOriginal, true)) return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+  // P192: su turno nunca se da por resuelto por su rival (`dueloYaResueltoPorElOtro`): ataca siempre.
 
   const esDuelo = defensorOriginal.objetivoActualId === actual.id;
   // AREA real, variante defensiva (2026-09-14) — mismo criterio que `resolverTurnoAutonomo`: el
@@ -2050,8 +2049,8 @@ export interface ResolucionRondaCombate {
   /// `fijarEleccionRondaJugador` antes de poder seguir resolviendo nada de esta ronda.
   esperandoEleccionRonda: boolean;
   /// Fase G del 0.1 (hallazgo G11): intercambios reales de esta tanda en los que la jugadora fue la
-  /// defensora, en orden. Si un enemigo con más iniciativa resolvió el duelo de la ronda, el turno
-  /// de la jugadora se salta y sin esto no veía ninguna tirada.
+  /// defensora, en orden: los ataques que recibe antes de su turno (P192: su turno ya no se salta, pero
+  /// sin esto no veía las tiradas de quienes actúan antes que ella).
   intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[];
   /// P55 (QA-27): golpes gratis (sin tirada) que recibió la jugadora en esta tanda, en orden.
   golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[];

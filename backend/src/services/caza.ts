@@ -168,15 +168,15 @@ export function groupVarianceClause(cantidadElegida: number, cantidadReal: numbe
 
 /// P191 (QA-27): la misma variación para el diario, en tercera persona y con frase entera («Gorhorn solo
 /// consigue acorralar a 5 de los 6 Múrgoles que había marcado.»); la de arriba, en primera, va al narrador.
-export function groupVarianceDiario(personaje: string, especie: string, cantidadElegida: number, cantidadReal: number): string | null {
+export function groupVarianceDiario(personaje: string, especie: string, cantidadElegida: number, cantidadReal: number, femenina = false): string | null {
   if (cantidadReal === cantidadElegida) return null;
   const plural = pluralDeEspecie(especie);
-  if (cantidadReal === 0) return `El grupo de ${plural} se dispersa antes de que ${personaje} pueda acorralar a ninguno.`;
+  if (cantidadReal === 0) return `El grupo de ${plural} se dispersa antes de que ${personaje} pueda acorralar a ${femenina ? 'ninguna' : 'ninguno'}.`;
   if (cantidadReal > cantidadElegida) {
     const extra = cantidadReal - cantidadElegida;
-    return extra === 1 ? `Al acercarse ${personaje}, se suma otro ${especie} sin previo aviso.` : `Al acercarse ${personaje}, se suman ${extra} ${plural} más sin previo aviso.`;
+    return extra === 1 ? `Al acercarse ${personaje}, se suma ${femenina ? 'otra' : 'otro'} ${especie} sin previo aviso.` : `Al acercarse ${personaje}, se suman ${extra} ${plural} más sin previo aviso.`;
   }
-  return `${personaje} solo consigue acorralar a ${cantidadReal === 1 ? 'uno' : cantidadReal} de los ${cantidadElegida} ${plural} que había marcado.`;
+  return `${personaje} solo consigue acorralar a ${cantidadReal === 1 ? (femenina ? 'una' : 'uno') : cantidadReal} de ${femenina ? 'las' : 'los'} ${cantidadElegida} ${plural} que había marcado.`;
 }
 
 /// Grupos de fauna reales (Fase 2, 2026-09-28) — el `ZonePoint` del que sale un objetivo pierde
@@ -380,7 +380,7 @@ async function intentarCazaEnGrupo(save: SaveParaCaza, targets: CazaTarget[], em
         if (clause) {
           const conNarrador = `Con '${npc.name}', ${clause}.`;
           varianceClauses.push(conNarrador);
-          const diario = groupVarianceDiario(save.characterName, npc.name, cantidadElegida, cantidadReal);
+          const diario = groupVarianceDiario(save.characterName, npc.name, cantidadElegida, cantidadReal, npc.articulo === 'la' || npc.genero === 'F');
           if (diario) enDiario.set(conNarrador, diario);
         }
       } else {

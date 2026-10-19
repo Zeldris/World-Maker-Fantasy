@@ -82,6 +82,9 @@ import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
 import { aNombre, conIndefinido, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { alcanzableDesde } from './murosZona.js';
+import { bando } from './cronista/misiones.js';
+import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
 import { nombrarOferta } from './ofertaNombre.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
@@ -507,7 +510,7 @@ export interface NarrateAndPersistResult {
   /// (`POST /saves/:id/modo-dinamico/interactuar`), para no gastar una llamada a Ollama en
   /// ofertas que nunca se aceptan. `null` en la inmensa mayoría de turnos — nunca se ofrece si
   /// este turno terminó en combate o si ya hay un modo dinámico en curso.
-  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string; quien?: string } | null;
+  dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string; quien?: string; deBando?: { faccion: string; deQuien: string; reputacion: number } } | null;
   /// P167 (QA-27): este turno dejó respondida la oferta pacífica que había (la jugadora actuó por su
   /// cuenta, p. ej. tras «Responder»); el frontend retira los botones de su tarjeta.
   ofertaDescartada?: true;
@@ -7202,7 +7205,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   const ofertaPreviaAlTurno = interruptionCandidateForOffer
     ? null
     : await prisma.save.findUnique({ where: { id: saveId }, select: { pendingDynamicModeOffer: true, pendingNpcInteractionOffer: true } });
-  let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string; quien?: string } | null = null;
+  let dynamicModeOffer: { tipo: 'NPC' | 'FAUNA' | 'RECURSO'; targetSlug: string; targetName: string; aQuien?: string; quien?: string; deBando?: { faccion: string; deQuien: string; reputacion: number } } | null = null;
   // Franja 1b (2026-09-08) — si este mismo turno ya ofreció Interactuar por interrupción de viaje
   // (más arriba, `interruptionCandidateForOffer`), no evaluar TAMBIÉN la oferta ambiental: pisaría
   // `pendingDynamicModeOffer` recién escrito con un candidato distinto sin que el jugador llegara a
@@ -7225,8 +7228,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // (`dynamicModeRecurso.ts`).
       const zonePointsRaw = await prisma.zonePoint.findMany({
         where: { saveId, locationId: regionLocationId, tipo: { in: ['NPC', 'FAUNA', 'RECURSO'] } },
-        select: { tipo: true, targetSlug: true, cantidad: true },
+        select: { tipo: true, targetSlug: true, cantidad: true, x: true, y: true, factionSlug: true },
       });
+      // P193: lo que cae sobre las estacas de una empalizada (el recinto de múrgoles) solo desde dentro.
+      const posOferta = await prisma.save.findUnique({ where: { id: saveId }, select: { zonaPosX: true, zonaPosY: true, currentLocation: { select: { slug: true } } } });
+      const celdaOferta = posOferta?.zonaPosX != null && posOferta.zonaPosY != null ? celdaDePixel({ x: posOferta.zonaPosX, y: posOferta.zonaPosY }) : null;
+      const zonePointsAlcanzables = celdaOferta ? zonePointsRaw.filter((p) => alcanzableDesde(posOferta?.currentLocation?.slug, celdaOferta, celdaDePixel(p))) : zonePointsRaw;
       // Ver `ZonePointCandidateRow.temperamento` (dynamicMode.ts) — bug real, investigación
       // 2026-09-05 a raíz de "Kirelon sobrerrepresentado": el problema nunca fue un peso de
       // aparición mal calibrado, es que NINGÚN candidato se filtraba por temperamento, así que
@@ -7244,13 +7251,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const temperamentoPorSlug = new Map(
         npcsParaOferta.map((n) => [n.slug, effectiveTemperamento(n.temperamento, n.faction, freshFactionsStatus)]),
       );
-      const zonePointsParaOferta = zonePointsRaw.map((p) => ({ ...p, temperamento: temperamentoPorSlug.get(p.targetSlug) ?? null }));
+      const zonePointsParaOferta = zonePointsAlcanzables.map((p) => ({ ...p, temperamento: temperamentoPorSlug.get(p.targetSlug) ?? null }));
       const candidato = decideOfertaModoDinamico(zonePointsParaOferta);
       if (candidato) {
         // P141/P165 (QA-27): nombre visible, artículo y descubrimiento de lo que nombra la tarjeta.
         const { targetName, articuloNpc, generoNpc } = await nombrarOferta(prisma, { saveId, worldId }, candidato);
         const quien = quienEnAviso(candidato.tipo, targetName, articuloNpc, generoNpc);
-        dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName, articuloNpc) } : {}), ...(quien ? { quien } : {}) };
+        // P190: lo de un bando (su rebaño, su recinto) avisa de quién es y de lo que cuesta que te vean.
+        const dueno = candidato.tipo === 'NPC' ? null : (zonePointsAlcanzables.find((p) => p.tipo === candidato.tipo && p.targetSlug === candidato.targetSlug && p.factionSlug)?.factionSlug ?? null);
+        const deBando = dueno ? { faccion: dueno, deQuien: bando(dueno, 'de'), reputacion: candidato.tipo === 'RECURSO' ? REP_COGER_LO_AJENO : REP_CAZAR_GANADO_AJENO } : null;
+        dynamicModeOffer = { tipo: candidato.tipo, targetSlug: candidato.targetSlug, targetName, ...(candidato.tipo === 'NPC' ? { aQuien: aNombre(targetName, articuloNpc) } : {}), ...(quien ? { quien } : {}), ...(deBando ? { deBando } : {}) };
         // Bug real 2026-08-28 ("oferta de modo dinámico no sobrevive a una recarga") — persistir la
         // oferta en `Save.pendingDynamicModeOffer` para que `GET /saves/:id` pueda reconstruirla
         // tras F5, igual que `pendingDynamicMode` ya hace con la conversación EN CURSO.

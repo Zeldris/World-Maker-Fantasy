@@ -48,7 +48,7 @@ async function levantarCampamento(tx: Tx, saveId: string, worldId: string, regio
     data: { saveId, locationId, region, ocupante: ocupante.slug, cabecilla: ocupante.cabecilla, gente, tope: gente, creadoDia: dia, ultimoRefuerzoDia: dia },
   });
   const { x, y } = posicionEnZona(c.id);
-  const punto = await tx.zonePoint.create({ data: { saveId, locationId, tipo: 'NPC', targetSlug: ocupante.npcSlug, label: ocupante.grupo, cantidad: gente + 1, x, y } });
+  const punto = await tx.zonePoint.create({ data: { saveId, locationId, tipo: 'NPC', targetSlug: ocupante.npcSlug, label: ocupante.grupo, cantidad: gente + 1, x, y, origenX: x, origenY: y } });
   await tx.campamento.update({ where: { id: c.id }, data: { zonePointId: punto.id } });
   // Q7: se sabe de oídas (el Libro y la difusión de rumores de `CR-18`).
   const lugar = (await tx.location.findUnique({ where: { id: locationId }, select: { name: true } }))?.name ?? region;

@@ -5,7 +5,7 @@
 // de múrgoles, pegado a la empalizada) si tiene al lado una casilla libre desde la que interactuar.
 // `calcularCamino` (zonaPosicion.ts) las rodea, y `GET /zona` las manda al frontend para la ruta prevista.
 // Cómo sacarlas de la ilustración y comprobarlas: docs/runbooks/nuevo-elemento-catalogo.md § «Muros de una zona».
-import { claveCelda, type Celda } from './zonaPosicion.js';
+import { claveCelda, GRID_COLS, GRID_ROWS, type Celda } from './zonaPosicion.js';
 
 const MUROS_POR_LOCATION: Record<string, [number, number][]> = {
   // Empalizada del Colmillo Ceniza (zona/campamento-serhu-mapa.png): la elipse de estacas; la puerta, abajo
@@ -21,8 +21,10 @@ const PUERTAS_POR_LOCATION: Record<string, [number, number][]> = {
   'campamento-serhu': [[12, 9]],
 };
 
-const COLUMNAS = 16;
-const FILAS = 12;
+const COLUMNAS = GRID_COLS;
+const FILAS = GRID_ROWS;
+/// El interior de cada zona no cambia: se calcula una vez.
+const interiorCache = new Map<string, ReadonlySet<string>>();
 
 export { claveCelda };
 
@@ -39,7 +41,9 @@ export function murosComoCeldas(locationSlug: string | null | undefined): Celda[
 /// cruzar un muro ni una puerta. Vacío si la zona no tiene empalizada con puertas.
 export function interiorDe(locationSlug: string | null | undefined): ReadonlySet<string> {
   const puertas = locationSlug ? PUERTAS_POR_LOCATION[locationSlug] : undefined;
-  if (!puertas) return new Set();
+  if (!locationSlug || !puertas) return new Set();
+  const guardado = interiorCache.get(locationSlug);
+  if (guardado) return guardado;
   const cerrado = new Set([...murosDe(locationSlug), ...puertas.map(([col, row]) => claveCelda({ col, row }))]);
   const fuera = new Set<string>();
   const cola: Celda[] = [];
@@ -64,6 +68,7 @@ export function interiorDe(locationSlug: string | null | undefined): ReadonlySet
     const k = claveCelda({ col, row });
     if (!fuera.has(k) && !cerrado.has(k)) dentro.add(k);
   }
+  interiorCache.set(locationSlug, dentro);
   return dentro;
 }
 

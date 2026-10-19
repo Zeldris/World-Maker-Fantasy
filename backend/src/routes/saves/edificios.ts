@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { edificioDelPunto, encargadoDe, fichaDeEdificio } from '../../services/fichaEdificio.js';
 import { abrirMenuDeNpc } from '../../services/menuDeNpc.js';
-import { conDefinido, nombreVisibleDeNpc } from '../../services/dynamicMode.js';
+import { conDefinido, nombreVisibleDeNpc, quienEnAviso } from '../../services/dynamicMode.js';
 import { celdaAdyacenteOMisma, celdaDePixel } from '../../services/zonaPosicion.js';
 
 /// P178 (QA-27, decidido por la usuaria 2026-10-17): la ficha de un edificio del mapa (`fichaEdificio.ts`) e
@@ -44,7 +44,7 @@ export async function edificiosRoutes(app: FastifyInstance) {
     // P199: con su artículo de catálogo («el Maestro Herrero Serhu»), o por su raza («el orco desconocido»).
     const enFrase = conDefinido(nombre, oculto ? null : npc.articulo);
     const menu = await abrirMenuDeNpc(prisma, save.id, npc.slug, nombre, 'edificio');
-    if (!menu) return { menu: null, motivo: `${enFrase.charAt(0).toUpperCase()}${enFrase.slice(1)} no tiene nada que ofrecerte aquí.` };
+    if (!menu) return { menu: null, motivo: `${quienEnAviso('NPC', nombre, oculto ? null : npc.articulo)} no tiene nada que ofrecerte aquí.` };
     const entrada = await prisma.logEntry.create({
       data: {
         saveId: save.id, channel: 'CHARACTER', isSystemMessage: true,

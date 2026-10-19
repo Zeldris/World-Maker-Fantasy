@@ -1179,10 +1179,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     if (!colision) {
       const recursosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: 'RECURSO', activo: true } });
       // P193: un recurso sobre las estacas (el recinto de múrgoles) solo se alcanza desde dentro.
-      const slugZona = recursosCrudos.length > 0 ? (await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug : null;
       for (const punto of recursosCrudos) {
         const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
-        if (!celdaAdyacenteOMisma(celda, celdaPunto) || !alcanzableDesde(slugZona, celda, celdaPunto)) continue;
+        if (!celdaAdyacenteOMisma(celda, celdaPunto) || !alcanzableDesde(locationSlugColision, celda, celdaPunto)) continue;
         if (punto.targetSlug === ultimoEncuentroSlug) {
           ultimoEncuentroSigueCerca = true;
           continue;

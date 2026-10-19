@@ -16,7 +16,7 @@ describe('presentacionOferta', () => {
   it('avisa de que el rebaño o el recinto es de un bando y de lo que cuesta', () => {
     const deBando = { faccion: 'Clan Serhu', deQuien: 'del Clan Serhu', reputacion: -100 }
     const rebano = presentacionOferta('e1', { tipo: 'FAUNA', targetSlug: 'murgol', targetName: 'Múrgol', cantidad: 6, deBando }, {})
-    expect(rebano.warning).toEqual({ nivel: 'alto', text: 'Es del Clan Serhu: si te ven cazarlo, perderás reputación con ellos (-100).' })
+    expect(rebano.warning).toEqual({ nivel: 'aviso', text: 'Es del Clan Serhu: si te ven cazarlo, perderás reputación con ellos (-100).' })
     const recinto = presentacionOferta('e1', { tipo: 'RECURSO', targetSlug: 'recinto', targetName: 'Recinto', deBando: { ...deBando, reputacion: -50 } }, {})
     expect(recinto.warning?.text).toBe('Es del Clan Serhu: si te ven cogerlo, perderás reputación con ellos (-50).')
     expect(presentacionOferta('e1', { tipo: 'FAUNA', targetSlug: 'guchapo', targetName: 'Guchapo' }, {}).warning).toBeUndefined()
