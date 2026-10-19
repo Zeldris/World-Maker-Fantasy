@@ -2076,6 +2076,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   aldeanos): hoy «hablo con Krarka» responde «¿A quién te refieres?». Cada súbdito entra en el RAG
   con su ficha (oficio, cuándo llegó, qué ha vivido: asaltos, pareja, hijos; su ánimo) para que el
   narrador lo reconozca y lleve la conversación. **M**
+- **CR-72** Nombres de edificios y elementos de facción por raza (usuaria, 2026-10-19, regla `D-11`;
+  X4: cada raza tiene su versión y su nombre de cada módulo de estación y nave): hoy 62 recetas de
+  construcción son variantes orcas y el resto tiene nombres comunes («un pequeño ayuntamiento»).
+  Repasar edificios, oficios de reino y elementos de facción, y dar a cada raza su nombre cuando el
+  lore lo traiga (pedido por `AGENTS.md`, nunca editando `docs/rpgtarkor/`); los comunes se quedan.
+  Va al `0.7`, cuando se juega con cualquier raza. **S**
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
