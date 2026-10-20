@@ -1458,6 +1458,10 @@ usuaria el 2026-10-20), con las tres de `/opt-tokens`.
 - ~~**QA-174 · `.prettierrc.json` del backend con comillas simples**: que un archivo reescrito no cambie de estilo.~~ ✅ 2026-10-20: `singleQuote`, `trailingComma: all`, `printWidth` 120; sin reformatear lo que ya hay.
 - ~~**QA-175 · `POR ARCHIVO` en `medir.py` de `opt-tokens`**: lecturas y arrastre por archivo.~~ ✅ 2026-10-20: sección `POR ARCHIVO` (Read y Bash con orden de lectura; rutas relativas a otra carpeta, resueltas por `git ls-files`), con su test en `test_medir.py`. En esta sesión, `narrador.ts`: 61 lecturas, 1,6M arrastrados.
 
+Skill `scout-updates` (usuaria, 2026-10-20: el narrador sale lento y malo en la ronda local; [diseño](../ia/skill-scout-updates.md)).
+- **QA-176 · Skill `scout-updates`**: inventario del proyecto en `arquitectura.md`, propuestas acumuladas en `propuestas.md`, búsqueda citada y banco de calidad por pares; genérica, bajo demanda.
+  🚧 2026-10-20: diseño hecho. Falta: evaluaciones, scripts, `SKILL.md`, captura de prompts en Tarkor (`IA_CASOS`) y primera pasada con foco narrador.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
