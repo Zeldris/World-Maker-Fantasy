@@ -128,6 +128,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 | `01-ref` | `QA-160` + instrumentación de `QA-162` | 61,0 s | 74,4 s | 45,2 s | 29 % | 14 % | 6.292 | prefill de `narrar` 38,8 s; respaldo recortado (2.050 tokens de entrada con `num_ctx` 4096 y ~16.000 caracteres); rechazos: `combateIniciado` con NPC no agresor ×3, «quedan orcos del Clan Maktor» ×1 |
 | `02-qa161` (12 turnos) | `QA-161` | 73,0 s | 101,0 s | 47,8 s | 40 % | 30 % | 6.419 | más rechazos que `01-ref` (2.ª persona ×2, `combateIniciado` ×3, equipo, repetición, luna): ruido del muestreo, no de `QA-161`; el `resumen` del turno 9 no recarga el narrador |
 | `04-qa163` | `QA-163` | 61,1 s | 77,3 s | 45,4 s | 29 % | 0 % | 6.487 | rechazos: 2.ª persona ×1, cambio de equipo ×1; ningún `combateIniciado` (en `01-ref` y `02`, 6 de 11) |
+| `05-qa164` | `QA-164` | 38,1 s | 63,6 s | 22,7 s | 29 % | 0 % | 6.344 | frente a `04`: prefill del intento 1 en caliente 13-16 s (antes ~37 s); el primer turno tras arrancar sigue en ~39 s; rechazos iguales (equipo ×1, 2.ª persona ×1) |
 
 - **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
   `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
@@ -144,3 +145,8 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
   ninguno), con el texto del prompt a juego, y `num_predict` del intento 1 de 220 a 300 (1 de 39 intentos 1 se cortaba
   por longitud). Desaparece el rechazo más frecuente; los intentos 2 se quedan en 29 % por otros rechazos (2.ª persona,
   equipo), pero ninguno llega al respaldo (14 % → 0 %). La latencia no cambia: el coste es el prefill (`QA-164`).
+- **`QA-164`**: el estado de la partida (con la hora) y «TU PROPIA NARRACIÓN DEL TURNO ANTERIOR» pasan detrás de los
+  hechos de la escena (`buildNarrationPrompt`), que casi no cambian entre turnos: el prefijo común pasa de ~5.900
+  caracteres a todo lo anterior a la memoria de la sesión. Turno p50 61 → 38 s y primera palabra 45 → 23 s: cumplen el
+  umbral; p95 64 s también. Las narraciones no pierden la hora ni la escena. Los repetidos de la memoria (P247) se quedan
+  fuera: van al final del prefijo y son ≤1.800 caracteres, poco frente al corte de la hora.

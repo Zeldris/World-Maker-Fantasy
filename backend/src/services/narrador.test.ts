@@ -1970,6 +1970,32 @@ describe('buildNarrationPrompt — "combateIniciado" solo con posibles agresores
   });
 });
 
+describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos estables (QA-164)', () => {
+  const ctx = (hora: string, anterior: string) => ({
+    characterSummary: `Gorhorn, Superviviente.\nESTADO DE LA PARTIDA (hechos mecánicos reales, nunca los contradigas): Día 1, ${hora}.`,
+    worldFacts: [`TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${anterior}".`, 'UBICACIÓN ACTUAL: Paso de los Pilares Rotos', 'PERSONAJE EN ESCENA: Ulkha Ketg'],
+    action: 'Miro a mi alrededor con calma.',
+    enCombate: false,
+  });
+
+  it('el estado y la narración anterior van detrás de los hechos de la escena', () => {
+    const p = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
+    const pos = (t: string) => p.indexOf(t);
+    expect(pos('PERSONAJE EN ESCENA')).toBeLessThan(pos('ESTADO DE LA PARTIDA'));
+    expect(pos('ESTADO DE LA PARTIDA')).toBeLessThan(pos('TU PROPIA NARRACIÓN'));
+    expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO'));
+    expect(p).toContain('PERSONAJE:\nGorhorn, Superviviente.\n\nHECHOS DEL MUNDO');
+  });
+
+  it('dos turnos seguidos comparten el prefijo hasta los hechos de la escena', () => {
+    const a = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
+    const b = buildNarrationPrompt(ctx('12:11', 'Gorhorn escucha.')).prompt;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    expect(n).toBeGreaterThan(a.indexOf('PERSONAJE EN ESCENA: Ulkha Ketg'));
+  });
+});
+
 describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a combatNotYetResolved (2026-08-22)', () => {
   const hostileCtx = {
     worldFacts: [],

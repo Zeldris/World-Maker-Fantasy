@@ -1399,7 +1399,9 @@ turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
 - ~~**QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.~~
   ✅ 2026-10-20: `combateIniciado` solo con agresores en el `format` y `num_predict` 300 en el intento 1; respaldo 14 % → 0 %,
   intento 2 sigue en 29 % (2.ª persona, equipo) y la latencia no cambia.
-- **QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).
+- ~~**QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).~~
+  ✅ 2026-10-20: estado de la partida y narración anterior tras los hechos estables; turno p50 61 → 38 s, primera palabra
+  45 → 23 s. Fuera: los repetidos de la memoria (P247), poco coste al ir al final del prefijo.
 - **QA-165 · `lengthGuidance` tras el bloque fijo** (propuesta 7): no perder la caché al entrar en combate.
 - **QA-166 · Contexto del respaldo** (propuesta 4): los respaldos se recortaban a 4096.
 - **QA-167 · Escalera del RAG** (propuesta 5) con los casos de la ronda.

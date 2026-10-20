@@ -1226,15 +1226,24 @@ ${
 CONOCIMIENTO DE FONDO DEL MUNDO (lore general del mundo relacionado con la acción — solo contexto/ambientación, NO implica presencia física en esta escena):
 ${factsBlock(ctx.backgroundLore ?? [])}`;
 
+  // QA-164 (`/opt-ai`, 2026-10-20): la caché de prefijo se cortaba en la hora de ESTADO DE LA PARTIDA, que cambia
+  // cada turno, y en la Deck se volvían a procesar ~4.400 tokens (~35 s). El estado y la narración anterior van
+  // ahora detrás de los hechos de la escena, que casi no cambian entre turnos.
+  const corteEstado = ctx.characterSummary.indexOf('\nESTADO DE LA PARTIDA');
+  const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
+  const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
+  const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+  const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
+
   const prompt = `${GOOD_NARRATION_EXAMPLE}
 
 ${fixedInstructions}
 
 PERSONAJE:
-${ctx.characterSummary}
+${identidad}
 
 HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
-${factsBlock(ctx.worldFacts)}${backgroundLoreBlock}
+${factsBlock(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)))}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
 ${groundingBlock}
 
 ${rollBlock}
