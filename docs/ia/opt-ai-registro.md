@@ -131,6 +131,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 | `05-qa164` | `QA-164` | 38,1 s | 63,6 s | 22,7 s | 29 % | 0 % | 6.344 | frente a `04`: prefill del intento 1 en caliente 13-16 s (antes ~37 s); el primer turno tras arrancar sigue en ~39 s; rechazos iguales (equipo ×1, 2.ª persona ×1) |
 | `06-qa165` | `QA-165` | 32,8 s | 66,1 s | 21,3 s | 14 % | 0 % | 6.374 | los 8 turnos no entran en combate: lo que mide `QA-165` es la reproducción de abajo; dos turnos seguidos con la misma frase de Ulkha («¿Qué busca?»), que el filtro de repetición no pilla |
 | `07-qa167` | `QA-167` | 31,6 s | 48,0 s | 21,3 s | 0 % | 0 % | 6.368 | `bench.sh` reindexa tras restaurar el dump; lore pertinente (el lugar primero, «El cielo sin luna» al mirar el cielo); score_1 0,735 → 0,760 |
+| `08-qa168` | `QA-168` | 28,7 s | 52,6 s | 16,7 s | 0 % | 0 % | 6.404 | `clasificar` p50 6,9 → 2,8 s (frío 100 → 20 %: solo el primer turno); el narrador no se descarga en todo el bench; RAM disponible ≥1,8 GB; p95 +4,5 s por un turno largo de `narrar`, sin rechazos |
 
 - **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
   `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
@@ -167,3 +168,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
   fallidos; suben `p251` (5 → 4), `p272-orco-maktor` (10 → 3), `maktor-aniquilado` (3 → 1) y `estaciones-orcas` (8 → 5);
   baja `jakut-faerus` (1 → 2). Sigue sin salir `p272-ulkha-maktor-compuesta` (pregunta doble): sería el peldaño 2
   (híbrida), que no se sube sin más casos que lo pidan.
+- **`QA-168`**: `keep_alive` de `clasificar` de `'0'` a `'5m'`. Con `ollama ps` cada 20 s durante el bench, los tres
+  modelos caben a la vez (narrador, `qwen2.5:1.5b` y `nomic-embed-text`) con 1,9-2,5 GB disponibles y sin descargar
+  nunca el narrador; `clasificar` deja de recargarse cada turno (p50 6,9 → 2,8 s) y la primera palabra baja a 16,7 s.
+  Se queda. Si en otra máquina falta memoria, volver a `'0'` (comentario en `classifyAction`).

@@ -460,8 +460,9 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['requiereTirada', 'atributo', 'dificultad', 'razon', 'banda', 'duracionEstimadaMinutos'],
   };
 
-  // keepAlive '0': descarga el modelo pequeño en cuanto clasifica, antes de que narrateAction
-  // cargue el modelo grande justo después — nunca los dos a la vez en memoria.
+  // keepAlive '5m' (QA-168, /opt-ai 2026-10-20): antes '0', para no tener los dos modelos a la vez; en la
+  // Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se descarga) y clasificar
+  // baja de 6,9 a 2,8 s p50 al no recargarse cada turno.
   // timeoutMs 90s: nunca ha tardado más de ~54s en pruebas reales, deja margen de sobra.
   // temperature 0 (roadmap 2026-07-20, Fable, segunda pasada): el `format` ya restringe la
   // gramática a los valores válidos del schema — el muestreo solo decide CUÁL de esos valores
@@ -475,7 +476,7 @@ Responde solo con el JSON pedido, nada más.`;
       system,
       prompt,
       format,
-      keepAlive: '0',
+      keepAlive: '5m',
       timeoutMs: 90_000,
       tarea: 'clasificar',
     });
