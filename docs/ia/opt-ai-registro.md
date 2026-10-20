@@ -130,6 +130,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 | `04-qa163` | `QA-163` | 61,1 s | 77,3 s | 45,4 s | 29 % | 0 % | 6.487 | rechazos: 2.ª persona ×1, cambio de equipo ×1; ningún `combateIniciado` (en `01-ref` y `02`, 6 de 11) |
 | `05-qa164` | `QA-164` | 38,1 s | 63,6 s | 22,7 s | 29 % | 0 % | 6.344 | frente a `04`: prefill del intento 1 en caliente 13-16 s (antes ~37 s); el primer turno tras arrancar sigue en ~39 s; rechazos iguales (equipo ×1, 2.ª persona ×1) |
 | `06-qa165` | `QA-165` | 32,8 s | 66,1 s | 21,3 s | 14 % | 0 % | 6.374 | los 8 turnos no entran en combate: lo que mide `QA-165` es la reproducción de abajo; dos turnos seguidos con la misma frase de Ulkha («¿Qué busca?»), que el filtro de repetición no pilla |
+| `07-qa167` | `QA-167` | 31,6 s | 48,0 s | 21,3 s | 0 % | 0 % | 6.368 | `bench.sh` reindexa tras restaurar el dump; lore pertinente (el lugar primero, «El cielo sin luna» al mirar el cielo); score_1 0,735 → 0,760 |
 
 - **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
   `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
@@ -159,3 +160,10 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
   de `benchmark-turno` (solo cambia el intento 3, que no salió en `04`…`06`); reproducción con un prompt real y el
   `format` de `narrar`: con 4096 lee 2.050 de 5.257 tokens y narra hechos sueltos sin la acción (7,8 s); con 8192 lee
   el prompt entero y narra la acción con Ulkha en escena (15,5 s). RAM: ~4 GB disponibles con el narrador cargado.
+- **`QA-167`**: peldaño 1 de la escalera (tamaño de trozo). Cada fragmento de `loreChunks.ts` se indexa en trozos de
+  ~400 caracteres por frases, con el título delante y el texto entero en la fila; `retrieveLore` se queda con el mejor
+  trozo por título (`DISTINCT ON`), así que el prompt no crece. Simulación previa con los 16 casos: 600 → 0,812,
+  400 → 0,875, 250 → 0,875. `rag-eval` tras reindexar: recall@4 0,750 → 0,875, MRR 0,708 → 0,755, 0 `debe_pasar`
+  fallidos; suben `p251` (5 → 4), `p272-orco-maktor` (10 → 3), `maktor-aniquilado` (3 → 1) y `estaciones-orcas` (8 → 5);
+  baja `jakut-faerus` (1 → 2). Sigue sin salir `p272-ulkha-maktor-compuesta` (pregunta doble): sería el peldaño 2
+  (híbrida), que no se sube sin más casos que lo pidan.
