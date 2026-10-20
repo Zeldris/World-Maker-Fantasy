@@ -25,7 +25,7 @@ class Entorno:
         # El PATH solo trae los falsos y las utilidades del sistema; sin psql real.
         sistema = os.path.join(d, 'sistema')
         os.makedirs(sistema)
-        for cmd in ('bash', 'base64', 'tr', 'cat', 'pwd', 'echo', 'printf', 'dirname'):
+        for cmd in ('bash', 'base64', 'tr', 'cat', 'pwd', 'echo', 'printf', 'dirname', 'grep'):
             ruta = shutil.which(cmd)
             if ruta:
                 os.symlink(ruta, os.path.join(sistema, cmd))
@@ -55,6 +55,20 @@ class Host(Entorno, unittest.TestCase):
         args = leer(d + '/args').split('\n')
         self.assertEqual(args[:4], ['--host', f'--directory={RAIZ}', 'bash', '-lic'])
         self.assertEqual(r.stdout, "a b c'd\n")
+
+    def test_solo_sandbox_1_fuerza_el_sandbox(self):
+        env, d = self.entorno(False)
+        env['HOST_SH_SANDBOX'] = '0'
+        r = self.correr(env, 'host.sh', 'pwd')
+        self.assertEqual(r.stdout.strip(), RAIZ)
+        self.assertFalse(os.path.exists(d + '/args'))
+
+    def test_filtra_solo_el_aviso_de_job_control_y_conserva_el_estado(self):
+        env, d = self.entorno(True)
+        falso(d, 'flatpak-spawn', 'echo "bash: no job control in this shell" >&2\necho "error real" >&2\nexit 3\n')
+        r = self.correr(env, 'host.sh', 'true')
+        self.assertEqual(r.returncode, 3)
+        self.assertEqual(r.stderr, 'error real\n')
 
     def test_sin_orden_falla(self):
         env, _ = self.entorno(False)

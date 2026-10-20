@@ -34,7 +34,7 @@ Importa `lib.mjs` y pasa la partida por entorno: `SAVE_ID=<id> node mi_script.mj
 
 Si el MCP de Playwright no conecta (`QA-41`, retro de `QA-27`), `driver.mjs` deja un navegador abierto
 y recibe órdenes de JS por `orden.sh`. Cada orden tiene a mano `page`, `shot(nombre, opciones)` (captura en
-`shots/`, JPEG de calidad 50; `{selector}`, `{clip}` recortan, `{completo:true}` da PNG de página entera, `QA-149`), `log(...)`, `FRONT` y `BACK`, y devuelve lo registrado y los errores de la página.
+`shots/`, JPEG de calidad 50; `{calidad:n}`, `{png:true}`; `{selector}`, `{clip}` recortan (`selector` no admite `clip` ni `completo`: error); `{completo:true}` da PNG de página entera, `QA-149`), `log(...)`, `FRONT` y `BACK`, y devuelve lo registrado y los errores de la página.
 
 ```sh
 nohup node tools/playwright-e2e/driver.mjs > tools/playwright-e2e/driver.log 2>&1 &
