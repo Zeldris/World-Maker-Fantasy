@@ -71,3 +71,81 @@ describe('ProduccionSection — REI-33', () => {
     expect(actualizarOrdenProduccion).toHaveBeenCalledWith('s1', 'o1', { limite: 4 })
   })
 })
+
+describe('ProduccionSection — P225 fallo de carga', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si falla la carga de órdenes avisa con Reintentar y no dice «Sin órdenes activas»', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    vi.mocked(getOrdenesProduccion).mockRejectedValueOnce(new Error('500')).mockResolvedValue({ ordenes: [orden({})] } as never)
+    const { findByRole, queryByText } = render(
+      <ProduccionSection saveId="s1" buildings={[edificio]} companions={[]} almacenItems={[]} professionRecipes={[]} onRefreshSave={async () => {}} />,
+    )
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('No se pudieron cargar las órdenes de producción.')
+    expect(queryByText('Sin órdenes activas.')).toBeNull()
+    await act(async () => {
+      fireEvent.click(await findByRole('button', { name: /Reintentar/ }))
+    })
+    expect(getOrdenesProduccion).toHaveBeenCalledTimes(2)
+  })
+
+  it('si las órdenes cargan bien tras un fallo (cambia saveId), el aviso desaparece', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    vi.mocked(getOrdenesProduccion).mockRejectedValueOnce(new Error('500')).mockResolvedValue({ ordenes: [orden({})] } as never)
+    const props = { buildings: [edificio], companions: [], almacenItems: [], professionRecipes: [], onRefreshSave: async () => {} }
+    const { findByRole, queryByRole, rerender } = render(<ProduccionSection saveId="s1" {...props} />)
+    await findByRole('alert')
+    rerender(<ProduccionSection saveId="s2" {...props} />)
+    await waitFor(() => expect(queryByRole('alert')).toBeNull())
+  })
+
+  it('una carga correcta no borra el aviso de una acción fallida', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    vi.mocked(getOrdenesProduccion).mockResolvedValue({ ordenes: [orden({ activa: false })] } as never)
+    vi.mocked(actualizarOrdenProduccion).mockRejectedValueOnce(new Error('500'))
+    const props = { buildings: [edificio], companions: [], almacenItems: [], professionRecipes: [], onRefreshSave: async () => {} }
+    const { findByText, findByRole, getByRole, rerender } = render(<ProduccionSection saveId="s1" {...props} />)
+    fireEvent.click(await findByText(/Desactivadas \(1\)/))
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Reactivar' }))
+    })
+    const texto = (await findByRole('alert')).textContent
+    rerender(<ProduccionSection saveId="s2" {...props} />)
+    await act(async () => {})
+    expect(getOrdenesProduccion).toHaveBeenCalledTimes(2)
+    expect(getByRole('alert').textContent).toBe(texto)
+  })
+})
+
+describe('ProduccionSection — carrera al cambiar de edificio', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si cambia building.id con la primera petición sin resolver, gana la segunda', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    let resolverPrimera: (v: unknown) => void = () => {}
+    vi.mocked(getOrdenesProduccion)
+      .mockReturnValueOnce(new Promise((r) => { resolverPrimera = r }) as never)
+      .mockResolvedValue({ ordenes: [orden({ id: 'o2', buildingId: 'b2', recipeKey: 'segunda' })] } as never)
+    const props = { saveId: 's1', companions: [], almacenItems: [], professionRecipes: [], onRefreshSave: async () => {} }
+    const b2 = { id: 'b2', name: 'Otro', status: 'ACTIVO' } as unknown as BuildingInfo
+    const { rerender, findByText, queryByText } = render(<ProduccionSection {...props} buildings={[edificio]} />)
+    rerender(<ProduccionSection {...props} buildings={[b2]} />)
+    await findByText(/segunda/i)
+    await act(async () => {
+      resolverPrimera({ ordenes: [orden({ id: 'o1', recipeKey: 'primera' })] })
+    })
+    expect(queryByText(/primera/i)).toBeNull()
+    expect(queryByText(/segunda/i)).toBeTruthy()
+  })
+})

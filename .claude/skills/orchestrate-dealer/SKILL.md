@@ -43,11 +43,16 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    Si cambias una función o un campo, busca (grep) a todos los que lo usan y ajústalos o dilo en FALTA.
    Si algo pide decidir a la usuaria, para y devuélvelo como pregunta.
    Devuelve como mucho 15 líneas:
-   HECHO: … · HALLADO: P-números con una línea cada uno · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
+   HECHO: … · HALLADO: P-números con una línea cada uno · HERRAMIENTAS: fallos de orden.sh, escenario.sh o del driver · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
    ```
 
 3. **Revisar lo que vuelve.** Comprueba el commit (`git fetch` + `git log -1 --stat`) y que el criterio de hecho
    se cumple. Si no cierra, el reintento sube un peldaño; dos fallos, se para y se le cuenta a la usuaria.
+   De cada rama de subagente con worktree, **antes de fusionarla**, un `/code-review` corto de su diff hecho por un
+   subagente revisor que devuelve solo los hallazgos; no se fusiona hasta arreglarlos (`QA-126`, `QA-131`: la tanda
+   P223-P237 fusionó 8 ramas sin esa revisión y el `/code-review` final halló 17).
+   La principal apunta lo que vuelve: los P-números de `HALLADO` en el registro de la ronda y lo de `HERRAMIENTAS`
+   en [`rondas-de-pruebas.md`](../../../docs/runbooks/rondas-de-pruebas.md#fallos-de-las-herramientas) (`QA-133`).
    Las `PREGUNTAS` van a la usuaria tal cual, con la respuesta que recomiendas.
 4. **Seguir.** Siguiente trozo. A la usuaria, una línea por trozo cerrado; el detalle está en la bitácora.
 
@@ -55,9 +60,11 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 - **Arreglos de código de la frontera, en paralelo** (idea de `implement-spec` de Matt Pocock): cada subagente con
   `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree sin tocar la bitácora ni subir, y
-  devuelve su rama. Antes de fusionar cada una, un `/code-review` corto de su diff (`QA-126`: los arreglos de la
-  ronda `QA-105` llegaron con 9 fallos que solo cazó la revisión final del PR). La principal los fusiona uno a uno en
-  la rama de trabajo (`git merge`, tests del paquete tocado), escribe la bitácora y sube. Un conflicto entre dos de ellos lo resuelve un subagente de fusión.
+  devuelve su rama. La principal los revisa (paso 3), los fusiona uno a uno en la rama de trabajo (`git merge`,
+  tests del paquete tocado), escribe la bitácora y sube. Un conflicto entre dos de ellos lo resuelve un subagente de fusión.
+- **Registros compartidos, solo la principal** (`QA-132`): con subagentes en paralelo, ninguno toca la bitácora ni
+  `docs/registros/pruebas-0.3-hallazgos.md` (ni otro registro compartido); devuelven sus P-números en `HALLADO` y la
+  principal los apunta. Escribirlos en paralelo da conflictos al fusionar.
 - **Sin worktree, uno a la vez en la misma rama**: dos subagentes que hacen commit en la rama de trabajo chocan
   en la bitácora. En paralelo, además, todo lo que no escribe (buscar, leer, medir).
 - **Rondas de pruebas, en un subagente `sonnet` y en serie** (`QA-124`: la ronda `QA-105` la jugó la principal con

@@ -45,6 +45,29 @@ describe('resumen de varios días (CR-12)', () => {
     expect(await agruparNoticias(prisma, saveId, otra)).toBe(0);
   });
 
+  it('P237: el resumen no repite la misma noticia dada varios días (un tablón renovado cada pocos días)', async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Resumen repetido (P237)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'R',
+        worldState: { create: { fictionalMinutes: 480 } },
+      },
+    });
+    saveIds.push(save.id);
+    const saveId = save.id;
+    const desde = await marcaDeNoticias(prisma, saveId);
+    await new Promise((r) => setTimeout(r, 5));
+    const aviso = 'Se dice que Feg Tusha ha colgado nuevos avisos en Trono Madre.';
+    for (const t of [aviso, 'Llega el invierno.', aviso, aviso]) await prisma.logEntry.create({ data: { saveId, channel: 'WORLD', text: t, timeLabel: 'Día 3', fictionalMinutes: 3 * 1440 } });
+
+    expect(await agruparNoticias(prisma, saveId, desde)).toBe(4);
+    const mundo = await prisma.logEntry.findMany({ where: { saveId, channel: 'WORLD' } });
+    expect(mundo).toHaveLength(1);
+    expect(mundo[0]!.text).toBe(`${CABECERA_RESUMEN}\n• ${aviso}\n• Llega el invierno.`);
+    expect(mundo[0]!.noticia).toEqual({ resumen: true, lineas: [null, null] });
+  });
+
   it('UX-38: la noticia guarda su categoría y su oportunidad, también la que llega tarde', async () => {
     const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
     const lugar = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
@@ -66,6 +89,27 @@ describe('resumen de varios días (CR-12)', () => {
 
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 480 + 4 * 1440 } });
     await evaluarConsecuencias(prisma, saveId);
-    expect((await prisma.logEntry.findFirstOrThrow({ where: { saveId, text: 'Se dice que una caravana pasa lejos.' } })).noticia).toEqual({ categoria: 'COMERCIO' });
+    expect((await prisma.logEntry.findFirstOrThrow({ where: { saveId, text: 'Se dice que una caravana pasa lejos.' } })).noticia).toEqual({ categoria: 'COMERCIO', rumor: { region: otra, pasoEn: 480 } });
+  });
+
+  it('P237 (revisión): si tras quitar repetidos queda una sola, es una entrada normal, sin cabecera', async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Resumen único (P237)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'R',
+        worldState: { create: { fictionalMinutes: 480 } },
+      },
+    });
+    saveIds.push(save.id);
+    const saveId = save.id;
+    const desde = await marcaDeNoticias(prisma, saveId);
+    await new Promise((r) => setTimeout(r, 5));
+    const aviso = 'Se dice que Feg Tusha ha colgado nuevos avisos en Trono Madre.';
+    for (const t of [aviso, aviso, aviso]) await prisma.logEntry.create({ data: { saveId, channel: 'WORLD', text: t, timeLabel: 'Día 3', fictionalMinutes: 3 * 1440 } });
+    expect(await agruparNoticias(prisma, saveId, desde)).toBe(3);
+    const mundo = await prisma.logEntry.findMany({ where: { saveId, channel: 'WORLD' } });
+    expect(mundo.map((e) => e.text)).toEqual([aviso]);
+    expect(mundo[0]!.noticia).toBeNull();
   });
 });

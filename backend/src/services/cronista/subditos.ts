@@ -7,6 +7,7 @@
 import type { Prisma } from '@prisma/client';
 import { companionSlotsForRecipeKey, esAyuntamientoRecipeKey } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
+import { formatFictionalDate } from '../worldClock.js';
 import { edadEnAnios, esAdulto } from './edades.js';
 import { apellidoDe, fundarLinaje, nombreConLinaje, unirALinaje } from './linajes.js';
 import { generarNombre, generarRastro, nombreLibre, type Genero } from './nombres.js';
@@ -150,6 +151,20 @@ export async function avanzarSubditos(tx: Tx, saveId: string, dias: number, ahor
     }
   }
   await recalcularPoblacion(tx, saveId, ahora);
+}
+
+/// P223: aviso en el canal del Reino (el que se ve en «El mundo» › Reino) de un suceso de vida de los súbditos.
+/// `ahora`: el instante del suceso (el día simulado, no el reloj de la partida: con varios días de descanso
+/// seguidos cada aviso lleva su día).
+export async function avisarEnReino(tx: Tx, saveId: string, text: string, ahora: number): Promise<void> {
+  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: formatFictionalDate(ahora), fictionalMinutes: ahora } });
+}
+
+/// P224: quien pierde a su pareja (se va o muere) queda libre en el acto. Devuelve el nombre de la pareja, si la había.
+export async function soltarPareja(tx: Tx, saveId: string, subjectId: string): Promise<string | null> {
+  const viudas = await tx.subject.findMany({ where: { saveId, parejaId: subjectId, estado: 'ACTIVO' }, select: { id: true, name: true } });
+  if (viudas.length) await tx.subject.updateMany({ where: { id: { in: viudas.map((v) => v.id) } }, data: { parejaId: null } });
+  return viudas[0]?.name ?? null;
 }
 
 /// La región del Reino: la del primer territorio que siga en pie (llegadas y salidas).

@@ -340,6 +340,7 @@ export async function restartSaveTransactionBody(
       lastRestLocationId: null,
       pausedAt: null,
       pendingCombatNpcSlugs: [],
+      combateDesde: null,
       pendingNpcAttack: Prisma.JsonNull,
       // Bug real (2026-09-22, mismo hallazgo que el CombatEncounter huérfano de arriba): las 4
       // ofertas "pending" de modo dinámico/misión/interacción tampoco se limpiaban al reiniciar —

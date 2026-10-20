@@ -8,7 +8,7 @@ import { ownerKeyFor } from '../reinoOwner.js';
 import { edadEnAnios, esAdulto, esFertil } from './edades.js';
 import { linajeParaNacido } from './linajes.js';
 import { registrarSuceso } from './sucesos.js';
-import { crearSubdito, cupoDeCamas } from './subditos.js';
+import { avisarEnReino, crearSubdito, cupoDeCamas } from './subditos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -65,11 +65,13 @@ export async function revisarFamilias(tx: Tx, saveId: string, ahora: number, ran
   const activos = new Set(subditos.map((s) => s.id));
   for (const s of subditos.filter((x) => x.parejaId && !activos.has(x.parejaId))) await tx.subject.update({ where: { id: s.id }, data: { parejaId: null } });
 
+  const nombres = new Map(subditos.map((x) => [x.id, x.name]));
   let parejas = 0;
   for (const [m, p] of posiblesParejas(subditos.map((s) => ({ ...s, parejaId: s.parejaId && activos.has(s.parejaId) ? s.parejaId : null })), ahora)) {
     if (random() >= PROB_PAREJA_SEMANA) continue;
     await tx.subject.update({ where: { id: m.id }, data: { parejaId: p.id, crias: 0 } });
     await tx.subject.update({ where: { id: p.id }, data: { parejaId: m.id, crias: 0 } });
+    await avisarEnReino(tx, saveId, `${nombres.get(m.id)} y ${nombres.get(p.id)} forman pareja.`, ahora);
     parejas++;
   }
 
@@ -97,6 +99,7 @@ export async function revisarFamilias(tx: Tx, saveId: string, ahora: number, ran
       ],
       datos: { nacido: cria.name, genero, padres: `${padre.name} y ${madre.name}` },
     });
+    await avisarEnReino(tx, saveId, `Nace ${cria.name}, ${genero === 'F' ? 'hija' : 'hijo'} de ${padre.name} y ${madre.name}.`, ahora);
     crias.push(cria.id);
   }
   return { parejas, crias };

@@ -163,7 +163,7 @@ TRABAJOS[TIPO_ATAQUE] = {
     const { cae, r, caenBandidos } = await pelearContraCampamento(tx, c, nuestros.map((h) => h.c), worldId, dia, { reino: true, quien: 'Una partida del Reino' }, random);
     const condicion = new Map(r.estados.map((e) => [e.id, e.condicion]));
     const muertos = new Set(r.estados.filter((e) => e.muerto).map((e) => e.id));
-    await aplicarBajas(tx, v.saveId, nuestros, condicion, muertos, dia, v.factionId);
+    await aplicarBajas(tx, v.saveId, nuestros, condicion, muertos, dia, 'combate', v.factionId);
     if (!cae) await avisoDeViajero(tx, v, `La partida no puede con el campamento: ${caenBandidos > 0 ? `caen ${caenBandidos} de los suyos, pero ` : ''}el cabecilla aguanta y vuelven a casa.`);
   },
 };

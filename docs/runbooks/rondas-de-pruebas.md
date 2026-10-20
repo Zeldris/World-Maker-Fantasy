@@ -115,3 +115,10 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 - `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
   arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.
+
+## Fallos de las herramientas
+
+Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, con su remedio:
+
+- `turno.js` falla con un cajón abierto (el clic queda interceptado): cerrar el cajón antes.
+- El driver de Playwright muere cada vez que `escenario.sh` reinicia el juego: relanzarlo.

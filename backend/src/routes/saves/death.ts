@@ -110,6 +110,7 @@ export async function deathRoutes(app: FastifyInstance) {
             pendingDynamicModeOffer: Prisma.JsonNull,
             pendingDynamicMode: Prisma.JsonNull,
             pendingCombatNpcSlugs: [],
+            combateDesde: null,
             pendingNpcAttack: Prisma.JsonNull,
             zonaUltimoEncuentro: Prisma.JsonNull,
             zonaCaminoPendiente: Prisma.JsonNull,

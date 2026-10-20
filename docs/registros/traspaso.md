@@ -10,12 +10,12 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-10-19 |
+| **Actualizado** | 2026-10-20 |
 | **Ramas de trabajo** | Una por cuenta, cada una con su fila «Tarea en curso» (`QA-69`): `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06, `CR-55`) y `claude/wonderful-volta-662qt8`. Las skills, ganchos y `settings.json` de `.claude/` van versionados con `git add` normal (`QA-112`); a `main` se pasa **por pull request**. |
-| **Último commit en `main`** | Fusión del PR #64 (2026-10-19, `588e62a`, CI en verde): proceso de pruebas, mapa del agente, `/opt-tokens`, compactar sin perder y escalera de modelos (~~`QA-101`~~…~~`QA-120`~~) y P207-P213 de `QA-27`. Antes: PR #63 (`509e011`), PR #62 (`7498bfd`), PR #60 (`0bacec8`). |
+| **Último commit en `main`** | Fusión del PR #65 (2026-10-19, `a1445c2`, CI en verde, confirmada por la usuaria): ronda `QA-105` cerrada, arreglos P215-P221, ~~`CR-70`~~…~~`CR-72`~~ al roadmap, ~~`QA-122`~~…~~`QA-130`~~. |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Ronda de pruebas del 2026-10-17 (`QA-27`), partida `cmvcunmm300017d64k8qxe0t3`: comprobados 12 del PR #60 y P197 (arreglado); reabierto P177; nuevos P188-P206; su retro `QA-94`…`QA-97` hecha. **Siguiente:** arreglar P206, P177 y P188, y seguir jugando desde el Hogar Ketg (misión de las Agujas, P184). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | Ronda (`QA-105`) cerrada el 2026-10-19 (P223-P235 pendientes). Flujo previo al PR a `main`: `/code-review` hecho y arreglado (9 de 10); `/opt-tokens` y `/retro` aprobadas y aplicadas (~~`QA-123`~~…~~`QA-130`~~: tope 200k, rondas en subagente `sonnet`, ayudas `opcion`/`interactuar`/`pelear`, revisión por arreglo, `medir.py` por tramo, calidad en `opt-tokens`). Siguiente: `revisado.sh` y PR. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | 🚧 P223-P237 (`QA-105`) arreglados y con el `/code-review` previo al PR (17 hallazgos) fusionado; suites en verde (2026-10-20). `/opt-tokens` y `/retro` aprobadas: `QA-131`…`QA-135` en dos subagentes (revisión por rama, registros compartidos, `HERRAMIENTAS:`, `medir.py --desde`, `fusionar.sh`). Ronda corta de P232, P234 y P235 en un subagente. Siguiente: fusionar los tres, `revisado.sh`, skill `pr` y PR a `main`. |
 | **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-17, tras el `/code-review` de los hallazgos de `QA-27`): backend `tsc` 0, `vitest` completo 293 archivos / 3599; frontend `tsc -b` 0, `vitest` 145 / 643, `oxlint` 0 errores; todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
 ## Dónde está todo (para saber qué sigue)
@@ -109,6 +109,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-19** — P223-P235 de la ronda `QA-105` (registro `pruebas-0.3-hallazgos.md`): avisos del reino por parejas, nacimientos, muertes y deserciones, y viudos sin pareja (P223, P224); errores con *Reintentar* en Producción, Almacén y Súbditos (P225, P230); marca de rumor (P226); `lang="es"`, iconos de bebida y odre (P227, P228); 5xx de classify con aviso (P229); descanso rechazado de 1 min (P231); cajón al abrir combate (P232); muerte sin convaleciente previa con COMBATE_PERDIDO y vencedor (P233); mayúsculas y coma de sucesos (P234, P235). Sin jugar aún.
 - **2026-10-19** — ~~`QA-123`~~, ~~`QA-124`~~, ~~`QA-125`~~, ~~`QA-126`~~, ~~`QA-127`~~, ~~`QA-128`~~, ~~`QA-129`~~, ~~`QA-130`~~ (`/opt-tokens` y `/retro` del PR de la ronda `QA-105`): tope de compactación a 200k, rondas en un subagente `sonnet`, ayudas del driver arregladas y `pelear`, `/code-review` de cada arreglo de subagente, `medir.py` por tramo, `orden.sh` guarda la respuesta, calidad primero en `opt-tokens` y la `/retro` revisa las skills propias.
 - **2026-10-19** — ~~`QA-122`~~: puntos de `/clear` (runbook `skills-y-modelos.md`, paso 1): Claude lo recomienda en puntos estables con la sesión lista (commit, push, bitácora); tope de compactación a 300k y `recuperar.py --estado` también tras `/clear`.
 - **2026-10-19** — ~~`QA-121`~~: skill `orchestrate-dealer`: la sesión principal reparte cada trozo a un subagente de contexto limpio (encargo con criterio de hecho, vuelta en 15 líneas) para trabajar sin `/clear`; compactar a 200k; sustituye la sesión nueva de `QA-110`.
@@ -118,4 +119,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-19** — ~~`QA-117`~~: `medir.py` por modelo (principal y subagentes) y el runbook manda escribir con un subagente `sonnet` cuando el plan está cerrado.
 - **2026-10-19** — ~~`QA-112`~~, ~~`QA-113`~~, ~~`QA-114`~~ y ~~`QA-115`~~ (retro previa al PR): `.claude/` versionado sin `-f`, test por herramienta con su comprobación, `opt-tokens` mira primero la curva y fecha de la bitácora comprobada en el pre-push.
 - **2026-10-19** — ~~`QA-109`~~, ~~`QA-110`~~ y ~~`QA-111`~~ (`/opt-tokens` previo al PR): compactar a 300k tokens (`.claude/settings.json`), sesión nueva tras cada PR fusionado y curva de contexto en `medir.py`.
-- **2026-10-19** — ~~`QA-108`~~: mapa del agente (`docs/mapa-agente.md`): por sistema, funciones de entrada, tests, tablas, interfaz y trampas; `tools/qa/mapa-agente.py` comprueba sus referencias en la CI y el pre-push.

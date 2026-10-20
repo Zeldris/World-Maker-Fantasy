@@ -16,6 +16,7 @@ import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
 import { nombreDeEncuentro, pluralDeEspecie } from './dynamicMode.js';
 import { sinComillasSueltas } from './accionCitada.js';
 import { aprovecharseDeLoAjeno } from './cronista/testigos.js';
+import { guardarSlugsDeCombate } from './combateDesde.js';
 
 /// Servicio de caza (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — extraído del
 /// núcleo de `POST /saves/:id/cazar/confirmar` (`cazar.ts`, todo lo que corre TRAS elegir
@@ -281,7 +282,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
     await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
     fraseAjena = zonePointId ? await cazaDeLoAjeno(tx, save.id, save.worldId, [zonePointId]) : null;
     const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text: fraseAjena ? `${text} ${fraseAjena}` : text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true, roll: cazaLimpia as unknown as Prisma.InputJsonValue } });
-    await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [npc.slug] } });
+    await guardarSlugsDeCombate(tx, save.id, [npc.slug]);
     // Grupos de fauna reales (Fase 2) — la caza limpia siempre enfrenta a UN único individuo
     // (nunca al grupo entero, ver comentario de cabecera de esta función); el punto del que salió
     // pierde exactamente ese individuo.
@@ -296,7 +297,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
   // Bug real (reconfirmado 2026-09-08, ver comentario original completo en `cazar.ts`) — se limpia
   // aquí, ya fuera de la transacción (la ventana de carrera de arriba ya cerró en cuanto esa
   // transacción hizo commit).
-  await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
+  await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [], combateDesde: null } });
 
   const sessionFacts = await loadSessionFacts(save.id);
   await appendSessionFacts(save.id, sessionFacts, [text]);

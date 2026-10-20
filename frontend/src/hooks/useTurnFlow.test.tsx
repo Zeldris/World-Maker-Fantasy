@@ -13,16 +13,24 @@ import type { BusyError, EndedGameError, TurnLockedError } from '../lib/api'
 /// level-up). El harness declara `useState` reales para el estado que GameView.tsx posee de
 /// verdad, mismo patrón que useCombatFlow.test.tsx.
 vi.mock('../lib/api', () => ({
+  BackendHttpError: class BackendHttpError extends Error {
+    httpStatus: number
+    constructor(httpStatus: number) {
+      super(`El backend respondió ${httpStatus}`)
+      this.httpStatus = httpStatus
+    }
+  },
   requestTurnClassify: vi.fn(),
   requestTurnNarrate: vi.fn(),
   getSave: vi.fn(),
 }))
 
-import { requestTurnClassify, requestTurnNarrate, getSave } from '../lib/api'
+import { BackendHttpError, requestTurnClassify, requestTurnNarrate, getSave } from '../lib/api'
 
 const mockClassify = vi.mocked(requestTurnClassify)
 const mockNarrate = vi.mocked(requestTurnNarrate)
 const mockGetSave = vi.mocked(getSave)
+const pollForResolutionMock = vi.fn()
 
 function baseProgression() {
   return { xpDelta: 0, newXp: 0, newLevel: 1, leveledUp: false, attributePointsGained: 0 }
@@ -114,7 +122,7 @@ function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unkn
     characterLog,
     composerRef,
     buildEntityBanner: () => undefined,
-    pollForResolution: vi.fn(),
+    pollForResolution: pollForResolutionMock,
     syncFromSave: vi.fn(),
     setCombatAwaitingDefense: vi.fn(),
     setInput: vi.fn(),
@@ -167,6 +175,7 @@ beforeEach(() => {
   mockClassify.mockReset()
   mockNarrate.mockReset()
   mockGetSave.mockReset()
+  pollForResolutionMock.mockReset()
 })
 
 describe('handleSubmit — guards', () => {
@@ -421,6 +430,35 @@ describe('handleSubmit — errores especiales', () => {
     expect(result.current.characterLog).toHaveLength(0)
   })
 
+  it('P229: un error HTTP de /turn/classify no cae al sondeo de reconexión: muestra el error y desbloquea', async () => {
+    mockClassify.mockRejectedValueOnce(new BackendHttpError(500))
+    const { result } = renderHook(() => useHarness())
+
+    await act(() => result.current.turn.handleSubmit('Exploro la zona.'))
+
+    expect(pollForResolutionMock).not.toHaveBeenCalled()
+    expect(result.current.characterLog.some((e) => e.text === 'El narrador no pudo procesar la acción. Inténtalo de nuevo.')).toBe(true)
+    expect(result.current.characterLog.some((e) => e.text.includes('500') || e.text.includes('backend'))).toBe(false)
+  })
+
+  it.each([502, 503, 504])('P229: un %i de proxy sí va al sondeo de reconexión', async (status) => {
+    mockClassify.mockRejectedValueOnce(new BackendHttpError(status))
+    const { result } = renderHook(() => useHarness())
+
+    await act(() => result.current.turn.handleSubmit('Exploro la zona.'))
+
+    expect(pollForResolutionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('P229: un corte de red real sí va al sondeo de reconexión', async () => {
+    mockClassify.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    const { result } = renderHook(() => useHarness())
+
+    await act(() => result.current.turn.handleSubmit('Exploro la zona.'))
+
+    expect(pollForResolutionMock).toHaveBeenCalledTimes(1)
+  })
+
   it('turnLocked: añade un aviso determinista, sin tocar busyUntil/endedAt', async () => {
     mockClassify.mockResolvedValueOnce(baseClassifyResponse())
     const lockedError: TurnLockedError = { status: 409, locked: true }
@@ -449,6 +487,24 @@ describe('handleSubmit — turno que abre un combate con intercambio', () => {
     const entrada = result.current.characterLog.find((e) => e.id === 'log-1')!
     expect(entrada.combatExchange).toBe(intercambio)
     expect(entrada.roll).toBeUndefined()
+  })
+
+  it('P232 (UX-12): el turno que abre combate NO marca la entrada con combate (el backend la guarda sin marca)', async () => {
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(
+      baseNarrateResponse({ combateIniciado: { npcs: [{ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [] }] } }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.turn.handleSubmit('Ataco al Orco.'))
+    expect(result.current.characterLog.find((e) => e.id === 'log-1')!.combate).toBeUndefined()
+  })
+
+  it('P232: un turno sin combate no marca combate', async () => {
+    mockClassify.mockResolvedValueOnce(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse() as never)
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.turn.handleSubmit('Miro.'))
+    expect(result.current.characterLog.find((e) => e.id === 'log-1')!.combate).toBeUndefined()
   })
 
   it('P55: los demás ataques que recibió van al diario tras la narración', async () => {

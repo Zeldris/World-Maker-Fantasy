@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avanzarViajeros, crearViajero } from './viajeros.js';
-import { descargarCaza, desolladeroDaAbasto, DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
+import { aplicarBajas, type Cazador, descargarCaza, desolladeroDaAbasto, DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
 
 /// CR-63 (63b): la partida caza de fondo al llegar, trae piezas que se estropean y el Desolladero las
 /// convierte en comida y materiales.
@@ -98,5 +98,15 @@ describe('partidas de caza (CR-63 63b)', () => {
     const n = await prisma.$transaction((tx) => descargarCaza(tx, { ...v, carga: { cuerdas: 2 }, miembros: [] }, 30));
     expect(n).toBe(0);
     expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'undefined' } } })).toBe(0);
+  });
+
+  it('P223 (revisión): un súbdito caído en combate se avisa con su causa, queda con suceso MUERTE_NPC y hastaMinutes', async () => {
+    const s = await prisma.subject.create({ data: { saveId, name: 'Caído del camino', role: 'cazador', notes: '', pueblo: 'orcos' } });
+    const cazador = { miembroId: 'm', subjectId: s.id, c: { id: s.id, nombre: s.name } } as unknown as Cazador;
+    await prisma.$transaction((tx) => aplicarBajas(tx, saveId, [cazador], new Map(), new Set([s.id]), 20, 'combate'));
+    const fila = await prisma.subject.findUniqueOrThrow({ where: { id: s.id } });
+    expect(fila).toMatchObject({ estado: 'MUERTO', hastaMinutes: 20 * 1440 });
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: 'Caído del camino ha muerto en combate.' } })).toBe(1);
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'MUERTE_NPC' } })).toBeGreaterThan(0);
   });
 });

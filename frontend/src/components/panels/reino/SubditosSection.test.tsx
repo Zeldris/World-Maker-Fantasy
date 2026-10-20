@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, fireEvent, cleanup, act } from '@testing-library/react'
+import { render, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
 
 vi.mock('../../../lib/api', () => ({
   crearPlantilla: vi.fn(),
@@ -172,5 +172,76 @@ describe('SubditosSection — llegadas (REI-119)', () => {
     )
     const lista = await findByLabelText('Requisitos para que llegue alguien')
     expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (0/2) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
+  })
+})
+
+describe('SubditosSection — P230 fallo de carga', () => {
+  beforeEach(() => {
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] })
+  })
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('si falla la carga avisa con Reintentar y al reintentar muestra los súbditos', async () => {
+    vi.mocked(getSubditos)
+      .mockRejectedValueOnce(new Error('500'))
+      .mockResolvedValue({ subditos: [], camas: { total: 3, companeros: 0, subditos: 0, libres: 3 } })
+    const { findByRole, findByText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('No se pudieron cargar los súbditos.')
+    await act(async () => {
+      fireEvent.click(await findByRole('button', { name: /Reintentar/ }))
+    })
+    expect(getSubditos).toHaveBeenCalledTimes(2)
+    expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
+  })
+
+  it('P236 — con la carga fallida no sale «Aún no vive nadie»; con la carga ok y vacía, sí', async () => {
+    vi.mocked(getSubditos).mockRejectedValueOnce(new Error('500'))
+    const props = { saveId: 's1', subjects: [], companions: [], inventory: [], almacenItems: [], plantillasEquipo: [], onRefreshSave: async () => {} }
+    const fallida = render(<SubditosSection {...props} />)
+    await fallida.findByRole('alert')
+    expect(fallida.queryByText(/Aún no vive nadie/)).toBeNull()
+    cleanup()
+    vi.mocked(getSubditos).mockResolvedValue({ subditos: [], camas: { total: 3, companeros: 0, subditos: 0, libres: 3 } })
+    const ok = render(<SubditosSection {...props} />)
+    expect(await ok.findByText(/Aún no vive nadie/)).toBeTruthy()
+  })
+
+  it('si la recarga automática (nuevo subjects) va bien tras un fallo, el aviso desaparece', async () => {
+    vi.mocked(getSubditos)
+      .mockRejectedValueOnce(new Error('500'))
+      .mockResolvedValue({ subditos: [], camas: { total: 3, companeros: 0, subditos: 0, libres: 3 } })
+    const props = { saveId: 's1', companions: [], inventory: [], almacenItems: [], plantillasEquipo: [], onRefreshSave: async () => {} }
+    const { findByRole, queryByRole, findByText, rerender } = render(<SubditosSection {...props} subjects={[]} />)
+    await findByRole('alert')
+    rerender(<SubditosSection {...props} subjects={[{ id: 'nuevo' } as never]} />)
+    expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
+    expect(queryByRole('alert')).toBeNull()
+  })
+
+  it('una carga correcta no borra el aviso de una acción fallida', async () => {
+    vi.mocked(getSubditos).mockResolvedValue({
+      subditos: [sub({ id: 'a' })], camas: { total: 4, companeros: 0, subditos: 1, libres: 3 },
+    })
+    vi.mocked(cambiarRolSubdito).mockRejectedValueOnce(new Error('500'))
+    const props = { saveId: 's1', companions: [], inventory: [], almacenItems: [], plantillasEquipo: [], onRefreshSave: async () => {} }
+    const { findByText, findByRole, getByRole, rerender } = render(<SubditosSection {...props} subjects={[]} />)
+    await findByText(/Camas: 1\/4/)
+    fireEvent.click(getByRole('button', { name: /^Rol de / }))
+    await act(async () => {
+      fireEvent.click(getByRole('option', { name: /Soldado/ }))
+    })
+    const texto = (await findByRole('alert')).textContent
+    expect(texto).toContain('No se pudo cambiar el rol.')
+    const llamadas = vi.mocked(getSubditos).mock.calls.length
+    rerender(<SubditosSection {...props} subjects={[{ id: 'nuevo' } as never]} />)
+    await waitFor(() => expect(vi.mocked(getSubditos).mock.calls.length).toBeGreaterThan(llamadas))
+    await act(async () => {})
+    expect(getByRole('alert').textContent).toBe(texto)
   })
 })

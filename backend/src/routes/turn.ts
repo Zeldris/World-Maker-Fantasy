@@ -533,7 +533,9 @@ async function resolveClassificationForTurn(params: {
 
     // P74 (QA-27): un descanso que el enfriamiento va a rechazar (turnResolution § restBlockedByCooldown)
     // no ocupa el tiempo que pedía: «Descanso ocho horas» con el descanso aún reciente dejaba a la
-    // jugadora ocupada 8 h mientras el narrador decía que no descansaba.
+    // jugadora ocupada 8 h mientras el narrador decía que no descansaba. P231: `computeDuration`
+    // respeta esta banda instantánea (no relee «tres días» del texto). Misma decisión que el turno
+    // (`hayLugar` = hay `currentLocationId`, turnResolution § restBlockedByCooldown).
     if (descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll, lastRestAtMinutes: params.lastRestAtMinutes ?? null, ahoraMinutos: fictionalMinutes })) {
       classification.banda = 'instantanea';
       classification.duracionEstimadaMinutos = 0;
