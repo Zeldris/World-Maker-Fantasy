@@ -121,6 +121,13 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 - `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
   arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.
+- En la Deck, Ollama se arranca con `flatpak-spawn --host bash -lic 'ollama serve'` (con `-lic`, para que cargue el
+  `~/.bashrc` con `OLLAMA_IGPU_ENABLE`, `OLLAMA_FLASH_ATTENTION` y `OLLAMA_KV_CACHE_TYPE`). Con `bash -c` va solo por
+  CPU (`logs/ollama.log`: «dropping integrated GPU»): turnos de 3-10 min, timeouts y casi todo narrado por el modelo
+  de respaldo, que parecen fallos del narrador y no lo son (2026-10-20).
+- Un escenario guardado en la nube trae los embeddings del lore del Ollama simulado: con el Ollama real, `npm run
+  reindex-lore` (en `backend/`, con la `DATABASE_URL` de `tarkor_juego`) antes de jugar; si no, el RAG devuelve trozos al
+  azar (P274).
 
 ## Fallos de las herramientas
 
