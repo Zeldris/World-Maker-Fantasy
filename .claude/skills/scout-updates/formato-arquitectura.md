@@ -24,7 +24,10 @@ banco · narrador: casos `docs/scout/banco/narrador.jsonl`, rúbrica `docs/scout
 ```
 
 - **Secciones**, por tipo, solo las que tenga el proyecto: `Modelos de IA`, `Dependencias`, `Runtimes`,
-  `Infraestructura y CI`, `Servicios externos`. Su título es el nombre del foco (`/scout-updates runtimes`).
+  `Infraestructura y CI`, `Servicios externos`, `Planificados`. Su título es el nombre del foco
+  (`/scout-updates runtimes`).
+- **`Planificados`**: componentes diseñados y sin implementar. El sello lleva los documentos de diseño, y la sección
+  dice qué restricciones les aplican si no son las generales (p. ej. corren con la aplicación cerrada).
 - **`Restricciones`** no lleva sello ni se contrasta: la escribe la usuaria (paso 0) y es el filtro del paso 4.
 - **Sello**, en la línea siguiente al título: `<!-- sello: AAAA-MM-DD · <commit corto> · ruta, ruta -->`. Las rutas
   son los archivos de donde sale la sección, relativas a la raíz. Al contrastar sin cambios, solo cambia la fecha; al

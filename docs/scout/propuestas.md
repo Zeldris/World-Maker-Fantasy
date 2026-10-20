@@ -19,11 +19,11 @@ borra. Las cuatro primeras son comparativas anteriores a la skill (decisión té
 | P-011 | 2026-10-20 | Ollama | sin fijar → ≥ 0.31.2 en la Deck (Adoptar, fuerte) | https://github.com/ollama/ollama/issues/14645 (2026-10-20) | propuesta |
 | P-012 | 2026-10-20 | prompts de imagen | Groq `llama-3.3-70b-versatile` (apagado) → `openai/gpt-oss-120b` (Adoptar, fuerte) | https://console.groq.com/docs/deprecations (2026-10-20) | propuesta |
 | P-013 | 2026-10-20 | prompts de imagen | Cerebras: tier gratuito → trial con tarjeta; al final de la rotación o retirar (Evaluar, fuerte) | https://inference-docs.cerebras.ai/support/rate-limits (2026-10-20) | propuesta |
-| P-014 | 2026-10-20 | prompts de imagen | Gemini `gemini-flash-latest` → `gemini-3.8-flash` (Probar, fuerte) | https://ai.google.dev/gemini-api/docs/models (2026-10-20) | propuesta |
+| P-014 | 2026-10-20 | prompts de imagen | Gemini `gemini-flash-latest` → `gemini-3.8-flash`, probado en vivo antes de fijar (Probar, fuerte) | https://ai.google.dev/gemini-api/docs/models (2026-10-20) | propuesta |
 | P-015 | 2026-10-20 | prompts de imagen | Cloudflare Llama 3.3 → `@cf/openai/gpt-oss-120b` (Probar, probable) | https://developers.cloudflare.com/workers-ai/platform/pricing/ (2026-10-20) | propuesta |
 | P-016 | 2026-10-20 | prompts de imagen | nuevo: OpenRouter `:free` (Evaluar, fuerte) | https://openrouter.ai/docs/api/reference/limits (2026-10-20) | propuesta |
-| P-017 | 2026-10-20 | dependencias | parches de seguridad en lockfiles: fastify, @fastify/static, undici, react-router, vite (Adoptar, fuerte) | `npm audit` (2026-10-20) | propuesta |
-| P-018 | 2026-10-20 | CI | checkout y setup-node v4 → v7; runner fijado `ubuntu-24.04` (Adoptar, fuerte) | https://github.com/actions/runner-images/issues/14748 (2026-10-20) | propuesta |
-| P-019 | 2026-10-20 | Prisma | 6.19.3 → 7.10.1 (Evaluar, fuerte) | https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-to-prisma-7 (2026-10-20) | propuesta |
+| P-017 | 2026-10-20 | dependencias | parches de seguridad en lockfiles: fastify, @fastify/static, undici, react-router, vite y transitivas; Prisma sin parche en 6.x (P-019 u `overrides`) (Adoptar, fuerte) | `npm audit` (2026-10-20) | propuesta |
+| P-018 | 2026-10-20 | CI | checkout y setup-node v4 → v7, no urgente; runner fijado `ubuntu-24.04` (Adoptar, fuerte) | https://github.com/actions/runner-images/issues/14748 (2026-10-20) | propuesta |
+| P-019 | 2026-10-20 | Prisma | 6.19.3 → 7.10.1, también por seguridad (Probar, fuerte) | https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-to-prisma-7 (2026-10-20) | propuesta |
 | P-020 | 2026-10-20 | Node.js | 22 → 26 LTS antes de 2027-04 (Evaluar, fuerte) | https://endoflife.date/api/v1/products/nodejs/ (2026-10-20) | propuesta |
 | P-021 | 2026-10-20 | dependencias | saltos mayores en espera: TS 7, Vitest 5, react-router 8, @fastify/cors 11, dotenv 18; oxlint unificado (Evaluar, fuerte) | `npm view` (2026-10-20) | propuesta |

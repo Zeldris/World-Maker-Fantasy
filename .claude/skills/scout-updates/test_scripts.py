@@ -96,6 +96,14 @@ class ContrastarTest(unittest.TestCase):
         self.assertEqual(inf['cambiada'][0]['archivos'], ['.env.example'])
         self.assertIn({'seccion': 'Otra', 'motivo': 'commit deadbeef desconocido'}, inf['sin sello'])
 
+    def test_informe_sin_cubrir(self):
+        arq = ('## Restricciones\n\n| Componente | x |\n|---|---|\n| memoria | 6 GB |\n\n'
+               '## Modelos de IA\n\n| Componente | Versión |\n|---|---|\n| narrador | a |\n| `cronista` | b |\n')
+        informe = '# I\n\n## Cobertura\n\n| Componente | Resultado |\n|---|---|\n| Narrador | P-001 |\n'
+        self.assertEqual(contrastar.sin_cubrir(arq, informe), ['cronista'])
+        self.assertEqual(contrastar.sin_cubrir(arq, informe + '| cronista | sin novedades |\n'), [])
+        self.assertEqual(contrastar.sin_cubrir(arq, '| narrador | fuera de Cobertura |\n'), ['narrador', 'cronista'])
+
     def test_codigo_de_salida(self):
         with open(self.arq, 'w') as f:
             f.write('## Runtimes\n<!-- sello: 2026-01-10 · %s · .nvmrc, package.json, .env.example -->\n' % self.commit)

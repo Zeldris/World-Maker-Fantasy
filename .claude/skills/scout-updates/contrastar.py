@@ -2,7 +2,7 @@
 """Contrasta `arquitectura.md` con el proyecto para `scout-updates`. Solo biblioteca estándar.
 
 Uso:
-  contrastar.py <arquitectura.md> [--raiz <raíz>] [--json]
+  contrastar.py <arquitectura.md> [--raiz <raíz>] [--json] [--informe <informe.md>]
 
 Por cada sección `## ...` con sello `<!-- sello: AAAA-MM-DD · <commit> · ruta, ruta -->` (formato-arquitectura.md):
   igual       ningún archivo del sello cambió desde su commit (`git diff --name-only <commit>`, sin commitear incluido): basta con
@@ -10,6 +10,8 @@ Por cada sección `## ...` con sello `<!-- sello: AAAA-MM-DD · <commit> · ruta
   cambiada    alguno cambió o desapareció: se relee esa sección (lista los archivos)
   sin sello   sección sin sello, o con un commit que git no conoce: se relee
 Además, `sin cuenta`: manifiestos de `inventario.py` que no figuran en ningún sello (componentes nuevos).
+Con `--informe`, además `sin cubrir`: componentes de arquitectura.md (primera columna de sus tablas) que no tienen
+fila en la tabla `## Cobertura` del informe (paso 6).
 Las secciones sin componentes (p. ej. Restricciones) no llevan sello y no se contrastan.
 Sale con código 1 si hay algo que releer, 0 si todo está igual.
 """
@@ -37,6 +39,33 @@ def secciones(texto):
         else:
             salida.append((titulo, None, None, []))
     return salida
+
+
+def _primera_columna(cuerpo):
+    """Primera celda de cada fila de tabla, sin cabecera ni separador, normalizada."""
+    celdas = []
+    for linea in cuerpo.splitlines():
+        if not linea.startswith('|') or re.match(r'^\|\s*:?-', linea):
+            continue
+        celda = linea.split('|')[1].replace('`', '').strip().lower()
+        if celda and celda != 'componente':
+            celdas.append(celda)
+    return celdas
+
+
+def sin_cubrir(texto_arq, texto_informe):
+    """Componentes de arquitectura.md sin fila en `## Cobertura` del informe, en orden."""
+    partes = RE_SECCION.split(texto_arq)
+    componentes = []
+    for titulo, cuerpo in zip(partes[1::2], partes[2::2]):
+        if titulo.strip().lower() not in SIN_CONTRASTE:
+            componentes += _primera_columna(cuerpo)
+    partes = RE_SECCION.split(texto_informe)
+    cubiertos = set()
+    for titulo, cuerpo in zip(partes[1::2], partes[2::2]):
+        if titulo.strip().lower() == 'cobertura':
+            cubiertos |= set(_primera_columna(cuerpo))
+    return [c for c in componentes if c not in cubiertos]
 
 
 def git(raiz, *args):
@@ -82,8 +111,12 @@ def main(argv=None):
     ap.add_argument('arquitectura')
     ap.add_argument('--raiz', default='.')
     ap.add_argument('--json', action='store_true')
+    ap.add_argument('--informe', help='informe del paso 6: comprueba su tabla de cobertura')
     a = ap.parse_args(argv)
     inf = contrastar(a.arquitectura, a.raiz)
+    if a.informe:
+        with open(a.arquitectura, encoding='utf-8') as f, open(a.informe, encoding='utf-8') as g:
+            inf['sin cubrir'] = sin_cubrir(f.read(), g.read())
     if a.json:
         print(json.dumps(inf, ensure_ascii=False, indent=1))
     else:
@@ -95,7 +128,9 @@ def main(argv=None):
             print('sin sello  %s%s' % (s['seccion'], ' (%s)' % s['motivo'] if s.get('motivo') else ''))
         for m in inf['sin cuenta']:
             print('sin cuenta %s' % m)
-    return 1 if inf['cambiada'] or inf['sin sello'] or inf['sin cuenta'] else 0
+        for c in inf.get('sin cubrir', []):
+            print('sin cubrir %s' % c)
+    return 1 if inf['cambiada'] or inf['sin sello'] or inf['sin cuenta'] or inf.get('sin cubrir') else 0
 
 
 if __name__ == '__main__':

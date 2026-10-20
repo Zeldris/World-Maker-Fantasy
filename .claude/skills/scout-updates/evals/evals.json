@@ -9,6 +9,7 @@
       "Crea arquitectura.md con secciones por tipo (modelos de IA, dependencias, runtimes, infraestructura y CI) y un sello de fecha, commit y archivos fuente por sección",
       "Recoge los modelos de .env.example (gpt-3.5-turbo, text-embedding-ada-002) en la sección de modelos de IA",
       "Pregunta a la usuaria las restricciones (hardware mínimo, local o nube, idioma) antes de buscar, en vez de inventarlas",
+      "Pregunta por componentes planificados sin implementar y busca servicios sin manifiesto (hosts de las URL de .env.example)",
       "No menciona Tarkor, Ollama, la Steam Deck ni ningún archivo de World-Maker-Fantasy",
       "Da una estimación de coste y espera confirmación antes de lanzar la búsqueda"
     ]
@@ -23,7 +24,8 @@
       "Limita la búsqueda a la sección runtimes",
       "Señala Node 16 como fuera de soporte citando endoflife.date (o la fuente oficial de Node) con fecha de consulta",
       "Propone la migración con anillo de Tech Radar y fuerza de la evidencia, nombrando todos los sitios donde se fija la versión (.nvmrc, engines, Dockerfile, ci.yml)",
-      "Añade la propuesta a propuestas.md con estado 'propuesta' sin tocar ningún otro archivo del proyecto"
+      "Añade la propuesta a propuestas.md con estado 'propuesta' sin tocar ningún otro archivo del proyecto",
+      "El informe abre con una tabla ## Cobertura con una fila por componente del foco, cada tarjeta dice cómo se comprueba, y contrastar.py --informe sale con 0"
     ]
   },
   {

@@ -50,22 +50,25 @@ variadas, `tarea` = `narrar`). El SYSTEM está en `Modelfile.llama31`: los candi
 en el caso (`ollama show --system tarkor-narrador-llama31`). Rúbrica: `docs/scout/banco/narrador-rubrica.md`.
 
 ## Servicios externos
-<!-- sello: 2026-10-20 · b945f6d · backend/.env.example, backend/src/config/env.ts -->
+<!-- sello: 2026-10-20 · bda4496b · backend/.env.example, backend/src/config/env.ts, backend/prisma/schema.prisma -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | prompts de imagen | rotación con failover: Cerebras `gpt-oss-120b`, Mistral `mistral-large-latest`, SambaNova `DeepSeek-V3.1`, Cloudflare `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, Gemini `gemini-flash-latest`, Groq `llama-3.3-70b-versatile` | prompts de imagen, solo tiers gratuitos; Ollama como último recurso | `env.ts` (`*_MODEL`, `*_API_KEY`), `lib/aiProviders/orchestrator.ts` |
 | profesor en vivo (DPO) | la misma rotación cloud | pares elegido/rechazado jugando, apagado por defecto | `env.ts` `LIVE_TEACHER_CAPTURE_*` |
+| Supabase (alternativa, sin uso) | Postgres alojado con pooler (6543 transacción, 5432 sesión) | solo para jugar desde varios dispositivos; por defecto, Postgres local | `.env.example` (comentado), `schema.prisma` `directUrl` |
 
 ## Runtimes
-<!-- sello: 2026-10-20 · b945f6d · .github/workflows/ci.yml, backend/package.json, frontend/package.json -->
+<!-- sello: 2026-10-20 · bda4496b · .github/workflows/ci.yml, backend/package.json, frontend/package.json, backend/.env.example, backend/prisma/schema.prisma, docs/arquitectura/15-instalacion.md -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | Node.js | 22 | backend, frontend y CI | `ci.yml` (`node-version`); sin `.nvmrc` ni `engines` |
 | TypeScript | `~6.0.2` | backend y frontend | `backend/package.json`, `frontend/package.json` |
 | Ollama | sin fijar en el repositorio | motor de IA local | instalado en la Deck |
-| PostgreSQL | sin fijar en el repositorio | base de datos (Prisma) | `DATABASE_URL` |
+| PostgreSQL | 16, imagen `pgvector/pgvector:pg16` (contenedor `tarkor-postgres`, Podman) | base de datos (Prisma); CI con Postgres 16 | `DATABASE_URL`, `15-instalacion.md`, `ci.yml` |
+| pgvector | la de la imagen; `CREATE EXTENSION vector` a mano (Prisma no la gestiona) | `vector(768)` del RAG de lore | `schema.prisma`, `15-instalacion.md` |
+| SteamOS (Deck) | raíz de solo lectura; lo compilado va en `distrobox`; GPU por Vulkan (RADV) | plataforma del hardware mínimo | `15-instalacion.md` |
 
 ## Dependencias
 <!-- sello: 2026-10-20 · b945f6d · backend/package.json, frontend/package.json, tools/playwright-e2e/package.json -->
@@ -90,3 +93,18 @@ El resto: 27 directas en total, con sus lockfiles.
 |---|---|---|---|
 | `actions/checkout`, `actions/setup-node` | v4 | CI | `ci.yml` |
 | runners | `ubuntu-24.04` y `ubuntu-latest` (mezclados) | CI | `ci.yml` |
+
+## Planificados
+<!-- sello: 2026-10-20 · bda4496b · docs/arquitectura/reutilizables/01-generacion-imagenes-local.md, docs/arquitectura/reutilizables/02-voces-y-sonidos-locales.md, docs/arquitectura/reutilizables/03-agente-desarrollo-local.md, docs/arquitectura/20-instalador-distribuible.md -->
+
+Diseñados y sin implementar: fuera del roadmap hasta que se implementen (decisión del 2026-10-13,
+[README](../arquitectura/reutilizables/README.md)). Se buscan como el resto: sale antes de implementarlos lo que ya
+haya cambiado. **Sus restricciones están por confirmar**: corren sin el juego abierto y fuera de partida, así que el
+tope de memoria del narrador no les aplica tal cual.
+
+| Componente | Versión | Uso | Dónde se configura |
+|---|---|---|---|
+| generador de imágenes | FLUX.2 [klein] 4B (Apache 2.0; el 9B es no comercial) en `stable-diffusion.cpp` con Vulkan, GGUF de `leejet`, codificador Qwen3-4B; ~7 GB en disco; Colab de respaldo | retratos y escenas, con el juego cerrado | `01-generacion-imagenes-local.md` |
+| voces | `qwentts.cpp` (MIT) con Qwen3-TTS (Apache 2.0): VoiceDesign 1.7B para diseñar, Base para producir; CPU o Vulkan | voces por raza | `02-voces-y-sonidos-locales.md` |
+| agente de desarrollo local | Aider con `qwen3:14b` en Ollama (Vulkan) en la Deck; Devstral Small 2 (24B, Apache 2.0) solo en un PC de 24 GB | programar sin coste recurrente, con el stack parado | `03-agente-desarrollo-local.md` |
+| instalador | Tauri, backend Node como sidecar y Postgres portátil empaquetado | distribuir el juego | `20-instalador-distribuible.md` |
