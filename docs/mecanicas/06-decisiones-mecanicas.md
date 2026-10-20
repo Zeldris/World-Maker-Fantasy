@@ -91,7 +91,7 @@ historial. Desfase de documentación arrastrado desde la auditoría de `docs/arc
 1. ~~Añadir el campo de condición física~~ — **hecho**, `Save.condicionFisica` (enum `ILESO→HERIDO→GRAVE→CONVALECIENTE→MUERTO`), junto con todo el sistema de combate/muerte/descanso de [14-combate-y-muerte.md](14-combate-y-muerte.md).
 2. ~~Construir el servicio de tiradas~~ — hecho, `backend/src/services/dice.ts`.
 3. ~~Construir la orquestación de turno~~ — hecho, `backend/src/routes/turn.ts` + `backend/src/services/turnResolution.ts` (clasificar → tirar → narrar, dividido en `/turn/classify` + `/turn/narrate` desde `docs/mecanicas/08-acciones-por-tiempo.md`).
-4. ~~Diseñar los prompts del Narrador~~ — hecho, `backend/src/services/narrador.ts` + `backend/Modelfile`.
+4. ~~Diseñar los prompts del Narrador~~ — hecho, `backend/src/services/narrador.ts` + `backend/Modelfile.llama31`.
 5. **Benchmark real** de latencia por turno con las dos llamadas al modelo (decisión 2), para confirmar que es jugable en este hardware — sigue sin medirse formalmente, perf, no bloqueante.
 6. ~~Asignar atributos numéricos~~ — **hecho**, ver [rpgtarkor/personajes.md](../rpgtarkor/personajes/personajes.md).
 7. ~~Sustituir el mundo y personajes placeholder~~ ("Valdreth" + Kaelen/Sylas/Ithraë/Mirren) — **hecho**, `frontend/src/data/mock.ts` usa Helek Sirik y sus personajes desde hace tiempo.

@@ -11,8 +11,9 @@ sección (las de formato-arquitectura.md):
   dependencias    package.json (dependencies/devDependencies), requirements*.txt, pyproject.toml, go.mod,
                   Cargo.toml; con su lockfile si lo hay
   infraestructura .github/workflows (`uses:` y `runs-on:`), docker-compose/compose (`image:`)
-  modelos de IA   variables de .env.example/.env.sample y de código de config cuyo nombre lleva MODEL, Modelfile
-                  `FROM`; con --ollama, los modelos instalados (/api/tags)
+  modelos de IA   variables de .env.example/.env.sample y de código de config cuyo nombre lleva MODEL, Modelfile y
+                  *.Modelfile `FROM`, agentes de código (opencode.json: `model` y `agent.*.model`; sus `plugin`, en
+                  dependencias); con --ollama, los modelos instalados (/api/tags)
 Cada componente lleva el archivo de donde sale (varios, separados por coma, si se repite). Se excluye .claude/. No resuelve versiones ni consulta la red (salvo --ollama).
 """
 import argparse, json, os, re, subprocess, sys, urllib.request
@@ -163,7 +164,21 @@ def inventariar(raiz, lista=None, excluir=EXCLUIR):
             manifiesto(ruta)
             for var, valor in RE_MODELO_ENV.findall(leer(raiz, ruta)):
                 inv['modelos de IA'].append(comp(valor, '-', ruta, var))
-        elif base.startswith('Modelfile'):
+        elif base in ('opencode.json', 'opencode.jsonc'):
+            manifiesto(ruta)
+            try:
+                cfg = json.loads(re.sub(r'^\s*//.*$', '', leer(raiz, ruta), flags=re.M))
+            except ValueError:
+                cfg = {}
+            if cfg.get('model'):
+                inv['modelos de IA'].append(comp(cfg['model'], '-', ruta, 'agente de código'))
+            for nombre, agente in (cfg.get('agent') or {}).items():
+                if isinstance(agente, dict) and agente.get('model'):
+                    inv['modelos de IA'].append(comp(agente['model'], '-', ruta, f'agente {nombre}'))
+            for plugin in cfg.get('plugin') or []:
+                n, _, v = plugin.rpartition('@') if plugin.rfind('@') > 0 else (plugin, '', '')
+                inv['dependencias'].append(comp(n, v or '-', ruta, 'plugin del agente'))
+        elif base.startswith('Modelfile') or base.endswith('.Modelfile'):
             manifiesto(ruta)
             m = re.search(r'^\s*FROM\s+(\S+)', leer(raiz, ruta), re.M | re.I)
             if m:

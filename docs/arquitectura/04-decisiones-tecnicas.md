@@ -479,8 +479,9 @@ Playwright contra la partida de TEST):**
     segunda prueba alucinó una justificación falsa ("el texto menciona una duración explícita")
     para una acción que no menciona ninguna duración. El 1.5B actual no cometió ninguno de estos
     fallos en las mismas 2 pruebas. **No se aplica** — modelo de prueba eliminado
-    (`ollama rm tarkor-cronista-qwen3`), `Modelfile.qwen3cronista` se deja en el repo como registro
-    del experimento (mismo patrón que `Modelfile.nemo`/`Modelfile.celeste`).
+    (`ollama rm tarkor-cronista-qwen3`), `Modelfile.qwen3cronista` se dejó en el repo como registro
+    del experimento (mismo patrón que `Modelfile.nemo`/`Modelfile.celeste`). Los tres, con `Modelfile` (qwen2.5:7b) y
+    `Modelfile.fast`, se borraron el 2026-10-20 para que no hagan ruido (`QA-176`); siguen en el historial de git.
 
 **Orden recomendado de la sesión de pruebas**: B1 primero (verifica que A1 tiene sentido aplicarlo
 sobre una base que funciona) → A1-A4 aplicados y compilados → B1 remedido tras A1 → B2 → B3 → B4 →

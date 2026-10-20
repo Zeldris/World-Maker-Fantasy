@@ -39,7 +39,8 @@ Confirmadas por la usuaria el 2026-10-20.
 | cronista | `qwen2.5:1.5b-instruct` (986 MB) | clasificar la acción y resumir capítulos; `keepAlive` 0 para no convivir con el narrador | `env.ts` `OLLAMA_MODEL_CRONISTA`, `.env.example` |
 | sugerencias | `qwen3.5:4b` (`think: false`) | sugerir acciones a la jugadora | `env.ts` `OLLAMA_MODEL_SUGERENCIAS`, `.env.example` |
 | embeddings | `nomic-embed-text` | RAG del lore (`retrieval.ts`) | `env.ts` `OLLAMA_MODEL_EMBEDDINGS` |
-| narradores alternativos (sin uso) | `Modelfile` (`qwen2.5:7b`), `Modelfile.fast` (`qwen2.5:3b`), `Modelfile.nemo`, `Modelfile.celeste`, `Modelfile.finetuned`, `Modelfile.qwen3cronista` (`qwen3:1.7b`) | comparativas anteriores, ver `propuestas.md` | `backend/Modelfile*` |
+| narrador fine-tuneado (sin uso) | `Modelfile.finetuned` (base: un `.gguf` propio aún sin exportar) | plan de fine-tune y DPO ([diseño](../ia/fine-tuning-ia-local.md)); las comparativas descartadas se borraron el 2026-10-20, ver `propuestas.md` | `backend/Modelfile.finetuned` |
+| propuestas de lore (OpenCode) | `qwen35-9b-32k` (base `qwen3.5:9b`, `num_ctx` 32768, temperatura 0,15, salida 4096), plugin `opencode-ollama-toolcall-proxy` (sin versión fijada) | agente `narrador-lore`: solo lee el canon (`docs/canon-opencode/`) y propone lore en `docs/borradores-opencode/`, fuera del juego | `opencode.json`, `modelfiles/qwen35-9b-32k.Modelfile`, `.opencode/prompts/narrador-lore.txt` |
 
 Diagnóstico de partida (2026-10-20, [diseño](../ia/skill-scout-updates.md)): el turno del narrador tarda unos 48 s,
 de los que unos 36 s son prefill de un prompt de unos 6.300 tokens. Recortar el prompt es de `opt-ai`; aquí se

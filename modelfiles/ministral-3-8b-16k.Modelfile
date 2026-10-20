@@ -1,7 +1,0 @@
-FROM ministral-3:8b
-
-PARAMETER num_ctx 16384
-PARAMETER temperature 0.15
-PARAMETER num_predict 4096
-PARAMETER num_batch 256
-PARAMETER num_thread 6

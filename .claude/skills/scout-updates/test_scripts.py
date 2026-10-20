@@ -41,7 +41,17 @@ class InventarioTest(unittest.TestCase):
             f.write('[package]\nname = "x"\n\n[dependencies]\nserde = "1.0"\ntokio = { version = "1", features = ["full"] }\n')
         with open(os.path.join(d, 'pyproject.toml'), 'w') as f:
             f.write('[project]\nrequires-python = ">=3.9"\ndependencies = ["requests>=2", "rich"]\n')
+        os.makedirs(os.path.join(d, 'modelfiles'))
+        with open(os.path.join(d, 'modelfiles', 'q-32k.Modelfile'), 'w') as f:
+            f.write('FROM base-b\n')
+        with open(os.path.join(d, 'opencode.json'), 'w') as f:
+            f.write('{"plugin": ["p-uno", "@org/p-dos@1.2"], "agent": {"lore": {"model": "ollama/q-32k"}}}')
         inv = inventario.inventariar(d)
+        otros = {(c['nombre'], c['uso']) for c in inv['modelos de IA']} - {('modelo-a', 'LLM_MODEL')}
+        self.assertEqual(otros, {('base-b', 'base del Modelfile'), ('ollama/q-32k', 'agente lore')})
+        self.assertIn(('@org/p-dos', '1.2'), {(c['nombre'], c['version']) for c in inv['dependencias']})
+        inv['modelos de IA'] = [c for c in inv['modelos de IA'] if c['nombre'] == 'modelo-a']
+        inv['dependencias'] = [c for c in inv['dependencias'] if c['origen'] != 'opencode.json']
         self.assertEqual(inv['modelos de IA'],
                          [{'nombre': 'modelo-a', 'version': '-', 'origen': '.env.example, src/config/env.ts', 'uso': 'LLM_MODEL'}])
         deps = {(c['nombre'], c['version']) for c in inv['dependencias']}
