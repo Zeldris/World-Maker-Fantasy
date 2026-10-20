@@ -41,7 +41,7 @@ describe('registro opt-ai en ollamaGenerate', () => {
       operation: 'text_completion',
       task: 'clasificar',
       model: 'm',
-      durationMs: 3000,
+      durationMs: expect.any(Number),
       loadMs: 1000,
       prefillMs: 500,
       decodeMs: 1500,
@@ -49,6 +49,70 @@ describe('registro opt-ai en ollamaGenerate', () => {
       outputTokens: 20,
       truncated: true,
     });
+    vi.unstubAllGlobals();
+    vi.doUnmock('./iaRegistro.js');
+  });
+});
+
+function streamDe(lineas: string[]) {
+  const enc = new TextEncoder();
+  let i = 0;
+  return {
+    ok: true,
+    body: {
+      getReader: () => ({
+        read: async () => (i < lineas.length ? { done: false, value: enc.encode(lineas[i++] + '\n') } : { done: true, value: undefined }),
+      }),
+    },
+  };
+}
+
+async function cargar() {
+  vi.resetModules();
+  const registrarLlamada = vi.fn();
+  vi.doMock('./iaRegistro.js', async (orig) => ({ ...(await orig<typeof import('./iaRegistro.js')>()), registrarLlamada }));
+  const mod = await import('./ollama.js');
+  return { registrarLlamada, ...mod };
+}
+
+describe('registro opt-ai en ollamaGenerateStream', () => {
+  it('una línea con error lanza y se registra como error', async () => {
+    const { registrarLlamada, ollamaGenerateStream } = await cargar();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(streamDe([JSON.stringify({ response: 'ho' }), JSON.stringify({ error: 'modelo roto' })])));
+    await expect(ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {})).rejects.toThrow('modelo roto');
+    expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ finishReason: 'error', error: 'modelo roto' });
+    vi.unstubAllGlobals();
+    vi.doUnmock('./iaRegistro.js');
+  });
+
+  it('un stream sin done:true se registra como «stream incompleto»', async () => {
+    const { registrarLlamada, ollamaGenerateStream } = await cargar();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(streamDe([JSON.stringify({ response: 'hola' })])));
+    const r = await ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {});
+    expect(r.text).toBe('hola');
+    expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ finishReason: 'error', error: 'stream incompleto' });
+    vi.unstubAllGlobals();
+    vi.doUnmock('./iaRegistro.js');
+  });
+
+  it('un stream completo no suma undefined y no registra error', async () => {
+    const { registrarLlamada, ollamaGenerateStream } = await cargar();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(streamDe([JSON.stringify({ response: 'a' }), JSON.stringify({ done: true, done_reason: 'stop' })])));
+    const r = await ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {});
+    expect(r.text).toBe('a');
+    expect(registrarLlamada.mock.calls[0][0].error).toBeUndefined();
+    vi.unstubAllGlobals();
+    vi.doUnmock('./iaRegistro.js');
+  });
+});
+
+describe('timeout en ollamaGenerate', () => {
+  it('app.error lleva el mensaje traducido, no el del AbortError', async () => {
+    const { registrarLlamada, ollamaGenerate } = await cargar();
+    const abort = Object.assign(new Error('This operation was aborted'), { name: 'AbortError' });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
+    await expect(ollamaGenerate({ model: 'm', prompt: 'p', timeoutMs: 50 })).rejects.toThrow(/no respondió en 50ms/);
+    expect(registrarLlamada.mock.calls[0][0].error).toMatch(/no respondió en 50ms/);
     vi.unstubAllGlobals();
     vi.doUnmock('./iaRegistro.js');
   });

@@ -22,7 +22,7 @@ export async function embed(text: string): Promise<number[]> {
         inputTokens: raw?.prompt_eval_count,
         task: 'embedding',
         keepAlive: env.ollamaKeepAlive,
-        durationMs: nsToMs(raw?.total_duration) ?? Date.now() - inicio,
+        durationMs: Date.now() - inicio,
         loadMs: nsToMs(raw?.load_duration),
         finishReason: error ? 'error' : undefined,
         error,
@@ -52,11 +52,14 @@ export async function embed(text: string): Promise<number[]> {
       registrar(raw);
       return raw.embeddings[0];
     } catch (err) {
-      registrar(undefined, err instanceof Error ? err.message : String(err));
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error('Ollama (embeddings) no respondió en 30s — probable cuelgue.');
-      }
-      throw err;
+      const traducido =
+        err instanceof Error && err.name === 'AbortError'
+          ? new Error('Ollama (embeddings) no respondió en 30s — probable cuelgue.')
+          : err instanceof Error
+            ? err
+            : new Error(String(err));
+      registrar(undefined, traducido.message);
+      throw traducido;
     } finally {
       clearTimeout(timer);
     }

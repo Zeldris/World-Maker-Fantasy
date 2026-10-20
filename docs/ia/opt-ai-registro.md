@@ -17,14 +17,14 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `gen_ai.response.finish_reason` | texto | `stop`, `length`, `error`… |
 | `app.task` | texto | Tarea del proyecto (en Tarkor: `narrar`, `clasificar`, `sugerir`, `cronica`, `resumen`, `embedding`, `rag`…) |
 | `app.machine_profile` | texto | Perfil de máquina (`IA_PERFIL`; en Tarkor `deck`, `cpu`, `gpu8`, `gpu12`; sin variable, `desconocido`) |
-| `app.num_ctx` | entero | Contexto pedido |
+| `app.num_ctx` | entero | Contexto pedido (solo sale si la llamada lo pasa) |
 | `app.keep_alive` | texto | Tiempo que el modelo sigue cargado |
 | `app.duration_ms` | número | Total de la llamada, medido por el cliente |
 | `app.load_ms` | número | Carga del modelo (>0 = carga en frío) |
 | `app.prefill_ms` | número | Lectura del prompt |
 | `app.decode_ms` | número | Generación |
 | `app.ttft_ms` | número | Primera palabra (solo en streaming) |
-| `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` (el prompt se recortó) |
+| `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` (el prompt se recortó). Aproximado: con la caché del prefijo, `prompt_eval_count` solo cuenta los tokens nuevos |
 | `app.error` | texto | Mensaje si la llamada falló |
 | `app.rag.query` | texto | Consulta del RAG (solo `retrieval`) |
 | `app.rag.k` | entero | Trozos pedidos |

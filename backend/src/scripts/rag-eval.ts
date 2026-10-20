@@ -20,6 +20,10 @@ function argumento(nombre: string): string | undefined {
 
 const rutaCasos = argumento('--casos') ?? fileURLToPath(new URL('../../ia/rag-casos.jsonl', import.meta.url));
 const k = Number(argumento('--k') ?? 5);
+if (!Number.isInteger(k) || k <= 0) {
+  console.error(`--k debe ser un entero mayor que 0 (recibido: ${argumento('--k')})`);
+  process.exit(2);
+}
 const comoJson = process.argv.includes('--json');
 
 const casos: CasoRag[] = readFileSync(rutaCasos, 'utf8')
@@ -33,13 +37,17 @@ const { retrieveLore } = await import('../services/retrieval.js');
 const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
 
 const resultados: ResultadoCaso[] = [];
-for (const caso of casos) {
-  const trozos = await retrieveLore(caso.pregunta, world.id, k);
-  const puesto = puestoDelPrimerEsperado(
-    trozos.map((t) => t.title),
-    caso.esperados,
-  );
-  resultados.push({ caso, puesto, devueltos: trozos.map((t) => t.title) });
+try {
+  for (const caso of casos) {
+    const trozos = await retrieveLore(caso.pregunta, world.id, k);
+    const puesto = puestoDelPrimerEsperado(
+      trozos.map((t) => t.title),
+      caso.esperados,
+    );
+    resultados.push({ caso, puesto, devueltos: trozos.map((t) => t.title) });
+  }
+} finally {
+  await prisma.$disconnect();
 }
 
 const resumen = resumirCasos(resultados, k);
@@ -56,5 +64,4 @@ if (comoJson) {
   for (const id of resumen.fallanObligatorios) console.log(`  FALLA ${id}`);
 }
 
-await prisma.$disconnect();
 process.exit(resumen.fallanObligatorios.length > 0 ? 1 : 0);
