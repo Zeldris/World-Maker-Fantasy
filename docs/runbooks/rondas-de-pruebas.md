@@ -128,3 +128,10 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
 - Con un encuentro hostil que corta el paso, «Moverte por la zona» queda deshabilitado y `puntos.js` y `mover.js` fallan
   por timeout: resolver antes el encuentro.
 - El Ollama simulado nunca devuelve `combateIniciado`: lo que pide un combate abierto desde texto libre no se prueba con él.
+- Tras una migración nueva, el cliente de Prisma puede quedar viejo: el primer turno da «Error narrando el turno» (`Unknown
+  field` en `logs/backend.log`). Remedio: `npx prisma generate` en `backend/` y volver a lanzar `arrancar-juego.sh`
+  (ronda P232, 2026-10-20).
+- Con Ollama real (Deck, por CPU) cada turno tarda 3-6 min: `combate.js` da «sigue desactivada tras 20 s» mientras
+  giran los dados; esperar a que el HUD deje de decir «El narrador escribe».
+- En la Deck no hay `psql` fuera del contenedor `tarkor-postgres`: envoltorios de `psql`, `pg_restore` y `pg_dump` con
+  `podman exec -i` en `logs/bin/` (ignorada por git), en el `PATH` de `flatpak-spawn --host bash -lic '…'`.
