@@ -115,7 +115,7 @@ def inventariar(raiz, lista=None, excluir=EXCLUIR):
         elif re.match(r'requirements[^/]*\.txt$', base):
             manifiesto(ruta)
             for l in leer(raiz, ruta).splitlines():
-                m = re.match(r'\s*([A-Za-z0-9_.\-\[\]]+)\s*([=<>~!]=?\s*[^\s;#]+)?', l)
+                m = re.match(r'\s*([A-Za-z0-9_.\-]+(?:\[[^\]]*\])?)\s*([=<>~!]=?\s*[^\s;#]+)?', l)
                 if m and not l.strip().startswith(('#', '-')):
                     inv['dependencias'].append(comp(m.group(1), (m.group(2) or '').replace(' ', '') or '*', ruta))
         elif base == 'pyproject.toml':
@@ -127,7 +127,7 @@ def inventariar(raiz, lista=None, excluir=EXCLUIR):
             # los corchetes de los extras (`pkg[extra]`) van entre comillas: no cierran la lista
             bloque = re.search(r'^dependencies\s*=\s*\[((?:"[^"]*"|\'[^\']*\'|[^\]"\'])*)\]', texto, re.M)
             for d in re.findall(r'["\']([^"\']+)["\']', bloque.group(1) if bloque else ''):
-                m = re.match(r'\s*([A-Za-z0-9_.\-\[\]]+)\s*(.*)', d)
+                m = re.match(r'\s*([A-Za-z0-9_.\-]+(?:\[[^\]]*\])?)\s*(.*)', d)
                 if m:
                     inv['dependencias'].append(comp(m.group(1), m.group(2).strip() or '*', ruta))
         elif base == 'go.mod':

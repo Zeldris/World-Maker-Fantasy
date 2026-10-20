@@ -3,6 +3,7 @@
 
 Uso:
   contrastar.py <arquitectura.md> [--raiz <raíz>] [--json] [--informe <informe.md>]
+  contrastar.py <arquitectura.md> --seccion <título>   imprime solo esa sección (para releerla sin leer el archivo)
 
 Por cada sección `## ...` con sello `<!-- sello: AAAA-MM-DD · <commit> · ruta, ruta -->` (formato-arquitectura.md):
   igual       ningún archivo del sello cambió desde su commit (`git diff --name-only <commit>`, sin commitear incluido): basta con
@@ -111,13 +112,31 @@ def contrastar(ruta_arq, raiz):
     return informe
 
 
+def seccion(texto, titulo):
+    """Texto de las secciones `## ...` cuyo título contiene `titulo` (sin mayúsculas); None si ninguna."""
+    partes = RE_SECCION.split(texto)
+    trozos = ['## %s\n\n%s' % (t, c.strip('\n') + '\n') for t, c in zip(partes[1::2], partes[2::2])
+              if titulo.strip().lower() in t.lower()]
+    return '\n'.join(trozos) or None
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('arquitectura')
     ap.add_argument('--raiz', default='.')
     ap.add_argument('--json', action='store_true')
     ap.add_argument('--informe', help='informe del paso 6: comprueba su tabla de cobertura')
+    ap.add_argument('--seccion', help='imprime solo las secciones cuyo título contiene este texto')
     a = ap.parse_args(argv)
+    if a.seccion:
+        with open(a.arquitectura, encoding='utf-8') as f:
+            texto = f.read()
+        trozo = seccion(texto, a.seccion)
+        if trozo is None:
+            print('Ninguna sección contiene «%s». Secciones: %s' % (a.seccion, ', '.join(RE_SECCION.findall(texto))))
+            return 1
+        print(trozo, end='')
+        return 0
     inf = contrastar(a.arquitectura, a.raiz)
     if a.informe:
         with open(a.arquitectura, encoding='utf-8') as f, open(a.informe, encoding='utf-8') as g:

@@ -6,7 +6,7 @@ la primera pasada (`docs/scout/arquitectura.md`, informe del 2026-10-20, `propue
 de la usuaria, el borrado de los Modelfiles sin uso, la captura `IA_CASOS` en el backend, el `/code-review --max-findings
 all` previo (17 hallazgos, arreglados en `bde0a825`) y las skills `scout-updates`, `opt-tokens` y `/code-review`.
 
-**Estado (2026-10-20): pendiente de la usuaria.**
+**Estado (2026-10-20): aprobadas todas por la usuaria y aplicadas en esta rama** (la 1 destapó otro fallo: los extras con coma, `httpx[http2,brotli]`, en pyproject y requirements; arreglado).
 
 ## Medida (`/opt-tokens`)
 

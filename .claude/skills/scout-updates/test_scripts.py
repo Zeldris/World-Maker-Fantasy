@@ -6,6 +6,13 @@ sys.path.insert(0, AQUI)
 import inventario, contrastar, banco
 
 EJEMPLO = os.path.join(AQUI, 'evals', 'proyecto-ejemplo')
+DIFICILES = os.path.join(AQUI, 'evals', 'manifiestos-dificiles')
+
+
+def salida_dificil():
+    """(nombre, versión) por sección del inventario de `manifiestos-dificiles`; su README dice cómo regenerarla."""
+    inv = inventario.inventariar(DIFICILES)
+    return {s: sorted([c['nombre'], c['version']] for c in v) for s, v in inv.items() if s != 'manifiestos'}
 
 
 def git(raiz, *args):
@@ -67,6 +74,10 @@ class InventarioTest(unittest.TestCase):
         imgs = {(c['nombre'], c['version']) for c in inventario.inventariar(d)['runtimes']}
         self.assertEqual(imgs, {('registry:5000/team/app', '1.2'), ('node', 'latest')})
 
+    def test_manifiestos_dificiles(self):
+        with open(os.path.join(DIFICILES, 'esperado.json'), encoding='utf-8') as f:
+            self.assertEqual(salida_dificil(), json.load(f))
+
     def test_salida_texto(self):
         out = io.StringIO()
         with redirect_stdout(out):
@@ -124,6 +135,11 @@ class ContrastarTest(unittest.TestCase):
         inf = contrastar.contrastar(self.arq, self.d)
         self.assertNotIn('.github/workflows/ci.yml', inf['sin cuenta'])
         self.assertIn({'seccion': 'Vacía', 'motivo': 'sello sin archivos'}, inf['sin sello'])
+
+    def test_seccion(self):
+        texto = '# A\n\n## Modelos de IA\n\nuno\n\n## Runtimes\n\ndos\n'
+        self.assertEqual(contrastar.seccion(texto, 'modelos'), '## Modelos de IA\n\nuno\n')
+        self.assertIsNone(contrastar.seccion(texto, 'nada'))
 
     def test_informe_sin_cubrir(self):
         arq = ('## Restricciones\n\n| Componente | x |\n|---|---|\n| memoria | 6 GB |\n\n'
