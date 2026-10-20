@@ -15,7 +15,7 @@ cada commit.**
 | **Último commit en `main`** | Fusión del PR #65 (2026-10-19, `a1445c2`, CI en verde, confirmada por la usuaria): ronda `QA-105` cerrada, arreglos P215-P221, ~~`CR-70`~~…~~`CR-72`~~ al roadmap, ~~`QA-122`~~…~~`QA-130`~~. |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Ronda de pruebas del 2026-10-17 (`QA-27`), partida `cmvcunmm300017d64k8qxe0t3`: comprobados 12 del PR #60 y P197 (arreglado); reabierto P177; nuevos P188-P206; su retro `QA-94`…`QA-97` hecha. **Siguiente:** arreglar P206, P177 y P188, y seguir jugando desde el Hogar Ketg (misión de las Agujas, P184). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | ✅ P223-P237 (`QA-105`) y ~~`QA-131`…`QA-135`~~ ✅ en `main`: PR [#66](https://github.com/Zeldris/World-Maker-Fantasy/pull/66) fusionado con el CI en verde (2026-10-20, 124ac4a). Pendiente de jugar: P234 y P235 en pantalla, P232 con Ollama real. Propuesta en conversación con la usuaria: Leyendas por categorías con filtros genéricos, para que entren también los avisos del Reino (al roadmap cuando acaben las pruebas). Siguiente: seguir las pruebas de juego. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | ✅ P223-P237 (`QA-105`) y ~~`QA-131`…`QA-135`~~ ✅ en `main`: PR [#66](https://github.com/Zeldris/World-Maker-Fantasy/pull/66) fusionado con el CI en verde (2026-10-20, 124ac4a). Pendiente de jugar: P234 y P235 en pantalla, P232 con Ollama real. Leyendas por categorías con filtros, aprobada para el roadmap tras las pruebas (ver «Propuestas aprobadas»). Siguiente: seguir las pruebas de juego. |
 | **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-17, tras el `/code-review` de los hallazgos de `QA-27`): backend `tsc` 0, `vitest` completo 293 archivos / 3599; frontend `tsc -b` 0, `vitest` 145 / 643, `oxlint` 0 errores; todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
 ## Dónde está todo (para saber qué sigue)
@@ -61,6 +61,16 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
    + oxlint en verde antes de subir; sin pasadas de juego (solo una captura si algo no se puede
    comprobar de otra forma). Las pruebas de juego, en la fase única antes de la beta (`0.8`).
    La etiqueta `v0.1.0-alpha` espera a cerrar E y F.
+
+## Propuestas aprobadas para el roadmap cuando acaben las pruebas
+
+Aprobadas por la usuaria; entran como tareas (con su hito) al volver al roadmap, no antes.
+
+| Propuesta | Detalle | Origen |
+|---|---|---|
+| Recuerdo propio del NPC que vence a la jugadora | Que el vencedor recuerde el combate, no solo la etiqueta | P233 (2026-10-19) |
+| No repetir «ha colgado nuevos avisos» | Si hace pocos días del último aviso del mismo tablón | P237 (2026-10-20) |
+| Leyendas por categorías con filtros genéricos | Entra todo (también los avisos menores del Reino) y lo que se ve lo eligen filtros combinables: **origen** (Tú, Tu Reino, Aliados, Mundo), **familia** (varias a la vez), **importancia** (Todo / Notable / Grave, por marca, nunca número) y **vía** (lo viviste, te lo contaron, de oídas, tablón). Por defecto «Notable»; recuerda el último filtro; contador por categoría; avisos iguales del mismo día agrupados. Referencias: registro de X4 por pestañas (marca el camino), avisos del asentamiento aparte en Manor Lords y Bellwright, diario por pestañas de BG3, fuentes y rumores de D&D 5e. Hoy: `LeyendasPanel.tsx` filtra por una familia y los avisos del Reino no llegan por el umbral de importancia | 2026-10-20 |
 
 ## Decisiones de Álvaro que bloquean algo
 
