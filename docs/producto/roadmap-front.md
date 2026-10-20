@@ -1396,7 +1396,9 @@ turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
   efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.~~
   ✅ 2026-10-20: hecho (`app.turno`, `app.intento`, `app.evento`/`app.rechazo`, `num_ctx` de `/api/ps`, tabla TURNOS);
   `rag-eval` con los casos nuevos: recall@4 0,750.
-- **QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.
+- ~~**QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.~~
+  ✅ 2026-10-20: `combateIniciado` solo con agresores en el `format` y `num_predict` 300 en el intento 1; respaldo 14 % → 0 %,
+  intento 2 sigue en 29 % (2.ª persona, equipo) y la latencia no cambia.
 - **QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).
 - **QA-165 · `lengthGuidance` tras el bloque fijo** (propuesta 7): no perder la caché al entrar en combate.
 - **QA-166 · Contexto del respaldo** (propuesta 4): los respaldos se recortaban a 4096.

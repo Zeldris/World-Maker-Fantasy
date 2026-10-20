@@ -1078,6 +1078,8 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
     : 'Esta acción no necesita tirada — narra el resultado directamente, pero sigue aportando algo concreto: qué cambia, qué consigue o qué nota el personaje, no solo atmósfera.';
 
   const npcSlugs = ctx.npcSlugsInScene ?? [];
+  const noAgresores = new Set(ctx.nonHostileNpcSlugsInScene ?? []);
+  const agresorSlugs = npcSlugs.filter((slug) => !noAgresores.has(slug));
   const reinoActive = reinoIntentDetected(ctx.action);
   // Emboscada determinista (bug real jugando, 2026-07-22): antes quién actúa primero era libre
   // albedrío total del modelo, incluso cuando ya existía una tirada resuelta para ESTA misma
@@ -1138,7 +1140,10 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
       }`
     : `Fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null. ${
         hostileEngagement
-          ? `Esta escena ES un enfrentamiento real contra ${npcSlugs.length === 1 ? 'el NPC ya' : 'los NPCs ya'} en escena — rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno), esto no es opcional aquí.${ambushHint}`
+          ? agresorSlugs.length > 0
+            ? `Esta escena ES un enfrentamiento real contra ${npcSlugs.length === 1 ? 'el NPC ya' : 'los NPCs ya'} en escena — rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno), esto no es opcional aquí.${ambushHint}`
+            : // QA-163: nadie en escena es agresor; el combate lo abre el motor por su vía determinista.
+              `Esta escena ES un enfrentamiento real, pero "combateIniciado" va a null: el combate lo abre el juego, no tú.${ambushHint}`
           : npcSlugs.length > 0
             ? // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"):
               // ante una pregunta directa del jugador a un NPC ya en escena, el modelo respondió con
@@ -1148,7 +1153,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.${nonHostileHint} DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
+              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
@@ -1304,15 +1309,21 @@ Responde solo con el JSON pedido, nada más.`;
         type: ['string', 'null'],
         enum: ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO', null],
       },
-      combateIniciado: {
-        type: ['object', 'null'],
-        properties: {
-          npcSlugs: {
-            type: 'array',
-            items: npcSlugs.length > 0 ? { type: 'string', enum: npcSlugs } : { type: 'string' },
-          },
-        },
-      },
+      // QA-163 (`/opt-ai`, 2026-10-20): solo los posibles agresores. Un NPC no agresor lo rechaza siempre
+      // `hasWrongAggressorName` (y el motor lo descarta en `combatSlugsFromModel`): era el rechazo más
+      // frecuente de las pasadas (6 de 11), cada uno con su intento 2. Sin agresores en escena, solo null.
+      combateIniciado:
+        npcSlugs.length > 0 && agresorSlugs.length === 0
+          ? { type: 'null' }
+          : {
+              type: ['object', 'null'],
+              properties: {
+                npcSlugs: {
+                  type: 'array',
+                  items: npcSlugs.length > 0 ? { type: 'string', enum: agresorSlugs } : { type: 'string' },
+                },
+              },
+            },
     },
     required: ['narration', 'newFacts'],
   };
@@ -1357,7 +1368,9 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       model: env.ollamaModelNarrador,
       prompt,
       format,
-      maxTokens: 220,
+      // QA-163: 220 → 300. Solo cuesta si el modelo los usa (p50 de salida ~150); con 220, 1 de cada ~40
+      // intentos 1 se cortaba a mitad del JSON y pasaba al intento 2.
+      maxTokens: 300,
       // Bajado de 180s a 90s (2026-08-04, "ronda larga de pruebas" — logs reales de la Deck bajo
       // presión de memoria: el intento 1 se colgó del todo y agotó los 180s completos en CADA
       // turno narrado de la sesión, y el intento 2 (que sí funcionó) tardó solo ~60-105s más

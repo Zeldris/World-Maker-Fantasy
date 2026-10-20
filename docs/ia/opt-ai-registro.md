@@ -127,6 +127,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 |---|---|---|---|---|---|---|---|---|
 | `01-ref` | `QA-160` + instrumentación de `QA-162` | 61,0 s | 74,4 s | 45,2 s | 29 % | 14 % | 6.292 | prefill de `narrar` 38,8 s; respaldo recortado (2.050 tokens de entrada con `num_ctx` 4096 y ~16.000 caracteres); rechazos: `combateIniciado` con NPC no agresor ×3, «quedan orcos del Clan Maktor» ×1 |
 | `02-qa161` (12 turnos) | `QA-161` | 73,0 s | 101,0 s | 47,8 s | 40 % | 30 % | 6.419 | más rechazos que `01-ref` (2.ª persona ×2, `combateIniciado` ×3, equipo, repetición, luna): ruido del muestreo, no de `QA-161`; el `resumen` del turno 9 no recarga el narrador |
+| `04-qa163` | `QA-163` | 61,1 s | 77,3 s | 45,4 s | 29 % | 0 % | 6.487 | rechazos: 2.ª persona ×1, cambio de equipo ×1; ningún `combateIniciado` (en `01-ref` y `02`, 6 de 11) |
 
 - **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
   `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
@@ -139,3 +140,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 - **`QA-162`**: instrumentación sin A/B (ya estaba en `01-ref`); lo que mide es lo de la tabla. `rag-eval` en
   `tarkor_juego` con los 4 casos de la ronda en `rag-casos.jsonl` (16 en total): recall@4 0,750, MRR 0,708 (k=8: 0,938 y
   0,739), 0 `debe_pasar` fallidos; de los de la ronda, solo `p263-ulkha-serhu` sale (puesto 1). Referencia de `QA-167`.
+- **`QA-163`**: el `format` solo deja en `combateIniciado.npcSlugs` los posibles agresores (y solo `null` si no hay
+  ninguno), con el texto del prompt a juego, y `num_predict` del intento 1 de 220 a 300 (1 de 39 intentos 1 se cortaba
+  por longitud). Desaparece el rechazo más frecuente; los intentos 2 se quedan en 29 % por otros rechazos (2.ª persona,
+  equipo), pero ninguno llega al respaldo (14 % → 0 %). La latencia no cambia: el coste es el prefill (`QA-164`).

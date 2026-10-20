@@ -1947,6 +1947,29 @@ describe('buildNarrationPrompt — narrar inconsciencia (docs/mecanicas/19-post-
 // cualquier primer ataque libre contra un NPC todavía sin combate mecánico abierto (`enCombate`
 // false). Se reescribió para hablar de ventaja de posición/iniciativa, nunca de contacto ya
 // resuelto.
+describe('buildNarrationPrompt — "combateIniciado" solo con posibles agresores (QA-163)', () => {
+  const ctx = { worldFacts: [], characterSummary: 'Gorhorn', action: 'Miro a mi alrededor con calma.', enCombate: false };
+  const esquema = (c: Parameters<typeof buildNarrationPrompt>[0]) =>
+    (buildNarrationPrompt(c).format.properties as Record<string, { type: unknown; properties?: { npcSlugs: { items: { enum?: string[] } } } }>).combateIniciado;
+
+  it('el enum deja fuera a los NPC no agresores', () => {
+    const c = esquema({ ...ctx, npcSlugsInScene: ['kirelon', 'quio'], nonHostileNpcSlugsInScene: ['quio'] });
+    expect(c?.properties?.npcSlugs.items.enum).toEqual(['kirelon']);
+  });
+
+  it('sin agresores en escena, solo null, y el prompt no pide rellenarlo', () => {
+    const c = { ...ctx, npcSlugsInScene: ['quio'], nonHostileNpcSlugsInScene: ['quio'] };
+    expect(esquema(c)).toEqual({ type: 'null' });
+    expect(buildNarrationPrompt(c).prompt).toMatch(/Nadie en escena es agresivo, así que "combateIniciado" va a null/);
+    const ataque = buildNarrationPrompt({ ...c, action: 'Ataco a Quio.' }).prompt;
+    expect(ataque).toMatch(/"combateIniciado" va a null: el combate lo abre el juego/);
+  });
+
+  it('sin NPC conocidos, como antes: cualquier texto', () => {
+    expect(esquema(ctx)?.properties?.npcSlugs.items).toEqual({ type: 'string' });
+  });
+});
+
 describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a combatNotYetResolved (2026-08-22)', () => {
   const hostileCtx = {
     worldFacts: [],
