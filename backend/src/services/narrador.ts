@@ -473,6 +473,7 @@ Responde solo con el JSON pedido, nada más.`;
       format,
       keepAlive: '0',
       timeoutMs: 90_000,
+      tarea: 'clasificar',
     });
 
   // Resiliencia (auditoría 2026-07-22): a diferencia de narrateAction (cascada de 3 intentos),
@@ -629,6 +630,7 @@ Responde solo con el JSON pedido, nada más.`;
       format,
       keepAlive: '0',
       timeoutMs: 90_000,
+      tarea: 'sugerir',
     });
 
   const downedNpcNames = knownNpcs.filter((n) => n.condicionFisica === 'CONVALECIENTE' || n.condicionFisica === 'MUERTO').map((n) => n.name);
@@ -939,6 +941,7 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
     system,
     prompt,
     format: NPC_REPLY_FORMAT,
+    tarea: 'dialogo_npc',
     // 120s (subido de 60s tras un fallo real en partida, 2026-07-23): probado en aislado, la
     // misma llamada tardó ~33s — pero en un turno real esta llamada se encola DETRÁS de la
     // narración principal (30-220s) en el mismo Ollama de concurrencia 1, y cambiar de `system`
@@ -1008,6 +1011,7 @@ No inventes ningún hecho nuevo (ni objetos, ni lugares, ni personajes) que no e
     timeoutMs: 120_000,
     keepAlive: '1h',
     temperature: 0.4,
+    tarea: 'narrar',
   });
   const narration = text.trim();
   // Mismo hueco estructural que `generateNpcReply` (llamada aislada, sin la cascada de guards de
@@ -1362,6 +1366,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       timeoutMs: 90_000,
       keepAlive: '1h',
       temperature: combatTemperature,
+      tarea: 'narrar',
     };
     if (!ctx.onNarrationChunk) return ollamaGenerate(generateOptions);
 
@@ -1404,6 +1409,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       timeoutMs: 240_000,
       keepAlive: '1h',
       temperature: combatTemperature,
+      tarea: 'narrar',
     });
   };
 
@@ -1416,6 +1422,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       timeoutMs: 90_000,
       keepAlive: '0',
       temperature: combatTemperature,
+      tarea: 'narrar_respaldo',
     });
 
   let lastResult: NarrationResult | null = null;

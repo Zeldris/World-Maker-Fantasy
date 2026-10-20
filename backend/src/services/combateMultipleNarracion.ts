@@ -83,6 +83,7 @@ export async function narrarTurnoCombateMultiple(input: TurnoNarracionInput): Pr
         timeoutMs: 90_000,
         keepAlive: '1h',
         temperature: 0.65,
+        tarea: 'combate',
       });
       const parsed = JSON.parse(text) as { narration?: string };
       const narration = (parsed.narration ?? '').trim();

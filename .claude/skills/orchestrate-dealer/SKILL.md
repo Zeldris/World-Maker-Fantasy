@@ -50,7 +50,10 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    se cumple. Si no cierra, el reintento sube un peldaño; dos fallos, se para y se le cuenta a la usuaria.
    De cada rama de subagente con worktree, **antes de fusionarla**, un `/code-review` corto de su diff hecho por un
    subagente revisor que devuelve solo los hallazgos; no se fusiona hasta arreglarlos (`QA-126`, `QA-131`: la tanda
-   P223-P237 fusionó 8 ramas sin esa revisión y el `/code-review` final halló 17).
+   P223-P237 fusionó 8 ramas sin esa revisión y el `/code-review` final halló 17). El encargo del revisor le pide
+   comparar el diff con el **contrato**: el doc que lo describe y los llamadores reales fuera de la rama (grep en la
+   rama de trabajo), no solo el diff (`QA-137`: en `opt-ai` las revisiones cortas no vieron tres fallos entre ramas,
+   `medir.py` frente al backend, las tareas de `proyecto.md` y `rag-eval` distinto del juego).
    La principal apunta lo que vuelve: los P-números de `HALLADO` en el registro de la ronda y lo de `HERRAMIENTAS`
    en [`rondas-de-pruebas.md`](../../../docs/runbooks/rondas-de-pruebas.md#fallos-de-las-herramientas) (`QA-133`).
    Las `PREGUNTAS` van a la usuaria tal cual, con la respuesta que recomiendas.
@@ -59,13 +62,17 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 ## Reglas
 
 - **Arreglos de código de la frontera, en paralelo** (idea de `implement-spec` de Matt Pocock): cada subagente con
-  `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree sin tocar la bitácora ni subir, y
+  `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree en cada punto estable (`WIP:` si
+  aún falla; `QA-139`: un reinicio perdió dos subagentes con todo sin commit) sin tocar la bitácora ni subir, y
   devuelve su rama. La principal los hace revisar (paso 3), los fusiona uno a uno con
   `tools/qa/fusionar.sh <rama> "<msg>" --revisada` (merge, tests del paquete tocado), escribe la bitácora y sube. Un
   subagente de fusión solo para conflictos que no sean del registro de hallazgos (el script resuelve ese).
 - **Registros compartidos, solo la principal** (`QA-132`): con subagentes en paralelo, ninguno toca la bitácora ni
   `docs/registros/pruebas-0.3-hallazgos.md` (ni otro registro compartido); devuelven sus P-números en `HALLADO` y la
   principal los apunta. Escribirlos en paralelo da conflictos al fusionar.
+- **Lo que nombra archivos de una rama, tras fusionarla** (`QA-138`): `docs/mapa-agente.md` y los docs que enlazan
+  archivos nuevos de un worktree se escriben en la principal después de fusionar esa rama; antes, el pre-push rechaza
+  las rutas que aún no existen.
 - **Sin worktree, uno a la vez en la misma rama**: dos subagentes que hacen commit en la rama de trabajo chocan
   en la bitácora. En paralelo, además, todo lo que no escribe (buscar, leer, medir).
 - **Rondas de pruebas, en un subagente `sonnet` y en serie** (`QA-124`: la ronda `QA-105` la jugó la principal con

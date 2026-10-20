@@ -41,3 +41,6 @@ tools/playwright-e2e/shots/
 # Bytecode de Python (los tests de tools/qa los regeneran)
 __pycache__/
 *.pyc
+
+# Registro por llamada de la IA (opt-ai): datos de la máquina, no se suben
+backend/ia/registro-*.jsonl

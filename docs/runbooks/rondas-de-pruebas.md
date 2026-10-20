@@ -78,6 +78,10 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
+   **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
+   `IA_REGISTRO=backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
+   (`IA_PERFIL`: `deck`, `cpu`, `gpu8` o `gpu12`, según la máquina). Al acabar la tanda, `/opt-ai` mide los tiempos,
+   contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
    visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
    (usuaria, 2026-10-19), después se mejora `estado.js` o la ayuda que toque para que lo dé en texto la próxima vez
@@ -128,3 +132,10 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
 - Con un encuentro hostil que corta el paso, «Moverte por la zona» queda deshabilitado y `puntos.js` y `mover.js` fallan
   por timeout: resolver antes el encuentro.
 - El Ollama simulado nunca devuelve `combateIniciado`: lo que pide un combate abierto desde texto libre no se prueba con él.
+- Tras una migración nueva, el cliente de Prisma puede quedar viejo: el primer turno da «Error narrando el turno» (`Unknown
+  field` en `logs/backend.log`). Remedio: `npx prisma generate` en `backend/` y volver a lanzar `arrancar-juego.sh`
+  (ronda P232, 2026-10-20).
+- Con Ollama real (Deck, por CPU) cada turno tarda 3-6 min: `combate.js` da «sigue desactivada tras 20 s» mientras
+  giran los dados; esperar a que el HUD deje de decir «El narrador escribe».
+- En la Deck no hay `psql` fuera del contenedor `tarkor-postgres`: envoltorios de `psql`, `pg_restore` y `pg_dump` con
+  `podman exec -i` en `logs/bin/` (ignorada por git), en el `PATH` de `flatpak-spawn --host bash -lic '…'`.

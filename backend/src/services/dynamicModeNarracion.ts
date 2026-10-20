@@ -194,6 +194,7 @@ export async function narrarVueltaModoDinamico(input: DynamicModeTurnoInput): Pr
         timeoutMs: 90_000,
         keepAlive: '1h',
         temperature: 0.7,
+        tarea: 'modo_dinamico',
       });
       const parsed = JSON.parse(text) as Partial<DynamicModeTurnoOutput>;
       const narration = (parsed.narration ?? '').trim();

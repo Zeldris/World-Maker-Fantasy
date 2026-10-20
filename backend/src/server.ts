@@ -88,7 +88,7 @@ startWorldTickWorker();
 // cuanto responde, nunca convive con el narrador en memoria. Precalentarlo aquí no ahorraría nada
 // real: para cuando llegue el primer turno de verdad, ya se habría descargado solo, exactamente
 // igual que si nunca se hubiera precalentado — solo gastaría tiempo/batería sin beneficio.
-void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000 })
+void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000, tarea: 'calentar' })
   .then(() => app.log.info(`Narrador (${env.ollamaModelNarrador}) precalentado en Ollama (prefijo real cacheado).`))
   .catch((err) => app.log.warn(`Warm-up del narrador falló (no bloquea el arranque): ${err instanceof Error ? err.message : err}`));
 

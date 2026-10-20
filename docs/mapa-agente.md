@@ -28,6 +28,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 | Añadir contenido (objeto, NPC, fauna, flora, habilidad, ubicación) | [nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Skills y modelo de cada tarea, flujo de PR | [skills-y-modelos.md](runbooks/skills-y-modelos.md) |
 | Fusionar la rama de un subagente (merge, conflictos de hallazgos, tests del paquete) | `tools/qa/fusionar.sh <rama> "<mensaje>"` (`QA-135`) |
+| Medir la IA local de una tanda, evaluar el RAG | `/opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
 | Tests de un archivo | `cd backend && npx vitest run <ruta>` (filtra con `grep -E "Test Files\|Tests \|FAIL"`) |
 
 ## Datos que se confunden
@@ -49,6 +50,9 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   encuentro al pasar el turno), `resolveCombatExchangePhase` (golpe en combate). Narrador:
   `b/services/narrador.ts#classifyAction`, `narrateAction`, `buildNarrationPrompt`, `generateSuggestions`
   (con sus filtros `dropSuggestions*`), `deterministicFallbackNarration`.
+- **IA y RAG:** llamadas al modelo local en `b/lib/ollama.ts#ollamaGenerate`, `ollamaGenerateStream` (opción `tarea`),
+  embeddings en `b/lib/embeddings.ts#embed`, lore en `b/services/retrieval.ts#retrieveLore`; cada llamada se apunta
+  con `b/lib/iaRegistro.ts` si está `IA_REGISTRO`. Casos del RAG: `backend/ia/rag-casos.jsonl`.
 - **Tests:** `b/services/turnLock.test.ts`, `b/services/narrador*.test.ts`.
 - **Interfaz:** `f/hooks/useTurnFlow.ts#useTurnFlow`, `f/components/ChatComposer.tsx` (escribir y «Actuar»),
   `f/components/LogPanel.tsx` (diario).

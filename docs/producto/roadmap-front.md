@@ -1374,6 +1374,15 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   mezclaba la ronda anterior.
 - ~~**QA-135 · `tools/qa/fusionar.sh`**~~ ✅ 2026-10-20 (usuaria): fusiona la rama del subagente, resuelve el registro de
   hallazgos, pasa los tests del paquete tocado y avisa si falta la revisión; la principal hacía 44 órdenes de git.
+- ~~**QA-136 · Cada sesión, su propia rama**~~ ✅ 2026-10-20 (usuaria): regla en `CLAUDE.md` («Ramas y `main`»). La
+  sesión local y la de la nube subían a la misma rama y se reescribían la fila de la bitácora.
+- ~~**QA-137 · La revisión corta mira el contrato**~~ ✅ 2026-10-20 (usuaria, retro del PR de `opt-ai`): el revisor de
+  cada rama compara con el doc del contrato y los llamadores reales (`orchestrate-dealer`, paso 3); test
+  `tools/qa/tests/test_opt_ai_tareas.py` (tareas de `opt-ai/proyecto.md` frente al backend) y los tests de `opt-ai` en la CI.
+- ~~**QA-138 · El mapa, tras fusionar la rama**~~ ✅ 2026-10-20 (usuaria): lo que nombra archivos de un worktree se escribe
+  después de fusionarlo (`orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
+- ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
+  perdió dos subagentes sin commit.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

@@ -47,7 +47,7 @@ function loadHeldOutScenarioIds(): Set<string> {
 async function runModel(model: string, scenario: DistillationScenario, prompt: string, format: Record<string, unknown>): Promise<ModelResult> {
   const t0 = Date.now();
   try {
-    const { text } = await ollamaGenerate({ model, prompt, format, maxTokens: MAX_TOKENS, timeoutMs: TIMEOUT_MS, keepAlive: '1h' });
+    const { text } = await ollamaGenerate({ model, prompt, format, maxTokens: MAX_TOKENS, timeoutMs: TIMEOUT_MS, keepAlive: '1h', tarea: 'narrar' });
     const latencyMs = Date.now() - t0;
     let parsed: NarrationResult;
     try {

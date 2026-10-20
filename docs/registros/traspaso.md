@@ -15,8 +15,8 @@ cada commit.**
 | **Último commit en `main`** | Fusión del PR #65 (2026-10-19, `a1445c2`, CI en verde, confirmada por la usuaria): ronda `QA-105` cerrada, arreglos P215-P221, ~~`CR-70`~~…~~`CR-72`~~ al roadmap, ~~`QA-122`~~…~~`QA-130`~~. |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Ronda de pruebas del 2026-10-17 (`QA-27`), partida `cmvcunmm300017d64k8qxe0t3`: comprobados 12 del PR #60 y P197 (arreglado); reabierto P177; nuevos P188-P206; su retro `QA-94`…`QA-97` hecha. **Siguiente:** arreglar P206, P177 y P188, y seguir jugando desde el Hogar Ketg (misión de las Agujas, P184). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | 🚧 P223-P237 (`QA-105`) arreglados y con el `/code-review` previo al PR (17 hallazgos) fusionado; suites en verde (2026-10-20). `/opt-tokens` y `/retro` aplicadas: ~~`QA-131`…`QA-135`~~ ✅ (revisión por rama, registros compartidos, `HERRAMIENTAS:`, `medir.py --desde`, `tools/qa/fusionar.sh`). Ronda corta: P234 y P235 comprobados; P232 sin combate con el Ollama simulado. PR [#66](https://github.com/Zeldris/World-Maker-Fantasy/pull/66) abierto. Siguiente: CI en verde y fusionar cuando la usuaria lo confirme. |
-| **Tests** | Rama `claude/frontend-improvements-roadmap-0mpckt` (2026-10-17, tras el `/code-review` de los hallazgos de `QA-27`): backend `tsc` 0, `vitest` completo 293 archivos / 3599; frontend `tsc -b` 0, `vitest` 145 / 643, `oxlint` 0 errores; todo en verde. Intermitentes: G16 y `avanceDiario` (`QA-52`). Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | 🚧 skill `opt-ai` ([diseño](../ia/skill-opt-ai.md), [registro](../ia/opt-ai-registro.md)), para `main`. Hecho: `retro` y `opt-tokens` proponen desde las skills propias; ~~`QA-136`~~ (pruebas locales en `claude/pruebas-local`). Implementada y fusionada: skill (`medir.py` 12/12) y backend (`iaRegistro`, `rag-eval`, 12 casos; revisado). `rag-eval` da 0 aquí sin lore indexado: la línea base sale en local tras `reindex-lore`. `/code-review`, `/opt-tokens` y retro hechos (~~`QA-137`~~…~~`QA-139`~~). Ronda con Ollama real: P238 y P239, a decidir. Siguiente: `revisado.sh`, PR a `main`. |
+| **Tests** | Rama `claude/wonderful-volta-662qt8` (2026-10-20, antes del PR de `opt-ai`): backend `tsc` 0, `vitest` 302 archivos / 3661 con 2 rojos que también fallan en `main` con la misma base (`mundoPartida` y `deudaDeVida`, integración: estado de la base tras la ronda con Ollama real, no del PR); frontend `tsc -b` 0; `tools/qa/tests` 68 y `opt-ai` 16 en verde. Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
 ## Dónde está todo (para saber qué sigue)
 
@@ -61,6 +61,19 @@ Del [plan del 0.1](../producto/plan-roadmap-0.1.md) y del [mapa de roadmaps](../
    + oxlint en verde antes de subir; sin pasadas de juego (solo una captura si algo no se puede
    comprobar de otra forma). Las pruebas de juego, en la fase única antes de la beta (`0.8`).
    La etiqueta `v0.1.0-alpha` espera a cerrar E y F.
+
+## Propuestas aprobadas para el roadmap cuando acaben las pruebas
+
+Aprobadas por la usuaria; entran como tareas (con su hito) al volver al roadmap, no antes.
+
+| Propuesta | Detalle | Origen |
+|---|---|---|
+| Recuerdo propio del NPC que vence a la jugadora | Que el vencedor recuerde el combate, no solo la etiqueta | P233 (2026-10-19) |
+| No repetir «ha colgado nuevos avisos» | Si hace pocos días del último aviso del mismo tablón | P237 (2026-10-20) |
+| Skill `scout-updates` (búsqueda de actualizaciones) | Skill aparte (sacada de `opt-ai`) que busque en la web novedades para todos los elementos del juego: modelos, librerías, técnicas. Se valora en el futuro | 2026-10-20 |
+| Leyendas por categorías con filtros genéricos | Entra todo (también los avisos menores del Reino) y lo que se ve lo eligen filtros combinables: **origen** (Tú, Tu Reino, Aliados, Mundo), **familia** (varias a la vez), **importancia** (Todo / Notable / Grave, por marca, nunca número) y **vía** (lo viviste, te lo contaron, de oídas, tablón). Por defecto «Notable»; recuerda el último filtro; contador por categoría; avisos iguales del mismo día agrupados. Referencias: registro de X4 por pestañas (marca el camino), avisos del asentamiento aparte en Manor Lords y Bellwright, diario por pestañas de BG3, fuentes y rumores de D&D 5e. Hoy: `LeyendasPanel.tsx` filtra por una familia y los avisos del Reino no llegan por el umbral de importancia | 2026-10-20 |
+
+Implementada (2026-10-20): skill `opt-ai` tras cada tanda de pruebas ([diseño](../ia/skill-opt-ai.md), [skill](../../.claude/skills/opt-ai/SKILL.md)); se activa con `IA_REGISTRO`/`IA_PERFIL` al arrancar ([runbook](../runbooks/rondas-de-pruebas.md)).
 
 ## Decisiones de Álvaro que bloquean algo
 
@@ -109,6 +122,8 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-20** — ~~`QA-137`~~, ~~`QA-138`~~, ~~`QA-139`~~ (retro del PR de `opt-ai`): la revisión corta mira el contrato y un test compara las tareas de `opt-ai` con el backend; el mapa se escribe tras fusionar la rama; commit WIP del subagente en worktree.
+- **2026-10-20** — ~~`QA-136`~~ (usuaria): cada sesión, su propia rama; regla en `CLAUDE.md` («Ramas y `main`»), porque la sesión local y la de la nube subían a la misma rama y se reescribían la fila de la bitácora.
 - **2026-10-20** — ~~`QA-131`~~, ~~`QA-132`~~, ~~`QA-133`~~, ~~`QA-134`~~, ~~`QA-135`~~ (`/opt-tokens` y `/retro` del PR de P223-P237): revisión de cada rama de subagente en el paso 3 de `orchestrate-dealer`, registros compartidos solo en la principal, campo `HERRAMIENTAS:`, `medir.py --desde` y `tools/qa/fusionar.sh`.
 - **2026-10-19** — P223-P235 de la ronda `QA-105` (registro `pruebas-0.3-hallazgos.md`): avisos del reino por parejas, nacimientos, muertes y deserciones, y viudos sin pareja (P223, P224); errores con *Reintentar* en Producción, Almacén y Súbditos (P225, P230); marca de rumor (P226); `lang="es"`, iconos de bebida y odre (P227, P228); 5xx de classify con aviso (P229); descanso rechazado de 1 min (P231); cajón al abrir combate (P232); muerte sin convaleciente previa con COMBATE_PERDIDO y vencedor (P233); mayúsculas y coma de sucesos (P234, P235). Sin jugar aún.
 - **2026-10-19** — ~~`QA-123`~~, ~~`QA-124`~~, ~~`QA-125`~~, ~~`QA-126`~~, ~~`QA-127`~~, ~~`QA-128`~~, ~~`QA-129`~~, ~~`QA-130`~~ (`/opt-tokens` y `/retro` del PR de la ronda `QA-105`): tope de compactación a 200k, rondas en un subagente `sonnet`, ayudas del driver arregladas y `pelear`, `/code-review` de cada arreglo de subagente, `medir.py` por tramo, `orden.sh` guarda la respuesta, calidad primero en `opt-tokens` y la `/retro` revisa las skills propias.
@@ -117,5 +132,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-19** — ~~`QA-119`~~ y ~~`QA-120`~~ (retro, segunda vuelta): constructor común de registros de sesión para los tests y test de los ganchos de `.claude/settings.json`; antes, los 16 arreglos del segundo `/code-review`.
 - **2026-10-19** — ~~`QA-118`~~: escalera de modelos para subagentes (sube un peldaño por fallo, tope de dos), parar si una tanda no cierra nada y `modelo:` en cada tarea nueva.
 - **2026-10-19** — ~~`QA-116`~~: `recuperar.py` (buscar lo de antes de compactar y estado que el gancho vuelve a poner tras compactar) y presupuesto de 1 a 5 compactaciones por tarea en el `selector`.
-- **2026-10-19** — ~~`QA-117`~~: `medir.py` por modelo (principal y subagentes) y el runbook manda escribir con un subagente `sonnet` cuando el plan está cerrado.
-- **2026-10-19** — ~~`QA-112`~~, ~~`QA-113`~~, ~~`QA-114`~~ y ~~`QA-115`~~ (retro previa al PR): `.claude/` versionado sin `-f`, test por herramienta con su comprobación, `opt-tokens` mira primero la curva y fecha de la bitácora comprobada en el pre-push.
