@@ -70,3 +70,17 @@ KV `q8_0`, `OLLAMA_IGPU_ENABLE=1`. Registro: `backend/ia/registro-2026-10-20.jso
 - Tanda anterior del mismo día, **solo CPU por un fallo del arranque** (Ollama sin el `~/.bashrc`, sin GPU):
   `narrar` 26 de 33 por timeout (90 s y 240 s), 12 de 17 turnos narrados por el respaldo; guardada como
   `registro-2026-10-20-solo-cpu.jsonl` y fuera de la comparación. En ella el RAG estaba roto (P274).
+
+Propuestas de esta pasada, **pendientes de decidir** por la usuaria (se presentaron el 2026-10-20, hechas a mano en la
+ronda y no con la skill: el `/opt-ai` del PR las revisa), de más a menos ganancia:
+
+1. Avisar si Ollama va sin GPU (`/api/ps` con `size_vram` 0, en `/health` o al calentar).
+2. Prefijo fijo del prompt del narrador primero, para la caché del motor (~50 s → ~20 s en los turnos sin caché).
+3. `reindex-lore` al cargar un escenario o cuando el índice no case con el modelo de embeddings (P274).
+4. Casos de la ronda en `rag-casos.jsonl` (P251, P263, P265, P241) y escalera del RAG: trozos más pequeños; si no, híbrida.
+5. Límite del intento 1 de `narrar` por perfil (90 s con p95 de 82 s en la Deck).
+6. `keep_alive` de `clasificar` y del respaldo de 0 a 5 min (~3 s por turno), comprobando la memoria de la Deck.
+7. Recortar el prompt del narrador (6.300 tokens), empezando por los repetidos de la memoria (P247).
+8. Medición: `num_ctx` y motivo del rechazo de cada intento en el registro (P273); `medir.py` sin las llamadas fallidas en p50 y tok/s.
+
+Umbral propuesto para `narrar` en la Deck: p50 ≤ 30 s y p95 ≤ 60 s.
