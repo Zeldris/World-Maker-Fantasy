@@ -60,8 +60,9 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 - **Arreglos de código de la frontera, en paralelo** (idea de `implement-spec` de Matt Pocock): cada subagente con
   `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree sin tocar la bitácora ni subir, y
-  devuelve su rama. La principal los revisa (paso 3), los fusiona uno a uno en la rama de trabajo (`git merge`,
-  tests del paquete tocado), escribe la bitácora y sube. Un conflicto entre dos de ellos lo resuelve un subagente de fusión.
+  devuelve su rama. La principal los hace revisar (paso 3), los fusiona uno a uno con
+  `tools/qa/fusionar.sh <rama> "<msg>" --revisada` (merge, tests del paquete tocado), escribe la bitácora y sube. Un
+  subagente de fusión solo para conflictos que no sean del registro de hallazgos (el script resuelve ese).
 - **Registros compartidos, solo la principal** (`QA-132`): con subagentes en paralelo, ninguno toca la bitácora ni
   `docs/registros/pruebas-0.3-hallazgos.md` (ni otro registro compartido); devuelven sus P-números en `HALLADO` y la
   principal los apunta. Escribirlos en paralelo da conflictos al fusionar.
