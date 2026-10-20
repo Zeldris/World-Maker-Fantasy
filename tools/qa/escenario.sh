@@ -10,9 +10,9 @@
 #   escenario.sh avanzar <partida> <días>        avanza N días con el avance diario de siempre (para el juego y lo
 #                                               vuelve a arrancar: el servidor no ve este avance en su cola)
 #   escenario.sh dar <partida> <slug>:<n>…        mete objetos del catálogo en su inventario (origen «escenario de prueba»)
-#   escenario.sh dar-reino <partida> comida=N bebida=N goirnos=N tesoro=N almacen:<slug>:<n>…
+#   escenario.sh dar-reino <partida> comida=N bebida=N goirnos=N tesoro=N almacen:<slug>:<n> edificio:<receta>…
 #                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
-#                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), objetos del
+#                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), edificio:<receta> ya terminado, objetos del
 #                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
