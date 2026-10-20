@@ -6,12 +6,13 @@ import { buildNarrationPrompt } from '../services/narrador.js';
 /// antes vivía duplicado como función privada de generate-distillation-dataset.ts; se extrae aquí
 /// para que el generador sintético y el servicio de captura en vivo (liveTeacherCapture.ts) lean
 /// EXACTAMENTE el mismo texto, en vez de arriesgarse a que una tercera copia se desincronice del
-/// Modelfile real si alguien lo edita.
+/// Modelfile real si alguien lo edita. Lee el del narrador en uso (`Modelfile.llama31`, 2026-10-20: el
+/// `Modelfile` de qwen2.5 descartado, con el mismo SYSTEM, se borró).
 export function readModelfileSystemPrompt(): string {
-  const modelfilePath = path.resolve(import.meta.dirname, '../../Modelfile');
+  const modelfilePath = path.resolve(import.meta.dirname, '../../Modelfile.llama31');
   const content = readFileSync(modelfilePath, 'utf-8');
   const match = content.match(/SYSTEM\s+"""([\s\S]*?)"""/);
-  if (!match) throw new Error('[modelfileSystemPrompt] no se pudo extraer el bloque SYSTEM de backend/Modelfile');
+  if (!match) throw new Error('[modelfileSystemPrompt] no se pudo extraer el bloque SYSTEM de backend/Modelfile.llama31');
   return match[1].trim();
 }
 

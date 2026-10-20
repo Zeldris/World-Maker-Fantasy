@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const fakeEnv = vi.hoisted(() => ({ iaRegistro: undefined as string | undefined, iaPerfil: 'desconocido', ollamaKeepAlive: '5m' }));
+const fakeEnv = vi.hoisted(() => ({ iaRegistro: undefined as string | undefined, iaCasos: undefined as string | undefined, iaPerfil: 'desconocido', ollamaKeepAlive: '5m' }));
 const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
   appendFile.mockResolvedValue(undefined);
   fakeEnv.iaRegistro = undefined;
+  fakeEnv.iaCasos = undefined;
   fakeEnv.iaPerfil = 'desconocido';
   _reiniciarAviso();
 });
@@ -122,5 +123,33 @@ describe('iaRegistro', () => {
       }),
     );
     expect(id).toBeUndefined();
+  });
+});
+
+describe('registrarCaso (QA-176)', () => {
+  const caso = { tarea: 'narrar', modelo: 'm', prompt: 'P completo', temperature: 0.7, numCtx: 8192, salida: 'texto' };
+
+  it('sin IA_CASOS no escribe nada', () => {
+    registrarCaso(caso);
+    expect(appendFile).not.toHaveBeenCalled();
+  });
+
+  it('con IA_CASOS escribe el caso en el formato de banco.py, sin campos vacíos', () => {
+    fakeEnv.iaCasos = '/tmp/casos.jsonl';
+    registrarCaso(caso);
+    const [ruta, linea] = appendFile.mock.calls[0] as [string, string];
+    expect(ruta).toBe('/tmp/casos.jsonl');
+    const o = JSON.parse(linea);
+    expect(o.id).toMatch(/^narrar-[0-9a-f]{8}$/);
+    expect(o).toMatchObject({ tarea: 'narrar', modelo: 'm', prompt: 'P completo', opciones: { temperature: 0.7, num_ctx: 8192 }, salida: 'texto' });
+    expect('system' in o).toBe(false);
+    expect('max_tokens' in o.opciones).toBe(false);
+  });
+
+  it('guarda el JSON Schema de las llamadas estructuradas, para volver a pedirlas igual', () => {
+    fakeEnv.iaCasos = '/tmp/casos.jsonl';
+    registrarCaso({ ...caso, format: { type: 'object' } });
+    const o = JSON.parse((appendFile.mock.calls[0] as [string, string])[1]);
+    expect(o.opciones.format).toEqual({ type: 'object' });
   });
 });

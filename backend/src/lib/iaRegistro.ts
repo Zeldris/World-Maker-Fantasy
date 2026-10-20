@@ -145,7 +145,62 @@ function avisar(err: unknown): void {
   console.warn(`[iaRegistro] no se pudo escribir en IA_REGISTRO (${env.iaRegistro}): ${err instanceof Error ? err.message : err}. Aviso único.`);
 }
 
+/// Caso del banco de calidad de `scout-updates` (QA-176, `.claude/skills/scout-updates/banco-calidad.md`): lo que
+/// recibió el modelo, sin recortar, para volver a generarlo con otros. Sin `system`, el modelo usó el SYSTEM de su
+/// Modelfile (`ollama show --system <modelo>`); un candidato sin ese Modelfile lo necesita en el caso.
+export interface CasoBanco {
+  tarea?: string;
+  modelo: string;
+  system?: string;
+  prompt: string;
+  temperature?: number;
+  numCtx?: number;
+  maxTokens?: number;
+  /// JSON Schema de la llamada (`format` de Ollama); `think: false` va siempre (`buildRequestBody`).
+  format?: object;
+  /// La salida del modelo actual, como referencia (banco.py la vuelve a generar).
+  salida: string;
+}
+
+export function lineaCaso(c: CasoBanco, ahora = new Date()): string {
+  const opciones: Record<string, unknown> = {};
+  if (c.temperature !== undefined) opciones.temperature = c.temperature;
+  if (c.numCtx !== undefined) opciones.num_ctx = c.numCtx;
+  if (c.maxTokens !== undefined) opciones.max_tokens = c.maxTokens;
+  if (c.format !== undefined) opciones.format = c.format;
+  return JSON.stringify({
+    id: `${c.tarea ?? 'generate'}-${randomUUID().slice(0, 8)}`,
+    ts: ahora.toISOString(),
+    tarea: c.tarea,
+    modelo: c.modelo,
+    system: c.system,
+    prompt: c.prompt,
+    opciones,
+    salida: c.salida,
+  });
+}
+
+/// Mismas garantías que `registrarLlamada`: sin `IA_CASOS` no hace nada y nunca frena ni rompe un turno.
+export function registrarCaso(c: CasoBanco): void {
+  const ruta = env.iaCasos;
+  if (!ruta) return;
+  try {
+    appendFile(ruta, lineaCaso(c) + '\n').catch(avisarCasos);
+  } catch (err) {
+    avisarCasos(err);
+  }
+}
+
+let avisadoCasos = false;
+
+function avisarCasos(err: unknown): void {
+  if (avisadoCasos) return;
+  avisadoCasos = true;
+  console.warn(`[iaRegistro] no se pudo escribir en IA_CASOS (${env.iaCasos}): ${err instanceof Error ? err.message : err}. Aviso único.`);
+}
+
 /// Solo para tests.
 export function _reiniciarAviso(): void {
   avisado = false;
+  avisadoCasos = false;
 }

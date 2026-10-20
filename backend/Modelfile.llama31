@@ -4,7 +4,7 @@
 # investigación posterior encontró un benchmark real (AscentCore 2026) donde Llama 3.1 8B Instruct
 # tuvo MEJOR schema compliance que Qwen2.5 7B (91-95% vs 73.9%) bajo grammar-constrained decoding.
 # Tokenizer BPE convencional (no el Tekken atípico de Mistral que sí dio problemas reales aquí).
-# Mismo SYSTEM que tarkor-narrador (Modelfile), para comparar en igualdad de condiciones.
+# Mismo SYSTEM que tarkor-narrador (el `Modelfile` de qwen2.5, borrado el 2026-10-20 y en git), para comparar en igualdad.
 #
 # Registrar con: ollama create tarkor-narrador-llama31 -f Modelfile.llama31
 

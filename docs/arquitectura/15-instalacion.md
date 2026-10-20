@@ -99,7 +99,6 @@ Cuatro modelos, cada uno con su papel (ver [03-arquitectura.md § 3.3](03-arquit
 | Uso | Modelo | Cómo se obtiene |
 |---|---|---|
 | Narrador (narración principal) | `tarkor-narrador-llama31` (modelo propio, `FROM llama3.1:8b-instruct-q4_K_M`) | `ollama pull llama3.1:8b-instruct-q4_K_M` y luego, desde `backend/`: `ollama create tarkor-narrador-llama31 -f Modelfile.llama31` |
-| Narrador de respaldo (no instalado hoy) | `tarkor-narrador` (`FROM qwen2.5:7b`) | `ollama pull qwen2.5:7b` y `ollama create tarkor-narrador -f Modelfile` |
 | Cronista (clasificación de acciones) | `qwen2.5:1.5b-instruct` | `ollama pull qwen2.5:1.5b-instruct` |
 | Sugerencias ("Sugerir" bajo demanda, separado del Narrador desde 2026-08-21) | `qwen3.5:4b` | `ollama pull qwen3.5:4b` |
 | Embeddings (RAG de lore) | `nomic-embed-text` | `ollama pull nomic-embed-text` |

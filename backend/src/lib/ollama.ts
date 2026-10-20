@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
-import { calcularTruncated, nsToMs, registrarLlamada } from './iaRegistro.js';
+import { calcularTruncated, nsToMs, registrarCaso, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -118,7 +118,7 @@ function traducirError(err: unknown, options: OllamaGenerateOptions): Error {
 /// sin él no se veía ningún recorte): el `num_ctx` del Modelfile (`/api/show`), que es el que recibe una llamada sin
 /// `numCtx`, o, si el Modelfile no lo trae, el `context_length` de ese modelo en `/api/ps` a los 4 s de empezar (los
 /// de `keep_alive` 0 ya no salen al acabar). No se toma `/api/ps` primero: ahí sale el runner que haya cargado, quizá
-/// con el `numCtx` de otra llamada (el respaldo carga el cronista a 8192). Solo con IA_REGISTRO, en segundo plano, una
+/// con el `numCtx` de otra llamada (el respaldo carga el cronista a 8192). Solo con IA_REGISTRO o IA_CASOS, en segundo plano, una
 /// consulta a la vez por modelo; la primera llamada de cada modelo puede salir sin él.
 const ctxPorModelo = new Map<string, number>();
 const ctxPendiente = new Set<string>();
@@ -144,12 +144,15 @@ async function leerCtx(model: string): Promise<void> {
 
 function vigilarCtx(options: OllamaGenerateOptions): void {
   const clave = conEtiqueta(options.model);
-  if (!env.iaRegistro || options.numCtx || ctxPorModelo.has(clave) || ctxPendiente.has(clave)) return;
+  if ((!env.iaRegistro && !env.iaCasos) || options.numCtx || ctxPorModelo.has(clave) || ctxPendiente.has(clave)) return;
   ctxPendiente.add(clave);
   void leerCtx(options.model)
     .catch(() => {})
     .finally(() => ctxPendiente.delete(clave));
 }
+
+/// `num_ctx` que recibe la llamada: el suyo o el del Modelfile (mismo valor para el registro y para el caso).
+const numCtxDe = (options: OllamaGenerateOptions) => options.numCtx ?? ctxEfectivo(options.model);
 
 /// Registro opt-ai de una llamada a /api/generate (no hace nada sin IA_REGISTRO).
 function registrarGenerate(
@@ -159,7 +162,7 @@ function registrarGenerate(
   extra: { ttftMs?: number; error?: string } = {},
 ): void {
   const r = (raw ?? {}) as OllamaRawStats;
-  const numCtx = options.numCtx ?? ctxEfectivo(options.model);
+  const numCtx = numCtxDe(options);
   registrarLlamada({
     operation: 'text_completion',
     provider: 'ollama',
@@ -181,6 +184,21 @@ function registrarGenerate(
     // Una llamada fallida no dice si se recortó: sin esto contaba en recortado_pct por el largo del prompt.
     truncated: extra.error ? undefined : calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
     error: extra.error,
+  });
+}
+
+/// Caso del banco de `scout-updates` de una llamada que acabó bien (no hace nada sin IA_CASOS).
+function registrarCasoGenerate(options: OllamaGenerateOptions, salida: string): void {
+  registrarCaso({
+    tarea: options.tarea,
+    modelo: options.model,
+    system: options.system,
+    prompt: options.prompt,
+    temperature: options.temperature,
+    numCtx: numCtxDe(options),
+    maxTokens: options.maxTokens,
+    format: options.format,
+    salida,
   });
 }
 
@@ -221,6 +239,7 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
 
       const raw = (await response.json()) as { response: string };
       registrarGenerate(options, raw, inicio);
+      registrarCasoGenerate(options, raw.response);
       return { text: raw.response, raw };
     } catch (err) {
       const traducido = traducirError(err, options);
@@ -308,6 +327,7 @@ export async function ollamaGenerateStream(
       procesarLinea(buffer);
 
       registrarGenerate(options, lastRaw, inicio, { ttftMs, error: terminado ? undefined : 'stream incompleto' });
+      if (terminado) registrarCasoGenerate(options, fullText);
       return { text: fullText, raw: lastRaw };
     } catch (err) {
       const traducido = traducirError(err, options);

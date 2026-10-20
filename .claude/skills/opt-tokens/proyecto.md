@@ -31,6 +31,7 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
   se pasa `python3 -m unittest discover -s tools/qa/tests`.
 - **Modelo por tarea** (`QA-117`): `medir.py` reparte la entrada por modelo, sesión principal y subagentes; el
   runbook `skills-y-modelos.md` manda escribir con un subagente `sonnet` cuando el plan está cerrado.
+- **Salida de subagentes no fiable** (retro de `QA-176`): `medir.py` la da como «—» cuando su registro no la guarda.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
 ## Gastos conocidos
@@ -48,4 +49,9 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
   `orden.sh` y mirar el estado al final.
 - **Suites con base real** (backend, ~3.600 tests): la salida entera es grande; filtrar con `grep -E "Test Files|Tests
   |FAIL"`.
+- **Páginas de documentación largas** (retro de `QA-176`, 2026-10-20): un WebFetch de la guía de skills metió 12k
+  tokens en la principal y arrastró 144k. Se leen con un WebFetch de pregunta estrecha (qué dice sobre X) o en un
+  subagente que devuelva solo lo que se busca.
+- **Releer documentos largos enteros** (misma retro): `docs/scout/arquitectura.md` se leyó 26 veces (146k arrastrados);
+  ahora `contrastar.py --seccion <título>`. Antes de un `cat` repetido, buscar la opción que lee un trozo.
 - **El registro de la sesión** pesa cientos de MB: medirlo con `medir.py`, nunca leerlo.

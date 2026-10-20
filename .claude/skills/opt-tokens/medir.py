@@ -28,6 +28,7 @@ import argparse, collections, datetime as dt, glob, json, os, re, subprocess, sy
 
 TOKENS_IMAGEN = 1600
 CHARS_POR_TOKEN = 3.5
+SALIDA_MINIMA = 100  # tokens de salida por llamada por debajo de los cuales la de un subagente no es fiable
 
 
 def raiz_del_proyecto():
@@ -322,10 +323,19 @@ def main():
     if subs:
         print()
         print('POR SUBAGENTE (una fila por registro de <sesión>/subagents/)')
+        # Hay registros de subagente que solo guardan el `usage` del bloque a medias (2026-10-20: 20 respuestas con 370
+        # tokens de salida en total): por debajo de SALIDA_MINIMA por llamada, la salida no se cree y sale «—».
+        sin_salida = False
         for desc, tipo, modelo, resp in sorted(subs, key=lambda x: -sum(r[1] for r in x[3]))[: a.top]:
             ent = sum(r[1] for r in resp)
+            sal = sum(r[2] for r in resp)
+            sal_txt = f'{sal:>9,}' if sal >= SALIDA_MINIMA * len(resp) else f'{"—":>9}'
+            sin_salida |= sal < SALIDA_MINIMA * len(resp)
             print(f'  {desc[:34]:<34} {tipo[:15]:<15} {modelo:<20} {len(resp):>4} llamadas  {ent / len(resp):>8,.0f} ctx medio  '
-                  f'{resp[0][1]:>7,} arranque  {ent:>12,} entrada  {sum(r[2] for r in resp):>9,} salida')
+                  f'{resp[0][1]:>7,} arranque  {ent:>12,} entrada  {sal_txt} salida')
+        if sin_salida:
+            print(f'  «—»: el registro del subagente no guarda la salida final (menos de {SALIDA_MINIMA} por llamada); '
+                  f'la salida de los totales se queda corta')
         if len(subs) > a.top:
             print(f'  … y {len(subs) - a.top} más (--top {len(subs)})')
         n_sub = sum(len(x[3]) for x in subs)
