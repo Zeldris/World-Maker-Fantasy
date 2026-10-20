@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(bash tools/qa/escenario.sh:*)",
+      "Bash(tools/qa/escenario.sh:*)",
+      "Bash(bash tools/qa/host.sh bash tools/qa/escenario.sh:*)",
+      "Bash(tools/qa/host.sh bash tools/qa/escenario.sh:*)",
+      "Bash(bash tools/qa/host.sh tools/qa/escenario.sh:*)",
+      "Bash(tools/qa/host.sh tools/qa/escenario.sh:*)"
+    ]
+  },
   "env": {
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
   },
