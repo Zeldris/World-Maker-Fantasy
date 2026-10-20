@@ -23,8 +23,7 @@ servidor: no es juego y `medir.py` lo excluye (`--con-calentar` lo muestra). Mot
 - Benchmark de turno (antes/después de cada propuesta): `npm run benchmark-turno` (en `backend/`).
 - Reindexar el lore: `npm run reindex-lore`. Recuperación: `backend/src/services/retrieval.ts`.
 - Evaluación del RAG: `npm run rag-eval` sobre el juego fijo `backend/ia/rag-casos.jsonl` (recall@k y MRR; el
-  caso rojo del paso 2 sale de aquí). Ambos los crea otro trozo del trabajo: si aún no existen, el paso 2 se
-  detiene en «falta el comando» y lo dice.
+  caso rojo del paso 2 sale de aquí).
 
 ## Dónde están las incoherencias
 
