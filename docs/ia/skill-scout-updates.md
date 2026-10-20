@@ -12,7 +12,7 @@ de mala calidad, y hacía falta una oferta de modelo con fundamento, no a ojo.
 | Memoria | **Dos `.md` en el proyecto:** `arquitectura.md` (la arquitectura y la fecha en que se comprobó; la siguiente vez solo se contrasta si sigue igual) y `propuestas.md` (acumulativo, para no repetir lo establecido ni lo ya rechazado). |
 | Focos | Una skill genérica que lo mira todo, y «versiones» que miran una parte: `/scout-updates <sección>`, donde las secciones son las de `arquitectura.md`. |
 | Lanzamiento | **Solo bajo demanda** (`disable-model-invocation: true`): gasta muchos tokens, decide la usuaria cuándo. Antes de buscar, estimación de coste y confirmación. |
-| Modelos | **Local siempre que se pueda**, con la opción de usar Claude. La usuaria elige candidatos y juez entre los disponibles. |
+| Modelos | **Local siempre que se pueda**, con la opción de usar Claude. La usuaria elige los candidatos. La skill **no depende de nada local** (se comparte con otros usuarios): el juez es el propio agente que la ejecuta y los candidatos pueden correr en una API (usuaria, 2026-10-20). |
 | Hardware | En Tarkor, la **Steam Deck es el mínimo**; modelos mayores para equipos mayores son una fase final del roadmap. Va como restricción en `arquitectura.md`, no en la skill. |
 | Coste | **Primero lo gratuito o de bajo coste.** Una propuesta de pago lleva el coste desglosado (precio publicado, uso estimado y su cálculo, total al mes) y qué calidad compra frente a la mejor gratuita, para juzgar calidad/precio. |
 | Autonomía | Solo propone (como `opt-ai`). Lo que la usuaria apruebe se convierte en tareas con hito. |
@@ -48,11 +48,12 @@ de mala calidad, y hacía falta una oferta de modelo con fundamento, no a ojo.
 - Candidatos por un endpoint agnóstico del motor (API de Ollama u OpenAI-compatible).
 - Juicio a ciegas por pares en **los dos órdenes**, por el sesgo de posición
   ([arXiv 2406.07791](https://arxiv.org/abs/2406.07791)); un par que cambia de ganador al girarlo cuenta como empate.
-- Juez local por defecto, con aviso de su debilidad y la sugerencia de calibrar unos pares con Claude; Claude en la
-  sesión como opción (los pares se exportan y los juzga la propia sesión).
+- Juez: el propio agente que ejecuta la skill (los pares se exportan y los juzga la sesión); un modelo local o de API
+  como opción para ahorrar tokens, calibrado con unos pares del agente.
 - Rúbrica: coherencia, naturalidad del español, fidelidad al lore, ajuste de longitud, sin repeticiones.
 - Latencia se mide aparte (la de `opt-ai`), nunca mezclada con la calidad.
-- El banco y el filtro de memoria necesitan el motor local: en la nube la skill hace solo inventario y búsqueda.
+- Sin motor local, el banco corre los candidatos en una API compatible con OpenAI (calidad); la memoria y la latencia
+  en el hardware mínimo quedan para quien tenga la máquina.
 
 ## Diagnóstico del narrador de Tarkor (punto de partida de la primera pasada)
 

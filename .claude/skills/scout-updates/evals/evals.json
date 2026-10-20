@@ -47,7 +47,7 @@
       "Toma las restricciones de arquitectura.md (hardware mínimo, memoria libre, idioma, solo local) como filtro",
       "Descarta los candidatos que no caben en la memoria del hardware mínimo, nombrando la restricción que incumple cada uno",
       "Separa en el informe la latencia (que remite a opt-ai) de la calidad",
-      "Propone el banco de calidad por pares en los dos órdenes con juez local por defecto y la opción de Claude, y deja que la usuaria elija candidatos y juez",
+      "Propone el banco de calidad por pares en los dos órdenes con el propio agente como juez por defecto (sin depender de nada local), y deja que la usuaria elija los candidatos",
       "Da una sola recomendación principal"
     ]
   }

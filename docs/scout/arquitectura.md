@@ -18,8 +18,8 @@ Confirmadas por la usuaria el 2026-10-20.
   Motivo: no dañar el equipo ni la experiencia de juego. El riesgo real es entrar en swap y que el juego se
   arrastre o se cierre; el narrador actual ya está probado sin ese problema. El pico medido está por apuntar; se
   estima en unos 6 GB (4,9 GB de pesos Q4_K_M y ~1 GB de caché KV con `num_ctx` 8192).
-- **Ejecución:** los modelos del juego, siempre locales (Ollama), sin internet. Claude se usa para buscar y,
-  opcionalmente, como juez del banco.
+- **Ejecución:** los modelos del juego, siempre locales (Ollama), sin internet. El agente de código (Claude Code) busca y
+  juzga el banco.
 - **Idioma:** español narrativo.
 - **Coste:** primero lo gratuito o de bajo coste. Lo de pago, solo con el coste desglosado y frente a la mejor
   opción gratuita.
