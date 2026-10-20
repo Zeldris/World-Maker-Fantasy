@@ -42,13 +42,16 @@ while read -r _ sha_local ref_remota sha_remoto; do
   for commit in $(git rev-list --no-merges "$sha_local" --not --remotes 2>/dev/null); do
     git diff-tree --no-commit-id --name-only -r "$commit" | grep -qx docs/registros/traspaso.md || continue
     # Un commit que viene de otra rama local sin subir (una subrama `claude/<tema>` fusionada de vuelta, QA-136)
-    # escribe en la fila de esa rama: se comprueba contra ella, no contra la que se sube.
-    propia="$rama"
+    # escribe en la fila de esa rama: vale si cumple contra la que se sube o contra alguna rama local que lo
+    # contenga (las de los subagentes también lo contienen si fusionaron esta: por eso se prueba primero esta).
+    python3 "$bitacora_py" --ajenas "$commit" "$rama" ${compartida[@]+"${compartida[@]}"} >/dev/null 2>&1 && continue
+    vale=""
     for otra in $(git branch --contains "$commit" --format='%(refname:short)' 2>/dev/null); do
       case "$otra" in "$rama"|main|master|"("*) continue ;; esac
-      propia="$otra"; break
+      python3 "$bitacora_py" --ajenas "$commit" "$otra" ${compartida[@]+"${compartida[@]}"} >/dev/null 2>&1 \
+        && { vale=1; break; }
     done
-    python3 "$bitacora_py" --ajenas "$commit" "$propia" ${compartida[@]+"${compartida[@]}"} \
+    [ -n "$vale" ] || python3 "$bitacora_py" --ajenas "$commit" "$rama" ${compartida[@]+"${compartida[@]}"} \
       || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; exit 1; }
   done
   for commit in $(git rev-list "$sha_local" --not --remotes 2>/dev/null); do
