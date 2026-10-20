@@ -23,7 +23,7 @@ los junta. Cada subagente recibe las rutas, el perfil y el criterio de cierre de
 0. **Registro de la tanda.** Busca el archivo de registro que dice `proyecto.md` (formato en
    `docs/ia/opt-ai-registro.md`). *Cierra cuando* el archivo existe y tiene líneas de la tanda (`wc -l`). Si no, di
    cómo activarlo (variables en `proyecto.md`) y **para**: sin medida no hay propuesta.
-1. **Medir.** `python3 .claude/skills/opt-ai/medir.py <registro> --anterior <registro de la tanda anterior>` (solo
+1. **Medir.** `python3 .claude/skills/opt-ai/medir.py <registro> [--anterior <registro de la tanda anterior>]` (solo
    salida del script, nunca el registro entero). Por perfil y tarea: p50/p95, ttft, tok/s, cargas en frío,
    recortados, errores; RAG: embed, búsqueda y score. **El perfil mínimo (la Deck) siempre**, aunque la tanda se
    jugara en otro: sin sus filas, di que falta y pídela. *Cierra cuando* cada fila tiene su diferencia con la tanda
@@ -53,7 +53,8 @@ los junta. Cada subagente recibe las rutas, el perfil y el criterio de cierre de
 
    Cada propuesta lleva **el experimento que la mide**: el benchmark del proyecto antes y después, con la misma
    semilla y el mismo perfil. `llama-bench` y `promptfoo` son opcionales y solo si están instalados (`command -v`);
-   sin ellos, vale el benchmark del proyecto. *Cierra cuando* cada propuesta tiene su comando de antes/después y su
+   sin ellos, vale el benchmark del proyecto (`proyecto.md`), con el registro activado en las dos pasadas, y
+   se comparan con `medir.py <después> --anterior <antes> --perfil <perfil>`. *Cierra cuando* cada propuesta tiene su comando de antes/después y su
    perfil.
 4. **Informe** (a la usuaria, con los pasos 1-3 juntos). Cada propuesta, en orden de impacto:
    - la **medida** que la justifica (cifra del paso 1 o recall@k del 2);

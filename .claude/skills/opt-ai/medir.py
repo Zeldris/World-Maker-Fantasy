@@ -9,7 +9,7 @@ generación, % de cargas en frío (load_ms > 100), % de recortados y % de errore
 n, p50 de embed_ms y search_ms, score medio del primer resultado. Con --anterior, la diferencia por fila.
 Las líneas corruptas se ignoran con un aviso; las tareas sin perfil se avisan.
 """
-import argparse, json, sys
+import argparse, json, math, sys
 
 FRIO_MS = 100
 SIN_PERFIL = 'desconocido'
@@ -33,7 +33,11 @@ def media(valores):
 
 def leer(ruta, avisos):
     registros = []
-    with open(ruta, encoding='utf-8') as f:
+    try:
+        f = open(ruta, encoding='utf-8', errors='replace')
+    except OSError as e:
+        sys.exit(f'No se puede leer {ruta}: {e.strerror}')
+    with f:
         for n, linea in enumerate(f, 1):
             if not linea.strip():
                 continue
@@ -47,14 +51,18 @@ def leer(ruta, avisos):
     return registros
 
 
+def es_num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
 def nums(rs, campo):
-    return [r[campo] for r in rs if isinstance(r.get(campo), (int, float)) and not isinstance(r.get(campo), bool)]
+    return [r[campo] for r in rs if es_num(r.get(campo))]
 
 
 def fila_llamadas(rs):
     n = len(rs)
-    dec = [r for r in rs if isinstance(r.get('gen_ai.usage.output_tokens'), (int, float))
-           and isinstance(r.get('app.decode_ms'), (int, float)) and r['app.decode_ms'] > 0]
+    dec = [r for r in rs if es_num(r.get('gen_ai.usage.output_tokens'))
+           and es_num(r.get('app.decode_ms')) and r['app.decode_ms'] > 0]
     toks = sum(r['gen_ai.usage.output_tokens'] for r in dec)
     ms = sum(r['app.decode_ms'] for r in dec)
     dur = nums(rs, 'app.duration_ms')
@@ -107,13 +115,15 @@ def analizar(ruta, perfil=None, avisos=None):
 
 
 def diferencia(actual, anterior):
-    """Por fila y campo numérico: actual - anterior (None si falta alguno)."""
+    """Por fila y campo numérico: actual - anterior (None si falta alguno); fila nueva: 'sin anterior'."""
     out = {}
     for clave, fila in actual.items():
         previa = anterior.get(clave)
         if previa:
             out[clave] = {c: (None if v is None or previa.get(c) is None else v - previa[c])
                           for c, v in fila.items()}
+        else:
+            out[clave] = 'sin anterior'
     return out
 
 
@@ -136,7 +146,9 @@ def tabla(titulo, filas, cols, difs):
     out = [titulo, '  perfil/tarea  ' + '  '.join(c for c, _ in cols)]
     for (p, t), fila in filas.items():
         d = difs.get((p, t), {})
-        out.append(f'  {p}/{t}  ' + '  '.join(fmt(fila[c], dec) + fmt_dif(d.get(c), dec) for c, dec in cols))
+        nota = '  (sin anterior)' if d == 'sin anterior' else ''
+        d = d if isinstance(d, dict) else {}
+        out.append(f'  {p}/{t}  ' + '  '.join(fmt(fila[c], dec) + fmt_dif(d.get(c), dec) for c, dec in cols) + nota)
     return out
 
 

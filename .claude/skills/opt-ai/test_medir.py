@@ -90,6 +90,25 @@ class MedirTest(unittest.TestCase):
             medir.main([act, '--anterior', ant])
         self.assertIn('(+500)', buf.getvalue())
 
+    def test_no_finitos_fuera(self):
+        r = medir.analizar(self.reg(['{"app.machine_profile": "deck", "app.task": "narrar", "app.duration_ms": Infinity}',
+                                     llamada(10, **{'gen_ai.usage.output_tokens': 5, 'app.decode_ms': float('nan')})]))
+        f = r['llamadas'][('deck', 'narrar')]
+        self.assertEqual((f['n'], f['p50_ms'], f['tok_s']), (2, 10, None))
+
+    def test_archivo_inexistente(self):
+        with self.assertRaises(SystemExit) as e:
+            medir.analizar('/no/existe.jsonl')
+        self.assertIn('No se puede leer', str(e.exception.code))
+
+    def test_comparacion_sin_anterior(self):
+        act, ant = self.reg([llamada(2000), llamada(10, perfil='cpu')]), self.reg([llamada(1500)])
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            medir.main([act, '--anterior', ant])
+        self.assertIn('cpu/narrar', buf.getvalue())
+        self.assertIn('(sin anterior)', buf.getvalue())
+
 
 if __name__ == '__main__':
     unittest.main()
