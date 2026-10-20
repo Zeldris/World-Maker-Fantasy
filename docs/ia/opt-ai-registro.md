@@ -119,7 +119,7 @@ causas) y la de `keep_alive`, que pasa a experimento.
 
 ## Medidas de las propuestas (`QA-160`…`QA-168`, rama `claude/opt-ai-mejoras`)
 
-Cada pasada: `logs/bench.sh <etiqueta> 8` (sin subir) restaura la partida de la ronda (`cmvgnd5ke0001rivyqqjpdezo`,
+Cada pasada (desde `10`, `bash tools/qa/bench-ia.sh <etiqueta> --anterior <etiqueta>`, `QA-173`; antes, `logs/bench.sh <etiqueta> 8`, sin subir) restaura la partida de la ronda (`cmvgnd5ke0001rivyqqjpdezo`,
 Gorhorn, Día 42) en `tarkor_juego`, arranca con `IA_PERFIL=deck` e `IA_REGISTRO` y pasa `benchmark-turno` (8 turnos,
 mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 

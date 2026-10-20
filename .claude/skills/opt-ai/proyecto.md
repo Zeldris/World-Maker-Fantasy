@@ -20,7 +20,9 @@ servidor: no es juego y `medir.py` lo excluye (`--con-calentar` lo muestra). Mot
 
 ## Benchmark y RAG
 
-- Benchmark de turno (antes/después de cada propuesta): `npm run benchmark-turno` (en `backend/`).
+- Benchmark de turno (antes/después de cada propuesta): `bash tools/qa/bench-ia.sh <etiqueta> --anterior <etiqueta>`
+  (`QA-173`): restaura el escenario `ia-gorhorn-dia42`, reindexa, juega 8 turnos de `npm run benchmark-turno` con
+  `IA_PERFIL=deck`, muestrea RAM y `ollama ps` y pasa `medir.py`. En segundo plano (~10 min).
 - Reindexar el lore: `npm run reindex-lore`. Recuperación: `backend/src/services/retrieval.ts`.
 - Evaluación del RAG: `npm run rag-eval` sobre el juego fijo `backend/ia/rag-casos.jsonl` (recall@k y MRR; el
   caso rojo del paso 2 sale de aquí).

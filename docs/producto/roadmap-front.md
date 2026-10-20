@@ -1448,6 +1448,16 @@ turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
 - ~~**QA-168 · `keep_alive` de `clasificar`, experimento** (propuesta 8).~~
   ✅ 2026-10-20: `'5m'`; caben los tres modelos (≥1,8 GB libres), `clasificar` p50 6,9 → 2,8 s, turno p50 28,7 s.
 
+Retro del PR de `claude/opt-ai-mejoras` ([retro](../registros/retro-2026-10-20-opt-ai-mejoras.md), aprobadas por la
+usuaria el 2026-10-20), con las tres de `/opt-tokens`.
+- ~~**QA-169 · `/code-review low` de cada propuesta de `opt-ai` antes de su commit**: el bench mide tiempo, no fallos.~~ ✅ 2026-10-20: (`opt-ai` paso 4): al aplicar cada tarea, `/code-review low` de su diff antes del commit y del bench de después. La usuaria propuso mover el `/code-review` del PR tras `/opt-tokens` y `/opt-ai`; se quedó esta, porque los cuatro fallos venían de las propias tareas de `opt-ai`, que ya iban antes de esa revisión.
+- ~~**QA-170 · `keep_alive` y `num_ctx` alineados en todas las llamadas a un modelo** (`opt-ai`, `motores.md`).~~ ✅ 2026-10-20: nota en `motores.md` (Ollama) y en el paso 3: buscar todas las llamadas al modelo y alinearlas con una constante como `CTX_CRONISTA`.
+- ~~**QA-171 · `tools/roadmap/cerrar.py`**: cerrar una tarea en su roadmap, en el mapa y en la bitácora en una orden.~~ ✅ 2026-10-20: `cerrar.py QA-n "nota" … --bitacora` (`test_cerrar.py`): tacha en el roadmap (también en varias líneas) y en el mapa (los rangos, cuando quedan cerrados enteros) y abre «Hecho recientemente» con las 10 últimas; con él se cerraron estas.
+- ~~**QA-172 · «Prompt del narrador» en `mapa-agente.md`**: bloques, intentos y modelo/`num_ctx`/`keep_alive` por tarea.~~ ✅ 2026-10-20: sección en `docs/mapa-agente.md` con el orden de bloques de `buildNarrationPrompt`, los intentos 1/2/3 y la tabla de modelo, `num_ctx` y `keep_alive` por tarea; `mapa-agente.py` en verde.
+- **QA-173 · `tools/qa/bench-ia.sh` versionado**: restaurar, reindexar, jugar, muestrear RAM y `medir.py` en una orden.
+- ~~**QA-174 · `.prettierrc.json` del backend con comillas simples**: que un archivo reescrito no cambie de estilo.~~ ✅ 2026-10-20: `singleQuote`, `trailingComma: all`, `printWidth` 120; sin reformatear lo que ya hay.
+- ~~**QA-175 · `POR ARCHIVO` en `medir.py` de `opt-tokens`**: lecturas y arrastre por archivo.~~ ✅ 2026-10-20: sección `POR ARCHIVO` (Read y Bash con orden de lectura; rutas relativas a otra carpeta, resueltas por `git ls-files`), con su test en `test_medir.py`. En esta sesión, `narrador.ts`: 61 lecturas, 1,6M arrastrados.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
