@@ -5,6 +5,9 @@ export interface CasoRag {
   pregunta: string;
   /// Títulos de trozo (`title` de loreChunks.ts) que responden la pregunta.
   esperados: string[];
+  /// Región de la ubicación del jugador (como `Location.region`). Opcional: añade ` — <región>` a la
+  /// consulta y excluye el lore del continente contrario, como hace el juego.
+  region?: string;
   origen?: string;
   causa?: string | null;
   /// Si es true y el caso no sale en el top-k, `rag-eval` sale con código 1.

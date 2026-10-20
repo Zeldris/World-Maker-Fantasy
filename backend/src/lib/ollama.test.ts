@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { queueTimeoutFor } from './ollama.js';
 
 // Bug real (2026-08-31): `ollamaQueue.enqueue` nunca recibía `queueTimeoutMs` explícito desde
@@ -15,6 +15,11 @@ describe('queueTimeoutFor', () => {
   it('sin timeoutMs, no impone ningún guard de cola propio (usa el default de la cola)', () => {
     expect(queueTimeoutFor({ model: 'x', prompt: 'y' })).toBeUndefined();
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.doUnmock('./iaRegistro.js');
 });
 
 // Registro opt-ai: cada llamada anota su tarea y los tiempos de Ollama (ns -> ms).
@@ -49,19 +54,21 @@ describe('registro opt-ai en ollamaGenerate', () => {
       outputTokens: 20,
       truncated: true,
     });
-    vi.unstubAllGlobals();
-    vi.doUnmock('./iaRegistro.js');
   });
 });
 
-function streamDe(lineas: string[]) {
+function streamDe(lineas: string[], finalSinSalto = false, cancel = vi.fn(async () => {})) {
   const enc = new TextEncoder();
   let i = 0;
   return {
     ok: true,
     body: {
       getReader: () => ({
-        read: async () => (i < lineas.length ? { done: false, value: enc.encode(lineas[i++] + '\n') } : { done: true, value: undefined }),
+        read: async () =>
+          i < lineas.length
+            ? { done: false, value: enc.encode(lineas[i++] + (finalSinSalto && i === lineas.length ? '' : '\n')) }
+            : { done: true, value: undefined },
+        cancel,
       }),
     },
   };
@@ -81,8 +88,23 @@ describe('registro opt-ai en ollamaGenerateStream', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(streamDe([JSON.stringify({ response: 'ho' }), JSON.stringify({ error: 'modelo roto' })])));
     await expect(ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {})).rejects.toThrow('modelo roto');
     expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ finishReason: 'error', error: 'modelo roto' });
-    vi.unstubAllGlobals();
-    vi.doUnmock('./iaRegistro.js');
+  });
+
+  it('procesa la última línea aunque no acabe en salto de línea', async () => {
+    const { registrarLlamada, ollamaGenerateStream } = await cargar();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(streamDe([JSON.stringify({ response: 'a' }), JSON.stringify({ response: 'b', done: true, done_reason: 'stop', eval_count: 7 })], true)));
+    const r = await ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {});
+    expect(r.text).toBe('ab');
+    expect(registrarLlamada.mock.calls[0][0].error).toBeUndefined();
+    expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ outputTokens: 7 });
+  });
+
+  it('ante una línea de error cancela la lectura antes de lanzar', async () => {
+    const { ollamaGenerateStream } = await cargar();
+    const cancel = vi.fn(async () => {});
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(streamDe([JSON.stringify({ error: 'roto' })], false, cancel)));
+    await expect(ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {})).rejects.toThrow('roto');
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 
   it('un stream sin done:true se registra como «stream incompleto»', async () => {
@@ -91,8 +113,6 @@ describe('registro opt-ai en ollamaGenerateStream', () => {
     const r = await ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {});
     expect(r.text).toBe('hola');
     expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ finishReason: 'error', error: 'stream incompleto' });
-    vi.unstubAllGlobals();
-    vi.doUnmock('./iaRegistro.js');
   });
 
   it('un stream completo no suma undefined y no registra error', async () => {
@@ -101,8 +121,6 @@ describe('registro opt-ai en ollamaGenerateStream', () => {
     const r = await ollamaGenerateStream({ model: 'm', prompt: 'p' }, () => {});
     expect(r.text).toBe('a');
     expect(registrarLlamada.mock.calls[0][0].error).toBeUndefined();
-    vi.unstubAllGlobals();
-    vi.doUnmock('./iaRegistro.js');
   });
 });
 
@@ -113,7 +131,5 @@ describe('timeout en ollamaGenerate', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
     await expect(ollamaGenerate({ model: 'm', prompt: 'p', timeoutMs: 50 })).rejects.toThrow(/no respondió en 50ms/);
     expect(registrarLlamada.mock.calls[0][0].error).toMatch(/no respondió en 50ms/);
-    vi.unstubAllGlobals();
-    vi.doUnmock('./iaRegistro.js');
   });
 });
