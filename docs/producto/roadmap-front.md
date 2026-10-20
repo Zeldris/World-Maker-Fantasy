@@ -1363,16 +1363,16 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   calidad y su contrapeso; al medir un cambio aplicado se mira también lo que costó en calidad. `proyecto.md` al día.
 - ~~**QA-130 · La `/retro` revisa las skills propias y el `/code-review`**~~ ✅ 2026-10-19 (usuaria): dónde fallaron
   o se quedaron cortas en lo revisado, y la mejora.
-- **QA-131 · Revisión de cada rama de subagente en el paso 3 de `orchestrate-dealer`** 🚧 2026-10-20 (usuaria): en la
+- ~~**QA-131 · Revisión de cada rama de subagente en el paso 3 de `orchestrate-dealer`**~~ ✅ 2026-10-20 (usuaria): en la
   tanda P223-P237 se fusionaron 8 ramas sin la revisión de `QA-126` (estaba solo en «Reglas») y el `/code-review` final
   encontró 17 hallazgos. La hace un subagente revisor antes de fusionar.
-- **QA-132 · Los subagentes en paralelo no tocan los registros compartidos** 🚧 2026-10-20 (usuaria): los hallazgos
+- ~~**QA-132 · Los subagentes en paralelo no tocan los registros compartidos**~~ ✅ 2026-10-20 (usuaria): los hallazgos
   vuelven en `HALLADO` y los apunta la principal, como la bitácora; `pruebas-0.3-hallazgos.md` chocaba al fusionar.
-- **QA-133 · Campo `HERRAMIENTAS:` en la vuelta del subagente** 🚧 2026-10-20 (usuaria): los fallos del driver van a
+- ~~**QA-133 · Campo `HERRAMIENTAS:` en la vuelta del subagente**~~ ✅ 2026-10-20 (usuaria): los fallos del driver van a
   `rondas-de-pruebas.md`; apuntados ya `turno.js` con cajón abierto y el driver que muere al reiniciar `escenario.sh`.
-- **QA-134 · `medir.py --desde <fecha|commit>`** 🚧 2026-10-20 (usuaria): medir una tarea y no la ventana de 24 h, que
+- ~~**QA-134 · `medir.py --desde <fecha|commit>`**~~ ✅ 2026-10-20 (usuaria): medir una tarea y no la ventana de 24 h, que
   mezclaba la ronda anterior.
-- **QA-135 · `tools/qa/fusionar.sh`** 🚧 2026-10-20 (usuaria): fusiona la rama del subagente, resuelve el registro de
+- ~~**QA-135 · `tools/qa/fusionar.sh`**~~ ✅ 2026-10-20 (usuaria): fusiona la rama del subagente, resuelve el registro de
   hallazgos, pasa los tests del paquete tocado y avisa si falta la revisión; la principal hacía 44 órdenes de git.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
