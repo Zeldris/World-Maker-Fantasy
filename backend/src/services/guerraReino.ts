@@ -150,7 +150,7 @@ TRABAJOS[TIPO_ATAQUE_ASENTAMIENTO] = {
     const suyos = Array.from({ length: n }, (_, i) => ({ ...soldadoGenerico(`defensa-${f.id}-${i}`, 'Soldado', 'B', base, true), bonoDefensa: cobertura }));
     const r = simularCombateDeFondo([...nuestros.map((h) => h.c), ...suyos], random);
     const estado = new Map(r.estados.map((e) => [e.id, e]));
-    await aplicarBajas(tx, v.saveId, nuestros, new Map(r.estados.map((e) => [e.id, e.condicion])), new Set(r.estados.filter((e) => e.muerto).map((e) => e.id)), dia, null);
+    await aplicarBajas(tx, v.saveId, nuestros, new Map(r.estados.map((e) => [e.id, e.condicion])), new Set(r.estados.filter((e) => e.muerto).map((e) => e.id)), dia, 'guerra', null);
     const muertos = suyos.filter((s) => estado.get(s.id)?.muerto).length;
     if (muertos > 0) await tx.kingdomStats.update({ where: { id: f.kingdomStats.id }, data: { soldados: Math.max(0, f.kingdomStats.soldados - muertos) } });
     const reino = await faccionDelReino(tx, v.saveId);

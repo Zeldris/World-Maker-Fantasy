@@ -7,6 +7,7 @@
 // 47c: al llegar, si la región del destino tiene otro dueño en guerra o en tensión con el Reino, la
 // caravana puede caer en un asalto (mismo riesgo que las expediciones de facción): pierde la carga.
 import { esMaterial, huecoDeMateriales } from './cronista/economiaReino.js';
+import { avisarEnReino } from './cronista/subditos.js';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { cotizarCompra, cotizarVenta, diasDeCamino, unidadesDeOrden, type TipoOrden } from './comercioVolumen.js';
 import { buildAdjacency, shortestPath } from './travel.js';
@@ -64,8 +65,8 @@ async function sacarDeAlmacen(tx: Tx, donde: { saveId: string } | { factionId: s
 }
 
 async function registrarEnReino(tx: Tx, saveId: string, text: string) {
-  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
-  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+  await avisarEnReino(tx, saveId, text, ws?.fictionalMinutes ?? 480);
 }
 
 /// 47e: el lugar por donde pasa ahora una caravana de fondo de `faccion` (punto «Caravana de …» de
