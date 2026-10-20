@@ -85,6 +85,49 @@ class Fusionar(unittest.TestCase):
         self.assertIn('Sin --revisada: confirma el /code-review', r.stdout)
         self.assertIn('resto: 1 archivos', r.stdout)
 
+    def con_worktree(self, d: str, nombre: str, sucio: bool = False) -> str:
+        ruta = os.path.join(d, '.claude', 'worktrees', nombre.replace('/', '-'))
+        git(d, 'worktree', 'add', '-q', '-b', nombre, ruta)
+        escribir(os.path.join(ruta, 'x.txt'), 'x\n')
+        git(ruta, 'add', '-A')
+        git(ruta, 'commit', '-qm', 'sub')
+        if sucio:
+            escribir(os.path.join(ruta, 'sin-commit.txt'), 'y\n')
+        return ruta
+
+    def ramas(self, d: str) -> str:
+        return git(d, 'branch', '--format=%(refname:short)')
+
+    def test_borra_worktree_y_rama_de_agente_fusionada(self):
+        d = self.repo()
+        ruta = self.con_worktree(d, 'worktree-agent-aaa')
+        r = self.fusionar(d, 'worktree-agent-aaa', 'Fusiona', '--revisada')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertFalse(os.path.exists(ruta))
+        self.assertNotIn('worktree-agent-aaa', self.ramas(d))
+
+    def test_worktree_con_cambios_sin_commit_se_deja_y_avisa(self):
+        d = self.repo()
+        ruta = self.con_worktree(d, 'worktree-agent-bbb', sucio=True)
+        r = self.fusionar(d, 'worktree-agent-bbb', 'Fusiona', '--revisada')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('AVISO', r.stdout)
+        self.assertTrue(os.path.exists(ruta))
+        self.assertIn('worktree-agent-bbb', self.ramas(d))
+
+    def test_rama_normal_sin_worktree_no_se_borra(self):
+        d = self.repo()
+        self.rama(d, tabla('✅ hecho', 'pendiente', '✅ ok'))
+        self.assertEqual(self.fusionar(d, 'sub', 'Fusiona', '--revisada').returncode, 0)
+        self.assertIn('sub', self.ramas(d))
+
+    def test_nunca_borra_ramas_claude(self):
+        d = self.repo()
+        self.con_worktree(d, 'claude/tema')
+        r = self.fusionar(d, 'claude/tema', 'Fusiona', '--revisada')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('claude/tema', self.ramas(d))
+
 
 if __name__ == '__main__':
     unittest.main()
