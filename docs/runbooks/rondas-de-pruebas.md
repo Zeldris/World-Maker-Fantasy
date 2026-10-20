@@ -79,7 +79,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
-   `IA_REGISTRO=backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
+   `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    (`IA_PERFIL`: `deck`, `cpu`, `gpu8` o `gpu12`, según la máquina). Al acabar la tanda, `/opt-ai` mide los tiempos,
    contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
@@ -93,16 +93,12 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `--nuevo "<hallazgo>" "<estado>"` añade la fila con el siguiente número, y
    `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado; las dos rehacen el resumen de la cabecera
    (`QA-84`). Lo comprobado jugando se marca con «Comprobado jugando» en el estado.
-4. **La ronda no escribe código** (`QA-45`, petición de la usuaria del 2026-10-12): la prioridad es
-   probar. Solo se arregla un fallo **bloqueante** (no se puede seguir jugando, o el juego hace algo
-   imposible), con su test y comprobado en vivo; que el test falle sin el arreglo se comprueba con
-   `tools/qa/rojo-sin-arreglo.sh` (`QA-58`). También se arregla, antes del PR, el efecto secundario de
-   un arreglo de esta misma rama que aún no está en `main` (`QA-83`; p. ej. P151, de P123): es parte
-   de ese arreglo y se vuelve a jugar. Lo demás va al registro como «pendiente»; las
-   mejoras y el diseño, al roadmap como tarea con hito. Las retros y los arreglos de lo apuntado se
-   hacen antes o después de la ronda, no en medio. Si el MCP de Playwright no conecta,
-   `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las mismas ayudas: `orden.sh --ayuda
-   <archivo> '<tk>'` (`QA-57`).
+4. **La ronda solo juega y apunta** (`QA-45`, usuaria, 2026-10-12; endurecido el 2026-10-20): no corrige código, ni
+   del juego ni de las herramientas, tampoco un fallo bloqueante, ni analiza (medidas, causas en el código, casos del
+   RAG): eso lo hacen las skills (`/opt-ai`, `/code-review`, `/retro`) en el flujo del PR. Lo que la usuaria acepte va a
+   «Propuestas aprobadas para el roadmap cuando acaben las pruebas» de la bitácora; los arreglos, en una sesión de
+   arreglos aparte. Si el MCP de Playwright no conecta, `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las
+   mismas ayudas: `orden.sh --ayuda <archivo> '<tk>'` (`QA-57`).
 5. Antes de pasar la suite con base real, `bash tools/playwright-e2e/arrancar-juego.sh --parar`: con el
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
@@ -119,6 +115,13 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 - `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
   arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.
+- En la Deck, Ollama se arranca con `flatpak-spawn --host bash -lic 'ollama serve'` (con `-lic`, para que cargue el
+  `~/.bashrc` con `OLLAMA_IGPU_ENABLE`, `OLLAMA_FLASH_ATTENTION` y `OLLAMA_KV_CACHE_TYPE`). Con `bash -c` va solo por
+  CPU (`logs/ollama.log`: «dropping integrated GPU»): turnos de 3-10 min, timeouts y casi todo narrado por el modelo
+  de respaldo, que parecen fallos del narrador y no lo son (2026-10-20).
+- Un escenario guardado en la nube trae los embeddings del lore del Ollama simulado: con el Ollama real, `npm run
+  reindex-lore` (en `backend/`, con la `DATABASE_URL` de `tarkor_juego`) antes de jugar; si no, el RAG devuelve trozos al
+  azar (P274).
 
 ## Fallos de las herramientas
 
@@ -139,3 +142,18 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
   giran los dados; esperar a que el HUD deje de decir «El narrador escribe».
 - En la Deck no hay `psql` fuera del contenedor `tarkor-postgres`: envoltorios de `psql`, `pg_restore` y `pg_dump` con
   `podman exec -i` en `logs/bin/` (ignorada por git), en el `PATH` de `flatpak-spawn --host bash -lic '…'`.
+- `orden.sh` también necesita `node`: en la Deck, por `flatpak-spawn --host` (el sandbox no ve el `/tmp` del host).
+- `turno.js` da «textbox no encontrado» con la barra de habilidades activa (el botón ✨ la alterna) o con un modal abierto.
+- `pulsar.js` con el texto «Leyendas» casa con el rótulo LEYENDA del mapa de zona.
+- El prompt del narrador no se registra: para ver un bloque (verdad, callbacks, memoria), ejecutar `bloqueMemoria` aparte con `tsx`.
+- Desde el sandbox, `flatpak-spawn --host --directory=<repo>`: sin `--directory` sale «No existe el fichero o directorio»
+  (el directorio de trabajo es el del scratchpad). El SQL con comillas va mejor por stdin al envoltorio de `psql` que con `-c`.
+- `pulsar.js` con solo `contiene` falla («Falta window.tk.texto»); `pulsar` «Reino» no dice si se abrió el cajón.
+- El escenario `reino-dia39` no tiene comida, materiales ni Goirnos: Corrales, Partidas, Defensa, oficios y llegadas no
+  se pueden provocar sin `escenario.sh dar` (necesita el permiso de la usuaria) o recolectar fuera de la Hondonada.
+- `orden.sh` por `flatpak-spawn` no ve el `/tmp` del sandbox: ni `< archivo` ni `--ayuda` con una ruta de allí (vale
+  pasar el JS en base64 por stdin, o dejar el archivo dentro del repo en una carpeta ignorada).
+- Con Ollama real, `turno.js` y `combate.js` vuelven a los ~40 s con el HUD aún en «El narrador escribe»: esperar en un
+  bucle a que desaparezca. `combate.js` con `rondas:1` a veces juega Defensa (por la iniciativa) sin avisar.
+- `IA_REGISTRO` con ruta relativa se resuelve desde `backend/` (donde corre el servidor): `backend/ia/…` no escribe
+  nada. Usar la ruta absoluta (`$PWD/backend/ia/registro-$(date +%F).jsonl` desde la raíz).

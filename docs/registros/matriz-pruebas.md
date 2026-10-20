@@ -60,7 +60,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-16` | Interfaz | El asistente sobrevive a recargar | jugado | asistente conserva mundo y paso 3 al recargar; POST /saves en 500 → aviso con Reintentar y Volver; Reintentar crea la partida |
 | `UX-24` | Interfaz | Ningún error en silencio | jugado | cambiar rol con POST forzado a 500: ErrorBanner con el detalle del backend, Reintentar aplica el cambio y el aviso se va; la carga (GET) falla en silencio (P230) y el classify cae en sondeo (P229) |
 | `UX-29` | Interfaz | El mundo de fondo nunca bloquea | jugado | mientras la gema está encendida el campo de acción sigue libre (aria-disabled=false) |
-| `UX-30` | Interfaz | Solo lo que el personaje sabe | sin jugar |  |
+| `UX-30` | Interfaz | Solo lo que el personaje sabe | jugado | 2026-10-20, Ollama real: Gistera no suelta nada de la rebelión ni de Grosh; Leyendas › Crónica solo enseña los 23 de 140 sucesos con Conocimiento, el rumor como «Rumor · lo supiste el día 10»; falla por el tooltip y «Responder», que enseñan la ficha secreta de un NPC (P260, grave), y por el Reino propio (P248) |
 | `UX-31` | Interfaz | Varios días de golpe | jugado | «descansar tres días» deja un solo aviso «Mientras pasaban los días… (6 noticias)» plegable; P231: el descanso rechazado avanzó igual los días |
 | `UX-35` | Interfaz | El turno no espera al día | jugado | el turno que cruzó tres días respondió en ~5 s y las noticias llegaron después |
 | `UX-36` | Interfaz | Leyendas siempre a una tecla | jugado | Y abre Leyendas desde la partida |
@@ -92,14 +92,14 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-13` | Mundo vivo | Nacimientos notables y generador de nombres (§ 12.3). M Incluye el efecto `crearNpc` | jugado | Día 44: «Nace Merkar Riuh, hijo de Grosh y Krarka» |
 | `CR-14` | Mundo vivo | Etiquetas (§ 8.1). 2026-10-06 S Incluye las reacciones de CR-10: etiqueta tras matar a un | jugado | Etiqueta FUNDADOR al fundar el Reino (ETIQUETA_GANADA) |
 | `CR-15` | Mundo vivo | Aprobación con valores (§ 8.2). 2026-10-06 M 15a 2026-10-06 (`cronista/aprobacion.ts`: val | sin jugar |  |
-| `CR-16` | Mundo vivo | Recuerdos de NPC (§ 8.3). S Incluye las reacciones de CR-10: `recuerdo(testigos, | sin jugar |  |
+| `CR-16` | Mundo vivo | Recuerdos de NPC (§ 8.3). S Incluye las reacciones de CR-10: `recuerdo(testigos, | sin jugar | 2026-10-20: «Vencedor de Gorhorn» sí; ningún Recuerdo provocado (regalar no entrega, P241) |
 | `CR-17` | Mundo vivo | Buscadores de historias e hilos (§ 7.4). 2026-10-06 M (`cronista/hilos.ts`; modelo | sin jugar |  |
 | `CR-18` | Mundo vivo | Propagación y rumores (§ 9). M 2026-10-05 (pasos 18a-18e abajo; lo que falta de la | jugado | P165, P137 («¿Qué se cuenta?», bandos) |
 | `CR-19` | Mundo vivo | Endpoints de Leyendas (§ 14). S 2026-10-05 (`cronista/leyendas.ts` y `routes/saves/leyenda | jugado | P137 (Leyendas) |
 | `CR-20` | Mundo vivo | Front: Leyendas y fichas "En tu partida" en la Enciclopedia. M 2026-10-05 Decidido (`CR-18 | jugado | P137 |
-| `CR-21` | Mundo vivo | Bloque de verdad obligatoria. S 2026-10-06 | sin jugar |  |
-| `CR-22` | Mundo vivo | Callbacks por entidad. S 2026-10-06 | sin jugar |  |
-| `CR-23` | Mundo vivo | Puntuación recencia + importancia + relevancia sobre Libro + crónica. M 2026-10-06 | sin jugar |  |
+| `CR-21` | Mundo vivo | Bloque de verdad obligatoria. S 2026-10-06 | jugado | 2026-10-20, Ollama real: el bloque sale bien; con el narrador en GPU lo usa (P251); la primera vez, solo CPU y con el RAG roto (P274), lo ignoró |
+| `CR-22` | Mundo vivo | Callbacks por entidad. S 2026-10-06 | jugado | 2026-10-20, Ollama real: el callback del orco sale bien, la narración no lo usa (P252) |
+| `CR-23` | Mundo vivo | Puntuación recencia + importancia + relevancia sobre Libro + crónica. M 2026-10-06 | jugado | 2026-10-20: con la acción de juego, «alianza/Concordia» sube las alianzas y «Maktor» el tratado y el espionaje (bloqueMemoria aparte); con «pozo/pobladores» «Se levanta un pozo» queda 8.º y «Llega un poblador» no entra; repetidos en P247 |
 | `CR-32` | Mundo vivo | Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a | sin jugar |  |
 | `CR-34` | Mundo vivo | Decisiones de facción 2026-10-05 (34d, expansión, pasa a `CR-39` en el `0.3`; Q20) (IA de | jugado | Día 44: GUERRA_DECLARADA (Serhu con la Concordia contra Helsig y Goshg), TRATADO_COMERCIAL, ESPIONAJE, ALIANZA |
 | `CR-35` | Mundo vivo | Economía y expediciones de facción en el mundo de la partida (`CR-34` Q1). M | jugado | Día 44: 22 EXPEDICION_SALE y 21 EXPEDICION_VUELVE |
@@ -124,7 +124,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-62` | Mundo vivo | Combate de fondo (Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07, | jugado | P77, P130 (los que quedan fuera del combate) |
 | `CR-63` | Mundo vivo | Partidas de caza y captura 2026-10-07 (ronda aceptada el 2026-10-07, decisiones en | sin jugar |  |
 | `CR-65` | Mundo vivo | Defensa del Reino y milicia 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2 | sin jugar |  |
-| `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | sin jugar |  |
+| `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | jugado | 2026-10-20: Configuración › Partida, Intensidad Dura y Tamaño Fácil se guardan (WorldState.intensidadAsaltos=DURA, tamanoAsaltos=FACIL) y siguen tras recargar; sin ver su efecto en un asalto (texto de Intensidad: P257) |
 | `NAR-9` | Narrador | Rumores en "El mundo" | jugado | 2026-10-19: un rumor del Cronista sale en pergamino con «Desde El Margen Silencioso · pasó el día 9» y «Ver en Leyendas», que abre Leyendas con la entrada resaltada; los «Se dice que…» de `darNoticia` salen sin estilo (P226) |
 | `PAN-9b` | Paneles | Leyendas de tu partida | jugado | P137 |
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | jugado | 2026-10-19: ⏸ desactiva; «Desactivadas (1)» con Reactivar y Borrar; Borrar pide confirmación «No se puede deshacer» y borra (0 órdenes en la base); límite editable solo en «único» |
