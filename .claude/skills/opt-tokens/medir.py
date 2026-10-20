@@ -13,6 +13,7 @@ Lee el registro de la sesión (`~/.claude/projects/<proyecto>/<sesión>.jsonl`) 
 Uso:
   python3 medir.py                       la sesión más reciente del proyecto actual, últimas 24 h
   python3 medir.py --horas 6             otro periodo (0 = toda la sesión)
+  python3 medir.py --desde <ISO|sha>     solo desde ese momento (fecha ISO-8601 o commit: su fecha); sustituye a --horas
   python3 medir.py --sesion <ruta.jsonl> otra sesión
   python3 medir.py --top 20              cuántas filas en cada lista
 
@@ -32,6 +33,18 @@ def raiz_del_proyecto():
         return os.environ['CLAUDE_PROJECT_DIR']
     r = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True)
     return r.stdout.strip() or os.getcwd()
+
+
+def momento_desde(valor):
+    """QA-134: `--desde` acepta una fecha ISO-8601 o un sha de commit (se usa la fecha del commit)."""
+    try:
+        f = dt.datetime.fromisoformat(valor.replace('Z', '+00:00'))
+    except ValueError:
+        r = subprocess.run(['git', 'show', '-s', '--format=%cI', valor], capture_output=True, text=True)
+        if r.returncode != 0 or not r.stdout.strip():
+            sys.exit(f'--desde: «{valor}» no es una fecha ISO-8601 ni un commit')
+        f = dt.datetime.fromisoformat(r.stdout.strip())
+    return f if f.tzinfo else f.replace(tzinfo=dt.timezone.utc)
 
 
 def ruta_por_defecto():
@@ -94,11 +107,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sesion')
     ap.add_argument('--horas', type=float, default=24)
+    ap.add_argument('--desde')
     ap.add_argument('--top', type=int, default=12)
     a = ap.parse_args()
     ruta = a.sesion or ruta_por_defecto()
     desde = None
-    if a.horas > 0:
+    if a.desde:
+        desde = momento_desde(a.desde)
+    elif a.horas > 0:
         desde = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=a.horas)
 
     usos = collections.Counter()
@@ -171,7 +187,7 @@ def main():
             repetidas[(nombre, completa, resumen)] += 1
 
     total_in = usos['input_tokens'] + usos['cache_creation_input_tokens'] + usos['cache_read_input_tokens']
-    print(f'Sesión: {os.path.basename(ruta)}  ·  periodo: {"toda" if not desde else f"últimas {a.horas:g} h"}')
+    print(f'Sesión: {os.path.basename(ruta)}  ·  periodo: {"toda" if not desde else f"desde {desde:%Y-%m-%d %H:%M} UTC" if a.desde else f"últimas {a.horas:g} h"}')
     print(f'Llamadas a la API: {llamadas_api}  ·  compactaciones: {len(cortes)}')
     print(f'Entrada {total_in:,.0f} tokens (caché leída {usos["cache_read_input_tokens"]:,.0f} = '
           f'{100 * usos["cache_read_input_tokens"] / max(total_in, 1):.0f} %, escrita {usos["cache_creation_input_tokens"]:,.0f}, '

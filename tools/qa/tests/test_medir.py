@@ -11,13 +11,13 @@ MEDIR = os.path.join(QA, '..', '..', '.claude', 'skills', 'opt-tokens', 'medir.p
 
 
 class Medir(unittest.TestCase):
-    def medir(self, partes: list, subagentes: dict | None = None, horas: str = '0') -> str:
+    def medir(self, partes: list, subagentes: dict | None = None, horas: str = '0', extra: tuple = ()) -> str:
         d = carpeta()
         ruta = registro(os.path.join(d, 's.jsonl'), *partes)
         for nombre, (tipo, sub) in (subagentes or {}).items():
             escribir(os.path.join(d, 's', 'subagents', f'{nombre}.meta.json'), json.dumps({'agentType': tipo}))
             registro(os.path.join(d, 's', 'subagents', f'{nombre}.jsonl'), *sub)
-        r = subprocess.run(['python3', MEDIR, '--sesion', ruta, '--horas', horas], capture_output=True, text=True)
+        r = subprocess.run(['python3', MEDIR, '--sesion', ruta, '--horas', horas, *extra], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         return r.stdout
 
@@ -68,6 +68,24 @@ class Medir(unittest.TestCase):
         self.assertIn('Contexto medio por llamada: 575 tokens', salida)
         self.assertIn('Contexto medio sin el primer tramo: 200 tokens', salida)
         self.assertIn('Por tramo, del más antiguo al último (medio/techo, en miles): 0/0', salida)
+
+    def test_desde_recorta_como_horas_con_fecha_o_sha(self):
+        """QA-134: `--desde` con una fecha ISO o un sha de commit mide solo desde ahí."""
+        def hace(horas):
+            return (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=horas)).isoformat().replace('+00:00', 'Z')
+        corte = compactacion()
+        for l in corte:
+            l['timestamp'] = hace(1.3)
+        partes = [respuesta('m0', 10, timestamp=hace(5)), respuesta('m1', 900, timestamp=hace(1.5)), *corte,
+                  respuesta('m3', 100, timestamp=hace(1.2)), respuesta('m4', 300, timestamp=hace(1.1))]
+        salida = self.medir(partes, extra=('--desde', hace(2)))
+        self.assertIn('Llamadas a la API: 3  ·  compactaciones: 1', salida)
+        self.assertIn('(sin el primero, que empezó antes del periodo)', salida)
+        # Con un sha se resuelve a la fecha del commit (el de HEAD, anterior a todo lo de hace 1 h o más reciente).
+        sha = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, cwd=QA).stdout.strip()
+        self.assertIn('Llamadas a la API:', self.medir(partes, extra=('--desde', sha)))
+        malo = subprocess.run(['python3', MEDIR, '--desde', 'no-existe-xyz'], capture_output=True, text=True)
+        self.assertNotEqual(malo.returncode, 0)
 
 
 if __name__ == '__main__':
