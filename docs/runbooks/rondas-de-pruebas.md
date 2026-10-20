@@ -150,7 +150,7 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
 - El prompt del narrador no se registra: para ver un bloque (verdad, callbacks, memoria), ejecutar `bloqueMemoria` aparte con `tsx`.
 - `pulsar.js` con solo `contiene` falla («Falta window.tk.texto»); `pulsar` «Reino» no dice si se abrió el cajón.
 - El escenario `reino-dia39` no tiene comida, materiales ni Goirnos: Corrales, Partidas, Defensa, oficios y llegadas no
-  se pueden provocar así: para eso está `reino-dia39-recursos` (`QA-143`: comida 60, bolsa 300 y tesoro 251 Goirnos,
+  se pueden provocar así: para eso está `reino-dia39-recursos` (`QA-143`: Granero, comida 180, bolsa 300 y tesoro 251 Goirnos,
   materiales en el inventario y el Almacén). Más recursos, con `escenario.sh dar` o `dar-reino`: tiene regla `allow` en
   `.claude/settings.json`, también por `host.sh` (solo toca `tarkor_juego`, nunca la partida real de Álvaro).
 - `orden.sh` por `host.sh` no ve el `/tmp` del sandbox: ni `< archivo` ni `--ayuda` con una ruta de allí (vale
