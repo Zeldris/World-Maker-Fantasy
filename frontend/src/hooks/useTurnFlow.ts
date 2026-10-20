@@ -447,8 +447,6 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             // Igual que se ve tras recargar (el diario pinta el intercambio en lugar de la tirada).
             roll: combatExchangeDisplay ? undefined : roll,
             combatExchange: combatExchangeDisplay ?? undefined,
-            // P232 (UX-12): el turno que abre combate es crítico: cierra el cajón de paneles.
-            combate: combate && combate.npcs.length > 0 ? true : undefined,
             createdAt: new Date().toISOString(),
             xpDelta: progression.xpDelta > 0 ? progression.xpDelta : undefined,
             // UX 2026-09-01 (ver comentario del mismo campo en types.ts § LogEntry) — separa el
@@ -536,16 +534,18 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             createdAt: new Date().toISOString(),
           },
         ])
-      } else if (err instanceof BackendHttpError) {
-        // P229: el backend contestó con un error HTTP (5xx) en /turn/classify: el turno no se
-        // resolvió ni se va a resolver, no es un corte de red. Se muestra el error y se desbloquea
-        // la entrada (el `finally`), sin sondeo de reconexión.
+      } else if (err instanceof BackendHttpError && ![502, 503, 504].includes(err.httpStatus)) {
+        // P229: el backend contestó él mismo con un error (500, 4xx) en /turn/classify: el turno no se
+        // resolvió ni se va a resolver, no es un corte de red. Se muestra el error y se desbloquea la
+        // entrada (el `finally`), sin sondeo. 502/503/504 (proxy) sí van al sondeo: el backend pudo
+        // haber guardado ya la acción.
+        console.error('classify falló:', err.message)
         setCharacterLog((prev) => [
           ...prev.slice(0, -1),
           {
             id: `turn-error-${Date.now()}`,
             channel: 'character',
-            text: `El narrador no pudo procesar la acción (${err.message}). Inténtalo de nuevo.`,
+            text: 'El narrador no pudo procesar la acción. Inténtalo de nuevo.',
             timeLabel: fictionalDate,
             createdAt: new Date().toISOString(),
           },

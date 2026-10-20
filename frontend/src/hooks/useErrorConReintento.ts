@@ -14,5 +14,9 @@ export function useErrorConReintento() {
 
   const limpiar = useCallback(() => setFallo(null), [])
 
-  return { fallo, informar, limpiar }
+  /// Quita el aviso solo si es el de `mensaje` (p. ej. el de una carga fallida que ya fue bien): el de
+  /// otra acción fallida sigue visible.
+  const limpiarSi = useCallback((mensaje: string) => setFallo((f) => (f && f.mensaje === mensaje ? null : f)), [])
+
+  return { fallo, informar, limpiar, limpiarSi }
 }
