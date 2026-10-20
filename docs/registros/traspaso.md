@@ -70,7 +70,10 @@ Aprobadas por la usuaria; entran como tareas (con su hito) al volver al roadmap,
 |---|---|---|
 | Recuerdo propio del NPC que vence a la jugadora | Que el vencedor recuerde el combate, no solo la etiqueta | P233 (2026-10-19) |
 | No repetir «ha colgado nuevos avisos» | Si hace pocos días del último aviso del mismo tablón | P237 (2026-10-20) |
+| Skill `scout-updates` (búsqueda de actualizaciones) | Skill aparte (sacada de `opt-ai`) que busque en la web novedades para todos los elementos del juego: modelos, librerías, técnicas. Se valora en el futuro | 2026-10-20 |
 | Leyendas por categorías con filtros genéricos | Entra todo (también los avisos menores del Reino) y lo que se ve lo eligen filtros combinables: **origen** (Tú, Tu Reino, Aliados, Mundo), **familia** (varias a la vez), **importancia** (Todo / Notable / Grave, por marca, nunca número) y **vía** (lo viviste, te lo contaron, de oídas, tablón). Por defecto «Notable»; recuerda el último filtro; contador por categoría; avisos iguales del mismo día agrupados. Referencias: registro de X4 por pestañas (marca el camino), avisos del asentamiento aparte en Manor Lords y Bellwright, diario por pestañas de BG3, fuentes y rumores de D&D 5e. Hoy: `LeyendasPanel.tsx` filtra por una familia y los avisos del Reino no llegan por el umbral de importancia | 2026-10-20 |
+
+En diseño (no es tarea todavía): skill `opt-ai` tras cada tanda de pruebas, en [`docs/ia/skill-opt-ai.md`](../ia/skill-opt-ai.md).
 
 ## Decisiones de Álvaro que bloquean algo
 
