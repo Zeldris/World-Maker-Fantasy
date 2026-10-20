@@ -68,3 +68,8 @@ Se activa con una variable de entorno durante las rondas.
 - Tiempo aceptable por tarea en la Deck (p. ej. narrar < N s), para marcar problemas.
 - Dónde vive la skill genérica para reutilizarla en otros proyectos (un repositorio propio de skills o copiada en cada uno).
 - Cuándo se implementa. El paso 0 toca el backend: ¿cuenta como mejora del entorno de trabajo o espera al fin de las pruebas?
+
+## Al terminar la implementación (usuaria, 2026-10-20)
+
+- **`retro` y `opt-tokens` miran también las skills propias** (`.claude/skills/` que no son de Matt Pocock: `opt-ai`, `opt-tokens`, `retro`, `orchestrate-dealer`, `selector`, `pr`…) y las tienen en cuenta en sus propuestas: si una skill falló, sobra o puede mejorar con lo visto en la sesión.
+- **Antes del diseño final:** ideas de herramientas parecidas en la web y de las skills de Matt Pocock (búsqueda en curso, 2026-10-20).
