@@ -17,9 +17,20 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 
 1. **Empezar la tarea:** cargar `selector`, clasificar la tarea con su tabla y decir en una línea
    qué skill y qué modelo pide, y su presupuesto de compactaciones (1 a 5, `QA-116`).
-   **Compactar sin perder** (`QA-116`): el tope de 300k (`QA-109`) es la red; los cortes buenos son los de fin
-   de sub-bloque, ya con commit y push, que Claude le señala a la usuaria para que haga `/compact`. Tras cada
-   compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
+   **Sesión directora** (`QA-121`): con `orchestrate-dealer`, la principal reparte cada trozo a un subagente de
+   contexto limpio y solo recibe su resumen; se trabaja horas sin `/clear` ni `/compact` de la usuaria.
+   **Puntos de `/clear`** (`QA-122`, usuaria, 2026-10-19): la compactación automática (tope de 200k, `QA-123`) es la red;
+   el corte limpio es un `/clear` en un punto estable. Claude lo recomienda: al cerrar una tarea del roadmap o una
+   tanda de arreglos, al cerrar una ronda o un bloque de pruebas, tras fusionar un PR, y cuando el contexto pasa de
+   ~200k o la tarea ya gastó su presupuesto de compactaciones, siempre entre pasos y nunca a mitad de uno. Entre el
+   `/code-review` y la `/retro` de un PR no se limpia: `/opt-tokens` y la `/retro` leen esta sesión. Antes de
+   recomendarlo deja la sesión lista: todo con commit y push, la fila de la bitácora con el siguiente paso concreto
+   y el estado de los tests, y lo que tenga que sobrevivir (una decisión, un dato a medias) en un `.md`. Entonces
+   dice en una línea «Punto de `/clear`: todo subido (`<commit>`). Escribe `/clear` y después «sigue».»; Claude no
+   puede lanzarlo. Tras el `/clear`, el gancho de `SessionStart` pone el estado (`recuperar.py --estado`) y se sigue
+   por «Al empezar cualquier sesión» de `CLAUDE.md`.
+   **Compactar sin perder** (`QA-116`): el tope de 200k (`QA-109`, bajado a 200k en `QA-121`, a 300k en `QA-122` y de vuelta a
+   200k en `QA-123`: con 300k el techo pasó de ~145k a ~220k y el medio, de ~115k a ~150k por llamada) es la red. Tras cada compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
    `git status`, los últimos commits y las compactaciones llevadas; un detalle de antes (un error, lo que dijo la
    usuaria) se busca con `python3 tools/qa/recuperar.py "<regex>"`, que lee el registro de la sesión sin
    cargarlo entero. Una sesión nueva no tiene ese registro: lo que tiene que sobrevivir, a la bitácora.
@@ -55,10 +66,11 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
-   la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
-   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Al fusionarlo, Claude le recuerda a la usuaria
-   que empiece una sesión nueva (`/clear` u otra sesión) para la siguiente tarea: arranca en ~70k tokens con la
-   bitácora en vez de arrastrar la conversación entera (`QA-110`).
+   la descripción con `pr`. Si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/opt-ai` tras el
+   `/code-review` y antes de `/opt-tokens` (`QA-142`); esta es la fuente única del orden. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
+   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Al fusionarlo, la siguiente tarea sigue en la misma
+   sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
+   subagentes de contexto limpio y la principal no arrastra lo leído.
 7. **Antes de crear cada PR a `main` (tras el `/code-review` y sus arreglos), y al cerrar una fase o un
    hito:** `retro` (usuaria, 2026-10-13), que lanza Claude sobre lo que va a entrar con el PR o sobre toda
    la fase.
@@ -72,6 +84,7 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 | Skill | Se invoca | Qué hace | Cuándo, en este proyecto |
 |---|---|---|---|
 | `selector` (propia) | sola, al empezar tarea | Elige skill y modelo según el caso | Siempre, al arrancar una tarea, un bug o un diseño |
+| `orchestrate-dealer` (propia) | Claude, en toda tarea de más de un paso (la apunta el `selector`) | La sesión principal parte y decide; cada trozo va a un subagente de contexto limpio que devuelve un resumen de 15 líneas | Tareas del roadmap, tandas de arreglos, rondas de pruebas (en serie): trabajar horas sin `/clear` (`QA-121`) |
 | `/grill-with-docs` | la usuaria o Claude al proponer diseño | Entrevista por rondas (preguntas numeradas, cada una con la respuesta recomendada) hasta no dejar nada supuesto; mantiene `GLOSSARY.md` y los ADR | Antes de diseñar algo grande: una fase nueva del Cronista, una mecánica, una decisión de Álvaro. Sustituye a las preguntas sueltas |
 | `grilling` | por debajo de la anterior | La entrevista en sí | — |
 | `domain-modeling` | por debajo de la anterior, o al discutir términos | Glosario (`GLOSSARY.md`) y decisiones difíciles de revertir (`docs/adr/`) | Términos del motor y producto (mundo de la partida, catálogo, Suceso…). El lore sigue en `docs/rpgtarkor/` y no se toca |
@@ -79,6 +92,7 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 | `/improve-codebase-architecture` | la usuaria o al cerrar fase | Busca módulos que simplificar y los presenta en un informe | Cada pocas fases. Candidatos claros: `turnResolution.ts` (más de 7.000 líneas), `turn.ts` |
 | `codebase-design` | por debajo de la anterior | Vocabulario para diseñar módulos con interfaz pequeña | — |
 | `opt-tokens` | Claude, antes de crear cada PR a `main` (tras el `/code-review`, antes de la `/retro`), o la usuaria con `/opt-tokens` | Mide dónde se fueron los tokens de la sesión (`medir.py`) y propone cómo gastar menos | Las propuestas las confirma la usuaria; lo confirmado entra como tarea con hito |
+| `opt-ai` | Claude o la usuaria con `/opt-ai`, tras cada tanda de pruebas con el modelo real, antes de cambiar de modelo o cuando la IA va lenta | Mide la IA local con el registro por llamada (`medir.py`), contrasta el RAG con las incoherencias de la tanda (`npm run rag-eval`) y propone configuración por perfil de máquina (la Steam Deck, siempre) | Solo propone; lo que confirme la usuaria entra como tarea con hito. Sin registro (`IA_REGISTRO`) no hay nada que medir |
 | `retro` | Claude, antes de crear cada PR a `main` (tras el `/code-review` y `/opt-tokens`; revisa también la skill `opt-tokens`) y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Antes de cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
 | `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |

@@ -3,12 +3,14 @@
 async (page) => {
   const { opcion } = await page.evaluate(() => window.tk || {});
   if (opcion == null) return 'Falta window.tk.opcion (número o texto)';
-  // Las opciones son botones «<n><texto>»: por número, el dígito sin otro detrás (1 no casa con 10); por
-  // texto, el trozo tal cual (escapado). Solo botones: un «1 hora después» del diario no cuenta.
+  // Las opciones son los botones `[data-opcion]` del modal. Por número, la n-ésima: el número que se ve
+  // va en un `span aria-hidden` y no forma parte del nombre del botón (QA-125). Por texto, el trozo tal cual.
   const escapar = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const patron = typeof opcion === 'number' ? new RegExp(`^\\s*${opcion}(?!\\d)\\s*\\S`) : new RegExp(escapar(String(opcion)), 'i');
+  const opciones = page.locator('[data-opcion]');
+  const boton = typeof opcion === 'number' ? opciones.nth(opcion - 1) : opciones.filter({ hasText: new RegExp(escapar(String(opcion)), 'i') }).first();
+  if (!(await boton.count())) return `No hay opción ${JSON.stringify(opcion)}: ${(await opciones.allInnerTexts()).join(' · ') || 'ninguna escena abierta'}`;
   const antes = await page.locator('body').innerText();
-  await page.getByRole('button', { name: patron }).first().click();
+  await boton.click();
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(1500);
     const t = await page.locator('body').innerText();

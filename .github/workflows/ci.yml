@@ -43,6 +43,8 @@ jobs:
           python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py')
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
+      # QA-137: tests de medir.py de la skill opt-ai.
+      - run: python3 -m unittest discover -s .claude/skills/opt-ai
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
       - run: for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
 
@@ -62,7 +64,10 @@ jobs:
       # dejaba el job en rojo sin llegar a ejecutar un test (PR #36).
       - name: Postgres 16 con pgvector
         working-directory: .
+        # El repositorio de Microsoft del runner dejó de estar firmado (403) y tumbaba `apt-get update`
+        # antes de instalar nada (PR #69); no se usa, se quita.
         run: |
+          sudo grep -l packages.microsoft.com /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null | grep -v '^/etc/apt/sources.list$' | xargs -r sudo rm -f
           sudo apt-get update -q
           sudo apt-get install -y -q postgresql-16-pgvector
           sudo systemctl start postgresql.service

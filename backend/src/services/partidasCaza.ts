@@ -19,6 +19,7 @@ import { descontarZonePointCaza } from './caza.js';
 import { decrementPopulationOnDeath } from './population.js';
 import { aprovecharAnimal } from './cronista/ganadoReino.js';
 import { recalcularPoblacion } from './cronista/subditos.js';
+import { morir } from './cronista/salidas.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
@@ -85,7 +86,8 @@ export async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Prom
 
 /// Lo que le queda a la partida tras una pelea: compañeros heridos o muertos, súbditos y genéricos
 /// muertos (los genéricos se descuentan de su fila y, si son de una facción, de su gente).
-export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[], condicion: Map<string, CondicionFisica>, muertos: Set<string>, dia: number, factionId: string | null = null): Promise<void> {
+export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[], condicion: Map<string, CondicionFisica>, muertos: Set<string>, dia: number, causa: 'caza' | 'combate' | 'guerra', factionId: string | null = null): Promise<void> {
+  let ahora: number | undefined;
   for (const h of cazadores) {
     const cond = muertos.has(h.c.id) ? 'MUERTO' : condicion.get(h.c.id) ?? 'ILESO';
     if (h.companionId && cond !== 'ILESO') {
@@ -93,7 +95,10 @@ export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[],
       const antes = (await tx.companion.findUnique({ where: { id: h.companionId }, select: { condicionFisica: true } }))?.condicionFisica as CondicionFisica | undefined;
       await tx.companion.update({ where: { id: h.companionId }, data: { condicionFisica: antes ? peor(antes, cond) : cond } });
     }
-    if (h.subjectId && cond === 'MUERTO') await tx.subject.update({ where: { id: h.subjectId }, data: { estado: 'MUERTO' } });
+    if (h.subjectId && cond === 'MUERTO') {
+      ahora ??= (await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? dia * 1440;
+      await morir(tx, saveId, { id: h.subjectId, name: h.c.nombre }, causa, ahora);
+    }
   }
   const genericosMuertos = new Map<string, number>();
   for (const h of cazadores) if (h.generico && muertos.has(h.c.id)) genericosMuertos.set(h.miembroId, (genericosMuertos.get(h.miembroId) ?? 0) + 1);
@@ -104,8 +109,7 @@ export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[],
     if (k) await tx.kingdomStats.update({ where: { id: k.id }, data: { poblacion: Math.max(0, k.poblacion - caidos), trabajadores: Math.max(0, k.trabajadores - caidos) } });
   }
   if (cazadores.some((h) => h.subjectId && muertos.has(h.c.id))) {
-    const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
-    await recalcularPoblacion(tx, saveId, ws?.fictionalMinutes ?? dia * 1440);
+    await recalcularPoblacion(tx, saveId, ahora ?? dia * 1440);
   }
 }
 
@@ -159,7 +163,7 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
     }
   }
 
-  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia, v.factionId);
+  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia, 'caza', v.factionId);
 
   const nombre = npc?.name ?? especie;
   const quien = cuerdas > 0 ? 'La partida de captura' : 'La partida de caza';

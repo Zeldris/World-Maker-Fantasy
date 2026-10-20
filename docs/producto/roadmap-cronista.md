@@ -2048,6 +2048,40 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   🚧 2026-10-17, del punto 1 solo el texto: una muerte sin testigos corre por bandos y «¿Qué se cuenta?»
   sin autor (`textoQueCorre`, de `QA-27` P184). Falta que el bando de la víctima no la tenga como
   propia sin testigo (`alcanceDeSucesos`) y los puntos 2-5.
+- **CR-70** Centro de Control y mensajeros (usuaria, 2026-10-19, de P221 en la ronda Reino `QA-105`;
+  contrastado con los seis juegos: X4 marca el camino con sus agentes de diplomacia, plazas limitadas
+  que se amplían y misiones que tardan, fallan y dan experiencia; D&D 5e, los Bastiones del DMG de
+  2024, instalación que se amplía con empleados y órdenes; Manor Lords, el aviso de que viene un
+  asalto; nada equivalente en BG3, Medieval Dynasty ni Bellwright). Lo que pasa en el Reino solo te
+  llega si alguien lo presencia y lo cuenta:
+  1. **Testigos:** súbditos presentes o el vigía guardan cada suceso del Reino (asalto, llegada,
+     muerte, hambre) como noticia pendiente, con fecha y quién lo vio. Si estás allí, lo vives.
+  2. **Edificio** con escalones (necesita Ayuntamiento): cada escalón da más plazas de mensajero
+     (p. ej. 1/3/5). Nombre propio por raza (regla de `D-11`); «Centro de Control» solo encaja en los
+     goirntes; el resto, pendiente de lore.
+  3. **Mensajeros:** súbditos con ese oficio; cada encargo es un viajero de `CR-64` (tarda, se puede
+     interceptar, el mensajero puede morir o caer preso) y gana experiencia.
+  4. **Encargos:** informarte (lleva las noticias a tu zona; el vigía da el aviso previo de un
+     asalto); recoger rumores de una región; esparcir un rumor tuyo (más mensajeros, más sitios a la
+     vez; sobre `CR-18`/`CR-69`); diplomacia a distancia (tratado, alianza, paz de `CR-34c`; en persona
+     ante el líder sigue siendo al momento); extorsión (tirada de Carisma como `CR-32`; exige
+     Goirnos, que dejen de asaltarte un tiempo o que cambien una decisión de la facción; si falla,
+     rencor y riesgo de guerra). Los informantes de `CR-32` mandan lo suyo por mensajero.
+  5. Sin mensajero te enteras al volver al Reino o por rumores; hasta que entre, el aviso del asalto
+     sigue siendo instantáneo (`avisoDeViajero`).
+  Pasos: 70a testigos y noticias pendientes · 70b edificio y plazas · 70c informarte · 70d rumores ·
+  70e diplomacia · 70f extorsión. Va con `CR-64`. **L**
+- **CR-71** Hablar con súbditos (usuaria, 2026-10-19, de P222 en la ronda Reino `QA-105`; BG3: los
+  compañeros del campamento comentan lo que ha pasado; Medieval Dynasty y Bellwright: hablas con tus
+  aldeanos): hoy «hablo con Krarka» responde «¿A quién te refieres?». Cada súbdito entra en el RAG
+  con su ficha (oficio, cuándo llegó, qué ha vivido: asaltos, pareja, hijos; su ánimo) para que el
+  narrador lo reconozca y lleve la conversación. **M**
+- **CR-72** Nombres de edificios y elementos de facción por raza (usuaria, 2026-10-19, regla `D-11`;
+  X4: cada raza tiene su versión y su nombre de cada módulo de estación y nave): hoy 62 recetas de
+  construcción son variantes orcas y el resto tiene nombres comunes («un pequeño ayuntamiento»).
+  Repasar edificios, oficios de reino y elementos de facción, y dar a cada raza su nombre cuando el
+  lore lo traiga (pedido por `AGENTS.md`, nunca editando `docs/rpgtarkor/`); los comunes se quedan.
+  Va al `0.7`, cuando se juega con cualquier raza. **S**
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
@@ -2144,6 +2178,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 | **D-8** 🧭 | Legado entre partidas (leyendas que aparecen en otras partidas) | **Fuera de alcance** de este roadmap |
 | **D-9** 🧭 | ¿Los compañeros pueden marcharse por baja aprobación? | **Sí**, con aviso previo de 3 días |
 | **D-10** 🧭 | Marcar muertos en partidas antiguas cuando no se sabe en cuál murió un NPC | Muerto en todas las existentes, documentado |
+| **D-11** | ¿Los edificios y elementos de facción se llaman igual en todas las razas? | **No** (usuaria, 2026-10-19): cada raza tiene su nombre para cada edificio y elemento de facción; algunos son comunes. Los nombres salen del lore, nunca editando `docs/rpgtarkor/` |
 
 ---
 

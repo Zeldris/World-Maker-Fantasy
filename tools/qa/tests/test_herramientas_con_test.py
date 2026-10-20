@@ -13,8 +13,8 @@ from comun import QA
 
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 EXCEPCIONES = {
+    'bench-ia.sh': 'juega turnos con el Ollama real de la Deck (QA-173); se prueba al medir',
     'comprobar-escenarios.sh': 'restaura las instantáneas en Postgres; la corre la CI con la base',
-    'escenario.sh': 'para y arranca el juego y restaura la base de la ronda',
     'recorrer.sh': 'lanza los recorridos de Playwright con el juego en marcha',
     'revisado.sh': 'marca la revisión de la rama real antes del PR (la comprueba el gancho de QA-50)',
     'rojo-sin-arreglo.sh': 'corre un test de vitest con y sin el arreglo',
@@ -27,8 +27,14 @@ class HerramientasConTest(unittest.TestCase):
         archivos = subprocess.run(['git', 'ls-files', 'tools/qa/*.py', 'tools/qa/*.sh', '.claude/skills/*/*.py'],
                                   cwd=RAIZ, capture_output=True, text=True).stdout.split()
         tests = set(os.listdir(os.path.join(QA, 'tests')))
-        sin_test = [a for a in archivos if '/tests/' not in a and os.path.basename(a) not in EXCEPCIONES
-                    and f'test_{os.path.splitext(os.path.basename(a))[0].replace("-", "_")}.py' not in tests]
+
+        def tiene_test(ruta):
+            # En tools/qa/tests o al lado de la herramienta (QA-137: los de las skills, con su skill).
+            nombre = f'test_{os.path.splitext(os.path.basename(ruta))[0].replace("-", "_")}.py'
+            return nombre in tests or os.path.exists(os.path.join(RAIZ, os.path.dirname(ruta), nombre))
+
+        sin_test = [a for a in archivos if '/tests/' not in a and not os.path.basename(a).startswith('test_')
+                    and os.path.basename(a) not in EXCEPCIONES and not tiene_test(a)]
         self.assertEqual(sin_test, [], 'herramienta sin tools/qa/tests/test_<nombre>.py (o, si necesita el juego, '
                                        'en EXCEPCIONES con el porqué)')
 

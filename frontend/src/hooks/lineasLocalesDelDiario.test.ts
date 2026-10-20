@@ -16,6 +16,7 @@ const PREFIJOS_LOCALES: Record<string, string> = {
   'huir-err': 'error al intentar huir',
   err: 'error de reconexión',
   'turn-locked': 'aviso de turno ocupado',
+  'turn-error': 'el narrador no pudo procesar la acción (5xx de classify, P229)',
   // `avisarErrorEnLog(prefijo, …)`: sus prefijos acaban en «-err» (lo comprueba el segundo test).
   '${prefijo}': 'errores de avisarErrorEnLog',
   // `nextId('p')` (`playerActionEntry`): la acción de la jugadora se pinta al pulsar Actuar, antes de

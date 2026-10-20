@@ -27,6 +27,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 | Mirar datos de la partida | SQL contra `tarkor_juego` ([rondas-de-pruebas.md](runbooks/rondas-de-pruebas.md)) |
 | Añadir contenido (objeto, NPC, fauna, flora, habilidad, ubicación) | [nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Skills y modelo de cada tarea, flujo de PR | [skills-y-modelos.md](runbooks/skills-y-modelos.md) |
+| Fusionar la rama de un subagente (merge, conflictos de hallazgos, tests del paquete) | `tools/qa/fusionar.sh <rama> "<mensaje>"` (`QA-135`) |
+| Medir la IA local de una tanda, evaluar el RAG | `/opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
 | Tests de un archivo | `cd backend && npx vitest run <ruta>` (filtra con `grep -E "Test Files\|Tests \|FAIL"`) |
 
 ## Datos que se confunden
@@ -48,12 +50,39 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   encuentro al pasar el turno), `resolveCombatExchangePhase` (golpe en combate). Narrador:
   `b/services/narrador.ts#classifyAction`, `narrateAction`, `buildNarrationPrompt`, `generateSuggestions`
   (con sus filtros `dropSuggestions*`), `deterministicFallbackNarration`.
+- **IA y RAG:** llamadas al modelo local en `b/lib/ollama.ts#ollamaGenerate`, `ollamaGenerateStream` (opción `tarea`),
+  embeddings en `b/lib/embeddings.ts#embed`, lore en `b/services/retrieval.ts#retrieveLore`; cada llamada se apunta
+  con `b/lib/iaRegistro.ts` si está `IA_REGISTRO`. Casos del RAG: `backend/ia/rag-casos.jsonl`.
 - **Tests:** `b/services/turnLock.test.ts`, `b/services/narrador*.test.ts`.
 - **Interfaz:** `f/hooks/useTurnFlow.ts#useTurnFlow`, `f/components/ChatComposer.tsx` (escribir y «Actuar»),
   `f/components/LogPanel.tsx` (diario).
 - **Trampas:** el modelo real no está en la nube; corre el Ollama simulado (`tools/ci/mock-ollama.mjs`), así que
   la narración es de plantilla. Las decisiones de verdad (tiradas, costes, efectos) son deterministas y van antes
   de narrar.
+
+## Prompt del narrador (`QA-172`)
+
+- **Orden de bloques** de `b/services/narrador.ts#buildNarrationPrompt` (fijo primero, para la caché de prompt de
+  Ollama, `QA-165`): `GOOD_NARRATION_EXAMPLE`, `fixedInstructions` (idéntico en todos los turnos), PERSONAJE
+  (`identidad`), HECHOS DEL MUNDO (`hechosBlock`, luego `estadoPartida`, `narracionAnterior`, `backgroundLoreBlock`
+  con el lore del RAG), `groundingBlock`, `rollBlock`, `combatBlock`, `lengthGuidance` y la acción del jugador.
+- **Intentos** en `b/services/narrador.ts#narrateAction`: `attempt1` (narrador, `maxTokens` 300, 90 s);
+  si se rechaza, `attempt2` (narrador, `retryPrompt` con `retryFacts`: solo los hechos críticos, `maxTokens`
+  400); si también, `attempt3` (cronista, mismo `retryPrompt`, tarea `narrar_respaldo`); si todo falla,
+  `deterministicFallbackNarration`. El registro los marca con `app.intento` 1/2/3 (`QA-162`).
+- **Modelo, `num_ctx` y `keep_alive` por tarea** (en Ollama son del modelo cargado: se alinean en todas sus llamadas,
+  `QA-170`):
+
+  | Tarea | Modelo (`env.…`) | `num_ctx` | `keep_alive` | Dónde |
+  |---|---|---|---|---|
+  | `narrar`, `dialogo_npc`, `resumen`, `combate`, `modo_dinamico` | `ollamaModelNarrador` | el del Modelfile (8192) | `1h` | `narrador.ts`, `chapterSummary.ts`, `combateMultipleNarracion.ts`, `dynamicModeNarracion.ts` |
+  | `clasificar`, `narrar_respaldo` | `ollamaModelCronista` | `CTX_CRONISTA` (8192) | `5m` | `narrador.ts` (`classifyAction`, `attempt3`) |
+  | `prompts_imagen` (solo si fallan las nubes) | `ollamaModelCronista` | el del modelo | `OLLAMA_KEEP_ALIVE` (5m) | `b/lib/aiProviders/orchestrator.ts` |
+  | `sugerir` | `ollamaModelSugerencias` | el del modelo | `0` | `narrador.ts` (`generateSuggestions`) |
+  | embeddings del RAG | `ollamaModelEmbeddings` | el del modelo | `OLLAMA_KEEP_ALIVE` | `b/lib/embeddings.ts` |
+
+- **Medirlo:** `bash tools/qa/bench-ia.sh <etiqueta> --anterior <etiqueta>` (`QA-173`); las cifras, en
+  `docs/ia/opt-ai-registro.md`.
 
 ## Mapa de zona y encuentros
 
@@ -164,6 +193,6 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Catálogo y siembra
 
 - **Código:** datos en `b/scripts/worldCatalog.ts`; siembra `b/scripts/seed-catalog.ts` con
-  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`,
+  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).

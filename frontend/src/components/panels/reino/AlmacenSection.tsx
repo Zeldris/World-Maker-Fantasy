@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, InventoryItemInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { NumeroGuardable } from '../../NumeroGuardable'
@@ -30,23 +30,29 @@ export function AlmacenSection({
   const consulta = useModoConsulta()
   const [busy, setBusy] = useState<string | null>(null)
   const [limites, setLimites] = useState<AlmacenLimiteInfo[] | null>(null)
-  const { fallo, informar, limpiar } = useErrorConReintento()
+  const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
   const grupos = agruparAlmacen(almacenItems)
 
-  useEffect(() => {
-    let cancelado = false
+  // P225 — si falla la carga de los topes se avisa con Reintentar (los topes quedan sin cargar).
+  const peticion = useRef(0)
+  const cargarLimites = useCallback(() => {
+    const id = ++peticion.current
     getAlmacenLimites(saveId)
       .then((res) => {
-        if (!cancelado) setLimites(res.limites)
+        if (id !== peticion.current) return
+        limpiarSi('No se pudieron cargar los topes del almacén.')
+        setLimites(res.limites)
       })
-      .catch(() => {
-        if (!cancelado) setLimites([])
-      })
+      .catch((e) => id === peticion.current && informar('No se pudieron cargar los topes del almacén.', e, cargarLimites))
+  }, [saveId, informar, limpiarSi])
+
+  useEffect(() => {
+    cargarLimites()
     return () => {
-      cancelado = true
+      peticion.current++
     }
-  }, [saveId])
+  }, [cargarLimites])
 
   async function handleDepositar(itemId: string) {
     setBusy(itemId)
@@ -180,7 +186,11 @@ export function AlmacenSection({
             <div className="mt-2 flex flex-col gap-1.5">
               {depositable.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
-                  <span className="truncate text-xs text-wood-200">{item.name}</span>
+                  <span className="truncate text-xs text-wood-200">
+                    {item.name}
+                    {/* P215: la comida que ninguna receta pide se suma a la Comida del Reino (10 de hambre = 1) y no queda en el almacén. */}
+                    {item.pasaAComidaDelReino ? <span className="ml-1 text-wood-400">(pasa a la Comida del Reino)</span> : null}
+                  </span>
                   <button
                     type="button"
                     onClick={() => handleDepositar(item.id)}

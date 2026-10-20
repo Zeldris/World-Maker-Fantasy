@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import Fastify from 'fastify';
 import { prisma } from '../lib/prisma.js';
+import { deathRoutes } from '../routes/saves/death.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { advanceCompanionSurvival, advancePlayerSurvival, advanceCorpseAndRecoveryTimeouts, autoEquiparDesdeAlmacen, FELICIDAD_DESCUIDO_PASO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
 
@@ -299,5 +301,47 @@ describe('autoEquiparDesdeAlmacen — 2 owners compitiendo por el mismo tipo de 
 
     const almacenRestante = await prisma.almacenItem.count({ where: { saveId } });
     expect(almacenRestante).toBe(0);
+  });
+});
+
+describe('P219: aviso de carencia y reaparición', () => {
+  let saveId: string;
+  const AHORA = MINUTOS_HASTA_AGUA_VACIA * 3;
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn de prueba (P219)', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'G',
+        condicionFisica: 'ILESO', lastAteAtMinutes: 0, lastDrankAtMinutes: 0, pendingDeathResolution: true, tutorialCompletedAt: new Date(),
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId, fictionalMinutes: AHORA } });
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el barrido deja un aviso en el diario al empeorar la condición', async () => {
+    await advancePlayerSurvival(prisma);
+    const avisos = await prisma.logEntry.findMany({ where: { saveId, isSystemMessage: true } });
+    expect(avisos.length).toBe(1);
+    expect(avisos[0].text).toMatch(/hambre|sed/);
+  });
+
+  it('al reaparecer, Hambre y Sed quedan al 100 % y el barrido ya no baja la condición', async () => {
+    const app = Fastify();
+    await app.register(deathRoutes);
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/death/resolve` });
+    expect(res.statusCode).toBe(200);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(save.condicionFisica).toBe('ILESO');
+    expect(save.lastAteAtMinutes).toBe(AHORA);
+    expect(save.lastDrankAtMinutes).toBe(AHORA);
+    await advancePlayerSurvival(prisma);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).condicionFisica).toBe('ILESO');
+    await app.close();
   });
 });

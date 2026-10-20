@@ -101,6 +101,7 @@ import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
 import { ambitoFacciones, ambitoPoblacion, asegurarMundoDePartida, npcVivoEnPartida } from './mundoPartida.js';
 import { avanzarMundoHasta } from './avanceDiario.js';
+import { guardarSlugsDeCombate } from './combateDesde.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -2148,16 +2149,14 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
       ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
     };
   });
-  if (!terminado) {
-    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: npcs.map((n) => n.slug) } });
-  } else {
-    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
-  }
+  await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
   return { npcs };
 }
 
 async function resolveCombatSlugsAndPersist(params: {
   saveId: string;
+  /// P233: instante en que empezó este turno (`Save.combateDesde` si el combate empieza ahora).
+  inicioTurno: Date;
   action: string;
   /// QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`): un agresivo en escena no fuerza combate.
   enGraciaRenacer: boolean;
@@ -2489,7 +2488,8 @@ async function resolveCombatSlugsAndPersist(params: {
   // aquí pero se perdía sin dejar rastro, porque `Save` no lo guardaba en ningún sitio. Se
   // sobrescribe cada turno (vacío si no hay combate ESTE turno) para que `GET /saves/:id` pueda
   // reconstruir el mismo aviso tras cualquier resincronización, no solo en la respuesta directa.
-  await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: combatSlugsToPersist } });
+  // P233: si el combate empieza en este turno, empieza cuando empezó el turno (antes de su COMBATE_PERDIDO).
+  await guardarSlugsDeCombate(prisma, saveId, combatSlugsToPersist, { ahora: params.inicioTurno });
 
   const combateIniciado = combatSlugs.length
     ? {
@@ -2582,7 +2582,21 @@ const EAT_DRINK_FLAVOR = ['El estómago se calma, al menos por ahora.', 'Las fue
 /// y muerte/descanso (docs/14), LogEntry. Compartido entre el turno síncrono (bandas
 /// instantánea/corta, `POST /turn/narrate`) y la resolución diferida de un `CharacterTransit`
 /// (bandas extendida/larga, `worldTick`) — misma lógica, dos disparadores.
+/// P233: ¿ya hay un COMBATE_PERDIDO de este combate? El combate empieza en `Save.combateDesde`
+/// (services/combateDesde.ts) o al crearse su `CombatEncounter`, lo que sea antes; sin ninguno de los
+/// dos, este turno lo empieza y no hay derrota previa. Lo que se perdió antes es de otro combate.
+async function yaPerdioEsteCombate(tx: Prisma.TransactionClient, saveId: string, encuentroDesde: Date | null): Promise<boolean> {
+  const save = await tx.save.findUnique({ where: { id: saveId }, select: { combateDesde: true } });
+  const fechas = [save?.combateDesde, encuentroDesde].filter((d): d is Date => !!d);
+  if (fechas.length === 0) return false;
+  const desde = new Date(Math.min(...fechas.map((d) => d.getTime())));
+  const perdido = await tx.suceso.findFirst({ where: { saveId, tipo: 'COMBATE_PERDIDO', createdAt: { gte: desde } }, select: { id: true } });
+  return !!perdido;
+}
+
 export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Promise<NarrateAndPersistResult> {
+  // P233: frontera del combate si empieza en este turno (ver `yaPerdioEsteCombate`).
+  const inicioTurno = new Date();
   const {
     saveId,
     worldId,
@@ -4416,9 +4430,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // switch de `narration` de más abajo, para poder usarla tanto en el guard de curación falsa
   // (`hasFalseHealingClaim`) como en la rama determinista nueva "cooldown activo" del propio
   // switch y en el bloque real de energía/condición más abajo — una sola fuente de verdad, sin
-  // triplicar la fórmula de `detectsRestIntent`.
-  const restIntentDetected = intentaDescansar({ action, hayViaje: !!travel, hayLugar: !!currentLocationRecord, roll });
-  const restBlockedByCooldown = descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationRecord, roll, lastRestAtMinutes: params.lastRestAtMinutes, ahoraMinutos: params.fictionalMinutesActuales });
+  // triplicar la fórmula de `detectsRestIntent`. `hayLugar` sale de `currentLocationId`, igual que en
+  // la clasificación (turn.ts, P74/P231), para que las dos decidan lo mismo.
+  const restIntentDetected = intentaDescansar({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll });
+  const restBlockedByCooldown = descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll, lastRestAtMinutes: params.lastRestAtMinutes, ahoraMinutos: params.fictionalMinutesActuales });
   // Ver `hasFalseHealingClaim` (narrador.ts) — Descansar ya NO cura condicionFisica (2026-09-06,
   // hallazgo 11: decisión explícita de la usuaria) — sin objeto médico, el techo real es siempre
   // `params.condicionFisica` (sin mejora), así que este guard se simplifica a "¿el jugador
@@ -4481,6 +4496,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // algún NPC vivo en escena — cubre también la apertura de combate desde una acción pasiva.
     nonHostileNpcNamesInScene,
     nonHostileNpcSlugsInScene,
+    agresorSlugsInScene: npcsHostilesEnEscena.map((n) => n.slug),
     // `contextBlocks` va SIEMPRE primero en `worldFacts` (línea de arriba) — su longitud es
     // justo el corte que un reintento de emergencia (attempt2, ver narrador.ts) debe respetar
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
@@ -6614,9 +6630,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
 
     // Libro de Sucesos (CR-3, hito 0.2): caer convaleciente en un combate es perderlo (morir tiene
-    // su propio suceso, más abajo).
-    if (enCombate && proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') {
-      await registrarSuceso(tx, {
+    // su propio suceso, más abajo). P233: morir sin haber caído convaleciente en ESTE combate (de un
+    // golpe, o entrando ya convaleciente de antes) también es perderlo, una sola vez por combate.
+    const actorRivalCombate = enCombate && npcParaIntercambio ? [{ entidadTipo: 'NPC' as const, entidadId: npcParaIntercambio.id, papel: 'AUTOR' as const }] : [];
+    const pierdeEsteCombate =
+      !!enCombate &&
+      ((proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') ||
+        (proposedCondicion === 'MUERTO' && !(await yaPerdioEsteCombate(tx, saveId, activeCombatEncounter?.createdAt ?? null))));
+    let combatePerdidoId: string | null = null;
+    if (pierdeEsteCombate) {
+      combatePerdidoId = await registrarSuceso(tx, {
         saveId,
         tipo: 'COMBATE_PERDIDO',
         fictionalMinutes: nuevoFictionalMinutes,
@@ -6625,7 +6648,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         actores: [
           { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' },
           // CR-16: quien te vence lo recuerda y sube (estilo Némesis).
-          ...(npcParaIntercambio ? [{ entidadTipo: 'NPC' as const, entidadId: npcParaIntercambio.id, papel: 'AUTOR' as const }] : []),
+          ...actorRivalCombate,
         ],
         datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
       });
@@ -6664,14 +6687,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
       // Libro de Sucesos (CR-3, hito 0.2): la muerte del personaje, y el final si no quedan vidas.
       const actoresMuerte = [{ entidadTipo: 'PERSONAJE' as const, entidadId: saveId, papel: 'VICTIMA' as const }];
+      // P233: en combate, el NPC que mata va también en la muerte (como AUTOR).
       const muerteId = await registrarSuceso(tx, {
         saveId,
         tipo: 'MUERTE_JUGADOR',
         fictionalMinutes: nuevoFictionalMinutes,
         locationId: currentLocationId,
         origen: 'JUGADOR',
-        actores: actoresMuerte,
+        actores: [...actoresMuerte, ...actorRivalCombate],
         datos: { personaje: characterName },
+        ...(combatePerdidoId ? { causas: [combatePerdidoId] } : {}),
       });
       if (outcome.finDePartida) {
         await registrarSuceso(tx, {
@@ -6953,6 +6978,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado)
     : (await resolveCombatSlugsAndPersist({
         saveId,
+        inicioTurno,
         action,
         enGraciaRenacer: await enGraciaTrasRenacer(prisma, saveId, fictionalMinutesActuales),
         enCombate,

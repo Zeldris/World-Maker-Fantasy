@@ -225,7 +225,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   CONSOLIDACION: { familia: 'REINO', importanciaBase: 5, plantilla: (d) => `${d.reino} se consolida.` },
   HAMBRUNA: { familia: 'REINO', importanciaBase: 6, plantilla: (d) => `El hambre llega a ${d.reino}.` },
   LLEGADA_POBLADORES: { familia: 'REINO', importanciaBase: 4, plantilla: (d) => `${d.cuantos === 1 ? 'Llega un poblador' : `Llegan ${d.cuantos} pobladores`} a ${d.reino}.` },
-  VISITANTE_ILUSTRE: { familia: 'REINO', importanciaBase: 5, plantilla: (d) => `${d.visitante} visita ${d.reino}.` },
+  VISITANTE_ILUSTRE: { familia: 'REINO', importanciaBase: 5, plantilla: (d) => `${d.visitante}${d.visitante.includes(',') ? ',' : ''} visita ${d.reino}.` },
   CAMPAMENTO_NUEVO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `Se asientan ${d.campamento} en ${d.lugar}.` },
   CAMPAMENTO_DESTRUIDO: { familia: 'FACCION', importanciaBase: 5, plantilla: (d) => `${d.por} acaba con el campamento de ${d.campamento} en ${d.lugar}.` },
   // LORE
@@ -240,7 +240,9 @@ export const CATALOGO_SUCESOS: Catalogo = {
 };
 
 export function textoDeSuceso<T extends TipoSuceso>(tipo: T, datos: DatosSuceso[T]): string {
-  return (CATALOGO_SUCESOS[tipo] as DefinicionSuceso<T>).plantilla(datos);
+  const texto = (CATALOGO_SUCESOS[tipo] as DefinicionSuceso<T>).plantilla(datos);
+  // P234: la frase siempre empieza en mayúscula (un edificio sin nombre propio: «una muralla sufre daños»).
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 /// Importancia final (§ 6.3): base del tipo, +1 si el jugador es AUTOR, +1 si toca a un NPC del

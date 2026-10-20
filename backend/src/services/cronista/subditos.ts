@@ -5,8 +5,9 @@
 // camas (el de los edificios con plazas). Los adultos trabajan, o hacen de soldado o vigía; los niños
 // no trabajan ni combaten hasta su madurez.
 import type { Prisma } from '@prisma/client';
-import { companionSlotsForRecipeKey } from '../construction.js';
+import { companionSlotsForRecipeKey, esAyuntamientoRecipeKey } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
+import { formatFictionalDate } from '../worldClock.js';
 import { edadEnAnios, esAdulto } from './edades.js';
 import { apellidoDe, fundarLinaje, nombreConLinaje, unirALinaje } from './linajes.js';
 import { generarNombre, generarRastro, nombreLibre, type Genero } from './nombres.js';
@@ -81,15 +82,45 @@ export function felicidadHacia(actual: number, reino: number, dias: number): num
 
 // ─────────────────────────── Con base de datos ───────────────────────────
 
+/// P220a (decisión de la usuaria, 2026-10-19): el Ayuntamiento da 2 camas TEMPORALES, solo para súbditos
+/// (nunca para compañeros). Un súbdito alojado ahí solo sirve como parte del Reino: sin cama permanente
+/// no hay compañero que ocupe su sitio, y en cuanto hay una cama de verdad pasa a ella.
+export const CAMAS_TEMPORALES_AYUNTAMIENTO = 2;
+
+export interface CupoDeCamas {
+  /** Camas permanentes (construcciones). */
+  total: number;
+  companeros: number;
+  subditos: number;
+  /** Camas permanentes libres: las únicas que usan los compañeros. */
+  libres: number;
+  /** Camas temporales del Ayuntamiento (solo súbditos): 0 sin Ayuntamiento en pie. */
+  temporales: number;
+  /** Súbditos que no caben en una cama permanente y viven en las temporales. */
+  enAyuntamiento: number;
+  /** Camas libres para un súbdito: permanentes libres + temporales libres. */
+  libresSubditos: number;
+}
+
+/// Puro: reparte las camas. Los súbditos ocupan primero las temporales del Ayuntamiento (solo suyas) y el
+/// resto las permanentes que dejan los compañeros, así no quitan cama a un compañero mientras quede una temporal.
+export function repartirCamas(total: number, companeros: number, subditos: number, temporales: number): CupoDeCamas {
+  const enAyuntamiento = Math.min(subditos, temporales);
+  const enPermanentes = Math.min(subditos - enAyuntamiento, Math.max(0, total - companeros));
+  const libres = Math.max(0, total - companeros - enPermanentes);
+  return { total, companeros, subditos, temporales, enAyuntamiento, libres, libresSubditos: libres + (temporales - enAyuntamiento) };
+}
+
 /// Q2: un único cupo de camas para compañeros (salvo el del Domador) y súbditos activos.
-export async function cupoDeCamas(tx: Tx, saveId: string): Promise<{ total: number; companeros: number; subditos: number; libres: number }> {
+export async function cupoDeCamas(tx: Tx, saveId: string): Promise<CupoDeCamas> {
   const [companeros, subditos, edificios] = await Promise.all([
     tx.companion.count({ where: { saveId, esSlotDomador: false } }),
     tx.subject.count({ where: { saveId, estado: 'ACTIVO' } }),
     tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true } }),
   ]);
   const total = edificios.reduce((s, b) => s + companionSlotsForRecipeKey(b.recipeKey), 0);
-  return { total, companeros, subditos, libres: Math.max(0, total - companeros - subditos) };
+  const hayAyuntamiento = edificios.some((b) => esAyuntamientoRecipeKey(b.recipeKey));
+  return repartirCamas(total, companeros, subditos, hayAyuntamiento ? CAMAS_TEMPORALES_AYUNTAMIENTO : 0);
 }
 
 /// La población del Reino (y de cada territorio) = sus súbditos activos. Idempotente.
@@ -120,6 +151,20 @@ export async function avanzarSubditos(tx: Tx, saveId: string, dias: number, ahor
     }
   }
   await recalcularPoblacion(tx, saveId, ahora);
+}
+
+/// P223: aviso en el canal del Reino (el que se ve en «El mundo» › Reino) de un suceso de vida de los súbditos.
+/// `ahora`: el instante del suceso (el día simulado, no el reloj de la partida: con varios días de descanso
+/// seguidos cada aviso lleva su día).
+export async function avisarEnReino(tx: Tx, saveId: string, text: string, ahora: number): Promise<void> {
+  await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: formatFictionalDate(ahora), fictionalMinutes: ahora } });
+}
+
+/// P224: quien pierde a su pareja (se va o muere) queda libre en el acto. Devuelve el nombre de la pareja, si la había.
+export async function soltarPareja(tx: Tx, saveId: string, subjectId: string): Promise<string | null> {
+  const viudas = await tx.subject.findMany({ where: { saveId, parejaId: subjectId, estado: 'ACTIVO' }, select: { id: true, name: true } });
+  if (viudas.length) await tx.subject.updateMany({ where: { id: { in: viudas.map((v) => v.id) } }, data: { parejaId: null } });
+  return viudas[0]?.name ?? null;
 }
 
 /// La región del Reino: la del primer territorio que siga en pie (llegadas y salidas).

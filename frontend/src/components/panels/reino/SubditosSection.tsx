@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, PlantillaEquipoInfo, SubjectInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
-import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, cambiarTareaSubdito, responderLlegada, type SubditoInfo, type TareaSubdito, type CamasReino, type CandidatoLlegada, type SalidaSubdito } from '../../../lib/api'
+import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, cambiarTareaSubdito, responderLlegada, type SubditoInfo, type TareaSubdito, type CamasReino, type CandidatoLlegada, type RequisitoLlegada, type SalidaSubdito } from '../../../lib/api'
 import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
@@ -362,21 +362,37 @@ const TAREAS_SUBDITO: { value: TareaSubdito; label: string; descripcion: string 
 /// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
 function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { saveId: string; subjects: SubjectInfo[]; plantillasEquipo: PlantillaEquipoInfo[]; onRefreshSave: () => Promise<void> }) {
   const consulta = useModoConsulta()
-  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[] } | null>(null)
+  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] } | null>(null)
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
-  const { fallo, informar, limpiar } = useErrorConReintento()
+  const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   // Cada refresco de la partida trae un `subjects` nuevo: se vuelve a pedir la lista, porque los
   // candidatos, muertes y salidas no cambian los súbditos activos que vienen en la partida.
-  useEffect(() => {
-    let vivo = true
+  // P230 — un fallo al cargar no deja la lista vacía sin aviso: ErrorBanner con Reintentar.
+  const [cargaFallida, setCargaFallida] = useState(false)
+  const peticion = useRef(0)
+  const cargar = useCallback(() => {
+    const id = ++peticion.current
     getSubditos(saveId)
-      .then((r) => vivo && setDatos(r))
-      .catch(() => vivo && setDatos(null))
+      .then((r) => {
+        if (id !== peticion.current) return
+        setCargaFallida(false)
+        limpiarSi('No se pudieron cargar los súbditos.')
+        setDatos(r)
+      })
+      .catch((e) => {
+        if (id !== peticion.current) return
+        setCargaFallida(true)
+        setDatos(null)
+        informar('No se pudieron cargar los súbditos.', e, cargar)
+      })
+  }, [saveId, informar, limpiarSi])
+  useEffect(() => {
+    cargar()
     return () => {
-      vivo = false
+      peticion.current++
     }
-  }, [saveId, subjects, version])
+  }, [cargar, subjects, version])
 
   async function handleRol(id: string, rol: string) {
     setBusy(true)
@@ -419,14 +435,30 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
 
   const subditos = datos?.subditos ?? []
   const candidatos = datos?.candidatos ?? []
-  if (!datos && subjects.length === 0) return null
+  if (!datos && subjects.length === 0 && !cargaFallida) return null
   const porId = new Map(subjects.map((s) => [s.id, s]))
   return (
     <PanelSection title="Súbditos">
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {datos && (
         <p className="mb-2 text-2xs text-wood-400">
-          Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'})
+          Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total + (datos.camas.temporales ?? 0)} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'}
+          {datos.camas.temporales ? `, ${datos.camas.temporales} temporales del Ayuntamiento solo para súbditos` : ''})
+        </p>
+      )}
+      {/* P220b: todos los requisitos para que llegue alguien, con su estado y su cifra (como en X4). */}
+      {(datos?.requisitosLlegada ?? []).length > 0 && (
+        <p className="mb-2 text-2xs text-wood-400" aria-label="Requisitos para que llegue alguien">
+          Para que llegue alguien:{' '}
+          {datos!.requisitosLlegada!.map((q, i) => (
+            <span key={q.clave}>
+              {i > 0 && ' · '}
+              <span className={q.cumple ? 'text-emerald-400' : 'text-danger-400'} title={q.cumple ? undefined : q.motivo}>
+                {q.nombre} <span aria-label={q.cumple ? 'cumplido' : 'falta'}>{q.cumple ? '✓' : '✗'}</span>
+              </span>{' '}
+              ({q.cifra})
+            </span>
+          ))}
         </p>
       )}
       {/* REI-119 / REI-54: quien llega espera respuesta; si no se le contesta, se va. */}
@@ -461,7 +493,8 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
           ))}
         </ul>
       )}
-      {subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
+      {/* P236 — el texto de vacío solo si la carga fue bien: con la carga fallida no se sabe si hay súbditos. */}
+      {datos && !cargaFallida && subditos.length === 0 && <p className="text-xs text-wood-500">Aún no vive nadie en tu Reino.</p>}
       <div className="flex flex-col gap-2">
         {subditos.map((s) => {
           const fila = porId.get(s.id)

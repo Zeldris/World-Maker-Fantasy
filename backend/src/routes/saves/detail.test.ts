@@ -145,6 +145,16 @@ describe('GET /saves/:id', () => {
     expect(res.statusCode).toBe(404);
   });
 
+  it('P219 (c): GET /saves/:id/supervivencia da solo condición, Hambre y Sed', async () => {
+    findUniqueSave.mockResolvedValue({ condicionFisica: 'GRAVE', lastAteAtMinutes: 1000, lastDrankAtMinutes: 1000, worldState: { fictionalMinutes: 1000 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/supervivencia' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ condicionFisica: 'GRAVE', hambre: 100, sed: 100 });
+    findUniqueSave.mockResolvedValue(null);
+    expect((await app.inject({ method: 'GET', url: '/saves/no-existe/supervivencia' })).statusCode).toBe(404);
+  });
+
   it('pendingDynamicMode null por defecto', async () => {
     findUniqueSave.mockResolvedValue(baseSave());
     const app = await buildApp();

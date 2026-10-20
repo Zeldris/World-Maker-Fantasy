@@ -4,7 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { MINUTOS_POR_ANIO } from './edades.js';
 import { linajeDe } from './linajes.js';
-import { avanzarSubditos, cambiarRolSubdito, cambiarTareaSubdito, cifrasDePoblacion, crearSubdito, cupoDeCamas, datosDeSubditos, felicidadHacia, rolDeSubdito, tareasDelReino } from './subditos.js';
+import { avanzarSubditos, cambiarRolSubdito, cambiarTareaSubdito, cifrasDePoblacion, crearSubdito, cupoDeCamas, datosDeSubditos, felicidadHacia, repartirCamas, rolDeSubdito, tareasDelReino } from './subditos.js';
 import { comidaDelReino } from './economiaReino.js';
 import { rendimientoRecolector } from './comidaOficios.js';
 import { estacionFor } from '../worldClock.js';
@@ -44,6 +44,20 @@ describe('súbditos (REI-118) — reglas puras', () => {
       ahora,
     );
     expect(t).toEqual({ recolector: 1, pescador: 1, cocinero: 1, ganadero: 0, fibrero: 0 });
+  });
+
+  it('P220a: las camas temporales del Ayuntamiento son solo de súbditos; los compañeros no las usan', () => {
+    // Sin camas de verdad: 2 temporales para súbditos, ninguna para compañeros.
+    expect(repartirCamas(0, 0, 0, 2)).toMatchObject({ libres: 0, libresSubditos: 2, enAyuntamiento: 0 });
+    expect(repartirCamas(0, 0, 2, 2)).toMatchObject({ libres: 0, libresSubditos: 0, enAyuntamiento: 2 });
+    // Con una Choza (2): los súbditos llenan primero las temporales y la cama permanente queda para un compañero.
+    expect(repartirCamas(2, 1, 2, 2)).toMatchObject({ libres: 1, libresSubditos: 1, enAyuntamiento: 2 });
+    expect(repartirCamas(2, 0, 2, 2)).toMatchObject({ libres: 2, libresSubditos: 2, enAyuntamiento: 2 });
+    // Solo cuando las temporales se llenan pasan a las permanentes.
+    expect(repartirCamas(2, 0, 3, 2)).toMatchObject({ libres: 1, libresSubditos: 1, enAyuntamiento: 2 });
+    expect(repartirCamas(4, 0, 3, 2)).toMatchObject({ libres: 3, libresSubditos: 3, enAyuntamiento: 2 });
+    // Sin Ayuntamiento no hay camas temporales.
+    expect(repartirCamas(0, 0, 0, 0)).toMatchObject({ libres: 0, libresSubditos: 0 });
   });
 
   it('la felicidad de cada súbdito se acerca a la del Reino 5 puntos por día', () => {

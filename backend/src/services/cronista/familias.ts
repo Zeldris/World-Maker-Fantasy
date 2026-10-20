@@ -8,7 +8,7 @@ import { ownerKeyFor } from '../reinoOwner.js';
 import { edadEnAnios, esAdulto, esFertil } from './edades.js';
 import { linajeParaNacido } from './linajes.js';
 import { registrarSuceso } from './sucesos.js';
-import { crearSubdito, cupoDeCamas } from './subditos.js';
+import { avisarEnReino, crearSubdito, cupoDeCamas } from './subditos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -65,11 +65,13 @@ export async function revisarFamilias(tx: Tx, saveId: string, ahora: number, ran
   const activos = new Set(subditos.map((s) => s.id));
   for (const s of subditos.filter((x) => x.parejaId && !activos.has(x.parejaId))) await tx.subject.update({ where: { id: s.id }, data: { parejaId: null } });
 
+  const nombres = new Map(subditos.map((x) => [x.id, x.name]));
   let parejas = 0;
   for (const [m, p] of posiblesParejas(subditos.map((s) => ({ ...s, parejaId: s.parejaId && activos.has(s.parejaId) ? s.parejaId : null })), ahora)) {
     if (random() >= PROB_PAREJA_SEMANA) continue;
     await tx.subject.update({ where: { id: m.id }, data: { parejaId: p.id, crias: 0 } });
     await tx.subject.update({ where: { id: p.id }, data: { parejaId: m.id, crias: 0 } });
+    await avisarEnReino(tx, saveId, `${nombres.get(m.id)} y ${nombres.get(p.id)} forman pareja.`, ahora);
     parejas++;
   }
 
@@ -81,7 +83,7 @@ export async function revisarFamilias(tx: Tx, saveId: string, ahora: number, ran
     const padre = porId.get(madre.parejaId!);
     if (!padre || !madre.pueblo || !puedeCriar(madre, padre, madre.crias, ahora)) continue;
     if (random() >= (PROB_CRIA_SEMANA[madre.pueblo] ?? 0.08)) continue;
-    if ((await cupoDeCamas(tx, saveId)).libres <= 0) break;
+    if ((await cupoDeCamas(tx, saveId)).libresSubditos <= 0) break;
     const linaje = await linajeParaNacido(tx, { saveId, pueblo: madre.pueblo, madreId: madre.id, padreId: padre.id, ahora, random, entidadTipo: 'SUBDITO' });
     const cria = await crearSubdito(tx, { saveId, worldId, pueblo: madre.pueblo, nacidoEn: ahora, origen: 'NACIDO', padreId: padre.id, madreId: madre.id, linajeId: linaje.id, felicidad: madre.felicidad, ahora, random });
     await tx.subject.updateMany({ where: { id: { in: [madre.id, padre.id] } }, data: { crias: { increment: 1 } } });
@@ -97,6 +99,7 @@ export async function revisarFamilias(tx: Tx, saveId: string, ahora: number, ran
       ],
       datos: { nacido: cria.name, genero, padres: `${padre.name} y ${madre.name}` },
     });
+    await avisarEnReino(tx, saveId, `Nace ${cria.name}, ${genero === 'F' ? 'hija' : 'hijo'} de ${padre.name} y ${madre.name}.`, ahora);
     crias.push(cria.id);
   }
   return { parejas, crias };

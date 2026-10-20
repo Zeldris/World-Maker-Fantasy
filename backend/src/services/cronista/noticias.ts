@@ -175,7 +175,9 @@ export async function darNoticia(
   const cuando = entrega(noticia, personaje);
   if (!cuando) return null;
   const texto = cuando.rumor ? comoRumor(noticia.texto) : noticia.texto;
-  const meta = metaDe(noticia);
+  const base = metaDe(noticia);
+  // P226: el rumor lleva la marca (como los de difusion.ts): región donde pasó y minuto en que pasó.
+  const meta: MetaNoticia | null = cuando.rumor ? { ...base, rumor: { region: noticia.region ?? null, pasoEn: ctx.fictionalMinutes } } : base;
   if (cuando.dias === 0) {
     await escribir(tx, ctx.saveId, texto, ctx.fictionalMinutes, meta);
     return cuando;
@@ -215,10 +217,22 @@ export async function agruparNoticias(prisma: PrismaClient, saveId: string, marc
     if (entradas.length < 2) return 0;
     const ultima = entradas[entradas.length - 1]!;
     await tx.logEntry.deleteMany({ where: { id: { in: entradas.map((e) => e.id) } } });
+    // P237: la misma noticia dada varios días (p. ej. «ha colgado nuevos avisos» en cada renovación del
+    // tablón) cuenta una vez: se queda la primera línea con ese texto.
+    const vistos = new Set<string>();
+    const lineas = entradas.filter((e) => !vistos.has(e.text) && vistos.add(e.text));
+    if (lineas.length === 1) {
+      // Tras quitar repetidos solo queda una: entrada normal, sin cabecera de resumen.
+      const unica = lineas[0]!;
+      await tx.logEntry.create({
+        data: { saveId, channel: 'WORLD', isSystemMessage: true, text: unica.text, timeLabel: unica.timeLabel, fictionalMinutes: unica.fictionalMinutes, ...(unica.noticia ? { noticia: unica.noticia as Prisma.InputJsonValue } : {}) },
+      });
+      return entradas.length;
+    }
     await tx.logEntry.create({
       data: {
-        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes, noticia: { resumen: true, lineas: entradas.map((e) => (e.noticia as MetaNoticia | null) ?? null) } as Prisma.InputJsonValue,
-        text: [CABECERA_RESUMEN, ...entradas.map((e) => `• ${e.text}`)].join('\n'),
+        saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes, noticia: { resumen: true, lineas: lineas.map((e) => (e.noticia as MetaNoticia | null) ?? null) } as Prisma.InputJsonValue,
+        text: [CABECERA_RESUMEN, ...lineas.map((e) => `• ${e.text}`)].join('\n'),
         // Cada línea conserva su categoría y su oportunidad (revisión del PR de CR-13).
       },
     });

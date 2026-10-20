@@ -1330,6 +1330,133 @@ aprobadas las cuatro por la usuaria):
 - ~~**QA-120 · Test de los ganchos de `.claude/settings.json`**~~ ✅ 2026-10-19 (retro, segunda vuelta, 6):
   `test_settings.py` exige `matcher` en cada `SessionStart`, solo `recuperar.py --estado` al compactar y que cada
   orden apunte a un archivo que existe.
+- ~~**QA-121 · Sesión directora: skill `orchestrate-dealer`**~~ ✅ 2026-10-19 (usuaria: no depender de `/clear`):
+  la principal parte la tarea y reparte cada trozo a un subagente de contexto limpio que devuelve 15 líneas; tope de
+  compactación a 200k; el `selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
+  la sesión nueva tras cada PR de `QA-110`. De `implement-spec` (Matt Pocock): encargos con punteros y
+  frontera de arreglos en paralelo, cada uno en su worktree. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
+- ~~**QA-122 · Puntos de `/clear`**~~ ✅ 2026-10-19 (usuaria, tras la ronda del Reino con 30 compactaciones): Claude
+  recomienda `/clear` en puntos estables (tarea o tanda cerrada, ronda o bloque de pruebas cerrado, PR fusionado,
+  contexto por encima de ~200k o presupuesto de compactaciones gastado), con la sesión lista antes (commit, push y
+  bitácora con el siguiente paso); nunca entre el `/code-review` y la `/retro`. Tope de compactación de vuelta a 300k
+  y gancho de `SessionStart` para `clear` con `recuperar.py --estado`. Runbook `skills-y-modelos.md`, paso 1.
+
+Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 2026-10-19: todo aprobado):
+
+- ~~**QA-123 · Tope de compactación de vuelta a 200k**~~ ✅ 2026-10-19: con 300k el techo pasó de ~145k a ~220k y el
+  medio por llamada, de ~115k a ~150k. `.claude/settings.json`, runbook `skills-y-modelos.md` paso 1,
+  `orchestrate-dealer` y `selector`.
+- ~~**QA-124 · Rondas en un subagente `sonnet`**~~ ✅ 2026-10-19: la ronda `QA-105` la jugó la principal con Opus
+  (1.150 órdenes de Bash). `rondas-de-pruebas.md` («Quién juega») y la regla de rondas de `orchestrate-dealer`.
+- ~~**QA-125 · Ayudas del driver que fallaban**~~ ✅ 2026-10-19: `interactuar` también pulsa el `menuitem` del menú
+  del NPC del mapa; `opcion` elige por número la n-ésima `[data-opcion]` (el número va en un `span aria-hidden`
+  y no entraba en el nombre del botón); `pelear` nuevo (acercarse, interactuar, «Combatir» y rondas). README de
+  `mcp/`. Pendiente: estrenarlas en la próxima ronda.
+- ~~**QA-126 · `/code-review` de cada arreglo de subagente antes de fusionarlo**~~ ✅ 2026-10-19: los arreglos de
+  P215-P220a llegaron con 9 fallos que solo cazó la revisión del PR. `orchestrate-dealer` (Reglas) y, en el
+  encargo, buscar a todos los que usan lo que se cambia.
+- ~~**QA-127 · `medir.py` por tramo**~~ ✅ 2026-10-19: medio y techo de los últimos 8 tramos y medio sin el primer
+  tramo a medias; el medio de 24 h mezclaba topes distintos. Test en `test_medir.py`.
+- ~~**QA-128 · `orden.sh` guarda la respuesta**~~ ✅ 2026-10-19: entera en `tools/playwright-e2e/shots/ultima-respuesta.txt`
+  (ignorado por git), 40 líneas en pantalla (`ORDEN_LINEAS`).
+- ~~**QA-129 · Calidad primero en `opt-tokens`**~~ ✅ 2026-10-19 (usuaria): cada propuesta dice su riesgo para la
+  calidad y su contrapeso; al medir un cambio aplicado se mira también lo que costó en calidad. `proyecto.md` al día.
+- ~~**QA-130 · La `/retro` revisa las skills propias y el `/code-review`**~~ ✅ 2026-10-19 (usuaria): dónde fallaron
+  o se quedaron cortas en lo revisado, y la mejora.
+- ~~**QA-131 · Revisión de cada rama de subagente en el paso 3 de `orchestrate-dealer`**~~ ✅ 2026-10-20 (usuaria): en la
+  tanda P223-P237 se fusionaron 8 ramas sin la revisión de `QA-126` (estaba solo en «Reglas») y el `/code-review` final
+  encontró 17 hallazgos. La hace un subagente revisor antes de fusionar.
+- ~~**QA-132 · Los subagentes en paralelo no tocan los registros compartidos**~~ ✅ 2026-10-20 (usuaria): los hallazgos
+  vuelven en `HALLADO` y los apunta la principal, como la bitácora; `pruebas-0.3-hallazgos.md` chocaba al fusionar.
+- ~~**QA-133 · Campo `HERRAMIENTAS:` en la vuelta del subagente**~~ ✅ 2026-10-20 (usuaria): los fallos del driver van a
+  `rondas-de-pruebas.md`; apuntados ya `turno.js` con cajón abierto y el driver que muere al reiniciar `escenario.sh`.
+- ~~**QA-134 · `medir.py --desde <fecha|commit>`**~~ ✅ 2026-10-20 (usuaria): medir una tarea y no la ventana de 24 h, que
+  mezclaba la ronda anterior.
+- ~~**QA-135 · `tools/qa/fusionar.sh`**~~ ✅ 2026-10-20 (usuaria): fusiona la rama del subagente, resuelve el registro de
+  hallazgos, pasa los tests del paquete tocado y avisa si falta la revisión; la principal hacía 44 órdenes de git.
+- ~~**QA-136 · Cada sesión, su propia rama**~~ ✅ 2026-10-20 (usuaria): regla en `CLAUDE.md` («Ramas y `main`»). La
+  sesión local y la de la nube subían a la misma rama y se reescribían la fila de la bitácora.
+- ~~**QA-137 · La revisión corta mira el contrato**~~ ✅ 2026-10-20 (usuaria, retro del PR de `opt-ai`): el revisor de
+  cada rama compara con el doc del contrato y los llamadores reales (`orchestrate-dealer`, paso 3); test
+  `tools/qa/tests/test_opt_ai_tareas.py` (tareas de `opt-ai/proyecto.md` frente al backend) y los tests de `opt-ai` en la CI.
+- ~~**QA-138 · El mapa, tras fusionar la rama**~~ ✅ 2026-10-20 (usuaria): lo que nombra archivos de un worktree se escribe
+  después de fusionarlo (`orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
+- ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
+  perdió dos subagentes sin commit.
+- **QA-140 · Lanzar Claude desde el repo** 🚧 en curso (lote 1, retro de pruebas-local §1 y `/opt-tokens`):
+  `Desarrollos/CLAUDE.md` de una línea («lanza `claude` desde `World-Maker-Fantasy/`») y la misma nota en el runbook de
+  rondas. Hecho 2026-10-20: la nota (paso 0 de «Cómo se juega»). **Falta** `Desarrollos/CLAUDE.md`, fuera del repo: lo
+  crea la sesión local en la Deck.
+- ~~**QA-141 · `arrancar-juego.sh` comprueba el entorno de la IA**~~ ✅ 2026-10-20 (§2 y `/opt-tokens`, GPU): con
+  `IA_PERFIL`, `IA_REGISTRO` a ruta absoluta; en `deck`, error si el registro de Ollama (solo lo escrito tras arrancar)
+  o `/api/ps` dicen CPU; `rag-eval` para el arranque (rc 1 → `reindex-lore`). Funciones en
+  `tools/playwright-e2e/ia-comprobaciones.sh`, test `test_ia_comprobaciones.py`; paso 1 del runbook con la ruta absoluta.
+- ~~**QA-142 · `/opt-ai` en el flujo del PR**~~ ✅ 2026-10-20 (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
+  del runbook apuntan ahí; fila en la tabla de reparto de `orchestrate-dealer`.
+- ~~**QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos**~~ ✅ 2026-10-20 (§4): regla `allow` en
+  `.claude/settings.json` (también por `host.sh`, confirmada por la usuaria); el runbook ya no pide permiso; escenario
+  `reino-dia39-recursos` (Granero, comida 180, bolsa 300 y tesoro 251 Goirnos, materiales en inventario y Almacén) y
+  `escenario.sh dar-reino` (`darReino.ts`: comida, bebida, Goirnos, tesoro, Almacén y `edificio:<receta>`). El Pozo
+  sigue DANADO y soldados y trabajadores en 0: se asignan jugando.
+- ~~**QA-144 · Gancho contra los borradores en commits**~~ ✅ 2026-10-20 (§5): `.githooks/pre-commit` con `CLAUDECODE=1`
+  rechaza altas, cambios, borrados y renombrados de `docs/borradores-opencode/`; no actúa al cerrar merge, cherry-pick
+  o rebase. Test `test_pre_commit.py`.
+- ~~**QA-145 · `bitacora.py` contra filas ajenas**~~ ✅ 2026-10-20 (§6): `bitacora.py --ajenas <commit> <rama>`; el
+  pre-push lo pasa a cada commit (no merge) que toca la bitácora. Libres: «Actualizado» y «Tests»; el resto de filas
+  compartidas, con `BITACORA_COMPARTIDA=1 git push` (p. ej. añadir una rama a «Ramas de trabajo»).
+- ~~**QA-146 · `medir.py` por subagente**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): sección «POR SUBAGENTE» (llamadas,
+  contexto medio, entrada y salida) y totales con subagentes; la salida se contaba de menos por tomar el valor provisional
+  del streaming (ahora el máximo por respuesta). Casos en `tools/qa/tests/test_medir.py`.
+- ~~**QA-147 · Tandas de juego en llamadas**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): `orchestrate-dealer` paso 1, tanda de ~60 llamadas con
+  traspaso por escenario guardado.
+- ~~**QA-148 · `opt-ai`: lo que ya hay y tanda válida**~~ ✅ 2026-10-20 (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0
+  descarta la tanda que no corrió con la configuración del perfil.
+- ~~**QA-149 · Capturas más pequeñas**~~ ✅ 2026-10-20 (`/opt-tokens`): `shot()` del driver y `mcp/captura.js` salen en
+  JPEG calidad 50 (4,4 veces menos bytes), con `selector`, `clip`, `calidad` y `completo:true` (PNG de página entera).
+- ~~**QA-150 · `tools/qa/host.sh` y `sql.sh`**~~ ✅ 2026-10-20 (`/opt-tokens`, tests `test_host.py` y `test_sql.py`): envoltorios para el sandbox Flatpak de la Deck
+- ~~**QA-151 · Reglas del juego en los scripts que escriben la partida**~~ ✅ 2026-10-20 (retro del lote 1): `orchestrate-dealer` pide en el encargo y en la revisión de cada rama que lo que escribe estado de la partida pase por las funciones del juego que aplican esas reglas (`darReino.ts` las rehacía a mano).
+- ~~**QA-152 · `fusionar.sh` borra la rama y el worktree del subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_fusionar.py`): tras fusionar y con los tests en verde, `git worktree remove` sin forzar y `git branch -d`; nunca la rama actual, `main` ni `claude/*`.
+- ~~**QA-153 · `escenario.sh probar <nombre> <orden…>`**~~ ✅ 2026-10-20 (retro del lote 1, `test_escenario.py`): restaura la instantánea en una base temporal, corre la orden contra ella y la borra al salir; probado con `dar-reino` sobre `reino-dia39-recursos`.
+- ~~**QA-154 · `medir.py` da el arranque de cada subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_medir.py`): columna «arranque» (contexto de la primera llamada) y «Arranque medio»; el paso 1 de `opt-tokens` lo usa para ver qué encargos no compensan un subagente.
+  (`flatpak-spawn --host --directory=<repo>`, SQL por stdin) que fuera de la Deck corren la orden tal cual.
+
+Propuestas de `/opt-ai` (primera medida en la Deck, 2026-10-20, aprobadas por la usuaria; [informe](../ia/opt-ai-registro.md)).
+Cada una se mide con `benchmark-turno` antes y después (perfil `deck`, `IA_REGISTRO` en las dos) y la medida va al
+informe; si empeora la calidad o no mejora, se revierte y se apunta. Objetivo por turno: primera palabra p50 ≤ 30 s,
+turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
+- ~~**QA-160 · Captura remota apagada en las tandas** (propuesta 9): `arrancar-juego.sh` la apaga y el servidor avisa al
+  arrancar si está encendida.~~ ✅ 2026-10-20: hecho; sin A/B (mandaría turnos fuera), comprobado en `backend.log`.
+- ~~**QA-161 · `keep_alive` 1h en `resumen`** (propuesta 3): el resumen usa el narrador y le bajaba la residencia a 5 min.~~
+  ✅ 2026-10-20: `resumen` y el calentamiento con 1h; medido en `02`, sin recarga tras el `resumen`.
+- ~~**QA-162 · Registro y `medir.py` por turno** (propuesta 6): `app.intento`, `app.rechazo`, id de turno y `num_ctx`
+  efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.~~
+  ✅ 2026-10-20: hecho (`app.turno`, `app.intento`, `app.evento`/`app.rechazo`, `num_ctx` de `/api/ps`, tabla TURNOS);
+  `rag-eval` con los casos nuevos: recall@4 0,750.
+- ~~**QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.~~
+  ✅ 2026-10-20: `combateIniciado` solo con agresores en el `format` y `num_predict` 300 en el intento 1; respaldo 14 % → 0 %,
+  intento 2 sigue en 29 % (2.ª persona, equipo) y la latencia no cambia.
+- ~~**QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).~~
+  ✅ 2026-10-20: estado de la partida y narración anterior tras los hechos estables; turno p50 61 → 38 s, primera palabra
+  45 → 23 s. Fuera: los repetidos de la memoria (P247), poco coste al ir al final del prefijo.
+- ~~**QA-165 · `lengthGuidance` tras el bloque fijo** (propuesta 7): no perder la caché al entrar en combate.~~
+  ✅ 2026-10-20: va junto a la acción; entrar en combate pasa de 50,4 s a 1,4 s de prefill (reproducción), turno p50 33 s.
+- ~~**QA-166 · Contexto del respaldo** (propuesta 4): los respaldos se recortaban a 4096.~~
+  ✅ 2026-10-20: prompt recortado del intento 2 y `num_ctx` 8192; ya narra la acción (15,5 s en la reproducción).
+- ~~**QA-167 · Escalera del RAG** (propuesta 5) con los casos de la ronda.~~
+  ✅ 2026-10-20: peldaño 1, trozos de ~400 caracteres por título; recall@4 0,750 → 0,875. Queda fuera la pregunta doble
+  de P272 (peldaño 2, híbrida).
+- ~~**QA-168 · `keep_alive` de `clasificar`, experimento** (propuesta 8).~~
+  ✅ 2026-10-20: `'5m'`; caben los tres modelos (≥1,8 GB libres), `clasificar` p50 6,9 → 2,8 s, turno p50 28,7 s.
+
+Retro del PR de `claude/opt-ai-mejoras` ([retro](../registros/retro-2026-10-20-opt-ai-mejoras.md), aprobadas por la
+usuaria el 2026-10-20), con las tres de `/opt-tokens`.
+- ~~**QA-169 · `/code-review low` de cada propuesta de `opt-ai` antes de su commit**: el bench mide tiempo, no fallos.~~ ✅ 2026-10-20: (`opt-ai` paso 4): al aplicar cada tarea, `/code-review low` de su diff antes del commit y del bench de después. La usuaria propuso mover el `/code-review` del PR tras `/opt-tokens` y `/opt-ai`; se quedó esta, porque los cuatro fallos venían de las propias tareas de `opt-ai`, que ya iban antes de esa revisión.
+- ~~**QA-170 · `keep_alive` y `num_ctx` alineados en todas las llamadas a un modelo** (`opt-ai`, `motores.md`).~~ ✅ 2026-10-20: nota en `motores.md` (Ollama) y en el paso 3: buscar todas las llamadas al modelo y alinearlas con una constante como `CTX_CRONISTA`.
+- ~~**QA-171 · `tools/roadmap/cerrar.py`**: cerrar una tarea en su roadmap, en el mapa y en la bitácora en una orden.~~ ✅ 2026-10-20: `cerrar.py QA-n "nota" … --bitacora` (`test_cerrar.py`): tacha en el roadmap (también en varias líneas) y en el mapa (los rangos, cuando quedan cerrados enteros) y abre «Hecho recientemente» con las 10 últimas; con él se cerraron estas.
+- ~~**QA-172 · «Prompt del narrador» en `mapa-agente.md`**: bloques, intentos y modelo/`num_ctx`/`keep_alive` por tarea.~~ ✅ 2026-10-20: sección en `docs/mapa-agente.md` con el orden de bloques de `buildNarrationPrompt`, los intentos 1/2/3 y la tabla de modelo, `num_ctx` y `keep_alive` por tarea; `mapa-agente.py` en verde.
+- ~~**QA-173 · `tools/qa/bench-ia.sh` versionado**: restaurar, reindexar, jugar, muestrear RAM y `medir.py` en una orden.~~ ✅ 2026-10-20: `bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N]` y el escenario `ia-gorhorn-dia42` (la partida de las pasadas `01`…`10`); probado con la pasada `10-bench-ia` (turno p50 34,9 s, en objetivo). Se lanza solo por `host.sh` en la Deck.
+- ~~**QA-174 · `.prettierrc.json` del backend con comillas simples**: que un archivo reescrito no cambie de estilo.~~ ✅ 2026-10-20: `singleQuote`, `trailingComma: all`, `printWidth` 120; sin reformatear lo que ya hay.
+- ~~**QA-175 · `POR ARCHIVO` en `medir.py` de `opt-tokens`**: lecturas y arrastre por archivo.~~ ✅ 2026-10-20: sección `POR ARCHIVO` (Read y Bash con orden de lectura; rutas relativas a otra carpeta, resueltas por `git ls-files`), con su test en `test_medir.py`. En esta sesión, `narrador.ts`: 61 lecturas, 1,6M arrastrados.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

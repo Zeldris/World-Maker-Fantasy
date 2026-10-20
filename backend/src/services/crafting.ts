@@ -1459,6 +1459,16 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
   CORNISA_CLOAK_RECIPE,
 ];
 
+/// P215 (revisión previa al PR, 2026-10-19): slugs que alguna receta pide por su nombre exacto
+/// (`racion-carne` para el Ahumadero y la Cocina). Esa comida se queda en el Almacén al depositarla,
+/// para las órdenes de producción; la demás pasa a la Comida del Reino (`/almacen/depositar`).
+export const SLUGS_INGREDIENTE: ReadonlySet<string> = new Set(
+  CRAFTING_RECIPES.flatMap((r) => r.ingredients.flatMap((i) => [i.match, i.orMatch?.match].flatMap((m) => (m?.kind === 'exact' ? [m.catalogSlug] : [])))),
+);
+export function pasaAComidaDelReino(slug: string | null | undefined, curaHambre: number | null | undefined): boolean {
+  return !!slug && !SLUGS_INGREDIENTE.has(slug) && (curaHambre ?? 0) > 0;
+}
+
 export function detectsCraftIntent(recipe: CraftingRecipe, action: string): boolean {
   const normalized = normalizeText(action);
   return recipe.verbRegex.test(normalized) && recipe.nounRegex.test(normalized);

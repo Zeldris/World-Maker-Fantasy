@@ -14,6 +14,12 @@ que cada tarea que pasa a tachada (`~~…~~`) en un roadmap entre esos dos commi
 QA-115 (retro del 2026-10-19): `bitacora.py <ruta> --fecha AAAA-MM-DD` falla si la fila «Actualizado» es
 anterior a esa fecha. El pre-push la pasa con la fecha de cada commit que cambia la bitácora: estuvo dos
 días en 2026-10-17 con commits del 19.
+
+QA-145 (retro del 2026-10-20): `bitacora.py --ajenas <commit> <rama> [--compartida]` falla si el commit
+cambia una fila «Tarea en curso · `<otra rama>`» o una fila compartida de «Estado actual» (Ramas de
+trabajo, Último commit en main, Hito…). Cada rama escribe solo en la suya (`QA-136`). «Actualizado» y
+«Tests» se tocan en casi cada commit y no se vigilan. Lo corre `prepush-ramas.sh` en cada commit nuevo que
+no es un merge; para un cambio compartido a propósito, `BITACORA_COMPARTIDA=1 git push`.
 """
 import re
 import subprocess
@@ -21,6 +27,7 @@ import sys
 from pathlib import Path
 
 TOPE = 600
+LIBRES = {"Actualizado", "Tests"}  # filas compartidas que cada commit puede tocar (QA-145)
 ROADMAPS = "docs/producto/"
 RUTA_BITACORA = "docs/registros/traspaso.md"
 
@@ -73,6 +80,47 @@ def cerradas_sin_bitacora(base: str, sha: str) -> list[str]:
     hecho = bitacora.split("## Hecho recientemente", 1)[1].split("\n## ", 1)[0] if "## Hecho recientemente" in bitacora else ""
     return sorted(nuevas - ids_tachados(hecho))
 
+
+def filas_estado(texto: str) -> dict[str, list[str]]:
+    """Filas «| **Clave** | texto |» de la tabla de «## Estado actual» (no de otras tablas del archivo): clave (con la
+    rama en «Tarea en curso · rama») -> textos, en orden. Con una clave repetida se guardan todos, para que un
+    cambio en una de las repetidas no quede oculto por la otra."""
+    seccion = texto.split("## Estado actual", 1)[1].split("\n## ", 1)[0] if "## Estado actual" in texto else ""
+    filas: dict[str, list[str]] = {}
+    for l in seccion.splitlines():
+        m = re.match(r"\|\s*\*\*(.+?)\*\*\s*\|(.*)\|\s*$", l)
+        if m:
+            filas.setdefault(m.group(1).replace("`", "").strip(), []).append(m.group(2).strip())
+    return filas
+
+
+def filas_ajenas(antes: str, despues: str, rama: str) -> list[str]:
+    """Claves de las filas que cambian entre `antes` y `despues` y no son de `rama` ni de las LIBRES."""
+    a, d = filas_estado(antes), filas_estado(despues)
+    propia = f"Tarea en curso · {rama}"
+    return [k for k in sorted(a.keys() | d.keys())
+            if a.get(k) != d.get(k) and k != propia and k not in LIBRES]
+
+
+def contenido(commit: str) -> str:
+    r = git("show", f"{commit}:{RUTA_BITACORA}")
+    return r.stdout if r.returncode == 0 else ""
+
+
+if sys.argv[1:2] == ["--ajenas"]:
+    resto = [a for a in sys.argv[2:] if a != "--compartida"]
+    if len(resto) != 2:
+        sys.exit("Uso: python3 tools/qa/bitacora.py --ajenas <commit> <rama> [--compartida]")
+    if "--compartida" in sys.argv[2:]:
+        sys.exit(0)
+    commit, rama = resto
+    padre = git("rev-parse", "--verify", "-q", f"{commit}^").stdout.strip()
+    ajenas = filas_ajenas(contenido(padre) if padre else "", contenido(commit), rama)
+    for k in ajenas:
+        print(f"bitácora: el commit cambia la fila «{k}», que no es de {rama}; cada rama escribe solo en su fila "
+              "«Tarea en curso» (QA-136). Si es a propósito (cerrar un PR, fila compartida), "
+              "sube con `BITACORA_COMPARTIDA=1 git push` o corre bitacora.py con --compartida")
+    sys.exit(1 if ajenas else 0)
 
 if sys.argv[1:2] == ["--cerradas"]:
     if len(sys.argv) != 4:

@@ -26,6 +26,15 @@ export interface RecipeStatus {
   /// materiales/atributos YA se cumplen, mismo criterio que turnResolution.ts (si faltan
   /// materiales, ese sigue siendo el problema real a mostrar). null = no aplica o no bloquea.
   blockedReason: string | null;
+  /// P218 — solo en recetas de construcción: lo que el panel Reino › Edificios › Construir necesita
+  /// para ofrecer cada edificio sin una lista a mano en el frontend (nombre, si cuelga del
+  /// Ayuntamiento y qué edificio mejora).
+  name?: string;
+  requiresAyuntamiento?: boolean;
+  upgradesRecipeKey?: string | null;
+  /// Nivel al que deja el edificio que mejora (Obrador 2, Gran obrador 3; revisión previa al PR de
+  /// P218): el panel oculta las mejoras de un nivel ya alcanzado (la mejora no cambia `recipeKey`).
+  nivel?: number | null;
 }
 
 /// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
@@ -68,6 +77,10 @@ export async function constructionRecipeStatusFor(params: {
     locationOk: true,
     requiredLocationName: null,
     blockedReason,
+    name: recipe.name,
+    requiresAyuntamiento: recipe.requiresAyuntamiento === true,
+    upgradesRecipeKey: recipe.upgradesRecipeKey ?? null,
+    nivel: recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null,
   };
 }
 
@@ -132,7 +145,11 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
 
     const activeRegion = save.currentLocation?.region ?? null;
     const construction: RecipeStatus[] = await Promise.all(
-      CONSTRUCTION_RECIPES.map((recipe) =>
+      // P218 (decisión de la usuaria, 2026-10-19): una receta con `raza` de otra raza que la del
+      // personaje no se lista (misma comparación directa de slugs de BERIG_RAZAS que el resto del
+      // backend con `Save.raza`). Sin `raza` en la receta, o personaje sin raza, siguen visibles.
+      // Solo filtra lo mostrado: el comando de texto no se toca (no está limitado por raza).
+      CONSTRUCTION_RECIPES.filter((recipe) => !recipe.raza || !save.raza || recipe.raza === save.raza).map((recipe) =>
         constructionRecipeStatusFor({
           recipe,
           saveId: save.id,

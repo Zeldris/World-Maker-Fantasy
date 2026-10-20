@@ -14,10 +14,19 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **SQL contra la partida** en vez de navegar la interfaz para mirar datos (`rondas-de-pruebas.md`, `QA-97`).
 - **Mapa del agente** (`QA-108`): `docs/mapa-agente.md` da por sistema las funciones de entrada, tests, tablas e
   interfaz; si una sesión exploró para encontrar algo que no estaba, se añade ahí.
-- **Compactar a 300k** (`QA-109`): `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en `.claude/settings.json`; antes el contexto
-  crecía de ~76k a ~742k por tramo (media 428k por llamada).
-- **Sesión nueva tras cada PR fusionado** (`QA-110`, runbook `skills-y-modelos.md`, paso 6).
-- **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones.
+- **Compactar a 200k** (`QA-109` a 300k; 200k desde `QA-121`; 300k en `QA-122` y otra vez 200k en `QA-123`, porque
+  con 300k el techo subió de ~145k a ~220k): `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en `.claude/settings.json`, con los
+  puntos de `/clear` de `QA-122`. Antes de `QA-109` el contexto crecía de ~76k a ~742k por tramo (media 428k por llamada).
+- **Sesión directora** (`QA-121`, sustituye la sesión nueva tras cada PR de `QA-110`): skill `orchestrate-dealer`.
+- **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones; desde
+  `QA-127`, medio y techo de cada uno de los últimos 8 tramos y el medio sin el primer tramo a medias.
+- **`medir.py --desde <ISO|sha>`** (`QA-134`): mide solo desde una fecha o desde un commit (su fecha), con el primer tramo a medias descartado como en `--horas`.
+- **`tools/qa/fusionar.sh <rama> "<mensaje>"`** (`QA-135`): merge `--no-ff` de la rama de un subagente, resuelve solo los conflictos de `pruebas-0.3-hallazgos.md` (queda el estado no pendiente), pasa los tests del paquete tocado y avisa si falta la marca de revisión.
+- **Rondas en un subagente `sonnet`** (`QA-124`): la principal reparte tandas y apunta; no lanza `orden.sh`.
+- **Ayudas del driver** (`QA-125`): `interactuar` también con el menú del NPC del mapa, `opcion` por número de
+  `[data-opcion]` y `pelear` (acercarse, interactuar y combatir en una orden). `orden.sh` guarda cada respuesta
+  entera en `tools/playwright-e2e/shots/ultima-respuesta.txt` y muestra 40 líneas (`QA-128`).
+- **Revisión por arreglo** (`QA-126`): `/code-review` corto del diff de cada subagente antes de fusionarlo.
 - **Tests de las herramientas** (`QA-113`): `medir.py` tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.
 - **Modelo por tarea** (`QA-117`): `medir.py` reparte la entrada por modelo, sesión principal y subagentes; el
@@ -25,6 +34,9 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
 ## Gastos conocidos
+
+- **La ronda `QA-105` en la principal** (2026-10-19): 1.295 llamadas en 24 h, 1.150 órdenes de Bash, 44 capturas
+  leídas, todo con Opus; 30 compactaciones. De ahí `QA-123`…`QA-128`.
 
 - **Sesiones largas sin compactar**: el 2026-10-19, 578 llamadas en 24 h con 428k tokens de contexto medio (el 99 % de
   caché leída); en toda la sesión, 15 tramos de suelo ~76k y techo ~742k, unas 440 llamadas por tramo. (Las cifras

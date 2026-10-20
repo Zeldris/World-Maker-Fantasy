@@ -72,6 +72,7 @@ import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, build
 import { ambitoPoblacion } from '../services/mundoPartida.js';
 import { enGraciaTrasRenacer } from '../services/death.js';
 import { tieneMontura } from '../services/monturas.js';
+import { abrirTurnoIa, seguirTurnoIa } from '../lib/iaRegistro.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -533,7 +534,9 @@ async function resolveClassificationForTurn(params: {
 
     // P74 (QA-27): un descanso que el enfriamiento va a rechazar (turnResolution § restBlockedByCooldown)
     // no ocupa el tiempo que pedía: «Descanso ocho horas» con el descanso aún reciente dejaba a la
-    // jugadora ocupada 8 h mientras el narrador decía que no descansaba.
+    // jugadora ocupada 8 h mientras el narrador decía que no descansaba. P231: `computeDuration`
+    // respeta esta banda instantánea (no relee «tres días» del texto). Misma decisión que el turno
+    // (`hayLugar` = hay `currentLocationId`, turnResolution § restBlockedByCooldown).
     if (descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll, lastRestAtMinutes: params.lastRestAtMinutes ?? null, ahoraMinutos: fictionalMinutes })) {
       classification.banda = 'instantanea';
       classification.duracionEstimadaMinutos = 0;
@@ -558,6 +561,7 @@ export async function turnRoutes(app: FastifyInstance) {
     if (!saveId || !action) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action' });
     }
+    if (!preview) abrirTurnoIa(saveId); // QA-162: id de turno del registro de opt-ai
 
     const save = await prisma.save.findUnique({
       where: { id: saveId },
@@ -1245,6 +1249,7 @@ export async function turnRoutes(app: FastifyInstance) {
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
+    seguirTurnoIa(saveId);
     // UX-29/UX-35: si aún corre el avance de fondo del turno o la acción anterior, este turno espera a
     // que acabe (suele ser menos de lo que se tarda en leer la narración) y lee el mundo ya avanzado.
     await esperarSegundoPlano(saveId);

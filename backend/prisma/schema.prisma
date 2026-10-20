@@ -284,6 +284,9 @@ model Save {
   /// "Combatir"). Se sobrescribe en cada turno (vacío si no hay combate ese turno), para que
   /// `GET /saves/:id` pueda reconstruir el mismo aviso de combate tras cualquier resincronización.
   pendingCombatNpcSlugs Json @default("[]")
+  /// P233: cuándo empezó el combate de `pendingCombatNpcSlugs` (services/combateDesde.ts); null sin
+  /// combate. Un COMBATE_PERDIDO anterior es de otro combate.
+  combateDesde DateTime?
 
   /// Recetas de crafteo desbloqueadas por recompensa de misión (2026-08-17, ver
   /// Quest.rewardRecipeKeys) — solo importa para recetas marcadas `requiresUnlock: true`

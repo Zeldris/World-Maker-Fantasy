@@ -75,7 +75,11 @@ describe('P17 — la duración explícita del texto manda', () => {
 
   it('computeDuration usa la del texto aunque el clasificador diga otra cosa', () => {
     expect(computeDuration('Descanso un par de horas junto al pozo', 'corta', attrs, 5).minutos).toBe(120);
-    expect(computeDuration('Descanso un par de horas', 'instantanea', attrs, 0).minutos).toBe(120);
+    // La ruta de clasificar ya sube la banda con lo escrito; si llega instantánea (descanso rechazado
+    // por enfriamiento, P231), la clasificación manda y no se relee el texto.
+    expect(duracionExplicitaDeLaAccion('Descanso un par de horas', 'instantanea')).toBe(120);
+    expect(computeDuration('Descanso un par de horas', 'instantanea', attrs, 0).minutos).toBe(1);
+    expect(computeDuration('Descansando tres días enteros', 'instantanea', attrs, 0).minutos).toBe(1);
     expect(computeDuration('Descanso un rato', 'corta', attrs, 20).minutos).toBe(20);
   });
 });
@@ -85,6 +89,6 @@ describe('P17 — lo que se dice no ocupa tiempo', () => {
   it('hablar de una duración no la hace durar', () => {
     expect(computeDuration('Le digo que vuelvo en una hora', 'instantanea', attrs, 0).minutos).toBe(1);
     expect(computeDuration('Examino la veta durante una hora', 'instantanea', attrs, 0).minutos).toBe(1);
-    expect(computeDuration('Espero dos horas a que pase la tormenta', 'instantanea', attrs, 0).minutos).toBe(120);
+    expect(duracionExplicitaDeLaAccion('Espero dos horas a que pase la tormenta', 'instantanea')).toBe(120);
   });
 });

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { candidatosDeLlegada, elegirPorPeso, motivoSinLlegada, puebloDeFila, responderLlegada, revisarLlegadas } from './llegadas.js';
+import { candidatosDeLlegada, elegirPorPeso, motivoSinLlegada, puebloDeFila, requisitosDeLlegada, responderLlegada, revisarLlegadas } from './llegadas.js';
+import { cupoDeCamas } from './subditos.js';
 
 describe('llegadas (REI-119) — reglas puras', () => {
   const base = { camasLibres: 1, comida: 5, bebida: 5, felicidad: 50, candidatoEsperando: false };
@@ -13,6 +14,15 @@ describe('llegadas (REI-119) — reglas puras', () => {
     expect(motivoSinLlegada({ ...base, bebida: 0 })).toMatch(/agua/);
     expect(motivoSinLlegada({ ...base, felicidad: 39 })).toMatch(/40/);
     expect(motivoSinLlegada({ ...base, candidatoEsperando: true })).toMatch(/esperando/);
+  });
+
+  // P220b: la lista entera de requisitos (no solo el primero que falla) y el motivo sale de ella.
+  it('requisitosDeLlegada da todos los requisitos con estado y cifra', () => {
+    const r = requisitosDeLlegada({ ...base, camasLibres: 2, camasTotales: 2, comida: 0, bebida: 12, felicidad: 55 });
+    expect(r.map((q) => [q.clave, q.cumple, q.cifra])).toEqual([['cama', true, '0/2'], ['comida', false, '0'], ['agua', true, '12'], ['felicidad', true, '55, mínimo 40']]);
+    const sin = requisitosDeLlegada({ ...base, camasLibres: 0, camasTotales: 2, comida: 0, bebida: 0, felicidad: 39 });
+    expect(sin.every((q) => !q.cumple)).toBe(true);
+    expect(motivoSinLlegada({ ...base, camasLibres: 0, comida: 0 })).toBe(sin[0]!.motivo);
   });
 
   it('el pueblo sale al azar según cuántos son', () => {
@@ -105,5 +115,45 @@ describe('llegadas (REI-119) — en una partida', () => {
     await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { comida: 50 } });
     await prisma.companion.create({ data: { saveId, name: 'Ana', role: 'x', notes: 'x' } });
     expect((await revisar(AHORA + 28 * DIA)).llegado).toBeNull();
+  });
+});
+
+// P220a: el Ayuntamiento da 2 camas temporales, solo para súbditos.
+describe('llegadas (P220a) — camas temporales del Ayuntamiento', () => {
+  let saveId: string;
+  const AHORA = 480 + 30 * 1440;
+  const ownerKey = () => `save:${saveId}`;
+
+  beforeAll(async () => {
+    const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    saveId = (await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Gorhorn', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'G',
+        worldState: { create: { fictionalMinutes: AHORA } },
+      },
+    })).id;
+    await asegurarMundoDePartida(prisma, saveId);
+    await prisma.faction.create({ data: { worldId, saveId, slug: 'reino-de-gorhorn', name: 'Reino de Gorhorn', raza: 'orcos', description: 'x' } });
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey: ownerKey(), felicidad: 60, comida: 50, bebida: 50 } });
+    await prisma.territory.create({ data: { saveId, name: 'Hondonada', description: 'x', region: 'Las Llanuras del Viento Rojo' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId } });
+    await prisma.building.create({ data: { saveId, locationId: location.id, recipeKey: 'ayuntamiento', name: 'Ayuntamiento', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO' } });
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('con solo el Ayuntamiento llegan súbditos (2 camas temporales) y los compañeros no tienen cama', async () => {
+    expect(await cupoDeCamas(prisma, saveId)).toMatchObject({ total: 0, temporales: 2, libres: 0, libresSubditos: 2 });
+    const r = await prisma.$transaction((tx) => revisarLlegadas(tx, saveId, AHORA, () => 0.3));
+    expect(r.llegado).not.toBeNull();
+    expect((await prisma.$transaction((tx) => responderLlegada(tx, saveId, r.llegado!, true, AHORA))).ok).toBe(true);
+    expect(await cupoDeCamas(prisma, saveId)).toMatchObject({ subditos: 1, enAyuntamiento: 1, libres: 0, libresSubditos: 1 });
+    // Una vez alojados los 2, no llega nadie más: «No hay cama libre».
+    const r2 = await prisma.$transaction((tx) => revisarLlegadas(tx, saveId, AHORA + 7 * 1440, () => 0.3));
+    expect((await prisma.$transaction((tx) => responderLlegada(tx, saveId, r2.llegado!, true, AHORA + 7 * 1440))).ok).toBe(true);
+    expect(await cupoDeCamas(prisma, saveId)).toMatchObject({ subditos: 2, enAyuntamiento: 2, libresSubditos: 0, libres: 0 });
+    expect((await prisma.$transaction((tx) => revisarLlegadas(tx, saveId, AHORA + 14 * 1440, () => 0.3))).llegado).toBeNull();
   });
 });

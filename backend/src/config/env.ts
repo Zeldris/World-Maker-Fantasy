@@ -20,6 +20,13 @@ export const env = {
   ollamaModelEmbeddings: process.env.OLLAMA_MODEL_EMBEDDINGS ?? 'nomic-embed-text',
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE ?? '5m',
 
+  /// Registro por llamada de la skill opt-ai (docs/ia/opt-ai-registro.md): ruta de un archivo
+  /// JSONL al que se añade una línea por llamada a Ollama/embeddings/RAG. Sin ella no se escribe
+  /// nada (y no cuesta nada).
+  iaRegistro: process.env.IA_REGISTRO || undefined,
+  /// Perfil de máquina que se anota en cada línea del registro: deck, cpu, gpu8, gpu12…
+  iaPerfil: process.env.IA_PERFIL || 'desconocido',
+
   // El .env real de la usuaria ya lo tenía bajado a 2 (roadmap 2026-07-20/21) — este default de
   // código solo importa para un checkout nuevo sin `.env` todavía, así que se alinea al mismo
   // valor ya validado en vez de quedarse en el 20 original de `.env.example` (auditoría 2026-07-24).

@@ -26,6 +26,7 @@ import type { AttributeBlock } from '../services/dice.js';
 import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
 import { appendSessionFacts } from '../services/worldFacts.js';
 import { esperarSegundoPlano } from '../services/avanceDiario.js';
+import { procesarReacciones } from '../services/cronista/reacciones.js';
 
 /// Harness de integración de la misión de apertura (2026-07-31, "checklist de mejoras de
 /// narración" — acordado al principio de la sesión de replanteamiento de arquitectura y retomado
@@ -3608,6 +3609,21 @@ describe('Descansar: +30 de energía fijo, NO cura condición física, cooldown 
     const { classification } = res.json() as { classification: { banda: string; duracionEstimadaMinutos: number } };
     expect(classification.banda).toBe('instantanea');
     expect(classification.duracionEstimadaMinutos).toBe(0);
+  }, 15_000);
+
+  it('P231: «descansando tres días enteros» rechazado por enfriamiento no salta el día ni gasta hambre y sed', async () => {
+    const app = await buildApp();
+    const action = 'Me quedo descansando tres días enteros';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } });
+    expect(classifyRes.statusCode).toBe(200);
+    expect((classifyRes.json() as { duracionMinutos: number }).duracionMinutos).toBe(1);
+    const wsAntes = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    const res = await doTurn(saveId, action);
+    expect(lastNdjsonLine(res.payload).narration).toEqual({ narration: expect.stringContaining('no está lo bastante cansado'), newFacts: [] });
+    const wsDespues = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    // Como cualquier acción rechazada: el minuto de un intento, no los 4320 pedidos.
+    expect(wsDespues.fictionalMinutes - wsAntes.fictionalMinutes).toBeLessThanOrEqual(1);
+    expect(wsDespues.fictionalDateLabel.split(',')[0]).toBe(wsAntes.fictionalDateLabel.split(',')[0]);
   }, 15_000);
 });
 
@@ -9103,5 +9119,143 @@ describe('CR-49 — atacar a Torgash en su campamento trae a los suyos', () => {
     expect(combateIniciado!.npcs.every((n) => !!n.participantId)).toBe(true);
     expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO', jugable: true } })).toBe(1);
     await app.close();
+  }, 30_000);
+});
+
+// P233 (pruebas 0.3, 2026-10-19): morir en un combate sin haber caído convaleciente EN ESE combate
+// (Gorhorn entró ya convaleciente contra el Orco enfurecido) no registraba COMBATE_PERDIDO y la
+// muerte no llevaba al NPC que mata: el orco no ganaba «Vencedor de», ni contaba para RIVALIDAD.
+describe('P233 — morir en combate sin pasar por Convaleciente en ese combate cuenta como perderlo', () => {
+  const saves: string[] = [];
+
+  async function partidaConvaleciente(
+    nombre: string,
+    opciones: { combateDesde?: Date; sinAccionFuera?: boolean } = {},
+  ): Promise<{ saveId: string; npcId: string }> {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
+        condicionFisica: 'CONVALECIENTE', dificultad: 'NOVATO', pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+        // El combate empezó hace media hora (los sucesos `antes` son de hace una).
+        combateDesde: opciones.combateDesde ?? new Date(Date.now() - 1_800_000),
+        // El orco ya ha lanzado su golpe: si conecta, mata (un escalón por debajo de CONVALECIENTE).
+        pendingNpcAttack: {
+          npcId: npc.id, attribute: 'fuerza', effects: ['ATAQUE'], rol: 'ataque', abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.', energyCost: 5, energyRegen: 0,
+        },
+      },
+    });
+    saves.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    // La última acción de la jugadora fuera de combate (antes P233 marcaba el inicio del combate).
+    if (!opciones.sinAccionFuera) await prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text: 'Voy a buscar al orco.', isPlayerAction: true, combate: false, timeLabel: 'x', fictionalMinutes: 420 } });
+    return { saveId: save.id, npcId: npc.id };
+  }
+
+  async function suceso(saveId: string, tipo: string, minutos: number, actores: { entidadTipo: string; entidadId: string; papel: string }[], antes = false) {
+    await prisma.suceso.create({
+      data: {
+        saveId, tipo, familia: 'JUGADOR', fictionalMinutes: minutos, importancia: 3, origen: 'JUGADOR', datos: {}, texto: tipo,
+        // Ya reaccionado: así el título y la rivalidad solo pueden salir de la muerte.
+        semilla: 'p233', reaccionesPendientes: false,
+        // `antes`: de un combate anterior (antes de `combateDesde`).
+        ...(antes ? { createdAt: new Date(Date.now() - 3_600_000) } : {}),
+        actores: { create: actores },
+      },
+    });
+  }
+
+  async function morir(saveId: string) {
+    classifyAction.mockResolvedValueOnce({ requiereTirada: true, atributo: 'fuerza', dificultad: 18, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    narrateAction.mockResolvedValueOnce({ narration: 'El orco acaba con Gorhorn.', newFacts: [], condicionFisica: 'MUERTO', combateIniciado: { npcSlugs: ['orco-enfurecido-hondonada'] } });
+    // Tiradas altas: el golpe del orco conecta.
+    const azar = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      await doTurn(saveId, "Ataco a 'Orco enfurecido' con todas mis fuerzas.");
+    } finally {
+      azar.mockRestore();
+    }
+    await esperarSegundoPlano(saveId);
+    await procesarReacciones(prisma, saveId);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).condicionFisica).toBe('MUERTO');
+  }
+
+  afterAll(async () => {
+    for (const id of saves) await prisma.save.delete({ where: { id } });
+  });
+
+  it('registra COMBATE_PERDIDO con el NPC, lo pone en MUERTE_JUGADOR, le da «Vencedor de» y cuenta para RIVALIDAD', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233');
+    const yo = { entidadTipo: 'PERSONAJE', entidadId: saveId };
+    const orco = { entidadTipo: 'NPC', entidadId: npcId };
+    // Dos enfrentamientos de combates anteriores con el mismo orco; la derrota vieja no cuenta para este.
+    await suceso(saveId, 'COMBATE_PERDIDO', 300, [{ ...yo, papel: 'VICTIMA' }, { ...orco, papel: 'AUTOR' }], true);
+    await suceso(saveId, 'COMBATE_GANADO', 350, [{ ...yo, papel: 'AUTOR' }, { ...orco, papel: 'VICTIMA' }], true);
+
+    await morir(saveId);
+
+    const perdidos = await prisma.suceso.findMany({ where: { saveId, tipo: 'COMBATE_PERDIDO' }, include: { actores: true }, orderBy: { createdAt: 'asc' } });
+    expect(perdidos).toHaveLength(2);
+    expect(perdidos[1].actores).toEqual(expect.arrayContaining([expect.objectContaining({ ...orco, papel: 'AUTOR' })]));
+    const muerte = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'MUERTE_JUGADOR' }, include: { actores: true } });
+    expect(muerte.actores).toEqual(expect.arrayContaining([expect.objectContaining({ ...yo, papel: 'VICTIMA' }), expect.objectContaining({ ...orco, papel: 'AUTOR' })]));
+    // SUPERVIVIENTE: el orco sube y lo recuerda con su título de vencedor.
+    const estado = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId, scope: '' } });
+    expect(estado.titulo).toBe('Vencedor de Gorhorn P233');
+    expect(estado.nivelesGanados).toBeGreaterThanOrEqual(1);
+    // Tercer enfrentamiento con el mismo NPC → RIVALIDAD.
+    expect(await prisma.hilo.count({ where: { saveId, clave: `RIVALIDAD:${npcId}` } })).toBe(1);
+  }, 30_000);
+
+  it('si ya cayó convaleciente en este mismo combate, la muerte no repite COMBATE_PERDIDO', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 bis');
+    await suceso(saveId, 'COMBATE_PERDIDO', 425, [{ entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' }, { entidadTipo: 'NPC', entidadId: npcId, papel: 'AUTOR' }]);
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(1);
+    const muerte = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'MUERTE_JUGADOR' }, include: { actores: true } });
+    expect(muerte.actores).toEqual(expect.arrayContaining([expect.objectContaining({ entidadTipo: 'NPC', entidadId: npcId, papel: 'AUTOR' })]));
+  }, 30_000);
+  const perdidoContra = (saveId: string, npcId: string) => [
+    { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' },
+    { entidadTipo: 'NPC', entidadId: npcId, papel: 'AUTOR' },
+  ];
+
+  it('una acción bloqueada o soltar un objeto a mitad del combate (combate: false) no repite COMBATE_PERDIDO', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 suelta');
+    await suceso(saveId, 'COMBATE_PERDIDO', 425, perdidoContra(saveId, npcId));
+    // Tras caer convaleciente, una acción que no pasa por el combate: no es un combate nuevo.
+    await prisma.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: 'Suelto la espada.', isPlayerAction: true, combate: false, timeLabel: 'x', fictionalMinutes: 426 } });
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(1);
+  }, 30_000);
+
+  it('una emboscada justo tras otro combate perdido registra la derrota del segundo', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 emboscada');
+    // La derrota del primer combate, sin acción fuera de combate entre los dos…
+    await suceso(saveId, 'COMBATE_PERDIDO', 425, perdidoContra(saveId, npcId));
+    // …y la emboscada empieza el segundo justo después.
+    await prisma.save.update({ where: { id: saveId }, data: { combateDesde: new Date() } });
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(2);
+  }, 30_000);
+
+  it('en una partida sin acciones fuera de combate, una derrota de otro combate no cuenta para este', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 sin acciones', { sinAccionFuera: true });
+    await suceso(saveId, 'COMBATE_PERDIDO', 300, perdidoContra(saveId, npcId), true);
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(2);
   }, 30_000);
 });

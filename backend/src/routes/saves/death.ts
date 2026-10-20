@@ -97,6 +97,11 @@ export async function deathRoutes(app: FastifyInstance) {
             energia: energiaMaxFor(effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).constitucion),
             currentLocationId: respawnLocationId,
             pendingDeathResolution: false,
+            // P219: Hambre y Sed también se restauran (como condición y energía); sin esto volvía
+            // con 0 % y 0 % y el siguiente barrido de supervivencia lo bajaba otra vez de condición.
+            // Se marcan como recién comido y bebido (100 %) en el reloj de ficción de ahora.
+            lastAteAtMinutes: save.worldState?.fictionalMinutes ?? 480,
+            lastDrankAtMinutes: save.worldState?.fictionalMinutes ?? 480,
             // QA-27 P82: al reaparecer no sigue nada de donde murió — ni el encuentro que lo mató
             // (era la muerte siguiente, sin opción), ni la posición en la zona, ni un camino a medias.
             // Mismos valores que el reinicio completo (`restartSaveTransactionBody`, shared.ts): la
@@ -105,6 +110,7 @@ export async function deathRoutes(app: FastifyInstance) {
             pendingDynamicModeOffer: Prisma.JsonNull,
             pendingDynamicMode: Prisma.JsonNull,
             pendingCombatNpcSlugs: [],
+            combateDesde: null,
             pendingNpcAttack: Prisma.JsonNull,
             zonaUltimoEncuentro: Prisma.JsonNull,
             zonaCaminoPendiente: Prisma.JsonNull,

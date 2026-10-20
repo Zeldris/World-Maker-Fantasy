@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
+import { registrarLlamada } from '../lib/iaRegistro.js';
 
 export interface RetrievedLore {
   title: string;
@@ -35,6 +36,9 @@ const RELEVANCE_THRESHOLD = 0.75;
 /// y recupera los fragmentos semánticamente más cercanos de LoreChunk vía pgvector. El tamaño de
 /// lo que se manda a Ollama depende de `topK`, no del tamaño total del lore indexado — así el
 /// mundo puede crecer sin que los turnos se vuelvan más lentos.
+/// QA-167: cada fragmento tiene varias filas (una por trozo, con el texto entero; ver loreTrozos.ts), así que se
+/// queda con la más cercana de cada título antes de cortar en `topK`. `LoreChunk` no tiene índice vectorial (255 filas
+/// en Tarkor, búsqueda de ~8 ms): si se le pone uno, el `DISTINCT ON` impide usarlo y habría que deduplicar fuera.
 /// Bajado de 6 a 4 (2026-07-17): con 6 fragmentos, narrar pasaba de ~30-140s a 170-220s+ (y dos
 /// veces se colgó del todo) — el prefill de un prompt ~3x más largo cuesta caro en esta CPU.
 export async function retrieveLore(
@@ -43,23 +47,59 @@ export async function retrieveLore(
   topK = 4,
   excludeTags: string[] = [],
 ): Promise<RetrievedLore[]> {
-  const vector = embed(query);
-  const queryLiteral = toVectorLiteral(await vector);
+  const inicio = Date.now();
+  let embedMs: number | undefined;
+  let inicioBusqueda: number | undefined;
+  try {
+    const vector = embed(query);
+    const queryLiteral = toVectorLiteral(await vector);
+    embedMs = Date.now() - inicio;
+    inicioBusqueda = Date.now();
 
-  const rows = await withQueryTimeout(
-    prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
-      SELECT title, text, embedding <=> ${queryLiteral}::vector AS distance
-      FROM "LoreChunk"
-      WHERE "worldId" = ${worldId}
-        AND NOT (tags && ${excludeTags}::text[])
-      ORDER BY embedding <=> ${queryLiteral}::vector
-      LIMIT ${topK}
-    `,
-    15_000,
-    'retrieveLore',
-  );
+    const rows = await withQueryTimeout(
+      prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
+        SELECT title, text, distance FROM (
+          SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
+          FROM "LoreChunk"
+          WHERE "worldId" = ${worldId}
+            AND NOT (tags && ${excludeTags}::text[])
+          ORDER BY title, embedding <=> ${queryLiteral}::vector
+        ) mejores
+        ORDER BY distance
+        LIMIT ${topK}
+      `,
+      15_000,
+      'retrieveLore',
+    );
 
-  return rows;
+    // Registro opt-ai. El «id» de un trozo es su título (único en loreChunks.ts): el id real de
+    // LoreChunk es un UUID nuevo en cada `reindex-lore`, así que no sirve para comparar casos.
+    registrarLlamada({
+      operation: 'retrieval',
+      task: 'rag',
+      ragQuery: query,
+      ragK: topK,
+      ragResults: rows.map((r) => ({ id: r.title, score: Math.round((1 - r.distance) * 10000) / 10000 })),
+      ragEmbedMs: embedMs,
+      ragSearchMs: Date.now() - inicioBusqueda,
+      durationMs: Date.now() - inicio,
+    });
+
+    return rows;
+  } catch (err) {
+    registrarLlamada({
+      operation: 'retrieval',
+      task: 'rag',
+      ragQuery: query,
+      ragK: topK,
+      ragEmbedMs: embedMs,
+      ragSearchMs: inicioBusqueda === undefined ? undefined : Date.now() - inicioBusqueda,
+      durationMs: Date.now() - inicio,
+      finishReason: 'error',
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 /// True si ninguno de los fragmentos recuperados es realmente relevante — la acción pregunta

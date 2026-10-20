@@ -28,6 +28,7 @@ import { useEnciclopedia } from '../hooks/useEnciclopedia'
 import { useEntityBanner } from '../hooks/useEntityBanner'
 import { useReconnectionPolling } from '../hooks/useReconnectionPolling'
 import { useSurroundingsPolling } from '../hooks/useSurroundingsPolling'
+import { useSupervivenciaSync } from '../hooks/useSupervivenciaSync'
 import { useRecipesData } from '../hooks/useRecipesData'
 import { useCombatFlow } from '../hooks/useCombatFlow'
 import { useZonaAcciones } from '../hooks/useZonaAcciones'
@@ -546,6 +547,12 @@ export function useGameViewState() {
   useEffect(() => {
     if (llegaCritico) setActivePanel(null)
   }, [llegaCritico, setActivePanel])
+  // P232: el turno que abre combate cierra el cajón por el cambio de estado de combate (no por una
+  // marca en la entrada del diario: el backend la guarda sin ella y se vería distinta tras recargar).
+  const hayCombateIniciado = !!combateIniciado && combateIniciado.npcs.length > 0
+  useEffect(() => {
+    if (hayCombateIniciado) setActivePanel(null)
+  }, [hayCombateIniciado, setActivePanel])
   const avisoLlegadas = avisoDeLlegadas(llegadasCajon)
   // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
   const permisoMover = puede('moverse')
@@ -562,6 +569,9 @@ export function useGameViewState() {
     buildEntityBanner,
     setWorldLog,
   })
+
+  // P219 (c): condición, Hambre y Sed que el worker cambia en BD entre turnos.
+  useSupervivenciaSync({ saveId, characterThinking, combatActive: !!combateIniciado, setCondicionFisica, setHambre, setSed })
 
   // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
   // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y

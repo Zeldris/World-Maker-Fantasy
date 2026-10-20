@@ -75,17 +75,20 @@ export function duracionExplicitaDeLaAccion(action: string, banda: Banda): numbe
   return esHabla || (banda === 'instantanea' && !esEspera) ? null : duracionExplicitaMinutos(action);
 }
 
+/// P231: la clasificación manda. La ruta de clasificar ya aplica la duración escrita
+/// (`duracionExplicitaDeLaAccion`) y es la que decide que algo es instantáneo (p. ej. un descanso que
+/// el enfriamiento rechaza, P74): una banda instantánea nunca vuelve a leer la duración del texto.
 export function computeDuration(action: string, banda: Banda, attributes: AttributeBlock, duracionEstimadaMinutosClasificador: number): DurationResult {
-  const explicita = duracionExplicitaDeLaAccion(action, banda);
-  const duracionEstimadaMinutos = explicita ?? duracionEstimadaMinutosClasificador;
-  if (explicita) banda = explicita <= 30 ? 'corta' : explicita < 1440 ? 'extendida' : 'larga';
-
   // Suelo de 1 minuto en vez de 0 (auditoría 2026-08-02, "revisar partida" — reportado como "una de
   // las cosas más graves": un combate real de varios intercambios seguidos, cada uno banda
   // "instantánea", dejaba el reloj de ficción clavado en el mismo minuto turno tras turno). Un
   // intercambio de combate/diálogo sigue narrándose como algo casi inmediato (1 min, no una espera
   // real), pero una pelea larga ahora sí acumula minutos de verdad en vez de sentirse congelada.
   if (banda === 'instantanea') return { minutos: 1 };
+
+  const explicita = duracionExplicitaDeLaAccion(action, banda);
+  const duracionEstimadaMinutos = explicita ?? duracionEstimadaMinutosClasificador;
+  if (explicita) banda = explicita <= 30 ? 'corta' : explicita < 1440 ? 'extendida' : 'larga';
 
   const lower = action.toLowerCase();
 

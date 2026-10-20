@@ -55,6 +55,64 @@ class Bitacora(unittest.TestCase):
         self.assertIn('Uso', comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', 'ayer').stderr)
 
 
+class Ajenas(unittest.TestCase):
+    """QA-145: un commit no cambia la fila de otra rama ni una fila compartida (salvo `--compartida`)."""
+    BASE = ('## Estado actual\n\n| **Actualizado** | 2026-10-19 |\n| **Hito** | 0.3 |\n| **Tests** | verde |\n'
+            '| **Tarea en curso · `a`** | uno |\n| **Tarea en curso · `b`** | dos |\n')
+
+    def commit(self, repo: str, texto: str) -> str:
+        escribir(os.path.join(repo, 'docs/registros/traspaso.md'), texto)
+        git(repo, 'add', '-A')
+        git(repo, 'commit', '-q', '-m', 'x')
+        return git(repo, 'rev-parse', 'HEAD')
+
+    def correr(self, texto: str, *extra: str):
+        repo = carpeta()
+        git(repo, 'init', '-q')
+        self.commit(repo, self.BASE)
+        sha = self.commit(repo, texto)
+        return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', sha, 'a', *extra],
+                              cwd=repo, capture_output=True, text=True)
+
+    def test_la_propia_y_las_libres_pasan(self):
+        t = self.BASE.replace('| uno |', '| nuevo |').replace('2026-10-19', '2026-10-20').replace('verde', 'rojo')
+        self.assertEqual(self.correr(t).returncode, 0)
+
+    def test_la_de_otra_rama_falla(self):
+        r = self.correr(self.BASE.replace('| dos |', '| tres |'))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('Tarea en curso · b', r.stdout)
+        self.assertIn('BITACORA_COMPARTIDA=1', r.stdout)
+
+    def test_compartida_falla_y_se_permite_con_la_opcion(self):
+        t = self.BASE.replace('0.3', '0.4')
+        self.assertIn('«Hito»', self.correr(t).stdout)
+        self.assertEqual(self.correr(t, '--compartida').returncode, 0)
+
+    def test_quitar_o_anadir_una_fila_ajena_falla(self):
+        self.assertEqual(self.correr(self.BASE.replace('| **Tarea en curso · `b`** | dos |\n', '')).returncode, 1)
+        self.assertEqual(self.correr(self.BASE + '| **Tarea en curso · `c`** | tres |\n').returncode, 1)
+
+    def test_una_tabla_de_otra_seccion_no_es_fila_compartida(self):
+        t = self.BASE + '\n## Otra\n\n| **Hito** | 0.9 |\n'
+        self.assertEqual(self.correr(t).returncode, 0)
+
+    def test_clave_repetida_no_oculta_un_cambio(self):
+        base = self.BASE + '| **Hito** | 0.5 |\n'
+        repo = carpeta()
+        git(repo, 'init', '-q')
+        self.commit(repo, base)
+        sha = self.commit(repo, base.replace('| 0.3 |', '| 0.4 |'))
+        r = subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', sha, 'a'], cwd=repo,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('«Hito»', r.stdout)
+
+    def test_uso(self):
+        r = subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', 'x'], capture_output=True, text=True)
+        self.assertIn('Uso', r.stderr)
+
+
 class Cerradas(unittest.TestCase):
     """QA-85: lo que se tacha en un roadmap sale tachado en «Hecho recientemente»."""
 
