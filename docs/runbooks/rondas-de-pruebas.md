@@ -35,25 +35,29 @@ sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas 
 
 - Cada orden de `orden.sh` tiene `shot('nombre')`, que guarda en `tools/playwright-e2e/shots/` y
   devuelve la ruta: `orden.sh "await page.getByText('Mapa').click(); return await shot('r1-mapa')"`.
-- Para mirar la partida por dentro, SQL contra la base de juego:
-  `psql postgresql://tarkor:tarkor@localhost:5432/tarkor_juego -c '<consulta>'` (tablas con el nombre
-  del modelo entre comillas, p. ej. `"Save"`, `"ZonePoint"`; columnas en camelCase).
-- Las consultas de cada ronda (`QA-97`, retro del 2026-10-17), con `D=postgresql://tarkor:tarkor@localhost:5432/tarkor_juego`
-  y `S=<id de la partida>`:
+  **Por defecto, JPEG de calidad 50** (`.jpg`, unas 4-5 veces menos bytes que el PNG; `QA-149`). Para gastar aún menos,
+  recorta: `shot('n', {selector: '.mapa'})` (a ese elemento) o `shot('n', {clip: {x:0, y:0, width:400, height:300}})`.
+  **A tamaño completo** (PNG, página entera): `shot('n', {completo: true})`; `{png: true}` solo cambia el formato y
+  `{calidad: 80}` la calidad. `captura.js` (MCP) acepta lo mismo en `tk`: `nombre`, `selector`, `clip`, `calidad`, `completo`.
+- Para mirar la partida por dentro, SQL contra la base de juego con `tools/qa/sql.sh` (`QA-150`): la consulta por
+  argumento o, si lleva comillas, por stdin (`bash tools/qa/sql.sh <<'SQL' … SQL`). Usa `psql` o, si no hay, `podman exec -i
+  tarkor-postgres psql`, y en la Deck pasa solo por `host.sh`. Base: `TARKOR_DB_URL` (por defecto `tarkor_juego`). Tablas
+  con el nombre del modelo entre comillas, p. ej. `"Save"`, `"ZonePoint"`; columnas en camelCase.
+- Las consultas de cada ronda (`QA-97`, retro del 2026-10-17), con `S=<id de la partida>`:
 
   ```sh
   # Dónde está (zona y px del mapa) y a qué hora (minutos desde el día 1 a las 00:00)
-  psql $D -c "select l.slug, s.\"zonaPosX\", s.\"zonaPosY\", w.\"fictionalMinutes\" from \"Save\" s join \"Location\" l on l.id = s.\"currentLocationId\" join \"WorldState\" w on w.\"saveId\" = s.id where s.id = '$S'"
+  bash tools/qa/sql.sh "select l.slug, s.\"zonaPosX\", s.\"zonaPosY\", w.\"fictionalMinutes\" from \"Save\" s join \"Location\" l on l.id = s.\"currentLocationId\" join \"WorldState\" w on w.\"saveId\" = s.id where s.id = '$S'"
   # Reputación con cada bando (vacía = la de partida)
-  psql $D -c "select \"factionsStatus\" from \"WorldState\" where \"saveId\" = '$S'"
+  bash tools/qa/sql.sh "select \"factionsStatus\" from \"WorldState\" where \"saveId\" = '$S'"
   # Últimas líneas del diario
-  psql $D -c "select \"createdAt\"::time, left(text, 120) from \"LogEntry\" where \"saveId\" = '$S' order by \"createdAt\" desc limit 10"
+  bash tools/qa/sql.sh "select \"createdAt\"::time, left(text, 120) from \"LogEntry\" where \"saveId\" = '$S' order by \"createdAt\" desc limit 10"
   # Puntos de una zona (posición en px del mapa de 800×600, dueño)
-  psql $D -c "select zp.tipo, zp.\"targetSlug\", zp.x, zp.y, zp.cantidad, zp.\"factionSlug\" from \"ZonePoint\" zp join \"Location\" l on l.id = zp.\"locationId\" where zp.\"saveId\" = '$S' and l.slug = '<slug>'"
+  bash tools/qa/sql.sh "select zp.tipo, zp.\"targetSlug\", zp.x, zp.y, zp.cantidad, zp.\"factionSlug\" from \"ZonePoint\" zp join \"Location\" l on l.id = zp.\"locationId\" where zp.\"saveId\" = '$S' and l.slug = '<slug>'"
   # Coordenadas de las zonas del catálogo (y crece hacia el norte: sirve para saber por qué salida se va)
-  psql $D -c "select slug, x, y from \"Location\" where \"saveId\" is null and slug in ('<slug>', '<slug>')"
+  bash tools/qa/sql.sh "select slug, x, y from \"Location\" where \"saveId\" is null and slug in ('<slug>', '<slug>')"
   # El último encuentro (enfriamiento de P177)
-  psql $D -c "select \"zonaUltimoEncuentro\" from \"Save\" where id = '$S'"
+  bash tools/qa/sql.sh "select \"zonaUltimoEncuentro\" from \"Save\" where id = '$S'"
   ```
 
 ## Una ronda, un bloque (`QA-105`)
@@ -140,18 +144,16 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
   (ronda P232, 2026-10-20).
 - Con Ollama real (Deck, por CPU) cada turno tarda 3-6 min: `combate.js` da «sigue desactivada tras 20 s» mientras
   giran los dados; esperar a que el HUD deje de decir «El narrador escribe».
-- En la Deck no hay `psql` fuera del contenedor `tarkor-postgres`: envoltorios de `psql`, `pg_restore` y `pg_dump` con
-  `podman exec -i` en `logs/bin/` (ignorada por git), en el `PATH` de `flatpak-spawn --host bash -lic '…'`.
-- `orden.sh` también necesita `node`: en la Deck, por `flatpak-spawn --host` (el sandbox no ve el `/tmp` del host).
+- En la Deck, lo que necesita el host (`node`, `psql`, `ollama`, `podman`) va por `bash tools/qa/host.sh <orden…>`
+  (`QA-150`: `flatpak-spawn --host --directory=<raíz> bash -lic`; fuera del sandbox ejecuta la orden tal cual). El SQL,
+  por `tools/qa/sql.sh` (sin `psql` usa `podman exec -i tarkor-postgres psql`).
 - `turno.js` da «textbox no encontrado» con la barra de habilidades activa (el botón ✨ la alterna) o con un modal abierto.
 - `pulsar.js` con el texto «Leyendas» casa con el rótulo LEYENDA del mapa de zona.
 - El prompt del narrador no se registra: para ver un bloque (verdad, callbacks, memoria), ejecutar `bloqueMemoria` aparte con `tsx`.
-- Desde el sandbox, `flatpak-spawn --host --directory=<repo>`: sin `--directory` sale «No existe el fichero o directorio»
-  (el directorio de trabajo es el del scratchpad). El SQL con comillas va mejor por stdin al envoltorio de `psql` que con `-c`.
 - `pulsar.js` con solo `contiene` falla («Falta window.tk.texto»); `pulsar` «Reino» no dice si se abrió el cajón.
 - El escenario `reino-dia39` no tiene comida, materiales ni Goirnos: Corrales, Partidas, Defensa, oficios y llegadas no
   se pueden provocar sin `escenario.sh dar` (necesita el permiso de la usuaria) o recolectar fuera de la Hondonada.
-- `orden.sh` por `flatpak-spawn` no ve el `/tmp` del sandbox: ni `< archivo` ni `--ayuda` con una ruta de allí (vale
+- `orden.sh` por `host.sh` no ve el `/tmp` del sandbox: ni `< archivo` ni `--ayuda` con una ruta de allí (vale
   pasar el JS en base64 por stdin, o dejar el archivo dentro del repo en una carpeta ignorada).
 - Con Ollama real, `turno.js` y `combate.js` vuelven a los ~40 s con el HUD aún en «El narrador escribe»: esperar en un
   bucle a que desaparezca. `combate.js` con `rondas:1` a veces juega Defensa (por la iniciativa) sin avisar.
