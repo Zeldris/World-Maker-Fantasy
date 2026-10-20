@@ -1,0 +1,13 @@
+#!/bin/bash
+# QA-144 (retro del 2026-10-20, §5): un `git add docs/` de Claude Code metió los borradores sin commitear de
+# Álvaro (`docs/borradores-opencode/`). Con CLAUDECODE=1 no se commitea nada de ahí; fuera de Claude Code
+# (Álvaro) este gancho no hace nada. Lo activa core.hooksPath=.githooks.
+set -euo pipefail
+[ "${CLAUDECODE:-}" = "1" ] || exit 0
+preparados=$(git diff --cached --name-only --diff-filter=ACMRD -- docs/borradores-opencode/)
+if [ -n "$preparados" ]; then
+  echo "pre-commit: hay archivos preparados de docs/borradores-opencode/ (son borradores de Álvaro, no se commitean desde Claude Code):" >&2
+  echo "$preparados" | sed 's/^/  /' >&2
+  echo "Sácalos con: git restore --staged docs/borradores-opencode/" >&2
+  exit 1
+fi
