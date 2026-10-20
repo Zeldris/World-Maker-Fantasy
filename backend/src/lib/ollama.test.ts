@@ -16,3 +16,40 @@ describe('queueTimeoutFor', () => {
     expect(queueTimeoutFor({ model: 'x', prompt: 'y' })).toBeUndefined();
   });
 });
+
+// Registro opt-ai: cada llamada anota su tarea y los tiempos de Ollama (ns -> ms).
+describe('registro opt-ai en ollamaGenerate', () => {
+  it('registra la tarea, los tokens y los tiempos', async () => {
+    vi.resetModules();
+    const registrarLlamada = vi.fn();
+    vi.doMock('./iaRegistro.js', async (orig) => ({ ...(await orig<typeof import('./iaRegistro.js')>()), registrarLlamada }));
+    const raw = {
+      response: 'hola',
+      total_duration: 3_000_000_000,
+      load_duration: 1_000_000_000,
+      prompt_eval_duration: 500_000_000,
+      eval_duration: 1_500_000_000,
+      prompt_eval_count: 4096,
+      eval_count: 20,
+      done_reason: 'stop',
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => raw }));
+    const { ollamaGenerate: generar } = await import('./ollama.js');
+    await generar({ model: 'm', prompt: 'p', tarea: 'clasificar', numCtx: 4096 });
+    expect(registrarLlamada).toHaveBeenCalledTimes(1);
+    expect(registrarLlamada.mock.calls[0][0]).toMatchObject({
+      operation: 'text_completion',
+      task: 'clasificar',
+      model: 'm',
+      durationMs: 3000,
+      loadMs: 1000,
+      prefillMs: 500,
+      decodeMs: 1500,
+      inputTokens: 4096,
+      outputTokens: 20,
+      truncated: true,
+    });
+    vi.unstubAllGlobals();
+    vi.doUnmock('./iaRegistro.js');
+  });
+});

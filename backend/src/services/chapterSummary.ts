@@ -126,6 +126,7 @@ async function generateAndPersistChapterSummary(saveId: string, characterName: s
       'Eres el cronista de un juego de rol. Tu única tarea es condensar un registro de juego en un resumen breve de capítulo, en tercera persona, sin inventar nada que no esté en el registro — en particular, nunca confundas quién es aliado y quién es enemigo, ni inventes ningún enfrentamiento que no aparezca explícitamente en el registro.',
     prompt: `Registro de ${characterName} en este capítulo:\n${logText}${continuidad}\n\nResume en 2-3 frases lo más importante que ha ocurrido — suficiente para que alguien que vuelve a la partida tras días sin jugar recuerde dónde estaba. Si conecta con el capítulo anterior, que se note (p. ej. "tras aquello..."), sin repetirlo.`,
     timeoutMs: 90_000,
+    tarea: 'resumen',
   });
 
   const chapterNumber = (lastSummary?.chapterNumber ?? 0) + 1;

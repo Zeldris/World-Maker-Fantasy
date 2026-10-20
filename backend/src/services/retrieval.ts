@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
+import { registrarLlamada } from '../lib/iaRegistro.js';
 
 export interface RetrievedLore {
   title: string;
@@ -43,8 +44,11 @@ export async function retrieveLore(
   topK = 4,
   excludeTags: string[] = [],
 ): Promise<RetrievedLore[]> {
+  const inicio = Date.now();
   const vector = embed(query);
   const queryLiteral = toVectorLiteral(await vector);
+  const embedMs = Date.now() - inicio;
+  const inicioBusqueda = Date.now();
 
   const rows = await withQueryTimeout(
     prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
@@ -58,6 +62,19 @@ export async function retrieveLore(
     15_000,
     'retrieveLore',
   );
+
+  // Registro opt-ai. El «id» de un trozo es su título (único en loreChunks.ts): el id real de
+  // LoreChunk es un UUID nuevo en cada `reindex-lore`, así que no sirve para comparar casos.
+  registrarLlamada({
+    operation: 'retrieval',
+    task: 'rag',
+    ragQuery: query,
+    ragK: topK,
+    ragResults: rows.map((r) => ({ id: r.title, score: Math.round((1 - r.distance) * 10000) / 10000 })),
+    ragEmbedMs: embedMs,
+    ragSearchMs: Date.now() - inicioBusqueda,
+    durationMs: Date.now() - inicio,
+  });
 
   return rows;
 }
