@@ -19,6 +19,12 @@ export DATABASE_URL="$URL" DIRECT_URL="$URL" OLLAMA_BASE_URL="${OLLAMA_BASE_URL:
 export TRAVEL_SEGUNDOS_PRIMER_TRAMO="${TRAVEL_SEGUNDOS_PRIMER_TRAMO:-5}"
 export TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA="${TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA:-3}"
 export TRAVEL_SEGUNDOS_MAXIMOS="${TRAVEL_SEGUNDOS_MAXIMOS:-20}"
+# QA-141: con IA real (`IA_PERFIL`), el registro va con ruta absoluta (el servidor corre en `backend/`).
+# shellcheck source=tools/playwright-e2e/ia-comprobaciones.sh
+. tools/playwright-e2e/ia-comprobaciones.sh
+if [ -n "${IA_PERFIL:-}" ] && [ -n "${IA_REGISTRO:-}" ]; then
+  export IA_REGISTRO="$(ia_registro_absoluto "$PWD" "$IA_REGISTRO")"
+fi
 PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
 
 # QA-65 (retro del 2026-10-12): la suite con base real, con el juego y el driver en marcha, sumaba
@@ -74,5 +80,15 @@ done
 if [ "$listo" != 1 ]; then
   echo "El juego no ha arrancado en 90 s: mira logs/backend.log y logs/frontend.log" >&2
   exit 1
+fi
+# QA-141: con IA real, se comprueba antes de jugar lo que en la ronda del 2026-10-20 costó horas: GPU y RAG.
+if [ -n "${IA_PERFIL:-}" ]; then
+  if [ "$IA_PERFIL" = deck ]; then
+    ia_comprobar_gpu logs/ollama.log "$(ollama ps 2>&1 || true)" || exit 1
+  fi
+  if ! (cd backend && npm run --silent rag-eval); then
+    echo "rag-eval falla: reindexa el lore con 'npm run reindex-lore' en backend/ (con la DATABASE_URL de $BASE) y arranca de nuevo (QA-141)" >&2
+    exit 1
+  fi
 fi
 echo "Juego listo: http://127.0.0.1:5173 (base $BASE, viajes $TRAVEL_SEGUNDOS_PRIMER_TRAMO/$TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA/$TRAVEL_SEGUNDOS_MAXIMOS s)"

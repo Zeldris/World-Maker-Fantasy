@@ -80,7 +80,8 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
-   (`IA_PERFIL`: `deck`, `cpu`, `gpu8` o `gpu12`, según la máquina). Al acabar la tanda, `/opt-ai` mide los tiempos,
+   (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
+   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, `/opt-ai` mide los tiempos,
    contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
    visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
@@ -115,13 +116,8 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 - `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
   arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.
-- En la Deck, Ollama se arranca con `flatpak-spawn --host bash -lic 'ollama serve'` (con `-lic`, para que cargue el
-  `~/.bashrc` con `OLLAMA_IGPU_ENABLE`, `OLLAMA_FLASH_ATTENTION` y `OLLAMA_KV_CACHE_TYPE`). Con `bash -c` va solo por
-  CPU (`logs/ollama.log`: «dropping integrated GPU»): turnos de 3-10 min, timeouts y casi todo narrado por el modelo
-  de respaldo, que parecen fallos del narrador y no lo son (2026-10-20).
-- Un escenario guardado en la nube trae los embeddings del lore del Ollama simulado: con el Ollama real, `npm run
-  reindex-lore` (en `backend/`, con la `DATABASE_URL` de `tarkor_juego`) antes de jugar; si no, el RAG devuelve trozos al
-  azar (P274).
+- GPU de Ollama en la Deck y lore sin reindexar con el Ollama real: los comprueba `arrancar-juego.sh` con `IA_PERFIL` y
+  para con el arreglo en el mensaje (`QA-141`, [script](../../tools/playwright-e2e/arrancar-juego.sh)).
 
 ## Fallos de las herramientas
 
