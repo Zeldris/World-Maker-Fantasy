@@ -1383,6 +1383,29 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   después de fusionarlo (`orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
 - ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
   perdió dos subagentes sin commit.
+- **QA-140 · Lanzar Claude desde el repo** (lote 1, retro de pruebas-local §1 y `/opt-tokens`): `Desarrollos/CLAUDE.md`
+  de una línea («lanza `claude` desde `World-Maker-Fantasy/`») y la misma nota en el runbook de rondas. El archivo de
+  `Desarrollos/` está fuera del repo: lo crea la sesión local en la Deck.
+- **QA-141 · `arrancar-juego.sh` comprueba el entorno de la IA** (§2 y `/opt-tokens`, GPU): con `IA_PERFIL`,
+  `IA_REGISTRO` a ruta absoluta, error sin GPU en el perfil `deck` y `rag-eval` que para el arranque si falla;
+  paso 1 del runbook con la ruta absoluta.
+- **QA-142 · `/opt-ai` en el flujo del PR** (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
+  del runbook apuntan ahí; fila en la tabla de reparto de `orchestrate-dealer`.
+- **QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos** (§4): regla `allow` en
+  `.claude/settings.json`, fuera «necesita el permiso de la usuaria» del runbook y escenario `reino-dia39-recursos`.
+- **QA-144 · Gancho contra los borradores en commits** (§5): `pre-commit` en `.githooks` que, con `CLAUDECODE=1`,
+  rechaza archivos de `docs/borradores-opencode/`; test en `tools/qa/tests`.
+- **QA-145 · `bitacora.py` contra filas ajenas** (§6): en el pre-push, falla si el commit cambia la fila «Tarea en curso»
+  de otra rama o una fila compartida sin `--compartida`.
+- **QA-146 · `medir.py` por subagente** (§7 y `/opt-tokens`): llamadas, contexto medio y salida por subagente, con
+  caso de `subagents/*.jsonl` en `tools/qa/tests/test_medir.py`.
+- **QA-147 · Tandas de juego en llamadas** (§7 y `/opt-tokens`): `orchestrate-dealer` paso 1, tanda de ~60 llamadas con
+  traspaso por escenario guardado.
+- **QA-148 · `opt-ai`: lo que ya hay y tanda válida** (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0
+  descarta la tanda que no corrió con la configuración del perfil.
+- **QA-149 · Capturas más pequeñas** (`/opt-tokens`): las capturas de las rondas, de menos tokens (recorte o tamaño).
+- **QA-150 · `tools/qa/host.sh` y `sql.sh`** (`/opt-tokens`): envoltorios para el sandbox Flatpak de la Deck
+  (`flatpak-spawn --host --directory=<repo>`, SQL por stdin) que fuera de la Deck corren la orden tal cual.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
