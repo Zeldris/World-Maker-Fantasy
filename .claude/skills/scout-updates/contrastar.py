@@ -95,6 +95,9 @@ def contrastar(ruta_arq, raiz):
         if not commit:
             informe['sin sello'].append({'seccion': titulo})
             continue
+        if not rutas:  # sin rutas, git diff compararía todo el repositorio
+            informe['sin sello'].append({'seccion': titulo, 'motivo': 'sello sin archivos'})
+            continue
         tocados = cambiados(raiz, commit, rutas)
         if tocados is None:
             informe['sin sello'].append({'seccion': titulo, 'motivo': 'commit %s desconocido' % commit})
@@ -102,7 +105,9 @@ def contrastar(ruta_arq, raiz):
             informe['cambiada'].append({'seccion': titulo, 'fecha': fecha, 'archivos': tocados})
         else:
             informe['igual'].append({'seccion': titulo, 'fecha': fecha})
-    informe['sin cuenta'] = [m for m in inventario.inventariar(raiz)['manifiestos'] if m not in sellados]
+    carpetas = tuple(r.rstrip('/') + '/' for r in sellados)  # un sello con una carpeta cubre sus manifiestos
+    informe['sin cuenta'] = [m for m in inventario.inventariar(raiz)['manifiestos']
+                             if m not in sellados and not m.startswith(carpetas)]
     return informe
 
 

@@ -9,7 +9,8 @@ herramienta (en este repositorio, `opt-ai`) y no se mezcla.
 - 10-15 situaciones reales y variadas (no 15 de la misma), una línea JSONL cada una:
   `{"id", "system", "prompt", "contexto", "opciones": {"temperature", "num_ctx", "max_tokens"}}`.
 - `system` y `prompt` son **los que recibe el modelo en el proyecto**, sin recortar: un prompt de juguete mide otra
-  cosa. `contexto` es lo que ve el juez (la petición o la acción, en pocas líneas).
+  cosa. `contexto` es lo que ve el juez (la petición o la acción y lo anterior, en pocas líneas): la captura no lo
+  sabe, así que se escribe a mano al elegir los casos; sin él, el juez solo ve la cola del prompt.
 - Quita antes datos personales (nombres reales, identificadores, texto libre de usuarios).
 - La ruta va en `arquitectura.md` (`banco · <componente>`), con la **rúbrica**: 4-6 criterios del proyecto (p. ej.
   coherencia con lo anterior, naturalidad en el idioma, fidelidad al mundo, ajuste de longitud, sin repeticiones).

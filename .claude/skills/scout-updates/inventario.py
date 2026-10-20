@@ -124,10 +124,12 @@ def inventariar(raiz, lista=None, excluir=EXCLUIR):
             m = re.search(r'requires-python\s*=\s*["\']([^"\']+)', texto)
             if m:
                 inv['runtimes'].append(comp('python', m.group(1), ruta))
-            bloque = re.search(r'^dependencies\s*=\s*\[(.*?)\]', texto, re.S | re.M)
+            # los corchetes de los extras (`pkg[extra]`) van entre comillas: no cierran la lista
+            bloque = re.search(r'^dependencies\s*=\s*\[((?:"[^"]*"|\'[^\']*\'|[^\]"\'])*)\]', texto, re.M)
             for d in re.findall(r'["\']([^"\']+)["\']', bloque.group(1) if bloque else ''):
-                m = re.match(r'([A-Za-z0-9_.\-\[\]]+)\s*(.*)', d)
-                inv['dependencias'].append(comp(m.group(1), m.group(2).strip() or '*', ruta))
+                m = re.match(r'\s*([A-Za-z0-9_.\-\[\]]+)\s*(.*)', d)
+                if m:
+                    inv['dependencias'].append(comp(m.group(1), m.group(2).strip() or '*', ruta))
         elif base == 'go.mod':
             manifiesto(ruta)
             texto = leer(raiz, ruta)
@@ -140,16 +142,19 @@ def inventariar(raiz, lista=None, excluir=EXCLUIR):
             manifiesto(ruta)
             texto = leer(raiz, ruta)
             bloque = re.search(r'^\[dependencies\](.*?)(^\[|\Z)', texto, re.S | re.M)
-            for n, v in re.findall(r'^([\w\-]+)\s*=\s*(?:"([^"]+)"|\{[^}]*version\s*=\s*"[^"]+")', bloque.group(1) if bloque else '', re.M):
-                inv['dependencias'].append(comp(n, v or '*', ruta))
+            for n, v, vt in re.findall(r'^([\w\-]+)\s*=\s*(?:"([^"]+)"|\{(?:[^}]*?\bversion\s*=\s*"([^"]+)")?)', bloque.group(1) if bloque else '', re.M):
+                inv['dependencias'].append(comp(n, v or vt or '*', ruta))
         elif base.startswith('Dockerfile') or base.endswith('.Dockerfile') or base.startswith('Containerfile'):
             manifiesto(ruta)
-            for img in re.findall(r'^\s*FROM\s+(?:--\S+\s+)*(\S+)', leer(raiz, ruta), re.M | re.I):
-                inv['runtimes'].append(comp(img.split(':')[0], img.split(':')[1] if ':' in img else 'latest', ruta, 'imagen base'))
+            texto = leer(raiz, ruta)
+            etapas = {e.lower() for e in re.findall(r'^\s*FROM\s+.*?\s+AS\s+(\S+)', texto, re.M | re.I)}
+            for img in re.findall(r'^\s*FROM\s+(?:--\S+\s+)*(\S+)', texto, re.M | re.I):
+                if img.lower() not in etapas:  # `FROM build`: una etapa anterior, no una imagen
+                    inv['runtimes'].append(comp(*imagen(img), ruta, 'imagen base'))
         elif re.match(r'(docker-)?compose[^/]*\.ya?ml$', base):
             manifiesto(ruta)
             for img in re.findall(r'^\s*image:\s*["\']?([^\s"\']+)', leer(raiz, ruta), re.M):
-                inv['infraestructura'].append(comp(img.split(':')[0], img.split(':')[1] if ':' in img else 'latest', ruta, 'servicio'))
+                inv['infraestructura'].append(comp(*imagen(img), ruta, 'servicio'))
         elif re.match(r'\.github/workflows/[^/]+\.ya?ml$', ruta):
             manifiesto(ruta)
             texto = leer(raiz, ruta)
@@ -197,8 +202,15 @@ def inventariar(raiz, lista=None, excluir=EXCLUIR):
     return inv
 
 
+def imagen(ref):
+    """(nombre, etiqueta) de una imagen: sin el digest; el `:` de un registro con puerto no es la etiqueta."""
+    ref = ref.split('@')[0]
+    nombre, _, etiqueta = ref.rpartition(':') if ':' in ref.rsplit('/', 1)[-1] else (ref, '', '')
+    return nombre, etiqueta or 'latest'
+
+
 def modelos_ollama(url):
-    """Modelos instalados en un motor Ollama (/api/tags). Lista vacía si no responde."""
+    """Modelos instalados en un motor Ollama (/api/tags). None si no responde."""
     try:
         with urllib.request.urlopen(url.rstrip('/') + '/api/tags', timeout=5) as r:
             datos = json.load(r)

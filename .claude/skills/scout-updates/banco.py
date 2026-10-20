@@ -3,17 +3,18 @@
 
 Uso:
   banco.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--url U] [--api ollama|openai]
-  banco.py pares <salidas.jsonl> <salidas.jsonl> [...] --salida <pares.jsonl> --clave <clave.json> [--semilla N]
+  banco.py pares <salidas.jsonl> <salidas.jsonl> [...] --casos <casos.jsonl> --salida <pares.jsonl> --clave <clave.json> [--semilla N]
   banco.py juzgar <pares.jsonl> --juez M --rubrica <rubrica.md> --salida <veredictos.jsonl> [--url U] [--api ...]
   banco.py resumen <pares.jsonl> <clave.json> <veredictos.jsonl> [--json]
 
 Casos: una línea por caso, {"id", "system"?, "prompt", "contexto"?, "opciones"?: {"temperature", "num_ctx",
-"max_tokens"}}. `contexto` es lo que ve el juez (p. ej. la acción del jugador); sin él, los últimos 1500 caracteres
+"max_tokens", "format"}}; `format` es el JSON Schema de las llamadas estructuradas. Con Ollama va siempre `think: false`. `contexto` es lo que ve el juez (p. ej. la acción del jugador); sin él, los últimos 1500 caracteres
 del prompt.
 generar: una línea por caso, {"caso", "modelo", "salida", "ms"} o {"caso", "modelo", "error"}.
 pares: por caso y por cada pareja de modelos, dos pares a ciegas (A como X y B como X), barajados; los nombres solo
 van en la clave.
-juzgar: el juez responde {"ganador": "X"|"Y"|"empate", "motivo"}. Para juzgar con Claude, la sesión escribe
+juzgar: el juez responde {"ganador": "X"|"Y"|"empate", "motivo"}; un par cuya llamada falla sale con "error" y no
+cuenta en el resumen. Para juzgar con Claude, la sesión escribe
 veredictos.jsonl a mano con ese formato y {"par"}, sin abrir la clave.
 resumen: por modelo, victorias (empate = 0,5) y tasa; consistencia = % de casos cuyo ganador no cambia al girar el
 par (el que cambia cuenta como empate); sesgo de posición = % de veces que gana X.
@@ -39,7 +40,8 @@ def llamar_http(url, api, modelo, system, prompt, opciones, formato_json=False, 
     """Texto generado por el motor. api: 'ollama' (/api/generate) u 'openai' (/v1/chat/completions)."""
     opciones = opciones or {}
     if api == 'ollama':
-        cuerpo = {'model': modelo, 'prompt': prompt, 'stream': False, 'options': {}}
+        # think: false, como el proyecto: sin él, los modelos con razonamiento lo escriben antes de la respuesta
+        cuerpo = {'model': modelo, 'prompt': prompt, 'stream': False, 'think': False, 'options': {}}
         if system:
             cuerpo['system'] = system
         for k in ('temperature', 'num_ctx'):
@@ -49,6 +51,8 @@ def llamar_http(url, api, modelo, system, prompt, opciones, formato_json=False, 
             cuerpo['options']['num_predict'] = opciones['max_tokens']
         if formato_json:
             cuerpo['format'] = 'json'
+        elif 'format' in opciones:
+            cuerpo['format'] = opciones['format']
         destino = url.rstrip('/') + '/api/generate'
     else:
         mensajes = ([{'role': 'system', 'content': system}] if system else []) + [{'role': 'user', 'content': prompt}]
@@ -58,6 +62,8 @@ def llamar_http(url, api, modelo, system, prompt, opciones, formato_json=False, 
                 cuerpo[k] = opciones[k]
         if formato_json:
             cuerpo['response_format'] = {'type': 'json_object'}
+        elif 'format' in opciones:
+            cuerpo['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'salida', 'schema': opciones['format']}}
         destino = url.rstrip('/') + '/v1/chat/completions'
     pet = urllib.request.Request(destino, json.dumps(cuerpo).encode(), {'Content-Type': 'application/json'})
     with urllib.request.urlopen(pet, timeout=timeout) as r:
@@ -126,13 +132,18 @@ Respuesta Y:
 def juzgar(lista, juez, rubrica, llamar):
     veredictos = []
     for p in lista:
-        texto = llamar(juez, None, PROMPT_JUEZ.format(rubrica=rubrica, contexto=p['contexto'], x=p['X'], y=p['Y']),
-                       {'temperature': 0}, True)
+        try:
+            texto = llamar(juez, None, PROMPT_JUEZ.format(rubrica=rubrica, contexto=p['contexto'], x=p['X'], y=p['Y']),
+                           {'temperature': 0}, True)
+        except Exception as e:  # un par fallido no tira los veredictos ya obtenidos
+            veredictos.append({'par': p['par'], 'error': str(e)})
+            continue
         try:
             v = json.loads(texto)
-            ganador = v.get('ganador') if v.get('ganador') in ('X', 'Y', 'empate') else None
         except ValueError:
-            v, ganador = {}, None
+            v = {}
+        v = v if isinstance(v, dict) else {}
+        ganador = v.get('ganador') if v.get('ganador') in ('X', 'Y', 'empate') else None
         veredictos.append({'par': p['par'], 'ganador': ganador or 'empate', 'motivo': v.get('motivo', ''),
                            **({} if ganador else {'aviso': 'respuesta del juez ilegible: %s' % texto[:200]})})
     return veredictos
@@ -144,7 +155,7 @@ def resumen(lista, clave, veredictos):
     gana_x = juzgados = 0
     for v in veredictos:
         par = v['par']
-        if par not in clave:
+        if par not in clave or 'error' in v:
             continue
         juzgados += 1
         g = v['ganador']

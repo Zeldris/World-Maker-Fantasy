@@ -118,7 +118,7 @@ function traducirError(err: unknown, options: OllamaGenerateOptions): Error {
 /// sin él no se veía ningún recorte): el `num_ctx` del Modelfile (`/api/show`), que es el que recibe una llamada sin
 /// `numCtx`, o, si el Modelfile no lo trae, el `context_length` de ese modelo en `/api/ps` a los 4 s de empezar (los
 /// de `keep_alive` 0 ya no salen al acabar). No se toma `/api/ps` primero: ahí sale el runner que haya cargado, quizá
-/// con el `numCtx` de otra llamada (el respaldo carga el cronista a 8192). Solo con IA_REGISTRO, en segundo plano, una
+/// con el `numCtx` de otra llamada (el respaldo carga el cronista a 8192). Solo con IA_REGISTRO o IA_CASOS, en segundo plano, una
 /// consulta a la vez por modelo; la primera llamada de cada modelo puede salir sin él.
 const ctxPorModelo = new Map<string, number>();
 const ctxPendiente = new Set<string>();
@@ -144,12 +144,15 @@ async function leerCtx(model: string): Promise<void> {
 
 function vigilarCtx(options: OllamaGenerateOptions): void {
   const clave = conEtiqueta(options.model);
-  if (!env.iaRegistro || options.numCtx || ctxPorModelo.has(clave) || ctxPendiente.has(clave)) return;
+  if ((!env.iaRegistro && !env.iaCasos) || options.numCtx || ctxPorModelo.has(clave) || ctxPendiente.has(clave)) return;
   ctxPendiente.add(clave);
   void leerCtx(options.model)
     .catch(() => {})
     .finally(() => ctxPendiente.delete(clave));
 }
+
+/// `num_ctx` que recibe la llamada: el suyo o el del Modelfile (mismo valor para el registro y para el caso).
+const numCtxDe = (options: OllamaGenerateOptions) => options.numCtx ?? ctxEfectivo(options.model);
 
 /// Registro opt-ai de una llamada a /api/generate (no hace nada sin IA_REGISTRO).
 function registrarGenerate(
@@ -159,7 +162,7 @@ function registrarGenerate(
   extra: { ttftMs?: number; error?: string } = {},
 ): void {
   const r = (raw ?? {}) as OllamaRawStats;
-  const numCtx = options.numCtx ?? ctxEfectivo(options.model);
+  const numCtx = numCtxDe(options);
   registrarLlamada({
     operation: 'text_completion',
     provider: 'ollama',
@@ -192,8 +195,9 @@ function registrarCasoGenerate(options: OllamaGenerateOptions, salida: string): 
     system: options.system,
     prompt: options.prompt,
     temperature: options.temperature,
-    numCtx: options.numCtx ?? ctxEfectivo(options.model),
+    numCtx: numCtxDe(options),
     maxTokens: options.maxTokens,
+    format: options.format,
     salida,
   });
 }

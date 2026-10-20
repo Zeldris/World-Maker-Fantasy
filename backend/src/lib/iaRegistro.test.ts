@@ -145,4 +145,11 @@ describe('registrarCaso (QA-176)', () => {
     expect('system' in o).toBe(false);
     expect('max_tokens' in o.opciones).toBe(false);
   });
+
+  it('guarda el JSON Schema de las llamadas estructuradas, para volver a pedirlas igual', () => {
+    fakeEnv.iaCasos = '/tmp/casos.jsonl';
+    registrarCaso({ ...caso, format: { type: 'object' } });
+    const o = JSON.parse((appendFile.mock.calls[0] as [string, string])[1]);
+    expect(o.opciones.format).toEqual({ type: 'object' });
+  });
 });

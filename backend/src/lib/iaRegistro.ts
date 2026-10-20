@@ -156,15 +156,18 @@ export interface CasoBanco {
   temperature?: number;
   numCtx?: number;
   maxTokens?: number;
+  /// JSON Schema de la llamada (`format` de Ollama); `think: false` va siempre (`buildRequestBody`).
+  format?: object;
   /// La salida del modelo actual, como referencia (banco.py la vuelve a generar).
   salida: string;
 }
 
 export function lineaCaso(c: CasoBanco, ahora = new Date()): string {
-  const opciones: Record<string, number> = {};
+  const opciones: Record<string, unknown> = {};
   if (c.temperature !== undefined) opciones.temperature = c.temperature;
   if (c.numCtx !== undefined) opciones.num_ctx = c.numCtx;
   if (c.maxTokens !== undefined) opciones.max_tokens = c.maxTokens;
+  if (c.format !== undefined) opciones.format = c.format;
   return JSON.stringify({
     id: `${c.tarea ?? 'generate'}-${randomUUID().slice(0, 8)}`,
     ts: ahora.toISOString(),

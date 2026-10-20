@@ -40,7 +40,7 @@ class InventarioTest(unittest.TestCase):
         with open(os.path.join(d, 'Cargo.toml'), 'w') as f:
             f.write('[package]\nname = "x"\n\n[dependencies]\nserde = "1.0"\ntokio = { version = "1", features = ["full"] }\n')
         with open(os.path.join(d, 'pyproject.toml'), 'w') as f:
-            f.write('[project]\nrequires-python = ">=3.9"\ndependencies = ["requests>=2", "rich"]\n')
+            f.write('[project]\nrequires-python = ">=3.9"\ndependencies = ["requests>=2", "uvicorn[standard]>=0.30", "rich"]\n')
         os.makedirs(os.path.join(d, 'modelfiles'))
         with open(os.path.join(d, 'modelfiles', 'q-32k.Modelfile'), 'w') as f:
             f.write('FROM base-b\n')
@@ -55,9 +55,17 @@ class InventarioTest(unittest.TestCase):
         self.assertEqual(inv['modelos de IA'],
                          [{'nombre': 'modelo-a', 'version': '-', 'origen': '.env.example, src/config/env.ts', 'uso': 'LLM_MODEL'}])
         deps = {(c['nombre'], c['version']) for c in inv['dependencias']}
-        self.assertEqual(deps, {('serde', '1.0'), ('tokio', '*'), ('requests', '>=2'), ('rich', '*')})
+        self.assertEqual(deps, {('serde', '1.0'), ('tokio', '1'), ('requests', '>=2'), ('uvicorn[standard]', '>=0.30'), ('rich', '*')})
         self.assertIn(('python', '>=3.9'), {(c['nombre'], c['version']) for c in inv['runtimes']})
         self.assertNotIn('.claude/x/package.json', inv['manifiestos'])
+
+    def test_imagenes_con_puerto_digest_y_etapas(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        with open(os.path.join(d, 'Dockerfile'), 'w') as f:
+            f.write('FROM registry:5000/team/app:1.2 AS build\nFROM node@sha256:abc\nFROM build\n')
+        imgs = {(c['nombre'], c['version']) for c in inventario.inventariar(d)['runtimes']}
+        self.assertEqual(imgs, {('registry:5000/team/app', '1.2'), ('node', 'latest')})
 
     def test_salida_texto(self):
         out = io.StringIO()
@@ -105,6 +113,17 @@ class ContrastarTest(unittest.TestCase):
         inf = contrastar.contrastar(self.arq, self.d)
         self.assertEqual(inf['cambiada'][0]['archivos'], ['.env.example'])
         self.assertIn({'seccion': 'Otra', 'motivo': 'commit deadbeef desconocido'}, inf['sin sello'])
+
+    def test_sello_sin_archivos_y_carpeta(self):
+        os.makedirs(os.path.join(self.d, '.github', 'workflows'))
+        with open(os.path.join(self.d, '.github', 'workflows', 'ci.yml'), 'w') as f:
+            f.write('jobs: {}\n')
+        with open(self.arq, 'a') as f:
+            f.write('## CI\n<!-- sello: 2026-01-10 · %s · .github/workflows -->\n'
+                    '## Vacía\n<!-- sello: 2026-01-10 · %s ·  -->\n' % (self.commit, self.commit))
+        inf = contrastar.contrastar(self.arq, self.d)
+        self.assertNotIn('.github/workflows/ci.yml', inf['sin cuenta'])
+        self.assertIn({'seccion': 'Vacía', 'motivo': 'sello sin archivos'}, inf['sin sello'])
 
     def test_informe_sin_cubrir(self):
         arq = ('## Restricciones\n\n| Componente | x |\n|---|---|\n| memoria | 6 GB |\n\n'
@@ -174,6 +193,20 @@ class BancoTest(unittest.TestCase):
         self.assertIn('ilegible', v[0]['aviso'])
         res = banco.resumen(lista, clave, v)
         self.assertEqual(res['sin_juzgar'], 3)
+        self.assertEqual(banco.juzgar(lista[:1], 'juez', 'r', lambda *a: '[1]')[0]['ganador'], 'empate')
+
+    def test_juez_caido_no_pierde_lo_juzgado(self):
+        lista, clave = banco.pares(self.tandas(), self.CASOS)
+
+        def juez(*a):
+            if juez.n == 1:
+                raise OSError('timeout')
+            juez.n += 1
+            return '{"ganador": "X"}'
+        juez.n = 0
+        v = banco.juzgar(lista[:2], 'juez', 'r', juez)
+        self.assertEqual(v[1], {'par': lista[1]['par'], 'error': 'timeout'})
+        self.assertEqual(banco.resumen(lista, clave, v)['juzgados'], 1)
 
 
 if __name__ == '__main__':
