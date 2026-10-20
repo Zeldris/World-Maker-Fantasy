@@ -167,7 +167,7 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   await tx.subject.update({ where: { id: quien.id }, data: { estado: 'SE_FUE', hastaMinutes: ahora, parejaId: null, notes: 'Desertó: no le pagabas.' } });
   await volverASuPueblo(tx, saveId, quien);
   const viudo = await soltarPareja(tx, saveId, quien.id);
-  await avisarEnReino(tx, saveId, `${quien.name} deserta: no le pagabas.${viudo ? ` ${viudo} se queda sin pareja.` : ''}`);
+  await avisarEnReino(tx, saveId, `${quien.name} deserta: no le pagabas.${viudo ? ` ${viudo} se queda sin pareja.` : ''}`, ahora);
   await recalcularPoblacion(tx, saveId, ahora);
   return { pagado: 0, desertor: quien.id };
 }

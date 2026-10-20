@@ -10,6 +10,7 @@
 // Lo que hace cada tipo al llegar y al volver lo registra su módulo en `TRABAJOS` (63b caza, 63c
 // captura). El avance es idempotente por `ultimoDia` y va día a día (QA-19).
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { avisarEnReino } from './cronista/subditos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -152,8 +153,8 @@ export function esDelReino(v: { factionId: string | null; tipo?: string }): bool
 
 export async function avisoDeViajero(tx: Tx, v: { saveId: string; factionId: string | null; tipo?: string }, text: string): Promise<void> {
   if (!esDelReino(v)) return;
-  const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
-  await tx.logEntry.create({ data: { saveId: v.saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 } });
+  const ws = await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalMinutes: true } });
+  await avisarEnReino(tx, v.saveId, text, ws?.fictionalMinutes ?? 480);
 }
 
 /// Q7: una orden permanente se para si cae alguien de los suyos.
