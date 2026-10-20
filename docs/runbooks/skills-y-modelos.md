@@ -66,7 +66,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
 6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
    del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
-   la descripción con `pr`. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
+   la descripción con `pr`. Si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/opt-ai` tras el
+   `/code-review` y antes de `/opt-tokens` (`QA-142`); esta es la fuente única del orden. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Al fusionarlo, la siguiente tarea sigue en la misma
    sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
    subagentes de contexto limpio y la principal no arrastra lo leído.

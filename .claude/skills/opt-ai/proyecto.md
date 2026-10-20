@@ -38,4 +38,8 @@ lenta» por su cuenta: informa de las cifras y propone el umbral a la usuaria.
 
 ## Lo que ya hay (no proponerlo otra vez)
 
-Nada todavía: se apunta aquí cada herramienta o ajuste aprobado.
+Se apunta aquí cada herramienta o ajuste aprobado.
+
+- **Prefijo fijo primero** en los prompts del narrador: lo que no cambia va delante y Ollama reaprovecha unos 2.600
+  tokens de caché por turno.
+- **`arrancar-juego.sh` con `IA_PERFIL`** (`QA-141`): `IA_REGISTRO` absoluto, GPU en `deck` y `rag-eval` antes de jugar.

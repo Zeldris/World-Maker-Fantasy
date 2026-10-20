@@ -1383,6 +1383,42 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   después de fusionarlo (`orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
 - ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
   perdió dos subagentes sin commit.
+- **QA-140 · Lanzar Claude desde el repo** 🚧 en curso (lote 1, retro de pruebas-local §1 y `/opt-tokens`):
+  `Desarrollos/CLAUDE.md` de una línea («lanza `claude` desde `World-Maker-Fantasy/`») y la misma nota en el runbook de
+  rondas. Hecho 2026-10-20: la nota (paso 0 de «Cómo se juega»). **Falta** `Desarrollos/CLAUDE.md`, fuera del repo: lo
+  crea la sesión local en la Deck.
+- ~~**QA-141 · `arrancar-juego.sh` comprueba el entorno de la IA**~~ ✅ 2026-10-20 (§2 y `/opt-tokens`, GPU): con
+  `IA_PERFIL`, `IA_REGISTRO` a ruta absoluta; en `deck`, error si el registro de Ollama (solo lo escrito tras arrancar)
+  o `/api/ps` dicen CPU; `rag-eval` para el arranque (rc 1 → `reindex-lore`). Funciones en
+  `tools/playwright-e2e/ia-comprobaciones.sh`, test `test_ia_comprobaciones.py`; paso 1 del runbook con la ruta absoluta.
+- ~~**QA-142 · `/opt-ai` en el flujo del PR**~~ ✅ 2026-10-20 (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
+  del runbook apuntan ahí; fila en la tabla de reparto de `orchestrate-dealer`.
+- ~~**QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos**~~ ✅ 2026-10-20 (§4): regla `allow` en
+  `.claude/settings.json` (también por `host.sh`, confirmada por la usuaria); el runbook ya no pide permiso; escenario
+  `reino-dia39-recursos` (Granero, comida 180, bolsa 300 y tesoro 251 Goirnos, materiales en inventario y Almacén) y
+  `escenario.sh dar-reino` (`darReino.ts`: comida, bebida, Goirnos, tesoro, Almacén y `edificio:<receta>`). El Pozo
+  sigue DANADO y soldados y trabajadores en 0: se asignan jugando.
+- ~~**QA-144 · Gancho contra los borradores en commits**~~ ✅ 2026-10-20 (§5): `.githooks/pre-commit` con `CLAUDECODE=1`
+  rechaza altas, cambios, borrados y renombrados de `docs/borradores-opencode/`; no actúa al cerrar merge, cherry-pick
+  o rebase. Test `test_pre_commit.py`.
+- ~~**QA-145 · `bitacora.py` contra filas ajenas**~~ ✅ 2026-10-20 (§6): `bitacora.py --ajenas <commit> <rama>`; el
+  pre-push lo pasa a cada commit (no merge) que toca la bitácora. Libres: «Actualizado» y «Tests»; el resto de filas
+  compartidas, con `BITACORA_COMPARTIDA=1 git push` (p. ej. añadir una rama a «Ramas de trabajo»).
+- ~~**QA-146 · `medir.py` por subagente**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): sección «POR SUBAGENTE» (llamadas,
+  contexto medio, entrada y salida) y totales con subagentes; la salida se contaba de menos por tomar el valor provisional
+  del streaming (ahora el máximo por respuesta). Casos en `tools/qa/tests/test_medir.py`.
+- ~~**QA-147 · Tandas de juego en llamadas**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): `orchestrate-dealer` paso 1, tanda de ~60 llamadas con
+  traspaso por escenario guardado.
+- ~~**QA-148 · `opt-ai`: lo que ya hay y tanda válida**~~ ✅ 2026-10-20 (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0
+  descarta la tanda que no corrió con la configuración del perfil.
+- ~~**QA-149 · Capturas más pequeñas**~~ ✅ 2026-10-20 (`/opt-tokens`): `shot()` del driver y `mcp/captura.js` salen en
+  JPEG calidad 50 (4,4 veces menos bytes), con `selector`, `clip`, `calidad` y `completo:true` (PNG de página entera).
+- ~~**QA-150 · `tools/qa/host.sh` y `sql.sh`**~~ ✅ 2026-10-20 (`/opt-tokens`, tests `test_host.py` y `test_sql.py`): envoltorios para el sandbox Flatpak de la Deck
+- ~~**QA-151 · Reglas del juego en los scripts que escriben la partida**~~ ✅ 2026-10-20 (retro del lote 1): `orchestrate-dealer` pide en el encargo y en la revisión de cada rama que lo que escribe estado de la partida pase por las funciones del juego que aplican esas reglas (`darReino.ts` las rehacía a mano).
+- ~~**QA-152 · `fusionar.sh` borra la rama y el worktree del subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_fusionar.py`): tras fusionar y con los tests en verde, `git worktree remove` sin forzar y `git branch -d`; nunca la rama actual, `main` ni `claude/*`.
+- ~~**QA-153 · `escenario.sh probar <nombre> <orden…>`**~~ ✅ 2026-10-20 (retro del lote 1, `test_escenario.py`): restaura la instantánea en una base temporal, corre la orden contra ella y la borra al salir; probado con `dar-reino` sobre `reino-dia39-recursos`.
+- ~~**QA-154 · `medir.py` da el arranque de cada subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_medir.py`): columna «arranque» (contexto de la primera llamada) y «Arranque medio»; el paso 1 de `opt-tokens` lo usa para ver qué encargos no compensan un subagente.
+  (`flatpak-spawn --host --directory=<repo>`, SQL por stdin) que fuera de la Deck corren la orden tal cual.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

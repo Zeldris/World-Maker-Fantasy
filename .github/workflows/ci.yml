@@ -64,7 +64,10 @@ jobs:
       # dejaba el job en rojo sin llegar a ejecutar un test (PR #36).
       - name: Postgres 16 con pgvector
         working-directory: .
+        # El repositorio de Microsoft del runner dejó de estar firmado (403) y tumbaba `apt-get update`
+        # antes de instalar nada (PR #69); no se usa, se quita.
         run: |
+          sudo grep -l packages.microsoft.com /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null | grep -v '^/etc/apt/sources.list$' | xargs -r sudo rm -f
           sudo apt-get update -q
           sudo apt-get install -y -q postgresql-16-pgvector
           sudo systemctl start postgresql.service

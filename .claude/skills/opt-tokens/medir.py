@@ -8,7 +8,9 @@ Lee el registro de la sesión (`~/.claude/projects/<proyecto>/<sesión>.jsonl`) 
     compactación: un resultado de 5k tokens con 200 llamadas detrás pesa 1M);
   - los resultados más pesados, las imágenes, los errores, y lo repetido (mismo archivo leído o misma orden);
   - por modelo, la sesión principal y sus subagentes (`<sesión>/subagents/*.jsonl`): si lo mecánico va al modelo
-    caro o el diseño a uno barato (QA-117).
+    caro o el diseño a uno barato (QA-117);
+  - por subagente (una fila por registro: descripción, tipo, modelo, llamadas, contexto medio, entrada, salida) y el
+    total de sesión + subagentes (QA-146). La salida es la mayor de las líneas de cada respuesta, no la primera.
 
 Uso:
   python3 medir.py                       la sesión más reciente del proyecto actual, últimas 24 h
@@ -78,10 +80,11 @@ def resumen_entrada(nombre, entrada):
     return json.dumps(entrada, ensure_ascii=False)[:110]
 
 
-def uso_por_modelo(ruta, desde, por_modelo, quien):
-    """Suma en `por_modelo[(quien, modelo)]` las llamadas, la entrada y la salida del registro de un subagente (una
-    vez por respuesta). Devuelve el último modelo visto. La sesión principal se suma en el bucle de `main`."""
-    vistos, modelo = set(), None
+def respuestas_de(ruta, desde):
+    """Las respuestas de la API de un registro, una por id de mensaje: lista de (modelo, contexto, salida).
+    Claude Code escribe una línea por bloque con el mismo `usage`, pero `output_tokens` crece de una línea a otra
+    (la primera trae un valor provisional): la salida real es el máximo de las líneas del mismo id (QA-146)."""
+    por_id = {}
     for linea in open(ruta, encoding='utf-8'):
         try:
             d = json.loads(linea)
@@ -93,16 +96,22 @@ def uso_por_modelo(ruta, desde, por_modelo, quien):
         ts = d.get('timestamp')
         if desde and ts and dt.datetime.fromisoformat(ts.replace('Z', '+00:00')) < desde:
             continue
+        u = m['usage']
+        ctx = sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'))
         clave = m.get('id') or d.get('requestId') or d.get('uuid')
-        if clave in vistos:
-            continue
-        vistos.add(clave)
-        u, modelo = m['usage'], m.get('model', '?')
+        antes = por_id.get(clave)
+        por_id[clave] = (m.get('model') or '?', ctx, max(u.get('output_tokens') or 0, antes[2] if antes else 0))
+    return list(por_id.values())
+
+
+def uso_por_modelo(ruta, desde, por_modelo, quien):
+    """Suma en `por_modelo[(quien, modelo)]` las llamadas, la entrada y la salida del registro de un subagente.
+    Devuelve las respuestas (para el desglose por subagente)."""
+    resp = respuestas_de(ruta, desde)
+    for modelo, ctx, sal in resp:
         p = por_modelo[(quien, modelo)]
-        p[0] += 1
-        p[1] += sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'))
-        p[2] += u.get('output_tokens') or 0
-    return modelo
+        p[0] += 1; p[1] += ctx; p[2] += sal
+    return resp
 
 
 def main():
@@ -125,7 +134,9 @@ def main():
     usos_tool = {}  # id → (nombre, resumen)
     resultados = []  # (indice_llamada, id, tokens, imagenes, es_error)
     cortes = []  # índice de llamada en el que hubo compactación
-    vistos = set()  # ids de mensaje ya contados
+    vistos = {}  # id de mensaje → índice de su llamada (para quedarse con la salida mayor)
+    salidas = []  # salida de cada llamada
+    modelos_llamada = []  # modelo de cada llamada (o None)
     por_modelo = collections.defaultdict(lambda: [0, 0, 0])  # (quién, modelo) → llamadas, entrada, salida
     recortada = False  # con --horas, si la sesión empezó antes del periodo
     for linea in open(ruta, encoding='utf-8'):
@@ -149,15 +160,16 @@ def main():
             # Claude Code escribe una línea por bloque (razonamiento, texto, herramienta) de la misma respuesta, y
             # todas repiten su `usage`: se cuenta una vez por id de mensaje.
             clave = m.get('id') or d.get('requestId') or d.get('uuid')
-            if u and clave not in vistos:
-                vistos.add(clave)
+            if u and clave in vistos:
+                salidas[vistos[clave]] = max(salidas[vistos[clave]], u.get('output_tokens') or 0)
+            elif u:
+                vistos[clave] = len(salidas)
                 llamadas_api += 1
-                for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens'):
+                for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'):
                     usos[k] += u.get(k) or 0
                 contextos.append(sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens')))
-                if not (m.get('model') or '<').startswith('<'):
-                    p = por_modelo[('principal', m['model'])]
-                    p[0] += 1; p[1] += contextos[-1]; p[2] += u.get('output_tokens') or 0
+                salidas.append(u.get('output_tokens') or 0)
+                modelos_llamada.append(m['model'] if not (m.get('model') or '<').startswith('<') else None)
             for b in m.get('content') or []:
                 if isinstance(b, dict) and b.get('type') == 'tool_use':
                     entrada = b.get('input') or {}
@@ -170,6 +182,11 @@ def main():
 
     if llamadas_api == 0:
         sys.exit('No hay llamadas en ese periodo (prueba --horas 0)')
+    usos['output_tokens'] = sum(salidas)
+    for modelo, ctx, sal in zip(modelos_llamada, contextos, salidas):
+        if modelo:
+            p = por_modelo[('principal', modelo)]
+            p[0] += 1; p[1] += ctx; p[2] += sal
 
     def arrastre(idx):
         # Llamadas posteriores hasta la siguiente compactación: cada una vuelve a leer el resultado.
@@ -239,14 +256,38 @@ def main():
     # QA-117: qué modelo hizo qué. Lo mecánico (escribir código con un plan cerrado, buscar, jugar una ronda) puede ir a
     # un subagente con un modelo más barato; el diseño y la revisión, al grande.
     tipos = collections.Counter()
+    subs = []  # (descripción, tipo, modelo, respuestas)
     for sub in sorted(glob.glob(os.path.join(os.path.splitext(ruta)[0], 'subagents', '*.jsonl'))):
         try:
-            tipo = json.load(open(sub[:-len('.jsonl')] + '.meta.json', encoding='utf-8')).get('agentType', '?')
+            meta = json.load(open(sub[:-len('.jsonl')] + '.meta.json', encoding='utf-8'))
         except (OSError, json.JSONDecodeError):
-            tipo = '?'
-        modelo = uso_por_modelo(sub, desde, por_modelo, 'subagentes')
-        if modelo:
+            meta = {}
+        tipo = meta.get('agentType') or '?'
+        resp = uso_por_modelo(sub, desde, por_modelo, 'subagentes')
+        if resp:
+            modelo = resp[-1][0]
             tipos[(tipo, modelo)] += 1
+            subs.append((meta.get('description') or os.path.basename(sub)[:-len('.jsonl')], tipo, modelo, resp))
+    # QA-146: una fila por subagente, con su contexto medio (lo que cuesta cada llamada suya) y su salida. Los totales
+    # de arriba son solo de la sesión principal; aquí van los de los subagentes y la suma de todo. QA-154: «arranque»
+    # es el contexto de su primera llamada, lo fijo que paga cada subagente antes de hacer nada.
+    if subs:
+        print()
+        print('POR SUBAGENTE (una fila por registro de <sesión>/subagents/)')
+        for desc, tipo, modelo, resp in sorted(subs, key=lambda x: -sum(r[1] for r in x[3]))[: a.top]:
+            ent = sum(r[1] for r in resp)
+            print(f'  {desc[:34]:<34} {tipo[:15]:<15} {modelo:<20} {len(resp):>4} llamadas  {ent / len(resp):>8,.0f} ctx medio  '
+                  f'{resp[0][1]:>7,} arranque  {ent:>12,} entrada  {sum(r[2] for r in resp):>9,} salida')
+        if len(subs) > a.top:
+            print(f'  … y {len(subs) - a.top} más (--top {len(subs)})')
+        n_sub = sum(len(x[3]) for x in subs)
+        ent_sub = sum(r[1] for x in subs for r in x[3])
+        sal_sub = sum(r[2] for x in subs for r in x[3])
+        print(f'  Subagentes en total: {len(subs)} registros · {n_sub:,} llamadas · {ent_sub:,} entrada · {sal_sub:,} salida')
+        print(f'  Arranque medio: {sum(x[3][0][1] for x in subs) / len(subs):,.0f} tokens (lo que paga cada subagente antes de hacer '
+              f'nada: un arreglo de pocas llamadas que la principal ya tiene en contexto sale más barato en ella)')
+        print(f'  Sesión + subagentes: {llamadas_api + n_sub:,} llamadas · {total_in + ent_sub:,} entrada · '
+              f'{usos["output_tokens"] + sal_sub:,} salida')
     print()
     print('POR MODELO (entrada y salida de la API)')
     for (quien, modelo), (n, ent, sal) in sorted(por_modelo.items(), key=lambda x: (x[0][0] != 'principal', -x[1][1])):

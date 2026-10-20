@@ -181,15 +181,15 @@ describe('dynamicModeOffer en /turn/narrate', () => {
         const done = JSON.parse(narrateRes.body.trim().split('\n').pop()!);
         if (done.dynamicModeOffer) {
           algunaOferta = true;
-          // RECURSO ahora también es candidato elegible (2026-09-08, "Ver qué hay en la zona") —
-          // `campamento-serhu` ya tiene su propio `ZonePoint` RECURSO real de catálogo
-          // (`murgoles-domados-campamento`), así que la oferta real puede ser CUALQUIERA de los
-          // candidatos activos en la Location, no solo la fauna sintética de este test. `cazadora-
-          // serhu` se sumó como tercer candidato real (hallazgo 4, 2026-09-15: único NPC con
-          // homeLocationSlug en el exterior de Karot Veku sin ZonePoint todavía). El propósito del
-          // test (el mecanismo dispara alguna vez con probabilidad real) sigue cubierto con
-          // cualquiera de los tres.
-          expect(['fauna-prueba-oferta-modo-dinamico-21', 'murgoles-domados-campamento', 'cazadora-serhu']).toContain(done.dynamicModeOffer.targetSlug);
+          // La oferta real puede ser CUALQUIERA de los candidatos de la partida, no solo la fauna
+          // sintética de este test: RECURSO de catálogo (`murgoles-domados-campamento`, 2026-09-08),
+          // NPC (`cazadora-serhu`, 2026-09-15) y la fauna que el propio juego mueve o hace aparecer
+          // al pasar el tiempo (`murgol`, CI de `main` 2026-10-20). En vez de una lista fija de
+          // slugs, se comprueba que lo ofrecido es un ZonePoint de esta partida, como los que lee
+          // `turnResolution.ts` para la oferta. El propósito (el mecanismo dispara alguna vez con
+          // probabilidad real) sigue cubierto.
+          const candidato = await prisma.zonePoint.findFirst({ where: { saveId, targetSlug: done.dynamicModeOffer.targetSlug } });
+          expect(candidato, done.dynamicModeOffer.targetSlug).not.toBeNull();
         }
       }
       expect(algunaOferta).toBe(true);
