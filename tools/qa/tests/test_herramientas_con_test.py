@@ -14,7 +14,6 @@ from comun import QA
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 EXCEPCIONES = {
     'comprobar-escenarios.sh': 'restaura las instantáneas en Postgres; la corre la CI con la base',
-    'escenario.sh': 'para y arranca el juego y restaura la base de la ronda',
     'recorrer.sh': 'lanza los recorridos de Playwright con el juego en marcha',
     'revisado.sh': 'marca la revisión de la rama real antes del PR (la comprueba el gancho de QA-50)',
     'rojo-sin-arreglo.sh': 'corre un test de vitest con y sin el arreglo',

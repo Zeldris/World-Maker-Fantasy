@@ -14,10 +14,18 @@
 #                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
 #                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), edificio:<receta> ya terminado, objetos del
 #                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
+#   escenario.sh probar <nombre> <orden…>        (QA-153) restaura la instantánea en una base temporal `prueba_<pid>` del mismo
+#                                               Postgres (sin parar el juego ni tocar su base), corre la orden desde la raíz y
+#                                               borra la base al acabar, también si la orden falla; sale con el código de la orden.
+#                                               La orden es `dar …` o `dar-reino …` (subcomandos de este script contra la base
+#                                               temporal) o cualquier otra con DATABASE_URL y DIRECT_URL exportadas a ella
+#                                               (p. ej. `npx tsx backend/src/scripts/x.ts`; ojo: corre desde la raíz). Ej.:
+#                                               escenario.sh probar reino-dia39-recursos dar-reino <partida> comida=10
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 BASE=tarkor_juego
-URL="postgresql://tarkor:tarkor@localhost:5432/$BASE"
+ADMIN="postgresql://tarkor:tarkor@localhost:5432/tarkor"
+URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/$BASE}"
 DIR=tools/qa/escenarios
 INDICE="$DIR/README.md"
 case "${1:-}" in
@@ -62,7 +70,25 @@ case "${1:-}" in
     partida="${2:?falta la partida}"; shift 2
     (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darReino.ts "$partida" "$@")
     ;;
+  probar)
+    nombre="${2:?falta el nombre}"; shift 2
+    [ $# -gt 0 ] || { echo "falta la orden (escenario.sh probar <nombre> <orden…>)"; exit 2; }
+    [ -f "$DIR/$nombre.dump" ] || { echo "No existe $DIR/$nombre.dump (escenario.sh lista)"; exit 1; }
+    temporal="prueba_$$"
+    tmpurl="postgresql://tarkor:tarkor@localhost:5432/$temporal"
+    borrar_temporal() { psql "$ADMIN" -Atq -c "DROP DATABASE IF EXISTS $temporal WITH (FORCE)" >/dev/null 2>&1 || echo "AVISO: no pude borrar la base $temporal"; }
+    trap borrar_temporal EXIT
+    psql "$ADMIN" -Atq -c "CREATE DATABASE $temporal" || { echo "No pude crear la base $temporal"; exit 1; }
+    # Como en `cargar`: pg_restore sale con 1 por avisos que no rompen nada.
+    pg_restore --no-owner -d "$tmpurl" "$DIR/$nombre.dump" 2>/dev/null || true
+    codigo=0
+    case "$1" in
+      dar|dar-reino) ESCENARIO_URL="$tmpurl" bash "$0" "$@" || codigo=$? ;;
+      *) DATABASE_URL="$tmpurl" DIRECT_URL="$tmpurl" "$@" || codigo=$? ;;
+    esac
+    exit "$codigo"
+    ;;
   *)
-    sed -n '2,16p' "$0"; exit 2
+    sed -n '2,23p' "$0"; exit 2
     ;;
 esac

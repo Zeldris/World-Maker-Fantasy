@@ -35,7 +35,8 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    siguiente trozo depende de él. Modelo y esfuerzo por la escalera del `selector` (`QA-118`): `sonnet` para
    implementar y jugar, `opus` para depurar algo no obvio. El encargo lleva **punteros**, no copias: dónde está lo que
    necesita (fila de la bitácora, P-número del registro, fila de la matriz, commit, archivo y función del
-   `docs/mapa-agente.md`), nunca el texto pegado. Con esta forma:
+   `docs/mapa-agente.md`), nunca el texto pegado. Si el encargo escribe en la partida (scripts de QA, escenarios), pruébalo con
+   `escenario.sh probar` contra una instantánea (`QA-153`). Con esta forma:
 
    ```text
    Trabajas en Tarkor, rama <rama>. Lee docs/registros/traspaso.md (tu fila) y, si tocas código,
