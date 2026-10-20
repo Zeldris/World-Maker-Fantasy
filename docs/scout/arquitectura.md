@@ -15,6 +15,9 @@ Confirmadas por la usuaria el 2026-10-20.
   - al menos 2 GB libres en el pico;
   - el turno no tarda más que ahora.
 
+  La Deck es el único equipo local de pruebas: nada que exija más. Una versión «plus» con modelos grandes, para
+  equipos mayores, vendrá cuando esto funcione en la Deck (usuaria, 2026-10-20).
+
   Motivo: no dañar el equipo ni la experiencia de juego. El riesgo real es entrar en swap y que el juego se
   arrastre o se cierre; el narrador actual ya está probado sin ese problema. El pico medido está por apuntar; se
   estima en unos 6 GB (4,9 GB de pesos Q4_K_M y ~1 GB de caché KV con `num_ctx` 8192).
@@ -31,7 +34,7 @@ Confirmadas por la usuaria el 2026-10-20.
   candidato tiene que dar JSON válido y buena prosa a la vez. La familia Mistral falló así (decisión técnica 14).
 
 ## Modelos de IA
-<!-- sello: 2026-10-20 · cd8b5185 · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, backend/Modelfile.finetuned, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
+<!-- sello: 2026-10-20 · cd8b5185 · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
@@ -39,14 +42,14 @@ Confirmadas por la usuaria el 2026-10-20.
 | cronista | `qwen2.5:1.5b-instruct` (986 MB) | clasificar la acción y resumir capítulos; `keepAlive` 0 para no convivir con el narrador | `env.ts` `OLLAMA_MODEL_CRONISTA`, `.env.example` |
 | sugerencias | `qwen3.5:4b` (`think: false`) | sugerir acciones a la jugadora | `env.ts` `OLLAMA_MODEL_SUGERENCIAS`, `.env.example` |
 | embeddings | `nomic-embed-text` | RAG del lore (`retrieval.ts`) | `env.ts` `OLLAMA_MODEL_EMBEDDINGS` |
-| narrador fine-tuneado (sin uso) | `Modelfile.finetuned` (base: un `.gguf` propio aún sin exportar) | plan de fine-tune y DPO ([diseño](../ia/fine-tuning-ia-local.md)); las comparativas descartadas se borraron el 2026-10-20, ver `propuestas.md` | `backend/Modelfile.finetuned` |
 | propuestas de lore (OpenCode) | `qwen35-9b-32k` (base `qwen3.5:9b`, `num_ctx` 32768, temperatura 0,15, salida 4096), plugin `opencode-ollama-toolcall-proxy` (sin versión fijada) | agente `narrador-lore`: solo lee el canon (`docs/canon-opencode/`) y propone lore en `docs/borradores-opencode/`, fuera del juego | `opencode.json`, `modelfiles/qwen35-9b-32k.Modelfile`, `.opencode/prompts/narrador-lore.txt` |
 
 Diagnóstico de partida (2026-10-20, [diseño](../ia/skill-scout-updates.md)): el turno del narrador tarda unos 48 s,
 de los que unos 36 s son prefill de un prompt de unos 6.300 tokens. Recortar el prompt es de `opt-ai`; aquí se
 busca **calidad**.
 
-banco · narrador: casos con `IA_CASOS=<ruta fuera del repositorio>` jugando una tanda (10-15 situaciones
+banco · narrador: candidatos P-005, P-006 y P-007 frente al actual (usuaria, 2026-10-20). Se ejecuta en una
+**sesión local en la Deck** (Ollama no es alcanzable desde la nube), con el agente de esa sesión de juez. Casos con `IA_CASOS=<ruta fuera del repositorio>` jugando una tanda (10-15 situaciones
 variadas, `tarea` = `narrar`). El SYSTEM está en `Modelfile.llama31`: los candidatos sin ese Modelfile lo necesitan
 en el caso (`ollama show --system tarkor-narrador-llama31`). Rúbrica: `docs/scout/banco/narrador-rubrica.md`.
 
@@ -100,12 +103,13 @@ El resto: 27 directas en total, con sus lockfiles.
 
 Diseñados y sin implementar: fuera del roadmap hasta que se implementen (decisión del 2026-10-13,
 [README](../arquitectura/reutilizables/README.md)). Se buscan como el resto: sale antes de implementarlos lo que ya
-haya cambiado. **Sus restricciones están por confirmar**: corren sin el juego abierto y fuera de partida, así que el
-tope de memoria del narrador no les aplica tal cual.
+haya cambiado. **Restricciones** (usuaria, 2026-10-20): corren con Tarkor parado, así que el tope del narrador no les
+aplica tal cual, pero tienen que caber en la Deck **sin swap**; licencias, idioma y coste, los de arriba. Lo que
+solo cabe en equipos mayores espera a la versión «plus».
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | generador de imágenes | FLUX.2 [klein] 4B (Apache 2.0; el 9B es no comercial) en `stable-diffusion.cpp` con Vulkan, GGUF de `leejet`, codificador Qwen3-4B; ~7 GB en disco; Colab de respaldo | retratos y escenas, con el juego cerrado | `01-generacion-imagenes-local.md` |
 | voces | `qwentts.cpp` (MIT) con Qwen3-TTS (Apache 2.0): VoiceDesign 1.7B para diseñar, Base para producir; CPU o Vulkan | voces por raza | `02-voces-y-sonidos-locales.md` |
-| agente de desarrollo local | Aider con `qwen3:14b` en Ollama (Vulkan) en la Deck; Devstral Small 2 (24B, Apache 2.0) solo en un PC de 24 GB | programar sin coste recurrente, con el stack parado | `03-agente-desarrollo-local.md` |
+| agente de desarrollo local | Aider con `qwen3:14b` en Ollama (Vulkan) en la Deck; Devstral Small 2 (24B) fuera hasta la versión «plus» (no cabe en la Deck) | programar sin coste recurrente, con el stack parado | `03-agente-desarrollo-local.md` |
 | instalador | Tauri, backend Node como sidecar y Postgres portátil empaquetado | distribuir el juego | `20-instalador-distribuible.md` |

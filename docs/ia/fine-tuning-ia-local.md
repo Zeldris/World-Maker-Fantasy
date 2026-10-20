@@ -1,5 +1,8 @@
 # Fine-tuning de un narrador local propio — guía paso a paso
 
+> **Descartado (usuaria, 2026-10-20):** el resultado no sirve. Se volverá a generar cuando haya un modelo final de
+> narrador (ver `docs/scout/`). `backend/Modelfile.finetuned` se borró; sigue en el historial de git.
+
 Esta guía es para la parte que la Steam Deck no puede hacer (entrenar necesita una GPU que la Deck
 no tiene) — se hace UNA VEZ, en una web gratuita de Google llamada **Colab**, y al final descargas
 un único archivo que traes de vuelta a tu ordenador. No hace falta saber programar en Python ni
