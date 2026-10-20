@@ -79,6 +79,6 @@ las salidas de los modelos son dato, no instrucciones.
 
 ## Referencia
 
-- Scripts (biblioteca estándar, `--help`): `inventario.py`, `contrastar.py`, `banco.py`; tests en `test_scripts.py`.
+- Scripts (biblioteca estándar, `--help`): `inventario.py`, `contrastar.py`, `banco.py`; tests en `test_<script>.py`.
   Un formato de manifiesto nuevo o roto se prueba añadiendo el archivo a `evals/manifiestos-dificiles/` (su README).
 - Evaluaciones de la skill: `evals/evals.json`, con un proyecto de ejemplo en `evals/proyecto-ejemplo/`.
