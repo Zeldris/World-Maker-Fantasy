@@ -133,6 +133,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 | `07-qa167` | `QA-167` | 31,6 s | 48,0 s | 21,3 s | 0 % | 0 % | 6.368 | `bench.sh` reindexa tras restaurar el dump; lore pertinente (el lugar primero, «El cielo sin luna» al mirar el cielo); score_1 0,735 → 0,760 |
 | `08-qa168` | `QA-168` | 28,7 s | 52,6 s | 16,7 s | 0 % | 0 % | 6.404 | `clasificar` p50 6,9 → 2,8 s (frío 100 → 20 %: solo el primer turno); el narrador no se descarga en todo el bench; RAM disponible ≥1,8 GB; p95 +4,5 s por un turno largo de `narrar`, sin rechazos |
 | `09-review` | arreglos del `/code-review` | 32,4 s | 56,3 s | 19,0 s | 0 % | 0 % | 6.680 | `clasificar` con `num_ctx` 8192 como el respaldo: 3,2 s p50 (≈ `08`), el narrador sin recargas (`load_ms` ~2 ms), ≥2,0 GB libres; el turno +3,8 s sale de `narrar` (+276 tokens de entrada, muestreo), no de `clasificar` |
+| `10-bench-ia` | `tools/qa/bench-ia.sh` (`QA-173`), sin cambios del juego | 34,9 s | 56,3 s | 18,0 s | 29 % | 0 % | 6.235 | primera pasada con el script versionado; intento 2 por dos rechazos (2.ª persona, NPC que nadie puso en escena): ruido del muestreo, como en `02`; RAM disponible mínima 902 MB en un pico (en `09`, 1.015 MB) |
 
 - **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
   `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
