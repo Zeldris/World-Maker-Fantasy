@@ -18,6 +18,11 @@ description: "Conduct a retrospective on a coding session. Use before creating e
 > y el `/code-review`, y propone mejorarlas donde fallaron o se quedaron cortas: un fallo que la revisión dejó
 > pasar o encontró tarde, un ahorro de `opt-tokens` que costó calidad o no se midió, un paso que se saltó porque
 > la skill no lo pedía con claridad.
+>
+> **Y proponen desde ellas** (usuaria, 2026-10-20): antes de proponer, lee la tabla de
+> [`.claude/skills/README.md`](../README.md). Si lo que falló es de una skill propia (`opt-ai` para la IA del
+> juego, `opt-tokens` para el gasto, `orchestrate-dealer` para el reparto…), la propuesta cambia esa skill o la usa,
+> en vez de añadir una regla suelta a `CLAUDE.md` o un runbook; y no propone lo que una skill ya hace.
 
 A phase has closed, so it is time for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.
 
