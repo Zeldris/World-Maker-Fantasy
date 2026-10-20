@@ -4,7 +4,12 @@
 # (Álvaro) este gancho no hace nada. Lo activa core.hooksPath=.githooks.
 set -euo pipefail
 [ "${CLAUDECODE:-}" = "1" ] || exit 0
-preparados=$(git diff --cached --name-only --diff-filter=ACMRD -- docs/borradores-opencode/)
+# Cerrar un merge, un cherry-pick o un rebase no es preparar nada: el borrador ya viene commiteado de la otra rama.
+for f in MERGE_HEAD CHERRY_PICK_HEAD REBASE_HEAD; do
+  [ -e "$(git rev-parse --git-path "$f")" ] && exit 0
+done
+# --no-renames: un archivo movido fuera de la carpeta sale como borrado en la ruta de origen y también se para.
+preparados=$(git diff --cached --no-renames --name-only -- docs/borradores-opencode/)
 if [ -n "$preparados" ]; then
   echo "pre-commit: hay archivos preparados de docs/borradores-opencode/ (son borradores de Álvaro, no se commitean desde Claude Code):" >&2
   echo "$preparados" | sed 's/^/  /' >&2

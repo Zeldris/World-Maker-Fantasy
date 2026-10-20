@@ -28,6 +28,56 @@ class PreCommit(unittest.TestCase):
             env['CLAUDECODE'] = '1'
         return subprocess.run(['bash', HOOK], cwd=self.repo, env=env, capture_output=True, text=True)
 
+    def git_real(self, *args: str) -> subprocess.CompletedProcess:
+        """Un git de verdad con CLAUDECODE=1 y el gancho por core.hooksPath."""
+        return subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', *args], cwd=self.repo,
+                              env={**ENV_GIT, 'CLAUDECODE': '1'}, capture_output=True, text=True)
+
+    def con_borrador_commiteado(self):
+        escribir(os.path.join(self.repo, 'docs/borradores-opencode/idea.md'), 'texto')
+        git(self.repo, 'add', '-A')
+        git(self.repo, 'commit', '-q', '--no-verify', '-m', 'borrador')
+
+    def test_merge_de_una_rama_con_borrador_commiteado_pasa(self):
+        git(self.repo, 'checkout', '-q', '-b', 'otra')
+        self.con_borrador_commiteado()
+        git(self.repo, 'checkout', '-q', 'main')
+        escribir(os.path.join(self.repo, 'otro.md'), 'y')
+        git(self.repo, 'add', 'otro.md')
+        git(self.repo, 'commit', '-q', '-m', 'main avanza')
+        r = self.git_real('merge', '--no-ff', '-m', 'merge', 'otra')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('docs/borradores-opencode/idea.md', git(self.repo, 'ls-files'))
+
+    def test_cerrar_un_merge_con_conflicto_a_mano_pasa(self):
+        escribir(os.path.join(self.repo, 'c.md'), 'base')
+        git(self.repo, 'add', 'c.md')
+        git(self.repo, 'commit', '-q', '-m', 'c')
+        git(self.repo, 'checkout', '-q', '-b', 'otra')
+        escribir(os.path.join(self.repo, 'c.md'), 'otra')
+        git(self.repo, 'add', 'c.md')
+        self.con_borrador_commiteado()
+        git(self.repo, 'checkout', '-q', 'main')
+        escribir(os.path.join(self.repo, 'c.md'), 'main')
+        git(self.repo, 'commit', '-q', '-am', 'c main')
+        self.assertNotEqual(self.git_real('merge', '--no-ff', 'otra').returncode, 0)
+        escribir(os.path.join(self.repo, 'c.md'), 'resuelto')
+        git(self.repo, 'add', 'c.md')
+        r = self.git_real('commit', '--no-edit')
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_renombrar_un_borrador_fuera_de_la_carpeta_rechaza(self):
+        self.con_borrador_commiteado()
+        git(self.repo, 'mv', 'docs/borradores-opencode/idea.md', 'docs/idea.md')
+        r = self.git_real('commit', '-m', 'mueve')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('git restore --staged', r.stderr)
+
+    def test_borrar_un_borrador_rechaza(self):
+        self.con_borrador_commiteado()
+        git(self.repo, 'rm', '-q', 'docs/borradores-opencode/idea.md')
+        self.assertNotEqual(self.git_real('commit', '-m', 'borra').returncode, 0)
+
     def test_es_ejecutable_y_git_lo_registra_asi(self):
         self.assertTrue(os.access(HOOK, os.X_OK))
         modo = subprocess.run(['git', 'ls-files', '-s', '.githooks/pre-commit'], cwd=RAIZ,
