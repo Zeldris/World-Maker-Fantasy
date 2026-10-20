@@ -6,7 +6,7 @@ bitácora, `CLAUDE.md`, la primera medida de `opt-ai` en `docs/ia/opt-ai-registr
 all` previo (14 hallazgos de docs, arreglados en `02674ce4`) y las skills `opt-ai`, `opt-tokens`,
 `orchestrate-dealer`, `retro` y `/code-review`.
 
-**Estado (2026-10-20): pendiente de la usuaria.**
+**Estado (2026-10-20): aprobadas todas por la usuaria, sin aplicar**: se anotan en «Propuestas aprobadas» de la bitácora y la implementación la gestiona ella en otro momento (no entran en este PR).
 
 ## Medida (`/opt-tokens`)
 

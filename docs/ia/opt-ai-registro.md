@@ -72,7 +72,7 @@ KV `q8_0`, `OLLAMA_IGPU_ENABLE=1`. Registro: `backend/ia/registro-2026-10-20.jso
   `registro-2026-10-20-solo-cpu.jsonl` y fuera de la comparación. En ella el RAG estaba roto (P274).
 
 **Informe de `/opt-ai`** (2026-10-20, con la skill; sustituye a las propuestas hechas a mano en la ronda, que revisó).
-Propuestas **pendientes de decidir** por la usuaria.
+Propuestas **aprobadas por la usuaria el 2026-10-20, sin aplicar** (bitácora, «Propuestas aprobadas»).
 
 - **Por turno** (lo que espera la jugadora): 15 turnos, p50 63,6 s, p95 ~104 s, máx. 133 s. 7 de 15 necesitaron el
   intento 2 de `narrar` y 2 llegaron al respaldo (las 22 llamadas = 15 intentos 1 + 7 intentos 2).
