@@ -93,7 +93,7 @@ function BuildingProduccionCard({
   const [busy, setBusy] = useState<string | null>(null)
   // REI-33 (hito 0.1, R13/R14) — borrar es irreversible: se confirma.
   const [ordenABorrar, setOrdenABorrar] = useState<OrdenProduccionInfo | null>(null)
-  const { fallo, informar, limpiar } = useErrorConReintento()
+  const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   // Recetas del oficio del edificio (P-3, decisión de Álvaro, 2026-09-29): null = sin filtro
   // (edificio sin oficio, o aún sin cargar/error).
   const [recetasPermitidas, setRecetasPermitidas] = useState<string[] | null>(null)
@@ -114,7 +114,7 @@ function BuildingProduccionCard({
     getOrdenesProduccion(saveId, building.id)
       .then((res) => {
         if (id !== peticion.current) return
-        limpiar()
+        limpiarSi('No se pudieron cargar las órdenes de producción.')
         setOrdenes(res.ordenes)
       })
       .catch((e) => {
@@ -122,7 +122,7 @@ function BuildingProduccionCard({
         setCargaFallida(true)
         informar('No se pudieron cargar las órdenes de producción.', e, cargarOrdenes)
       })
-  }, [saveId, building.id, informar, limpiar])
+  }, [saveId, building.id, informar, limpiarSi])
 
   useEffect(() => {
     let cancelado = false

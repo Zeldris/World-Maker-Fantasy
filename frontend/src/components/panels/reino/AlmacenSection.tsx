@@ -30,7 +30,7 @@ export function AlmacenSection({
   const consulta = useModoConsulta()
   const [busy, setBusy] = useState<string | null>(null)
   const [limites, setLimites] = useState<AlmacenLimiteInfo[] | null>(null)
-  const { fallo, informar, limpiar } = useErrorConReintento()
+  const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
   const grupos = agruparAlmacen(almacenItems)
 
@@ -41,11 +41,11 @@ export function AlmacenSection({
     getAlmacenLimites(saveId)
       .then((res) => {
         if (id !== peticion.current) return
-        limpiar()
+        limpiarSi('No se pudieron cargar los topes del almacén.')
         setLimites(res.limites)
       })
       .catch((e) => id === peticion.current && informar('No se pudieron cargar los topes del almacén.', e, cargarLimites))
-  }, [saveId, informar, limpiar])
+  }, [saveId, informar, limpiarSi])
 
   useEffect(() => {
     cargarLimites()

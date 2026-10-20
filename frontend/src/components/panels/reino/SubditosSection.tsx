@@ -365,7 +365,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
   const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] } | null>(null)
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
-  const { fallo, informar, limpiar } = useErrorConReintento()
+  const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   // Cada refresco de la partida trae un `subjects` nuevo: se vuelve a pedir la lista, porque los
   // candidatos, muertes y salidas no cambian los súbditos activos que vienen en la partida.
   // P230 — un fallo al cargar no deja la lista vacía sin aviso: ErrorBanner con Reintentar.
@@ -377,7 +377,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
       .then((r) => {
         if (id !== peticion.current) return
         setCargaFallida(false)
-        limpiar()
+        limpiarSi('No se pudieron cargar los súbditos.')
         setDatos(r)
       })
       .catch((e) => {
@@ -386,7 +386,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
         setDatos(null)
         informar('No se pudieron cargar los súbditos.', e, cargar)
       })
-  }, [saveId, informar, limpiar])
+  }, [saveId, informar, limpiarSi])
   useEffect(() => {
     cargar()
     return () => {

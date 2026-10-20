@@ -104,6 +104,24 @@ describe('ProduccionSection — P225 fallo de carga', () => {
     rerender(<ProduccionSection saveId="s2" {...props} />)
     await waitFor(() => expect(queryByRole('alert')).toBeNull())
   })
+
+  it('una carga correcta no borra el aviso de una acción fallida', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    vi.mocked(getOrdenesProduccion).mockResolvedValue({ ordenes: [orden({ activa: false })] } as never)
+    vi.mocked(actualizarOrdenProduccion).mockRejectedValueOnce(new Error('500'))
+    const props = { buildings: [edificio], companions: [], almacenItems: [], professionRecipes: [], onRefreshSave: async () => {} }
+    const { findByText, findByRole, getByRole, rerender } = render(<ProduccionSection saveId="s1" {...props} />)
+    fireEvent.click(await findByText(/Desactivadas \(1\)/))
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Reactivar' }))
+    })
+    const texto = (await findByRole('alert')).textContent
+    rerender(<ProduccionSection saveId="s2" {...props} />)
+    await act(async () => {})
+    expect(getOrdenesProduccion).toHaveBeenCalledTimes(2)
+    expect(getByRole('alert').textContent).toBe(texto)
+  })
 })
 
 describe('ProduccionSection — carrera al cambiar de edificio', () => {

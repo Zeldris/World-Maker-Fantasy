@@ -89,4 +89,20 @@ describe('AlmacenSection — P225 fallo de carga de topes', () => {
     rerender(<AlmacenSection saveId="s2" {...props} />)
     await waitFor(() => expect(queryByRole('alert')).toBeNull())
   })
+
+  it('una carga correcta no borra el aviso de una acción fallida', async () => {
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] })
+    vi.mocked(retirarDeAlmacen).mockRejectedValueOnce(new Error('500'))
+    const props = { inventory: [], almacenItems: [item('m1', 'Madera', 'madera')], onRefreshSave: vi.fn().mockResolvedValue(undefined) }
+    const { findByRole, getByRole, rerender } = render(<AlmacenSection saveId="s1" {...props} />)
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: /Retirar/ }))
+    })
+    const aviso = await findByRole('alert')
+    const texto = aviso.textContent
+    rerender(<AlmacenSection saveId="s2" {...props} />)
+    await act(async () => {})
+    expect(getAlmacenLimites).toHaveBeenCalledTimes(2)
+    expect(getByRole('alert').textContent).toBe(texto)
+  })
 })
