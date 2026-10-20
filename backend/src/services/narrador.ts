@@ -1422,7 +1422,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       timeoutMs: 90_000,
       keepAlive: '0',
       temperature: combatTemperature,
-      tarea: 'narrar',
+      tarea: 'narrar_respaldo',
     });
 
   let lastResult: NarrationResult | null = null;

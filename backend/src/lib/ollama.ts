@@ -225,6 +225,25 @@ export async function ollamaGenerateStream(
       let lastRaw: unknown;
       let terminado = false;
 
+      const procesarLinea = (texto: string) => {
+        const line = texto.trim();
+        if (!line) return;
+        const parsed = JSON.parse(line) as { response?: string; done?: boolean; error?: string };
+        // Ollama puede mandar `{"error": "..."}` a mitad de stream (p. ej. modelo que falla al cargar).
+        if (parsed.error) {
+          // Se cierra la conexión antes de lanzar: si no, Ollama sigue generando para nadie.
+          void reader.cancel().catch(() => {});
+          throw new Error(parsed.error);
+        }
+        lastRaw = parsed;
+        if (parsed.done) terminado = true;
+        if (parsed.response) {
+          fullText += parsed.response;
+          ttftMs ??= Date.now() - inicio;
+          onChunk(parsed.response);
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -234,23 +253,15 @@ export async function ollamaGenerateStream(
         // qué alinearse con esos límites, así que se acumula en `buffer` hasta tener línea completa.
         let newlineIndex = buffer.indexOf('\n');
         while (newlineIndex >= 0) {
-          const line = buffer.slice(0, newlineIndex).trim();
+          const line = buffer.slice(0, newlineIndex);
           buffer = buffer.slice(newlineIndex + 1);
-          if (line) {
-            const parsed = JSON.parse(line) as { response?: string; done?: boolean; error?: string };
-            // Ollama puede mandar `{"error": "..."}` a mitad de stream (p. ej. modelo que falla al cargar).
-            if (parsed.error) throw new Error(parsed.error);
-            lastRaw = parsed;
-            if (parsed.done) terminado = true;
-            if (parsed.response) fullText += parsed.response;
-            if (parsed.response) {
-              ttftMs ??= Date.now() - inicio;
-              onChunk(parsed.response);
-            }
-          }
+          procesarLinea(line);
           newlineIndex = buffer.indexOf('\n');
         }
       }
+      // Última línea sin '\n' final (p. ej. el `{"done":true}`): se procesa también.
+      buffer += decoder.decode();
+      procesarLinea(buffer);
 
       registrarGenerate(options, lastRaw, inicio, { ttftMs, error: terminado ? undefined : 'stream incompleto' });
       return { text: fullText, raw: lastRaw };

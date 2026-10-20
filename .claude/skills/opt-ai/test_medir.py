@@ -40,7 +40,7 @@ class MedirTest(unittest.TestCase):
         f = medir.fila_llamadas(rs)
         self.assertEqual((f['n'], f['p50_ms'], f['tok_in'], f['tok_out']), (2, 2000, 200, 50))
         self.assertEqual(f['tok_s'], 50)
-        self.assertEqual((f['frio_pct'], f['recortado_pct'], f['error_pct']), (50, 50, 50))
+        self.assertEqual((f['frio_pct'], f['recortado_pct'], f['error_pct']), (50, 100, 50))
         self.assertEqual(f['ttft_p50_ms'], 200)
 
     def test_campos_ausentes(self):
@@ -48,21 +48,49 @@ class MedirTest(unittest.TestCase):
         self.assertIsNone(f['tok_s'])
         self.assertIsNone(f['ttft_p50_ms'])
         self.assertIsNone(f['tok_in'])
-        self.assertEqual(f['frio_pct'], 0)
+        self.assertIsNone(f['frio_pct'])
+        self.assertIsNone(f['recortado_pct'])
+        self.assertEqual(f['error_pct'], 0)
+
+    def test_porcentajes_sobre_filas_con_campo(self):
+        rs = [llamada(1, **{'app.load_ms': 500, 'app.truncated': True}), llamada(1), llamada(1, **{'app.load_ms': 1, 'app.truncated': False}),
+              llamada(1, **{'app.error': 'x'})]
+        f = medir.fila_llamadas(rs)
+        self.assertEqual((f['frio_pct'], f['recortado_pct'], f['error_pct']), (50, 50, 25))
+
+    def test_agrupa_por_modelo(self):
+        r = medir.analizar(self.reg([llamada(10, **{'gen_ai.request.model': 'a'}), llamada(30, **{'gen_ai.request.model': 'b'}),
+                                     llamada(50, **{'gen_ai.request.model': 'a'})]))
+        self.assertEqual({k: v['n'] for k, v in r['llamadas'].items()}, {('deck', 'narrar', 'a'): 2, ('deck', 'narrar', 'b'): 1})
+
+    def test_comparacion_misma_clave_de_modelo(self):
+        act = self.reg([llamada(2000, **{'gen_ai.request.model': 'a'}), llamada(100, **{'gen_ai.request.model': 'b'})])
+        ant = self.reg([llamada(1500, **{'gen_ai.request.model': 'a'})])
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            medir.main([act, '--anterior', ant, '--json'])
+        d = json.loads(buf.getvalue())
+        self.assertEqual(d['diferencia_llamadas']['deck/narrar/a']['p50_ms'], 500)
+        self.assertEqual(d['diferencia_llamadas']['deck/narrar/b'], 'sin anterior')
+
+    def test_calentar_excluido(self):
+        ruta = self.reg([llamada(10), llamada(9000, tarea='calentar')])
+        self.assertEqual(list(medir.analizar(ruta)['llamadas']), [('deck', 'narrar', '-')])
+        self.assertIn(('deck', 'calentar', '-'), medir.analizar(ruta, con_calentar=True)['llamadas'])
 
     def test_lineas_corruptas(self):
         r = medir.analizar(self.reg([llamada(10), '{no es json', '[1,2]', llamada(30)]))
-        self.assertEqual(r['llamadas'][('deck', 'narrar')]['n'], 2)
+        self.assertEqual(r['llamadas'][('deck', 'narrar', '-')]['n'], 2)
         self.assertEqual(sum('corrupta' in a for a in r['avisos']), 2)
 
     def test_sin_perfil_avisa(self):
         r = medir.analizar(self.reg([{'app.task': 'clasificar', 'app.duration_ms': 5}]))
-        self.assertIn(('desconocido', 'clasificar'), r['llamadas'])
+        self.assertIn(('desconocido', 'clasificar', '-'), r['llamadas'])
         self.assertTrue(any('sin perfil' in a and 'clasificar' in a for a in r['avisos']))
 
     def test_filtro_perfil(self):
         r = medir.analizar(self.reg([llamada(10), llamada(20, perfil='cpu')]), 'cpu')
-        self.assertEqual(list(r['llamadas']), [('cpu', 'narrar')])
+        self.assertEqual(list(r['llamadas']), [('cpu', 'narrar', '-')])
 
     def test_rag(self):
         base = {'gen_ai.operation.name': 'retrieval', 'app.machine_profile': 'deck', 'app.task': 'rag'}
@@ -71,7 +99,7 @@ class MedirTest(unittest.TestCase):
                           'app.rag.results': [{'id': 'a', 'score': 0.8}, {'id': 'b', 'score': 0.5}]}),
             dict(base, **{'app.rag.embed_ms': 30, 'app.rag.search_ms': 6,
                           'app.rag.results': [{'id': 'c', 'score': 0.6}]})])
-        f = medir.analizar(ruta)['rag'][('deck', 'rag')]
+        f = medir.analizar(ruta)['rag'][('deck', 'rag', '-')]
         self.assertEqual((f['n'], f['embed_p50_ms'], f['search_p50_ms']), (2, 20, 5))
         self.assertAlmostEqual(f['score_1'], 0.7)
 
@@ -81,7 +109,7 @@ class MedirTest(unittest.TestCase):
         with redirect_stdout(buf):
             medir.main([act, '--anterior', ant, '--json'])
         d = json.loads(buf.getvalue())
-        self.assertEqual(d['diferencia_llamadas']['deck/narrar']['p50_ms'], 500)
+        self.assertEqual(d['diferencia_llamadas']['deck/narrar/-']['p50_ms'], 500)
 
     def test_comparacion_texto(self):
         act, ant = self.reg([llamada(2000)]), self.reg([llamada(1500)])
@@ -93,7 +121,7 @@ class MedirTest(unittest.TestCase):
     def test_no_finitos_fuera(self):
         r = medir.analizar(self.reg(['{"app.machine_profile": "deck", "app.task": "narrar", "app.duration_ms": Infinity}',
                                      llamada(10, **{'gen_ai.usage.output_tokens': 5, 'app.decode_ms': float('nan')})]))
-        f = r['llamadas'][('deck', 'narrar')]
+        f = r['llamadas'][('deck', 'narrar', '-')]
         self.assertEqual((f['n'], f['p50_ms'], f['tok_s']), (2, 10, None))
 
     def test_archivo_inexistente(self):

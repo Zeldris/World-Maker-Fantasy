@@ -5,9 +5,10 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 ## Tareas y modelos
 
 Fuente de verdad: `backend/src/config/env.ts` (variables `OLLAMA_MODEL_*`, `OLLAMA_KEEP_ALIVE`); léela en cada
-pasada, aquí no se copian los nombres de modelo. Tareas (`app.task`): `narrar` (narrador), `clasificar`, `sugerir`
-(modelo propio de sugerencias), `cronica` (Cronista, modelo pequeño), `resumen`, `embedding` (modelo de embeddings)
-y `rag` (recuperación). Motor: Ollama (columna de `motores.md`).
+pasada, aquí no se copian los nombres de modelo. Tareas (`app.task`, las que emite el código): `narrar` (narrador), `narrar_respaldo` (3.er intento del
+combate, modelo del Cronista), `clasificar`, `sugerir` (modelo propio), `dialogo_npc`, `combate`, `modo_dinamico`,
+`resumen`, `prompts_imagen`, `embedding` y `rag` (recuperación). `calentar` es el calentamiento al arrancar el
+servidor: no es juego y `medir.py` lo excluye (`--con-calentar` lo muestra). Motor: Ollama (columna de `motores.md`).
 
 ## Registro y perfiles
 

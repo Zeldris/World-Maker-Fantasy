@@ -2,10 +2,11 @@
 """Mide el registro por llamada de `opt-ai` (formato: docs/ia/opt-ai-registro.md). Solo biblioteca estándar.
 
 Uso:
-  medir.py <registro.jsonl> [--anterior <registro.jsonl>] [--perfil X] [--json]
+  medir.py <registro.jsonl> [--anterior <registro.jsonl>] [--perfil X] [--con-calentar] [--json]
 
-Por perfil y tarea: n, p50 y p95 de duration_ms, ttft p50, tokens medios de entrada y salida, tok/s de
-generación, % de cargas en frío (load_ms > 100), % de recortados y % de errores. RAG (operation `retrieval`):
+Por perfil, tarea y modelo (gen_ai.request.model; '-' si falta; fila `perfil/tarea/modelo`): n, p50 y p95 de duration_ms, ttft p50, tokens medios de entrada y salida, tok/s de
+generación, % de cargas en frío (load_ms > 100) y de recortados, sobre las filas que llevan ese campo ('-' si ninguna),
+y % de errores (sobre todas). La tarea `calentar` (calentamiento al arrancar) se excluye salvo con --con-calentar. RAG (operation `retrieval`):
 n, p50 de embed_ms y search_ms, score medio del primer resultado. Con --anterior, la diferencia por fila.
 Las líneas corruptas se ignoran con un aviso; las tareas sin perfil se avisan.
 """
@@ -13,6 +14,8 @@ import argparse, json, math, sys
 
 FRIO_MS = 100
 SIN_PERFIL = 'desconocido'
+SIN_MODELO = '-'
+CALENTAR = 'calentar'
 
 
 def percentil(valores, p):
@@ -59,6 +62,10 @@ def nums(rs, campo):
     return [r[campo] for r in rs if es_num(r.get(campo))]
 
 
+def pct(parte, total):
+    return 100 * parte / total if total else None
+
+
 def fila_llamadas(rs):
     n = len(rs)
     dec = [r for r in rs if es_num(r.get('gen_ai.usage.output_tokens'))
@@ -66,6 +73,8 @@ def fila_llamadas(rs):
     toks = sum(r['gen_ai.usage.output_tokens'] for r in dec)
     ms = sum(r['app.decode_ms'] for r in dec)
     dur = nums(rs, 'app.duration_ms')
+    cargas = nums(rs, 'app.load_ms')
+    recortes = [r['app.truncated'] for r in rs if isinstance(r.get('app.truncated'), bool)]
     return {
         'n': n,
         'p50_ms': percentil(dur, 50), 'p95_ms': percentil(dur, 95),
@@ -73,8 +82,8 @@ def fila_llamadas(rs):
         'tok_in': media(nums(rs, 'gen_ai.usage.input_tokens')),
         'tok_out': media(nums(rs, 'gen_ai.usage.output_tokens')),
         'tok_s': toks / (ms / 1000) if ms else None,
-        'frio_pct': 100 * sum(1 for x in nums(rs, 'app.load_ms') if x > FRIO_MS) / n,
-        'recortado_pct': 100 * sum(1 for r in rs if r.get('app.truncated') is True) / n,
+        'frio_pct': pct(sum(1 for x in cargas if x > FRIO_MS), len(cargas)),
+        'recortado_pct': pct(sum(1 for x in recortes if x), len(recortes)),
         'error_pct': 100 * sum(1 for r in rs if r.get('app.error')) / n,
     }
 
@@ -89,26 +98,29 @@ def fila_rag(rs):
             'search_p50_ms': percentil(nums(rs, 'app.rag.search_ms'), 50), 'score_1': media(primeros)}
 
 
-def agrupar(registros, perfil=None):
+def agrupar(registros, perfil=None, con_calentar=False):
     llamadas, rag = {}, {}
     for r in registros:
         p = r.get('app.machine_profile') or SIN_PERFIL
         if perfil and p != perfil:
             continue
         t = r.get('app.task') or 'sin_tarea'
+        if t == CALENTAR and not con_calentar:
+            continue
+        m = r.get('gen_ai.request.model') or SIN_MODELO
         destino = rag if r.get('gen_ai.operation.name') == 'retrieval' else llamadas
-        destino.setdefault((p, t), []).append(r)
+        destino.setdefault((p, t, m), []).append(r)
     return ({k: fila_llamadas(v) for k, v in sorted(llamadas.items())},
             {k: fila_rag(v) for k, v in sorted(rag.items())})
 
 
-def analizar(ruta, perfil=None, avisos=None):
+def analizar(ruta, perfil=None, avisos=None, con_calentar=False):
     avisos = [] if avisos is None else avisos
     regs = leer(ruta, avisos)
     if not regs:
         avisos.append(f'{ruta}: sin registros válidos')
-    llamadas, rag = agrupar(regs, perfil)
-    sin_perfil = sorted({t for (p, t) in list(llamadas) + list(rag) if p == SIN_PERFIL})
+    llamadas, rag = agrupar(regs, perfil, con_calentar)
+    sin_perfil = sorted({t for (p, t, _m) in list(llamadas) + list(rag) if p == SIN_PERFIL})
     if sin_perfil:
         avisos.append('tareas sin perfil (¿falta IA_PERFIL?): ' + ', '.join(sin_perfil))
     return {'llamadas': llamadas, 'rag': rag, 'avisos': avisos}
@@ -143,12 +155,12 @@ COLS_RAG = [('n', 0), ('embed_p50_ms', 0), ('search_p50_ms', 0), ('score_1', 3)]
 def tabla(titulo, filas, cols, difs):
     if not filas:
         return []
-    out = [titulo, '  perfil/tarea  ' + '  '.join(c for c, _ in cols)]
-    for (p, t), fila in filas.items():
-        d = difs.get((p, t), {})
+    out = [titulo, '  perfil/tarea/modelo  ' + '  '.join(c for c, _ in cols)]
+    for (p, t, m), fila in filas.items():
+        d = difs.get((p, t, m), {})
         nota = '  (sin anterior)' if d == 'sin anterior' else ''
         d = d if isinstance(d, dict) else {}
-        out.append(f'  {p}/{t}  ' + '  '.join(fmt(fila[c], dec) + fmt_dif(d.get(c), dec) for c, dec in cols) + nota)
+        out.append(f'  {p}/{t}/{m}  ' + '  '.join(fmt(fila[c], dec) + fmt_dif(d.get(c), dec) for c, dec in cols) + nota)
     return out
 
 
@@ -157,15 +169,16 @@ def main(argv=None):
     ap.add_argument('registro')
     ap.add_argument('--anterior')
     ap.add_argument('--perfil')
+    ap.add_argument('--con-calentar', action='store_true', help='incluye la tarea calentar (se excluye por defecto)')
     ap.add_argument('--json', action='store_true')
     a = ap.parse_args(argv)
     avisos = []
-    act = analizar(a.registro, a.perfil, avisos)
-    ant = analizar(a.anterior, a.perfil, avisos) if a.anterior else None
+    act = analizar(a.registro, a.perfil, avisos, a.con_calentar)
+    ant = analizar(a.anterior, a.perfil, avisos, a.con_calentar) if a.anterior else None
     dif_ll = diferencia(act['llamadas'], ant['llamadas']) if ant else {}
     dif_rag = diferencia(act['rag'], ant['rag']) if ant else {}
     if a.json:
-        claves = lambda d: {f'{p}/{t}': v for (p, t), v in d.items()}
+        claves = lambda d: {f'{p}/{t}/{m}': v for (p, t, m), v in d.items()}
         print(json.dumps({'llamadas': claves(act['llamadas']), 'rag': claves(act['rag']),
                           'diferencia_llamadas': claves(dif_ll), 'diferencia_rag': claves(dif_rag),
                           'avisos': avisos}, ensure_ascii=False, indent=2))
