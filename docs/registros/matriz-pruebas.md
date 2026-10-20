@@ -124,7 +124,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-62` | Mundo vivo | Combate de fondo (Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07, | jugado | P77, P130 (los que quedan fuera del combate) |
 | `CR-63` | Mundo vivo | Partidas de caza y captura 2026-10-07 (ronda aceptada el 2026-10-07, decisiones en | sin jugar |  |
 | `CR-65` | Mundo vivo | Defensa del Reino y milicia 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2 | sin jugar |  |
-| `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | sin jugar |  |
+| `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | jugado | 2026-10-20: Configuración › Partida, Intensidad Dura y Tamaño Fácil se guardan (WorldState.intensidadAsaltos=DURA, tamanoAsaltos=FACIL) y siguen tras recargar; sin ver su efecto en un asalto (texto de Intensidad: P257) |
 | `NAR-9` | Narrador | Rumores en "El mundo" | jugado | 2026-10-19: un rumor del Cronista sale en pergamino con «Desde El Margen Silencioso · pasó el día 9» y «Ver en Leyendas», que abre Leyendas con la entrada resaltada; los «Se dice que…» de `darNoticia` salen sin estilo (P226) |
 | `PAN-9b` | Paneles | Leyendas de tu partida | jugado | P137 |
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | jugado | 2026-10-19: ⏸ desactiva; «Desactivadas (1)» con Reactivar y Borrar; Borrar pide confirmación «No se puede deshacer» y borra (0 órdenes en la base); límite editable solo en «único» |

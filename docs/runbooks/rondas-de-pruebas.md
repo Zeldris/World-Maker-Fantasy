@@ -141,3 +141,8 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
 - `turno.js` da «textbox no encontrado» con la barra de habilidades activa (el botón ✨ la alterna) o con un modal abierto.
 - `pulsar.js` con el texto «Leyendas» casa con el rótulo LEYENDA del mapa de zona.
 - El prompt del narrador no se registra: para ver un bloque (verdad, callbacks, memoria), ejecutar `bloqueMemoria` aparte con `tsx`.
+- Desde el sandbox, `flatpak-spawn --host --directory=<repo>`: sin `--directory` sale «No existe el fichero o directorio»
+  (el directorio de trabajo es el del scratchpad). El SQL con comillas va mejor por stdin al envoltorio de `psql` que con `-c`.
+- `pulsar.js` con solo `contiene` falla («Falta window.tk.texto»); `pulsar` «Reino» no dice si se abrió el cajón.
+- El escenario `reino-dia39` no tiene comida, materiales ni Goirnos: Corrales, Partidas, Defensa, oficios y llegadas no
+  se pueden provocar sin `escenario.sh dar` (necesita el permiso de la usuaria) o recolectar fuera de la Hondonada.
