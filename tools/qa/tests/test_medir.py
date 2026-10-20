@@ -65,9 +65,10 @@ class Medir(unittest.TestCase):
         })
         self.assertIn('POR SUBAGENTE', salida)
         self.assertRegex(salida, r'Arreglo del turno\s+general-purpose\s+claude-sonnet-5-5\s+2 llamadas\s+2,000 ctx medio'
-                                 r'\s+4,000 entrada\s+710 salida')
-        self.assertRegex(salida, r'agent-b\s+Explore\s+claude-haiku-5-5\s+1 llamadas\s+500 ctx medio\s+500 entrada\s+10 salida')
+                                 r'\s+1,000 arranque\s+4,000 entrada\s+710 salida')
+        self.assertRegex(salida, r'agent-b\s+Explore\s+claude-haiku-5-5\s+1 llamadas\s+500 ctx medio\s+500 arranque\s+500 entrada\s+10 salida')
         self.assertIn('Subagentes en total: 2 registros · 3 llamadas · 4,500 entrada · 720 salida', salida)
+        self.assertIn('Arranque medio: 750 tokens', salida)
         self.assertIn('Sesión + subagentes: 4 llamadas · 4,600 entrada · 730 salida', salida)
         self.assertRegex(salida, r'subagentes\s+claude-sonnet-5-5\s+2 llamadas\s+4,000 entrada\s+710 salida')
 

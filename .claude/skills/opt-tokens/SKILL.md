@@ -26,7 +26,8 @@ calidad: hallazgos del `/code-review` o de las rondas que vienen de él, reinten
    contexto y los **arrastrados** (cada resultado se reenvía en cada llamada hasta la siguiente compactación).
    Al final, `POR SUBAGENTE` (`QA-146`): una fila por subagente (descripción, tipo, modelo, llamadas, contexto medio,
    entrada, salida) y el total de sesión + subagentes; los totales de arriba son solo de la principal. Un subagente
-   con muchas llamadas y contexto medio alto es donde repartir mejor.
+   con muchas llamadas y contexto medio alto es donde repartir mejor; el «arranque» (contexto de su primera llamada,
+   `QA-154`) es lo que cuesta lanzarlo: un encargo de pocas llamadas sobre lo que la principal ya sabe no lo compensa.
    Lee solo su salida, nunca el registro entero. **Lo primero, la curva** (`Contexto medio` y `Tramos entre
    compactaciones`): contexto medio × llamadas es casi todo el gasto, y un techo muy por encima del suelo dice
    que se compacta tarde. Esa es la primera propuesta si se cumple, antes que cualquier herramienta. Si una

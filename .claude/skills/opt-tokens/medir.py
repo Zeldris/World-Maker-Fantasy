@@ -269,20 +269,23 @@ def main():
             tipos[(tipo, modelo)] += 1
             subs.append((meta.get('description') or os.path.basename(sub)[:-len('.jsonl')], tipo, modelo, resp))
     # QA-146: una fila por subagente, con su contexto medio (lo que cuesta cada llamada suya) y su salida. Los totales
-    # de arriba son solo de la sesión principal; aquí van los de los subagentes y la suma de todo.
+    # de arriba son solo de la sesión principal; aquí van los de los subagentes y la suma de todo. QA-154: «arranque»
+    # es el contexto de su primera llamada, lo fijo que paga cada subagente antes de hacer nada.
     if subs:
         print()
         print('POR SUBAGENTE (una fila por registro de <sesión>/subagents/)')
         for desc, tipo, modelo, resp in sorted(subs, key=lambda x: -sum(r[1] for r in x[3]))[: a.top]:
             ent = sum(r[1] for r in resp)
             print(f'  {desc[:34]:<34} {tipo[:15]:<15} {modelo:<20} {len(resp):>4} llamadas  {ent / len(resp):>8,.0f} ctx medio  '
-                  f'{ent:>12,} entrada  {sum(r[2] for r in resp):>9,} salida')
+                  f'{resp[0][1]:>7,} arranque  {ent:>12,} entrada  {sum(r[2] for r in resp):>9,} salida')
         if len(subs) > a.top:
             print(f'  … y {len(subs) - a.top} más (--top {len(subs)})')
         n_sub = sum(len(x[3]) for x in subs)
         ent_sub = sum(r[1] for x in subs for r in x[3])
         sal_sub = sum(r[2] for x in subs for r in x[3])
         print(f'  Subagentes en total: {len(subs)} registros · {n_sub:,} llamadas · {ent_sub:,} entrada · {sal_sub:,} salida')
+        print(f'  Arranque medio: {sum(x[3][0][1] for x in subs) / len(subs):,.0f} tokens (lo que paga cada subagente antes de hacer '
+              f'nada: un arreglo de pocas llamadas que la principal ya tiene en contexto sale más barato en ella)')
         print(f'  Sesión + subagentes: {llamadas_api + n_sub:,} llamadas · {total_in + ent_sub:,} entrada · '
               f'{usos["output_tokens"] + sal_sub:,} salida')
     print()
