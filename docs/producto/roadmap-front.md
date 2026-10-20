@@ -1397,8 +1397,9 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   rechaza archivos de `docs/borradores-opencode/`; test en `tools/qa/tests`.
 - **QA-145 · `bitacora.py` contra filas ajenas** (§6): en el pre-push, falla si el commit cambia la fila «Tarea en curso»
   de otra rama o una fila compartida sin `--compartida`.
-- **QA-146 · `medir.py` por subagente** (§7 y `/opt-tokens`): llamadas, contexto medio y salida por subagente, con
-  caso de `subagents/*.jsonl` en `tools/qa/tests/test_medir.py`.
+- ~~**QA-146 · `medir.py` por subagente**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): sección «POR SUBAGENTE» (llamadas,
+  contexto medio, entrada y salida) y totales con subagentes; la salida se contaba de menos por tomar el valor provisional
+  del streaming (ahora el máximo por respuesta). Casos en `tools/qa/tests/test_medir.py`.
 - **QA-147 · Tandas de juego en llamadas** (§7 y `/opt-tokens`): `orchestrate-dealer` paso 1, tanda de ~60 llamadas con
   traspaso por escenario guardado.
 - **QA-148 · `opt-ai`: lo que ya hay y tanda válida** (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0

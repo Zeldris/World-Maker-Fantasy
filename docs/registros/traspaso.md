@@ -130,6 +130,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-20** — ~~`QA-146`~~ (lote 1): `medir.py` de `opt-tokens` desglosa por subagente y cuenta bien la salida (máximo por respuesta, no el valor provisional del streaming).
 - **2026-10-20** — ~~`QA-137`~~, ~~`QA-138`~~, ~~`QA-139`~~ (retro del PR de `opt-ai`): la revisión corta mira el contrato y un test compara las tareas de `opt-ai` con el backend; el mapa se escribe tras fusionar la rama; commit WIP del subagente en worktree.
 - **2026-10-20** — ~~`QA-136`~~ (usuaria): cada sesión, su propia rama; regla en `CLAUDE.md` («Ramas y `main`»), porque la sesión local y la de la nube subían a la misma rama y se reescribían la fila de la bitácora.
 - **2026-10-20** — ~~`QA-131`~~, ~~`QA-132`~~, ~~`QA-133`~~, ~~`QA-134`~~, ~~`QA-135`~~ (`/opt-tokens` y `/retro` del PR de P223-P237): revisión de cada rama de subagente en el paso 3 de `orchestrate-dealer`, registros compartidos solo en la principal, campo `HERRAMIENTAS:`, `medir.py --desde` y `tools/qa/fusionar.sh`.
@@ -139,4 +140,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-19** — ~~`QA-121`~~: skill `orchestrate-dealer`: la sesión principal reparte cada trozo a un subagente de contexto limpio (encargo con criterio de hecho, vuelta en 15 líneas) para trabajar sin `/clear`; compactar a 200k; sustituye la sesión nueva de `QA-110`.
 - **2026-10-19** — ~~`QA-119`~~ y ~~`QA-120`~~ (retro, segunda vuelta): constructor común de registros de sesión para los tests y test de los ganchos de `.claude/settings.json`; antes, los 16 arreglos del segundo `/code-review`.
 - **2026-10-19** — ~~`QA-118`~~: escalera de modelos para subagentes (sube un peldaño por fallo, tope de dos), parar si una tanda no cierra nada y `modelo:` en cada tarea nueva.
-- **2026-10-19** — ~~`QA-116`~~: `recuperar.py` (buscar lo de antes de compactar y estado que el gancho vuelve a poner tras compactar) y presupuesto de 1 a 5 compactaciones por tarea en el `selector`.
