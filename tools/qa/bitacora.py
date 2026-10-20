@@ -81,13 +81,16 @@ def cerradas_sin_bitacora(base: str, sha: str) -> list[str]:
     return sorted(nuevas - ids_tachados(hecho))
 
 
-def filas_estado(texto: str) -> dict[str, str]:
-    """Filas «| **Clave** | texto |» de la bitácora: clave (con la rama en «Tarea en curso · rama») -> texto."""
-    filas = {}
-    for l in texto.splitlines():
+def filas_estado(texto: str) -> dict[str, list[str]]:
+    """Filas «| **Clave** | texto |» de la tabla de «## Estado actual» (no de otras tablas del archivo): clave (con la
+    rama en «Tarea en curso · rama») -> textos, en orden. Con una clave repetida se guardan todos, para que un
+    cambio en una de las repetidas no quede oculto por la otra."""
+    seccion = texto.split("## Estado actual", 1)[1].split("\n## ", 1)[0] if "## Estado actual" in texto else ""
+    filas: dict[str, list[str]] = {}
+    for l in seccion.splitlines():
         m = re.match(r"\|\s*\*\*(.+?)\*\*\s*\|(.*)\|\s*$", l)
         if m:
-            filas[m.group(1).replace("`", "").strip()] = m.group(2).strip()
+            filas.setdefault(m.group(1).replace("`", "").strip(), []).append(m.group(2).strip())
     return filas
 
 

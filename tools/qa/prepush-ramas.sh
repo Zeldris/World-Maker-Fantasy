@@ -7,7 +7,8 @@
 #   - comprueba la bitácora de cada commit nuevo que se sube (QA-69) y que nombra las tareas que se tachan
 #     en los roadmaps (QA-85), y su fecha si el commit la cambia (QA-115); sale con 1 si no cumple.
 #   - QA-145: ningún commit cambia la fila «Tarea en curso» de otra rama ni una fila compartida (salvo con
-#     BITACORA_COMPARTIDA=1); la rama es la remota a la que se sube, o la actual si no hay nombre.
+#     BITACORA_COMPARTIDA=1); la rama es la remota a la que se sube, o la actual si no hay nombre; si el commit
+#     está en otra rama local (subrama fusionada de vuelta), vale la fila de esa rama.
 # La bitácora se lee con BITACORA_PY (por defecto, la de este repo), para poder probarlo en otro.
 set -uo pipefail
 cambiados="$1"
@@ -40,7 +41,14 @@ while read -r _ sha_local ref_remota sha_remoto; do
   # QA-145: sin los merges (traen filas de main o de otra rama que no son de este commit).
   for commit in $(git rev-list --no-merges "$sha_local" --not --remotes 2>/dev/null); do
     git diff-tree --no-commit-id --name-only -r "$commit" | grep -qx docs/registros/traspaso.md || continue
-    python3 "$bitacora_py" --ajenas "$commit" "$rama" ${compartida[@]+"${compartida[@]}"} \
+    # Un commit que viene de otra rama local sin subir (una subrama `claude/<tema>` fusionada de vuelta, QA-136)
+    # escribe en la fila de esa rama: se comprueba contra ella, no contra la que se sube.
+    propia="$rama"
+    for otra in $(git branch --contains "$commit" --format='%(refname:short)' 2>/dev/null); do
+      case "$otra" in "$rama"|main|master|"("*) continue ;; esac
+      propia="$otra"; break
+    done
+    python3 "$bitacora_py" --ajenas "$commit" "$propia" ${compartida[@]+"${compartida[@]}"} \
       || { echo "bitácora: en el commit $(git log -1 --format='%h %s' "$commit")"; exit 1; }
   done
   for commit in $(git rev-list "$sha_local" --not --remotes 2>/dev/null); do
