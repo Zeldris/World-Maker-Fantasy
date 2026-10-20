@@ -24,7 +24,6 @@ export TRAVEL_SEGUNDOS_MAXIMOS="${TRAVEL_SEGUNDOS_MAXIMOS:-20}"
 . tools/playwright-e2e/ia-comprobaciones.sh
 if [ -n "${IA_PERFIL:-}" ]; then
   if [ -n "${IA_REGISTRO:-}" ]; then export IA_REGISTRO="$(ia_registro_absoluto "$PWD" "$IA_REGISTRO")"; fi
-  OLLAMA_LOG_OFFSET="$(ia_tamano_log logs/ollama.log)"  # el log es append: solo cuenta lo escrito desde aquí
 fi
 PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
 
@@ -84,15 +83,10 @@ if [ "$listo" != 1 ]; then
 fi
 # QA-141: con IA real, se comprueba antes de jugar lo que en la ronda del 2026-10-20 costó horas: GPU y RAG.
 if [ -n "${IA_PERFIL:-}" ]; then
-  if [ "$IA_PERFIL" = deck ]; then ia_comprobar_log_gpu logs/ollama.log "$OLLAMA_LOG_OFFSET" || exit 1; fi
-  (cd backend && npm run --silent rag-eval) && rc=0 || rc=$?
-  if [ "$rc" = 1 ]; then
-    echo "rag-eval: fallan casos obligatorios; reindexa el lore con 'npm run reindex-lore' en backend/ (con la DATABASE_URL de $BASE) y arranca de nuevo (QA-141)" >&2
-    exit 1
-  elif [ "$rc" != 0 ]; then
-    echo "rag-eval acabó con código $rc (error de uso o JSON inválido, no de recall): mira su salida (QA-141)" >&2
-    exit 1
-  fi
+  if [ "$IA_PERFIL" = deck ]; then ia_comprobar_log_gpu logs/ollama.log || exit 1; fi
+  salida="$(cd backend && npm run --silent rag-eval 2>&1)" && rc=0 || rc=$?
+  printf '%s\n' "$salida"
+  ia_veredicto_rag_eval "$rc" "$salida" || exit 1
   # rag-eval ya cargó el modelo de embeddings: ahora /api/ps lista algo (recién arrancado salía vacío).
   if [ "$IA_PERFIL" = deck ]; then
     ia_comprobar_gpu_api "$(curl -sf --max-time 5 "$OLLAMA_BASE_URL/api/ps" 2>/dev/null || true)" && rc=0 || rc=$?

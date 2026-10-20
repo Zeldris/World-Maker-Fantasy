@@ -11,22 +11,33 @@ ia_registro_absoluto() {
   esac
 }
 
-# Tamaño actual del log (0 si no existe): se guarda al empezar para mirar luego solo lo escrito en esta sesión.
-ia_tamano_log() {
-  stat -c %s "$1" 2>/dev/null || echo 0
-}
-
-# Devuelve 1 con mensaje si en lo escrito en el log DESPUÉS del offset $2 Ollama descartó la GPU integrada.
-# El log es append: lo anterior al offset no cuenta. Sin log (o truncado, más corto que el offset), no hay nada
-# que comprobar o se mira entero. Uso: ia_comprobar_log_gpu <log-ollama> <offset>
+# Devuelve 1 con mensaje si el log de Ollama ($1) dice que descartó la GPU integrada. Se mira el log ENTERO: Ollama
+# escribe «dropping integrated GPU» una sola vez, al arrancar `ollama serve` (que este script no lanza), e
+# `iniciar-tarkor.sh` trunca el log con `>` al lanzarlo, así que el archivo es la ejecución actual.
+# Sin log, avisa (sin parar): solo cuenta /api/ps. Uso: ia_comprobar_log_gpu <log-ollama>
 ia_comprobar_log_gpu() {
-  [ -f "$1" ] || return 0
-  local offset="${2:-0}"
-  [ "$(ia_tamano_log "$1")" -ge "$offset" ] || offset=0
-  if tail -c +"$((offset + 1))" "$1" | grep -q "dropping integrated GPU"; then
-    echo "Ollama va solo por CPU («dropping integrated GPU» en $1): arráncalo con 'flatpak-spawn --host bash -lic \"ollama serve\"' (QA-141)" >&2
+  if [ ! -f "$1" ]; then
+    echo "Aviso: no hay registro de Ollama ($1); solo cuenta /api/ps. Arráncalo con 'flatpak-spawn --host bash -lic \"ollama serve > logs/ollama.log 2>&1\"' para tenerlo (QA-141)" >&2
+    return 0
+  fi
+  if grep -q "dropping integrated GPU" "$1"; then
+    echo "Ollama va solo por CPU («dropping integrated GPU» en $1): arráncalo con 'flatpak-spawn --host bash -lic \"ollama serve > logs/ollama.log 2>&1\"' (QA-141)" >&2
     return 1
   fi
+}
+
+# Veredicto de `npm run rag-eval`: $1 = código de salida, $2 = su salida (stdout+stderr). Devuelve 0 si pasa.
+# rag-eval sale con 1 tanto si fallan casos obligatorios (imprime «fallan debe_pasar: N», N > 0) como por una
+# excepción no capturada (BD, Ollama caído, modelo de embeddings ausente): solo lo primero pide reindexar.
+ia_veredicto_rag_eval() {
+  [ "$1" = 0 ] && return 0
+  if [ "$1" = 1 ] && printf '%s\n' "$2" | grep -Eq 'fallan debe_pasar: [1-9]'; then
+    echo "rag-eval: fallan casos obligatorios; reindexa el lore con 'npm run reindex-lore' en backend/ y arranca de nuevo (QA-141)" >&2
+  else
+    echo "rag-eval acabó con código $1 sin resumen de casos fallidos: error del entorno (BD, Ollama o modelo de embeddings), no de recall (QA-141). Últimas líneas:" >&2
+    printf '%s\n' "$2" | tail -n 15 >&2
+  fi
+  return 1
 }
 
 # Mira el JSON de `GET <OLLAMA_BASE_URL>/api/ps` ($1). Devuelve 0 si algún modelo cargado usa VRAM (size_vram > 0),
