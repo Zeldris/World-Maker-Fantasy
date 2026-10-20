@@ -47,6 +47,10 @@ calidad: hallazgos del `/code-review` o de las rondas que vienen de él, reinten
      escribe una vez (un puntero en un runbook, un escenario, una ayuda) y no se vuelve a pagar.
    - **Contexto fijo.** `CLAUDE.md` y las skills siempre cargadas cuestan en cada llamada: lo que no se usa en
      cada tarea, a un documento con puntero o a una skill que se cargue cuando haga falta (menos de 200 líneas).
+   - **Skills propias** (usuaria, 2026-10-20). Leer la tabla de `.claude/skills/README.md` antes de proponer: un
+     gasto que una skill ya resuelve (repartir con `orchestrate-dealer`, elegir modelo con `selector`) se propone
+     como usarla o mejorarla, no como regla nueva; y lo que gastó una skill (su `SKILL.md` cargado, sus pasos) se
+     mide como cualquier otro contexto. La IA del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`.
    - **Modelo y razonamiento.** Mirar `POR MODELO` de `medir.py`: qué parte de la entrada va al modelo grande en
      la sesión principal y qué subagentes usaron el grande para algo mecánico. Planificar, diseñar y revisar, con
      el grande; escribir código con un plan ya cerrado, buscar, jugar una ronda o formatear, en un subagente con un
