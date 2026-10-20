@@ -9128,7 +9128,10 @@ describe('CR-49 — atacar a Torgash en su campamento trae a los suyos', () => {
 describe('P233 — morir en combate sin pasar por Convaleciente en ese combate cuenta como perderlo', () => {
   const saves: string[] = [];
 
-  async function partidaConvaleciente(nombre: string): Promise<{ saveId: string; npcId: string }> {
+  async function partidaConvaleciente(
+    nombre: string,
+    opciones: { combateDesde?: Date; sinAccionFuera?: boolean } = {},
+  ): Promise<{ saveId: string; npcId: string }> {
     const userId = await getDefaultUserId();
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'orco-enfurecido-hondonada' } });
@@ -9138,6 +9141,8 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
         userId, worldId: world.id, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
         characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
         condicionFisica: 'CONVALECIENTE', dificultad: 'NOVATO', pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+        // El combate empezó hace media hora (los sucesos `antes` son de hace una).
+        combateDesde: opciones.combateDesde ?? new Date(Date.now() - 1_800_000),
         // El orco ya ha lanzado su golpe: si conecta, mata (un escalón por debajo de CONVALECIENTE).
         pendingNpcAttack: {
           npcId: npc.id, attribute: 'fuerza', effects: ['ATAQUE'], rol: 'ataque', abilityName: 'Ataque base',
@@ -9147,8 +9152,8 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
     });
     saves.push(save.id);
     await prisma.worldState.create({ data: { saveId: save.id } });
-    // El combate empieza tras la última acción de la jugadora fuera de combate.
-    await prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text: 'Voy a buscar al orco.', isPlayerAction: true, combate: false, timeLabel: 'x', fictionalMinutes: 420 } });
+    // La última acción de la jugadora fuera de combate (antes P233 marcaba el inicio del combate).
+    if (!opciones.sinAccionFuera) await prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text: 'Voy a buscar al orco.', isPlayerAction: true, combate: false, timeLabel: 'x', fictionalMinutes: 420 } });
     return { saveId: save.id, npcId: npc.id };
   }
 
@@ -9158,7 +9163,7 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
         saveId, tipo, familia: 'JUGADOR', fictionalMinutes: minutos, importancia: 3, origen: 'JUGADOR', datos: {}, texto: tipo,
         // Ya reaccionado: así el título y la rivalidad solo pueden salir de la muerte.
         semilla: 'p233', reaccionesPendientes: false,
-        // `antes`: de un combate anterior (antes de la última acción fuera de combate).
+        // `antes`: de un combate anterior (antes de `combateDesde`).
         ...(antes ? { createdAt: new Date(Date.now() - 3_600_000) } : {}),
         actores: { create: actores },
       },
@@ -9216,5 +9221,41 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(1);
     const muerte = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'MUERTE_JUGADOR' }, include: { actores: true } });
     expect(muerte.actores).toEqual(expect.arrayContaining([expect.objectContaining({ entidadTipo: 'NPC', entidadId: npcId, papel: 'AUTOR' })]));
+  }, 30_000);
+  const perdidoContra = (saveId: string, npcId: string) => [
+    { entidadTipo: 'PERSONAJE', entidadId: saveId, papel: 'VICTIMA' },
+    { entidadTipo: 'NPC', entidadId: npcId, papel: 'AUTOR' },
+  ];
+
+  it('una acción bloqueada o soltar un objeto a mitad del combate (combate: false) no repite COMBATE_PERDIDO', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 suelta');
+    await suceso(saveId, 'COMBATE_PERDIDO', 425, perdidoContra(saveId, npcId));
+    // Tras caer convaleciente, una acción que no pasa por el combate: no es un combate nuevo.
+    await prisma.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: 'Suelto la espada.', isPlayerAction: true, combate: false, timeLabel: 'x', fictionalMinutes: 426 } });
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(1);
+  }, 30_000);
+
+  it('una emboscada justo tras otro combate perdido registra la derrota del segundo', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 emboscada');
+    // La derrota del primer combate, sin acción fuera de combate entre los dos…
+    await suceso(saveId, 'COMBATE_PERDIDO', 425, perdidoContra(saveId, npcId));
+    // …y la emboscada empieza el segundo justo después.
+    await prisma.save.update({ where: { id: saveId }, data: { combateDesde: new Date() } });
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(2);
+  }, 30_000);
+
+  it('en una partida sin acciones fuera de combate, una derrota de otro combate no cuenta para este', async () => {
+    const { saveId, npcId } = await partidaConvaleciente('Gorhorn P233 sin acciones', { sinAccionFuera: true });
+    await suceso(saveId, 'COMBATE_PERDIDO', 300, perdidoContra(saveId, npcId), true);
+
+    await morir(saveId);
+
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(2);
   }, 30_000);
 });

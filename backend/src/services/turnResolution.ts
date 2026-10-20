@@ -101,6 +101,7 @@ import { Prisma } from '@prisma/client';
 import type { CondicionFisica, Dificultad, AbilityEffect, AbilityRol, Clase, Especializacion } from '@prisma/client';
 import { ambitoFacciones, ambitoPoblacion, asegurarMundoDePartida, npcVivoEnPartida } from './mundoPartida.js';
 import { avanzarMundoHasta } from './avanceDiario.js';
+import { guardarSlugsDeCombate } from './combateDesde.js';
 
 const REINO_XP = { territory: 150, buildingActive: 100, firstSubject: 100, subject: 25, consolidado: 300 } as const;
 /// Población anónima con la que arranca todo Territory nuevo (2026-08-23, Grupo 3) — un puñado de
@@ -2148,16 +2149,14 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
       ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
     };
   });
-  if (!terminado) {
-    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: npcs.map((n) => n.slug) } });
-  } else {
-    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
-  }
+  await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
   return { npcs };
 }
 
 async function resolveCombatSlugsAndPersist(params: {
   saveId: string;
+  /// P233: instante en que empezó este turno (`Save.combateDesde` si el combate empieza ahora).
+  inicioTurno: Date;
   action: string;
   /// QA-27 P82: gracia tras reaparecer (`enGraciaTrasRenacer`): un agresivo en escena no fuerza combate.
   enGraciaRenacer: boolean;
@@ -2489,7 +2488,8 @@ async function resolveCombatSlugsAndPersist(params: {
   // aquí pero se perdía sin dejar rastro, porque `Save` no lo guardaba en ningún sitio. Se
   // sobrescribe cada turno (vacío si no hay combate ESTE turno) para que `GET /saves/:id` pueda
   // reconstruir el mismo aviso tras cualquier resincronización, no solo en la respuesta directa.
-  await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: combatSlugsToPersist } });
+  // P233: si el combate empieza en este turno, empieza cuando empezó el turno (antes de su COMBATE_PERDIDO).
+  await guardarSlugsDeCombate(prisma, saveId, combatSlugsToPersist, { ahora: params.inicioTurno });
 
   const combateIniciado = combatSlugs.length
     ? {
@@ -2582,22 +2582,21 @@ const EAT_DRINK_FLAVOR = ['El estómago se calma, al menos por ahora.', 'Las fue
 /// y muerte/descanso (docs/14), LogEntry. Compartido entre el turno síncrono (bandas
 /// instantánea/corta, `POST /turn/narrate`) y la resolución diferida de un `CharacterTransit`
 /// (bandas extendida/larga, `worldTick`) — misma lógica, dos disparadores.
-/// P233: ¿ya hay un COMBATE_PERDIDO de este combate? El combate empieza tras la última acción de la
-/// jugadora fuera de combate (`combate: false`, turn.ts); lo que se perdió antes es de otro combate.
-async function yaPerdioEsteCombate(tx: Prisma.TransactionClient, saveId: string): Promise<boolean> {
-  const ultimaFuera = await tx.logEntry.findFirst({
-    where: { saveId, channel: 'CHARACTER', isPlayerAction: true, combate: false },
-    orderBy: { createdAt: 'desc' },
-    select: { createdAt: true },
-  });
-  const perdido = await tx.suceso.findFirst({
-    where: { saveId, tipo: 'COMBATE_PERDIDO', ...(ultimaFuera ? { createdAt: { gt: ultimaFuera.createdAt } } : {}) },
-    select: { id: true },
-  });
+/// P233: ¿ya hay un COMBATE_PERDIDO de este combate? El combate empieza en `Save.combateDesde`
+/// (services/combateDesde.ts) o al crearse su `CombatEncounter`, lo que sea antes; sin ninguno de los
+/// dos, este turno lo empieza y no hay derrota previa. Lo que se perdió antes es de otro combate.
+async function yaPerdioEsteCombate(tx: Prisma.TransactionClient, saveId: string, encuentroDesde: Date | null): Promise<boolean> {
+  const save = await tx.save.findUnique({ where: { id: saveId }, select: { combateDesde: true } });
+  const fechas = [save?.combateDesde, encuentroDesde].filter((d): d is Date => !!d);
+  if (fechas.length === 0) return false;
+  const desde = new Date(Math.min(...fechas.map((d) => d.getTime())));
+  const perdido = await tx.suceso.findFirst({ where: { saveId, tipo: 'COMBATE_PERDIDO', createdAt: { gte: desde } }, select: { id: true } });
   return !!perdido;
 }
 
 export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Promise<NarrateAndPersistResult> {
+  // P233: frontera del combate si empieza en este turno (ver `yaPerdioEsteCombate`).
+  const inicioTurno = new Date();
   const {
     saveId,
     worldId,
@@ -6636,7 +6635,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const pierdeEsteCombate =
       !!enCombate &&
       ((proposedCondicion === 'CONVALECIENTE' && params.condicionFisica !== 'CONVALECIENTE') ||
-        (proposedCondicion === 'MUERTO' && !(await yaPerdioEsteCombate(tx, saveId))));
+        (proposedCondicion === 'MUERTO' && !(await yaPerdioEsteCombate(tx, saveId, activeCombatEncounter?.createdAt ?? null))));
     let combatePerdidoId: string | null = null;
     if (pierdeEsteCombate) {
       combatePerdidoId = await registrarSuceso(tx, {
@@ -6978,6 +6977,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado)
     : (await resolveCombatSlugsAndPersist({
         saveId,
+        inicioTurno,
         action,
         enGraciaRenacer: await enGraciaTrasRenacer(prisma, saveId, fictionalMinutesActuales),
         enCombate,
