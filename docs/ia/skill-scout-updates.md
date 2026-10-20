@@ -14,6 +14,7 @@ de mala calidad, y hacía falta una oferta de modelo con fundamento, no a ojo.
 | Lanzamiento | **Solo bajo demanda** (`disable-model-invocation: true`): gasta muchos tokens, decide la usuaria cuándo. Antes de buscar, estimación de coste y confirmación. |
 | Modelos | **Local siempre que se pueda**, con la opción de usar Claude. La usuaria elige candidatos y juez entre los disponibles. |
 | Hardware | En Tarkor, la **Steam Deck es el mínimo**; modelos mayores para equipos mayores son una fase final del roadmap. Va como restricción en `arquitectura.md`, no en la skill. |
+| Coste | **Primero lo gratuito o de bajo coste.** Una propuesta de pago lleva el coste desglosado (precio publicado, uso estimado y su cálculo, total al mes) y qué calidad compra frente a la mejor gratuita, para juzgar calidad/precio. |
 | Autonomía | Solo propone (como `opt-ai`). Lo que la usuaria apruebe se convierte en tareas con hito. |
 
 ## Flujo de una pasada
