@@ -79,7 +79,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
-   `IA_REGISTRO=backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
+   `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    (`IA_PERFIL`: `deck`, `cpu`, `gpu8` o `gpu12`, según la máquina). Al acabar la tanda, `/opt-ai` mide los tiempos,
    contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
