@@ -29,23 +29,42 @@ class IaComprobaciones(unittest.TestCase):
     def test_ruta_absoluta_no_cambia(self):
         self.assertEqual(bash('ia_registro_absoluto /repo /tmp/r.jsonl').stdout.strip(), '/tmp/r.jsonl')
 
-    def test_gpu_descartada_en_lo_nuevo_del_log_falla(self):
-        log = self.log_falso('viejo\nlevel=INFO msg="dropping integrated GPU"\n')
-        r = bash(f'ia_comprobar_log_gpu {log} 0')
+    def test_gpu_descartada_en_el_log_falla(self):
+        log = self.log_falso('viejo\nlevel=INFO msg="dropping integrated GPU"\n' + 'x' * 500 + '\n')
+        r = bash(f'ia_comprobar_log_gpu {log}')
         self.assertEqual(r.returncode, 1)
         self.assertIn('CPU', r.stderr)
+        self.assertIn('logs/ollama.log', r.stderr)  # el arranque recomendado escribe el log
 
-    def test_gpu_descartada_antes_del_offset_no_cuenta(self):
-        viejo = 'level=INFO msg="dropping integrated GPU"\n'
-        log = self.log_falso(viejo + 'level=INFO msg="inference compute" library=vulkan\n')
-        self.assertEqual(bash(f'ia_comprobar_log_gpu {log} {len(viejo)}').returncode, 0)
+    def test_log_sin_descarte_pasa_en_silencio(self):
+        r = bash(f'ia_comprobar_log_gpu {self.log_falso("inference compute library=vulkan")}')
+        self.assertEqual((r.returncode, r.stderr), (0, ''))
 
-    def test_log_inexistente_se_salta(self):
-        self.assertEqual(bash('ia_comprobar_log_gpu /no/existe.log 0').returncode, 0)
+    def test_log_inexistente_avisa_sin_parar(self):
+        r = bash('ia_comprobar_log_gpu /no/existe.log')
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('Aviso', r.stderr)
+        self.assertIn('/api/ps', r.stderr)
+        self.assertIn('logs/ollama.log', r.stderr)
 
-    def test_tamano_log(self):
-        self.assertEqual(bash(f'ia_tamano_log {self.log_falso("12345")}').stdout.strip(), '5')
-        self.assertEqual(bash('ia_tamano_log /no/existe.log').stdout.strip(), '0')
+    def test_rag_eval_ok(self):
+        self.assertEqual(bash("ia_veredicto_rag_eval 0 'fallan debe_pasar: 0'").returncode, 0)
+
+    def test_rag_eval_casos_fallidos_pide_reindexar(self):
+        r = bash("ia_veredicto_rag_eval 1 'recall@5: 0.5   fallan debe_pasar: 2'")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('reindexa', r.stderr)
+
+    def test_rag_eval_excepcion_ensena_la_salida(self):
+        r = bash("ia_veredicto_rag_eval 1 $'Error: connect ECONNREFUSED 127.0.0.1:11434\n    at fetch'")
+        self.assertEqual(r.returncode, 1)
+        self.assertNotIn('reindexa', r.stderr)
+        self.assertIn('ECONNREFUSED', r.stderr)
+
+    def test_rag_eval_otro_codigo_ensena_la_salida(self):
+        r = bash("ia_veredicto_rag_eval 2 'uso: --k'")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('uso: --k', r.stderr)
 
     def test_api_ps_con_vram_pasa(self):
         self.assertEqual(bash("""ia_comprobar_gpu_api '{"models":[{"name":"a","size_vram":123}]}'""").returncode, 0)
