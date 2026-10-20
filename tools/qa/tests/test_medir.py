@@ -81,9 +81,19 @@ class Medir(unittest.TestCase):
         salida = self.medir(partes, extra=('--desde', hace(2)))
         self.assertIn('Llamadas a la API: 3  ·  compactaciones: 1', salida)
         self.assertIn('(sin el primero, que empezó antes del periodo)', salida)
-        # Con un sha se resuelve a la fecha del commit (el de HEAD, anterior a todo lo de hace 1 h o más reciente).
-        sha = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, cwd=QA).stdout.strip()
-        self.assertIn('Llamadas a la API:', self.medir(partes, extra=('--desde', sha)))
+        # Con un sha: la fecha del commit (con su offset, +02:00 = 10:00 UTC) recorta; una ISO sin zona es UTC.
+        repo = carpeta()
+        entorno = {**os.environ, 'GIT_COMMITTER_DATE': '2026-01-01T12:00:00+02:00', 'GIT_AUTHOR_DATE': '2026-01-01T12:00:00+02:00',
+                   'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_SYSTEM': os.devnull}
+        for orden_git in (['init', '-q'], ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'x']):
+            subprocess.run(['git', *orden_git], cwd=repo, env=entorno, check=True)
+        sha = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=repo, capture_output=True, text=True).stdout.strip()
+        ruta = registro(os.path.join(repo, 's.jsonl'), respuesta('a', 10, timestamp='2026-01-01T09:00:00Z'),
+                        respuesta('b', 20, timestamp='2026-01-01T11:00:00Z'), respuesta('c', 30, timestamp='2026-01-01T12:00:00Z'))
+        for valor in (sha, sha[:8], '2026-01-01T10:00:00', '2026-01-01T12:00:00+02:00'):
+            r = subprocess.run(['python3', MEDIR, '--sesion', ruta, '--desde', valor], capture_output=True, text=True, cwd=repo)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn('Llamadas a la API: 2  ·', r.stdout, valor)
         malo = subprocess.run(['python3', MEDIR, '--desde', 'no-existe-xyz'], capture_output=True, text=True)
         self.assertNotEqual(malo.returncode, 0)
 

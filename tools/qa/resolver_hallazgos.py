@@ -26,5 +26,9 @@ def resolver(m):
 
 if __name__ == '__main__':
     ruta = sys.argv[1]
-    texto = open(ruta, encoding='utf-8').read()
-    open(ruta, 'w', encoding='utf-8').write(PAT.sub(resolver, texto))
+    try:
+        nuevo = PAT.sub(resolver, open(ruta, encoding='utf-8').read())
+    except AssertionError as e:
+        print(f'resolver_hallazgos: {e}; el registro no se toca', file=sys.stderr)
+        sys.exit(1)
+    open(ruta, 'w', encoding='utf-8').write(nuevo)

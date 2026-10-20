@@ -1,32 +1,41 @@
 #!/bin/bash
 # QA-135: fusiona una rama de subagente en la actual y comprueba el resultado en una salida corta.
-# Uso: tools/qa/fusionar.sh <rama> "<mensaje del merge>"
+# Uso: tools/qa/fusionar.sh <rama> "<mensaje del merge>" [--revisada]
 #  - `git merge --no-ff`; si el único conflicto es docs/registros/pruebas-0.3-hallazgos.md, lo resuelve
 #    quedándose, hallazgo a hallazgo, con el lado cuyo estado no es «pendiente» (resolver_hallazgos.py).
 #    Con otro conflicto, para y lo lista (el merge queda abierto).
 #  - pasa los tests del paquete tocado (vitest de los archivos cambiados y los que los importan; frontend, y `tsc -b`).
-#  - avisa, sin bloquear, si el último commit de la rama no lleva la marca de revisión (`revisado.sh`, QA-50).
+#    Con tests en rojo el merge YA está hecho: dice cómo deshacerlo y sale con 1.
+#  - `--revisada` = la principal ya hizo revisar el diff (paso 3 de orchestrate-dealer); sin él, lo recuerda.
 set -uo pipefail
-[ $# -eq 2 ] || { echo "Uso: $0 <rama> \"<mensaje>\"" >&2; exit 2; }
-rama="$1"; mensaje="$2"
+[ $# -ge 2 ] && [ $# -le 3 ] && { [ $# -eq 2 ] || [ "$3" = "--revisada" ]; } || { echo "Uso: $0 <rama> \"<mensaje>\" [--revisada]" >&2; exit 2; }
+rama="$1"; mensaje="$2"; revisada="${3:-}"
 raiz="$(git rev-parse --show-toplevel)"; cd "$raiz"
 HALLAZGOS="docs/registros/pruebas-0.3-hallazgos.md"
+logs="$(mktemp -d)"
 
-sha_rama="$(git rev-parse "$rama")" || exit 2
-if ! git merge --no-ff "$rama" -m "$mensaje" >/tmp/fusionar-merge.log 2>&1; then
+git rev-parse --verify --quiet "$rama^{commit}" >/dev/null || { echo "No existe la rama $rama" >&2; exit 2; }
+antes="$(git rev-parse HEAD)"
+if ! git merge --no-ff "$rama" -m "$mensaje" >"$logs/merge.log" 2>&1; then
   conflictos="$(git diff --name-only --diff-filter=U)"
   if [ "$conflictos" = "$HALLAZGOS" ]; then
     if python3 "$raiz/tools/qa/resolver_hallazgos.py" "$HALLAZGOS" && ! grep -q '^<<<<<<<' "$HALLAZGOS"; then
-      git add "$HALLAZGOS" && git commit --no-edit -q || { echo "FALLO: no pude cerrar el merge"; exit 1; }
+      git add "$HALLAZGOS" && git commit --no-edit -q || { echo "FALLO: no pude cerrar el merge (sigue abierto)"; exit 1; }
       echo "Conflicto en $HALLAZGOS resuelto (se queda el estado no pendiente)."
     else
-      echo "FALLO: no pude resolver $HALLAZGOS; el merge queda abierto."; exit 1
+      echo "FALLO: no pude resolver $HALLAZGOS (registro intacto, con marcas de conflicto); el merge queda abierto: resuélvelo o git merge --abort."
+      exit 1
     fi
   else
     echo "CONFLICTO (merge abierto: resuélvelo o git merge --abort):"
-    echo "${conflictos:-$(tail -5 /tmp/fusionar-merge.log)}" | sed 's/^/  /'
+    echo "${conflictos:-$(tail -5 "$logs/merge.log")}" | sed 's/^/  /'
     exit 1
   fi
+fi
+
+if [ "$(git rev-parse HEAD)" = "$antes" ]; then
+  echo "Nada que fusionar: $rama ya está en la rama actual."
+  exit 0
 fi
 
 echo "Commit $(git rev-parse --short HEAD) · $(git log -1 --format=%s)"
@@ -35,7 +44,7 @@ for paquete in backend frontend; do
   n="$(grep -c "^$paquete/" <<<"$cambiados")"
   [ "$n" -gt 0 ] && echo "  $paquete: $n archivos"
 done
-otros="$(grep -vcE '^(backend|frontend)/' <<<"$cambiados")"
+otros="$(grep -vE '^(backend|frontend)/' <<<"$cambiados" | grep -c .)"
 [ "$otros" -gt 0 ] && echo "  resto: $otros archivos"
 
 fallo=0
@@ -48,20 +57,19 @@ for paquete in backend frontend; do
   resultado="OK"
   if [ ${#archivos[@]} -gt 0 ]; then
     proyecto=(); [ "$paquete" = backend ] && proyecto=(--project unit)
-    (cd "$paquete" && npx vitest related --run "${proyecto[@]}" --passWithNoTests "${archivos[@]}" >"/tmp/fusionar-$paquete.log" 2>&1) \
-      || resultado="FAIL (log en /tmp/fusionar-$paquete.log)"
+    (cd "$paquete" && npx vitest related --run ${proyecto[@]+"${proyecto[@]}"} --passWithNoTests "${archivos[@]}" >"$logs/$paquete.log" 2>&1) \
+      || resultado="FAIL (log en $logs/$paquete.log)"
   fi
   if [ "$paquete" = frontend ] && [ "$resultado" = OK ]; then
-    (cd frontend && npx tsc -b >/tmp/fusionar-tsc.log 2>&1) || resultado="FAIL tsc (log en /tmp/fusionar-tsc.log)"
+    (cd frontend && npx tsc -b >"$logs/tsc.log" 2>&1) || resultado="FAIL tsc (log en $logs/tsc.log)"
   fi
   echo "  tests $paquete: $resultado"
   [ "$resultado" = OK ] || fallo=1
 done
 
-# Marca de revisión (QA-50): `.claude/revision-main.sha` guarda el HEAD revisado; si no es el último commit de la
-# rama fusionada, se avisa (sin bloquear).
-marca=""; [ -f ".claude/revision-main.sha" ] && marca="$(cat .claude/revision-main.sha)"
-if [ "$marca" != "$sha_rama" ]; then
-  echo "AVISO: el último commit de $rama (${sha_rama:0:8}) no lleva marca de revisión; recuerda el paso 3 de orchestrate-dealer (/code-review del diff)."
+[ "$revisada" = "--revisada" ] || echo "Sin --revisada: confirma el /code-review del diff (paso 3 de orchestrate-dealer)."
+if [ "$fallo" -ne 0 ]; then
+  echo "TESTS EN ROJO: el merge YA está hecho en la rama actual. Para deshacerlo: git reset --hard HEAD^1"
+  exit 1
 fi
-exit $fallo
+exit 0

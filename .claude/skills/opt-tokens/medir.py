@@ -13,7 +13,7 @@ Lee el registro de la sesión (`~/.claude/projects/<proyecto>/<sesión>.jsonl`) 
 Uso:
   python3 medir.py                       la sesión más reciente del proyecto actual, últimas 24 h
   python3 medir.py --horas 6             otro periodo (0 = toda la sesión)
-  python3 medir.py --desde <ISO|sha>     solo desde ese momento (fecha ISO-8601 o commit: su fecha); sustituye a --horas
+  python3 medir.py --desde <ISO|sha>     solo desde ese momento (commit: su fecha; fecha ISO-8601, sin zona = UTC); sustituye a --horas
   python3 medir.py --sesion <ruta.jsonl> otra sesión
   python3 medir.py --top 20              cuántas filas en cada lista
 
@@ -36,15 +36,17 @@ def raiz_del_proyecto():
 
 
 def momento_desde(valor):
-    """QA-134: `--desde` acepta una fecha ISO-8601 o un sha de commit (se usa la fecha del commit)."""
-    try:
-        f = dt.datetime.fromisoformat(valor.replace('Z', '+00:00'))
-    except ValueError:
-        r = subprocess.run(['git', 'show', '-s', '--format=%cI', valor], capture_output=True, text=True)
-        if r.returncode != 0 or not r.stdout.strip():
-            sys.exit(f'--desde: «{valor}» no es una fecha ISO-8601 ni un commit')
-        f = dt.datetime.fromisoformat(r.stdout.strip())
-    return f if f.tzinfo else f.replace(tzinfo=dt.timezone.utc)
+    """QA-134: `--desde` acepta un commit (su fecha) o una fecha ISO-8601 (sin zona, UTC). Siempre en UTC."""
+    r = subprocess.run(['git', 'rev-parse', '--verify', '--quiet', f'{valor}^{{commit}}'], capture_output=True, text=True)
+    if r.returncode == 0:
+        f = dt.datetime.fromisoformat(subprocess.run(['git', 'show', '-s', '--format=%cI', r.stdout.strip()],
+                                                     capture_output=True, text=True).stdout.strip())
+    else:
+        try:
+            f = dt.datetime.fromisoformat(valor.replace('Z', '+00:00'))
+        except ValueError:
+            sys.exit(f'--desde: «{valor}» no es un commit ni una fecha ISO-8601')
+    return (f if f.tzinfo else f.replace(tzinfo=dt.timezone.utc)).astimezone(dt.timezone.utc)
 
 
 def ruta_por_defecto():
