@@ -115,3 +115,16 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 - `arrancar-juego.sh` no recarga el backend al cambiar el código (`tsx` sin `watch`): tras un arreglo, `--parar` y
   arrancar de nuevo antes de jugarlo (`QA-97`).
 - Tras reiniciar el backend, el frontend conserva datos viejos hasta recargar la página.
+
+## Fallos de las herramientas
+
+Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, con su remedio:
+
+- `turno.js` falla con un cajón abierto (el clic queda interceptado): cerrar el cajón antes.
+- El driver de Playwright muere cada vez que `escenario.sh` reinicia el juego: relanzarlo.
+- Lanzar el driver con `setsid node … < /dev/null &`: con `nohup … &` no responde y `orden.sh` devuelve vacío. Antes,
+  comprobar que no queden drivers viejos (el `driver.log` puede mostrar el error de otro).
+- No usar `pkill -f driver.mjs`: casa también con la shell que lo lanza y la mata (código 144). Matar por PID.
+- Con un encuentro hostil que corta el paso, «Moverte por la zona» queda deshabilitado y `puntos.js` y `mover.js` fallan
+  por timeout: resolver antes el encuentro.
+- El Ollama simulado nunca devuelve `combateIniciado`: lo que pide un combate abierto desde texto libre no se prueba con él.

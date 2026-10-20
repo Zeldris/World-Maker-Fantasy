@@ -34,6 +34,7 @@ import { EquipSlot } from '@prisma/client';
 import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } from '../../services/cronista/etiquetas.js';
 import { valoresIniciales } from '../../services/cronista/aprobacion.js';
 import { preguntarCompanero } from '../../services/cronista/companeroTierra.js';
+import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
@@ -224,7 +225,7 @@ export async function companerosRoutes(app: FastifyInstance) {
       });
       if (!grupoContinua) {
         const pendientes = ((save.pendingCombatNpcSlugs as string[] | null) ?? []).filter((slug) => slug !== npc.slug);
-        await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: pendientes } });
+        await guardarSlugsDeCombate(prisma, save.id, pendientes);
       }
     }
 

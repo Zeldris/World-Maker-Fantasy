@@ -1,6 +1,6 @@
 import { useRef, type Dispatch, type RefObject, type SetStateAction } from 'react'
 import type { ChatComposerHandle } from '../components/ChatComposer'
-import { requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
+import { BackendHttpError, requestTurnClassify, requestTurnNarrate, getSave, type ClassifyResponse, type ConfirmarCazaResultado, type SaveDetail } from '../lib/api'
 import { isBusyError, isEndedGameError, isPendingDeathError, isTurnLockedError, applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import { playerActionEntry } from '../lib/simulateAI'
 import { duracionTirada, temporizadorTirada } from '../lib/duracionTirada'
@@ -530,6 +530,22 @@ export function useTurnFlow(params: UseTurnFlowParams) {
             id: `turn-locked-${Date.now()}`,
             channel: 'character',
             text: 'Todavía se está resolviendo tu turno anterior — espera un momento e inténtalo de nuevo.',
+            timeLabel: fictionalDate,
+            createdAt: new Date().toISOString(),
+          },
+        ])
+      } else if (err instanceof BackendHttpError && ![502, 503, 504].includes(err.httpStatus)) {
+        // P229: el backend contestó él mismo con un error (500, 4xx) en /turn/classify: el turno no se
+        // resolvió ni se va a resolver, no es un corte de red. Se muestra el error y se desbloquea la
+        // entrada (el `finally`), sin sondeo. 502/503/504 (proxy) sí van al sondeo: el backend pudo
+        // haber guardado ya la acción.
+        console.error('classify falló:', err.message)
+        setCharacterLog((prev) => [
+          ...prev.slice(0, -1),
+          {
+            id: `turn-error-${Date.now()}`,
+            channel: 'character',
+            text: 'El narrador no pudo procesar la acción. Inténtalo de nuevo.',
             timeLabel: fictionalDate,
             createdAt: new Date().toISOString(),
           },

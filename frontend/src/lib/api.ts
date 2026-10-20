@@ -58,6 +58,17 @@ import type {
 // localhost:3001 sigue siendo el valor por defecto para desarrollo local.
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
+/// P229: el backend contestó con un error HTTP (5xx…): no es un corte de red, así que no hay nada
+/// resolviéndose en segundo plano que sondear (useTurnFlow no cae al sondeo de reconexión).
+export class BackendHttpError extends Error {
+  readonly httpStatus: number
+  constructor(httpStatus: number) {
+    super(`El backend respondió ${httpStatus}`)
+    this.name = 'BackendHttpError'
+    this.httpStatus = httpStatus
+  }
+}
+
 /// Helper compartido (auditoría 2026-07-22): antes cada función repetía a mano el mismo
 /// `if (!response.ok) throw new Error(...)`, en dos variantes — una simple ("El backend
 /// respondió 500") y otra que intentaba leer `body.error` primero — repetido en ~18 sitios. Esto
@@ -193,7 +204,7 @@ export async function requestTurnClassify(params: {
     throw err
   }
   if (!response.ok) {
-    throw new Error(`El backend respondió ${response.status}`)
+    throw new BackendHttpError(response.status)
   }
 
   return response.json()

@@ -24,6 +24,7 @@ import { detectNpcsInScene } from '../../services/npcScene.js';
 import { abrirCombateDePersonas, grupoDePersona } from '../../services/combatePersonas.js';
 import { iniciarCaza, accionEnDiarioDeCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
 import type { AttributeBlock } from '../../services/dice.js';
+import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
 /// al final de un turno normal (`dynamicModeOffer`, turnResolution.ts), nunca lo interrumpe. Estas
@@ -211,10 +212,7 @@ async function abrirCombateForzadoDesdeInteractuar(
   // jugando en vivo con Playwright: antes solo se escribía `pendingCombatNpcSlugs` y la oferta se
   // quedaba en BD — tras recargar reaparecía la tarjeta aunque el combate ya hubiera empezado o
   // terminado, y mientras siguiera pendiente ningún encuentro nuevo podía ofrecerse en la zona).
-  await prisma.save.update({
-    where: { id: save.id },
-    data: { pendingCombatNpcSlugs: [targetSlug], pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull },
-  });
+  await guardarSlugsDeCombate(prisma, save.id, [targetSlug], { extra: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
   // B9 (pruebas 2026-09-28): el encuentro decía "Alguien se abalanza..." pero la ficha de combate
   // mostraba al instante el nombre real y toda su historia. Al quedar cara a cara en combate se le
   // identifica: queda descubierto, así mapa, Enciclopedia y ficha cuentan lo mismo desde aquí.

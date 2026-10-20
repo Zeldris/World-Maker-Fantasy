@@ -10,7 +10,7 @@ import { edadEnAnios, esAdulto, probMuerteDeViejoPorDia } from './edades.js';
 import { puebloDeFila } from './llegadas.js';
 import { registrarSuceso } from './sucesos.js';
 import { stripRegionArticle } from '../population.js';
-import { recalcularPoblacion, regionDelReino } from './subditos.js';
+import { avisarEnReino, recalcularPoblacion, regionDelReino, soltarPareja } from './subditos.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -51,15 +51,19 @@ export function victimaDelHambre<T extends SubditoVital>(subditos: T[], ahora: n
   return conEdad.length ? conEdad.reduce((a, b) => (a.nacidoEn! < b.nacidoEn! ? a : b)) : subditos[0] ?? null;
 }
 
-const MOTIVO = { vejez: ['Murió de viejo.', 'de viejo'], hambre: ['Murió de hambre.', 'de hambre'], sed: ['Murió de sed.', 'de sed'], asalto: ['Murió defendiendo el Reino.', 'defendiendo el Reino'] } as const;
+const MOTIVO = { vejez: ['Murió de viejo.', 'de viejo'], hambre: ['Murió de hambre.', 'de hambre'], sed: ['Murió de sed.', 'de sed'], asalto: ['Murió defendiendo el Reino.', 'defendiendo el Reino'],
+  caza: ['Murió en la caza.', 'en la caza'], combate: ['Murió en combate.', 'en combate'], guerra: ['Murió en la guerra.', 'en la guerra'],
+} as const;
 
 export async function morir(tx: Tx, saveId: string, s: Pick<SubditoVital, 'id' | 'name'>, causa: keyof typeof MOTIVO, ahora: number) {
-  await tx.subject.update({ where: { id: s.id }, data: { estado: 'MUERTO', hastaMinutes: ahora, notes: MOTIVO[causa][0] } });
+  await tx.subject.update({ where: { id: s.id }, data: { estado: 'MUERTO', hastaMinutes: ahora, parejaId: null, notes: MOTIVO[causa][0] } });
   await registrarSuceso(tx, {
     saveId, tipo: 'MUERTE_NPC', fictionalMinutes: ahora, origen: 'MUNDO',
     actores: [{ entidadTipo: 'SUBDITO', entidadId: s.id, papel: 'VICTIMA' }],
     datos: { npc: s.name, causa: MOTIVO[causa][1] },
   });
+  const viudo = await soltarPareja(tx, saveId, s.id);
+  await avisarEnReino(tx, saveId, `${s.name} ha muerto ${MOTIVO[causa][1]}.${viudo ? ` ${viudo} se queda sin pareja.` : ''}`, ahora);
 }
 
 /// Vuelve a la población de su pueblo (la de la que salió o, si nació en el Reino, la de su pueblo).
@@ -111,11 +115,18 @@ export async function revisarSalidas(tx: Tx, saveId: string, ahora: number, rand
       if (quien) {
         // Se lleva a sus crías.
         const suyos = vivos.filter((s) => s.id === quien.id || ((s.madreId === quien.id || s.padreId === quien.id) && s.nacidoEn != null && !esAdulto(s.pueblo, edad(s, ahora)!)));
+        const viudos: string[] = [];
         for (const s of suyos) {
           await tx.subject.update({ where: { id: s.id }, data: { estado: 'SE_FUE', hastaMinutes: ahora, parejaId: null } });
           await volverASuPueblo(tx, saveId, s);
+          const viudo = await soltarPareja(tx, saveId, s.id);
+          if (viudo) viudos.push(viudo);
           idos.push(s.id);
         }
+        // Un solo aviso para la familia que se va.
+        const hijos = suyos.filter((s) => s.id !== quien.id).map((s) => s.name);
+        const con = hijos.length ? `, con ${new Intl.ListFormat('es', { style: 'long', type: 'conjunction' }).format(hijos)}` : '';
+        await avisarEnReino(tx, saveId, `${quien.name} se marcha del Reino, descontento${con}.${viudos.map((v) => ` ${v} se queda sin pareja.`).join('')}`, ahora);
       }
     }
   }

@@ -11,6 +11,7 @@ import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEnt
 import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
+import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -166,7 +167,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (stillPending) {
       return reply.status(409).send({ error: 'Todavía queda algo por resolver en este combate' });
     }
-    await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [] } });
+    await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [], combateDesde: null } });
     return reply.status(204).send();
   });
 
@@ -249,7 +250,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
         await tx.save.update({
           where: { id: save.id },
-          data: { pendingCombatNpcSlugs: [], zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined },
+          data: { pendingCombatNpcSlugs: [], combateDesde: null, zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined },
         });
       }
       return { kind: 'ok' as const, entrada };
@@ -346,7 +347,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           // Punto del jugador en el mapa de Zona (2026-09-04) — solo si consigue huir de verdad
           // (roll.success): vuelve al punto de ENTRADA. Si falla, el combate sigue y el jugador se
           // queda donde está, junto al enemigo.
-          ...(roll.success ? { pendingCombatNpcSlugs: [], zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined } : {}),
+          ...(roll.success ? { pendingCombatNpcSlugs: [], combateDesde: null, zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined } : {}),
         },
       });
       return { kind: 'ok' as const, entrada };
@@ -506,7 +507,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         if (!freshBefore.includes(npc.slug)) return { kind: 'ya-resuelto' as const };
 
         const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
-        await tx.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: freshSlugs } });
+        await guardarSlugsDeCombate(tx, save.id, freshSlugs);
         // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
         await registrarPerdon(tx, created.id);

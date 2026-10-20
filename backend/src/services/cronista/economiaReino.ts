@@ -9,7 +9,7 @@ import { estacionFor } from '../worldClock.js';
 import { locationTerrainTags } from '../../scripts/worldCatalog.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { volverASuPueblo } from './salidas.js';
-import { recalcularPoblacion, rolDeSubdito, tareasDelReino } from './subditos.js';
+import { avisarEnReino, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
 import { costeDePiezas, desgasteSemanal, EQUIPO, equipoDeAlta, gastarMateriales, piezasEnCasa, roturaSinPagar, talleresDelReino } from './facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
@@ -166,6 +166,8 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   if (!quien) return { pagado: 0, desertor: null };
   await tx.subject.update({ where: { id: quien.id }, data: { estado: 'SE_FUE', hastaMinutes: ahora, parejaId: null, notes: 'Desertó: no le pagabas.' } });
   await volverASuPueblo(tx, saveId, quien);
+  const viudo = await soltarPareja(tx, saveId, quien.id);
+  await avisarEnReino(tx, saveId, `${quien.name} deserta: no le pagabas.${viudo ? ` ${viudo} se queda sin pareja.` : ''}`, ahora);
   await recalcularPoblacion(tx, saveId, ahora);
   return { pagado: 0, desertor: quien.id };
 }

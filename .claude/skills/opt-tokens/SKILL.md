@@ -21,7 +21,7 @@ calidad: hallazgos del `/code-review` o de las rondas que vienen de él, reinten
 ## Pasos
 
 1. **Medir, no recordar.** `python3 .claude/skills/opt-tokens/medir.py` (sesión más reciente, últimas 24 h;
-   `--horas N`, `--horas 0` para toda, `--sesion <ruta>`). Da el uso real de la API, el **contexto medio por
+   `--horas N`, `--horas 0` para toda, `--desde <ISO|sha>` desde una fecha o un commit (`QA-134`), `--sesion <ruta>`). Da el uso real de la API, el **contexto medio por
    llamada** (lo que cuesta cada llamada de más), y por herramienta y por resultado los tokens que entraron en el
    contexto y los **arrastrados** (cada resultado se reenvía en cada llamada hasta la siguiente compactación).
    Lee solo su salida, nunca el registro entero. **Lo primero, la curva** (`Contexto medio` y `Tramos entre

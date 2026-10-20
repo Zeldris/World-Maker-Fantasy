@@ -33,6 +33,7 @@ import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
 import { aplicarNivelGanado, aplicarRecuerdo } from './recuerdos.js';
 import { apellidoDe, fundarLinaje, linajeParaNacido, nombreConLinaje, unirALinaje } from './linajes.js';
 import { aplicarAbrirHilo, aplicarCerrarHilo, registradorDeHilo, type ActorHilo, type Patron } from './hilos.js';
+import { guardarSlugsDeCombate } from '../combateDesde.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -800,7 +801,7 @@ async function forzarCombate(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'forzarC
   ]);
   const pendientes = Array.isArray(save?.pendingCombatNpcSlugs) ? (save.pendingCombatNpcSlugs as string[]) : [];
   if (!npc || !save || pendientes.includes(npc.slug)) return NO_APLICADO;
-  await ctx.tx.save.update({ where: { id: ctx.saveId }, data: { pendingCombatNpcSlugs: [...pendientes, npc.slug] } });
+  await guardarSlugsDeCombate(ctx.tx, ctx.saveId, [...pendientes, npc.slug]); // P233: con su combateDesde
   await ctx.tx.logEntry.create({
     data: { saveId: ctx.saveId, channel: 'CHARACTER', text: e.mensaje, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: ctx.fictionalMinutes, isSystemMessage: true },
   });

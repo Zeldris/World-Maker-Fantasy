@@ -44,6 +44,10 @@ describe('catálogo de sucesos', () => {
     expect(textoDeSuceso('LLEGADA_POBLADORES', { reino: 'Maktor', cuantos: 1 })).toBe('Llega un poblador a Maktor.');
     expect(textoDeSuceso('LLEGADA_POBLADORES', { reino: 'Maktor', cuantos: 3 })).toBe('Llegan 3 pobladores a Maktor.');
     expect(textoDeSuceso('MUERTE_NPC', { npc: 'Tira', causa: 'de vieja' })).toBe('Muere Tira (de vieja).');
+    // P234 / P235
+    expect(textoDeSuceso('EDIFICIO_DANADO', { edificio: 'una muralla', causa: 'crecida' })).toBe('Una muralla sufre daños (crecida).');
+    expect(textoDeSuceso('VISITANTE_ILUSTRE', { reino: 'Maktor', visitante: 'Doshka, de Clan Goshg' })).toBe('Doshka, de Clan Goshg, visita Maktor.');
+    expect(textoDeSuceso('VISITANTE_ILUSTRE', { reino: 'Maktor', visitante: 'Doshka' })).toBe('Doshka visita Maktor.');
   });
 
   it('importancia: +1 por jugador autor, +1 por núcleo jugable, +1 por hilo, con tope 10', () => {

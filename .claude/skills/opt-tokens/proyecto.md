@@ -20,6 +20,8 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
 - **Sesión directora** (`QA-121`, sustituye la sesión nueva tras cada PR de `QA-110`): skill `orchestrate-dealer`.
 - **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones; desde
   `QA-127`, medio y techo de cada uno de los últimos 8 tramos y el medio sin el primer tramo a medias.
+- **`medir.py --desde <ISO|sha>`** (`QA-134`): mide solo desde una fecha o desde un commit (su fecha), con el primer tramo a medias descartado como en `--horas`.
+- **`tools/qa/fusionar.sh <rama> "<mensaje>"`** (`QA-135`): merge `--no-ff` de la rama de un subagente, resuelve solo los conflictos de `pruebas-0.3-hallazgos.md` (queda el estado no pendiente), pasa los tests del paquete tocado y avisa si falta la marca de revisión.
 - **Rondas en un subagente `sonnet`** (`QA-124`): la principal reparte tandas y apunta; no lanza `orden.sh`.
 - **Ayudas del driver** (`QA-125`): `interactuar` también con el menú del NPC del mapa, `opcion` por número de
   `[data-opcion]` y `pelear` (acercarse, interactuar y combatir en una orden). `orden.sh` guarda cada respuesta

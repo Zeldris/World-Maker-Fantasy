@@ -313,7 +313,7 @@ export function itemToDetailTarget(item: EnciclopediaItemInfo): EnciclopediaLink
   ].filter((line): line is string => !!line)
   return {
     kind: 'info',
-    icon: itemIcon(item.category),
+    icon: itemIcon(item.category, item.name),
     name: item.name,
     meta: ITEM_CATEGORY_LABEL[item.category] ?? item.category,
     description: item.description,

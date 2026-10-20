@@ -547,6 +547,12 @@ export function useGameViewState() {
   useEffect(() => {
     if (llegaCritico) setActivePanel(null)
   }, [llegaCritico, setActivePanel])
+  // P232: el turno que abre combate cierra el cajón por el cambio de estado de combate (no por una
+  // marca en la entrada del diario: el backend la guarda sin ella y se vería distinta tras recargar).
+  const hayCombateIniciado = !!combateIniciado && combateIniciado.npcs.length > 0
+  useEffect(() => {
+    if (hayCombateIniciado) setActivePanel(null)
+  }, [hayCombateIniciado, setActivePanel])
   const avisoLlegadas = avisoDeLlegadas(llegadasCajon)
   // UX-7 (hito 0.2) — la brújula y el mapa de zona: moverse solo en `libre`.
   const permisoMover = puede('moverse')

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NumeroGuardable } from '../../NumeroGuardable'
 import { SelectorJuego } from '../../SelectorJuego'
 import { Esqueleto } from '../../Esqueleto'
@@ -93,7 +93,7 @@ function BuildingProduccionCard({
   const [busy, setBusy] = useState<string | null>(null)
   // REI-33 (hito 0.1, R13/R14) — borrar es irreversible: se confirma.
   const [ordenABorrar, setOrdenABorrar] = useState<OrdenProduccionInfo | null>(null)
-  const { fallo, informar, limpiar } = useErrorConReintento()
+  const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   // Recetas del oficio del edificio (P-3, decisión de Álvaro, 2026-09-29): null = sin filtro
   // (edificio sin oficio, o aún sin cargar/error).
   const [recetasPermitidas, setRecetasPermitidas] = useState<string[] | null>(null)
@@ -105,15 +105,28 @@ function BuildingProduccionCard({
     setOrdenes(res.ordenes)
   }
 
-  useEffect(() => {
-    let cancelado = false
+  // P225 — si falla la carga, la lista no se da por vacía: aviso con Reintentar.
+  const [cargaFallida, setCargaFallida] = useState(false)
+  const peticion = useRef(0)
+  const cargarOrdenes = useCallback(() => {
+    const id = ++peticion.current
+    setCargaFallida(false)
     getOrdenesProduccion(saveId, building.id)
       .then((res) => {
-        if (!cancelado) setOrdenes(res.ordenes)
+        if (id !== peticion.current) return
+        limpiarSi('No se pudieron cargar las órdenes de producción.')
+        setOrdenes(res.ordenes)
       })
-      .catch(() => {
-        if (!cancelado) setOrdenes([])
+      .catch((e) => {
+        if (id !== peticion.current) return
+        setCargaFallida(true)
+        informar('No se pudieron cargar las órdenes de producción.', e, cargarOrdenes)
       })
+  }, [saveId, building.id, informar, limpiarSi])
+
+  useEffect(() => {
+    let cancelado = false
+    cargarOrdenes()
     getRecetasProduccionEdificio(saveId, building.id)
       .then((res) => {
         if (!cancelado) setRecetasPermitidas(res.oficio ? res.recipeKeys : null)
@@ -123,8 +136,9 @@ function BuildingProduccionCard({
       })
     return () => {
       cancelado = true
+      peticion.current++
     }
-  }, [saveId, building.id])
+  }, [saveId, building.id, cargarOrdenes])
 
   async function handlePrioridadChange(ordenId: string, prioridad: number): Promise<boolean> {
     setBusy(ordenId)
@@ -241,7 +255,7 @@ function BuildingProduccionCard({
 
       <p className="mt-3 text-2xs uppercase tracking-wide text-wood-500">Órdenes de producción</p>
       {ordenes === null ? (
-        <Esqueleto filas={2} que="órdenes de producción" className="mt-1" />
+        cargaFallida ? null : <Esqueleto filas={2} que="órdenes de producción" className="mt-1" />
       ) : (
         <div className="mt-1 flex flex-col gap-1.5">
           {ordenes.filter((o) => o.activa).length === 0 && trabajadores.length === 0 && (

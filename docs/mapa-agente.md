@@ -27,6 +27,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 | Mirar datos de la partida | SQL contra `tarkor_juego` ([rondas-de-pruebas.md](runbooks/rondas-de-pruebas.md)) |
 | Añadir contenido (objeto, NPC, fauna, flora, habilidad, ubicación) | [nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Skills y modelo de cada tarea, flujo de PR | [skills-y-modelos.md](runbooks/skills-y-modelos.md) |
+| Fusionar la rama de un subagente (merge, conflictos de hallazgos, tests del paquete) | `tools/qa/fusionar.sh <rama> "<mensaje>"` (`QA-135`) |
 | Tests de un archivo | `cd backend && npx vitest run <ruta>` (filtra con `grep -E "Test Files\|Tests \|FAIL"`) |
 
 ## Datos que se confunden

@@ -70,6 +70,10 @@ describe('familias (REI-120) — en una partida', () => {
     expect(stats).toMatchObject({ poblacion: 3, trabajadores: 2 });
     const suceso = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'NACIMIENTO_NOTABLE' } });
     expect(suceso.texto).toBe(`Nace ${cria.name}, ${cria.genero === 'F' ? 'hija' : 'hijo'} de ${padre!.name} y ${madre!.name}.`);
+    // P223: pareja y nacimiento avisan en el canal del Reino.
+    const avisos = (await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM' }, select: { text: true } })).map((l) => l.text);
+    expect(avisos).toContain(`${madre!.name} y ${padre!.name} forman pareja.`);
+    expect(avisos).toContain(`Nace ${cria.name}, ${cria.genero === 'F' ? 'hija' : 'hijo'} de ${padre!.name} y ${madre!.name}.`);
   });
 
   it('una vez por semana; como mucho 2 crías; sin cama no nace nadie', async () => {
