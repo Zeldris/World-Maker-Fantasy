@@ -90,6 +90,10 @@ prueba y cómo se apunta (`QA-56`).
 
 - Se trabaja siempre en la rama que indique la bitácora (o la que asigne la sesión, que se apunta
   en la bitácora nada más empezar).
+- **Cada sesión, su propia rama** (usuaria, 2026-10-20, `QA-136`): dos sesiones a la vez (las dos cuentas, la local y
+  la de la nube) nunca suben a la misma rama. Si la rama de la bitácora ya la usa otra sesión, crea
+  `claude/<tema>` desde ella, con su fila «Tarea en curso» en la bitácora, y escribe solo en esa fila.
+  Lo suyo vuelve a la rama principal por `git merge` antes del PR a `main`.
 - **A `main` solo se sube cuando el usuario lo confirma.** Al hacerlo, se apunta en la bitácora.
 - **Se fusiona solo con el CI del PR en verde** (usuaria, 2026-10-12), también cuando pide «fusiona
   directamente»: eso quita esperar a más revisiones, no al CI ni la `/retro` presentada a la usuaria antes del PR

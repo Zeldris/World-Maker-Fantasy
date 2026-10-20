@@ -1,6 +1,9 @@
-# Diseño: skill `opt-ai` (borrador, 2026-10-20)
+# Diseño: skill `opt-ai` (implementada, 2026-10-20)
 
-Estado: **en diseño con la usuaria**, sin implementar. Se lanza tras cada tanda de pruebas para buscar
+Estado: **implementada** (2026-10-20) en [`.claude/skills/opt-ai/`](../../.claude/skills/opt-ai/SKILL.md)
+(núcleo genérico, adaptador `proyecto.md`, `motores.md`, `medir.py`), con el registro por llamada del backend
+(`IA_REGISTRO`/`IA_PERFIL`, [formato](opt-ai-registro.md)) y `npm run rag-eval` sobre `backend/ia/rag-casos.jsonl`.
+Se lanza tras cada tanda de pruebas para buscar
 mejoras en los modelos de IA local del juego: tiempos, RAG, configuración y problemas.
 
 ## Decisiones de la usuaria (2026-10-20)
@@ -62,14 +65,15 @@ Se activa con una variable de entorno durante las rondas.
 
    Se presenta a la usuaria; lo que apruebe entra como tarea.
 
-## Preguntas abiertas
+## Resuelto al implementar (valores por defecto, 2026-10-20)
 
-- Perfiles de máquina: cuáles además de la Deck (p. ej. PC sin GPU, GPU de 8 GB, de 12 GB o más) y cómo los detecta el juego.
-- Tiempo aceptable por tarea en la Deck (p. ej. narrar < N s), para marcar problemas.
-- Dónde vive la skill genérica para reutilizarla en otros proyectos (un repositorio propio de skills o copiada en cada uno).
-- Cuándo se implementa. El paso 0 toca el backend: ¿cuenta como mejora del entorno de trabajo o espera al fin de las pruebas?
+- Perfiles: `deck`, `cpu`, `gpu8` y `gpu12`, por la variable `IA_PERFIL` al arrancar; sin ella, `desconocido` (y `medir.py` avisa).
+- Tiempo aceptable por tarea: sale de la primera medición en la Deck; hasta entonces no se marcan problemas por tiempo.
+- La skill vive en `.claude/skills/opt-ai` (genérica: para otro proyecto se copia y se cambia `proyecto.md`).
+- Se implementó ya, como mejora del entorno de trabajo (aprobada por la usuaria).
+- Sin juez LLM: el RAG se mide con recall@k sobre casos escritos a mano.
 
 ## Al terminar la implementación (usuaria, 2026-10-20)
 
 - **`retro` y `opt-tokens` miran también las skills propias** (`.claude/skills/` que no son de Matt Pocock: `opt-ai`, `opt-tokens`, `retro`, `orchestrate-dealer`, `selector`, `pr`…) y las tienen en cuenta en sus propuestas: si una skill falló, sobra o puede mejorar con lo visto en la sesión.
-- **Antes del diseño final:** ideas de herramientas parecidas en la web y de las skills de Matt Pocock (búsqueda en curso, 2026-10-20).
+- **Antes del diseño final:** ideas de herramientas parecidas en la web y de las skills de Matt Pocock (hecho: se copiaron `research` y `to-questionnaire`).

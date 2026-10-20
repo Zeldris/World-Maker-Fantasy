@@ -29,6 +29,7 @@
     "test:rapido": "vitest run --changed --passWithNoTests",
     "sync-professions": "tsx src/scripts/syncProfessions.ts",
     "lint": "oxlint",
+    "rag-eval": "tsx src/scripts/rag-eval.ts",
     "benchmark-avance": "tsx src/scripts/benchmark-avance.ts"
   },
   "dependencies": {
