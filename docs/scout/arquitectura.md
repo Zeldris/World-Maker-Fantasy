@@ -34,7 +34,7 @@ Confirmadas por la usuaria el 2026-10-20.
   candidato tiene que dar JSON válido y buena prosa a la vez. La familia Mistral falló así (decisión técnica 14).
 
 ## Modelos de IA
-<!-- sello: 2026-10-20 · cd8b5185 · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
+<!-- sello: 2026-10-20 · bde0a825 · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
