@@ -1460,7 +1460,7 @@ usuaria el 2026-10-20), con las tres de `/opt-tokens`.
 
 Skill `scout-updates` (usuaria, 2026-10-20: el narrador sale lento y malo en la ronda local; [diseño](../ia/skill-scout-updates.md)).
 - **QA-176 · Skill `scout-updates`**: inventario del proyecto en `arquitectura.md`, propuestas acumuladas en `propuestas.md`, búsqueda citada y banco de calidad por pares; genérica, bajo demanda.
-  🚧 2026-10-20: diseño, evaluaciones (`evals/`, con un proyecto de ejemplo no Tarkor), `inventario.py` y `contrastar.py` hechos. Falta: `banco.py`, `SKILL.md`, captura de prompts en Tarkor (`IA_CASOS`) y primera pasada con foco narrador.
+  🚧 2026-10-20: diseño, evaluaciones (`evals/`, con un proyecto de ejemplo no Tarkor), `inventario.py`, `contrastar.py` y `banco.py` hechos. Falta: `SKILL.md`, captura de prompts en Tarkor (`IA_CASOS`) y primera pasada con foco narrador.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
