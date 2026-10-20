@@ -31,7 +31,7 @@ Confirmadas por la usuaria el 2026-10-20.
   candidato tiene que dar JSON válido y buena prosa a la vez. La familia Mistral falló así (decisión técnica 14).
 
 ## Modelos de IA
-<!-- sello: 2026-10-20 · b945f6d · backend/.env.example, backend/src/config/env.ts, backend/Modelfile, backend/Modelfile.llama31, backend/Modelfile.qwen3cronista, backend/Modelfile.fast, backend/Modelfile.nemo, backend/Modelfile.celeste, backend/Modelfile.finetuned -->
+<!-- sello: 2026-10-20 · cd8b5185 · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, backend/Modelfile.finetuned, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
@@ -60,7 +60,7 @@ en el caso (`ollama show --system tarkor-narrador-llama31`). Rúbrica: `docs/sco
 | Supabase (alternativa, sin uso) | Postgres alojado con pooler (6543 transacción, 5432 sesión) | solo para jugar desde varios dispositivos; por defecto, Postgres local | `.env.example` (comentado), `schema.prisma` `directUrl` |
 
 ## Runtimes
-<!-- sello: 2026-10-20 · bda4496b · .github/workflows/ci.yml, backend/package.json, frontend/package.json, backend/.env.example, backend/prisma/schema.prisma, docs/arquitectura/15-instalacion.md -->
+<!-- sello: 2026-10-20 · cd8b5185 · .github/workflows/ci.yml, backend/package.json, frontend/package.json, backend/.env.example, backend/prisma/schema.prisma, docs/arquitectura/15-instalacion.md -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
