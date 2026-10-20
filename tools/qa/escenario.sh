@@ -10,6 +10,10 @@
 #   escenario.sh avanzar <partida> <días>        avanza N días con el avance diario de siempre (para el juego y lo
 #                                               vuelve a arrancar: el servidor no ve este avance en su cola)
 #   escenario.sh dar <partida> <slug>:<n>…        mete objetos del catálogo en su inventario (origen «escenario de prueba»)
+#   escenario.sh dar-reino <partida> comida=N bebida=N goirnos=N tesoro=N almacen:<slug>:<n>…
+#                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
+#                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), objetos del
+#                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 BASE=tarkor_juego
@@ -54,7 +58,11 @@ case "${1:-}" in
     partida="${2:?falta la partida}"; shift 2
     (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darObjetos.ts "$partida" "$@")
     ;;
+  dar-reino)
+    partida="${2:?falta la partida}"; shift 2
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darReino.ts "$partida" "$@")
+    ;;
   *)
-    sed -n '2,12p' "$0"; exit 2
+    sed -n '2,16p' "$0"; exit 2
     ;;
 esac
