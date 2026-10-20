@@ -57,7 +57,7 @@ class Bitacora(unittest.TestCase):
 
 class Ajenas(unittest.TestCase):
     """QA-145: un commit no cambia la fila de otra rama ni una fila compartida (salvo `--compartida`)."""
-    BASE = ('| **Actualizado** | 2026-10-19 |\n| **Hito** | 0.3 |\n| **Tests** | verde |\n'
+    BASE = ('## Estado actual\n\n| **Actualizado** | 2026-10-19 |\n| **Hito** | 0.3 |\n| **Tests** | verde |\n'
             '| **Tarea en curso · `a`** | uno |\n| **Tarea en curso · `b`** | dos |\n')
 
     def commit(self, repo: str, texto: str) -> str:
@@ -92,6 +92,21 @@ class Ajenas(unittest.TestCase):
     def test_quitar_o_anadir_una_fila_ajena_falla(self):
         self.assertEqual(self.correr(self.BASE.replace('| **Tarea en curso · `b`** | dos |\n', '')).returncode, 1)
         self.assertEqual(self.correr(self.BASE + '| **Tarea en curso · `c`** | tres |\n').returncode, 1)
+
+    def test_una_tabla_de_otra_seccion_no_es_fila_compartida(self):
+        t = self.BASE + '\n## Otra\n\n| **Hito** | 0.9 |\n'
+        self.assertEqual(self.correr(t).returncode, 0)
+
+    def test_clave_repetida_no_oculta_un_cambio(self):
+        base = self.BASE + '| **Hito** | 0.5 |\n'
+        repo = carpeta()
+        git(repo, 'init', '-q')
+        self.commit(repo, base)
+        sha = self.commit(repo, base.replace('| 0.3 |', '| 0.4 |'))
+        r = subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', sha, 'a'], cwd=repo,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('«Hito»', r.stdout)
 
     def test_uso(self):
         r = subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', 'x'], capture_output=True, text=True)

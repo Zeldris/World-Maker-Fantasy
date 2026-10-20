@@ -66,6 +66,24 @@ class PreCommit(unittest.TestCase):
         r = self.git_real('commit', '--no-edit')
         self.assertEqual(r.returncode, 0, r.stderr)
 
+    def test_conflicto_con_un_borrador_nuevo_sin_commitear_rechaza(self):
+        escribir(os.path.join(self.repo, 'c.md'), 'base')
+        git(self.repo, 'add', 'c.md')
+        git(self.repo, 'commit', '-q', '-m', 'c')
+        git(self.repo, 'checkout', '-q', '-b', 'otra')
+        escribir(os.path.join(self.repo, 'c.md'), 'otra')
+        git(self.repo, 'commit', '-q', '-am', 'c otra')
+        git(self.repo, 'checkout', '-q', 'main')
+        escribir(os.path.join(self.repo, 'c.md'), 'main')
+        git(self.repo, 'commit', '-q', '-am', 'c main')
+        self.assertNotEqual(self.git_real('merge', '--no-ff', 'otra').returncode, 0)
+        escribir(os.path.join(self.repo, 'c.md'), 'resuelto')
+        escribir(os.path.join(self.repo, 'docs/borradores-opencode/nuevo.md'), 'de Álvaro')
+        git(self.repo, 'add', 'c.md', 'docs/')
+        r = self.git_real('commit', '--no-edit')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('docs/borradores-opencode/nuevo.md', r.stderr)
+
     def test_renombrar_un_borrador_fuera_de_la_carpeta_rechaza(self):
         self.con_borrador_commiteado()
         git(self.repo, 'mv', 'docs/borradores-opencode/idea.md', 'docs/idea.md')

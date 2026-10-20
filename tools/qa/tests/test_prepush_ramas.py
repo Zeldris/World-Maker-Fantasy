@@ -64,7 +64,7 @@ class PrepushRamas(unittest.TestCase):
 
     def test_fila_de_otra_rama_o_compartida_falla_salvo_con_la_variable(self):
         """QA-145: cada rama escribe solo en su fila; `BITACORA_COMPARTIDA=1` lo permite."""
-        base = AL_DIA + '| **Hito** | 0.3 |\n| **Tarea en curso · `r`** | algo |\n| **Tarea en curso · `o`** | de otra |\n'
+        base = '## Estado actual\n\n' + AL_DIA + '| **Hito** | 0.3 |\n| **Tarea en curso · `r`** | algo |\n| **Tarea en curso · `o`** | de otra |\n'
         self.commit('docs/registros/traspaso.md', base, 'base con otra rama')
         git(self.repo, 'push', '-q', 'origin', 'r')
         propia = base.replace('| algo |', '| mío |').replace('2999-12-31', '2999-12-30')
@@ -75,6 +75,21 @@ class PrepushRamas(unittest.TestCase):
         self.assertEqual(self.correr(sha, CERO)[0], 1)
         self.assertEqual(self.correr(sha, CERO, {'BITACORA_COMPARTIDA': '1'})[0], 0)
         sha = self.commit('docs/registros/traspaso.md', ajena.replace('0.3', '0.4'), 'toca el hito')
+        self.assertEqual(self.correr(sha, CERO)[0], 1)
+
+    def test_commit_de_una_subrama_local_fusionada_de_vuelta_se_comprueba_contra_ella(self):
+        """QA-136/QA-145: la fila de la subrama sin subir vale; sin la subrama, el mismo commit se rechaza."""
+        base = '## Estado actual\n\n' + AL_DIA + '| **Tarea en curso · `r`** | algo |\n| **Tarea en curso · `s`** | sub |\n'
+        self.commit('docs/registros/traspaso.md', base, 'base con subrama')
+        git(self.repo, 'push', '-q', 'origin', 'r')
+        git(self.repo, 'checkout', '-q', '-b', 's')
+        self.commit('docs/registros/traspaso.md', base.replace('| sub |', '| nuevo |'), 'edita su fila')
+        git(self.repo, 'checkout', '-q', 'r')
+        self.commit('docs/x.md', 'x', 'avanza r')
+        git(self.repo, 'merge', '-q', '--no-ff', '-m', 'fusiona s', 's')
+        sha = git(self.repo, 'rev-parse', 'HEAD')
+        self.assertEqual(self.correr(sha, CERO)[0], 0)
+        git(self.repo, 'branch', '-q', '-D', 's')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
 
     def test_bitacora_mala_en_un_commit_intermedio_falla(self):
