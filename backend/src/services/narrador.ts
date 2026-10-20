@@ -950,7 +950,6 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
     timeoutMs: 120_000,
     keepAlive: '1h',
     temperature: 0.4,
-    tarea: 'narrar',
   });
   let reply: string;
   try {

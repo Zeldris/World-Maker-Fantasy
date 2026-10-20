@@ -34,5 +34,5 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 ## Casos del RAG (`rag-casos.jsonl`)
 
 Una línea por caso: `{"id": "…", "pregunta": "…", "esperados": ["<id o fuente del trozo>", …], "origen": "P-número o
-semilla", "causa": "ausente|no_recuperado|ignorado|null"}`. El script de evaluación devuelve por caso el puesto del
+semilla", "causa": "ausente|no_recuperado|ignorado|null", "debe_pasar": true}`. `debe_pasar` (opcional): si el caso no sale en el top-k, `npm run rag-eval` termina con código 1. En Tarkor el id de trozo de `esperados` es su título en `loreChunks.ts` (los UUID de BD cambian en cada reindexado). El script de evaluación devuelve por caso el puesto del
 primer trozo esperado y, en total, recall@k y MRR.
