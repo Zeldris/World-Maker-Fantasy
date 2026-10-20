@@ -1393,8 +1393,9 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   `tools/playwright-e2e/ia-comprobaciones.sh`, test `test_ia_comprobaciones.py`; paso 1 del runbook con la ruta absoluta.
 - ~~**QA-142 · `/opt-ai` en el flujo del PR**~~ ✅ 2026-10-20 (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
   del runbook apuntan ahí; fila en la tabla de reparto de `orchestrate-dealer`.
-- **QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos** 🚧 en curso (§4; la regla `allow` la
-  denegó el clasificador por tocar los permisos: la añade la usuaria o lo confirma; el escenario, en un subagente): regla `allow` en
+- **QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos** 🚧 en curso (§4). Hecho 2026-10-20: escenario
+  `reino-dia39-recursos` y `escenario.sh dar-reino` (comida, bebida, Goirnos, tesoro y Almacén; `darReino.ts`). **Falta** la
+  regla `allow`: la denegó el clasificador por tocar los permisos; la añade la usuaria o lo confirma. Pedido: regla `allow` en
   `.claude/settings.json`, fuera «necesita el permiso de la usuaria» del runbook y escenario `reino-dia39-recursos`.
 - ~~**QA-144 · Gancho contra los borradores en commits**~~ ✅ 2026-10-20 (§5): `.githooks/pre-commit` con `CLAUDECODE=1`
   rechaza altas, cambios, borrados y renombrados de `docs/borradores-opencode/`; no actúa al cerrar merge, cherry-pick
