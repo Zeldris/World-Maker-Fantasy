@@ -4431,9 +4431,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // switch de `narration` de más abajo, para poder usarla tanto en el guard de curación falsa
   // (`hasFalseHealingClaim`) como en la rama determinista nueva "cooldown activo" del propio
   // switch y en el bloque real de energía/condición más abajo — una sola fuente de verdad, sin
-  // triplicar la fórmula de `detectsRestIntent`.
-  const restIntentDetected = intentaDescansar({ action, hayViaje: !!travel, hayLugar: !!currentLocationRecord, roll });
-  const restBlockedByCooldown = descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationRecord, roll, lastRestAtMinutes: params.lastRestAtMinutes, ahoraMinutos: params.fictionalMinutesActuales });
+  // triplicar la fórmula de `detectsRestIntent`. `hayLugar` sale de `currentLocationId`, igual que en
+  // la clasificación (turn.ts, P74/P231), para que las dos decidan lo mismo.
+  const restIntentDetected = intentaDescansar({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll });
+  const restBlockedByCooldown = descansoRechazadoPorEnfriamiento({ action, hayViaje: !!travel, hayLugar: !!currentLocationId, roll, lastRestAtMinutes: params.lastRestAtMinutes, ahoraMinutos: params.fictionalMinutesActuales });
   // Ver `hasFalseHealingClaim` (narrador.ts) — Descansar ya NO cura condicionFisica (2026-09-06,
   // hallazgo 11: decisión explícita de la usuaria) — sin objeto médico, el techo real es siempre
   // `params.condicionFisica` (sin mejora), así que este guard se simplifica a "¿el jugador
