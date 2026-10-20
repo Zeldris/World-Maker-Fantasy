@@ -6,6 +6,7 @@
 // traiga `Origin` (la mandaría una página web, también la que maneja el propio driver).
 //
 // Arrancar:  nohup node tools/playwright-e2e/driver.mjs > tools/playwright-e2e/driver.log 2>&1 &
+// Capturas (QA-149): shot('n') = JPEG calidad 50; shot('n',{selector:'…'}|{clip}|{completo:true}).
 // Usar:      bash tools/playwright-e2e/orden.sh "await page.click('text=Nueva partida'); return await shot('menu')"
 import http from 'node:http';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -46,9 +47,17 @@ http
     req.on('end', async () => {
       const salida = [];
       const log = (...a) => salida.push(a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' '));
-      const shot = async (nombre) => {
-        const ruta = `${SHOTS}/${nombre}.png`;
-        await page.screenshot({ path: ruta });
+      // QA-149: por defecto JPEG de calidad 50 (unas 4-5 veces menos bytes que el PNG). Opciones:
+      // {selector} recorta a ese elemento, {clip:{x,y,width,height}} a una región, {completa:true} la página
+      // entera, {png:true} o {calidad:n} el formato y la calidad. `{completo:true}` = PNG a tamaño completo.
+      const shot = async (nombre, o = {}) => {
+        const png = o.png || o.completo;
+        const ruta = `${SHOTS}/${nombre}.${png ? 'png' : 'jpg'}`;
+        const opc = { path: ruta, ...(png ? { type: 'png' } : { type: 'jpeg', quality: o.calidad ?? 50 }) };
+        if (o.completa || o.completo) opc.fullPage = true;
+        if (o.clip) opc.clip = o.clip;
+        if (o.selector) await page.locator(o.selector).first().screenshot(opc);
+        else await page.screenshot(opc);
         return ruta;
       };
       try {
