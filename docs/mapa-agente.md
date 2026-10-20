@@ -51,8 +51,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `b/services/narrador.ts#classifyAction`, `narrateAction`, `buildNarrationPrompt`, `generateSuggestions`
   (con sus filtros `dropSuggestions*`), `deterministicFallbackNarration`.
 - **IA y RAG:** llamadas al modelo local en `b/lib/ollama.ts#ollamaGenerate`, `ollamaGenerateStream` (opción `tarea`),
-  embeddings en `b/lib/embeddings.ts#embed`, lore en `b/services/retrieval.ts#retrieveLore`; cada llamada se apunta
-  con `b/lib/iaRegistro.ts` si está `IA_REGISTRO`. Casos del RAG: `backend/ia/rag-casos.jsonl`.
+  embeddings en `b/lib/embeddings.ts#embed`, lore en `b/services/retrieval.ts#retrieveLore` (registro por llamada y casos del RAG:
+  se añaden al fusionar el backend de `opt-ai`).
 - **Tests:** `b/services/turnLock.test.ts`, `b/services/narrador*.test.ts`.
 - **Interfaz:** `f/hooks/useTurnFlow.ts#useTurnFlow`, `f/components/ChatComposer.tsx` (escribir y «Actuar»),
   `f/components/LogPanel.tsx` (diario).
