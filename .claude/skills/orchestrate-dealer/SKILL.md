@@ -19,20 +19,24 @@ principal solo recibe un resumen corto y crece despacio. Si aun así llega al to
 | Decidir (diseño, qué se arregla, qué se apunta) | Jugar una tanda de la ronda de pruebas |
 | Revisar lo que vuelve: `git log`/`git diff --stat`, nunca el diff entero salvo duda | Commit y push de su trabajo, con la bitácora en el mismo commit |
 | `/code-review`, `/opt-tokens`, `/retro`, PR y fusión | — |
+| Analizar una tanda (medidas, causas, RAG): `/opt-ai` en el flujo del PR, no la ronda (`QA-142`) | — |
 
 Una lectura de más de ~200 líneas o una salida larga en la principal es un trozo que no se repartió.
 
 ## Pasos
 
 1. **Partir.** Con el `selector` ya aplicado, divide la tarea en trozos que un subagente cierre de una vez: un
-   arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. Cada trozo, con su criterio de hecho
+   arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. La tanda de juego se mide también en llamadas:
+   como mucho ~60 por subagente; al llegar, guarda el estado con `escenario.sh guardar` y el siguiente lo carga
+   (`QA-147`). Cada trozo, con su criterio de hecho
    comprobable (un test en verde, un P-número comprobado o abierto, un commit subido) y lo que le bloquea. La
    **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas).
 2. **Repartir.** Un subagente por trozo con `Agent`, en primer plano (`run_in_background: false`) cuando el
    siguiente trozo depende de él. Modelo y esfuerzo por la escalera del `selector` (`QA-118`): `sonnet` para
    implementar y jugar, `opus` para depurar algo no obvio. El encargo lleva **punteros**, no copias: dónde está lo que
    necesita (fila de la bitácora, P-número del registro, fila de la matriz, commit, archivo y función del
-   `docs/mapa-agente.md`), nunca el texto pegado. Con esta forma:
+   `docs/mapa-agente.md`), nunca el texto pegado. Si el encargo escribe en la partida (scripts de QA, escenarios), pruébalo con
+   `escenario.sh probar` contra una instantánea (`QA-153`). Con esta forma:
 
    ```text
    Trabajas en Tarkor, rama <rama>. Lee docs/registros/traspaso.md (tu fila) y, si tocas código,
@@ -41,6 +45,8 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    Hecho cuando: <criterio comprobable>.
    No hagas: <lo que es de otro trozo o pide decisión de la usuaria>.
    Si cambias una función o un campo, busca (grep) a todos los que lo usan y ajústalos o dilo en FALTA.
+   Si escribes estado de la partida (scripts de QA, escenarios), pasa por las funciones del juego que aplican esas reglas
+   (docs/mapa-agente.md dice cuáles), sin reescribirlas a mano.
    Si algo pide decidir a la usuaria, para y devuélvelo como pregunta.
    Devuelve como mucho 15 líneas:
    HECHO: … · HALLADO: P-números con una línea cada uno · HERRAMIENTAS: fallos de orden.sh, escenario.sh o del driver · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
@@ -54,6 +60,8 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    comparar el diff con el **contrato**: el doc que lo describe y los llamadores reales fuera de la rama (grep en la
    rama de trabajo), no solo el diff (`QA-137`: en `opt-ai` las revisiones cortas no vieron tres fallos entre ramas,
    `medir.py` frente al backend, las tareas de `proyecto.md` y `rag-eval` distinto del juego).
+   Si la rama escribe estado de la partida, el revisor mira también que pase por las funciones del juego que aplican
+   esas reglas y no las rehaga a mano (`QA-151`: `darReino.ts` duplicaba el Ayuntamiento y se saltaba cupos y topes).
    La principal apunta lo que vuelve: los P-números de `HALLADO` en el registro de la ronda y lo de `HERRAMIENTAS`
    en [`rondas-de-pruebas.md`](../../../docs/runbooks/rondas-de-pruebas.md#fallos-de-las-herramientas) (`QA-133`).
    Las `PREGUNTAS` van a la usuaria tal cual, con la respuesta que recomiendas.

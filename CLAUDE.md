@@ -93,7 +93,8 @@ prueba y cómo se apunta (`QA-56`).
 - **Cada sesión, su propia rama** (usuaria, 2026-10-20, `QA-136`): dos sesiones a la vez (las dos cuentas, la local y
   la de la nube) nunca suben a la misma rama. Si la rama de la bitácora ya la usa otra sesión, crea
   `claude/<tema>` desde ella, con su fila «Tarea en curso» en la bitácora, y escribe solo en esa fila.
-  Lo suyo vuelve a la rama principal por `git merge` antes del PR a `main`.
+  Lo suyo vuelve a la rama principal por `git merge` antes del PR a `main`. El pre-push rechaza tocar filas de otra rama
+  o compartidas (`QA-145`); para una compartida (p. ej. añadir tu rama a «Ramas de trabajo»), `BITACORA_COMPARTIDA=1 git push`.
 - **A `main` solo se sube cuando el usuario lo confirma.** Al hacerlo, se apunta en la bitácora.
 - **Se fusiona solo con el CI del PR en verde** (usuaria, 2026-10-12), también cuando pide «fusiona
   directamente»: eso quita esperar a más revisiones, no al CI ni la `/retro` presentada a la usuaria antes del PR
@@ -103,7 +104,7 @@ prueba y cómo se apunta (`QA-56`).
   ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de
   revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
 - **Antes de crear cada PR a `main`, tras el `/code-review`, `/opt-tokens` y después `/retro`** (usuaria,
-  2026-10-13 y 2026-10-19) sobre lo que va a entrar con él; la `/retro` revisa también la propia skill
+  2026-10-13 y 2026-10-19; con tandas de Ollama real, `/opt-ai` tras el `/code-review`, [paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`) sobre lo que va a entrar con él; la `/retro` revisa también la propia skill
   `opt-tokens`. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
   antes de crear el PR**, y solo entonces se crea.
 

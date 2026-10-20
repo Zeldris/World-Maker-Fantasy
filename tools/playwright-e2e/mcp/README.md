@@ -21,4 +21,4 @@ parámetros van en la página: antes, `browser_evaluate` con `() => { window.tk 
 | `opcion.js` | `opcion` (número o texto) | Elige una opción de la escena (`[data-opcion]`) y devuelve la vuelta siguiente. |
 | `combate.js` | `ataque`, `defensa`, `rondas` | Juega rondas de combate con esas habilidades. |
 | `pelear.js` | `x`, `y` (opcionales), `ataque`, `defensa`, `rondas` (3) | Se acerca, interactúa, elige «Combatir» y juega las rondas (`QA-125`). Solo con `orden.sh --ayuda pelear`. |
-| `captura.js` | `nombre` | Captura en `.playwright-mcp/<nombre>.png`. |
+| `captura.js` | `nombre`, `selector`, `clip`, `calidad`, `png`, `completo` | Captura en `.playwright-mcp/<nombre>.jpg` (JPEG calidad 50; `QA-149`); `png:true` da PNG, `selector`/`clip` recortan (`selector` no admite `clip` ni `completo`: error), `completo:true` da PNG de página entera. Misma semántica que `shot()` del driver. |

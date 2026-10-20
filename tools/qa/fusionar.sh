@@ -6,6 +6,9 @@
 #    Con otro conflicto, para y lo lista (el merge queda abierto).
 #  - pasa los tests del paquete tocado (vitest de los archivos cambiados y los que los importan; frontend, y `tsc -b`).
 #    Con tests en rojo el merge YA está hecho: dice cómo deshacerlo y sale con 1.
+#  - QA-152: tras fusionar bien una rama `worktree-agent-*` (o cualquiera con worktree en .claude/worktrees/), borra
+#    su worktree (`git worktree remove`, sin forzar: con cambios sin commitear avisa y lo deja) y la rama
+#    (`git branch -d`, solo borra lo fusionado; si falla avisa y sigue). Nunca borra la rama actual, main ni `claude/*`.
 #  - `--revisada` = la principal ya hizo revisar el diff (paso 3 de orchestrate-dealer); sin él, lo recuerda.
 set -uo pipefail
 [ $# -ge 2 ] && [ $# -le 3 ] && { [ $# -eq 2 ] || [ "$3" = "--revisada" ]; } || { echo "Uso: $0 <rama> \"<mensaje>\" [--revisada]" >&2; exit 2; }
@@ -37,6 +40,31 @@ if [ "$(git rev-parse HEAD)" = "$antes" ]; then
   echo "Nada que fusionar: $rama ya está en la rama actual."
   exit 0
 fi
+
+limpiar_rama() {
+  local actual wt
+  actual="$(git branch --show-current)"
+  case "$rama" in main|claude/*) return 0 ;; esac
+  [ "$rama" = "$actual" ] && return 0
+  wt="$(git worktree list --porcelain | awk -v r="refs/heads/$rama" '/^worktree /{w=substr($0,10)} $1=="branch" && $2==r {print w}')"
+  case "$rama" in
+    worktree-agent-*) ;;
+    *) case "$wt" in */.claude/worktrees/*) ;; *) return 0 ;; esac ;;
+  esac
+  if [ -n "$wt" ] && [ "$wt" != "$raiz" ]; then
+    case "$wt" in
+      */.claude/worktrees/*)
+        git worktree remove "$wt" >"$logs/wt.log" 2>&1 \
+          && echo "Worktree $wt borrado." \
+          || { echo "AVISO: no borro el worktree $wt ($(head -1 "$logs/wt.log")); la rama $rama queda."; return 0; } ;;
+      *) echo "AVISO: $rama tiene worktree fuera de .claude/worktrees/ ($wt); no lo borro."; return 0 ;;
+    esac
+  fi
+  git branch -d "$rama" >"$logs/br.log" 2>&1 \
+    && echo "Rama $rama borrada." \
+    || echo "AVISO: no borro la rama $rama ($(head -1 "$logs/br.log"))."
+  return 0
+}
 
 echo "Commit $(git rev-parse --short HEAD) · $(git log -1 --format=%s)"
 cambiados="$(git diff --name-only HEAD^1 HEAD)"
@@ -72,4 +100,6 @@ if [ "$fallo" -ne 0 ]; then
   echo "TESTS EN ROJO: el merge YA está hecho en la rama actual. Para deshacerlo: git reset --hard HEAD^1"
   exit 1
 fi
+# Tras los tests: con ellos en rojo, `git reset --hard HEAD^1` necesita la rama para no perderla.
+limpiar_rama
 exit 0

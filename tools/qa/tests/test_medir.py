@@ -15,7 +15,7 @@ class Medir(unittest.TestCase):
         d = carpeta()
         ruta = registro(os.path.join(d, 's.jsonl'), *partes)
         for nombre, (tipo, sub) in (subagentes or {}).items():
-            escribir(os.path.join(d, 's', 'subagents', f'{nombre}.meta.json'), json.dumps({'agentType': tipo}))
+            escribir(os.path.join(d, 's', 'subagents', f'{nombre}.meta.json'), json.dumps(tipo if isinstance(tipo, dict) else {'agentType': tipo}))
             registro(os.path.join(d, 's', 'subagents', f'{nombre}.jsonl'), *sub)
         r = subprocess.run(['python3', MEDIR, '--sesion', ruta, '--horas', horas, *extra], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -49,6 +49,41 @@ class Medir(unittest.TestCase):
         self.assertRegex(salida, r'principal\s+claude-opus-5-5\s+2 llamadas\s+300 entrada\s+20 salida')
         self.assertRegex(salida, r'subagentes\s+claude-sonnet-5-5\s+1 llamadas\s+40 entrada')
         self.assertIn('Subagentes: 1 general-purpose (claude-sonnet-5-5) · 1 Explore (claude-haiku-5-5)', salida)
+
+    def test_desglosa_por_subagente_y_cuenta_la_salida_mayor_de_cada_respuesta(self):
+        """QA-146: una fila por subagente (descripción, tipo, modelo, llamadas, contexto medio, entrada, salida) y totales
+        con su salida; `output_tokens` crece entre las líneas de una misma respuesta, vale la última."""
+        a = respuesta('s1', 1000, texto('a'), texto('b'), modelo='claude-sonnet-5-5')
+        a[0]['message']['usage']['output_tokens'] = 20  # valor provisional de la primera línea
+        a[1]['message']['usage']['output_tokens'] = 700
+        b = respuesta('s2', 3000, modelo='claude-sonnet-5-5')
+        c = respuesta('s3', 500, modelo='claude-haiku-5-5')
+        salida = self.medir([respuesta('m1', 100)], {
+            'agent-a': ({'agentType': 'general-purpose', 'description': 'Arreglo del turno'}, [a, b]),
+            'agent-b': ({'agentType': 'Explore'}, [c]),
+            'agent-c': ({'agentType': 'Explore'}, []),  # sin respuestas: no sale
+        })
+        self.assertIn('POR SUBAGENTE', salida)
+        self.assertRegex(salida, r'Arreglo del turno\s+general-purpose\s+claude-sonnet-5-5\s+2 llamadas\s+2,000 ctx medio'
+                                 r'\s+1,000 arranque\s+4,000 entrada\s+710 salida')
+        self.assertRegex(salida, r'agent-b\s+Explore\s+claude-haiku-5-5\s+1 llamadas\s+500 ctx medio\s+500 arranque\s+500 entrada\s+10 salida')
+        self.assertIn('Subagentes en total: 2 registros · 3 llamadas · 4,500 entrada · 720 salida', salida)
+        self.assertIn('Arranque medio: 750 tokens', salida)
+        self.assertIn('Sesión + subagentes: 4 llamadas · 4,600 entrada · 730 salida', salida)
+        self.assertRegex(salida, r'subagentes\s+claude-sonnet-5-5\s+2 llamadas\s+4,000 entrada\s+710 salida')
+
+    def test_subagente_sin_modelo_y_synthetic(self):
+        """Modelo a null: sale como «?» sin reventar; `<synthetic>` no sale en la tabla ni cuenta en POR MODELO."""
+        salida = self.medir([respuesta('m1', 100)], {
+            'agent-a': ({'agentType': 'Explore', 'description': 'Sin modelo'}, [respuesta('s1', 50, modelo=None)]),
+            'agent-b': ({'agentType': 'Explore', 'description': 'Solo sintetico'}, [respuesta('s2', 60, modelo='<synthetic>')]),
+        })
+        self.assertRegex(salida, r'Sin modelo\s+Explore\s+\?\s+1 llamadas')
+        self.assertNotIn('Solo sintetico', salida)
+        self.assertNotIn('synthetic', salida)
+
+    def test_sin_subagentes_no_hay_seccion(self):
+        self.assertNotIn('POR SUBAGENTE', self.medir([respuesta('m1', 100)]))
 
     def test_con_horas_el_primer_tramo_a_medias_no_cuenta_como_suelo(self):
         def hace(horas):

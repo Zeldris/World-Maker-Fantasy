@@ -169,6 +169,6 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Catálogo y siembra
 
 - **Código:** datos en `b/scripts/worldCatalog.ts`; siembra `b/scripts/seed-catalog.ts` con
-  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`,
+  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
