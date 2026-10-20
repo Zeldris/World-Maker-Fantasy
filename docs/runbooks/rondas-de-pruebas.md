@@ -79,6 +79,8 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 
 ## Cómo se juega
 
+0. **Claude se lanza desde `World-Maker-Fantasy/`**, no desde `Desarrollos/` (`QA-140`): desde fuera no cargan
+   `.claude/settings.json` (tope de 200k), los ganchos ni las skills del repo (`Unknown skill: opt-ai`).
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
@@ -108,7 +110,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review`, luego `/opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review`, `/opt-ai` si hubo tandas con Ollama real ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`), luego `/opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
 ## Lo que engaña
 

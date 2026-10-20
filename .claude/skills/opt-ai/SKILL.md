@@ -22,7 +22,9 @@ los junta. Cada subagente recibe las rutas, el perfil y el criterio de cierre de
 
 0. **Registro de la tanda.** Busca el archivo de registro que dice `proyecto.md` (formato en
    `docs/ia/opt-ai-registro.md`). *Cierra cuando* el archivo existe y tiene líneas de la tanda (`wc -l`). Si no, di
-   cómo activarlo (variables en `proyecto.md`) y **para**: sin medida no hay propuesta.
+   cómo activarlo (variables en `proyecto.md`) y **para**: sin medida no hay propuesta. Si la tanda no corrió con la
+   configuración del perfil (sin `IA_PERFIL`, o `arrancar-juego.sh` avisó de CPU o de `rag-eval`), se descarta: dilo
+   y pide repetirla (`QA-148`).
 1. **Medir.** `python3 .claude/skills/opt-ai/medir.py <registro> [--anterior <registro de la tanda anterior>]` (solo
    salida del script, nunca el registro entero). Por perfil, tarea y modelo: p50/p95, ttft, tok/s, cargas en frío,
    recortados, errores; RAG: embed, búsqueda y score. **El perfil mínimo (la Deck) siempre**, aunque la tanda se

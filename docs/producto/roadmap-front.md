@@ -1383,16 +1383,18 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   después de fusionarlo (`orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
 - ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
   perdió dos subagentes sin commit.
-- **QA-140 · Lanzar Claude desde el repo** (lote 1, retro de pruebas-local §1 y `/opt-tokens`): `Desarrollos/CLAUDE.md`
-  de una línea («lanza `claude` desde `World-Maker-Fantasy/`») y la misma nota en el runbook de rondas. El archivo de
-  `Desarrollos/` está fuera del repo: lo crea la sesión local en la Deck.
+- **QA-140 · Lanzar Claude desde el repo** 🚧 en curso (lote 1, retro de pruebas-local §1 y `/opt-tokens`):
+  `Desarrollos/CLAUDE.md` de una línea («lanza `claude` desde `World-Maker-Fantasy/`») y la misma nota en el runbook de
+  rondas. Hecho 2026-10-20: la nota (paso 0 de «Cómo se juega»). **Falta** `Desarrollos/CLAUDE.md`, fuera del repo: lo
+  crea la sesión local en la Deck.
 - ~~**QA-141 · `arrancar-juego.sh` comprueba el entorno de la IA**~~ ✅ 2026-10-20 (§2 y `/opt-tokens`, GPU): con
   `IA_PERFIL`, `IA_REGISTRO` a ruta absoluta; en `deck`, error si el registro de Ollama (solo lo escrito tras arrancar)
   o `/api/ps` dicen CPU; `rag-eval` para el arranque (rc 1 → `reindex-lore`). Funciones en
   `tools/playwright-e2e/ia-comprobaciones.sh`, test `test_ia_comprobaciones.py`; paso 1 del runbook con la ruta absoluta.
-- **QA-142 · `/opt-ai` en el flujo del PR** (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
+- ~~**QA-142 · `/opt-ai` en el flujo del PR**~~ ✅ 2026-10-20 (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
   del runbook apuntan ahí; fila en la tabla de reparto de `orchestrate-dealer`.
-- **QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos** (§4): regla `allow` en
+- **QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos** 🚧 en curso (§4; la regla `allow` la
+  denegó el clasificador por tocar los permisos: la añade la usuaria o lo confirma; el escenario, en un subagente): regla `allow` en
   `.claude/settings.json`, fuera «necesita el permiso de la usuaria» del runbook y escenario `reino-dia39-recursos`.
 - ~~**QA-144 · Gancho contra los borradores en commits**~~ ✅ 2026-10-20 (§5): `.githooks/pre-commit` con `CLAUDECODE=1`
   rechaza altas, cambios, borrados y renombrados de `docs/borradores-opencode/`; no actúa al cerrar merge, cherry-pick
@@ -1403,9 +1405,9 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-146 · `medir.py` por subagente**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): sección «POR SUBAGENTE» (llamadas,
   contexto medio, entrada y salida) y totales con subagentes; la salida se contaba de menos por tomar el valor provisional
   del streaming (ahora el máximo por respuesta). Casos en `tools/qa/tests/test_medir.py`.
-- **QA-147 · Tandas de juego en llamadas** (§7 y `/opt-tokens`): `orchestrate-dealer` paso 1, tanda de ~60 llamadas con
+- ~~**QA-147 · Tandas de juego en llamadas**~~ ✅ 2026-10-20 (§7 y `/opt-tokens`): `orchestrate-dealer` paso 1, tanda de ~60 llamadas con
   traspaso por escenario guardado.
-- **QA-148 · `opt-ai`: lo que ya hay y tanda válida** (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0
+- ~~**QA-148 · `opt-ai`: lo que ya hay y tanda válida**~~ ✅ 2026-10-20 (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0
   descarta la tanda que no corrió con la configuración del perfil.
 - ~~**QA-149 · Capturas más pequeñas**~~ ✅ 2026-10-20 (`/opt-tokens`): `shot()` del driver y `mcp/captura.js` salen en
   JPEG calidad 50 (4,4 veces menos bytes), con `selector`, `clip`, `calidad` y `completo:true` (PNG de página entera).

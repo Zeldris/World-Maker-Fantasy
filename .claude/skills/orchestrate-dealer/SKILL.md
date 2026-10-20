@@ -19,13 +19,16 @@ principal solo recibe un resumen corto y crece despacio. Si aun así llega al to
 | Decidir (diseño, qué se arregla, qué se apunta) | Jugar una tanda de la ronda de pruebas |
 | Revisar lo que vuelve: `git log`/`git diff --stat`, nunca el diff entero salvo duda | Commit y push de su trabajo, con la bitácora en el mismo commit |
 | `/code-review`, `/opt-tokens`, `/retro`, PR y fusión | — |
+| Analizar una tanda (medidas, causas, RAG): `/opt-ai` en el flujo del PR, no la ronda (`QA-142`) | — |
 
 Una lectura de más de ~200 líneas o una salida larga en la principal es un trozo que no se repartió.
 
 ## Pasos
 
 1. **Partir.** Con el `selector` ya aplicado, divide la tarea en trozos que un subagente cierre de una vez: un
-   arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. Cada trozo, con su criterio de hecho
+   arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. La tanda de juego se mide también en llamadas:
+   como mucho ~60 por subagente; al llegar, guarda el estado con `escenario.sh guardar` y el siguiente lo carga
+   (`QA-147`). Cada trozo, con su criterio de hecho
    comprobable (un test en verde, un P-número comprobado o abierto, un commit subido) y lo que le bloquea. La
    **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas).
 2. **Repartir.** Un subagente por trozo con `Agent`, en primer plano (`run_in_background: false`) cuando el
