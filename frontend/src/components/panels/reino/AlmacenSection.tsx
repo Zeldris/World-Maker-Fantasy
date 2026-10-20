@@ -40,10 +40,12 @@ export function AlmacenSection({
     const id = ++peticion.current
     getAlmacenLimites(saveId)
       .then((res) => {
-        if (id === peticion.current) setLimites(res.limites)
+        if (id !== peticion.current) return
+        limpiar()
+        setLimites(res.limites)
       })
       .catch((e) => id === peticion.current && informar('No se pudieron cargar los topes del almacén.', e, cargarLimites))
-  }, [saveId, informar])
+  }, [saveId, informar, limpiar])
 
   useEffect(() => {
     cargarLimites()

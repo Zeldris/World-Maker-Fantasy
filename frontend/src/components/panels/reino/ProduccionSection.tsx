@@ -113,14 +113,16 @@ function BuildingProduccionCard({
     setCargaFallida(false)
     getOrdenesProduccion(saveId, building.id)
       .then((res) => {
-        if (id === peticion.current) setOrdenes(res.ordenes)
+        if (id !== peticion.current) return
+        limpiar()
+        setOrdenes(res.ordenes)
       })
       .catch((e) => {
         if (id !== peticion.current) return
         setCargaFallida(true)
         informar('No se pudieron cargar las órdenes de producción.', e, cargarOrdenes)
       })
-  }, [saveId, building.id, informar])
+  }, [saveId, building.id, informar, limpiar])
 
   useEffect(() => {
     let cancelado = false

@@ -93,6 +93,17 @@ describe('ProduccionSection — P225 fallo de carga', () => {
     })
     expect(getOrdenesProduccion).toHaveBeenCalledTimes(2)
   })
+
+  it('si las órdenes cargan bien tras un fallo (cambia saveId), el aviso desaparece', async () => {
+    vi.mocked(getRecetasProduccionEdificio).mockResolvedValue({ oficio: null, recipeKeys: [] } as never)
+    vi.mocked(getAlmacenLimites).mockResolvedValue({ limites: [] } as never)
+    vi.mocked(getOrdenesProduccion).mockRejectedValueOnce(new Error('500')).mockResolvedValue({ ordenes: [orden({})] } as never)
+    const props = { buildings: [edificio], companions: [], almacenItems: [], professionRecipes: [], onRefreshSave: async () => {} }
+    const { findByRole, queryByRole, rerender } = render(<ProduccionSection saveId="s1" {...props} />)
+    await findByRole('alert')
+    rerender(<ProduccionSection saveId="s2" {...props} />)
+    await waitFor(() => expect(queryByRole('alert')).toBeNull())
+  })
 })
 
 describe('ProduccionSection — carrera al cambiar de edificio', () => {

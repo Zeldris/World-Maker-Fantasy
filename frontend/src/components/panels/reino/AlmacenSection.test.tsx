@@ -80,4 +80,13 @@ describe('AlmacenSection — P225 fallo de carga de topes', () => {
     const tope = (await findByLabelText('Tope de Madera')) as HTMLInputElement
     await waitFor(() => expect(tope.value).toBe('10'))
   })
+
+  it('si los topes cargan bien tras un fallo (cambia saveId), el aviso desaparece', async () => {
+    vi.mocked(getAlmacenLimites).mockRejectedValueOnce(new Error('500')).mockResolvedValue({ limites: [] })
+    const props = { inventory: [], almacenItems: [], onRefreshSave: vi.fn().mockResolvedValue(undefined) }
+    const { findByRole, queryByRole, rerender } = render(<AlmacenSection saveId="s1" {...props} />)
+    await findByRole('alert')
+    rerender(<AlmacenSection saveId="s2" {...props} />)
+    await waitFor(() => expect(queryByRole('alert')).toBeNull())
+  })
 })

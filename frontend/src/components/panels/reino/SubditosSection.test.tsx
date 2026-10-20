@@ -211,4 +211,16 @@ describe('SubditosSection — P230 fallo de carga', () => {
     const ok = render(<SubditosSection {...props} />)
     expect(await ok.findByText(/Aún no vive nadie/)).toBeTruthy()
   })
+
+  it('si la recarga automática (nuevo subjects) va bien tras un fallo, el aviso desaparece', async () => {
+    vi.mocked(getSubditos)
+      .mockRejectedValueOnce(new Error('500'))
+      .mockResolvedValue({ subditos: [], camas: { total: 3, companeros: 0, subditos: 0, libres: 3 } })
+    const props = { saveId: 's1', companions: [], inventory: [], almacenItems: [], plantillasEquipo: [], onRefreshSave: async () => {} }
+    const { findByRole, queryByRole, findByText, rerender } = render(<SubditosSection {...props} subjects={[]} />)
+    await findByRole('alert')
+    rerender(<SubditosSection {...props} subjects={[{ id: 'nuevo' } as never]} />)
+    expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
+    expect(queryByRole('alert')).toBeNull()
+  })
 })

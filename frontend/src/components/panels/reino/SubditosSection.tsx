@@ -377,6 +377,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
       .then((r) => {
         if (id !== peticion.current) return
         setCargaFallida(false)
+        limpiar()
         setDatos(r)
       })
       .catch((e) => {
@@ -385,7 +386,7 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
         setDatos(null)
         informar('No se pudieron cargar los súbditos.', e, cargar)
       })
-  }, [saveId, informar])
+  }, [saveId, informar, limpiar])
   useEffect(() => {
     cargar()
     return () => {
