@@ -16,6 +16,12 @@ def bash(cmd):
 
 
 class IaComprobaciones(unittest.TestCase):
+    def log_falso(self, texto):
+        with tempfile.NamedTemporaryFile('w', suffix='.log', delete=False) as f:
+            f.write(texto)
+        self.addCleanup(os.unlink, f.name)
+        return f.name
+
     def test_ruta_relativa_pasa_a_absoluta(self):
         self.assertEqual(bash('ia_registro_absoluto /repo backend/ia/r.jsonl').stdout.strip(), '/repo/backend/ia/r.jsonl')
         self.assertEqual(bash('ia_registro_absoluto /repo/ ./r.jsonl').stdout.strip(), '/repo/r.jsonl')
@@ -23,29 +29,41 @@ class IaComprobaciones(unittest.TestCase):
     def test_ruta_absoluta_no_cambia(self):
         self.assertEqual(bash('ia_registro_absoluto /repo /tmp/r.jsonl').stdout.strip(), '/tmp/r.jsonl')
 
-    def test_gpu_descartada_en_el_log_falla(self):
-        with tempfile.NamedTemporaryFile('w', suffix='.log') as f:
-            f.write('level=INFO msg="dropping integrated GPU"\n')
-            f.flush()
-            r = bash(f'ia_comprobar_gpu {f.name} "NAME ... 100% GPU"')
+    def test_gpu_descartada_en_lo_nuevo_del_log_falla(self):
+        log = self.log_falso('viejo\nlevel=INFO msg="dropping integrated GPU"\n')
+        r = bash(f'ia_comprobar_log_gpu {log} 0')
         self.assertEqual(r.returncode, 1)
         self.assertIn('CPU', r.stderr)
 
-    def test_ps_sin_gpu_falla(self):
-        r = bash('ia_comprobar_gpu /no/existe.log "NAME  PROCESSOR\nqwen  100% CPU"')
-        self.assertEqual(r.returncode, 1)
+    def test_gpu_descartada_antes_del_offset_no_cuenta(self):
+        viejo = 'level=INFO msg="dropping integrated GPU"\n'
+        log = self.log_falso(viejo + 'level=INFO msg="inference compute" library=vulkan\n')
+        self.assertEqual(bash(f'ia_comprobar_log_gpu {log} {len(viejo)}').returncode, 0)
 
-    def test_log_limpio_y_gpu_pasa(self):
-        with tempfile.NamedTemporaryFile('w', suffix='.log') as f:
-            f.write('level=INFO msg="inference compute" library=vulkan\n')
-            f.flush()
-            r = bash(f'ia_comprobar_gpu {f.name} "qwen 100% GPU"')
-        self.assertEqual(r.returncode, 0)
+    def test_log_inexistente_se_salta(self):
+        self.assertEqual(bash('ia_comprobar_log_gpu /no/existe.log 0').returncode, 0)
+
+    def test_tamano_log(self):
+        self.assertEqual(bash(f'ia_tamano_log {self.log_falso("12345")}').stdout.strip(), '5')
+        self.assertEqual(bash('ia_tamano_log /no/existe.log').stdout.strip(), '0')
+
+    def test_api_ps_con_vram_pasa(self):
+        self.assertEqual(bash("""ia_comprobar_gpu_api '{"models":[{"name":"a","size_vram":123}]}'""").returncode, 0)
+
+    def test_api_ps_sin_vram_falla(self):
+        self.assertEqual(bash("""ia_comprobar_gpu_api '{"models":[{"name":"a","size_vram":0}]}'""").returncode, 1)
+
+    def test_api_ps_vacio_o_ilegible_avisa_sin_fallar(self):
+        for js in ('{"models":[]}', '', 'no json'):
+            r = bash(f"ia_comprobar_gpu_api '{js}'")
+            self.assertEqual(r.returncode, 2, js)
+            self.assertIn('Aviso', r.stderr)
 
     def test_arrancar_juego_sintaxis_y_ramas_con_guarda(self):
         self.assertEqual(subprocess.run(['bash', '-n', SCRIPT]).returncode, 0)
-        s = open(SCRIPT).read()
-        self.assertEqual(s.count('if [ -n "${IA_PERFIL:-}" ]'), 2)  # ruta absoluta y comprobaciones, solo con IA_PERFIL
+        with open(SCRIPT) as f:
+            s = f.read()
+        self.assertEqual(s.count('if [ -n "${IA_PERFIL:-}" ]'), 2)  # ruta/offset y comprobaciones, solo con IA_PERFIL
 
 
 if __name__ == '__main__':
