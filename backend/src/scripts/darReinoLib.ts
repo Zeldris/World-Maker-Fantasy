@@ -39,3 +39,38 @@ export function parsearPeticionReino(args: string[]): PeticionReino | { error: s
   }
   return p;
 }
+
+const LIENZO = { ancho: 800, alto: 600 };
+const PASO = 60;
+
+/// Posición junto al Ayuntamiento (anillos de `PASO` px, dentro del lienzo 800×600) que no coincide con
+/// ninguna ya ocupada. Sin Ayuntamiento posicionado devuelve null (el edificio queda sin posición).
+export function posicionJuntoAlAyuntamiento(ayto: { x: number | null; y: number | null }, ocupadas: { x: number | null; y: number | null }[]): { x: number; y: number } | null {
+  if (ayto.x == null || ayto.y == null) return null;
+  const usada = (x: number, y: number) => ocupadas.some((o) => o.x != null && o.y != null && Math.abs(o.x - x) < PASO / 2 && Math.abs(o.y - y) < PASO / 2);
+  for (let anillo = 1; anillo <= 10; anillo++) {
+    for (let dy = -anillo; dy <= anillo; dy++) {
+      for (let dx = -anillo; dx <= anillo; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== anillo) continue;
+        const x = ayto.x + dx * PASO;
+        const y = ayto.y + dy * PASO;
+        if (x < 0 || y < 0 || x > LIENZO.ancho || y > LIENZO.alto || usada(x, y)) continue;
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
+/// Primer tope que se pasaría con lo pedido, o null.
+export function primerExcesoDeTope(
+  suma: { comida: number; bebida: number; materiales: number },
+  actual: { comida: number; bebida: number; materiales: number },
+  topes: { comida: number; bebida: number; materiales: number },
+): string | null {
+  const nombres = { comida: 'comida', bebida: 'bebida', materiales: 'materiales del Almacén (RECURSO)' } as const;
+  for (const k of ['comida', 'bebida', 'materiales'] as const) {
+    if (suma[k] > 0 && actual[k] + suma[k] > topes[k]) return `${nombres[k]}: ${actual[k]} + ${suma[k]} pasa del tope de ${topes[k]} (hueco ${Math.max(0, topes[k] - actual[k])}).`;
+  }
+  return null;
+}
