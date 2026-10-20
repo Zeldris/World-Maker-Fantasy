@@ -1968,6 +1968,11 @@ describe('buildNarrationPrompt — "combateIniciado" solo con posibles agresores
   it('sin NPC conocidos, como antes: cualquier texto', () => {
     expect(esquema(ctx)?.properties?.npcSlugs.items).toEqual({ type: 'string' });
   });
+
+  it('con la lista de agresores vivos, un muerto en escena no entra en el enum', () => {
+    const c = { ...ctx, npcSlugsInScene: ['lobo-muerto', 'quio'], nonHostileNpcSlugsInScene: ['quio'], agresorSlugsInScene: [] };
+    expect(esquema(c)).toEqual({ type: 'null' });
+  });
 });
 
 describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos estables (QA-164)', () => {

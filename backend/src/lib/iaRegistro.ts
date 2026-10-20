@@ -58,21 +58,34 @@ export function calcularTruncated(inputTokens?: number, numCtx?: number, promptC
 /// QA-162: id de turno (`app.turno`) para medir lo que espera la jugadora y no solo cada llamada. `/turn/classify`
 /// lo abre y `/turn/narrate` de la misma partida lo sigue; todo lo que se llame desde ahí (también en segundo plano)
 /// lo hereda por AsyncLocalStorage. Sin IA_REGISTRO no hace nada.
-const turnoIa = new AsyncLocalStorage<string>();
+/// Cada petición abre su ámbito (`ambitoTurnoIa`, gancho `onRequest` de server.ts) y el id se escribe en él: un
+/// `enterWith` desde el handler antes de su primer `await` se pegaría al socket y lo heredarían las peticiones
+/// siguientes de la misma conexión (code-review del PR de `QA-160`…`QA-168`).
+const turnoIa = new AsyncLocalStorage<{ id?: string }>();
 const turnoAbiertoPorPartida = new Map<string, string>();
+
+export function ambitoTurnoIa(siguiente: () => void): void {
+  turnoIa.run({}, siguiente);
+}
+
+function fijarTurno(id: string): void {
+  const ambito = turnoIa.getStore();
+  if (ambito) ambito.id = id;
+  else turnoIa.enterWith({ id });
+}
 
 export function abrirTurnoIa(saveId: string): void {
   if (!env.iaRegistro) return;
   const id = randomUUID().slice(0, 8);
   turnoAbiertoPorPartida.set(saveId, id);
-  turnoIa.enterWith(id);
+  fijarTurno(id);
 }
 
 export function seguirTurnoIa(saveId: string): void {
   if (!env.iaRegistro) return;
   const id = turnoAbiertoPorPartida.get(saveId) ?? randomUUID().slice(0, 8);
   turnoAbiertoPorPartida.delete(saveId);
-  turnoIa.enterWith(id);
+  fijarTurno(id);
 }
 
 export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Date()): string {
@@ -89,7 +102,7 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'gen_ai.response.finish_reason': r.finishReason,
     'app.task': r.task,
     'app.machine_profile': perfil,
-    'app.turno': turnoIa.getStore(),
+    'app.turno': turnoIa.getStore()?.id,
     'app.intento': r.intento,
     'app.rechazo': r.rechazo,
     'app.num_ctx': r.numCtx,

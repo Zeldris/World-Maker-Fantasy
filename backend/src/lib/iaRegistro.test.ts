@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -97,6 +97,19 @@ describe('iaRegistro', () => {
     expect(await turnoDe(() => seguirTurnoIa('p1'))).toBe(abierto);
     const suelto = await turnoDe(() => seguirTurnoIa('p1'));
     expect(suelto).not.toBe(abierto); // narrate sin classify antes: turno nuevo
+  });
+
+  it('el turno no pasa a la petición siguiente: cada una abre su ámbito', async () => {
+    fakeEnv.iaRegistro = '/tmp/x.jsonl';
+    const enPeticion = (fn: () => void) =>
+      new Promise<unknown>((resolve) =>
+        ambitoTurnoIa(() => {
+          fn();
+          setImmediate(() => resolve(JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))['app.turno']));
+        }),
+      );
+    expect(typeof (await enPeticion(() => abrirTurnoIa('p3')))).toBe('string');
+    expect(await enPeticion(() => {})).toBeUndefined();
   });
 
   it('sin IA_REGISTRO no hay turno', async () => {

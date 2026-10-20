@@ -132,7 +132,7 @@ def fila_turnos(turnos):
         ini = lambda r: fin(r) - r['app.duration_ms']
         inicio = min(ini(r) for r in ll)
         dur.append(max(fin(r) for r in narr) - inicio)
-        p1 = [r for r in narr if r.get('app.intento', 1) == 1 and es_num(r.get('app.ttft_ms'))]
+        p1 = [r for r in narr if r.get('app.intento') == 1 and es_num(r.get('app.ttft_ms'))]
         if p1:
             primera.append(ini(p1[0]) + p1[0]['app.ttft_ms'] - inicio)
         intentos = {r.get('app.intento') for r in narr}

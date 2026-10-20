@@ -115,11 +115,13 @@ function traducirError(err: unknown, options: OllamaGenerateOptions): Error {
 }
 
 /// QA-162: `num_ctx` efectivo por modelo para el registro cuando la llamada no lo pasa (casi ninguna lo pasa, y
-/// sin él no se veía ningún recorte): el `context_length` de `/api/ps` mientras el modelo está cargado o, si no,
-/// el `num_ctx` del Modelfile (`/api/show`). Solo con IA_REGISTRO, en segundo plano y sin esperar: la primera
-/// llamada de cada modelo puede salir sin él. Se consulta a los 4 s de empezar la llamada porque los modelos con
-/// `keep_alive` 0 ya no salen en `/api/ps` al acabar.
+/// sin él no se veía ningún recorte): el `num_ctx` del Modelfile (`/api/show`), que es el que recibe una llamada sin
+/// `numCtx`, o, si el Modelfile no lo trae, el `context_length` de ese modelo en `/api/ps` a los 4 s de empezar (los
+/// de `keep_alive` 0 ya no salen al acabar). No se toma `/api/ps` primero: ahí sale el runner que haya cargado, quizá
+/// con el `numCtx` de otra llamada (el respaldo carga el cronista a 8192). Solo con IA_REGISTRO, en segundo plano, una
+/// consulta a la vez por modelo; la primera llamada de cada modelo puede salir sin él.
 const ctxPorModelo = new Map<string, number>();
+const ctxPendiente = new Set<string>();
 const conEtiqueta = (model: string) => (model.includes(':') ? model : `${model}:latest`);
 
 export function ctxEfectivo(model: string): number | undefined {
@@ -127,17 +129,26 @@ export function ctxEfectivo(model: string): number | undefined {
 }
 
 async function leerCtx(model: string): Promise<void> {
-  const ps = (await fetch(`${env.ollamaBaseUrl}/api/ps`).then((r) => r.json())) as { models?: { name?: string; context_length?: number }[] };
-  for (const m of ps.models ?? []) if (m.name && m.context_length) ctxPorModelo.set(m.name, m.context_length);
-  if (ctxPorModelo.has(conEtiqueta(model))) return;
+  const clave = conEtiqueta(model);
   const show = (await fetch(`${env.ollamaBaseUrl}/api/show`, { method: 'POST', body: JSON.stringify({ model }) }).then((r) => r.json())) as { parameters?: string };
   const n = Number(/(?:^|\n)num_ctx\s+(\d+)/.exec(show.parameters ?? '')?.[1]);
-  if (n > 0) ctxPorModelo.set(conEtiqueta(model), n);
+  if (n > 0) {
+    ctxPorModelo.set(clave, n);
+    return;
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 4_000).unref?.());
+  const ps = (await fetch(`${env.ollamaBaseUrl}/api/ps`).then((r) => r.json())) as { models?: { name?: string; context_length?: number }[] };
+  const cargado = ps.models?.find((m) => m.name === clave)?.context_length;
+  if (cargado) ctxPorModelo.set(clave, cargado);
 }
 
 function vigilarCtx(options: OllamaGenerateOptions): void {
-  if (!env.iaRegistro || options.numCtx || ctxPorModelo.has(conEtiqueta(options.model))) return;
-  setTimeout(() => void leerCtx(options.model).catch(() => {}), 4_000).unref?.();
+  const clave = conEtiqueta(options.model);
+  if (!env.iaRegistro || options.numCtx || ctxPorModelo.has(clave) || ctxPendiente.has(clave)) return;
+  ctxPendiente.add(clave);
+  void leerCtx(options.model)
+    .catch(() => {})
+    .finally(() => ctxPendiente.delete(clave));
 }
 
 /// Registro opt-ai de una llamada a /api/generate (no hace nada sin IA_REGISTRO).
@@ -167,7 +178,8 @@ function registrarGenerate(
     prefillMs: nsToMs(r.prompt_eval_duration),
     decodeMs: nsToMs(r.eval_duration),
     ttftMs: extra.ttftMs,
-    truncated: calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
+    // Una llamada fallida no dice si se recortó: sin esto contaba en recortado_pct por el largo del prompt.
+    truncated: extra.error ? undefined : calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
     error: extra.error,
   });
 }

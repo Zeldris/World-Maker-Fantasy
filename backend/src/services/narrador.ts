@@ -114,6 +114,10 @@ interface TurnContext {
   /// `hasWrongAggressorName` para comparar directamente contra el campo estructurado
   /// "combateIniciado.npcSlugs" que el propio LLM devuelve, sin depender de parsear texto libre.
   nonHostileNpcSlugsInScene?: string[];
+  /// QA-163: los vivos en escena que sí pueden iniciar combate (AGRESIVO/ENEMIGO con la reputación aplicada), la
+  /// lista cerrada de `combateIniciado`. Sin ella, `npcSlugsInScene` menos `nonHostileNpcSlugsInScene` (que cuenta
+  /// también a los muertos).
+  agresorSlugsInScene?: string[];
   /// Ver `hasWrongCelestialReference` más abajo (bug real, sesión autónoma de pruebas 2026-09-04:
   /// "el resplandor de la luna" narrado a las 08:16 de la mañana) — momento del día YA calculado
   /// por el motor determinista (`momentoDelDiaFor`, worldClock.ts, mismo dato que usan las imágenes
@@ -350,6 +354,9 @@ interface ClassifyContext {
 }
 
 /// QA-164: la narración anterior va en `worldFacts` (turnResolution.ts) pero el prompt la saca de los hechos de la escena.
+/// QA-166/QA-168: contexto del modelo pequeño en `clasificar` y en el respaldo de `narrar`, el mismo en los dos.
+const CTX_CRONISTA = 8192;
+
 const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
 
 function factsBlock(facts: string[]): string {
@@ -462,7 +469,8 @@ Responde solo con el JSON pedido, nada más.`;
 
   // keepAlive '5m' (QA-168, /opt-ai 2026-10-20): antes '0', para no tener los dos modelos a la vez; en la
   // Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se descarga) y clasificar
-  // baja de 6,9 a 2,8 s p50 al no recargarse cada turno.
+  // baja de 6,9 a 2,8 s p50 al no recargarse cada turno. Con el `num_ctx` del respaldo (`CTX_CRONISTA`): un
+  // `num_ctx` distinto obliga a Ollama a recargar el modelo, y un respaldo dejaba el siguiente clasificar en frío.
   // timeoutMs 90s: nunca ha tardado más de ~54s en pruebas reales, deja margen de sobra.
   // temperature 0 (roadmap 2026-07-20, Fable, segunda pasada): el `format` ya restringe la
   // gramática a los valores válidos del schema — el muestreo solo decide CUÁL de esos valores
@@ -476,6 +484,7 @@ Responde solo con el JSON pedido, nada más.`;
       system,
       prompt,
       format,
+      numCtx: CTX_CRONISTA,
       keepAlive: '5m',
       timeoutMs: 90_000,
       tarea: 'clasificar',
@@ -1085,7 +1094,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
 
   const npcSlugs = ctx.npcSlugsInScene ?? [];
   const noAgresores = new Set(ctx.nonHostileNpcSlugsInScene ?? []);
-  const agresorSlugs = npcSlugs.filter((slug) => !noAgresores.has(slug));
+  const agresorSlugs = ctx.agresorSlugsInScene ?? npcSlugs.filter((slug) => !noAgresores.has(slug));
   const reinoActive = reinoIntentDetected(ctx.action);
   // Emboscada determinista (bug real jugando, 2026-07-22): antes quién actúa primero era libre
   // albedrío total del modelo, incluso cuando ya existía una tirada resuelta para ESTA misma
@@ -1424,6 +1433,8 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // sin saber la causa exacta — no ha demostrado arreglar el cuelgue visto, pero tampoco hace
   // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
   // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
+  // La narración anterior (un bloque determinista, así que siempre se quedaba) ya va aparte en el prompt
+  // (QA-164): se filtra aquí solo para no ponerla dos veces.
   const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
   // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
   // reintento de emergencia — se omite entero, nunca se recorta a medias.
@@ -1451,15 +1462,16 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
 
   // QA-166 (`/opt-ai`, 2026-10-20): con el `num_ctx` 4096 del Modelfile, el respaldo leía 2.050 de ~5.500 tokens y
   // perdía la acción (contestaba con lore). Lleva el prompt recortado del intento 2 y 8192: ~13 s en la Deck.
+  // Mismo `num_ctx` y `keep_alive` que `clasificar` (QA-168), para que los dos usen el modelo ya cargado.
   const attempt3 = () =>
     ollamaGenerate({
       model: env.ollamaModelCronista,
       prompt: retryPrompt,
       format,
-      numCtx: 8192,
+      numCtx: CTX_CRONISTA,
       maxTokens: 220,
       timeoutMs: 90_000,
-      keepAlive: '0',
+      keepAlive: '5m',
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
       intento: 3,

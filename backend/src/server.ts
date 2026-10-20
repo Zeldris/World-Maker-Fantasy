@@ -16,9 +16,13 @@ import { startWorldTickWorker, stopWorldTickWorker } from './workers/worldTick.j
 import { prisma } from './lib/prisma.js';
 import { registrarAvanceTrasAcciones } from './services/avanceDiario.js';
 import { ollamaGenerate } from './lib/ollama.js';
+import { ambitoTurnoIa } from './lib/iaRegistro.js';
 import { narratorWarmupPrompt } from './services/narrador.js';
 
 const app = Fastify({ logger: true, requestTimeout: 0 });
+
+// QA-162: ámbito propio por petición para el id de turno del registro de `opt-ai` (ver iaRegistro.ts).
+app.addHook('onRequest', (_request, _reply, done) => ambitoTurnoIa(done));
 
 // Forma de error consistente (auditoría 2026-07-22): toda ruta validada a mano devuelve
 // `{ error: string }` con el código que corresponda, pero sin esto una excepción NO capturada
@@ -92,11 +96,9 @@ startWorldTickWorker();
 // `keepAlive` 1h como los turnos (QA-161): con el de por defecto (5m), si el primer turno tardaba más en llegar, se
 // recargaba entero.
 //
-// Solo el narrador, NO el cronista (probado y descartado, 2026-09-14): `keepAlive: '0'` en las
-// llamadas de clasificación (narrador.ts) es deliberado — el cronista SIEMPRE se descarga en
-// cuanto responde, nunca convive con el narrador en memoria. Precalentarlo aquí no ahorraría nada
-// real: para cuando llegue el primer turno de verdad, ya se habría descargado solo, exactamente
-// igual que si nunca se hubiera precalentado — solo gastaría tiempo/batería sin beneficio.
+// Solo el narrador, NO el cronista (probado y descartado, 2026-09-14, cuando clasificar llevaba `keepAlive: '0'`).
+// Desde QA-168 clasificar lo mantiene 5 min, así que solo el primer clasificar tras arrancar sale en frío (~7 s);
+// precalentarlo tampoco ahorraría mucho si el primer turno tarda más de 5 min en llegar.
 void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000, keepAlive: '1h', tarea: 'calentar' })
   .then(() => app.log.info(`Narrador (${env.ollamaModelNarrador}) precalentado en Ollama (prefijo real cacheado).`))
   .catch((err) => app.log.warn(`Warm-up del narrador falló (no bloquea el arranque): ${err instanceof Error ? err.message : err}`));
