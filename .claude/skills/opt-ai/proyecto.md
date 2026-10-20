@@ -38,4 +38,8 @@ lenta» por su cuenta: informa de las cifras y propone el umbral a la usuaria.
 
 ## Lo que ya hay (no proponerlo otra vez)
 
-Nada todavía: se apunta aquí cada herramienta o ajuste aprobado.
+Se apunta aquí cada herramienta o ajuste aprobado.
+
+- Registro por turno (`QA-162`): `app.turno`, `app.intento`, rechazos de guard (`app.evento: rechazo`) y `num_ctx`
+  efectivo de `/api/ps`; `medir.py` saca la tabla TURNOS.
+- `keep_alive` 1h en `resumen` y en el calentamiento (`QA-161`); captura remota apagada en las tandas (`QA-160`).

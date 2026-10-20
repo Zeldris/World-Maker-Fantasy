@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import { appendFile } from 'node:fs/promises';
 import { env } from '../config/env.js';
 
@@ -8,7 +10,12 @@ import { env } from '../config/env.js';
 export type RegistroOperacion = 'text_completion' | 'chat' | 'embeddings' | 'retrieval';
 
 export interface RegistroLlamada {
-  operation: RegistroOperacion;
+  /// Sin operación es un evento (`evento`), no una llamada.
+  operation?: RegistroOperacion;
+  /// QA-162: `rechazo` = el validador del narrador descartó el texto del intento `intento`.
+  evento?: 'rechazo';
+  intento?: number;
+  rechazo?: string;
   model?: string;
   provider?: string;
   maxTokens?: number;
@@ -38,15 +45,40 @@ export function nsToMs(ns: unknown): number | undefined {
   return typeof ns === 'number' && Number.isFinite(ns) ? Math.round((ns / 1e6) * 100) / 100 : undefined;
 }
 
-/// `input_tokens` ≥ `num_ctx` significa que el prompt se recortó. Sin ambos datos, no se sabe.
-export function calcularTruncated(inputTokens?: number, numCtx?: number): boolean | undefined {
-  if (inputTokens === undefined || numCtx === undefined) return undefined;
-  return inputTokens >= numCtx;
+/// `input_tokens` ≥ `num_ctx` significa que el prompt se recortó. Pero cuando Ollama recorta, `prompt_eval_count`
+/// ya cuenta lo que queda (el respaldo pasaba de 5.456 a 2.050 con 4096), así que también se mira el largo del
+/// prompt: a ~4 caracteres por token (en castellano salen menos, así que se queda corto y no da falsos recortes).
+/// Sin `num_ctx`, no se sabe.
+export function calcularTruncated(inputTokens?: number, numCtx?: number, promptChars?: number): boolean | undefined {
+  if (numCtx === undefined) return undefined;
+  if (inputTokens === undefined && promptChars === undefined) return undefined;
+  return (inputTokens ?? 0) >= numCtx || (promptChars ?? 0) / 4 > numCtx;
+}
+
+/// QA-162: id de turno (`app.turno`) para medir lo que espera la jugadora y no solo cada llamada. `/turn/classify`
+/// lo abre y `/turn/narrate` de la misma partida lo sigue; todo lo que se llame desde ahí (también en segundo plano)
+/// lo hereda por AsyncLocalStorage. Sin IA_REGISTRO no hace nada.
+const turnoIa = new AsyncLocalStorage<string>();
+const turnoAbiertoPorPartida = new Map<string, string>();
+
+export function abrirTurnoIa(saveId: string): void {
+  if (!env.iaRegistro) return;
+  const id = randomUUID().slice(0, 8);
+  turnoAbiertoPorPartida.set(saveId, id);
+  turnoIa.enterWith(id);
+}
+
+export function seguirTurnoIa(saveId: string): void {
+  if (!env.iaRegistro) return;
+  const id = turnoAbiertoPorPartida.get(saveId) ?? randomUUID().slice(0, 8);
+  turnoAbiertoPorPartida.delete(saveId);
+  turnoIa.enterWith(id);
 }
 
 export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Date()): string {
   const campos: Record<string, unknown> = {
     ts: ahora.toISOString(),
+    'app.evento': r.evento,
     'gen_ai.operation.name': r.operation,
     'gen_ai.provider.name': r.provider,
     'gen_ai.request.model': r.model,
@@ -57,6 +89,9 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'gen_ai.response.finish_reason': r.finishReason,
     'app.task': r.task,
     'app.machine_profile': perfil,
+    'app.turno': turnoIa.getStore(),
+    'app.intento': r.intento,
+    'app.rechazo': r.rechazo,
     'app.num_ctx': r.numCtx,
     'app.keep_alive': r.keepAlive,
     'app.duration_ms': r.durationMs,

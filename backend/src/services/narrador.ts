@@ -1,4 +1,5 @@
 import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
+import { registrarLlamada } from '../lib/iaRegistro.js';
 import { sinComillasSueltas } from './accionCitada.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
@@ -1367,6 +1368,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       keepAlive: '1h',
       temperature: combatTemperature,
       tarea: 'narrar',
+      intento: 1,
     };
     if (!ctx.onNarrationChunk) return ollamaGenerate(generateOptions);
 
@@ -1410,6 +1412,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       keepAlive: '1h',
       temperature: combatTemperature,
       tarea: 'narrar',
+      intento: 2,
     });
   };
 
@@ -1423,6 +1426,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       keepAlive: '0',
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
+      intento: 3,
     });
 
   let lastResult: NarrationResult | null = null;
@@ -1625,6 +1629,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
 
       if (rejection) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
+        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason });
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         rejectionReasons.push(rejection.reason);

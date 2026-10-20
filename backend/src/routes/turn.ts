@@ -72,6 +72,7 @@ import { planDeterministicBuild, detectsBuildIntent, CONSTRUCTION_RECIPES, build
 import { ambitoPoblacion } from '../services/mundoPartida.js';
 import { enGraciaTrasRenacer } from '../services/death.js';
 import { tieneMontura } from '../services/monturas.js';
+import { abrirTurnoIa, seguirTurnoIa } from '../lib/iaRegistro.js';
 
 interface ClassifyBody {
   saveId: string;
@@ -560,6 +561,7 @@ export async function turnRoutes(app: FastifyInstance) {
     if (!saveId || !action) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action' });
     }
+    if (!preview) abrirTurnoIa(saveId); // QA-162: id de turno del registro de opt-ai
 
     const save = await prisma.save.findUnique({
       where: { id: saveId },
@@ -1247,6 +1249,7 @@ export async function turnRoutes(app: FastifyInstance) {
     if (!saveId || !action || !classification) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action, classification' });
     }
+    seguirTurnoIa(saveId);
     // UX-29/UX-35: si aún corre el avance de fondo del turno o la acción anterior, este turno espera a
     // que acabe (suele ser menos de lo que se tarda en leer la narración) y lee el mundo ya avanzado.
     await esperarSegundoPlano(saveId);

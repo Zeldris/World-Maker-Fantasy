@@ -136,3 +136,6 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
   ±10 s en p50 con 8 turnos: las comparaciones de las siguientes se leen con eso en cuenta).
 - **Hallazgo de `02`**: el prefill del intento 1 es de ~37 s para ~6.500 tokens, pero el del intento 2 (~5.900) baja a
   4,5-6 s y el calentamiento en frío lee 2.848 tokens en 3,8 s: entre turnos no se aprovecha la caché del prefijo.
+- **`QA-162`**: instrumentación sin A/B (ya estaba en `01-ref`); lo que mide es lo de la tabla. `rag-eval` en
+  `tarkor_juego` con los 4 casos de la ronda en `rag-casos.jsonl` (16 en total): recall@4 0,750, MRR 0,708 (k=8: 0,938 y
+  0,739), 0 `debe_pasar` fallidos; de los de la ronda, solo `p263-ulkha-serhu` sale (puesto 1). Referencia de `QA-167`.

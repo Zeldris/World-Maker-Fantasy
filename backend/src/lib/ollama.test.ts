@@ -57,6 +57,36 @@ describe('registro opt-ai en ollamaGenerate', () => {
   });
 });
 
+// QA-162: sin `numCtx` en la llamada, el registro saca el contexto efectivo de Ollama (`/api/ps`) y el intento.
+describe('num_ctx efectivo e intento en el registro', () => {
+  it('lee context_length de /api/ps a los 4 s y lo usa en las llamadas siguientes', async () => {
+    vi.resetModules();
+    vi.useFakeTimers();
+    const registrarLlamada = vi.fn();
+    vi.doMock('./iaRegistro.js', async (orig) => ({ ...(await orig<typeof import('./iaRegistro.js')>()), registrarLlamada }));
+    vi.doMock('../config/env.js', async (orig) => {
+      const real = await orig<typeof import('../config/env.js')>();
+      return { env: { ...real.env, iaRegistro: '/tmp/x.jsonl' } };
+    });
+    const raw = { response: '{}', prompt_eval_count: 2050, eval_count: 5, done_reason: 'stop' };
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith('/api/ps')
+        ? { ok: true, json: async () => ({ models: [{ name: 'q:1.5b', context_length: 4096 }] }) }
+        : { ok: true, json: async () => raw },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { ollamaGenerate: generar } = await import('./ollama.js');
+    await generar({ model: 'q:1.5b', prompt: 'x'.repeat(20_000), intento: 3 });
+    expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ intento: 3 });
+    expect(registrarLlamada.mock.calls[0][0].numCtx).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(4_000);
+    await generar({ model: 'q:1.5b', prompt: 'x'.repeat(20_000) });
+    expect(registrarLlamada.mock.calls[1][0]).toMatchObject({ numCtx: 4096, truncated: true });
+    vi.useRealTimers();
+    vi.doUnmock('../config/env.js');
+  });
+});
+
 function streamDe(lineas: string[], finalSinSalto = false, cancel = vi.fn(async () => {})) {
   const enc = new TextEncoder();
   let i = 0;

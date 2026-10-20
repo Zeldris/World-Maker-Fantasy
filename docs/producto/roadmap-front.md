@@ -1392,8 +1392,10 @@ turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
   arrancar si está encendida.~~ ✅ 2026-10-20: hecho; sin A/B (mandaría turnos fuera), comprobado en `backend.log`.
 - ~~**QA-161 · `keep_alive` 1h en `resumen`** (propuesta 3): el resumen usa el narrador y le bajaba la residencia a 5 min.~~
   ✅ 2026-10-20: `resumen` y el calentamiento con 1h; medido en `02`, sin recarga tras el `resumen`.
-- **QA-162 · Registro y `medir.py` por turno** (propuesta 6): `app.intento`, `app.rechazo`, id de turno y `num_ctx`
-  efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.
+- ~~**QA-162 · Registro y `medir.py` por turno** (propuesta 6): `app.intento`, `app.rechazo`, id de turno y `num_ctx`
+  efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.~~
+  ✅ 2026-10-20: hecho (`app.turno`, `app.intento`, `app.evento`/`app.rechazo`, `num_ctx` de `/api/ps`, tabla TURNOS);
+  `rag-eval` con los casos nuevos: recall@4 0,750.
 - **QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.
 - **QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).
 - **QA-165 · `lengthGuidance` tras el bloque fijo** (propuesta 7): no perder la caché al entrar en combate.

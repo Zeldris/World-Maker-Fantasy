@@ -47,6 +47,8 @@ export interface OllamaGenerateOptions {
   /// Contexto pedido a Ollama (`num_ctx`). Si se omite no se envía (manda el Modelfile); si se
   /// pasa, además de enviarse sirve para calcular `truncated` en el registro.
   numCtx?: number;
+  /// Intento de la cascada del narrador (1, 2 o 3), solo para el registro (`app.intento`, QA-162).
+  intento?: number;
 }
 
 export interface OllamaGenerateResult {
@@ -112,6 +114,32 @@ function traducirError(err: unknown, options: OllamaGenerateOptions): Error {
   return err instanceof Error ? err : new Error(String(err));
 }
 
+/// QA-162: `num_ctx` efectivo por modelo para el registro cuando la llamada no lo pasa (casi ninguna lo pasa, y
+/// sin él no se veía ningún recorte): el `context_length` de `/api/ps` mientras el modelo está cargado o, si no,
+/// el `num_ctx` del Modelfile (`/api/show`). Solo con IA_REGISTRO, en segundo plano y sin esperar: la primera
+/// llamada de cada modelo puede salir sin él. Se consulta a los 4 s de empezar la llamada porque los modelos con
+/// `keep_alive` 0 ya no salen en `/api/ps` al acabar.
+const ctxPorModelo = new Map<string, number>();
+const conEtiqueta = (model: string) => (model.includes(':') ? model : `${model}:latest`);
+
+export function ctxEfectivo(model: string): number | undefined {
+  return ctxPorModelo.get(conEtiqueta(model));
+}
+
+async function leerCtx(model: string): Promise<void> {
+  const ps = (await fetch(`${env.ollamaBaseUrl}/api/ps`).then((r) => r.json())) as { models?: { name?: string; context_length?: number }[] };
+  for (const m of ps.models ?? []) if (m.name && m.context_length) ctxPorModelo.set(m.name, m.context_length);
+  if (ctxPorModelo.has(conEtiqueta(model))) return;
+  const show = (await fetch(`${env.ollamaBaseUrl}/api/show`, { method: 'POST', body: JSON.stringify({ model }) }).then((r) => r.json())) as { parameters?: string };
+  const n = Number(/(?:^|\n)num_ctx\s+(\d+)/.exec(show.parameters ?? '')?.[1]);
+  if (n > 0) ctxPorModelo.set(conEtiqueta(model), n);
+}
+
+function vigilarCtx(options: OllamaGenerateOptions): void {
+  if (!env.iaRegistro || options.numCtx || ctxPorModelo.has(conEtiqueta(options.model))) return;
+  setTimeout(() => void leerCtx(options.model).catch(() => {}), 4_000).unref?.();
+}
+
 /// Registro opt-ai de una llamada a /api/generate (no hace nada sin IA_REGISTRO).
 function registrarGenerate(
   options: OllamaGenerateOptions,
@@ -120,6 +148,7 @@ function registrarGenerate(
   extra: { ttftMs?: number; error?: string } = {},
 ): void {
   const r = (raw ?? {}) as OllamaRawStats;
+  const numCtx = options.numCtx ?? ctxEfectivo(options.model);
   registrarLlamada({
     operation: 'text_completion',
     provider: 'ollama',
@@ -130,14 +159,15 @@ function registrarGenerate(
     outputTokens: r.eval_count,
     finishReason: extra.error ? 'error' : r.done_reason,
     task: options.tarea,
-    numCtx: options.numCtx,
+    intento: options.intento,
+    numCtx,
     keepAlive: options.keepAlive ?? env.ollamaKeepAlive,
     durationMs: Date.now() - inicio,
     loadMs: nsToMs(r.load_duration),
     prefillMs: nsToMs(r.prompt_eval_duration),
     decodeMs: nsToMs(r.eval_duration),
     ttftMs: extra.ttftMs,
-    truncated: calcularTruncated(r.prompt_eval_count, options.numCtx),
+    truncated: calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
     error: extra.error,
   });
 }
@@ -149,6 +179,7 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
     const controller = options.timeoutMs ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
     const inicio = Date.now();
+    vigilarCtx(options);
 
     try {
       // use_mlock/num_thread (roadmap de velocidad, 2026-07-19, revisado 2026-09-14): options.*
@@ -204,6 +235,7 @@ export async function ollamaGenerateStream(
     const controller = options.timeoutMs ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
     const inicio = Date.now();
+    vigilarCtx(options);
     let ttftMs: number | undefined;
 
     try {
