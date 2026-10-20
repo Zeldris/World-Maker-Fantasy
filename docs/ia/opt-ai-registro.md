@@ -155,3 +155,7 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
   con un prompt real (6.427 tokens) y la caché caliente: entrar en combate costaba 50,4 s de prefill con el orden viejo y
   1,4 s con el nuevo. Arreglado de paso un fallo de `QA-164`: el intento 2 recortaba los hechos con un `replace` del
   bloque entero, que ya no casaba cuando había narración anterior (el prompt la saca aparte); ahora usa `hechosBlock`.
+- **`QA-166`**: el respaldo (`qwen2.5:1.5b-instruct`) lleva el prompt recortado del intento 2 y `num_ctx` 8192. Sin pasada
+  de `benchmark-turno` (solo cambia el intento 3, que no salió en `04`…`06`); reproducción con un prompt real y el
+  `format` de `narrar`: con 4096 lee 2.050 de 5.257 tokens y narra hechos sueltos sin la acción (7,8 s); con 8192 lee
+  el prompt entero y narra la acción con Ulkha en escena (15,5 s). RAM: ~4 GB disponibles con el narrador cargado.

@@ -1419,17 +1419,18 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     });
   };
 
+  // Si fue timeout (no solo JSON cortado), reducir los hechos es la mitigación más razonable
+  // sin saber la causa exacta — no ha demostrado arreglar el cuelgue visto, pero tampoco hace
+  // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
+  // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
+  const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
+  // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
+  // reintento de emergencia — se omite entero, nunca se recorta a medias.
+  const retryPrompt = prompt
+    .replace(hechosBlock, factsBlock(retryFacts))
+    .replace(backgroundLoreBlock, '');
+
   const attempt2 = () => {
-    // Si fue timeout (no solo JSON cortado), reducir los hechos es la mitigación más razonable
-    // sin saber la causa exacta — no ha demostrado arreglar el cuelgue visto, pero tampoco hace
-    // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
-    // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
-    const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
-    // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
-    // reintento de emergencia — se omite entero, nunca se recorta a medias.
-    const retryPrompt = prompt
-      .replace(hechosBlock, factsBlock(retryFacts))
-      .replace(backgroundLoreBlock, '');
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
     // llevaba tope y podía irse a los 240s enteros de timeout en vez de cortar antes — 400 sigue
     // dando mucho más margen que los 220 del intento 1 (por si la causa real era truncar de más),
@@ -1447,11 +1448,14 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     });
   };
 
+  // QA-166 (`/opt-ai`, 2026-10-20): con el `num_ctx` 4096 del Modelfile, el respaldo leía 2.050 de ~5.500 tokens y
+  // perdía la acción (contestaba con lore). Lleva el prompt recortado del intento 2 y 8192: ~13 s en la Deck.
   const attempt3 = () =>
     ollamaGenerate({
       model: env.ollamaModelCronista,
-      prompt,
+      prompt: retryPrompt,
       format,
+      numCtx: 8192,
       maxTokens: 220,
       timeoutMs: 90_000,
       keepAlive: '0',
