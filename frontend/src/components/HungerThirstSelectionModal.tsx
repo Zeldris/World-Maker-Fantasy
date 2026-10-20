@@ -5,6 +5,7 @@ import { quantityOf, baseNameOf } from '../lib/gameViewHelpers'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { QuantityStepper } from './QuantityStepper'
 import { Miniatura } from './Miniatura'
+import { itemIcon } from '../lib/enciclopediaTargets'
 import { ACCION_BEBER_DE_LA_FUENTE } from '../lib/puntosDeAgua'
 
 interface HungerThirstSelectionModalProps {
@@ -37,6 +38,13 @@ function pctTextColor(pct: number): string {
 /// odre") — el Odre de agua (curtidor-orcos-llanuras, T1) se craftea vacío y se llena con
 /// "recoger agua" solo en una zona con agua real; el odre LLENO (`curaAgua: 100`) es el que
 /// aparece aquí como cualquier otra bebida.
+/// P228: el icono por nombre del resto de la interfaz (el odre, 💧); sin uno propio, el de bebida (no el
+/// de la categoría «consumible», que es una comida).
+function iconoDeBebida(nombre: string): string {
+  const porNombre = itemIcon('', nombre)
+  return porNombre === itemIcon('', '') ? '🥤' : porNombre
+}
+
 export function HungerThirstSelectionModal({ inventory, hambre, sed, energia, energiaMax, enFuente = false, onConfirm, onCancel }: HungerThirstSelectionModalProps) {
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [selectionOrder, setSelectionOrder] = useState<string[]>([])
@@ -214,7 +222,7 @@ export function HungerThirstSelectionModal({ inventory, hambre, sed, energia, en
                   value > 0 ? 'border-accent-600/60 bg-accent-500/10' : 'border-iron-700'
                 }`}
               >
-                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono="🥤" />
+                <Miniatura nombre={baseNameOf(item.name)} entityType="item" slug={item.catalogSlug ?? undefined} icono={iconoDeBebida(item.name)} />
                 <span className="mr-auto min-w-0">
                   <span className="font-semibold text-wood-100">{baseNameOf(item.name)}</span>
                   <span className="ml-1.5 text-2xs text-wood-500">

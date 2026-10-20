@@ -79,7 +79,7 @@ describe('partidas de las facciones (CR-63 63g)', () => {
     const v = await prisma.viajero.findFirstOrThrow({ where: { factionId: faccionId }, include: { miembros: true } });
     const m = v.miembros[0]!;
     const cazadores: Cazador[] = Array.from({ length: 8 }, (_, i) => ({ miembroId: m.id, generico: true, c: { id: `${m.id}-${i}` } as Cazador['c'] }));
-    await prisma.$transaction((tx) => aplicarBajas(tx, saveId, cazadores, new Map(), new Set([`${m.id}-0`, `${m.id}-1`, `${m.id}-2`]), 21, faccionId));
+    await prisma.$transaction((tx) => aplicarBajas(tx, saveId, cazadores, new Map(), new Set([`${m.id}-0`, `${m.id}-1`, `${m.id}-2`]), 21, 'caza', faccionId));
     expect(await prisma.$transaction((tx) => cazadoresFuera(tx, faccionId))).toBe(5);
     expect(await prisma.kingdomStats.findFirstOrThrow({ where: { factionId: faccionId } })).toMatchObject({ poblacion: 47, trabajadores: 97 });
     const rep = await prisma.$transaction(async (tx) => TRABAJOS.CAZA!.antesDeRepetir!(tx, (await tx.viajero.findUniqueOrThrow({ where: { id: v.id }, include: { miembros: true } })), 21));

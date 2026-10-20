@@ -437,7 +437,17 @@ describe('handleSubmit — errores especiales', () => {
     await act(() => result.current.turn.handleSubmit('Exploro la zona.'))
 
     expect(pollForResolutionMock).not.toHaveBeenCalled()
-    expect(result.current.characterLog.some((e) => e.text.includes('500'))).toBe(true)
+    expect(result.current.characterLog.some((e) => e.text === 'El narrador no pudo procesar la acción. Inténtalo de nuevo.')).toBe(true)
+    expect(result.current.characterLog.some((e) => e.text.includes('500') || e.text.includes('backend'))).toBe(false)
+  })
+
+  it.each([502, 503, 504])('P229: un %i de proxy sí va al sondeo de reconexión', async (status) => {
+    mockClassify.mockRejectedValueOnce(new BackendHttpError(status))
+    const { result } = renderHook(() => useHarness())
+
+    await act(() => result.current.turn.handleSubmit('Exploro la zona.'))
+
+    expect(pollForResolutionMock).toHaveBeenCalledTimes(1)
   })
 
   it('P229: un corte de red real sí va al sondeo de reconexión', async () => {
@@ -479,14 +489,14 @@ describe('handleSubmit — turno que abre un combate con intercambio', () => {
     expect(entrada.roll).toBeUndefined()
   })
 
-  it('P232 (UX-12): el turno que abre combate marca su entrada con combate: true', async () => {
+  it('P232 (UX-12): el turno que abre combate NO marca la entrada con combate (el backend la guarda sin marca)', async () => {
     mockClassify.mockResolvedValueOnce(baseClassifyResponse())
     mockNarrate.mockResolvedValueOnce(
       baseNarrateResponse({ combateIniciado: { npcs: [{ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO', saqueado: false, lootedItemNames: [], analizado: false, capturable: true, activeEffects: [] }] } }) as never,
     )
     const { result } = renderHook(() => useHarness())
     await act(() => result.current.turn.handleSubmit('Ataco al Orco.'))
-    expect(result.current.characterLog.find((e) => e.id === 'log-1')!.combate).toBe(true)
+    expect(result.current.characterLog.find((e) => e.id === 'log-1')!.combate).toBeUndefined()
   })
 
   it('P232: un turno sin combate no marca combate', async () => {

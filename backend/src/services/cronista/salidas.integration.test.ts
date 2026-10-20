@@ -5,6 +5,7 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { MINUTOS_POR_ANIO } from './edades.js';
 import { procesarReacciones } from './reacciones.js';
 import { crearSubdito } from './subditos.js';
+import { formatFictionalDate } from '../worldClock.js';
 import { morir, quienSeVa, revisarSalidas, salidasRecientes, victimaDelHambre } from './salidas.js';
 
 const AHORA = 480 + 100 * MINUTOS_POR_ANIO;
@@ -117,5 +118,48 @@ describe('salidas y muerte (REI-121) — en una partida', () => {
     expect(r.idos).toContain(c.id);
     expect((await prisma.subject.findUniqueOrThrow({ where: { id: d.id } })).parejaId).toBeNull();
     expect(await avisos()).toContain(`${c.name} se marcha del Reino, descontento. ${d.name} se queda sin pareja.`);
+  });
+
+  it('P223/P224 (revisión): un ex muerto no sale como «se queda sin pareja», y quien muere se limpia su propio parejaId', async () => {
+    const a = await crear(25, { genero: 'F' });
+    const b = await crear(25, { genero: 'M' });
+    await prisma.subject.update({ where: { id: a.id }, data: { parejaId: b.id } });
+    await prisma.subject.update({ where: { id: b.id }, data: { parejaId: a.id } });
+    await prisma.$transaction((tx) => morir(tx, saveId, a, 'vejez', AHORA));
+    expect((await prisma.subject.findUniqueOrThrow({ where: { id: a.id } })).parejaId).toBeNull();
+    // Aunque a su ex le quedara el vínculo colgando, al morir b no se nombra a un muerto.
+    await prisma.subject.update({ where: { id: a.id }, data: { parejaId: b.id } });
+    await prisma.$transaction((tx) => morir(tx, saveId, b, 'vejez', AHORA + DIA));
+    const texto = (await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM', text: { startsWith: `${b.name} ha muerto` } } })).map((l) => l.text);
+    expect(texto).toEqual([`${b.name} ha muerto de viejo.`]);
+  });
+
+  it('P223 (revisión): el aviso lleva el instante del suceso, no el reloj de la partida', async () => {
+    const a = await crear(25);
+    const cuando = AHORA + 5 * DIA + 600;
+    await prisma.$transaction((tx) => morir(tx, saveId, a, 'sed', cuando));
+    const aviso = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'KINGDOM', text: `${a.name} ha muerto de sed.` } });
+    expect(aviso.fictionalMinutes).toBe(cuando);
+    expect(aviso.timeLabel).toBe(formatFictionalDate(cuando));
+  });
+
+  it('P223 (revisión): la familia que se va da un solo aviso, no uno por hijo', async () => {
+    await prisma.subject.updateMany({ where: { saveId, estado: 'ACTIVO' }, data: { felicidad: 90 } });
+    const madre = await crear(25, { genero: 'F' });
+    const h1 = await crear(1, { madreId: madre.id });
+    const h2 = await crear(2, { madreId: madre.id });
+    await prisma.subject.update({ where: { id: madre.id }, data: { felicidad: 1 } });
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKey() }, data: { diasFelicidadBaja: 7 } });
+    const r = await prisma.$transaction((tx) => revisarSalidas(tx, saveId, AHORA + 60 * DIA, () => 0.99));
+    expect(r.idos).toHaveLength(3);
+    const avisos = (await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se marcha del Reino' } }, orderBy: { createdAt: 'desc' }, take: 3 })).map((l) => l.text);
+    const nuevos = avisos.filter((t) => t.startsWith(madre.name));
+    expect(nuevos).toHaveLength(1);
+    expect(nuevos[0]).toMatch(new RegExp(`^${madre.name} se marcha del Reino, descontento, con .+ y .+\\.$`));
+    const nombresHijos = (await prisma.subject.findMany({ where: { id: { in: [h1.id, h2.id] } } })).map((x) => x.name);
+    for (const n of nombresHijos) {
+      expect(nuevos[0]).toContain(n);
+      expect(avisos.filter((t) => t.startsWith(`${n} se marcha`))).toHaveLength(0);
+    }
   });
 });

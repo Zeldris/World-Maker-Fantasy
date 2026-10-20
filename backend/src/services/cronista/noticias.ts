@@ -221,6 +221,14 @@ export async function agruparNoticias(prisma: PrismaClient, saveId: string, marc
     // tablón) cuenta una vez: se queda la primera línea con ese texto.
     const vistos = new Set<string>();
     const lineas = entradas.filter((e) => !vistos.has(e.text) && vistos.add(e.text));
+    if (lineas.length === 1) {
+      // Tras quitar repetidos solo queda una: entrada normal, sin cabecera de resumen.
+      const unica = lineas[0]!;
+      await tx.logEntry.create({
+        data: { saveId, channel: 'WORLD', isSystemMessage: true, text: unica.text, timeLabel: unica.timeLabel, fictionalMinutes: unica.fictionalMinutes, ...(unica.noticia ? { noticia: unica.noticia as Prisma.InputJsonValue } : {}) },
+      });
+      return entradas.length;
+    }
     await tx.logEntry.create({
       data: {
         saveId, channel: 'WORLD', isSystemMessage: true, timeLabel: ultima.timeLabel, fictionalMinutes: ultima.fictionalMinutes, noticia: { resumen: true, lineas: lineas.map((e) => (e.noticia as MetaNoticia | null) ?? null) } as Prisma.InputJsonValue,
