@@ -349,6 +349,9 @@ interface ClassifyContext {
   npcCalibration?: string | null;
 }
 
+/// QA-164: la narración anterior va en `worldFacts` (turnResolution.ts) pero el prompt la saca de los hechos de la escena.
+const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+
 function factsBlock(facts: string[]): string {
   return facts.length ? facts.map((f) => `- ${f}`).join('\n') : '(sin hechos previos registrados todavía)';
 }
@@ -1072,6 +1075,8 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   prompt: string;
   format: Record<string, unknown>;
   backgroundLoreBlock: string;
+  /// Los hechos de la escena tal como van en `prompt` (sin la narración anterior), para que el intento 2 los recorte.
+  hechosBlock: string;
 } {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
@@ -1187,9 +1192,11 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // mayoría de turnos reales). Ahora `fixedInstructions` es de verdad idéntico letra a letra en
   // todos los turnos de cualquier partida, y `combatBlock` se coloca más abajo, junto a `rollBlock`
   // y ACCIÓN DEL JUGADOR — la parte que ya variaba turno a turno de todos modos.
-  const fixedInstructions = `${lengthGuidance}
-
-PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida (bug real jugando en vivo, 2026-09-15: dos NPC sin relación entre sí dijeron literalmente la misma frase "¿Has visto algo?" — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el mismo motivo o situación). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
+  //
+  // QA-165 (`/opt-ai`, 2026-10-20): `lengthGuidance` (cambia al entrar o salir de combate y con la banda) iba al
+  // principio de `fixedInstructions` y rompía toda la caché en ese turno (~6.400 tokens, ~50 s en la Deck). Va ahora
+  // junto a la acción, y el bloque fijo empieza ya en PERSPECTIVA.
+  const fixedInstructions = `PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida (bug real jugando en vivo, 2026-09-15: dos NPC sin relación entre sí dijeron literalmente la misma frase "¿Has visto algo?" — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el mismo motivo o situación). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
 
 TONO: el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara). Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador.
 
@@ -1232,8 +1239,8 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   const corteEstado = ctx.characterSummary.indexOf('\nESTADO DE LA PARTIDA');
   const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
   const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
-  const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
   const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
+  const hechosBlock = factsBlock(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)));
 
   const prompt = `${GOOD_NARRATION_EXAMPLE}
 
@@ -1243,12 +1250,14 @@ PERSONAJE:
 ${identidad}
 
 HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
-${factsBlock(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)))}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
+${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
 ${groundingBlock}
 
 ${rollBlock}
 
 ${combatBlock}
+
+${lengthGuidance}
 
 ACCIÓN DEL JUGADOR:
 "${ctx.action}"
@@ -1337,7 +1346,7 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['narration', 'newFacts'],
   };
 
-  return { prompt, format, backgroundLoreBlock };
+  return { prompt, format, backgroundLoreBlock, hechosBlock };
 }
 
 /// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce
@@ -1353,7 +1362,7 @@ export function allAttemptsRejectedForSameReason(reasons: string[], totalAttempt
 }
 
 export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
-  const { prompt, format, backgroundLoreBlock } = buildNarrationPrompt(ctx);
+  const { prompt, format, backgroundLoreBlock, hechosBlock } = buildNarrationPrompt(ctx);
 
   // Tres intentos en cascada. Visto en pruebas reales (2026-07-18): una acción concreta colgó
   // 4 de 4 veces con el modelo grande, incluso reduciendo hechos y relajando la regla de "no
@@ -1415,11 +1424,11 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     // sin saber la causa exacta — no ha demostrado arreglar el cuelgue visto, pero tampoco hace
     // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
     // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
-    const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0));
+    const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
     // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
     // reintento de emergencia — se omite entero, nunca se recorta a medias.
     const retryPrompt = prompt
-      .replace(factsBlock(ctx.worldFacts), factsBlock(retryFacts))
+      .replace(hechosBlock, factsBlock(retryFacts))
       .replace(backgroundLoreBlock, '');
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
     // llevaba tope y podía irse a los 240s enteros de timeout en vez de cortar antes — 400 sigue

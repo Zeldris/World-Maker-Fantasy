@@ -1987,12 +1987,28 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(p).toContain('PERSONAJE:\nGorhorn, Superviviente.\n\nHECHOS DEL MUNDO');
   });
 
+  it('hechosBlock es literal del prompt, para que el intento 2 pueda recortarlo', () => {
+    const { prompt, hechosBlock } = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.'));
+    expect(prompt).toContain(hechosBlock);
+    expect(hechosBlock).toContain('PERSONAJE EN ESCENA');
+    expect(hechosBlock).not.toContain('TU PROPIA NARRACIÓN');
+  });
+
   it('dos turnos seguidos comparten el prefijo hasta los hechos de la escena', () => {
     const a = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
     const b = buildNarrationPrompt(ctx('12:11', 'Gorhorn escucha.')).prompt;
     let n = 0;
     while (a[n] === b[n]) n++;
     expect(n).toBeGreaterThan(a.indexOf('PERSONAJE EN ESCENA: Ulkha Ketg'));
+  });
+
+  it('entrar en combate no cambia el prefijo: la guía de longitud va junto a la acción (QA-165)', () => {
+    const a = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
+    const b = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), enCombate: true }).prompt;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    expect(n).toBeGreaterThan(a.indexOf('CONOCIMIENTO DE FONDO'));
+    expect(b.indexOf('Narra en 1-2 frases muy breves')).toBeLessThan(b.indexOf('ACCIÓN DEL JUGADOR'));
   });
 });
 
