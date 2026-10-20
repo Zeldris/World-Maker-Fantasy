@@ -150,3 +150,9 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
 - `pulsar.js` con solo `contiene` falla («Falta window.tk.texto»); `pulsar` «Reino» no dice si se abrió el cajón.
 - El escenario `reino-dia39` no tiene comida, materiales ni Goirnos: Corrales, Partidas, Defensa, oficios y llegadas no
   se pueden provocar sin `escenario.sh dar` (necesita el permiso de la usuaria) o recolectar fuera de la Hondonada.
+- `orden.sh` por `flatpak-spawn` no ve el `/tmp` del sandbox: ni `< archivo` ni `--ayuda` con una ruta de allí (vale
+  pasar el JS en base64 por stdin, o dejar el archivo dentro del repo en una carpeta ignorada).
+- Con Ollama real, `turno.js` y `combate.js` vuelven a los ~40 s con el HUD aún en «El narrador escribe»: esperar en un
+  bucle a que desaparezca. `combate.js` con `rondas:1` a veces juega Defensa (por la iniciativa) sin avisar.
+- `IA_REGISTRO` con ruta relativa se resuelve desde `backend/` (donde corre el servidor): `backend/ia/…` no escribe
+  nada. Usar la ruta absoluta (`$PWD/backend/ia/registro-$(date +%F).jsonl` desde la raíz).
