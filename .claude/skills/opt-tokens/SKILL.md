@@ -24,6 +24,9 @@ calidad: hallazgos del `/code-review` o de las rondas que vienen de él, reinten
    `--horas N`, `--horas 0` para toda, `--desde <ISO|sha>` desde una fecha o un commit (`QA-134`), `--sesion <ruta>`). Da el uso real de la API, el **contexto medio por
    llamada** (lo que cuesta cada llamada de más), y por herramienta y por resultado los tokens que entraron en el
    contexto y los **arrastrados** (cada resultado se reenvía en cada llamada hasta la siguiente compactación).
+   Al final, `POR SUBAGENTE` (`QA-146`): una fila por subagente (descripción, tipo, modelo, llamadas, contexto medio,
+   entrada, salida) y el total de sesión + subagentes; los totales de arriba son solo de la principal. Un subagente
+   con muchas llamadas y contexto medio alto es donde repartir mejor.
    Lee solo su salida, nunca el registro entero. **Lo primero, la curva** (`Contexto medio` y `Tramos entre
    compactaciones`): contexto medio × llamadas es casi todo el gasto, y un techo muy por encima del suelo dice
    que se compacta tarde. Esa es la primera propuesta si se cumple, antes que cualquier herramienta. Si una
@@ -51,7 +54,7 @@ calidad: hallazgos del `/code-review` o de las rondas que vienen de él, reinten
      gasto que una skill ya resuelve (repartir con `orchestrate-dealer`, elegir modelo con `selector`) se propone
      como usarla o mejorarla, no como regla nueva; y lo que gastó una skill (su `SKILL.md` cargado, sus pasos) se
      mide como cualquier otro contexto. La IA del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`.
-   - **Modelo y razonamiento.** Mirar `POR MODELO` de `medir.py`: qué parte de la entrada va al modelo grande en
+   - **Modelo y razonamiento.** Mirar `POR MODELO` y `POR SUBAGENTE` de `medir.py`: qué parte de la entrada va al modelo grande en
      la sesión principal y qué subagentes usaron el grande para algo mecánico. Planificar, diseñar y revisar, con
      el grande; escribir código con un plan ya cerrado, buscar, jugar una ronda o formatear, en un subagente con un
      modelo más barato o menos esfuerzo, que devuelva el resultado (el diff, el resumen) a la sesión principal.
