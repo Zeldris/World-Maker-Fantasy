@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
-import { calcularTruncated, nsToMs, registrarLlamada } from './iaRegistro.js';
+import { calcularTruncated, nsToMs, registrarCaso, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -184,6 +184,20 @@ function registrarGenerate(
   });
 }
 
+/// Caso del banco de `scout-updates` de una llamada que acabó bien (no hace nada sin IA_CASOS).
+function registrarCasoGenerate(options: OllamaGenerateOptions, salida: string): void {
+  registrarCaso({
+    tarea: options.tarea,
+    modelo: options.model,
+    system: options.system,
+    prompt: options.prompt,
+    temperature: options.temperature,
+    numCtx: options.numCtx ?? ctxEfectivo(options.model),
+    maxTokens: options.maxTokens,
+    salida,
+  });
+}
+
 /// Llamada no-streaming a /api/generate, serializada por ollamaQueue (decisión técnica 5).
 export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<OllamaGenerateResult> {
   const queueTimeoutMs = queueTimeoutFor(options);
@@ -221,6 +235,7 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
 
       const raw = (await response.json()) as { response: string };
       registrarGenerate(options, raw, inicio);
+      registrarCasoGenerate(options, raw.response);
       return { text: raw.response, raw };
     } catch (err) {
       const traducido = traducirError(err, options);
@@ -308,6 +323,7 @@ export async function ollamaGenerateStream(
       procesarLinea(buffer);
 
       registrarGenerate(options, lastRaw, inicio, { ttftMs, error: terminado ? undefined : 'stream incompleto' });
+      if (terminado) registrarCasoGenerate(options, fullText);
       return { text: fullText, raw: lastRaw };
     } catch (err) {
       const traducido = traducirError(err, options);

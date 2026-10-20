@@ -61,7 +61,7 @@ Dos problemas distintos:
 - **Calidad:** modelo de 8B antiguo (`tarkor-narrador-llama31`, ajuste fino de Llama 3.1) escribiendo en español.
 
 Pieza que falta en Tarkor: el registro de `opt-ai` (`iaRegistro.ts`) no guarda los prompts, y el banco los necesita
-como casos. Propuesta: variable `IA_CASOS` en `env.ts` y captura en `registrarGenerate` de `ollama.ts`.
+como casos. Hecho (2026-10-20): con `IA_CASOS=<ruta>` cada `/api/generate` que acaba bien añade su prompt completo y su salida en el formato de casos de `banco.py` (`registrarCaso`, `iaRegistro.ts`). Sin `system` en el caso, el narrador usó el SYSTEM de su Modelfile: para un candidato sin él, añadirlo desde `ollama show --system`.
 
 ## De dónde sale cada decisión
 

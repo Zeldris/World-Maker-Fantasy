@@ -26,6 +26,10 @@ export const env = {
   iaRegistro: process.env.IA_REGISTRO || undefined,
   /// Perfil de máquina que se anota en cada línea del registro: deck, cpu, gpu8, gpu12…
   iaPerfil: process.env.IA_PERFIL || 'desconocido',
+  /// Casos para el banco de calidad de `scout-updates` (QA-176): ruta de un JSONL al que se añade, por cada
+  /// llamada a /api/generate que acaba bien, el prompt completo en el formato de casos de `banco.py`. Sin ella
+  /// no se escribe nada. Lleva el texto de la partida: no se sube al repositorio.
+  iaCasos: process.env.IA_CASOS || undefined,
 
   // El .env real de la usuaria ya lo tenía bajado a 2 (roadmap 2026-07-20/21) — este default de
   // código solo importa para un checkout nuevo sin `.env` todavía, así que se alinea al mismo
