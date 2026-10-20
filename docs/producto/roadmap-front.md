@@ -1384,6 +1384,22 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
   perdió dos subagentes sin commit.
 
+Propuestas de `/opt-ai` (primera medida en la Deck, 2026-10-20, aprobadas por la usuaria; [informe](../ia/opt-ai-registro.md)).
+Cada una se mide con `benchmark-turno` antes y después (perfil `deck`, `IA_REGISTRO` en las dos) y la medida va al
+informe; si empeora la calidad o no mejora, se revierte y se apunta. Objetivo por turno: primera palabra p50 ≤ 30 s,
+turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
+- ~~**QA-160 · Captura remota apagada en las tandas** (propuesta 9): `arrancar-juego.sh` la apaga y el servidor avisa al
+  arrancar si está encendida.~~ ✅ 2026-10-20: hecho; sin A/B (mandaría turnos fuera), comprobado en `backend.log`.
+- **QA-161 · `keep_alive` 1h en `resumen`** (propuesta 3): el resumen usa el narrador y le bajaba la residencia a 5 min.
+- **QA-162 · Registro y `medir.py` por turno** (propuesta 6): `app.intento`, `app.rechazo`, id de turno y `num_ctx`
+  efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.
+- **QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.
+- **QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).
+- **QA-165 · `lengthGuidance` tras el bloque fijo** (propuesta 7): no perder la caché al entrar en combate.
+- **QA-166 · Contexto del respaldo** (propuesta 4): los respaldos se recortaban a 4096.
+- **QA-167 · Escalera del RAG** (propuesta 5) con los casos de la ronda.
+- **QA-168 · `keep_alive` de `clasificar`, experimento** (propuesta 8).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

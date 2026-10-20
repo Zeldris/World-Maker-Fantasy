@@ -19,6 +19,8 @@ export DATABASE_URL="$URL" DIRECT_URL="$URL" OLLAMA_BASE_URL="${OLLAMA_BASE_URL:
 export TRAVEL_SEGUNDOS_PRIMER_TRAMO="${TRAVEL_SEGUNDOS_PRIMER_TRAMO:-5}"
 export TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA="${TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA:-3}"
 export TRAVEL_SEGUNDOS_MAXIMOS="${TRAVEL_SEGUNDOS_MAXIMOS:-20}"
+# QA-160 (`/opt-ai` del 2026-10-20): las tandas son solo locales; la captura remota del `.env` queda apagada.
+export LIVE_TEACHER_CAPTURE_ENABLED=false
 PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
 
 # QA-65 (retro del 2026-10-12): la suite con base real, con el juego y el driver en marcha, sumaba

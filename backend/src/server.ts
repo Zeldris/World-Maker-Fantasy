@@ -42,6 +42,12 @@ if (freeGb < 5) {
   app.log.warn(`RAM libre baja al arrancar: ${freeGb.toFixed(1)}GB — narrar puede tardar mucho más de lo normal (cerrar apps ayuda).`);
 }
 
+// QA-160 (`/opt-ai` del 2026-10-20, propuesta 9): la captura manda turnos a proveedores remotos y el
+// registro de la IA no la recoge; que se vea al arrancar, porque choca con «solo local».
+if (env.liveTeacherCaptureEnabled) {
+  app.log.warn('LIVE_TEACHER_CAPTURE_ENABLED=true: se mandan turnos a proveedores remotos (privacidad). Las tandas de pruebas la apagan.');
+}
+
 await app.register(cors, { origin: true });
 // Imágenes reales de la Enciclopedia (checklist 2026-07-21/22, punto 7 — sustituyen a los
 // prompts de texto ya generados): la usuaria sube el archivo a mano a uploads/images/<tipo>/

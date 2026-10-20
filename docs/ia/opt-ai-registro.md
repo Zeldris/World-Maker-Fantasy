@@ -17,14 +17,17 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `gen_ai.response.finish_reason` | texto | `stop`, `length`, `error`… |
 | `app.task` | texto | Tarea del proyecto (en Tarkor: `narrar`, `narrar_respaldo`, `clasificar`, `sugerir`, `dialogo_npc`, `combate`, `modo_dinamico`, `resumen`, `prompts_imagen`, `embedding`, `rag`; `calentar` es el calentamiento al arrancar y se excluye del análisis) |
 | `app.machine_profile` | texto | Perfil de máquina (`IA_PERFIL`; en Tarkor `deck`, `cpu`, `gpu8`, `gpu12`; sin variable, `desconocido`) |
-| `app.num_ctx` | entero | Contexto pedido (solo sale si la llamada lo pasa) |
+| `app.num_ctx` | entero | Contexto pedido, o el efectivo del modelo cargado (`/api/ps`, si no `/api/show`) si la llamada no lo pasa (`QA-162`) |
+| `app.turno` | texto | Id del turno: lo abre `/turn/classify` y lo siguen las llamadas de `/turn/narrate` de la misma partida (`QA-162`) |
+| `app.intento` | entero | Intento de la cascada de `narrar` (1, 2, o 3 = respaldo) |
+| `app.evento` | texto | `rechazo`: línea sin llamada, un guard rechazó el texto de ese intento (`app.rechazo` = motivo) |
 | `app.keep_alive` | texto | Tiempo que el modelo sigue cargado |
 | `app.duration_ms` | número | Total de la llamada, medido por el cliente |
 | `app.load_ms` | número | Carga del modelo (>0 = carga en frío) |
 | `app.prefill_ms` | número | Lectura del prompt |
 | `app.decode_ms` | número | Generación |
 | `app.ttft_ms` | número | Primera palabra (solo en streaming) |
-| `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` (el prompt se recortó). Aproximado: con la caché del prefijo, `prompt_eval_count` solo cuenta los tokens nuevos |
+| `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` o caracteres del prompt / 4 > `num_ctx` (el prompt se recortó; Ollama cuenta los tokens ya recortados) |
 | `app.error` | texto | Mensaje si la llamada falló |
 | `app.rag.query` | texto | Consulta del RAG (solo `retrieval`) |
 | `app.rag.k` | entero | Trozos pedidos |
@@ -113,3 +116,16 @@ causas) y la de `keep_alive`, que pasa a experimento.
 
 **Umbral propuesto** (Deck con GPU, por turno): primera palabra p50 ≤ 30 s; turno p50 ≤ 45 s y p95 ≤ 75 s;
 `modo_dinamico` y `dialogo_npc` p50 ≤ 15 s. Hoy `narrar` no cumple ninguno.
+
+## Medidas de las propuestas (`QA-160`…`QA-168`, rama `claude/opt-ai-mejoras`)
+
+Cada pasada: `logs/bench.sh <etiqueta> 8` (sin subir) restaura la partida de la ronda (`cmvgnd5ke0001rivyqqjpdezo`,
+Gorhorn, Día 42) en `tarkor_juego`, arranca con `IA_PERFIL=deck` e `IA_REGISTRO` y pasa `benchmark-turno` (8 turnos,
+mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
+
+| Pasada | Cambio | turno p50 | turno p95 | primera palabra p50 | intento 2 | respaldo | narrar tok_in | Nota |
+|---|---|---|---|---|---|---|---|---|
+| `01-ref` | `QA-160` + instrumentación de `QA-162` | 61,0 s | 74,4 s | 45,2 s | 29 % | 14 % | 6.292 | prefill de `narrar` 38,8 s; respaldo recortado (2.050 tokens de entrada con `num_ctx` 4096 y ~16.000 caracteres); rechazos: `combateIniciado` con NPC no agresor ×3, «quedan orcos del Clan Maktor» ×1 |
+
+- **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
+  `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
