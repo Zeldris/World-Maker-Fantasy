@@ -71,6 +71,16 @@ class Medir(unittest.TestCase):
         self.assertIn('Sesión + subagentes: 4 llamadas · 4,600 entrada · 730 salida', salida)
         self.assertRegex(salida, r'subagentes\s+claude-sonnet-5-5\s+2 llamadas\s+4,000 entrada\s+710 salida')
 
+    def test_subagente_sin_modelo_y_synthetic(self):
+        """Modelo a null: sale como «?» sin reventar; `<synthetic>` no sale en la tabla ni cuenta en POR MODELO."""
+        salida = self.medir([respuesta('m1', 100)], {
+            'agent-a': ({'agentType': 'Explore', 'description': 'Sin modelo'}, [respuesta('s1', 50, modelo=None)]),
+            'agent-b': ({'agentType': 'Explore', 'description': 'Solo sintetico'}, [respuesta('s2', 60, modelo='<synthetic>')]),
+        })
+        self.assertRegex(salida, r'Sin modelo\s+Explore\s+\?\s+1 llamadas')
+        self.assertNotIn('Solo sintetico', salida)
+        self.assertNotIn('synthetic', salida)
+
     def test_sin_subagentes_no_hay_seccion(self):
         self.assertNotIn('POR SUBAGENTE', self.medir([respuesta('m1', 100)]))
 

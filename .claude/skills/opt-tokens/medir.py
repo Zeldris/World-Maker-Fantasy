@@ -100,7 +100,7 @@ def respuestas_de(ruta, desde):
         ctx = sum(u.get(k) or 0 for k in ('input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'))
         clave = m.get('id') or d.get('requestId') or d.get('uuid')
         antes = por_id.get(clave)
-        por_id[clave] = (m.get('model', '?'), ctx, max(u.get('output_tokens') or 0, antes[2] if antes else 0))
+        por_id[clave] = (m.get('model') or '?', ctx, max(u.get('output_tokens') or 0, antes[2] if antes else 0))
     return list(por_id.values())
 
 
