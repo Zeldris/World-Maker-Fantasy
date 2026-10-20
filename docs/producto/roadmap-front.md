@@ -1374,6 +1374,8 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   mezclaba la ronda anterior.
 - ~~**QA-135 · `tools/qa/fusionar.sh`**~~ ✅ 2026-10-20 (usuaria): fusiona la rama del subagente, resuelve el registro de
   hallazgos, pasa los tests del paquete tocado y avisa si falta la revisión; la principal hacía 44 órdenes de git.
+- ~~**QA-136 · Cada sesión, su propia rama**~~ ✅ 2026-10-20 (usuaria): regla en `CLAUDE.md` («Ramas y `main`»). La
+  sesión local y la de la nube subían a la misma rama y se reescribían la fila de la bitácora.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
