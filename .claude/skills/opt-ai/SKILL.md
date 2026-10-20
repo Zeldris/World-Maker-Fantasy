@@ -27,7 +27,8 @@ los junta. Cada subagente recibe las rutas, el perfil y el criterio de cierre de
    y pide repetirla (`QA-148`).
 1. **Medir.** `python3 .claude/skills/opt-ai/medir.py <registro> [--anterior <registro de la tanda anterior>]` (solo
    salida del script, nunca el registro entero). Por perfil, tarea y modelo: p50/p95, ttft, tok/s, cargas en frío,
-   recortados, errores; RAG: embed, búsqueda y score. **El perfil mínimo (la Deck) siempre**, aunque la tanda se
+   recortados, errores (los fallidos no cuentan en p50 ni tok/s); RAG: embed, búsqueda y score; con `app.turno`, el
+   turno entero (p50/p95, primera palabra, % con intento 2 y con respaldo, rechazos por motivo). **El perfil mínimo (la Deck) siempre**, aunque la tanda se
    jugara en otro: sin sus filas, di que falta y pídela. *Cierra cuando* cada fila tiene su diferencia con la tanda
    anterior (o «sin anterior») y las tareas sin perfil están avisadas.
 2. **RAG frente a las incoherencias de la ronda** (lista en `proyecto.md`).
@@ -53,6 +54,8 @@ los junta. Cada subagente recibe las rutas, el perfil y el criterio de cierre de
    5. el **prefijo fijo del prompt primero** (instrucciones y lore estable antes de lo variable), para que el motor
       reutilice su caché de prompt.
 
+   Lo que se ajuste por modelo (`keep_alive`, `num_ctx`), en **todas** las llamadas a ese modelo (`motores.md`).
+
    Cada propuesta lleva **el experimento que la mide**: el benchmark del proyecto antes y después, con la misma
    semilla y el mismo perfil. `llama-bench` y `promptfoo` son opcionales y solo si están instalados (`command -v`);
    sin ellos, vale el benchmark del proyecto (`proyecto.md`), con el registro activado en las dos pasadas, y
@@ -69,7 +72,9 @@ los junta. Cada subagente recibe las rutas, el perfil y el criterio de cierre de
    perfil, tareas por encima del tiempo aceptable de `proyecto.md`). **Antes de pegar ejemplos** (consultas,
    prompts, salidas), quita datos de partida (nombres de jugadora, identificadores, texto libre escrito) y rutas
    absolutas: deja el tipo de dato y la forma. *Cierra cuando* cada propuesta tiene sus cinco campos y el informe
-   se ha presentado; **ahí acaba la skill**: la usuaria decide y lo aprobado entra como tarea.
+   se ha presentado; **ahí acaba la skill**: la usuaria decide y lo aprobado entra como tarea. Al aplicar cada
+   tarea, su diff pasa un `/code-review low` antes del commit y del bench de después (`QA-169`): el bench mide el
+   tiempo, no los fallos, y en `QA-160`…`QA-168` cuatro de verdad salieron solo en la revisión del PR.
 
 ## Referencia
 

@@ -38,7 +38,7 @@ class MedirTest(unittest.TestCase):
               llamada(3000, **{'gen_ai.usage.input_tokens': 300, 'gen_ai.usage.output_tokens': 50,
                                'app.decode_ms': 1000, 'app.load_ms': 5, 'app.truncated': True, 'app.error': 'x'})]
         f = medir.fila_llamadas(rs)
-        self.assertEqual((f['n'], f['p50_ms'], f['tok_in'], f['tok_out']), (2, 2000, 200, 50))
+        self.assertEqual((f['n'], f['p50_ms'], f['tok_in'], f['tok_out']), (2, 1000, 200, 50))  # el fallido no cuenta en p50
         self.assertEqual(f['tok_s'], 50)
         self.assertEqual((f['frio_pct'], f['recortado_pct'], f['error_pct']), (50, 100, 50))
         self.assertEqual(f['ttft_p50_ms'], 200)
@@ -72,6 +72,29 @@ class MedirTest(unittest.TestCase):
         d = json.loads(buf.getvalue())
         self.assertEqual(d['diferencia_llamadas']['deck/narrar/a']['p50_ms'], 500)
         self.assertEqual(d['diferencia_llamadas']['deck/narrar/b'], 'sin anterior')
+
+    def test_turnos(self):
+        # Turno A: clasificar 0-2 s, narrar intento 1 2-12 s (ttft 3 s) rechazado, intento 2 12-30 s. Turno B: 0-20 s, sin rechazo.
+        ts = lambda s: f'2026-10-20T10:00:{s:02d}.000Z'
+        a = [llamada(2000, tarea='clasificar', ts=ts(2), **{'app.turno': 'A'}),
+             llamada(10000, ts=ts(12), **{'app.turno': 'A', 'app.intento': 1, 'app.ttft_ms': 3000}),
+             {'ts': ts(12), 'app.evento': 'rechazo', 'app.task': 'narrar', 'app.intento': 1, 'app.rechazo': 'segunda persona',
+              'app.machine_profile': 'deck', 'app.turno': 'A'},
+             llamada(18000, ts=ts(30), **{'app.turno': 'A', 'app.intento': 2}),
+             llamada(9000, tarea='resumen', ts=ts(59), **{'app.turno': 'A'})]
+        b = [llamada(20000, ts=ts(20), **{'app.turno': 'B', 'app.intento': 1, 'app.ttft_ms': 5000})]
+        r = medir.analizar(self.reg(a + b))
+        t = r['turnos'][('deck', 'turno', '-')]
+        self.assertEqual(t['n'], 2)
+        self.assertEqual((t['p50_ms'], t['max_ms']), (25000, 30000))  # el resumen de después no alarga el turno
+        self.assertEqual(t['primera_p50_ms'], 5000)  # A: 2 s + 3 s; B: 5 s
+        self.assertEqual((t['intento2_pct'], t['respaldo_pct']), (50, 0))
+        self.assertEqual(t['rechazos'], {'segunda persona': 1})
+        self.assertEqual(r['llamadas'][('deck', 'narrar', '-')]['n'], 3)  # el evento no es una llamada
+
+    def test_turno_sin_narrar_no_cuenta(self):
+        r = medir.analizar(self.reg([llamada(2000, tarea='clasificar', ts='2026-10-20T10:00:02Z', **{'app.turno': 'T'})]))
+        self.assertEqual(r['turnos'][('deck', 'turno', '-')]['n'], 0)
 
     def test_calentar_excluido(self):
         ruta = self.reg([llamada(10), llamada(9000, tarea='calentar')])

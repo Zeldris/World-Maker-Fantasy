@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso } from './iaRegistro.js';
+import { registrarLlamada, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -49,6 +49,9 @@ describe('iaRegistro', () => {
     expect(calcularTruncated(4096, 4096)).toBe(true);
     expect(calcularTruncated(100, 4096)).toBe(false);
     expect(calcularTruncated(100, undefined)).toBeUndefined();
+    // QA-162: Ollama ya recortado cuenta lo que queda; el largo del prompt lo delata.
+    expect(calcularTruncated(2050, 4096, 20_000)).toBe(true);
+    expect(calcularTruncated(3000, 8192, 20_000)).toBe(false);
     const o = JSON.parse(lineaRegistro({ operation: 'text_completion', loadMs: nsToMs(2e9), truncated: false }, 'cpu'));
     expect(o['app.load_ms']).toBe(2000);
     expect(o['app.truncated']).toBe(false);
@@ -67,5 +70,57 @@ describe('iaRegistro', () => {
     });
     expect(() => registrarLlamada({ operation: 'embeddings' })).not.toThrow();
     aviso.mockRestore();
+  });
+
+  it('evento de rechazo: sin operación, con intento y motivo (QA-162)', () => {
+    const o = JSON.parse(lineaRegistro({ evento: 'rechazo', task: 'narrar', intento: 1, rechazo: 'segunda persona' }, 'deck'));
+    expect(o).toMatchObject({ 'app.evento': 'rechazo', 'app.task': 'narrar', 'app.intento': 1, 'app.rechazo': 'segunda persona' });
+    expect(o['gen_ai.operation.name']).toBeUndefined();
+  });
+
+  it('classify abre el turno y narrate de la misma partida lo sigue (QA-162)', async () => {
+    fakeEnv.iaRegistro = '/tmp/x.jsonl';
+    const turnoDe = async (fn: () => void) => {
+      let id: unknown;
+      await new Promise<void>((resolve) =>
+        setImmediate(async () => {
+          fn();
+          await Promise.resolve();
+          id = JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))['app.turno'];
+          resolve();
+        }),
+      );
+      return id;
+    };
+    const abierto = await turnoDe(() => abrirTurnoIa('p1'));
+    expect(typeof abierto).toBe('string');
+    expect(await turnoDe(() => seguirTurnoIa('p1'))).toBe(abierto);
+    const suelto = await turnoDe(() => seguirTurnoIa('p1'));
+    expect(suelto).not.toBe(abierto); // narrate sin classify antes: turno nuevo
+  });
+
+  it('el turno no pasa a la petición siguiente: cada una abre su ámbito', async () => {
+    fakeEnv.iaRegistro = '/tmp/x.jsonl';
+    const enPeticion = (fn: () => void) =>
+      new Promise<unknown>((resolve) =>
+        ambitoTurnoIa(() => {
+          fn();
+          setImmediate(() => resolve(JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))['app.turno']));
+        }),
+      );
+    expect(typeof (await enPeticion(() => abrirTurnoIa('p3')))).toBe('string');
+    expect(await enPeticion(() => {})).toBeUndefined();
+  });
+
+  it('sin IA_REGISTRO no hay turno', async () => {
+    let id: unknown = 'x';
+    await new Promise<void>((resolve) =>
+      setImmediate(() => {
+        abrirTurnoIa('p2');
+        id = JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))['app.turno'];
+        resolve();
+      }),
+    );
+    expect(id).toBeUndefined();
   });
 });

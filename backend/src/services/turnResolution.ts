@@ -4496,6 +4496,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // algún NPC vivo en escena — cubre también la apertura de combate desde una acción pasiva.
     nonHostileNpcNamesInScene,
     nonHostileNpcSlugsInScene,
+    agresorSlugsInScene: npcsHostilesEnEscena.map((n) => n.slug),
     // `contextBlocks` va SIEMPRE primero en `worldFacts` (línea de arriba) — su longitud es
     // justo el corte que un reintento de emergencia (attempt2, ver narrador.ts) debe respetar
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.

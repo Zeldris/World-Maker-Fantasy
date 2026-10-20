@@ -38,6 +38,29 @@ class Medir(unittest.TestCase):
         # El resultado de Read (100 tokens) se arrastra a la llamada siguiente del tramo: 1 llamada.
         self.assertRegex(salida, r'Read\s+1 llamadas\s+100 tok\s+100 arrastrados')
 
+    def test_por_archivo_junta_read_y_bash_con_la_ruta_desde_la_raiz(self):
+        # QA-175: Read con ruta absoluta, Bash tras `cd backend &&` con ruta relativa a esa carpeta, y una orden que
+        # lee dos archivos (se reparte); `git status` no lee ninguno.
+        raiz = os.path.abspath(os.path.join(QA, '..', '..'))
+        antes = os.environ.get('CLAUDE_PROJECT_DIR')
+        os.environ['CLAUDE_PROJECT_DIR'] = raiz
+        self.addCleanup(lambda: os.environ.pop('CLAUDE_PROJECT_DIR') if antes is None else os.environ.update(CLAUDE_PROJECT_DIR=antes))
+        salida = self.medir([
+            respuesta('m1', 100, orden('t1', '', nombre='Read', file_path=f'{raiz}/backend/src/services/narrador.ts')),
+            resultado('t1', 'x' * 350),
+            respuesta('m2', 100, orden('t2', 'cd backend && sed -n 1,5p src/services/narrador.ts')),
+            resultado('t2', 'x' * 350),
+            respuesta('m3', 100, orden('t3', 'head -3 CLAUDE.md AGENTS.md | cut -c1-80')),
+            resultado('t3', 'x' * 700),
+            respuesta('m4', 100, orden('t4', 'git status docs/x.md')),
+            resultado('t4', 'x' * 3500),
+            respuesta('m5', 100),
+        ])
+        self.assertRegex(salida, r'backend/src/services/narrador.ts\s+2×\s+200 tok')
+        self.assertRegex(salida, r'AGENTS.md\s+1×\s+100 tok')
+        self.assertRegex(salida, r'CLAUDE.md\s+1×\s+100 tok')
+        self.assertNotIn('docs/x.md', salida.split('POR ARCHIVO')[1])
+
     def test_reparte_por_modelo_la_sesion_y_sus_subagentes(self):
         """QA-117: qué modelo hizo qué, con los subagentes de `<sesión>/subagents/`."""
         salida = self.medir([respuesta('m1', 100), respuesta('m2', 200),

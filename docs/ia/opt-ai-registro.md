@@ -17,14 +17,17 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `gen_ai.response.finish_reason` | texto | `stop`, `length`, `error`… |
 | `app.task` | texto | Tarea del proyecto (en Tarkor: `narrar`, `narrar_respaldo`, `clasificar`, `sugerir`, `dialogo_npc`, `combate`, `modo_dinamico`, `resumen`, `prompts_imagen`, `embedding`, `rag`; `calentar` es el calentamiento al arrancar y se excluye del análisis) |
 | `app.machine_profile` | texto | Perfil de máquina (`IA_PERFIL`; en Tarkor `deck`, `cpu`, `gpu8`, `gpu12`; sin variable, `desconocido`) |
-| `app.num_ctx` | entero | Contexto pedido (solo sale si la llamada lo pasa) |
+| `app.num_ctx` | entero | Contexto pedido, o el efectivo del modelo cargado (`/api/ps`, si no `/api/show`) si la llamada no lo pasa (`QA-162`) |
+| `app.turno` | texto | Id del turno: lo abre `/turn/classify` y lo siguen las llamadas de `/turn/narrate` de la misma partida (`QA-162`) |
+| `app.intento` | entero | Intento de la cascada de `narrar` (1, 2, o 3 = respaldo) |
+| `app.evento` | texto | `rechazo`: línea sin llamada, un guard rechazó el texto de ese intento (`app.rechazo` = motivo) |
 | `app.keep_alive` | texto | Tiempo que el modelo sigue cargado |
 | `app.duration_ms` | número | Total de la llamada, medido por el cliente |
 | `app.load_ms` | número | Carga del modelo (>0 = carga en frío) |
 | `app.prefill_ms` | número | Lectura del prompt |
 | `app.decode_ms` | número | Generación |
 | `app.ttft_ms` | número | Primera palabra (solo en streaming) |
-| `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` (el prompt se recortó). Aproximado: con la caché del prefijo, `prompt_eval_count` solo cuenta los tokens nuevos |
+| `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` o caracteres del prompt / 4 > `num_ctx` (el prompt se recortó; Ollama cuenta los tokens ya recortados) |
 | `app.error` | texto | Mensaje si la llamada falló |
 | `app.rag.query` | texto | Consulta del RAG (solo `retrieval`) |
 | `app.rag.k` | entero | Trozos pedidos |
@@ -113,3 +116,63 @@ causas) y la de `keep_alive`, que pasa a experimento.
 
 **Umbral propuesto** (Deck con GPU, por turno): primera palabra p50 ≤ 30 s; turno p50 ≤ 45 s y p95 ≤ 75 s;
 `modo_dinamico` y `dialogo_npc` p50 ≤ 15 s. Hoy `narrar` no cumple ninguno.
+
+## Medidas de las propuestas (`QA-160`…`QA-168`, rama `claude/opt-ai-mejoras`)
+
+Cada pasada (desde `10`, `bash tools/qa/bench-ia.sh <etiqueta> --anterior <etiqueta>`, `QA-173`; antes, `logs/bench.sh <etiqueta> 8`, sin subir) restaura la partida de la ronda (`cmvgnd5ke0001rivyqqjpdezo`,
+Gorhorn, Día 42) en `tarkor_juego`, arranca con `IA_PERFIL=deck` e `IA_REGISTRO` y pasa `benchmark-turno` (8 turnos,
+mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
+
+| Pasada | Cambio | turno p50 | turno p95 | primera palabra p50 | intento 2 | respaldo | narrar tok_in | Nota |
+|---|---|---|---|---|---|---|---|---|
+| `01-ref` | `QA-160` + instrumentación de `QA-162` | 61,0 s | 74,4 s | 45,2 s | 29 % | 14 % | 6.292 | prefill de `narrar` 38,8 s; respaldo recortado (2.050 tokens de entrada con `num_ctx` 4096 y ~16.000 caracteres); rechazos: `combateIniciado` con NPC no agresor ×3, «quedan orcos del Clan Maktor» ×1 |
+| `02-qa161` (12 turnos) | `QA-161` | 73,0 s | 101,0 s | 47,8 s | 40 % | 30 % | 6.419 | más rechazos que `01-ref` (2.ª persona ×2, `combateIniciado` ×3, equipo, repetición, luna): ruido del muestreo, no de `QA-161`; el `resumen` del turno 9 no recarga el narrador |
+| `04-qa163` | `QA-163` | 61,1 s | 77,3 s | 45,4 s | 29 % | 0 % | 6.487 | rechazos: 2.ª persona ×1, cambio de equipo ×1; ningún `combateIniciado` (en `01-ref` y `02`, 6 de 11) |
+| `05-qa164` | `QA-164` | 38,1 s | 63,6 s | 22,7 s | 29 % | 0 % | 6.344 | frente a `04`: prefill del intento 1 en caliente 13-16 s (antes ~37 s); el primer turno tras arrancar sigue en ~39 s; rechazos iguales (equipo ×1, 2.ª persona ×1) |
+| `06-qa165` | `QA-165` | 32,8 s | 66,1 s | 21,3 s | 14 % | 0 % | 6.374 | los 8 turnos no entran en combate: lo que mide `QA-165` es la reproducción de abajo; dos turnos seguidos con la misma frase de Ulkha («¿Qué busca?»), que el filtro de repetición no pilla |
+| `07-qa167` | `QA-167` | 31,6 s | 48,0 s | 21,3 s | 0 % | 0 % | 6.368 | `bench.sh` reindexa tras restaurar el dump; lore pertinente (el lugar primero, «El cielo sin luna» al mirar el cielo); score_1 0,735 → 0,760 |
+| `08-qa168` | `QA-168` | 28,7 s | 52,6 s | 16,7 s | 0 % | 0 % | 6.404 | `clasificar` p50 6,9 → 2,8 s (frío 100 → 20 %: solo el primer turno); el narrador no se descarga en todo el bench; RAM disponible ≥1,8 GB; p95 +4,5 s por un turno largo de `narrar`, sin rechazos |
+| `09-review` | arreglos del `/code-review` | 32,4 s | 56,3 s | 19,0 s | 0 % | 0 % | 6.680 | `clasificar` con `num_ctx` 8192 como el respaldo: 3,2 s p50 (≈ `08`), el narrador sin recargas (`load_ms` ~2 ms), ≥2,0 GB libres; el turno +3,8 s sale de `narrar` (+276 tokens de entrada, muestreo), no de `clasificar` |
+| `10-bench-ia` | `tools/qa/bench-ia.sh` (`QA-173`), sin cambios del juego | 34,9 s | 56,3 s | 18,0 s | 29 % | 0 % | 6.235 | primera pasada con el script versionado; intento 2 por dos rechazos (2.ª persona, NPC que nadie puso en escena): ruido del muestreo, como en `02`; RAM disponible mínima 902 MB en un pico (en `09`, 1.015 MB) |
+
+- **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
+  `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
+- **`QA-161`**: el `resumen` (turno 9, al cumplir 15 acciones) sale con `keep_alive` 1h, carga 30 ms (en caliente) y
+  el `narrar` siguiente carga en 2,9 ms: no hay recarga. En la ronda, el `resumen` con 5m costó una recarga de ~30 s.
+  Los 8 primeros turnos no cambian por `QA-161`; la diferencia con `01-ref` es de rechazos (ruido entre pasadas de
+  ±10 s en p50 con 8 turnos: las comparaciones de las siguientes se leen con eso en cuenta).
+- **Hallazgo de `02`**: el prefill del intento 1 es de ~37 s para ~6.500 tokens, pero el del intento 2 (~5.900) baja a
+  4,5-6 s y el calentamiento en frío lee 2.848 tokens en 3,8 s: entre turnos no se aprovecha la caché del prefijo.
+- **`QA-162`**: instrumentación sin A/B (ya estaba en `01-ref`); lo que mide es lo de la tabla. `rag-eval` en
+  `tarkor_juego` con los 4 casos de la ronda en `rag-casos.jsonl` (16 en total): recall@4 0,750, MRR 0,708 (k=8: 0,938 y
+  0,739), 0 `debe_pasar` fallidos; de los de la ronda, solo `p263-ulkha-serhu` sale (puesto 1). Referencia de `QA-167`.
+- **`QA-163`**: el `format` solo deja en `combateIniciado.npcSlugs` los posibles agresores (y solo `null` si no hay
+  ninguno), con el texto del prompt a juego, y `num_predict` del intento 1 de 220 a 300 (1 de 39 intentos 1 se cortaba
+  por longitud). Desaparece el rechazo más frecuente; los intentos 2 se quedan en 29 % por otros rechazos (2.ª persona,
+  equipo), pero ninguno llega al respaldo (14 % → 0 %). La latencia no cambia: el coste es el prefill (`QA-164`).
+- **`QA-164`**: el estado de la partida (con la hora) y «TU PROPIA NARRACIÓN DEL TURNO ANTERIOR» pasan detrás de los
+  hechos de la escena (`buildNarrationPrompt`), que casi no cambian entre turnos: el prefijo común pasa de ~5.900
+  caracteres a todo lo anterior a la memoria de la sesión. Turno p50 61 → 38 s y primera palabra 45 → 23 s: cumplen el
+  umbral; p95 64 s también. Las narraciones no pierden la hora ni la escena. Los repetidos de la memoria (P247) se quedan
+  fuera: van al final del prefijo y son ≤1.800 caracteres, poco frente al corte de la hora.
+- **`QA-165`**: `lengthGuidance` pasa del principio del bloque fijo a justo antes de ACCIÓN DEL JUGADOR. Reproducción
+  con un prompt real (6.427 tokens) y la caché caliente: entrar en combate costaba 50,4 s de prefill con el orden viejo y
+  1,4 s con el nuevo. Arreglado de paso un fallo de `QA-164`: el intento 2 recortaba los hechos con un `replace` del
+  bloque entero, que ya no casaba cuando había narración anterior (el prompt la saca aparte); ahora usa `hechosBlock`.
+- **`QA-166`**: el respaldo (`qwen2.5:1.5b-instruct`) lleva el prompt recortado del intento 2 y `num_ctx` 8192. Sin pasada
+  de `benchmark-turno` (solo cambia el intento 3, que no salió en `04`…`06`); reproducción con un prompt real y el
+  `format` de `narrar`: con 4096 lee 2.050 de 5.257 tokens y narra hechos sueltos sin la acción (7,8 s); con 8192 lee
+  el prompt entero y narra la acción con Ulkha en escena (15,5 s). RAM: ~4 GB disponibles con el narrador cargado.
+- **`QA-167`**: peldaño 1 de la escalera (tamaño de trozo). Cada fragmento de `loreChunks.ts` se indexa en trozos de
+  ~400 caracteres por frases, con el título delante y el texto entero en la fila; `retrieveLore` se queda con el mejor
+  trozo por título (`DISTINCT ON`), así que el prompt no crece. Simulación previa con los 16 casos: 600 → 0,812,
+  400 → 0,875, 250 → 0,875. `rag-eval` tras reindexar: recall@4 0,750 → 0,875, MRR 0,708 → 0,755, 0 `debe_pasar`
+  fallidos; suben `p251` (5 → 4), `p272-orco-maktor` (10 → 3), `maktor-aniquilado` (3 → 1) y `estaciones-orcas` (8 → 5);
+  baja `jakut-faerus` (1 → 2). Sigue sin salir `p272-ulkha-maktor-compuesta` (pregunta doble): sería el peldaño 2
+  (híbrida), que no se sube sin más casos que lo pidan.
+- **`QA-168`**: `keep_alive` de `clasificar` de `'0'` a `'5m'`. Con `ollama ps` cada 20 s durante el bench, los tres
+  modelos caben a la vez (narrador, `qwen2.5:1.5b` y `nomic-embed-text`) con 1,9-2,5 GB disponibles y sin descargar
+  nunca el narrador; `clasificar` deja de recargarse cada turno (p50 6,9 → 2,8 s) y la primera palabra baja a 16,7 s.
+  Se queda. Si en otra máquina falta memoria, volver a `'0'` (comentario en `classifyAction`). Tras el `/code-review`,
+  `clasificar` y el respaldo comparten `num_ctx` 8192 y `keep_alive` 5m (`CTX_CRONISTA`), para que un respaldo no deje
+  el siguiente `clasificar` en frío: `09-review` sin cambio en `clasificar` ni recargas del narrador.

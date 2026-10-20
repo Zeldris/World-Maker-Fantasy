@@ -13,6 +13,7 @@ from comun import QA
 
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 EXCEPCIONES = {
+    'bench-ia.sh': 'juega turnos con el Ollama real de la Deck (QA-173); se prueba al medir',
     'comprobar-escenarios.sh': 'restaura las instantáneas en Postgres; la corre la CI con la base',
     'recorrer.sh': 'lanza los recorridos de Playwright con el juego en marcha',
     'revisado.sh': 'marca la revisión de la rama real antes del PR (la comprueba el gancho de QA-50)',

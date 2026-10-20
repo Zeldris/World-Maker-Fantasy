@@ -7,6 +7,8 @@ Lee el registro de la sesión (`~/.claude/projects/<proyecto>/<sesión>.jsonl`) 
     **arrastrados** (cada resultado se vuelve a enviar en cada llamada posterior hasta la siguiente
     compactación: un resultado de 5k tokens con 200 llamadas detrás pesa 1M);
   - los resultados más pesados, las imágenes, los errores, y lo repetido (mismo archivo leído o misma orden);
+  - por archivo (QA-175): cuántas veces se leyó cada uno (Read, o Bash con cat/sed/head/grep… sobre su ruta) y lo que
+    arrastraron esas lecturas: un archivo grande que se relee pide un puntero en un mapa o una herramienta;
   - por modelo, la sesión principal y sus subagentes (`<sesión>/subagents/*.jsonl`): si lo mecánico va al modelo
     caro o el diseño a uno barato (QA-117);
   - por subagente (una fila por registro: descripción, tipo, modelo, llamadas, contexto medio, entrada, salida) y el
@@ -80,6 +82,39 @@ def resumen_entrada(nombre, entrada):
     return json.dumps(entrada, ensure_ascii=False)[:110]
 
 
+ARCHIVO = re.compile(r'(?<![\w/.-])((?:[\w.-]+/)*[\w.-]+\.(?:ts|tsx|js|mjs|py|md|sh|json|jsonl|sql|prisma|css|html))(?![\w/])')
+LEE = re.compile(r'(?:^|[|;&(]\s*|\s)(?:cat|sed|head|tail|grep|rg|awk|wc|less|nl|cut)\s')
+CD = re.compile(r'^\s*cd\s+(\S+)\s*&&')
+
+
+def rutas_leidas(nombre, entrada, raiz):
+    """QA-175: los archivos que lee una llamada, con la ruta desde la raíz del repo. Read: su `file_path`; Bash: las
+    rutas de la orden si lleva una orden de lectura (con `cd <dir> &&` delante, relativas a <dir>)."""
+    if nombre == 'Read' and entrada.get('file_path'):
+        rutas = [entrada['file_path']]
+    elif nombre == 'Bash' and LEE.search(entrada.get('command') or ''):
+        orden = entrada['command']
+        cd = CD.match(orden)
+        base = cd.group(1) if cd else ''
+        rutas = [r if r.startswith('/') or not base else os.path.join(base, r) for r in ARCHIVO.findall(orden)]
+    else:
+        return []
+    fuera = raiz.rstrip('/') + '/'
+    return sorted({del_repo(os.path.normpath(r[len(fuera):] if r.startswith(fuera) else r), raiz) for r in rutas})
+
+
+def del_repo(ruta, raiz, cache={}):
+    """La ruta desde la raíz: una relativa a otra carpeta de trabajo (`src/x.ts` desde backend/) se resuelve por el
+    único archivo de git que acaba igual; si hay varios o ninguno, se deja tal cual."""
+    if raiz not in cache:
+        r = subprocess.run(['git', 'ls-files'], cwd=raiz, capture_output=True, text=True)
+        cache[raiz] = r.stdout.split()
+    if ruta in cache[raiz] or ruta.startswith('/'):
+        return ruta
+    iguales = [f for f in cache[raiz] if f.endswith('/' + ruta)]
+    return iguales[0] if len(iguales) == 1 else ruta
+
+
 def respuestas_de(ruta, desde):
     """Las respuestas de la API de un registro, una por id de mensaje: lista de (modelo, contexto, salida).
     Claude Code escribe una línea por bloque con el mismo `usage`, pero `output_tokens` crece de una línea a otra
@@ -132,6 +167,8 @@ def main():
     llamadas_api = 0
     contextos = []  # contexto de cada llamada, para la curva entre compactaciones
     usos_tool = {}  # id → (nombre, resumen)
+    archivos_tool = {}  # id → archivos que lee (QA-175)
+    raiz = raiz_del_proyecto()
     resultados = []  # (indice_llamada, id, tokens, imagenes, es_error)
     cortes = []  # índice de llamada en el que hubo compactación
     vistos = {}  # id de mensaje → índice de su llamada (para quedarse con la salida mayor)
@@ -174,6 +211,7 @@ def main():
                 if isinstance(b, dict) and b.get('type') == 'tool_use':
                     entrada = b.get('input') or {}
                     usos_tool[b['id']] = (b.get('name', '?'), resumen_entrada(b.get('name'), entrada), json.dumps(entrada, sort_keys=True))
+                    archivos_tool[b['id']] = rutas_leidas(b.get('name'), entrada, raiz)
         elif d.get('type') == 'user':
             for b in m.get('content') or [] if isinstance(m.get('content'), list) else []:
                 if isinstance(b, dict) and b.get('type') == 'tool_result':
@@ -196,7 +234,12 @@ def main():
     por_tool = collections.defaultdict(lambda: [0, 0.0, 0.0, 0, 0])  # llamadas, tokens, arrastrados, imágenes, errores
     filas = []
     repetidas = collections.Counter()
+    por_archivo = collections.defaultdict(lambda: [0, 0.0, 0.0])  # lecturas, tokens, arrastrados
     for idx, tid, t, img, err in resultados:
+        leidos = archivos_tool.get(tid) or []
+        for r in leidos:  # una orden que lee varios archivos reparte su resultado entre ellos
+            q = por_archivo[r]
+            q[0] += 1; q[1] += t / len(leidos); q[2] += t * arrastre(idx) / len(leidos)
         nombre, resumen, completa = usos_tool.get(tid, ('?', '', ''))
         arr = t * arrastre(idx)
         p = por_tool[nombre]
@@ -247,6 +290,11 @@ def main():
     print('RESULTADOS QUE MÁS PESARON (arrastrados)')
     for arr, t, nombre, resumen, img, err in sorted(filas, reverse=True)[: a.top]:
         print(f'  {arr:>12,.0f}  ({t:>7,.0f} tok) {nombre}: {resumen}{" [imagen]" if img else ""}{" [error]" if err else ""}')
+    if por_archivo:
+        print()
+        print('POR ARCHIVO (lecturas con Read o Bash · tokens · arrastrados; una orden con varios archivos se reparte)')
+        for r, (n, t, arr) in sorted(por_archivo.items(), key=lambda x: -x[1][2])[: a.top]:
+            print(f'  {r[-60:]:<60} {n:>4}×  {t:>9,.0f} tok  {arr:>13,.0f} arrastrados')
     rep = [(n, k) for k, n in repetidas.items() if n > 1]
     if rep:
         print()

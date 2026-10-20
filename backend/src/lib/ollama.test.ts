@@ -57,6 +57,71 @@ describe('registro opt-ai en ollamaGenerate', () => {
   });
 });
 
+// QA-162: sin `numCtx` en la llamada, el registro saca el contexto efectivo de Ollama y el intento.
+describe('num_ctx efectivo e intento en el registro', () => {
+  const raw = { response: '{}', prompt_eval_count: 2050, eval_count: 5, done_reason: 'stop' };
+  // `ps`: lo que hay cargado; `parametros`: los del Modelfile en /api/show.
+  async function preparar(ps: { name: string; context_length: number }[], parametros = '') {
+    vi.resetModules();
+    vi.useFakeTimers();
+    const registrarLlamada = vi.fn();
+    vi.doMock('./iaRegistro.js', async (orig) => ({ ...(await orig<typeof import('./iaRegistro.js')>()), registrarLlamada }));
+    vi.doMock('../config/env.js', async (orig) => {
+      const real = await orig<typeof import('../config/env.js')>();
+      return { env: { ...real.env, iaRegistro: '/tmp/x.jsonl' } };
+    });
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith('/api/ps')
+        ? { ok: true, json: async () => ({ models: ps }) }
+        : url.endsWith('/api/show')
+          ? { ok: true, json: async () => ({ parameters: parametros }) }
+          : { ok: true, json: async () => raw },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { ollamaGenerate } = await import('./ollama.js');
+    return { generar: ollamaGenerate, registrarLlamada, fetchMock };
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.doUnmock('../config/env.js');
+  });
+
+  it('sin num_ctx en el Modelfile, lee context_length de /api/ps a los 4 s y lo usa en las llamadas siguientes', async () => {
+    const { generar, registrarLlamada } = await preparar([{ name: 'q:1.5b', context_length: 4096 }]);
+    await generar({ model: 'q:1.5b', prompt: 'x'.repeat(20_000), intento: 3 });
+    expect(registrarLlamada.mock.calls[0][0]).toMatchObject({ intento: 3 });
+    expect(registrarLlamada.mock.calls[0][0].numCtx).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(4_000);
+    await generar({ model: 'q:1.5b', prompt: 'x'.repeat(20_000) });
+    expect(registrarLlamada.mock.calls[1][0]).toMatchObject({ numCtx: 4096, truncated: true });
+  });
+
+  it('el Modelfile manda sobre el runner cargado con otro numCtx, y solo se anota el modelo pedido', async () => {
+    const { generar, registrarLlamada } = await preparar(
+      [
+        { name: 'q:1.5b', context_length: 8192 },
+        { name: 'narrador:latest', context_length: 8192 },
+      ],
+      'num_ctx 4096\ntemperature 0.7',
+    );
+    await generar({ model: 'q:1.5b', prompt: 'p' });
+    await vi.advanceTimersByTimeAsync(4_000);
+    await generar({ model: 'q:1.5b', prompt: 'p' });
+    expect(registrarLlamada.mock.calls[1][0].numCtx).toBe(4096);
+    const { ctxEfectivo } = await import('./ollama.js');
+    expect(ctxEfectivo('narrador')).toBeUndefined();
+  });
+
+  it('una sola consulta por modelo aunque lleguen varias llamadas antes de la respuesta', async () => {
+    const { generar, fetchMock } = await preparar([{ name: 'q:1.5b', context_length: 4096 }]);
+    await Promise.all([generar({ model: 'q:1.5b', prompt: 'p' }), generar({ model: 'q:1.5b', prompt: 'p' })]);
+    await vi.advanceTimersByTimeAsync(4_000);
+    const consultas = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/show') || String(url).endsWith('/api/ps'));
+    expect(consultas).toHaveLength(2);
+  });
+});
+
 function streamDe(lineas: string[], finalSinSalto = false, cancel = vi.fn(async () => {})) {
   const enc = new TextEncoder();
   let i = 0;

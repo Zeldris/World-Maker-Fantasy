@@ -3,6 +3,7 @@ import '../lib/setupFetch.js';
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { loreChunks } from './loreChunks.js';
+import { trozosParaIndexar } from './loreTrozos.js';
 
 /// Reindexa el lore de Helek Sirik para recuperación semántica (RAG). Correr cada vez que
 /// docs/rpgtarkor/*.md cambie y loreChunks.ts se actualice con los fragmentos afectados.
@@ -48,23 +49,26 @@ async function main() {
   let done = 0;
   for (const chunk of loreChunks) {
     const t0 = Date.now();
-    const vector = await embed(`${chunk.title}\n${chunk.text}`);
-    const id = crypto.randomUUID();
+    // QA-167: una fila por trozo, todas con el texto entero (ver loreTrozos.ts).
+    for (const trozo of trozosParaIndexar(chunk.text)) {
+      const vector = await embed(`${chunk.title}\n${trozo}`);
+      const id = crypto.randomUUID();
 
-    await prisma.$executeRaw`
-      INSERT INTO "LoreChunk" (id, "worldId", type, title, text, tags, "sourceDoc", embedding, "createdAt")
-      VALUES (
-        ${id},
-        ${worldId},
-        ${chunk.type}::"LoreChunkType",
-        ${chunk.title},
-        ${chunk.text},
-        ${chunk.tags},
-        ${chunk.sourceDoc},
-        ${toVectorLiteral(vector)}::vector,
-        now()
-      )
-    `;
+      await prisma.$executeRaw`
+        INSERT INTO "LoreChunk" (id, "worldId", type, title, text, tags, "sourceDoc", embedding, "createdAt")
+        VALUES (
+          ${id},
+          ${worldId},
+          ${chunk.type}::"LoreChunkType",
+          ${chunk.title},
+          ${chunk.text},
+          ${chunk.tags},
+          ${chunk.sourceDoc},
+          ${toVectorLiteral(vector)}::vector,
+          now()
+        )
+      `;
+    }
 
     done += 1;
     console.log(`  [${done}/${loreChunks.length}] ${chunk.title} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);

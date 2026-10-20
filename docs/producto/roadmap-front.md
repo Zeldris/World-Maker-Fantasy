@@ -1420,6 +1420,44 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-154 · `medir.py` da el arranque de cada subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_medir.py`): columna «arranque» (contexto de la primera llamada) y «Arranque medio»; el paso 1 de `opt-tokens` lo usa para ver qué encargos no compensan un subagente.
   (`flatpak-spawn --host --directory=<repo>`, SQL por stdin) que fuera de la Deck corren la orden tal cual.
 
+Propuestas de `/opt-ai` (primera medida en la Deck, 2026-10-20, aprobadas por la usuaria; [informe](../ia/opt-ai-registro.md)).
+Cada una se mide con `benchmark-turno` antes y después (perfil `deck`, `IA_REGISTRO` en las dos) y la medida va al
+informe; si empeora la calidad o no mejora, se revierte y se apunta. Objetivo por turno: primera palabra p50 ≤ 30 s,
+turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
+- ~~**QA-160 · Captura remota apagada en las tandas** (propuesta 9): `arrancar-juego.sh` la apaga y el servidor avisa al
+  arrancar si está encendida.~~ ✅ 2026-10-20: hecho; sin A/B (mandaría turnos fuera), comprobado en `backend.log`.
+- ~~**QA-161 · `keep_alive` 1h en `resumen`** (propuesta 3): el resumen usa el narrador y le bajaba la residencia a 5 min.~~
+  ✅ 2026-10-20: `resumen` y el calentamiento con 1h; medido en `02`, sin recarga tras el `resumen`.
+- ~~**QA-162 · Registro y `medir.py` por turno** (propuesta 6): `app.intento`, `app.rechazo`, id de turno y `num_ctx`
+  efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.~~
+  ✅ 2026-10-20: hecho (`app.turno`, `app.intento`, `app.evento`/`app.rechazo`, `num_ctx` de `/api/ps`, tabla TURNOS);
+  `rag-eval` con los casos nuevos: recall@4 0,750.
+- ~~**QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.~~
+  ✅ 2026-10-20: `combateIniciado` solo con agresores en el `format` y `num_predict` 300 en el intento 1; respaldo 14 % → 0 %,
+  intento 2 sigue en 29 % (2.ª persona, equipo) y la latencia no cambia.
+- ~~**QA-164 · Recortar la parte variable del prompt** (propuesta 2), empezando por los repetidos de la memoria (P247).~~
+  ✅ 2026-10-20: estado de la partida y narración anterior tras los hechos estables; turno p50 61 → 38 s, primera palabra
+  45 → 23 s. Fuera: los repetidos de la memoria (P247), poco coste al ir al final del prefijo.
+- ~~**QA-165 · `lengthGuidance` tras el bloque fijo** (propuesta 7): no perder la caché al entrar en combate.~~
+  ✅ 2026-10-20: va junto a la acción; entrar en combate pasa de 50,4 s a 1,4 s de prefill (reproducción), turno p50 33 s.
+- ~~**QA-166 · Contexto del respaldo** (propuesta 4): los respaldos se recortaban a 4096.~~
+  ✅ 2026-10-20: prompt recortado del intento 2 y `num_ctx` 8192; ya narra la acción (15,5 s en la reproducción).
+- ~~**QA-167 · Escalera del RAG** (propuesta 5) con los casos de la ronda.~~
+  ✅ 2026-10-20: peldaño 1, trozos de ~400 caracteres por título; recall@4 0,750 → 0,875. Queda fuera la pregunta doble
+  de P272 (peldaño 2, híbrida).
+- ~~**QA-168 · `keep_alive` de `clasificar`, experimento** (propuesta 8).~~
+  ✅ 2026-10-20: `'5m'`; caben los tres modelos (≥1,8 GB libres), `clasificar` p50 6,9 → 2,8 s, turno p50 28,7 s.
+
+Retro del PR de `claude/opt-ai-mejoras` ([retro](../registros/retro-2026-10-20-opt-ai-mejoras.md), aprobadas por la
+usuaria el 2026-10-20), con las tres de `/opt-tokens`.
+- ~~**QA-169 · `/code-review low` de cada propuesta de `opt-ai` antes de su commit**: el bench mide tiempo, no fallos.~~ ✅ 2026-10-20: (`opt-ai` paso 4): al aplicar cada tarea, `/code-review low` de su diff antes del commit y del bench de después. La usuaria propuso mover el `/code-review` del PR tras `/opt-tokens` y `/opt-ai`; se quedó esta, porque los cuatro fallos venían de las propias tareas de `opt-ai`, que ya iban antes de esa revisión.
+- ~~**QA-170 · `keep_alive` y `num_ctx` alineados en todas las llamadas a un modelo** (`opt-ai`, `motores.md`).~~ ✅ 2026-10-20: nota en `motores.md` (Ollama) y en el paso 3: buscar todas las llamadas al modelo y alinearlas con una constante como `CTX_CRONISTA`.
+- ~~**QA-171 · `tools/roadmap/cerrar.py`**: cerrar una tarea en su roadmap, en el mapa y en la bitácora en una orden.~~ ✅ 2026-10-20: `cerrar.py QA-n "nota" … --bitacora` (`test_cerrar.py`): tacha en el roadmap (también en varias líneas) y en el mapa (los rangos, cuando quedan cerrados enteros) y abre «Hecho recientemente» con las 10 últimas; con él se cerraron estas.
+- ~~**QA-172 · «Prompt del narrador» en `mapa-agente.md`**: bloques, intentos y modelo/`num_ctx`/`keep_alive` por tarea.~~ ✅ 2026-10-20: sección en `docs/mapa-agente.md` con el orden de bloques de `buildNarrationPrompt`, los intentos 1/2/3 y la tabla de modelo, `num_ctx` y `keep_alive` por tarea; `mapa-agente.py` en verde.
+- ~~**QA-173 · `tools/qa/bench-ia.sh` versionado**: restaurar, reindexar, jugar, muestrear RAM y `medir.py` en una orden.~~ ✅ 2026-10-20: `bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N]` y el escenario `ia-gorhorn-dia42` (la partida de las pasadas `01`…`10`); probado con la pasada `10-bench-ia` (turno p50 34,9 s, en objetivo). Se lanza solo por `host.sh` en la Deck.
+- ~~**QA-174 · `.prettierrc.json` del backend con comillas simples**: que un archivo reescrito no cambie de estilo.~~ ✅ 2026-10-20: `singleQuote`, `trailingComma: all`, `printWidth` 120; sin reformatear lo que ya hay.
+- ~~**QA-175 · `POR ARCHIVO` en `medir.py` de `opt-tokens`**: lecturas y arrastre por archivo.~~ ✅ 2026-10-20: sección `POR ARCHIVO` (Read y Bash con orden de lectura; rutas relativas a otra carpeta, resueltas por `git ls-files`), con su test en `test_medir.py`. En esta sesión, `narrador.ts`: 61 lecturas, 1,6M arrastrados.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

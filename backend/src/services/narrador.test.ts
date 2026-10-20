@@ -1947,6 +1947,76 @@ describe('buildNarrationPrompt — narrar inconsciencia (docs/mecanicas/19-post-
 // cualquier primer ataque libre contra un NPC todavía sin combate mecánico abierto (`enCombate`
 // false). Se reescribió para hablar de ventaja de posición/iniciativa, nunca de contacto ya
 // resuelto.
+describe('buildNarrationPrompt — "combateIniciado" solo con posibles agresores (QA-163)', () => {
+  const ctx = { worldFacts: [], characterSummary: 'Gorhorn', action: 'Miro a mi alrededor con calma.', enCombate: false };
+  const esquema = (c: Parameters<typeof buildNarrationPrompt>[0]) =>
+    (buildNarrationPrompt(c).format.properties as Record<string, { type: unknown; properties?: { npcSlugs: { items: { enum?: string[] } } } }>).combateIniciado;
+
+  it('el enum deja fuera a los NPC no agresores', () => {
+    const c = esquema({ ...ctx, npcSlugsInScene: ['kirelon', 'quio'], nonHostileNpcSlugsInScene: ['quio'] });
+    expect(c?.properties?.npcSlugs.items.enum).toEqual(['kirelon']);
+  });
+
+  it('sin agresores en escena, solo null, y el prompt no pide rellenarlo', () => {
+    const c = { ...ctx, npcSlugsInScene: ['quio'], nonHostileNpcSlugsInScene: ['quio'] };
+    expect(esquema(c)).toEqual({ type: 'null' });
+    expect(buildNarrationPrompt(c).prompt).toMatch(/Nadie en escena es agresivo, así que "combateIniciado" va a null/);
+    const ataque = buildNarrationPrompt({ ...c, action: 'Ataco a Quio.' }).prompt;
+    expect(ataque).toMatch(/"combateIniciado" va a null: el combate lo abre el juego/);
+  });
+
+  it('sin NPC conocidos, como antes: cualquier texto', () => {
+    expect(esquema(ctx)?.properties?.npcSlugs.items).toEqual({ type: 'string' });
+  });
+
+  it('con la lista de agresores vivos, un muerto en escena no entra en el enum', () => {
+    const c = { ...ctx, npcSlugsInScene: ['lobo-muerto', 'quio'], nonHostileNpcSlugsInScene: ['quio'], agresorSlugsInScene: [] };
+    expect(esquema(c)).toEqual({ type: 'null' });
+  });
+});
+
+describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos estables (QA-164)', () => {
+  const ctx = (hora: string, anterior: string) => ({
+    characterSummary: `Gorhorn, Superviviente.\nESTADO DE LA PARTIDA (hechos mecánicos reales, nunca los contradigas): Día 1, ${hora}.`,
+    worldFacts: [`TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${anterior}".`, 'UBICACIÓN ACTUAL: Paso de los Pilares Rotos', 'PERSONAJE EN ESCENA: Ulkha Ketg'],
+    action: 'Miro a mi alrededor con calma.',
+    enCombate: false,
+  });
+
+  it('el estado y la narración anterior van detrás de los hechos de la escena', () => {
+    const p = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
+    const pos = (t: string) => p.indexOf(t);
+    expect(pos('PERSONAJE EN ESCENA')).toBeLessThan(pos('ESTADO DE LA PARTIDA'));
+    expect(pos('ESTADO DE LA PARTIDA')).toBeLessThan(pos('TU PROPIA NARRACIÓN'));
+    expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO'));
+    expect(p).toContain('PERSONAJE:\nGorhorn, Superviviente.\n\nHECHOS DEL MUNDO');
+  });
+
+  it('hechosBlock es literal del prompt, para que el intento 2 pueda recortarlo', () => {
+    const { prompt, hechosBlock } = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.'));
+    expect(prompt).toContain(hechosBlock);
+    expect(hechosBlock).toContain('PERSONAJE EN ESCENA');
+    expect(hechosBlock).not.toContain('TU PROPIA NARRACIÓN');
+  });
+
+  it('dos turnos seguidos comparten el prefijo hasta los hechos de la escena', () => {
+    const a = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
+    const b = buildNarrationPrompt(ctx('12:11', 'Gorhorn escucha.')).prompt;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    expect(n).toBeGreaterThan(a.indexOf('PERSONAJE EN ESCENA: Ulkha Ketg'));
+  });
+
+  it('entrar en combate no cambia el prefijo: la guía de longitud va junto a la acción (QA-165)', () => {
+    const a = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
+    const b = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), enCombate: true }).prompt;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    expect(n).toBeGreaterThan(a.indexOf('CONOCIMIENTO DE FONDO'));
+    expect(b.indexOf('Narra en 1-2 frases muy breves')).toBeLessThan(b.indexOf('ACCIÓN DEL JUGADOR'));
+  });
+});
+
 describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a combatNotYetResolved (2026-08-22)', () => {
   const hostileCtx = {
     worldFacts: [],

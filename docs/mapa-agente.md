@@ -60,6 +60,30 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   la narración es de plantilla. Las decisiones de verdad (tiradas, costes, efectos) son deterministas y van antes
   de narrar.
 
+## Prompt del narrador (`QA-172`)
+
+- **Orden de bloques** de `b/services/narrador.ts#buildNarrationPrompt` (fijo primero, para la caché de prompt de
+  Ollama, `QA-165`): `GOOD_NARRATION_EXAMPLE`, `fixedInstructions` (idéntico en todos los turnos), PERSONAJE
+  (`identidad`), HECHOS DEL MUNDO (`hechosBlock`, luego `estadoPartida`, `narracionAnterior`, `backgroundLoreBlock`
+  con el lore del RAG), `groundingBlock`, `rollBlock`, `combatBlock`, `lengthGuidance` y la acción del jugador.
+- **Intentos** en `b/services/narrador.ts#narrateAction`: `attempt1` (narrador, `maxTokens` 300, 90 s);
+  si se rechaza, `attempt2` (narrador, `retryPrompt` con `retryFacts`: solo los hechos críticos, `maxTokens`
+  400); si también, `attempt3` (cronista, mismo `retryPrompt`, tarea `narrar_respaldo`); si todo falla,
+  `deterministicFallbackNarration`. El registro los marca con `app.intento` 1/2/3 (`QA-162`).
+- **Modelo, `num_ctx` y `keep_alive` por tarea** (en Ollama son del modelo cargado: se alinean en todas sus llamadas,
+  `QA-170`):
+
+  | Tarea | Modelo (`env.…`) | `num_ctx` | `keep_alive` | Dónde |
+  |---|---|---|---|---|
+  | `narrar`, `dialogo_npc`, `resumen`, `combate`, `modo_dinamico` | `ollamaModelNarrador` | el del Modelfile (8192) | `1h` | `narrador.ts`, `chapterSummary.ts`, `combateMultipleNarracion.ts`, `dynamicModeNarracion.ts` |
+  | `clasificar`, `narrar_respaldo` | `ollamaModelCronista` | `CTX_CRONISTA` (8192) | `5m` | `narrador.ts` (`classifyAction`, `attempt3`) |
+  | `prompts_imagen` (solo si fallan las nubes) | `ollamaModelCronista` | el del modelo | `OLLAMA_KEEP_ALIVE` (5m) | `b/lib/aiProviders/orchestrator.ts` |
+  | `sugerir` | `ollamaModelSugerencias` | el del modelo | `0` | `narrador.ts` (`generateSuggestions`) |
+  | embeddings del RAG | `ollamaModelEmbeddings` | el del modelo | `OLLAMA_KEEP_ALIVE` | `b/lib/embeddings.ts` |
+
+- **Medirlo:** `bash tools/qa/bench-ia.sh <etiqueta> --anterior <etiqueta>` (`QA-173`); las cifras, en
+  `docs/ia/opt-ai-registro.md`.
+
 ## Mapa de zona y encuentros
 
 - **Código:** `b/routes/saves/zona.ts` (`GET /saves/:id/zona`, `POST …/zona/mover`, `…/zona/cazar`); dentro,

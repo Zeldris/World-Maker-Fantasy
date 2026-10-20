@@ -1,4 +1,5 @@
 import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
+import { registrarLlamada } from '../lib/iaRegistro.js';
 import { sinComillasSueltas } from './accionCitada.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
@@ -113,6 +114,10 @@ interface TurnContext {
   /// `hasWrongAggressorName` para comparar directamente contra el campo estructurado
   /// "combateIniciado.npcSlugs" que el propio LLM devuelve, sin depender de parsear texto libre.
   nonHostileNpcSlugsInScene?: string[];
+  /// QA-163: los vivos en escena que sí pueden iniciar combate (AGRESIVO/ENEMIGO con la reputación aplicada), la
+  /// lista cerrada de `combateIniciado`. Sin ella, `npcSlugsInScene` menos `nonHostileNpcSlugsInScene` (que cuenta
+  /// también a los muertos).
+  agresorSlugsInScene?: string[];
   /// Ver `hasWrongCelestialReference` más abajo (bug real, sesión autónoma de pruebas 2026-09-04:
   /// "el resplandor de la luna" narrado a las 08:16 de la mañana) — momento del día YA calculado
   /// por el motor determinista (`momentoDelDiaFor`, worldClock.ts, mismo dato que usan las imágenes
@@ -348,6 +353,12 @@ interface ClassifyContext {
   npcCalibration?: string | null;
 }
 
+/// QA-164: la narración anterior va en `worldFacts` (turnResolution.ts) pero el prompt la saca de los hechos de la escena.
+/// QA-166/QA-168: contexto del modelo pequeño en `clasificar` y en el respaldo de `narrar`, el mismo en los dos.
+const CTX_CRONISTA = 8192;
+
+const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+
 function factsBlock(facts: string[]): string {
   return facts.length ? facts.map((f) => `- ${f}`).join('\n') : '(sin hechos previos registrados todavía)';
 }
@@ -456,8 +467,10 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['requiereTirada', 'atributo', 'dificultad', 'razon', 'banda', 'duracionEstimadaMinutos'],
   };
 
-  // keepAlive '0': descarga el modelo pequeño en cuanto clasifica, antes de que narrateAction
-  // cargue el modelo grande justo después — nunca los dos a la vez en memoria.
+  // keepAlive '5m' (QA-168, /opt-ai 2026-10-20): antes '0', para no tener los dos modelos a la vez; en la
+  // Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se descarga) y clasificar
+  // baja de 6,9 a 2,8 s p50 al no recargarse cada turno. Con el `num_ctx` del respaldo (`CTX_CRONISTA`): un
+  // `num_ctx` distinto obliga a Ollama a recargar el modelo, y un respaldo dejaba el siguiente clasificar en frío.
   // timeoutMs 90s: nunca ha tardado más de ~54s en pruebas reales, deja margen de sobra.
   // temperature 0 (roadmap 2026-07-20, Fable, segunda pasada): el `format` ya restringe la
   // gramática a los valores válidos del schema — el muestreo solo decide CUÁL de esos valores
@@ -471,7 +484,8 @@ Responde solo con el JSON pedido, nada más.`;
       system,
       prompt,
       format,
-      keepAlive: '0',
+      numCtx: CTX_CRONISTA,
+      keepAlive: '5m',
       timeoutMs: 90_000,
       tarea: 'clasificar',
     });
@@ -1071,12 +1085,16 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   prompt: string;
   format: Record<string, unknown>;
   backgroundLoreBlock: string;
+  /// Los hechos de la escena tal como van en `prompt` (sin la narración anterior), para que el intento 2 los recorte.
+  hechosBlock: string;
 } {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
     : 'Esta acción no necesita tirada — narra el resultado directamente, pero sigue aportando algo concreto: qué cambia, qué consigue o qué nota el personaje, no solo atmósfera.';
 
   const npcSlugs = ctx.npcSlugsInScene ?? [];
+  const noAgresores = new Set(ctx.nonHostileNpcSlugsInScene ?? []);
+  const agresorSlugs = ctx.agresorSlugsInScene ?? npcSlugs.filter((slug) => !noAgresores.has(slug));
   const reinoActive = reinoIntentDetected(ctx.action);
   // Emboscada determinista (bug real jugando, 2026-07-22): antes quién actúa primero era libre
   // albedrío total del modelo, incluso cuando ya existía una tirada resuelta para ESTA misma
@@ -1137,7 +1155,10 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
       }`
     : `Fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null. ${
         hostileEngagement
-          ? `Esta escena ES un enfrentamiento real contra ${npcSlugs.length === 1 ? 'el NPC ya' : 'los NPCs ya'} en escena — rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno), esto no es opcional aquí.${ambushHint}`
+          ? agresorSlugs.length > 0
+            ? `Esta escena ES un enfrentamiento real contra ${npcSlugs.length === 1 ? 'el NPC ya' : 'los NPCs ya'} en escena — rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno), esto no es opcional aquí.${ambushHint}`
+            : // QA-163: nadie en escena es agresor; el combate lo abre el motor por su vía determinista.
+              `Esta escena ES un enfrentamiento real, pero "combateIniciado" va a null: el combate lo abre el juego, no tú.${ambushHint}`
           : npcSlugs.length > 0
             ? // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"):
               // ante una pregunta directa del jugador a un NPC ya en escena, el modelo respondió con
@@ -1147,7 +1168,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.${nonHostileHint} DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
+              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
@@ -1181,9 +1202,11 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // mayoría de turnos reales). Ahora `fixedInstructions` es de verdad idéntico letra a letra en
   // todos los turnos de cualquier partida, y `combatBlock` se coloca más abajo, junto a `rollBlock`
   // y ACCIÓN DEL JUGADOR — la parte que ya variaba turno a turno de todos modos.
-  const fixedInstructions = `${lengthGuidance}
-
-PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida (bug real jugando en vivo, 2026-09-15: dos NPC sin relación entre sí dijeron literalmente la misma frase "¿Has visto algo?" — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el mismo motivo o situación). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
+  //
+  // QA-165 (`/opt-ai`, 2026-10-20): `lengthGuidance` (cambia al entrar o salir de combate y con la banda) iba al
+  // principio de `fixedInstructions` y rompía toda la caché en ese turno (~6.400 tokens, ~50 s en la Deck). Va ahora
+  // junto a la acción, y el bloque fijo empieza ya en PERSPECTIVA.
+  const fixedInstructions = `PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida (bug real jugando en vivo, 2026-09-15: dos NPC sin relación entre sí dijeron literalmente la misma frase "¿Has visto algo?" — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el mismo motivo o situación). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
 
 TONO: el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara). Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador.
 
@@ -1220,20 +1243,31 @@ ${
 CONOCIMIENTO DE FONDO DEL MUNDO (lore general del mundo relacionado con la acción — solo contexto/ambientación, NO implica presencia física en esta escena):
 ${factsBlock(ctx.backgroundLore ?? [])}`;
 
+  // QA-164 (`/opt-ai`, 2026-10-20): la caché de prefijo se cortaba en la hora de ESTADO DE LA PARTIDA, que cambia
+  // cada turno, y en la Deck se volvían a procesar ~4.400 tokens (~35 s). El estado y la narración anterior van
+  // ahora detrás de los hechos de la escena, que casi no cambian entre turnos.
+  const corteEstado = ctx.characterSummary.indexOf('\nESTADO DE LA PARTIDA');
+  const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
+  const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
+  const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
+  const hechosBlock = factsBlock(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)));
+
   const prompt = `${GOOD_NARRATION_EXAMPLE}
 
 ${fixedInstructions}
 
 PERSONAJE:
-${ctx.characterSummary}
+${identidad}
 
 HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
-${factsBlock(ctx.worldFacts)}${backgroundLoreBlock}
+${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
 ${groundingBlock}
 
 ${rollBlock}
 
 ${combatBlock}
+
+${lengthGuidance}
 
 ACCIÓN DEL JUGADOR:
 "${ctx.action}"
@@ -1303,20 +1337,26 @@ Responde solo con el JSON pedido, nada más.`;
         type: ['string', 'null'],
         enum: ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO', null],
       },
-      combateIniciado: {
-        type: ['object', 'null'],
-        properties: {
-          npcSlugs: {
-            type: 'array',
-            items: npcSlugs.length > 0 ? { type: 'string', enum: npcSlugs } : { type: 'string' },
-          },
-        },
-      },
+      // QA-163 (`/opt-ai`, 2026-10-20): solo los posibles agresores. Un NPC no agresor lo rechaza siempre
+      // `hasWrongAggressorName` (y el motor lo descarta en `combatSlugsFromModel`): era el rechazo más
+      // frecuente de las pasadas (6 de 11), cada uno con su intento 2. Sin agresores en escena, solo null.
+      combateIniciado:
+        npcSlugs.length > 0 && agresorSlugs.length === 0
+          ? { type: 'null' }
+          : {
+              type: ['object', 'null'],
+              properties: {
+                npcSlugs: {
+                  type: 'array',
+                  items: npcSlugs.length > 0 ? { type: 'string', enum: agresorSlugs } : { type: 'string' },
+                },
+              },
+            },
     },
     required: ['narration', 'newFacts'],
   };
 
-  return { prompt, format, backgroundLoreBlock };
+  return { prompt, format, backgroundLoreBlock, hechosBlock };
 }
 
 /// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce
@@ -1332,7 +1372,7 @@ export function allAttemptsRejectedForSameReason(reasons: string[], totalAttempt
 }
 
 export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
-  const { prompt, format, backgroundLoreBlock } = buildNarrationPrompt(ctx);
+  const { prompt, format, backgroundLoreBlock, hechosBlock } = buildNarrationPrompt(ctx);
 
   // Tres intentos en cascada. Visto en pruebas reales (2026-07-18): una acción concreta colgó
   // 4 de 4 veces con el modelo grande, incluso reduciendo hechos y relajando la regla de "no
@@ -1356,7 +1396,9 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       model: env.ollamaModelNarrador,
       prompt,
       format,
-      maxTokens: 220,
+      // QA-163: 220 → 300. Solo cuesta si el modelo los usa (p50 de salida ~150); con 220, 1 de cada ~40
+      // intentos 1 se cortaba a mitad del JSON y pasaba al intento 2.
+      maxTokens: 300,
       // Bajado de 180s a 90s (2026-08-04, "ronda larga de pruebas" — logs reales de la Deck bajo
       // presión de memoria: el intento 1 se colgó del todo y agotó los 180s completos en CADA
       // turno narrado de la sesión, y el intento 2 (que sí funcionó) tardó solo ~60-105s más
@@ -1367,6 +1409,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       keepAlive: '1h',
       temperature: combatTemperature,
       tarea: 'narrar',
+      intento: 1,
     };
     if (!ctx.onNarrationChunk) return ollamaGenerate(generateOptions);
 
@@ -1386,17 +1429,20 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     });
   };
 
+  // Si fue timeout (no solo JSON cortado), reducir los hechos es la mitigación más razonable
+  // sin saber la causa exacta — no ha demostrado arreglar el cuelgue visto, pero tampoco hace
+  // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
+  // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
+  // La narración anterior (un bloque determinista, así que siempre se quedaba) ya va aparte en el prompt
+  // (QA-164): se filtra aquí solo para no ponerla dos veces.
+  const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
+  // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
+  // reintento de emergencia — se omite entero, nunca se recorta a medias.
+  const retryPrompt = prompt
+    .replace(hechosBlock, factsBlock(retryFacts))
+    .replace(backgroundLoreBlock, '');
+
   const attempt2 = () => {
-    // Si fue timeout (no solo JSON cortado), reducir los hechos es la mitigación más razonable
-    // sin saber la causa exacta — no ha demostrado arreglar el cuelgue visto, pero tampoco hace
-    // daño. Nunca por debajo de `criticalFactsCount` (ver comentario en TurnContext) — el recorte
-    // se come primero el lore RAG/sessionFacts del final, nunca los bloques deterministas.
-    const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0));
-    // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
-    // reintento de emergencia — se omite entero, nunca se recorta a medias.
-    const retryPrompt = prompt
-      .replace(factsBlock(ctx.worldFacts), factsBlock(retryFacts))
-      .replace(backgroundLoreBlock, '');
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
     // llevaba tope y podía irse a los 240s enteros de timeout en vez de cortar antes — 400 sigue
     // dando mucho más margen que los 220 del intento 1 (por si la causa real era truncar de más),
@@ -1410,19 +1456,25 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       keepAlive: '1h',
       temperature: combatTemperature,
       tarea: 'narrar',
+      intento: 2,
     });
   };
 
+  // QA-166 (`/opt-ai`, 2026-10-20): con el `num_ctx` 4096 del Modelfile, el respaldo leía 2.050 de ~5.500 tokens y
+  // perdía la acción (contestaba con lore). Lleva el prompt recortado del intento 2 y 8192: ~13 s en la Deck.
+  // Mismo `num_ctx` y `keep_alive` que `clasificar` (QA-168), para que los dos usen el modelo ya cargado.
   const attempt3 = () =>
     ollamaGenerate({
       model: env.ollamaModelCronista,
-      prompt,
+      prompt: retryPrompt,
       format,
+      numCtx: CTX_CRONISTA,
       maxTokens: 220,
       timeoutMs: 90_000,
-      keepAlive: '0',
+      keepAlive: '5m',
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
+      intento: 3,
     });
 
   let lastResult: NarrationResult | null = null;
@@ -1625,6 +1677,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
 
       if (rejection) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
+        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason });
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         rejectionReasons.push(rejection.reason);

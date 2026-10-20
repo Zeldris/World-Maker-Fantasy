@@ -20,7 +20,9 @@ servidor: no es juego y `medir.py` lo excluye (`--con-calentar` lo muestra). Mot
 
 ## Benchmark y RAG
 
-- Benchmark de turno (antes/después de cada propuesta): `npm run benchmark-turno` (en `backend/`).
+- Benchmark de turno (antes/después de cada propuesta): `bash tools/qa/bench-ia.sh <etiqueta> --anterior <etiqueta>`
+  (`QA-173`): restaura el escenario `ia-gorhorn-dia42`, reindexa, juega 8 turnos de `npm run benchmark-turno` con
+  `IA_PERFIL=deck`, muestrea RAM y `ollama ps` y pasa `medir.py`. En segundo plano (~10 min).
 - Reindexar el lore: `npm run reindex-lore`. Recuperación: `backend/src/services/retrieval.ts`.
 - Evaluación del RAG: `npm run rag-eval` sobre el juego fijo `backend/ia/rag-casos.jsonl` (recall@k y MRR; el
   caso rojo del paso 2 sale de aquí).
@@ -43,3 +45,6 @@ Se apunta aquí cada herramienta o ajuste aprobado.
 - **Prefijo fijo primero** en los prompts del narrador: lo que no cambia va delante y Ollama reaprovecha unos 2.600
   tokens de caché por turno.
 - **`arrancar-juego.sh` con `IA_PERFIL`** (`QA-141`): `IA_REGISTRO` absoluto, GPU en `deck` y `rag-eval` antes de jugar.
+- Registro por turno (`QA-162`): `app.turno`, `app.intento`, rechazos de guard (`app.evento: rechazo`) y `num_ctx`
+  efectivo de `/api/ps`; `medir.py` saca la tabla TURNOS.
+- `keep_alive` 1h en `resumen` y en el calentamiento (`QA-161`); captura remota apagada en las tandas (`QA-160`).
