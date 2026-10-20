@@ -45,6 +45,8 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    Hecho cuando: <criterio comprobable>.
    No hagas: <lo que es de otro trozo o pide decisión de la usuaria>.
    Si cambias una función o un campo, busca (grep) a todos los que lo usan y ajústalos o dilo en FALTA.
+   Si escribes estado de la partida (scripts de QA, escenarios), pasa por las funciones del juego que aplican esas reglas
+   (docs/mapa-agente.md dice cuáles), sin reescribirlas a mano.
    Si algo pide decidir a la usuaria, para y devuélvelo como pregunta.
    Devuelve como mucho 15 líneas:
    HECHO: … · HALLADO: P-números con una línea cada uno · HERRAMIENTAS: fallos de orden.sh, escenario.sh o del driver · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
@@ -58,6 +60,8 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    comparar el diff con el **contrato**: el doc que lo describe y los llamadores reales fuera de la rama (grep en la
    rama de trabajo), no solo el diff (`QA-137`: en `opt-ai` las revisiones cortas no vieron tres fallos entre ramas,
    `medir.py` frente al backend, las tareas de `proyecto.md` y `rag-eval` distinto del juego).
+   Si la rama escribe estado de la partida, el revisor mira también que pase por las funciones del juego que aplican
+   esas reglas y no las rehaga a mano (`QA-151`: `darReino.ts` duplicaba el Ayuntamiento y se saltaba cupos y topes).
    La principal apunta lo que vuelve: los P-números de `HALLADO` en el registro de la ronda y lo de `HERRAMIENTAS`
    en [`rondas-de-pruebas.md`](../../../docs/runbooks/rondas-de-pruebas.md#fallos-de-las-herramientas) (`QA-133`).
    Las `PREGUNTAS` van a la usuaria tal cual, con la respuesta que recomiendas.

@@ -65,7 +65,6 @@ limpiar_rama() {
     || echo "AVISO: no borro la rama $rama ($(head -1 "$logs/br.log"))."
   return 0
 }
-limpiar_rama
 
 echo "Commit $(git rev-parse --short HEAD) · $(git log -1 --format=%s)"
 cambiados="$(git diff --name-only HEAD^1 HEAD)"
@@ -101,4 +100,6 @@ if [ "$fallo" -ne 0 ]; then
   echo "TESTS EN ROJO: el merge YA está hecho en la rama actual. Para deshacerlo: git reset --hard HEAD^1"
   exit 1
 fi
+# Tras los tests: con ellos en rojo, `git reset --hard HEAD^1` necesita la rama para no perderla.
+limpiar_rama
 exit 0

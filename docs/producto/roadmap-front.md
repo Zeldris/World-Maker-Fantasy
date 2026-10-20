@@ -1414,6 +1414,10 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-149 · Capturas más pequeñas**~~ ✅ 2026-10-20 (`/opt-tokens`): `shot()` del driver y `mcp/captura.js` salen en
   JPEG calidad 50 (4,4 veces menos bytes), con `selector`, `clip`, `calidad` y `completo:true` (PNG de página entera).
 - ~~**QA-150 · `tools/qa/host.sh` y `sql.sh`**~~ ✅ 2026-10-20 (`/opt-tokens`, tests `test_host.py` y `test_sql.py`): envoltorios para el sandbox Flatpak de la Deck
+- ~~**QA-151 · Reglas del juego en los scripts que escriben la partida**~~ ✅ 2026-10-20 (retro del lote 1): `orchestrate-dealer` pide en el encargo y en la revisión de cada rama que lo que escribe estado de la partida pase por las funciones del juego que aplican esas reglas (`darReino.ts` las rehacía a mano).
+- ~~**QA-152 · `fusionar.sh` borra la rama y el worktree del subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_fusionar.py`): tras fusionar y con los tests en verde, `git worktree remove` sin forzar y `git branch -d`; nunca la rama actual, `main` ni `claude/*`.
+- ~~**QA-153 · `escenario.sh probar <nombre> <orden…>`**~~ ✅ 2026-10-20 (retro del lote 1, `test_escenario.py`): restaura la instantánea en una base temporal, corre la orden contra ella y la borra al salir; probado con `dar-reino` sobre `reino-dia39-recursos`.
+- ~~**QA-154 · `medir.py` da el arranque de cada subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_medir.py`): columna «arranque» (contexto de la primera llamada) y «Arranque medio»; el paso 1 de `opt-tokens` lo usa para ver qué encargos no compensan un subagente.
   (`flatpak-spawn --host --directory=<repo>`, SQL por stdin) que fuera de la Deck corren la orden tal cual.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
