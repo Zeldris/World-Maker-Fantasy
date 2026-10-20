@@ -60,7 +60,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-16` | Interfaz | El asistente sobrevive a recargar | jugado | asistente conserva mundo y paso 3 al recargar; POST /saves en 500 → aviso con Reintentar y Volver; Reintentar crea la partida |
 | `UX-24` | Interfaz | Ningún error en silencio | jugado | cambiar rol con POST forzado a 500: ErrorBanner con el detalle del backend, Reintentar aplica el cambio y el aviso se va; la carga (GET) falla en silencio (P230) y el classify cae en sondeo (P229) |
 | `UX-29` | Interfaz | El mundo de fondo nunca bloquea | jugado | mientras la gema está encendida el campo de acción sigue libre (aria-disabled=false) |
-| `UX-30` | Interfaz | Solo lo que el personaje sabe | jugado | 2026-10-20, Ollama real: Gistera no suelta nada de la rebelión ni de Grosh; Leyendas › Crónica solo enseña los 23 de 140 sucesos con Conocimiento, el rumor como «Rumor · lo supiste el día 10» (hueco del Reino propio: P248) |
+| `UX-30` | Interfaz | Solo lo que el personaje sabe | jugado | 2026-10-20, Ollama real: Gistera no suelta nada de la rebelión ni de Grosh; Leyendas › Crónica solo enseña los 23 de 140 sucesos con Conocimiento, el rumor como «Rumor · lo supiste el día 10»; falla por el tooltip y «Responder», que enseñan la ficha secreta de un NPC (P260, grave), y por el Reino propio (P248) |
 | `UX-31` | Interfaz | Varios días de golpe | jugado | «descansar tres días» deja un solo aviso «Mientras pasaban los días… (6 noticias)» plegable; P231: el descanso rechazado avanzó igual los días |
 | `UX-35` | Interfaz | El turno no espera al día | jugado | el turno que cruzó tres días respondió en ~5 s y las noticias llegaron después |
 | `UX-36` | Interfaz | Leyendas siempre a una tecla | jugado | Y abre Leyendas desde la partida |
@@ -97,7 +97,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-18` | Mundo vivo | Propagación y rumores (§ 9). M 2026-10-05 (pasos 18a-18e abajo; lo que falta de la | jugado | P165, P137 («¿Qué se cuenta?», bandos) |
 | `CR-19` | Mundo vivo | Endpoints de Leyendas (§ 14). S 2026-10-05 (`cronista/leyendas.ts` y `routes/saves/leyenda | jugado | P137 (Leyendas) |
 | `CR-20` | Mundo vivo | Front: Leyendas y fichas "En tu partida" en la Enciclopedia. M 2026-10-05 Decidido (`CR-18 | jugado | P137 |
-| `CR-21` | Mundo vivo | Bloque de verdad obligatoria. S 2026-10-06 | jugado | 2026-10-20, Ollama real: el bloque sale bien, el narrador lo ignora (P251) |
+| `CR-21` | Mundo vivo | Bloque de verdad obligatoria. S 2026-10-06 | jugado | 2026-10-20, Ollama real: el bloque sale bien; con el narrador en GPU lo usa (P251); la primera vez, solo CPU y con el RAG roto (P274), lo ignoró |
 | `CR-22` | Mundo vivo | Callbacks por entidad. S 2026-10-06 | jugado | 2026-10-20, Ollama real: el callback del orco sale bien, la narración no lo usa (P252) |
 | `CR-23` | Mundo vivo | Puntuación recencia + importancia + relevancia sobre Libro + crónica. M 2026-10-06 | jugado | 2026-10-20: con la acción de juego, «alianza/Concordia» sube las alianzas y «Maktor» el tratado y el espionaje (bloqueMemoria aparte); con «pozo/pobladores» «Se levanta un pozo» queda 8.º y «Llega un poblador» no entra; repetidos en P247 |
 | `CR-32` | Mundo vivo | Reclutamiento pacífico e informantes (usuaria, 2026-10-04, Q14 de `CR-12`): convencer a | sin jugar |  |

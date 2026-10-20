@@ -93,18 +93,12 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `--nuevo "<hallazgo>" "<estado>"` añade la fila con el siguiente número, y
    `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado; las dos rehacen el resumen de la cabecera
    (`QA-84`). Lo comprobado jugando se marca con «Comprobado jugando» en el estado.
-4. **La ronda no escribe código** (`QA-45`, petición de la usuaria del 2026-10-12): la prioridad es
-   probar. **Desde el 2026-10-20 (usuaria), una sesión de pruebas solo apunta, nunca corrige código** (ni del
-   juego ni de las herramientas): lo que la usuaria acepte va a «Propuestas aprobadas para el roadmap cuando
-   acaben las pruebas» de la bitácora. Lo que sigue de este punto queda para las sesiones de arreglos. Solo se arregla un fallo **bloqueante** (no se puede seguir jugando, o el juego hace algo
-   imposible), con su test y comprobado en vivo; que el test falle sin el arreglo se comprueba con
-   `tools/qa/rojo-sin-arreglo.sh` (`QA-58`). También se arregla, antes del PR, el efecto secundario de
-   un arreglo de esta misma rama que aún no está en `main` (`QA-83`; p. ej. P151, de P123): es parte
-   de ese arreglo y se vuelve a jugar. Lo demás va al registro como «pendiente»; las
-   mejoras y el diseño, al roadmap como tarea con hito. Las retros y los arreglos de lo apuntado se
-   hacen antes o después de la ronda, no en medio. Si el MCP de Playwright no conecta,
-   `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las mismas ayudas: `orden.sh --ayuda
-   <archivo> '<tk>'` (`QA-57`).
+4. **La ronda solo juega y apunta** (`QA-45`, usuaria, 2026-10-12; endurecido el 2026-10-20): no corrige código, ni
+   del juego ni de las herramientas, tampoco un fallo bloqueante, ni analiza (medidas, causas en el código, casos del
+   RAG): eso lo hacen las skills (`/opt-ai`, `/code-review`, `/retro`) en el flujo del PR. Lo que la usuaria acepte va a
+   «Propuestas aprobadas para el roadmap cuando acaben las pruebas» de la bitácora; los arreglos, en una sesión de
+   arreglos aparte. Si el MCP de Playwright no conecta, `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las
+   mismas ayudas: `orden.sh --ayuda <archivo> '<tk>'` (`QA-57`).
 5. Antes de pasar la suite con base real, `bash tools/playwright-e2e/arrancar-juego.sh --parar`: con el
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está

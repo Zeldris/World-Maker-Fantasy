@@ -67,8 +67,8 @@ siguiente sesión.
 
 **Hasta cerrar las pruebas, no hay roadmap** (usuaria, 2026-10-13). Ninguna tarea nueva del roadmap,
 ni se añaden más, hasta que se haya probado jugando todo lo implementado (del `0.1` al hito en curso),
-lleve lo que lleve. Las dos cuentas juegan rondas de pruebas, arreglan lo que sale y cierran lo que está
-a medias (p. ej. `QA-63`). Sí entran las tareas de las retros que apruebe la usuaria (mejoran el entorno
+lleve lo que lleve. Las dos cuentas juegan rondas de pruebas y, en sesiones aparte, arreglan lo que sale y cierran lo que está
+a medias (p. ej. `QA-63`); la ronda en sí solo juega y apunta (usuaria, 2026-10-20, [runbook](docs/runbooks/rondas-de-pruebas.md)). Sí entran las tareas de las retros que apruebe la usuaria (mejoran el entorno
 de trabajo, no el juego).
 
 **Al volver al roadmap, cada tarea se prueba al momento**: se implementa, se pasan los tests y se juega

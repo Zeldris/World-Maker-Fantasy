@@ -11,7 +11,7 @@ cada commit.**
 | | |
 |---|---|
 | **Actualizado** | 2026-10-20 |
-| **Ramas de trabajo** | Una por cuenta, cada una con su fila «Tarea en curso» (`QA-69`): `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06, `CR-55`) `claude/wonderful-volta-662qt8` y `claude/pruebas-local` (rondas de pruebas en la Deck, 2026-10-20). Las skills, ganchos y `settings.json` de `.claude/` van versionados con `git add` normal (`QA-112`); a `main` se pasa **por pull request**. |
+| **Ramas de trabajo** | Una por cuenta, cada una con su fila «Tarea en curso» (`QA-69`): `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06, `CR-55`) y `claude/wonderful-volta-662qt8`. Las skills, ganchos y `settings.json` de `.claude/` van versionados con `git add` normal (`QA-112`); a `main` se pasa **por pull request**. |
 | **Último commit en `main`** | Fusión del PR #65 (2026-10-19, `a1445c2`, CI en verde, confirmada por la usuaria): ronda `QA-105` cerrada, arreglos P215-P221, ~~`CR-70`~~…~~`CR-72`~~ al roadmap, ~~`QA-122`~~…~~`QA-130`~~. |
 | **Hito** | `0.3` Reino profundo, Fase D (economía y ganadería) y E (conflicto) — [plan](../producto/plan-roadmap-0.3.md) · [mapa de roadmaps](../producto/21-roadmap.md#qué-entra-en-cada-hito). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (ver abajo) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Ronda de pruebas del 2026-10-17 (`QA-27`), partida `cmvcunmm300017d64k8qxe0t3`: comprobados 12 del PR #60 y P197 (arreglado); reabierto P177; nuevos P188-P206; su retro `QA-94`…`QA-97` hecha. **Siguiente:** arreglar P206, P177 y P188, y seguir jugando desde el Hogar Ketg (misión de las Agujas, P184). |

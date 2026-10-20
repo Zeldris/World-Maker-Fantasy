@@ -48,7 +48,7 @@ Tanda de 16:36 a 17:38 en la partida de pruebas «IA y diálogos», día 1: 9 te
 Interactuar, 5 rondas de combate y 1 «Responder». Ollama 0.34.2 por Vulkan (33/33 capas en la GPU), flash attention,
 KV `q8_0`, `OLLAMA_IGPU_ENABLE=1`. Registro: `backend/ia/registro-2026-10-20.jsonl` (85 líneas, sin subir).
 
-| Tarea · modelo | n | p50 | p95 | ttft p50 | tok in p50 | tok/s | frío | errores |
+| Tarea · modelo | n | p50 | p95 | ttft p50 | tok in (media) | tok/s | frío | errores |
 |---|---|---|---|---|---|---|---|---|
 | `narrar` · narrador | 22 | 48,1 s | 82,0 s | 38,5 s | 6.331 | 10,7 | 9 % | 0 % |
 | `modo_dinamico` · narrador | 10 | 16,8 s | 22,9 s | — | 1.628 | 12,2 | 0 % | 0 % |
@@ -58,11 +58,11 @@ KV `q8_0`, `OLLAMA_IGPU_ENABLE=1`. Registro: `backend/ia/registro-2026-10-20.jso
 | `narrar_respaldo` · qwen2.5 1.5B | 2 | 11,4 s | 12,3 s | — | 2.050 | 31,8 | 100 % | 0 % |
 | `embedding` · nomic-embed-text | 29 | 0,03 s | 0,96 s | — | 34 | — | 21 % | 0 % |
 
-- `narrar`: el prefill manda (p50 36 s de 48 s). Si el motor reutiliza la caché del prompt, el turno tarda unos 20 s
+- `narrar`: el prefill manda (p50 de `app.prefill_ms` 36 s de 48 s; el ttft, 38,5 s, suma además la carga y el primer token). Si el motor reutiliza la caché del prompt, el turno tarda unos 20 s
   (7 de 22); si no, unos 50 s (15 de 22). Un `length` a los 89 s, con recarga del modelo (8,7 s), al borde del
   límite de 90 s del intento 1.
 - `clasificar` y `narrar_respaldo` (`keep_alive` 0): siempre en frío, 3 s de carga cada vez.
-- Recortados: sin medir (el registro no lleva `num_ctx`); el máximo de entrada fue 7.024 tokens con `num_ctx` 8192
+- Recortados: `medir.py` da «-» porque `app.truncated` solo se escribe cuando la llamada pasa `num_ctx`, y ninguna lo pasa; el máximo de entrada fue 7.024 tokens con `num_ctx` 8192
   en el Modelfile del narrador.
 - RAG, juego fijo (`npm run rag-eval`, 12 casos de semilla, k=4, tras `reindex-lore`): **recall@4 0,917, MRR 0,861**
   (no sale `estaciones-orcas`; `maktor-aniquilado`, 3.º). Con 4 casos de la ronda (P251, P263, P265, P241, en un
