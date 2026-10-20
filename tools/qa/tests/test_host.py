@@ -1,4 +1,4 @@
-"""QA-150: tools/qa/host.sh y sql.sh, con un flatpak-spawn, un psql y un podman falsos en el PATH."""
+"""QA-150: tools/qa/host.sh, con un flatpak-spawn falso en el PATH (sql.sh, en test_sql.py)."""
 import os
 import shutil
 import stat
@@ -16,7 +16,8 @@ def falso(d: str, nombre: str, cuerpo: str) -> None:
     os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
 
 
-class Host(unittest.TestCase):
+class Entorno:
+    """PATH con los falsos y lo justo del sistema; lo comparte test_sql.py."""
     def entorno(self, sandbox: bool, **extra: str) -> tuple[dict, str]:
         d = carpeta()
         # flatpak-spawn falso: anota los argumentos (uno por línea) y ejecuta la orden (lo que sigue a «--host --directory=…»).
@@ -39,6 +40,8 @@ class Host(unittest.TestCase):
         return subprocess.run(['bash', os.path.join(QA, script), *args], env=env, input=entrada,
                               capture_output=True, text=True, cwd='/')
 
+
+class Host(Entorno, unittest.TestCase):
     def test_fuera_del_sandbox_ejecuta_en_la_raiz_sin_flatpak(self):
         env, d = self.entorno(False)
         r = self.correr(env, 'host.sh', 'pwd')
@@ -56,21 +59,6 @@ class Host(unittest.TestCase):
     def test_sin_orden_falla(self):
         env, _ = self.entorno(False)
         self.assertEqual(self.correr(env, 'host.sh').returncode, 2)
-
-    def test_sql_con_psql_lee_stdin_y_conserva_comillas(self):
-        env, d = self.entorno(False)
-        falso(d, 'psql', 'echo "URL=$1"; cat\n')
-        consulta = 'select "Save".id from "Save" where x = \'a\''
-        r = self.correr(env, 'sql.sh', entrada=consulta)
-        self.assertIn('URL=postgresql://tarkor:tarkor@localhost:5432/tarkor_juego', r.stdout)
-        self.assertIn(consulta, r.stdout)
-
-    def test_sql_sin_psql_usa_podman_y_url_sobrescrita_en_sandbox(self):
-        env, d = self.entorno(True, TARKOR_DB_URL='postgresql://x/y')
-        falso(d, 'podman', 'echo "podman $*"; cat\n')
-        r = self.correr(env, 'sql.sh', 'select 1')
-        self.assertIn('podman exec -i tarkor-postgres psql postgresql://x/y', r.stdout)
-        self.assertIn('select 1', r.stdout)
 
 
 if __name__ == '__main__':
