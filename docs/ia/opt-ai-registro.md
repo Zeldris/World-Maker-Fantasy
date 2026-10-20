@@ -126,6 +126,13 @@ mismas acciones). Columnas de `medir.py` por turno (`QA-162`).
 | Pasada | Cambio | turno p50 | turno p95 | primera palabra p50 | intento 2 | respaldo | narrar tok_in | Nota |
 |---|---|---|---|---|---|---|---|---|
 | `01-ref` | `QA-160` + instrumentación de `QA-162` | 61,0 s | 74,4 s | 45,2 s | 29 % | 14 % | 6.292 | prefill de `narrar` 38,8 s; respaldo recortado (2.050 tokens de entrada con `num_ctx` 4096 y ~16.000 caracteres); rechazos: `combateIniciado` con NPC no agresor ×3, «quedan orcos del Clan Maktor» ×1 |
+| `02-qa161` (12 turnos) | `QA-161` | 73,0 s | 101,0 s | 47,8 s | 40 % | 30 % | 6.419 | más rechazos que `01-ref` (2.ª persona ×2, `combateIniciado` ×3, equipo, repetición, luna): ruido del muestreo, no de `QA-161`; el `resumen` del turno 9 no recarga el narrador |
 
 - **`QA-160`**: sin A/B (medirla mandaría turnos fuera). Comprobado: con `arrancar-juego.sh` el servidor no avisa y
   `backend.log` no tiene ningún intento de `live-teacher`. El `.env` de la Deck también queda en `false` (no se sube).
+- **`QA-161`**: el `resumen` (turno 9, al cumplir 15 acciones) sale con `keep_alive` 1h, carga 30 ms (en caliente) y
+  el `narrar` siguiente carga en 2,9 ms: no hay recarga. En la ronda, el `resumen` con 5m costó una recarga de ~30 s.
+  Los 8 primeros turnos no cambian por `QA-161`; la diferencia con `01-ref` es de rechazos (ruido entre pasadas de
+  ±10 s en p50 con 8 turnos: las comparaciones de las siguientes se leen con eso en cuenta).
+- **Hallazgo de `02`**: el prefill del intento 1 es de ~37 s para ~6.500 tokens, pero el del intento 2 (~5.900) baja a
+  4,5-6 s y el calentamiento en frío lee 2.848 tokens en 3,8 s: entre turnos no se aprovecha la caché del prefijo.

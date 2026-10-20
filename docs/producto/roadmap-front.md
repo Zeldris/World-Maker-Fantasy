@@ -1390,7 +1390,8 @@ informe; si empeora la calidad o no mejora, se revierte y se apunta. Objetivo po
 turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
 - ~~**QA-160 · Captura remota apagada en las tandas** (propuesta 9): `arrancar-juego.sh` la apaga y el servidor avisa al
   arrancar si está encendida.~~ ✅ 2026-10-20: hecho; sin A/B (mandaría turnos fuera), comprobado en `backend.log`.
-- **QA-161 · `keep_alive` 1h en `resumen`** (propuesta 3): el resumen usa el narrador y le bajaba la residencia a 5 min.
+- ~~**QA-161 · `keep_alive` 1h en `resumen`** (propuesta 3): el resumen usa el narrador y le bajaba la residencia a 5 min.~~
+  ✅ 2026-10-20: `resumen` y el calentamiento con 1h; medido en `02`, sin recarga tras el `resumen`.
 - **QA-162 · Registro y `medir.py` por turno** (propuesta 6): `app.intento`, `app.rechazo`, id de turno y `num_ctx`
   efectivo; p50/p95 por turno, sin fallidos en p50 y tok/s; los casos de la ronda (P251, P263, P272) en `rag-casos.jsonl`.
 - **QA-163 · Menos intentos 2 de `narrar`** (propuesta 1): `num_predict` del intento 1 y los rechazos más frecuentes.
