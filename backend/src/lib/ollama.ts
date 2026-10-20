@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
+import { calcularTruncated, nsToMs, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -39,6 +40,13 @@ export interface OllamaGenerateOptions {
   /// donde importa la calidad narrativa (narración, diálogo de NPC); clasificación/resúmenes
   /// siguen en GPU sin tocar, no necesitan esa precisión y sí se benefician de la velocidad.
   forceCpu?: boolean;
+  /// Tarea del proyecto, solo para el registro de opt-ai (`app.task`, docs/ia/opt-ai-registro.md):
+  /// `narrar`, `clasificar`, `sugerir`, `cronica`, `resumen`, `combate`, `modo_dinamico`… No cambia
+  /// la petición a Ollama.
+  tarea?: string;
+  /// Contexto pedido a Ollama (`num_ctx`). Si se omite no se envía (manda el Modelfile); si se
+  /// pasa, además de enviarse sirve para calcular `truncated` en el registro.
+  numCtx?: number;
 }
 
 export interface OllamaGenerateResult {
@@ -68,6 +76,7 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
       ...(options.maxTokens ? { num_predict: options.maxTokens } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.forceCpu ? { num_gpu: 0 } : {}),
+      ...(options.numCtx ? { num_ctx: options.numCtx } : {}),
     },
   });
 }
@@ -85,12 +94,61 @@ export function queueTimeoutFor(options: OllamaGenerateOptions): number | undefi
   return options.timeoutMs ? options.timeoutMs + 30_000 : undefined;
 }
 
+interface OllamaRawStats {
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_duration?: number;
+  eval_duration?: number;
+  prompt_eval_count?: number;
+  eval_count?: number;
+  done_reason?: string;
+}
+
+/// Error que ve el llamador y que se registra: el AbortError del timeout se traduce a un mensaje claro.
+function traducirError(err: unknown, options: OllamaGenerateOptions): Error {
+  if (err instanceof Error && err.name === 'AbortError') {
+    return new Error(`Ollama no respondió en ${options.timeoutMs}ms (modelo ${options.model}) — probable cuelgue.`);
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}
+
+/// Registro opt-ai de una llamada a /api/generate (no hace nada sin IA_REGISTRO).
+function registrarGenerate(
+  options: OllamaGenerateOptions,
+  raw: unknown,
+  inicio: number,
+  extra: { ttftMs?: number; error?: string } = {},
+): void {
+  const r = (raw ?? {}) as OllamaRawStats;
+  registrarLlamada({
+    operation: 'text_completion',
+    provider: 'ollama',
+    model: options.model,
+    maxTokens: options.maxTokens,
+    temperature: options.temperature,
+    inputTokens: r.prompt_eval_count,
+    outputTokens: r.eval_count,
+    finishReason: extra.error ? 'error' : r.done_reason,
+    task: options.tarea,
+    numCtx: options.numCtx,
+    keepAlive: options.keepAlive ?? env.ollamaKeepAlive,
+    durationMs: Date.now() - inicio,
+    loadMs: nsToMs(r.load_duration),
+    prefillMs: nsToMs(r.prompt_eval_duration),
+    decodeMs: nsToMs(r.eval_duration),
+    ttftMs: extra.ttftMs,
+    truncated: calcularTruncated(r.prompt_eval_count, options.numCtx),
+    error: extra.error,
+  });
+}
+
 /// Llamada no-streaming a /api/generate, serializada por ollamaQueue (decisión técnica 5).
 export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<OllamaGenerateResult> {
   const queueTimeoutMs = queueTimeoutFor(options);
   return ollamaQueue.enqueue(async () => {
     const controller = options.timeoutMs ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
+    const inicio = Date.now();
 
     try {
       // use_mlock/num_thread (roadmap de velocidad, 2026-07-19, revisado 2026-09-14): options.*
@@ -119,12 +177,12 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
       }
 
       const raw = (await response.json()) as { response: string };
+      registrarGenerate(options, raw, inicio);
       return { text: raw.response, raw };
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(`Ollama no respondió en ${options.timeoutMs}ms (modelo ${options.model}) — probable cuelgue.`);
-      }
-      throw err;
+      const traducido = traducirError(err, options);
+      registrarGenerate(options, undefined, inicio, { error: traducido.message });
+      throw traducido;
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -145,6 +203,8 @@ export async function ollamaGenerateStream(
   return ollamaQueue.enqueue(async () => {
     const controller = options.timeoutMs ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
+    const inicio = Date.now();
+    let ttftMs: number | undefined;
 
     try {
       const response = await fetch(`${env.ollamaBaseUrl}/api/generate`, {
@@ -163,6 +223,7 @@ export async function ollamaGenerateStream(
       let buffer = '';
       let fullText = '';
       let lastRaw: unknown;
+      let terminado = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -176,21 +237,27 @@ export async function ollamaGenerateStream(
           const line = buffer.slice(0, newlineIndex).trim();
           buffer = buffer.slice(newlineIndex + 1);
           if (line) {
-            const parsed = JSON.parse(line) as { response: string; done: boolean };
+            const parsed = JSON.parse(line) as { response?: string; done?: boolean; error?: string };
+            // Ollama puede mandar `{"error": "..."}` a mitad de stream (p. ej. modelo que falla al cargar).
+            if (parsed.error) throw new Error(parsed.error);
             lastRaw = parsed;
-            fullText += parsed.response;
-            if (parsed.response) onChunk(parsed.response);
+            if (parsed.done) terminado = true;
+            if (parsed.response) fullText += parsed.response;
+            if (parsed.response) {
+              ttftMs ??= Date.now() - inicio;
+              onChunk(parsed.response);
+            }
           }
           newlineIndex = buffer.indexOf('\n');
         }
       }
 
+      registrarGenerate(options, lastRaw, inicio, { ttftMs, error: terminado ? undefined : 'stream incompleto' });
       return { text: fullText, raw: lastRaw };
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(`Ollama no respondió en ${options.timeoutMs}ms (modelo ${options.model}) — probable cuelgue.`);
-      }
-      throw err;
+      const traducido = traducirError(err, options);
+      registrarGenerate(options, undefined, inicio, { ttftMs, error: traducido.message });
+      throw traducido;
     } finally {
       if (timer) clearTimeout(timer);
     }

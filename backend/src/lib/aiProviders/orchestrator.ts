@@ -54,6 +54,7 @@ export async function completeWithFallback(systemPrompt: string, userContent: st
     prompt: userContent,
     maxTokens,
     timeoutMs: 60_000,
+    tarea: 'prompts_imagen',
   });
   return { text: result.text.trim(), provider: `ollama:${env.ollamaModelCronista}` };
 }
