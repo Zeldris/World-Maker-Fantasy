@@ -137,3 +137,7 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
   giran los dados; esperar a que el HUD deje de decir «El narrador escribe».
 - En la Deck no hay `psql` fuera del contenedor `tarkor-postgres`: envoltorios de `psql`, `pg_restore` y `pg_dump` con
   `podman exec -i` en `logs/bin/` (ignorada por git), en el `PATH` de `flatpak-spawn --host bash -lic '…'`.
+- `orden.sh` también necesita `node`: en la Deck, por `flatpak-spawn --host` (el sandbox no ve el `/tmp` del host).
+- `turno.js` da «textbox no encontrado» con la barra de habilidades activa (el botón ✨ la alterna) o con un modal abierto.
+- `pulsar.js` con el texto «Leyendas» casa con el rótulo LEYENDA del mapa de zona.
+- El prompt del narrador no se registra: para ver un bloque (verdad, callbacks, memoria), ejecutar `bloqueMemoria` aparte con `tsx`.
