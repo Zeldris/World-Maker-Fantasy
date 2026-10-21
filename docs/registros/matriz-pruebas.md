@@ -85,15 +85,15 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-6` | Mundo vivo | `asegurarMundoDePartida` y adaptar lecturas/escrituras de facciones, relaciones, | no se juega | mundo por partida; se ve en todo |
 | `CR-7` | Mundo vivo | `avanceDiario` por partida; sacar las funciones de mundo de `worldTick.ts`. M 2026-10-04. | no se juega | motor; se ve por el paso de días |
 | `CR-8` | Mundo vivo | Script de migración (§ 16). M 2026-10-04: `services/cronista/migrarPartidas.ts` | no se juega | script de migración |
-| `CR-9` | Mundo vivo | Lista cerrada de efectos con sus sucesos. M 2026-10-04 — paso 1: | sin jugar |  |
+| `CR-9` | Mundo vivo | Lista cerrada de efectos con sus sucesos. M 2026-10-04 — paso 1: | sin jugar | parcial 2026-10-21: sin jugar los efectos uno a uno; en la partida del día 39 aparecen sus sucesos (EDIFICIO_DANADO, TERRITORIO_PERDIDO, MIGRACION_FAUNA, AUGE_POBLACION, RENACER, NPC_DESTACA); matarNpc/crearFaccion/absorber no provocados |
 | `CR-10` | Mundo vivo | Reacciones inmediatas (tabla § 7.1). M 2026-10-04: `services/cronista/reacciones.ts` | jugado | Día 44: HAMBRUNA en Maktor → reacción de cohesión → REBELION |
 | `CR-11` | Mundo vivo | Consecuencias aplazadas con sus disparos y las 7 iniciales (§ 7.2). M 2026-10-04 (4 reglas | jugado | Día 44: 47 consecuencias (NOTICIA y OPORTUNIDAD_CIERRA disparadas, CARAVANA_ASALTADA caducadas y pendiente) |
 | `CR-12` | Mundo vivo | Narrador de fondo con presupuesto, enfriamientos y reglas de facción (§ 7.3); | jugado | Día 44: sucesos de fondo (expediciones, tormentas, caravanas, escaramuzas, alianzas, migraciones) en la Crónica; P234, P235 (textos) |
 | `CR-13` | Mundo vivo | Nacimientos notables y generador de nombres (§ 12.3). M Incluye el efecto `crearNpc` | jugado | Día 44: «Nace Merkar Riuh, hijo de Grosh y Krarka» |
 | `CR-14` | Mundo vivo | Etiquetas (§ 8.1). 2026-10-06 S Incluye las reacciones de CR-10: etiqueta tras matar a un | jugado | Etiqueta FUNDADOR al fundar el Reino (ETIQUETA_GANADA) |
-| `CR-15` | Mundo vivo | Aprobación con valores (§ 8.2). 2026-10-06 M 15a 2026-10-06 (`cronista/aprobacion.ts`: val | sin jugar |  |
-| `CR-16` | Mundo vivo | Recuerdos de NPC (§ 8.3). S Incluye las reacciones de CR-10: `recuerdo(testigos, | sin jugar | 2026-10-20: «Vencedor de Gorhorn» sí; ningún Recuerdo provocado (regalar no entrega, P241) |
-| `CR-17` | Mundo vivo | Buscadores de historias e hilos (§ 7.4). 2026-10-06 M (`cronista/hilos.ts`; modelo | sin jugar |  |
+| `CR-15` | Mundo vivo | Aprobación con valores (§ 8.2). 2026-10-06 M 15a 2026-10-06 (`cronista/aprobacion.ts`: val | sin jugar | parcial 2026-10-21: la barra «Lo que piensa de ti» no sale para Ruka (súbdito con rolReino, por diseño); sin compañero NPC real no se prueban vectores ni «se va» (P289) |
+| `CR-16` | Mundo vivo | Recuerdos de NPC (§ 8.3). S Incluye las reacciones de CR-10: `recuerdo(testigos, | sin jugar | parcial 2026-10-21: «Vencedor de Gorhorn» sí (2026-10-20); ningún Recuerdo provocado (regalar no entrega, P241) |
+| `CR-17` | Mundo vivo | Buscadores de historias e hilos (§ 7.4). 2026-10-06 M (`cronista/hilos.ts`; modelo | sin jugar | parcial 2026-10-21: Leyendas › Historias en marcha sale y da «No sabes de ninguna historia en marcha» con 0 hilos; ningún hilo provocado (aceptar ayudar a Gistera Koh no abre deuda; el combate se atascó, P288) |
 | `CR-18` | Mundo vivo | Propagación y rumores (§ 9). M 2026-10-05 (pasos 18a-18e abajo; lo que falta de la | jugado | P165, P137 («¿Qué se cuenta?», bandos) |
 | `CR-19` | Mundo vivo | Endpoints de Leyendas (§ 14). S 2026-10-05 (`cronista/leyendas.ts` y `routes/saves/leyenda | jugado | P137 (Leyendas) |
 | `CR-20` | Mundo vivo | Front: Leyendas y fichas "En tu partida" en la Enciclopedia. M 2026-10-05 Decidido (`CR-18 | jugado | P137 |
@@ -106,7 +106,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-37` | Mundo vivo | Guerra de una facción contra el Reino de la jugadora 2026-10-08 (`CR-34` Q7, `0.3`): solo | sin jugar | parcial 2026-10-21: no se pudo provocar, Defensa › Guerra dice «Nadie está en guerra ni en tensión»; faltan tributo, atacar su casa y ejército enemigo (la guerra depende de que la facción llegue a GUERRA con el Reino) |
 | `CR-40` | Mundo vivo | Misiones secundarias por motor 2026-10-05 (fusionado en `main` con el PR #16; 40f-2 descar | jugado | P140, P183, P184, P201 (misiones del poste y encargos) |
 | `CR-42` | Mundo vivo | Compañeros que cuentan lo de su tierra (`CR-18` Q9, va al `0.3` con `CR-15`): un compañero | sin jugar |  |
-| `CR-43` | Mundo vivo | 2026-10-05 (ciclo vital, nombres de escisión con la goirnte «Los del Edicto/Estela/Tributo | sin jugar |  |
+| `CR-43` | Mundo vivo | 2026-10-05 (ciclo vital, nombres de escisión con la goirnte «Los del Edicto/Estela/Tributo | sin jugar | parcial 2026-10-21: en base, disposiciones MERCANTIL (Helsig, Goshg, Feg Ger) y RECELOSA (Feg Tusha), Dessa Kaltrenn, Yerin Slaad y Riko existen como NPC, Rugoconcha en el catálogo; ciclo vital y nombre de escisión («Los del…») sin jugar |
 | `CR-44` | Mundo vivo | 2026-10-05 Moral y retirada de los NPC en combate. M Pasos: 44a reglas puras (`moralCombat | jugado | registro: pruebas-0.3-hallazgos.md |
 | `CR-45` | Mundo vivo | 2026-10-05 (capitán = el de más Inteligencia ≥ 20 del bando enemigo; `objetivoConcentrado` | sin jugar |  |
 | `CR-46` | Mundo vivo | 2026-10-05 (`GET /saves/:id/expediciones/mapa`, `expedicionesMapa.ts`; banderita ⚑ en el m | sin jugar |  |
