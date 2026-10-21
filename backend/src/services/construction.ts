@@ -1899,6 +1899,10 @@ export async function computeBuildBlockedReason(params: {
       include: { location: true },
     });
     if (!ayuntamiento?.location) {
+      // P287 — un Ayuntamiento dañado no cuenta (regla sin tocar), pero el motivo dice «repáralo».
+      if (await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento', status: 'DANADO' }, select: { id: true } })) {
+        return 'tu Ayuntamiento está dañado: repáralo (Reino › Edificios) antes de levantar esto';
+      }
       return 'necesita un Ayuntamiento construido antes de poder levantar esto';
     }
     // Conquista territorial estilo X4 (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21): el
@@ -2007,6 +2011,9 @@ export async function computeBuildBlockedReason(params: {
   // de arriba porque aquí importa el NIVEL, no solo que exista.
   if (buildRecipe.ayuntamientoNivelMinimo) {
     const ayuntamiento = await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO' } });
+    if (!ayuntamiento && (await db.building.findFirst({ where: { saveId, recipeKey: 'ayuntamiento', status: 'DANADO' }, select: { id: true } }))) {
+      return 'tu Ayuntamiento está dañado: repáralo (Reino › Edificios) antes de levantar esto';
+    }
     if (!ayuntamiento || (ayuntamiento.tier ?? 1) < buildRecipe.ayuntamientoNivelMinimo) {
       return `necesita un Ayuntamiento de nivel ${buildRecipe.ayuntamientoNivelMinimo} o superior`;
     }

@@ -84,6 +84,19 @@ describe('SubditosSection — súbditos (REI-118)', () => {
     expect(await findByText('Camas: 0/2 (0 súbditos, 0 compañeros, 2 temporales del Ayuntamiento solo para súbditos)')).toBeTruthy()
   })
 
+  it('P284/P301: con edificios dañados avisa de las camas perdidas y el Cocinero avisa de su Cocina', async () => {
+    vi.mocked(getSubditos).mockResolvedValue({
+      subditos: [sub({ id: 'a', tarea: 'cocinero' })],
+      camas: { total: 0, companeros: 0, subditos: 1, libres: 0 },
+      danados: [{ id: 'h', name: 'Choza', camas: 2, cocina: false }, { id: 'k', name: 'Cocina', camas: 0, cocina: true }],
+    })
+    const { findByText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    expect(await findByText(/Sin camas hasta repararlos \(Choza: 2\)/)).toBeTruthy()
+    expect(await findByText(/Su Cocina está dañada/)).toBeTruthy()
+  })
+
   it('las camas compartidas, el rol de un adulto se cambia y una cría no tiene rol', async () => {
     vi.mocked(getSubditos).mockResolvedValue({
       subditos: [sub({ id: 'a', pareja: 'Grosh Ketg', crias: 1 }), sub({ id: 'b', name: 'Doru Ketg', edad: 1, adulto: false })],

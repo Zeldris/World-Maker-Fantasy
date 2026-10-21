@@ -3047,8 +3047,19 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
 
   it('felicidad ≤20 sostenida 7 días pierde el territorio (población a 0) y abandona sus edificios', async () => {
     await setUp(20);
+    // P299 — edificios sin territorio (levantados sin fundar uno) también dejan de ser del Reino perdido.
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    const otraRegion = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
+    const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    const pozoLejano = await prisma.building.create({ data: { saveId, locationId: otraRegion.id, name: 'Pozo lejano', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    const ayto = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
+    // Otra región y el Ayuntamiento no se tocan.
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozoLejano.id } })).status).toBe('ACTIVO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO');
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('PERDIDO');
@@ -3374,6 +3385,45 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
     // Los materiales se consumieron una sola vez — ninguna fila de piedra/leña suelta ni
     // duplicada.
     expect(await prisma.inventoryItem.count({ where: { saveId } })).toBe(0);
+  }, 20_000);
+});
+
+// P302 (pruebas 0.3) — doble clic en Construir con materiales para DOS: dos peticiones a la vez
+// pasaban el 409 de «ocupado» (se comprobaba fuera de la transacción) y creaban dos edificios.
+// Ahora la transacción toma el candado de la partida y la segunda recibe el 409.
+describe('P302 — doble clic en Construir no crea dos edificios', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn P302', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: ATTRS_CARISMATICO, portraitInitial: 'G', currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'carisma', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('dos turnos simultáneos de «construyo un campamento» con materiales para dos crean un solo Building', async () => {
+    await giveMaterials(saveId, [
+      { name: 'Leña de matorral de cuerno (12)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (16)', catalogSlug: 'piedra' },
+      { name: 'Lana de múrgol (4)', catalogSlug: 'lana-murgol' },
+    ]);
+    const [a, b] = await Promise.all([doTurn(saveId, 'Me pongo a construir un campamento'), doTurn(saveId, 'Me pongo a construir un campamento')]);
+    expect([a.statusCode, b.statusCode]).toContain(409);
+    expect(await prisma.building.count({ where: { saveId, recipeKey: 'campamento' } })).toBe(1);
   }, 20_000);
 });
 

@@ -5,7 +5,7 @@ import { SelectorJuego } from '../../SelectorJuego'
 import { GuerraSection } from './GuerraSection'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
-import { getDefensa, postEquiposMilicia, postGuarnicion, postLlamarMilicia, postRepararEmpalizada, type AsentamientoDefensa, type AvistamientoInfo, type ModuloDefensaInfo } from '../../../lib/api'
+import { getDefensa, postEquiposMilicia, postGuarnicion, postLlamarMilicia, postRepararEdificio, type AsentamientoDefensa, type AvistamientoInfo, type ModuloDefensaInfo } from '../../../lib/api'
 
 const NOMBRE: Record<ModuloDefensaInfo['modulo'], string> = { empalizada: 'Empalizada', 'torre-vigia': 'Torre de vigía', armeria: 'Armería', barracon: 'Barracón' }
 
@@ -13,12 +13,15 @@ const NOMBRE: Record<ModuloDefensaInfo['modulo'], string> = { empalizada: 'Empal
 export function efectoDeModulo(m: ModuloDefensaInfo, a: AsentamientoDefensa): string {
   switch (m.modulo) {
     case 'empalizada':
-      return m.caida ? 'caída: no cubre hasta repararla' : `cobertura +${a.efecto.cobertura} · ha encajado ${m.golpes} de ${a.efecto.aguante} asaltos`
+      return m.danado ? 'dañada: no cubre hasta repararla' : m.caida ? 'caída: no cubre hasta repararla' : `cobertura +${a.efecto.cobertura} · ha encajado ${m.golpes} de ${a.efecto.aguante} asaltos`
     case 'torre-vigia':
+      if (m.danado) return 'dañada: no ve venir nada hasta repararla'
       return `ve ${a.efecto.radioTramos} tramo${a.efecto.radioTramos === 1 ? '' : 's'} de camino · +${a.efecto.bonoAltura} al tirar desde lo alto`
     case 'armeria':
+      if (m.danado) return 'dañada: sus equipos no cuentan hasta repararla'
       return `${m.equiposMilicia} de ${a.efecto.equiposMilicia} equipos de milicia`
     case 'barracon':
+      if (m.danado) return 'dañado: sin plazas de guarnición hasta repararlo'
       return `${a.efecto.plazasGuarnicion} plazas de guarnición · +${a.efecto.bonoMoral} a la moral`
   }
 }
@@ -29,6 +32,7 @@ export function efectoDeModulo(m: ModuloDefensaInfo, a: AsentamientoDefensa): st
 export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRefreshSave: () => Promise<void> }) {
   const [asentamientos, setAsentamientos] = useState<AsentamientoDefensa[] | null>(null)
   const [avistados, setAvistados] = useState<AvistamientoInfo[]>([])
+  const [danados, setDanados] = useState<{ id: string; nombre: string }[]>([])
   const [aMover, setAMover] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
@@ -39,6 +43,7 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
       const r = await getDefensa(saveId)
       setAsentamientos(r.asentamientos)
       setAvistados(r.avistados)
+      setDanados(r.danados ?? [])
     } catch (e) {
       informar('No se pudo cargar la defensa del Reino.', e, () => void cargar())
     }
@@ -79,7 +84,12 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
           ))}
         </section>
       )}
-      {asentamientos.length === 0 && <p className="text-xs text-wood-500">Tu Reino necesita un Ayuntamiento para defenderse.</p>}
+      {asentamientos.length === 0 && danados.length === 0 && <p className="text-xs text-wood-500">Tu Reino necesita un Ayuntamiento para defenderse.</p>}
+      {danados.map((d) => (
+        <p key={d.id} className="text-xs text-cost-400">
+          {d.nombre} está dañado y no defiende: repáralo en la pestaña Edificios.
+        </p>
+      ))}
       {asentamientos.map((a) => {
         const otros = asentamientos.filter((x) => x.id !== a.id).flatMap((x) => x.guarnicion)
         const armeria = a.modulos.find((m) => m.modulo === 'armeria')
@@ -90,8 +100,8 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
               {a.modulos.map((m) => (
                 <li key={m.id} className="text-xs text-wood-200">
                   <span className="font-medium text-wood-100">{NOMBRE[m.modulo]}</span> <span className="text-wood-500">(escalón {m.escalon})</span> · {efectoDeModulo(m, a)}
-                  {m.modulo === 'empalizada' && m.caida && (
-                    <button type="button" disabled={desactivado} title={consulta ?? undefined} onClick={() => void accion(() => postRepararEmpalizada(saveId, m.id), 'No se pudo reparar la Empalizada.')} className="tactile ml-2 text-2xs text-accent-300 hover:underline disabled:opacity-50">
+                  {(m.caida || m.danado) && (
+                    <button type="button" disabled={desactivado} title={consulta ?? undefined} onClick={() => void accion(() => postRepararEdificio(saveId, m.id), 'No se pudo reparar el módulo.')} className="tactile ml-2 text-2xs text-accent-300 hover:underline disabled:opacity-50">
                       Reparar
                     </button>
                   )}

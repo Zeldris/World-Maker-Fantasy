@@ -11,6 +11,9 @@ export async function comercioRoutes(app: FastifyInstance) {
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     const reino = await prisma.faction.findFirst({ where: { saveId: save.id, origenSlug: null, disueltaEn: null }, select: { id: true } });
     const mercado = !!(await prisma.building.findFirst({ where: { saveId: save.id, recipeKey: MERCADO_RECIPE_KEY, status: 'ACTIVO' }, select: { id: true } }));
+    // P287 — un Mercado dañado no cuenta como construido (regla sin tocar), pero la interfaz tiene que
+    // decir «repáralo» y no «construye uno».
+    const mercadoDanado = !mercado && !!(await prisma.building.findFirst({ where: { saveId: save.id, recipeKey: MERCADO_RECIPE_KEY, status: 'DANADO' }, select: { id: true } }));
     const [ordenes, caravanas, objetos, relaciones] = await Promise.all([
       prisma.ordenComercio.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } }),
       prisma.caravana.findMany({
@@ -32,6 +35,7 @@ export async function comercioRoutes(app: FastifyInstance) {
     return {
       reino: !!reino,
       mercado,
+      mercadoDanado,
       socios,
       objetos,
       ordenes: ordenes.map((o) => ({ ...o, nombre: nombreDe.get(o.catalogSlug) ?? o.catalogSlug })),

@@ -27,6 +27,7 @@ import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
+import { costeDeReparar } from '../../services/asaltos.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
@@ -501,6 +502,8 @@ export async function detailRoutes(app: FastifyInstance) {
         name: b.name,
         kind: b.kind,
         status: b.status,
+        caida: b.caida,
+        costeReparar: b.status === 'DANADO' || b.caida ? costeDeReparar(b.recipeKey, b.tier) : null,
         description: b.description,
       })),
       subjects: save.subjects.map((s) => ({

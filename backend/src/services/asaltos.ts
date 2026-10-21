@@ -239,14 +239,33 @@ TRABAJOS.ASALTO = {
   },
 };
 
-/// Q4: repara una Empalizada caída por la mitad de su coste (en materiales del Almacén).
-export async function repararEmpalizada(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, recipeKey: 'empalizada', status: 'ACTIVO' }, select: { tier: true, caida: true } });
-  if (!b) return { ok: false, motivo: 'No tienes esa Empalizada.' };
-  if (!b.caida) return { ok: false, motivo: 'La Empalizada está en pie.' };
-  const receta = CONSTRUCTION_RECIPES.find((r) => r.edificioTipo === 'defensa' && (r.key === 'empalizada' ? 1 : r.upgradesRecipeKey === 'empalizada' ? r.edificioOficioNivel : 0) === (b.tier ?? 1));
-  const coste = Math.ceil((receta?.requirements.reduce((s, q) => s + q.cantidad, 0) ?? 0) / 2);
+/// P284/P296/P301: lo que cuesta reparar un edificio: la mitad de los materiales de su receta (a su
+/// nivel), como la Empalizada (Q4). Mínimo 1.
+export function costeDeReparar(recipeKey: string | null | undefined, tier: number | null | undefined): number {
+  if (!recipeKey) return 1;
+  const candidatas = CONSTRUCTION_RECIPES.filter((r) => r.key === recipeKey || r.upgradesRecipeKey === recipeKey);
+  const nivel = tier ?? 1;
+  const receta = candidatas.find((r) => (r.ayuntamientoNivel ?? r.edificioOficioNivel ?? 1) === nivel) ?? candidatas[0];
+  return Math.max(1, Math.ceil((receta?.requirements.reduce((s, q) => s + q.cantidad, 0) ?? 0) / 2));
+}
+
+/// P284/P296/P301: repara un edificio DANADO (o una Empalizada caída) por la mitad de su coste, en
+/// materiales del Almacén. Un edificio DANADO no cuenta (Camas, Mercado, Cocina…) hasta repararlo.
+export async function repararEdificio(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true; coste: number } | { ok: false; motivo: string }> {
+  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, status: { in: ['ACTIVO', 'DANADO'] } }, select: { name: true, recipeKey: true, tier: true, caida: true, status: true } });
+  if (!b) return { ok: false, motivo: 'No tienes ese edificio.' };
+  if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.` };
+  const coste = costeDeReparar(b.recipeKey, b.tier);
   if (!(await gastarMateriales(tx, saveId, coste))) return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén.` };
-  await tx.building.update({ where: { id: buildingId }, data: { caida: false, golpesDefensa: 0 } });
-  return { ok: true };
+  await tx.building.update({ where: { id: buildingId }, data: { status: 'ACTIVO', caida: false, golpesDefensa: 0 } });
+  return { ok: true, coste };
+}
+
+/// Q4: repara una Empalizada caída (o dañada). Es `repararEdificio` limitado a la Empalizada.
+export async function repararEmpalizada(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, recipeKey: 'empalizada', status: { in: ['ACTIVO', 'DANADO'] } }, select: { caida: true, status: true } });
+  if (!b) return { ok: false, motivo: 'No tienes esa Empalizada.' };
+  if (!b.caida && b.status !== 'DANADO') return { ok: false, motivo: 'La Empalizada está en pie.' };
+  const r = await repararEdificio(tx, saveId, buildingId);
+  return r.ok ? { ok: true } : r;
 }

@@ -12,7 +12,12 @@ export async function defensaRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/defensa', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    return prisma.$transaction(async (tx) => ({ asentamientos: await asentamientosDelReino(tx, save.id), avistados: await radarDelReino(tx, save.id) }));
+    // P284: el Ayuntamiento o el Cuartel dañados no defienden; se dice cuál es para que se repare, no «construye uno».
+    return prisma.$transaction(async (tx) => ({
+      asentamientos: await asentamientosDelReino(tx, save.id),
+      avistados: await radarDelReino(tx, save.id),
+      danados: (await tx.building.findMany({ where: { saveId: save.id, recipeKey: { in: ['ayuntamiento', 'cuartel-avanzado'] }, status: 'DANADO' }, select: { id: true, name: true }, orderBy: { createdAt: 'asc' } })),
+    }));
   });
 
   /// Q7: asigna un soldado o vigía a la guarnición de un asentamiento.

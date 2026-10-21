@@ -211,8 +211,8 @@ export function VisionGeneralSection({
               Solo se muestra cuando ya hay días acumulados de verdad, no en cada visita. */}
           {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && (
             <p className="mb-2 text-2xs text-danger-400">
-              ⚠️ Felicidad baja desde hace {kingdomStats.diasFelicidadBaja} día{kingdomStats.diasFelicidadBaja === 1 ? '' : 's'} — si sigue así 7
-              días seguidos, el reino puede rebelarse y perder el control de un territorio.
+              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de 7 días para la rebelión — si llegas a 7 seguidos, el reino se rebela
+              y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) antes.
             </p>
           )}
           {kingdomStats && kingdomStats.diasFelicidadAlta > 0 && (

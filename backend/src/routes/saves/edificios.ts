@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
+import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
+import { repararEdificio } from '../../services/asaltos.js';
 import { edificioDelPunto, encargadoDe, fichaDeEdificio } from '../../services/fichaEdificio.js';
 import { abrirMenuDeNpc } from '../../services/menuDeNpc.js';
 import { conDefinido, nombreVisibleDeNpc, quienEnAviso } from '../../services/dynamicMode.js';
@@ -9,6 +10,20 @@ import { celdaAdyacenteOMisma, celdaDePixel } from '../../services/zonaPosicion.
 /// P178 (QA-27, decidido por la usuaria 2026-10-17): la ficha de un edificio del mapa (`fichaEdificio.ts`) e
 /// «Interactuar» en él, que abre el menú de quien lo lleva (antes salía la tarjeta del NPC más cercano).
 export async function edificiosRoutes(app: FastifyInstance) {
+  /// P284/P296/P301: «Reparar» para todo edificio DANADO (y la Empalizada caída), por la mitad de su coste en materiales.
+  app.post<{ Params: { id: string; buildingId: string } }>('/saves/:id/edificios/:buildingId/reparar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return repararEdificio(tx, save.id, request.params.buildingId);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true, coste: r.coste };
+  });
+
   app.get<{ Params: { id: string; zonePointId: string } }>('/saves/:id/zona/edificio/:zonePointId', async (request, reply) => {
     const ficha = await fichaDeEdificio(prisma, request.params.id, request.params.zonePointId);
     if (!ficha) return reply.status(404).send({ error: 'Ese edificio no está en tu partida' });
