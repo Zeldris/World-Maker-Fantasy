@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { metaDeRival } from '../lib/rivalMeta'
 import { CONDICION_LABEL } from '../lib/health'
 import { attributeLabels, attributeColorClasses, attributeAbbr } from '../lib/dice'
 import { recommendedAttributeAgainst } from '../lib/attributeWheel'
@@ -143,7 +144,7 @@ function EnemyFicha({
     if (npc) {
       return {
         name: npc.name,
-        meta: `${npc.role}${npc.faction ? ` — ${npc.faction}` : ''} · nivel ${npc.level}`,
+        meta: metaDeRival(npc),
         bio: npc.bio,
         // Bug real jugando en vivo (2026-08-08, habilidad "Cazar" nueva): con Corretolvas en
         // combate, la ficha se quedó sin imagen — `imageUrls.banner` es null cuando la especie
@@ -238,7 +239,7 @@ function EnemyFicha({
                   ) : (
                     <MediaSlot icon="⚔️" variant="placeholder" />
                   )}
-                  <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{target.meta}</p>
+                  <p className="text-2xs text-wood-500">{target.meta}</p>
                   {target.bio && <p className="text-xs leading-relaxed text-wood-300">{target.bio}</p>}
                 </>
               ) : atributoRecomendado ? (
