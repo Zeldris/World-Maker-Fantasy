@@ -12,11 +12,11 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (66): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (71): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
   P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287, P288,
-  P289, P290, P291, P292, P293.
+  P289, P290, P291, P292, P293, P294, P295, P296, P297, P298.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -341,3 +341,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P291 | CR-42 (reino-companero-npc, día 39, Compañeros): «¿Qué se sabe en tu tierra?» de Tirag Susig (Clan Serhu) cuenta la misma noticia dos veces seguidas («Una tormenta terrible arrasa las Llanuras del Viento Rojo.» ×2), y la de Hagar Kiugh sí trae dos distintas; además la tormenta no es de «su tierra» (Serhu). Comprobado jugando. | Abierto |
 | P292 | CR-45 (reino-combate-capitan, día 39): el capitán funciona: Ulkha Ketg lleva «⚑ a por ti» (tooltip «Capitán: ordena a los suyos caer sobre ti») y el diario «ordena caer sobre Gorhorn»; en la ronda 3 pasó a «a por Hagar Kiugh» y el tooltip lo siguió. Pero en el resto de rondas todos los golpes de Hulki, Herrero Serhu y Ulkha fueron a Gorhorn y no se vio caer a ninguno sobre los compañeros pese a la orden. Comprobado jugando; Gorhorn (nivel 2, Terk'ikar nivel 24) muere en 4 rondas, sin poder ganar. | Abierto |
 | P293 | CR-15/CR-16 (reino-combate-capitan): tras COMBATE_PERDIDO y MUERTE_JUGADOR contra Ulkha Ketg, ni NpcState.titulo («Vencedor de Gorhorn») ni nivelesGanados ni filas de Recuerdo se crean (0), y la aprobación de Tirag y Hagar sigue en 50. El escenario no deja ganar, matar ni perdonar a nadie, así que los vectores de aprobación, los Recuerdos y «se va» siguen sin poder jugarse. | Abierto (limitación de escenario) |
+| P294 | CR-47 (reino-sano-defensas, días 40-55, Reino › Diplomacia): una orden permanente «Comprar Cuerdas si baja de 20 · 5 por viaje · con Clan Serhu» (Almacén con 10, Mercado ACTIVO, tesoro 2 y después 202 Goirnos) queda activa 15 días y no sale ninguna caravana (caravanas vacío, ni línea en el diario); no se vio la caravana ni su asalto | pendiente |
+| P295 | CR-65 (día 42, Defensa): «Llamar a la milicia» sale en la alerta de la Torre aunque el Reino no tenga trabajadores y da error 400 («No hay equipos libres en la Armería o trabajadores que armar»); con 2 trabajadores (preparar) no avisa de nada visible, enMilicia vale 0 tras el asalto y el diario del asalto (día 44: 37 comida, 5 Goirnos y 12 objetos saqueados, Empalizada caída) no menciona milicia ni guarnición | pendiente |
+| P296 | CR-65/P284 (reino-sano-defensas, Defensa): con la Empalizada caída la pestaña la lista con «Reparar» y repara bien (vuelve a «cobertura +2, ha encajado 0 de 1»); pero tras un asalto sin milicia (avanzar 7 días de golpe) todos los edificios pasan a DAÑADO y Defensa solo lista la Torre: la Empalizada caída no aparece y no hay Reparar. Con la milicia llamada solo quedaron dañados una Choza y el Pozo. P285 no se vio: un asalto en 15 días | pendiente |
+| P297 | CR-59/P286 (reino-guerra-vasallaje, días 39-66): la deuda de vasallaje de Serhu no aparece en Visión general ni en Diplomacia › Clan Serhu; sube y baja sin pagos (7233 → 7148 → 7048 → 8882) y en 27 días no hay patrulla, rearme ni ruptura (rotoEn vacío) ni línea en el diario | pendiente |
+| P298 | CR-37 (reino-guerra-vasallaje, Defensa › Guerra): el orden de las facciones en guerra cambia entre cargas (Helsig/Serhu): «Tributo de 100» pulsado sobre la primera fila pagó a Clan Helsig cuando la lista leída un momento antes empezaba por Serhu. Tributo (100), «Atacar su casa» (3 soldados: «La partida no puede con la casa de Clan Serhu y vuelve. Herkka ha muerto en la guerra.») y la guerra visible funcionan; el ejército enemigo no se vio | pendiente |
