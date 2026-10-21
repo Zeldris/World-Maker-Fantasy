@@ -12,12 +12,12 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (80): P16, P27, P49, P66, P99, P158, P169, P177, P188, P203, P205, P206, P207,
+- **Pendientes** (81): P16, P27, P49, P66, P99, P158, P169, P177, P188, P203, P205, P206, P207,
   P208, P209, P210, P211, P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251,
   P252, P253, P254, P255, P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268,
   P269, P270, P271, P272, P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284,
   P285, P286, P287, P288, P290, P291, P292, P293, P294, P295, P296, P297, P298, P299, P300, P301,
-  P302, P303, P304.
+  P302, P303, P304, P305.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (7): P12, P70, P82, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (74): P25, P26, P29, P32, P33, P35, P36, P37, P41, P43, P44,
@@ -352,3 +352,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P302 | CR-61 (mismo escenario, Edificios): construir pulsa «Fibrería» y el edificio tarda ~30 s en aparecer (espera al narrador); al pulsar otra vez por no ver respuesta se construyen dos Fibrerías y gasta los materiales dos veces, sin aviso ni límite de una por Reino; con el Ayuntamiento pequeño el cupo de 10 edificios (contando los dañados) bloqueó la Carpintería («cupo máximo»). | Abierto |
 | P303 | Ficha del rival en combate (2026-10-21, tanda 7): la de Ulkha Ketg se titula «TERK'IKAR DEL CLAN SERHU · NIVEL 24» (la bio sí es la suya, «Orca del Clan Serhu…»): el nombre de cabecera no es el del rival. | abierto 2026-10-21 (visto jugando) |
 | P304 | Tras reaparecer de una muerte en combate de grupo (reino-combate-capitan, 2.ª muerte, Ulkha Ketg + Hulki + Herrero Serhu), el combate sigue abierto: CombatEncounter EN_CURSO (ronda 5), HUD «En combate» con Gorhorn Ileso en la Hondonada, el compositor bloqueado («usa el panel de combate»), y COMBATIR reabre el panel con los rivales. Tras la 3.ª muerte el mismo encuentro sí quedó RESUELTO. | Abierto 2026-10-21 (visto jugando) |
+| P305 | El modal «Descansar» (cajón Reino) promete «curándote hasta Herido», pero con hambre y sed al 0 % no cura y el estado empeora (Gorhorn en Grave 50, tanda 7 del 3.3). La mecánica es correcta según las guías: en D&D 5e no comer impide que el descanso largo quite el agotamiento; Medieval Dynasty y Bellwright no recuperan vida sin comida ni bebida. El fallo es la promesa sin aviso: como el descanso parcial de BG3, avisar antes de confirmar («Sin comida ni bebida, el descanso no cura y tu estado empeora») y prometer la cura solo con provisiones. | pendiente (2026-10-21): solo el aviso del modal; la mecánica no cambia |
