@@ -4,7 +4,7 @@
 // que conoces, de una vez o con orden permanente; se puede parar, hacer volver o cambiar de destino.
 import type { Prisma } from '@prisma/client';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
-import { esAdultoSubdito, rolDeSubdito } from './cronista/subditos.js';
+import { esAdultoSubdito, rolDeSubdito, subditosSinArma } from './cronista/subditos.js';
 import { prepararCaptura } from './partidasCaptura.js';
 import { crearViajero, enlacesDelMundo, rutaMasCorta, TIPOS_SIN_DUENO, type OrdenViajero } from './viajeros.js';
 
@@ -16,6 +16,8 @@ export const TIPOS_PARTIDA = ['CAZA', 'CAPTURA'] as const;
 export type TipoPartida = (typeof TIPOS_PARTIDA)[number];
 
 const enMarcha = { estado: { not: 'TERMINADO' } };
+/// P283: las partidas que volvieron se ven esta cantidad de días y luego salen de la lista.
+export const DIAS_VISIBLE_VUELTA = 7;
 
 /// De dónde salen: el lugar del Ayuntamiento (o, sin él, el de cualquier edificio del Reino).
 export async function origenDelReino(tx: Tx, saveId: string): Promise<{ id: string; name: string } | null> {
@@ -36,7 +38,12 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
   const origen = await origenDelReino(tx, saveId);
   const fuera = await ocupados(tx, saveId);
   const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
-  const cazadores = subditos.filter((s) => rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora) && !fuera.subjects.has(s.id)).map((s) => ({ id: s.id, name: s.name }));
+  // Q3 (P281): adulto y con arma, como un soldado. Los que no tienen arma salen en la lista, marcados.
+  const sinArma = await subditosSinArma(tx, saveId, ahora);
+  const aptos = subditos.filter((s) => rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora));
+  const cazadores = aptos.filter((s) => !fuera.subjects.has(s.id)).map((s) => ({ id: s.id, name: s.name, sinArma: sinArma.has(s.id) }));
+  // P283: los que están fuera con una partida (para decir «volverán» y no «no tienes cazadores»).
+  const cazadoresFuera = aptos.filter((s) => fuera.subjects.has(s.id)).map((s) => s.name);
   const [companeros, nombres] = await Promise.all([
     tx.companion.findMany({ where: { saveId, tipo: 'NPC', rolReino: null, combatGroupSlotIndex: { gt: 0 }, condicionFisica: { notIn: ['MUERTO', 'CONVALECIENTE'] } }, select: { id: true, name: true, combatGroupSlotIndex: true }, orderBy: [{ combatGroupSlotIndex: 'asc' }, { createdAt: 'asc' }] }),
     tx.combatGroup.findMany({ where: { saveId }, select: { slotIndex: true, name: true } }),
@@ -65,7 +72,7 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
         }),
       };
     });
-  return { origen, cazadores, grupos, destinos };
+  return { origen, cazadores, cazadoresFuera, grupos, destinos };
 }
 
 export interface PeticionPartida {
@@ -89,6 +96,8 @@ export async function lanzarPartida(tx: Tx, saveId: string, p: PeticionPartida, 
   if (p.tipo === 'CAPTURA' && !especie.capturable) return { ok: false, motivo: `${especie.name} no se deja capturar.` };
   const libresComp = new Set(op.grupos.flatMap((g) => g.companeros.map((c) => c.id)));
   const libresSub = new Set(op.cazadores.map((c) => c.id));
+  const desarmados = op.cazadores.filter((c) => c.sinArma && (p.subjectIds ?? []).includes(c.id));
+  if (desarmados.length > 0) return { ok: false, motivo: `${desarmados.map((c) => c.name).join(', ')} no ${desarmados.length === 1 ? 'tiene' : 'tienen'} arma: un cazador sale armado como un soldado.` };
   const companionIds = [...new Set(p.companionIds ?? [])];
   const subjectIds = [...new Set(p.subjectIds ?? [])];
   if (companionIds.some((id) => !libresComp.has(id)) || subjectIds.some((id) => !libresSub.has(id))) return { ok: false, motivo: 'Alguno de los que eliges no puede salir ahora.' };
@@ -143,9 +152,10 @@ export async function ordenarPartida(tx: Tx, saveId: string, id: string, accion:
 
 /// Para el panel: las partidas del Reino en marcha y las 5 últimas que volvieron.
 export async function partidasDelReino(tx: Tx, saveId: string) {
+  const hoy = Math.floor(((await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0) / 1440);
   const filas = [
     ...(await tx.viajero.findMany({ where: { saveId, factionId: null, tipo: { notIn: TIPOS_SIN_DUENO }, ...enMarcha }, orderBy: { createdAt: 'asc' }, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
-    ...(await tx.viajero.findMany({ where: { saveId, factionId: null, tipo: { notIn: TIPOS_SIN_DUENO }, estado: 'TERMINADO' }, orderBy: { updatedAt: 'desc' }, take: 5, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
+    ...(await tx.viajero.findMany({ where: { saveId, factionId: null, tipo: { notIn: TIPOS_SIN_DUENO }, estado: 'TERMINADO', ultimoDia: { gte: hoy - DIAS_VISIBLE_VUELTA } }, orderBy: { updatedAt: 'desc' }, take: 5, include: { miembros: { include: { companion: { select: { name: true } }, subject: { select: { name: true } } } }, ubicacion: { select: { name: true } }, destino: { select: { name: true } } } })),
   ];
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const fauna = new Map((await tx.npc.findMany({ where: { worldId, saveId: null, slug: { in: filas.map((f) => f.objetivo ?? '') } }, select: { slug: true, name: true } })).map((f) => [f.slug, f.name]));
@@ -153,6 +163,8 @@ export async function partidasDelReino(tx: Tx, saveId: string) {
     id: f.id, tipo: f.tipo, estado: f.estado, especie: f.objetivo, especieNombre: fauna.get(f.objetivo ?? '') ?? f.objetivo,
     ubicacion: f.ubicacion.name, destino: f.destino.name, permanente: !!(f.orden as OrdenViajero | null)?.repetir,
     miembros: f.miembros.map((m) => m.companion?.name ?? m.subject?.name ?? `${m.genericos} cazadores`),
-    carga: f.carga as { piezas?: number; capturados?: number } | null,
+    carga: f.carga as { piezas?: number; capturados?: number; resumen?: string } | null,
+    /// P283: el día en que volvió a casa.
+    vueltaDia: f.estado === 'TERMINADO' ? f.ultimoDia : null,
   }));
 }

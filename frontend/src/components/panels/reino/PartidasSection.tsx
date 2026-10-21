@@ -17,7 +17,8 @@ const ESTADO: Record<PartidaInfo['estado'], string> = {
 /// Puro: «Caza de Múrgol · de camino, en Los Pilares → La Hondonada».
 export function lineaDePartida(p: PartidaInfo): string {
   const que = p.tipo === 'ATAQUE' ? 'Ataque al campamento' : p.tipo === 'ATAQUE_ASENTAMIENTO' ? 'Ataque a su casa' : `${p.tipo === 'CAPTURA' ? 'Captura' : 'Caza'} de ${p.especieNombre ?? 'presas'}`
-  const donde = p.estado === 'TERMINADO' ? ESTADO.TERMINADO : `${ESTADO[p.estado]}, en ${p.ubicacion} → ${p.destino}`
+  // P283: la que ya volvió dice desde qué día está en casa.
+  const donde = p.estado === 'TERMINADO' ? (p.vueltaDia != null ? `${ESTADO.TERMINADO} desde el día ${p.vueltaDia}` : ESTADO.TERMINADO) : `${ESTADO[p.estado]}, en ${p.ubicacion} → ${p.destino}`
   return `${que} · ${donde}`
 }
 
@@ -78,7 +79,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
   const especieElegida = especies.find((e) => e.slug === especie) ?? especies[0]
   const companerosIds = new Set(opciones.grupos.flatMap((g) => g.companeros.map((c) => c.id)))
   const companionIds = [...elegidos].filter((id) => companerosIds.has(id))
-  const subjectIds = [...elegidos].filter((id) => opciones.cazadores.some((c) => c.id === id))
+  const subjectIds = [...elegidos].filter((id) => opciones.cazadores.some((c) => c.id === id && !c.sinArma))
   const alternar = (id: string) =>
     setElegidos((prev) => {
       const s = new Set(prev)
@@ -89,6 +90,10 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
   const enMarcha = partidas.filter((p) => p.estado !== 'TERMINADO')
   const vueltas = partidas.filter((p) => p.estado === 'TERMINADO')
   const nadieDisponible = opciones.cazadores.length === 0 && opciones.grupos.length === 0
+  // P283: «fuera» no es «no tienes»: sus cazadores vuelven y se les puede mandar otra vez.
+  const fuera = opciones.cazadoresFuera ?? []
+  // P281 (Q3): sin arma no salen; se ven en la lista, marcados, para saber por qué.
+  const sinArma = opciones.cazadores.filter((c) => c.sinArma)
 
   return (
     <div className="flex flex-col gap-5">
@@ -125,6 +130,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
               <li key={p.id} className="text-2xs text-wood-500">
                 {lineaDePartida(p)}
                 {cargaDePartida(p) ? ` · ${cargaDePartida(p)}` : ' · sin presas'}
+                {!cargaDePartida(p) && p.carga?.resumen && <span className="block text-wood-400">{p.carga.resumen}</span>}
               </li>
             ))}
           </ul>
@@ -134,7 +140,13 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
       <PanelSection title="Nueva partida">
         {!opciones.origen && <p className="text-xs text-wood-500">Tu Reino necesita un edificio desde el que salir.</p>}
         {opciones.origen && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Aún no conoces ningún lugar con fauna a la vista: explóralos antes de mandar a nadie.</p>}
-        {opciones.origen && nadieDisponible && <p className="text-xs text-wood-500">No hay nadie libre: da a algún súbdito el rol de cazador (Súbditos) o forma un grupo de combate 2 o más.</p>}
+        {opciones.origen && nadieDisponible && (
+          <p className="text-xs text-wood-500">
+            {fuera.length > 0
+              ? `Tus cazadores (${fuera.join(', ')}) están fuera con una partida: cuando vuelvan podrás mandarlos otra vez.`
+              : 'No hay nadie libre: da a algún súbdito el rol de cazador (Súbditos) o forma un grupo de combate 2 o más.'}
+          </p>
+        )}
         {opciones.origen && destino && !nadieDisponible && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -162,13 +174,19 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
                   <span className="text-2xs text-wood-400">{bloque.titulo}:</span>
                   {bloque.gente.map((g) => (
                     <label key={g.id} className="flex items-center gap-1 text-2xs text-wood-200">
-                      <input type="checkbox" checked={elegidos.has(g.id)} onChange={() => alternar(g.id)} />
+                      <input type="checkbox" checked={elegidos.has(g.id)} disabled={'sinArma' in g && !!g.sinArma} onChange={() => alternar(g.id)} />
                       {g.name}
+                      {'sinArma' in g && !!g.sinArma && <span className="text-amber-300"> (sin arma)</span>}
                     </label>
                   ))}
                 </div>
               ))}
             </fieldset>
+            {sinArma.length > 0 && (
+              <p className="text-2xs text-amber-300" role="status">
+                {sinArma.map((c) => c.name).join(', ')} no {sinArma.length === 1 ? 'tiene' : 'tienen'} arma: un cazador sale armado como un soldado, así que no puede ir hasta que el Reino le dé una.
+              </p>
+            )}
             <label className="flex items-center gap-1.5 text-2xs text-wood-300">
               <input type="checkbox" checked={permanente} onChange={(e) => setPermanente(e.target.checked)} />
               Orden permanente: al volver y descargar, sale otra vez (se para si cae alguien).
