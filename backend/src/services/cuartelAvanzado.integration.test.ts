@@ -65,6 +65,21 @@ describe('Cuartel Avanzado — conquista territorial (2026-09-21)', () => {
     expect(reason).toMatch(/Ayuntamiento/);
   });
 
+  it('P287: con el Ayuntamiento dañado sigue bloqueado, pero el motivo dice que lo repares', async () => {
+    await prisma.building.create({
+      data: { saveId, locationId: llanurasLocationId, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'DANADO', tier: 1 },
+    });
+    const reason = await computeBuildBlockedReason({
+      db: prisma,
+      saveId,
+      worldId,
+      buildRecipe: CUARTEL_AVANZADO_RECIPE,
+      activeRegion: 'Cristal Helado',
+      currentLocationRecord: { id: cristalHeladoLocationId },
+    });
+    expect(reason).toMatch(/dañado: repáralo/);
+  });
+
   it('con Ayuntamiento, en la MISMA región que el Ayuntamiento: bloqueado (para eso está la Choza)', async () => {
     await prisma.building.create({
       data: { saveId, locationId: llanurasLocationId, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },

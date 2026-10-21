@@ -3377,6 +3377,45 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
   }, 20_000);
 });
 
+// P302 (pruebas 0.3) — doble clic en Construir con materiales para DOS: dos peticiones a la vez
+// pasaban el 409 de «ocupado» (se comprobaba fuera de la transacción) y creaban dos edificios.
+// Ahora la transacción toma el candado de la partida y la segunda recibe el 409.
+describe('P302 — doble clic en Construir no crea dos edificios', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn P302', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: ATTRS_CARISMATICO, portraitInitial: 'G', currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'carisma', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('dos turnos simultáneos de «construyo un campamento» con materiales para dos crean un solo Building', async () => {
+    await giveMaterials(saveId, [
+      { name: 'Leña de matorral de cuerno (12)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (16)', catalogSlug: 'piedra' },
+      { name: 'Lana de múrgol (4)', catalogSlug: 'lana-murgol' },
+    ]);
+    const [a, b] = await Promise.all([doTurn(saveId, 'Me pongo a construir un campamento'), doTurn(saveId, 'Me pongo a construir un campamento')]);
+    expect([a.statusCode, b.statusCode]).toContain(409);
+    expect(await prisma.building.count({ where: { saveId, recipeKey: 'campamento' } })).toBe(1);
+  }, 20_000);
+});
+
 // Cobertura (2026-08-04, guard de temperamento 2026-08-25 — Grupo 3 § Mundo determinista): slots
 // de compañero — 0 de base, cada construcción propia ACTIVA da los suyos. `newCompanion` del LLM
 // (mockeado aquí, a diferencia del resto del archivo) solo se materializa de verdad si hay hueco

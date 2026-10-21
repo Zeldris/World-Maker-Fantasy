@@ -2071,6 +2071,8 @@ export interface CaravanaInfo {
 export interface ComercioInfo {
   reino: boolean
   mercado: boolean
+  /// P287 — hay un Mercado pero está dañado.
+  mercadoDanado?: boolean
   socios: { slug: string; name: string }[]
   objetos: { slug: string; name: string }[]
   ordenes: OrdenComercioInfo[]
