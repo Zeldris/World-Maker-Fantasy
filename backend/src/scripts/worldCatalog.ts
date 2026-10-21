@@ -4051,7 +4051,9 @@ export const npcs: NpcInput[] = [
   // Historia completa reescrita 2026-08-05 (ver npcs.md #14 para el detalle íntegro): ya no
   // persigue a Gistera Koh por un duelo de honor rechazado — es uno de los tres guerreros Serhu
   // pagados en secreto por los Goirntes para matar al artesano Uhuld Koh, padre adoptivo de
-  // Gistera, antes de que su plan contra la casta de Ketg saliera a la luz.
+  // Gistera, antes de que su plan contra la casta de Ketg saliera a la luz. P260 (2026-10-21): como la
+  // `bio` de Gistera (auditoría del 2026-09-15), `role` y `bio` se quedan en lo que ve quien se lo cruza;
+  // el encargo y la muerte de Uhuld los sabe el narrador por el lore (`loreChunks.ts`) y están en npcs.md #14.
   {
     slug: 'orco-enfurecido-hondonada',
     name: 'Orco enfurecido',
@@ -4059,11 +4061,11 @@ export const npcs: NpcInput[] = [
     aliases: ['orco enfurecido'],
     faction: 'Clan Serhu',
     genero: 'M',
-    role: "Uno de los guerreros que mataron a Uhuld Koh por encargo Goirnte; persigue a Gistera Koh sin que sus compañeros lo sepan",
+    role: "Orco Serhu furioso que merodea por la Hondonada del Eco",
     articulo: 'el',
     level: 1,
     attributes: { fuerza: 6, destreza: 4, constitucion: 5, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
-    bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible — se la arrancó él mismo, en el mismo arranque de furia que lo trajo hasta aquí. Uno de los tres guerreros pagados en secreto por los Goirntes para asegurar la muerte del artesano Uhuld Koh, cuyo plan amenazaba con exponer la represión de los suyos: fue él quien le aplastó el cráneo con la maza después de que Uhuld, ya herido, lo alcanzara con el hacha. Vio huir esa misma noche a la hija adoptiva de Uhuld y la siguió por su cuenta, sin avisar a sus compañeros — ni él mismo sabe ya si por acabar el encargo o por una obsesión que se le ha ido de las manos. A pocos kilómetros del Karot Veku estuvo a punto de caer en una trampa que ella le tendió; la humillación de haberlo estado a punto de lograr una fugitiva a la que dobla en tamaño terminó de quebrarlo. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él.",
+    bio: "Orco del Clan Serhu, calvo y de complexión corpulenta, piel beige agrietada, sin pintura de clan visible: se la ha arrancado él mismo, por lo que parece en un arranque de furia. Tiene la mirada de quien lleva días sin dormir, persiguiendo algo que no cuenta a nadie. Duerme y merodea en la Hondonada del Eco, donde el terreno hundido le permite ver llegar a cualquiera antes de que lo vean a él.",
     personality: 'Errático y violento con cualquiera, obsesivo con ella — ataca al primer contacto sin intentar hablar.',
     homeLocationSlug: 'hondonada-del-eco',
     raza: 'orcos',

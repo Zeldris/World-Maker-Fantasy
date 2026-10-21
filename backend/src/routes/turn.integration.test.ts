@@ -4672,6 +4672,69 @@ describe('questProgress: el modelo cierra una misión directamente también conc
   }, 15_000);
 });
 
+// P240 (ronda con Ollama real, 2026-10-20): regalar un pan a Gistera hizo FALLIDA la misión de vida de
+// Gorhorn. El narrador solo completa misiones, y la de vida (`HONOR_MAKTOR`) no la cierra nunca.
+describe('questProgress: el narrador no hace fallar misiones ni cierra la misión de vida (P240)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba P240',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.quest.createMany({
+      data: [
+        { saveId, title: 'Misión de prueba P240', description: 'x', status: 'ACTIVA', rewardXp: 100 },
+        { saveId, questSlug: 'HONOR_MAKTOR', title: 'Honor de prueba P240', description: 'x', status: 'ACTIVA', rewardXp: 1000 },
+      ],
+    });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'fuerza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+  });
+
+  afterAll(async () => {
+    classifyAction.mockReset(); // no filtra el mockResolvedValue a los describe siguientes
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un FALLIDA del narrador se ignora', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn le regala un pan a Gistera.',
+      newFacts: [],
+      questProgress: { title: 'Misión de prueba P240', status: 'FALLIDA' as 'COMPLETADA' }, // el modelo puede devolverlo aunque el tipo no lo admita
+    });
+    await doTurn(saveId, 'Le regalo a Gistera un pan.');
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: 'Misión de prueba P240' } });
+    expect(quest.status).toBe('ACTIVA');
+  }, 15_000);
+
+  it('la misión de vida no la completa el narrador', async () => {
+    narrateAction.mockResolvedValueOnce({
+      narration: 'Gorhorn siente que el nombre Maktor vuelve a sonar.',
+      newFacts: [],
+      questProgress: { title: 'Honor de prueba P240', status: 'COMPLETADA' },
+    });
+    await doTurn(saveId, 'Grito el nombre de mi clan.');
+    const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: 'Honor de prueba P240' } });
+    expect(quest.status).toBe('ACTIVA');
+  }, 15_000);
+});
+
 // Bug real jugando en vivo (2026-08-13, "el efecto del mapa no está funcionando y sale en el
 // inventario como objeto sin categorizar... y me deja ponerlo en cualquier ranura de equipo"):
 // `grantQuestRewardItems` creaba la InventoryItem con solo nombre/descripción genérica, sin

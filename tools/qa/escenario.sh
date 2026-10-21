@@ -14,15 +14,20 @@
 #                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
 #                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), edificio:<receta> ya terminado, objetos del
 #                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
+#   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
+#                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>], reclutar:<npc>, guarnicion,
+#                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, combate:<npc>,<npc>…
 #   escenario.sh probar <nombre> <orden…>        (QA-153) restaura la instantánea en una base temporal `prueba_<pid>` del mismo
 #                                               Postgres (sin parar el juego ni tocar su base), corre la orden desde la raíz y
 #                                               borra la base al acabar, también si la orden falla; sale con el código de la orden.
-#                                               La orden es `dar …` o `dar-reino …` (subcomandos de este script contra la base
+#                                               La orden es `dar …`, `dar-reino …` o `preparar …` (subcomandos de este script contra la base
 #                                               temporal) o cualquier otra con DATABASE_URL y DIRECT_URL exportadas a ella
 #                                               (p. ej. `npx tsx backend/src/scripts/x.ts`; ojo: corre desde la raíz). Ej.:
 #                                               escenario.sh probar reino-dia39-recursos dar-reino <partida> comida=10
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# QA-188: en la Deck el host no trae psql, pg_dump ni pg_restore; los envoltorios de tools/qa/deck (van por podman) se añaden al PATH como respaldo.
+. tools/qa/deck/_path.sh
 BASE=tarkor_juego
 ADMIN="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/$BASE}"
@@ -35,7 +40,9 @@ case "${1:-}" in
   guardar)
     nombre="${2:?falta el nombre}"; que="${3:?falta qué tiene (partida, estado, día)}"
     [[ "$nombre" =~ ^[a-z0-9-]+$ ]] || { echo "nombre en minúsculas y guiones"; exit 2; }
-    pg_dump -Fc --no-owner "$URL" -f "$DIR/$nombre.dump"
+    # Por la salida estándar, no con `-f`: así vale también el shim de la Deck (pg_dump va dentro del contenedor).
+    pg_dump -Fc --no-owner "$URL" > "$DIR/$nombre.dump.tmp" || { rm -f "$DIR/$nombre.dump.tmp"; echo "pg_dump ha fallado: no se guarda nada"; exit 1; }
+    mv "$DIR/$nombre.dump.tmp" "$DIR/$nombre.dump"
     # La partida que se ha jugado la última (la de la última entrada del diario).
     partida=$(psql "$URL" -Atc 'select "saveId" from "LogEntry" order by "createdAt" desc limit 1')
     [ -n "$partida" ] || { rm -f "$DIR/$nombre.dump"; echo "No hay ninguna partida con diario: juega una acción antes de guardar"; exit 1; }
@@ -70,6 +77,10 @@ case "${1:-}" in
     partida="${2:?falta la partida}"; shift 2
     (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darReino.ts "$partida" "$@")
     ;;
+  preparar)
+    partida="${2:?falta la partida}"; shift 2
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/prepararReino.ts "$partida" "$@")
+    ;;
   probar)
     nombre="${2:?falta el nombre}"; shift 2
     [ $# -gt 0 ] || { echo "falta la orden (escenario.sh probar <nombre> <orden…>)"; exit 2; }
@@ -83,12 +94,12 @@ case "${1:-}" in
     pg_restore --no-owner -d "$tmpurl" "$DIR/$nombre.dump" 2>/dev/null || true
     codigo=0
     case "$1" in
-      dar|dar-reino) ESCENARIO_URL="$tmpurl" bash "$0" "$@" || codigo=$? ;;
+      dar|dar-reino|preparar) ESCENARIO_URL="$tmpurl" bash "$0" "$@" || codigo=$? ;;
       *) DATABASE_URL="$tmpurl" DIRECT_URL="$tmpurl" "$@" || codigo=$? ;;
     esac
     exit "$codigo"
     ;;
   *)
-    sed -n '2,23p' "$0"; exit 2
+    sed -n '2,26p' "$0"; exit 2
     ;;
 esac

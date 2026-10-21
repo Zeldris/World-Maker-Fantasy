@@ -64,9 +64,9 @@ export interface NarrationResult {
   /// objetivo narrativo con entidad propia (no cualquier intención pasajera) — mismo patrón que
   /// newTerritory/newBuilding/newSubject, el backend valida y materializa.
   newQuest?: { title: string; description: string } | null;
-  /// Cierra una misión ACTIVA ya existente (matchea por título, backend valida que exista) —
-  /// "completada" o "fallida" según cómo se resuelva en la narración.
-  questProgress?: { title: string; status: 'COMPLETADA' | 'FALLIDA' } | null;
+  /// Completa una misión ACTIVA ya existente (matchea por título, backend valida que exista). P240: el
+  /// narrador solo completa; si un modelo devuelve otro estado, turnResolution.ts lo ignora.
+  questProgress?: { title: string; status: 'COMPLETADA' } | null;
   /// docs/mecanicas/14-combate-y-muerte.md § 2.1: el Narrador marca esto cuando la escena deriva en un
   /// enfrentamiento real (no lo infiere el backend por regex, a diferencia de viajar/recolectar
   /// — un inicio de combate depende demasiado de contexto narrativo). `npcSlugs` viene acotado
@@ -1216,7 +1216,7 @@ CAMPOS OPCIONALES (todos poco frecuentes, la mayoría de turnos van en null): si
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
-Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción resuelve (con éxito o fracaso definitivo) una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" o "FALLIDA" — en caso contrario, null (muy poco frecuente).
+Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción cumple de verdad una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" — en caso contrario, null (muy poco frecuente). Nunca das una misión por fallida: eso lo decide el juego.
 
 ${
     // Roadmap de velocidad (Fable, 2026-07-19): este párrafo (y los 3 campos del schema que
@@ -1330,7 +1330,8 @@ Responde solo con el JSON pedido, nada más.`;
         type: ['object', 'null'],
         properties: {
           title: { type: 'string' },
-          status: { type: 'string', enum: ['COMPLETADA', 'FALLIDA'] },
+          // P240: solo COMPLETADA; un FALLIDA del modelo se ignora en turnResolution.ts.
+          status: { type: 'string', enum: ['COMPLETADA'] },
         },
       },
       condicionFisica: {

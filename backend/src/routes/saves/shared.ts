@@ -109,6 +109,7 @@ export async function buildStartingQuestsData(worldId: string, characterName: st
   const targetNpcs = npcSlugs.length ? await prisma.npc.findMany({ where: { worldId, slug: { in: npcSlugs } } }) : [];
   const npcIdBySlug = new Map(targetNpcs.map((npc) => [npc.slug, npc.id]));
   return quests.map((q) => ({
+    questSlug: q.questSlug,
     title: q.title,
     description: q.description,
     targetNpcId: q.targetNpcSlug ? npcIdBySlug.get(q.targetNpcSlug) : undefined,

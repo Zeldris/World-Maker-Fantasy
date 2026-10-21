@@ -86,6 +86,7 @@ import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
 import { nombrarOferta } from './ofertaNombre.js';
+import { narradorPuedeCerrar } from './startingQuests.js';
 import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
@@ -4023,10 +4024,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // OFICIOS_CONSTRUCCION_REQUERIDOS en construction.ts) — a diferencia de `alivioFor` (que solo
   // relaja el requisito), esto distingue "no tiene el oficio en absoluto" de "lo tiene a nivel 1".
   const tieneOficioFor = (oficio: string | undefined) => (oficio ? oficioNivelById.has(oficio) : true);
-  // CR-40 (Q1, Q9): el narrador solo puede cerrar las misiones antiguas suyas (sin `tipoMision`); las
-  // del motor las ve para narrarlas, pero las cierra el juego.
-  const misionesDelNarrador = activeQuests.filter((q) => !q.tipoMision);
-  const misionesDelMundo = activeQuests.filter((q) => q.tipoMision);
+  // CR-40 (Q1, Q9) y P240: las que no cierra el narrador (del motor, misión de vida) las ve para narrarlas,
+  // pero las cierra el juego.
+  const misionesDelNarrador = activeQuests.filter(narradorPuedeCerrar);
+  const misionesDelMundo = activeQuests.filter((q) => !narradorPuedeCerrar(q));
   if (misionesDelMundo.length) {
     contextBlocks.push(
       `MISIONES DEL MUNDO (no las cierres tú: las cierra el juego):\n${misionesDelMundo.map((q) => `- ${q.title}: ${q.description}`).join('\n')}`,
@@ -6252,13 +6253,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });
     }
 
-    if (narration.questProgress) {
-      // CR-40 (Q9): solo las misiones antiguas del narrador (las del motor las cierra el juego).
-      const matchingQuests = await tx.quest.findMany({
-        where: { saveId, title: narration.questProgress.title, status: 'ACTIVA', tipoMision: null },
-      });
+    // P240: el narrador solo completa; un FALLIDA suyo (un pan regalado hizo fallar la misión de vida) se ignora.
+    if (narration.questProgress && narration.questProgress.status !== 'COMPLETADA') {
+      console.warn(`[turno] questProgress ${narration.questProgress.status} del narrador ignorado (P240, saveId=${saveId})`);
+    } else if (narration.questProgress) {
+      const matchingQuests = (
+        await tx.quest.findMany({
+          where: { saveId, title: narration.questProgress.title, status: 'ACTIVA', tipoMision: null },
+        })
+      ).filter(narradorPuedeCerrar);
       await tx.quest.updateMany({
-        where: { saveId, title: narration.questProgress.title, status: 'ACTIVA', tipoMision: null },
+        where: { id: { in: matchingQuests.map((q) => q.id) } },
         data: { status: narration.questProgress.status },
       });
       for (const mision of matchingQuests) {
