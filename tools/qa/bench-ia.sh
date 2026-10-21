@@ -13,6 +13,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 if [ -e /.flatpak-info ] || [ -n "${FLATPAK_ID:-}" ]; then exec bash tools/qa/host.sh bash tools/qa/bench-ia.sh "$@"; fi
 [ -d logs/bin ] && PATH="$PWD/logs/bin:$PATH"
+. tools/qa/deck/_path.sh
 
 et="${1:?uso: bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N]}"; shift
 anterior=""; turnos=8

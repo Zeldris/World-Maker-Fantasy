@@ -5,6 +5,7 @@
 # Uso: comprobar-escenarios.sh [URL de Postgres sin base, por defecto la local]
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
+. tools/qa/deck/_path.sh
 export PGOPTIONS="-c client_min_messages=warning"
 SERVIDOR="${1:-postgresql://tarkor:tarkor@localhost:5432}"
 DIR=tools/qa/escenarios

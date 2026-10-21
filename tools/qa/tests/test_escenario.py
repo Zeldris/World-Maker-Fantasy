@@ -14,6 +14,8 @@ class Probar(unittest.TestCase):
         git(d, 'init', '-q', '-b', 'main')
         os.makedirs(os.path.join(d, 'tools', 'qa', 'escenarios'))
         shutil.copy(os.path.join(QA, 'escenario.sh'), os.path.join(d, 'tools', 'qa', 'escenario.sh'))
+        os.makedirs(os.path.join(d, 'tools', 'qa', 'deck'))
+        shutil.copy(os.path.join(QA, 'deck', '_path.sh'), os.path.join(d, 'tools', 'qa', 'deck', '_path.sh'))
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'uno.dump'), 'x')
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'README.md'), '')
         os.makedirs(os.path.join(d, 'bin'))

@@ -26,8 +26,8 @@
 #                                               escenario.sh probar reino-dia39-recursos dar-reino <partida> comida=10
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-# QA-188: en la Deck el host no trae psql, pg_dump ni pg_restore; los envoltorios de tools/qa/deck (van por podman) se ponen delante en el PATH.
-command -v psql >/dev/null 2>&1 || export PATH="$PWD/tools/qa/deck:$PATH"
+# QA-188: en la Deck el host no trae psql, pg_dump ni pg_restore; los envoltorios de tools/qa/deck (van por podman) se añaden al PATH como respaldo.
+. tools/qa/deck/_path.sh
 BASE=tarkor_juego
 ADMIN="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/$BASE}"
