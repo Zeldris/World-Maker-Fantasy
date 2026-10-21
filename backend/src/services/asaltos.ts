@@ -88,6 +88,8 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     defensores.push({ ...c, conNombre: false, bonoDefensa: cobertura, bonoAtaque: enGuarnicion && rolDeSubdito(s.role) === 'vigia' ? bonoAltura : 0, bonoMoral });
   }
 
+  // Guarnición real (los guardias de fauna se cuentan aparte).
+  const enGuarnicionN = defensores.length - milicianos;
   // CR-37 (Q3): los guardias de fauna crecidos de los corrales de su región (`CR-56`).
   const guardias = await guardiasDeRegion(tx, saveId, worldId, asentamiento.region, ahora);
   for (const { ganadoId, npc } of guardias) {
@@ -183,7 +185,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     caidosReino,
     estadoPersonaje: presente ? estado.get(`personaje-${saveId}`)?.condicion ?? null : null,
     condicionAntes: save.condicionFisica,
-    defensores: { guarnicion: defensores.length - milicianos, milicianos },
+    defensores: { guarnicion: enGuarnicionN, milicianos, guardias: guardias.length },
   });
   await avisoDeViajero(tx, { saveId, factionId: null }, texto);
   return { defendido, defensores: defensores.length - milicianos, milicianos, caidosReino, caidosAsaltantes, botin, empalizadaCaida };
@@ -203,13 +205,13 @@ export function textoDelAsalto(a: {
   estadoPersonaje: CondicionFisica | null;
   condicionAntes: CondicionFisica;
   /// P295: quién defendía (si se pasa, la línea lo dice: guarnición, milicia o nadie).
-  defensores?: { guarnicion: number; milicianos: number };
+  defensores?: { guarnicion: number; milicianos: number; guardias?: number };
 }): string {
   const v = (sing: string, plur: string) => (a.plural ? plur : sing);
   const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const bajas = a.caidosReino.length > 0 ? ` ${a.caidosReino.length > 1 ? 'Caen' : 'Cae'} ${a.caidosReino.join(', ')}.` : '';
   const d = a.defensores;
-  const quienDefendia = !d ? '' : d.guarnicion + d.milicianos === 0 ? ' Nadie defendía: sin guarnición ni milicia.' : ` Defendían ${[d.guarnicion > 0 ? `${d.guarnicion} de guarnición` : null, d.milicianos > 0 ? `${d.milicianos} de milicia` : null].filter(Boolean).join(' y ')}.`;
+  const quienDefendia = !d ? '' : d.guarnicion + d.milicianos + (d.guardias ?? 0) === 0 ? ' Nadie defendía: sin guarnición ni milicia.' : ` Defendían ${[d.guarnicion > 0 ? `${d.guarnicion} de guarnición` : null, d.milicianos > 0 ? `${d.milicianos} de milicia` : null, (d.guardias ?? 0) > 0 ? `${d.guardias} ${d.guardias === 1 ? 'guardia' : 'guardias'} de los corrales` : null].filter(Boolean).join(' y ')}.`;
   const despues = a.estadoPersonaje ? peor(a.condicionAntes, a.estadoPersonaje) : a.condicionAntes;
   const tuyo = despues !== a.condicionAntes ? ` Estabas allí y sales ${despues.toLowerCase()}.` : '';
   if (a.defendido) {

@@ -30,4 +30,9 @@ describe('textoDelAsalto: quién defendía (P295)', () => {
     expect(textoDelAsalto({ ...base, defensores: { guarnicion: 2, milicianos: 3 } })).toContain('Defendían 2 de guarnición y 3 de milicia.');
     expect(textoDelAsalto({ ...base, defendido: true, defensores: { guarnicion: 0, milicianos: 1 } })).toContain('Defendían 1 de milicia.');
   });
+  it('los guardias de los corrales no son guarnición', () => {
+    expect(textoDelAsalto({ ...base, defensores: { guarnicion: 0, milicianos: 0, guardias: 2 } })).toContain('Defendían 2 guardias de los corrales.');
+    expect(textoDelAsalto({ ...base, defensores: { guarnicion: 1, milicianos: 0, guardias: 2 } })).toContain('Defendían 1 de guarnición y 2 guardias de los corrales.');
+    expect(textoDelAsalto({ ...base, defensores: { guarnicion: 0, milicianos: 0, guardias: 0 } })).toContain('Nadie defendía');
+  });
 });
