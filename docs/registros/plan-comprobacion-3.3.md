@@ -30,6 +30,13 @@ Al acabar, `marca-hallazgo.py --resumen` dice qué arreglados quedan fuera del r
 
 **Repaso final de los sin ver**: P175 (pide una victoria; sirve un Guchapo en el Pozo), P181 (pide un NPC con el menú Aprender oficio) y P182 (pide que coincidan una ficha abierta y un encuentro); de la 13b-1: P184 (pide matar al Orco enfurecido sin testigos), P191 y P192 (piden una caza de grupo que acabe en combate; «Cazar» solo hizo caza de sigilo y rompe la pantalla, P308), P193 (pide llamadas para ordeñar desde el sur) y la hora entera de P189 (el rebaño vuelve a su origen en ~25 min; falta verlo una hora seguida); de la 13b-2: P200 (pide un herrero sin descubrir que ofrezca un encargo) y P201 (pide que se ofrezca y complete la misión de explorar Las Agujas Imán).
 
-**No jugables** (se cierran con su razón, sin jugar): P25 (el género sale en el texto libre del narrador), P52
+**No jugables** (✅ cerrados sin jugar el 2026-10-22, con su razón en el registro): P25 (el género sale en el texto libre del narrador), P52
 (efecto `moverPoblacion`, solo tests), P174 (`arrancar-juego.sh`, herramienta de pruebas), P44 (interiores de otra
 partida, se ve en la base), P143 (encuentros en Hogar Ketg por azar, ya decidido).
+
+**Cierre del reparto (2026-10-22).** Tandas 1-14 jugadas. `marca-hallazgo.py --resumen`: 37 arreglados sin comprobar
+jugando, 11 en parte. De los 37, los 5 no jugables de arriba (cerrados sin jugar) y, fuera de toda tanda, P51 y P124.
+Los demás son los sin ver de las tandas, que piden un estado que el escenario no da o el azar: el repaso de arriba
+más P29, P69 (iniciativa), P46, P47, P90, P204 (interrupción de viaje o emboscada; `QA-193` en el 3.4), P55, P56,
+P77, P129, P153 (grupo de 6 Guchapo), P94, P107, P112 (diario y fichas de combate), P121, P125, P128, P163.
+P76, P79 y P95 son registros de otros P y no se marcan.
