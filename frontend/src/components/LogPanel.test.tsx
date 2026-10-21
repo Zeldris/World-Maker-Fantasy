@@ -122,6 +122,15 @@ describe('LogPanel — aviso de riesgo en la tarjeta Cazar', () => {
     expect(aviso.textContent).toContain('Orco Enfurecido (nivel 4)')
   })
 
+  it('QA-27 P27: «El orco desconocido te corta el paso» avisa aunque no haya dato de riesgo o sea bajo', () => {
+    for (const riesgoCaza of [undefined, { riesgo: 'bajo' as const, motivo: '' }]) {
+      const e = entryConOferta({ tipo: 'NPC', targetSlug: 'orco', targetName: 'Orco desconocido', zonePointId: undefined, cantidad: 1, combateForzado: true, quienInicia: 'npc', riesgoCaza })
+      const aviso = render(<LogPanel {...baseProps} entries={[e]} isThinking={false} />).getByRole('alert')
+      expect(aviso.textContent).toContain('Pelear siempre tiene riesgo')
+      cleanup()
+    }
+  })
+
   it('riesgo bajo o sin dato: sin aviso', () => {
     const bajo = entryConOferta({ riesgoCaza: { riesgo: 'bajo', motivo: '' } })
     expect(render(<LogPanel {...baseProps} entries={[bajo]} isThinking={false} />).queryByRole('alert')).toBeNull()

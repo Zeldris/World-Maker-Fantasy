@@ -68,6 +68,11 @@ export function presentacionMenuNpc(entryId: string, menu: MenuNpc, onChoose?: (
 }
 
 function riesgoDeOferta(offer: OfertaModoDinamico): PresentacionOferta['warning'] {
+  // P27 (reabierto): quien te corta el paso siempre avisa de que pelear arriesga, también sin dato de
+  // riesgo (oferta antigua, NPC desconocido) o con riesgo bajo; con dato alto/mortal va el aviso concreto.
+  if (offer.combateForzado && (!offer.riesgoCaza || offer.riesgoCaza.riesgo === 'bajo')) {
+    return { nivel: 'aviso', text: 'Pelear siempre tiene riesgo: puedes salir herido.' }
+  }
   if (!offer.riesgoCaza || offer.riesgoCaza.riesgo === 'bajo' || !(offer.combateForzado || offer.tipo === 'FAUNA')) return undefined
   return {
     nivel: offer.riesgoCaza.riesgo,
