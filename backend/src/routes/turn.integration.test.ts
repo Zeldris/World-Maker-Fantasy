@@ -3047,8 +3047,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
 
   it('felicidad ≤20 sostenida 7 días pierde el territorio (población a 0) y abandona sus edificios', async () => {
     await setUp(20);
+    // P299 — edificios sin territorio (levantados sin fundar uno) también dejan de ser del Reino perdido.
+    const pozo = await prisma.building.create({ data: { saveId, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('PERDIDO');

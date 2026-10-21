@@ -69,7 +69,20 @@ export async function advanceKingdomStatsDay(
         if (perdiendoIds.length > 0) {
           // Se conserva la fila (docs/10 § 5.4: "es historia del reino") — nunca se borra.
           await tx.territory.updateMany({ where: { id: { in: perdiendoIds } }, data: { control: 'PERDIDO', population: 0 } });
-          await tx.building.updateMany({ where: { territoryId: { in: perdiendoIds }, status: 'ACTIVO' }, data: { status: 'ABANDONADO' } });
+          // P299 — el Reino perdido ya no tiene Choza, Pozo ni camas propias: también se abandonan los
+          // edificios sin territorio (los levantados sin fundar uno), salvo el Campamento del personaje.
+          await tx.building.updateMany({
+            where: { saveId, status: 'ACTIVO', OR: [{ territoryId: { in: perdiendoIds } }, { territoryId: null, NOT: { recipeKey: 'campamento' } }] },
+            data: { status: 'ABANDONADO' },
+          });
+          // P299 — se explica después: antes solo se veía el territorio en «Perdido».
+          await tx.logEntry.create({
+            data: {
+              saveId, channel: 'KINGDOM', isSystemMessage: true,
+              text: `Tu Reino se ha rebelado: la felicidad llevaba ${DIAS_PARA_REBELION} días baja y ha perdido el territorio. Sus edificios quedan abandonados y sin camas; sube la felicidad y vuelve a reclamarlo.`,
+              timeLabel: formatFictionalDate(hasta), fictionalMinutes: hasta,
+            },
+          });
         }
       } else if (ticked.diasFelicidadAlta >= DIAS_PARA_CONSOLIDAR) {
         const { count } = await tx.territory.updateMany({ where: { saveId, control: { in: ['RECLAMADO', 'DISPUTADO'] } }, data: { control: 'CONSOLIDADO' } });
