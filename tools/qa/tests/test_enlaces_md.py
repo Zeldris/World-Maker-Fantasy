@@ -9,11 +9,11 @@ DESTINO = '# Guía\n\n## Cómo se usa\n\n## Cómo se usa\n\n<a id="propia"></a>\
 
 
 class EnlacesMd(unittest.TestCase):
-    def comprobar(self, texto: str, *args: str) -> subprocess.CompletedProcess:
+    def comprobar(self, texto: str, *args: str, archivo: str = 'docs/a.md') -> subprocess.CompletedProcess:
         repo = carpeta()
         git(repo, 'init', '-q')
         escribir(os.path.join(repo, 'docs/guia.md'), DESTINO)
-        escribir(os.path.join(repo, 'docs/a.md'), texto)
+        escribir(os.path.join(repo, archivo), texto)
         git(repo, 'add', '-A')
         return subprocess.run(['python3', os.path.join(QA, 'enlaces-md.py'), *args], cwd=repo, capture_output=True, text=True)
 
@@ -34,6 +34,12 @@ class EnlacesMd(unittest.TestCase):
     def test_dentro_de_bloques_de_codigo_no_se_mira(self):
         r = self.comprobar('```\n[a](falta.md)\n```\n  ~~~\n[b](falta.md)\n  ~~~\n`[c](falta.md)`\n')
         self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_descripcion_de_pr_enlaza_desde_la_raiz(self):
+        r = self.comprobar('[a](docs/guia.md#cómo-se-usa)\n', archivo='docs/registros/pr/claude/rama.md')
+        self.assertEqual(r.returncode, 0, r.stdout)
+        r = self.comprobar('[a](docs/falta.md)\n', archivo='docs/registros/pr/claude/rama.md')
+        self.assertIn('no existe docs/falta.md', r.stdout)
 
 
 if __name__ == '__main__':

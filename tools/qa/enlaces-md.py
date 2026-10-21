@@ -59,7 +59,9 @@ def main():
                 # GitHub acepta el ancla en mayúsculas y con los acentos codificados (`%C3%B3`).
                 an = urllib.parse.unquote(an).lower()
                 camino = urllib.parse.unquote(camino)
-                objetivo = os.path.normpath(os.path.join(os.path.dirname(ruta), camino)) if camino else ruta
+                # QA-184: `docs/registros/pr/` guarda la descripción de un PR, que enlaza desde la raíz del repo.
+                base = RAIZ if rel.startswith('docs/registros/pr/') else os.path.dirname(ruta)
+                objetivo = os.path.normpath(os.path.join(base, camino)) if camino else ruta
                 if camino and not os.path.exists(objetivo):
                     rotos.append(f'{rel}:{n}: no existe {camino}')
                 elif an and not solo_archivos and objetivo.endswith('.md') and an not in anclas_de(objetivo):
