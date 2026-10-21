@@ -12,11 +12,11 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (75): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (74): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
   P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287, P288,
-  P289, P290, P291, P292, P293, P294, P295, P296, P297, P298, P299, P300, P301, P302.
+  P290, P291, P292, P293, P294, P295, P296, P297, P298, P299, P300, P301, P302.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -33,8 +33,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P127, P130, P132, P135, P137, P138, P142, P144, P145, P147, P150, P154, P164, P165, P166, P172,
   P178, P185, P187, P194, P197, P214, P215, P216, P217, P218, P219, P220, P225, P226, P227, P228,
   P229, P230, P231, P232, P233, P234, P235.
-- **Cerrados sin arreglo (no aplica, dato o roadmap)** (18): P5, P10, P22, P23, P30, P34, P40, P48,
-  P59, P71, P75, P89, P146, P179, P222, P238, P239, P249.
+- **Cerrados sin arreglo (no aplica, dato o roadmap)** (19): P5, P10, P22, P23, P30, P34, P40, P48,
+  P59, P71, P75, P89, P146, P179, P222, P238, P239, P249, P289.
 <!-- fin del resumen -->
 
 - **Roadmap** (diseño o desarrollo nuevo, para cuando se vuelva a él): `REI-122` (permiso para fundar),
@@ -336,7 +336,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P286 | CR-59 (días 39-50, Reino › Diplomacia): el vasallaje de Serhu a la Concordia existe (tabla Vasallaje) pero no se ve en ninguna pantalla del Reino; la deuda sube de 500 (inicio) a 7144 en el día 39 y a 8310 en el día 50 (~583 por semana), sin que el texto de la pestaña la mencione | pendiente |
 | P287 | CR-47 (día 55, Reino › Diplomacia): con el Mercado DAÑADO la pestaña dice «Sin Mercado. Construye un Mercado» aunque está construido: el estado dañado se lee como no construido, y sin él no hay órdenes permanentes ni caravanas (0 caravanas) | pendiente |
 | P288 | Ronda 2026-10-21 tanda 4 (día 39, Hondonada del Eco, combate contra el Orco enfurecido de la misión de Gistera Koh): tras perder la iniciativa (9 vs 16) el combate queda en «Combate — Defensa» con Defenderse habilitado; 30 clics en Defenderse (y 10 en Ataque Básico antes) no lanzan ninguna petición al backend (logs/backend.log sin POST) ni mueven la hora (08:29); tras recargar, el HUD sigue en «⚔️ En combate» pero no hay panel de combate ni forma de salir. Antes, «Tajo Horizontal» (FUE -10, energía 67/77) quedó «sigue desactivada tras 20 s». Sin analizar la causa (ronda). | Abierto |
-| P289 | CR-15 (día 39, Compañeros): la barra «Lo que piensa de ti» no sale para Ruka la Lengua (aprobacion=50 en la base) porque detail.ts solo la manda si tipo NPC y sin rolReino; con el único compañero del escenario (súbdito diplomático) no se puede ver la barra, y no hay en el escenario un compañero NPC real para jugar CR-15/CR-16 (perdón, regalo, rencor). Por diseño, pero deja CR-15 sin jugar; pide un escenario con un compañero NPC capturado/persuadido. | Resuelto por el escenario reino-companero-npc (2026-10-21): Tirag Susig y Hagar Kiugh (sin rolReino) muestran la barra «Lo que piensa de ti» (Neutral con aprobación 50) y «¿Qué se sabe en tu tierra?». Comprobado jugando; los vectores y «se va» siguen sin jugar (ver P293) |
+| P289 | CR-15 (día 39, Compañeros): la barra «Lo que piensa de ti» no sale para Ruka la Lengua (aprobacion=50 en la base) porque detail.ts solo la manda si tipo NPC y sin rolReino; con el único compañero del escenario (súbdito diplomático) no se puede ver la barra, y no hay en el escenario un compañero NPC real para jugar CR-15/CR-16 (perdón, regalo, rencor). Por diseño, pero deja CR-15 sin jugar; pide un escenario con un compañero NPC capturado/persuadido. | No aplica: no era un fallo del juego sino falta de estado. Resuelto por el escenario reino-companero-npc (2026-10-21): Tirag Susig y Hagar Kiugh (sin rolReino) muestran la barra «Lo que piensa de ti» (Neutral con aprobación 50) y «¿Qué se sabe en tu tierra?». Comprobado jugando; los vectores y «se va» siguen sin jugar (ver P293) |
 | P290 | CR-46: GET /expediciones/mapa devuelve la expedición «viajeros, de vuelta» con faccion «tu Reino» pero delReino:false (el flag lo calcula e.faction.id === reino.id); la banderita sí sale en el mapa de Berig con su tarjeta («Expedición de tu Reino», va a La Desembocadura Callada). Ronda Mundo vivo tanda 5, reino-dia39-recursos. | Abierto |
 | P291 | CR-42 (reino-companero-npc, día 39, Compañeros): «¿Qué se sabe en tu tierra?» de Tirag Susig (Clan Serhu) cuenta la misma noticia dos veces seguidas («Una tormenta terrible arrasa las Llanuras del Viento Rojo.» ×2), y la de Hagar Kiugh sí trae dos distintas; además la tormenta no es de «su tierra» (Serhu). Comprobado jugando. | Abierto |
 | P292 | CR-45 (reino-combate-capitan, día 39): el capitán funciona: Ulkha Ketg lleva «⚑ a por ti» (tooltip «Capitán: ordena a los suyos caer sobre ti») y el diario «ordena caer sobre Gorhorn»; en la ronda 3 pasó a «a por Hagar Kiugh» y el tooltip lo siguió. Pero en el resto de rondas todos los golpes de Hulki, Herrero Serhu y Ulkha fueron a Gorhorn y no se vio caer a ninguno sobre los compañeros pese a la orden. Comprobado jugando; Gorhorn (nivel 2, Terk'ikar nivel 24) muere en 4 rondas, sin poder ganar. | Abierto |
