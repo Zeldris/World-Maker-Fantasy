@@ -1,6 +1,6 @@
 # Roadmap — Tarkor, Berig en alpha
 
-**Actualizado:** 2026-10-01 (mapa de roadmaps); hitos comprobados contra el código el 2026-09-29.
+**Actualizado:** 2026-10-21 ([la línea](#la-línea-usuaria-2026-10-21)); 2026-10-01 (mapa de roadmaps); hitos comprobados contra el código el 2026-09-29.
 **Versión actual:** Alpha 0 · `v0.0.0-alpha` (etiqueta en `44f8ba3`).
 **Siguiente hito:** `0.1` Llanuras estable. Plan de ejecución en
 [plan-roadmap-0.1.md](plan-roadmap-0.1.md).
@@ -18,6 +18,33 @@ y el hito de cada fase de los roadmaps temáticos. Ver [Mapa de roadmaps](#mapa-
 - **🧭 = decide Álvaro antes de empezar.** Nada marcado así se implementa sin su respuesta.
 - Origen: **[A]** pedido o decidido por Álvaro · **[H]** hallazgo verificado en código · **[P]**
   propuesta de Claude.
+
+## La línea (usuaria, 2026-10-21)
+
+Un solo frente cada vez, en este orden. Lo que salga fuera de él va a la bandeja de ideas (abajo), no a un roadmap.
+
+1. **Entorno congelado.** Ninguna tarea `QA-*` nueva salvo que algo bloquee de verdad. Las propuestas de las
+   retros se apuntan en la bitácora («Propuestas aprobadas…») y no se aplican hasta cerrar las pruebas.
+2. **Ramas cerradas.** Una sola rama por cuenta. Las que solo llevan la bitácora por delante de `main` se fusionan
+   o se cierran; `claude/instalador-empaquetado` (parada desde el 2026-09-28) se retoma o se archiva, lo decide la usuaria.
+3. **Cerrar la puerta de pruebas** ([CLAUDE.md](../../CLAUDE.md#pruebas-de-juego), [hallazgos](../registros/pruebas-0.3-hallazgos.md)),
+   que es el único frente activo. A 2026-10-21: 19 de 135 sin jugar (sobre todo Mundo vivo, 29/48), 59 hallazgos pendientes,
+   148 arreglados sin comprobar jugando y 2 decisiones de la usuaria (P215, P218). Orden:
+   1. Los graves (P240, P260) y las dos decisiones.
+   2. Jugar lo que falta de la matriz (`python3 tools/qa/matriz-pruebas.py`).
+   3. Comprobar jugando los arreglados, por tandas de un sistema.
+   4. El resto de pendientes.
+4. **Limpieza ligera del roadmap** al cerrar las pruebas, sin reestructurarlo:
+   - Cerrar formalmente el `0.1` y el `0.2`. Lo que espera a Álvaro pasa a [Preguntas abiertas para
+     Álvaro](#preguntas-abiertas-para-álvaro) y no mantiene un hito abierto.
+   - Las tareas en dos hitos y las asignadas sin definir que da `python3 tools/roadmap/cobertura.py`, a cero.
+   - Entran las propuestas aprobadas de la bitácora, cada una en su hito.
+5. **Vuelta al `0.3`** (Fases D y E del [plan](plan-roadmap-0.3.md)): **un solo hito activo** y como mucho una línea
+   de trabajo por cuenta; cada tarea se juega al terminarla.
+
+**Bandeja de ideas:** lo nuevo (una mejora, una herramienta, una tarea de otro hito) se apunta en
+«Propuestas aprobadas para el roadmap cuando acaben las pruebas» de la [bitácora](../registros/traspaso.md), sin hito
+ni identificador. Solo entra en un roadmap cuando la usuaria lo aprueba en la limpieza del paso 4 o al cerrar un hito.
 
 ---
 
