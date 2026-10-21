@@ -12,11 +12,11 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (62): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (63): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
   P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287, P288,
-  P289.
+  P289, P290.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -337,3 +337,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P287 | CR-47 (día 55, Reino › Diplomacia): con el Mercado DAÑADO la pestaña dice «Sin Mercado. Construye un Mercado» aunque está construido: el estado dañado se lee como no construido, y sin él no hay órdenes permanentes ni caravanas (0 caravanas) | pendiente |
 | P288 | Ronda 2026-10-21 tanda 4 (día 39, Hondonada del Eco, combate contra el Orco enfurecido de la misión de Gistera Koh): tras perder la iniciativa (9 vs 16) el combate queda en «Combate — Defensa» con Defenderse habilitado; 30 clics en Defenderse (y 10 en Ataque Básico antes) no lanzan ninguna petición al backend (logs/backend.log sin POST) ni mueven la hora (08:29); tras recargar, el HUD sigue en «⚔️ En combate» pero no hay panel de combate ni forma de salir. Antes, «Tajo Horizontal» (FUE -10, energía 67/77) quedó «sigue desactivada tras 20 s». Sin analizar la causa (ronda). | Abierto |
 | P289 | CR-15 (día 39, Compañeros): la barra «Lo que piensa de ti» no sale para Ruka la Lengua (aprobacion=50 en la base) porque detail.ts solo la manda si tipo NPC y sin rolReino; con el único compañero del escenario (súbdito diplomático) no se puede ver la barra, y no hay en el escenario un compañero NPC real para jugar CR-15/CR-16 (perdón, regalo, rencor). Por diseño, pero deja CR-15 sin jugar; pide un escenario con un compañero NPC capturado/persuadido. | Abierto (limitación de escenario) |
+| P290 | CR-46: GET /expediciones/mapa devuelve la expedición «viajeros, de vuelta» con faccion «tu Reino» pero delReino:false (el flag lo calcula e.faction.id === reino.id); la banderita sí sale en el mapa de Berig con su tarjeta («Expedición de tu Reino», va a La Desembocadura Callada). Ronda Mundo vivo tanda 5, reino-dia39-recursos. | Abierto |
