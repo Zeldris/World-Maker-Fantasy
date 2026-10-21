@@ -130,11 +130,13 @@ export interface Avistamiento {
   tramos: number;
   /// CR-67 (Q5): por qué viene.
   motivo?: string;
+  /// P295: por qué «Llamar a la milicia» no serviría ahora (si sirve, no está).
+  sinMilicia?: string;
 }
 
 /// Q5 (X4: lo que entra en el alcance de tus satélites): los asaltos que se ven desde la Torre de
 /// cada asentamiento, a cuántos tramos están.
-export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamiento[]> {
+export async function radarDelReino(tx: Tx, saveId: string, ahora: number): Promise<Avistamiento[]> {
   const asentamientos = (await asentamientosDelReino(tx, saveId)).filter((a) => a.efecto.radioTramos > 0);
   if (asentamientos.length === 0) return [];
   const hostiles = await tx.viajero.findMany({
@@ -152,7 +154,8 @@ export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamient
       const tramos = alcance.get(h.ubicacionLocationId);
       if (tramos === undefined) continue;
       const gente = h.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
-      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos, ...((h.carga as { motivo?: string } | null)?.motivo ? { motivo: (h.carga as { motivo: string }).motivo } : {}) });
+      const sinMilicia = (await planMilicia(tx, saveId, a.id, ahora)).motivo;
+      out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos, ...(sinMilicia ? { sinMilicia } : {}), ...((h.carga as { motivo?: string } | null)?.motivo ? { motivo: (h.carga as { motivo: string }).motivo } : {}) });
     }
   }
   return out;
@@ -161,16 +164,29 @@ export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamient
 /// Q6: arma a la milicia de un asentamiento: tantos trabajadores adultos como equipos haya en su
 /// Armería. Mientras dura, no producen.
 export async function convocarMilicia(tx: Tx, saveId: string, asentamientoId: string, ahora: number): Promise<number> {
-  const a = (await asentamientosDelReino(tx, saveId)).find((x) => x.id === asentamientoId);
-  if (!a) return 0;
-  const equipos = a.modulos.find((m) => m.modulo === 'armeria' && !m.danado)?.equiposMilicia ?? 0;
-  const yaArmados = await tx.subject.count({ where: { saveId, estado: 'ACTIVO', enMilicia: true } });
-  const libres = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO', enMilicia: false }, select: { id: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
-  const llamados = libres.filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora)).slice(0, Math.max(0, equipos - yaArmados));
+  const { llamados } = await planMilicia(tx, saveId, asentamientoId, ahora);
   if (llamados.length === 0) return 0;
-  await tx.subject.updateMany({ where: { id: { in: llamados.map((s) => s.id) } }, data: { enMilicia: true } });
+  await tx.subject.updateMany({ where: { id: { in: llamados } }, data: { enMilicia: true } });
   await recalcularPoblacion(tx, saveId, ahora);
   return llamados.length;
+}
+
+/// P295: a quién llamaría la milicia de un asentamiento ahora y, si a nadie, por qué (sin Armería
+/// sana o sin equipos, sin trabajadores adultos libres, o todos los equipos ya en uso).
+export async function planMilicia(tx: Tx, saveId: string, asentamientoId: string, ahora: number): Promise<{ llamados: string[]; motivo: string | null }> {
+  const a = (await asentamientosDelReino(tx, saveId)).find((x) => x.id === asentamientoId);
+  if (!a) return { llamados: [], motivo: 'Ese asentamiento no existe.' };
+  const armeria = a.modulos.find((m) => m.modulo === 'armeria' && !m.danado);
+  const equipos = armeria?.equiposMilicia ?? 0;
+  const sujetos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, role: true, pueblo: true, nacidoEn: true, enMilicia: true }, orderBy: { createdAt: 'asc' } });
+  const trabajadores = sujetos.filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora));
+  const yaArmados = sujetos.filter((s) => s.enMilicia).length;
+  const llamados = trabajadores.filter((s) => !s.enMilicia).slice(0, Math.max(0, equipos - yaArmados)).map((s) => s.id);
+  if (llamados.length > 0) return { llamados, motivo: null };
+  if (!armeria) return { llamados, motivo: 'No hay una Armería en pie que arme a la milicia.' };
+  if (equipos === 0) return { llamados, motivo: 'La Armería no tiene equipos de milicia: compra alguno en Defensa.' };
+  if (trabajadores.length === 0) return { llamados, motivo: 'No hay trabajadores adultos que armar.' };
+  return { llamados, motivo: yaArmados >= equipos ? 'Toda la milicia ya está armada.' : 'No hay trabajadores libres que armar.' };
 }
 
 /// Fin de la alarma: los milicianos vuelven al trabajo.
@@ -186,7 +202,7 @@ export async function licenciarMilicia(tx: Tx, saveId: string, ahora: number): P
 export async function vigilarDelReino(prisma: PrismaClient, saveId: string, dia: number): Promise<number> {
   return prisma.$transaction(async (tx) => {
     const ahora = dia * 1440;
-    const vistos = await radarDelReino(tx, saveId);
+    const vistos = await radarDelReino(tx, saveId, ahora);
     const nuevos = await tx.viajero.findMany({ where: { id: { in: [...new Set(vistos.map((v) => v.viajeroId))] }, avistado: false }, select: { id: true } });
     const nuevosIds = new Set(nuevos.map((n) => n.id));
     const save = await tx.save.findUnique({ where: { id: saveId }, select: { currentLocationId: true } });

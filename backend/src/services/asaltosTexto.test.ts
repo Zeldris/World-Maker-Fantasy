@@ -21,3 +21,13 @@ describe('textoDelAsalto (P221)', () => {
     expect(textoDelAsalto({ ...base, estadoPersonaje: 'ILESO' })).not.toMatch(/Estabas allí/);
   });
 });
+
+describe('textoDelAsalto: quién defendía (P295)', () => {
+  it('sin defensores lo dice, también al saquear', () => {
+    expect(textoDelAsalto({ ...base, defensores: { guarnicion: 0, milicianos: 0 } })).toContain('Nadie defendía: sin guarnición ni milicia.');
+  });
+  it('nombra guarnición y milicia', () => {
+    expect(textoDelAsalto({ ...base, defensores: { guarnicion: 2, milicianos: 3 } })).toContain('Defendían 2 de guarnición y 3 de milicia.');
+    expect(textoDelAsalto({ ...base, defendido: true, defensores: { guarnicion: 0, milicianos: 1 } })).toContain('Defendían 1 de milicia.');
+  });
+});

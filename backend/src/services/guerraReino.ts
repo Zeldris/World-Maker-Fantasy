@@ -38,6 +38,12 @@ export async function faccionDelReino(prisma: Pick<PrismaClient, 'faction'>, sav
   return prisma.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { id: true, name: true } });
 }
 
+/// P298: la lista de la pestaña Guerra en un orden estable (más presión primero; a igualdad, por
+/// nombre e id): sin desempate, el orden cambiaba entre cargas y «Tributo» pagaba a otra facción.
+export function ordenarEnemigas<T extends { id: string; nombre: string; presion: number }>(lista: T[]): T[] {
+  return [...lista].sort((a, b) => b.presion - a.presion || a.nombre.localeCompare(b.nombre, 'es') || a.id.localeCompare(b.id));
+}
+
 /// Las facciones en guerra con el Reino.
 export async function enGuerraConElReino(prisma: Pick<PrismaClient, 'faction' | 'factionRelation'>, saveId: string): Promise<string[]> {
   const reino = await faccionDelReino(prisma, saveId);

@@ -183,6 +183,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     caidosReino,
     estadoPersonaje: presente ? estado.get(`personaje-${saveId}`)?.condicion ?? null : null,
     condicionAntes: save.condicionFisica,
+    defensores: { guarnicion: defensores.length - milicianos, milicianos },
   });
   await avisoDeViajero(tx, { saveId, factionId: null }, texto);
   return { defendido, defensores: defensores.length - milicianos, milicianos, caidosReino, caidosAsaltantes, botin, empalizadaCaida };
@@ -201,14 +202,18 @@ export function textoDelAsalto(a: {
   caidosReino: string[];
   estadoPersonaje: CondicionFisica | null;
   condicionAntes: CondicionFisica;
+  /// P295: quién defendía (si se pasa, la línea lo dice: guarnición, milicia o nadie).
+  defensores?: { guarnicion: number; milicianos: number };
 }): string {
   const v = (sing: string, plur: string) => (a.plural ? plur : sing);
   const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const bajas = a.caidosReino.length > 0 ? ` ${a.caidosReino.length > 1 ? 'Caen' : 'Cae'} ${a.caidosReino.join(', ')}.` : '';
+  const d = a.defensores;
+  const quienDefendia = !d ? '' : d.guarnicion + d.milicianos === 0 ? ' Nadie defendía: sin guarnición ni milicia.' : ` Defendían ${[d.guarnicion > 0 ? `${d.guarnicion} de guarnición` : null, d.milicianos > 0 ? `${d.milicianos} de milicia` : null].filter(Boolean).join(' y ')}.`;
   const despues = a.estadoPersonaje ? peor(a.condicionAntes, a.estadoPersonaje) : a.condicionAntes;
   const tuyo = despues !== a.condicionAntes ? ` Estabas allí y sales ${despues.toLowerCase()}.` : '';
   if (a.defendido) {
-    return `${mayus(a.lugar)} aguanta el asalto: ${a.quien.charAt(0).toLowerCase()}${a.quien.slice(1)} ${v('se retira', 'se retiran')}${a.caidosAsaltantes > 0 ? ` dejando ${a.caidosAsaltantes} ${a.caidosAsaltantes === 1 ? 'muerto' : 'muertos'}` : ''}.${bajas}${tuyo}`;
+    return `${mayus(a.lugar)} aguanta el asalto: ${a.quien.charAt(0).toLowerCase()}${a.quien.slice(1)} ${v('se retira', 'se retiran')}${a.caidosAsaltantes > 0 ? ` dejando ${a.caidosAsaltantes} ${a.caidosAsaltantes === 1 ? 'muerto' : 'muertos'}` : ''}.${quienDefendia}${bajas}${tuyo}`;
   }
   const b = a.botin ?? { comida: 0, goirnos: 0, objetos: 0 };
   const partes = [
@@ -218,7 +223,7 @@ export function textoDelAsalto(a: {
   ].filter((x): x is string => x !== null);
   const lista = partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}` : partes[0];
   const saqueo = lista ? `${v('se lleva', 'se llevan')} ${lista}` : `no ${v('encuentra', 'encuentran')} nada que llevarse`;
-  return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${bajas}${tuyo}`;
+  return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${quienDefendia}${bajas}${tuyo}`;
 }
 
 /// Un asalto que llega a su destino: si allí hay un asentamiento del Reino, se resuelve de fondo
