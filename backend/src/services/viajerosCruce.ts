@@ -17,7 +17,7 @@ type Tx = Prisma.TransactionClient;
 const exterior = (slug: string) => slug.replace(/-interior$/, '');
 /// Q9: rumores que te pasa un viajero al preguntarle, como mucho.
 export const MAX_RUMORES_DE_VIAJERO = 2;
-const NOMBRE_TIPO: Record<string, string> = { CAZA: 'partida de caza', CAPTURA: 'partida de captura' };
+const NOMBRE_TIPO: Record<string, string> = { CAZA: 'partida de caza', CAPTURA: 'partida de captura', ASALTO: 'asalto' };
 
 /// Puro: días que le faltan para volver a casa (ida que quede + un día en el destino + vuelta).
 export function diasParaVolver(enlaces: Enlace[], v: { estado: string; ubicacionLocationId: string; ruta: string[]; minutosEnTramo: number; origenLocationId: string; destinoLocationId: string }): number {
@@ -51,7 +51,8 @@ export async function viajerosEnMapa(tx: Tx, saveId: string, ctx: { dia: number;
     const fraccion = siguiente && tramo > 0 ? Math.min(1, v.minutosEnTramo / tramo) : 0;
     out.push({
       id: v.id,
-      faccion: v.faction?.name ?? 'tu Reino',
+      // P290: sin facción, «tu Reino» solo si es suyo; un asalto de bandidos no lo es.
+      faccion: v.faction?.name ?? (delReino ? 'tu Reino' : 'Bandidos'),
       oficio: `${NOMBRE_TIPO[v.tipo] ?? 'viajeros'}${v.estado === 'VUELTA' ? ', de vuelta' : ''}`,
       motivo: null,
       origenSlug: exterior(v.ubicacion.slug),

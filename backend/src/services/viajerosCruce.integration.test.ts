@@ -53,6 +53,17 @@ describe('cruzarse con viajeros (CR-63 63e)', () => {
     expect(enMapa!.diaRegreso).toBe(10 + diasParaVolver(enlaces, v)); // el día del reloj de la partida
   });
 
+  it('P290: un asalto sin dueño no se anuncia como «tu Reino» y una partida propia sí es delReino', async () => {
+    const asalto = await prisma.viajero.create({ data: { saveId, tipo: 'ASALTO', origenLocationId: ruta[0]!, destinoLocationId: ruta.at(-1)!, ubicacionLocationId: ruta[1]!, ruta: [], diaSalida: 10, ultimoDia: 10, miembros: { create: [{ genericos: 3, rol: 'bandido' }] } } });
+    const propia = await prisma.viajero.create({ data: { saveId, tipo: 'CAZA', origenLocationId: ruta[0]!, destinoLocationId: ruta.at(-1)!, ubicacionLocationId: ruta[1]!, ruta: [], diaSalida: 10, ultimoDia: 10, miembros: { create: [{ genericos: 3, rol: 'cazador' }] } } });
+    const mapa = await expedicionesVisibles(prisma, saveId);
+    expect(mapa.find((e) => e.id === propia.id)).toMatchObject({ faccion: 'tu Reino', delReino: true });
+    const a = mapa.find((e) => e.id === asalto.id);
+    expect(a?.faccion).not.toBe('tu Reino');
+    expect(a?.delReino).toBe(false);
+    await prisma.viajero.deleteMany({ where: { id: { in: [asalto.id, propia.id] } } });
+  });
+
   it('de paso por aquí: preguntar cuenta lo que vio y comprar carne cobra y entrega', async () => {
     // El personaje está donde está el viajero.
     const v = await prisma.viajero.findFirstOrThrow({ where: { saveId } });
