@@ -130,14 +130,18 @@ class Resumen(unittest.TestCase):
         self.assertIn('P7 se contradice', r.stderr)
         self.assertNotIn('P8', r.stderr)
 
-    def test_comprobar_avisa_de_un_pendiente_que_no_lo_dice(self):
-        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | resuelto con un parche |\n| P8 | Ocho | Pendiente: falta el texto |\n')
+    def test_comprobar_falla_con_un_pendiente_que_no_lo_dice(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | resuelto con un parche |\n'
+                 '| P8 | Ocho | **Pendientes**: falta el texto |\n| P9 | Nueve | 🔴 abierto |\n'
+                 '| P10 | Diez | ✅ hecho. Reabierto en la ronda 3 |\n| P11 | Once | resuelto del todo |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
         r = self.correr('--resumen', '--comprobar')
-        self.assertEqual(r.returncode, 0)
-        self.assertIn('P7 cuenta como pendiente', r.stderr)
-        self.assertNotIn('P8', r.stderr)
-        self.assertNotIn('P1 ', r.stderr)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('no lo dice (QA-185): P7, P11;', r.stderr)
+
+    def test_comprobar_pasa_si_cada_pendiente_lo_dice(self):
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
 
     def test_comprobar_sin_marcas_falla(self):
         escribir(self.ruta, CON_RESUMEN.replace(INICIO, '<!-- resumen -->'))

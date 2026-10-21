@@ -80,12 +80,13 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
    comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh` (la marca no se versiona) y crea el PR con esa descripción.
    Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
-   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Quien lo fusiona deja en la bitácora la fila de esa
-   rama como «PR #N fusionado; rama por cerrar» (`QA-186`). Al fusionarlo, la siguiente tarea sigue en la misma
+   verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). El último commit antes del PR deja la fila de la rama
+   como «PR a `main`; al fusionarse, rama terminada» (`QA-186`), para que `main` la reciba ya cerrada; la de una
+   sesión local, con su «PR listo» de `QA-184`, vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
    sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
-   subagentes de contexto limpio y la principal no arrastra lo leído. Si la siguiente no se reparte así (una sesión
-   en la nube que encadena PR pequeños), Claude cierra la tarea en la bitácora y propone a la usuaria seguir tras
-   un `/clear` (`QA-187`).
+   subagentes de contexto limpio y la principal no arrastra lo leído. Si la sesión ya compactó alguna vez (lo dice el
+   gancho de `QA-116` tras cada compactación), Claude lo dice a la usuaria al fusionar y le propone seguir tras un
+   `/clear`: el estado ya está en la bitácora (`QA-187`).
 7. **Antes de crear cada PR a `main` (fase 2 del paso 6), y al cerrar una fase o un
    hito:** `retro` (usuaria, 2026-10-13), que lanza Claude sobre lo que va a entrar con el PR o sobre toda
    la fase.
