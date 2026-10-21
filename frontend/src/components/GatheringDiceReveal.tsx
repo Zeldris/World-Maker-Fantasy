@@ -14,6 +14,8 @@ import { cancelarTirada, duracionTirada, retardosTirada, saltarTiradas, temporiz
 /// se tiran dos d20 y se usa el mayor, nunca un modificador numérico sumado (así es como D&D trata
 /// la suerte de verdad: rasgo Lucky/dote Lucky = repetir o tirar con ventaja). El dado descartado
 /// se queda tachado en vez de desaparecer, para que se note que sí hubo ventaja.
+const GRADO_LABEL = { claro: 'Éxito', con_coste: 'Éxito parcial', fallo: 'Fallo' } as const
+
 function SingleDie({ value, landed, discarded }: { value: number | null; landed: boolean; discarded: boolean }) {
   return (
     <span className="flex items-center gap-1">
@@ -84,6 +86,12 @@ export function GatheringDiceReveal({ roll, oficioLabel, onLanded }: { roll: Gat
         <span className="flex items-baseline gap-1.5 font-mono text-sm">
           <span className="font-bold text-wood-100">+{bono}</span>
           <span className="text-accent2-400">= {roll.result}</span>
+        </span>
+      )}
+      {/* P158 (reabierto): también en la tirada en vivo, contra qué tiró y qué sacó. */}
+      {landed && roll.dificultad !== undefined && roll.grado && (
+        <span className="font-mono text-2xs text-wood-300" data-testid="tirada-vs">
+          vs {roll.dificultad} · <span className="font-semibold">{GRADO_LABEL[roll.grado]}</span>
         </span>
       )}
       <span className={`text-2xs font-semibold ${attributeColorClasses[roll.attribute].text}`}>

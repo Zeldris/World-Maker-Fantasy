@@ -338,7 +338,7 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
   },
   escorante: {
     macho: {
-      rasgoFisico: 'Escarabajo de caparazón oscuro y amarillo con detalles arcillosos y rojos, cuerno frontal en forma de pala, pinchos diminutos por todo el caparazón.',
+      rasgoFisico: 'Escarabajo de caparazón oscuro y amarillo con detalles rojo arcilla, cuerno frontal en forma de pala, pinchos diminutos por todo el caparazón.',
       description: 'Prefiere enterrarse en zonas húmedas antes que enfrentarse a un depredador, saliendo solo a alimentarse del Musgo Arcilla.',
       medidaCm: 48,
       edadMaxima: 10,

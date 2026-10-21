@@ -26,4 +26,19 @@ describe('oficioTexto (P99, QA-27)', () => {
       'Cura y trabaja las pieles de la caza.',
     )
   })
+
+  it('P99: Carpintero, Curtidor y Primeros auxilios no repiten la región en la descripción', () => {
+    const region = 'Llanuras del Viento Rojo'
+    for (const [oficio, d] of [
+      ['Carpintero', 'Crea armas, herramientas o recursos'],
+      ['Curtidor', 'Cura y trabaja las pieles de la caza'],
+      ['Primeros auxilios', 'Prepara vendajes y cataplasmas básicas de primeros auxilios'],
+    ]) {
+      const nombre = `${oficio} de los Orcos de las ${region}`
+      const desc = `${d} de los Orcos de las ${region}. Esta profesión se centra en los recursos que ofrece la zona de las ${region}.`
+      const visto = descripcionSinNombre(desc, nombre)
+      expect(visto).not.toContain(region)
+      expect(visto).toContain('Esta profesión se centra en los recursos que ofrece la zona.')
+    }
+  })
 })

@@ -21,7 +21,7 @@ export async function preguntarCompanero(prisma: PrismaClient, saveId: string, c
     const region = faccion ? (Object.entries(REGION_OWNING_FACTIONS).find(([, fs]) => fs.includes(faccion))?.[0] ?? null) : null;
     if (!region && !faccion) return { frase: `${c.name}: «De donde vengo no llegan noticias.»`, contadas: 0 };
     return contarNoticias(tx, {
-      saveId, nombre: c.name, fuente: `companero:${companionId}`, quien: { region, faccion },
+      saveId, nombre: c.name, fuente: `companero:${companionId}`, quien: { region, faccion }, soloPropias: true,
       sinNada: `${c.name}: «Hace tiempo que no sé nada de los míos.»`,
     });
   }, { maxWait: 10_000, timeout: 20_000 });
