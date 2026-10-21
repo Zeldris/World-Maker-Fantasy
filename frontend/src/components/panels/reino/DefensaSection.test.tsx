@@ -63,7 +63,7 @@ describe('DefensaSection (CR-65 65f)', () => {
   it('alerta de asalto con «Llamar a la milicia»; reparar y comprar equipo', async () => {
     vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital], avistados: [{ asentamientoId: 'cap', asentamiento: 'Karot Veku', viajeroId: 'v1', quien: 'Bandidos', gente: 6, tramos: 1 }] })
     vi.mocked(postLlamarMilicia).mockResolvedValue({ ok: true, armados: 3 })
-    vi.mocked(postRepararEdificio).mockResolvedValue({ ok: true })
+    vi.mocked(postRepararEdificio).mockResolvedValue({ ok: true, coste: 0 })
     vi.mocked(postEquiposMilicia).mockResolvedValue({ ok: true, comprados: 1 })
     const { findByRole, getByRole, getByText } = render(<DefensaSection saveId="s" onRefreshSave={async () => {}} />)
     const alerta = await findByRole('alert', { name: 'Asaltos a la vista' })
