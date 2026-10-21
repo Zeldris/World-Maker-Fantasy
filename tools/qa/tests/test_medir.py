@@ -54,12 +54,19 @@ class Medir(unittest.TestCase):
             resultado('t3', 'x' * 700),
             respuesta('m4', 100, orden('t4', 'git status docs/x.md')),
             resultado('t4', 'x' * 3500),
-            respuesta('m5', 100),
+            # QA-179: los scripts que se ejecutan no se leen; lo que lee la orden que lanzan, sí.
+            respuesta('m5', 100, orden('t5', 'bash tools/qa/host.sh grep -n x docs/y.md && ./tools/z.sh && python3 -I a/b.py')),
+            resultado('t5', 'x' * 350),
+            respuesta('m6', 100),
         ])
         self.assertRegex(salida, r'backend/src/services/narrador.ts\s+2×\s+200 tok')
         self.assertRegex(salida, r'AGENTS.md\s+1×\s+100 tok')
         self.assertRegex(salida, r'CLAUDE.md\s+1×\s+100 tok')
-        self.assertNotIn('docs/x.md', salida.split('POR ARCHIVO')[1])
+        por_archivo = salida.split('POR ARCHIVO')[1]
+        self.assertNotIn('docs/x.md', por_archivo)
+        self.assertRegex(por_archivo, r'docs/y.md\s+1×')
+        for script in ('host.sh', 'z.sh', 'b.py'):
+            self.assertNotIn(script, por_archivo)
 
     def test_reparte_por_modelo_la_sesion_y_sus_subagentes(self):
         """QA-117: qué modelo hizo qué, con los subagentes de `<sesión>/subagents/`."""

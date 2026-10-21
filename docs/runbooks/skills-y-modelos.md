@@ -64,14 +64,26 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está
    al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61). Aparte, `main` se trae
    siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
-6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria): `/code-review --max-findings all`
-   del diff contra `main` (sin el tope de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)), arreglar lo que encuentre y escribir
-   la descripción con `pr`. Si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/opt-ai` tras el
-   `/code-review` y antes de `/opt-tokens` (`QA-142`); esta es la fuente única del orden. Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
+6. **Antes de un PR a `main`** (solo cuando lo pide la usuaria), en tres fases (usuaria, 2026-10-21, `QA-183`); esta es
+   la fuente única del orden:
+   1. **Código:** `git fetch origin main` y `/code-review --max-findings all` del diff contra `origin/main` (sin el tope
+      de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)); contra un `main` local viejo revisa código
+      que ya está en `main`. Se arregla lo que encuentre y se sube.
+   2. **Entorno:** si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/opt-ai` (`QA-142`);
+      luego `/opt-tokens` y `retro` (paso 7). Va tras el código porque la retro aprende de sus hallazgos. Lo que apruebe
+      la usuaria se aplica en la rama.
+   3. **Cierre:** si la fase 2 añadió código (herramientas, scripts, skills con tests), `/code-review --max-findings all`
+      solo de esos commits (`<commit de la retro>..HEAD`) y sus arreglos: en la del banco del narrador encontró dos
+      fallos en lo recién aplicado. Luego `bash tools/qa/revisado.sh`, la descripción con `pr` y se crea el PR.
+   Desde una sesión local (la Deck) el PR no se crea (`QA-184`): no hay `gh` ni herramienta de GitHub y el modo auto
+   no deja usar la credencial de git. La local sube la descripción a `docs/registros/pr/<rama>.md` y escribe en su fila
+   de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
+   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh` (la marca no se versiona) y crea el PR con esa descripción.
+   Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). Al fusionarlo, la siguiente tarea sigue en la misma
    sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
    subagentes de contexto limpio y la principal no arrastra lo leído.
-7. **Antes de crear cada PR a `main` (tras el `/code-review` y sus arreglos), y al cerrar una fase o un
+7. **Antes de crear cada PR a `main` (fase 2 del paso 6), y al cerrar una fase o un
    hito:** `retro` (usuaria, 2026-10-13), que lanza Claude sobre lo que va a entrar con el PR o sobre toda
    la fase.
    Sus propuestas se presentan a la usuaria, que las revisa y confirma (nada se aplica antes). Cada pocas fases,

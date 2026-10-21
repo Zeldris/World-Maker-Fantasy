@@ -48,4 +48,18 @@ python3 $B resumen pares.jsonl clave.json veredictos.jsonl
 - **tasa**: victorias / jugadas (empate = 0,5). Con 10-15 casos, una diferencia menor de ~0,15 es ruido: dilo.
 - **consistencia al girar** baja (< 0,6) o **gana X** lejos de 0,5 (> 0,65 o < 0,35): el juez es poco fiable;
   el resultado se informa como especulativo y se propone otro juez o que juzgue el agente.
+- **Todas las cifras del informe y los fallos típicos de cada modelo salen de `resumen --detalle`**: cara a cara,
+  puntos por caso y los motivos de los pares que pierde cada modelo, con el mismo conteo que la tasa. Un recuento
+  propio cuenta distinto (el par que cambia al girarlo) y no cuadra con el ranking.
 - Lee 2-3 pares de los que gana y pierde cada modelo antes de recomendar: la cifra no dice **por qué**.
+
+## Decisión
+
+Por la diferencia de tasa del candidato con el actual en el cara a cara:
+
+- **gana por más de ~0,15**: se recomienda adoptarlo.
+- **dentro del ruido** (menos de ~0,15 en cualquier sentido): deciden la memoria y la latencia, medidas en el hardware
+  mínimo.
+- **pierde por más de ~0,15**: se recomienda rechazarlo. Si una causa ajena al modelo pesa en el resultado (p. ej. el
+  prompt), el motivo de `propuestas.md` dice qué cambio la quita, y la condición para reabrir es quedar **dentro del
+  ruido** tras ese cambio.

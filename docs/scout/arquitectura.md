@@ -34,7 +34,7 @@ Confirmadas por la usuaria el 2026-10-20.
   candidato tiene que dar JSON válido y buena prosa a la vez. La familia Mistral falló así (decisión técnica 14).
 
 ## Modelos de IA
-<!-- sello: 2026-10-20 · bde0a825 · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
+<!-- sello: 2026-10-21 · c2393bad · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
 
 | Componente | Versión | Uso | Dónde se configura |
 |---|---|---|---|
@@ -48,10 +48,13 @@ Diagnóstico de partida (2026-10-20, [diseño](../ia/skill-scout-updates.md)): e
 de los que unos 36 s son prefill de un prompt de unos 6.300 tokens. Recortar el prompt es de `opt-ai`; aquí se
 busca **calidad**.
 
-banco · narrador: candidatos P-005, P-006 y P-007 frente al actual (usuaria, 2026-10-20). Se ejecuta en una
-**sesión local en la Deck** (Ollama no es alcanzable desde la nube), con el agente de esa sesión de juez. Casos con `IA_CASOS=<ruta fuera del repositorio>` jugando una tanda (10-15 situaciones
-variadas, `tarea` = `narrar`). El SYSTEM está en `Modelfile.llama31`: los candidatos sin ese Modelfile lo necesitan
-en el caso (`ollama show --system tarkor-narrador-llama31`). Rúbrica: `docs/scout/banco/narrador-rubrica.md`.
+banco · narrador: hecho el 2026-10-21 en la Deck ([informe](informes/2026-10-21.md)). Fueron 11 casos y 132 pares a
+ciegas en los dos órdenes, con un juez fiable (consistencia 0,939). **Gana el actual**, con una tasa de 0,727. Le
+siguen `gemma4:e2b` (0,500), `qwen3.5:4b` (0,394) y `gemma3:4b` (0,379). Ningún candidato gana al actual: la usuaria
+rechazó P-005, P-006 y P-007 el 2026-10-21. El fallo que más pesa en todos los modelos es del prompt: el
+orco de la misión activa aparece en escenas donde no está. Es de `opt-ai`, y tras arreglarlo conviene repetir el banco
+con P-007. Para repetirlo: casos con `IA_CASOS=<ruta fuera del repositorio>`, SYSTEM de `ollama show --system
+tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
 
 ## Servicios externos
 <!-- sello: 2026-10-20 · bda4496b · backend/.env.example, backend/src/config/env.ts, backend/prisma/schema.prisma -->

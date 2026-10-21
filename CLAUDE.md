@@ -99,14 +99,18 @@ prueba y cómo se apunta (`QA-56`).
 - **Se fusiona solo con el CI del PR en verde** (usuaria, 2026-10-12), también cuando pide «fusiona
   directamente»: eso quita esperar a más revisiones, no al CI ni la `/retro` presentada a la usuaria antes del PR
   (`QA-95`). El gancho de `QA-50` lo comprueba (`QA-62`).
-- **Antes de crear un PR a `main` (nunca ya fusionado, `QA-77`), `/code-review --max-findings all`**
-  del diff contra `main`, los arreglos subidos, `bash tools/qa/revisado.sh` y la descripción con la skill `pr`
-  ([paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)). Sin la marca de
-  revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
-- **Antes de crear cada PR a `main`, tras el `/code-review`, `/opt-tokens` y después `/retro`** (usuaria,
-  2026-10-13 y 2026-10-19; con tandas de Ollama real, `/opt-ai` tras el `/code-review`, [paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`) sobre lo que va a entrar con él; la `/retro` revisa también la propia skill
-  `opt-tokens`. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama
-  antes de crear el PR**, y solo entonces se crea.
+- **Antes de crear un PR a `main` (nunca ya fusionado, `QA-77`), tres fases** (usuaria, 2026-10-21, `QA-183`;
+  detalle en el [paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)):
+  1. **Código:** `/code-review --max-findings all` del diff contra `origin/main` (con `git fetch` antes), arreglos subidos.
+  2. **Entorno:** `/opt-ai` si hubo tandas con Ollama real (`QA-142`), `/opt-tokens` y `/retro`, que revisa también
+     `opt-tokens`. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama**.
+  3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de sus commits y sus arreglos;
+     luego `bash tools/qa/revisado.sh`, la descripción con la skill `pr`, y solo entonces se crea. Sin la marca de
+     revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
+- **El PR de una sesión local lo crea Claude en la nube** (usuaria, 2026-10-21, `QA-184`): en la Deck no hay `gh` ni
+  herramienta de GitHub, y el modo auto no deja usar la credencial de git. Tras la fase 3, la local sube la
+  descripción a `docs/registros/pr/<rama>.md` y deja en su fila de la bitácora «PR listo» con el título, en el último commit; la
+  nube comprueba que nada va detrás de ese commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión.
 
 ## La bitácora (`docs/registros/traspaso.md`)
 

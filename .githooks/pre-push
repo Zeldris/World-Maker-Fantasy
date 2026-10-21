@@ -5,6 +5,11 @@
 # `git push --no-verify`.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# QA-180: en el sandbox Flatpak de la Deck no hay npx y el push fallaba sin decir por qué: el gancho entero se relanza
+# en el host, como bench-ia.sh, con la entrada de git y las variables que lee prepush-ramas.sh.
+if [ -e /.flatpak-info ] || [ -n "${FLATPAK_ID:-}" ]; then
+  exec bash tools/qa/host.sh env BITACORA_COMPARTIDA="${BITACORA_COMPARTIDA:-}" BITACORA_PY="${BITACORA_PY:-}" bash .githooks/pre-push "$@"
+fi
 # Los mismos comandos que la CI (ci.yml), con el oxlint que fija cada paquete.
 echo "pre-push: tsc y lint de backend y frontend, cobertura del roadmap, tests de lo que cambia…"
 # El cliente de Prisma se regenera antes de tipar: tras traer un cambio de esquema (p. ej. una columna
