@@ -944,3 +944,40 @@ describe('objetivoConcentrado (CR-45)', () => {
     expect(objetivoConcentrado([c('m', 'MUERTO', 1)])).toBeNull();
   });
 });
+
+describe('resolverEnganchesRonda con la orden del capitán (CR-45, P292)', () => {
+  // Combate real de reino-combate-capitan: los rivales tiran antes y el capitán manda caer sobre Hagar.
+  const orden = ['ulkha', 'hulki', 'herrero', 'gorhorn', 'tirag', 'hagar'];
+  const combatientes = [
+    { participantId: 'ulkha', bando: 'ENEMIGO' as const },
+    { participantId: 'hulki', bando: 'ENEMIGO' as const },
+    { participantId: 'herrero', bando: 'ENEMIGO' as const },
+    { participantId: 'gorhorn', bando: 'JUGADOR' as const },
+    { participantId: 'tirag', bando: 'JUGADOR' as const },
+    { participantId: 'hagar', bando: 'JUGADOR' as const },
+  ];
+  const ordenCapitan = { seguidores: new Set(['ulkha', 'hulki', 'herrero']), objetivoId: 'hagar' };
+  // La jugadora ataca al primer rival (el capitán) y Tirag a Hulki: reclamarlos no les quita la orden.
+  const elegidos: Record<string, string> = { gorhorn: 'ulkha', tirag: 'hulki', hagar: 'herrero' };
+  const elegir = (id: string, candidatos: string[]) => elegidos[id] ?? candidatos[0] ?? null;
+
+  it('los del capitán van todos a por el señalado aunque otro los haya elegido', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(), new Map(), new Map(), ordenCapitan);
+    expect([r.get('ulkha'), r.get('hulki'), r.get('herrero')]).toEqual(['hagar', 'hagar', 'hagar']);
+    // Quien los eligió sigue atacándolos (golpe sin duelo) y el señalado se defiende del primero.
+    expect(r.get('gorhorn')).toBe('ulkha');
+    expect(r.get('tirag')).toBe('hulki');
+    expect(r.get('hagar')).toBe('ulkha');
+  });
+
+  it('una provocación sigue mandando sobre la orden', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(), new Map([['hulki', 'tirag']]), new Map(), ordenCapitan);
+    expect(r.get('hulki')).toBe('tirag');
+    expect(r.get('herrero')).toBe('hagar');
+  });
+
+  it('si el señalado está oculto, cada uno elige como siempre', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(['hagar']), new Map(), new Map(), ordenCapitan);
+    expect(r.get('ulkha')).not.toBe('hagar');
+  });
+});
