@@ -50,8 +50,8 @@ busca **calidad**.
 
 banco · narrador: hecho el 2026-10-21 en la Deck ([informe](informes/2026-10-21.md)). Fueron 11 casos y 132 pares a
 ciegas en los dos órdenes, con un juez fiable (consistencia 0,939). **Gana el actual**, con una tasa de 0,727. Le
-siguen `gemma4:e2b` (0,500), `qwen3.5:4b` (0,394) y `gemma3:4b` (0,379). Ningún candidato gana al actual; se
-recomienda rechazar P-005 y P-006, y P-007 por ahora. El fallo que más pesa en todos los modelos es del prompt: el
+siguen `gemma4:e2b` (0,500), `qwen3.5:4b` (0,394) y `gemma3:4b` (0,379). Ningún candidato gana al actual: la usuaria
+rechazó P-005, P-006 y P-007 el 2026-10-21. El fallo que más pesa en todos los modelos es del prompt: el
 orco de la misión activa aparece en escenas donde no está. Es de `opt-ai`, y tras arreglarlo conviene repetir el banco
 con P-007. Para repetirlo: casos con `IA_CASOS=<ruta fuera del repositorio>`, SYSTEM de `ollama show --system
 tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
