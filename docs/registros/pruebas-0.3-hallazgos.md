@@ -12,10 +12,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (56): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (60): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
-  P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283.
+  P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -330,3 +330,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P281 | Ronda 2026-10-21 (Día 49, Reino › Súbditos › Rol y Partidas): se lanza una partida con Rildagh Rah (orco de 13 años, recién acogido, sin arma del Almacén ni plantilla) como único cazador; Q3 de CR-63 pide adulto y arma «como un soldado». La interfaz no avisa de que le falta arma ni edad; «Lanzar partida (1)» se activa y sale. Puede ser el motivo de las 0 piezas del hallazgo anterior (sin analizar). | pendiente |
 | P282 | Ronda 2026-10-21 (Día 39, Reino › Edificios y › Corrales): los Corrales piden «al menos una Jaula construida», pero la lista de Edificios (28 recetas) no ofrece ninguna Jaula: con el personaje de la ronda no se puede construir una jugando desde ahí (hubo que darla con dar-reino edificio:jaula-pequena). No se vio dónde se construye. | pendiente |
 | P283 | Ronda 2026-10-21 (Día 53, Reino › Partidas): el texto «No hay nadie libre: da a algún súbdito el rol de cazador (Súbditos) o forma un grupo de combate 2 o más» sigue saliendo con el selector «Quién va» ya abierto y vacío cuando el único cazador está fuera; tras volver, «Lanzar partida (0)» exige marcar de nuevo a Rildagh Rah pese a la casilla «Orden permanente» sin marcar (coherente), pero el pie «Caza de Kirelon Arenoso · en casa · sin presas» no desaparece ni dice cuándo volvió (día). | pendiente |
+| P284 | CR-65 (día 50, Reino › Edificios/Defensa/Súbditos/Diplomacia): tras el primer asalto de nabieus (Torre avisó 1 día antes, sin guarnición ni milicia por no haber súbditos; saqueo de 20 comida, 10 Goirnos, 4 objetos y Empalizada caída, «sales grave») todos los edificios pasan a DAÑADO, Ayuntamiento incluido, y no hay botón visible para repararlos (solo la Empalizada en Defensa): Defensa dice «Tu Reino necesita un Ayuntamiento para defenderse», Súbditos «Camas 2/0» y ACOGER a Karkka da 400, Diplomacia «Sin Mercado», el tope de comida/agua baja a 60. Bloquea seguir con milicia, guarnición y comercio | pendiente |
+| P285 | CR-65 (días 50 y 51, diario): dos asaltos seguidos de 12 nabieus al mismo Reino a los 6 días de levantar Torre, Armería, Barracón y Empalizada, con un único súbdito; el segundo repite el saqueo (15 comida, 10 Goirnos, 4 objetos) sin que el jugador pueda convocar la milicia (0 súbditos): no se pudo probar guarnición, milicia ni cobertura jugando | pendiente |
+| P286 | CR-59 (días 39-50, Reino › Diplomacia): el vasallaje de Serhu a la Concordia existe (tabla Vasallaje) pero no se ve en ninguna pantalla del Reino; la deuda sube de 500 (inicio) a 7144 en el día 39 y a 8310 en el día 50 (~583 por semana), sin que el texto de la pestaña la mencione | pendiente |
+| P287 | CR-47 (día 55, Reino › Diplomacia): con el Mercado DAÑADO la pestaña dice «Sin Mercado. Construye un Mercado» aunque está construido: el estado dañado se lee como no construido, y sin él no hay órdenes permanentes ni caravanas (0 caravanas) | pendiente |
