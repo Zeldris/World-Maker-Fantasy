@@ -130,6 +130,15 @@ class Resumen(unittest.TestCase):
         self.assertIn('P7 se contradice', r.stderr)
         self.assertNotIn('P8', r.stderr)
 
+    def test_comprobar_avisa_de_un_pendiente_que_no_lo_dice(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | resuelto con un parche |\n| P8 | Ocho | Pendiente: falta el texto |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        r = self.correr('--resumen', '--comprobar')
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('P7 cuenta como pendiente', r.stderr)
+        self.assertNotIn('P8', r.stderr)
+        self.assertNotIn('P1 ', r.stderr)
+
     def test_comprobar_sin_marcas_falla(self):
         escribir(self.ruta, CON_RESUMEN.replace(INICIO, '<!-- resumen -->'))
         r = self.correr('--resumen', '--comprobar')

@@ -105,6 +105,13 @@ def contradictorio(estado: str) -> bool:
                              or re.search(r'pendiente de (una |la )?decisi[oó]n|que la usuaria (confirme|decida)', bajo))
 
 
+def raro(estado: str) -> bool:
+    """QA-185: cuenta como pendiente sin decirlo, como las filas «arreglado» sin ✅ que se contaban mal."""
+    bajo = sin_citas(estado).lower().strip()
+    return grupo(estado) == 'pendiente' and not re.match(r'(pendiente|reabierto|abierto)\b', bajo) \
+        and 'reabierto' not in bajo
+
+
 def partir(linea: str) -> tuple[str, str]:
     """Una fila en (todo hasta la última columna, su Estado): lo que va detrás del último ` | ` sin escapar."""
     cuerpo = linea.rstrip()[:-1].rstrip()  # sin la `|` final
@@ -151,6 +158,9 @@ def main(args: list[str]) -> None:
                 m = re.match(r'^\| (P\d+) \|', linea)
                 if m and contradictorio(partir(linea)[1]):
                     print(f'{ruta}: aviso: el estado de {m.group(1)} se contradice (✅ y cerrado o pendiente de la usuaria)',
+                          file=sys.stderr)
+                if m and raro(partir(linea)[1]):
+                    print(f'{ruta}: aviso: {m.group(1)} cuenta como pendiente y su estado no empieza por «pendiente» (QA-185)',
                           file=sys.stderr)
             if nuevas != lineas:
                 sys.exit(f'{ruta}: el resumen no coincide con la tabla; rehazlo con `python3 tools/qa/marca-hallazgo.py --resumen`')
