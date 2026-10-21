@@ -70,6 +70,19 @@ class Host(Entorno, unittest.TestCase):
         self.assertEqual(r.returncode, 3)
         self.assertEqual(r.stderr, 'error real\n')
 
+    def test_filtra_el_aviso_en_espanol_y_el_ruido_de_nvm(self):
+        # QA-180: lo que saca el ~/.bashrc de la Deck en cada orden; un error de npm parecido no se filtra.
+        env, d = self.entorno(True)
+        ruido = ['bash: no se puede establecer el grupo de proceso de terminal (-1): Función ioctl no apropiada para el dispositivo',
+                 'bash: no hay control de trabajos en este shell',
+                 'Your user’s .npmrc file (${HOME}/.npmrc)',
+                 'has a `globalconfig` and/or a `prefix` setting, which are incompatible with nvm.',
+                 'Run `nvm use --delete-prefix v22.23.1 --silent` to unset it.']
+        escribir(d + '/ruido', '\n'.join(ruido + ['npm ERR! prefix setting is invalid']) + '\n')
+        falso(d, 'flatpak-spawn', f'cat {d}/ruido >&2\n')
+        r = self.correr(env, 'host.sh', 'true')
+        self.assertEqual(r.stderr, 'npm ERR! prefix setting is invalid\n')
+
     def test_sin_orden_falla(self):
         env, _ = self.entorno(False)
         self.assertEqual(self.correr(env, 'host.sh').returncode, 2)
