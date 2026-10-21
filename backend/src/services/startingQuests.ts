@@ -1,6 +1,19 @@
 import type { QuestRewardCompanion } from './questResolution.js';
 
+/// P240: la misión de vida de Gorhorn. Sin cierre determinista, así que el narrador no puede cerrarla.
+export const HONOR_MAKTOR_QUEST_SLUG = 'HONOR_MAKTOR';
+
+const QUEST_SLUGS_SIN_CIERRE_DEL_NARRADOR: ReadonlySet<string> = new Set([HONOR_MAKTOR_QUEST_SLUG]);
+
+/// Si el narrador puede cerrar esta misión por `questProgress`: solo las suyas antiguas (CR-40, Q9),
+/// nunca las del motor (`tipoMision`) ni la misión de vida (P240).
+export function narradorPuedeCerrar(q: { tipoMision: string | null; questSlug: string | null }): boolean {
+  return !q.tipoMision && !(q.questSlug && QUEST_SLUGS_SIN_CIERRE_DEL_NARRADOR.has(q.questSlug));
+}
+
 export interface StartingQuest {
+  /// Ver Quest.questSlug en schema.prisma.
+  questSlug?: string;
   title: string;
   description: string;
   /// slug de Npc de catálogo (mismo mundo) cuya derrota cierra esta misión sola — se resuelve al
@@ -31,6 +44,7 @@ export interface StartingQuest {
 /// que cualquier otra misión propuesta en juego — no hace falta sembrarla a mano.
 const GORHORN_STARTING_QUESTS: StartingQuest[] = [
   {
+    questSlug: HONOR_MAKTOR_QUEST_SLUG,
     title: 'Recuperar el honor de los Maktor',
     description:
       'El Clan Maktor fue aniquilado y Gorhorn es, que él sepa, el último. No hay un solo golpe que arregle esto — es la misión de toda una vida: sobrevivir, hacerse fuerte, y devolverle al nombre Maktor un lugar entre los clanes de las Llanuras. Con el tiempo, quizás algo más que un lugar.',

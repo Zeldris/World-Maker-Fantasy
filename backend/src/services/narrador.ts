@@ -1216,7 +1216,7 @@ CAMPOS OPCIONALES (todos poco frecuentes, la mayoría de turnos van en null): si
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
-Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción resuelve (con éxito o fracaso definitivo) una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" o "FALLIDA" — en caso contrario, null (muy poco frecuente).
+Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción cumple de verdad una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" — en caso contrario, null (muy poco frecuente). Nunca das una misión por fallida: eso lo decide el juego.
 
 ${
     // Roadmap de velocidad (Fable, 2026-07-19): este párrafo (y los 3 campos del schema que
@@ -1330,7 +1330,8 @@ Responde solo con el JSON pedido, nada más.`;
         type: ['object', 'null'],
         properties: {
           title: { type: 'string' },
-          status: { type: 'string', enum: ['COMPLETADA', 'FALLIDA'] },
+          // P240: solo COMPLETADA; un FALLIDA del modelo se ignora en turnResolution.ts.
+          status: { type: 'string', enum: ['COMPLETADA'] },
         },
       },
       condicionFisica: {
