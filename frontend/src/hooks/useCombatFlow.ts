@@ -276,7 +276,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         // P288: un guard del backend paró la acción y ya guardó su respuesta en el diario. Sin
         // enseñarla aquí, pulsar «Actuar»/«Defenderte» no hacía nada visible hasta recargar.
         const blocked = classifyResult.blocked
-        setCharacterLog((prev) => [...prev, { ...blocked.logEntry, channel: 'character', combate: true }])
+        setCharacterLog((prev) =>
+          prev.some((e) => e.id === blocked.logEntry.id) ? prev : [...prev, { ...blocked.logEntry, channel: 'character', combate: true }],
+        )
         return false
       }
       if (classifyResult.transit) {

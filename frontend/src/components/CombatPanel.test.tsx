@@ -4,6 +4,18 @@ import { setFactorDados } from '../lib/duracionTirada'
 import { CombatPanel } from './CombatPanel'
 import type { CombatNpcDisplay } from './CombatComposer'
 import type { InitiativeRollInfo, SavedActionInfo } from '../types'
+import { createElement, useEffect, type ComponentProps } from 'react'
+
+// Cuenta los montajes de `DiceRollVs` sin cambiar lo que hace (P288: montaje con la tirada ya puesta).
+const montajesDados = vi.hoisted(() => ({ n: 0 }))
+vi.mock('./DiceRoll', async (original) => {
+  const real = await original<typeof import('./DiceRoll')>()
+  function DiceRollVs(props: ComponentProps<typeof real.DiceRollVs>) {
+    useEffect(() => { montajesDados.n++ }, [])
+    return createElement(real.DiceRollVs, props)
+  }
+  return { ...real, DiceRollVs }
+})
 
 const ataqueBasico = {
   id: 'a1', name: 'Ataque Básico', promptText: 'Ataco', icon: '⚔️', description: 'Golpe sencillo', isStarting: true,
@@ -72,5 +84,17 @@ describe('CombatPanel: iniciativa repetida con las mismas tiradas (P288)', () =>
     expect(screen.getByText(/Tirando iniciativa/)).toBeTruthy()
     act(() => { vi.advanceTimersByTime(1000) })
     expect(screen.queryByText(/Tirando iniciativa/)).toBeNull()
+  })
+  it('al montarse con la tirada ya puesta (rehidratar), los dados se montan una sola vez', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+    montajesDados.n = 0
+    const sano = { ...orco(false), condicion: 'ILESO' } as CombatNpcDisplay
+    render(panel([sano], tirada(), true))
+    expect(montajesDados.n).toBe(1)
   })
 })

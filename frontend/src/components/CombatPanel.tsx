@@ -398,10 +398,15 @@ export function CombatPanel({
   // P288: número de tirada, para la `key` de `DiceRollVs`. Con solo los números, dos iniciativas
   // seguidas con los mismos dados no remontaban la animación: `onAllLanded` no volvía a llegar y el
   // panel se quedaba en «Tirando iniciativa...».
-  const [initiativeTirada, setInitiativeTirada] = useState(0)
+  // Sube solo cuando cambia la identidad de la tirada, nunca en el montaje: si no, al rehidratar con
+  // la tirada ya puesta la `key` pasaba de 0 a 1 y la animación arrancaba dos veces.
+  const initiativeTiradaRef = useRef({ roll: lastInitiativeRoll, n: 0 })
+  if (initiativeTiradaRef.current.roll !== lastInitiativeRoll) {
+    initiativeTiradaRef.current = { roll: lastInitiativeRoll, n: initiativeTiradaRef.current.n + 1 }
+  }
+  const initiativeTirada = initiativeTiradaRef.current.n
   useEffect(() => {
     setInitiativeRevealed(false)
-    setInitiativeTirada((n) => n + 1)
   }, [lastInitiativeRoll])
 
   // Scroll al inicio al abrirse el panel (2026-08-31, "revisa bien todos los casos del foco/
