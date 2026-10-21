@@ -20,6 +20,11 @@ EXCEPCIONES = {
     'rojo-sin-arreglo.sh': 'corre un test de vitest con y sin el arreglo',
     'tests-relacionados.sh': 'corre `vitest related` de backend y frontend',
 }
+# QA-188: carpetas enteras de atajos que necesitan el driver, el juego o podman en la Deck; se prueban al usarlos.
+CARPETAS_EXCEPTUADAS = {
+    'deck': 'atajos de la Deck (driver de Playwright, juego y envoltorios de podman); se prueban al jugar',
+    'escenarios': 'construir.sh rehace instantáneas cargando la partida en Postgres y el juego; se prueba al construirlas',
+}
 
 
 class HerramientasConTest(unittest.TestCase):
@@ -34,13 +39,16 @@ class HerramientasConTest(unittest.TestCase):
             return nombre in tests or os.path.exists(os.path.join(RAIZ, os.path.dirname(ruta), nombre))
 
         sin_test = [a for a in archivos if '/tests/' not in a and not os.path.basename(a).startswith('test_')
-                    and os.path.basename(a) not in EXCEPCIONES and not tiene_test(a)]
+                    and os.path.basename(a) not in EXCEPCIONES
+                    and os.path.basename(os.path.dirname(a)) not in CARPETAS_EXCEPTUADAS and not tiene_test(a)]
         self.assertEqual(sin_test, [], 'herramienta sin tools/qa/tests/test_<nombre>.py (o, si necesita el juego, '
                                        'en EXCEPCIONES con el porqué)')
 
     def test_las_excepciones_existen(self):
         for nombre in EXCEPCIONES:
             self.assertTrue(os.path.exists(os.path.join(QA, nombre)), f'{nombre} ya no existe: quítala de EXCEPCIONES')
+        for carpeta in CARPETAS_EXCEPTUADAS:
+            self.assertTrue(os.path.isdir(os.path.join(QA, carpeta)), f'{carpeta}/ ya no existe: quítala de CARPETAS_EXCEPTUADAS')
 
 
 if __name__ == '__main__':
