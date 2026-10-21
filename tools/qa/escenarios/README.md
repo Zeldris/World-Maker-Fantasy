@@ -20,3 +20,4 @@ estado útil lo guarda aquí (`QA-105`).
 | `t13a2-ketg` | `cmvex1v0300057d0pdjlbezcj` | cmvex1v0300057d0pdjlbezcj | 2026-10-22 |
 | `t13a3-ketg` | `cmvex1v0300057d0pdjlbezcj` | Como t13a2-ketg tras la tanda 13a-3: misión Ascuas de Raíz de Fuego aceptada (0/3), día 39 12:30, Hogar Ketg | 2026-10-22 |
 | `t13b1-ketg` | `cmvex1v0300057d0pdjlbezcj` | Como t13a3-ketg tras la tanda 13b-1: Gorhorn en el Pozo de Cauce Viejo, día 39 14:43, Convaleciente 25 con sed 0%, rebaño del clan de 5 Múrgoles | 2026-10-22 |
+| `t13b2-ketg` | `cmvex1v0300057d0pdjlbezcj` | Como t13b1-ketg tras la tanda 13b-2: Gorhorn en Hogar Ketg junto a la Peletería, día 39 16:52, sed 100% | 2026-10-22 |
