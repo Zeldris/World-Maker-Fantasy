@@ -1,0 +1,4 @@
+#!/bin/bash
+# Envoltorio para la Deck: el último argumento es el archivo, que entra por stdin al contenedor.
+f="${@: -1}"; args=("${@:1:$#-1}")
+exec podman exec -i tarkor-postgres pg_restore "${args[@]}" < "$f"

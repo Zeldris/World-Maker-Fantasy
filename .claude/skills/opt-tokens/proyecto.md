@@ -56,4 +56,10 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
   subagente que devuelva solo lo que se busca.
 - **Releer documentos largos enteros** (misma retro): `docs/scout/arquitectura.md` se leyó 26 veces (146k arrastrados);
   ahora `contrastar.py --seccion <título>`. Antes de un `cat` repetido, buscar la opción que lee un trozo.
+- **La bitácora entera en la principal** (`QA-194`, 2026-10-21): 12 lecturas de `traspaso.md`, ~419k tokens arrastrados.
+  La fila de la rama sale con `python3 tools/qa/recuperar.py --estado` (fila, commits y compactaciones); `traspaso.md` entero
+  solo al empezar una sesión nueva.
+- **Capturas en las tandas de juego** (`QA-189`): las tandas 6 y 7 del 3.3 hicieron 87 y 99 llamadas (tope 60) y 15-19
+  capturas jpg cada una, ~95 % de lo que metieron en su contexto. Captura solo si el hallazgo es visual; el resto, por
+  `estado.js`/`r.sh`/`panel.sh` (texto).
 - **El registro de la sesión** pesa cientos de MB: medirlo con `medir.py`, nunca leerlo.

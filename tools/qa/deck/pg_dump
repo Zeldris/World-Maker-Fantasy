@@ -1,0 +1,3 @@
+#!/bin/bash
+# Envoltorio para la Deck: vuelca por stdout desde el contenedor.
+exec podman exec -i tarkor-postgres pg_dump "$@"

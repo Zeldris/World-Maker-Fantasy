@@ -1,0 +1,3 @@
+#!/bin/bash
+# Envoltorio para la Deck (sin psql en el host): va por el contenedor de Postgres.
+exec podman exec -i tarkor-postgres psql "$@"

@@ -27,7 +27,7 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 1. **Partir.** Con el `selector` ya aplicado, divide la tarea en trozos que un subagente cierre de una vez: un
    arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. La tanda de juego se mide también en llamadas:
-   como mucho ~60 por subagente; al llegar, guarda el estado con `escenario.sh guardar` y el siguiente lo carga
+   de 6-8 hallazgos y como mucho ~60 llamadas por subagente (`QA-189`: las de 11-14 hicieron 87 y 99); al llegar, guarda el estado con `escenario.sh guardar` y el siguiente lo carga
    (`QA-147`). Cada trozo, con su criterio de hecho
    comprobable (un test en verde, un P-número comprobado o abierto, un commit subido) y lo que le bloquea. La
    **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas).
@@ -47,6 +47,7 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    Si cambias una función o un campo, busca (grep) a todos los que lo usan y ajústalos o dilo en FALTA.
    Si escribes estado de la partida (scripts de QA, escenarios), pasa por las funciones del juego que aplican esas reglas
    (docs/mapa-agente.md dice cuáles), sin reescribirlas a mano.
+   Si juegas: captura solo si el hallazgo es visual; lo demás, por el volcado de texto.
    Si algo pide decidir a la usuaria, para y devuélvelo como pregunta.
    Devuelve como mucho 15 líneas:
    HECHO: … · HALLADO: P-números con una línea cada uno · HERRAMIENTAS: fallos de orden.sh, escenario.sh o del driver · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
@@ -54,8 +55,9 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
 
 3. **Revisar lo que vuelve.** Comprueba el commit (`git fetch` + `git log -1 --stat`) y que el criterio de hecho
    se cumple. Si no cierra, el reintento sube un peldaño; dos fallos, se para y se le cuenta a la usuaria.
-   De cada rama de subagente con worktree, **antes de fusionarla**, un `/code-review` corto de su diff hecho por un
-   subagente revisor que devuelve solo los hallazgos; no se fusiona hasta arreglarlos (`QA-126`, `QA-131`: la tanda
+   De cada rama de subagente con worktree, y del commit de un subagente que toca código en la propia rama sin worktree,
+   **antes de fusionarla o seguir**, un `/code-review` corto de su diff hecho por un
+   subagente revisor que devuelve solo los hallazgos; no se fusiona hasta arreglarlos (`QA-126`, `QA-190`: el `/code-review` previo al PR halló 11 fallos, casi todos del subagente de escenarios sin worktree; `QA-131`: la tanda
    P223-P237 fusionó 8 ramas sin esa revisión y el `/code-review` final halló 17). El encargo del revisor le pide
    comparar el diff con el **contrato**: el doc que lo describe y los llamadores reales fuera de la rama (grep en la
    rama de trabajo), no solo el diff (`QA-137`: en `opt-ai` las revisiones cortas no vieron tres fallos entre ramas,

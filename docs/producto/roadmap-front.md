@@ -1475,6 +1475,15 @@ Retro del PR de `claude/banco-narrador` ([retro](../registros/retro-2026-10-21-b
 - ~~**QA-186 · La fila de la rama al fusionar su PR**: las filas de los PR #68, #69 y #70 seguían diciendo «fusionar».~~ ✅ 2026-10-21 (retro del PR de la línea): el último commit antes del PR deja la fila como «al fusionarse, rama terminada» (paso 6 de `skills-y-modelos.md`).
 - ~~**QA-187 · `/clear` tras fusionar sin `orchestrate-dealer`**: una sesión en la nube encadenó 3 PR con 25 compactaciones.~~ ✅ 2026-10-21 (retro del PR de la línea): si la sesión ya compactó, se propone `/clear` al fusionar; paso 6 de `skills-y-modelos.md` y `opt-tokens/proyecto.md`.
 
+Retro previa al PR de `claude/puerta-pruebas` (aprobadas por la usuaria el 2026-10-21; 188-190, 192 y 194 se aplican ya; 191 y 193 son arreglos de la puerta de pruebas, paso 3.4 de la línea):
+- ~~**QA-188 · Herramientas de la Deck a git**: los atajos de `logs/shim/` (ignorado) no los tenía la otra cuenta.~~ ✅ 2026-10-21: `tools/qa/deck/` (envoltorios `psql`/`pg_dump`/`pg_restore`, `esc.sh`, `j.sh`, `o.sh`, `lanza.sh`, `relanza.sh`, `ronda.sh`, `r.sh`, `panel.sh`, `txt.sh`, `est.sh` con la partida como argumento, README); `escenario.sh` los antepone al PATH si no hay `psql`; `rondas-de-pruebas.md` apunta a las rutas nuevas. No se suben `lanza.out`, `sub.sh`, `sub2.sh` ni `t.sh` (un solo uso).
+- ~~**QA-189 · Tandas de juego más cortas y sin capturas de más**: las tandas 6 y 7 hicieron 87 y 99 llamadas (tope 60) y 15-19 capturas jpg, ~95 % de su contexto.~~ ✅ 2026-10-21: `orchestrate-dealer` pide 6-8 hallazgos por tanda y «captura solo si el hallazgo es visual» en la plantilla; apuntado en `opt-tokens/proyecto.md`.
+- ~~**QA-190 · Revisión corta también sin worktree**: el `/code-review` previo al PR halló 11 fallos, casi todos del subagente de escenarios, que trabajó sin worktree.~~ ✅ 2026-10-21: paso 3 de `orchestrate-dealer`.
+- **QA-191 · Rehacer `reino-combate-capitan` con un solo capitán** (hoy salen 3 rivales «Muy difícil» y Gorhorn muere en 3 rondas) y la regla, en `tools/qa/escenarios/README.md` y `construir.sh`, de que un escenario nuevo se cierra solo tras jugar una vez lo que promete.
+- ~~**QA-192 · El lanzador de la Deck pone `IA_PERFIL` e `IA_REGISTRO`**: `/opt-ai` no tuvo registro de las tandas con Ollama real.~~ ✅ 2026-10-21: `tools/qa/deck/juego.sh` arranca `arrancar-juego.sh` con `IA_PERFIL=deck` e `IA_REGISTRO=<raíz>/logs/ia/<fecha>.jsonl` absoluto salvo que ya vengan puestas.
+- **QA-193 · Vía de QA para forzar el azar en `prepararReino`**: activa solo con una variable de entorno de QA; fuerza el próximo suceso (ganar o empatar la iniciativa, emboscada de fauna, interrupción de viaje) para comprobar P29, P69, P90, P46 y P47.
+- ~~**QA-194 · La bitácora por su fila en la principal**: 12 lecturas de `traspaso.md`, ~419k tokens arrastrados.~~ ✅ 2026-10-21: `opt-tokens/proyecto.md` manda `python3 tools/qa/recuperar.py --estado` (da la fila, commits y compactaciones) y apunta lo de las capturas.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
