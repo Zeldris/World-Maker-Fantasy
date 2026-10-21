@@ -68,11 +68,14 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
 
   if (descubiertas.length === 0) {
     return (
-      <PanelEmptyState
-        icon="🤝"
-        title="Sin facciones descubiertas todavía"
-        hint="Descubre alguna facción en el mundo (hablando con sus NPC o visitando su territorio) para poder negociar o comerciar con ella."
-      />
+      <div className="flex flex-col gap-4">
+        {vasallajes.length > 0 && <VasallajesCard vasallajes={vasallajes} />}
+        <PanelEmptyState
+          icon="🤝"
+          title="Sin facciones descubiertas todavía"
+          hint="Descubre alguna facción en el mundo (hablando con sus NPC o visitando su territorio) para poder negociar o comerciar con ella."
+        />
+      </div>
     )
   }
 
@@ -120,7 +123,7 @@ export function VasallajesCard({ vasallajes }: { vasallajes: VasallajeInfo[] }) 
             <p className="font-medium">{v.vasalloNombre} es vasallo de {v.senorNombre}</p>
             {v.rotoEn == null ? (
               <p className="text-2xs text-wood-500">
-                Deuda: <span className="font-mono tabular-nums text-accent2-300">{v.deuda}</span> Goirnos · cada semana compra sus armas al doble y a crédito (la deuda sube) y cumple una patrulla obligada (baja 100)
+                Deuda: <span className="font-mono tabular-nums text-accent2-300">{v.deuda}</span> Goirnos · cada semana compra sus armas a crédito ×{v.sobreprecioArmas} (la deuda sube) y cumple una patrulla obligada de {v.patrullaGuerreros} guerreros (baja {v.deudaPorPatrulla})
                 {v.proximaRevision != null ? ` · próxima revisión: día ${v.proximaRevision}` : ''}
               </p>
             ) : (

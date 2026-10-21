@@ -128,6 +128,10 @@ export interface VasallajeVista {
   senorSlug: string;
   senorNombre: string;
   deuda: number;
+  /// Reglas vigentes (las constantes de este módulo), para que la interfaz no las repita a mano.
+  deudaPorPatrulla: number;
+  sobreprecioArmas: number;
+  patrullaGuerreros: number;
   /// Próximo día de ficción en que se revisa (semanal); null si roto.
   proximaRevision: number | null;
   rotoEn: number | null;
@@ -145,6 +149,9 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
     senorSlug: f.senorSlug,
     senorNombre: nombres.get(f.senorSlug) ?? f.senorSlug,
     deuda: f.deuda,
+    deudaPorPatrulla: DEUDA_POR_PATRULLA,
+    sobreprecioArmas: SOBREPRECIO_ARMAS,
+    patrullaGuerreros: PATRULLA_GUERREROS,
     proximaRevision: f.rotoEn != null ? null : Math.max(dia, (f.ultimaSemana ?? dia - 7) + 7),
     rotoEn: f.rotoEn,
     motivoRuptura: f.motivoRuptura,

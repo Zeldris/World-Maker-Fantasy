@@ -3216,6 +3216,9 @@ export interface VasallajeInfo {
   senorSlug: string
   senorNombre: string
   deuda: number
+  deudaPorPatrulla: number
+  sobreprecioArmas: number
+  patrullaGuerreros: number
   proximaRevision: number | null
   rotoEn: number | null
   motivoRuptura: string | null

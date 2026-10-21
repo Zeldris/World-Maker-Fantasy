@@ -83,7 +83,7 @@ describe('DiplomaciaMercadoSection — P286/P297 vasallajes', () => {
 
   it('enseña la deuda del vasallaje y la próxima revisión', async () => {
     vi.mocked(getVasallajes).mockResolvedValue({
-      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 7144, proximaRevision: 46, rotoEn: null, motivoRuptura: null }],
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 7144, deudaPorPatrulla: 100, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 46, rotoEn: null, motivoRuptura: null }],
     })
     let utils!: ReturnType<typeof render>
     await act(async () => {
@@ -92,5 +92,18 @@ describe('DiplomaciaMercadoSection — P286/P297 vasallajes', () => {
     expect(utils.getByText('Clan Serhu es vasallo de Concordia de Hierro')).toBeTruthy()
     expect(utils.getByText('7144')).toBeTruthy()
     expect(utils.container.textContent).toContain('próxima revisión: día 46')
+    expect(utils.container.textContent).toContain('patrulla obligada de 20 guerreros (baja 100)')
+  })
+
+  it('sin facciones descubiertas la tarjeta de vasallajes sale igual', async () => {
+    vi.mocked(getVasallajes).mockResolvedValue({
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 600, deudaPorPatrulla: 100, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 7, rotoEn: null, motivoRuptura: null }],
+    })
+    let utils!: ReturnType<typeof render>
+    await act(async () => {
+      utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[]} goirnos={0} onRefreshSave={async () => {}} />)
+    })
+    expect(utils.getByText('Clan Serhu es vasallo de Concordia de Hierro')).toBeTruthy()
+    expect(utils.getByText('Sin facciones descubiertas todavía')).toBeTruthy()
   })
 })

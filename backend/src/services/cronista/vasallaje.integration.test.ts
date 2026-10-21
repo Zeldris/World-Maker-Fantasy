@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { armasDeLaSemana, asegurarVasallajes, DEUDA_INICIAL, rearme, revisarVasallajes, SOBREPRECIO_ARMAS, vasallajesVista } from './vasallaje.js';
+import { armasDeLaSemana, asegurarVasallajes, DEUDA_INICIAL, DEUDA_POR_PATRULLA, PATRULLA_GUERREROS, rearme, revisarVasallajes, SOBREPRECIO_ARMAS, vasallajesVista } from './vasallaje.js';
 import { EQUIPO } from './facturaEquipo.js';
 import { produccionDeFaccion } from '../kingdomTick.js';
 
@@ -74,7 +74,7 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
   it('P286/P297: la deuda se ve en la vista y una patrulla sin escaramuza deja línea en el diario', async () => {
     const antes = (await prisma.vasallaje.findFirstOrThrow({ where: { saveId } })).deuda;
     const [vista] = await vasallajesVista(prisma, saveId, 10);
-    expect(vista).toMatchObject({ vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', deuda: antes, proximaRevision: 14, rotoEn: null });
+    expect(vista).toMatchObject({ vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', deuda: antes, deudaPorPatrulla: DEUDA_POR_PATRULLA, sobreprecioArmas: SOBREPRECIO_ARMAS, patrullaGuerreros: PATRULLA_GUERREROS, proximaRevision: 14, rotoEn: null });
     const r = await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 14, 14 * 1440, () => 0.9));
     expect(r.escaramuzas).toBe(0);
     const despues = (await prisma.vasallaje.findFirstOrThrow({ where: { saveId } })).deuda;
