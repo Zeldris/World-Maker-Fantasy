@@ -12,10 +12,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (52): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (56): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
-  P273, P274, P275, P276, P277, P278, P279.
+  P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -326,3 +326,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P277 | Ronda 2026-10-21 (Reino › Edificios, Día 39): Cisterna y Granero piden Inteligencia 8 y Gorhorn Cazador tiene 7 («Falta: inteligencia 7/8»): la Cisterna no se puede construir jugando con el personaje de las rondas (el Granero solo está por el escenario); CR-53 queda sin jugar en Cisterna | pendiente |
 | P278 | Ronda 2026-10-21 (Reino › Edificios, Día 39): la lista de edificios muestra «Choza Básica Orco de las Llanuras · DAÑADO · pozo» con la descripción del Pozo, y luego «un pozo · DAÑADO» con la misma; no se ve cuál es cuál ni cuántos Pozos hay (Agua al día +0 con ambos dañados) | pendiente |
 | P279 | Ronda 2026-10-21 (Día 46-56, tras acoger a nadie, población 0): la comida del Reino baja sin súbditos (60 de 160 en 10 días, además de una incursión de -20) y tras acoger a Dolgeth Tiuh (Recolector, luego Pescador, Días 56-62) queda clavada en 60 en 3+3 días sin distinguir las dos tareas; no hay forma de ver en el juego cuánto produce/gasta al día (solo «Agua al día») | pendiente |
+| P280 | Ronda 2026-10-21 (Mundo vivo, reino-dia39-recursos, Día 48-56, Reino › Partidas): una partida de caza a Kirelon Arenoso en La Hondonada del Eco, que tiene 3 Kirelon Arenoso en el mapa de zona (ZonePoint FAUNA cantidad 3), vuelve las dos veces (salidas día 48 y 52) con 0 piezas: «La partida de caza abate 0 Kirelon Arenoso» y la tarjeta dice «en casa · sin presas», sin ningún aviso en el diario ni en Mundo; no se ve ningún combate ni herido. Con la especie presente, Q4 de CR-63 pide pelea de fondo y piezas. | pendiente |
+| P281 | Ronda 2026-10-21 (Día 49, Reino › Súbditos › Rol y Partidas): se lanza una partida con Rildagh Rah (orco de 13 años, recién acogido, sin arma del Almacén ni plantilla) como único cazador; Q3 de CR-63 pide adulto y arma «como un soldado». La interfaz no avisa de que le falta arma ni edad; «Lanzar partida (1)» se activa y sale. Puede ser el motivo de las 0 piezas del hallazgo anterior (sin analizar). | pendiente |
+| P282 | Ronda 2026-10-21 (Día 39, Reino › Edificios y › Corrales): los Corrales piden «al menos una Jaula construida», pero la lista de Edificios (28 recetas) no ofrece ninguna Jaula: con el personaje de la ronda no se puede construir una jugando desde ahí (hubo que darla con dar-reino edificio:jaula-pequena). No se vio dónde se construye. | pendiente |
+| P283 | Ronda 2026-10-21 (Día 53, Reino › Partidas): el texto «No hay nadie libre: da a algún súbdito el rol de cazador (Súbditos) o forma un grupo de combate 2 o más» sigue saliendo con el selector «Quién va» ya abierto y vacío cuando el único cazador está fuera; tras volver, «Lanzar partida (0)» exige marcar de nuevo a Rildagh Rah pese a la casilla «Orden permanente» sin marcar (coherente), pero el pie «Caza de Kirelon Arenoso · en casa · sin presas» no desaparece ni dice cuándo volvió (día). | pendiente |
