@@ -807,6 +807,10 @@ export interface BuildingInfo {
   name: string
   kind: string
   status: BuildingStatus
+  /// Empalizada caída (sigue ACTIVO pero no cubre hasta repararla).
+  caida?: boolean
+  /// P284: materiales que cuesta repararlo; null si no hace falta.
+  costeReparar?: number | null
   description: string
 }
 

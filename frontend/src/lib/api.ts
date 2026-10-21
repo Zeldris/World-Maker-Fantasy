@@ -3150,6 +3150,8 @@ export interface ModuloDefensaInfo {
   escalon: number
   golpes: number
   caida: boolean
+  /// P296: dañado (no cuenta hasta repararlo).
+  danado?: boolean
   equiposMilicia: number
 }
 export interface AsentamientoDefensa {
@@ -3170,7 +3172,8 @@ export interface AvistamientoInfo {
   gente: number
   tramos: number
 }
-export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[] }> {
+/// `danados`: Ayuntamiento o Cuartel dañados (P284), que no defienden hasta repararlos.
+export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/defensa`)
 }
 export async function postGuarnicion(saveId: string, subjectId: string, asentamientoId: string): Promise<{ ok: boolean }> {
@@ -3182,8 +3185,9 @@ export async function postEquiposMilicia(saveId: string, armeriaId: string, cant
 export async function postLlamarMilicia(saveId: string, asentamientoId: string): Promise<{ ok: boolean; armados: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/defensa/${asentamientoId}/milicia`, { method: 'POST' })
 }
-export async function postRepararEmpalizada(saveId: string, buildingId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/defensa/empalizada/${buildingId}/reparar`, { method: 'POST' })
+/// P284/P296/P301: repara un edificio dañado (mitad de su coste en materiales del Almacén).
+export async function postRepararEdificio(saveId: string, buildingId: string): Promise<{ ok: boolean; coste: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/reparar`, { method: 'POST' })
 }
 
 // CR-50 (50d): manda una partida a por un campamento de bandidos.
