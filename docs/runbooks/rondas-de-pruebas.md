@@ -159,3 +159,4 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
   bucle a que desaparezca. `combate.js` con `rondas:1` a veces juega Defensa (por la iniciativa) sin avisar.
 - `IA_REGISTRO` con ruta relativa se resuelve desde `backend/` (donde corre el servidor): `backend/ia/…` no escribe
   nada. Usar la ruta absoluta (`$PWD/backend/ia/registro-$(date +%F).jsonl` desde la raíz).
+- En la Deck, `escenario.sh cargar/avanzar` por `host.sh` falla con «psql: orden no encontrada» (el host no tiene `psql`, `pg_restore` ni `pg_dump`; ronda 2026-10-21). Remedio sin tocar el repo: scripts `psql`/`pg_restore`/`pg_dump` en `logs/shim/` (ignorado) que van por `podman exec -i tarkor-postgres …`, y `PATH` con esa carpeta delante. `escenario.sh guardar` no vale así (`pg_dump -f` escribe dentro del contenedor). El driver muere tras cada `avanzar`.

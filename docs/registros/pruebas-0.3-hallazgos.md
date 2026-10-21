@@ -12,10 +12,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (47): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (52): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
-  P273, P274.
+  P273, P274, P275, P276, P277, P278, P279.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -321,3 +321,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P272 | Tanda IA con GPU (2026-10-20, partida «Pruebas · IA y diálogos», Día 1): el narrador inventa lore: Ulkha atribuye lo de los Maktor a las «primeras escaramuzas de la Concordia de Hierro», y el canon dice que fue una incursión de los Goirntes | pendiente |
 | P273 | Tanda IA con GPU (2026-10-20, partida «Pruebas · IA y diálogos», Día 1): el narrador de respaldo (qwen2.5 1.5B) entra en turnos normales («Recuerdo lo que me pidió Gistera», que no cita la petición, y el regalo a Ulkha) tras intentos del modelo grande que acaban en «stop»; el registro de IA no dice por qué se rechazó el intento (validación, antirrepetición…) | pendiente |
 | P274 | Ronda 2026-10-20 (entorno): los escenarios de tools/qa/escenarios/ guardados en la nube llevan los embeddings del lore del Ollama simulado: cargados contra el Ollama real, el RAG devuelve trozos al azar (score_1 0,008-0,019, «El cielo sin luna» para cualquier pregunta) hasta pasar «npm run reindex-lore» (luego 0,78). arrancar-juego.sh solo vuelve a sembrar el catálogo, no el lore. Toda la tanda solo CPU y las anteriores de hoy jugaron con el RAG roto | pendiente |
+| P275 | Ronda 2026-10-21 (Mundo vivo, reino-dia39-recursos, Día 39-62, Reino › Visión general): el Almacén dice «comida 180 · agua 60 · materiales 30/60» y solo da el tope de materiales; el de comida y agua (CR-53: 60 + 120 por Granero/Cisterna) no se ve, aunque el Granero esté construido | pendiente |
+| P276 | Ronda 2026-10-21 (Reino › Súbditos › Depositar desde la mochila, Leñera ya construida, materiales 175/180): al llegar al tope el aviso es «No caben más materiales en el Almacén: construye una Leñera» aunque ya hay una Leñera; el tope en sí funciona (admitió 5 y rechazó el resto con 400) | pendiente |
+| P277 | Ronda 2026-10-21 (Reino › Edificios, Día 39): Cisterna y Granero piden Inteligencia 8 y Gorhorn Cazador tiene 7 («Falta: inteligencia 7/8»): la Cisterna no se puede construir jugando con el personaje de las rondas (el Granero solo está por el escenario); CR-53 queda sin jugar en Cisterna | pendiente |
+| P278 | Ronda 2026-10-21 (Reino › Edificios, Día 39): la lista de edificios muestra «Choza Básica Orco de las Llanuras · DAÑADO · pozo» con la descripción del Pozo, y luego «un pozo · DAÑADO» con la misma; no se ve cuál es cuál ni cuántos Pozos hay (Agua al día +0 con ambos dañados) | pendiente |
+| P279 | Ronda 2026-10-21 (Día 46-56, tras acoger a nadie, población 0): la comida del Reino baja sin súbditos (60 de 160 en 10 días, además de una incursión de -20) y tras acoger a Dolgeth Tiuh (Recolector, luego Pescador, Días 56-62) queda clavada en 60 en 3+3 días sin distinguir las dos tareas; no hay forma de ver en el juego cuánto produce/gasta al día (solo «Agua al día») | pendiente |
