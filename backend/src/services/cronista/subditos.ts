@@ -137,6 +137,16 @@ export async function subditosSinArma(tx: Tx, saveId: string, ahora: number): Pr
   return new Set(conArma.slice(Math.max(0, conArma.length - faltan)).map((s) => s.id));
 }
 
+/// Cazadores adultos activos: llevan arma como un soldado, así que entran en el tope de `sinArma`.
+export async function cazadoresAdultos(tx: Tx, saveId: string): Promise<number> {
+  const [ws, subditos] = await Promise.all([
+    tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }),
+    tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true } }),
+  ]);
+  const ahora = ws?.fictionalMinutes ?? 0;
+  return subditos.filter((s) => rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora)).length;
+}
+
 /// La población del Reino (y de cada territorio) = sus súbditos activos. Idempotente.
 export async function recalcularPoblacion(tx: Tx, saveId: string, ahora: number): Promise<void> {
   const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, territoryId: true, enMilicia: true } });

@@ -5,6 +5,7 @@ import { ownerKeyFor } from './reinoOwner.js';
 import { crearViajero, enlacesDelMundo } from './viajeros.js';
 import { cazarEnDestino } from './partidasCaza.js';
 import { DIAS_VISIBLE_VUELTA, lanzarPartida, opcionesDePartida, partidasDelReino } from './partidasReino.js';
+import { guerrerosLibres } from './ataquesCampamento.js';
 import { subditosSinArma } from './cronista/subditos.js';
 
 /// P280/P281/P283 (CR-63, Q3 y Q4): un cazador sin arma no sale; si sale, el diario cuenta el fracaso;
@@ -59,6 +60,8 @@ describe('partidas de caza: arma y vuelta (P280, P281, P283)', () => {
     const r = await prisma.$transaction((tx) => lanzarPartida(tx, saveId, { tipo: 'CAZA', especie: 'kirelon-arenoso', destinoLocationId: coto, subjectIds: [desarmado] }, HOY * 1440));
     expect(r.ok).toBe(false);
     expect((r as { motivo: string }).motivo).toMatch(/Rildagh no tiene arma/);
+    // Tampoco va a un ataque.
+    expect((await guerrerosLibres(prisma, saveId, HOY * 1440)).map((g) => g.id)).toEqual([armado]);
   });
 
   it('un sin arma que llega al destino pierde y el diario lo cuenta (P280)', async () => {
