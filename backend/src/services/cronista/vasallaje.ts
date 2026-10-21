@@ -80,8 +80,11 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
       alSenor += cobrar(nuevos * EQUIPO.arma.valor * SOBREPRECIO_ARMAS);
     }
     // 3. Patrulla obligada.
+    let patrullo = false;
+    let huboEscaramuza = false;
     if (sold && sold.poblacion + nuevos >= PATRULLA_GUERREROS) {
       deuda = Math.max(0, deuda - DEUDA_POR_PATRULLA);
+      patrullo = true;
       if (random() < PROB_ESCARAMUZA) {
         const region = Object.keys((sold.distribucion ?? {}) as Record<string, number>)[0] ?? null;
         const rival = await tx.faction.findFirst({
@@ -101,11 +104,56 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
           datos: { faccionA: vasallo.name, faccionB: rival?.name ?? 'los renegados', ...(region ? { region } : {}), ...(pelea ? { resultado: resumenEscaramuza(pelea) } : {}) },
         });
         escaramuzas++;
+        huboEscaramuza = true;
       }
+    }
+    // P297: sin escaramuza la semana no dejaba rastro; el diario dice que patrulló y cómo queda la deuda.
+    if (patrullo && !huboEscaramuza) {
+      await registrarSuceso(tx, {
+        saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
+        actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
+        datos: { vasallo: vasallo.name, senor: senor.name, deuda, ...(nuevos > 0 ? { rearmados: nuevos } : {}) },
+      });
     }
     await tx.kingdomStats.update({ where: { id: vasallo.kingdomStats.id }, data: { riqueza, trabajadores: { decrement: nuevos }, poblacion: { decrement: nuevos }, soldados: { increment: nuevos } } });
     if (alSenor > 0) await tx.kingdomStats.update({ where: { id: senor.kingdomStats.id }, data: { riqueza: { increment: alSenor } } });
     await tx.vasallaje.update({ where: { id: v.id }, data: { deuda, ...(deuda === 0 ? { rotoEn: ahora, motivoRuptura: 'deuda saldada' } : {}) } });
   }
   return { escaramuzas };
+}
+
+export interface VasallajeVista {
+  vasalloSlug: string;
+  vasalloNombre: string;
+  senorSlug: string;
+  senorNombre: string;
+  deuda: number;
+  /// Reglas vigentes (las constantes de este módulo), para que la interfaz no las repita a mano.
+  deudaPorPatrulla: number;
+  sobreprecioArmas: number;
+  patrullaGuerreros: number;
+  /// Próximo día de ficción en que se revisa (semanal); null si roto.
+  proximaRevision: number | null;
+  rotoEn: number | null;
+  motivoRuptura: string | null;
+}
+
+/// P286: lo que enseña Reino › Diplomacia de cada vasallaje de la partida (también los rotos).
+export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Promise<VasallajeVista[]> {
+  const filas = await tx.vasallaje.findMany({ where: { saveId }, orderBy: { vasalloSlug: 'asc' } });
+  const slugs = [...new Set(filas.flatMap((f) => [f.vasalloSlug, f.senorSlug]))];
+  const nombres = new Map((await tx.faction.findMany({ where: { saveId, slug: { in: slugs } }, select: { slug: true, name: true } })).map((f) => [f.slug, f.name]));
+  return filas.map((f) => ({
+    vasalloSlug: f.vasalloSlug,
+    vasalloNombre: nombres.get(f.vasalloSlug) ?? f.vasalloSlug,
+    senorSlug: f.senorSlug,
+    senorNombre: nombres.get(f.senorSlug) ?? f.senorSlug,
+    deuda: f.deuda,
+    deudaPorPatrulla: DEUDA_POR_PATRULLA,
+    sobreprecioArmas: SOBREPRECIO_ARMAS,
+    patrullaGuerreros: PATRULLA_GUERREROS,
+    proximaRevision: f.rotoEn != null ? null : Math.max(dia, (f.ultimaSemana ?? dia - 7) + 7),
+    rotoEn: f.rotoEn,
+    motivoRuptura: f.motivoRuptura,
+  }));
 }
