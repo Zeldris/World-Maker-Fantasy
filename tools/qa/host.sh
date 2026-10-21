@@ -7,8 +7,13 @@ RAIZ="$(cd "$(dirname "$0")/../.." && pwd)"
 if [ "$HOST_SH_SANDBOX" = 1 ] || [ -e /.flatpak-info ] || [ -n "$FLATPAK_ID" ]; then
   ORDEN=""
   for a in "$@"; do ORDEN+="$(printf '%q' "$a") "; done
-  # -i (los ~/.bashrc salen pronto sin él) sin TTY avisa «no job control in this shell»: solo se filtra esa línea de stderr.
-  flatpak-spawn --host --directory="$RAIZ" bash -lic "$ORDEN" 2> >(grep -v -e 'cannot set terminal process group' -e 'no job control in this shell' >&2)
+  # -i (los ~/.bashrc salen pronto sin él) sin TTY avisa de que no hay control de trabajos, en inglés o en español
+  # según el locale, y el nvm del ~/.bashrc de la Deck se queja del .npmrc (QA-180): se filtran solo esas líneas de stderr.
+  flatpak-spawn --host --directory="$RAIZ" bash -lic "$ORDEN" 2> >(grep -v -F \
+    -e 'cannot set terminal process group' -e 'no job control in this shell' \
+    -e 'no se puede establecer el grupo de proceso de terminal' -e 'no hay control de trabajos en este shell' \
+    -e "Your user’s .npmrc file (\${HOME}/.npmrc)" -e 'has a `globalconfig` and/or a `prefix` setting, which are incompatible with nvm.' \
+    -e 'Run `nvm use --delete-prefix ' >&2)
   estado=$?
   wait
   exit $estado

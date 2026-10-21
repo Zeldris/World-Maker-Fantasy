@@ -5,7 +5,7 @@ Uso:
   banco.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--url U] [--api ollama|openai]
   banco.py pares <salidas.jsonl> <salidas.jsonl> [...] --casos <casos.jsonl> --salida <pares.jsonl> --clave <clave.json> [--semilla N]
   banco.py juzgar <pares.jsonl> --juez M --rubrica <rubrica.md> --salida <veredictos.jsonl> [--url U] [--api ...]
-  banco.py resumen <pares.jsonl> <clave.json> <veredictos.jsonl> [--json]
+  banco.py resumen <pares.jsonl> <clave.json> <veredictos.jsonl> [--json] [--detalle]
 
 Casos: una línea por caso, {"id", "system"?, "prompt", "contexto"?, "opciones"?: {"temperature", "num_ctx",
 "max_tokens", "format"}}; `format` es el JSON Schema de las llamadas estructuradas. Con Ollama va siempre `think: false`. `contexto` es lo que ve el juez (p. ej. la acción del jugador); sin él, los últimos 1500 caracteres
@@ -17,7 +17,9 @@ juzgar: el juez responde {"ganador": "X"|"Y"|"empate", "motivo"}; un par cuya ll
 cuenta en el resumen. Para juzgar con Claude, la sesión escribe
 veredictos.jsonl a mano con ese formato y {"par"}, sin abrir la clave.
 resumen: por modelo, victorias (empate = 0,5) y tasa; consistencia = % de casos cuyo ganador no cambia al girar el
-par (el que cambia cuenta como empate); sesgo de posición = % de veces que gana X.
+par (el que cambia cuenta como empate); sesgo de posición = % de veces que gana X. Con --detalle, además, con el mismo
+conteo: cara a cara (tasa de cada modelo contra cada otro), puntos por caso y los motivos de los pares que pierde
+cada modelo (para los fallos típicos del informe).
 """
 import argparse, itertools, json, random, sys, time, urllib.request
 
@@ -153,18 +155,27 @@ def resumen(lista, clave, veredictos):
     caso_de = {p['par']: p['caso'] for p in lista}
     por_ronda = {}  # (caso, pareja de modelos) -> [modelo ganador o None por empate]
     gana_x = juzgados = 0
+    derrotas = {}  # modelo -> pares que pierde, con el motivo del juez
     for v in veredictos:
         par = v['par']
         if par not in clave or 'error' in v:
             continue
         juzgados += 1
-        g = v['ganador']
+        g = v.get('ganador')  # un veredicto escrito a mano sin ganador cuenta como empate, como el ilegible
         gana_x += g == 'X'
         modelos = tuple(sorted(clave[par].values()))
         por_ronda.setdefault((caso_de[par], modelos), []).append(clave[par][g] if g in ('X', 'Y') else None)
+        if g in ('X', 'Y'):
+            perdedor = clave[par]['Y' if g == 'X' else 'X']
+            derrotas.setdefault(perdedor, []).append({'caso': caso_de[par], 'contra': clave[par][g],
+                                                      'motivo': v.get('motivo', '')})
     puntos, jugadas = {}, {}
-    consistentes = completas = 0
-    for (_, modelos), ganadores in por_ronda.items():
+    cara, por_caso = {}, {}
+    consistentes = completas = repetidas = 0
+    for (caso, modelos), ganadores in por_ronda.items():
+        if len(ganadores) > 2:  # el mismo par juzgado otra vez (veredictos añadidos dos veces): no cuenta
+            repetidas += 1
+            continue
         if len(ganadores) == 2:
             completas += 1
             if ganadores[0] == ganadores[1]:
@@ -174,14 +185,39 @@ def resumen(lista, clave, veredictos):
         for g in ganadores:
             for m in modelos:
                 jugadas[m] = jugadas.get(m, 0) + 1
-                puntos[m] = puntos.get(m, 0) + (1 if g == m else 0.5 if g is None else 0)
+                w = 1 if g == m else 0.5 if g is None else 0
+                puntos[m] = puntos.get(m, 0) + w
+                otro = modelos[1] if m == modelos[0] else modelos[0]
+                c = cara.setdefault(m, {}).setdefault(otro, [0, 0])
+                c[0] += w
+                c[1] += 1
+                por_caso.setdefault(caso, {})[m] = por_caso.get(caso, {}).get(m, 0) + w
     return {
         'modelos': {m: {'puntos': puntos[m], 'jugadas': jugadas[m], 'tasa': round(puntos[m] / jugadas[m], 3)}
                     for m in sorted(jugadas, key=lambda m: -puntos[m] / jugadas[m])},
         'consistencia': round(consistentes / completas, 3) if completas else None,
         'sesgo_x': round(gana_x / juzgados, 3) if juzgados else None,
-        'juzgados': juzgados, 'sin_juzgar': len(lista) - juzgados,
+        'juzgados': juzgados, 'sin_juzgar': len(lista) - juzgados, 'repetidas': repetidas,
+        'cara_a_cara': {m: {o: round(p / n, 3) for o, (p, n) in sorted(d.items())} for m, d in cara.items()},
+        'por_caso': {c: por_caso[c] for c in sorted(por_caso)},
+        'derrotas': {m: sorted(d, key=lambda x: x['caso']) for m, d in derrotas.items()},
     }
+
+
+def imprimir_detalle(res):
+    modelos = list(res['modelos'])
+    print('\ncara a cara (tasa de la fila contra la columna):')
+    print('  %-28s ' % '' + ' '.join('%10s' % m[:10] for m in modelos))
+    for m in modelos:
+        fila = res['cara_a_cara'].get(m, {})
+        print('  %-28s ' % m[:28] + ' '.join('%10s' % (fila[o] if o in fila else '—') for o in modelos))
+    print('\npuntos por caso:')
+    for caso, d in res['por_caso'].items():
+        print('  %-16s ' % caso + ' '.join('%10s' % ('%g' % d[m] if m in d else '—') for m in modelos))
+    for m in modelos:
+        print('\npierde %s:' % m)
+        for x in res['derrotas'].get(m, []):
+            print('  %s contra %s: %s' % (x['caso'], x['contra'], x['motivo']))
 
 
 def main(argv=None):
@@ -210,6 +246,7 @@ def main(argv=None):
     r.add_argument('clave')
     r.add_argument('veredictos')
     r.add_argument('--json', action='store_true')
+    r.add_argument('--detalle', action='store_true')
     a = ap.parse_args(argv)
 
     if a.orden in ('generar', 'juzgar'):
@@ -238,6 +275,10 @@ def main(argv=None):
                 print('%-40s tasa %.3f (%s de %d)' % (m, d['tasa'], d['puntos'], d['jugadas']))
             print('consistencia al girar: %s · gana X: %s · juzgados %d, sin juzgar %d'
                   % (res['consistencia'], res['sesgo_x'], res['juzgados'], res['sin_juzgar']))
+            if res['repetidas']:
+                print('AVISO: %d pares juzgados más de una vez no cuentan; quita los veredictos repetidos' % res['repetidas'])
+            if a.detalle:
+                imprimir_detalle(res)
 
 
 if __name__ == '__main__':
