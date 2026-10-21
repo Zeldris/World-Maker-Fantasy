@@ -3048,10 +3048,17 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   it('felicidad ≤20 sostenida 7 días pierde el territorio (población a 0) y abandona sus edificios', async () => {
     await setUp(20);
     // P299 — edificios sin territorio (levantados sin fundar uno) también dejan de ser del Reino perdido.
-    const pozo = await prisma.building.create({ data: { saveId, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    const otraRegion = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
+    const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    const pozoLejano = await prisma.building.create({ data: { saveId, locationId: otraRegion.id, name: 'Pozo lejano', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    const ayto = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
+    // Otra región y el Ayuntamiento no se tocan.
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozoLejano.id } })).status).toBe('ACTIVO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO');
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });

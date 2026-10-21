@@ -69,17 +69,25 @@ export async function advanceKingdomStatsDay(
         if (perdiendoIds.length > 0) {
           // Se conserva la fila (docs/10 § 5.4: "es historia del reino") — nunca se borra.
           await tx.territory.updateMany({ where: { id: { in: perdiendoIds } }, data: { control: 'PERDIDO', population: 0 } });
-          // P299 — el Reino perdido ya no tiene Choza, Pozo ni camas propias: también se abandonan los
-          // edificios sin territorio (los levantados sin fundar uno), salvo el Campamento del personaje.
+          // P299 — el territorio perdido ya no tiene Choza, Pozo ni camas propias: también se abandonan los
+          // edificios sin territorio levantados en SU región, nunca el Campamento ni el Ayuntamiento
+          // ni los de otras regiones.
+          const regionesPerdidas = territories.filter((t) => perdiendoIds.includes(t.id) && t.region).map((t) => t.region as string);
           await tx.building.updateMany({
-            where: { saveId, status: 'ACTIVO', OR: [{ territoryId: { in: perdiendoIds } }, { territoryId: null, NOT: { recipeKey: 'campamento' } }] },
+            where: {
+              saveId, status: 'ACTIVO',
+              OR: [
+                { territoryId: { in: perdiendoIds } },
+                { territoryId: null, NOT: { recipeKey: { in: ['campamento', 'ayuntamiento'] } }, location: { region: { in: regionesPerdidas } } },
+              ],
+            },
             data: { status: 'ABANDONADO' },
           });
           // P299 — se explica después: antes solo se veía el territorio en «Perdido».
           await tx.logEntry.create({
             data: {
               saveId, channel: 'KINGDOM', isSystemMessage: true,
-              text: `Tu Reino se ha rebelado: la felicidad llevaba ${DIAS_PARA_REBELION} días baja y ha perdido el territorio. Sus edificios quedan abandonados y sin camas; sube la felicidad y vuelve a reclamarlo.`,
+              text: `Tu Reino se ha rebelado: la felicidad llevaba ${DIAS_PARA_REBELION} días baja y ha perdido el territorio. Sus edificios quedan abandonados y sin camas.`,
               timeLabel: formatFictionalDate(hasta), fictionalMinutes: hasta,
             },
           });
