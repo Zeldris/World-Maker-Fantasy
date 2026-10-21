@@ -273,6 +273,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       const classifyResult = await requestTurnClassify({ saveId, action, enCombate: true, savedActionId: opts.savedActionId })
       const { classification, roll } = classifyResult
       if (classifyResult.blocked) {
+        // P288: un guard del backend paró la acción y ya guardó su respuesta en el diario. Sin
+        // enseñarla aquí, pulsar «Actuar»/«Defenderte» no hacía nada visible hasta recargar.
+        const blocked = classifyResult.blocked
+        setCharacterLog((prev) => [...prev, { ...blocked.logEntry, channel: 'character', combate: true }])
         return false
       }
       if (classifyResult.transit) {

@@ -358,6 +358,21 @@ describe('submitCombatAction — guards', () => {
   })
 })
 
+describe('submitCombatAction — acción bloqueada por un guard (P288)', () => {
+  it('enseña la respuesta del guard en el diario en vez de no hacer nada', async () => {
+    mockClassify.mockResolvedValue({
+      classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' },
+      blocked: { narration: 'Aquí no hay nadie con ese nombre.', logEntry: { id: 'blk-1', text: 'Aquí no hay nadie con ese nombre.', timeLabel: 'Día 39', createdAt: '2026-10-21T00:00:00Z' } },
+    } as never)
+    const { result } = renderHook(() => useHarness())
+    const ok = await act(() => result.current.combat.submitCombatAction('Me defiendo', {}))
+    expect(ok).toBe(false)
+    expect(mockNarrate).not.toHaveBeenCalled()
+    expect(result.current.characterLog.map((e) => e.text)).toContain('Aquí no hay nadie con ese nombre.')
+    expect(result.current.combat.combatBusy).toBe(false)
+  })
+})
+
 describe('submitCombatAction — camino feliz', () => {
   it('resuelve classify+narrate reales y actualiza quests/deathCount/factionsStatus/xp/condicionFisica', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
