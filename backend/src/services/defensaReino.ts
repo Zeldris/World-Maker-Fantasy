@@ -26,6 +26,8 @@ export interface ModuloFila {
   escalon: number;
   golpes: number;
   caida: boolean;
+  /// P296: el módulo está DANADO (no cuenta hasta repararlo, sale en la lista para poder repararlo).
+  danado: boolean;
   equiposMilicia: number;
 }
 
@@ -54,12 +56,13 @@ export async function asentamientosDelReino(tx: Tx, saveId: string): Promise<Ase
   });
   const capital = nucleos.find((n) => n.recipeKey === 'ayuntamiento');
   const [modulos, subditos] = await Promise.all([
-    tx.building.findMany({ where: { saveId, recipeKey: { in: DEFENSA_RECIPE_KEYS }, status: 'ACTIVO' }, select: { id: true, recipeKey: true, name: true, tier: true, golpesDefensa: true, caida: true, equiposMilicia: true, location: { select: { region: true } } } }),
+    tx.building.findMany({ where: { saveId, recipeKey: { in: DEFENSA_RECIPE_KEYS }, status: { in: ['ACTIVO', 'DANADO'] } }, select: { id: true, status: true, recipeKey: true, name: true, tier: true, golpesDefensa: true, caida: true, equiposMilicia: true, location: { select: { region: true } } } }),
     tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, asentamientoId: true }, orderBy: { createdAt: 'asc' } }),
   ]);
   return nucleos.map((n) => {
     const aqui = modulos.filter((m) => m.location?.region === n.location!.region);
-    const escalon = (k: string) => aqui.find((m) => m.recipeKey === k)?.tier ?? 0;
+    // P296: un módulo DANADO sale en la lista (para repararlo) pero no suma; la Empalizada dañada cuenta como caída.
+    const escalon = (k: string) => aqui.find((m) => m.recipeKey === k && (m.status === 'ACTIVO' || k === 'empalizada'))?.tier ?? 0;
     const guarnicion = subditos
       .filter((s) => esGuarnicion(s.role) && (s.asentamientoId === n.id || (!s.asentamientoId && n.id === capital?.id)))
       .map((s) => ({ id: s.id, nombre: s.name, rol: esGuarnicion(s.role)! }));
@@ -68,7 +71,7 @@ export async function asentamientosDelReino(tx: Tx, saveId: string): Promise<Ase
       torre: escalon('torre-vigia'),
       armeria: escalon('armeria'),
       barracon: escalon('barracon'),
-      empalizadaCaida: aqui.find((x) => x.recipeKey === 'empalizada')?.caida ?? false,
+      empalizadaCaida: (() => { const e = aqui.find((x) => x.recipeKey === 'empalizada'); return !!e && (e.caida || e.status === 'DANADO'); })(),
       vigiaEnTorre: guarnicion.some((g) => g.rol === 'vigia'),
     };
     return {
@@ -77,7 +80,7 @@ export async function asentamientosDelReino(tx: Tx, saveId: string): Promise<Ase
       capital: n.id === capital?.id,
       region: n.location!.region,
       locationId: n.location!.id,
-      modulos: aqui.map((x) => ({ id: x.id, modulo: moduloDeRecipeKey(x.recipeKey)!, nombre: x.name, escalon: x.tier ?? 1, golpes: x.golpesDefensa, caida: x.caida, equiposMilicia: x.equiposMilicia })),
+      modulos: aqui.map((x) => ({ id: x.id, modulo: moduloDeRecipeKey(x.recipeKey)!, nombre: x.name, escalon: x.tier ?? 1, golpes: x.golpesDefensa, caida: x.caida || (x.recipeKey === 'empalizada' && x.status === 'DANADO'), danado: x.status === 'DANADO', equiposMilicia: x.equiposMilicia })),
       guarnicion,
       efecto: efectoDefensa(m),
     };
@@ -160,7 +163,7 @@ export async function radarDelReino(tx: Tx, saveId: string): Promise<Avistamient
 export async function convocarMilicia(tx: Tx, saveId: string, asentamientoId: string, ahora: number): Promise<number> {
   const a = (await asentamientosDelReino(tx, saveId)).find((x) => x.id === asentamientoId);
   if (!a) return 0;
-  const equipos = a.modulos.find((m) => m.modulo === 'armeria')?.equiposMilicia ?? 0;
+  const equipos = a.modulos.find((m) => m.modulo === 'armeria' && !m.danado)?.equiposMilicia ?? 0;
   const yaArmados = await tx.subject.count({ where: { saveId, estado: 'ACTIVO', enMilicia: true } });
   const libres = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO', enMilicia: false }, select: { id: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
   const llamados = libres.filter((s) => rolDeSubdito(s.role) === 'trabajador' && esAdultoSubdito(s, ahora)).slice(0, Math.max(0, equipos - yaArmados));
@@ -263,7 +266,7 @@ export async function contextoDefensa(tx: Tx, saveId: string, ahora: number): Pr
 /// (en la Capital, equipos de su Armería y trabajadores; en un Cuartel Avanzado no vive nadie que
 /// armar), guardias de fauna de la región, cobertura y moral.
 export async function defensaVista(tx: Tx, saveId: string, a: Asentamiento, ahora: number, ctx: ContextoDefensa): Promise<number> {
-  const equipos = a.modulos.find((m) => m.modulo === 'armeria')?.equiposMilicia ?? 0;
+  const equipos = a.modulos.find((m) => m.modulo === 'armeria' && !m.danado)?.equiposMilicia ?? 0;
   if (!ctx.guardiasPorRegion.has(a.region)) ctx.guardiasPorRegion.set(a.region, (await guardiasDeRegion(tx, saveId, ctx.worldId, a.region, ahora)).length);
   return defensaEstimada({ guarnicion: a.guarnicion.length, milicia: a.capital ? Math.min(equipos, ctx.trabajadores) : 0, guardias: ctx.guardiasPorRegion.get(a.region)!, cobertura: a.efecto.cobertura, bonoMoral: a.efecto.bonoMoral });
 }

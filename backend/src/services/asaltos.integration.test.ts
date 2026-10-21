@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
-import { botinDe, repararEmpalizada, resolverAsaltoDeFondo } from './asaltos.js';
+import { botinDe, costeDeReparar, repararEdificio, repararEmpalizada, resolverAsaltoDeFondo } from './asaltos.js';
 import { simularCombateDeFondo, type CombatienteFondo } from './combateDeFondo.js';
 import { soldadoGenerico } from './cronista/combatientesFaccion.js';
-import { TIPO_ASALTO } from './defensaReino.js';
+import { asentamientosDelReino, TIPO_ASALTO } from './defensaReino.js';
 
 function semilla(s: number) {
   let x = s;
@@ -96,5 +96,66 @@ describe('asaltos de fondo (CR-65 65d)', () => {
       expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'aguanta el asalto' } } })).toBe(2);
       expect((await prisma.viajero.findUniqueOrThrow({ where: { id: v.id } })).estado).not.toBe('TRABAJANDO');
     });
+  });
+});
+
+/// P284/P296/P301: «Reparar» para todo edificio dañado, no solo la Empalizada.
+describe('reparar edificios dañados (P284/P296/P301)', () => {
+  let saveId: string;
+  let casa: string;
+  const ids: Record<string, string> = {};
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    casa = (await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } })).id;
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn (P284)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x', attributes: BASE, portraitInitial: 'G' },
+    })).id;
+    const crea = async (recipeKey: string, status: 'ACTIVO' | 'DANADO', tier = 1) => (await prisma.building.create({ data: { saveId, locationId: casa, recipeKey, name: recipeKey, kind: recipeKey, description: 'x', status, tier } })).id;
+    ids.ayuntamiento = await crea('ayuntamiento', 'DANADO');
+    ids.empalizada = await crea('empalizada', 'DANADO');
+    ids.choza = await crea('choza', 'DANADO');
+    ids.pozo = await crea('pozo', 'ACTIVO');
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el coste es la mitad de los materiales de la receta, a su nivel', () => {
+    expect(costeDeReparar('choza', 1)).toBe(10);
+    expect(costeDeReparar('ayuntamiento', 1)).toBeGreaterThan(costeDeReparar('choza', 1));
+    expect(costeDeReparar('ayuntamiento', 2)).not.toBe(costeDeReparar('ayuntamiento', 1));
+  });
+
+  it('una Empalizada dañada sigue en Defensa, como caída, y con el Ayuntamiento dañado no hay asentamiento', async () => {
+    expect(await prisma.$transaction((tx) => asentamientosDelReino(tx, saveId))).toEqual([]);
+    await prisma.building.update({ where: { id: ids.ayuntamiento }, data: { status: 'ACTIVO' } });
+    const [a] = await prisma.$transaction((tx) => asentamientosDelReino(tx, saveId));
+    expect(a.modulos).toHaveLength(1);
+    expect(a.modulos[0]).toMatchObject({ id: ids.empalizada, modulo: 'empalizada', caida: true, danado: true });
+    expect(a.efecto.cobertura).toBe(0);
+  });
+
+  it('un edificio en pie no se repara; uno dañado pide materiales y vuelve a ACTIVO', async () => {
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.pozo))).toMatchObject({ ok: false });
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toMatchObject({ ok: false, motivo: expect.stringContaining('10 materiales') });
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ids.choza } })).status).toBe('DANADO');
+    const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+    const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: 'RECURSO' }, select: { slug: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 12 }, () => ({ saveId, name: 'Material', description: 'x', catalogSlug: recurso.slug })) });
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toEqual({ ok: true, coste: 10 });
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ids.choza } })).status).toBe('ACTIVO');
+    expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(2);
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toMatchObject({ ok: false });
+  });
+
+  it('reparar la Empalizada dañada la deja ACTIVA y en pie', async () => {
+    const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+    const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: 'RECURSO' }, select: { slug: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 30 }, () => ({ saveId, name: 'Material', description: 'x', catalogSlug: recurso.slug })) });
+    expect(await prisma.$transaction((tx) => repararEmpalizada(tx, saveId, ids.empalizada))).toEqual({ ok: true });
+    expect(await prisma.building.findUniqueOrThrow({ where: { id: ids.empalizada } })).toMatchObject({ status: 'ACTIVO', caida: false });
+    const [a] = await prisma.$transaction((tx) => asentamientosDelReino(tx, saveId));
+    expect(a.modulos[0]).toMatchObject({ caida: false, danado: false });
   });
 });
