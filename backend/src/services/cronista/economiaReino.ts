@@ -9,7 +9,7 @@ import { estacionFor } from '../worldClock.js';
 import { locationTerrainTags } from '../../scripts/worldCatalog.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { volverASuPueblo } from './salidas.js';
-import { avisarEnReino, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
+import { avisarEnReino, cazadoresAdultos, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
 import { costeDePiezas, desgasteSemanal, EQUIPO, equipoDeAlta, gastarMateriales, piezasEnCasa, roturaSinPagar, talleresDelReino } from './facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
@@ -263,9 +263,11 @@ async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; s
   const ownerKey = ownerKeyFor({ saveId });
   const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
   const r = roturaSinPagar(c);
+  // CR-63 (P281): el cazador lleva arma como un soldado, así que cuenta para el tope.
+  const conArma = c.soldados + (await cazadoresAdultos(tx, saveId));
   await tx.kingdomStats.update({
     where: { ownerKey },
-    data: { sinHerramienta: Math.min(c.trabajadores, k.sinHerramienta + r.sinHerramienta), sinArma: Math.min(c.soldados, k.sinArma + r.sinArma) },
+    data: { sinHerramienta: Math.min(c.trabajadores, k.sinHerramienta + r.sinHerramienta), sinArma: Math.min(conArma, k.sinArma + r.sinArma) },
   });
 }
 

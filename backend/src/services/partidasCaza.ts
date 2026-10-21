@@ -18,7 +18,7 @@ import { combatienteDeNpc } from './factionExpeditions.js';
 import { descontarZonePointCaza } from './caza.js';
 import { decrementPopulationOnDeath } from './population.js';
 import { aprovecharAnimal } from './cronista/ganadoReino.js';
-import { recalcularPoblacion } from './cronista/subditos.js';
+import { recalcularPoblacion, subditosSinArma } from './cronista/subditos.js';
 import { morir } from './cronista/salidas.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 
@@ -72,9 +72,11 @@ export async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Prom
     });
   }
   const subditos = await tx.subject.findMany({ where: { id: { in: v.miembros.map((m) => m.subjectId).filter((x): x is string => !!x) }, estado: 'ACTIVO' } });
+  // Q3 (P281): como un soldado, quien no tiene arma pelea sin su bono.
+  const sinArma = subditos.length > 0 ? await subditosSinArma(tx, v.saveId, (await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0) : new Set<string>();
   for (const s of subditos) {
     const m = v.miembros.find((x) => x.subjectId === s.id)!;
-    out.push({ miembroId: m.id, subjectId: s.id, c: { ...soldadoGenerico(s.id, s.name, 'A', await baseDePueblo(tx, worldId, s.pueblo ?? 'orcos'), true), conNombre: false } });
+    out.push({ miembroId: m.id, subjectId: s.id, c: { ...soldadoGenerico(s.id, s.name, 'A', await baseDePueblo(tx, worldId, s.pueblo ?? 'orcos'), !sinArma.has(s.id)), conNombre: false } });
   }
   const raza = v.factionId ? (await tx.faction.findUnique({ where: { id: v.factionId }, select: { raza: true } }))?.raza ?? null : null;
   for (const m of v.miembros.filter((x) => x.genericos > 0)) {
@@ -167,9 +169,15 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
 
   const nombre = npc?.name ?? especie;
   const quien = cuerdas > 0 ? 'La partida de captura' : 'La partida de caza';
+  // P280: una partida que pelea y no abate nada lo cuenta (quién cae, quién no tenía arma), no «abate 0».
+  const caidos = cazadores.filter((h) => !enPie(condicion.get(h.c.id)!) || muertos.has(h.c.id)).length;
+  const heridos = cazadores.filter((h) => condicion.get(h.c.id) !== 'ILESO').length;
+  const desarmados = cazadores.filter((h) => h.c.attributeBonus === 0 && !h.companionId).length;
   const resumen = encuentros === 0
     ? `${quien} no encuentra ${nombre} en ${lugar.name} y vuelve de vacío.`
-    : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar.name}${muertos.size > 0 ? `; caen ${muertos.size} de los suyos` : ''}.`;
+    : piezas === 0 && capturados === 0
+      ? `${quien} planta cara a ${nombre} en ${lugar.name} y no abate ninguno: ${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran${muertos.size > 0 ? `; caen ${muertos.size}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
+      : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar.name}${muertos.size > 0 ? `; caen ${muertos.size} de los suyos` : ''}.`;
   return { especie, piezas, diaCaza: dia, resumen, ...(cuerdas > 0 ? { cuerdas: cuerdas - capturados, capturados } : {}) };
 }
 

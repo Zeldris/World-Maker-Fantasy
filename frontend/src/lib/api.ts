@@ -1652,11 +1652,16 @@ export interface PartidaInfo {
   destino: string
   permanente: boolean
   miembros: string[]
-  carga: { piezas?: number; capturados?: number } | null
+  carga: { piezas?: number; capturados?: number; resumen?: string } | null
+  /// Día en que volvió a casa (solo las que ya terminaron).
+  vueltaDia?: number | null
 }
 export interface OpcionesPartida {
   origen: { id: string; name: string } | null
-  cazadores: { id: string; name: string }[]
+  /// `sinArma`: sin arma no sale (Q3 de CR-63, como un soldado).
+  cazadores: { id: string; name: string; sinArma?: boolean }[]
+  /// Nombres de los cazadores que están fuera con una partida.
+  cazadoresFuera?: string[]
   grupos: { slotIndex: number; nombre: string; companeros: { id: string; name: string }[] }[]
   destinos: { id: string; name: string; region: string; especies: { slug: string; name: string; cantidad: number; capturable: boolean }[] }[]
 }
