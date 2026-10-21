@@ -86,18 +86,23 @@ def resumen_entrada(nombre, entrada):
 ARCHIVO = re.compile(r'(?<![\w/.-])((?:[\w.-]+/)*[\w.-]+\.(?:ts|tsx|js|mjs|py|md|sh|json|jsonl|sql|prisma|css|html))(?![\w/])')
 LEE = re.compile(r'(?:^|[|;&(]\s*|\s)(?:cat|sed|head|tail|grep|rg|awk|wc|less|nl|cut)\s')
 CD = re.compile(r'^\s*cd\s+(\S+)\s*&&')
+# QA-179: lo que va justo detrás de un intérprete (o con `./`) se ejecuta, no se lee: `bash tools/qa/host.sh grep …`.
+EJECUTA = re.compile(r'(?:^|[|;&(]\s*|\s)(?:(?:bash|sh|python3?|node)\s+(?:-\S+\s+)*|(?=\./))(\S+)')
 
 
 def rutas_leidas(nombre, entrada, raiz):
     """QA-175: los archivos que lee una llamada, con la ruta desde la raíz del repo. Read: su `file_path`; Bash: las
-    rutas de la orden si lleva una orden de lectura (con `cd <dir> &&` delante, relativas a <dir>)."""
+    rutas de la orden si lleva una orden de lectura (con `cd <dir> &&` delante, relativas a <dir>), salvo los scripts
+    que la orden ejecuta."""
     if nombre == 'Read' and entrada.get('file_path'):
         rutas = [entrada['file_path']]
     elif nombre == 'Bash' and LEE.search(entrada.get('command') or ''):
         orden = entrada['command']
         cd = CD.match(orden)
         base = cd.group(1) if cd else ''
-        rutas = [r if r.startswith('/') or not base else os.path.join(base, r) for r in ARCHIVO.findall(orden)]
+        ejecutados = {os.path.normpath(e) for e in EJECUTA.findall(orden)}
+        rutas = [r if r.startswith('/') or not base else os.path.join(base, r)
+                 for r in ARCHIVO.findall(orden) if os.path.normpath(r) not in ejecutados]
     else:
         return []
     fuera = raiz.rstrip('/') + '/'
