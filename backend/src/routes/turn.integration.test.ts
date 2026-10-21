@@ -2836,7 +2836,43 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
 // tick puro (eso ya lo cubre kingdomTick.test.ts a fondo). Un solo turno con `duracionEstimadaMinutos`
 // enorme cruza los 7 días de golpe (mismo patrón ya usado por el resto de este archivo con
 // construcciones "banda larga"), evitando 7 turnos reales por test.
+// Test intermitente cerrado (2026-09-28, CI del instalador): un turno "larga" (esperar 7 días)
+// hace que `/turn/classify` cree el tránsito y lance `startEagerTransitResolution` en segundo
+// plano, y `doPassiveTurn` llama además a `/turn/narrate`. Los dos compiten por
+// `claimTurnInFlight`: si gana la resolución en segundo plano, `/turn/narrate` responde 409 al
+// momento y el test comprobaba el resultado antes de que esa resolución terminara (esperaba hasta
+// `transitMaxRealMinutes` reales). Ahora la espera real se acorta en estos describes y se espera a
+// que el reloj de ficción haya avanzado de verdad — lo hace cualquiera de los dos caminos, el que
+// gane — antes de mirar el resultado.
+const MINUTOS_ESPERA_LARGA = 7 * 1440;
+async function esperarEsperaLargaResuelta(saveId: string, minutosAntes: number): Promise<void> {
+  const limite = Date.now() + 15_000;
+  for (;;) {
+    const { fictionalMinutes } = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    if (fictionalMinutes - minutosAntes >= MINUTOS_ESPERA_LARGA) return;
+    if (Date.now() > limite) throw new Error(`la espera larga no se resolvió (avanzó ${fictionalMinutes - minutosAntes} min)`);
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
 describe('Territory.control/population: felicidad sostenida consolida o rebela (Grupo 3, 2026-08-23)', () => {
+
+  // Test intermitente cerrado (2026-09-28, CI del instalador): estos turnos esperan 7 días en La
+  // Hondonada del Eco, el único sitio con interrupciones estacionarias (`pickStationaryInterruption`,
+  // 18 % por tramo con `Math.random()` real). Si una cortaba la espera, no pasaban los 7 días y el
+  // resultado cambiaba (territorio sin perder, orden sin producir). Aquí se prueba el tick de Reino,
+  // no las interrupciones: se desactivan solo en este describe.
+  // Y la espera real del tránsito, a ~1 s (ver `esperarEsperaLargaResuelta`).
+  const originalStationaryProbability = env.stationaryInterruptionProbabilityPerChunk;
+  const originalTransitMaxRealMinutes = env.transitMaxRealMinutes;
+  beforeAll(() => {
+    env.stationaryInterruptionProbabilityPerChunk = 0;
+    env.transitMaxRealMinutes = 0.02;
+  });
+  afterAll(() => {
+    env.stationaryInterruptionProbabilityPerChunk = originalStationaryProbability;
+    env.transitMaxRealMinutes = originalTransitMaxRealMinutes;
+  });
   let saveId: string;
   let territoryId: string;
   let buildingId: string;
@@ -2896,9 +2932,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
   // por `mentionsExplicitDuration` ("varios días") para que ningún guard lo capture y lo cape.
   async function doPassiveTurn(action: string) {
     const app = await buildApp();
+    const minutosAntes = (await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).fictionalMinutes;
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     const { classification, roll } = classifyRes.json();
-    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    await esperarEsperaLargaResuelta(saveId, minutosAntes);
+    return res;
   }
 
   it('felicidad ≥70 sostenida 7 días consolida el territorio y da 300 XP de Reino', async () => {
@@ -2953,6 +2992,23 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
 // Mismo patrón que el describe de arriba: Building/Companion/OrdenProduccion sembrados directo por
 // Prisma, un turno pasivo con salto de 7 días de golpe.
 describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-09-21)', () => {
+
+  // Test intermitente cerrado (2026-09-28, CI del instalador): estos turnos esperan 7 días en La
+  // Hondonada del Eco, el único sitio con interrupciones estacionarias (`pickStationaryInterruption`,
+  // 18 % por tramo con `Math.random()` real). Si una cortaba la espera, no pasaban los 7 días y el
+  // resultado cambiaba (territorio sin perder, orden sin producir). Aquí se prueba el tick de Reino,
+  // no las interrupciones: se desactivan solo en este describe.
+  // Y la espera real del tránsito, a ~1 s (ver `esperarEsperaLargaResuelta`).
+  const originalStationaryProbability = env.stationaryInterruptionProbabilityPerChunk;
+  const originalTransitMaxRealMinutes = env.transitMaxRealMinutes;
+  beforeAll(() => {
+    env.stationaryInterruptionProbabilityPerChunk = 0;
+    env.transitMaxRealMinutes = 0.02;
+  });
+  afterAll(() => {
+    env.stationaryInterruptionProbabilityPerChunk = originalStationaryProbability;
+    env.transitMaxRealMinutes = originalTransitMaxRealMinutes;
+  });
   let saveId: string;
   let buildingId: string;
   let companionId: string;
@@ -2995,9 +3051,12 @@ describe('OrdenProduccion: tick real de producción de Reino (§ 4.4-ter, 2026-0
 
   async function doPassiveTurn(action: string) {
     const app = await buildApp();
+    const minutosAntes = (await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).fictionalMinutes;
     const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
     const { classification, roll } = classifyRes.json();
-    return app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    await esperarEsperaLargaResuelta(saveId, minutosAntes);
+    return res;
   }
 
   it('con materia prima en el Almacén, un trabajador sin oficio produce una receta sin oficio (smokeMeat)', async () => {

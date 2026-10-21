@@ -2767,7 +2767,16 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       energyCost: 0,
       energyRegen: 0,
     };
-    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    // Test intermitente cerrado (2026-09-28, CI del instalador): el éxito de ANALISIS sale de la
+    // tirada real del atacante (`utilityTriggered` sobre `resolveIndependentExchange`) y el test no
+    // la fijaba — con una tirada baja no se marcaba nada y fallaba sin ningún bug detrás. Aquí se
+    // prueba A QUIÉN se marca, no la tirada: se fuerza un d20 alto solo durante este turno.
+    const tirada = vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    try {
+      await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    } finally {
+      tirada.mockRestore();
+    }
 
     const analizadoFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: analizado.id } });
     const otroFresco = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: otro.id } });
