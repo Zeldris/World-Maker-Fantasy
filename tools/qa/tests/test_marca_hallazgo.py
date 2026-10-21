@@ -112,6 +112,16 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Arreglados, sin comprobar jugando** (2): P2, P8.', texto)
         self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
 
+    def test_arreglado_sin_check_cuenta_como_arreglado(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | arreglado (2026-10-19, decisión de la usuaria): suma a la Comida |
+| P8 | Ocho | arreglado (2026-10-19): test en verde. Jugado ✓ (2026-10-19) |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Arreglados, sin comprobar jugando** (2): P2, P7.', texto)
+        self.assertIn('- **Comprobados jugando** (2): P3, P8.', texto)
+        self.assertIn('- **Pendientes de una decisión de la usuaria** (1): P4.', texto)
+
     def test_comprobar_avisa_de_un_estado_contradictorio(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | No aplica. ✅ hecho |\n| P8 | Ocho | ✅ 2026-10-13 (decisión de la usuaria): así |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
@@ -119,6 +129,19 @@ class Resumen(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertIn('P7 se contradice', r.stderr)
         self.assertNotIn('P8', r.stderr)
+
+    def test_comprobar_falla_con_un_pendiente_que_no_lo_dice(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | resuelto con un parche |\n'
+                 '| P8 | Ocho | **Pendientes**: falta el texto |\n| P9 | Nueve | 🔴 abierto |\n'
+                 '| P10 | Diez | ✅ hecho. Reabierto en la ronda 3 |\n| P11 | Once | resuelto del todo |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('no lo dice (QA-185): P7, P11;', r.stderr)
+
+    def test_comprobar_pasa_si_cada_pendiente_lo_dice(self):
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
 
     def test_comprobar_sin_marcas_falla(self):
         escribir(self.ruta, CON_RESUMEN.replace(INICIO, '<!-- resumen -->'))

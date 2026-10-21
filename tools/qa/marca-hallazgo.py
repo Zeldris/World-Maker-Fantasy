@@ -84,10 +84,11 @@ def grupo(estado: str) -> str:
         return 'pendiente'
     if re.match(r'(no aplica|dato\b|→ roadmap|🧭|va al roadmap|pasa al roadmap)', bajo):
         return 'cerrado'
-    if '✅' in t:
+    # Desde la ronda del 2026-10-19 muchas filas abren con «arreglado (…)» sin el ✅: cuentan igual.
+    if '✅' in t or re.match(r'arreglad[oa]s?\b', bajo):
         if re.search(r'\b(pendiente|falta):|\ben parte\b', bajo):
             return 'parte'
-        if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b', bajo):
+        if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', bajo):
             return 'comprobado'
         return 'arreglado'
     if re.search(r'decisi[oó]n de la usuaria|que la usuaria (confirme|decida)', bajo):
@@ -102,6 +103,18 @@ def contradictorio(estado: str) -> bool:
     bajo = t.lower()
     return '✅' in t and bool(re.match(r'(no aplica|→ roadmap|va al roadmap|pasa al roadmap)', bajo)
                              or re.search(r'pendiente de (una |la )?decisi[oó]n|que la usuaria (confirme|decida)', bajo))
+
+
+def raro(estado: str) -> bool:
+    """QA-185: cuenta como pendiente sin decirlo, como las filas «arreglado» sin ✅ que se contaban mal. Lo dice
+    si empieza (tras negritas, emoji o rayas) por «pendiente(s)» o «abierto», o si un «reabierto» lo reabrió."""
+    bajo = sin_citas(estado).lower()
+    if grupo(estado) != 'pendiente':
+        return False
+    reabierto = bajo.rfind('reabierto')
+    if reabierto >= 0 and '✅' not in bajo[reabierto:]:
+        return False
+    return not re.match(r'[^\w]*(pendientes?|abiert[oa]s?)\b', bajo)
 
 
 def partir(linea: str) -> tuple[str, str]:
@@ -146,11 +159,20 @@ def main(args: list[str]) -> None:
         if args[1:] == ['--comprobar']:
             if INICIO_RESUMEN not in lineas or FIN_RESUMEN not in lineas:
                 sys.exit(f'{ruta}: faltan las marcas del resumen (`{INICIO_RESUMEN}` y `{FIN_RESUMEN}`, cada una en su línea)')
+            raros = []
             for linea in lineas:
                 m = re.match(r'^\| (P\d+) \|', linea)
-                if m and contradictorio(partir(linea)[1]):
+                if not m:
+                    continue
+                estado = partir(linea)[1]
+                if contradictorio(estado):
                     print(f'{ruta}: aviso: el estado de {m.group(1)} se contradice (✅ y cerrado o pendiente de la usuaria)',
                           file=sys.stderr)
+                if raro(estado):
+                    raros.append(m.group(1))
+            if raros:
+                sys.exit(f'{ruta}: cuentan como pendientes y su estado no lo dice (QA-185): {", ".join(raros)}; '
+                         'empiézalo por «pendiente», o por «✅»/«arreglado» si ya está arreglado')
             if nuevas != lineas:
                 sys.exit(f'{ruta}: el resumen no coincide con la tabla; rehazlo con `python3 tools/qa/marca-hallazgo.py --resumen`')
             return

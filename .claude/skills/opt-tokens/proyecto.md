@@ -18,6 +18,8 @@ Lo propio de este proyecto para la skill. En otro proyecto, este archivo se rees
   con 300k el techo subió de ~145k a ~220k): `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en `.claude/settings.json`, con los
   puntos de `/clear` de `QA-122`. Antes de `QA-109` el contexto crecía de ~76k a ~742k por tramo (media 428k por llamada).
 - **Sesión directora** (`QA-121`, sustituye la sesión nueva tras cada PR de `QA-110`): skill `orchestrate-dealer`.
+  Si la sesión ya compactó, se propone `/clear` tras fusionar (`QA-187`, paso 6 de `skills-y-modelos.md`): la sesión de la línea encadenó
+  3 PR con 25 compactaciones y ~113k de contexto medio.
 - **Curva de contexto en `medir.py`** (`QA-111`): suelo, techo y llamadas por tramo entre compactaciones; desde
   `QA-127`, medio y techo de cada uno de los últimos 8 tramos y el medio sin el primer tramo a medias.
 - **`medir.py --desde <ISO|sha>`** (`QA-134`): mide solo desde una fecha o desde un commit (su fecha), con el primer tramo a medias descartado como en `--horas`.
