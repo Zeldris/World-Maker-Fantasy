@@ -12,11 +12,11 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (71): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
+- **Pendientes** (73): P16, P49, P66, P177, P188, P203, P205, P206, P207, P208, P209, P210, P211,
   P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251, P252, P253, P254, P255,
   P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268, P269, P270, P271, P272,
   P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287, P288,
-  P289, P290, P291, P292, P293, P294, P295, P296, P297, P298.
+  P289, P290, P291, P292, P293, P294, P295, P296, P297, P298, P299, P300.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (5): P70, P131, P151, P155, P186.
 - **Arreglados, sin comprobar jugando** (152): P1, P2, P3, P9, P11, P12, P13, P14, P15, P17, P18,
@@ -346,3 +346,5 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P296 | CR-65/P284 (reino-sano-defensas, Defensa): con la Empalizada caída la pestaña la lista con «Reparar» y repara bien (vuelve a «cobertura +2, ha encajado 0 de 1»); pero tras un asalto sin milicia (avanzar 7 días de golpe) todos los edificios pasan a DAÑADO y Defensa solo lista la Torre: la Empalizada caída no aparece y no hay Reparar. Con la milicia llamada solo quedaron dañados una Choza y el Pozo. P285 no se vio: un asalto en 15 días | pendiente |
 | P297 | CR-59/P286 (reino-guerra-vasallaje, días 39-66): la deuda de vasallaje de Serhu no aparece en Visión general ni en Diplomacia › Clan Serhu; sube y baja sin pagos (7233 → 7148 → 7048 → 8882) y en 27 días no hay patrulla, rearme ni ruptura (rotoEn vacío) ni línea en el diario | pendiente |
 | P298 | CR-37 (reino-guerra-vasallaje, Defensa › Guerra): el orden de las facciones en guerra cambia entre cargas (Helsig/Serhu): «Tributo de 100» pulsado sobre la primera fila pagó a Clan Helsig cuando la lista leída un momento antes empezaba por Serhu. Tributo (100), «Atacar su casa» (3 soldados: «La partida no puede con la casa de Clan Serhu y vuelve. Herkka ha muerto en la guerra.») y la guerra visible funcionan; el ejército enemigo no se vio | pendiente |
+| P299 | Remate C (reino-hambre-sed, 2026-10-21): tras 40 días de hambre y sed el territorio del Reino sale PERDIDO (felicidad baja 14+ días) y el panel de Edificios dice «Necesita un Ayuntamiento construido» para Choza, Pozo, Leñera y Fibrería; Camas: 5/0 aunque quedan súbditos y compañeros viviendo allí, y el agua deja de entrar (bebida −3 al día sin fuente). No hay aviso en Visión general de que el Reino ya no tiene Ayuntamiento ni de cómo recuperarlo; se ve solo en Territorios (PERDIDO). Escenario reino-hambre-sed ya no tiene Ayuntamiento (sirve para hambre y sed, no para reconstruir) | Abierto (jugando, CR-53) |
+| P300 | Remate C: con 2 trabajadores (Pescador + Recolector, fuente perdida) la comida se queda plana en 10 durante 3 días (días 102-104), mientras con 3 Recolectores subía +3 al día (días 80-85); repite P279 con Pescador. Pescador guardado (tarea=Pescador) y el texto promete 3 al día si hay agua junto al Ayuntamiento (que ya no existe): el panel no avisa de que el Pescador «recolecta» o no produce por eso | Abierto (jugando, CR-61, P279) |
