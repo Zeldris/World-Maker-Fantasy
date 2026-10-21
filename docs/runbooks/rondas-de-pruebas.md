@@ -149,6 +149,8 @@ Lo que devuelven los subagentes en `HERRAMIENTAS` (`QA-133`) se apunta aquí, co
 - `turno.js` da «textbox no encontrado» con la barra de habilidades activa (el botón ✨ la alterna) o con un modal abierto.
 - `pulsar.js` con el texto «Leyendas» casa con el rótulo LEYENDA del mapa de zona.
 - El prompt del narrador no se registra: para ver un bloque (verdad, callbacks, memoria), ejecutar `bloqueMemoria` aparte con `tsx`.
+- Las fichas de la Enciclopedia son un modal con fundido: `txt.sh` y el texto del cuerpo no las ven al instante; `j.sh` con una espera de 1 s y buscar el elemento con el nombre y «Reclutar» (o una captura `shot`) las da (ronda 3.3, tanda 10).
+- `ronda.sh` y `combate.js` dicen «no hay combate en marcha» hasta pulsar «Combatir» (`pulsar` con `contiene`), y no rematan: con rivales convalecientes hay que pulsar «Matar», elegir «Ataque Básico» y «Actuar» con `j.sh`; luego «Salir» del fin de combate (ronda 3.3, tanda 10).
 - `pulsar.js` con solo `contiene` falla («Falta window.tk.texto»); `pulsar` «Reino» no dice si se abrió el cajón.
 - El escenario `reino-dia39` no tiene comida, materiales ni Goirnos: Corrales, Partidas, Defensa, oficios y llegadas no
   se pueden provocar así: para eso está `reino-dia39-recursos` (`QA-143`: Granero, comida 180, bolsa 300 y tesoro 251 Goirnos,
