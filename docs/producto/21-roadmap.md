@@ -23,16 +23,18 @@ y el hito de cada fase de los roadmaps temáticos. Ver [Mapa de roadmaps](#mapa-
 
 Un solo frente cada vez, en este orden. Lo que salga fuera de él va a la bandeja de ideas (abajo), no a un roadmap.
 
-1. **Entorno congelado.** Ninguna tarea `QA-*` nueva salvo que algo bloquee de verdad. Las propuestas de las
-   retros se apuntan en la bitácora («Propuestas aprobadas…») y no se aplican hasta cerrar las pruebas.
-2. **Ramas cerradas.** Una sola rama por cuenta. Las que solo llevan la bitácora por delante de `main` se fusionan
-   o se cierran; `claude/instalador-empaquetado` (parada desde el 2026-09-28) se retoma o se archiva, lo decide la usuaria.
+1. **Entorno congelado.** Ninguna tarea `QA-*` nueva salvo que algo bloquee de verdad. De una retro solo se aplica lo
+   que la usuaria apruebe para aplicar ya ([CLAUDE.md](../../CLAUDE.md#pruebas-de-juego)); el resto se apunta en la
+   bitácora («Propuestas aprobadas…») y espera a cerrar las pruebas.
+2. **Ramas cerradas.** Una línea de trabajo por cuenta; cada sesión, su rama (`QA-136`). Las ramas ya fusionadas que
+   solo llevan la bitácora por delante de `main` se cierran; `claude/instalador-empaquetado` (parada desde el
+   2026-09-28) se retoma o se archiva, lo decide la usuaria.
 3. **Cerrar la puerta de pruebas** ([CLAUDE.md](../../CLAUDE.md#pruebas-de-juego), [hallazgos](../registros/pruebas-0.3-hallazgos.md)),
-   que es el único frente activo. A 2026-10-21: 19 de 135 sin jugar (sobre todo Mundo vivo, 29/48), 59 hallazgos pendientes,
-   148 arreglados sin comprobar jugando y 2 decisiones de la usuaria (P215, P218). Orden:
-   1. Los graves (P240, P260) y las dos decisiones.
-   2. Jugar lo que falta de la matriz (`python3 tools/qa/matriz-pruebas.py`).
-   3. Comprobar jugando los arreglados, por tandas de un sistema.
+   que es el único frente activo. Lo que falta, al día: `python3 tools/qa/matriz-pruebas.py` (tareas sin jugar) y el
+   resumen de cabecera de los hallazgos (`python3 tools/qa/marca-hallazgo.py --resumen`). Orden:
+   1. Los graves (P240, P260) y las decisiones pendientes de la usuaria, si las hay.
+   2. Jugar lo que falta de la matriz (sobre todo Mundo vivo).
+   3. Comprobar jugando los arreglados y los arreglados en parte, por tandas de un sistema.
    4. El resto de pendientes.
 4. **Limpieza ligera del roadmap** al cerrar las pruebas, sin reestructurarlo:
    - Cerrar formalmente el `0.1` y el `0.2`. Lo que espera a Álvaro pasa a [Preguntas abiertas para

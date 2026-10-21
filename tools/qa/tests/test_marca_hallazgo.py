@@ -112,6 +112,16 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Arreglados, sin comprobar jugando** (2): P2, P8.', texto)
         self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
 
+    def test_arreglado_sin_check_cuenta_como_arreglado(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | arreglado (2026-10-19, decisión de la usuaria): suma a la Comida |
+| P8 | Ocho | arreglado (2026-10-19): test en verde. Jugado ✓ (2026-10-19) |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Arreglados, sin comprobar jugando** (2): P2, P7.', texto)
+        self.assertIn('- **Comprobados jugando** (2): P3, P8.', texto)
+        self.assertIn('- **Pendientes de una decisión de la usuaria** (1): P4.', texto)
+
     def test_comprobar_avisa_de_un_estado_contradictorio(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | No aplica. ✅ hecho |\n| P8 | Ocho | ✅ 2026-10-13 (decisión de la usuaria): así |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)

@@ -84,10 +84,11 @@ def grupo(estado: str) -> str:
         return 'pendiente'
     if re.match(r'(no aplica|dato\b|→ roadmap|🧭|va al roadmap|pasa al roadmap)', bajo):
         return 'cerrado'
-    if '✅' in t:
+    # Desde la ronda del 2026-10-19 muchas filas abren con «arreglado (…)» sin el ✅: cuentan igual.
+    if '✅' in t or re.match(r'arreglad[oa]s?\b', bajo):
         if re.search(r'\b(pendiente|falta):|\ben parte\b', bajo):
             return 'parte'
-        if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b', bajo):
+        if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', bajo):
             return 'comprobado'
         return 'arreglado'
     if re.search(r'decisi[oó]n de la usuaria|que la usuaria (confirme|decida)', bajo):
