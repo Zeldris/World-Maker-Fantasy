@@ -176,5 +176,43 @@ class Cerradas(unittest.TestCase):
         self.assertEqual(self.correr(sha).returncode, 0)
 
 
+
+class EnCurso(unittest.TestCase):
+    """QA-182: aviso de una tarea 🚧 que los commits nombran y cuya entrada del roadmap no cambia."""
+
+    def setUp(self):
+        self.repo = carpeta()
+        git(self.repo, 'init', '-q')
+        self.roadmap = ('- **QA-1 · Una** 🚧 en curso:\n  falta X.\n- **QA-2 · Dos**\n'
+                        '- ~~**QA-3 · Tres**~~ ✅\n| QA-4 | Cuatro 🚧 |\n')
+        self.base = self.commit(self.roadmap, 'base')
+
+    def commit(self, roadmap: str, mensaje: str) -> str:
+        escribir(os.path.join(self.repo, 'docs/producto/roadmap.md'), roadmap)
+        escribir(os.path.join(self.repo, 'otro.txt'), mensaje)
+        git(self.repo, 'add', '-A')
+        git(self.repo, 'commit', '-q', '-m', mensaje)
+        return git(self.repo, 'rev-parse', 'HEAD')
+
+    def correr(self, sha: str) -> subprocess.CompletedProcess:
+        return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--en-curso', self.base, sha],
+                              cwd=self.repo, capture_output=True, text=True)
+
+    def test_avisa_sin_fallar_de_la_en_curso_sin_tocar(self):
+        r = self.correr(self.commit(self.roadmap, 'Avanza QA-1, QA-2, QA-3 y QA-4'))
+        self.assertEqual(r.returncode, 0)
+        self.assertIn('QA-1', r.stdout)
+        self.assertIn('QA-4', r.stdout)
+        self.assertNotIn('QA-2', r.stdout)
+        self.assertNotIn('QA-3', r.stdout)
+
+    def test_la_entrada_tocada_aunque_sea_en_su_continuacion_no_avisa(self):
+        r = self.correr(self.commit(self.roadmap.replace('falta X', 'falta Y'), 'Avanza QA-1'))
+        self.assertEqual(r.stdout, '')
+
+    def test_sin_nombrarla_no_avisa(self):
+        self.assertEqual(self.correr(self.commit(self.roadmap, 'Otra cosa')).stdout, '')
+
+
 if __name__ == '__main__':
     unittest.main()

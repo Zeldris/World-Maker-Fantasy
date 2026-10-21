@@ -20,6 +20,10 @@ cambia una fila «Tarea en curso · `<otra rama>`» o una fila compartida de «E
 trabajo, Último commit en main, Hito…). Cada rama escribe solo en la suya (`QA-136`). «Actualizado» y
 «Tests» se tocan en casi cada commit y no se vigilan. Lo corre `prepush-ramas.sh` en cada commit nuevo que
 no es un merge; para un cambio compartido a propósito, `BITACORA_COMPARTIDA=1 git push`.
+
+QA-182 (retro del 2026-10-21): `bitacora.py --en-curso <base> <sha>` avisa, sin fallar, de cada tarea `🚧` de un
+roadmap que nombran los commits entre esos dos y cuya entrada no cambia: la de `QA-176` siguió diciendo «Falta:
+banco del narrador» con el banco hecho en otra rama. Lo corre `prepush-ramas.sh`.
 """
 import re
 import subprocess
@@ -102,6 +106,40 @@ def filas_ajenas(antes: str, despues: str, rama: str) -> list[str]:
             if a.get(k) != d.get(k) and k != propia and k not in LIBRES]
 
 
+ENTRADA = re.compile(rf"[-|]\s*(~~)?\s*(?:\*\*)?`?({ID})\b")
+
+
+def entradas(texto: str) -> dict[str, str]:
+    """Entradas de un roadmap: id -> su texto, desde la línea que la abre (`- **QA-1 · …`, `| REI-53 | …`) hasta
+    la siguiente sin sangría. Las tachadas (cerradas o movidas) no se guardan."""
+    res: dict[str, str] = {}
+    actual = None
+    for l in texto.splitlines():
+        if l[:1] in (" ", "\t") and actual:
+            res[actual] += "\n" + l
+            continue
+        m = ENTRADA.match(l)
+        actual = m.group(2) if m and not m.group(1) else None
+        if actual:
+            res[actual] = l
+    return res
+
+
+def en_curso_sin_tocar(base: str, sha: str) -> list[str]:
+    """Tareas `🚧` que nombran los commits de `base..sha` (sin merges) y cuya entrada en los roadmaps no cambia."""
+    nombradas = set(re.findall(ID, git("log", "--no-merges", "--format=%B", f"{base}..{sha}").stdout))
+    if not nombradas:
+        return []
+    antes: dict[str, set[str]] = {}
+    despues: dict[str, set[str]] = {}
+    for ruta in (r for r in git("ls-tree", "--name-only", sha, ROADMAPS).stdout.split() if r.endswith(".md")):
+        for commit, destino in ((base, antes), (sha, despues)):
+            r = git("show", f"{commit}:{ruta}")
+            for i, t in (entradas(r.stdout) if r.returncode == 0 else {}).items():
+                destino.setdefault(i, set()).add(t)
+    return sorted(i for i in nombradas if any("🚧" in t for t in despues.get(i, ())) and despues[i] == antes.get(i))
+
+
 def contenido(commit: str) -> str:
     r = git("show", f"{commit}:{RUTA_BITACORA}")
     return r.stdout if r.returncode == 0 else ""
@@ -121,6 +159,14 @@ if sys.argv[1:2] == ["--ajenas"]:
               "«Tarea en curso» (QA-136). Si es a propósito (cerrar un PR, fila compartida), "
               "sube con `BITACORA_COMPARTIDA=1 git push` o corre bitacora.py con --compartida")
     sys.exit(1 if ajenas else 0)
+
+if sys.argv[1:2] == ["--en-curso"]:
+    if len(sys.argv) != 4:
+        sys.exit("Uso: python3 tools/qa/bitacora.py --en-curso <commit base> <commit>")
+    for t in en_curso_sin_tocar(sys.argv[2], sys.argv[3]):
+        print(f"aviso: los commits nombran {t}, en curso (🚧), y su entrada del roadmap no cambia; si avanzó o queda "
+              "algo distinto pendiente, apúntalo ahí (QA-182)")
+    sys.exit(0)
 
 if sys.argv[1:2] == ["--cerradas"]:
     if len(sys.argv) != 4:

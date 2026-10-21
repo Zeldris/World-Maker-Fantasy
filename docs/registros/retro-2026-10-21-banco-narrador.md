@@ -10,7 +10,7 @@ Lo revisado: lo que entra con el PR a `main` (`git log origin/main..HEAD`). Es e
 
 También se revisan las skills `scout-updates` (`banco-calidad.md`, `banco.py`), `opt-tokens` y `/code-review`.
 
-**Estado (2026-10-21): pendiente de la usuaria.**
+**Estado (2026-10-21): aprobadas todas por la usuaria.** Aplicadas en la rama antes del PR: 1 (`QA-177`), 2 (`QA-178`), 3 (`QA-179`), 4 (`QA-180`) y 6 (`QA-182`). La 5 queda como `QA-181`, para la próxima sesión de arreglos.
 
 ## Medida (`/opt-tokens`)
 
@@ -45,7 +45,7 @@ y uno estaba atribuido al modelo equivocado (la fuga de metadatos es de gemma3, 
 - los motivos de los pares que pierde cada modelo (con la clave ya abierta).
 
 El paso del informe en `banco-calidad.md` dice entonces que todas las cifras y los fallos típicos salen de
-`--detalle`. Va con su test en `test_scripts.py`.
+`--detalle`. Va con su test en `test_banco.py`.
 
 **Riesgo:** ninguno; es la misma cuenta, puesta a la vista.
 
