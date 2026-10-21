@@ -8,7 +8,7 @@ Al acabar, `marca-hallazgo.py --resumen` dice qué arreglados quedan fuera del r
 
 | Tanda | Sistema | Escenario | Hallazgos | Estado |
 |---|---|---|---|---|
-| 1 | Partida nueva, menús y Habilidades | partida nueva | P38, P53, P54, P57, P58, P42, P99, P100, P101, P110, P114, P126, P67, P19, P80 | |
+| 1 | Partida nueva, menús y Habilidades | partida nueva | P38, P53, P54, P57, P58, P42, P99, P100, P101, P110, P114, P126, P67, P19, P80 | ✅ 2026-10-21: 14 comprobados, P99 reabierto (descripciones de oficio aún repiten la región) |
 | 2 | Descanso, acciones libres e inventario | `hondonada-inicio` | P17, P18, P72, P74, P83, P84, P85, P86, P87, P121, P141 | |
 | 3 | Mapa de zona y recolección en la Hondonada | `hondonada-inicio` | P20, P21, P24, P60, P61, P62, P88, P90, P95, P108, P151, P158, P159, P160, P161, P162, P163, P168, P169 | |
 | 4 | Viajar de la Hondonada al Pozo | `hondonada-inicio` | P6, P46, P47, P68, P91, P115, P170, P204, P186 (viaje), P125, P133 | |
