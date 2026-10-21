@@ -12,19 +12,19 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (77): P16, P27, P49, P66, P99, P158, P169, P177, P188, P203, P205, P206, P207,
+- **Pendientes** (76): P16, P27, P49, P66, P99, P158, P169, P177, P188, P203, P205, P206, P207,
   P208, P209, P210, P211, P212, P213, P241, P242, P243, P244, P245, P246, P247, P248, P250, P251,
   P252, P253, P254, P255, P256, P257, P258, P259, P261, P262, P263, P264, P265, P266, P267, P268,
   P269, P270, P271, P272, P273, P274, P275, P276, P277, P278, P279, P280, P281, P282, P283, P284,
-  P285, P286, P287, P288, P291, P292, P293, P295, P296, P297, P298, P299, P300, P301, P302, P303.
+  P285, P286, P287, P288, P291, P292, P295, P296, P297, P298, P299, P300, P301, P302, P303.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (7): P12, P70, P131, P151, P155, P186, P294.
-- **Arreglados, sin comprobar jugando** (79): P25, P26, P29, P32, P33, P35, P36, P37, P41, P43, P44,
+- **Arreglados, sin comprobar jugando** (80): P25, P26, P29, P32, P33, P35, P36, P37, P41, P43, P44,
   P45, P46, P47, P51, P52, P55, P56, P69, P76, P77, P79, P82, P90, P94, P95, P102, P103, P105, P106,
   P107, P112, P116, P119, P121, P124, P125, P128, P129, P134, P136, P139, P140, P143, P153, P156,
   P157, P163, P167, P171, P173, P174, P175, P176, P180, P181, P182, P183, P184, P189, P190, P191,
   P192, P193, P195, P198, P199, P200, P201, P202, P204, P221, P223, P224, P236, P237, P240, P260,
-  P290.
+  P290, P293.
 - **Comprobados jugando** (121): P1, P2, P3, P4, P6, P7, P8, P9, P11, P13, P14, P15, P17, P18, P19,
   P20, P21, P24, P28, P31, P38, P39, P42, P50, P53, P54, P57, P58, P60, P61, P62, P63, P64, P65,
   P67, P68, P72, P73, P74, P78, P80, P81, P83, P84, P85, P86, P87, P88, P91, P92, P93, P96, P97,
@@ -340,7 +340,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P290 | CR-46: GET /expediciones/mapa devuelve la expedición «viajeros, de vuelta» con faccion «tu Reino» pero delReino:false (el flag lo calcula e.faction.id === reino.id); la banderita sí sale en el mapa de Berig con su tarjeta («Expedición de tu Reino», va a La Desembocadura Callada). Ronda Mundo vivo tanda 5, reino-dia39-recursos. | Arreglado (2026-10-21, 9e2432f4): un viajero sin facción solo sale como «tu Reino» si delReino; si no, «Bandidos» con oficio asalto. Test en viajerosCruce. |
 | P291 | CR-42 (reino-companero-npc, día 39, Compañeros): «¿Qué se sabe en tu tierra?» de Tirag Susig (Clan Serhu) cuenta la misma noticia dos veces seguidas («Una tormenta terrible arrasa las Llanuras del Viento Rojo.» ×2), y la de Hagar Kiugh sí trae dos distintas; además la tormenta no es de «su tierra» (Serhu). Comprobado jugando. | Abierto |
 | P292 | CR-45 (reino-combate-capitan, día 39): el capitán funciona: Ulkha Ketg lleva «⚑ a por ti» (tooltip «Capitán: ordena a los suyos caer sobre ti») y el diario «ordena caer sobre Gorhorn»; en la ronda 3 pasó a «a por Hagar Kiugh» y el tooltip lo siguió. Pero en el resto de rondas todos los golpes de Hulki, Herrero Serhu y Ulkha fueron a Gorhorn y no se vio caer a ninguno sobre los compañeros pese a la orden. Comprobado jugando; Gorhorn (nivel 2, Terk'ikar nivel 24) muere en 4 rondas, sin poder ganar. | Abierto |
-| P293 | CR-15/CR-16 (reino-combate-capitan): tras COMBATE_PERDIDO y MUERTE_JUGADOR contra Ulkha Ketg, ni NpcState.titulo («Vencedor de Gorhorn») ni nivelesGanados ni filas de Recuerdo se crean (0), y la aprobación de Tirag y Hagar sigue en 50. El escenario no deja ganar, matar ni perdonar a nadie, así que los vectores de aprobación, los Recuerdos y «se va» siguen sin poder jugarse. | Abierto (limitación de escenario) |
+| P293 | CR-15/CR-16 (reino-combate-capitan): tras COMBATE_PERDIDO y MUERTE_JUGADOR contra Ulkha Ketg, ni NpcState.titulo («Vencedor de Gorhorn») ni nivelesGanados ni filas de Recuerdo se crean (0), y la aprobación de Tirag y Hagar sigue en 50. El escenario no deja ganar, matar ni perdonar a nadie, así que los vectores de aprobación, los Recuerdos y «se va» siguen sin poder jugarse. | Arreglado (2026-10-21, 6de0e87e): escenario reino-combate-ganable, contra Herrero Serhu (nivel 1) con Tirag y Hagar en el grupo; se gana y el rival queda vivo para matar o perdonar. Ganan sobre todo los compañeros. Falta jugar CR-15/CR-16 en la ronda. |
 | P294 | CR-47 (reino-sano-defensas, días 40-55, Reino › Diplomacia): una orden permanente «Comprar Cuerdas si baja de 20 · 5 por viaje · con Clan Serhu» (Almacén con 10, Mercado ACTIVO, tesoro 2 y después 202 Goirnos) queda activa 15 días y no sale ninguna caravana (caravanas vacío, ni línea en el diario); no se vio la caravana ni su asalto | Arreglado en parte (2026-10-21, 9e2432f4): la orden no salía porque ninguna facción con trato tenía Cuerdas; ahora lo dice en el diario («La orden de comprar X no sale: …», una vez por semana). La regla no cambia; si las facciones deben producir o guardar Cuerdas queda a decisión de la usuaria. |
 | P295 | CR-65 (día 42, Defensa): «Llamar a la milicia» sale en la alerta de la Torre aunque el Reino no tenga trabajadores y da error 400 («No hay equipos libres en la Armería o trabajadores que armar»); con 2 trabajadores (preparar) no avisa de nada visible, enMilicia vale 0 tras el asalto y el diario del asalto (día 44: 37 comida, 5 Goirnos y 12 objetos saqueados, Empalizada caída) no menciona milicia ni guarnición | pendiente |
 | P296 | CR-65/P284 (reino-sano-defensas, Defensa): con la Empalizada caída la pestaña la lista con «Reparar» y repara bien (vuelve a «cobertura +2, ha encajado 0 de 1»); pero tras un asalto sin milicia (avanzar 7 días de golpe) todos los edificios pasan a DAÑADO y Defensa solo lista la Torre: la Empalizada caída no aparece y no hay Reparar. Con la milicia llamada solo quedaron dañados una Choza y el Pozo. P285 no se vio: un asalto en 15 días | pendiente |
