@@ -279,7 +279,7 @@ export function sinVictoriaYaContada<S extends { tipo: string; fictionalMinutes:
 /// («¿Qué se cuenta?», CR-18) y los compañeros («¿Qué se sabe en tu tierra?», CR-42).
 export async function contarNoticias(
   tx: Prisma.TransactionClient,
-  p: { saveId: string; nombre: string; fuente: string; quien: { region: string | null; faccion: string | null }; sinNada?: string },
+  p: { saveId: string; nombre: string; fuente: string; quien: { region: string | null; faccion: string | null }; sinNada?: string; soloPropias?: boolean },
 ): Promise<{ frase: string; contadas: number }> {
   const { saveId, nombre, fuente, quien } = p;
   const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
@@ -307,10 +307,14 @@ export async function contarNoticias(
     .filter((s) => {
       const a = alcance.get(s.id)!;
       if (!npcSabe(a, quien, (ahora - s.fictionalMinutes) / MINUTOS_DIA)) return false;
+      // P291: «en tu tierra» solo cuenta lo que pasó en su región o implica a su facción, no rumores de fuera.
+      if (p.soloPropias && !cuentaComoHecho(a, quien)) return false;
       // Lo que ya sabe de oídas solo vale la pena si él puede confirmarlo.
       return s.conocimientos.length === 0 || cuentaComoHecho(a, quien);
     })
     .sort((x, y) => y.importancia - x.importancia || y.fictionalMinutes - x.fictionalMinutes)
+    // P291: dos sucesos con la misma frase (p. ej. dos tormentas) son la misma noticia.
+    .filter((s, i, todos) => todos.findIndex((o) => textoQueCorre(o) === textoQueCorre(s)) === i)
     .slice(0, MAX_CONTADAS);
 
   const frases: string[] = [];

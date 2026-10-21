@@ -41,6 +41,21 @@ describe('«¿Qué se sabe en tu tierra?» (CR-42)', () => {
     expect('frase' in otra && otra.frase).toBe('Rakka: «Ya te he contado todo lo que sé.»');
   });
 
+  it('P291: no repite la misma noticia ni cuenta lo de otra tierra', async () => {
+    const serhu = await prisma.npc.findFirstOrThrow({ where: { worldId, saveId: null, faction: 'Clan Serhu', kind: 'PRINCIPAL' } });
+    const c = await prisma.companion.create({ data: { saveId, name: 'Orrek', role: 'aliado', notes: '', tipo: 'NPC', sourceSlug: serhu.slug, aprobacion: 60 } });
+    for (const m of [MIN - 30, MIN - 20]) {
+      await prisma.$transaction((tx) => registrarSuceso(tx, {
+        saveId, tipo: 'TORMENTA_EXTREMA', fictionalMinutes: m, origen: 'MUNDO', regionSlug: 'las-llanuras-del-viento-rojo',
+        actores: [], datos: { region: 'Las Llanuras del Viento Rojo' },
+      }));
+    }
+    const r = await preguntarCompanero(prisma, saveId, c.id);
+    if (!('frase' in r)) throw new Error(r.error);
+    const trozos = r.frase.split('«').slice(1);
+    expect(new Set(trozos).size).toBe(trozos.length);
+  });
+
   it('con poca aprobación no cuenta nada; un animal no tiene nada que contar', async () => {
     const distante = await prisma.companion.create({ data: { saveId, name: 'Seco', role: 'aliado', notes: '', tipo: 'NPC', aprobacion: 30 } });
     const r = await preguntarCompanero(prisma, saveId, distante.id);
