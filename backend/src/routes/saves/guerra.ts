@@ -2,7 +2,7 @@
 // contraataque.
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { faccionDelReino, lanzarAtaqueAAsentamiento, ofrecerTributo } from '../../services/guerraReino.js';
+import { faccionDelReino, ordenarEnemigas, lanzarAtaqueAAsentamiento, ofrecerTributo } from '../../services/guerraReino.js';
 import { idsDelCuerpo } from './cuerpo.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
@@ -25,7 +25,7 @@ export async function guerraRoutes(app: FastifyInstance) {
       const previa = porFaccion.get(otra.id);
       if (!previa || r.presion > previa.presion) porFaccion.set(otra.id, { id: otra.id, nombre: otra.name, relacion: r.type as 'GUERRA' | 'TENSION', presion: r.presion });
     }
-    return { enemigas: [...porFaccion.values()].sort((a, b) => b.presion - a.presion) };
+    return { enemigas: ordenarEnemigas([...porFaccion.values()]) };
   });
 
   /// Q4: ofrecer tributo a una facción en guerra o tensión.

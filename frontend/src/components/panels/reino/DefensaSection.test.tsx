@@ -60,6 +60,14 @@ describe('DefensaSection (CR-65 65f)', () => {
     expect(postRepararEdificio).toHaveBeenCalledWith('s', 'tor')
   })
 
+  it('P295: sin milicia posible, el botón se desactiva y dice por qué', async () => {
+    vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital], avistados: [{ asentamientoId: 'cap', asentamiento: 'Karot Veku', viajeroId: 'v1', quien: 'Bandidos', gente: 6, tramos: 1, sinMilicia: 'No hay trabajadores adultos que armar.' }] })
+    const { findByRole, getAllByText } = render(<DefensaSection saveId="s" onRefreshSave={async () => {}} />)
+    const boton = (await findByRole('button', { name: 'Llamar a la milicia' })) as HTMLButtonElement
+    expect(boton.disabled).toBe(true)
+    expect(getAllByText('No hay trabajadores adultos que armar.').length).toBeGreaterThan(0)
+  })
+
   it('alerta de asalto con «Llamar a la milicia»; reparar y comprar equipo', async () => {
     vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital], avistados: [{ asentamientoId: 'cap', asentamiento: 'Karot Veku', viajeroId: 'v1', quien: 'Bandidos', gente: 6, tramos: 1 }] })
     vi.mocked(postLlamarMilicia).mockResolvedValue({ ok: true, armados: 3 })

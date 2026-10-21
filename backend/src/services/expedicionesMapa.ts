@@ -93,7 +93,7 @@ export async function expedicionesVisibles(prisma: PrismaClient, saveId: string)
   // CR-63 (63e): los viajeros (partidas de caza y captura…), por el tramo por el que van; CR-65 (Q5):
   // también los asaltos que se ven desde una Torre de vigía.
   visibles.push(...(await prisma.$transaction(async (tx) => {
-    const vistos = new Set((await radarDelReino(tx, saveId)).map((a) => a.viajeroId));
+    const vistos = new Set((await radarDelReino(tx, saveId, dia * 1440)).map((a) => a.viajeroId));
     return viajerosEnMapa(tx, saveId, { dia, regionActual, aliadas, vistos });
   })));
   return visibles;

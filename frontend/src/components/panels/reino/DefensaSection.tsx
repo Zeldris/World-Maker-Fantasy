@@ -77,7 +77,8 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
               <span>
                 ⚑ {v.quien}: {v.gente} a {v.tramos} tramo{v.tramos === 1 ? '' : 's'} de {v.asentamiento}
               </span>
-              <button type="button" disabled={desactivado} title={consulta ?? undefined} onClick={() => void accion(() => postLlamarMilicia(saveId, v.asentamientoId), 'No se pudo llamar a la milicia.')} className="tactile text-2xs font-semibold text-accent-300 hover:underline disabled:opacity-50">
+              {v.sinMilicia && <span className="text-2xs text-red-300/80">{v.sinMilicia}</span>}
+              <button type="button" disabled={desactivado || !!v.sinMilicia} title={consulta ?? v.sinMilicia ?? undefined} onClick={() => void accion(() => postLlamarMilicia(saveId, v.asentamientoId), 'No se pudo llamar a la milicia.')} className="tactile text-2xs font-semibold text-accent-300 hover:underline disabled:opacity-50">
                 Llamar a la milicia
               </button>
             </div>

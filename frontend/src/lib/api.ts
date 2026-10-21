@@ -3178,6 +3178,8 @@ export interface AvistamientoInfo {
   quien: string
   gente: number
   tramos: number
+  /// P295: por qué llamar a la milicia no serviría ahora.
+  sinMilicia?: string
 }
 /// `danados`: Ayuntamiento o Cuartel dañados (P284), que no defienden hasta repararlos.
 export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[] }> {

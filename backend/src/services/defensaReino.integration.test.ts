@@ -98,9 +98,9 @@ describe('radar de la Torre y milicia (CR-65 65c)', () => {
   it('la Torre de escalón 1 con vigía ve 1 tramo; avisa una vez y arma la milicia si estás fuera', async () => {
     const { vigilarDelReino, radarDelReino, TIPO_ASALTO } = await import('./defensaReino.js');
     const asalto = await prisma.viajero.create({ data: { saveId, tipo: TIPO_ASALTO, origenLocationId: lejos, destinoLocationId: casa, ubicacionLocationId: lejos, ruta: [], diaSalida: 1, ultimoDia: 1, miembros: { create: [{ genericos: 6, rol: 'bandido' }] } } });
-    expect(await prisma.$transaction((tx) => radarDelReino(tx, saveId))).toHaveLength(0);
+    expect(await prisma.$transaction((tx) => radarDelReino(tx, saveId, 1440))).toHaveLength(0);
     await prisma.viajero.update({ where: { id: asalto.id }, data: { ubicacionLocationId: cerca } });
-    const [visto] = await prisma.$transaction((tx) => radarDelReino(tx, saveId));
+    const [visto] = await prisma.$transaction((tx) => radarDelReino(tx, saveId, 1440));
     expect(visto).toMatchObject({ asentamientoId: capitalId, viajeroId: asalto.id, gente: 6, tramos: 1, quien: 'Bandidos' });
     // En el mapa: el asalto se ve aunque no sea de la región (hostil) y la Torre dibuja su alcance.
     const { expedicionesVisibles } = await import('./expedicionesMapa.js');
@@ -119,5 +119,27 @@ describe('radar de la Torre y milicia (CR-65 65c)', () => {
     await vigilarDelReino(prisma, saveId, 4);
     expect(await prisma.subject.count({ where: { saveId, enMilicia: true } })).toBe(0);
     expect((await prisma.kingdomStats.findFirstOrThrow({ where: { saveId } })).trabajadores).toBe(3);
+  });
+
+  // P295: «Llamar a la milicia» dice por qué no sirve en vez de un 400 genérico.
+  it('planMilicia explica por qué no arma a nadie y el radar lo avisa', async () => {
+    const { planMilicia, convocarMilicia, radarDelReino, TIPO_ASALTO } = await import('./defensaReino.js');
+    const ahora = 10 * 1440;
+    const armeria = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'armeria' } });
+    await prisma.building.update({ where: { id: armeria.id }, data: { equiposMilicia: 0 } });
+    expect((await prisma.$transaction((tx) => planMilicia(tx, saveId, capitalId, ahora))).motivo).toMatch(/no tiene equipos/);
+    expect(await prisma.$transaction((tx) => convocarMilicia(tx, saveId, capitalId, ahora))).toBe(0);
+    const asalto = await prisma.viajero.create({ data: { saveId, tipo: TIPO_ASALTO, origenLocationId: lejos, destinoLocationId: casa, ubicacionLocationId: cerca, ruta: [], diaSalida: 1, ultimoDia: 1, miembros: { create: [{ genericos: 6, rol: 'bandido' }] } } });
+    const [visto] = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
+    expect(visto!.sinMilicia).toMatch(/no tiene equipos/);
+    // Con equipos pero sin trabajadores, lo dice también.
+    await prisma.building.update({ where: { id: armeria.id }, data: { equiposMilicia: 2 } });
+    const trabajadores = await prisma.subject.findMany({ where: { saveId, role: 'trabajador' }, select: { id: true } });
+    await prisma.subject.updateMany({ where: { id: { in: trabajadores.map((t) => t.id) } }, data: { role: 'soldado' } });
+    expect((await prisma.$transaction((tx) => planMilicia(tx, saveId, capitalId, ahora))).motivo).toMatch(/No hay trabajadores/);
+    await prisma.subject.updateMany({ where: { id: { in: trabajadores.map((t) => t.id) } }, data: { role: 'trabajador' } });
+    const [ok] = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
+    expect(ok!.sinMilicia).toBeUndefined();
+    await prisma.viajero.update({ where: { id: asalto.id }, data: { estado: 'TERMINADO' } });
   });
 });
