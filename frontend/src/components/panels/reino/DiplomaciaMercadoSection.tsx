@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo } from '../../../types'
-import type { DiplomaciaResultado, EnciclopediaFaccionInfo, MercadoItemInfo } from '../../../lib/api'
-import { getMercado, postDiplomacia, postMercadoComprar, postMercadoVender } from '../../../lib/api'
+import type { DiplomaciaResultado, EnciclopediaFaccionInfo, MercadoItemInfo, VasallajeInfo } from '../../../lib/api'
+import { getMercado, getVasallajes, postDiplomacia, postMercadoComprar, postMercadoVender } from '../../../lib/api'
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { PanelSection } from '../../PanelSection'
 import { razaThemeStyleVars } from '../../../lib/razaTheme'
@@ -58,6 +58,13 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
   // `DiplomaciaCard.onNegociarExito` más abajo) — cambiar de valor es lo único que le importa al
   // `useEffect` de `MercadoCard`, mismo patrón que `refetchToken` de `useEnciclopedia.ts`.
   const [mercadoRefreshToken, setMercadoRefreshToken] = useState(0)
+  // P286: vasallajes del mundo (quién debe a quién y cuánto); un fallo no tapa el resto de la pestaña.
+  const [vasallajes, setVasallajes] = useState<VasallajeInfo[]>([])
+  useEffect(() => {
+    let cancelado = false
+    getVasallajes(saveId).then((r) => { if (!cancelado) setVasallajes(r.vasallajes) }).catch(() => { if (!cancelado) setVasallajes([]) })
+    return () => { cancelado = true }
+  }, [saveId])
 
   if (descubiertas.length === 0) {
     return (
@@ -71,6 +78,7 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
 
   return (
     <div className="flex flex-col gap-4">
+      {vasallajes.length > 0 && <VasallajesCard vasallajes={vasallajes} />}
       <PanelSection title="Facción objetivo">
         <div className="flex flex-wrap gap-1.5">
           {descubiertas.map((f) => (
@@ -99,6 +107,29 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
         </>
       )}
     </div>
+  )
+}
+
+/// P286/P297: la deuda de cada vasallaje (Serhu debe a la Concordia) con lo que pasa cada semana.
+export function VasallajesCard({ vasallajes }: { vasallajes: VasallajeInfo[] }) {
+  return (
+    <PanelSection title="Vasallajes del mundo">
+      <div className="flex flex-col gap-1.5">
+        {vasallajes.map((v) => (
+          <div key={v.vasalloSlug} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs text-wood-300">
+            <p className="font-medium">{v.vasalloNombre} es vasallo de {v.senorNombre}</p>
+            {v.rotoEn == null ? (
+              <p className="text-2xs text-wood-500">
+                Deuda: <span className="font-mono tabular-nums text-accent2-300">{v.deuda}</span> Goirnos · cada semana compra sus armas al doble y a crédito (la deuda sube) y cumple una patrulla obligada (baja 100)
+                {v.proximaRevision != null ? ` · próxima revisión: día ${v.proximaRevision}` : ''}
+              </p>
+            ) : (
+              <p className="text-2xs text-wood-500">Vasallaje roto: {v.motivoRuptura ?? 'sin motivo'}.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </PanelSection>
   )
 }
 

@@ -3209,6 +3209,20 @@ export interface EnemigaInfo {
   relacion: 'GUERRA' | 'TENSION'
   presion: number
 }
+/// CR-59 (P286): vasallajes de la partida (Reino › Diplomacia).
+export interface VasallajeInfo {
+  vasalloSlug: string
+  vasalloNombre: string
+  senorSlug: string
+  senorNombre: string
+  deuda: number
+  proximaRevision: number | null
+  rotoEn: number | null
+  motivoRuptura: string | null
+}
+export async function getVasallajes(saveId: string): Promise<{ vasallajes: VasallajeInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/vasallajes`)
+}
 export async function getGuerra(saveId: string): Promise<{ enemigas: EnemigaInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/guerra`)
 }
