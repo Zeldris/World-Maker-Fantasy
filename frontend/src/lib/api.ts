@@ -1874,7 +1874,7 @@ export interface SalidaSubdito {
   cuando: number | null
 }
 
-export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; danados?: { id: string; name: string; camas: number; cocina: boolean }[]; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
 }
 
