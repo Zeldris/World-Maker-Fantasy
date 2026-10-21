@@ -47,11 +47,14 @@ for (const paso of pasos) {
       const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
       const s = await prisma.$transaction(async (tx) => {
         const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, random: Math.random });
-        const r = paso.rol ? await cambiarRolSubdito(tx, saveId, nuevo.id, paso.rol, ahora) : ({ ok: true } as const);
-        return { nuevo, r };
-      });
-      if (!s.r.ok) { rechaza(`${s.nuevo.name}: ${s.r.motivo}`); break; }
-      dice(`Súbdito: ${s.nuevo.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
+        if (paso.rol) {
+          const r = await cambiarRolSubdito(tx, saveId, nuevo.id, paso.rol, ahora);
+          if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`); // deshace también el súbdito recién creado
+        }
+        return nuevo;
+      }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return null; });
+      if (!s) break;
+      dice(`Súbdito: ${s.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
     }
   } else if (paso.tipo === 'reclutar') {
     // random fijo alto: la tirada de Carisma se gana (el reclutamiento en sí lo decide la regla del juego: cama, líder, ya acompañante…).
@@ -68,10 +71,11 @@ for (const paso of pasos) {
       for (const s of soldados) {
         const r = await asignarGuarnicion(tx, saveId, s.id, capital.id);
         if (r.ok) hechos.push(s.name);
-        else if (!/^Solo se asignan/.test(r.motivo)) { dice(`Guarnición: ${s.name} no entra (${r.motivo})`); break; }
+        else if (!/^Solo se asignan/.test(r.motivo)) throw new Error(`guarnicion: ${s.name} no entra (${r.motivo})`);
       }
       return hechos;
-    });
+    }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return 'error' as const; });
+    if (asignados === 'error') continue;
     if (!asignados) rechaza('guarnicion: el Reino no tiene Ayuntamiento activo.');
     else dice(`Guarnición de la capital: ${asignados.join(', ') || 'nadie'}`);
   } else if (paso.tipo === 'milicia') {

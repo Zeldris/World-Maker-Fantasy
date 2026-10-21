@@ -1,11 +1,11 @@
 #!/bin/bash
 # 3.2 (2026-10-21): cómo se construyen los escenarios de la ronda «Mundo vivo» a partir de otros, solo con las funciones
 # del juego (dar-reino, preparar, avanzar: nada de UPDATE/INSERT a mano, QA-151). Cada paso lee y escribe la base que dicen
-# `ESCENARIO_URL`/`DATABASE_URL` (la de juego, o la temporal de `escenario.sh probar`), así se prueba sin tocar el juego:
+# `ESCENARIO_URL` (la de juego, o la temporal de `escenario.sh probar`), así se prueba sin tocar el juego:
 #   escenario.sh probar <base> bash tools/qa/escenarios/construir.sh pasos <nombre>
 # y se guarda de verdad con:  bash tools/qa/escenarios/construir.sh hacer <nombre>   (carga la base, aplica los pasos y guarda).
 # Orden de la cadena: reino-dia39-recursos → reino-companero-npc → reino-sano-defensas → reino-guerra-vasallaje.
-# `reino-hambre-sed` sale de reino-companero-npc. Los dos de campamento y combate acaban jugando (ver el README de escenarios).
+# `reino-hambre-sed` y `reino-combate-capitan` salen de reino-sano-defensas. Los dos de campamento y combate acaban jugando (ver el README de escenarios).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 PARTIDA=cmvex1v0300057d0pdjlbezcj
@@ -19,6 +19,7 @@ base_de() {
     *) echo "escenario desconocido: $1" >&2; exit 2 ;;
   esac
 }
+# Única fuente de la descripción: `escenario.sh guardar` la escribe en la fila del README (no se edita a mano).
 que_tiene() {
   case "$1" in
     reino-companero-npc) echo "Como \`reino-dia39-recursos\` más 2 Chozas nuevas y dos compañeros NPC reales (Tirag Susig, de Clan Serhu, y Hagar Kiugh, de Clan Helsig; sin \`rolReino\`, con \`sourceSlug\`, aprobación 50): para CR-15, CR-16, CR-42 (P289)" ;;
@@ -30,7 +31,7 @@ que_tiene() {
   esac
 }
 pasos() {
-  export ESCENARIO_URL="${ESCENARIO_URL:-${DATABASE_URL:-postgresql://tarkor:tarkor@localhost:5432/tarkor_juego}}"
+  export ESCENARIO_URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/tarkor_juego}"
   case "$1" in
     reino-companero-npc)
       e dar-reino "$PARTIDA" edificio:choza edificio:choza
@@ -44,8 +45,7 @@ pasos() {
       e preparar "$PARTIDA" relacion:clan-serhu:EXPANSION_TERRITORIAL_AGRESIVA:3 relacion:clan-helsig:EXPANSION_TERRITORIAL_AGRESIVA:6
       ;;
     reino-hambre-sed)
-      # avanzarDias.ts directo (no `escenario.sh avanzar`, que para el juego): sirve igual contra la base temporal de `probar`
-      (cd backend && DATABASE_URL="$ESCENARIO_URL" DIRECT_URL="$ESCENARIO_URL" npx tsx src/scripts/avanzarDias.ts "$PARTIDA" "${DIAS_HAMBRE:-40}")
+      e avanzar "$PARTIDA" "${DIAS_HAMBRE:-40}"
       ;;
     reino-combate-capitan)
       e preparar "$PARTIDA" combate:ulkha-ketg,hulki,herrero-serhu
@@ -60,4 +60,5 @@ case "$modo" in
     pasos "$nombre"
     e guardar "$nombre" "$(que_tiene "$nombre")"
     ;;
+  *) echo "Uso: construir.sh pasos|hacer <escenario>" >&2; exit 1 ;;
 esac

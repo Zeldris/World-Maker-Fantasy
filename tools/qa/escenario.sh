@@ -39,7 +39,8 @@ case "${1:-}" in
     nombre="${2:?falta el nombre}"; que="${3:?falta qué tiene (partida, estado, día)}"
     [[ "$nombre" =~ ^[a-z0-9-]+$ ]] || { echo "nombre en minúsculas y guiones"; exit 2; }
     # Por la salida estándar, no con `-f`: así vale también el shim de la Deck (pg_dump va dentro del contenedor).
-    pg_dump -Fc --no-owner "$URL" > "$DIR/$nombre.dump.tmp" && mv "$DIR/$nombre.dump.tmp" "$DIR/$nombre.dump"
+    pg_dump -Fc --no-owner "$URL" > "$DIR/$nombre.dump.tmp" || { rm -f "$DIR/$nombre.dump.tmp"; echo "pg_dump ha fallado: no se guarda nada"; exit 1; }
+    mv "$DIR/$nombre.dump.tmp" "$DIR/$nombre.dump"
     # La partida que se ha jugado la última (la de la última entrada del diario).
     partida=$(psql "$URL" -Atc 'select "saveId" from "LogEntry" order by "createdAt" desc limit 1')
     [ -n "$partida" ] || { rm -f "$DIR/$nombre.dump"; echo "No hay ninguna partida con diario: juega una acción antes de guardar"; exit 1; }

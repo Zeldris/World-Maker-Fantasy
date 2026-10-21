@@ -64,9 +64,9 @@ export interface NarrationResult {
   /// objetivo narrativo con entidad propia (no cualquier intención pasajera) — mismo patrón que
   /// newTerritory/newBuilding/newSubject, el backend valida y materializa.
   newQuest?: { title: string; description: string } | null;
-  /// Cierra una misión ACTIVA ya existente (matchea por título, backend valida que exista) —
-  /// "completada" o "fallida" según cómo se resuelva en la narración.
-  questProgress?: { title: string; status: 'COMPLETADA' | 'FALLIDA' } | null;
+  /// Completa una misión ACTIVA ya existente (matchea por título, backend valida que exista). P240: el
+  /// narrador solo completa; si un modelo devuelve otro estado, turnResolution.ts lo ignora.
+  questProgress?: { title: string; status: 'COMPLETADA' } | null;
   /// docs/mecanicas/14-combate-y-muerte.md § 2.1: el Narrador marca esto cuando la escena deriva en un
   /// enfrentamiento real (no lo infiere el backend por regex, a diferencia de viajar/recolectar
   /// — un inicio de combate depende demasiado de contexto narrativo). `npcSlugs` viene acotado

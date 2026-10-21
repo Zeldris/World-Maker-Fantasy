@@ -24,7 +24,7 @@ type ValidationCtx = Parameters<typeof buildNarrationPrompt>[0];
 
 const HITO_VALUES = ['descubrimiento', 'objetivo_menor', 'objetivo_mayor'];
 const CONDICION_VALUES = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO'];
-const QUEST_STATUS_VALUES = ['COMPLETADA', 'FALLIDA'];
+const QUEST_STATUS_VALUES = ['COMPLETADA'] // P240: el esquema del narrador solo admite COMPLETADA;
 
 /// Validación de slugs/enums — la red de seguridad que Ollama garantiza por gramática y que un
 /// profesor cloud (sin esa restricción estructural) puede saltarse por pura alucinación. Esto es

@@ -4708,6 +4708,7 @@ describe('questProgress: el narrador no hace fallar misiones ni cierra la misió
   });
 
   afterAll(async () => {
+    classifyAction.mockReset(); // no filtra el mockResolvedValue a los describe siguientes
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -4715,7 +4716,7 @@ describe('questProgress: el narrador no hace fallar misiones ni cierra la misió
     narrateAction.mockResolvedValueOnce({
       narration: 'Gorhorn le regala un pan a Gistera.',
       newFacts: [],
-      questProgress: { title: 'Misión de prueba P240', status: 'FALLIDA' },
+      questProgress: { title: 'Misión de prueba P240', status: 'FALLIDA' as 'COMPLETADA' }, // el modelo puede devolverlo aunque el tipo no lo admita
     });
     await doTurn(saveId, 'Le regalo a Gistera un pan.');
     const quest = await prisma.quest.findFirstOrThrow({ where: { saveId, title: 'Misión de prueba P240' } });
