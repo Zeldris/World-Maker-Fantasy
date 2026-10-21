@@ -51,6 +51,11 @@ class BancoTest(unittest.TestCase):
         self.assertEqual(res['por_caso'], {'c1': {'a': 2, 'b': 0}, 'c2': {'a': 1.0, 'b': 1.0}})
         self.assertEqual(sorted(x['caso'] for x in res['derrotas']['b']), ['c1', 'c1', 'c2'])
         self.assertEqual(sorted(x['caso'] for x in res['derrotas']['a']), ['c2'])
+        self.assertEqual(res['repetidas'], 0)
+        # un veredicto repetido no cuenta dos veces y se avisa; uno sin ganador es empate
+        res = banco.resumen(lista, clave, veredictos + veredictos[:1] + [{'par': veredictos[1]['par']}])
+        self.assertGreaterEqual(res['repetidas'], 1)
+        self.assertLess(res['modelos'].get('a', {}).get('jugadas', 0), 5)
 
     def test_juez_ilegible_es_empate(self):
         lista, clave = banco.pares(self.tandas(), self.CASOS)

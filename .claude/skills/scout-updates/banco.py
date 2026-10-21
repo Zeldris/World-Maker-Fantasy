@@ -161,7 +161,7 @@ def resumen(lista, clave, veredictos):
         if par not in clave or 'error' in v:
             continue
         juzgados += 1
-        g = v['ganador']
+        g = v.get('ganador')  # un veredicto escrito a mano sin ganador cuenta como empate, como el ilegible
         gana_x += g == 'X'
         modelos = tuple(sorted(clave[par].values()))
         por_ronda.setdefault((caso_de[par], modelos), []).append(clave[par][g] if g in ('X', 'Y') else None)
@@ -171,8 +171,11 @@ def resumen(lista, clave, veredictos):
                                                       'motivo': v.get('motivo', '')})
     puntos, jugadas = {}, {}
     cara, por_caso = {}, {}
-    consistentes = completas = 0
+    consistentes = completas = repetidas = 0
     for (caso, modelos), ganadores in por_ronda.items():
+        if len(ganadores) > 2:  # el mismo par juzgado otra vez (veredictos añadidos dos veces): no cuenta
+            repetidas += 1
+            continue
         if len(ganadores) == 2:
             completas += 1
             if ganadores[0] == ganadores[1]:
@@ -194,7 +197,7 @@ def resumen(lista, clave, veredictos):
                     for m in sorted(jugadas, key=lambda m: -puntos[m] / jugadas[m])},
         'consistencia': round(consistentes / completas, 3) if completas else None,
         'sesgo_x': round(gana_x / juzgados, 3) if juzgados else None,
-        'juzgados': juzgados, 'sin_juzgar': len(lista) - juzgados,
+        'juzgados': juzgados, 'sin_juzgar': len(lista) - juzgados, 'repetidas': repetidas,
         'cara_a_cara': {m: {o: round(p / n, 3) for o, (p, n) in sorted(d.items())} for m, d in cara.items()},
         'por_caso': {c: por_caso[c] for c in sorted(por_caso)},
         'derrotas': {m: sorted(d, key=lambda x: x['caso']) for m, d in derrotas.items()},
@@ -272,6 +275,8 @@ def main(argv=None):
                 print('%-40s tasa %.3f (%s de %d)' % (m, d['tasa'], d['puntos'], d['jugadas']))
             print('consistencia al girar: %s · gana X: %s · juzgados %d, sin juzgar %d'
                   % (res['consistencia'], res['sesgo_x'], res['juzgados'], res['sin_juzgar']))
+            if res['repetidas']:
+                print('AVISO: %d pares juzgados más de una vez no cuentan; quita los veredictos repetidos' % res['repetidas'])
             if a.detalle:
                 imprimir_detalle(res)
 
