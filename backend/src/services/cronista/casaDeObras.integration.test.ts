@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, TIER_MAXIMO_PERSONAJE } from '../construction.js';
@@ -49,6 +49,9 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       expect(repartirObras(obras, [], 1).get('b')).toEqual({ aviso: expect.stringMatching(/Sin constructores/) });
       const uno = repartirObras(obras.slice(0, 2), [{ id: 'x', nivelConstructor: 3 }], 1);
       expect(uno.get('b')).toEqual({ aviso: expect.stringMatching(/Esperando turno/) });
+    });
+    it('una reparación no pasa por el tope de tier de la Casa', () => {
+      expect(repartirObras([{ id: 'r', tier: 6, tipo: 'REPARAR' }], [{ id: 'x', nivelConstructor: 1 }], 1).get('r')).toEqual({ constructorId: 'x' });
     });
     it('cada material de la receta se reparte entre los días de la obra y suma justo su cantidad', () => {
       expect([0, 1, 2].map((d) => cuotaDelDia(6, 3, d))).toEqual([2, 2, 2]);
@@ -293,6 +296,66 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       expect(await bloqueo('jaula-grande', 'casa-de-obras') ?? '').not.toMatch(/necesita un Ayuntamiento/);
       expect(await bloqueo('ayuntamiento-grande', 'casa-de-obras') ?? '').not.toMatch(/necesita un Ayuntamiento/);
       await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
+    });
+
+    it('X4: una obra sin materiales no se queda el constructor; avanza la siguiente que sí los tiene', async () => {
+      await prisma.building.update({ where: { id: casaId }, data: { tier: 1 } });
+      await nivelDe(1);
+      // La Jaula pide cuerda de tendón, que el pozo no lleva: solo hay material para el pozo.
+      await llenarPara('pozo');
+      await prisma.$transaction((tx) => encargarObra(tx, saveId, 'jaula-pequena'));
+      await prisma.$transaction((tx) => encargarObra(tx, saveId, 'pozo'));
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
+      const queda = await prisma.obraCola.findMany({ where: { saveId } });
+      expect(queda).toHaveLength(1);
+      expect(queda[0]).toMatchObject({ recipeKey: 'jaula-pequena', aviso: expect.stringMatching(/Faltan materiales/) });
+      await prisma.building.deleteMany({ where: { saveId, recipeKey: 'pozo' } });
+    });
+
+    it('una Casa de nivel 1 repara un edificio dañado de tier 6', async () => {
+      await prisma.building.update({ where: { id: casaId }, data: { tier: 1 } });
+      const jaula = await prisma.building.create({ data: { saveId, locationId: casaLoc, recipeKey: 'jaula-grande', name: 'una jaula grande', kind: 'jaula-grande', description: 'x', status: 'DANADO' } });
+      await llenarAlmacen(40);
+      expect((await prisma.$transaction((tx) => encargarReparacion(tx, saveId, jaula.id))).ok).toBe(true);
+      expect((await prisma.obraCola.findFirstOrThrow({ where: { saveId } })).tier).toBe(6);
+      expect(await jornada()).toEqual({ avanzadas: 0, terminadas: 1 });
+      expect((await prisma.building.findUniqueOrThrow({ where: { id: jaula.id } })).status).toBe('ACTIVO');
+      await prisma.building.delete({ where: { id: jaula.id } });
+    });
+
+    it('una mejora no se encarga con su base en la cola ni junto a otro eslabón de la misma cadena', async () => {
+      await prisma.obraCola.create({ data: { saveId, orden: 1, tipo: 'CONSTRUIR', recipeKey: 'empalizada', tier: 2, dias: 2 } });
+      expect(await prisma.$transaction((tx) => encargarObra(tx, saveId, 'empalizada-2'))).toMatchObject({ ok: false, motivo: expect.stringMatching(/aún está en la cola/) });
+      await prisma.obraCola.deleteMany({ where: { saveId } });
+      await prisma.obraCola.create({ data: { saveId, orden: 1, tipo: 'CONSTRUIR', recipeKey: 'empalizada-2', tier: 5, dias: 5 } });
+      expect(await prisma.$transaction((tx) => encargarObra(tx, saveId, 'empalizada-3'))).toMatchObject({ ok: false, motivo: expect.stringMatching(/mismo edificio que .*ya está en la cola/) });
+    });
+
+    it('una mejora acabada que no encuentra su edificio no se da por terminada ni se pierde', async () => {
+      await prisma.building.update({ where: { id: casaId }, data: { tier: 2 } });
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
+      await prisma.obraCola.create({ data: { saveId, orden: 1, tipo: 'CONSTRUIR', recipeKey: 'ayuntamiento-mediano', tier: 6, dias: 6, diasHechos: 6, gastados: 30 } });
+      const sucesos = await prisma.suceso.count({ where: { saveId, tipo: 'EDIFICIO_CONSTRUIDO' } });
+      const terminada = { saveId, text: { contains: 'termina un ayuntamiento mediano' } };
+      const avisos = await prisma.logEntry.count({ where: terminada });
+      // `motivoDeBloqueo` ya exige el edificio, así que se simula que `mejorarEnSitio` no lo encuentra
+      // (los setupFiles ya cargaron el módulo: hace falta cargar casaDeObras de nuevo con el mock).
+      vi.resetModules();
+      vi.doMock('../construction.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('../construction.js')>()), mejorarEnSitio: async () => null }));
+      try {
+        const sinEdificio = await import('./casaDeObras.js');
+        expect(await prisma.$transaction((tx) => sinEdificio.avanzarCasaDeObras(tx, saveId, ahora))).toEqual({ avanzadas: 0, terminadas: 0 });
+      } finally {
+        vi.doUnmock('../construction.js');
+        vi.resetModules();
+      }
+      expect(await prisma.obraCola.findFirstOrThrow({ where: { saveId } })).toMatchObject({ gastados: 30, aviso: expect.stringMatching(/no está el edificio que mejora/) });
+      expect(await prisma.suceso.count({ where: { saveId, tipo: 'EDIFICIO_CONSTRUIDO' } })).toBe(sucesos);
+      expect(await prisma.logEntry.count({ where: terminada })).toBe(avisos);
+      expect((await prisma.building.findUniqueOrThrow({ where: { id: ayuntamientoId } })).tier).toBe(1);
+      // Al día siguiente, con su edificio, se aplica.
+      expect(await jornada()).toEqual({ avanzadas: 0, terminadas: 1 });
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1, name: 'Karot' } });
     });
 
     it('sin Casa de obras no se encarga nada', async () => {
