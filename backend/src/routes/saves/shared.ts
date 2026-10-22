@@ -248,6 +248,7 @@ export async function restartSaveTransactionBody(
   await tx.companion.deleteMany({ where: { saveId: save.id } });
   await tx.subject.deleteMany({ where: { saveId: save.id } });
   await tx.almacenItem.deleteMany({ where: { saveId: save.id } });
+  await tx.obraCola.deleteMany({ where: { saveId: save.id } });
   await tx.plantillaEquipo.deleteMany({ where: { saveId: save.id } });
   await tx.building.deleteMany({ where: { saveId: save.id } });
   await tx.territory.deleteMany({ where: { saveId: save.id } });

@@ -293,6 +293,28 @@ Faerus/Bosque...), cada una necesitará sus propios oficios regionales y quizá 
 procesados — este sistema solo cierra el caso orco/Llanuras, el patrón general queda documentado
 para repetirlo.
 
+## Construcción por oficio y Casa de obras (P277, P282, P284; 2026-10-21)
+
+Diseño aprobado el 2026-10-21 (bandeja de la bitácora). El código está en
+`backend/src/services/cronista/casaDeObras.ts`, y la puerta de tiers en `ayuntamientoNivelMinimoPorTier`
+de `construction.ts`.
+
+- **Tier de obra 1-9:** ningún edificio pide atributos. T1-3 se construyen libres, T4-6 necesitan el
+  Ayuntamiento mediano y T7-9 el grande. El personaje levanta solo hasta T3 (Medieval Dynasty).
+- **Casa de obras (Bellwright):** tiene 3 niveles, que cubren los tiers 1-3, 4-6 y 7-9 con 1, 2 y 3
+  plazas de constructor.
+  - Sus constructores sacan adelante una cola reordenable de obras y reparaciones.
+  - Una obra de tier N lleva N días de obra.
+  - Consume los materiales exactos de la receta del Almacén según avanza (X4). Si falta alguno, se
+    para ese día sin perder lo avanzado.
+- **Decisión de la usuaria 2026-10-22: el nivel del Ayuntamiento abre los tiers y el del constructor
+  solo da velocidad (X4 y Manor Lords).**
+  - Cualquier constructor trabaja cualquier obra que cubra la Casa.
+  - Cada nivel por encima de 1 suma un 10 % de trabajo por jornada (`VELOCIDAD_POR_NIVEL_CONSTRUCTOR`):
+    el nivel 1 hace 1 día de obra, el 6 hace 1,5 y el 9 hace 1,8.
+  - El avance (`ObraCola.diasHechos`) va por fracciones de día.
+  - La primera obra de la cola se lleva al constructor más rápido.
+
 ## Fuera de alcance a propósito (ni hoy ni en este documento)
 - "Puesto avanzado" como tipo de edificio nuevo — mencionado como roadmap futuro, no se crea su
   receta todavía.

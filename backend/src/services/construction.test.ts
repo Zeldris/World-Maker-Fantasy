@@ -15,16 +15,11 @@ import {
   nivelEdificioRequeridoParaTier,
   plazasTrabajadorParaTier,
   buildingTierFor,
+  ayuntamientoNivelMinimoPorTier,
+  TIER_MAXIMO_PERSONAJE,
   type ConstructionRecipe,
 } from './construction.js';
-import type { AttributeBlock } from './dice.js';
-import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
-
-// Ninguna de las 3 recetas base tiene `requisitos` todavía, así que estos valores no afectan a
-// checkRecipe(); existen para no repetir el bloque en cada llamada.
-const attrs: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
-const secondary = EMPTY_SECONDARY_ATTRIBUTES;
 
 // catalogSlug de cada fila → tipo/categoría real (2026-07-29, refactor de ingredientes: ya no se
 // matchea por prefijo de nombre). Mismos slugs que construction.ts usa de verdad.
@@ -60,12 +55,12 @@ describe('quantityOf', () => {
 describe('checkRecipe', () => {
   it('detecta receta cumplida, sumando entre varias filas fungibles de la misma categoría', () => {
     const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-gargantua', 5)];
-    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 
   it('reporta exactamente qué falta y cuánto', () => {
     const rows = [row('1', 'lena-matorral-cuerno', 2)];
-    const result = checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary);
+    const result = checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug);
     expect(result.met).toBe(false);
     expect(result.missing).toEqual([
       { label: 'leña', tienes: 2, necesitas: 6 },
@@ -74,25 +69,11 @@ describe('checkRecipe', () => {
     ]);
   });
 
-  it('bloquea la construcción si no se llega al requisito de atributo de la receta', () => {
-    const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-gargantua', 5)];
-    const recipeConRequisito: ConstructionRecipe = { ...CAMPAMENTO_RECIPE, requisitos: { fuerza: 12 } };
-    const debil: AttributeBlock = { ...attrs, fuerza: 6 };
-    const result = checkRecipe(recipeConRequisito, rows, catalogBySlug, debil, secondary);
-    expect(result.met).toBe(false);
-    expect(result.missing).toEqual([{ label: 'fuerza', tienes: 6, necesitas: 12 }]);
-  });
 
-  it('el alivio de oficio reduce el requisito exigido de una construcción', () => {
-    const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-gargantua', 5)];
-    const recipeConRequisito: ConstructionRecipe = { ...CAMPAMENTO_RECIPE, requisitos: { fuerza: 12 } };
-    const debil: AttributeBlock = { ...attrs, fuerza: 8 };
-    expect(checkRecipe(recipeConRequisito, rows, catalogBySlug, debil, secondary, 4)).toEqual({ met: true, missing: [] });
-  });
 
   it('cualquier piel de distinta especie cuenta igual (ingrediente fungible por categoría)', () => {
     const rows = [row('1', 'lena-matorral-cuerno', 20), row('2', 'piedra', 10), row('3', 'piel-corredor', 3), row('4', 'piel-gargantua', 2)];
-    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(CAMPAMENTO_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 });
 
@@ -187,17 +168,17 @@ describe('detectsBuildIntent', () => {
 describe('checkRecipe — recetas nuevas', () => {
   it('choza: cumplida con piel/hueso largo/cuerda de tendón suficientes', () => {
     const rows = [row('1', 'piel-gargantua', 10), row('2', 'hueso-largo-gargantua', 6), row('3', 'cuerda-tendon', 4)];
-    expect(checkRecipe(CHOZA_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(CHOZA_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 
   it('tótem del Clan Maktor: cumplido con el tótem roto + el tótem personal de Gorhorn', () => {
     const rows = [row('1', 'totem-clan-roto'), row('2', 'totem-maktor')];
-    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 
   it('tótem del Clan Maktor: falta si solo tienes uno de los dos materiales', () => {
-    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-clan-roto')], catalogBySlug, attrs, secondary).met).toBe(false);
-    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-maktor')], catalogBySlug, attrs, secondary).met).toBe(false);
+    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-clan-roto')], catalogBySlug).met).toBe(false);
+    expect(checkRecipe(MAKTOR_CLAN_TOTEM_RECIPE, [row('1', 'totem-maktor')], catalogBySlug).met).toBe(false);
   });
 
   it('ayuntamiento pequeño: cumplido con las 6 categorías suficientes (rebalanceo 2026-08-24)', () => {
@@ -209,7 +190,7 @@ describe('checkRecipe — recetas nuevas', () => {
       row('5', 'mena-de-hierro', 2),
       row('6', 'fibra-enredaderas-llanuras', 8),
     ];
-    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 
   // P80 (QA-27, decisión de la usuaria 2026-10-13): fundar solo pide materiales; Gorhorn tiene Carisma 6.
@@ -222,7 +203,7 @@ describe('checkRecipe — recetas nuevas', () => {
       row('5', 'mena-de-hierro', 2),
       row('6', 'fibra-enredaderas-llanuras', 8),
     ];
-    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, { ...attrs, carisma: 6 }, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 
   // Materiales procesados (2026-08-24, Grupo 3 § materiales procesados de construcción) — mediano
@@ -243,8 +224,7 @@ describe('checkRecipe — recetas nuevas', () => {
       row('10', 'fibra-enredaderas-llanuras', 3),
       row('11', 'resina-trepador-ocaso', 12),
     ];
-    const carismatico: AttributeBlock = { ...attrs, carisma: 18 };
-    expect(checkRecipe(AYUNTAMIENTO_MEDIANO_RECIPE, rows, catalogBySlug, carismatico, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_MEDIANO_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 
   it('ayuntamiento grande: cumplido 100% procesado (salvo resina, siempre cruda) y carisma alto', () => {
@@ -256,8 +236,7 @@ describe('checkRecipe — recetas nuevas', () => {
       row('5', 'cordaje-trenzado', 5),
       row('6', 'resina-trepador-ocaso', 20),
     ];
-    const carismatico: AttributeBlock = { ...attrs, carisma: 22 };
-    expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rows, catalogBySlug, carismatico, secondary)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rows, catalogBySlug)).toEqual({ met: true, missing: [] });
   });
 });
 
@@ -270,16 +249,15 @@ describe('checkRecipe — bloqueo real de oficio de construcción (2026-08-24)',
     row('5', 'cordaje-trenzado', 5),
     row('6', 'resina-trepador-ocaso', 20),
   ];
-  const carismatico: AttributeBlock = { ...attrs, carisma: 22 };
 
   it('sin tieneOficio (mediano/grande), aunque sobren materiales y carisma, no está cumplida', () => {
-    const result = checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rowsGrande, catalogBySlug, carismatico, secondary, 0, false);
+    const result = checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rowsGrande, catalogBySlug, false);
     expect(result.met).toBe(false);
     expect(result.missing).toEqual([{ label: 'el oficio de constructor-orcos-llanuras', tienes: 0, necesitas: 1 }]);
   });
 
   it('con tieneOficio true, la misma combinación sí está cumplida', () => {
-    expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rowsGrande, catalogBySlug, carismatico, secondary, 0, true)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_GRANDE_RECIPE, rowsGrande, catalogBySlug, true)).toEqual({ met: true, missing: [] });
   });
 
   it('el pequeño no exige el oficio (nivel de entrada) — tieneOficio false no lo bloquea', () => {
@@ -291,7 +269,7 @@ describe('checkRecipe — bloqueo real de oficio de construcción (2026-08-24)',
       row('5', 'mena-de-hierro', 2),
       row('6', 'fibra-enredaderas-llanuras', 8),
     ];
-    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, attrs, secondary, 0, false)).toEqual({ met: true, missing: [] });
+    expect(checkRecipe(AYUNTAMIENTO_PEQUENO_RECIPE, rows, catalogBySlug, false)).toEqual({ met: true, missing: [] });
   });
 });
 
@@ -373,14 +351,16 @@ describe('Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio
     }
   });
 
-  it('las mejoras de nivel 2/3 llevan ayuntamientoNivelMinimo y edificioOficioNivel crecientes', () => {
+  it('las mejoras de nivel 2/3 suben de tier y piden Ayuntamiento mediano/grande por su tier', () => {
     const obrador = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-obrador')!;
     const granObrador = CONSTRUCTION_RECIPES.find((r) => r.key === 'herreria-gran-obrador')!;
     expect(obrador.edificioOficioNivel).toBe(2);
-    expect(obrador.ayuntamientoNivelMinimo).toBe(2);
+    expect(obrador.tier).toBe(5);
+    expect(ayuntamientoNivelMinimoPorTier(obrador)).toBe(2);
     expect(obrador.upgradesRecipeKey).toBe('herreria');
     expect(granObrador.edificioOficioNivel).toBe(3);
-    expect(granObrador.ayuntamientoNivelMinimo).toBe(3);
+    expect(granObrador.tier).toBe(8);
+    expect(ayuntamientoNivelMinimoPorTier(granObrador)).toBe(3);
     // Mismo criterio que el Ayuntamiento: la mejora actualiza la MISMA fila, que conserva la
     // recipeKey base, así que las dos mejoras apuntan a 'herreria'.
     expect(granObrador.upgradesRecipeKey).toBe('herreria');
@@ -420,5 +400,34 @@ describe('P278 — ficha de edificio en el panel', () => {
     expect(fichaDeEdificioParaPanel(libre)).toBe(libre);
     const ayto = { recipeKey: 'ayuntamiento', name: 'Ayuntamiento mediano', kind: 'ayuntamiento', description: 'd' };
     expect(fichaDeEdificioParaPanel(ayto)).toBe(ayto);
+  });
+});
+
+// Construcción por oficio (2026-10-21, P277/P282): cada edificio tiene un tier 1-9 y ninguno pide
+// atributos; el personaje levanta hasta T3 y el resto lo hace la Casa de obras.
+describe('Tier de obra 1-9 por edificio', () => {
+  it('todas las recetas tienen un tier entero entre 1 y 9 y ninguna pide atributos', () => {
+    for (const r of CONSTRUCTION_RECIPES) {
+      expect(Number.isInteger(r.tier), r.key).toBe(true);
+      expect(r.tier, r.key).toBeGreaterThanOrEqual(1);
+      expect(r.tier, r.key).toBeLessThanOrEqual(9);
+      expect((r as ConstructionRecipe & { requisitos?: unknown }).requisitos, r.key).toBeUndefined();
+    }
+  });
+
+  it('la Jaula pequeña es T1 y la Cisterna y el Granero no pasan de T2 (el personaje los levanta)', () => {
+    const tier = (k: string) => CONSTRUCTION_RECIPES.find((r) => r.key === k)!.tier;
+    expect(tier('jaula-pequena')).toBe(1);
+    expect(tier('cisterna')).toBeLessThanOrEqual(TIER_MAXIMO_PERSONAJE);
+    expect(tier('granero')).toBeLessThanOrEqual(TIER_MAXIMO_PERSONAJE);
+    expect(TIER_MAXIMO_PERSONAJE).toBe(3);
+  });
+
+  it('el Ayuntamiento base no pide Ayuntamiento previo; T4-6 piden mediano y T7-9 grande', () => {
+    expect(ayuntamientoNivelMinimoPorTier(AYUNTAMIENTO_PEQUENO_RECIPE)).toBe(1);
+    expect(ayuntamientoNivelMinimoPorTier(AYUNTAMIENTO_MEDIANO_RECIPE)).toBe(1);
+    expect(ayuntamientoNivelMinimoPorTier(AYUNTAMIENTO_GRANDE_RECIPE)).toBe(1);
+    expect(ayuntamientoNivelMinimoPorTier({ ...CAMPAMENTO_RECIPE, tier: 4 })).toBe(2);
+    expect(ayuntamientoNivelMinimoPorTier({ ...CAMPAMENTO_RECIPE, tier: 7 })).toBe(3);
   });
 });

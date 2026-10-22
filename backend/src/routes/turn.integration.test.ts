@@ -2905,7 +2905,9 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
   // solo 30 piedra + 25 leña crudas; ahora ~75% procesado/25% crudo por categoría. La suposición
   // original de que este save "ya empieza con constructor-orcos-llanuras" era falsa (ver comentario
   // real dentro del test, corregido 2026-08-25) — se siembra a mano ahí.
-  it('mejora el Ayuntamiento a mediano IN-PLACE — mismo Building.id, sin duplicar Territory', async () => {
+  // Construcción por oficio (2026-10-21): el Ayuntamiento mediano es una obra de T6 y el personaje
+  // solo levanta hasta T3 — la mejora in-place la hace la Casa de obras (casaDeObras.integration.test.ts).
+  it('el personaje NO mejora el Ayuntamiento a mediano: es T6, se encarga a la Casa de obras', async () => {
     const before = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     const territoriesBefore = await prisma.territory.count({ where: { saveId } });
     // Bug real encontrado con Postgres real (2026-08-25): el comentario de arriba asumía que este
@@ -2931,14 +2933,13 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
       { name: 'Resina de trepador del ocaso (12)', catalogSlug: 'resina-trepador-ocaso' },
     ]);
     narrateAction.mockClear();
-    const res = await doTurn(saveId, 'Mejoro mi ayuntamiento a mediano.');
-    expect(narrateAction).not.toHaveBeenCalled();
-    expect(lastNdjsonLine(res.payload).newKingdomFounded).toBeNull(); // solo se notifica al FUNDAR, no al mejorar
+    await doTurn(saveId, 'Mejoro mi ayuntamiento a mediano.');
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(narrateAction.mock.calls[0])).toMatch(/solo levanta hasta tier 3/);
 
     const after = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     expect(after.id).toBe(before.id);
-    expect(after.tier).toBe(2);
-    expect(after.name).toBe('un ayuntamiento mediano');
+    expect(after.tier ?? 1).toBe(1);
     expect(await prisma.building.count({ where: { saveId, recipeKey: 'ayuntamiento' } })).toBe(1);
     expect(await prisma.territory.count({ where: { saveId } })).toBe(territoriesBefore);
   }, 15_000);

@@ -55,7 +55,7 @@ import { energiaMaxFor, energiaPasivaEntre, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
-import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, fichaDeEdificioParaPanel, type ConstructionRecipe, type RecipeCheck } from './construction.js';
+import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, fichaDeEdificioParaPanel, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { abilityUnlocksAlSubirANivel, savedActionDataFromAbility } from './classAbilities.js';
@@ -1957,9 +1957,6 @@ async function resolveBuildIntentContext(params: {
   currentLocationRecord: { id: string; kind: string; slug: string } | null;
   inventoryRows: InventoryRowLike[];
   catalogBySlug: Map<string, CatalogLookup>;
-  attributes: AttributeBlock;
-  secondaryAttributes: SecondaryAttributeBlock;
-  alivioFor: (oficio: string | undefined) => number;
   tieneOficioFor: (oficio: string | undefined) => boolean;
   /// Bug real (auditoría en vivo, 2026-09-01, camino DIFERIDO — ver comentario completo en
   /// `computeBuildBlockedReason`, construction.ts): mismo motivo que la exclusión de la segunda
@@ -1969,11 +1966,11 @@ async function resolveBuildIntentContext(params: {
   /// revalidación de materiales.
   earlyBuildingId?: string;
 }): Promise<BuildIntentContext> {
-  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor, tieneOficioFor, earlyBuildingId } =
+  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, tieneOficioFor, earlyBuildingId } =
     params;
   const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
   const buildRecipeCheck: RecipeCheck | null = buildRecipe
-    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio), tieneOficioFor(buildRecipe.oficio))
+    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, tieneOficioFor(buildRecipe.oficio))
     : null;
   const buildBlockedReason: string | null =
     buildRecipe && buildRecipeCheck?.met && currentLocationRecord
@@ -4237,9 +4234,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     currentLocationRecord,
     inventoryRows,
     catalogBySlug,
-    attributes,
-    secondaryAttributes,
-    alivioFor,
     tieneOficioFor,
     earlyBuildingId,
   });
@@ -5995,13 +5989,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // El objetivo ya se verificó arriba (`buildBlockedReason`), pero se re-busca fresco dentro
         // de la transacción por si acaso, mismo criterio que `freshInventoryRows`.
         // CR-65: un módulo de defensa se mejora en su asentamiento.
-        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, ...(buildRecipe.edificioTipo === 'defensa' ? { status: 'ACTIVO', location: { region: activeRegion ?? undefined } } : {}) } });
-        if (target) {
-          await tx.building.update({
-            where: { id: target.id },
-            data: { name: buildRecipe.name, description: buildRecipe.description, tier: buildingTierFor(buildRecipe) ?? undefined, status: 'ACTIVO' },
-          });
-        }
+        await mejorarEnSitio(tx, saveId, buildRecipe, activeRegion);
       } else {
         // Completa la fila EN_CONSTRUCCION ya creada en turn.ts en vez de crear una nueva
         // (2026-08-23, Grupo 3 § Building.status) — `earlyBuildingId` solo falta si esta

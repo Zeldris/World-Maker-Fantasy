@@ -462,6 +462,7 @@ model Save {
   buildings          Building[]
   subjects           Subject[]
   almacenItems       AlmacenItem[]
+  obrasCola          ObraCola[]
   almacenLimites     AlmacenLimite[]
   plantillasEquipo   PlantillaEquipo[]
   combatEncounters   CombatEncounter[]
@@ -2323,9 +2324,13 @@ model Subject {
   /// REI-120: su pareja (otro súbdito) y cuántas crías han tenido juntos.
   parejaId          String?
   crias             Int       @default(0)
-  /// CR-61 (61c): tarea de un trabajador: recolector | pescador | cocinero | ganadero | fibrero
+  /// CR-61 (61c): tarea de un trabajador: recolector | pescador | cocinero | ganadero | fibrero | constructor
   /// (null = recolector).
   tarea             String?
+  /// Casa de obras (P277, 2026-10-21): nivel de constructor del súbdito (tier máximo que levanta) y su
+  /// experiencia; sube construyendo.
+  nivelConstructor  Int       @default(1)
+  xpConstructor     Int       @default(0)
 
   /// Plantilla de equipo asignada (docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md § 7) — null = sin
   /// auto-equipo, este súbdito no recibe nada del Almacén de Reino automáticamente.
@@ -4058,4 +4063,30 @@ model Campamento {
   createdAt            DateTime @default(now())
 
   @@index([saveId, estado])
+}
+
+/// Casa de obras (P277/P284, 2026-10-21): cola de obras y reparaciones del Reino, en orden. Los
+/// súbditos constructores toman la primera que su nivel alcanza; avanza un día por jornada
+/// trabajada y gasta materiales del Almacén cada día (cronista/casaDeObras.ts).
+model ObraCola {
+  id         String   @id @default(cuid())
+  saveId     String
+  save       Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  orden      Int
+  /// CONSTRUIR | REPARAR
+  tipo       String
+  /// CONSTRUIR: receta (una mejora lleva la receta del nivel siguiente).
+  recipeKey  String?
+  /// REPARAR: edificio dañado.
+  buildingId String?
+  tier       Int
+  dias       Int
+  diasHechos Float    @default(0)
+  /// Materiales del Almacén ya gastados en la obra.
+  gastados   Int      @default(0)
+  /// Por qué no avanza hoy (🔒 tier, sin constructores, sin materiales…); null = avanza.
+  aviso      String?
+  createdAt  DateTime @default(now())
+
+  @@index([saveId, orden])
 }

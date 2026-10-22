@@ -258,10 +258,16 @@ export function costeDeReparar(recipeKey: string | null | undefined, tier: numbe
 
 /// P284/P296/P301: repara un edificio DANADO (o una Empalizada caída) por la mitad de su coste, en
 /// materiales del Almacén. Un edificio DANADO no cuenta (Camas, Mercado, Cocina…) hasta repararlo.
-export async function repararEdificio(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true; coste: number } | { ok: false; motivo: string }> {
+/// `sinArreglo`: no hay nada que reparar (el edificio no existe o ya está en pie), a diferencia de
+/// que falten materiales, que se puede reintentar.
+export async function repararEdificio(
+  tx: Tx,
+  saveId: string,
+  buildingId: string,
+): Promise<{ ok: true; coste: number } | { ok: false; motivo: string; sinArreglo?: boolean }> {
   const b = await tx.building.findFirst({ where: { id: buildingId, saveId, status: { in: ['ACTIVO', 'DANADO'] } }, select: { name: true, recipeKey: true, tier: true, caida: true, status: true } });
-  if (!b) return { ok: false, motivo: 'No tienes ese edificio.' };
-  if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.` };
+  if (!b) return { ok: false, motivo: 'No tienes ese edificio.', sinArreglo: true };
+  if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.`, sinArreglo: true };
   const coste = costeDeReparar(b.recipeKey, b.tier);
   if (!(await gastarMateriales(tx, saveId, coste))) return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén.` };
   await tx.building.update({ where: { id: buildingId }, data: { status: 'ACTIVO', caida: false, golpesDefensa: 0 } });

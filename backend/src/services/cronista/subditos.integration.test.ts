@@ -43,7 +43,7 @@ describe('súbditos (REI-118) — reglas puras', () => {
       ],
       ahora,
     );
-    expect(t).toEqual({ recolector: 1, pescador: 1, cocinero: 1, ganadero: 0, fibrero: 0 });
+    expect(t).toEqual({ recolector: 1, pescador: 1, cocinero: 1, ganadero: 0, fibrero: 0, constructor: 0 });
   });
 
   it('P220a: las camas temporales del Ayuntamiento son solo de súbditos; los compañeros no las usan', () => {
