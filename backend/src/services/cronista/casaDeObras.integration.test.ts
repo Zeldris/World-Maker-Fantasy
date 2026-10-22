@@ -326,6 +326,11 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     it('una mejora no se encarga con su base en la cola ni junto a otro eslabón de la misma cadena', async () => {
       await prisma.obraCola.create({ data: { saveId, orden: 1, tipo: 'CONSTRUIR', recipeKey: 'empalizada', tier: 2, dias: 2 } });
       expect(await prisma.$transaction((tx) => encargarObra(tx, saveId, 'empalizada-2'))).toMatchObject({ ok: false, motivo: expect.stringMatching(/aún está en la cola/) });
+      // Con otra Empalizada ya en pie, la mejora va sobre esa: la de la cola no la frena.
+      const enPie = await prisma.building.create({ data: { saveId, locationId: casaLoc, recipeKey: 'empalizada', name: 'una empalizada', kind: 'empalizada', description: 'x', status: 'ACTIVO' } });
+      const conBaseEnPie = await prisma.$transaction((tx) => encargarObra(tx, saveId, 'empalizada-2'));
+      expect(conBaseEnPie.ok ? '' : conBaseEnPie.motivo).not.toMatch(/aún está en la cola/);
+      await prisma.building.delete({ where: { id: enPie.id } });
       await prisma.obraCola.deleteMany({ where: { saveId } });
       await prisma.obraCola.create({ data: { saveId, orden: 1, tipo: 'CONSTRUIR', recipeKey: 'empalizada-2', tier: 5, dias: 5 } });
       expect(await prisma.$transaction((tx) => encargarObra(tx, saveId, 'empalizada-3'))).toMatchObject({ ok: false, motivo: expect.stringMatching(/mismo edificio que .*ya está en la cola/) });

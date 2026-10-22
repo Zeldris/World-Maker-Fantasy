@@ -237,8 +237,10 @@ export async function encargarObra(tx: Tx, saveId: string, recipeKey: string): P
   // Una mejora espera a que su base esté levantada, y dos eslabones de la misma cadena no van a la vez.
   if (recipe.upgradesRecipeKey) {
     const recetaEnCola = (o: { recipeKey: string | null }) => CONSTRUCTION_RECIPES.find((r) => r.key === o.recipeKey);
+    // Con una base ya en pie (p. ej. una segunda Empalizada en la cola), la mejora va sobre la levantada.
     const base = enCola.find((o) => o.recipeKey === recipe.upgradesRecipeKey);
-    if (base) return { ok: false, motivo: `${recipe.name} mejora ${recetaEnCola(base)?.name ?? 'un edificio'}, que aún está en la cola: encárgala cuando esté levantado.` };
+    const enPie = base ? await tx.building.count({ where: { saveId, recipeKey: recipe.upgradesRecipeKey, status: 'ACTIVO' } }) : 0;
+    if (base && enPie === 0) return { ok: false, motivo: `${recipe.name} mejora ${recetaEnCola(base)?.name ?? 'un edificio'}, que aún está en la cola: encárgala cuando esté levantado.` };
     const hermana = enCola.map(recetaEnCola).find((r) => r?.upgradesRecipeKey === recipe.upgradesRecipeKey);
     if (hermana) return { ok: false, motivo: `${recipe.name} mejora el mismo edificio que ${hermana.name}, que ya está en la cola: espera a que termine.` };
   }
