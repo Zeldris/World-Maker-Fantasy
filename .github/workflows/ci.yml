@@ -43,8 +43,8 @@ jobs:
           python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py')
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
-      # QA-137: tests de medir.py de la skill opt-ai.
-      - run: python3 -m unittest discover -s .claude/skills/opt-ai
+      # QA-137: tests de medir.py de la skill opt-ai (el de WMF, medir-ia.py, va con tools/qa).
+      - run: python3 -m unittest discover -s .claude/skills/opt-ai/scripts
       # QA-176: tests de los scripts de la skill scout-updates.
       - run: python3 -m unittest discover -s .claude/skills/scout-updates
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.

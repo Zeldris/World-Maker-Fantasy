@@ -1,8 +1,8 @@
 import io, json, os, sys, tempfile, unittest
 from contextlib import redirect_stdout
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import medir
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+medir = __import__("medir-ia")
 
 
 def llamada(dur, perfil='deck', tarea='narrar', **extra):

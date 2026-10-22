@@ -25,6 +25,10 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 1 | 2, `aplicar.py` | El clasificador del modo automático lo deniega entero («Code from External»), no solo al escribir `.claude/settings.json`: no llega a avisar. | Lo lanza la usuaria en su terminal. |
 | 2 | 2 | El `.gitignore` de WMF ignoraba `.claude/*` salvo settings, hooks y skills: `.claude/gw.json` y `.claude/gw/` no se habrían subido, y nada lo avisa. La marca `.claude/revision-main.sha` también estaba ignorada. | Excepciones en `.gitignore`. |
 | 3 | 1, `check` | `check` no tiene forma de relanzarse fuera de un sandbox (Flatpak de la Deck): el `pre-push` de WMF se relanzaba entero en el host. | Cada orden con npx, envuelta en `tools/qa/host.sh`. |
+| 4 | 3, `opt-ai` | El `medir.py` del flujo no tiene la tabla por turno (TURNOS) que usa `bench-ia.sh`. | El de WMF pasa a `tools/qa/medir-ia.py` (script del proyecto). |
+| 5 | 3, `opt-tokens` | El `medir.py` del flujo no trae test; el de WMF sí. Mismas cifras en esta sesión. | `tools/qa/tests/test_medir.py` portado al del flujo (8 tests). |
+| 6 | 3, CI | `unittest discover -s .claude/skills/opt-ai` da 0 tests: los scripts del flujo están en `scripts/`, sin `__init__.py`. | `-s .claude/skills/opt-ai/scripts` en `ci.yml` y `ci-local.sh`. |
+| 7 | 3 | La salida de los scripts del flujo está en inglés aunque `language: es`. | Se acepta. |
 
 ## For Galivelop-workflow
 
@@ -34,3 +38,7 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
   (`git check-ignore`) y avisar con la línea que lo arregla.
 - `check`/`pre-push`: un gancho para ejecutar las órdenes dentro de un envoltorio del proyecto (p. ej. `checkWrapper`)
   evitaría repetir `host.sh` en cada orden.
+- `opt-ai/scripts/medir.py`: una tabla por turno (duración y tareas de cada turno) haría innecesario el script propio.
+- `opt-tokens/scripts/medir.py`: sin test; WMF ofrece el suyo (`tools/qa/tests/test_medir.py`).
+- Los scripts de cada skill en `scripts/` piden `-s <skill>/scripts` a `unittest discover`; decirlo en `aplicar.md`.
+- Los mensajes de los scripts deberían seguir `language` de `gw.json`.
