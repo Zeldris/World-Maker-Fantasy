@@ -125,6 +125,8 @@ export function VasallajesCard({ vasallajes }: { vasallajes: VasallajeInfo[] }) 
               <p className="text-2xs text-wood-500">
                 {v.alCorriente ? (
                   <span className="text-accent2-300">Al corriente</span>
+                ) : v.cuota === 0 ? (
+                  <span className="text-accent-300">Sin soldados con los que patrullar: arrastra {v.deuda} Goirnos</span>
                 ) : v.porcentajePagado == null ? (
                   <span className="text-accent-300">Pendiente de la revisión semanal ({v.deuda} Goirnos)</span>
                 ) : v.porcentajePagado >= 100 ? (

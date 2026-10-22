@@ -112,6 +112,19 @@ describe('DiplomaciaMercadoSection — P286/P297 vasallajes', () => {
     expect(utils.container.textContent).not.toContain('Impagado')
   })
 
+  it('sin soldados (cuota 0) dice que no puede patrullar y lo que arrastra, no «pago parcial»', async () => {
+    vi.mocked(getVasallajes).mockResolvedValue({
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 300, alCorriente: false, porcentajePagado: 0, cuota: 0, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 63, rotoEn: null, motivoRuptura: null }],
+    })
+    let utils!: ReturnType<typeof render>
+    await act(async () => {
+      utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[faccion]} goirnos={0} onRefreshSave={async () => {}} />)
+    })
+    expect(utils.container.textContent).toContain('Sin soldados con los que patrullar: arrastra 300 Goirnos')
+    expect(utils.container.textContent).not.toContain('Pago parcial')
+    expect(utils.container.textContent).not.toContain('Impagado')
+  })
+
   it('sin facciones descubiertas la tarjeta de vasallajes sale igual', async () => {
     vi.mocked(getVasallajes).mockResolvedValue({
       vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 0, alCorriente: true, porcentajePagado: 100, cuota: 1248, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 7, rotoEn: null, motivoRuptura: null }],
