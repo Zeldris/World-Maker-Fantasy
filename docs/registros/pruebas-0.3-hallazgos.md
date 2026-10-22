@@ -12,12 +12,12 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (67): P16, P27, P49, P66, P99, P116, P136, P158, P169, P173, P177, P188, P203,
+- **Pendientes** (69): P16, P27, P49, P66, P99, P116, P136, P158, P169, P173, P177, P188, P203,
   P205, P206, P207, P208, P209, P210, P211, P212, P213, P241, P242, P243, P244, P245, P246, P247,
   P248, P250, P251, P252, P253, P254, P255, P256, P257, P258, P259, P261, P262, P263, P264, P265,
   P266, P267, P268, P269, P270, P271, P272, P273, P274, P293, P299, P304, P305, P306, P307, P308,
-  P309, P310, P311, P312, P313, P314.
-- **Pendientes de una decisión de la usuaria** (0): ninguno.
+  P309, P310, P311, P312, P313, P314, P315, P317.
+- **Pendientes de una decisión de la usuaria** (1): P316.
 - **Arreglados en parte** (18): P12, P45, P70, P82, P131, P151, P155, P180, P182, P186, P189, P223,
   P279, P288, P292, P294, P295, P300.
 - **Arreglados, sin comprobar jugando** (36): P29, P46, P47, P51, P55, P56, P69, P76, P77, P79, P90,
@@ -364,3 +364,6 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P312 | Tanda 16 (2026-10-22, t16-reino, Reino › Partidas, día 50-51): con las 3 piezas de Kirelon de una partida de caza en el Almacén y un Desolladero (dado con dar-reino), tras avanzar 1 día las piezas desaparecen y el diario (LogEntry) no tiene ni «El Desolladero desuella…» ni «Se echan a perder…»: no se ve qué fue de ellas. | Pendiente |
 | P313 | Tanda 16 (2026-10-22, Reino › Partidas): con la única zona con fauna conocida ya sin presas (Hondonada, 3 Kirelon abatidos), el selector dice «Aún no conoces ningún lugar con fauna a la vista: explóralos antes de mandar a nadie», aunque el lugar se conoce y se ha agotado (texto engañoso, menor). | Pendiente |
 | P314 | Tanda 18 (2026-10-22, reino-guerra-vasallaje, día 51, Reino › Diplomacia › Vasallajes del mundo): con la cuota pagada al 100 % pero deuda arrastrada (1612, alCorriente false), el suceso del vasallaje dice estado «parcial»: no se entiende si se ha pagado o no (menor). | Pendiente |
+| P315 | Tanda 20 (2026-10-22, t20-mundo, días 39-1479 con escenario.sh avanzar): las tormentas dañan edificios del Reino (días 28, 37, 46, 55…) sin ninguna línea en el diario ni en el aviso del Reino (que solo cuenta asaltos): la jugadora se entera al ir a construir y ver el aviso «Tu Ayuntamiento está dañado». | Pendiente |
+| P316 | Tanda 20 (2026-10-22, t20-mundo): en 1479 días ningún suceso del mundo llega a la jugadora: Conocimiento no tiene filas de HAMBRUNA, INCENDIO, MUERTE_NPC, NACIMIENTO_NOTABLE, NPC_DESTACA, PLAGA ni TORMENTA_EXTREMA (171 tormentas, 169 plagas), logEntryId es null salvo en RENACER, y ni «El mundo» ni Leyendas los muestran (sí guerra, alianza, territorio perdido y expediciones). Puede ser por diseño (se conoce por cercanía o rumor; Gorhorn no se movió y los días pasaron con avanzar, no jugando). | Pendiente de una decisión de la usuaria: ¿es el diseño buscado? |
+| P317 | Tanda 20 (2026-10-22, t20-mundo): la población de NPC solo crece: 78 nacimientos frente a 3 muertes en 1479 días. Los NPC del catálogo empiezan con 41 años como mucho (la vejez de los orcos llega a los 48) y la primera muerte de viejo llega hacia el día 1000 (Maestro Minero Helsig, día 1044). Equilibrio, menor. | Pendiente |
