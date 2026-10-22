@@ -211,6 +211,21 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     expect(await prisma.vasallaje.count({ where: { saveId } })).toBe(1);
   });
 
+  it('las líneas no se mezclan: una facción señora en un vasallaje y vasalla en otro', async () => {
+    const cuota = cuotaSemanal((await stats('clan-serhu')).soldados);
+    const otra = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: { notIn: ['clan-serhu', 'concordia-de-hierro'] }, kingdomStats: { isNot: null } }, select: { slug: true } });
+    // La Concordia, señora de Serhu, es vasalla de otra facción, con algo pendiente y sin revisión aún.
+    // Serhu, con su última revisión impagada (día 49), vuelve a deber una cuota.
+    await prisma.vasallaje.update({ where: { id: (await vasallaje()).id }, data: { deuda: cuota } });
+    const extra = await prisma.vasallaje.create({ data: { saveId, vasalloSlug: 'concordia-de-hierro', senorSlug: otra.slug, deuda: 100, desdeMinutes: 0 } });
+    const vista = await vasallajesVista(prisma, saveId, 51);
+    // Las líneas de Serhu (con la Concordia como actor) siguen siendo solo de Serhu.
+    expect(vista.find((x) => x.vasalloSlug === 'concordia-de-hierro')).toMatchObject({ alCorriente: false, porcentajePagado: null, deuda: 100 });
+    expect(vista.find((x) => x.vasalloSlug === 'clan-serhu')).toMatchObject({ porcentajePagado: 0, deuda: cuota });
+    expect((await ultimaLinea()).datos).toMatchObject({ vasalloSlug: 'clan-serhu' });
+    await prisma.vasallaje.delete({ where: { id: extra.id } });
+  });
+
   it('si cae el señor, el vasallaje se rompe', async () => {
     await prisma.faction.updateMany({ where: { saveId, slug: 'concordia-de-hierro' }, data: { disueltaEn: 54 * 1440 } });
     await semana(56, 0.9);

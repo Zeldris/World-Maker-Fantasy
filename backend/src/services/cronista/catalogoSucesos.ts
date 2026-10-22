@@ -69,7 +69,7 @@ export interface DatosSuceso {
   /// CR-59 (P297): la semana de un vasallo: al corriente (paga y patrulla), pago parcial (patrullas en
   /// proporción, `porcentaje` y si patrulló) o impagado (patrullas suspendidas), decisión 2026-10-22.
   /// `deuda` solo en las líneas de antes de esa decisión.
-  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'impagado' | 'migrado'; porcentaje?: number; patrulla?: boolean; pendiente?: number; pagado?: number; deuda?: number; rearmados?: number };
+  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'impagado' | 'migrado'; porcentaje?: number; patrulla?: boolean; vasalloSlug?: string; pendiente?: number; deuda?: number; rearmados?: number };
   // FACCION
   FACCION_CAE: { faccion: string };
   FACCION_ESCINDIDA: { faccion: string; nueva: string };

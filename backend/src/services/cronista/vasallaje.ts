@@ -61,24 +61,29 @@ const RUPTURA_VIEJA = 'deuda saldada';
 async function lineasNuevas(tx: Tx, saveId: string, vasallos: string[]): Promise<Map<string, { ultima: DatosLinea | null; marcada: boolean }>> {
   const porVasallo = new Map(vasallos.map((v) => [v, { ultima: null as DatosLinea | null, marcada: false }]));
   if (vasallos.length === 0) return porVasallo;
+  // Con tope: basta con las últimas semanas de cada vasallo (una línea por semana como mucho).
   const lineas = await tx.suceso.findMany({
     where: { saveId, tipo: 'PATRULLA_VASALLO', actores: { some: { entidadTipo: 'FACCION', entidadId: { in: vasallos } } } },
     orderBy: { fictionalMinutes: 'desc' },
+    take: LINEAS_POR_VASALLO * vasallos.length,
     select: { datos: true, actores: { select: { entidadId: true } } },
   });
+  let faltan = vasallos.length;
   for (const l of lineas) {
     const d = l.datos as DatosLinea;
     if (!d.estado) continue;
-    for (const a of l.actores) {
-      const e = porVasallo.get(a.entidadId);
-      if (!e) continue;
-      e.marcada = true;
-      if (!e.ultima && d.estado !== 'migrado') e.ultima = d;
-    }
+    // Vasallo y señor son los dos AFECTADO: la línea es del vasallo que dice `datos.vasalloSlug`; las
+    // escritas antes de guardarlo, del primer actor (el vasallo, que se registra primero).
+    const e = porVasallo.get(d.vasalloSlug ?? l.actores[0]?.entidadId ?? '');
+    if (!e || (e.ultima && e.marcada)) continue;
+    e.marcada = true;
+    if (!e.ultima && d.estado !== 'migrado') e.ultima = d;
+    if (e.ultima && --faltan === 0) break;
   }
   return porVasallo;
 }
-type DatosLinea = { estado?: string; porcentaje?: number };
+type DatosLinea = { estado?: string; porcentaje?: number; vasalloSlug?: string };
+const LINEAS_POR_VASALLO = 50;
 
 /// Puro: cuántos trabajadores pasan a guerreros con un excedente de comida (cada uno deja de producir 2).
 export const rearme = (margenComida: number, trabajadores: number) => Math.max(0, Math.min(trabajadores, Math.floor(margenComida / 2)));
@@ -114,7 +119,7 @@ export async function asegurarVasallajes(tx: Tx, saveId: string, ahora: number):
       await registrarSuceso(tx, {
         saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
         actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
-        datos: { vasallo: porSlug.get(v.vasalloSlug)!.name, senor: porSlug.get(v.senorSlug)?.name ?? v.senorSlug, estado: 'migrado', pendiente },
+        datos: { vasalloSlug: v.vasalloSlug, vasallo: porSlug.get(v.vasalloSlug)!.name, senor: porSlug.get(v.senorSlug)?.name ?? v.senorSlug, estado: 'migrado', pendiente },
       });
     }
   }
@@ -194,7 +199,7 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
         saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
         actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
         datos: {
-          vasallo: vasallo.name, senor: senor.name,
+          vasalloSlug: v.vasalloSlug, vasallo: vasallo.name, senor: senor.name,
           ...(pago.alCorriente
             ? { estado: 'al-corriente' as const }
             : pago.pagado > 0
