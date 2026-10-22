@@ -122,6 +122,14 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Comprobados jugando** (2): P3, P8.', texto)
         self.assertIn('- **Pendientes de una decisión de la usuaria** (1): P4.', texto)
 
+    def test_no_jugable_va_aparte_de_los_sin_comprobar(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ 2026-10-09 (no jugable, se cierra sin jugar: solo tests): test en verde |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Arreglados, sin comprobar jugando** (1): P2.', texto)
+        self.assertIn('- **Arreglados, no jugables (los cubre un test o la base)** (1): P7.', texto)
+
     def test_comprobar_avisa_de_un_estado_contradictorio(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | No aplica. ✅ hecho |\n| P8 | Ocho | ✅ 2026-10-13 (decisión de la usuaria): así |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)

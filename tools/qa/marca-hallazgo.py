@@ -63,6 +63,7 @@ GRUPOS = [
     ('parte', 'Arreglados en parte'),
     ('arreglado', 'Arreglados, sin comprobar jugando'),
     ('comprobado', 'Comprobados jugando'),
+    ('nojugable', 'Arreglados, no jugables (los cubre un test o la base)'),
     ('cerrado', 'Cerrados sin arreglo (no aplica, dato o roadmap)'),
 ]
 
@@ -75,8 +76,9 @@ def grupo(estado: str) -> str:
     """En qué grupo del resumen cae un hallazgo, por el texto de su estado (lo citado entre «» no cuenta).
 
     Lo que queda de un arreglo va tras «pendiente:» o «falta:», o lo marca «en parte» (con o sin paréntesis);
-    lo jugado, «comprobado jugando», «comprobado en vivo» o «✅ comprobado». «Reabierto» solo cuenta si no
-    le sigue un ✅: manda el último estado (QA-92)."""
+    lo jugado, «comprobado jugando», «comprobado en vivo» o «✅ comprobado»; lo que no se puede jugar y se cierra
+    con su razón, «no jugable» (cierre del 3.3). «Reabierto» solo cuenta si no le sigue un ✅: manda el último
+    estado (QA-92)."""
     t = sin_citas(estado)
     bajo = t.lower()
     reabierto = bajo.rfind('reabierto')
@@ -86,6 +88,8 @@ def grupo(estado: str) -> str:
         return 'cerrado'
     # Desde la ronda del 2026-10-19 muchas filas abren con «arreglado (…)» sin el ✅: cuentan igual.
     if '✅' in t or re.match(r'arreglad[oa]s?\b', bajo):
+        if re.search(r'\bno jugable\b', bajo):
+            return 'nojugable'
         if re.search(r'\b(pendiente|falta):|\ben parte\b', bajo):
             return 'parte'
         if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', bajo):
