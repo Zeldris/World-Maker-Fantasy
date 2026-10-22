@@ -30,16 +30,20 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    de 6-8 hallazgos y como mucho ~60 llamadas por subagente (`QA-189`: las de 11-14 hicieron 87 y 99); al llegar, guarda el estado con `escenario.sh guardar` y el siguiente lo carga
    (`QA-147`). Cada trozo, con su criterio de hecho
    comprobable (un test en verde, un P-número comprobado o abierto, un commit subido) y lo que le bloquea. La
-   **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas).
+   **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas). Un arreglo de un archivo
+   cuyo sitio ya da el revisor no es un trozo: lo hace la principal, con sus tests y `tsc` (`QA-202`: un subagente
+   paga ~52k al arrancar y hace 70-80 llamadas; la principal lo cerró en ~10).
 2. **Repartir.** Un subagente por trozo con `Agent`, en primer plano (`run_in_background: false`) cuando el
    siguiente trozo depende de él. Modelo y esfuerzo por la escalera del `selector` (`QA-118`): `sonnet` para
-   implementar y jugar, `opus` para depurar algo no obvio. El encargo lleva **punteros**, no copias: dónde está lo que
+   implementar y jugar, también los arreglos de una revisión, cuyo plan cierra el revisor (`QA-201`: tres con `opus`
+   gastaron 7,4 M de entrada cada uno; el revisor sigue en `opus`), `opus` para depurar algo no obvio. El encargo lleva **punteros**, no copias: dónde está lo que
    necesita (fila de la bitácora, P-número del registro, fila de la matriz, commit, archivo y función del
    `docs/mapa-agente.md`), nunca el texto pegado. Si el encargo escribe en la partida (scripts de QA, escenarios), pruébalo con
-   `escenario.sh probar` contra una instantánea (`QA-153`). Con esta forma:
+   `escenario.sh probar` contra una instantánea (`QA-153`). El encargo empieza comprobando la rama de partida (`QA-204`: los worktrees salían de `main`). Con esta forma:
 
    ```text
-   Trabajas en Tarkor, rama <rama>. Lee docs/registros/traspaso.md (tu fila) y, si tocas código,
+   Trabajas en Tarkor, rama <rama>. Si tu worktree no parte de origin/<rama> (git log -1), git reset --hard
+   origin/<rama> antes de nada. Lee docs/registros/traspaso.md (tu fila) y, si tocas código,
    docs/mapa-agente.md. Sigue CLAUDE.md (commit + push con la bitácora en el mismo commit).
    Encargo: <qué, en una o dos frases>.
    Hecho cuando: <criterio comprobable>.
@@ -89,6 +93,9 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
   Opus, 1.150 órdenes de Bash): la principal no lanza `orden.sh`; reparte tandas y apunta lo que vuelve. Comparten
   el navegador y la base de juego. Cada tanda deja la partida en un
   estado que la siguiente pueda retomar y lo dice en `FALTA` (pantalla, partida, día).
+- **Antes del PR, solo lo grave** (`QA-203`: cada arreglo del `/code-review` previo al PR se revisaba y traía más,
+  y los cambios se acumularon): en esa fase se arregla lo grave o medio y lo que el propio arreglo rompe; lo leve va a
+  la fila compartida de la bitácora como pendiente.
 - **El subagente no habla con la usuaria**: lo que necesite de ella vuelve como `PREGUNTAS`.
 - **Medir**: `/opt-tokens` antes de cada PR compara el contexto medio por llamada, las compactaciones y el reparto
   `POR MODELO` con la sesión anterior; si no bajan, el reparto se está quedando en la principal.

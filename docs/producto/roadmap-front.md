@@ -1492,6 +1492,15 @@ Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-
 - **QA-199 · Partidas intermedias de una tanda fuera de git**: el PR subió 5 `.dump` de ~900 KB; que `escenario.sh guardar` deje las intermedias en `logs/` (ignorado) y solo suba a `tools/qa/escenarios/` lo guardado con `--subir`. Paso 3.4.
 - ~~**QA-200 · Una tanda con Ollama real juega al menos 8 turnos**: con 3 turnos `/opt-ai` no tiene medida comparable.~~ ✅ 2026-10-22: regla 8 de `rondas-de-pruebas.md`; si no llega, `bash tools/qa/bench-ia.sh` al cerrar.
 
+`/opt-tokens` y retro previos al PR de `claude/frontend-improvements-roadmap-0mpckt` (aprobadas por la usuaria el 2026-10-22; 201-204 se aplican ya; 205-207 son del paso 3.4 de la línea):
+- ~~**QA-201 · Arreglos de una revisión con `sonnet`**: los tres agentes de arreglos del code-review fueron con `opus`, 7,4 M de entrada cada uno.~~ ✅ 2026-10-22: paso 2 de `orchestrate-dealer`; el revisor sigue en `opus`.
+- ~~**QA-202 · La principal hace el arreglo de un archivo**: un subagente arranca con ~52k y hace 70-80 llamadas; la principal cerró dos arreglos en ~10.~~ ✅ 2026-10-22: paso 1 de `orchestrate-dealer`.
+- ~~**QA-203 · Antes del PR, solo lo grave**: cada arreglo del code-review previo al PR traía más hallazgos y se acumularon los cambios.~~ ✅ 2026-10-22: regla de `orchestrate-dealer`; lo leve, a la fila compartida de la bitácora.
+- ~~**QA-204 · El encargo comprueba la rama de partida**: varios worktrees de agentes salieron de `main`.~~ ✅ 2026-10-22: primera línea del encargo de `orchestrate-dealer`.
+- **QA-205 · Aislar el test intermitente de cronista** (`decisionesFaccion`/`deudaDeVida`): pasa solo y falla a veces en la suite completa, seguramente por la base compartida; puede poner el CI en rojo sin motivo. Paso 3.4.
+- **QA-206 · `fusionar.sh` desde la raíz**: si se lanza dentro del worktree que borra acaba con error de `getcwd` (aunque fusiona), y con el agente vivo no borra el worktree sin decir por qué; que trabaje desde la raíz y avise del bloqueo. Paso 3.4.
+- **QA-207 · `medir.py`, contexto de toda la sesión**: con `--horas 0` da 382k de contexto medio frente a ~110k de los 8 tramos que enseña; que lo cuadre o diga «últimos 8». Paso 3.4.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
