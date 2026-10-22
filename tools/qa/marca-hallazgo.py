@@ -63,6 +63,7 @@ GRUPOS = [
     ('parte', 'Arreglados en parte'),
     ('arreglado', 'Arreglados, sin comprobar jugando'),
     ('comprobado', 'Comprobados jugando'),
+    ('nojugable', 'Arreglados, no jugables (los cubre un test o la base)'),
     ('cerrado', 'Cerrados sin arreglo (no aplica, dato o roadmap)'),
 ]
 
@@ -71,24 +72,43 @@ def sin_citas(estado: str) -> str:
     return re.sub(r'«[^»]*»', '', estado).strip()
 
 
+REABIERTO = re.compile(r'\breabiert[oa]s?\b', re.I)
+FECHA = r'(\d{4}-\d{2}-\d{2})'
+COMPROBADO = re.compile(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', re.I)
+
+
+def reabiertos(t: str) -> list[re.Match]:
+    """Todo «reabierto» cuenta, también tras un «no» («no se ha reabierto»): ante la duda, pendiente antes que cerrado
+    (QA-195; con una guardia de negación, el «sin» de otra frase escondía el reabierto de P99)."""
+    return list(REABIERTO.finditer(t))
+
+
+def reabierto_vigente(t: str) -> bool:
+    """Hay un «reabierto» (el último) sin ✅ detrás: manda el último estado (QA-92)."""
+    ms = reabiertos(t)
+    return bool(ms) and '✅' not in t[ms[-1].start():]
+
+
 def grupo(estado: str) -> str:
     """En qué grupo del resumen cae un hallazgo, por el texto de su estado (lo citado entre «» no cuenta).
 
     Lo que queda de un arreglo va tras «pendiente:» o «falta:», o lo marca «en parte» (con o sin paréntesis);
-    lo jugado, «comprobado jugando», «comprobado en vivo» o «✅ comprobado». «Reabierto» solo cuenta si no
-    le sigue un ✅: manda el último estado (QA-92)."""
+    lo jugado, «comprobado jugando», «comprobado en vivo» o «✅ comprobado»; lo que no se puede jugar y se cierra
+    con su razón, «no jugable» (cierre del 3.3). «Reabierto» solo cuenta si no le sigue un ✅: manda el último
+    estado (QA-92)."""
     t = sin_citas(estado)
     bajo = t.lower()
-    reabierto = bajo.rfind('reabierto')
-    if reabierto >= 0 and '✅' not in t[reabierto:]:
+    if reabierto_vigente(t):
         return 'pendiente'
     if re.match(r'(no aplica|dato\b|→ roadmap|🧭|va al roadmap|pasa al roadmap)', bajo):
         return 'cerrado'
     # Desde la ronda del 2026-10-19 muchas filas abren con «arreglado (…)» sin el ✅: cuentan igual.
     if '✅' in t or re.match(r'arreglad[oa]s?\b', bajo):
+        if re.search(r'\bno jugable\b', bajo):
+            return 'nojugable'
         if re.search(r'\b(pendiente|falta):|\ben parte\b', bajo):
             return 'parte'
-        if re.search(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', bajo):
+        if COMPROBADO.search(bajo):
             return 'comprobado'
         return 'arreglado'
     if re.search(r'decisi[oó]n de la usuaria|que la usuaria (confirme|decida)', bajo):
@@ -105,16 +125,45 @@ def contradictorio(estado: str) -> bool:
                              or re.search(r'pendiente de (una |la )?decisi[oó]n|que la usuaria (confirme|decida)', bajo))
 
 
-def raro(estado: str) -> bool:
+def raro(estado: str, g: str | None = None) -> bool:
     """QA-185: cuenta como pendiente sin decirlo, como las filas «arreglado» sin ✅ que se contaban mal. Lo dice
     si empieza (tras negritas, emoji o rayas) por «pendiente(s)» o «abierto», o si un «reabierto» lo reabrió."""
-    bajo = sin_citas(estado).lower()
-    if grupo(estado) != 'pendiente':
-        return False
-    reabierto = bajo.rfind('reabierto')
-    if reabierto >= 0 and '✅' not in bajo[reabierto:]:
+    t = sin_citas(estado)
+    bajo = t.lower()
+    if (g or grupo(estado)) != 'pendiente' or reabierto_vigente(t):
         return False
     return not re.match(r'[^\w]*(pendientes?|abiert[oa]s?)\b', bajo)
+
+
+def incoherente(estado: str, g: str | None = None) -> bool:
+    """QA-195: el estado cuenta como cerrado (arreglado, comprobado, en parte o no jugable) pero dice lo contrario en el
+    orden equivocado: un «reabierto <fecha>» POSTERIOR a la fecha del ✅ que lo sigue (los subagentes escriben lo nuevo
+    delante del estado viejo: P116 del 3.3), o, en un comprobado, «falta/queda (por) ver/comprobar» tras la última marca
+    de verificación. El historial en orden («✅ 10-15; reabierto 10-21; ✅ 10-23») pasa. Cada fecha se lee pegada a su
+    palabra (sin dígitos ni «;» entre medias), para no tomar la de otra frase; un reabierto sin fecha delante de un ✅
+    pasa (es ambiguo): se escribe siempre «Reabierto AAAA-MM-DD: …» y al final del estado."""
+    t = sin_citas(estado)
+    bajo = t.lower()
+    g = g or grupo(estado)
+    if g not in ('arreglado', 'comprobado', 'parte', 'nojugable'):
+        return False
+    # «falta verlo/comprobarlo jugando» en un arreglado es lo normal (aún no se ha jugado); «falta ver una hora» tras la
+    # última marca de verificación es lo que se quedó a medias (lo de antes es historial: P202).
+    if g == 'comprobado':
+        marcas = list(COMPROBADO.finditer(bajo))
+        desde = marcas[-1].end() if marcas else 0
+        if re.search(r'\b(falta|queda)n?( por)? (ver|comprobar)\w*', bajo[desde:]):
+            return True
+    for m in reabiertos(t):
+        resto = t[m.end():]
+        cruz = resto.find('✅')
+        if cruz < 0:
+            continue
+        f1 = re.match(r'[^\d✅;]{0,15}' + FECHA, resto)
+        f2 = re.match(r'[^\d✅;]{0,30}' + FECHA, resto[cruz + 1:])
+        if f1 and f2 and f1.group(1) > f2.group(1):
+            return True
+    return False
 
 
 def partir(linea: str) -> tuple[str, str]:
@@ -159,20 +208,29 @@ def main(args: list[str]) -> None:
         if args[1:] == ['--comprobar']:
             if INICIO_RESUMEN not in lineas or FIN_RESUMEN not in lineas:
                 sys.exit(f'{ruta}: faltan las marcas del resumen (`{INICIO_RESUMEN}` y `{FIN_RESUMEN}`, cada una en su línea)')
-            raros = []
+            raros, incoherentes = [], []
             for linea in lineas:
                 m = re.match(r'^\| (P\d+) \|', linea)
                 if not m:
                     continue
                 estado = partir(linea)[1]
+                g = grupo(estado)
                 if contradictorio(estado):
                     print(f'{ruta}: aviso: el estado de {m.group(1)} se contradice (✅ y cerrado o pendiente de la usuaria)',
                           file=sys.stderr)
-                if raro(estado):
+                if incoherente(estado, g):
+                    print(f'{ruta}: aviso: el estado de {m.group(1)} tiene un «reabierto <fecha>» posterior a su ✅, o un '
+                          '«falta ver» en un comprobado (QA-195)', file=sys.stderr)
+                    incoherentes.append(m.group(1))
+                if raro(estado, g):
                     raros.append(m.group(1))
             if raros:
                 sys.exit(f'{ruta}: cuentan como pendientes y su estado no lo dice (QA-185): {", ".join(raros)}; '
                          'empiézalo por «pendiente», o por «✅»/«arreglado» si ya está arreglado')
+            if incoherentes:
+                sys.exit(f'{ruta}: cuentan como cerrados y su estado dice lo contrario en orden equivocado (QA-195): '
+                         f'{", ".join(incoherentes)}; el estado vigente va AL FINAL (gana el último, QA-92): mueve el '
+                         '«Reabierto <fecha>: …» detrás del ✅ viejo, o quita el «falta ver» si ya se vio')
             if nuevas != lineas:
                 sys.exit(f'{ruta}: el resumen no coincide con la tabla; rehazlo con `python3 tools/qa/marca-hallazgo.py --resumen`')
             return
