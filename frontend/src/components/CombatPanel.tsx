@@ -396,6 +396,16 @@ export function CombatPanel({
   // la conclusión hasta que su propia animación termine — `onAllLanded` de `DiceRollVs` lo pone en
   // `true` cuando el segundo dado aterriza de verdad.
   const [initiativeRevealed, setInitiativeRevealed] = useState(false)
+  // P288: número de tirada, para la `key` de `DiceRollVs`. Con solo los números, dos iniciativas
+  // seguidas con los mismos dados no remontaban la animación: `onAllLanded` no volvía a llegar y el
+  // panel se quedaba en «Tirando iniciativa...».
+  // Sube solo cuando cambia la identidad de la tirada, nunca en el montaje: si no, al rehidratar con
+  // la tirada ya puesta la `key` pasaba de 0 a 1 y la animación arrancaba dos veces.
+  const initiativeTiradaRef = useRef({ roll: lastInitiativeRoll, n: 0 })
+  if (initiativeTiradaRef.current.roll !== lastInitiativeRoll) {
+    initiativeTiradaRef.current = { roll: lastInitiativeRoll, n: initiativeTiradaRef.current.n + 1 }
+  }
+  const initiativeTirada = initiativeTiradaRef.current.n
   useEffect(() => {
     setInitiativeRevealed(false)
   }, [lastInitiativeRoll])
@@ -679,10 +689,10 @@ export function CombatPanel({
               // `CombatPanel` se monta una única vez por combate): el `useEffect(..., [])` interno de
               // `useScrollIntoViewOnMount` (DiceRoll.tsx) solo corre en el montaje real, así que el
               // scroll automático a la tirada solo funcionaba en la PRIMERA iniciativa del combate,
-              // nunca en las siguientes. Los rolls crudos de esta tirada bastan como identidad —
-              // cambian en cada tirada real (y ahora, con un único bloque, esta `key` es también lo
-              // único que fuerza un remount real: un cambio de `awaitingDefense` solo no lo hace).
-              key={`${lastInitiativeRoll.jugador.roll}-${lastInitiativeRoll.npc.roll}`}
+              // nunca en las siguientes. La `key` es el número de tirada (P288: los rolls crudos se
+              // repiten a veces), y con un único bloque es lo único que fuerza un remount real: un
+              // cambio de `awaitingDefense` solo no lo hace.
+              key={initiativeTirada}
               left={lastInitiativeRoll.jugador}
               right={lastInitiativeRoll.npc}
               leftLabel={characterName ?? 'Tú'}

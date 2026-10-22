@@ -3178,6 +3178,8 @@ export interface AvistamientoInfo {
   quien: string
   gente: number
   tramos: number
+  /// P295: por qué llamar a la milicia no serviría ahora.
+  sinMilicia?: string
 }
 /// `danados`: Ayuntamiento o Cuartel dañados (P284), que no defienden hasta repararlos.
 export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[] }> {
@@ -3208,6 +3210,23 @@ export interface EnemigaInfo {
   nombre: string
   relacion: 'GUERRA' | 'TENSION'
   presion: number
+}
+/// CR-59 (P286): vasallajes de la partida (Reino › Diplomacia).
+export interface VasallajeInfo {
+  vasalloSlug: string
+  vasalloNombre: string
+  senorSlug: string
+  senorNombre: string
+  deuda: number
+  deudaPorPatrulla: number
+  sobreprecioArmas: number
+  patrullaGuerreros: number
+  proximaRevision: number | null
+  rotoEn: number | null
+  motivoRuptura: string | null
+}
+export async function getVasallajes(saveId: string): Promise<{ vasallajes: VasallajeInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/vasallajes`)
 }
 export async function getGuerra(saveId: string): Promise<{ enemigas: EnemigaInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/guerra`)

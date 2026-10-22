@@ -10,6 +10,8 @@ import { precioDinamico } from '../../services/economia.js';
 import { quantityOf } from '../../services/ingredients.js';
 import { asegurarMundoDePartida } from '../../services/mundoPartida.js';
 import { etiquetasActivas } from '../../services/cronista/etiquetas.js';
+import { vasallajesVista } from '../../services/cronista/vasallaje.js';
+import { diaDeFiccion } from '../../services/avanceDiario.js';
 import { resumenEconomia, traspasarGoirnos } from '../../services/cronista/economiaReino.js';
 
 /// Fundación de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — el popup que se abre
@@ -498,6 +500,13 @@ export async function reinoRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     return resumenEconomia(prisma, save.id);
+  });
+
+  // CR-59 (P286): vasallajes de la partida con su deuda, para Reino › Diplomacia.
+  app.get<{ Params: { id: string } }>('/saves/:id/reino/vasallajes', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    return { vasallajes: await vasallajesVista(prisma, save.id, diaDeFiccion(save.worldState?.fictionalMinutes ?? 0)) };
   });
 
   // CR-53 53c (Q3): pasar Goirnos entre la bolsa del personaje y el tesoro del Reino.

@@ -336,8 +336,16 @@ export function resolverEnganchesRonda(
   /// una pérdida de control más fuerte que la propia orden de marcar, mismo criterio que "si ya te
   /// han elegido, no eliges tú" de la regla 3 ya existente.
   marcas: Map<string, string> = new Map(),
+  /// CR-45 (P292, 2026-10-21): la orden del capitán. Sus `seguidores` van a por `objetivoId` aunque
+  /// otro los haya elegido antes o después (se saltan las reglas 3 y 4): quien los eligió les pega sin
+  /// duelo y el señalado se defiende del primero que llega. Antes, la jugadora atacando al capitán y
+  /// los compañeros eligiendo a los demás deshacían la orden y los golpes acababan en la jugadora.
+  /// Una provocación sigue mandando sobre la orden, y un señalado oculto no es candidato.
+  ordenCapitan: { seguidores: Set<string>; objetivoId: string } | null = null,
 ): Map<string, string | null> {
   const bandoDe = new Map(combatientes.map((c) => [c.participantId, c.bando]));
+  // Seguidores del capitán que esta ronda cumplen la orden (ni la regla 3 ni la 4 se la quitan).
+  const cumplenOrden = new Set<string>();
   // target → primer atacante que lo reclamó — first-come, nunca se sobreescribe con un reclamo
   // nuevo (eso es justo lo que produce el golpe gratis del segundo/tercer pretendiente).
   const reclamadoPor = new Map<string, string>();
@@ -347,7 +355,6 @@ export function resolverEnganchesRonda(
 
   for (const id of ordenIniciativa) {
     if (!bandoDe.has(id)) continue; // participante fuera de este encuentro (no debería pasar)
-    if (reclamadoPor.has(id)) continue; // ya reclamado por alguien antes — no elige (regla 3)
 
     const bando = bandoDe.get(id)!;
     const candidatosCrudos = combatientes.filter((c) => c.bando !== bando);
@@ -355,6 +362,14 @@ export function resolverEnganchesRonda(
     const candidatos = (candidatosVisibles.length > 0 ? candidatosVisibles : candidatosCrudos).map((c) => c.participantId);
     // Provocado con provocador todavía vivo/candidato real este turno → salta la IA normal.
     const provocadorId = provocaciones.get(id);
+    const provocado = !!provocadorId && candidatos.includes(provocadorId);
+    if (ordenCapitan && !provocado && ordenCapitan.seguidores.has(id) && candidatos.includes(ordenCapitan.objetivoId)) {
+      cumplenOrden.add(id);
+      objetivoProvisional.set(id, ordenCapitan.objetivoId);
+      if (!reclamadoPor.has(ordenCapitan.objetivoId)) reclamadoPor.set(ordenCapitan.objetivoId, id);
+      continue;
+    }
+    if (reclamadoPor.has(id)) continue; // ya reclamado por alguien antes — no elige (regla 3)
     // MARCAR: sin provocación activa, un COMPANION con marca viva y objetivo todavía candidato
     // ataca preferentemente a ese objetivo en vez de su IA de Inteligencia normal.
     const marcaId = marcas.get(id);
@@ -374,7 +389,7 @@ export function resolverEnganchesRonda(
   // pierde esa elección — su objetivo original queda libre otra vez (aunque ya nadie más vaya a
   // reclamarlo esta ronda, ver comentario de cabecera).
   for (const [atacante, objetivoElegido] of objetivoProvisional) {
-    if (!reclamadoPor.has(atacante)) continue;
+    if (!reclamadoPor.has(atacante) || cumplenOrden.has(atacante)) continue;
     objetivoProvisional.delete(atacante);
     if (reclamadoPor.get(objetivoElegido) === atacante) reclamadoPor.delete(objetivoElegido);
   }
@@ -382,7 +397,8 @@ export function resolverEnganchesRonda(
   const resultado = new Map<string, string | null>();
   for (const id of ordenIniciativa) {
     if (!bandoDe.has(id)) continue; // mismo filtro que la fase de elección, ver comentario de arriba
-    if (reclamadoPor.has(id)) resultado.set(id, reclamadoPor.get(id)!);
+    if (cumplenOrden.has(id)) resultado.set(id, objetivoProvisional.get(id)!);
+    else if (reclamadoPor.has(id)) resultado.set(id, reclamadoPor.get(id)!);
     else if (objetivoProvisional.has(id)) resultado.set(id, objetivoProvisional.get(id)!);
     else resultado.set(id, null);
   }
