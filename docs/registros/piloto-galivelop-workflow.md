@@ -17,6 +17,10 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 - **`content`**: `docs/rpgtarkor|registros|producto/`, los `.md` de la raíz y los de las skills. Quedan fuera
   `docs/runbooks/` y `docs/mapa-agente.md`: son instrucciones para los agentes.
 - **`designReferences`**: los seis juegos de la regla de diseño de `CLAUDE.md` (X4 primero).
+- **CI**: se queda `ci.yml` y se borra el `comprobar.yml` del flujo. Con `install: []` (fricción 11) correría `check`
+  sin `npm ci` en `backend/` ni en `frontend/` y fallaría; lo demás ya lo hacen los tres jobs de `ci.yml`, y repetirlo
+  en cada push gasta la cuota de Actions (`QA-215`). Lo único nuevo, el `pre-commit` de la base sobre los commits del
+  PR (secretos), pasa a `ci.yml` y a `ci-local.sh`.
 
 ## Fricciones
 
@@ -37,6 +41,7 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 13 | 4, inicio | No se puede clonar el repo del flujo (`Zeldris/Galivelop-workflow` es privado y no está entre los de la sesión de la nube; `add_repo` lo deniega). | Se trabaja con la copia instalada en `.claude/gw/` y, de referencia, el clon público de Portal-Galivelop (`REVIEW.md`, `GLOSSARY.md`, `comprobar.yml`). |
 | 14 | 4, duplicados de `tools/qa` | Los 7 scripts del flujo hacen lo mismo salvo: `bitacora.py closed` da por apuntada una tarea con un punto sin tachar que empieza por su id (WMF exigía la línea tachada, `QA-85`); `check` ignora una fila «Tarea en curso» sin rama si hay otras buenas; `enlaces-md.py` no tiene la excepción de `docs/registros/pr/` (enlaces desde la raíz, `QA-184`); `rojo-sin-arreglo.sh` toma una orden entera y ya no comprueba que se ejecute exactamente un test (lo sustituye `--fails-with`); `recuperar.py --buscar` busca como texto una expresión mala; `revisado.sh` hace commit de la marca. | Tests de WMF portados a los scripts del flujo (`test_bitacora`, `test_prepush_ramas`, `test_enlaces_md`, `test_recuperar`; 169 en verde) y los 7 borrados. Las descripciones de PR enlazan desde su carpeta (3 arregladas), y dos enlaces rotos del propio piloto (`CLAUDE.md#pruebas-de-juego` → `AGENTS.md`, el banco del scout). CI, `ci-local.sh`, runbook y `EXCEPCIONES` al día. |
 | 15 | 4, `REVIEW.md` y `GLOSSARY.md` | `aplicar.py` no propone nada para los archivos que rellena el proyecto (bien), pero sin el repo del flujo no se ven sus plantillas: la marca y las reglas se sacan de `AGENTS.md`, de la skill `domain-modeling` y del `REVIEW.md` de Portal. `GLOSSARY.md` tenía **Rastro** dos veces con dos sentidos. | Marca `<!-- galivelop-workflow v0.2.0 -->` en los dos; en `REVIEW.md`, «Ganchos y scripts del flujo» (lo de Portal, adaptado: PR a `main`, `host.sh`, tests de `tools/qa`); en `GLOSSARY.md`, los dos **Rastro** con su sentido entre paréntesis y «El trabajo con Claude» (bitácora, relevo, marca de revisión). |
+| 16 | 4, CI | `comprobar.yml` instala con `install` y prepara Node solo si hay `package.json` en la raíz: en un monorepo con `install: []` (porque lo hace `session-start.sh`) no puede pasar `check`. Además corre en cada push fuera de `main`, aparte del CI que ya tenga el proyecto. | Se decide `ci.yml` (ver Decisiones); `comprobar.yml` borrado y su paso de `pre-commit --rango` llevado a `ci.yml` y `ci-local.sh`. |
 
 ## For Galivelop-workflow
 
@@ -64,3 +69,6 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 - Dar acceso de lectura al repo del flujo en la nube, o publicar las versiones, para que un piloto pueda comparar.
 - `doctor.py`: avisar de términos repetidos en `GLOSSARY.md` (el mismo `**Término**:` dos veces).
 - `gw-init`/`aplicar.py`: decir qué marca llevan `REVIEW.md` y `GLOSSARY.md` en un proyecto que ya los tenía.
+- `comprobar.yml`: una lista `ciInstall` aparte de `install` (o un paso del proyecto) para monorepos, y el paso del
+  `pre-commit --rango` como bloque que se pueda copiar a un CI existente; `doctor.py` no debería proponer
+  `comprobar.yml` cuando ya hay otro workflow que corre `check`.

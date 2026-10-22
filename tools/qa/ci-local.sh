@@ -30,6 +30,8 @@ paso . "cobertura del roadmap" python3 tools/roadmap/cobertura.py
 paso . "matriz de pruebas" python3 tools/qa/matriz-pruebas.py --comprobar
 paso . "bitácora" python3 .claude/gw/scripts/bitacora.py check
 [ -n "$base" ] && paso . "bitácora: tareas cerradas desde la base" python3 .claude/gw/scripts/bitacora.py closed "$base" HEAD
+[ -n "$base" ] && git -C "$dir" cat-file -e "$base:.githooks/pre-commit" 2>/dev/null && git -C "$dir" show "$base:.githooks/pre-commit" >"$logs/pre-commit-base" &&
+  paso . "pre-commit de la base sobre la rama" bash "$logs/pre-commit-base" --rango "\$(git merge-base $base HEAD)..HEAD"
 paso . "enlaces de los .md" python3 .claude/gw/scripts/enlaces-md.py
 paso . "mapa del agente" python3 tools/qa/mapa-agente.py
 paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks); do bash -n \"\$f\" || exit 1; done
