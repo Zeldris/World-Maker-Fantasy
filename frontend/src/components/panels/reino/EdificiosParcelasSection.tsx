@@ -7,6 +7,7 @@ import { postObra, postRepararEdificio } from '../../../lib/api'
 import { CasaDeObrasCola } from './CasaDeObrasCola'
 
 /// Construcción por oficio (P277): el personaje levanta en persona hasta tier 3; lo demás, la Casa de obras.
+/// Copia de `TIER_MAXIMO_PERSONAJE` de backend/src/services/construction.ts: si cambia allí, cámbialo aquí.
 const TIER_MAXIMO_PERSONAJE = 3
 
 const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
@@ -94,7 +95,7 @@ function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: Recipe
     if (!delReino || !s.recipeKey) continue
     vistas.add(s.recipeKey)
     if (fija) {
-      out.push({ ...fija, status: construcciones.includes(s) ? s : undefined })
+      out.push({ ...fija, status: construcciones.includes(s) ? s : undefined, tier: s.tier })
     } else if (s.name) {
       out.push({ recipeKey: s.recipeKey, label: mejora ? `Mejorar a ${labelDeReceta(s.name)}` : labelDeReceta(s.name), actionText: `Me pongo a construir ${s.name}`, needsCuartel: false, status: s, tier: s.tier })
     }

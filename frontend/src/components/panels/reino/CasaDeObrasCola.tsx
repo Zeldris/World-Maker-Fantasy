@@ -19,7 +19,9 @@ export function CasaDeObrasCola({ saveId, version = 0 }: { saveId: string; versi
     return () => { vivo = false }
   }, [saveId, version, recarga])
 
-  const hacer = async (accion: () => Promise<unknown>) => {
+  /// `deshacer`: si la petición falla, vuelve atrás lo que se pintó por adelantado; además se relee
+  /// la cola del servidor y se enseña el error.
+  const hacer = async (accion: () => Promise<unknown>, deshacer?: () => void) => {
     if (busy) return
     setBusy(true)
     setError(null)
@@ -27,7 +29,9 @@ export function CasaDeObrasCola({ saveId, version = 0 }: { saveId: string; versi
       await accion()
       setRecarga((n) => n + 1)
     } catch (e) {
+      deshacer?.()
       setError(e instanceof Error ? e.message : 'No se pudo cambiar la cola.')
+      setRecarga((n) => n + 1)
     } finally {
       setBusy(false)
     }
@@ -38,8 +42,9 @@ export function CasaDeObrasCola({ saveId, version = 0 }: { saveId: string; versi
     const j = i + delta
     if (j < 0 || j >= ids.length) return
     ;[ids[i], ids[j]] = [ids[j], ids[i]]
+    const antes = datos
     setDatos({ ...datos, cola: ids.map((id) => datos.cola.find((o) => o.id === id)!) })
-    void hacer(() => putOrdenObras(saveId, ids))
+    void hacer(() => putOrdenObras(saveId, ids), () => setDatos(antes))
   }
 
   if (!datos) return error ? <p role="alert" className="text-2xs text-cost-400">{error}</p> : null

@@ -44,6 +44,25 @@ describe('Casa de obras — cola', () => {
     await waitFor(() => expect(quitar).toHaveBeenCalledWith('s1', 'o1'))
   })
 
+  it('si falla el reordenar, vuelve al orden de antes, relee la cola y enseña el error', async () => {
+    const leer = vi.spyOn(api, 'getObras').mockResolvedValue(datos())
+    vi.spyOn(api, 'putOrdenObras').mockRejectedValue(new Error('Esa partida ya terminó'))
+    const { findByRole, findByText, getByLabelText } = render(<CasaDeObrasCola saveId="s1" />)
+    fireEvent.click(await findByRole('button', { name: 'Subir un ayuntamiento mediano' }))
+    expect(await findByText('Esa partida ya terminó')).toBeTruthy()
+    await waitFor(() => expect(leer).toHaveBeenCalledTimes(2))
+    expect(getByLabelText('Cola de obras').querySelectorAll('li')[0].textContent).toMatch(/1\. un pozo/)
+  })
+
+  it('el Cuartel de guerra (T6) lleva su tier y el personaje no lo levanta', () => {
+    const cuartel: RecipeStatusInfo = {
+      recipeKey: 'cuartel-de-guerra', recipeCategory: 'construccion', met: true, ingredients: [], missingRequisitos: [], locationOk: true, requiredLocationName: null, blockedReason: null, name: 'un cuartel de guerra', tier: 6, upgradesRecipeKey: null,
+    }
+    const edificios = [{ id: 'q', name: 'Cuartel', kind: 'x', description: 'd', status: 'ACTIVO', recipeKey: 'cuartel-avanzado', tier: 1 }] as unknown as BuildingInfo[]
+    const { getByRole } = render(<EdificiosParcelasSection buildings={edificios} recipesStatus={[cuartel]} onBuild={vi.fn()} saveId="s1" />)
+    expect((getByRole('button', { name: /Mejorar a Cuartel de guerra/ }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('Construir: una obra de tier > 3 no la levanta el personaje y se encarga a la Casa; la Jaula sale (P282)', async () => {
     vi.spyOn(api, 'getObras').mockResolvedValue({ ...datos(), cola: [] })
     const encargar = vi.spyOn(api, 'postObra').mockResolvedValue({ ok: true, id: 'o3' })

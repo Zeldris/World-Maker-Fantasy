@@ -21,7 +21,7 @@ import {
   type ConstructionRecipe,
 } from '../construction.js';
 import { repararEdificio } from '../asaltos.js';
-import { planConsumption, totalQuantity, type CatalogLookup, type InventoryRowLike } from '../ingredients.js';
+import { baseNameOf, planConsumption, totalQuantity, type CatalogLookup, type InventoryRowLike } from '../ingredients.js';
 import { professionLevelForXp, xpForCraftSuccess } from '../professionProgress.js';
 import { registrarSuceso } from './sucesos.js';
 import { avisarEnReino, esAdultoSubdito, rolDeSubdito } from './subditos.js';
@@ -55,9 +55,9 @@ export function cuotaDelDia(cantidad: number, dias: number, diasHechos: number):
   return acumulado(diasHechos + 1) - acumulado(diasHechos);
 }
 
-/// Gasta del Almacén la cuota de hoy de cada material de la receta (fila por unidad, por slug exacto
-/// o por categoría del catálogo). Todo o nada: si falta alguno, no borra ninguna fila y devuelve
-/// qué falta.
+/// Gasta del Almacén la cuota de hoy de cada material de la receta (por slug exacto o por categoría
+/// del catálogo). Una fila apilada («Leña (12)») cuenta por su cantidad y, si sobra, se queda con el
+/// resto. Todo o nada: si falta alguno, no toca ninguna fila y devuelve qué falta.
 async function gastarCuotaDelDia(
   tx: Tx,
   saveId: string,
@@ -68,11 +68,11 @@ async function gastarCuotaDelDia(
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const catalogo = await tx.itemCatalog.findMany({ where: { worldId: save.worldId }, select: { slug: true, tipo: true, category: true } });
   const catalogBySlug = new Map<string, CatalogLookup>(catalogo.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
-  const filas = await tx.almacenItem.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' }, select: { id: true, catalogSlug: true } });
-  // Una fila es una unidad: el nombre no lleva cantidad.
-  let libres: InventoryRowLike[] = filas.map((f) => ({ id: f.id, name: '', catalogSlug: f.catalogSlug }));
+  let libres: InventoryRowLike[] = await tx.almacenItem.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, catalogSlug: true } });
   const borrar: string[] = [];
+  const renombrar = new Map<string, string>();
   const faltan: string[] = [];
+  let gastadas = 0;
   for (const req of recipe.requirements) {
     const cantidad = cuotaDelDia(req.cantidad, dias, diasHechos);
     if (cantidad <= 0) continue;
@@ -82,13 +82,23 @@ async function gastarCuotaDelDia(
       faltan.push(`${cantidad - tienes} de ${req.label}`);
       continue;
     }
-    const usadas = new Set(planConsumption(libres, hoy, catalogBySlug).deleteIds);
+    const plan = planConsumption(libres, hoy, catalogBySlug);
+    const usadas = new Set(plan.deleteIds);
     borrar.push(...usadas);
+    renombrar.forEach((_, id) => usadas.has(id) && renombrar.delete(id));
     libres = libres.filter((r) => !usadas.has(r.id));
+    if (plan.updateRemainder) {
+      const { id, newQuantity } = plan.updateRemainder;
+      const fila = libres.find((r) => r.id === id)!;
+      fila.name = newQuantity > 1 ? `${baseNameOf(fila.name)} (${newQuantity})` : baseNameOf(fila.name);
+      renombrar.set(id, fila.name);
+    }
+    gastadas += cantidad;
   }
   if (faltan.length > 0) return { ok: false, faltan };
   if (borrar.length > 0) await tx.almacenItem.deleteMany({ where: { id: { in: borrar } } });
-  return { ok: true, gastadas: borrar.length };
+  for (const [id, name] of renombrar) await tx.almacenItem.update({ where: { id }, data: { name } });
+  return { ok: true, gastadas };
 }
 
 export interface ConstructorParaReparto {
@@ -250,7 +260,7 @@ async function darXp(tx: Tx, c: { id: string; xpConstructor: number; nivelConstr
 }
 
 /// Levanta (o mejora en el sitio) la obra terminada. Devuelve el motivo si ya no se puede.
-async function terminarObra(tx: Tx, saveId: string, recipe: ConstructionRecipe, constructorId: string, ahora: number): Promise<string | null> {
+async function terminarObra(tx: Tx, saveId: string, recipe: ConstructionRecipe, constructorId: string | null, ahora: number): Promise<string | null> {
   const motivo = await motivoDeBloqueo(tx, saveId, recipe);
   if (motivo) return motivo;
   const ayto = (await ayuntamientoDelReino(tx, saveId))!;
@@ -285,7 +295,7 @@ async function terminarObra(tx: Tx, saveId: string, recipe: ConstructionRecipe, 
       locationId: ayto.locationId,
       origen: 'MOTOR',
       actores: [
-        { entidadTipo: 'SUBDITO', entidadId: constructorId, papel: 'AUTOR' },
+        ...(constructorId ? [{ entidadTipo: 'SUBDITO' as const, entidadId: constructorId, papel: 'AUTOR' as const }] : []),
         { entidadTipo: 'EDIFICIO', entidadId: edificioId, papel: 'BENEFICIARIO' },
       ],
       datos: { edificio: recipe.name },
@@ -305,10 +315,25 @@ export async function avanzarCasaDeObras(tx: Tx, saveId: string, ahora: number):
     await tx.obraCola.updateMany({ where: { saveId }, data: { aviso: 'La Casa de obras no está en pie.' } });
     return res;
   }
+  // Una obra con todos sus días hechos que no se pudo levantar ya no ocupa constructor: se reintenta
+  // levantar cada día y, mientras no se pueda, se queda con su aviso.
+  const acabadas = cola.filter((o) => o.tipo === 'CONSTRUIR' && o.diasHechos >= o.dias);
+  for (const o of acabadas) {
+    const recipe = CONSTRUCTION_RECIPES.find((x) => x.key === o.recipeKey);
+    const motivo = recipe ? await terminarObra(tx, saveId, recipe, null, ahora) : null;
+    if (motivo) {
+      const aviso = `Terminada, pero no se puede levantar: ${motivo}.`;
+      if (o.aviso !== aviso) await tx.obraCola.update({ where: { id: o.id }, data: { aviso } });
+      continue;
+    }
+    await tx.obraCola.delete({ where: { id: o.id } });
+    if (recipe) res.terminadas++;
+  }
+  const pendientes = cola.filter((o) => !acabadas.includes(o));
   const constructores = await constructoresDeLaCasa(tx, saveId, plazasDeCasa(casa.nivel), ahora);
   const porId = new Map(constructores.map((c) => [c.id, c]));
-  const reparto = repartirObras(cola, constructores, casa.nivel);
-  for (const o of cola) {
+  const reparto = repartirObras(pendientes, constructores, casa.nivel);
+  for (const o of pendientes) {
     const r = reparto.get(o.id)!;
     if ('aviso' in r) {
       if (o.aviso !== r.aviso) await tx.obraCola.update({ where: { id: o.id }, data: { aviso: r.aviso } });
@@ -316,8 +341,8 @@ export async function avanzarCasaDeObras(tx: Tx, saveId: string, ahora: number):
     }
     const c = porId.get(r.constructorId)!;
     if (o.tipo === 'REPARAR') {
-      const rep = o.buildingId ? await repararEdificio(tx, saveId, o.buildingId) : { ok: false as const, motivo: 'Ese edificio ya no existe.' };
-      if (rep.ok || /está en pie|No tienes ese edificio|ya no existe/.test(rep.motivo)) {
+      const rep = o.buildingId ? await repararEdificio(tx, saveId, o.buildingId) : { ok: false as const, motivo: 'Ese edificio ya no existe.', sinArreglo: true };
+      if (rep.ok || rep.sinArreglo) {
         if (rep.ok) {
           await darXp(tx, c, o.tier, o.dias);
           res.terminadas++;

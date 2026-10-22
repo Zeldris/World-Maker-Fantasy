@@ -49,7 +49,14 @@ export async function edificiosRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string; obraId: string } }>('/saves/:id/obras/:obraId', async (request, reply) => {
-    const quitada = await prisma.$transaction((tx) => quitarObra(tx, request.params.id, request.params.obraId));
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const quitada = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return quitarObra(tx, save.id, request.params.obraId);
+    });
     if (!quitada) return reply.status(404).send({ error: 'Esa obra no está en la cola.' });
     return { ok: true };
   });
@@ -58,9 +65,13 @@ export async function edificiosRoutes(app: FastifyInstance) {
   app.put<{ Params: { id: string }; Body: { ids?: string[] } }>('/saves/:id/obras/orden', async (request, reply) => {
     const ids = request.body?.ids;
     if (!Array.isArray(ids) || ids.some((x) => typeof x !== 'string')) return reply.status(400).send({ error: 'Falta el orden (ids).' });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
     await prisma.$transaction(async (tx) => {
-      await lockRowForUpdate(tx, 'Save', request.params.id, ['id']);
-      await reordenarCola(tx, request.params.id, ids);
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      await reordenarCola(tx, save.id, ids);
     });
     return { ok: true };
   });

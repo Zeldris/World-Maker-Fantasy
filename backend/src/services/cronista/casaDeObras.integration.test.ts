@@ -216,6 +216,37 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 1 } });
     });
 
+    it('una fila apilada del Almacén («Leña (N)») cuenta por su cantidad y se queda con el resto', async () => {
+      const [primero, ...resto] = receta('pozo').requirements;
+      await llenarPara('pozo', 1, [primero.label]);
+      const slug =
+        primero.match.kind === 'exact'
+          ? primero.match.catalogSlug
+          : (await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: primero.match.tipo, category: primero.match.category }, orderBy: { slug: 'asc' } })).slug;
+      const pila = await prisma.almacenItem.create({ data: { saveId, name: `Pila (${primero.cantidad + 5})`, description: 'x', catalogSlug: slug } });
+      await prisma.$transaction((tx) => encargarObra(tx, saveId, 'pozo'));
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
+      expect((await prisma.almacenItem.findUniqueOrThrow({ where: { id: pila.id } })).name).toBe('Pila (5)');
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(1);
+      expect(resto.length).toBeGreaterThan(0);
+    });
+
+    it('una obra terminada que no se puede levantar no retiene al constructor', async () => {
+      await prisma.building.update({ where: { id: casaId }, data: { tier: 2 } });
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 2 } });
+      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 6 } });
+      // El mediano ya está: la mejora acabada no se puede aplicar.
+      await prisma.obraCola.create({ data: { saveId, orden: 0, tipo: 'CONSTRUIR', recipeKey: 'ayuntamiento-mediano', tier: 6, dias: 6, diasHechos: 6 } });
+      await llenarPara('pozo');
+      await prisma.$transaction((tx) => encargarObra(tx, saveId, 'pozo'));
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
+      const queda = await prisma.obraCola.findMany({ where: { saveId } });
+      expect(queda).toHaveLength(1);
+      expect(queda[0]).toMatchObject({ recipeKey: 'ayuntamiento-mediano', aviso: expect.stringMatching(/^Terminada, pero no se puede levantar/) });
+      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 1 } });
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
+    });
+
     it('puerta del diseño: T4-6 piden Ayuntamiento mediano y T7-9 grande, salvo el propio Ayuntamiento', async () => {
       await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
       expect(await bloqueo('jaula-grande', 'casa-de-obras')).toMatch(/necesita un Ayuntamiento mediano/);
