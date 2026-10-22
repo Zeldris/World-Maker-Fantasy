@@ -71,10 +71,11 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   const ahora = dia * 1440;
   const { cobertura, bonoAltura, bonoMoral } = asentamiento.efecto;
 
-  // Quien defiende: la guarnición y la milicia (Q6, Q7).
+  // Quien defiende: la guarnición y, en la Capital, la milicia (Q6, Q7). La milicia sale de donde vive la
+  // gente y defiende su asentamiento (Manor Lords), igual que la cuenta `defensaVista`.
   const guarnicionIds = asentamiento.guarnicion.map((g) => g.id);
   const gente = await tx.subject.findMany({
-    where: { saveId, estado: 'ACTIVO', OR: [{ id: { in: guarnicionIds } }, { enMilicia: true }] },
+    where: { saveId, estado: 'ACTIVO', OR: [{ id: { in: guarnicionIds } }, ...(asentamiento.capital ? [{ enMilicia: true }] : [])] },
     select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true, enMilicia: true },
   });
   const defensores: CombatienteFondo[] = [];
@@ -171,7 +172,8 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     await tx.viajero.update({ where: { id: v.id }, data: { carga } });
   }
   if (caidosReino.length > 0) await recalcularPoblacion(tx, saveId, ahora);
-  await licenciarMilicia(tx, saveId, ahora);
+  // La milicia solo luchó si el asalto era a la Capital; si no, sigue armada (puede venir otro a la Capital).
+  if (asentamiento.capital) await licenciarMilicia(tx, saveId, ahora);
 
   const quien = v.factionId ? `La partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : `Los ${(ocupante?.grupo ?? 'bandidos').toLowerCase()}`;
   const texto = textoDelAsalto({

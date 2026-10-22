@@ -97,6 +97,20 @@ describe('asaltos de fondo (CR-65 65d)', () => {
       expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'aguanta el asalto' } } })).toBe(2);
       expect((await prisma.viajero.findUniqueOrThrow({ where: { id: v.id } })).estado).not.toBe('TRABAJANDO');
     });
+
+    it('la milicia solo defiende la Capital: en otro asentamiento no cuenta, como en defensaVista', async () => {
+      const otro = (await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } })).id;
+      const cuartel = await prisma.building.create({ data: { saveId, locationId: otro, recipeKey: 'cuartel-avanzado', name: 'Cuartel', kind: 'cuartel-avanzado', description: 'x', status: 'ACTIVO' } });
+      const miliciano = await prisma.subject.create({ data: { saveId, name: 'Miliciano', role: 'trabajador', notes: '', pueblo: 'orcos', enMilicia: true } });
+      const contraCuartel = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), cuartel.id, 11, semilla(9)));
+      expect(contraCuartel).toMatchObject({ milicianos: 0, defensores: 0 });
+      const contraCapital = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), capitalId, 12, semilla(9)));
+      expect(contraCapital).toMatchObject({ milicianos: 1 });
+      // Tras luchar en la Capital, vuelve al trabajo; el asalto al Cuartel no la había licenciado.
+      expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
+      await prisma.subject.delete({ where: { id: miliciano.id } });
+      await prisma.building.delete({ where: { id: cuartel.id } });
+    });
   });
 });
 
