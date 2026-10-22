@@ -1484,6 +1484,14 @@ Retro previa al PR de `claude/puerta-pruebas` (aprobadas por la usuaria el 2026-
 - **QA-193 · Vía de QA para forzar el azar en `prepararReino`**: activa solo con una variable de entorno de QA; fuerza el próximo suceso (ganar o empatar la iniciativa, emboscada de fauna, interrupción de viaje) para comprobar P29, P69, P90, P46 y P47.
 - ~~**QA-194 · La bitácora por su fila en la principal**: 12 lecturas de `traspaso.md`, ~419k tokens arrastrados.~~ ✅ 2026-10-21: `opt-tokens/proyecto.md` manda `python3 tools/qa/recuperar.py --estado` (da la fila, commits y compactaciones) y apunta lo de las capturas.
 
+Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-22, [retro](../registros/retro-2026-10-22-pruebas-3-3.md); 195, 197, 198 y 200 se aplican ya; 196 y 199 son del paso 3.4 de la línea):
+- ~~**QA-195 · Aviso de «reabierto» o «falta ver» que cuenta como hecho**: los subagentes escriben lo nuevo delante del estado viejo (P116 y P189 del 3.3).~~ ✅ 2026-10-22: `marca-hallazgo.py --resumen --comprobar` (CI) falla si un estado con «reabierto», o con «falta ver/comprobar» y contado como comprobado, cae en arreglado o comprobado; test en `test_marca_hallazgo.py`.
+- **QA-196 · Chuleta del driver en lugar de notas por tanda**: «Fallos de las herramientas» del runbook crece ~12 líneas por PR y cada tanda la lee entera (35k); rehacerla como chuleta por herramienta y borrar lo resuelto. Paso 3.4, junto a `QA-193`.
+- ~~**QA-197 · `escenario.sh` en una orden sola**: el modo auto denegó `dar` en la tanda 13b-1 por ir encadenado con `o.sh pulsar`.~~ ✅ 2026-10-22: regla en `rondas-de-pruebas.md` (en una orden Bash sola; la usuaria lo autoriza para preparar la partida) y nota de la 13b-1 corregida. La regla `allow` ya existía.
+- ~~**QA-198 · Test de los atajos de la Deck**: `juego.sh` llegó sin `_path.sh` al PR.~~ ✅ 2026-10-22: `tools/qa/tests/test_atajos_deck.py` exige que todo `tools/qa/deck/*.sh` que lleve a `psql`, `pg_dump`, `pg_restore` o `arrancar-juego.sh` (directo o por otro atajo) cargue `_path.sh`; en rojo sin esa línea en `juego.sh`.
+- **QA-199 · Partidas intermedias de una tanda fuera de git**: el PR subió 5 `.dump` de ~900 KB; que `escenario.sh guardar` deje las intermedias en `logs/` (ignorado) y solo suba a `tools/qa/escenarios/` lo guardado con `--subir`. Paso 3.4.
+- ~~**QA-200 · Una tanda con Ollama real juega al menos 8 turnos**: con 3 turnos `/opt-ai` no tiene medida comparable.~~ ✅ 2026-10-22: regla 8 de `rondas-de-pruebas.md`; si no llega, `bash tools/qa/bench-ia.sh` al cerrar.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

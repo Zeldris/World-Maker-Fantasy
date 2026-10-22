@@ -121,6 +121,19 @@ def raro(estado: str) -> bool:
     return not re.match(r'[^\w]*(pendientes?|abiert[oa]s?)\b', bajo)
 
 
+def incoherente(estado: str) -> bool:
+    """QA-195: el estado dice «reabierto» (o, si cuenta como comprobado, «falta ver/comprobar») pero grupo() lo cuenta
+    como arreglado o comprobado
+    (los subagentes escriben lo nuevo delante del estado viejo: P116 y P189 del 3.3). Hay que reordenar la fila."""
+    bajo = sin_citas(estado).lower()
+    g = grupo(estado)
+    if g not in ('arreglado', 'comprobado'):
+        return False
+    # «falta verlo/comprobarlo jugando» en un arreglado es lo normal (aún no se ha jugado); «falta ver una hora» tras un
+    # «comprobado jugando» es lo que se quedó a medias.
+    return bool(re.search(r'reabiert[oa]', bajo)) or (g == 'comprobado' and bool(re.search(r'falta (ver|comprobar)\b', bajo)))
+
+
 def partir(linea: str) -> tuple[str, str]:
     """Una fila en (todo hasta la última columna, su Estado): lo que va detrás del último ` | ` sin escapar."""
     cuerpo = linea.rstrip()[:-1].rstrip()  # sin la `|` final
@@ -163,7 +176,7 @@ def main(args: list[str]) -> None:
         if args[1:] == ['--comprobar']:
             if INICIO_RESUMEN not in lineas or FIN_RESUMEN not in lineas:
                 sys.exit(f'{ruta}: faltan las marcas del resumen (`{INICIO_RESUMEN}` y `{FIN_RESUMEN}`, cada una en su línea)')
-            raros = []
+            raros, incoherentes = [], []
             for linea in lineas:
                 m = re.match(r'^\| (P\d+) \|', linea)
                 if not m:
@@ -172,11 +185,18 @@ def main(args: list[str]) -> None:
                 if contradictorio(estado):
                     print(f'{ruta}: aviso: el estado de {m.group(1)} se contradice (✅ y cerrado o pendiente de la usuaria)',
                           file=sys.stderr)
+                if incoherente(estado):
+                    print(f'{ruta}: aviso: el estado de {m.group(1)} dice «reabierto» o «falta ver/comprobar» y cuenta '
+                          'como arreglado o comprobado (QA-195)', file=sys.stderr)
+                    incoherentes.append(m.group(1))
                 if raro(estado):
                     raros.append(m.group(1))
             if raros:
                 sys.exit(f'{ruta}: cuentan como pendientes y su estado no lo dice (QA-185): {", ".join(raros)}; '
                          'empiézalo por «pendiente», o por «✅»/«arreglado» si ya está arreglado')
+            if incoherentes:
+                sys.exit(f'{ruta}: su estado dice «reabierto» o «falta ver/comprobar» y cuentan como arreglados o '
+                         f'comprobados (QA-195): {", ".join(incoherentes)}; deja el estado vigente por delante')
             if nuevas != lineas:
                 sys.exit(f'{ruta}: el resumen no coincide con la tabla; rehazlo con `python3 tools/qa/marca-hallazgo.py --resumen`')
             return

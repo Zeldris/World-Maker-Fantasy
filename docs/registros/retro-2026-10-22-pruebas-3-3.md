@@ -9,7 +9,9 @@ Lo revisado: lo que entra con el PR a `main` desde `claude/pruebas-3.3` (`git lo
 
 También se revisan `opt-tokens`, `opt-ai`, `orchestrate-dealer` y `/code-review`.
 
-**Estado (2026-10-22): pendiente de que la usuaria decida.**
+**Estado (2026-10-22): la usuaria aprobó las seis propuestas.** Aplicadas en la rama: 1 → `QA-195`, 3 → `QA-197`,
+4 → `QA-198`, 6 → `QA-200`. Al paso 3.4, sin implementar: 2 → `QA-196` (chuleta del driver) y 5 → `QA-199`
+(partidas intermedias fuera de git).
 
 ## Medida
 

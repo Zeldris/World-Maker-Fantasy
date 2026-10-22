@@ -147,6 +147,17 @@ class Resumen(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('no lo dice (QA-185): P7, P11;', r.stderr)
 
+    def test_comprobar_falla_con_reabierto_o_falta_ver_que_cuenta_como_hecho(self):
+        # QA-195: P116 («Reabierto… arreglo ✅») y P189 («comprobado jugando…; falta ver una hora») del 3.3.
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | Reabierto en la ronda 3; arreglo ✅ 2026-10-22 |\n'
+                 '| P8 | Ocho | ✅ comprobado jugando 2026-10-22; falta ver una hora entera |\n'
+                 '| P9 | Nueve | ✅ arreglado. Falta verlo jugando |\n'
+                 '| P10 | Diez | pendiente. Reabierto |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('(QA-195): P7, P8;', r.stderr)
+
     def test_comprobar_pasa_si_cada_pendiente_lo_dice(self):
         self.assertEqual(self.correr('--resumen').returncode, 0)
         self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
