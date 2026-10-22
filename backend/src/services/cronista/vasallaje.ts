@@ -54,14 +54,29 @@ export const porcentajePagado = (fraccion: number) => (fraccion >= 1 ? 100 : fra
 /// Motivo de ruptura de la regla anterior al 2026-10-22, que ya no existe (se reabren al migrar).
 const RUPTURA_VIEJA = 'deuda saldada';
 
-/// La última línea del diario de un vasallaje (por el slug del vasallo como actor), o null.
-async function ultimaLineaDe(tx: Tx, saveId: string, vasalloSlug: string): Promise<DatosLinea | null> {
-  const s = await tx.suceso.findFirst({
-    where: { saveId, tipo: 'PATRULLA_VASALLO', actores: { some: { entidadTipo: 'FACCION', entidadId: vasalloSlug } } },
+/// Las líneas de la regla nueva (con `estado`) de los vasallos dados, de una sola consulta: primero por
+/// partida y tipo (índice `[saveId, tipo]`), luego por sus actores, agrupadas en memoria por vasallo.
+/// `ultima` es la última línea de revisión (sin las `migrado`, que pueden llevar minutos posteriores a
+/// una revisión de días atrasados); `marcada`, si tiene alguna de la regla nueva, `migrado` incluida.
+async function lineasNuevas(tx: Tx, saveId: string, vasallos: string[]): Promise<Map<string, { ultima: DatosLinea | null; marcada: boolean }>> {
+  const porVasallo = new Map(vasallos.map((v) => [v, { ultima: null as DatosLinea | null, marcada: false }]));
+  if (vasallos.length === 0) return porVasallo;
+  const lineas = await tx.suceso.findMany({
+    where: { saveId, tipo: 'PATRULLA_VASALLO', actores: { some: { entidadTipo: 'FACCION', entidadId: { in: vasallos } } } },
     orderBy: { fictionalMinutes: 'desc' },
-    select: { datos: true },
+    select: { datos: true, actores: { select: { entidadId: true } } },
   });
-  return s ? (s.datos as DatosLinea) : null;
+  for (const l of lineas) {
+    const d = l.datos as DatosLinea;
+    if (!d.estado) continue;
+    for (const a of l.actores) {
+      const e = porVasallo.get(a.entidadId);
+      if (!e) continue;
+      e.marcada = true;
+      if (!e.ultima && d.estado !== 'migrado') e.ultima = d;
+    }
+  }
+  return porVasallo;
 }
 type DatosLinea = { estado?: string; porcentaje?: number };
 
@@ -69,37 +84,39 @@ type DatosLinea = { estado?: string; porcentaje?: number };
 export const rearme = (margenComida: number, trabajadores: number) => Math.max(0, Math.min(trabajadores, Math.floor(margenComida / 2)));
 
 /// Crea los vasallajes del canon si aún no existen en la partida (idempotente) y migra, una sola vez
-/// por fila, los de antes del 2026-10-22. Corre cada día, así que no toca nada de la regla nueva (el
-/// tope de una cuota va en la revisión semanal):
+/// por fila, los de antes del 2026-10-22. Corre cada día, así que no cobra ni toca nada de la regla
+/// nueva (el cobro y el tope de una cuota van en la revisión semanal):
 ///   - los rotos por «deuda saldada» (regla vieja) se reabren al corriente si siguen vivas las dos;
-///   - una deuda vieja (con algo pendiente y sin línea de la regla nueva en el diario) se recorta a
-///     una cuota, o se salda si hay fondos, y deja su línea (`estado: 'migrado'`), que es la marca de
-///     que ya se migró.
+///   - una deuda vieja de más de una cuota se recorta a una cuota, sin cobrar nada, y deja su línea
+///     (`estado: 'migrado'`), que es la marca de que ya se migró. Solo se mira el diario si la deuda
+///     pasa de la cuota actual (con la regla nueva, solo tras bajas a mitad de semana).
 export async function asegurarVasallajes(tx: Tx, saveId: string, ahora: number): Promise<void> {
   for (const v of await tx.vasallaje.findMany({ where: { saveId, motivoRuptura: RUPTURA_VIEJA } })) {
     const vivas = await tx.faction.count({ where: { saveId, slug: { in: [v.vasalloSlug, v.senorSlug] }, disueltaEn: null } });
     if (vivas === 2) await tx.vasallaje.update({ where: { id: v.id }, data: { rotoEn: null, motivoRuptura: null, deuda: 0 } });
   }
-  for (const v of await tx.vasallaje.findMany({ where: { saveId, rotoEn: null, deuda: { gt: 0 } } })) {
-    if ((await ultimaLineaDe(tx, saveId, v.vasalloSlug))?.estado) continue;
-    const [vasallo, senor] = await Promise.all(
-      [v.vasalloSlug, v.senorSlug].map((slug) => tx.faction.findFirst({ where: { saveId, slug }, select: { name: true, kingdomStats: { select: { id: true, riqueza: true, soldados: true } } } })),
-    );
-    const k = vasallo?.kingdomStats;
-    if (!vasallo || !k) continue;
-    const cuota = cuotaSemanal(k.soldados);
-    const saldar = v.deuda > cuota && k.riqueza >= cuota && !!senor?.kingdomStats;
-    if (saldar) {
-      await tx.kingdomStats.update({ where: { id: k.id }, data: { riqueza: { decrement: cuota } } });
-      await tx.kingdomStats.update({ where: { id: senor!.kingdomStats!.id }, data: { riqueza: { increment: cuota } } });
-    }
-    const pendiente = saldar ? 0 : Math.min(v.deuda, cuota);
-    await tx.vasallaje.update({ where: { id: v.id }, data: { deuda: pendiente } });
-    await registrarSuceso(tx, {
-      saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
-      actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
-      datos: { vasallo: vasallo.name, senor: senor?.name ?? v.senorSlug, estado: 'migrado', pendiente, ...(saldar ? { pagado: cuota } : {}) },
+  const conDeuda = await tx.vasallaje.findMany({ where: { saveId, rotoEn: null, deuda: { gt: 0 } } });
+  if (conDeuda.length > 0) {
+    const facciones = await tx.faction.findMany({
+      where: { saveId, slug: { in: [...new Set(conDeuda.flatMap((v) => [v.vasalloSlug, v.senorSlug]))] } },
+      select: { slug: true, name: true, kingdomStats: { select: { soldados: true } } },
     });
+    const porSlug = new Map(facciones.map((f) => [f.slug, f]));
+    const pasadas = conDeuda.filter((v) => {
+      const k = porSlug.get(v.vasalloSlug)?.kingdomStats;
+      return !!k && v.deuda > cuotaSemanal(k.soldados);
+    });
+    const lineas = await lineasNuevas(tx, saveId, pasadas.map((v) => v.vasalloSlug));
+    for (const v of pasadas) {
+      if (lineas.get(v.vasalloSlug)?.marcada) continue;
+      const pendiente = cuotaSemanal(porSlug.get(v.vasalloSlug)!.kingdomStats!.soldados);
+      await tx.vasallaje.update({ where: { id: v.id }, data: { deuda: pendiente } });
+      await registrarSuceso(tx, {
+        saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
+        actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
+        datos: { vasallo: porSlug.get(v.vasalloSlug)!.name, senor: porSlug.get(v.senorSlug)?.name ?? v.senorSlug, estado: 'migrado', pendiente },
+      });
+    }
   }
   for (const v of VASALLAJES_DEL_CANON) {
     if (await tx.vasallaje.findUnique({ where: { saveId_vasalloSlug: { saveId, vasalloSlug: v.vasallo } } })) continue;
@@ -224,14 +241,11 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
   const facciones = await tx.faction.findMany({ where: { saveId, slug: { in: slugs } }, select: { slug: true, name: true, kingdomStats: { select: { soldados: true } } } });
   const nombres = new Map(facciones.map((f) => [f.slug, f.name]));
   const soldados = new Map(facciones.map((f) => [f.slug, f.kingdomStats?.soldados ?? 0]));
-  // El porcentaje del último pago sale de la última línea del diario de ese vasallo (toda revisión con
-  // algo pendiente la deja); sin línea de revisión (p. ej. recién migrado), null.
+  // El porcentaje del último pago sale de la última línea de revisión de ese vasallo (toda revisión con
+  // algo pendiente la deja; una consulta para todos); sin línea de revisión (p. ej. recién migrado), null.
+  const lineas = await lineasNuevas(tx, saveId, filas.filter((f) => f.deuda > 0).map((f) => f.vasalloSlug));
   const porcentajes = new Map<string, number | null>();
-  for (const f of filas) {
-    if (f.deuda === 0) continue;
-    const d = await ultimaLineaDe(tx, saveId, f.vasalloSlug);
-    porcentajes.set(f.vasalloSlug, d?.estado === 'parcial' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' ? 0 : null);
-  }
+  for (const [slug, { ultima: d }] of lineas) porcentajes.set(slug, d?.estado === 'parcial' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' ? 0 : null);
   return filas.map((f) => ({
     vasalloSlug: f.vasalloSlug,
     vasalloNombre: nombres.get(f.vasalloSlug) ?? f.vasalloSlug,

@@ -197,7 +197,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
         : d.estado === 'parcial'
           ? `${d.vasallo} paga a ${d.senor} solo parte de su cuota: pago parcial ${d.porcentaje ?? 0} %, patrullas al ${d.porcentaje ?? 0} %.${d.patrulla ? ' Esta semana cumple su patrulla.' : ' Esta semana no patrulla.'}`
           : d.estado === 'migrado'
-            ? `${d.vasallo} pasa a pagar a ${d.senor} una cuota semanal: su deuda vieja ${d.pagado ? `se salda con ${d.pagado} Goirnos` : `se queda en ${d.pendiente ?? 0} Goirnos pendientes`}.`
+            ? `${d.vasallo} pasa a pagar a ${d.senor} una cuota semanal: su deuda vieja se queda en ${d.pendiente ?? 0} Goirnos pendientes.`
             : d.estado === 'al-corriente'
               ? `${d.vasallo} paga su cuota a ${d.senor} y cumple su patrulla obligada${d.rearmados ? `; arma a ${d.rearmados} guerreros más` : ''}. Vasallaje al corriente.`
               : `${d.vasallo} cumple su patrulla obligada para ${d.senor}${d.rearmados ? ` y arma a ${d.rearmados} guerreros más a crédito` : ''}. Su deuda: ${d.deuda ?? 0} Goirnos.` },

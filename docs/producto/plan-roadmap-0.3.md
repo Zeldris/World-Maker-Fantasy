@@ -151,7 +151,7 @@ tope de pienso).
     pendiente y la cuota, vuelve a estar al corriente y patrulla siempre. La patrulla es el servicio
     que se paga, ya no rebaja deuda. El rearme solo se hace al corriente y compra armas con lo que le
     quede tras la cuota (sin crédito). Las partidas de antes migran una sola vez: la deuda se recorta a
-    una cuota, o se salda si hay fondos, con su línea en el diario; los vasallajes rotos por «deuda
+    una cuota, sin cobrar nada (el cobro va en la revisión), con su línea en el diario; los rotos por «deuda
     saldada» se reabren. Ya no se rompe por «deuda saldada».
 - **Ingresos pasivos** (usuaria): hoy solo existen el comercio y las expediciones y saqueos de las
   facciones. Se diseñarán más (`CR-60`) para no depender solo de los trabajadores.

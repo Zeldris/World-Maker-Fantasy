@@ -174,35 +174,33 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     expect(linea.fictionalMinutes).toBe(49 * 1440);
   });
 
-  it('migración (una sola vez): una deuda vieja se recorta a una cuota, o se salda si hay fondos', async () => {
+  it('migración (una sola vez, sin cobrar): una deuda vieja se recorta a una cuota', async () => {
     const cuota = cuotaSemanal((await stats('clan-serhu')).soldados);
     const v = await vasallaje();
     // Partida de antes del 2026-10-22: deuda creciente y el diario solo con líneas de la regla vieja.
-    const viejaPartida = async (deuda: number) => {
-      await prisma.suceso.deleteMany({ where: { saveId, tipo: 'PATRULLA_VASALLO' } });
-      await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda } });
-    };
-    await viejaPartida(8310);
-    await ponerRiqueza('clan-serhu', 0);
+    await prisma.suceso.deleteMany({ where: { saveId, tipo: 'PATRULLA_VASALLO' } });
+    await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda: 8310 } });
+    // Aunque tenga fondos, la migración no cobra: solo recorta (el cobro va en la revisión semanal).
+    await ponerRiqueza('clan-serhu', cuota + 7);
+    const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
     await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 50 * 1440));
     expect((await vasallaje()).deuda).toBe(cuota);
+    expect((await stats('clan-serhu')).riqueza).toBe(cuota + 7);
+    expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes);
     expect((await ultimaLinea()).datos).toMatchObject({ estado: 'migrado', pendiente: cuota });
     // Sin revisión aún: la tarjeta dice que está pendiente de la revisión semanal.
     expect((await vasallajesVista(prisma, saveId, 50))[0]).toMatchObject({ alCorriente: false, porcentajePagado: null });
-    // Ya migrada: con fondos al día siguiente no cobra nada fuera de la revisión.
-    await ponerRiqueza('clan-serhu', cuota + 7);
+    // Ya migrada: con bajas al día siguiente (deuda por encima de la nueva cuota) no se vuelve a migrar.
+    const serhu = await stats('clan-serhu');
+    await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: Math.floor(serhu.soldados / 2) } });
     await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 51 * 1440));
     expect((await vasallaje()).deuda).toBe(cuota);
-    expect((await stats('clan-serhu')).riqueza).toBe(cuota + 7);
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'PATRULLA_VASALLO' } })).toBe(1);
-
-    await viejaPartida(8310);
-    const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
-    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 51 * 1440));
-    expect((await vasallaje()).deuda).toBe(0);
-    expect((await stats('clan-serhu')).riqueza).toBe(7);
-    expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + cuota);
-    expect((await ultimaLinea()).datos).toMatchObject({ estado: 'migrado', pagado: cuota, pendiente: 0 });
+    await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: serhu.soldados, riqueza: 0 } });
+    // Una revisión de un día atrasado lleva minutos anteriores a la línea `migrado`: la vista usa la revisión.
+    await prisma.vasallaje.update({ where: { id: v.id }, data: { ultimaSemana: 42 } });
+    await semana(49, 0.9);
+    expect((await vasallajesVista(prisma, saveId, 51))[0]).toMatchObject({ alCorriente: false, porcentajePagado: 0, deuda: cuota });
   });
 
   it('migración: un vasallaje roto por «deuda saldada» (regla vieja) se reabre al corriente', async () => {
