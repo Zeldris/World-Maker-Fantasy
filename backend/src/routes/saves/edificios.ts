@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { repararEdificio } from '../../services/asaltos.js';
+import { encargarObra, encargarReparacion, quitarObra, reordenarCola, verCasaDeObras } from '../../services/cronista/casaDeObras.js';
 import { edificioDelPunto, encargadoDe, fichaDeEdificio } from '../../services/fichaEdificio.js';
 import { abrirMenuDeNpc } from '../../services/menuDeNpc.js';
 import { conDefinido, nombreVisibleDeNpc, quienEnAviso } from '../../services/dynamicMode.js';
@@ -22,6 +23,46 @@ export async function edificiosRoutes(app: FastifyInstance) {
     });
     if (!r.ok) return reply.status(400).send({ error: r.motivo });
     return { ok: true, coste: r.coste };
+  });
+
+  /// Casa de obras (P277/P284, 2026-10-21): la Casa, sus constructores y la cola de obras y reparaciones.
+  app.get<{ Params: { id: string } }>('/saves/:id/obras', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    return prisma.$transaction((tx) => verCasaDeObras(tx, save.id, save.worldState?.fictionalMinutes ?? 0));
+  });
+
+  /// Encarga una obra (`recipeKey`) o una reparación (`buildingId`) al final de la cola.
+  app.post<{ Params: { id: string }; Body: { recipeKey?: string; buildingId?: string } }>('/saves/:id/obras', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const { recipeKey, buildingId } = request.body ?? {};
+    if (!recipeKey === !buildingId) return reply.status(400).send({ error: 'Indica la obra (recipeKey) o el edificio que reparar (buildingId).' });
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return recipeKey ? encargarObra(tx, save.id, recipeKey) : encargarReparacion(tx, save.id, buildingId!);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true, id: r.id };
+  });
+
+  app.delete<{ Params: { id: string; obraId: string } }>('/saves/:id/obras/:obraId', async (request, reply) => {
+    const quitada = await prisma.$transaction((tx) => quitarObra(tx, request.params.id, request.params.obraId));
+    if (!quitada) return reply.status(404).send({ error: 'Esa obra no está en la cola.' });
+    return { ok: true };
+  });
+
+  /// Reordena la cola: `ids` en el orden nuevo.
+  app.put<{ Params: { id: string }; Body: { ids?: string[] } }>('/saves/:id/obras/orden', async (request, reply) => {
+    const ids = request.body?.ids;
+    if (!Array.isArray(ids) || ids.some((x) => typeof x !== 'string')) return reply.status(400).send({ error: 'Falta el orden (ids).' });
+    await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', request.params.id, ['id']);
+      await reordenarCola(tx, request.params.id, ids);
+    });
+    return { ok: true };
   });
 
   app.get<{ Params: { id: string; zonePointId: string } }>('/saves/:id/zona/edificio/:zonePointId', async (request, reply) => {

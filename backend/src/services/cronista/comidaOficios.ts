@@ -11,7 +11,7 @@
 //   cazan en agregado (2,5 por cazador) para no pasar hambre.
 import type { Estacion } from '@prisma/client';
 
-export const TAREAS = ['recolector', 'pescador', 'cocinero', 'ganadero', 'fibrero'] as const;
+export const TAREAS = ['recolector', 'pescador', 'cocinero', 'ganadero', 'fibrero', 'constructor'] as const;
 export type Tarea = (typeof TAREAS)[number];
 export const TAREA_POR_DEFECTO: Tarea = 'recolector';
 

@@ -159,6 +159,28 @@ export function buildingTierFor(recipe: ConstructionRecipe): number | null {
   return recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null;
 }
 
+/// Mejora en el sitio (2026-08-04, "no se acumulan, mejoras el actual"): actualiza el MISMO
+/// `Building.id` que la receta mejora; un módulo de defensa (CR-65), el de su región. Lo usan el
+/// turno del personaje (turnResolution.ts) y la Casa de obras (cronista/casaDeObras.ts).
+export async function mejorarEnSitio(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  recipe: ConstructionRecipe,
+  region: string | null,
+): Promise<{ id: string } | null> {
+  if (!recipe.upgradesRecipeKey) return null;
+  const target = await tx.building.findFirst({
+    where: { saveId, recipeKey: recipe.upgradesRecipeKey, ...(recipe.edificioTipo === 'defensa' ? { status: 'ACTIVO', location: { region: region ?? undefined } } : {}) },
+    select: { id: true },
+  });
+  if (!target) return null;
+  await tx.building.update({
+    where: { id: target.id },
+    data: { name: recipe.name, description: recipe.description, tier: buildingTierFor(recipe) ?? undefined, status: 'ACTIVO' },
+  });
+  return target;
+}
+
 /// Plazas de trabajador por nivel de edificio de oficio (mismo documento, § 2: "Bellwright: una
 /// estación admite varios aldeanos, más plazas es la recompensa natural de mejorarla") — 1/2/4,
 /// null para edificios sin `Building.tier` propio (Campamento, Choza... nunca gatean por plazas).
@@ -1627,6 +1649,60 @@ export const BARRACON_GRAN_RECIPE: ConstructionRecipe = {
   edificioOficioNivel: 3,
 };
 
+// Construcción por oficio y Casa de obras (diseño aprobado 2026-10-21, P277/P282/P284): los súbditos
+// constructores trabajan desde aquí una cola de obras y reparaciones. Cada nivel cubre un tramo de
+// tiers (1-3, 4-6, 7-9) y admite 1, 2 o 3 trabajadores (cronista/casaDeObras.ts).
+export const CASA_DE_OBRAS_RECIPE: ConstructionRecipe = {
+  key: 'casa-de-obras',
+  tier: 2,
+  name: 'una casa de obras',
+  description: 'Un cobertizo de tablones con andamios, poleas y montones de material: desde aquí los constructores del Reino levantan y reparan lo que se les encarga, por turno.',
+  nounRegex: /(?=.*\bcasa\b)(?=.*\bobras\b)/,
+  requirements: [
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 8, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 4, label: 'piedra' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'fibras' }, cantidad: 2, label: 'fibra' },
+  ],
+  oficio: 'constructor-orcos-llanuras',
+  edificioOficioNivel: 1,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const CASA_DE_OBRAS_AMPLIADA_RECIPE: ConstructionRecipe = {
+  key: 'casa-de-obras-2',
+  tier: 3,
+  name: 'una casa de obras ampliada',
+  description: 'Un segundo andamio y un taller cubierto para tallar vigas: dos constructores a la vez y obras de hasta tier 6.',
+  nounRegex: /(?=.*\bcasa\b)(?=.*\bobras\b)(?=.*ampliad)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
+    { match: { kind: 'category', tipo: 'RECURSO', category: 'piedra' }, cantidad: 8, label: 'piedra' },
+  ],
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'casa-de-obras',
+  edificioOficioNivel: 2,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+export const CASA_DE_OBRAS_GRAN_RECIPE: ConstructionRecipe = {
+  key: 'casa-de-obras-3',
+  tier: 6,
+  name: 'una gran casa de obras',
+  description: 'Grúas de madera, un patio de cantería y almacén propio de andamios: tres constructores a la vez y obras de hasta tier 9.',
+  nounRegex: /(?=.*\bgran\b)(?=.*\bcasa\b)(?=.*\bobras\b)/,
+  requirements: [
+    { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
+    { match: { kind: 'exact', catalogSlug: 'bloque-piedra-tallada' }, cantidad: 4, label: 'bloque de piedra tallada' },
+    { match: { kind: 'exact', catalogSlug: 'cordaje-trenzado' }, cantidad: 2, label: 'cordaje trenzado' },
+  ],
+  oficio: 'constructor-orcos-llanuras',
+  upgradesRecipeKey: 'casa-de-obras',
+  edificioOficioNivel: 3,
+  companionSlots: 0,
+  requiresAyuntamiento: true,
+};
+
 export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   CAMPAMENTO_RECIPE,
   CHOZA_RECIPE,
@@ -1693,6 +1769,10 @@ export const CONSTRUCTION_RECIPES: ConstructionRecipe[] = [
   BOCA_MINA_GRAN_OBRADOR_RECIPE,
   BOCA_MINA_OBRADOR_RECIPE,
   BOCA_MINA_RECIPE,
+  // Casa de obras: la gran y la ampliada antes que la base.
+  CASA_DE_OBRAS_GRAN_RECIPE,
+  CASA_DE_OBRAS_AMPLIADA_RECIPE,
+  CASA_DE_OBRAS_RECIPE,
   // CR-65: las mejoras antes que la base (sus `nounRegex` son más específicos).
   EMPALIZADA_MURALLA_RECIPE,
   TORRE_VIGIA_GRAN_RECIPE,

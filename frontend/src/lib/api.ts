@@ -1840,9 +1840,11 @@ export interface SubditoInfo {
   crias?: number
   /// CR-61 (61c): su tarea si es trabajador (sin tarea, recolector).
   tarea?: TareaSubdito
+  /// Casa de obras (P277): nivel de oficio de constructor (1-9); llega a obras de ese tier.
+  nivelConstructor?: number
 }
 
-export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero'
+export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero' | 'constructor'
 
 export interface CamasReino {
   total: number
@@ -3197,6 +3199,35 @@ export async function postLlamarMilicia(saveId: string, asentamientoId: string):
 /// P284/P296/P301: repara un edificio dañado (mitad de su coste en materiales del Almacén).
 export async function postRepararEdificio(saveId: string, buildingId: string): Promise<{ ok: boolean; coste: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/reparar`, { method: 'POST' })
+}
+
+/// Casa de obras (P277/P284): la Casa, sus constructores y la cola de obras y reparaciones.
+export interface ObraEnCola {
+  id: string
+  tipo: 'CONSTRUIR' | 'REPARAR'
+  nombre: string
+  tier: number
+  dias: number
+  diasHechos: number
+  /// Por qué no avanza («🔒N: …», faltan materiales…); null = avanza.
+  aviso: string | null
+}
+export interface CasaDeObrasInfo {
+  casa: { nivel: number; tierMaximo: number; plazas: number } | null
+  constructores: { id: string; name: string; nivel: number }[]
+  cola: ObraEnCola[]
+}
+export async function getObras(saveId: string): Promise<CasaDeObrasInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras`)
+}
+export async function postObra(saveId: string, encargo: { recipeKey: string } | { buildingId: string }): Promise<{ ok: boolean; id: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(encargo) })
+}
+export async function deleteObra(saveId: string, obraId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras/${obraId}`, { method: 'DELETE' })
+}
+export async function putOrdenObras(saveId: string, ids: string[]): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras/orden`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
 }
 
 // CR-50 (50d): manda una partida a por un campamento de bandidos.

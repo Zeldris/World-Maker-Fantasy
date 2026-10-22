@@ -55,7 +55,7 @@ import { energiaMaxFor, energiaPasivaEntre, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
-import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe, type RecipeCheck } from './construction.js';
+import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { abilityUnlocksAlSubirANivel, savedActionDataFromAbility } from './classAbilities.js';
@@ -5989,13 +5989,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // El objetivo ya se verificó arriba (`buildBlockedReason`), pero se re-busca fresco dentro
         // de la transacción por si acaso, mismo criterio que `freshInventoryRows`.
         // CR-65: un módulo de defensa se mejora en su asentamiento.
-        const target = await tx.building.findFirst({ where: { saveId, recipeKey: buildRecipe.upgradesRecipeKey, ...(buildRecipe.edificioTipo === 'defensa' ? { status: 'ACTIVO', location: { region: activeRegion ?? undefined } } : {}) } });
-        if (target) {
-          await tx.building.update({
-            where: { id: target.id },
-            data: { name: buildRecipe.name, description: buildRecipe.description, tier: buildingTierFor(buildRecipe) ?? undefined, status: 'ACTIVO' },
-          });
-        }
+        await mejorarEnSitio(tx, saveId, buildRecipe, activeRegion);
       } else {
         // Completa la fila EN_CONSTRUCCION ya creada en turn.ts en vez de crear una nueva
         // (2026-08-23, Grupo 3 § Building.status) — `earlyBuildingId` solo falta si esta

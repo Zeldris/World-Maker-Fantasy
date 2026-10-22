@@ -292,7 +292,7 @@ export async function datosDeSubditos(tx: Tx, saveId: string, ahora: number, ids
     edad: s.nacidoEn == null ? null : edadEnAnios(s.nacidoEn, ahora), adulto: esAdultoSubdito(s, ahora),
     felicidad: s.felicidad, origen: s.origen, territoryId: s.territoryId, linaje: linajePor.get(s.id) ?? null,
     pareja: s.parejaId ? nombrePor.get(s.parejaId) ?? null : null, crias: s.crias,
-    tarea: esTarea(s.tarea) ? s.tarea : TAREA_POR_DEFECTO,
+    tarea: esTarea(s.tarea) ? s.tarea : TAREA_POR_DEFECTO, nivelConstructor: s.nivelConstructor,
   }));
 }
 
