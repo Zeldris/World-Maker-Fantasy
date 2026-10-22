@@ -8,7 +8,7 @@ if [ $# -gt 0 ]; then CONSULTA="$*"; else CONSULTA="$(cat)"; fi
 [ -n "$CONSULTA" ] || { echo "sql.sh: falta la consulta" >&2; exit 2; }
 # La consulta viaja en base64: ninguna comilla se pierde por las capas de shell.
 B64="$(printf '%s' "$CONSULTA" | base64 | tr -d '\n')"
-exec bash "$QA/host.sh" bash -c '
-  C="$(printf %s "$1" | base64 -d)"
-  . "$3"
-  printf "%s\n" "$C" | psql "$2" -v ON_ERROR_STOP=1' _ "$B64" "$URL" "$QA/deck/_path.sh"
+exec bash "$QA/host.sh" bash -c "
+  C=\"\$(printf %s \"\$1\" | base64 -d)\"
+  . '$QA/deck/_path.sh'
+  printf '%s\\n' \"\$C\" | psql \"\$2\" -v ON_ERROR_STOP=1" _ "$B64" "$URL"

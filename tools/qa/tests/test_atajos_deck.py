@@ -15,13 +15,15 @@ CARPETAS = [os.path.join(QA, 'deck'), QA, os.path.join(RAIZ, 'tools', 'playwrigh
 POSTGRES = re.compile(r'\b(psql|pg_dump|pg_restore)\b')
 CARGA = re.compile(r'^\s*(\.|source)\s+.*_path\.sh')
 EXENTOS = {'_path.sh'}
+TUBERIA = re.compile(r'\|\s*(psql|pg_dump|pg_restore)\b')
 
 
 def codigo(ruta: str) -> list[str]:
-    """Líneas con código: sin comentarios (enteros o de final de línea) ni echo/printf, que solo mencionan el programa."""
+    """Líneas con código: sin comentarios (enteros o de final de línea) ni echo/printf que solo mencionan el programa; los
+    que llevan una tubería a psql, pg_dump o pg_restore (`printf … | psql`) sí son uso."""
     out = []
     for linea in leer(ruta).splitlines():
-        if re.match(r'^\s*(echo|printf)\b', linea):
+        if re.match(r'^\s*(echo|printf)\b', linea) and not TUBERIA.search(linea):
             continue
         out.append(re.sub(r'(^|\s)#.*$', '', linea))
     return out
@@ -49,10 +51,26 @@ class AtajosDeck(unittest.TestCase):
         self.assertEqual(mal, [], f'estos scripts invocan psql, pg_dump o pg_restore sin cargar antes _path.sh: {mal}')
 
     def test_juego_y_arrancar_juego_se_vigilan(self):
-        for ruta in (os.path.join(QA, 'deck', 'juego.sh'), os.path.join(RAIZ, 'tools', 'playwright-e2e', 'arrancar-juego.sh')):
-            lineas = codigo(ruta)
-            self.assertIn(ruta, scripts())
-            self.assertTrue(any(CARGA.search(l) for l in lineas), ruta)
+        # juego.sh no invoca psql: delega en arrancar-juego.sh, que es quien carga _path.sh (sin transitividad).
+        juego = os.path.join(QA, 'deck', 'juego.sh')
+        arrancar = os.path.join(RAIZ, 'tools', 'playwright-e2e', 'arrancar-juego.sh')
+        self.assertIn(juego, scripts())
+        self.assertIn(arrancar, scripts())
+        self.assertIsNone(primera_invocacion(codigo(juego)))
+        self.assertTrue(any(CARGA.search(l) for l in codigo(arrancar)), arrancar)
+
+    def test_echo_con_tuberia_a_psql_cuenta_como_uso(self):
+        ruta = os.path.join(QA, 'sql.sh')
+        self.assertIsNotNone(primera_invocacion(codigo(ruta)))
+
+    def test_echo_que_solo_menciona_psql_no_cuenta(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile('w', suffix='.sh', delete=False) as f:
+            f.write('echo "usa psql"\nprintf "select 1" | psql -d x\n')
+        try:
+            self.assertEqual(codigo(f.name), ['printf "select 1" | psql -d x'])
+        finally:
+            os.unlink(f.name)
 
 
 if __name__ == '__main__':
