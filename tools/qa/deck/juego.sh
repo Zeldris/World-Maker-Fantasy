@@ -3,6 +3,7 @@
 # (absoluto) salvo que ya vengan puestas, para que /opt-ai tenga el registro de la tanda (QA-141). Por host.sh:
 #   bash tools/qa/host.sh bash tools/qa/deck/juego.sh
 . "$(dirname "$0")/_raiz.sh"
+. "$DECK/_path.sh"  # psql por podman en la Deck; arrancar-juego.sh también lo carga (QA-192)
 export IA_PERFIL="${IA_PERFIL:-deck}"
 if [ -z "${IA_REGISTRO:-}" ]; then
   mkdir -p "$RAIZ/logs/ia"

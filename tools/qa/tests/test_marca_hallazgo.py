@@ -122,6 +122,14 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Comprobados jugando** (2): P3, P8.', texto)
         self.assertIn('- **Pendientes de una decisión de la usuaria** (1): P4.', texto)
 
+    def test_no_jugable_va_aparte_de_los_sin_comprobar(self):
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ 2026-10-09 (no jugable, se cierra sin jugar: solo tests): test en verde |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Arreglados, sin comprobar jugando** (1): P2.', texto)
+        self.assertIn('- **Arreglados, no jugables (los cubre un test o la base)** (1): P7.', texto)
+
     def test_comprobar_avisa_de_un_estado_contradictorio(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | No aplica. ✅ hecho |\n| P8 | Ocho | ✅ 2026-10-13 (decisión de la usuaria): así |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
@@ -138,6 +146,62 @@ class Resumen(unittest.TestCase):
         r = self.correr('--resumen', '--comprobar')
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('no lo dice (QA-185): P7, P11;', r.stderr)
+
+    def test_comprobar_falla_con_reabierto_posterior_o_falta_ver_que_cuenta_como_hecho(self):
+        # QA-195: P116 («Reabierto 10-21 … arreglo ✅ 10-13») y P189 («comprobado jugando…; falta ver una hora») del 3.3.
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | Reabierto 2026-10-21: no sale (arreglo ✅ 2026-10-13) |\n'
+                 '| P8 | Ocho | ✅ comprobado jugando 2026-10-22; falta ver una hora entera |\n'
+                 '| P9 | Nueve | ✅ arreglado. Falta verlo jugando |\n'
+                 '| P10 | Diez | pendiente. Reabierto |\n'
+                 '| P11 | Once | ✅ comprobado en vivo 2026-10-22; queda por ver el resto |\n'
+                 '| P12 | Doce | ✅ 2026-10-15 arreglado; pendiente: el menú. Reabierto 2026-10-21; ✅ 2026-10-23 |\n'
+                 '| P13 | Trece | Reabierto 2026-10-21: vuelve (en parte ✅ 2026-10-13) |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('(QA-195): P7, P8, P11, P13;', r.stderr)
+        self.assertIn('AL FINAL', r.stderr)
+
+    def test_comprobar_pasa_con_historial_en_orden(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ 2026-10-15; reabierto 2026-10-21; ✅ 2026-10-23 |\n'
+                 '| P8 | Ocho | ✅ 2026-10-18: arreglado; falta comprobarlo jugando; comprobado jugando 2026-10-22 |\n'
+                 '| P9 | Nueve | Reabierto 2026-10-21 ✅ arreglado; ver P5 del 2026-10-01 |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
+
+    def test_todo_reabierto_cuenta_tambien_en_plural_y_tras_un_no(self):
+        # Ante la duda, pendiente: con guardia de negación, el «sin» de otra frase escondía el reabierto de P99 (3.3).
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ hecho. Reabiertos los dos casos |\n'
+                 '| P8 | Ocho | ✅ comprobado jugando; no se ha reabierto |\n'
+                 '| P9 | Nueve | ✅ 2026-10-12 sin repetirlo (`x.ts`); reabierto 2026-10-21: sigue |\n'
+                 '| P10 | Diez | ✅ arreglado; comprobado jugando: no funciona — reabierto 2026-10-21 |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertIn('- **Pendientes** (5): P1, P7, P8, P9, P10.', leer(self.ruta))
+
+    def test_comprobar_salta_con_texto_entre_el_check_y_la_fecha_y_con_plural(self):
+        # P116: «arreglo ✅ nota 2026-10-13»: la fecha del ✅ puede venir tras unas palabras, sin dígitos ni «;».
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | Reabierto 2026-10-21: no sale (arreglo ✅ verificado en la ronda 2026-10-13) |\n'
+                 '| P8 | Ocho | Reabiertos 2026-10-21: vuelve (arreglo ✅ 2026-10-13) |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('(QA-195): P7, P8;', r.stderr)
+
+    def test_comprobar_reabierto_sin_fecha_delante_de_un_check_no_salta(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | Reabierto: no sale (arreglo ✅ 2026-10-13) |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
+
+    def test_comprobar_falta_ver_solo_tras_la_ultima_marca(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ falta ver una hora; comprobado en vivo 2026-10-22 |\n'
+                 '| P8 | Ocho | ✅ comprobado jugando 2026-10-20; falta ver; ✅ comprobado 2026-10-22 |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ comprobado en vivo 2026-10-22; falta ver el resto |\n')
+        self.correr('--resumen')
+        r = self.correr('--resumen', '--comprobar')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('(QA-195): P7;', r.stderr)
 
     def test_comprobar_pasa_si_cada_pendiente_lo_dice(self):
         self.assertEqual(self.correr('--resumen').returncode, 0)
