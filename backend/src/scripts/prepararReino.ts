@@ -3,7 +3,7 @@
 //   subditos:<pueblo>:<n>[:<rol>]   n súbditos adultos (`crearSubdito`) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
 //   reclutar:<npc>                  un NPC con nombre se une como compañero real (`proponer` RECLUTAR, con la tirada ganada; pide cama libre)
 //   guarnicion                      cada soldado y vigía a la guarnición de la capital mientras haya plazas (`asignarGuarnicion`)
-//   milicia:<n>                     compra n equipos de milicia en la primera Armería (`comprarEquiposMilicia`)
+//   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
@@ -79,8 +79,10 @@ for (const paso of pasos) {
     if (!asignados) rechaza('guarnicion: el Reino no tiene Ayuntamiento activo.');
     else dice(`Guarnición de la capital: ${asignados.join(', ') || 'nadie'}`);
   } else if (paso.tipo === 'milicia') {
-    const armeria = await prisma.building.findFirst({ where: { saveId, recipeKey: 'armeria', status: 'ACTIVO' }, select: { id: true } });
-    if (!armeria) { rechaza('milicia: no hay Armería activa (dar-reino edificio:armeria).'); continue; }
+    // La milicia sale de la Capital: solo cuenta la Armería de su asentamiento.
+    const capital = (await asentamientosDelReino(prisma, saveId)).find((a) => a.capital);
+    const armeria = capital?.modulos.find((m) => m.modulo === 'armeria');
+    if (!armeria) { rechaza('milicia: no hay Armería activa en la Capital (dar-reino edificio:armeria).'); continue; }
     const r = await prisma.$transaction((tx) => comprarEquiposMilicia(tx, saveId, armeria.id, paso.n));
     if (!r.ok) rechaza(`milicia: ${r.motivo}`);
     else dice(`Milicia: ${r.comprados} equipos`);

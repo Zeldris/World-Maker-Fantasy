@@ -104,9 +104,12 @@ describe('asaltos de fondo (CR-65 65d)', () => {
       const miliciano = await prisma.subject.create({ data: { saveId, name: 'Miliciano', role: 'trabajador', notes: '', pueblo: 'orcos', enMilicia: true } });
       const contraCuartel = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), cuartel.id, 11, semilla(9)));
       expect(contraCuartel).toMatchObject({ milicianos: 0, defensores: 0 });
+      // La Capital no tiene asaltos a la vista (sin Torre): la milicia vuelve al trabajo. Se rearma.
+      expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
+      await prisma.subject.update({ where: { id: miliciano.id }, data: { enMilicia: true } });
       const contraCapital = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), capitalId, 12, semilla(9)));
       expect(contraCapital).toMatchObject({ milicianos: 1 });
-      // Tras luchar en la Capital, vuelve al trabajo; el asalto al Cuartel no la había licenciado.
+      // Tras luchar en la Capital, sin más asaltos a la vista, vuelve al trabajo.
       expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
       await prisma.subject.delete({ where: { id: miliciano.id } });
       await prisma.building.delete({ where: { id: cuartel.id } });

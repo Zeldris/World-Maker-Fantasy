@@ -3085,6 +3085,23 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     expect((await prisma.building.findUniqueOrThrow({ where: { id: casa.id } })).status).toBe('ACTIVO');
   }, 20_000);
 
+  it('P299: la rebelión de otra región abandona sus edificios sin territorio, no los de la Capital', async () => {
+    await setUp(20);
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    const capital = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
+    // La Capital está en otra región y su Ayuntamiento no es de ningún territorio: sigue en pie.
+    const ayto = await prisma.building.create({ data: { saveId, locationId: capital.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const casa = await prisma.building.create({ data: { saveId, locationId: capital.id, name: 'Casa de obras', kind: 'casa-de-obras', recipeKey: 'casa-de-obras', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    narrateAction.mockClear();
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+    expect((await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } })).control).toBe('PERDIDO');
+    // Lo sin territorio de la región rebelada cae aunque el Ayuntamiento siga en pie en otra.
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: casa.id } })).status).toBe('ACTIVO');
+  }, 20_000);
+
   it('felicidad neutral (50) no consolida ni rebela — el territorio se queda RECLAMADO', async () => {
     await setUp(50);
     narrateAction.mockClear();

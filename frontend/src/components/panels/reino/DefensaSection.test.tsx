@@ -14,7 +14,7 @@ vi.mock('../../../lib/api', () => ({
 }))
 
 import { getDefensa, postEquiposMilicia, postLlamarMilicia, postRepararEdificio, type AsentamientoDefensa } from '../../../lib/api'
-import { DefensaSection, efectoDeModulo } from './DefensaSection'
+import { DefensaSection, efectoDeModulo, MILICIA_SOLO_CAPITAL } from './DefensaSection'
 
 /// CR-65 (65f): Reino › Defensa.
 const capital: AsentamientoDefensa = {
@@ -38,6 +38,10 @@ describe('DefensaSection (CR-65 65f)', () => {
     expect(efectoDeModulo(capital.modulos[0]!, capital)).toBe('caída: no cubre hasta repararla')
     expect(efectoDeModulo({ ...capital.modulos[0]!, caida: false }, { ...capital, efecto: { ...capital.efecto, cobertura: 2 } })).toBe('cobertura +2 · ha encajado 2 de 2 asaltos')
     expect(efectoDeModulo(capital.modulos[1]!, capital)).toBe('3 de 5 equipos de milicia')
+    // Fuera de la Capital la Armería no arma a nadie, salvo si es de la región de la Capital.
+    const cuartel = { ...capital, id: 'cua', capital: false }
+    expect(efectoDeModulo(capital.modulos[1]!, cuartel)).toBe(MILICIA_SOLO_CAPITAL)
+    expect(efectoDeModulo(capital.modulos[1]!, cuartel, true)).toBe('3 de 5 equipos de milicia')
     expect(efectoDeModulo(capital.modulos[2]!, capital)).toBe('ve 1 tramo de camino · +2 al tirar desde lo alto')
     // P296: una Empalizada dañada se lista como caída y lo dice.
     expect(efectoDeModulo({ ...capital.modulos[0]!, danado: true }, capital)).toBe('dañada: no cubre hasta repararla')
@@ -66,6 +70,18 @@ describe('DefensaSection (CR-65 65f)', () => {
     const boton = (await findByRole('button', { name: 'Llamar a la milicia' })) as HTMLButtonElement
     expect(boton.disabled).toBe(true)
     expect(getAllByText('No hay trabajadores adultos que armar.').length).toBeGreaterThan(0)
+  })
+
+  it('fuera de la Capital no se compran equipos de milicia ni se cuenta su milicia', async () => {
+    const cuartel: AsentamientoDefensa = { ...capital, id: 'cua', nombre: 'Cuartel del Paso', capital: false, region: 'Cristal', guarnicion: [], modulos: [{ id: 'arm2', modulo: 'armeria', nombre: 'otra armería', escalon: 1, golpes: 0, caida: false, equiposMilicia: 0 }] }
+    vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital, cuartel], avistados: [] })
+    const { findByRole, getAllByRole, queryByText } = render(<DefensaSection saveId="s" onRefreshSave={async () => {}} />)
+    const modulos = await findByRole('list', { name: 'Módulos de Cuartel del Paso' })
+    expect(modulos.textContent).toContain(MILICIA_SOLO_CAPITAL)
+    // Solo la Armería de la Capital vende equipos; solo la Capital dice su milicia.
+    expect(getAllByRole('button', { name: 'Comprar un equipo' })).toHaveLength(1)
+    expect(queryByText(/Guarnición 0\/3 · milicia/)).toBeNull()
+    expect(queryByText(/milicia: hasta 3/)).toBeTruthy()
   })
 
   it('alerta de asalto con «Llamar a la milicia»; reparar y comprar equipo', async () => {

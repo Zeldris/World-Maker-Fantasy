@@ -19,7 +19,7 @@ import { golpeAEmpalizada, NIVEL_MENOS_MILICIA } from './cronista/defensa.js';
 import { morir } from './cronista/salidas.js';
 import { esAdultoSubdito, recalcularPoblacion, rolDeSubdito } from './cronista/subditos.js';
 import { NIVEL_SOLDADO_GENERICO } from './cronista/combatientesFaccion.js';
-import { asentamientosDelReino, guardiasDeRegion, licenciarMilicia } from './defensaReino.js';
+import { asentamientosDelReino, guardiasDeRegion, licenciarMiliciaSiCapitalTranquila } from './defensaReino.js';
 import { volverAlCampamento } from './campamentos.js';
 import { ocupanteDe } from './cronista/campamentosBandidos.js';
 import { combatienteDeNpc } from './factionExpeditions.js';
@@ -172,8 +172,8 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     await tx.viajero.update({ where: { id: v.id }, data: { carga } });
   }
   if (caidosReino.length > 0) await recalcularPoblacion(tx, saveId, ahora);
-  // La milicia solo luchó si el asalto era a la Capital; si no, sigue armada (puede venir otro a la Capital).
-  if (asentamiento.capital) await licenciarMilicia(tx, saveId, ahora);
+  // Pasado el asalto, la milicia vuelve al trabajo si la Capital ya no tiene más asaltos a la vista.
+  await licenciarMiliciaSiCapitalTranquila(tx, saveId, ahora, undefined, v.id);
 
   const quien = v.factionId ? `La partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : `Los ${(ocupante?.grupo ?? 'bandidos').toLowerCase()}`;
   const texto = textoDelAsalto({
