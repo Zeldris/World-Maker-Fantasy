@@ -39,7 +39,7 @@ siguen leyendo el tramo, así que la migración es pequeña (§ 4).
 - **PV máx. humanoide** = `10 + Con + (nivel − 1) × (4 + Con // 4)`. Nivel 1 con Con 10: 20 PV;
   orco cazador de nivel 3 con Co 12: 36 PV. (5e: dado de golpe fijo por nivel + mod. de Con.)
 - **PV máx. fauna** = `Con + nivel × DG(tamaño)`, con DG por tamaño 2/3/5/7/10
-  (diminuta/pequeña/mediana/grande/enorme), como los bloques de monstruo de 5e. Zense (diminuta,
+  (diminuta/pequeña/mediana/grande/enorme), como los bloques de monstruo de 5e. Zense (pequeña,
   nivel 1): 9 PV; cornante (grande, nivel 3): 34; gargantúa (enorme, nivel 6): 82.
 - **Tramo** = % de PV actual sobre el máximo: ILESO > 75 · HERIDO 51-75 · GRAVE 26-50 ·
   CONVALECIENTE 1-25 · MUERTO 0. Los valores de `SALUD_POR_CONDICION` de hoy (100/75/50/25/0) caen
@@ -87,12 +87,14 @@ dejan de trabajar; Bellwright: los aldeanos heridos se curan en la cama y con el
   Deja de ser tirada enfrentada: el defensor no tira (5e: CA fija).
 - **Resultado** por margen (ataque − Defensa), reaprovechando `outcomeForMargin`:
   - **golpe pleno:** 20 natural o margen ≥ 10 → **dobla los dados** de daño (5e crítico).
-  - **golpe normal:** margen ≥ 0 → daño normal.
+  - **golpe normal:** margen ≥ 0 (salvo 1 natural) → daño normal.
   - **parada:** margen −1 a −9 → nada.
-  - **contragolpe:** 1 natural o margen ≤ −10 → el defensor golpea con daño normal si tiene
+  - **contragolpe:** 1 natural (fallo automático aunque el margen sea ≥ 0, como en 5e) o margen ≤ −10 → el defensor golpea con daño normal si tiene
     habilidad de ATAQUE (igual que hoy, `effectiveExchangeOutcome`).
 - **Daño:** dado del arma + `atributo // 3`. Daga **d4**, espada **d8**, hacha **d12**, lanza
-  **d8**; la daga usa Destreza, el resto Fuerza (5e «finesse»). Sin arma: d2. La fauna pega con su
+  **d8**; la daga usa Destreza, el resto Fuerza (5e «finesse»). Sin arma: d2. Pendientes de dado (hoy en el catálogo sin cifra), propuesta de 5e: maza
+  (`MAZA_1_MANO`) d6, garrote (`GARROTE_1_MANO`) d4, pica (`PICA`) d10; escudo (`ESCUDO`) +2 a la
+  Defensa (5e: el escudo suma +2 a la CA) y, si golpea, d4 como arma improvisada (5e). La fauna pega con su
   arma natural según tamaño: d2 / d4 / d6 / 2d6 / 2d10.
 - El aguante absorbe primero (§ 2.2).
 
@@ -121,7 +123,7 @@ narrando a partir del tramo y de la lesión nueva, si la hay.
 | daño masivo | sobrante ≥ 50 % del PV máx. para morir | `death.ts` |
 | Defensa | `10 + De//2 + armadura`; defenderse +5 | `combatExchange.ts` |
 | golpe pleno / contragolpe | 20 / 1 natural o margen ±10 | `combatExchange.ts` |
-| dados de arma | daga d4, espada d8, hacha d12, lanza d8, sin arma d2 | catálogo (`dadoDano` en el objeto) |
+| dados de arma | daga d4, espada d8, hacha d12, lanza d8, sin arma d2; pendientes: maza d6, garrote d4, pica d10, escudo +2 Defensa / d4 (5e) | catálogo (`dadoDano` en el objeto) |
 | dados de fauna | d2 / d4 / d6 / 2d6 / 2d10 por tamaño | catálogo (`tamano` en la fauna) |
 | bono de daño | `atributo // 3` | `combatExchange.ts` |
 | lesión | pleno 50 %, a GRAVE 15 %, a CONVALECIENTE 35 % | `lesiones.ts` (nuevo) |
@@ -225,7 +227,9 @@ moral, todo es Ataque básico. Jugadora de nivel 1 con Fu 11, De 11, Co 10.
 **Lectura y ajustes que salieron de aquí**
 
 - El arma ya importa: sin armadura, hacha 71 %, daga 66 %, espada 65 % (la daga se sostiene
-  porque ataca y hiere con Destreza), y los combates se acortan de 3,5 a 2,5-3,2 rondas. La cota +2 vale ~10 puntos de victoria con cualquier arma.
+  porque ataca y hiere con Destreza), y los combates se acortan de 3,5 a 2,5-3,2 rondas. La cota +2 suma entre 5 y 12 puntos de victoria según el arma (hacha +5, daga +9,5, espada
+  +11,6; hoy, +5 a +13). El 1 natural como contragolpe automático no mueve ninguna cifra con estas
+  fichas: con bono +5/+6 contra Defensa ≥ 12, un 1 nunca llega a margen ≥ 0.
 - La fauna se ordena sola: el zense deja de ser un riesgo (97 %), el gargantúa pasa a imposible a
   nivel 1 (0,2 %, hoy 9 %) y las peleas duras dejan lesión 1 de cada 4.
 - La caza fácil es **más segura** que hoy (10 % de cazadores heridos frente a 26 %) y la dura igual

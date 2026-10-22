@@ -29,7 +29,9 @@ MARGEN_DECISIVO = 10  # combatExchange.ts
 
 # ---------------------------------------------------------------- cifras del sistema nuevo (§ 3 del doc)
 DADO_ARMA = {'DAGA': (1, 4), 'CUCHILLO': (1, 4), 'ESPADA_1_MANO': (1, 8), 'HACHA_1_MANO': (1, 12),
-             'LANZA': (1, 8), 'NATURAL': None}
+             'LANZA': (1, 8), 'NATURAL': None,
+             # Pendientes de confirmar (propuesta de 5e, doc § 2.4): no salen en los escenarios.
+             'MAZA_1_MANO': (1, 6), 'GARROTE_1_MANO': (1, 4), 'PICA': (1, 10), 'ESCUDO': (1, 4)}
 # Arma natural de la fauna por tamaño (bloques de monstruo de 5e) y dado de golpe para sus PV.
 DADO_TAMANO = {'diminuta': (1, 2), 'pequena': (1, 4), 'mediana': (1, 6), 'grande': (2, 6), 'enorme': (2, 10)}
 DG_TAMANO = {'diminuta': 2, 'pequena': 3, 'mediana': 5, 'grande': 7, 'enorme': 10}
@@ -240,12 +242,12 @@ def golpe_nuevo(at: Luchador, de: Luchador, rng):
     if nat == 20 or m >= MARGEN_DECISIVO:
         danar(de, tirar_dano(at, rng, True), True, rng)
         return 'pleno'
+    if nat == 1 or m <= -MARGEN_DECISIVO:  # el 1 natural siempre falla y da contragolpe (5e)
+        danar(at, tirar_dano(de, rng, False), False, rng)
+        return 'contra'
     if m >= 0:
         danar(de, tirar_dano(at, rng, False), False, rng)
         return 'normal'
-    if nat == 1 or m <= -MARGEN_DECISIVO:
-        danar(at, tirar_dano(de, rng, False), False, rng)
-        return 'contra'
     return 'parada'
 
 
