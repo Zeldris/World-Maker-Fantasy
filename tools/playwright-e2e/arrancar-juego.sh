@@ -13,6 +13,8 @@
 # Ollama real).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
+# QA-188/QA-198: en la Deck el host no trae psql; los envoltorios de tools/qa/deck (van por podman) se añaden al PATH como respaldo.
+. tools/qa/deck/_path.sh
 BASE=tarkor_juego
 URL="postgresql://tarkor:tarkor@localhost:5432/$BASE"
 export DATABASE_URL="$URL" DIRECT_URL="$URL" OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"

@@ -115,7 +115,9 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 
 8. **Una tanda con Ollama real juega al menos 8 turnos** (`QA-200`, retro del 2026-10-22): con 3 turnos `/opt-ai` no
    tiene medida comparable. Si la tanda no llega a 8, al cerrar se pasa `bash tools/qa/bench-ia.sh <etiqueta>
-   --anterior <etiqueta>` (`QA-173`; 8 turnos de `npm run benchmark-turno`).
+   --anterior <etiqueta>` (`QA-173`; 8 turnos de `npm run benchmark-turno`). **Ojo:** `bench-ia.sh` restaura su escenario en
+   `tarkor_juego` y relanza el juego, y pisa la partida en curso: antes, `bash tools/qa/escenario.sh guardar <nombre>` de la
+   partida de la tanda.
 
 ## Lo que engaña
 
