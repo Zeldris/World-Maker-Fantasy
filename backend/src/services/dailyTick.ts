@@ -74,10 +74,10 @@ export async function advanceKingdomStatsDay(
           // del Ayuntamiento heredan su territoryId (a menudo null): si el Ayuntamiento sigue en pie, los de
           // su región no caen (la Casa de obras, la Herrería…; si no, la cola de obras se congelaría), ni por
           // su rebelión ni por la de otra región. El Ayuntamiento es el mismo que la Capital de
-          // `asentamientosDelReino` (ACTIVO, con lugar, el más antiguo).
+          // `asentamientosDelReino` (con lugar, el más antiguo); uno DANADO sigue en pie y sigue siendo la Capital.
           const regionesPerdidas = territories.filter((t) => perdiendoIds.includes(t.id) && t.region).map((t) => t.region as string);
           const ayto = await tx.building.findFirst({
-            where: { saveId, recipeKey: 'ayuntamiento', status: 'ACTIVO', location: { isNot: null } },
+            where: { saveId, recipeKey: 'ayuntamiento', status: { in: ['ACTIVO', 'DANADO'] }, location: { isNot: null } },
             select: { territoryId: true, location: { select: { region: true } } },
             orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           });

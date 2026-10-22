@@ -3071,17 +3071,18 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     expect(building.status).toBe('ABANDONADO');
   }, 20_000);
 
-  it('P299: si el Ayuntamiento (sin territorio) sigue en pie, los edificios de su asentamiento no se abandonan', async () => {
+  // Un Ayuntamiento DANADO (por un suceso del Cronista) sigue en pie: sigue siendo la Capital.
+  it.each(['ACTIVO', 'DANADO'] as const)('P299: si el Ayuntamiento (sin territorio, %s) sigue en pie, los edificios de su asentamiento no se abandonan', async (estado) => {
     await setUp(20);
     const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
-    const ayto = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const ayto = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: estado, tier: 1 } });
     const casa = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Casa de obras', kind: 'casa-de-obras', recipeKey: 'casa-de-obras', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
     expect((await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } })).control).toBe('PERDIDO');
     // Lo del territorio perdido cae; el Ayuntamiento y su Casa de obras siguen (la cola de obras no se congela).
     expect((await prisma.building.findUniqueOrThrow({ where: { id: buildingId } })).status).toBe('ABANDONADO');
-    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe(estado);
     expect((await prisma.building.findUniqueOrThrow({ where: { id: casa.id } })).status).toBe('ACTIVO');
   }, 20_000);
 
