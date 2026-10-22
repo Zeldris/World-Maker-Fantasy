@@ -3,7 +3,7 @@
 // Paso 53a: el agua que entra (pozos y fuente natural) y los topes del almacén por categoría.
 import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
-import { CONSUMO_COMIDA_POR_BOCA, escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
+import { CONSUMO_POR_BOCA, escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
 import { comidaDelDia } from './comidaOficios.js';
 import { CASA_DE_OBRAS_KEY, plazasDeCasa } from './casaDeObras.js';
 import { estacionFor } from '../worldClock.js';
@@ -61,6 +61,7 @@ export async function datosComidaDelReino(tx: Tx, saveId: string, ahora: number)
   const casa = edificios.find((b) => b.recipeKey === CASA_DE_OBRAS_KEY);
   return {
     tareas: tareasDelReino(subditos, ahora),
+    hayAyuntamiento: !!ayuntamiento,
     hayAgua: !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location),
     escalonCocina: escalonCocinaDe(edificios),
     plazasConstructor: casa ? plazasDeCasa(casa.tier ?? 1) : 0,
@@ -216,7 +217,7 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   if ((tocaPagar || k.diasSinCobrar > 0) && total > 0 && k.riqueza >= total) {
     await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { decrement: total }, ultimoPagoSueldos: ahora, diasSinCobrar: 0 } });
     // CR-58: con los sueldos, el desgaste del equipo (y reponer lo roto, si alcanza).
-    await liquidarEquipo(tx, saveId, k);
+    await liquidarEquipo(tx, saveId, k, ahora);
     return { pagado: total, desertor: null };
   }
   if ((tocaPagar || k.diasSinCobrar > 0) && total === 0) {
@@ -225,7 +226,7 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   }
   if (!tocaPagar && k.diasSinCobrar === 0) return { pagado: 0, desertor: null };
   // No alcanza: un día más sin cobrar, y el equipo de esta semana se gasta sin reponer (CR-58).
-  if (tocaPagar) await romperEquipo(tx, saveId, k);
+  if (tocaPagar) await romperEquipo(tx, saveId, k, ahora);
   const dias = k.diasSinCobrar + 1;
   await tx.kingdomStats.update({
     where: { ownerKey },
@@ -285,16 +286,16 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
   const comidaActual = k?.comida ?? 0;
   const produccion = k ? Math.round(comidaDelReinoDia(datos, Math.floor(minutos / 1440) * 1440 + 720, comidaActual, factor) * 10) / 10 : 0;
   const bocasCifra = k ? k.poblacion + k.soldados + k.visitantes : 0;
-  const hayAyuntamiento = (await tx.building.count({ where: { saveId, status: 'ACTIVO', recipeKey: { in: [...AYUNTAMIENTOS] } } })) > 0;
+  const { hayAyuntamiento } = datos;
   return {
     comida: comidaActual,
     bebida: k?.bebida ?? 0,
     comidaProduccionDia: produccion,
-    comidaConsumoDia: bocasCifra * CONSUMO_COMIDA_POR_BOCA,
+    comidaConsumoDia: bocasCifra * CONSUMO_POR_BOCA,
     bocasDetalle: { civiles: k?.poblacion ?? 0, soldados: k?.soldados ?? 0, visitantes: k?.visitantes ?? 0 },
     motivosComida: k ? explicarComida({
       comida: comidaActual, tope: sum.topeComida, bocas: { civiles: k.poblacion, soldados: k.soldados, visitantes: k.visitantes },
-      produccion, consumo: bocasCifra * CONSUMO_COMIDA_POR_BOCA, tareas: datos.tareas, hayAyuntamiento, hayAgua: datos.hayAgua, escalonCocina: datos.escalonCocina, factor,
+      produccion, consumo: bocasCifra * CONSUMO_POR_BOCA, tareas: datos.tareas, hayAyuntamiento, hayAgua: datos.hayAgua, escalonCocina: datos.escalonCocina, factor,
       plazasConstructor: datos.plazasConstructor,
     }) : [],
     aguaDia: sum.agua,
@@ -323,13 +324,13 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
 
 /// Paga el desgaste semanal del equipo (Goirnos lo comprado, materiales lo hecho en casa) y repone lo
 /// roto si alcanza. Si no se puede pagar el desgaste, se rompe la parte de esa semana.
-export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }): Promise<{ goirnos: number; materiales: number; pagado: boolean }> {
+export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }, ahora: number): Promise<{ goirnos: number; materiales: number; pagado: boolean }> {
   const ownerKey = ownerKeyFor({ saveId });
   const enCasa = piezasEnCasa(await talleresDelReino(tx, saveId));
   const coste = costeDePiezas(desgasteSemanal(c), enCasa);
   const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { riqueza: true, sinHerramienta: true, sinArma: true } });
   if (k.riqueza < coste.goirnos || !(await gastarMateriales(tx, saveId, coste.materiales))) {
-    await romperEquipo(tx, saveId, c);
+    await romperEquipo(tx, saveId, c, ahora);
     return { ...coste, pagado: false };
   }
   let riqueza = k.riqueza - coste.goirnos;
@@ -349,12 +350,12 @@ export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: 
 }
 
 /// Una semana sin pagar el desgaste: se rompe 1/4 de las herramientas y 1/6 de las armas.
-async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }): Promise<void> {
+async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }, ahora: number): Promise<void> {
   const ownerKey = ownerKeyFor({ saveId });
   const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
   const r = roturaSinPagar(c);
   // CR-63 (P281): el cazador lleva arma como un soldado, así que cuenta para el tope.
-  const conArma = c.soldados + (await cazadoresAdultos(tx, saveId));
+  const conArma = c.soldados + (await cazadoresAdultos(tx, saveId, ahora));
   await tx.kingdomStats.update({
     where: { ownerKey },
     data: { sinHerramienta: Math.min(c.trabajadores, k.sinHerramienta + r.sinHerramienta), sinArma: Math.min(conArma, k.sinArma + r.sinArma) },

@@ -125,7 +125,8 @@ export async function cupoDeCamas(tx: Tx, saveId: string): Promise<CupoDeCamas> 
 
 /// CR-63 (Q3, P281): quién de los que llevan arma (soldados, vigías y cazadores adultos) no la tiene. El
 /// Reino solo cuenta cuántas armas faltan (`KingdomStats.sinArma`); las que faltan son de los últimos en
-/// darse de alta, que son quienes se quedaron sin equipo cuando no había con qué pagarlo.
+/// darse de alta, que son quienes se quedaron sin equipo cuando no había con qué pagarlo. Regla determinista:
+/// orden por `createdAt` y, a igualdad, por `id`; las armas que faltan son las de los últimos de esa lista.
 export async function subditosSinArma(tx: Tx, saveId: string, ahora: number): Promise<Set<string>> {
   const [k, subditos] = await Promise.all([
     tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { sinArma: true } }),
@@ -138,13 +139,14 @@ export async function subditosSinArma(tx: Tx, saveId: string, ahora: number): Pr
 }
 
 /// Cazadores adultos activos: llevan arma como un soldado, así que entran en el tope de `sinArma`.
-export async function cazadoresAdultos(tx: Tx, saveId: string): Promise<number> {
-  const [ws, subditos] = await Promise.all([
-    tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }),
-    tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true } }),
-  ]);
-  const ahora = ws?.fictionalMinutes ?? 0;
-  return subditos.filter((s) => rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora)).length;
+export async function cazadoresAdultos(tx: Tx, saveId: string, ahora: number): Promise<number> {
+  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true } });
+  return subditos.filter((s) => esCazadorAdulto(s, ahora)).length;
+}
+
+/// Filtro compartido del cazador adulto (lleva arma como un soldado).
+function esCazadorAdulto(s: { role: string; pueblo: string | null; nacidoEn: number | null }, ahora: number): boolean {
+  return rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora);
 }
 
 /// La población del Reino (y de cada territorio) = sus súbditos activos. Idempotente.
@@ -155,7 +157,7 @@ export async function recalcularPoblacion(tx: Tx, saveId: string, ahora: number)
   if (k) {
     const cifras = cifrasDePoblacion(subditos, ahora);
     // CR-63 (P281): el cazador lleva arma como un soldado, así que cuenta para el tope de armas que faltan.
-    const cazadores = subditos.filter((s) => rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora)).length;
+    const cazadores = subditos.filter((s) => esCazadorAdulto(s, ahora)).length;
     // CR-58: el equipo que falta nunca pasa de la gente que hay (quien se va, muere o cambia de rol).
     await tx.kingdomStats.update({ where: { ownerKey }, data: { ...cifras, sinHerramienta: Math.min(k.sinHerramienta, cifras.trabajadores), sinArma: Math.min(k.sinArma, cifras.soldados + cazadores) } });
   }

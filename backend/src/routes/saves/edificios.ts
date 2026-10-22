@@ -29,7 +29,7 @@ export async function edificiosRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/obras', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    return prisma.$transaction((tx) => verCasaDeObras(tx, save.id, save.worldState?.fictionalMinutes ?? 0));
+    return verCasaDeObras(prisma, save.id, save.worldState?.fictionalMinutes ?? 0);
   });
 
   /// Encarga una obra (`recipeKey`) o una reparación (`buildingId`) al final de la cola.

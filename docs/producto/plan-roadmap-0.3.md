@@ -147,7 +147,10 @@ tope de pienso).
     parcial 40 % de la cuota: patrullas al 40 %»). Así no se estanca en el 50 %: con una cuota pendiente
     y pagando justo una, patrulla al 100 %, pero sigue sin estar al corriente, y sin rearme, hasta
     saldar lo pendiente. Si no paga nada, queda **impagado** y no patrulla. Lo pendiente nunca pasa de
-    una cuota (se recorta en la revisión semanal, nunca a mitad de semana). Cuando paga entero lo
+    una cuota (se recorta en la revisión semanal, nunca a mitad de semana). **Excepción, sin soldados
+    (cuota 0):** lo pendiente se conserva entero (se paga con lo que haya, sin patrulla; el diario y la
+    interfaz dicen «sin soldados con los que patrullar» y lo que arrastra) y se recorta a una cuota
+    cuando vuelve a haber soldados. Cuando paga entero lo
     pendiente y la cuota, vuelve a estar al corriente y patrulla siempre. La patrulla es el servicio
     que se paga, ya no rebaja deuda. El rearme solo se hace al corriente y compra armas con lo que le
     quede tras la cuota (sin crédito). Las partidas de antes migran una sola vez: la deuda se recorta a

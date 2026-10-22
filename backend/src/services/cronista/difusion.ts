@@ -303,6 +303,7 @@ export async function contarNoticias(
     },
   });
   const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
+  const vistos = new Set<string>();
   const candidatos = sinVictoriaYaContada(sucesos)
     .filter((s) => {
       const a = alcance.get(s.id)!;
@@ -314,7 +315,12 @@ export async function contarNoticias(
     })
     .sort((x, y) => y.importancia - x.importancia || y.fictionalMinutes - x.fictionalMinutes)
     // P291: dos sucesos con la misma frase (p. ej. dos tormentas) son la misma noticia.
-    .filter((s, i, todos) => todos.findIndex((o) => textoQueCorre(o) === textoQueCorre(s)) === i)
+    .filter((s) => {
+      const texto = textoQueCorre(s);
+      if (vistos.has(texto)) return false;
+      vistos.add(texto);
+      return true;
+    })
     .slice(0, MAX_CONTADAS);
 
   const frases: string[] = [];

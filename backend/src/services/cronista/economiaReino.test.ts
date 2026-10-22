@@ -89,10 +89,10 @@ describe('P279/P300 — por qué se mueve la comida', () => {
   });
   it('comidaDelReinoDia: el constructor sin plaza produce como un recolector; con plaza, nada', () => {
     const tareas = { recolector: 0, pescador: 0, cocinero: 0, ganadero: 0, fibrero: 0, constructor: 1 };
-    const sinCasa = comidaDelReinoDia({ tareas, hayAgua: true, escalonCocina: 0, plazasConstructor: 0 }, 720, 100);
-    const recolector = comidaDelReinoDia({ tareas: { ...tareas, constructor: 0, recolector: 1 }, hayAgua: true, escalonCocina: 0, plazasConstructor: 0 }, 720, 100);
+    const sinCasa = comidaDelReinoDia({ tareas, hayAyuntamiento: true, hayAgua: true, escalonCocina: 0, plazasConstructor: 0 }, 720, 100);
+    const recolector = comidaDelReinoDia({ tareas: { ...tareas, constructor: 0, recolector: 1 }, hayAyuntamiento: true, hayAgua: true, escalonCocina: 0, plazasConstructor: 0 }, 720, 100);
     expect(sinCasa).toBeGreaterThan(0);
     expect(sinCasa).toBe(recolector);
-    expect(comidaDelReinoDia({ tareas, hayAgua: true, escalonCocina: 0, plazasConstructor: 1 }, 720, 100)).toBe(0);
+    expect(comidaDelReinoDia({ tareas, hayAyuntamiento: true, hayAgua: true, escalonCocina: 0, plazasConstructor: 1 }, 720, 100)).toBe(0);
   });
 });
