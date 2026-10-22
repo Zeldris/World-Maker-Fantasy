@@ -1957,9 +1957,6 @@ async function resolveBuildIntentContext(params: {
   currentLocationRecord: { id: string; kind: string; slug: string } | null;
   inventoryRows: InventoryRowLike[];
   catalogBySlug: Map<string, CatalogLookup>;
-  attributes: AttributeBlock;
-  secondaryAttributes: SecondaryAttributeBlock;
-  alivioFor: (oficio: string | undefined) => number;
   tieneOficioFor: (oficio: string | undefined) => boolean;
   /// Bug real (auditoría en vivo, 2026-09-01, camino DIFERIDO — ver comentario completo en
   /// `computeBuildBlockedReason`, construction.ts): mismo motivo que la exclusión de la segunda
@@ -1969,11 +1966,11 @@ async function resolveBuildIntentContext(params: {
   /// revalidación de materiales.
   earlyBuildingId?: string;
 }): Promise<BuildIntentContext> {
-  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor, tieneOficioFor, earlyBuildingId } =
+  const { action, saveId, worldId, activeRegion, currentLocationRecord, inventoryRows, catalogBySlug, tieneOficioFor, earlyBuildingId } =
     params;
   const buildRecipe: ConstructionRecipe | undefined = CONSTRUCTION_RECIPES.find((r) => detectsBuildIntent(r, action));
   const buildRecipeCheck: RecipeCheck | null = buildRecipe
-    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor(buildRecipe.oficio), tieneOficioFor(buildRecipe.oficio))
+    ? checkRecipe(buildRecipe, inventoryRows, catalogBySlug, tieneOficioFor(buildRecipe.oficio))
     : null;
   const buildBlockedReason: string | null =
     buildRecipe && buildRecipeCheck?.met && currentLocationRecord
@@ -4237,9 +4234,6 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     currentLocationRecord,
     inventoryRows,
     catalogBySlug,
-    attributes,
-    secondaryAttributes,
-    alivioFor,
     tieneOficioFor,
     earlyBuildingId,
   });

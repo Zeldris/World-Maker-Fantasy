@@ -8,7 +8,6 @@ import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes
 import { CRAFTING_RECIPES } from '../../services/crafting.js';
 import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, type ConstructionRecipe } from '../../services/construction.js';
 import type { AttributeBlock } from '../../services/dice.js';
-import type { SecondaryAttributeBlock } from '../../services/secondaryAttributes.js';
 
 export interface RecipeStatus {
   recipeKey: string;
@@ -35,6 +34,17 @@ export interface RecipeStatus {
   /// Nivel al que deja el edificio que mejora (Obrador 2, Gran obrador 3; revisión previa al PR de
   /// P218): el panel oculta las mejoras de un nivel ya alcanzado (la mejora no cambia `recipeKey`).
   nivel?: number | null;
+  /// Tier de obra 1-9 (construcción por oficio, 2026-10-21): el personaje levanta hasta T3; el
+  /// resto se encarga a la Casa de obras.
+  tier?: number;
+  /// Si Reino › Edificios ofrece construirlo: lo que cuelga del Ayuntamiento y las Jaulas (P282: los
+  /// Corrales piden una Jaula y el panel no la ofrecía).
+  panelReino?: boolean;
+}
+
+/// Edificios que se ofrecen en Reino › Edificios (P282): los del Ayuntamiento y las Jaulas.
+export function esDelPanelReino(recipe: ConstructionRecipe): boolean {
+  return recipe.requiresAyuntamiento === true || recipe.key.startsWith('jaula-');
 }
 
 /// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
@@ -49,14 +59,12 @@ export async function constructionRecipeStatusFor(params: {
   currentLocationId: string | null;
   inventoryRows: InventoryRowLike[];
   catalogBySlug: Map<string, CatalogLookup>;
-  attributes: AttributeBlock;
-  secondaryAttributes: SecondaryAttributeBlock;
-  alivioFor: (oficio: string | null | undefined) => number;
 }): Promise<RecipeStatus> {
-  const { recipe, saveId, worldId, activeRegion, currentLocationId, inventoryRows, catalogBySlug, attributes, secondaryAttributes, alivioFor } = params;
+  const { recipe, saveId, worldId, activeRegion, currentLocationId, inventoryRows, catalogBySlug } = params;
   const ingredients = checkIngredients(recipe.requirements, inventoryRows, catalogBySlug);
-  const missingRequisitos = checkRequisitos(recipe.requisitos, attributes, secondaryAttributes, alivioFor(recipe.oficio)).map(shortfallLabel);
-  const materialsOk = ingredients.every((i) => i.met) && missingRequisitos.length === 0;
+  // Construcción por oficio (2026-10-21, P277): ningún edificio pide atributos.
+  const missingRequisitos: string[] = [];
+  const materialsOk = ingredients.every((i) => i.met);
   const blockedReason =
     materialsOk && currentLocationId
       ? await computeBuildBlockedReason({
@@ -81,6 +89,8 @@ export async function constructionRecipeStatusFor(params: {
     requiresAyuntamiento: recipe.requiresAyuntamiento === true,
     upgradesRecipeKey: recipe.upgradesRecipeKey ?? null,
     nivel: recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null,
+    tier: recipe.tier,
+    panelReino: esDelPanelReino(recipe),
   };
 }
 
@@ -158,9 +168,6 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
           currentLocationId: save.currentLocation?.id ?? null,
           inventoryRows,
           catalogBySlug,
-          attributes,
-          secondaryAttributes,
-          alivioFor,
         }),
       ),
     );

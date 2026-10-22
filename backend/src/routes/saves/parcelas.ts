@@ -4,10 +4,6 @@ import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './share
 import { CONSTRUCTION_RECIPES, planRecipeConsumption, baseNameOf, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe } from '../../services/construction.js';
 import { constructionRecipeStatusFor, type RecipeStatus } from './recipesStatus.js';
 import { checkIngredients, type CatalogLookup } from '../../services/ingredients.js';
-import { alivioForLevel } from '../../services/professionProgress.js';
-import { effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
-import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
-import type { AttributeBlock } from '../../services/dice.js';
 
 /// Concepto de "parcela" estilo Travian/Tribal Wars (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4,
 /// 2026-09-21) — hueco de construcción marcado a priori en el PNG de una zona-interior. Flujo
@@ -58,11 +54,6 @@ export async function parcelasRoutes(app: FastifyInstance) {
       ? await prisma.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: catalogSlugs } }, select: { slug: true, tipo: true, category: true } })
       : [];
     const catalogBySlug = new Map<string, CatalogLookup>(catalogRows.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
-    const equippedItems = save.inventoryItems.filter((i) => i.slot !== null);
-    const attributes = effectiveAttributes(save.attributes as AttributeBlock, equippedItems);
-    const secondaryAttributes = effectiveSecondaryAttributes(normalizeSecondaryAttributes(save.secondaryAttributes), equippedItems);
-    const oficioNivelById = new Map(save.professionProgress.map((p) => [p.professionId, p.nivel]));
-    const alivioFor = (oficio: string | null | undefined) => (oficio ? alivioForLevel(oficioNivelById.get(oficio) ?? 1) : 0);
 
     // AVANZADA: una sola candidata, la fija de la parcela. BASICA: todas las que apliquen — el
     // jugador elige cuál construir de entre las que SÍ cumple.
@@ -81,9 +72,6 @@ export async function parcelasRoutes(app: FastifyInstance) {
           currentLocationId: parcela.locationId,
           inventoryRows,
           catalogBySlug,
-          attributes,
-          secondaryAttributes,
-          alivioFor,
         }),
       ),
     );

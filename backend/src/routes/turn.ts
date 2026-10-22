@@ -1035,8 +1035,6 @@ export async function turnRoutes(app: FastifyInstance) {
           currentLocationId: currentLocationForSummary.id,
           activeRegion: currentLocationForSummary.region,
           inventoryRows: await prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true } }),
-          attributes,
-          secondaryAttributes,
         })
       : null;
 
