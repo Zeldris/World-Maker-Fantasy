@@ -76,9 +76,10 @@ lo que cambia antes de darla por cerrada, sin dejar arreglos para una fase poste
 decisión del 2026-10-02: implementación continua solo con tests y pruebas de juego en una fase única
 antes de la beta.
 
-**Al jugar** (ronda de pruebas, «sigue probando», «juega»): antes de la primera acción, relee
+**Al jugar** (ronda de pruebas, «sigue probando», «juega»): quien lanza `orden.sh` (en una ronda repartida, el
+subagente de cada tanda), antes de la primera acción, relee
 [`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md): con qué se juega, qué se
-prueba y cómo se apunta (`QA-56`).
+prueba y cómo se apunta (`QA-56`). La sesión que reparte lee solo «Qué se prueba» (`QA-209`).
 
 ## Mensajes de commit
 
@@ -107,6 +108,10 @@ prueba y cómo se apunta (`QA-56`).
   3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de sus commits y sus arreglos;
      luego `bash tools/qa/revisado.sh`, la descripción con la skill `pr`, y solo entonces se crea. Sin la marca de
      revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
+- **Con la cuota de GitHub Actions agotada, a `main` sin PR** (usuaria, 2026-10-22, `QA-215`): las tres fases de arriba
+  igual, pero en vez del PR, la nube fusiona la rama en `main` en un worktree, pasa `bash tools/qa/ci-local.sh <worktree>`
+  (los tres jobs de `ci.yml`) hasta verde y sube con `git push origin HEAD:main`. Se apunta en la bitácora como «sin PR,
+  CI local». Sustituye al CI del PR solo mientras dure la cuota agotada; con cuota, PR como siempre.
 - **El PR de una sesión local lo crea Claude en la nube** (usuaria, 2026-10-21, `QA-184`): en la Deck no hay `gh` ni
   herramienta de GitHub, y el modo auto no deja usar la credencial de git. Tras la fase 3, la local sube la
   descripción a `docs/registros/pr/<rama>.md` y deja en su fila de la bitácora «PR listo» con el título, en el último commit; la

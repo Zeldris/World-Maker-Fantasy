@@ -53,6 +53,14 @@ class MatrizPruebas(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn('ESTADO DESCONOCIDO: REI-1', r.stdout)
 
+    def test_jugado_con_prueba_parcial_falla(self):
+        escribir(self.matriz, CABEZA + '| `REI-1` | Reino | x | jugado | parcial 2026-10-21: falta y |\n')
+        r = self.correr('--comprobar')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('JUGADO CON PRUEBA PARCIAL (reescribe la prueba con lo jugado o vuelve a «sin jugar»): REI-1', r.stdout)
+        escribir(self.matriz, CABEZA + '| `REI-1` | Reino | x | jugado | 2026-10-22, tanda 20; antes, parcial |\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
+
     def test_bloque_lista_lo_sin_jugar_y_sin_valor_da_uso(self):
         escribir(self.matriz, CABEZA + '| `REI-1` | Reino | Fundar | sin jugar |  |\n')
         self.assertEqual(self.correr('--bloque', 'Reino').stdout, 'REI-1 · Fundar (sin jugar)\n')

@@ -69,7 +69,7 @@ Una lectura de más de ~200 líneas o una salida larga en la principal es un tro
    Si la rama escribe estado de la partida, el revisor mira también que pase por las funciones del juego que aplican
    esas reglas y no las rehaga a mano (`QA-151`: `darReino.ts` duplicaba el Ayuntamiento y se saltaba cupos y topes).
    La principal apunta lo que vuelve: los P-números de `HALLADO` en el registro de la ronda y lo de `HERRAMIENTAS`
-   en [`rondas-de-pruebas.md`](../../../docs/runbooks/rondas-de-pruebas.md#fallos-de-las-herramientas) (`QA-133`).
+   en [`fallos-herramientas.md`](../../../docs/registros/fallos-herramientas.md) (`QA-133`).
    Las `PREGUNTAS` van a la usuaria tal cual, con la respuesta que recomiendas.
 4. **Seguir.** Siguiente trozo. A la usuaria, una línea por trozo cerrado; el detalle está en la bitácora.
 

@@ -44,3 +44,4 @@ __pycache__/
 
 # Registro por llamada de la IA (opt-ai): datos de la máquina, no se suben
 backend/ia/registro-*.jsonl
+*.kate-swp
