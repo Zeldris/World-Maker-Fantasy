@@ -79,8 +79,10 @@ NEGACION = re.compile(r'\b(no|nunca|sin)\b', re.I)
 
 
 def negado(t: str, pos: int) -> bool:
-    """Una negación («no», «nunca», «sin») en las ~3 palabras anteriores a pos: «no se ha reabierto»."""
-    return bool(NEGACION.search(' '.join(t[:pos].split()[-3:])))
+    """Una negación («no», «nunca», «sin») en las ~3 palabras anteriores a pos y en la misma cláusula: «no se ha
+    reabierto»; el «sin» de «…sin repetirlo (`x.ts`); reabierto» no cuenta (P99)."""
+    clausula = re.split(r'[;:.,()]', t[:pos])[-1]
+    return bool(NEGACION.search(' '.join(clausula.split()[-3:])))
 
 
 def reabiertos(t: str) -> list[re.Match]:

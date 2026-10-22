@@ -210,6 +210,12 @@ class Resumen(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('(QA-195): P7;', r.stderr)
 
+    def test_una_negacion_de_otra_clausula_no_anula_el_reabierto(self):
+        # P99 del 3.3: el «sin» de «sin repetirlo (`oficioTexto.ts`);» no niega el «reabierto» que le sigue.
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ 2026-10-12 sin repetirlo (`x.ts`); reabierto 2026-10-21: sigue |\n')
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        self.assertIn('- **Pendientes** (2): P1, P7.', leer(self.ruta))
+
     def test_comprobar_pasa_si_cada_pendiente_lo_dice(self):
         self.assertEqual(self.correr('--resumen').returncode, 0)
         self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
