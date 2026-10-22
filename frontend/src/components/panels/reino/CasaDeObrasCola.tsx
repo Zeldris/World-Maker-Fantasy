@@ -3,7 +3,7 @@ import { deleteObra, getObras, putOrdenObras, type CasaDeObrasInfo } from '../..
 import { PanelSection } from '../../PanelSection'
 
 /// Casa de obras (P277/P284, diseño 2026-10-21): la cola de obras y reparaciones que trabajan los
-/// súbditos constructores, día a día. Se reordena (la primera que su nivel alcanza es la que toman)
+/// súbditos constructores, día a día. Se reordena (toman la primera que la Casa de obras abre)
 /// y se quitan obras; el aviso «🔒N» dice por qué una obra no avanza.
 export function CasaDeObrasCola({ saveId, version = 0 }: { saveId: string; version?: number }) {
   const [datos, setDatos] = useState<CasaDeObrasInfo | null>(null)

@@ -1840,7 +1840,7 @@ export interface SubditoInfo {
   crias?: number
   /// CR-61 (61c): su tarea si es trabajador (sin tarea, recolector).
   tarea?: TareaSubdito
-  /// Casa de obras (P277): nivel de oficio de constructor (1-9); llega a obras de ese tier.
+  /// Casa de obras (P277): nivel de oficio de constructor (1-9); da velocidad (los tiers los abre la Casa de obras).
   nivelConstructor?: number
 }
 
