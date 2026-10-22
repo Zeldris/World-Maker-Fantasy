@@ -22,6 +22,18 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
   en cada push gasta la cuota de Actions (`QA-215`). Lo único nuevo, el `pre-commit` de la base sobre los commits del
   PR (secretos), pasa a `ci.yml` y a `ci-local.sh`.
 
+## Comprobación final (2026-10-22)
+
+- **CI local** (`bash tools/qa/ci-local.sh`, sobre `3b21115`): los tres jobs de `ci.yml` en verde, también el paso nuevo
+  del `pre-commit` de la base. El CI de GitHub no se pasa: cuota de Actions agotada (`QA-215`).
+- **Paso 6**: un commit de prueba en `frontend/src/main.tsx` y `git push --dry-run origin HEAD:main` → rechazado
+  («code changed after the review mark (b54829d)»), y `git reset --hard HEAD~1`. El gancho de `PreToolUse`
+  (`revision-antes-de-main.sh`) bloquea (salida 2) `create_pull_request` a `main` desde esta rama y `gh pr create
+  --base main`; deja pasar lo demás (`ls`). Fricción 18.
+- **Relevo**: un clon nuevo de la rama, como el de la otra cuenta. `session-start.sh` pone `core.hooksPath` y avisa si
+  la sesión arranca fuera de la raíz; `doctor.py` todo OK, `bitacora.py check` bien, y `recuperar.py --estado` da la
+  fila de la rama, el siguiente paso y los últimos commits. Fricción 19.
+
 ## Fricciones
 
 | # | Paso | Qué pasó | Cómo se resolvió |
@@ -43,6 +55,8 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 15 | 4, `REVIEW.md` y `GLOSSARY.md` | `aplicar.py` no propone nada para los archivos que rellena el proyecto (bien), pero sin el repo del flujo no se ven sus plantillas: la marca y las reglas se sacan de `AGENTS.md`, de la skill `domain-modeling` y del `REVIEW.md` de Portal. `GLOSSARY.md` tenía **Rastro** dos veces con dos sentidos. | Marca `<!-- galivelop-workflow v0.2.0 -->` en los dos; en `REVIEW.md`, «Ganchos y scripts del flujo» (lo de Portal, adaptado: PR a `main`, `host.sh`, tests de `tools/qa`); en `GLOSSARY.md`, los dos **Rastro** con su sentido entre paréntesis y «El trabajo con Claude» (bitácora, relevo, marca de revisión). |
 | 16 | 4, CI | `comprobar.yml` instala con `install` y prepara Node solo si hay `package.json` en la raíz: en un monorepo con `install: []` (porque lo hace `session-start.sh`) no puede pasar `check`. Además corre en cada push fuera de `main`, aparte del CI que ya tenga el proyecto. | Se decide `ci.yml` (ver Decisiones); `comprobar.yml` borrado y su paso de `pre-commit --rango` llevado a `ci.yml` y `ci-local.sh`. |
 | 17 | 4, `doctor.py` | Sin FAIL; un WARN falso: el `.claude/hooks/session-start.sh` de WMF (dependencias, Postgres, Ollama simulado) se llama como el script del flujo y `doctor.py` lo toma por una copia vieja («delete that entry»): borrarlo dejaría la nube sin entorno. | Renombrado a `.claude/hooks/entorno-nube.sh` (`settings.json`, `AGENTS.md`, comandos de la bitácora). `doctor.py`: todo OK. |
+| 18 | 6, gancho de PR | `merge_pull_request` del PR #1 (antiguo, ya fusionado, sin `gw.json` en su cabeza) se bloquea bien, pero pide «commit a valid `gw.json` on the PR branch», que no tiene sentido en un PR cerrado. | Nada que hacer en WMF; sugerencia abajo. |
+| 19 | 7, relevo | Al arrancar (`startup`), `session-start.sh` no dice nada del estado; la fila de la bitácora solo se inyecta tras `compact`/`clear`. El relevo depende de que `CLAUDE.md` mande leer la bitácora (lo hace). | Nada que cambiar; sugerencia abajo. |
 
 ## For Galivelop-workflow
 
@@ -75,3 +89,6 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
   `comprobar.yml` cuando ya hay otro workflow que corre `check`.
 - `doctor.py` (`stale_flow_hooks`): comparar con el contenido o la cabecera `# galivelop-workflow`, no solo con el nombre
   del script; un script del proyecto que se llame igual no es una copia vieja.
+- `revision-antes-de-main.sh`: con un PR cerrado o fusionado, decirlo en vez de pedir un `gw.json` en su rama.
+- `session-start.sh`: en `startup` y `resume`, una línea con la rama y el siguiente paso de la bitácora (lo que ya da
+  `recuperar.py --estado`), para que el relevo no dependa solo de `CLAUDE.md`.
