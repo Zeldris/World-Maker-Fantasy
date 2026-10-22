@@ -66,8 +66,9 @@ export interface DatosSuceso {
   ESPIONAJE: { autor: string; espiada: string };
   /// CR-62: `resultado`, cómo acabó la pelea (combate de fondo).
   ESCARAMUZA: { faccionA: string; faccionB: string; region?: string; resultado?: string };
-  /// CR-59 (P297): la patrulla semanal obligada de un vasallo, con la deuda que queda.
-  PATRULLA_VASALLO: { vasallo: string; senor: string; deuda: number; rearmados?: number };
+  /// CR-59 (P297): la semana de un vasallo: al corriente (paga y patrulla) o impagado (patrullas
+  /// suspendidas), decisión 2026-10-22. `deuda` solo en las líneas de antes de esa decisión.
+  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'impagado'; deuda?: number; rearmados?: number };
   // FACCION
   FACCION_CAE: { faccion: string };
   FACCION_ESCINDIDA: { faccion: string; nueva: string };
@@ -187,7 +188,12 @@ export const CATALOGO_SUCESOS: Catalogo = {
   RUPTURA: { familia: 'DIPLOMACIA', importanciaBase: 6, plantilla: (d) => `${d.faccionA} y ${d.faccionB} rompen relaciones.` },
   SABOTAJE: { familia: 'DIPLOMACIA', importanciaBase: 5, plantilla: (d) => `${d.autor} sabotea a ${d.victima}.` },
   ESCARAMUZA: { familia: 'DIPLOMACIA', importanciaBase: 4, plantilla: (d) => `Gente de ${d.faccionA} y de ${d.faccionB} llega a las manos${d.region ? ` en ${d.region}` : ''}.${d.resultado ? ` ${d.resultado.charAt(0).toUpperCase()}${d.resultado.slice(1)}.` : ''}` },
-  PATRULLA_VASALLO: { familia: 'DIPLOMACIA', importanciaBase: 2, plantilla: (d) => `${d.vasallo} cumple su patrulla obligada para ${d.senor}${d.rearmados ? ` y arma a ${d.rearmados} guerreros más a crédito` : ''}. Su deuda: ${d.deuda} Goirnos.` },
+  PATRULLA_VASALLO: { familia: 'DIPLOMACIA', importanciaBase: 2, plantilla: (d) =>
+    d.estado === 'impagado'
+      ? `${d.vasallo} no puede pagar su cuota a ${d.senor}: vasallaje impagado, patrullas suspendidas.`
+      : d.estado === 'al-corriente'
+        ? `${d.vasallo} paga su cuota a ${d.senor} y cumple su patrulla obligada${d.rearmados ? `; arma a ${d.rearmados} guerreros más` : ''}. Vasallaje al corriente.`
+        : `${d.vasallo} cumple su patrulla obligada para ${d.senor}${d.rearmados ? ` y arma a ${d.rearmados} guerreros más a crédito` : ''}. Su deuda: ${d.deuda ?? 0} Goirnos.` },
   ESPIONAJE: { familia: 'DIPLOMACIA', importanciaBase: 3, plantilla: (d) => `${d.autor} espía a ${d.espiada}.` },
   // FACCION
   FACCION_CAE: { familia: 'FACCION', importanciaBase: 10, plantilla: (d) => `${d.faccion} cae.` },

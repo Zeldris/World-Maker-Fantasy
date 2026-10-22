@@ -3224,8 +3224,11 @@ export interface VasallajeInfo {
   vasalloNombre: string
   senorSlug: string
   senorNombre: string
+  /// Lo que quedó sin pagar la última semana (como mucho una cuota); 0 = al corriente.
   deuda: number
-  deudaPorPatrulla: number
+  /// false: impagado, patrullas suspendidas hasta que pague (presupuesto al estilo X4, 2026-10-22).
+  alCorriente: boolean
+  cuota: number
   sobreprecioArmas: number
   patrullaGuerreros: number
   proximaRevision: number | null

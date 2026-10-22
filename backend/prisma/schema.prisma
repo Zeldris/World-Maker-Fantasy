@@ -3902,14 +3902,14 @@ model LinajeMiembro {
 
 /// CR-59 (hito 0.3, Fase D, Q21-Q24 y Q28): una facción vasalla de otra (Serhu bajo la Concordia de
 /// Hierro, canon de la usuaria). El vasallo compra las armas al señor al doble y a crédito, se rearma
-/// con todo excedente y paga la deuda con patrullas obligadas.
+/// con el excedente y patrulla mientras pague su cuota semanal (presupuesto al estilo X4, 2026-10-22).
 model Vasallaje {
   id            String  @id @default(cuid())
   saveId        String
   save          Save    @relation(fields: [saveId], references: [id], onDelete: Cascade)
   vasalloSlug   String
   senorSlug     String
-  /// Goirnos que el vasallo debe al señor.
+  /// Goirnos que el vasallo dejó sin pagar la última semana (como mucho una cuota; 0 = al corriente).
   deuda         Int     @default(0)
   desdeMinutes  Int
   /// Último día de ficción en que se revisó (una vez por semana).

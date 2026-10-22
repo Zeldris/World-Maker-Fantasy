@@ -138,6 +138,14 @@ tope de pienso).
   a la Concordia, al doble. Su saldo es de unos −493 Goirnos a la semana, que se cubren **a
   crédito**. La deuda crece y la Concordia la cobra en patrullas (100 de deuda por patrulla).
   Nunca quiebran ni crecen.
+  - **Decisión de la usuaria 2026-10-22: presupuesto al estilo X4; sin deuda acumulada** (P286/P297;
+    sustituye la deuda creciente y los 100 por patrulla). Como el presupuesto de un mánager de X4:
+    Foundations, cada semana la cuota (el desgaste de sus armas, al doble) sale del tesoro del vasallo
+    y va al señor. Si no le llega, el vasallaje queda **impagado**: esa semana no patrulla y lo
+    pendiente nunca pasa de una cuota. La semana que paga lo pendiente y la cuota, vuelve a 0 y
+    reanuda las patrullas. La patrulla es el servicio que se paga, ya no rebaja deuda. El rearme solo
+    compra armas con lo que le quede tras la cuota (sin crédito). Las partidas de antes recortan la
+    deuda a una cuota, o la saldan si hay fondos. Ya no se rompe por «deuda saldada».
 - **Ingresos pasivos** (usuaria): hoy solo existen el comercio y las expediciones y saqueos de las
   facciones. Se diseñarán más (`CR-60`) para no depender solo de los trabajadores.
 

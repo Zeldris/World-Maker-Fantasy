@@ -1741,6 +1741,11 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Patrulla de 20 que rebaja 100 la deuda, con un 25 % de `ESCARAMUZA` (1d6 bajas) contra otra facción de su
     región o contra renegados.
   - Se rompe con la deuda saldada o si cae el señor.
+  - **Decisión de la usuaria 2026-10-22: presupuesto al estilo X4; sin deuda acumulada** (P286/P297):
+    la cuota semanal sale del tesoro del vasallo; si no llega, «impagado» con las patrullas suspendidas
+    y lo pendiente con tope de una cuota; al pagar, al corriente y patrulla otra vez. Sustituye la
+    deuda creciente, los 100 por patrulla y la ruptura por deuda saldada. Detalle en
+    [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md) (Q28).
   - **Queda:** romperlo por alianza con el Reino o por guerra (`CR-37`).
   - Doctrina de rearme y armas al doble a crédito.
   - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6

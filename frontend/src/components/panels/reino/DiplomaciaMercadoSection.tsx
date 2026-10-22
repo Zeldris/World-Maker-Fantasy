@@ -113,7 +113,7 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
   )
 }
 
-/// P286/P297: la deuda de cada vasallaje (Serhu debe a la Concordia) con lo que pasa cada semana.
+/// P286/P297: cada vasallaje (Serhu bajo la Concordia), al corriente o impagado, con lo que pasa cada semana.
 export function VasallajesCard({ vasallajes }: { vasallajes: VasallajeInfo[] }) {
   return (
     <PanelSection title="Vasallajes del mundo">
@@ -123,7 +123,12 @@ export function VasallajesCard({ vasallajes }: { vasallajes: VasallajeInfo[] }) 
             <p className="font-medium">{v.vasalloNombre} es vasallo de {v.senorNombre}</p>
             {v.rotoEn == null ? (
               <p className="text-2xs text-wood-500">
-                Deuda: <span className="font-mono tabular-nums text-accent2-300">{v.deuda}</span> Goirnos · cada semana compra sus armas a crédito ×{v.sobreprecioArmas} (la deuda sube) y cumple una patrulla obligada de {v.patrullaGuerreros} guerreros (baja {v.deudaPorPatrulla})
+                {v.alCorriente ? (
+                  <span className="text-accent2-300">Al corriente</span>
+                ) : (
+                  <span className="text-danger-300">Impagado: patrullas suspendidas</span>
+                )}
+                {` · cada semana paga una cuota de ${v.cuota} Goirnos (sus armas ×${v.sobreprecioArmas}) y, si está al corriente, cumple una patrulla obligada de ${v.patrullaGuerreros} guerreros`}
                 {v.proximaRevision != null ? ` · próxima revisión: día ${v.proximaRevision}` : ''}
               </p>
             ) : (
