@@ -92,7 +92,10 @@ describe('asaltos de los campamentos (CR-50 50b)', () => {
   it('salen a por la Capital de su región con lo que creen necesitar; uno en marcha a la vez', async () => {
     const { lanzarAsaltosAlReino } = await import('./campamentos.js');
     expect(await lanzarAsaltosAlReino(prisma, saveId, 12)).toBe(1);
+    // Uno en marcha a la vez: con el enfriamiento del Reino fuera de la ventana, el día 13 sigue sin salir otro.
+    await prisma.campamento.update({ where: { id: campId }, data: { ultimoAsaltoReinoDia: null } });
     expect(await lanzarAsaltosAlReino(prisma, saveId, 13)).toBe(0);
+    await prisma.campamento.update({ where: { id: campId }, data: { ultimoAsaltoReinoDia: 12 } });
     const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, tipo: 'ASALTO' }, include: { miembros: true } });
     expect(v).toMatchObject({ origenLocationId: campLoc, destinoLocationId: capitalLoc, carga: { campamentoId: campId, motivo: expect.stringContaining('han reunido 8') } });
     // Sin defensa en la Capital, con 2 les basta.
@@ -128,13 +131,27 @@ describe('asaltos de los campamentos (CR-50 50b)', () => {
   it('P285: tras un asalto, el Reino descansa 7 días: nada al día +6, sí al +7', async () => {
     const { lanzarAsaltosAlReino, DIAS_ENFRIAMIENTO_ASALTO_REINO } = await import('./campamentos.js');
     expect(DIAS_ENFRIAMIENTO_ASALTO_REINO).toBe(7);
-    // El primer test dejó el último asalto el día 12 y al campamento repuesto (8 de 8).
+    // No depende de lo que dejaron los tests anteriores: asalto del día 12, nada en marcha, campamento listo.
+    await prisma.viajero.updateMany({ where: { saveId, tipo: 'ASALTO' }, data: { estado: 'TERMINADO' } });
+    await prisma.campamento.update({ where: { id: campId }, data: { gente: 8, tope: 8, botinComida: 0, botinGoirnos: 0, ultimoAsaltoReinoDia: 12 } });
+    // Segundo campamento de la misma región, también listo y sin asalto previo.
+    const { enlacesDelMundo, rutaMasCorta } = await import('./viajeros.js');
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const enlaces = await enlacesDelMundo(prisma, world.id);
+    const llanuras = await prisma.location.findMany({ where: { worldId: world.id, region: 'Las Llanuras del Viento Rojo', id: { notIn: [campLoc, capitalLoc] } }, select: { id: true }, orderBy: { id: 'asc' } });
+    const otraLoc = llanuras.find((l) => rutaMasCorta(enlaces, l.id, capitalLoc))!.id;
+    const c2 = await prisma.campamento.create({ data: { saveId, locationId: otraLoc, region: 'Las Llanuras del Viento Rojo', ocupante: 'renegados-goirntes', cabecilla: 'Otro cabecilla', gente: 8, tope: 8, creadoDia: 10, ultimoRefuerzoDia: 10 } });
+    // Ninguno de los dos ataca al día +6 (el enfriamiento es del Reino, no de un campamento).
     expect(await lanzarAsaltosAlReino(prisma, saveId, 12 + 6)).toBe(0);
     expect(await prisma.viajero.count({ where: { saveId, tipo: 'ASALTO', estado: { not: 'TERMINADO' } } })).toBe(0);
+    // Al +7, con los dos listos, sale como mucho un asalto (el del primero).
     expect(await lanzarAsaltosAlReino(prisma, saveId, 12 + 7)).toBe(1);
     expect(await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).toMatchObject({ ultimoAsaltoReinoDia: 19 });
+    expect((await prisma.campamento.findUniqueOrThrow({ where: { id: c2.id } })).ultimoAsaltoReinoDia).toBeNull();
+    // Y el segundo tampoco ataca hasta pasados otros 7 días.
     await prisma.viajero.updateMany({ where: { saveId, tipo: 'ASALTO' }, data: { estado: 'TERMINADO' } });
-    await prisma.campamento.update({ where: { id: campId }, data: { gente: 8 } });
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 19 + 6)).toBe(0);
+    await prisma.viajero.updateMany({ where: { saveId, tipo: 'ASALTO' }, data: { estado: 'TERMINADO' } });
   });
 });
 
