@@ -148,15 +148,19 @@ export async function radarDelReino(tx: Tx, saveId: string, ahora: number): Prom
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const enlaces = await enlacesDelMundo(tx, worldId);
   const out: Avistamiento[] = [];
+  // La milicia solo sale de la Capital (`defensaVista`): su plan se calcula una vez y solo si hace falta.
+  let planCapital: string | null | undefined;
   for (const a of asentamientos) {
-    // Una vez por asentamiento, no por cada hostil.
-    let sinMilicia: string | null | undefined;
+    let sinMilicia: string | null | undefined = a.capital ? undefined : MILICIA_SOLO_CAPITAL;
     const alcance = lugaresATramos(enlaces, a.locationId, a.efecto.radioTramos);
     for (const h of hostiles) {
       const tramos = alcance.get(h.ubicacionLocationId);
       if (tramos === undefined) continue;
       const gente = h.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
-      if (sinMilicia === undefined) sinMilicia = (await planMilicia(tx, saveId, a.id, ahora, a)).motivo;
+      if (sinMilicia === undefined) {
+        if (planCapital === undefined) planCapital = (await planMilicia(tx, saveId, a.id, ahora, a)).motivo;
+        sinMilicia = planCapital;
+      }
       out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos, ...(sinMilicia ? { sinMilicia } : {}), ...((h.carga as { motivo?: string } | null)?.motivo ? { motivo: (h.carga as { motivo: string }).motivo } : {}) });
     }
   }
@@ -173,11 +177,15 @@ export async function convocarMilicia(tx: Tx, saveId: string, asentamientoId: st
   return llamados.length;
 }
 
+/// La milicia sale de la Capital, donde vive la gente (`defensaVista`); en otro asentamiento no hay a quién armar.
+export const MILICIA_SOLO_CAPITAL = 'La milicia sale de la Capital: aquí no vive nadie que armar.';
+
 /// P295: a quién llamaría la milicia de un asentamiento ahora y, si a nadie, por qué (sin Armería
 /// sana o sin equipos, sin trabajadores adultos libres, o todos los equipos ya en uso).
 export async function planMilicia(tx: Tx, saveId: string, asentamientoId: string, ahora: number, cargado?: Asentamiento): Promise<{ llamados: string[]; motivo: string | null }> {
   const a = cargado ?? (await asentamientosDelReino(tx, saveId)).find((x) => x.id === asentamientoId);
   if (!a) return { llamados: [], motivo: 'Ese asentamiento no existe.' };
+  if (!a.capital) return { llamados: [], motivo: MILICIA_SOLO_CAPITAL };
   const armeria = a.modulos.find((m) => m.modulo === 'armeria' && !m.danado);
   const equipos = armeria?.equiposMilicia ?? 0;
   const sujetos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, role: true, pueblo: true, nacidoEn: true, enMilicia: true }, orderBy: { createdAt: 'asc' } });

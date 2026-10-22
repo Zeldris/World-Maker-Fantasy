@@ -6,6 +6,7 @@ import { botinDe, costeDeReparar, repararEdificio, repararEmpalizada, resolverAs
 import { simularCombateDeFondo, type CombatienteFondo } from './combateDeFondo.js';
 import { soldadoGenerico } from './cronista/combatientesFaccion.js';
 import { asentamientosDelReino, TIPO_ASALTO } from './defensaReino.js';
+import { CONSTRUCTION_RECIPES } from './construction.js';
 
 function semilla(s: number) {
   let x = s;
@@ -125,6 +126,12 @@ describe('reparar edificios dañados (P284/P296/P301)', () => {
     expect(costeDeReparar('choza', 1)).toBe(10);
     expect(costeDeReparar('ayuntamiento', 1)).toBeGreaterThan(costeDeReparar('choza', 1));
     expect(costeDeReparar('ayuntamiento', 2)).not.toBe(costeDeReparar('ayuntamiento', 1));
+    // Mejorado dos veces (mejorarEnSitio mantiene `recipeKey`, sube el tier): se repara al coste del Ayuntamiento grande.
+    const mitad = (key: string) => Math.ceil(CONSTRUCTION_RECIPES.find((r) => r.key === key)!.requirements.reduce((s, q) => s + q.cantidad, 0) / 2);
+    expect(costeDeReparar('ayuntamiento', 3)).toBe(mitad('ayuntamiento-grande'));
+    expect(costeDeReparar('ayuntamiento', 2)).toBe(mitad('ayuntamiento-mediano'));
+    // Bifurcación sin nivel (Cuartel avanzado → Cuartel de guerra / Puesto comercial): sin mejorar, se cobra la base.
+    expect(costeDeReparar('cuartel-avanzado', null)).toBe(mitad('cuartel-avanzado'));
   });
 
   it('una Empalizada dañada sigue en Defensa, como caída, y con el Ayuntamiento dañado no hay asentamiento', async () => {

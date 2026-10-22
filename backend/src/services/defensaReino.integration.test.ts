@@ -138,8 +138,17 @@ describe('radar de la Torre y milicia (CR-65 65c)', () => {
     await prisma.subject.updateMany({ where: { id: { in: trabajadores.map((t) => t.id) } }, data: { role: 'soldado' } });
     expect((await prisma.$transaction((tx) => planMilicia(tx, saveId, capitalId, ahora))).motivo).toMatch(/No hay trabajadores/);
     await prisma.subject.updateMany({ where: { id: { in: trabajadores.map((t) => t.id) } }, data: { role: 'trabajador' } });
-    const [ok] = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
-    expect(ok!.sinMilicia).toBeUndefined();
+    const vistos = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
+    expect(vistos.find((v) => v.asentamientoId === capitalId)!.sinMilicia).toBeUndefined();
+    // Fuera de la Capital no hay milicia que llamar: lo dice sin cargar a los súbditos, y no arma a nadie.
+    const { MILICIA_SOLO_CAPITAL } = await import('./defensaReino.js');
+    const cuartel = await prisma.building.create({ data: { saveId, locationId: cerca, recipeKey: 'cuartel-avanzado', name: 'Cuartel', kind: 'cuartel-avanzado', description: 'x', status: 'ACTIVO' } });
+    expect(await prisma.$transaction((tx) => planMilicia(tx, saveId, cuartel.id, ahora))).toEqual({ llamados: [], motivo: MILICIA_SOLO_CAPITAL });
+    expect(await prisma.$transaction((tx) => convocarMilicia(tx, saveId, cuartel.id, ahora))).toBe(0);
+    const conCuartel = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
+    expect(conCuartel.find((v) => v.asentamientoId === cuartel.id)!.sinMilicia).toBe(MILICIA_SOLO_CAPITAL);
+    expect(conCuartel.find((v) => v.asentamientoId === capitalId)!.sinMilicia).toBeUndefined();
+    await prisma.building.delete({ where: { id: cuartel.id } });
     await prisma.viajero.update({ where: { id: asalto.id }, data: { estado: 'TERMINADO' } });
   });
 });

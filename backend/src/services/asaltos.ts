@@ -27,7 +27,7 @@ import { peor } from './partidasCaza.js';
 import type { AttributeBlock } from './dice.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
-import { CONSTRUCTION_RECIPES } from './construction.js';
+import { recetaDeEdificio } from './construction.js';
 import { gastarMateriales } from './cronista/facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
@@ -247,12 +247,9 @@ TRABAJOS.ASALTO = {
 };
 
 /// P284/P296/P301: lo que cuesta reparar un edificio: la mitad de los materiales de su receta (a su
-/// nivel), como la Empalizada (Q4). Mínimo 1.
+/// nivel, `recetaDeEdificio`: la base en nivel 1, la mejora de su nivel si no), como la Empalizada (Q4). Mínimo 1.
 export function costeDeReparar(recipeKey: string | null | undefined, tier: number | null | undefined): number {
-  if (!recipeKey) return 1;
-  const candidatas = CONSTRUCTION_RECIPES.filter((r) => r.key === recipeKey || r.upgradesRecipeKey === recipeKey);
-  const nivel = tier ?? 1;
-  const receta = candidatas.find((r) => (r.ayuntamientoNivel ?? r.edificioOficioNivel ?? 1) === nivel) ?? candidatas[0];
+  const receta = recetaDeEdificio(recipeKey ?? null, tier ?? null);
   return Math.max(1, Math.ceil((receta?.requirements.reduce((s, q) => s + q.cantidad, 0) ?? 0) / 2));
 }
 
@@ -276,9 +273,8 @@ export async function repararEdificio(
 
 /// Q4: repara una Empalizada caída (o dañada). Es `repararEdificio` limitado a la Empalizada.
 export async function repararEmpalizada(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, recipeKey: 'empalizada', status: { in: ['ACTIVO', 'DANADO'] } }, select: { caida: true, status: true } });
+  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, recipeKey: 'empalizada' }, select: { id: true } });
   if (!b) return { ok: false, motivo: 'No tienes esa Empalizada.' };
-  if (!b.caida && b.status !== 'DANADO') return { ok: false, motivo: 'La Empalizada está en pie.' };
   const r = await repararEdificio(tx, saveId, buildingId);
   return r.ok ? { ok: true } : r;
 }
