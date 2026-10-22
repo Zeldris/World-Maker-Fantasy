@@ -323,7 +323,7 @@ function SuministrosReino({ saveId, version, onRefreshSave }: { saveId: string; 
       ))}
       {fila('Agua al día', `+${eco.aguaDia} / −${eco.bocas}`, 'Lo que dan los Pozos y la fuente natural frente a lo que beben las bocas del Reino.')}
       {textoComidaDia(eco) !== null &&
-        fila('Comida al día', textoComidaDia(eco)!, 'Lo que producen las tareas de tus trabajadores hoy (con la estación) frente a lo que comen las bocas del Reino.')}
+        fila('Comida al día', textoComidaDia(eco)!, 'Producción de media al día de las tareas de tus trabajadores (con la estación; el reparto diario varía) frente a lo que comen las bocas del Reino.')}
       {(eco.motivosComida ?? []).map((m) => (
         <p key={m} className="text-2xs text-wood-400">🍖 {m}</p>
       ))}

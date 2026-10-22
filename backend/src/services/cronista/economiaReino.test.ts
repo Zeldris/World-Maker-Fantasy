@@ -59,6 +59,7 @@ describe('P279/P300 — por qué se mueve la comida', () => {
   it('sin súbditos dice que nadie come; sin trabajadores, que nadie produce', () => {
     expect(explicarComida({ ...base, bocas: { civiles: 0, soldados: 0, visitantes: 0 }, produccion: 0, consumo: 0, tareas: {} }).join(' ')).toContain('Nadie come');
     expect(explicarComida({ ...base, produccion: 0, tareas: {} }).join(' ')).toContain('Nadie produce comida');
+    expect(explicarComida({ ...base, produccion: 0, tareas: { ganadero: 2, fibrero: 1 } }).join(' ')).toContain('Nadie produce comida');
   });
   it('el Pescador sin agua o sin Ayuntamiento lo avisa', () => {
     const sinAyto = explicarComida({ ...base, tareas: { pescador: 1, recolector: 1 }, hayAgua: false, hayAyuntamiento: false }).join(' ');

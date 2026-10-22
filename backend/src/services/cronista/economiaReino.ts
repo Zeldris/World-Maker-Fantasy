@@ -90,14 +90,14 @@ export function explicarComida(d: {
   tareas: Record<string, number>; hayAyuntamiento: boolean; hayAgua: boolean; escalonCocina: number | null; factor: number;
 }): string[] {
   const m: string[] = [];
-  const trabajadores = Object.values(d.tareas).reduce((a, b) => a + b, 0);
+  const trabajadores = (d.tareas.recolector ?? 0) + (d.tareas.pescador ?? 0) + (d.tareas.cocinero ?? 0);
   const bocas = d.bocas.civiles + d.bocas.soldados + d.bocas.visitantes;
   if (bocas === 0) m.push('Nadie come ahora mismo (sin súbditos, soldados ni visitantes): la comida no baja por consumo.');
   else if (trabajadores === 0) m.push(`Nadie produce comida: no hay trabajadores, y ${bocas === 1 ? 'la boca come' : `las ${bocas} bocas comen`} ${d.consumo} al día.`);
   if ((d.tareas.pescador ?? 0) > 0 && !d.hayAgua) {
     m.push(d.hayAyuntamiento
-      ? 'Los pescadores no tienen agua junto al Ayuntamiento: recolectan en su lugar (2 al día en vez de 3).'
-      : 'No hay Ayuntamiento activo, así que no hay agua para pescar: los pescadores recolectan en su lugar (2 al día en vez de 3).');
+      ? 'Los pescadores no tienen agua junto al Ayuntamiento: recolectan en su lugar.'
+      : 'No hay Ayuntamiento activo, así que no hay agua para pescar: los pescadores recolectan en su lugar.');
   }
   if ((d.tareas.cocinero ?? 0) > 0 && !d.escalonCocina) m.push('Los cocineros no tienen Cocina: recolectan en su lugar.');
   if (d.factor < 1 && trabajadores > 0) m.push('Hay trabajadores sin herramienta: producen la mitad.');
@@ -243,7 +243,7 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
   const sum = await suministrosDelReino(tx, saveId);
   const [almacen, k, save, ws] = await Promise.all([
     materialesDelAlmacen(tx, saveId, sum),
-    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
+    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { comida: true, bebida: true, trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
     tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } }),
     tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }),
   ]);
@@ -251,14 +251,13 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
   const minutos = ws?.fictionalMinutes ?? 0;
   const datos = await datosComidaDelReino(tx, saveId, minutos);
   const factor = k && k.trabajadores > 0 ? Math.max(0, k.trabajadores - Math.ceil((k.sinHerramienta ?? 0) / 2)) / k.trabajadores : 1;
-  const reservas = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { comida: true, bebida: true } });
-  const comidaActual = reservas?.comida ?? 0;
+  const comidaActual = k?.comida ?? 0;
   const produccion = k ? Math.round(comidaDelReinoDia(datos, Math.floor(minutos / 1440) * 1440 + 720, comidaActual, factor) * 10) / 10 : 0;
   const bocasCifra = k ? k.poblacion + k.soldados + k.visitantes : 0;
   const hayAyuntamiento = (await tx.building.count({ where: { saveId, status: 'ACTIVO', recipeKey: { in: [...AYUNTAMIENTOS] } } })) > 0;
   return {
     comida: comidaActual,
-    bebida: reservas?.bebida ?? 0,
+    bebida: k?.bebida ?? 0,
     comidaProduccionDia: produccion,
     comidaConsumoDia: bocasCifra * CONSUMO_COMIDA_POR_BOCA,
     bocasDetalle: { civiles: k?.poblacion ?? 0, soldados: k?.soldados ?? 0, visitantes: k?.visitantes ?? 0 },
