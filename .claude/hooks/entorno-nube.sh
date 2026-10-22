@@ -3,7 +3,8 @@
 # nube, que es lo que se perdía en cada reinicio del contenedor: dependencias, Postgres 16 con
 # pgvector y la base `tarkor` (migrada y, si está vacía, con lore y catálogo sembrados) y el Ollama
 # simulado del repo. Idempotente: lo que ya está, no se toca.
-# Piloto de Galivelop-workflow (2026-10-22): `core.hooksPath` lo pone el session-start del flujo. Las dependencias
+# Piloto de Galivelop-workflow (2026-10-22): antes `session-start.sh`, renombrado para que `doctor.py` no lo tome
+# por una copia vieja del suyo. `core.hooksPath` lo pone el session-start del flujo. Las dependencias
 # siguen aquí y no en `install` de gw.json: Claude Code lanza a la vez los dos hooks de inicio, y Postgres y las
 # migraciones necesitan node_modules antes.
 set -euo pipefail

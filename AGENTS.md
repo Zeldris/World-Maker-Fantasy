@@ -176,7 +176,7 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
 ## Reglas del proyecto
 
 - Instalar: `cd backend && npm ci`, `cd frontend && npm ci`. Tras un reinicio del contenedor,
-  `.claude/hooks/session-start.sh` levanta Postgres (con pgvector, base `tarkor`) y el Ollama simulado (`QA-10`).
+  `.claude/hooks/entorno-nube.sh` levanta Postgres (con pgvector, base `tarkor`) y el Ollama simulado (`QA-10`).
 - **El lore no lo edita un agente**: nunca se toca `docs/rpgtarkor/` ni otro `.md` de lore ya existente salvo que
   la usuaria pida pasar lo aprobado al canon; ver abajo. Los borradores de Álvaro (`docs/borradores-opencode/`) no se
   commitean desde Claude Code (`protectedPaths`, `QA-144`).
