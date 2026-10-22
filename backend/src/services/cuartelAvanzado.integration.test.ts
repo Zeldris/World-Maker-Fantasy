@@ -65,6 +65,21 @@ describe('Cuartel Avanzado — conquista territorial (2026-09-21)', () => {
     expect(reason).toMatch(/Ayuntamiento/);
   });
 
+  it('P287: con el Ayuntamiento dañado sigue bloqueado, pero el motivo dice que lo repares', async () => {
+    await prisma.building.create({
+      data: { saveId, locationId: llanurasLocationId, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'DANADO', tier: 1 },
+    });
+    const reason = await computeBuildBlockedReason({
+      db: prisma,
+      saveId,
+      worldId,
+      buildRecipe: CUARTEL_AVANZADO_RECIPE,
+      activeRegion: 'Cristal Helado',
+      currentLocationRecord: { id: cristalHeladoLocationId },
+    });
+    expect(reason).toMatch(/dañado: repáralo/);
+  });
+
   it('con Ayuntamiento, en la MISMA región que el Ayuntamiento: bloqueado (para eso está la Choza)', async () => {
     await prisma.building.create({
       data: { saveId, locationId: llanurasLocationId, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 },
@@ -140,11 +155,16 @@ describe('Cuartel Avanzado — conquista territorial (2026-09-21)', () => {
       buildRecipe: CUARTEL_DE_GUERRA_RECIPE,
       activeRegion: 'Cristal Helado',
       currentLocationRecord: { id: cristalHeladoLocationId },
+      quien: 'casa-de-obras', // T6: el personaje no la levanta (tope T3)
     });
     expect(reason).toMatch(/no tiene ning[uú]n Cuartel Avanzado/);
   });
 
   it('mejorar a Cuartel de Guerra: con un Cuartel Avanzado ACTIVO, permitido', async () => {
+    // T6 (construcción por oficio, 2026-10-21): pide Ayuntamiento mediano.
+    await prisma.building.create({
+      data: { saveId, locationId: llanurasLocationId, recipeKey: 'ayuntamiento', name: 'x', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 2 },
+    });
     await prisma.building.create({
       data: { saveId, locationId: cristalHeladoLocationId, recipeKey: 'cuartel-avanzado', name: 'x', kind: 'cuartel-avanzado', description: 'x', status: 'ACTIVO' },
     });
@@ -155,6 +175,7 @@ describe('Cuartel Avanzado — conquista territorial (2026-09-21)', () => {
       buildRecipe: CUARTEL_DE_GUERRA_RECIPE,
       activeRegion: 'Cristal Helado',
       currentLocationRecord: { id: cristalHeladoLocationId },
+      quien: 'casa-de-obras', // T6: el personaje no la levanta (tope T3)
     });
     expect(reason).toBeNull();
   });

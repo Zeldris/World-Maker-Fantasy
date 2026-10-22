@@ -27,13 +27,14 @@ async (page) => {
     // a mitad de otro nombre ni rompe con un «(». Pásalo completo («Ataque Básico», no «Ataque»).
     const escapado = nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const tarjeta = page.getByRole('button', { name: new RegExp(`^\\s*\\S*\\s*${escapado}(\\s|$)`) }).first();
-    // Tras la tirada, los dados del intercambio aún giran unos segundos y las habilidades siguen apagadas.
+    // Tras la tirada, los dados del intercambio (10 s) y la iniciativa siguiente (otros 10 s) aún giran
+    // y las habilidades siguen apagadas: unos 21 s a velocidad «Dramática», más si el turno tarda (P288).
     let apagada = true;
-    for (let i = 0; i < 20 && apagada; i++) {
+    for (let i = 0; i < 45 && apagada; i++) {
       apagada = (await tarjeta.getAttribute('aria-disabled')) === 'true';
       if (apagada) await page.waitForTimeout(1000);
     }
-    if (apagada) { salida.push(`R${r}: «${nombre}» sigue desactivada tras 20 s (¿sin energía?)`); break; }
+    if (apagada) { salida.push(`R${r}: «${nombre}» sigue desactivada tras 45 s (¿sin energía?)`); break; }
     await tarjeta.scrollIntoViewIfNeeded();
     await tarjeta.click();
     await page.waitForTimeout(400);

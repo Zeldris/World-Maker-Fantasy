@@ -2,10 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
-import { botinDe, repararEmpalizada, resolverAsaltoDeFondo } from './asaltos.js';
+import { botinDe, costeDeReparar, repararEdificio, repararEmpalizada, resolverAsaltoDeFondo } from './asaltos.js';
 import { simularCombateDeFondo, type CombatienteFondo } from './combateDeFondo.js';
 import { soldadoGenerico } from './cronista/combatientesFaccion.js';
-import { TIPO_ASALTO } from './defensaReino.js';
+import { asentamientosDelReino, TIPO_ASALTO } from './defensaReino.js';
+import { CONSTRUCTION_RECIPES } from './construction.js';
 
 function semilla(s: number) {
   let x = s;
@@ -96,5 +97,89 @@ describe('asaltos de fondo (CR-65 65d)', () => {
       expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'aguanta el asalto' } } })).toBe(2);
       expect((await prisma.viajero.findUniqueOrThrow({ where: { id: v.id } })).estado).not.toBe('TRABAJANDO');
     });
+
+    it('la milicia solo defiende la Capital: en otro asentamiento no cuenta, como en defensaVista', async () => {
+      const otro = (await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } })).id;
+      const cuartel = await prisma.building.create({ data: { saveId, locationId: otro, recipeKey: 'cuartel-avanzado', name: 'Cuartel', kind: 'cuartel-avanzado', description: 'x', status: 'ACTIVO' } });
+      const miliciano = await prisma.subject.create({ data: { saveId, name: 'Miliciano', role: 'trabajador', notes: '', pueblo: 'orcos', enMilicia: true } });
+      const contraCuartel = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), cuartel.id, 11, semilla(9)));
+      expect(contraCuartel).toMatchObject({ milicianos: 0, defensores: 0 });
+      // La Capital no tiene asaltos a la vista (sin Torre): la milicia vuelve al trabajo. Se rearma.
+      expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
+      await prisma.subject.update({ where: { id: miliciano.id }, data: { enMilicia: true } });
+      const contraCapital = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), capitalId, 12, semilla(9)));
+      expect(contraCapital).toMatchObject({ milicianos: 1 });
+      // Tras luchar en la Capital, sin más asaltos a la vista, vuelve al trabajo.
+      expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
+      await prisma.subject.delete({ where: { id: miliciano.id } });
+      await prisma.building.delete({ where: { id: cuartel.id } });
+    });
+  });
+});
+
+/// P284/P296/P301: «Reparar» para todo edificio dañado, no solo la Empalizada.
+describe('reparar edificios dañados (P284/P296/P301)', () => {
+  let saveId: string;
+  let casa: string;
+  const ids: Record<string, string> = {};
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    casa = (await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } })).id;
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn (P284)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x', attributes: BASE, portraitInitial: 'G' },
+    })).id;
+    const crea = async (recipeKey: string, status: 'ACTIVO' | 'DANADO', tier = 1) => (await prisma.building.create({ data: { saveId, locationId: casa, recipeKey, name: recipeKey, kind: recipeKey, description: 'x', status, tier } })).id;
+    ids.ayuntamiento = await crea('ayuntamiento', 'DANADO');
+    ids.empalizada = await crea('empalizada', 'DANADO');
+    ids.choza = await crea('choza', 'DANADO');
+    ids.pozo = await crea('pozo', 'ACTIVO');
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el coste es la mitad de los materiales de la receta, a su nivel', () => {
+    expect(costeDeReparar('choza', 1)).toBe(10);
+    expect(costeDeReparar('ayuntamiento', 1)).toBeGreaterThan(costeDeReparar('choza', 1));
+    expect(costeDeReparar('ayuntamiento', 2)).not.toBe(costeDeReparar('ayuntamiento', 1));
+    // Mejorado dos veces (mejorarEnSitio mantiene `recipeKey`, sube el tier): se repara al coste del Ayuntamiento grande.
+    const mitad = (key: string) => Math.ceil(CONSTRUCTION_RECIPES.find((r) => r.key === key)!.requirements.reduce((s, q) => s + q.cantidad, 0) / 2);
+    expect(costeDeReparar('ayuntamiento', 3)).toBe(mitad('ayuntamiento-grande'));
+    expect(costeDeReparar('ayuntamiento', 2)).toBe(mitad('ayuntamiento-mediano'));
+    // Bifurcación sin nivel (Cuartel avanzado → Cuartel de guerra / Puesto comercial): sin mejorar, se cobra la base.
+    expect(costeDeReparar('cuartel-avanzado', null)).toBe(mitad('cuartel-avanzado'));
+  });
+
+  it('una Empalizada dañada sigue en Defensa, como caída, y con el Ayuntamiento dañado no hay asentamiento', async () => {
+    expect(await prisma.$transaction((tx) => asentamientosDelReino(tx, saveId))).toEqual([]);
+    await prisma.building.update({ where: { id: ids.ayuntamiento }, data: { status: 'ACTIVO' } });
+    const [a] = await prisma.$transaction((tx) => asentamientosDelReino(tx, saveId));
+    expect(a.modulos).toHaveLength(1);
+    expect(a.modulos[0]).toMatchObject({ id: ids.empalizada, modulo: 'empalizada', caida: true, danado: true });
+    expect(a.efecto.cobertura).toBe(0);
+  });
+
+  it('un edificio en pie no se repara; uno dañado pide materiales y vuelve a ACTIVO', async () => {
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.pozo))).toMatchObject({ ok: false });
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toMatchObject({ ok: false, motivo: expect.stringContaining('10 materiales') });
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ids.choza } })).status).toBe('DANADO');
+    const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+    const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: 'RECURSO' }, select: { slug: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 12 }, () => ({ saveId, name: 'Material', description: 'x', catalogSlug: recurso.slug })) });
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toEqual({ ok: true, coste: 10 });
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ids.choza } })).status).toBe('ACTIVO');
+    expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(2);
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toMatchObject({ ok: false });
+  });
+
+  it('reparar la Empalizada dañada la deja ACTIVA y en pie', async () => {
+    const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+    const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: 'RECURSO' }, select: { slug: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 30 }, () => ({ saveId, name: 'Material', description: 'x', catalogSlug: recurso.slug })) });
+    expect(await prisma.$transaction((tx) => repararEmpalizada(tx, saveId, ids.empalizada))).toEqual({ ok: true });
+    expect(await prisma.building.findUniqueOrThrow({ where: { id: ids.empalizada } })).toMatchObject({ status: 'ACTIVO', caida: false });
+    const [a] = await prisma.$transaction((tx) => asentamientosDelReino(tx, saveId));
+    expect(a.modulos[0]).toMatchObject({ caida: false, danado: false });
   });
 });

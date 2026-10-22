@@ -148,7 +148,7 @@ export function ReinoPanel({
           onRefreshSave={onRefreshSave}
         />
       )}
-      {activeSubTab === 'edificios' && <EdificiosParcelasSection buildings={buildings} recipesStatus={recipesStatus} onBuild={onBuild} bloqueoTurno={bloqueoTurno} />}
+      {activeSubTab === 'edificios' && <EdificiosParcelasSection buildings={buildings} recipesStatus={recipesStatus} onBuild={onBuild} bloqueoTurno={bloqueoTurno} saveId={saveId} onRefreshSave={onRefreshSave} />}
       {activeSubTab === 'produccion' && (
         <ProduccionSection
           saveId={saveId}

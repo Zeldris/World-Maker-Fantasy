@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AlmacenItemInfo, CompanionInfo } from '../../../types'
-import type { DiplomaciaResultado, EnciclopediaFaccionInfo, MercadoItemInfo } from '../../../lib/api'
-import { getMercado, postDiplomacia, postMercadoComprar, postMercadoVender } from '../../../lib/api'
+import type { DiplomaciaResultado, EnciclopediaFaccionInfo, MercadoItemInfo, VasallajeInfo } from '../../../lib/api'
+import { getMercado, getVasallajes, postDiplomacia, postMercadoComprar, postMercadoVender } from '../../../lib/api'
 import { PanelEmptyState } from '../../PanelEmptyState'
 import { PanelSection } from '../../PanelSection'
 import { razaThemeStyleVars } from '../../../lib/razaTheme'
@@ -58,19 +58,30 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
   // `DiplomaciaCard.onNegociarExito` más abajo) — cambiar de valor es lo único que le importa al
   // `useEffect` de `MercadoCard`, mismo patrón que `refetchToken` de `useEnciclopedia.ts`.
   const [mercadoRefreshToken, setMercadoRefreshToken] = useState(0)
+  // P286: vasallajes del mundo (quién debe a quién y cuánto); un fallo no tapa el resto de la pestaña.
+  const [vasallajes, setVasallajes] = useState<VasallajeInfo[]>([])
+  useEffect(() => {
+    let cancelado = false
+    getVasallajes(saveId).then((r) => { if (!cancelado) setVasallajes(r.vasallajes) }).catch(() => { if (!cancelado) setVasallajes([]) })
+    return () => { cancelado = true }
+  }, [saveId])
 
   if (descubiertas.length === 0) {
     return (
-      <PanelEmptyState
-        icon="🤝"
-        title="Sin facciones descubiertas todavía"
-        hint="Descubre alguna facción en el mundo (hablando con sus NPC o visitando su territorio) para poder negociar o comerciar con ella."
-      />
+      <div className="flex flex-col gap-4">
+        {vasallajes.length > 0 && <VasallajesCard vasallajes={vasallajes} />}
+        <PanelEmptyState
+          icon="🤝"
+          title="Sin facciones descubiertas todavía"
+          hint="Descubre alguna facción en el mundo (hablando con sus NPC o visitando su territorio) para poder negociar o comerciar con ella."
+        />
+      </div>
     )
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {vasallajes.length > 0 && <VasallajesCard vasallajes={vasallajes} />}
       <PanelSection title="Facción objetivo">
         <div className="flex flex-wrap gap-1.5">
           {descubiertas.map((f) => (
@@ -99,6 +110,46 @@ export function DiplomaciaMercadoSection({ saveId, companions, factions, goirnos
         </>
       )}
     </div>
+  )
+}
+
+/// P286/P297: cada vasallaje (Serhu bajo la Concordia), al corriente, con pago parcial o impagado, con lo que pasa cada semana.
+export function VasallajesCard({ vasallajes }: { vasallajes: VasallajeInfo[] }) {
+  return (
+    <PanelSection title="Vasallajes del mundo">
+      <div className="flex flex-col gap-1.5">
+        {vasallajes.map((v) => (
+          <div key={v.vasalloSlug} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2 text-xs text-wood-300">
+            <p className="font-medium">{v.vasalloNombre} es vasallo de {v.senorNombre}</p>
+            {v.rotoEn == null ? (
+              <p className="text-2xs text-wood-500">
+                {v.alCorriente ? (
+                  <span className="text-accent2-300">Al corriente</span>
+                ) : v.cuota === 0 ? (
+                  <span className="text-accent-300">Sin soldados con los que patrullar: arrastra {v.deuda} Goirnos</span>
+                ) : v.porcentajePagado == null ? (
+                  <span className="text-accent-300">Pendiente de la revisión semanal ({v.deuda} Goirnos)</span>
+                ) : v.porcentajePagado >= 100 ? (
+                  <span className="text-accent-300">
+                    Cuota pagada, arrastra {v.deuda} Goirnos: patrullas al 100 %, sin rearme hasta saldar
+                  </span>
+                ) : v.porcentajePagado > 0 ? (
+                  <span className="text-accent-300">
+                    Pago parcial {v.porcentajePagado} % de la cuota: patrullas al {v.porcentajePagado} %
+                  </span>
+                ) : (
+                  <span className="text-danger-300">Impagado: patrullas suspendidas</span>
+                )}
+                {` · cada semana paga una cuota de ${v.cuota} Goirnos (sus armas ×${v.sobreprecioArmas}) y cumple una patrulla obligada de ${v.patrullaGuerreros} guerreros, en proporción a lo que pague`}
+                {v.proximaRevision != null ? ` · próxima revisión: día ${v.proximaRevision}` : ''}
+              </p>
+            ) : (
+              <p className="text-2xs text-wood-500">Vasallaje roto: {v.motivoRuptura ?? 'sin motivo'}.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </PanelSection>
   )
 }
 

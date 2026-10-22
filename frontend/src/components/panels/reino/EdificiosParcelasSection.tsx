@@ -1,7 +1,14 @@
+import { useRef, useState } from 'react'
 import type { BuildingInfo, RecipeStatusInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { TooltipAnchor } from '../../TooltipAnchor'
 import { cuartelBuildDisabledReason } from '../../../lib/cuartelBuild'
+import { postObra, postRepararEdificio } from '../../../lib/api'
+import { CasaDeObrasCola } from './CasaDeObrasCola'
+
+/// Construcción por oficio (P277): el personaje levanta en persona hasta tier 3; lo demás, la Casa de obras.
+/// Copia de `TIER_MAXIMO_PERSONAJE` de backend/src/services/construction.ts: si cambia allí, cámbialo aquí.
+const TIER_MAXIMO_PERSONAJE = 3
 
 const buildingStatusLabel: Record<BuildingInfo['status'], string> = {
   EN_CONSTRUCCION: 'En construcción',
@@ -52,9 +59,31 @@ interface EdificiosParcelasSectionProps {
   /// UX-3 (hito 0.1) — motivo por el que ahora no se puede lanzar un turno (narrador escribiendo,
   /// ocupado…); `null`/ausente = libre. Deshabilita los botones que mandan una acción al turno.
   bloqueoTurno?: string | null
+  /// P284/P296/P301 — para reparar un edificio dañado desde su tarjeta (sin ellos no hay botón).
+  saveId?: string
+  onRefreshSave?: () => Promise<void>
 }
 
-interface BuildOption { recipeKey: string; label: string; actionText: string; needsCuartel: boolean; status: RecipeStatusInfo | undefined }
+interface BuildOption { recipeKey: string; label: string; actionText: string; needsCuartel: boolean; status: RecipeStatusInfo | undefined; tier?: number }
+
+/// P278: cuántos hay de cada clase (por `recipeKey`) y el número de orden de cada uno, para distinguir dos Pozos o dos
+/// Chozas. Los narrados sin receta no se numeran.
+export function numerarEdificios(buildings: BuildingInfo[]): { numero: Map<string, { n: number; de: number }>; resumen: string[] } {
+  const porClave = new Map<string, BuildingInfo[]>()
+  for (const b of buildings) {
+    if (!b.recipeKey) continue
+    porClave.set(b.recipeKey, [...(porClave.get(b.recipeKey) ?? []), b])
+  }
+  const numero = new Map<string, { n: number; de: number }>()
+  const resumen: string[] = []
+  for (const grupo of porClave.values()) {
+    grupo.forEach((b, i) => numero.set(b.id, { n: i + 1, de: grupo.length }))
+    if (grupo.length < 2) continue
+    const danados = grupo.filter((b) => b.status === 'DANADO').length
+    resumen.push(`${grupo.length} × ${labelDeReceta(grupo[0]!.name)}${danados ? ` (${danados} dañado${danados === 1 ? '' : 's'})` : ''}`)
+  }
+  return { numero, resumen }
+}
 
 /// P218 — «un pozo» -> «Pozo».
 function labelDeReceta(name: string): string {
@@ -74,23 +103,69 @@ function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: Recipe
   for (const s of candidatas) {
     if (vistas.has(s.recipeKey)) continue
     const fija = fijas.get(s.recipeKey)
-    const mejora = s.upgradesRecipeKey && s.upgradesRecipeKey !== 'ayuntamiento' ? s.upgradesRecipeKey : null
+    const mejora = s.upgradesRecipeKey ?? null
     // Una mejora solo se ofrece sobre su edificio y si aún no está en ese nivel: mejorar actualiza la
-    // misma fila (sube `tier`, `recipeKey` sigue siendo el del nivel 1).
-    const delReino = fija || (s.requiresAyuntamiento && !mejora) || (mejora && buildings.some((b) => b.recipeKey === mejora && (b.tier ?? 1) < (s.nivel ?? 2)))
+    // misma fila (sube `tier`, `recipeKey` sigue siendo el del nivel 1). Las del Ayuntamiento, solo
+    // la del nivel siguiente (P277: ya no las levanta el personaje, se encargan a la Casa de obras).
+    // P282: `panelReino` (backend) incluye las Jaulas, que no cuelgan del Ayuntamiento.
+    const delPanel = s.panelReino ?? s.requiresAyuntamiento
+    const mejoraOfrecida = mejora && buildings.some((b) => b.recipeKey === mejora && (mejora === 'ayuntamiento' ? (b.tier ?? 1) + 1 === (s.nivel ?? 2) : (b.tier ?? 1) < (s.nivel ?? 2)))
+    const delReino = fija || (delPanel && !mejora) || mejoraOfrecida
     if (!delReino || !s.recipeKey) continue
     vistas.add(s.recipeKey)
     if (fija) {
-      out.push({ ...fija, status: construcciones.includes(s) ? s : undefined })
+      out.push({ ...fija, status: construcciones.includes(s) ? s : undefined, tier: s.tier })
     } else if (s.name) {
-      out.push({ recipeKey: s.recipeKey, label: mejora ? `Mejorar a ${labelDeReceta(s.name)}` : labelDeReceta(s.name), actionText: `Me pongo a construir ${s.name}`, needsCuartel: false, status: s })
+      out.push({ recipeKey: s.recipeKey, label: mejora ? `Mejorar a ${labelDeReceta(s.name)}` : labelDeReceta(s.name), actionText: `Me pongo a construir ${s.name}`, needsCuartel: false, status: s, tier: s.tier })
     }
   }
   return out
 }
 
 /// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`.
-export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild, bloqueoTurno }: EdificiosParcelasSectionProps) {
+export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild, bloqueoTurno, saveId, onRefreshSave }: EdificiosParcelasSectionProps) {
+  // P302 — el cierre síncrono (ref) evita el doble clic antes de que React pinte el botón deshabilitado;
+  // el estado lo deshabilita a la vista. Se suelta cuando termina la petición del turno.
+  const enVuelo = useRef(false)
+  const [construyendo, setConstruyendo] = useState(false)
+  const [reparando, setReparando] = useState<string | null>(null)
+  const [errorReparar, setErrorReparar] = useState<string | null>(null)
+  const [encargando, setEncargando] = useState(false)
+  const [versionCola, setVersionCola] = useState(0)
+  const hayCasaDeObras = buildings.some((b) => b.recipeKey === 'casa-de-obras' && b.status === 'ACTIVO')
+  /// P277/P284: encarga una obra o una reparación a la Casa de obras (al final de su cola).
+  const encargar = async (encargo: { recipeKey: string } | { buildingId: string }) => {
+    if (!saveId || encargando) return
+    setEncargando(true)
+    setErrorReparar(null)
+    try {
+      await postObra(saveId, encargo)
+      setVersionCola((n) => n + 1)
+    } catch (e) {
+      setErrorReparar(e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.')
+    } finally {
+      setEncargando(false)
+    }
+  }
+  const construir = (actionText: string) => {
+    if (!onBuild || enVuelo.current) return
+    enVuelo.current = true
+    setConstruyendo(true)
+    void Promise.resolve(onBuild(actionText)).catch(() => {}).finally(() => { enVuelo.current = false; setConstruyendo(false) })
+  }
+  const reparar = async (id: string) => {
+    if (!saveId || reparando) return
+    setReparando(id)
+    setErrorReparar(null)
+    try {
+      await postRepararEdificio(saveId, id)
+      await onRefreshSave?.()
+    } catch (e) {
+      setErrorReparar(e instanceof Error ? e.message : 'No se pudo reparar el edificio.')
+    } finally {
+      setReparando(null)
+    }
+  }
   const hasCuartel = buildings.some((b) => b.recipeKey === 'cuartel-avanzado')
   const buildButtons = onBuild && (
     <PanelSection title="Construir">
@@ -100,7 +175,10 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           // Solo las opciones fijas (Cuartel) se miran aquí; las del catálogo pueden repetirse (Leñeras,
           // Pozos…) y su tope lo dice el backend en `blockedReason`.
           const alreadyBuilt = !opt.status?.name && buildings.some((b) => b.recipeKey === opt.recipeKey)
-          const reason = cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? null
+          const soloCasa = (opt.tier ?? 1) > TIER_MAXIMO_PERSONAJE
+          const reason = soloCasa
+            ? `Tier ${opt.tier}: el personaje solo levanta hasta tier ${TIER_MAXIMO_PERSONAJE}; encárgala a la Casa de obras.`
+            : cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? (construyendo ? 'Enviando la orden de construir…' : null)
           const coste = status?.ingredients?.length ? status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(' · ') : null
           return (
             <div key={opt.recipeKey}>
@@ -108,11 +186,21 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
                 type="button"
                 disabled={reason !== null}
                 title={reason ?? undefined}
-                onClick={() => onBuild(opt.actionText)}
+                onClick={() => construir(opt.actionText)}
                 className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2 text-left text-sm font-medium text-wood-100 transition-colors hover:border-accent2-600/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                🏗️ {opt.label}
+                🏗️ {opt.label}{opt.tier ? <span className="ml-1 text-2xs text-wood-400">T{opt.tier}</span> : null}
               </button>
+              {saveId && hayCasaDeObras && opt.status?.name && opt.recipeKey !== 'ayuntamiento' && (
+                <button
+                  type="button"
+                  disabled={encargando}
+                  onClick={() => void encargar({ recipeKey: opt.recipeKey })}
+                  className="tactile mt-1 rounded-md border border-accent2-600/40 px-2 py-0.5 text-2xs font-semibold text-accent-300 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Encargar a la Casa de obras
+                </button>
+              )}
               {coste && <p className="mt-0.5 px-1 text-2xs text-wood-400">Coste: {coste}</p>}
               {reason && <p className="mt-0.5 px-1 text-2xs text-wood-500">{reason}</p>}
             </div>
@@ -121,11 +209,14 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       </div>
     </PanelSection>
   )
+  const { numero, resumen } = numerarEdificios(buildings)
+  const cola = saveId ? <CasaDeObrasCola saveId={saveId} version={versionCola} /> : null
   if (buildings.length === 0) return <>{buildButtons}<p className="text-xs text-wood-500">Sin edificios todavía.</p></>
 
   return (
     <>
     {buildButtons}
+    {hayCasaDeObras && cola}
     <PanelSection title="Edificios">
       {/* Leyenda de estados (Fase 0, higiene 2026-09-21) — mismo patrón que Territorios. */}
       <details className="group mb-2 rounded-lg border border-iron-700 bg-wood-950/40 text-2xs text-wood-400">
@@ -144,11 +235,16 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           ))}
         </div>
       </details>
+      {errorReparar && <p role="alert" className="mb-2 text-2xs text-cost-400">{errorReparar}</p>}
+      {resumen.length > 0 && <p className="mb-2 text-2xs text-wood-400">Repetidos: {resumen.join(' · ')}</p>}
       <div className="flex flex-col gap-2">
         {buildings.map((b) => (
           <div key={b.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
             <p className="flex items-center justify-between font-medium text-wood-100">
-              {b.name}
+              <span>
+                {b.name}
+                {numero.get(b.id) && numero.get(b.id)!.de > 1 && <span className="ml-1.5 text-2xs font-normal text-wood-500">n.º {numero.get(b.id)!.n}</span>}
+              </span>
               {/* REI-115 (hito 0.1) — el significado del estado al pasar por encima, no solo en la leyenda. */}
               <TooltipAnchor text={buildingStatusLabel[b.status]} subtext={BUILDING_STATE_HINT[b.status]}>
                 <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${BUILDING_STATUS_TONE[b.status]}`}>
@@ -161,6 +257,29 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
               {b.recipeKey === 'ayuntamiento' && b.tier && ` · Ayuntamiento ${AYUNTAMIENTO_TIER_LABEL[b.tier] ?? b.tier}`}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-wood-400">{b.description}</p>
+            {b.status === 'DANADO' && saveId && (
+              <div className="mt-1.5 flex items-center gap-2 text-2xs">
+                <button
+                  type="button"
+                  disabled={reparando !== null}
+                  onClick={() => void reparar(b.id)}
+                  className="tactile rounded-md border border-accent2-600/40 px-2 py-0.5 font-semibold text-accent-300 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Reparar
+                </button>
+                {hayCasaDeObras && (
+                  <button
+                    type="button"
+                    disabled={encargando}
+                    onClick={() => void encargar({ buildingId: b.id })}
+                    className="tactile rounded-md border border-iron-700 px-2 py-0.5 font-semibold text-wood-200 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Encargar reparación
+                  </button>
+                )}
+                {b.costeReparar != null && <span className="text-wood-400">Coste: {b.costeReparar} materiales del Almacén</span>}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -3,13 +3,14 @@
 // Paso 53a: el agua que entra (pozos y fuente natural) y los topes del almacén por categoría.
 import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
-import { escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
+import { CONSUMO_POR_BOCA, escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
 import { comidaDelDia } from './comidaOficios.js';
+import { CASA_DE_OBRAS_KEY, plazasDeCasa } from './casaDeObras.js';
 import { estacionFor } from '../worldClock.js';
 import { locationTerrainTags } from '../../scripts/worldCatalog.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { volverASuPueblo } from './salidas.js';
-import { avisarEnReino, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
+import { avisarEnReino, cazadoresAdultos, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
 import { costeDePiezas, desgasteSemanal, EQUIPO, equipoDeAlta, gastarMateriales, piezasEnCasa, roturaSinPagar, talleresDelReino } from './facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
@@ -49,18 +50,27 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
 
 /// CR-61 (61c): lo que decide la comida del Reino y no cambia de un día a otro de un salto: cuántos
 /// trabajadores hay en cada tarea, si hay agua junto al Ayuntamiento para pescar y el escalón de su
-/// mejor Cocina. Se carga una vez por tick (QA-19).
+/// mejor Cocina, y las plazas de constructor de la Casa de obras (0 sin Casa en pie). Se carga una vez
+/// por tick (QA-19).
 export async function datosComidaDelReino(tx: Tx, saveId: string, ahora: number) {
   const [subditos, edificios] = await Promise.all([
     tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, tarea: true, enMilicia: true } }),
     tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true, location: { select: { slug: true, name: true } } } }),
   ]);
   const ayuntamiento = edificios.find((b) => b.recipeKey && AYUNTAMIENTOS.has(b.recipeKey));
-  return { tareas: tareasDelReino(subditos, ahora), hayAgua: !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location), escalonCocina: escalonCocinaDe(edificios) };
+  const casa = edificios.find((b) => b.recipeKey === CASA_DE_OBRAS_KEY);
+  return {
+    tareas: tareasDelReino(subditos, ahora),
+    hayAyuntamiento: !!ayuntamiento,
+    hayAgua: !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location),
+    escalonCocina: escalonCocinaDe(edificios),
+    plazasConstructor: casa ? plazasDeCasa(casa.tier ?? 1) : 0,
+  };
 }
 
 /// Puro: comida (con decimales) que dan en un día las tareas de los súbditos, con la estación de ese
-/// día y la reserva que queda. Sin agua los pescadores recolectan; sin Cocina, los cocineros también.
+/// día y la reserva que queda. Sin agua los pescadores recolectan; sin Cocina, los cocineros también;
+/// y los constructores sin plaza en la Casa de obras (o sin Casa), igual.
 /// `factor`: la parte que rinde (CR-58: quien no tiene herramienta produce la mitad). El tick reparte
 /// las medias por número de día (`porcionDelDia`).
 export function comidaDelReinoDia(
@@ -69,9 +79,9 @@ export function comidaDelReinoDia(
   comidaDisponible: number,
   factor = 1,
 ): number {
-  const { tareas, hayAgua, escalonCocina } = datos;
+  const { tareas, hayAgua, escalonCocina, plazasConstructor } = datos;
   const cuadrilla = {
-    recolectores: tareas.recolector + (hayAgua ? 0 : tareas.pescador) + (escalonCocina ? 0 : tareas.cocinero),
+    recolectores: tareas.recolector + (hayAgua ? 0 : tareas.pescador) + (escalonCocina ? 0 : tareas.cocinero) + constructoresSinPlaza(Object.hasOwn(tareas, 'constructor') ? tareas['constructor'] : 0, plazasConstructor ?? 0),
     pescadores: hayAgua ? tareas.pescador : 0,
     cocineros: escalonCocina ? tareas.cocinero : 0,
     cazadores: 0,
@@ -84,11 +94,73 @@ export async function comidaDelReino(tx: Tx, saveId: string, ahora: number, comi
   return comidaDelReinoDia(await datosComidaDelReino(tx, saveId, ahora), ahora, comidaDisponible, factor);
 }
 
+/// Puro: constructores que no caben en la Casa de obras (o no hay Casa) y recolectan en su lugar.
+export function constructoresSinPlaza(constructores: number, plazas: number): number {
+  return Math.max(0, constructores - plazas);
+}
+
+/// P279/P300: por qué la comida del Reino sube, baja o se queda plana. Puro: frases cortas para Visión general.
+/// `plazasConstructor`: las de la Casa de obras (0 sin Casa); sin el dato, todos los constructores trabajan en ella.
+export function explicarComida(d: {
+  comida: number; tope: number; bocas: { civiles: number; soldados: number; visitantes: number }; produccion: number; consumo: number;
+  tareas: Record<string, number>; hayAyuntamiento: boolean; hayAgua: boolean; escalonCocina: number | null; factor: number;
+  plazasConstructor?: number;
+}): string[] {
+  const m: string[] = [];
+  // `constructor` choca con Object.prototype: sin la clave propia, `tareas.constructor` sería la función Object.
+  const constructores = Object.hasOwn(d.tareas, 'constructor') ? d.tareas['constructor'] : 0;
+  const sinPlaza = d.plazasConstructor == null ? 0 : constructoresSinPlaza(constructores, d.plazasConstructor);
+  const enObras = constructores - sinPlaza;
+  const trabajadores = (d.tareas.recolector ?? 0) + (d.tareas.pescador ?? 0) + (d.tareas.cocinero ?? 0) + sinPlaza;
+  const bocas = d.bocas.civiles + d.bocas.soldados + d.bocas.visitantes;
+  if (bocas === 0) m.push('Nadie come ahora mismo (sin súbditos, soldados ni visitantes): la comida no baja por consumo.');
+  else if (trabajadores === 0) {
+    const quien = enObras > 0
+      ? `${enObras === 1 ? 'tu constructor está' : `tus ${enObras} constructores están`} en la Casa de obras y nadie recolecta, pesca ni cocina`
+      : 'no hay trabajadores';
+    m.push(`Nadie produce comida: ${quien}, y ${bocas === 1 ? 'la boca come' : `las ${bocas} bocas comen`} ${d.consumo} al día.`);
+  }
+  if (sinPlaza > 0) {
+    const n = sinPlaza === 1 ? 'un constructor' : `${sinPlaza} constructores`;
+    m.push(d.plazasConstructor === 0
+      ? `No hay Casa de obras en pie: ${n} ${sinPlaza === 1 ? 'recolecta' : 'recolectan'} en su lugar.`
+      : `La Casa de obras solo tiene ${d.plazasConstructor} ${d.plazasConstructor === 1 ? 'plaza' : 'plazas'}: ${n} de más ${sinPlaza === 1 ? 'recolecta' : 'recolectan'} en su lugar.`);
+  }
+  if ((d.tareas.pescador ?? 0) > 0 && !d.hayAgua) {
+    m.push(d.hayAyuntamiento
+      ? 'Los pescadores no tienen agua junto al Ayuntamiento: recolectan en su lugar.'
+      : 'No hay Ayuntamiento activo, así que no hay agua para pescar: los pescadores recolectan en su lugar.');
+  }
+  if ((d.tareas.cocinero ?? 0) > 0 && !d.escalonCocina) m.push('Los cocineros no tienen Cocina: recolectan en su lugar.');
+  if (d.factor < 1 && trabajadores > 0) m.push('Hay trabajadores sin herramienta: producen la mitad.');
+  const neto = Math.round((d.produccion - d.consumo) * 10) / 10;
+  if (bocas > 0 && trabajadores > 0 && neto === 0) m.push('Los trabajadores producen justo lo que comen las bocas: por eso no sube ni baja.');
+  if (d.tope > 0 && d.comida >= d.tope) m.push(`El almacén de comida está lleno (${d.tope}): lo que sobra se pierde. Un Granero sube el tope.`);
+  return m;
+}
+
 /// CR-53 53b (Q2): materiales del Almacén del Reino = objetos de tipo RECURSO (leña, piedra, fibra…).
 /// Cuántos caben aún (la base y lo que suman las Leñeras, menos lo que ya hay).
 export async function huecoDeMateriales(tx: Tx, saveId: string): Promise<number> {
   const { tope, guardados } = await materialesDelAlmacen(tx, saveId);
   return Math.max(0, tope - guardados);
+}
+
+/// P276: el aviso cuando los materiales no caben. Sin Leñera activa, el edificio que falta; con una (o más),
+/// el Almacén está lleno y no hay nada que construir para esto.
+export function avisoMaterialesLlenos(lenerasActivas: number, c: { guardados: number; tope: number }): string {
+  if (lenerasActivas <= 0) return `No caben más materiales en el Almacén (${c.guardados}/${c.tope}): construye una Leñera.`;
+  const n = lenerasActivas === 1 ? 'tu Leñera' : `tus ${lenerasActivas} Leñeras`;
+  return `El Almacén está lleno de materiales (${c.guardados}/${c.tope}), incluso con ${n}: gasta o retira alguno para hacer sitio.`;
+}
+
+/// Lo que dice el juego al depositar un material sin hueco.
+export async function motivoMaterialesLlenos(tx: Tx, saveId: string): Promise<string> {
+  const [lenerasActivas, almacen] = await Promise.all([
+    tx.building.count({ where: { saveId, status: 'ACTIVO', recipeKey: 'lenera' } }),
+    materialesDelAlmacen(tx, saveId),
+  ]);
+  return avisoMaterialesLlenos(lenerasActivas, almacen);
 }
 
 /// Slugs del catálogo que cuentan como materiales (tipo RECURSO) en el mundo de la partida.
@@ -145,7 +217,7 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   if ((tocaPagar || k.diasSinCobrar > 0) && total > 0 && k.riqueza >= total) {
     await tx.kingdomStats.update({ where: { ownerKey }, data: { riqueza: { decrement: total }, ultimoPagoSueldos: ahora, diasSinCobrar: 0 } });
     // CR-58: con los sueldos, el desgaste del equipo (y reponer lo roto, si alcanza).
-    await liquidarEquipo(tx, saveId, k);
+    await liquidarEquipo(tx, saveId, k, ahora);
     return { pagado: total, desertor: null };
   }
   if ((tocaPagar || k.diasSinCobrar > 0) && total === 0) {
@@ -154,7 +226,7 @@ export async function revisarSueldos(tx: Tx, saveId: string, ahora: number): Pro
   }
   if (!tocaPagar && k.diasSinCobrar === 0) return { pagado: 0, desertor: null };
   // No alcanza: un día más sin cobrar, y el equipo de esta semana se gasta sin reponer (CR-58).
-  if (tocaPagar) await romperEquipo(tx, saveId, k);
+  if (tocaPagar) await romperEquipo(tx, saveId, k, ahora);
   const dias = k.diasSinCobrar + 1;
   await tx.kingdomStats.update({
     where: { ownerKey },
@@ -201,14 +273,33 @@ export async function traspasarGoirnos(tx: Tx, saveId: string, cantidad: number)
 /// 53e: lo que enseña Visión general — agua al día, topes, tesoro, sueldos y avisos.
 export async function resumenEconomia(tx: Tx, saveId: string) {
   const sum = await suministrosDelReino(tx, saveId);
-  const [almacen, k, save] = await Promise.all([
+  const [almacen, k, save, ws] = await Promise.all([
     materialesDelAlmacen(tx, saveId, sum),
-    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
+    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { comida: true, bebida: true, trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
     tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } }),
+    tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }),
   ]);
+  // La comida de un día como la calcula el tick (con la estación de hoy y la parte que rinde sin herramienta).
+  const minutos = ws?.fictionalMinutes ?? 0;
+  const datos = await datosComidaDelReino(tx, saveId, minutos);
+  const factor = k && k.trabajadores > 0 ? Math.max(0, k.trabajadores - Math.ceil((k.sinHerramienta ?? 0) / 2)) / k.trabajadores : 1;
+  const comidaActual = k?.comida ?? 0;
+  const produccion = k ? Math.round(comidaDelReinoDia(datos, Math.floor(minutos / 1440) * 1440 + 720, comidaActual, factor) * 10) / 10 : 0;
+  const bocasCifra = k ? k.poblacion + k.soldados + k.visitantes : 0;
+  const { hayAyuntamiento } = datos;
   return {
+    comida: comidaActual,
+    bebida: k?.bebida ?? 0,
+    comidaProduccionDia: produccion,
+    comidaConsumoDia: bocasCifra * CONSUMO_POR_BOCA,
+    bocasDetalle: { civiles: k?.poblacion ?? 0, soldados: k?.soldados ?? 0, visitantes: k?.visitantes ?? 0 },
+    motivosComida: k ? explicarComida({
+      comida: comidaActual, tope: sum.topeComida, bocas: { civiles: k.poblacion, soldados: k.soldados, visitantes: k.visitantes },
+      produccion, consumo: bocasCifra * CONSUMO_POR_BOCA, tareas: datos.tareas, hayAyuntamiento, hayAgua: datos.hayAgua, escalonCocina: datos.escalonCocina, factor,
+      plazasConstructor: datos.plazasConstructor,
+    }) : [],
     aguaDia: sum.agua,
-    bocas: k ? k.poblacion + k.soldados + k.visitantes : 0,
+    bocas: bocasCifra,
     topeComida: sum.topeComida,
     topeBebida: sum.topeBebida,
     topeMateriales: sum.topeMateriales,
@@ -233,13 +324,13 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
 
 /// Paga el desgaste semanal del equipo (Goirnos lo comprado, materiales lo hecho en casa) y repone lo
 /// roto si alcanza. Si no se puede pagar el desgaste, se rompe la parte de esa semana.
-export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }): Promise<{ goirnos: number; materiales: number; pagado: boolean }> {
+export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }, ahora: number): Promise<{ goirnos: number; materiales: number; pagado: boolean }> {
   const ownerKey = ownerKeyFor({ saveId });
   const enCasa = piezasEnCasa(await talleresDelReino(tx, saveId));
   const coste = costeDePiezas(desgasteSemanal(c), enCasa);
   const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { riqueza: true, sinHerramienta: true, sinArma: true } });
   if (k.riqueza < coste.goirnos || !(await gastarMateriales(tx, saveId, coste.materiales))) {
-    await romperEquipo(tx, saveId, c);
+    await romperEquipo(tx, saveId, c, ahora);
     return { ...coste, pagado: false };
   }
   let riqueza = k.riqueza - coste.goirnos;
@@ -259,13 +350,15 @@ export async function liquidarEquipo(tx: Tx, saveId: string, c: { trabajadores: 
 }
 
 /// Una semana sin pagar el desgaste: se rompe 1/4 de las herramientas y 1/6 de las armas.
-async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }): Promise<void> {
+async function romperEquipo(tx: Tx, saveId: string, c: { trabajadores: number; soldados: number }, ahora: number): Promise<void> {
   const ownerKey = ownerKeyFor({ saveId });
   const k = await tx.kingdomStats.findUniqueOrThrow({ where: { ownerKey }, select: { sinHerramienta: true, sinArma: true } });
   const r = roturaSinPagar(c);
+  // CR-63 (P281): el cazador lleva arma como un soldado, así que cuenta para el tope.
+  const conArma = c.soldados + (await cazadoresAdultos(tx, saveId, ahora));
   await tx.kingdomStats.update({
     where: { ownerKey },
-    data: { sinHerramienta: Math.min(c.trabajadores, k.sinHerramienta + r.sinHerramienta), sinArma: Math.min(c.soldados, k.sinArma + r.sinArma) },
+    data: { sinHerramienta: Math.min(c.trabajadores, k.sinHerramienta + r.sinHerramienta), sinArma: Math.min(conArma, k.sinArma + r.sinArma) },
   });
 }
 

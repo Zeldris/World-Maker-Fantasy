@@ -1035,8 +1035,6 @@ export async function turnRoutes(app: FastifyInstance) {
           currentLocationId: currentLocationForSummary.id,
           activeRegion: currentLocationForSummary.region,
           inventoryRows: await prisma.inventoryItem.findMany({ where: { saveId }, select: { id: true, name: true, catalogSlug: true } }),
-          attributes,
-          secondaryAttributes,
         })
       : null;
 
@@ -1117,7 +1115,20 @@ export async function turnRoutes(app: FastifyInstance) {
       // poder crear la fila de `Building` EN_CONSTRUCCION condicionalmente (solo si `buildAttempt`)
       // y leer su id antes de montar `zoneContext`, algo que el form-array de siempre no permite
       // limpiamente sin desincronizar posiciones. Misma atomicidad de antes.
-      const transitRow = await prisma.$transaction(async (tx) => {
+      // P302 — un doble clic en Construir mandaba dos peticiones que pasaban a la vez el 409 de
+      // «ocupado» (comprobado fuera de la transacción) y creaban dos edificios. Con construcción,
+      // la propia transacción toma primero el candado de la fila de la partida (el `update` la
+      // bloquea hasta el commit) y vuelve a mirar el tránsito: la segunda petición espera, ve el
+      // tránsito de la primera y se va con el mismo 409.
+      class PersonajeOcupadoError extends Error {}
+      let transitRow;
+      try {
+      transitRow = await prisma.$transaction(async (tx) => {
+        if (buildAttempt) {
+          await tx.save.update({ where: { id: saveId }, data: { lastPlayedAt: new Date() } });
+          const ocupado = await tx.characterTransit.findUnique({ where: { saveId } });
+          if (ocupado && ocupado.busyUntil > new Date()) throw new PersonajeOcupadoError();
+        }
         await tx.logEntry.create({
           data: {
             saveId,
@@ -1193,6 +1204,18 @@ export async function turnRoutes(app: FastifyInstance) {
         });
         return transit;
       });
+      } catch (err) {
+        if (err instanceof PersonajeOcupadoError) {
+          const t = await prisma.characterTransit.findUnique({ where: { saveId } });
+          return reply.status(409).send({
+            error: 'El personaje sigue ocupado',
+            activity: t?.activity ?? null,
+            busyUntil: t?.busyUntil ?? null,
+            duracionMinutos: (t?.zoneContext as { duracionMinutos?: number } | null)?.duracionMinutos ?? null,
+          });
+        }
+        throw err;
+      }
 
       // Espera de viaje precalculada (2026-08-13, petición explícita: "si no hay eventos con las
       // esperas... no hay que esperar los mins y luego lanzar el prompt... el prompt se lanza ya

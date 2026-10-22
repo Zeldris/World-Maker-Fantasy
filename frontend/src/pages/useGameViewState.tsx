@@ -9,6 +9,7 @@ import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
 import { etiquetaDeFase } from '../lib/gamePhase'
+import { combateTrasResync } from '../lib/combateResync'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -483,6 +484,9 @@ export function useGameViewState() {
     setDiceReveal,
     markCarcassPending,
   })
+  // P288: `syncFromSave` lo llaman sondeos que pueden guardar un cierre viejo; el ref lee el valor actual.
+  const combatOpenRef = useRef(combat.combatOpen)
+  combatOpenRef.current = combat.combatOpen
 
   // Guard de exclusión mutua entre modales de acción (checklist frontend 2026-08-27, A.2) —
   // `anyActionModalOpen` (useActionModalsState.ts) cubre los 6 modales de ese hook; aquí se añaden
@@ -719,8 +723,9 @@ export function useGameViewState() {
     // Bug real (2026-07-23, "revisar partida"): antes `combateIniciado` solo se fijaba con la
     // respuesta directa de `/turn/narrate` — cualquier resincronización (sondeo de reconexión,
     // recarga de página) perdía el aviso de combate aunque el backend lo hubiera calculado bien.
+    // P288: y se limpia si la partida ya no tiene combate (ver `combateTrasResync`).
+    setCombateIniciado((actual) => combateTrasResync(save.combateIniciado, actual, combatOpenRef.current))
     if (save.combateIniciado && save.combateIniciado.npcs.length > 0) {
-      setCombateIniciado(save.combateIniciado)
       // Bug real (2026-08-21, jugando en vivo: "al recargar la página se está perdiendo el mensaje
       // de la iniciativa y la tirada de los dados") — mismo criterio que `combatExchange`/
       // `npcAbilityUsed` (LogPanel): `lastInitiativeRoll` solo vivía en memoria del turno recién

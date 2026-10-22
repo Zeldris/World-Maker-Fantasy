@@ -185,7 +185,16 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
     if (id === mapaTab) return
     setMapaTab(id)
     pestanasRef.current?.scrollIntoView?.({ block: 'nearest' })
+    haCambiadoPestana.current = true
   }
+  // P169 (reabierto): el scroll de arriba se hacía antes de pintar la pestaña nueva, y con la ficha de
+  // «Zona» desplazada «Mapa» arrancaba a media altura. Se repite ya con el contenido nuevo puesto.
+  const haCambiadoPestana = useRef(false)
+  useEffect(() => {
+    if (!haCambiadoPestana.current) return
+    haCambiadoPestana.current = false
+    pestanasRef.current?.scrollIntoView?.({ block: 'start' })
+  }, [mapaTab])
   // CR-46: expediciones visibles, al abrir el mapa de Berig (best-effort: sin ellas el mapa sigue igual).
   const [expediciones, setExpediciones] = useState<ExpedicionEnMapa[]>([])
   const [alcances, setAlcances] = useState<AlcanceTorre[]>([])

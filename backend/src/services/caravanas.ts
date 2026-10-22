@@ -81,6 +81,15 @@ async function caravanaDeFondoCerca(db: Tx | PrismaClient, saveId: string, facci
   return punto?.location ?? null;
 }
 
+/// P294: una orden que no puede salir lo dice en el diario (una vez por semana por el mismo motivo),
+/// en vez de quedarse activa y muda.
+async function avisarOrdenParada(tx: Tx, saveId: string, texto: string) {
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } });
+  const ahora = ws?.fictionalMinutes ?? 480;
+  const repetido = await tx.logEntry.findFirst({ where: { saveId, channel: 'KINGDOM', text: texto, fictionalMinutes: { gte: ahora - 7 * 1440 } }, select: { id: true } });
+  if (!repetido) await avisarEnReino(tx, saveId, texto, ahora);
+}
+
 export interface ResultadoComercio {
   salen: number;
   comercian: number;
@@ -189,7 +198,6 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
   const mercado = await prisma.building.findFirst({ where: { saveId, recipeKey: MERCADO_RECIPE_KEY, status: 'ACTIVO', locationId: { not: null } }, select: { locationId: true } });
   if (!mercado?.locationId) return resultado;
   const socios = new Set(await sociosDelReino(prisma, reino.id));
-  if (socios.size === 0) return resultado;
   const ordenes = await prisma.ordenComercio.findMany({ where: { saveId, activa: true }, include: { caravanas: { where: { status: { in: ['EN_CAMINO', 'VOLVIENDO'] } }, select: { id: true } } } });
   for (const orden of ordenes) {
     if (orden.caravanas.length > 0) continue;
@@ -197,6 +205,10 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
       const stockReino = await stockDe(tx, { saveId }, orden.catalogSlug);
       const unidades = unidadesDeOrden({ tipo: orden.tipo as TipoOrden, umbral: orden.umbral, lote: orden.lote }, stockReino);
       if (unidades === 0) return;
+      const nombreItem = (await tx.itemCatalog.findFirst({ where: { worldId, slug: orden.catalogSlug }, select: { name: true } }))?.name ?? orden.catalogSlug;
+      const accion = orden.tipo === 'COMPRA' ? 'comprar' : 'vender';
+      const parada = (motivo: string) => avisarOrdenParada(tx, saveId, `La orden de ${accion} ${nombreItem} no sale: ${motivo}.`);
+      if (socios.size === 0) return parada('no tienes ninguna facción con tratado comercial o alianza');
       // Socio: el preferido si tiene trato; si no, el primero que tenga trato (y género, si compra).
       const candidatos = await tx.faction.findMany({ where: { id: { in: [...socios] }, disueltaEn: null }, select: { id: true, slug: true, name: true } });
       const ordenados = [...candidatos].sort((a, b) => Number(b.slug === orden.factionSlug) - Number(a.slug === orden.factionSlug));
@@ -206,12 +218,12 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
         socio = f;
         break;
       }
-      if (!socio) return;
+      if (!socio) return parada(`ninguna facción con trato tiene ${nombreItem} para vender${orden.factionSlug ? ` (ni la elegida, ${orden.factionSlug})` : ''}`);
       // 47e: si una caravana del socio (narrador de fondo) pasa por la región del Mercado, se comercia
       // con ella allí mismo: ida y vuelta en el día y sin riesgo de asalto.
       const cercana = await caravanaDeFondoCerca(tx, saveId, socio.name, mercado.locationId!);
       const destino = cercana ?? (await asentamientoDe(tx, worldId, socio.id));
-      if (!destino) return;
+      if (!destino) return parada(`no se sabe dónde está el asentamiento de ${socio.name}`);
       const dias = cercana ? 0 : diasDeCamino(await minutosEntre(tx, worldId, mercado.locationId!, destino.id));
       let riqueza = 0;
       let carga = unidades;
@@ -220,11 +232,11 @@ export async function avanzarComercio(prisma: PrismaClient, saveId: string, dia:
         const valor = (await tx.itemCatalog.findFirst({ where: { worldId, slug: orden.catalogSlug }, select: { valorGoirnos: true } }))?.valorGoirnos ?? 0;
         const stockSocio = await stockDe(tx, { factionId: socio.id }, orden.catalogSlug);
         riqueza = Math.min(stats?.riqueza ?? 0, cotizarCompra(valor, stockSocio, unidades).coste);
-        if (riqueza <= 0) return;
+        if (riqueza <= 0) return parada(`el tesoro no llega ni para una unidad a ${socio.name}`);
         await tx.kingdomStats.update({ where: { saveId }, data: { riqueza: { decrement: riqueza } } });
       } else {
         carga = await sacarDeAlmacen(tx, { saveId }, orden.catalogSlug, unidades);
-        if (carga === 0) return;
+        if (carga === 0) return parada('el Almacén no tiene nada que llevar');
       }
       await tx.caravana.create({
         data: {

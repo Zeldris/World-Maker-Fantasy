@@ -2905,7 +2905,9 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
   // solo 30 piedra + 25 leña crudas; ahora ~75% procesado/25% crudo por categoría. La suposición
   // original de que este save "ya empieza con constructor-orcos-llanuras" era falsa (ver comentario
   // real dentro del test, corregido 2026-08-25) — se siembra a mano ahí.
-  it('mejora el Ayuntamiento a mediano IN-PLACE — mismo Building.id, sin duplicar Territory', async () => {
+  // Construcción por oficio (2026-10-21): el Ayuntamiento mediano es una obra de T6 y el personaje
+  // solo levanta hasta T3 — la mejora in-place la hace la Casa de obras (casaDeObras.integration.test.ts).
+  it('el personaje NO mejora el Ayuntamiento a mediano: es T6, se encarga a la Casa de obras', async () => {
     const before = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     const territoriesBefore = await prisma.territory.count({ where: { saveId } });
     // Bug real encontrado con Postgres real (2026-08-25): el comentario de arriba asumía que este
@@ -2931,14 +2933,13 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
       { name: 'Resina de trepador del ocaso (12)', catalogSlug: 'resina-trepador-ocaso' },
     ]);
     narrateAction.mockClear();
-    const res = await doTurn(saveId, 'Mejoro mi ayuntamiento a mediano.');
-    expect(narrateAction).not.toHaveBeenCalled();
-    expect(lastNdjsonLine(res.payload).newKingdomFounded).toBeNull(); // solo se notifica al FUNDAR, no al mejorar
+    await doTurn(saveId, 'Mejoro mi ayuntamiento a mediano.');
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(narrateAction.mock.calls[0])).toMatch(/solo levanta hasta tier 3/);
 
     const after = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     expect(after.id).toBe(before.id);
-    expect(after.tier).toBe(2);
-    expect(after.name).toBe('un ayuntamiento mediano');
+    expect(after.tier ?? 1).toBe(1);
     expect(await prisma.building.count({ where: { saveId, recipeKey: 'ayuntamiento' } })).toBe(1);
     expect(await prisma.territory.count({ where: { saveId } })).toBe(territoriesBefore);
   }, 15_000);
@@ -3047,8 +3048,20 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
 
   it('felicidad ≤20 sostenida 7 días pierde el territorio (población a 0) y abandona sus edificios', async () => {
     await setUp(20);
+    // P299 — edificios sin territorio (levantados sin fundar uno) también dejan de ser del Reino perdido.
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    const otraRegion = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
+    const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    const pozoLejano = await prisma.building.create({ data: { saveId, locationId: otraRegion.id, name: 'Pozo lejano', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    // El Ayuntamiento es del territorio perdido: cae con él, y con él los edificios sin territorio de su región.
+    const ayto = await prisma.building.create({ data: { saveId, territoryId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ABANDONADO');
+    // Otra región no se toca.
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozoLejano.id } })).status).toBe('ACTIVO');
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);
 
     const territory = await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } });
     expect(territory.control).toBe('PERDIDO');
@@ -3056,6 +3069,38 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
 
     const building = await prisma.building.findUniqueOrThrow({ where: { id: buildingId } });
     expect(building.status).toBe('ABANDONADO');
+  }, 20_000);
+
+  // Un Ayuntamiento DANADO (por un suceso del Cronista) sigue en pie: sigue siendo la Capital.
+  it.each(['ACTIVO', 'DANADO'] as const)('P299: si el Ayuntamiento (sin territorio, %s) sigue en pie, los edificios de su asentamiento no se abandonan', async (estado) => {
+    await setUp(20);
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    const ayto = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: estado, tier: 1 } });
+    const casa = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Casa de obras', kind: 'casa-de-obras', recipeKey: 'casa-de-obras', description: 'x', status: 'ACTIVO', tier: 1 } });
+    narrateAction.mockClear();
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+    expect((await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } })).control).toBe('PERDIDO');
+    // Lo del territorio perdido cae; el Ayuntamiento y su Casa de obras siguen (la cola de obras no se congela).
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: buildingId } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe(estado);
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: casa.id } })).status).toBe('ACTIVO');
+  }, 20_000);
+
+  it('P299: la rebelión de otra región abandona sus edificios sin territorio, no los de la Capital', async () => {
+    await setUp(20);
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { slug: 'hondonada-del-eco' } });
+    const capital = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
+    // La Capital está en otra región y su Ayuntamiento no es de ningún territorio: sigue en pie.
+    const ayto = await prisma.building.create({ data: { saveId, locationId: capital.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const casa = await prisma.building.create({ data: { saveId, locationId: capital.id, name: 'Casa de obras', kind: 'casa-de-obras', recipeKey: 'casa-de-obras', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
+    narrateAction.mockClear();
+    await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
+    expect((await prisma.territory.findUniqueOrThrow({ where: { id: territoryId } })).control).toBe('PERDIDO');
+    // Lo sin territorio de la región rebelada cae aunque el Ayuntamiento siga en pie en otra.
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: casa.id } })).status).toBe('ACTIVO');
   }, 20_000);
 
   it('felicidad neutral (50) no consolida ni rebela — el territorio se queda RECLAMADO', async () => {
@@ -3374,6 +3419,45 @@ describe('Construcción: condición de carrera en turnos concurrentes (auditorí
     // Los materiales se consumieron una sola vez — ninguna fila de piedra/leña suelta ni
     // duplicada.
     expect(await prisma.inventoryItem.count({ where: { saveId } })).toBe(0);
+  }, 20_000);
+});
+
+// P302 (pruebas 0.3) — doble clic en Construir con materiales para DOS: dos peticiones a la vez
+// pasaban el 409 de «ocupado» (se comprobaba fuera de la transacción) y creaban dos edificios.
+// Ahora la transacción toma el candado de la partida y la segunda recibe el 409.
+describe('P302 — doble clic en Construir no crea dos edificios', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn P302', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes: ATTRS_CARISMATICO, portraitInitial: 'G', currentLocationId: hondonada.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'carisma', dificultad: 15, razon: 'x', banda: 'larga', duracionEstimadaMinutos: 4320,
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('dos turnos simultáneos de «construyo un campamento» con materiales para dos crean un solo Building', async () => {
+    await giveMaterials(saveId, [
+      { name: 'Leña de matorral de cuerno (12)', catalogSlug: 'lena-matorral-cuerno' },
+      { name: 'Piedra (16)', catalogSlug: 'piedra' },
+      { name: 'Lana de múrgol (4)', catalogSlug: 'lana-murgol' },
+    ]);
+    const [a, b] = await Promise.all([doTurn(saveId, 'Me pongo a construir un campamento'), doTurn(saveId, 'Me pongo a construir un campamento')]);
+    expect([a.statusCode, b.statusCode]).toContain(409);
+    expect(await prisma.building.count({ where: { saveId, recipeKey: 'campamento' } })).toBe(1);
   }, 20_000);
 });
 

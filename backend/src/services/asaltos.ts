@@ -19,7 +19,7 @@ import { golpeAEmpalizada, NIVEL_MENOS_MILICIA } from './cronista/defensa.js';
 import { morir } from './cronista/salidas.js';
 import { esAdultoSubdito, recalcularPoblacion, rolDeSubdito } from './cronista/subditos.js';
 import { NIVEL_SOLDADO_GENERICO } from './cronista/combatientesFaccion.js';
-import { asentamientosDelReino, guardiasDeRegion, licenciarMilicia } from './defensaReino.js';
+import { asentamientosDelReino, guardiasDeRegion, licenciarMiliciaSiCapitalTranquila } from './defensaReino.js';
 import { volverAlCampamento } from './campamentos.js';
 import { ocupanteDe } from './cronista/campamentosBandidos.js';
 import { combatienteDeNpc } from './factionExpeditions.js';
@@ -27,7 +27,7 @@ import { peor } from './partidasCaza.js';
 import type { AttributeBlock } from './dice.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
-import { CONSTRUCTION_RECIPES } from './construction.js';
+import { recetaDeEdificio } from './construction.js';
 import { gastarMateriales } from './cronista/facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
@@ -71,10 +71,11 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
   const ahora = dia * 1440;
   const { cobertura, bonoAltura, bonoMoral } = asentamiento.efecto;
 
-  // Quien defiende: la guarnición y la milicia (Q6, Q7).
+  // Quien defiende: la guarnición y, en la Capital, la milicia (Q6, Q7). La milicia sale de donde vive la
+  // gente y defiende su asentamiento (Manor Lords), igual que la cuenta `defensaVista`.
   const guarnicionIds = asentamiento.guarnicion.map((g) => g.id);
   const gente = await tx.subject.findMany({
-    where: { saveId, estado: 'ACTIVO', OR: [{ id: { in: guarnicionIds } }, { enMilicia: true }] },
+    where: { saveId, estado: 'ACTIVO', OR: [{ id: { in: guarnicionIds } }, ...(asentamiento.capital ? [{ enMilicia: true }] : [])] },
     select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true, enMilicia: true },
   });
   const defensores: CombatienteFondo[] = [];
@@ -88,6 +89,8 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     defensores.push({ ...c, conNombre: false, bonoDefensa: cobertura, bonoAtaque: enGuarnicion && rolDeSubdito(s.role) === 'vigia' ? bonoAltura : 0, bonoMoral });
   }
 
+  // Guarnición real (los guardias de fauna se cuentan aparte).
+  const enGuarnicionN = defensores.length - milicianos;
   // CR-37 (Q3): los guardias de fauna crecidos de los corrales de su región (`CR-56`).
   const guardias = await guardiasDeRegion(tx, saveId, worldId, asentamiento.region, ahora);
   for (const { ganadoId, npc } of guardias) {
@@ -169,7 +172,8 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     await tx.viajero.update({ where: { id: v.id }, data: { carga } });
   }
   if (caidosReino.length > 0) await recalcularPoblacion(tx, saveId, ahora);
-  await licenciarMilicia(tx, saveId, ahora);
+  // Pasado el asalto, la milicia vuelve al trabajo si la Capital ya no tiene más asaltos a la vista.
+  await licenciarMiliciaSiCapitalTranquila(tx, saveId, ahora, undefined, v.id);
 
   const quien = v.factionId ? `La partida de ${(await tx.faction.findUnique({ where: { id: v.factionId }, select: { name: true } }))?.name ?? 'otra facción'}` : `Los ${(ocupante?.grupo ?? 'bandidos').toLowerCase()}`;
   const texto = textoDelAsalto({
@@ -183,6 +187,7 @@ export async function resolverAsaltoDeFondo(tx: Tx, saveId: string, v: ViajeroFi
     caidosReino,
     estadoPersonaje: presente ? estado.get(`personaje-${saveId}`)?.condicion ?? null : null,
     condicionAntes: save.condicionFisica,
+    defensores: { guarnicion: enGuarnicionN, milicianos, guardias: guardias.length },
   });
   await avisoDeViajero(tx, { saveId, factionId: null }, texto);
   return { defendido, defensores: defensores.length - milicianos, milicianos, caidosReino, caidosAsaltantes, botin, empalizadaCaida };
@@ -201,14 +206,18 @@ export function textoDelAsalto(a: {
   caidosReino: string[];
   estadoPersonaje: CondicionFisica | null;
   condicionAntes: CondicionFisica;
+  /// P295: quién defendía (si se pasa, la línea lo dice: guarnición, milicia o nadie).
+  defensores?: { guarnicion: number; milicianos: number; guardias?: number };
 }): string {
   const v = (sing: string, plur: string) => (a.plural ? plur : sing);
   const mayus = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
   const bajas = a.caidosReino.length > 0 ? ` ${a.caidosReino.length > 1 ? 'Caen' : 'Cae'} ${a.caidosReino.join(', ')}.` : '';
+  const d = a.defensores;
+  const quienDefendia = !d ? '' : d.guarnicion + d.milicianos + (d.guardias ?? 0) === 0 ? ' Nadie defendía: sin guarnición ni milicia.' : ` Defendían ${[d.guarnicion > 0 ? `${d.guarnicion} de guarnición` : null, d.milicianos > 0 ? `${d.milicianos} de milicia` : null, (d.guardias ?? 0) > 0 ? `${d.guardias} ${d.guardias === 1 ? 'guardia' : 'guardias'} de los corrales` : null].filter(Boolean).join(' y ')}.`;
   const despues = a.estadoPersonaje ? peor(a.condicionAntes, a.estadoPersonaje) : a.condicionAntes;
   const tuyo = despues !== a.condicionAntes ? ` Estabas allí y sales ${despues.toLowerCase()}.` : '';
   if (a.defendido) {
-    return `${mayus(a.lugar)} aguanta el asalto: ${a.quien.charAt(0).toLowerCase()}${a.quien.slice(1)} ${v('se retira', 'se retiran')}${a.caidosAsaltantes > 0 ? ` dejando ${a.caidosAsaltantes} ${a.caidosAsaltantes === 1 ? 'muerto' : 'muertos'}` : ''}.${bajas}${tuyo}`;
+    return `${mayus(a.lugar)} aguanta el asalto: ${a.quien.charAt(0).toLowerCase()}${a.quien.slice(1)} ${v('se retira', 'se retiran')}${a.caidosAsaltantes > 0 ? ` dejando ${a.caidosAsaltantes} ${a.caidosAsaltantes === 1 ? 'muerto' : 'muertos'}` : ''}.${quienDefendia}${bajas}${tuyo}`;
   }
   const b = a.botin ?? { comida: 0, goirnos: 0, objetos: 0 };
   const partes = [
@@ -218,7 +227,7 @@ export function textoDelAsalto(a: {
   ].filter((x): x is string => x !== null);
   const lista = partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}` : partes[0];
   const saqueo = lista ? `${v('se lleva', 'se llevan')} ${lista}` : `no ${v('encuentra', 'encuentran')} nada que llevarse`;
-  return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${bajas}${tuyo}`;
+  return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${quienDefendia}${bajas}${tuyo}`;
 }
 
 /// Un asalto que llega a su destino: si allí hay un asentamiento del Reino, se resuelve de fondo
@@ -239,14 +248,35 @@ TRABAJOS.ASALTO = {
   },
 };
 
-/// Q4: repara una Empalizada caída por la mitad de su coste (en materiales del Almacén).
-export async function repararEmpalizada(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, recipeKey: 'empalizada', status: 'ACTIVO' }, select: { tier: true, caida: true } });
-  if (!b) return { ok: false, motivo: 'No tienes esa Empalizada.' };
-  if (!b.caida) return { ok: false, motivo: 'La Empalizada está en pie.' };
-  const receta = CONSTRUCTION_RECIPES.find((r) => r.edificioTipo === 'defensa' && (r.key === 'empalizada' ? 1 : r.upgradesRecipeKey === 'empalizada' ? r.edificioOficioNivel : 0) === (b.tier ?? 1));
-  const coste = Math.ceil((receta?.requirements.reduce((s, q) => s + q.cantidad, 0) ?? 0) / 2);
+/// P284/P296/P301: lo que cuesta reparar un edificio: la mitad de los materiales de su receta (a su
+/// nivel, `recetaDeEdificio`: la base en nivel 1, la mejora de su nivel si no), como la Empalizada (Q4). Mínimo 1.
+export function costeDeReparar(recipeKey: string | null | undefined, tier: number | null | undefined): number {
+  const receta = recetaDeEdificio(recipeKey ?? null, tier ?? null);
+  return Math.max(1, Math.ceil((receta?.requirements.reduce((s, q) => s + q.cantidad, 0) ?? 0) / 2));
+}
+
+/// P284/P296/P301: repara un edificio DANADO (o una Empalizada caída) por la mitad de su coste, en
+/// materiales del Almacén. Un edificio DANADO no cuenta (Camas, Mercado, Cocina…) hasta repararlo.
+/// `sinArreglo`: no hay nada que reparar (el edificio no existe o ya está en pie), a diferencia de
+/// que falten materiales, que se puede reintentar.
+export async function repararEdificio(
+  tx: Tx,
+  saveId: string,
+  buildingId: string,
+): Promise<{ ok: true; coste: number } | { ok: false; motivo: string; sinArreglo?: boolean }> {
+  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, status: { in: ['ACTIVO', 'DANADO'] } }, select: { name: true, recipeKey: true, tier: true, caida: true, status: true } });
+  if (!b) return { ok: false, motivo: 'No tienes ese edificio.', sinArreglo: true };
+  if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.`, sinArreglo: true };
+  const coste = costeDeReparar(b.recipeKey, b.tier);
   if (!(await gastarMateriales(tx, saveId, coste))) return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén.` };
-  await tx.building.update({ where: { id: buildingId }, data: { caida: false, golpesDefensa: 0 } });
-  return { ok: true };
+  await tx.building.update({ where: { id: buildingId }, data: { status: 'ACTIVO', caida: false, golpesDefensa: 0 } });
+  return { ok: true, coste };
+}
+
+/// Q4: repara una Empalizada caída (o dañada). Es `repararEdificio` limitado a la Empalizada.
+export async function repararEmpalizada(tx: Tx, saveId: string, buildingId: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const b = await tx.building.findFirst({ where: { id: buildingId, saveId, recipeKey: 'empalizada' }, select: { id: true } });
+  if (!b) return { ok: false, motivo: 'No tienes esa Empalizada.' };
+  const r = await repararEdificio(tx, saveId, buildingId);
+  return r.ok ? { ok: true } : r;
 }

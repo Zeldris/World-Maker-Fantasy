@@ -20,7 +20,7 @@ import { aplicarBajas, cazadoresDe } from './partidasCaza.js';
 import { MAX_MIEMBROS_PARTIDA, ocupados, opcionesDePartida } from './partidasReino.js';
 import { applyFactionRepDelta, parseFactionsStatus, REGION_OWNING_FACTIONS } from './reputation.js';
 import { ownerKeyFor } from './reinoOwner.js';
-import { esAdultoSubdito, rolDeSubdito } from './cronista/subditos.js';
+import { esAdultoSubdito, rolDeSubdito, subditosSinArma } from './cronista/subditos.js';
 import { avisoDeViajero, crearViajero, TRABAJOS } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
@@ -109,8 +109,10 @@ async function pelearContraCampamento(tx: Tx, c: CampamentoFila, atacantes: Comb
 export async function guerrerosLibres(tx: Tx, saveId: string, ahora: number): Promise<{ id: string; name: string; rol: string }[]> {
   const fuera = (await ocupados(tx, saveId)).subjects;
   const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true }, orderBy: { createdAt: 'asc' } });
+  // CR-63 (P281): sin arma no se sale, ni de caza ni a un ataque.
+  const sinArma = await subditosSinArma(tx, saveId, ahora);
   return subditos
-    .filter((s) => ['soldado', 'cazador', 'vigia'].includes(rolDeSubdito(s.role)) && esAdultoSubdito(s, ahora) && !fuera.has(s.id))
+    .filter((s) => ['soldado', 'cazador', 'vigia'].includes(rolDeSubdito(s.role)) && esAdultoSubdito(s, ahora) && !fuera.has(s.id) && !sinArma.has(s.id))
     .map((s) => ({ id: s.id, name: s.name, rol: rolDeSubdito(s.role) }));
 }
 

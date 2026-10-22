@@ -155,6 +155,10 @@ export interface RecipeStatusInfo {
   upgradesRecipeKey?: string | null
   /// Nivel al que deja el edificio que mejora (la mejora no cambia `recipeKey`, sube `tier`).
   nivel?: number | null
+  /// Construcción por oficio (P277): tier de la obra (1-9); el personaje solo levanta hasta 3.
+  tier?: number
+  /// Sale en Reino › Edificios › Construir (cuelga del Ayuntamiento, o es una Jaula: P282).
+  panelReino?: boolean
 }
 
 /// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
@@ -807,6 +811,10 @@ export interface BuildingInfo {
   name: string
   kind: string
   status: BuildingStatus
+  /// Empalizada caída (sigue ACTIVO pero no cubre hasta repararla).
+  caida?: boolean
+  /// P284: materiales que cuesta repararlo; null si no hace falta.
+  costeReparar?: number | null
   description: string
 }
 

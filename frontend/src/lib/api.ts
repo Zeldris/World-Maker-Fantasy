@@ -1652,11 +1652,16 @@ export interface PartidaInfo {
   destino: string
   permanente: boolean
   miembros: string[]
-  carga: { piezas?: number; capturados?: number } | null
+  carga: { piezas?: number; capturados?: number; resumen?: string } | null
+  /// Día en que volvió a casa (solo las que ya terminaron).
+  vueltaDia?: number | null
 }
 export interface OpcionesPartida {
   origen: { id: string; name: string } | null
-  cazadores: { id: string; name: string }[]
+  /// `sinArma`: sin arma no sale (Q3 de CR-63, como un soldado).
+  cazadores: { id: string; name: string; sinArma?: boolean }[]
+  /// Nombres de los cazadores que están fuera con una partida.
+  cazadoresFuera?: string[]
   grupos: { slotIndex: number; nombre: string; companeros: { id: string; name: string }[] }[]
   destinos: { id: string; name: string; region: string; especies: { slug: string; name: string; cantidad: number; capturable: boolean }[] }[]
 }
@@ -1784,6 +1789,13 @@ export async function fijarRolReinoCompanion(saveId: string, companionId: string
 }
 /// CR-53 (hito 0.3): la economía de supervivencia del Reino (agua, topes, tesoro y sueldos).
 export interface EconomiaReino {
+  /// P279: comida en el almacén, lo que producen y comen al día y por qué se mueve (o no).
+  comida?: number
+  bebida?: number
+  comidaProduccionDia?: number
+  comidaConsumoDia?: number
+  bocasDetalle?: { civiles: number; soldados: number; visitantes: number }
+  motivosComida?: string[]
   aguaDia: number
   bocas: number
   topeComida: number
@@ -1835,9 +1847,11 @@ export interface SubditoInfo {
   crias?: number
   /// CR-61 (61c): su tarea si es trabajador (sin tarea, recolector).
   tarea?: TareaSubdito
+  /// Casa de obras (P277): nivel de oficio de constructor (1-9); da velocidad (los tiers los abre la Casa de obras).
+  nivelConstructor?: number
 }
 
-export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero'
+export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero' | 'constructor'
 
 export interface CamasReino {
   total: number
@@ -1874,7 +1888,7 @@ export interface SalidaSubdito {
   cuando: number | null
 }
 
-export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
+export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; danados?: { id: string; name: string; camas: number; cocina: boolean }[]; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
 }
 
@@ -2071,6 +2085,8 @@ export interface CaravanaInfo {
 export interface ComercioInfo {
   reino: boolean
   mercado: boolean
+  /// P287 — hay un Mercado pero está dañado.
+  mercadoDanado?: boolean
   socios: { slug: string; name: string }[]
   objetos: { slug: string; name: string }[]
   ordenes: OrdenComercioInfo[]
@@ -3150,6 +3166,8 @@ export interface ModuloDefensaInfo {
   escalon: number
   golpes: number
   caida: boolean
+  /// P296: dañado (no cuenta hasta repararlo).
+  danado?: boolean
   equiposMilicia: number
 }
 export interface AsentamientoDefensa {
@@ -3169,8 +3187,11 @@ export interface AvistamientoInfo {
   quien: string
   gente: number
   tramos: number
+  /// P295: por qué llamar a la milicia no serviría ahora.
+  sinMilicia?: string
 }
-export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[] }> {
+/// `danados`: Ayuntamiento o Cuartel dañados (P284), que no defienden hasta repararlos.
+export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/defensa`)
 }
 export async function postGuarnicion(saveId: string, subjectId: string, asentamientoId: string): Promise<{ ok: boolean }> {
@@ -3182,8 +3203,38 @@ export async function postEquiposMilicia(saveId: string, armeriaId: string, cant
 export async function postLlamarMilicia(saveId: string, asentamientoId: string): Promise<{ ok: boolean; armados: number }> {
   return fetchJson(`${API_URL}/saves/${saveId}/defensa/${asentamientoId}/milicia`, { method: 'POST' })
 }
-export async function postRepararEmpalizada(saveId: string, buildingId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/defensa/empalizada/${buildingId}/reparar`, { method: 'POST' })
+/// P284/P296/P301: repara un edificio dañado (mitad de su coste en materiales del Almacén).
+export async function postRepararEdificio(saveId: string, buildingId: string): Promise<{ ok: boolean; coste: number }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/reparar`, { method: 'POST' })
+}
+
+/// Casa de obras (P277/P284): la Casa, sus constructores y la cola de obras y reparaciones.
+export interface ObraEnCola {
+  id: string
+  tipo: 'CONSTRUIR' | 'REPARAR'
+  nombre: string
+  tier: number
+  dias: number
+  diasHechos: number
+  /// Por qué no avanza («🔒N: …», faltan materiales…); null = avanza.
+  aviso: string | null
+}
+export interface CasaDeObrasInfo {
+  casa: { nivel: number; tierMaximo: number; plazas: number } | null
+  constructores: { id: string; name: string; nivel: number }[]
+  cola: ObraEnCola[]
+}
+export async function getObras(saveId: string): Promise<CasaDeObrasInfo> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras`)
+}
+export async function postObra(saveId: string, encargo: { recipeKey: string } | { buildingId: string }): Promise<{ ok: boolean; id: string }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(encargo) })
+}
+export async function deleteObra(saveId: string, obraId: string): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras/${obraId}`, { method: 'DELETE' })
+}
+export async function putOrdenObras(saveId: string, ids: string[]): Promise<{ ok: boolean }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/obras/orden`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
 }
 
 // CR-50 (50d): manda una partida a por un campamento de bandidos.
@@ -3197,6 +3248,29 @@ export interface EnemigaInfo {
   nombre: string
   relacion: 'GUERRA' | 'TENSION'
   presion: number
+}
+/// CR-59 (P286): vasallajes de la partida (Reino › Diplomacia).
+export interface VasallajeInfo {
+  vasalloSlug: string
+  vasalloNombre: string
+  senorSlug: string
+  senorNombre: string
+  /// Lo que quedó sin pagar la última semana (como mucho una cuota); 0 = al corriente.
+  deuda: number
+  /// false: pago parcial o impagado, patrullas en proporción a lo pagado (presupuesto al estilo X4, 2026-10-22).
+  alCorriente: boolean
+  /// Lo pagado de la cuota en la última revisión (0-100): la probabilidad de patrullar. null si debe
+  /// algo y aún no hay revisión (pendiente de la revisión semanal).
+  porcentajePagado: number | null
+  cuota: number
+  sobreprecioArmas: number
+  patrullaGuerreros: number
+  proximaRevision: number | null
+  rotoEn: number | null
+  motivoRuptura: string | null
+}
+export async function getVasallajes(saveId: string): Promise<{ vasallajes: VasallajeInfo[] }> {
+  return fetchJson(`${API_URL}/saves/${saveId}/reino/vasallajes`)
 }
 export async function getGuerra(saveId: string): Promise<{ enemigas: EnemigaInfo[] }> {
   return fetchJson(`${API_URL}/saves/${saveId}/guerra`)

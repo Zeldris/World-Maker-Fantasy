@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { BuildingInfo, KingdomStatsInfo, TerritoryInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { getDescansarCampamentoDisponible, getEconomiaReino, postDescansarCampamento, traspasarTesoro, type EconomiaReino } from '../../../lib/api'
-import { avisosDeEconomia } from '../../../lib/economiaReino'
+import { avisosDeEconomia, textoAlmacen, textoComidaDia } from '../../../lib/economiaReino'
 import { ConfirmModal } from '../../ConfirmModal'
 import { TooltipAnchor } from '../../TooltipAnchor'
 import { useModoConsulta } from '../../../context/useModoConsulta'
@@ -211,8 +211,8 @@ export function VisionGeneralSection({
               Solo se muestra cuando ya hay días acumulados de verdad, no en cada visita. */}
           {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && (
             <p className="mb-2 text-2xs text-danger-400">
-              ⚠️ Felicidad baja desde hace {kingdomStats.diasFelicidadBaja} día{kingdomStats.diasFelicidadBaja === 1 ? '' : 's'} — si sigue así 7
-              días seguidos, el reino puede rebelarse y perder el control de un territorio.
+              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de 7 días para la rebelión — si llegas a 7 seguidos, el reino se rebela
+              y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) antes.
             </p>
           )}
           {kingdomStats && kingdomStats.diasFelicidadAlta > 0 && (
@@ -322,7 +322,12 @@ function SuministrosReino({ saveId, version, onRefreshSave }: { saveId: string; 
         <p key={a} role="alert" className="text-2xs text-danger-400">⚠️ {a}</p>
       ))}
       {fila('Agua al día', `+${eco.aguaDia} / −${eco.bocas}`, 'Lo que dan los Pozos y la fuente natural frente a lo que beben las bocas del Reino.')}
-      {fila('Almacén', `comida ${eco.topeComida} · agua ${eco.topeBebida} · materiales ${eco.materiales}/${eco.topeMateriales}`, 'Topes del almacén: el Ayuntamiento da 60 de cada; Granero, Cisterna y Leñera suman 120. Lo que no cabe se pierde.')}
+      {textoComidaDia(eco) !== null &&
+        fila('Comida al día', textoComidaDia(eco)!, 'Producción de media al día de las tareas de tus trabajadores (con la estación; el reparto diario varía) frente a lo que comen las bocas del Reino.')}
+      {(eco.motivosComida ?? []).map((m) => (
+        <p key={m} className="text-2xs text-wood-400">🍖 {m}</p>
+      ))}
+      {fila('Almacén', textoAlmacen(eco), 'Guardado sobre el tope de cada cosa. El Ayuntamiento da 60 de cada una; el Granero suma 120 de comida, la Cisterna 120 de agua y la Leñera 120 de materiales. Lo que no cabe se pierde.')}
       {fila('Sueldos a la semana', `${eco.sueldosSemana} Goirnos`, '2 por trabajador y 5 por soldado o vigía. Se pagan del tesoro.')}
       {fila(
         'Equipo a la semana',

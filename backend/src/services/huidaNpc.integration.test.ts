@@ -82,7 +82,9 @@ describe('CR-44 (44b) — moral del NPC en el combate 1v1', () => {
     });
 
     it('no huye si falla el escape, si le alcanzan o si la defensa no promete huida', async () => {
-      expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Instinto Solitario'), random: d20(1) })).toBeNull();
+      // Destreza fija: con la primera bestia del catálogo (Lebude, destreza 14) un 1 ya llega al mínimo de 8 y escapa.
+      const torpe = { ...fauna, attributes: { ...fauna.attributes, destreza: 4 } };
+      expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Instinto Solitario'), npc: torpe, random: d20(1) })).toBeNull();
       expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Estampida instintiva', true), random: d20(20) })).toBeNull();
       expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad('Piel endurecida'), random: d20(20) })).toBeNull();
       expect(await decidirHuidaPorHabilidad(prisma, { ...habilidad(null), random: d20(20) })).toBeNull();

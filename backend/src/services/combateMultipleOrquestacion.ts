@@ -170,13 +170,12 @@ export async function iniciarCombatEncounter(
     // `esperandoEleccionJugadora` en schema.prisma) — null la deja "sin objetivo propio" hasta
     // entonces, aunque otros SÍ puedan reclamarla a ella mientras tanto.
     if (id === jugadorParticipantId) return null;
-    if (sigueAlCapitan.has(id) && objetivoCapitan && candidatos.includes(objetivoCapitan)) return objetivoCapitan;
     const inteligencia = participantes.find((p) => p.participantId === id)?.inteligencia ?? 0;
     const candidatosObj: ObjetivoCandidato[] = candidatos.map((cid) => ({ participantId: cid, condicionFisica: 'ILESO' as CondicionFisica }));
     return elegirObjetivo(inteligencia, candidatosObj, Math.random);
   };
   const ordenIds = orden.map((e) => e.participantId);
-  const enganches = resolverEnganchesRonda(ordenIds, combatientesParaEnganche, elegirObjetivoInicial);
+  const enganches = resolverEnganchesRonda(ordenIds, combatientesParaEnganche, elegirObjetivoInicial, new Set(), new Map(), new Map(), objetivoCapitan ? { seguidores: sigueAlCapitan, objetivoId: objetivoCapitan } : null);
   const esperandoJugadora = jugadorParticipantId !== null && enganches.get(jugadorParticipantId) === null;
 
   await Promise.all(
@@ -589,7 +588,6 @@ async function calcularEnganchesRonda({
 
   const elegirObjetivoPara = (id: string, candidatos: string[]): string | null => {
     if (id === jugadoraId) return jugadoraTargetId;
-    if (sigueAlCapitan.has(id) && objetivoCapitan && candidatos.includes(objetivoCapitan)) return objetivoCapitan;
     // `esJugadorReal` (2026-08-29, mismo hallazgo que arriba): sin esto, un NPC con SOLO la
     // jugadora convaleciente como candidato nunca podía elegirla — `elegirObjetivo` la trataba
     // como cualquier otro CONVALECIENTE, `objetivoActualId` se quedaba `null` para siempre.
@@ -624,7 +622,7 @@ async function calcularEnganchesRonda({
       .filter((p) => p.marcaObjetivoRondas != null && p.marcaObjetivoRondas > 0 && p.marcaObjetivoId && idsVivos.has(p.marcaObjetivoId))
       .map((p) => [p.id, p.marcaObjetivoId!] as const),
   );
-  const enganches = resolverEnganchesRonda(encounter.ordenIniciativa, combatientes, elegirObjetivoPara, ocultosOExpulsados, provocaciones, marcas);
+  const enganches = resolverEnganchesRonda(encounter.ordenIniciativa, combatientes, elegirObjetivoPara, ocultosOExpulsados, provocaciones, marcas, objetivoCapitan ? { seguidores: sigueAlCapitan, objetivoId: objetivoCapitan } : null);
   const esperandoJugadora = jugadoraId !== null && enganches.get(jugadoraId) === null;
   const ordenCapitan =
     capitan && objetivoCapitan

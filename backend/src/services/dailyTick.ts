@@ -69,7 +69,40 @@ export async function advanceKingdomStatsDay(
         if (perdiendoIds.length > 0) {
           // Se conserva la fila (docs/10 § 5.4: "es historia del reino") — nunca se borra.
           await tx.territory.updateMany({ where: { id: { in: perdiendoIds } }, data: { control: 'PERDIDO', population: 0 } });
-          await tx.building.updateMany({ where: { territoryId: { in: perdiendoIds }, status: 'ACTIVO' }, data: { status: 'ABANDONADO' } });
+          // P299 — el territorio perdido ya no tiene Choza, Pozo ni camas propias: se abandonan sus edificios
+          // y los sin territorio de su región, nunca el Campamento ni el Ayuntamiento. Los del asentamiento
+          // del Ayuntamiento heredan su territoryId (a menudo null): si el Ayuntamiento sigue en pie, los de
+          // su región no caen (la Casa de obras, la Herrería…; si no, la cola de obras se congelaría), ni por
+          // su rebelión ni por la de otra región. El Ayuntamiento es el mismo que la Capital de
+          // `asentamientosDelReino` (con lugar, el más antiguo); uno DANADO sigue en pie y sigue siendo la Capital.
+          const regionesPerdidas = territories.filter((t) => perdiendoIds.includes(t.id) && t.region).map((t) => t.region as string);
+          const ayto = await tx.building.findFirst({
+            where: { saveId, recipeKey: 'ayuntamiento', status: { in: ['ACTIVO', 'DANADO'] }, location: { isNot: null } },
+            select: { territoryId: true, location: { select: { region: true } } },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          });
+          const aytoCae = !ayto || (ayto.territoryId !== null && perdiendoIds.includes(ayto.territoryId));
+          const regionesQueCaen = regionesPerdidas.filter((r) => aytoCae || r !== ayto?.location?.region);
+          await tx.building.updateMany({
+            where: {
+              saveId, status: 'ACTIVO',
+              OR: [
+                { territoryId: { in: perdiendoIds } },
+                ...(regionesQueCaen.length > 0
+                  ? [{ territoryId: null, NOT: { recipeKey: { in: ['campamento', 'ayuntamiento'] } }, location: { region: { in: regionesQueCaen } } }]
+                  : []),
+              ],
+            },
+            data: { status: 'ABANDONADO' },
+          });
+          // P299 — se explica después: antes solo se veía el territorio en «Perdido».
+          await tx.logEntry.create({
+            data: {
+              saveId, channel: 'KINGDOM', isSystemMessage: true,
+              text: `Tu Reino se ha rebelado: la felicidad llevaba ${DIAS_PARA_REBELION} días baja y ha perdido el territorio. Sus edificios quedan abandonados y sin camas.`,
+              timeLabel: formatFictionalDate(hasta), fictionalMinutes: hasta,
+            },
+          });
         }
       } else if (ticked.diasFelicidadAlta >= DIAS_PARA_CONSOLIDAR) {
         const { count } = await tx.territory.updateMany({ where: { saveId, control: { in: ['RECLAMADO', 'DISPUTADO'] } }, data: { control: 'CONSOLIDADO' } });

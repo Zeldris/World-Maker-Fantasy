@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tickKingdomOneDay, DEFAULT_KINGDOM_STATS } from '../kingdomTick.js';
-import { AGUA_FUENTE_NATURAL_DIA, BASE_ALMACEN, suministrosDeEdificios, sueldosSemana, tieneFuenteNatural, tocaDesertar } from './economiaReino.js';
+import { AGUA_FUENTE_NATURAL_DIA, avisoMaterialesLlenos, BASE_ALMACEN, comidaDelReinoDia, constructoresSinPlaza, explicarComida, suministrosDeEdificios, sueldosSemana, tieneFuenteNatural, tocaDesertar } from './economiaReino.js';
 
 describe('economía del Reino (CR-53) — agua y almacén', () => {
   it('el Ayuntamiento da la base; cada Pozo, Granero, Cisterna y Leñera suma lo suyo', () => {
@@ -41,5 +41,58 @@ describe('economía del Reino (CR-53) — sueldos', () => {
     const base = { ...DEFAULT_KINGDOM_STATS, soldados: 4, riqueza: 10, comida: 50, bebida: 50 };
     expect(tickKingdomOneDay(base).riqueza).toBe(6);
     expect(tickKingdomOneDay(base, { agua: 0, topeComida: 999, topeBebida: 999, sueldosSemanales: true }).riqueza).toBe(10);
+  });
+});
+
+describe('P276 — aviso de materiales llenos', () => {
+  it('sin Leñera pide construirla; con Leñera dice que está lleno y no pide otra', () => {
+    expect(avisoMaterialesLlenos(0, { guardados: 60, tope: 60 })).toContain('construye una Leñera');
+    const con = avisoMaterialesLlenos(1, { guardados: 180, tope: 180 });
+    expect(con).toContain('lleno');
+    expect(con).toContain('180/180');
+    expect(con).not.toContain('construye');
+  });
+});
+
+describe('P279/P300 — por qué se mueve la comida', () => {
+  const base = { comida: 10, tope: 60, bocas: { civiles: 2, soldados: 0, visitantes: 0 }, produccion: 4, consumo: 2, tareas: { recolector: 2 } as Record<string, number>, hayAyuntamiento: true, hayAgua: true, escalonCocina: null, factor: 1 };
+  it('sin súbditos dice que nadie come; sin trabajadores, que nadie produce', () => {
+    expect(explicarComida({ ...base, bocas: { civiles: 0, soldados: 0, visitantes: 0 }, produccion: 0, consumo: 0, tareas: {} }).join(' ')).toContain('Nadie come');
+    expect(explicarComida({ ...base, produccion: 0, tareas: {} }).join(' ')).toContain('Nadie produce comida');
+    expect(explicarComida({ ...base, produccion: 0, tareas: { ganadero: 2, fibrero: 1 } }).join(' ')).toContain('Nadie produce comida');
+  });
+  it('el Pescador sin agua o sin Ayuntamiento lo avisa', () => {
+    const sinAyto = explicarComida({ ...base, tareas: { pescador: 1, recolector: 1 }, hayAgua: false, hayAyuntamiento: false }).join(' ');
+    expect(sinAyto).toContain('No hay Ayuntamiento activo');
+    expect(explicarComida({ ...base, tareas: { pescador: 1 }, hayAgua: false }).join(' ')).toContain('no tienen agua junto al Ayuntamiento');
+  });
+  it('plana por producir lo que come, por herramientas o por el tope', () => {
+    expect(explicarComida({ ...base, produccion: 2 }).join(' ')).toContain('justo lo que comen');
+    expect(explicarComida({ ...base, factor: 0.5 }).join(' ')).toContain('sin herramienta');
+    expect(explicarComida({ ...base, comida: 60 }).join(' ')).toContain('lleno (60)');
+  });
+  it('los constructores con plaza en la Casa de obras se nombran; no dice «no hay trabajadores»', () => {
+    const t = explicarComida({ ...base, produccion: 0, tareas: { constructor: 2 }, plazasConstructor: 2 }).join(' ');
+    expect(t).toContain('Nadie produce comida');
+    expect(t).toContain('tus 2 constructores están en la Casa de obras');
+    expect(t).not.toContain('no hay trabajadores');
+    expect(t).not.toContain('recolectan en su lugar');
+  });
+  it('los constructores sin plaza o sin Casa recolectan y lo avisa', () => {
+    const sinCasa = explicarComida({ ...base, tareas: { constructor: 1 }, plazasConstructor: 0 }).join(' ');
+    expect(sinCasa).toContain('No hay Casa de obras en pie: un constructor recolecta');
+    expect(sinCasa).not.toContain('Nadie produce comida');
+    const deMas = explicarComida({ ...base, tareas: { constructor: 3 }, plazasConstructor: 1 }).join(' ');
+    expect(deMas).toContain('solo tiene 1 plaza: 2 constructores de más recolectan');
+    expect(constructoresSinPlaza(3, 1)).toBe(2);
+    expect(constructoresSinPlaza(1, 2)).toBe(0);
+  });
+  it('comidaDelReinoDia: el constructor sin plaza produce como un recolector; con plaza, nada', () => {
+    const tareas = { recolector: 0, pescador: 0, cocinero: 0, ganadero: 0, fibrero: 0, constructor: 1 };
+    const sinCasa = comidaDelReinoDia({ tareas, hayAyuntamiento: true, hayAgua: true, escalonCocina: 0, plazasConstructor: 0 }, 720, 100);
+    const recolector = comidaDelReinoDia({ tareas: { ...tareas, constructor: 0, recolector: 1 }, hayAyuntamiento: true, hayAgua: true, escalonCocina: 0, plazasConstructor: 0 }, 720, 100);
+    expect(sinCasa).toBeGreaterThan(0);
+    expect(sinCasa).toBe(recolector);
+    expect(comidaDelReinoDia({ tareas, hayAyuntamiento: true, hayAgua: true, escalonCocina: 0, plazasConstructor: 1 }, 720, 100)).toBe(0);
   });
 });

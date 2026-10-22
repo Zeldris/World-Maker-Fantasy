@@ -16,9 +16,13 @@ export function nombresVisiblesDeOficios(nombres: string[]): Map<string, string>
   return new Map(nombres.map((n) => [n, (cuantos.get(nombreCortoOficio(n)) ?? 0) > 1 ? n : nombreCortoOficio(n)]))
 }
 
-/// Quita la primera frase de la descripción si solo repite el nombre del oficio.
+/// Quita la primera frase de la descripción si solo repite el nombre del oficio, y la región donde
+/// aún se repite («…cura pieles de los Orcos de las Llanuras…», «…la zona de las Llanuras…»).
 export function descripcionSinNombre(descripcion: string, nombre: string): string {
   const corto = nombreCortoOficio(nombre)
   const [primera, ...resto] = descripcion.split(/(?<=\.)\s+/)
-  return resto.length > 0 && nombreCortoOficio(primera.replace(/\.$/, '')) === corto ? resto.join(' ') : descripcion
+  const base = resto.length > 0 && nombreCortoOficio(primera.replace(/\.$/, '')) === corto ? resto.join(' ') : descripcion
+  const cola = nombre.slice(corto.length).trim()
+  const sinCola = cola ? base.split(` ${cola}`).join('') : base
+  return sinCola.replace(/\b(la zona|el territorio) del?\s(?:la |las |los |el )?[^.]*\./g, '$1.')
 }

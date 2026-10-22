@@ -3,12 +3,13 @@ import { render, fireEvent, cleanup, act } from '@testing-library/react'
 
 vi.mock('../../../lib/api', () => ({
   getMercado: vi.fn(),
+  getVasallajes: vi.fn(),
   postDiplomacia: vi.fn(),
   postMercadoComprar: vi.fn(),
   postMercadoVender: vi.fn(),
 }))
 
-import { getMercado, postDiplomacia } from '../../../lib/api'
+import { getMercado, getVasallajes, postDiplomacia } from '../../../lib/api'
 import { DiplomaciaMercadoSection } from './DiplomaciaMercadoSection'
 import type { CompanionInfo } from '../../../types'
 import type { EnciclopediaFaccionInfo } from '../../../lib/api'
@@ -22,6 +23,7 @@ const ana = { id: 'c1', name: 'Ana', rolReino: 'diplomatico' } as unknown as Com
 describe('DiplomaciaMercadoSection — REI-116', () => {
   beforeEach(() => {
     vi.mocked(getMercado).mockResolvedValue({ tratado: false, items: [] } as never)
+    vi.mocked(getVasallajes).mockResolvedValue({ vasallajes: [] })
   })
   afterEach(() => {
     cleanup()
@@ -70,5 +72,69 @@ describe('DiplomaciaMercadoSection — REI-116', () => {
     expect(negociar.title).toBe('El narrador todavía está escribiendo.')
     fireEvent.click(negociar)
     expect(postDiplomacia).not.toHaveBeenCalled()
+  })
+})
+
+describe('DiplomaciaMercadoSection — P286/P297 vasallajes', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('enseña si el vasallaje está impagado, su cuota y la próxima revisión', async () => {
+    vi.mocked(getVasallajes).mockResolvedValue({
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 1248, alCorriente: false, porcentajePagado: 0, cuota: 1248, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 46, rotoEn: null, motivoRuptura: null }],
+    })
+    let utils!: ReturnType<typeof render>
+    await act(async () => {
+      utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[faccion]} goirnos={0} onRefreshSave={async () => {}} />)
+    })
+    expect(utils.getByText('Clan Serhu es vasallo de Concordia de Hierro')).toBeTruthy()
+    expect(utils.getByText('Impagado: patrullas suspendidas')).toBeTruthy()
+    expect(utils.container.textContent).toContain('próxima revisión: día 46')
+    expect(utils.container.textContent).toContain('cuota de 1248 Goirnos')
+    expect(utils.container.textContent).toContain('patrulla obligada de 20 guerreros')
+  })
+
+  it.each([
+    [40, 749, 'Pago parcial 40 % de la cuota: patrullas al 40 %'],
+    [100, 1248, 'Cuota pagada, arrastra 1248 Goirnos: patrullas al 100 %, sin rearme hasta saldar'],
+    [null, 1248, 'Pendiente de la revisión semanal (1248 Goirnos)'],
+  ])('con %s %% de la cuota pagado dice cómo van las patrullas', async (porcentajePagado, deuda, texto) => {
+    vi.mocked(getVasallajes).mockResolvedValue({
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda, alCorriente: false, porcentajePagado, cuota: 1248, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 46, rotoEn: null, motivoRuptura: null }],
+    })
+    let utils!: ReturnType<typeof render>
+    await act(async () => {
+      utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[faccion]} goirnos={0} onRefreshSave={async () => {}} />)
+    })
+    expect(utils.container.textContent).toContain(texto)
+    expect(utils.container.textContent).not.toContain('Impagado')
+  })
+
+  it('sin soldados (cuota 0) dice que no puede patrullar y lo que arrastra, no «pago parcial»', async () => {
+    vi.mocked(getVasallajes).mockResolvedValue({
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 300, alCorriente: false, porcentajePagado: 0, cuota: 0, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 63, rotoEn: null, motivoRuptura: null }],
+    })
+    let utils!: ReturnType<typeof render>
+    await act(async () => {
+      utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[faccion]} goirnos={0} onRefreshSave={async () => {}} />)
+    })
+    expect(utils.container.textContent).toContain('Sin soldados con los que patrullar: arrastra 300 Goirnos')
+    expect(utils.container.textContent).not.toContain('Pago parcial')
+    expect(utils.container.textContent).not.toContain('Impagado')
+  })
+
+  it('sin facciones descubiertas la tarjeta de vasallajes sale igual', async () => {
+    vi.mocked(getVasallajes).mockResolvedValue({
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 0, alCorriente: true, porcentajePagado: 100, cuota: 1248, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 7, rotoEn: null, motivoRuptura: null }],
+    })
+    let utils!: ReturnType<typeof render>
+    await act(async () => {
+      utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[]} goirnos={0} onRefreshSave={async () => {}} />)
+    })
+    expect(utils.getByText('Clan Serhu es vasallo de Concordia de Hierro')).toBeTruthy()
+    expect(utils.getByText('Sin facciones descubiertas todavía')).toBeTruthy()
+    expect(utils.getByText('Al corriente')).toBeTruthy()
   })
 })

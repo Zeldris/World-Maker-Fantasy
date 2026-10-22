@@ -32,7 +32,8 @@ describe('módulos de defensa (CR-65 65a)', () => {
   });
 
   const motivo = (recipeKey: string, region: string, locationId: string) =>
-    computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe: CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey)!, activeRegion: region, currentLocationRecord: { id: locationId } });
+    // Casa de obras: este test mira las reglas de módulos, no el tope T3 del personaje.
+    computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe: CONSTRUCTION_RECIPES.find((r) => r.key === recipeKey)!, activeRegion: region, currentLocationRecord: { id: locationId }, quien: 'casa-de-obras' });
   const edificio = (recipeKey: string, locationId: string, extra: Record<string, unknown> = {}) =>
     prisma.building.create({ data: { saveId, locationId, recipeKey, name: 'x', kind: recipeKey, description: 'x', status: 'ACTIVO', ...extra } });
 

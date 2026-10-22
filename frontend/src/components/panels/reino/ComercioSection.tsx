@@ -39,8 +39,8 @@ export function ComercioSection({ saveId }: { saveId: string }) {
     return (
       <PanelEmptyState
         icon="⚖️"
-        title="Sin Mercado"
-        hint={datos.reino ? 'Construye un Mercado en el Reino para dejar órdenes de compra y venta que cumplan tus caravanas.' : 'Funda tu Reino y construye un Mercado para comerciar en volumen.'}
+        title={datos.mercadoDanado ? 'Mercado dañado' : 'Sin Mercado'}
+        hint={datos.mercadoDanado ? 'Tu Mercado está dañado: repáralo en Reino › Edificios para volver a dejar órdenes.' : datos.reino ? 'Construye un Mercado en el Reino para dejar órdenes de compra y venta que cumplan tus caravanas.' : 'Funda tu Reino y construye un Mercado para comerciar en volumen.'}
       />
     )
   }

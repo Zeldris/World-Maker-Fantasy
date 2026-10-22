@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
-import { equiparAlta, esMaterial, huecoDeMateriales, resumenEconomia, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
+import { equiparAlta, esMaterial, huecoDeMateriales, motivoMaterialesLlenos, resumenEconomia, revisarSueldos, suministrosDelReino, traspasarGoirnos } from './economiaReino.js';
 import { crearSubdito } from './subditos.js';
 
 describe('economía del Reino (CR-53) — en una partida', () => {
@@ -39,6 +39,18 @@ describe('economía del Reino (CR-53) — en una partida', () => {
     expect(await huecoDeMateriales(prisma, saveId)).toBe(0);
     await edificio('lenera');
     expect(await huecoDeMateriales(prisma, saveId)).toBe(120);
+    // P276: con Leñera construida el aviso ya no pide otra; solo dice que está lleno.
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 120 }, () => ({ saveId, name: recurso.name, description: '', catalogSlug: recurso.slug })) });
+    expect(await motivoMaterialesLlenos(prisma, saveId)).toMatch(/lleno.*180\/180.*tu Leñera/);
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: recurso.slug, id: { in: (await prisma.almacenItem.findMany({ where: { saveId, catalogSlug: recurso.slug }, take: 120, select: { id: true } })).map((r) => r.id) } } });
+  });
+
+  it('P275/P279: el resumen da los topes de comida y agua y la producción y el consumo diarios con sus motivos', async () => {
+    const r = await resumenEconomia(prisma, saveId);
+    expect(r).toMatchObject({ topeComida: 60, topeBebida: 60 });
+    expect(r).toHaveProperty('comidaProduccionDia');
+    expect(r).toHaveProperty('comidaConsumoDia');
+    expect(Array.isArray(r.motivosComida)).toBe(true);
   });
 
   it('sueldos: se pagan por semana; sin Goirnos baja la felicidad y a los 7 días deserta un soldado; el traspaso salda la deuda', async () => {

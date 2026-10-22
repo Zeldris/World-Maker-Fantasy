@@ -351,18 +351,21 @@ const ROLES_SUBDITO: { value: SubditoInfo['rol']; label: string; descripcion: st
   { value: 'cazador', label: 'Cazador', descripcion: 'Sale con las partidas de caza y captura (Reino › Partidas); no trabaja en casa y lleva arma.' },
 ]
 /// CR-61 (61c): la tarea de cada trabajador; de ella sale la comida del Reino.
+/// Copia de `VELOCIDAD_POR_NIVEL_CONSTRUCTOR` (backend/src/services/cronista/casaDeObras.ts): si cambia allí, cámbialo aquí.
+const VELOCIDAD_POR_NIVEL_CONSTRUCTOR = 0.1
 const TAREAS_SUBDITO: { value: TareaSubdito; label: string; descripcion: string }[] = [
   { value: 'recolector', label: 'Recolector', descripcion: 'Recoge 2 de comida al día (2,5 en primavera y verano; 1 en invierno).' },
   { value: 'pescador', label: 'Pescador', descripcion: 'Pesca 3 al día si hay agua junto al Ayuntamiento; si no, recolecta.' },
   { value: 'cocinero', label: 'Cocinero', descripcion: 'Con Cocina, transforma 10 de comida cruda: +5, +10 o +15 según su escalón. Sin Cocina, recolecta.' },
   { value: 'ganadero', label: 'Ganadero', descripcion: 'Cuida el ganado de los Corrales (sin ganadero no producen).' },
   { value: 'fibrero', label: 'Fibrero', descripcion: 'Siega en la Fibrería: 10 de forraje al día.' },
+  { value: 'constructor', label: 'Constructor', descripcion: 'Trabaja en la Casa de obras: levanta y repara la cola de obras; sube de nivel construyendo y cada nivel le hace un 10 % más rápido.' },
 ]
 /// REI-118 + REI-53 (parte): los súbditos como personas — pueblo, edad, linaje, felicidad y rol
 /// editable (las crías no trabajan ni combaten) — y las camas que comparten con los compañeros.
 function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { saveId: string; subjects: SubjectInfo[]; plantillasEquipo: PlantillaEquipoInfo[]; onRefreshSave: () => Promise<void> }) {
   const consulta = useModoConsulta()
-  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] } | null>(null)
+  const [datos, setDatos] = useState<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; danados?: { id: string; name: string; camas: number; cocina: boolean }[]; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] } | null>(null)
   const [version, setVersion] = useState(0)
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
@@ -444,6 +447,12 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
         <p className="mb-2 text-2xs text-wood-400">
           Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total + (datos.camas.temporales ?? 0)} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'}
           {datos.camas.temporales ? `, ${datos.camas.temporales} temporales del Ayuntamiento solo para súbditos` : ''})
+        </p>
+      )}
+      {/* P284: lo dañado no da camas hasta repararlo. */}
+      {(datos?.danados ?? []).filter((d) => d.camas > 0).length > 0 && (
+        <p className="mb-2 text-2xs text-cost-400" role="status">
+          Sin camas hasta repararlos ({(datos?.danados ?? []).filter((d) => d.camas > 0).map((d) => `${d.name}: ${d.camas}`).join(', ')}): Reino › Edificios › Reparar.
         </p>
       )}
       {/* P220b: todos los requisitos para que llegue alguien, con su estado y su cifra (como en X4). */}
@@ -529,6 +538,11 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
                   </span>
                 )}
               </div>
+              {s.rol === 'trabajador' && s.adulto && s.tarea === 'cocinero' && (datos?.danados ?? []).some((d) => d.cocina) && (
+                <p className="mt-1 text-2xs text-cost-400" role="status">
+                  Su Cocina está dañada: recolecta en vez de cocinar hasta que la repares (Reino › Edificios).
+                </p>
+              )}
               {s.rol === 'trabajador' && s.adulto && (
                 <div className="mt-1.5 flex items-center justify-between gap-2">
                   <span className="text-2xs text-wood-500">Tarea</span>
@@ -542,6 +556,9 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
                     className="min-w-[7rem]"
                   />
                 </div>
+              )}
+              {s.rol === 'trabajador' && s.adulto && s.tarea === 'constructor' && (
+                <p className="mt-1 text-2xs text-wood-400">Constructor de nivel {s.nivelConstructor ?? 1}: hace {(1 + VELOCIDAD_POR_NIVEL_CONSTRUCTOR * ((s.nivelConstructor ?? 1) - 1)).toLocaleString('es-ES', { maximumFractionDigits: 1 })} días de obra por jornada.</p>
               )}
               <div className="mt-1.5 flex items-center gap-2" title={`Felicidad ${s.felicidad}/100`}>
                 <span className="text-2xs text-wood-500">Felicidad</span>

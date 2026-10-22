@@ -168,6 +168,10 @@ export async function asaltoACaravana(tx: Tx, saveId: string, destinoLocationId:
   return ocupanteDe(c.ocupante)?.grupo ?? 'Bandidos';
 }
 
+/// P285: tras un asalto de bandidos al Reino, ese Reino no sufre otro hasta pasados 7 días de juego,
+/// contados desde `ultimoAsaltoReinoDia` (el día que salió el asalto, de cualquier campamento).
+export const DIAS_ENFRIAMIENTO_ASALTO_REINO = 7;
+
 /// CR-67 (principio 10, X4): cada campamento decide cada día, por su estado, si asalta el
 /// asentamiento del Reino más débil de su región: su gente, lo que vale el botín y su necesidad,
 /// frente a la defensa que estima (`decidirAtaque`). Sin temporizador: tras perder gente tiene que
@@ -176,6 +180,10 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
   const campamentos = await prisma.campamento.findMany({ where: { saveId, estado: 'ACTIVO', gente: { gt: 0 } }, orderBy: { createdAt: 'asc' } });
   if (campamentos.length === 0) return 0;
   const ahora = dia * 1440;
+  // P285: enfriamiento del Reino entero (no solo del campamento que asaltó).
+  const ultimo = await prisma.campamento.aggregate({ where: { saveId }, _max: { ultimoAsaltoReinoDia: true } });
+  const ultimoDia = ultimo._max.ultimoAsaltoReinoDia;
+  if (ultimoDia != null && dia - ultimoDia < DIAS_ENFRIAMIENTO_ASALTO_REINO) return 0;
   // Lo que es igual para todos los campamentos ese día, una vez.
   const base = await prisma.$transaction(async (tx) => {
     const asentamientos = await asentamientosDelReino(tx, saveId);
@@ -198,6 +206,7 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
       // El asentamiento del Reino de su región que menos defensa parece tener (X4).
       const blanco = base.asentamientos.filter((a) => a.region === c.region).sort((x, y) => base.defensas.get(x.id)! - base.defensas.get(y.id)!)[0];
       if (!blanco) return;
+      if (salen > 0) return; // P285: un asalto al Reino por tanda; el enfriamiento corre desde hoy.
       const motivo = motivoBandidos({ riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, gente: c.gente, tope: c.tope, intensidad: base.intensidad });
       const d = decidirAtaque({ fuerza: c.gente, enCasa: BANDIDOS_EN_CASA, defensa: base.defensas.get(blanco.id)!, motivo, intensidad: base.intensidad, tamano: base.tamano });
       if (!d.ataca) return;

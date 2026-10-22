@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
+import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
+import { repararEdificio } from '../../services/asaltos.js';
+import { encargarObra, encargarReparacion, quitarObra, reordenarCola, verCasaDeObras } from '../../services/cronista/casaDeObras.js';
 import { edificioDelPunto, encargadoDe, fichaDeEdificio } from '../../services/fichaEdificio.js';
 import { abrirMenuDeNpc } from '../../services/menuDeNpc.js';
 import { conDefinido, nombreVisibleDeNpc, quienEnAviso } from '../../services/dynamicMode.js';
@@ -9,6 +11,71 @@ import { celdaAdyacenteOMisma, celdaDePixel } from '../../services/zonaPosicion.
 /// P178 (QA-27, decidido por la usuaria 2026-10-17): la ficha de un edificio del mapa (`fichaEdificio.ts`) e
 /// «Interactuar» en él, que abre el menú de quien lo lleva (antes salía la tarjeta del NPC más cercano).
 export async function edificiosRoutes(app: FastifyInstance) {
+  /// P284/P296/P301: «Reparar» para todo edificio DANADO (y la Empalizada caída), por la mitad de su coste en materiales.
+  app.post<{ Params: { id: string; buildingId: string } }>('/saves/:id/edificios/:buildingId/reparar', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return repararEdificio(tx, save.id, request.params.buildingId);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true, coste: r.coste };
+  });
+
+  /// Casa de obras (P277/P284, 2026-10-21): la Casa, sus constructores y la cola de obras y reparaciones.
+  app.get<{ Params: { id: string } }>('/saves/:id/obras', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldState: { select: { fictionalMinutes: true } } } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    return verCasaDeObras(prisma, save.id, save.worldState?.fictionalMinutes ?? 0);
+  });
+
+  /// Encarga una obra (`recipeKey`) o una reparación (`buildingId`) al final de la cola.
+  app.post<{ Params: { id: string }; Body: { recipeKey?: string; buildingId?: string } }>('/saves/:id/obras', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const { recipeKey, buildingId } = request.body ?? {};
+    if (!recipeKey === !buildingId) return reply.status(400).send({ error: 'Indica la obra (recipeKey) o el edificio que reparar (buildingId).' });
+    const r = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return recipeKey ? encargarObra(tx, save.id, recipeKey) : encargarReparacion(tx, save.id, buildingId!);
+    });
+    if (!r.ok) return reply.status(400).send({ error: r.motivo });
+    return { ok: true, id: r.id };
+  });
+
+  app.delete<{ Params: { id: string; obraId: string } }>('/saves/:id/obras/:obraId', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const quitada = await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      return quitarObra(tx, save.id, request.params.obraId);
+    });
+    if (!quitada) return reply.status(404).send({ error: 'Esa obra no está en la cola.' });
+    return { ok: true };
+  });
+
+  /// Reordena la cola: `ids` en el orden nuevo.
+  app.put<{ Params: { id: string }; Body: { ids?: string[] } }>('/saves/:id/obras/orden', async (request, reply) => {
+    const ids = request.body?.ids;
+    if (!Array.isArray(ids) || ids.some((x) => typeof x !== 'string')) return reply.status(400).send({ error: 'Falta el orden (ids).' });
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    await prisma.$transaction(async (tx) => {
+      await lockRowForUpdate(tx, 'Save', save.id, ['id']);
+      await reordenarCola(tx, save.id, ids);
+    });
+    return { ok: true };
+  });
+
   app.get<{ Params: { id: string; zonePointId: string } }>('/saves/:id/zona/edificio/:zonePointId', async (request, reply) => {
     const ficha = await fichaDeEdificio(prisma, request.params.id, request.params.zonePointId);
     if (!ficha) return reply.status(404).send({ error: 'Ese edificio no está en tu partida' });

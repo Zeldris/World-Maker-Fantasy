@@ -5,10 +5,11 @@ import { scopeFor } from '../../services/npcScene.js';
 import { equipSlotFamily, effectiveAttributes, effectiveInventorySlotsBonus } from '../../services/equipment.js';
 import { inventoryCapacityFor, totalInventoryUnits } from '../../services/inventoryCapacity.js';
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
-import { plazasTrabajadorParaTier } from '../../services/construction.js';
+import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../services/construction.js';
+import { COCINA_RECIPE_KEYS } from '../../services/kingdomTick.js';
 import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, requisitosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
-import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
+import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
@@ -700,7 +701,7 @@ export async function companerosRoutes(app: FastifyInstance) {
 
     // CR-53 (Q2): los materiales caben hasta el tope del Almacén (base y Leñeras).
     if ((await esMaterial(prisma, request.params.id, item.catalogSlug)) && (await huecoDeMateriales(prisma, request.params.id)) <= 0) {
-      return reply.status(400).send({ error: 'No caben más materiales en el Almacén: construye una Leñera.' });
+      return reply.status(400).send({ error: await motivoMaterialesLlenos(prisma, request.params.id) });
     }
     const result = await prisma.$transaction(async (tx) => {
       await tx.inventoryItem.delete({ where: { id: item.id } });
@@ -924,7 +925,10 @@ export async function companerosRoutes(app: FastifyInstance) {
     // P220b: todos los requisitos de llegada con su estado (mismos umbrales que `motivoSinLlegada`).
     const stats = await prisma.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { comida: true, bebida: true, felicidad: true } });
     const requisitosLlegada = stats ? requisitosDeLlegada({ camasLibres: camas.libresSubditos, camasTotales: camas.total + camas.temporales, ...stats, candidatoEsperando: candidatos.length > 0 }) : [];
-    return { ahora, subditos, camas, salidas, requisitosLlegada, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
+    // P284/P301 — los edificios dañados no cuentan (camas, Cocina): la interfaz lo dice y manda a repararlos.
+    const danadosRows = await prisma.building.findMany({ where: { saveId: save.id, status: 'DANADO' }, select: { id: true, name: true, recipeKey: true } });
+    const danados = danadosRows.map((b) => ({ id: b.id, name: b.name, camas: companionSlotsForRecipeKey(b.recipeKey), cocina: !!b.recipeKey && COCINA_RECIPE_KEYS.has(b.recipeKey) }));
+    return { ahora, subditos, camas, danados, salidas, requisitosLlegada, candidatos: candidatos.map((c) => ({ ...datosCandidatos.find((d) => d.id === c.id)!, deDonde: c.deDonde, hastaMinutes: c.hastaMinutes })) };
   });
 
   /// REI-119: aceptar o rechazar a quien llega al Reino.
