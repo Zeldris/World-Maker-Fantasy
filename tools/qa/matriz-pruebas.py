@@ -14,7 +14,8 @@ Uso:
   python3 tools/qa/matriz-pruebas.py --generar    añade las filas que falten (estado inicial: «jugado» si
                                                   la tarea sale en un registro de pruebas en una línea con ✅
                                                   o «Comprobado jugando»; si no, «sin jugar»)
-  python3 tools/qa/matriz-pruebas.py --comprobar  sale con 1 si falta la fila de alguna tarea cerrada (pre-push)
+  python3 tools/qa/matriz-pruebas.py --comprobar  sale con 1 si falta la fila de alguna tarea cerrada o una «jugado»
+                                                  tiene la prueba en «parcial …» (pre-push)
   python3 tools/qa/matriz-pruebas.py --bloque Reino  las filas sin jugar de ese bloque (para preparar una ronda)
 """
 import io, os, re, sys, runpy, contextlib
@@ -130,6 +131,9 @@ def main():
             print('Se dejan porque tienen estado o prueba escritos (quítalas a mano si de verdad no cuentan):', ', '.join(sobran))
         faltan = []
     malos = [i for i, f in filas.items() if f[2] not in ESTADOS]
+    # QA-213: CR-9 y otras cinco pasaron a «jugado» con la prueba aún en «parcial …, falta …» y el recuento se inflaba.
+    # Al pasar a «jugado», la prueba se reescribe con lo jugado; si aún falta algo, la fila sigue «sin jugar».
+    parciales = [i for i, f in filas.items() if f[2] == 'jugado' and f[3].lower().startswith('parcial')]
     if '--bloque' in args:
         k = args.index('--bloque') + 1
         if k >= len(args):
@@ -156,7 +160,9 @@ def main():
         print('SOBRAN EN LA MATRIZ (no son tareas cerradas; `--generar`):', ', '.join(sobran))
     if malos:
         print('ESTADO DESCONOCIDO:', ', '.join(malos), '— vale:', ', '.join(ESTADOS))
-    return 1 if '--comprobar' in args and (faltan or malos or sobran) else 0
+    if parciales:
+        print('JUGADO CON PRUEBA PARCIAL (reescribe la prueba con lo jugado o vuelve a «sin jugar»):', ', '.join(parciales))
+    return 1 if '--comprobar' in args and (faltan or malos or sobran or parciales) else 0
 
 
 if __name__ == '__main__':

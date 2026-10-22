@@ -20,7 +20,7 @@ python3 tools/roadmap/cobertura.py > /tmp/pre-push-cobertura.log || { grep -v "^
 # QA-108: el mapa del agente no nombra archivos ni funciones que ya no existen.
 python3 tools/qa/mapa-agente.py > /tmp/pre-push-mapa.log || { cat /tmp/pre-push-mapa.log; echo "pre-push: docs/mapa-agente.md nombra algo que ya no existe"; exit 1; }
 # QA-101: cada tarea cerrada de los hitos en prueba tiene su fila en la matriz de cobertura.
-python3 tools/qa/matriz-pruebas.py --comprobar > /tmp/pre-push-matriz.log || { grep -E "^FALTAN|^SOBRAN|^ESTADO" /tmp/pre-push-matriz.log; echo "pre-push: matriz de pruebas incompleta (tools/qa/matriz-pruebas.py --generar)"; exit 1; }
+python3 tools/qa/matriz-pruebas.py --comprobar > /tmp/pre-push-matriz.log || { grep -E "^FALTAN|^SOBRAN|^ESTADO|^JUGADO CON" /tmp/pre-push-matriz.log; echo "pre-push: matriz de pruebas incompleta o con una prueba parcial (tools/qa/matriz-pruebas.py)"; exit 1; }
 # QA-35 (imágenes), QA-66 (qué commits sube: un push vacío también decía «todo en verde») y QA-69
 # (bitácora de cada commit), en `tools/qa/prepush-ramas.sh` para poder probarlo (QA-74). Git pasa por la
 # entrada «ref local, sha local, ref remota, sha remota» de cada rama que se sube.
