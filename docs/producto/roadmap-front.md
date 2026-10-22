@@ -1486,7 +1486,7 @@ Retro previa al PR de `claude/puerta-pruebas` (aprobadas por la usuaria el 2026-
 
 Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-22, [retro](../registros/retro-2026-10-22-pruebas-3-3.md); 195, 197, 198 y 200 se aplican ya; 196 y 199 son del paso 3.4 de la línea):
 - ~~**QA-195 · Aviso de «reabierto» o «falta ver» que cuenta como hecho**: los subagentes escriben lo nuevo delante del estado viejo (P116 y P189 del 3.3).~~ ✅ 2026-10-22: `marca-hallazgo.py --resumen --comprobar` (CI) falla si un estado con «reabierto», o con «falta ver/comprobar» y contado como comprobado, cae en arreglado o comprobado; test en `test_marca_hallazgo.py`.
-- **QA-196 · Chuleta del driver en lugar de notas por tanda**: «Fallos de las herramientas» del runbook crece ~12 líneas por PR y cada tanda la lee entera (35k); rehacerla como chuleta por herramienta y borrar lo resuelto. Paso 3.4, junto a `QA-193`.
+- **QA-196 · Chuleta del driver en lugar de notas por tanda**: «Fallos de las herramientas» del runbook crece ~12 líneas por PR y cada tanda la lee entera (35k); rehacerla como chuleta por herramienta y borrar lo resuelto. Paso 3.4, junto a `QA-193`. 🚧 en parte 2026-10-22 (`QA-208`): el historial pasó a `docs/registros/fallos-herramientas.md` y el runbook tiene «Trucos de las herramientas» con los vigentes; falta ordenarlos por herramienta y depurar duplicados del registro.
 - ~~**QA-197 · `escenario.sh` en una orden sola**: el modo auto denegó `dar` en la tanda 13b-1 por ir encadenado con `o.sh pulsar`.~~ ✅ 2026-10-22: regla en `rondas-de-pruebas.md` (en una orden Bash sola; la usuaria lo autoriza para preparar la partida) y nota de la 13b-1 corregida. La regla `allow` ya existía.
 - ~~**QA-198 · Test de los atajos de la Deck**: `juego.sh` llegó sin `_path.sh` al PR.~~ ✅ 2026-10-22: `tools/qa/tests/test_atajos_deck.py` exige que todo `tools/qa/deck/*.sh` que lleve a `psql`, `pg_dump`, `pg_restore` o `arrancar-juego.sh` (directo o por otro atajo) cargue `_path.sh`; en rojo sin esa línea en `juego.sh`.
 - **QA-199 · Partidas intermedias de una tanda fuera de git**: el PR subió 5 `.dump` de ~900 KB; que `escenario.sh guardar` deje las intermedias en `logs/` (ignorado) y solo suba a `tools/qa/escenarios/` lo guardado con `--subir`. Paso 3.4.
@@ -1500,6 +1500,18 @@ Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-
 - **QA-205 · Aislar el test intermitente de cronista** (`decisionesFaccion`/`deudaDeVida`): pasa solo y falla a veces en la suite completa, seguramente por la base compartida; puede poner el CI en rojo sin motivo. Paso 3.4.
 - **QA-206 · `fusionar.sh` desde la raíz**: si se lanza dentro del worktree que borra acaba con error de `getcwd` (aunque fusiona), y con el agente vivo no borra el worktree sin decir por qué; que trabaje desde la raíz y avise del bloqueo. Paso 3.4.
 - **QA-207 · `medir.py`, contexto de toda la sesión**: con `--horas 0` da 382k de contexto medio frente a ~110k de los 8 tramos que enseña; que lo cuadre o diga «últimos 8». Paso 3.4.
+
+`/opt-tokens` y retro previos al PR de `claude/pruebas-reino` (aprobadas por la usuaria el 2026-10-22 y aplicadas en la rama):
+- ~~**QA-208 · Fallos de las herramientas fuera del runbook**: la sección ocupaba 22,8 KB de 34 KB y la leía entera cada subagente de tanda (~330k tokens por tanda).~~ ✅ 2026-10-22: historial en `docs/registros/fallos-herramientas.md`; en el runbook, «Trucos de las herramientas» con los 17 vigentes (34 → 14 KB).
+- ~~**QA-209 · El runbook de rondas lo lee quien juega**: la principal lo leyó entero sin jugar (~520k arrastrados).~~ ✅ 2026-10-22: `CLAUDE.md`, «Al jugar».
+- ~~**QA-210 · Gancho `commit-msg` con `Siguiente:`**: dos commits de subagentes salieron sin él.~~ ✅ 2026-10-22: `.githooks/commit-msg` (solo con `CLAUDECODE=1`; merges y revert pasan), con test.
+- ~~**QA-211 · `escenario.sh guardar` valida la descripción**: `t16-reino` y `t20-mundo` llevaban el id de la partida en el índice.~~ ✅ 2026-10-22: rechaza una palabra sola o un id, con test.
+- ~~**QA-212 · Reabrir solo si el arreglo no funciona**: P293 se reabrió con otro fallo y la revisión lo partió en P319.~~ ✅ 2026-10-22: línea en «Cómo se juega» del runbook de rondas.
+- ~~**QA-213 · La matriz no cuenta como jugada una prueba «parcial»**: CR-9 y otras seis pasaron a «jugado» con el texto «parcial … falta».~~ ✅ 2026-10-22: `matriz-pruebas.py --comprobar` las señala (pre-push), con test; las 7 filas reescritas.
+- ~~**QA-214 · `*.kate-swp` en `.gitignore`**: el temporal de Kate se coló en un `git add docs/`.~~ ✅ 2026-10-22.
+
+Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
+- ~~**QA-215 · A `main` sin PR con el CI en local**: sin minutos de Actions no hay CI de PR y no se podía fusionar.~~ ✅ 2026-10-22: `tools/qa/ci-local.sh` repite los tres jobs de `ci.yml` (base `tarkor_ci` nueva); con él en verde, merge a `main` y `git push origin HEAD:main` sin PR (`CLAUDE.md`, «Ramas y main»). Estrenado con `claude/pruebas-reino`; encontró un enlace roto en su descripción.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

@@ -13,6 +13,7 @@ from comun import QA
 
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 EXCEPCIONES = {
+    'ci-local.sh': 'repite la CI entera con Postgres, npm ci y los tests (QA-215); se prueba al usarla',
     'bench-ia.sh': 'juega turnos con el Ollama real de la Deck (QA-173); se prueba al medir',
     'comprobar-escenarios.sh': 'restaura las instantáneas en Postgres; la corre la CI con la base',
     'recorrer.sh': 'lanza los recorridos de Playwright con el juego en marcha',
