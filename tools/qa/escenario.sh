@@ -40,6 +40,9 @@ case "${1:-}" in
   guardar)
     nombre="${2:?falta el nombre}"; que="${3:?falta qué tiene (partida, estado, día)}"
     [[ "$nombre" =~ ^[a-z0-9-]+$ ]] || { echo "nombre en minúsculas y guiones"; exit 2; }
+    # QA-211: t16-reino y t20-mundo se guardaron con el id de la partida como descripción y el índice no decía qué
+    # tenían. La descripción es una frase: partida, estado y día.
+    [[ "$que" == *" "* && ! "$que" =~ ^c[a-z0-9]{24}$ ]] || { echo "«$que» no describe la instantánea: di qué tiene (partida, estado, día)"; exit 2; }
     # Por la salida estándar, no con `-f`: así vale también el shim de la Deck (pg_dump va dentro del contenedor).
     pg_dump -Fc --no-owner "$URL" > "$DIR/$nombre.dump.tmp" || { rm -f "$DIR/$nombre.dump.tmp"; echo "pg_dump ha fallado: no se guarda nada"; exit 1; }
     mv "$DIR/$nombre.dump.tmp" "$DIR/$nombre.dump"

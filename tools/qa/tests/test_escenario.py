@@ -63,5 +63,23 @@ class Probar(unittest.TestCase):
         self.assertIn('DROP DATABASE IF EXISTS prueba_', leer(os.path.join(d, 'llamadas.log')))
 
 
+class Guardar(unittest.TestCase):
+    """QA-211: `guardar` rechaza una descripción que no es una frase (p. ej. el id de la partida) sin tocar postgres."""
+    repo = Probar.repo
+
+    def guardar(self, d: str, *args: str):
+        env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
+        return subprocess.run(['bash', 'tools/qa/escenario.sh', 'guardar', *args], cwd=d, env=env, capture_output=True, text=True)
+
+    def test_rechaza_el_id_de_la_partida_o_una_palabra(self):
+        d = self.repo()
+        for que in ('cmvex1v0300057d0pdjlbezcj', 'reino'):
+            r = self.guardar(d, 'dos', que)
+            self.assertEqual(r.returncode, 2, r.stdout)
+            self.assertIn('no describe', r.stdout)
+        self.assertFalse(os.path.exists(os.path.join(d, 'tools', 'qa', 'escenarios', 'dos.dump')))
+        self.assertFalse(os.path.exists(os.path.join(d, 'llamadas.log')))
+
+
 if __name__ == '__main__':
     unittest.main()

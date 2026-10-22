@@ -76,9 +76,10 @@ lo que cambia antes de darla por cerrada, sin dejar arreglos para una fase poste
 decisión del 2026-10-02: implementación continua solo con tests y pruebas de juego en una fase única
 antes de la beta.
 
-**Al jugar** (ronda de pruebas, «sigue probando», «juega»): antes de la primera acción, relee
+**Al jugar** (ronda de pruebas, «sigue probando», «juega»): quien lanza `orden.sh` (en una ronda repartida, el
+subagente de cada tanda), antes de la primera acción, relee
 [`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md): con qué se juega, qué se
-prueba y cómo se apunta (`QA-56`).
+prueba y cómo se apunta (`QA-56`). La sesión que reparte lee solo «Qué se prueba» (`QA-209`).
 
 ## Mensajes de commit
 

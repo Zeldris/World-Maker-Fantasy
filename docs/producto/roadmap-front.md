@@ -1501,6 +1501,15 @@ Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-
 - **QA-206 · `fusionar.sh` desde la raíz**: si se lanza dentro del worktree que borra acaba con error de `getcwd` (aunque fusiona), y con el agente vivo no borra el worktree sin decir por qué; que trabaje desde la raíz y avise del bloqueo. Paso 3.4.
 - **QA-207 · `medir.py`, contexto de toda la sesión**: con `--horas 0` da 382k de contexto medio frente a ~110k de los 8 tramos que enseña; que lo cuadre o diga «últimos 8». Paso 3.4.
 
+`/opt-tokens` y retro previos al PR de `claude/pruebas-reino` (aprobadas por la usuaria el 2026-10-22 y aplicadas en la rama):
+- ~~**QA-208 · Fallos de las herramientas fuera del runbook**: la sección ocupaba 22,8 KB de 34 KB y la leía entera cada subagente de tanda (~330k tokens por tanda).~~ ✅ 2026-10-22: historial en `docs/registros/fallos-herramientas.md`; en el runbook, «Trucos de las herramientas» con los 15 vigentes (34 → 14 KB).
+- ~~**QA-209 · El runbook de rondas lo lee quien juega**: la principal lo leyó entero sin jugar (~520k arrastrados).~~ ✅ 2026-10-22: `CLAUDE.md`, «Al jugar».
+- ~~**QA-210 · Gancho `commit-msg` con `Siguiente:`**: dos commits de subagentes salieron sin él.~~ ✅ 2026-10-22: `.githooks/commit-msg` (solo con `CLAUDECODE=1`; merges y revert pasan), con test.
+- ~~**QA-211 · `escenario.sh guardar` valida la descripción**: `t16-reino` y `t20-mundo` llevaban el id de la partida en el índice.~~ ✅ 2026-10-22: rechaza una palabra sola o un id, con test.
+- ~~**QA-212 · Reabrir solo si el arreglo no funciona**: P293 se reabrió con otro fallo y la revisión lo partió en P319.~~ ✅ 2026-10-22: línea en «Cómo se juega» del runbook de rondas.
+- ~~**QA-213 · La matriz no cuenta como jugada una prueba «parcial»**: CR-9 y otras seis pasaron a «jugado» con el texto «parcial … falta».~~ ✅ 2026-10-22: `matriz-pruebas.py --comprobar` las señala (pre-push), con test; las 7 filas reescritas.
+- ~~**QA-214 · `*.kate-swp` en `.gitignore`**: el temporal de Kate se coló en un `git add docs/`.~~ ✅ 2026-10-22.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
