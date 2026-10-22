@@ -7,7 +7,7 @@ import {
   avanzarCasaDeObras,
   encargarObra,
   encargarReparacion,
-  materialesDelDia,
+  cuotaDelDia,
   quitarObra,
   reordenarCola,
   repartirObras,
@@ -46,10 +46,11 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       const uno = repartirObras(obras.slice(0, 2), [{ id: 'x', nivelConstructor: 3 }], 1);
       expect(uno.get('b')).toEqual({ aviso: expect.stringMatching(/Esperando turno/) });
     });
-    it('los materiales se reparten por los días que quedan', () => {
-      expect(materialesDelDia(12, 0, 3, 0)).toBe(4);
-      expect(materialesDelDia(13, 4, 3, 1)).toBe(5);
-      expect(materialesDelDia(5, 5, 2, 2)).toBe(0);
+    it('cada material de la receta se reparte entre los días de la obra y suma justo su cantidad', () => {
+      expect([0, 1, 2].map((d) => cuotaDelDia(6, 3, d))).toEqual([2, 2, 2]);
+      expect([0, 1, 2].map((d) => cuotaDelDia(4, 3, d))).toEqual([2, 1, 1]);
+      expect([0, 1, 2, 3, 4, 5].map((d) => cuotaDelDia(1, 6, d))).toEqual([1, 0, 0, 0, 0, 0]);
+      expect(cuotaDelDia(5, 2, 2)).toBe(0);
     });
   });
 
@@ -64,6 +65,21 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     const ahora = 0;
 
     const llenarAlmacen = (n: number) => prisma.almacenItem.createMany({ data: Array.from({ length: n }, (_, i) => ({ saveId, name: `Material ${i}`, description: 'x', catalogSlug: recursoSlug })) });
+    /// Mete en el Almacén los materiales exactos de una receta (por categoría, el primer objeto del
+    /// catálogo de esa categoría), multiplicados por `veces`. Devuelve cuántas filas metió.
+    const llenarPara = async (key: string, veces = 1, saltar: string[] = []) => {
+      const data: { saveId: string; name: string; description: string; catalogSlug: string }[] = [];
+      for (const req of receta(key).requirements) {
+        if (saltar.includes(req.label)) continue;
+        const slug =
+          req.match.kind === 'exact'
+            ? req.match.catalogSlug
+            : (await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: req.match.tipo, category: req.match.category }, orderBy: { slug: 'asc' } })).slug;
+        for (let i = 0; i < req.cantidad * veces; i++) data.push({ saveId, name: req.label, description: 'x', catalogSlug: slug });
+      }
+      await prisma.almacenItem.createMany({ data });
+      return data.length;
+    };
     const jornada = () => prisma.$transaction((tx) => avanzarCasaDeObras(tx, saveId, ahora));
     const bloqueo = (key: string, quien?: 'personaje' | 'casa-de-obras') =>
       computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe: receta(key), activeRegion: null, currentLocationRecord: { id: casaLoc }, quien });
@@ -99,12 +115,12 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     });
 
     it('construye un pozo (T1) desde la cola: gasta del Almacén, lo levanta y el constructor gana XP', async () => {
-      await llenarAlmacen(15);
+      const metidas = await llenarPara('pozo', 2);
       const r = await prisma.$transaction((tx) => encargarObra(tx, saveId, 'pozo'));
       expect(r.ok).toBe(true);
       expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
       expect(await prisma.building.count({ where: { saveId, recipeKey: 'pozo', status: 'ACTIVO', locationId: casaLoc } })).toBe(1);
-      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(3);
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(metidas / 2);
       expect(await prisma.obraCola.count({ where: { saveId } })).toBe(0);
       expect((await prisma.subject.findUniqueOrThrow({ where: { id: constructorId } })).xpConstructor).toBe(10);
       expect(await prisma.suceso.count({ where: { saveId, tipo: 'EDIFICIO_CONSTRUIDO' } })).toBe(1);
@@ -143,7 +159,7 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     });
 
     it('🔒: una mejora de tier 6 espera a una Casa de nivel 2 y a un constructor de nivel 6, y luego mejora en el sitio', async () => {
-      await llenarAlmacen(60);
+      await llenarPara('ayuntamiento-mediano');
       const r = await prisma.$transaction((tx) => encargarObra(tx, saveId, 'ayuntamiento-mediano'));
       expect(r.ok).toBe(true);
       await jornada();
@@ -154,9 +170,60 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 6 } });
       for (let d = 0; d < 6; d++) await jornada();
       expect(await prisma.obraCola.count({ where: { saveId } })).toBe(0);
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
       const ayto = await prisma.building.findUniqueOrThrow({ where: { id: ayuntamientoId } });
       expect(ayto).toMatchObject({ tier: 2, recipeKey: 'ayuntamiento', name: 'un ayuntamiento mediano' });
       expect(await prisma.building.count({ where: { saveId, recipeKey: 'ayuntamiento' } })).toBe(1);
+    });
+
+    it('X4: gasta los materiales exactos día a día; si falta uno, se para ese día sin perder lo avanzado', async () => {
+      // Jaula pequeña (T1) dura 1 día: para ver el reparto hace falta una obra de varios días.
+      const r3 = CONSTRUCTION_RECIPES.find((x) => x.tier === 3 && !x.upgradesRecipeKey && x.requirements.length >= 2 && !x.requiresAyuntamiento)!;
+      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 3 } });
+      const [primero, ...resto] = r3.requirements;
+      // Todo menos el primer material: el día 1 se para.
+      await llenarPara(r3.key, 1, [primero.label]);
+      const total = r3.requirements.reduce((s, q) => s + q.cantidad, 0);
+      const sinPrimero = total - primero.cantidad;
+      expect((await prisma.$transaction((tx) => encargarObra(tx, saveId, r3.key))).ok).toBe(true);
+      expect(await jornada()).toEqual({ avanzadas: 0, terminadas: 0 });
+      let obra = await prisma.obraCola.findFirstOrThrow({ where: { saveId } });
+      expect(obra.aviso).toContain(`Faltan materiales en el Almacén: ${cuotaDelDia(primero.cantidad, 3, 0)} de ${primero.label}`);
+      expect(obra.diasHechos).toBe(0);
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(sinPrimero);
+      // Llega el primer material: el día 1 gasta su cuota de cada uno.
+      await llenarPara(r3.key, 1, resto.map((q) => q.label));
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 0 });
+      obra = await prisma.obraCola.findFirstOrThrow({ where: { saveId } });
+      const dia1 = r3.requirements.reduce((s, q) => s + cuotaDelDia(q.cantidad, 3, 0), 0);
+      expect(obra).toMatchObject({ diasHechos: 1, gastados: dia1, aviso: null });
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(total - dia1);
+      // Se lleva del Almacén lo que queda del primer material: el día 2 se para y conserva el día 1.
+      const slugPrimero = (await prisma.almacenItem.findFirst({ where: { saveId, name: primero.label } }))!.catalogSlug;
+      await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: slugPrimero, name: primero.label } });
+      expect(await jornada()).toEqual({ avanzadas: 0, terminadas: 0 });
+      obra = await prisma.obraCola.findFirstOrThrow({ where: { saveId } });
+      expect(obra).toMatchObject({ diasHechos: 1, gastados: dia1 });
+      expect(obra.aviso).toMatch(/Faltan materiales/);
+      // Vuelve el material: termina en los dos días que faltan y el Almacén queda vacío.
+      await prisma.almacenItem.createMany({
+        data: Array.from({ length: primero.cantidad - cuotaDelDia(primero.cantidad, 3, 0) }, () => ({ saveId, name: primero.label, description: 'x', catalogSlug: slugPrimero })),
+      });
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 0 });
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
+      expect(await prisma.building.count({ where: { saveId, recipeKey: r3.key, status: 'ACTIVO' } })).toBe(1);
+      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 1 } });
+    });
+
+    it('puerta del diseño: T4-6 piden Ayuntamiento mediano y T7-9 grande, salvo el propio Ayuntamiento', async () => {
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
+      expect(await bloqueo('jaula-grande', 'casa-de-obras')).toMatch(/necesita un Ayuntamiento mediano/);
+      expect(await bloqueo('ayuntamiento-mediano', 'casa-de-obras') ?? '').not.toMatch(/necesita un Ayuntamiento/);
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 2 } });
+      expect(await bloqueo('jaula-grande', 'casa-de-obras') ?? '').not.toMatch(/necesita un Ayuntamiento/);
+      expect(await bloqueo('ayuntamiento-grande', 'casa-de-obras') ?? '').not.toMatch(/necesita un Ayuntamiento/);
+      await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
     });
 
     it('sin Casa de obras no se encarga nada', async () => {

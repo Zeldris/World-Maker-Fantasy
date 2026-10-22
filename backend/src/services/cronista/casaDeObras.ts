@@ -3,8 +3,10 @@
 // - La Casa de obras tiene 3 niveles: cubre obras de tier 1-3, 4-6 y 7-9, con 1, 2 y 3 plazas.
 // - Sus trabajadores son súbditos con la tarea «constructor». Cada uno toma, cada día, la primera
 //   obra de la cola que su nivel alcanza (`Subject.nivelConstructor`) y que nadie trabaja ya ese día.
-// - Una obra de tier N dura N días (una reparación, 1) y gasta materiales del Almacén día a día:
-//   lo que queda de su coste repartido entre los días que faltan. Sin materiales, no avanza.
+// - Una obra de tier N dura N días (una reparación, 1) y gasta del Almacén los materiales exactos de
+//   su receta repartidos entre esos días, al estilo de X4 (`cuotaDelDia`). Si un día falta alguno,
+//   la obra se para ese día con un aviso y no gasta nada, sin perder lo avanzado. Una reparación
+//   sigue gastando materiales genéricos (`costeDeReparar`).
 // - Una obra que nadie alcanza lleva el aviso «🔒N».
 // - Al terminar se revalida con las reglas de siempre (`computeBuildBlockedReason`) y se levanta
 //   (o se mejora en el sitio, `mejorarEnSitio`); una reparación usa `repararEdificio` (asaltos.ts).
@@ -19,7 +21,7 @@ import {
   type ConstructionRecipe,
 } from '../construction.js';
 import { repararEdificio } from '../asaltos.js';
-import { gastarMateriales } from './facturaEquipo.js';
+import { planConsumption, totalQuantity, type CatalogLookup, type InventoryRowLike } from '../ingredients.js';
 import { professionLevelForXp, xpForCraftSuccess } from '../professionProgress.js';
 import { registrarSuceso } from './sucesos.js';
 import { avisarEnReino, esAdultoSubdito, rolDeSubdito } from './subditos.js';
@@ -39,15 +41,54 @@ export function plazasDeCasa(nivel: number): number {
   return Math.min(3, Math.max(1, nivel));
 }
 
-/// Total de materiales de una receta (como `costeDeReparar`, en unidades genéricas del Almacén).
+/// Total de materiales de una receta, en unidades.
 export function materialesDeReceta(recipe: ConstructionRecipe): number {
   return recipe.requirements.reduce((s, q) => s + q.cantidad, 0);
 }
 
-/// Materiales que gasta hoy una obra: lo que falta repartido entre los días que quedan.
-export function materialesDelDia(total: number, gastados: number, dias: number, diasHechos: number): number {
-  const quedan = Math.max(1, dias - diasHechos);
-  return Math.max(0, Math.ceil((total - gastados) / quedan));
+/// Puro: unidades de un material que se gastan el día `diasHechos + 1` de una obra de `dias` días.
+/// Lo acumulado hasta el día d es ceil(cantidad·d/dias), así que el último día se llega justo a la
+/// cantidad de la receta.
+export function cuotaDelDia(cantidad: number, dias: number, diasHechos: number): number {
+  const d = Math.max(1, dias);
+  const acumulado = (n: number) => Math.ceil((cantidad * Math.min(n, d)) / d);
+  return acumulado(diasHechos + 1) - acumulado(diasHechos);
+}
+
+/// Gasta del Almacén la cuota de hoy de cada material de la receta (fila por unidad, por slug exacto
+/// o por categoría del catálogo). Todo o nada: si falta alguno, no borra ninguna fila y devuelve
+/// qué falta.
+async function gastarCuotaDelDia(
+  tx: Tx,
+  saveId: string,
+  recipe: ConstructionRecipe,
+  dias: number,
+  diasHechos: number,
+): Promise<{ ok: true; gastadas: number } | { ok: false; faltan: string[] }> {
+  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+  const catalogo = await tx.itemCatalog.findMany({ where: { worldId: save.worldId }, select: { slug: true, tipo: true, category: true } });
+  const catalogBySlug = new Map<string, CatalogLookup>(catalogo.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
+  const filas = await tx.almacenItem.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' }, select: { id: true, catalogSlug: true } });
+  // Una fila es una unidad: el nombre no lleva cantidad.
+  let libres: InventoryRowLike[] = filas.map((f) => ({ id: f.id, name: '', catalogSlug: f.catalogSlug }));
+  const borrar: string[] = [];
+  const faltan: string[] = [];
+  for (const req of recipe.requirements) {
+    const cantidad = cuotaDelDia(req.cantidad, dias, diasHechos);
+    if (cantidad <= 0) continue;
+    const hoy = { ...req, cantidad };
+    const tienes = totalQuantity(libres, hoy, catalogBySlug);
+    if (tienes < cantidad) {
+      faltan.push(`${cantidad - tienes} de ${req.label}`);
+      continue;
+    }
+    const usadas = new Set(planConsumption(libres, hoy, catalogBySlug).deleteIds);
+    borrar.push(...usadas);
+    libres = libres.filter((r) => !usadas.has(r.id));
+  }
+  if (faltan.length > 0) return { ok: false, faltan };
+  if (borrar.length > 0) await tx.almacenItem.deleteMany({ where: { id: { in: borrar } } });
+  return { ok: true, gastadas: borrar.length };
 }
 
 export interface ConstructorParaReparto {
@@ -293,12 +334,12 @@ export async function avanzarCasaDeObras(tx: Tx, saveId: string, ahora: number):
       continue;
     }
     if (o.diasHechos < o.dias) {
-      const hoy = materialesDelDia(materialesDeReceta(recipe), o.gastados, o.dias, o.diasHechos);
-      if (!(await gastarMateriales(tx, saveId, hoy))) {
-        await tx.obraCola.update({ where: { id: o.id }, data: { aviso: `Faltan materiales: hoy hacen falta ${hoy} en el Almacén.` } });
+      const gasto = await gastarCuotaDelDia(tx, saveId, recipe, o.dias, o.diasHechos);
+      if (!gasto.ok) {
+        await tx.obraCola.update({ where: { id: o.id }, data: { aviso: `Faltan materiales en el Almacén: ${gasto.faltan.join(', ')}.` } });
         continue;
       }
-      await tx.obraCola.update({ where: { id: o.id }, data: { diasHechos: { increment: 1 }, gastados: { increment: hoy }, aviso: null } });
+      await tx.obraCola.update({ where: { id: o.id }, data: { diasHechos: { increment: 1 }, gastados: { increment: gasto.gastadas }, aviso: null } });
       await darXp(tx, c, o.tier, o.dias);
       res.avanzadas++;
       if (o.diasHechos + 1 < o.dias) continue;
