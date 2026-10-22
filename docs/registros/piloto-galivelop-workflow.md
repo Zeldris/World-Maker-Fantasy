@@ -34,6 +34,8 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 10 | 3, `scout-updates` | El banco de calidad por pares (`banco.py`) no está en el flujo; las evals de WMF eran de su skill en español. | Banco a `tools/qa/banco-calidad.py` y `docs/scout/banco/README.md`; evals borradas (en git). Inventario y contraste del flujo, comprobados iguales en WMF y en los casos difíciles. |
 | 11 | 3, `settings.json` | Claude Code lanza a la vez los hooks del mismo `SessionStart`: `install` de `gw.json` (npm install) correría en paralelo con el arranque de WMF, que necesita `node_modules` para Prisma, Postgres y migraciones. | `install: []`; las dependencias siguen en `.claude/hooks/session-start.sh`. El gancho de revisión, `recuperar.py` y `core.hooksPath`, los del flujo; el `revision-antes-de-main.sh` de WMF, borrado. |
 | 12 | 3, `.githooks` | `protectedPaths` se había puesto en `docs/rpgtarkor/`, pero Claude sí commitea ahí el lore aprobado cuando la usuaria lo pide; lo que el `pre-commit` de WMF paraba era `docs/borradores-opencode/` (`QA-144`). El `pre-commit` del flujo saca la raíz de su ruta: el test de WMF, que lo corría en un repo temporal, miraba el de WMF. | `protectedPaths: ["docs/borradores-opencode/"]`; el test copia gancho, scripts y `gw.json` al repo temporal (10 tests en verde). `pre-push` del flujo: los mismos `check`, y las imágenes (`QA-35`) van en `tests-vitest.sh`. `commit-msg` (`QA-210`) se queda. |
+| 13 | 4, inicio | No se puede clonar el repo del flujo (`Zeldris/Galivelop-workflow` es privado y no está entre los de la sesión de la nube; `add_repo` lo deniega). | Se trabaja con la copia instalada en `.claude/gw/` y, de referencia, el clon público de Portal-Galivelop (`REVIEW.md`, `GLOSSARY.md`, `comprobar.yml`). |
+| 14 | 4, duplicados de `tools/qa` | Los 7 scripts del flujo hacen lo mismo salvo: `bitacora.py closed` da por apuntada una tarea con un punto sin tachar que empieza por su id (WMF exigía la línea tachada, `QA-85`); `check` ignora una fila «Tarea en curso» sin rama si hay otras buenas; `enlaces-md.py` no tiene la excepción de `docs/registros/pr/` (enlaces desde la raíz, `QA-184`); `rojo-sin-arreglo.sh` toma una orden entera y ya no comprueba que se ejecute exactamente un test (lo sustituye `--fails-with`); `recuperar.py --buscar` busca como texto una expresión mala; `revisado.sh` hace commit de la marca. | Tests de WMF portados a los scripts del flujo (`test_bitacora`, `test_prepush_ramas`, `test_enlaces_md`, `test_recuperar`; 169 en verde) y los 7 borrados. Las descripciones de PR enlazan desde su carpeta (3 arregladas), y dos enlaces rotos del propio piloto (`CLAUDE.md#pruebas-de-juego` → `AGENTS.md`, el banco del scout). CI, `ci-local.sh`, runbook y `EXCEPCIONES` al día. |
 
 ## For Galivelop-workflow
 
@@ -52,3 +54,10 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 - `scout-updates`: WMF ofrece su banco por pares a ciegas (`tools/qa/banco-calidad.py`, con test) para el paso 5.
 - `session-start.sh`/`install`: los hooks de inicio corren en paralelo; un paso `setup` del proyecto que corra tras
   `install` (en el mismo script del flujo) permitiría dejar las dependencias en `gw.json`.
+- `bitacora.py closed`: contar como apuntada solo la línea tachada de «Hecho» (o la que empieza por fecha y nombra el id
+  tachado), no cualquier punto que empiece por el id.
+- `bitacora.py check`: fallar con una fila «Tarea en curso» sin rama aunque haya otras buenas.
+- `enlaces-md.py`: una lista de carpetas cuyos enlaces se resuelven desde la raíz (p. ej. `linkRoots` en `gw.json`), o
+  decir en la skill `pr` que la descripción guardada enlaza desde su carpeta.
+- `rojo-sin-arreglo.sh`: una opción para exigir que se ejecute exactamente un test (WMF lo contaba en la salida de vitest).
+- Dar acceso de lectura al repo del flujo en la nube, o publicar las versiones, para que un piloto pueda comparar.

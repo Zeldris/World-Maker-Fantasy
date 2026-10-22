@@ -2,7 +2,7 @@
 
 ## Summary
 
-Arregla lo que encontró la puerta de pruebas del 0.3 ([hallazgos](docs/registros/pruebas-0.3-hallazgos.md)): los cuatro reabiertos,
+Arregla lo que encontró la puerta de pruebas del 0.3 ([hallazgos](../../pruebas-0.3-hallazgos.md)): los cuatro reabiertos,
 el texto de P70 y los nuevos P275-P303. P278, P279, P288 (falta Ollama real) y P300 quedan en parte.
 
 ```text

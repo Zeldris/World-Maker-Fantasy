@@ -1,20 +1,21 @@
-"""QA-116: tools/qa/recuperar.py, con un registro de sesión de prueba (líneas de `comun`, QA-119)."""
+"""QA-116: el `recuperar.py` de Galivelop-workflow (antes tools/qa/recuperar.py; piloto 2026-10-22), con un registro de
+sesión de prueba (líneas de `comun`, QA-119). Mensajes en inglés; una expresión mala se busca como texto."""
 import json
 import os
 import subprocess
 import unittest
 
-from comun import QA, aviso, carpeta, compactacion, orden, registro, respuesta, resultado, ruido, texto, usuaria
+from comun import GW, aviso, carpeta, compactacion, orden, registro, respuesta, resultado, ruido, texto, usuaria
 
 PARTES = [
     *ruido(),
     usuaria('el aviso dice "Territorio de Clan Serhu"\nen la cabecera'),
     respuesta('m1', 100, {'type': 'thinking', 'thinking': '', 'signature': 'x'}, orden('toolu_a', 'npx vitest run zona')),
-    resultado('toolu_a', 'FAIL zona.test.ts: esperaba 3, llegó 4'),
+    resultado('toolu_a', 'FAIL zona.test.ts: ' + 'x' * 40 + ' esperaba 3, llegó 4 ' + 'y' * 40),
     *compactacion(),
     respuesta('m2', 50, texto('otra cosa de Serhu'), isSidechain=True),
     # Una búsqueda anterior con este script y su resultado no se repiten.
-    respuesta('m3', 60, orden('toolu_b', 'python3 tools/qa/recuperar.py "Serhu" --max 3')),
+    respuesta('m3', 60, orden('toolu_b', 'python3 .claude/gw/scripts/recuperar.py --buscar "Serhu" --max 3')),
     resultado('toolu_b', 'usuaria: Territorio de Clan Serhu'),
     # Nombrar el script no es llamarlo: un diff que lo menciona sí se busca.
     respuesta('m4', 70, texto('cambio en recuperar.py: «Morvath» con comillas')),
@@ -27,39 +28,41 @@ PARTES = [
 class Recuperar(unittest.TestCase):
     def correr(self, *args: str, entrada: str | None = None, sesion: bool = True) -> subprocess.CompletedProcess:
         ruta = registro(os.path.join(carpeta(), 's.jsonl'), *PARTES)
-        return subprocess.run(['python3', os.path.join(QA, 'recuperar.py'), *args, *(['--sesion', ruta] if sesion else [])],
+        return subprocess.run(['python3', os.path.join(GW, 'recuperar.py'), *args, *(['--sesion', ruta] if sesion else [])],
                               input=entrada.replace('RUTA', ruta) if entrada else None, capture_output=True, text=True)
 
     def test_encuentra_lo_de_antes_de_compactar_sin_resumen_ni_subagentes_ni_busquedas_previas(self):
         # Con comillas y salto de línea en el texto: en la línea JSON van escapados.
-        r = self.correr('"Territorio de Clan serhu"\nen|resumen')
-        self.assertEqual(r.stdout, '[2026-10-19T10:00] usuaria: el aviso dice "Territorio de Clan Serhu" en la cabecera…\n'
-                                   '1 fragmentos con /"Territorio de Clan serhu"\nen|resumen/\n')
+        r = self.correr('--buscar', '"Territorio de Clan serhu"\nen|resumen')
+        self.assertEqual(r.stdout, '[2026-10-19T10:00] user: el aviso dice "Territorio de Clan Serhu" en la cabecera\n'
+                                   '1 fragment(s) match /"Territorio de Clan serhu"\nen|resumen/\n')
 
     def test_menciones_del_script_y_avisos_del_sistema(self):
-        r = self.correr('«Morvath»|aviso de|cargada', '--ancho', '200')
-        self.assertEqual(r.stdout, '[2026-10-19T10:00] claude: cambio en recuperar.py: «Morvath» con comillas…\n'
-                                   '[2026-10-19T10:00] sistema: <system-reminder>aviso de Morvath</system-reminder>…\n'
-                                   '[2026-10-19T10:00] sistema: skill cargada sobre Morvath…\n'
-                                   '3 fragmentos con /«Morvath»|aviso de|cargada/\n')
+        r = self.correr('--buscar', '«Morvath»|aviso de|cargada', '--ancho', '200')
+        self.assertEqual(r.stdout, '[2026-10-19T10:00] claude: cambio en recuperar.py: «Morvath» con comillas\n'
+                                   '[2026-10-19T10:00] system: <system-reminder>aviso de Morvath</system-reminder>\n'
+                                   '[2026-10-19T10:00] system: skill cargada sobre Morvath\n'
+                                   '3 fragment(s) match /«Morvath»|aviso de|cargada/\n')
 
-    def test_expresion_o_numero_malos_dan_un_error_legible(self):
-        self.assertIn('no vale', self.correr('(').stderr)
-        self.assertIn('necesita un número', self.correr('x', '--max', 'y').stderr)
+    def test_expresion_mala_se_busca_como_texto_y_numero_malo_da_error(self):
+        self.assertIn('0 fragment(s)', self.correr('--buscar', '(').stdout)
+        r = self.correr('--buscar', 'x', '--max', 'y')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('invalid int value', r.stderr)
 
     def test_resultados_de_ordenes_recortados_y_con_tope(self):
-        r = self.correr('esperaba|vitest', '--ancho', '12', '--max', '1')
-        self.assertIn('resultado: …t.ts: espera…', r.stdout)
-        self.assertIn('2 fragmentos con /esperaba|vitest/ (los 1 últimos)', r.stdout)
+        r = self.correr('--buscar', 'esperaba|vitest', '--ancho', '40', '--max', '1')
+        self.assertRegex(r.stdout, r'result: …x+ esperaba 3, llegó 4…\n')
+        self.assertIn('2 fragment(s) match /esperaba|vitest/ (the last 1 shown', r.stdout)
 
     def test_estado_cuenta_las_compactaciones_y_dice_como_recuperar(self):
         r = self.correr('--estado')
-        self.assertIn('- Compactaciones en esta sesión: 1', r.stdout)
-        self.assertIn('python3 tools/qa/recuperar.py "<regex>"', r.stdout)
+        self.assertIn('- Compactions in this session: 1', r.stdout)
+        self.assertIn('recuperar.py --sesion', r.stdout)
 
     def test_estado_desde_el_gancho_lee_el_registro_de_la_entrada(self):
         r = self.correr('--estado', entrada=json.dumps({'transcript_path': 'RUTA', 'source': 'compact'}), sesion=False)
-        self.assertIn('- Compactaciones en esta sesión: 1', r.stdout)
+        self.assertIn('- Compactions in this session: 1', r.stdout)
         self.assertRegex(r.stdout, r'--sesion \S+s\.jsonl')
 
     def test_sin_patron_da_la_ayuda(self):

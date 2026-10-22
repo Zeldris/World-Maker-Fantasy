@@ -1,9 +1,12 @@
-"""QA-74: tools/qa/prepush-ramas.sh, la parte de .githooks/pre-push que mira cada rama (QA-35, QA-66, QA-69)."""
+"""QA-74: el `prepush-ramas.sh` de Galivelop-workflow (antes tools/qa/prepush-ramas.sh, piloto 2026-10-22), la parte de
+.githooks/pre-push que mira cada rama (QA-35, QA-66, QA-69). El script saca la raíz de su propia ruta: cada prueba copia
+scripts, esquema y `gw.json` al repo de prueba."""
 import os
+import shutil
 import subprocess
 import unittest
 
-from comun import ENV_GIT, QA, carpeta, escribir, git, leer
+from comun import ENV_GIT, RAIZ, carpeta, escribir, git, leer
 
 CERO = '0' * 40
 # Una fecha que ningún commit adelanta: cada commit que cambia la bitácora la comprueba (QA-115).
@@ -17,6 +20,9 @@ class PrepushRamas(unittest.TestCase):
         git(remoto, 'init', '-q', '--bare', '-b', 'main')
         self.repo = carpeta()
         git(self.repo, 'clone', '-q', remoto, '.')
+        for ruta in ('.claude/gw/scripts', '.claude/gw/schema'):
+            shutil.copytree(os.path.join(RAIZ, ruta), os.path.join(self.repo, ruta))
+        shutil.copy(os.path.join(RAIZ, '.claude/gw.json'), os.path.join(self.repo, '.claude/gw.json'))
         self.commit('docs/registros/traspaso.md', BITACORA_OK, 'base')
         git(self.repo, 'push', '-q', 'origin', 'HEAD:main')
         git(self.repo, 'fetch', '-q', 'origin')
@@ -31,16 +37,17 @@ class PrepushRamas(unittest.TestCase):
     def correr(self, sha_local: str, sha_remoto: str, extra_env: dict | None = None) -> tuple[int, str, str]:
         d = carpeta()
         cambiados, subidos = os.path.join(d, 'c'), os.path.join(d, 's')
-        r = subprocess.run(['bash', os.path.join(QA, 'prepush-ramas.sh'), cambiados, subidos],
+        r = subprocess.run(['bash', os.path.join(self.repo, '.claude/gw/scripts/prepush-ramas.sh'), cambiados, subidos],
                            input=f'refs/heads/r {sha_local} refs/heads/r {sha_remoto}\n', cwd=self.repo,
-                           env={**ENV_GIT, 'BITACORA_PY': os.path.join(QA, 'bitacora.py'), **(extra_env or {})}, capture_output=True, text=True)
-        return r.returncode, leer(cambiados), leer(subidos)
+                           env={**ENV_GIT, **(extra_env or {})}, capture_output=True, text=True)
+        # Sin nada nuevo, el flujo no crea los archivos: vacío.
+        return r.returncode, *(leer(f) if os.path.exists(f) else '' for f in (cambiados, subidos))
 
     def test_rama_nueva_lista_sus_commits_y_lo_que_cambian(self):
         sha = self.commit('backend/uploads/images/x.png', 'img', 'imagen nueva')
         codigo, cambiados, subidos = self.correr(sha, CERO)
         self.assertEqual(codigo, 0)
-        self.assertIn('imagen nueva', subidos)
+        self.assertIn(sha, subidos)  # el flujo apunta solo la sha
         self.assertIn('backend/uploads/images/x.png', cambiados)
 
     def test_lo_ya_subido_no_cuenta(self):
@@ -54,7 +61,7 @@ class PrepushRamas(unittest.TestCase):
         sha = self.commit('a.txt', 'a', 'mi commit')
         codigo, _, subidos = self.correr(sha, 'f' * 40)
         self.assertEqual(codigo, 0)
-        self.assertIn('mi commit', subidos)
+        self.assertIn(sha, subidos)
 
     def test_bitacora_mala_en_el_commit_falla_aunque_en_disco_este_bien(self):
         sha = self.commit('docs/registros/traspaso.md', AL_DIA + '| **Tarea en curso** | sin rama |\n', 'bitácora mala')

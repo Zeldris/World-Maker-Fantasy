@@ -32,7 +32,7 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    **Compactar sin perder** (`QA-116`): el tope de 200k (`QA-109`, bajado a 200k en `QA-121`, a 300k en `QA-122` y de vuelta a
    200k en `QA-123`: con 300k el techo pasó de ~145k a ~220k y el medio, de ~115k a ~150k por llamada) es la red. Tras cada compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
    `git status`, los últimos commits y las compactaciones llevadas; un detalle de antes (un error, lo que dijo la
-   usuaria) se busca con `python3 tools/qa/recuperar.py "<regex>"`, que lee el registro de la sesión sin
+   usuaria) se busca con `python3 .claude/gw/scripts/recuperar.py --buscar "<texto>"`, que lee el registro de la sesión sin
    cargarlo entero. Una sesión nueva no tiene ese registro: lo que tiene que sobrevivir, a la bitácora.
 2. **Si hay diseño o una decisión abierta:** `grilling` + `domain-modeling` (o `/grill-with-docs` si
    lo lanza la usuaria), con los juegos de referencia. **Toda ronda de diseño, también las de
@@ -74,11 +74,11 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
       la usuaria se aplica en la rama.
    3. **Cierre:** si la fase 2 añadió código (herramientas, scripts, skills con tests), `/code-review --max-findings all`
       solo de esos commits (`<commit de la retro>..HEAD`) y sus arreglos: en la del banco del narrador encontró dos
-      fallos en lo recién aplicado. Luego `bash tools/qa/revisado.sh`, la descripción con `pr` y se crea el PR.
+      fallos en lo recién aplicado. Luego `bash .claude/gw/scripts/revisado.sh` (escribe la marca y hace su commit; después `git push`), la descripción con `pr` y se crea el PR.
    Desde una sesión local (la Deck) el PR no se crea (`QA-184`): no hay `gh` ni herramienta de GitHub y el modo auto
    no deja usar la credencial de git. La local sube la descripción a `docs/registros/pr/<rama>.md` y escribe en su fila
    de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
-   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh` (la marca no se versiona) y crea el PR con esa descripción.
+   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh` (la marca va en su propio commit, que se sube) y crea el PR con esa descripción.
    Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). El último commit antes del PR deja la fila de la rama
    como «PR a `main`; al fusionarse, rama terminada» (`QA-186`), para que `main` la reciba ya cerrada; la de una

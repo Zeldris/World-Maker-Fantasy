@@ -24,12 +24,12 @@ y el hito de cada fase de los roadmaps temáticos. Ver [Mapa de roadmaps](#mapa-
 Un solo frente cada vez, en este orden. Lo que salga fuera de él va a la bandeja de ideas (abajo), no a un roadmap.
 
 1. **Entorno congelado.** Ninguna tarea `QA-*` nueva salvo que algo bloquee de verdad. De una retro solo se aplica lo
-   que la usuaria apruebe para aplicar ya ([CLAUDE.md](../../CLAUDE.md#pruebas-de-juego)); el resto se apunta en la
+   que la usuaria apruebe para aplicar ya ([CLAUDE.md](../../AGENTS.md#pruebas-de-juego)); el resto se apunta en la
    bitácora («Propuestas aprobadas…») y espera a cerrar las pruebas.
 2. **Ramas cerradas.** Una línea de trabajo por cuenta; cada sesión, su rama (`QA-136`). Las ramas ya fusionadas que
    solo llevan la bitácora por delante de `main` se cierran; `claude/instalador-empaquetado` (parada desde el
    2026-09-28) se retoma o se archiva, lo decide la usuaria.
-3. **Cerrar la puerta de pruebas** ([CLAUDE.md](../../CLAUDE.md#pruebas-de-juego), [hallazgos](../registros/pruebas-0.3-hallazgos.md)),
+3. **Cerrar la puerta de pruebas** ([CLAUDE.md](../../AGENTS.md#pruebas-de-juego), [hallazgos](../registros/pruebas-0.3-hallazgos.md)),
    que es el único frente activo. Lo que falta, al día: `python3 tools/qa/matriz-pruebas.py` (tareas sin jugar) y el
    resumen de cabecera de los hallazgos (`python3 tools/qa/marca-hallazgo.py --resumen`). Orden:
    1. Los graves (P240, P260) y las decisiones pendientes de la usuaria, si las hay.
