@@ -24,15 +24,15 @@ describe('vasallaje (CR-59) — reglas puras', () => {
     expect(pagoSemanal(1248, 1248, 1248)).toEqual({ pagado: 1248, pendiente: 1248, alCorriente: false, fraccion: 1 });
     expect(pagoSemanal(1800, 1248, 1248)).toEqual({ pagado: 1800, pendiente: 696, alCorriente: false, fraccion: 1 });
     expect(pagoSemanal(624, 1248, 1248)).toEqual({ pagado: 624, pendiente: 1248, alCorriente: false, fraccion: 0.5 });
-    expect(pagoSemanal(0, 0, 0)).toEqual({ pagado: 0, pendiente: 0, alCorriente: true, fraccion: 1 });
+    expect(pagoSemanal(0, 0, 0)).toEqual({ pagado: 0, pendiente: 0, alCorriente: true, fraccion: 0 });
     expect(pagoSemanal(0, 9000, 1248)).toEqual({ pagado: 0, pendiente: 1248, alCorriente: false, fraccion: 0 });
     expect(pagoSemanal(2496, 1248, 1248)).toEqual({ pagado: 2496, pendiente: 0, alCorriente: true, fraccion: 1 });
     // El pago va primero a la cuota de la semana: con una de dos pagada patrulla seguro, sin quedar al corriente.
     expect(pagoSemanal(100, 100, 100)).toEqual({ pagado: 100, pendiente: 100, alCorriente: false, fraccion: 1 });
-    // Sin cuota (sin soldados) lo pendiente no se borra: se conserva y se paga con lo que haya.
-    expect(pagoSemanal(0, 500, 0)).toEqual({ pagado: 0, pendiente: 500, alCorriente: false, fraccion: 1 });
-    expect(pagoSemanal(200, 500, 0)).toEqual({ pagado: 200, pendiente: 300, alCorriente: false, fraccion: 1 });
-    expect(pagoSemanal(900, 500, 0)).toEqual({ pagado: 500, pendiente: 0, alCorriente: true, fraccion: 1 });
+    // Sin cuota (sin soldados) lo pendiente no se borra: se conserva y se paga con lo que haya; sin patrulla.
+    expect(pagoSemanal(0, 500, 0)).toEqual({ pagado: 0, pendiente: 500, alCorriente: false, fraccion: 0 });
+    expect(pagoSemanal(200, 500, 0)).toEqual({ pagado: 200, pendiente: 300, alCorriente: false, fraccion: 0 });
+    expect(pagoSemanal(900, 500, 0)).toEqual({ pagado: 500, pendiente: 0, alCorriente: true, fraccion: 0 });
     expect([0, 0.004, 0.4, 0.996, 1].map(porcentajePagado)).toEqual([0, 1, 40, 99, 100]);
   });
 });
@@ -283,9 +283,16 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     const v = await vasallaje();
     await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda: 500, ultimaSemana: 49 } });
     await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: 0, riqueza: 200 } });
-    await semana(56, 0.99);
+    // Azar 0: sin cuota no patrulla aunque le quede gente en la fila de soldados.
+    expect((await semana(56, 0)).escaramuzas).toBe(0);
     expect((await vasallaje()).deuda).toBe(300);
-    expect((await ultimaLinea()).datos).toMatchObject({ estado: 'parcial', porcentaje: 100, pendiente: 300 });
+    const sinSoldados = await ultimaLinea();
+    expect(sinSoldados.datos).toMatchObject({ estado: 'sin-soldados', pendiente: 300, pagado: 200 });
+    expect(sinSoldados.texto).toContain('no tiene soldados con los que patrullar');
+    expect(sinSoldados.texto).toContain('arrastra 300 Goirnos');
+    expect(sinSoldados.texto).not.toContain('paga su cuota');
+    // La vista no lo enseña como «pago parcial 100 %».
+    expect((await vasallajesVista(prisma, saveId, 56))[0]).toMatchObject({ alCorriente: false, porcentajePagado: 0, cuota: 0, deuda: 300 });
     await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 57 * 1440));
     expect((await vasallaje()).deuda).toBe(300);
     await ponerRiqueza('clan-serhu', 1000);

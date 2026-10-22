@@ -1747,7 +1747,8 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     la cuota semanal sale del tesoro del vasallo, y lo que sobre paga lo pendiente; si no llega, paga
     lo que pueda y patrulla en proporción a lo pagado de la cuota («Pago parcial 40 % de la cuota:
     patrullas al 40 %»); sin pagar nada, «impagado» y sin patrullas. Lo pendiente tiene tope de una
-    cuota (en la revisión semanal); al pagar entero, al corriente, patrulla siempre y se rearma.
+    cuota (en la revisión semanal), salvo sin soldados (cuota 0): entonces se conserva entero, sin
+    patrulla, y se recorta a una cuota cuando vuelve a haber soldados; al pagar entero, al corriente, patrulla siempre y se rearma.
     Sustituye la deuda creciente, los 100 por patrulla y la ruptura por deuda saldada; las partidas de
     antes migran una sola vez y los vasallajes rotos por deuda saldada se reabren. Detalle en
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md) (Q28).

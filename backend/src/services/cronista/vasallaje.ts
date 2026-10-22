@@ -40,13 +40,14 @@ export const cuotaSemanal = armasDeLaSemana;
 /// el único sitio donde se aplica el tope). `fraccion` es la parte pagada de la cuota de la semana
 /// (0-1): la probabilidad de que patrulle. Pagar la cuota entera con algo pendiente patrulla seguro,
 /// pero no deja al corriente (y sin rearme) hasta saldar lo pendiente. Sin cuota (sin soldados) no
-/// hay con qué recortar: lo pendiente se conserva entero y se paga con lo que haya.
+/// hay con qué recortar: lo pendiente se conserva entero y se paga con lo que haya, y la fracción es 0
+/// (sin soldados no hay patrulla que pagar).
 export function pagoSemanal(riqueza: number, pendiente: number, cuota: number): { pagado: number; pendiente: number; alCorriente: boolean; fraccion: number } {
   const previo = Math.max(0, pendiente);
   const debe = (cuota > 0 ? Math.min(previo, cuota) : previo) + cuota;
   const pagado = Math.min(Math.max(0, riqueza), debe);
   const resto = cuota > 0 ? Math.min(cuota, debe - pagado) : debe - pagado;
-  return { pagado, pendiente: resto, alCorriente: resto === 0, fraccion: cuota > 0 ? Math.min(1, pagado / cuota) : 1 };
+  return { pagado, pendiente: resto, alCorriente: resto === 0, fraccion: cuota > 0 ? Math.min(1, pagado / cuota) : 0 };
 }
 
 /// Puro: el porcentaje de la cuota pagado, para la interfaz y el diario (1-99 si pagó solo parte de
@@ -116,7 +117,9 @@ export async function asegurarVasallajes(tx: Tx, saveId: string, ahora: number):
     const porSlug = new Map(facciones.map((f) => [f.slug, f]));
     const pasadas = conDeuda.filter((v) => {
       const k = porSlug.get(v.vasalloSlug)?.kingdomStats;
-      return !!k && v.deuda > cuotaSemanal(k.soldados);
+      // Sin cuota (sin soldados) lo pendiente se conserva entero (Q28): ni se recorta ni se lee el diario.
+      const cuota = k ? cuotaSemanal(k.soldados) : 0;
+      return cuota > 0 && v.deuda > cuota;
     });
     // Sin tope: la marca de la regla nueva puede quedar lejos (p. ej. muchas líneas en las que es señor).
     const lineas = await lineasNuevas(tx, saveId, new Map(pasadas.map((v) => [v.vasalloSlug, porSlug.get(v.vasalloSlug)!.name])), true);
@@ -155,7 +158,8 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
       continue;
     }
     // 1. La cuota de la semana (y lo pendiente de la anterior), del tesoro del vasallo al señor.
-    const pago = pagoSemanal(vasallo.kingdomStats.riqueza, v.deuda, cuotaSemanal(vasallo.kingdomStats.soldados));
+    const cuota = cuotaSemanal(vasallo.kingdomStats.soldados);
+    const pago = pagoSemanal(vasallo.kingdomStats.riqueza, v.deuda, cuota);
     let riqueza = vasallo.kingdomStats.riqueza - pago.pagado;
     let alSenor = pago.pagado;
     // 2. Rearme con el excedente de comida, solo con lo que quede en el tesoro (sin crédito).
@@ -175,7 +179,7 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
     // 3. Patrulla obligada, en proporción a lo pagado de la cuota (impagado: patrullas suspendidas esa semana).
     let patrullo = false;
     let huboEscaramuza = false;
-    const tocaPatrulla = pago.alCorriente || (pago.fraccion > 0 && random() < pago.fraccion);
+    const tocaPatrulla = cuota > 0 && (pago.alCorriente || (pago.fraccion > 0 && random() < pago.fraccion));
     if (tocaPatrulla && sold && sold.poblacion + nuevos >= PATRULLA_GUERREROS) {
       patrullo = true;
       if (random() < PROB_ESCARAMUZA) {
@@ -211,7 +215,9 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
           vasalloSlug: v.vasalloSlug, vasallo: vasallo.name, senor: senor.name,
           ...(pago.alCorriente
             ? { estado: 'al-corriente' as const, patrulla: patrullo }
-            : pago.fraccion > 0
+            : cuota === 0
+              ? { estado: 'sin-soldados' as const, pendiente: pago.pendiente, ...(pago.pagado > 0 ? { pagado: pago.pagado } : {}) }
+              : pago.fraccion > 0
               ? { estado: 'parcial' as const, porcentaje: porcentajePagado(pago.fraccion), patrulla: patrullo, pendiente: pago.pendiente }
               : { estado: 'impagado' as const }),
           ...(nuevos > 0 ? { rearmados: nuevos } : {}),
@@ -259,7 +265,8 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
   // algo pendiente la deja; una consulta para todos); sin línea de revisión (p. ej. recién migrado), null.
   const lineas = await lineasNuevas(tx, saveId, new Map(filas.filter((f) => f.deuda > 0).map((f) => [f.vasalloSlug, nombres.get(f.vasalloSlug) ?? f.vasalloSlug])));
   const porcentajes = new Map<string, number | null>();
-  for (const [slug, { ultima: d }] of lineas) porcentajes.set(slug, d?.estado === 'parcial' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' ? 0 : null);
+  // Sin soldados no hay cuota ni patrulla: 0 (nunca «pago parcial 100 %»); la interfaz lo dice por `cuota: 0`.
+  for (const [slug, { ultima: d }] of lineas) porcentajes.set(slug, d?.estado === 'parcial' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' || d?.estado === 'sin-soldados' ? 0 : null);
   return filas.map((f) => ({
     vasalloSlug: f.vasalloSlug,
     vasalloNombre: nombres.get(f.vasalloSlug) ?? f.vasalloSlug,
