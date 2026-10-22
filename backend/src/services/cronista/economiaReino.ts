@@ -3,7 +3,7 @@
 // Paso 53a: el agua que entra (pozos y fuente natural) y los topes del almacén por categoría.
 import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
-import { escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
+import { CONSUMO_COMIDA_POR_BOCA, escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
 import { comidaDelDia } from './comidaOficios.js';
 import { estacionFor } from '../worldClock.js';
 import { locationTerrainTags } from '../../scripts/worldCatalog.js';
@@ -84,11 +84,51 @@ export async function comidaDelReino(tx: Tx, saveId: string, ahora: number, comi
   return comidaDelReinoDia(await datosComidaDelReino(tx, saveId, ahora), ahora, comidaDisponible, factor);
 }
 
+/// P279/P300: por qué la comida del Reino sube, baja o se queda plana. Puro: frases cortas para Visión general.
+export function explicarComida(d: {
+  comida: number; tope: number; bocas: { civiles: number; soldados: number; visitantes: number }; produccion: number; consumo: number;
+  tareas: Record<string, number>; hayAyuntamiento: boolean; hayAgua: boolean; escalonCocina: number | null; factor: number;
+}): string[] {
+  const m: string[] = [];
+  const trabajadores = (d.tareas.recolector ?? 0) + (d.tareas.pescador ?? 0) + (d.tareas.cocinero ?? 0);
+  const bocas = d.bocas.civiles + d.bocas.soldados + d.bocas.visitantes;
+  if (bocas === 0) m.push('Nadie come ahora mismo (sin súbditos, soldados ni visitantes): la comida no baja por consumo.');
+  else if (trabajadores === 0) m.push(`Nadie produce comida: no hay trabajadores, y ${bocas === 1 ? 'la boca come' : `las ${bocas} bocas comen`} ${d.consumo} al día.`);
+  if ((d.tareas.pescador ?? 0) > 0 && !d.hayAgua) {
+    m.push(d.hayAyuntamiento
+      ? 'Los pescadores no tienen agua junto al Ayuntamiento: recolectan en su lugar.'
+      : 'No hay Ayuntamiento activo, así que no hay agua para pescar: los pescadores recolectan en su lugar.');
+  }
+  if ((d.tareas.cocinero ?? 0) > 0 && !d.escalonCocina) m.push('Los cocineros no tienen Cocina: recolectan en su lugar.');
+  if (d.factor < 1 && trabajadores > 0) m.push('Hay trabajadores sin herramienta: producen la mitad.');
+  const neto = Math.round((d.produccion - d.consumo) * 10) / 10;
+  if (bocas > 0 && trabajadores > 0 && neto === 0) m.push('Los trabajadores producen justo lo que comen las bocas: por eso no sube ni baja.');
+  if (d.tope > 0 && d.comida >= d.tope) m.push(`El almacén de comida está lleno (${d.tope}): lo que sobra se pierde. Un Granero sube el tope.`);
+  return m;
+}
+
 /// CR-53 53b (Q2): materiales del Almacén del Reino = objetos de tipo RECURSO (leña, piedra, fibra…).
 /// Cuántos caben aún (la base y lo que suman las Leñeras, menos lo que ya hay).
 export async function huecoDeMateriales(tx: Tx, saveId: string): Promise<number> {
   const { tope, guardados } = await materialesDelAlmacen(tx, saveId);
   return Math.max(0, tope - guardados);
+}
+
+/// P276: el aviso cuando los materiales no caben. Sin Leñera activa, el edificio que falta; con una (o más),
+/// el Almacén está lleno y no hay nada que construir para esto.
+export function avisoMaterialesLlenos(lenerasActivas: number, c: { guardados: number; tope: number }): string {
+  if (lenerasActivas <= 0) return `No caben más materiales en el Almacén (${c.guardados}/${c.tope}): construye una Leñera.`;
+  const n = lenerasActivas === 1 ? 'tu Leñera' : `tus ${lenerasActivas} Leñeras`;
+  return `El Almacén está lleno de materiales (${c.guardados}/${c.tope}), incluso con ${n}: gasta o retira alguno para hacer sitio.`;
+}
+
+/// Lo que dice el juego al depositar un material sin hueco.
+export async function motivoMaterialesLlenos(tx: Tx, saveId: string): Promise<string> {
+  const [lenerasActivas, almacen] = await Promise.all([
+    tx.building.count({ where: { saveId, status: 'ACTIVO', recipeKey: 'lenera' } }),
+    materialesDelAlmacen(tx, saveId),
+  ]);
+  return avisoMaterialesLlenos(lenerasActivas, almacen);
 }
 
 /// Slugs del catálogo que cuentan como materiales (tipo RECURSO) en el mundo de la partida.
@@ -201,14 +241,32 @@ export async function traspasarGoirnos(tx: Tx, saveId: string, cantidad: number)
 /// 53e: lo que enseña Visión general — agua al día, topes, tesoro, sueldos y avisos.
 export async function resumenEconomia(tx: Tx, saveId: string) {
   const sum = await suministrosDelReino(tx, saveId);
-  const [almacen, k, save] = await Promise.all([
+  const [almacen, k, save, ws] = await Promise.all([
     materialesDelAlmacen(tx, saveId, sum),
-    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
+    tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { comida: true, bebida: true, trabajadores: true, soldados: true, poblacion: true, visitantes: true, riqueza: true, diasSinCobrar: true, diasSed: true, diasHambre: true, sinHerramienta: true, sinArma: true } }),
     tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } }),
+    tx.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true } }),
   ]);
+  // La comida de un día como la calcula el tick (con la estación de hoy y la parte que rinde sin herramienta).
+  const minutos = ws?.fictionalMinutes ?? 0;
+  const datos = await datosComidaDelReino(tx, saveId, minutos);
+  const factor = k && k.trabajadores > 0 ? Math.max(0, k.trabajadores - Math.ceil((k.sinHerramienta ?? 0) / 2)) / k.trabajadores : 1;
+  const comidaActual = k?.comida ?? 0;
+  const produccion = k ? Math.round(comidaDelReinoDia(datos, Math.floor(minutos / 1440) * 1440 + 720, comidaActual, factor) * 10) / 10 : 0;
+  const bocasCifra = k ? k.poblacion + k.soldados + k.visitantes : 0;
+  const hayAyuntamiento = (await tx.building.count({ where: { saveId, status: 'ACTIVO', recipeKey: { in: [...AYUNTAMIENTOS] } } })) > 0;
   return {
+    comida: comidaActual,
+    bebida: k?.bebida ?? 0,
+    comidaProduccionDia: produccion,
+    comidaConsumoDia: bocasCifra * CONSUMO_COMIDA_POR_BOCA,
+    bocasDetalle: { civiles: k?.poblacion ?? 0, soldados: k?.soldados ?? 0, visitantes: k?.visitantes ?? 0 },
+    motivosComida: k ? explicarComida({
+      comida: comidaActual, tope: sum.topeComida, bocas: { civiles: k.poblacion, soldados: k.soldados, visitantes: k.visitantes },
+      produccion, consumo: bocasCifra * CONSUMO_COMIDA_POR_BOCA, tareas: datos.tareas, hayAyuntamiento, hayAgua: datos.hayAgua, escalonCocina: datos.escalonCocina, factor,
+    }) : [],
     aguaDia: sum.agua,
-    bocas: k ? k.poblacion + k.soldados + k.visitantes : 0,
+    bocas: bocasCifra,
     topeComida: sum.topeComida,
     topeBebida: sum.topeBebida,
     topeMateriales: sum.topeMateriales,

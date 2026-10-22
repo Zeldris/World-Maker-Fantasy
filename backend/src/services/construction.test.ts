@@ -7,6 +7,7 @@ import {
   AYUNTAMIENTO_MEDIANO_RECIPE,
   AYUNTAMIENTO_GRANDE_RECIPE,
   CONSTRUCTION_RECIPES,
+  fichaDeEdificioParaPanel,
   checkRecipe,
   detectsBuildIntent,
   planConsumption,
@@ -402,5 +403,22 @@ describe('Edificios de oficio (docs/rpgtarkor/sistemas-reino/edificios-de-oficio
     // array es lo que decide, ver test de arriba) — pero si se comprueba el Taller AISLADO,
     // el texto de la mejora también matchea su patrón más simple.
     expect(detectsBuildIntent(herreria, 'Mejoro a un gran obrador de herrería')).toBe(true);
+  });
+});
+
+describe('P278 — ficha de edificio en el panel', () => {
+  it('un Pozo y una Choza se distinguen aunque la fila guardara el texto de otro', () => {
+    const choza = fichaDeEdificioParaPanel({ recipeKey: 'choza', name: 'Choza Básica Orco de las Llanuras', kind: 'pozo', description: 'Un brocal de piedra…' });
+    expect(choza.name).toBe(CHOZA_RECIPE.name);
+    expect(choza.kind).toBe('choza');
+    expect(choza.description).toBe(CHOZA_RECIPE.description);
+    const pozo = fichaDeEdificioParaPanel({ recipeKey: 'pozo', name: 'x', kind: 'x', description: 'x' });
+    expect(pozo.name).toBe('un pozo');
+  });
+  it('lo narrado o mejorable (Ayuntamiento) conserva lo guardado', () => {
+    const libre = { recipeKey: null, name: 'Atalaya', kind: 'torre', description: 'Alta.' };
+    expect(fichaDeEdificioParaPanel(libre)).toBe(libre);
+    const ayto = { recipeKey: 'ayuntamiento', name: 'Ayuntamiento mediano', kind: 'ayuntamiento', description: 'd' };
+    expect(fichaDeEdificioParaPanel(ayto)).toBe(ayto);
   });
 });

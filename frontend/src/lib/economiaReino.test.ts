@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { avisosDeEconomia } from './economiaReino'
+import { avisosDeEconomia, textoAlmacen, textoComidaDia } from './economiaReino'
 
 const base = { aguaDia: 12, bocas: 5, topeComida: 60, topeBebida: 60, topeMateriales: 60, materiales: 0, sueldosSemana: 10, tesoro: 20, bolsa: 0, diasSinCobrar: 0, diasSed: 0, diasHambre: 0 }
 
@@ -20,5 +20,16 @@ describe('avisos de la economía del Reino (CR-53)', () => {
       '1 trabajador sin herramienta: producen la mitad.',
       '3 soldados sin arma: cuentan la mitad en la defensa.',
     ])
+  })
+})
+
+describe('P275/P279 — Almacén con los tres topes y comida al día', () => {
+  it('el Almacén enseña el tope de comida y de agua, no solo el de materiales', () => {
+    expect(textoAlmacen({ ...base, topeComida: 180, topeBebida: 60, materiales: 30, topeMateriales: 60, comida: 100, bebida: 20 })).toBe('comida 100/180 · agua 20/60 · materiales 30/60')
+    expect(textoAlmacen({ ...base, topeComida: 180 })).toBe('comida 180 · agua 60 · materiales 0/60')
+  })
+  it('comida al día como agua al día; sin datos del servidor, nada', () => {
+    expect(textoComidaDia({ ...base, comidaProduccionDia: 4, comidaConsumoDia: 2 })).toBe('+4 / −2')
+    expect(textoComidaDia(base)).toBeNull()
   })
 })

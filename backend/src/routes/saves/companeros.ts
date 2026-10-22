@@ -9,7 +9,7 @@ import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../serv
 import { COCINA_RECIPE_KEYS } from '../../services/kingdomTick.js';
 import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, requisitosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
-import { esMaterial, huecoDeMateriales } from '../../services/cronista/economiaReino.js';
+import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
@@ -701,7 +701,7 @@ export async function companerosRoutes(app: FastifyInstance) {
 
     // CR-53 (Q2): los materiales caben hasta el tope del Almacén (base y Leñeras).
     if ((await esMaterial(prisma, request.params.id, item.catalogSlug)) && (await huecoDeMateriales(prisma, request.params.id)) <= 0) {
-      return reply.status(400).send({ error: 'No caben más materiales en el Almacén: construye una Leñera.' });
+      return reply.status(400).send({ error: await motivoMaterialesLlenos(prisma, request.params.id) });
     }
     const result = await prisma.$transaction(async (tx) => {
       await tx.inventoryItem.delete({ where: { id: item.id } });

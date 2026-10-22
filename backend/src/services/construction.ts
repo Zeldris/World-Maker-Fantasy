@@ -136,6 +136,16 @@ export function nivelEdificioRequeridoParaTier(tier: number): number {
   return Math.ceil(Math.max(1, tier) / 3);
 }
 
+/// P278: nombre, clase y descripción con que se enseña un edificio en el panel. Si guarda la clave de una receta
+/// que no se mejora (Pozo, Choza…), salen de esa receta, así dos edificios nunca se confunden aunque la fila
+/// guardara otro texto. Los que sí se mejoran (Ayuntamiento, Herrería…) y los narrados conservan lo guardado.
+export function fichaDeEdificioParaPanel<T extends { recipeKey: string | null; name: string; kind: string; description: string }>(b: T): T {
+  if (!b.recipeKey) return b;
+  const r = CONSTRUCTION_RECIPES.find((x) => x.key === b.recipeKey);
+  if (!r || CONSTRUCTION_RECIPES.some((x) => x.upgradesRecipeKey === r.key)) return b;
+  return { ...b, name: r.name, kind: r.key, description: r.description };
+}
+
 /// Valor de `Building.tier` que deja una receta al completarse: nivel de Ayuntamiento o nivel de
 /// edificio de oficio. Único punto de verdad para los cuatro sitios que crean o mejoran un Building.
 export function buildingTierFor(recipe: ConstructionRecipe): number | null {

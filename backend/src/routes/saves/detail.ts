@@ -13,6 +13,7 @@ import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
+import { fichaDeEdificioParaPanel } from '../../services/construction.js';
 import { comidaPct, aguaPct } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
@@ -493,7 +494,7 @@ export async function detailRoutes(app: FastifyInstance) {
         control: t.control,
         population: t.population,
       })),
-      buildings: save.buildings.map((b) => ({
+      buildings: save.buildings.map((b) => fichaDeEdificioParaPanel({
         id: b.id,
         territoryId: b.territoryId,
         locationId: b.locationId,
