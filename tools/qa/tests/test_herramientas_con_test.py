@@ -20,6 +20,7 @@ EXCEPCIONES = {
     'revisado.sh': 'marca la revisión de la rama real antes del PR (la comprueba el gancho de QA-50)',
     'rojo-sin-arreglo.sh': 'corre un test de vitest con y sin el arreglo',
     'tests-relacionados.sh': 'corre `vitest related` de backend y frontend',
+    'tests-vitest.sh': '`relatedTests` del flujo: corre vitest de lo que cambia; se prueba en cada push',
 }
 # QA-188: carpetas enteras de atajos que necesitan el driver, el juego o podman en la Deck; se prueban al usarlos.
 CARPETAS_EXCEPTUADAS = {

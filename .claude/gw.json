@@ -7,7 +7,7 @@
   "logRows": true,
   "protectedBranch": "main",
   "pushToProtected": "pr",
-  "install": ["cd backend && npm ci", "cd frontend && npm ci"],
+  "install": [],
   "check": [
     "bash tools/qa/host.sh bash -c 'cd backend && npx prisma generate > /dev/null && npx tsc --noEmit -p . && npm run --silent lint'",
     "bash tools/qa/host.sh bash -c 'cd frontend && npx tsc -b && npm run --silent lint'",

@@ -2,7 +2,8 @@
 
 `session-start.sh` corría también al compactar (sin `matcher`) y metía la instalación del entorno en el contexto tras
 cada compactación. Cada `SessionStart` dice cuándo corre, al compactar solo corre `recuperar.py --estado` (QA-116), y
-cada orden apunta a un archivo del repo que existe.
+cada orden apunta a un archivo del repo que existe. Desde el piloto de Galivelop-workflow (2026-10-22), el
+`recuperar.py` es el del flujo (`.claude/gw/scripts/`).
 """
 import json
 import os
@@ -26,14 +27,14 @@ class Settings(unittest.TestCase):
             self.assertIn('matcher', entrada, entrada)
             ordenes = [h['command'] for h in entrada['hooks']]
             if 'compact' in entrada['matcher'].split('|'):
-                self.assertEqual(ordenes, ['python3 "$CLAUDE_PROJECT_DIR/tools/qa/recuperar.py" --estado'])
+                self.assertEqual(ordenes, ['python3 "$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/recuperar.py --estado'])
         self.assertTrue(any('compact' in e['matcher'].split('|') for e in inicio))
 
     def test_cada_orden_apunta_a_un_archivo_que_existe(self):
         for evento, entradas in self.ganchos.items():
             for entrada in entradas:
                 for h in entrada['hooks']:
-                    rutas = re.findall(r'\$CLAUDE_PROJECT_DIR/([^"\s]+)', h.get('command', ''))
+                    rutas = re.findall(r'\$CLAUDE_PROJECT_DIR"?/([^"\s]+)', h.get('command', ''))
                     self.assertTrue(rutas, f'{evento}: {h}')
                     for r in rutas:
                         self.assertTrue(os.path.isfile(os.path.join(RAIZ, r)), f'{evento}: {r} no existe')

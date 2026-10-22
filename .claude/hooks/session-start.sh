@@ -3,6 +3,9 @@
 # nube, que es lo que se perdía en cada reinicio del contenedor: dependencias, Postgres 16 con
 # pgvector y la base `tarkor` (migrada y, si está vacía, con lore y catálogo sembrados) y el Ollama
 # simulado del repo. Idempotente: lo que ya está, no se toca.
+# Piloto de Galivelop-workflow (2026-10-22): `core.hooksPath` lo pone el session-start del flujo. Las dependencias
+# siguen aquí y no en `install` de gw.json: Claude Code lanza a la vez los dos hooks de inicio, y Postgres y las
+# migraciones necesitan node_modules antes.
 set -euo pipefail
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
@@ -50,8 +53,6 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ] && ! grep -q "DATABASE_URL=$DB_URL" "$CLAUDE_EN
     echo "export OLLAMA_BASE_URL=http://localhost:11434"
   } >> "$CLAUDE_ENV_FILE"
 fi
-# QA-13: el hook de antes de subir (tsc, oxlint y cobertura del roadmap).
-git -C "${CLAUDE_PROJECT_DIR:-$(cd .. && pwd)}" config core.hooksPath .githooks
 echo "Entorno listo: Postgres $(pg_isready -h localhost | cut -d' ' -f3-), Ollama simulado en 11434."
 # QA-49: si había una ronda de pruebas (base del juego) y el juego no está levantado, avisar.
 if [ "$(psql "$DB_URL" -tAc "select 1 from pg_database where datname='tarkor_juego'" 2>/dev/null)" = "1" ] \

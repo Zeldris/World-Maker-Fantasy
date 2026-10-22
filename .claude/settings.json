@@ -28,24 +28,6 @@
         ]
       },
       {
-        "matcher": "clear",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/qa/recuperar.py\" --estado"
-          }
-        ]
-      },
-      {
-        "matcher": "compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/qa/recuperar.py\" --estado"
-          }
-        ]
-      },
-      {
         "matcher": "clear|compact",
         "hooks": [
           {
@@ -56,15 +38,6 @@
       }
     ],
     "PreToolUse": [
-      {
-        "matcher": "mcp__github__create_pull_request|mcp__github__merge_pull_request",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/revision-antes-de-main.sh"
-          }
-        ]
-      },
       {
         "matcher": "^mcp__github__(create_pull_request|merge_pull_request|enable_pr_auto_merge|update_pull_request)$|^Bash$",
         "hooks": [
