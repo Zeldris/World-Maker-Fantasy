@@ -124,6 +124,18 @@ describe('asaltos de los campamentos (CR-50 50b)', () => {
     expect(await prisma.$transaction((tx) => asaltoACaravana(tx, saveId, campLoc, 40, () => 0.01))).toBe('Renegados goirntes');
     expect((await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).botinGoirnos).toBe(55);
   });
+
+  it('P285: tras un asalto, el Reino descansa 7 días: nada al día +6, sí al +7', async () => {
+    const { lanzarAsaltosAlReino, DIAS_ENFRIAMIENTO_ASALTO_REINO } = await import('./campamentos.js');
+    expect(DIAS_ENFRIAMIENTO_ASALTO_REINO).toBe(7);
+    // El primer test dejó el último asalto el día 12 y al campamento repuesto (8 de 8).
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 12 + 6)).toBe(0);
+    expect(await prisma.viajero.count({ where: { saveId, tipo: 'ASALTO', estado: { not: 'TERMINADO' } } })).toBe(0);
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 12 + 7)).toBe(1);
+    expect(await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).toMatchObject({ ultimoAsaltoReinoDia: 19 });
+    await prisma.viajero.updateMany({ where: { saveId, tipo: 'ASALTO' }, data: { estado: 'TERMINADO' } });
+    await prisma.campamento.update({ where: { id: campId }, data: { gente: 8 } });
+  });
 });
 
 /// CR-50 (50d, Q7): se conoce un campamento si estuviste allí, si te llegó el rumor o si lo ve una Torre.
