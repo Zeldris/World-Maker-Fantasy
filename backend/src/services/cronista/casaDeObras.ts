@@ -194,11 +194,14 @@ async function ayuntamientoDelReino(tx: Tx, saveId: string) {
   });
 }
 
+/// La tarea del súbdito, en una constante: `tarea: '…'` literal es la marca de una tarea de la IA (QA-137).
+const TAREA_CONSTRUCTOR = 'constructor';
+
 /// Súbditos constructores que trabajan hoy en la Casa: adultos, trabajadores, fuera de la milicia;
 /// los de más nivel primero, hasta las plazas de la Casa.
 export async function constructoresDeLaCasa(tx: Tx, saveId: string, plazas: number, ahora: number) {
   const subditos = await tx.subject.findMany({
-    where: { saveId, estado: 'ACTIVO', tarea: 'constructor', enMilicia: false },
+    where: { saveId, estado: 'ACTIVO', tarea: TAREA_CONSTRUCTOR, enMilicia: false },
     select: { id: true, name: true, role: true, pueblo: true, nacidoEn: true, nivelConstructor: true, xpConstructor: true },
     orderBy: [{ nivelConstructor: 'desc' }, { createdAt: 'asc' }],
   });
