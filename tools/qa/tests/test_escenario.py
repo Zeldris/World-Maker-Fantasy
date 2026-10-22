@@ -19,7 +19,7 @@ class Probar(unittest.TestCase):
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'uno.dump'), 'x')
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'README.md'), '')
         os.makedirs(os.path.join(d, 'bin'))
-        for nombre in ('psql', 'pg_restore'):
+        for nombre in ('psql', 'pg_restore', 'pg_dump'):
             ruta = os.path.join(d, 'bin', nombre)
             escribir(ruta, f'#!/bin/bash\necho "{nombre} $*" >> "{d}/llamadas.log"\n')
             os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
@@ -73,7 +73,7 @@ class Guardar(unittest.TestCase):
 
     def test_rechaza_el_id_de_la_partida_o_una_palabra(self):
         d = self.repo()
-        for que in ('cmvex1v0300057d0pdjlbezcj', 'reino'):
+        for que in ('cmvex1v0300057d0pdjlbezcj', 'reino', '   ', 'cmvex1v0300057d0pdjlbezcj día 52', 'reino | día 52'):
             r = self.guardar(d, 'dos', que)
             self.assertEqual(r.returncode, 2, r.stdout)
             self.assertIn('no describe', r.stdout)

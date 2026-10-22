@@ -4,8 +4,11 @@
 # lleva una línea `Siguiente: …`; los merges (también los de fusionar.sh, con mensaje propio) y los revert pasan. Fuera de Claude Code (Álvaro) no hace nada.
 set -euo pipefail
 [ "${CLAUDECODE:-}" = "1" ] || exit 0
-merge=$(git rev-parse --git-path MERGE_HEAD 2>/dev/null || true)
-[ -n "$merge" ] && [ -e "$merge" ] && exit 0
+# Un merge, un squash o un cherry-pick traen el mensaje de commits que ya existen.
+for f in MERGE_HEAD CHERRY_PICK_HEAD SQUASH_MSG; do
+  ruta=$(git rev-parse --git-path "$f" 2>/dev/null || true)
+  [ -n "$ruta" ] && [ -e "$ruta" ] && exit 0
+done
 mensaje=$(grep -v '^#' "$1" || true)
 case "$(head -1 <<< "$mensaje")" in Merge*|Revert*) exit 0 ;; esac
 grep -qE '^Siguiente: *[^ ]' <<< "$mensaje" && exit 0

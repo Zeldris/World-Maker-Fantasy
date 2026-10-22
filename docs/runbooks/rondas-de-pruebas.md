@@ -152,6 +152,8 @@ Lo que sigue vigente del [registro de fallos](../registros/fallos-herramientas.m
 - `turno.js` no encuentra el cuadro con la barra de habilidades activa: pulsar «Escribir» antes.
 - `combate.js` busca «Defensa» y el botón es «Defenderse»; con un combate de `escenario.sh` hay que pulsar COMBATIR antes.
 - Con Ollama real cada turno tarda 3-6 min: `combate.js` con `rondas:1` en bucle y esperar a que el HUD deje de decir «El narrador escribe».
+- Un encuentro hostil que corta el paso deja «Moverte por la zona» deshabilitado y `puntos.js` y `mover.js` fallan: resolverlo antes.
+- El Ollama simulado nunca devuelve `combateIniciado`: un combate abierto desde texto libre solo se prueba con Ollama real.
 - `orden.sh` por `host.sh` no ve el `/tmp` del sandbox: dejar el archivo dentro del repo.
 - `IA_REGISTRO` con ruta absoluta (el servidor corre en `backend/`); tras una migración, `npx prisma generate` en `backend/`.
 

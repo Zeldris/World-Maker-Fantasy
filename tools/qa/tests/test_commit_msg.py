@@ -16,7 +16,8 @@ class CommitMsg(unittest.TestCase):
         env = {k: v for k, v in ENV_GIT.items() if k != 'CLAUDECODE'}
         if claudecode:
             env['CLAUDECODE'] = '1'
-        return subprocess.run(['bash', HOOK, ruta], env=env, capture_output=True, text=True).returncode
+        # Fuera de un repo: el gancho no ve el MERGE_HEAD del proyecto real.
+        return subprocess.run(['bash', HOOK, ruta], cwd=os.path.dirname(ruta), env=env, capture_output=True, text=True).returncode
 
     def test_sin_siguiente_falla_y_con_siguiente_pasa(self):
         self.assertEqual(self.correr('Tanda 21: algo\n\nCuerpo.\n\nCo-Authored-By: x\n'), 1)
