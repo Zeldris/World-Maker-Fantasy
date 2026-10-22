@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { armasDeLaSemana, asegurarVasallajes, cuotaSemanal, pagoSemanal, PATRULLA_GUERREROS, rearme, revisarVasallajes, SOBREPRECIO_ARMAS, vasallajesVista } from './vasallaje.js';
+import { armasDeLaSemana, asegurarVasallajes, cuotaSemanal, pagoSemanal, PATRULLA_GUERREROS, porcentajePagado, rearme, revisarVasallajes, SOBREPRECIO_ARMAS, vasallajesVista } from './vasallaje.js';
 import { EQUIPO } from './facturaEquipo.js';
 import { produccionDeFaccion } from '../kingdomTick.js';
 
@@ -15,12 +15,14 @@ describe('vasallaje (CR-59) — reglas puras', () => {
   });
 
   it('pago semanal al estilo X4 (2026-10-22): lo pendiente nunca pasa de una cuota', () => {
-    expect(pagoSemanal(2000, 0, 1248)).toEqual({ pagado: 1248, pendiente: 0, alCorriente: true });
-    expect(pagoSemanal(300, 0, 1248)).toEqual({ pagado: 300, pendiente: 948, alCorriente: false });
+    expect(pagoSemanal(2000, 0, 1248)).toEqual({ pagado: 1248, pendiente: 0, alCorriente: true, fraccion: 1 });
+    expect(pagoSemanal(300, 0, 1248)).toEqual({ pagado: 300, pendiente: 948, alCorriente: false, fraccion: 300 / 1248 });
     // Con lo pendiente de la semana anterior (y una deuda vieja recortada a una cuota).
-    expect(pagoSemanal(0, 948, 1248)).toEqual({ pagado: 0, pendiente: 1248, alCorriente: false });
-    expect(pagoSemanal(0, 9000, 1248)).toEqual({ pagado: 0, pendiente: 1248, alCorriente: false });
-    expect(pagoSemanal(2496, 1248, 1248)).toEqual({ pagado: 2496, pendiente: 0, alCorriente: true });
+    expect(pagoSemanal(0, 948, 1248)).toEqual({ pagado: 0, pendiente: 1248, alCorriente: false, fraccion: 0 });
+    expect(pagoSemanal(1248, 1248, 1248)).toEqual({ pagado: 1248, pendiente: 1248, alCorriente: false, fraccion: 0.5 });
+    expect(pagoSemanal(0, 9000, 1248)).toEqual({ pagado: 0, pendiente: 1248, alCorriente: false, fraccion: 0 });
+    expect(pagoSemanal(2496, 1248, 1248)).toEqual({ pagado: 2496, pendiente: 0, alCorriente: true, fraccion: 1 });
+    expect([0, 0.004, 0.4, 0.996, 1].map(porcentajePagado)).toEqual([0, 1, 40, 99, 100]);
   });
 });
 
@@ -88,27 +90,47 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     expect(vista).toMatchObject({ vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', deuda: 0, alCorriente: true, cuota: cuotaSemanal(despues.soldados), sobreprecioArmas: SOBREPRECIO_ARMAS, patrullaGuerreros: PATRULLA_GUERREROS, proximaRevision: 14, rotoEn: null });
   });
 
-  it('sin fondos: impagado, patrullas suspendidas (ni escaramuza ni rearme) y línea en el diario', async () => {
-    await ponerRiqueza('clan-serhu', 100);
+  it('pago parcial: paga lo que puede y patrulla en proporción (40 % de lo debido, 40 % de probabilidad)', async () => {
     const soldados = (await stats('clan-serhu')).soldados;
     const cuota = cuotaSemanal(soldados);
+    const paga = Math.round((cuota * 2) / 5);
+    await ponerRiqueza('clan-serhu', paga);
     const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
-    const r = await semana(14, 0.1);
-    expect(r.escaramuzas).toBe(0);
-    expect((await vasallaje()).deuda).toBe(cuota - 100);
-    expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + 100);
+    // Azar 0,1: entra en el 40 % y patrulla (y como 0,1 < 25 %, acaba en escaramuza).
+    expect((await semana(14, 0.1)).escaramuzas).toBe(1);
+    expect((await vasallaje()).deuda).toBe(cuota - paga);
+    expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + paga);
     expect(await stats('clan-serhu')).toMatchObject({ riqueza: 0, soldados });
-    const linea = await ultimaLinea();
-    expect(linea.datos).toMatchObject({ estado: 'impagado' });
+    const porcentaje = porcentajePagado(paga / cuota);
+    expect(porcentaje).toBe(40);
+    expect((await ultimaLinea()).datos).toMatchObject({ estado: 'parcial', porcentaje, patrulla: true });
     const [vista] = await vasallajesVista(prisma, saveId, 14);
-    expect(vista).toMatchObject({ alCorriente: false, deuda: cuota - 100 });
+    expect(vista).toMatchObject({ alCorriente: false, porcentajePagado: porcentaje, deuda: cuota - paga });
   });
 
-  it('la deuda no se acumula: otra semana sin fondos se queda en una cuota', async () => {
+  it('pago parcial sin suerte: con el azar por encima de lo pagado no patrulla', async () => {
     const cuota = cuotaSemanal((await stats('clan-serhu')).soldados);
-    expect((await semana(21, 0.1)).escaramuzas).toBe(0);
+    // Debe lo pendiente (unas 0,6 cuotas) más la cuota; paga la mitad.
+    const debe = (await vasallaje()).deuda + cuota;
+    const paga = Math.round(debe / 2);
+    await ponerRiqueza('clan-serhu', paga);
+    expect((await semana(21, 0.9)).escaramuzas).toBe(0);
+    expect((await vasallaje()).deuda).toBe(debe - paga);
+    const linea = await ultimaLinea();
+    expect(linea.fictionalMinutes).toBe(21 * 1440);
+    expect(linea.datos).toMatchObject({ estado: 'parcial', porcentaje: 50, patrulla: false });
+  });
+
+  it('sin fondos: impagado, patrullas suspendidas y lo pendiente no pasa de una cuota', async () => {
+    const cuota = cuotaSemanal((await stats('clan-serhu')).soldados);
+    await ponerRiqueza('clan-serhu', 0);
+    // Ni con el azar más bajo patrulla: no pagó nada.
+    expect((await semana(28, 0)).escaramuzas).toBe(0);
     expect((await vasallaje()).deuda).toBe(cuota);
-    expect((await semana(28, 0.1)).escaramuzas).toBe(0);
+    expect((await ultimaLinea()).datos).toMatchObject({ estado: 'impagado' });
+    const [vista] = await vasallajesVista(prisma, saveId, 28);
+    expect(vista).toMatchObject({ alCorriente: false, porcentajePagado: 0, deuda: cuota });
+    expect((await semana(35, 0)).escaramuzas).toBe(0);
     expect((await vasallaje()).deuda).toBe(cuota);
   });
 
@@ -116,12 +138,12 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     const cuota = cuotaSemanal((await stats('clan-serhu')).soldados);
     await ponerRiqueza('clan-serhu', 2 * cuota);
     const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
-    expect((await semana(35, 0.9)).escaramuzas).toBe(0);
+    expect((await semana(42, 0.9)).escaramuzas).toBe(0);
     expect((await vasallaje()).deuda).toBe(0);
     expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + 2 * cuota);
     const linea = await ultimaLinea();
     expect(linea.datos).toMatchObject({ estado: 'al-corriente' });
-    expect(linea.fictionalMinutes).toBe(35 * 1440);
+    expect(linea.fictionalMinutes).toBe(42 * 1440);
   });
 
   it('migración: una deuda vieja de más de una cuota se recorta a una cuota, o se salda si hay fondos', async () => {
@@ -129,20 +151,20 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     const v = await vasallaje();
     await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda: 8310 } });
     await ponerRiqueza('clan-serhu', 0);
-    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 36 * 1440));
+    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 43 * 1440));
     expect((await vasallaje()).deuda).toBe(cuota);
     await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda: 8310 } });
     await ponerRiqueza('clan-serhu', cuota + 7);
     const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
-    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 36 * 1440));
+    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 43 * 1440));
     expect((await vasallaje()).deuda).toBe(0);
     expect((await stats('clan-serhu')).riqueza).toBe(7);
     expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + cuota);
   });
 
   it('si cae el señor, el vasallaje se rompe', async () => {
-    await prisma.faction.updateMany({ where: { saveId, slug: 'concordia-de-hierro' }, data: { disueltaEn: 40 * 1440 } });
-    await semana(42, 0.9);
+    await prisma.faction.updateMany({ where: { saveId, slug: 'concordia-de-hierro' }, data: { disueltaEn: 47 * 1440 } });
+    await semana(49, 0.9);
     expect(await vasallaje()).toMatchObject({ motivoRuptura: 'cayó el señor' });
   });
 });

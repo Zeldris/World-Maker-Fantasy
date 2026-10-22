@@ -141,9 +141,11 @@ tope de pienso).
   - **Decisión de la usuaria 2026-10-22: presupuesto al estilo X4; sin deuda acumulada** (P286/P297;
     sustituye la deuda creciente y los 100 por patrulla). Como el presupuesto de un mánager de X4:
     Foundations, cada semana la cuota (el desgaste de sus armas, al doble) sale del tesoro del vasallo
-    y va al señor. Si no le llega, el vasallaje queda **impagado**: esa semana no patrulla y lo
-    pendiente nunca pasa de una cuota. La semana que paga lo pendiente y la cuota, vuelve a 0 y
-    reanuda las patrullas. La patrulla es el servicio que se paga, ya no rebaja deuda. El rearme solo
+    y va al señor. **Pago parcial** (decisión del mismo día): paga lo que pueda de lo pendiente más la
+    cuota y patrulla en proporción a lo pagado (pagar el 40 % da un 40 % de probabilidad de patrullar
+    esa semana; la interfaz y el diario dicen «Pago parcial 40 %: patrullas al 40 %»). Si no paga nada,
+    queda **impagado** y no patrulla. Lo pendiente nunca pasa de una cuota. Cuando paga entero lo
+    pendiente y la cuota, vuelve a estar al corriente y patrulla siempre. La patrulla es el servicio que se paga, ya no rebaja deuda. El rearme solo
     compra armas con lo que le quede tras la cuota (sin crédito). Las partidas de antes recortan la
     deuda a una cuota, o la saldan si hay fondos. Ya no se rompe por «deuda saldada».
 - **Ingresos pasivos** (usuaria): hoy solo existen el comercio y las expediciones y saqueos de las

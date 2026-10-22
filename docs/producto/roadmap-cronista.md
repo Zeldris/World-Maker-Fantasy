@@ -1742,8 +1742,9 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     región o contra renegados.
   - Se rompe con la deuda saldada o si cae el señor.
   - **Decisión de la usuaria 2026-10-22: presupuesto al estilo X4; sin deuda acumulada** (P286/P297):
-    la cuota semanal sale del tesoro del vasallo; si no llega, «impagado» con las patrullas suspendidas
-    y lo pendiente con tope de una cuota; al pagar, al corriente y patrulla otra vez. Sustituye la
+    la cuota semanal sale del tesoro del vasallo; si no llega, paga lo que pueda y patrulla en
+    proporción («Pago parcial 40 %: patrullas al 40 %»); sin pagar nada, «impagado» y sin patrullas.
+    Lo pendiente tiene tope de una cuota; al pagar entero, al corriente y patrulla siempre. Sustituye la
     deuda creciente, los 100 por patrulla y la ruptura por deuda saldada. Detalle en
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md) (Q28).
   - **Queda:** romperlo por alianza con el Reino o por guerra (`CR-37`).

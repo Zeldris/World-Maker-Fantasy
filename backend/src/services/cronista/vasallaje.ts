@@ -3,13 +3,15 @@
 // vende las armas al doble. Decisión de la usuaria 2026-10-22 (P286/P297): presupuesto al estilo
 // X4: Foundations, sin deuda acumulada. Cada semana:
 //   1. la cuota: el desgaste de las armas de sus soldados, al doble, sale del tesoro del vasallo y va
-//      al señor, junto con lo que quedara pendiente de la semana anterior. Si no le llega, el
-//      vasallaje queda «impagado»: lo pendiente nunca pasa de una cuota y esa semana no patrulla;
+//      al señor, junto con lo que quedara pendiente de la semana anterior. Si no le llega, paga lo que
+//      pueda («pago parcial», decisión del mismo día) y lo pendiente nunca pasa de una cuota; si no
+//      paga nada, el vasallaje queda «impagado»;
 //   2. el rearme: el excedente de comida pasa trabajadores a guerreros, con sus armas al doble, solo
 //      con lo que le quede en el tesoro tras la cuota (sin crédito);
-//   3. la patrulla (solo al corriente): 20 guerreros a una zona de su región; 25 % de escaramuza, que
-//      se pelea de verdad contra 1d6+2 rivales (CR-62, combate de fondo). La patrulla es el servicio
-//      que se paga; ya no rebaja deuda.
+//   3. la patrulla, en proporción a lo pagado (pagar el 40 % da un 40 % de probabilidad de patrullar;
+//      sin pagar, no patrulla): 20 guerreros a una zona de su región; 25 % de escaramuza, que se pelea
+//      de verdad contra 1d6+2 rivales (CR-62, combate de fondo). La patrulla es el servicio que se
+//      paga; ya no rebaja deuda.
 // El ciclo se rompe si cae el señor o el vasallo (Q24; la alianza con el Reino y la guerra llegan con
 // `CR-37`).
 import { pelearEscaramuza, resumenEscaramuza } from './escaramuzas.js';
@@ -33,14 +35,18 @@ export const armasDeLaSemana = (soldados: number) => Math.round(((soldados * EQU
 /// Puro: la cuota semanal es el desgaste de sus armas al doble (decisión 2026-10-22).
 export const cuotaSemanal = armasDeLaSemana;
 
-/// Puro: un pago semanal. Paga lo pendiente (como mucho una cuota) más la cuota de la semana con lo que
-/// tenga; lo que no llegue queda pendiente, con tope de una cuota (no se acumula).
-export function pagoSemanal(riqueza: number, pendiente: number, cuota: number): { pagado: number; pendiente: number; alCorriente: boolean } {
+/// Puro: un pago semanal. Paga lo que pueda de lo pendiente (como mucho una cuota) más la cuota de la
+/// semana; lo que no llegue queda pendiente, con tope de una cuota (no se acumula). `fraccion` es la
+/// parte pagada de lo que debía (0-1): la probabilidad de que patrulle esa semana.
+export function pagoSemanal(riqueza: number, pendiente: number, cuota: number): { pagado: number; pendiente: number; alCorriente: boolean; fraccion: number } {
   const debe = Math.min(Math.max(0, pendiente), cuota) + cuota;
   const pagado = Math.min(Math.max(0, riqueza), debe);
   const resto = Math.min(cuota, debe - pagado);
-  return { pagado, pendiente: resto, alCorriente: resto === 0 };
+  return { pagado, pendiente: resto, alCorriente: resto === 0, fraccion: resto === 0 ? 1 : pagado / debe };
 }
+
+/// Puro: el porcentaje pagado para la interfaz y el diario (1-99 en un pago parcial, nunca 0 ni 100).
+export const porcentajePagado = (fraccion: number) => (fraccion >= 1 ? 100 : fraccion <= 0 ? 0 : Math.min(99, Math.max(1, Math.round(fraccion * 100))));
 
 /// Puro: cuántos trabajadores pasan a guerreros con un excedente de comida (cada uno deja de producir 2).
 export const rearme = (margenComida: number, trabajadores: number) => Math.max(0, Math.min(trabajadores, Math.floor(margenComida / 2)));
@@ -104,10 +110,11 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
       riqueza -= nuevos * precioArma;
       alSenor += nuevos * precioArma;
     }
-    // 3. Patrulla obligada, solo si está al corriente (impagado: patrullas suspendidas esa semana).
+    // 3. Patrulla obligada, en proporción a lo pagado (impagado: patrullas suspendidas esa semana).
     let patrullo = false;
     let huboEscaramuza = false;
-    if (pago.alCorriente && sold && sold.poblacion + nuevos >= PATRULLA_GUERREROS) {
+    const tocaPatrulla = pago.alCorriente || (pago.fraccion > 0 && random() < pago.fraccion);
+    if (tocaPatrulla && sold && sold.poblacion + nuevos >= PATRULLA_GUERREROS) {
       patrullo = true;
       if (random() < PROB_ESCARAMUZA) {
         const region = Object.keys((sold.distribucion ?? {}) as Record<string, number>)[0] ?? null;
@@ -137,7 +144,15 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
       await registrarSuceso(tx, {
         saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
         actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
-        datos: { vasallo: vasallo.name, senor: senor.name, estado: pago.alCorriente ? 'al-corriente' : 'impagado', ...(nuevos > 0 ? { rearmados: nuevos } : {}) },
+        datos: {
+          vasallo: vasallo.name, senor: senor.name,
+          ...(pago.alCorriente
+            ? { estado: 'al-corriente' as const }
+            : pago.pagado > 0
+              ? { estado: 'parcial' as const, porcentaje: porcentajePagado(pago.fraccion), patrulla: patrullo }
+              : { estado: 'impagado' as const }),
+          ...(nuevos > 0 ? { rearmados: nuevos } : {}),
+        },
       });
     }
     await tx.kingdomStats.update({ where: { id: vasallo.kingdomStats.id }, data: { riqueza, trabajadores: { decrement: nuevos }, poblacion: { decrement: nuevos }, soldados: { increment: nuevos } } });
@@ -154,8 +169,10 @@ export interface VasallajeVista {
   senorNombre: string;
   /// Lo que quedó sin pagar la última semana (como mucho una cuota); 0 si está al corriente.
   deuda: number;
-  /// false: impagado, con las patrullas suspendidas hasta que pague.
+  /// false: pago parcial o impagado, con las patrullas en proporción a lo pagado.
   alCorriente: boolean;
+  /// Lo pagado la última semana de lo que debía (0-100): la probabilidad de patrullar.
+  porcentajePagado: number;
   /// Cuota semanal actual (las armas de sus soldados al doble).
   cuota: number;
   /// Reglas vigentes (las constantes de este módulo), para que la interfaz no las repita a mano.
@@ -174,6 +191,14 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
   const facciones = await tx.faction.findMany({ where: { saveId, slug: { in: slugs } }, select: { slug: true, name: true, kingdomStats: { select: { soldados: true } } } });
   const nombres = new Map(facciones.map((f) => [f.slug, f.name]));
   const soldados = new Map(facciones.map((f) => [f.slug, f.kingdomStats?.soldados ?? 0]));
+  // El porcentaje del último pago sale de su línea del diario (toda semana con algo pendiente la deja).
+  const lineas = filas.some((f) => f.deuda > 0)
+    ? await tx.suceso.findMany({ where: { saveId, tipo: 'PATRULLA_VASALLO' }, orderBy: { fictionalMinutes: 'desc' }, take: 20, select: { datos: true } })
+    : [];
+  const ultimoPorcentaje = (vasallo: string) => {
+    const d = lineas.map((l) => l.datos as { vasallo?: string; estado?: string; porcentaje?: number }).find((x) => x.vasallo === vasallo);
+    return d?.estado === 'parcial' ? (d.porcentaje ?? 0) : 0;
+  };
   return filas.map((f) => ({
     vasalloSlug: f.vasalloSlug,
     vasalloNombre: nombres.get(f.vasalloSlug) ?? f.vasalloSlug,
@@ -181,6 +206,7 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
     senorNombre: nombres.get(f.senorSlug) ?? f.senorSlug,
     deuda: f.deuda,
     alCorriente: f.deuda === 0,
+    porcentajePagado: f.deuda === 0 ? 100 : ultimoPorcentaje(nombres.get(f.vasalloSlug) ?? f.vasalloSlug),
     cuota: cuotaSemanal(soldados.get(f.vasalloSlug) ?? 0),
     sobreprecioArmas: SOBREPRECIO_ARMAS,
     patrullaGuerreros: PATRULLA_GUERREROS,

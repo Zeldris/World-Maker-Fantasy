@@ -3226,8 +3226,10 @@ export interface VasallajeInfo {
   senorNombre: string
   /// Lo que quedó sin pagar la última semana (como mucho una cuota); 0 = al corriente.
   deuda: number
-  /// false: impagado, patrullas suspendidas hasta que pague (presupuesto al estilo X4, 2026-10-22).
+  /// false: pago parcial o impagado, patrullas en proporción a lo pagado (presupuesto al estilo X4, 2026-10-22).
   alCorriente: boolean
+  /// Lo pagado la última semana de lo que debía (0-100): la probabilidad de patrullar.
+  porcentajePagado: number
   cuota: number
   sobreprecioArmas: number
   patrullaGuerreros: number
