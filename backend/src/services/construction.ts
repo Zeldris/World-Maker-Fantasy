@@ -50,7 +50,7 @@ export interface ConstructionRecipe {
   /// pide atributos. T1-3 libres, T4-6 piden Ayuntamiento mediano y T7-9 grande
   /// (`ayuntamientoNivelMinimoPorTier`). El personaje levanta solo hasta T3
   /// (`TIER_MAXIMO_PERSONAJE`, Medieval Dynasty); el resto lo hace la Casa de obras con súbditos
-  /// constructores cuyo nivel llegue al tier (Bellwright). NO es `Building.tier`: ese sigue siendo
+  /// constructores (Bellwright), cuyo nivel solo da velocidad (usuaria, 2026-10-22). NO es `Building.tier`: ese sigue siendo
   /// el nivel del Ayuntamiento o del edificio de oficio (1-3).
   tier: number;
   oficio?: string;

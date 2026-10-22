@@ -68,7 +68,7 @@ export function CasaDeObrasCola({ saveId, version = 0 }: { saveId: string; versi
             <li key={o.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
               <div className="flex items-center justify-between gap-2 text-sm text-wood-100">
                 <span>
-                  {i + 1}. {o.nombre} <span className="text-2xs text-wood-400">T{o.tier} · día {o.diasHechos}/{o.dias}</span>
+                  {i + 1}. {o.nombre} <span className="text-2xs text-wood-400">T{o.tier} · {o.diasHechos.toLocaleString('es-ES', { maximumFractionDigits: 1 })}/{o.dias} días de obra</span>
                 </span>
                 <span className="flex gap-1 text-2xs">
                   <button type="button" aria-label={`Subir ${o.nombre}`} disabled={busy || i === 0} onClick={() => mover(i, -1)} className="tactile rounded border border-iron-700 px-1.5 disabled:opacity-40">▲</button>

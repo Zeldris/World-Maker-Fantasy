@@ -4081,7 +4081,7 @@ model ObraCola {
   buildingId String?
   tier       Int
   dias       Int
-  diasHechos Int      @default(0)
+  diasHechos Float    @default(0)
   /// Materiales del Almacén ya gastados en la obra.
   gastados   Int      @default(0)
   /// Por qué no avanza hoy (🔒 tier, sin constructores, sin materiales…); null = avanza.

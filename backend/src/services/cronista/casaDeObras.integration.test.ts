@@ -3,7 +3,10 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, TIER_MAXIMO_PERSONAJE } from '../construction.js';
 import { esDelPanelReino } from '../../routes/saves/recipesStatus.js';
+import { xpForProfessionLevel } from '../professionProgress.js';
 import {
+  VELOCIDAD_POR_NIVEL_CONSTRUCTOR,
+  avanceDiario,
   avanzarCasaDeObras,
   encargarObra,
   encargarReparacion,
@@ -34,14 +37,15 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
 
   describe('repartirObras (puro)', () => {
     const obras = [{ id: 'a', tier: 2 }, { id: 'b', tier: 1 }, { id: 'c', tier: 5 }];
-    it('el de menor nivel que llega, una obra por constructor', () => {
-      const r = repartirObras(obras.slice(0, 2), [{ id: 'x', nivelConstructor: 3 }, { id: 'y', nivelConstructor: 2 }], 1);
-      expect(r.get('a')).toEqual({ constructorId: 'y' });
-      expect(r.get('b')).toEqual({ constructorId: 'x' });
+    it('la primera obra de la cola se lleva al más rápido; una obra por constructor', () => {
+      const r = repartirObras(obras.slice(0, 2), [{ id: 'y', nivelConstructor: 2 }, { id: 'x', nivelConstructor: 3 }], 1);
+      expect(r.get('a')).toEqual({ constructorId: 'x' });
+      expect(r.get('b')).toEqual({ constructorId: 'y' });
     });
-    it('🔒 por nivel de Casa, por nivel de constructor y sin constructores', () => {
+    it('usuaria 2026-10-22: el nivel del constructor no bloquea tiers; 🔒 solo por nivel de Casa, y sin constructores', () => {
       expect(repartirObras(obras, [{ id: 'x', nivelConstructor: 9 }], 1).get('c')).toEqual({ aviso: expect.stringMatching(/^🔒5: la Casa de obras de nivel 1/) });
-      expect(repartirObras(obras, [{ id: 'x', nivelConstructor: 1 }], 1).get('a')).toEqual({ aviso: expect.stringMatching(/^🔒2: ningún constructor/) });
+      expect(repartirObras(obras, [{ id: 'x', nivelConstructor: 1 }], 1).get('a')).toEqual({ constructorId: 'x' });
+      expect(repartirObras([{ id: 'c', tier: 5 }], [{ id: 'x', nivelConstructor: 1 }], 2).get('c')).toEqual({ constructorId: 'x' });
       expect(repartirObras(obras, [], 1).get('b')).toEqual({ aviso: expect.stringMatching(/Sin constructores/) });
       const uno = repartirObras(obras.slice(0, 2), [{ id: 'x', nivelConstructor: 3 }], 1);
       expect(uno.get('b')).toEqual({ aviso: expect.stringMatching(/Esperando turno/) });
@@ -51,6 +55,21 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       expect([0, 1, 2].map((d) => cuotaDelDia(4, 3, d))).toEqual([2, 1, 1]);
       expect([0, 1, 2, 3, 4, 5].map((d) => cuotaDelDia(1, 6, d))).toEqual([1, 0, 0, 0, 0, 0]);
       expect(cuotaDelDia(5, 2, 2)).toBe(0);
+    });
+    it('el nivel del constructor da velocidad (+10 % por nivel) y el gasto sigue al avance', () => {
+      expect(VELOCIDAD_POR_NIVEL_CONSTRUCTOR).toBe(0.1);
+      expect([1, 2, 6, 9].map(avanceDiario)).toEqual([1, 1.1, 1.5, 1.8]);
+      // 10 unidades en 3 días a 1,5 por jornada: 5 y 5.
+      expect([cuotaDelDia(10, 3, 0, 1.5), cuotaDelDia(10, 3, 1.5, 1.5)]).toEqual([5, 5]);
+      // Sumar 1,1 seis veces no se pasa de la receta ni deja nada sin gastar.
+      let hechos = 0;
+      let total = 0;
+      while (hechos < 6) {
+        const avance = Math.min(1.1, 6 - hechos);
+        total += cuotaDelDia(7, 6, hechos, avance);
+        hechos = Math.round((hechos + avance) * 100) / 100;
+      }
+      expect(total).toBe(7);
     });
   });
 
@@ -81,6 +100,8 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       return data.length;
     };
     const jornada = () => prisma.$transaction((tx) => avanzarCasaDeObras(tx, saveId, ahora));
+    /// Pone al constructor en ese nivel con la XP justa, para que no suba solo a mitad de test.
+    const nivelDe = (n: number) => prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: n, xpConstructor: xpForProfessionLevel(n) } });
     const bloqueo = (key: string, quien?: 'personaje' | 'casa-de-obras') =>
       computeBuildBlockedReason({ db: prisma, saveId, worldId, buildRecipe: receta(key), activeRegion: null, currentLocationRecord: { id: casaLoc }, quien });
 
@@ -158,7 +179,8 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       expect(vista.cola.map((o) => o.id)).toEqual([a.id]);
     });
 
-    it('🔒: una mejora de tier 6 espera a una Casa de nivel 2 y a un constructor de nivel 6, y luego mejora en el sitio', async () => {
+    it('🔒: una mejora de tier 6 espera a una Casa de nivel 2, la hace un constructor de nivel 1 y mejora en el sitio', async () => {
+      await nivelDe(1);
       await llenarPara('ayuntamiento-mediano');
       const r = await prisma.$transaction((tx) => encargarObra(tx, saveId, 'ayuntamiento-mediano'));
       expect(r.ok).toBe(true);
@@ -166,9 +188,10 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       expect((await prisma.obraCola.findFirstOrThrow({ where: { saveId } })).aviso).toMatch(/^🔒6: la Casa de obras de nivel 1/);
       await prisma.building.update({ where: { id: casaId }, data: { tier: 2 } });
       await jornada();
-      expect((await prisma.obraCola.findFirstOrThrow({ where: { saveId } })).aviso).toMatch(/^🔒6: ningún constructor llega a tier 6/);
-      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 6 } });
-      for (let d = 0; d < 6; d++) await jornada();
+      const obra = await prisma.obraCola.findFirstOrThrow({ where: { saveId } });
+      expect(obra).toMatchObject({ diasHechos: 1, aviso: null });
+      // Sube de nivel construyendo y acelera: acaba en 6 jornadas como mucho.
+      for (let d = 1; d < 6 && (await prisma.obraCola.count({ where: { saveId } })) > 0; d++) await jornada();
       expect(await prisma.obraCola.count({ where: { saveId } })).toBe(0);
       expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
       const ayto = await prisma.building.findUniqueOrThrow({ where: { id: ayuntamientoId } });
@@ -179,7 +202,8 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     it('X4: gasta los materiales exactos día a día; si falta uno, se para ese día sin perder lo avanzado', async () => {
       // Jaula pequeña (T1) dura 1 día: para ver el reparto hace falta una obra de varios días.
       const r3 = CONSTRUCTION_RECIPES.find((x) => x.tier === 3 && !x.upgradesRecipeKey && x.requirements.length >= 2 && !x.requiresAyuntamiento)!;
-      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 3 } });
+      // Nivel 1 (1 día de obra por jornada) y su XP no llega a nivel 2 en esta obra.
+      await nivelDe(1);
       const [primero, ...resto] = r3.requirements;
       // Todo menos el primer material: el día 1 se para.
       await llenarPara(r3.key, 1, [primero.label]);
@@ -213,7 +237,23 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
       expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
       expect(await prisma.building.count({ where: { saveId, recipeKey: r3.key, status: 'ACTIVO' } })).toBe(1);
-      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 1 } });
+      await prisma.building.deleteMany({ where: { saveId, recipeKey: r3.key } });
+    });
+
+    it('un constructor de nivel 6 hace 1,5 días de obra por jornada: una obra de 3 días en 2', async () => {
+      const r3 = CONSTRUCTION_RECIPES.find((x) => x.tier === 3 && !x.upgradesRecipeKey && x.requirements.length >= 2 && !x.requiresAyuntamiento)!;
+      await nivelDe(6);
+      const total = await llenarPara(r3.key);
+      expect((await prisma.$transaction((tx) => encargarObra(tx, saveId, r3.key))).ok).toBe(true);
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 0 });
+      const obra = await prisma.obraCola.findFirstOrThrow({ where: { saveId } });
+      const mitad = r3.requirements.reduce((s, q) => s + cuotaDelDia(q.cantidad, 3, 0, 1.5), 0);
+      expect(obra).toMatchObject({ diasHechos: 1.5, gastados: mitad });
+      expect(await jornada()).toEqual({ avanzadas: 1, terminadas: 1 });
+      expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(0);
+      expect(total).toBe(r3.requirements.reduce((s, q) => s + q.cantidad, 0));
+      await prisma.building.deleteMany({ where: { saveId, recipeKey: r3.key } });
+      await nivelDe(1);
     });
 
     it('una fila apilada del Almacén («Leña (N)») cuenta por su cantidad y se queda con el resto', async () => {
@@ -234,7 +274,6 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     it('una obra terminada que no se puede levantar no retiene al constructor', async () => {
       await prisma.building.update({ where: { id: casaId }, data: { tier: 2 } });
       await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 2 } });
-      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 6 } });
       // El mediano ya está: la mejora acabada no se puede aplicar.
       await prisma.obraCola.create({ data: { saveId, orden: 0, tipo: 'CONSTRUIR', recipeKey: 'ayuntamiento-mediano', tier: 6, dias: 6, diasHechos: 6 } });
       await llenarPara('pozo');
@@ -243,7 +282,6 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
       const queda = await prisma.obraCola.findMany({ where: { saveId } });
       expect(queda).toHaveLength(1);
       expect(queda[0]).toMatchObject({ recipeKey: 'ayuntamiento-mediano', aviso: expect.stringMatching(/^Terminada, pero no se puede levantar/) });
-      await prisma.subject.update({ where: { id: constructorId }, data: { nivelConstructor: 1 } });
       await prisma.building.update({ where: { id: ayuntamientoId }, data: { tier: 1 } });
     });
 

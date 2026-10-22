@@ -1,13 +1,17 @@
 // Construcción por oficio y Casa de obras (diseño aprobado 2026-10-21; P277, P282, P284).
 //
 // - La Casa de obras tiene 3 niveles: cubre obras de tier 1-3, 4-6 y 7-9, con 1, 2 y 3 plazas.
-// - Sus trabajadores son súbditos con la tarea «constructor». Cada uno toma, cada día, la primera
-//   obra de la cola que su nivel alcanza (`Subject.nivelConstructor`) y que nadie trabaja ya ese día.
-// - Una obra de tier N dura N días (una reparación, 1) y gasta del Almacén los materiales exactos de
-//   su receta repartidos entre esos días, al estilo de X4 (`cuotaDelDia`). Si un día falta alguno,
-//   la obra se para ese día con un aviso y no gasta nada, sin perder lo avanzado. Una reparación
-//   sigue gastando materiales genéricos (`costeDeReparar`).
-// - Una obra que nadie alcanza lleva el aviso «🔒N».
+// - Sus trabajadores son súbditos con la tarea «constructor». Cada día, las obras de la cola, en
+//   orden, toman a los constructores libres, el de más nivel primero.
+// - Decisión de la usuaria 2026-10-22 (X4 y Manor Lords): el nivel del Ayuntamiento abre los tiers
+//   (`ayuntamientoNivelMinimoPorTier`, construction.ts) y el del constructor solo da velocidad
+//   (`avanceDiario`): cualquier constructor trabaja cualquier obra que la Casa cubra.
+// - Una obra de tier N son N días de trabajo (una reparación, 1); un constructor de nivel n hace
+//   `avanceDiario(n)` al día. Gasta del Almacén los materiales exactos de su receta según avanza, al
+//   estilo de X4 (`cuotaDelDia`). Si un día falta alguno, la obra se para ese día con un aviso y no
+//   gasta nada, sin perder lo avanzado. Una reparación sigue gastando materiales genéricos
+//   (`costeDeReparar`).
+// - Una obra por encima de lo que cubre la Casa lleva el aviso «🔒N».
 // - Al terminar se revalida con las reglas de siempre (`computeBuildBlockedReason`) y se levanta
 //   (o se mejora en el sitio, `mejorarEnSitio`); una reparación usa `repararEdificio` (asaltos.ts).
 // - El constructor sube de nivel construyendo, con la misma XP por tier que el oficio del personaje.
@@ -46,13 +50,25 @@ export function materialesDeReceta(recipe: ConstructionRecipe): number {
   return recipe.requirements.reduce((s, q) => s + q.cantidad, 0);
 }
 
-/// Puro: unidades de un material que se gastan el día `diasHechos + 1` de una obra de `dias` días.
-/// Lo acumulado hasta el día d es ceil(cantidad·d/dias), así que el último día se llega justo a la
-/// cantidad de la receta.
-export function cuotaDelDia(cantidad: number, dias: number, diasHechos: number): number {
+/// Velocidad del constructor (decisión de la usuaria 2026-10-22): +10 % de trabajo al día por cada
+/// nivel por encima de 1 (nivel 1: 1 día de obra al día; nivel 6: 1,5; nivel 9: 1,8).
+export const VELOCIDAD_POR_NIVEL_CONSTRUCTOR = 0.1;
+
+/// Días de obra que hace en una jornada un constructor de ese nivel.
+export function avanceDiario(nivelConstructor: number): number {
+  return 1 + VELOCIDAD_POR_NIVEL_CONSTRUCTOR * (Math.max(1, nivelConstructor) - 1);
+}
+
+/// El avance se guarda con dos decimales para que sumar 1,1 cada día no acumule error.
+const redondearAvance = (x: number) => Math.round(x * 100) / 100;
+
+/// Puro: unidades de un material que se gastan al pasar una obra de `dias` días de `diasHechos` a
+/// `diasHechos + avance`. Lo acumulado hasta el avance p es ceil(cantidad·p/dias), así que al acabar
+/// se llega justo a la cantidad de la receta.
+export function cuotaDelDia(cantidad: number, dias: number, diasHechos: number, avance = 1): number {
   const d = Math.max(1, dias);
-  const acumulado = (n: number) => Math.ceil((cantidad * Math.min(n, d)) / d);
-  return acumulado(diasHechos + 1) - acumulado(diasHechos);
+  const acumulado = (n: number) => Math.ceil((cantidad * Math.min(n, d)) / d - 1e-9);
+  return acumulado(redondearAvance(diasHechos + avance)) - acumulado(diasHechos);
 }
 
 /// Gasta del Almacén la cuota de hoy de cada material de la receta (por slug exacto o por categoría
@@ -64,6 +80,7 @@ async function gastarCuotaDelDia(
   recipe: ConstructionRecipe,
   dias: number,
   diasHechos: number,
+  avance: number,
 ): Promise<{ ok: true; gastadas: number } | { ok: false; faltan: string[] }> {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const catalogo = await tx.itemCatalog.findMany({ where: { worldId: save.worldId }, select: { slug: true, tipo: true, category: true } });
@@ -74,7 +91,7 @@ async function gastarCuotaDelDia(
   const faltan: string[] = [];
   let gastadas = 0;
   for (const req of recipe.requirements) {
-    const cantidad = cuotaDelDia(req.cantidad, dias, diasHechos);
+    const cantidad = cuotaDelDia(req.cantidad, dias, diasHechos, avance);
     if (cantidad <= 0) continue;
     const hoy = { ...req, cantidad };
     const tienes = totalQuantity(libres, hoy, catalogBySlug);
@@ -111,11 +128,11 @@ export interface ObraParaReparto {
 }
 export type Reparto = Map<string, { constructorId: string } | { aviso: string }>;
 
-/// Puro: qué constructor trabaja hoy cada obra (cola en orden), o por qué no avanza.
+/// Puro: qué constructor trabaja hoy cada obra (cola en orden), o por qué no avanza. El nivel del
+/// constructor no bloquea ningún tier: la primera obra de la cola se lleva al más rápido.
 export function repartirObras(obras: ObraParaReparto[], constructores: ConstructorParaReparto[], nivelCasa: number): Reparto {
   const tope = tierMaximoDeCasa(nivelCasa);
-  const libres = [...constructores].sort((a, b) => a.nivelConstructor - b.nivelConstructor);
-  const mejor = constructores.reduce((m, c) => Math.max(m, c.nivelConstructor), 0);
+  const libres = [...constructores].sort((a, b) => b.nivelConstructor - a.nivelConstructor);
   const r: Reparto = new Map();
   for (const o of obras) {
     if (o.tier > tope) {
@@ -126,18 +143,12 @@ export function repartirObras(obras: ObraParaReparto[], constructores: Construct
       r.set(o.id, { aviso: 'Sin constructores: pon a algún súbdito trabajador con la tarea «Constructor».' });
       continue;
     }
-    if (o.tier > mejor) {
-      r.set(o.id, { aviso: `🔒${o.tier}: ningún constructor llega a tier ${o.tier} (el mejor es de nivel ${mejor})` });
-      continue;
-    }
-    // El de menor nivel que la alcance, para dejar libres a los mejores para las obras altas.
-    const i = libres.findIndex((c) => c.nivelConstructor >= o.tier);
-    if (i < 0) {
+    const c = libres.shift();
+    if (!c) {
       r.set(o.id, { aviso: 'Esperando turno: sus constructores están en otras obras.' });
       continue;
     }
-    r.set(o.id, { constructorId: libres[i].id });
-    libres.splice(i, 1);
+    r.set(o.id, { constructorId: c.id });
   }
   return r;
 }
@@ -253,8 +264,9 @@ export async function verCasaDeObras(tx: Tx, saveId: string, ahora: number) {
   };
 }
 
-async function darXp(tx: Tx, c: { id: string; xpConstructor: number; nivelConstructor: number }, tier: number, dias: number) {
-  const xp = c.xpConstructor + Math.ceil(xpForCraftSuccess(tier) / Math.max(1, dias));
+/// XP por el trabajo hecho: la de la obra entera repartida por días de obra (`avance` de `dias`).
+async function darXp(tx: Tx, c: { id: string; xpConstructor: number; nivelConstructor: number }, tier: number, dias: number, avance = 1) {
+  const xp = c.xpConstructor + Math.ceil((xpForCraftSuccess(tier) * avance) / Math.max(1, dias) - 1e-9);
   const nivel = Math.max(c.nivelConstructor, professionLevelForXp(xp));
   await tx.subject.update({ where: { id: c.id }, data: { xpConstructor: xp, nivelConstructor: nivel } });
 }
@@ -359,15 +371,17 @@ export async function avanzarCasaDeObras(tx: Tx, saveId: string, ahora: number):
       continue;
     }
     if (o.diasHechos < o.dias) {
-      const gasto = await gastarCuotaDelDia(tx, saveId, recipe, o.dias, o.diasHechos);
+      const avance = Math.min(avanceDiario(c.nivelConstructor), o.dias - o.diasHechos);
+      const gasto = await gastarCuotaDelDia(tx, saveId, recipe, o.dias, o.diasHechos, avance);
       if (!gasto.ok) {
         await tx.obraCola.update({ where: { id: o.id }, data: { aviso: `Faltan materiales en el Almacén: ${gasto.faltan.join(', ')}.` } });
         continue;
       }
-      await tx.obraCola.update({ where: { id: o.id }, data: { diasHechos: { increment: 1 }, gastados: { increment: gasto.gastadas }, aviso: null } });
-      await darXp(tx, c, o.tier, o.dias);
+      const hechos = Math.min(o.dias, redondearAvance(o.diasHechos + avance));
+      await tx.obraCola.update({ where: { id: o.id }, data: { diasHechos: hechos, gastados: { increment: gasto.gastadas }, aviso: null } });
+      await darXp(tx, c, o.tier, o.dias, avance);
       res.avanzadas++;
-      if (o.diasHechos + 1 < o.dias) continue;
+      if (hechos < o.dias) continue;
     }
     const motivo = await terminarObra(tx, saveId, recipe, c.id, ahora);
     if (motivo) {
