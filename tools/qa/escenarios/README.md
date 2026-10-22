@@ -20,5 +20,5 @@ estado útil lo guarda aquí (`QA-105`).
 | `t13a-colmillo` | `cmvex1v0300057d0pdjlbezcj` | Como reino-dia39-recursos, en Hogar Ketg (Colmillo Ceniza), día 39 12:03, nivel 3, tras la tanda 13a-1 | 2026-10-21 |
 | `t13a3-ketg` | `cmvex1v0300057d0pdjlbezcj` | Como t13a-colmillo tras las tandas 13a-2 y 13a-3: misión Ascuas de Raíz de Fuego aceptada (0/3), día 39 12:30, Hogar Ketg | 2026-10-22 |
 | `t13b2-ketg` | `cmvex1v0300057d0pdjlbezcj` | Como t13a3-ketg tras las tandas 13b-1 y 13b-2: Gorhorn en Hogar Ketg junto a la Peletería, día 39 16:52, sed 100% | 2026-10-22 |
-| `t16-reino` | `cmvex1v0300057d0pdjlbezcj` | cmvex1v0300057d0pdjlbezcj | 2026-10-22 |
-| `t20-mundo` | `cmvex1v0300057d0pdjlbezcj` | cmvex1v0300057d0pdjlbezcj | 2026-10-22 |
+| `t16-reino` | `cmvex1v0300057d0pdjlbezcj` | Reino día 52: 8 cazadores, Desolladero y Corrales (P312). La fauna de la zona está agotada: para partidas de caza o domar, `reino-dia39-recursos` | 2026-10-22 |
+| `t20-mundo` | `cmvex1v0300057d0pdjlbezcj` | Mundo en el día 1479 tras `avanzar`: sucesos, nacimientos, muertes y vejez de NPC (CR-9, CR-43, P315-P317) | 2026-10-22 |

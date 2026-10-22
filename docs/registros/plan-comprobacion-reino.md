@@ -1,4 +1,4 @@
-# Pasos 3.2 y 3.3 de la línea: Mundo vivo sin jugar y arreglados del Reino (P275-P303)
+# Pasos 3.2 y 3.3 de la línea: Mundo vivo sin jugar y arreglados del Reino (P275-P303), tandas 15-21
 
 Reparto (2026-10-22, rama `claude/pruebas-reino`, sesión local en la Deck) de lo que quedaba tras el
 [reparto del 3.3](plan-comprobacion-3.3.md): las 11 tareas de Mundo vivo «sin jugar» de `matriz-pruebas.py` y los
