@@ -62,6 +62,18 @@ describe('defensa de los asentamientos (CR-65 65b)', () => {
     expect((await prisma.building.findUniqueOrThrow({ where: { id: armeriaId } })).equiposMilicia).toBe(5);
     expect(await prisma.$transaction((tx) => comprarEquiposMilicia(tx, saveId, armeriaId, 1))).toMatchObject({ ok: false });
   });
+
+  // La milicia sale de la Capital: una Armería de la región de un Cuartel no vende equipos (no armaría a nadie).
+  it('no compra equipos de milicia en una Armería que no es de la Capital', async () => {
+    const { ARMERIA_FUERA_DE_LA_CAPITAL } = await import('./defensaReino.js');
+    const cuartel = await prisma.building.findUniqueOrThrow({ where: { id: cuartelId }, select: { locationId: true } });
+    const otra = await prisma.building.create({ data: { saveId, locationId: cuartel.locationId, recipeKey: 'armeria', name: 'Armería del Cuartel', kind: 'armeria', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const antes = (await prisma.kingdomStats.findFirstOrThrow({ where: { saveId } })).riqueza;
+    expect(await prisma.$transaction((tx) => comprarEquiposMilicia(tx, saveId, otra.id, 1))).toEqual({ ok: false, motivo: ARMERIA_FUERA_DE_LA_CAPITAL });
+    expect((await prisma.kingdomStats.findFirstOrThrow({ where: { saveId } })).riqueza).toBe(antes);
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: otra.id } })).equiposMilicia).toBe(0);
+    await prisma.building.delete({ where: { id: otra.id } });
+  });
 });
 
 /// CR-65 (65c): radar de la Torre, aviso al entrar un asalto en su radio y milicia.
@@ -138,8 +150,47 @@ describe('radar de la Torre y milicia (CR-65 65c)', () => {
     await prisma.subject.updateMany({ where: { id: { in: trabajadores.map((t) => t.id) } }, data: { role: 'soldado' } });
     expect((await prisma.$transaction((tx) => planMilicia(tx, saveId, capitalId, ahora))).motivo).toMatch(/No hay trabajadores/);
     await prisma.subject.updateMany({ where: { id: { in: trabajadores.map((t) => t.id) } }, data: { role: 'trabajador' } });
-    const [ok] = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
-    expect(ok!.sinMilicia).toBeUndefined();
+    const vistos = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
+    expect(vistos.find((v) => v.asentamientoId === capitalId)!.sinMilicia).toBeUndefined();
+    // Fuera de la Capital no hay milicia que llamar: lo dice sin cargar a los súbditos, y no arma a nadie.
+    const { MILICIA_SOLO_CAPITAL } = await import('./defensaReino.js');
+    const cuartel = await prisma.building.create({ data: { saveId, locationId: cerca, recipeKey: 'cuartel-avanzado', name: 'Cuartel', kind: 'cuartel-avanzado', description: 'x', status: 'ACTIVO' } });
+    expect(await prisma.$transaction((tx) => planMilicia(tx, saveId, cuartel.id, ahora))).toEqual({ llamados: [], motivo: MILICIA_SOLO_CAPITAL });
+    expect(await prisma.$transaction((tx) => convocarMilicia(tx, saveId, cuartel.id, ahora))).toBe(0);
+    const conCuartel = await prisma.$transaction((tx) => radarDelReino(tx, saveId, ahora));
+    expect(conCuartel.find((v) => v.asentamientoId === cuartel.id)!.sinMilicia).toBe(MILICIA_SOLO_CAPITAL);
+    expect(conCuartel.find((v) => v.asentamientoId === capitalId)!.sinMilicia).toBeUndefined();
+    await prisma.building.delete({ where: { id: cuartel.id } });
     await prisma.viajero.update({ where: { id: asalto.id }, data: { estado: 'TERMINADO' } });
+  });
+
+  // Un asalto que solo ve la Torre de un Cuartel: no ofrece la milicia (no hay a quién armar allí) ni
+  // retiene a la de la Capital, que vuelve al trabajo.
+  it('lo que solo ve la Torre de un Cuartel no llama ni retiene a la milicia de la Capital', async () => {
+    const { vigilarDelReino, radarDelReino, TIPO_ASALTO } = await import('./defensaReino.js');
+    const { enlacesDelMundo, lugaresATramos } = await import('./viajeros.js');
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const region = (await prisma.location.findUniqueOrThrow({ where: { id: casa } })).region;
+    const alAlcance = lugaresATramos(await enlacesDelMundo(prisma, world.id), casa, 1);
+    const otra = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, saveId: null, region: { not: region }, id: { notIn: [...alAlcance.keys()] } }, orderBy: { slug: 'asc' } });
+    const b = (recipeKey: string, tier: number | null) => prisma.building.create({ data: { saveId, locationId: otra.id, recipeKey, name: recipeKey, kind: recipeKey, description: 'x', status: 'ACTIVO', tier } });
+    const cuartel = await b('cuartel-avanzado', null);
+    const torre = await b('torre-vigia', 1);
+    const vigia = await prisma.subject.create({ data: { saveId, name: 'Vigía del Cuartel', role: 'vigia', notes: '', asentamientoId: cuartel.id } });
+    // El personaje está en el Cuartel (antes: «Puedes llamar a la milicia») y un trabajador sigue armado.
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: otra.id } });
+    const armado = await prisma.subject.findFirstOrThrow({ where: { saveId, role: 'trabajador' } });
+    await prisma.subject.update({ where: { id: armado.id }, data: { enMilicia: true } });
+    const asalto = await prisma.viajero.create({ data: { saveId, tipo: TIPO_ASALTO, origenLocationId: lejos, destinoLocationId: otra.id, ubicacionLocationId: otra.id, ruta: [], diaSalida: 1, ultimoDia: 1, miembros: { create: [{ genericos: 4, rol: 'bandido' }] } } });
+    const vistos = await prisma.$transaction((tx) => radarDelReino(tx, saveId, 20 * 1440));
+    expect(vistos.map((v) => v.asentamientoId)).toEqual([cuartel.id]);
+    expect(await vigilarDelReino(prisma, saveId, 20)).toBe(1);
+    const aviso = await prisma.logEntry.findFirstOrThrow({ where: { saveId, text: { contains: 'se ve venir' } }, orderBy: { createdAt: 'desc' } });
+    expect(aviso.text).not.toMatch(/Puedes llamar/);
+    expect((await prisma.subject.findUniqueOrThrow({ where: { id: armado.id } })).enMilicia).toBe(false);
+    await prisma.viajero.update({ where: { id: asalto.id }, data: { estado: 'TERMINADO' } });
+    await prisma.subject.delete({ where: { id: vigia.id } });
+    await prisma.building.deleteMany({ where: { id: { in: [cuartel.id, torre.id] } } });
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: lejos } });
   });
 });

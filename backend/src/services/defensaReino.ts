@@ -104,6 +104,10 @@ export async function asignarGuarnicion(tx: Tx, saveId: string, subjectId: strin
 export async function comprarEquiposMilicia(tx: Tx, saveId: string, armeriaId: string, n: number): Promise<{ ok: true; comprados: number } | { ok: false; motivo: string }> {
   const armeria = await tx.building.findFirst({ where: { id: armeriaId, saveId, recipeKey: 'armeria', status: 'ACTIVO' }, select: { tier: true, equiposMilicia: true } });
   if (!armeria) return { ok: false, motivo: 'No tienes esa Armería.' };
+  // Sus equipos solo sirven si arma a la milicia de la Capital: la misma Armería que cuenta `planMilicia`
+  // (un módulo de la Capital, de su región).
+  const capital = (await asentamientosDelReino(tx, saveId)).find((a) => a.capital);
+  if (!capital?.modulos.some((m) => m.id === armeriaId)) return { ok: false, motivo: ARMERIA_FUERA_DE_LA_CAPITAL };
   const caben = EQUIPOS_ARMERIA[Math.min(3, Math.max(1, armeria.tier ?? 1))] - armeria.equiposMilicia;
   const cuantos = Math.min(Math.max(0, Math.floor(n)), caben);
   if (cuantos <= 0) return { ok: false, motivo: 'La Armería ya está llena.' };
@@ -148,15 +152,19 @@ export async function radarDelReino(tx: Tx, saveId: string, ahora: number): Prom
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
   const enlaces = await enlacesDelMundo(tx, worldId);
   const out: Avistamiento[] = [];
+  // La milicia solo sale de la Capital (`defensaVista`): su plan se calcula una vez y solo si hace falta.
+  let planCapital: string | null | undefined;
   for (const a of asentamientos) {
-    // Una vez por asentamiento, no por cada hostil.
-    let sinMilicia: string | null | undefined;
+    let sinMilicia: string | null | undefined = a.capital ? undefined : MILICIA_SOLO_CAPITAL;
     const alcance = lugaresATramos(enlaces, a.locationId, a.efecto.radioTramos);
     for (const h of hostiles) {
       const tramos = alcance.get(h.ubicacionLocationId);
       if (tramos === undefined) continue;
       const gente = h.miembros.reduce((s, m) => s + m.genericos + (m.companionId || m.subjectId ? 1 : 0), 0);
-      if (sinMilicia === undefined) sinMilicia = (await planMilicia(tx, saveId, a.id, ahora, a)).motivo;
+      if (sinMilicia === undefined) {
+        if (planCapital === undefined) planCapital = (await planMilicia(tx, saveId, a.id, ahora, a)).motivo;
+        sinMilicia = planCapital;
+      }
       out.push({ asentamientoId: a.id, asentamiento: a.nombre, viajeroId: h.id, quien: h.faction?.name ?? (await grupoDeAsalto(tx, h.carga)), gente, tramos, ...(sinMilicia ? { sinMilicia } : {}), ...((h.carga as { motivo?: string } | null)?.motivo ? { motivo: (h.carga as { motivo: string }).motivo } : {}) });
     }
   }
@@ -173,11 +181,25 @@ export async function convocarMilicia(tx: Tx, saveId: string, asentamientoId: st
   return llamados.length;
 }
 
+/// La milicia sale de la Capital, donde vive la gente (`defensaVista`); en otro asentamiento no hay a quién armar.
+export const MILICIA_SOLO_CAPITAL = 'La milicia sale de la Capital: aquí no vive nadie que armar.';
+export const ARMERIA_FUERA_DE_LA_CAPITAL = `${MILICIA_SOLO_CAPITAL} Los equipos de milicia se compran en la Armería de la Capital.`;
+
+/// La milicia vuelve al trabajo cuando ya no queda ningún asalto a la vista de la Capital (los que solo ve
+/// la Torre de un Cuartel no la retienen). `excepto`: un asalto que se acaba de resolver.
+export async function licenciarMiliciaSiCapitalTranquila(tx: Tx, saveId: string, ahora: number, vistos?: Avistamiento[], excepto?: string): Promise<number> {
+  const capital = (await asentamientosDelReino(tx, saveId)).find((a) => a.capital);
+  const radar = vistos ?? (await radarDelReino(tx, saveId, ahora));
+  if (capital && radar.some((v) => v.asentamientoId === capital.id && v.viajeroId !== excepto)) return 0;
+  return licenciarMilicia(tx, saveId, ahora);
+}
+
 /// P295: a quién llamaría la milicia de un asentamiento ahora y, si a nadie, por qué (sin Armería
 /// sana o sin equipos, sin trabajadores adultos libres, o todos los equipos ya en uso).
 export async function planMilicia(tx: Tx, saveId: string, asentamientoId: string, ahora: number, cargado?: Asentamiento): Promise<{ llamados: string[]; motivo: string | null }> {
   const a = cargado ?? (await asentamientosDelReino(tx, saveId)).find((x) => x.id === asentamientoId);
   if (!a) return { llamados: [], motivo: 'Ese asentamiento no existe.' };
+  if (!a.capital) return { llamados: [], motivo: MILICIA_SOLO_CAPITAL };
   const armeria = a.modulos.find((m) => m.modulo === 'armeria' && !m.danado);
   const equipos = armeria?.equiposMilicia ?? 0;
   const sujetos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, role: true, pueblo: true, nacidoEn: true, enMilicia: true }, orderBy: { createdAt: 'asc' } });
@@ -200,7 +222,7 @@ export async function licenciarMilicia(tx: Tx, saveId: string, ahora: number): P
 
 /// Un día de vigilancia (avance diario): avisa de cada asalto que entra en el radio de una Torre;
 /// si el personaje no está en ese asentamiento, la milicia se arma sola (Q6). Sin asaltos a la
-/// vista, la milicia vuelve al trabajo.
+/// vista de la Capital, la milicia vuelve al trabajo.
 export async function vigilarDelReino(prisma: PrismaClient, saveId: string, dia: number): Promise<number> {
   return prisma.$transaction(async (tx) => {
     const ahora = dia * 1440;
@@ -215,10 +237,10 @@ export async function vigilarDelReino(prisma: PrismaClient, saveId: string, dia:
       const asentamiento = (await asentamientosDelReino(tx, saveId)).find((a) => a.id === v.asentamientoId)!;
       const fuera = save?.currentLocationId !== asentamiento.locationId;
       const armados = fuera ? await convocarMilicia(tx, saveId, v.asentamientoId, ahora) : 0;
-      await avisoDeViajero(tx, { saveId, factionId: null }, `Desde la Torre de vigía de ${v.asentamiento} se ve venir a ${v.quien}: ${v.gente} a ${v.tramos} tramo${v.tramos === 1 ? '' : 's'} de camino.${v.motivo ? ` ${v.motivo}` : ''}${armados > 0 ? ` Estás fuera: ${armados} trabajadores toman las armas de la Armería.` : fuera ? '' : ' Puedes llamar a la milicia.'}`);
+      await avisoDeViajero(tx, { saveId, factionId: null }, `Desde la Torre de vigía de ${v.asentamiento} se ve venir a ${v.quien}: ${v.gente} a ${v.tramos} tramo${v.tramos === 1 ? '' : 's'} de camino.${v.motivo ? ` ${v.motivo}` : ''}${armados > 0 ? ` Estás fuera: ${armados} trabajadores toman las armas de la Armería.` : fuera || !asentamiento.capital ? '' : ' Puedes llamar a la milicia.'}`);
     }
     if (avisados.size > 0) await tx.viajero.updateMany({ where: { id: { in: [...avisados] } }, data: { avistado: true } });
-    if (vistos.length === 0) await licenciarMilicia(tx, saveId, ahora);
+    await licenciarMiliciaSiCapitalTranquila(tx, saveId, ahora, vistos);
     return avisados.size;
   });
 }

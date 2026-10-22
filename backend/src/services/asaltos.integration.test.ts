@@ -6,6 +6,7 @@ import { botinDe, costeDeReparar, repararEdificio, repararEmpalizada, resolverAs
 import { simularCombateDeFondo, type CombatienteFondo } from './combateDeFondo.js';
 import { soldadoGenerico } from './cronista/combatientesFaccion.js';
 import { asentamientosDelReino, TIPO_ASALTO } from './defensaReino.js';
+import { CONSTRUCTION_RECIPES } from './construction.js';
 
 function semilla(s: number) {
   let x = s;
@@ -96,6 +97,23 @@ describe('asaltos de fondo (CR-65 65d)', () => {
       expect(await prisma.logEntry.count({ where: { saveId, text: { contains: 'aguanta el asalto' } } })).toBe(2);
       expect((await prisma.viajero.findUniqueOrThrow({ where: { id: v.id } })).estado).not.toBe('TRABAJANDO');
     });
+
+    it('la milicia solo defiende la Capital: en otro asentamiento no cuenta, como en defensaVista', async () => {
+      const otro = (await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } })).id;
+      const cuartel = await prisma.building.create({ data: { saveId, locationId: otro, recipeKey: 'cuartel-avanzado', name: 'Cuartel', kind: 'cuartel-avanzado', description: 'x', status: 'ACTIVO' } });
+      const miliciano = await prisma.subject.create({ data: { saveId, name: 'Miliciano', role: 'trabajador', notes: '', pueblo: 'orcos', enMilicia: true } });
+      const contraCuartel = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), cuartel.id, 11, semilla(9)));
+      expect(contraCuartel).toMatchObject({ milicianos: 0, defensores: 0 });
+      // La Capital no tiene asaltos a la vista (sin Torre): la milicia vuelve al trabajo. Se rearma.
+      expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
+      await prisma.subject.update({ where: { id: miliciano.id }, data: { enMilicia: true } });
+      const contraCapital = await prisma.$transaction(async (tx) => resolverAsaltoDeFondo(tx, saveId, await asalto(1), capitalId, 12, semilla(9)));
+      expect(contraCapital).toMatchObject({ milicianos: 1 });
+      // Tras luchar en la Capital, sin más asaltos a la vista, vuelve al trabajo.
+      expect((await prisma.subject.findUniqueOrThrow({ where: { id: miliciano.id } })).enMilicia).toBe(false);
+      await prisma.subject.delete({ where: { id: miliciano.id } });
+      await prisma.building.delete({ where: { id: cuartel.id } });
+    });
   });
 });
 
@@ -125,6 +143,12 @@ describe('reparar edificios dañados (P284/P296/P301)', () => {
     expect(costeDeReparar('choza', 1)).toBe(10);
     expect(costeDeReparar('ayuntamiento', 1)).toBeGreaterThan(costeDeReparar('choza', 1));
     expect(costeDeReparar('ayuntamiento', 2)).not.toBe(costeDeReparar('ayuntamiento', 1));
+    // Mejorado dos veces (mejorarEnSitio mantiene `recipeKey`, sube el tier): se repara al coste del Ayuntamiento grande.
+    const mitad = (key: string) => Math.ceil(CONSTRUCTION_RECIPES.find((r) => r.key === key)!.requirements.reduce((s, q) => s + q.cantidad, 0) / 2);
+    expect(costeDeReparar('ayuntamiento', 3)).toBe(mitad('ayuntamiento-grande'));
+    expect(costeDeReparar('ayuntamiento', 2)).toBe(mitad('ayuntamiento-mediano'));
+    // Bifurcación sin nivel (Cuartel avanzado → Cuartel de guerra / Puesto comercial): sin mejorar, se cobra la base.
+    expect(costeDeReparar('cuartel-avanzado', null)).toBe(mitad('cuartel-avanzado'));
   });
 
   it('una Empalizada dañada sigue en Defensa, como caída, y con el Ayuntamiento dañado no hay asentamiento', async () => {
