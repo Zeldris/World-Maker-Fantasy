@@ -102,7 +102,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `P<n> "<texto viejo>" "<texto nuevo>"` cambia su estado; las dos rehacen el resumen de la cabecera
    (`QA-84`). Lo comprobado jugando se marca con «Comprobado jugando» en el estado.
    Un reabierto se escribe siempre «Reabierto AAAA-MM-DD: …» y al final del estado (gana el último, `QA-92`); `--comprobar`
-   falla si su fecha es posterior a la del ✅ que le sigue (`QA-195`). «No se ha reabierto» no cuenta.
+   falla si su fecha es posterior a la del ✅ que le sigue (`QA-195`). Todo «reabierto» cuenta, también «no se ha reabierto»: no se escribe esa frase en un estado cerrado.
 4. **La ronda solo juega y apunta** (`QA-45`, usuaria, 2026-10-12; endurecido el 2026-10-20): no corrige código, ni
    del juego ni de las herramientas, tampoco un fallo bloqueante, ni analiza (medidas, causas en el código, casos del
    RAG): eso lo hacen las skills (`/opt-ai`, `/code-review`, `/retro`) en el flujo del PR. Lo que la usuaria acepte va a

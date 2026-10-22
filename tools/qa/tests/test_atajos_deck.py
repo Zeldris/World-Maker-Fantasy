@@ -14,7 +14,8 @@ from comun import QA, leer
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 CARPETAS = [os.path.join(QA, 'deck'), QA, os.path.join(RAIZ, 'tools', 'playwright-e2e')]
 POSTGRES = re.compile(r'\b(psql|pg_dump|pg_restore)\b')
-CARGA = re.compile(r'_path\.sh')  # `. …/_path.sh`, o su ruta en una variable que se carga dentro (sql.sh)
+# `. …/_path.sh`, o `. "$N"` con la ruta como argumento posicional dentro de un `bash -c` (sql.sh).
+CARGA = re.compile(r'^\s*(\.|source)\s+(\S*_path\.sh|"\$\d")')
 EXENTOS = {'_path.sh'}
 TUBERIA = re.compile(r'\|\s*(psql|pg_dump|pg_restore)\b')
 
