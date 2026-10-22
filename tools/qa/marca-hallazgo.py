@@ -75,18 +75,12 @@ def sin_citas(estado: str) -> str:
 REABIERTO = re.compile(r'\breabiert[oa]s?\b', re.I)
 FECHA = r'(\d{4}-\d{2}-\d{2})'
 COMPROBADO = re.compile(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', re.I)
-NEGACION = re.compile(r'\b(no|nunca|sin)\b', re.I)
-
-
-def negado(t: str, pos: int) -> bool:
-    """Una negación («no», «nunca», «sin») en las ~3 palabras anteriores a pos y en la misma cláusula: «no se ha
-    reabierto»; el «sin» de «…sin repetirlo (`x.ts`); reabierto» no cuenta (P99)."""
-    clausula = re.split(r'[;:.,()]', t[:pos])[-1]
-    return bool(NEGACION.search(' '.join(clausula.split()[-3:])))
 
 
 def reabiertos(t: str) -> list[re.Match]:
-    return [m for m in REABIERTO.finditer(t) if not negado(t, m.start())]
+    """Todo «reabierto» cuenta, también tras un «no» («no se ha reabierto»): ante la duda, pendiente antes que cerrado
+    (QA-195; con una guardia de negación, el «sin» de otra frase escondía el reabierto de P99)."""
+    return list(REABIERTO.finditer(t))
 
 
 def reabierto_vigente(t: str) -> bool:
@@ -145,10 +139,9 @@ def incoherente(estado: str, g: str | None = None) -> bool:
     """QA-195: el estado cuenta como cerrado (arreglado, comprobado, en parte o no jugable) pero dice lo contrario en el
     orden equivocado: un «reabierto <fecha>» POSTERIOR a la fecha del ✅ que lo sigue (los subagentes escriben lo nuevo
     delante del estado viejo: P116 del 3.3), o, en un comprobado, «falta/queda (por) ver/comprobar» tras la última marca
-    de verificación. El historial en orden («✅ 10-15; reabierto 10-21; ✅ 10-23») y las negaciones («no se ha
-    reabierto», «no falta ver nada») pasan. Un reabierto sin fecha delante de un ✅ también pasa (es ambiguo): se escribe
-    siempre «Reabierto AAAA-MM-DD: …» y al final del estado. La fecha del reabierto es la primera en los ~30 caracteres
-    que siguen; la del ✅, la primera en los ~60 siguientes."""
+    de verificación. El historial en orden («✅ 10-15; reabierto 10-21; ✅ 10-23») pasa. Cada fecha se lee pegada a su
+    palabra (sin dígitos ni «;» entre medias), para no tomar la de otra frase; un reabierto sin fecha delante de un ✅
+    pasa (es ambiguo): se escribe siempre «Reabierto AAAA-MM-DD: …» y al final del estado."""
     t = sin_citas(estado)
     bajo = t.lower()
     g = g or grupo(estado)
@@ -159,17 +152,16 @@ def incoherente(estado: str, g: str | None = None) -> bool:
     if g == 'comprobado':
         marcas = list(COMPROBADO.finditer(bajo))
         desde = marcas[-1].end() if marcas else 0
-        for m in re.finditer(r'\b(falta|queda)n?( nada)?( por)? (ver|comprobar)\w*', bajo[desde:]):
-            if not negado(bajo, desde + m.start()):
-                return True
+        if re.search(r'\b(falta|queda)n?( por)? (ver|comprobar)\w*', bajo[desde:]):
+            return True
     for m in reabiertos(t):
         resto = t[m.end():]
         cruz = resto.find('✅')
         if cruz < 0:
             continue
-        f1 = re.search(FECHA, resto[:30])
-        f2 = re.search(FECHA, resto[cruz + 1:cruz + 61])
-        if f1 and f2 and f1.start() < cruz and f1.group(1) > f2.group(1):
+        f1 = re.match(r'[^\d✅;]{0,15}' + FECHA, resto)
+        f2 = re.match(r'[^\d✅;]{0,30}' + FECHA, resto[cruz + 1:])
+        if f1 and f2 and f1.group(1) > f2.group(1):
             return True
     return False
 

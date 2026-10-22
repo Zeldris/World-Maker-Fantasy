@@ -162,29 +162,24 @@ class Resumen(unittest.TestCase):
         self.assertIn('(QA-195): P7, P8, P11, P13;', r.stderr)
         self.assertIn('AL FINAL', r.stderr)
 
-    def test_comprobar_pasa_con_historial_en_orden_y_negaciones_sin_fecha(self):
+    def test_comprobar_pasa_con_historial_en_orden(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ 2026-10-15; reabierto 2026-10-21; ✅ 2026-10-23 |\n'
-                 '| P8 | Ocho | ✅ comprobado jugando; no se ha reabierto |\n'
-                 '| P9 | Nueve | ✅ arreglado como P116, reabierto antes |\n'
-                 '| P10 | Diez | ✅ 2026-10-18: arreglado; falta comprobarlo jugando; comprobado jugando 2026-10-22 |\n')
+                 '| P8 | Ocho | ✅ 2026-10-18: arreglado; falta comprobarlo jugando; comprobado jugando 2026-10-22 |\n'
+                 '| P9 | Nueve | Reabierto 2026-10-21 ✅ arreglado; ver P5 del 2026-10-01 |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
         self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
-        texto = leer(self.ruta)
-        self.assertRegex(texto, r'\*\*Comprobados jugando\*\* \(\d\): [^\n]*P8')  # P8: negado, vuelve a comprobado
 
-    def test_reabierto_en_plural_y_negado_en_el_grupo(self):
+    def test_todo_reabierto_cuenta_tambien_en_plural_y_tras_un_no(self):
+        # Ante la duda, pendiente: con guardia de negación, el «sin» de otra frase escondía el reabierto de P99 (3.3).
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ hecho. Reabiertos los dos casos |\n'
                  '| P8 | Ocho | ✅ comprobado jugando; no se ha reabierto |\n'
-                 '| P9 | Nueve | ✅ hecho; nunca reabierto |\n'
-                 '| P10 | Diez | ✅ arreglado, sin reabierto |\n')
+                 '| P9 | Nueve | ✅ 2026-10-12 sin repetirlo (`x.ts`); reabierto 2026-10-21: sigue |\n'
+                 '| P10 | Diez | ✅ arreglado; comprobado jugando: no funciona — reabierto 2026-10-21 |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
-        texto = leer(self.ruta)
-        self.assertRegex(texto, r'\*\*Pendientes\*\* \(2\): P1, P7\.')
-        self.assertRegex(texto, r'\*\*Comprobados jugando\*\* \(\d\): [^\n]*P8')
-        self.assertRegex(texto, r'\*\*Arreglados, sin comprobar jugando\*\* \(\d\): [^\n]*P9, P10')
+        self.assertIn('- **Pendientes** (5): P1, P7, P8, P9, P10.', leer(self.ruta))
 
     def test_comprobar_salta_con_texto_entre_el_check_y_la_fecha_y_con_plural(self):
-        # P116: «arreglo ✅ nota (2026-10-13)»; el reabierto toma su fecha de los 30 caracteres tras la palabra.
+        # P116: «arreglo ✅ nota 2026-10-13»: la fecha del ✅ puede venir tras unas palabras, sin dígitos ni «;».
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | Reabierto 2026-10-21: no sale (arreglo ✅ verificado en la ronda 2026-10-13) |\n'
                  '| P8 | Ocho | Reabiertos 2026-10-21: vuelve (arreglo ✅ 2026-10-13) |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
@@ -197,11 +192,9 @@ class Resumen(unittest.TestCase):
         self.assertEqual(self.correr('--resumen').returncode, 0)
         self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
 
-    def test_comprobar_falta_ver_solo_tras_la_ultima_marca_y_con_negaciones(self):
+    def test_comprobar_falta_ver_solo_tras_la_ultima_marca(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ falta ver una hora; comprobado en vivo 2026-10-22 |\n'
-                 '| P8 | Ocho | ✅ comprobado jugando; no falta ver nada |\n'
-                 '| P9 | Nueve | ✅ comprobado jugando; ya no queda nada por comprobar |\n'
-                 '| P10 | Diez | ✅ comprobado jugando 2026-10-20; falta ver; ✅ comprobado 2026-10-22 |\n')
+                 '| P8 | Ocho | ✅ comprobado jugando 2026-10-20; falta ver; ✅ comprobado 2026-10-22 |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
         self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ comprobado en vivo 2026-10-22; falta ver el resto |\n')
@@ -209,12 +202,6 @@ class Resumen(unittest.TestCase):
         r = self.correr('--resumen', '--comprobar')
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('(QA-195): P7;', r.stderr)
-
-    def test_una_negacion_de_otra_clausula_no_anula_el_reabierto(self):
-        # P99 del 3.3: el «sin» de «sin repetirlo (`oficioTexto.ts`);» no niega el «reabierto» que le sigue.
-        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ 2026-10-12 sin repetirlo (`x.ts`); reabierto 2026-10-21: sigue |\n')
-        self.assertEqual(self.correr('--resumen').returncode, 0)
-        self.assertIn('- **Pendientes** (2): P1, P7.', leer(self.ruta))
 
     def test_comprobar_pasa_si_cada_pendiente_lo_dice(self):
         self.assertEqual(self.correr('--resumen').returncode, 0)
