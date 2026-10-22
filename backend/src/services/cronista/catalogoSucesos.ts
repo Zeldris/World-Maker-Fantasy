@@ -69,7 +69,7 @@ export interface DatosSuceso {
   /// CR-59 (P297): la semana de un vasallo: al corriente (paga y patrulla), pago parcial (patrullas en
   /// proporción, `porcentaje` y si patrulló) o impagado (patrullas suspendidas), decisión 2026-10-22.
   /// `deuda` solo en las líneas de antes de esa decisión.
-  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'impagado'; porcentaje?: number; patrulla?: boolean; deuda?: number; rearmados?: number };
+  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'impagado' | 'migrado'; porcentaje?: number; patrulla?: boolean; pendiente?: number; pagado?: number; deuda?: number; rearmados?: number };
   // FACCION
   FACCION_CAE: { faccion: string };
   FACCION_ESCINDIDA: { faccion: string; nueva: string };
@@ -192,11 +192,15 @@ export const CATALOGO_SUCESOS: Catalogo = {
   PATRULLA_VASALLO: { familia: 'DIPLOMACIA', importanciaBase: 2, plantilla: (d) =>
     d.estado === 'impagado'
       ? `${d.vasallo} no puede pagar su cuota a ${d.senor}: vasallaje impagado, patrullas suspendidas.`
-      : d.estado === 'parcial'
-        ? `${d.vasallo} paga a ${d.senor} solo parte de lo que debe: pago parcial ${d.porcentaje ?? 0} %, patrullas al ${d.porcentaje ?? 0} %.${d.patrulla ? ' Esta semana cumple su patrulla.' : ' Esta semana no patrulla.'}`
-        : d.estado === 'al-corriente'
-          ? `${d.vasallo} paga su cuota a ${d.senor} y cumple su patrulla obligada${d.rearmados ? `; arma a ${d.rearmados} guerreros más` : ''}. Vasallaje al corriente.`
-          : `${d.vasallo} cumple su patrulla obligada para ${d.senor}${d.rearmados ? ` y arma a ${d.rearmados} guerreros más a crédito` : ''}. Su deuda: ${d.deuda ?? 0} Goirnos.` },
+      : d.estado === 'parcial' && (d.porcentaje ?? 0) >= 100
+        ? `${d.vasallo} paga su cuota a ${d.senor} y cumple su patrulla, pero arrastra ${d.pendiente ?? 0} Goirnos pendientes: sin rearme hasta saldarlos.`
+        : d.estado === 'parcial'
+          ? `${d.vasallo} paga a ${d.senor} solo parte de su cuota: pago parcial ${d.porcentaje ?? 0} %, patrullas al ${d.porcentaje ?? 0} %.${d.patrulla ? ' Esta semana cumple su patrulla.' : ' Esta semana no patrulla.'}`
+          : d.estado === 'migrado'
+            ? `${d.vasallo} pasa a pagar a ${d.senor} una cuota semanal: su deuda vieja ${d.pagado ? `se salda con ${d.pagado} Goirnos` : `se queda en ${d.pendiente ?? 0} Goirnos pendientes`}.`
+            : d.estado === 'al-corriente'
+              ? `${d.vasallo} paga su cuota a ${d.senor} y cumple su patrulla obligada${d.rearmados ? `; arma a ${d.rearmados} guerreros más` : ''}. Vasallaje al corriente.`
+              : `${d.vasallo} cumple su patrulla obligada para ${d.senor}${d.rearmados ? ` y arma a ${d.rearmados} guerreros más a crédito` : ''}. Su deuda: ${d.deuda ?? 0} Goirnos.` },
   ESPIONAJE: { familia: 'DIPLOMACIA', importanciaBase: 3, plantilla: (d) => `${d.autor} espía a ${d.espiada}.` },
   // FACCION
   FACCION_CAE: { familia: 'FACCION', importanciaBase: 10, plantilla: (d) => `${d.faccion} cae.` },

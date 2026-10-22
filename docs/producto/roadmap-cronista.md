@@ -1735,23 +1735,27 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - Sin herramienta se produce la mitad; sin arma, se cuenta medio en la defensa. **M**
 - ~~**CR-59** Vasallaje y deuda (Fase D, Q21-Q24 y Q28; Serhu bajo la Concordia).~~ ✅ 2026-10-06
   (`cronista/vasallaje.ts`; modelo `Vasallaje`, migración `20261006150000_vasallaje`).
-  - Cada partida empieza con Serhu vasallo de la Concordia y una deuda de 500.
-  - Cada semana: el desgaste de sus armas al doble, al señor; lo que no pueden pagar va a deuda.
-  - Rearme: todo excedente de comida pasa trabajadores a guerreros, con sus armas al doble.
-  - Patrulla de 20 que rebaja 100 la deuda, con un 25 % de `ESCARAMUZA` (1d6 bajas) contra otra facción de su
-    región o contra renegados.
-  - Se rompe con la deuda saldada o si cae el señor.
+  - Cada partida empieza con Serhu vasallo de la Concordia, ~~y una deuda de 500~~ al corriente (2026-10-22).
+  - Cada semana: el desgaste de sus armas al doble, al señor; ~~lo que no pueden pagar va a deuda~~
+    lo que no pueden pagar queda pendiente, con tope de una cuota (2026-10-22).
+  - Rearme: todo excedente de comida pasa trabajadores a guerreros, con sus armas al doble (desde el
+    2026-10-22, solo al corriente y con lo que quede en el tesoro).
+  - Patrulla de 20 ~~que rebaja 100 la deuda~~ (desde el 2026-10-22, en proporción a lo pagado de la
+    cuota), con un 25 % de `ESCARAMUZA` (1d6 bajas) contra otra facción de su región o contra renegados.
+  - Se rompe ~~con la deuda saldada o~~ si cae el señor.
   - **Decisión de la usuaria 2026-10-22: presupuesto al estilo X4; sin deuda acumulada** (P286/P297):
-    la cuota semanal sale del tesoro del vasallo; si no llega, paga lo que pueda y patrulla en
-    proporción («Pago parcial 40 %: patrullas al 40 %»); sin pagar nada, «impagado» y sin patrullas.
-    Lo pendiente tiene tope de una cuota; al pagar entero, al corriente y patrulla siempre. Sustituye la
-    deuda creciente, los 100 por patrulla y la ruptura por deuda saldada. Detalle en
+    la cuota semanal sale del tesoro del vasallo, y lo que sobre paga lo pendiente; si no llega, paga
+    lo que pueda y patrulla en proporción a lo pagado de la cuota («Pago parcial 40 % de la cuota:
+    patrullas al 40 %»); sin pagar nada, «impagado» y sin patrullas. Lo pendiente tiene tope de una
+    cuota (en la revisión semanal); al pagar entero, al corriente, patrulla siempre y se rearma.
+    Sustituye la deuda creciente, los 100 por patrulla y la ruptura por deuda saldada; las partidas de
+    antes migran una sola vez y los vasallajes rotos por deuda saldada se reabren. Detalle en
     [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md) (Q28).
   - **Queda:** romperlo por alianza con el Reino o por guerra (`CR-37`).
-  - Doctrina de rearme y armas al doble a crédito.
-  - Deuda que se cobra en patrullas obligadas (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6
-    bajas).
-  - Se rompe saldando la deuda, si cae el señor, con una alianza con el Reino o en guerra. **M**
+  - Doctrina de rearme y armas al doble ~~a crédito~~ (sin crédito desde el 2026-10-22).
+  - ~~Deuda que se cobra en patrullas obligadas~~ Cuota semanal con patrullas obligadas en proporción
+    a lo pagado (20 guerreros por semana, 25 % de `ESCARAMUZA` con 1d6 bajas).
+  - Se rompe ~~saldando la deuda,~~ si cae el señor, con una alianza con el Reino o en guerra. **M**
 - ~~**CR-62** Combate de fondo (Q6 de la ronda de `CR-56`; ronda propia aceptada el 2026-10-07,
   decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-62-combate-de-fondo-ronda-aceptada-por-la-usuaria-el-2026-10-07);
   ADR 0002).~~ ✅ 2026-10-07. Pasos:

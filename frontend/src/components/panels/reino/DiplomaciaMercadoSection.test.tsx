@@ -96,15 +96,20 @@ describe('DiplomaciaMercadoSection — P286/P297 vasallajes', () => {
     expect(utils.container.textContent).toContain('patrulla obligada de 20 guerreros')
   })
 
-  it('con pago parcial dice el porcentaje y las patrullas en proporción', async () => {
+  it.each([
+    [40, 749, 'Pago parcial 40 % de la cuota: patrullas al 40 %'],
+    [100, 1248, 'Cuota pagada, arrastra 1248 Goirnos: patrullas al 100 %, sin rearme hasta saldar'],
+    [null, 1248, 'Pendiente de la revisión semanal (1248 Goirnos)'],
+  ])('con %s %% de la cuota pagado dice cómo van las patrullas', async (porcentajePagado, deuda, texto) => {
     vi.mocked(getVasallajes).mockResolvedValue({
-      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda: 749, alCorriente: false, porcentajePagado: 40, cuota: 1248, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 46, rotoEn: null, motivoRuptura: null }],
+      vasallajes: [{ vasalloSlug: 'clan-serhu', vasalloNombre: 'Clan Serhu', senorSlug: 'concordia-de-hierro', senorNombre: 'Concordia de Hierro', deuda, alCorriente: false, porcentajePagado, cuota: 1248, sobreprecioArmas: 2, patrullaGuerreros: 20, proximaRevision: 46, rotoEn: null, motivoRuptura: null }],
     })
     let utils!: ReturnType<typeof render>
     await act(async () => {
       utils = render(<DiplomaciaMercadoSection saveId="s1" companions={[ana]} factions={[faccion]} goirnos={0} onRefreshSave={async () => {}} />)
     })
-    expect(utils.container.textContent).toContain('Pago parcial 40 %: patrullas al 40 %')
+    expect(utils.container.textContent).toContain(texto)
+    expect(utils.container.textContent).not.toContain('Impagado')
   })
 
   it('sin facciones descubiertas la tarjeta de vasallajes sale igual', async () => {

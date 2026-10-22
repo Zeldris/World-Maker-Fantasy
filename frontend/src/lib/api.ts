@@ -3228,8 +3228,9 @@ export interface VasallajeInfo {
   deuda: number
   /// false: pago parcial o impagado, patrullas en proporción a lo pagado (presupuesto al estilo X4, 2026-10-22).
   alCorriente: boolean
-  /// Lo pagado la última semana de lo que debía (0-100): la probabilidad de patrullar.
-  porcentajePagado: number
+  /// Lo pagado de la cuota en la última revisión (0-100): la probabilidad de patrullar. null si debe
+  /// algo y aún no hay revisión (pendiente de la revisión semanal).
+  porcentajePagado: number | null
   cuota: number
   sobreprecioArmas: number
   patrullaGuerreros: number

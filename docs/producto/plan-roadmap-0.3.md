@@ -141,13 +141,18 @@ tope de pienso).
   - **Decisión de la usuaria 2026-10-22: presupuesto al estilo X4; sin deuda acumulada** (P286/P297;
     sustituye la deuda creciente y los 100 por patrulla). Como el presupuesto de un mánager de X4:
     Foundations, cada semana la cuota (el desgaste de sus armas, al doble) sale del tesoro del vasallo
-    y va al señor. **Pago parcial** (decisión del mismo día): paga lo que pueda de lo pendiente más la
-    cuota y patrulla en proporción a lo pagado (pagar el 40 % da un 40 % de probabilidad de patrullar
-    esa semana; la interfaz y el diario dicen «Pago parcial 40 %: patrullas al 40 %»). Si no paga nada,
-    queda **impagado** y no patrulla. Lo pendiente nunca pasa de una cuota. Cuando paga entero lo
-    pendiente y la cuota, vuelve a estar al corriente y patrulla siempre. La patrulla es el servicio que se paga, ya no rebaja deuda. El rearme solo
-    compra armas con lo que le quede tras la cuota (sin crédito). Las partidas de antes recortan la
-    deuda a una cuota, o la saldan si hay fondos. Ya no se rompe por «deuda saldada».
+    y va al señor. **Pago parcial** (decisión del mismo día): paga primero la cuota de la semana y,
+    con lo que sobre, lo pendiente; patrulla en proporción a lo pagado **de la cuota** (pagar el 40 %
+    de la cuota da un 40 % de probabilidad de patrullar esa semana; la interfaz y el diario dicen «Pago
+    parcial 40 % de la cuota: patrullas al 40 %»). Así no se estanca en el 50 %: con una cuota pendiente
+    y pagando justo una, patrulla al 100 %, pero sigue sin estar al corriente, y sin rearme, hasta
+    saldar lo pendiente. Si no paga nada, queda **impagado** y no patrulla. Lo pendiente nunca pasa de
+    una cuota (se recorta en la revisión semanal, nunca a mitad de semana). Cuando paga entero lo
+    pendiente y la cuota, vuelve a estar al corriente y patrulla siempre. La patrulla es el servicio
+    que se paga, ya no rebaja deuda. El rearme solo se hace al corriente y compra armas con lo que le
+    quede tras la cuota (sin crédito). Las partidas de antes migran una sola vez: la deuda se recorta a
+    una cuota, o se salda si hay fondos, con su línea en el diario; los vasallajes rotos por «deuda
+    saldada» se reabren. Ya no se rompe por «deuda saldada».
 - **Ingresos pasivos** (usuaria): hoy solo existen el comercio y las expediciones y saqueos de las
   facciones. Se diseñarán más (`CR-60`) para no depender solo de los trabajadores.
 
