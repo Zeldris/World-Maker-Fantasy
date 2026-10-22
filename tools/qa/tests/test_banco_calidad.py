@@ -1,8 +1,8 @@
 import json, os, sys, unittest
 
-AQUI = os.path.dirname(os.path.abspath(__file__))
+AQUI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, AQUI)
-import banco
+banco = __import__("banco-calidad")
 
 
 class BancoTest(unittest.TestCase):

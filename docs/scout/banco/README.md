@@ -18,7 +18,7 @@ herramienta (en este repositorio, `opt-ai`) y no se mezcla.
 ## Pasada
 
 ```bash
-B=.claude/skills/scout-updates/banco.py
+B=tools/qa/banco-calidad.py
 python3 $B generar casos.jsonl --modelo <actual> --salida s-actual.jsonl     # también el modelo actual
 python3 $B generar casos.jsonl --modelo <candidato> --salida s-cand.jsonl   # uno por candidato
 python3 $B pares s-*.jsonl --casos casos.jsonl --salida pares.jsonl --clave clave.json
@@ -37,7 +37,7 @@ python3 $B resumen pares.jsonl clave.json veredictos.jsonl
 - **El agente, por defecto** (el que ejecuta la skill: Claude Code, u otro): lee `pares.jsonl` (nunca `clave.json`
   hasta el resumen) y escribe `veredictos.jsonl`, una línea por par: `{"par", "ganador": "X"|"Y"|"empate", "motivo"}`,
   aplicando la rúbrica. No depende de nada instalado. Con muchos pares, en un subagente para no llenar el contexto.
-- **Un modelo con `banco.py juzgar`**, si la usuaria lo pide para ahorrar tokens: el más capaz disponible, distinto de
+- **Un modelo con `banco-calidad.py juzgar`**, si la usuaria lo pide para ahorrar tokens: el más capaz disponible, distinto de
   los candidatos (un modelo tiende a preferirse a sí mismo). Su debilidad se dice en el informe y se calibra: el
   agente juzga 5-6 pares y se comparan.
 - Cada caso se juzga **en los dos órdenes**, por el sesgo de posición de los jueces LLM

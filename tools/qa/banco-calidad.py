@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Banco de calidad por pares para `scout-updates` (banco-calidad.md). Solo biblioteca estándar.
+"""Banco de calidad por pares para `scout-updates` (docs/scout/banco/README.md). Solo biblioteca estándar.
 
 Uso:
-  banco.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--url U] [--api ollama|openai]
-  banco.py pares <salidas.jsonl> <salidas.jsonl> [...] --casos <casos.jsonl> --salida <pares.jsonl> --clave <clave.json> [--semilla N]
-  banco.py juzgar <pares.jsonl> --juez M --rubrica <rubrica.md> --salida <veredictos.jsonl> [--url U] [--api ...]
-  banco.py resumen <pares.jsonl> <clave.json> <veredictos.jsonl> [--json] [--detalle]
+  banco-calidad.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--url U] [--api ollama|openai]
+  banco-calidad.py pares <salidas.jsonl> <salidas.jsonl> [...] --casos <casos.jsonl> --salida <pares.jsonl> --clave <clave.json> [--semilla N]
+  banco-calidad.py juzgar <pares.jsonl> --juez M --rubrica <rubrica.md> --salida <veredictos.jsonl> [--url U] [--api ...]
+  banco-calidad.py resumen <pares.jsonl> <clave.json> <veredictos.jsonl> [--json] [--detalle]
 
 Casos: una línea por caso, {"id", "system"?, "prompt", "contexto"?, "opciones"?: {"temperature", "num_ctx",
 "max_tokens", "format"}}; `format` es el JSON Schema de las llamadas estructuradas. Con Ollama va siempre `think: false`. `contexto` es lo que ve el juez (p. ej. la acción del jugador); sin él, los últimos 1500 caracteres

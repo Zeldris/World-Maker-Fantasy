@@ -1,5 +1,10 @@
 # Diseño: skill `scout-updates` (🚧 en construcción, `QA-176`)
 
+> **Desde el 2026-10-22** la skill es la de Galivelop-workflow (piloto): `inventario.py` y `contrastar.py` pasan a
+> `scripts/inventory.py` y `scripts/compare.py` de la skill, `banco.py` a `tools/qa/banco-calidad.py`, y lo propio de
+> Tarkor a [`.claude/gw/scout-updates.md`](../../.claude/gw/scout-updates.md). Este documento queda como historia del
+> diseño.
+
 Skill **bajo demanda** que hace inventario de un proyecto, lo ordena y busca actualizaciones, mejoras o candidatos
 a migración para cada pieza. Solo propone. Nace de la ronda local del 2026-10-20: el narrador de Tarkor sale lento y
 de mala calidad, y hacía falta una oferta de modelo con fundamento, no a ojo.
@@ -63,7 +68,7 @@ Dos problemas distintos:
 - **Calidad:** modelo de 8B antiguo (`tarkor-narrador-llama31`, ajuste fino de Llama 3.1) escribiendo en español.
 
 Pieza que falta en Tarkor: el registro de `opt-ai` (`iaRegistro.ts`) no guarda los prompts, y el banco los necesita
-como casos. Hecho (2026-10-20): con `IA_CASOS=<ruta>` cada `/api/generate` que acaba bien añade su prompt completo y su salida en el formato de casos de `banco.py` (`registrarCaso`, `iaRegistro.ts`). Sin `system` en el caso, el narrador usó el SYSTEM de su Modelfile: para un candidato sin él, añadirlo desde `ollama show --system`.
+como casos. Hecho (2026-10-20): con `IA_CASOS=<ruta>` cada `/api/generate` que acaba bien añade su prompt completo y su salida en el formato de casos de `tools/qa/banco-calidad.py` (`registrarCaso`, `iaRegistro.ts`). Sin `system` en el caso, el narrador usó el SYSTEM de su Modelfile: para un candidato sin él, añadirlo desde `ollama show --system`.
 
 ## De dónde sale cada decisión
 

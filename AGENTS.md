@@ -171,7 +171,7 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   [`fallos-herramientas.md`](docs/registros/fallos-herramientas.md) (`QA-133`); con subagentes en paralelo, solo la
   principal escribe la bitácora y `docs/registros/pruebas-0.3-hallazgos.md` (`QA-132`).
 - **`opt-ai` y `scout-updates`:** lo de WMF (Ollama real, `tools/qa/bench-ia.sh`, perfiles de la Deck) está en
-  `.claude/gw/opt-ai.md`, `.claude/gw/scout-updates.md` y `.claude/gw/scout/`; `opt-tokens`, en `.claude/gw/opt-tokens.md`.
+  `.claude/gw/opt-ai.md` y `.claude/gw/scout-updates.md` (la memoria del scout sigue en `docs/scout/`); `opt-tokens`, en `.claude/gw/opt-tokens.md`.
 
 ## Reglas del proyecto
 

@@ -134,7 +134,7 @@ describe('registrarCaso (QA-176)', () => {
     expect(appendFile).not.toHaveBeenCalled();
   });
 
-  it('con IA_CASOS escribe el caso en el formato de banco.py, sin campos vacíos', () => {
+  it('con IA_CASOS escribe el caso en el formato de banco-calidad.py, sin campos vacíos', () => {
     fakeEnv.iaCasos = '/tmp/casos.jsonl';
     registrarCaso(caso);
     const [ruta, linea] = appendFile.mock.calls[0] as [string, string];

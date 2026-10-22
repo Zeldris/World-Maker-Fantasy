@@ -63,7 +63,7 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
   tokens en la principal y arrastró 144k. Se leen con un WebFetch de pregunta estrecha (qué dice sobre X) o en un
   subagente que devuelva solo lo que se busca.
 - **Releer documentos largos enteros** (misma retro): `docs/scout/arquitectura.md` se leyó 26 veces (146k arrastrados);
-  ahora `contrastar.py --seccion <título>`. Antes de un `cat` repetido, buscar la opción que lee un trozo.
+  ahora `compare.py --section <título>`. Antes de un `cat` repetido, buscar la opción que lee un trozo.
 - **La bitácora entera en la principal** (`QA-194`, 2026-10-21): 12 lecturas de `traspaso.md`, ~419k tokens arrastrados.
   La fila de la rama sale con `python3 .claude/gw/scripts/recuperar.py --estado` (fila, commits y compactaciones); `traspaso.md` entero
   solo al empezar una sesión nueva.

@@ -1,6 +1,6 @@
 # Propuestas · Tarkor
 
-Registro acumulativo de `scout-updates` ([formato](../../.claude/skills/scout-updates/formato-propuestas.md)). Nada se
+Registro acumulativo de `scout-updates` ([formato](../../.claude/skills/scout-updates/references/formats.md)). Nada se
 borra. Las cuatro primeras son comparativas anteriores a la skill (decisión técnica 14,
 `docs/arquitectura/04-decisiones-tecnicas.md`), para no reproponerlas.
 

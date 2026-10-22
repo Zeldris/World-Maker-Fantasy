@@ -29,6 +29,9 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 5 | 3, `opt-tokens` | El `medir.py` del flujo no trae test; el de WMF sí. Mismas cifras en esta sesión. | `tools/qa/tests/test_medir.py` portado al del flujo (8 tests). |
 | 6 | 3, CI | `unittest discover -s .claude/skills/opt-ai` da 0 tests: los scripts del flujo están en `scripts/`, sin `__init__.py`. | `-s .claude/skills/opt-ai/scripts` en `ci.yml` y `ci-local.sh`. |
 | 7 | 3 | La salida de los scripts del flujo está en inglés aunque `language: es`. | Se acepta. |
+| 8 | 3, `scout-updates` | `compare.py` busca `seal:`, `## Constraints`, la columna `Component` y `## Coverage` en inglés: con la memoria en español (`sello:`, `Restricciones`) da todo `unsealed`. | Esos cuatro textos, en inglés en `docs/scout/arquitectura.md`; apuntado en `.claude/gw/scout-updates.md`. |
+| 9 | 3, `scout-updates` | La skill fija la memoria en `.claude/gw/scout/`; la de WMF está en `docs/scout/` y la enlazan informes, roadmap y retros. | Se queda en `docs/scout/`; las notas lo dicen. |
+| 10 | 3, `scout-updates` | El banco de calidad por pares (`banco.py`) no está en el flujo; las evals de WMF eran de su skill en español. | Banco a `tools/qa/banco-calidad.py` y `docs/scout/banco/README.md`; evals borradas (en git). Inventario y contraste del flujo, comprobados iguales en WMF y en los casos difíciles. |
 
 ## For Galivelop-workflow
 
@@ -42,3 +45,6 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 - `opt-tokens/scripts/medir.py`: sin test; WMF ofrece el suyo (`tools/qa/tests/test_medir.py`).
 - Los scripts de cada skill en `scripts/` piden `-s <skill>/scripts` a `unittest discover`; decirlo en `aplicar.md`.
 - Los mensajes de los scripts deberían seguir `language` de `gw.json`.
+- `scout-updates/compare.py`: aceptar los títulos en el `language` del proyecto (o una lista en las notas) y `sello`.
+- `scout-updates`: dejar elegir la carpeta de la memoria (p. ej. `scoutDir` en `gw.json`).
+- `scout-updates`: WMF ofrece su banco por pares a ciegas (`tools/qa/banco-calidad.py`, con test) para el paso 5.

@@ -1,9 +1,10 @@
 # Arquitectura · Tarkor
 
-Mantenida por `scout-updates` ([skill](../../.claude/skills/scout-updates/SKILL.md)). Cada sección lleva su sello;
-para contrastar: `python3 .claude/skills/scout-updates/contrastar.py docs/scout/arquitectura.md`.
+Mantenida por `scout-updates` ([skill](../../.claude/skills/scout-updates/SKILL.md)). Cada sección lleva su sello
+(`seal:`); para contrastar: `python3 .claude/skills/scout-updates/scripts/compare.py docs/scout/arquitectura.md`. Los
+títulos `Constraints` y la columna `Component` van en inglés porque el script los busca así ([notas](../../.claude/gw/scout-updates.md)).
 
-## Restricciones
+## Constraints
 
 Confirmadas por la usuaria el 2026-10-20.
 
@@ -34,9 +35,9 @@ Confirmadas por la usuaria el 2026-10-20.
   candidato tiene que dar JSON válido y buena prosa a la vez. La familia Mistral falló así (decisión técnica 14).
 
 ## Modelos de IA
-<!-- sello: 2026-10-21 · c2393bad · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
+<!-- seal: 2026-10-21 · c2393bad · backend/.env.example, backend/src/config/env.ts, backend/Modelfile.llama31, opencode.json, modelfiles/qwen35-9b-32k.Modelfile, .opencode/prompts/narrador-lore.txt -->
 
-| Componente | Versión | Uso | Dónde se configura |
+| Component | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | narrador | `tarkor-narrador-llama31` (base `llama3.1:8b-instruct-q4_K_M`, `num_ctx` 8192, temperatura 0,7) | narrar cada turno con JSON forzado | `env.ts` `OLLAMA_MODEL_NARRADOR`, `.env.example`, `Modelfile.llama31` |
 | cronista | `qwen2.5:1.5b-instruct` (986 MB) | clasificar la acción y resumir capítulos; `keepAlive` 0 para no convivir con el narrador | `env.ts` `OLLAMA_MODEL_CRONISTA`, `.env.example` |
@@ -57,18 +58,18 @@ con P-007. Para repetirlo: casos con `IA_CASOS=<ruta fuera del repositorio>`, SY
 tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
 
 ## Servicios externos
-<!-- sello: 2026-10-20 · bda4496b · backend/.env.example, backend/src/config/env.ts, backend/prisma/schema.prisma -->
+<!-- seal: 2026-10-20 · bda4496b · backend/.env.example, backend/src/config/env.ts, backend/prisma/schema.prisma -->
 
-| Componente | Versión | Uso | Dónde se configura |
+| Component | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | prompts de imagen | rotación con failover: Cerebras `gpt-oss-120b`, Mistral `mistral-large-latest`, SambaNova `DeepSeek-V3.1`, Cloudflare `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, Gemini `gemini-flash-latest`, Groq `llama-3.3-70b-versatile` | prompts de imagen, solo tiers gratuitos; Ollama como último recurso | `env.ts` (`*_MODEL`, `*_API_KEY`), `lib/aiProviders/orchestrator.ts` |
 | profesor en vivo (DPO) | la misma rotación cloud | pares elegido/rechazado jugando, apagado por defecto | `env.ts` `LIVE_TEACHER_CAPTURE_*` |
 | Supabase (alternativa, sin uso) | Postgres alojado con pooler (6543 transacción, 5432 sesión) | solo para jugar desde varios dispositivos; por defecto, Postgres local | `.env.example` (comentado), `schema.prisma` `directUrl` |
 
 ## Runtimes
-<!-- sello: 2026-10-20 · cd8b5185 · .github/workflows/ci.yml, backend/package.json, frontend/package.json, backend/.env.example, backend/prisma/schema.prisma, docs/arquitectura/15-instalacion.md -->
+<!-- seal: 2026-10-20 · cd8b5185 · .github/workflows/ci.yml, backend/package.json, frontend/package.json, backend/.env.example, backend/prisma/schema.prisma, docs/arquitectura/15-instalacion.md -->
 
-| Componente | Versión | Uso | Dónde se configura |
+| Component | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | Node.js | 22 | backend, frontend y CI | `ci.yml` (`node-version`); sin `.nvmrc` ni `engines` |
 | TypeScript | `~6.0.2` | backend y frontend | `backend/package.json`, `frontend/package.json` |
@@ -78,9 +79,9 @@ tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
 | SteamOS (Deck) | raíz de solo lectura; lo compilado va en `distrobox`; GPU por Vulkan (RADV) | plataforma del hardware mínimo | `15-instalacion.md` |
 
 ## Dependencias
-<!-- sello: 2026-10-20 · b945f6d · backend/package.json, frontend/package.json, tools/playwright-e2e/package.json -->
+<!-- seal: 2026-10-20 · b945f6d · backend/package.json, frontend/package.json, tools/playwright-e2e/package.json -->
 
-| Componente | Versión | Uso | Dónde se configura |
+| Component | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | Fastify (+ `@fastify/cors`, `@fastify/static`) | `^5.2.0` | servidor del backend | `backend/package.json` |
 | Prisma (`prisma`, `@prisma/client`) | `^6.1.0` | ORM y migraciones | `backend/package.json` |
@@ -94,15 +95,15 @@ tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
 El resto: 27 directas en total, con sus lockfiles.
 
 ## Infraestructura y CI
-<!-- sello: 2026-10-20 · b945f6d · .github/workflows/ci.yml -->
+<!-- seal: 2026-10-20 · b945f6d · .github/workflows/ci.yml -->
 
-| Componente | Versión | Uso | Dónde se configura |
+| Component | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | `actions/checkout`, `actions/setup-node` | v4 | CI | `ci.yml` |
 | runners | `ubuntu-24.04` y `ubuntu-latest` (mezclados) | CI | `ci.yml` |
 
 ## Planificados
-<!-- sello: 2026-10-20 · bda4496b · docs/arquitectura/reutilizables/01-generacion-imagenes-local.md, docs/arquitectura/reutilizables/02-voces-y-sonidos-locales.md, docs/arquitectura/reutilizables/03-agente-desarrollo-local.md, docs/arquitectura/20-instalador-distribuible.md -->
+<!-- seal: 2026-10-20 · bda4496b · docs/arquitectura/reutilizables/01-generacion-imagenes-local.md, docs/arquitectura/reutilizables/02-voces-y-sonidos-locales.md, docs/arquitectura/reutilizables/03-agente-desarrollo-local.md, docs/arquitectura/20-instalador-distribuible.md -->
 
 Diseñados y sin implementar: fuera del roadmap hasta que se implementen (decisión del 2026-10-13,
 [README](../arquitectura/reutilizables/README.md)). Se buscan como el resto: sale antes de implementarlos lo que ya
@@ -110,7 +111,7 @@ haya cambiado. **Restricciones** (usuaria, 2026-10-20): corren con Tarkor parado
 aplica tal cual, pero tienen que caber en la Deck **sin swap**; licencias, idioma y coste, los de arriba. Lo que
 solo cabe en equipos mayores espera a la versión «plus».
 
-| Componente | Versión | Uso | Dónde se configura |
+| Component | Versión | Uso | Dónde se configura |
 |---|---|---|---|
 | generador de imágenes | FLUX.2 [klein] 4B (Apache 2.0; el 9B es no comercial) en `stable-diffusion.cpp` con Vulkan, GGUF de `leejet`, codificador Qwen3-4B; ~7 GB en disco; Colab de respaldo | retratos y escenas, con el juego cerrado | `01-generacion-imagenes-local.md` |
 | voces | `qwentts.cpp` (MIT) con Qwen3-TTS (Apache 2.0): VoiceDesign 1.7B para diseñar, Base para producir; CPU o Vulkan | voces por raza | `02-voces-y-sonidos-locales.md` |

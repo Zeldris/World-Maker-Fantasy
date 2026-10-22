@@ -27,7 +27,7 @@ export const env = {
   /// Perfil de máquina que se anota en cada línea del registro: deck, cpu, gpu8, gpu12…
   iaPerfil: process.env.IA_PERFIL || 'desconocido',
   /// Casos para el banco de calidad de `scout-updates` (QA-176): ruta de un JSONL al que se añade, por cada
-  /// llamada a /api/generate que acaba bien, el prompt completo en el formato de casos de `banco.py`. Sin ella
+  /// llamada a /api/generate que acaba bien, el prompt completo en el formato de casos de `tools/qa/banco-calidad.py`. Sin ella
   /// no se escribe nada. Lleva el texto de la partida: no se sube al repositorio.
   iaCasos: process.env.IA_CASOS || undefined,
 

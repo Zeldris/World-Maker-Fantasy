@@ -46,7 +46,7 @@ jobs:
       # QA-137: tests de medir.py de la skill opt-ai (el de WMF, medir-ia.py, va con tools/qa).
       - run: python3 -m unittest discover -s .claude/skills/opt-ai/scripts
       # QA-176: tests de los scripts de la skill scout-updates.
-      - run: python3 -m unittest discover -s .claude/skills/scout-updates
+      - run: python3 -m unittest discover -s .claude/skills/scout-updates/scripts
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
       - run: for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
 
