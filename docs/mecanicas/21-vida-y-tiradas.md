@@ -298,3 +298,13 @@ moral, todo es Ataque básico. Jugadora de nivel 1 con Fu 11, De 11, Co 10.
     tramo y lesión. *Test:* test del bloque de contexto (sin cifras de PV) y prueba de juego.
 
 Cada paso se juega antes de cerrarlo (regla de `CLAUDE.md` al volver al roadmap).
+
+## 9. Decisiones de la usuaria (2026-10-22)
+
+Cierra lo abierto en § 7; todas, como se recomendaron:
+
+1. **Descanso hasta el 75 %:** vale lo aprobado el 2026-10-21; sustituye al hallazgo 11 del 2026-09-06.
+2. **Súbditos con salud:** `Subject` gana `condicionFisica`, `pv` y lesiones; los grupos de combate, `pvGrupo`.
+3. **`AGUANTE`:** el efecto de habilidad rellena la capa de aguante; no se renombra nada.
+4. **Rueda de tipos:** multiplica solo la tirada de ataque (el defensor ya no tira).
+5. **Caza fácil más segura** (10 % de heridos frente a 26 %): se acepta tal cual.
