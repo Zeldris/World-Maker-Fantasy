@@ -39,11 +39,13 @@ export const cuotaSemanal = armasDeLaSemana;
 /// mucho una cuota); lo que no llegue queda pendiente, con tope de una cuota (no se acumula; este es
 /// el único sitio donde se aplica el tope). `fraccion` es la parte pagada de la cuota de la semana
 /// (0-1): la probabilidad de que patrulle. Pagar la cuota entera con algo pendiente patrulla seguro,
-/// pero no deja al corriente (y sin rearme) hasta saldar lo pendiente.
+/// pero no deja al corriente (y sin rearme) hasta saldar lo pendiente. Sin cuota (sin soldados) no
+/// hay con qué recortar: lo pendiente se conserva entero y se paga con lo que haya.
 export function pagoSemanal(riqueza: number, pendiente: number, cuota: number): { pagado: number; pendiente: number; alCorriente: boolean; fraccion: number } {
-  const debe = Math.min(Math.max(0, pendiente), cuota) + cuota;
+  const previo = Math.max(0, pendiente);
+  const debe = (cuota > 0 ? Math.min(previo, cuota) : previo) + cuota;
   const pagado = Math.min(Math.max(0, riqueza), debe);
-  const resto = Math.min(cuota, debe - pagado);
+  const resto = cuota > 0 ? Math.min(cuota, debe - pagado) : debe - pagado;
   return { pagado, pendiente: resto, alCorriente: resto === 0, fraccion: cuota > 0 ? Math.min(1, pagado / cuota) : 1 };
 }
 
@@ -54,27 +56,30 @@ export const porcentajePagado = (fraccion: number) => (fraccion >= 1 ? 100 : fra
 /// Motivo de ruptura de la regla anterior al 2026-10-22, que ya no existe (se reabren al migrar).
 const RUPTURA_VIEJA = 'deuda saldada';
 
-/// Las líneas de la regla nueva (con `estado`) de los vasallos dados, de una sola consulta: primero por
-/// partida y tipo (índice `[saveId, tipo]`), luego por sus actores, agrupadas en memoria por vasallo.
-/// `ultima` es la última línea de revisión (sin las `migrado`, que pueden llevar minutos posteriores a
-/// una revisión de días atrasados); `marcada`, si tiene alguna de la regla nueva, `migrado` incluida.
-async function lineasNuevas(tx: Tx, saveId: string, vasallos: string[]): Promise<Map<string, { ultima: DatosLinea | null; marcada: boolean }>> {
-  const porVasallo = new Map(vasallos.map((v) => [v, { ultima: null as DatosLinea | null, marcada: false }]));
-  if (vasallos.length === 0) return porVasallo;
+/// Las líneas de la regla nueva (con `estado`) de los vasallos dados (slug → nombre), de una sola
+/// consulta: primero por partida y tipo (índice `[saveId, tipo]`), luego por sus actores, agrupadas en
+/// memoria por vasallo. `ultima` es la última línea de revisión (sin las `migrado`, que pueden llevar
+/// minutos posteriores a una revisión de días atrasados); `marcada`, si tiene alguna de la regla nueva,
+/// `migrado` incluida. `sinTope` lee todo el diario del vasallo: la migración lo usa para que `marcada`
+/// no dependa de que la marca caiga dentro de las últimas líneas.
+async function lineasNuevas(tx: Tx, saveId: string, vasallos: Map<string, string>, sinTope = false): Promise<Map<string, { ultima: DatosLinea | null; marcada: boolean }>> {
+  const porVasallo = new Map([...vasallos.keys()].map((v) => [v, { ultima: null as DatosLinea | null, marcada: false }]));
+  if (vasallos.size === 0) return porVasallo;
+  // Las líneas sin `vasalloSlug` (escritas antes de guardarlo) se asignan por `datos.vasallo`, el
+  // nombre del vasallo: los actores no guardan orden (vasallo y señor son los dos AFECTADO).
+  const porNombre = new Map([...vasallos].map(([slug, nombre]) => [nombre, slug]));
   // Con tope: basta con las últimas semanas de cada vasallo (una línea por semana como mucho).
   const lineas = await tx.suceso.findMany({
-    where: { saveId, tipo: 'PATRULLA_VASALLO', actores: { some: { entidadTipo: 'FACCION', entidadId: { in: vasallos } } } },
+    where: { saveId, tipo: 'PATRULLA_VASALLO', actores: { some: { entidadTipo: 'FACCION', entidadId: { in: [...vasallos.keys()] } } } },
     orderBy: { fictionalMinutes: 'desc' },
-    take: LINEAS_POR_VASALLO * vasallos.length,
-    select: { datos: true, actores: { select: { entidadId: true } } },
+    ...(sinTope ? {} : { take: LINEAS_POR_VASALLO * vasallos.size }),
+    select: { datos: true },
   });
-  let faltan = vasallos.length;
+  let faltan = vasallos.size;
   for (const l of lineas) {
     const d = l.datos as DatosLinea;
     if (!d.estado) continue;
-    // Vasallo y señor son los dos AFECTADO: la línea es del vasallo que dice `datos.vasalloSlug`; las
-    // escritas antes de guardarlo, del primer actor (el vasallo, que se registra primero).
-    const e = porVasallo.get(d.vasalloSlug ?? l.actores[0]?.entidadId ?? '');
+    const e = porVasallo.get(d.vasalloSlug ?? porNombre.get(d.vasallo ?? '') ?? '');
     if (!e || (e.ultima && e.marcada)) continue;
     e.marcada = true;
     if (!e.ultima && d.estado !== 'migrado') e.ultima = d;
@@ -82,7 +87,7 @@ async function lineasNuevas(tx: Tx, saveId: string, vasallos: string[]): Promise
   }
   return porVasallo;
 }
-type DatosLinea = { estado?: string; porcentaje?: number; vasalloSlug?: string };
+type DatosLinea = { estado?: string; porcentaje?: number; vasalloSlug?: string; vasallo?: string };
 const LINEAS_POR_VASALLO = 50;
 
 /// Puro: cuántos trabajadores pasan a guerreros con un excedente de comida (cada uno deja de producir 2).
@@ -94,7 +99,9 @@ export const rearme = (margenComida: number, trabajadores: number) => Math.max(0
 ///   - los rotos por «deuda saldada» (regla vieja) se reabren al corriente si siguen vivas las dos;
 ///   - una deuda vieja de más de una cuota se recorta a una cuota, sin cobrar nada, y deja su línea
 ///     (`estado: 'migrado'`), que es la marca de que ya se migró. Solo se mira el diario si la deuda
-///     pasa de la cuota actual (con la regla nueva, solo tras bajas a mitad de semana).
+///     pasa de la cuota actual (con la regla nueva, solo tras bajas a mitad de semana), y entero: con
+///     CUALQUIER línea con `estado` del vasallo no se migra (toda revisión que deja algo pendiente la
+///     escribe, así que una deuda de la regla nueva siempre la tiene).
 export async function asegurarVasallajes(tx: Tx, saveId: string, ahora: number): Promise<void> {
   for (const v of await tx.vasallaje.findMany({ where: { saveId, motivoRuptura: RUPTURA_VIEJA } })) {
     const vivas = await tx.faction.count({ where: { saveId, slug: { in: [v.vasalloSlug, v.senorSlug] }, disueltaEn: null } });
@@ -111,7 +118,8 @@ export async function asegurarVasallajes(tx: Tx, saveId: string, ahora: number):
       const k = porSlug.get(v.vasalloSlug)?.kingdomStats;
       return !!k && v.deuda > cuotaSemanal(k.soldados);
     });
-    const lineas = await lineasNuevas(tx, saveId, pasadas.map((v) => v.vasalloSlug));
+    // Sin tope: la marca de la regla nueva puede quedar lejos (p. ej. muchas líneas en las que es señor).
+    const lineas = await lineasNuevas(tx, saveId, new Map(pasadas.map((v) => [v.vasalloSlug, porSlug.get(v.vasalloSlug)!.name])), true);
     for (const v of pasadas) {
       if (lineas.get(v.vasalloSlug)?.marcada) continue;
       const pendiente = cuotaSemanal(porSlug.get(v.vasalloSlug)!.kingdomStats!.soldados);
@@ -194,15 +202,16 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
     }
     // P297: sin escaramuza la semana no dejaba rastro; el diario dice si está al corriente y patrulla
     // o si queda impagado con las patrullas suspendidas.
-    if (!pago.alCorriente || (patrullo && !huboEscaramuza)) {
+    // También al saldar lo pendiente, aunque no patrulle (p. ej. sin cuota, sin guerreros).
+    if (!pago.alCorriente || (patrullo && !huboEscaramuza) || v.deuda > 0) {
       await registrarSuceso(tx, {
         saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: ahora, origen: 'MUNDO',
         actores: [{ entidadTipo: 'FACCION', entidadId: v.vasalloSlug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: v.senorSlug, papel: 'AFECTADO' }],
         datos: {
           vasalloSlug: v.vasalloSlug, vasallo: vasallo.name, senor: senor.name,
           ...(pago.alCorriente
-            ? { estado: 'al-corriente' as const }
-            : pago.pagado > 0
+            ? { estado: 'al-corriente' as const, patrulla: patrullo }
+            : pago.fraccion > 0
               ? { estado: 'parcial' as const, porcentaje: porcentajePagado(pago.fraccion), patrulla: patrullo, pendiente: pago.pendiente }
               : { estado: 'impagado' as const }),
           ...(nuevos > 0 ? { rearmados: nuevos } : {}),
@@ -248,7 +257,7 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
   const soldados = new Map(facciones.map((f) => [f.slug, f.kingdomStats?.soldados ?? 0]));
   // El porcentaje del último pago sale de la última línea de revisión de ese vasallo (toda revisión con
   // algo pendiente la deja; una consulta para todos); sin línea de revisión (p. ej. recién migrado), null.
-  const lineas = await lineasNuevas(tx, saveId, filas.filter((f) => f.deuda > 0).map((f) => f.vasalloSlug));
+  const lineas = await lineasNuevas(tx, saveId, new Map(filas.filter((f) => f.deuda > 0).map((f) => [f.vasalloSlug, nombres.get(f.vasalloSlug) ?? f.vasalloSlug])));
   const porcentajes = new Map<string, number | null>();
   for (const [slug, { ultima: d }] of lineas) porcentajes.set(slug, d?.estado === 'parcial' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' ? 0 : null);
   return filas.map((f) => ({

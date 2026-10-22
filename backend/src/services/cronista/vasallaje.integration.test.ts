@@ -4,6 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { armasDeLaSemana, asegurarVasallajes, cuotaSemanal, pagoSemanal, PATRULLA_GUERREROS, porcentajePagado, rearme, revisarVasallajes, SOBREPRECIO_ARMAS, vasallajesVista } from './vasallaje.js';
 import { EQUIPO } from './facturaEquipo.js';
+import { registrarSuceso } from './sucesos.js';
 import { produccionDeFaccion } from '../kingdomTick.js';
 
 describe('vasallaje (CR-59) — reglas puras', () => {
@@ -26,6 +27,12 @@ describe('vasallaje (CR-59) — reglas puras', () => {
     expect(pagoSemanal(0, 0, 0)).toEqual({ pagado: 0, pendiente: 0, alCorriente: true, fraccion: 1 });
     expect(pagoSemanal(0, 9000, 1248)).toEqual({ pagado: 0, pendiente: 1248, alCorriente: false, fraccion: 0 });
     expect(pagoSemanal(2496, 1248, 1248)).toEqual({ pagado: 2496, pendiente: 0, alCorriente: true, fraccion: 1 });
+    // El pago va primero a la cuota de la semana: con una de dos pagada patrulla seguro, sin quedar al corriente.
+    expect(pagoSemanal(100, 100, 100)).toEqual({ pagado: 100, pendiente: 100, alCorriente: false, fraccion: 1 });
+    // Sin cuota (sin soldados) lo pendiente no se borra: se conserva y se paga con lo que haya.
+    expect(pagoSemanal(0, 500, 0)).toEqual({ pagado: 0, pendiente: 500, alCorriente: false, fraccion: 1 });
+    expect(pagoSemanal(200, 500, 0)).toEqual({ pagado: 200, pendiente: 300, alCorriente: false, fraccion: 1 });
+    expect(pagoSemanal(900, 500, 0)).toEqual({ pagado: 500, pendiente: 0, alCorriente: true, fraccion: 1 });
     expect([0, 0.004, 0.4, 0.996, 1].map(porcentajePagado)).toEqual([0, 1, 40, 99, 100]);
   });
 });
@@ -226,9 +233,78 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     await prisma.vasallaje.delete({ where: { id: extra.id } });
   });
 
+  it('las líneas sin vasalloSlug se asignan por el nombre del vasallo, no por el orden de los actores', async () => {
+    const otra = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: { notIn: ['clan-serhu', 'concordia-de-hierro'] }, kingdomStats: { isNot: null } }, select: { slug: true, name: true } });
+    const extra = await prisma.vasallaje.create({ data: { saveId, vasalloSlug: 'concordia-de-hierro', senorSlug: otra.slug, deuda: 100, desdeMinutes: 0 } });
+    await prisma.$transaction(async (tx) => {
+      // Línea de Serhu escrita antes de guardar `vasalloSlug`, con el señor como primer actor.
+      await registrarSuceso(tx, {
+        saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: 51 * 1440 + 1, origen: 'MUNDO',
+        actores: [{ entidadTipo: 'FACCION', entidadId: 'concordia-de-hierro', papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: 'clan-serhu', papel: 'AFECTADO' }],
+        datos: { vasallo: 'Clan Serhu', senor: 'Concordia de Hierro', estado: 'parcial', porcentaje: 30, patrulla: false, pendiente: 1 },
+      });
+      // Y una de la Concordia como vasalla, sin `vasalloSlug` tampoco.
+      await registrarSuceso(tx, {
+        saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: 51 * 1440 + 2, origen: 'MUNDO',
+        actores: [{ entidadTipo: 'FACCION', entidadId: otra.slug, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: 'concordia-de-hierro', papel: 'AFECTADO' }],
+        datos: { vasallo: (await tx.faction.findFirstOrThrow({ where: { saveId, slug: 'concordia-de-hierro' } })).name, senor: otra.name, estado: 'parcial', porcentaje: 70, patrulla: true, pendiente: 1 },
+      });
+    });
+    const vista = await vasallajesVista(prisma, saveId, 51);
+    expect(vista.find((x) => x.vasalloSlug === 'clan-serhu')).toMatchObject({ porcentajePagado: 30 });
+    expect(vista.find((x) => x.vasalloSlug === 'concordia-de-hierro')).toMatchObject({ porcentajePagado: 70 });
+    await prisma.vasallaje.delete({ where: { id: extra.id } });
+  });
+
+  it('migración: con una línea de la regla nueva, aunque quede tras más de 50 líneas, no recorta una deuda legítima', async () => {
+    const serhu = await stats('clan-serhu');
+    const cuota = cuotaSemanal(serhu.soldados);
+    const v = await vasallaje();
+    await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda: cuota } });
+    // 60 líneas más nuevas sin `estado` (p. ej. de la regla vieja o en las que es otra cosa).
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < 60; i++) {
+        await registrarSuceso(tx, {
+          saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: 52 * 1440 + i, origen: 'MUNDO',
+          actores: [{ entidadTipo: 'FACCION', entidadId: 'clan-serhu', papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: 'concordia-de-hierro', papel: 'AFECTADO' }],
+          datos: { vasallo: 'Clan Serhu', senor: 'Concordia de Hierro', deuda: 1 },
+        });
+      }
+    });
+    // Bajas a mitad de semana: la cuota baja y la deuda queda por encima.
+    await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: Math.floor(serhu.soldados / 2) } });
+    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 53 * 1440));
+    expect((await vasallaje()).deuda).toBe(cuota);
+    await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: serhu.soldados } });
+  });
+
+  it('sin cuota (sin soldados) lo pendiente se conserva, la migración no lo toca y al saldarlo deja línea', async () => {
+    const serhu = await stats('clan-serhu');
+    const v = await vasallaje();
+    await prisma.vasallaje.update({ where: { id: v.id }, data: { deuda: 500, ultimaSemana: 49 } });
+    await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: 0, riqueza: 200 } });
+    await semana(56, 0.99);
+    expect((await vasallaje()).deuda).toBe(300);
+    expect((await ultimaLinea()).datos).toMatchObject({ estado: 'parcial', porcentaje: 100, pendiente: 300 });
+    await prisma.$transaction((tx) => asegurarVasallajes(tx, saveId, 57 * 1440));
+    expect((await vasallaje()).deuda).toBe(300);
+    await ponerRiqueza('clan-serhu', 1000);
+    const concordiaAntes = (await stats('concordia-de-hierro')).riqueza;
+    await semana(63, 0.99);
+    expect((await vasallaje()).deuda).toBe(0);
+    // Salda los 300 (y, ya al corriente, se rearma con lo que le sobra: también va al señor).
+    const gastado = 1000 - (await stats('clan-serhu')).riqueza;
+    expect(gastado).toBeGreaterThanOrEqual(300);
+    expect((await stats('concordia-de-hierro')).riqueza).toBe(concordiaAntes + gastado);
+    const linea = await ultimaLinea();
+    expect(linea.fictionalMinutes).toBe(63 * 1440);
+    expect(linea.datos).toMatchObject({ estado: 'al-corriente' });
+    await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { soldados: serhu.soldados } });
+  });
+
   it('si cae el señor, el vasallaje se rompe', async () => {
     await prisma.faction.updateMany({ where: { saveId, slug: 'concordia-de-hierro' }, data: { disueltaEn: 54 * 1440 } });
-    await semana(56, 0.9);
+    await semana(70, 0.9);
     expect(await vasallaje()).toMatchObject({ motivoRuptura: 'cayó el señor' });
   });
 });
