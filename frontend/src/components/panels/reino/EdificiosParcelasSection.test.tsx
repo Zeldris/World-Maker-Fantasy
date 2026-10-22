@@ -71,3 +71,26 @@ describe('P218 — Construir ofrece todo lo que cuelga del Ayuntamiento', () => 
     expect((getByRole('button', { name: /Leñera/ }) as HTMLButtonElement).disabled).toBe(false)
   })
 })
+
+describe('P278 — la lista distingue cada edificio y cuántos hay', () => {
+  afterEach(cleanup)
+  const ed = (id: string, recipeKey: string, name: string, status: BuildingInfo['status'] = 'ACTIVO'): BuildingInfo => ({ id, recipeKey, name, kind: recipeKey, status, description: `Descripción de ${name}` })
+
+  it('numera dos Pozos, resume cuántos hay y cuántos están dañados, y deja la Choza aparte', () => {
+    const { getByText, getAllByText, queryByText } = render(
+      <EdificiosParcelasSection buildings={[ed('1', 'choza', 'Choza Básica Orco de las Llanuras', 'DANADO'), ed('2', 'pozo', 'un pozo', 'DANADO'), ed('3', 'pozo', 'un pozo')]} />,
+    )
+    expect(getByText('Repetidos: 2 × Pozo (1 dañado)')).toBeTruthy()
+    expect(getByText('n.º 1')).toBeTruthy()
+    expect(getByText('n.º 2')).toBeTruthy()
+    expect(getByText('Descripción de Choza Básica Orco de las Llanuras')).toBeTruthy()
+    expect(getAllByText('Descripción de un pozo')).toHaveLength(2)
+    expect(queryByText('n.º 3')).toBeNull()
+  })
+
+  it('un edificio único no lleva número ni resumen', () => {
+    const { queryByText } = render(<EdificiosParcelasSection buildings={[ed('1', 'pozo', 'un pozo')]} />)
+    expect(queryByText(/Repetidos/)).toBeNull()
+    expect(queryByText(/n\.º/)).toBeNull()
+  })
+})

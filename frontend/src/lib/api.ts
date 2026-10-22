@@ -1784,6 +1784,13 @@ export async function fijarRolReinoCompanion(saveId: string, companionId: string
 }
 /// CR-53 (hito 0.3): la economía de supervivencia del Reino (agua, topes, tesoro y sueldos).
 export interface EconomiaReino {
+  /// P279: comida en el almacén, lo que producen y comen al día y por qué se mueve (o no).
+  comida?: number
+  bebida?: number
+  comidaProduccionDia?: number
+  comidaConsumoDia?: number
+  bocasDetalle?: { civiles: number; soldados: number; visitantes: number }
+  motivosComida?: string[]
   aguaDia: number
   bocas: number
   topeComida: number

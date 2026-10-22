@@ -13,3 +13,15 @@ export function avisosDeEconomia(e: EconomiaReino): string[] {
   if (e.sinArma) avisos.push(`${e.sinArma} soldado${e.sinArma === 1 ? '' : 's'} sin arma: cuentan la mitad en la defensa.`)
   return avisos
 }
+
+/// P275: el Almacén con los tres topes (comida, agua y materiales), con lo guardado cuando se sabe.
+export function textoAlmacen(e: EconomiaReino): string {
+  const sobre = (guardado: number | undefined, tope: number) => (guardado !== undefined ? `${guardado}/${tope}` : `${tope}`)
+  return `comida ${sobre(e.comida, e.topeComida)} · agua ${sobre(e.bebida, e.topeBebida)} · materiales ${e.materiales}/${e.topeMateriales}`
+}
+
+/// P279: lo que produce y come la comida al día, como «Agua al día»; null si el servidor no lo manda.
+export function textoComidaDia(e: EconomiaReino): string | null {
+  if (e.comidaProduccionDia === undefined || e.comidaConsumoDia === undefined) return null
+  return `+${e.comidaProduccionDia} / −${e.comidaConsumoDia}`
+}

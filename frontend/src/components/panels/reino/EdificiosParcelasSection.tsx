@@ -56,6 +56,25 @@ interface EdificiosParcelasSectionProps {
 
 interface BuildOption { recipeKey: string; label: string; actionText: string; needsCuartel: boolean; status: RecipeStatusInfo | undefined }
 
+/// P278: cuántos hay de cada clase (por `recipeKey`) y el número de orden de cada uno, para distinguir dos Pozos o dos
+/// Chozas. Los narrados sin receta no se numeran.
+export function numerarEdificios(buildings: BuildingInfo[]): { numero: Map<string, { n: number; de: number }>; resumen: string[] } {
+  const porClave = new Map<string, BuildingInfo[]>()
+  for (const b of buildings) {
+    if (!b.recipeKey) continue
+    porClave.set(b.recipeKey, [...(porClave.get(b.recipeKey) ?? []), b])
+  }
+  const numero = new Map<string, { n: number; de: number }>()
+  const resumen: string[] = []
+  for (const grupo of porClave.values()) {
+    grupo.forEach((b, i) => numero.set(b.id, { n: i + 1, de: grupo.length }))
+    if (grupo.length < 2) continue
+    const danados = grupo.filter((b) => b.status === 'DANADO').length
+    resumen.push(`${grupo.length} × ${labelDeReceta(grupo[0]!.name)}${danados ? ` (${danados} dañado${danados === 1 ? '' : 's'})` : ''}`)
+  }
+  return { numero, resumen }
+}
+
 /// P218 — «un pozo» -> «Pozo».
 function labelDeReceta(name: string): string {
   const sinArticulo = name.replace(/^(un|una|el|la)\s+/i, '')
@@ -121,6 +140,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       </div>
     </PanelSection>
   )
+  const { numero, resumen } = numerarEdificios(buildings)
   if (buildings.length === 0) return <>{buildButtons}<p className="text-xs text-wood-500">Sin edificios todavía.</p></>
 
   return (
@@ -144,11 +164,15 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           ))}
         </div>
       </details>
+      {resumen.length > 0 && <p className="mb-2 text-2xs text-wood-400">Repetidos: {resumen.join(' · ')}</p>}
       <div className="flex flex-col gap-2">
         {buildings.map((b) => (
           <div key={b.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
             <p className="flex items-center justify-between font-medium text-wood-100">
-              {b.name}
+              <span>
+                {b.name}
+                {numero.get(b.id) && numero.get(b.id)!.de > 1 && <span className="ml-1.5 text-2xs font-normal text-wood-500">n.º {numero.get(b.id)!.n}</span>}
+              </span>
               {/* REI-115 (hito 0.1) — el significado del estado al pasar por encima, no solo en la leyenda. */}
               <TooltipAnchor text={buildingStatusLabel[b.status]} subtext={BUILDING_STATE_HINT[b.status]}>
                 <span className={`rounded-full border px-2 py-0.5 text-2xs uppercase tracking-wide ${BUILDING_STATUS_TONE[b.status]}`}>

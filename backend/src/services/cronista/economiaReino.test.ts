@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tickKingdomOneDay, DEFAULT_KINGDOM_STATS } from '../kingdomTick.js';
-import { AGUA_FUENTE_NATURAL_DIA, BASE_ALMACEN, suministrosDeEdificios, sueldosSemana, tieneFuenteNatural, tocaDesertar } from './economiaReino.js';
+import { AGUA_FUENTE_NATURAL_DIA, avisoMaterialesLlenos, BASE_ALMACEN, explicarComida, suministrosDeEdificios, sueldosSemana, tieneFuenteNatural, tocaDesertar } from './economiaReino.js';
 
 describe('economía del Reino (CR-53) — agua y almacén', () => {
   it('el Ayuntamiento da la base; cada Pozo, Granero, Cisterna y Leñera suma lo suyo', () => {
@@ -41,5 +41,33 @@ describe('economía del Reino (CR-53) — sueldos', () => {
     const base = { ...DEFAULT_KINGDOM_STATS, soldados: 4, riqueza: 10, comida: 50, bebida: 50 };
     expect(tickKingdomOneDay(base).riqueza).toBe(6);
     expect(tickKingdomOneDay(base, { agua: 0, topeComida: 999, topeBebida: 999, sueldosSemanales: true }).riqueza).toBe(10);
+  });
+});
+
+describe('P276 — aviso de materiales llenos', () => {
+  it('sin Leñera pide construirla; con Leñera dice que está lleno y no pide otra', () => {
+    expect(avisoMaterialesLlenos(0, { guardados: 60, tope: 60 })).toContain('construye una Leñera');
+    const con = avisoMaterialesLlenos(1, { guardados: 180, tope: 180 });
+    expect(con).toContain('lleno');
+    expect(con).toContain('180/180');
+    expect(con).not.toContain('construye');
+  });
+});
+
+describe('P279/P300 — por qué se mueve la comida', () => {
+  const base = { comida: 10, tope: 60, bocas: { civiles: 2, soldados: 0, visitantes: 0 }, produccion: 4, consumo: 2, tareas: { recolector: 2 } as Record<string, number>, hayAyuntamiento: true, hayAgua: true, escalonCocina: null, factor: 1 };
+  it('sin súbditos dice que nadie come; sin trabajadores, que nadie produce', () => {
+    expect(explicarComida({ ...base, bocas: { civiles: 0, soldados: 0, visitantes: 0 }, produccion: 0, consumo: 0, tareas: {} }).join(' ')).toContain('Nadie come');
+    expect(explicarComida({ ...base, produccion: 0, tareas: {} }).join(' ')).toContain('Nadie produce comida');
+  });
+  it('el Pescador sin agua o sin Ayuntamiento lo avisa', () => {
+    const sinAyto = explicarComida({ ...base, tareas: { pescador: 1, recolector: 1 }, hayAgua: false, hayAyuntamiento: false }).join(' ');
+    expect(sinAyto).toContain('No hay Ayuntamiento activo');
+    expect(explicarComida({ ...base, tareas: { pescador: 1 }, hayAgua: false }).join(' ')).toContain('no tienen agua junto al Ayuntamiento');
+  });
+  it('plana por producir lo que come, por herramientas o por el tope', () => {
+    expect(explicarComida({ ...base, produccion: 2 }).join(' ')).toContain('justo lo que comen');
+    expect(explicarComida({ ...base, factor: 0.5 }).join(' ')).toContain('sin herramienta');
+    expect(explicarComida({ ...base, comida: 60 }).join(' ')).toContain('lleno (60)');
   });
 });

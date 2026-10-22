@@ -60,7 +60,9 @@ const FELICIDAD_MAX = 100;
 /// CR-61: ya no hay comida pasiva por trabajador; la comida sale de sus tareas
 /// (`cronista/comidaOficios.ts`) y llega aquí como `SuministrosDia.comidaDia` o `extra.comida`.
 export const RIQUEZA_POR_TRABAJADOR = 1;
-const CONSUMO_POR_BOCA = 1;
+export const CONSUMO_POR_BOCA = 1;
+/// Alias para el panel (P279): lo que come cada boca al día.
+export const CONSUMO_COMIDA_POR_BOCA = CONSUMO_POR_BOCA;
 const MANTENIMIENTO_POR_SOLDADO = 1;
 
 /// Bandas de felicidad que alimentan Territory.control/population (2026-08-23, Grupo 3 —
