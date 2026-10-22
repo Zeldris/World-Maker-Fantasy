@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { CONSUMO_POR_BOCA, escalonCocinaDe, type SuministrosDia } from '../kingdomTick.js';
 import { comidaDelDia } from './comidaOficios.js';
+import { CASA_DE_OBRAS_KEY, plazasDeCasa } from './casaDeObras.js';
 import { estacionFor } from '../worldClock.js';
 import { locationTerrainTags } from '../../scripts/worldCatalog.js';
 import { ownerKeyFor } from '../reinoOwner.js';
@@ -49,18 +50,27 @@ export async function suministrosDelReino(tx: Tx, saveId: string) {
 
 /// CR-61 (61c): lo que decide la comida del Reino y no cambia de un día a otro de un salto: cuántos
 /// trabajadores hay en cada tarea, si hay agua junto al Ayuntamiento para pescar y el escalón de su
-/// mejor Cocina. Se carga una vez por tick (QA-19).
+/// mejor Cocina, y las plazas de constructor de la Casa de obras (0 sin Casa en pie). Se carga una vez
+/// por tick (QA-19).
 export async function datosComidaDelReino(tx: Tx, saveId: string, ahora: number) {
   const [subditos, edificios] = await Promise.all([
     tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true, pueblo: true, nacidoEn: true, tarea: true, enMilicia: true } }),
     tx.building.findMany({ where: { saveId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, tier: true, location: { select: { slug: true, name: true } } } }),
   ]);
   const ayuntamiento = edificios.find((b) => b.recipeKey && AYUNTAMIENTOS.has(b.recipeKey));
-  return { tareas: tareasDelReino(subditos, ahora), hayAyuntamiento: !!ayuntamiento, hayAgua: !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location), escalonCocina: escalonCocinaDe(edificios) };
+  const casa = edificios.find((b) => b.recipeKey === CASA_DE_OBRAS_KEY);
+  return {
+    tareas: tareasDelReino(subditos, ahora),
+    hayAyuntamiento: !!ayuntamiento,
+    hayAgua: !!ayuntamiento?.location && tieneFuenteNatural(ayuntamiento.location),
+    escalonCocina: escalonCocinaDe(edificios),
+    plazasConstructor: casa ? plazasDeCasa(casa.tier ?? 1) : 0,
+  };
 }
 
 /// Puro: comida (con decimales) que dan en un día las tareas de los súbditos, con la estación de ese
-/// día y la reserva que queda. Sin agua los pescadores recolectan; sin Cocina, los cocineros también.
+/// día y la reserva que queda. Sin agua los pescadores recolectan; sin Cocina, los cocineros también;
+/// y los constructores sin plaza en la Casa de obras (o sin Casa), igual.
 /// `factor`: la parte que rinde (CR-58: quien no tiene herramienta produce la mitad). El tick reparte
 /// las medias por número de día (`porcionDelDia`).
 export function comidaDelReinoDia(
@@ -69,9 +79,9 @@ export function comidaDelReinoDia(
   comidaDisponible: number,
   factor = 1,
 ): number {
-  const { tareas, hayAgua, escalonCocina } = datos;
+  const { tareas, hayAgua, escalonCocina, plazasConstructor } = datos;
   const cuadrilla = {
-    recolectores: tareas.recolector + (hayAgua ? 0 : tareas.pescador) + (escalonCocina ? 0 : tareas.cocinero),
+    recolectores: tareas.recolector + (hayAgua ? 0 : tareas.pescador) + (escalonCocina ? 0 : tareas.cocinero) + constructoresSinPlaza(Object.hasOwn(tareas, 'constructor') ? tareas['constructor'] : 0, plazasConstructor ?? 0),
     pescadores: hayAgua ? tareas.pescador : 0,
     cocineros: escalonCocina ? tareas.cocinero : 0,
     cazadores: 0,
@@ -84,16 +94,38 @@ export async function comidaDelReino(tx: Tx, saveId: string, ahora: number, comi
   return comidaDelReinoDia(await datosComidaDelReino(tx, saveId, ahora), ahora, comidaDisponible, factor);
 }
 
+/// Puro: constructores que no caben en la Casa de obras (o no hay Casa) y recolectan en su lugar.
+export function constructoresSinPlaza(constructores: number, plazas: number): number {
+  return Math.max(0, constructores - plazas);
+}
+
 /// P279/P300: por qué la comida del Reino sube, baja o se queda plana. Puro: frases cortas para Visión general.
+/// `plazasConstructor`: las de la Casa de obras (0 sin Casa); sin el dato, todos los constructores trabajan en ella.
 export function explicarComida(d: {
   comida: number; tope: number; bocas: { civiles: number; soldados: number; visitantes: number }; produccion: number; consumo: number;
   tareas: Record<string, number>; hayAyuntamiento: boolean; hayAgua: boolean; escalonCocina: number | null; factor: number;
+  plazasConstructor?: number;
 }): string[] {
   const m: string[] = [];
-  const trabajadores = (d.tareas.recolector ?? 0) + (d.tareas.pescador ?? 0) + (d.tareas.cocinero ?? 0);
+  // `constructor` choca con Object.prototype: sin la clave propia, `tareas.constructor` sería la función Object.
+  const constructores = Object.hasOwn(d.tareas, 'constructor') ? d.tareas['constructor'] : 0;
+  const sinPlaza = d.plazasConstructor == null ? 0 : constructoresSinPlaza(constructores, d.plazasConstructor);
+  const enObras = constructores - sinPlaza;
+  const trabajadores = (d.tareas.recolector ?? 0) + (d.tareas.pescador ?? 0) + (d.tareas.cocinero ?? 0) + sinPlaza;
   const bocas = d.bocas.civiles + d.bocas.soldados + d.bocas.visitantes;
   if (bocas === 0) m.push('Nadie come ahora mismo (sin súbditos, soldados ni visitantes): la comida no baja por consumo.');
-  else if (trabajadores === 0) m.push(`Nadie produce comida: no hay trabajadores, y ${bocas === 1 ? 'la boca come' : `las ${bocas} bocas comen`} ${d.consumo} al día.`);
+  else if (trabajadores === 0) {
+    const quien = enObras > 0
+      ? `${enObras === 1 ? 'tu constructor está' : `tus ${enObras} constructores están`} en la Casa de obras y nadie recolecta, pesca ni cocina`
+      : 'no hay trabajadores';
+    m.push(`Nadie produce comida: ${quien}, y ${bocas === 1 ? 'la boca come' : `las ${bocas} bocas comen`} ${d.consumo} al día.`);
+  }
+  if (sinPlaza > 0) {
+    const n = sinPlaza === 1 ? 'un constructor' : `${sinPlaza} constructores`;
+    m.push(d.plazasConstructor === 0
+      ? `No hay Casa de obras en pie: ${n} ${sinPlaza === 1 ? 'recolecta' : 'recolectan'} en su lugar.`
+      : `La Casa de obras solo tiene ${d.plazasConstructor} ${d.plazasConstructor === 1 ? 'plaza' : 'plazas'}: ${n} de más ${sinPlaza === 1 ? 'recolecta' : 'recolectan'} en su lugar.`);
+  }
   if ((d.tareas.pescador ?? 0) > 0 && !d.hayAgua) {
     m.push(d.hayAyuntamiento
       ? 'Los pescadores no tienen agua junto al Ayuntamiento: recolectan en su lugar.'
@@ -264,6 +296,7 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
     motivosComida: k ? explicarComida({
       comida: comidaActual, tope: sum.topeComida, bocas: { civiles: k.poblacion, soldados: k.soldados, visitantes: k.visitantes },
       produccion, consumo: bocasCifra * CONSUMO_POR_BOCA, tareas: datos.tareas, hayAyuntamiento, hayAgua: datos.hayAgua, escalonCocina: datos.escalonCocina, factor,
+      plazasConstructor: datos.plazasConstructor,
     }) : [],
     aguaDia: sum.agua,
     bocas: bocasCifra,

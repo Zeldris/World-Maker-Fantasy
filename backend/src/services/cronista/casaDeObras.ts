@@ -11,7 +11,10 @@
 //   estilo de X4 (`cuotaDelDia`). Si un día falta alguno, la obra se para ese día con un aviso y no
 //   gasta nada, sin perder lo avanzado. Una reparación sigue gastando materiales genéricos
 //   (`costeDeReparar`).
-// - Una obra por encima de lo que cubre la Casa lleva el aviso «🔒N».
+// - Una obra por encima de lo que cubre la Casa lleva el aviso «🔒N». Una reparación no: se repara
+//   cualquier edificio dañado, sea del tier que sea.
+// - Al estilo de X4 (la estación trabaja en lo que tiene recursos), una obra sin materiales ese día
+//   no se queda el constructor: pasa a la siguiente de la cola que sí pueda avanzar.
 // - Al terminar se revalida con las reglas de siempre (`computeBuildBlockedReason`) y se levanta
 //   (o se mejora en el sitio, `mejorarEnSitio`); una reparación usa `repararEdificio` (asaltos.ts).
 // - El constructor sube de nivel construyendo, con la misma XP por tier que el oficio del personaje.
@@ -125,30 +128,56 @@ export interface ConstructorParaReparto {
 export interface ObraParaReparto {
   id: string;
   tier: number;
+  /// Una reparación no pasa por el tope de tier de la Casa.
+  tipo?: string;
 }
 export type Reparto = Map<string, { constructorId: string } | { aviso: string }>;
 
-/// Puro: qué constructor trabaja hoy cada obra (cola en orden), o por qué no avanza. El nivel del
-/// constructor no bloquea ningún tier: la primera obra de la cola se lleva al más rápido.
-export function repartirObras(obras: ObraParaReparto[], constructores: ConstructorParaReparto[], nivelCasa: number): Reparto {
+/// Puro: por qué una obra no puede ni intentarse hoy (🔒 por nivel de Casa, o sin constructores).
+function bloqueoDeObra(o: ObraParaReparto, hayConstructores: boolean, nivelCasa: number): string | null {
   const tope = tierMaximoDeCasa(nivelCasa);
+  if (o.tipo !== 'REPARAR' && o.tier > tope) return `🔒${o.tier}: la Casa de obras de nivel ${nivelCasa} llega hasta tier ${tope}`;
+  if (!hayConstructores) return 'Sin constructores: pon a algún súbdito trabajador con la tarea «Constructor».';
+  return null;
+}
+const AVISO_ESPERANDO_TURNO = 'Esperando turno: sus constructores están en otras obras.';
+
+/// Reparto de una jornada: la cola en orden, cada obra prueba con el constructor libre más rápido y,
+/// solo si `trabajar` dice que trabajó, se lo queda; si no (le faltan materiales), el constructor pasa
+/// a la siguiente obra. Devuelve el aviso de cada obra que no se intentó.
+async function repartirJornada<O extends ObraParaReparto, C extends ConstructorParaReparto>(
+  obras: O[],
+  constructores: C[],
+  nivelCasa: number,
+  trabajar: (o: O, c: C) => Promise<boolean>,
+): Promise<Map<string, string>> {
+  const libres = [...constructores].sort((a, b) => b.nivelConstructor - a.nivelConstructor);
+  const avisos = new Map<string, string>();
+  for (const o of obras) {
+    const bloqueo = bloqueoDeObra(o, constructores.length > 0, nivelCasa);
+    if (bloqueo) {
+      avisos.set(o.id, bloqueo);
+      continue;
+    }
+    const c = libres[0];
+    if (!c) {
+      avisos.set(o.id, AVISO_ESPERANDO_TURNO);
+      continue;
+    }
+    if (await trabajar(o, c)) libres.shift();
+  }
+  return avisos;
+}
+
+/// Puro: qué constructor trabaja hoy cada obra (cola en orden), o por qué no avanza, si todas tienen
+/// material. El nivel del constructor no bloquea ningún tier: la primera obra se lleva al más rápido.
+export function repartirObras(obras: ObraParaReparto[], constructores: ConstructorParaReparto[], nivelCasa: number): Reparto {
   const libres = [...constructores].sort((a, b) => b.nivelConstructor - a.nivelConstructor);
   const r: Reparto = new Map();
   for (const o of obras) {
-    if (o.tier > tope) {
-      r.set(o.id, { aviso: `🔒${o.tier}: la Casa de obras de nivel ${nivelCasa} llega hasta tier ${tope}` });
-      continue;
-    }
-    if (constructores.length === 0) {
-      r.set(o.id, { aviso: 'Sin constructores: pon a algún súbdito trabajador con la tarea «Constructor».' });
-      continue;
-    }
-    const c = libres.shift();
-    if (!c) {
-      r.set(o.id, { aviso: 'Esperando turno: sus constructores están en otras obras.' });
-      continue;
-    }
-    r.set(o.id, { constructorId: c.id });
+    const bloqueo = bloqueoDeObra(o, constructores.length > 0, nivelCasa);
+    const c = bloqueo ? undefined : libres.shift();
+    r.set(o.id, c ? { constructorId: c.id } : { aviso: bloqueo ?? AVISO_ESPERANDO_TURNO });
   }
   return r;
 }
@@ -203,7 +232,18 @@ export async function encargarObra(tx: Tx, saveId: string, recipeKey: string): P
   if (!recipe) return { ok: false, motivo: 'No hay ninguna obra así.' };
   if (recipe.key === 'ayuntamiento') return { ok: false, motivo: 'El Ayuntamiento lo funda el personaje en persona.' };
   if (!(await casaDelReino(tx, saveId))) return { ok: false, motivo: 'Hace falta una Casa de obras en pie (Reino › Edificios).' };
-  if (await tx.obraCola.findFirst({ where: { saveId, tipo: 'CONSTRUIR', recipeKey } })) return { ok: false, motivo: `${recipe.name} ya está en la cola.` };
+  const enCola = await tx.obraCola.findMany({ where: { saveId, tipo: 'CONSTRUIR' }, select: { recipeKey: true } });
+  if (enCola.some((o) => o.recipeKey === recipeKey)) return { ok: false, motivo: `${recipe.name} ya está en la cola.` };
+  // Una mejora espera a que su base esté levantada, y dos eslabones de la misma cadena no van a la vez.
+  if (recipe.upgradesRecipeKey) {
+    const recetaEnCola = (o: { recipeKey: string | null }) => CONSTRUCTION_RECIPES.find((r) => r.key === o.recipeKey);
+    // Con una base ya en pie (p. ej. una segunda Empalizada en la cola), la mejora va sobre la levantada.
+    const base = enCola.find((o) => o.recipeKey === recipe.upgradesRecipeKey);
+    const enPie = base ? await tx.building.count({ where: { saveId, recipeKey: recipe.upgradesRecipeKey, status: 'ACTIVO' } }) : 0;
+    if (base && enPie === 0) return { ok: false, motivo: `${recipe.name} mejora ${recetaEnCola(base)?.name ?? 'un edificio'}, que aún está en la cola: encárgala cuando esté levantado.` };
+    const hermana = enCola.map(recetaEnCola).find((r) => r?.upgradesRecipeKey === recipe.upgradesRecipeKey);
+    if (hermana) return { ok: false, motivo: `${recipe.name} mejora el mismo edificio que ${hermana.name}, que ya está en la cola: espera a que termine.` };
+  }
   const motivo = await motivoDeBloqueo(tx, saveId, recipe);
   if (motivo) return { ok: false, motivo: `No se puede encargar ${recipe.name}: ${motivo}.` };
   const obra = await tx.obraCola.create({
@@ -219,6 +259,7 @@ export async function encargarReparacion(tx: Tx, saveId: string, buildingId: str
   if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.` };
   if (!(await casaDelReino(tx, saveId))) return { ok: false, motivo: 'Hace falta una Casa de obras en pie (Reino › Edificios).' };
   if (await tx.obraCola.findFirst({ where: { saveId, tipo: 'REPARAR', buildingId } })) return { ok: false, motivo: `${b.name} ya está en la cola.` };
+  // El tier solo da la XP del constructor: una reparación no pasa por el tope de la Casa (repartirObras).
   const tier = (b.recipeKey ? recetaDeEdificio(b.recipeKey, b.tier)?.tier : undefined) ?? 1;
   const obra = await tx.obraCola.create({ data: { saveId, orden: await siguienteOrden(tx, saveId), tipo: 'REPARAR', buildingId, tier, dias: 1 } });
   return { ok: true, id: obra.id };
@@ -277,9 +318,13 @@ async function terminarObra(tx: Tx, saveId: string, recipe: ConstructionRecipe, 
   if (motivo) return motivo;
   const ayto = (await ayuntamientoDelReino(tx, saveId))!;
   const region = ayto.location?.region ?? null;
-  let edificioId: string | null;
+  let edificioId: string;
   if (recipe.upgradesRecipeKey) {
-    edificioId = (await mejorarEnSitio(tx, saveId, recipe, region))?.id ?? null;
+    // `motivoDeBloqueo` ya exige el edificio que se mejora; si aun así no aparece, la obra no se da
+    // por terminada: se queda en la cola con su aviso (y lo gastado) hasta que se pueda aplicar.
+    const mejorado = await mejorarEnSitio(tx, saveId, recipe, region);
+    if (!mejorado) return 'no está el edificio que mejora';
+    edificioId = mejorado.id;
   } else {
     const creado = await tx.building.create({
       data: {
@@ -298,21 +343,19 @@ async function terminarObra(tx: Tx, saveId: string, recipe: ConstructionRecipe, 
     });
     edificioId = creado.id;
   }
-  if (edificioId) {
-    await registrarSuceso(tx, {
-      saveId,
-      tipo: 'EDIFICIO_CONSTRUIDO',
-      fictionalMinutes: ahora,
-      regionSlug: region ? slugify(region) : null,
-      locationId: ayto.locationId,
-      origen: 'MOTOR',
-      actores: [
-        ...(constructorId ? [{ entidadTipo: 'SUBDITO' as const, entidadId: constructorId, papel: 'AUTOR' as const }] : []),
-        { entidadTipo: 'EDIFICIO', entidadId: edificioId, papel: 'BENEFICIARIO' },
-      ],
-      datos: { edificio: recipe.name },
-    });
-  }
+  await registrarSuceso(tx, {
+    saveId,
+    tipo: 'EDIFICIO_CONSTRUIDO',
+    fictionalMinutes: ahora,
+    regionSlug: region ? slugify(region) : null,
+    locationId: ayto.locationId,
+    origen: 'MOTOR',
+    actores: [
+      ...(constructorId ? [{ entidadTipo: 'SUBDITO' as const, entidadId: constructorId, papel: 'AUTOR' as const }] : []),
+      { entidadTipo: 'EDIFICIO', entidadId: edificioId, papel: 'BENEFICIARIO' },
+    ],
+    datos: { edificio: recipe.name },
+  });
   await avisarEnReino(tx, saveId, `La Casa de obras termina ${recipe.name}.`, ahora);
   return null;
 }
@@ -343,53 +386,52 @@ export async function avanzarCasaDeObras(tx: Tx, saveId: string, ahora: number):
   }
   const pendientes = cola.filter((o) => !acabadas.includes(o));
   const constructores = await constructoresDeLaCasa(tx, saveId, plazasDeCasa(casa.nivel), ahora);
-  const porId = new Map(constructores.map((c) => [c.id, c]));
-  const reparto = repartirObras(pendientes, constructores, casa.nivel);
-  for (const o of pendientes) {
-    const r = reparto.get(o.id)!;
-    if ('aviso' in r) {
-      if (o.aviso !== r.aviso) await tx.obraCola.update({ where: { id: o.id }, data: { aviso: r.aviso } });
-      continue;
-    }
-    const c = porId.get(r.constructorId)!;
+  const ponerAviso = async (o: (typeof cola)[number], aviso: string | null) => {
+    if (o.aviso !== aviso) await tx.obraCola.update({ where: { id: o.id }, data: { aviso } });
+  };
+  /// Trabaja una obra con ese constructor; true si lo ha ocupado la jornada.
+  const trabajar = async (o: (typeof cola)[number], c: (typeof constructores)[number]): Promise<boolean> => {
     if (o.tipo === 'REPARAR') {
       const rep = o.buildingId ? await repararEdificio(tx, saveId, o.buildingId) : { ok: false as const, motivo: 'Ese edificio ya no existe.', sinArreglo: true };
       if (rep.ok || rep.sinArreglo) {
-        if (rep.ok) {
-          await darXp(tx, c, o.tier, o.dias);
-          res.terminadas++;
-        }
         await tx.obraCola.delete({ where: { id: o.id } });
-      } else {
-        await tx.obraCola.update({ where: { id: o.id }, data: { aviso: rep.motivo } });
+        if (!rep.ok) return false;
+        await darXp(tx, c, o.tier, o.dias);
+        res.terminadas++;
+        return true;
       }
-      continue;
+      await ponerAviso(o, rep.motivo);
+      return false;
     }
     const recipe = CONSTRUCTION_RECIPES.find((x) => x.key === o.recipeKey);
     if (!recipe) {
       await tx.obraCola.delete({ where: { id: o.id } });
-      continue;
+      return false;
     }
-    if (o.diasHechos < o.dias) {
-      const avance = Math.min(avanceDiario(c.nivelConstructor), o.dias - o.diasHechos);
-      const gasto = await gastarCuotaDelDia(tx, saveId, recipe, o.dias, o.diasHechos, avance);
-      if (!gasto.ok) {
-        await tx.obraCola.update({ where: { id: o.id }, data: { aviso: `Faltan materiales en el Almacén: ${gasto.faltan.join(', ')}.` } });
-        continue;
-      }
-      const hechos = Math.min(o.dias, redondearAvance(o.diasHechos + avance));
-      await tx.obraCola.update({ where: { id: o.id }, data: { diasHechos: hechos, gastados: { increment: gasto.gastadas }, aviso: null } });
-      await darXp(tx, c, o.tier, o.dias, avance);
-      res.avanzadas++;
-      if (hechos < o.dias) continue;
+    const avance = Math.min(avanceDiario(c.nivelConstructor), o.dias - o.diasHechos);
+    const gasto = await gastarCuotaDelDia(tx, saveId, recipe, o.dias, o.diasHechos, avance);
+    if (!gasto.ok) {
+      await ponerAviso(o, `Faltan materiales en el Almacén: ${gasto.faltan.join(', ')}.`);
+      return false;
     }
+    const hechos = Math.min(o.dias, redondearAvance(o.diasHechos + avance));
+    await tx.obraCola.update({ where: { id: o.id }, data: { diasHechos: hechos, gastados: { increment: gasto.gastadas }, aviso: null } });
+    await darXp(tx, c, o.tier, o.dias, avance);
+    res.avanzadas++;
+    if (hechos < o.dias) return true;
     const motivo = await terminarObra(tx, saveId, recipe, c.id, ahora);
     if (motivo) {
       await tx.obraCola.update({ where: { id: o.id }, data: { aviso: `Terminada, pero no se puede levantar: ${motivo}.` } });
-      continue;
+      return true;
     }
     await tx.obraCola.delete({ where: { id: o.id } });
     res.terminadas++;
+    return true;
+  };
+  const avisos = await repartirJornada(pendientes, constructores, casa.nivel, trabajar);
+  for (const o of pendientes) {
+    const aviso = avisos.get(o.id);
+    if (aviso) await ponerAviso(o, aviso);
   }
   return res;
 }

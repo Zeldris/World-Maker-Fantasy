@@ -2327,8 +2327,9 @@ model Subject {
   /// CR-61 (61c): tarea de un trabajador: recolector | pescador | cocinero | ganadero | fibrero | constructor
   /// (null = recolector).
   tarea             String?
-  /// Casa de obras (P277, 2026-10-21): nivel de constructor del súbdito (tier máximo que levanta) y su
-  /// experiencia; sube construyendo.
+  /// Casa de obras (P277, 2026-10-21): nivel de constructor del súbdito y su experiencia; sube
+  /// construyendo. Solo da velocidad (+10 % de obra al día por nivel, `avanceDiario`): el tier que se
+  /// puede levantar lo abre el nivel de la Casa de obras (usuaria, 2026-10-22).
   nivelConstructor  Int       @default(1)
   xpConstructor     Int       @default(0)
 
@@ -4067,9 +4068,10 @@ model Campamento {
   @@index([saveId, estado])
 }
 
-/// Casa de obras (P277/P284, 2026-10-21): cola de obras y reparaciones del Reino, en orden. Los
-/// súbditos constructores toman la primera que su nivel alcanza; avanza un día por jornada
-/// trabajada y gasta materiales del Almacén cada día (cronista/casaDeObras.ts).
+/// Casa de obras (P277/P284, 2026-10-21): cola de obras y reparaciones del Reino, en orden. Cada
+/// jornada `repartirObras` (cronista/casaDeObras.ts) da los constructores libres, el más rápido
+/// primero, a las obras que la Casa cubre y que tienen material ese día; cada uno suma
+/// `avanceDiario(nivel)` días de obra (fraccional) y gasta del Almacén la cuota de ese avance.
 model ObraCola {
   id         String   @id @default(cuid())
   saveId     String
@@ -4082,7 +4084,9 @@ model ObraCola {
   /// REPARAR: edificio dañado.
   buildingId String?
   tier       Int
+  /// Días de obra que lleva (una reparación, 1; una obra, su tier).
   dias       Int
+  /// Días de obra hechos, con decimales (un constructor de nivel n hace `avanceDiario(n)` al día).
   diasHechos Float    @default(0)
   /// Materiales del Almacén ya gastados en la obra.
   gastados   Int      @default(0)

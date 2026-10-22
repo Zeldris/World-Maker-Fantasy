@@ -7,6 +7,8 @@
 // - Cocinero: transforma 10 de comida cruda al día con el multiplicador de su Cocina (Taller ×1,5,
 //   Obrador ×2, Gran obrador ×2,5): +5, +10 o +15 netos. Sin Cocina no cocina.
 // - Ganadero y fibrero: los cuenta `CR-55` (su comida sale del ganado).
+// - Constructor: trabaja en la Casa de obras (cronista/casaDeObras.ts) y no da comida; el que no tiene
+//   plaza en ella (o no hay Casa) recolecta en su lugar (`comidaDelReinoDia`, economiaReino.ts).
 // - La caza no es un oficio: son partidas (`CR-63`). Hasta entonces, las facciones de orcos y Faerus
 //   cazan en agregado (2,5 por cazador) para no pasar hambre.
 import type { Estacion } from '@prisma/client';
