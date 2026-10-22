@@ -165,7 +165,8 @@ class Resumen(unittest.TestCase):
     def test_comprobar_pasa_con_historial_en_orden_y_negaciones_sin_fecha(self):
         escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | ✅ 2026-10-15; reabierto 2026-10-21; ✅ 2026-10-23 |\n'
                  '| P8 | Ocho | ✅ comprobado jugando; no se ha reabierto |\n'
-                 '| P9 | Nueve | ✅ arreglado como P116, reabierto antes |\n')
+                 '| P9 | Nueve | ✅ arreglado como P116, reabierto antes |\n'
+                 '| P10 | Diez | ✅ 2026-10-18: arreglado; falta comprobarlo jugando; comprobado jugando 2026-10-22 |\n')
         self.assertEqual(self.correr('--resumen').returncode, 0)
         self.assertEqual(self.correr('--resumen', '--comprobar').returncode, 0)
 

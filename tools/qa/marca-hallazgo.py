@@ -138,10 +138,12 @@ def incoherente(estado: str, g: str | None = None) -> bool:
     g = g or grupo(estado)
     if g not in ('arreglado', 'comprobado', 'parte', 'nojugable'):
         return False
-    # «falta verlo/comprobarlo jugando» en un arreglado es lo normal (aún no se ha jugado); «falta ver una hora» tras un
-    # «comprobado jugando» es lo que se quedó a medias.
-    if g == 'comprobado' and re.search(r'\b(falta|queda)n?( por)? (ver|comprobar)\w*', bajo):
-        return True
+    # «falta verlo/comprobarlo jugando» en un arreglado es lo normal (aún no se ha jugado); «falta ver una hora» tras el
+    # último «comprobado jugando» es lo que se quedó a medias (uno de antes es historial: P202).
+    if g == 'comprobado':
+        ultimo = bajo.rfind('comprobado jugando')
+        if re.search(r'\b(falta|queda)n?( por)? (ver|comprobar)\w*', bajo[max(ultimo, 0):]):
+            return True
     for m in REABIERTO.finditer(t):
         resto = t[m.end():]
         cruz = resto.find('✅')
