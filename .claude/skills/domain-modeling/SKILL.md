@@ -1,11 +1,13 @@
 ---
 name: domain-modeling
 description: Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a GLOSSARY.md, or recording or editing an ADR.
+license: MIT (see LICENSE-mattpocock-skills)
+metadata:
+  version: "0.2.0"
+  source: "mattpocock/skills@5beb35b"
 ---
 
-> **En este repositorio:** escribe el glosario y los ADR en español. `GLOSSARY.md` (raíz) es el
-> vocabulario del motor y del producto; el lore canónico vive en `docs/rpgtarkor/` y **nunca se edita
-> desde aquí** (`AGENTS.md`): un término de lore se enlaza, no se redefine. ADR en `docs/adr/`.
+> Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 # Domain Modeling
 

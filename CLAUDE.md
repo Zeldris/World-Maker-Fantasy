@@ -1,127 +1,20 @@
-# Instrucciones para Claude en este repositorio
+<!-- galivelop-workflow v0.2.0 -->
+@AGENTS.md
 
-Este proyecto se trabaja desde **dos cuentas de Claude** que se van relevando. Una sesión puede
-quedarse sin tokens en cualquier momento y otra (de la otra cuenta) tiene que poder seguir **sin
-perder nada y sin preguntar por dónde iba**. Todo lo de este archivo existe para eso.
+## Solo para Claude Code
 
-## Al empezar cualquier sesión
-
-1. Lee [`docs/registros/traspaso.md`](docs/registros/traspaso.md): rama de trabajo, tarea en curso,
-   qué falta y siguiente paso.
-2. Mira `git log` de esa rama (`git fetch origin <rama>` primero) y comprueba que el último commit
-   coincide con lo que dice la bitácora.
-3. Comprueba que los tests están como dice la bitácora antes de tocar nada.
-4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
-5. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día:
-   `git fetch origin main` y, si trae commits, `git merge origin/main` (merge, nunca rebase: las ramas
-   están subidas). Se sube con el siguiente commit. Si el conflicto toca la misma lógica por los dos
-   lados o dos migraciones, se para y se consulta a la usuaria.
-6. Al empezar cada tarea, aplica el selector (qué skill y qué modelo pide el caso) y sigue el flujo
-   de skills de una tarea (diseño, prototipo, bugs, PR, retro) de
-   [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea).
-
-**Diseño (usuaria, 2026-10-07):** toda ronda de diseño, también las de detalle, se contrasta con
-X4: Foundations, D&D 5e, Baldur's Gate 3, Medieval Dynasty, Bellwright y Manor Lords, citando de cuál
-sale cada propuesta; **X4 marca el camino** siempre que se pueda
-([runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)).
-
-**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza), abre
-[`docs/mapa-agente.md`](docs/mapa-agente.md): funciones de entrada, tests, tablas, interfaz y qué no leer (`QA-108`).
-
-Otras reglas que siguen vigentes: [`AGENTS.md`](AGENTS.md) (lore: nunca editar `docs/rpgtarkor/`
-directamente) y la forma de trabajo de cada plan de hito (p. ej.
-[`docs/producto/plan-roadmap-0.1.md`](docs/producto/plan-roadmap-0.1.md)). Orden y fases de todo
-el trabajo: [mapa de roadmaps](docs/producto/21-roadmap.md#mapa-de-roadmaps).
-
-## Trabajo por relevos: commit y push constantes
-
-Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub no existe** para la
-siguiente sesión.
-
-- **Al cerrar cada tarea** del roadmap (identificadores `UX-3`, `CR-12`, `ZON-10`…): commit +
-  push en el acto, la tarea tachada en su roadmap y en el mapa de `21-roadmap.md`, y la bitácora
-  actualizada.
-- **El estado vive en los `.md`, no en la conversación** (petición de la usuaria, 2026-10-02): en el
-  roadmap de cada tarea, junto al tachado, `✅ fecha` + qué se hizo y **qué queda pendiente** si la
-  tarea se cerró solo en parte (p. ej. "parte del 0.1 hecha; falta X para el menú de
-  Configuración"). Una tarea a medias se marca `🚧 en curso` con lo hecho y lo que falta. Así la otra
-  cuenta sabe exactamente qué está implementado sin leer el código ni el historial.
-- **Ninguna tarea sin hito** (petición de la usuaria, 2026-10-02): toda tarea nueva que se añada a
-  cualquier roadmap entra en una fase de su roadmap o en una fila de «Qué entra en cada hito»
-  (`21-roadmap.md`). Antes de cerrar un hito y tras añadir tareas, `python3 tools/roadmap/cobertura.py`
-  tiene que dar «SIN HITO: 0».
-- **Dentro de una tarea grande**, commit + push en cada punto estable (tests en verde). Las tareas
-  grandes se parten en pasos pequeños con su propio commit.
-- **Nunca más de 30-45 minutos de trabajo sin subir.**
-- **Si hay que parar con algo a medias o con tests en rojo:** commit igualmente en la rama de
-  trabajo, con `WIP:` al principio del mensaje, y en la bitácora qué falla y por qué. Nunca dejar
-  trabajo solo en local.
-- **Push siempre tras cada commit**, a la rama de trabajo (`git push -u origin <rama>`; si falla
-  por red, reintentar con espera 2 s, 4 s, 8 s, 16 s).
-- **La bitácora se actualiza en el mismo commit** que el trabajo que describe, no al final de la
-  sesión.
-- **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`):
-  el cambio puede haberse guardado, o incluso subido, y repetirlo lo duplica.
-
-## Pruebas de juego
-
-**Hasta cerrar las pruebas, no hay roadmap** (usuaria, 2026-10-13). Ninguna tarea nueva del roadmap,
-ni se añaden más, hasta que se haya probado jugando todo lo implementado (del `0.1` al hito en curso),
-lleve lo que lleve. Las dos cuentas juegan rondas de pruebas y, en sesiones aparte, arreglan lo que sale y cierran lo que está
-a medias (p. ej. `QA-63`); la ronda en sí solo juega y apunta (usuaria, 2026-10-20, [runbook](docs/runbooks/rondas-de-pruebas.md)). Sí entran las tareas de las retros que apruebe la usuaria (mejoran el entorno
-de trabajo, no el juego).
-
-**Al volver al roadmap, cada tarea se prueba al momento**: se implementa, se pasan los tests y se juega
-lo que cambia antes de darla por cerrada, sin dejar arreglos para una fase posterior. Sustituye a la
-decisión del 2026-10-02: implementación continua solo con tests y pruebas de juego en una fase única
-antes de la beta.
-
-**Al jugar** (ronda de pruebas, «sigue probando», «juega»): quien lanza `orden.sh` (en una ronda repartida, el
-subagente de cada tanda), antes de la primera acción, relee
-[`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md): con qué se juega, qué se
-prueba y cómo se apunta (`QA-56`). La sesión que reparte lee solo «Qué se prueba» (`QA-209`).
-
-## Mensajes de commit
-
-- Primera línea en español, qué cambia, con los identificadores de las tareas tocadas.
-- Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado de los tests.
-- Última línea antes de la atribución: `Siguiente: <próximo paso concreto>`.
-
-## Ramas y `main`
-
-- Se trabaja siempre en la rama que indique la bitácora (o la que asigne la sesión, que se apunta
-  en la bitácora nada más empezar).
-- **Cada sesión, su propia rama** (usuaria, 2026-10-20, `QA-136`): dos sesiones a la vez (las dos cuentas, la local y
-  la de la nube) nunca suben a la misma rama. Si la rama de la bitácora ya la usa otra sesión, crea
-  `claude/<tema>` desde ella, con su fila «Tarea en curso» en la bitácora, y escribe solo en esa fila.
-  Lo suyo vuelve a la rama principal por `git merge` antes del PR a `main`. El pre-push rechaza tocar filas de otra rama
-  o compartidas (`QA-145`); para una compartida (p. ej. añadir tu rama a «Ramas de trabajo»), `BITACORA_COMPARTIDA=1 git push`.
-- **A `main` solo se sube cuando el usuario lo confirma.** Al hacerlo, se apunta en la bitácora.
-- **Se fusiona solo con el CI del PR en verde** (usuaria, 2026-10-12), también cuando pide «fusiona
-  directamente»: eso quita esperar a más revisiones, no al CI ni la `/retro` presentada a la usuaria antes del PR
-  (`QA-95`). El gancho de `QA-50` lo comprueba (`QA-62`).
-- **Antes de crear un PR a `main` (nunca ya fusionado, `QA-77`), tres fases** (usuaria, 2026-10-21, `QA-183`;
-  detalle en el [paso 6](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea)):
-  1. **Código:** `/code-review --max-findings all` del diff contra `origin/main` (con `git fetch` antes), arreglos subidos.
-  2. **Entorno:** `/opt-ai` si hubo tandas con Ollama real (`QA-142`), `/opt-tokens` y `/retro`, que revisa también
-     `opt-tokens`. Sus propuestas se presentan a la usuaria; lo que confirme **se aplica en la rama**.
-  3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de sus commits y sus arreglos;
-     luego `bash tools/qa/revisado.sh`, la descripción con la skill `pr`, y solo entonces se crea. Sin la marca de
-     revisión del mismo commit, un gancho bloquea crear o fusionar el PR (`QA-50`).
-- **Con la cuota de GitHub Actions agotada, a `main` sin PR** (usuaria, 2026-10-22, `QA-215`): las tres fases de arriba
-  igual, pero en vez del PR, la nube fusiona la rama en `main` en un worktree, pasa `bash tools/qa/ci-local.sh <worktree>`
-  (los tres jobs de `ci.yml`) hasta verde y sube con `git push origin HEAD:main`. Se apunta en la bitácora como «sin PR,
-  CI local». Sustituye al CI del PR solo mientras dure la cuota agotada; con cuota, PR como siempre.
-- **El PR de una sesión local lo crea Claude en la nube** (usuaria, 2026-10-21, `QA-184`): en la Deck no hay `gh` ni
-  herramienta de GitHub, y el modo auto no deja usar la credencial de git. Tras la fase 3, la local sube la
-  descripción a `docs/registros/pr/<rama>.md` y deja en su fila de la bitácora «PR listo» con el título, en el último commit; la
-  nube comprueba que nada va detrás de ese commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión.
-
-## La bitácora (`docs/registros/traspaso.md`)
-
-Tiene siempre al día: rama de trabajo, hito y fase, tarea en curso con lo hecho y lo pendiente,
-último commit y estado de los tests, siguientes pasos en orden, decisiones de Álvaro que bloquean
-algo, y los comandos para comprobar el estado. Al cerrar una tarea, se mueve a "Hecho
-recientemente" (las 10 últimas; lo más antiguo se borra, el historial ya está en git). Cada rama tiene
-su fila «Tarea en curso · `<rama>`» y solo escribe en la suya: la tarea actual, lo que falta y el
-siguiente paso, como mucho 600 caracteres (lo comprueba el push, `QA-69`).
+- Responde en el idioma del proyecto (`es`).
+- Al empezar cada tarea, di en una línea qué skill y qué modelo pide el caso, con la skill `selector` (y el runbook
+  [`skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md)). El modelo de la sesión lo elige la usuaria; los
+  subagentes, el más barato que haga bien el trabajo.
+- Antes de ir a `main`: `/code-review --max-findings all` del diff contra
+  `origin/main`, con el criterio de `REVIEW.md` (fase 1 de las tres de `AGENTS.md`).
+- Lo mecánico, a subagentes con modelos baratos (`orchestrate-dealer`); la sesión principal planea, decide y revisa.
+- **Compactación:** `.claude/settings.json` fija la ventana de compactación automática. Tras una compactación o un
+  `/clear`, el gancho de inicio corre `python3 .claude/gw/scripts/recuperar.py --estado`, que devuelve el estado de
+  la bitácora y los últimos commits; un detalle perdido se busca con
+  `python3 .claude/gw/scripts/recuperar.py --buscar "<texto>"`. Lo que tenga que sobrevivir va a `docs/registros/traspaso.md`.
+- **El modo automático** puede pedir permiso para editar `.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`:
+  pregunta a la usuaria antes de tocarlos, o deja que haga ella el cambio.
+- **Sesión local (Deck):** no hay `gh` ni herramienta de GitHub; el PR lo crea la sesión de la nube (`QA-184`, ver
+  `AGENTS.md`). La sesión de la nube usa las herramientas `mcp__github__*`.

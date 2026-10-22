@@ -1,101 +1,120 @@
 ---
 name: orchestrate-dealer
-description: La sesión principal como orchestrator que reparte el trabajo a subagentes de contexto limpio, para trabajar horas sin `/clear`. Usar en toda tarea de más de un paso (tarea del roadmap, tanda de arreglos, ronda de pruebas) y cuando el contexto de la sesión pase de ~150k.
+description: Run the main session as an orchestrator that deals work out to clean-context subagents, so it can work for hours without /clear. Use for any task of more than one step (a plan task, a batch of fixes, a whole phase), when bringing material from another repo, and when the session context passes ~150k tokens.
+license: MIT
+compatibility: Claude Code or any Agent Skills agent with subagents; git; reads .claude/gw.json
+metadata:
+  version: "0.2.0"
+  source: "Galivelop workshop; generalised from the Tarkor, installer and portal orchestrate-dealer"
 ---
 
-# orchestrate-dealer (`QA-121`)
+# orchestrate-dealer
 
-La sesión principal es el **orchestrator**: guarda el plan, las decisiones y el hilo con la usuaria, y reparte cada
-trozo de trabajo a un subagente que empieza con el contexto vacío. Cada reparto es un `/clear` automático: la
-principal solo recibe un resumen corto y crece despacio. Si aun así llega al tope, la compactación automática
-(`CLAUDE_CODE_AUTO_COMPACT_WINDOW`, 200k), los puntos de `/clear` (`QA-122`) y el gancho de `recuperar.py --estado` son la red.
+The main session is the **orchestrator**: it holds the plan, the decisions and the thread with the user, and deals each
+chunk of work to a subagent that starts with an empty context. Every deal is an automatic `/clear`: the main session
+receives a short summary and grows slowly. Reply to the user in the project's `language`.
 
-## Qué se queda en la principal y qué se reparte
+Config values used below come from `.claude/gw.json`: `check` (list of commands), `log` (handover file),
+`protectedBranch`, `language`. Read it once at the start.
 
-| Orchestrator (principal) | Subagente |
+## Who does what
+
+| Orchestrator (main session) | Subagent |
 |---|---|
-| Hablar con la usuaria, preguntar, presentar | Leer código, docs largos, logs, capturas y `snapshot` de Playwright |
-| Partir la tarea en trozos y escribir cada encargo | Implementar, depurar, pasar tests |
-| Decidir (diseño, qué se arregla, qué se apunta) | Jugar una tanda de la ronda de pruebas |
-| Revisar lo que vuelve: `git log`/`git diff --stat`, nunca el diff entero salvo duda | Commit y push de su trabajo, con la bitácora en el mismo commit |
-| `/code-review`, `/opt-tokens`, `/retro`, PR y fusión | — |
-| Analizar una tanda (medidas, causas, RAG): `/opt-ai` en el flujo del PR, no la ronda (`QA-142`) | — |
+| Talk to the user, ask, present | Read code, long docs, logs, screenshots, other repos |
+| Split the task and write each brief | Implement, debug, run the tests |
+| Decide (design, what to fix, what to log) | Run a batch of manual or end-to-end checks |
+| Review what returns: `git log`, `git diff --stat`; the whole diff only when in doubt | Commit and push its work, log update in the same commit |
+| `/code-review`, `/opt-tokens`, `/retro`, PR and merge | none |
 
-Una lectura de más de ~200 líneas o una salida larga en la principal es un trozo que no se repartió.
+A read of more than ~200 lines, or a long output, in the main session is a chunk that was not dealt out.
 
-## Pasos
+## Steps
 
-1. **Partir.** Con el `selector` ya aplicado, divide la tarea en trozos que un subagente cierre de una vez: un
-   arreglo, un sistema, una tanda de 3-5 comprobaciones de la ronda. La tanda de juego se mide también en llamadas:
-   de 6-8 hallazgos y como mucho ~60 llamadas por subagente (`QA-189`: las de 11-14 hicieron 87 y 99); al llegar, guarda el estado con `escenario.sh guardar` y el siguiente lo carga
-   (`QA-147`). Cada trozo, con su criterio de hecho
-   comprobable (un test en verde, un P-número comprobado o abierto, un commit subido) y lo que le bloquea. La
-   **frontera** son los trozos que nada pendiente bloquea: salen a la vez (ver Reglas). Un arreglo de un archivo
-   cuyo sitio ya da el revisor no es un trozo: lo hace la principal, con sus tests y `tsc` (`QA-202`: un subagente
-   paga ~52k al arrancar y hace 70-80 llamadas; la principal lo cerró en ~10).
-2. **Repartir.** Un subagente por trozo con `Agent`, en primer plano (`run_in_background: false`) cuando el
-   siguiente trozo depende de él. Modelo y esfuerzo por la escalera del `selector` (`QA-118`): `sonnet` para
-   implementar y jugar, también los arreglos de una revisión, cuyo plan cierra el revisor (`QA-201`: tres con `opus`
-   gastaron 7,4 M de entrada cada uno; el revisor sigue en `opus`), `opus` para depurar algo no obvio. El encargo lleva **punteros**, no copias: dónde está lo que
-   necesita (fila de la bitácora, P-número del registro, fila de la matriz, commit, archivo y función del
-   `docs/mapa-agente.md`), nunca el texto pegado. Si el encargo escribe en la partida (scripts de QA, escenarios), pruébalo con
-   `escenario.sh probar` contra una instantánea (`QA-153`). El encargo empieza comprobando la rama de partida (`QA-204`: los worktrees salían de `main`). Con esta forma:
+1. **Split.** With the `selector` already applied, cut the task into chunks one subagent can close in one go: a fix,
+   a module, a screen, a command. Each chunk gets a **done criterion** that can be checked (a green test, a green
+   CI job, a pushed commit) and a list of what blocks it. The **frontier** is the chunks nothing pending blocks:
+   they go out together (see Rules). Cap a subagent at ~60 tool calls; at the cap it saves its state in `log` and the
+   next one resumes from it. A one-file fix whose place the reviewer already gave is not a chunk: the main session
+   makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
+2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
+   effort follow the `selector` ladder: `sonnet` to implement, `opus` to debug something non-obvious. Fixes from a
+   review go to `sonnet` too: the reviewer already closed the plan (where and what to change). The brief carries
+   **pointers, not copies**: where the material is (the log row, the plan task, a doc, a commit, a file and
+   function), never the pasted text. Template:
 
    ```text
-   Trabajas en Tarkor, rama <rama>. Si tu worktree no parte de origin/<rama> (git log -1), git reset --hard
-   origin/<rama> antes de nada. Lee docs/registros/traspaso.md (tu fila) y, si tocas código,
-   docs/mapa-agente.md. Sigue CLAUDE.md (commit + push con la bitácora en el mismo commit).
-   Encargo: <qué, en una o dos frases>.
-   Hecho cuando: <criterio comprobable>.
-   No hagas: <lo que es de otro trozo o pide decisión de la usuaria>.
-   Si cambias una función o un campo, busca (grep) a todos los que lo usan y ajústalos o dilo en FALTA.
-   Si escribes estado de la partida (scripts de QA, escenarios), pasa por las funciones del juego que aplican esas reglas
-   (docs/mapa-agente.md dice cuáles), sin reescribirlas a mano.
-   Si juegas: captura solo si el hallazgo es visual; lo demás, por el volcado de texto.
-   Si algo pide decidir a la usuaria, para y devuélvelo como pregunta.
-   Devuelve como mucho 15 líneas:
-   HECHO: … · HALLADO: P-números con una línea cada uno · HERRAMIENTAS: fallos de orden.sh, escenario.sh o del driver · COMMIT: <sha> · FALTA: … · PREGUNTAS: …
+   You work in this repository on branch <branch>. In a fresh, clean worktree, first check that `git log -1` matches
+   `origin/<branch>`; if not, `git fetch origin <branch> && git reset --hard origin/<branch>`. Read your state with
+   `python3 .claude/gw/scripts/recuperar.py --estado`; if it reports no row for your branch or the log has no
+   per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
+   AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
+   same commit.
+   Task: <what, in one or two sentences>.
+   Done when: <checkable criterion>. Run before pushing: {check}.
+   For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
+   test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
+   Do not: <what belongs to another chunk or needs a user decision>.
+   If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
+   If you touch processes, paths or permissions, write it for every platform the project supports.
+   If something needs a user decision, stop and return it as a question. Never merge into {protectedBranch}.
+   Write your reply and commit message in {language}. Reply in at most 15 lines:
+   DONE: … · COMMIT: <sha> · MISSING: … · QUESTIONS: …
+   Add FOUND: (one line per finding) and TOOLS: (failures of the project's scripts, hooks or CI) only if you have any.
    ```
 
-3. **Revisar lo que vuelve.** Comprueba el commit (`git fetch` + `git log -1 --stat`) y que el criterio de hecho
-   se cumple. Si no cierra, el reintento sube un peldaño; dos fallos, se para y se le cuenta a la usuaria.
-   De cada rama de subagente con worktree, y del commit de un subagente que toca código en la propia rama sin worktree,
-   **antes de fusionarla o seguir**, un `/code-review` corto de su diff hecho por un
-   subagente revisor que devuelve solo los hallazgos; no se fusiona hasta arreglarlos (`QA-126`, `QA-190`: el `/code-review` previo al PR halló 11 fallos, casi todos del subagente de escenarios sin worktree; `QA-131`: la tanda
-   P223-P237 fusionó 8 ramas sin esa revisión y el `/code-review` final halló 17). El encargo del revisor le pide
-   comparar el diff con el **contrato**: el doc que lo describe y los llamadores reales fuera de la rama (grep en la
-   rama de trabajo), no solo el diff (`QA-137`: en `opt-ai` las revisiones cortas no vieron tres fallos entre ramas,
-   `medir.py` frente al backend, las tareas de `proyecto.md` y `rag-eval` distinto del juego).
-   Si la rama escribe estado de la partida, el revisor mira también que pase por las funciones del juego que aplican
-   esas reglas y no las rehaga a mano (`QA-151`: `darReino.ts` duplicaba el Ayuntamiento y se saltaba cupos y topes).
-   La principal apunta lo que vuelve: los P-números de `HALLADO` en el registro de la ronda y lo de `HERRAMIENTAS`
-   en [`fallos-herramientas.md`](../../../docs/registros/fallos-herramientas.md) (`QA-133`).
-   Las `PREGUNTAS` van a la usuaria tal cual, con la respuesta que recomiendas.
-4. **Seguir.** Siguiente trozo. A la usuaria, una línea por trozo cerrado; el detalle está en la bitácora.
+   `{check}`, `{log}`, `{protectedBranch}` and `{language}` are filled from the config before sending. Add a line
+   for each project rule a fresh agent could miss.
+3. **Review what returns.** Fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
+   criterion holds. If it does not close, the retry climbs one ladder rung; two failures, stop and tell the user.
+   For every subagent branch built in a worktree, **before merging it**, a subagent reviewer runs a short
+   `/code-review` of its diff and returns only the findings; nothing merges until they are fixed. The reviewer's
+   brief asks it to compare the diff with the **contract**: the doc that describes it and the real callers outside
+   the branch (grep on the working branch), not the diff alone. Short per-branch reviews miss cross-branch breaks:
+   a script against its backend, a doc against its code, two branches that edit the same rule.
+   Log what comes back: `FOUND` and `TOOLS` into `log` (or the records the project keeps for them). `QUESTIONS`
+   go to the user as they are, with the answer you recommend.
+4. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`.
 
-## Reglas
+## Rules
 
-- **Arreglos de código de la frontera, en paralelo** (idea de `implement-spec` de Matt Pocock): cada subagente con
-  `isolation: "worktree"`, en `run_in_background`, hace commit en su worktree en cada punto estable (`WIP:` si
-  aún falla; `QA-139`: un reinicio perdió dos subagentes con todo sin commit) sin tocar la bitácora ni subir, y
-  devuelve su rama. La principal los hace revisar (paso 3), los fusiona uno a uno con
-  `tools/qa/fusionar.sh <rama> "<msg>" --revisada` (merge, tests del paquete tocado), escribe la bitácora y sube. Un
-  subagente de fusión solo para conflictos que no sean del registro de hallazgos (el script resuelve ese).
-- **Registros compartidos, solo la principal** (`QA-132`): con subagentes en paralelo, ninguno toca la bitácora ni
-  `docs/registros/pruebas-0.3-hallazgos.md` (ni otro registro compartido); devuelven sus P-números en `HALLADO` y la
-  principal los apunta. Escribirlos en paralelo da conflictos al fusionar.
-- **Lo que nombra archivos de una rama, tras fusionarla** (`QA-138`): `docs/mapa-agente.md` y los docs que enlazan
-  archivos nuevos de un worktree se escriben en la principal después de fusionar esa rama; antes, el pre-push rechaza
-  las rutas que aún no existen.
-- **Sin worktree, uno a la vez en la misma rama**: dos subagentes que hacen commit en la rama de trabajo chocan
-  en la bitácora. En paralelo, además, todo lo que no escribe (buscar, leer, medir).
-- **Rondas de pruebas, en un subagente `sonnet` y en serie** (`QA-124`: la ronda `QA-105` la jugó la principal con
-  Opus, 1.150 órdenes de Bash): la principal no lanza `orden.sh`; reparte tandas y apunta lo que vuelve. Comparten
-  el navegador y la base de juego. Cada tanda deja la partida en un
-  estado que la siguiente pueda retomar y lo dice en `FALTA` (pantalla, partida, día).
-- **Antes del PR, solo lo grave** (`QA-203`: cada arreglo del `/code-review` previo al PR se revisaba y traía más,
-  y los cambios se acumularon): en esa fase se arregla lo grave o medio y lo que el propio arreglo rompe; lo leve va a
-  la fila compartida de la bitácora como pendiente.
-- **El subagente no habla con la usuaria**: lo que necesite de ella vuelve como `PREGUNTAS`.
-- **Medir**: `/opt-tokens` antes de cada PR compara el contexto medio por llamada, las compactaciones y el reparto
-  `POR MODELO` con la sesión anterior; si no bajan, el reparto se está quedando en la principal.
+- **Code from a subagent gets its own review:** every chunk that changes code (always the hooks, push/merge guards
+  and the scripts they call; also code a subagent commits on the working branch, not only worktree branches)
+  passes a short `/code-review` by a reviewer subagent as soon as the chunk returns, before the next chunk starts
+  (commit it first, as `WIP:` if needed, so nothing is lost if the session ends). The reviewer compares the diff with
+  the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone; its fixes land before moving on.
+- **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
+  findings as pending in `log` and do not review them again in this PR (`/code-review --max-findings all` still
+  serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
+- **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
+  shared files. In parallel, only what does not write (searching, reading, measuring).
+- **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in
+  the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
+  log or push, and returns its branch. The main session has each one reviewed (step 3), merges them one by one
+  (merge, never rebase; `check` after each), writes the log and pushes.
+- **Shared records, main session only:** with parallel subagents none touches `log`, the findings register or any other
+  shared record; they return their entries under `FOUND` and the main session writes them. Parallel writes conflict
+  on merge.
+- **What names files of a branch, after merging it:** indexes and docs that link to files created in a worktree are
+  written in the main session after that branch is merged; before, the links point at files that do not exist yet.
+- **Manual or end-to-end batches run in a `sonnet` subagent, in series:** the main session does not drive the
+  tool itself; it deals batches and logs what returns. **Size a batch by its items: 6-8 checks**, and split it on
+  the fly when it grows (batches of 11-14 blew the 60-call cap; 6-8 kept within it). Screenshots only when the finding
+  is visual; otherwise the text tool's output. Batches share the environment, so each leaves it in a state the
+  next can resume from and says so under `MISSING`.
+- **A subagent never talks to the user:** what it needs from them returns as `QUESTIONS`.
+- **A subagent cut off by a usage or API limit is resumed, not restarted:** send it a message (SendMessage to its id)
+  once the limit resets; it continues from its transcript. A new subagent would redo the work. Commit its partial
+  work as `WIP:` meanwhile.
+- **Intermediate state stays out of git:** dumps, screenshots, scratch logs and bench outputs go to a scratch folder
+  (or a path in `.gitignore`); only results, tests and the log are committed.
+- **Measure:** `/opt-tokens` before each PR compares the average context per call, the compactions and the per-model
+  split with the previous session; if they do not fall, the dealing is staying in the main session.
+- **A batch of approved rows is dealt, not worked inline:** the rows of an approved proposal or a findings list go
+  one per subagent (or 2-3 small related rows per subagent), in series on the working branch, each reviewed as in
+  step 3. A row the main session keeps (a one-file fix) counts against a stretch: every 4-5 rows, or as soon as the
+  context passes ~150k, it writes the handover in `log` and recommends a `/clear`. Saying "dealt out" and then
+  working 18 rows inline cost a 191k average context over 157 calls.
+- **Automatic compaction is the net, not the plan:** at task boundaries write the handover in `log` and recommend
+  a `/clear` to the user rather than letting the context grow. In the cloud the net may be missing: the session
+  starts outside the repo and does not load its `.claude/settings.json` (`doctor.py` warns).
