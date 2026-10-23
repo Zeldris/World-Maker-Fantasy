@@ -57,6 +57,12 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 17 | 4, `doctor.py` | Sin FAIL; un WARN falso: el `.claude/hooks/session-start.sh` de WMF (dependencias, Postgres, Ollama simulado) se llama como el script del flujo y `doctor.py` lo toma por una copia vieja («delete that entry»): borrarlo dejaría la nube sin entorno. | Renombrado a `.claude/hooks/entorno-nube.sh` (`settings.json`, `AGENTS.md`, comandos de la bitácora). `doctor.py`: todo OK. |
 | 18 | 6, gancho de PR | `merge_pull_request` del PR #1 (antiguo, ya fusionado, sin `gw.json` en su cabeza) se bloquea bien, pero pide «commit a valid `gw.json` on the PR branch», que no tiene sentido en un PR cerrado. | Nada que hacer en WMF; sugerencia abajo. |
 | 19 | 7, relevo | Al arrancar (`startup`), `session-start.sh` no dice nada del estado; la fila de la bitácora solo se inyecta tras `compact`/`clear`. El relevo depende de que `CLAUDE.md` mande leer la bitácora (lo hace). | Nada que cambiar; sugerencia abajo. |
+| 20 | `/code-review` antes de `main`, `pre-push` | En modo worktree (sha distinto de HEAD o árbol con cambios) el `pre-push` solo enlaza `node_modules` y `.venv` de la raíz; WMF los tiene en `backend/` y `frontend/`, así que `check` y los tests fallarían allí. | `tools/qa/host.sh` enlaza, en un worktree enlazado, `backend/node_modules`, `frontend/node_modules` y los `.env` de la copia principal (3 tests en `test_host.py`). |
+| 21 | `/code-review`, Deck | El worktree temporal del `pre-push` está en el `/tmp` del sandbox Flatpak, que el host no ve: `flatpak-spawn --directory=<worktree>` fallaría (el `pre-push` viejo se relanzaba entero en el host, `QA-180`). | `host.sh`, en el sandbox, rehace el worktree en el mismo commit dentro de `.git/` (visible desde el host), corre allí y lo borra; con cambios sin commit, falla con el motivo. **Pendiente:** probarlo en la Deck (la usuaria, en su próximo push desde allí). |
+| 22 | `/code-review`, `revisado.sh` | El `revisado.sh` del flujo cuenta los archivos sin seguimiento (`git status --porcelain`); el de WMF usaba `--untracked-files=no`. Con un borrador de Álvaro en `docs/borradores-opencode/` (no se commitea ni se ignora) no se puede escribir la marca. | En WMF: `git stash -u` antes de `revisado.sh` y `git stash pop` después. Sugerencia abajo. |
+| 23 | `/code-review`, `requireRetro` | `revisado.sh` solo da la retro por decidida si su **Estado** dice `aplicad…`/`rechazad…`/`aplazad…`/`decidid…`; las retros de WMF decían «aprobadas por la usuaria» o «ninguna aprobada». | Las retros nuevas escriben «aplicadas», «rechazadas» o «aplazadas». Sugerencia abajo. |
+| 24 | `/code-review`, `settings.json` | El matcher del gancho `revision-antes-de-main.sh` incluye `^Bash$`: corre en cada llamada a Bash (una tanda de juego, ~60), no solo al crear o fusionar un PR o subir a `main`. | Se queda (es lo que vigila `git push origin main`). Sugerencia abajo. |
+| 25 | `/code-review`, `es-codigo.sh` | Cualquier fallo del Python incrustado (hasta un `BrokenPipe` con `\| head -1`) se informa como «content regex invalid». | Nada en WMF; sugerencia abajo. |
 
 ## For Galivelop-workflow
 
@@ -92,3 +98,11 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 - `revision-antes-de-main.sh`: con un PR cerrado o fusionado, decirlo en vez de pedir un `gw.json` en su rama.
 - `session-start.sh`: en `startup` y `resume`, una línea con la rama y el siguiente paso de la bitácora (lo que ya da
   `recuperar.py --estado`), para que el relevo no dependa solo de `CLAUDE.md`.
+- `.githooks/pre-push` (modo worktree): una lista de rutas a enlazar desde la raíz (p. ej. `sharedPaths` en `gw.json`,
+  con `backend/node_modules`) para monorepos; y crear el worktree dentro de `.git/` y no en `$TMPDIR`, que en un
+  sandbox (Flatpak) no ve el host.
+- `revisado.sh`: ignorar los archivos sin seguimiento (`--untracked-files=no`) o, al menos, los de `protectedPaths`.
+- `revisado.sh` (`requireRetro`): decir en el error qué palabras valen en **Estado**, o aceptar una lista del proyecto.
+- `settings.json`: separar el matcher de Bash del de los PR, o que `revision-antes-de-main.sh` salga antes de lanzar
+  Python cuando la orden no nombra `git push`/`gh pr`.
+- `es-codigo.sh`: distinguir un error de la regex de `content` de cualquier otro fallo del Python incrustado.

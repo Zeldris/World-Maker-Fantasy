@@ -5,7 +5,7 @@ import stat
 import subprocess
 import unittest
 
-from comun import QA, carpeta, escribir, leer
+from comun import QA, carpeta, escribir, git, leer
 
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 
@@ -25,7 +25,7 @@ class Entorno:
         # El PATH solo trae los falsos y las utilidades del sistema; sin psql real.
         sistema = os.path.join(d, 'sistema')
         os.makedirs(sistema)
-        for cmd in ('bash', 'base64', 'tr', 'cat', 'pwd', 'echo', 'printf', 'dirname', 'grep'):
+        for cmd in ('bash', 'base64', 'tr', 'cat', 'pwd', 'echo', 'printf', 'dirname', 'grep', 'git', 'ln', 'mktemp', 'rmdir', 'rm', 'ls', 'readlink'):
             ruta = shutil.which(cmd)
             if ruta:
                 os.symlink(ruta, os.path.join(sistema, cmd))
@@ -82,6 +82,51 @@ class Host(Entorno, unittest.TestCase):
         falso(d, 'flatpak-spawn', f'cat {d}/ruido >&2\n')
         r = self.correr(env, 'host.sh', 'true')
         self.assertEqual(r.stderr, 'npm ERR! prefix setting is invalid\n')
+
+    def worktree(self) -> tuple[str, str]:
+        """Copia principal con dependencias (sin git) y un worktree enlazado fuera de ella, como el del pre-push."""
+        principal = carpeta()
+        escribir(principal + '/tools/qa/host.sh', leer(os.path.join(QA, 'host.sh')))
+        escribir(principal + '/.gitignore', 'node_modules/\n.env\n')
+        escribir(principal + '/backend/package.json', '{}')
+        escribir(principal + '/frontend/package.json', '{}')
+        git(principal, 'init', '-q')
+        git(principal, 'add', '.')
+        git(principal, 'commit', '-qm', 'base')
+        escribir(principal + '/backend/node_modules/x', '')
+        escribir(principal + '/frontend/.env', '')
+        wt = os.path.join(carpeta(), 'wt')
+        git(principal, 'worktree', 'add', '-q', '--detach', wt)
+        return principal, wt
+
+    def correr_en(self, env: dict, raiz: str, *args: str):
+        return subprocess.run(['bash', raiz + '/tools/qa/host.sh', *args], env=env, capture_output=True, text=True, cwd='/')
+
+    def test_en_un_worktree_enlaza_las_dependencias_de_la_copia_principal(self):
+        principal, wt = self.worktree()
+        env, _ = self.entorno(False)
+        r = self.correr_en(env, wt, 'ls', 'backend/node_modules')
+        self.assertEqual((r.returncode, r.stdout), (0, 'x\n'), r.stderr)
+        self.assertEqual(os.readlink(wt + '/frontend/.env'), principal + '/frontend/.env')
+        self.assertFalse(os.path.lexists(wt + '/frontend/node_modules'))  # lo que la principal no tiene, no se enlaza
+
+    def test_en_el_sandbox_un_worktree_fuera_de_la_principal_corre_en_uno_visible_y_lo_borra(self):
+        principal, wt = self.worktree()
+        env, d = self.entorno(True)
+        r = self.correr_en(env, wt, 'pwd')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('--directory=' + principal + '/.git/host-sh-wt.', leer(d + '/args'))
+        self.assertEqual([n for n in os.listdir(principal + '/.git') if n.startswith('host-sh-wt.')], [])
+        self.assertNotIn('host-sh-wt', git(principal, 'worktree', 'list'))
+
+    def test_en_el_sandbox_un_worktree_invisible_con_cambios_falla_con_motivo(self):
+        _, wt = self.worktree()
+        escribir(wt + '/tools/qa/host.sh', leer(wt + '/tools/qa/host.sh') + '# cambio\n')
+        env, d = self.entorno(True)
+        r = self.correr_en(env, wt, 'pwd')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('cambios sin commit', r.stderr)
+        self.assertFalse(os.path.exists(d + '/args'))
 
     def test_sin_orden_falla(self):
         env, _ = self.entorno(False)

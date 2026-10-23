@@ -112,7 +112,7 @@ subagente de cada tanda), antes de la primera acción, relee
   herramienta de GitHub. Tras la fase 3, la local sube la descripción a `docs/registros/pr/<rama>.md` y deja en su
   fila de la bitácora «PR listo» con el título, en el último commit; la nube comprueba que nada va detrás de ese
   commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión.
-- La rama de un subagente vuelve con `bash tools/qa/fusionar.sh <rama> "<mensaje>" --revisada`: la versión de WMF
+- La rama de un subagente vuelve con `bash tools/qa/fusionar.sh <rama> "<mensaje>" --revisada` (no la de `.claude/gw/scripts/`): la de WMF
   resuelve sola los conflictos del registro de hallazgos (`resolver_hallazgos.py`) y pasa los tests del paquete tocado.
 
 ## Antes de ir a `main`: tres fases

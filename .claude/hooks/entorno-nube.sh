@@ -4,10 +4,13 @@
 # pgvector y la base `tarkor` (migrada y, si está vacía, con lore y catálogo sembrados) y el Ollama
 # simulado del repo. Idempotente: lo que ya está, no se toca.
 # Piloto de Galivelop-workflow (2026-10-22): antes `session-start.sh`, renombrado para que `doctor.py` no lo tome
-# por una copia vieja del suyo. `core.hooksPath` lo pone el session-start del flujo. Las dependencias
+# por una copia vieja del suyo. `core.hooksPath` lo pone también el session-start del flujo; se repite aquí por si
+# aquel falla antes de llegar (revisión antes de main, 2026-10-23). Las dependencias
 # siguen aquí y no en `install` de gw.json: Claude Code lanza a la vez los dos hooks de inicio, y Postgres y las
 # migraciones necesitan node_modules antes.
 set -euo pipefail
+
+git -C "${CLAUDE_PROJECT_DIR:-$(pwd)}" config core.hooksPath .githooks
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
