@@ -6,12 +6,13 @@ export type PasoReino =
   | { tipo: 'milicia'; n: number }
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
   | { tipo: 'combate'; npcSlugs: string[] }
-  | { tipo: 'ganado'; especie: string; n: number };
+  | { tipo: 'ganado'; especie: string; n: number }
+  | { tipo: 'convaleciente'; npcSlug: string };
 
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra). Se ejecutan en el orden dado.
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];
@@ -43,6 +44,9 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const n = entero(r[1]);
       if (!r[0] || n == null) return { error: `«${arg}»: falta ganado:<especie>:<n>.` };
       pasos.push({ tipo: 'ganado', especie: r[0], n });
+    } else if (clave === 'convaleciente') {
+      if (!r[0] || r.length > 1) return { error: `«${arg}»: falta convaleciente:<slug del NPC>.` };
+      pasos.push({ tipo: 'convaleciente', npcSlug: r[0] });
     } else {
       return { error: `«${arg}»: paso desconocido.` };
     }

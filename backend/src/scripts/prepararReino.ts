@@ -7,6 +7,7 @@
 //   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
+//   convaleciente:<npc>             el NPC queda CONVALECIENTE en el lugar actual, con la misma escritura de `NpcState` (scope y reloj) que deja ganarle un combate
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -28,7 +29,7 @@ import { parsearPasosReino } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc> combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -119,6 +120,17 @@ for (const paso of pasos) {
     );
     if (!abierto) rechaza('combate: ya hay un combate en curso.');
     else dice(`Combate abierto contra ${miembros.map((m) => `${m.nombre} (Int ${m.inteligencia})`).join(', ')}`);
+  } else if (paso.tipo === 'convaleciente') {
+    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.npcSlug }, select: { id: true, slug: true, kind: true } });
+    if (!npc) { rechaza(`convaleciente: no hay NPC ${paso.npcSlug}.`); continue; }
+    // Misma escritura que `turnLootKill.ts` al dejar a un NPC en CONVALECIENTE: scope por `scopeFor`, condición y reloj de la condición.
+    const scope = scopeFor(npc.kind, save.currentLocationId);
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
+      create: { saveId, npcId: npc.id, scope, condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: ahora },
+      update: { condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: ahora },
+    });
+    dice(`Convaleciente: ${npc.slug} (${scope})`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }
