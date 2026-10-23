@@ -77,13 +77,14 @@ describe('avanzarMundoHasta (CR-7)', () => {
     expect(copias.length).toBeGreaterThan(0);
     // Al clonar, los marcadores arrancan en el día de la partida (0), no en el del mundo.
     expect(copias.every((k) => k.ultimoDiaProducido === 0 && k.ultimoDiaExpedicion === 0)).toBe(true);
-    const catalogoAntes = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true } });
+    const catalogoAntes = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true }, orderBy: { id: 'asc' } });
 
     await avanzarMundoHasta(prisma, a, 480 + 3 * 1440, () => 0);
 
     const copiasTras = await prisma.kingdomStats.findMany({ where: { faction: { saveId: a, origenSlug: { not: null } } } });
     expect(copiasTras.every((k) => k.ultimoDiaProducido === 3)).toBe(true);
-    const catalogoTras = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true } });
+    const catalogoTras = await prisma.kingdomStats.findMany({ where: { faction: { worldId, saveId: null } }, select: { id: true, ultimoDiaProducido: true, comida: true }, orderBy: { id: 'asc' } });
+    // Con orderBy: sin él, Postgres puede devolver las mismas filas en otro orden y el toEqual falla.
     expect(catalogoTras).toEqual(catalogoAntes);
   }, 30_000);
 
