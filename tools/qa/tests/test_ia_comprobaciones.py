@@ -84,6 +84,14 @@ class IaComprobaciones(unittest.TestCase):
             s = f.read()
         self.assertEqual(s.count('if [ -n "${IA_PERFIL:-}" ]'), 2)  # ruta/offset y comprobaciones, solo con IA_PERFIL
 
+    def test_arrancar_juego_levanta_el_ollama_simulado_solo_sin_ia_real(self):
+        # Tanda 24a: tras `escenario.sh cargar` no había Ollama simulado y las acciones daban 500 (ECONNREFUSED).
+        with open(SCRIPT) as f:
+            s = f.read()
+        self.assertIn('if [ -z "${IA_PERFIL:-}" ] && ! curl -s --max-time 3 -o /dev/null "$OLLAMA_BASE_URL"', s)
+        self.assertIn('tools/ci/mock-ollama.mjs', s)
+        self.assertIn('logs/mock-ollama.pid', s)  # --parar lo baja por su PID
+
 
 if __name__ == '__main__':
     unittest.main()

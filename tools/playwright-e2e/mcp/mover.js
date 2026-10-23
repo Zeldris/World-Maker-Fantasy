@@ -28,14 +28,19 @@ async (page) => {
   // puede saber (sin ficha de jugador, otro elemento encima), avisa y hace el clic como antes.
   const bajo = await page.evaluate(
     ({ x, y }) => {
-      // El svg del mapa es el más exterior y el más grande: hay más fichas «jugador-zona» (leyenda, iconos) en svg chicos.
+      // El svg del mapa de zona es el exterior más grande de los que llevan puntos (`<title>`, como en puntos.js) o la
+      // ficha del jugador. No basta la ficha: la leyenda también la lleva en un svg de 20×20, y si el jugador no está en
+      // el mapa (modal sin ficha) se medía ese (QA-46, tanda 24a).
       const exterior = (el) => {
         let m = el.closest('svg');
         while (m?.parentElement?.closest('svg')) m = m.parentElement.closest('svg');
         return m;
       };
       const area = (m) => m.getBoundingClientRect().width * m.getBoundingClientRect().height;
-      const mapa = [...document.querySelectorAll('[data-testid="jugador-zona"]')].map(exterior).filter(Boolean).sort((a, b) => area(b) - area(a))[0];
+      const candidatos = [...document.querySelectorAll('svg title, [data-testid="jugador-zona"]')].map(exterior).filter(Boolean);
+      // Con el modal abierto, el mapa es el del modal; el de la pantalla de detrás no recibe el clic.
+      const delModal = candidatos.filter((m) => m.closest('[role="dialog"]'));
+      const mapa = (delModal.length ? delModal : candidatos).sort((a, b) => area(b) - area(a))[0];
       const aviso = [];
       if (!mapa) aviso.push('no se encuentra el mapa de zona (sin ficha «jugador-zona»), clic a ciegas');
       const e = document.elementFromPoint(x, y);

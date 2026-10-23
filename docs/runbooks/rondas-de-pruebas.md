@@ -87,6 +87,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
+   Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
    **Montura de pruebas** (solo para probar «Viajar» y las interrupciones de viaje, P46/P47/P321; nunca en producción): `bash tools/qa/host.sh env WMF_MONTURA_PRUEBAS=1 bash tools/qa/deck/juego.sh` (o `WMF_MONTURA_PRUEBAS=1` delante de `arrancar-juego.sh`); la jugadora cuenta como con montura hasta que CR-57 la dé de verdad.
    (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
    `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, `/opt-ai` mide los tiempos,

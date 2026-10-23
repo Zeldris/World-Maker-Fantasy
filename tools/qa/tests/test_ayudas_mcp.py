@@ -46,6 +46,12 @@ class AyudasMcp(unittest.TestCase):
         self.assertIn('solo cambió la hora', js)
         self.assertIn("const enModal = page.getByRole('dialog')", js)
 
+    def test_mover_mide_el_svg_del_mapa_no_la_leyenda(self):
+        # Tanda 24a: medía un svg de 20×20 de la leyenda («cae fuera del mapa, que ocupa x 59–79»).
+        js = leer(os.path.join(MCP, 'mover.js'))
+        self.assertIn("querySelectorAll('svg title, [data-testid=\"jugador-zona\"]')", js)
+        self.assertIn("m.closest('[role=\"dialog\"]')", js)
+
 
 if __name__ == '__main__':
     unittest.main()

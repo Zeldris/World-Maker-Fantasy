@@ -36,6 +36,8 @@ PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
 # fallos por tiempo límite. `--parar` lo libera todo antes de pasarla.
 if [ "${1:-}" = "--parar" ]; then
   if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || true; rm -f logs/backend.pid; fi
+  # El Ollama simulado solo si lo lanzó este script (su PID); un Ollama real nunca se toca.
+  if [ -s logs/mock-ollama.pid ]; then kill "$(cat logs/mock-ollama.pid)" 2>/dev/null || true; rm -f logs/mock-ollama.pid; fi
   fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
   echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
   exit 0
@@ -85,6 +87,16 @@ done
 if [ "$listo" != 1 ]; then
   echo "El juego no ha arrancado en 90 s: mira logs/backend.log y logs/frontend.log" >&2
   exit 1
+fi
+# QA-46 (tanda 24a): sin IA real (`IA_PERFIL`), el narrador necesita el Ollama simulado; tras `escenario.sh cargar` (que
+# para y relanza el juego) no estaba y las acciones daban 500 (ECONNREFUSED). Se levanta aquí si nada responde en el
+# puerto de OLLAMA_BASE_URL; `--parar` lo baja. Con Ollama real ya escuchando, no se toca.
+if [ -z "${IA_PERFIL:-}" ] && ! curl -s --max-time 3 -o /dev/null "$OLLAMA_BASE_URL"; then
+  puerto="${OLLAMA_BASE_URL##*:}"; puerto="${puerto%%/*}"
+  PORT="$puerto" setsid nohup node tools/ci/mock-ollama.mjs > logs/mock-ollama.log 2>&1 < /dev/null &
+  echo $! > logs/mock-ollama.pid
+  for i in $(seq 1 10); do curl -s --max-time 1 -o /dev/null "$OLLAMA_BASE_URL" && break; sleep 1; done
+  echo "Ollama simulado levantado en $OLLAMA_BASE_URL"
 fi
 # QA-141: con IA real, se comprueba antes de jugar lo que en la ronda del 2026-10-20 costó horas: GPU y RAG.
 if [ -n "${IA_PERFIL:-}" ]; then
