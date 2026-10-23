@@ -1,16 +1,19 @@
 // 3.2 (2026-10-21): prepara estados del Reino que `darReino.ts` no alcanza, SOLO con las funciones del juego que aplican
 // sus reglas (QA-151: nada de UPDATE/INSERT a mano). Pasos, en el orden dado:
 //   subditos:<pueblo>:<n>[:<rol>]   n súbditos adultos (`crearSubdito`) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
+//                                   o su tarea de trabajador (`cambiarTareaSubdito`: ganadero, recolector, fibrero…)
 //   reclutar:<npc>                  un NPC con nombre se une como compañero real (`proponer` RECLUTAR, con la tirada ganada; pide cama libre)
 //   guarnicion                      cada soldado y vigía a la guarnición de la capital mientras haya plazas (`asignarGuarnicion`)
 //   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
+//   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
 import { prisma } from '../lib/prisma.js';
 import { MINUTOS_POR_ANIO, cicloVital } from '../services/cronista/edades.js';
-import { cambiarRolSubdito, crearSubdito } from '../services/cronista/subditos.js';
+import { cambiarRolSubdito, cambiarTareaSubdito, crearSubdito } from '../services/cronista/subditos.js';
+import { esTarea } from '../services/cronista/comidaOficios.js';
 import { proponer } from '../services/cronista/reclutamiento.js';
 import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia } from '../services/defensaReino.js';
 import { recordFactionEvent, type FactionEventType } from '../services/factionRelations.js';
@@ -19,6 +22,7 @@ import { abrirCombateDePersonas, type MiembroDeGrupo } from '../services/combate
 import { scopeFor } from '../services/npcScene.js';
 import { formatFictionalDate } from '../services/worldClock.js';
 import type { AttributeBlock } from '../services/dice.js';
+import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { parsearPasosReino } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
@@ -47,7 +51,11 @@ for (const paso of pasos) {
       const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
       const s = await prisma.$transaction(async (tx) => {
         const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, random: Math.random });
-        if (paso.rol) {
+        if (paso.rol && esTarea(paso.rol)) {
+          // ganadero, recolector…: son tareas del trabajador, no roles.
+          const r = await cambiarTareaSubdito(tx, saveId, nuevo.id, paso.rol, ahora);
+          if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`);
+        } else if (paso.rol) {
           const r = await cambiarRolSubdito(tx, saveId, nuevo.id, paso.rol, ahora);
           if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`); // deshace también el súbdito recién creado
         }
@@ -111,6 +119,16 @@ for (const paso of pasos) {
     );
     if (!abierto) rechaza('combate: ya hay un combate en curso.');
     else dice(`Combate abierto contra ${miembros.map((m) => `${m.nombre} (Int ${m.inteligencia})`).join(', ')}`);
+  } else if (paso.tipo === 'ganado') {
+    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
+    if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }
+    for (let i = 0; i < paso.n && !fallo; i++) {
+      // meterEnCorral saca la edad con el primer random() y el sexo con el segundo: M, F, M, F…
+      const sec = [0.5, i % 2 === 0 ? 0.1 : 0.9];
+      const r = await prisma.$transaction((tx) => meterEnCorral(tx, saveId, npc, ahora, () => sec.shift() ?? 0.5));
+      if (!r.ok) rechaza(`ganado: ${r.motivo}`);
+      else dice(`Al corral: ${npc.slug} ${r.sexo} (${r.buildingId})`);
+    }
   }
 }
 await prisma.$disconnect();

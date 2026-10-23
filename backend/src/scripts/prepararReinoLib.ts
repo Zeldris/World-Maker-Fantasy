@@ -5,12 +5,13 @@ export type PasoReino =
   | { tipo: 'guarnicion' }
   | { tipo: 'milicia'; n: number }
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
-  | { tipo: 'combate'; npcSlugs: string[] };
+  | { tipo: 'combate'; npcSlugs: string[] }
+  | { tipo: 'ganado'; especie: string; n: number };
 
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…`. Se ejecutan en el orden dado.
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];
@@ -38,6 +39,10 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const npcSlugs = (r[0] ?? '').split(',').filter(Boolean);
       if (npcSlugs.length === 0) return { error: `«${arg}»: falta combate:<npc>,<npc>…` };
       pasos.push({ tipo: 'combate', npcSlugs });
+    } else if (clave === 'ganado') {
+      const n = entero(r[1]);
+      if (!r[0] || n == null) return { error: `«${arg}»: falta ganado:<especie>:<n>.` };
+      pasos.push({ tipo: 'ganado', especie: r[0], n });
     } else {
       return { error: `«${arg}»: paso desconocido.` };
     }
