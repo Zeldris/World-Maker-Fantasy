@@ -39,8 +39,9 @@ jobs:
         run: |
           base=${{ github.event.pull_request.base.sha }}
           git cat-file -e "$base:.githooks/pre-commit" 2>/dev/null || { echo "la base no tiene .githooks/pre-commit"; exit 0; }
-          git show "$base:.githooks/pre-commit" > "$RUNNER_TEMP/pre-commit"
-          bash "$RUNNER_TEMP/pre-commit" --rango "$(git merge-base "$base" HEAD)..HEAD"
+          # Dentro de .githooks/: el gancho saca la raíz del repo de su propia ruta.
+          git show "$base:.githooks/pre-commit" > .githooks/.pre-commit-base
+          bash .githooks/.pre-commit-base --rango "$(git merge-base "$base" HEAD)..HEAD"
       # QA-107: ningún enlace relativo roto (archivo o ancla) en los .md.
       - run: python3 .claude/gw/scripts/enlaces-md.py
       - run: python3 tools/qa/mapa-agente.py
