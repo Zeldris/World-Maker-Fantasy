@@ -48,3 +48,6 @@ __pycache__/
 # Registro por llamada de la IA (opt-ai): datos de la máquina, no se suben
 backend/ia/registro-*.jsonl
 *.kate-swp
+
+# Copia del pre-commit de la base que ci-local.sh y ci.yml ejecutan dentro del repo (QA-215)
+.githooks/.pre-commit-base
