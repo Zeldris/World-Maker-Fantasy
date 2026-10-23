@@ -11,7 +11,7 @@ Lo revisado: lo que entra con el PR a `main` desde `claude/pruebas-mundo-vivo` (
 
 También se revisan `opt-tokens`, `orchestrate-dealer` y `/code-review`.
 
-**Estado (2026-10-23): la usuaria aprobó T1, T2, R1, R2 y R3.** Se aplican en la rama: T1 → `QA-216`, T2 → `QA-217`,
+**Estado (2026-10-23): la usuaria aprobó T1, T2, R1, R2 y R3; todas aplicadas en la rama.** T1 → `QA-216`, T2 → `QA-217`,
 R1 → `QA-218`, R2 → `QA-219`, R3 → `QA-220`.
 
 ## Medida
