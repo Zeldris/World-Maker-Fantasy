@@ -26,7 +26,7 @@ import { type ActiveEffect } from './activeEffects.js';
 import type { RollResult } from './dice.js';
 
 import { Prisma } from '@prisma/client';
-import type { CondicionFisica, AbilityEffect } from '@prisma/client';
+import type { CondicionFisica, AbilityEffect, NpcKind } from '@prisma/client';
 import { ambitoFacciones } from './mundoPartida.js';
 import { testigosEnLugar } from './cronista/testigos.js';
 
@@ -165,6 +165,115 @@ export function goirnosDeBotin(nivel: number): number {
   return 2 + Math.max(1, nivel) * 2;
 }
 
+/// Datos de la fila `NpcState` que deja un intercambio de combate contra un NPC (condición, energía,
+/// grupo, tope de habilidades, efectos y, si el golpe lo derrota de verdad, la ausencia de zona de 6 h).
+/// Pura: la usan `applyCombatExchangeToNpcState` y `dejarNpcConvaleciente` (`QA-220`).
+export function datosNpcStateDeIntercambio(p: {
+  npcAttackTarget: Pick<NpcInScene, 'id' | 'groupSize' | 'groupDefeated' | 'abilityUsesThisEncounter'>;
+  npcNuevaEnergia: number | null;
+  npcAttackHits: boolean;
+  npcTargetNewCondicion: CondicionFisica | null;
+  analizarRivalExito: boolean;
+  abilityNamesToIncrement: string[];
+  npcActiveEffectsNext: ActiveEffect[];
+  saveId: string;
+  scope: string;
+  currentLocationId: string | null;
+  nuevoFictionalMinutes: number;
+}): { create: Prisma.NpcStateUncheckedCreateInput; update: Prisma.NpcStateUncheckedUpdateInput; esGolpeDeMuerte: boolean } {
+  const { npcAttackTarget, npcNuevaEnergia, npcAttackHits, npcTargetNewCondicion, analizarRivalExito, abilityNamesToIncrement, npcActiveEffectsNext, saveId, scope, currentLocationId, nuevoFictionalMinutes } = p;
+  const esGolpeDeMuerte = npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO');
+  // Caza en grupo (2026-08-13) — ver el hint gemelo en `resolveCombatExchangePhase` (misma
+  // condición exacta, `npcAttackTarget.groupSize`/`.groupDefeated` ya leídos en el mismo turno
+  // ANTES de narrar, para que lo que se escribe aquí coincida con lo que se le pidió narrar al
+  // modelo). Si quedan más miembros, el individuo ACTUAL "resucita" a ILESO para el siguiente en
+  // vez de quedarse en CONVALECIENTE/MUERTO — misma fila, `groupDefeated` sube uno.
+  const grupoContinua = !!(esGolpeDeMuerte && npcAttackTarget.groupSize && npcAttackTarget.groupDefeated + 1 < npcAttackTarget.groupSize);
+  const condicionAEscribir = grupoContinua ? 'ILESO' : npcTargetNewCondicion;
+  // Tope de usos por combate (2026-08-15) — se resetea a `{}` en cuanto el NPC vuelve a ILESO
+  // (descanso/curación real entre combates, nunca durante uno; mismo criterio ya documentado en
+  // schema.prisma § NpcState.abilityUsesThisEncounter), y suma +1 por cada nombre usado este
+  // intercambio que lleve tope. Solo se escribe si de verdad cambia algo, mismo criterio que el
+  // resto de este upsert.
+  const abilityUsesReset = condicionAEscribir === 'ILESO';
+  const abilityUsesNext = abilityUsesReset ? {} : { ...npcAttackTarget.abilityUsesThisEncounter };
+  for (const name of abilityNamesToIncrement) abilityUsesNext[name] = (abilityUsesNext[name] ?? 0) + 1;
+  const abilityUsesChanged = abilityUsesReset || abilityNamesToIncrement.length > 0;
+  // Fase 2 de efectos de clase (2026-08-26) — mismo reset-on-ILESO que `abilityUsesNext`, arriba.
+  const activeEffectsToWrite = condicionAEscribir === 'ILESO' ? [] : npcActiveEffectsNext;
+  // "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo reset-on-ILESO que
+  // `abilityUsesNext`/`activeEffectsToWrite`: en cuanto el NPC vuelve a ILESO (curación entre
+  // combates) ya no tiene sentido seguir "marcado para matar" del encuentro anterior.
+  const targetedForKillReset = condicionAEscribir === 'ILESO';
+  // Punto del jugador en el mapa de Zona (2026-09-04) — combate ganado de verdad (golpe de muerte
+  // y, si era un grupo, ya no queda nadie más) marca al NPC ausente 6h de ficción. `grupoContinua`
+  // deja esto fuera a propósito: todavía hay alguien vivo de ese grupo en la zona.
+  const marcarAusente = esGolpeDeMuerte && !grupoContinua;
+  const zonaAusenteData = marcarAusente ? { zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes), zonaLocationId: currentLocationId } : {};
+  return {
+    esGolpeDeMuerte: !!esGolpeDeMuerte,
+    create: {
+      saveId,
+      npcId: npcAttackTarget.id,
+      scope,
+      ...(npcTargetNewCondicion ? { condicionFisica: condicionAEscribir!, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
+      ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
+      // Rediseño de combate (2026-08-09, "Analizar rival") — permanente por NPC/scope en esta
+      // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
+      ...(analizarRivalExito ? { analizado: true } : {}),
+      ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: 1, corpsesLooted: 0 } : {}),
+      ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
+      ...zonaAusenteData,
+      activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
+    },
+    update: {
+      ...(npcAttackHits && npcTargetNewCondicion
+        ? { condicionFisica: condicionAEscribir!, condicionFisicaSinceMinutes: nuevoFictionalMinutes, ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: { increment: 1 } } : {}) }
+        : {}),
+      ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
+      ...(analizarRivalExito ? { analizado: true } : {}),
+      ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
+      ...(targetedForKillReset ? { targetedForKill: false } : {}),
+      ...zonaAusenteData,
+      activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
+    },
+  };
+}
+
+/// Deja a un NPC CONVALECIENTE en `currentLocationId` con la misma escritura que la derrota real en
+/// combate (`datosNpcStateDeIntercambio` con golpe de muerte): condición y reloj, ausencia de zona de 6 h,
+/// `groupDefeated`/`corpsesLooted` si es de un grupo. Lo usa `prepararReino.ts` (`convaleciente:<npc>`).
+export async function dejarNpcConvaleciente(
+  tx: Prisma.TransactionClient,
+  p: { saveId: string; npc: { id: string; kind: NpcKind }; currentLocationId: string | null; ahora: number },
+): Promise<{ scope: string }> {
+  const scope = scopeFor(p.npc.kind, p.currentLocationId);
+  const previo = await tx.npcState.findUnique({
+    where: { saveId_npcId_scope: { saveId: p.saveId, npcId: p.npc.id, scope } },
+    select: { groupSize: true, groupDefeated: true, abilityUsesThisEncounter: true },
+  });
+  const { create, update } = datosNpcStateDeIntercambio({
+    npcAttackTarget: {
+      id: p.npc.id,
+      groupSize: previo?.groupSize ?? null,
+      groupDefeated: previo?.groupDefeated ?? 0,
+      abilityUsesThisEncounter: (previo?.abilityUsesThisEncounter as Record<string, number> | undefined) ?? {},
+    },
+    npcNuevaEnergia: null,
+    npcAttackHits: true,
+    npcTargetNewCondicion: 'CONVALECIENTE',
+    analizarRivalExito: false,
+    abilityNamesToIncrement: [],
+    npcActiveEffectsNext: [],
+    saveId: p.saveId,
+    scope,
+    currentLocationId: p.currentLocationId,
+    nuevoFictionalMinutes: p.ahora,
+  });
+  await tx.npcState.upsert({ where: { saveId_npcId_scope: { saveId: p.saveId, npcId: p.npc.id, scope } }, create, update });
+  return { scope };
+}
+
 /// Aplica el resultado YA resuelto del intercambio de combate (`resolveCombatExchangePhase`) al
 /// `NpcState` del objetivo — extraído de la transacción de `narrateAndPersistTurn` (refactor de
 /// deuda técnica 2026-08-13). Sistema de fatiga simétrico (2026-07-30): `npcNuevaEnergia` viaja
@@ -227,61 +336,14 @@ export async function applyCombatExchangeToNpcState(params: {
     return { questCompletedInfo, factionRepChange };
   }
   const scope = scopeFor(npcAttackTarget.kind, currentLocationId);
-  const esGolpeDeMuerte = npcAttackHits && npcTargetNewCondicion && (npcTargetNewCondicion === 'CONVALECIENTE' || npcTargetNewCondicion === 'MUERTO');
-  // Caza en grupo (2026-08-13) — ver el hint gemelo en `resolveCombatExchangePhase` (misma
-  // condición exacta, `npcAttackTarget.groupSize`/`.groupDefeated` ya leídos en el mismo turno
-  // ANTES de narrar, para que lo que se escribe aquí coincida con lo que se le pidió narrar al
-  // modelo). Si quedan más miembros, el individuo ACTUAL "resucita" a ILESO para el siguiente en
-  // vez de quedarse en CONVALECIENTE/MUERTO — misma fila, `groupDefeated` sube uno.
-  const grupoContinua = !!(esGolpeDeMuerte && npcAttackTarget.groupSize && npcAttackTarget.groupDefeated + 1 < npcAttackTarget.groupSize);
-  const condicionAEscribir = grupoContinua ? 'ILESO' : npcTargetNewCondicion;
-  // Tope de usos por combate (2026-08-15) — se resetea a `{}` en cuanto el NPC vuelve a ILESO
-  // (descanso/curación real entre combates, nunca durante uno; mismo criterio ya documentado en
-  // schema.prisma § NpcState.abilityUsesThisEncounter), y suma +1 por cada nombre usado este
-  // intercambio que lleve tope. Solo se escribe si de verdad cambia algo, mismo criterio que el
-  // resto de este upsert.
-  const abilityUsesReset = condicionAEscribir === 'ILESO';
-  const abilityUsesNext = abilityUsesReset ? {} : { ...npcAttackTarget.abilityUsesThisEncounter };
-  for (const name of abilityNamesToIncrement) abilityUsesNext[name] = (abilityUsesNext[name] ?? 0) + 1;
-  const abilityUsesChanged = abilityUsesReset || abilityNamesToIncrement.length > 0;
-  // Fase 2 de efectos de clase (2026-08-26) — mismo reset-on-ILESO que `abilityUsesNext`, arriba.
-  const activeEffectsToWrite = condicionAEscribir === 'ILESO' ? [] : npcActiveEffectsNext;
-  // "Matar" persistido (2026-09-05, bug real: se perdía al recargar) — mismo reset-on-ILESO que
-  // `abilityUsesNext`/`activeEffectsToWrite`: en cuanto el NPC vuelve a ILESO (curación entre
-  // combates) ya no tiene sentido seguir "marcado para matar" del encuentro anterior.
-  const targetedForKillReset = condicionAEscribir === 'ILESO';
-  // Punto del jugador en el mapa de Zona (2026-09-04) — combate ganado de verdad (golpe de muerte
-  // y, si era un grupo, ya no queda nadie más) marca al NPC ausente 6h de ficción. `grupoContinua`
-  // deja esto fuera a propósito: todavía hay alguien vivo de ese grupo en la zona.
-  const marcarAusente = esGolpeDeMuerte && !grupoContinua;
-  const zonaAusenteData = marcarAusente ? { zonaAusenteHastaMinutes: minutoDeReaparicion(nuevoFictionalMinutes), zonaLocationId: currentLocationId } : {};
+  const { create, update, esGolpeDeMuerte } = datosNpcStateDeIntercambio({
+    npcAttackTarget, npcNuevaEnergia, npcAttackHits, npcTargetNewCondicion, analizarRivalExito,
+    abilityNamesToIncrement, npcActiveEffectsNext, saveId, scope, currentLocationId, nuevoFictionalMinutes,
+  });
   await tx.npcState.upsert({
     where: { saveId_npcId_scope: { saveId, npcId: npcAttackTarget.id, scope } },
-    create: {
-      saveId,
-      npcId: npcAttackTarget.id,
-      scope,
-      ...(npcTargetNewCondicion ? { condicionFisica: condicionAEscribir!, condicionFisicaSinceMinutes: nuevoFictionalMinutes } : {}),
-      ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
-      // Rediseño de combate (2026-08-09, "Analizar rival") — permanente por NPC/scope en esta
-      // partida, nunca se vuelve a poner en false (mismo criterio idempotente que `saqueado`).
-      ...(analizarRivalExito ? { analizado: true } : {}),
-      ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: 1, corpsesLooted: 0 } : {}),
-      ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
-      ...zonaAusenteData,
-      activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
-    },
-    update: {
-      ...(npcAttackHits && npcTargetNewCondicion
-        ? { condicionFisica: condicionAEscribir!, condicionFisicaSinceMinutes: nuevoFictionalMinutes, ...(esGolpeDeMuerte && npcAttackTarget.groupSize ? { groupDefeated: { increment: 1 } } : {}) }
-        : {}),
-      ...(npcNuevaEnergia !== null ? { energia: npcNuevaEnergia } : {}),
-      ...(analizarRivalExito ? { analizado: true } : {}),
-      ...(abilityUsesChanged ? { abilityUsesThisEncounter: abilityUsesNext } : {}),
-      ...(targetedForKillReset ? { targetedForKill: false } : {}),
-      ...zonaAusenteData,
-      activeEffects: activeEffectsToWrite as unknown as Prisma.InputJsonValue,
-    },
+    create,
+    update,
   });
   // Punto del jugador (2026-09-04) — cualquier intercambio de combate real contra este objetivo
   // (golpe recibido, energía gastada, tope de habilidad, análisis) lo acerca al jugador: primero
@@ -303,7 +365,7 @@ export async function applyCombatExchangeToNpcState(params: {
     const killSideEffects = await applyKillSideEffects({
       tx,
       npc: npcAttackTarget,
-      nuevaCondicion: npcTargetNewCondicion,
+      nuevaCondicion: npcTargetNewCondicion!, // esGolpeDeMuerte implica condición no nula
       saveId,
       worldId,
       nuevoFictionalMinutes,

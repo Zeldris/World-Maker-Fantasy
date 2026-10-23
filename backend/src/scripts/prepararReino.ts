@@ -7,7 +7,7 @@
 //   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
-//   convaleciente:<npc>             el NPC queda CONVALECIENTE en el lugar actual, con la misma escritura de `NpcState` (scope y reloj) que deja ganarle un combate
+//   convaleciente:<npc>             el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -21,6 +21,7 @@ import { recordFactionEvent, type FactionEventType } from '../services/factionRe
 import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePersonas, type MiembroDeGrupo } from '../services/combatePersonas.js';
 import { scopeFor } from '../services/npcScene.js';
+import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
 import { formatFictionalDate } from '../services/worldClock.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
@@ -123,13 +124,8 @@ for (const paso of pasos) {
   } else if (paso.tipo === 'convaleciente') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.npcSlug }, select: { id: true, slug: true, kind: true } });
     if (!npc) { rechaza(`convaleciente: no hay NPC ${paso.npcSlug}.`); continue; }
-    // Misma escritura que `turnLootKill.ts` al dejar a un NPC en CONVALECIENTE: scope por `scopeFor`, condición y reloj de la condición.
-    const scope = scopeFor(npc.kind, save.currentLocationId);
-    await prisma.npcState.upsert({
-      where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
-      create: { saveId, npcId: npc.id, scope, condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: ahora },
-      update: { condicionFisica: 'CONVALECIENTE', condicionFisicaSinceMinutes: ahora },
-    });
+    // Lo escribe `dejarNpcConvaleciente` (`turnLootKill.ts`), la misma función de datos que usa la derrota real en combate: condición y reloj, ausencia de zona de 6 h y grupo.
+    const { scope } = await prisma.$transaction((tx) => dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora }));
     dice(`Convaleciente: ${npc.slug} (${scope})`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
