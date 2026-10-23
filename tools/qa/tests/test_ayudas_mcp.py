@@ -33,11 +33,15 @@ class AyudasMcp(unittest.TestCase):
 
     def test_comportamiento_en_navegador(self):
         # QA-219: pulsar.js y mover.js sobre una página fija con Chromium (el orden de pasadas, el svg del mapa).
+        # En el CI (CI=true) Playwright y Chromium se instalan a propósito: si faltan, falla en vez de saltarse.
+        en_ci = os.environ.get('CI') == 'true'
         if not os.path.isdir(os.path.join(RAIZ, 'tools', 'playwright-e2e', 'node_modules', 'playwright')):
+            if en_ci:
+                self.fail('sin Playwright en el CI: cd tools/playwright-e2e && npm ci')
             self.skipTest('sin Playwright: cd tools/playwright-e2e && npm ci')
         r = subprocess.run(['bash', os.path.join(RAIZ, 'tools', 'qa', 'host.sh'), 'node', 'tools/qa/tests/ayudas_mcp_navegador.mjs'],
                            capture_output=True, text=True, timeout=240)
-        if r.returncode == 2:
+        if r.returncode == 2 and not en_ci:
             self.skipTest('sin Chromium de Playwright: ' + r.stderr.strip())
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
