@@ -1513,6 +1513,14 @@ Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-
 Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-215 · A `main` sin PR con el CI en local**: sin minutos de Actions no hay CI de PR y no se podía fusionar.~~ ✅ 2026-10-22: `tools/qa/ci-local.sh` repite los tres jobs de `ci.yml` (base `tarkor_ci` nueva); con él en verde, merge a `main` y `git push origin HEAD:main` sin PR (`CLAUDE.md`, «Ramas y main»). Estrenado con `claude/pruebas-reino`; encontró un enlace roto en su descripción.
 
+`/opt-tokens` y retro previos al PR de `claude/pruebas-mundo-vivo` ([retro](../registros/retro-2026-10-23-pruebas-mundo-vivo.md); aprobadas por la usuaria el 2026-10-23 y aplicadas en la rama):
+- ~~**QA-216 · Preparar antes de jugar**~~ ✅ 2026-10-23 (regla en `AGENTS.md`, línea de `orchestrate-dealer`, y en «Qué se prueba» de `rondas-de-pruebas.md`): cuatro pasadas de juego cerraron casi nada porque el escenario no daba el estado que pedía cada hallazgo (~15 M de subagentes). Antes de repartir una tanda, la principal comprueba la precondición de cada id; si falta, primero se prepara.
+- **QA-217 · El plan de comprobación nombra escenarios que existen**: un check falla si una fila del plan cita un escenario sin `.dump` en `tools/qa/escenarios/`.
+- **QA-218 · `o.sh` sin lo que cada tanda redescubría**: `combate` que ataca al leer, entradas de «Viajar», `puntos`/`interactuar` con el mapa cerrado o la tarjeta abierta, `captura` dentro del repo (`fallos-herramientas.md`, tandas 23-27).
+- **QA-219 · Tests de comportamiento de `pulsar.js` y `mover.js`**: los de ahora buscan trozos del código; el `/code-review` encontró el orden de pasadas de `pulsar` que no ven.
+- **QA-220 · `preparar convaleciente:<npc>`**: `mv-pozo-guchapo-conv` lleva un `NpcState` insertado a mano (contra `QA-151`); rehacerlo con las funciones del juego.
+- **QA-221 · Leves del `/code-review` del PR de `claude/pruebas-mundo-vivo`**: `mover.js` conserva una rama del menú viejo y detecta posición y hora por texto; la montura de pruebas solo la guarda `NODE_ENV=production`; el uso de `prepararReino` no cita `ganado:`; `ganado:` depende del orden de las llamadas a `random()`; `mover.js` y `pulsar.js` repiten la descripción del elemento.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

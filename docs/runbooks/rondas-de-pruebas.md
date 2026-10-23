@@ -20,6 +20,10 @@ reparte y apunta. Para pelear, `orden.sh --ayuda pelear` (acercarse, interactuar
    [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
 3. Lo que el roadmap no tiene (p. ej. «Crear desde cero» en la creación de personaje) no se prueba.
 
+**Preparar antes de jugar** (`QA-216`, retro del 2026-10-23): la sesión que reparte comprueba que el escenario de
+cada id da el estado que pide (montura, lugar visitado, animal domable, convaleciente…); si no, la primera tanda lo
+prepara con `escenario.sh preparar` y lo guarda, sin rehacer reglas a mano (`QA-151`).
+
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
 roadmap: no se abre.
