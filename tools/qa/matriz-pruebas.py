@@ -16,9 +16,11 @@ Uso:
                                                   o «Comprobado jugando»; si no, «sin jugar»)
   python3 tools/qa/matriz-pruebas.py --comprobar  sale con 1 si falta la fila de alguna tarea cerrada o una «jugado»
                                                   tiene la prueba en «parcial …» (pre-push)
+  (QA-217) --comprobar falla también si un plan `docs/registros/plan-comprobacion-*.md` nombra, en su columna
+                                                  «Escenario», un `nombre` sin `tools/qa/escenarios/<nombre>.dump`
   python3 tools/qa/matriz-pruebas.py --bloque Reino  las filas sin jugar de ese bloque (para preparar una ronda)
 """
-import io, os, re, sys, runpy, contextlib
+import glob, io, os, re, sys, runpy, contextlib
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 MATRIZ = os.path.join(RAIZ, 'docs', 'registros', 'matriz-pruebas.md')
@@ -95,6 +97,46 @@ def jugado_en_registros(ids):
     return vistos
 
 
+NOMBRE_ESCENARIO = re.compile(r'^[a-z0-9][a-z0-9_-]*$')
+
+
+def escenarios_nombrados(texto):
+    """QA-217: {nombre: [líneas]} de lo que un plan de comprobación pone en su columna «Escenario».
+
+    Solo cuenta lo que va entre comillas invertidas y parece un nombre de escenario (`t20-mundo`, `x.dump`,
+    `tools/qa/escenarios/x.dump`); las órdenes (`escenario.sh avanzar`, `preparar combate:x`) y el texto suelto
+    («partida nueva», «—») no. Un plan sin columna «Escenario» no nombra ninguno. Las demás columnas se ignoran:
+    ahí «mv-ganado» puede ser una mención de pasada."""
+    nombres = {}
+    col = None
+    for n, l in enumerate(texto.splitlines(), 1):
+        if not l.lstrip().startswith('|'):
+            col = None
+            continue
+        celdas = [c.strip() for c in l.strip().strip('|').split('|')]
+        if col is None:
+            col = next((k for k, c in enumerate(celdas) if c.lower() == 'escenario'), None)
+            continue
+        if col >= len(celdas) or set(celdas[col]) <= set('-: '):
+            continue
+        for t in re.findall(r'`([^`]+)`', celdas[col]):
+            t = os.path.basename(t.strip())
+            t = t[:-5] if t.endswith('.dump') else t
+            if NOMBRE_ESCENARIO.match(t):
+                nombres.setdefault(t, []).append(n)
+    return nombres
+
+
+def escenarios_inexistentes():
+    """QA-217: ['plan.md: nombre (línea N)'] de los escenarios de los planes que no tienen su .dump."""
+    malos = []
+    for plan in sorted(glob.glob(os.path.join(RAIZ, 'docs', 'registros', 'plan-comprobacion-*.md'))):
+        for nombre, lineas in escenarios_nombrados(open(plan, encoding='utf-8').read()).items():
+            if not os.path.exists(os.path.join(RAIZ, 'tools', 'qa', 'escenarios', nombre + '.dump')):
+                malos.append(f'{os.path.basename(plan)}: {nombre} (línea {lineas[0]})')
+    return malos
+
+
 def orden(i):
     p, n = i.split('-')
     return (p, int(re.sub(r'\D', '', n)), n)
@@ -134,6 +176,7 @@ def main():
     # QA-213: CR-9 y otras cinco pasaron a «jugado» con la prueba aún en «parcial …, falta …» y el recuento se inflaba.
     # Al pasar a «jugado», la prueba se reescribe con lo jugado; si aún falta algo, la fila sigue «sin jugar».
     parciales = [i for i, f in filas.items() if f[2] == 'jugado' and f[3].lower().startswith('parcial')]
+    sin_dump = escenarios_inexistentes()
     if '--bloque' in args:
         k = args.index('--bloque') + 1
         if k >= len(args):
@@ -162,7 +205,10 @@ def main():
         print('ESTADO DESCONOCIDO:', ', '.join(malos), '— vale:', ', '.join(ESTADOS))
     if parciales:
         print('JUGADO CON PRUEBA PARCIAL (reescribe la prueba con lo jugado o vuelve a «sin jugar»):', ', '.join(parciales))
-    return 1 if '--comprobar' in args and (faltan or malos or sobran or parciales) else 0
+    if sin_dump:
+        print('ESCENARIO SIN .dump (un plan de comprobación nombra un escenario que no está en tools/qa/escenarios/; '
+              'corrige el nombre o guárdalo con `escenario.sh guardar`):', '; '.join(sin_dump))
+    return 1 if '--comprobar' in args and (faltan or malos or sobran or parciales or sin_dump) else 0
 
 
 if __name__ == '__main__':
