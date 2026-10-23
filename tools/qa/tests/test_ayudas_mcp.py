@@ -20,45 +20,26 @@ class AyudasMcp(unittest.TestCase):
         r = subprocess.run(['node', '-e', PARSEA, *sorted(glob.glob(os.path.join(MCP, '*.js')))], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
-    def test_pulsar_da_errores_claros(self):
+    def test_pulsar_y_mover_conservan_sus_errores_claros(self):
+        # Lo que no cubre el navegador (ramas que necesitan la app): textos de error de pulsar y mover.
         js = leer(os.path.join(MCP, 'pulsar.js'))
-        for texto in ('falta window.tk.texto', 'tapada por', 'deshabilitado', 'No hay nada visible', 'forzar'):
+        for texto in ('tapada por', 'deshabilitado', 'forzar'):
             self.assertIn(texto, js)
-        # `{"contiene":"…"}` solo vale, además de `{"texto":"…","contiene":true}`.
-        self.assertIn("typeof tk.contiene === 'string'", js)
-        # `contiene` truthy activa la búsqueda parcial; el atajo es un solo dígito + espacio y exacto prueba antes el texto tal cual.
-        self.assertIn('const contiene = !!tk.contiene;', js)
-        self.assertIn('/^\\d\\s+/', js)
-        self.assertIn('[false, true]', js)
-        self.assertIn('casó sin el número', js)
-        # Orden exacto: capa de arriba tal cual, capa sin atajo, documento tal cual, documento sin atajo (un botón de detrás
-        # del modal no gana a «1 Reanudar» de dentro).
-        self.assertIn('[[false, true], [true, true], [false, false], [true, false]]', js)
-        # Con varias coincidencias no pulsa otra si la pedida está tapada; no desplaza candidato a candidato.
-        self.assertNotIn('todos.map', js)
-        self.assertIn("closest('button,[role=\"button\"]')", js)
-        self.assertIn('new MouseEvent', js)
-
-    def test_mover_avisa_de_lo_que_no_se_mueve(self):
         js = leer(os.path.join(MCP, 'mover.js'))
-        for texto in ('cae fuera del mapa', 'está tapado por', 'SIN MOVIMIENTO', 'POSICIÓN:', 'encuentro abierto', 'deshabilitado'):
+        for texto in ('está tapado por', 'SIN MOVIMIENTO', 'POSICIÓN:', 'encuentro abierto', 'deshabilitado'):
             self.assertIn(texto, js)
-        # Un encuentro abierto es AVISO (pelear.js sigue con interactuar.js); la comprobación previa solo bloquea por paneles.
         self.assertIn("'AVISO: hay un encuentro abierto", js)
-        self.assertIn('hago el clic igualmente', js)
         self.assertIn('solo cambió la hora', js)
-        self.assertIn("const enModal = page.getByRole('dialog')", js)
 
-    def test_mover_mide_el_svg_del_mapa_no_la_leyenda(self):
-        # Tanda 24a: medía un svg de 20×20 de la leyenda («cae fuera del mapa, que ocupa x 59–79»).
-        js = leer(os.path.join(MCP, 'mover.js'))
-        self.assertIn("querySelectorAll('svg title, [data-testid=\"jugador-zona\"]')", js)
-        self.assertIn("m.closest('[role=\"dialog\"]')", js)
-
-        # Los svg pequeños (iconos con <title> dentro del modal) no cuentan como mapa; sin grandes, cae a los de la página.
-        self.assertIn('area(m) >= 100 * 100', js)
-        self.assertIn("grandes(candidatos.filter((m) => m.closest('[role=\"dialog\"]')))", js)
-
+    def test_comportamiento_en_navegador(self):
+        # QA-219: pulsar.js y mover.js sobre una página fija con Chromium (el orden de pasadas, el svg del mapa).
+        if not os.path.isdir(os.path.join(RAIZ, 'tools', 'playwright-e2e', 'node_modules', 'playwright')):
+            self.skipTest('sin Playwright: cd tools/playwright-e2e && npm ci')
+        r = subprocess.run(['bash', os.path.join(RAIZ, 'tools', 'qa', 'host.sh'), 'node', 'tools/qa/tests/ayudas_mcp_navegador.mjs'],
+                           capture_output=True, text=True, timeout=240)
+        if r.returncode == 2:
+            self.skipTest('sin Chromium de Playwright: ' + r.stderr.strip())
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def test_combate_leer_no_pulsa_nada(self):
         # QA-218: `leer` (o `rondas:0`) devuelve antes del bucle de rondas; ahí no hay `click`.
