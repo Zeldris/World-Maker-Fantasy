@@ -1,0 +1,22 @@
+# Paso 3 de la línea: Mundo vivo sin jugar y arreglados sin comprobar (P29-P301), tandas 22-27
+
+Reparto (2026-10-23, rama `claude/pruebas-mundo-vivo`, sesión local en la Deck), paso 3 de la línea tras el
+[reparto del Reino](plan-comprobacion-reino.md): las 4 tareas de Mundo vivo «sin jugar» de `matriz-pruebas.py`
+(CR-43, CR-55, CR-56, CR-63) y los 35 «Arreglados, sin comprobar jugando» del resumen de
+[`pruebas-0.3-hallazgos.md`](pruebas-0.3-hallazgos.md). Mismas reglas de la tanda: un subagente `sonnet`, 6-8
+comprobaciones (donde el escenario es otro, menos), como mucho ~60 llamadas; al tope, `escenario.sh guardar` y la
+siguiente lo carga. Cada tanda devuelve sus P y tareas y la principal marca el registro (`marca-hallazgo.py`) y la
+matriz, y tacha aquí su fila. Ningún hallazgo de este reparto exige Ollama real (P47 y P94 hablan del Ollama
+simulado y de la narración de reserva: se ven con el que hay). Lo que cada fila arrastra de «sin ver» está en su
+columna.
+
+| Tanda | Sistema | Escenario | Hallazgos y tareas | Estado |
+|---|---|---|---|---|
+| 22 | Combate de grupo y caza de un grupo | `reino-dia39-recursos` (cazar el grupo de Guchapos del Pozo) | P55, P56, P77, P129, P153, P94, P112, P79 (P55/P56/P129/P153: cada golpe de más en el diario con sus dados, una sola tirada por turno, ataques de más contra la defensa con tope de 2 y chip «▲ flanqueo»; P77: aviso de rezagados; P94/P112: acción sin comillas y «Ataque Básico» del rival; P79: re-ver Clemente y el aviso «puede matarte») | pendiente |
+| 23 | Iniciativa, viajes y encuentros en el camino | `reino-dia39-recursos`; viajes entre Hondonada, Pozo y salida del oeste | P29, P69, P46, P47, P204, P90 (P46/P47: sin ver en las tandas 4 y 5a, 10 y 8 viajes sin interrupción: hace falta provocar una interrupción, repetir viajes largos; P90: pide emboscada de un grupo, en el Pozo solo hay tarjeta) | pendiente |
+| 24 | Mapa de zona, textos y supervivencia | `reino-dia39-recursos` | P51, P107, P124, P163, P95, P76, P121 (P163: el aviso «Obtienes…» no se llegó a ver en la tanda 3: recoger algo con el panel El Mundo abierto; P121: energía baja con hambre y sed al 100 %; P76: Beber de la fuente con la sed al 50 %) | pendiente |
+| 25 | Ganadería, usos de la fauna, caza de grupos y recintos | `reino-dia39-recursos` (la fauna de `t16-reino` está agotada) | CR-55, CR-56, CR-63, P125, P191, P192, P193 (CR-55/CR-56: faltó un animal domable, domesticar «Al corral», cría, producción y sacrificar; P125: pide un cadáver en el Pozo; P191/P192: cazar el rebaño de Múrgoles hasta el combate; P193: ordeñar el recinto desde el sur de las estacas) | pendiente |
+| 26 | Bandos, misiones y maestros en Hogar Ketg | `t13b2-ketg` (Hogar Ketg, día 39) | P175, P181, P184, P200, P201, P171 (P184: pide matar sin testigos al Orco enfurecido; P200: pide un herrero sin descubrir con encargo, el del Hogar Ketg y la Peletería no tienen: probar con `dar`/preparar; P201: pide completar la misión de explorar Las Agujas Imán, que nadie ofrece; P171: ver la descripción del Pozo en pantalla) | pendiente |
+| 27 | Reino (asaltos, reparar, expediciones), ciclo vital y fin de partida | `reino-sano-defensas` para P285 y P301; `reino-dia39-recursos` para P290; `t20-mundo` + `escenario.sh avanzar` para CR-43; `hondonada-inicio` para P128 | P285, P301, P290, CR-43, P128 (P285: enfriamiento de 7 días tras un asalto; P301: pide una Cocina DANADO y el botón Reparar; P290: expedición del Reino en vuelo con `delReino`; CR-43: escisión con la muerte de un líder de cohesión baja; P128: 4.ª muerte en Medio y `FinDePartidaModal`) | pendiente |
+
+Cuenta: 8 + 6 + 7 + 7 + 6 + 5 = 39 (4 tareas y 35 hallazgos, cada uno en una sola tanda).
