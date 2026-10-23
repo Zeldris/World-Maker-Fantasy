@@ -1,4 +1,9 @@
 import { afterEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
+
+// Sin `globals` de vitest, Testing Library no desmonta solo entre tests: lo montado seguía vivo y, con la suite
+// cargada, el scheduler de React corría tras desmontar jsdom («window is not defined», CombatPanel.test.tsx).
+afterEach(cleanup)
 
 // QA-94 (retro del 2026-10-17): un aviso de React por la consola hace fallar el test que lo provoca. P197 (dos
 // «Salir» en un menú) dejaba «Encountered two children with the same key» en cada render y la suite seguía en
