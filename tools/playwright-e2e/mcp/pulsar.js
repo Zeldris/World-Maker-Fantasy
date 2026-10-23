@@ -1,4 +1,4 @@
-// Pulsa lo que tenga ese texto (window.tk.texto; exacto, o `window.tk.contiene: true`; también vale solo
+// Pulsa lo que tenga ese texto (window.tk.texto; exacto, o `window.tk.contiene` truthy; también vale solo
 // `{"contiene":"…"}`), el visible más arriba en capas, con el ratón en su centro: sirve para las tarjetas que Playwright no da por «estables» (animación) y
 // para lo que no es un `button` (pestañas de texto). Con `window.tk.mantener: ms`, lo mantiene pulsado (los
 // botones «Mantén para…»). Después, `estado.js` para ver qué ha pasado.
@@ -7,16 +7,25 @@ async (page) => {
   const { mantener = 0, forzar = false } = tk;
   // `{"contiene":"Ir hasta"}` solo: el texto parcial es la búsqueda. `{"texto":"…","contiene":true}` como siempre.
   const texto = tk.texto || (typeof tk.contiene === 'string' ? tk.contiene : '');
-  const contiene = tk.contiene === true || (!tk.texto && typeof tk.contiene === 'string');
+  const contiene = !!tk.contiene;
   if (!texto) return 'ERROR: falta window.tk.texto (o window.tk.contiene con el texto): {"texto":"Reanudar"} exacto, {"contiene":"Ir hasta"} parcial';
   const res = await page.evaluate(
     ({ texto, contiene, forzar }) => {
+      // Dos pasadas: el texto tal cual y, solo si no hay nada (exacto), sin el atajo de teclado del principio.
+      for (const sinAtajo of contiene ? [true] : [false, true]) {
+        const r = pulsarCon(sinAtajo);
+        if (!r.vacio) return sinAtajo && !contiene ? { ...r, sinNumero: true } : r;
+      }
+      return { error: `No hay nada visible con el texto «${texto}»` };
+      function pulsarCon(sinAtajo) {
       // Sin distinguir mayúsculas: el CSS (`uppercase`) cambia lo que se ve, no el texto («MANTÉN PARA FUNDAR»).
       const buscado = texto.toLowerCase();
-      // También sin el número de atajo del principio («1 Reanudar» de los menús con `data-opcion`).
+      // El atajo de teclado del principio es un solo dígito seguido de espacio («1 Reanudar» de los menús con
+      // `data-opcion`). Exacto: solo en la segunda pasada; parcial: siempre vale con o sin él.
       const casa = (t) => {
         const m = t.toLowerCase();
-        return [m, m.replace(/^\d+\s+(?=\D)/, '')].some((u) => (contiene ? u.includes(buscado) : u === buscado));
+        const sin = m.replace(/^\d\s+/, '');
+        return contiene ? m.includes(buscado) || sin.includes(buscado) : (sinAtajo ? sin : m) === buscado;
       };
       // Sin el emoji o icono del principio («✨Habilidades», «🏛️Fundar ayuntamiento»).
       const limpio = (t) => t.replace(/\s+/g, ' ').trim().replace(/^[^\p{L}\p{N}¿¡«]+/u, '');
@@ -45,37 +54,37 @@ async (page) => {
       const arriba = capas.pop();
       let todos = arriba ? buscar(arriba) : [];
       if (!todos.length) todos = buscar(document);
-      if (!todos.length) return { error: `No hay nada visible con el texto «${texto}»` };
-      // Varias coincidencias: la que de verdad recibe el clic en su centro (no tapada por otro panel), la última del documento
-      // (la de más arriba). Una tapada solo se pulsa con `forzar: true` (clic del DOM, no del ratón).
-      const midiendo = todos.map((el) => {
-        el.scrollIntoView({ block: 'center', inline: 'center' });
-        const r = el.getBoundingClientRect();
-        const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-        const desact = el.disabled === true || el.getAttribute('aria-disabled') === 'true';
-        return { el, r, desact, libre: !!e && (e === el || el.contains(e)), tapa: e };
-      });
-      const util = midiendo.filter((m) => m.libre && !m.desact);
-      const elegido = util.pop();
+      if (!todos.length) return { vacio: true };
+      // Varias coincidencias: la última del documento (la de más arriba, como siempre). Si está tapada por otro panel
+      // no se pulsa otra: error (o clic del DOM con `forzar: true`). Se mide sin desplazar y solo el elegido se
+      // desplaza y se vuelve a medir justo antes del clic.
       const n = todos.length;
-      if (!elegido) {
-        const des = midiendo.find((m) => m.desact);
-        if (des) return { error: `«${texto}» está deshabilitado (${n} coincidencia${n > 1 ? 's' : ''}); mira estado.js: lo desactivados van entre paréntesis` };
-        const t = midiendo[midiendo.length - 1];
-        const quien = t.tapa ? `${t.tapa.tagName.toLowerCase()} «${(t.tapa.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)}»` : 'nada (fuera de la pantalla)';
+      const el = todos[n - 1];
+      const deshab = (e) => {
+        const b = e.closest('button,[role="button"]');
+        return [e, b].some((x) => x && (x.disabled === true || x.getAttribute('aria-disabled') === 'true'));
+      };
+      if (deshab(el)) return { error: `«${texto}» está deshabilitado (${n} coincidencia${n > 1 ? 's' : ''}); mira estado.js: lo desactivados van entre paréntesis` };
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      const r = el.getBoundingClientRect();
+      const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      if (!e || !(e === el || el.contains(e))) {
         if (forzar) {
-          t.el.click();
+          if (typeof el.click === 'function') el.click();
+          else el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
           return { forzado: true, n };
         }
-        return { error: `«${texto}» está tapado por ${quien}; ciérralo antes (o window.tk.forzar: true para un clic del DOM)` };
+        const quien = e ? `${e.tagName.toLowerCase()} «${(e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40)}»` : 'nada (fuera de la pantalla)';
+        const cuantas = n > 1 ? `hay ${n} coincidencias y la pedida (la de más arriba en el documento)` : '';
+        return { error: `${cuantas ? cuantas + ' está' : `«${texto}» está`} tapada por ${quien}; ciérralo antes (o window.tk.forzar: true para un clic del DOM)` };
       }
-      const r = elegido.r;
       return { x: r.x + r.width / 2, y: r.y + r.height / 2, n };
+      }
     },
     { texto, contiene, forzar },
   );
   if (res.error) return 'ERROR: ' + res.error;
-  const varias = res.n > 1 ? ` (${res.n} coincidencias; la visible de más arriba)` : '';
+  const varias = (res.n > 1 ? ` (${res.n} coincidencias; la última del documento)` : '') + (res.sinNumero ? ' (casó sin el número de atajo del principio)' : '');
   if (res.forzado) {
     await page.waitForTimeout(1200);
     return `pulsado «${texto}» con clic del DOM (forzado)${varias}`;

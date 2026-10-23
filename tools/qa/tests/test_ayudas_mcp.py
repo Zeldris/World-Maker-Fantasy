@@ -22,15 +22,29 @@ class AyudasMcp(unittest.TestCase):
 
     def test_pulsar_da_errores_claros(self):
         js = leer(os.path.join(MCP, 'pulsar.js'))
-        for texto in ('falta window.tk.texto', 'tapado por', 'deshabilitado', 'No hay nada visible', 'forzar'):
+        for texto in ('falta window.tk.texto', 'tapada por', 'deshabilitado', 'No hay nada visible', 'forzar'):
             self.assertIn(texto, js)
         # `{"contiene":"…"}` solo vale, además de `{"texto":"…","contiene":true}`.
         self.assertIn("typeof tk.contiene === 'string'", js)
+        # `contiene` truthy activa la búsqueda parcial; el atajo es un solo dígito + espacio y exacto prueba antes el texto tal cual.
+        self.assertIn('const contiene = !!tk.contiene;', js)
+        self.assertIn('/^\\d\\s+/', js)
+        self.assertIn('[false, true]', js)
+        self.assertIn('casó sin el número', js)
+        # Con varias coincidencias no pulsa otra si la pedida está tapada; no desplaza candidato a candidato.
+        self.assertNotIn('todos.map', js)
+        self.assertIn("closest('button,[role=\"button\"]')", js)
+        self.assertIn('new MouseEvent', js)
 
     def test_mover_avisa_de_lo_que_no_se_mueve(self):
         js = leer(os.path.join(MCP, 'mover.js'))
         for texto in ('cae fuera del mapa', 'está tapado por', 'SIN MOVIMIENTO', 'POSICIÓN:', 'encuentro abierto', 'deshabilitado'):
             self.assertIn(texto, js)
+        # Un encuentro abierto es AVISO (pelear.js sigue con interactuar.js); la comprobación previa solo bloquea por paneles.
+        self.assertIn("'AVISO: hay un encuentro abierto", js)
+        self.assertIn('hago el clic igualmente', js)
+        self.assertIn('solo cambió la hora', js)
+        self.assertIn("const enModal = page.getByRole('dialog')", js)
 
 
 if __name__ == '__main__':
