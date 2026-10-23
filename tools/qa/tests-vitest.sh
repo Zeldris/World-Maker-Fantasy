@@ -4,6 +4,7 @@
 #   unidad       `vitest related` de backend (solo el proyecto `unit`) y frontend, y el test de nombres de imágenes
 #                si cambia algo en backend/uploads/images/ (QA-35)
 #   integracion  los de BD real con el nombre de un archivo cambiado (`foo.ts` → `foo.integration.test.ts`)
+# Cada log, en su archivo de mktemp: dos pushes a la vez no se pisan (retro del piloto, 2026-10-23).
 # En el sandbox Flatpak de la Deck no hay npx: vitest corre en el host (host.sh, QA-180).
 # Uso: tests-vitest.sh unidad|integracion <archivos relativos a la raíz…>
 set -uo pipefail
@@ -20,15 +21,16 @@ if [ "$modo" = unidad ]; then
     [ ${#archivos[@]} -eq 0 ] && continue
     proyecto=()
     [ "$paquete" = backend ] && proyecto=(--project unit)
-    log="/tmp/pre-push-related-$paquete.log"
+    log="$(mktemp "${TMPDIR:-/tmp}/pre-push-related-$paquete.XXXXXX")"
     echo "pre-push: tests relacionados de $paquete (${#archivos[@]} archivos cambiados)…"
     bash tools/qa/host.sh bash -c 'cd "$1" && shift && npx vitest related --run "$@" --passWithNoTests' _ "$paquete" "${proyecto[@]}" "${archivos[@]}" > "$log" 2>&1 \
       || { grep -E "FAIL|AssertionError|Error:|Test Files|Tests " "$log" | head -30; echo "pre-push: tests de $paquete en rojo (log completo en $log)"; exit 1; }
   done
   for f in "$@"; do
     case "$f" in backend/uploads/images/*)
-      bash tools/qa/host.sh bash -c 'cd backend && npx vitest run src/scripts/imagenesZona.test.ts' > /tmp/pre-push-imagenes.log 2>&1 \
-        || { grep -E "Expected|\+ |archivo|mapa" /tmp/pre-push-imagenes.log | head -20; echo "pre-push: hay imágenes con un nombre que no es el de ningún lugar"; exit 1; }
+      log="$(mktemp "${TMPDIR:-/tmp}/pre-push-imagenes.XXXXXX")"
+      bash tools/qa/host.sh bash -c 'cd backend && npx vitest run src/scripts/imagenesZona.test.ts' > "$log" 2>&1 \
+        || { grep -E "Expected|\+ |archivo|mapa" "$log" | head -20; echo "pre-push: hay imágenes con un nombre que no es el de ningún lugar (log completo en $log)"; exit 1; }
       break ;;
     esac
   done
@@ -44,7 +46,7 @@ for f in "$@"; do
 done
 [ ${#integracion[@]} -eq 0 ] && exit 0
 mapfile -t integracion < <(printf '%s\n' "${integracion[@]}" | sort -u)
-log_bd="/tmp/pre-push-integracion.log"
+log_bd="$(mktemp "${TMPDIR:-/tmp}/pre-push-integracion.XXXXXX")"
 echo "pre-push: tests de integración de lo que cambia (${#integracion[@]})…"
 bash tools/qa/host.sh bash -c 'cd backend && npx vitest run --project bd-real "$@"' _ "${integracion[@]}" > "$log_bd" 2>&1 \
   || { grep -E "FAIL|AssertionError|Error:|Test Files|Tests " "$log_bd" | head -30; echo "pre-push: tests de integración en rojo (log completo en $log_bd)"; exit 1; }

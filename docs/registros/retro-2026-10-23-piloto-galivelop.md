@@ -1,6 +1,6 @@
 # Retro: piloto de Galivelop-workflow v0.2.0 y revisión antes de `main` (2026-10-23)
 
-**Estado (2026-10-23):** pendiente: se presenta a la usuaria antes de `revisado.sh` y de la fusión a `main`.
+**Estado (2026-10-23):** decididas por la usuaria: 2, 3 y 4 aplicadas (notas en el paso 6 de `skills-y-modelos.md`; logs de `tests-vitest.sh` con `mktemp` y `test_tests_vitest.py`); 1 aplazada (la usuaria prueba `host.sh` en la Deck); 5 aplazada (va al flujo).
 
 Rama `claude/piloto-galivelop-workflow`. Fuentes: el [registro del piloto](piloto-galivelop-workflow.md) (fricciones
 1-25), el `/code-review --max-findings all` contra `origin/main` (12 hallazgos) y `/opt-tokens --since 76b4f16`.
