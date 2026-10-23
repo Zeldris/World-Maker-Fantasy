@@ -56,7 +56,7 @@ echo "registro: $(wc -l < "$reg") líneas"
 awk '{gsub("MB","",$2); if (min == "" || $2 + 0 < min) min = $2 + 0} END {print "RAM disponible mínima: " min " MB"}' "$ram"
 echo "modelos cargados (último muestreo): $(tail -1 "$ram" | cut -d' ' -f3-)"
 if [ -n "$anterior" ]; then
-  python3 .claude/skills/opt-ai/medir.py "$reg" --anterior "backend/ia/registro-bench-$anterior.jsonl" --perfil deck
+  python3 tools/qa/medir-ia.py "$reg" --anterior "backend/ia/registro-bench-$anterior.jsonl" --perfil deck
 else
-  python3 .claude/skills/opt-ai/medir.py "$reg" --perfil deck
+  python3 tools/qa/medir-ia.py "$reg" --perfil deck
 fi

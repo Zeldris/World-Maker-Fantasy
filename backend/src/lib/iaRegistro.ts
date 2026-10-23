@@ -145,7 +145,7 @@ function avisar(err: unknown): void {
   console.warn(`[iaRegistro] no se pudo escribir en IA_REGISTRO (${env.iaRegistro}): ${err instanceof Error ? err.message : err}. Aviso único.`);
 }
 
-/// Caso del banco de calidad de `scout-updates` (QA-176, `.claude/skills/scout-updates/banco-calidad.md`): lo que
+/// Caso del banco de calidad de `scout-updates` (QA-176, `docs/scout/banco/README.md`): lo que
 /// recibió el modelo, sin recortar, para volver a generarlo con otros. Sin `system`, el modelo usó el SYSTEM de su
 /// Modelfile (`ollama show --system <modelo>`); un candidato sin ese Modelfile lo necesita en el caso.
 export interface CasoBanco {
@@ -158,7 +158,7 @@ export interface CasoBanco {
   maxTokens?: number;
   /// JSON Schema de la llamada (`format` de Ollama); `think: false` va siempre (`buildRequestBody`).
   format?: object;
-  /// La salida del modelo actual, como referencia (banco.py la vuelve a generar).
+  /// La salida del modelo actual, como referencia (banco-calidad.py la vuelve a generar).
   salida: string;
 }
 

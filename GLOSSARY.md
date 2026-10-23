@@ -1,3 +1,4 @@
+<!-- galivelop-workflow v0.2.0 -->
 # Helek Sirik — motor y producto
 
 Vocabulario del motor del juego y del producto. El lore canónico vive en `docs/rpgtarkor/` y no se
@@ -98,7 +99,7 @@ Pasar un rumor a hecho sabido, porque la jugadora lo ve, va donde pasó o se lo 
 La crónica de la partida tal como la conoce el personaje: solo sucesos de los que tiene conocimiento.
 _Evitar_: libro de sucesos (ese lo contiene todo)
 
-**Rastro**:
+**Rastro (de un suceso)**:
 La huella visible que un suceso reciente deja en una región (humo, barro, animales que llegan) y que aparece en la ambientación.
 
 **Oportunidad**:
@@ -158,7 +159,7 @@ _Evitar_: poblador (solo para el que aún está llegando), aldeano
 Una familia que el motor sigue a través de generaciones (Ketg, Koh, Marn…): actor del Libro, hereda venganzas y deudas.
 _Evitar_: clan (es la facción), dinastía
 
-**Rastro**:
+**Rastro (linaje)**:
 El linaje de los Faerus: una pequeña manada dentro de la gran manada que los suyos reconocen por los sentidos; se escribe «Tasko, del rastro Veyra».
 _Evitar_: apellido (los Faerus no tienen)
 
@@ -282,3 +283,15 @@ Una orden que el viajero repite sola (ir, hacer, volver, descargar) hasta que se
 **Tarea**:
 Lo que hace cada día un súbdito trabajador: recolector, pescador, cocinero, ganadero o fibrero. De ella sale la comida del Reino; las facciones reparten a sus trabajadores en tareas según la costumbre de su pueblo.
 _Evitar_: oficio (es la profesión con nivel de un trabajador o compañero, no lo que hace hoy)
+
+## El trabajo con Claude
+
+**Bitácora**:
+`docs/registros/traspaso.md`: el estado del trabajo para la sesión que releva, con una fila por rama.
+_Evitar_: traspaso, log
+
+**Relevo**:
+El paso del trabajo de una sesión (o cuenta) a otra, sin preguntar por dónde iba.
+
+**Marca de revisión**:
+El commit revisado que guarda `.claude/revision-main.sha`; sin ella no se crea ni se fusiona el PR a `main`.

@@ -8,6 +8,8 @@ import subprocess
 import tempfile
 
 QA = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
+GW = os.path.join(RAIZ, '.claude', 'gw', 'scripts')  # scripts de Galivelop-workflow (piloto, 2026-10-22)
 ENV_GIT = {**os.environ, 'GIT_AUTHOR_NAME': 't', 'GIT_AUTHOR_EMAIL': 't@t', 'GIT_COMMITTER_NAME': 't',
            'GIT_COMMITTER_EMAIL': 't@t', 'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_SYSTEM': os.devnull}
 
@@ -25,6 +27,13 @@ def escribir(ruta: str, texto: str) -> None:
 def leer(ruta: str) -> str:
     with open(ruta, encoding='utf-8') as f:
         return f.read()
+
+
+def config_gw(repo: str) -> None:
+    """El `.claude/gw.json` de WMF en un repo de prueba: los scripts del flujo lo leen de la raíz que se les pasa
+    con `--root`."""
+    os.makedirs(os.path.join(repo, '.claude'), exist_ok=True)
+    shutil.copy(os.path.join(RAIZ, '.claude', 'gw.json'), os.path.join(repo, '.claude', 'gw.json'))
 
 
 def carpeta() -> str:

@@ -3,7 +3,7 @@
 ## Summary
 
 Pasos 3.2 y 3.3 de «La línea» (`21-roadmap.md`) para el Reino y Mundo vivo, según el
-[reparto](docs/registros/plan-comprobacion-reino.md). Esta rama solo jugó y apuntó; no toca código del juego. Trae el registro
+[reparto](../../plan-comprobacion-reino.md). Esta rama solo jugó y apuntó; no toca código del juego. Trae el registro
 de lo jugado, dos instantáneas nuevas y la retro aplicada a las herramientas de QA.
 
 ```text

@@ -2,7 +2,7 @@
 # QA-215 (usuaria, 2026-10-22): con la cuota de GitHub Actions agotada, el CI se pasa aquí y la rama se sube a main
 # sin PR (CLAUDE.md, «Ramas y main»). Repite los tres jobs de .github/workflows/ci.yml sobre un checkout limpio,
 # con una base de datos nueva (`tarkor_ci`, se borra y se crea) para no tocar la `tarkor` ni la de la ronda.
-# Uso: tools/qa/ci-local.sh [checkout, por defecto la raíz del repo] [base del diff para `bitacora.py --cerradas`]
+# Uso: tools/qa/ci-local.sh [checkout, por defecto la raíz del repo] [base del diff para `bitacora.py closed`]
 # Sale con 1 si algún paso falla; los registros quedan en el directorio que imprime al final.
 set -uo pipefail
 raiz="$(git rev-parse --show-toplevel)"
@@ -28,17 +28,19 @@ paso() {  # paso <subdirectorio> <descripción> <comando…>
 echo "== roadmap"
 paso . "cobertura del roadmap" python3 tools/roadmap/cobertura.py
 paso . "matriz de pruebas" python3 tools/qa/matriz-pruebas.py --comprobar
-paso . "bitácora" python3 tools/qa/bitacora.py
-[ -n "$base" ] && paso . "bitácora: tareas cerradas desde la base" python3 tools/qa/bitacora.py --cerradas "$base" HEAD
-paso . "enlaces de los .md" python3 tools/qa/enlaces-md.py
+paso . "bitácora" python3 .claude/gw/scripts/bitacora.py check
+[ -n "$base" ] && paso . "bitácora: tareas cerradas desde la base" python3 .claude/gw/scripts/bitacora.py closed "$base" HEAD
+[ -n "$base" ] && git -C "$dir" cat-file -e "$base:.githooks/pre-commit" 2>/dev/null && git -C "$dir" show "$base:.githooks/pre-commit" >"$logs/pre-commit-base" &&
+  paso . "pre-commit de la base sobre la rama" bash "$logs/pre-commit-base" --rango "\$(git merge-base $base HEAD)..HEAD"
+paso . "enlaces de los .md" python3 .claude/gw/scripts/enlaces-md.py
 paso . "mapa del agente" python3 tools/qa/mapa-agente.py
 paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks); do bash -n \"\$f\" || exit 1; done
   for f in \$(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check \"\$f\" || exit 1; done
   for f in tools/playwright-e2e/mcp/*.js; do node -e \"new Function('return (' + require('fs').readFileSync('\$f', 'utf8') + ')')\" || { echo \"\$f\"; exit 1; }; done
-  python3 -m py_compile \$(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py')"
+  python3 -m py_compile \$(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')"
 paso . "tests de tools/qa" python3 -m unittest discover -s tools/qa/tests
-paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/opt-ai
-paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/scout-updates
+paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/opt-ai/scripts
+paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/scout-updates/scripts
 paso . "resumen de los registros de hallazgos" 'for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done'
 
 echo "== backend"

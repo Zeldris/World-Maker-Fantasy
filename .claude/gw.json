@@ -1,0 +1,37 @@
+{
+  "$schema": "gw/schema/gw.schema.json",
+  "version": "0.2.0",
+  "language": "es",
+  "visibleLanguages": [],
+  "log": "docs/registros/traspaso.md",
+  "logRows": true,
+  "protectedBranch": "main",
+  "pushToProtected": "pr",
+  "install": [],
+  "check": [
+    "bash tools/qa/host.sh bash -c 'cd backend && npx prisma generate > /dev/null && npx tsc --noEmit -p . && npm run --silent lint'",
+    "bash tools/qa/host.sh bash -c 'cd frontend && npx tsc -b && npm run --silent lint'",
+    "python3 tools/roadmap/cobertura.py > /dev/null",
+    "python3 tools/qa/mapa-agente.py",
+    "python3 tools/qa/matriz-pruebas.py --comprobar > /dev/null"
+  ],
+  "reviewMark": ".claude/revision-main.sha",
+  "requireRetro": true,
+  "content": [
+    "^docs/(rpgtarkor|registros|producto)/",
+    "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$",
+    "^\\.claude/skills/.*\\.md$"
+  ],
+  "roadmap": true,
+  "selector": {"cases": []},
+  "logSections": [],
+  "designReferences": ["X4: Foundations", "D&D 5e", "Baldur's Gate 3", "Medieval Dynasty", "Bellwright", "Manor Lords"],
+  "protectedPaths": ["docs/borradores-opencode/"],
+  "staleRefs": [],
+  "relatedTests": {
+    "fast": ["bash tools/qa/tests-vitest.sh unidad {files}"],
+    "slow": ["bash tools/qa/tests-vitest.sh integracion {files}"]
+  },
+  "plan": ["docs/producto/"],
+  "taskId": "(?:CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR)-\\d+[a-z]?"
+}

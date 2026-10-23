@@ -1,18 +1,28 @@
-"""QA-144: .githooks/pre-commit rechaza, solo con CLAUDECODE=1, archivos preparados de docs/borradores-opencode/."""
+"""QA-144: .githooks/pre-commit rechaza, solo con CLAUDECODE=1, archivos preparados de docs/borradores-opencode/.
+
+Desde el piloto de Galivelop-workflow (2026-10-22) el gancho es el del flujo y la carpeta va en `protectedPaths` de
+`.claude/gw.json`. El gancho saca la raíz de su propia ruta: cada prueba copia gancho, scripts y configuración al repo
+temporal.
+"""
 import os
+import shutil
 import subprocess
 import unittest
 
 from comun import ENV_GIT, QA, carpeta, escribir, git
 
 RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
-HOOK = os.path.join(RAIZ, '.githooks', 'pre-commit')
+HOOK_REPO = os.path.join(RAIZ, '.githooks', 'pre-commit')
 
 
 class PreCommit(unittest.TestCase):
     def setUp(self):
         self.repo = carpeta()
         git(self.repo, 'init', '-q', '-b', 'main')
+        for ruta in ('.githooks', '.claude/gw/scripts', '.claude/gw/schema'):
+            shutil.copytree(os.path.join(RAIZ, ruta), os.path.join(self.repo, ruta))
+        shutil.copy(os.path.join(RAIZ, '.claude/gw.json'), os.path.join(self.repo, '.claude/gw.json'))
+        self.hook = os.path.join(self.repo, '.githooks', 'pre-commit')
         escribir(os.path.join(self.repo, 'README.md'), 'x')
         git(self.repo, 'add', '-A')
         git(self.repo, 'commit', '-q', '-m', 'base')
@@ -26,11 +36,11 @@ class PreCommit(unittest.TestCase):
         env = {k: v for k, v in ENV_GIT.items() if k != 'CLAUDECODE'}
         if claudecode:
             env['CLAUDECODE'] = '1'
-        return subprocess.run(['bash', HOOK], cwd=self.repo, env=env, capture_output=True, text=True)
+        return subprocess.run(['bash', self.hook], cwd=self.repo, env=env, capture_output=True, text=True)
 
     def git_real(self, *args: str) -> subprocess.CompletedProcess:
         """Un git de verdad con CLAUDECODE=1 y el gancho por core.hooksPath."""
-        return subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', *args], cwd=self.repo,
+        return subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(self.hook)}', *args], cwd=self.repo,
                               env={**ENV_GIT, 'CLAUDECODE': '1'}, capture_output=True, text=True)
 
     def con_borrador_commiteado(self):
@@ -97,7 +107,7 @@ class PreCommit(unittest.TestCase):
         self.assertNotEqual(self.git_real('commit', '-m', 'borra').returncode, 0)
 
     def test_es_ejecutable_y_git_lo_registra_asi(self):
-        self.assertTrue(os.access(HOOK, os.X_OK))
+        self.assertTrue(os.access(HOOK_REPO, os.X_OK))
         modo = subprocess.run(['git', 'ls-files', '-s', '.githooks/pre-commit'], cwd=RAIZ,
                               capture_output=True, text=True).stdout.split()[0]
         self.assertEqual(modo, '100755')
@@ -106,7 +116,7 @@ class PreCommit(unittest.TestCase):
         self.preparar('docs/borradores-opencode/idea.md')
         r = self.correr(True)
         self.assertEqual(r.returncode, 1)
-        self.assertIn('git restore --staged docs/borradores-opencode/', r.stderr)
+        self.assertIn('git restore --staged', r.stderr)
         self.assertIn('docs/borradores-opencode/idea.md', r.stderr)
 
     def test_sin_claudecode_deja_pasar_el_borrador(self):

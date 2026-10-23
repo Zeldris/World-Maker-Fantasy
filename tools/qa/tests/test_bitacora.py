@@ -1,15 +1,22 @@
-"""QA-74: tools/qa/bitacora.py (QA-69)."""
+"""QA-74: la bitácora (QA-69), con el `bitacora.py` de Galivelop-workflow (`.claude/gw/scripts/`, piloto del
+2026-10-22; sustituye a `tools/qa/bitacora.py`). Los mensajes del flujo están en inglés."""
 import os
 import subprocess
 import unittest
 
-from comun import QA, carpeta, escribir, git
+from comun import GW, carpeta, config_gw, escribir, git
+
+BITACORA = os.path.join(GW, 'bitacora.py')
+
+
+def flujo(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(['python3', BITACORA, *args], capture_output=True, text=True)
 
 
 def comprobar(texto: str, *args: str) -> subprocess.CompletedProcess:
     ruta = os.path.join(carpeta(), 'traspaso.md')
     escribir(ruta, texto)
-    return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), ruta, *args], capture_output=True, text=True)
+    return flujo('check', ruta, *args)
 
 
 class Bitacora(unittest.TestCase):
@@ -20,17 +27,20 @@ class Bitacora(unittest.TestCase):
     def test_fila_sin_rama_falla(self):
         r = comprobar('| **Tarea en curso** | algo |\n')
         self.assertEqual(r.returncode, 1)
-        self.assertIn('fila sin rama', r.stdout)
+        self.assertIn('there is no row', r.stdout)
+        r = comprobar('| **Tarea en curso · `a** | algo |\n')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('malformed branch row', r.stdout)
 
     def test_fila_larga_falla(self):
         r = comprobar('| **Tarea en curso · `a`** | ' + 'x' * 601 + ' |\n')
         self.assertEqual(r.returncode, 1)
-        self.assertIn('601 caracteres', r.stdout)
+        self.assertIn('601 characters', r.stdout)
 
     def test_dos_filas_de_la_misma_rama_fallan(self):
         r = comprobar('| **Tarea en curso · `a`** | uno |\n| **Tarea en curso · `a`** | dos |\n')
         self.assertEqual(r.returncode, 1)
-        self.assertIn('dos filas', r.stdout)
+        self.assertIn('two rows for a', r.stdout)
 
     def test_sin_ninguna_fila_falla(self):
         self.assertEqual(comprobar('| **Hito** | 0.3 |\n').returncode, 1)
@@ -38,25 +48,27 @@ class Bitacora(unittest.TestCase):
     def test_fecha_anterior_al_commit_falla(self):
         """QA-115: con `--fecha`, «Actualizado» no puede ser de un día anterior."""
         texto = '| **Actualizado** | 2026-10-17 |\n| **Tarea en curso · `a`** | algo |\n'
-        r = comprobar(texto, '--fecha', '2026-10-19')
+        r = comprobar(texto, '--date', '2026-10-19')
         self.assertEqual(r.returncode, 1)
-        self.assertIn('«Actualizado» dice 2026-10-17 y el commit es del 2026-10-19', r.stdout)
-        self.assertEqual(comprobar(texto, '--fecha', '2026-10-17').returncode, 0)
+        self.assertIn('"Updated" says 2026-10-17 and the commit is from 2026-10-19', r.stdout)
+        self.assertEqual(comprobar(texto, '--date', '2026-10-17').returncode, 0)
         self.assertEqual(comprobar(texto).returncode, 0)
 
     def test_fecha_con_formato_suelto_o_sin_fila(self):
         texto = '|  **Actualizado**  |  `2026-10-17` |\n| **Tarea en curso · `a`** | algo |\n'
-        self.assertIn('dice 2026-10-17', comprobar(texto, '--fecha', '2026-10-19').stdout)
-        r = comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', '2026-10-19')
+        self.assertIn('says 2026-10-17', comprobar(texto, '--date', '2026-10-19').stdout)
+        r = comprobar('| **Tarea en curso · `a`** | algo |\n', '--date', '2026-10-19')
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn('falta la fila «| **Actualizado**', r.stdout)
+        self.assertIn('the "Updated" row is missing', r.stdout)
 
     def test_fecha_mal_escrita_da_uso(self):
-        self.assertIn('Uso', comprobar('| **Tarea en curso · `a`** | algo |\n', '--fecha', 'ayer').stderr)
+        r = comprobar('| **Tarea en curso · `a`** | algo |\n', '--date', 'ayer')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('--date must be YYYY-MM-DD', r.stderr)
 
 
 class Ajenas(unittest.TestCase):
-    """QA-145: un commit no cambia la fila de otra rama ni una fila compartida (salvo `--compartida`)."""
+    """QA-145: un commit no cambia la fila de otra rama ni una fila compartida (salvo `--shared`)."""
     BASE = ('## Estado actual\n\n| **Actualizado** | 2026-10-19 |\n| **Hito** | 0.3 |\n| **Tests** | verde |\n'
             '| **Tarea en curso · `a`** | uno |\n| **Tarea en curso · `b`** | dos |\n')
 
@@ -69,10 +81,10 @@ class Ajenas(unittest.TestCase):
     def correr(self, texto: str, *extra: str):
         repo = carpeta()
         git(repo, 'init', '-q')
+        config_gw(repo)
         self.commit(repo, self.BASE)
         sha = self.commit(repo, texto)
-        return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', sha, 'a', *extra],
-                              cwd=repo, capture_output=True, text=True)
+        return flujo('--root', repo, 'own-row', sha, 'a', *extra)
 
     def test_la_propia_y_las_libres_pasan(self):
         t = self.BASE.replace('| uno |', '| nuevo |').replace('2026-10-19', '2026-10-20').replace('verde', 'rojo')
@@ -86,8 +98,8 @@ class Ajenas(unittest.TestCase):
 
     def test_compartida_falla_y_se_permite_con_la_opcion(self):
         t = self.BASE.replace('0.3', '0.4')
-        self.assertIn('«Hito»', self.correr(t).stdout)
-        self.assertEqual(self.correr(t, '--compartida').returncode, 0)
+        self.assertIn('"Hito"', self.correr(t).stdout)
+        self.assertEqual(self.correr(t, '--shared').returncode, 0)
 
     def test_quitar_o_anadir_una_fila_ajena_falla(self):
         self.assertEqual(self.correr(self.BASE.replace('| **Tarea en curso · `b`** | dos |\n', '')).returncode, 1)
@@ -101,16 +113,17 @@ class Ajenas(unittest.TestCase):
         base = self.BASE + '| **Hito** | 0.5 |\n'
         repo = carpeta()
         git(repo, 'init', '-q')
+        config_gw(repo)
         self.commit(repo, base)
         sha = self.commit(repo, base.replace('| 0.3 |', '| 0.4 |'))
-        r = subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', sha, 'a'], cwd=repo,
-                           capture_output=True, text=True)
+        r = flujo('--root', repo, 'own-row', sha, 'a')
         self.assertEqual(r.returncode, 1)
-        self.assertIn('«Hito»', r.stdout)
+        self.assertIn('"Hito"', r.stdout)
 
     def test_uso(self):
-        r = subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--ajenas', 'x'], capture_output=True, text=True)
-        self.assertIn('Uso', r.stderr)
+        r = flujo('own-row', 'x')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('usage', r.stderr)
 
 
 class Cerradas(unittest.TestCase):
@@ -119,6 +132,7 @@ class Cerradas(unittest.TestCase):
     def setUp(self):
         self.repo = carpeta()
         git(self.repo, 'init', '-q')
+        config_gw(self.repo)
         self.base = self.commit('- **QA-1 · Una**\n- ~~**QA-2 · Dos**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-2`~~\n')
 
     def commit(self, roadmap: str, bitacora: str) -> str:
@@ -129,12 +143,13 @@ class Cerradas(unittest.TestCase):
         return git(self.repo, 'rev-parse', 'HEAD')
 
     def correr(self, sha: str) -> subprocess.CompletedProcess:
-        return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--cerradas', self.base, sha],
-                              cwd=self.repo, capture_output=True, text=True)
+        return flujo('--root', self.repo, 'closed', self.base, sha)
 
     def test_tachada_sin_bitacora_falla(self):
+        """Con la fecha delante, como en la bitácora de WMF. El flujo da por apuntada una viñeta que empieza por el id
+        aunque no esté tachada (`- `QA-1` diagnosticado`): fricción 14 del piloto."""
         sha = self.commit('- ~~**QA-1 · Una**~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n',
-                          '## Hecho recientemente\n\n- `QA-1` diagnosticado\n- ~~`QA-2`~~\n')
+                          '## Hecho recientemente\n\n- **2026-10-14** — `QA-1` diagnosticado\n- ~~`QA-2`~~\n')
         r = self.correr(sha)
         self.assertEqual(r.returncode, 1)
         self.assertIn('QA-1', r.stdout)
@@ -183,6 +198,7 @@ class EnCurso(unittest.TestCase):
     def setUp(self):
         self.repo = carpeta()
         git(self.repo, 'init', '-q')
+        config_gw(self.repo)
         self.roadmap = ('- **QA-1 · Una** 🚧 en curso:\n  falta X.\n- **QA-2 · Dos**\n'
                         '- ~~**QA-3 · Tres**~~ ✅\n| QA-4 | Cuatro 🚧 |\n')
         self.base = self.commit(self.roadmap, 'base')
@@ -195,8 +211,7 @@ class EnCurso(unittest.TestCase):
         return git(self.repo, 'rev-parse', 'HEAD')
 
     def correr(self, sha: str) -> subprocess.CompletedProcess:
-        return subprocess.run(['python3', os.path.join(QA, 'bitacora.py'), '--en-curso', self.base, sha],
-                              cwd=self.repo, capture_output=True, text=True)
+        return flujo('--root', self.repo, 'in-progress', self.base, sha)
 
     def test_avisa_sin_fallar_de_la_en_curso_sin_tocar(self):
         r = self.correr(self.commit(self.roadmap, 'Avanza QA-1, QA-2, QA-3 y QA-4'))

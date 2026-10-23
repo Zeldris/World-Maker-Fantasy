@@ -17,6 +17,10 @@ logs/
 !.claude/settings.json
 !.claude/hooks/
 !.claude/skills/
+# Galivelop-workflow (piloto, 2026-10-22): su config, sus scripts y la marca de revisión van en el repo.
+!.claude/gw.json
+!.claude/gw/
+!.claude/revision-main.sha
 
 # Playwright que usa Claude para jugar el frontend real y hacer pruebas en vivo (QA-30, retro del
 # 2026-10-09): los scripts se versionan para que las dos cuentas los compartan; se quedan fuera lo
@@ -36,7 +40,6 @@ tools/lore-links/
 .playwright-mcp/
 tools/playwright-e2e/driver.token
 tools/playwright-e2e/shots/
-.claude/revision-main.sha
 
 # Bytecode de Python (los tests de tools/qa los regeneran)
 __pycache__/

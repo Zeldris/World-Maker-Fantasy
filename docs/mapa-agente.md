@@ -16,7 +16,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   (`docs/registros/matriz-pruebas.md`) dice qué falta probar.
 - `docs/rpgtarkor/`: lore; solo cuando la tarea es de lore, y nunca se edita a mano (`AGENTS.md`).
 - `b/services/turnResolution.ts` entero (7.400 líneas): busca la sección (abajo) con `grep -n`.
-- El registro `.jsonl` de la sesión: se mide con `.claude/skills/opt-tokens/medir.py`.
+- El registro `.jsonl` de la sesión: se mide con `.claude/skills/opt-tokens/scripts/medir.py`.
 
 ## Comandos
 

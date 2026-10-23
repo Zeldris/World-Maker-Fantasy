@@ -1,11 +1,13 @@
 ---
 name: research
 description: Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent.
+license: MIT (see LICENSE-mattpocock-skills)
+metadata:
+  version: "0.2.0"
+  source: "mattpocock/skills@5beb35b"
 ---
 
-> **En este repositorio:** es el molde de la futura skill `scout-updates` (búsqueda de actualizaciones de los
-> elementos del juego, fuera de `opt-ai` por decisión de la usuaria, 2026-10-20) y de las citas de `opt-ai`: cada
-> afirmación con su fuente primaria y la fecha de consulta. Se deja tal cual; esta nota es lo único añadido.
+> Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 Spin up a **background agent** to do the research, so you keep working while it reads.
 

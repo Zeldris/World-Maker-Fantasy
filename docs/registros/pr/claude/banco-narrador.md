@@ -1,6 +1,6 @@
 ## Summary
 
-Banco de calidad del narrador de `QA-176` ([informe](docs/scout/informes/2026-10-21.md)). El actual `tarkor-narrador-llama31` gana a los tres candidatos. La usuaria rechazó P-005, P-006 y P-007, y los modelos de prueba están borrados de la Deck.
+Banco de calidad del narrador de `QA-176` ([informe](../../../scout/informes/2026-10-21.md)). El actual `tarkor-narrador-llama31` gana a los tres candidatos. La usuaria rechazó P-005, P-006 y P-007, y los modelos de prueba están borrados de la Deck.
 
 ```text
 tasa de victorias (juicio a ciegas, los dos órdenes; consistencia 0,939)
@@ -10,7 +10,7 @@ tasa de victorias (juicio a ciegas, los dos órdenes; consistencia 0,939)
   gemma3:4b  (P-005) 0,379
 ```
 
-Con el PR entra también la retro, aprobada entera por la usuaria ([retro](docs/registros/retro-2026-10-21-banco-narrador.md)):
+Con el PR entra también la retro, aprobada entera por la usuaria ([retro](../../retro-2026-10-21-banco-narrador.md)):
 
 ```diff
  .claude/skills/scout-updates/

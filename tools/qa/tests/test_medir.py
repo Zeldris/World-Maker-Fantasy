@@ -1,4 +1,5 @@
-"""QA-113: .claude/skills/opt-tokens/medir.py (QA-111), con un registro de sesión de prueba (líneas de `comun`, QA-119)."""
+"""QA-113: prueba el script del flujo, .claude/skills/opt-tokens/scripts/medir.py (piloto Galivelop-workflow, 2026-10-22),
+con un registro de sesión de prueba (líneas de `comun`, QA-119). Banderas y salida en inglés."""
 import datetime as dt
 import json
 import os
@@ -7,7 +8,7 @@ import unittest
 
 from comun import QA, carpeta, compactacion, escribir, orden, registro, respuesta, resultado, ruido, texto
 
-MEDIR = os.path.join(QA, '..', '..', '.claude', 'skills', 'opt-tokens', 'medir.py')
+MEDIR = os.path.join(QA, '..', '..', '.claude', 'skills', 'opt-tokens', 'scripts', 'medir.py')
 
 
 class Medir(unittest.TestCase):
@@ -17,7 +18,7 @@ class Medir(unittest.TestCase):
         for nombre, (tipo, sub) in (subagentes or {}).items():
             escribir(os.path.join(d, 's', 'subagents', f'{nombre}.meta.json'), json.dumps(tipo if isinstance(tipo, dict) else {'agentType': tipo}))
             registro(os.path.join(d, 's', 'subagents', f'{nombre}.jsonl'), *sub)
-        r = subprocess.run(['python3', MEDIR, '--sesion', ruta, '--horas', horas, *extra], capture_output=True, text=True)
+        r = subprocess.run(['python3', MEDIR, '--session', ruta, '--hours', horas, *extra], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         return r.stdout
 
@@ -32,11 +33,11 @@ class Medir(unittest.TestCase):
             respuesta('m3', 50),
             respuesta('s', 9999, isSidechain=True),
         ])
-        self.assertIn('Llamadas a la API: 3  ·  compactaciones: 1', salida)
-        self.assertIn('Entrada 450 tokens', salida)
-        self.assertIn('Tramos entre compactaciones: 2  ·  suelo medio 75  ·  techo medio 175', salida)
+        self.assertIn('API calls: 3  |  compactions: 1', salida)
+        self.assertIn('Input 450 tokens', salida)
+        self.assertIn('Stretches between compactions: 2  |  average floor 75  |  average ceiling 175', salida)
         # El resultado de Read (100 tokens) se arrastra a la llamada siguiente del tramo: 1 llamada.
-        self.assertRegex(salida, r'Read\s+1 llamadas\s+100 tok\s+100 arrastrados')
+        self.assertRegex(salida, r'Read\s+1 calls\s+100 tok\s+100 dragged')
 
     def test_por_archivo_junta_read_y_bash_con_la_ruta_desde_la_raiz(self):
         # QA-175: Read con ruta absoluta, Bash tras `cd backend &&` con ruta relativa a esa carpeta, y una orden que
@@ -59,12 +60,12 @@ class Medir(unittest.TestCase):
             resultado('t5', 'x' * 350),
             respuesta('m6', 100),
         ])
-        self.assertRegex(salida, r'backend/src/services/narrador.ts\s+2×\s+200 tok')
-        self.assertRegex(salida, r'AGENTS.md\s+1×\s+100 tok')
-        self.assertRegex(salida, r'CLAUDE.md\s+1×\s+100 tok')
-        por_archivo = salida.split('POR ARCHIVO')[1]
+        self.assertRegex(salida, r'backend/src/services/narrador.ts\s+2x\s+200 tok')
+        self.assertRegex(salida, r'AGENTS.md\s+1x\s+100 tok')
+        self.assertRegex(salida, r'CLAUDE.md\s+1x\s+100 tok')
+        por_archivo = salida.split('BY FILE')[1]
         self.assertNotIn('docs/x.md', por_archivo)
-        self.assertRegex(por_archivo, r'docs/y.md\s+1×')
+        self.assertRegex(por_archivo, r'docs/y.md\s+1x')
         for script in ('host.sh', 'z.sh', 'b.py'):
             self.assertNotIn(script, por_archivo)
 
@@ -76,9 +77,9 @@ class Medir(unittest.TestCase):
             'agent-a': ('general-purpose', [respuesta('s1', 40, texto('a'), texto('b'), modelo='claude-sonnet-5-5')]),
             'agent-b': ('Explore', [respuesta('s2', 7, modelo='claude-haiku-5-5')]),
         })
-        self.assertRegex(salida, r'principal\s+claude-opus-5-5\s+2 llamadas\s+300 entrada\s+20 salida')
-        self.assertRegex(salida, r'subagentes\s+claude-sonnet-5-5\s+1 llamadas\s+40 entrada')
-        self.assertIn('Subagentes: 1 general-purpose (claude-sonnet-5-5) · 1 Explore (claude-haiku-5-5)', salida)
+        self.assertRegex(salida, r'main\s+claude-opus-5-5\s+2 calls\s+300 input\s+20 output')
+        self.assertRegex(salida, r'subagents\s+claude-sonnet-5-5\s+1 calls\s+40 input')
+        self.assertIn('Subagents: 1 general-purpose (claude-sonnet-5-5) | 1 Explore (claude-haiku-5-5)', salida)
 
     def test_desglosa_por_subagente_y_cuenta_la_salida_mayor_de_cada_respuesta(self):
         """QA-146: una fila por subagente (descripción, tipo, modelo, llamadas, contexto medio, entrada, salida) y totales
@@ -93,28 +94,28 @@ class Medir(unittest.TestCase):
             'agent-b': ({'agentType': 'Explore'}, [c]),
             'agent-c': ({'agentType': 'Explore'}, []),  # sin respuestas: no sale
         })
-        self.assertIn('POR SUBAGENTE', salida)
-        self.assertRegex(salida, r'Arreglo del turno\s+general-purpose\s+claude-sonnet-5-5\s+2 llamadas\s+2,000 ctx medio'
-                                 r'\s+1,000 arranque\s+4,000 entrada\s+710 salida')
-        self.assertRegex(salida, r'agent-b\s+Explore\s+claude-haiku-5-5\s+1 llamadas\s+500 ctx medio\s+500 arranque\s+500 entrada\s+— salida')
-        self.assertIn('«—»: el registro del subagente no guarda la salida final', salida)
-        self.assertIn('Subagentes en total: 2 registros · 3 llamadas · 4,500 entrada · 720 salida', salida)
-        self.assertIn('Arranque medio: 750 tokens', salida)
-        self.assertIn('Sesión + subagentes: 4 llamadas · 4,600 entrada · 730 salida', salida)
-        self.assertRegex(salida, r'subagentes\s+claude-sonnet-5-5\s+2 llamadas\s+4,000 entrada\s+710 salida')
+        self.assertIn('BY SUBAGENT', salida)
+        self.assertRegex(salida, r'Arreglo del turno\s+general-purpose\s+claude-sonnet-5-5\s+2 calls\s+2,000 avg ctx'
+                                 r'\s+1,000 startup\s+4,000 input\s+710 output')
+        self.assertRegex(salida, r'agent-b\s+Explore\s+claude-haiku-5-5\s+1 calls\s+500 avg ctx\s+500 startup\s+500 input\s+- output')
+        self.assertIn('"-": the subagent log does not keep its final output', salida)
+        self.assertIn('Subagents in total: 2 logs | 3 calls | 4,500 input | 720 output', salida)
+        self.assertIn('Average startup: 750 tokens', salida)
+        self.assertIn('Session + subagents: 4 calls | 4,600 input | 730 output', salida)
+        self.assertRegex(salida, r'subagents\s+claude-sonnet-5-5\s+2 calls\s+4,000 input\s+710 output')
 
     def test_subagente_sin_modelo_y_synthetic(self):
-        """Modelo a null: sale como «?» sin reventar; `<synthetic>` no sale en la tabla ni cuenta en POR MODELO."""
+        """Modelo a null: sale como «?» sin reventar; `<synthetic>` no sale en la tabla ni cuenta en BY MODEL."""
         salida = self.medir([respuesta('m1', 100)], {
             'agent-a': ({'agentType': 'Explore', 'description': 'Sin modelo'}, [respuesta('s1', 50, modelo=None)]),
             'agent-b': ({'agentType': 'Explore', 'description': 'Solo sintetico'}, [respuesta('s2', 60, modelo='<synthetic>')]),
         })
-        self.assertRegex(salida, r'Sin modelo\s+Explore\s+\?\s+1 llamadas')
+        self.assertRegex(salida, r'Sin modelo\s+Explore\s+\?\s+1 calls')
         self.assertNotIn('Solo sintetico', salida)
         self.assertNotIn('synthetic', salida)
 
     def test_sin_subagentes_no_hay_seccion(self):
-        self.assertNotIn('POR SUBAGENTE', self.medir([respuesta('m1', 100)]))
+        self.assertNotIn('BY SUBAGENT', self.medir([respuesta('m1', 100)]))
 
     def test_con_horas_el_primer_tramo_a_medias_no_cuenta_como_suelo(self):
         def hace(horas):
@@ -128,12 +129,12 @@ class Medir(unittest.TestCase):
             *corte,
             respuesta('m3', 100, timestamp=hace(1.2)), respuesta('m4', 300, timestamp=hace(1.1)),
         ], horas='2')
-        self.assertIn('Tramos entre compactaciones: 1  ·  suelo medio 100  ·  techo medio 300  ·  2 llamadas por tramo'
-                      '  (sin el primero, que empezó antes del periodo)', salida)
+        self.assertIn('Stretches between compactions: 1  |  average floor 100  |  average ceiling 300  |  2 calls per stretch'
+                      '  (without the first, which began before the period)', salida)
         # QA-127: el medio de todo el periodo (575) mezcla el tramo a medias; sin él, el del régimen actual (200).
-        self.assertIn('Contexto medio por llamada: 575 tokens', salida)
-        self.assertIn('Contexto medio sin el primer tramo: 200 tokens', salida)
-        self.assertIn('Por tramo, del más antiguo al último (medio/techo, en miles): 0/0', salida)
+        self.assertIn('Average context per call: 575 tokens', salida)
+        self.assertIn('Average context without the first stretch: 200 tokens', salida)
+        self.assertIn('Per stretch, oldest to latest (average/ceiling, thousands): 0/0', salida)
 
     def test_desde_recorta_como_horas_con_fecha_o_sha(self):
         """QA-134: `--desde` con una fecha ISO o un sha de commit mide solo desde ahí."""
@@ -144,9 +145,9 @@ class Medir(unittest.TestCase):
             l['timestamp'] = hace(1.3)
         partes = [respuesta('m0', 10, timestamp=hace(5)), respuesta('m1', 900, timestamp=hace(1.5)), *corte,
                   respuesta('m3', 100, timestamp=hace(1.2)), respuesta('m4', 300, timestamp=hace(1.1))]
-        salida = self.medir(partes, extra=('--desde', hace(2)))
-        self.assertIn('Llamadas a la API: 3  ·  compactaciones: 1', salida)
-        self.assertIn('(sin el primero, que empezó antes del periodo)', salida)
+        salida = self.medir(partes, extra=('--since', hace(2)))
+        self.assertIn('API calls: 3  |  compactions: 1', salida)
+        self.assertIn('(without the first, which began before the period)', salida)
         # Con un sha: la fecha del commit (con su offset, +02:00 = 10:00 UTC) recorta; una ISO sin zona es UTC.
         repo = carpeta()
         entorno = {**os.environ, 'GIT_COMMITTER_DATE': '2026-01-01T12:00:00+02:00', 'GIT_AUTHOR_DATE': '2026-01-01T12:00:00+02:00',
@@ -157,10 +158,10 @@ class Medir(unittest.TestCase):
         ruta = registro(os.path.join(repo, 's.jsonl'), respuesta('a', 10, timestamp='2026-01-01T09:00:00Z'),
                         respuesta('b', 20, timestamp='2026-01-01T11:00:00Z'), respuesta('c', 30, timestamp='2026-01-01T12:00:00Z'))
         for valor in (sha, sha[:8], '2026-01-01T10:00:00', '2026-01-01T12:00:00+02:00'):
-            r = subprocess.run(['python3', MEDIR, '--sesion', ruta, '--desde', valor], capture_output=True, text=True, cwd=repo)
+            r = subprocess.run(['python3', MEDIR, '--session', ruta, '--since', valor], capture_output=True, text=True, cwd=repo)
             self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn('Llamadas a la API: 2  ·', r.stdout, valor)
-        malo = subprocess.run(['python3', MEDIR, '--desde', 'no-existe-xyz'], capture_output=True, text=True)
+            self.assertIn('API calls: 2  |', r.stdout, valor)
+        malo = subprocess.run(['python3', MEDIR, '--since', 'no-existe-xyz'], capture_output=True, text=True)
         self.assertNotEqual(malo.returncode, 0)
 
 

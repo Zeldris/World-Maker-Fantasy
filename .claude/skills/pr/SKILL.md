@@ -1,7 +1,10 @@
 ---
 name: pr
 description: "Use when writing a PR body."
+license: MIT (see LICENSE-mattpocock-skills)
 metadata:
+  version: "0.2.0"
+  source: "mattpocock/skills@5beb35b"
   credits:
     skill: show-me
     author: Dex Horthy
@@ -9,11 +12,7 @@ metadata:
     url: "https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md"
 ---
 
-> **En este repositorio:** cada PR a `main`, después de `/code-review` y sus arreglos. Todo en
-> español; título con los identificadores de las tareas (`CR-55`, `UX-39`…). **Evidencia:** los
-> números de `tsc`, `vitest` y `oxlint` de backend y frontend, y el test que cubre cada cambio
-> importante. **Peligro:** una migración de base de datos o un cambio de partidas guardadas es
-> puerta de un solo sentido. Al final, las líneas de atribución que pida la sesión.
+> Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 Use this template for writing the PR body:
 

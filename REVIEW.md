@@ -1,3 +1,4 @@
+<!-- galivelop-workflow v0.2.0 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`) comprueba en cada diff, además de los fallos de siempre. Son los
@@ -137,3 +138,18 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   `docs/producto/21-roadmap.md`; la bitácora al día en el mismo commit (`CLAUDE.md`).
 - **Lore.** Nada editado en `docs/rpgtarkor/` (`AGENTS.md`); las propuestas, en
   `docs/borradores-opencode/propuestas-lore.md`.
+
+## Ganchos y scripts del flujo
+
+Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flujo son los de `.githooks/` y
+`.claude/gw/scripts/`: no se editan aquí, se proponen en el repo del flujo (`docs/registros/piloto-galivelop-workflow.md`,
+«For Galivelop-workflow»). Lo de WMF es su configuración (`.claude/gw.json`), sus scripts de `tools/qa/` y sus tests.
+
+- La raíz del repo se saca de la ruta del script (`$(dirname "$0")`), no de `$CLAUDE_PROJECT_DIR` ni del directorio
+  actual: en la nube la sesión puede arrancar en `/home/user`.
+- Un gancho de subida comprueba el commit que se sube, no la carpeta de trabajo, y falla cerrado cuando le falta un
+  dato (un commit que no tiene, una API que no responde).
+- Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos.
+- Una orden con `npx` en `check` pasa por `tools/qa/host.sh` (sandbox Flatpak de la Deck, `QA-180`).
+- Un cambio en `.claude/gw.json` (sobre todo `check`, `relatedTests`, `protectedPaths` o `reviewMark`) o en
+  `.githooks/` lleva su caso en `tools/qa/tests/` (`test_pre_commit.py`, `test_prepush_ramas.py`).

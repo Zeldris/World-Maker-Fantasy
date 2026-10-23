@@ -21,17 +21,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # QA-107: `bitacora.py --cerradas` compara con la base del PR
+          fetch-depth: 0  # QA-107: `bitacora.py closed` compara con la base del PR
       - run: python3 tools/roadmap/cobertura.py
       # QA-101/QA-107: cada tarea cerrada de los hitos en prueba tiene su fila en la matriz de cobertura.
       - run: python3 tools/qa/matriz-pruebas.py --comprobar
       # QA-69/QA-85/QA-107: la bitácora (filas cortas, una por rama) y, en un PR, cada tarea tachada en un
       # roadmap también tachada en «Hecho recientemente». Antes solo lo miraba el pre-push.
-      - run: python3 tools/qa/bitacora.py
+      # Desde el piloto de Galivelop-workflow (2026-10-22), los scripts del flujo en `.claude/gw/scripts/`.
+      - run: python3 .claude/gw/scripts/bitacora.py check
       - if: github.event_name == 'pull_request'
-        run: python3 tools/qa/bitacora.py --cerradas ${{ github.event.pull_request.base.sha }} HEAD
+        run: python3 .claude/gw/scripts/bitacora.py closed ${{ github.event.pull_request.base.sha }} HEAD
+      # Piloto de Galivelop-workflow (2026-10-22): el pre-commit de la BASE sobre los commits del PR (secretos), para
+      # que un PR no pueda rebajar el gancho que lo revisa. Viene del comprobar.yml del flujo, que no se usa: su
+      # `check` ya lo repiten estos tres jobs.
+      - if: github.event_name == 'pull_request'
+        name: Pre-commit de la base sobre el PR
+        run: |
+          base=${{ github.event.pull_request.base.sha }}
+          git cat-file -e "$base:.githooks/pre-commit" 2>/dev/null || { echo "la base no tiene .githooks/pre-commit"; exit 0; }
+          git show "$base:.githooks/pre-commit" > "$RUNNER_TEMP/pre-commit"
+          bash "$RUNNER_TEMP/pre-commit" --rango "$(git merge-base "$base" HEAD)..HEAD"
       # QA-107: ningún enlace relativo roto (archivo o ancla) en los .md.
-      - run: python3 tools/qa/enlaces-md.py
+      - run: python3 .claude/gw/scripts/enlaces-md.py
       - run: python3 tools/qa/mapa-agente.py
       # QA-107: las herramientas de pruebas no se rompen sin que nadie lo vea hasta la ronda (sintaxis de los
       # .sh, los .mjs y las ayudas de mcp/; historico/ son scripts archivados que no se ejecutan).
@@ -40,13 +51,13 @@ jobs:
           for f in $(git ls-files '*.sh' .githooks); do bash -n "$f" || exit 1; done
           for f in $(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check "$f" || exit 1; done
           for f in tools/playwright-e2e/mcp/*.js; do node -e "new Function('return (' + require('fs').readFileSync('$f', 'utf8') + ')')" || { echo "$f"; exit 1; }; done
-          python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py')
+          python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
-      # QA-137: tests de medir.py de la skill opt-ai.
-      - run: python3 -m unittest discover -s .claude/skills/opt-ai
+      # QA-137: tests de medir.py de la skill opt-ai (el de WMF, medir-ia.py, va con tools/qa).
+      - run: python3 -m unittest discover -s .claude/skills/opt-ai/scripts
       # QA-176: tests de los scripts de la skill scout-updates.
-      - run: python3 -m unittest discover -s .claude/skills/scout-updates
+      - run: python3 -m unittest discover -s .claude/skills/scout-updates/scripts
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
       - run: for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
 
