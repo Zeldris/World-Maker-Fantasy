@@ -63,6 +63,7 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 | 23 | `/code-review`, `requireRetro` | `revisado.sh` solo da la retro por decidida si su **Estado** dice `aplicad…`/`rechazad…`/`aplazad…`/`decidid…`; las retros de WMF decían «aprobadas por la usuaria» o «ninguna aprobada». | Las retros nuevas escriben «aplicadas», «rechazadas» o «aplazadas». Sugerencia abajo. |
 | 24 | `/code-review`, `settings.json` | El matcher del gancho `revision-antes-de-main.sh` incluye `^Bash$`: corre en cada llamada a Bash (una tanda de juego, ~60), no solo al crear o fusionar un PR o subir a `main`. | Se queda (es lo que vigila `git push origin main`). Sugerencia abajo. |
 | 25 | `/code-review`, `es-codigo.sh` | Cualquier fallo del Python incrustado (hasta un `BrokenPipe` con `\| head -1`) se informa como «content regex invalid». | Nada en WMF; sugerencia abajo. |
+| 26 | `revisado.sh` | Su commit («Revisado: <sha>») no lleva la línea «Siguiente:» que exige el `commit-msg` de WMF: el commit falla y la marca queda en el índice. | La marca se commitea a mano con el mismo asunto y la línea «Siguiente:». Sugerencia abajo. |
 
 ## For Galivelop-workflow
 
@@ -87,6 +88,8 @@ Encargo y decisiones: la usuaria aprobó las propuestas de esta sesión (2026-10
 - `enlaces-md.py`: una lista de carpetas cuyos enlaces se resuelven desde la raíz (p. ej. `linkRoots` en `gw.json`), o
   decir en la skill `pr` que la descripción guardada enlaza desde su carpeta.
 - `rojo-sin-arreglo.sh`: una opción para exigir que se ejecute exactamente un test (WMF lo contaba en la salida de vitest).
+- `revisado.sh`: dejar añadir líneas al mensaje de la marca (p. ej. `--next "<texto>"` o `REVISADO_SIGUIENTE`), o
+  saltar el `commit-msg` del proyecto solo en ese commit.
 - Dar acceso de lectura al repo del flujo en la nube, o publicar las versiones, para que un piloto pueda comparar.
 - `doctor.py`: avisar de términos repetidos en `GLOSSARY.md` (el mismo `**Término**:` dos veces).
 - `gw-init`/`aplicar.py`: decir qué marca llevan `REVIEW.md` y `GLOSSARY.md` en un proyecto que ya los tenía.
