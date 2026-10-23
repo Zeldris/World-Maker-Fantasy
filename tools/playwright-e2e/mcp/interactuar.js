@@ -5,7 +5,11 @@ async (page) => {
   const enMenu = page.getByRole('menuitem', { name: 'Interactuar' });
   const boton = (await enMapa.count()) ? enMapa.first() : (await enMenu.count()) ? enMenu.first() : page.getByRole('button', { name: 'Interactuar' }).last();
   if (!(await boton.count())) return 'No hay ningún «Interactuar» a la vista: acércate (mover.js) o abre el menú del NPC';
-  await boton.click();
+  // QA-218: si lo tapa un modal (mapa, ficha) o está deshabilitado, lo dice en vez de esperar 15 s.
+  if (await boton.isDisabled().catch(() => false)) return 'ERROR: «Interactuar» está deshabilitado: ¿escena o combate abiertos? mira estado.js';
+  try { await boton.click({ timeout: 5000 }); } catch {
+    return 'ERROR: «Interactuar» está tapado por otro panel (el mapa o una ficha está abierto sobre el diario): ciérralo («Cerrar») y repite; mira estado.js';
+  }
   for (let i = 0; i < 20; i++) {
     await page.waitForTimeout(1000);
     const t = await page.locator('body').innerText();

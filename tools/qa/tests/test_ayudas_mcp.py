@@ -60,5 +60,40 @@ class AyudasMcp(unittest.TestCase):
         self.assertIn("grandes(candidatos.filter((m) => m.closest('[role=\"dialog\"]')))", js)
 
 
+    def test_combate_leer_no_pulsa_nada(self):
+        # QA-218: `leer` (o `rondas:0`) devuelve antes del bucle de rondas; ahí no hay `click`.
+        js = leer(os.path.join(MCP, 'combate.js'))
+        self.assertIn('leer || rondas === 0', js)
+        leer_js = js[js.index('leer || rondas === 0'):js.index('for (let r = 0')]
+        for prohibido in ('.click(', 'mouse.', 'press('):
+            self.assertNotIn(prohibido, leer_js)
+        self.assertIn('return [', leer_js)
+
+    def test_o_sh_atajos(self):
+        sh = leer(os.path.join(RAIZ, 'tools', 'qa', 'deck', 'o.sh'))
+        self.assertIn('viajar-a:[!{]*', sh)
+        self.assertIn('combate:leer', sh)
+
+    def test_viajar_a_dice_que_lugares_hay(self):
+        js = leer(os.path.join(MCP, 'viajar-a.js'))
+        for texto in ('no está en «Viajar». Hay:', 'solo salen los ya visitados', 'Moverte por la zona', 'combate abierto'):
+            self.assertIn(texto, js)
+
+    def test_puntos_e_interactuar_avisan_en_vez_de_esperar(self):
+        puntos = leer(os.path.join(MCP, 'puntos.js'))
+        for texto in ('ERROR: no está «Moverte por la zona»', 'está deshabilitado', 'tapado por otro panel', 'hay una escena abierta'):
+            self.assertIn(texto, puntos)
+        self.assertIn('timeout: 5000', puntos)
+        interactuar = leer(os.path.join(MCP, 'interactuar.js'))
+        self.assertIn('ERROR: «Interactuar» está tapado por otro panel', interactuar)
+        self.assertIn('timeout: 5000', interactuar)
+
+    def test_captura_guarda_en_shots_con_orden_sh(self):
+        js = leer(os.path.join(MCP, 'captura.js'))
+        self.assertIn("globalThis.AYUDAS_DIR", js)
+        self.assertIn("/shots`", js)
+        self.assertIn("'.playwright-mcp'", js)  # con el MCP, su carpeta (ignorada por git)
+
+
 if __name__ == '__main__':
     unittest.main()
