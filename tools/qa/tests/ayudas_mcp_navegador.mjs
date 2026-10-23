@@ -22,6 +22,8 @@ const ayuda = async (n) => await new AF('return (' + readFileSync(join(e2e, 'mcp
 const html = readFileSync(join(aqui, 'fixtures', 'ayudas-mcp.html'), 'utf8');
 const pulsar = await ayuda('pulsar');
 const mover = await ayuda('mover');
+const viajarA = await ayuda('viajar-a');
+const htmlViaje = readFileSync(join(aqui, 'fixtures', 'viajar-a.html'), 'utf8');
 
 const pruebas = [];
 const test = (nombre, f) => pruebas.push([nombre, f]);
@@ -95,6 +97,41 @@ test('mover: sin modal usa el mapa de la página', async () => {
 });
 test('mover: faltan x e y', async () => {
   assert.match(await errorMover({}), /faltan window\.tk\.x y window\.tk\.y/);
+});
+
+// viajar-a (QA-218, medios de la fase 3): el diálogo se localiza por su nombre, los destinos son los [data-opcion].
+const viaja = async (tk, cfg) => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await page.setContent(htmlViaje);
+  await page.evaluate(([t, c]) => { window.tk = t; Object.assign(window.cfg, c); }, [tk, cfg]);
+  const t0 = Date.now();
+  const salida = await viajarA(page);
+  const ms = Date.now() - t0;
+  const viajados = await page.evaluate(() => window.viajados);
+  const abierto = await page.getByRole('dialog').count();
+  await page.close();
+  return { salida, viajados, abierto, ms };
+};
+test('viajar-a: lista los destinos (con mapa el texto de ayuda es otro) sin contar botones que no lo son', async () => {
+  const r = await viaja({}, { mapa: true });
+  assert.equal(r.salida, 'Lugares a los que se puede viajar: Aldea Norte Región | Puerto Sal Región');
+  assert.equal(r.abierto, 0);
+});
+test('viajar-a: espera a que la lista cargue (más de 1 s)', async () => {
+  const r = await viaja({}, { tardeMs: 2500 });
+  assert.match(r.salida, /Aldea Norte.*\| Puerto Sal/);
+});
+test('viajar-a: un lugar que no está dice cuáles hay', async () => {
+  const r = await viaja({ lugar: 'Nada' }, {});
+  assert.match(r.salida, /^ERROR: «Nada» no está en «Viajar»\. Hay: Aldea Norte Región \| Puerto Sal Región$/);
+  assert.deepEqual(r.viajados, []);
+});
+test('viajar-a: destino deshabilitado (sin montura) da ERROR con el motivo, cierra el modal y no se cuelga', async () => {
+  const r = await viaja({ lugar: 'puerto' }, { motivo: 'Necesitas una montura' });
+  assert.match(r.salida, /^ERROR: «Puerto Sal Región» está deshabilitado en «Viajar»: 🐎 Necesitas una montura\./);
+  assert.deepEqual(r.viajados, []);
+  assert.equal(r.abierto, 0);
+  assert.ok(r.ms < 9000, 'tardó ' + r.ms);
 });
 
 let fallos = 0;

@@ -6,7 +6,8 @@ async (page) => {
   const { lugar = '' } = await page.evaluate(() => window.tk || {});
   const hud = async () => (await page.locator('header').first().innerText()).replace(/\s+/g, ' ');
   const boton = page.getByRole('button', { name: /Viajar/ });
-  const dialogo = () => page.locator('[role=dialog]').filter({ hasText: 'Solo lugares que ya has visitado' }).last();
+  // El diálogo de «Viajar» se llama «Viajar» (aria-label del ModalShell); el texto de ayuda cambia con/sin mapa.
+  const dialogo = () => page.getByRole('dialog', { name: 'Viajar', exact: true }).last();
   if (!(await boton.count())) {
     if (await page.getByText('Moverte por la zona').first().isVisible().catch(() => false) && (await page.locator('[role=dialog]').count())) {
       return 'ERROR: el mapa de «Moverte por la zona» está abierto: ciérralo («Cerrar») antes de viajar';
@@ -24,10 +25,15 @@ async (page) => {
   }
   if (!(await boton.count())) return 'ERROR: no encuentro «🧭 Viajar» en el Mapa (¿tarjeta de encuentro o panel tapando? mira estado.js)';
   await boton.first().click();
-  await page.waitForTimeout(1000);
   const d = dialogo();
+  await d.waitFor({ timeout: 5000 }).catch(() => {});
   if (!(await d.count())) return 'ERROR: «Viajar» no abrió la lista de lugares';
-  const lugares = (await d.locator('button').allInnerTexts()).map((s) => s.replace(/\s+/g, ' ').trim()).filter((s) => s && !/^cancelar$/i.test(s));
+  // La lista llega del backend: esperar a los destinos o a que acabe «Buscando destinos...» (tope 10 s).
+  for (let j = 0; j < 100; j++) {
+    if ((await d.locator('[data-opcion]').count()) || !/Buscando destinos/.test(await d.innerText().catch(() => ''))) break;
+    await page.waitForTimeout(100);
+  }
+  const lugares = (await d.locator('[data-opcion]').allInnerTexts()).map((s) => s.replace(/\s+/g, ' ').trim()).filter((s) => s && !/^cancelar$/i.test(s));
   const cancelar = async () => {
     await d.getByRole('button', { name: /cancelar/i }).first().click().catch(() => {});
     await page.getByText('Cerrar ✕').first().click({ force: true, timeout: 3000 }).catch(() => {}); // deja el Mapa cerrado
@@ -38,8 +44,15 @@ async (page) => {
     await cancelar();
     return `ERROR: «${lugar}» no está en «Viajar». Hay: ${lugares.join(' | ') || '(ninguno: solo salen los ya visitados; para uno nuevo, a pie con viajar.js)'}`;
   }
+  const destino = d.locator('[data-opcion]').nth(idx);
+  if (await destino.isDisabled().catch(() => false)) {
+    const motivo = (await d.locator('p').allInnerTexts()).map((s) => s.replace(/\s+/g, ' ').trim()).filter((s) => /^(🔒|🐎)/.test(s)).join(' ')
+      || (await destino.getAttribute('title').catch(() => null)) || 'sin motivo visible';
+    await cancelar();
+    return `ERROR: «${lugares[idx]}» está deshabilitado en «Viajar»: ${motivo}`;
+  }
   const antes = await hud();
-  await d.locator('button').filter({ hasText: lugares[idx] }).first().click();
+  await destino.click({ timeout: 5000 });
   // Un posible diálogo de confirmación («Viajar»/«Ir»).
   await page.waitForTimeout(1200);
   const confirmar = page.locator('[role=dialog]').getByRole('button', { name: /^(Viajar|Ir|Entrar|Confirmar)$/ });

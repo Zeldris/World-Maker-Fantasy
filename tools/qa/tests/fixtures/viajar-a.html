@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Fixture de viajar-a</title></head>
+<body>
+<!-- Imita TravelDestinationModal: aria-label «Viajar», ayuda según hasMap, «Buscando destinos...» mientras carga,
+     destinos con data-opcion (disabled sin montura) y «Cancelar» en el pie. window.cfg lo fija cada test. -->
+<header>HUD: Libre</header>
+<button id="abrir">🧭 Viajar</button>
+<script>
+  window.cfg = { mapa: false, tardeMs: 0, motivo: '', destinos: [{ nombre: 'Aldea Norte' }, { nombre: 'Puerto Sal' }] };
+  window.viajados = [];
+  document.getElementById('abrir').onclick = () => {
+    const c = window.cfg, d = document.createElement('div');
+    d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Viajar');
+    d.innerHTML = '<h3>Viajar</h3><p>' + (c.mapa ? 'Con tu mapa, puedes poner rumbo a cualquier lugar de la región.' : 'Solo lugares que ya has visitado — consigue un mapa para ver más.') + '</p><div id="cuerpo"><div role="status"><p>Buscando destinos...</p></div></div><button>Cancelar</button>';
+    document.body.appendChild(d);
+    d.querySelector('button').onclick = () => d.remove();
+    setTimeout(() => {
+      const cuerpo = d.querySelector('#cuerpo'); cuerpo.innerHTML = '';
+      if (c.motivo) { const p = document.createElement('p'); p.textContent = '🐎 ' + c.motivo + '.'; cuerpo.appendChild(p); }
+      const otro = document.createElement('button'); otro.textContent = 'Ayuda del viaje'; cuerpo.appendChild(otro); // no es destino
+      for (const x of c.destinos) {
+        const b = document.createElement('button'); b.setAttribute('data-opcion', ''); b.disabled = !!c.motivo;
+        b.innerHTML = '<span style="display:block">' + x.nombre + '</span><span style="display:block">Región</span>'; b.onclick = () => window.viajados.push(x.nombre);
+        cuerpo.appendChild(b);
+      }
+    }, c.tardeMs);
+  };
+</script>
+</body></html>
