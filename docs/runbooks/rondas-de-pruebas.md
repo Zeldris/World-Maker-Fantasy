@@ -154,6 +154,7 @@ Lo que sigue vigente del [registro de fallos](../registros/fallos-herramientas.m
 - `combate.js` busca «Defensa» y el botón es «Defenderse»; con un combate de `escenario.sh` hay que pulsar COMBATIR antes.
 - Con Ollama real cada turno tarda 3-6 min: `combate.js` con `rondas:1` en bucle y esperar a que el HUD deje de decir «El narrador escribe».
 - Un encuentro hostil que corta el paso deja «Moverte por la zona» deshabilitado y `puntos.js` y `mover.js` fallan: resolverlo antes.
+- `o.sh pulsar` y `o.sh mover` dan `ERROR:` claro (tapado por otro panel, deshabilitado, fuera del mapa, encuentro abierto) y `mover` dice `POSICIÓN`/`HORA` antes → después, con `SIN MOVIMIENTO` si no avanza; `AVISO: (ninguno)` solo es «sin encuentro». `pulsar` acepta `{"contiene":"Ir hasta"}` solo y `forzar:true` (clic del DOM) para un botón tapado. Con la ficha de un punto, el menú pegado a él lleva «Ir hasta aquí» y «Ver ficha completa».
 - El Ollama simulado nunca devuelve `combateIniciado`: un combate abierto desde texto libre solo se prueba con Ollama real.
 - `orden.sh` por `host.sh` no ve el `/tmp` del sandbox: dejar el archivo dentro del repo.
 - `IA_REGISTRO` con ruta absoluta (el servidor corre en `backend/`); tras una migración, `npx prisma generate` en `backend/`.
