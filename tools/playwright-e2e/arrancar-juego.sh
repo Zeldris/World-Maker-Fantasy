@@ -8,6 +8,7 @@
 #   bash tools/playwright-e2e/arrancar-juego.sh --parar      # para backend, frontend y driver (QA-65)
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
+# WMF_MONTURA_PRUEBAS=1 (del entorno, solo pruebas): la jugadora cuenta como con montura y sale la lista «Viajar».
 # Registros: logs/backend.log y logs/frontend.log. Narraciones: las del Ollama simulado, que meten
 # trozos del prompt en el texto (no es un fallo del juego; la calidad narrativa se prueba con
 # Ollama real).
