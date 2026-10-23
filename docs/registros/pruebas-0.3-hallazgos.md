@@ -12,12 +12,11 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (78): P16, P27, P49, P66, P99, P116, P129, P136, P158, P169, P173, P177, P188,
+- **Pendientes** (77): P16, P27, P49, P66, P99, P116, P129, P136, P158, P169, P173, P177, P188,
   P203, P205, P206, P207, P208, P209, P210, P211, P212, P213, P241, P242, P243, P244, P245, P246,
   P247, P248, P250, P251, P252, P253, P254, P255, P256, P257, P258, P259, P261, P262, P263, P264,
   P265, P266, P267, P268, P269, P270, P271, P272, P273, P274, P299, P304, P305, P306, P307, P308,
-  P309, P310, P311, P312, P313, P314, P315, P316, P317, P318, P319, P320, P321, P322, P323, P324,
-  P325.
+  P309, P310, P311, P312, P313, P314, P315, P316, P317, P318, P319, P320, P321, P323, P324, P325.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (19): P12, P29, P45, P70, P82, P131, P151, P155, P180, P182, P186, P189,
   P223, P279, P288, P292, P294, P295, P300.
@@ -35,8 +34,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P231, P232, P233, P234, P235, P236, P237, P240, P260, P275, P276, P277, P278, P280, P281, P282,
   P283, P284, P286, P287, P291, P293, P296, P297, P298, P302, P303.
 - **Arreglados, no jugables (los cubre un test o la base)** (5): P25, P44, P52, P143, P174.
-- **Cerrados sin arreglo (no aplica, dato o roadmap)** (19): P5, P10, P22, P23, P30, P34, P40, P48,
-  P59, P71, P75, P89, P146, P179, P222, P238, P239, P249, P289.
+- **Cerrados sin arreglo (no aplica, dato o roadmap)** (20): P5, P10, P22, P23, P30, P34, P40, P48,
+  P59, P71, P75, P89, P146, P179, P222, P238, P239, P249, P289, P322.
 <!-- fin del resumen -->
 
 - **Roadmap** (diseño o desarrollo nuevo, para cuando se vuelva a él): `REI-122` (permiso para fundar),
@@ -371,7 +370,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P319 | Tanda 19 (2026-10-22, reino-combate-ganable): al matar a Herrero Serhu rendido el diario dice «Tirag/Hagar asiente en silencio», pero su aprobación sigue en 50. Por aprobacion.ts, MUERTE_DE_RENDIDO (piedad −2, crueldad +2, honor −1) con sus valores (piedad −1, honor 1) da +1 (50 → 51), y «asiente» sale de un delta > 0: la frase se muestra sin aplicar el cambio. El perdón sí mueve (50 → 48). Antes iba en el estado de P293. | Pendiente |
 | P320 | Tanda 22 (2026-10-23, reino-dia39-recursos, Día 39 10:14): al pulsar Clemente sobre un Guchapo convaleciente (cazado solo), el aviso pega en su cuerpo la nota de ficha entera de Gorhorn (trasfondo) y la descripción larga del Guchapo del bestiario. Visto en estado.js, sin mirar en pantalla. Reproducir: cazar un Guchapo solo, dejarlo convaleciente y pulsar Clemente. | pendiente |
 | P321 | Tanda 23 (2026-10-23, reino-dia39-recursos): ningún viaje a pie puede interrumpirse. pickTravelInterruption devuelve null si travel.pathIds.length < 3, pero las salidas del mapa de zona son siempre un salto directo a la zona vecina (ZonaSalidaModal), escribir «Viajo hacia…» da «A pie… se va por sus caminos» (P164) y tieneMontura es siempre false (monturas.ts, CR-57). Deja sin poder jugar P46 y P47; sin mirar si es así por diseño. | pendiente |
-| P322 | Tanda 23 (2026-10-23, reino-dia39-recursos): la Hondonada ya no muestra Orco enfurecido, Kirelon ni Jorer Susig; sus filas siguen en ZonePoint pero no salen en puntos.js. Sin mirar si los mató una tanda anterior al guardar el escenario o si es un fallo. Deja sin hostil P29, P69 y P184. | pendiente |
+| P322 | Tanda 23 (2026-10-23, reino-dia39-recursos): la Hondonada ya no muestra Orco enfurecido, Kirelon ni Jorer Susig; sus filas siguen en ZonePoint pero no salen en puntos.js. Sin mirar si los mató una tanda anterior al guardar el escenario o si es un fallo. Deja sin hostil P29, P69 y P184. | No aplica (2026-10-23, preparación de escenarios): es el diseño. El Orco enfurecido sale solo tras aceptar la misión orco-enfurecido-hondonada-gistera (ZONE_POINTS_GATEADOS_POR_QUEST, zonePoints.ts ~77; al aceptarla se oculta Gistera), Kirelon es fauna nocturna (faunaMomentoDelDia) y Jorer era una caravana pasajera (activo=false). Escenario mv-hondonada-hostiles con los tres a la vista. |
 | P323 | Tanda 23 (2026-10-23, reino-dia39-recursos, Día 39-40): en viajes seguidos con sed 0 % Gorhorn pasa de Ileso a Convaleciente 25 en unas 12 h de ficción sin ningún aviso visible en el resultado del viaje. Además, «Bebo agua de la fuente» con el Ollama simulado dio «El narrador no pudo procesar la acción». | pendiente |
 | P324 | Tanda 24 (2026-10-23, reino-dia39-recursos, Hondonada, Día 39 ~08:40, Ollama simulado): en la escena de Gistera Koh (Vuelta 2), «Salir» y «Rechazar y seguir tu camino» no la cierran: la consola da 500 y luego 409 (Conflict); se cerró 20 s después con un «Salir» forzado. Reproducir: acercarse a la orca en el mapa de zona, Interactuar, «Me acerco a ella», «Salir». | pendiente |
-| P325 | Tanda 24 (2026-10-23, reino-dia39-recursos, Hondonada): el «???» del mapa de zona (orco-enfurecido-hondonada) se mueve (x 236→284, y 577→555→599), «Ir hasta aquí» no lo alcanza y al llegar sale la tarjeta de Gistera Koh, no la del Orco enfurecido; luego Gistera aparece como «Refugio oculto (Gistera Koh)». Puede ser la causa de P322. | pendiente |
+| P325 | Tanda 24 (2026-10-23, reino-dia39-recursos, Hondonada): el «???» del mapa de zona (orco-enfurecido-hondonada) se mueve (x 236→284, y 577→555→599), «Ir hasta aquí» no lo alcanza y al llegar sale la tarjeta de Gistera Koh, no la del Orco enfurecido; luego Gistera aparece como «Refugio oculto (Gistera Koh)». Puede ser la causa de P322. | pendiente. 2026-10-23: sin la misión del Orco, Gistera es el único NPC fijo de la Hondonada, así que el «???» era ella y el nombre orco-enfurecido-hondonada de la nota parece una confusión; queda por ver si de verdad se mueve (en la base está fija en 220,500). |
