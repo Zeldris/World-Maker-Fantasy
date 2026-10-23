@@ -11,13 +11,15 @@ async (page) => {
   if (!texto) return 'ERROR: falta window.tk.texto (o window.tk.contiene con el texto): {"texto":"Reanudar"} exacto, {"contiene":"Ir hasta"} parcial';
   const res = await page.evaluate(
     ({ texto, contiene, forzar }) => {
-      // Dos pasadas: el texto tal cual y, solo si no hay nada (exacto), sin el atajo de teclado del principio.
-      for (const sinAtajo of contiene ? [true] : [false, true]) {
-        const r = pulsarCon(sinAtajo);
+      // Orden: capa de arriba con el texto tal cual, capa de arriba sin el atajo de teclado del principio (exacto),
+      // y luego lo mismo en todo el documento. Así «1 Reanudar» de dentro del modal gana a un «Reanudar» de detrás.
+      const pasadas = contiene ? [[true, true], [true, false]] : [[false, true], [true, true], [false, false], [true, false]];
+      for (const [sinAtajo, soloCapa] of pasadas) {
+        const r = pulsarCon(sinAtajo, soloCapa);
         if (!r.vacio) return sinAtajo && !contiene ? { ...r, sinNumero: true } : r;
       }
       return { error: `No hay nada visible con el texto «${texto}»` };
-      function pulsarCon(sinAtajo) {
+      function pulsarCon(sinAtajo, soloCapa) {
       // Sin distinguir mayúsculas: el CSS (`uppercase`) cambia lo que se ve, no el texto («MANTÉN PARA FUNDAR»).
       const buscado = texto.toLowerCase();
       // El atajo de teclado del principio es un solo dígito seguido de espacio («1 Reanudar» de los menús con
@@ -52,8 +54,7 @@ async (page) => {
         });
       };
       const arriba = capas.pop();
-      let todos = arriba ? buscar(arriba) : [];
-      if (!todos.length) todos = buscar(document);
+      const todos = soloCapa ? (arriba ? buscar(arriba) : []) : buscar(document);
       if (!todos.length) return { vacio: true };
       // Varias coincidencias: la última del documento (la de más arriba, como siempre). Si está tapada por otro panel
       // no se pulsa otra: error (o clic del DOM con `forzar: true`). Se mide sin desplazar y solo el elegido se

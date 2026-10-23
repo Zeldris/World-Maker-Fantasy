@@ -93,10 +93,17 @@ fi
 # puerto de OLLAMA_BASE_URL; `--parar` lo baja. Con Ollama real ya escuchando, no se toca.
 if [ -z "${IA_PERFIL:-}" ] && ! curl -s --max-time 3 -o /dev/null "$OLLAMA_BASE_URL"; then
   puerto="${OLLAMA_BASE_URL##*:}"; puerto="${puerto%%/*}"
+  case "$puerto" in ''|*[!0-9]*) puerto=11434 ;; esac  # sin puerto en la URL: el de Ollama
   PORT="$puerto" setsid nohup node tools/ci/mock-ollama.mjs > logs/mock-ollama.log 2>&1 < /dev/null &
   echo $! > logs/mock-ollama.pid
-  for i in $(seq 1 10); do curl -s --max-time 1 -o /dev/null "$OLLAMA_BASE_URL" && break; sleep 1; done
-  echo "Ollama simulado levantado en $OLLAMA_BASE_URL"
+  mock_ok=0
+  for i in $(seq 1 10); do if curl -s --max-time 1 -o /dev/null "$OLLAMA_BASE_URL"; then mock_ok=1; break; fi; sleep 1; done
+  if [ "$mock_ok" = 1 ]; then
+    echo "Ollama simulado levantado en $OLLAMA_BASE_URL"
+  else
+    echo "AVISO: el Ollama simulado no responde en $OLLAMA_BASE_URL tras 10 s: mira logs/mock-ollama.log" >&2
+    rm -f logs/mock-ollama.pid
+  fi
 fi
 # QA-141: con IA real, se comprueba antes de jugar lo que en la ronda del 2026-10-20 costó horas: GPU y RAG.
 if [ -n "${IA_PERFIL:-}" ]; then

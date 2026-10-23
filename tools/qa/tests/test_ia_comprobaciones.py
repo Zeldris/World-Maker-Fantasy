@@ -91,6 +91,11 @@ class IaComprobaciones(unittest.TestCase):
         self.assertIn('if [ -z "${IA_PERFIL:-}" ] && ! curl -s --max-time 3 -o /dev/null "$OLLAMA_BASE_URL"', s)
         self.assertIn('tools/ci/mock-ollama.mjs', s)
         self.assertIn('logs/mock-ollama.pid', s)  # --parar lo baja por su PID
+        # Sin puerto en OLLAMA_BASE_URL, 11434; si el mock no responde, aviso a stderr con el log y sin PID ni «levantado».
+        self.assertIn('puerto=11434', s)
+        self.assertIn('mock_ok=1', s)
+        self.assertIn('tras 10 s: mira logs/mock-ollama.log" >&2', s)
+        self.assertIn('rm -f logs/mock-ollama.pid', s)
 
 
 if __name__ == '__main__':

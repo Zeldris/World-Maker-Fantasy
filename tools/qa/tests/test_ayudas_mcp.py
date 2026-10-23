@@ -31,6 +31,9 @@ class AyudasMcp(unittest.TestCase):
         self.assertIn('/^\\d\\s+/', js)
         self.assertIn('[false, true]', js)
         self.assertIn('casó sin el número', js)
+        # Orden exacto: capa de arriba tal cual, capa sin atajo, documento tal cual, documento sin atajo (un botón de detrás
+        # del modal no gana a «1 Reanudar» de dentro).
+        self.assertIn('[[false, true], [true, true], [false, false], [true, false]]', js)
         # Con varias coincidencias no pulsa otra si la pedida está tapada; no desplaza candidato a candidato.
         self.assertNotIn('todos.map', js)
         self.assertIn("closest('button,[role=\"button\"]')", js)
@@ -51,6 +54,10 @@ class AyudasMcp(unittest.TestCase):
         js = leer(os.path.join(MCP, 'mover.js'))
         self.assertIn("querySelectorAll('svg title, [data-testid=\"jugador-zona\"]')", js)
         self.assertIn("m.closest('[role=\"dialog\"]')", js)
+
+        # Los svg pequeños (iconos con <title> dentro del modal) no cuentan como mapa; sin grandes, cae a los de la página.
+        self.assertIn('area(m) >= 100 * 100', js)
+        self.assertIn("grandes(candidatos.filter((m) => m.closest('[role=\"dialog\"]')))", js)
 
 
 if __name__ == '__main__':

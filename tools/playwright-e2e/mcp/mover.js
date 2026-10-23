@@ -39,7 +39,10 @@ async (page) => {
       const area = (m) => m.getBoundingClientRect().width * m.getBoundingClientRect().height;
       const candidatos = [...document.querySelectorAll('svg title, [data-testid="jugador-zona"]')].map(exterior).filter(Boolean);
       // Con el modal abierto, el mapa es el del modal; el de la pantalla de detrás no recibe el clic.
-      const delModal = candidatos.filter((m) => m.closest('[role="dialog"]'));
+      // Los svg pequeños (iconos con `<title>`, la leyenda de 20×20) no cuentan como mapa; si en el modal no queda
+      // ninguno, se cae a los de la página.
+      const grandes = (l) => l.filter((m) => area(m) >= 100 * 100);
+      const delModal = grandes(candidatos.filter((m) => m.closest('[role="dialog"]')));
       const mapa = (delModal.length ? delModal : candidatos).sort((a, b) => area(b) - area(a))[0];
       const aviso = [];
       if (!mapa) aviso.push('no se encuentra el mapa de zona (sin ficha «jugador-zona»), clic a ciegas');
