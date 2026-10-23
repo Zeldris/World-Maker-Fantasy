@@ -1,5 +1,6 @@
 """Retro del piloto de Galivelop-workflow (2026-10-23, propuesta 4): `tests-vitest.sh` escribe cada log en un
-archivo propio de `mktemp`, no en una ruta fija de /tmp que pisan dos pushes a la vez (dos sesiones en la Deck)."""
+archivo propio de `mktemp`, no en una ruta fija que pisan dos pushes a la vez (dos sesiones en la Deck); en verde lo
+borra, y si no puede crearlo lo dice en vez de dar los tests por rojos."""
 import os
 import shutil
 import subprocess
@@ -7,50 +8,69 @@ import unittest
 
 from comun import QA, ENV_GIT, carpeta, escribir, git
 
-
-def repo_con_host_rojo() -> str:
-    """Un repo con `tests-vitest.sh` y un `host.sh` falso que escribe su salida y falla, como un vitest en rojo."""
-    repo = carpeta()
-    git(repo, 'init', '-q')
-    os.makedirs(os.path.join(repo, 'tools', 'qa'))
-    shutil.copy(os.path.join(QA, 'tests-vitest.sh'), os.path.join(repo, 'tools', 'qa', 'tests-vitest.sh'))
-    escribir(os.path.join(repo, 'tools', 'qa', 'host.sh'), 'echo "FAIL src/a.test.ts"\nexit 1\n')
-    escribir(os.path.join(repo, 'backend', 'src', 'a.ts'), 'export const a = 1\n')
-    escribir(os.path.join(repo, 'backend', 'src', 'a.integration.test.ts'), '\n')
-    return repo
+ROJO = 'echo "FAIL src/a.test.ts"\nexit 1\n'
+VERDE = 'echo "Tests 1 passed"\n'
 
 
-def correr(repo: str, *args: str) -> subprocess.CompletedProcess:
-    tmp = carpeta()
-    return subprocess.run(['bash', 'tools/qa/tests-vitest.sh', *args], cwd=repo, capture_output=True, text=True,
+def repo(host: str = ROJO) -> str:
+    """Un repo con `tests-vitest.sh` y un `host.sh` falso que hace de vitest (en rojo o en verde)."""
+    r = carpeta()
+    git(r, 'init', '-q')
+    os.makedirs(os.path.join(r, 'tools', 'qa'))
+    shutil.copy(os.path.join(QA, 'tests-vitest.sh'), os.path.join(r, 'tools', 'qa', 'tests-vitest.sh'))
+    escribir(os.path.join(r, 'tools', 'qa', 'host.sh'), host)
+    escribir(os.path.join(r, 'backend', 'src', 'a.ts'), 'export const a = 1\n')
+    escribir(os.path.join(r, 'backend', 'src', 'a.integration.test.ts'), '\n')
+    escribir(os.path.join(r, 'backend', 'uploads', 'images', 'x.png'), '')
+    return r
+
+
+def correr(r: str, tmp: str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(['bash', 'tools/qa/tests-vitest.sh', *args], cwd=r, capture_output=True, text=True,
                           env={**ENV_GIT, 'TMPDIR': tmp})
 
 
+def ruta_del_log(salida: str) -> str:
+    linea = [l for l in salida.splitlines() if 'log completo en ' in l]
+    return linea[0].split('log completo en ')[1].rstrip(')') if linea else ''
+
+
+CASOS = {
+    'unidad': ('unidad', 'backend/src/a.ts'),
+    'imagenes': ('unidad', 'backend/uploads/images/x.png'),
+    'integracion': ('integracion', 'backend/src/a.ts'),
+}
+
+
 class LogsPropios(unittest.TestCase):
-    def comprobar(self, *args: str, fija: str):
-        r = correr(repo_con_host_rojo(), *args)
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        linea = [l for l in r.stdout.splitlines() if 'log completo en' in l]
-        self.assertTrue(linea, r.stdout)
-        log = linea[0].split('log completo en ')[1].rstrip(')')
-        self.assertNotEqual(log, fija, 'el log sigue en una ruta fija de /tmp')
-        self.assertTrue(os.path.isfile(log), log)
-        with open(log, encoding='utf-8') as f:
-            self.assertIn('FAIL src/a.test.ts', f.read())
+    def test_dos_pushes_no_comparten_log(self):
+        for caso, args in CASOS.items():
+            with self.subTest(caso):
+                r, tmp = repo(), carpeta()
+                logs = []
+                for _ in range(2):
+                    p = correr(r, tmp, *args)
+                    self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                    logs.append(ruta_del_log(p.stdout))
+                    self.assertTrue(logs[-1].startswith(tmp), p.stdout)
+                self.assertNotEqual(logs[0], logs[1], 'dos pushes escriben el mismo log')
+                for log in logs:
+                    with open(log, encoding='utf-8') as f:
+                        self.assertIn('FAIL src/a.test.ts', f.read())
 
-    def test_unidad_en_un_log_propio(self):
-        self.comprobar('unidad', 'backend/src/a.ts', fija='/tmp/pre-push-related-backend.log')
+    def test_en_verde_no_deja_logs(self):
+        for caso, args in CASOS.items():
+            with self.subTest(caso):
+                tmp = carpeta()
+                p = correr(repo(VERDE), tmp, *args)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+                self.assertEqual(os.listdir(tmp), [])
 
-    def test_integracion_en_un_log_propio(self):
-        self.comprobar('integracion', 'backend/src/a.ts', fija='/tmp/pre-push-integracion.log')
-
-    def test_imagenes_en_un_log_propio(self):
-        repo = repo_con_host_rojo()
-        escribir(os.path.join(repo, 'backend', 'uploads', 'images', 'x.png'), '')
-        r = correr(repo, 'unidad', 'backend/uploads/images/x.png')
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn('log completo en', r.stdout)
-        self.assertNotIn('/tmp/pre-push-imagenes.log', r.stdout)
+    def test_sin_carpeta_para_el_log_no_dice_tests_en_rojo(self):
+        p = correr(repo(VERDE), os.path.join(carpeta(), 'no-existe'), 'unidad', 'backend/src/a.ts')
+        self.assertEqual(p.returncode, 1)
+        self.assertIn('no se pudo crear el log de related-backend', p.stderr)
+        self.assertNotIn('en rojo', p.stdout)
 
 
 if __name__ == '__main__':
