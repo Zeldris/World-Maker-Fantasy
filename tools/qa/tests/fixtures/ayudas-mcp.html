@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Fixture de las ayudas de mcp/</title>
+<style>
+  body { margin: 0; font: 14px sans-serif; }
+  #pagina { position: absolute; left: 20px; top: 20px; width: 420px; }
+  #pagina button { display: block; margin: 4px 0; }
+  #mapa-pagina { position: absolute; left: 20px; top: 260px; }
+  /* Capa superior: contenedor fijo con el diálogo dentro, sin telón (los botones de la página siguen a la vista). */
+  #capa { position: fixed; left: 600px; top: 0; width: 600px; height: 500px; z-index: 10; }
+  #capa [role=dialog] { position: absolute; left: 100px; top: 20px; width: 400px; height: 440px; background: #eee; }
+</style></head>
+<body>
+<div id="pagina">
+  <p>Moverte por la zona</p>
+  <button data-id="pagina-comer">Comer</button>
+  <button data-id="pagina-1-comer">1 Comer</button>
+  <button data-id="pagina-reanudar">Reanudar</button>
+  <button data-id="pagina-salir">Salir</button>
+  <button data-id="pagina-3-salir">3 Salir</button>
+  <button data-id="pagina-4-huir">4 Huir</button>
+</div>
+<svg id="mapa-pagina" width="420" height="400"><title>Mapa de la página</title><rect width="420" height="400" fill="#cde"/></svg>
+<div id="capa">
+  <div role="dialog" aria-label="Modal">
+    <button data-id="modal-1-comer">1 Comer</button>
+    <button data-id="modal-1-reanudar">1 Reanudar</button>
+    <svg id="leyenda" width="40" height="40"><title>Leyenda</title><rect width="40" height="40" fill="#fc8"/></svg>
+    <svg id="mapa-modal" width="300" height="300"><title>Mapa del modal</title><rect width="300" height="300" fill="#dec"/></svg>
+  </div>
+</div>
+<script>
+  window.pulsados = [];
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-id]'); if (b) window.pulsados.push(b.dataset.id); });
+</script>
+</body></html>

@@ -164,7 +164,9 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   backend y frontend y el test que cubre cada cambio importante; una migración de BD o un cambio de partidas
   guardadas es puerta de un solo sentido.
 - **`orchestrate-dealer`:** el encargo apunta a la fila de la bitácora, el P-número del registro, la fila de la
-  matriz y la función de `docs/mapa-agente.md`. Una tanda de juego, 6-8 hallazgos y ~60 llamadas; al llegar,
+  matriz y la función de `docs/mapa-agente.md`. Antes de repartir una tanda, la principal comprueba que el escenario
+  da el estado que pide cada id (montura, lugar visitado, animal, convaleciente…); si falta, el primer trozo lo
+  prepara (`QA-216`). Una tanda de juego, 6-8 hallazgos y ~60 llamadas; al llegar,
   `tools/qa/escenario.sh guardar` y la siguiente lo carga (`QA-147`); si el encargo escribe en la partida, se prueba
   con `escenario.sh probar` (`QA-153`) y pasa por las funciones del juego que aplican esas reglas, sin rehacerlas a
   mano (`QA-151`). Los P-números de `FOUND` van al registro de la ronda y los de `TOOLS` a

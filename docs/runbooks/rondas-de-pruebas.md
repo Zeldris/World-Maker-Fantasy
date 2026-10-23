@@ -20,6 +20,10 @@ reparte y apunta. Para pelear, `orden.sh --ayuda pelear` (acercarse, interactuar
    [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
 3. Lo que el roadmap no tiene (p. ej. «Crear desde cero» en la creación de personaje) no se prueba.
 
+**Preparar antes de jugar** (`QA-216`, retro del 2026-10-23): la sesión que reparte comprueba que el escenario de
+cada id da el estado que pide (montura, lugar visitado, animal domable, convaleciente…); si no, la primera tanda lo
+prepara con `escenario.sh preparar` y lo guarda, sin rehacer reglas a mano (`QA-151`).
+
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
 roadmap: no se abre.
@@ -87,6 +91,8 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
+   Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
+   **Montura de pruebas** (solo para probar «Viajar» y las interrupciones de viaje, P46/P47/P321; nunca en producción): `bash tools/qa/host.sh env WMF_MONTURA_PRUEBAS=1 bash tools/qa/deck/juego.sh` (o `WMF_MONTURA_PRUEBAS=1` delante de `arrancar-juego.sh`); la jugadora cuenta como con montura hasta que CR-57 la dé de verdad.
    (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
    `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, `/opt-ai` mide los tiempos,
    contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/opt-ai/SKILL.md)).
@@ -153,6 +159,8 @@ Lo que sigue vigente del [registro de fallos](../registros/fallos-herramientas.m
 - `combate.js` busca «Defensa» y el botón es «Defenderse»; con un combate de `escenario.sh` hay que pulsar COMBATIR antes.
 - Con Ollama real cada turno tarda 3-6 min: `combate.js` con `rondas:1` en bucle y esperar a que el HUD deje de decir «El narrador escribe».
 - Un encuentro hostil que corta el paso deja «Moverte por la zona» deshabilitado y `puntos.js` y `mover.js` fallan: resolverlo antes.
+- `o.sh pulsar` y `o.sh mover` dan `ERROR:` claro (tapado por otro panel, deshabilitado, fuera del mapa, encuentro abierto) y `mover` dice `POSICIÓN`/`HORA` antes → después, con `SIN MOVIMIENTO` si no avanza; `AVISO: (ninguno)` solo es «sin encuentro». `pulsar` acepta `{"contiene":"Ir hasta"}` solo y `forzar:true` (clic del DOM) para un botón tapado. Con la ficha de un punto, el menú pegado a él lleva «Ir hasta aquí» y «Ver ficha completa».
+- QA-218: `o.sh combate leer` solo mira (fase, habilidades, convaleciente); sin él, `combate` ataca. `o.sh viajar-a <lugar>` abre Mapa › Viajar y elige el lugar (si no está, lista los que hay: solo los visitados). `puntos` e `interactuar` dan `ERROR:` con el motivo (escena, combate, modal encima) en vez de colgarse; `o.sh captura` guarda en `tools/playwright-e2e/shots/`.
 - El Ollama simulado nunca devuelve `combateIniciado`: un combate abierto desde texto libre solo se prueba con Ollama real.
 - `orden.sh` por `host.sh` no ve el `/tmp` del sandbox: dejar el archivo dentro del repo.
 - `IA_REGISTRO` con ruta absoluta (el servidor corre en `backend/`); tras una migración, `npx prisma generate` en `backend/`.

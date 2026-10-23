@@ -52,6 +52,8 @@ jobs:
           for f in $(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check "$f" || exit 1; done
           for f in tools/playwright-e2e/mcp/*.js; do node -e "new Function('return (' + require('fs').readFileSync('$f', 'utf8') + ')')" || { echo "$f"; exit 1; }; done
           python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')
+      # QA-219: Playwright y Chromium para el test de navegador de pulsar.js/mover.js (sin ellos se salta).
+      - run: cd tools/playwright-e2e && npm ci && npx playwright install --with-deps chromium
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
       # QA-137: tests de medir.py de la skill opt-ai (el de WMF, medir-ia.py, va con tools/qa).

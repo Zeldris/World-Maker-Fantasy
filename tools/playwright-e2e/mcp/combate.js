@@ -1,10 +1,27 @@
+// QA-218: `window.tk.leer: true` (o `rondas: 0`) SOLO MIRA: fase, HUD, rival convaleciente, habilidades (entre
+// paréntesis, las desactivadas) y los últimos resúmenes; no pulsa nada. Desde la Deck: `o.sh combate leer`.
 // QA-57: juega rondas de combate. `window.tk`: `ataque` y `defensa` (nombre de la habilidad, p. ej.
 // «Estocada Veloz» y «Defenderse»), `rondas` (1 por defecto). En cada ronda elige la habilidad según la
 // fase (Ataque o Defensa) y pulsa el botón del panel de combate. Para y lo dice si el combate acaba,
 // si un rival queda CONVALECIENTE (Matar / Clemente) o si la habilidad está desactivada.
 async (page) => {
-  const { ataque = 'Ataque Básico', defensa = 'Defenderse', rondas = 1 } = await page.evaluate(() => window.tk || {});
+  const { ataque = 'Ataque Básico', defensa = 'Defenderse', rondas = 1, leer = false } = await page.evaluate(() => window.tk || {});
   const salida = [];
+  if (leer || rondas === 0) {
+    const t = await page.locator('body').innerText();
+    const fase = t.match(/Combate — (Ataque|Defensa)/);
+    if (!fase) return 'No hay combate en marcha (leer no pulsa nada)';
+    const hud = t.slice(t.indexOf('Nivel'), t.indexOf('Nivel') + 50).replace(/\s+/g, ' ');
+    const habs = await page.getByRole('button').evaluateAll((bs) => bs
+      .filter((b) => b.hasAttribute('aria-disabled') && b.offsetParent)
+      .map((b) => (b.getAttribute('aria-disabled') === 'true' ? '(' : '') + b.innerText.replace(/\s+/g, ' ').trim().slice(0, 40) + (b.getAttribute('aria-disabled') === 'true' ? ')' : '')));
+    const resumenes = t.match(/(Gana [^\n]+|Cada lado se juzga por su cuenta[^\n]+)/g) || [];
+    return [`FASE: ${fase[1]} | ${hud}`,
+      /ESTÁ CONVALECIENTE/i.test(t) && /Matar/.test(t) ? 'RIVAL CONVALECIENTE: Matar o Clemente' : '',
+      /Tirando iniciativa|Resolviendo/.test(t) ? 'ESPERA: tirando iniciativa o resolviendo' : '',
+      `HABILIDADES: ${habs.join(' | ') || '(ninguna a la vista)'}`,
+      `ÚLTIMOS: ${resumenes.slice(-2).join(' / ').slice(0, 220) || '(ninguno)'}`].filter(Boolean).join('\n');
+  }
   // Cuántos resúmenes de intercambio hay ya en pantalla: el de esta ronda es el que aparezca de más (el
   // texto de toda la página trae también los de combates anteriores).
   const resumenes = (t) => t.match(/(Gana [^\n]+|Cada lado se juzga por su cuenta[^\n]+)/g) || [];

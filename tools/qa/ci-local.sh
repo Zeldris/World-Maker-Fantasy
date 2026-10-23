@@ -38,6 +38,8 @@ paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks
   for f in \$(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check \"\$f\" || exit 1; done
   for f in tools/playwright-e2e/mcp/*.js; do node -e \"new Function('return (' + require('fs').readFileSync('\$f', 'utf8') + ')')\" || { echo \"\$f\"; exit 1; }; done
   python3 -m py_compile \$(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')"
+# QA-219: Playwright para el test de navegador de pulsar.js/mover.js (sin Chromium en la máquina, el test se salta).
+paso tools/playwright-e2e "Playwright para el test de navegador" "npm ci --silent && npx playwright install chromium"
 paso . "tests de tools/qa" python3 -m unittest discover -s tools/qa/tests
 paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/opt-ai/scripts
 paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/scout-updates/scripts

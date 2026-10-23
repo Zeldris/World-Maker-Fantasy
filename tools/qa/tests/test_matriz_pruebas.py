@@ -15,7 +15,7 @@ asignado = {'REI-1': {'0.1'}, 'REI-2': {'0.1'}}
 CABEZA = '| Tarea | Bloque | Qué | Estado | Prueba |\n|---|---|---|---|---|\n'
 
 
-class MatrizPruebas(unittest.TestCase):
+class BaseMatriz(unittest.TestCase):
     def setUp(self):
         self.raiz = carpeta()
         os.makedirs(os.path.join(self.raiz, 'tools/qa'))
@@ -29,6 +29,8 @@ class MatrizPruebas(unittest.TestCase):
         return subprocess.run(['python3', os.path.join(self.raiz, 'tools/qa/matriz-pruebas.py'), *args],
                               capture_output=True, text=True)
 
+
+class MatrizPruebas(BaseMatriz):
     def test_falta_la_fila_de_una_tarea_cerrada_y_generar_la_anade(self):
         r = self.correr('--comprobar')
         self.assertEqual(r.returncode, 1)
@@ -65,6 +67,76 @@ class MatrizPruebas(unittest.TestCase):
         escribir(self.matriz, CABEZA + '| `REI-1` | Reino | Fundar | sin jugar |  |\n')
         self.assertEqual(self.correr('--bloque', 'Reino').stdout, 'REI-1 · Fundar (sin jugar)\n')
         self.assertEqual(self.correr('--bloque').returncode, 2)
+
+
+class EscenariosDelPlan(BaseMatriz):
+    """QA-217: un plan de comprobación no puede nombrar un escenario sin su .dump."""
+
+    def setUp(self):
+        super().setUp()
+        escribir(self.matriz, CABEZA + '| `REI-1` | Reino | x | jugado | 2026-10-22 |\n')
+        os.makedirs(os.path.join(self.raiz, 'tools/qa/escenarios'))
+        for n in ('existe', 'otro'):
+            escribir(os.path.join(self.raiz, f'tools/qa/escenarios/{n}.dump'), 'x')
+
+    def plan(self, filas: str, cabeza: str = '| Tanda | Sistema | Escenario | Estado |\n|---|---|---|---|\n', nombre='a') -> None:
+        escribir(os.path.join(self.raiz, f'docs/registros/plan-comprobacion-{nombre}.md'), '# Plan\n\n' + cabeza + filas)
+
+    def falla_con(self, *nombres: str) -> None:
+        r = self.correr('--comprobar')
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn('ESCENARIO SIN .dump', r.stdout)
+        for n in nombres:
+            self.assertIn(f'plan-comprobacion-a.md: {n} (línea', r.stdout)
+
+    def test_escenario_inexistente_falla_con_su_nombre_y_linea(self):
+        self.plan('| 1 | Reino | `no-esta` | ok |\n')
+        self.falla_con('no-esta')
+        self.assertIn('(línea 5)', self.correr('--comprobar').stdout)
+
+    def test_escenario_que_existe_pasa(self):
+        self.plan('| 1 | Reino | `existe` | ok |\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
+
+    def test_varios_escenarios_en_una_celda_se_miran_todos(self):
+        self.plan('| 1 | Reino | `existe`; `otro` y `falta` | ok |\n')
+        self.falla_con('falta')
+        self.assertNotIn('existe (', self.correr('--comprobar').stdout)
+        self.assertNotIn('otro (', self.correr('--comprobar').stdout)
+
+    def test_con_o_sin_extension_dump_y_con_ruta(self):
+        self.plan('| 1 | Reino | `existe.dump` | ok |\n| 2 | Reino | `tools/qa/escenarios/otro.dump` | ok |\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
+        self.plan('| 1 | Reino | `no-esta.dump` | ok |\n')
+        self.falla_con('no-esta')
+
+    def test_celdas_sin_escenario_ni_ordenes_no_cuentan(self):
+        self.plan('| 1 | Reino | — | ok |\n| 2 | Reino | partida nueva | ok |\n|  3 | Reino |  | ok |\n'
+                  '| 4 | Reino | `existe` + `escenario.sh avanzar` | ok |\n'
+                  '| 5 | Reino | `preparar subditos:orcos:3:cazador` | ok |\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
+
+    def test_enlace_markdown_con_el_nombre_en_comillas(self):
+        self.plan('| 1 | Reino | [`no-esta`](../../tools/qa/escenarios/no-esta.dump) | ok |\n')
+        self.falla_con('no-esta')
+
+    def test_plan_sin_columna_escenario_no_nombra_ninguno(self):
+        self.plan('| 1 | Reino | `no-esta` |\n', cabeza='| Tanda | Sistema | Estado |\n|---|---|---|\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
+
+    def test_solo_cuenta_la_columna_escenario_no_el_resto_de_la_fila(self):
+        # Un escenario creado en la propia tanda se cita en «Estado» (p. ej. «Partida guardada: `nuevo`»): no se exige.
+        self.plan('| 1 | Reino | `existe` | Partida guardada: `nuevo-de-la-tanda` |\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
+
+    def test_columna_escenario_en_otra_posicion_y_varios_planes(self):
+        self.plan('| 1 | `no-esta` | ok |\n', cabeza='| Tanda | ESCENARIO | Estado |\n|---|---|---|\n', nombre='a')
+        self.plan('| 1 | `existe` | ok |\n', cabeza='| Tanda | Escenario | Estado |\n|---|---|---|\n', nombre='b')
+        self.falla_con('no-esta')
+
+    def test_dos_tablas_en_un_plan_cada_una_con_su_cabecera(self):
+        self.plan('| 1 | Reino | `existe` | ok |\n\n| Otra | Cosa |\n|---|---|\n| `no-escenario` | x |\n')
+        self.assertEqual(self.correr('--comprobar').returncode, 0)
 
 
 if __name__ == '__main__':

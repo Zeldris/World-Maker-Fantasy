@@ -8,6 +8,7 @@
 #   bash tools/playwright-e2e/arrancar-juego.sh --parar      # para backend, frontend y driver (QA-65)
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
+# WMF_MONTURA_PRUEBAS=1 (del entorno, solo pruebas): la jugadora cuenta como con montura y sale la lista «Viajar».
 # Registros: logs/backend.log y logs/frontend.log. Narraciones: las del Ollama simulado, que meten
 # trozos del prompt en el texto (no es un fallo del juego; la calidad narrativa se prueba con
 # Ollama real).
@@ -35,6 +36,8 @@ PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
 # fallos por tiempo límite. `--parar` lo libera todo antes de pasarla.
 if [ "${1:-}" = "--parar" ]; then
   if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || true; rm -f logs/backend.pid; fi
+  # El Ollama simulado solo si lo lanzó este script (su PID); un Ollama real nunca se toca.
+  if [ -s logs/mock-ollama.pid ]; then kill "$(cat logs/mock-ollama.pid)" 2>/dev/null || true; rm -f logs/mock-ollama.pid; fi
   fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
   echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
   exit 0
@@ -84,6 +87,23 @@ done
 if [ "$listo" != 1 ]; then
   echo "El juego no ha arrancado en 90 s: mira logs/backend.log y logs/frontend.log" >&2
   exit 1
+fi
+# QA-46 (tanda 24a): sin IA real (`IA_PERFIL`), el narrador necesita el Ollama simulado; tras `escenario.sh cargar` (que
+# para y relanza el juego) no estaba y las acciones daban 500 (ECONNREFUSED). Se levanta aquí si nada responde en el
+# puerto de OLLAMA_BASE_URL; `--parar` lo baja. Con Ollama real ya escuchando, no se toca.
+if [ -z "${IA_PERFIL:-}" ] && ! curl -s --max-time 3 -o /dev/null "$OLLAMA_BASE_URL"; then
+  puerto="${OLLAMA_BASE_URL##*:}"; puerto="${puerto%%/*}"
+  case "$puerto" in ''|*[!0-9]*) puerto=11434 ;; esac  # sin puerto en la URL: el de Ollama
+  PORT="$puerto" setsid nohup node tools/ci/mock-ollama.mjs > logs/mock-ollama.log 2>&1 < /dev/null &
+  echo $! > logs/mock-ollama.pid
+  mock_ok=0
+  for i in $(seq 1 10); do if curl -s --max-time 1 -o /dev/null "$OLLAMA_BASE_URL"; then mock_ok=1; break; fi; sleep 1; done
+  if [ "$mock_ok" = 1 ]; then
+    echo "Ollama simulado levantado en $OLLAMA_BASE_URL"
+  else
+    echo "AVISO: el Ollama simulado no responde en $OLLAMA_BASE_URL tras 10 s: mira logs/mock-ollama.log" >&2
+    rm -f logs/mock-ollama.pid
+  fi
 fi
 # QA-141: con IA real, se comprueba antes de jugar lo que en la ronda del 2026-10-20 costó horas: GPU y RAG.
 if [ -n "${IA_PERFIL:-}" ]; then
