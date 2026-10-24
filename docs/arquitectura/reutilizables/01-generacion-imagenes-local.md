@@ -2,27 +2,44 @@
 
 Documento reutilizable (fuera del roadmap): análisis del prompt de la usuaria del 2026-10-13 y plan
 para generar los assets visuales de Tarkor —y de cualquier juego o aplicación futura— sin depender
-de los límites de ChatGPT. Comprobado contra fuentes el 2026-10-13; lo que no se pudo comprobar va
-marcado **(sin verificar)** o **(estimación)**.
+de los límites de ChatGPT. Comprobado contra fuentes el 2026-10-13 y **revisado el 2026-10-24** (ver
+«Novedades del 2026-10-24»); lo que no se pudo comprobar va marcado **(sin verificar)** o
+**(estimación)**.
+
+## Novedades del 2026-10-24
+
+Revisión en busca de algo que encaje mejor que lo redactado el 2026-10-13. Tres cambios y un
+descarte:
+
+| Novedad | Lo comprobado | Qué cambia aquí |
+|---|---|---|
+| **FLUX.3 Image Klein** (BFL, 2026-10-15) | 5,6B parámetros, pesos abiertos. Destilado: 16 pasos, `cfg 1.0`; base: 50 pasos según BFL (20 y `cfg 3.5` según stable-diffusion.cpp). Hasta 10 imágenes de referencia; una LoRA entrenada en el base carga también en el destilado. BFL dice +91 Elo sobre FLUX.2 klein **9B** en texto a imagen (no se compara con el 4B). Soportado en `sd-cli` desde el 2026-10-16 (`docs/flux3.md`), con GGUF de `leejet` (Q8 5,9 GB, Q4 3,4 GB) y codificador **Qwen3-VL-4B**. **Licencia: FLUX Kommunity** (ver «Licencias»). | **Candidato**, no sustituto: se decide en la fase 1 con el mismo banco de prompts en los dos modelos (ver «Plan»). |
+| **VAE con licencia abierta** | `black-forest-labs/FLUX.2-small-decoder` es **Apache 2.0**, se cambia sin más por el decodificador de FLUX.2 (el codificador no cambia), decodifica ~1,4× más rápido y gasta menos memoria. | Pasa a ser el VAE por defecto; el `ae.safetensors` de FLUX.2-dev (no comercial) queda descartado. |
+| **Binario Linux con Vulkan ya compilado** | Los *releases* de stable-diffusion.cpp traen `sd-…-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip` (35 MB; el último, `master-1000-95ff762`, del 2026-10-23). | Los pasos 1 y 2 pasan a «descargar y probar»; compilar en `distrobox` queda de respaldo. Que corra tal cual en SteamOS **(sin verificar en la Deck)**. |
+| Z-Image-Turbo (Tongyi-MAI) | Apache 2.0, 6B, 8 pasos, cabe en 16 GB; orientado a fotorrealismo y texto en la imagen, «diversidad baja» según su propia ficha. | **Descartado** como principal: no mejora al klein 4B en ilustración y pesa más. |
+
+Lo que **no** cambia: no hay datos publicados de FLUX en la Steam Deck (ni del 2 ni del 3); los
+tiempos siguen siendo estimación hasta el banco de la fase 1.
 
 ## Veredicto
 
 **Útil, con correcciones.** La idea central es buena y está comprobada: **FLUX.2 [klein] 4B** con
 **stable-diffusion.cpp** sobre **Vulkan** en la Steam Deck es hoy la mejor opción local, libre para
-uso comercial y con calidad cercana a ChatGPT en ilustración. Pero el prompt de partida tiene fallos
-que harían perder horas:
+uso comercial y con calidad cercana a ChatGPT en ilustración. Desde el 2026-10-15 tiene un rival,
+**FLUX.3 Image Klein**: más calidad, más lento y con licencia limitada; se comparan en la fase 1. Pero
+el prompt de partida tiene fallos que harían perder horas:
 
 | Lo que decía el prompt | Lo comprobado | Qué hacemos |
 |---|---|---|
 | FLUX.2 klein 4B, Apache 2.0 | ✅ Cierto. El **9B** es **no comercial** (FLUX Non-Commercial License). | Solo el 4B. El 9B queda descartado para el juego, no por hardware sino por licencia. |
 | stable-diffusion.cpp lo soporta desde enero de 2026 | ✅ Cierto (soporte de FLUX.2-klein del 2026-01-18, `docs/flux2.md`). | Herramienta principal. |
 | Cualquier GGUF sirve | ❌ Los GGUF de `city96` son para ComfyUI y **no cargan** en `sd-cli`. | Usar los GGUF de `leejet` (el autor de stable-diffusion.cpp). |
-| `sudo apt install vulkan-sdk` | ❌ SteamOS es Arch con sistema de archivos de solo lectura; no hay `apt`. Los drivers Vulkan (RADV) ya vienen. | Compilar dentro de un contenedor `distrobox` (Ubuntu), que ve la GPU. |
+| `sudo apt install vulkan-sdk` | ❌ SteamOS es Arch con sistema de archivos de solo lectura; no hay `apt`. Los drivers Vulkan (RADV) ya vienen. | Binario Vulkan ya compilado de los *releases* (2026-10-24); si no arranca, compilar dentro de un contenedor `distrobox` (Ubuntu), que ve la GPU. |
 | 50 pasos para la LoRA `light_fantasy` | ⚠️ El klein **destilado** usa 4 pasos y `cfg 1.0`; el **base** usa ~20 pasos y `cfg 4.0`. Una LoRA entrenada sobre el base pide el base. | Elegir modelo según la LoRA (ver «Parámetros»). |
 | SD 1.5 para iterar rápido y FLUX para la final | ❌ Composición, encuadre y estilo no se trasladan entre modelos distintos: lo que salga en SD 1.5 no se parece a lo que hará FLUX. | Iterar con el **mismo** FLUX klein a 512×512 y 4 pasos, y sacar la final a tamaño completo con la misma semilla. |
 | Consistencia con semillas y prompts | ⚠️ Ayuda poco. | FLUX.2 klein **edita con imagen de referencia** (`-r ref.png`): es la herramienta real de consistencia de personajes. |
 | Goblin AI (`pip install goblin-ai`), sin límites | ❌ **No se encontró ese paquete.** | Descartado. Respaldo en la nube: Google Colab gratuito con el **mismo** modelo (ver «Respaldo»). |
-| GLM-Image, Perchance | Perchance existe y es gratuito **(condiciones sin verificar)**; GLM-Image **(sin verificar)**. | Solo para bocetos, nunca para assets finales sin leer sus condiciones. |
+| GLM-Image, Perchance | Perchance existe y es gratuito **(condiciones sin verificar)**. GLM-Image pide una GPU de más de 80 GB o varias (2026-10-24): imposible en local. | Solo para bocetos, nunca para assets finales sin leer sus condiciones. |
 | LoRAs `light_fantasy`, `MS Fantasy Style`, etc. | **(sin verificar)**: nombres y pesos tal cual del prompt. | Comprobar cada una en su página: modelo base, licencia y palabra clave. |
 
 ## Requisitos y preparación de la Steam Deck
@@ -37,7 +54,21 @@ que harían perder horas:
   opciones)**.
 - **Modo escritorio** y espacio libre: unos 15 GB entre modelos, compilación e imágenes.
 
-### Paso 1. Contenedor para compilar (sin tocar SteamOS)
+### Paso 0. Binario ya compilado (probar primero, 2026-10-24)
+
+```sh
+mkdir -p ~/sdcpp-bin && cd ~/sdcpp-bin
+# el nombre exacto cambia con cada release: copiarlo de github.com/leejet/stable-diffusion.cpp/releases
+curl -LO https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1000-95ff762/sd-master-95ff762-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip
+unzip sd-*-vulkan.zip && ./sd-cli --help | head   # la ruta de sd-cli dentro del zip, comprobarla al descomprimir
+```
+
+Si arranca y la primera imagen del Paso 4 sale, los pasos 1 y 2 sobran (en los comandos de abajo,
+`./bin/sd-cli` pasa a ser `~/sdcpp-bin/sd-cli`). Si falta alguna biblioteca (está hecho para Ubuntu
+24.04, no para SteamOS), se descomprime y se corre dentro del contenedor del Paso 1 en vez de compilar
+**(sin verificar en la Deck)**.
+
+### Paso 1. Contenedor (sin tocar SteamOS), si el binario no arranca
 
 ```sh
 # distrobox viene en SteamOS 3.5+; si no: curl -s https://raw.githubusercontent.com/89luca89/distrobox/main/install | sh -s -- --prefix ~/.local
@@ -47,7 +78,7 @@ sudo apt update && sudo apt install -y build-essential cmake git libvulkan-dev g
 vulkaninfo --summary | grep -i deviceName   # tiene que salir la GPU de la Deck (AMD Custom GPU 0405 / RADV VANGOGH)
 ```
 
-### Paso 2. Compilar stable-diffusion.cpp con Vulkan
+### Paso 2. Compilar stable-diffusion.cpp con Vulkan (solo si el Paso 0 no sirve)
 
 ```sh
 git clone --recursive https://github.com/leejet/stable-diffusion.cpp ~/sdcpp
@@ -57,8 +88,7 @@ cmake --build . --config Release -j4
 ./bin/sd-cli --help | head
 ```
 
-Si la página de *releases* trae un binario Linux con Vulkan, sirve igual **(sin verificar que exista
-para Linux)**.
+El binario Linux con Vulkan existe (2026-10-24): ver Paso 0.
 
 ### Paso 3. Descargar los pesos
 
@@ -67,7 +97,12 @@ para Linux)**.
 | Modelo (destilado, 4 pasos) | `huggingface.co/leejet/FLUX.2-klein-4B-GGUF` | `flux-2-klein-4b-Q8_0.gguf` (o `flux-2-klein-4b-Q4_0.gguf` si falta memoria) |
 | Modelo base (para LoRAs entrenadas en el base) | `huggingface.co/leejet/FLUX.2-klein-base-4B-GGUF` | ídem |
 | Codificador de texto (Qwen3 4B) | `huggingface.co/unsloth/Qwen3-4B-GGUF` | `Qwen3-4B-Q4_K_M.gguf` |
-| VAE | `huggingface.co/black-forest-labs/FLUX.2-dev` | `ae.safetensors` |
+| VAE (Apache 2.0) | `huggingface.co/black-forest-labs/FLUX.2-small-decoder` | `full_encoder_small_decoder.safetensors` (237 MB; el que indica `docs/flux2.md`) |
+| *Candidato:* FLUX.3 Image Klein (destilado, 16 pasos) | `huggingface.co/leejet/flux-3-image-klein-GGUF` | `flux3-image-klein-Q8_0.gguf` (5,9 GB) o `-Q4_K.gguf` (3,4 GB) |
+| *Candidato:* su codificador (Qwen3-VL 4B) | `huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF` | `Qwen3-VL-4B-Instruct-Q4_K_M.gguf` |
+
+FLUX.3 Klein usa el mismo VAE de FLUX.2 (según `docs/flux3.md`; que el *small decoder* también le
+sirva, **sin verificar**: se prueba en la fase 1).
 
 ```sh
 pipx install huggingface_hub    # dentro del contenedor; pip a secas falla en Ubuntu 24.04 (PEP 668)
@@ -75,17 +110,14 @@ pipx ensurepath && exec bash    # deja `hf` en el PATH
 mkdir -p ~/modelos/{diffusion,text,vae,lora}
 hf download leejet/FLUX.2-klein-4B-GGUF flux-2-klein-4b-Q8_0.gguf --local-dir ~/modelos/diffusion
 hf download unsloth/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir ~/modelos/text
-hf auth login                   # el repo de FLUX.2-dev pide aceptar sus condiciones
-hf download black-forest-labs/FLUX.2-dev ae.safetensors --local-dir ~/modelos/vae
+hf download black-forest-labs/FLUX.2-small-decoder full_encoder_small_decoder.safetensors --local-dir ~/modelos/vae
 ```
 
 Si la versión de `huggingface_hub` es antigua y no trae `hf`, el comando equivalente es
 `huggingface-cli` (`download` igual; `login` en vez de `auth login`).
 
-**Licencia del VAE:** viene del repositorio de FLUX.2-dev, cuya licencia es no comercial. Antes de
-publicar el juego hay que confirmar que el VAE tiene su propia licencia abierta **(sin verificar)**. Si
-no, la documentación de stable-diffusion.cpp ofrece como alternativa
-`black-forest-labs/FLUX.2-small-decoder`.
+**Licencia del VAE (resuelto el 2026-10-24):** el `ae.safetensors` de FLUX.2-dev es no comercial; el
+`FLUX.2-small-decoder` es Apache 2.0, se cambia sin más y es más rápido. Se usa este.
 
 ### Paso 4. Primera imagen
 
@@ -94,7 +126,7 @@ cd ~/sdcpp/build
 ./bin/sd-cli \
   --diffusion-model ~/modelos/diffusion/flux-2-klein-4b-Q8_0.gguf \
   --llm ~/modelos/text/Qwen3-4B-Q4_K_M.gguf \
-  --vae ~/modelos/vae/ae.safetensors \
+  --vae ~/modelos/vae/full_encoder_small_decoder.safetensors \
   -p "painterly fantasy illustration, an orc hunter with a bone-handled axe, red dust plains at dawn" \
   --cfg-scale 1.0 --steps 4 -W 512 -H 512 --seed 42 \
   --diffusion-fa --vae-tiling --offload-to-cpu -o prueba.png -v
@@ -112,6 +144,11 @@ cambian entre versiones.
 | Final sin LoRA | klein 4B destilado | 4-8 | 1.0 | el del perfil (ver Tarkor) |
 | Final con LoRA entrenada en el base | klein **base** 4B | 20-30 | 3.5-4.0 | ídem |
 | Edición / consistencia (con referencia) | klein 4B destilado | 4 | 1.0 | `-r referencia.png` |
+| *Candidato:* final | FLUX.3 Image Klein destilado | 16 | 1.0 | ídem |
+| *Candidato:* final con LoRA | FLUX.3 Image Klein **base** | 20 | 3.5 | ídem (la LoRA vale también en el destilado) |
+
+FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambiarlo) y admite hasta
+10 `-r` por imagen.
 
 - **Sampler:** el de la documentación es `euler`; no tocarlo hasta tener una imagen que funcione.
 - **Semilla:** fija (`--seed`) mientras se itera el prompt; así cada cambio se ve aislado.
@@ -131,7 +168,14 @@ cambian entre versiones.
   - Klein 4B tiene un tercio de parámetros y la GPU de la Deck es más lenta: calcular **del orden de
     2-6 minutos a 512×512 y 8-20 minutos a 1024×1024 con 4 pasos**. El modelo base con 25 pasos tarda
     unas 6 veces más.
+  - **FLUX.3 Image Klein:** 1,4× parámetros y 4× pasos (16 frente a 4): calcular **unas 5-6 veces
+    lo del klein 4B**, es decir, del orden de 10-35 minutos a 512×512 y de una a dos horas a
+    1024×1024 **(estimación, 2026-10-24)**. En la Deck sirve para lotes de noche pequeños o no sirve;
+    en Colab, segundos o pocos minutos por imagen **(sin verificar)**.
   - Se mide en el Paso 4 con `time`, y la tabla se corrige con el dato real.
+- **Memoria con FLUX.3 Klein:** Q8 (5,9 GB) + Qwen3-VL-4B Q4 (~2,5 GB, **estimación**) + VAE ronda
+  los 9 GB: cabe en los 12 GB que quedan, justo. Con Q4_K (3,4 GB) hay margen a costa de algo de
+  calidad.
 - **Klein 9B:** descartado por licencia (no comercial). En hardware tampoco cabe bien: 9B más Qwen3 8B
   pasan holgadamente de la memoria disponible.
 
@@ -142,9 +186,12 @@ cambian entre versiones.
    `imagePromptContext.ts` desde el catálogo.
 2. **Imagen de referencia**: la primera buena de cada personaje se guarda como referencia, y las
    siguientes se generan con `-r referencia.png` («mismo personaje, ahora…»). Es la palanca más
-   fuerte de FLUX.2 klein.
+   fuerte de FLUX.2 klein. FLUX.3 Klein admite hasta 10 referencias a la vez (personaje + estilo +
+   escenario), que sería su principal ventaja aquí.
 3. **Misma LoRA de estilo y mismo peso** en todo el juego, para que el estilo no varíe.
 4. **Semilla** solo como apoyo para variaciones pequeñas del mismo prompt.
+5. **Un solo modelo para todo el juego.** Lo que vale entre SD 1.5 y FLUX vale entre FLUX.2 y FLUX.3:
+   el estilo no se traslada. Se elige uno en la fase 1 y no se mezclan.
 
 ## Cómo escribir los prompts
 
@@ -178,7 +225,9 @@ Orden: **estilo → sujeto → acción/pose → entorno → luz → detalles de 
 con ComfyUI o `diffusers` ejecuta FLUX.2 klein 4B en segundos por imagen. Ventaja clave sobre
 cualquier web «gratis e ilimitada»: es el **mismo modelo**, así que las imágenes encajan con las de la
 Deck y la licencia es la misma (Apache 2.0). Límite: sesiones y cuota de GPU de Colab, que cambian sin
-aviso **(sin verificar la cuota actual)**.
+aviso **(sin verificar la cuota actual)**. Si en la fase 1 se elige FLUX.3 Image Klein, Colab pasa de
+respaldo a sitio principal por lo lento que va en la Deck: su FP8 ocupa 5,6 GB y BFL dice que el
+INT8 corre con 8 GB de VRAM, así que cabe en la T4 de 16 GB **(sin verificar en Colab)**.
 
 Otros servicios gratuitos (Pollinations, Perchance…) solo para bocetos. Antes de publicar algo hecho con
 ellos hay que leer sus condiciones, porque el modelo de detrás y sus derechos no siempre están claros.
@@ -188,7 +237,20 @@ ellos hay que leer sus condiciones, porque el modelo de detrás y sus derechos n
 - **FLUX.2 klein 4B:** Apache 2.0, con uso comercial permitido. Las imágenes generadas se pueden usar
   en el juego.
 - **FLUX.2 klein 9B y FLUX.2 dev:** licencia no comercial. No sirven para el juego.
-- **VAE:** ver la nota del Paso 3.
+- **FLUX.3 Image Klein (FLUX Kommunity License, 2026-10-24; lectura del texto, no consejo legal):**
+  - Uso comercial gratis solo para el «Qualifying User»: ingresos brutos anuales, **sumados los de
+    las empresas vinculadas**, por debajo de 5 M$ **en todo momento**. Por encima, licencia aparte con
+    BFL.
+  - Las imágenes son de quien las genera (BFL no reclama propiedad) y se pueden usar en el juego.
+  - Obligaciones: filtrar o **revisar cada imagen** antes de publicarla (contenido ilícito o que
+    infrinja derechos) y **avisar de que es IA** donde la ley lo exija (Steam ya pide declararlo).
+  - Prohibido usar el modelo o sus imágenes para mejorar otro modelo de imagen. Una LoRA o un ajuste
+    propio es un «derivado» y arrastra las mismas condiciones.
+  - Generar dentro del juego (en el equipo del jugador o en un servidor) cuenta como distribuir el
+    modelo: atribución y copia de la licencia. Para assets generados fuera, no aplica.
+  - Se termina sola ante cualquier incumplimiento, y BFL puede terminarla con aviso.
+  - Frente al klein 4B (Apache 2.0, sin nada de esto), es la contrapartida de la calidad extra.
+- **VAE:** `FLUX.2-small-decoder`, Apache 2.0 (Paso 3).
 - **LoRAs:** cada una lleva su licencia en Civitai o Hugging Face (permiso de uso comercial, de venta
   de imágenes y de mezcla). Se apunta la licencia de cada LoRA usada junto a las imágenes que genera.
 - **Servicios en la nube:** sus condiciones mandan sobre las imágenes. En Colab, como el modelo es el
@@ -200,9 +262,12 @@ ellos hay que leer sus condiciones, porque el modelo de detrás y sus derechos n
 
 Por fases; cada una acaba en algo comprobable.
 
-1. **Banco de pruebas en la Deck** (½ día): pasos 1-4. *Hecho cuando* sale `prueba.png` y se ha medido
-   el tiempo a 512 y a 1024 con y sin el UMA a 4G; la tabla de «Expectativas» se corrige con esos datos.
-2. **Estilo de la casa** (1-2 sesiones): elegir modelo (destilado o base), LoRA si la hay (con su
+1. **Banco de pruebas en la Deck** (½ día): pasos 0-4 (1-2 solo si el binario no arranca). Los
+   **mismos 3 prompts** (retrato, escenario, icono; los de «Cómo escribir los prompts») y la misma
+   semilla en **FLUX.2 klein 4B y FLUX.3 Image Klein** (2026-10-24). *Hecho cuando* sale `prueba.png`,
+   se ha medido el tiempo de los dos a 512 y a 1024 con y sin el UMA a 4G, la tabla de «Expectativas»
+   se corrige con esos datos y la usuaria elige **un** modelo viendo las imágenes lado a lado.
+2. **Estilo de la casa** (1-2 sesiones): con el modelo elegido, destilado o base, LoRA si la hay (con su
    licencia apuntada) y un preámbulo de estilo fijo. *Hecho cuando* 5 retratos de personajes distintos se
    reconocen como del mismo juego.
 3. **Generador por lotes** (ver «Acoplamiento a Tarkor»): un script que, sin supervisión, recorre lo
@@ -225,7 +290,9 @@ Lo que ya existe:
   - las zonas, `<slug>[-dia|-noche][-estacion]-mapa.<ext>`, que vigila `imagenesZona.test.ts`;
   - la fauna, con sufijo de sexo (`-macho`/`-hembra`).
 - `npm run audit-images` (`auditImages.ts`, en `backend/`) lista las imágenes huérfanas y las
-  entidades sin imagen de fauna, flora, npc, item, location y faction. Solo orienta: no falla.
+  entidades sin imagen de fauna, flora, npc, item, location y faction. Solo orienta: no falla. Deja
+  fuera `raza` aunque ya tiene imágenes subidas (18 el 2026-10-24); el lote que la genere tendrá que
+  añadirla al audit.
 - La API de prompts no recibe momento del día ni estación: las variantes de zona se piden
   añadiéndolas al prompt desde `generar.mjs`.
 
@@ -283,3 +350,14 @@ Deck se reutilizan sin cambios.
 - [Hugging Face Forum: FLUX.1-schnell en 8 GB AMD sin CUDA](https://discuss.huggingface.co/t/flux-1-schnell-on-8gb-vram-amd-no-cuda-the-gguf-format-mismatch-that-wastes-hours/177010): tiempos en RX 580 con Vulkan y GGUF de city96 incompatibles con `sd-cli`.
 - [Issue #563 de stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp/issues/563): Vulkan en iGPU AMD.
 - Búsqueda de «goblin-ai»: sin resultados del paquete (solo modelos de pago de ModelsLab con nombres parecidos).
+
+Añadidas en la revisión del 2026-10-24:
+
+- [Notas de versión de BFL](https://docs.eu.bfl.ai/release-notes) y [blog de FLUX 3 Image Klein](https://bfl.ai/blog/flux-3-image-klein): 5,6B, 16/50 pasos, 10 referencias, comparación con klein 9B, pesos en BF16 y FP8.
+- [LICENSE.md de flux-3-image-klein](https://huggingface.co/black-forest-labs/flux-3-image-klein/blob/main/LICENSE.md) (FLUX Kommunity License) y [VentureBeat](https://venturebeat.com/technology/black-forest-labs-opens-flux-3-image-klein-weights-with-free-commercial-use-limited-to-smaller-businesses).
+- [stable-diffusion.cpp: `docs/flux3.md`](https://github.com/leejet/stable-diffusion.cpp/blob/master/docs/flux3.md) (archivos, pasos, `flow shift`), `docs/flux2.md` (`full_encoder_small_decoder.safetensors`) y [releases](https://github.com/leejet/stable-diffusion.cpp/releases) (binario Linux Vulkan de `master-1000-95ff762`).
+- [leejet/flux-3-image-klein-GGUF](https://huggingface.co/leejet/flux-3-image-klein-GGUF): tamaños de Q2_K a Q8_0.
+- [FLUX.2-small-decoder](https://huggingface.co/black-forest-labs/FLUX.2-small-decoder): Apache 2.0, ~1,4× más rápido.
+- [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo): Apache 2.0, 6B, 8 pasos, fotorrealismo.
+- [Wikipedia: Flux](https://en.wikipedia.org/wiki/Flux_(text-to-image_model)) y [BentoML](https://www.bentoml.com/blog/a-guide-to-open-source-image-generation-models) (GLM-Image y el resto de modelos abiertos de 2026).
+- Sin datos de FLUX en la Steam Deck: la búsqueda solo dio tiempos en Apple Silicon ([lilting.ch](https://lilting.ch/en/articles/flux2-klein-apple-silicon)) y en CPU.
