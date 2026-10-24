@@ -63,6 +63,29 @@ class CommitMsg(unittest.TestCase):
         hoy = subprocess.run(['date', '+%F'], capture_output=True, text=True).stdout.strip()
         r = commit(hoy)
         self.assertEqual(r.returncode, 0, r.stderr)
+        # Un commit que no cambia la bitácora no la comprueba, aunque la copia de trabajo esté mal.
+        escribir(log, '| **Actualizado** | 2020-01-01 |\n' + fila)
+        escribir(os.path.join(repo, 'otro.txt'), 'x')
+        subprocess.run(['git', 'add', 'otro.txt'], cwd=repo, env=ENV_GIT, check=True)
+        r = subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'commit', '-q', '-m',
+                            'x\n\nSiguiente: y'], cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'},
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_un_revert_que_trae_la_fecha_vieja_de_la_bitacora_pasa(self):
+        repo = carpeta()
+        log = os.path.join(repo, 'docs', 'registros', 'traspaso.md')
+        hoy = subprocess.run(['date', '+%F'], capture_output=True, text=True).stdout.strip()
+        subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=repo, env=ENV_GIT, check=True, capture_output=True)
+        for fecha in ('2020-01-01', hoy):  # sin el gancho: la fecha vieja entra
+            escribir(log, f'| **Actualizado** | {fecha} |\n| **Tarea en curso · `main`** | algo |\n')
+            subprocess.run(['git', 'add', '-A'], cwd=repo, env=ENV_GIT, check=True)
+            subprocess.run(['git', 'commit', '-qm', fecha], cwd=repo, env=ENV_GIT, check=True)
+        # `git revert` no lanza commit-msg; sí el `git commit` que cierra un revert con conflicto o --no-commit.
+        subprocess.run(['git', 'revert', '--no-commit', 'HEAD'], cwd=repo, env=ENV_GIT, check=True)
+        r = subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'commit', '-q', '--no-edit'],
+                           cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'}, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
 
 
 if __name__ == '__main__':

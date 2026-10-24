@@ -212,7 +212,7 @@ class Elementos(Base):
         # Si el juego añade un tipo a ImagePromptEntityType, este test se pone rojo hasta que la lista lo dé.
         with open(os.path.join(RAIZ, 'backend', 'src', 'services', 'imagePromptGenerator.ts'), encoding='utf-8') as f:
             union = re.search(r"export type ImagePromptEntityType =(.*?')\s*;", f.read(), re.S).group(1)
-        tipos = set(re.findall(r"^\s*\|\s*'([a-z]+)'", union, re.M))
+        tipos = set(re.findall(r"^\s*\|\s*'([^']+)'", union, re.M))
         self.assertGreater(len(tipos), 10)
         api = os.path.join(self.raiz, 'api')
         ficha = {'slug': 'a', 'key': 'a', 'sourceSlug': 'a', 'name': 'A'}
@@ -426,6 +426,16 @@ class Resumen(unittest.TestCase):
             '2 elementos: clase 1, npc 1', 'con intentos: 1 · con elegida: 1 · con imagen del juego: 1',
             'aviso: Sin el catálogo completo', '  MAGO · Mago (2 intentos, ✓ elegida)',
             'trabajo: npc/hulki thumbnail · paso 2/4 · 50 s de ~105 s'])
+        self.assertEqual(r.resumen([], None, {'enMarcha': False}).splitlines()[-1],
+                         'trabajo: ninguno desde que arrancó la interfaz')
+        fallo = {'enMarcha': False, 'inicio': 1, 'tipo': 'npc', 'slug': 'hulki', 'perfil': 'banner', 'rc': 1,
+                 'segundos': 9}
+        self.assertEqual(r.resumen([], None, dict(fallo, logFinal='a\nsin memoria\n')).splitlines()[-2:], [
+            'último trabajo: npc/hulki banner · falló (rc 1) en 9 s', 'final del log: sin memoria'])
+        self.assertEqual(r.resumen([], None, dict(fallo, logFinal='\n \n')).splitlines()[-1],
+                         'último trabajo: npc/hulki banner · falló (rc 1) en 9 s')
+        self.assertEqual(r.resumen([], None, dict(fallo, rc=0)).splitlines()[-1],
+                         'último trabajo: npc/hulki banner · lista en 9 s')
 
 
 if __name__ == '__main__':

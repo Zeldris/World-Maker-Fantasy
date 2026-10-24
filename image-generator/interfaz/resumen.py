@@ -41,8 +41,9 @@ def resumen(lista, aviso, estado, tipo=None):
         fin = 'falló (rc %s)' % estado['rc'] if estado.get('rc') else 'lista'
         lineas.append(f"último trabajo: {estado.get('tipo')}/{estado.get('slug')} {estado.get('perfil')} · {fin} "
                       f"en {estado.get('segundos')} s")
-        if estado.get('logFinal'):
-            lineas.append('final del log: ' + estado['logFinal'].strip().splitlines()[-1][:200])
+        final = (estado.get('logFinal') or '').strip().splitlines()
+        if final:
+            lineas.append('final del log: ' + final[-1][:200])
     else:
         lineas.append('trabajo: ninguno desde que arrancó la interfaz')
     return '\n'.join(lineas)
@@ -55,9 +56,11 @@ def main():
     a = p.parse_args()
     try:
         els, estado = pedir(a.url, '/api/elementos'), pedir(a.url, '/api/estado')
-    except OSError as err:
-        sys.exit(f'la interfaz no responde en {a.url} ({err}); arráncala con image-generator/abrir.sh')
-    print(resumen(els['elementos'], els.get('aviso'), estado, a.tipo))
+        lista = els['elementos']
+    except (OSError, ValueError, KeyError, TypeError) as err:
+        sys.exit(f'la interfaz no responde en {a.url} ({type(err).__name__}: {err}); arráncala con '
+                 'image-generator/abrir.sh, o elige su puerto con IMG_PUERTO=<puerto>')
+    print(resumen(lista, els.get('aviso'), estado, a.tipo))
 
 
 if __name__ == '__main__':

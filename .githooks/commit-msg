@@ -5,15 +5,17 @@
 set -euo pipefail
 [ "${CLAUDECODE:-}" = "1" ] || exit 0
 # Un merge, un squash o un cherry-pick traen el mensaje de commits que ya existen.
-for f in MERGE_HEAD CHERRY_PICK_HEAD SQUASH_MSG; do
+for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD SQUASH_MSG; do
   ruta=$(git rev-parse --git-path "$f" 2>/dev/null || true)
   [ -n "$ruta" ] && [ -e "$ruta" ] && exit 0
 done
 # Retro de claude/interfaz-imagenes (2026-10-25): la bitácora que cambia el commit se comprueba aquí («Actualizado»
 # con la fecha de hoy, filas de <= 600), no solo en el pre-push, cuando ya hay commits encima que rehacer.
 raiz=$(cd "$(dirname "$0")/.." && pwd)
-log=$(python3 "$raiz/.claude/gw/scripts/config.py" get log)
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && ! git diff --cached --quiet -- "$log"; then
+log=$(python3 "$raiz/.claude/gw/scripts/config.py" get log 2>/dev/null || true)
+# Sin log en la config, o si el commit lo borra, no hay bitácora que comprobar.
+if [ -n "$log" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1 && ! git diff --cached --quiet -- "$log" \
+    && git cat-file -e ":$log" 2>/dev/null; then
   tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
   git show ":$log" > "$tmp"
   python3 "$raiz/.claude/gw/scripts/bitacora.py" check "$tmp" --date "$(date +%F)" || exit 1

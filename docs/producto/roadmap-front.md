@@ -1599,6 +1599,7 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-231 · La fila de la bitácora dice la fase antes de `main`**~~ ✅ 2026-10-25: hecho en la fila de `claude/interfaz-imagenes`; propuesto a Galivelop-workflow en la retro.
 - ~~**QA-232 · `bitacora.py check` en `commit-msg`**~~ ✅ 2026-10-25: un push rechazado por la fecha de «Actualizado» obligó a rehacer dos commits. `.githooks/commit-msg` comprueba la bitácora preparada cuando el commit la cambia. Test: `test_una_bitacora_con_actualizado_viejo_falla_al_hacer_el_commit`. Propuesto también a Galivelop-workflow.
 - ~~**QA-233 · `selector` al lanzar cada subagente**~~ ✅ 2026-10-25: tres de cuatro subagentes fueron con Opus para trabajo mecánico; apuntado en `.claude/gw/opt-tokens.md` (costes conocidos).
+- **QA-234 · Leves del `/code-review` del PR de `claude/interfaz-imagenes`**: `commit-msg` compara «Actualizado» con la fecha de hoy y el pre-push con la del autor (difieren con `--amend` o `--date`); con `--amend` sin tocar la bitácora no la mira; el test corre también el `pre-commit` real, que mira el índice del proyecto; `resumen.py` repite los nombres de campo de `/api/estado` y `/api/elementos` sin un contrato común con `servidor.py`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
