@@ -17,6 +17,7 @@ EXCEPCIONES = {
     'bench-ia.sh': 'juega turnos con el Ollama real de la Deck (QA-173); se prueba al medir',
     'comprobar-escenarios.sh': 'restaura las instantáneas en Postgres; la corre la CI con la base',
     'recorrer.sh': 'lanza los recorridos de Playwright con el juego en marcha',
+    'backend-dev.sh': 'reinicia el backend de desarrollo con Postgres y espera a /health (QA-224); se prueba al usarla',
 }
 # QA-188: carpetas enteras de atajos que necesitan el driver, el juego o podman en la Deck; se prueban al usarlos.
 CARPETAS_EXCEPTUADAS = {
