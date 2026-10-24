@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
 """CFG-43 (usuaria, 2026-10-24): interfaz local del generador de imágenes, la que abre `image-generator/abrir.sh`.
 
-Pegas un prompt (o eliges una entidad y trae su prompt usado o el base de la tabla ImagePrompt), generas con
-`scripts/probar.sh` (que llama a `generar.sh`, con sus protecciones de memoria, y apunta la tanda), escribes la nota
-de cada imagen y, con «Elegir esta», la copias a `salida/images/<tipo>/<slug>-<perfil>.png`, la misma estructura que
-`backend/uploads/images/` (`backend/src/lib/imageAssets.ts`). Pasarla al juego es copiarla a mano.
-Si en `referencias/images/` (la copia de `backend/uploads/images/` que hace `abrir.sh`) hay imagen de esa entidad, la
-página ofrece usarla de referencia con su vista previa.
+Todo es por elemento, en `generated/<tipo>/<slug>/` (fuera de git): `intentos/<perfil>-s<semilla>-p<pasos>-<fecha>.png`,
+`prompts/` y `logs/` con el mismo nombre, `registro.tsv` (una fila por intento), `notas.md`, `elegidas.tsv` y, por
+perfil, la elegida `<slug>-<perfil>.png` con el nombre del juego (para copiarla a `backend/uploads/images/<tipo>/`).
+Genera con `scripts/probar.sh <tipo> <slug> <perfil> [semilla] [pasos]` (que llama a `generar.sh`, con sus protecciones
+de memoria). El prompt viene de la tabla ImagePrompt (usado, si no el base) o pegado. Si en `referencias/images/` (la
+copia de `backend/uploads/images/` que hace `abrir.sh`) hay imagen de ese elemento, se ve y se puede usar de referencia.
+
+API (JSON salvo las imágenes):
+  GET  /api/inicio                          perfiles y mundo
+  GET  /api/elementos                       {elementos:[{tipo,slug,perfiles:[{perfil,usado}],juego,intentos,elegidas}], aviso}
+                                            une la BD y generated/; sin BD devuelve los de generated/ y un aviso
+  GET  /api/elemento?tipo&slug              intentos del elemento, el más reciente primero
+  GET  /api/prompt?tipo&slug&perfil         prompt usado o base de la BD
+  GET  /api/referencia?tipo&slug&perfil     imagen del juego {ruta, perfil} o {ruta: null}
+  GET  /api/estado                          generación en curso: progreso, paso, pasos, segundos, estimado, rc, logFinal
+  GET  /img/<tipo>/<slug>/<nombre>.png      un intento;  GET /elegida/<tipo>/<slug>/<perfil>.png  la elegida
+  GET  /ref/<tipo>/<slug>-<perfil>.<ext>    imagen del juego
+  POST /api/generar {tipo,slug,perfil,semilla,pasos,prompt|desdeBase,usarReferencia}
+  POST /api/nota {tipo,slug,nombre,texto};  POST /api/elegir {tipo,slug,nombre}
 
 Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.1.
 Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_PUERTO (7861).
 """
-import json, os, re, shlex, shutil, subprocess, sys, tempfile, threading, time
+import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -20,12 +33,14 @@ RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
 PROBAR = os.environ.get('IMG_PROBAR', os.path.join(RAIZ, 'scripts', 'probar.sh'))
 PSQL = shlex.split(os.environ.get('IMG_PSQL', 'podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c'))
 MUNDO = os.environ.get('MUNDO', 'helek-sirik')
+GENERADO = os.path.join(RAIZ, 'generated')
 REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
 SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9-]*$')  # el juego respeta las mayúsculas (CAZADOR)
 EXTENSIONES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
-CABECERA_REGISTRO = ['fecha', 'nombre', 'tipo', 'slug', 'perfil', 'prompt', 'semilla', 'pasos', 'tamaño', 'extra',
-                     'salida', 'segundos']
+CABECERA_REGISTRO = ['fecha', 'nombre', 'perfil', 'prompt', 'semilla', 'pasos', 'tamaño', 'extra', 'salida', 'segundos']
+ESTIMADO_BASE = {'thumbnail': 105, 'banner': 110, 'mapa': 110, 'icono': 80}  # segundos, sin referencia
+FACTOR_REFERENCIA = 1.9
 
 
 class Invalido(ValueError):
@@ -48,14 +63,15 @@ def entero(valor, campo, minimo, maximo):
     return n
 
 
-def pruebas(tanda=None):
-    d = os.path.join(RAIZ, 'pruebas')
-    return os.path.join(d, slug(tanda, 'tanda')) if tanda is not None else d
+def elemento_dir(tipo, slug_):
+    return os.path.join(GENERADO, slug(tipo, 'tipo'), slug(slug_, 'slug'))
 
 
-def destino_salida(tipo, slug_, perfil):
-    """Ruta en salida/ con el nombre que busca el juego: images/<tipo>/<slug>-<perfil>.png."""
-    return os.path.join(RAIZ, 'salida', 'images', slug(tipo, 'tipo'), f"{slug(slug_, 'slug')}-{perfil}.png")
+def destino_elegida(tipo, slug_, perfil):
+    """Ruta con el nombre que busca el juego: generated/<tipo>/<slug>/<slug>-<perfil>.png."""
+    if perfil not in PERFILES:
+        raise Invalido(f'perfil desconocido: {perfil}')
+    return os.path.join(elemento_dir(tipo, slug_), f'{slug_}-{perfil}.png')
 
 
 # --- base de datos (ImagePrompt) ---
@@ -87,7 +103,7 @@ def prompt_de(tipo, slug_, perfil):
     return {'prompt': fila['usado'] or fila['base'], 'fuente': 'usado' if fila['usado'] else 'base'}
 
 
-# --- tanda: registro.tsv (lo escribe probar.sh), notas.md y elegidas.tsv ---
+# --- elemento: registro.tsv (lo escribe probar.sh), notas.md y elegidas.tsv ---
 
 def leer_notas(d):
     notas = {}
@@ -101,15 +117,15 @@ def leer_notas(d):
     return notas
 
 
-def guardar_nota(tanda, nombre, texto):
-    d = pruebas(tanda)
+def guardar_nota(tipo, slug_, nombre, texto):
+    d = elemento_dir(tipo, slug_)
     slug(nombre, 'nombre')
-    texto = ' '.join(str(texto).split())  # una línea por imagen
+    texto = ' '.join(str(texto).split())  # una línea por intento
     ruta = os.path.join(d, 'notas.md')
     try:
         lineas = open(ruta, encoding='utf-8').read().split('\n')
     except FileNotFoundError:
-        lineas = [f'# Notas de la tanda {tanda}', '']
+        lineas = [f'# Notas de {tipo}/{slug_}', '']
     lineas = [l for l in lineas if not l.startswith(f'- {nombre}: ')]
     while lineas and lineas[-1] == '':
         lineas.pop()
@@ -133,49 +149,91 @@ def leer_elegidas(d):
     return elegidas
 
 
-def leer_tanda(tanda):
-    d = pruebas(tanda)
-    filas = []
+def filas_registro(d):
     try:
         lineas = open(os.path.join(d, 'registro.tsv'), encoding='utf-8').read().splitlines()
     except FileNotFoundError:
-        lineas = []
+        return []
+    filas = [dict(zip(CABECERA_REGISTRO, l.split('\t'))) for l in lineas[1:]]
+    return [f for f in filas if 'nombre' in f]
+
+
+def leer_elemento(tipo, slug_):
+    d = elemento_dir(tipo, slug_)
     notas, elegidas = leer_notas(d), leer_elegidas(d)
-    for l in lineas[1:]:
-        f = dict(zip(CABECERA_REGISTRO, l.split('\t')))
-        if 'nombre' not in f:
-            continue
-        rel = os.path.relpath(destino_salida(f['tipo'], f['slug'], f['perfil']), RAIZ)
+    filas = []
+    for f in filas_registro(d):
+        rel = os.path.relpath(destino_elegida(tipo, slug_, f['perfil']), RAIZ) if f.get('perfil') in PERFILES else ''
         try:
             prompt = open(os.path.join(d, 'prompts', f['nombre'] + '.txt'), encoding='utf-8').read().strip()
         except FileNotFoundError:
             prompt = ''
-        f.update(imagen=os.path.exists(os.path.join(d, 'imagenes', f['nombre'] + '.png')), nota=notas.get(f['nombre'], ''),
-                 elegida=elegidas.get(rel) == f['nombre'], destino=rel, textoPrompt=prompt)
+        f.update(imagen=os.path.exists(os.path.join(d, 'intentos', f['nombre'] + '.png')), nota=notas.get(f['nombre'], ''),
+                 elegida=bool(rel) and elegidas.get(rel) == f['nombre'], destino=rel, textoPrompt=prompt,
+                 conReferencia='-r' in f.get('extra', '').split())
         filas.append(f)
-    return list(reversed(filas))  # la más reciente primero
+    # el más reciente primero (a igual fecha, el último apuntado)
+    return sorted(reversed(filas), key=lambda f: f.get('fecha', ''), reverse=True)
 
 
-def tandas():
-    try:
-        nombres = [n for n in os.listdir(pruebas()) if SLUG.match(n) and os.path.isdir(pruebas(n))]
-        return sorted(nombres, key=lambda n: os.path.getmtime(pruebas(n)), reverse=True)  # la más reciente primero
-    except FileNotFoundError:
-        return []
-
-
-def elegir(tanda, nombre):
-    d = pruebas(tanda)
-    fila = next((f for f in leer_tanda(tanda) if f['nombre'] == slug(nombre, 'nombre')), None)
+def elegir(tipo, slug_, nombre):
+    d = elemento_dir(tipo, slug_)
+    fila = next((f for f in leer_elemento(tipo, slug_) if f['nombre'] == slug(nombre, 'nombre')), None)
     if not fila or not fila['imagen']:
-        raise Invalido(f'no hay imagen {nombre} en la tanda {tanda}')
-    destino = destino_salida(fila['tipo'], fila['slug'], fila['perfil'])
-    os.makedirs(os.path.dirname(destino), exist_ok=True)
-    shutil.copyfile(os.path.join(d, 'imagenes', nombre + '.png'), destino)
+        raise Invalido(f'no hay imagen {nombre} en {tipo}/{slug_}')
+    destino = destino_elegida(tipo, slug_, fila['perfil'])
+    shutil.copyfile(os.path.join(d, 'intentos', nombre + '.png'), destino)
     rel = os.path.relpath(destino, RAIZ)
     with open(os.path.join(d, 'elegidas.tsv'), 'a', encoding='utf-8') as e:
         e.write(f'{nombre}\t{rel}\n')
     return rel
+
+
+def elementos():
+    """(lista, aviso): las entidades con prompt en la BD unidas a lo que hay en generated/."""
+    aviso, claves = None, {}
+    try:
+        for e in entidades() or []:
+            el = claves.setdefault((e['tipo'], e['slug']), {'tipo': e['tipo'], 'slug': e['slug'], 'perfiles': []})
+            el['perfiles'].append({'perfil': e['perfil'], 'usado': bool(e['usado'])})
+    except (RuntimeError, ValueError, subprocess.TimeoutExpired, OSError) as err:
+        aviso = f'Sin la lista de la enciclopedia: {err}'
+    try:
+        for t in os.listdir(GENERADO):
+            if not SLUG.match(t) or not os.path.isdir(os.path.join(GENERADO, t)):
+                continue
+            for s_ in os.listdir(os.path.join(GENERADO, t)):
+                if SLUG.match(s_) and os.path.isdir(os.path.join(GENERADO, t, s_)):
+                    claves.setdefault((t, s_), {'tipo': t, 'slug': s_, 'perfiles': []})
+    except FileNotFoundError:
+        pass
+    lista = []
+    for (t, s_), el in sorted(claves.items()):
+        d = os.path.join(GENERADO, t, s_)
+        ref = referencia_de(t, s_, el['perfiles'][0]['perfil'] if el['perfiles'] else 'thumbnail')
+        el.update(juego=ref['ruta'] if ref else None, intentos=len(filas_registro(d)),
+                  elegidas=[p for p in PERFILES if os.path.isfile(os.path.join(d, f'{s_}-{p}.png'))])
+        lista.append(el)
+    return lista, aviso
+
+
+def estimado(perfil, con_referencia):
+    """Segundos que tarda: mediana de los intentos correctos del mismo perfil y con/sin referencia, de todo generated/."""
+    tiempos = []
+    try:
+        for t in os.listdir(GENERADO):
+            for s_ in os.listdir(os.path.join(GENERADO, t)):
+                for f in filas_registro(os.path.join(GENERADO, t, s_)):
+                    if f.get('perfil') == perfil and f.get('salida') == '0' and ('-r' in f.get('extra', '').split()) == con_referencia:
+                        try:
+                            tiempos.append(float(f['segundos']))
+                        except (KeyError, ValueError):
+                            pass
+    except (FileNotFoundError, NotADirectoryError):
+        pass
+    if tiempos:
+        return int(round(statistics.median(tiempos)))
+    return int(round(ESTIMADO_BASE.get(perfil, 110) * (FACTOR_REFERENCIA if con_referencia else 1)))
 
 
 def referencia_de(tipo, slug_, perfil):
@@ -196,7 +254,6 @@ class Trabajo:
         self.estado = {'enMarcha': False}
 
     def lanzar(self, peticion):
-        tanda = slug(peticion.get('tanda'), 'tanda')
         tipo = slug(peticion.get('tipo'), 'tipo')
         slug_ = slug(peticion.get('slug'), 'slug')
         perfil = peticion.get('perfil')
@@ -225,9 +282,9 @@ class Trabajo:
                 if archivo:
                     os.unlink(archivo)
                 raise Invalido('ya hay una imagen generándose; espera a que acabe')
-            self.estado = {'enMarcha': True, 'tanda': tanda, 'inicio': time.time(), 'salida': [], 'nombre': None,
-                           'rc': None}
-        orden = [PROBAR, tanda, tipo, slug_, perfil, str(semilla), str(pasos)] + extra
+            self.estado = {'enMarcha': True, 'tipo': tipo, 'slug': slug_, 'perfil': perfil, 'conReferencia': bool(extra),
+                           'inicio': time.time(), 'salida': [], 'nombre': None, 'rc': None}
+        orden = [PROBAR, tipo, slug_, perfil, str(semilla), str(pasos)] + extra
         threading.Thread(target=self._correr, args=(orden, env, archivo), daemon=True).start()
 
     def _correr(self, orden, env, archivo):
@@ -256,35 +313,50 @@ class Trabajo:
             e = dict(self.estado, salida=list(self.estado.get('salida', [])))
         if e.get('inicio'):
             e['segundos'] = int((e.get('fin') or time.time()) - e['inicio'])
-        if e['enMarcha']:
-            e['progreso'] = progreso(e['tanda'], e['inicio'])
+            e['estimado'] = estimado(e['perfil'], e['conReferencia'])
+            texto, e['paso'], e['pasos'] = leer_progreso(e['tipo'], e['slug'], e['inicio'])
+            if e['enMarcha']:
+                e['progreso'] = texto
+            elif e.get('rc'):  # falló: el final del log de sd-cli, para ver el motivo
+                e['logFinal'] = cola_log(e['tipo'], e['slug'], e['inicio'], 3000)
         e['salida'] = e['salida'][-8:]
         return e
 
 
-def progreso(tanda, desde):
-    """Paso N/M del sd-cli que corre, sacado del log más reciente de la tanda (generar.sh lo escribe con -v)."""
-    d = os.path.join(pruebas(tanda), 'logs')
+def cola_log(tipo, slug_, desde, bytes_=8192):
+    """Final del log más reciente del elemento escrito desde `desde` ('' si no hay)."""
+    d = os.path.join(elemento_dir(tipo, slug_), 'logs')
     try:
         logs = [os.path.join(d, n) for n in os.listdir(d) if n.endswith('.log')]
     except FileNotFoundError:
-        return 'preparando'
+        return ''
     logs = [l for l in logs if os.path.getmtime(l) >= desde - 1]
     if not logs:
-        return 'preparando'
+        return ''
     with open(max(logs, key=os.path.getmtime), 'rb') as f:
         f.seek(0, 2)
-        f.seek(max(0, f.tell() - 8192))
-        cola = f.read().decode('utf-8', 'replace')
+        f.seek(max(0, f.tell() - bytes_))
+        return f.read().decode('utf-8', 'replace')
+
+
+def leer_progreso(tipo, slug_, desde):
+    """(texto, paso, pasos) del sd-cli que corre, sacado del log más reciente del elemento (generar.sh lo escribe con -v)."""
+    cola = cola_log(tipo, slug_, desde)
+    if not cola:
+        return 'preparando', None, None
     if 'decode_first_stage completed' in cola:
-        return 'guardando la imagen'
+        return 'guardando la imagen', None, None
     # El muestreo pinta «|====>  | 3/4 - 1.26it/s» (o s/it); la carga de pesos, «|####| 4/4 - 847MB/s».
     pasos = re.findall(r'\|[=> ]*\|\s*(\d+)/(\d+)\s*-\s*[\d.]+\s*(?:it/s|s/it)', cola)
     if pasos and pasos[-1][0] == pasos[-1][1]:
-        return 'decodificando la imagen'
+        return 'decodificando la imagen', int(pasos[-1][0]), int(pasos[-1][1])
     if pasos:
-        return f'muestreo {pasos[-1][0]}/{pasos[-1][1]}'
-    return 'cargando modelos'
+        return f'muestreo {pasos[-1][0]}/{pasos[-1][1]}', int(pasos[-1][0]), int(pasos[-1][1])
+    return 'cargando modelos', None, None
+
+
+def progreso(tipo, slug_, desde):
+    return leer_progreso(tipo, slug_, desde)[0]
 
 
 TRABAJO = Trabajo()
@@ -306,7 +378,8 @@ class Manejador(BaseHTTPRequestHandler):
     def archivo(self, ruta, tipo):
         if not os.path.isfile(ruta):
             return self.responder(404, {'error': 'no existe'})
-        self.responder(200, open(ruta, 'rb').read(), tipo)
+        with open(ruta, 'rb') as f:
+            self.responder(200, f.read(), tipo)
 
     def atender(self, accion):
         try:
@@ -325,10 +398,14 @@ class Manejador(BaseHTTPRequestHandler):
         if u.path == '/api/estado':
             return self.responder(200, TRABAJO.ver())
         if u.path == '/api/inicio':
-            return self.responder(200, {'tandas': tandas(), 'perfiles': PERFILES,
-                                        'mundo': MUNDO})
-        if u.path == '/api/entidades':
-            return self.atender(lambda: self.responder(200, entidades()))
+            return self.responder(200, {'perfiles': PERFILES, 'mundo': MUNDO})
+        if u.path == '/api/elementos':
+            def lista():
+                els, aviso = elementos()
+                self.responder(200, {'elementos': els, 'aviso': aviso})
+            return self.atender(lista)
+        if u.path == '/api/elemento':
+            return self.atender(lambda: self.responder(200, leer_elemento(q.get('tipo'), q.get('slug'))))
         if u.path == '/api/prompt':
             def p():
                 perfil = q.get('perfil')
@@ -352,13 +429,17 @@ class Manejador(BaseHTTPRequestHandler):
                 self.archivo(os.path.join(REFERENCIAS, slug(partes[1], 'tipo'), slug(base, 'nombre') + '.' + ext),
                              EXTENSIONES[ext])
             return self.atender(ref)
-        if u.path == '/api/tanda':
-            return self.atender(lambda: self.responder(200, leer_tanda(q.get('tanda'))))
-        if len(partes) == 3 and partes[0] == 'img':  # /img/<tanda>/<nombre>.png
+        if len(partes) == 4 and partes[0] == 'img':  # /img/<tipo>/<slug>/<nombre>.png
             def img():
-                nombre = partes[2][:-4] if partes[2].endswith('.png') else ''
-                self.archivo(os.path.join(pruebas(partes[1]), 'imagenes', slug(nombre, 'nombre') + '.png'), 'image/png')
+                nombre = partes[3][:-4] if partes[3].endswith('.png') else ''
+                self.archivo(os.path.join(elemento_dir(partes[1], partes[2]), 'intentos', slug(nombre, 'nombre') + '.png'),
+                             'image/png')
             return self.atender(img)
+        if len(partes) == 4 and partes[0] == 'elegida':  # /elegida/<tipo>/<slug>/<perfil>.png
+            def elegida():
+                perfil = partes[3][:-4] if partes[3].endswith('.png') else ''
+                self.archivo(destino_elegida(partes[1], partes[2], perfil), 'image/png')
+            return self.atender(elegida)
         self.responder(404, {'error': 'no existe'})
 
     def do_POST(self):
@@ -370,10 +451,10 @@ class Manejador(BaseHTTPRequestHandler):
         if u == '/api/generar':
             return self.atender(lambda: (TRABAJO.lanzar(peticion), self.responder(202, {'ok': True})))
         if u == '/api/nota':
-            return self.atender(lambda: (guardar_nota(peticion.get('tanda'), peticion.get('nombre'),
+            return self.atender(lambda: (guardar_nota(peticion.get('tipo'), peticion.get('slug'), peticion.get('nombre'),
                                                       peticion.get('texto', '')), self.responder(200, {'ok': True})))
         if u == '/api/elegir':
-            return self.atender(lambda: self.responder(200, {'destino': elegir(peticion.get('tanda'),
+            return self.atender(lambda: self.responder(200, {'destino': elegir(peticion.get('tipo'), peticion.get('slug'),
                                                                                 peticion.get('nombre'))}))
         self.responder(404, {'error': 'no existe'})
 

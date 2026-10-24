@@ -60,6 +60,22 @@ reindexa, juega 8 turnos de `npm run benchmark-turno` con `IA_PERFIL=deck`, mues
 - Las incoherencias: `docs/registros/pruebas-*-hallazgos.md`; las P de IA son las que inventan, contradicen el lore
   o se equivocan de nombre. Cada una pasa a caso de `rag-casos.jsonl` con `origen` = su P.
 
+## Generador de imágenes
+
+`/opt-ai` mide también `image-generator/` (usuaria, 2026-10-24): `sd-cli` (stable-diffusion.cpp, Vulkan) con FLUX.2
+klein 4B en la Deck, no Ollama, así que `medir.py` no lo ve. Fuentes, sin leer los logs enteros:
+
+- `image-generator/generated/*/*/registro.tsv`: una fila por intento con perfil, semilla, pasos, tamaño, `extra`
+  (`-r <ruta>` = con referencia), `salida` (0 = bien) y `segundos`.
+- La última línea de cada `generated/*/*/logs/*.log` que escribe `generar.sh`: `total`, `min_libre` (RAM libre
+  mínima, MB) y los tiempos de `sampling` y `decode_first_stage`.
+
+Se compara por perfil (`thumbnail`, `banner`…), pasos y con o sin referencia; base medida el 2026-10-24 en la Deck:
+thumbnail ~104 s y banner ~110 s sin referencia, ~200 s con una. Límites que no se proponen subir: `--max-vram 2`
+(la Deck comparte la memoria con el juego) y Ollama liberado antes de generar (`LIBERAR_OLLAMA=1`). Hasta que exista
+el script de `IMG-3`, se resume con `awk` sobre los `registro.tsv`. Lo que se propone (pasos, tamaño, cuantización,
+`--vae-tiling`, cuántas referencias) se apunta como tarea `IMG` en [`roadmap-imagenes.md`](../../docs/producto/roadmap-imagenes.md).
+
 ## Tiempos aceptables
 
 Se fijan con la primera medición en la Deck. Hasta entonces, el paso 4 no marca ninguna tarea como «demasiado

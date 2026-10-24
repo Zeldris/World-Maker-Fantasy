@@ -8,3 +8,6 @@ pruebas/
 # Imágenes elegidas en la interfaz (CFG-43), con la estructura de backend/uploads/images/: se copian a mano al juego.
 salida/
 referencias/
+# Todo lo generado por elemento (CFG-43): generated/<tipo>/<slug>/ con intentos/, prompts/, logs/, registro.tsv, notas.md y la elegida
+# (<slug>-<perfil>.png, el nombre del juego: se copia a backend/uploads/images/<tipo>/ a mano).
+generated/

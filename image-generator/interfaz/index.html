@@ -4,168 +4,297 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Generador de imágenes</title>
-<!-- CFG-43: interfaz local del generador de imágenes; la sirve servidor.py (image-generator/abrir.sh). -->
+<!-- CFG-43: interfaz local del generador de imágenes, por elemento; la sirve servidor.py (image-generator/abrir.sh). -->
 <style>
   :root { --fondo:#f6f4ef; --panel:#fff; --texto:#26231f; --suave:#6d665c; --borde:#ddd6ca; --acento:#8a5a2b;
-          --acento-texto:#fff; --ok:#2f7a3d; --error:#a33a2a; }
+          --acento-texto:#fff; --ok:#2f7a3d; --ok-fondo:#e3f2e5; --error:#a33a2a; --error-fondo:#f8e4df; --hueco:#e9e3d8; }
   @media (prefers-color-scheme: dark) {
     :root { --fondo:#1b1916; --panel:#25221e; --texto:#ece6dc; --suave:#a59c8f; --borde:#3d3832; --acento:#c98a4b;
-            --acento-texto:#1b1916; --ok:#6cc17a; --error:#e07a68; }
+            --acento-texto:#1b1916; --ok:#6cc17a; --ok-fondo:#1f3324; --error:#e07a68; --error-fondo:#3a211c; --hueco:#332f29; }
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--fondo); color:var(--texto); font:15px/1.45 system-ui, sans-serif; }
-  header { padding:12px 20px; border-bottom:1px solid var(--borde); display:flex; gap:12px; align-items:baseline; }
+  header { padding:12px 20px; border-bottom:1px solid var(--borde); display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
   header h1 { font-size:18px; margin:0; }
   header span { color:var(--suave); font-size:13px; }
-  main { display:grid; grid-template-columns:minmax(320px, 440px) 1fr; gap:20px; padding:20px; }
-  @media (max-width: 900px) { main { grid-template-columns:1fr; } }
-  section { background:var(--panel); border:1px solid var(--borde); border-radius:8px; padding:16px; }
-  h2 { font-size:15px; margin:0 0 12px; }
+  main { display:grid; grid-template-columns:minmax(260px, 340px) 1fr; gap:20px; padding:20px; align-items:start; }
+  @media (max-width: 900px) { main { grid-template-columns:1fr; padding:12px; } }
+  section, aside { background:var(--panel); border:1px solid var(--borde); border-radius:8px; padding:16px; min-width:0; }
+  .derecha { display:grid; gap:20px; min-width:0; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  h3 { font-size:14px; margin:14px 0 6px; }
   label { display:block; font-size:13px; color:var(--suave); margin:10px 0 4px; }
   input, select, textarea, button { font:inherit; color:inherit; }
   input, select, textarea { width:100%; background:var(--fondo); border:1px solid var(--borde); border-radius:6px; padding:6px 8px; }
   textarea { resize:vertical; }
-  #prompt { min-height:220px; font-family:ui-monospace, monospace; font-size:13px; }
-  .fila { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
   button { border:1px solid var(--borde); background:var(--fondo); border-radius:6px; padding:6px 12px; cursor:pointer; }
-  button.principal { background:var(--acento); color:var(--acento-texto); border-color:var(--acento); font-weight:600; width:100%; padding:10px; margin-top:14px; }
+  button.principal { background:var(--acento); color:var(--acento-texto); border-color:var(--acento); font-weight:600; }
   button:disabled { opacity:.5; cursor:default; }
-  #lista { max-height:180px; overflow:auto; border:1px solid var(--borde); border-radius:6px; margin-top:6px; }
-  #lista div { padding:4px 8px; cursor:pointer; font-size:13px; display:flex; justify-content:space-between; gap:8px; }
-  #lista div:hover { background:var(--fondo); }
-  #lista small { color:var(--suave); }
-  .nota-fuente { font-size:12px; color:var(--suave); margin-top:4px; }
-  #estado { margin-top:12px; font-size:13px; white-space:pre-wrap; font-family:ui-monospace, monospace; color:var(--suave); }
-  #estado.error { color:var(--error); }
-  .barra-tanda { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
-  .barra-tanda select { width:auto; }
-  #galeria { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:14px; }
-  .tarjeta { border:1px solid var(--borde); border-radius:8px; overflow:hidden; background:var(--fondo); }
+  small, .suave { color:var(--suave); font-size:12px; }
+  .fila { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+  /* columna de elementos */
+  #lista { max-height:min(62vh, 560px); overflow:auto; border:1px solid var(--borde); border-radius:6px; margin-top:8px; }
+  @media (max-width: 900px) { #lista { max-height:300px; } }
+  .elemento { display:flex; gap:10px; align-items:center; padding:6px 8px; cursor:pointer; border-bottom:1px solid var(--borde); }
+  .elemento:last-child { border-bottom:0; }
+  .elemento:hover { background:var(--fondo); }
+  .elemento.activo { background:var(--hueco); box-shadow:3px 0 0 var(--acento) inset; }
+  .miniatura { width:48px; height:48px; border-radius:5px; flex:none; object-fit:cover; background:var(--hueco); display:block; }
+  .elemento .nombre { font-size:14px; word-break:break-word; }
+  .marcas { display:flex; gap:6px; flex-wrap:wrap; font-size:12px; color:var(--suave); }
+  .marcas .eleg { color:var(--ok); font-weight:600; }
+  #nuevoForm { margin-top:8px; padding:10px; border:1px dashed var(--borde); border-radius:6px; }
+
+  /* ficha */
+  .cabecera { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
+  .cabecera img { max-width:200px; max-height:140px; border-radius:6px; border:1px solid var(--borde); cursor:zoom-in; display:block; }
+  .cabecera .hueco { width:120px; height:90px; border-radius:6px; background:var(--hueco); display:flex; align-items:center; justify-content:center; text-align:center; padding:6px; }
+  .cabecera h2 { font-size:18px; margin:0 0 2px; word-break:break-word; }
+  #perfiles { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
+  #perfiles button { display:flex; flex-direction:column; align-items:flex-start; line-height:1.25; }
+  #perfiles button.activo { background:var(--acento); color:var(--acento-texto); border-color:var(--acento); }
+  #perfiles button small { color:inherit; opacity:.8; }
+  #prompt { min-height:200px; font-family:ui-monospace, monospace; font-size:13px; }
+  .linea-fuente { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:4px; }
+  .compacto { display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:end; margin-top:6px; }
+  .compacto label { margin:0 0 4px; }
+  .compacto input[type=number] { width:96px; }
+  .semilla { display:flex; gap:6px; }
+  #refBloque { margin-top:10px; }
+  #refBloque label { display:flex; gap:8px; align-items:center; color:inherit; margin:0; font-size:14px; }
+  #refBloque input { width:auto; }
+  #refPrevia { margin-top:8px; max-width:100%; max-height:200px; border-radius:6px; border:1px solid var(--borde); cursor:zoom-in; display:block; }
+  #generar { width:100%; padding:10px; margin-top:14px; }
+
+  /* progreso */
+  #progreso { margin-top:12px; }
+  .barra { height:12px; background:var(--hueco); border-radius:6px; overflow:hidden; }
+  .barra div { height:100%; width:0; background:var(--acento); transition:width .8s linear; }
+  #progresoTexto { font-size:13px; margin-top:6px; color:var(--suave); }
+  .aviso { padding:10px 12px; border-radius:6px; font-size:14px; margin-top:12px; }
+  .aviso.ok { background:var(--ok-fondo); color:var(--ok); }
+  .aviso.error { background:var(--error-fondo); color:var(--error); }
+  .aviso pre { white-space:pre-wrap; font-size:12px; max-height:240px; overflow:auto; color:var(--texto); margin:6px 0 0; }
+
+  /* galería */
+  .barra-galeria { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .barra-galeria select { width:auto; }
+  #galeria { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+  .tarjeta { border:1px solid var(--borde); border-radius:8px; overflow:hidden; background:var(--fondo); position:relative; min-width:0; }
   .tarjeta.elegida { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok) inset; }
-  .tarjeta img { width:100%; display:block; background:#0002; cursor:zoom-in; }
+  .tarjeta.juego { border-style:dashed; }
+  .tarjeta img { width:100%; display:block; background:var(--hueco); cursor:zoom-in; }
   .tarjeta .sin-imagen { padding:30px; text-align:center; color:var(--error); font-size:13px; }
   .tarjeta .cuerpo { padding:10px; }
-  .tarjeta .nombre { font-size:12px; font-family:ui-monospace, monospace; word-break:break-all; }
-  .tarjeta .datos { font-size:12px; color:var(--suave); margin:4px 0 8px; }
-  .tarjeta textarea { min-height:52px; font-size:13px; }
-  .tarjeta .botones { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .distintivo { position:absolute; top:8px; left:8px; background:var(--ok); color:var(--acento-texto); font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px; }
+  .distintivo.neutro { background:var(--acento); }
+  .tarjeta .titulo { font-weight:600; font-size:14px; }
+  .tarjeta .datos { font-size:12px; color:var(--suave); margin:2px 0 8px; }
+  .tarjeta textarea { min-height:48px; font-size:13px; }
+  .tarjeta .botones { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
   .tarjeta details { font-size:12px; margin-top:8px; }
   .tarjeta details pre { white-space:pre-wrap; font-size:12px; margin:6px 0 0; }
   .ok { color:var(--ok); font-size:12px; }
-  #grande { position:fixed; inset:0; background:#000c; display:none; align-items:center; justify-content:center; cursor:zoom-out; }
-  #grande img { max-width:96vw; max-height:96vh; }
-  #refBloque { margin-top:10px; }
-  #refBloque label { display:flex; gap:8px; align-items:center; color:inherit; margin:0; }
-  #refBloque input { width:auto; }
-  #refPrevia { margin-top:8px; max-width:100%; max-height:220px; border-radius:6px; border:1px solid var(--borde); cursor:zoom-in; display:block; }
+  #grande { position:fixed; inset:0; background:#000d; display:none; align-items:center; justify-content:center; gap:12px; cursor:zoom-out; flex-wrap:wrap; padding:12px; overflow:auto; }
+  #grande figure { margin:0; text-align:center; color:#eee; font-size:13px; }
+  #grande img { max-width:min(96vw, 48vw); max-height:88vh; display:block; margin:0 auto 4px; }
+  #grande.solo img { max-width:96vw; }
+  @media (max-width: 900px) { #grande img, #grande.solo img { max-width:94vw; max-height:44vh; } #grande.solo img { max-height:88vh; } }
 </style>
 </head>
 <body>
 <header><h1>Generador de imágenes</h1><span id="mundo"></span></header>
 <main>
-  <section>
-    <h2>1 · Prompt</h2>
-    <label for="buscar">Traer el prompt de una entidad (usado si lo hay, si no el base)</label>
-    <input id="buscar" placeholder="busca por tipo o slug: fauna, nievon, banner…" autocomplete="off">
-    <div id="lista" hidden></div>
-    <div class="fila3">
-      <div><label for="tipo">Tipo</label><input id="tipo" list="tipos" placeholder="fauna"><datalist id="tipos"></datalist></div>
-      <div><label for="slug">Slug</label><input id="slug" placeholder="nievon"></div>
-      <div><label for="perfil">Perfil</label><select id="perfil"></select></div>
+  <aside>
+    <h2>Elemento</h2>
+    <select id="categoria" aria-label="Categoría"></select>
+    <input id="filtro" placeholder="Filtrar por nombre…" autocomplete="off" style="margin-top:8px">
+    <div id="avisoLista" class="suave"></div>
+    <div id="lista"></div>
+    <button id="nuevo" style="margin-top:8px;width:100%">+ Elemento nuevo</button>
+    <div id="nuevoForm" hidden>
+      <div class="suave">Para un prompt pegado de algo que aún no está en la enciclopedia.</div>
+      <label for="nuevoTipo">Categoría (tipo)</label><input id="nuevoTipo" list="tipos" placeholder="fauna"><datalist id="tipos"></datalist>
+      <label for="nuevoSlug">Nombre (slug)</label><input id="nuevoSlug" placeholder="nievon">
+      <button id="nuevoOk" class="principal" style="margin-top:10px;width:100%">Usar este elemento</button>
+      <div id="nuevoError" class="suave"></div>
     </div>
-    <label for="prompt">Prompt (pégalo o edítalo)</label>
-    <textarea id="prompt" spellcheck="false"></textarea>
-    <div class="nota-fuente" id="fuente">Pegado</div>
+  </aside>
 
-    <h2 style="margin-top:18px">2 · Generar</h2>
-    <div class="fila">
-      <div><label for="semilla">Semilla</label>
-        <div style="display:flex;gap:6px"><input id="semilla" type="number" value="42" min="0"><button id="azar" title="Semilla al azar">🎲</button></div></div>
-      <div><label for="pasos">Pasos</label><input id="pasos" type="number" value="4" min="1" max="20"></div>
-    </div>
-    <label for="tanda">Tanda</label><input id="tanda" list="tandas"><datalist id="tandas"></datalist>
-    <div id="refBloque" hidden>
-      <label><input type="checkbox" id="usarRef"> Usar la imagen actual del juego como referencia <small class="nota-fuente" id="refNombre"></small></label>
-      <img id="refPrevia" alt="Imagen de referencia" hidden>
-    </div>
-    <button class="principal" id="generar">Generar imagen</button>
-    <div id="estado"></div>
-  </section>
+  <div class="derecha">
+    <section id="ficha" hidden>
+      <div class="cabecera">
+        <div id="fichaImagen"></div>
+        <div><h2 id="fichaNombre"></h2><div class="suave" id="fichaDetalle"></div></div>
+      </div>
+      <h3>Perfil</h3>
+      <div id="perfiles"></div>
+      <label for="prompt">Prompt (pégalo o edítalo)</label>
+      <textarea id="prompt" spellcheck="false"></textarea>
+      <div class="linea-fuente"><small id="fuente">Pegado</small><button id="volver" hidden>Volver al de la enciclopedia</button></div>
+      <div class="compacto">
+        <div><label for="semilla">Semilla</label>
+          <div class="semilla"><input id="semilla" type="number" value="42" min="0"><button id="azar" title="Semilla al azar">🎲</button></div></div>
+        <div><label for="pasos">Pasos</label><input id="pasos" type="number" value="4" min="1" max="20"></div>
+        <span></span>
+      </div>
+      <div id="refBloque" hidden>
+        <label><input type="checkbox" id="usarRef"> Usar la imagen actual del juego como referencia <small id="refNombre"></small></label>
+        <img id="refPrevia" alt="Imagen de referencia" hidden>
+      </div>
+      <button class="principal" id="generar">Generar imagen</button>
+      <div id="progreso" hidden>
+        <div class="barra"><div id="relleno"></div></div>
+        <div id="progresoTexto"></div>
+      </div>
+      <div id="resultado" class="aviso" hidden></div>
+    </section>
 
-  <section>
-    <div class="barra-tanda"><h2 style="margin:0">3 · Tanda</h2><select id="verTanda"></select>
-      <span class="nota-fuente">Nota de cada imagen → notas.md · «Elegir esta» → salida/images/&lt;tipo&gt;/&lt;slug&gt;-&lt;perfil&gt;.png</span></div>
-    <div id="galeria"></div>
-  </section>
+    <section id="vacio"><h2>Elige un elemento</h2><p class="suave">Escoge uno de la lista (o crea uno nuevo) para ver su ficha, generar y comparar sus imágenes.</p></section>
+
+    <section id="galeriaSeccion" hidden>
+      <div class="barra-galeria"><h2 style="margin:0">Imágenes del elemento</h2>
+        <select id="filtroPerfil" aria-label="Filtrar por perfil"></select>
+        <small>Nota de cada imagen → notas.md · «Elegir esta» → generated/&lt;tipo&gt;/&lt;slug&gt;/&lt;slug&gt;-&lt;perfil&gt;.png</small></div>
+      <div id="avisoGaleria" class="aviso ok" hidden></div>
+      <div id="galeria"></div>
+    </section>
+  </div>
 </main>
-<div id="grande"><img alt=""></div>
+<div id="grande"></div>
 <script>
 const $ = (id) => document.getElementById(id);
 const TAMANOS = { banner: '1280×512', thumbnail: '768×768', mapa: '832×624', icono: '512×512' };
-let entidades = [], cargado = null, sondeo = null;
+let elementos = [], actual = null, perfil = null, cargado = null, referencia = null, sondeo = null, esperaRef = null, perfilesBD = {};
 
+function h(tag, props, ...hijos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) { if (k === 'class') e.className = v; else if (k.startsWith('on')) e[k] = v; else e.setAttribute(k, v); }
+  for (const x of hijos.flat()) if (x !== null && x !== undefined) e.append(x);
+  return e;
+}
 async function api(ruta, cuerpo) {
   const r = await fetch(ruta, cuerpo === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
   const datos = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(datos.error || `error ${r.status}`);
   return datos;
 }
-function hoy() { const d = new Date(); return d.toISOString().slice(0, 10); }
-function aviso(texto, error) { $('estado').textContent = texto; $('estado').className = error ? 'error' : ''; }
-function guardarFormulario() {
-  try { localStorage.setItem('generador', JSON.stringify({ tipo: $('tipo').value, slug: $('slug').value, perfil: $('perfil').value,
-    prompt: $('prompt').value, semilla: $('semilla').value, pasos: $('pasos').value, tanda: $('tanda').value })); } catch {}
-}
-function recuperarFormulario() {
-  try { const f = JSON.parse(localStorage.getItem('generador') || 'null'); if (!f) return;
-    for (const k of Object.keys(f)) if ($(k) && f[k] !== undefined) $(k).value = f[k]; } catch {}
-}
+const q = encodeURIComponent;
+function guardar() { try { localStorage.setItem('generador-cfg43', JSON.stringify({ tipo: actual && actual.tipo, slug: actual && actual.slug, perfil })); } catch {} }
+function recordado() { try { return JSON.parse(localStorage.getItem('generador-cfg43') || 'null') || {}; } catch { return {}; } }
 
+/* ---------- ampliar ---------- */
+function ampliar(src, titulo, juego) {
+  const g = $('grande'); g.innerHTML = '';
+  g.className = juego ? '' : 'solo';
+  g.append(h('figure', {}, h('img', { src, alt: '' }), titulo));
+  if (juego) g.append(h('figure', {}, h('img', { src: juego, alt: '' }), 'Actual del juego'));
+  g.style.display = 'flex';
+}
+$('grande').onclick = () => { $('grande').style.display = 'none'; };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('grande').style.display = 'none'; });
+
+/* ---------- lista de elementos ---------- */
+async function cargarElementos() {
+  const r = await api('/api/elementos');
+  elementos = r.elementos;
+  $('avisoLista').textContent = r.aviso || '';
+  const sel = $('categoria'), previa = sel.value;
+  const tipos = [...new Set(elementos.map((e) => e.tipo))].sort();
+  sel.innerHTML = ''; sel.add(new Option('Todas las categorías', ''));
+  for (const t of tipos) sel.add(new Option(`${t} (${elementos.filter((e) => e.tipo === t).length})`, t));
+  sel.value = tipos.includes(previa) ? previa : '';
+  $('tipos').innerHTML = tipos.map((t) => `<option value="${t}">`).join('');
+  pintarLista();
+}
+function pintarLista() {
+  const cat = $('categoria').value, texto = $('filtro').value.trim().toLowerCase();
+  const vistos = elementos.filter((e) => (!cat || e.tipo === cat) && (!texto || `${e.tipo} ${e.slug}`.toLowerCase().includes(texto)));
+  const l = $('lista'); l.innerHTML = '';
+  for (const e of vistos.slice(0, 300)) {
+    const marcas = h('div', { class: 'marcas' });
+    if (e.intentos) marcas.append(h('span', {}, `${e.intentos} intento${e.intentos === 1 ? '' : 's'}`));
+    if (e.elegidas.length) marcas.append(h('span', { class: 'eleg' }, '✓ elegida'));
+    const miniatura = e.juego ? h('img', { class: 'miniatura', loading: 'lazy', alt: '', src: `/ref/${e.juego}` }) : h('div', { class: 'miniatura', title: 'Sin imagen en el juego' });
+    l.append(h('div', { class: 'elemento' + (actual && actual.tipo === e.tipo && actual.slug === e.slug ? ' activo' : ''), onclick: () => elegirElemento(e.tipo, e.slug) },
+      miniatura, h('div', {}, h('div', { class: 'nombre' }, cat ? e.slug : `${e.tipo} / ${e.slug}`), marcas)));
+  }
+  if (!vistos.length) l.append(h('div', { class: 'elemento' }, h('small', {}, elementos.length ? 'Sin coincidencias.' : 'Aún no hay elementos: crea uno nuevo o genera sus prompts en la enciclopedia.')));
+  if (vistos.length > 300) l.append(h('div', { class: 'elemento' }, h('small', {}, `Y ${vistos.length - 300} más: afina el filtro.`)));
+}
+$('categoria').onchange = pintarLista;
+$('filtro').oninput = pintarLista;
+$('nuevo').onclick = () => { $('nuevoForm').hidden = !$('nuevoForm').hidden; };
+$('nuevoOk').onclick = () => {
+  const tipo = $('nuevoTipo').value.trim(), slug = $('nuevoSlug').value.trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(tipo) || !/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(slug)) { $('nuevoError').textContent = 'Solo letras sin tilde, cifras y guiones.'; return; }
+  $('nuevoError').textContent = ''; $('nuevoForm').hidden = true;
+  elegirElemento(tipo, slug);
+};
+
+/* ---------- ficha del elemento ---------- */
+function datosElemento() { return elementos.find((e) => e.tipo === actual.tipo && e.slug === actual.slug) || { tipo: actual.tipo, slug: actual.slug, perfiles: [], intentos: 0, elegidas: [], juego: null }; }
+
+async function elegirElemento(tipo, slug, perfilInicial) {
+  const cambia = !actual || actual.tipo !== tipo || actual.slug !== slug;
+  actual = { tipo, slug };
+  const e = datosElemento();
+  perfilesBD = Object.fromEntries(e.perfiles.map((p) => [p.perfil, p.usado]));
+  $('vacio').hidden = true; $('ficha').hidden = false; $('galeriaSeccion').hidden = false;
+  $('fichaNombre').textContent = slug;
+  $('fichaDetalle').textContent = `${tipo} · ${e.intentos} intento${e.intentos === 1 ? '' : 's'}${e.elegidas.length ? ' · elegida: ' + e.elegidas.join(', ') : ''}`;
+  const caja = $('fichaImagen'); caja.innerHTML = '';
+  if (e.juego) caja.append(h('img', { src: `/ref/${e.juego}`, alt: 'Imagen actual del juego', title: 'Imagen actual del juego (clic para ampliar)', onclick: () => ampliar(`/ref/${e.juego}`, 'Actual del juego') }));
+  else caja.append(h('div', { class: 'hueco suave' }, 'El juego aún no tiene imagen'));
+  if (cambia) { $('prompt').value = ''; cargado = null; }
+  pintarPerfiles();
+  const inicial = perfilInicial || (!cambia ? perfil : null) || (recordado().tipo === tipo && recordado().slug === slug ? recordado().perfil : null)
+    || (e.perfiles[0] && e.perfiles[0].perfil) || 'thumbnail';
+  await seleccionarPerfil(inicial, cambia);
+  pintarLista();
+  await pintarGaleria();
+}
+function pintarPerfiles() {
+  const caja = $('perfiles'); caja.innerHTML = '';
+  for (const p of Object.keys(TAMANOS)) {
+    const nota = p in perfilesBD ? (perfilesBD[p] ? 'prompt usado' : 'prompt base') : 'sin prompt en la enciclopedia';
+    caja.append(h('button', { class: p === perfil ? 'activo' : '', onclick: () => seleccionarPerfil(p, true) }, p, h('small', {}, `${TAMANOS[p]} · ${nota}`)));
+  }
+  const filtro = $('filtroPerfil'), previo = filtro.value;
+  filtro.innerHTML = ''; filtro.add(new Option('Todos los perfiles', ''));
+  for (const p of Object.keys(TAMANOS)) filtro.add(new Option(p, p));
+  filtro.value = previo;
+}
+async function seleccionarPerfil(p, traer) {
+  perfil = p; guardar(); pintarPerfiles();
+  if (traer && p in perfilesBD) await traerPrompt();
+  else marcarFuente();
+  buscarReferencia();
+}
+async function traerPrompt() {
+  try {
+    const r = await api(`/api/prompt?tipo=${q(actual.tipo)}&slug=${q(actual.slug)}&perfil=${q(perfil)}`);
+    $('prompt').value = r.prompt;
+    cargado = { tipo: actual.tipo, slug: actual.slug, perfil, prompt: r.prompt, fuente: r.fuente };
+    marcarFuente();
+  } catch (err) { $('fuente').textContent = err.message; }
+}
 function marcarFuente() {
-  const igual = cargado && cargado.prompt === $('prompt').value && cargado.tipo === $('tipo').value && cargado.slug === $('slug').value && cargado.perfil === $('perfil').value;
+  const igual = !!cargado && cargado.prompt === $('prompt').value && cargado.tipo === actual.tipo && cargado.slug === actual.slug && cargado.perfil === perfil;
   $('fuente').textContent = igual ? `Prompt ${cargado.fuente} de la enciclopedia (${cargado.tipo}/${cargado.slug}/${cargado.perfil})`
-    : cargado ? 'Editado aquí: se generará con este texto (el registro dirá «pegado»)' : 'Pegado';
+    : (cargado && cargado.perfil === perfil) ? 'Editado aquí: se generará con este texto (el registro dirá «pegado»)' : 'Pegado';
+  $('volver').hidden = !(perfil in perfilesBD) || igual;
   return igual;
 }
+$('prompt').addEventListener('input', marcarFuente);
+$('volver').onclick = traerPrompt;
+$('azar').onclick = () => { $('semilla').value = Math.floor(Math.random() * 1e6); };
 
-function pintarLista() {
-  const q = $('buscar').value.trim().toLowerCase();
-  if (!q) { $('lista').hidden = true; return; }
-  const palabras = q.split(/\s+/);
-  const hallados = entidades.filter((e) => palabras.every((p) => `${e.tipo} ${e.slug} ${e.perfil}`.includes(p))).slice(0, 60);
-  $('lista').innerHTML = '';
-  for (const e of hallados) {
-    const d = document.createElement('div');
-    d.innerHTML = `<span></span><small></small>`;
-    d.firstChild.textContent = `${e.tipo} / ${e.slug}`;
-    d.lastChild.textContent = `${e.perfil}${e.usado ? ' · usado' : ''}`;
-    d.onclick = () => traer(e);
-    $('lista').appendChild(d);
-  }
-  if (!hallados.length) $('lista').innerHTML = '<div><small>Sin coincidencias (¿generaste su prompt en la enciclopedia?)</small></div>';
-  $('lista').hidden = false;
-}
-
-async function traer(e) {
-  try {
-    const r = await api(`/api/prompt?tipo=${encodeURIComponent(e.tipo)}&slug=${encodeURIComponent(e.slug)}&perfil=${encodeURIComponent(e.perfil)}`);
-    $('tipo').value = e.tipo; $('slug').value = e.slug; $('perfil').value = e.perfil; $('prompt').value = r.prompt;
-    cargado = { ...e, prompt: r.prompt, fuente: r.fuente };
-    $('lista').hidden = true; $('buscar').value = '';
-    marcarFuente(); guardarFormulario(); buscarReferencia();
-  } catch (err) { aviso(err.message, true); }
-}
-
-// La imagen que el juego tiene ya de esa entidad (copiada por abrir.sh a referencias/images/), para usarla de referencia.
-let referencia = null, esperaRef = null;
+/* ---------- referencia ---------- */
 async function buscarReferencia() {
-  const tipo = $('tipo').value.trim(), slug = $('slug').value.trim(), perfil = $('perfil').value;
   referencia = null;
-  if (tipo && slug) {
-    try { const r = await api(`/api/referencia?tipo=${encodeURIComponent(tipo)}&slug=${encodeURIComponent(slug)}&perfil=${encodeURIComponent(perfil)}`);
-      if (r.ruta) referencia = r; } catch {}
-  }
+  if (actual) { try { const r = await api(`/api/referencia?tipo=${q(actual.tipo)}&slug=${q(actual.slug)}&perfil=${q(perfil)}`); if (r.ruta) referencia = r; } catch {} }
   $('refBloque').hidden = !referencia;
   if (referencia) $('refNombre').textContent = referencia.perfil === perfil ? `(${referencia.ruta})` : `(${referencia.ruta}: de otro perfil)`;
   pintarReferencia();
@@ -175,103 +304,102 @@ function pintarReferencia() {
   $('refPrevia').hidden = !ver;
   if (ver) $('refPrevia').src = `/ref/${referencia.ruta}`;
 }
+$('usarRef').onchange = pintarReferencia;
+$('refPrevia').onclick = () => ampliar($('refPrevia').src, 'Referencia');
 
-async function generar() {
-  const desdeBase = marcarFuente();
-  const peticion = { tanda: $('tanda').value.trim() || hoy(), tipo: $('tipo').value.trim(), slug: $('slug').value.trim(),
-    perfil: $('perfil').value, prompt: $('prompt').value, desdeBase, semilla: Number($('semilla').value), pasos: Number($('pasos').value),
-    usarReferencia: !$('refBloque').hidden && $('usarRef').checked };
-  $('tanda').value = peticion.tanda; guardarFormulario();
-  try { await api('/api/generar', peticion); $('generar').disabled = true; aviso('Empezando…'); seguir(); }
-  catch (err) { aviso(err.message, true); }
+/* ---------- generar y progreso ---------- */
+function mostrarResultado(texto, ok, detalle) {
+  const r = $('resultado'); r.hidden = !texto; r.className = 'aviso ' + (ok ? 'ok' : 'error'); r.innerHTML = '';
+  if (!texto) return;
+  r.append(texto);
+  if (detalle) r.append(h('details', {}, h('summary', {}, 'Ver el final del log'), h('pre', {}, detalle)));
 }
+async function generar() {
+  const peticion = { tipo: actual.tipo, slug: actual.slug, perfil, prompt: $('prompt').value, desdeBase: marcarFuente(),
+    semilla: Number($('semilla').value), pasos: Number($('pasos').value), usarReferencia: !$('refBloque').hidden && $('usarRef').checked };
+  mostrarResultado('');
+  try { await api('/api/generar', peticion); $('generar').disabled = true; $('progreso').hidden = false; $('relleno').style.width = '2%'; $('progresoTexto').textContent = 'Empezando…'; seguir(); }
+  catch (err) { mostrarResultado(err.message, false); }
+}
+$('generar').onclick = generar;
 
 function seguir() {
   clearTimeout(sondeo);
   sondeo = setTimeout(async () => {
     let e;
-    try { e = await api('/api/estado'); } catch (err) { aviso('El servidor no responde: ' + err.message, true); return; }
+    try { e = await api('/api/estado'); } catch (err) { mostrarResultado('El servidor no responde: ' + err.message, false); $('generar').disabled = false; return; }
     if (e.enMarcha) {
-      aviso(`${e.progreso} · ${e.segundos} s\n${e.salida.slice(-3).join('\n')}`);
+      $('progreso').hidden = false;
+      const resto = Math.max(0, e.estimado - e.segundos);
+      $('relleno').style.width = Math.max(2, Math.min(97, 100 * e.segundos / e.estimado)) + '%';
+      const fase = e.paso ? `paso ${e.paso}/${e.pasos}` : e.progreso;
+      $('progresoTexto').textContent = `${fase[0].toUpperCase() + fase.slice(1)} · ${e.segundos} s · ${resto ? 'quedan ~' + resto + ' s' : 'casi lista'}`;
       return seguir();
     }
-    $('generar').disabled = false;
-    if (e.rc === 0) aviso(`Hecha en ${e.segundos} s: ${e.nombre}`);
-    else if (e.rc !== null && e.rc !== undefined) aviso(`Falló (salida ${e.rc}) tras ${e.segundos} s:\n${e.salida.join('\n')}`, true);
-    await cargarTandas(e.tanda);
-  }, 1500);
+    $('generar').disabled = false; $('progreso').hidden = true;
+    if (e.rc === 0) mostrarResultado(`Lista en ${e.segundos} s: ${e.nombre}`, true);
+    else if (e.rc !== null && e.rc !== undefined) mostrarResultado(`Falló (salida ${e.rc}) tras ${e.segundos} s: ${e.salida.slice(-3).join(' · ')}`, false, e.logFinal || e.salida.join('\n'));
+    await cargarElementos();
+    if (actual) { const a = actual; await elegirElemento(a.tipo, a.slug, perfil); }
+  }, 1000);
 }
 
-async function cargarTandas(elegir) {
-  const ini = await api('/api/inicio');
-  $('tandas').innerHTML = ini.tandas.map((t) => `<option value="${t}">`).join('');
-  const sel = $('verTanda'), actual = elegir || sel.value || $('tanda').value || ini.tandas[0];
-  sel.innerHTML = '';
-  for (const t of ini.tandas) sel.add(new Option(t, t, false, t === actual));
-  if (ini.tandas.length) await pintarTanda(sel.value);
-  else $('galeria').innerHTML = '<p class="nota-fuente">Aún no hay tandas: genera la primera imagen.</p>';
+/* ---------- galería ---------- */
+function datosIntento(f) {
+  return `${f.perfil} · semilla ${f.semilla} · ${f.pasos} pasos · ${f.conReferencia ? 'con referencia' : 'sin referencia'} · ${f.segundos} s · prompt ${f.prompt} · ${f.fecha.replace('T', ' ').slice(0, 16)}`;
 }
-
-async function pintarTanda(tanda) {
-  const filas = await api(`/api/tanda?tanda=${encodeURIComponent(tanda)}`);
-  const g = $('galeria'); g.innerHTML = '';
-  if (!filas.length) g.innerHTML = '<p class="nota-fuente">Tanda vacía.</p>';
-  for (const f of filas) {
-    const t = document.createElement('div');
-    t.className = 'tarjeta' + (f.elegida ? ' elegida' : '');
-    t.innerHTML = `${f.imagen ? '<img loading="lazy" alt="">' : '<div class="sin-imagen"></div>'}
-      <div class="cuerpo"><div class="nombre"></div><div class="datos"></div>
-      <textarea placeholder="Qué te parece, qué sobra, qué falta…"></textarea>
-      <div class="botones"><button class="elegir"></button><button class="usar">Usar este prompt</button><span class="ok"></span></div>
-      <details><summary>Prompt</summary><pre></pre></details></div>`;
-    if (f.imagen) {
-      const img = t.querySelector('img'); img.src = `/img/${tanda}/${f.nombre}.png?${f.fecha}`;
-      img.onclick = () => { $('grande').firstChild.src = img.src; $('grande').style.display = 'flex'; };
-    } else t.querySelector('.sin-imagen').textContent = `Sin imagen (salida ${f.salida})`;
-    t.querySelector('.nombre').textContent = f.nombre;
-    t.querySelector('.datos').textContent = `${f.tipo}/${f.slug} · ${f.perfil} ${f.tamaño} · semilla ${f.semilla} · ${f.pasos} pasos · prompt ${f.prompt} · ${f.segundos} s${f.extra ? ' · ' + f.extra.replace(/.*\//, 'ref ') : ''}`;
-    t.querySelector('pre').textContent = f.textoPrompt;
-    const nota = t.querySelector('textarea'), ok = t.querySelector('.ok');
-    nota.value = f.nota;
-    nota.onchange = async () => { try { await api('/api/nota', { tanda, nombre: f.nombre, texto: nota.value }); ok.textContent = 'nota guardada'; } catch (err) { ok.textContent = err.message; } };
-    const be = t.querySelector('.elegir');
-    be.textContent = f.elegida ? '✓ Elegida' : 'Elegir esta'; be.disabled = !f.imagen;
-    be.title = f.destino;
-    be.onclick = async () => { try { const r = await api('/api/elegir', { tanda, nombre: f.nombre }); await pintarTanda(tanda); aviso(`Copiada a image-generator/${r.destino}`); } catch (err) { aviso(err.message, true); } };
-    t.querySelector('.usar').onclick = () => {
-      $('tipo').value = f.tipo; $('slug').value = f.slug; $('perfil').value = f.perfil; $('prompt').value = f.textoPrompt;
-      $('semilla').value = f.semilla; $('pasos').value = f.pasos; cargado = null; marcarFuente(); guardarFormulario(); buscarReferencia(); window.scrollTo(0, 0);
-    };
-    g.appendChild(t);
-  }
+async function pintarGaleria() {
+  const a = actual, g = $('galeria');
+  let filas;
+  try { filas = await api(`/api/elemento?tipo=${q(a.tipo)}&slug=${q(a.slug)}`); } catch (err) { g.textContent = err.message; return; }
+  if (!actual || actual.tipo !== a.tipo || actual.slug !== a.slug) return;
+  const filtro = $('filtroPerfil').value;
+  let juego = null;
+  try { const r = await api(`/api/referencia?tipo=${q(a.tipo)}&slug=${q(a.slug)}&perfil=${q(filtro || perfil)}`); if (r.ruta) juego = r; } catch {}
+  const juegoSrc = juego ? `/ref/${juego.ruta}` : null;
+  g.innerHTML = '';
+  if (juego) g.append(h('div', { class: 'tarjeta juego' }, h('span', { class: 'distintivo neutro' }, 'Actual del juego'),
+    h('img', { src: juegoSrc, alt: '', onclick: () => ampliar(juegoSrc, 'Actual del juego') }),
+    h('div', { class: 'cuerpo' }, h('div', { class: 'titulo' }, 'Actual del juego'), h('div', { class: 'datos' }, `${juego.ruta}${juego.perfil === (filtro || perfil) ? '' : ' (de otro perfil)'}`))));
+  const vistas = filas.filter((f) => !filtro || f.perfil === filtro);
+  vistas.sort((x, y) => Number(y.elegida) - Number(x.elegida));  // la elegida destacada, primero (estable)
+  if (!vistas.length) g.append(h('p', { class: 'suave' }, 'Aún no hay imágenes de este elemento: genera la primera.'));
+  for (const f of vistas) g.append(tarjeta(f, juegoSrc));
 }
+function tarjeta(f, juegoSrc) {
+  const a = actual, src = `/img/${q(a.tipo)}/${q(a.slug)}/${q(f.nombre)}.png?${q(f.fecha)}`;
+  const nota = h('textarea', { placeholder: 'Qué te parece, qué sobra, qué falta…' }); nota.value = f.nota;
+  const ok = h('span', { class: 'ok' });
+  nota.onchange = async () => { try { await api('/api/nota', { tipo: a.tipo, slug: a.slug, nombre: f.nombre, texto: nota.value }); ok.textContent = 'guardada ✓'; } catch (err) { ok.textContent = err.message; } };
+  nota.oninput = () => { ok.textContent = ''; };
+  const elegir = h('button', { class: 'principal', onclick: async () => {
+    try { const r = await api('/api/elegir', { tipo: a.tipo, slug: a.slug, nombre: f.nombre }); await cargarElementos(); await elegirElemento(a.tipo, a.slug, perfil);
+      const av = $('avisoGaleria'); av.hidden = false; av.textContent = `Copiada a image-generator/${r.destino}. Para verla en el juego, cópiala a backend/uploads/images/${a.tipo}/.`; }
+    catch (err) { const av = $('avisoGaleria'); av.hidden = false; av.className = 'aviso error'; av.textContent = err.message; } } }, f.elegida ? '✓ Elegida (repetir)' : 'Elegir esta');
+  elegir.disabled = !f.imagen; elegir.title = f.destino;
+  const reutilizar = h('button', { onclick: () => {
+    perfil = f.perfil; pintarPerfiles(); $('prompt').value = f.textoPrompt; $('semilla').value = f.semilla; $('pasos').value = f.pasos;
+    cargado = null; marcarFuente(); guardar(); buscarReferencia(); $('ficha').scrollIntoView({ behavior: 'smooth' }); } }, 'Reutilizar prompt y semilla');
+  return h('div', { class: 'tarjeta' + (f.elegida ? ' elegida' : '') },
+    f.elegida ? h('span', { class: 'distintivo' }, '✓ Elegida') : null,
+    f.imagen ? h('img', { src, loading: 'lazy', alt: '', onclick: () => ampliar(src, f.nombre, juegoSrc) }) : h('div', { class: 'sin-imagen' }, `Sin imagen (salida ${f.salida})`),
+    h('div', { class: 'cuerpo' }, h('div', { class: 'titulo' }, f.perfil, h('small', {}, ' · ' + f.nombre)), h('div', { class: 'datos' }, datosIntento(f)),
+      nota, h('div', { class: 'botones' }, elegir, reutilizar, ok),
+      h('details', {}, h('summary', {}, 'Prompt'), h('pre', {}, f.textoPrompt))));
+}
+$('filtroPerfil').onchange = pintarGaleria;
 
+/* ---------- inicio ---------- */
 async function iniciar() {
   const ini = await api('/api/inicio');
-  $('mundo').textContent = `mundo ${ini.mundo} · las imágenes elegidas van a image-generator/salida/images/`;
-  for (const p of ini.perfiles) $('perfil').add(new Option(`${p} (${TAMANOS[p]})`, p));
-  $('tanda').value = hoy();
-  recuperarFormulario();
-  marcarFuente();
-  buscarReferencia();
-  try { entidades = await api('/api/entidades'); $('tipos').innerHTML = [...new Set(entidades.map((e) => e.tipo))].map((t) => `<option value="${t}">`).join(''); }
-  catch (err) { aviso('Sin lista de entidades: ' + err.message, true); }
-  await cargarTandas($('tanda').value);
+  $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
+  await cargarElementos();
   const e = await api('/api/estado');
-  if (e.enMarcha) { $('generar').disabled = true; seguir(); }
+  const r = recordado();
+  if (e.enMarcha) { $('generar').disabled = true; $('progreso').hidden = false; await elegirElemento(e.tipo, e.slug, e.perfil); seguir(); }
+  else if (r.tipo && r.slug) await elegirElemento(r.tipo, r.slug, r.perfil);
 }
-
-$('buscar').oninput = pintarLista;
-for (const id of ['prompt', 'tipo', 'slug', 'perfil']) $(id).addEventListener('input', () => { marcarFuente(); guardarFormulario(); });
-for (const id of ['tipo', 'slug', 'perfil']) $(id).addEventListener('input', () => { clearTimeout(esperaRef); esperaRef = setTimeout(buscarReferencia, 300); });
-for (const id of ['semilla', 'pasos', 'tanda']) $(id).addEventListener('change', guardarFormulario);
-$('azar').onclick = () => { $('semilla').value = Math.floor(Math.random() * 1e6); guardarFormulario(); };
-$('generar').onclick = generar;
-$('verTanda').onchange = () => pintarTanda($('verTanda').value);
-$('usarRef').onchange = pintarReferencia;
-$('refPrevia').onclick = () => { $('grande').firstChild.src = $('refPrevia').src; $('grande').style.display = 'flex'; };
-$('grande').onclick = () => { $('grande').style.display = 'none'; };
-iniciar().catch((err) => aviso(err.message, true));
+iniciar().catch((err) => { $('avisoLista').textContent = err.message; });
 </script>
 </body>
 </html>

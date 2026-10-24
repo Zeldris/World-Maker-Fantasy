@@ -289,8 +289,8 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   sirve en klein destilado y las condiciones de uso de las imágenes de origen. Tras `CFG-42`, que dirá qué estilo
   fijar. **M**
 - **CFG-42 · Análisis de las pruebas de prompts de la usuaria** (usuaria, 2026-10-24): ella genera imágenes con sus
-  prompts usados ([`probar.sh`](../../image-generator/scripts/probar.sh): `registro.tsv` y `notas.md` por tanda) y,
-  cuando avisa, Claude en la Deck analiza las tandas (imágenes, prompts, notas) y propone mejoras al generador
+  prompts usados ([`probar.sh`](../../image-generator/scripts/probar.sh): `registro.tsv` y `notas.md` por elemento, en `generated/<tipo>/<slug>/`) y,
+  cuando avisa, Claude en la Deck analiza los intentos (imágenes, prompts, notas) y propone mejoras al generador
   (`imagePromptGenerator.ts`, `REGION_ESCENA`) y a los parámetros. Pasos en el
   [README de image-generator](../../image-generator/README.md#probar-prompts-la-usuaria). **M**
   **Cómo se analiza** (`QA-223`): un subagente con el modelo grande lee `registro.tsv`, `notas.md`, los prompts y
@@ -306,6 +306,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   Referencia (usuaria, 2026-10-24): `abrir.sh` copia las imágenes del juego a `referencias/images/` y, si la entidad
   tiene una, una casilla la usa (`-r`) y enseña la original. `sd-cli` corre con sus librerías (`LD_LIBRARY_PATH`).
   Tests: `test_interfaz_imagenes` (15).
+  Por elemento (usuaria, 2026-10-24): todo va a `generated/<tipo>/<slug>/` (`intentos/`, `prompts/`, `logs/`,
+  `registro.tsv`, `notas.md`, `elegidas.tsv`) y «Elegir esta» deja `<slug>-<perfil>.png` ahí mismo; sin tandas ni
+  `salida/`. La página: lista de elementos por categoría con miniatura del juego, barra de progreso con tiempo
+  estimado (mediana de los intentos anteriores) y galería con la imagen actual del juego y la elegida marcada.
+  Tests: `test_interfaz_imagenes` (28). Lo siguiente del generador, en [roadmap-imagenes.md](roadmap-imagenes.md).
 
 ---
 

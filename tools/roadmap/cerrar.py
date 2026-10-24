@@ -15,7 +15,7 @@ import argparse, datetime as dt, os, re, subprocess, sys
 
 RAIZ = os.environ.get('CERRAR_RAIZ') or os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 PRODUCTO = os.path.join(RAIZ, 'docs', 'producto')
-ROADMAPS = ['roadmap-front.md', 'roadmap-front-ux.md', 'roadmap-front-zona.md', 'roadmap-front-reino.md', 'roadmap-cronista.md']
+ROADMAPS = ['roadmap-front.md', 'roadmap-front-ux.md', 'roadmap-front-zona.md', 'roadmap-front-reino.md', 'roadmap-cronista.md', 'roadmap-imagenes.md']
 MAPA = os.path.join(PRODUCTO, '21-roadmap.md')
 BITACORA = os.path.join(RAIZ, 'docs', 'registros', 'traspaso.md')
 HECHOS = 10

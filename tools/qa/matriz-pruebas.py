@@ -31,6 +31,7 @@ BLOQUES = {
     'REI': 'Reino', 'CR': 'Mundo vivo', 'ZON': 'Mapa de zona', 'CMB': 'Combate', 'DAD': 'Dados y tiradas',
     'NAR': 'Narrador', 'INT': 'Cronista en la interfaz', 'UX': 'Interfaz', 'HUD': 'Interfaz', 'PAN': 'Paneles',
     'MOD': 'Interfaz', 'CFG': 'Configuración', 'BAS': 'Interfaz', 'ATM': 'Ambiente', 'PRE': 'Interfaz', 'SON': 'Ambiente',
+    'IMG': 'Configuración',
 }
 ESTADOS = ('jugado', 'solo tests', 'sin jugar', 'no se juega')
 CABECERA = """# Matriz de cobertura de las pruebas jugando (`QA-101`)
