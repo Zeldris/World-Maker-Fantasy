@@ -22,9 +22,10 @@ API (JSON salvo las imágenes):
   POST /api/nota {tipo,slug,nombre,texto};  POST /api/elegir {tipo,slug,nombre}
 
 Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.1.
-Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_PUERTO (7861).
+Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_API (backend del juego, ''
+= sin catálogo), IMG_PUERTO (7861).
 """
-import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time
+import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time, urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -33,6 +34,7 @@ RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
 PROBAR = os.environ.get('IMG_PROBAR', os.path.join(RAIZ, 'scripts', 'probar.sh'))
 PSQL = shlex.split(os.environ.get('IMG_PSQL', 'podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c'))
 MUNDO = os.environ.get('MUNDO', 'helek-sirik')
+API = os.environ.get('IMG_API', 'http://127.0.0.1:3001')
 GENERADO = os.path.join(RAIZ, 'generated')
 REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
@@ -189,15 +191,43 @@ def elegir(tipo, slug_, nombre):
     return rel
 
 
+# Sección de /world/<mundo>/enciclopedia → (carpeta de imágenes, campo del slug); fauna y flora según `esFauna`.
+SECCIONES = {'npcs': ('npc', 'slug'), 'items': ('item', 'slug'), 'faunaFlora': (None, 'sourceSlug'),
+             'locations': ('location', 'slug'), 'razas': ('raza', 'slug'), 'personajes': ('personaje', 'slug'),
+             'constructionRecipes': ('construccion', 'key'), 'craftingRecipes': ('crafteo', 'key'),
+             'factions': ('faction', 'slug'), 'historia': ('historia', 'slug')}
+
+
+def catalogo():
+    """[(tipo, slug, nombre)] de toda la enciclopedia, del backend del juego (si no corre, error)."""
+    with urllib.request.urlopen(f'{API}/world/{slug(MUNDO, "mundo")}/enciclopedia', timeout=10) as r:
+        datos = json.load(r)
+    out = []
+    for seccion, (tipo, campo) in SECCIONES.items():
+        for e in datos.get(seccion) or []:
+            s_ = e.get(campo)
+            if s_ and SLUG.match(s_):
+                out.append((tipo or ('fauna' if e.get('esFauna') else 'flora'), s_,
+                            e.get('name') or e.get('sourceName') or e.get('title') or ''))
+    return out
+
+
 def elementos():
-    """(lista, aviso): las entidades con prompt en la BD unidas a lo que hay en generated/."""
-    aviso, claves = None, {}
+    """(lista, aviso): toda la enciclopedia (backend del juego), las entidades con prompt en la BD, lo que hay en
+    generated/ y lo que tiene imagen en el juego."""
+    avisos, claves = [], {}
+    if API:
+        try:
+            for t, s_, nombre in catalogo():
+                claves.setdefault((t, s_), {'tipo': t, 'slug': s_, 'perfiles': []})['nombre'] = nombre
+        except (OSError, ValueError) as err:
+            avisos.append(f'Sin el catálogo completo (arranca el juego para verlo entero): {err}')
     try:
         for e in entidades() or []:
             el = claves.setdefault((e['tipo'], e['slug']), {'tipo': e['tipo'], 'slug': e['slug'], 'perfiles': []})
             el['perfiles'].append({'perfil': e['perfil'], 'usado': bool(e['usado'])})
     except (RuntimeError, ValueError, subprocess.TimeoutExpired, OSError) as err:
-        aviso = f'Sin la lista de la enciclopedia: {err}'
+        avisos.append(f'Sin los prompts de la enciclopedia: {err}')
     try:
         for t in os.listdir(GENERADO):
             if not SLUG.match(t) or not os.path.isdir(os.path.join(GENERADO, t)):
@@ -207,14 +237,26 @@ def elementos():
                     claves.setdefault((t, s_), {'tipo': t, 'slug': s_, 'perfiles': []})
     except FileNotFoundError:
         pass
+    # Lo que tiene imagen en el juego aunque no tenga prompt en la BD (razas, fauna sin generar…)
+    try:
+        for t in os.listdir(REFERENCIAS):
+            if not SLUG.match(t) or not os.path.isdir(os.path.join(REFERENCIAS, t)):
+                continue
+            for n in os.listdir(os.path.join(REFERENCIAS, t)):
+                m = re.match(rf"^([A-Za-z0-9][A-Za-z0-9-]*?)-({'|'.join(PERFILES)})\.(?:{'|'.join(EXTENSIONES)})$", n)
+                if m:
+                    claves.setdefault((t, m.group(1)), {'tipo': t, 'slug': m.group(1), 'perfiles': []})
+    except FileNotFoundError:
+        pass
     lista = []
     for (t, s_), el in sorted(claves.items()):
         d = os.path.join(GENERADO, t, s_)
         ref = referencia_de(t, s_, el['perfiles'][0]['perfil'] if el['perfiles'] else 'thumbnail')
+        el.setdefault('nombre', '')
         el.update(juego=ref['ruta'] if ref else None, intentos=len(filas_registro(d)),
                   elegidas=[p for p in PERFILES if os.path.isfile(os.path.join(d, f'{s_}-{p}.png'))])
         lista.append(el)
-    return lista, aviso
+    return lista, ' · '.join(avisos) or None
 
 
 def estimado(perfil, con_referencia):

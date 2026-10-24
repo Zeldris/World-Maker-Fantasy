@@ -37,8 +37,9 @@ esac
 '''
 
 
-def cargar(raiz, psql='false'):
-    os.environ.update(IMG_RAIZ=raiz, IMG_PROBAR=os.path.join(raiz, 'probar.sh'), IMG_PSQL=psql, CABECERA=CABECERA)
+def cargar(raiz, psql='false', api=''):
+    os.environ.update(IMG_RAIZ=raiz, IMG_PROBAR=os.path.join(raiz, 'probar.sh'), IMG_PSQL=psql, CABECERA=CABECERA,
+                      IMG_API=api)
     spec = importlib.util.spec_from_file_location('servidor_imagenes', SERVIDOR)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -155,6 +156,39 @@ class Elementos(Base):
         lista, aviso = self.s.elementos()  # IMG_PSQL=false: la base no responde
         self.assertEqual([(e['tipo'], e['slug'], e['intentos']) for e in lista], [('fauna', 'nievon', 1)])
         self.assertIn('la base no responde', aviso)
+
+    def test_suma_lo_que_tiene_imagen_en_el_juego_sin_prompt(self):
+        refs = os.path.join(self.raiz, 'referencias', 'images')
+        for n in ('raza/humano-banner.png', 'raza/humano-thumbnail.webp', 'fauna/nievon-macho-banner.png',
+                  'faction/clan-serhu-banner2.png', 'raza/.gitkeep'):
+            escribir(os.path.join(refs, n), 'IMG')
+        lista, _ = self.s.elementos()
+        self.assertEqual([(e['tipo'], e['slug'], e['perfiles'], e['juego']) for e in lista],
+                         [('fauna', 'nievon-macho', [], 'fauna/nievon-macho-banner.png'),
+                          ('raza', 'humano', [], 'raza/humano-thumbnail.webp')])
+
+    def test_suma_toda_la_enciclopedia_con_su_nombre(self):
+        api = os.path.join(self.raiz, 'api')
+        escribir(os.path.join(api, 'world', 'helek-sirik', 'enciclopedia'), json.dumps({
+            'items': [{'slug': 'resina-jumba-verde', 'name': 'Resina de jumba'}],
+            'faunaFlora': [{'sourceSlug': 'murgol-macho', 'sourceName': 'Múrgol macho', 'esFauna': True},
+                           {'sourceSlug': 'arena-iman', 'sourceName': 'Arena imán', 'esFauna': False}],
+            'constructionRecipes': [{'key': 'choza', 'name': 'Choza'}],
+            'historia': [{'slug': 'sello', 'title': 'El sello'}, {'slug': '../x', 'title': 'mala'}],
+            'combate': [{'slug': 'no-es-imagen', 'title': 'fuera'}]}))
+        s = cargar(self.raiz, api='file://' + api)
+        lista, aviso = s.elementos()
+        self.assertIn('la base no responde', aviso)
+        self.assertEqual([(e['tipo'], e['slug'], e['nombre']) for e in lista],
+                         [('construccion', 'choza', 'Choza'), ('fauna', 'murgol-macho', 'Múrgol macho'),
+                          ('flora', 'arena-iman', 'Arena imán'), ('historia', 'sello', 'El sello'),
+                          ('item', 'resina-jumba-verde', 'Resina de jumba')])
+
+    def test_sin_backend_lo_avisa_y_sigue(self):
+        self.intento()
+        lista, aviso = cargar(self.raiz, api='http://127.0.0.1:9').elementos()
+        self.assertEqual([e['slug'] for e in lista], ['nievon'])
+        self.assertIn('arranca el juego para verlo entero', aviso)
 
     def test_sin_generated_ni_base_la_lista_esta_vacia(self):
         self.assertEqual(self.s.elementos()[0], [])

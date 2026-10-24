@@ -210,15 +210,15 @@ async function cargarElementos() {
 }
 function pintarLista() {
   const cat = $('categoria').value, texto = $('filtro').value.trim().toLowerCase();
-  const vistos = elementos.filter((e) => (!cat || e.tipo === cat) && (!texto || `${e.tipo} ${e.slug}`.toLowerCase().includes(texto)));
+  const vistos = elementos.filter((e) => (!cat || e.tipo === cat) && (!texto || `${e.tipo} ${e.slug} ${e.nombre || ''}`.toLowerCase().includes(texto)));
   const l = $('lista'); l.innerHTML = '';
-  for (const e of vistos.slice(0, 300)) {
+  for (const e of vistos) {
     const marcas = h('div', { class: 'marcas' });
     if (e.intentos) marcas.append(h('span', {}, `${e.intentos} intento${e.intentos === 1 ? '' : 's'}`));
     if (e.elegidas.length) marcas.append(h('span', { class: 'eleg' }, '✓ elegida'));
     const miniatura = e.juego ? h('img', { class: 'miniatura', loading: 'lazy', alt: '', src: `/ref/${e.juego}` }) : h('div', { class: 'miniatura', title: 'Sin imagen en el juego' });
     l.append(h('div', { class: 'elemento' + (actual && actual.tipo === e.tipo && actual.slug === e.slug ? ' activo' : ''), onclick: () => elegirElemento(e.tipo, e.slug) },
-      miniatura, h('div', {}, h('div', { class: 'nombre' }, cat ? e.slug : `${e.tipo} / ${e.slug}`), marcas)));
+      miniatura, h('div', {}, h('div', { class: 'nombre' }, (e.nombre || e.slug) + (cat ? '' : ` · ${e.tipo}`)), e.nombre ? h('small', {}, e.slug) : '', marcas)));
   }
   if (!vistos.length) l.append(h('div', { class: 'elemento' }, h('small', {}, elementos.length ? 'Sin coincidencias.' : 'Aún no hay elementos: crea uno nuevo o genera sus prompts en la enciclopedia.')));
   if (vistos.length > 300) l.append(h('div', { class: 'elemento' }, h('small', {}, `Y ${vistos.length - 300} más: afina el filtro.`)));
