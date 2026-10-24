@@ -32,7 +32,8 @@ cp "$PF" "$D/prompts/$N.txt"
 LOG=$D/logs/$N.log
 
 t0=$(date +%s)
-timeout "$TOPE" "$B/sd-cli" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
+# CFG-43: sd-cli con sus librerías ggml; las de Ollama (LD_LIBRARY_PATH del host) le quitan la GPU: «No devices found».
+LD_LIBRARY_PATH="$B" timeout "$TOPE" "$B/sd-cli" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
   --vae "$M/vae/full_encoder_small_decoder.safetensors" -p "$PROMPT" \
   --cfg-scale "$CFG" --steps "$STEPS" --sampling-method euler -W "$W" -H "$H" --seed "$SEED" \
   --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/imagenes/$N.png" -v > "$LOG" 2>&1 &
