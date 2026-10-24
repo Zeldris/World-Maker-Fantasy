@@ -256,7 +256,12 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   —el exacto con el que se generó la imagen—. «Regenerar» solo cambia el base; el usado no se pierde nunca y es el
   que copia «Copiar». Campo nuevo en `ImagePrompt` (migración). Contexto:
   [reutilizable de imágenes](../arquitectura/reutilizables/01-generacion-imagenes-local.md). **S**
-- **CFG-39 · Generador de prompts de imagen con las reglas de FLUX** (usuaria, 2026-10-24, tras el
+- ~~**CFG-39 · Generador de prompts de imagen con las reglas de FLUX**~~ ✅ 2026-10-24 (borrador estilo → sujeto →
+  encuadre → luz → acabado → cierre; `finalizePrompt` quita medidas y deja el cierre una vez; fuera la lista negativa
+  y `buildNegativePrompt`, que no usaba nadie; 11 tests. Probado con el LLM real y FLUX en la Deck: «like a worn wool
+  sweater» le puso un jersey y «not like a goat's» lo hizo cabra, así que símiles solo de naturaleza, nada en
+  negativo y tamaño sin cifras; `v8-cfg39-s7` ya da un múrgol masivo al ocaso. **Queda** el pelaje largo de `v5`:
+  lo traen los prompts usados en `CFG-40`) (usuaria, 2026-10-24, tras el
   [banco del múrgol](../arquitectura/reutilizables/01-generacion-imagenes-local.md#banco-del-múrgol-2026-10-24-medido-en-la-deck)):
   `imagePromptGenerator.ts` escribe en lenguaje natural y en orden estilo → sujeto → pose → entorno → luz → acabado;
   sin px ni proporción en el texto, sin listas negativas ni comparaciones con el otro sexo; escena, hora y luz

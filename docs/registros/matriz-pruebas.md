@@ -20,6 +20,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-34` | Configuración | Estilo del mundo | jugado | Caótico se guarda en /ritmo (CAOTICO) |
 | `CFG-35` | Configuración | Avisos de sucesos | jugado | Solo graves: noticia NORMAL y GRAVE en El mundo, solo la GRAVE da aviso |
 | `CFG-38` | Configuración | Prompt de imagen editable | jugado | Enciclopedia admin, Múrgol: editar el prompt usado de la miniatura, guardar, recargar (sigue con su fecha), volver al base |
+| `CFG-39` | Configuración | Prompts de imagen con reglas FLUX | jugado | Regenerar el banner del múrgol con el LLM real y generarlo en la Deck (`v8-cfg39-s7`): sin px, sin negativos, cierre una vez |
 | `INT-1` | Cronista en la interfaz | Familias de sucesos con identidad propia | jugado | 2026-10-19: Leyendas con 5 familias, cada una con icono y color propios (Diplomacia, Tus hechos, Facciones, Tu Reino, Crónica); el filtro Diplomacia deja solo sus 6 entradas |
 | `INT-2` | Cronista en la interfaz | Importancia visible | jugado | 2026-10-19: tres niveles (NORMAL sin borde, DESTACADO con borde, GRAVE con borde rojo y sello: «Gorhorn muere», «funda el reino») |
 | `INT-3` | Cronista en la interfaz | Causas enlazadas | jugado | 2026-10-19: «Por qué pasó: Día 1 Gorhorn funda el reino…» en «Fundador» lleva a la causa y la resalta |

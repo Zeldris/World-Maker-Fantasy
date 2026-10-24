@@ -71,37 +71,85 @@ const ENTITY_TYPE_HINT: Record<ImagePromptEntityType, string> = {
 };
 
 // ============================================================
-// MAPEOS — ESTILOS POR TIPO (NUEVO, INTERNO)
+// ESTILO, ACABADO Y LUZ POR TIPO
 // ============================================================
 
-const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, string> = {
-  npc: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, rich textures, dramatic lighting',
-  item: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, sharp focus on materials and texture',
-  fauna: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, animal anatomy and environmental integration',
-  flora: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, botanical/mineral texture and natural detail',
-  ability: 'dark fantasy illustration style, heavy shadows, dramatic chiaroscuro, moody and atmospheric, ink-wash textures, gothic undertones',
-  raza: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, anthropological reference quality',
-  personaje: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, character portrait with personality and presence',
-  location: 'painterly style with visible brushstrokes, rich impasto textures, atmospheric lighting, soft edges, oil painting aesthetic, fantasy art quality',
-  construccion: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, architectural precision and weathering',
-  faction: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
-  historia: 'painterly style with visible brushstrokes, rich impasto textures, atmospheric lighting, soft edges, oil painting aesthetic, fantasy art quality, historical scene',
-  crafteo: 'hyperrealistic design with fantastic nuances, photorealistic rendering, cinematic detail, sharp focus on crafted materials and tool marks',
-  // Reforzado (2026-08-26, hallazgo real: la primera imagen de prueba trajo título y leyenda en
-  // inglés incrustados pese a que "no text or labels" ya estaba aquí) — la app pinta sus propios
-  // pines reales (`ZonePoint`) encima de esta imagen, así que cualquier texto/leyenda/cartucho
-  // horneado en el propio PNG siempre queda descolocado o duplicado. `generateImagePrompt` instruye
-  // al LLM a "copiar" este estilo literal (no resumirlo), así que la prohibición sobrevive el
-  // refinado — pero la herramienta EXTERNA de generación es la que puede seguir ignorándolo: una
-  // sola cláusula al final ("no text or labels") se pierde fácil entre el resto de la descripción,
-  // así que aquí va repetida, explícita y en mayúsculas donde más pesa.
-  zona: 'hand-illustrated fantasy cartography style, painterly top-down map, muted natural color palette, clearly readable terrain features and landmarks purely through illustrated shape and color — ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: no title, no legend, no cartouche, no compass rose, no scale bar, no labels, no captions, no lettering, no numbers, no watermark, no UI elements of any kind, a completely textless illustration',
-  // Emblema plano (mismo criterio que `faction`, distinto de `ability`) — clase/especialización son
-  // conceptos abstractos elegidos por el jugador, no una acción concreta en marcha; un icono
-  // heráldico coherente con el resto de emblemas del juego (facciones, asentamientos) se lee mejor
-  // en el espacio de tarjeta pequeño del modal de elección que una ilustración de acción dinámica.
-  clase: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
-  especializacion: 'bold flat icon illustration, simple clean shapes, a single strong silhouette, minimal flat color palette, no fine texture or surface detail — must read clearly and instantly as a small icon; NEVER photorealistic',
+// CFG-39 (usuaria, 2026-10-24, banco del múrgol en
+// docs/arquitectura/reutilizables/01-generacion-imagenes-local.md): FLUX lee lenguaje natural, no
+// listas de etiquetas. El estilo abre el prompt y el acabado (cámara, textura) lo cierra; en medio,
+// sujeto → encuadre → entorno → luz. Antes iba todo en una sola lista separada por comas.
+interface EstiloTipo {
+  estilo: string;
+  acabado: string;
+  luz: string;
+}
+
+const FOTO = 'natural muted colours, subtle filmic grade';
+const LUZ_DORADA = 'late-afternoon sun low in the sky, warm golden rim light, soft long shadows';
+const PINTURA: EstiloTipo = {
+  estilo: 'Oil painting with visible brushstrokes and rich impasto, atmospheric fantasy landscape art',
+  acabado: 'Soft painterly edges and rich layered colour',
+  luz: 'soft diffuse daylight through atmospheric haze',
+};
+const ICONO: EstiloTipo = {
+  estilo: 'Bold flat icon illustration with simple clean shapes, a single strong silhouette and a minimal flat colour palette, never photorealistic',
+  acabado: 'Clean vector-like finish that reads instantly at a small size',
+  luz: 'even flat lighting',
+};
+const RETRATO: EstiloTipo = {
+  estilo: `Cinematic fantasy portrait photograph, ${FOTO}`,
+  acabado: 'Shot on a full-frame camera with an 85mm lens, ultra detailed skin, cloth and leather texture',
+  luz: LUZ_DORADA,
+};
+
+const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, EstiloTipo> = {
+  npc: RETRATO,
+  personaje: RETRATO,
+  raza: RETRATO,
+  item: {
+    estilo: `Cinematic still-life photograph of a handmade fantasy object, ${FOTO}`,
+    acabado: 'Shot with a 100mm macro lens, sharp focus on materials, wear and tool marks',
+    luz: 'warm side light from a low window, soft falloff into shadow',
+  },
+  crafteo: {
+    estilo: `Cinematic still-life photograph of a handmade fantasy object, ${FOTO}`,
+    acabado: 'Shot with a 100mm macro lens, sharp focus on crafted materials and tool marks',
+    luz: 'warm side light from a low window, soft falloff into shadow',
+  },
+  fauna: {
+    estilo: `Cinematic wildlife photograph, ${FOTO}`,
+    acabado: 'Shot on a full-frame camera with a 35mm lens, ultra detailed fur, hide and scale texture',
+    // Banco del múrgol: la versión que más se acercó al original tenía el sol bajo en el horizonte y nubes de
+    // ocaso; con solo «golden light» sale un cielo lavado.
+    luz: 'low sun just above the horizon, dramatic sunset clouds filling the sky, warm golden rim light on the fur and hide',
+  },
+  flora: {
+    estilo: `Cinematic nature photograph, ${FOTO}`,
+    acabado: 'Shot with a 100mm macro lens, ultra detailed botanical and mineral texture',
+    luz: 'soft morning light with gentle backlight',
+  },
+  construccion: {
+    estilo: `Cinematic architectural photograph, ${FOTO}`,
+    acabado: 'Shot on a full-frame camera with a 24mm lens, detailed stone, timber and weathering',
+    luz: LUZ_DORADA,
+  },
+  location: PINTURA,
+  historia: { ...PINTURA, estilo: `${PINTURA.estilo}, a historical scene` },
+  ability: {
+    estilo: 'Dark fantasy illustration with heavy shadows, dramatic chiaroscuro and ink-wash textures',
+    acabado: 'Moody and atmospheric, with gothic undertones',
+    luz: 'a single hard light source carving deep shadows',
+  },
+  faction: ICONO,
+  clase: ICONO,
+  especializacion: ICONO,
+  // Hallazgo real (2026-08-26): la primera imagen de prueba trajo título y leyenda incrustados. La app pinta sus
+  // pines (`ZonePoint`) encima, así que el mapa tiene que salir sin texto: lo dice el estilo y lo repite el cierre.
+  zona: {
+    estilo: 'Hand-illustrated fantasy cartography, a painterly top-down map with a muted natural colour palette, a completely textless illustration',
+    acabado: 'Terrain and landmarks read purely through illustrated shape and colour',
+    luz: 'even daylight with no dramatic focal point',
+  },
 };
 
 // ============================================================
@@ -158,30 +206,20 @@ function inferToneFromLore(lore: string): string {
 }
 
 // ============================================================
-// DIMENSIONES EXACTAS (sin cambios)
+// ENCUADRE POR PERFIL
 // ============================================================
 
-const SIZE_PROFILE_DIMENSIONS: Record<ImagePromptSizeProfile, string> = {
-  thumbnail: 'square 1:1 aspect ratio, 1024x1024px',
-  banner: 'wide 2.5:1 aspect ratio, 1920x768px',
-  mapa: 'wide 4:3 aspect ratio, 800x600px',
-  icono: 'square 1:1 aspect ratio, 512x512px',
-};
-
-// ============================================================
-// HEADROOM INSTRUCTION (mejorada)
-// ============================================================
-
-const HEADROOM_INSTRUCTION: Record<ImagePromptSizeProfile, string> = {
+// CFG-39: sin píxeles ni proporción en el texto (FLUX los ignora o los pinta); el tamaño va en los parámetros
+// del generador. Aquí solo cómo se compone la imagen para cada hueco de la interfaz.
+const FRAMING: Record<ImagePromptSizeProfile, string> = {
   thumbnail:
-    'top of head/subject clearly inside frame with at least 10% empty space above; single centered subject with simple or plain background, bold silhouette readable when scaled down, minimal fine detail',
-
+    'Close, centred framing of a single subject with clear space above the top of it and a plain, softly blurred background, so the silhouette still reads when small',
   banner:
-    'clear headroom above the main subject — the top of the composition must have at least 15% of the image height as open sky, mist, or empty background before the subject begins, to allow safe cropping for UI overlays without cutting into the focal point; center horizontally or place slightly off-center, but always leave breathing room around it; never crop the top or any edge of the subject',
+    'Wide panoramic framing with open sky or mist across the top sixth of the image, the subject slightly off-centre with room around it and nothing cropped at the edges',
   mapa:
-    'empty terrain and environment ONLY — ground texture, vegetation, natural landmarks, paths, walls or a perimeter if relevant, open space where structures would stand; do NOT render any buildings, huts, tents, characters, creatures or named landmarks as drawn objects (they are placed afterward as separate map markers on top of this background), the entire navigable area must be visible within frame, evenly lit with no single dramatic focal point, consistent scale and perspective across the whole image so markers can be positioned precisely, no vignetting or heavy framing at the edges',
+    'Empty terrain seen from straight above: ground, vegetation, paths and natural landmarks, with open ground where buildings, characters and creatures will later be placed as separate markers; the whole navigable area in frame at one consistent scale and perspective, without vignetting at the edges',
   icono:
-    'single centered emblem or landmark silhouette filling most of the frame, plain or minimal flat background, bold and instantly readable even at very small display sizes, no fine detail that would disappear when scaled down',
+    'A single centred emblem or landmark silhouette filling most of the frame on a plain flat background',
 };
 
 // ============================================================
@@ -216,11 +254,35 @@ function sanitizePrompt(prompt: string): string {
   for (const [unsafe, safe] of Object.entries(SAFE_SUBSTITUTIONS)) {
     sanitized = sanitized.replace(new RegExp(`\\b${unsafe}\\b`, 'gi'), safe);
   }
-  // Añadir bloque de seguridad al final si no está ya presente
-  if (!sanitized.includes('no explicit gore')) {
-    sanitized += ', no explicit gore, no nudity, no open wounds, no graphic violence, no anatomical detail, no sexual content';
-  }
   return sanitized;
+}
+
+// CFG-39: antes se añadía al final una lista «no explicit gore, no nudity…»; en FLUX nombrar lo que no se quiere
+// lo acerca a la imagen, así que el saneado se queda en las sustituciones de arriba y el prompt cierra siempre
+// con esta línea, la única negativa que se ha visto funcionar (firmas y textos incrustados).
+const CIERRE = 'No text, no signature, no watermark.';
+
+const MEDIDAS = [
+  /\b(?:square|wide|tall|portrait|landscape)?\s*\d+(?:\.\d+)?\s*:\s*\d+(?:\.\d+)?\s*(?:aspect ratio)?/gi,
+  /\b\d{3,4}\s*[x×]\s*\d{3,4}\s*(?:px|pixels)?/gi,
+  /\b\d{3,4}\s*(?:px|pixels)\b/gi,
+  /\baspect ratio\b/gi,
+];
+
+/// Hace cumplir las reglas sobre la salida del LLM: sin medidas, con el saneado y con la línea de cierre una vez.
+function finalizePrompt(text: string): string {
+  let out = sanitizePrompt(text.trim().replace(/^["'“”]+|["'“”]+$/g, ''));
+  for (const medida of MEDIDAS) out = out.replace(medida, '');
+  out = out.replace(/no text,\s*no signature,\s*no watermark\.?/gi, '');
+  out = out
+    .replace(/\s*,(\s*,)+/g, ',')
+    .replace(/\s+([,.])/g, '$1')
+    .replace(/,\s*\./g, '.')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[,\s]+$/, '');
+  if (out && !/[.!?]$/.test(out)) out += '.';
+  return out ? `${out} ${CIERRE}` : CIERRE;
 }
 
 // ============================================================
@@ -240,46 +302,34 @@ function ensureSexExplicit(lore: string, subject: string): string {
 }
 
 // ============================================================
-// CONSTRUCCIÓN DEL PROMPT (NUEVA ESTRUCTURA INTERNA)
+// CONSTRUCCIÓN DEL BORRADOR
 // ============================================================
 
+/// Borrador en el orden que pide FLUX: estilo → sujeto (con el lore) → encuadre → luz → acabado → cierre.
+/// El LLM lo convierte en frases naturales en inglés con el entorno concreto que saque del lore.
 function buildPrompt(
   entityType: ImagePromptEntityType,
   name: string,
   loreContext: string,
   sizeProfile: ImagePromptSizeProfile,
 ): string {
-  const hint = ENTITY_TYPE_HINT[entityType];
-  const dimensions = SIZE_PROFILE_DIMENSIONS[sizeProfile];
-  // Icono de asentamiento (2026-08-31) — mismo estilo plano/heráldico que ya usa `faction` para
-  // sus emblemas (`ENTITY_TYPE_STYLE.faction`), reutilizado en vez de duplicar el texto: un
-  // asentamiento necesita leerse igual de claro a tamaño reducido que un blasón de facción. Solo
-  // afecta a `location`+`icono` — el resto de combinaciones sigue su estilo normal por tipo.
-  const style = entityType === 'location' && sizeProfile === 'icono' ? ENTITY_TYPE_STYLE.faction : ENTITY_TYPE_STYLE[entityType];
-  const headroom = HEADROOM_INSTRUCTION[sizeProfile];
+  // Icono de asentamiento (2026-08-31): mismo estilo plano que los emblemas de facción, para leerse a tamaño reducido.
+  const tipo = entityType === 'location' && sizeProfile === 'icono' ? ENTITY_TYPE_STYLE.faction : ENTITY_TYPE_STYLE[entityType];
   const tone = inferToneFromLore(loreContext);
+  const subject = ensureSexExplicit(loreContext, `${name}, ${ENTITY_TYPE_HINT[entityType]}`);
 
-  let subject = `${name} — ${hint}`;
-  subject = ensureSexExplicit(loreContext, subject);
-
-  const parts: string[] = [
-    subject,
-    loreContext,
-  ];
-
-  if (tone) parts.push(tone);
-  parts.push(headroom);
-  parts.push(style);
-  parts.push(dimensions);
-
-  let fullPrompt = parts.join(', ');
-  fullPrompt = sanitizePrompt(fullPrompt);
-
-  return fullPrompt;
+  return [
+    `${tipo.estilo}.`,
+    `Subject: ${subject}. ${loreContext}`,
+    `${FRAMING[sizeProfile]}.`,
+    `Light: ${tipo.luz}${tone ? `; atmosphere: ${tone}` : ''}.`,
+    `${tipo.acabado}.`,
+    CIERRE,
+  ].join('\n');
 }
 
 // ============================================================
-// FUNCIÓN PRINCIPAL — API EXACTAMENTE IGUAL
+// FUNCIÓN PRINCIPAL
 // ============================================================
 
 export async function generateImagePrompt(
@@ -288,83 +338,33 @@ export async function generateImagePrompt(
   loreContext: string,
   sizeProfile: ImagePromptSizeProfile,
 ): Promise<{ prompt: string; provider: string }> {
-  // Construir el prompt estructurado sin llamar al LLM (porque ya tenemos toda la lógica interna:
-  // hint por tipo, estilo por tipo, tono inferido del lore, encuadre por perfil, dimensiones).
-  const structuredPrompt = buildPrompt(
-    entityType,
-    name,
-    loreContext,
-    sizeProfile,
-  );
-
-  // Bug real (2026-08-27, auditoría de calidad de prompts): `structuredPrompt` se calculaba pero
-  // NUNCA llegaba al LLM — `userContent` solo mandaba Type/Name/Lore/Profile en bruto, así que
-  // toda la maquinaria de arriba (estilo por tipo, tono inferido, encuadre, dimensiones exactas)
-  // quedaba muerta; el system prompt le pedía al modelo "usa el tono inferido del lore"/"copia el
-  // estilo apropiado" SIN DARLE ese tono/estilo en ningún sitio — tenía que adivinarlos de cero.
-  // Ahora el borrador estructurado viaja como base real a pulir, tal como el comentario de arriba
-  // siempre dijo que pasaba.
+  // Bug real (2026-08-27): el borrador estructurado se calculaba pero no llegaba al LLM. Viaja aquí como base.
   const userContent = `
 Type: ${ENTITY_TYPE_HINT[entityType]}
 Name: ${name}
 Lore (Spanish): ${loreContext}
-Profile: ${SIZE_PROFILE_DIMENSIONS[sizeProfile]}
 
-Structured draft (already includes the correct tone, framing/headroom, art style and exact pixel dimensions for this type of image — polish it into natural, vivid, flowing English; NEVER drop or rewrite the art style or the exact dimensions it already states):
-${structuredPrompt}
+Draft:
+${buildPrompt(entityType, name, loreContext, sizeProfile)}
 `;
 
-  const systemPrompt = `You are a prompt engineer for a text-to-image AI. You receive a lore description in Spanish plus an already-correct structured draft prompt, and must refine that draft into a concise, vivid English image prompt. Follow this exact structure for your output (single line, comma-separated):
-  1. Subject (with sex explicitly stated if provided)
-  2. Physical appearance / material description
-  3. Clothing, armor, or textures
-  4. Props, weapons, or equipment
-  5. Setting / environment / background
-  6. Lighting and atmosphere (use the tone already given in the structured draft, never invent a different one)
-  7. Framing and composition (use the headroom instruction already given in the structured draft)
-  8. Art style (copy the art style already given in the structured draft, word for word — never substitute it)
-  9. Dimensions (copy the exact dimensions for the profile)
+  const systemPrompt = `You write prompts for FLUX, a text-to-image model that reads natural English sentences, not keyword lists. You receive a lore description in Spanish and an English draft. Rewrite the draft as one paragraph of natural English sentences, in this order:
+  1. Style: the draft's first sentence, kept as it is.
+  2. Subject: what it is (with its sex if the draft gives one) and how it looks — size, build, shape, colours and textures. Invent concrete similes that fit this subject, taken only from nature and raw materials — wood, stone, clay, rope, roots — never from clothing or man-made objects, which the image model paints onto the subject (the kind of "skin cracked like dry riverbed clay" — never reuse this example). Convey size with words of weight and build (massive, towering, broad, slight), never with numbers. Describe every part positively: never write what it is not or what it does not look like, because the image model draws whatever is named.
+  3. Pose and framing: follow the draft's framing sentence.
+  4. Environment: a concrete scene taken from the lore — ground, vegetation, background, weather. Named places and factions only as setting.
+  5. Light: time of day, where the sun or light source is and how it falls; use the draft's light and atmosphere.
+  6. Finish: the draft's finish sentence, kept as it is.
+  7. End with exactly: "${CIERRE}"
 
-  CRITICAL:
-  - Every image is generated in total isolation — NEVER compare to another sex, character, species, region, or object.
-  - Every visual trait must be a standalone, absolute description.
-  - Named places/factions may appear only as setting/origin context.
-  - No quotes, no explanations, no line breaks, max ~70 words.
+  Rules:
+  - Each image is made on its own: never compare with another sex, species, character, region or object; describe every trait on its own terms.
+  - No pixel sizes, resolutions or aspect ratios.
+  - No lists of things to avoid.
+  - 90 to 160 words, no quotes, no explanations, no line breaks.
   - Return ONLY the prompt.`;
 
-  const { text, provider } = await completeWithFallback(
-    systemPrompt,
-    userContent,
-    220,
-  );
+  const { text, provider } = await completeWithFallback(systemPrompt, userContent, 320);
 
-  // Sanitizar la salida del LLM por si acaso
-  const finalPrompt = sanitizePrompt(text);
-
-  return { prompt: finalPrompt, provider };
-}
-
-// ============================================================
-// FUNCIÓN ADICIONAL — NEGATIVE PROMPT (OPCIONAL, NUEVA)
-// ============================================================
-
-export function buildNegativePrompt(entityType: ImagePromptEntityType): string {
-  const style = ENTITY_TYPE_STYLE[entityType];
-  const base =
-    'deformed, bad anatomy, disfigured, poorly drawn face, mutation, mutated, extra limb, ugly, missing limb, floating limbs, disconnected limbs, malformed hands, out of focus, blurry, lowres, bad proportions, cloned face, duplicate, morbid, mutilated';
-
-  const styleSpecific: Record<string, string> = {
-    'hyperrealistic': 'cartoon, 3d render, watercolor, stylized, surreal, anime, sketch, flat color, low detail',
-    'painterly': 'photorealistic, hyperrealistic, flat, vector, digital sharp, low-poly, 3d render',
-    'dark fantasy illustration': 'cartoon, bright, colorful, cheerful, photorealistic, flat, low contrast',
-    'flat icon': 'photorealistic, hyperdetailed, shadow, gradient, 3d, texture, realism, fine detail, brushstrokes',
-  };
-
-  let styleKey = 'hyperrealistic';
-  if (style.includes('painterly')) styleKey = 'painterly';
-  else if (style.includes('dark fantasy')) styleKey = 'dark fantasy illustration';
-  else if (style.includes('flat icon')) styleKey = 'flat icon';
-
-  const specific = styleSpecific[styleKey] || styleSpecific['hyperrealistic'];
-  return `${base}, ${specific}`;
+  return { prompt: finalizePrompt(text), provider };
 }

@@ -12,35 +12,7 @@ vi.mock('../lib/aiProviders/orchestrator.js', () => ({
   completeWithFallback: (...args: unknown[]) => completeWithFallback(...args),
 }));
 
-const { generateImagePrompt, buildNegativePrompt } = await import('./imagePromptGenerator.js');
-
-describe('buildNegativePrompt', () => {
-  it('incluye el negativo específico de estilo hiperrealista para npc/item/fauna/raza/personaje/construccion/crafteo', () => {
-    for (const entityType of ['npc', 'item', 'fauna', 'raza', 'personaje', 'construccion', 'crafteo'] as const) {
-      expect(buildNegativePrompt(entityType)).toContain('cartoon, 3d render, watercolor');
-    }
-  });
-
-  it('usa el negativo "painterly" para location/historia (estilo pictórico, nunca fotorrealista)', () => {
-    for (const entityType of ['location', 'historia'] as const) {
-      const negative = buildNegativePrompt(entityType);
-      expect(negative).toContain('photorealistic, hyperrealistic, flat, vector');
-    }
-  });
-
-  it('usa el negativo "dark fantasy illustration" para ability', () => {
-    expect(buildNegativePrompt('ability')).toContain('cartoon, bright, colorful, cheerful');
-  });
-
-  it('usa el negativo "flat icon" para faction, nunca fotorrealista de verdad', () => {
-    const negative = buildNegativePrompt('faction');
-    expect(negative).toContain('photorealistic, hyperdetailed, shadow, gradient, 3d');
-  });
-
-  it('siempre incluye la base común de anatomía/calidad, sin importar el tipo', () => {
-    expect(buildNegativePrompt('npc')).toContain('deformed, bad anatomy, disfigured');
-  });
-});
+const { generateImagePrompt } = await import('./imagePromptGenerator.js');
 
 describe('generateImagePrompt', () => {
   beforeEach(() => {
@@ -60,18 +32,6 @@ describe('generateImagePrompt', () => {
     expect(prompt).not.toMatch(/\bcorpse\b/i);
     expect(prompt).toContain('dark stains');
     expect(prompt).toContain('scar');
-    expect(prompt).toContain('no explicit gore');
-  });
-
-  it('no duplica el bloque de seguridad si el LLM ya lo incluyó', async () => {
-    completeWithFallback.mockResolvedValue({
-      text: 'A calm scene, no explicit gore, no nudity, no open wounds, no graphic violence, no anatomical detail, no sexual content',
-      provider: 'groq:llama-3.3-70b',
-    });
-
-    const { prompt } = await generateImagePrompt('item', 'Hacha', 'Un hacha de guerra.', 'thumbnail');
-
-    expect(prompt.match(/no explicit gore/g)?.length).toBe(1);
   });
 
   it('pasa el proveedor devuelto por completeWithFallback tal cual', async () => {
@@ -90,7 +50,7 @@ describe('generateImagePrompt', () => {
     const userContent = completeWithFallback.mock.calls[0][1] as string;
     expect(userContent).toContain('Corredor de Cauce');
     expect(userContent).toContain('Un corredor de llanura veloz.');
-    expect(userContent).toContain('1920x768px');
+    expect(userContent).toContain('Wide panoramic framing');
   });
 
   // Bug real (2026-08-27, auditoría de calidad de prompts): `buildPrompt` calculaba estilo/tono/
@@ -104,8 +64,8 @@ describe('generateImagePrompt', () => {
 
     const userContent = completeWithFallback.mock.calls[0][1] as string;
     // Estilo real de 'faction' (ENTITY_TYPE_STYLE) — icono plano, nunca fotorrealista.
-    expect(userContent).toContain('bold flat icon illustration');
-    expect(userContent).toContain('NEVER photorealistic');
+    expect(userContent).toContain('Bold flat icon illustration');
+    expect(userContent).toContain('never photorealistic');
   });
 
   it('el tono inferido del lore (p.ej. volcánico) también viaja dentro del borrador estructurado', async () => {
@@ -118,13 +78,79 @@ describe('generateImagePrompt', () => {
     expect(userContent).toContain('volcanic haze');
   });
 
-  it('las dimensiones exactas del perfil viajan dentro del borrador estructurado, no solo en la línea "Profile"', async () => {
-    completeWithFallback.mockResolvedValue({ text: 'prompt', provider: 'x' });
+  // CFG-39 (usuaria, 2026-10-24): reglas de FLUX sacadas del banco del múrgol
+  // (docs/arquitectura/reutilizables/01-generacion-imagenes-local.md). El código las hace cumplir
+  // sobre la salida del LLM, no solo se las pide.
+  describe('reglas de FLUX (CFG-39)', () => {
+    const CIERRE = 'No text, no signature, no watermark.';
 
-    await generateImagePrompt('npc', 'Gorhorn', 'Guerrero orco.', 'thumbnail');
+    it('quita píxeles, resoluciones y proporciones aunque el LLM las escriba', async () => {
+      completeWithFallback.mockResolvedValue({
+        text: 'Cinematic wildlife photograph. A huge beast on red plains, wide 2.5:1 aspect ratio, 1920x768px, 1024 x 1024 pixels.',
+        provider: 'x',
+      });
 
-    const userContent = completeWithFallback.mock.calls[0][1] as string;
-    // Aparece dos veces: una en la línea "Profile:" de siempre, otra dentro del borrador.
-    expect(userContent.match(/1024x1024px/g)?.length).toBe(2);
+      const { prompt } = await generateImagePrompt('fauna', 'Múrgol', 'Rumiante.', 'banner');
+
+      expect(prompt).not.toMatch(/\d+\s*[x×]\s*\d+|px\b|pixels|aspect ratio|\d:\d/i);
+      expect(prompt).toContain('A huge beast on red plains');
+    });
+
+    it('acaba siempre con la línea de cierre, una sola vez', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'A calm meadow at dawn, no text, no signature, no watermark', provider: 'x' });
+
+      const { prompt } = await generateImagePrompt('location', 'La Hondonada', 'Un valle.', 'banner');
+
+      expect(prompt.endsWith(CIERRE)).toBe(true);
+      expect(prompt.match(/no watermark/gi)?.length).toBe(1);
+    });
+
+    it('no añade listas negativas al prompt', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'A warrior at dusk.', provider: 'x' });
+
+      const { prompt } = await generateImagePrompt('npc', 'Gorhorn', 'Guerrero orco.', 'thumbnail');
+
+      expect(prompt).toBe(`A warrior at dusk. ${CIERRE}`);
+    });
+
+    it('el borrador va en orden estilo → sujeto → encuadre → luz → acabado → cierre, sin píxeles', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('fauna', 'Múrgol', 'Rumiante lanudo de las llanuras.', 'banner');
+
+      const userContent = completeWithFallback.mock.calls[0][1] as string;
+      const borrador = userContent.slice(userContent.indexOf('Draft:'));
+      const orden = ['Cinematic wildlife photograph', 'Múrgol', 'Wide panoramic framing', 'Light:', 'Shot on a full-frame camera', CIERRE];
+      const posiciones = orden.map((t) => borrador.indexOf(t));
+      expect(posiciones.every((p) => p >= 0)).toBe(true);
+      expect([...posiciones].sort((a, b) => a - b)).toEqual(posiciones);
+      expect(userContent).not.toMatch(/\d{3,4}\s*x\s*\d{3,4}|px\b|aspect ratio/i);
+    });
+
+    it('el borrador siempre trae una luz explícita, también sin tono en el lore', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('item', 'Hacha', 'Un hacha de guerra.', 'thumbnail');
+
+      const userContent = completeWithFallback.mock.calls[0][1] as string;
+      expect(userContent).toMatch(/Light: \S+/);
+    });
+
+    it('el system prompt pide lenguaje natural, sin comparaciones, sin píxeles ni negativos', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('fauna', 'Múrgol', 'Rumiante.', 'banner');
+
+      const system = completeWithFallback.mock.calls[0][0] as string;
+      expect(system).toMatch(/natural English sentences/);
+      expect(system).toMatch(/never compare/i);
+      expect(system).toMatch(/no pixel sizes/i);
+      expect(system).toMatch(/no lists of things to avoid/i);
+      // Primera imagen de CFG-39: «like a worn wool sweater» le puso un jersey y «not like a goat's» lo hizo cabra.
+      expect(system).toMatch(/never from clothing or man-made objects/i);
+      expect(system).toMatch(/never write what it is not/i);
+      expect(system).toMatch(/never with numbers/i);
+      expect(system).toContain(CIERRE);
+    });
   });
 });

@@ -266,6 +266,11 @@ Conclusiones:
 Orden: **estilo → sujeto → acción/pose → entorno → luz → detalles de acabado**, en frases descriptivas
 (FLUX entiende lenguaje natural, no listas de etiquetas sueltas).
 
+Desde `CFG-39` (2026-10-24) el generador de prompts del juego (`backend/src/services/imagePromptGenerator.ts`) las
+sigue y el código las hace cumplir sobre lo que devuelve el LLM: sin píxeles ni proporción en el texto (el tamaño va
+en `-W`/`-H`), sin listas negativas, símiles propios de cada criatura (el LLM copiaba los ejemplos si eran del
+múrgol), escena y luz explícitas, y cierre `No text, no signature, no watermark.`
+
 - **Retrato:** `painterly fantasy illustration. Portrait of an orc hunter in his thirties, pale grey-green
   skin, a scar across the left brow, braided black hair with bone beads, leather armour with red clan
   markings. Three-quarter view, calm alert expression. Background: blurred red dust plains. Warm
