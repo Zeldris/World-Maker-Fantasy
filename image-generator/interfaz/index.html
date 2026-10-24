@@ -205,7 +205,7 @@ async function cargarElementos() {
   sel.innerHTML = ''; sel.add(new Option('Todas las categorías', ''));
   for (const t of tipos) sel.add(new Option(`${t} (${elementos.filter((e) => e.tipo === t).length})`, t));
   sel.value = tipos.includes(previa) ? previa : '';
-  $('tipos').innerHTML = tipos.map((t) => `<option value="${t}">`).join('');
+  $('tipos').replaceChildren(...tipos.map((t) => new Option('', t)));
   pintarLista();
 }
 function pintarLista() {
@@ -233,6 +233,8 @@ $('nuevoOk').onclick = () => {
 };
 
 /* ---------- ficha del elemento ---------- */
+// El perfil que busca el juego para los tipos que no usan miniatura y banner (imageAssets.ts: zoneMapImageUrl, iconoUrlFor).
+const PERFIL_DEL_TIPO = { zona: 'mapa', clase: 'icono', especializacion: 'icono' };
 function datosElemento() { return elementos.find((e) => e.tipo === actual.tipo && e.slug === actual.slug) || { tipo: actual.tipo, slug: actual.slug, perfiles: [], intentos: 0, elegidas: [], juego: null }; }
 
 async function elegirElemento(tipo, slug, perfilInicial) {
@@ -249,7 +251,7 @@ async function elegirElemento(tipo, slug, perfilInicial) {
   if (cambia) { $('prompt').value = ''; cargado = null; }
   pintarPerfiles();
   const inicial = perfilInicial || (!cambia ? perfil : null) || (recordado().tipo === tipo && recordado().slug === slug ? recordado().perfil : null)
-    || (e.perfiles[0] && e.perfiles[0].perfil) || 'thumbnail';
+    || (e.perfiles[0] && e.perfiles[0].perfil) || PERFIL_DEL_TIPO[tipo] || 'thumbnail';
   await seleccionarPerfil(inicial, cambia);
   pintarLista();
   await pintarGaleria();
@@ -272,12 +274,15 @@ async function seleccionarPerfil(p, traer) {
   buscarReferencia();
 }
 async function traerPrompt() {
+  const pide = { tipo: actual.tipo, slug: actual.slug, perfil };  // si cambias de perfil antes de que llegue, se descarta
+  const vigente = () => actual.tipo === pide.tipo && actual.slug === pide.slug && perfil === pide.perfil;
   try {
-    const r = await api(`/api/prompt?tipo=${q(actual.tipo)}&slug=${q(actual.slug)}&perfil=${q(perfil)}`);
+    const r = await api(`/api/prompt?tipo=${q(pide.tipo)}&slug=${q(pide.slug)}&perfil=${q(pide.perfil)}`);
+    if (!vigente()) return;
     $('prompt').value = r.prompt;
-    cargado = { tipo: actual.tipo, slug: actual.slug, perfil, prompt: r.prompt, fuente: r.fuente };
+    cargado = { ...pide, prompt: r.prompt, fuente: r.fuente };
     marcarFuente();
-  } catch (err) { $('fuente').textContent = err.message; }
+  } catch (err) { if (vigente()) $('fuente').textContent = err.message; }
 }
 function marcarFuente() {
   const igual = !!cargado && cargado.prompt === $('prompt').value && cargado.tipo === actual.tipo && cargado.slug === actual.slug && cargado.perfil === perfil;
@@ -373,7 +378,7 @@ function tarjeta(f, juegoSrc) {
   nota.oninput = () => { ok.textContent = ''; };
   const elegir = h('button', { class: 'principal', onclick: async () => {
     try { const r = await api('/api/elegir', { tipo: a.tipo, slug: a.slug, nombre: f.nombre }); await cargarElementos(); await elegirElemento(a.tipo, a.slug, perfil);
-      const av = $('avisoGaleria'); av.hidden = false; av.textContent = `Copiada a image-generator/${r.destino}. Para verla en el juego, cópiala a backend/uploads/images/${a.tipo}/.`; }
+      const av = $('avisoGaleria'); av.hidden = false; av.className = 'aviso ok'; av.textContent = `Copiada a image-generator/${r.destino}. Para verla en el juego, cópiala a backend/uploads/images/${a.tipo}/.`; }
     catch (err) { const av = $('avisoGaleria'); av.hidden = false; av.className = 'aviso error'; av.textContent = err.message; } } }, f.elegida ? '✓ Elegida (repetir)' : 'Elegir esta');
   elegir.disabled = !f.imagen; elegir.title = f.destino;
   const reutilizar = h('button', { onclick: () => {

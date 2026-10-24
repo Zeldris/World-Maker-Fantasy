@@ -300,8 +300,8 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   abre una página (`interfaz/servidor.py`, Python sin dependencias, solo en 127.0.0.1) donde se pega un prompt o se
   trae el usado o el base de una entidad, se genera con `probar.sh` (`PROMPT_ARCHIVO` para el pegado;
   `LIBERAR_OLLAMA=1` en `generar.sh` descarga los modelos de Ollama antes), se ve el paso del muestreo, se apunta la
-  nota de cada imagen en `notas.md` y «Elegir esta» la copia a `salida/images/<tipo>/<slug>-<perfil>.png`, la
-  estructura de `backend/uploads/images/` (a mano al juego). Tests: `tools/qa/tests/test_interfaz_imagenes.py`.
+  nota de cada imagen en `notas.md` y «Elegir esta» la copia con el nombre que busca el juego (a mano a
+  `backend/uploads/images/`; dónde queda ahora, en «Por elemento»). Tests: `tools/qa/tests/test_interfaz_imagenes.py`.
   Pasos en el [README](../../image-generator/README.md#probar-prompts-la-usuaria). **S**
   Referencia (usuaria, 2026-10-24): `abrir.sh` copia las imágenes del juego a `referencias/images/` y, si la entidad
   tiene una, una casilla la usa (`-r`) y enseña la original. `sd-cli` corre con sus librerías (`LD_LIBRARY_PATH`).
@@ -313,7 +313,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   La lista trae toda la enciclopedia del backend del juego (`/world/<mundo>/enciclopedia`), con lo anidado
   (variantes por sexo, de raza y de día/estación, el mapa de `zona` de cada lugar y las habilidades de los `unlocks`)
   y las clases y especializaciones de `schema.prisma` (2.550 elementos el 2026-10-25), más los prompts de la BD, lo
-  generado y las imágenes del juego. Tests: `test_interfaz_imagenes` (32). Lo siguiente del generador, en [roadmap-imagenes.md](roadmap-imagenes.md).
+  generado y las imágenes del juego. Tests: `test_interfaz_imagenes` (35). Lo siguiente del generador, en [roadmap-imagenes.md](roadmap-imagenes.md).
 
 ---
 

@@ -5,11 +5,18 @@
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 PUERTO=${IMG_PUERTO:-7861}
-fuser -k "$PUERTO/tcp" > /dev/null 2>&1 || true   # una interfaz anterior que quedara abierta
+# Una interfaz anterior que quedara abierta se cierra; si el puerto es de otra cosa, o hay un sd-cli generando
+# (pararlo dejaría la imagen a medias y otra a la vez bloquea la Deck), no se toca nada.
+if pgrep -x sd-cli > /dev/null; then echo "ABORTO: hay un sd-cli generando; espera a que acabe (o pkill -x sd-cli)."; exit 1; fi
+for pid in $(fuser "$PUERTO/tcp" 2>/dev/null); do
+  grep -qa 'interfaz/servidor.py' "/proc/$pid/cmdline" 2>/dev/null \
+    || { echo "ABORTO: el puerto $PUERTO lo usa otro programa (pid $pid); elige otro con IMG_PUERTO=<puerto>."; exit 1; }
+  kill "$pid"
+done
 podman start tarkor-postgres > /dev/null 2>&1 || echo "AVISO: no arranca tarkor-postgres; podrás pegar prompts, pero no traerlos de la enciclopedia."
-# Las imágenes del juego, de referencia: copia las que falten (las ya copiadas no se tocan, aunque el juego cambie).
+# Las imágenes del juego, de referencia: copia las que falten y las que el juego tenga más nuevas.
 mkdir -p "$G/referencias/images"
-cp -rn "$G/../backend/uploads/images/." "$G/referencias/images/" 2>/dev/null   # -n sale con 1 si se salta alguna
+cp -ru "$G/../backend/uploads/images/." "$G/referencias/images/" 2>/dev/null
 find "$G/referencias/images" -name .gitkeep -delete
 ( sleep 1; xdg-open "http://127.0.0.1:$PUERTO/" > /dev/null 2>&1 ) &
 IMG_PUERTO=$PUERTO exec python3 "$G/interfaz/servidor.py"

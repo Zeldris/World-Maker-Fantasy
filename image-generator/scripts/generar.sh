@@ -21,8 +21,13 @@ disp() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
 cargados() { curl -s --max-time 2 localhost:11434/api/ps | python3 -c 'import json,sys; [print(m["name"]) for m in json.load(sys.stdin).get("models", [])]' 2>/dev/null; }
 # CFG-43: LIBERAR_OLLAMA=1 (lo pone la interfaz) descarga los modelos en vez de abortar; keep_alive 0 los saca de memoria.
 if [ "${LIBERAR_OLLAMA:-0}" = 1 ]; then
-  for m in $(cargados); do echo "Ollama: descargando $m"; curl -s --max-time 10 localhost:11434/api/generate -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null; done
-  sleep 2
+  # El de embeddings no acepta /api/generate: se descarga con /api/embed. La descarga es asíncrona: hasta 15 s.
+  for m in $(cargados); do
+    echo "Ollama: descargando $m"
+    curl -s --max-time 10 localhost:11434/api/generate -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null
+    curl -s --max-time 10 localhost:11434/api/embed -d "{\"model\":\"$m\",\"input\":\"\",\"keep_alive\":0}" > /dev/null
+  done
+  for _ in $(seq 15); do [ -z "$(cargados)" ] && break; sleep 1; done
 fi
 [ -z "$(cargados)" ] || { echo "ABORTO: Ollama tiene modelos cargados (ollama stop <modelo>)."; exit 3; }
 # QA-226: el tercer argumento es una ruta; con el texto del prompt, el mensaje lo dice sin repetir el texto entero.

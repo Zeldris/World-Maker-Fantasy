@@ -31,7 +31,7 @@ echo "imagen: $D/intentos/$N.png (prompt pegado)"
 # psql falso: la lista de entidades para json_agg y, para lo demás, la consulta de prompt_de.
 PSQL = '''#!/bin/bash
 case "$*" in
-  *json_agg*) echo '[{"tipo":"fauna","slug":"nievon","perfil":"thumbnail","usado":true},{"tipo":"fauna","slug":"nievon","perfil":"banner","usado":false},{"tipo":"flora","slug":"musgo","perfil":"icono","usado":false}]' ;;
+  *json_agg*) echo '[{"tipo":"fauna","slug":"nievon","perfil":"thumbnail","usado":true},{"tipo":"fauna","slug":"nievon","perfil":"banner","usado":false},{"tipo":"flora","slug":"musgo","perfil":"icono","usado":false},{"tipo":"crafteo","slug":"mal:slug","perfil":"banner","usado":false}]' ;;
   *) echo '{"usado":null,"base":"Base prompt"}' ;;
 esac
 '''
@@ -207,6 +207,15 @@ class Elementos(Base):
             ('raza', 'goirntes-meseta-hembra', 'De la Meseta (hembra)'),
             ('zona', 'yegr-kegi', 'Yegr Kegi (mapa)'), ('zona', 'yegr-kegi-noche-otono', 'Yegr Kegi (mapa, noche-otono)')])
 
+    def test_una_variante_sin_slug_ni_estacion_no_crea_elementos_none(self):
+        api = os.path.join(self.raiz, 'api')
+        escribir(os.path.join(api, 'world', 'helek-sirik', 'enciclopedia'), json.dumps({
+            'npcs': [{'name': 'Sin slug', 'variantesSexo': [{'sexo': 'macho'}]},
+                     {'slug': 'hulki', 'name': 'Hulki', 'variantesSexo': [{}]}],
+            'locations': [{'slug': 'yegr', 'name': 'Yegr', 'variantesTiempo': [{'momento': 'dia'}]}]}))
+        lista, _ = cargar(self.raiz, api='file://' + api).elementos()
+        self.assertEqual([(e['tipo'], e['slug']) for e in lista], [('location', 'yegr'), ('npc', 'hulki'), ('zona', 'yegr')])
+
     def test_sin_backend_lo_avisa_y_sigue(self):
         self.intento()
         lista, aviso = cargar(self.raiz, api='http://127.0.0.1:9').elementos()
@@ -247,13 +256,13 @@ class Progreso(Base):
         self.log('|##########| 4/4 - 847.00MB/s\n  |====>     | 3/4 - 1.26it/s\n')
         self.assertEqual(self.s.leer_progreso('fauna', 'nievon', time.time()), ('muestreo 3/4', 3, 4))
         self.log('|==========| 4/4 - 1.30s/it\n')
-        self.assertEqual(self.s.progreso('fauna', 'nievon', time.time()), 'decodificando la imagen')
+        self.assertEqual(self.s.leer_progreso('fauna', 'nievon', time.time())[0], 'decodificando la imagen')
         self.log('|==========| 4/4 - 1.30s/it\ndecode_first_stage completed\n')
-        self.assertEqual(self.s.progreso('fauna', 'nievon', time.time()), 'guardando la imagen')
+        self.assertEqual(self.s.leer_progreso('fauna', 'nievon', time.time())[0], 'guardando la imagen')
 
     def test_un_log_de_antes_de_empezar_no_cuenta(self):
         self.log('| 2/4 - 1.0it/s\n')
-        self.assertEqual(self.s.progreso('fauna', 'nievon', time.time() + 10), 'preparando')
+        self.assertEqual(self.s.leer_progreso('fauna', 'nievon', time.time() + 10)[0], 'preparando')
 
 
 class Http(Base):
@@ -281,6 +290,16 @@ class Http(Base):
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read())
 
+    def test_un_post_de_otra_web_o_sin_json_no_entra(self):
+        cuerpo = json.dumps({'tipo': 'fauna', 'slug': 'nievon', 'nombre': 'x', 'texto': 'hola'}).encode()
+        for cabeceras in ({'Content-Type': 'text/plain'},
+                          {'Content-Type': 'application/json', 'Origin': 'http://malo.example'}):
+            r = urllib.request.Request(f'http://127.0.0.1:{self.puerto}/api/nota', data=cuerpo, headers=cabeceras)
+            with self.assertRaises(urllib.error.HTTPError) as e:
+                urllib.request.urlopen(r, timeout=10)
+            self.assertEqual(e.exception.code, 403)
+            self.assertIn('propia interfaz', json.loads(e.exception.read())['error'])
+
     def bytes(self, ruta):
         with urllib.request.urlopen(f'http://127.0.0.1:{self.puerto}{ruta}', timeout=10) as r:
             return r.headers['Content-Type'], r.read()
@@ -300,7 +319,7 @@ class Http(Base):
         en_marcha = self.pedir('/api/estado')[1]
         self.assertEqual((en_marcha['enMarcha'], en_marcha['estimado'], en_marcha['perfil']), (True, 105, 'thumbnail'))
         codigo, error = self.pedir('/api/generar', peticion)
-        self.assertEqual((codigo, error['error']), (400, 'ya hay una imagen generándose; espera a que acabe'))
+        self.assertEqual((codigo, error['error']), (400, 'ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe'))
         estado = self.esperar()
         self.assertEqual((estado['rc'], estado['nombre']), (0, 'thumbnail-s7-p4-20261024-100000'))
         self.assertEqual((estado['paso'], estado['pasos']), (2, 4))

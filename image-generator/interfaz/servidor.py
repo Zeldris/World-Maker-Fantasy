@@ -94,7 +94,8 @@ def entidades():
     sql = ("select coalesce(json_agg(json_build_object('tipo',\"entityType\",'slug',\"entitySlug\",'perfil',\"sizeProfile\","
            "'usado',\"promptUsado\" is not null) order by \"entityType\",\"entitySlug\",\"sizeProfile\"),'[]') "
            f"from \"ImagePrompt\" where \"worldId\"=(select id from \"World\" where slug='{slug(MUNDO, 'mundo')}')")
-    return consulta_json(sql)
+    # Una fila con un tipo o slug que no son rutas válidas (una tilde, un «:») no tumba la lista: se salta.
+    return [e for e in consulta_json(sql) or [] if SLUG.match(str(e.get('tipo'))) and SLUG.match(str(e.get('slug')))]
 
 
 def prompt_de(tipo, slug_, perfil):
@@ -228,9 +229,12 @@ def catalogo():
             out.append((tipo, s_, nombre))
 
     def con_sexos(tipo, e, s_, nombre):
+        if not s_:
+            return
         sumar(tipo, s_, nombre)
         for v in e.get('variantesSexo') or []:
-            sumar(tipo, f"{s_}-{v.get('sexo')}", f"{nombre} ({v.get('sexo')})")
+            if v.get('sexo'):
+                sumar(tipo, f"{s_}-{v['sexo']}", f"{nombre} ({v['sexo']})")
 
     for seccion, (tipo, campo) in SECCIONES.items():
         for e in datos.get(seccion) or []:
@@ -242,6 +246,8 @@ def catalogo():
             if seccion == 'locations' and s_:
                 sumar('zona', s_, f'{nombre} (mapa)')
                 for v in e.get('variantesTiempo') or []:
+                    if not (v.get('momento') and v.get('estacion')):
+                        continue
                     momento = f"{v.get('momento')}-{v.get('estacion')}"
                     sumar('location', f'{s_}-{momento}', f'{nombre} ({momento})')
                     sumar('zona', f'{s_}-{momento}', f'{nombre} (mapa, {momento})')
@@ -288,24 +294,30 @@ def elementos():
                     claves.setdefault((t, s_), {'tipo': t, 'slug': s_, 'perfiles': []})
     except FileNotFoundError:
         pass
-    # Lo que tiene imagen en el juego aunque no tenga prompt en la BD (razas, fauna sin generar…)
+    # Lo que tiene imagen en el juego aunque no tenga prompt en la BD (razas, fauna sin generar…); un listdir por
+    # carpeta de tipo, no una búsqueda por elemento: la lista pasa de 2.500.
+    juego = {}
     try:
         for t in os.listdir(REFERENCIAS):
             if not SLUG.match(t) or not os.path.isdir(os.path.join(REFERENCIAS, t)):
                 continue
-            for n in os.listdir(os.path.join(REFERENCIAS, t)):
+            for n in sorted(os.listdir(os.path.join(REFERENCIAS, t))):
                 m = re.match(rf"^([A-Za-z0-9][A-Za-z0-9_-]*?)-({'|'.join(PERFILES)})\.(?:{'|'.join(EXTENSIONES)})$", n)
                 if m:
                     claves.setdefault((t, m.group(1)), {'tipo': t, 'slug': m.group(1), 'perfiles': []})
+                    juego.setdefault((t, m.group(1)), {}).setdefault(m.group(2), f'{t}/{n}')
     except FileNotFoundError:
         pass
     lista = []
     for (t, s_), el in sorted(claves.items()):
         d = os.path.join(GENERADO, t, s_)
-        ref = referencia_de(t, s_, el['perfiles'][0]['perfil'] if el['perfiles'] else 'thumbnail')
+        hay = os.path.isdir(d)
+        refs = juego.get((t, s_), {})
+        primero = el['perfiles'][0]['perfil'] if el['perfiles'] else 'thumbnail'
         el.setdefault('nombre', '')
-        el.update(juego=ref['ruta'] if ref else None, intentos=len(filas_registro(d)),
-                  elegidas=[p for p in PERFILES if os.path.isfile(os.path.join(d, f'{s_}-{p}.png'))])
+        el.update(juego=refs.get(primero) or next((refs[p] for p in PERFILES if p in refs), None),
+                  intentos=len(filas_registro(d)) if hay else 0,
+                  elegidas=[p for p in PERFILES if hay and os.path.isfile(os.path.join(d, f'{s_}-{p}.png'))])
         lista.append(el)
     return lista, ' · '.join(avisos) or None
 
@@ -341,6 +353,14 @@ def referencia_de(tipo, slug_, perfil):
 
 # --- generación (una a la vez) ---
 
+def sd_cli_en_marcha():
+    """True si corre un sd-cli, aunque no lo lanzara este servidor (uno anterior que se cerró a medias)."""
+    try:
+        return subprocess.run(['pgrep', '-x', 'sd-cli'], stdout=subprocess.DEVNULL).returncode == 0
+    except OSError:
+        return False
+
+
 class Trabajo:
     def __init__(self):
         self.cerrojo = threading.Lock()
@@ -371,16 +391,18 @@ class Trabajo:
                 f.write(texto + '\n')
             env['PROMPT_ARCHIVO'] = archivo
         with self.cerrojo:
-            if self.estado['enMarcha']:
+            if self.estado['enMarcha'] or sd_cli_en_marcha():
                 if archivo:
                     os.unlink(archivo)
-                raise Invalido('ya hay una imagen generándose; espera a que acabe')
+                raise Invalido('ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
             self.estado = {'enMarcha': True, 'tipo': tipo, 'slug': slug_, 'perfil': perfil, 'conReferencia': bool(extra),
-                           'inicio': time.time(), 'salida': [], 'nombre': None, 'rc': None}
+                           'inicio': time.time(), 'salida': [], 'nombre': None, 'rc': None,
+                           'estimado': estimado(perfil, bool(extra))}
         orden = [PROBAR, tipo, slug_, perfil, str(semilla), str(pasos)] + extra
         threading.Thread(target=self._correr, args=(orden, env, archivo), daemon=True).start()
 
     def _correr(self, orden, env, archivo):
+        rc = 1
         try:
             p = subprocess.Popen(orden, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for linea in p.stdout:
@@ -395,18 +417,20 @@ class Trabajo:
             with self.cerrojo:
                 self.estado['salida'].append(f'ERROR: no se pudo lanzar probar.sh: {e}')
             rc = 127
+        except Exception as e:  # sin esto, `enMarcha` se quedaría en True y no dejaría generar más
+            with self.cerrojo:
+                self.estado['salida'].append(f'ERROR: {e}')
         finally:
             if archivo:
                 os.unlink(archivo)
-        with self.cerrojo:
-            self.estado.update(enMarcha=False, rc=rc, fin=time.time())
+            with self.cerrojo:
+                self.estado.update(enMarcha=False, rc=rc, fin=time.time())
 
     def ver(self):
         with self.cerrojo:
             e = dict(self.estado, salida=list(self.estado.get('salida', [])))
         if e.get('inicio'):
             e['segundos'] = int((e.get('fin') or time.time()) - e['inicio'])
-            e['estimado'] = estimado(e['perfil'], e['conReferencia'])
             texto, e['paso'], e['pasos'] = leer_progreso(e['tipo'], e['slug'], e['inicio'])
             if e['enMarcha']:
                 e['progreso'] = texto
@@ -448,10 +472,6 @@ def leer_progreso(tipo, slug_, desde):
     return 'cargando modelos', None, None
 
 
-def progreso(tipo, slug_, desde):
-    return leer_progreso(tipo, slug_, desde)[0]
-
-
 TRABAJO = Trabajo()
 
 
@@ -481,6 +501,8 @@ class Manejador(BaseHTTPRequestHandler):
             self.responder(400, {'error': str(e)})
         except (RuntimeError, json.JSONDecodeError, subprocess.TimeoutExpired) as e:
             self.responder(502, {'error': str(e)})
+        except (OSError, UnicodeDecodeError) as e:
+            self.responder(500, {'error': f'{type(e).__name__}: {e}'})
 
     def do_GET(self):
         u = urlparse(self.path)
@@ -536,6 +558,12 @@ class Manejador(BaseHTTPRequestHandler):
         self.responder(404, {'error': 'no existe'})
 
     def do_POST(self):
+        # Otra web abierta en el navegador podría lanzar generaciones con un POST text/plain (sin preflight): solo
+        # JSON y desde esta misma página.
+        origen = self.headers.get('Origin')
+        if (self.headers.get('Content-Type') or '').split(';')[0].strip() != 'application/json' or \
+                (origen and urlparse(origen).netloc != self.headers.get('Host')):
+            return self.responder(403, {'error': 'solo desde la propia interfaz'})
         try:
             peticion = json.loads(self.rfile.read(int(self.headers.get('Content-Length') or 0)) or b'{}')
         except json.JSONDecodeError:
