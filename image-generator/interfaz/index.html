@@ -55,6 +55,10 @@
   .ok { color:var(--ok); font-size:12px; }
   #grande { position:fixed; inset:0; background:#000c; display:none; align-items:center; justify-content:center; cursor:zoom-out; }
   #grande img { max-width:96vw; max-height:96vh; }
+  #refBloque { margin-top:10px; }
+  #refBloque label { display:flex; gap:8px; align-items:center; color:inherit; margin:0; }
+  #refBloque input { width:auto; }
+  #refPrevia { margin-top:8px; max-width:100%; max-height:220px; border-radius:6px; border:1px solid var(--borde); cursor:zoom-in; display:block; }
 </style>
 </head>
 <body>
@@ -80,9 +84,10 @@
         <div style="display:flex;gap:6px"><input id="semilla" type="number" value="42" min="0"><button id="azar" title="Semilla al azar">🎲</button></div></div>
       <div><label for="pasos">Pasos</label><input id="pasos" type="number" value="4" min="1" max="20"></div>
     </div>
-    <div class="fila">
-      <div><label for="referencia">Referencia de estilo</label><select id="referencia"><option value="">Ninguna</option></select></div>
-      <div><label for="tanda">Tanda</label><input id="tanda" list="tandas"><datalist id="tandas"></datalist></div>
+    <label for="tanda">Tanda</label><input id="tanda" list="tandas"><datalist id="tandas"></datalist>
+    <div id="refBloque" hidden>
+      <label><input type="checkbox" id="usarRef"> Usar la imagen actual del juego como referencia <small class="nota-fuente" id="refNombre"></small></label>
+      <img id="refPrevia" alt="Imagen de referencia" hidden>
     </div>
     <button class="principal" id="generar">Generar imagen</button>
     <div id="estado"></div>
@@ -110,7 +115,7 @@ function hoy() { const d = new Date(); return d.toISOString().slice(0, 10); }
 function aviso(texto, error) { $('estado').textContent = texto; $('estado').className = error ? 'error' : ''; }
 function guardarFormulario() {
   try { localStorage.setItem('generador', JSON.stringify({ tipo: $('tipo').value, slug: $('slug').value, perfil: $('perfil').value,
-    prompt: $('prompt').value, semilla: $('semilla').value, pasos: $('pasos').value, referencia: $('referencia').value, tanda: $('tanda').value })); } catch {}
+    prompt: $('prompt').value, semilla: $('semilla').value, pasos: $('pasos').value, tanda: $('tanda').value })); } catch {}
 }
 function recuperarFormulario() {
   try { const f = JSON.parse(localStorage.getItem('generador') || 'null'); if (!f) return;
@@ -148,15 +153,34 @@ async function traer(e) {
     $('tipo').value = e.tipo; $('slug').value = e.slug; $('perfil').value = e.perfil; $('prompt').value = r.prompt;
     cargado = { ...e, prompt: r.prompt, fuente: r.fuente };
     $('lista').hidden = true; $('buscar').value = '';
-    marcarFuente(); guardarFormulario();
+    marcarFuente(); guardarFormulario(); buscarReferencia();
   } catch (err) { aviso(err.message, true); }
+}
+
+// La imagen que el juego tiene ya de esa entidad (copiada por abrir.sh a referencias/images/), para usarla de referencia.
+let referencia = null, esperaRef = null;
+async function buscarReferencia() {
+  const tipo = $('tipo').value.trim(), slug = $('slug').value.trim(), perfil = $('perfil').value;
+  referencia = null;
+  if (tipo && slug) {
+    try { const r = await api(`/api/referencia?tipo=${encodeURIComponent(tipo)}&slug=${encodeURIComponent(slug)}&perfil=${encodeURIComponent(perfil)}`);
+      if (r.ruta) referencia = r; } catch {}
+  }
+  $('refBloque').hidden = !referencia;
+  if (referencia) $('refNombre').textContent = referencia.perfil === perfil ? `(${referencia.ruta})` : `(${referencia.ruta}: de otro perfil)`;
+  pintarReferencia();
+}
+function pintarReferencia() {
+  const ver = referencia && $('usarRef').checked;
+  $('refPrevia').hidden = !ver;
+  if (ver) $('refPrevia').src = `/ref/${referencia.ruta}`;
 }
 
 async function generar() {
   const desdeBase = marcarFuente();
   const peticion = { tanda: $('tanda').value.trim() || hoy(), tipo: $('tipo').value.trim(), slug: $('slug').value.trim(),
     perfil: $('perfil').value, prompt: $('prompt').value, desdeBase, semilla: Number($('semilla').value), pasos: Number($('pasos').value),
-    referencia: $('referencia').value };
+    usarReferencia: !$('refBloque').hidden && $('usarRef').checked };
   $('tanda').value = peticion.tanda; guardarFormulario();
   try { await api('/api/generar', peticion); $('generar').disabled = true; aviso('Empezando…'); seguir(); }
   catch (err) { aviso(err.message, true); }
@@ -216,7 +240,7 @@ async function pintarTanda(tanda) {
     be.onclick = async () => { try { const r = await api('/api/elegir', { tanda, nombre: f.nombre }); await pintarTanda(tanda); aviso(`Copiada a image-generator/${r.destino}`); } catch (err) { aviso(err.message, true); } };
     t.querySelector('.usar').onclick = () => {
       $('tipo').value = f.tipo; $('slug').value = f.slug; $('perfil').value = f.perfil; $('prompt').value = f.textoPrompt;
-      $('semilla').value = f.semilla; $('pasos').value = f.pasos; cargado = null; marcarFuente(); guardarFormulario(); window.scrollTo(0, 0);
+      $('semilla').value = f.semilla; $('pasos').value = f.pasos; cargado = null; marcarFuente(); guardarFormulario(); buscarReferencia(); window.scrollTo(0, 0);
     };
     g.appendChild(t);
   }
@@ -226,10 +250,10 @@ async function iniciar() {
   const ini = await api('/api/inicio');
   $('mundo').textContent = `mundo ${ini.mundo} · las imágenes elegidas van a image-generator/salida/images/`;
   for (const p of ini.perfiles) $('perfil').add(new Option(`${p} (${TAMANOS[p]})`, p));
-  for (const r of ini.referencias) $('referencia').add(new Option(r, r));
   $('tanda').value = hoy();
   recuperarFormulario();
   marcarFuente();
+  buscarReferencia();
   try { entidades = await api('/api/entidades'); $('tipos').innerHTML = [...new Set(entidades.map((e) => e.tipo))].map((t) => `<option value="${t}">`).join(''); }
   catch (err) { aviso('Sin lista de entidades: ' + err.message, true); }
   await cargarTandas($('tanda').value);
@@ -239,10 +263,13 @@ async function iniciar() {
 
 $('buscar').oninput = pintarLista;
 for (const id of ['prompt', 'tipo', 'slug', 'perfil']) $(id).addEventListener('input', () => { marcarFuente(); guardarFormulario(); });
-for (const id of ['semilla', 'pasos', 'referencia', 'tanda']) $(id).addEventListener('change', guardarFormulario);
+for (const id of ['tipo', 'slug', 'perfil']) $(id).addEventListener('input', () => { clearTimeout(esperaRef); esperaRef = setTimeout(buscarReferencia, 300); });
+for (const id of ['semilla', 'pasos', 'tanda']) $(id).addEventListener('change', guardarFormulario);
 $('azar').onclick = () => { $('semilla').value = Math.floor(Math.random() * 1e6); guardarFormulario(); };
 $('generar').onclick = generar;
 $('verTanda').onchange = () => pintarTanda($('verTanda').value);
+$('usarRef').onchange = pintarReferencia;
+$('refPrevia').onclick = () => { $('grande').firstChild.src = $('refPrevia').src; $('grande').style.display = 'flex'; };
 $('grande').onclick = () => { $('grande').style.display = 'none'; };
 iniciar().catch((err) => aviso(err.message, true));
 </script>

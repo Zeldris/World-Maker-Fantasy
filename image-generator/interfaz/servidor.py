@@ -5,9 +5,11 @@ Pegas un prompt (o eliges una entidad y trae su prompt usado o el base de la tab
 `scripts/probar.sh` (que llama a `generar.sh`, con sus protecciones de memoria, y apunta la tanda), escribes la nota
 de cada imagen y, con «Elegir esta», la copias a `salida/images/<tipo>/<slug>-<perfil>.png`, la misma estructura que
 `backend/uploads/images/` (`backend/src/lib/imageAssets.ts`). Pasarla al juego es copiarla a mano.
+Si en `referencias/images/` (la copia de `backend/uploads/images/` que hace `abrir.sh`) hay imagen de esa entidad, la
+página ofrece usarla de referencia con su vista previa.
 
 Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.1.
-Variables (para los tests): IMG_RAIZ (image-generator/), IMG_PROBAR, IMG_PSQL, IMG_PUERTO (7861).
+Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_PUERTO (7861).
 """
 import json, os, re, shlex, shutil, subprocess, sys, tempfile, threading, time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -18,9 +20,10 @@ RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
 PROBAR = os.environ.get('IMG_PROBAR', os.path.join(RAIZ, 'scripts', 'probar.sh'))
 PSQL = shlex.split(os.environ.get('IMG_PSQL', 'podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c'))
 MUNDO = os.environ.get('MUNDO', 'helek-sirik')
+REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
 SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9-]*$')  # el juego respeta las mayúsculas (CAZADOR)
-REFERENCIA = re.compile(r'^[\w.-]+\.(png|jpe?g|webp)$')
+EXTENSIONES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 CABECERA_REGISTRO = ['fecha', 'nombre', 'tipo', 'slug', 'perfil', 'prompt', 'semilla', 'pasos', 'tamaño', 'extra',
                      'salida', 'segundos']
 
@@ -175,11 +178,14 @@ def elegir(tanda, nombre):
     return rel
 
 
-def referencias():
-    try:
-        return sorted(n for n in os.listdir(os.path.join(RAIZ, 'referencias')) if REFERENCIA.match(n))
-    except FileNotFoundError:
-        return []
+def referencia_de(tipo, slug_, perfil):
+    """La imagen del juego de esa entidad en referencias/images/<tipo>/: la de su perfil y, si no, la de otro."""
+    d = os.path.join(REFERENCIAS, slug(tipo, 'tipo'))
+    for p in (perfil,) + tuple(x for x in PERFILES if x != perfil):
+        for ext in EXTENSIONES:
+            if os.path.isfile(os.path.join(d, f'{slug(slug_, "slug")}-{p}.{ext}')):
+                return {'ruta': f'{tipo}/{slug_}-{p}.{ext}', 'perfil': p}
+    return None
 
 
 # --- generación (una a la vez) ---
@@ -199,11 +205,11 @@ class Trabajo:
         semilla = entero(peticion.get('semilla', 42), 'la semilla', 0, 2 ** 31 - 1)
         pasos = entero(peticion.get('pasos', 4), 'los pasos', 1, 20)
         extra = []
-        ref = peticion.get('referencia') or ''
-        if ref:
-            if not REFERENCIA.match(ref) or ref not in referencias():
-                raise Invalido(f'no hay referencia {ref} en image-generator/referencias/')
-            extra = ['-r', os.path.join(RAIZ, 'referencias', ref)]
+        if peticion.get('usarReferencia'):
+            ref = referencia_de(tipo, slug_, perfil)
+            if not ref:
+                raise Invalido(f'no hay imagen de {tipo}/{slug_} en image-generator/referencias/images/')
+            extra = ['-r', os.path.join(REFERENCIAS, ref['ruta'])]
         env = dict(os.environ, LIBERAR_OLLAMA='1', MUNDO=MUNDO)
         archivo = None
         if not peticion.get('desdeBase'):
@@ -319,7 +325,7 @@ class Manejador(BaseHTTPRequestHandler):
         if u.path == '/api/estado':
             return self.responder(200, TRABAJO.ver())
         if u.path == '/api/inicio':
-            return self.responder(200, {'tandas': tandas(), 'referencias': referencias(), 'perfiles': PERFILES,
+            return self.responder(200, {'tandas': tandas(), 'perfiles': PERFILES,
                                         'mundo': MUNDO})
         if u.path == '/api/entidades':
             return self.atender(lambda: self.responder(200, entidades()))
@@ -331,6 +337,21 @@ class Manejador(BaseHTTPRequestHandler):
                 r = prompt_de(q.get('tipo'), q.get('slug'), perfil)
                 self.responder(200 if r else 404, r or {'error': 'esa entidad no tiene prompt para ese perfil'})
             return self.atender(p)
+        if u.path == '/api/referencia':
+            def r():
+                perfil = q.get('perfil')
+                if perfil not in PERFILES:
+                    raise Invalido(f'perfil desconocido: {perfil}')
+                self.responder(200, referencia_de(q.get('tipo'), q.get('slug'), perfil) or {'ruta': None})
+            return self.atender(r)
+        if len(partes) == 3 and partes[0] == 'ref':  # /ref/<tipo>/<slug>-<perfil>.<ext>
+            def ref():
+                base, _, ext = partes[2].rpartition('.')
+                if ext not in EXTENSIONES:
+                    raise Invalido('solo imágenes')
+                self.archivo(os.path.join(REFERENCIAS, slug(partes[1], 'tipo'), slug(base, 'nombre') + '.' + ext),
+                             EXTENSIONES[ext])
+            return self.atender(ref)
         if u.path == '/api/tanda':
             return self.atender(lambda: self.responder(200, leer_tanda(q.get('tanda'))))
         if len(partes) == 3 and partes[0] == 'img':  # /img/<tanda>/<nombre>.png

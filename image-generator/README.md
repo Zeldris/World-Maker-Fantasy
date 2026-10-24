@@ -18,7 +18,7 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf`; para comparar, `flux-2-klein-base-4b-Q8_0.gguf` y `flux3-image-klein-Q8_0.gguf` (no arranca en la Deck) | no |
 | `modelos/text/` | `Qwen3-4B-Q4_K_M.gguf` (codificador de texto); `Qwen3VL-4B-Instruct-Q4_K_M.gguf` (el de FLUX.3) | no |
 | `modelos/upscale/` | `RealESRGAN_x4plus.pth` (ampliación, BSD-3) | no |
-| `referencias/` | imágenes de referencia de estilo (`-r`), p. ej. el banner original del múrgol reducido | no |
+| `referencias/` | imágenes de referencia (`-r`); `referencias/images/` es la copia de `backend/uploads/images/` que hace `abrir.sh` (solo las que falten) | no |
 | `modelos/vae/` | `full_encoder_small_decoder.safetensors` (FLUX.2-small-decoder, Apache 2.0) | no |
 | `pruebas/<tanda>/` | `imagenes/`, `logs/` y `prompts/` de cada tanda, más `registro.tsv`, `notas.md` y `elegidas.tsv` | no |
 | `salida/images/<tipo>/` | las elegidas, como `<slug>-<perfil>.png`: la estructura de `backend/uploads/images/` | no |
@@ -35,8 +35,10 @@ image-generator/abrir.sh      # abre http://127.0.0.1:7861/ en el navegador; Ctr
 1. **Prompt.** Pega uno (el que copiaste de la enciclopedia o uno tuyo) o busca la entidad («fauna nievon») y la
    interfaz trae su prompt usado, o el base si no hay (la tabla `ImagePrompt`; necesita `tarkor-postgres`, que
    `abrir.sh` arranca; el juego no hace falta). Pon tipo, slug y perfil: deciden el tamaño y dónde acabará la imagen.
-2. **Generar.** Semilla (🎲 al azar; repite la misma para ver solo el efecto del prompt), pasos, referencia de estilo
-   y tanda (por defecto, la fecha de hoy). Se ve el paso del muestreo mientras genera; una imagen a la vez.
+2. **Generar.** Semilla (🎲 al azar; repite la misma para ver solo el efecto del prompt), pasos y tanda (por
+   defecto, la fecha de hoy). Si el juego ya tiene imagen de esa entidad (en `referencias/images/<tipo>/`, la de su
+   perfil o, si no, la de otro), sale la casilla «Usar la imagen actual del juego como referencia»: marcada, la usa
+   y enseña la original. Se ve el paso del muestreo mientras genera; una imagen a la vez.
 3. **Tanda.** Debajo de cada imagen, escribe qué te parece, qué sobra o qué falta: se guarda sola en
    `pruebas/<tanda>/notas.md`. «Usar este prompt» lo devuelve al formulario para retocarlo.
 4. **Elegir esta** copia la imagen a `salida/images/<tipo>/<slug>-<perfil>.png`, el nombre que busca el juego; para

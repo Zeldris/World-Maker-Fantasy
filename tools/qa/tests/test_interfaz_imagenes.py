@@ -65,7 +65,7 @@ class Validacion(Base):
     def test_lanzar_rechaza_perfil_pasos_referencia_y_prompt_vacio(self):
         base = {'tanda': 't1', 'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'thumbnail', 'prompt': 'x'}
         for cambio, motivo in (({'perfil': 'poster'}, 'perfil desconocido'), ({'pasos': 50}, 'los pasos: de 1 a 20'),
-                               ({'referencia': '../../etc.png'}, 'no hay referencia'), ({'prompt': '  '}, 'vacío')):
+                               ({'usarReferencia': True}, 'no hay imagen de fauna/nievon'), ({'prompt': '  '}, 'vacío')):
             with self.subTest(cambio=cambio), self.assertRaisesRegex(self.s.Invalido, motivo):
                 self.s.Trabajo().lanzar({**base, **cambio})
 
@@ -185,6 +185,42 @@ class Http(Base):
                          (200, {'prompt': 'Base prompt', 'fuente': 'base'}))
         self.assertEqual(self.pedir('/api/prompt?tipo=fauna&slug=nievon&perfil=x')[0], 400)
         self.assertEqual(self.pedir('/api/tanda?tanda=..%2Fx')[0], 400)
+
+
+class Referencia(Http):
+    """La imagen que el juego ya tiene de la entidad (referencias/images/<tipo>/<slug>-<perfil>.<ext>)."""
+
+    def poner(self, archivo, contenido='JPG'):
+        escribir(os.path.join(self.raiz, 'referencias', 'images', 'fauna', archivo), contenido)
+
+    def test_la_del_perfil_y_si_no_la_de_otro_perfil(self):
+        self.assertEqual(self.pedir('/api/referencia?tipo=fauna&slug=nievon&perfil=thumbnail'), (200, {'ruta': None}))
+        self.poner('nievon-banner.jpeg')
+        self.assertEqual(self.pedir('/api/referencia?tipo=fauna&slug=nievon&perfil=thumbnail')[1],
+                         {'ruta': 'fauna/nievon-banner.jpeg', 'perfil': 'banner'})
+        self.poner('nievon-thumbnail.png')
+        self.assertEqual(self.pedir('/api/referencia?tipo=fauna&slug=nievon&perfil=thumbnail')[1],
+                         {'ruta': 'fauna/nievon-thumbnail.png', 'perfil': 'thumbnail'})
+        self.assertEqual(self.pedir('/api/referencia?tipo=..&slug=nievon&perfil=thumbnail')[0], 400)
+
+    def test_sirve_la_vista_previa_y_nada_fuera_de_referencias(self):
+        self.poner('nievon-banner.jpeg', 'IMAGEN')
+        with urllib.request.urlopen(f'http://127.0.0.1:{self.puerto}/ref/fauna/nievon-banner.jpeg', timeout=10) as r:
+            self.assertEqual((r.headers['Content-Type'], r.read()), ('image/jpeg', b'IMAGEN'))
+        for malo in ('/ref/fauna/nievon-banner.txt', '/ref/..%2F..%2Fx/a.png', '/ref/fauna/otro-banner.png'):
+            with self.subTest(malo=malo):
+                self.assertIn(self.pedir(malo)[0], (400, 404))
+
+    def test_generar_con_la_casilla_pasa_la_referencia_a_probar(self):
+        self.poner('nievon-thumbnail.png')
+        self.pedir('/api/generar', {'tanda': 't1', 'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'thumbnail',
+                                    'desdeBase': True, 'usarReferencia': True})
+        for _ in range(100):
+            if not self.pedir('/api/estado')[1]['enMarcha']:
+                break
+            time.sleep(0.1)
+        args = leer(os.path.join(self.raiz, 'args'))
+        self.assertIn('-r\n' + os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-thumbnail.png'), args)
 
 
 if __name__ == '__main__':

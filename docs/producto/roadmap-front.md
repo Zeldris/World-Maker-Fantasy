@@ -303,6 +303,9 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   nota de cada imagen en `notas.md` y «Elegir esta» la copia a `salida/images/<tipo>/<slug>-<perfil>.png`, la
   estructura de `backend/uploads/images/` (a mano al juego). Tests: `tools/qa/tests/test_interfaz_imagenes.py`.
   Pasos en el [README](../../image-generator/README.md#probar-prompts-la-usuaria). **S**
+  Referencia (usuaria, 2026-10-24): `abrir.sh` copia las imágenes del juego a `referencias/images/` y, si la entidad
+  tiene una, una casilla la usa (`-r`) y enseña la original. `sd-cli` corre con sus librerías (`LD_LIBRARY_PATH`).
+  Tests: `test_interfaz_imagenes` (15).
 
 ---
 

@@ -7,5 +7,9 @@ G=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 PUERTO=${IMG_PUERTO:-7861}
 fuser -k "$PUERTO/tcp" > /dev/null 2>&1 || true   # una interfaz anterior que quedara abierta
 podman start tarkor-postgres > /dev/null 2>&1 || echo "AVISO: no arranca tarkor-postgres; podrás pegar prompts, pero no traerlos de la enciclopedia."
+# Las imágenes del juego, de referencia: copia las que falten (las ya copiadas no se tocan, aunque el juego cambie).
+mkdir -p "$G/referencias/images"
+cp -rn "$G/../backend/uploads/images/." "$G/referencias/images/" 2>/dev/null   # -n sale con 1 si se salta alguna
+find "$G/referencias/images" -name .gitkeep -delete
 ( sleep 1; xdg-open "http://127.0.0.1:$PUERTO/" > /dev/null 2>&1 ) &
 IMG_PUERTO=$PUERTO exec python3 "$G/interfaz/servidor.py"
