@@ -5,3 +5,4 @@ descargas/
 modelos/
 # Salidas de las pruebas (imágenes, logs, prompts): se regeneran con scripts/demo.sh.
 pruebas/
+referencias/

@@ -221,6 +221,32 @@ Conclusiones:
 - Abierto: por qué el gestor de memoria ve «0 MB libres» tras una ejecución con `--offload-to-cpu`
   (con `--params-backend disk` no ha vuelto a pasar en tres seguidas).
 
+## Banco del múrgol (2026-10-24, medido en la Deck)
+
+Objetivo de la usuaria: igualar el banner actual del múrgol (`backend/uploads/images/fauna/murgol-macho-banner.png`,
+1983×793, hecho fuera). Mismo prompt afinado a mano
+([`prompts/murgol/v5.txt`](../../../image-generator/prompts/murgol/v5.txt); v1-v4, el camino hasta él), semilla 7
+y 1280×512 salvo donde se dice; una prueba cada vez con
+[`generar.sh`](../../../image-generator/scripts/generar.sh). Imágenes y logs en `image-generator/pruebas/murgol/`.
+
+| Prueba | Total | Memoria libre mínima | Resultado |
+|---|---|---|---|
+| klein 4B, 4 pasos | 110 s | 9,2 GB | Base de comparación: forma y astas bien; color, brillos y sombras lejos del original. |
+| klein 4B, 8 pasos | 193 s | 8,9 GB | Algo más de detalle y vetas rojas; casi igual. No compensa el doble de tiempo. |
+| **klein 4B, 4 pasos + el banner original como referencia** (`-r`, reducido a 1024 de ancho; [`v6-ref.txt`](../../../image-generator/prompts/murgol/v6-ref.txt)) | 199 s | 8,8 GB | **La mejor** (también para la usuaria): cielo, vetas rojas, horizonte y hierba como el original. |
+| La misma referencia con otro animal (cuernahoja, prompt guardado sin afinar) | 194 s | 8,9 GB | Solo trae suelo y bruma; no la paleta, y añade cuernos. La referencia de estilo sirve si el prompt describe una escena y una luz parecidas. |
+| klein 4B **base**, 25 pasos, `cfg 4` | 1057 s | 8,9 GB | Más suave y con menos detalle de pelo. Descartado: 10× el tiempo sin mejora. |
+| **FLUX.3 Image Klein** Q8, 16 pasos | — | — | **No arranca** con `--max-vram vulkan0=2`: su grafo va en un solo segmento de 6,2 GB y no se trocea. Subir el tope es lo que bloqueó la Deck; en la Deck queda descartado, solo en Colab. |
+| La mejor con hires fix a 1920×768 (Lanczos, denoise 0,35) | 232 s | 8,7 GB | **Falla** en la segunda pasada: a 1920×768 no cabe en los 2 GB de GPU. Descartado en la Deck. |
+| La mejor + RealESRGAN x4plus (BSD-3), reducida a 1983×794 | +141 s | 10,3 GB | A la resolución del original y muy cerca de él. |
+
+Conclusiones:
+
+- **La palanca grande es la imagen de referencia**, no el modelo ni los pasos. Para el juego: unas pocas imágenes
+  ancla por tipo de escena (fauna al atardecer, interior, objeto…) en vez de un prefijo de estilo de texto.
+- **Receta en la Deck:** klein 4B destilado, 4 pasos, referencia, 1280×512 y ESRGAN; ~5,5 minutos por banner.
+- **FLUX.3 Image Klein** y hires fix solo se pueden probar en Colab.
+
 ## Consistencia de personajes
 
 1. **Ficha visual fija por personaje**: un párrafo de rasgos (raza, piel, cicatrices, ropa, colores)
