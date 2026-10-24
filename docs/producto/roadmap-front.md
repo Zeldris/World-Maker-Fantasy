@@ -1572,6 +1572,7 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-224 · `tools/qa/backend-dev.sh`**~~ ✅ 2026-10-24: `tsx watch` no ve los cambios del sandbox y se reinició a mano cuatro veces; el script para el de :3001, arranca `npm run dev` (base `tarkor`) y espera a `/health` (`--parar` solo lo para). Probado en la Deck: listo en 4 s.
 - ~~**QA-225 · `sql.sh` contra la base de desarrollo**~~ ✅ 2026-10-24: la orden con `TARKOR_DB_URL` de la base `tarkor` está en la sección «Imágenes» del mapa (la sesión escribió `psql` con comillas a mano).
 - ~~**QA-226 · `generar.sh` dice que el tercer argumento es una ruta**~~ ✅ 2026-10-24: con el texto del prompt abortaba repitiéndolo entero.
+- ~~**QA-227 · `host.sh` rehace el worktree del pre-push en `logs/`, no en `.git/`**~~ ✅ 2026-10-24: Vite 8 niega `**/.git/**` y los tests de frontend del pre-push fallaban todos («Cannot find module '/src/test/avisosDeReact.ts'»). Test: `test_host`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

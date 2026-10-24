@@ -25,7 +25,7 @@ class Entorno:
         # El PATH solo trae los falsos y las utilidades del sistema; sin psql real.
         sistema = os.path.join(d, 'sistema')
         os.makedirs(sistema)
-        for cmd in ('bash', 'base64', 'tr', 'cat', 'pwd', 'echo', 'printf', 'dirname', 'grep', 'git', 'ln', 'mktemp', 'rmdir', 'rm', 'ls', 'readlink'):
+        for cmd in ('bash', 'base64', 'tr', 'cat', 'pwd', 'echo', 'printf', 'dirname', 'grep', 'git', 'ln', 'mktemp', 'mkdir', 'rmdir', 'rm', 'ls', 'readlink'):
             ruta = shutil.which(cmd)
             if ruta:
                 os.symlink(ruta, os.path.join(sistema, cmd))
@@ -115,8 +115,8 @@ class Host(Entorno, unittest.TestCase):
         env, d = self.entorno(True)
         r = self.correr_en(env, wt, 'pwd')
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn('--directory=' + principal + '/.git/host-sh-wt.', leer(d + '/args'))
-        self.assertEqual([n for n in os.listdir(principal + '/.git') if n.startswith('host-sh-wt.')], [])
+        self.assertIn('--directory=' + principal + '/logs/host-sh-wt.', leer(d + '/args'))  # QA-227: fuera de .git/
+        self.assertEqual([n for n in os.listdir(principal + '/logs') if n.startswith('host-sh-wt.')], [])
         self.assertNotIn('host-sh-wt', git(principal, 'worktree', 'list'))
 
     def test_en_el_sandbox_un_worktree_invisible_con_cambios_falla_con_motivo(self):

@@ -151,6 +151,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-24** — ~~`QA-227`~~: `tools/qa/host.sh` rehace el worktree del pre-push en `logs/` de la copia principal y no en `.git/` (Vite 8 niega `**/.git/**` y vitest no encontraba su setupFiles).
 - **2026-10-24** — ~~`QA-222`…`QA-226`~~ (retro de `claude/imagenes-local`): sección «Imágenes» en `docs/mapa-agente.md`, análisis de `CFG-42` en un subagente, `tools/qa/backend-dev.sh` (reinicia el backend de desarrollo y espera a `/health`), `sql.sh` contra `tarkor` en el mapa y `generar.sh` avisando de que el tercer argumento es una ruta.
 - **2026-10-24** — ~~`CFG-40`~~: paisaje y luz por región (`REGION_ESCENA`) y hasta 2 prompts usados como ejemplos en el generador de imágenes; región de fauna como la Enciclopedia (arregla «Llanuras» para todos); probado con LLM real + FLUX en la Deck.
 - **2026-10-24** — ~~`CFG-39`~~: `imagePromptGenerator.ts` con las reglas FLUX del banco del múrgol (orden, sin medidas ni negativos, símiles de naturaleza, cierre); 11 tests; probado con LLM real + FLUX en la Deck.
@@ -160,4 +161,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-23** — ~~`QA-218`~~: `o.sh combate leer` (solo mira), `o.sh viajar-a <lugar>` (lista los lugares si no está), `puntos`/`interactuar` con `ERROR:` y motivo en vez de colgarse, `captura` por `o.sh` en `shots/`; tests de texto en `test_ayudas_mcp.py`; probado en vivo salvo `leer` con combate y el viaje real (sin lugares visitados).
 - **2026-10-23** — ~~`QA-220`~~: paso `preparar convaleciente:<npc>` (`prepararReino.ts`, con `ganado:` ya en su uso) y `mv-pozo-guchapo-conv` rehecho desde `mv-pozo-sed50` sin SQL a mano; la escritura del estado repite la de `turnLootKill.ts` (no hay función exportada).
 - **2026-10-23** — ~~`QA-217`~~: `matriz-pruebas.py --comprobar` falla si un `plan-comprobacion-*.md` nombra en su columna «Escenario» uno sin `.dump` (10 tests); corregido `t13a2-ketg` del plan 3.3, que ya no existe.
-- **2026-10-23** — ~~`QA-216`~~ (retro del PR de `claude/pruebas-mundo-vivo`): antes de repartir una tanda, la principal comprueba que el escenario da el estado de cada id; si falta, se prepara primero (`AGENTS.md`, `rondas-de-pruebas.md`).
