@@ -1,0 +1,7 @@
+# Lo pesado y lo que depende de esta máquina no se sube: se descarga siguiendo
+# docs/arquitectura/reutilizables/01-generacion-imagenes-local.md (pasos 0 y 3).
+bin/
+descargas/
+modelos/
+# Salidas de las pruebas (imágenes, logs, prompts): se regeneran con scripts/demo.sh.
+pruebas/

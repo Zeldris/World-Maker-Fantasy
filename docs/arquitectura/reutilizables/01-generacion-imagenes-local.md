@@ -56,17 +56,20 @@ el prompt de partida tiene fallos que harían perder horas:
 
 ### Paso 0. Binario ya compilado (probar primero, 2026-10-24)
 
+Todo lo de este proyecto vive en [`image-generator/`](../../../image-generator/README.md), en la raíz
+del repo (binario, modelos, scripts y pruebas; lo pesado, fuera de git). Las rutas de abajo son
+relativas a la raíz del repo.
+
 ```sh
-mkdir -p ~/sdcpp-bin && cd ~/sdcpp-bin
+mkdir -p image-generator/descargas image-generator/bin && cd image-generator/descargas
 # el nombre exacto cambia con cada release: copiarlo de github.com/leejet/stable-diffusion.cpp/releases
 curl -LO https://github.com/leejet/stable-diffusion.cpp/releases/download/master-1000-95ff762/sd-master-95ff762-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip
-unzip sd-*-vulkan.zip && ./sd-cli --help | head   # la ruta de sd-cli dentro del zip, comprobarla al descomprimir
+unzip sd-*-vulkan.zip -d ../bin && ../bin/sd-cli --help | head
 ```
 
-Si arranca y la primera imagen del Paso 4 sale, los pasos 1 y 2 sobran (en los comandos de abajo,
-`./bin/sd-cli` pasa a ser `~/sdcpp-bin/sd-cli`). Si falta alguna biblioteca (está hecho para Ubuntu
-24.04, no para SteamOS), se descomprime y se corre dentro del contenedor del Paso 1 en vez de compilar
-**(sin verificar en la Deck)**.
+**Comprobado el 2026-10-24:** arranca tal cual en SteamOS (sin contenedor) y ve la GPU (`AMD Custom
+GPU 0405 (RADV VANGOGH)`, `uma: 1`). Los pasos 1 y 2 sobran; se quedan por si un release futuro pide
+bibliotecas que SteamOS no trae.
 
 ### Paso 1. Contenedor (sin tocar SteamOS), si el binario no arranca
 
@@ -107,11 +110,13 @@ sirva, **sin verificar**: se prueba en la fase 1).
 ```sh
 pipx install huggingface_hub    # dentro del contenedor; pip a secas falla en Ubuntu 24.04 (PEP 668)
 pipx ensurepath && exec bash    # deja `hf` en el PATH
-mkdir -p ~/modelos/{diffusion,text,vae,lora}
-hf download leejet/FLUX.2-klein-4B-GGUF flux-2-klein-4b-Q8_0.gguf --local-dir ~/modelos/diffusion
-hf download unsloth/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir ~/modelos/text
-hf download black-forest-labs/FLUX.2-small-decoder full_encoder_small_decoder.safetensors --local-dir ~/modelos/vae
+M=image-generator/modelos; mkdir -p $M/{diffusion,text,vae,lora}
+hf download leejet/FLUX.2-klein-4B-GGUF flux-2-klein-4b-Q8_0.gguf --local-dir $M/diffusion
+hf download unsloth/Qwen3-4B-GGUF Qwen3-4B-Q4_K_M.gguf --local-dir $M/text
+hf download black-forest-labs/FLUX.2-small-decoder full_encoder_small_decoder.safetensors --local-dir $M/vae
 ```
+
+Los tres (6,6 GB) bajaron en unos 2 minutos el 2026-10-24.
 
 Si la versión de `huggingface_hub` es antigua y no trae `hf`, el comando equivalente es
 `huggingface-cli` (`download` igual; `login` en vez de `auth login`).
@@ -121,20 +126,31 @@ Si la versión de `huggingface_hub` es antigua y no trae `hf`, el comando equiva
 
 ### Paso 4. Primera imagen
 
+En la Deck, **siempre con [`image-generator/scripts/demo.sh`](../../../image-generator/scripts/demo.sh)**,
+que lleva las protecciones de memoria (ver «Demo del 2026-10-24»). La orden que lanza por debajo:
+
 ```sh
-cd ~/sdcpp/build
-./bin/sd-cli \
-  --diffusion-model ~/modelos/diffusion/flux-2-klein-4b-Q8_0.gguf \
-  --llm ~/modelos/text/Qwen3-4B-Q4_K_M.gguf \
-  --vae ~/modelos/vae/full_encoder_small_decoder.safetensors \
-  -p "painterly fantasy illustration, an orc hunter with a bone-handled axe, red dust plains at dawn" \
-  --cfg-scale 1.0 --steps 4 -W 512 -H 512 --seed 42 \
-  --diffusion-fa --vae-tiling --offload-to-cpu -o prueba.png -v
+M=image-generator/modelos
+image-generator/bin/sd-cli \
+  --diffusion-model $M/diffusion/flux-2-klein-4b-Q8_0.gguf \
+  --llm $M/text/Qwen3-4B-Q4_K_M.gguf \
+  --vae $M/vae/full_encoder_small_decoder.safetensors \
+  -p "painterly fantasy illustration, an orc hunter with a bone-handled axe, red dust plains at dawn. No text, no signature, no watermark." \
+  --cfg-scale 1.0 --steps 4 --sampling-method euler -W 512 -H 512 --seed 42 \
+  --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 -o prueba.png -v
 ```
 
-`--offload-to-cpu` y `--vae-tiling` son los que evitan quedarse sin memoria en hardware pequeño; si
-sobra memoria, quitarlos acelera. Si algo falla, mirar los nombres exactos con `./bin/sd-cli --help`:
-cambian entre versiones.
+- `--diffusion-fa` está obsoleta en el release `master-1000`: ahora es `--flash-attn off,diffusion=on`.
+- **`--params-backend disk --max-vram vulkan0=2`, no `--offload-to-cpu`:** en la Deck la VRAM es RAM
+  compartida (GTT). Con `--offload-to-cpu` el gestor de memoria decide según la VRAM «libre» que ve:
+  recién reiniciada ve ~9 GB y duplica el modelo entero en RAM fijada y en GTT (se comió 10 GB en
+  16 s); tras una ejecución ve 0 MB y falla. Subir `--max-vram` (6 GB) **bloqueó la Deck** y hubo que
+  forzar el apagado. Leyendo los pesos del disco por segmentos con 2 GB de GPU, la memoria libre no
+  baja de 9,2 GB y va más rápido.
+- «No text, no signature, no watermark» al final: sin ello, la primera imagen salió con una firma
+  inventada.
+- Si algo falla, mirar los nombres exactos con `image-generator/bin/sd-cli --help`: cambian entre
+  versiones.
 
 ## Parámetros recomendados
 
@@ -153,7 +169,7 @@ FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambi
 - **Sampler:** el de la documentación es `euler`; no tocarlo hasta tener una imagen que funcione.
 - **Semilla:** fija (`--seed`) mientras se itera el prompt; así cada cambio se ve aislado.
 - **LoRA:** se pone en el prompt como en stable-diffusion-webui, con `--lora-model-dir`:
-  `-p "light_fantasy, retrato de… <lora:light_fantasy:0.8>" --lora-model-dir ~/modelos/lora`.
+  `-p "light_fantasy, retrato de… <lora:light_fantasy:0.8>" --lora-model-dir image-generator/modelos/lora`.
   Con modelos cuantizados (GGUF) se aplica en tiempo de ejecución: más lenta, pero más fiel.
 
 ## Expectativas realistas
@@ -162,7 +178,10 @@ FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambi
   composición y detalle, y por debajo en textos dentro de la imagen y en escenas con muchos personajes
   **(estimación, por comparativas públicas, no medida en la Deck)**. Para retratos, objetos e iconos
   basta; para escenas complejas hará falta repetir más tiradas.
-- **Tiempo en la Deck (estimación):**
+- **Tiempo en la Deck, medido (2026-10-24, klein 4B Q8, 4 pasos):** ~60 s a 512×512 y ~57 s a
+  768×304 en total (difusión 44-47 s, VAE 7-8 s, el resto carga). La estimación de abajo era
+  pesimista: queda como referencia para FLUX.3 Klein, que no se ha medido.
+- **Tiempo en la Deck (estimación previa):**
   - El dato más cercano publicado: una RX 580 de 8 GB con Vulkan tardó unos 14 minutos en FLUX.1-schnell
     (12B parámetros) a 1024×1024 y 4 pasos.
   - Klein 4B tiene un tercio de parámetros y la GPU de la Deck es más lenta: calcular **del orden de
@@ -178,6 +197,29 @@ FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambi
   calidad.
 - **Klein 9B:** descartado por licencia (no comercial). En hardware tampoco cabe bien: 9B más Qwen3 8B
   pasan holgadamente de la memoria disponible.
+
+## Demo del 2026-10-24 (medido en la Deck)
+
+Con [`demo.sh`](../../../image-generator/scripts/demo.sh) y los prompts reales del juego (tabla
+`ImagePrompt`, sin LLM). Imágenes, logs y prompts en `image-generator/pruebas/demo/` (fuera de git).
+
+| Prompt | Tamaño | Total | Memoria libre mínima | Frente a la imagen actual del juego |
+|---|---|---|---|---|
+| fauna `mekiosi`, thumbnail | 512×512 | 61 s | 9,7 GB | La actual es ilustración plana; el prompt guardado pide «photorealistic» y FLUX lo cumple. «muscular build» lo pone de pie, como un humanoide. |
+| item `esquirla-celeste-caida`, banner | 768×304 | 57 s | 9,2 GB | Misma composición (cristal azul, tierra agrietada, tormenta); menos detalle y sin el polvo rojizo de la actual (1983×793). |
+| location `acantilados-partidos-dia-primavera`, banner | 768×304 | 56 s | 9,5 GB | Acantilado con oleaje, gaviotas y flores, estilo pintado y limpio; buena a este tamaño. |
+
+Conclusiones:
+
+- **Funciona y es estable** en la Deck con las protecciones de `demo.sh`: ~1 minuto por imagen, sin
+  acercarse al límite de memoria.
+- **El estilo lo decide el prompt, no el modelo.** Los prompts guardados no fijan un estilo común
+  (unos piden fotorrealismo, otros no) y las imágenes actuales tampoco lo siguen. Antes de generar en
+  serie hace falta un prefijo de estilo único para todo el juego (punto 3 de «Consistencia»).
+- **El tamaño de banner es el límite visible:** a 768×304 se pierde detalle frente a las actuales.
+  Falta medir 1024 o generar a 768 y ampliar.
+- Abierto: por qué el gestor de memoria ve «0 MB libres» tras una ejecución con `--offload-to-cpu`
+  (con `--params-backend disk` no ha vuelto a pasar en tres seguidas).
 
 ## Consistencia de personajes
 
