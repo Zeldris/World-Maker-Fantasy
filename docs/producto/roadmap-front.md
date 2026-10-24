@@ -273,7 +273,15 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   fija la hora, la luz sale de ahí. Hasta 2 prompts usados del mismo tipo (`ejemplosDePromptsUsados`) van como
   ejemplos, sin la instrucción de la imagen de referencia; regla nueva de traducir todo al inglés porque se colaban
   «cuernos» y «felino». Probado con el LLM real y en la Deck: `cfg40/cuernahoja-s7` en estepa roja con volcanes y
-  ocaso. **Queda** ver cuánto aportan los ejemplos cuando haya más prompts usados; ahora solo está el del múrgol)
+  ocaso. **Queda** ver cuánto aportan los ejemplos cuando haya más prompts usados; ahora solo está el del múrgol.
+  **Leves de la revisión** (fase 1, 2026-10-24), para `CFG-42`: `finalizePrompt` no detecta una salida cortada de
+  Ollama; el cierre solo se deduplica en su forma exacta; la regex de proporciones borra también horas (`6:00`); se
+  quitó el bloque de seguridad (gore, desnudos) con CFG-39 por la regla de no nombrar lo que no se quiere, falta
+  decidir si hace falta otro freno; la región toma el `lugarOrigen` solo del primer objeto, no del primero que lo
+  tenga, como `regionFor`; el `PUT` del prompt usado (CFG-38) da 500 sin cuerpo o si la fila desaparece entre la
+  lectura y la escritura, y no pide admin en el backend; `ImagePromptDisplay` no limpia el usado al cambiar de
+  entidad sin `key`, no lo pide si llega por «Generar» sin `existingPrompt` y hace un `GET` por caja que la
+  Enciclopedia podría traer ya)
   (usuaria, 2026-10-24): el contexto del canon (región, paisaje, luz) y los prompts usados (`CFG-38`) de la misma
   categoría como ejemplos para el LLM. **M**
 - **CFG-41 · LoRA de estilo para las imágenes**: conjunto de imágenes ya generadas con sus prompts usados y prueba de

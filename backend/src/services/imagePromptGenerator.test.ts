@@ -158,7 +158,7 @@ describe('generateImagePrompt', () => {
   // CFG-40 (usuaria, 2026-10-24): paisaje y luz de la región desde el canon, y prompts usados (CFG-38) como ejemplos.
   describe('contexto de región y ejemplos (CFG-40)', () => {
     const borrador = () => {
-      const userContent = completeWithFallback.mock.calls[0][1] as string;
+      const userContent = completeWithFallback.mock.calls.at(-1)![1] as string;
       return userContent.slice(userContent.indexOf('Draft:'));
     };
 
@@ -198,6 +198,16 @@ describe('generateImagePrompt', () => {
       const d = borrador();
       expect(d).toMatch(/Light: the time of day/);
       expect(d).not.toMatch(/sunset|golden/i);
+    });
+
+    it('el mapa de zona y el icono conservan su luz plana aunque el lore fije la hora', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('zona', 'Pilares', 'Ruinas. De noche.', 'mapa', { region: 'Llanuras del Viento Rojo', conMomento: true });
+      expect(borrador()).not.toMatch(/Light: the time of day/);
+
+      await generateImagePrompt('location', 'Aldea', 'Casas. De noche.', 'icono', { conMomento: true });
+      expect(borrador()).toContain('Light: even flat lighting');
     });
 
     it('los prompts usados viajan como ejemplos, sin la instrucción de la imagen de referencia', async () => {

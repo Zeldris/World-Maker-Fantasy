@@ -364,6 +364,14 @@ describe('CFG-40 — región y ejemplos para el prompt de imagen', () => {
     expect(result?.conMomento).toBe(true);
   });
 
+  it('location con solo la estación también la marca: la luz tiene que casar con el invierno', async () => {
+    findUniqueLocation.mockResolvedValueOnce({ name: 'Pilares', region: 'Las Llanuras del Viento Rojo', kind: 'x', description: 'Ruinas.' });
+
+    const result = await loreContextFor('w1', 'location', 'pilares-invierno');
+
+    expect(result?.conMomento).toBe(true);
+  });
+
   it('ejemplos: del mismo tipo, sin la propia entidad, primero los del mismo perfil y como mucho 2', async () => {
     findManyImagePrompt.mockResolvedValueOnce([
       { promptUsado: 'miniatura', sizeProfile: 'thumbnail' },
@@ -375,7 +383,7 @@ describe('CFG-40 — región y ejemplos para el prompt de imagen', () => {
 
     expect(ejemplos).toEqual(['banner A', 'banner B']);
     const where = findManyImagePrompt.mock.calls[0][0].where;
-    expect(where).toMatchObject({ worldId: 'w1', entityType: 'fauna', promptUsado: { not: null }, NOT: { entitySlug: 'cuernahoja-macho' } });
+    expect(where).toMatchObject({ worldId: 'w1', entityType: 'fauna', promptUsado: { not: null }, NOT: { entitySlug: { startsWith: 'cuernahoja' } } });
   });
 });
 

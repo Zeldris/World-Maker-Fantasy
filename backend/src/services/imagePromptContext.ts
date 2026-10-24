@@ -261,7 +261,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } } });
     if (!location) return null;
     const general = `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}`;
-    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion), region: coreRegionOf(location.region), conMomento: !!momento };
+    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion), region: coreRegionOf(location.region), conMomento: !!(momento || estacion) };
   }
 
   if (entityType === 'zona') {
@@ -278,7 +278,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
       ? ` Elementos reales presentes en la zona (referencia, no listar como texto en la imagen): ${location.zonePoints.map((p) => p.label ?? p.targetSlug).join(', ')}.`
       : '';
     const general = `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}${puntos}`;
-    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion), region: coreRegionOf(location.region), conMomento: !!momento };
+    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion), region: coreRegionOf(location.region), conMomento: !!(momento || estacion) };
   }
 
   if (entityType === 'faction') {
@@ -359,7 +359,8 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
 
 /// CFG-40 (usuaria, 2026-10-24): los prompts que la usuaria ya corrigió a mano (`promptUsado`, CFG-38) del mismo
 /// tipo, como ejemplos para el LLM. Primero los del mismo perfil (un banner enseña más a otro banner) y como mucho
-/// `max`; la propia entidad no, para que regenerar su base no copie su versión.
+/// `max`; la propia entidad no (ni sus variantes de sexo, momento o estación), para que regenerar su base no copie
+/// su versión.
 export async function ejemplosDePromptsUsados(
   worldId: string,
   entityType: ImagePromptEntityType,
@@ -367,10 +368,11 @@ export async function ejemplosDePromptsUsados(
   sizeProfile: ImagePromptSizeProfile,
   max = 2,
 ): Promise<string[]> {
+  const base = stripLocationTimeVariant(stripSexoSuffix(entitySlug)?.baseSlug ?? entitySlug).baseSlug;
   const filas = await prisma.imagePrompt.findMany({
-    where: { worldId, entityType, promptUsado: { not: null }, NOT: { entitySlug } },
+    where: { worldId, entityType, promptUsado: { not: null }, NOT: { entitySlug: { startsWith: base } } },
     orderBy: { promptUsadoAt: 'desc' },
-    take: 10,
+    take: 50,
     select: { promptUsado: true, sizeProfile: true },
   });
   return [...filas]

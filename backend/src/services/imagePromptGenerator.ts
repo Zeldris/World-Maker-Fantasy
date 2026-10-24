@@ -360,8 +360,11 @@ function buildPrompt(
   const subject = ensureSexExplicit(loreContext, `${name}, ${ENTITY_TYPE_HINT[entityType]}`);
   // Un emblema plano no tiene escenario; el mapa de zona sí toma el terreno, pero su luz sigue siendo uniforme.
   const escena = tipo === ICONO ? undefined : REGION_ESCENA[contexto.region ?? ''];
-  const luzRegion = escena && entityType !== 'zona' && entityType !== 'ability' ? escena.luz : undefined;
-  const luz = contexto.conMomento ? 'the time of day and season given in the lore' : (luzRegion ?? tipo.luz);
+  // Iconos, mapas de zona y habilidades conservan la luz plana de su tipo, aunque el lore traiga región u hora.
+  const luzPropia = tipo !== ICONO && entityType !== 'zona' && entityType !== 'ability';
+  const luz = luzPropia && contexto.conMomento
+    ? 'the time of day and season given in the lore'
+    : ((luzPropia ? escena?.luz : undefined) ?? tipo.luz);
 
   return [
     `${tipo.estilo}.`,
@@ -418,7 +421,7 @@ ${seccionEjemplos}`;
   - 90 to 160 words, no quotes, no explanations, no line breaks.
   - Return ONLY the prompt.`;
 
-  const { text, provider } = await completeWithFallback(systemPrompt, userContent, 320);
+  const { text, provider } = await completeWithFallback(systemPrompt, userContent, 800);
 
   return { prompt: finalizePrompt(text), provider };
 }

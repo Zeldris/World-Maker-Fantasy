@@ -3,9 +3,9 @@
 # Uso: probar.sh <tanda> <tipo> <slug> <perfil> [semilla=42] [pasos=4] [args extra de sd-cli…]
 # p. ej.: probar.sh 2026-10-25 fauna cuernahoja-macho banner 7
 # Usa el prompt usado (CFG-38) si lo hay, si no el base. Tamaño por perfil, a la medida que aguanta la Deck
-# (se escala después); W=… H=… lo cambian. Llama a generar.sh (protecciones de memoria) y apunta cada imagen en
-# pruebas/<tanda>/registro.tsv; lo que le parece a la usuaria va en pruebas/<tanda>/notas.md. Con los dos se
-# analiza la tanda después.
+# (se escala después); W=… H=… lo cambian, y MUNDO=… el mundo (helek-sirik). Llama a generar.sh (protecciones
+# de memoria) y apunta cada imagen en pruebas/<tanda>/registro.tsv; lo que le parece a la usuaria va en
+# pruebas/<tanda>/notas.md. Con los dos se analiza la tanda después.
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 [ $# -ge 4 ] || { sed -n 3,4p "$0"; exit 2; }
@@ -17,10 +17,12 @@ case $P in
   icono) DW=512; DH=512 ;;
   *) echo "ABORTO: perfil desconocido: $P (banner, thumbnail, mapa, icono)"; exit 2 ;;
 esac
-W=${W:-$DW}; H=${H:-$DH}
+W=${W:-$DW}; H=${H:-$DH}; MUNDO=${MUNDO:-helek-sirik}
+# Van tal cual a la consulta: solo minúsculas, cifras y guiones.
+for v in "$T" "$S" "$MUNDO"; do [[ $v =~ ^[a-z0-9-]+$ ]] || { echo "ABORTO: «$v» no es un tipo, slug o mundo válido"; exit 2; }; done
 
 psql_() { podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c "$1"; }
-WHERE="\"entityType\"='$T' and \"entitySlug\"='$S' and \"sizeProfile\"='$P'"
+WHERE="\"worldId\"=(select id from \"World\" where slug='$MUNDO') and \"entityType\"='$T' and \"entitySlug\"='$S' and \"sizeProfile\"='$P'"
 PROMPT=$(psql_ "select \"promptUsado\" from \"ImagePrompt\" where $WHERE;"); FUENTE=usado
 [ -n "$PROMPT" ] || { PROMPT=$(psql_ "select prompt from \"ImagePrompt\" where $WHERE;"); FUENTE=base; }
 [ -n "$PROMPT" ] || { echo "ABORTO: sin prompt para $T/$S/$P (genéralo en la enciclopedia)"; exit 3; }

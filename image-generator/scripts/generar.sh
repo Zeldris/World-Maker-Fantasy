@@ -29,11 +29,13 @@ timeout "$TOPE" "$B/sd-cli" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/t
   --cfg-scale "$CFG" --steps "$STEPS" --sampling-method euler -W "$W" -H "$H" --seed "$SEED" \
   --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/imagenes/$N.png" -v > "$LOG" 2>&1 &
 PID=$!
+# $PID es el de `timeout`: un SIGKILL a él no llega a sd-cli, que seguiría con la memoria. Primero el hijo.
+matar() { pkill -9 -P $PID; kill -9 $PID; }
 MIN=99999
 while kill -0 $PID 2>/dev/null; do
   m=$(disp); [ "$m" -lt $MIN ] && MIN=$m
-  if [ "$m" -lt $MIN_VIGILA_MB ]; then kill -9 $PID; echo "VIGILANTE: matado con $m MB libres"; break; fi
-  if grep -q "reported free 0.00 MB" "$LOG"; then kill -9 $PID; echo "ABORTO: el driver dice 0 MB libres (ver $LOG)"; break; fi
+  if [ "$m" -lt $MIN_VIGILA_MB ]; then matar; echo "VIGILANTE: matado con $m MB libres"; break; fi
+  if grep -q "reported free 0.00 MB" "$LOG"; then matar; echo "ABORTO: el driver dice 0 MB libres (ver $LOG)"; break; fi
   sleep 1
 done
 wait $PID; rc=$?

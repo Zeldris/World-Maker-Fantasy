@@ -850,6 +850,8 @@ export async function worldRoutes(app: FastifyInstance) {
       // el frontend solo mostraba "No se pudo generar", sin distinguir un fallo real de todos los
       // proveedores de IA de cualquier otro error): sin este try/catch, un fallo aquí llegaba como
       // 500 genérico de Fastify, sin `body.error` legible que el frontend pudiera mostrar.
+      // CFG-40: fuera del try, que atribuye cualquier fallo a los proveedores de IA.
+      const ejemplos = await ejemplosDePromptsUsados(world.id, entityType as ImagePromptEntityType, entitySlug, sizeProfile as ImagePromptSizeProfile);
       let prompt: string;
       let provider: string;
       try {
@@ -862,7 +864,7 @@ export async function worldRoutes(app: FastifyInstance) {
           {
             region: subject.region,
             conMomento: subject.conMomento,
-            ejemplos: await ejemplosDePromptsUsados(world.id, entityType as ImagePromptEntityType, entitySlug, sizeProfile as ImagePromptSizeProfile),
+            ejemplos,
           },
         ));
       } catch (err) {
