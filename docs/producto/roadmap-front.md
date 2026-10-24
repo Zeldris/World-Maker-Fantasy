@@ -278,7 +278,13 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   categoría como ejemplos para el LLM. **M**
 - **CFG-41 · LoRA de estilo para las imágenes**: conjunto de imágenes ya generadas con sus prompts usados y prueba de
   entrenamiento en Colab, para no depender de la imagen de referencia. Antes, comprobar si una LoRA de klein base
-  sirve en klein destilado y las condiciones de uso de las imágenes de origen. Tras `CFG-40`. **M**
+  sirve en klein destilado y las condiciones de uso de las imágenes de origen. Tras `CFG-42`, que dirá qué estilo
+  fijar. **M**
+- **CFG-42 · Análisis de las pruebas de prompts de la usuaria** (usuaria, 2026-10-24): ella genera imágenes con sus
+  prompts usados ([`probar.sh`](../../image-generator/scripts/probar.sh): `registro.tsv` y `notas.md` por tanda) y,
+  cuando avisa, Claude en la Deck analiza las tandas (imágenes, prompts, notas) y propone mejoras al generador
+  (`imagePromptGenerator.ts`, `REGION_ESCENA`) y a los parámetros. Pasos en el
+  [README de image-generator](../../image-generator/README.md#probar-prompts-la-usuaria). **M**
 
 ---
 

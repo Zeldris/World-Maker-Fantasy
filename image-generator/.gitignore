@@ -3,6 +3,6 @@
 bin/
 descargas/
 modelos/
-# Salidas de las pruebas (imágenes, logs, prompts): se regeneran con scripts/demo.sh.
+# Salidas de las pruebas (imágenes, logs, prompts): se regeneran con scripts/probar.sh.
 pruebas/
 referencias/

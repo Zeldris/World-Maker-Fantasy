@@ -1,5 +1,6 @@
 #!/bin/bash
 # Demo de FLUX.2 klein 4B en la Deck con prompts reales del juego (tabla ImagePrompt).
+# Obsoleto (2026-10-24): repite el cierre que ya trae el prompt y no lee el prompt usado; usar ../probar.sh.
 # Uso: demo.sh <tipo> <slug> <perfil> <ancho> <alto>
 # Saca el prompt de la base y llama a generar.sh (que lleva las protecciones de memoria); salida en pruebas/demo/.
 set -u

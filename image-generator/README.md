@@ -10,7 +10,7 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 
 | Carpeta | Qué guarda | En git |
 |---|---|---|
-| `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `demo.sh` (prompt sacado de la BD); `obsoleto/` lo que no se debe volver a lanzar | sí |
+| `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `probar.sh` (prompt de la enciclopedia, para las pruebas de la usuaria); `obsoleto/` lo que no se debe volver a lanzar | sí |
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
 | `descargas/` | el zip original del binario | no |
@@ -21,18 +21,30 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | `modelos/vae/` | `full_encoder_small_decoder.safetensors` (FLUX.2-small-decoder, Apache 2.0) | no |
 | `pruebas/<tanda>/` | `imagenes/`, `logs/` y `prompts/` de cada tanda | no |
 
-## Lanzar la demo
+## Probar prompts (la usuaria)
 
-Desde el host (en VS Code, que corre en un sandbox Flatpak, con `flatpak-spawn --host bash -lc '…'`), con Postgres
-(`tarkor-postgres`) arrancado y Ollama sin modelos cargados:
+Desde una terminal de la Deck (Konsole; desde el sandbox de VS Code, con `flatpak-spawn --host bash -lc '…'`), en la
+carpeta del repo, con Postgres (`tarkor-postgres`) y el juego arrancados y Ollama sin modelos cargados:
+
+1. En la enciclopedia, con las herramientas de admin, abre la entidad y genera su prompt (el base).
+2. Mejóralo en «prompt usado» y guárdalo. Lo que guardes ahí sirve también de ejemplo al generador para las demás
+   entidades del mismo tipo (`CFG-40`): cuanto mejores sean, mejores saldrán los siguientes.
+3. Genera la imagen con ese prompt:
 
 ```bash
-image-generator/scripts/demo.sh <tipo> <slug> <perfil> <ancho> <alto>
-# p. ej.: image-generator/scripts/demo.sh fauna mekiosi thumbnail 512 512
+image-generator/scripts/probar.sh <tanda> <tipo> <slug> <perfil> [semilla=42] [pasos=4]
+# p. ej.: image-generator/scripts/probar.sh 2026-10-25 fauna cuernahoja-macho banner 7
 ```
 
-Saca el prompt real de la tabla `ImagePrompt` y deja la imagen, el log y el prompt en `pruebas/demo/`. Una imagen de
-512×512 tarda ~60 s; un banner de 768×304, ~57 s.
+4. Mira la imagen (`pruebas/<tanda>/imagenes/`) y apunta en `pruebas/<tanda>/notas.md` qué te parece, con el nombre
+   que da el script. Para ver solo el efecto del prompt, repite la misma semilla.
+5. Al acabar, pide a Claude **en la Deck** «analiza la tanda <tanda>» (`CFG-42`): `pruebas/` no se sube a git, así que
+   la sesión de la nube no la ve.
+
+Usa el prompt usado si lo hay, si no el base, y el tamaño del perfil a la medida que aguanta la Deck (banner 1280×512
+~110 s, miniatura 768×768 ~100 s, mapa 832×624, icono 512×512; `W=… H=…` lo cambian). Cada imagen queda en
+`pruebas/<tanda>/registro.tsv` (prompt usado o base, semilla, pasos, tiempo) y su prompt exacto en
+`pruebas/<tanda>/prompts/`. Con referencia de estilo: `… banner 7 4 -r image-generator/referencias/murgol-original-1024.png` (~200 s).
 
 ## Generar con un prompt propio
 
@@ -48,7 +60,7 @@ Un banner de 1280×512 tarda ~110 s; con `-r referencia.png` (args extra al fina
 ## Memoria: lo que no se toca
 
 La Deck se bloqueó el 2026-10-24 por falta de memoria (la VRAM es RAM compartida y, sin memoria, se congela en vez
-de matar el proceso). `generar.sh` (y `demo.sh`, que lo llama) lo evita con:
+de matar el proceso). `generar.sh` (y `probar.sh`, que lo llama) lo evita con:
 
 - `--params-backend disk --max-vram vulkan0=2`: pesos leídos del disco por segmentos y 2 GB de GPU a la vez. Sin
   esto, con la Deck recién reiniciada el gestor ve ~9 GB «libres» y duplica el modelo entero en RAM y GTT.

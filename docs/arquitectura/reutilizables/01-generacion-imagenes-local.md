@@ -126,8 +126,9 @@ Si la versión de `huggingface_hub` es antigua y no trae `hf`, el comando equiva
 
 ### Paso 4. Primera imagen
 
-En la Deck, **siempre con [`image-generator/scripts/demo.sh`](../../../image-generator/scripts/demo.sh)**,
-que lleva las protecciones de memoria (ver «Demo del 2026-10-24»). La orden que lanza por debajo:
+En la Deck, **siempre con [`generar.sh`](../../../image-generator/scripts/generar.sh)** (o
+[`probar.sh`](../../../image-generator/scripts/probar.sh), que saca el prompt de la enciclopedia y lo llama), que lleva
+las protecciones de memoria (ver «Demo del 2026-10-24»). La orden que lanza por debajo:
 
 ```sh
 M=image-generator/modelos
@@ -200,7 +201,7 @@ FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambi
 
 ## Demo del 2026-10-24 (medido en la Deck)
 
-Con [`demo.sh`](../../../image-generator/scripts/demo.sh) y los prompts reales del juego (tabla
+Con [`demo.sh`](../../../image-generator/scripts/obsoleto/demo.sh) (hoy `probar.sh`) y los prompts reales del juego (tabla
 `ImagePrompt`, sin LLM). Imágenes, logs y prompts en `image-generator/pruebas/demo/` (fuera de git).
 
 | Prompt | Tamaño | Total | Memoria libre mínima | Frente a la imagen actual del juego |
@@ -211,7 +212,7 @@ Con [`demo.sh`](../../../image-generator/scripts/demo.sh) y los prompts reales d
 
 Conclusiones:
 
-- **Funciona y es estable** en la Deck con las protecciones de `demo.sh`: ~1 minuto por imagen, sin
+- **Funciona y es estable** en la Deck con las protecciones de `generar.sh`: ~1 minuto por imagen, sin
   acercarse al límite de memoria.
 - **El estilo lo decide el prompt, no el modelo.** Los prompts guardados no fijan un estilo común
   (unos piden fotorrealismo, otros no) y las imágenes actuales tampoco lo siguen. Antes de generar en
