@@ -249,11 +249,23 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   (causas) en Leyendas. **S**
 - **CFG-37 · IA en la nube para el Cronista** (Cronista D-4): solo visible si hay clave configurada;
   apagado por defecto. **S**
-- **CFG-38 · Prompt de imagen editable** 🚧 en curso (usuaria, 2026-10-24; excepción a la puerta de pruebas aprobada por
+- ~~**CFG-38 · Prompt de imagen editable**~~ ✅ 2026-10-24 (`promptUsado`/`promptUsadoAt` en `ImagePrompt`, rutas
+  `GET /world/:slug/image-prompt` y `PUT …/usado`, caja «prompt usado» con Editar / Volver al base; probado en la
+  enciclopedia real: editar, guardar, recargar y quitar) (usuaria, 2026-10-24; excepción a la puerta de pruebas aprobada por
   ella): en la caja de `ImagePromptSlot`, además del prompt base que genera la IA, un **prompt usado** editable
   —el exacto con el que se generó la imagen—. «Regenerar» solo cambia el base; el usado no se pierde nunca y es el
   que copia «Copiar». Campo nuevo en `ImagePrompt` (migración). Contexto:
   [reutilizable de imágenes](../arquitectura/reutilizables/01-generacion-imagenes-local.md). **S**
+- **CFG-39 · Generador de prompts de imagen con las reglas de FLUX** (usuaria, 2026-10-24, tras el
+  [banco del múrgol](../arquitectura/reutilizables/01-generacion-imagenes-local.md#banco-del-múrgol-2026-10-24-medido-en-la-deck)):
+  `imagePromptGenerator.ts` escribe en lenguaje natural y en orden estilo → sujeto → pose → entorno → luz → acabado;
+  sin px ni proporción en el texto, sin listas negativas ni comparaciones con el otro sexo; escena, hora y luz
+  explícitas; cierre «No text, no signature, no watermark.». Tests que hacen cumplir cada regla. **S**
+- **CFG-40 · RAG del generador de prompts de imagen**: el contexto del canon (región, paisaje, luz) y los prompts
+  usados (`CFG-38`) de la misma categoría como ejemplos para el LLM. Tras `CFG-39`. **M**
+- **CFG-41 · LoRA de estilo para las imágenes**: conjunto de imágenes ya generadas con sus prompts usados y prueba de
+  entrenamiento en Colab, para no depender de la imagen de referencia. Antes, comprobar si una LoRA de klein base
+  sirve en klein destilado y las condiciones de uso de las imágenes de origen. Tras `CFG-40`. **M**
 
 ---
 
