@@ -1,8 +1,8 @@
 # Reddit: ronda de pruebas del Mundo vivo
 
 **Subreddits:** `r/gamedev` (en, mejor en «Screenshot Saturday» o como post de devlog), `r/LocalLLaMA` (en, por el
-ángulo de agentes e IA local), `r/programacion` (es). Leer antes sus normas de autopromoción. Imagen:
-`juego-combate.webp`.
+ángulo de agentes e IA local), `r/programacion` (es). Leer antes sus normas de autopromoción. Imágenes:
+`medios/flujo-pruebas.<idioma>.webp` (el diagrama) y `juego-combate.webp` del Portal.
 
 ## es
 

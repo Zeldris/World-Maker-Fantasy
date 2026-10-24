@@ -49,3 +49,11 @@ honesta**, sin vender. Se enseña lo que hay, con sus pendientes, y se invita a 
 - **Además, si toca:** `actualizado` (fecha), `fase`, `hitos`, `cifras` e imágenes nuevas (WebP de unos 1.600 px más
   su `-mini` de unos 720 px en `public/proyectos/tarkor/`). Ver `docs/desarrollo.md` del Portal.
 - **Tono:** el de las novedades que ya hay: qué puede hacer ahora quien juega, sin tecnicismos.
+
+## Imágenes
+
+- **Tamaño:** 1600x900 (16:9) sirve en X, LinkedIn, Reddit y Discord sin recortes; el Portal usa la WebP de 1600 px
+  y su `-mini` de 720 px. Una captura puede ser más pequeña: que se lea en un móvil.
+- **Cuál en cada sitio:** X, la tarjeta en el primer mensaje; LinkedIn, el diagrama (lo que aprendimos); Reddit, el
+  diagrama o una captura; Discord, la tarjeta y una captura del juego.
+- **Texto en la imagen:** en el idioma del texto que acompaña (`<nombre>.es.webp` con el mensaje en `es`).

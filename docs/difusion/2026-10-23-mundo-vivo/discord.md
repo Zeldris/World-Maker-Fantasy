@@ -1,6 +1,6 @@
 # Discord: ronda de pruebas del Mundo vivo
 
-Adjuntar `juego-combate.webp` y `juego-mapa-pozo.webp`.
+Adjuntar `medios/tarjeta.<idioma>.webp` y `medios/captura-mapa-pozo.webp` (captura del juego del 2026-10-24).
 
 ## es
 

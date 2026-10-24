@@ -1,6 +1,6 @@
 # LinkedIn: ronda de pruebas del Mundo vivo
 
-Imagen: `juego-mapa-pozo.webp` (texto alternativo en la ficha).
+Imagen: `medios/flujo-pruebas.<idioma>.webp`, el diagrama de cómo prueban los agentes (texto alternativo en la ficha).
 
 ## es
 

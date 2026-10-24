@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="tamano" content="1600x900">
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1600px; height:900px; background:var(--fondo); color:var(--texto); font-family:'DejaVu Sans','Liberation Sans',sans-serif;
+         padding:72px 80px; display:flex; flex-direction:column; }
+  .marca { font-size:22px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  h1 { font-size:56px; margin-top:20px; }
+  ol { list-style:none; display:flex; align-items:stretch; gap:56px; margin-top:auto; counter-reset:paso; }
+  li { flex:1; position:relative; background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:28px 26px; counter-increment:paso; }
+  li::before { content:counter(paso); display:inline-grid; place-items:center; width:46px; height:46px; border-radius:50%;
+               background:var(--celeste); color:var(--fondo); font-weight:bold; font-size:24px; }
+  li:not(:last-child)::after { content:'→'; position:absolute; right:-48px; top:50%; transform:translateY(-50%); font-size:40px; color:var(--celeste); }
+  li b { display:block; font-size:30px; margin-top:18px; line-height:1.2; }
+  li span { display:block; font-size:22px; color:var(--tenue); margin-top:12px; line-height:1.4; }
+  .vuelta { margin-top:34px; border:2px dashed var(--celeste); border-top:none; border-radius:0 0 18px 18px; height:46px; position:relative; }
+  .vuelta span { position:absolute; left:50%; bottom:-16px; transform:translateX(-50%); background:var(--fondo); padding:0 18px; font-size:24px; color:var(--celeste); }
+  .pie { margin-top:auto; padding-top:40px; font-size:24px; color:var(--tenue); }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <h1>Cómo probamos Tarkor jugando con agentes</h1>
+  <ol>
+    <li><b>Partida guardada</b><span>Cada tanda arranca con el estado justo: una montura, un animal herido, un lugar visitado.</span></li>
+    <li><b>Un agente juega</b><span>Una IA juega en un navegador real, con los mismos botones que tú.</span></li>
+    <li><b>Ayudas que explican</b><span>Si algo falla, la herramienta dice por qué; leer el combate ya no ataca.</span></li>
+    <li><b>Fallo, arreglo y test</b><span>Cada hallazgo se apunta, se arregla y queda un test que lo vigila.</span></li>
+  </ol>
+  <div class="vuelta"><span>la siguiente tanda carga la partida que dejó esta</span></div>
+  <div class="pie">Llegar jugando a «un reino con bandidos cerca» cuesta cientos de acciones; así se llega una vez.</div>
+</body>
+</html>

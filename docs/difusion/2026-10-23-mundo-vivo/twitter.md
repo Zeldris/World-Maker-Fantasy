@@ -1,6 +1,6 @@
 # Twitter/X: ronda de pruebas del Mundo vivo
 
-Imagen en el 1/: `juego-combate.webp` (texto alternativo en la ficha).
+Imágenes (texto alternativo en la ficha): en el 1/, `medios/tarjeta.<idioma>.webp`; en el 2/, `juego-combate.webp` del Portal.
 
 ## es
 

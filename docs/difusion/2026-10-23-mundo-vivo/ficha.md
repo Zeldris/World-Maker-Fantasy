@@ -40,7 +40,15 @@ La fuente de todo lo que se publica de esta actualización. Lo que no esté aqu�
 | Imagen | Texto alternativo (es / en) | Canales |
 |---|---|---|
 | `https://zeldris.github.io/Portal-Galivelop/proyectos/tarkor/juego-combate.webp` | Combate contra un guchapo: el diario narra cada golpe y el panel muestra el resultado / Fighting a guchapo: the journal narrates every blow and the panel shows the outcome | X, Reddit, Discord |
-| `https://zeldris.github.io/Portal-Galivelop/proyectos/tarkor/juego-mapa-pozo.webp` | Mapa de zona de El Pozo de Cauce Viejo, con la fauna y los recursos del territorio / Zone map of the Old Riverbed Well, with the territory’s wildlife and resources | LinkedIn, Discord |
+| `https://zeldris.github.io/Portal-Galivelop/proyectos/tarkor/juego-mapa-pozo.webp` | Mapa de zona de El Pozo de Cauce Viejo, con la fauna y los recursos del territorio / Zone map of the Old Riverbed Well, with the territory’s wildlife and resources | Reserva |
+| `medios/tarjeta.es.webp` | Tarjeta: seis tandas jugando el Mundo vivo; 44 de 48 tareas jugadas, 11 fallos nuevos y más de 4.200 tests / Card in Spanish: six rounds playing the Living World; 44 of 48 tasks played, 11 new bugs and 4,200+ tests | X, Discord (es) |
+| `medios/tarjeta.en.webp` | Tarjeta en inglés: seis tandas jugando el Mundo vivo, con las mismas cifras / Card: six rounds playing the Living World; 44 of 48 tasks played, 11 new bugs and 4,200+ tests | X, Discord (en) |
+| `medios/flujo-pruebas.es.webp` | Diagrama: partida guardada, un agente juega en el navegador, ayudas que explican el fallo, y fallo, arreglo y test; la siguiente tanda carga la partida que dejó esta / Diagram in Spanish: saved game, an agent plays in the browser, tools that explain failures, and bug, fix and test; the next round loads the save this one left | LinkedIn, Reddit (es) |
+| `medios/flujo-pruebas.en.webp` | Diagrama en inglés: el mismo flujo de pruebas con agentes / Diagram: saved game, an agent plays in the browser, tools that explain failures, and bug, fix and test; the next round loads the save this one left | LinkedIn, Reddit (en) |
+| `medios/captura-mapa-pozo.webp` | Captura del juego: mapa de zona de El Pozo de Cauce Viejo, con el pozo de piedra en el centro, los caminos que salen de él y los iconos de fauna y recursos / Game screenshot: zone map of the Old Riverbed Well, with the stone well at the centre, the paths leading out and the wildlife and resource icons | Discord |
+
+Fuentes de las imágenes propias en `medios/fuente/` (las tarjetas y el diagrama, en HTML; la captura, del escenario
+`mv-pozo-guchapo-conv`, con `tools/playwright-e2e`); se renderizan con `node .claude/skills/gw-media-content/scripts/render.mjs`.
 
 ## Uso interno (no se publica)
 

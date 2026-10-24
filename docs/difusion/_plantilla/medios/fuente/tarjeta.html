@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<!-- Tarjeta social de una actualización: X, LinkedIn y Discord. Se copia una por idioma (tarjeta.es.html,
+     tarjeta.en.html), se rellenan los {{…}} y se renderiza con render.mjs. Para quitar una cifra, borra su <div>. -->
+<meta name="tamano" content="1600x900">
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; }
+  * { box-sizing:border-box; margin:0; }
+  body { width:1600px; height:900px; background:var(--fondo); color:var(--texto); font-family:'DejaVu Sans','Liberation Sans',sans-serif;
+         background-image:radial-gradient(circle at 85% 15%, rgb(26 166 223 / .25), transparent 45%); padding:80px 96px; display:flex; flex-direction:column; }
+  .marca { font-size:26px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  h1 { font-size:68px; line-height:1.08; margin-top:40px; max-width:1300px; }
+  p.sub { font-size:34px; line-height:1.35; color:var(--tenue); margin-top:28px; max-width:1250px; }
+  .cifras { display:flex; gap:28px; margin-top:auto; }
+  .cifra { flex:1; background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:26px 30px; }
+  .cifra b { display:block; font-size:58px; color:var(--celeste); }
+  .cifra span { font-size:24px; color:var(--tenue); }
+  .pie { display:flex; justify-content:space-between; margin-top:36px; font-size:24px; color:var(--tenue); }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <h1>{{título}}</h1>
+  <p class="sub">{{subtítulo: qué puede hacer ahora quien juega}}</p>
+  <div class="cifras">
+    <div class="cifra"><b>{{cifra}}</b><span>{{qué mide}}</span></div>
+    <div class="cifra"><b>{{cifra}}</b><span>{{qué mide}}</span></div>
+    <div class="cifra"><b>{{cifra}}</b><span>{{qué mide}}</span></div>
+  </div>
+  <div class="pie"><span>{{fecha}}</span><span>zeldris.github.io/Portal-Galivelop</span></div>
+</body>
+</html>

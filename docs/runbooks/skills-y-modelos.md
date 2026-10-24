@@ -118,6 +118,7 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
 | `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |
 | `pr` | Claude, al abrir un PR a `main` | Descripción del PR: resumen visual del cambio, evidencia antes/después y peligro del merge | Cada PR a `main`, tras `/code-review`. Evidencia: los números de `tsc`, `vitest` y `oxlint` |
+| `gw-media-content` (propia) | Claude, cuando la usuaria pide publicaciones o contenido para redes o el Portal | Crea o completa una carpeta de `docs/difusion/` con los textos por canal (`es`/`en`, `gl` en el Portal) y sus imágenes: tarjeta, diagrama y capturas en WebP | Tras fusionar algo que se pueda contar. Solo prepara: publica la usuaria |
 
 ## Descartadas, y por qué
 
