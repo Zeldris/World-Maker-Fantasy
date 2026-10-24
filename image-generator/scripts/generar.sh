@@ -18,7 +18,8 @@ MODELO=${MODELO:-flux-2-klein-4b-Q8_0.gguf}; LLM=${LLM:-Qwen3-4B-Q4_K_M.gguf}; C
 disp() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
 [ "$(disp)" -ge $MIN_INICIO_MB ] || { echo "ABORTO: solo $(disp) MB libres (<$MIN_INICIO_MB). Cierra navegador/Steam/juego."; exit 3; }
 if curl -s --max-time 2 localhost:11434/api/ps | grep -q '"name"'; then echo "ABORTO: Ollama tiene modelos cargados (ollama stop <modelo>)."; exit 3; fi
-[ -s "$PF" ] || { echo "ABORTO: prompt vacío o inexistente: $PF"; exit 3; }
+# QA-226: el tercer argumento es una ruta; con el texto del prompt, el mensaje lo dice sin repetir el texto entero.
+[ -s "$PF" ] || { echo "ABORTO: el tercer argumento es la ruta de un archivo de prompt, y «${PF:0:60}» no existe o está vacío"; exit 3; }
 PROMPT=$(cat "$PF")
 cp "$PF" "$D/prompts/$N.txt"
 LOG=$D/logs/$N.log

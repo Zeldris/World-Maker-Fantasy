@@ -36,6 +36,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **Ayudas del driver** (`QA-125`): `interactuar` también con el menú del NPC del mapa, `opcion` por número de
   `[data-opcion]` y `pelear` (acercarse, interactuar y combatir en una orden). `orden.sh` guarda cada respuesta
   entera en `tools/playwright-e2e/shots/ultima-respuesta.txt` y muestra 40 líneas (`QA-128`).
+- **Mapa de imágenes y análisis en subagente** (`QA-222`, `QA-223`): sección «Imágenes» de `docs/mapa-agente.md`; las tandas de `CFG-42` las mira un subagente y la principal solo las imágenes que deciden.
+- **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **Revisión por arreglo** (`QA-126`): `/code-review` corto del diff de cada subagente antes de fusionarlo.
 - **Tests de las herramientas** (`QA-113`): `medir.py` del flujo tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.

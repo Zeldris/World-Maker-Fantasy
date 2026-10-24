@@ -1,6 +1,6 @@
 # Retro y opt-tokens · `claude/imagenes-local` (2026-10-24)
 
-**Estado:** presentada a la usuaria, pendiente de decisión.
+**Estado:** aprobadas las cinco por la usuaria (2026-10-24) y aplicadas: `QA-222`…`QA-226`.
 
 Sesión de CFG-38…CFG-40 y `probar.sh`: 343 llamadas, 4 compactaciones, contexto medio 114k (techo ~162k por tramo,
 dentro de lo previsto con la ventana de 200k). Un subagente (Opus, 11 llamadas). 26 imágenes leídas, casi todas para

@@ -196,3 +196,20 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
+
+## Imágenes (prompts y generación local)
+
+- **Código:** `b/services/imagePromptGenerator.ts#generateImagePrompt` (reglas de FLUX en el prompt del sistema,
+  `buildPrompt`, `REGION_ESCENA`); el contexto de lore, `b/services/imagePromptContext.ts#loreContextFor`, y los
+  prompts usados como ejemplos, `b/services/imagePromptContext.ts#ejemplosDePromptsUsados`; rutas
+  `/world/:slug/image-prompt` (GET y POST) e `image-prompt/usado` (PUT) en `b/routes/world.ts`.
+- **Tests:** `b/services/imagePromptGenerator.test.ts`, `b/services/imagePromptContext.test.ts`,
+  `f/components/ImagePromptDisplay.test.tsx`.
+- **Datos:** `backend/prisma/schema.prisma#ImagePrompt` (`prompt` base y `promptUsado`, por mundo, entidad y perfil),
+  base `tarkor` (la de desarrollo): `TARKOR_DB_URL=postgresql://tarkor:tarkor@localhost:5432/tarkor tools/qa/sql.sh`.
+- **Interfaz:** `f/components/ImagePromptDisplay.tsx` (enciclopedia, modo desarrollador). Tras editar el backend,
+  `bash tools/qa/backend-dev.sh` (`tsx watch` no ve los cambios del sandbox).
+- **Generar en la Deck:** `image-generator/scripts/probar.sh` (con el prompt de la base) y `generar.sh` (el tercer
+  argumento es la ruta de un archivo de prompt); resultados en `image-generator/pruebas/<tanda>/`, fuera de git.
+- **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
+  («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
