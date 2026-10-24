@@ -9,6 +9,15 @@ for f in MERGE_HEAD CHERRY_PICK_HEAD SQUASH_MSG; do
   ruta=$(git rev-parse --git-path "$f" 2>/dev/null || true)
   [ -n "$ruta" ] && [ -e "$ruta" ] && exit 0
 done
+# Retro de claude/interfaz-imagenes (2026-10-25): la bitácora que cambia el commit se comprueba aquí («Actualizado»
+# con la fecha de hoy, filas de <= 600), no solo en el pre-push, cuando ya hay commits encima que rehacer.
+raiz=$(cd "$(dirname "$0")/.." && pwd)
+log=$(python3 "$raiz/.claude/gw/scripts/config.py" get log)
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && ! git diff --cached --quiet -- "$log"; then
+  tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
+  git show ":$log" > "$tmp"
+  python3 "$raiz/.claude/gw/scripts/bitacora.py" check "$tmp" --date "$(date +%F)" || exit 1
+fi
 mensaje=$(grep -v '^#' "$1" || true)
 case "$(head -1 <<< "$mensaje")" in Merge*|Revert*) exit 0 ;; esac
 grep -qE '^Siguiente: *[^ ]' <<< "$mensaje" && exit 0

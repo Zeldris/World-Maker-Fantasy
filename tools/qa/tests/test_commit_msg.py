@@ -45,5 +45,25 @@ class CommitMsg(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
 
 
+    def test_una_bitacora_con_actualizado_viejo_falla_al_hacer_el_commit(self):
+        repo = carpeta()
+        subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=repo, env=ENV_GIT, check=True, capture_output=True)
+        log = os.path.join(repo, 'docs', 'registros', 'traspaso.md')
+        fila = "| **Tarea en curso · `main`** | algo |\n"
+
+        def commit(fecha):
+            escribir(log, f'| **Actualizado** | {fecha} |\n' + fila)
+            subprocess.run(['git', 'add', '-A'], cwd=repo, env=ENV_GIT, check=True)
+            return subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'commit', '-q', '-m',
+                                   'x\n\nSiguiente: y'], cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'},
+                                  capture_output=True, text=True)
+        r = commit('2020-01-01')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('set today', r.stdout + r.stderr)
+        hoy = subprocess.run(['date', '+%F'], capture_output=True, text=True).stdout.strip()
+        r = commit(hoy)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

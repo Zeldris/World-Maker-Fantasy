@@ -38,6 +38,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
   entera en `tools/playwright-e2e/shots/ultima-respuesta.txt` y muestra 40 líneas (`QA-128`).
 - **Mapa de imágenes y análisis en subagente** (`QA-222`, `QA-223`): sección «Imágenes» de `docs/mapa-agente.md`; las tandas de `CFG-42` las mira un subagente y la principal solo las imágenes que deciden.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
+- **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto
+  (`--tipo <tipo>`); la captura, solo para lo visual. La interfaz, en la sección «Imágenes» del mapa (`QA-229`).
 - **Revisión por arreglo** (`QA-126`): `/code-review` corto del diff de cada subagente antes de fusionarlo.
 - **Tests de las herramientas** (`QA-113`): `medir.py` del flujo tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.
@@ -47,6 +49,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
 ## Costes conocidos
+
+- **Subagentes con Opus para lo mecánico** (`claude/interfaz-imagenes`, 2026-10-25, `QA-233`): 3 de 4; el de reescribir
+  la interfaz con un plan cerrado fue con Sonnet y salió bien. Se aplica `selector` al lanzar cada uno.
 
 - **La ronda `QA-105` en la principal** (2026-10-19): 1.295 llamadas en 24 h, 1.150 órdenes de Bash, 44 capturas
   leídas, todo con Opus; 30 compactaciones. De ahí `QA-123`…`QA-128`.

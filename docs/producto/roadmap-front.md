@@ -1592,6 +1592,14 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-226 · `generar.sh` dice que el tercer argumento es una ruta**~~ ✅ 2026-10-24: con el texto del prompt abortaba repitiéndolo entero.
 - ~~**QA-227 · `host.sh` rehace el worktree del pre-push en `logs/`, no en `.git/`**~~ ✅ 2026-10-24: Vite 8 niega `**/.git/**` y los tests de frontend del pre-push fallaban todos («Cannot find module '/src/test/avisosDeReact.ts'»). Test: `test_host`.
 
+`/opt-tokens` y retro previos al PR de `claude/interfaz-imagenes` ([retro](../registros/retro-2026-10-25-interfaz-imagenes.md); aprobadas por la usuaria el 2026-10-25 y aplicadas en la rama):
+- ~~**QA-228 · La lista de imágenes cubre todos los tipos que ilustra el juego**~~ ✅ 2026-10-25: la lista de `CFG-43` se dio por completa tres veces sin serlo. `test_la_lista_cubre_todos_los_tipos_que_ilustra_el_juego` lee la unión `ImagePromptEntityType` de `imagePromptGenerator.ts` y falla si `catalogo()` no da alguno (rojo sin los mapas de `zona`).
+- ~~**QA-229 · La interfaz del generador en el mapa del agente**~~ ✅ 2026-10-25: `servidor.py` se leyó 43 veces. La sección «Imágenes» de `docs/mapa-agente.md` dice `generated/<tipo>/<slug>/` y da las entradas de `servidor.py`, `index.html`, `abrir.sh`, `resumen.py` y el test.
+- ~~**QA-230 · `image-generator/interfaz/resumen.py`**~~ ✅ 2026-10-25: elementos por tipo, aviso y estado del trabajo en unas líneas (`--tipo` lista uno), en vez de capturas de la página (29 imágenes en la sesión). Test: `Resumen` en `test_interfaz_imagenes.py`.
+- ~~**QA-231 · La fila de la bitácora dice la fase antes de `main`**~~ ✅ 2026-10-25: hecho en la fila de `claude/interfaz-imagenes`; propuesto a Galivelop-workflow en la retro.
+- ~~**QA-232 · `bitacora.py check` en `commit-msg`**~~ ✅ 2026-10-25: un push rechazado por la fecha de «Actualizado» obligó a rehacer dos commits. `.githooks/commit-msg` comprueba la bitácora preparada cuando el commit la cambia. Test: `test_una_bitacora_con_actualizado_viejo_falla_al_hacer_el_commit`. Propuesto también a Galivelop-workflow.
+- ~~**QA-233 · `selector` al lanzar cada subagente**~~ ✅ 2026-10-25: tres de cuatro subagentes fueron con Opus para trabajo mecánico; apuntado en `.claude/gw/opt-tokens.md` (costes conocidos).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

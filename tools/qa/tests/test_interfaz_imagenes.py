@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import re
 import shutil
 import socket
 import tempfile
@@ -207,6 +208,23 @@ class Elementos(Base):
             ('raza', 'goirntes-meseta-hembra', 'De la Meseta (hembra)'),
             ('zona', 'yegr-kegi', 'Yegr Kegi (mapa)'), ('zona', 'yegr-kegi-noche-otono', 'Yegr Kegi (mapa, noche-otono)')])
 
+    def test_la_lista_cubre_todos_los_tipos_que_ilustra_el_juego(self):
+        # Si el juego añade un tipo a ImagePromptEntityType, este test se pone rojo hasta que la lista lo dé.
+        with open(os.path.join(RAIZ, 'backend', 'src', 'services', 'imagePromptGenerator.ts'), encoding='utf-8') as f:
+            union = re.search(r"export type ImagePromptEntityType =(.*?')\s*;", f.read(), re.S).group(1)
+        tipos = set(re.findall(r"^\s*\|\s*'([a-z]+)'", union, re.M))
+        self.assertGreater(len(tipos), 10)
+        api = os.path.join(self.raiz, 'api')
+        ficha = {'slug': 'a', 'key': 'a', 'sourceSlug': 'a', 'name': 'A'}
+        enciclopedia = {seccion: [dict(ficha)] for seccion in self.s.SECCIONES}
+        enciclopedia['faunaFlora'].append(dict(ficha, sourceSlug='b', esFauna=True))
+        enciclopedia['classes'] = [{'name': 'GUERRERO', 'unlocks': [{'ability': {'name': 'Firmeza'}}]}]
+        escribir(os.path.join(api, 'world', 'helek-sirik', 'enciclopedia'), json.dumps(enciclopedia))
+        escribir(os.path.join(self.raiz, 'schema.prisma'),
+                 'enum Clase {\n  GUERRERO\n}\nenum Especializacion {\n  PODER_MAGIA\n}\n')
+        lista, _ = cargar(self.raiz, api='file://' + api).elementos()
+        self.assertEqual(tipos - {e['tipo'] for e in lista}, set())
+
     def test_una_variante_sin_slug_ni_estacion_no_crea_elementos_none(self):
         api = os.path.join(self.raiz, 'api')
         escribir(os.path.join(api, 'world', 'helek-sirik', 'enciclopedia'), json.dumps({
@@ -392,6 +410,22 @@ class Referencia(Http):
         self.esperar()
         args = leer(os.path.join(self.raiz, 'args'))
         self.assertIn('-r\n' + os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-thumbnail.png'), args)
+
+
+class Resumen(unittest.TestCase):
+    def test_cuenta_por_tipo_lista_un_tipo_y_dice_el_trabajo(self):
+        spec = importlib.util.spec_from_file_location('resumen', os.path.join(os.path.dirname(SERVIDOR), 'resumen.py'))
+        r = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(r)
+        lista = [{'tipo': 'clase', 'slug': 'MAGO', 'nombre': 'Mago', 'intentos': 2, 'elegidas': ['icono']},
+                 {'tipo': 'npc', 'slug': 'hulki', 'nombre': 'Hulki', 'juego': {'thumbnail': 'npc/hulki-thumbnail.png'}}]
+        texto = r.resumen(lista, 'Sin el catálogo completo', {'enMarcha': True, 'tipo': 'npc', 'slug': 'hulki',
+                                                            'perfil': 'thumbnail', 'paso': 2, 'pasos': 4,
+                                                            'segundos': 50, 'estimado': 105}, 'clase')
+        self.assertEqual(texto.splitlines(), [
+            '2 elementos: clase 1, npc 1', 'con intentos: 1 · con elegida: 1 · con imagen del juego: 1',
+            'aviso: Sin el catálogo completo', '  MAGO · Mago (2 intentos, ✓ elegida)',
+            'trabajo: npc/hulki thumbnail · paso 2/4 · 50 s de ~105 s'])
 
 
 if __name__ == '__main__':

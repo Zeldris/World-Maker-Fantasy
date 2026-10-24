@@ -1,6 +1,8 @@
 # Retro y opt-tokens · `claude/interfaz-imagenes` (2026-10-25)
 
-**Estado:** presentada a la usuaria (2026-10-25), pendiente de su decisión.
+**Estado:** aprobada entera por la usuaria (2026-10-25) y aplicada en la rama: 1 → `QA-228`, 2 → `QA-229`,
+3 → `QA-230`, 4 → `QA-231`, 5 → `QA-232` (también en `.githooks/commit-msg`), 6 → `QA-233`. Los puntos 4 y 5
+quedan además para Galivelop-workflow (abajo).
 
 Sesión de `CFG-43` (interfaz del generador, todo por elemento en `generated/`, lista de la enciclopedia), el roadmap
 `IMG` y `opt-ai` de imágenes, sobre el final de `claude/imagenes-local`: 698 llamadas, 9 compactaciones, contexto

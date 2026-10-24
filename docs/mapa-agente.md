@@ -210,6 +210,13 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - **Interfaz:** `f/components/ImagePromptDisplay.tsx` (enciclopedia, modo desarrollador). Tras editar el backend,
   `bash tools/qa/backend-dev.sh` (`tsx watch` no ve los cambios del sandbox).
 - **Generar en la Deck:** `image-generator/scripts/probar.sh` (con el prompt de la base) y `generar.sh` (el tercer
-  argumento es la ruta de un archivo de prompt); resultados en `image-generator/pruebas/<tanda>/`, fuera de git.
+  argumento es la ruta de un archivo de prompt); todo por elemento en `image-generator/generated/<tipo>/<slug>/`
+  (`intentos/`, `prompts/`, `logs/`, `registro.tsv`, `notas.md`, `elegidas.tsv`), fuera de git.
+- **Interfaz del generador (`CFG-43`):** la abre `image-generator/abrir.sh` (127.0.0.1:7861). Servidor,
+  `image-generator/interfaz/servidor.py`: `catalogo` (la enciclopedia con lo anidado y los enums de clase),
+  `elementos` (la lista), `Trabajo.lanzar` (una imagen a la vez), `leer_progreso`, `elegir`. Página,
+  `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
+  progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
+  `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
