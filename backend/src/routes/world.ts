@@ -795,6 +795,17 @@ export async function worldRoutes(app: FastifyInstance) {
   ];
   const IMAGE_PROMPT_SIZE_PROFILES: ImagePromptSizeProfile[] = ['thumbnail', 'banner', 'mapa', 'icono'];
 
+  // Clave de una fila de ImagePrompt (entityType + entitySlug + sizeProfile), validada igual en las tres rutas de
+  // abajo. Devuelve el mensaje del 400 o null si es válida.
+  const errorClaveImagePrompt = (entityType: unknown, entitySlug: unknown, sizeProfile: unknown): string | null => {
+    if (!IMAGE_PROMPT_ENTITY_TYPES.includes(entityType as ImagePromptEntityType)) return 'entityType inválido';
+    // Bug real (auditoría 2026-07-28): sin este chequeo, un entitySlug ausente/no-string llegaba
+    // intacto a la clave compuesta de Prisma y reventaba con un 500 genérico en vez de un 400 claro.
+    if (!entitySlug || typeof entitySlug !== 'string') return 'entitySlug inválido';
+    if (!IMAGE_PROMPT_SIZE_PROFILES.includes(sizeProfile as ImagePromptSizeProfile)) return 'sizeProfile inválido';
+    return null;
+  };
+
   // Generación de prompts de imagen BAJO DEMANDA (checklist 2026-07-21/22, punto 7 — petición
   // explícita de la usuaria: "hay que pedir 1 a 1 la imagen en cada petición, no que genere todos
   // los prompts a la vez"). Un solo POST = como mucho una llamada real a un proveedor cloud (o a
@@ -811,17 +822,9 @@ export async function worldRoutes(app: FastifyInstance) {
       }
 
       const { entityType, entitySlug, sizeProfile, regenerate } = request.body;
-      if (!IMAGE_PROMPT_ENTITY_TYPES.includes(entityType as ImagePromptEntityType)) {
-        return reply.status(400).send({ error: 'entityType inválido' });
-      }
-      // Bug real (auditoría 2026-07-28): sin este chequeo, un entitySlug ausente/no-string llegaba
-      // intacto a la clave compuesta de Prisma de más abajo y reventaba con un 500 genérico en vez
-      // de un 400 claro.
-      if (!entitySlug || typeof entitySlug !== 'string') {
-        return reply.status(400).send({ error: 'entitySlug inválido' });
-      }
-      if (!IMAGE_PROMPT_SIZE_PROFILES.includes(sizeProfile as ImagePromptSizeProfile)) {
-        return reply.status(400).send({ error: 'sizeProfile inválido' });
+      const errorClave = errorClaveImagePrompt(entityType, entitySlug, sizeProfile);
+      if (errorClave) {
+        return reply.status(400).send({ error: errorClave });
       }
 
       // Regenerar (petición explícita de la usuaria, 2026-07-22): "si le doy a regenerar vuelve a
@@ -863,9 +866,67 @@ export async function worldRoutes(app: FastifyInstance) {
       await prisma.imagePrompt.upsert({
         where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
         create: { worldId: world.id, entityType, entitySlug, sizeProfile, prompt, provider },
+        // Solo el prompt base: el usado (CFG-38) es de la usuaria y regenerar nunca lo pisa.
         update: { prompt, provider },
       });
       return { prompt, provider, cached: false };
+    },
+  );
+
+  // CFG-38 (usuaria, 2026-10-24): el prompt generado es solo la base; la usuaria lo mejora a mano y genera la
+  // imagen con su versión. Se guarda aparte («prompt usado») para que quede el prompt exacto de cada imagen, y
+  // la caja de la Enciclopedia lo pide aquí al abrirse (solo con las herramientas de admin, CFG-33).
+  app.get<{ Params: { slug: string }; Querystring: { entityType: string; entitySlug: string; sizeProfile: string } }>(
+    '/world/:slug/image-prompt',
+    async (request, reply) => {
+      const world = await prisma.world.findUnique({ where: { slug: request.params.slug } });
+      if (!world) {
+        return reply.status(404).send({ error: 'Mundo no encontrado' });
+      }
+      const { entityType, entitySlug, sizeProfile } = request.query;
+      const errorClave = errorClaveImagePrompt(entityType, entitySlug, sizeProfile);
+      if (errorClave) {
+        return reply.status(400).send({ error: errorClave });
+      }
+      const fila = await prisma.imagePrompt.findUnique({
+        where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
+      });
+      return {
+        prompt: fila?.prompt ?? null,
+        promptUsado: fila?.promptUsado ?? null,
+        promptUsadoAt: fila?.promptUsadoAt?.toISOString() ?? null,
+      };
+    },
+  );
+
+  // Guarda (o borra, con texto vacío o null) el prompt usado. Necesita que exista ya el prompt base: la caja
+  // solo ofrece «Editar» cuando lo hay.
+  app.put<{ Params: { slug: string }; Body: { entityType: string; entitySlug: string; sizeProfile: string; promptUsado: string | null } }>(
+    '/world/:slug/image-prompt/usado',
+    async (request, reply) => {
+      const world = await prisma.world.findUnique({ where: { slug: request.params.slug } });
+      if (!world) {
+        return reply.status(404).send({ error: 'Mundo no encontrado' });
+      }
+      const { entityType, entitySlug, sizeProfile, promptUsado } = request.body;
+      const errorClave = errorClaveImagePrompt(entityType, entitySlug, sizeProfile);
+      if (errorClave) {
+        return reply.status(400).send({ error: errorClave });
+      }
+      if (promptUsado !== null && typeof promptUsado !== 'string') {
+        return reply.status(400).send({ error: 'promptUsado inválido' });
+      }
+      const where = { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } };
+      const fila = await prisma.imagePrompt.findUnique({ where });
+      if (!fila) {
+        return reply.status(404).send({ error: 'Todavía no hay prompt base: genéralo primero' });
+      }
+      const texto = promptUsado?.trim() || null;
+      const guardada = await prisma.imagePrompt.update({
+        where,
+        data: { promptUsado: texto, promptUsadoAt: texto ? new Date() : null },
+      });
+      return { promptUsado: guardada.promptUsado, promptUsadoAt: guardada.promptUsadoAt?.toISOString() ?? null };
     },
   );
 }

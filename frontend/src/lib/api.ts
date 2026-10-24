@@ -2956,6 +2956,39 @@ export async function requestImagePrompt(
   })
 }
 
+/// CFG-38 (usuaria, 2026-10-24): el prompt base (generado) y el usado (editado a mano, el exacto con el que se generó
+/// la imagen) de una entidad y un perfil. Todo null si aún no hay fila.
+export interface ImagePromptGuardado {
+  prompt: string | null
+  promptUsado: string | null
+  promptUsadoAt: string | null
+}
+
+export async function getImagePrompt(
+  worldSlug: string,
+  entityType: ImagePromptEntityType,
+  entitySlug: string,
+  sizeProfile: ImagePromptSizeProfile,
+): Promise<ImagePromptGuardado> {
+  const q = new URLSearchParams({ entityType, entitySlug, sizeProfile })
+  return fetchJson(`${API_URL}/world/${worldSlug}/image-prompt?${q}`)
+}
+
+/// Guarda el prompt usado; con texto vacío o null lo borra. Necesita que ya exista el prompt base.
+export async function saveImagePromptUsado(
+  worldSlug: string,
+  entityType: ImagePromptEntityType,
+  entitySlug: string,
+  sizeProfile: ImagePromptSizeProfile,
+  promptUsado: string | null,
+): Promise<Pick<ImagePromptGuardado, 'promptUsado' | 'promptUsadoAt'>> {
+  return fetchJson(`${API_URL}/world/${worldSlug}/image-prompt/usado`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entityType, entitySlug, sizeProfile, promptUsado }),
+  })
+}
+
 export async function getWorldLocations(worldSlug: string): Promise<WorldLocationsResponse> {
   return fetchJson(`${API_URL}/world/${worldSlug}/locations`)
 }

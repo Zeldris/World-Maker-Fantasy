@@ -249,6 +249,11 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   (causas) en Leyendas. **S**
 - **CFG-37 · IA en la nube para el Cronista** (Cronista D-4): solo visible si hay clave configurada;
   apagado por defecto. **S**
+- **CFG-38 · Prompt de imagen editable** 🚧 en curso (usuaria, 2026-10-24; excepción a la puerta de pruebas aprobada por
+  ella): en la caja de `ImagePromptSlot`, además del prompt base que genera la IA, un **prompt usado** editable
+  —el exacto con el que se generó la imagen—. «Regenerar» solo cambia el base; el usado no se pierde nunca y es el
+  que copia «Copiar». Campo nuevo en `ImagePrompt` (migración). Contexto:
+  [reutilizable de imágenes](../arquitectura/reutilizables/01-generacion-imagenes-local.md). **S**
 
 ---
 

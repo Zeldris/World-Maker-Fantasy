@@ -3464,6 +3464,10 @@ model ImagePrompt {
   /// Qué proveedor lo generó ("cerebras:gpt-oss-120b", "ollama:qwen2.5:1.5b-instruct"...) — para
   /// poder distinguir calidad si hace falta regenerar solo lo que cayó al fallback local.
   provider    String
+  /// CFG-38 (usuaria, 2026-10-24): el prompt con el que se generó de verdad la imagen, editado a mano a partir
+  /// de `prompt`. Regenerar solo cambia `prompt`; este no lo pisa nunca. Null si no se ha editado.
+  promptUsado   String?
+  promptUsadoAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

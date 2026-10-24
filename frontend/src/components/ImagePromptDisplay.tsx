@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { requestImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../lib/api'
+import {
+  getImagePrompt,
+  requestImagePrompt,
+  saveImagePromptUsado,
+  type ImagePromptEntityType,
+  type ImagePromptSizeProfile,
+} from '../lib/api'
 import { useHerramientasAdminVisibles } from '../lib/modoDesarrollador'
 
 /// Extraído de DetailModal.tsx (auditoría 2026-07-22): la generación de prompts de imagen (red +
@@ -123,46 +129,41 @@ export function MediaSlot({ icon, variant = 'active', imageUrl }: { icon: string
 
 // Caja de prompt de imagen (roadmap 2026-07-21/22, punto 7): la API solo genera el TEXTO del
 // prompt (en inglés, para pegar en cualquier generador externo) — todavía no renderiza nada, así
-// que la única acción útil aquí es copiarlo. Estado de "copiado" propio, no comparte el de editing.
+// que la acción principal aquí es copiarlo. Estado de "copiado" propio, no comparte el de editing.
 // `onRegenerate` (petición explícita de la usuaria, 2026-07-22): opcional porque solo tiene
 // sentido una vez ya existe un prompt — vuelve a generarlo con la info actual de la entrada,
 // sobrescribiendo el guardado (ver /world/:slug/image-prompt con `regenerate: true`).
+// `children` (CFG-38): botones extra junto a «Copiar» (Editar, Regenerar base).
+const BOTON = 'tactile self-start rounded-lg border border-iron-700 px-2.5 py-1 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-60'
+
 function ImagePromptBox({
   label,
   prompt,
-  onRegenerate,
-  regenerating,
+  copiarTexto = 'Copiar prompt',
+  children,
 }: {
   label: string
   prompt: string
-  onRegenerate?: () => void
-  regenerating?: boolean
+  copiarTexto?: string
+  children?: React.ReactNode
 }) {
   const [copied, setCopied] = useState(false)
   return (
     <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-iron-700/60 bg-wood-950/40 p-2.5">
-      <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{label} (inglés)</p>
-      <p className="font-mono text-xs leading-relaxed text-wood-300">{prompt}</p>
-      <div className="flex gap-2">
+      <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{label}</p>
+      <p className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-wood-300">{prompt}</p>
+      <div className="flex flex-wrap gap-2">
         <button type="button"
           onClick={() => {
             navigator.clipboard.writeText(prompt)
             setCopied(true)
             setTimeout(() => setCopied(false), 1500)
           }}
-          className="tactile self-start rounded-lg border border-iron-700 px-2.5 py-1 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
+          className={BOTON}
         >
-          {copied ? 'Copiado ✓' : 'Copiar prompt'}
+          {copied ? 'Copiado ✓' : copiarTexto}
         </button>
-        {onRegenerate && (
-          <button type="button"
-            disabled={regenerating}
-            onClick={onRegenerate}
-            className="tactile self-start rounded-lg border border-iron-700 px-2.5 py-1 text-2xs text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-60"
-          >
-            {regenerating ? 'Regenerando…' : 'Regenerar'}
-          </button>
-        )}
+        {children}
       </div>
     </div>
   )
@@ -194,6 +195,27 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
   const [prompt, setPrompt] = useState<string | null>(existingPrompt)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // CFG-38 (usuaria, 2026-10-24): el prompt base es solo el punto de partida; el que se usó de verdad para la
+  // imagen se edita aquí y se guarda aparte. Regenerar solo cambia el base.
+  const [usado, setUsado] = useState<{ texto: string; at: string | null } | null>(null)
+  const [borrador, setBorrador] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+
+  useEffect(() => {
+    if (!existingPrompt) return
+    let vivo = true
+    getImagePrompt(worldSlug, entityType, entitySlug, sizeProfile)
+      .then((r) => {
+        if (vivo && r.promptUsado) setUsado({ texto: r.promptUsado, at: r.promptUsadoAt })
+      })
+      .catch((err) => {
+        console.error('[image-prompt] no se pudo leer el prompt usado:', err)
+        if (vivo) setError(err instanceof Error ? err.message : 'No se pudo leer el prompt usado.')
+      })
+    return () => {
+      vivo = false
+    }
+  }, [existingPrompt, worldSlug, entityType, entitySlug, sizeProfile])
 
   const generate = async (regenerate: boolean) => {
     setGenerating(true)
@@ -213,10 +235,75 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
     }
   }
 
+  const guardarUsado = async (texto: string | null) => {
+    setGuardando(true)
+    setError(null)
+    try {
+      const r = await saveImagePromptUsado(worldSlug, entityType, entitySlug, sizeProfile, texto)
+      setUsado(r.promptUsado ? { texto: r.promptUsado, at: r.promptUsadoAt } : null)
+      setBorrador(null)
+    } catch (err) {
+      console.error('[image-prompt] no se pudo guardar el prompt usado:', err)
+      setError(err instanceof Error ? err.message : 'No se pudo guardar — inténtalo de nuevo.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   if (prompt) {
+    const regenerar = (
+      <button type="button" disabled={generating} onClick={() => generate(true)} className={BOTON}>
+        {generating ? 'Regenerando…' : usado ? 'Regenerar base' : 'Regenerar'}
+      </button>
+    )
     return (
       <div className="flex flex-col gap-1.5">
-        <ImagePromptBox label={label} prompt={prompt} onRegenerate={() => generate(true)} regenerating={generating} />
+        {borrador !== null ? (
+          <div className="flex flex-col gap-1.5 rounded-lg border border-dashed border-accent-600/60 bg-wood-950/40 p-2.5">
+            <p className="text-2xs uppercase tracking-[0.1em] text-wood-500">{label} · prompt usado (inglés)</p>
+            <textarea
+              aria-label={`Prompt usado de ${label.toLowerCase()}`}
+              value={borrador}
+              onChange={(e) => setBorrador(e.target.value)}
+              rows={8}
+              className="w-full rounded border border-iron-700 bg-wood-950/60 p-2 font-mono text-xs leading-relaxed text-wood-200"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={guardando || !borrador.trim()} onClick={() => guardarUsado(borrador)} className={BOTON}>
+                {guardando ? 'Guardando…' : 'Guardar'}
+              </button>
+              <button type="button" disabled={guardando} onClick={() => setBorrador(null)} className={BOTON}>
+                Cancelar
+              </button>
+              {usado && (
+                <button type="button" disabled={guardando} onClick={() => guardarUsado(null)} className={BOTON}>
+                  Volver al base
+                </button>
+              )}
+            </div>
+          </div>
+        ) : usado ? (
+          <>
+            <ImagePromptBox label={`${label} · prompt usado${usado.at ? ` (editado ${usado.at.slice(0, 10)})` : ''}`} prompt={usado.texto}>
+              <button type="button" onClick={() => setBorrador(usado.texto)} className={BOTON}>
+                Editar
+              </button>
+            </ImagePromptBox>
+            <details className="text-2xs text-wood-500">
+              <summary className="cursor-pointer select-none">Prompt base (IA)</summary>
+              <ImagePromptBox label={`${label} · prompt base (inglés)`} prompt={prompt} copiarTexto="Copiar base">
+                {regenerar}
+              </ImagePromptBox>
+            </details>
+          </>
+        ) : (
+          <ImagePromptBox label={`${label} (inglés)`} prompt={prompt}>
+            <button type="button" onClick={() => setBorrador(prompt)} className={BOTON}>
+              Editar
+            </button>
+            {regenerar}
+          </ImagePromptBox>
+        )}
         {error && <p className="text-2xs text-red-400/80">{error}</p>}
       </div>
     )

@@ -10,7 +10,8 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 
 | Carpeta | Qué guarda | En git |
 |---|---|---|
-| `scripts/` | `demo.sh` (la demo segura); `obsoleto/` lo que no se debe volver a lanzar | sí |
+| `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `demo.sh` (prompt sacado de la BD); `obsoleto/` lo que no se debe volver a lanzar | sí |
+| `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
 | `descargas/` | el zip original del binario | no |
 | `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf` | no |
@@ -31,10 +32,20 @@ image-generator/scripts/demo.sh <tipo> <slug> <perfil> <ancho> <alto>
 Saca el prompt real de la tabla `ImagePrompt` y deja la imagen, el log y el prompt en `pruebas/demo/`. Una imagen de
 512×512 tarda ~60 s; un banner de 768×304, ~57 s.
 
+## Generar con un prompt propio
+
+```bash
+image-generator/scripts/generar.sh <tanda> <nombre> <archivo-prompt> <ancho> <alto> [semilla=42] [pasos=4]
+# p. ej.: image-generator/scripts/generar.sh murgol v5-1280x512 image-generator/prompts/murgol/v5.txt 1280 512
+```
+
+Un banner de 1280×512 tarda ~110 s. El prompt que funcione se guarda como «prompt usado» en la enciclopedia
+(`CFG-38`), para que quede el exacto con el que se generó la imagen.
+
 ## Memoria: lo que no se toca
 
 La Deck se bloqueó el 2026-10-24 por falta de memoria (la VRAM es RAM compartida y, sin memoria, se congela en vez
-de matar el proceso). `demo.sh` lo evita con:
+de matar el proceso). `generar.sh` (y `demo.sh`, que lo llama) lo evita con:
 
 - `--params-backend disk --max-vram vulkan0=2`: pesos leídos del disco por segmentos y 2 GB de GPU a la vez. Sin
   esto, con la Deck recién reiniciada el gestor ve ~9 GB «libres» y duplica el modelo entero en RAM y GTT.

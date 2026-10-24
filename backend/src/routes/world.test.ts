@@ -14,6 +14,8 @@ const findManyItemCatalog = vi.fn();
 const findManyHarvestYield = vi.fn();
 const findManyLocation = vi.fn();
 const findManyImagePrompt = vi.fn();
+const findUniqueImagePrompt = vi.fn();
+const updateImagePrompt = vi.fn();
 const findManyNpcItem = vi.fn();
 const findManyDiscoveredEntity = vi.fn();
 const findManyLocationVisit = vi.fn();
@@ -27,7 +29,11 @@ vi.mock('../lib/prisma.js', () => ({
     itemCatalog: { findMany: (...args: unknown[]) => findManyItemCatalog(...args) },
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     location: { findMany: (...args: unknown[]) => findManyLocation(...args) },
-    imagePrompt: { findMany: (...args: unknown[]) => findManyImagePrompt(...args) },
+    imagePrompt: {
+      findMany: (...args: unknown[]) => findManyImagePrompt(...args),
+      findUnique: (...args: unknown[]) => findUniqueImagePrompt(...args),
+      update: (...args: unknown[]) => updateImagePrompt(...args),
+    },
     // Rediseño de la vista de combate (2026-07-28): "Ataque base" se calcula en el propio backend
     // a partir del loadout de arma(s) de cada NPC, ver npcItem.findMany en world.ts.
     npcItem: { findMany: (...args: unknown[]) => findManyNpcItem(...args) },
@@ -699,5 +705,63 @@ describe('GET /world/:slug/enciclopedia', () => {
       const npc = res.json().npcs.find((n: { slug: string }) => n.slug === 'sella-marn');
       expect(npc.fase).toBe('DESCUBIERTO');
     });
+  });
+});
+
+describe('CFG-38 — prompt de imagen usado', () => {
+  const clave = { entityType: 'fauna', entitySlug: 'murgol-macho', sizeProfile: 'banner' };
+  const fila = { prompt: 'base generada', promptUsado: null, promptUsadoAt: null };
+  beforeEach(() => {
+    findUniqueWorld.mockReset().mockResolvedValue({ id: 'w1', slug: 'berig' });
+    findUniqueImagePrompt.mockReset();
+    updateImagePrompt.mockReset().mockImplementation(async ({ data }) => ({ ...fila, ...data }));
+  });
+
+  it('GET devuelve el base y el usado de la fila', async () => {
+    const at = new Date('2026-10-24T18:00:00Z');
+    findUniqueImagePrompt.mockResolvedValue({ ...fila, promptUsado: 'mi versión', promptUsadoAt: at });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/world/berig/image-prompt', query: clave });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ prompt: 'base generada', promptUsado: 'mi versión', promptUsadoAt: at.toISOString() });
+  });
+
+  it('GET sin fila devuelve todo a null, y con clave mala da 400 con el motivo', async () => {
+    findUniqueImagePrompt.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/world/berig/image-prompt', query: clave });
+    expect(res.json()).toEqual({ prompt: null, promptUsado: null, promptUsadoAt: null });
+    const mala = await app.inject({ method: 'GET', url: '/world/berig/image-prompt', query: { ...clave, sizeProfile: 'gigante' } });
+    expect(mala.statusCode).toBe(400);
+    expect(mala.json().error).toBe('sizeProfile inválido');
+  });
+
+  it('PUT guarda el usado recortado, con fecha, sin tocar el prompt base', async () => {
+    findUniqueImagePrompt.mockResolvedValue(fila);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'PUT', url: '/world/berig/image-prompt/usado', payload: { ...clave, promptUsado: '  mi versión  ' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().promptUsado).toBe('mi versión');
+    const { data } = updateImagePrompt.mock.calls[0][0];
+    expect(data.promptUsado).toBe('mi versión');
+    expect(data.promptUsadoAt).toBeInstanceOf(Date);
+    expect(data).not.toHaveProperty('prompt');
+  });
+
+  it('PUT con texto vacío borra el usado y su fecha', async () => {
+    findUniqueImagePrompt.mockResolvedValue({ ...fila, promptUsado: 'vieja', promptUsadoAt: new Date() });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'PUT', url: '/world/berig/image-prompt/usado', payload: { ...clave, promptUsado: '   ' } });
+    expect(res.json()).toEqual({ promptUsado: null, promptUsadoAt: null });
+    expect(updateImagePrompt.mock.calls[0][0].data).toEqual({ promptUsado: null, promptUsadoAt: null });
+  });
+
+  it('PUT sin prompt base da 404 y no escribe nada', async () => {
+    findUniqueImagePrompt.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'PUT', url: '/world/berig/image-prompt/usado', payload: { ...clave, promptUsado: 'x' } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error).toMatch(/prompt base/);
+    expect(updateImagePrompt).not.toHaveBeenCalled();
   });
 });
