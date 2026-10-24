@@ -11,6 +11,7 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | Carpeta | Qué guarda | En git |
 |---|---|---|
 | `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `probar.sh` (prompt de la enciclopedia, para las pruebas de la usuaria); `obsoleto/` lo que no se debe volver a lanzar | sí |
+| `interfaz/` | la interfaz de pruebas (`servidor.py` e `index.html`, sin dependencias), que abre `abrir.sh` (`CFG-43`) | sí |
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
 | `descargas/` | el zip original del binario | no |
@@ -19,32 +20,42 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | `modelos/upscale/` | `RealESRGAN_x4plus.pth` (ampliación, BSD-3) | no |
 | `referencias/` | imágenes de referencia de estilo (`-r`), p. ej. el banner original del múrgol reducido | no |
 | `modelos/vae/` | `full_encoder_small_decoder.safetensors` (FLUX.2-small-decoder, Apache 2.0) | no |
-| `pruebas/<tanda>/` | `imagenes/`, `logs/` y `prompts/` de cada tanda | no |
+| `pruebas/<tanda>/` | `imagenes/`, `logs/` y `prompts/` de cada tanda, más `registro.tsv`, `notas.md` y `elegidas.tsv` | no |
+| `salida/images/<tipo>/` | las elegidas, como `<slug>-<perfil>.png`: la estructura de `backend/uploads/images/` | no |
 
 ## Probar prompts (la usuaria)
 
-Desde una terminal de la Deck (Konsole; desde el sandbox de VS Code, con `flatpak-spawn --host bash -lc '…'`), en la
-carpeta del repo, con Postgres (`tarkor-postgres`) y el juego arrancados y Ollama sin modelos cargados:
-
-1. En la enciclopedia, con las herramientas de admin, abre la entidad y genera su prompt (el base).
-2. Mejóralo en «prompt usado» y guárdalo. Lo que guardes ahí sirve también de ejemplo al generador para las demás
-   entidades del mismo tipo (`CFG-40`): cuanto mejores sean, mejores saldrán los siguientes.
-3. Genera la imagen con ese prompt:
+Con la interfaz (`CFG-43`). Desde la Konsole de la Deck, en la carpeta del repo, con Ollama sin modelos cargados
+(la interfaz los descarga si hace falta):
 
 ```bash
-image-generator/scripts/probar.sh <tanda> <tipo> <slug> <perfil> [semilla=42] [pasos=4]
-# p. ej.: image-generator/scripts/probar.sh 2026-10-25 fauna cuernahoja-macho banner 7
+image-generator/abrir.sh      # abre http://127.0.0.1:7861/ en el navegador; Ctrl+C la para
 ```
 
-4. Mira la imagen (`pruebas/<tanda>/imagenes/`) y apunta en `pruebas/<tanda>/notas.md` qué te parece, con el nombre
-   que da el script. Para ver solo el efecto del prompt, repite la misma semilla.
+1. **Prompt.** Pega uno (el que copiaste de la enciclopedia o uno tuyo) o busca la entidad («fauna nievon») y la
+   interfaz trae su prompt usado, o el base si no hay (la tabla `ImagePrompt`; necesita `tarkor-postgres`, que
+   `abrir.sh` arranca; el juego no hace falta). Pon tipo, slug y perfil: deciden el tamaño y dónde acabará la imagen.
+2. **Generar.** Semilla (🎲 al azar; repite la misma para ver solo el efecto del prompt), pasos, referencia de estilo
+   y tanda (por defecto, la fecha de hoy). Se ve el paso del muestreo mientras genera; una imagen a la vez.
+3. **Tanda.** Debajo de cada imagen, escribe qué te parece, qué sobra o qué falta: se guarda sola en
+   `pruebas/<tanda>/notas.md`. «Usar este prompt» lo devuelve al formulario para retocarlo.
+4. **Elegir esta** copia la imagen a `salida/images/<tipo>/<slug>-<perfil>.png`, el nombre que busca el juego; para
+   verla en el juego, cópiala a `backend/uploads/images/<tipo>/`. Si te gusta el prompt, guárdalo como «prompt usado»
+   en la enciclopedia: sirve de ejemplo al generador para las demás entidades del mismo tipo (`CFG-40`).
 5. Al acabar, pide a Claude **en la Deck** «analiza la tanda <tanda>» (`CFG-42`): `pruebas/` no se sube a git, así que
    la sesión de la nube no la ve.
 
-Usa el prompt usado si lo hay, si no el base, y el tamaño del perfil a la medida que aguanta la Deck (banner 1280×512
-~110 s, miniatura 768×768 ~100 s, mapa 832×624, icono 512×512; `W=… H=…` lo cambian). Cada imagen queda en
-`pruebas/<tanda>/registro.tsv` (prompt usado o base, semilla, pasos, tiempo) y su prompt exacto en
-`pruebas/<tanda>/prompts/`. Con referencia de estilo: `… banner 7 4 -r image-generator/referencias/murgol-original-1024.png` (~200 s).
+Tamaños por perfil, a la medida que aguanta la Deck: banner 1280×512 ~110 s, miniatura 768×768 ~100 s, mapa
+832×624, icono 512×512; con referencia de estilo, ~200 s. Cada imagen queda en `pruebas/<tanda>/registro.tsv`
+(prompt usado, base o pegado, semilla, pasos, tiempo) y su prompt exacto en `pruebas/<tanda>/prompts/`.
+
+Sin interfaz, lo mismo desde la terminal (`W=… H=…` cambian el tamaño; `PROMPT_ARCHIVO=<archivo>` usa un prompt
+pegado en vez del de la base):
+
+```bash
+image-generator/scripts/probar.sh <tanda> <tipo> <slug> <perfil> [semilla=42] [pasos=4] [-r referencia.png]
+# p. ej.: image-generator/scripts/probar.sh 2026-10-25 fauna cuernahoja-macho banner 7
+```
 
 ## Generar con un prompt propio
 

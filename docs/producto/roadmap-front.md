@@ -296,6 +296,13 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   **Cómo se analiza** (`QA-223`): un subagente con el modelo grande lee `registro.tsv`, `notas.md`, los prompts y
   las imágenes, y devuelve por imagen qué funcionó y qué no, con su nombre; la principal mira solo las 2-3 imágenes
   que decidan cada propuesta (cada imagen pesa ~1.600 tokens y se arrastra el resto de la sesión).
+- ~~**CFG-43 · Interfaz local del generador de imágenes**~~ ✅ 2026-10-24 (usuaria, 2026-10-24): `image-generator/abrir.sh`
+  abre una página (`interfaz/servidor.py`, Python sin dependencias, solo en 127.0.0.1) donde se pega un prompt o se
+  trae el usado o el base de una entidad, se genera con `probar.sh` (`PROMPT_ARCHIVO` para el pegado;
+  `LIBERAR_OLLAMA=1` en `generar.sh` descarga los modelos de Ollama antes), se ve el paso del muestreo, se apunta la
+  nota de cada imagen en `notas.md` y «Elegir esta» la copia a `salida/images/<tipo>/<slug>-<perfil>.png`, la
+  estructura de `backend/uploads/images/` (a mano al juego). Tests: `tools/qa/tests/test_interfaz_imagenes.py`.
+  Pasos en el [README](../../image-generator/README.md#probar-prompts-la-usuaria). **S**
 
 ---
 

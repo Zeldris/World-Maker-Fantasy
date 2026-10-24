@@ -4,6 +4,7 @@
 # p. ej. args extra: -r referencia.png (imagen de referencia de estilo)
 # Otro modelo, por variables: MODELO=<gguf de modelos/diffusion> LLM=<gguf de modelos/text> CFG=<escala> TOPE=<s>
 # Deja imagen, log y copia del prompt en pruebas/<tanda>/{imagenes,logs,prompts}/<nombre>.*
+# LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
 # Protecciones (2026-10-24, tras el bloqueo por memoria): memoria libre al empezar, Ollama vacío, vigilante de
 # MemAvailable, aborto si el driver dice 0 MB libres, timeout. Pesos leídos del disco con 2 GB de GPU: no subirlo.
 set -u
@@ -17,7 +18,13 @@ MODELO=${MODELO:-flux-2-klein-4b-Q8_0.gguf}; LLM=${LLM:-Qwen3-4B-Q4_K_M.gguf}; C
 
 disp() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
 [ "$(disp)" -ge $MIN_INICIO_MB ] || { echo "ABORTO: solo $(disp) MB libres (<$MIN_INICIO_MB). Cierra navegador/Steam/juego."; exit 3; }
-if curl -s --max-time 2 localhost:11434/api/ps | grep -q '"name"'; then echo "ABORTO: Ollama tiene modelos cargados (ollama stop <modelo>)."; exit 3; fi
+cargados() { curl -s --max-time 2 localhost:11434/api/ps | python3 -c 'import json,sys; [print(m["name"]) for m in json.load(sys.stdin).get("models", [])]' 2>/dev/null; }
+# CFG-43: LIBERAR_OLLAMA=1 (lo pone la interfaz) descarga los modelos en vez de abortar; keep_alive 0 los saca de memoria.
+if [ "${LIBERAR_OLLAMA:-0}" = 1 ]; then
+  for m in $(cargados); do echo "Ollama: descargando $m"; curl -s --max-time 10 localhost:11434/api/generate -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null; done
+  sleep 2
+fi
+[ -z "$(cargados)" ] || { echo "ABORTO: Ollama tiene modelos cargados (ollama stop <modelo>)."; exit 3; }
 # QA-226: el tercer argumento es una ruta; con el texto del prompt, el mensaje lo dice sin repetir el texto entero.
 [ -s "$PF" ] || { echo "ABORTO: el tercer argumento es la ruta de un archivo de prompt, y «${PF:0:60}» no existe o está vacío"; exit 3; }
 PROMPT=$(cat "$PF")

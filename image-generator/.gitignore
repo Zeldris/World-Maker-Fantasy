@@ -5,4 +5,6 @@ descargas/
 modelos/
 # Salidas de las pruebas (imágenes, logs, prompts): se regeneran con scripts/probar.sh.
 pruebas/
+# Imágenes elegidas en la interfaz (CFG-43), con la estructura de backend/uploads/images/: se copian a mano al juego.
+salida/
 referencias/

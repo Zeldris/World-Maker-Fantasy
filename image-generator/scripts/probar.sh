@@ -6,6 +6,7 @@
 # (se escala después); W=… H=… lo cambian, y MUNDO=… el mundo (helek-sirik). Llama a generar.sh (protecciones
 # de memoria) y apunta cada imagen en pruebas/<tanda>/registro.tsv; lo que le parece a la usuaria va en
 # pruebas/<tanda>/notas.md. Con los dos se analiza la tanda después.
+# PROMPT_ARCHIVO=<archivo> usa ese prompt (pegado en la interfaz, CFG-43) en vez del de la base; el registro dice «pegado».
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 [ $# -ge 4 ] || { sed -n 3,4p "$0"; exit 2; }
@@ -19,13 +20,18 @@ case $P in
 esac
 W=${W:-$DW}; H=${H:-$DH}; MUNDO=${MUNDO:-helek-sirik}
 # Van tal cual a la consulta: solo minúsculas, cifras y guiones.
-for v in "$T" "$S" "$MUNDO"; do [[ $v =~ ^[a-z0-9-]+$ ]] || { echo "ABORTO: «$v» no es un tipo, slug o mundo válido"; exit 2; }; done
+for v in "$T" "$S" "$MUNDO"; do [[ $v =~ ^[A-Za-z0-9-]+$ ]] || { echo "ABORTO: «$v» no es un tipo, slug o mundo válido"; exit 2; }; done
 
-psql_() { podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c "$1"; }
-WHERE="\"worldId\"=(select id from \"World\" where slug='$MUNDO') and \"entityType\"='$T' and \"entitySlug\"='$S' and \"sizeProfile\"='$P'"
-PROMPT=$(psql_ "select \"promptUsado\" from \"ImagePrompt\" where $WHERE;"); FUENTE=usado
-[ -n "$PROMPT" ] || { PROMPT=$(psql_ "select prompt from \"ImagePrompt\" where $WHERE;"); FUENTE=base; }
-[ -n "$PROMPT" ] || { echo "ABORTO: sin prompt para $T/$S/$P (genéralo en la enciclopedia)"; exit 3; }
+if [ -n "${PROMPT_ARCHIVO:-}" ]; then
+  PROMPT=$(cat "$PROMPT_ARCHIVO" 2>/dev/null); FUENTE=pegado
+  [ -n "$PROMPT" ] || { echo "ABORTO: PROMPT_ARCHIVO vacío o inexistente: $PROMPT_ARCHIVO"; exit 3; }
+else
+  psql_() { podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c "$1"; }
+  WHERE="\"worldId\"=(select id from \"World\" where slug='$MUNDO') and \"entityType\"='$T' and \"entitySlug\"='$S' and \"sizeProfile\"='$P'"
+  PROMPT=$(psql_ "select \"promptUsado\" from \"ImagePrompt\" where $WHERE;"); FUENTE=usado
+  [ -n "$PROMPT" ] || { PROMPT=$(psql_ "select prompt from \"ImagePrompt\" where $WHERE;"); FUENTE=base; }
+  [ -n "$PROMPT" ] || { echo "ABORTO: sin prompt para $T/$S/$P (genéralo en la enciclopedia)"; exit 3; }
+fi
 
 D=$G/pruebas/$TANDA; mkdir -p "$D"
 N="$T-$S-$P-s$SEED-p$STEPS-$(date +%H%M%S)"
