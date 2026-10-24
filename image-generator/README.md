@@ -34,7 +34,7 @@ image-generator/abrir.sh      # abre http://127.0.0.1:7861/ en el navegador; Ctr
 ```
 
 1. **Elegir el elemento.** A la izquierda, categoría y lista: toda la enciclopedia (con el juego arrancado, del
-   backend en `127.0.0.1:3001`; si no, solo lo que tiene prompt, imagen del juego o intentos, y lo avisa), con el
+   backend en `127.0.0.1:3001`, con variantes, mapas de zona, habilidades, clases y especializaciones; si no, solo lo que tiene prompt, imagen del juego o intentos, y lo avisa), con el
    nombre de cada ficha, la miniatura de su imagen actual del juego y las
    marcas «N intentos» y «✓ elegida»), con filtro por texto; «Elemento nuevo» deja escribir tipo y slug a mano, para un
    prompt pegado. Su ficha enseña la imagen actual del juego y los perfiles como botones («prompt usado» o «prompt

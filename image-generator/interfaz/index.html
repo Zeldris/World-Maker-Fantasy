@@ -221,14 +221,13 @@ function pintarLista() {
       miniatura, h('div', {}, h('div', { class: 'nombre' }, (e.nombre || e.slug) + (cat ? '' : ` · ${e.tipo}`)), e.nombre ? h('small', {}, e.slug) : '', marcas)));
   }
   if (!vistos.length) l.append(h('div', { class: 'elemento' }, h('small', {}, elementos.length ? 'Sin coincidencias.' : 'Aún no hay elementos: crea uno nuevo o genera sus prompts en la enciclopedia.')));
-  if (vistos.length > 300) l.append(h('div', { class: 'elemento' }, h('small', {}, `Y ${vistos.length - 300} más: afina el filtro.`)));
 }
 $('categoria').onchange = pintarLista;
 $('filtro').oninput = pintarLista;
 $('nuevo').onclick = () => { $('nuevoForm').hidden = !$('nuevoForm').hidden; };
 $('nuevoOk').onclick = () => {
   const tipo = $('nuevoTipo').value.trim(), slug = $('nuevoSlug').value.trim();
-  if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(tipo) || !/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(slug)) { $('nuevoError').textContent = 'Solo letras sin tilde, cifras y guiones.'; return; }
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(tipo) || !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(slug)) { $('nuevoError').textContent = 'Solo letras sin tilde, cifras, guiones y _.'; return; }
   $('nuevoError').textContent = ''; $('nuevoForm').hidden = true;
   elegirElemento(tipo, slug);
 };

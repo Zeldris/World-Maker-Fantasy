@@ -39,7 +39,7 @@ esac
 
 def cargar(raiz, psql='false', api=''):
     os.environ.update(IMG_RAIZ=raiz, IMG_PROBAR=os.path.join(raiz, 'probar.sh'), IMG_PSQL=psql, CABECERA=CABECERA,
-                      IMG_API=api)
+                      IMG_API=api, IMG_ESQUEMA=os.path.join(raiz, 'schema.prisma'))
     spec = importlib.util.spec_from_file_location('servidor_imagenes', SERVIDOR)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
@@ -183,6 +183,29 @@ class Elementos(Base):
                          [('construccion', 'choza', 'Choza'), ('fauna', 'murgol-macho', 'Múrgol macho'),
                           ('flora', 'arena-iman', 'Arena imán'), ('historia', 'sello', 'El sello'),
                           ('item', 'resina-jumba-verde', 'Resina de jumba')])
+
+    def test_suma_lo_anidado_las_habilidades_y_las_clases_del_esquema(self):
+        api = os.path.join(self.raiz, 'api')
+        escribir(os.path.join(api, 'world', 'helek-sirik', 'enciclopedia'), json.dumps({
+            'npcs': [{'slug': 'hulki', 'name': 'Hulki', 'variantesSexo': [{'sexo': 'macho'}]}],
+            'razas': [{'slug': 'goirntes', 'name': 'Goirntes',
+                       'variantes': [{'slug': 'goirntes-meseta', 'name': 'De la Meseta',
+                                      'variantesSexo': [{'sexo': 'hembra'}]}]}],
+            'locations': [{'slug': 'yegr-kegi', 'name': 'Yegr Kegi',
+                           'variantesTiempo': [{'momento': 'noche', 'estacion': 'otono'}]}],
+            'classes': [{'name': 'GUERRERO', 'unlocks': [{'ability': {'name': 'Firmeza Férrea'}}]}]}))
+        escribir(os.path.join(self.raiz, 'schema.prisma'),
+                 'enum Clase {\n  GUERRERO\n  MAGO\n}\nenum Especializacion {\n  PODER_MAGIA\n}\n')
+        lista, _ = cargar(self.raiz, api='file://' + api).elementos()
+        self.assertEqual([(e['tipo'], e['slug'], e['nombre']) for e in lista], [
+            ('ability', 'firmeza-ferrea', 'Firmeza Férrea'),
+            ('clase', 'GUERRERO', 'Guerrero'), ('clase', 'MAGO', 'Mago'),
+            ('especializacion', 'PODER_MAGIA', 'Poder magia'),
+            ('location', 'yegr-kegi', 'Yegr Kegi'), ('location', 'yegr-kegi-noche-otono', 'Yegr Kegi (noche-otono)'),
+            ('npc', 'hulki', 'Hulki'), ('npc', 'hulki-macho', 'Hulki (macho)'),
+            ('raza', 'goirntes', 'Goirntes'), ('raza', 'goirntes-meseta', 'De la Meseta'),
+            ('raza', 'goirntes-meseta-hembra', 'De la Meseta (hembra)'),
+            ('zona', 'yegr-kegi', 'Yegr Kegi (mapa)'), ('zona', 'yegr-kegi-noche-otono', 'Yegr Kegi (mapa, noche-otono)')])
 
     def test_sin_backend_lo_avisa_y_sigue(self):
         self.intento()

@@ -21,7 +21,7 @@ case $P in
 esac
 W=${W:-$DW}; H=${H:-$DH}; MUNDO=${MUNDO:-helek-sirik}
 # Van tal cual a la consulta: solo minúsculas, cifras y guiones.
-for v in "$T" "$S" "$MUNDO"; do [[ $v =~ ^[A-Za-z0-9-]+$ ]] || { echo "ABORTO: «$v» no es un tipo, slug o mundo válido"; exit 2; }; done
+for v in "$T" "$S" "$MUNDO"; do [[ $v =~ ^[A-Za-z0-9_-]+$ ]] || { echo "ABORTO: «$v» no es un tipo, slug o mundo válido"; exit 2; }; done
 
 if [ -n "${PROMPT_ARCHIVO:-}" ]; then
   PROMPT=$(cat "$PROMPT_ARCHIVO" 2>/dev/null); FUENTE=pegado

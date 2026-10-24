@@ -310,8 +310,10 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   `registro.tsv`, `notas.md`, `elegidas.tsv`) y «Elegir esta» deja `<slug>-<perfil>.png` ahí mismo; sin tandas ni
   `salida/`. La página: lista de elementos por categoría con miniatura del juego, barra de progreso con tiempo
   estimado (mediana de los intentos anteriores) y galería con la imagen actual del juego y la elegida marcada.
-  La lista trae toda la enciclopedia del backend del juego (`/world/<mundo>/enciclopedia`), más los prompts de la
-  BD, lo generado y las imágenes del juego. Tests: `test_interfaz_imagenes` (31). Lo siguiente del generador, en [roadmap-imagenes.md](roadmap-imagenes.md).
+  La lista trae toda la enciclopedia del backend del juego (`/world/<mundo>/enciclopedia`), con lo anidado
+  (variantes por sexo, de raza y de día/estación, el mapa de `zona` de cada lugar y las habilidades de los `unlocks`)
+  y las clases y especializaciones de `schema.prisma` (2.550 elementos el 2026-10-25), más los prompts de la BD, lo
+  generado y las imágenes del juego. Tests: `test_interfaz_imagenes` (32). Lo siguiente del generador, en [roadmap-imagenes.md](roadmap-imagenes.md).
 
 ---
 

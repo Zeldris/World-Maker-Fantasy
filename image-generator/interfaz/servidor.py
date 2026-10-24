@@ -25,7 +25,7 @@ Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.
 Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_API (backend del juego, ''
 = sin catálogo), IMG_PUERTO (7861).
 """
-import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time, urllib.request
+import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time, unicodedata, urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -38,7 +38,7 @@ API = os.environ.get('IMG_API', 'http://127.0.0.1:3001')
 GENERADO = os.path.join(RAIZ, 'generated')
 REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
-SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9-]*$')  # el juego respeta las mayúsculas (CAZADOR)
+SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]*$')  # el juego respeta las mayúsculas (CAZADOR)
 EXTENSIONES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 CABECERA_REGISTRO = ['fecha', 'nombre', 'perfil', 'prompt', 'semilla', 'pasos', 'tamaño', 'extra', 'salida', 'segundos']
 ESTIMADO_BASE = {'thumbnail': 105, 'banner': 110, 'mapa': 110, 'icono': 80}  # segundos, sin referencia
@@ -111,7 +111,7 @@ def leer_notas(d):
     notas = {}
     try:
         for l in open(os.path.join(d, 'notas.md'), encoding='utf-8'):
-            m = re.match(r'^- ([A-Za-z0-9-]+): (.*)$', l.rstrip('\n'))
+            m = re.match(r'^- ([A-Za-z0-9_-]+): (.*)$', l.rstrip('\n'))
             if m:
                 notas[m.group(1)] = m.group(2)
     except FileNotFoundError:
@@ -196,19 +196,70 @@ SECCIONES = {'npcs': ('npc', 'slug'), 'items': ('item', 'slug'), 'faunaFlora': (
              'locations': ('location', 'slug'), 'razas': ('raza', 'slug'), 'personajes': ('personaje', 'slug'),
              'constructionRecipes': ('construccion', 'key'), 'craftingRecipes': ('crafteo', 'key'),
              'factions': ('faction', 'slug'), 'historia': ('historia', 'slug')}
+ESQUEMA = os.environ.get('IMG_ESQUEMA', os.path.join(os.path.dirname(RAIZ), 'backend', 'prisma', 'schema.prisma'))
+
+
+def slugify(nombre):
+    """El `slugify` del backend (backend/src/lib/slugify.ts), que da el slug de cada habilidad."""
+    s_ = ''.join(c for c in unicodedata.normalize('NFD', nombre) if not unicodedata.combining(c)).lower()
+    return re.sub(r'[^a-z0-9]+', '-', s_).strip('-')
+
+
+def enum_prisma(nombre):
+    """Valores del enum `nombre` de schema.prisma: las clases y especializaciones usan el valor como slug."""
+    try:
+        with open(ESQUEMA, encoding='utf-8') as f:
+            m = re.search(rf'^enum {nombre} \{{(.*?)^\}}', f.read(), re.S | re.M)
+    except OSError:
+        return []
+    return re.findall(r'^\s*([A-Z][A-Z0-9_]*)\s*$', m.group(1), re.M) if m else []
 
 
 def catalogo():
-    """[(tipo, slug, nombre)] de toda la enciclopedia, del backend del juego (si no corre, error)."""
+    """[(tipo, slug, nombre)] de toda la enciclopedia, del backend del juego (si no corre, error), con lo anidado
+    (variantes por sexo, de raza y de tiempo; el mapa de zona de cada lugar; las habilidades) y las clases y
+    especializaciones de schema.prisma."""
     with urllib.request.urlopen(f'{API}/world/{slug(MUNDO, "mundo")}/enciclopedia', timeout=10) as r:
         datos = json.load(r)
     out = []
+
+    def sumar(tipo, s_, nombre):
+        if s_ and SLUG.match(s_):
+            out.append((tipo, s_, nombre))
+
+    def con_sexos(tipo, e, s_, nombre):
+        sumar(tipo, s_, nombre)
+        for v in e.get('variantesSexo') or []:
+            sumar(tipo, f"{s_}-{v.get('sexo')}", f"{nombre} ({v.get('sexo')})")
+
     for seccion, (tipo, campo) in SECCIONES.items():
         for e in datos.get(seccion) or []:
-            s_ = e.get(campo)
-            if s_ and SLUG.match(s_):
-                out.append((tipo or ('fauna' if e.get('esFauna') else 'flora'), s_,
-                            e.get('name') or e.get('sourceName') or e.get('title') or ''))
+            t = tipo or ('fauna' if e.get('esFauna') else 'flora')
+            s_, nombre = e.get(campo), e.get('name') or e.get('sourceName') or e.get('title') or ''
+            con_sexos(t, e, s_, nombre)
+            for v in e.get('variantes') or []:  # variantes regionales de raza
+                con_sexos(t, v, v.get('slug'), v.get('name') or '')
+            if seccion == 'locations' and s_:
+                sumar('zona', s_, f'{nombre} (mapa)')
+                for v in e.get('variantesTiempo') or []:
+                    momento = f"{v.get('momento')}-{v.get('estacion')}"
+                    sumar('location', f'{s_}-{momento}', f'{nombre} ({momento})')
+                    sumar('zona', f'{s_}-{momento}', f'{nombre} (mapa, {momento})')
+
+    def habilidades(o):  # unlocks de clases y de fauna, estén donde estén
+        if isinstance(o, dict):
+            h = o.get('ability')
+            if isinstance(h, dict) and h.get('name'):
+                sumar('ability', slugify(h['name']), h['name'])
+            for v in o.values():
+                habilidades(v)
+        elif isinstance(o, list):
+            for v in o:
+                habilidades(v)
+    habilidades(datos)
+    for tipo, enum in (('clase', 'Clase'), ('especializacion', 'Especializacion')):
+        for valor in enum_prisma(enum):
+            sumar(tipo, valor, valor.replace('_', ' ').capitalize())
     return out
 
 
@@ -243,7 +294,7 @@ def elementos():
             if not SLUG.match(t) or not os.path.isdir(os.path.join(REFERENCIAS, t)):
                 continue
             for n in os.listdir(os.path.join(REFERENCIAS, t)):
-                m = re.match(rf"^([A-Za-z0-9][A-Za-z0-9-]*?)-({'|'.join(PERFILES)})\.(?:{'|'.join(EXTENSIONES)})$", n)
+                m = re.match(rf"^([A-Za-z0-9][A-Za-z0-9_-]*?)-({'|'.join(PERFILES)})\.(?:{'|'.join(EXTENSIONES)})$", n)
                 if m:
                     claves.setdefault((t, m.group(1)), {'tipo': t, 'slug': m.group(1), 'perfiles': []})
     except FileNotFoundError:
@@ -336,7 +387,7 @@ class Trabajo:
                 linea = linea.rstrip('\n')
                 with self.cerrojo:
                     self.estado['salida'].append(linea)
-                    m = re.match(r'^imagen: .*/([A-Za-z0-9-]+)\.png', linea)
+                    m = re.match(r'^imagen: .*/([A-Za-z0-9_-]+)\.png', linea)
                     if m:
                         self.estado['nombre'] = m.group(1)
             rc = p.wait()
