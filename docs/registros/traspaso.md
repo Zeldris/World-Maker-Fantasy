@@ -151,6 +151,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-24** — ~~`QA-222`…`QA-226`~~ (retro de `claude/imagenes-local`): sección «Imágenes» en `docs/mapa-agente.md`, análisis de `CFG-42` en un subagente, `tools/qa/backend-dev.sh` (reinicia el backend de desarrollo y espera a `/health`), `sql.sh` contra `tarkor` en el mapa y `generar.sh` avisando de que el tercer argumento es una ruta.
 - **2026-10-24** — ~~`CFG-40`~~: paisaje y luz por región (`REGION_ESCENA`) y hasta 2 prompts usados como ejemplos en el generador de imágenes; región de fauna como la Enciclopedia (arregla «Llanuras» para todos); probado con LLM real + FLUX en la Deck.
 - **2026-10-24** — ~~`CFG-39`~~: `imagePromptGenerator.ts` con las reglas FLUX del banco del múrgol (orden, sin medidas ni negativos, símiles de naturaleza, cierre); 11 tests; probado con LLM real + FLUX en la Deck.
 - **2026-10-24** — ~~`CFG-38`~~: prompt de imagen usado editable aparte del base (`promptUsado`, migración `20261024120000_image_prompt_usado`, `GET`/`PUT` de `image-prompt`); 4 tests de UI y 29 de `world.test.ts`; probado en la enciclopedia real con Playwright (editar, recargar, volver al base).
@@ -160,4 +161,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-23** — ~~`QA-220`~~: paso `preparar convaleciente:<npc>` (`prepararReino.ts`, con `ganado:` ya en su uso) y `mv-pozo-guchapo-conv` rehecho desde `mv-pozo-sed50` sin SQL a mano; la escritura del estado repite la de `turnLootKill.ts` (no hay función exportada).
 - **2026-10-23** — ~~`QA-217`~~: `matriz-pruebas.py --comprobar` falla si un `plan-comprobacion-*.md` nombra en su columna «Escenario» uno sin `.dump` (10 tests); corregido `t13a2-ketg` del plan 3.3, que ya no existe.
 - **2026-10-23** — ~~`QA-216`~~ (retro del PR de `claude/pruebas-mundo-vivo`): antes de repartir una tanda, la principal comprueba que el escenario da el estado de cada id; si falta, se prepara primero (`AGENTS.md`, `rondas-de-pruebas.md`).
-- **2026-10-23** — Piloto de Galivelop-workflow v0.2.0 en `main` sin PR, CI local (`claude/piloto-galivelop-workflow`): scripts en `.claude/gw/`, `host.sh` en worktrees, logs de `tests-vitest.sh` con `mktemp`, 27 fricciones y sugerencias al flujo en el [registro](piloto-galivelop-workflow.md).
