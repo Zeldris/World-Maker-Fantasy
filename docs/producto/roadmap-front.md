@@ -266,8 +266,16 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
   `imagePromptGenerator.ts` escribe en lenguaje natural y en orden estilo → sujeto → pose → entorno → luz → acabado;
   sin px ni proporción en el texto, sin listas negativas ni comparaciones con el otro sexo; escena, hora y luz
   explícitas; cierre «No text, no signature, no watermark.». Tests que hacen cumplir cada regla. **S**
-- **CFG-40 · RAG del generador de prompts de imagen**: el contexto del canon (región, paisaje, luz) y los prompts
-  usados (`CFG-38`) de la misma categoría como ejemplos para el LLM. Tras `CFG-39`. **M**
+- ~~**CFG-40 · RAG del generador de prompts de imagen**~~ ✅ 2026-10-24 (`REGION_ESCENA` en
+  `imagePromptGenerator.ts`: paisaje y luz en inglés de las 5 regiones núcleo, sacados de `docs/canon-opencode/regiones/`;
+  el Margen, sin niebla, como dice el canon. La región sale como en la Enciclopedia: `harvestSourceRegion`, hogar del
+  Npc y `lugarOrigen` del objeto, lo que arregla que toda la fauna dijera «de las Llanuras del Viento Rojo». Si el lore
+  fija la hora, la luz sale de ahí. Hasta 2 prompts usados del mismo tipo (`ejemplosDePromptsUsados`) van como
+  ejemplos, sin la instrucción de la imagen de referencia; regla nueva de traducir todo al inglés porque se colaban
+  «cuernos» y «felino». Probado con el LLM real y en la Deck: `cfg40/cuernahoja-s7` en estepa roja con volcanes y
+  ocaso. **Queda** ver cuánto aportan los ejemplos cuando haya más prompts usados; ahora solo está el del múrgol)
+  (usuaria, 2026-10-24): el contexto del canon (región, paisaje, luz) y los prompts usados (`CFG-38`) de la misma
+  categoría como ejemplos para el LLM. **M**
 - **CFG-41 · LoRA de estilo para las imágenes**: conjunto de imágenes ya generadas con sus prompts usados y prueba de
   entrenamiento en Colab, para no depender de la imagen de referencia. Antes, comprobar si una LoRA de klein base
   sirve en klein destilado y las condiciones de uso de las imágenes de origen. Tras `CFG-40`. **M**

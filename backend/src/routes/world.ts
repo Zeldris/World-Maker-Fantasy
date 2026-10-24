@@ -20,7 +20,7 @@ import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
 import { slugify } from '../lib/slugify.js';
 import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
-import { loreContextFor } from '../services/imagePromptContext.js';
+import { ejemplosDePromptsUsados, loreContextFor } from '../services/imagePromptContext.js';
 import { imageUrlsFor, zoneMapImageUrl, iconoUrlFor } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
 import { COMBAT_LORE_SECTIONS } from '../services/combatLore.js';
@@ -858,6 +858,12 @@ export async function worldRoutes(app: FastifyInstance) {
           subject.name,
           subject.loreContext,
           sizeProfile as ImagePromptSizeProfile,
+          // CFG-40: paisaje y luz de la región, y los prompts que la usuaria ya usó como ejemplos.
+          {
+            region: subject.region,
+            conMomento: subject.conMomento,
+            ejemplos: await ejemplosDePromptsUsados(world.id, entityType as ImagePromptEntityType, entitySlug, sizeProfile as ImagePromptSizeProfile),
+          },
         ));
       } catch (err) {
         app.log.error({ err, entityType, entitySlug, sizeProfile }, '[image-prompt] todos los proveedores de IA fallaron');

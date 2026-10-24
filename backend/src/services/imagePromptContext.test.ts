@@ -15,6 +15,7 @@ const findFirstHarvestYield = vi.fn();
 const findUniqueLocation = vi.fn();
 const findUniqueFaction = vi.fn();
 const findUniqueHistoria = vi.fn();
+const findManyImagePrompt = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -25,16 +26,18 @@ vi.mock('../lib/prisma.js', () => ({
     location: { findUnique: (...args: unknown[]) => findUniqueLocation(...args) },
     faction: { findFirst: (...args: unknown[]) => findUniqueFaction(...args) },
     historiaEntry: { findUnique: (...args: unknown[]) => findUniqueHistoria(...args) },
+    imagePrompt: { findMany: (...args: unknown[]) => findManyImagePrompt(...args) },
   },
 }));
 
 vi.mock('../scripts/worldCatalog.js', () => ({
   harvestSourceAliases: { 'corredor-de-cauce': ['corredor'] },
   harvestSourceDescriptions: { 'una-flor-sin-npc': 'Flor silvestre sin fauna asociada.' },
+  harvestSourceRegion: { 'corredor-de-cauce': 'Llanuras del Viento Rojo' },
   sourceDisplayNameFor: (slug: string, npcName?: string | null) => npcName ?? slug,
 }));
 
-const { loreContextFor, stripLocationTimeVariant } = await import('./imagePromptContext.js');
+const { loreContextFor, stripLocationTimeVariant, ejemplosDePromptsUsados } = await import('./imagePromptContext.js');
 
 describe('stripLocationTimeVariant', () => {
   it('sin sufijo, devuelve el slug tal cual con los dos ejes en null', () => {
@@ -166,7 +169,8 @@ describe('loreContextFor — fauna', () => {
 
     const result = await loreContextFor('w1', 'fauna', 'corredor-de-cauce');
 
-    expect(result?.loreContext).toContain('Fauna cazable de las Llanuras del Viento Rojo.');
+    expect(result?.loreContext).toContain('Fauna cazable. Región: Llanuras del Viento Rojo.');
+    expect(result?.region).toBe('Llanuras del Viento Rojo');
     expect(result?.loreContext).toContain('Corre en manadas por la estepa.');
     expect(result?.loreContext).toContain('También conocido como: corredor.');
   });
@@ -177,7 +181,8 @@ describe('loreContextFor — fauna', () => {
 
     const result = await loreContextFor('w1', 'fauna', 'una-flor-sin-npc');
 
-    expect(result?.loreContext).toContain('Flora o material recolectable de las Llanuras del Viento Rojo.');
+    expect(result?.loreContext).toContain('Flora o material recolectable.');
+    expect(result?.region).toBeNull();
     expect(result?.loreContext).toContain('Flor silvestre sin fauna asociada.');
   });
 
@@ -239,7 +244,7 @@ describe('loreContextFor — location/faction/historia', () => {
 
     findUniqueLocation.mockResolvedValueOnce({ name: 'Los Pilares Rotos', region: 'Las Llanuras del Viento Rojo', kind: 'punto_de_interes', description: 'Ruinas antiguas.' });
     const result = await loreContextFor('w1', 'location', 'los-pilares-rotos');
-    expect(result).toEqual({ name: 'Los Pilares Rotos', loreContext: 'Región: Las Llanuras del Viento Rojo. Tipo: punto_de_interes. Ruinas antiguas.' });
+    expect(result).toEqual({ name: 'Los Pilares Rotos', loreContext: 'Región: Las Llanuras del Viento Rojo. Tipo: punto_de_interes. Ruinas antiguas.', region: 'Llanuras del Viento Rojo', conMomento: false });
   });
 
   // Día/noche/estación (2026-08-27) — el sufijo se despoja ANTES de consultar Prisma (la fila real
@@ -330,3 +335,47 @@ describe('loreContextFor — construccion/crafteo/personaje/ability (contenido e
     expect(await loreContextFor('w1', 'ability', 'no-existe')).toBeNull();
   });
 });
+
+// CFG-40 (usuaria, 2026-10-24): región de la fauna para el escenario del prompt y prompts usados como ejemplos.
+describe('CFG-40 — región y ejemplos para el prompt de imagen', () => {
+  it('fauna fuera del mapa de regiones: toma la región del hogar de su Npc', async () => {
+    findFirstHarvestYield.mockResolvedValueOnce({ sourceSlug: 'oso-de-hielo' });
+    findUniqueNpc.mockResolvedValueOnce({ name: 'Oso de hielo', bio: 'Grande.', homeLocationSlug: 'helske-tugh' });
+    findUniqueLocation.mockResolvedValueOnce({ region: 'Cristal Helado' });
+
+    const result = await loreContextFor('w1', 'fauna', 'oso-de-hielo');
+
+    expect(result?.region).toBe('Cristal Helado');
+    expect(result?.loreContext).toContain('Región: Cristal Helado.');
+  });
+
+  it('fauna sin hogar: toma la región del lugar de origen del objeto que da', async () => {
+    findFirstHarvestYield.mockResolvedValueOnce({ sourceSlug: 'nievon', item: { lugarOrigen: 'Cumbres del Cristal Helado' } });
+    findUniqueNpc.mockResolvedValueOnce({ name: 'Nievón', bio: 'Felino blanco.', homeLocationSlug: null });
+
+    expect((await loreContextFor('w1', 'fauna', 'nievon'))?.region).toBe('Cristal Helado');
+  });
+
+  it('location con momento del día lo marca para que la luz salga del lore', async () => {
+    findUniqueLocation.mockResolvedValueOnce({ name: 'Pilares', region: 'Las Llanuras del Viento Rojo', kind: 'x', description: 'Ruinas.' });
+
+    const result = await loreContextFor('w1', 'location', 'pilares-noche');
+
+    expect(result?.conMomento).toBe(true);
+  });
+
+  it('ejemplos: del mismo tipo, sin la propia entidad, primero los del mismo perfil y como mucho 2', async () => {
+    findManyImagePrompt.mockResolvedValueOnce([
+      { promptUsado: 'miniatura', sizeProfile: 'thumbnail' },
+      { promptUsado: 'banner A', sizeProfile: 'banner' },
+      { promptUsado: 'banner B', sizeProfile: 'banner' },
+    ]);
+
+    const ejemplos = await ejemplosDePromptsUsados('w1', 'fauna', 'cuernahoja-macho', 'banner');
+
+    expect(ejemplos).toEqual(['banner A', 'banner B']);
+    const where = findManyImagePrompt.mock.calls[0][0].where;
+    expect(where).toMatchObject({ worldId: 'w1', entityType: 'fauna', promptUsado: { not: null }, NOT: { entitySlug: 'cuernahoja-macho' } });
+  });
+});
+

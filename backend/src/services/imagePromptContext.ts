@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
-import { harvestSourceAliases, harvestSourceDescriptions, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
+import { harvestSourceAliases, harvestSourceDescriptions, harvestSourceRegion, sourceDisplayNameFor } from '../scripts/worldCatalog.js';
+import { coreRegionOf } from './discovery.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { CRAFTING_RECIPES } from './crafting.js';
 import { allClassAbilityUnlocks, CLASE_DESCRIPTION, claseDeEspecializacion, resumenMecanicoEspecializacion } from './classAbilities.js';
@@ -14,12 +15,16 @@ import {
   RAZA_VARIANTE_SEXO_VARIANTES,
   type SexoVariantesEntry,
 } from './sexDimorphism.js';
-import type { ImagePromptEntityType } from './imagePromptGenerator.js';
+import type { ImagePromptEntityType, ImagePromptSizeProfile } from './imagePromptGenerator.js';
 import type { MomentoDelDia } from './worldClock.js';
 
 export interface ImagePromptSubject {
   name: string;
   loreContext: string;
+  /// CFG-40: región núcleo (`REGION_CORE_NAMES`) para el escenario y la luz del prompt; solo fauna/flora y lugares.
+  region?: string | null;
+  /// CFG-40: el slug fija la hora del día (`-noche`, `-amanecer`…), así que la luz sale del lore y no de la región.
+  conMomento?: boolean;
 }
 
 /// Formato Title Case desde SNAKE_CASE, mismo criterio que `especializacionLabel`/`claseLabel`
@@ -167,7 +172,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     const sexoMatch = stripSexoSuffix(entitySlug);
     const baseSlug = sexoMatch?.baseSlug ?? entitySlug;
     const [yieldRow, npc] = await Promise.all([
-      prisma.harvestYield.findFirst({ where: { worldId, sourceSlug: baseSlug } }),
+      prisma.harvestYield.findFirst({ where: { worldId, sourceSlug: baseSlug }, include: { item: { select: { lugarOrigen: true } } } }),
       prisma.npc.findFirst({ where: { worldId, slug: baseSlug, saveId: null } }),
     ]);
     if (!yieldRow) return null;
@@ -178,12 +183,20 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     // para fauna cazable, ni nada para flora/mineral (HarvestYield no tiene columna description).
     // `harvestSourceDescriptions` cubre las fuentes sin Npc propio (ver worldCatalog.ts).
     const description = npc?.bio ?? harvestSourceDescriptions[baseSlug];
-    const general = `${cazable ? 'Fauna cazable' : 'Flora o material recolectable'} de las Llanuras del Viento Rojo.${
+    // CFG-40: antes decía «de las Llanuras del Viento Rojo» para toda la fauna. Mismo criterio que los
+    // colapsables de la Enciclopedia (`regionFor` en world.ts): el mapa explícito, el hogar del Npc y el
+    // `lugarOrigen` del objeto que da (el nievón no tiene hogar fijo).
+    const hogar = !harvestSourceRegion[baseSlug] && npc?.homeLocationSlug
+      ? await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: npc.homeLocationSlug } } })
+      : null;
+    const region = coreRegionOf(harvestSourceRegion[baseSlug]) ?? coreRegionOf(hogar?.region) ?? coreRegionOf(yieldRow.item?.lugarOrigen);
+    const general = `${cazable ? 'Fauna cazable' : 'Flora o material recolectable'}.${region ? ` Región: ${region}.` : ''}${
       description ? ` ${description}` : ''
     }${aliases.length ? ` También conocido como: ${aliases.join(', ')}.` : ''}`;
     return {
       name: sourceDisplayNameFor(baseSlug, npc?.name),
       loreContext: sexoMatch ? withSexoVariante(general, FAUNA_SEXO_VARIANTES, baseSlug, sexoMatch.sexo) : general,
+      region,
     };
   }
 
@@ -248,7 +261,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     const location = await prisma.location.findUnique({ where: { worldId_slug: { worldId, slug: baseSlug } } });
     if (!location) return null;
     const general = `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}`;
-    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion) };
+    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion), region: coreRegionOf(location.region), conMomento: !!momento };
   }
 
   if (entityType === 'zona') {
@@ -265,7 +278,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
       ? ` Elementos reales presentes en la zona (referencia, no listar como texto en la imagen): ${location.zonePoints.map((p) => p.label ?? p.targetSlug).join(', ')}.`
       : '';
     const general = `Región: ${location.region}. Tipo: ${location.kind}. ${location.description}${puntos}`;
-    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion) };
+    return { name: location.name, loreContext: withTimeVariant(general, momento, estacion), region: coreRegionOf(location.region), conMomento: !!momento };
   }
 
   if (entityType === 'faction') {
@@ -342,4 +355,26 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     name: match.ability.name,
     loreContext: `${match.levelLabel}. ${match.ability.description} — "${match.ability.promptText}"`,
   };
+}
+
+/// CFG-40 (usuaria, 2026-10-24): los prompts que la usuaria ya corrigió a mano (`promptUsado`, CFG-38) del mismo
+/// tipo, como ejemplos para el LLM. Primero los del mismo perfil (un banner enseña más a otro banner) y como mucho
+/// `max`; la propia entidad no, para que regenerar su base no copie su versión.
+export async function ejemplosDePromptsUsados(
+  worldId: string,
+  entityType: ImagePromptEntityType,
+  entitySlug: string,
+  sizeProfile: ImagePromptSizeProfile,
+  max = 2,
+): Promise<string[]> {
+  const filas = await prisma.imagePrompt.findMany({
+    where: { worldId, entityType, promptUsado: { not: null }, NOT: { entitySlug } },
+    orderBy: { promptUsadoAt: 'desc' },
+    take: 10,
+    select: { promptUsado: true, sizeProfile: true },
+  });
+  return [...filas]
+    .sort((a, b) => Number(b.sizeProfile === sizeProfile) - Number(a.sizeProfile === sizeProfile))
+    .slice(0, max)
+    .flatMap((f) => (f.promptUsado ? [f.promptUsado] : []));
 }

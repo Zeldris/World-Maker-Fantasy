@@ -153,6 +153,46 @@ const ENTITY_TYPE_STYLE: Record<ImagePromptEntityType, EstiloTipo> = {
 };
 
 // ============================================================
+// ESCENARIO Y LUZ POR REGIÓN
+// ============================================================
+
+// CFG-40 (usuaria, 2026-10-24): el paisaje y la luz de cada región, en inglés, sacados del canon resumido
+// (docs/canon-opencode/regiones/). Banco del múrgol: con escena y luz explícitas la imagen de referencia se
+// transfiere bien; sin ellas (cuernahoja) apenas. Claves = `REGION_CORE_NAMES` (discovery.ts).
+const REGION_ESCENA: Record<string, { paisaje: string; luz: string }> = {
+  'Llanuras del Viento Rojo': {
+    paisaje: 'a vast red clay steppe with tufts of dry orange grass, scattered savanna scrub and low volcanic peaks far off in the haze, fine red dust drifting on the wind',
+    luz: 'low sun just above the horizon through a haze of red dust, dramatic sunset clouds, warm golden rim light',
+  },
+  'Cristal Helado': {
+    paisaje: 'high ice-capped mountains above a tundra of dark volcanic rock patched with snow, glaciers and sheer sea cliffs',
+    luz: 'pale low arctic sun, cold blue shadows, crisp clear air glinting with ice crystals',
+  },
+  'Ciénaga Troncal': {
+    paisaje: 'a dense swamp of tangled trunks and climbing vines, dark standing water and flat muddy clearings',
+    luz: 'soft humid light filtered green through the canopy, warm haze rising off the water',
+  },
+  // El canon lo dice expresamente: en el Margen no hay niebla; el follaje absorbe el sonido.
+  'Margen Silencioso': {
+    paisaje: 'a temperate rainforest of black-wooded conifers and dense dark foliage over marshy ground, the air clear and perfectly still',
+    luz: 'dim green light under a thick canopy pierced by a few sharp shafts of sun, deep shadows',
+  },
+  'Meseta del Orden': {
+    paisaje: 'a grey stone desert of flat slabs and stepped terraces laid out with unnatural symmetry, sparse iron-grey grass, distant fortress walls of polished stone and black iron',
+    luz: 'harsh high sun on grey stone, crisp hard shadows, a clear pale sky',
+  },
+};
+
+export interface ImagePromptContexto {
+  /// Región núcleo de la entidad (`ImagePromptSubject.region`).
+  region?: string | null;
+  /// El lore fija la hora del día: la luz sale de ahí, no de la región ni del tipo.
+  conMomento?: boolean;
+  /// Prompts usados (CFG-38) de otras entidades del mismo tipo.
+  ejemplos?: string[];
+}
+
+// ============================================================
 // INFERENCIA DE TONO DESDE EL CONTEXTO (NUEVO, INTERNO)
 // ============================================================
 
@@ -312,17 +352,23 @@ function buildPrompt(
   name: string,
   loreContext: string,
   sizeProfile: ImagePromptSizeProfile,
+  contexto: ImagePromptContexto,
 ): string {
   // Icono de asentamiento (2026-08-31): mismo estilo plano que los emblemas de facción, para leerse a tamaño reducido.
   const tipo = entityType === 'location' && sizeProfile === 'icono' ? ENTITY_TYPE_STYLE.faction : ENTITY_TYPE_STYLE[entityType];
   const tone = inferToneFromLore(loreContext);
   const subject = ensureSexExplicit(loreContext, `${name}, ${ENTITY_TYPE_HINT[entityType]}`);
+  // Un emblema plano no tiene escenario; el mapa de zona sí toma el terreno, pero su luz sigue siendo uniforme.
+  const escena = tipo === ICONO ? undefined : REGION_ESCENA[contexto.region ?? ''];
+  const luzRegion = escena && entityType !== 'zona' && entityType !== 'ability' ? escena.luz : undefined;
+  const luz = contexto.conMomento ? 'the time of day and season given in the lore' : (luzRegion ?? tipo.luz);
 
   return [
     `${tipo.estilo}.`,
     `Subject: ${subject}. ${loreContext}`,
     `${FRAMING[sizeProfile]}.`,
-    `Light: ${tipo.luz}${tone ? `; atmosphere: ${tone}` : ''}.`,
+    ...(escena ? [`Setting: ${escena.paisaje}.`] : []),
+    `Light: ${luz}${tone ? `; atmosphere: ${tone}` : ''}.`,
     `${tipo.acabado}.`,
     CIERRE,
   ].join('\n');
@@ -337,7 +383,13 @@ export async function generateImagePrompt(
   name: string,
   loreContext: string,
   sizeProfile: ImagePromptSizeProfile,
+  contexto: ImagePromptContexto = {},
 ): Promise<{ prompt: string; provider: string }> {
+  // Un prompt usado con imagen de referencia empieza por la instrucción para esa imagen: como ejemplo no sirve.
+  const ejemplos = (contexto.ejemplos ?? []).map((e) => e.replace(/^Use the reference image[^:]*:\s*/i, '').trim()).filter(Boolean);
+  const seccionEjemplos = ejemplos.length
+    ? `\nApproved examples (prompts the art director wrote for other subjects of this kind):\n${ejemplos.map((e, i) => `${i + 1}. ${e}`).join('\n')}\n`
+    : '';
   // Bug real (2026-08-27): el borrador estructurado se calculaba pero no llegaba al LLM. Viaja aquí como base.
   const userContent = `
 Type: ${ENTITY_TYPE_HINT[entityType]}
@@ -345,22 +397,24 @@ Name: ${name}
 Lore (Spanish): ${loreContext}
 
 Draft:
-${buildPrompt(entityType, name, loreContext, sizeProfile)}
-`;
+${buildPrompt(entityType, name, loreContext, sizeProfile, contexto)}
+${seccionEjemplos}`;
 
   const systemPrompt = `You write prompts for FLUX, a text-to-image model that reads natural English sentences, not keyword lists. You receive a lore description in Spanish and an English draft. Rewrite the draft as one paragraph of natural English sentences, in this order:
   1. Style: the draft's first sentence, kept as it is.
-  2. Subject: what it is (with its sex if the draft gives one) and how it looks — size, build, shape, colours and textures. Invent concrete similes that fit this subject, taken only from nature and raw materials — wood, stone, clay, rope, roots — never from clothing or man-made objects, which the image model paints onto the subject (the kind of "skin cracked like dry riverbed clay" — never reuse this example). Convey size with words of weight and build (massive, towering, broad, slight), never with numbers. Describe every part positively: never write what it is not or what it does not look like, because the image model draws whatever is named.
+  2. Subject: what it is (with its sex if the draft gives one) and how it looks — size, build, shape, colours and textures. Invent concrete similes that fit this subject, taken only from nature and raw materials — wood, stone, clay, roots, bark — never from clothing or man-made objects, which the image model paints onto the subject (the kind of "skin cracked like dry riverbed clay" — never reuse this example). Convey size with words of weight and build (massive, towering, broad, slight), never with numbers. Describe every part positively: never write what it is not or what it does not look like, because the image model draws whatever is named.
   3. Pose and framing: follow the draft's framing sentence.
-  4. Environment: a concrete scene taken from the lore — ground, vegetation, background, weather. Named places and factions only as setting.
+  4. Environment: a concrete scene — ground, vegetation, background, weather — from the draft's setting if it has one, otherwise from the lore. Named places and factions only as setting.
   5. Light: time of day, where the sun or light source is and how it falls; use the draft's light and atmosphere.
   6. Finish: the draft's finish sentence, kept as it is.
   7. End with exactly: "${CIERRE}"
 
   Rules:
   - Each image is made on its own: never compare with another sex, species, character, region or object; describe every trait on its own terms.
+  - Write every word in English: translate every Spanish word from the lore (cuernos → horns, cuello → neck, felino → feline); only the subject's proper name stays as it is.
   - No pixel sizes, resolutions or aspect ratios.
   - No lists of things to avoid.
+  - If approved examples are given, match their level of detail, concreteness and richness of light, but never copy their subjects, names or scenery.
   - 90 to 160 words, no quotes, no explanations, no line breaks.
   - Return ONLY the prompt.`;
 

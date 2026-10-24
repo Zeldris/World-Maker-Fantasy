@@ -150,7 +150,75 @@ describe('generateImagePrompt', () => {
       expect(system).toMatch(/never from clothing or man-made objects/i);
       expect(system).toMatch(/never write what it is not/i);
       expect(system).toMatch(/never with numbers/i);
+      expect(system).toMatch(/translate every Spanish word/i);
       expect(system).toContain(CIERRE);
+    });
+  });
+
+  // CFG-40 (usuaria, 2026-10-24): paisaje y luz de la región desde el canon, y prompts usados (CFG-38) como ejemplos.
+  describe('contexto de región y ejemplos (CFG-40)', () => {
+    const borrador = () => {
+      const userContent = completeWithFallback.mock.calls[0][1] as string;
+      return userContent.slice(userContent.indexOf('Draft:'));
+    };
+
+    it('con región conocida, el borrador trae su paisaje antes de la luz y usa la luz de la región', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('fauna', 'Múrgol', 'Rumiante.', 'banner', { region: 'Cristal Helado' });
+
+      const d = borrador();
+      expect(d).toMatch(/Setting: .*glaciers/);
+      expect(d.indexOf('Setting:')).toBeLessThan(d.indexOf('Light:'));
+      expect(d).toMatch(/Light: pale low arctic sun/);
+    });
+
+    it('sin región, o con una que no está en el canon, no inventa escenario', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('fauna', 'Múrgol', 'Rumiante.', 'banner', { region: 'Tierra Inventada' });
+
+      expect(borrador()).not.toContain('Setting:');
+    });
+
+    it('un emblema plano no lleva escenario de región', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('faction', 'Clan Serhu', 'Clan orco.', 'thumbnail', { region: 'Llanuras del Viento Rojo' });
+
+      expect(borrador()).not.toContain('Setting:');
+      expect(borrador()).toContain('Light: even flat lighting');
+    });
+
+    it('si el lore fija la hora del día, la luz la toma del lore y no pone un ocaso', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('location', 'Pilares', 'Ruinas. De noche.', 'banner', { region: 'Llanuras del Viento Rojo', conMomento: true });
+
+      const d = borrador();
+      expect(d).toMatch(/Light: the time of day/);
+      expect(d).not.toMatch(/sunset|golden/i);
+    });
+
+    it('los prompts usados viajan como ejemplos, sin la instrucción de la imagen de referencia', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+      const usado = 'Use the reference image only as a guide for style. Create a new image: Cinematic wildlife photograph of a beast.';
+
+      await generateImagePrompt('fauna', 'Cuernahoja', 'Rumiante.', 'banner', { ejemplos: [usado] });
+
+      const userContent = completeWithFallback.mock.calls[0][1] as string;
+      expect(userContent).toContain('Approved examples');
+      expect(userContent).toContain('1. Cinematic wildlife photograph of a beast.');
+      expect(userContent).not.toContain('reference image');
+      expect(completeWithFallback.mock.calls[0][0] as string).toMatch(/never copy their subjects/i);
+    });
+
+    it('sin ejemplos no hay sección de ejemplos', async () => {
+      completeWithFallback.mockResolvedValue({ text: 'p', provider: 'x' });
+
+      await generateImagePrompt('fauna', 'Cuernahoja', 'Rumiante.', 'banner');
+
+      expect(completeWithFallback.mock.calls[0][1] as string).not.toContain('Approved examples');
     });
   });
 });
