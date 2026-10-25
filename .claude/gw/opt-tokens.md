@@ -37,6 +37,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
   `[data-opcion]` y `pelear` (acercarse, interactuar y combatir en una orden). `orden.sh` guarda cada respuesta
   entera en `tools/playwright-e2e/shots/ultima-respuesta.txt` y muestra 40 líneas (`QA-128`).
 - **Mapa de imágenes y análisis en subagente** (`QA-222`, `QA-223`): sección «Imágenes» de `docs/mapa-agente.md`; las tandas de `CFG-42` las mira un subagente y la principal solo las imágenes que deciden.
+- **Mapa de voces** (`QA-241`): sección «Voces y sonidos» de `docs/mapa-agente.md`; `mapa-agente.py` comprueba también las rutas de `image-generator/` y `voice-generator/`.
+- **`python3 tools/roadmap/cobertura.py --fila <ID>`** (`QA-242`): definición, hito (con su fila) y menciones de una tarea en `21-roadmap.md`, recortadas, en vez de leer el mapa de roadmaps.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto
   (`--tipo <tipo>`); la captura, solo para lo visual. La interfaz, en la sección «Imágenes» del mapa (`QA-229`).

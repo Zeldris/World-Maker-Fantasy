@@ -53,6 +53,9 @@ Hasta entonces no se toca `voice-generator/` ni se prueba en la Deck lo de esta 
 - **VOZ-6 · Control de las voces desde el panel de administración** [A] (usuaria, 2026-10-25): el mismo camino que
   el de las imágenes (`CFG-43`): elegir raza y voz, generar tomas, escucharlas con y sin efectos, apuntar notas y
   fijar la elegida, todo desde el panel admin. Se hace con lo que llegue del repositorio aparte. **M**
+  ⏸ 2026-10-25 (usuaria): se espera a que la usuaria acabe el proyecto genérico de voces que prepara en otro repo;
+  entonces se trae su versión adaptada a este código y se usa donde la calidad conseguida lo justifique. Al traerla:
+  el simulacro con binarios falsos (`QA-240`) y la sección «Voces y sonidos» de `docs/mapa-agente.md` al día.
 
 ## Fase V-B · La voz en el juego
 

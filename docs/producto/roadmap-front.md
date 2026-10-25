@@ -1610,6 +1610,11 @@ Retro de la difusión (usuaria, 2026-10-25; [`retro-2026-10-25-difusion.md`](../
 - ~~**QA-238 · «Lleva a `main`» con la usuaria fuera**~~ ✅ 2026-10-25: regla en `AGENTS.md` («Ramas y `main`»): todo a un paso y su decisión sobre la retro lo lleva a `main`.
 - ~~**QA-239 · `ci-local.sh` en un worktree, sin rojos falsos**~~ ✅ 2026-10-25: `test_commit_msg` usa un `hooksPath` solo con `commit-msg` (el pre-commit miraba el índice del repo real), `test_host` acepta el worktree de `logs/` y `ci-local.sh` quita los enlaces de `node_modules` y `.env` antes de `npm ci` (vaciaba el `node_modules` de la copia principal y metía su `.env`). Queda (leve): `test_host` en un worktree de subagente con cambios sin commit sigue dando rojo (host.sh se niega, a propósito).
 
+Retro de las voces (usuaria, 2026-10-25; [`retro-2026-10-25-voces.md`](../registros/retro-2026-10-25-voces.md)):
+- **QA-240 · Simulacro de `voice-generator/` con binarios falsos**: la revisión previa a `main` encontró en scripts nunca ejecutados que `lanzar` dejaba a `qwen-tts` sin el texto, que `fijar.sh` cambiaba la voz aunque fallara el codec y que `banco.sh` copiaba una toma a medias. Un test en `tools/qa/tests/` con `qwen-tts`, `qwen-codec` y `sox` falsos en el `PATH` que corra `fijar.sh`, `producir.sh` y `banco.sh` de punta a punta. Se escribe dentro de `VOZ-6`, sobre los scripts que lleguen del repo aparte. **S**
+- ~~**QA-241 · Las voces en el mapa del agente**~~ ✅ 2026-10-25: el doc 02 se leyó 8 veces y el `README.md` de imágenes 4 (~176k arrastrados). Sección «Voces y sonidos» en `docs/mapa-agente.md` (scripts, fichas, `voces.py`, apartados del doc 02), y `tools/qa/mapa-agente.py` mira también `image-generator/` y `voice-generator/` (con `def` de Python y funciones de bash; una ruta con `<…>` no se mira).
+- ~~**QA-242 · `cobertura.py --fila <ID>`**~~ ✅ 2026-10-25: `21-roadmap.md` se leyó 12 veces (74k arrastrados). La orden da la línea donde se define la tarea, su hito con la fila de «Qué entra en cada hito» y cada mención en `21-roadmap.md`, recortada; test en `tools/qa/tests/test_cobertura.py`.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

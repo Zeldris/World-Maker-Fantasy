@@ -1,6 +1,9 @@
 # Retro y opt-tokens · `claude/wonderful-volta-662qt8` (2026-10-25)
 
-**Estado:** pendiente de la decisión de la usuaria.
+**Estado:** aprobada entera por la usuaria (2026-10-25) y aplicada en la rama: 1 → `QA-240` (abierta, dentro de
+`VOZ-6`), 2 → `QA-241` (con `mapa-agente.py` ampliado a `image-generator/` y `voice-generator/`, que no los miraba),
+3 → `QA-242`. La usuaria decide además esperar a su proyecto genérico de voces y traer su versión adaptada
+(`VOZ-6`).
 
 Sesión de `VOZ-1`…`VOZ-6`. Se montó `voice-generator/` como `image-generator/` (scripts, fichas, efectos y
 `roadmap-voces.md`), se dejó en pausa hasta traer el repo aparte de la usuaria y se lleva a `main`.
