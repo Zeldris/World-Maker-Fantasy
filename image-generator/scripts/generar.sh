@@ -21,7 +21,8 @@ VAE=${VAE:-full_encoder_small_decoder.safetensors}
 
 disp() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
 [ "$(disp)" -ge $MIN_INICIO_MB ] || { echo "ABORTO: solo $(disp) MB libres (<$MIN_INICIO_MB). Cierra navegador/Steam/juego."; exit 3; }
-cargados() { curl -s --max-time 2 localhost:11434/api/ps | python3 -c 'import json,sys; [print(m["name"]) for m in json.load(sys.stdin).get("models", [])]' 2>/dev/null; }
+# Solo cuentan los que ocupan memoria (size): el Ollama simulado de los tests (tools/ci/mock-ollama.mjs) los lista sin ella.
+cargados() { curl -s --max-time 2 localhost:11434/api/ps | python3 -c 'import json,sys; [print(m["name"]) for m in json.load(sys.stdin).get("models", []) if m.get("size", 0) > 0]' 2>/dev/null; }
 # CFG-43: LIBERAR_OLLAMA=1 (lo pone la interfaz) descarga los modelos en vez de abortar; keep_alive 0 los saca de memoria.
 if [ "${LIBERAR_OLLAMA:-0}" = 1 ]; then
   # El de embeddings no acepta /api/generate: se descarga con /api/embed. La descarga es asíncrona: hasta 15 s.

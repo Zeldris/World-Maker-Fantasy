@@ -15,7 +15,7 @@ export LIBERAR_OLLAMA=${LIBERAR_OLLAMA:-1}
 libre() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
 lista() {  # memoria suficiente y, si no se libera Ollama, Ollama vacío
   [ "$(libre)" -ge "${LIBRE:-7200}" ] || return 1
-  [ "$LIBERAR_OLLAMA" = 1 ] || ! curl -s --max-time 5 localhost:11434/api/ps | grep -q '"name"'
+  [ "$LIBERAR_OLLAMA" = 1 ] || ! curl -s --max-time 5 localhost:11434/api/ps | grep -q '"size": *[1-9]'
 }
 while IFS=$'\t' read -r nombre pasos prompt vars extra; do
   [[ -z $nombre || $nombre == \#* ]] && continue
