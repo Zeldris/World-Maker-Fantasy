@@ -1610,6 +1610,9 @@ Retro de la difusión (usuaria, 2026-10-25; [`retro-2026-10-25-difusion.md`](../
 - ~~**QA-238 · «Lleva a `main`» con la usuaria fuera**~~ ✅ 2026-10-25: regla en `AGENTS.md` («Ramas y `main`»): todo a un paso y su decisión sobre la retro lo lleva a `main`.
 - ~~**QA-239 · `ci-local.sh` en un worktree, sin rojos falsos**~~ ✅ 2026-10-25: `test_commit_msg` usa un `hooksPath` solo con `commit-msg` (el pre-commit miraba el índice del repo real), `test_host` acepta el worktree de `logs/` y `ci-local.sh` quita los enlaces de `node_modules` y `.env` antes de `npm ci` (vaciaba el `node_modules` de la copia principal y metía su `.env`). Queda (leve): `test_host` en un worktree de subagente con cambios sin commit sigue dando rojo (host.sh se niega, a propósito).
 
+Lore de la enciclopedia (usuaria, 2026-10-25, rama `claude/lore-enciclopedia`):
+- **QA-240 · Asentar el lore de la enciclopedia** 🚧 en curso: auditar cada sección (fauna y flora, NPC, razas y personajes, lugares, facciones e historia, objetos y recetas, clases, combate y reputación) contra el canon de `docs/rpgtarkor/`; cada arreglo, propuesto y aplicado solo con el sí de la usuaria, y apuntado en [`lore-hallazgos.md`](../registros/lore-hallazgos.md). **M**
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
