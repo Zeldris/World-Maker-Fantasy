@@ -118,8 +118,9 @@ niños. Reglas:
 ```sh
 cd ~/qwentts
 voz=~/proyecto/voces/orcos/guerrero-1                        # carpeta de la voz
-# instruct = las 12 claves en una frase (lo mismo hace voice-generator/scripts/disenar.sh)
-jq -r '"\(.gender), \(.age), \(.pitch) pitch, \(.speed) speed, \(.volume) volume, \(.clarity), \(.fluency), \(.accent) accent, \(.texture) texture, \(.emotion), \(.tone) tone, \(.personality) personality"' \
+# instruct = las 12 claves en una frase, sin las comas de dentro de cada valor (lo mismo hace
+# voice-generator/scripts/disenar.sh)
+jq -r 'map_values(tostring | gsub(","; "")) | "\(.gender), \(.age), \(.pitch) pitch, \(.speed) speed, \(.volume) volume, \(.clarity), \(.fluency), \(.accent) accent, \(.texture) texture, \(.emotion), \(.tone) tone, \(.personality) personality"' \
   "$voz/diseno.json" > /tmp/instruct.txt
 jq -r .texto_prueba "$voz/diseno.json" > /tmp/texto_prueba.txt
 for s in 11 22 33 44 55; do

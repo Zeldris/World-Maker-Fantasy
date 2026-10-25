@@ -26,8 +26,9 @@ CLAVES = [('gender', ''), ('age', ''), ('pitch', ' pitch'), ('speed', ' speed'),
           ('tone', ' tone'), ('personality', ' personality')]
 # Contra la deriva infantil (doc 02, «Evitar la deriva infantil»): edad adulta explícita y sin estas palabras.
 EDADES = ('adult', 'middle-aged', 'elderly')
-PROHIBIDAS = ('bright', 'cute', 'small', 'light', 'childlike', 'high-pitched', 'child', 'kid', 'teen', 'young')
-TONOS_ALTOS = ('high', 'very high')
+PROHIBIDAS = ('bright', 'cute', 'small', 'light', 'childlike', 'high-pitched', 'child', 'kid', 'teen', 'young', 'youth')
+# Sus formas («childish», «younger», «teenage», «youthful»); «-ly» no, que «lightly» es otra cosa.
+SUFIJOS = r'(?:s|er|ers|est|ish|ness|ful|like|hood|age|ager|agers)?'
 
 # tipo → (parámetros con su valor por defecto, None = obligatorio; plantilla de SoX). None en la plantilla: SoX no
 # lo hace y se salta con aviso (lo hará Web Audio, VOZ-10).
@@ -75,6 +76,8 @@ def sox(cadena, avisar=print):
 
 
 def errores_ficha(ficha):
+    if not isinstance(ficha, dict):
+        return ['la ficha tiene que ser un objeto JSON']
     err = [f'falta «{k}»' for k, _ in CLAVES if not str(ficha.get(k, '')).strip()]
     err += [f'clave desconocida «{k}»' for k in ficha if k not in dict(CLAVES) and k not in ('semilla', 'texto_prueba')]
     if not isinstance(ficha.get('semilla'), int):
@@ -82,22 +85,25 @@ def errores_ficha(ficha):
     if not str(ficha.get('texto_prueba', '')).strip():
         err.append('falta «texto_prueba»')
     edad = str(ficha.get('age', '')).lower()
-    if edad and not any(e in edad for e in EDADES):
+    if edad and (not any(e in edad for e in EDADES) or re.search(r'\b(?:non|not|pre|sub)[- ]?adult', edad)):
         err.append(f'la edad «{edad}» no es adulta y explícita ({", ".join(EDADES)})')
-    if str(ficha.get('pitch', '')).lower() in TONOS_ALTOS:
+    if re.search(r'\bhigh', str(ficha.get('pitch', '')).lower()):
         err.append('tono agudo en el diseño: se diseña medio o grave y se sube con efectos')
     for k, _ in CLAVES:
         for p in PROHIBIDAS:
-            if re.search(rf'\b{re.escape(p)}\b', str(ficha.get(k, '')).lower()):
+            if re.search(rf'\b{re.escape(p)}{SUFIJOS}\b', str(ficha.get(k, '')).lower()):
                 err.append(f'«{p}» en «{k}» lleva a la deriva infantil (mejor airy, breathy, soft-spoken, whispering)')
     return err
 
 
 def errores_cadena(cadena):
-    if not isinstance(cadena.get('cadena'), list):
+    if not isinstance(cadena, dict) or not isinstance(cadena.get('cadena'), list):
         return ['falta la lista «cadena»']
     err = []
     for i, ef in enumerate(cadena['cadena'], 1):
+        if not isinstance(ef, dict):
+            err.append(f'efecto {i}: tiene que ser un objeto con «tipo»')
+            continue
         tipo = ef.get('tipo')
         if tipo not in EFECTOS:
             err.append(f'efecto {i}: tipo desconocido «{tipo}» ({", ".join(EFECTOS)})')
@@ -111,14 +117,17 @@ def errores_cadena(cadena):
 
 
 def razas():
-    """Los slugs de BERIG_RAZAS (el NPC habla con la voz de su raza, doc 02 «Asignar la voz»), más el narrador."""
+    """Los slugs de BERIG_RAZAS (el NPC habla con la voz de su raza, doc 02 «Asignar la voz»), más el narrador; None si
+    no se encuentran (comprobar lo da como fallo)."""
     try:
         with open(RAZAS_TS, encoding='utf-8') as f:
             texto = f.read()
     except OSError:
         return None
+    if 'export const BERIG_RAZAS' not in texto:
+        return None
     # Solo el array: detrás vienen BERIG_PERSONAJES, con slugs al mismo nivel.
-    bloque = texto.split('export const BERIG_RAZAS', 1)[-1].split('\n];', 1)[0]
+    bloque = texto.split('export const BERIG_RAZAS', 1)[1].split('\n];', 1)[0]
     # Las razas son los objetos de primer nivel: su slug va con 4 espacios; las variantes, con más.
     return set(re.findall(r"^ {4}slug: '([a-z0-9-]+)'", bloque, re.M)) | {'narrador'}
 
@@ -126,6 +135,8 @@ def razas():
 def comprobar(carpeta=G):
     fallos = []
     conocidas = razas()
+    if conocidas is None:
+        fallos.append(f'no se leen las razas de BERIG_RAZAS en {os.path.relpath(RAZAS_TS, G)}')
     voces = os.path.join(carpeta, 'voces')
     for raza in sorted(os.listdir(voces)) if os.path.isdir(voces) else []:
         d = os.path.join(voces, raza)
@@ -144,14 +155,17 @@ def comprobar(carpeta=G):
                     if a == 'efectos.json':
                         fallos += [f'{rel}/{a}: {e}' for e in errores_cadena(cargar(ruta))]
                     elif a == 'diseno.json':
-                        fallos += [f'{rel}/{a}: {e}' for e in errores_ficha(cargar(ruta))]
+                        ficha = cargar(ruta)
+                        fallos += [f'{rel}/{a}: {e}' for e in errores_ficha(ficha)]
+                        if not isinstance(ficha, dict):
+                            continue
                         ref = os.path.join(raiz, 'referencia.txt')
                         if not os.path.exists(ref):
                             fallos.append(f'{rel}: falta referencia.txt (el texto que se dirá en la referencia)')
                             continue
                         with open(ref, encoding='utf-8') as f:
                             dice = f.read().strip()
-                        if dice != str(cargar(ruta).get('texto_prueba', '')).strip():
+                        if dice != str(ficha.get('texto_prueba', '')).strip():
                             # Las tomas dicen texto_prueba: la referencia clonada tiene que decir lo mismo.
                             fallos.append(f'{rel}: referencia.txt no dice lo mismo que «texto_prueba»')
                 except (ValueError, OSError) as e:

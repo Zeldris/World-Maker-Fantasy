@@ -18,7 +18,7 @@ if [ -f "$EF" ]; then
   sox "$IN" "$OUT" "${ARGS[@]}" || { echo "ABORTO: sox falló con: ${ARGS[*]}"; exit 4; }
   echo "con efectos de $R: $OUT (sox ${ARGS[*]})"
 else
-  OUT=$IN; echo "$R no tiene efectos.json: suena tal cual"
+  OUT=${3:-$IN}; [ "$OUT" = "$IN" ] || cp "$IN" "$OUT"; echo "$R no tiene efectos.json: suena tal cual ($OUT)"
 fi
 [ "${REPRODUCIR:-1}" = 1 ] && command -v play > /dev/null && play -q "$OUT"
 exit 0

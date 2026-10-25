@@ -18,14 +18,17 @@ MODELOS=${MODELOS:-"qwen-tokenizer-12hz-Q8_0.gguf qwen-talker-0.6b-base-Q8_0.ggu
 QUE=${1:-todo}
 
 motor() {
-  for h in git cmake c++ glslc; do command -v $h > /dev/null || { echo "ABORTO: falta $h (apt install, ver la cabecera)"; exit 3; }; done
+  for h in git cmake c++; do command -v $h > /dev/null || { echo "ABORTO: falta $h (apt install, ver la cabecera)"; exit 3; }; done
   if [ -d "$QT/.git" ]; then git -C "$QT" pull --ff-only && git -C "$QT" submodule update --init --recursive
   else git clone --recurse-submodules "$REPO" "$QT"; fi || { echo "ABORTO: no se pudo clonar o actualizar $REPO"; exit 4; }
   echo "motor: $(git -C "$QT" log -1 --format='%h %cs')"
-  cmake -S "$QT" -B "$QT/build-vulkan" -DGGML_VULKAN=ON && cmake --build "$QT/build-vulkan" --config Release -j"$(nproc)" \
-    || echo "AVISO: falló la compilación con Vulkan; queda la de CPU (DISPOSITIVO=CPU)"
-  cmake -S "$QT" -B "$QT/build-cpu" -DGGML_BLAS=ON && cmake --build "$QT/build-cpu" --config Release -j"$(nproc)" \
-    || { echo "ABORTO: falló también la compilación de CPU"; exit 4; }
+  # Release en la configuración: con Makefiles, `--config Release` de --build no hace nada y saldría sin optimizar.
+  if command -v glslc > /dev/null; then
+    cmake -S "$QT" -B "$QT/build-vulkan" -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON && cmake --build "$QT/build-vulkan" -j"$(nproc)" \
+      || echo "AVISO: falló la compilación con Vulkan; queda la de CPU (DISPOSITIVO=CPU)"
+  else echo "AVISO: sin glslc no hay compilación con Vulkan; queda la de CPU (DISPOSITIVO=CPU)"; fi
+  cmake -S "$QT" -B "$QT/build-cpu" -DCMAKE_BUILD_TYPE=Release -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS \
+    && cmake --build "$QT/build-cpu" -j"$(nproc)" || { echo "ABORTO: falló también la compilación de CPU"; exit 4; }
   for b in build-vulkan build-cpu; do
     for x in qwen-tts qwen-codec tts-server; do [ -x "$QT/$b/$x" ] && echo "ok: $b/$x" || echo "falta: $b/$x"; done
   done
@@ -50,6 +53,8 @@ case $QUE in
 esac
 # Comprobación de carga: sin -i, qwen-codec solo carga el tokenizador.
 B=$QT/build-cpu; [ -x "$QT/build-vulkan/qwen-codec" ] && B=$QT/build-vulkan
-[ -x "$B/qwen-codec" ] && [ -s "$M/qwen-tokenizer-12hz-Q8_0.gguf" ] && \
-  LD_LIBRARY_PATH="$B" "$B/qwen-codec" --model "$M/qwen-tokenizer-12hz-Q8_0.gguf" > /dev/null 2>&1 && echo "codec: carga bien"
+if [ -x "$B/qwen-codec" ] && [ -s "$M/qwen-tokenizer-12hz-Q8_0.gguf" ]; then
+  LD_LIBRARY_PATH="$B" "$B/qwen-codec" --model "$M/qwen-tokenizer-12hz-Q8_0.gguf" > /dev/null 2>&1 && echo "codec: carga bien" \
+    || { echo "ABORTO: qwen-codec no carga el tokenizador (¿GGUF a medias o faltan .so en $B?)"; exit 4; }
+else echo "AVISO: sin qwen-codec o sin el tokenizador no se comprueba la carga"; fi
 echo "Siguiente: voice-generator/scripts/banco.sh (VOZ-2)"

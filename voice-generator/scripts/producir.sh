@@ -27,6 +27,9 @@ while IFS= read -r frase || [ -n "$frase" ]; do
   registrar "$D/registro.tsv" $'fecha\tnombre\tqué\tmodelo\tdispositivo\tsemilla\tsalida\tsegundos\tmin_libre_mb' \
     "$(date -Iseconds)"$'\t'"$N"$'\tfrase\t'"$BASE"$'\t'"$DISPOSITIVO"$'\t'"${SEMILLA:-7}"$'\t'"$RC"$'\t'"$(( $(date +%s) - INI ))"$'\t'"$MIN"
   echo "frase $n: $D/frases/$N.wav salida=$RC ${RTF:-sin RTF} min_libre=${MIN}MB"
-  [ "${EFECTOS:-0}" = 1 ] && [ $RC = 0 ] && REPRODUCIR=0 "$G/scripts/escuchar.sh" "$R" "$D/frases/$N.wav" > /dev/null
+  if [ "${EFECTOS:-0}" = 1 ] && [ $RC = 0 ]; then
+    REPRODUCIR=0 "$G/scripts/escuchar.sh" "$R" "$D/frases/$N.wav" > "$D/logs/$N-efectos.log" 2>&1 \
+      || echo "AVISO: sin efectos en la frase $n (ver $D/logs/$N-efectos.log)"
+  fi
 done < "$FR"
 echo "$n frases en $D/frases/"

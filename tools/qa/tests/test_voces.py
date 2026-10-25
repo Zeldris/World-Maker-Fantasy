@@ -2,9 +2,12 @@
 
 El motor (qwentts.cpp) solo corre en la Deck; lo que se prueba aquí son los datos que le llegan.
 """
+import contextlib
+import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -55,8 +58,23 @@ class Ficha(unittest.TestCase):
         self.assertEqual(voces.errores_ficha({**FICHA, 'texture': 'lightly rough'}), [])
 
     def test_tono_agudo(self):
-        err = voces.errores_ficha({**FICHA, 'pitch': 'high'})
-        self.assertTrue(any('tono agudo' in e for e in err), err)
+        for tono in ('high', 'fairly high', 'medium-high', 'higher'):
+            err = voces.errores_ficha({**FICHA, 'pitch': tono})
+            self.assertTrue(any('tono agudo' in e for e in err), (tono, err))
+
+    def test_formas_de_las_palabras_prohibidas(self):
+        for clave, valor, palabra in (('texture', 'youthful', 'youth'), ('personality', 'childish', 'child'),
+                                      ('tone', 'younger', 'young'), ('emotion', 'teenage angst', 'teen')):
+            err = voces.errores_ficha({**FICHA, clave: valor})
+            self.assertTrue(any(f'«{palabra}» en «{clave}»' in e for e in err), (valor, err))
+
+    def test_edad_negada(self):
+        for edad in ('non-adult', 'not adult', 'pre-adult'):
+            err = voces.errores_ficha({**FICHA, 'age': edad})
+            self.assertTrue(any('no es adulta' in e for e in err), (edad, err))
+
+    def test_ficha_que_no_es_objeto(self):
+        self.assertEqual(voces.errores_ficha([]), ['la ficha tiene que ser un objeto JSON'])
 
     def test_falta_clave_clave_desconocida_y_semilla_no_entera(self):
         ficha = {k: v for k, v in FICHA.items() if k != 'accent'}
@@ -77,6 +95,10 @@ class Cadena(unittest.TestCase):
 
     def test_sin_lista(self):
         self.assertEqual(voces.errores_cadena({}), ['falta la lista «cadena»'])
+        self.assertEqual(voces.errores_cadena([]), ['falta la lista «cadena»'])
+
+    def test_efecto_que_no_es_objeto(self):
+        self.assertEqual(voces.errores_cadena({'cadena': ['tono']}), ['efecto 1: tiene que ser un objeto con «tipo»'])
 
 
 class Ordenes(unittest.TestCase):
@@ -93,7 +115,10 @@ class Ordenes(unittest.TestCase):
     def test_semilla_sin_campo_aborta(self):
         ruta = os.path.join(self.dir, 'diseno.json')
         escribir(ruta, '{}')
-        self.assertEqual(voces.main(['voces.py', 'semilla', ruta, '33']), 1)
+        salida = io.StringIO()
+        with contextlib.redirect_stderr(salida):
+            self.assertEqual(voces.main(['voces.py', 'semilla', ruta, '33']), 1)
+        self.assertIn('no tiene una «semilla» que cambiar', salida.getvalue())
 
     def voz(self, raza, voz='v1', texto='Hola.', efectos=True):
         d = os.path.join(self.dir, 'voces', raza)
@@ -127,6 +152,23 @@ class Ordenes(unittest.TestCase):
 
     def test_las_fichas_reales_estan_bien(self):
         self.assertEqual(voces.comprobar(), [])
+
+    def test_comprobar_ficha_que_no_es_objeto(self):
+        self.voz('orcos')
+        escribir(os.path.join(self.dir, 'voces', 'orcos', 'v1', 'diseno.json'), '[]')
+        self.assertEqual(voces.comprobar(self.dir), ['voces/orcos/v1/diseno.json: la ficha tiene que ser un objeto JSON'])
+
+
+class Lanzar(unittest.TestCase):
+    def test_la_orden_recibe_la_entrada_redirigida(self):
+        # qwen-tts lee el texto por stdin: `lanzar <log> qwen-tts … < frase.txt` en segundo plano no lo perdía.
+        with tempfile.TemporaryDirectory(prefix='qa-lanzar-') as d:
+            escribir(os.path.join(d, 'frase.txt'), 'El viento trae ceniza.\n')
+            comun = os.path.join(RAIZ, 'voice-generator', 'scripts', 'comun.sh')
+            r = subprocess.run(['bash', '-c', f'. "{comun}"; MIN_VIGILA_MB=0; lanzar "$1/log" cat < "$1/frase.txt"', '_', d],
+                               capture_output=True, text=True, timeout=30)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(leer(os.path.join(d, 'log')), 'El viento trae ceniza.\n')
 
 
 if __name__ == '__main__':

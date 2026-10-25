@@ -49,10 +49,12 @@ una_a_la_vez() {
 # lanzar <log> <orden…>: la corre con timeout y el vigilante; deja en MIN la memoria libre mínima y devuelve su salida.
 lanzar() {
   local log=$1; shift
-  LD_LIBRARY_PATH="$(bin_dir)" timeout "$TOPE" "$@" > "$log" 2>&1 &
+  # Sin `<&0`, bash da /dev/null como entrada a lo que va en segundo plano y qwen-tts no recibiría el texto
+  # (`lanzar … < frase.txt`).
+  LD_LIBRARY_PATH="$(bin_dir)" timeout "$TOPE" "$@" > "$log" 2>&1 <&0 &
   local pid=$!
   # $pid es el de `timeout`: un SIGKILL a él no llega al hijo, que seguiría con la memoria. Primero el hijo.
-  MIN=99999
+  MIN=$(disp)   # si muere antes de la primera vuelta, la de al empezar
   while kill -0 $pid 2>/dev/null; do
     local m; m=$(disp); [ "$m" -lt $MIN ] && MIN=$m
     if [ "$m" -lt $MIN_VIGILA_MB ]; then pkill -9 -P $pid; kill -9 $pid; echo "VIGILANTE: matado con $m MB libres"; break; fi

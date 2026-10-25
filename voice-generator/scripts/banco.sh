@@ -39,8 +39,9 @@ for DISPOSITIVO in $DISPOSITIVOS; do
   # VoiceDesign también se mide: es el que diseña las voces (en desarrollo, no en la máquina del jugador).
   lanzar "$D/logs/voicedesign-$DISPOSITIVO.log" "$B/qwen-tts" --model "$M/$DISENO" --codec "$M/$CODEC" \
     --device "$DISPOSITIVO" --instruct "$INS" --lang "$LANG_VOZ" --seed "$SEM" -o "$D/voicedesign-$DISPOSITIVO.wav" < "$D/referencia.txt"
-  fila "1.7b-voicedesign" "$DISPOSITIVO" referencia 1 "$D/logs/voicedesign-$DISPOSITIVO.log" $?
-  [ -s "$D/referencia.wav" ] || cp "$D/voicedesign-$DISPOSITIVO.wav" "$D/referencia.wav" 2>/dev/null
+  RC=$?; fila "1.7b-voicedesign" "$DISPOSITIVO" referencia 1 "$D/logs/voicedesign-$DISPOSITIVO.log" $RC
+  # Solo una toma que acabó bien: la que mató el vigilante o el timeout puede estar a medias.
+  [ -s "$D/referencia.wav" ] || { [ $RC = 0 ] && cp "$D/voicedesign-$DISPOSITIVO.wav" "$D/referencia.wav" 2>/dev/null; }
 done
 [ -s "$D/referencia.wav" ] || { echo "ABORTO: VoiceDesign no dio la referencia (ver $D/logs/)"; exit 4; }
 
