@@ -1,6 +1,6 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { PUERTA_INTERIOR, enFila, posicionPuertaAInterior } from './puertasInterior.js';
-import { celdaDePixel, posicionesDeSalidas, type Celda } from './zonaPosicion.js';
+import { celdaDePixel, pixelDeCelda, posicionesDeSalidas, type Celda } from './zonaPosicion.js';
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -58,4 +58,31 @@ export async function celdasDeEntrada(db: Db, saveId: string, locationId: string
 /// La celda está a `RADIO_SEGURO_ENTRADA` casillas o menos (en cualquier dirección) de una entrada.
 export function enRadioSeguro(celda: Celda, entradas: Celda[]): boolean {
   return entradas.some((e) => Math.max(Math.abs(e.col - celda.col), Math.abs(e.row - celda.row)) <= RADIO_SEGURO_ENTRADA);
+}
+
+/// P116 (reabierto 2026-10-21): lo que cambia en la partida cuando la jugadora huye con éxito de un
+/// combate o de «te corta el paso». Vuelve al punto de entrada guardado, pero si esa casilla queda
+/// fuera del radio seguro de las entradas (`enRadioSeguro`), a la entrada más cercana, para que el
+/// mismo grupo no la vuelva a cortar el paso a la primera casilla. Quita la oferta de combate forzado
+/// y el camino pendiente: sin ello, el servidor sigue contestando 409 «no te deja marcharte» a un
+/// combate que ya no existe. Sin entrada guardada (partida previa) no mueve a nadie.
+export async function datosDeHuidaDeZona(
+  db: Db,
+  saveId: string,
+  locationId: string | null,
+  entrada: { x: number | null; y: number | null },
+): Promise<Prisma.SaveUncheckedUpdateInput> {
+  const limpiar = { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull, zonaCaminoPendiente: Prisma.JsonNull };
+  if (entrada.x == null || entrada.y == null) return limpiar;
+  let destino = { x: entrada.x, y: entrada.y };
+  if (locationId) {
+    const entradas = await celdasDeEntrada(db, saveId, locationId);
+    const celda = celdaDePixel(destino);
+    if (entradas.length > 0 && !enRadioSeguro(celda, entradas)) {
+      const distancia = (e: Celda) => Math.max(Math.abs(e.col - celda.col), Math.abs(e.row - celda.row));
+      const cercana = entradas.reduce((mejor, e) => (distancia(e) < distancia(mejor) ? e : mejor));
+      destino = pixelDeCelda(cercana);
+    }
+  }
+  return { ...limpiar, zonaPosX: destino.x, zonaPosY: destino.y };
 }

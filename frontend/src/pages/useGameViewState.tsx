@@ -1,5 +1,6 @@
 import { useNoticiasMundo } from '../hooks/useNoticiasMundo'
 import { useGamePhase } from '../hooks/useGamePhase'
+import { useEncuentroForzado } from '../hooks/useEncuentroForzado'
 import { usePresence } from '../hooks/usePresence'
 import { accionDeTecla } from '../lib/atajos'
 import { useAjustes } from '../context/useAjustes'
@@ -511,7 +512,8 @@ export function useGameViewState() {
   const anyModalOpen = anyActionModalOpen || !!detailTarget || reinoVisible || combat.combatOpen
   // Un agresivo te corta el paso (2026-09-28) — la brújula se oculta hasta reaccionar (el backend
   // rechaza igualmente moverse con 409, esto solo evita ofrecer algo que no se puede hacer).
-  const combateForzadoPendiente = characterLog.some((e) => e.dynamicModeOffer?.combateForzado)
+  // P116: el servidor decide con la oferta guardada, no con la tarjeta del registro; cuentan las dos.
+  const { encuentroForzado: combateForzadoPendiente, guardarOferta: guardarOfertaForzada } = useEncuentroForzado(characterLog)
   // Elecciones obligatorias a la vista (cuando la cola de UX-10 las deja salir).
   const claseVisible = clasePendiente && decisiones.mostrar
   const especializacionVisible = especializacionPendiente && decisiones.mostrar
@@ -666,6 +668,7 @@ export function useGameViewState() {
     // Setter CRUDO (no el wrapper `setCharacterLog`) — carga inicial/recarga completa, ninguna de
     // estas entradas debe animarse como "recién vista" (ver comentario de `liveRevealedIdsRef`).
     setCharacterLogRaw(save.characterLog)
+    guardarOfertaForzada(save.pendingDynamicModeOffer)
     setWorldLog(save.worldLog)
     setKingdomLog(save.kingdomLog)
     inventarioConocidoRef.current = new Set(save.inventory.map((i) => i.id))

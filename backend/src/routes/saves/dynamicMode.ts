@@ -25,6 +25,7 @@ import { abrirCombateDePersonas, grupoDePersona } from '../../services/combatePe
 import { iniciarCaza, accionEnDiarioDeCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
+import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
 /// al final de un turno normal (`dynamicModeOffer`, turnResolution.ts), nunca lo interrumpe. Estas
@@ -458,10 +459,12 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const text = `${save.characterName} logra alejarse ${deNombre(nombreDeEncuentro(pending.targetName, pending.cantidad))} sin que llegue a haber combate.`;
       // Huir vuelve a la ENTRADA de la zona, igual que las dos huidas de session.ts (antes el
       // jugador se quedaba pegado al agresor y el siguiente paso volvía a toparse con él).
+      // P116: la misma función que las huidas de session.ts (entrada dentro del radio seguro, sin oferta).
+      const datosHuida = await datosDeHuidaDeZona(prisma, save.id, save.currentLocationId, { x: save.zonaPosEntradaX, y: save.zonaPosEntradaY });
       await prisma.$transaction([
         prisma.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } }),
         prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } }),
-        prisma.save.update({ where: { id: save.id }, data: { zonaPosX: save.zonaPosEntradaX ?? undefined, zonaPosY: save.zonaPosEntradaY ?? undefined } }),
+        prisma.save.update({ where: { id: save.id }, data: datosHuida }),
       ]);
       return { narration: text, opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel, newQuestOfferInfo: null };
     }
