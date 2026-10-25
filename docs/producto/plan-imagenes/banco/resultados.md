@@ -73,3 +73,19 @@ cuantización. Pastos y `cine2` con Z-Image, pendientes: piden 7,2 GB libres al 
 
 Memoria: klein baja la libre ~2,2 GB y Z-Image ~3,5 GB; con el vigilante de 1500 MB, klein arranca con 5 GB
 (`MIN_INICIO_MB=5000`, `LIBRE=5200`).
+
+## r7 · Robustez con las semillas 7 y 11 (klein, `cine2`, euler, 6 pasos)
+
+| Prueba | Lectura |
+|---|---|
+| aullador `cine2` | colmillos curvos con la 7, cortos con la 11; con las dos, el lomo lleno de gotas rojas |
+| aullador `polvo` | sin gotas con las tres semillas: tierra rojiza mate apelmazada; los colmillos, iguales que `cine2` con la misma semilla |
+| pastos | misma escena con las dos: Cuernahoja en primer plano, manada lejos, montañas con polvo rojo; con la 11, más de vaca que de gacela |
+| hulki | muy estable: manto de hojas, colgante de hueso, plataforma atada; la mejor de la tanda |
+| cardo | estable: bulbo plateado, semillas negras en el tallo, polvo al aire |
+
+**Veredicto:** la configuración aguanta con otras semillas. La longitud de los colmillos depende de la semilla, no
+del texto: el polvo mate entra en el estilo ganador. Toca generar 2-3 semillas por imagen y elegir.
+
+Z-Image Q6 con `cine2` (aullador): colmillos curvos, manada y luz muy logradas, más pictórico y saturado que
+klein; las garras salen como anillas. ~7 min.
