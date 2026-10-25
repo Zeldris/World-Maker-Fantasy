@@ -1,60 +1,43 @@
-**Título:** Arreglos de la puerta de pruebas: reabiertos P27, P99, P158, P169; P275-P303, Casa de obras y retro (QA-201 a QA-207)
+# QA-235: carpeta de difusión y skill gw-media-content
 
-## Summary
+## Qué cambia
 
-Arregla lo que encontró la puerta de pruebas del 0.3 ([hallazgos](../../pruebas-0.3-hallazgos.md)): los cuatro reabiertos,
-el texto de P70 y los nuevos P275-P303. P278, P279, P288 (falta Ollama real) y P300 quedan en parte.
+- **`docs/difusion/`**: contenido para publicar en X, LinkedIn, Reddit, Discord y el Portal Galivelop, con una carpeta
+  por actualización. Incluye:
+  - un `README.md` con las reglas;
+  - una `guia-canales.md` con el tono, la longitud y las imágenes de cada canal;
+  - la `_plantilla/`;
+  - el ejemplo `2026-10-23-mundo-vivo/`, con su ficha de datos con fuentes, los cinco canales en `es` y `en` (`gl`
+    solo en el Portal) y tres imágenes propias en `medios/`: tarjeta, diagrama y captura del mapa del Pozo.
+- **Skill `gw-media-content`** (`.claude/skills/gw-media-content/`): crea una carpeta o completa una existente con lo
+  que aún no se ha publicado, para los canales que se pidan.
+  - `render.mjs` convierte las fuentes HTML, SVG, PNG o JPG de `medios/fuente/` en WebP de 1600 px y en su `-mini` de
+    720 px.
+  - `comprobar.py` busca huecos de la plantilla, jerga interna, mensajes de X de más de 280, un hilo fuera de 2 a 4
+    mensajes, un JSON del Portal inválido e imágenes sin renderizar, sin listar o sin texto alternativo.
+  - La nota de WMF (`.claude/gw/gw-media-content.md`) explica cómo sacar capturas con los escenarios guardados.
+- **Comprobaciones:** `comprobar.py` entra en el check (`.claude/gw.json`), y sus 11 tests entran en `ci.yml` y en
+  `tools/qa/ci-local.sh`.
+- **Roadmap, bitácora y retro:** `QA-235` está tachada en `roadmap-front.md` y en `21-roadmap.md`, y la retro está en
+  `docs/registros/retro-2026-10-25-difusion.md`.
 
-```text
-Reino
-  Almacén y depositar        P275 P276          tope y avisos coherentes
-  Edificios                  P277 P282 P287 P301 requisitos, Jaula→Corrales, Mercado DAÑADO cuenta
-  Casa de obras (nuevo)      P302               cola de obras con constructores (nivel → velocidad,
-                                                tier por nivel de la Casa: 1→T1-3, 2→T4-6, 3→T7-9)
-  Partidas y súbditos        P280 P281 P283     caza, menores fuera, texto sin nadie libre
-  Defensa y milicia          P284 P285 P295 P296 milicia solo de la Capital, reparar, sin trabajadores
-  Vasallaje y guerra         P286 P297 P298     deuda visible, cuota 0 sin patrulla, orden estable
-  Rebelión                   P299               un Ayuntamiento DAÑADO sigue siendo la Capital
-Personajes y combate         P27 P289 P291 P292 P293 P303   avisos, aprobación, títulos, ficha del rival
-Interfaz                     P99 P158 P169 P290 P294        oficios, dificultad, mapa, expediciones
-```
+## Evidencia
 
-Decisiones de la usuaria (2026-10-22): tope de tier de la Casa de obras; una Capital sin Torre licencia la milicia
-tras el asalto; fracción de la cuota de la semana, la migración no cobra, constructores sin obra recogen comida.
+- No toca `backend/src` ni `frontend/src`. El `tsc` y el `oxlint` de backend y frontend del check siguen en verde.
+- `python3 -m unittest discover -s .claude/skills/gw-media-content/scripts`: 11 tests OK. Un test nuevo falla sin su
+  arreglo, según `rojo-sin-arreglo.sh`.
+- `comprobar.py` da OK en el ejemplo.
+- La revisión de código antes de `main` dio 13 hallazgos, todos arreglados en `a9eb7bbf`.
 
-Antes del PR, `/code-review --max-findings all` con arreglos fusionados (vasallaje, Casa de obras, rebelión, milicia);
-lo leve, como pendiente en la bitácora. Retro (`retro-2026-10-22-frontend-improvements.md`):
+## Riesgo
 
-```diff
- .claude/skills/orchestrate-dealer/SKILL.md
-+  arreglos de una revisión con sonnet; el revisor, opus           (QA-201)
-+  el arreglo de un archivo lo hace la principal                   (QA-202)
-+  antes del PR, solo lo grave; lo leve a la bitácora              (QA-203)
-+  el encargo comprueba que parte de origin/<rama>                 (QA-204)
- roadmap-front.md: QA-205 test intermitente, QA-206 fusionar.sh, QA-207 medir.py → paso 3.4
-```
+Sin migraciones y sin cambios en las partidas guardadas. Solo hay documentación, una skill y una comprobación nueva en
+el check.
 
-## Evidence
+## Queda
 
-- **Antes:** P275-P303 abiertos en el registro; P27, P99, P158, P169 reabiertos.
-  **Después:** cada uno con su test (p. ej. `turn.integration.test.ts` P299 con `ACTIVO` y `DANADO`,
-  `casaDeObras.integration.test.ts`, `vasallaje` con cuota 0).
-- backend: `tsc` 0 errores · `oxlint` 0 errores · `vitest` 311 archivos, 3772 tests en verde.
-- frontend: `tsc` 0 errores · `oxlint` 0 errores · `vitest` 156 archivos, 721 tests en verde.
-- Un test de cronista (`decisionesFaccion`/`deudaDeVida`) falla a veces en la suite completa (`QA-205`).
-
-## Merge Danger
-
-**Door:** de un solo sentido.
-
-Dos migraciones: `20261022120000_casa_de_obras` (columnas `nivelConstructor`, `xpConstructor` en `Subject`, tabla
-`ObraCola`) y `20261022130000_obra_avance_por_velocidad` (`diasHechos` pasa a `DOUBLE PRECISION`). Solo añaden, con
-valores por defecto: las partidas guardadas cargan igual.
-
-**Blast Radius:** Reino.
-
-Tick diario (vasallaje, rebelión, milicia, obras) y pantallas del Reino. Una partida vieja empieza con la cola vacía y
-constructores de nivel 1.
+- La usuaria valida el estilo del ejemplo antes de publicar nada.
+- Las propuestas de la retro esperan su decisión.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
