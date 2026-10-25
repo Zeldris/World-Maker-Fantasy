@@ -43,6 +43,12 @@ desde el panel vive en tablas que siembran.
 - **IMG-6 · Las 5 fichas piloto con semilla fija** [A] (usuaria, 2026-10-25): aullador macho y hembra, Cardo Brújula,
   Pastos de la Deriva y Hulki, sin `-r`; el aullador además en segunda pasada sobre su zona (`-r` de la zona). Las
   aprueba la usuaria. Depende de `IMG-5`. **S** 🚧 en curso: `docs/producto/plan-imagenes/pilotos.sh 3 6` (semilla 3, 6 pasos); falta generarlas y que las apruebe.
+- **IMG-14 · Momento del día y estación como condiciones** [A] (usuaria, 2026-10-25): `--momento dia|atardecer|noche`
+  y `--estacion primavera|verano|otono|invierno`, aparte de las variantes del sujeto (macho, hembra). `mundo.json`
+  da a cada región una luz por momento y un paisaje por estación (de `docs/rpgtarkor/lore-mundo/estaciones.md`); la
+  ficha de zona añade `condiciones` con lo que cambia en cada una; el script rechaza una luz o un paisaje que no case
+  con el momento pedido. Por zona se aprueban la de día de cada estación y una de noche (5 imágenes), y lo nativo se
+  pinta sobre la de su misma condición (`IMG-12`). Depende de `IMG-5`. **M**
 - **IMG-7 · Modelo de datos: `Propuesta` y `FichaVisual`** [A] (usuaria, 2026-10-25): migración Prisma (puerta de un
   solo sentido), importador de los 3 `.md` de propuestas (~159), exportación de lo aprobado al formato de
   `propuestas-aprobadas.md`, fichas exportadas a JSON versionado, API Fastify con escritura solo desde `127.0.0.1` y

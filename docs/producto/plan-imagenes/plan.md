@@ -107,6 +107,8 @@ Hay que decidir cuál manda (D9).
 - **Telda:** crece hasta 4-6 m (lo de 1-2 m son ejemplares jóvenes); de ahí salen los troncos de las empalizadas.
 - **Nabieus:** gris casi neutro, sin brillo, que apenas se distingue de la sombra.
 - **Aullador:** manda el canon (flaco, patas desproporcionadamente largas); la imagen del juego se rehace.
+- **Momento y estación** (`IMG-14`): condiciones aparte de las variantes; momentos día, atardecer y noche; por zona,
+  la de día de cada estación y una de noche.
 
 Las fichas y la guía ya los usan. Pasarlos al canon (`docs/rpgtarkor/`, `worldCatalog.ts`, `berigLore.ts`) va por el
 runbook `ampliar-lore.md`, con Álvaro: ningún agente edita el lore.
