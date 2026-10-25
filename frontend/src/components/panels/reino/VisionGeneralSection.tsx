@@ -7,6 +7,9 @@ import { ConfirmModal } from '../../ConfirmModal'
 import { TooltipAnchor } from '../../TooltipAnchor'
 import { useModoConsulta } from '../../../context/useModoConsulta'
 
+// Días seguidos de felicidad baja que rebelan el reino (`DIAS_PARA_REBELION` de kingdomTick.ts).
+const DIAS_PARA_REBELION = 7
+
 // `diasFelicidadBaja`/`diasFelicidadAlta` (B.19) quedan fuera a propósito — son metadatos de
 // "cuántos días lleva así", no un recurso del reino que tenga sentido como tarjeta en Economía.
 type KingdomStatKey = Exclude<keyof KingdomStatsInfo, 'diasFelicidadBaja' | 'diasFelicidadAlta'>
@@ -226,7 +229,15 @@ export function VisionGeneralSection({
               baja/alta sostenida (7 días, DIAS_PARA_REBELION/CONSOLIDAR en el backend), nunca el
               conflicto de facciones del mundo (sistema distinto, ver ZonaPanel > control regional).
               Solo se muestra cuando ya hay días acumulados de verdad, no en cada visita. */}
-          {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && (
+          {/* P299 (reabierto 2026-10-22): a partir de 7 días el reino ya se rebeló (`DIAS_PARA_REBELION`, dailyTick):
+              «14 de 7 días para la rebelión» hablaba en futuro de algo que ya había pasado. */}
+          {kingdomStats && kingdomStats.diasFelicidadBaja >= DIAS_PARA_REBELION && (
+            <p className="mb-2 text-2xs text-danger-400">
+              ⚠️ El reino se ha rebelado: {kingdomStats.diasFelicidadBaja} días seguidos con la felicidad baja. Mientras siga así,
+              cada territorio se pierde con sus edificios. Sube la felicidad (comida, agua, camas).
+            </p>
+          )}
+          {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && kingdomStats.diasFelicidadBaja < DIAS_PARA_REBELION && (
             <p className="mb-2 text-2xs text-danger-400">
               ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de 7 días para la rebelión — si llegas a 7 seguidos, el reino se rebela
               y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) antes.

@@ -28,6 +28,14 @@ describe('VisionGeneralSection — aviso de rebelión (P299)', () => {
     expect(getByText(/Felicidad baja: 3 de 7 días para la rebelión/)).toBeTruthy()
   })
 
+  it('con 7 días o más ya no cuenta hacia la rebelión: dice que el reino se ha rebelado (P299, reabierto)', () => {
+    const { getByText, queryByText } = render(
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={stats(14)} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
+    )
+    expect(getByText(/El reino se ha rebelado: 14 días seguidos/)).toBeTruthy()
+    expect(queryByText(/de 7 días para la rebelión/)).toBeNull()
+  })
+
   it('sin días de felicidad baja no avisa', () => {
     const { queryByText } = render(
       <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={stats(0)} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
