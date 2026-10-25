@@ -43,7 +43,7 @@ function iguales(a: unknown, b: unknown): boolean {
 
 /// Función pura. `catalogo` = fila de ItemCatalog de ese `catalogSlug` (undefined si ya no existe
 /// → no se toca nada). Toda diferencia de bonus se resetea al catálogo, también en lo fabricado:
-/// desde `QA-240` (2026-10-25, «el catálogo manda») la receta ya no fija bonus propios, así que
+/// desde `QA-243` (2026-10-25, «el catálogo manda») la receta ya no fija bonus propios, así que
 /// una copia fabricada con los bonus viejos de su receta vuelve a los de su ficha.
 export function cambiosParaSincronizar(
   fila: FilaSincronizable,

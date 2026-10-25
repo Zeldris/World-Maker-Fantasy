@@ -27,7 +27,7 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ## Índice
 
-**2026-10-25 — `QA-240`, asentar el lore de la enciclopedia**
+**2026-10-25 — `QA-243`, asentar el lore de la enciclopedia**
 - [Bloque 1: NPC, razas y personajes](#2026-10-25--qa-240-bloque-1-npc-razas-y-personajes-de-la-enciclopedia)
 
 **2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
@@ -529,7 +529,10 @@ esta ronda: `personajes.md` arriba.
 
 ---
 
-## 2026-10-25 — `QA-240`, bloque 1: NPC, razas y personajes de la enciclopedia
+## 2026-10-25 — `QA-243`, bloque 1: NPC, razas y personajes de la enciclopedia
+
+> Los commits de la rama `claude/lore-enciclopedia` anteriores al 2026-10-25 por la tarde llaman `QA-240` a esta
+> tarea y `QA-241` a la de la historia: `main` ya usaba esos números (voces), así que pasan a `QA-243` y `QA-244`.
 
 Auditoría de la enciclopedia contra el canon (rama `claude/lore-enciclopedia`). Cada arreglo, con el sí de la usuaria.
 
@@ -552,7 +555,7 @@ Auditoría de la enciclopedia contra el canon (rama `claude/lore-enciclopedia`).
 «domar a las criaturas más poderosas» en la ficha de Gorhorn; Constitución 32 de Torgash (techo ~30); NPC
 del canon que faltan (Brann el Cambista); NPC del juego sin ficha en `npcs.md`; erratas de `razas.md`.
 
-## 2026-10-25 — `QA-240`, bloque 2: fichas de combate y sistemas de la enciclopedia
+## 2026-10-25 — `QA-243`, bloque 2: fichas de combate y sistemas de la enciclopedia
 
 Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de la usuaria, cada regla contrastada con el código:
 - `las-tiradas`: decía tres resultados (fallo, éxito con coste, éxito claro). Desde el 2026-09-07 son dos (`dice.ts:23`, `gradoExitoFor`).
@@ -597,7 +600,7 @@ Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de l
 - Partidas ya empezadas: el renombrado es por clase y rama (`HABILIDADES_RENOMBRADAS_POR_CLASE` en `habilidadesRenombradas.ts`); el caso del Selecto se distingue por la descripción. Tests: `habilidadesRenombradas.test.ts` (sin nombres repetidos en el catálogo) y `detail.habilidadesIniciales.integration.test.ts`.
 - **Pendiente:** las imágenes de estas ocho habilidades van por el nombre (`slugify`), así que hay que generarlas de nuevo.
 
-## 2026-10-25 — `QA-240`, bloque 3: objetos y recetas de la enciclopedia
+## 2026-10-25 — `QA-243`, bloque 3: objetos y recetas de la enciclopedia
 
 Aplicado con el sí de la usuaria.
 
@@ -622,13 +625,13 @@ Aplicado con el sí de la usuaria.
 - Objetos del catálogo que nadie vende, suelta ni fabrica.
 - Las partidas ya empezadas conservan el nombre antiguo de sus objetos fabricados. La sincronización solo repone bonus y hueco.
 
-## 2026-10-25 — `QA-240`, bloque 4 (primer arreglo): notas de diseño a la vista en 26 lugares
+## 2026-10-25 — `QA-243`, bloque 4 (primer arreglo): notas de diseño a la vista en 26 lugares
 
 - 26 descripciones de lugares (Meseta del Orden, Ciénaga Troncal, El Margen Silencioso) acababan en «Fuera del núcleo jugable actual.», a veces con «Gorhorn no ha estado aquí» o «Sin conexión previa con Gorhorn». Son notas de diseño y la regla P35 (`QA-27`) ya las prohíbe en texto visible. Se quitan. El aviso para el narrador sigue en `loreChunks.ts`.
 - «el primer lugar del núcleo jugable desde el que…» (Cresta volcánica) → «el primer lugar de las Llanuras desde el que…», también en su chunk.
 - Por qué se coló: el test de P35 solo miraba la línea `description:`, y el texto empieza en la línea siguiente. `catalogoSinNotasInternas.test.ts` ahora recorre los datos exportados del catálogo. Falla sin el arreglo (`rojo-sin-arreglo` OK).
 
-## 2026-10-25 — `QA-240`, bloque 4: lugares, facciones, fauna y flora
+## 2026-10-25 — `QA-243`, bloque 4: lugares, facciones, fauna y flora
 
 Aplicado con el sí de la usuaria («11 plantas sin nombre, Margen: tres errores, Ortografía, Datos sueltos»,
 «Poblado Jeyselt», «Ufag, Gisot, Jorer: PRINCIPAL», «Historia: tarea aparte»).
@@ -670,7 +673,7 @@ Aplicado con el sí de la usuaria («11 plantas sin nombre, Margen: tres errores
   Queda apuntado en `personajes.md`.
 - `razas.md`: erratas de las filas Goirntes, Kalisar, Nabieus y Faerus, sin cambiar lo que dicen.
 - Historia: fuera «Fecha provisional.» de dos entradas visibles. Las entradas que faltan van a la tarea
-  `QA-241`.
+  `QA-244`.
 
 **Pendiente de este bloque (leve):**
 - Los Goshg no tienen edificios, ni Keseg Sael ni los Goirntes tienen tablones (también falta en el canon).

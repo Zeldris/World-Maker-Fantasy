@@ -37,7 +37,7 @@ describe('cambiosParaSincronizar', () => {
     expect(cambiosParaSincronizar({ catalogSlug: 'a', statBonuses: null, slot: 'CASCO' }, { statBonuses: null, equipSlot: null })).toEqual({ desequipar: true });
   });
 
-  it('QA-240: una copia fabricada sin bonus vuelve a los de su ficha (el catálogo manda)', () => {
+  it('QA-243: una copia fabricada sin bonus vuelve a los de su ficha (el catálogo manda)', () => {
     const cat = { statBonuses: { carisma: 2 }, equipSlot: 'CINTURON' as const };
     expect(cambiosParaSincronizar({ catalogSlug: 'c', statBonuses: null }, cat)).toEqual({ statBonuses: { carisma: 2 } });
     expect(cambiosParaSincronizar({ catalogSlug: 'c', statBonuses: { fuerza: 9 } }, cat)).toEqual({ statBonuses: { carisma: 2 } });

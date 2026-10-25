@@ -187,9 +187,9 @@ tan importante como la mina en los años de hambre.
   `flora-fauna.md`).
 - 2026-09-27 (pasada de conexión): primera fauna y flora de la región (Hielaga, Nievón, Liquen Escarcha) y sección de conexiones (Senda del Sílice, frente norte del muro de obsidiana).
 - 2026-09-27 (segunda pasada): el Escarchín y la pesca de invierno del Lago Cristalice.
-- 2026-10-25 (QA-240): la fauna y la flora de la región ya están en el juego; se quitan las marcas
+- 2026-10-25 (QA-243): la fauna y la flora de la región ya están en el juego; se quitan las marcas
   «pendiente de código».
-- 2026-10-25 (`QA-240`): el Escarchín es la única pesca de la región (lo que ya decía el juego) y la
+- 2026-10-25 (`QA-243`): el Escarchín es la única pesca de la región (lo que ya decía el juego) y la
   Hielaga suma en el juego el Cuerno de Hielaga que daba el canon.
 
 ---

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 /// P35 (QA-27): las bios y condiciones del catálogo se ven tal cual en la Enciclopedia y en las
 /// fichas de recurso. Las notas de diseño («fuera del núcleo jugable actual», «grafo v1»,
 /// «pendiente: el motor…») van en comentarios, nunca dentro del texto.
-/// QA-240: se recorren los datos exportados, no las líneas del archivo — el texto de casi todas las
+/// QA-243: se recorren los datos exportados, no las líneas del archivo — el texto de casi todas las
 /// descripciones empieza en la línea siguiente a `description:` y así se colaban.
 const CAMPOS_VISIBLES = new Set(['bio', 'description', 'condicion', 'personality', 'role']);
 const NOTAS_INTERNAS = /núcleo jugable|grafo v1|improvisársele números|pendiente:|\bel motor\b|sourceSlug/i;

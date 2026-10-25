@@ -745,7 +745,7 @@ export const locations: LocationInput[] = [
   },
   {
     slug: 'conclave-keseg-prisilke',
-    // QA-240: el poblado es Jeyselt y Keseg Prisilke el clan que lo habita; «Fin Susurrado», el
+    // QA-243: el poblado es Jeyselt y Keseg Prisilke el clan que lo habita; «Fin Susurrado», el
     // nombre en lengua común que el poblado toma de su clan. «Conclave» no salía en el canon.
     name: 'Jeyselt',
     region: 'Ciénaga Troncal',
@@ -3036,7 +3036,7 @@ export const npcs: NpcInput[] = [
     aliases: ['gistera koh', 'gistera'],
     faction: null,
     genero: 'F',
-    // QA-240 (2026-10-25): el rol tampoco dice quién lo mató ni de quién huye (npcs.md #13).
+    // QA-243 (2026-10-25): el rol tampoco dice quién lo mató ni de quién huye (npcs.md #13).
     role: 'Hija adoptiva de un artesano Serhu, huye sola tras su muerte',
     level: 1,
     attributes: { fuerza: 6, destreza: 8, constitucion: 6, inteligencia: 6, voluntad: 10, carisma: 6, magia: 4 },
@@ -3256,7 +3256,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'ufag-ketg',
     name: 'Ufag Ketg',
-    // QA-240: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
+    // QA-243: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
     kind: 'PRINCIPAL',
     aliases: ['ufag ketg'],
     faction: 'Clan Serhu',
@@ -3280,7 +3280,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'gisot-ketg',
     name: 'Gisot Ketg',
-    // QA-240: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
+    // QA-243: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
     kind: 'PRINCIPAL',
     aliases: ['gisot ketg'],
     faction: 'Clan Serhu',
@@ -3304,7 +3304,7 @@ export const npcs: NpcInput[] = [
   {
     slug: 'jorer-susig',
     name: 'Jorer Susig',
-    // QA-240: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
+    // QA-243: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
     kind: 'PRINCIPAL',
     aliases: ['jorer susig'],
     faction: 'Clan Serhu',
@@ -3725,7 +3725,7 @@ export const npcs: NpcInput[] = [
     reclutablePct: 0,
     atributoResistencia: 'fuerza',
     capturablePct: 0,
-    // QA-240 (usuaria, 2026-10-25): vende los dos cuchillos de desuello, que antes no daba nadie
+    // QA-243 (usuaria, 2026-10-25): vende los dos cuchillos de desuello, que antes no daba nadie
     // (la Curtiduría pide el de hielo sílice y solo lo llevaba la domadora).
     loadout: [
       { itemSlug: 'cuchillo-deshuello', cantidad: 2 },
@@ -5169,7 +5169,7 @@ export const npcs: NpcInput[] = [
 
   // P-04 — NPC Nabieus: portavoces/líderes de Keseg Sael y Keseg Prisilke (A-02/A-03).
   {
-    // QA-240 (2026-10-25): su bio ya no cuenta que sabe que Yerin Slaad figura en los registros de la
+    // QA-243 (2026-10-25): su bio ya no cuenta que sabe que Yerin Slaad figura en los registros de la
     // carta del sabotaje (el cónclave lo protege sin decírselo); es secreto de la trama, ver npcs.md #24.
     slug: 'aven-tessk',
     name: 'Aven Tessk',
@@ -5698,7 +5698,7 @@ export const items: ItemCatalogInput[] = [
 
   {
     slug: 'cuchillo-deshuello',
-    // QA-240 (2026-10-25): «deshuello» → «desuello» (de desollar); el slug se queda.
+    // QA-243 (2026-10-25): «deshuello» → «desuello» (de desollar); el slug se queda.
     name: 'Cuchillo de desuello de hielo sílice',
     aliases: ['cuchillo de desuello', 'cuchillo de deshuello'],
     category: 'herramienta',
@@ -6544,7 +6544,7 @@ export const items: ItemCatalogInput[] = [
     // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
     // archivo" — imagen ya subida "infusion-petalos-flor-ceniza-banner.png").
     slug: 'infusion-petalos-flor-ceniza',
-    // QA-240 (2026-10-25): se recolecta crudo, así que se llama por lo que es; slug e imagen intactos.
+    // QA-243 (2026-10-25): se recolecta crudo, así que se llama por lo que es; slug e imagen intactos.
     name: 'Pétalos de Flor de Ceniza',
     aliases: ['pétalos de flor de ceniza', 'infusión de pétalos de flor de ceniza'],
     category: 'medicinal',
@@ -7152,7 +7152,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Yerreo fundido en lingote — se obtiene fundiendo su mena, o directamente de las garras del Kirelon Arenoso si el cazador es herrero con fragua a mano.',
     dimensiones: 'Lingote de 15 cm.',
     tier: 4,
-    valorGoirnos: 70, // QA-240 (2026-10-25): antes 12, por debajo de las 4 menas (60) que cuesta fundirlo
+    valorGoirnos: 70, // QA-243 (2026-10-25): antes 12, por debajo de las 4 menas (60) que cuesta fundirlo
   },
 
   {
@@ -8137,7 +8137,7 @@ export const items: ItemCatalogInput[] = [
     // Pasada de objetos narrativos sin función real en juego (2026-09-02, "al menos todo objeto
     // que se almacene en el inventario" debía aportar algo) — al ser equipable, el gancho natural
     // es statBonuses, no venta/lore: cuentas de trueque llevadas como adorno, encaja con la
-    // sociabilidad que representa el carisma. QA-240 (2026-10-25): +1, no +3 — sin tier y por 2
+    // sociabilidad que representa el carisma. QA-243 (2026-10-25): +1, no +3 — sin tier y por 2
     // Goirnos daba más que el Tocado de plumas (tier 1, +2).
     statBonuses: { carisma: 1 },
     description: 'Puñado de cuentas de hueso, piedra pulida y vidrio volcánico ensartadas en cordel — trueque menor.',
@@ -8860,7 +8860,7 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Cristal Helado.',
     tier: 2,
   },
-  // QA-240: el canon de Cristal Helado da tres recursos a la Hielaga y faltaba este.
+  // QA-243: el canon de Cristal Helado da tres recursos a la Hielaga y faltaba este.
   {
     slug: 'cuerno-hielaga',
     name: 'Cuerno de Hielaga',
@@ -9180,7 +9180,7 @@ export const factionRelationsIniciales: FactionRelationInput[] = [
   { source: 'Clan Serhu', target: 'Clan Goshg', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Goshg' },
   { source: 'Concordia de Hierro', target: 'Clan Helsig', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Helsig' },
   { source: 'Concordia de Hierro', target: 'Clan Goshg', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Goshg' },
-  { source: 'Clan Helsig', target: 'Clan Goshg', presion: 30, motivo: 'QA-240: la Senda del Sílice, hielo sílice por madera y resina' },
+  { source: 'Clan Helsig', target: 'Clan Goshg', presion: 30, motivo: 'QA-243: la Senda del Sílice, hielo sílice por madera y resina' },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -9887,7 +9887,7 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 1,
     condicion: 'objeto especial, muy baja probabilidad de loot — solo machos, tienen cola',
   },
-  // QA-240: el canon del Ferike también da hueso y carne; misma cantidad que el Rondador de Brasas.
+  // QA-243: el canon del Ferike también da hueso y carne; misma cantidad que el Rondador de Brasas.
   {
     sourceSlug: 'ferike',
     sourceCategory: 'fauna',
@@ -11342,7 +11342,7 @@ export const harvestSourceRegion: Record<string, string> = {
   // este mapa (y que `distribucion` en `worldPopulation.ts`); su propia descripción dice "caza en
   // grupo en El Margen Silencioso".
   'sombra-de-kroj': 'Margen Silencioso',
-  // QA-240: 18 animales no tenían región, y en las Llanuras se dejaba
+  // QA-243: 18 animales no tenían región, y en las Llanuras se dejaba
   // «cazar una hielaga» (`detectsWrongRegionHarvestClaim`). Región del canon de cada una.
   hielaga: 'Cristal Helado',
   nievon: 'Cristal Helado',
@@ -11511,7 +11511,7 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'verdileas-acuaticas': 'Verdileas Acuáticas',
   volcanita: 'Volcanita',
   yerreo: 'Yerreo',
-  // QA-240 (2026-10-25): flora del Margen, la Ciénaga y Cristal Helado, con el nombre de su ficha de
+  // QA-243 (2026-10-25): flora del Margen, la Ciénaga y Cristal Helado, con el nombre de su ficha de
   // canon. Sin entrada aquí la Enciclopedia enseñaba el slug («musgo-callado») como nombre.
   'musgo-callado': 'Musgo Callado',
   'veldria-hueca': 'Veldria Hueca',
@@ -11639,7 +11639,7 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Mineral volcánico de El Filo de las Brasas, la veta más común de la zona.',
   yerreo:
     'Mineral con la apariencia del hierro pero de vetas rojas y brillos anaranjados, muy difícil de encontrar y en cantidades mínimas donde aparece, en La Hondonada del Eco.',
-  // QA-240 (2026-10-25): resumen de cada ficha de canon (margen-silencioso.md, cienaga-troncal.md,
+  // QA-243 (2026-10-25): resumen de cada ficha de canon (margen-silencioso.md, cienaga-troncal.md,
   // cristal-helado.md).
   'musgo-callado':
     'Musgo gris apagado que cubre troncos, ramas y suelo en todo el Margen Silencioso. Sus filamentos finísimos atrapan el sonido y lo apagan, como un fieltro a escala de bosque. Los Nabieus tapizan con él sus cámaras y los Faerus forran sus refugios de caza.',
@@ -11784,7 +11784,7 @@ export const harvestSourceFloraCategoria: Record<string, FloraCategoria> = {
   // algo imposible ya en su bio.
   'raiz-de-fuego': 'BROTES_SALVAJES', // acumula calor volcánico hasta el punto de inflamarse
   'cardo-brujula': 'BROTES_SALVAJES', // fibra imantada que siempre señala el mismo rumbo
-  // QA-240 (2026-10-25): flora del Margen, la Ciénaga y Cristal Helado, con el género que da su
+  // QA-243 (2026-10-25): flora del Margen, la Ciénaga y Cristal Helado, con el género que da su
   // ficha de canon.
   'veldria-hueca': 'VELDRIAS',
   'resina-veldria-fuente': 'VELDRIAS',

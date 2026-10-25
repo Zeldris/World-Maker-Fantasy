@@ -203,10 +203,10 @@ Tragalodo.
   catálogo y el de la sección del interior (`areas.md` decía "Makut Silh" en un solo sitio).
 - 2026-09-27 (pasada de conexión): Tragalodo, Borbol, Zancapilote y Bolco; familia y nivel de los Cornantes; Costa Corredor y Embarcadero descritos; sección de conexiones (Senda del Sílice, tributo por mar).
 - 2026-09-27 (segunda pasada): descritos los seis lugares que solo tenían nombre (Túneles Musgosos, Raíces Madre Fango, Cumbre Bruma Negra, Cataratas Madre Fango, Costa Marea Vida, Desfiladero Esmeralda) y los talleres del Cerco.
-- 2026-10-25 (QA-240): la fauna, la flora y las descripciones de los lugares ya están en el juego; se
+- 2026-10-25 (QA-243): la fauna, la flora y las descripciones de los lugares ya están en el juego; se
   quitan las marcas «pendiente de código». Jeyselt: *Jeyselt* es el nombre del poblado en su lengua y *Fin
   Susurrado* el de lengua común (antes se leía al revés).
-- 2026-10-25 (`QA-240`): los oficios de la Ciénaga ya existen; a los talleres Goshg les faltan los Maestros.
+- 2026-10-25 (`QA-243`): los oficios de la Ciénaga ya existen; a los talleres Goshg les faltan los Maestros.
 
 ---
 

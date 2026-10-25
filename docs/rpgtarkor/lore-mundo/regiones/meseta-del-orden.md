@@ -133,7 +133,7 @@ simetría lo es en la piedra.
 - 2026-10-07 (tanda OpenCode del 2026-10-06/07, revisada por Claude): nombres y adendas al pie de los obeliscos; las costumbres Goirntes van en `razas.md`. Sin código.
 - 2026-09-27 (pasada de conexión): sección de conexiones (mensajeros Nabieus, tala del borde, rutas del tributo).
 - 2026-09-27 (segunda pasada): las ciudades-fortaleza numeradas (Vresk Hes, Vresk Tuh y Vresk Kei) y el Vreskal, primera especie de la familia Ordenados.
-- 2026-10-25 (`QA-240`): fuera las marcas «pendiente de código» del Puesto del Corredor, las Canteras del Eje, el
+- 2026-10-25 (`QA-243`): fuera las marcas «pendiente de código» del Puesto del Corredor, las Canteras del Eje, el
   Vreskal y Los del Obelisco, que ya están en el juego.
 
 ---

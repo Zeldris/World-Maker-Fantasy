@@ -877,7 +877,7 @@ describe('QA-16: ninguna receta pisa a otra', () => {
   });
 });
 
-describe('recetas contra el catálogo (QA-240)', () => {
+describe('recetas contra el catálogo (QA-243)', () => {
   const porSlug = new Map(items.map((i) => [i.slug, i]));
 
   it('cada ingrediente exacto es un objeto del catálogo', () => {

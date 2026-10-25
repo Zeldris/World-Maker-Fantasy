@@ -2,7 +2,7 @@
 
 [← Volver al índice](../sistemas-reino/mundo-vivo-x4.md)
 
-**Estado (2026-10-25, `QA-240`):** § 8 APLICADO al motor el 2026-10-05 (`CR-44` moral y retirada, `CR-45`
+**Estado (2026-10-25, `QA-243`):** § 8 APLICADO al motor el 2026-10-05 (`CR-44` moral y retirada, `CR-45`
 capitán; ver «Cómo quedó en el motor» al final del § 8). § 9 sigue sin diseñar.
 
 ---
@@ -49,7 +49,7 @@ cambio de objetivo coordinado necesita una pasada previa por todo el bando antes
 ataque individual (cambio de orden de evaluación en `combateMultipleOrquestacion.ts`) o puede
 resolverse con una estructura de datos compartida sin reordenar nada.
 
-### Cómo quedó en el motor (2026-10-05, `CR-44`, `CR-45`; anotado el 2026-10-25, `QA-240`)
+### Cómo quedó en el motor (2026-10-05, `CR-44`, `CR-45`; anotado el 2026-10-25, `QA-243`)
 
 La retirada no quedó reservada a Inteligencia 20+: se construyó como **moral**, la regla opcional
 de D&D 5e (DMG pág. 273), para todo NPC con mente.

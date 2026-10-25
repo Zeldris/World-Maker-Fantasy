@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 /// identifican por nombre, así que todo lo que compara nombres pasa por aquí.
 export const HABILIDADES_RENOMBRADAS: Readonly<Record<string, string>> = { 'Analisis Salvaje': 'Análisis Salvaje', 'Plumaje ferreo': 'Plumaje férreo' };
 
-/// QA-240: renombres que dependen de la clase — habilidades que se repetían entre clases (o dentro de
+/// QA-243: renombres que dependen de la clase — habilidades que se repetían entre clases (o dentro de
 /// la misma: el Asesino Selecto tenía dos «Golpe Certero»). Cada entrada vale para su clase y, si la
 /// lleva, solo para esa especialización. `descripcion`, la del catálogo: distingue la fila de
 /// `SavedAction` cuando una partida tiene dos con el mismo nombre viejo; donde solo se guarda el

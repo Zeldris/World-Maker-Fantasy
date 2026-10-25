@@ -1468,7 +1468,7 @@ export function craftDurationSecondsFor(recipe: CraftingRecipe): number {
   return CRAFT_TIER_DURATION_SECONDS[recipe.tier ?? 1] ?? 5;
 }
 
-/// `QA-240` (usuaria, 2026-10-25, «el catálogo manda»): lo fabricado sale con el nombre, la
+/// `QA-243` (usuaria, 2026-10-25, «el catálogo manda»): lo fabricado sale con el nombre, la
 /// descripción y los bonos de su ficha de ItemCatalog, igual que el mismo objeto comprado o
 /// saqueado (antes la Mochila Curtida fabricada daba 0 huecos y la ficha decía +10). La receta
 /// solo pone el texto de la lista de recetas, o el objeto entero si no tiene fila de catálogo.

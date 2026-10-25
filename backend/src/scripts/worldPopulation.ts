@@ -411,7 +411,7 @@ export const worldPopulations: WorldPopulationInput[] = [
     poblacionMax: 500,
     distribucion: { 'Ciénaga Troncal': 1 },
   },
-  // QA-240 (usuaria, 2026-10-25): la fauna de Ciénaga, Cristal, Meseta y Margen que no tenía
+  // QA-243 (usuaria, 2026-10-25): la fauna de Ciénaga, Cristal, Meseta y Margen que no tenía
   // población, con el mismo criterio (cuanto más pequeño, más ejemplares). La Hielaga, escasa
   // porque se raciona.
   {

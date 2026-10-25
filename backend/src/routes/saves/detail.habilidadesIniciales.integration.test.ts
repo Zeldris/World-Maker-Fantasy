@@ -72,9 +72,9 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
   });
 });
 
-/// QA-240: habilidades que se repetían entre clases, renombradas según la clase de la partida. Un
+/// QA-243: habilidades que se repetían entre clases, renombradas según la clase de la partida. Un
 /// Asesino Selecto tenía dos «Golpe Certero» (tronco y rama); cada fila recoge el suyo.
-describe('GET /saves/:id renombra por clase las habilidades repetidas (QA-240)', () => {
+describe('GET /saves/:id renombra por clase las habilidades repetidas (QA-243)', () => {
   let saveId: string;
   const TRONCO = 'Un golpe reactivo, soltado en el instante exacto en que el rival baja la guardia.';
   const RAMA = 'Un golpe directo al objetivo marcado, sin desperdiciar ni un movimiento.';

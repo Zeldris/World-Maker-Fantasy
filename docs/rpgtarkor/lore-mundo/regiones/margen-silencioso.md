@@ -298,7 +298,7 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
   (entre ellas la Leshra, primera de la familia Umbrias) y los Faerus de Hashma.
 - 2026-10-06 (tanda OpenCode del 2026-10-03, revisada por Claude): origen del Jakut Tusha y de la tala del borde; el Pacto del Umbral y las costumbres Faerus van en `razas.md`. Sin código.
 - 2026-09-27 (pasada de conexión): familia, nivel y temperamento de Sombras de Kroj, Hetris, Mekiosi y Vistue; El Claro de la Manada arrasado tras El Detonante (canon de Riko que faltaba aquí); sección de conexiones (el Margen como muro del Imperio, la tala del borde).
-- 2026-10-25 (QA-240): la flora y los vecinos de Hashma ya están en el juego; se quitan las marcas
+- 2026-10-25 (QA-243): la flora y los vecinos de Hashma ya están en el juego; se quitan las marcas
   «pendiente de código». «Puesto Rabioso del Márgen» pasa a escribirse «del Margen».
 
 ---

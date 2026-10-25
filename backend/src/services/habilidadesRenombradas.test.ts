@@ -27,7 +27,7 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(nombreActualDeHabilidad('Esquivar')).toBe('Esquivar');
   });
 
-  it('QA-240: un nombre repetido entre clases cambia solo en la clase y la rama que lo pierden', () => {
+  it('QA-243: un nombre repetido entre clases cambia solo en la clase y la rama que lo pierden', () => {
     expect(nombreActualDeHabilidad('Golpe Certero', { clase: 'CAZADOR', especializacion: null })).toBe('Golpe Certero');
     expect(nombreActualDeHabilidad('Golpe Certero', { clase: 'ASESINO', especializacion: null })).toBe('Golpe Oportuno');
     expect(nombreActualDeHabilidad('Instinto Asesino', { clase: 'ASESINO', especializacion: 'MAESTRO_ASESINO' })).toBe('Instinto Asesino');
@@ -36,7 +36,7 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(nombreActualDeHabilidad('Golpe Certero')).toBe('Golpe Certero');
   });
 
-  it('QA-240: el Asesino Selecto distingue sus dos «Golpe Certero» por la descripción', () => {
+  it('QA-243: el Asesino Selecto distingue sus dos «Golpe Certero» por la descripción', () => {
     const selecto = { clase: 'ASESINO', especializacion: 'ASESINO_SELECTO' };
     const deLaRama = allClassAbilityUnlocks().find((u) => u.especializacion === 'ASESINO_SELECTO' && u.level === 32)!.ability;
     expect(deLaRama.name).toBe('Golpe a la Marca');
@@ -45,7 +45,7 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(nombreActualDeHabilidad('Golpe Certero', selecto)).toBe('Golpe Oportuno');
   });
 
-  it('QA-240: ningún nombre de habilidad de clase se repite y cada nombre nuevo existe en el catálogo', () => {
+  it('QA-243: ningún nombre de habilidad de clase se repite y cada nombre nuevo existe en el catálogo', () => {
     const nombres = allClassAbilityUnlocks().map((u) => u.ability.name);
     expect(nombres.filter((n, i) => nombres.indexOf(n) !== i)).toEqual([]);
     for (const r of HABILIDADES_RENOMBRADAS_POR_CLASE) expect(nombres).toContain(r.nuevo);
