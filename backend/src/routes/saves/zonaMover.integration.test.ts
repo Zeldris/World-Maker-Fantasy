@@ -741,7 +741,7 @@ describe('POST /saves/:id/zona/mover', () => {
     const primero = await mover(375, 25);
     expect(primero.jugador).toEqual({ x: 75, y: 25 });
     expect(primero.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
-    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toMatchObject({ targetSlug: 'test-mover-recurso', locationId, tipo: 'RECURSO' });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toMatchObject([{ targetSlug: 'test-mover-recurso', locationId, tipo: 'RECURSO' }]);
 
     // "Ignorar" limpia la oferta pendiente (lo que hace /modo-dinamico/ignorar).
     await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
@@ -783,14 +783,44 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(vuelta.dynamicModeOffer).toBeNull();
 
     // Pasado el rato, sí.
-    const ultimo = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro as { minutos: number };
-    await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: { ...ultimo, minutos: ultimo.minutos - 61 } } });
+    const [ultimo] = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro as { minutos: number }[];
+    await prisma.save.update({ where: { id: saveId }, data: { zonaUltimoEncuentro: [{ ...ultimo, minutos: ultimo.minutos - 61 }] } });
     await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 225, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull } });
     await mover(375, 25); // un paso más, fuera de su radio: ahora sí se olvida
     expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toBeNull();
     await mover(25, 25);
     const tarde = await mover(25, 25);
     expect(tarde.dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+  });
+
+  // P177 reabierto (2026-10-17): solo se recordaba el último encuentro, y otro en medio liberaba al
+  // anterior (en el Pozo, un Guchapo y la Telda Común se alternaban a cada paso).
+  it('otro encuentro en medio no libera al ser vivo de antes: al volver no sale otra vez (P177)', async () => {
+    await prisma.zonePoint.createMany({
+      data: [
+        { locationId, saveId, x: 125, y: 75, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 75 }] },
+        // (5,1): al lado de (4,0), ya fuera del radio de la fauna.
+        { locationId, saveId, x: 275, y: 75, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true },
+      ],
+    });
+    const app = await buildApp();
+    const mover = async (x: number, y: number) =>
+      JSON.parse((await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x, y } } })).body);
+    const ignorar = () => prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+
+    expect((await mover(375, 25)).dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+    await ignorar();
+    await mover(375, 25); // (2,0)
+    await mover(375, 25); // (3,0)
+    const enMedio = await mover(375, 25); // (4,0)
+    expect(enMedio.dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+    await ignorar();
+
+    const vuelta = await mover(25, 25); // (3,0), otra vez junto a la fauna
+    expect(vuelta.jugador).toEqual({ x: 175, y: 25 });
+    expect(vuelta.dynamicModeOffer).toBeNull();
+    // El recurso, ya lejos, se olvida; la fauna sigue en su rato.
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toMatchObject([{ targetSlug: 'test-mover-pacifico', tipo: 'FAUNA' }]);
   });
 
   // P186 (QA-27): tras una escena, con la conversación aún abierta, el primer clic en una salida daba un
