@@ -44,6 +44,8 @@ vi.mock('../lib/prisma.js', () => ({
       findMany: (...args: unknown[]) => findManyQuest(...args),
       findFirst: (...args: unknown[]) => findFirstQuest(...args),
     },
+    // P310: el aviso de NPC ausente mira si la jugadora ya conoce al NPC.
+    discoveredEntity: { findFirst: () => Promise.resolve(null) },
     logEntry: { create: (...args: unknown[]) => logEntryCreate(...args) },
     combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
   },
