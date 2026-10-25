@@ -53,3 +53,23 @@ salen como gotas: se prueba «polvo mate» en r6.
 
 **Veredicto:** `cine2` es el estilo de partida. `fantasia`, si la usuaria prefiere el diseño exagerado de ChatGPT al
 del canon (decisión suya).
+
+## r5 · Z-Image-Turbo Q6_K
+
+Aullador con `cine`: casi la misma imagen que Q4 (r4); al 100 %, algo más nítido el pelo y el ojo. ~7 min (Q4,
+~6) y la memoria libre baja a ~4 GB (Q4, ~8). **Veredicto provisional:** la blandura es del modelo, no de la
+cuantización. Pastos y `cine2` con Z-Image, pendientes: piden 7,2 GB libres al empezar.
+
+## r6 · Sampler, pasos y polvo mate (klein, `cine2`)
+
+| Prueba | Lectura |
+|---|---|
+| `dpm++2m`, `res_multistep` | prácticamente iguales a euler |
+| `er_sde` (estocástico) | cambia la composición al azar: aullador más oscuro y sin los colmillos curvos; pastos con Cuernahoja más de gacela (canon) y un remolino de polvo rojo |
+| euler 9 pasos | igual que 6 y un 40 % más lento |
+| polvo mate (`aullador-polvo`) | ya no salen gotas ni gemas sino manchas de tierra apelmazada; con esta semilla, colmillos más cortos |
+
+**Veredicto:** euler y 6 pasos se quedan. El polvo mate, a confirmar con más semillas (r7).
+
+Memoria: klein baja la libre ~2,2 GB y Z-Image ~3,5 GB; con el vigilante de 1500 MB, klein arranca con 5 GB
+(`MIN_INICIO_MB=5000`, `LIBRE=5200`).

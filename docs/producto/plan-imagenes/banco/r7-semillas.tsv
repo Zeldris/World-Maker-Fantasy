@@ -1,0 +1,6 @@
+# Robustez: la configuración ganadora (klein, cine2, euler, 6 pasos) con otras semillas; polvo mate frente a motas.
+aullador-cine2	6	prompts/aullador-cine2.txt	-	-
+aullador-polvo	6	prompts/aullador-polvo.txt	-	-
+pastos-cine2	6	prompts/pastos-cine2.txt	-	-
+hulki-cine2	6	prompts/hulki-cine2.txt	-	-
+cardo-cine2	6	prompts/cardo-cine2.txt	-	-
