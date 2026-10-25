@@ -70,6 +70,26 @@ describe('P218 — Construir ofrece todo lo que cuelga del Ayuntamiento', () => 
     const { getByRole } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={[receta('lenera', 'una leñera')]} onBuild={() => {}} />)
     expect((getByRole('button', { name: /Leñera/ }) as HTMLButtonElement).disabled).toBe(false)
   })
+
+  it('P255: un edificio único por región ya levantado no se ofrece; el repetible (Pozo) sí', () => {
+    const buildings = [{ id: 'b1', recipeKey: 'mercado', name: 'un mercado', status: 'ACTIVO' }, { id: 'b2', recipeKey: 'pozo', name: 'un pozo', status: 'ACTIVO' }] as unknown as BuildingInfo[]
+    const estado = [receta('mercado', 'un mercado', { unicaYaLevantada: true }), receta('pozo', 'un pozo', { unicaYaLevantada: false })]
+    const { queryByRole } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={estado} onBuild={() => {}} />)
+    expect(queryByRole('button', { name: /Mercado/ })).toBeNull()
+    expect(queryByRole('button', { name: /Pozo/ })).toBeTruthy()
+  })
+
+  it('P255: el Mercado aún sin levantar sí se ofrece', () => {
+    const { getByRole } = render(<EdificiosParcelasSection buildings={[]} recipesStatus={[receta('mercado', 'un mercado', { unicaYaLevantada: false })]} onBuild={() => {}} />)
+    expect(getByRole('button', { name: /Mercado/ })).toBeTruthy()
+  })
+
+  it('P212: el edificio de la capital se llama «Pequeño ayuntamiento», sin el artículo de la narración', () => {
+    const buildings = [{ id: 'b1', recipeKey: 'ayuntamiento', name: 'un pequeño ayuntamiento', status: 'ACTIVO', tier: 1 }] as unknown as BuildingInfo[]
+    const { getByText, queryByText } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={[]} onBuild={() => {}} />)
+    expect(getByText('Pequeño ayuntamiento')).toBeTruthy()
+    expect(queryByText(/un pequeño ayuntamiento/)).toBeNull()
+  })
 })
 
 describe('P278 — la lista distingue cada edificio y cuántos hay', () => {

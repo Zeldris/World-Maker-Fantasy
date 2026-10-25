@@ -3,6 +3,7 @@ import { construirEnParcela, getParcela } from '../lib/api'
 import type { LogEntry, ParcelaDetailInfo, ProfessionRecipeInfo, RecipeStatusInfo, ZonaParcelaInfo } from '../types'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 import { CargandoModal } from './EstadosModal'
+import { nombreDeEdificio, nombreDeSlug } from '../lib/edificios'
 
 interface ParcelaDetailModalProps {
   saveId: string
@@ -19,11 +20,12 @@ interface ParcelaDetailModalProps {
   onConstruido: (logEntry: LogEntry) => void
 }
 
-function recipeLabel(recipeKey: string, professionRecipes: ProfessionRecipeInfo[]): { name: string; description: string } {
-  const found = professionRecipes.find((r) => r.recipeKey === recipeKey)
-  // Fallback al propio recipeKey (nunca debería pasar con el catálogo real, pero evita una
-  // tarjeta en blanco si professionRecipes todavía no ha terminado de cargar).
-  return found ? { name: found.ability.name, description: found.ability.description } : { name: recipeKey, description: '' }
+/// P213: la habilidad de la receta da nombre y descripción (la choza); los edificios sin habilidad (tótem, pozo,
+/// mercado…) usan el nombre de su receta, que ya trae el estado de la parcela, y solo en último caso el slug.
+function recipeLabel(status: RecipeStatusInfo, professionRecipes: ProfessionRecipeInfo[]): { name: string; description: string } {
+  const found = professionRecipes.find((r) => r.recipeKey === status.recipeKey)
+  if (found) return { name: found.ability.name, description: found.ability.description }
+  return { name: status.name ? nombreDeEdificio(status.name) : nombreDeSlug(status.recipeKey), description: '' }
 }
 
 // Mismo criterio de texto combinado que `readinessTooltip` (HabilidadesPanel.tsx) — reescrito en
@@ -100,7 +102,7 @@ export function ParcelaDetailModal({ saveId, parcela, professionRecipes, onCance
   // parpadear "cargando" en un caso que no necesita pedir nada.
   if (parcela.building) {
     return (
-      <SelectionModalShell title={parcela.building.name} onCancel={onCancel}>
+      <SelectionModalShell title={nombreDeEdificio(parcela.building.name)} onCancel={onCancel}>
         <p className="text-xs text-wood-300">Ya hay una construcción aquí.</p>
       </SelectionModalShell>
     )
@@ -151,7 +153,7 @@ export function ParcelaDetailModal({ saveId, parcela, professionRecipes, onCance
               se muestra igual (sin radio, solo su tarjeta) para que el texto no cambie de forma
               entre los dos tipos. */}
           {detail.candidates.map((c) => {
-            const { name, description } = recipeLabel(c.recipeKey, professionRecipes)
+            const { name, description } = recipeLabel(c, professionRecipes)
             const selected = c.recipeKey === selectedRecipeKey
             return (
               <button

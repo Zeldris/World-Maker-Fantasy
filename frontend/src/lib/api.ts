@@ -1849,6 +1849,8 @@ export interface SubditoInfo {
   tarea?: TareaSubdito
   /// Casa de obras (P277): nivel de oficio de constructor (1-9); da velocidad (los tiers los abre la Casa de obras).
   nivelConstructor?: number
+  /// P318: lleva arma (soldado, vigía o cazador adulto) y no la tiene: se marca «(sin arma)» en la lista.
+  sinArma?: boolean
 }
 
 export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero' | 'constructor'

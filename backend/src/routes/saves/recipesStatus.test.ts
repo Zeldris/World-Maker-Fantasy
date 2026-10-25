@@ -191,6 +191,26 @@ describe('GET /saves/:id/recipes-status', () => {
     expect(por('campamento').requiresAyuntamiento).toBe(false);
   });
 
+  it('P255: una receta con tope por región ya levantada sale unicaYaLevantada; las repetibles (choza, pozo) y la que aún no está, no', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: { id: 'loc1', slug: 'algun-sitio', region: 'Las Llanuras del Viento Rojo' },
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    // Hay un Mercado y un Pozo en la región; solo el Mercado tiene tope de 1 por región.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string } }) => (args.where.recipeKey === 'mercado' || args.where.recipeKey === 'pozo' ? 1 : 0));
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const por = (k: string) => body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === k && r.recipeCategory === 'construccion');
+    expect(por('mercado').unicaYaLevantada).toBe(true);
+    expect(por('pozo').unicaYaLevantada).toBe(false);
+    expect(por('choza').unicaYaLevantada).toBe(false);
+    expect(por('tablon-avisos').unicaYaLevantada).toBe(false);
+  });
+
   it('P218: oculta las recetas de construcción de otra raza; sin raza en la receta o en el personaje siguen visibles', async () => {
     const save = (raza: string | null) => ({
       worldId: 'world1',

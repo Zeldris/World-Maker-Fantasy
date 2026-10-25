@@ -159,6 +159,8 @@ export interface RecipeStatusInfo {
   tier?: number
   /// Sale en Reino › Edificios › Construir (cuelga del Ayuntamiento, o es una Jaula: P282).
   panelReino?: boolean
+  /// P255: receta con tope por región ya levantada en la región actual: no se ofrece de nuevo. Las repetibles no se marcan.
+  unicaYaLevantada?: boolean
 }
 
 /// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una

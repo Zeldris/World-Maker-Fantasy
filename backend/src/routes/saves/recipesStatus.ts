@@ -40,6 +40,10 @@ export interface RecipeStatus {
   /// Si Reino › Edificios ofrece construirlo: lo que cuelga del Ayuntamiento y las Jaulas (P282: los
   /// Corrales piden una Jaula y el panel no la ofrecía).
   panelReino?: boolean;
+  /// P255: receta con tope por región (`maxPerRegion`: Mercado, Tablón, Campamento…) que ya está levantada
+  /// (o en obra) en la región donde está el personaje: Reino › Edificios deja de ofrecerla. Las repetibles
+  /// (Choza, Pozo, Granero…) no llevan tope y no se marcan nunca.
+  unicaYaLevantada?: boolean;
 }
 
 /// Edificios que se ofrecen en Reino › Edificios (P282): los del Ayuntamiento y las Jaulas.
@@ -76,6 +80,11 @@ export async function constructionRecipeStatusFor(params: {
           currentLocationRecord: { id: currentLocationId },
         })
       : null;
+  const unicaYaLevantada = recipe.maxPerRegion
+    ? (await prisma.building.count({
+        where: { saveId, recipeKey: recipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined } },
+      })) >= recipe.maxPerRegion
+    : false;
   return {
     recipeKey: recipe.key,
     recipeCategory: 'construccion',
@@ -91,6 +100,7 @@ export async function constructionRecipeStatusFor(params: {
     nivel: recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null,
     tier: recipe.tier,
     panelReino: esDelPanelReino(recipe),
+    unicaYaLevantada,
   };
 }
 
