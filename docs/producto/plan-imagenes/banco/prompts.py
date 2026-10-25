@@ -62,9 +62,17 @@ def fantasia(texto):
                          'animal, whose silhouette only loosely recalls ')
 
 
+def polvo(texto):
+    """Las «motas rojas brillantes» salen como gotas o gemas: polvo mate apelmazado."""
+    return texto.replace('Tiny glinting flecks of red mineral grit are matted into the fur along the flanks, like sand '
+                         'stuck in a wet coat.', 'Dull rust-red mineral dust is caked into the fur along the flanks, '
+                         'like dry dirt worked into the coat.')
+
+
 # estilo: (cambio de mundo.json, cambio del texto final)
 ESTILOS = {'actual': (lambda m: m, None), 'cine': (cine, None), 'cine2': (cine2, None), 'corto': (corto, None),
-           'arte': (arte, None), 'fantasia': (cine2, fantasia)}
+           'arte': (arte, None), 'fantasia': (cine2, fantasia),
+           'polvo': (cine2, polvo)}
 
 
 def main():
