@@ -551,3 +551,25 @@ Auditoría de la enciclopedia contra el canon (rama `claude/lore-enciclopedia`).
 **Pendiente de decidir en este bloque:** Ufag, Gisot y Jorer son `PLANTILLA` siendo individuos únicos;
 «domar a las criaturas más poderosas» en la ficha de Gorhorn; Constitución 32 de Torgash (techo ~30); NPC
 del canon que faltan (Brann el Cambista); NPC del juego sin ficha en `npcs.md`; erratas de `razas.md`.
+
+## 2026-10-25 — `QA-240`, bloque 2: fichas de combate y sistemas de la enciclopedia
+
+Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de la usuaria, cada regla contrastada con el código:
+- `las-tiradas`: decía tres resultados (fallo, éxito con coste, éxito claro). Desde el 2026-09-07 son dos (`dice.ts:23`, `gradoExitoFor`).
+- `la-dificultad`: decía que la dificultad decide el combate. En el intercambio no decide el resultado (`combatExchange.ts:208`, `outcomeForMargin`); cuenta para las habilidades de apoyo, la huida y la experiencia.
+- `el-intercambio`: decía «dos tiradas independientes» contra dificultades propias. Ahora es tirada contra tirada: el empate lo gana quien defiende; un margen de 10 o más da golpe pleno o contragolpe (`DECISIVE_MARGIN`).
+- `condicion-fisica`: «respawnea» → «se repone».
+- `rematar-y-saquear`: decía que el golpe de gracia no tira. Sí tira, pero el resultado se fuerza a golpe pleno (`conGolpeDeGracia`, `combatExchange.ts:232`).
+- `la-reputacion`: cinco escalones de reputación y su efecto real en el temperamento (`reputation.ts`, `effectiveTemperamento`).
+- `reputacion-y-territorio`: basta estar por debajo del punto neutro con una de las facciones dueñas para que la región quede en disputa (`resolveFoundingOutcome`).
+- `lengua-de-los-orcos`: «Los tres títulos» → «Los cuatro títulos».
+- `crafteo`: sin tirada ni riesgo de estropear el objeto (`canCraft`); el nivel de oficio rebaja los mínimos; el «tier» solo marca la duración (`CRAFT_TIER_DURATION_SECONDS`); algunas recetas se desbloquean con un encargo. Fuera lo del Maestro y lo de «margen de que salga mal».
+- `construcciones`: ninguna obra pide atributos. Del tier 4 en adelante hacen falta la Casa de obras y un Ayuntamiento mediano o grande (`construction.ts`, `TIER_MAXIMO_PERSONAJE`, `ayuntamientoNivelMinimoPorTier`).
+
+**Pendiente de este bloque:**
+- Canon: recuentos de `clases.md` y § 8 de `ia-combate-y-mundo.md` (CR-44/CR-45 aplicados).
+- Nombres nuevos para habilidades repetidas («Golpe Certero», «Instinto Asesino» y otras).
+- Ficha nueva: «Los enemigos también huyen».
+- Coste de huir.
+- MAGO en la sección de clases.
+- `domador` frente a `ganadero`.

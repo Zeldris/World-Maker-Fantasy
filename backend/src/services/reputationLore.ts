@@ -39,13 +39,13 @@ El temperamento no es fijo para siempre: tu reputación con la facción de esa p
 
 Resolver algo en paz con alguien de una facción mejora tu reputación con ella poco a poco. Atacar a alguien de esa facción hasta matarlo la hunde de golpe, mucho más rápido de lo que se recupera actuando en paz — no es simétrico a propósito: caer en su lista negra debe doler de verdad, no ser algo de lo que sales en un par de turnos. Dejar a alguien con vida tras vencerlo también tiene coste, pero mucho menor que matarlo — capturarlo cuesta más que perdonarlo, y ambos cuestan bastante menos que rematarlo.
 
-Cuando tu reputación con una facción cae muy bajo, el temperamento de cualquiera de esa facción se vuelve más hostil de lo que sería por defecto — hasta el punto de que alguien normalmente cauteloso puede volverse tan peligroso como uno agresivo. Cuando tu reputación es excelente, ocurre lo contrario: hasta alguien agresivo por naturaleza puede tratarte con más cautela de la que trataría a un desconocido cualquiera.`,
+Tu reputación con cada facción tiene cinco escalones. En los dos más bajos, el temperamento de cualquiera de esa facción se vuelve más hostil de lo que sería por defecto — en el peor, alguien normalmente cauteloso pasa a tratarte como a un enemigo. En los dos más altos ocurre lo contrario: en el mejor, hasta alguien agresivo por naturaleza deja de atacarte por su cuenta. En el escalón del medio, cada cual es como es.`,
   },
   {
     slug: 'reputacion-y-territorio',
     icon: '🏳️',
     title: 'La reputación también decide quién es dueño de la tierra',
-    text: `Varias regiones del mundo tienen una o más facciones que las consideran suyas. Si intentas fundar un asentamiento propio en una región así, tu reputación con esa facción decide cómo responde: con buena reputación, el territorio pasa a ser tuyo sin más resistencia; con mala reputación, la facción no lo acepta y el territorio queda en disputa en vez de quedar limpiamente bajo tu control.
+    text: `Varias regiones del mundo tienen una o más facciones que las consideran suyas. Si intentas fundar un asentamiento propio en una región así, tu reputación con ellas decide cómo responden: si no estás por debajo del punto neutro con ninguna, el territorio pasa a ser tuyo sin más resistencia; si lo estás con alguna — aunque sea solo una de las dos que se reparten una región —, no lo acepta y el territorio queda en disputa en vez de quedar limpiamente bajo tu control.
 
 Una región sin ninguna facción conocida que la reclame no tiene este problema — puedes fundar ahí sin que nadie te lo dispute por motivos de reputación.`,
   },
@@ -79,7 +79,7 @@ No hay ningún atajo para forzar esto desde la propia Enciclopedia — la única
     title: 'Kektira: la lengua de los orcos',
     text: `Los orcos de Helek Sirik hablan su propia lengua, el Kektira, y varios nombres de cargo, lugar y persona que oirás una y otra vez vienen directamente de ella, sin traducir.
 
-Los tres títulos que vas a encontrarte más: Ikar es "jefe" o "jefa" a secas. Kort'ikar añade el sentido de mando en la guerra — quien lidera en el campo de batalla. Terk'ikar es quien gobierna el clan en su día a día, poblado, caza y reparto. Mesok'ikar es el título del chamán, guía espiritual del clan.
+Los cuatro títulos que vas a encontrarte más: Ikar es "jefe" o "jefa" a secas. Kort'ikar añade el sentido de mando en la guerra — quien lidera en el campo de batalla. Terk'ikar es quien gobierna el clan en su día a día, poblado, caza y reparto. Mesok'ikar es el título del chamán, guía espiritual del clan.
 
 Otras raíces frecuentes en nombres de lugar: Karot (ceniza), Veku (colmillo), Lukar (hogar), Sedsar (salón), Helske (helado), Tugh (honor). Así, "Karot Veku" es literalmente "Colmillo de Ceniza", y "Helske Tugh" es "Honor Helado" — los propios nombres del asentamiento ya cuentan algo de quienes viven ahí.`,
   },
@@ -87,15 +87,15 @@ Otras raíces frecuentes en nombres de lugar: Karot (ceniza), Veku (colmillo), L
     slug: 'crafteo',
     icon: '🔨',
     title: 'Crafteo: fabricar tus propios objetos',
-    text: `Muchos objetos del mundo no se encuentran, se fabrican — a partir de materiales que ya llevas encima, según una receta concreta. Cada receta pide un conjunto fijo de ingredientes y, en muchos casos, un oficio determinado: sin haberlo aprendido de algún Maestro, esa receta en concreto se te resiste por mucho que tengas los materiales delante.
+    text: `Muchos objetos del mundo no se encuentran, se fabrican — a partir de materiales que ya llevas encima, según una receta concreta. Cada receta pide un conjunto fijo de ingredientes y, a menudo, algo más: estar en el sitio adecuado (un taller, un fuego), tener los atributos mínimos que exige y, en algunos oficios, llevar encima su herramienta.
 
-El nivel de dificultad de una receta (su "tier") no es solo un número de rareza — marca cuánta experiencia real necesitas en el oficio para intentarlo con garantías. Cuanto más alto el tier, más exigentes son los materiales y más margen hay de que algo salga mal si te falta práctica.`,
+Si conoces el oficio de la receta, cada nivel que tengas en él rebaja esos mínimos: la práctica suple la fuerza o la maña que te falte. El nivel de una receta (su "tier") marca cuánto tarda: de unos segundos para lo más sencillo a cerca de un minuto para lo más elaborado. Unas pocas recetas, además, hay que descubrirlas antes, al cerrar un encargo. Con todo eso en regla, el objeto sale: no hay tirada ni riesgo de estropearlo.`,
   },
   {
     slug: 'construcciones',
     icon: '🏗️',
     title: 'Construcciones: levantar algo permanente',
-    text: `Construir es distinto de craftear: en vez de un objeto que te llevas encima, levantas algo fijo en el mundo — un edificio, una mejora de tu territorio — que se queda ahí de forma permanente. Igual que el crafteo, cada construcción pide materiales concretos y, muchas veces, un oficio y un nivel de dificultad ("tier") que reflejan cuánto sabe hacer falta para no desperdiciar el esfuerzo.
+    text: `Construir es distinto de craftear: en vez de un objeto que te llevas encima, levantas algo fijo en el mundo — un edificio, una mejora de tu territorio — que se queda ahí de forma permanente. Igual que el crafteo, cada construcción pide materiales concretos, pero ninguna exige atributos mínimos. Lo que manda es su nivel de obra ("tier", del 1 al 9): hasta el 3 la levantas tú con tus manos; del 4 en adelante hace falta una Casa de obras con súbditos constructores, y un Ayuntamiento mediano (niveles 4 a 6) o grande (7 a 9).
 
 Algunas construcciones además están ligadas a una raza o cultura concreta — reflejan cómo construye ese pueblo, no una plantilla genérica que sirva para cualquiera.`,
   },
