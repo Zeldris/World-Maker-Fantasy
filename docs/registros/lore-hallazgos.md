@@ -581,3 +581,18 @@ Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de l
   - Resúmenes corregidos: Convocador 7, Valor 8, Tóxico 8, Aullador 4.
   - «34 especializaciones» → 29 construidas.
 - `ia-combate-y-mundo.md`: § 8 marcado APLICADO (`CR-44`, `CR-45`), con una sección «Cómo quedó en el motor». La retirada se construyó como moral para todo NPC con mente, no solo para los de Inteligencia 20+; desde 20, el NPC es capitán de su bando.
+
+**Habilidades con nombre repetido, renombradas el 2026-10-25 con el sí de la usuaria («Sí, los ocho»):**
+- Las partidas guardadas reconocen cada habilidad por su nombre (`SavedAction`, la barra y el arreglo de `detail.ts`), así que dos habilidades distintas con el mismo nombre chocaban. Caso real: el Asesino Selecto tenía «Golpe Certero» en el tronco (nv. 8) y en su rama (nv. 32), y el filtro de duplicados por nombre le quitaba la del nivel 32.
+- Cambian de nombre (código en `classAbilities.ts` y canon en `clases.md`):
+  - Asesino, tronco nv. 8: Golpe Certero → **Golpe Oportuno**.
+  - Asesino Selecto nv. 32: Golpe Certero → **Golpe a la Marca**.
+  - Cazador Instintivo nv. 36: Instinto Asesino → **Reflejo Primario**.
+  - Druida Salvaje nv. 19: Instinto Asesino → **Arrebato Salvaje**.
+  - Guerrero Especialista nv. 12: Golpe Adaptado → **Golpe Llano**.
+  - Cazador Tirador nv. 19: Tiro Inmovilizador → **Tiro a la Pata**.
+  - Cazador Tirador nv. 36: Tiro Múltiple → **Tiro Pasante**.
+  - Maestro Ballestero nv. 24: Postura de Tirador → **Postura de Ballestero**.
+- Conservan el nombre: Golpe Certero del Cazador, Instinto Asesino del Maestro Asesino, Golpe Adaptado del Druida Adaptado, y Tiro Inmovilizador, Tiro Múltiple y Postura de Tirador del Maestro Arquero.
+- Partidas ya empezadas: el renombrado es por clase y rama (`HABILIDADES_RENOMBRADAS_POR_CLASE` en `habilidadesRenombradas.ts`); el caso del Selecto se distingue por la descripción. Tests: `habilidadesRenombradas.test.ts` (sin nombres repetidos en el catálogo) y `detail.habilidadesIniciales.integration.test.ts`.
+- **Pendiente:** las imágenes de estas ocho habilidades van por el nombre (`slugify`), así que hay que generarlas de nuevo.

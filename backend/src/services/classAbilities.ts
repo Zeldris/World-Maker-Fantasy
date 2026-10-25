@@ -619,7 +619,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'GUERRERO',
     especializacion: 'ESPECIALISTA',
     ability: {
-      name: 'Golpe Adaptado',
+      name: 'Golpe Llano',
       icon: '⚔️',
       description: 'Un golpe de fuerza bruta sin ninguna floritura — el generalista de la clase sabe pegar fuerte cuando toca.',
       promptText: 'Golpeo con fuerza bruta, sin ninguna floritura.',
@@ -1200,7 +1200,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'CAZADOR',
     especializacion: 'TIRADOR',
     ability: {
-      name: 'Tiro Inmovilizador',
+      name: 'Tiro a la Pata',
       icon: '🏹',
       description: 'Un disparo dirigido a clavar al rival en el sitio, no a herirlo de gravedad.',
       promptText: 'Disparo buscando clavar a mi rival en el sitio, no herirlo de gravedad.',
@@ -1274,7 +1274,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'CAZADOR',
     especializacion: 'TIRADOR',
     ability: {
-      name: 'Tiro Múltiple',
+      name: 'Tiro Pasante',
       icon: '🏹',
       description: 'Un disparo tan preciso que, si conecta de lleno, alcanza también a otro rival cercano.',
       promptText: 'Disparo buscando alcanzar a más de un rival de un solo tiro.',
@@ -1385,7 +1385,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'CAZADOR',
     especializacion: 'INSTINTIVO',
     ability: {
-      name: 'Instinto Asesino',
+      name: 'Reflejo Primario',
       icon: '🩸',
       description: 'Reacción primaria, pura adrenalina — el cuerpo responde antes de que la mente decida nada.',
       promptText: 'Dejo que la pura adrenalina responda por mí, antes de pensarlo.',
@@ -2129,7 +2129,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'ARQUERO',
     especializacion: 'MAESTRO_BALLESTERO',
     ability: {
-      name: 'Postura de Tirador',
+      name: 'Postura de Ballestero',
       icon: '🧍',
       description: 'Una postura firme que estabiliza el disparo — la base de toda puntería duradera.',
       promptText: 'Adopto una postura firme, buscando estabilizar mi puntería.',
@@ -3309,7 +3309,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     level: 8,
     clase: 'ASESINO',
     ability: {
-      name: 'Golpe Certero',
+      name: 'Golpe Oportuno',
       icon: '🗡️',
       description: 'Un golpe reactivo, soltado en el instante exacto en que el rival baja la guardia.',
       promptText: 'Golpeo en el instante exacto en que mi rival baja la guardia.',
@@ -3768,7 +3768,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'ASESINO',
     especializacion: 'ASESINO_SELECTO',
     ability: {
-      name: 'Golpe Certero',
+      name: 'Golpe a la Marca',
       icon: '🎯',
       description: 'Un golpe directo al objetivo marcado, sin desperdiciar ni un movimiento.',
       promptText: 'Golpeo directo al objetivo marcado, sin desperdiciar nada.',
@@ -4119,7 +4119,7 @@ const CLASS_ABILITIES: ClassAbilityUnlock[] = [
     clase: 'DRUIDA',
     especializacion: 'SALVAJE',
     ability: {
-      name: 'Instinto Asesino',
+      name: 'Arrebato Salvaje',
       icon: '🩸',
       description: 'Deja que el instinto puro tome el control, aturdiendo al rival por pura agresividad.',
       promptText: 'Dejo que mi instinto más puro tome el control.',

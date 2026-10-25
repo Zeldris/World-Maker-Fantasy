@@ -529,7 +529,7 @@ constitución y destreza repetidas. Columna Estado añadida (se había perdido a
 
 | Nivel | Habilidad | Atributo | Efecto | Rol | Estado |
 |---|---|---|---|---|---|
-| 12 | Golpe Adaptado | Fuerza | `ATAQUE` | ataque | ✅ lista, sembrada |
+| 12 | Golpe Llano *(antes «Golpe Adaptado», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Fuerza | `ATAQUE` | ataque | ✅ lista, sembrada |
 | 16 | Golpe Calculado | Inteligencia | `ATAQUE` — golpe técnico, no de fuerza bruta | ataque | ✅ lista, sembrada |
 | 19 | Golpe Desequilibrante | Destreza | `ATAQUE` + `ATURDIMIENTO` | ataque | ✅ lista, sembrada |
 | 24 | Aliento de Batalla | Voluntad | `AGUANTE` + `RECUPERACION` | utilidad | ✅ lista, sembrada |
@@ -626,11 +626,11 @@ Columna Estado añadida (se había perdido al escribir esta tabla) y corregido e
 |---|---|---|---|---|
 | 12 | Disparo Certero | Destreza | `ATAQUE` | ✅ lista, sembrada |
 | 16 | Instinto de Cazador | Inteligencia | `AGUANTE` — lees la intención del rival y esquivas antes del golpe aumentando tu inteligencia en +4 | ✅ lista, sembrada |
-| 19 | Tiro Inmovilizador | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista, sembrada |
+| 19 | Tiro a la Pata *(antes «Tiro Inmovilizador», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista, sembrada |
 | 24 | Tensar al Límite | Fuerza | `ATAQUE` + `CANALIZAR` + `LETAL` — tensa el arco al máximo, más potencia por pura resistencia física | ✅ lista, sembrada — `CANALIZAR` tiene motor real desde el 2026-09-09 (1v1 y combate múltiple) |
 | 28 | Concentración Absoluta | Voluntad | `ATAQUE` — paciencia y foco antes de disparar, no técnica | ✅ lista, sembrada |
 | 32 | Puntería Perfecta | Destreza | `ATAQUE` — el disparo definitivo de precisión | ✅ lista, sembrada |
-| 36 | Tiro Multiple | Destreza | `ATAQUE` + `MULTIPLE` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts` como "Tiro Múltiple") |
+| 36 | Tiro Pasante *(antes «Tiro Múltiple», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` + `MULTIPLE` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts` como "Tiro Múltiple") |
 | 40 | Disparo Definitivo *(capstone)* | Destreza | `ATAQUE` + `AGUANTE` + `CONTRA` + `LIMITADO` | ⛔ combina rol ataque Y rol defensa en la MISMA habilidad ("si es en turno de ataque... si es en defensa...") — el motor asigna un único `rol` por `SavedAction`, no hay forma de que la misma ficha se comporte distinto según quién inicia el intercambio |
 
 **7 de 8 sembradas** (12, 16, 19, 24, 28, 32, 36 — corregido 2026-09-15, auditoría de lore:
@@ -650,7 +650,7 @@ Columna Estado añadida (se había perdido al escribir esta tabla):
 | 24 | Furia Instintiva | Fuerza | `ATAQUE` + `DEBILIDAD` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts`) |
 | 28 | Instinto de Reserva | Inteligencia | `AGUANTE` + `RECUPERACION` + `AREA` | ✅ lista, sembrada 2026-09-14 — `AREA` real, variante defensiva: dispara por margen decisivo (contragolpea con éxito), activa `CombatParticipant.areaDefensaPorRondas`; mientras viva, redirige cada golpe futuro dirigido al aliado protegido hacia quien la activó |
 | 32 | Golpe Gemelo | Fuerza | `ATAQUE` + `MULTIPLE` | ✅ **lista, sembrada 2026-08-31** — corregido un bug de siembra real: estaba dada de alta por error en Supervivencia nv.32 en vez de aquí (mismo nombre, mismo atributo), movida a su especialización correcta. Tramo único (siempre 2 objetivos si conecta), sin condición de margen propia de la ficha |
-| 36 | Instinto Asesino | Constitución | `AGUANTE` + `ATURDIMIENTO` + `LIMITADO` — reacción primaria, pura adrenalina | ✅ lista, sembrada |
+| 36 | Reflejo Primario *(antes «Instinto Asesino», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Constitución | `AGUANTE` + `ATURDIMIENTO` + `LIMITADO` — reacción primaria, pura adrenalina | ✅ lista, sembrada |
 | 40 | Velocidad Letal *(capstone)* | Destreza | `ATAQUE` + `LETAL` | ✅ lista, sembrada |
 
 **8 de 8 sembradas** (corregido 2026-10-25, `QA-240`: 19 ya está en `classAbilities.ts`) — Instintivo completo. Antes: 7 de 8 (12/16/24/28/32/36/40 — 28 (Instinto de Reserva) cerrada 2026-09-14 por `AREA`
@@ -838,7 +838,7 @@ verdad — ninguna otra ficha de todo el documento combina esos 2 efectos.
 
 Mismo atributo/efecto/nivel que Maestro Arquero en los 8 huecos, solo cambia el arma y el texto de
 sabor (arco → ballesta): Perno Certero (12), Perno Inmovilizador (16), Cálculo de Viento (19,
-idéntica), Postura de Tirador (24, idéntica), Perno Perforante (28), Segundo Aliento del Cazador
+idéntica), Postura de Ballestero (24, la Postura de Tirador del Maestro Arquero con otro nombre desde 2026-10-25, `QA-240`), Perno Perforante (28), Segundo Aliento del Cazador
 (32, idéntica), Recarga en Cadena (36), Perno del Ocaso *(capstone, 40)*. **Actualizado
 2026-09-14, mismo reparto que Maestro Arquero** (ver nota de esa sección): **7 de 8 listas** —
 solo 40 (`CANALIZAR`+`LETAL`) sigue bloqueada de verdad.
@@ -1016,7 +1016,7 @@ Destreza se repite a propósito (define a la clase), igual que Chamán repitió 
 | 1 | Estudio del Blanco | Inteligencia | `ANALISIS` | ✅ lista |
 | 4 | Reflejos de Sombra | Destreza | `AGUANTE` | ✅ lista |
 | 6 | Respiración Silenciosa | Voluntad | `RECUPERACION` | ✅ lista |
-| 8 | Golpe Certero | Destreza | `ATAQUE` (reactiva) | ✅ lista |
+| 8 | Golpe Oportuno *(antes «Golpe Certero», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` (reactiva) | ✅ lista |
 
 ### Maestro Asesino — generalista: precisión, crítico puro
 
@@ -1078,7 +1078,7 @@ repartidas.
 | 19 | Instinto de Caza | Voluntad | `AGUANTE` | ✅ lista |
 | 24 | Golpe Selecto | Fuerza | `ATAQUE` | ✅ lista |
 | 28 | Ventaja del Cazador | Inteligencia | `AUMENTO` | ⚠️ bloqueada |
-| 32 | Golpe Certero | Destreza | `ATAQUE` | ✅ lista |
+| 32 | Golpe a la Marca *(antes «Golpe Certero», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` | ✅ lista |
 | 36 | Sentencia | Constitución | `ATURDIMIENTO` | ✅ lista |
 | 40 | Ejecución del Elegido *(capstone)* | Destreza | `ATAQUE` — daño masivo solo contra el objetivo marcado | ✅ lista |
 
@@ -1149,7 +1149,7 @@ bloqueado por `INVOCACION` multi-objetivo (12/16/19/40).
 |---|---|---|---|---|
 | 12 | Garras Desgarradoras | Fuerza | `ATAQUE` | ✅ lista |
 | 16 | Mordisco Feroz | Destreza | `ATAQUE` | ✅ lista |
-| 19 | Instinto Asesino | Constitución | `ATURDIMIENTO` | ✅ lista |
+| 19 | Arrebato Salvaje *(antes «Instinto Asesino», renombrada 2026-10-25, `QA-240`: el nombre se repetía en otra clase)* | Constitución | `ATURDIMIENTO` | ✅ lista |
 | 24 | Embestida Salvaje | Fuerza | `ATAQUE` | ✅ lista |
 | 28 | Furia Primal | Voluntad | `RECUPERACION` | ✅ lista |
 | 32 | Zarpazo Doble | Destreza | `ATAQUE` | ✅ lista |
