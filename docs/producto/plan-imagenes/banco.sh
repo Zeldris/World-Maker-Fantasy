@@ -7,7 +7,7 @@
 # Una prueba que ya tiene imagen con esa semilla se salta (relanzar la ronda hace solo lo que falta). Antes de cada una, espera hasta
 # ESPERA s (1800) a tener LIBRE MB (7200): generar.sh aborta por debajo de 7000 y en la Deck hay más sesiones abiertas.
 # Con LIBERAR_OLLAMA=0 espera también a que Ollama esté vacío, en vez de descargar el modelo de otra sesión.
-set -eu
+set -euo pipefail  # sin pipefail, «probar.sh … | tail -2 || echo FALLO» nunca diría FALLO
 R=$(cd "$(dirname "$0")/../../.." && pwd); B=$R/docs/producto/plan-imagenes/banco
 RONDA=$1; SEED=${2:-3}; TSV=$B/$RONDA.tsv
 [ -s "$TSV" ] || { echo "ABORTO: no existe $TSV"; exit 2; }

@@ -243,6 +243,10 @@ class Elementos(Base):
     def test_sin_generated_ni_base_la_lista_esta_vacia(self):
         self.assertEqual(self.s.elementos()[0], [])
 
+    def test_los_bancos_de_calidad_no_son_elementos(self):
+        self.intento(tipo='banco', slug='r3-estilo-aullador-cine2')
+        self.assertEqual(self.s.elementos()[0], [])
+
 
 class Estimado(Base):
     def test_mediana_por_perfil_y_con_o_sin_referencia_en_todo_generated(self):
@@ -255,7 +259,8 @@ class Estimado(Base):
         self.intento('thumbnail-s9-p4-20261024-100009', segundos=220, extra='-r /y.png')
         self.assertEqual(self.s.estimado('thumbnail', False), 112)  # mediana de 100, 104, 120, 140
         self.assertEqual(self.s.estimado('thumbnail', True), 210)
-        self.assertEqual(self.s.estimado('banner', False), 999)
+        self.intento('banner-s3-p8-20261024-100010', tipo='banco', slug='r4-zimage', perfil='banner', segundos=400)
+        self.assertEqual(self.s.estimado('banner', False), 999)  # el banco de calidad no cuenta
 
     def test_por_defecto_sin_datos_y_mas_con_referencia(self):
         for perfil, base in (('thumbnail', 105), ('banner', 110), ('mapa', 110), ('icono', 80)):

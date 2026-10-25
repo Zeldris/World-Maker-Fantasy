@@ -112,9 +112,16 @@ http
         res.end(JSON.stringify({ model: body.model, embeddings: inputs.map(vec), embedding: vec(inputs[0]) }));
         return;
       }
-      if (url.startsWith('/api/tags') || url.startsWith('/api/ps')) {
+      if (url.startsWith('/api/tags')) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ models: [{ name: 'tarkor-narrador', model: 'tarkor-narrador' }] }));
+        return;
+      }
+      // /api/ps, como un Ollama real sin nada en memoria: el simulado no ocupa memoria, y si listara un modelo,
+      // image-generator/scripts/generar.sh intentaría descargarlo antes de cada imagen (IMG-15).
+      if (url.startsWith('/api/ps')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ models: [] }));
         return;
       }
       res.writeHead(200, { 'Content-Type': 'text/plain' });

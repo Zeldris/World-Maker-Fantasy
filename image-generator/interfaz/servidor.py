@@ -39,6 +39,9 @@ GENERADO = os.path.join(RAIZ, 'generated')
 REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
 SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]*$')  # el juego respeta las mayúsculas (CAZADOR)
+# Los bancos de calidad (docs/producto/plan-imagenes/banco.sh y calidad.sh, IMG-15) dejan sus intentos en generated/banco/:
+# no son elementos del juego ni cuentan para el tiempo estimado (prueban otros modelos, pasos y tamaños).
+BANCO = 'banco'
 EXTENSIONES = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'webp': 'image/webp'}
 CABECERA_REGISTRO = ['fecha', 'nombre', 'perfil', 'prompt', 'semilla', 'pasos', 'tamaño', 'extra', 'salida', 'segundos']
 ESTIMADO_BASE = {'thumbnail': 105, 'banner': 110, 'mapa': 110, 'icono': 80}  # segundos, sin referencia
@@ -287,7 +290,7 @@ def elementos():
         avisos.append(f'Sin los prompts de la enciclopedia: {err}')
     try:
         for t in os.listdir(GENERADO):
-            if not SLUG.match(t) or not os.path.isdir(os.path.join(GENERADO, t)):
+            if not SLUG.match(t) or t == BANCO or not os.path.isdir(os.path.join(GENERADO, t)):
                 continue
             for s_ in os.listdir(os.path.join(GENERADO, t)):
                 if SLUG.match(s_) and os.path.isdir(os.path.join(GENERADO, t, s_)):
@@ -327,6 +330,8 @@ def estimado(perfil, con_referencia):
     tiempos = []
     try:
         for t in os.listdir(GENERADO):
+            if t == BANCO:
+                continue
             for s_ in os.listdir(os.path.join(GENERADO, t)):
                 for f in filas_registro(os.path.join(GENERADO, t, s_)):
                     if f.get('perfil') == perfil and f.get('salida') == '0' and ('-r' in f.get('extra', '').split()) == con_referencia:
