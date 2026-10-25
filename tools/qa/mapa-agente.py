@@ -26,13 +26,13 @@ def texto_de(ruta, cache={}):
     return cache[ruta]
 
 
-def define(texto, nombre):
+def define(texto, nombre, python=False):
     n = re.escape(nombre)
     return re.search(
         rf'(?:\b(?:function\*?|const|let|var|class|interface|type|enum|model|def)\s+{n}\b)'  # declaración
-        rf'|(?:^{n}\s*(?::[^=\n]*)?=(?!=))'  # constante o asignación de Python sin sangría
+        + (rf'|(?:^{n}\s*(?::[^=\n]*)?=(?!=))' if python else '')  # constante de Python: asignación sin sangría
         # método (con o sin modificadores) o función de bash: sus paréntesis van seguidos de `{`, no de `;` como una llamada
-        rf'|(?:^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*(?::[^;{{=]*)?\{{)',
+        + rf'|(?:^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*(?::[^;{{=]*)?\{{)',
         texto, re.M) is not None
 
 
@@ -72,16 +72,19 @@ def main():
             ruta_actual = ruta
             if '<' in ruta:  # patrón: basta con que exista la carpeta fija de delante
                 fija = ruta[:ruta.index('<')].rsplit('/', 1)[0]
-                ignorada = subprocess.run(['git', 'check-ignore', '-q', fija + '/'], cwd=RAIZ).returncode == 0
-                if not os.path.isdir(os.path.join(RAIZ, fija)) and not ignorada:  # ignorada: salida que crea el generador
+                # ignorada por git (`generated/` o `generated/*`): es la salida que crea el generador
+                if not os.path.isdir(os.path.join(RAIZ, fija)) and \
+                        subprocess.run(['git', 'check-ignore', '-q', fija + '/_'], cwd=RAIZ).returncode != 0:
                     rotas.append(f'mapa-agente.md:{nl}: no existe {fija}/')
+                if nombre:
+                    rotas.append(f'mapa-agente.md:{nl}: {ruta} es un patrón: su #{nombre} no se puede comprobar')
                 archivos = None
                 continue
             todos = glob.glob(os.path.join(RAIZ, ruta))
             archivos = [a for a in todos if os.path.isfile(a)]
             if not todos:
                 rotas.append(f'mapa-agente.md:{nl}: no existe {ruta}')
-            elif nombre and not any(define(texto_de(a), nombre) for a in archivos):
+            elif nombre and not any(define(texto_de(a), nombre, a.endswith('.py')) for a in archivos):
                 rotas.append(f'mapa-agente.md:{nl}: {ruta} no define {nombre}')
             if not nombre or '*' in ruta:
                 archivos = None  # los nombres sueltos solo siguen a una referencia `archivo#función`

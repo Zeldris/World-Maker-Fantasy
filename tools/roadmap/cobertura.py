@@ -14,7 +14,8 @@ fases R-x / Z-x / UX-x y «CR Fases N») y lista:
 Uso: python3 tools/roadmap/cobertura.py   (sale con código 1 si hay tareas sin hito, identificadores
 sin definir nuevos o retros pendientes; lo ejecuta la CI, QA-14)
      python3 tools/roadmap/cobertura.py --fila <ID>   (QA-242: dónde está definida la tarea, su hito y cada
-     línea de 21-roadmap.md que la nombra, con el trozo de alrededor; sin leer los roadmaps enteros)
+     línea de 21-roadmap.md que la nombra, con el trozo de alrededor; sin leer los roadmaps enteros;
+     sale con 1 si la tarea no está definida o no tiene hito)
 """
 import re, sys, os
 D=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','docs','producto')+'/'
@@ -99,7 +100,7 @@ def fila(i):
 if __name__ == '__main__' and sys.argv[1:2] == ['--fila']:
     if len(sys.argv) != 3: sys.exit('uso: cobertura.py --fila <ID>')
     print('\n'.join(fila(sys.argv[2])))
-    sys.exit(0 if sys.argv[2] in defs and sys.argv[2] in asignado else 1)  # como sin argumentos: definida y con hito
+    sys.exit(0 if sys.argv[2] in defs and sys.argv[2] in asignado else 1)
 if __name__ == '__main__':
     print('definidas',len(defs),'asignadas',len(asignado))
     print('SIN HITO:',len(falta))
