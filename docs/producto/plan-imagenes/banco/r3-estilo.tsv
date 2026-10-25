@@ -1,0 +1,10 @@
+# r3: estilo del prompt (banco/prompts.py), con klein 4B, VAE pequeño y Qwen3 Q4 de hoy.
+aullador-cine2	6	prompts/aullador-cine2.txt	-	-
+aullador-corto	6	prompts/aullador-corto.txt	-	-
+aullador-arte	6	prompts/aullador-arte.txt	-	-
+aullador-fantasia	6	prompts/aullador-fantasia.txt	-	-
+pastos-cine2	6	prompts/pastos-cine2.txt	-	-
+pastos-corto	6	prompts/pastos-corto.txt	-	-
+pastos-arte	6	prompts/pastos-arte.txt	-	-
+hulki-cine2	6	prompts/hulki-cine2.txt	-	-
+cardo-cine2	6	prompts/cardo-cine2.txt	-	-

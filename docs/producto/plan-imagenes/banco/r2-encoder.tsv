@@ -1,0 +1,5 @@
+# r2: codificador de texto Qwen3-4B en Q8 (hoy Q4_K_M), con el VAE pequeño y con el completo. Prompt: estilo cine.
+pastos-q8	6	prompts/pastos-cine.txt	LLM=Qwen3-4B-Q8_0.gguf	-
+pastos-q8-vae-full	6	prompts/pastos-cine.txt	LLM=Qwen3-4B-Q8_0.gguf,VAE=flux2-vae.safetensors	-
+aullador-q8	6	prompts/aullador-cine.txt	LLM=Qwen3-4B-Q8_0.gguf	-
+aullador-q8-vae-full	6	prompts/aullador-cine.txt	LLM=Qwen3-4B-Q8_0.gguf,VAE=flux2-vae.safetensors	-

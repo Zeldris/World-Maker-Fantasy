@@ -2,7 +2,8 @@
 # Genera una imagen con FLUX.2 klein 4B en la Deck a partir de un archivo de prompt.
 # Uso: generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla] [pasos] [args extra de sd-cli…]
 # p. ej. args extra: -r referencia.png (imagen de referencia de estilo)
-# Otro modelo, por variables: MODELO=<gguf de modelos/diffusion> LLM=<gguf de modelos/text> CFG=<escala> TOPE=<s>
+# Otro modelo, por variables: MODELO=<gguf de modelos/diffusion> LLM=<gguf de modelos/text> VAE=<de modelos/vae>
+# CFG=<escala> TOPE=<s>
 # Deja imagen, log y copia del prompt en <directorio-de-salida>/{intentos,logs,prompts}/<nombre>.* (probar.sh le pasa
 # generated/<tipo>/<slug>); a mano, p. ej.: generar.sh image-generator/generated/murgol/pruebas v5 prompt.txt 1280 512
 # LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
@@ -15,6 +16,7 @@ D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-4}; EXTRA=("${@:8}")
 mkdir -p "$D/intentos" "$D/logs" "$D/prompts"
 MIN_INICIO_MB=7000; MIN_VIGILA_MB=1500
 MODELO=${MODELO:-flux-2-klein-4b-Q8_0.gguf}; LLM=${LLM:-Qwen3-4B-Q4_K_M.gguf}; CFG=${CFG:-1.0}; TOPE=${TOPE:-900}
+VAE=${VAE:-full_encoder_small_decoder.safetensors}
 
 disp() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
 [ "$(disp)" -ge $MIN_INICIO_MB ] || { echo "ABORTO: solo $(disp) MB libres (<$MIN_INICIO_MB). Cierra navegador/Steam/juego."; exit 3; }
@@ -39,7 +41,7 @@ LOG=$D/logs/$N.log
 t0=$(date +%s)
 # CFG-43: sd-cli con sus librerías ggml; las de Ollama (LD_LIBRARY_PATH del host) le quitan la GPU: «No devices found».
 LD_LIBRARY_PATH="$B" timeout "$TOPE" "$B/sd-cli" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
-  --vae "$M/vae/full_encoder_small_decoder.safetensors" -p "$PROMPT" \
+  --vae "$M/vae/$VAE" -p "$PROMPT" \
   --cfg-scale "$CFG" --steps "$STEPS" --sampling-method euler -W "$W" -H "$H" --seed "$SEED" \
   --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/intentos/$N.png" -v > "$LOG" 2>&1 &
 PID=$!
