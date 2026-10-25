@@ -77,7 +77,10 @@ async (page) => {
     .evaluateAll((els) => els.map((el) => Array.from(el.childNodes).map((n) => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim()));
   // P246: la tarjeta del encuentro sale en el diario y, con el mapa abierto, junto a la ficha (ZON-5): el mismo
   // aviso dos veces en pantalla no son dos avisos, así que se enseña una vez.
+  // P320: solo frases cortas (un aviso, no una ficha): la nota de trasfondo de Gorhorn o la descripción larga
+  // de un bestiario también dicen «convaleciente» y acababan pegadas en el cuerpo del aviso.
   const avisos = parrafos
+    .filter((t) => t.length <= 160)
     .filter((t) => /busca tu atención|te corta el paso|Te topas con|te golpea|Has caído|Victoria|Derrota|CONVALECIENTE/i.test(t))
     .filter((t, i, todos) => todos.indexOf(t) === i)
     .slice(-3);

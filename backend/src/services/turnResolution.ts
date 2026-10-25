@@ -3758,7 +3758,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // modelo confundió una fauna ("Colmena de Lebude") con el apellido de una persona inventada
     // ("el pescador de Lebude"). Solo NPC son personas reales con las que se puede hablar — el
     // resto se etiqueta explícitamente como NO personas.
-    const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId, saveId);
+    const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId, saveId, worldId);
     if (zonePointsSummary?.npc) contextBlocks.push(`PERSONAJES AQUÍ AHORA MISMO (son gente real, puedes hablar con ellos): ${zonePointsSummary.npc}`);
     if (zonePointsSummary?.fauna) contextBlocks.push(`FAUNA AQUÍ AHORA MISMO (animales, NO son personas): ${zonePointsSummary.fauna}`);
     if (zonePointsSummary?.recurso) contextBlocks.push(`RECURSOS AQUÍ AHORA MISMO (materiales, NO son personas ni animales): ${zonePointsSummary.recurso}`);

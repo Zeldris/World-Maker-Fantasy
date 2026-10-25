@@ -145,8 +145,11 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
 
     // Revisión de P269/P329 (leve): el nombre sale del mundo de la partida, no de otro con el mismo slug.
     it('un NPC de otro mundo con el mismo slug no le pone su nombre al punto', async () => {
+      // Slug único por pasada (y limpieza de restos): una pasada cortada a medias no tumba las siguientes.
+      const slugOtroMundo = `test-zonepoints-otro-mundo-${Date.now()}`;
+      await prisma.world.deleteMany({ where: { slug: { startsWith: 'test-zonepoints-otro-mundo' } } });
       const otroMundo = await prisma.world.create({
-        data: { slug: 'test-zonepoints-otro-mundo', name: 'Otro mundo', tagline: 'x', synopsis: 'x', tone: 'x', lethality: 'MEDIA', theme: {} },
+        data: { slug: slugOtroMundo, name: 'Otro mundo', tagline: 'x', synopsis: 'x', tone: 'x', lethality: 'MEDIA', theme: {} },
       });
       try {
         await prisma.npc.create({
@@ -158,6 +161,10 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
         const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
         expect(resumen?.npc).toContain('Gistera Koh');
         expect(resumen?.npc).not.toContain('Gemela de otro mundo');
+        // Con el mundo ya sabido (lo pasa el turno) da lo mismo, sin leer la partida.
+        const mundoPartida = (await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } })).worldId;
+        const conMundo = await zonePointsSummaryFor(prisma, locationId, saveId, mundoPartida);
+        expect(conMundo).toEqual(resumen);
       } finally {
         await prisma.world.delete({ where: { id: otroMundo.id } });
       }

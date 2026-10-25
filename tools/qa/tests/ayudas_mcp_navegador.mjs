@@ -134,6 +134,18 @@ test('viajar-a: destino deshabilitado (sin montura) da ERROR con el motivo, cier
   assert.ok(r.ms < 9000, 'tardó ' + r.ms);
 });
 
+// P320: AVISOS de estado.js enseña los avisos cortos, no una ficha larga que solo nombra «convaleciente».
+test('estado: una nota larga que dice «convaleciente» no entra en AVISOS', async () => {
+  const estado = await ayuda('estado');
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const larga = 'Gorhorn nació en el clan y de joven quedó convaleciente tras una cacería que casi acaba con él; desde entonces lleva la marca de aquel invierno y no confía en nadie que no haya compartido su fuego durante mucho tiempo.';
+  await page.setContent(`<body><header>HUD</header><main><h3>Guchapo está CONVALECIENTE</h3><p>${larga}</p></main></body>`);
+  const salida = await estado(page);
+  await page.close();
+  assert.match(salida, /AVISOS: Guchapo está CONVALECIENTE$/m);
+  assert.doesNotMatch(salida, /AVISOS:.*Gorhorn nació/);
+});
+
 let fallos = 0;
 for (const [nombre, f] of pruebas) {
   try { await f(); console.log('ok   ' + nombre); } catch (e) { fallos++; console.log('FALLA ' + nombre + '\n  ' + String(e.message).split('\n').join('\n  ')); }

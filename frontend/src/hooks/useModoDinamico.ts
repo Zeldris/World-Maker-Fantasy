@@ -116,7 +116,7 @@ export function useModoDinamico({
     trasMenu?: boolean,
   ) {
     setCharacterLog((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: true } } : e)),
+      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: true } } : e)),
     )
     try {
       // P142: un NPC con menú propio (oficio, trabajo, noticias…) lo enseña primero, en el sitio
@@ -183,7 +183,7 @@ export function useModoDinamico({
           e.id === entryId
             ? {
                 ...e,
-                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: false, error: motivo },
+                dynamicModeOffer: yaNoDisponible ? undefined : { ...e.dynamicModeOffer, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: false, error: motivo },
                 ...(yaNoDisponible ? { text: `${e.text} (${motivo})` } : {}),
               }
             : e,

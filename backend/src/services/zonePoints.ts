@@ -813,7 +813,7 @@ export interface ZonePointsSummaryPorTipo {
   edificio: string | null;
 }
 
-export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string): Promise<ZonePointsSummaryPorTipo | null> {
+export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string, worldIdConocido?: string): Promise<ZonePointsSummaryPorTipo | null> {
   await asegurarZonePointsDePartida(prisma, saveId, locationId);
   const puntosCrudos = await prisma.zonePoint.findMany({ where: { saveId, locationId, activo: true } });
   if (puntosCrudos.length === 0) return null;
@@ -826,7 +826,8 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
   const npcSlugs = [...new Set(puntos.filter((p) => p.tipo === 'NPC').map((p) => p.targetSlug))];
   // Revisión de P269/P329 (leve): los Npc se buscan en el mundo de la partida (y los nacidos en ella), no por slug
   // a secas: uno de otro mundo con el mismo slug le ponía su nombre al punto.
-  const worldId = npcSlugs.length ? (await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } }))?.worldId : undefined;
+  // El turno ya sabe el mundo y lo pasa (sin consulta extra); sin él, se lee de la partida.
+  const worldId = worldIdConocido ?? (npcSlugs.length ? (await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } }))?.worldId : undefined);
   const npcRows = npcSlugs.length && worldId ? await prisma.npc.findMany({ where: { worldId, ...npcDeLaPartida(saveId), slug: { in: npcSlugs } }, select: { slug: true, name: true } }) : [];
   const npcNameBySlug = new Map(npcRows.map((n) => [n.slug, n.name]));
 

@@ -21,11 +21,11 @@ const encuentro: LogEntry = {
   dynamicModeOffer: { tipo: 'NPC', targetSlug: 'maestro-cocinero-serhu', targetName: 'Alguien', quienInicia: 'jugador' },
 }
 
-function montar() {
+function montar(inicial: LogEntry = encuentro) {
   const setActiveDynamicMode = vi.fn()
   const handleSubmit = vi.fn()
   const hook = renderHook(() => {
-    const [characterLog, setCharacterLog] = useState<LogEntry[]>([encuentro])
+    const [characterLog, setCharacterLog] = useState<LogEntry[]>([inicial])
     const md = useModoDinamico({
       saveId: 's1', characterLog, characterName: 'Gorhorn', fictionalDate: '', enciclopediaIndex: { bySlugKey: new Map() } as never,
       setCharacterLog, setFictionalDate: vi.fn(), setCombateIniciado: vi.fn(), setActiveDynamicMode, setInventory: vi.fn(), setXp: vi.fn(),
@@ -94,5 +94,41 @@ describe('P142 — menú fijo del NPC desde el encuentro del mapa', () => {
     })
     expect(hook.result.current.characterLog[0].dynamicModeOffer).toBeUndefined()
     expect(hook.result.current.characterLog[0].npcInteractionOffer).toBeUndefined()
+  })
+})
+
+/// P309: al pulsar «Interactuar» la tarjeta pasaba a «Interactuando...» y perdía `quien` (el nombre con
+/// artículo que manda el backend), `aQuien` y `deBando`: la cabecera quedaba «Cazadora Serhu busca…».
+describe('P309 — la tarjeta conserva lo que manda el backend mientras interactúa', () => {
+  const cazadora: LogEntry = {
+    ...encuentro,
+    dynamicModeOffer: {
+      tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'jugador',
+      quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu', deBando: { faccion: 'Clan Serhu', deQuien: 'del Clan Serhu', reputacion: -50 },
+    },
+  }
+
+  it('mientras espera (busy) sigue con `quien`, `aQuien` y `deBando`', async () => {
+    let soltar: (v: { menu: null }) => void = () => undefined
+    vi.mocked(abrirMenuNpc).mockReset()
+    vi.mocked(abrirMenuNpc).mockReturnValue(new Promise((r) => { soltar = r as never }))
+    vi.mocked(interactuarModoDinamico).mockReset()
+    vi.mocked(interactuarModoDinamico).mockRejectedValue(new Error('No se pudo abrir'))
+    const { hook } = montar(cazadora)
+    let promesa: Promise<void> = Promise.resolve()
+    await act(async () => {
+      promesa = hook.result.current.handleInteractuarModoDinamico('e1', 'NPC', 'cazadora-serhu', 'Cazadora Serhu', 'jugador')
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({
+      busy: true, quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu', deBando: { reputacion: -50 },
+    })
+    await act(async () => {
+      soltar({ menu: null })
+      await promesa
+    })
+    // Tras el fallo, la tarjeta sigue siendo la misma, con el motivo.
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({
+      busy: false, error: 'No se pudo abrir', quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu',
+    })
   })
 })

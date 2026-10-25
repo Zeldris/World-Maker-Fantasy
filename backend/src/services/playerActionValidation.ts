@@ -17,6 +17,8 @@ import { ANACHRONISM_REGEX } from './narrador.js';
 import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from './harvest.js';
 import { harvestAbilityForMetodo } from './harvestAbilities.js';
 import { stripRegionArticle } from './population.js';
+import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from './entityDiscovery.js';
+import { nombreEnFrase } from './dynamicMode.js';
 import { harvestSourceRegion, harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
@@ -127,6 +129,8 @@ export interface AbsentSceneNpcClaim {
   /// P310: la jugadora ya la ha visto en escena (`DiscoveredEntity` en fase DESCUBIERTO). Una
   /// conocida ausente («Gistera Koh», la dadora de la misión) no se trata como «quienquiera que sea».
   conocido: boolean;
+  /// P310 (revisión): es fauna (`entityTypeDeSerVivo`), no una persona: la frase no dice «esa persona».
+  esFauna: boolean;
 }
 
 /// Detecta si la acción del jugador interactúa con un NPC/fauna REAL de catálogo (existe de
@@ -197,11 +201,13 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
   }
   const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
   if (!absent) return null;
+  // La ficha se busca con el tipo que le toca (`entityTypeDeSerVivo`, REVIEW.md): una fauna y un NPC con el mismo slug no se confunden.
+  const entityType = entityTypeDeSerVivo(absent.slug, FUENTES_DE_CATALOGO);
   const vista = await prisma.discoveredEntity.findFirst({
-    where: { saveId, entitySlug: absent.slug, fase: 'DESCUBIERTO' },
+    where: { saveId, entityType, entitySlug: absent.slug, fase: 'DESCUBIERTO' },
     select: { id: true },
   });
-  return { name: absent.name, conocido: vista !== null };
+  return { name: absent.name, conocido: vista !== null, esFauna: entityType === 'fauna' };
 }
 
 /// Mismo criterio que `WRONG_WEAPON_LINES` — pool de 5, 1 cómica menos frecuente.
@@ -215,15 +221,16 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
 
 /// P310: para quien la jugadora ya conoce (la ha visto en escena), ni «quienquiera que sea» ni «no
 /// hay nadie con ese nombre»: Gorhorn sabe quién es, solo que ahora no está aquí.
-const ABSENT_KNOWN_NPC_LINES: ((nombre: string) => string)[] = [
-  (nombre) => `Gorhorn mira alrededor buscando a ${nombre}, pero ahora mismo no está en este lugar.`,
-  (nombre) => `${nombre} no está aquí ahora. Gorhorn lo comprueba con la mirada: tendrá que ir a buscar a esa persona donde esté, o esperar a que vuelva.`,
-  (nombre) => `Gorhorn se vuelve hacia donde esperaba ver a ${nombre}, pero no hay rastro por aquí. Habrá que dar con esa persona en otro sitio.`,
+const ABSENT_KNOWN_NPC_LINES: ((nombre: string, quien: string) => string)[] = [
+  (nombre) => `Gorhorn mira alrededor buscando a ${nombreEnFrase(nombre)}, pero ahora mismo no está en este lugar.`,
+  (nombre, quien) => `${nombreEnFrase(nombre, true)} no está aquí ahora. Gorhorn lo comprueba con la mirada: tendrá que ir a buscar a ${quien} donde esté, o esperar a que vuelva.`,
+  (nombre, quien) => `Gorhorn se vuelve hacia donde esperaba ver a ${nombreEnFrase(nombre)}, pero no hay rastro por aquí. Habrá que dar con ${quien} en otro sitio.`,
 ];
 
-export function absentSceneNpcNarrationFor(nombre: string, conocido = false): string {
+export function absentSceneNpcNarrationFor(nombre: string, conocido = false, esFauna = false): string {
   const line = pickRandomLine(conocido ? ABSENT_KNOWN_NPC_LINES : ABSENT_NPC_LINES);
-  return line(nombre);
+  // «esa persona» solo con personas; una fauna conocida es «ese animal».
+  return line(nombre, esFauna ? 'ese animal' : 'esa persona');
 }
 
 /// Verbo/preposición de diálogo DIRIGIDO a una persona concreta — más estrecho a propósito que
