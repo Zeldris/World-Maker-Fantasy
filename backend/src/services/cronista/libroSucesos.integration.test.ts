@@ -183,6 +183,17 @@ describe('registrarSuceso (CR-2)', () => {
     expect(await alianza(40 * 1440, 'faccion-a', 'faccion-b')).not.toBe(primera); // un pacto nuevo, un mes después
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'ALIANZA' } })).toBe(3);
   });
+
+  // Revisión P247: si entre las dos alianzas se rompieron, la segunda es un pacto nuevo y se cuenta.
+  it('alianza, ruptura y alianza nueva en la misma semana son dos pactos', async () => {
+    const actores = [{ entidadTipo: 'FACCION' as const, entidadId: 'faccion-x', papel: 'AFECTADO' as const }, { entidadTipo: 'FACCION' as const, entidadId: 'faccion-y', papel: 'AFECTADO' as const }];
+    const alianza = (min: number) => registrarSuceso(prisma, { saveId, tipo: 'ALIANZA', fictionalMinutes: min, origen: 'MUNDO', actores, datos: { faccionA: 'X', faccionB: 'Y' } });
+    const primera = await alianza(60 * 1440);
+    await registrarSuceso(prisma, { saveId, tipo: 'RUPTURA', fictionalMinutes: 62 * 1440, origen: 'MUNDO', actores, datos: { faccionA: 'X', faccionB: 'Y' } });
+    const segunda = await alianza(64 * 1440);
+    expect(segunda).not.toBe(primera);
+    expect(await alianza(64 * 1440 + 30)).toBe(segunda); // el mismo pacto nuevo, visto otra vez, sí se junta
+  });
 });
 
 // CR-3 (hito 0.2): con el tiempo, un NPC convaleciente se recupera y un cadáver desaparece — los dos

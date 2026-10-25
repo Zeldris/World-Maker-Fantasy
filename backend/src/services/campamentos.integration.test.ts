@@ -190,6 +190,12 @@ describe('asaltos al Reino vacío (P253)', () => {
     // Una pizca (por debajo de lo que merece el viaje) tampoco.
     await prisma.kingdomStats.updateMany({ where: { saveId }, data: { riqueza: 5, comida: 20 } });
     expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(0);
+    // Revisión P253: sin Goirnos ni comida, pero con el Almacén lleno, también hay que llevarse.
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 4 }, (_, i) => ({ saveId, name: `Maza orca ${i}`, description: 'x', catalogSlug: 'maza-orca' })) });
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(1);
+    await prisma.viajero.deleteMany({ where: { saveId, tipo: 'ASALTO' } });
+    await prisma.campamento.updateMany({ where: { saveId }, data: { ultimoAsaltoReinoDia: null } });
+    await prisma.almacenItem.deleteMany({ where: { saveId } });
     await prisma.kingdomStats.updateMany({ where: { saveId }, data: { riqueza: 300 } });
     expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(1);
     expect((await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).ultimoAsaltoReinoDia).toBe(30);

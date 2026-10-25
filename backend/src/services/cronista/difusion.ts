@@ -171,10 +171,11 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
   const personaje = { region: save.currentLocation?.region ?? null, aliadas: await aliadasDelReino(tx, saveId) };
   if (sucesos.length === 0) return opciones.sucesoIds ? 0 : confirmarRumores(tx, saveId, ahora, personaje);
   const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
+  const reino = await tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { name: true } });
   let sabidos = 0;
   for (const s of sucesos) {
     const a = alcance.get(s.id)!;
-    const llega = llegaSola(a, personaje);
+    const llega = llegaSola(a, { ...personaje, reino: reino?.name ?? null });
     if (!llega || ahora - s.fictionalMinutes < llega.dias * MINUTOS_DIA) continue;
     const r = await conocer(tx, {
       saveId, sucesoId: s.id, via: llega.via, confirmado: llega.confirmado, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null,

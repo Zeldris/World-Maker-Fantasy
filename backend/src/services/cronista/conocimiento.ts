@@ -97,12 +97,16 @@ function diasComoRumorLejano(origenes: string[], region: string): number {
 /// Cuándo y cómo le llega sola la noticia al personaje; null = no le llega sin hacer nada (Q10).
 export function llegaSola(
   s: SucesoConAlcance,
-  personaje: { region: string | null; aliadas: Set<string> },
+  personaje: { region: string | null; aliadas: Set<string>; reino?: string | null },
 ): { dias: number; via: Via; confirmado: boolean } | null {
   if (s.importancia >= IMPORTANCIA_SE_SABE && s.facciones.some((f) => personaje.aliadas.has(f))) {
     return { dias: 0, via: 'ALIADA', confirmado: true };
   }
-  if (s.importancia < IMPORTANCIA_RUMOR_LEJANO || !personaje.region) return null;
+  if (s.importancia < IMPORTANCIA_RUMOR_LEJANO) return null;
+  // Lo de su propio Reino (hambruna, rebelión: sin región de origen) lo sabe al momento por los suyos,
+  // nunca como rumor lejano (P316).
+  if (personaje.reino && s.facciones.includes(personaje.reino)) return { dias: 0, via: 'OIDAS', confirmado: true };
+  if (!personaje.region) return null;
   // Dentro del alcance de la tabla (≥ 7 y vecinas, 5-6 en su región) lo de siempre; fuera, rumor lejano.
   const dias = diasHastaRegion(s, personaje.region) ?? diasComoRumorLejano(s.origenes, personaje.region);
   return { dias, via: 'OIDAS', confirmado: s.origenes.includes(personaje.region) };

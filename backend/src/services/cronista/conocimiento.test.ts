@@ -66,6 +66,15 @@ describe('alcance de un suceso', () => {
     expect(llegaSola(suceso(3, [], ['Clan Goshg']), p('Cristal Helado', ['Clan Goshg']))).toBeNull();
   });
 
+  // Revisión P316: lo del propio Reino (hambruna, rebelión) no tiene región de origen; lo sabe al momento
+  // como hecho por los suyos, esté donde esté, nunca como «rumor lejano» a los 3 días.
+  it('lo de su propio Reino le llega al momento como hecho, aunque no tenga región de origen', () => {
+    const hambruna = suceso(6, [], ['El Reino de Prueba']);
+    expect(llegaSola(hambruna, { region: 'Cristal Helado', aliadas: new Set(), reino: 'El Reino de Prueba' })).toEqual({ dias: 0, via: 'OIDAS', confirmado: true });
+    expect(llegaSola(hambruna, { region: null, aliadas: new Set(), reino: 'El Reino de Prueba' })).toEqual({ dias: 0, via: 'OIDAS', confirmado: true });
+    expect(llegaSola(suceso(4, [], ['El Reino de Prueba']), { region: LL, aliadas: new Set(), reino: 'El Reino de Prueba' })).toBeNull();
+  });
+
   it('región a partir del slug del suceso', () => {
     expect(regionDeSlug('cienaga-troncal')).toBe('Ciénaga Troncal');
     expect(regionDeSlug('atlantida')).toBeNull();

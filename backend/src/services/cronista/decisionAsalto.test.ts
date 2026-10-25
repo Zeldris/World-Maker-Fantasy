@@ -48,6 +48,9 @@ describe('decisión de asalto (CR-67)', () => {
     expect(reinoTieneQueLlevarse(5, 20)).toBe(false);
     expect(reinoTieneQueLlevarse(20, 0)).toBe(true);
     expect(reinoTieneQueLlevarse(0, 40)).toBe(true);
+    // Revisión P253: los objetos del Almacén también son botín (se llevan uno desde 4).
+    expect(reinoTieneQueLlevarse(0, 0, 3)).toBe(false);
+    expect(reinoTieneQueLlevarse(0, 0, 4)).toBe(true);
     const g = [79, 80, 90, 100].map(motivoGuerra);
     expect(g[0]).toBe(0);
     expect(g[1]).toBeCloseTo(0.2);

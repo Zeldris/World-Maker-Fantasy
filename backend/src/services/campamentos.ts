@@ -192,7 +192,8 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
     const defensas = new Map<string, number>();
     for (const a of asentamientos) defensas.set(a.id, await defensaVista(tx, saveId, a, ahora, ctx));
     const k = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { riqueza: true, comida: true } });
-    return { asentamientos, defensas, riqueza: k?.riqueza ?? 0, comida: k?.comida ?? 0, ...(await ajustesAsaltos(tx, saveId)) };
+    const objetos = await tx.almacenItem.count({ where: { saveId } });
+    return { asentamientos, defensas, riqueza: k?.riqueza ?? 0, comida: k?.comida ?? 0, objetos, ...(await ajustesAsaltos(tx, saveId)) };
   });
   if (!base) return 0;
   let salen = 0;
@@ -208,7 +209,7 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
       if (!blanco) return;
       if (salen > 0) return; // P285: un asalto al Reino por tanda; el enfriamiento corre desde hoy.
       // P253: a un Reino sin nada que llevarse no se va, por mucha necesidad que haya.
-      if (!reinoTieneQueLlevarse(base.riqueza, base.comida)) return;
+      if (!reinoTieneQueLlevarse(base.riqueza, base.comida, base.objetos)) return;
       const motivo = motivoBandidos({ riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, gente: c.gente, tope: c.tope, intensidad: base.intensidad });
       const d = decidirAtaque({ fuerza: c.gente, enCasa: BANDIDOS_EN_CASA, defensa: base.defensas.get(blanco.id)!, motivo, intensidad: base.intensidad, tamano: base.tamano });
       if (!d.ataca) return;

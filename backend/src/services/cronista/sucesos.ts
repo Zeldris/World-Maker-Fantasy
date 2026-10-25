@@ -44,19 +44,34 @@ type Db = PrismaClient | Prisma.TransactionClient;
 /// dos sistemas (la cadena de Serhu y el cambio de banda de la relación): en Leyendas salían dos líneas casi iguales.
 export const DIAS_MISMO_PACTO = 7;
 
+/// Lo que entre dos alianzas de las mismas facciones dice que la primera se rompió: la segunda es otro pacto.
+const ROMPEN_PACTO = ['RUPTURA', 'GUERRA_DECLARADA', 'CAMBIO_RELACION', 'TREGUA', 'TRATADO_COMERCIAL'] as const;
+
 /// Si ya hay una alianza entre las mismas facciones en la ventana de `DIAS_MISMO_PACTO`, su id (es el mismo
-/// pacto: no se vuelve a contar). Solo para `ALIANZA`; el resto de sucesos, nunca.
+/// pacto: no se vuelve a contar), salvo que entre las dos se rompiera (ruptura, guerra, cambio de banda).
+/// Solo para `ALIANZA`; el resto de sucesos, nunca.
 async function alianzaYaContada(db: Db, s: NuevoSuceso): Promise<string | null> {
   if (s.tipo !== 'ALIANZA') return null;
   const facciones = [...new Set(s.actores.filter((a) => a.entidadTipo === 'FACCION').map((a) => a.entidadId))];
   if (facciones.length < 2) return null;
   const ventana = DIAS_MISMO_PACTO * 1440;
+  const entreLasMismas = (p: { actores: { entidadId: string }[] }) => facciones.every((f) => p.actores.some((a) => a.entidadId === f));
   const previos = await db.suceso.findMany({
     where: { saveId: s.saveId, tipo: 'ALIANZA', fictionalMinutes: { gte: s.fictionalMinutes - ventana, lte: s.fictionalMinutes + ventana } },
-    select: { id: true, actores: { where: { entidadTipo: 'FACCION' }, select: { entidadId: true } } },
+    select: { id: true, fictionalMinutes: true, actores: { where: { entidadTipo: 'FACCION' }, select: { entidadId: true } } },
     orderBy: { fictionalMinutes: 'asc' },
   });
-  return previos.find((p) => facciones.every((f) => p.actores.some((a) => a.entidadId === f)))?.id ?? null;
+  // La más cercana en el tiempo: con una ruptura en medio, la anterior a ella ya no cuenta.
+  const previo = previos.filter(entreLasMismas).sort((x, y) => Math.abs(x.fictionalMinutes - s.fictionalMinutes) - Math.abs(y.fictionalMinutes - s.fictionalMinutes))[0];
+  if (!previo) return null;
+  // Revisión P247: alianza, ruptura y alianza nueva en la misma semana son dos pactos, no uno.
+  const desde = Math.min(previo.fictionalMinutes, s.fictionalMinutes);
+  const hasta = Math.max(previo.fictionalMinutes, s.fictionalMinutes);
+  const enMedio = await db.suceso.findMany({
+    where: { saveId: s.saveId, tipo: { in: [...ROMPEN_PACTO] }, fictionalMinutes: { gte: desde, lte: hasta } },
+    select: { actores: { where: { entidadTipo: 'FACCION' }, select: { entidadId: true } } },
+  });
+  return enMedio.some(entreLasMismas) ? null : previo.id;
 }
 
 /// Registra un suceso en el Libro y devuelve su id. Llamar dentro de la transacción del turno o del

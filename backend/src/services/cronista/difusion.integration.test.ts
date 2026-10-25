@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
+import { registrarHambruna } from './hambruna.js';
 import { conocer, difundir, leerBandos, preguntarNoticias, ventanaTrasSalto, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
 import { asegurarTablonesDePartida, TABLON_RECIPE_KEY } from './tablones.js';
 import type { MetaNoticia } from './noticias.js';
@@ -266,6 +267,18 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
       const e = await entrada('plaga golpea los guchapos en El Margen Silencioso');
       expect(e.text).toBe('Se dice que una plaga golpea los guchapos en El Margen Silencioso.');
       expect((e.noticia as MetaNoticia).sucesoId).toBe(lejana);
+    });
+
+    // Revisión P316: la hambruna de su propio Reino no tiene región de origen; antes le llegaba a los 3 días
+    // como «Se dice que el hambre llega a…». Lo suyo lo sabe al momento y como hecho.
+    it('la hambruna de su propio Reino le llega al momento y como hecho, no como rumor lejano', async () => {
+      const worldId = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).worldId;
+      await prisma.faction.create({ data: { worldId, saveId, slug: `reino-difusion-${saveId}`, name: 'El Reino de Difusión', raza: 'orcos', description: 'x', origenSlug: null } });
+      const hambre = (await prisma.$transaction((tx) => registrarHambruna(tx, saveId, 'REINO_JUGADORA')))!;
+      await difundir(prisma, saveId);
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: hambre } } })).toMatchObject({ via: 'OIDAS', confirmado: true });
+      const e = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'WORLD', noticia: { path: ['sucesoId'], equals: hambre } } });
+      expect(e.text).not.toMatch(/^Se dice/);
     });
 
     it('lo de importancia 4 sigue sin llegar solo', async () => {
