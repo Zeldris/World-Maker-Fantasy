@@ -384,6 +384,8 @@ export const MAKTOR_CLAN_TOTEM_RECIPE: ConstructionRecipe = {
   // Mismo criterio que antes en crafting.ts: acto de memoria, no de destreza — solo Carisma, sin
   // oficio.
   requiresAyuntamiento: true,
+  // Uno por región (usuaria, 2026-10-25): es un monumento único, no se ofrece otra vez si ya está.
+  maxPerRegion: 1,
 };
 
 // Ayuntamiento (2026-08-04, renombrado desde "Atalaya de vigía" — docs/17-reglas-construcciones-
