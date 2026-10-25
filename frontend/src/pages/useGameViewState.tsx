@@ -1304,6 +1304,8 @@ export function useGameViewState() {
     setQuests,
     setTerritories,
     setBuildings,
+    buildings,
+    setKingdomLog,
     setSubjects,
     setKingdomStats,
     setDeathCount,

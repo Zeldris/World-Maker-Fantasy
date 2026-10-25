@@ -146,7 +146,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   secciones en `f/components/panels/reino/`; estado `f/hooks/useKingdomState.ts#useKingdomState`.
 - **Trampas:** recetas actuales: ayuntamiento piedra 14, madera 6, hueso 6, resina 8, mena 2, fibras 8; choza piel
   10, `hueso-largo-gargantua` 6, `cuerda-tendon` 4 (para dar materiales: `tools/qa/escenario.sh dar`). El registro
-  del reino no se refresca hasta recargar (P209).
+  del reino se refresca al levantar o mejorar el campamento o el ayuntamiento (`useTurnFlow#hitoDeReinoNuevo`, P209);
+  las demás entradas KINGDOM (súbditos, caravanas, tick diario) llegan al recargar.
 
 ## Súbditos y llegadas
 
