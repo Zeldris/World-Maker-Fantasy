@@ -347,7 +347,7 @@ export const BERIG_PERSONAJES: PersonajeInfo[] = [
     facultades:
       'Movimiento absolutamente insonoro; puede permanecer inmóvil sin ser detectado. Identifica mentiras e intenciones en los silencios de una conversación.',
     historia:
-      'Mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas, hasta la semana de la ruptura del sello — desde entonces ya no trabaja para nadie, y algo de lo que entregó aquellos días le pesa en silencio.',
+      'Mensajero de bajo rango que entregaba correspondencia sellada sin hacer preguntas, hasta la semana de la ruptura del sello — desde entonces no ha vuelto a entregar nada sellado, y algo de lo que entregó aquellos días le pesa en silencio.',
     voz: 'Voz apenas audible que obliga al interlocutor a inclinarse hacia él; usa las palabras justas y ni una más, y responde muchas preguntas con silencios.',
   },
   {

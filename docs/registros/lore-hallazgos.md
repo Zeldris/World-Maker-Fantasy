@@ -27,6 +27,9 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ## Índice
 
+**2026-10-25 — `QA-240`, asentar el lore de la enciclopedia**
+- [Bloque 1: NPC, razas y personajes](#2026-10-25--qa-240-bloque-1-npc-razas-y-personajes-de-la-enciclopedia)
+
 **2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
 compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)**
 - [combate-multiple.md confirmado sin discrepancias, muy bien mantenido](#combate-multiplemd--confirmado-sin-discrepancias-muy-bien-mantenido)
@@ -523,3 +526,28 @@ debe tomar por su cuenta.
 
 **Estado**: NO ES BUG en items.md/razas.md/npcs.md, sin acción necesaria. Único hallazgo real de
 esta ronda: `personajes.md` arriba.
+
+---
+
+## 2026-10-25 — `QA-240`, bloque 1: NPC, razas y personajes de la enciclopedia
+
+Auditoría de la enciclopedia contra el canon (rama `claude/lore-enciclopedia`). Cada arreglo, con el sí de la usuaria.
+
+**Aplicado (solo juego, `worldCatalog.ts` y `berigLore.ts`):**
+- `hagar-kiugh`: el rol decía «amigo de infancia de Gorhorn»; el canon dice que se conocieron en las minas
+  (`personajes.md:60`). Rol nuevo: «el amigo que Gorhorn hizo en las minas»; la bio pierde la frase repetida.
+- `aven-tessk`: Inteligencia 18 → 20, como `npcs.md` #24.
+- Spoilers fuera de la enciclopedia (mismo criterio que las bios recortadas el 2026-09-15). Aven Tessk ya no
+  cuenta lo de la carta del sabotaje y Yerin; el rol de Gistera ya no dice quién mató a su padre ni de quién
+  huye. El detalle queda en un comentario del código y en `npcs.md`.
+- `gisot-ketg`: macho; el rol pasa de «encargada» a «encargado».
+- `jorer-susig`: la muerte de su padre pasa de «Torgash Ketg» a «los Ketg», como la bio de Tirag. El canon no
+  se la atribuye a Torgash.
+- Erratas de rol y bio: Ufag («única chamana»), Jorer («perdió», «acabó», «sucesión», «guerreros», «pasado»),
+  guerrero y guerrera Serhu («que patrulla»), guardia Serhu y guardiana Helsig (sin el guion suelto).
+- Yerin (ficha de personaje): «ya no trabaja para nadie» → «no ha vuelto a entregar nada sellado», porque su
+  NPC sigue siendo mensajero de Keseg Sael.
+
+**Pendiente de decidir en este bloque:** Ufag, Gisot y Jorer son `PLANTILLA` siendo individuos únicos;
+«domar a las criaturas más poderosas» en la ficha de Gorhorn; Constitución 32 de Torgash (techo ~30); NPC
+del canon que faltan (Brann el Cambista); NPC del juego sin ficha en `npcs.md`; erratas de `razas.md`.
