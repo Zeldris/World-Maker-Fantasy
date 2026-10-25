@@ -16,7 +16,7 @@
       "A ridge of dark bristling spines runs down its back to the tail.",
       "Its thick black tail drags behind it, brushing away its own tracks."
     ],
-    "pose": "It crouches low and stalks through the tall grass, with two more of the pack behind it.",
+    "pose": "It crouches low and stalks through the grass, with two more of the pack behind it.",
     "entorno": "Around them lie red clay and tall straw-yellow grass tinged with orange."
   },
   "variantes": {
@@ -43,6 +43,6 @@
     "paleta: rust red, darker underparts, amber eyes, dark muzzle",
     "escala: hip / mid-thigh of an adult orc",
     "pose: crouching, two more of the pack",
-    "condiciones estacion:invierno: entorno de hierba corta para no contradecir la pose «tall grass» (la pose sigue agazapada en hierba alta; revisar)"
+    "condiciones estacion:invierno: entorno de hierba corta (la pose ya dice solo «grass», vale para todas las estaciones)"
   ]
 }
