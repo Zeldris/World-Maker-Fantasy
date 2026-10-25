@@ -286,7 +286,7 @@ export function GameModals() {
       <Presencia>
         {simpleModal === 'travel' && saveId && (
           <Capa id="viajar">
-          <TravelDestinationModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+          <TravelDestinationModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno ?? permisoMover.motivo} />
           </Capa>
         )}
       </Presencia>

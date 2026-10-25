@@ -410,6 +410,22 @@ describe('POST /saves/:id/zona/mover', () => {
       expect(body.colision).toBeNull();
     });
 
+    // P269/P329: el orco convaleciente (perdonado con Clemente) volvía a cortar el paso en el siguiente movimiento.
+    it('convaleciente (derrotado y perdonado): no corta el paso; sano otra vez, sí', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      });
+      await prisma.npcState.create({ data: { saveId, npcId: principalNpcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).colision).toBeNull();
+      await prisma.npcState.updateMany({ where: { saveId, npcId: principalNpcId }, data: { condicionFisica: 'ILESO' } });
+      await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull } });
+      const otra = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(JSON.parse(otra.body).colision).toMatchObject({ targetSlug: 'test-mover-principal' });
+    });
+
     it('muerto y con la ventana de 6h ya vencida: sigue sin colisionar (a diferencia de fauna genérica, nunca reaparece)', async () => {
       await prisma.zonePoint.create({
         data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

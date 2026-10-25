@@ -893,6 +893,18 @@ export async function turnRoutes(app: FastifyInstance) {
     // Una salida es un camino directo al destino (aunque el más corto en minutos pase por otra zona).
     const porUnCamino = async (t: TravelResolution) =>
       t.path.length <= 2 || (!!save.currentLocationId && (await prisma.locationLink.count({ where: { fromId: save.currentLocationId, toId: t.toLocationId } })) > 0);
+    // P206/P326: con un agresivo cortando el paso (oferta o conversación de `combateForzado` sin resolver) no se
+    // viaja: antes hay que combatir o huir. Vale para los dos caminos (salida del mapa y lista de «Viajar»).
+    const cortanElPaso =
+      !!(save.pendingDynamicModeOffer as { combateForzado?: boolean } | null)?.combateForzado ||
+      !!(save.pendingDynamicMode as { combateForzado?: boolean } | null)?.combateForzado;
+    if (travel && cortanElPaso) {
+      const aviso = `No puedes irte hacia ${travel.toLocationName} con alguien cortándote el paso: antes tienes que combatir o huir.`;
+      if (!preview) return resolveBlockedTurn(aviso);
+      travel = null;
+      classification = { requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: aviso, banda: 'instantanea', duracionEstimadaMinutos: 0 };
+      roll = undefined;
+    }
     if (travel && !(viajeElegido && ((await porUnCamino(travel)) || (await tieneMontura(prisma, saveId))))) {
       const aviso = `A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`;
       if (!preview) return resolveBlockedTurn(aviso);

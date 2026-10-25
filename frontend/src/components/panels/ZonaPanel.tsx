@@ -907,7 +907,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         <ZonaSalidaModal
           salida={selectedSalida}
           onCancel={() => setSelectedSalida(null)}
-          bloqueoTurno={bloqueoTurno}
+          // P206/P326: con un agresivo cortando el paso (fase `encuentro`) el turno sí se acepta, pero irse
+          // de la zona no: el mismo motivo que bloquea la brújula.
+          bloqueoTurno={bloqueoTurno ?? bloqueoMovimiento}
           onViajar={(actionText) => {
             setSelectedSalida(null)
             onViajarA?.(actionText)

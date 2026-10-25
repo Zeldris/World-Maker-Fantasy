@@ -6720,6 +6720,24 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     expect(res.json().blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos/);
   });
 
+  // P206/P326: con un agresivo cortando el paso no se viaja (ni con montura, ni desde la salida del mapa).
+  it('con un agresivo cortando el paso, un viaje elegido no sale: ni el envío ni la vista previa', async () => {
+    const app = await buildApp();
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'cruzavientos', targetName: 'Cruzavientos', quienInicia: 'jugador', combateForzado: true } },
+    });
+    try {
+      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true } });
+      expect(res.json().blocked.narration).toMatch(/cortándote el paso: antes tienes que combatir o huir/);
+      expect(await prisma.characterTransit.findUnique({ where: { saveId } })).toBeNull();
+      const previa = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true, preview: true } });
+      expect(previa.json().travel ?? null).toBeNull();
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    }
+  });
+
   it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito, y guarda el destino original para retomarlo', async () => {
     const app = await buildApp();
     const classifyRes = await app.inject({
