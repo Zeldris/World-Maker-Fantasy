@@ -39,6 +39,10 @@ misma rama (`QA-249`…`QA-251`, ya aplicada).
 
 ## For Galivelop-workflow
 
+- **`revisado.sh` hace su commit con `-m "Revisado: <sha>"`**: un `commit-msg` del proyecto que pide más líneas (WMF,
+  «Siguiente:») lo rechaza y la marca se confirma a mano. Que acepte un cuerpo (`-m` extra) o que los ganchos
+  dejen pasar el asunto «Revisado:».
+
 - **Ganchos en worktrees** (propuesta 1): la raíz con `env -u GIT_DIR -u GIT_WORK_TREE git -C "$hookdir" rev-parse --show-toplevel` en `pre-commit` y `pre-push`. Falta lo mismo en `config.py` (`git_toplevel`, que usa `commit-msg`: en un worktree cae en `CLAUDE_PROJECT_DIR` y lee el `gw.json` de la copia principal) y en los `.sh` de `.claude/gw/scripts/`; quitar `GIT_DIR`/`GIT_WORK_TREE` dentro de `git_toplevel` arregla a todos los que lo llaman.
 - **`recuperar.py --estado` con los worktrees** (`QA-250`, ya aplicado en la copia del proyecto): el gancho de arranque
   corre donde se abrió la sesión. Ahora da también cada worktree con la fila de su rama. Test en
