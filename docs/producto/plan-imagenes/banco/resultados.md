@@ -37,6 +37,19 @@ canon mejor que klein (patas largas y finas, colmillos curvos, manada a contralu
 pictórico. Pastos: más neblina y menos detalle; los Cuernahoja salen como caballos. **Veredicto:** prometedor en
 fauna; se prueba en Q6_K por si la blandura es de la cuantización.
 
-## r3 · Estilo del prompt
+## r3 · Estilo del prompt (klein, 6 pasos, ~2,6 min)
 
-En curso.
+| Estilo | Qué cambia | Lectura |
+|---|---|---|
+| `cine` | luz dorada dramática, gradación cálida | referencia (r1) |
+| `cine2` | cielo ámbar/carmesí saturado, polvo encendido a contraluz, borde de luz; «hyper-detailed, razor-sharp» | **el más cercano a ChatGPT**: sol con rayos, cielo encendido, más profundidad; en el aullador conserva los colmillos curvos del canon |
+| `corto` | `cine` sin la frase «grounded… handmade from wood, hide, bone…» | casi igual que `cine`: esa frase no estorba |
+| `arte` | `cine2` como *concept art* / *matte painting* | tan dramático como `cine2`, más pictórico; cresta de púas más marcada, colmillos más cortos; en pastos, los Cuernahoja más vacunos |
+| `fantasia` | `cine2` + «criatura de otro mundo, no un animal real» | cresta de púas y aire de criatura, como ChatGPT; colmillos más cortos; el prompt pasa de 300 palabras y se pierde B6 |
+
+Hulki y el cardo con `cine2`: también ganan (contraluz, cielo encendido, profundidad). `cine2` solo toca el preámbulo
+de día; la noche y las estaciones (`IMG-14`) siguen igual. En todos, las «motas rojas brillantes» del aullador
+salen como gotas: se prueba «polvo mate» en r6.
+
+**Veredicto:** `cine2` es el estilo de partida. `fantasia`, si la usuaria prefiere el diseño exagerado de ChatGPT al
+del canon (decisión suya).
