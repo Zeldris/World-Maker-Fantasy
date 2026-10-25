@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react'
 import { useSupervivenciaSync } from './useSupervivenciaSync'
 
 vi.mock('../lib/api', () => ({
-  getSupervivencia: vi.fn(async () => ({ condicionFisica: 'CONVALECIENTE', hambre: 0, sed: 0 })),
+  getSupervivencia: vi.fn(async () => ({ condicionFisica: 'CONVALECIENTE', hambre: 0, sed: 0, aviso: 'Sin beber lo necesario, la sed te debilita y tu estado empeora. Busca agua.' })),
 }))
 
 describe('useSupervivenciaSync (P219 c)', () => {
@@ -14,7 +14,7 @@ describe('useSupervivenciaSync (P219 c)', () => {
     const setC = vi.fn()
     const setH = vi.fn()
     const setS = vi.fn()
-    renderHook(() => useSupervivenciaSync({ saveId: 's1', characterThinking: false, combatActive: false, setCondicionFisica: setC, setHambre: setH, setSed: setS }))
+    renderHook(() => useSupervivenciaSync({ saveId: 's1', characterThinking: false, combatActive: false, condicionFisica: 'ILESO', setCondicionFisica: setC, setHambre: setH, setSed: setS }))
     await vi.advanceTimersByTimeAsync(60_000)
     expect(setC).toHaveBeenCalledWith('CONVALECIENTE')
     expect(setH).toHaveBeenCalledWith(0)
@@ -23,8 +23,22 @@ describe('useSupervivenciaSync (P219 c)', () => {
 
   it('no toca nada con un turno en curso', async () => {
     const setC = vi.fn()
-    renderHook(() => useSupervivenciaSync({ saveId: 's1', characterThinking: true, combatActive: false, setCondicionFisica: setC, setHambre: vi.fn(), setSed: vi.fn() }))
+    renderHook(() => useSupervivenciaSync({ saveId: 's1', characterThinking: true, combatActive: false, condicionFisica: 'ILESO', setCondicionFisica: setC, setHambre: vi.fn(), setSed: vi.fn() }))
     await vi.advanceTimersByTimeAsync(120_000)
     expect(setC).not.toHaveBeenCalled()
+  })
+
+  it('P323: avisa cuando el sondeo ve que la condición ha empeorado', async () => {
+    const alEmpeorar = vi.fn()
+    renderHook(() => useSupervivenciaSync({ saveId: 's1', characterThinking: false, combatActive: false, condicionFisica: 'HERIDO', alEmpeorar, setCondicionFisica: vi.fn(), setHambre: vi.fn(), setSed: vi.fn() }))
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(alEmpeorar).toHaveBeenCalledWith('Sin beber lo necesario, la sed te debilita y tu estado empeora. Busca agua.')
+  })
+
+  it('P323: no avisa si la condición no cambia', async () => {
+    const alEmpeorar = vi.fn()
+    renderHook(() => useSupervivenciaSync({ saveId: 's1', characterThinking: false, combatActive: false, condicionFisica: 'CONVALECIENTE', alEmpeorar, setCondicionFisica: vi.fn(), setHambre: vi.fn(), setSed: vi.fn() }))
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(alEmpeorar).not.toHaveBeenCalled()
   })
 })

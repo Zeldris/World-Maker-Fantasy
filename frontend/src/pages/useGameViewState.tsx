@@ -576,9 +576,6 @@ export function useGameViewState() {
     setWorldLog,
   })
 
-  // P219 (c): condición, Hambre y Sed que el worker cambia en BD entre turnos.
-  useSupervivenciaSync({ saveId, characterThinking, combatActive: !!combateIniciado, setCondicionFisica, setHambre, setSed })
-
   // Fase D (hito 0.1) — noticias del mundo escritas en segundo plano, sin esperar a recargar.
   // HUD-6 (hito 0.2) — notificaciones (toasts): misiones, reputación, oficio, objetos nuevos y
   // noticias del mundo (lib/notificaciones.ts).
@@ -607,6 +604,17 @@ export function useGameViewState() {
             ...(sucesoId ? { enlace: { label: 'Ver en Leyendas', alPulsar: () => { setLeyendaPedida(sucesoId); setActivePanel('leyendas') } } } : {}),
           })
         }),
+  })
+  // P219 (c): condición, Hambre y Sed que el worker cambia en BD entre turnos. P323: si la condición empeora, avisa.
+  useSupervivenciaSync({
+    saveId,
+    characterThinking,
+    combatActive: !!combateIniciado,
+    condicionFisica,
+    alEmpeorar: (aviso) => notificar({ tipo: 'danger', icono: '🍖', texto: aviso }),
+    setCondicionFisica,
+    setHambre,
+    setSed,
   })
   // Avisos de las entradas nuevas del registro llegadas en vivo (no las de la carga de la partida).
   const procesadasRef = useRef(0)

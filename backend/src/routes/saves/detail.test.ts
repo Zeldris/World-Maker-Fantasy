@@ -150,9 +150,17 @@ describe('GET /saves/:id', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/supervivencia' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ condicionFisica: 'GRAVE', hambre: 100, sed: 100 });
+    expect(res.json()).toEqual({ condicionFisica: 'GRAVE', hambre: 100, sed: 100, aviso: null });
     findUniqueSave.mockResolvedValue(null);
     expect((await app.inject({ method: 'GET', url: '/saves/no-existe/supervivencia' })).statusCode).toBe(404);
+  });
+
+  it('P323: GET /saves/:id/supervivencia lleva el aviso cuando hay hambre o sed', async () => {
+    // Bebió en el minuto 0 y comió en el 2.500; ahora es el 3.000: hambre 100 % y sed 0 %.
+    findUniqueSave.mockResolvedValue({ condicionFisica: 'HERIDO', lastAteAtMinutes: 2500, lastDrankAtMinutes: 0, worldState: { fictionalMinutes: 3000 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/supervivencia' });
+    expect(res.json()).toMatchObject({ condicionFisica: 'HERIDO', sed: 0, aviso: 'Sin beber lo necesario, la sed te debilita y tu estado empeora. Busca agua.' });
   });
 
   it('pendingDynamicMode null por defecto', async () => {

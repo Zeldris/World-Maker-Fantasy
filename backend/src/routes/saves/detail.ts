@@ -14,7 +14,7 @@ import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
 import { fichaDeEdificioParaPanel } from '../../services/construction.js';
-import { comidaPct, aguaPct } from '../../services/companionSupervivencia.js';
+import { comidaPct, aguaPct, avisoCarenciaPersonaje, carenciaPersonaje } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
 import { entornoTemporalFor } from '../../services/worldClock.js';
@@ -40,7 +40,12 @@ export async function detailRoutes(app: FastifyInstance) {
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     const ahora = save.worldState?.fictionalMinutes ?? 0;
-    return { condicionFisica: save.condicionFisica, hambre: comidaPct(save.lastAteAtMinutes, ahora), sed: aguaPct(save.lastDrankAtMinutes, ahora) };
+    const hambre = comidaPct(save.lastAteAtMinutes, ahora);
+    const sed = aguaPct(save.lastDrankAtMinutes, ahora);
+    // P323: el worker baja la condición entre turnos y su aviso queda solo en el diario de la BD; el sondeo del HUD
+    // lo recibe aquí para enseñarlo al momento (null si no hay carencia).
+    const aviso = carenciaPersonaje(hambre, sed) ? avisoCarenciaPersonaje(hambre, sed) : null;
+    return { condicionFisica: save.condicionFisica, hambre, sed, aviso };
   });
 
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
