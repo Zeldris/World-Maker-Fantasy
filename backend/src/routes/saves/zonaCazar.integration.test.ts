@@ -181,7 +181,7 @@ describe('POST /saves/:id/zona/cazar', () => {
     const body = JSON.parse(res.body);
     expect(body.resuelveSinCombate).toBe(true);
     expect(body.exito).toBe(true);
-    expect(body.combate.npcs).toEqual([{ slug: 'test-cazar-debil', name: 'Bestia Débil de Prueba', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: [] }]);
+    expect(body.combate.npcs).toEqual([{ slug: 'test-cazar-debil', name: 'Bestia Débil de Prueba', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: [], analizado: false, capturable: false, activeEffects: [], targetedForKill: false }]);
     // Fase 10 (2026-09-29) — la caza sigilosa es una tirada visible (d100 vs probabilidad real) y
     // queda en `LogEntry.roll`.
     expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', roll: 1, exito: true, npcName: 'Bestia Débil de Prueba' });

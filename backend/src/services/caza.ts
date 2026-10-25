@@ -100,7 +100,9 @@ export type IniciarCazaResultado =
   | {
       resuelveSinCombate: true;
       exito: true;
-      combate: { npcs: [{ slug: string; name: string; condicionFisica: 'MUERTO'; saqueado: false; lootedItemNames: [] }] };
+      /// P308: la misma forma que `NpcInSceneInfo` (frontend): sin `activeEffects` el panel de combate
+      /// rompía al pintar los efectos del rival (`ActiveEffectChips`).
+      combate: { npcs: [{ slug: string; name: string; condicionFisica: 'MUERTO'; saqueado: false; lootedItemNames: []; analizado: false; capturable: false; activeEffects: []; targetedForKill: false }] };
       logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll: TiradaCazaLimpia };
       cazaLimpia: TiradaCazaLimpia;
     }
@@ -306,7 +308,7 @@ async function intentarCazaLimpia(save: SaveParaCaza, target: CazaTarget): Promi
   return {
     resuelveSinCombate: true,
     exito: true,
-    combate: { npcs: [{ slug: npc.slug, name: npc.name, condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [] }] },
+    combate: { npcs: [{ slug: npc.slug, name: npc.name, condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [], analizado: false, capturable: false, activeEffects: [], targetedForKill: false }] },
     logEntry: { id: logEntry.id, text: fraseAjena ? `${text} ${fraseAjena}` : text, timeLabel, createdAt: logEntry.createdAt.toISOString(), roll: cazaLimpia },
     cazaLimpia,
   };
