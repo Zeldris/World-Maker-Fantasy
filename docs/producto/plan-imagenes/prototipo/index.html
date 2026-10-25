@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel Tarkor</title>
+<style>
+:root{--bg:#0e1015;--panel:#161922;--panel2:#1d212c;--line:#2a2f3d;--text:#e6e8ee;--mute:#8b92a5;--accent:#8b7cf6;--accent-t:#fff;--ok:#3fb982;--bad:#ef5b6b;--warn:#e5a93d;--info:#4aa3e8;--ins:rgba(63,185,130,.22);--del:rgba(239,91,107,.22);--shadow:0 8px 30px rgba(0,0,0,.45);--r:10px}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f3f4f8;--panel:#fff;--panel2:#eef0f6;--line:#d9dce6;--text:#1a1d29;--mute:#667088;--accent:#6a5ae0;--ok:#1f9d68;--bad:#d63c4e;--warn:#b87a0c;--info:#1f7fc4;--ins:rgba(31,157,104,.18);--del:rgba(214,60,78,.16);--shadow:0 8px 30px rgba(20,25,50,.15)}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{font-weight:700;letter-spacing:.04em}.logo span{color:var(--accent)}
+nav{display:flex;gap:4px;flex:1;overflow-x:auto}
+nav button{background:none;border:0;padding:8px 14px;border-radius:8px;color:var(--mute);white-space:nowrap}
+nav button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 -2px var(--accent)}
+nav .n{background:var(--accent);color:var(--accent-t);border-radius:9px;padding:0 6px;font-size:11px;margin-left:5px}
+main{padding:14px 16px;max-width:1500px;margin:auto}
+.tab{display:none}.tab.on{display:block}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-t)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{padding:3px 8px;font-size:12px}
+input[type=text],input[type=search],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 9px;width:100%}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+textarea{resize:vertical;min-height:60px}
+label.l{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:10px 0 4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.badge{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.b-sin,.b-nuevo{color:var(--info)}.b-aprobada,.b-aplicada{color:var(--ok)}.b-rechazada,.b-descartada{color:var(--bad)}.b-cambios,.b-candidata{color:var(--warn)}.b-favorita{color:#e86fb4}
+.mute{color:var(--mute)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);padding:8px 16px;border-radius:99px;box-shadow:var(--shadow);z-index:100;max-width:90vw}
+/* Propuestas */
+.inbox{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:14px;align-items:start}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px}
+.filters input{grid-column:1/-1}
+.bulk{display:flex;gap:8px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.plist{max-height:62vh;overflow:auto}
+.pi{display:flex;gap:9px;padding:10px;border-bottom:1px solid var(--line);cursor:pointer;align-items:flex-start}
+.pi:hover{background:var(--panel2)}.pi.sel{background:var(--panel2);box-shadow:inset 3px 0 var(--accent)}
+.pi .t{font-weight:600}.pi .m{font-size:12px;color:var(--mute)}
+.detail{padding:16px}
+.diffrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.diffrow>div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+ins{background:var(--ins);text-decoration:none;border-radius:3px;padding:0 2px}del{background:var(--del);border-radius:3px;padding:0 2px}
+.diffrow textarea{min-height:44px;border:0;padding:0;background:none;width:100%}
+.hints{font-size:12px;color:var(--mute);margin-top:12px}
+/* Fichas */
+.fichas{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:14px;align-items:start}
+.elist{padding:6px;max-height:75vh;overflow:auto}
+.elist h4{margin:10px 8px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+.ei{display:block;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 8px}
+.ei:hover,.ei.sel{background:var(--panel2)}
+.bar{height:5px;border-radius:3px;background:var(--line);margin-top:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}.bar i.full{background:var(--ok)}
+.sheet{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.sheet .full{grid-column:1/-1}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.chip:hover{border-color:var(--bad)}
+.promptbox{background:var(--bg);border:1px dashed var(--accent);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:13px;min-height:70px;white-space:pre-wrap}
+.dep{padding:6px 10px;border-radius:8px;display:inline-block;margin-top:6px}
+.dep.ok{background:var(--ins);color:var(--ok)}.dep.no{background:var(--del);color:var(--bad)}
+/* Generador */
+.gen{display:grid;grid-template-columns:260px 1fr 260px;gap:14px;align-items:start}
+.side{padding:12px}
+.zbg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.zbg button{aspect-ratio:1;border-radius:8px;border:2px solid transparent;padding:0}.zbg button.on{border-color:var(--accent)}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.fchip{background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 11px;font-size:12px}
+.fchip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-t)}
+.masonry{column-width:190px;column-gap:10px}
+.tile{break-inside:avoid;margin-bottom:10px;position:relative;border-radius:10px;overflow:hidden;cursor:pointer;border:2px solid transparent}
+.tile:hover{border-color:var(--accent)}.tile.cmp{border-color:var(--warn)}
+.tile .bd{position:absolute;left:6px;top:6px;background:rgba(10,12,18,.72);backdrop-filter:blur(4px)}
+.tile .sd{position:absolute;right:6px;bottom:6px;font-size:11px;color:#fff;background:rgba(10,12,18,.6);padding:0 6px;border-radius:6px}
+.tile.dis{opacity:.5}
+.qi{padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.lb{position:fixed;inset:0;background:rgba(5,6,10,.88);z-index:50;display:none;align-items:center;justify-content:center;padding:12px}
+.lb.on{display:flex}
+.lbin{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px;max-width:1100px;width:100%;max-height:94vh}
+.lbimg{border-radius:12px;max-height:80vh;width:100%;margin:auto;aspect-ratio:1}
+.lbpanel{padding:14px;overflow:auto;max-height:90vh}
+.cmpgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));width:100%;max-width:1200px}
+@media (max-width:1000px){.gen{grid-template-columns:1fr}.inbox,.fichas{grid-template-columns:1fr}.plist,.elist{max-height:none}}
+@media (max-width:640px){.sheet,.diffrow,.lbin{grid-template-columns:1fr}main{padding:10px}.lbimg{max-height:50vh;width:auto;max-width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">TARKOR<span>·</span>PANEL</div>
+  <nav id="nav"></nav>
+  <span class="mute" style="font-size:12px">Prototipo · datos ficticios</span>
+</header>
+<main>
+<section class="tab" id="t-prop"></section>
+<section class="tab" id="t-fich"></section>
+<section class="tab" id="t-gen"></section>
+</main>
+<div class="lb" id="lb"></div>
+<div id="toastbox"></div>
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;$('#toastbox').append(t);setTimeout(()=>t.remove(),2200)}
+
+/* ================= DATOS ================= */
+const ESTADOS={sin:'Sin revisar',aprobada:'Aprobada',rechazada:'Rechazada',aplicada:'Aplicada',cambios:'Cambios pedidos'};
+const props=[
+ {id:1,origen:'OpenCode',tipo:'Fauna',el:'Aullador Rojo',estado:'sin',fecha:'2026-10-24',com:'',campos:[
+  {k:'Silueta',cur:'Cuadrúpedo flaco de patas largas',prop:'Cuadrúpedo flaco de patas desproporcionadamente largas, pecho estrecho y lomo caído'},
+  {k:'Paleta',cur:'pelaje rojizo rasposo',prop:'rojo herrumbre apagado, vientre más oscuro, púas casi negras'},
+  {k:'Hábitat',cur:'Llanuras del Viento Rojo',prop:'Llanuras del Viento Rojo, acechando en el pasto alto de Los Pastos de la Deriva'}]},
+ {id:2,origen:'Claude',tipo:'Flora',el:'Cardo Brújula',estado:'sin',fecha:'2026-10-24',com:'',campos:[
+  {k:'Paleta',cur:'flor gris metálico apagado',prop:'flor gris metálico con matiz violáceo (concilia la planta y el ítem)'},
+  {k:'Rasgos distintivos',cur:'una única fibra central imantada',prop:'una única fibra central imantada que apunta siempre en la misma dirección'}]},
+ {id:3,origen:'OpenCode',tipo:'Zona',el:'Los Pastos de la Deriva',estado:'sin',fecha:'2026-10-23',com:'',campos:[
+  {k:'Descripción',cur:'Praderas abiertas donde la hierba dura más tiempo',prop:'Praderas abiertas onduladas de hierba amarillo paja con matiz naranja y polvo rojo en suspensión'},
+  {k:'Prohibido',cur:'asentamientos fijos',prop:'asentamientos fijos, luna, humanos'}]},
+ {id:4,origen:'Claude',tipo:'NPC',el:'Hulki',estado:'aprobada',fecha:'2026-10-22',com:'Encaja con el lore.',campos:[
+  {k:'Tamaño',cur:'Delgada',prop:'Delgada, con hombros de quien ha cargado presas'},
+  {k:'Rasgos distintivos',cur:'Pelaje encanecido en el hocico',prop:'Hocico encanecido y piel de hojas finas que susurra al moverse'}]},
+ {id:5,origen:'OpenCode',tipo:'Fauna',el:'Aullador Rojo',estado:'rechazada',fecha:'2026-10-21',com:'Contradice la alzada de 90 cm.',campos:[
+  {k:'Tamaño',cur:'Alzada 90 cm (macho)',prop:'Colosal, del tamaño de una casa'}]},
+ {id:6,origen:'Claude',tipo:'Zona',el:'Llanuras del Viento Rojo',estado:'aplicada',fecha:'2026-10-20',com:'',campos:[
+  {k:'Cielo',cur:'Polvo rojo',prop:'Polvo rojo y brillo perlado del cinturón de micro-cristales, sin luna'}]},
+ {id:7,origen:'OpenCode',tipo:'NPC',el:'Hulki',estado:'sin',fecha:'2026-10-25',com:'',campos:[
+  {k:'Paleta',cur:'tonos de corteza y musgo',prop:'pardo corteza, verde musgo, gris ceniza en el hocico'},
+  {k:'Prohibido',cur:'túnica',prop:'túnica, sandalias, ropa de tela'}]},
+ {id:8,origen:'Claude',tipo:'Flora',el:'Cardo Brújula',estado:'cambios',fecha:'2026-10-19',com:'Falta la altura de la planta entera, no solo del tallo.',campos:[
+  {k:'Tamaño',cur:'Tallo 25 cm',prop:'Planta de 40 cm, tallo de 25 cm'}]}
+];
+const VIS=['tamano','silueta','paleta','rasgos','zona','hora','prohibido'];
+const els=[
+ {id:'e1',tipo:'Fauna',n:'Aullador Rojo',tamano:'Alzada 90 cm (macho)',silueta:'Cuadrúpedo flaco de patas desproporcionadamente largas',paleta:['#8a3b26','#4a2a20','#1c1a19'],rasgos:'púas oscuras en el lomo, colmillos curvos amarillentos, cola negra tupida',zona:'Los Pastos de la Deriva',hora:'Ocaso',prohibido:'alas, cuernos'},
+ {id:'e2',tipo:'Fauna',n:'Cuernahoja',tamano:'',silueta:'Cuadrúpedo esbelto de cuernos finos y largos',paleta:['#a8402a','#efe9df'],rasgos:'',zona:'Los Pastos de la Deriva',hora:'',prohibido:''},
+ {id:'e3',tipo:'Flora',n:'Cardo Brújula',tamano:'Tallo 25 cm',silueta:'Cardo espinoso de tallo rígido',paleta:['#8d8f96','#6f6480'],rasgos:'flor cerrada gris metálico, fibra central imantada',zona:'Agujas Imán',hora:'',prohibido:''},
+ {id:'e4',tipo:'Zona',n:'Los Pastos de la Deriva',tamano:'Extenso',silueta:'Pradera ondulada',paleta:['#d9b45a','#b5552f','#c9a27a'],rasgos:'hierba amarillo paja, polvo rojo, picos volcánicos lejanos',zona:'—',hora:'Ocaso',prohibido:'asentamientos fijos, luna'},
+ {id:'e5',tipo:'Zona',n:'Llanuras del Viento Rojo',tamano:'Extenso',silueta:'',paleta:[],rasgos:'',zona:'—',hora:'',prohibido:''},
+ {id:'e6',tipo:'NPC',n:'Hulki',tamano:'Delgada',silueta:'Faerus vieja de hombros cargados',paleta:['#6b4f36','#5d6b3a','#9a9a92'],rasgos:'hocico encanecido, piel de hojas finas, pelaje corteza y musgo',zona:'Llanuras del Viento Rojo',hora:'Todo el día',prohibido:'túnica, sandalias'}
+];
+const zonaAprobada={'Los Pastos de la Deriva':true,'Llanuras del Viento Rojo':false,'Agujas Imán':false};
+const FIELDS=[['tamano','Tamaño'],['silueta','Silueta'],['rasgos','Rasgos distintivos'],['zona','Hábitat / zona'],['hora','Hora activa'],['prohibido','Prohibido']];
+
+/* ================= TABS ================= */
+let tab='prop';
+try{tab=localStorage.getItem('tarkor-tab')||'prop'}catch(e){}
+function setTab(t){tab=t;try{localStorage.setItem('tarkor-tab',t)}catch(e){}renderNav();$$('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t))}
+function renderNav(){
+  const n=props.filter(p=>p.estado==='sin').length;
+  $('#nav').innerHTML=[['prop','Propuestas',n],['fich','Fichas'],['gen','Generador']].map(([k,l,c])=>`<button class="${tab===k?'on':''}" data-tab="${k}">${l}${c?`<span class="n">${c}</span>`:''}</button>`).join('');
+}
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(b)setTab(b.dataset.tab)});
+
+/* ================= PROPUESTAS ================= */
+const F={estado:'',origen:'',tipo:'',q:''};
+let selP=1, checked=new Set();
+function words(s){return s.split(/(\s+)/)}
+function diff(a,b,mode){ // mode 'prop' marca insertadas, 'cur' marca borradas
+  const other=new Set(words(mode==='prop'?a:b).map(w=>w.trim()).filter(Boolean));
+  return words(mode==='prop'?b:a).map(w=>{const t=w.trim();return t&&!other.has(t)?(mode==='prop'?`<ins>${esc(w)}</ins>`:`<del>${esc(w)}</del>`):esc(w)}).join('');
+}
+function visibles(){return props.filter(p=>(!F.estado||p.estado===F.estado)&&(!F.origen||p.origen===F.origen)&&(!F.tipo||p.tipo===F.tipo)&&(!F.q||(p.el+p.campos.map(c=>c.prop).join(' ')).toLowerCase().includes(F.q.toLowerCase())))}
+function opts(list,cur,all){return `<option value="">${all}</option>`+list.map(([v,l])=>`<option value="${v}" ${cur===v?'selected':''}>${l}</option>`).join('')}
+function renderProp(){
+  const vis=visibles(), p=props.find(x=>x.id===selP);
+  $('#t-prop').innerHTML=`<div class="inbox">
+  <div class="card">
+    <div class="filters">
+      <input type="search" id="fq" placeholder="Buscar propuesta…" value="${esc(F.q)}">
+      <select id="fe">${opts(Object.entries(ESTADOS),F.estado,'Todos los estados')}</select>
+      <select id="fo">${opts([['OpenCode','OpenCode'],['Claude','Claude']],F.origen,'Todo origen')}</select>
+      <select id="ft" style="grid-column:1/-1">${opts(['Fauna','Flora','Zona','NPC'].map(x=>[x,x]),F.tipo,'Todo tipo de elemento')}</select>
+    </div>
+    <div class="bulk"><label><input type="checkbox" id="pall" ${vis.length&&vis.every(v=>checked.has(v.id))?'checked':''}> Todo</label>
+      <span class="mute">${checked.size} marcadas</span>
+      <button class="btn sm ok" data-bulk="aprobada" ${checked.size?'':'disabled'}>Aprobar</button>
+      <button class="btn sm bad" data-bulk="rechazada" ${checked.size?'':'disabled'}>Rechazar</button></div>
+    <div class="plist">${vis.map(v=>`<div class="pi ${v.id===selP?'sel':''}" data-id="${v.id}">
+      <input type="checkbox" data-chk="${v.id}" ${checked.has(v.id)?'checked':''}>
+      <div style="flex:1;min-width:0"><div class="t">${esc(v.el)}</div>
+      <div class="m">${v.tipo} · ${v.origen} · ${v.campos.length} campo${v.campos.length>1?'s':''} · ${v.fecha}</div></div>
+      <span class="badge b-${v.estado==='sin'?'sin':v.estado}">${ESTADOS[v.estado]}</span></div>`).join('')||'<p class="mute" style="padding:16px">Nada con esos filtros.</p>'}</div>
+  </div>
+  <div class="card detail">${p?`
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(p.el)}</h2><span class="badge b-${p.estado}">${ESTADOS[p.estado]}</span></div>
+    <p class="mute">${p.tipo} · propuesta de <b>${p.origen}</b> · ${p.fecha}</p>
+    <div class="diffrow mute" style="margin:0"><span>Actual</span><span>Propuesto (editable)</span></div>
+    ${p.campos.map((c,i)=>`<label class="l">${esc(c.k)}</label><div class="diffrow"><div>${diff(c.cur,c.prop,'cur')}</div>
+      <div><textarea data-edit="${i}" rows="2">${esc(c.prop)}</textarea><div class="mute" style="font-size:12px;margin-top:4px">${diff(c.cur,c.prop,'prop')}</div></div></div>`).join('')}
+    <label class="l">Comentario</label><textarea id="pcom" placeholder="Motivo, matices…">${esc(p.com)}</textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ok" data-act="aprobada">Aprobar</button><button class="btn bad" data-act="rechazada">Rechazar</button>
+      <button class="btn" data-act="cambios">Pedir cambios</button></div>
+    <div class="hints"><kbd>j</kbd>/<kbd>k</kbd> mover · <kbd>a</kbd> aprobar · <kbd>r</kbd> rechazar (fuera de los campos de texto)</div>`:'<p class="mute">Selecciona una propuesta.</p>'}</div></div>`;
+}
+function setEstado(ids,e){ids.forEach(id=>{const p=props.find(x=>x.id===id);if(p)p.estado=e});toast(`${ids.length} propuesta(s): ${ESTADOS[e].toLowerCase()}`);renderNav();renderProp()}
+const tp=$('#t-prop');
+tp.addEventListener('input',e=>{
+  const p=props.find(x=>x.id===selP);
+  if(e.target.id==='fq'){F.q=e.target.value;const pos=e.target.selectionStart;renderProp();const f=$('#fq');f.focus();f.setSelectionRange(pos,pos)}
+  else if(e.target.dataset.edit!==undefined){p.campos[+e.target.dataset.edit].prop=e.target.value}
+  else if(e.target.id==='pcom')p.com=e.target.value;
+});
+tp.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='fe')F.estado=t.value;else if(t.id==='fo')F.origen=t.value;else if(t.id==='ft')F.tipo=t.value;
+  else if(t.id==='pall'){visibles().forEach(v=>t.checked?checked.add(v.id):checked.delete(v.id))}
+  else if(t.dataset.chk){t.checked?checked.add(+t.dataset.chk):checked.delete(+t.dataset.chk)}
+  else if(t.dataset.edit!==undefined){renderProp();return}
+  else return;
+  renderProp();
+});
+tp.addEventListener('click',e=>{
+  const b=e.target.closest('[data-bulk]');if(b){setEstado([...checked],b.dataset.bulk);checked.clear();renderProp();return}
+  const a=e.target.closest('[data-act]');if(a){setEstado([selP],a.dataset.act);return}
+  if(e.target.dataset.chk)return;
+  const i=e.target.closest('.pi');if(i){selP=+i.dataset.id;renderProp()}
+});
+
+/* ================= FICHAS ================= */
+let selE='e1';
+const filled=el=>VIS.filter(k=>k==='paleta'?el.paleta.length:el[k]&&el[k]!=='—').length;
+function promptOf(el){
+  const parts=[`${el.n}, ${el.tipo.toLowerCase()} de fantasía`];
+  if(el.tamano)parts.push(`tamaño ${el.tamano.toLowerCase()}`);
+  if(el.silueta)parts.push(`silueta: ${el.silueta.toLowerCase()}`);
+  if(el.paleta.length)parts.push(`paleta ${el.paleta.join(' ')}`);
+  if(el.rasgos)parts.push(el.rasgos);
+  if(el.zona&&el.zona!=='—')parts.push(`en ${el.zona}`);
+  if(el.hora)parts.push(`luz de ${el.hora.toLowerCase()}`);
+  let s=parts.join(', ')+'.';
+  if(el.prohibido)s+=`\n(Vetos: se comprueban, no van al prompt: ${el.prohibido}.)`;
+  return s;
+}
+function depBadge(el){
+  if(!el.zona||el.zona==='—')return '';
+  return zonaAprobada[el.zona]?`<span class="dep ok">Zona ${esc(el.zona)}: imagen aprobada ✓</span>`:`<span class="dep no">Falta aprobar la zona ${esc(el.zona)}</span>`;
+}
+function renderFich(){
+  const el=els.find(x=>x.id===selE);
+  const groups=['Fauna','Flora','Zona','NPC'];
+  $('#t-fich').innerHTML=`<div class="fichas"><div class="card elist">${groups.map(g=>`<h4>${g}</h4>`+els.filter(x=>x.tipo===g).map(x=>{const c=filled(x);return `<button class="ei ${x.id===selE?'sel':''}" data-el="${x.id}"><div class="row" style="justify-content:space-between"><span>${esc(x.n)}</span><span class="mute">${c}/7</span></div><div class="bar"><i class="${c===7?'full':''}" style="width:${c/7*100}%"></i></div></button>`}).join('')).join('')}</div>
+  <div><div class="card"><div class="sheet">
+    <div class="full row" style="justify-content:space-between"><h2 style="margin:0">${esc(el.n)}</h2><span class="badge b-nuevo">${el.tipo}</span></div>
+    ${FIELDS.map(([k,l])=>`<div class="${k==='rasgos'?'full':''}"><label class="l">${l}</label><input type="text" data-f="${k}" value="${esc(el[k])}"></div>`).join('')}
+    <div class="full"><label class="l">Paleta</label><div class="chips">${el.paleta.map((c,i)=>`<button class="chip" title="Quitar ${c}" data-rm="${i}" style="background:${c}"></button>`).join('')}
+      <input type="color" id="addcol" value="#8b7cf6" style="width:40px;height:30px;padding:0;border:0;background:none"><button class="btn sm" id="addchip">+ añadir color</button></div></div>
+    <div class="full">${depBadge(el)}</div></div></div>
+  <div class="card" style="padding:16px;margin-top:14px"><div class="row" style="justify-content:space-between"><b>Prompt generado</b><span class="mute">se actualiza al escribir</span></div>
+    <div class="promptbox" id="pv">${esc(promptOf(el))}</div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="cpy">Copiar</button><button class="btn pri" id="togen">Enviar al generador</button></div></div></div></div>`;
+}
+const tf=$('#t-fich');
+tf.addEventListener('input',e=>{const k=e.target.dataset.f;if(!k)return;const el=els.find(x=>x.id===selE);el[k]=e.target.value;$('#pv').textContent=promptOf(el);
+  const b=$(`.ei[data-el="${selE}"]`);const c=filled(el);b.querySelector('.mute').textContent=c+'/7';const i=b.querySelector('i');i.style.width=c/7*100+'%';i.className=c===7?'full':''});
+tf.addEventListener('change',e=>{if(e.target.dataset.f==='zona')renderFich()});
+tf.addEventListener('click',e=>{
+  const el=els.find(x=>x.id===selE);
+  if(e.target.closest('[data-el]')){selE=e.target.closest('[data-el]').dataset.el;renderFich()}
+  else if(e.target.dataset.rm!==undefined){el.paleta.splice(+e.target.dataset.rm,1);renderFich()}
+  else if(e.target.id==='addchip'){el.paleta.push($('#addcol').value);renderFich()}
+  else if(e.target.id==='cpy'){try{navigator.clipboard.writeText(promptOf(el))}catch(x){}toast('Prompt copiado')}
+  else if(e.target.id==='togen'){G.prompt=promptOf(el);G.elName=el.n;renderGen();setTab('gen')}
+});
+
+/* ================= GENERADOR ================= */
+const G={prompt:'',elName:'Aullador Rojo',perfil:'Banner 1280×512',seed:'3',steps:6,zbg:0,lote:4,filter:'todos',trash:false,cmpMode:false,cmp:[],lb:null,nid:1,
+  queue:[{id:'q1',n:'Aullador Rojo · semilla 77120',pct:40},{id:'q2',n:'Aullador Rojo · semilla 77121',pct:0},{id:'q3',n:'Aullador Rojo · semilla 77122',pct:0}]};
+const SS=['nuevo','candidata','favorita','aprobada','descartada'];
+G.items=Array.from({length:16},(_,i)=>({id:G.nid++,hue:(i*47+12)%360,ar:[1,1.4,0.75,2.5,1][i%5],estado:SS[[0,0,1,2,0,4,1,0,3,0,0,2,4,0,1,0][i]],seed:String(10000+i*3917),steps:[4,6,8][i%3],perfil:i%5===3?'Banner 1280×512':'Miniatura 768×768',trashed:false}));
+G.items[3].trashed=true;G.items[13].trashed=true;
+const grad=h=>`linear-gradient(135deg,hsl(${h} 62% 42%),hsl(${(h+55)%360} 55% 22%))`;
+const liveItems=()=>G.items.filter(i=>i.trashed===G.trash&&(G.trash||G.filter==='todos'||i.estado===G.filter));
+const q$=()=>G.queue.length;
+function renderGen(){
+  const items=liveItems(), nTr=G.items.filter(i=>i.trashed).length;
+  $('#t-gen').innerHTML=`<div class="gen">
+  <div class="card side">
+    <b>Parámetros</b>
+    <label class="l">Elemento</label><input type="text" id="gel" value="${esc(G.elName)}">
+    <label class="l">Perfil</label><select id="gper">${['Miniatura 768×768','Banner 1280×512','Mapa 832×624'].map(x=>`<option ${x===G.perfil?'selected':''}>${x}</option>`).join('')}</select>
+    <label class="l">Semilla</label><div class="row" style="flex-wrap:nowrap"><input type="number" id="gseed" value="${G.seed}"><button class="btn sm" id="rnd" title="Aleatoria">🎲</button></div>
+    <label class="l">Pasos: <b id="stv">${G.steps}</b></label><input type="range" id="gsteps" min="2" max="12" value="${G.steps}" style="width:100%">
+    <label class="l">Referencia: fondo de zona</label>
+    <div class="zbg">${[['Pastos',110],['Llanuras',10],['Ninguno',0]].map(([n,h],i)=>`<button data-zbg="${i}" class="${G.zbg===i?'on':''}" title="${n}" style="background:${i===2?'var(--panel2)':grad(h)};color:#fff;font-size:11px">${n}</button>`).join('')}</div>
+    <label class="l">Lote de N semillas</label><input type="number" id="glote" min="1" max="12" value="${G.lote}">
+    <div class="mute" style="font-size:12px;margin:8px 0">${G.prompt?'Prompt desde ficha:<br><i>'+esc(G.prompt.slice(0,120))+'…</i>':'Sin prompt de ficha'}</div>
+    <button class="btn pri" id="gen" style="width:100%">Generar ${G.lote>1?'lote de '+G.lote:'imagen'}</button>
+  </div>
+  <div>
+    <div class="toolbar">${['todos',...SS].map(s=>`<button class="fchip ${!G.trash&&G.filter===s?'on':''}" data-flt="${s}">${s==='todos'?'Todos':s[0].toUpperCase()+s.slice(1)}</button>`).join('')}
+      <span style="flex:1"></span>
+      <button class="fchip ${G.cmpMode?'on':''}" id="cmpm">Comparar${G.cmp.length?' ('+G.cmp.length+')':''}</button>
+      ${G.cmp.length>=2?'<button class="btn sm pri" id="cmpgo">Ver lado a lado</button>':''}
+      <button class="fchip ${G.trash?'on':''}" id="trash">Papelera (${nTr})</button></div>
+    ${G.cmpMode?'<p class="mute" style="font-size:12px;margin:0 0 8px">Modo comparar: elige de 2 a 4 intentos.</p>':''}
+    <div class="masonry">${items.map(it=>`<div class="tile ${it.estado==='descartada'?'dis':''} ${G.cmp.includes(it.id)?'cmp':''}" data-it="${it.id}">
+      <div style="aspect-ratio:${it.ar>2?'2.5/1':it.ar===1?'1':it.ar>1?'1/1.4':'3/4'};background:${grad(it.hue)}"></div>
+      <span class="badge bd b-${it.estado}">${it.estado}</span><span class="sd">#${it.seed}</span></div>`).join('')||'<p class="mute">Nada aquí.</p>'}</div>
+  </div>
+  <div class="card side"><b>Cola</b><div style="margin:6px 0"><span class="badge b-cambios">${q$()} en cola · ~${q$()*2} min</span></div>
+    ${G.queue.map((j,i)=>`<div class="qi">${esc(j.n)}<div class="bar"><i style="width:${j.pct}%"></i></div><div class="row mute" style="justify-content:space-between;font-size:12px"><span>${i===0?'generando… '+j.pct+'%':'en espera'}</span><button class="btn sm" data-qx="${j.id}">Cancelar</button></div></div>`).join('')||'<p class="mute">Cola vacía.</p>'}
+    <p class="mute" style="font-size:12px">≈ 2 min por imagen (simulado: la cola avanza sola).</p></div></div>`;
+}
+const tg=$('#t-gen');
+tg.addEventListener('input',e=>{
+  if(e.target.id==='gsteps'){G.steps=+e.target.value;$('#stv').textContent=G.steps}
+  else if(e.target.id==='gseed')G.seed=e.target.value;
+  else if(e.target.id==='gel')G.elName=e.target.value;
+});
+tg.addEventListener('change',e=>{
+  if(e.target.id==='gper')G.perfil=e.target.value;
+  else if(e.target.id==='glote'){G.lote=Math.max(1,Math.min(12,+e.target.value||1));renderGen()}
+});
+tg.addEventListener('click',e=>{
+  const t=e.target, c=s=>t.closest(s);
+  if(c('[data-flt]')){G.filter=c('[data-flt]').dataset.flt;G.trash=false;renderGen()}
+  else if(c('#trash')){G.trash=!G.trash;renderGen()}
+  else if(c('#cmpm')){G.cmpMode=!G.cmpMode;if(!G.cmpMode)G.cmp=[];renderGen()}
+  else if(c('#cmpgo'))openCmp();
+  else if(c('[data-zbg]')){G.zbg=+c('[data-zbg]').dataset.zbg;renderGen()}
+  else if(c('#rnd')){G.seed=String(Math.floor(Math.random()*99999));renderGen()}
+  else if(c('#gen')){
+    for(let i=0;i<G.lote;i++)G.queue.push({id:'q'+Date.now()+i,n:`${G.elName} · semilla ${+G.seed+i}`,pct:0});
+    toast(`${G.lote} trabajo(s) encolados`);renderGen();
+  }
+  else if(c('[data-qx]')){G.queue=G.queue.filter(j=>j.id!==c('[data-qx]').dataset.qx);renderGen()}
+  else if(c('.tile')){
+    const id=+c('.tile').dataset.it;
+    if(G.cmpMode){const k=G.cmp.indexOf(id);if(k>=0)G.cmp.splice(k,1);else if(G.cmp.length<4)G.cmp.push(id);else toast('Máximo 4');renderGen()}
+    else openLb(id);
+  }
+});
+// la cola avanza sola
+setInterval(()=>{
+  if(!G.queue.length)return;
+  const j=G.queue[0];j.pct+=20;
+  if(j.pct>=100){G.queue.shift();const s=j.n.split('semilla ')[1];
+    G.items.unshift({id:G.nid++,hue:Math.floor(Math.random()*360),ar:[1,1.4,0.75][Math.floor(Math.random()*3)],estado:'nuevo',seed:s,steps:G.steps,perfil:G.perfil,trashed:false})}
+  if(tab==='gen'&&!G.lb&&!$('#lb').classList.contains('on'))renderGen();
+},2000);
+/* lightbox */
+const lbEl=$('#lb');
+function openLb(id){G.lb=id;drawLb();lbEl.classList.add('on')}
+function closeLb(){G.lb=null;lbEl.classList.remove('on');lbEl.innerHTML='';renderGen()}
+function drawLb(){
+  const it=G.items.find(x=>x.id===G.lb);if(!it)return closeLb();
+  lbEl.innerHTML=`<div class="lbin"><div class="lbimg" style="background:${grad(it.hue)};aspect-ratio:${it.ar>2?'2.5/1':it.ar===1?'1':it.ar>1?'1/1.4':'3/4'}"></div>
+  <div class="card lbpanel"><div class="row" style="justify-content:space-between"><b>Intento #${it.id}</b><button class="btn sm" data-lb="close">✕</button></div>
+   <p><span class="badge b-${it.estado}">${it.estado}</span></p>
+   <p class="mute">Perfil: ${it.perfil}<br>Semilla: ${it.seed}<br>Pasos: ${it.steps}</p>
+   <div class="row"><button class="btn sm" data-lb="candidata">Candidata</button><button class="btn sm" data-lb="favorita">Favorita</button>
+   <button class="btn sm bad" data-lb="descartada">Descartar</button><button class="btn sm ok" data-lb="aprobada">Aprobar</button></div>
+   <p><button class="btn" data-lb="reuse" style="width:100%">Reutilizar ajustes</button></p>
+   <p><button class="btn sm" data-lb="trash">${it.trashed?'Restaurar de la papelera':'Mover a la papelera'}</button></p>
+   <p class="hints"><kbd>←</kbd><kbd>→</kbd> navegar · <kbd>f</kbd> favorita · <kbd>c</kbd> candidata · <kbd>x</kbd> descartar · <kbd>Enter</kbd> aprobar · <kbd>Esc</kbd> cerrar</p></div></div>`;
+}
+function setIt(est){const it=G.items.find(x=>x.id===G.lb);if(it){it.estado=est;toast(`#${it.id}: ${est}`);drawLb()}}
+function navLb(d){const l=liveItems();const i=l.findIndex(x=>x.id===G.lb);if(!l.length)return;G.lb=l[(i+d+l.length)%l.length].id;drawLb()}
+function openCmp(){
+  lbEl.innerHTML=`<div style="width:100%;max-width:1200px"><div class="row" style="justify-content:space-between;margin-bottom:8px;color:#fff"><b>Comparar ${G.cmp.length} intentos</b><button class="btn sm" data-lb="cmpx">Cerrar</button></div>
+  <div class="cmpgrid">${G.cmp.map(id=>{const it=G.items.find(x=>x.id===id);return `<div class="card" style="padding:8px"><div style="aspect-ratio:1;border-radius:8px;background:${grad(it.hue)}"></div><div class="row" style="justify-content:space-between;margin-top:6px"><span class="mute">#${it.seed}</span><span class="badge b-${it.estado}">${it.estado}</span></div>
+  <div class="row" style="margin-top:6px"><button class="btn sm ok" data-pick="${id}">Aprobar esta</button></div></div>`}).join('')}</div></div>`;
+  G.lb=null;lbEl.classList.add('on');lbEl.dataset.cmp=1;
+}
+lbEl.addEventListener('click',e=>{
+  const b=e.target.closest('[data-lb],[data-pick]');
+  if(e.target===lbEl){delete lbEl.dataset.cmp;closeLb();return}
+  if(!b)return;
+  if(b.dataset.pick){const id=+b.dataset.pick;G.items.forEach(i=>{if(G.cmp.includes(i.id))i.estado=i.id===id?'aprobada':'descartada'});toast('Aprobada; el resto descartado');G.cmp=[];G.cmpMode=false;delete lbEl.dataset.cmp;closeLb();return}
+  const a=b.dataset.lb;
+  if(a==='close'||a==='cmpx'){delete lbEl.dataset.cmp;closeLb()}
+  else if(a==='reuse'){const it=G.items.find(x=>x.id===G.lb);G.seed=it.seed;G.steps=it.steps;G.perfil=it.perfil;toast('Ajustes cargados en el panel');closeLb()}
+  else if(a==='trash'){const it=G.items.find(x=>x.id===G.lb);it.trashed=!it.trashed;toast(it.trashed?'A la papelera':'Restaurada');closeLb()}
+  else setIt(a);
+});
+/* teclado global */
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const typing=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&e.target.type!=='checkbox';
+  if(lbEl.classList.contains('on')){
+    if(e.key==='Escape'){delete lbEl.dataset.cmp;closeLb();return}
+    if(lbEl.dataset.cmp||G.lb===null)return;
+    const m={ArrowRight:()=>navLb(1),ArrowLeft:()=>navLb(-1),f:()=>setIt('favorita'),c:()=>setIt('candidata'),x:()=>setIt('descartada'),Enter:()=>setIt('aprobada')}[e.key];
+    if(m){e.preventDefault();m()}return;
+  }
+  if(typing||tab!=='prop')return;
+  const vis=visibles(),i=vis.findIndex(v=>v.id===selP);
+  if(e.key==='j'&&vis.length){selP=vis[Math.min(i+1,vis.length-1)].id;renderProp()}
+  else if(e.key==='k'&&vis.length){selP=vis[Math.max(i-1,0)].id;renderProp()}
+  else if(e.key==='a')setEstado([selP],'aprobada');
+  else if(e.key==='r')setEstado([selP],'rechazada');
+});
+
+renderNav();renderProp();renderFich();renderGen();setTab(tab);
+</script>
+</body>
+</html>
