@@ -824,7 +824,10 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
   if (puntos.length === 0) return null;
 
   const npcSlugs = [...new Set(puntos.filter((p) => p.tipo === 'NPC').map((p) => p.targetSlug))];
-  const npcRows = npcSlugs.length ? await prisma.npc.findMany({ where: { slug: { in: npcSlugs } }, select: { slug: true, name: true } }) : [];
+  // Revisión de P269/P329 (leve): los Npc se buscan en el mundo de la partida (y los nacidos en ella), no por slug
+  // a secas: uno de otro mundo con el mismo slug le ponía su nombre al punto.
+  const worldId = npcSlugs.length ? (await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } }))?.worldId : undefined;
+  const npcRows = npcSlugs.length && worldId ? await prisma.npc.findMany({ where: { worldId, ...npcDeLaPartida(saveId), slug: { in: npcSlugs } }, select: { slug: true, name: true } }) : [];
   const npcNameBySlug = new Map(npcRows.map((n) => [n.slug, n.name]));
 
   const nombreDe = (p: (typeof puntos)[number]): string => {

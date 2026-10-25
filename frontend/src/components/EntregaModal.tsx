@@ -63,7 +63,7 @@ export function EntregaModal({ saveId, onEntregado, onCancel }: EntregaModalProp
       ) : items.length === 0 ? (
         <p className="text-xs text-wood-500">No llevas nada que puedas entregar (desequípalo primero si lo llevas puesto).</p>
       ) : npcs.length === 0 ? (
-        <p className="text-xs text-wood-500">No hay nadie aquí a quien entregarle algo.</p>
+        <p className="text-xs text-wood-500">Aquí no hay nadie a quien entregarle algo: solo se entrega a tus compañeros de equipo o a quien te pide materiales para un encargo.</p>
       ) : !selectedItem ? (
         <div className="space-y-2">
           <p className="text-2xs text-wood-500">¿Qué le entregas?</p>

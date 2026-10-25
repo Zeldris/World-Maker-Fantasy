@@ -4,7 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
 import { procesarReacciones } from './reacciones.js';
-import { bloqueMemoria, componer, palabrasClave, puntuar, sinTextosRepetidos, TOPE_TOTAL, TOPE_VERDAD } from './memoriaNarrador.js';
+import { bloqueMemoria, componer, lineaDeEtiquetas, palabrasClave, puntuar, sinTextosRepetidos, TOPE_TOTAL, TOPE_VERDAD } from './memoriaNarrador.js';
 
 describe('memoria del narrador (CR-21…23) — reglas puras', () => {
   it('palabras clave sin acentos, cortas ni vacías', () => {
@@ -23,6 +23,15 @@ describe('memoria del narrador (CR-21…23) — reglas puras', () => {
   it('un texto repetido ocupa un solo hueco de la memoria (P247)', () => {
     const renacer = 'Gorhorn despierta de nuevo en Campamento.';
     expect(sinTextosRepetidos([renacer, 'otra cosa', renacer, renacer])).toEqual([renacer, 'otra cosa']);
+  });
+
+  it('P271: las etiquetas de la jugadora van como rasgos en minúscula, nunca como un nombre con el que llamarla', () => {
+    const linea = lineaDeEtiquetas(['Clemente', 'Carnicero'])!;
+    expect(linea).toContain('clemente, carnicero');
+    expect(linea).not.toContain('Clemente');
+    expect(linea).not.toMatch(/conocen como/);
+    expect(linea).toContain('no su nombre ni un apodo');
+    expect(lineaDeEtiquetas([])).toBeNull();
   });
 
   it('recorta por el final sin pasarse del presupuesto; la verdad nunca pasa de su tope', () => {

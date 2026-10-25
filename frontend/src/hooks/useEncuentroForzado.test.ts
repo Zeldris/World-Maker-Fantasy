@@ -47,4 +47,17 @@ describe('useEncuentroForzado', () => {
     rerender()
     expect(result.current.encuentroForzado).toBe(false)
   })
+
+  // Leve de la revisión de la tanda Zona: la oferta guardada con el registro sin tarjeta (registro
+  // vacío: la tarjeta se cuelga de la última entrada, así que sin entradas no hay tarjeta que
+  // resolver) no se olvida por el efecto de la tarjeta, porque esa tarjeta nunca existió. Se olvida
+  // cuando el save recargado ya no la trae: `syncFromSave` llama a `guardarOferta(save.pendingDynamicModeOffer)`
+  // en cada carga y resincronización, y con `null` queda libre.
+  it('con la oferta guardada y sin tarjeta, un save recargado que ya no la trae la olvida', () => {
+    const { result } = renderHook(() => useEncuentroForzado([]))
+    act(() => result.current.guardarOferta({ combateForzado: true }))
+    expect(result.current.encuentroForzado).toBe(true)
+    act(() => result.current.guardarOferta(undefined))
+    expect(result.current.encuentroForzado).toBe(false)
+  })
 })

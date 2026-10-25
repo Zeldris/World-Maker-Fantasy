@@ -143,6 +143,26 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
       await prisma.zonePoint.delete({ where: { id: npcZonePointId } });
     });
 
+    // Revisión de P269/P329 (leve): el nombre sale del mundo de la partida, no de otro con el mismo slug.
+    it('un NPC de otro mundo con el mismo slug no le pone su nombre al punto', async () => {
+      const otroMundo = await prisma.world.create({
+        data: { slug: 'test-zonepoints-otro-mundo', name: 'Otro mundo', tagline: 'x', synopsis: 'x', tone: 'x', lethality: 'MEDIA', theme: {} },
+      });
+      try {
+        await prisma.npc.create({
+          data: {
+            worldId: otroMundo.id, kind: 'PRINCIPAL', slug: 'gistera-koh', name: 'Gemela de otro mundo', aliases: [], role: 'x', level: 1,
+            attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 }, bio: 'x', personality: 'x', homeLocationSlug: null, temperamento: 'CAUTELOSO',
+          },
+        });
+        const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+        expect(resumen?.npc).toContain('Gistera Koh');
+        expect(resumen?.npc).not.toContain('Gemela de otro mundo');
+      } finally {
+        await prisma.world.delete({ where: { id: otroMundo.id } });
+      }
+    });
+
     it('el NPC real aparece en `npc`, la fauna aparece en `fauna`, nunca en la misma cadena', async () => {
       const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
       expect(resumen?.npc).toContain('Gistera Koh');

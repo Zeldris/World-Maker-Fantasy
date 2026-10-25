@@ -302,6 +302,16 @@ describe('detectsAttackIntent', () => {
     expect(detectsAttackIntent('Aprieto los dientes, aguanto con mi Puño de Hierro y me preparo')).toBe(false)
     expect(detectsAttackIntent('Reviso mi armadura de hierro antes de seguir')).toBe(false)
   });
+
+  it('P261: "hacer", "viene", "tiene", "quiero" no se confunden con "hiere"/"hiero"/"lacerar" por la tolerancia a erratas', () => {
+    expect(detectsAttackIntent('Pienso en lo que me pidió Gistera Koh y qué hacer con el orco')).toBe(false)
+    expect(detectsAttackIntent('Le digo al orco que Gistera Koh viene hacia aquí')).toBe(false)
+    expect(detectsAttackIntent('Miro al orco mientras Gistera Koh tiene razón')).toBe(false)
+    expect(detectsAttackIntent('Quiero hablar con el orco y con Gistera Koh')).toBe(false)
+    // Lo literal sigue contando.
+    expect(detectsAttackIntent('Hiero al orco con la espada')).toBe(true)
+    expect(detectsAttackIntent('Intento lacerar al orco')).toBe(true)
+  });
 });
 
 describe('detectsHostileSearchIntent', () => {

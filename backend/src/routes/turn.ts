@@ -688,7 +688,7 @@ export async function turnRoutes(app: FastifyInstance) {
       npcsInSceneForValidation.map((n) => n.slug),
     );
     if (absentNpcClaim) {
-      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name), absentNpcClaim.name);
+      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name, absentNpcClaim.conocido), absentNpcClaim.name);
     }
 
     // Diálogo dirigido a "alguien" por descripción libre, sin que ningún alias real haya resuelto

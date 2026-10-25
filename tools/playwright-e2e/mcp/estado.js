@@ -75,7 +75,12 @@ async (page) => {
   const parrafos = await page
     .locator('p, h1, h2, h3, h4, li')
     .evaluateAll((els) => els.map((el) => Array.from(el.childNodes).map((n) => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim()));
-  const avisos = parrafos.filter((t) => /busca tu atención|te corta el paso|Te topas con|te golpea|Has caído|Victoria|Derrota|CONVALECIENTE/i.test(t)).slice(-3);
+  // P246: la tarjeta del encuentro sale en el diario y, con el mapa abierto, junto a la ficha (ZON-5): el mismo
+  // aviso dos veces en pantalla no son dos avisos, así que se enseña una vez.
+  const avisos = parrafos
+    .filter((t) => /busca tu atención|te corta el paso|Te topas con|te golpea|Has caído|Victoria|Derrota|CONVALECIENTE/i.test(t))
+    .filter((t, i, todos) => todos.indexOf(t) === i)
+    .slice(-3);
   return [
     'HUD: ' + hud,
     modales.length ? 'MODALES: ' + modales.join(' > ') : '',

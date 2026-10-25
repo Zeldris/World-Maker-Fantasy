@@ -338,8 +338,13 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
 /// (Franja 0, 2026-09-08). Todas las vueltas narradas, concatenadas en orden (decisión explícita
 /// de la usuaria: "todas las vueltas concatenadas" — conserva el detalle completo de la
 /// conversación, coherente con cómo se lee el resto del log).
+///
+/// P243: dos vueltas seguidas con el mismo texto (el guion de Gistera, con «Preguntar más antes de
+/// decidir», vuelve a decir la presentación entera) se cuentan una vez: el Diario llevaba el mismo
+/// discurso 3 veces seguidas. Solo se quita la repetición PEGADA a la anterior; un texto que vuelve
+/// tras otro distinto se conserva.
 export function resumenModoDinamicoParaLog(historialNarracion: string[]): string {
-  return historialNarracion.join('\n\n');
+  return historialNarracion.filter((texto, i) => i === 0 || texto !== historialNarracion[i - 1]).join('\n\n');
 }
 
 /// Máximo de vueltas antes de forzar el cierre del modo dinámico (evita que una conversación se

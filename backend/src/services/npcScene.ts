@@ -749,12 +749,16 @@ function isNegatedMatch(normalized: string, matchIndex: number): boolean {
 /// Verbo de ataque directo (roadmap 2026-07-19: "roadmap 2" de calibración de combate, y
 /// reutilizado por la clasificación tabulada en turn.ts) — mismo regex que la red de seguridad de
 /// `combateIniciado` en turnResolution.ts, vive aquí para no duplicarlo entre los dos módulos.
-const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero/;
+const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer/;
 
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;
 // "atac" (4) y la frase "cargo contra" se quedan con la coincidencia exacta del regex.
-const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'hiere', 'hiero', 'amputo','lacer','asesin','espadazo'];
+// P261 (2026-10-25): 'hiere', 'hiero' y 'lacer' NO entran aquí. Con solo 5 letras, la distancia ≤2
+// los casaba con verbos de todos los días («hacer», «viene», «tiene», «quiere», «quiero»), y el
+// guard del NPC ausente cortaba «Pienso en lo que me pidió Gistera Koh y qué hacer con el orco».
+// Siguen cubiertos por la coincidencia exacta del regex de arriba.
+const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'amputo','asesin','espadazo'];
 
 // Auditoría 2026-07-29 (tras el bug real de "ataque"~"saque" en turnResolution.ts § LOOT_INTENT):
 // "hierro" está a distancia 1-2 de "hiero"/"hiere" — un material/nombre de habilidad normal

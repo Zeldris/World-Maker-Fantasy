@@ -124,6 +124,9 @@ export function wrongWeaponNarrationFor(armaReal: string): string {
 export interface AbsentSceneNpcClaim {
   /// Nombre real de catálogo del NPC/fauna reclamado ("Torgash") — para la frase de vuelta.
   name: string;
+  /// P310: la jugadora ya la ha visto en escena (`DiscoveredEntity` en fase DESCUBIERTO). Una
+  /// conocida ausente («Gistera Koh», la dadora de la misión) no se trata como «quienquiera que sea».
+  conocido: boolean;
 }
 
 /// Detecta si la acción del jugador interactúa con un NPC/fauna REAL de catálogo (existe de
@@ -193,7 +196,12 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
     if (quotedNpc && effectiveSceneSlugs.includes(quotedNpc.slug)) return null;
   }
   const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
-  return absent ? { name: absent.name } : null;
+  if (!absent) return null;
+  const vista = await prisma.discoveredEntity.findFirst({
+    where: { saveId, entitySlug: absent.slug, fase: 'DESCUBIERTO' },
+    select: { id: true },
+  });
+  return { name: absent.name, conocido: vista !== null };
 }
 
 /// Mismo criterio que `WRONG_WEAPON_LINES` — pool de 5, 1 cómica menos frecuente.
@@ -205,8 +213,16 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
   (nombre) => `Gorhorn frunce el ceño. «¿${nombre}? Aquí no hay nadie con ese nombre, que yo vea...» Baja la guardia, un poco confuso.`,
 ];
 
-export function absentSceneNpcNarrationFor(nombre: string): string {
-  const line = pickRandomLine(ABSENT_NPC_LINES);
+/// P310: para quien la jugadora ya conoce (la ha visto en escena), ni «quienquiera que sea» ni «no
+/// hay nadie con ese nombre»: Gorhorn sabe quién es, solo que ahora no está aquí.
+const ABSENT_KNOWN_NPC_LINES: ((nombre: string) => string)[] = [
+  (nombre) => `Gorhorn mira alrededor buscando a ${nombre}, pero ahora mismo no está en este lugar.`,
+  (nombre) => `${nombre} no está aquí ahora. Gorhorn lo comprueba con la mirada: tendrá que ir a buscar a esa persona donde esté, o esperar a que vuelva.`,
+  (nombre) => `Gorhorn se vuelve hacia donde esperaba ver a ${nombre}, pero no hay rastro por aquí. Habrá que dar con esa persona en otro sitio.`,
+];
+
+export function absentSceneNpcNarrationFor(nombre: string, conocido = false): string {
+  const line = pickRandomLine(conocido ? ABSENT_KNOWN_NPC_LINES : ABSENT_NPC_LINES);
   return line(nombre);
 }
 

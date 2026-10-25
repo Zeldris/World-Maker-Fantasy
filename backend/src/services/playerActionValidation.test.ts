@@ -7,6 +7,7 @@ const findManyHarvestYield = vi.fn();
 const findFirstQuest = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
+const findFirstDiscovered = vi.fn();
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
@@ -14,6 +15,7 @@ vi.mock('../lib/prisma.js', () => ({
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     quest: { findFirst: (...args: unknown[]) => findFirstQuest(...args), findMany: (...args: unknown[]) => findManyQuest(...args) },
     npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
+    discoveredEntity: { findFirst: (...args: unknown[]) => findFirstDiscovered(...args) },
   },
 }));
 
@@ -135,11 +137,12 @@ describe('detectsAbsentSceneNpcClaim', () => {
     // Sin misión activa por defecto — la mayoría de los tests de este describe no la necesitan;
     // el describe siguiente (isPursuerOrcoInScene) la sobreescribe caso a caso.
     findFirstQuest.mockReset().mockResolvedValue(null);
+    findFirstDiscovered.mockReset().mockResolvedValue(null);
   });
 
   it('detecta interactuar con un NPC real de catálogo que no está en la escena actual', async () => {
     const result = await detectsAbsentSceneNpcClaim("Le pregunto a Torgash por su clan.", 'world1', 'save1', []);
-    expect(result).toEqual({ name: 'Torgash' });
+    expect(result).toEqual({ name: 'Torgash', conocido: false });
   });
 
   it('no dispara si el NPC mencionado SÍ está en la lista de escena', async () => {
@@ -182,6 +185,35 @@ describe('detectsAbsentSceneNpcClaim', () => {
       [],
     );
     expect(result).not.toBeNull();
+  });
+});
+
+describe('P310: una conocida ausente no se trata como desconocida', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset().mockResolvedValue([{ slug: 'gistera-koh', name: 'Gistera Koh', aliases: ['gistera koh', 'gistera'] }]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
+    findFirstDiscovered.mockReset();
+  });
+
+  it('con la ficha DESCUBIERTO marca conocido y pregunta por esa ficha en la partida y en fase DESCUBIERTO', async () => {
+    findFirstDiscovered.mockResolvedValue({ id: 'd1' });
+    const result = await detectsAbsentSceneNpcClaim('Le regalo a Gistera un pan y le digo: «Toma, es para ti».', 'world1', 'save1', []);
+    expect(result).toEqual({ name: 'Gistera Koh', conocido: true });
+    expect(findFirstDiscovered).toHaveBeenCalledWith(expect.objectContaining({ where: { saveId: 'save1', entitySlug: 'gistera-koh', fase: 'DESCUBIERTO' } }));
+  });
+
+  it('sin ficha DESCUBIERTO sigue siendo desconocida', async () => {
+    findFirstDiscovered.mockResolvedValue(null);
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Gistera Koh por su clan.', 'world1', 'save1', []);
+    expect(result).toEqual({ name: 'Gistera Koh', conocido: false });
+  });
+
+  it('la narración de una conocida nunca dice «quienquiera que sea» ni «no hay nadie», y siempre cita el nombre', () => {
+    for (let i = 0; i < 40; i++) {
+      const texto = absentSceneNpcNarrationFor('Gistera Koh', true);
+      expect(texto).toContain('Gistera Koh');
+      expect(texto).not.toMatch(/quienquiera|sea quien sea|nadie|ni rastro de/i);
+    }
   });
 });
 

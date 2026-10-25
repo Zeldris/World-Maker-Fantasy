@@ -86,9 +86,18 @@ async function marcarNpcConocidoRapido(tx: Prisma.TransactionClient, saveId: str
   });
 }
 
+/// P324: corre DESPUÉS de la transacción que ya cerró la conversación, así que si el embebido (Ollama
+/// lento, colgado o sin cuota) lanzaba, la ruta contestaba 500 con el cierre ya confirmado: «Salir» no
+/// parecía cerrar y el reintento daba 409 («No hay ningún modo dinámico en curso»). El hecho de sesión
+/// es solo contexto narrativo recuperable (nada mecánico depende de él), así que su fallo se anota y
+/// no tumba la respuesta.
 async function registrarNpcConocidoSessionFact(saveId: string, targetName: string): Promise<void> {
-  const sessionFacts = await loadSessionFacts(saveId);
-  await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
+  try {
+    const sessionFacts = await loadSessionFacts(saveId);
+    await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
+  } catch (err) {
+    console.warn(`[modo-dinamico] no se pudo guardar el hecho de sesión de ${targetName} (save ${saveId}):`, err instanceof Error ? err.message : err);
+  }
 }
 
 /// Solo se llama para el camino GENÉRICO de modo dinámico (LLM) — mismo criterio previo a
@@ -459,13 +468,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       const text = `${save.characterName} logra alejarse ${deNombre(nombreDeEncuentro(pending.targetName, pending.cantidad))} sin que llegue a haber combate.`;
       // Huir vuelve a la ENTRADA de la zona, igual que las dos huidas de session.ts (antes el
       // jugador se quedaba pegado al agresor y el siguiente paso volvía a toparse con él).
-      // P116: la misma función que las huidas de session.ts (entrada dentro del radio seguro, sin oferta).
-      const datosHuida = await datosDeHuidaDeZona(prisma, save.id, save.currentLocationId, { x: save.zonaPosEntradaX, y: save.zonaPosEntradaY });
-      await prisma.$transaction([
-        prisma.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } }),
-        prisma.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } }),
-        prisma.save.update({ where: { id: save.id }, data: datosHuida }),
-      ]);
+      // P116: la misma función que las huidas de session.ts (entrada dentro del radio seguro, sin oferta); dentro de
+      // la transacción, como en ellas, para que lea las entradas con el mismo cliente que escribe (revisión P116, leve).
+      await prisma.$transaction(async (tx) => {
+        const datosHuida = await datosDeHuidaDeZona(tx, save.id, save.currentLocationId, { x: save.zonaPosEntradaX, y: save.zonaPosEntradaY });
+        await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
+        await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
+        await tx.save.update({ where: { id: save.id }, data: datosHuida });
+      });
       return { narration: text, opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel, newQuestOfferInfo: null };
     }
 

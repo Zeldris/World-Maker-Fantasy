@@ -125,7 +125,8 @@ export async function verdadObligatoria(db: Db, e: Escena): Promise<string[]> {
   }
 
   const etiquetas = await db.etiqueta.findMany({ where: { saveId: e.saveId, entidadTipo: 'PERSONAJE', activa: true }, select: { texto: true }, take: 6 });
-  if (etiquetas.length) lineas.push(`A la jugadora la conocen como: ${etiquetas.map((t) => t.texto).join(', ')}.`);
+  const lineaEtiquetas = lineaDeEtiquetas(etiquetas.map((t) => t.texto));
+  if (lineaEtiquetas) lineas.push(lineaEtiquetas);
 
   const companeros = await db.companion.findMany({
     where: { saveId: e.saveId, tipo: 'NPC', rolReino: null, condicionFisica: { not: 'MUERTO' }, combatGroupSlotIndex: 0 },
@@ -222,6 +223,14 @@ export async function memoriaPorRelevancia(db: Db, e: Escena, excluir: Set<strin
 /// solo hueco de la memoria, no tres de diez. Conserva el primero (el mejor puntuado) y el orden.
 export function sinTextosRepetidos(textos: string[]): string[] {
   return [...new Set(textos)];
+}
+
+/// P271: «A la jugadora la conocen como: Clemente» hacía que el modelo la llamara «Clemente» a la cara
+/// («¿Qué noticias traes de los Maktor, Clemente?»). Las etiquetas son rasgos que le atribuyen por lo que ha
+/// hecho, en minúscula y dichos como tales, y la línea avisa de que no son ni su nombre ni un apodo.
+export function lineaDeEtiquetas(textos: string[]): string | null {
+  if (textos.length === 0) return null;
+  return `Fama de la jugadora, por lo que ha hecho (rasgos que le atribuyen, no su nombre ni un apodo con el que dirigirse a ella): ${textos.map((t) => t.toLowerCase()).join(', ')}.`;
 }
 
 /// El bloque completo para el narrador (o '' si no hay nada que contar).

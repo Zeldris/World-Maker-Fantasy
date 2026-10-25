@@ -82,6 +82,12 @@ describe('detectsTravelIntent', () => {
   it('no detecta intención de viaje en una acción no relacionada', () => {
     expect(detectsTravelIntent('examino mis alrededores con cuidado')).toBe(false);
   });
+  it('P268: «de viaje» como sustantivo (raciones de viaje) no es intención de viajar, pero viajar sí', () => {
+    expect(detectsTravelIntent('Le entrego raciones de viaje al orco')).toBe(false);
+    expect(detectsTravelIntent('Regalo una bolsa de viaje al orco')).toBe(false);
+    expect(detectsTravelIntent('Viajo a la capital')).toBe(true);
+    expect(detectsTravelIntent('Emprendo un viaje hacia el cruce')).toBe(true);
+  });
 });
 
 // docs/registros/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/

@@ -21,6 +21,18 @@ vi.mock('../../services/narrador.js', () => ({
   generateQuestResponseNarration: (...args: unknown[]) => generateQuestResponseNarration(...args),
 }));
 
+// P324: `appendSessionFacts` llama a Ollama (embebido) y corre fuera de la transacción de cierre;
+// `fallaSessionFact` lo hace fallar en los tests que comprueban que el cierre aguanta.
+let fallaSessionFact: Error | null = null;
+vi.mock('../../services/worldFacts.js', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../services/worldFacts.js')>();
+  return {
+    ...real,
+    appendSessionFacts: (...args: Parameters<typeof real.appendSessionFacts>) =>
+      fallaSessionFact ? Promise.reject(fallaSessionFact) : real.appendSessionFacts(...args),
+  };
+});
+
 const { dynamicModeRoutes } = await import('./dynamicMode.js');
 
 async function buildApp() {
@@ -357,6 +369,69 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
       const discovered = await prisma.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
       expect(discovered?.fase).toBe('DESCUBIERTO');
+    });
+
+    // P324: «Salir» y «Rechazar» daban 500 y luego 409 porque el hecho de sesión (embebido de Ollama,
+    // fuera de la transacción) lanzaba con el cierre ya confirmado. Los tres caminos que cierran con
+    // un NPC siguen respondiendo 200 y dejan la conversación cerrada y al NPC DESCUBIERTO.
+    describe('P324: si el hecho de sesión falla, el cierre no da 500', () => {
+      const fallo = new Error('Ollama (embeddings) no respondió en 30s — probable cuelgue.');
+      beforeAll(() => {
+        fallaSessionFact = fallo;
+      });
+      afterAll(() => {
+        fallaSessionFact = null;
+      });
+
+      async function abrirKade(app: Awaited<ReturnType<typeof buildApp>>) {
+        await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+        narrarVueltaModoDinamico.mockResolvedValueOnce({ narration: 'Maestro Kade te mira, esperando.', opciones: ['Preguntar'], cierra: false });
+        const open = await app.inject({
+          method: 'POST',
+          url: `/saves/${saveId}/modo-dinamico/interactuar`,
+          payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
+        });
+        expect(open.statusCode).toBe(200);
+      }
+
+      async function comprobarCerrada() {
+        const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+        expect(saveAfter.pendingDynamicMode).toBeNull();
+        const discovered = await prisma.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+        expect(discovered?.fase).toBe('DESCUBIERTO');
+      }
+
+      it('/ignorar («Salir»)', async () => {
+        const app = await buildApp();
+        await abrirKade(app);
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+        expect(res.statusCode).toBe(200);
+        await comprobarCerrada();
+      });
+
+      it('/responder con cierre', async () => {
+        const app = await buildApp();
+        await abrirKade(app);
+        narrarVueltaModoDinamico.mockResolvedValueOnce({ narration: 'Maestro Kade asiente y se marcha.', opciones: [], cierra: true });
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Preguntar' } });
+        expect(res.statusCode).toBe(200);
+        expect(JSON.parse(res.body).cierra).toBe(true);
+        await comprobarCerrada();
+      });
+
+      it('/interactuar que cierra ya en la primera vuelta', async () => {
+        const app = await buildApp();
+        await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+        narrarVueltaModoDinamico.mockResolvedValueOnce({ narration: 'Maestro Kade te saluda con la cabeza.', opciones: [], cierra: true });
+        const res = await app.inject({
+          method: 'POST',
+          url: `/saves/${saveId}/modo-dinamico/interactuar`,
+          payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
+        });
+        expect(res.statusCode).toBe(200);
+        expect(JSON.parse(res.body).cierra).toBe(true);
+        await comprobarCerrada();
+      });
     });
 
     // Guion determinista de Gistera Koh (2026-09-09, ver dynamicMode.ts § `narrarVueltaGistera` —
