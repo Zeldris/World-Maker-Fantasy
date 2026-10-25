@@ -44,6 +44,10 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto
   (`--tipo <tipo>`); la captura, solo para lo visual. La interfaz, en la sección «Imágenes» del mapa (`QA-229`).
+- **Hoja de contactos del banco de imágenes** (`QA-249`): `bash docs/producto/plan-imagenes/hoja.sh <prefijo>` junta una
+  ronda en hojas de 6 (una lectura por hoja); la finalista, entera.
+- **`recuperar.py --estado` con los worktrees** (`QA-250`): da también la fila de la rama de cada worktree; la sesión
+  que trabaja en uno no relee `traspaso.md`.
 - **Revisión por arreglo** (`QA-126`): `/code-review` corto del diff de cada subagente antes de fusionarlo.
 - **Tests de las herramientas** (`QA-113`): `medir.py` del flujo tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.
@@ -84,6 +88,12 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **El registro de la sesión** pesa cientos de MB: medirlo con `medir.py`, nunca leerlo.
 
 - **Subagentes de auditoría con un bloque entero** (`QA-243`, 2026-10-25): 9 subagentes, 32M de entrada (el 40 % de la sesión), con un contexto medio de 102-118k. De ahí `QA-247`.
+
+- **Imágenes del banco una a una** (`claude/plan-imagenes`, 2026-10-25): 66 lecturas de PNG, 3,99M arrastrados. De ahí `QA-249`.
+- **Subagente mecánico sin `model`** (misma sesión): heredó Opus (2,9M de entrada), la segunda vez tras `QA-233`. Toda
+  llamada lleva `model` (`QA-251`).
+- **Salidas de fondo leídas enteras** (misma sesión): una de 11,7k arrastró 363k. Se leen con `tail -20` (`banco.sh`
+  da una línea por prueba); entera solo si el final no explica el fallo.
 
 ## Ajustes en vigor
 

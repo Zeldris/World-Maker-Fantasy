@@ -165,6 +165,8 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   plan y la sesión principal revisa su diff antes del commit. Se queda en la sesión principal lo que pide
   sostener contexto: el bug difícil, el motor con varios sistemas, lo que cambia el plan a mitad. `medir.py`
   (`POR MODELO`) dice en cada `/opt-tokens` si se está haciendo.
+- **El modelo, siempre explícito** (`QA-251`): toda llamada a un subagente lleva `model` (el que dé el `selector`);
+  sin él hereda el de la sesión (Opus), y así fueron dos encargos mecánicos (`QA-233`, `QA-251`).
 - **Escalera y topes** (`QA-118`, ideas del workflow `implement-afk` que se revisó el 2026-10-19; el resto no
   encaja: paralelo con base de datos compartida, issues, rebase forzado): cada subagente empieza en el peldaño
   más barato que encaje y sube uno por fallo (`sonnet` low → `sonnet` medium → `opus` medium → `opus` high), con

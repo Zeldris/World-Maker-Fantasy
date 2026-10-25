@@ -5,8 +5,8 @@
   recuperar.py --estado         what the SessionStart hook (clear|compact) puts back into the context: the log's
                                 state (with logRows, the current branch's row; else the log's first section, ~25
                                 lines), `git status --short` (15 lines at most), the last 5 commits, the compactions
-                                in this session (WMF P10: compare them with the task's budget) and how to search the
-                                transcript for a detail.
+                                in this session (WMF P10: compare them with the task's budget), each other worktree
+                                with its branch's row, and how to search the transcript for a detail.
   recuperar.py --buscar TEXT    the transcript fragments (main conversation: user, Claude, tool calls and results)
                                 matching TEXT (case-insensitive regex; plain text if it is not a valid regex), newest
                                 last. --max N (10), --ancho N (300 characters per fragment).
@@ -21,6 +21,7 @@ first). Python 3.8+ standard library only.
 import argparse
 import json
 import os
+import pathlib
 import re
 import select
 import subprocess
@@ -229,11 +230,29 @@ def log_state(root, branch):
     return out
 
 
+def other_worktrees(root):
+    """(path, branch) of the repo's other worktrees with a branch. The SessionStart hook runs in the folder the session
+    was opened in (WMF: a session that works in a worktree, IMG-15): without these rows it read the whole log."""
+    out, path = [], None
+    for line in git(root, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            path = line[len("worktree "):]
+        elif line.startswith("branch refs/heads/") and path and os.path.isdir(path) \
+                and os.path.realpath(path) != os.path.realpath(str(root)):
+            out.append((path, line[len("branch refs/heads/"):]))
+    return out
+
+
 def state(root, transcript):
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     print(f"State after compaction or /clear (galivelop-workflow), branch {branch}:")
     for line in log_state(root, branch):
         print(line)
+    for path, other in other_worktrees(root):
+        print(f"- Worktree {path}, branch {other} (its state: python3 {path}/.claude/gw/scripts/recuperar.py --estado):")
+        rows = log_state(pathlib.Path(path), other)
+        if len(rows) == 1:  # with logRows, its row; a whole first section per worktree would be too long
+            print("  " + rows[0])
     status = git(root, "status", "--short").splitlines()
     if status:
         print(f"- Uncommitted: {len(status)} file(s)")

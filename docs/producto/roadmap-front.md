@@ -1625,6 +1625,11 @@ Retro del lore de la enciclopedia (usuaria, 2026-10-25; [`retro-2026-10-25-lore-
 - ~~**QA-247 · Auditorías de lore en tandas pequeñas**~~ ✅ 2026-10-25: las tandas de auditoría fueron el 40 % de la entrada, con 110k de contexto medio. Una tanda, una región o un catálogo, con el resumen de `docs/canon-opencode/` y `ficha.sh`, unas 30 llamadas como tope, y devuelve una tabla de hallazgos. **Hecho:** § 0.5 de [`ampliar-lore.md`](../runbooks/ampliar-lore.md) y línea en `.claude/gw/opt-tokens.md`.
 - ~~**QA-248 · La enciclopedia en el mapa del agente**~~ ✅ 2026-10-25: `routes/world.ts` se leyó 13 veces. Sección «Enciclopedia y lore» en `docs/mapa-agente.md` (de dónde saca cada pestaña sus datos, diccionarios, población, chunks, tests de integridad y canon). **Hecho:** sección «Enciclopedia y lore» en `docs/mapa-agente.md` (la comprueba `mapa-agente.py`).
 
+Opt-tokens de `claude/plan-imagenes` (usuaria, 2026-10-25; 296 llamadas con 116k de contexto medio):
+- ~~**QA-249 · Hoja de contactos del banco de imágenes**~~ ✅ 2026-10-25: se leyeron 66 imágenes del banco una a una (3,99M arrastrados). `bash docs/producto/plan-imagenes/hoja.sh <prefijo> [columnas]` junta una ronda en hojas de 6 casillas (ffmpeg; la leyenda, en texto); la hoja sirve para descartar y la finalista se abre entera. Test: `tools/qa/tests/test_hoja_banco.py`.
+- ~~**QA-250 · `recuperar.py --estado` con los worktrees**~~ ✅ 2026-10-25: el gancho corre donde se abrió la sesión y daba la fila de otra rama; la sesión del worktree releyó `traspaso.md` 22 veces (376k). Ahora da también cada worktree con la fila de su rama. Test en `tools/qa/tests/test_recuperar.py`.
+- ~~**QA-251 · Modelo explícito en cada subagente y salidas de fondo con `tail`**~~ ✅ 2026-10-25: un subagente mecánico fue con Opus (2,9M de entrada; la segunda vez, tras `QA-233`) y una salida de fondo se leyó entera (11,7k, 363k arrastrados). Regla en `docs/runbooks/skills-y-modelos.md` y en `.claude/gw/opt-tokens.md`.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

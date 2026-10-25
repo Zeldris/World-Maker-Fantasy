@@ -237,6 +237,9 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+- **Banco de calidad (`IMG-15`):** `docs/producto/plan-imagenes/banco.sh <ronda>` (un TSV por ronda en `banco/`,
+  resultados en `banco/resultados.md`); para mirar una ronda, `docs/producto/plan-imagenes/hoja.sh <prefijo>` (hojas de
+  contactos de 6 con la leyenda en texto, `QA-249`), y solo la finalista a tamaño completo.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
 
