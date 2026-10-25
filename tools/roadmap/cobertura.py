@@ -62,7 +62,7 @@ tabla=open(D+'21-roadmap.md').read()
 inicio_tabla=tabla[:tabla.index('### Qué entra en cada hito')].count('\n')+1
 tabla=tabla[tabla.index('### Qué entra en cada hito'):tabla.index('### Dependencias que mandan el orden')]
 asignado={}
-fila_hito={}  # QA-242: id → líneas de 21-roadmap.md de las filas que lo asignan
+fila_hito={}  # QA-242: id → (línea de 21-roadmap.md, hito) de las filas que lo asignan, en orden
 for k,row in enumerate(tabla.split('\n')):
     if not row.startswith('| **`'): continue
     hito=re.search(r'`([\d.]+)`',row).group(1)
@@ -73,11 +73,12 @@ for k,row in enumerate(tabla.split('\n')):
     for g in re.findall(r'CR Fases? ([\d ,y]+)',row):
         for n in re.findall(r'\d',g): ids|=cr.get(int(n),set())
     for i in ids:
-        asignado.setdefault(i,set()).add(hito); fila_hito.setdefault(i,[]).append(inicio_tabla+k)
+        asignado.setdefault(i,set()).add(hito); fila_hito.setdefault(i,[]).append((inicio_tabla+k,hito))
 falta=sorted((i for i in defs if i not in asignado), key=lambda x:(x.split('-')[0],int(re.sub(r'\D','',x.split('-')[1]))))
 fantasmas=sorted(i for i in asignado if i not in defs)
 def fila(i):
-    """QA-242: las líneas de una tarea (definición, hito y menciones en 21-roadmap.md), recortadas."""
+    """QA-242: las líneas de una tarea (definición, hito y menciones en 21-roadmap.md), recortadas.
+    Las filas de hito no se repiten como mención, y cada línea sale una vez."""
     def trozo(l, m):
         a,b=max(0,m.start()-100),min(len(l),m.end()+100)
         return ('…' if a else '')+l[a:b]+('…' if b<len(l) else '')
@@ -88,17 +89,17 @@ def fila(i):
         out.append(f'{f}:{n}: {trozo(l, patron.search(l))}')
     else:
         out.append(f'{i}: no está definida en ningún roadmap')
-    out.append('hito: '+(', '.join(sorted(asignado[i]))+' (21-roadmap.md:'+', '.join(map(str,fila_hito[i]))+')'
-                         if i in asignado else 'SIN HITO'))
+    out.append('hito: '+(', '.join(f'{h} (21-roadmap.md:{n})' for n,h in fila_hito[i]) if i in asignado else 'SIN HITO'))
+    filas={n for n,_ in fila_hito.get(i,[])}
     for n,l in enumerate(open(D+'21-roadmap.md'),1):
-        for m in patron.finditer(l.rstrip('\n')):
-            out.append(f'21-roadmap.md:{n}: {trozo(l.rstrip(chr(10)), m)}')
+        l=l.rstrip('\n'); m=patron.search(l)
+        if m and n not in filas: out.append(f'21-roadmap.md:{n}: {trozo(l, m)}')
     return out
 # QA-101: sin ejecutarse como script (p. ej. desde tools/qa/matriz-pruebas.py), solo calcula `defs` y `asignado`.
 if __name__ == '__main__' and sys.argv[1:2] == ['--fila']:
     if len(sys.argv) != 3: sys.exit('uso: cobertura.py --fila <ID>')
     print('\n'.join(fila(sys.argv[2])))
-    sys.exit(0 if sys.argv[2] in defs else 1)
+    sys.exit(0 if sys.argv[2] in defs and sys.argv[2] in asignado else 1)  # como sin argumentos: definida y con hito
 if __name__ == '__main__':
     print('definidas',len(defs),'asignadas',len(asignado))
     print('SIN HITO:',len(falta))

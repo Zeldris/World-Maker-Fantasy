@@ -20,6 +20,8 @@ Mapa: `QA-2` sigue abierta. ''' + 'x' * 300 + '''
 | **`0.2` Dos** | `QA-2` |
 
 ### Dependencias que mandan el orden
+
+Otras: `QA-20`, `QA-2b`, `XQA-2`, `QA-5`.
 '''
 
 
@@ -32,7 +34,7 @@ class Fila(unittest.TestCase):
         for f in ROADMAPS:
             escribir(os.path.join(producto, f), '')
         escribir(os.path.join(producto, 'roadmap-front.md'),
-                 '# QA\n\n- **QA-1 · Uno**\n- **QA-2 · Dos**\n- **QA-3 · Tres**\n- **QA-20 · Veinte** (no es `QA-2`)\n')
+                 '# QA\n\n- **QA-1 · Uno**\n- **QA-2 · Dos**\n- **QA-3 · Tres**\n- **QA-20 · Veinte** (no es `QA-2`)\n- **QA-5 · Cinco**\n')
         escribir(os.path.join(producto, '21-roadmap.md'), MAPA)
 
     def fila(self, *args):
@@ -47,11 +49,16 @@ class Fila(unittest.TestCase):
 
     def test_tarea_en_dos_hitos_con_menciones_recortadas(self):
         lineas = self.fila('QA-2').stdout.splitlines()
-        self.assertEqual(lineas[:2], ['roadmap-front.md:4: - **QA-2 · Dos**', 'hito: 0.1, 0.2 (21-roadmap.md:9, 10)'])
-        # QA-20 no cuenta como QA-2; la línea larga sale recortada.
-        self.assertEqual(lineas[2], '21-roadmap.md:3: Mapa: `QA-2` sigue abierta. ' + 'x' * 83 + '…')
-        self.assertEqual(lineas[3], '21-roadmap.md:10: | **`0.2` Dos** | `QA-2` |')
-        self.assertEqual(len(lineas), 4)
+        self.assertEqual(lineas[:2], ['roadmap-front.md:4: - **QA-2 · Dos**',
+                                      'hito: 0.1 (21-roadmap.md:9), 0.2 (21-roadmap.md:10)'])
+        # La línea larga sale recortada; la fila del hito no se repite y `QA-20`, `QA-2b` y `XQA-2` no son QA-2.
+        self.assertEqual(lineas[2:], ['21-roadmap.md:3: Mapa: `QA-2` sigue abierta. ' + 'x' * 83 + '…'])
+
+    def test_tarea_sin_hito_sale_con_1(self):
+        r = self.fila('QA-5')
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual(r.stdout.splitlines(), ['roadmap-front.md:7: - **QA-5 · Cinco**', 'hito: SIN HITO',
+                                                 '21-roadmap.md:14: Otras: `QA-20`, `QA-2b`, `XQA-2`, `QA-5`.'])
 
     def test_tarea_que_no_existe(self):
         r = self.fila('QA-9')
