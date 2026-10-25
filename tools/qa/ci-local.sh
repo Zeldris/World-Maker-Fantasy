@@ -41,6 +41,7 @@ if [ -n "$base" ] && git -C "$dir" cat-file -e "$base:.githooks/pre-commit" 2>/d
 fi
 paso . "enlaces de los .md" python3 .claude/gw/scripts/enlaces-md.py
 paso . "mapa del agente" python3 tools/qa/mapa-agente.py
+paso . "tests de las skills en el CI" python3 tools/qa/skills-con-tests.py
 paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks); do bash -n \"\$f\" || exit 1; done
   for f in \$(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check \"\$f\" || exit 1; done
   for f in tools/playwright-e2e/mcp/*.js; do node -e \"new Function('return (' + require('fs').readFileSync('\$f', 'utf8') + ')')\" || { echo \"\$f\"; exit 1; }; done
@@ -56,7 +57,9 @@ paso . "resumen de los registros de hallazgos" 'for r in docs/registros/pruebas-
 echo "== backend"
 paso . "base tarkor_ci nueva con pgvector" "psql '$servidor/postgres' -qc 'DROP DATABASE IF EXISTS tarkor_ci' -c 'CREATE DATABASE tarkor_ci' && psql \"\$DATABASE_URL\" -qc 'CREATE EXTENSION IF NOT EXISTS vector'"
 curl -s -o /dev/null localhost:11434 || { nohup node "$dir/tools/ci/mock-ollama.mjs" >"$logs/mock-ollama.out" 2>&1 & sleep 2; }
-paso backend "npm ci" npm ci
+# QA-239: en un worktree, host.sh (desde los tests de tools/qa) deja node_modules como enlace a la copia principal;
+# `npm ci` vaciaría la de la principal a través del enlace. Se quita el enlace y se instala aquí.
+paso backend "npm ci" "{ [ ! -L node_modules ] || rm node_modules; } && npm ci"
 paso backend "prisma generate" npx prisma generate
 paso backend "lint" npm run lint
 paso backend "tsc" npx tsc --noEmit
@@ -68,7 +71,7 @@ paso backend "tests" npm test
 paso . "escenarios de pruebas" bash tools/qa/comprobar-escenarios.sh
 
 echo "== frontend"
-paso frontend "npm ci" npm ci
+paso frontend "npm ci" "{ [ ! -L node_modules ] || rm node_modules; } && npm ci"
 paso frontend "lint" npm run lint
 paso frontend "build" npm run build
 paso frontend "tests" npm test

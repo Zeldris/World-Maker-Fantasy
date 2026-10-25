@@ -104,6 +104,9 @@ subagente de cada tanda), antes de la primera acción, relee
   directo la sigue pidiendo.
 - **Se fusiona solo con el CI en verde** (usuaria, 2026-10-12), también cuando pide «fusiona directamente»: eso quita
   esperar a más revisiones, nunca el CI ni la retro presentada a la usuaria (`QA-95`).
+- **«Lleva a `main`» con la usuaria fuera** (usuaria, 2026-10-25, `QA-238`): se deja todo a un paso (retro escrita,
+  CI local en verde sobre la fusión con `main`, descripción en `docs/registros/pr/`) y se para antes de
+  `revisado.sh`; su decisión sobre la retro es la confirmación que lo lleva a `main`, sin más preguntas.
 - **Con la cuota de GitHub Actions agotada, a `main` sin PR** (usuaria, 2026-10-22, `QA-215`): las tres fases de
   abajo igual, pero en vez del PR, la nube fusiona la rama en `main` en un worktree, pasa
   `bash tools/qa/ci-local.sh <worktree>` (los tres jobs de `ci.yml`) hasta verde y sube con `git push origin HEAD:main`.

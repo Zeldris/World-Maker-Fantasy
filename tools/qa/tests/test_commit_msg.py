@@ -9,6 +9,15 @@ RAIZ = os.path.abspath(os.path.join(QA, '..', '..'))
 HOOK = os.path.join(RAIZ, '.githooks', 'commit-msg')
 
 
+def ganchos() -> str:
+    """QA-239: solo commit-msg. Con core.hooksPath=.githooks corría también el pre-commit, que saca la raíz de su
+    propia ruta y miraba el índice del proyecto real (en un worktree, .git es un archivo y fallaba)."""
+    d = carpeta()
+    escribir(os.path.join(d, 'commit-msg'), f'#!/bin/bash\nexec bash {HOOK} "$@"\n')
+    os.chmod(os.path.join(d, 'commit-msg'), 0o755)
+    return d
+
+
 class CommitMsg(unittest.TestCase):
     def correr(self, mensaje: str, claudecode: bool = True) -> int:
         ruta = os.path.join(carpeta(), 'COMMIT_EDITMSG')
@@ -39,7 +48,7 @@ class CommitMsg(unittest.TestCase):
                      ('checkout', '-q', '-b', 'otra'), ('commit', '-q', '--allow-empty', '-m', 'b'),
                      ('checkout', '-q', 'main'), ('commit', '-q', '--allow-empty', '-m', 'c')):
             subprocess.run(['git', *args], cwd=repo, env=ENV_GIT, check=True, capture_output=True)
-        r = subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'merge', '--no-ff', 'otra', '-m',
+        r = subprocess.run(['git', '-c', f'core.hooksPath={ganchos()}', 'merge', '--no-ff', 'otra', '-m',
                             'Fusiona la rama de un subagente'], cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'},
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -54,7 +63,7 @@ class CommitMsg(unittest.TestCase):
         def commit(fecha):
             escribir(log, f'| **Actualizado** | {fecha} |\n' + fila)
             subprocess.run(['git', 'add', '-A'], cwd=repo, env=ENV_GIT, check=True)
-            return subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'commit', '-q', '-m',
+            return subprocess.run(['git', '-c', f'core.hooksPath={ganchos()}', 'commit', '-q', '-m',
                                    'x\n\nSiguiente: y'], cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'},
                                   capture_output=True, text=True)
         r = commit('2020-01-01')
@@ -67,7 +76,7 @@ class CommitMsg(unittest.TestCase):
         escribir(log, '| **Actualizado** | 2020-01-01 |\n' + fila)
         escribir(os.path.join(repo, 'otro.txt'), 'x')
         subprocess.run(['git', 'add', 'otro.txt'], cwd=repo, env=ENV_GIT, check=True)
-        r = subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'commit', '-q', '-m',
+        r = subprocess.run(['git', '-c', f'core.hooksPath={ganchos()}', 'commit', '-q', '-m',
                             'x\n\nSiguiente: y'], cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'},
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -83,7 +92,7 @@ class CommitMsg(unittest.TestCase):
             subprocess.run(['git', 'commit', '-qm', fecha], cwd=repo, env=ENV_GIT, check=True)
         # `git revert` no lanza commit-msg; sí el `git commit` que cierra un revert con conflicto o --no-commit.
         subprocess.run(['git', 'revert', '--no-commit', 'HEAD'], cwd=repo, env=ENV_GIT, check=True)
-        r = subprocess.run(['git', '-c', f'core.hooksPath={os.path.dirname(HOOK)}', 'commit', '-q', '--no-edit'],
+        r = subprocess.run(['git', '-c', f'core.hooksPath={ganchos()}', 'commit', '-q', '--no-edit'],
                            cwd=repo, env={**ENV_GIT, 'CLAUDECODE': '1'}, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
 

@@ -1604,6 +1604,12 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 Difusión (usuaria, 2026-10-24):
 - ~~**QA-235 · Carpeta de difusión y skill `gw-media-content`**~~ ✅ 2026-10-25: `docs/difusion/` (guía de canales, plantilla por actualización y el ejemplo `2026-10-23-mundo-vivo`, con tarjeta, diagrama y captura en `medios/`) y la skill `gw-media-content`, que crea o completa una carpeta solo con lo no publicado, para los canales pedidos. `render.mjs` pasa las fuentes de `medios/fuente/` a WebP; `comprobar.py` (en el check y en el CI) da por buena la carpeta. Test: `test_comprobar.py`. Queda: la usuaria valida el estilo del ejemplo.
 
+Retro de la difusión (usuaria, 2026-10-25; [`retro-2026-10-25-difusion.md`](../registros/retro-2026-10-25-difusion.md)):
+- ~~**QA-236 · Los tests de las skills, en el check**~~ ✅ 2026-10-25: `test_herramientas_con_test` (que ya pedía el test de cada script de skill) entra en el check, y `tools/qa/skills-con-tests.py` (check, CI y `ci-local.sh`) falla si el CI no corre los tests de una skill. Test: `test_skills_con_tests.py`.
+- ~~**QA-237 · La bitácora, en el check**~~ ✅ 2026-10-25: `tools/qa/bitacora-check.sh` en el check: `bitacora.py check` y, frente a la rama remota como el pre-push, `closed` sobre la copia de trabajo (`git stash create`). Test: `test_bitacora_check.py`.
+- ~~**QA-238 · «Lleva a `main`» con la usuaria fuera**~~ ✅ 2026-10-25: regla en `AGENTS.md` («Ramas y `main`»): todo a un paso y su decisión sobre la retro lo lleva a `main`.
+- ~~**QA-239 · `ci-local.sh` en un worktree, sin rojos falsos**~~ ✅ 2026-10-25: `test_commit_msg` usa un `hooksPath` solo con `commit-msg` (el pre-commit miraba el índice del repo real), `test_host` acepta el worktree de `logs/` y `ci-local.sh` quita el enlace de `node_modules` antes de `npm ci` (vaciaba el de la copia principal).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

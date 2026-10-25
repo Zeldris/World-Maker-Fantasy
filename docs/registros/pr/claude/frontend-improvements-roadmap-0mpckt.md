@@ -1,4 +1,4 @@
-# QA-235: carpeta de difusión y skill gw-media-content
+# QA-235…QA-239: carpeta de difusión, skill gw-media-content y retro aplicada
 
 ## Qué cambia
 
@@ -18,7 +18,14 @@
   - La nota de WMF (`.claude/gw/gw-media-content.md`) explica cómo sacar capturas con los escenarios guardados.
 - **Comprobaciones:** `comprobar.py` entra en el check (`.claude/gw.json`), y sus 11 tests entran en `ci.yml` y en
   `tools/qa/ci-local.sh`.
-- **Roadmap, bitácora y retro:** `QA-235` está tachada en `roadmap-front.md` y en `21-roadmap.md`, y la retro está en
+- **Retro aplicada** (aprobada entera por la usuaria, 2026-10-25):
+  - `QA-236`: `tools/qa/skills-con-tests.py` falla si los tests de una skill no corren en `ci.yml` y en
+    `ci-local.sh`; entra en el check con `test_herramientas_con_test` (script de skill sin test al lado).
+  - `QA-237`: `tools/qa/bitacora-check.sh` (la comprobación de la bitácora del pre-push) entra en el check.
+  - `QA-238`: regla en `AGENTS.md` para «lleva a `main`» con la usuaria fuera.
+  - `QA-239`: `ci-local.sh` en un worktree sin rojos falsos (`test_commit_msg`, `test_host` y `npm ci` sobre el enlace
+    de `node_modules`).
+- **Roadmap, bitácora y retro:** `QA-235` a `QA-239` están tachadas en `roadmap-front.md` y en `21-roadmap.md`, y la retro está en
   `docs/registros/retro-2026-10-25-difusion.md`.
 
 ## Evidencia
@@ -28,16 +35,18 @@
   arreglo, según `rojo-sin-arreglo.sh`.
 - `comprobar.py` da OK en el ejemplo.
 - La revisión de código antes de `main` dio 13 hallazgos, todos arreglados en `a9eb7bbf`.
+- `python3 -m unittest discover -s tools/qa/tests`: OK, también en un worktree. Los tests nuevos
+  (`test_skills_con_tests`, `test_bitacora_check`) fallan sin su arreglo.
 
 ## Riesgo
 
-Sin migraciones y sin cambios en las partidas guardadas. Solo hay documentación, una skill y una comprobación nueva en
-el check.
+Sin migraciones y sin cambios en las partidas guardadas. Solo hay documentación, una skill y comprobaciones nuevas en el
+check.
 
 ## Queda
 
 - La usuaria valida el estilo del ejemplo antes de publicar nada.
-- Las propuestas de la retro esperan su decisión.
+- Las propuestas 1-3 de la retro quedan también para Galivelop-workflow.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

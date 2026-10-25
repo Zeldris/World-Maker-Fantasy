@@ -14,7 +14,10 @@
     "python3 tools/roadmap/cobertura.py > /dev/null",
     "python3 tools/qa/mapa-agente.py",
     "python3 tools/qa/matriz-pruebas.py --comprobar > /dev/null",
-    "python3 .claude/skills/gw-media-content/scripts/comprobar.py > /dev/null"
+    "python3 .claude/skills/gw-media-content/scripts/comprobar.py > /dev/null",
+    "bash tools/qa/bitacora-check.sh",
+    "python3 tools/qa/skills-con-tests.py",
+    "cd tools/qa/tests && python3 -m unittest -q test_herramientas_con_test"
   ],
   "reviewMark": ".claude/revision-main.sha",
   "requireRetro": true,

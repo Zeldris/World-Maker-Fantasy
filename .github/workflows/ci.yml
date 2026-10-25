@@ -46,6 +46,8 @@ jobs:
       # QA-107: ningún enlace relativo roto (archivo o ancla) en los .md.
       - run: python3 .claude/gw/scripts/enlaces-md.py
       - run: python3 tools/qa/mapa-agente.py
+      # QA-236: los tests de las skills, al lado de sus scripts, tienen su paso aquí y en ci-local.sh.
+      - run: python3 tools/qa/skills-con-tests.py
       # QA-107: las herramientas de pruebas no se rompen sin que nadie lo vea hasta la ronda (sintaxis de los
       # .sh, los .mjs y las ayudas de mcp/; historico/ son scripts archivados que no se ejecutan).
       - name: Sintaxis de las herramientas

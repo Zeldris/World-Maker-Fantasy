@@ -1,6 +1,7 @@
 # Retro y opt-tokens · `claude/frontend-improvements-roadmap-0mpckt` (2026-10-25)
 
-**Estado:** presentada a la usuaria el 2026-10-25, sin decidir todavía. Ninguna propuesta está aplicada en la rama.
+**Estado:** aprobada entera por la usuaria (2026-10-25) y aplicada en la rama: 1 → `QA-236`, 2 → `QA-237`, 3 →
+`QA-238`, 4 → `QA-239`. Las propuestas 1-3 quedan además para Galivelop-workflow.
 
 Es la sesión de `QA-235`: la carpeta `docs/difusion/` y la skill `gw-media-content`, con su tarjeta, su diagrama y su
 captura. Desde `2d4a082d` hubo 83 llamadas y 3 compactaciones. El contexto medio fue de 121k, con un techo de 144k por

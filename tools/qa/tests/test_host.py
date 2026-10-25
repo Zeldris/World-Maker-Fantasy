@@ -53,6 +53,11 @@ class Host(Entorno, unittest.TestCase):
         r = self.correr(env, 'host.sh', 'echo', 'a b', "c'd")
         self.assertEqual(r.returncode, 0, r.stderr)
         args = leer(d + '/args').split('\n')
+        # QA-239: desde un worktree fuera de la copia principal (el de ci-local.sh), host.sh corre en uno de logs/.
+        principal = os.path.dirname(git(RAIZ, 'rev-parse', '--path-format=absolute', '--git-common-dir').strip())
+        if RAIZ != principal and not RAIZ.startswith(principal + '/'):
+            self.assertTrue(args[1].startswith(f'--directory={principal}/logs/host-sh-wt.'), args[1])
+            args[1] = f'--directory={RAIZ}'
         self.assertEqual(args[:4], ['--host', f'--directory={RAIZ}', 'bash', '-lic'])
         self.assertEqual(r.stdout, "a b c'd\n")
 
