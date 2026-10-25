@@ -86,7 +86,7 @@ Vulkan, con 0,6B y 1,7B. Esas cuatro cifras deciden los niveles.
 
 ### 1. Ficha de diseño (la plantilla de 12 claves, como texto)
 
-Se guarda en `voces/<raza>/<voz>/diseno.json` y de ahí se arma la frase del `--instruct`:
+Se guarda en `voice-generator/voces/<raza>/<voz>/diseno.json` y de ahí se arma la frase del `--instruct`:
 
 ```json
 {
@@ -118,7 +118,7 @@ niños. Reglas:
 ```sh
 cd ~/qwentts
 voz=~/proyecto/voces/orcos/guerrero-1                        # carpeta de la voz
-# instruct = las 12 claves en una frase (lo mismo hará tools/voces/disenar.sh)
+# instruct = las 12 claves en una frase (lo mismo hace voice-generator/scripts/disenar.sh)
 jq -r '"\(.gender), \(.age), \(.pitch) pitch, \(.speed) speed, \(.volume) volume, \(.clarity), \(.fluency), \(.accent) accent, \(.texture) texture, \(.emotion), \(.tone) tone, \(.personality) personality"' \
   "$voz/diseno.json" > /tmp/instruct.txt
 jq -r .texto_prueba "$voz/diseno.json" > /tmp/texto_prueba.txt
@@ -216,16 +216,20 @@ instalador distribuible (`docs/arquitectura/20-instalador-distribuible.md`) ya a
 aparte. La voz entra igual: **otro proceso local, sin dependencia dura**.
 
 ```text
-voces/                                   # datos, versionados
-├── orcos/
-│   ├── efectos.json                     # cadena de la raza (para Web Audio)
-│   └── guerrero-1/{diseno.json, referencia.wav, referencia.txt}
-└── narrador/                           # «raza» especial: sin efectos.json
-    └── principal/{diseno.json, referencia.wav, referencia.txt}
-tools/voces/
-├── disenar.sh                           # tomas con VoiceDesign a partir de diseno.json
-├── fijar.sh                             # .spk/.rvq para el modelo Base del nivel
-└── fauna.sh                             # cadenas SoX por especie
+voice-generator/                         # implementado (VOZ-1…VOZ-5); ver su README.md
+├── voces/                               # datos, versionados
+│   ├── orcos/
+│   │   ├── efectos.json                 # cadena de la raza (SoX ahora; Web Audio en el juego)
+│   │   └── guerrero-1/{diseno.json, referencia.wav, referencia.txt}
+│   └── narrador/                        # «raza» especial: sin efectos.json
+│       └── principal/{diseno.json, referencia.wav, referencia.txt}
+├── fauna/<especie>/{cadena.json, licencias.tsv}
+└── scripts/
+    ├── instalar.sh, banco.sh            # motor y modelos; velocidad y español en la Deck
+    ├── disenar.sh                       # tomas con VoiceDesign a partir de diseno.json
+    ├── fijar.sh                         # .spk/.rvq para el modelo Base del nivel
+    ├── producir.sh, escuchar.sh         # frases con la voz fijada; efectos de la raza
+    └── fauna.sh                         # cadenas SoX por especie
 ```
 
 ```text

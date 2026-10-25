@@ -1,0 +1,6 @@
+{
+  "nota": "Doc 02: sala pequeña de piedra (reverberación corta), sin efectos de tono. Cifras de partida, a ajustar de oído.",
+  "cadena": [
+    {"tipo": "reverberacion", "reverberancia": 25, "amortiguacion": 60, "sala": 20, "retardo_ms": 5, "humedo_db": -6}
+  ]
+}

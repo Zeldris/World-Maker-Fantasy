@@ -1,0 +1,7 @@
+{
+  "nota": "Doc 02 (cazadores bestiales): ecualización media y un gruñido sumado al inicio de frase. La capa la hará Web Audio (VOZ-10) con un sonido de fauna (VOZ-5); SoX la salta.",
+  "cadena": [
+    {"tipo": "ecualizador", "hz": 1000, "q": 1.0, "db": 3},
+    {"tipo": "capa", "sonido": "gruñido de fauna (pendiente, VOZ-5)"}
+  ]
+}
