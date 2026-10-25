@@ -426,6 +426,23 @@ describe('POST /saves/:id/zona/mover', () => {
       expect(JSON.parse(otra.body).colision).toMatchObject({ targetSlug: 'test-mover-principal' });
     });
 
+    // Revisión de P269/P329: el `NpcState` de fauna y plantillas es uno por especie y lugar; un individuo
+    // convaleciente no puede silenciar la colisión de todos los de su especie en la zona.
+    it('fauna convaleciente (estado compartido por especie y lugar): los demás de su especie siguen cortando el paso', async () => {
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },
+      });
+      await prisma.npcState.create({ data: { saveId, npcId: agresivoNpcId, scope: locationId, condicionFisica: 'CONVALECIENTE' } });
+      try {
+        const app = await buildApp();
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+        expect(res.statusCode).toBe(200);
+        expect(JSON.parse(res.body).colision).toMatchObject({ targetSlug: 'test-mover-agresivo' });
+      } finally {
+        await prisma.npcState.deleteMany({ where: { saveId, npcId: agresivoNpcId } });
+      }
+    });
+
     it('muerto y con la ventana de 6h ya vencida: sigue sin colisionar (a diferencia de fauna genérica, nunca reaparece)', async () => {
       await prisma.zonePoint.create({
         data: { locationId, saveId, x: 75, y: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] },

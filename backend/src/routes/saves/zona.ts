@@ -27,6 +27,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   zonePointVisiblePara,
   zonePointActivoAhora,
   zonePointNpcMuertoParaSiempre,
+  zonePointNpcConvalecienteNoActua,
   questSlugsAceptadosPara,
   recalcularZonePointsDeLocation,
   type ZonePointColor,
@@ -866,11 +867,11 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcStateBySlugColision = new Map(
       npcs.map((n) => [n.slug, npcStatesColision.find((s) => s.npcId === n.id && s.scope === scopeFor(n.kind, locationId))]),
     );
-    // P269/P329 (REVIEW.md, «muertos y caídos»): un NPC convaleciente (derrotado, y más si se le perdonó con
-    // Clemente) no actúa: no corta el paso ni abre combate. Su ficha sigue en el mapa; cuando se recupera
+    // P269/P329 (REVIEW.md, «muertos y caídos»): un NPC único convaleciente (derrotado, y más si se le perdonó
+    // con Clemente) no actúa: no corta el paso ni abre combate (`zonePointNpcConvalecienteNoActua`). Su ficha sigue en el mapa; cuando se recupera
     // (`npcRecoversFromConvaleciente`) vuelve a la acción.
     const puntosVivos = puntos.filter(
-      (p) => npcStateBySlugColision.get(p.targetSlug)?.condicionFisica !== 'CONVALECIENTE' && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+      (p) => !zonePointNpcConvalecienteNoActua(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica) && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
     );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único

@@ -123,6 +123,14 @@ export function zonePointNpcMuertoParaSiempre(kind: string, condicionFisica: str
   return kind === 'PRINCIPAL' && condicionFisica === 'MUERTO';
 }
 
+/// Puro — P269/P329 (REVIEW.md, «muertos y caídos»): un NPC único convaleciente no actúa, así que su
+/// `ZonePoint` no corta el paso ni abre combate. Solo `kind: 'PRINCIPAL'`: el `NpcState` de fauna y
+/// plantillas es uno por especie y lugar (`scopeFor`, npcScene.ts), y un individuo convaleciente
+/// silenciaría a todos los de su especie en la zona (mismo criterio que `estaAusente` en `GET /zona`).
+export function zonePointNpcConvalecienteNoActua(kind: string, condicionFisica: string | undefined): boolean {
+  return kind === 'PRINCIPAL' && condicionFisica === 'CONVALECIENTE';
+}
+
 /// Puro — ¿esta especie está activa AHORA MISMO según `faunaMomentoDelDia` (worldCatalog.ts)?
 /// `true` si no tiene ninguna entrada en ese diccionario (sin dato = sin filtrar, mismo criterio
 /// documentado en el propio comentario de cabecera de `faunaMomentoDelDia`).
