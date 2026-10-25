@@ -1784,6 +1784,8 @@ export interface ResolverTurnoAutonomoParams {
   encounterId: string;
   weaponNamesPorDefecto?: string[];
   narrarFn?: typeof narrarTurnoCombateMultiple;
+  /// P129: el turno de la jugadora en curso (`abrirTurnoJugadora`); sin él solo cuenta el tope por ronda.
+  ventanaJugadora?: VentanaJugadora;
 }
 
 export async function resolverTurnoAutonomo({
@@ -1793,6 +1795,7 @@ export async function resolverTurnoAutonomo({
   encounterId,
   weaponNamesPorDefecto = [],
   narrarFn = narrarTurnoCombateMultiple,
+  ventanaJugadora,
 }: ResolverTurnoAutonomoParams): Promise<TurnoAutonomoResultado | null> {
   const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
   if (encounter.estado === 'RESUELTO' || encounter.ordenIniciativa.length === 0) return null;
@@ -1867,10 +1870,16 @@ export async function resolverTurnoAutonomo({
   // Antes, en un grupo de 6 Guchapo, tres golpes gratis seguidos la mataban en un turno.
   // Si el golpe le llega porque ella protege a otro con AREA defensiva, lo encaja siempre: lo eligió
   // ella y no cuenta entre los atacantes de más (`/code-review` del PR #53).
+  // Reabierto el 2026-10-23: un turno suyo cruza el cambio de ronda (la cola de una y la cabeza de la
+  // siguiente), así que el tope de 2 cuenta también por turno de la jugadora (`ventanaJugadora`).
   if (defensor.tipo === 'JUGADOR') {
     const loEncajaPorProteger = defensor.id !== defensorOriginal.id;
-    if (!loEncajaPorProteger && !esAtacanteDeMasPermitido(encounter.ordenIniciativa, encounter.participantes, actual.id, defensor)) {
-      return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+    if (!loEncajaPorProteger) {
+      const ventanaLlena = ventanaJugadora !== undefined && ventanaJugadora.ataquesDeMas >= MAX_ATACANTES_DE_MAS_JUGADORA;
+      if (ventanaLlena || !esAtacanteDeMasPermitido(encounter.ordenIniciativa, encounter.participantes, actual.id, defensor)) {
+        return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
+      }
+      if (ventanaJugadora) ventanaJugadora.ataquesDeMas++;
     }
     return ejecutarIntercambioYAvanzar({
       prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque,
@@ -1883,6 +1892,21 @@ export async function resolverTurnoAutonomo({
 
 /// P129: cuántos pueden atacar de más a la jugadora en una ronda (además de su duelo).
 export const MAX_ATACANTES_DE_MAS_JUGADORA = 2;
+
+/// P129 (reabierto el 2026-10-23): lo que la jugadora vive como «una ronda» es su turno, de su acción a
+/// la siguiente, y cruza el cambio de ronda: los que actúan tras ella en una y antes que ella en la
+/// siguiente. Ahí van los 2 ataques de más como mucho y el tope de Ileso a Convaleciente.
+export interface VentanaJugadora {
+  ataquesDeMas: number;
+}
+
+/// P129: abre el turno de la jugadora: su condición de ahora es la del tope (`topeDeRondaJugadora`) hasta
+/// el siguiente, y el contador de ataques de más empieza a cero. Se llama al empezar cada turno suyo.
+export async function abrirTurnoJugadora(prisma: PrismaClient, saveId: string, encounterId: string): Promise<VentanaJugadora> {
+  const condicion = (await prisma.save.findUnique({ where: { id: saveId }, select: { condicionFisica: true } }))?.condicionFisica ?? null;
+  await prisma.combatParticipant.updateMany({ where: { encounterId, tipo: 'JUGADOR' }, data: { condicionInicioRonda: condicion } });
+  return { ataquesDeMas: 0 };
+}
 
 /// P129: `actualId` está entre los `MAX_ATACANTES_DE_MAS_JUGADORA` primeros, por iniciativa, de quienes
 /// tienen a la jugadora de objetivo esta ronda sin ser su duelo.
@@ -2062,6 +2086,8 @@ export interface ResolverTurnosAutonomosHastaJugadoraParams {
   weaponNamesPorDefecto?: string[];
   narrarFn?: typeof narrarTurnoCombateMultiple;
   maxIteraciones?: number;
+  /// P129: el turno de la jugadora en curso, compartido entre las llamadas de antes y de después de su acción.
+  ventanaJugadora?: VentanaJugadora;
 }
 
 export async function resolverTurnosAutonomosHastaJugadora({
@@ -2072,13 +2098,14 @@ export async function resolverTurnosAutonomosHastaJugadora({
   weaponNamesPorDefecto = [],
   narrarFn = narrarTurnoCombateMultiple,
   maxIteraciones = 30,
+  ventanaJugadora,
 }: ResolverTurnosAutonomosHastaJugadoraParams): Promise<ResolucionRondaCombate> {
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
   const intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[] = [];
   const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
-    const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn });
+    const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn, ventanaJugadora });
     if (resultado === null) {
       const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
       return {
@@ -2474,9 +2501,8 @@ async function avanzarYComprobarFin({
     where: { id: encounterId },
     data: { turnoActual: nuevoTurnoActual, ronda: { increment: 1 }, esperandoEleccionJugadora: esperandoJugadora },
   });
-  // P129: la ronda nueva empieza con la condición de la jugadora de este momento.
-  const condicionJugadoraRonda = (await tx.save.findUnique({ where: { id: saveId }, select: { condicionFisica: true } }))?.condicionFisica ?? null;
-  await tx.combatParticipant.updateMany({ where: { encounterId, tipo: 'JUGADOR' }, data: { condicionInicioRonda: condicionJugadoraRonda } });
+  // P129: la condición del tope no se renueva al cambiar de ronda sino al empezar cada turno de la
+  // jugadora (`abrirTurnoJugadora`): renovarla aquí, a mitad de su turno, la dejaba pasar de Ileso a Muerto.
   return { terminado: false, totemsQueAtacan };
 }
 

@@ -87,7 +87,7 @@ import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
 import { nombrarOferta } from './ofertaNombre.js';
 import { narradorPuedeCerrar } from './startingQuests.js';
-import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
@@ -4618,7 +4618,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Bug real de timeout de transacción (2026-08-25, ver comentario de cabecera en
     // combateMultipleOrquestacion.ts) — esto YA NO va envuelto en `prisma.$transaction`: la propia
     // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
-    const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
+    // P129: lo que pase hasta su próximo turno cuenta como su ronda (2 ataques de más, sin Ileso → Muerto).
+    const ventanaJugadora = await abrirTurnoJugadora(prisma, saveId, encounterId);
+    const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, ventanaJugadora });
     narraciones.push(...antes.narraciones);
     const intercambiosContraJugadora = [...antes.intercambiosContraJugadora];
     golpesSinTiradaContraJugadora.push(...antes.golpesSinTiradaContraJugadora);
@@ -4690,7 +4692,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
 
       if (!combatEncounterTerminado) {
-        const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
+        const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, ventanaJugadora });
         narraciones.push(...despues.narraciones);
         intercambiosContraJugadora.push(...despues.intercambiosContraJugadora);
         golpesSinTiradaContraJugadora.push(...despues.golpesSinTiradaContraJugadora);
