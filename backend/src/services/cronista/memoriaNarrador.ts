@@ -209,12 +209,19 @@ export async function memoriaPorRelevancia(db: Db, e: Escena, excluir: Set<strin
     take: 200,
   });
   const ctx = { ahora: e.ahora, palabras: palabrasClave(e.accion), actoresEscena: new Set([...e.npcs.map((n) => n.id), ...(e.locationId ? [e.locationId] : [])]) };
-  return candidatos
-    .filter((s) => !excluir.has(s.id))
-    .map((s) => ({ s, p: puntuar({ ...s, actorIds: s.actores.map((a) => a.entidadId) }, ctx) }))
-    .sort((a, b) => b.p - a.p)
-    .slice(0, MAX_MEMORIA)
-    .map(({ s }) => s.texto);
+  return sinTextosRepetidos(
+    candidatos
+      .filter((s) => !excluir.has(s.id))
+      .map((s) => ({ s, p: puntuar({ ...s, actorIds: s.actores.map((a) => a.entidadId) }, ctx) }))
+      .sort((a, b) => b.p - a.p)
+      .map(({ s }) => s.texto),
+  ).slice(0, MAX_MEMORIA);
+}
+
+/// Puro (P247): un mismo texto (p. ej. «Gorhorn despierta de nuevo en X», una vez por cada muerte) ocupa un
+/// solo hueco de la memoria, no tres de diez. Conserva el primero (el mejor puntuado) y el orden.
+export function sinTextosRepetidos(textos: string[]): string[] {
+  return [...new Set(textos)];
 }
 
 /// El bloque completo para el narrador (o '' si no hay nada que contar).

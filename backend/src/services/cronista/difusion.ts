@@ -149,7 +149,7 @@ export async function conocer(
 
 /// Lo que llega solo (Q10): sucesos recientes que el personaje no sabe y cuya noticia ya alcanza la
 /// región donde está; y los rumores que ahí se confirman (18e). Devuelve cuántos supo o confirmó.
-export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?: string[] } = {}): Promise<number> {
+export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?: string[]; ventanaDias?: number } = {}): Promise<number> {
   const save = await tx.save.findUnique({
     where: { id: saveId },
     select: { currentLocation: { select: { region: true } }, worldState: { select: { fictionalMinutes: true } } },
@@ -161,7 +161,7 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
       saveId,
       ...difundible,
       importancia: { gte: 4 },
-      fictionalMinutes: { gte: ahora - VENTANA_DIAS_LLEGA_SOLA * MINUTOS_DIA, lte: ahora },
+      fictionalMinutes: { gte: ahora - (opciones.ventanaDias ?? VENTANA_DIAS_LLEGA_SOLA) * MINUTOS_DIA, lte: ahora },
       conocimientos: { none: {} },
       ...(opciones.sucesoIds ? { id: { in: opciones.sucesoIds } } : {}),
     },
@@ -206,9 +206,16 @@ async function confirmarRumores(tx: Tx, saveId: string, ahora: number, personaje
   return confirmados;
 }
 
+/// P316 (REVIEW.md, «salto de varios días»): tras un salto de N días la pasada es una sola, así que su
+/// ventana cubre los días saltados además de los 5 de siempre, con tope en lo que aún se comenta (30).
+/// Si no, de un salto largo solo llegaban los últimos 5 días y el resto del mundo no se enteraba nunca.
+export function ventanaTrasSalto(diasSimulados: number): number {
+  return Math.min(Math.max(VENTANA_DIAS_LLEGA_SOLA, diasSimulados + VENTANA_DIAS_LLEGA_SOLA), DIAS_MEMORIA_NPC);
+}
+
 /// `difundirEn` en su propia transacción (tras cada día simulado y tras cada acción).
-export async function difundir(prisma: PrismaClient, saveId: string): Promise<number> {
-  return prisma.$transaction((tx) => difundirEn(tx, saveId), { maxWait: 10_000, timeout: 20_000 });
+export async function difundir(prisma: PrismaClient, saveId: string, opciones: { ventanaDias?: number } = {}): Promise<number> {
+  return prisma.$transaction((tx) => difundirEn(tx, saveId, opciones), { maxWait: 10_000, timeout: 20_000 });
 }
 
 /// Noticia de un suceso del motor (narrador de fondo, decisiones de facción): se guarda con el suceso

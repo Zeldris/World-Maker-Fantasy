@@ -47,12 +47,21 @@ describe('alcance de un suceso', () => {
     expect(cuentaComoHecho(suceso(9), { region: 'Cristal Helado', faccion: null })).toBe(false);
   });
 
-  it('al personaje solo le llega solo lo de ≥ 7 o lo de las aliadas (Q10)', () => {
+  it('al personaje le llega solo lo de ≥ 5 (P316), de cerca como hecho y de lejos como rumor, y lo de las aliadas', () => {
     const p = (region: string | null, aliadas: string[] = []) => ({ region, aliadas: new Set(aliadas) });
-    expect(llegaSola(suceso(6), p(LL))).toBeNull();
+    expect(llegaSola(suceso(4), p(LL))).toBeNull();
+    // 5-6 donde está: hecho al momento. Antes (Q10) no llegaba nunca.
+    expect(llegaSola(suceso(5), p(LL))).toEqual({ dias: 0, via: 'OIDAS', confirmado: true });
+    expect(llegaSola(suceso(6), p(LL))).toEqual({ dias: 0, via: 'OIDAS', confirmado: true });
+    // 5-6 en otra región: rumor, 1 día por salto con tope 3 (vecina: 1; a dos saltos: 2). Sin lugar, 3.
+    expect(llegaSola(suceso(6), p('Ciénaga Troncal'))).toEqual({ dias: 1, via: 'OIDAS', confirmado: false });
+    expect(llegaSola(suceso(5), p('La Meseta del Orden'))).toEqual({ dias: 2, via: 'OIDAS', confirmado: false });
+    expect(llegaSola(suceso(5, []), p(LL))).toEqual({ dias: 3, via: 'OIDAS', confirmado: false });
     expect(llegaSola(suceso(7), p(LL))).toEqual({ dias: 0, via: 'OIDAS', confirmado: true });
     expect(llegaSola(suceso(7), p('Ciénaga Troncal'))).toEqual({ dias: 1, via: 'OIDAS', confirmado: false });
-    expect(llegaSola(suceso(7), p('La Meseta del Orden'))).toBeNull();
+    // 7-8 fuera de su alcance: también rumor (antes, nunca).
+    expect(llegaSola(suceso(7), p('La Meseta del Orden'))).toEqual({ dias: 2, via: 'OIDAS', confirmado: false });
+    expect(llegaSola(suceso(5), p(null))).toBeNull();
     expect(llegaSola(suceso(5, [], ['Clan Goshg']), p('Cristal Helado', ['Clan Goshg']))).toEqual({ dias: 0, via: 'ALIADA', confirmado: true });
     expect(llegaSola(suceso(3, [], ['Clan Goshg']), p('Cristal Helado', ['Clan Goshg']))).toBeNull();
   });

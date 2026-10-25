@@ -3,12 +3,12 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
-import { conocer, difundir, leerBandos, preguntarNoticias, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
+import { conocer, difundir, leerBandos, preguntarNoticias, ventanaTrasSalto, VENTANA_DIAS_LLEGA_SOLA } from './difusion.js';
 import { asegurarTablonesDePartida, TABLON_RECIPE_KEY } from './tablones.js';
 import type { MetaNoticia } from './noticias.js';
 
 // CR-18 (18b, hito 0.2) — lo visto y lo que llega solo: la importancia dice hasta dónde, la distancia
-// cuándo, y solo llega solo lo de importancia ≥ 7 (Q10).
+// cuándo, y llega solo lo de importancia ≥ 5 (Q10; P316 bajó el umbral de 7 a 5 y añadió el rumor lejano).
 describe('difusión de sucesos al personaje (CR-18 18b)', () => {
   const DIA = 20;
   let saveId: string;
@@ -73,19 +73,21 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     expect(await difundir(prisma, saveId)).toBe(0);
   });
 
-  it('en su región llega al momento y como hecho; más allá de su alcance, nunca', async () => {
+  // P316: antes lo de más allá de su alcance (aquí, a dos saltos) no llegaba nunca.
+  it('en su región llega al momento y como hecho; más allá de su alcance, como rumor a los dos días', async () => {
     const aqui = await alianza('las-llanuras-del-viento-rojo');
     const lejos = await alianza('la-meseta-del-orden');
     expect(await difundir(prisma, saveId)).toBe(1);
     expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: aqui } } })).toMatchObject({ confirmado: true });
-    await pasarDias(3);
-    await difundir(prisma, saveId);
     expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: lejos } })).toBe(0);
+    await pasarDias(2);
+    await difundir(prisma, saveId);
+    expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: lejos } } })).toMatchObject({ via: 'OIDAS', confirmado: false });
   });
 
   it('lo menor no llega solo; lo que pasa donde está el personaje lo sabe por haberlo visto, sin noticia', async () => {
     const menor = await registrarSuceso(prisma, {
-      saveId, tipo: 'TREGUA', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO', actores: [],
+      saveId, tipo: 'ESCARAMUZA', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO', actores: [],
       datos: { faccionA: 'Unos', faccionB: 'Otros' },
     });
     await difundir(prisma, saveId);
@@ -236,5 +238,57 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
     expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: id } })).toBe(1);
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'WORLD', text: { contains: 'Los de prueba y Los otros' }, noticia: { path: ['sucesoId'], equals: id } } })).toBe(1);
   });
-});
 
+  // P316 (usuaria 2026-10-25): un suceso grave del mundo llega aunque no esté cerca. Tormentas terribles,
+  // plagas, hambrunas, incendios y muertes son de importancia 5-6 y nunca llegaban (Q10 pedía ≥ 7).
+  describe('sucesos graves del mundo (P316)', () => {
+    const plaga = async (region: string, regionSlug: string, minutos?: number) =>
+      registrarSuceso(prisma, {
+        saveId, tipo: 'PLAGA', fictionalMinutes: minutos ?? (await ahora()), regionSlug, origen: 'MUNDO',
+        actores: [{ entidadTipo: 'REGION', entidadId: regionSlug, papel: 'LUGAR' }], datos: { region, afecta: 'los guchapos' },
+      });
+    const entrada = (texto: string) => prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'WORLD', text: { contains: texto } } });
+
+    it('una plaga lejana llega como rumor en «El mundo» y en Conocimiento, y una tormenta terrible de su región, como hecho', async () => {
+      const lejana = await plaga('El Margen Silencioso', 'el-margen-silencioso');
+      const tormenta = await registrarSuceso(prisma, {
+        saveId, tipo: 'TORMENTA_EXTREMA', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO',
+        actores: [{ entidadTipo: 'REGION', entidadId: 'las-llanuras-del-viento-rojo', papel: 'LUGAR' }], datos: { region: 'las Llanuras del Viento Rojo' },
+      });
+      expect(await difundir(prisma, saveId)).toBe(1);
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: tormenta } } })).toMatchObject({ via: 'OIDAS', confirmado: true });
+      expect((await entrada('tormenta terrible')).text).toBe('Una tormenta terrible arrasa las Llanuras del Viento Rojo.');
+      // El Margen es vecino: al día siguiente, como rumor y enlazado a su suceso.
+      await pasarDias(1);
+      expect(await difundir(prisma, saveId)).toBe(1);
+      const c = await prisma.conocimiento.findUniqueOrThrow({ where: { saveId_sucesoId: { saveId, sucesoId: lejana } } });
+      expect(c).toMatchObject({ via: 'OIDAS', confirmado: false });
+      const e = await entrada('plaga golpea los guchapos en El Margen Silencioso');
+      expect(e.text).toBe('Se dice que una plaga golpea los guchapos en El Margen Silencioso.');
+      expect((e.noticia as MetaNoticia).sucesoId).toBe(lejana);
+    });
+
+    it('lo de importancia 4 sigue sin llegar solo', async () => {
+      const menor = await registrarSuceso(prisma, {
+        saveId, tipo: 'OLA_FRIO', fictionalMinutes: await ahora(), regionSlug: 'las-llanuras-del-viento-rojo', origen: 'MUNDO',
+        actores: [], datos: { region: 'las Llanuras' },
+      });
+      await difundir(prisma, saveId);
+      expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: menor } })).toBe(0);
+    });
+
+    // REVIEW.md, «salto de varios días»: un salto de 20 días hace una sola pasada; con la ventana de 5
+    // días, de lo anterior a sus últimos 5 días no se enteraba nunca.
+    it('tras un salto largo, la pasada cubre los días saltados (hasta lo que aún se comenta)', async () => {
+      expect(ventanaTrasSalto(1)).toBe(VENTANA_DIAS_LLEGA_SOLA + 1);
+      expect(ventanaTrasSalto(0)).toBe(VENTANA_DIAS_LLEGA_SOLA);
+      expect(ventanaTrasSalto(20)).toBe(25);
+      expect(ventanaTrasSalto(1479)).toBe(30);
+      const hace12 = await plaga('Las Llanuras del Viento Rojo', 'las-llanuras-del-viento-rojo', (await ahora()) - 12 * 1440);
+      await difundir(prisma, saveId);
+      expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: hace12 } })).toBe(0);
+      expect(await difundir(prisma, saveId, { ventanaDias: ventanaTrasSalto(12) })).toBe(1);
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: hace12 } } })).toMatchObject({ confirmado: true });
+    });
+  });
+});

@@ -139,7 +139,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
 
       <PanelSection title="Nueva partida">
         {!opciones.origen && <p className="text-xs text-wood-500">Tu Reino necesita un edificio desde el que salir.</p>}
-        {opciones.origen && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Ahora mismo no hay ningún lugar que conozcas con presas a la vista: o aún no has explorado donde las hay, o ya cazaste las de los que conoces. Explora otros lugares antes de mandar a nadie.</p>}
+        {opciones.origen && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Ahora mismo no hay ningún lugar que conozcas con presas a la vista: o aún no has explorado donde las hay, o ya cazaste las de los que conoces, o ninguno tiene camino desde tu Reino. Explora otros lugares antes de mandar a nadie.</p>}
         {opciones.origen && nadieDisponible && (
           <p className="text-xs text-wood-500">
             {fuera.length > 0

@@ -64,6 +64,13 @@ describe('PartidasSection (CR-63 63d)', () => {
     expect(queryByText(/Aún no conoces ningún lugar/)).toBeNull()
   })
 
+  // Leve de la revisión de P313: el backend también deja fuera los lugares con presas sin camino desde el Reino.
+  it('sin destinos también dice que puede no haber camino desde el Reino', async () => {
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, destinos: [] } })
+    const { findByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect(await findByText(/ninguno tiene camino desde tu Reino/)).toBeTruthy()
+  })
+
   it('sin nadie libre lo dice', async () => {
     vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, cazadores: [], grupos: [] } })
     const { findByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)

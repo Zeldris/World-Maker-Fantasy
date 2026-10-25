@@ -77,6 +77,18 @@ export function decidirAtaque(p: { fuerza: number; enCasa: number; defensa: numb
   return { ataca: true, manda, defensa: p.defensa, margen };
 }
 
+/// P253: lo mínimo que tiene que valer un Reino (riqueza + comida/2) para que unos bandidos vayan a por
+/// él. Por debajo no hay nada que llevarse (el botín topa en un cuarto de lo que hay), por mucha
+/// necesidad que tengan. Cifra provisional, como las demás.
+export const OBJETIVO_MINIMO = 20;
+
+/// Puro (P253, Q1): ¿hay algo que llevarse? Sin esto, la necesidad (poco botín guardado, campamento
+/// lleno) sola empujaba a asaltar un Reino vacío («no encuentran nada que llevarse»). Solo vale para un
+/// asentamiento: a un viajero se le asalta por el camino, lleve lo que lleve (CR-50 Q4).
+export function reinoTieneQueLlevarse(riqueza: number, comida: number): boolean {
+  return riqueza + comida / 2 >= OBJETIVO_MINIMO;
+}
+
 /// Puro (Q1): motivo de unos bandidos: lo que vale el objetivo (riqueza y comida) y su necesidad
 /// (poco botín guardado o campamento lleno). La intensidad pesa el botín.
 export function motivoBandidos(p: { riqueza: number; comida: number; botinGuardado: number; gente: number; tope: number; intensidad: Intensidad }): number {

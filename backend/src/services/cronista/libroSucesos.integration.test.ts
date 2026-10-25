@@ -168,6 +168,21 @@ describe('registrarSuceso (CR-2)', () => {
     ).rejects.toThrow('el turno falla');
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'TORMENTA' } })).toBe(0);
   });
+
+  // P247: la cadena de Serhu y el cambio de banda de la relación emitían la misma alianza con minutos de diferencia
+  it('una alianza entre las mismas facciones en la misma semana se cuenta una sola vez (P247)', async () => {
+    const alianza = (min: number, a: string, b: string) => registrarSuceso(prisma, {
+      saveId, tipo: 'ALIANZA', fictionalMinutes: min, origen: 'MUNDO',
+      actores: [{ entidadTipo: 'FACCION', entidadId: a, papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: b, papel: 'AFECTADO' }],
+      datos: { faccionA: 'A', faccionB: 'B' },
+    });
+    const primera = await alianza(10 * 1440, 'faccion-a', 'faccion-b');
+    expect(await alianza(10 * 1440 + 30, 'faccion-b', 'faccion-a')).toBe(primera); // mismo pacto, orden distinto
+    expect(await alianza(14 * 1440, 'faccion-a', 'faccion-b')).toBe(primera); // dentro de la ventana
+    expect(await alianza(10 * 1440, 'faccion-a', 'faccion-c')).not.toBe(primera); // otra pareja
+    expect(await alianza(40 * 1440, 'faccion-a', 'faccion-b')).not.toBe(primera); // un pacto nuevo, un mes después
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'ALIANZA' } })).toBe(3);
+  });
 });
 
 // CR-3 (hito 0.2): con el tiempo, un NPC convaleciente se recupera y un cadáver desaparece — los dos

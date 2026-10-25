@@ -12,17 +12,20 @@
 // | 7-8 | + regiones vecinas | 1 día |
 // | 9-10 | Todo Berig | 1 día por salto, tope 3 |
 //
-// Al personaje solo le llega solo lo de importancia ≥ 7 que ya se sabe donde está, y lo de las
-// facciones aliadas o con tratado (Q10). Lo demás se sabe viéndolo, preguntando a un NPC o leyendo
-// los bandos del tablón (Q9).
+// Al personaje le llega solo lo de importancia ≥ 5 (P316, usuaria 2026-10-25: un suceso grave del
+// mundo tiene que llegar aunque no esté cerca): dentro del alcance de la tabla, con su retraso; más
+// allá (y lo de 5-6 de otra región), como rumor a 1-3 días según la distancia. Y lo de las facciones
+// aliadas o con tratado (Q10). Lo demás se sabe viéndolo, preguntando a un NPC o leyendo los bandos
+// del tablón (Q9).
 import { slugify } from '../../lib/slugify.js';
 import { REGIONES_VECINAS } from './regiones.js';
 import { distanciaRegiones, retrasoPorDistancia } from './noticias.js';
 
 export type Via = 'TESTIGO' | 'OIDAS' | 'NPC' | 'BANDO' | 'ALIADA';
 
-/// Importancia mínima para que la noticia llegue sola al personaje (Q10).
-export const IMPORTANCIA_LLEGA_SOLA = 7;
+/// Importancia mínima para que la noticia llegue sola al personaje (nivel «destacado»). P316: antes
+/// era 7 (Q10) y no llegaba nada de 5-6: tormentas terribles, plagas, hambrunas, incendios, muertes.
+export const IMPORTANCIA_RUMOR_LEJANO = 5;
 /// Importancia mínima para que un suceso se sepa más allá de testigos y actores.
 export const IMPORTANCIA_SE_SABE = 4;
 
@@ -84,6 +87,13 @@ export function cuentaComoHecho(s: Pick<SucesoConAlcance, 'origenes' | 'faccione
   return (!!npc.region && s.origenes.includes(npc.region)) || (!!npc.faccion && s.facciones.includes(npc.faccion));
 }
 
+/// Días que tarda en llegar como rumor a `region` desde donde pasó (fuera del alcance de la tabla):
+/// 1-3 según la distancia al origen más cercano; sin lugar o fuera del mapa, el máximo (como CR-12).
+function diasComoRumorLejano(origenes: string[], region: string): number {
+  const distancias = origenes.map((o) => distanciaRegiones(o, region) ?? 3);
+  return retrasoPorDistancia(distancias.length > 0 ? Math.min(...distancias) : 3);
+}
+
 /// Cuándo y cómo le llega sola la noticia al personaje; null = no le llega sin hacer nada (Q10).
 export function llegaSola(
   s: SucesoConAlcance,
@@ -92,9 +102,9 @@ export function llegaSola(
   if (s.importancia >= IMPORTANCIA_SE_SABE && s.facciones.some((f) => personaje.aliadas.has(f))) {
     return { dias: 0, via: 'ALIADA', confirmado: true };
   }
-  if (s.importancia < IMPORTANCIA_LLEGA_SOLA || !personaje.region) return null;
-  const dias = diasHastaRegion(s, personaje.region);
-  if (dias === null) return null;
+  if (s.importancia < IMPORTANCIA_RUMOR_LEJANO || !personaje.region) return null;
+  // Dentro del alcance de la tabla (≥ 7 y vecinas, 5-6 en su región) lo de siempre; fuera, rumor lejano.
+  const dias = diasHastaRegion(s, personaje.region) ?? diasComoRumorLejano(s.origenes, personaje.region);
   return { dias, via: 'OIDAS', confirmado: s.origenes.includes(personaje.region) };
 }
 

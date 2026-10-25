@@ -51,6 +51,16 @@ export function esDelPanelReino(recipe: ConstructionRecipe): boolean {
   return recipe.requiresAyuntamiento === true || recipe.key.startsWith('jaula-');
 }
 
+/// Región del Ayuntamiento de la partida (o `null` si no hay): la consulta se hace una vez por petición y se
+/// pasa a `constructionRecipeStatusFor`, no una por receta.
+export async function regionDelAyuntamiento(saveId: string): Promise<string | null> {
+  const ayuntamiento = await prisma.building.findFirst({
+    where: { saveId, recipeKey: 'ayuntamiento', status: { in: ['ACTIVO', 'DANADO'] } },
+    select: { location: { select: { region: true } } },
+  });
+  return ayuntamiento?.location?.region ?? null;
+}
+
 /// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
 /// cálculo de "¿puedo construir esto AHORA MISMO?" reutilizado por `parcelas.ts` (una Parcela
 /// solo necesita el status de SU receta candidata, no las de todo el catálogo). Nunca duplica el
@@ -63,6 +73,8 @@ export async function constructionRecipeStatusFor(params: {
   currentLocationId: string | null;
   inventoryRows: InventoryRowLike[];
   catalogBySlug: Map<string, CatalogLookup>;
+  /// Región del Ayuntamiento, ya consultada (`regionDelAyuntamiento`); sin darla, se consulta aquí.
+  regionAyuntamiento?: string | null;
 }): Promise<RecipeStatus> {
   const { recipe, saveId, worldId, activeRegion, currentLocationId, inventoryRows, catalogBySlug } = params;
   const ingredients = checkIngredients(recipe.requirements, inventoryRows, catalogBySlug);
@@ -84,11 +96,8 @@ export async function constructionRecipeStatusFor(params: {
   // del Ayuntamiento, no en la del personaje; el tope por región se cuenta donde se va a levantar de verdad.
   let regionDelTope = activeRegion;
   if (recipe.maxPerRegion && recipe.requiresAyuntamiento) {
-    const ayuntamiento = await prisma.building.findFirst({
-      where: { saveId, recipeKey: 'ayuntamiento', status: { in: ['ACTIVO', 'DANADO'] } },
-      select: { location: { select: { region: true } } },
-    });
-    if (ayuntamiento?.location) regionDelTope = ayuntamiento.location.region;
+    const regionAyuntamiento = params.regionAyuntamiento === undefined ? await regionDelAyuntamiento(saveId) : params.regionAyuntamiento;
+    if (regionAyuntamiento) regionDelTope = regionAyuntamiento;
   }
   const unicaYaLevantada = recipe.maxPerRegion
     ? (await prisma.building.count({
@@ -174,6 +183,7 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
     });
 
     const activeRegion = save.currentLocation?.region ?? null;
+    const regionAyuntamiento = await regionDelAyuntamiento(save.id); // una vez por petición, no por receta
     const construction: RecipeStatus[] = await Promise.all(
       // P218 (decisión de la usuaria, 2026-10-19): una receta con `raza` de otra raza que la del
       // personaje no se lista (misma comparación directa de slugs de BERIG_RAZAS que el resto del
@@ -188,6 +198,7 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
           currentLocationId: save.currentLocation?.id ?? null,
           inventoryRows,
           catalogBySlug,
+          regionAyuntamiento,
         }),
       ),
     );

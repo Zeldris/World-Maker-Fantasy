@@ -40,9 +40,31 @@ export interface NuevoSuceso<T extends TipoSuceso = TipoSuceso> {
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
+/// P247: dos alianzas sellantes entre las mismas facciones en menos de esto son el mismo pacto visto por
+/// dos sistemas (la cadena de Serhu y el cambio de banda de la relación): en Leyendas salían dos líneas casi iguales.
+export const DIAS_MISMO_PACTO = 7;
+
+/// Si ya hay una alianza entre las mismas facciones en la ventana de `DIAS_MISMO_PACTO`, su id (es el mismo
+/// pacto: no se vuelve a contar). Solo para `ALIANZA`; el resto de sucesos, nunca.
+async function alianzaYaContada(db: Db, s: NuevoSuceso): Promise<string | null> {
+  if (s.tipo !== 'ALIANZA') return null;
+  const facciones = [...new Set(s.actores.filter((a) => a.entidadTipo === 'FACCION').map((a) => a.entidadId))];
+  if (facciones.length < 2) return null;
+  const ventana = DIAS_MISMO_PACTO * 1440;
+  const previos = await db.suceso.findMany({
+    where: { saveId: s.saveId, tipo: 'ALIANZA', fictionalMinutes: { gte: s.fictionalMinutes - ventana, lte: s.fictionalMinutes + ventana } },
+    select: { id: true, actores: { where: { entidadTipo: 'FACCION' }, select: { entidadId: true } } },
+    orderBy: { fictionalMinutes: 'asc' },
+  });
+  return previos.find((p) => facciones.every((f) => p.actores.some((a) => a.entidadId === f)))?.id ?? null;
+}
+
 /// Registra un suceso en el Libro y devuelve su id. Llamar dentro de la transacción del turno o del
-/// día, para que el suceso exista si y solo si existe lo que lo causó.
+/// día, para que el suceso exista si y solo si existe lo que lo causó. Una alianza que ya se contó
+/// (P247) devuelve el id de la primera.
 export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuceso<T>): Promise<string> {
+  const mismoPacto = await alianzaYaContada(db, s);
+  if (mismoPacto) return mismoPacto;
   const jugadorAutor = s.actores.some((a) => a.entidadTipo === 'PERSONAJE' && a.papel === 'AUTOR');
   const npcIds = s.actores.filter((a) => a.entidadTipo === 'NPC').map((a) => a.entidadId);
   const afectaNucleoJugable =

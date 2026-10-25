@@ -74,7 +74,8 @@ describe('partidas de caza (CR-63 63b)', () => {
     expect(await prisma.$transaction((tx) => revisarPiezas(tx, saveId, caduca))).toEqual({ desolladas: 0, perdidas: quedan });
   });
 
-  // P312: lo que fue de las piezas (desolladas o echadas a perder) queda en el diario del Reino, en el día en que pasa.
+  // P312: lo que fue de las piezas (desolladas o echadas a perder) queda en el diario del Reino, fechado con la hora
+  // del mundo en que pasa (la de `WorldState`, 20 días en este escenario).
   it('el diario del Reino dice qué fue de las piezas: desolladas y echadas a perder', async () => {
     await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
     await prisma.logEntry.deleteMany({ where: { saveId, channel: 'KINGDOM' } });
@@ -87,6 +88,9 @@ describe('partidas de caza (CR-63 63b)', () => {
     await prisma.almacenItem.createMany({ data: [pieza(80), pieza(80)] });
     expect(await prisma.$transaction((tx) => revisarPiezas(tx, saveId, 80))).toEqual({ desolladas: 0, perdidas: 2 });
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'Se echan a perder 2 piezas' } } })).toBe(1);
+    const fechas = await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM' }, select: { fictionalMinutes: true } });
+    expect(fechas.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(fechas.map((f) => f.fictionalMinutes))).toEqual(new Set([20 * 1440]));
     await prisma.building.deleteMany({ where: { saveId, recipeKey: 'desolladero' } });
   });
 

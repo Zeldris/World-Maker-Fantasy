@@ -24,7 +24,7 @@ export async function ganadoRoutes(app: FastifyInstance) {
       const productos = await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: ['leche-murgol', 'lana-murgol', 'huevo-corretolvas', 'plumas-rojizas'] } }, select: { slug: true, name: true } });
       const nombreProducto = new Map(productos.map((p) => [p.slug, p.name]));
       const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { forraje: true, ganadoDiasSinComer: true, ganadoDiasSinBeber: true } });
-      const hayAnimales = corrales.some((c) => c.animales.length > 0)
+      const hayAnimales = corrales.some((c) => c.animales.length > 0);
       return {
         forraje: stats?.forraje ?? 0,
         huecoForraje: await huecoDeForraje(tx, save.id),

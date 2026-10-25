@@ -4,7 +4,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { registrarSuceso } from './sucesos.js';
 import { procesarReacciones } from './reacciones.js';
-import { bloqueMemoria, componer, palabrasClave, puntuar, TOPE_TOTAL, TOPE_VERDAD } from './memoriaNarrador.js';
+import { bloqueMemoria, componer, palabrasClave, puntuar, sinTextosRepetidos, TOPE_TOTAL, TOPE_VERDAD } from './memoriaNarrador.js';
 
 describe('memoria del narrador (CR-21…23) — reglas puras', () => {
   it('palabras clave sin acentos, cortas ni vacías', () => {
@@ -18,6 +18,11 @@ describe('memoria del narrador (CR-21…23) — reglas puras', () => {
     const viejo = puntuar({ importancia: 3, fictionalMinutes: 0, texto: 'algo', actorIds: ['t'] }, ctx);
     expect(deEscena).toBeGreaterThan(ajeno);
     expect(deEscena).toBeGreaterThan(viejo);
+  });
+
+  it('un texto repetido ocupa un solo hueco de la memoria (P247)', () => {
+    const renacer = 'Gorhorn despierta de nuevo en Campamento.';
+    expect(sinTextosRepetidos([renacer, 'otra cosa', renacer, renacer])).toEqual([renacer, 'otra cosa']);
   });
 
   it('recorta por el final sin pasarse del presupuesto; la verdad nunca pasa de su tope', () => {

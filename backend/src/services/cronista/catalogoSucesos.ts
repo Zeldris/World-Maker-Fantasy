@@ -67,7 +67,8 @@ export interface DatosSuceso {
   /// CR-62: `resultado`, cómo acabó la pelea (combate de fondo).
   ESCARAMUZA: { faccionA: string; faccionB: string; region?: string; resultado?: string };
   /// CR-59 (P297): la semana de un vasallo: al corriente (paga y patrulla), pago parcial (patrullas en
-  /// proporción, `porcentaje` y si patrulló) o impagado (patrullas suspendidas), decisión 2026-10-22.
+  /// proporción, `porcentaje` y si patrulló), `pagada-con-deuda` (paga lo de la semana pero sigue debiendo
+  /// lo anterior) o impagado (patrullas suspendidas), decisión 2026-10-22.
   /// `deuda` solo en las líneas de antes de esa decisión.
   PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'pagada-con-deuda' | 'impagado' | 'migrado' | 'sin-soldados'; porcentaje?: number; patrulla?: boolean; vasalloSlug?: string; pendiente?: number; pagado?: number; deuda?: number; rearmados?: number };
   // FACCION

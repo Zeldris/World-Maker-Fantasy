@@ -9,7 +9,7 @@ import { posicionEnZona } from './viajerosCruce.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { slugify } from '../lib/slugify.js';
 import { ajustesAsaltos, asentamientosDelReino, contextoDefensa, defensaVista } from './defensaReino.js';
-import { decidirAtaque, defensaEstimada, DIAS_POR_REFUERZO_INTENSIDAD, motivoBandidos, porQueVienenBandidos } from './cronista/decisionAsalto.js';
+import { decidirAtaque, defensaEstimada, DIAS_POR_REFUERZO_INTENSIDAD, motivoBandidos, porQueVienenBandidos, reinoTieneQueLlevarse } from './cronista/decisionAsalto.js';
 import { topeTrasExito } from './cronista/campamentosBandidos.js';
 import { crearViajero, enlacesDelMundo, lugaresATramos, type Enlace, type ViajeroFila } from './viajeros.js';
 import { TIPO_ASALTO } from './defensaReino.js';
@@ -207,6 +207,8 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
       const blanco = base.asentamientos.filter((a) => a.region === c.region).sort((x, y) => base.defensas.get(x.id)! - base.defensas.get(y.id)!)[0];
       if (!blanco) return;
       if (salen > 0) return; // P285: un asalto al Reino por tanda; el enfriamiento corre desde hoy.
+      // P253: a un Reino sin nada que llevarse no se va, por mucha necesidad que haya.
+      if (!reinoTieneQueLlevarse(base.riqueza, base.comida)) return;
       const motivo = motivoBandidos({ riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, gente: c.gente, tope: c.tope, intensidad: base.intensidad });
       const d = decidirAtaque({ fuerza: c.gente, enCasa: BANDIDOS_EN_CASA, defensa: base.defensas.get(blanco.id)!, motivo, intensidad: base.intensidad, tamano: base.tamano });
       if (!d.ataca) return;
