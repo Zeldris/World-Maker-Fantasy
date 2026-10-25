@@ -4,7 +4,7 @@
 Sin LLM, sin prompt negativo y sin dependencias: misma ficha, perfil y variante dan siempre el mismo texto.
 Uso:
   prompt_ficha.py <ficha.json> <perfil> [--variante macho] [--momento dia|atardecer|noche]
-                  [--estacion primavera|verano|otono|invierno] [--fondo <ficha-zona.json>] [--json]
+                  [--estacion primavera|verano|otono|invierno (o el enum del motor: PRIMAVERA…)] [--fondo <ficha-zona.json>] [--json]
 Sale con 2 y el motivo (palabra, regla, alternativa) si el prompt rompe una regla.
 """
 import argparse
@@ -16,7 +16,10 @@ import sys
 
 MUNDO = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'estilo', 'mundo.json')
 RECORTABLES = ('B6', 'B5', 'B4')  # orden en que se quitan si el prompt se pasa de largo
-ESTACIONES = ('primavera', 'verano', 'otono', 'invierno')  # las de backend/src/services/worldClock.ts
+ESTACIONES = ('primavera', 'verano', 'otono', 'invierno')  # claves internas, en minúsculas y sin eñe (otoño = otono)
+# El enum del motor (`Estacion`, backend/src/services/worldClock.ts) va en mayúsculas; se acepta y se normaliza.
+ESTACIONES_MOTOR = {'PRIMAVERA': 'primavera', 'VERANO': 'verano', 'OTONO': 'otono', 'INVIERNO': 'invierno'}
+CAMPOS = ('sujeto', 'ancla', 'cuerpo', 'rasgos', 'pose', 'entorno', 'luz', 'lugar')  # claves válidas de `prompt`
 
 
 class ReglaRota(Exception):
@@ -44,6 +47,17 @@ def _aplicar(p: dict, cambios: dict):
             p[clave] = valor
 
 
+def _validar_campos(ficha: dict):
+    """Las claves de `variantes` y de `condiciones` (con o sin `+` final) tienen que ser campos de `prompt`."""
+    for seccion in ('variantes', 'condiciones'):
+        for nombre, cambios in (ficha.get(seccion) or {}).items():
+            for clave in cambios or {}:
+                if clave.removesuffix('+') not in CAMPOS:
+                    raise ReglaRota(f'regla 8 ({seccion}): la clave «{clave}» de «{nombre}» en la ficha '
+                                    f'«{ficha.get("slug", "?")}» no es un campo de prompt; los que hay son: '
+                                    f'{", ".join(CAMPOS)} (con «+» al final para añadir a la lista)')
+
+
 def _aplicar_variante(ficha: dict, variante):
     p = copy.deepcopy(ficha.get('prompt') or {})
     if variante is None:
@@ -58,14 +72,16 @@ def _aplicar_variante(ficha: dict, variante):
 
 def _validar_condiciones(ficha: dict, mundo: dict):
     momentos, estaciones = sorted(mundo['preambulo']), list(mundo.get('estaciones') or ESTACIONES)
+    validos = {'estacion': estaciones, 'momento': momentos}
     for clave in ficha.get('condiciones') or {}:
-        for parte in clave.split('+'):
-            tipo, _, valor = parte.partition(':')
-            if (tipo == 'estacion' and valor in estaciones) or (tipo == 'momento' and valor in momentos):
-                continue
-            raise ReglaRota(f'regla 9 (condiciones): la clave «{clave}» de la ficha «{ficha.get("slug", "?")}» no es '
-                            f'válida; usa «estacion:<{"|".join(estaciones)}>», «momento:<{"|".join(momentos)}>» '
-                            'o «estacion:<e>+momento:<m>»')
+        partes = [parte.partition(':') for parte in clave.split('+')]
+        tipos = tuple(t for t, _, _ in partes)
+        # solo las formas que busca _aplicar_condiciones: una sola parte, o la combinada estación + momento en ese orden
+        if tipos in (('estacion',), ('momento',), ('estacion', 'momento')) and all(v in validos[t] for t, _, v in partes):
+            continue
+        raise ReglaRota(f'regla 9 (condiciones): la clave «{clave}» de la ficha «{ficha.get("slug", "?")}» no es '
+                        f'válida; usa «estacion:<{"|".join(estaciones)}>», «momento:<{"|".join(momentos)}>» '
+                        'o «estacion:<e>+momento:<m>» (en ese orden, sin repetir)')
 
 
 def _aplicar_condiciones(p: dict, ficha: dict, estacion, momento):
@@ -88,13 +104,18 @@ def _b1(p: dict) -> str:
     return sujeto
 
 
-def _estilo(mundo: dict, perfil: str, tipo: str) -> str:
+def _estilo_perfil(mundo: dict, perfil: str) -> dict:
     estilos = mundo['estilos']
     e = estilos.get(perfil)
     if isinstance(e, str):  # alias (thumbnail -> icono)
         e = estilos.get(e)
     if not isinstance(e, dict):
         raise ReglaRota(f'regla 2: el perfil «{perfil}» no tiene estilo en mundo.json')
+    return e
+
+
+def _estilo(mundo: dict, perfil: str, tipo: str) -> str:
+    e = _estilo_perfil(mundo, perfil)
     por_tipo = (e.get('porTipo') or {}).get(tipo) or {}
     base = e['base'].replace('{clase}', por_tipo.get('clase', ''))
     base = re.sub(r'\s+', ' ', base).replace(' ,', ',').strip()
@@ -118,7 +139,7 @@ def _comprobar(prompt: str, mundo: dict, nombres: list, momento=None):
             fallos.append(f'regla 3 (frases en positivo): negación «{m.group(0)}» en el prompt; '
                           'reescribir en positivo, sin nombrar lo que no se quiere')
     for n in nombres:
-        if n and re.search(re.escape(n), prompt, re.I):
+        if n and re.search(rf'(?<!\w){re.escape(n)}(?!\w)', prompt, re.I):  # palabra entera: «Ash» no salta con «ashes»
             fallos.append(f'regla 5 (sin nombres propios): el prompt contiene el nombre «{n}»; '
                           'describir la cosa en vez de nombrarla')
     if fallos:
@@ -133,30 +154,46 @@ def construir(ficha: dict, mundo: dict, perfil: str, variante=None, momento=None
         raise ReglaRota(f'regla 9 (condiciones): momento desconocido «{mom}»; los que hay son: '
                         f'{", ".join(sorted(mundo["preambulo"]))}')
     validas = list(mundo.get('estaciones') or ESTACIONES)
+    estacion = ESTACIONES_MOTOR.get(estacion, estacion)  # PRIMAVERA… del motor -> primavera…
     if estacion is not None and estacion not in validas:
         raise ReglaRota(f'regla 9 (condiciones): estación desconocida «{estacion}»; las que hay son: {", ".join(validas)}')
+    tipo = ficha.get('tipo', '')
+    if perfil == 'mapa' and tipo != 'location':
+        raise ReglaRota(f'regla 2: el perfil «mapa» solo vale con fichas de tipo location; la ficha '
+                        f'«{ficha.get("slug", "?")}» es de tipo «{tipo or "?"}»')
+    region_ficha = ficha.get('region')
+    regiones = mundo.get('regiones') or {}
+    if region_ficha is not None and region_ficha not in regiones:
+        raise ReglaRota(f'regla 9 (condiciones): región desconocida «{region_ficha}» en la ficha '
+                        f'«{ficha.get("slug", "?")}»; las que hay son: {", ".join(sorted(regiones)) or "ninguna"}')
+    _validar_campos(ficha)
     _validar_condiciones(ficha, mundo)
     condicion = f'{estacion or "-"}/{mom}'
     p = _aplicar_variante(ficha, variante)
     _aplicar_condiciones(p, ficha, estacion, mom)
-    tipo = ficha.get('tipo', '')
     b1, b2, b3, b4 = _b1(p), _frases(p.get('cuerpo')), _frases(p.get('rasgos')), _frases(p.get('pose'))
     avisos, recortados = [], []
     propuestas = list(ficha.get('propuestas') or [])
 
     if fondo is not None:
-        lugar = (fondo.get('prompt') or {}).get('lugar', '')
+        lugar = _frases((fondo.get('prompt') or {}).get('lugar'))
+        if fondo.get('tipo') != 'location' or not lugar:
+            raise ReglaRota(f'segunda pasada (D10, --fondo): la ficha de fondo «{fondo.get("slug", "?")}» tiene que ser de tipo '
+                            f'location y llevar prompt.lugar no vacío (es de tipo «{fondo.get("tipo") or "?"}»'
+                            f'{"" if lugar else ", sin prompt.lugar"})')
         entrada = mundo['fondo']['entrada'].replace('{lugar}', lugar)
         sujeto = ' '.join(x for x in (b1, b2, b3, b4) if x)
         sujeto = sujeto[:1].lower() + sujeto[1:]
-        estilo = 'photographic' if perfil == 'banner' else 'painterly'
+        estilo = _estilo_perfil(mundo, perfil).get('palabra')
+        if not estilo:
+            raise ReglaRota(f'regla 2: el perfil «{perfil}» no tiene `palabra` de estilo en mundo.json (la pide --fondo)')
         cierre = mundo['fondo']['cierre'].replace('{estilo}', estilo)
         prompt = ' '.join((entrada, sujeto, cierre))
         _comprobar(prompt, mundo, [ficha.get('nombre'), fondo.get('nombre')], mom)
         return {'prompt': prompt, 'palabras': len(prompt.split()), 'recortados': [], 'avisos': avisos,
                 'propuestas': propuestas, 'momento': mom, 'estacion': estacion, 'condicion': condicion}
 
-    region = (mundo.get('regiones') or {}).get(ficha.get('region'), {})
+    region = regiones.get(region_ficha, {})
     if 'entorno' in p:
         b5 = _frases(p['entorno'])
     else:
@@ -166,7 +203,8 @@ def construir(ficha: dict, mundo: dict, perfil: str, variante=None, momento=None
     luz_region = region.get('luz', '')
     if isinstance(luz_region, dict):  # una luz por momento
         luz_region = luz_region.get(mom, '')
-    b6 = _frases(p['luz']) if p.get('luz') else luz_region
+    # clave ausente: luz de la región; cadena vacía: sin B6 (igual que `entorno: ""` quita B5, regla 8)
+    b6 = _frases(p['luz']) if 'luz' in p else luz_region
     b7 = mundo['encuadres'][perfil]
     b8 = _estilo(mundo, perfil, tipo)
     b9 = mundo['preambulo'][mom]

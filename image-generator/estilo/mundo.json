@@ -9,6 +9,7 @@
   "estilos": {
     "_nota": "D8 (usuaria, 2026-10-25): banner realista, icono y thumbnail al óleo (thumbnail es icono), mapa a medio camino.",
     "banner": {
+      "palabra": "photographic",
       "base": "Cinematic {clase} photograph, natural muted colours, subtle filmic grade.",
       "porTipo": {
         "fauna": { "clase": "wildlife", "acabado": "Shot on a full-frame camera with a 35mm lens, ultra detailed fur, hide and scale texture." },
@@ -18,11 +19,13 @@
       }
     },
     "icono": {
+      "palabra": "painterly",
       "base": "Oil painting with visible brushstrokes and rich impasto, a single clear subject with a strong readable silhouette.",
       "porTipo": {}
     },
     "thumbnail": "icono",
     "mapa": {
+      "palabra": "painterly",
       "base": "Painterly realism halfway between a photograph and an oil painting: realistic terrain, light and texture rendered with soft, visible brushwork.",
       "porTipo": {}
     }

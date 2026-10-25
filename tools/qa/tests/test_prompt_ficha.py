@@ -26,10 +26,10 @@ with open(os.path.join(IMG, 'estilo', 'mundo.json'), encoding='utf-8') as _f:
 MUNDO = {
     'preambulo': {'dia': 'PREAMBULO-DIA.', 'noche': 'PREAMBULO-NOCHE.'},
     'estilos': {
-        'banner': {'base': 'Cinematic {clase} photograph.', 'porTipo': {'fauna': {'clase': 'wildlife', 'acabado': 'Shot with a 35mm lens.'}}},
-        'icono': {'base': 'Oil painting with brushstrokes.', 'porTipo': {}},
+        'banner': {'palabra': 'photographic', 'base': 'Cinematic {clase} photograph.', 'porTipo': {'fauna': {'clase': 'wildlife', 'acabado': 'Shot with a 35mm lens.'}}},
+        'icono': {'palabra': 'painterly', 'base': 'Oil painting with brushstrokes.', 'porTipo': {}},
         'thumbnail': 'icono',
-        'mapa': {'base': 'Painterly realism.', 'porTipo': {}},
+        'mapa': {'palabra': 'painterly', 'base': 'Painterly realism.', 'porTipo': {}},
     },
     'encuadres': {'banner': 'ENC-BANNER.', 'thumbnail': 'ENC-THUMB.', 'icono': 'ENC-ICONO.', 'mapa': 'ENC-MAPA.'},
     'regiones': {'R': {'paisaje': 'a red steppe', 'luz': 'Low golden sun.'}},
@@ -618,6 +618,121 @@ class DatosRealesCondiciones(unittest.TestCase):
         r = pf.construir(DatosReales.ficha('fauna/aullador-rojo'), _REAL, 'banner', variante='macho', estacion='invierno',
                          momento='noche', fondo=DatosReales.ficha('location/pastos-de-la-deriva'))
         self.assertEqual(r['condicion'], 'invierno/noche')
+
+
+class ReglasRevision(unittest.TestCase):
+    """Hallazgos de la revisión de prompt_ficha.py: cada regla rota dice el motivo, no solo sale con 2."""
+
+    def rota(self, ficha=None, mundo=None, perfil='banner', **kw):
+        with self.assertRaises(pf.ReglaRota) as c:
+            pf.construir(ficha or ficha_c(), mundo or MUNDO_C, perfil, **kw)
+        return str(c.exception)
+
+    # 1. --fondo
+    def test_fondo_que_no_es_location_se_rechaza(self):
+        zona = dict(ZONA, tipo='fauna')
+        m = self.rota(fondo=zona)
+        self.assertIn('location', m)
+        self.assertIn('fauna', m)
+        self.assertNotIn('In this ,', m)
+
+    def test_fondo_sin_lugar_o_con_lugar_vacio_se_rechaza(self):
+        for prompt in ({}, {'lugar': ''}, {'lugar': '  '}):
+            with self.subTest(prompt=prompt):
+                self.assertIn('prompt.lugar', self.rota(fondo=dict(ZONA, prompt=prompt)))
+
+    # 2. claves combinadas
+    def test_clave_combinada_solo_en_forma_canonica(self):
+        for clave in ('momento:noche+estacion:invierno', 'estacion:verano+estacion:invierno',
+                      'momento:dia+momento:noche', 'estacion:verano+momento:dia+momento:noche',
+                      'estacion:verano+momento:dia+estacion:invierno', 'estacion:verano+'):
+            with self.subTest(clave=clave):
+                m = self.rota(ficha_c({clave: {'pose': 'x'}}))
+                self.assertIn(f'«{clave}»', m)
+                self.assertIn('estacion:<e>+momento:<m>', m)
+
+    def test_clave_combinada_canonica_vale_y_se_aplica(self):
+        f = ficha_c({'estacion:invierno+momento:noche': {'pose': 'COMBINADA.'}})
+        self.assertIn('COMBINADA.', pf.construir(f, MUNDO_C, 'banner', estacion='invierno', momento='noche')['prompt'])
+
+    # 3. campos de prompt
+    def test_clave_de_variante_o_condicion_desconocida(self):
+        f = ficha_c({'momento:noche': {'poze': 'x'}})
+        m = self.rota(f, momento='noche')
+        self.assertIn('«poze»', m)
+        self.assertIn('no es un campo de prompt', m)
+        f = ficha_c()
+        f['variantes'] = {'cria': {'tamano': 'small'}}
+        self.assertIn('«tamano»', self.rota(f))  # aunque no se pida esa variante
+        f['variantes'] = {'cria': {'pelo+': ['x']}}
+        self.assertIn('«pelo+»', self.rota(f))
+
+    def test_campos_conocidos_con_mas_valen(self):
+        f = ficha_c({'momento:noche': {'rasgos+': ['MAS.'], 'lugar': 'x'}})
+        self.assertIn('MAS.', pf.construir(f, MUNDO_C, 'banner', momento='noche')['prompt'])
+
+    # 4. región
+    def test_region_desconocida(self):
+        f = ficha_c()
+        f['region'] = 'Atlantida'
+        m = self.rota(f)
+        self.assertIn('región desconocida «Atlantida»', m)
+        self.assertIn('R', m)
+
+    # 5. nombres propios con palabra entera
+    def test_nombre_propio_solo_como_palabra_entera(self):
+        f = con_prompt(pose='It scratches the ashes.')
+        f['nombre'] = 'Ash'
+        self.assertIn('ashes', montar(f)['prompt'])
+        f = con_prompt(pose='It scratches the ash.')
+        f['nombre'] = 'Ash'
+        self.assertIn('el nombre «Ash»', self.rota(f, mundo=MUNDO))
+        f = con_prompt(pose='It follows Ash, closely.')
+        f['nombre'] = 'Ash'
+        self.assertIn('el nombre «Ash»', self.rota(f, mundo=MUNDO))
+
+    # 6. mapa solo con location
+    def test_mapa_solo_con_location(self):
+        m = self.rota(ficha_c(), perfil='mapa')
+        self.assertIn('«mapa» solo vale con fichas de tipo location', m)
+        self.assertIn('fauna', m)
+        self.assertIn('Painterly realism.', pf.construir(dict(ZONA, tipo='location'), MUNDO_C, 'mapa')['prompt'])
+        for perfil in ('banner', 'icono', 'thumbnail'):
+            pf.construir(ficha_c(), MUNDO_C, perfil)  # los demás perfiles no cambian
+
+    # 7. luz vacía
+    def test_luz_vacia_quita_b6_y_ausente_usa_la_de_la_region(self):
+        self.assertIn('LUZ-NOCHE.', pf.construir(ficha_c(), MUNDO_C, 'banner', momento='noche')['prompt'])
+        for f in (ficha_c(luz=''), ficha_c({'momento:noche': {'luz': ''}})):
+            r = pf.construir(f, MUNDO_C, 'banner', momento='noche')
+            self.assertNotIn('LUZ-', r['prompt'])
+            self.assertEqual(r['recortados'], [])
+
+    # 8. estación del motor
+    def test_estacion_del_enum_del_motor(self):
+        for motor, interna in (('PRIMAVERA', 'primavera'), ('VERANO', 'verano'), ('OTONO', 'otono'),
+                               ('INVIERNO', 'invierno')):
+            with self.subTest(motor):
+                r = pf.construir(ficha_c(), MUNDO_C, 'banner', estacion=motor)
+                self.assertEqual(r['estacion'], interna)
+                self.assertEqual(r['condicion'], f'{interna}/dia')
+                self.assertIn(f'SEASON-{motor}.', r['prompt'])
+        self.assertIn('«OTOÑO»', self.rota(estacion='OTOÑO'))
+
+    # 9. palabra de estilo en mundo.json
+    def test_palabra_de_estilo_sale_de_mundo_json(self):
+        mundo = copy.deepcopy(MUNDO_C)
+        mundo['estilos']['banner']['palabra'] = 'RETRATO'
+        mundo['estilos']['icono']['palabra'] = 'OLEO'
+        self.assertTrue(pf.construir(ficha_c(), mundo, 'banner', fondo=ZONA)['prompt'].endswith('It matches the RETRATO style.'))
+        for perfil in ('icono', 'thumbnail'):  # thumbnail es alias de icono
+            self.assertTrue(pf.construir(ficha_c(), mundo, perfil, fondo=ZONA)['prompt'].endswith('It matches the OLEO style.'))
+        del mundo['estilos']['banner']['palabra']
+        self.assertIn('`palabra`', self.rota(mundo=mundo, fondo=ZONA))
+
+    def test_palabras_reales(self):
+        self.assertEqual({k: _REAL['estilos'][k].get('palabra') for k in ('banner', 'icono', 'mapa')},
+                         {'banner': 'photographic', 'icono': 'painterly', 'mapa': 'painterly'})
 
 
 if __name__ == '__main__':
