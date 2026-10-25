@@ -19,7 +19,9 @@ sin definir nuevos o retros pendientes; lo ejecuta la CI, QA-14)
      python3 tools/roadmap/cobertura.py --libre <PREFIJO>   (QA-246: el siguiente número libre del prefijo, el
      mayor entre el árbol de trabajo y origin/main, para que dos ramas no abran el mismo identificador)
      Además la salida normal falla con «ABIERTAS TAMBIÉN EN MAIN» (QA-246): tareas que esta rama y origin/main
-     han definido las dos desde su base común (merge-base), es decir, el mismo identificador abierto dos veces.
+     han definido las dos desde su base común (merge-base) con otro título, es decir, el mismo identificador abierto
+     dos veces; y con «DEFINIDAS DOS VECES»: el mismo identificador definido en dos líneas del árbol (así se ve
+     también tras traer main, cuando la base ya es main).
 """
 import re, sys, os, subprocess
 D=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','docs','producto')+'/'
@@ -27,12 +29,20 @@ PREF='CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR|IMG|VOZ'
 ID=rf'(?:{PREF})-\d+[a-z]?'
 files=['roadmap-front.md','roadmap-front-ux.md','roadmap-front-zona.md','roadmap-front-reino.md','roadmap-cronista.md','roadmap-imagenes.md','roadmap-voces.md']
 defs={}
+repetidas={}  # QA-246: id → [(archivo, línea)] de las definiciones que siguen a la primera
 DEF=rf'^\s*-\s*(?:~~)?\*\*({ID})\b|^\|\s*(?:~~)?({ID})(?:~~)?\s*\||^\s*(?:~~)?\*\*({ID})\s*·'
-for f in files:
-    for n,l in enumerate(open(D+f),1):
-        for m in re.finditer(DEF, l):
+def num(i):
+    return (i.split('-')[0],int(re.sub(r'\D','',i.split('-')[1])))
+def definiciones(texto):
+    """(número de línea, id, título) de cada definición de tarea de un texto de roadmap."""
+    for n,l in enumerate(texto.split('\n'),1):
+        for m in re.finditer(DEF,l):
             i=next(g for g in m.groups() if g)
-            defs.setdefault(i,(f,n))
+            yield n,i,re.split(r'\*\*|\|',l[m.end():].replace('~~',''))[0].strip(' ·')
+for f in files:
+    for n,i,_ in definiciones(open(D+f).read()):
+        if i in defs: repetidas.setdefault(i,[]).append((f,n))
+        else: defs[i]=(f,n)
 def git(*a):
     """QA-246: salida de una orden de git en el repo, o None si git falla (sin origin/main, sin repo)."""
     try:
@@ -42,11 +52,11 @@ def git(*a):
 def desde(ref, f):
     """QA-246: el texto de `docs/producto/<f>` en `ref`, o None."""
     return git('show',f'{ref}:docs/producto/{f}')
-def definidas(textos):
-    out=set()
+def titulos(textos):
+    """QA-246: {id: título} de las tareas definidas en `textos` (la primera definición de cada una)."""
+    out={}
     for t in textos:
-        for l in t.split('\n'):
-            for m in re.finditer(DEF,l): out.add(next(g for g in m.groups() if g))
+        for _,i,tit in definiciones(t): out.setdefault(i,tit)
     return out
 def expand(text, default_prefix=None):
     out=set()
@@ -95,7 +105,7 @@ for k,row in enumerate(tabla.split('\n')):
         for n in re.findall(r'\d',g): ids|=cr.get(int(n),set())
     for i in ids:
         asignado.setdefault(i,set()).add(hito); fila_hito.setdefault(i,[]).append((inicio_tabla+k,hito))
-falta=sorted((i for i in defs if i not in asignado), key=lambda x:(x.split('-')[0],int(re.sub(r'\D','',x.split('-')[1]))))
+falta=sorted((i for i in defs if i not in asignado), key=num)
 fantasmas=sorted(i for i in asignado if i not in defs)
 def fila(i):
     """QA-242: las líneas de una tarea (definición, hito y menciones en 21-roadmap.md), recortadas.
@@ -128,16 +138,19 @@ def libre(pref):
     main=textos_en('origin/main')
     if not main: print('aviso: sin origin/main; solo cuenta el árbol de trabajo',file=sys.stderr)
     textos=[open(D+f).read() for f in files+['21-roadmap.md']]+list(main.values())
-    nums=[int(re.sub(r'\D','',i.split('-')[1])) for t in textos for i in expand(t) if i.startswith(pref+'-')]
+    # Solo menciones escritas con su prefijo: en «QA-12 y 400» el 400 no es un identificador.
+    nums=[int(n) for t in textos for n in re.findall(rf'(?<![\w-]){pref}-(\d+)',t)]
     return f'{pref}-{max(nums,default=0)+1}'
 def choques():
-    """QA-246: tareas que esta rama y origin/main han definido las dos desde su base común. Tras traer
-    main la base pasa a ser main y desaparecen; cambiar el título de una tarea ya de main no cuenta."""
+    """QA-246: tareas que esta rama y origin/main han definido las dos desde su base común, con otro título.
+    Con el mismo título es la misma tarea, traída de una tercera rama a las dos; cambiar el título de una tarea
+    ya de main tampoco cuenta (no es nueva en main). Tras traer main la base pasa a ser main: lo ve «DEFINIDAS DOS VECES»."""
     base=(git('merge-base','HEAD','origin/main') or '').strip()
     if not base: return []
-    nuevas_main=definidas(textos_en('origin/main').values())-definidas(textos_en(base).values())
-    out=[i for i in defs if i in nuevas_main]
-    return sorted(out,key=lambda x:(x.split('-')[0],int(re.sub(r'\D','',x.split('-')[1]))))
+    en_main=titulos(textos_en('origin/main').values())
+    nuevas_main=set(en_main)-set(titulos(textos_en(base).values()))
+    aqui=titulos(open(D+f).read() for f in files)
+    return sorted((i for i in defs if i in nuevas_main and aqui[i]!=en_main[i]),key=num)
 # QA-101: sin ejecutarse como script (p. ej. desde tools/qa/matriz-pruebas.py), solo calcula `defs` y `asignado`.
 if __name__ == '__main__' and sys.argv[1:2] == ['--fila']:
     if len(sys.argv) != 3: sys.exit('uso: cobertura.py --fila <ID>')
@@ -173,4 +186,8 @@ if __name__ == '__main__':
     # QA-246: el mismo identificador abierto en esta rama y en main a la vez; sin origin/main no falla.
     otros=choques()
     print('ABIERTAS TAMBIÉN EN MAIN:',otros)
-    sys.exit(1 if falta or nuevos or retros or otros else 0)
+    # QA-246: UX-6 se nombra en una lista de decisiones de roadmap-cronista.md con la forma de una definición.
+    DOBLES_CONOCIDAS={'UX-6'}
+    dos_veces={i:[defs[i],*v] for i,v in repetidas.items() if i not in DOBLES_CONOCIDAS}
+    print('DEFINIDAS DOS VECES:',dos_veces)
+    sys.exit(1 if falta or nuevos or retros or otros or dos_veces else 0)

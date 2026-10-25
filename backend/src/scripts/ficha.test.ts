@@ -1,6 +1,9 @@
 // QA-245: ficha.ts (todo lo que el juego sabe de un slug). Datos inyectados pequeños + el catálogo real con 'hielaga'.
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { ficha, parecidos, secciones, contieneSlug, recortar, nombreVisible, cargarDatos, type FichaDatos } from './ficha.js';
+import { canon, ficha, parecidos, secciones, contieneSlug, recortar, nombreVisible, cargarDatos, type FichaDatos } from './ficha.js';
 
 const falso: FichaDatos = {
   catalogo: {
@@ -48,6 +51,30 @@ describe('ficha (datos inyectados)', () => {
     expect(contieneSlug({ a: ['x', { b: 'bicho' }] }, 'bicho')).toBe(true);
     expect(contieneSlug({ a: 'bichos' }, 'bicho')).toBe(false);
     expect(nombreVisible('bicho', falso)).toBe('Bicho');
+  });
+});
+
+describe('ficha (claves heredadas y canon)', () => {
+  it('constructor o toString no son slugs de ningún diccionario', () => {
+    for (const s of ['constructor', 'toString', 'valueOf']) expect(ficha(s, falso).encontrado).toBe(false);
+  });
+
+  it('una receta con orMatch nombra la alternativa', () => {
+    const d = { ...falso, recetas: [{ key: 'r2', resultName: 'Y', ingredients: [{ cantidad: 1, match: { kind: 'exact', catalogSlug: 'otro' }, orMatch: { match: { kind: 'exact', catalogSlug: 'bicho' } } }] }] };
+    expect(secciones('bicho', d).join('\n')).toContain('1 otro (o bicho)');
+  });
+
+  it('canon: líneas por slug y por nombre, sin repetir, con tope por cada una y recortadas por caracteres', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'ficha-'));
+    mkdirSync(join(raiz, 'docs', 'rpgtarkor'), { recursive: true });
+    mkdirSync(join(raiz, 'docs', 'canon-opencode'), { recursive: true });
+    writeFileSync(join(raiz, 'docs', 'rpgtarkor', 'a.md'), `${'`bicho-raro`\n'.repeat(12)}el Bicho Raro vive\n${'á'.repeat(300)} bicho raro\n`);
+    writeFileSync(join(raiz, 'docs', 'canon-opencode', 'b.md'), 'otro bicho-raro\n');
+    const l = canon('bicho-raro', 'Bicho Raro', raiz, 10);
+    expect(l.filter((x) => x.includes('`bicho-raro`'))).toHaveLength(10);
+    expect(l).toContain('docs/rpgtarkor/a.md:13:el Bicho Raro vive');
+    expect(l.some((x) => x.startsWith('docs/rpgtarkor/a.md:14:áá') && x.length === 160 && x.endsWith('…'))).toBe(true);
+    expect(l.some((x) => x.startsWith('docs/canon-opencode/b.md:1:'))).toBe(false); // más de 10 por slug: no entra
   });
 });
 

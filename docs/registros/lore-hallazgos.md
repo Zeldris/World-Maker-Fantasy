@@ -729,3 +729,27 @@ estaba alrededor:
 respeta los bonus de la receta. Lo fabricado en partidas existentes vuelve a los bonus de su ficha
 (por ejemplo, el Tocado de plumas). Las habilidades renombradas se renombran en la partida al
 cargarla.
+
+## 2026-10-25 — `QA-245`…`QA-248`, fase 3 antes de `main`: revisión de la retro
+
+**Arreglado:**
+- `ficha.ts` leía claves heredadas de los diccionarios: `ficha.sh constructor` se caía y `toString`
+  salía como encontrado. Ahora solo cuentan las claves propias.
+- Un slug parcial («hielag») encajaba por subcadena en los chunks y no sugería parecidos. Ahora
+  encajan por palabra entera.
+- `--canon` cortaba líneas con tildes a mitad de carácter (`cut` por bytes). Además, si había 20
+  líneas con el slug, se perdían las del nombre, y el catálogo se cargaba dos veces. La búsqueda
+  está ahora en `ficha.ts`: 10 líneas por el slug y 10 por el nombre, recortadas por caracteres.
+- Una receta con `orMatch` no nombraba la alternativa. `ficha.sh a b` se quedaba con `b` sin avisar.
+- `cobertura.py`: el choque de identificadores dejaba de verse al traer `main`. Ahora también falla
+  «DEFINIDAS DOS VECES» en el árbol, con `UX-6` como excepción conocida.
+- `cobertura.py`: la misma tarea traída a las dos ramas desde una tercera ya no cuenta como choque
+  (se compara el título).
+- `cobertura.py`: `--libre` ya no cuenta números sueltos de la prosa («`QA-12` y 400»).
+- Tests de fallo de `ficha.sh` con su motivo; el de `--libre` prueba que mira `origin/main`.
+
+**Leves, pendientes:**
+- `textos_en()` lanza un `git show` por archivo (unos 17 por pasada de `cobertura.py`). Uno solo
+  con `git cat-file --batch` lo abarataría.
+- Los parecidos de `ficha.sh` no proponen lugares ni facciones; esos slugs sí salen en «Otras
+  exportaciones».

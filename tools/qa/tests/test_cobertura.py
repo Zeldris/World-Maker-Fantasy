@@ -95,11 +95,16 @@ class MainRemoto(unittest.TestCase):
                               capture_output=True, text=True)
 
     def test_libre_con_numero_mas_alto_solo_en_main(self):
-        self.main_con('- **QA-1 · Uno**\n- **QA-9 · Nueve**\n')
+        self.main_con('- **QA-1 · Uno**\n- **QA-30 · Treinta**\n')
         escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-1 · Uno**\n- **QA-3 · Tres**\n')
         r = self.cob('--libre', 'QA')
-        self.assertEqual((r.returncode, r.stdout.strip()), (0, 'QA-21'), r.stderr)  # QA-20 se menciona en el mapa
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, 'QA-31'), r.stderr)  # el árbol solo llega a QA-20 (mapa)
         self.assertEqual(self.cob('--libre', 'UX').stdout.strip(), 'UX-1')
+
+    def test_libre_no_cuenta_numeros_sueltos_de_la_prosa(self):
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-3 · Tres**: `QA-3` y 400 llamadas, `QA-3`, 2026\n')
+        self.git('init', '-q')
+        self.assertEqual(self.cob('--libre', 'QA').stdout.strip(), 'QA-21')
 
     def test_libre_sin_origin_main_avisa(self):
         escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-30 · Treinta**\n')
@@ -124,6 +129,19 @@ class MainRemoto(unittest.TestCase):
     def test_cambiar_el_titulo_de_una_tarea_de_main_no_choca(self):
         self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n', '- ~~**QA-1 · Uno, con otro título**~~ ✅\n')
         self.assertIn('ABIERTAS TAMBIÉN EN MAIN: []', self.cob().stdout)
+
+    def test_misma_tarea_traida_de_una_tercera_rama_no_choca(self):
+        self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n- ~~**QA-2 · Común**~~ ✅\n', '- **QA-1 · Uno**\n- **QA-2 · Común**\n')
+        self.assertIn('ABIERTAS TAMBIÉN EN MAIN: []', self.cob().stdout)
+
+    def test_tras_traer_main_con_las_dos_lineas_falla_por_definida_dos_veces(self):
+        self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n- **QA-2 · Voces**\n', '- **QA-1 · Uno**\n- **QA-2 · Lore**\n')
+        self.git('merge', '-q', '-m', 'trae main', 'origin/main', '-X', 'theirs')
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-1 · Uno**\n- **QA-2 · Voces**\n- **QA-2 · Lore**\n')
+        r = self.cob()
+        self.assertIn('ABIERTAS TAMBIÉN EN MAIN: []', r.stdout)
+        self.assertIn("DEFINIDAS DOS VECES: {'QA-2': [('roadmap-front.md', 2), ('roadmap-front.md', 3)]}", r.stdout)
+        self.assertEqual(r.returncode, 1)
 
     def test_tras_traer_main_no_choca(self):
         self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n- **QA-2 · Voces**\n', '- **QA-1 · Uno**\n- **QA-3 · Lore**\n')

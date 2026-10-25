@@ -2,10 +2,12 @@
  * QA-245: `ficha <slug>` — todo lo que el juego sabe de un slug, en una salida de texto compacta, para no
  * tener que hacer grep/sed sobre worldCatalog.ts (12.000+ líneas). Se lanza con `tools/qa/ficha.sh <slug>`.
  *   npx tsx src/scripts/ficha.ts <slug>            # la ficha (código 1 y 5 parecidos si no existe)
- *   npx tsx src/scripts/ficha.ts <slug> --nombre   # solo el nombre visible (lo usa `ficha.sh --canon`)
+ *   npx tsx src/scripts/ficha.ts <slug> --canon    # además, dónde lo nombra el canon (por slug y por nombre)
  * La lógica vive en funciones exportadas con `datos` inyectable (ficha.test.ts).
  */
-import { pathToFileURL } from 'node:url';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export interface FichaDatos {
   /** Exportaciones de worldCatalog.ts, por nombre. */
@@ -31,6 +33,10 @@ function arr(v: unknown): Array<Record<string, any>> {
 }
 function dic(v: unknown): Record<string, any> {
   return v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Set) ? (v as Record<string, any>) : {};
+}
+/** La clave propia de un diccionario: `constructor` o `toString` no son slugs. */
+function propia(o: Record<string, any>, k: string): any {
+  return Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined;
 }
 
 /** ¿Aparece el slug como valor de texto exacto (o clave) en cualquier parte de `v`? */
@@ -62,7 +68,7 @@ export function nombreVisible(slug: string, d: FichaDatos): string | null {
     const f = arr(c[k]).find((x) => x.slug === slug);
     if (f?.name) return String(f.name);
   }
-  const n = dic(c.harvestSourceDisplayName)[slug];
+  const n = propia(dic(c.harvestSourceDisplayName), slug);
   return typeof n === 'string' ? n : null;
 }
 
@@ -97,10 +103,10 @@ export function secciones(slug: string, d: FichaDatos): string[] {
     out.push(`# Se obtiene de (${comoResultado.length})\n${comoResultado.map((y) => lineaYield(y, y.sourceSlug)).join('\n')}`);
   }
 
-  const region = dic(c.harvestSourceRegion)[slug];
-  const nombre = dic(c.harvestSourceDisplayName)[slug];
-  const desc = dic(c.harvestSourceDescriptions)[slug];
-  const alias = dic(c.harvestSourceAliases)[slug];
+  const region = propia(dic(c.harvestSourceRegion), slug);
+  const nombre = propia(dic(c.harvestSourceDisplayName), slug);
+  const desc = propia(dic(c.harvestSourceDescriptions), slug);
+  const alias = propia(dic(c.harvestSourceAliases), slug);
   if (region || nombre || desc || alias) {
     out.push(`# Enciclopedia (fuente)\n  region=${region ?? '—'} · nombre=${nombre ?? '—'}${alias ? ` · alias=${(alias as string[]).join('|')}` : ''}${desc ? `\n  ${recortar(desc)}` : ''}`);
   }
@@ -113,7 +119,8 @@ export function secciones(slug: string, d: FichaDatos): string[] {
   const fabrican = d.recetas.filter((r) => r.resultCatalogSlug === slug);
   const usan = d.recetas.filter((r) => arr(r.ingredients).some((i) => [i.match, i.orMatch?.match].some((m) => m?.kind === 'exact' && m.catalogSlug === slug)));
   if (fabrican.length || usan.length) {
-    const l = (r: Record<string, any>) => `  ${r.key}: ${arr(r.ingredients).map((i) => `${i.cantidad} ${i.match?.catalogSlug ?? `${i.match?.category}*`}`).join(' + ')} → ${r.resultCantidad ?? 1} ${r.resultName}${r.location ? ` @${[r.location].flat().join('|')}` : ''}`;
+    const m = (x: Record<string, any> | undefined) => x?.catalogSlug ?? `${x?.category}*`;
+    const l = (r: Record<string, any>) => `  ${r.key}: ${arr(r.ingredients).map((i) => `${i.cantidad} ${m(i.match)}${i.orMatch ? ` (o ${m(i.orMatch.match)})` : ''}`).join(' + ')} → ${r.resultCantidad ?? 1} ${r.resultName}${r.location ? ` @${[r.location].flat().join('|')}` : ''}`;
     if (fabrican.length) out.push(`# Recetas que lo fabrican (${fabrican.length})\n${fabrican.map(l).join('\n')}`);
     if (usan.length) out.push(`# Recetas que lo usan (${usan.length})\n${usan.map(l).join('\n')}`);
   }
@@ -184,6 +191,31 @@ export function ficha(slug: string, d: FichaDatos): { texto: string; encontrado:
   return { texto: `No hay nada de «${slug}». ¿Quizá?\n${parecidos(slug, slugsConocidos(d)).map((x) => `  ${x}`).join('\n')}`, encontrado: false };
 }
 
+const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const CARPETAS_CANON = ['docs/rpgtarkor', 'docs/canon-opencode'];
+
+function mdBajo(dir: string): string[] {
+  let entradas;
+  try {
+    entradas = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entradas.sort((a, b) => a.name.localeCompare(b.name)).flatMap((e) => (e.isDirectory() ? mdBajo(join(dir, e.name)) : e.name.endsWith('.md') ? [join(dir, e.name)] : []));
+}
+
+/** Dónde nombra el canon el slug y dónde su nombre visible: hasta `max` líneas de cada, sin repetir, recortadas. */
+export function canon(slug: string, nombre: string | null, raiz = RAIZ, max = 10): string[] {
+  const lineas = CARPETAS_CANON.flatMap((c) => mdBajo(join(raiz, c))).flatMap((f) =>
+    readFileSync(f, 'utf8').split('\n').map((texto, i) => ({ donde: `${relative(raiz, f)}:${i + 1}`, texto })),
+  );
+  const n = nombre?.toLowerCase();
+  const porSlug = lineas.filter((l) => l.texto.includes(slug)).slice(0, max);
+  const vistas = new Set(porSlug.map((l) => l.donde));
+  const porNombre = n ? lineas.filter((l) => !vistas.has(l.donde) && l.texto.toLowerCase().includes(n)).slice(0, max) : [];
+  return [...porSlug, ...porNombre].map((l) => recortar(`${l.donde}:${l.texto}`, 160));
+}
+
 export async function cargarDatos(): Promise<FichaDatos> {
   const catalogo = (await import('./worldCatalog.js')) as unknown as Record<string, unknown>;
   const { worldPopulations } = await import('./worldPopulation.js');
@@ -196,17 +228,13 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const slug = args.find((a) => !a.startsWith('--'));
   if (!slug) {
-    console.error('uso: ficha.ts <slug> [--nombre]');
+    console.error('uso: ficha.ts <slug> [--canon]');
     process.exit(2);
   }
   const d = await cargarDatos();
-  if (args.includes('--nombre')) {
-    const n = nombreVisible(slug, d);
-    if (n) console.log(n);
-    return;
-  }
   const r = ficha(slug, d);
   console.log(r.texto);
+  if (args.includes('--canon')) console.log(`# Canon (${CARPETAS_CANON.join(', ')})\n${canon(slug, nombreVisible(slug, d)).join('\n')}`);
   process.exit(r.encontrado ? 0 : 1);
 }
 

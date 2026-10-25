@@ -2,8 +2,8 @@
 
 **Estado:** aprobada entera por la usuaria (2026-10-25) y aplicada en la rama:
 - 1 → `QA-245` (`tools/qa/ficha.sh`);
-- 2 → `QA-246` (`cobertura.py --libre` y «ABIERTAS TAMBIÉN EN MAIN», que compara con la base común y no con el
-  título, para no fallar cuando una rama cambia el título de una tarea de `main`);
+- 2 → `QA-246` (`cobertura.py --libre`, «ABIERTAS TAMBIÉN EN MAIN», que mira lo nuevo en `main` desde la base
+  común con otro título, y «DEFINIDAS DOS VECES», que lo ve también después de traer `main`);
 - 3 → `QA-247` (`ampliar-lore.md` § 0.5);
 - 4 → `QA-248` (sección «Enciclopedia y lore» de `docs/mapa-agente.md`).
 
