@@ -627,3 +627,53 @@ Aplicado con el sí de la usuaria.
 - 26 descripciones de lugares (Meseta del Orden, Ciénaga Troncal, El Margen Silencioso) acababan en «Fuera del núcleo jugable actual.», a veces con «Gorhorn no ha estado aquí» o «Sin conexión previa con Gorhorn». Son notas de diseño y la regla P35 (`QA-27`) ya las prohíbe en texto visible. Se quitan. El aviso para el narrador sigue en `loreChunks.ts`.
 - «el primer lugar del núcleo jugable desde el que…» (Cresta volcánica) → «el primer lugar de las Llanuras desde el que…», también en su chunk.
 - Por qué se coló: el test de P35 solo miraba la línea `description:`, y el texto empieza en la línea siguiente. `catalogoSinNotasInternas.test.ts` ahora recorre los datos exportados del catálogo. Falla sin el arreglo (`rojo-sin-arreglo` OK).
+
+## 2026-10-25 — `QA-240`, bloque 4: lugares, facciones, fauna y flora
+
+Aplicado con el sí de la usuaria («11 plantas sin nombre, Margen: tres errores, Ortografía, Datos sueltos»,
+«Poblado Jeyselt», «Ufag, Gisot, Jorer: PRINCIPAL», «Historia: tarea aparte»).
+
+**Fauna y flora:**
+- **Grave:** 11 fuentes de recolección del Margen, la Ciénaga y Cristal Helado se veían en la Enciclopedia con
+  el slug y la ficha vacía (Musgo Callado, Veldria Hueca, Resina de Veldria, Flor de Víspera, Cántaro de Hoja,
+  Carnosa de Tocón, Bulbo de Turbera, Velo de Charca, Herrumbrera, Liquen Escarcha, Holdo). Ahora tienen nombre,
+  descripción sacada del canon y su familia de flora. El Osario de la Manada, como fuente de hueso, se llama
+  «Costillas de la Gargantúa». Test: `floraConFicha.test.ts` (falla sin el arreglo).
+- Cornante y Sombra de Kroj tenían el mismo rendimiento repetido. Se queda una fila de cada uno. El test lo
+  comprueba para todo el catálogo.
+- Erratas en cinco habilidades de fauna. «Plumaje ferreo» pasa a «Plumaje férreo», con renombre en
+  `HABILIDADES_RENOMBRADAS` por si alguna partida lo guarda.
+- Canon: fuera las marcas «pendiente de código» de la fauna y la flora que ya están en el juego (Margen,
+  Ciénaga, Cristal Helado) y de los vecinos de Hashma. La Gargantúa de Ceniza pasa a CAUTELOSO también en el
+  canon: el juego ya lo era desde el 2026-08-23.
+
+**Lugares:**
+- El Margen Silencioso: la frontera con las Llanuras es la norte, no la oeste. Del Refugio sin Nombre salen
+  los correos que la Concordia de Hierro usa; antes decía que «se infiltran» en ella. El Claro de la Manada
+  cuenta que hoy está arrasado, como dice el canon.
+- **Jeyselt** es el poblado y **Keseg Prisilke** el clan que lo habita. «Fin Susurrado» es el nombre del
+  poblado en lengua común, tomado de su clan. El exterior se llamaba «Conclave Fin Susurrado - Keseg
+  Prisilke», con un «Conclave» que no salía en el canon, y el interior pasa a «Salón de Jeyselt». Los
+  alias antiguos se conservan. También cambian `cienaga-troncal.md`, que lo contaba al revés,
+  `lenguas-helek.md` y el chunk de Keseg Prisilke.
+- Ortografía: Marismas de Lodo Negro, La Veta Helada, La Red Profunda Final, El Lago Cristalice, Túneles
+  Musgosos y Raíces Madre Fango. Las once `kind: 'region'` se normalizan a «región» (el Cronista ya aceptaba
+  las dos). «Puesto Rabioso del Márgen» pasa a «del Margen» en el juego y en el canon.
+- La Playa de Ceniza Blanca dice ya que es puesto avanzado Serhu, con su Embarcadero de pesca. Silh Makut
+  recibe el alias «el cerco de los pilotes».
+
+**Facciones, personajes e historia:**
+- Nueva relación inicial Helsig ↔ Goshg con presión 30, que da un tratado comercial: la Senda del Sílice.
+  El test daba esa pareja por NEUTRAL solo porque no tenía fila.
+- Ufag Ketg, Gisot Ketg y Jorer Susig pasan a PRINCIPAL: tienen nombre propio, igual que Tirag Susig.
+- Gorhorn conserva «domar»: es Cazador y se especializará como Domador, así que podrá domar desde el nivel 10.
+  Queda apuntado en `personajes.md`.
+- `razas.md`: erratas de las filas Goirntes, Kalisar, Nabieus y Faerus, sin cambiar lo que dicen.
+- Historia: fuera «Fecha provisional.» de dos entradas visibles. Las entradas que faltan van a la tarea
+  `QA-241`.
+
+**Pendiente de este bloque (leve):**
+- Los Goshg no tienen edificios, ni Keseg Sael ni los Goirntes tienen tablones (también falta en el canon).
+- El Ferike no da hueso ni carne.
+- Sin revisar contra el canon: la fauna de la Ciénaga, de Cristal Helado y de la Meseta.
+- Las propuestas de traducción de elementos de facción (Nabieus, Faerus, orcos) esperan el sí de la usuaria.

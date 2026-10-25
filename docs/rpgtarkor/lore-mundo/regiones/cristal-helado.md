@@ -120,8 +120,6 @@ sobre todo el Clan Helsig: el filo de hielo sílice no se forja, se talla.
 
 ## Fauna y flora
 
-Pendientes de código.
-
 ### Hielaga
 *Bestiones · nivel 1-4 · CAUTELOSO · La Veta Helada y laderas.*
 
@@ -150,7 +148,7 @@ entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.
 **Recurso:** Liquen Escarcha, t1, alimento de emergencia.
 
 ### Escarchín
-*Nadantes · nivel 1-2 · INOFENSIVO · ACUATICO · El Lago Cristalice · pendiente de código.*
+*Nadantes · nivel 1-2 · INOFENSIVO · ACUATICO · El Lago Cristalice.*
 
 Pez de 20-35 cm, casi transparente, que vive bajo el hielo del lago en agua a punto de congelarse. Su
 sangre lleva sustancias que le impiden cristalizar (como ciertos peces reales de aguas polares). Se
@@ -188,6 +186,8 @@ mueve despacio y se pesca por agujeros en el hielo con sedal de tendón.
   `flora-fauna.md`).
 - 2026-09-27 (pasada de conexión): primera fauna y flora de la región (Hielaga, Nievón, Liquen Escarcha) y sección de conexiones (Senda del Sílice, frente norte del muro de obsidiana).
 - 2026-09-27 (segunda pasada): el Escarchín y la pesca de invierno del Lago Cristalice.
+- 2026-10-25 (QA-240): la fauna y la flora de la región ya están en el juego; se quitan las marcas
+  «pendiente de código».
 
 ---
 

@@ -9,7 +9,7 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Corredor de Cauce | BESTIONES | 1-2 | INOFENSIVO | toda la región |
 | Corretolvas | ZANCUDOS | 1 | INOFENSIVO | toda la región |
 | Cruzavientos | CORVENES | 5-10 | AGRESIVO | Pilares Rotos |
-| Gargantúa de Ceniza | BESTIONES | 6-12 | AGRESIVO | toda la región |
+| Gargantúa de Ceniza | BESTIONES | 6-12 | CAUTELOSO | toda la región |
 | Múrgol | BESTIONES | 1-5 | INOFENSIVO | toda la región |
 | Rondador de Brasas | ACECHANTES | 2-6 | AGRESIVO | Filo de las Brasas |
 | Salamandra de Escoria | MUDOS_SALVAJE | 3-4 | CAUTELOSO | Filo de las Brasas |

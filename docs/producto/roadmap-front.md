@@ -1612,6 +1612,7 @@ Retro de la difusión (usuaria, 2026-10-25; [`retro-2026-10-25-difusion.md`](../
 
 Lore de la enciclopedia (usuaria, 2026-10-25, rama `claude/lore-enciclopedia`):
 - **QA-240 · Asentar el lore de la enciclopedia** 🚧 en curso: auditar cada sección (fauna y flora, NPC, razas y personajes, lugares, facciones e historia, objetos y recetas, clases, combate y reputación) contra el canon de `docs/rpgtarkor/`; cada arreglo, propuesto y aplicado solo con el sí de la usuaria, y apuntado en [`lore-hallazgos.md`](../registros/lore-hallazgos.md). **M**
+- **QA-241 · La historia de la enciclopedia, completa**: hoy tiene 7 entradas y todas cuelgan de un documento. Faltan los hechos de la cronología sin documento: el Estallido (~1.000), el nacimiento de los orcos (2.000), El Borde (Karo'sael), el Golpe de Ketg (~2.850), la Mesa del Lazo (~2.855), la Senda del Sílice (~3.000-3.500), la Purga Silenciosa (~3.650), el Pacto del Umbral, la Guerra de la Isla Cambiante (~3.900) y El Detonante (~4.005-4.008). Hace falta que una entrada pueda no tener documento, y que cada texto salga del canon con el sí de la usuaria (salió del bloque 4 de `QA-240`). **M**
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

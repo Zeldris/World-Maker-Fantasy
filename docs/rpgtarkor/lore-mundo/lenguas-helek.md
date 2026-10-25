@@ -96,7 +96,9 @@
   no significa "Clan" en sentido literal, es que los Nabieus nombran a sus propios clanes como
   "Fin de [algo]" — el final de una huida, el final de un silencio — nunca con una palabra genérica
   de "clan" como hacen los orcos con `Terk'ikar`. Ningún clan Nabieus comparte la misma raíz de
-  nombre por diseño, cada uno es un final distinto.
+  nombre por diseño, cada uno es un final distinto. **Jeyselt** es el poblado y **Keseg Prisilke** el
+  clan que lo habita; en lengua común el poblado se llama «Fin Susurrado», el nombre de su clan
+  (2026-10-25, `QA-240`).
     . Diccionario:
         . `Keseg*`  - **Fin** *(raíz para nombrar clanes — "el fin de [algo]", nunca "clan" en genérico)*
         . `Prisilke`  - **Susurrado**

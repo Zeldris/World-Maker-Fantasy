@@ -91,5 +91,5 @@ Imán · Roca de Llanura Roja · Mena de hierro (la peor de Helek Sirik).
 - Pocas especies nocturnas fuera de la Hondonada y las Agujas.
 - Ninguna fauna ni flora propia en El Laberinto de Cañones, La Grieta Cantora, El Oasis, Las Pozas
   de Marea ni La Desembocadura Callada.
-- El Puesto Rabioso del Márgen solo existe como rótulo del mapa.
+- El Puesto Rabioso del Margen solo existe como rótulo del mapa.
 - Trabajadores de Reino (PLANTILLA) por oficio: diseñados, sin crear.

@@ -105,7 +105,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'cruce',
     description:
-      'El punto donde el camino que viene de la Meseta del Orden se bifurca en la llanura — zona de paso habitual de patrullas de la Concordia de Hierro. Se asienta en una muesca de la frontera donde El Margen Silencioso se adentra en la llanura: mirando al sur, ya se distingue el Puesto Rabioso del Márgen al otro lado.',
+      'El punto donde el camino que viene de la Meseta del Orden se bifurca en la llanura — zona de paso habitual de patrullas de la Concordia de Hierro. Se asienta en una muesca de la frontera donde El Margen Silencioso se adentra en la llanura: mirando al sur, ya se distingue el Puesto Rabioso del Margen al otro lado.',
     aliases: ['el cruce de las cenizas'],
     x: 0,
     y: -18,
@@ -268,7 +268,7 @@ export const locations: LocationInput[] = [
     slug: 'oasis-de-chudos-rojos',
     name: 'El Oasis de Chudos Rojos',
     region: 'Las Llanuras del Viento Rojo',
-    kind: 'punto de agua y vegetacion',
+    kind: 'punto de agua y vegetación',
     description:
       'Agua en superficie de verdad, alimentada por la misma corriente subterránea que sigue Los Manaderos — un punto verde real en medio del polvo rojo, disputado entre clanes, fauna y cualquiera que necesite descansar de la travesía.',
     aliases: ['el oasis de chudos rojos', 'oasis de chudos rojos'],
@@ -296,7 +296,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'costa',
     description:
-      'Franja de arena clara entre dos brazos bajos de roca — la zona costera más accesible y menos hostil de toda la región, el único punto donde el mar se alcanza y se usa sin escalar ni cruzar marisma.',
+      'Franja de arena clara entre dos brazos bajos de roca, en el tramo norte de la costa, y puesto avanzado del Clan Serhu, con su Embarcadero de pesca. Es la zona costera más accesible y menos hostil de toda la región: el único punto donde el mar se alcanza y se usa sin escalar ni cruzar marisma.',
     aliases: ['playa de ceniza blanca', 'la playa de ceniza blanca'],
     x: -20,
     y: 22,
@@ -619,34 +619,34 @@ export const locations: LocationInput[] = [
     slug: 'veta-helada',
     name: 'La Veta Helada',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
-      "Region de tundra congelada, con grandes yacimientos de hielo sílice en las profundidades del hielo, amplia zona de roca negra oscura cubierta de nieve y amplios lagos congelados con grietas que deja ver en el fondo el brillo del hielo sílice. La zona es rica en minerales y fauna adaptada al frío extremo, pero pobre en vegetación.",
+      "Región de tundra congelada, con grandes yacimientos de hielo sílice en las profundidades del hielo, una amplia zona de roca negra cubierta de nieve y lagos helados cuyas grietas dejan ver en el fondo el brillo del hielo sílice. La zona es rica en minerales y fauna adaptada al frío extremo, pero pobre en vegetación.",
     aliases: ['veta helada'],
   },
   {
     slug: 'red-profunda-final',
     name: 'La Red Profunda Final',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
-      "Red de tuneles que recorre la parte norte de Cristal Helado, las cuales van por debajo de las grandes montañas. Creados antiguamente sin saber exactamente quien los creo. Actualmente es una zona casi inexplorada con vegetación y fauna adaptada a la oscuridad y el frio extremo. La zona es rica en minerales pero pocas veces alguien se aventura a explorarla por el peligro que representa. De ahi el nombre de la zona, ya que se dice que quien entra es para ver su final.",
+      "Red de túneles que recorre el norte de Cristal Helado por debajo de las grandes montañas. Se excavaron hace mucho y nadie sabe quién lo hizo. Hoy es una zona casi inexplorada, con vegetación y fauna adaptadas a la oscuridad y al frío extremo. Es rica en minerales, pero pocos se aventuran en ella por el peligro que encierra. De ahí su nombre: se dice que quien entra va a ver su final.",
     aliases: ['la red profunda final'],
   },
   {
     slug: 'lago-cristalice',
     name: 'El Lago Cristalice',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
-      "Lago congelado que deja ver en el fondo una veta gigante de hielo sílice anclada en las profundidades del lago creando asi un efecto de luz en las noches oscuras reflejando el brillo del cielo. La zona es rica en hielo silice.",
+      "Lago helado que deja ver en el fondo una veta gigante de hielo sílice, anclada en sus profundidades, que en las noches oscuras devuelve el brillo del cielo. La zona es rica en hielo sílice.",
     aliases: ['lago cristalice'],
   },
   {
     slug: 'pico-escarcha',
     name: 'El Pico Escarcha',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "La cumbre más alta de la cordillera, siempre cubierta de una capa de escarcha que nunca llega a derretirse del todo ni en los días más templados. Desde su ladera se ve toda La Veta Helada extenderse hacia el sur — los pocos que suben cuentan que el viento corta como una hoja y que el propio hielo sílice de las profundidades se nota crujir bajo las botas.",
     aliases: ['pico escarcha'],
@@ -657,7 +657,7 @@ export const locations: LocationInput[] = [
     // el propio slug ya decía 'ocaso' correctamente; el nombre y el alias no coincidían con él.
     name: 'El Pico Ocaso Negro',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "Roca negra desnuda, sin apenas nieve que se le pegue — al ponerse el sol, la piedra oscura absorbe la última luz y la cumbre entera parece arder un instante antes de apagarse del todo. Los orcos del Clan Helsig evitan acercarse tras el ocaso; dicen que es entonces cuando la montaña 'respira'.",
     aliases: ['pico ocaso negro', 'pico ocason negro'],
@@ -666,7 +666,7 @@ export const locations: LocationInput[] = [
     slug: 'pico-tundra-negra',
     name: 'El Pico Tundra Negra',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "Vigía de piedra oscura sobre la propia Tundra Negra Refleja, más bajo que sus vecinos pero más escarpado — sus laderas de roca suelta hacen la subida traicionera incluso para cazadores expertos. Da nombre a toda la tundra que se extiende a sus pies.",
     aliases: ['pico tundra negra'],
@@ -675,7 +675,7 @@ export const locations: LocationInput[] = [
     slug: 'tundra-negra-refleja',
     name: 'La Tundra Negra Refleja',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "Llanura helada de roca volcánica oscura pulida por siglos de viento y hielo, tan lisa que en las noches despejadas devuelve el reflejo entero del cielo estrellado como si se caminara sobre un segundo firmamento. Traicionera bajo los pies — el hielo que cubre la roca negra es casi invisible hasta que ya se ha resbalado.",
     aliases: ['tundra negra refleja'],
@@ -684,7 +684,7 @@ export const locations: LocationInput[] = [
     slug: 'tundra-polvo-nocturno',
     name: 'La Tundra Polvo Nocturno',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "Extensión de nieve fina y ceniza volcánica arrastrada desde el Pico Ocaso Negro, que de noche se levanta con el viento en remolinos oscuros — de ahí el nombre. Respirar sin cubrirse la boca en esas noches deja la garganta áspera durante días; de día, en cambio, es tundra silenciosa y despejada como cualquier otra.",
     aliases: ['tundra polvo nocturno'],
@@ -693,7 +693,7 @@ export const locations: LocationInput[] = [
     slug: 'costa-celeste-agitada',
     name: 'La Costa Celeste Agitada',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "El límite norte de Cristal Helado, donde la tundra se rompe en acantilados sobre un mar de un azul intenso, casi antinatural, agitado por corrientes frías que nunca amainan del todo. Los témpanos que se desprenden arrastran vetas visibles de hielo sílice hasta mar adentro, brillando bajo la superficie como si el propio mar estuviera imantado.",
     aliases: ['costa celeste agitada'],
@@ -702,7 +702,7 @@ export const locations: LocationInput[] = [
     slug: 'cascada-cristal-tres-aguas',
     name: 'La Cascada Cristal Tres Aguas',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "Punto donde tres arroyos nacidos en el deshielo de otros tantos glaciares se juntan y caen juntos por un único salto de roca cubierta de escarcha permanente — de ahí el nombre. El agua, cargada de polvo de hielo sílice, cae con un brillo que no tiene ningún otro salto de agua de la región.",
     aliases: ['cascada cristal tres aguas'],
@@ -711,7 +711,7 @@ export const locations: LocationInput[] = [
     slug: 'desfiladeros-bruma',
     name: 'Los Desfiladeros de Bruma',
     region: 'Cristal Helado',
-    kind: 'region',
+    kind: 'región',
     description:
       "Red de gargantas estrechas entre paredes de roca helada, donde el aire frío que baja de los picos y el más templado de los valles se encuentran y generan una bruma espesa casi permanente, incluso en los días más claros. Fácil perder el rumbo ahí dentro sin algo que marque el camino — se dice que hasta los cazadores del Clan Helsig más experimentados evitan cruzarlos solos.",
     aliases: ['desfiladeros de bruma'],
@@ -728,7 +728,7 @@ export const locations: LocationInput[] = [
     kind: 'asentamiento',
     description:
       "Campamento del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra.",
-    aliases: ['silh makut', 'piel musgo', 'campamento del clan goshg'],
+    aliases: ['silh makut', 'piel musgo', 'campamento del clan goshg', 'el cerco de los pilotes'],
   },
   {
     slug: 'campamento-goshg-interior',
@@ -745,17 +745,19 @@ export const locations: LocationInput[] = [
   },
   {
     slug: 'conclave-keseg-prisilke',
-    name: 'Conclave Fin Susurrado - Keseg Prisilke',
+    // QA-240: el poblado es Jeyselt y Keseg Prisilke el clan que lo habita; «Fin Susurrado», el
+    // nombre en lengua común que el poblado toma de su clan. «Conclave» no salía en el canon.
+    name: 'Jeyselt',
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      'Poblado Nabieus en la explanada más pequeña del sur de la ciénaga, del conclave Keseg Prisilke — nombre en lengua común: Fin Susurrado. Cuerpos adaptados a vivir en las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.',
-    aliases: ['conclave fin susurrado', 'keseg prisilke'],
+      'Poblado del clan Nabieus Keseg Prisilke, en la explanada más pequeña del sur de la ciénaga. En lengua común se le llama Fin Susurrado, el nombre de su clan. Sus habitantes tienen cuerpos adaptados a las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.',
+    aliases: ['jeyselt', 'jeyselet', 'fin susurrado', 'keseg prisilke', 'conclave fin susurrado'],
   },
   {
     slug: 'conclave-keseg-prisilke-interior',
-    // Grafía fijada por Álvaro (2026-09-29): Jeyselt, igual que el poblado; "jeyselet" queda como alias.
-    name: 'Jeyselt',
+    // Grafía fijada por Álvaro (2026-09-29): Jeyselt; "jeyselet" queda como alias del poblado.
+    name: 'Salón de Jeyselt',
     region: 'Ciénaga Troncal',
     // Fix real (2026-09-13, auditoría de lore Helek) — `kind` corregido de 'asentamiento' a
     // 'interior' (mismo bug de copia-pega que `campamento-feg-tusha-interior` más abajo): un
@@ -763,8 +765,8 @@ export const locations: LocationInput[] = [
     // punto que su exterior (`conclave-keseg-prisilke`).
     kind: 'interior',
     description:
-      'Dentro de la empalizada de Keseg Prisilke se encuentra el salón de Jeyselt.',
-    aliases: ['jeyselt', 'jeyselet'],
+      'Dentro de la empalizada de Jeyselt se encuentra el salón del clan Keseg Prisilke.',
+    aliases: ['salón de jeyselt', 'salon de jeyselt'],
   },
   {
     slug: 'trepaderes-humededos',
@@ -783,30 +785,30 @@ export const locations: LocationInput[] = [
   },
   {
     slug: 'marismas-lodo-negro',
-    name: 'Marismas de Lodo negro',
+    name: 'Marismas de Lodo Negro',
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Marismas que sea crean de la mezcla de resina de Holdo (Arbol oscuro de resina negra) el agua y el fango gris. En la superficie acumulan los restos mas espesos de la resina formando una capa protectora y viscosa, bajo esta una red tuneles submarinos con el agua mas puro y cristalina de Berig.',
+      'Marismas que se forman de la mezcla del agua, el fango gris y la resina del Holdo, un árbol oscuro de resina negra. En la superficie se acumulan los restos más espesos de la resina, que forman una capa viscosa y protectora; bajo ella corre una red de túneles sumergidos con el agua más pura y cristalina de Berig.',
     aliases: ['marismas de lodo negro'],
   },
   {
     slug: 'tuneles-musgosos',
-    name: 'Tuneles Musgosos',
+    name: 'Túneles Musgosos',
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
       'Galerías secas bajo las raíces entrelazadas de los Trepadores Ocaso más viejos, tapizadas de musgo, por donde se cruza la Ciénaga sin tocar el agua. Los cazadores de Keseg Prisilke las conocen como nadie; en las crecidas, son el refugio de medio pantano.',
-    aliases: ['tuneles musgosos'],
+    aliases: ['tuneles musgosos', 'túneles musgosos'],
   },
   {
     slug: 'raices-madre-fango',
-    name: 'Raices Madre Fango',
+    name: 'Raíces Madre Fango',
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
       'El Trepador Ocaso más viejo de la Ciénaga, con unas raíces tan anchas que forman una isla firme y alta. Es el único suelo seco donde los Goshg pueden levantar sus piras: aquí queman a sus muertos y dejan sus tótems funerarios, colgados de las raíces.',
-    aliases: ['raices madre fango'],
+    aliases: ['raices madre fango', 'raíces madre fango'],
   },
   {
     slug: 'cumbre-bruma-negra',
@@ -873,7 +875,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'pasto estacional',
     description:
-      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntan para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera norte, ya en las Llanuras del Viento Rojo.',
+      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntaban para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Hoy está arrasado: la magia salvaje liberada tras la ruptura del sello lo devastó, la manada de Riko, que se reunía aquí, se rompió, y en los límites del Margen aparecieron criaturas mutadas que atacan a quien se acerca. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera norte, ya en las Llanuras del Viento Rojo.',
     aliases: ['claro de la manada', 'el claro', 'territorio faerus'],
   },
 
@@ -916,7 +918,7 @@ export const locations: LocationInput[] = [
       // con presencia hasta el borde de Ciénaga Troncal (vecina real, no una frontera cerrada);
       // los Faerus ocupan el resto — la mayor parte de la región — con puestos avanzados que
       // cruzan algo la frontera norte hacia las Llanuras.
-      'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de las tierras salvajes del norte — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera oeste con las Llanuras del Viento Rojo.',
+      'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de las tierras salvajes del norte — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera norte con las Llanuras del Viento Rojo.',
     aliases: ['el margen silencioso'],
   },
 
@@ -926,7 +928,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'refugio',
     description:
-      'El enclave Nabieus más estable del Margen Silencioso, en la mitad oriental de la región — no tiene nombre propio en ninguna lengua ajena a ellos, y así lo prefieren: cuanto menos se hable de él, más dura. Desde aquí parten los mensajeros y correos que se infiltran en la Concordia de Hierro.',
+      'El enclave Nabieus más estable del Margen Silencioso, en la mitad oriental de la región — no tiene nombre propio en ninguna lengua ajena a ellos, y así lo prefieren: cuanto menos se hable de él, más dura. Desde aquí parten los mensajeros y correos que la Concordia de Hierro usa.',
     aliases: ['refugio sin nombre', 'el refugio', 'enclave nabieus'],
   },
 
@@ -1492,7 +1494,7 @@ export const fauna: NpcInput[] = [
     faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
       { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
-      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rapidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rápidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
       { icon: '🐾', name: 'Instinto Solitario', description: 'En cuanto se queda solo, se retira a toda velocidad — casi imposible rematarlo en la huida.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['AGUANTE'] },
     ],
   },
@@ -1530,9 +1532,9 @@ export const fauna: NpcInput[] = [
     // sobre su presa" desde altura, texto literal de su propia habilidad de ataque.
     faunaCategoria: 'CORVENES',
     habilidadesRaciales: [
-      { icon: '🐦', name: 'Plumaje ferreo', description: 'Aprrieta los musculos para protegerse de los ataques formando una malla resistente con su plumaje.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🐦', name: 'Plumaje férreo', description: 'Aprieta los músculos para protegerse de los ataques formando una malla resistente con su plumaje.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 4, effects: ['AGUANTE'] },
       { icon: '🦅', name: 'Vuelo Embestida', description: 'Alza el vuelo, al obtener cierta altura cae en picado sobre su presa', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
-      { icon: '🦴', name: 'Carroña', description: 'Busca rapidamente un cadáver para alimentarse y recuperar un poco de salud', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['RECUPERACION'] },
+      { icon: '🦴', name: 'Carroña', description: 'Busca rápidamente un cadáver para alimentarse y recuperar un poco de salud', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['RECUPERACION'] },
     ],
   },
 
@@ -1632,7 +1634,7 @@ export const fauna: NpcInput[] = [
     faunaCategoria: 'ZANCUDOS',
     habilidadesRaciales: [
       { icon: '💥', name: 'Picoteo Incesante', description: 'En un ataque agil, ejecuta continuos picotazos en las partes mas debil de su agresor. Busca atacar las partes mas blandas y desprotegidas.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
-      { icon: '🐦', name: 'Vuelo en Bandada', description: 'Se coloca en posición de carrera y sin que te puedas dar cuenta huye del combate desapareciendo entre las tornmentas de arena roja.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '🐦', name: 'Vuelo en Bandada', description: 'Se coloca en posición de carrera y antes de que te des cuenta huye del combate y desaparece entre las tormentas de arena roja.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1682,8 +1684,8 @@ export const fauna: NpcInput[] = [
     habilidadesRaciales: [
       { icon: '🌬️', name: 'Vuelo Errático', description: 'Despliega sus alas rígidas y se mueve rapido haciendo movimientos impredecibles siendo muy dificil alcanzarlo', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
       { icon: '💥', name: 'Embestida Aérea', description: 'Carga con todo su peso desde el aire embistiendo con su afilado plumaje a sus enemigos', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
-      { icon: '🩸', name: 'Garras Sangrantes', description: 'Busca tus puntos débiles y los ataca con sus garras afiladas bucando desgarrar tendones.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
-      { icon: '🌋', name: 'Coraza Ceniza', description: 'Colaca sus alas al frente creando un escudo de plumaje solido que le protege casi de cualquier ataque.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 28, effects: ['AGUANTE'] },
+      { icon: '🩸', name: 'Garras Sangrantes', description: 'Busca tus puntos débiles y los ataca con sus garras afiladas buscando desgarrar tendones.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '🌋', name: 'Coraza Ceniza', description: 'Coloca sus alas al frente creando un escudo de plumaje sólido que le protege casi de cualquier ataque.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 28, effects: ['AGUANTE'] },
     ],
   },
 
@@ -3254,7 +3256,8 @@ export const npcs: NpcInput[] = [
   {
     slug: 'ufag-ketg',
     name: 'Ufag Ketg',
-    kind: 'PLANTILLA',
+    // QA-240: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
+    kind: 'PRINCIPAL',
     aliases: ['ufag ketg'],
     faction: 'Clan Serhu',
     genero: 'F',
@@ -3277,7 +3280,8 @@ export const npcs: NpcInput[] = [
   {
     slug: 'gisot-ketg',
     name: 'Gisot Ketg',
-    kind: 'PLANTILLA',
+    // QA-240: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
+    kind: 'PRINCIPAL',
     aliases: ['gisot ketg'],
     faction: 'Clan Serhu',
     genero: 'M',
@@ -3300,7 +3304,8 @@ export const npcs: NpcInput[] = [
   {
     slug: 'jorer-susig',
     name: 'Jorer Susig',
-    kind: 'PLANTILLA',
+    // QA-240: nombre propio, no una plantilla genérica (mismo criterio que Tirag Susig).
+    kind: 'PRINCIPAL',
     aliases: ['jorer susig'],
     faction: 'Clan Serhu',
     genero: 'M',
@@ -3377,7 +3382,7 @@ export const npcs: NpcInput[] = [
     faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
       { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
-      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rapidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rápidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
       { icon: '🦴', name: 'Adiestrado para Quedarse', description: 'A diferencia de su especie, nunca huye solo — entrenado para no abandonar a Tirag pase lo que pase.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['AGUANTE'] },
     ],
   },
@@ -9161,7 +9166,7 @@ export const factionRelationsIniciales: FactionRelationInput[] = [
   { source: 'Clan Serhu', target: 'Clan Helsig', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Helsig' },
   { source: 'Clan Serhu', target: 'Clan Goshg', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Goshg' },
   { source: 'Concordia de Hierro', target: 'Clan Helsig', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Helsig' },
-  { source: 'Concordia de Hierro', target: 'Clan Goshg', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Goshg' },
+  { source: 'Concordia de Hierro', target: 'Clan Goshg', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Goshg' },  { source: 'Clan Helsig', target: 'Clan Goshg', presion: 30, motivo: 'QA-240: la Senda del Sílice, hielo sílice por madera y resina' },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -9240,7 +9245,7 @@ export const historiaEntries: HistoriaEntryInput[] = [
     title: 'El Pacto de la Primera Pieza',
     era: 'comun',
     year: 2300,
-    text: 'Un colmillo de Canizor con dos marcas, un zarpazo Maktor y una muesca Faerus, guardado en el Jakut Ger. Los Faerus no escriben; esto es lo más parecido que tienen a un acta. Una partida de caza Maktor y una manada Faerus de la frontera sur de las Llanuras abatieron a la vez el mismo Canizor, y la cabecilla Maktor, de sangre de Tevya, ofreció a la manada la primera pieza (Vash\'grath). Para un Faerus eso define quién es de la manada: el gesto se leyó como parentesco y no como comercio. La manada levantó un campamento fijo para seguir tratando con los Maktor, Kegi, origen del Feg Ger. Los Serhu no heredaron el pacto: por eso los Faerus comercian con cualquier orco pero solo confían en los Maktor. Fecha provisional.',
+    text: 'Un colmillo de Canizor con dos marcas, un zarpazo Maktor y una muesca Faerus, guardado en el Jakut Ger. Los Faerus no escriben; esto es lo más parecido que tienen a un acta. Una partida de caza Maktor y una manada Faerus de la frontera sur de las Llanuras abatieron a la vez el mismo Canizor, y la cabecilla Maktor, de sangre de Tevya, ofreció a la manada la primera pieza (Vash\'grath). Para un Faerus eso define quién es de la manada: el gesto se leyó como parentesco y no como comercio. La manada levantó un campamento fijo para seguir tratando con los Maktor, Kegi, origen del Feg Ger. Los Serhu no heredaron el pacto: por eso los Faerus comercian con cualquier orco pero solo confían en los Maktor.',
     documentoItemSlug: 'colmillo-canizor-dos-marcas',
   },
   {
@@ -9248,7 +9253,7 @@ export const historiaEntries: HistoriaEntryInput[] = [
     title: 'El Primer Edicto del Tributo',
     era: 'comun',
     year: 3600,
-    text: 'Un calco del Ord\'teandu (edicto) grabado en el obelisco de leyes de El Baluarte de Goirme, con el que empieza el Yugo de Hierro: tributo anual de mineral y contingentes de guerra obligatorios que cada clan entrega "en defensa del orden". Lo firmó la casta de Ketg en nombre de los clanes de las Llanuras; los grupos emigrados a Cristal Helado y a la Ciénaga quedaron obligados después por extensión, sin haber firmado nada. El texto sigue grabado y no dice "donde el mando decida": Los del Obelisco lo citan de memoria contra el uso actual de los contingentes orcos. Para un Goirnte el edicto nunca se derogó, solo se "reajustó". Fecha provisional.',
+    text: 'Un calco del Ord\'teandu (edicto) grabado en el obelisco de leyes de El Baluarte de Goirme, con el que empieza el Yugo de Hierro: tributo anual de mineral y contingentes de guerra obligatorios que cada clan entrega "en defensa del orden". Lo firmó la casta de Ketg en nombre de los clanes de las Llanuras; los grupos emigrados a Cristal Helado y a la Ciénaga quedaron obligados después por extensión, sin haber firmado nada. El texto sigue grabado y no dice "donde el mando decida": Los del Obelisco lo citan de memoria contra el uso actual de los contingentes orcos. Para un Goirnte el edicto nunca se derogó, solo se "reajustó".',
     documentoItemSlug: 'calco-edicto-tributo',
   },
 ];
@@ -9460,17 +9465,6 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'cardo-brujula',
     cantidad: 1,
-  },
-
-  // --- Cornante ---
-
-  {
-    sourceSlug: 'cornante',
-    sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA',
-    itemSlug: 'racion-carne',
-    cantidad: 3,
-    condicion: 'Solo en Ciénaga Troncal, cacería de grupo',
   },
 
   // --- Corredor de Cauce ---
@@ -10791,15 +10785,7 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'La Meseta del Orden — matar uno en una muralla está mal visto',
   },
 
-  // --- P-02: Sombra de Kroj, Hetris, Mekiosi, Vistue (El Margen Silencioso) ---
-  {
-    sourceSlug: 'sombra-de-kroj',
-    sourceCategory: 'fauna',
-    metodoObtencion: 'CAZA',
-    itemSlug: 'pluma-sombra-kroj',
-    cantidad: 1,
-    condicion: 'El Margen Silencioso',
-  },
+  // --- P-02: Hetris, Mekiosi, Vistue (El Margen Silencioso); la Sombra de Kroj ya estaba arriba ---
   {
     sourceSlug: 'hetris',
     sourceCategory: 'fauna',
@@ -11466,6 +11452,20 @@ export const harvestSourceDisplayName: Record<string, string> = {
   'verdileas-acuaticas': 'Verdileas Acuáticas',
   volcanita: 'Volcanita',
   yerreo: 'Yerreo',
+  // QA-240 (2026-10-25): flora del Margen, la Ciénaga y Cristal Helado, con el nombre de su ficha de
+  // canon. Sin entrada aquí la Enciclopedia enseñaba el slug («musgo-callado») como nombre.
+  'musgo-callado': 'Musgo Callado',
+  'veldria-hueca': 'Veldria Hueca',
+  'resina-veldria-fuente': 'Resina de Veldria',
+  'flor-de-vispera': 'Flor de Víspera',
+  'cantaro-de-hoja': 'Cántaro de Hoja',
+  'carnosa-de-tocon': 'Carnosa de Tocón',
+  'bulbo-de-turbera': 'Bulbo de Turbera',
+  'velo-de-charca': 'Velo de Charca',
+  herrumbrera: 'Herrumbrera',
+  'liquen-escarcha': 'Liquen Escarcha',
+  holdo: 'Holdo',
+  'osario-de-la-manada': 'Costillas de la Gargantúa',
 };
 
 /// Nombre real de una fuente (2026-08-15) — helper compartido para no repetir el mismo fallback
@@ -11580,6 +11580,32 @@ export const harvestSourceDescriptions: Record<string, string> = {
     'Mineral volcánico de El Filo de las Brasas, la veta más común de la zona.',
   yerreo:
     'Mineral con la apariencia del hierro pero de vetas rojas y brillos anaranjados, muy difícil de encontrar y en cantidades mínimas donde aparece, en La Hondonada del Eco.',
+  // QA-240 (2026-10-25): resumen de cada ficha de canon (margen-silencioso.md, cienaga-troncal.md,
+  // cristal-helado.md).
+  'musgo-callado':
+    'Musgo gris apagado que cubre troncos, ramas y suelo en todo el Margen Silencioso. Sus filamentos finísimos atrapan el sonido y lo apagan, como un fieltro a escala de bosque. Los Nabieus tapizan con él sus cámaras y los Faerus forran sus refugios de caza.',
+  'veldria-hueca':
+    'Conífera de madera negra con el corazón hueco. Sus raíces se enlazan con las de sus vecinas y la pared del tronco conduce la vibración de toda la red: un Nabieus que apoya la palma siente pasos a centenares de metros. Los Faerus no la talan y los Nabieus solo toman ramas caídas, porque talar una deja sordo un trozo de bosque.',
+  'resina-veldria-fuente':
+    'La resina oscura de la Veldria Hueca, que huele a lluvia. Sirve de pegamento y no cruje al secar.',
+  'flor-de-vispera':
+    'Planta baja de hojas gris plata cuyas flores gris perla solo se abren al atardecer y se cierran ante un movimiento brusco. Su aroma calma y ayuda a dormir, sin quitar el dolor. Los Faerus mastican un pétalo antes de dormir en territorio hostil.',
+  'cantaro-de-hoja':
+    'Arbusto de tallo central hueco que guarda el agua de lluvia que encauzan sus hojas anchas. En un bosque de charcas negras y estancadas, es la única agua limpia a mano.',
+  'carnosa-de-tocon':
+    'Seta carnosa en forma de embudo, gris azulada por fuera y beige por dentro, que crece sobre los tocones caídos de madera negra. Cruda es amarga; asada o en guiso sabe suave, a tierra. Es la comida del Brozán.',
+  'bulbo-de-turbera':
+    'Tubérculo de piel parda y pulpa blanca que crece en el fango de turba de las zonas llanas de la Ciénaga. Es el alimento base de Keseg Prisilke y de los Goshg cuando falla la caza; se come cocido, frito o seco al humo.',
+  'velo-de-charca':
+    'Láminas gelatinosas y translúcidas que cubren las charcas quietas bajo los Trepadores Ocaso. Se come en sopa y, aplicado fresco sobre una quemadura, enfría y protege: es la cura de campo de los Goshg, que se queman a menudo con la resina de sus antorchas.',
+  herrumbrera:
+    'Arbusto de tallos gruesos y corteza color óxido. Sus raíces sacan el hierro disuelto del fango y lo concentran en la corteza, que acaba hecha una costra de herrumbre. No da para una herrería, pero sí para puntas de lanza y clavos.',
+  'liquen-escarcha':
+    'Costra verde grisácea que crece unos milímetros al año sobre la roca que da al sol. Es lo único que comen las Hielagas en invierno, y los Helsig lo hierven en caldo en los años de hambre. Se raspa la mitad y se deja la otra para que vuelva.',
+  holdo:
+    'Árbol bajo y ancho, pariente del Trepador Ocaso pero sin vetas doradas, que solo crece en las Marismas de Lodo Negro. Su resina negra y pesada gotea al agua y flota, y sella los túneles sumergidos que guardan el agua más limpia de Berig. Los Goshg calafatean con ella sus canoas.',
+  'osario-de-la-manada':
+    'Las costillas de la Gargantúa de Ceniza que murió aquí hace décadas, blanqueadas por el viento. Se toman las placas y los fragmentos que se han soltado solos; nadie arranca hueso de la osamenta, que los orcos respetan. Es el único hueso de gargantúa que no pide una cacería ritual.',
 };
 
 /// Afinidad de terreno de cada fuente EXTRACCION/MINERIA/TALA (filtro por zona, ver `terrain.ts`)
@@ -11699,9 +11725,20 @@ export const harvestSourceFloraCategoria: Record<string, FloraCategoria> = {
   // algo imposible ya en su bio.
   'raiz-de-fuego': 'BROTES_SALVAJES', // acumula calor volcánico hasta el punto de inflamarse
   'cardo-brujula': 'BROTES_SALVAJES', // fibra imantada que siempre señala el mismo rumbo
-  // Trepador Ocaso (Ciénaga Troncal, fuera del núcleo jugable) queda sin asignar todavía — sin
-  // suficiente lore propio para decidir entre VELDRIAS (árbol con resina) y BROTES_SALVAJES (la
-  // resina de vetas doradas podría o no ser mágica) hasta que se repase esa región.
+  // QA-240 (2026-10-25): flora del Margen, la Ciénaga y Cristal Helado, con el género que da su
+  // ficha de canon.
+  'veldria-hueca': 'VELDRIAS',
+  'resina-veldria-fuente': 'VELDRIAS',
+  holdo: 'VELDRIAS',
+  'trepador-ocaso': 'VELDRIAS',
+  'cantaro-de-hoja': 'ZARCOS',
+  'bulbo-de-turbera': 'BULVIAS',
+  'velo-de-charca': 'MARELAS',
+  'musgo-callado': 'MUSCARIAS',
+  'liquen-escarcha': 'MUSCARIAS',
+  'flor-de-vispera': 'SALVIRAS',
+  'carnosa-de-tocon': 'FONGARES',
+  herrumbrera: 'VETRIAS',
 };
 
 /// Afinidad de hábitat de cada especie cazable (filtro por zona, ver `terrain.ts`) — leída de su
