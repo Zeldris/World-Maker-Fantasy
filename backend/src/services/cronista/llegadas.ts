@@ -34,7 +34,8 @@ type EntradaLlegada = { camasLibres: number; camasTotales?: number; comida: numb
 
 /// Puro: todos los requisitos de llegada con su estado (única fuente de los umbrales).
 export function requisitosDeLlegada(r: EntradaLlegada): RequisitoLlegada[] {
-  const cama = r.camasTotales != null ? `${Math.max(0, r.camasLibres)} libres de ${r.camasTotales}` : `${r.camasLibres} libres`;
+  const libres = Math.max(0, r.camasLibres);
+  const cama = `${libres} ${libres === 1 ? 'libre' : 'libres'}${r.camasTotales != null ? ` de ${r.camasTotales}` : ''}`;
   return [
     { clave: 'cama', nombre: 'Cama libre', cumple: r.camasLibres > 0, cifra: cama, motivo: 'No hay cama libre.' },
     { clave: 'comida', nombre: 'Comida', cumple: r.comida > 0, cifra: String(r.comida), motivo: 'No hay comida.' },
