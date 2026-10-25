@@ -1,21 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 /// P35 (QA-27): las bios y condiciones del catálogo se ven tal cual en la Enciclopedia y en las
 /// fichas de recurso. Las notas de diseño («fuera del núcleo jugable actual», «grafo v1»,
 /// «pendiente: el motor…») van en comentarios, nunca dentro del texto.
-const CAMPOS_VISIBLES = /^\s*(bio|description|condicion|personality|role):\s/;
+/// QA-240: se recorren los datos exportados, no las líneas del archivo — el texto de casi todas las
+/// descripciones empieza en la línea siguiente a `description:` y así se colaban.
+const CAMPOS_VISIBLES = new Set(['bio', 'description', 'condicion', 'personality', 'role']);
 const NOTAS_INTERNAS = /núcleo jugable|grafo v1|improvisársele números|pendiente:|\bel motor\b|sourceSlug/i;
 
+function camposConNota(valor: unknown, ruta: string, vistos: Set<unknown>, salida: string[]): void {
+  if (!valor || typeof valor !== 'object' || vistos.has(valor)) return;
+  vistos.add(valor);
+  for (const [clave, v] of Object.entries(valor)) {
+    if (typeof v === 'string') {
+      if (CAMPOS_VISIBLES.has(clave) && NOTAS_INTERNAS.test(v)) salida.push(`${ruta}.${clave}: ${v.slice(0, 120)}`);
+    } else {
+      camposConNota(v, `${ruta}.${clave}`, vistos, salida);
+    }
+  }
+}
+
 describe('catálogo sin notas internas a la vista (P35)', () => {
-  it('ningún campo visible de worldCatalog.ts lleva notas de diseño', () => {
-    const texto = readFileSync(fileURLToPath(new URL('./worldCatalog.ts', import.meta.url)), 'utf8');
-    const conNota = texto
-      .split('\n')
-      .map((linea, i) => ({ linea, n: i + 1 }))
-      .filter(({ linea }) => CAMPOS_VISIBLES.test(linea) && NOTAS_INTERNAS.test(linea))
-      .map(({ linea, n }) => `${n}: ${linea.trim().slice(0, 120)}`);
+  it('ningún campo visible de worldCatalog.ts lleva notas de diseño', async () => {
+    const catalogo = await import('./worldCatalog.js');
+    const conNota: string[] = [];
+    camposConNota(catalogo, 'worldCatalog', new Set(), conNota);
     expect(conNota).toEqual([]);
   });
 });

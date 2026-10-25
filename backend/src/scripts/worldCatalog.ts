@@ -118,7 +118,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'mirador',
     description:
-      'Una cresta de roca oscura al noreste de Los Restos de Maktor, donde la estepa empieza a ceder ante la tierra volcánica — el primer lugar del núcleo jugable desde el que los volcanes activos que solo se veían "a lo lejos" se distinguen de verdad, con su calima de calor y ceniza en el aire. Territorio real de la Salamandra de Escoria, que antes solo aparecía aquí como avanzadilla ocasional.',
+      'Una cresta de roca oscura al noreste de Los Restos de Maktor, donde la estepa empieza a ceder ante la tierra volcánica — el primer lugar de las Llanuras desde el que los volcanes activos que solo se veían "a lo lejos" se distinguen de verdad, con su calima de calor y ceniza en el aire. Territorio real de la Salamandra de Escoria, que antes solo aparecía aquí como avanzadilla ocasional.',
     aliases: ['el filo de las brasas'],
     x: 16,
     y: 31,
@@ -517,7 +517,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'asentamiento',
     description:
-      'La mayor de las ciudades-fortaleza Goirntes, sede de la Concordia de Hierro — muros de hierro negro pulido tallados con la misma simetría antinatural que el resto de la Meseta, y el obelisco de leyes más alto de todo Berig en su plaza central. Lleva el nombre de la Semilla que dio forma a su pueblo. Fuera del núcleo jugable actual.',
+      'La mayor de las ciudades-fortaleza Goirntes, sede de la Concordia de Hierro — muros de hierro negro pulido tallados con la misma simetría antinatural que el resto de la Meseta, y el obelisco de leyes más alto de todo Berig en su plaza central. Lleva el nombre de la Semilla que dio forma a su pueblo.',
     aliases: ['el baluarte', 'baluarte de goirme', 'baluarte', 'la capital goirnte'],
   },
 
@@ -531,7 +531,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'región',
     description:
-      'Desierto de piedra gris tallado con una simetría antinatural — obra del control de Goirme sobre sus hijos. Ciudades-fortaleza geométricas de piedra pulida y hierro negro, acueductos perfectos, leyes grabadas en obeliscos. El corazón de la Concordia de Hierro. Fuera del núcleo jugable actual — Gorhorn no ha estado aquí.',
+      'Desierto de piedra gris tallado con una simetría antinatural — obra del control de Goirme sobre sus hijos. Ciudades-fortaleza geométricas de piedra pulida y hierro negro, acueductos perfectos, leyes grabadas en obeliscos. El corazón de la Concordia de Hierro.',
     aliases: ['la meseta del orden'],
   },
 
@@ -545,7 +545,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'puesto de control',
     description:
-      'El puesto de control en el extremo sur del corredor costero occidental, donde el camino que bordea El Margen Silencioso entra en la Meseta del Orden. Toda columna de la Concordia que va o vuelve del Cruce de las Cenizas pasa por aquí — la otra puerta de las que siempre llegan en columna y por una sola. Una explanada de piedra gris pulida con tres caminos que se cruzan en ángulos exactos: el corredor costero, el que sube al Baluarte de Goirme y el que lleva a las forjas de la frontera norte. Un obelisco menor lleva los edictos de paso, y los inspectores anotan cada carga, cada nombre y cada hora — un registro de entrada sin su salida es un asunto inacabado, y se persigue. Una escuadra de doce y dos inspectores de la casta de ley lo guardan de forma permanente. Fuera del núcleo jugable actual.',
+      'El puesto de control en el extremo sur del corredor costero occidental, donde el camino que bordea El Margen Silencioso entra en la Meseta del Orden. Toda columna de la Concordia que va o vuelve del Cruce de las Cenizas pasa por aquí — la otra puerta de las que siempre llegan en columna y por una sola. Una explanada de piedra gris pulida con tres caminos que se cruzan en ángulos exactos: el corredor costero, el que sube al Baluarte de Goirme y el que lleva a las forjas de la frontera norte. Un obelisco menor lleva los edictos de paso, y los inspectores anotan cada carga, cada nombre y cada hora — un registro de entrada sin su salida es un asunto inacabado, y se persigue. Una escuadra de doce y dos inspectores de la casta de ley lo guardan de forma permanente.',
     aliases: ['el puesto del corredor', 'puesto del corredor'],
   },
   {
@@ -554,7 +554,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'cantera',
     description:
-      'La cantera y el taller de talla de donde sale cada obelisco de leyes de Berig, siempre de la misma veta que el primer obelisco del Baluarte de Goirme — un edicto grabado en otra piedra no se considera del todo válido, y ningún Goirnte sabría explicar por qué: simplemente, no está en su sitio. Galerías paralelas excavadas siguiendo los ejes de la Meseta; los bloques se cortan con herramientas de aleación de Hierba del Hierro y se pulen con arena y agua en surcos tallados en el suelo. Se trabaja en silencio y por turnos, y un obelisco a medio tallar nunca se abandona: si su talladora muere, otra lo termina con la misma herramienta. Un linaje de talladores de la casta de construcción, unos treinta activos, trabaja aquí de forma permanente. Fuera del núcleo jugable actual.',
+      'La cantera y el taller de talla de donde sale cada obelisco de leyes de Berig, siempre de la misma veta que el primer obelisco del Baluarte de Goirme — un edicto grabado en otra piedra no se considera del todo válido, y ningún Goirnte sabría explicar por qué: simplemente, no está en su sitio. Galerías paralelas excavadas siguiendo los ejes de la Meseta; los bloques se cortan con herramientas de aleación de Hierba del Hierro y se pulen con arena y agua en surcos tallados en el suelo. Se trabaja en silencio y por turnos, y un obelisco a medio tallar nunca se abandona: si su talladora muere, otra lo termina con la misma herramienta. Un linaje de talladores de la casta de construcción, unos treinta activos, trabaja aquí de forma permanente.',
     aliases: ['las canteras del eje', 'canteras del eje'],
   },
 
@@ -567,7 +567,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'asentamiento',
     description:
-      'La segunda ciudad-fortaleza de la Meseta del Orden, en el interior, entre los campos de Hierba del Hierro. Allí están las forjas mayores de la Concordia de Hierro, y de allí salen las aleaciones grises y las armas que cada mes suben al Clan Serhu. Como todas las ciudades Goirntes, tiene su propio obelisco de leyes (Vresk\'ord) en la plaza central. Fuera del núcleo jugable actual.',
+      'La segunda ciudad-fortaleza de la Meseta del Orden, en el interior, entre los campos de Hierba del Hierro. Allí están las forjas mayores de la Concordia de Hierro, y de allí salen las aleaciones grises y las armas que cada mes suben al Clan Serhu. Como todas las ciudades Goirntes, tiene su propio obelisco de leyes (Vresk\'ord) en la plaza central.',
     aliases: ['vresk hes'],
   },
   {
@@ -576,7 +576,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'asentamiento',
     description:
-      'La tercera ciudad-fortaleza de la Meseta del Orden, en la frontera norte, junto a El Margen Silencioso. Es la ciudad de los Goirntes de piel clara y ágiles que trabajan la madera; de aquí salen las cuadrillas de la tala del borde y las patrullas que protegen a los leñadores. Es la ciudad que más odia a los Faerus y la que más los teme. Fuera del núcleo jugable actual.',
+      'La tercera ciudad-fortaleza de la Meseta del Orden, en la frontera norte, junto a El Margen Silencioso. Es la ciudad de los Goirntes de piel clara y ágiles que trabajan la madera; de aquí salen las cuadrillas de la tala del borde y las patrullas que protegen a los leñadores. Es la ciudad que más odia a los Faerus y la que más los teme.',
     aliases: ['vresk tuh'],
   },
   {
@@ -585,7 +585,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'asentamiento',
     description:
-      'La cuarta ciudad-fortaleza de la Meseta del Orden, el puerto oriental. Recibe las balsas de madera del tributo que bajan por la Costa Corredor desde Ciénaga Troncal. Fuera del núcleo jugable actual.',
+      'La cuarta ciudad-fortaleza de la Meseta del Orden, el puerto oriental. Recibe las balsas de madera del tributo que bajan por la Costa Corredor desde Ciénaga Troncal.',
     aliases: ['vresk kei'],
   },
 
@@ -727,7 +727,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      "Campamento del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra. Fuera del núcleo jugable actual.",
+      "Campamento del Clan Goshg — empalizadas de madera oscura levantadas sobre pilotes por encima del agua, unidas por pasarelas y canoas. Aquí se reúnen las dos tribus Goshg en la estación de las crecidas. Hogar de la Terk'ikar Doshka, que gobierna la tribu, y su hermano menor, el Kort'ikar Dulgren, que lidera la guerra.",
     aliases: ['silh makut', 'piel musgo', 'campamento del clan goshg'],
   },
   {
@@ -749,7 +749,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      'Poblado Nabieus en la explanada más pequeña del sur de la ciénaga, del conclave Keseg Prisilke — nombre en lengua común: Fin Susurrado. Cuerpos adaptados a vivir en las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso. Sin conexión previa con Gorhorn. Fuera del núcleo jugable actual.',
+      'Poblado Nabieus en la explanada más pequeña del sur de la ciénaga, del conclave Keseg Prisilke — nombre en lengua común: Fin Susurrado. Cuerpos adaptados a vivir en las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.',
     aliases: ['conclave fin susurrado', 'keseg prisilke'],
   },
   {
@@ -772,7 +772,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Terreno húmedo, en gran parte inhabitable, con tres pequeñas zonas llanas invadidas por Trepadores Ocaso. Rica en alimento y madera, pobre en minerales. La zona llana más amplia la habitan las dos tribus del Clan Goshg, que viven de los Trepadores Ocaso y los Cornantes y tallan sus tótems en la misma madera oscura que Gorhorn lleva a la espalda; la explanada más pequeña del sur (ver Jeyselt) la habita una tribu Nabieus adaptada al pantano. Sin conexión previa con Gorhorn — territorio completamente nuevo si la partida llega aquí. Fuera del núcleo jugable actual.',
+      'Terreno húmedo, en gran parte inhabitable, con tres pequeñas zonas llanas invadidas por Trepadores Ocaso. Rica en alimento y madera, pobre en minerales. La zona llana más amplia la habitan las dos tribus del Clan Goshg, que viven de los Trepadores Ocaso y los Cornantes y tallan sus tótems en la misma madera oscura que Gorhorn lleva a la espalda; la explanada más pequeña del sur (ver Jeyselt) la habita una tribu Nabieus adaptada al pantano.',
     // 'la cienaga'/'la ciénaga' quitados (auditoría 2026-08-02, "revisar partida"): prefijo literal
     // de 'cienaga troncal'/'ciénaga troncal' de esta misma entidad — el enlazador de texto clicable
     // (enciclopediaIndex.ts) hace matching de izquierda a derecha y el alias corto ganaba SIEMPRE
@@ -796,7 +796,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Galerías secas bajo las raíces entrelazadas de los Trepadores Ocaso más viejos, tapizadas de musgo, por donde se cruza la Ciénaga sin tocar el agua. Los cazadores de Keseg Prisilke las conocen como nadie; en las crecidas, son el refugio de medio pantano. Fuera del núcleo jugable actual.',
+      'Galerías secas bajo las raíces entrelazadas de los Trepadores Ocaso más viejos, tapizadas de musgo, por donde se cruza la Ciénaga sin tocar el agua. Los cazadores de Keseg Prisilke las conocen como nadie; en las crecidas, son el refugio de medio pantano.',
     aliases: ['tuneles musgosos'],
   },
   {
@@ -805,7 +805,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'El Trepador Ocaso más viejo de la Ciénaga, con unas raíces tan anchas que forman una isla firme y alta. Es el único suelo seco donde los Goshg pueden levantar sus piras: aquí queman a sus muertos y dejan sus tótems funerarios, colgados de las raíces. Fuera del núcleo jugable actual.',
+      'El Trepador Ocaso más viejo de la Ciénaga, con unas raíces tan anchas que forman una isla firme y alta. Es el único suelo seco donde los Goshg pueden levantar sus piras: aquí queman a sus muertos y dejan sus tótems funerarios, colgados de las raíces.',
     aliases: ['raices madre fango'],
   },
   {
@@ -814,7 +814,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'La única altura de la Ciénaga, una loma de roca vieja que asoma sobre el dosel. Por la mañana la envuelve la niebla de las charcas, oscurecida por el humo de resina de las hogueras de los vigías Goshg, que desde aquí ven llegar a los Serhu. Fuera del núcleo jugable actual.',
+      'La única altura de la Ciénaga, una loma de roca vieja que asoma sobre el dosel. Por la mañana la envuelve la niebla de las charcas, oscurecida por el humo de resina de las hogueras de los vigías Goshg, que desde aquí ven llegar a los Serhu.',
     aliases: ['cumbre bruma negra'],
   },
   {
@@ -823,7 +823,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Donde el agua que rodea las Raíces Madre cae de golpe a un nivel más bajo del pantano, en un salto de agua marrón. Los Borboles remontan aquí en primavera y es la mejor pesca de la región. Fuera del núcleo jugable actual.',
+      'Donde el agua que rodea las Raíces Madre cae de golpe a un nivel más bajo del pantano, en un salto de agua marrón. Los Borboles remontan aquí en primavera y es la mejor pesca de la región.',
     aliases: ['cataratas madre fango'],
   },
   {
@@ -832,7 +832,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Marismas de marea en la costa oriental, al norte de la Costa Corredor, donde la mezcla de agua dulce y salada da marisco en abundancia. Los Goshg la recolectan en marea baja. Fuera del núcleo jugable actual.',
+      'Marismas de marea en la costa oriental, al norte de la Costa Corredor, donde la mezcla de agua dulce y salada da marisco en abundancia. Los Goshg la recolectan en marea baja.',
     aliases: ['costa marea vida'],
   },
   {
@@ -841,7 +841,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'La costa oriental donde se entrega la madera del tributo a las balsas Goirntes que bajan hacia la Meseta. Es el único punto de la Ciénaga donde se ven Goirntes con regularidad. Fuera del núcleo jugable actual.',
+      'La costa oriental donde se entrega la madera del tributo a las balsas Goirntes que bajan hacia la Meseta. Es el único punto de la Ciénaga donde se ven Goirntes con regularidad.',
     aliases: ['costa corredor'],
   },
   {
@@ -850,7 +850,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'El muelle propio de El Cerco de los Pilotes, del que salen las canoas de fondo plano hacia la Costa Corredor y hacia Jeyselt. Fuera del núcleo jugable actual.',
+      'El muelle propio de El Cerco de los Pilotes, del que salen las canoas de fondo plano hacia la Costa Corredor y hacia Jeyselt.',
     aliases: ['embarcadero silh makut'],
   },
   {
@@ -859,7 +859,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'región',
     description:
-      'Garganta de paredes cubiertas de un musgo verde intenso, en el borde norte de la Ciénaga. Es la salida hacia Cristal Helado, y por él pasa la Senda del Sílice: el sitio donde se cruzan las caravanas Helsig y los porteadores Goshg. Fuera del núcleo jugable actual.',
+      'Garganta de paredes cubiertas de un musgo verde intenso, en el borde norte de la Ciénaga. Es la salida hacia Cristal Helado, y por él pasa la Senda del Sílice: el sitio donde se cruzan las caravanas Helsig y los porteadores Goshg.',
     aliases: ['desfiladero esmeralda'],
   },
 
@@ -873,7 +873,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'pasto estacional',
     description:
-      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntan para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera norte, ya en las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
+      'Un claro amplio en la mitad occidental del Margen Silencioso donde las manadas Faerus que no viven en Hashma o Kegi se juntan para cazar y compartir la primera pieza — un lugar de encuentro, no una construcción. Algunas manadas mantienen pequeños puestos avanzados más allá de la frontera norte, ya en las Llanuras del Viento Rojo.',
     aliases: ['claro de la manada', 'el claro', 'territorio faerus'],
   },
 
@@ -883,7 +883,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'asentamiento',
     description:
-      'Poblado principal de los Faerus de la selva, en la mitad occidental del Margen Silencioso, cerca de la costa — colgado sobre los árboles, hogar del clan Feg Tusha. Nombre en lengua común: Selviterna. Fuera del núcleo jugable actual.',
+      'Poblado principal de los Faerus de la selva, en la mitad occidental del Margen Silencioso, cerca de la costa — colgado sobre los árboles, hogar del clan Feg Tusha. Nombre en lengua común: Selviterna.',
     // 'poblado faerus' quitado a propósito (auditoría de documentación/lore 2026-08-18): prefijo
     // literal de 'poblado faerus de las llanuras' (alias de Kegi, el otro poblado Faerus) — mismo
     // patrón ya arreglado antes en este archivo para 'las agujas'/'clan serhu' (ver comentarios de
@@ -916,7 +916,7 @@ export const locations: LocationInput[] = [
       // con presencia hasta el borde de Ciénaga Troncal (vecina real, no una frontera cerrada);
       // los Faerus ocupan el resto — la mayor parte de la región — con puestos avanzados que
       // cruzan algo la frontera norte hacia las Llanuras.
-      'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de las tierras salvajes del norte — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera oeste con las Llanuras del Viento Rojo. Fuera del núcleo jugable actual.',
+      'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de las tierras salvajes del norte — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera oeste con las Llanuras del Viento Rojo.',
     aliases: ['el margen silencioso'],
   },
 
@@ -926,7 +926,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'refugio',
     description:
-      'El enclave Nabieus más estable del Margen Silencioso, en la mitad oriental de la región — no tiene nombre propio en ninguna lengua ajena a ellos, y así lo prefieren: cuanto menos se hable de él, más dura. Desde aquí parten los mensajeros y correos que se infiltran en la Concordia de Hierro. Fuera del núcleo jugable actual.',
+      'El enclave Nabieus más estable del Margen Silencioso, en la mitad oriental de la región — no tiene nombre propio en ninguna lengua ajena a ellos, y así lo prefieren: cuanto menos se hable de él, más dura. Desde aquí parten los mensajeros y correos que se infiltran en la Concordia de Hierro.',
     aliases: ['refugio sin nombre', 'el refugio', 'enclave nabieus'],
   },
 
@@ -940,7 +940,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'cruce',
     description:
-      'El centro de El Margen Silencioso, en la línea donde la selva Faerus (oeste) da paso a la mitad oriental de los Nabieus. No es de nadie. Bosque cerrado de coníferas de madera negra de copas bajas, suelo hecho un entramado de raíces cubierto de Musgo Callado. La quietud es total: no se oye el viento, ni los pasos propios, ni la respiración del que va al lado. Es el paso de los cazadores Faerus hacia las Llanuras y de los mensajeros Nabieus hacia el sur — sin asentamiento. Rige una norma que nadie ha pactado pero todos cumplen: dentro del Cruce nadie ataca a nadie de otra raza, porque nadie oiría pedir ayuda. Las manadas cuentan que aquí grupos enteros "se desvanecieron" — no hay nada sobrenatural: el Mekiosi espera inmóvil y caza de una embestida, y donde no se oye un grito, un grupo que se separa unos pasos puede perder a uno tras otro sin que el resto lo note. Fuera del núcleo jugable actual.',
+      'El centro de El Margen Silencioso, en la línea donde la selva Faerus (oeste) da paso a la mitad oriental de los Nabieus. No es de nadie. Bosque cerrado de coníferas de madera negra de copas bajas, suelo hecho un entramado de raíces cubierto de Musgo Callado. La quietud es total: no se oye el viento, ni los pasos propios, ni la respiración del que va al lado. Es el paso de los cazadores Faerus hacia las Llanuras y de los mensajeros Nabieus hacia el sur — sin asentamiento. Rige una norma que nadie ha pactado pero todos cumplen: dentro del Cruce nadie ataca a nadie de otra raza, porque nadie oiría pedir ayuda. Las manadas cuentan que aquí grupos enteros "se desvanecieron" — no hay nada sobrenatural: el Mekiosi espera inmóvil y caza de una embestida, y donde no se oye un grito, un grupo que se separa unos pasos puede perder a uno tras otro sin que el resto lo note.',
     aliases: ['cruce de las ausencias', 'el cruce'],
     teaser: 'Aquí nadie oye cuando llamas.',
   },
@@ -950,7 +950,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'pantano',
     description:
-      'La franja pantanosa de El Margen Silencioso, entre El Cruce de las Ausencias y la mitad oriental. Canales y charcas de agua negra entre raíces de coníferas, con islas de raíz que ceden bajo el peso de algo grande. El agua no suena: ni chapoteo ni goteo. La única forma de saber que algo se mueve es mirar el agua — las ondas se ven, pero no se oyen. Nadie vive aquí: los cazadores del Feg Tusha bajan en temporada seca. Aquí aprendieron los Nabieus que la vibración viaja mejor por el agua, antes de la segunda huida hacia Ciénaga Troncal. Fuera del núcleo jugable actual.',
+      'La franja pantanosa de El Margen Silencioso, entre El Cruce de las Ausencias y la mitad oriental. Canales y charcas de agua negra entre raíces de coníferas, con islas de raíz que ceden bajo el peso de algo grande. El agua no suena: ni chapoteo ni goteo. La única forma de saber que algo se mueve es mirar el agua — las ondas se ven, pero no se oyen. Nadie vive aquí: los cazadores del Feg Tusha bajan en temporada seca. Aquí aprendieron los Nabieus que la vibración viaja mejor por el agua, antes de la segunda huida hacia Ciénaga Troncal.',
     aliases: ['las aguas sordas', 'aguas sordas'],
     teaser: 'Mira el agua. No va a avisarte de otra forma.',
   },
@@ -960,7 +960,7 @@ export const locations: LocationInput[] = [
     region: 'El Margen Silencioso',
     kind: 'mirador',
     description:
-      'El borde sur de El Margen Silencioso, donde la roca gris de la Meseta del Orden se adentra en la selva como la proa de un barco — la única altura del Margen. Un espolón de piedra gris con la misma simetría antinatural de la Meseta, que se deshace a medida que avanza hacia la selva: en la base, las grietas son rectas y paralelas; en la punta, ya son irregulares, como si el trabajo de Goirme se hubiera quedado sin fuerza. Termina en cortados de treinta metros sobre el dosel. Solo crece musgo en las grietas. Es el único punto del Margen desde el que se ve lejos: los Nabieus de Keseg Sael mantienen aquí un turno de vigía rotativo (5-10 a la vez) que cuenta las columnas de la Concordia por el corredor costero occidental. Es terreno de caza de las Sombras de Kroj, que usan sus precipicios, y los vigías bajan antes del anochecer sin excepción. Fuera del núcleo jugable actual.',
+      'El borde sur de El Margen Silencioso, donde la roca gris de la Meseta del Orden se adentra en la selva como la proa de un barco — la única altura del Margen. Un espolón de piedra gris con la misma simetría antinatural de la Meseta, que se deshace a medida que avanza hacia la selva: en la base, las grietas son rectas y paralelas; en la punta, ya son irregulares, como si el trabajo de Goirme se hubiera quedado sin fuerza. Termina en cortados de treinta metros sobre el dosel. Solo crece musgo en las grietas. Es el único punto del Margen desde el que se ve lejos: los Nabieus de Keseg Sael mantienen aquí un turno de vigía rotativo (5-10 a la vez) que cuenta las columnas de la Concordia por el corredor costero occidental. Es terreno de caza de las Sombras de Kroj, que usan sus precipicios, y los vigías bajan antes del anochecer sin excepción.',
     aliases: ['la proa gris', 'proa gris'],
     teaser: 'Desde aquí se ve la Meseta entera. Lo que oyes detrás no es tu eco.',
   },

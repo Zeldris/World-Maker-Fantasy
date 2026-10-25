@@ -314,7 +314,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'REGION',
     title: 'El Filo de las Brasas (Llanuras del Viento Rojo)',
-    text: 'Cresta rocosa al noreste de Los Restos de Maktor, donde la estepa cede ante tierra volcánica — el primer punto del núcleo jugable donde los "volcanes activos a lo lejos" se ven de cerca. Territorio real de la Salamandra de Escoria y del Rondador de Brasas. Segunda gran zona de minerales de alto tier de las Llanuras (junto a La Hondonada del Eco/Yerreo): Volcanita y Rovalnica son comunes, el Fercaneo (tier 5) es casi imposible de encontrar, protegido por las propias Salamandras.',
+    text: 'Cresta rocosa al noreste de Los Restos de Maktor, donde la estepa cede ante tierra volcánica — el primer punto de las Llanuras donde los "volcanes activos a lo lejos" se ven de cerca. Territorio real de la Salamandra de Escoria y del Rondador de Brasas. Segunda gran zona de minerales de alto tier de las Llanuras (junto a La Hondonada del Eco/Yerreo): Volcanita y Rovalnica son comunes, el Fercaneo (tier 5) es casi imposible de encontrar, protegido por las propias Salamandras.',
     tags: ['filo-de-las-brasas', 'llanuras', 'salamandra-de-escoria', 'rondador-de-brasas', 'volcanita', 'fercaneo'],
     sourceDoc: 'areas.md',
   },

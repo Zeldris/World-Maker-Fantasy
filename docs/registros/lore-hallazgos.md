@@ -621,3 +621,9 @@ Aplicado con el sí de la usuaria.
 - «Kit de costura de hueso»: anglicismo.
 - Objetos del catálogo que nadie vende, suelta ni fabrica.
 - Las partidas ya empezadas conservan el nombre antiguo de sus objetos fabricados. La sincronización solo repone bonus y hueco.
+
+## 2026-10-25 — `QA-240`, bloque 4 (primer arreglo): notas de diseño a la vista en 26 lugares
+
+- 26 descripciones de lugares (Meseta del Orden, Ciénaga Troncal, El Margen Silencioso) acababan en «Fuera del núcleo jugable actual.», a veces con «Gorhorn no ha estado aquí» o «Sin conexión previa con Gorhorn». Son notas de diseño y la regla P35 (`QA-27`) ya las prohíbe en texto visible. Se quitan. El aviso para el narrador sigue en `loreChunks.ts`.
+- «el primer lugar del núcleo jugable desde el que…» (Cresta volcánica) → «el primer lugar de las Llanuras desde el que…», también en su chunk.
+- Por qué se coló: el test de P35 solo miraba la línea `description:`, y el texto empieza en la línea siguiente. `catalogoSinNotasInternas.test.ts` ahora recorre los datos exportados del catálogo. Falla sin el arreglo (`rojo-sin-arreglo` OK).
