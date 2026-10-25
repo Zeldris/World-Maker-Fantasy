@@ -49,6 +49,13 @@ desde el panel vive en tablas que siembran.
   ficha de zona añade `condiciones` con lo que cambia en cada una; el script rechaza una luz o un paisaje que no case
   con el momento pedido. Por zona se aprueban la de día de cada estación y una de noche (5 imágenes), y lo nativo se
   pinta sobre la de su misma condición (`IMG-12`). Depende de `IMG-5`. **M**
+- **IMG-15 · Calidad del generador local frente a ChatGPT** [A] (usuaria, 2026-10-25: «la calidad comparado con lo
+  que genero desde chatgpt sigue siendo muy mala»): banco con el mismo prompt y semilla, una palanca cada vez
+  (`docs/producto/plan-imagenes/calidad.sh`): más pasos, hires fix, Real-ESRGAN, `flux-2-klein-base-4b` con cfg real;
+  después, lo que hay que descargar: el decodificador VAE completo (hoy `full_encoder_small_decoder`) y el codificador
+  de texto en Q8 (hoy `Qwen3-4B-Q4_K_M`). Se compara contra una imagen de ChatGPT del mismo prompt y se fija el
+  perfil por defecto con su coste en minutos. Si ni así se acerca, decidir con la usuaria una vía en la nube para las
+  imágenes clave (zonas). Depende de `IMG-6`. **M**
 - **IMG-7 · Modelo de datos: `Propuesta` y `FichaVisual`** [A] (usuaria, 2026-10-25): migración Prisma (puerta de un
   solo sentido), importador de los 3 `.md` de propuestas (~159), exportación de lo aprobado al formato de
   `propuestas-aprobadas.md`, fichas exportadas a JSON versionado, API Fastify con escritura solo desde `127.0.0.1` y

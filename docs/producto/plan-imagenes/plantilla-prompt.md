@@ -25,7 +25,7 @@ Klein 4B, que no reescribe el prompt, pide frases descriptivas largas y, con cfg
    rechaza el prompt si contiene el `nombre` de la ficha.
 6. **Animales reales, solo en el prompt** (D5): el campo `ancla` («a maned wolf, only gaunter and wilder») da la
    silueta; nunca pasa a texto publicado.
-7. **Longitud** entre `longitud.min` y `longitud.max` palabras (120-280 **[propuesta]**; los prompts del spike que
+7. **Longitud** entre `longitud.min` y `longitud.max` palabras (120-320 **[propuesta]**, subido de 280 el 2026-10-25 porque recortaba la luz de Hulki y el entorno del aullador; los prompts del spike que
    funcionaron tenían ~250). Si se pasa, se quitan bloques en este orden: B6 (luz), B5 (entorno), B4 (pose); nunca
    B1-B3. Si se queda corto, solo se avisa.
 8. Un campo que falta o está vacío omite su bloque sin dejar hueco.

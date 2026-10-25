@@ -11,8 +11,8 @@
     "sujeto": "A wide, open steppe of gently rolling grassland that stretches to the horizon, an empty wild land with only grazing herds on it.",
     "cuerpo": "It is covered in tall straw-yellow grass tinged with orange, with patches of bare red clay showing between the tufts and a few low bushes of dense, deep green with small broad leaves.",
     "rasgos": [
-      "Far off on the horizon a line of dark volcanic peaks rises through a haze of fine red dust.",
-      "In the middle distance graze a few slender, antelope-like animals with rust-red backs, pure white bellies and long, thin, straight horns."
+      "Far off on the horizon a line of jagged black volcanic peaks rises through a haze of fine red dust.",
+      "In the middle distance graze a few tall, narrow-bodied grazers with rust-red backs, pure white bellies and a single pair of flat, blade-like horns swept straight back."
     ],
     "pose": "The grass bends under a dry wind that carries thin streamers of red dust across the plain.",
     "entorno": "",
@@ -52,6 +52,8 @@
     "condiciones estacion:verano: hierba quebradiza y arcilla agrietada",
     "condiciones estacion:otono: espigas con semilla y plantas con fruto maduro",
     "condiciones estacion:invierno: hierba corta y aplastada, viento frío (la hierba sigue amarillo pajizo anaranjado)",
-    "condiciones estacion:invierno+momento:noche: escarcha fina"
+    "condiciones estacion:invierno+momento:noche: escarcha fina",
+    "picos «jagged black» (salían pardos)",
+    "Cuernahoja sin «antelope-like» (salían impalas): cuernos planos como hojas, sin fuente"
   ]
 }

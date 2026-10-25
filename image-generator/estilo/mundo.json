@@ -121,7 +121,7 @@
     "noche": { "patron": "\\b(sun|sunlit|sunlight|daylight|midday|noon)\\b", "motivo": "el modelo pinta un cielo de día aunque el preámbulo sea de noche", "alternativa": "luz de noche: «stars under a soft, even pearly glow» (condición momento:noche en la ficha o luz.noche de la región)" },
     "dia": { "patron": "\\b(stars?|starlit|night)\\b", "motivo": "el modelo pinta un cielo estrellado en pleno día", "alternativa": "luz de día (condición momento:dia en la ficha o luz.dia de la región)" }
   },
-  "longitud": { "min": 120, "max": 280 },
+  "longitud": { "min": 120, "max": 320 },
   "vetadas": [
     { "patron": "\\bmoons?\\b|\\bmoonlit\\b|\\bmoonlight\\b", "motivo": "el modelo pinta una luna aunque sea para negarla; Helek Sirik no tiene luna", "alternativa": "no nombrarla; de noche, «stars under a soft, even pearly glow»" },
     { "patron": "crystal dust|\\bheavens\\b", "motivo": "«crystal dust across the heavens» pinta estrellas de día", "alternativa": "«a light warm haze» de día; el velo perlado solo en el preámbulo de noche" },

@@ -11,8 +11,8 @@
     "sujeto": "An upright, spiky thistle with a stiff, thorny stem as tall as an adult orc's open hand, its grey-green leaves edged with fine thorns.",
     "cuerpo": "At the tip sits a single closed, egg-shaped flower in a dull metallic grey with a faint muted violet tint at its base, with a matte, almost forged sheen.",
     "rasgos": [
-      "From the centre of the flower a lone rigid, magnetised fibre points steadily in one direction.",
-      "A few dark grains of iron sand cling to the thorns, drawn to the plant."
+      "From the centre of the flower a single hair-thin, stiff dark fibre rises, barely visible, pointing steadily in one direction.",
+      "Coarse dark grains of iron sand cling to the thorns and lie around the base, each grain almost as big as a thorn, showing how small the plant is."
     ],
     "pose": "Two or three of the thistles grow close together in the lee of a field of black magnetic rocks, where wind-combed ridges of dark iron sand pile up.",
     "entorno": "Fine red dust drifts in the air above red clay, and a low, hazy horizon glows behind them.",
@@ -31,6 +31,8 @@
     "hojas grey-green",
     "granos de arena pegados a las espinas",
     "two or three",
-    "condiciones momento:atardecer / momento:noche: luz propia que sustituye «Soft morning light»"
+    "condiciones momento:atardecer / momento:noche: luz propia que sustituye «Soft morning light»",
+    "fibra «hair-thin… barely visible» (salía como aguja)",
+    "escala por los granos de arena"
   ]
 }
