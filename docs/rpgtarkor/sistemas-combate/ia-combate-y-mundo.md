@@ -1,14 +1,16 @@
-# IA de combate NPC y curvas dinámicas de mundo — diseño sin código todavía
+# IA de combate NPC y curvas dinámicas de mundo
 
 [← Volver al índice](../sistemas-reino/mundo-vivo-x4.md)
 
-**Estado (2026-09-28):** sin cambios. § 8 diseñado sin código (solo existe el umbral
-`INTELIGENCIA_TACTICA_UMBRAL = 12`); § 9 sin diseñar.
+**Estado (2026-10-25, `QA-240`):** § 8 APLICADO al motor el 2026-10-05 (`CR-44` moral y retirada, `CR-45`
+capitán; ver «Cómo quedó en el motor» al final del § 8). § 9 sigue sin diseñar.
 
 ---
 
-## 8. IA de combate NPC por tramos de Inteligencia — DISEÑO CERRADO (2026-09-21, sesión posterior),
-sin código todavía
+## 8. IA de combate NPC por tramos de Inteligencia — DISEÑO CERRADO (2026-09-21), APLICADO (2026-10-05, `CR-44`, `CR-45`)
+
+*El texto de abajo es el diseño de 2026-09-21, tal como se cerró; lo que cambió al construirlo está en
+«Cómo quedó en el motor».*
 
 Grounding real hecho antes de diseñar (mismo criterio que el resto del documento): el motor actual
 ya tiene un umbral BINARIO (`INTELIGENCIA_TACTICA_UMBRAL = 12`, `combateMultiple.ts`) que decide
@@ -46,6 +48,33 @@ de "retirada de NPC" (¿nuevo estado de `CombatParticipant`, o reutilizar algo e
 cambio de objetivo coordinado necesita una pasada previa por todo el bando antes de resolver cada
 ataque individual (cambio de orden de evaluación en `combateMultipleOrquestacion.ts`) o puede
 resolverse con una estructura de datos compartida sin reordenar nada.
+
+### Cómo quedó en el motor (2026-10-05, `CR-44`, `CR-45`; anotado el 2026-10-25, `QA-240`)
+
+La retirada no quedó reservada a Inteligencia 20+: se construyó como **moral**, la regla opcional
+de D&D 5e (DMG pág. 273), para todo NPC con mente.
+
+- **Quién tiene moral** (`moralCombate.ts`, `tieneMoral`): toda persona con raza. La fauna sigue con su
+  temperamento y las invocaciones no huyen. Un líder cuya muerte acabaría con su facción (`sinSucesor`)
+  tampoco huye, para no partir historias.
+- **Cuándo tira:** la primera vez que cae a GRAVE, la primera vez que su bando queda a la mitad y al caer o
+  huir su capitán. La tirada es de Voluntad contra CD 10 (`MORAL_DIFICULTAD`). Va con desventaja si la
+  jugadora va claramente ganando o si acaba de perder a su capitán. En un grupo con líder, tira el líder
+  por todos.
+- **Si falla:** intenta escapar con la misma tirada de Destreza que la huida del personaje, con los papeles
+  cambiados; si no escapa, pierde el turno. La Inteligencia decide cómo se va: por debajo de 12, en
+  desbandada (cada uno por su lado); de 12 en adelante, en orden (`INTELIGENCIA_RETIRADA_ORDENADA`).
+- **Quién huye:** el NPC que huye sale del combate (`huido` del participante). Combate 1v1, en
+  `huidaNpc.ts`; combate de varios, en `moralGrupo.ts`. No huye el objetivo de una misión activa.
+- **Capitán** (`combateMultiple.ts`, `INTELIGENCIA_CAPITAN = 20`): el NPC de más Inteligencia del
+  bando, si llega a 20.
+  - Él y los suyos concentran los ataques en el rival más vulnerable (`objetivoConcentrado`: peor
+    condición y, a igualdad, menos Constitución; entre empatados, al azar). El registro lo cuenta al
+    empezar cada ronda («X ordena caer sobre Y»).
+  - Manda desde la ronda de apertura.
+  - Su caída hace tirar moral con desventaja a su bando.
+- **Sin cambios:** el umbral táctico `INTELIGENCIA_TACTICA_UMBRAL = 12`. Por debajo de 12, cada NPC elige
+  objetivo al azar; desde 12, va a por el más herido.
 
 ## 9. Movimiento en Zona / Profesiones-talento-nivel-energía — señales dinámicas, DISEÑO PENDIENTE
 DE GROUNDING (2026-09-21, sesión posterior)

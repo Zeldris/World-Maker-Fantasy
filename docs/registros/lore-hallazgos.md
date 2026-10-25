@@ -573,3 +573,11 @@ Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de l
 - Coste de huir.
 - MAGO en la sección de clases.
 - `domador` frente a `ganadero`.
+
+**Canon del bloque 2, aplicado el 2026-10-25 con el sí de la usuaria:**
+- `clases.md`:
+  - Tabla final regenerada contando `allClassAbilityUnlocks()`. Llevaba Guerrero, Cazador, Arquero y otras con cifras de agosto. Se añade la fila de Mago (sin tronco en el motor).
+  - Instintivo pasa a 8/8: Instinto Reactivo (nv. 19) ya está sembrado.
+  - Resúmenes corregidos: Convocador 7, Valor 8, Tóxico 8, Aullador 4.
+  - «34 especializaciones» → 29 construidas.
+- `ia-combate-y-mundo.md`: § 8 marcado APLICADO (`CR-44`, `CR-45`), con una sección «Cómo quedó en el motor». La retirada se construyó como moral para todo NPC con mente, no solo para los de Inteligencia 20+; desde 20, el NPC es capitán de su bando.
