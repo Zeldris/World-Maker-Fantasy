@@ -6,12 +6,17 @@
 # Cada imagen queda en image-generator/generated/banco/<ronda>-<nombre>/intentos/ (probar.sh); el resumen, en la salida.
 # Una prueba que ya tiene imagen se salta (relanzar la ronda hace solo lo que falta). Antes de cada una, espera hasta
 # ESPERA s (1800) a tener LIBRE MB (7200): generar.sh aborta por debajo de 7000 y en la Deck hay más sesiones abiertas.
+# Con LIBERAR_OLLAMA=0 espera también a que Ollama esté vacío, en vez de descargar el modelo de otra sesión.
 set -eu
 R=$(cd "$(dirname "$0")/../../.." && pwd); B=$R/docs/producto/plan-imagenes/banco
 RONDA=$1; SEED=${2:-3}; TSV=$B/$RONDA.tsv
 [ -s "$TSV" ] || { echo "ABORTO: no existe $TSV"; exit 2; }
-export LIBERAR_OLLAMA=1
+export LIBERAR_OLLAMA=${LIBERAR_OLLAMA:-1}
 libre() { awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo; }
+lista() {  # memoria suficiente y, si no se libera Ollama, Ollama vacío
+  [ "$(libre)" -ge "${LIBRE:-7200}" ] || return 1
+  [ "$LIBERAR_OLLAMA" = 1 ] || ! curl -s --max-time 5 localhost:11434/api/ps | grep -q '"name"'
+}
 while IFS=$'\t' read -r nombre pasos prompt vars extra; do
   [[ -z $nombre || $nombre == \#* ]] && continue
   [ -s "$B/$prompt" ] || { echo "ABORTO: $nombre: no existe $B/$prompt"; exit 2; }
@@ -21,7 +26,7 @@ while IFS=$'\t' read -r nombre pasos prompt vars extra; do
     echo "== $RONDA-$nombre: ya tiene imagen, se salta"; continue
   fi
   fin=$(( $(date +%s) + ${ESPERA:-1800} ))
-  until [ "$(libre)" -ge "${LIBRE:-7200}" ] || [ "$(date +%s)" -gt $fin ]; do sleep 20; done
+  until lista || [ "$(date +%s)" -gt $fin ]; do sleep 20; done
   echo "== $RONDA-$nombre ($pasos pasos) ${vars} ${extra}"
   env "${env_[@]}" PROMPT_ARCHIVO="$B/$prompt" bash "$R/image-generator/scripts/probar.sh" banco "$RONDA-$nombre" banner \
     "$SEED" "$pasos" "${args[@]}" < /dev/null | tail -2 || echo "FALLO: $nombre"
