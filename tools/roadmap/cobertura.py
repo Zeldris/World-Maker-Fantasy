@@ -16,18 +16,38 @@ sin definir nuevos o retros pendientes; lo ejecuta la CI, QA-14)
      python3 tools/roadmap/cobertura.py --fila <ID>   (QA-242: dónde está definida la tarea, su hito y cada
      línea de 21-roadmap.md que la nombra, con el trozo de alrededor; sin leer los roadmaps enteros;
      sale con 1 si la tarea no está definida o no tiene hito)
+     python3 tools/roadmap/cobertura.py --libre <PREFIJO>   (QA-246: el siguiente número libre del prefijo, el
+     mayor entre el árbol de trabajo y origin/main, para que dos ramas no abran el mismo identificador)
+     Además la salida normal falla con «ABIERTAS TAMBIÉN EN MAIN» (QA-246): tareas que esta rama y origin/main
+     han definido las dos desde su base común (merge-base), es decir, el mismo identificador abierto dos veces.
 """
-import re, sys, os
+import re, sys, os, subprocess
 D=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','docs','producto')+'/'
 PREF='CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR|IMG|VOZ'
 ID=rf'(?:{PREF})-\d+[a-z]?'
 files=['roadmap-front.md','roadmap-front-ux.md','roadmap-front-zona.md','roadmap-front-reino.md','roadmap-cronista.md','roadmap-imagenes.md','roadmap-voces.md']
 defs={}
+DEF=rf'^\s*-\s*(?:~~)?\*\*({ID})\b|^\|\s*(?:~~)?({ID})(?:~~)?\s*\||^\s*(?:~~)?\*\*({ID})\s*·'
 for f in files:
     for n,l in enumerate(open(D+f),1):
-        for m in re.finditer(rf'^\s*-\s*(?:~~)?\*\*({ID})\b|^\|\s*(?:~~)?({ID})(?:~~)?\s*\||^\s*(?:~~)?\*\*({ID})\s*·', l):
+        for m in re.finditer(DEF, l):
             i=next(g for g in m.groups() if g)
             defs.setdefault(i,(f,n))
+def git(*a):
+    """QA-246: salida de una orden de git en el repo, o None si git falla (sin origin/main, sin repo)."""
+    try:
+        r=subprocess.run(['git',*a],cwd=D,capture_output=True,text=True)
+    except OSError: return None
+    return r.stdout if r.returncode==0 else None
+def desde(ref, f):
+    """QA-246: el texto de `docs/producto/<f>` en `ref`, o None."""
+    return git('show',f'{ref}:docs/producto/{f}')
+def definidas(textos):
+    out=set()
+    for t in textos:
+        for l in t.split('\n'):
+            for m in re.finditer(DEF,l): out.add(next(g for g in m.groups() if g))
+    return out
 def expand(text, default_prefix=None):
     out=set()
     text=text.replace('`','').replace('~~','')
@@ -96,11 +116,37 @@ def fila(i):
         l=l.rstrip('\n'); m=patron.search(l)
         if m and n not in filas: out.append(f'21-roadmap.md:{n}: {trozo(l, m)}')
     return out
+def textos_en(ref):
+    """QA-246: {archivo: texto en `ref`} de los roadmaps y del mapa; vacío si `ref` no está."""
+    out={}
+    for f in files+['21-roadmap.md']:
+        t=desde(ref,f)
+        if t is not None: out[f]=t
+    return out
+def libre(pref):
+    """QA-246: el siguiente número libre de `pref`: el mayor que aparece en el árbol o en origin/main, más uno."""
+    main=textos_en('origin/main')
+    if not main: print('aviso: sin origin/main; solo cuenta el árbol de trabajo',file=sys.stderr)
+    textos=[open(D+f).read() for f in files+['21-roadmap.md']]+list(main.values())
+    nums=[int(re.sub(r'\D','',i.split('-')[1])) for t in textos for i in expand(t) if i.startswith(pref+'-')]
+    return f'{pref}-{max(nums,default=0)+1}'
+def choques():
+    """QA-246: tareas que esta rama y origin/main han definido las dos desde su base común. Tras traer
+    main la base pasa a ser main y desaparecen; cambiar el título de una tarea ya de main no cuenta."""
+    base=(git('merge-base','HEAD','origin/main') or '').strip()
+    if not base: return []
+    nuevas_main=definidas(textos_en('origin/main').values())-definidas(textos_en(base).values())
+    out=[i for i in defs if i in nuevas_main]
+    return sorted(out,key=lambda x:(x.split('-')[0],int(re.sub(r'\D','',x.split('-')[1]))))
 # QA-101: sin ejecutarse como script (p. ej. desde tools/qa/matriz-pruebas.py), solo calcula `defs` y `asignado`.
 if __name__ == '__main__' and sys.argv[1:2] == ['--fila']:
     if len(sys.argv) != 3: sys.exit('uso: cobertura.py --fila <ID>')
     print('\n'.join(fila(sys.argv[2])))
     sys.exit(0 if sys.argv[2] in defs and sys.argv[2] in asignado else 1)
+if __name__ == '__main__' and sys.argv[1:2] == ['--libre']:
+    if len(sys.argv) != 3 or sys.argv[2] not in PREF.split('|'): sys.exit('uso: cobertura.py --libre <PREFIJO>')
+    print(libre(sys.argv[2]))
+    sys.exit(0)
 if __name__ == '__main__':
     print('definidas',len(defs),'asignadas',len(asignado))
     print('SIN HITO:',len(falta))
@@ -124,4 +170,7 @@ if __name__ == '__main__':
             if cerrada and 'retro ✅' not in estado and 'sin retro' not in estado:
                 retros.append(f'{f} Fase {m.group(1)}')
     print('RETRO PENDIENTE:',retros)
-    sys.exit(1 if falta or nuevos or retros else 0)
+    # QA-246: el mismo identificador abierto en esta rama y en main a la vez; sin origin/main no falla.
+    otros=choques()
+    print('ABIERTAS TAMBIÉN EN MAIN:',otros)
+    sys.exit(1 if falta or nuevos or retros or otros else 0)

@@ -39,6 +39,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **Mapa de imágenes y análisis en subagente** (`QA-222`, `QA-223`): sección «Imágenes» de `docs/mapa-agente.md`; las tandas de `CFG-42` las mira un subagente y la principal solo las imágenes que deciden.
 - **Mapa de voces** (`QA-241`): sección «Voces y sonidos» de `docs/mapa-agente.md`; `mapa-agente.py` comprueba también las rutas de `image-generator/` y `voice-generator/`.
 - **`python3 tools/roadmap/cobertura.py --fila <ID>`** (`QA-242`): definición, hito (con su fila) y menciones de una tarea en `21-roadmap.md`, recortadas, en vez de leer el mapa de roadmaps; sale con 1 si no está definida o no tiene hito.
+- **`bash tools/qa/ficha.sh <slug> [--canon]`** (`QA-245`): todo lo de un slug (ficha, despiece, región, enciclopedia, población, recetas, chunks y canon) en una salida, en vez de `grep`/`sed` sobre `worldCatalog.ts` (140 lecturas en `QA-243`). Sección «Enciclopedia y lore» de `docs/mapa-agente.md` (`QA-248`).
+- **Auditorías de lore en tandas de una región o un catálogo** (`QA-247`, `ampliar-lore.md` § 0.5), con unas 30 llamadas como tope.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto
   (`--tipo <tipo>`); la captura, solo para lo visual. La interfaz, en la sección «Imágenes» del mapa (`QA-229`).
@@ -80,6 +82,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
   capturas jpg cada una, ~95 % de lo que metieron en su contexto. Captura solo si el hallazgo es visual; el resto, por
   `estado.js`/`r.sh`/`panel.sh` (texto).
 - **El registro de la sesión** pesa cientos de MB: medirlo con `medir.py`, nunca leerlo.
+
+- **Subagentes de auditoría con un bloque entero** (`QA-243`, 2026-10-25): 9 subagentes, 32M de entrada (el 40 % de la sesión), con un contexto medio de 102-118k. De ahí `QA-247`.
 
 ## Ajustes en vigor
 

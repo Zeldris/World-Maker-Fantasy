@@ -71,5 +71,65 @@ class Fila(unittest.TestCase):
         self.assertIn('uso: cobertura.py --fila <ID>', r.stderr)
 
 
+class MainRemoto(unittest.TestCase):
+    """QA-246: `--libre` y el choque de títulos contra `origin/main`, en un repo git temporal."""
+    def setUp(self):
+        self.dir = carpeta()
+        os.makedirs(os.path.join(self.dir, 'tools', 'roadmap'))
+        shutil.copy(os.path.join(RAIZ, 'tools', 'roadmap', 'cobertura.py'), os.path.join(self.dir, 'tools', 'roadmap'))
+        self.producto = os.path.join(self.dir, 'docs', 'producto')
+        for f in ROADMAPS:
+            escribir(os.path.join(self.producto, f), '')
+        escribir(os.path.join(self.producto, '21-roadmap.md'), MAPA)
+
+    def git(self, *a):
+        subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *a], cwd=self.dir, check=True, capture_output=True)
+
+    def main_con(self, front):
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), front)
+        self.git('init', '-q'); self.git('add', '-A'); self.git('commit', '-q', '-m', 'main')
+        self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+
+    def cob(self, *args):
+        return subprocess.run(['python3', os.path.join(self.dir, 'tools', 'roadmap', 'cobertura.py'), *args],
+                              capture_output=True, text=True)
+
+    def test_libre_con_numero_mas_alto_solo_en_main(self):
+        self.main_con('- **QA-1 · Uno**\n- **QA-9 · Nueve**\n')
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-1 · Uno**\n- **QA-3 · Tres**\n')
+        r = self.cob('--libre', 'QA')
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, 'QA-21'), r.stderr)  # QA-20 se menciona en el mapa
+        self.assertEqual(self.cob('--libre', 'UX').stdout.strip(), 'UX-1')
+
+    def test_libre_sin_origin_main_avisa(self):
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-30 · Treinta**\n')
+        self.git('init', '-q')
+        r = self.cob('--libre', 'QA')
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, 'QA-31'))
+        self.assertIn('sin origin/main', r.stderr)
+
+    def ramas(self, base, main, rama):
+        """Base común con `base`, origin/main con `main` y la rama (HEAD) con `rama`, en roadmap-front.md."""
+        front = os.path.join(self.producto, 'roadmap-front.md')
+        self.main_con(base)
+        escribir(front, main); self.git('commit', '--allow-empty', '-qam', 'main'); self.git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+        self.git('checkout', '-q', 'HEAD~1'); escribir(front, rama); self.git('commit', '-qam', 'rama')
+
+    def test_mismo_id_abierto_en_la_rama_y_en_main(self):
+        self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n- **QA-2 · Voces**\n', '- **QA-1 · Uno**\n- **QA-2 · Lore**\n')
+        r = self.cob()
+        self.assertIn("ABIERTAS TAMBIÉN EN MAIN: ['QA-2']", r.stdout)
+        self.assertEqual(r.returncode, 1)
+
+    def test_cambiar_el_titulo_de_una_tarea_de_main_no_choca(self):
+        self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n', '- ~~**QA-1 · Uno, con otro título**~~ ✅\n')
+        self.assertIn('ABIERTAS TAMBIÉN EN MAIN: []', self.cob().stdout)
+
+    def test_tras_traer_main_no_choca(self):
+        self.ramas('- **QA-1 · Uno**\n', '- **QA-1 · Uno**\n- **QA-2 · Voces**\n', '- **QA-1 · Uno**\n- **QA-3 · Lore**\n')
+        self.git('merge', '-q', '-m', 'trae main', 'origin/main', '-X', 'theirs')
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-1 · Uno**\n- **QA-2 · Voces**\n- **QA-3 · Lore**\n')
+        self.assertIn('ABIERTAS TAMBIÉN EN MAIN: []', self.cob().stdout)
+
 if __name__ == '__main__':
     unittest.main()

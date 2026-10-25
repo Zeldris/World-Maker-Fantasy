@@ -11,6 +11,21 @@ a código, que sobrevive entre sesiones (a diferencia de la lista de tareas de u
 Leer `docs/registros/ampliar-lore-checklist.md` — la sección "Pendiente de código" puede tener trabajo de una
 sesión anterior sin cerrar. Mencionarlo si hay algo ahí antes de seguir con lore nuevo.
 
+## 0.5. Auditar la enciclopedia contra el canon (`QA-247`)
+
+Cuando la sesión revisa lo que ya hay (como en `QA-243`), la auditoría se reparte en **tandas pequeñas**
+(`orchestrate-dealer`, con Sonnet). Cada tanda:
+
+- cubre una región o un catálogo (la fauna de la Ciénaga, los objetos de Cristal Helado), no un bloque entero;
+- empieza por el resumen de `docs/canon-opencode/` y por la sección «Enciclopedia y lore» de `docs/mapa-agente.md`;
+- mira cada elemento con `bash tools/qa/ficha.sh <slug> --canon`;
+- tiene un tope de unas 30 llamadas;
+- devuelve una tabla de hallazgos con columnas elemento · qué dice el juego · qué dice el canon · propuesta.
+
+La principal revisa la tabla, la presenta a la usuaria y apunta lo aplicado en `docs/registros/lore-hallazgos.md`.
+Medida en `QA-243`: con un bloque por tanda, el contexto medio llegó a 110k y las tandas fueron el 40 % de la
+entrada de la sesión.
+
 ## 1. El flujo de la sesión
 
 La usuaria da indicaciones de lore (a veces un párrafo denso con varios personajes/eventos/reglas
