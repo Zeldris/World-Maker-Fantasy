@@ -186,7 +186,7 @@ describe('SubditosSection — llegadas (REI-119)', () => {
     vi.mocked(getSubditos).mockResolvedValue({
       ahora: 0, subditos: [], camas: { total: 0, companeros: 0, subditos: 0, libres: 0 },
       requisitosLlegada: [
-        { clave: 'cama', nombre: 'Cama libre', cumple: true, cifra: '0/2', motivo: 'No hay cama libre.' },
+        { clave: 'cama', nombre: 'Cama libre', cumple: true, cifra: '2 libres de 4', motivo: 'No hay cama libre.' },
         { clave: 'comida', nombre: 'Comida', cumple: false, cifra: '0', motivo: 'No hay comida.' },
         { clave: 'agua', nombre: 'Agua', cumple: true, cifra: '12', motivo: 'No hay agua.' },
         { clave: 'felicidad', nombre: 'Felicidad', cumple: true, cifra: '55, mínimo 40', motivo: 'Poca fama.' },
@@ -196,7 +196,7 @@ describe('SubditosSection — llegadas (REI-119)', () => {
       <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
     )
     const lista = await findByLabelText('Requisitos para que llegue alguien')
-    expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (0/2) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
+    expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (2 libres de 4) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
   })
 })
 

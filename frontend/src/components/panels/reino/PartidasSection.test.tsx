@@ -56,6 +56,14 @@ describe('PartidasSection (CR-63 63d)', () => {
     expect(postLanzarPartida).toHaveBeenCalledWith('s', { tipo: 'CAZA', especie: 'murgol', destinoLocationId: 'coto', companionIds: ['c1'], subjectIds: ['s1'], permanente: true })
   })
 
+  // P313: sin destinos no se dice «aún no conoces ningún lugar»: puede ser que ya estén cazados.
+  it('sin destinos con presas no dice que no conozcas ningún lugar: pueden estar ya cazados', async () => {
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, destinos: [] } })
+    const { findByText, queryByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect(await findByText(/ya cazaste las de los que conoces/)).toBeTruthy()
+    expect(queryByText(/Aún no conoces ningún lugar/)).toBeNull()
+  })
+
   it('sin nadie libre lo dice', async () => {
     vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, cazadores: [], grupos: [] } })
     const { findByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)

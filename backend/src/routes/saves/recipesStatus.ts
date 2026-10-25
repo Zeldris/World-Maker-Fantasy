@@ -41,7 +41,7 @@ export interface RecipeStatus {
   /// Corrales piden una Jaula y el panel no la ofrecía).
   panelReino?: boolean;
   /// P255: receta con tope por región (`maxPerRegion`: Mercado, Tablón, Campamento…) que ya está levantada
-  /// (o en obra) en la región donde está el personaje: Reino › Edificios deja de ofrecerla. Las repetibles
+  /// (o en obra) en la región donde se levantaría (la del Ayuntamiento si lo pide, si no la del personaje): Reino › Edificios deja de ofrecerla. Las repetibles
   /// (Choza, Pozo, Granero…) no llevan tope y no se marcan nunca.
   unicaYaLevantada?: boolean;
 }
@@ -80,9 +80,19 @@ export async function constructionRecipeStatusFor(params: {
           currentLocationRecord: { id: currentLocationId },
         })
       : null;
+  // P255 (leve de la revisión): lo que cuelga del Ayuntamiento se levanta, y «Encargar» lo valida, en la región
+  // del Ayuntamiento, no en la del personaje; el tope por región se cuenta donde se va a levantar de verdad.
+  let regionDelTope = activeRegion;
+  if (recipe.maxPerRegion && recipe.requiresAyuntamiento) {
+    const ayuntamiento = await prisma.building.findFirst({
+      where: { saveId, recipeKey: 'ayuntamiento', status: { in: ['ACTIVO', 'DANADO'] } },
+      select: { location: { select: { region: true } } },
+    });
+    if (ayuntamiento?.location) regionDelTope = ayuntamiento.location.region;
+  }
   const unicaYaLevantada = recipe.maxPerRegion
     ? (await prisma.building.count({
-        where: { saveId, recipeKey: recipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: activeRegion ?? undefined } },
+        where: { saveId, recipeKey: recipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: regionDelTope ?? undefined } },
       })) >= recipe.maxPerRegion
     : false;
   return {

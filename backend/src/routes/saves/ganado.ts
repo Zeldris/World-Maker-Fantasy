@@ -24,12 +24,14 @@ export async function ganadoRoutes(app: FastifyInstance) {
       const productos = await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: ['leche-murgol', 'lana-murgol', 'huevo-corretolvas', 'plumas-rojizas'] } }, select: { slug: true, name: true } });
       const nombreProducto = new Map(productos.map((p) => [p.slug, p.name]));
       const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { forraje: true, ganadoDiasSinComer: true, ganadoDiasSinBeber: true } });
+      const hayAnimales = corrales.some((c) => c.animales.length > 0)
       return {
         forraje: stats?.forraje ?? 0,
         huecoForraje: await huecoDeForraje(tx, save.id),
         forrajeDia: await forrajeDeFibrerias(tx, save.id),
-        diasSinComer: stats?.ganadoDiasSinComer ?? 0,
-        diasSinBeber: stats?.ganadoDiasSinBeber ?? 0,
+        // P330: sin animales no hay carencia que avisar (los contadores viejos de partidas ya jugadas no cuentan).
+        diasSinComer: hayAnimales ? (stats?.ganadoDiasSinComer ?? 0) : 0,
+        diasSinBeber: hayAnimales ? (stats?.ganadoDiasSinBeber ?? 0) : 0,
         // CR-56 (Q4): compañeros animales que pueden volver al corral.
         fueraDelCorral: (await tx.companion.findMany({ where: { saveId: save.id, tipo: 'FAUNA', sourceSlug: { not: null }, condicionFisica: { not: 'MUERTO' } }, select: { id: true, name: true, sourceSlug: true } }))
           .filter((c) => esGanado(c.sourceSlug!))

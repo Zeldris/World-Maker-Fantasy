@@ -164,7 +164,12 @@ describe('vasallaje (CR-59) — Serhu bajo la Concordia', () => {
     expect((await semana(42, 0.99)).escaramuzas).toBe(0);
     expect((await vasallaje()).deuda).toBe(cuota);
     expect((await stats('clan-serhu')).soldados).toBe(serhu.soldados);
-    expect((await ultimaLinea()).datos).toMatchObject({ estado: 'parcial', porcentaje: 100, patrulla: true, pendiente: cuota });
+    const linea = await ultimaLinea();
+    // P314: la cuota entera pagada con deuda arrastrada no se llama «parcial» y el diario dice que se ha pagado.
+    expect(linea.datos).toMatchObject({ estado: 'pagada-con-deuda', porcentaje: 100, patrulla: true, pendiente: cuota });
+    expect(linea.texto).toContain('paga su cuota');
+    expect(linea.texto).toContain(`arrastra ${cuota} Goirnos pendientes`);
+    expect(linea.texto).not.toContain('parcial');
     const [vista] = await vasallajesVista(prisma, saveId, 42);
     expect(vista).toMatchObject({ alCorriente: false, porcentajePagado: 100, deuda: cuota });
   });
