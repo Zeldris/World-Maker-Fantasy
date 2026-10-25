@@ -27,6 +27,9 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 
 ## Índice
 
+**2026-10-25 — `QA-243`, asentar el lore de la enciclopedia**
+- [Bloque 1: NPC, razas y personajes](#2026-10-25--qa-243-bloque-1-npc-razas-y-personajes-de-la-enciclopedia)
+
 **2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
 compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)**
 - [combate-multiple.md confirmado sin discrepancias, muy bien mantenido](#combate-multiplemd--confirmado-sin-discrepancias-muy-bien-mantenido)
@@ -523,3 +526,242 @@ debe tomar por su cuenta.
 
 **Estado**: NO ES BUG en items.md/razas.md/npcs.md, sin acción necesaria. Único hallazgo real de
 esta ronda: `personajes.md` arriba.
+
+---
+
+## 2026-10-25 — `QA-243`, bloque 1: NPC, razas y personajes de la enciclopedia
+
+> Los commits de la rama `claude/lore-enciclopedia` anteriores al 2026-10-25 por la tarde llaman `QA-240` a esta
+> tarea y `QA-241` a la de la historia: `main` ya usaba esos números (voces), así que pasan a `QA-243` y `QA-244`.
+
+Auditoría de la enciclopedia contra el canon (rama `claude/lore-enciclopedia`). Cada arreglo, con el sí de la usuaria.
+
+**Aplicado (solo juego, `worldCatalog.ts` y `berigLore.ts`):**
+- `hagar-kiugh`: el rol decía «amigo de infancia de Gorhorn»; el canon dice que se conocieron en las minas
+  (`personajes.md:60`). Rol nuevo: «el amigo que Gorhorn hizo en las minas»; la bio pierde la frase repetida.
+- `aven-tessk`: Inteligencia 18 → 20, como `npcs.md` #24.
+- Spoilers fuera de la enciclopedia (mismo criterio que las bios recortadas el 2026-09-15). Aven Tessk ya no
+  cuenta lo de la carta del sabotaje y Yerin; el rol de Gistera ya no dice quién mató a su padre ni de quién
+  huye. El detalle queda en un comentario del código y en `npcs.md`.
+- `gisot-ketg`: macho; el rol pasa de «encargada» a «encargado».
+- `jorer-susig`: la muerte de su padre pasa de «Torgash Ketg» a «los Ketg», como la bio de Tirag. El canon no
+  se la atribuye a Torgash.
+- Erratas de rol y bio: Ufag («única chamana»), Jorer («perdió», «acabó», «sucesión», «guerreros», «pasado»),
+  guerrero y guerrera Serhu («que patrulla»), guardia Serhu y guardiana Helsig (sin el guion suelto).
+- Yerin (ficha de personaje): «ya no trabaja para nadie» → «no ha vuelto a entregar nada sellado», porque su
+  NPC sigue siendo mensajero de Keseg Sael.
+
+**Pendiente de decidir en este bloque:** Ufag, Gisot y Jorer son `PLANTILLA` siendo individuos únicos;
+«domar a las criaturas más poderosas» en la ficha de Gorhorn; Constitución 32 de Torgash (techo ~30); NPC
+del canon que faltan (Brann el Cambista); NPC del juego sin ficha en `npcs.md`; erratas de `razas.md`.
+
+## 2026-10-25 — `QA-243`, bloque 2: fichas de combate y sistemas de la enciclopedia
+
+Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de la usuaria, cada regla contrastada con el código:
+- `las-tiradas`: decía tres resultados (fallo, éxito con coste, éxito claro). Desde el 2026-09-07 son dos (`dice.ts:23`, `gradoExitoFor`).
+- `la-dificultad`: decía que la dificultad decide el combate. En el intercambio no decide el resultado (`combatExchange.ts:208`, `outcomeForMargin`); cuenta para las habilidades de apoyo, la huida y la experiencia.
+- `el-intercambio`: decía «dos tiradas independientes» contra dificultades propias. Ahora es tirada contra tirada: el empate lo gana quien defiende; un margen de 10 o más da golpe pleno o contragolpe (`DECISIVE_MARGIN`).
+- `condicion-fisica`: «respawnea» → «se repone».
+- `rematar-y-saquear`: decía que el golpe de gracia no tira. Sí tira, pero el resultado se fuerza a golpe pleno (`conGolpeDeGracia`, `combatExchange.ts:232`).
+- `la-reputacion`: cinco escalones de reputación y su efecto real en el temperamento (`reputation.ts`, `effectiveTemperamento`).
+- `reputacion-y-territorio`: basta estar por debajo del punto neutro con una de las facciones dueñas para que la región quede en disputa (`resolveFoundingOutcome`).
+- `lengua-de-los-orcos`: «Los tres títulos» → «Los cuatro títulos».
+- `crafteo`: sin tirada ni riesgo de estropear el objeto (`canCraft`); el nivel de oficio rebaja los mínimos; el «tier» solo marca la duración (`CRAFT_TIER_DURATION_SECONDS`); algunas recetas se desbloquean con un encargo. Fuera lo del Maestro y lo de «margen de que salga mal».
+- `construcciones`: ninguna obra pide atributos. Del tier 4 en adelante hacen falta la Casa de obras y un Ayuntamiento mediano o grande (`construction.ts`, `TIER_MAXIMO_PERSONAJE`, `ayuntamientoNivelMinimoPorTier`).
+
+**Pendiente de este bloque:**
+- Canon: recuentos de `clases.md` y § 8 de `ia-combate-y-mundo.md` (CR-44/CR-45 aplicados).
+- Nombres nuevos para habilidades repetidas («Golpe Certero», «Instinto Asesino» y otras).
+- Ficha nueva: «Los enemigos también huyen».
+- Coste de huir.
+- MAGO en la sección de clases.
+- `domador` frente a `ganadero`.
+
+**Canon del bloque 2, aplicado el 2026-10-25 con el sí de la usuaria:**
+- `clases.md`:
+  - Tabla final regenerada contando `allClassAbilityUnlocks()`. Llevaba Guerrero, Cazador, Arquero y otras con cifras de agosto. Se añade la fila de Mago (sin tronco en el motor).
+  - Instintivo pasa a 8/8: Instinto Reactivo (nv. 19) ya está sembrado.
+  - Resúmenes corregidos: Convocador 7, Valor 8, Tóxico 8, Aullador 4.
+  - «34 especializaciones» → 29 construidas.
+- `ia-combate-y-mundo.md`: § 8 marcado APLICADO (`CR-44`, `CR-45`), con una sección «Cómo quedó en el motor». La retirada se construyó como moral para todo NPC con mente, no solo para los de Inteligencia 20+; desde 20, el NPC es capitán de su bando.
+
+**Habilidades con nombre repetido, renombradas el 2026-10-25 con el sí de la usuaria («Sí, los ocho»):**
+- Las partidas guardadas reconocen cada habilidad por su nombre (`SavedAction`, la barra y el arreglo de `detail.ts`), así que dos habilidades distintas con el mismo nombre chocaban. Caso real: el Asesino Selecto tenía «Golpe Certero» en el tronco (nv. 8) y en su rama (nv. 32), y el filtro de duplicados por nombre le quitaba la del nivel 32.
+- Cambian de nombre (código en `classAbilities.ts` y canon en `clases.md`):
+  - Asesino, tronco nv. 8: Golpe Certero → **Golpe Oportuno**.
+  - Asesino Selecto nv. 32: Golpe Certero → **Golpe a la Marca**.
+  - Cazador Instintivo nv. 36: Instinto Asesino → **Reflejo Primario**.
+  - Druida Salvaje nv. 19: Instinto Asesino → **Arrebato Salvaje**.
+  - Guerrero Especialista nv. 12: Golpe Adaptado → **Golpe Llano**.
+  - Cazador Tirador nv. 19: Tiro Inmovilizador → **Tiro a la Pata**.
+  - Cazador Tirador nv. 36: Tiro Múltiple → **Tiro Pasante**.
+  - Maestro Ballestero nv. 24: Postura de Tirador → **Postura de Ballestero**.
+- Conservan el nombre: Golpe Certero del Cazador, Instinto Asesino del Maestro Asesino, Golpe Adaptado del Druida Adaptado, y Tiro Inmovilizador, Tiro Múltiple y Postura de Tirador del Maestro Arquero.
+- Partidas ya empezadas: el renombrado es por clase y rama (`HABILIDADES_RENOMBRADAS_POR_CLASE` en `habilidadesRenombradas.ts`); el caso del Selecto se distingue por la descripción. Tests: `habilidadesRenombradas.test.ts` (sin nombres repetidos en el catálogo) y `detail.habilidadesIniciales.integration.test.ts`.
+- **Pendiente:** las imágenes de estas ocho habilidades van por el nombre (`slugify`), así que hay que generarlas de nuevo.
+
+## 2026-10-25 — `QA-243`, bloque 3: objetos y recetas de la enciclopedia
+
+Aplicado con el sí de la usuaria.
+
+**Recetas contra el catálogo:**
+- **El catálogo manda** sobre lo fabricado («Catálogo manda»). Las recetas ya no traen `statBonuses` propios: `objetoFabricado()` (`crafting.ts`) toma nombre, descripción y bonus de la ficha `resultCatalogSlug`. Lo usan el crafteo del turno, el del tick diario y la economía de facción. `itemCatalogSync` deja de exceptuar las copias fabricadas: vuelven a los bonus de su ficha.
+- Seis `resultName` igualados al catálogo: Hacha de guerra Maktor, Lingote de Hierro de Llanura Roja, Lingote de Hierro Imantado de Llanura Roja, Vendaje improvisado orco de las Llanuras, Mena de Hierro de las Llanuras y Manojo de salvia del polvo.
+- Ungüento de Espina: pedía un ingrediente inexistente; ahora pide «pétalos de Flor de Ceniza» (`infusion-petalos-flor-ceniza`).
+- Tests en `crafting.test.ts` («recetas contra el catálogo»): cada ingrediente exacto existe, cada `resultName` coincide con su ficha y una Mochila Curtida fabricada da +10 huecos.
+
+**Objetos del catálogo:**
+- `infusion-petalos-flor-ceniza` pasa a «Pétalos de Flor de Ceniza» (es el pétalo, la infusión es su uso). El slug no cambia.
+- «Cuchillo de deshuello» → **Cuchillo de desuello de hielo sílice**. El slug no cambia y el alias antiguo se conserva. También se corrige «deshuello» en las condiciones, en `construction.ts` y `loreChunks.ts` y en el canon (`cristal-helado.md`, `edificios-de-oficio.md`).
+- Los cuchillos de desuello no los vendía nadie, y la Curtiduría los pide. Ahora los lleva y los vende el Maestro Desollador Serhu (2 cuchillos de desuello y un desollador de sílice).
+- Abalorios: carisma +3 → **+1**. Valían más que objetos de rango superior.
+- Lingote de Yerreo: 12 → **70 goirnos**. Valía menos que su mena.
+- «Bulco de Arena» → **Rugoconcha** en el canon (`llanuras-del-viento-rojo.md`, `items.md` y los resúmenes de `canon-opencode`). El motor ya usaba `rugoconcha` desde `CR-43`.
+
+**Pendiente de este bloque (leve):**
+- Peletero, desollador y domador no tienen recetas.
+- La placa de gargantúa pide fuerza 18 para fabricarla y solo F14/C16 para llevarla. Es una decisión de diseño.
+- «Kit de costura de hueso»: anglicismo.
+- Objetos del catálogo que nadie vende, suelta ni fabrica.
+- Las partidas ya empezadas conservan el nombre antiguo de sus objetos fabricados. La sincronización solo repone bonus y hueco.
+
+## 2026-10-25 — `QA-243`, bloque 4 (primer arreglo): notas de diseño a la vista en 26 lugares
+
+- 26 descripciones de lugares (Meseta del Orden, Ciénaga Troncal, El Margen Silencioso) acababan en «Fuera del núcleo jugable actual.», a veces con «Gorhorn no ha estado aquí» o «Sin conexión previa con Gorhorn». Son notas de diseño y la regla P35 (`QA-27`) ya las prohíbe en texto visible. Se quitan. El aviso para el narrador sigue en `loreChunks.ts`.
+- «el primer lugar del núcleo jugable desde el que…» (Cresta volcánica) → «el primer lugar de las Llanuras desde el que…», también en su chunk.
+- Por qué se coló: el test de P35 solo miraba la línea `description:`, y el texto empieza en la línea siguiente. `catalogoSinNotasInternas.test.ts` ahora recorre los datos exportados del catálogo. Falla sin el arreglo (`rojo-sin-arreglo` OK).
+
+## 2026-10-25 — `QA-243`, bloque 4: lugares, facciones, fauna y flora
+
+Aplicado con el sí de la usuaria («11 plantas sin nombre, Margen: tres errores, Ortografía, Datos sueltos»,
+«Poblado Jeyselt», «Ufag, Gisot, Jorer: PRINCIPAL», «Historia: tarea aparte»).
+
+**Fauna y flora:**
+- **Grave:** 11 fuentes de recolección del Margen, la Ciénaga y Cristal Helado se veían en la Enciclopedia con
+  el slug y la ficha vacía (Musgo Callado, Veldria Hueca, Resina de Veldria, Flor de Víspera, Cántaro de Hoja,
+  Carnosa de Tocón, Bulbo de Turbera, Velo de Charca, Herrumbrera, Liquen Escarcha, Holdo). Ahora tienen nombre,
+  descripción sacada del canon y su familia de flora. El Osario de la Manada, como fuente de hueso, se llama
+  «Costillas de la Gargantúa». Test: `floraConFicha.test.ts` (falla sin el arreglo).
+- Cornante y Sombra de Kroj tenían el mismo rendimiento repetido. Se queda una fila de cada uno. El test lo
+  comprueba para todo el catálogo.
+- Erratas en cinco habilidades de fauna. «Plumaje ferreo» pasa a «Plumaje férreo», con renombre en
+  `HABILIDADES_RENOMBRADAS` por si alguna partida lo guarda.
+- Canon: fuera las marcas «pendiente de código» de la fauna y la flora que ya están en el juego (Margen,
+  Ciénaga, Cristal Helado) y de los vecinos de Hashma. La Gargantúa de Ceniza pasa a CAUTELOSO también en el
+  canon: el juego ya lo era desde el 2026-08-23.
+
+**Lugares:**
+- El Margen Silencioso: la frontera con las Llanuras es la norte, no la oeste. Del Refugio sin Nombre salen
+  los correos que la Concordia de Hierro usa; antes decía que «se infiltran» en ella. El Claro de la Manada
+  cuenta que hoy está arrasado, como dice el canon.
+- **Jeyselt** es el poblado y **Keseg Prisilke** el clan que lo habita. «Fin Susurrado» es el nombre del
+  poblado en lengua común, tomado de su clan. El exterior se llamaba «Conclave Fin Susurrado - Keseg
+  Prisilke», con un «Conclave» que no salía en el canon, y el interior pasa a «Salón de Jeyselt». Los
+  alias antiguos se conservan. También cambian `cienaga-troncal.md`, que lo contaba al revés,
+  `lenguas-helek.md` y el chunk de Keseg Prisilke.
+- Ortografía: Marismas de Lodo Negro, La Veta Helada, La Red Profunda Final, El Lago Cristalice, Túneles
+  Musgosos y Raíces Madre Fango. Las once `kind: 'region'` se normalizan a «región» (el Cronista ya aceptaba
+  las dos). «Puesto Rabioso del Márgen» pasa a «del Margen» en el juego y en el canon.
+- La Playa de Ceniza Blanca dice ya que es puesto avanzado Serhu, con su Embarcadero de pesca. Silh Makut
+  recibe el alias «el cerco de los pilotes».
+
+**Facciones, personajes e historia:**
+- Nueva relación inicial Helsig ↔ Goshg con presión 30, que da un tratado comercial: la Senda del Sílice.
+  El test daba esa pareja por NEUTRAL solo porque no tenía fila.
+- Ufag Ketg, Gisot Ketg y Jorer Susig pasan a PRINCIPAL: tienen nombre propio, igual que Tirag Susig.
+- Gorhorn conserva «domar»: es Cazador y se especializará como Domador, así que podrá domar desde el nivel 10.
+  Queda apuntado en `personajes.md`.
+- `razas.md`: erratas de las filas Goirntes, Kalisar, Nabieus y Faerus, sin cambiar lo que dicen.
+- Historia: fuera «Fecha provisional.» de dos entradas visibles. Las entradas que faltan van a la tarea
+  `QA-244`.
+
+**Pendiente de este bloque (leve):**
+- Los Goshg no tienen edificios, ni Keseg Sael ni los Goirntes tienen tablones (también falta en el canon).
+- El Ferike no da hueso ni carne.
+- Sin revisar contra el canon: la fauna de la Ciénaga, de Cristal Helado y de la Meseta.
+
+**Traducciones de elementos de facción** (sí de la usuaria, las cuatro), en `lenguas-helek.md`:
+- Nabieus: `Ilsk` (ver, observar) y `Ilsk'sael`, el Archivo del Refugio («lo visto, callado»). No lleva
+  `Karo` (carta) porque en el Archivo nunca se guardan cartas. También en el chunk del Refugio.
+- Faerus: `Thak` (garra) y `Thak'ashi`, el Árbol de las marcas («garra y olor»), que sale también en el
+  tablón de Feg Tusha. `Hesh` (piel) y `Hesh'yegr`, la Tolda de Kegi («la piel del Vergel»).
+- Orcos: `Durk` (senda) y `Durk'helske`, la Senda del Sílice («la senda helada»). También en el chunk
+  de la Ciénaga.
+- El tablón de Keseg Prisilke decía «en el cónclave»; ahora dice «en el salón».
+
+**Fauna de Ciénaga, Cristal y Meseta** (sí de la usuaria). Las fichas coincidían con el canon; lo que fallaba
+estaba alrededor:
+- 18 animales cazables no tenían región (`harvestSourceRegion`): los 7 de estas regiones, 7 del Margen y 4 de
+  las Llanuras (Imanio, Nuente, Celubia Pálida, Terkash). En las Llanuras se dejaba «cazar una hielaga».
+  Test nuevo en `floraConFicha.test.ts` (rojo sin el arreglo).
+- 14 de ellos no tenían población; se siembran con el criterio de siempre (Borbol 3000/5000 … Tragalodo y
+  Mekiosi 40/80; la Hielaga, 400/600 porque se raciona).
+- Cuerno de Hielaga (t2), que daba el canon, como objeto y en el despiece.
+- Chunk nuevo «Fauna de Cristal Helado» (Hielaga, Nievón, Escarchín); el de la Meseta nombra al Vreskal.
+- `meseta-del-orden.md`: fuera cuatro «pendiente de código» y el hueco de Los del Obelisco. `cristal-helado.md`:
+  el Escarchín es la única pesca de la región (lo decía el juego). `canon-opencode/catalogo/fauna.md`: la tabla
+  «Solo en el lore» pasa a «En el catálogo del juego (fuera de las Llanuras)».
+
+**Leves del bloque 4** (sí de la usuaria):
+- Ferike: hueso ligero y carne, 3 de cada uno, como decía el canon.
+- Edificios Goshg: los oficios de la Ciénaga existen, pero no hay ningún Maestro Goshg; el canon
+  (`cienaga-troncal.md`, `edificios-de-oficio.md`) decía «solo primeros auxilios». Queda en el hito `0.5`.
+- Tablones de Keseg Sael y de los Goirntes: no tienen interior donde colgarlos. Quedan en el hito `0.6`.
+
+## 2026-10-25 — `QA-243`, fase 1 antes de `main`: revisión del código de la rama
+
+**Arreglado:**
+- 11 plantas de fuera de las Llanuras no tenían región en `harvestSourceRegion`: seis del Margen
+  Silencioso, cuatro de la Ciénaga Troncal y el Liquen de Escarcha de Cristal Helado. El test de
+  `floraConFicha.test.ts` cubre ya toda fuente de recolección, no solo la fauna (rojo sin el arreglo).
+- `producirFacciones` leía la ficha de lo fabricado una vez por día y por oficio. Ahora lo hace una
+  vez por receta.
+
+**Leves, pendientes:**
+- `NpcState.abilityUsesThisEncounter` se renombra con la clase de la jugadora, así que un NPC de
+  otra clase puede ver un nombre cambiado. Se acepta porque el contador se vacía en cada combate.
+- Si la jugadora llama «Golpe Certero» a una habilidad propia, la carga de la partida la renombra
+  según su clase.
+- `narrateAndPersistTurn` vuelve a leer la ficha de catálogo de lo fabricado, que `catalogBySlug`
+  ya había traído. Lo mismo pasa en `tickProduccionReino`, una vez por orden producida.
+
+**Puerta de un solo sentido (va en la descripción del PR):** `sincronizarObjetosDeCatalogo` ya no
+respeta los bonus de la receta. Lo fabricado en partidas existentes vuelve a los bonus de su ficha
+(por ejemplo, el Tocado de plumas). Las habilidades renombradas se renombran en la partida al
+cargarla.
+
+## 2026-10-25 — `QA-245`…`QA-248`, fase 3 antes de `main`: revisión de la retro
+
+**Arreglado:**
+- `ficha.ts` leía claves heredadas de los diccionarios: `ficha.sh constructor` se caía y `toString`
+  salía como encontrado. Ahora solo cuentan las claves propias.
+- Un slug parcial («hielag») encajaba por subcadena en los chunks y no sugería parecidos. Ahora
+  encajan por palabra entera.
+- `--canon` cortaba líneas con tildes a mitad de carácter (`cut` por bytes). Además, si había 20
+  líneas con el slug, se perdían las del nombre, y el catálogo se cargaba dos veces. La búsqueda
+  está ahora en `ficha.ts`: 10 líneas por el slug y 10 por el nombre, recortadas por caracteres.
+- Una receta con `orMatch` no nombraba la alternativa. `ficha.sh a b` se quedaba con `b` sin avisar.
+- `cobertura.py`: el choque de identificadores dejaba de verse al traer `main`. Ahora también falla
+  «DEFINIDAS DOS VECES» en el árbol, con `UX-6` como excepción conocida.
+- `cobertura.py`: la misma tarea traída a las dos ramas desde una tercera ya no cuenta como choque
+  (se compara el título).
+- `cobertura.py`: `--libre` ya no cuenta números sueltos de la prosa («`QA-12` y 400»).
+- Tests de fallo de `ficha.sh` con su motivo; el de `--libre` prueba que mira `origin/main`.
+
+**Leves, pendientes:**
+- `textos_en()` lanza un `git show` por archivo (unos 17 por pasada de `cobertura.py`). Uno solo
+  con `git cat-file --batch` lo abarataría.
+- Los parecidos de `ficha.sh` no proponen lugares ni facciones; esos slugs sí salen en «Otras
+  exportaciones».
+
+**Segunda vuelta (revisión de los arreglos):** arreglados la cantidad de la alternativa `orMatch`
+(«1 por cada 4»), `--libre`, que había dejado de contar los rangos y las reservas del mapa, y
+`--canon`, que pasa a buscar por palabra entera con plural, como los chunks. También el recorte
+por caracteres de verdad (no por unidades UTF-16), la doble lectura de los roadmaps y la carpeta
+temporal del test. Leves:
+- «DEFINIDAS DOS VECES» se apoya en la excepción `UX-6`: `DEF` toma por definición cualquier
+  viñeta en negrita con el id (`- **UX-6:**`). Exigir ` ·` tras el id quitaría la excepción, pero
+  hay que revisar antes qué definiciones reales se escriben sin él.
+- Una tarea traída de una tercera rama y renombrada después en un solo lado cuenta como choque
+  hasta traer `main`.
+- `canon()` carga todas las líneas del canon para quedarse con 20.

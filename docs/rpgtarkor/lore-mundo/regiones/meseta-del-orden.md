@@ -38,7 +38,7 @@ Aquí residen las dos cabezas del orden: el **Primer Censor Tarsen Vold**, que d
 la **Archimagistrada Yovenne Tal**, que encabeza a Los del Obelisco.
 
 ### El Puesto del Corredor
-*Puesto de control · extremo sur del corredor costero · pendiente de código.*
+*Puesto de control · extremo sur del corredor costero.*
 
 El puesto de control donde el camino que bordea el Margen entra en la Meseta: la otra puerta de las
 columnas que llegan al Cruce de las Cenizas. Es una explanada de piedra gris pulida donde se cruzan en
@@ -49,7 +49,7 @@ de entrada sin su salida es un asunto inacabado, y se persigue. Sin sello de pat
 se entra sin mentir, sobornar o rodear por el Margen.
 
 ### Las Canteras del Eje
-*Cantera y taller de talla · pendiente de código.*
+*Cantera y taller de talla.*
 
 De donde sale **cada obelisco de leyes de Berig**, siempre de la misma veta que el primero. Un edicto
 grabado en otra piedra no se considera del todo válido, y ningún Goirnte sabría explicar por qué:
@@ -94,7 +94,7 @@ aleaciones metálicas ligeras y resistentes sin excavar minas profundas.
 ## Fauna
 
 ### Vreskal
-*Ordenados (Goirme) · primera especie de la familia · nivel 1-3 · INOFENSIVO · pendiente de código.*
+*Ordenados (Goirme) · primera especie de la familia · nivel 1-3 · INOFENSIVO.*
 
 Lagarto de palmo y medio con el cuerpo cubierto de placas hexagonales idénticas, que se añaden una a
 una a medida que crece siguiendo siempre el mismo patrón (crecimiento modular, como un panal). Vive en
@@ -123,8 +123,6 @@ simetría lo es en la piedra.
   nombre.
 - Yovenne Tal y Tarsen Vold tienen su sitio en El Baluarte, pero Vrask Ombra y Kael Dorn siguen sin
   lugar fijo, y El Baluarte no tiene `Location` interior.
-- Las dos facciones Goirntes (Concordia y Los del Obelisco) comparten la región; la segunda está
-  pendiente de código.
 
 ## Historial de cambios
 
@@ -135,6 +133,8 @@ simetría lo es en la piedra.
 - 2026-10-07 (tanda OpenCode del 2026-10-06/07, revisada por Claude): nombres y adendas al pie de los obeliscos; las costumbres Goirntes van en `razas.md`. Sin código.
 - 2026-09-27 (pasada de conexión): sección de conexiones (mensajeros Nabieus, tala del borde, rutas del tributo).
 - 2026-09-27 (segunda pasada): las ciudades-fortaleza numeradas (Vresk Hes, Vresk Tuh y Vresk Kei) y el Vreskal, primera especie de la familia Ordenados.
+- 2026-10-25 (`QA-243`): fuera las marcas «pendiente de código» del Puesto del Corredor, las Canteras del Eje, el
+  Vreskal y Los del Obelisco, que ya están en el juego.
 
 ---
 

@@ -39,7 +39,7 @@ Especies que aparecen en buena parte de las Llanuras, no ligadas a una sola zona
 ### Fauna
 
 #### Gargantúas de Ceniza
-*Bestiones · nivel 6-12 · AGRESIVO · Catálogo: `gargantua-de-ceniza`.*
+*Bestiones · nivel 6-12 · CAUTELOSO (cambiado el 2026-08-23 con la usuaria: solo ataca si se la provoca) · Catálogo: `gargantua-de-ceniza`.*
 
 Reptiles herbívoros del tamaño de casas, con placas óseas volcánicas. Los orcos los respetan
 profundamente. Quien las guía en las migraciones estacionales es el Domador del clan
@@ -471,7 +471,7 @@ Da Quitina Escorante (tier 2-4).
 Donde el núcleo explorado de la llanura acaba, un cruce de caminos: uno se adentra hacia el sur,
 rumbo al corredor occidental que bordea El Margen Silencioso camino de la Meseta del Orden, y otro
 sigue a lo largo de la llanura hacia la frontera real con la espesa selva. Se asienta en una muesca
-donde el propio Margen se adentra en la llanura, con **el Puesto Rabioso del Márgen** (un puesto
+donde el propio Margen se adentra en la llanura, con **el Puesto Rabioso del Margen** (un puesto
 avanzado del Margen, rotulado así en el mapa de Azgaar) a la vista al otro lado de la frontera. El
 Cruce no es solo el límite de lo explorado: es el punto exacto donde alguien que mira al sur ve ya la
 otra región. Es la única puerta por la que llegan las columnas de la Concordia.
@@ -883,8 +883,8 @@ Pez migratorio de 1-1,40 m, gris oscuro, de cuerpo ancho y circular casi sin col
 muy desarrolladas y escamas grandes como armadura. Solo aparece en otoño y es el más codiciado de la
 costa. Da Carne de Toluh (tier 7) y Escamas de Toluh (tier 7), muy buscadas para armaduras.
 
-#### Bulco de Arena
-*Nadantes · Catálogo: `bulco-de-arena`.*
+#### Rugoconcha
+*Nadantes · Catálogo: `rugoconcha` (antes «Bulco de Arena», renombrada 2026-10-05, `CR-43`, para no confundirla con el Bolco, hoy Holdo).*
 
 Caracol de mar de 5-15 cm, de concha rugosa entre rojo oscuro y marrón claro. Es marisco y se obtiene
 con la habilidad Buscar (tier 1).
@@ -1008,7 +1008,7 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 - **Talleres de Karot Veku** descritos pero sin edificio en el catálogo: herboristería, alquimia,
   corrales del Domador, desolladero y carpintería (ya tienen descripción y Maestro asignado).
 - El **trabajador de Reino** (`<Oficio>` Serhu PLANTILLA) no existe para ningún oficio.
-- El **Puesto Rabioso del Márgen** es solo un rótulo del mapa, sin `Location`.
+- El **Puesto Rabioso del Margen** es solo un rótulo del mapa, sin `Location`.
 - La **Espina del Viento** no tiene ficha de combate, por diseño.
 - Hay loot **sin uso** en ninguna receta: Huevo de Celubia y Caparazón de Terkash. El Veneno de
   Espina y las Plumas de Celubia ya lo tienen (Ungüento de Espina y Manto de Cornisa, en código).

@@ -71,3 +71,56 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
     expect((await prisma.npcState.findFirstOrThrow({ where: { saveId } })).abilityUsesThisEncounter).toEqual({ 'Análisis Salvaje': 1, Mordisco: 2 });
   });
 });
+
+/// QA-243: habilidades que se repetían entre clases, renombradas según la clase de la partida. Un
+/// Asesino Selecto tenía dos «Golpe Certero» (tronco y rama); cada fila recoge el suyo.
+describe('GET /saves/:id renombra por clase las habilidades repetidas (QA-243)', () => {
+  let saveId: string;
+  const TRONCO = 'Un golpe reactivo, soltado en el instante exacto en que el rival baja la guardia.';
+  const RAMA = 'Un golpe directo al objetivo marcado, sin desperdiciar ni un movimiento.';
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Selecta',
+        characterArchetype: 'asesino',
+        characterOrigin: 'x',
+        characterMotivation: 'x',
+        attributes: { fuerza: 8, destreza: 12, constitucion: 7, inteligencia: 8, voluntad: 7, carisma: 6, magia: 2 },
+        portraitInitial: 'S',
+        currentLocationId: hondonada.id,
+        clase: 'ASESINO',
+        especializacion: 'ASESINO_SELECTO',
+        level: 32,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.savedAction.create({ data: { saveId, name: 'Golpe Certero', promptText: 'x', category: 'combate', icon: '🗡️', description: TRONCO } });
+    await prisma.savedAction.create({ data: { saveId, name: 'Golpe Certero', promptText: 'x', category: 'combate', icon: '🎯', description: RAMA } });
+    await prisma.skillBar.create({ data: { saveId, slotIndex: 0, name: 'Barra 1', abilityNames: ['Golpe Certero'] } });
+  });
+
+  afterAll(async () => {
+    await prisma.skillBar.deleteMany({ where: { saveId } });
+    await prisma.savedAction.deleteMany({ where: { saveId } });
+    await prisma.worldState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el del tronco pasa a «Golpe Oportuno» y el de la rama a «Golpe a la Marca», sin duplicarse', async () => {
+    const app = Fastify();
+    await app.register(detailRoutes);
+    expect((await app.inject({ method: 'GET', url: `/saves/${saveId}` })).statusCode).toBe(200);
+    const nombres = (await prisma.savedAction.findMany({ where: { saveId, category: 'combate' } })).map((a) => a.name);
+    expect(nombres).not.toContain('Golpe Certero');
+    expect(nombres.filter((n) => n === 'Golpe Oportuno')).toHaveLength(1);
+    expect(nombres.filter((n) => n === 'Golpe a la Marca')).toHaveLength(1);
+    expect((await prisma.skillBar.findFirstOrThrow({ where: { saveId, slotIndex: 0 } })).abilityNames).toEqual(['Golpe Oportuno']);
+  });
+});

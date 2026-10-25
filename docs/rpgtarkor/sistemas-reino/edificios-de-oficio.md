@@ -100,7 +100,7 @@ aproximadamente el doble y pide un material procesado, que obliga a tener la cad
 | # | Edificio (`key` propuesta) | Oficio | Clase X4 | Qué hace | Pieza propia del oficio (nivel 1) |
 |---|---|---|---|---|---|
 | 1 | Herrería (`herreria`) | herrero | procesado + producción | lingotes (hierro, Yerreo, Hiyerro), reparar el hacha, armas y armaduras de metal | 1 piedra de afilar |
-| 2 | Curtiduría (`curtiduria`) | curtidor | procesado | pieles crudas → cuero curtido; armaduras de piel pesada | 1 cuchillo de deshuello |
+| 2 | Curtiduría (`curtiduria`) | curtidor | procesado | pieles crudas → cuero curtido; armaduras de piel pesada | 1 cuchillo de desuello |
 | 3 | Peletería (`peleteria`) | peletero | producción | ropa y abrigo de piel (capas, capuchas, guantes) | 1 kit de costura de hueso |
 | 4 | Desolladero (`desolladero`) | desollador | procesado | despieza las presas que entran al almacén: carne, piel, hueso, garra | 1 cuchillo de hielo sílice |
 | 5 | Corrales (`corrales`) | domador | extracción (animal) | leche, lana y crías de los animales domados; aclimata capturas antes de la Jaula | 4 cuerdas de tendón |
@@ -137,7 +137,7 @@ tiene su edificio*.
 |---|---|---|---|
 | **Clan Serhu** (Karot Veku, Llanuras) | 12 + constructor | Ketg'sedsar, Herrería, Curtiduría, Cocina común | Peletería, Desolladero, Corrales, Carpintería, Sastrería, Herboristería, Casa de curas, Taller de alquimia, Obrador de piedra; y el Embarcadero de pesca, en El Embarcadero de Ceniza, no en el poblado (ya existe como lugar). El lore de 5 de ellos ya está escrito (A-09) |
 | **Clan Helsig** (Helske Tugh, Cristal Helado) | herrero, peletero, cocinero, minero, herborista, alquimista, primeros auxilios | Helsig'sedsar, Herrería, Peletería, Cocina, Boca de mina, Herboristería, Taller de alquimia | Casa de curas (el oficio existe, pero ni Maestro ni edificio) |
-| **Clan Goshg** (Silh Makut, Ciénaga) | solo primeros auxilios | Goshg'sedsar | Casa de curas. Los talleres del lore (astillero, resinería, ahumadero, talla de tótems, ver P-06) **no tienen oficio en código**: hacen falta `carpintero-orcos-cienaga`, `cocinero-orcos-cienaga` y un oficio de resina (§ 6) |
+| **Clan Goshg** (Silh Makut, Ciénaga) | ninguno con Maestro (los oficios de la Ciénaga existen, sin quien los enseñe) | Goshg'sedsar | Casa de curas y los talleres del lore (astillero, resinería, ahumadero, talla de tótems, ver P-06): esperan a los Maestros Goshg (hito `0.5`); falta un oficio de resina (§ 6) |
 | **Concordia / Los del Obelisco** (Goirntes) | ninguno en código | — | Nada hasta que existan oficios Goirntes (§ 6) |
 | **Feg Tusha, Feg Ger** (Faerus) | ninguno | — | Nada. Por lore, los Faerus apenas fabrican; Kegi sería la excepción (curtido fino, colmillo) |
 | **Keseg Sael, Keseg Prisilke** (Nabieus) | ninguno | — | Nada todavía |

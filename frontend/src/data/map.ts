@@ -121,7 +121,7 @@ export const llanurasNodePositions: Record<string, { x: number; y: number }> = {
   // dibujo del Cruce a la triangulación real y ponerlo donde corresponde de verdad contra el PNG.
   // Primer intento (0,-180) lo pegaba al borde exterior; ajuste fino pedido por la usuaria
   // (flecha sobre una captura del mapa real) lo mete en la muesca donde El Margen Silencioso se
-  // adentra más en Llanuras, justo frente a "Puesto Rabioso del Márgen" (burg ya nombrado así en
+  // adentra más en Llanuras, justo frente a "Puesto Rabioso del Margen" (burg ya nombrado así en
   // el .map real de Azgaar) — verificado renderizando sobre el PNG real con rsvg-convert. El
   // resto del núcleo no se toca. La mecánica de viaje no usa estas coordenadas (usa las horas/km
   // reales de LocationLink en la DB), así que este desacople no cambia ningún tiempo de viaje.

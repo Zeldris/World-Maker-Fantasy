@@ -9,7 +9,7 @@ import { comidaDe } from './cronista/ganaderia.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
-import { CRAFTING_RECIPES } from './crafting.js';
+import { CRAFTING_RECIPES, objetoFabricado } from './crafting.js';
 
 // Tick diario extraído de `turnResolution.ts` (Fase 7 del plan, refactor puro): todo lo que corre
 // UNA vez por turno que cruza al menos un día de ficción. La producción/consumo de facción vive
@@ -215,13 +215,14 @@ export async function tickProduccionReino(tx: Prisma.TransactionClient, saveId: 
         const cabe = esMat ? Math.min(resultado.resultCantidad, huecoMateriales) : resultado.resultCantidad;
         if (esMat) huecoMateriales -= Math.max(0, cabe);
         if (resultado.resultCatalogSlug && cabe > 0) {
+          const fabricado = await objetoFabricado(tx, worldId, recipe);
           await tx.almacenItem.createMany({
             data: Array.from({ length: cabe }, () => ({
               saveId,
-              name: recipe.resultName,
-              description: recipe.resultDescription,
+              name: fabricado.name,
+              description: fabricado.description,
               catalogSlug: recipe.resultCatalogSlug ?? null,
-              statBonuses: recipe.statBonuses ?? undefined,
+              statBonuses: fabricado.statBonuses ?? undefined,
             })),
           });
         }

@@ -61,4 +61,4 @@ de los tocones, t2).
 - NPC Nabieus: solo Aven Tessk (portavoz del cónclave).
 - Sin flora de Heldras, Granoles, Trenias, Marelas, Bulvias ni Vetrias.
 - La costa occidental está sin describir.
-- El Puesto Rabioso del Márgen es solo un rótulo.
+- El Puesto Rabioso del Margen es solo un rótulo.

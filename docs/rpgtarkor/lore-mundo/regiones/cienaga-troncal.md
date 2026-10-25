@@ -44,9 +44,9 @@ los mejores trabajando la madera de los tres clanes, y sus talleres lo reflejan:
 - **Talla de tótems**: sin techo, junto al salón. De aquí salen los tótems de madera de ciénaga que
   los demás clanes compran o piden.
 
-En el código, los Goshg solo tienen un oficio (primeros auxilios), así que el único edificio de oficio
-que les corresponde hoy es la **Casa de curas**. Para que los talleres de arriba sean edificios de
-verdad hacen falta oficios nuevos: carpintero y cocinero de la Ciénaga, y un resinero (ver
+En el código existen los oficios de la Ciénaga (carpintero y cocinero incluidos), pero ningún Maestro
+Goshg los enseña, y cada edificio de oficio necesita el suyo: los talleres de arriba y la **Casa de
+curas** esperan a los Maestros Goshg (hito `0.5`). Falta además un oficio de resina (ver
 [edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md) § 6).
 
 ### Jeyselt (Fin Susurrado)
@@ -56,8 +56,8 @@ Poblado del clan **Keseg Prisilke**, en la explanada más pequeña del sur de la
 de la segunda huida Nabieus (ver [cronologia-mitica.md](../cronologia-mitica.md#sin-fechar-generaciones-después-de-la-caída-la-segunda-huida-nabieus)).
 Vive de la caza y de la madera de los Trepadores Ocaso más que de los mensajes; la Concordia le exige
 madera, como a los Goshg, con quienes comparte la Ciénaga en una convivencia práctica (intercambian
-madera y noticias, no se casan entre sí). Nombre en
-lengua común: *Fin Susurrado*; en su lengua, *Jeyselt*. Sus habitantes tienen cuerpos adaptados a
+madera y noticias, no se casan entre sí). *Jeyselt* es el
+nombre del poblado en su lengua; en lengua común se le llama *Fin Susurrado*, el nombre de su clan. Sus habitantes tienen cuerpos adaptados a
 las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.
 
 ## Lugares
@@ -105,7 +105,7 @@ madera oscura, densa y casi inmune a la humedad, es la que los clanes orcos pref
 sus tótems. De ella era el gran tótem del Clan Maktor, y también el trozo que Gorhorn rescató.
 
 ### Bulbo de Turbera
-*Bulvias · zonas llanas · pendiente de código.*
+*Bulvias · zonas llanas.*
 
 Tubérculo elíptico de 15-30 cm, de piel parda y pulpa blanca y firme, que crece en el fango de turba
 de las zonas llanas. Es el alimento base de Keseg Prisilke y de los Goshg cuando falla la caza de
@@ -113,7 +113,7 @@ Cornantes; se come cocido, frito o seco al humo.
 **Recurso:** Bulbo de Turbera, tier 1, alimento.
 
 ### Velo de Charca
-*Marelas · charcas quietas entre los pilotes · pendiente de código.*
+*Marelas · charcas quietas entre los pilotes.*
 
 Láminas gelatinosas y translúcidas de 5-15 cm que cubren la superficie de las charcas quietas, bajo
 los Trepadores Ocaso. Se come en sopa, y aplicada fresca sobre una quemadura **enfría y protege**: es
@@ -121,7 +121,7 @@ la cura de campo más habitual de los Goshg, que se queman a menudo con la resin
 **Recurso:** Velo de Charca, tier 1, alimento y medicinal.
 
 ### Herrumbrera
-*Vetrias · orillas de agua estancada · pendiente de código.*
+*Vetrias · orillas de agua estancada.*
 
 Arbusto de 40-70 cm de tallos gruesos con una corteza de color óxido, pesada y áspera. El fango de la
 Ciénaga arrastra hierro disuelto; sus raíces lo concentran en la corteza, que con el tiempo se vuelve
@@ -131,7 +131,7 @@ una región pobre en minerales: da para puntas de lanza y clavos, no para una he
 **Recurso:** Corteza Herrumbre, tier 2 (10 unidades equivalen a 1 de mena de hierro pobre al fundir).
 
 ### Holdo
-*Veldrias · Marismas de Lodo Negro · pendiente de código.*
+*Veldrias · Marismas de Lodo Negro.*
 
 Árbol bajo y ancho, pariente del Trepador Ocaso pero sin vetas doradas, que solo crece en las
 marismas. Su resina, negra y pesada, gotea al agua y flota: es la que forma la capa viscosa de las
@@ -143,7 +143,7 @@ de las canoas.
 ## Fauna
 
 ### Cornantes
-*Bestiones · nivel 3-8 · CAUTELOSO · pendiente de código.*
+*Bestiones · nivel 3-8 · CAUTELOSO.*
 
 Criatura de cuatro patas, corpulenta y de gran tamaño, con cornamenta ancha y ramificada. Es la
 principal fuente de alimento de los orcos en la Ciénaga Troncal. Cazar un Cornante es trabajo de
@@ -151,7 +151,7 @@ grupo y de paciencia: se le acorrala hacia el agua baja, donde su propio peso lo
 atrae Tragalodos.
 
 ### Tragalodo
-*Escamados · nivel 8-14 · AGRESIVO · agua baja y orillas · pendiente de código.*
+*Escamados · nivel 8-14 · AGRESIVO · agua baja y orillas.*
 
 Reptil acorazado de 3-4 m, de placas pardas cubiertas de barro seco y ojos a ras de cabeza. Caza en el
 agua baja, justo donde los Goshg acorralan a los Cornantes, y huele la sangre desde lejos. Por eso la
@@ -159,7 +159,7 @@ caza del Cornante es cosa de grupo y de prisa. Es el depredador grande que le fa
 **Recursos:** Placas de Tragalodo (t5, armadura) y Dientes de Tragalodo (t4).
 
 ### Borbol
-*Nadantes · nivel 1-2 · INOFENSIVO · ACUATICO · charcas y canales · pendiente de código.*
+*Nadantes · nivel 1-2 · INOFENSIVO · ACUATICO · charcas y canales.*
 
 Pez de fondo de 30-50 cm que respira aire: cada pocos minutos sube a la superficie con un golpe de
 cola. **Esa vibración es lo que leen los cazadores de Keseg Prisilke** con la pierna metida en el agua
@@ -167,7 +167,7 @@ cola. **Esa vibración es lo que leen los cazadores de Keseg Prisilke** con la p
 **Recurso:** Carne de Borbol (t1).
 
 ### Zancapilote
-*Zancudos · nivel 2-5 · CAUTELOSO · pilotes viejos del Cerco · pendiente de código.*
+*Zancudos · nivel 2-5 · CAUTELOSO · pilotes viejos del Cerco.*
 
 Ave zancuda gris de 1,5 m que anida en los pilotes abandonados del Cerco y roba pescado de las redes.
 Los Goshg la toleran porque grazna en cuanto algo grande se mueve bajo el agua: es su alarma contra el
@@ -190,10 +190,7 @@ Tragalodo.
 
 ## Huecos conocidos
 
-- Toda la fauna y la flora (salvo el Trepador Ocaso) está pendiente de código.
 - Los talleres del Cerco no tienen Maestro (ni edificio en el catálogo).
-- Todavía no hay descripción de ningún lugar en el código (las `Location` están vacías salvo las
-  Marismas).
 
 ## Historial de cambios
 
@@ -206,6 +203,10 @@ Tragalodo.
   catálogo y el de la sección del interior (`areas.md` decía "Makut Silh" en un solo sitio).
 - 2026-09-27 (pasada de conexión): Tragalodo, Borbol, Zancapilote y Bolco; familia y nivel de los Cornantes; Costa Corredor y Embarcadero descritos; sección de conexiones (Senda del Sílice, tributo por mar).
 - 2026-09-27 (segunda pasada): descritos los seis lugares que solo tenían nombre (Túneles Musgosos, Raíces Madre Fango, Cumbre Bruma Negra, Cataratas Madre Fango, Costa Marea Vida, Desfiladero Esmeralda) y los talleres del Cerco.
+- 2026-10-25 (QA-243): la fauna, la flora y las descripciones de los lugares ya están en el juego; se
+  quitan las marcas «pendiente de código». Jeyselt: *Jeyselt* es el nombre del poblado en su lengua y *Fin
+  Susurrado* el de lengua común (antes se leía al revés).
+- 2026-10-25 (`QA-243`): los oficios de la Ciénaga ya existen; a los talleres Goshg les faltan los Maestros.
 
 ---
 
