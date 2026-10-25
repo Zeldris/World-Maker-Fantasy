@@ -707,3 +707,25 @@ estaba alrededor:
 - Edificios Goshg: los oficios de la Ciénaga existen, pero no hay ningún Maestro Goshg; el canon
   (`cienaga-troncal.md`, `edificios-de-oficio.md`) decía «solo primeros auxilios». Queda en el hito `0.5`.
 - Tablones de Keseg Sael y de los Goirntes: no tienen interior donde colgarlos. Quedan en el hito `0.6`.
+
+## 2026-10-25 — `QA-243`, fase 1 antes de `main`: revisión del código de la rama
+
+**Arreglado:**
+- 11 plantas de fuera de las Llanuras no tenían región en `harvestSourceRegion`: seis del Margen
+  Silencioso, cuatro de la Ciénaga Troncal y el Liquen de Escarcha de Cristal Helado. El test de
+  `floraConFicha.test.ts` cubre ya toda fuente de recolección, no solo la fauna (rojo sin el arreglo).
+- `producirFacciones` leía la ficha de lo fabricado una vez por día y por oficio. Ahora lo hace una
+  vez por receta.
+
+**Leves, pendientes:**
+- `NpcState.abilityUsesThisEncounter` se renombra con la clase de la jugadora, así que un NPC de
+  otra clase puede ver un nombre cambiado. Se acepta porque el contador se vacía en cada combate.
+- Si la jugadora llama «Golpe Certero» a una habilidad propia, la carga de la partida la renombra
+  según su clase.
+- `narrateAndPersistTurn` vuelve a leer la ficha de catálogo de lo fabricado, que `catalogBySlug`
+  ya había traído. Lo mismo pasa en `tickProduccionReino`, una vez por orden producida.
+
+**Puerta de un solo sentido (va en la descripción del PR):** `sincronizarObjetosDeCatalogo` ya no
+respeta los bonus de la receta. Lo fabricado en partidas existentes vuelve a los bonus de su ficha
+(por ejemplo, el Tocado de plumas). Las habilidades renombradas se renombran en la partida al
+cargarla.

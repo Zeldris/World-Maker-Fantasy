@@ -31,4 +31,9 @@ describe('fauna cazable con región y población (QA-243)', () => {
     expect(cazables.filter((s) => !harvestSourceRegion[s])).toEqual([]);
     expect(cazables.filter((s) => !conPoblacion.has(s))).toEqual([]);
   });
+
+  it('toda fuente de recolección tiene región de origen', () => {
+    const fuentes = [...new Set(harvestYields.map((y) => y.sourceSlug))];
+    expect(fuentes.filter((s) => !harvestSourceRegion[s])).toEqual([]);
+  });
 });

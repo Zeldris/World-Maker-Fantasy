@@ -11419,6 +11419,19 @@ export const harvestSourceRegion: Record<string, string> = {
   'negueo-turquesa': 'Llanuras del Viento Rojo',
   'negueo-solar': 'Llanuras del Viento Rojo',
   'rugoconcha': 'Llanuras del Viento Rojo',
+
+  // QA-243: las plantas de fuera de las Llanuras tampoco tenían región (mismo hueco que la fauna).
+  'musgo-callado': 'Margen Silencioso',
+  'veldria-hueca': 'Margen Silencioso',
+  'resina-veldria-fuente': 'Margen Silencioso',
+  'flor-de-vispera': 'Margen Silencioso',
+  'cantaro-de-hoja': 'Margen Silencioso',
+  'carnosa-de-tocon': 'Margen Silencioso',
+  'bulbo-de-turbera': 'Ciénaga Troncal',
+  'velo-de-charca': 'Ciénaga Troncal',
+  herrumbrera: 'Ciénaga Troncal',
+  holdo: 'Ciénaga Troncal',
+  'liquen-escarcha': 'Cristal Helado',
 };
 
 /// Categorías amplias de fuente recolectable (2026-08-15, petición explícita: "tener un enum con
