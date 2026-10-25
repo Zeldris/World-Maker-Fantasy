@@ -15,6 +15,11 @@ La fase V-A se hizo como excepción a la regla de las pruebas de juego (usuaria,
 desarrollo que no tocan el juego ni el backend. Los scripts se escribieron en la nube, sin modelos ni Deck: **lo
 que depende del motor lo prueba la usuaria en la Deck** y, hasta entonces, cada tarea queda 🚧.
 
+**⏸ En pausa (usuaria, 2026-10-25):** la usuaria prepara el generador a fondo en un repositorio aparte. Cuando esté,
+se trae aquí, se adapta a este flujo y sustituye o completa lo de la fase V-A, siguiendo el camino del generador de
+imágenes (`roadmap-imagenes.md`, `CFG-43`) hasta que todo se controle desde el panel de administración (`VOZ-6`).
+Hasta entonces no se toca `voice-generator/` ni se prueba en la Deck lo de esta rama.
+
 ## Fase V-A · Herramientas de desarrollo (pasos 1-3 del documento y la fauna)
 
 - **VOZ-1 · Instalar el motor y los modelos** [A] (usuaria, 2026-10-25): `voice-generator/scripts/instalar.sh`
@@ -45,9 +50,9 @@ que depende del motor lo prueba la usuaria en la Deck** y, hasta entonces, cada 
   usan) y saca variantes reproducibles de tono y tempo para ataque, herida, muerte y ambiente. **M**
   🚧 2026-10-25: script y `fauna/_plantilla/` hechos, probados con sonidos sintéticos. Falta: elegir las primeras
   especies (de la Hondonada) y sus sonidos CC0, y escucharlas en la Deck.
-- **VOZ-6 · Interfaz de pruebas de voces** [P] (usuaria, 2026-10-25): como la de `image-generator/` (`CFG-43`):
-  elegir raza y voz, generar tomas, escucharlas con y sin efectos, apuntar notas y fijar la elegida. Más adelante:
-  por ahora basta la terminal. **M**
+- **VOZ-6 · Control de las voces desde el panel de administración** [A] (usuaria, 2026-10-25): el mismo camino que
+  el de las imágenes (`CFG-43`): elegir raza y voz, generar tomas, escucharlas con y sin efectos, apuntar notas y
+  fijar la elegida, todo desde el panel admin. Se hace con lo que llegue del repositorio aparte. **M**
 
 ## Fase V-B · La voz en el juego
 
