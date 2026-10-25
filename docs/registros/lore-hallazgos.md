@@ -28,7 +28,7 @@ Cada entrada: fecha, zona auditada, hallazgo, y estado.
 ## Índice
 
 **2026-10-25 — `QA-243`, asentar el lore de la enciclopedia**
-- [Bloque 1: NPC, razas y personajes](#2026-10-25--qa-240-bloque-1-npc-razas-y-personajes-de-la-enciclopedia)
+- [Bloque 1: NPC, razas y personajes](#2026-10-25--qa-243-bloque-1-npc-razas-y-personajes-de-la-enciclopedia)
 
 **2026-09-15 — auditoría de lore de los sistemas nuevos post-2026-09-07 (combate múltiple con
 compañeros, cuadrícula/Interactuar, Cazadora Serhu, MedioMovimiento)**
