@@ -25,8 +25,11 @@ while IFS=$'\t' read -r nombre pasos prompt vars extra; do
   if compgen -G "$R/image-generator/generated/banco/$RONDA-$nombre/intentos/*-s$SEED-p$pasos-*.png" > /dev/null; then
     echo "== $RONDA-$nombre: ya tiene imagen, se salta"; continue
   fi
-  fin=$(( $(date +%s) + ${ESPERA:-1800} ))
-  until lista || [ "$(date +%s)" -gt $fin ]; do sleep 20; done
+  fin=$(( $(date +%s) + ${ESPERA:-1800} )); vueltas=0
+  until lista || [ "$(date +%s)" -gt $fin ]; do  # cada 5 min, una línea: la ronda 7 se quedó parada sin decir nada (QA-255)
+    (( ++vueltas % 15 )) || echo "   esperando memoria: $(libre) MB libres, pide ${LIBRE:-7200} (se baja con LIBRE=, y MIN_INICIO_MB= para generar.sh)"
+    sleep 20
+  done
   echo "== $RONDA-$nombre ($pasos pasos) ${vars} ${extra}"
   env "${env_[@]}" PROMPT_ARCHIVO="$B/$prompt" bash "$R/image-generator/scripts/probar.sh" banco "$RONDA-$nombre" banner \
     "$SEED" "$pasos" "${args[@]}" < /dev/null | tail -2 || echo "FALLO: $nombre"

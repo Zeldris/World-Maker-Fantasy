@@ -124,14 +124,34 @@ class Host(Entorno, unittest.TestCase):
         self.assertEqual([n for n in os.listdir(principal + '/logs') if n.startswith('host-sh-wt.')], [])
         self.assertNotIn('host-sh-wt', git(principal, 'worktree', 'list'))
 
-    def test_en_el_sandbox_un_worktree_invisible_con_cambios_falla_con_motivo(self):
-        _, wt = self.worktree()
+    def test_en_el_sandbox_un_worktree_invisible_con_cambios_los_lleva_a_la_copia_visible(self):
+        # QA-253: antes se rechazaba; ahora la orden corre en la copia visible con el árbol tal como está.
+        principal, wt = self.worktree()
         escribir(wt + '/tools/qa/host.sh', leer(wt + '/tools/qa/host.sh') + '# cambio\n')
+        escribir(wt + '/backend/package.json', '{"cambio": 1}')
+        escribir(wt + '/nuevo.txt', 'sin seguimiento')
         env, d = self.entorno(True)
-        r = self.correr_en(env, wt, 'pwd')
-        self.assertEqual(r.returncode, 1)
-        self.assertIn('cambios sin commit', r.stderr)
-        self.assertFalse(os.path.exists(d + '/args'))
+        # Este flatpak-spawn falso sí entra en --directory, como el real: ahí se ve qué copia recibe la orden.
+        falso(d, 'flatpak-spawn', f'printf "%s\\n" "$@" > {d}/args\ncd "${{2#--directory=}}" && shift 2 && exec "$@"\n')
+        r = self.correr_en(env, wt, 'cat', 'backend/package.json')
+        self.assertEqual((r.returncode, r.stdout), (0, '{"cambio": 1}'), r.stderr)
+        self.assertIn('--directory=' + principal + '/logs/host-sh-wt.', leer(d + '/args'))
+        self.assertEqual([n for n in os.listdir(principal + '/logs') if n.startswith('host-sh-wt.')], [])
+        # El árbol, el índice y la lista de stash del worktree quedan como estaban.
+        self.assertEqual(git(wt, 'diff', '--name-only'), 'backend/package.json\ntools/qa/host.sh')
+        self.assertEqual(git(wt, 'diff', '--cached', '--name-only'), '')
+        self.assertTrue(os.path.exists(wt + '/nuevo.txt'))
+        self.assertEqual(git(wt, 'stash', 'list'), '')
+
+    def test_en_el_sandbox_un_archivo_sin_seguimiento_no_llega_a_la_copia_visible(self):
+        _, wt = self.worktree()
+        escribir(wt + '/backend/package.json', '{"cambio": 1}')
+        escribir(wt + '/nuevo.txt', 'sin seguimiento')
+        env, d = self.entorno(True)
+        falso(d, 'flatpak-spawn', 'cd "${2#--directory=}" && shift 2 && exec "$@"\n')
+        r = self.correr_en(env, wt, 'ls', 'backend/package.json', 'nuevo.txt')
+        self.assertEqual(r.stdout, 'backend/package.json\n')
+        self.assertIn('nuevo.txt', r.stderr)
 
     def test_sin_orden_falla(self):
         env, _ = self.entorno(False)

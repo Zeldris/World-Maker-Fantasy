@@ -1,3 +1,4 @@
+# sin pipefail: registro de la spike (sin shebang, rutas de ~/plan-imagenes-tarkor); se guarda como estaba y no se vuelve a correr
 cd /home/deck/Desktop/Desarrollos/plan-imagenes-tarkor/spike
 
 g=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/scripts/generar.sh

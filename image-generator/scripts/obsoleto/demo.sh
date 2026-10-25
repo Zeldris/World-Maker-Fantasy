@@ -3,6 +3,7 @@
 # Obsoleto (2026-10-24): repite el cierre que ya trae el prompt y no lee el prompt usado; usar ../probar.sh.
 # Uso: demo.sh <tipo> <slug> <perfil> <ancho> <alto>
 # Saca el prompt de la base y llama a generar.sh (que lleva las protecciones de memoria); salida en pruebas/demo/.
+# sin pipefail: obsoleto (sustituido por ../probar.sh); se guarda como estaba
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 T=$1; S=$2; P=$3; W=$4; H=$5; N="demo-$T-$S-$P-${W}x$H"

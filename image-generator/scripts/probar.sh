@@ -8,6 +8,7 @@
 # registro.tsv (una fila por intento), notas.md (lo que le parece a la usuaria) y, al elegir en la interfaz,
 # <slug>-<perfil>.png, con el nombre del juego (se copia a backend/uploads/images/<tipo>/).
 # PROMPT_ARCHIVO=<archivo> usa ese prompt (pegado en la interfaz, CFG-43) en vez del de la base; el registro dice «pegado».
+# sin pipefail: depende del código de salida de generar.sh (RC=$?) tras vigilar y matar sd-cli; no se prueba sin los modelos de la Deck
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 [ $# -ge 3 ] || { sed -n 3,4p "$0"; exit 2; }

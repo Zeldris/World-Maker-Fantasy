@@ -3,7 +3,7 @@
 # banner, semilla 3) con cada palanca por separado; se comparan a ojo contra la referencia de ChatGPT.
 # Uso: bash docs/producto/plan-imagenes/calidad.sh [semilla=3]
 # Cada intento queda en image-generator/generated/banco/calidad-<palanca>/ (probar.sh), fuera de la lista de la interfaz.
-set -eu
+set -euo pipefail
 R=$(cd "$(dirname "$0")/../../.." && pwd)
 SEED=${1:-3}; G=$R/image-generator
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
@@ -11,7 +11,8 @@ export LIBERAR_OLLAMA=1 PROMPT_ARCHIVO=$T/prompt.txt
 python3 "$G/scripts/prompt_ficha.py" "$G/fichas/location/pastos-de-la-deriva.json" banner > "$PROMPT_ARCHIVO"
 
 prueba() { local slug=$1 pasos=$2; shift 2; echo "== $slug (${MODELO:-klein-4b} cfg ${CFG:-1.0}, $pasos pasos) $*"
-  bash "$G/scripts/probar.sh" banco "calidad-$slug" banner "$SEED" "$pasos" "$@" | tail -1; }
+  bash "$G/scripts/probar.sh" banco "calidad-$slug" banner "$SEED" "$pasos" "$@" | tail -1 \
+    || echo "FALLO: $slug"; }   # con pipefail, un intento que falla ya no se calla ni para el banco
 
 prueba pasos6 6                                   # lo de hoy, de referencia
 prueba pasos12 12                                 # más pasos con el modelo destilado

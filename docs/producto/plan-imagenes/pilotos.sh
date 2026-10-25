@@ -3,7 +3,7 @@
 # (macho y hembra), el Cardo y Hulki sin -r y, al final, el aullador macho en segunda pasada con la zona como -r (D10).
 # Uso: bash docs/producto/plan-imagenes/pilotos.sh [semilla=3] [pasos=6]
 # Cada intento queda en image-generator/generated/<tipo>/<slug>/ (probar.sh); el resumen, en la salida.
-set -eu
+set -euo pipefail
 R=$(cd "$(dirname "$0")/../../.." && pwd)
 SEED=${1:-3}; STEPS=${2:-6}
 F=$R/image-generator/fichas; P=$R/image-generator/scripts/prompt_ficha.py
@@ -18,7 +18,7 @@ genera() {
   [ $# -gt 0 ] && { shift; extra=("$@"); }
   python3 "$P" "$F/$ficha" banner "${pargs[@]}" > "$T/$slug.txt"
   echo "== $tipo/$slug (${pargs[*]:-}) ${extra[*]:-}"
-  local out; out=$(PROMPT_ARCHIVO="$T/$slug.txt" bash "$R/image-generator/scripts/probar.sh" "$tipo" "$slug" banner "$SEED" "$STEPS" "${extra[@]}" | tee /dev/stderr)
+  local out; out=$(PROMPT_ARCHIVO="$T/$slug.txt" bash "$R/image-generator/scripts/probar.sh" "$tipo" "$slug" banner "$SEED" "$STEPS" "${extra[@]}" | tee /dev/stderr) || true   # si probar.sh falla, lo dice el [ -s ] de abajo (ABORTO, exit 3)
   IMAGEN=$(sed -n 's/^imagen: \([^ ]*\).*/\1/p' <<< "$out" | tail -1)
   [ -s "$IMAGEN" ] || { echo "ABORTO: $slug no dejó imagen"; exit 3; }
 }

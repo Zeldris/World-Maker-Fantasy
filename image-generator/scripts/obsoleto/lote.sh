@@ -1,6 +1,7 @@
 #!/bin/bash
 # NO USAR (2026-10-24): con --max-vram vulkan0=6 bloqueó la Deck por falta de memoria. Se guarda solo como
 # registro; las rutas (~/sdcpp-bin, ~/modelos) ya no existen. Usar ../probar.sh.
+# sin pipefail: obsoleto, sale con «exit 1» antes de hacer nada; solo se guarda como registro
 exit 1
 cd ~/sdcpp-bin
 NO=" No text, no signature, no watermark."

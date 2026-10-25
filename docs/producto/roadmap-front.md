@@ -1630,6 +1630,12 @@ Opt-tokens de `claude/plan-imagenes` (usuaria, 2026-10-25; 296 llamadas con 116k
 - ~~**QA-250 · `recuperar.py --estado` con los worktrees**~~ ✅ 2026-10-25: el gancho corre donde se abrió la sesión y daba la fila de otra rama; la sesión del worktree releyó `traspaso.md` 22 veces (376k). Ahora da también cada worktree con la fila de su rama. Test en `tools/qa/tests/test_recuperar.py`.
 - ~~**QA-251 · Modelo explícito en cada subagente y salidas de fondo con `tail`**~~ ✅ 2026-10-25: un subagente mecánico fue con Opus (2,9M de entrada; la segunda vez, tras `QA-233`) y una salida de fondo se leyó entera (11,7k, 363k arrastrados). Regla en `docs/runbooks/skills-y-modelos.md` y en `.claude/gw/opt-tokens.md`.
 
+Retro de `claude/plan-imagenes` (usuaria, 2026-10-25; [`retro-2026-10-25-plan-imagenes.md`](../registros/retro-2026-10-25-plan-imagenes.md)):
+- ~~**QA-252 · Los ganchos de `.githooks/` en un worktree**~~ ✅ 2026-10-25: en un worktree git exporta `GIT_DIR` y `pre-commit`/`pre-push` tomaban `.githooks` por raíz; la sesión subió con envoltorios hechos a mano. La raíz sale con `env -u GIT_DIR -u GIT_WORK_TREE`. Test en `tools/qa/tests/test_pre_commit.py`; el push de este arreglo ya fue sin envoltorios.
+- ~~**QA-253 · `host.sh` con cambios sin commit**~~ ✅ 2026-10-25: rechazaba un worktree con cambios y no se pudo pasar `node` antes del commit. La copia visible sale de `git stash create` (lo seguido, tal como está; lo sin seguimiento, con `git add` antes). Tests en `tools/qa/tests/test_host.py`. Pendiente: 3 tests de `test_host.py` fallan en el sandbox de la Deck también sin el cambio (`pwd` con el PATH reducido); el CI local en el host lo dirá.
+- ~~**QA-254 · `set -euo pipefail` en los scripts de imágenes**~~ ✅ 2026-10-25: `banco.sh` sin `pipefail` nunca decía FALLO. `tools/qa/tests/test_pipefail.py` lo exige en todo `.sh` de `image-generator/` y `docs/producto/plan-imagenes/`, o una línea `# sin pipefail: <motivo>`; `abrir.sh`, `calidad.sh`, `pilotos.sh` y `banco/recorte.sh` lo llevan; `generar.sh`, `probar.sh`, los de `spike/` y `obsoleto/`, con su motivo.
+- ~~**QA-255 · `banco.sh` avisa mientras espera memoria**~~ ✅ 2026-10-25: la ronda 7 se quedó parada sin decir nada. Cada 5 min, una línea con los MB libres y los que pide.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
