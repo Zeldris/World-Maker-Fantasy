@@ -1,5 +1,6 @@
 """QA-210: .githooks/commit-msg pide, solo con CLAUDECODE=1, una línea «Siguiente: …» (merges y revert pasan)."""
 import os
+import shlex
 import subprocess
 import unittest
 
@@ -13,7 +14,7 @@ def ganchos() -> str:
     """QA-239: solo commit-msg. Con core.hooksPath=.githooks corría también el pre-commit, que saca la raíz de su
     propia ruta y miraba el índice del proyecto real (en un worktree, .git es un archivo y fallaba)."""
     d = carpeta()
-    escribir(os.path.join(d, 'commit-msg'), f'#!/bin/bash\nexec bash {HOOK} "$@"\n')
+    escribir(os.path.join(d, 'commit-msg'), f'#!/bin/bash\nexec bash {shlex.quote(HOOK)} "$@"\n')
     os.chmod(os.path.join(d, 'commit-msg'), 0o755)
     return d
 

@@ -9,11 +9,11 @@ Sale con 1 y una línea por fallo, con lo que hay que hacer. Uso: skills-con-tes
 import glob
 import os
 import sys
+from pathlib import Path
 
 
 def fallos(raiz: str) -> list[str]:
-    ci = {r: open(os.path.join(raiz, r), encoding='utf-8').read()
-          for r in ('.github/workflows/ci.yml', 'tools/qa/ci-local.sh')}
+    ci = {r: Path(raiz, r).read_text(encoding='utf-8') for r in ('.github/workflows/ci.yml', 'tools/qa/ci-local.sh')}
     salida = []
     for carpeta in sorted(glob.glob(os.path.join(raiz, '.claude', 'skills', '*', 'scripts'))):
         if not glob.glob(os.path.join(carpeta, 'test_*.py')):

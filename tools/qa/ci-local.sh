@@ -57,9 +57,11 @@ paso . "resumen de los registros de hallazgos" 'for r in docs/registros/pruebas-
 echo "== backend"
 paso . "base tarkor_ci nueva con pgvector" "psql '$servidor/postgres' -qc 'DROP DATABASE IF EXISTS tarkor_ci' -c 'CREATE DATABASE tarkor_ci' && psql \"\$DATABASE_URL\" -qc 'CREATE EXTENSION IF NOT EXISTS vector'"
 curl -s -o /dev/null localhost:11434 || { nohup node "$dir/tools/ci/mock-ollama.mjs" >"$logs/mock-ollama.out" 2>&1 & sleep 2; }
-# QA-239: en un worktree, host.sh (desde los tests de tools/qa) deja node_modules como enlace a la copia principal;
-# `npm ci` vaciaría la de la principal a través del enlace. Se quita el enlace y se instala aquí.
-paso backend "npm ci" "{ [ ! -L node_modules ] || rm node_modules; } && npm ci"
+# QA-239: en un worktree, host.sh (desde los tests de tools/qa) deja node_modules y .env como enlaces a la copia
+# principal: `npm ci` vaciaría su node_modules a través del enlace, y su .env metería su configuración (el CI de
+# GitHub no tiene). Se quitan los enlaces y se instala aquí.
+sin_enlaces='for e in node_modules .env; do [ ! -L "$e" ] || rm "$e" || exit 1; done'
+paso backend "npm ci" "$sin_enlaces && npm ci"
 paso backend "prisma generate" npx prisma generate
 paso backend "lint" npm run lint
 paso backend "tsc" npx tsc --noEmit
@@ -71,7 +73,7 @@ paso backend "tests" npm test
 paso . "escenarios de pruebas" bash tools/qa/comprobar-escenarios.sh
 
 echo "== frontend"
-paso frontend "npm ci" "{ [ ! -L node_modules ] || rm node_modules; } && npm ci"
+paso frontend "npm ci" "$sin_enlaces && npm ci"
 paso frontend "lint" npm run lint
 paso frontend "build" npm run build
 paso frontend "tests" npm test
