@@ -37,12 +37,12 @@ desde el panel vive en tablas que siembran.
 
 - **IMG-4 · Guía visual del mundo y plantilla de prompt** [A] (usuaria, 2026-10-25): desde
   `plan-imagenes/borradores/`, con lo marcado «[propuesta]» pendiente de la usuaria. Fase 1 del plan. **S**
-- **IMG-5 · Script que monta el prompt desde la ficha** [A] (usuaria, 2026-10-25): determinista, sin LLM, con tests;
+- ~~**IMG-5 · Script que monta el prompt desde la ficha**~~ ✅ 2026-10-25: `image-generator/scripts/prompt_ficha.py` (bloques B1-B9, variantes, `--fondo`, recorte por longitud, rechazo de vetadas, negaciones y nombre propio) y `tools/qa/tests/test_prompt_ficha.py` (40 tests). Pendiente: que lea `FichaVisual` (`IMG-9`). [A] (usuaria, 2026-10-25): determinista, sin LLM, con tests;
   rechaza las palabras que el modelo malinterpreta («moon», «crystal dust across the heavens», «scars»…). Depende de
   `IMG-4`. **M**
 - **IMG-6 · Las 5 fichas piloto con semilla fija** [A] (usuaria, 2026-10-25): aullador macho y hembra, Cardo Brújula,
   Pastos de la Deriva y Hulki, sin `-r`; el aullador además en segunda pasada sobre su zona (`-r` de la zona). Las
-  aprueba la usuaria. Depende de `IMG-5`. **S**
+  aprueba la usuaria. Depende de `IMG-5`. **S** 🚧 en curso: `docs/producto/plan-imagenes/pilotos.sh 3 6` (semilla 3, 6 pasos); falta generarlas y que las apruebe.
 - **IMG-7 · Modelo de datos: `Propuesta` y `FichaVisual`** [A] (usuaria, 2026-10-25): migración Prisma (puerta de un
   solo sentido), importador de los 3 `.md` de propuestas (~159), exportación de lo aprobado al formato de
   `propuestas-aprobadas.md`, fichas exportadas a JSON versionado, API Fastify con escritura solo desde `127.0.0.1` y

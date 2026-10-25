@@ -12,22 +12,31 @@
     "ancla": "a maned wolf, only gaunter and wilder",
     "cuerpo": "Its ribs show beneath tight skin, tufts of black hair ring its ankles, and its long dark muzzle carries oversized, curved, yellowish fangs. The rough, tangled coat is a dull rust red with darker underparts and amber eyes.",
     "rasgos": [
-      "Thin glinting streaks of red mineral are embedded in the coat along the flanks, catching the light like veins of ore.",
-      "A ridge of dark bristling spines runs along its spine from the neck to the base of the tail.",
-      "Its thick black tail drags behind it over the ground, brushing away its own tracks."
+      "Thin glinting streaks of red mineral are embedded in the coat along the flanks like veins of ore.",
+      "A ridge of dark bristling spines runs down its back to the tail.",
+      "Its thick black tail drags behind it, brushing away its own tracks."
     ],
-    "pose": "It crouches low and stalks through the tall grass, with two more of the pack half hidden behind it.",
-    "entorno": "The setting is a wide steppe of red clay and tall dry straw-yellow grass tinged with orange under a haze of fine red dust, with low volcanic peaks far off in the distance."
+    "pose": "It crouches low and stalks through the tall grass, with two more of the pack behind it.",
+    "entorno": "Around them lie red clay and tall straw-yellow grass tinged with orange."
   },
   "variantes": {
     "macho": {
-      "rasgos+": ["This male has a thick, bristling ruff of fur around the neck and pale healed streaks across the muzzle from fights over rank."]
+      "rasgos+": [
+        "This male has a thick, bristling ruff around the neck and pale healed streaks across the muzzle."
+      ]
     },
     "hembra": {
-      "sujeto": "A lean, long-legged pack hunter with a narrow deep chest, a sloping back and disproportionately long, thin legs, standing about as high as an adult orc's mid-thigh, a little lower than the males.",
-      "rasgos+": ["This female has a smooth, sleek neck and especially long legs for her slender body."],
-      "pose": "She crouches low at the front of the stalking pack, with two more of the pack half hidden behind her."
+      "sujeto": "A lean, long-legged pack hunter with a narrow deep chest, a sloping back and disproportionately long, thin legs, standing about as high as an adult orc's mid-thigh.",
+      "rasgos+": [
+        "This female has a smooth, sleek neck and especially long legs for her slender body."
+      ],
+      "pose": "She crouches low at the front of the stalking pack, with two more of the pack behind her."
     }
   },
-  "propuestas": ["ancla", "paleta: rust red, darker underparts, amber eyes, dark muzzle", "escala: hip / mid-thigh of an adult orc", "pose: crouching, two more of the pack"]
+  "propuestas": [
+    "ancla",
+    "paleta: rust red, darker underparts, amber eyes, dark muzzle",
+    "escala: hip / mid-thigh of an adult orc",
+    "pose: crouching, two more of the pack"
+  ]
 }
