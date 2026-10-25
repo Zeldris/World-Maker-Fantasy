@@ -227,10 +227,11 @@ export function sinTextosRepetidos(textos: string[]): string[] {
 
 /// P271: «A la jugadora la conocen como: Clemente» hacía que el modelo la llamara «Clemente» a la cara
 /// («¿Qué noticias traes de los Maktor, Clemente?»). Las etiquetas son rasgos que le atribuyen por lo que ha
-/// hecho, en minúscula y dichos como tales, y la línea avisa de que no son ni su nombre ni un apodo.
+/// hecho, en minúscula y dichos como tales, y la línea avisa de que no son ni su nombre ni un apodo. Solo baja la
+/// primera letra: «Amigo de los Maktor» o «Salvador de <región>» guardan la mayúscula del nombre propio.
 export function lineaDeEtiquetas(textos: string[]): string | null {
   if (textos.length === 0) return null;
-  return `Fama de la jugadora, por lo que ha hecho (rasgos que le atribuyen, no su nombre ni un apodo con el que dirigirse a ella): ${textos.map((t) => t.toLowerCase()).join(', ')}.`;
+  return `Fama de la jugadora, por lo que ha hecho (rasgos que le atribuyen, no su nombre ni un apodo con el que dirigirse a ella): ${textos.map((t) => t.charAt(0).toLowerCase() + t.slice(1)).join(', ')}.`;
 }
 
 /// El bloque completo para el narrador (o '' si no hay nada que contar).

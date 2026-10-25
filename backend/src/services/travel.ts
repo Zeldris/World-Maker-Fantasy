@@ -8,8 +8,9 @@ import type { Banda } from './narrador.js';
 /// El modelo nunca elige la ruta, solo (como mucho) el destino, y siempre de una lista cerrada.
 
 /// P268: «Le entrego raciones de viaje al orco» cortaba el turno como viaje a un lugar desconocido: «de viaje»
-/// es un sustantivo (raciones, bolsa, equipo de viaje), no una intención de desplazarse.
-const TRAVEL_INTENT_REGEX = /(?<!\bde )viaj|camin|desplaz|ruta|tramo|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
+/// es un sustantivo (raciones, bolsa, equipo de viaje), no una intención de desplazarse. Salir, irse o ponerse
+/// «de viaje» sí lo es.
+const TRAVEL_INTENT_REGEX = /(?<!\bde )viaj|\b(?:salgo|salimos|me voy|nos vamos|voy|vamos|parto|partimos|me pongo|nos ponemos|sigo|seguimos) de viaje|camin|desplaz|ruta|tramo|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
 
 /// Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
 /// repetida sin progreso tras el combate"): "avanzo por una salida" / "Continuo por la cueva" /

@@ -34,6 +34,11 @@ describe('memoria del narrador (CR-21…23) — reglas puras', () => {
     expect(lineaDeEtiquetas([])).toBeNull();
   });
 
+  it('P271: al bajar la etiqueta a minúscula, el nombre propio de dentro guarda su mayúscula', () => {
+    const linea = lineaDeEtiquetas(['Amigo de los Maktor', 'Salvador de Llanos Altos'])!;
+    expect(linea).toContain('amigo de los Maktor, salvador de Llanos Altos');
+  });
+
   it('recorta por el final sin pasarse del presupuesto; la verdad nunca pasa de su tope', () => {
     const largo = 'x'.repeat(200);
     const texto = componer([

@@ -87,6 +87,9 @@ describe('detectsTravelIntent', () => {
     expect(detectsTravelIntent('Regalo una bolsa de viaje al orco')).toBe(false);
     expect(detectsTravelIntent('Viajo a la capital')).toBe(true);
     expect(detectsTravelIntent('Emprendo un viaje hacia el cruce')).toBe(true);
+    expect(detectsTravelIntent('Salgo de viaje hacia la capital')).toBe(true);
+    expect(detectsTravelIntent('Me voy de viaje al cruce')).toBe(true);
+    expect(detectsTravelIntent('Me pongo de viaje otra vez')).toBe(true);
   });
 });
 
