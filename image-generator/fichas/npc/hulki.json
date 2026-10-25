@@ -1,0 +1,19 @@
+{
+  "tipo": "npc",
+  "slug": "hulki",
+  "nombre": "Hulki",
+  "region": "Margen Silencioso",
+  "momento": "dia",
+  "canon": "Vieja, con el pelaje encanecido en el hocico, delgada pero con los hombros de quien ha cargado presas toda la vida. Piel de hojas finas que susurra al moverse; pelaje denso en tonos de corteza y musgo, como toda la manada de Hashma.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:4984-4995 (bio); backend/src/services/berigLore.ts:243 y 273 (Faerus, Faerus del Margen); docs/canon-opencode/00-nucleo.md (sin túnica ni sandalias)",
+  "prompt": {
+    "sujeto": "A very old female forest creature of a fibrous, wiry build who moves on two or four limbs, holding herself upright in a low squat, with the broad strong shoulders of someone who has carried prey all her life.",
+    "cuerpo": "Her dense, thick fur is in the tones of tree bark and moss, going silver-grey around her long muzzle, and patches of fine leaf-like skin over her body rustle softly when she moves. Her dark, cold eyes watch calmly and patiently.",
+    "rasgos": [
+      "She is bare of cloth and wears only a simple pendant of bone on a plaited fibre cord."
+    ],
+    "pose": "She sits on a high seat of lashed wooden poles among the branches of a village hung in the trees.",
+    "entorno": "Around her rise huge black-wooded conifer trunks and heavy dark foliage, the air clear and perfectly still."
+  },
+  "propuestas": ["ojos dark, cold", "colgante de hueso", "asiento de varas atadas (el Jakut Tusha no está descrito)", "gris plata del hocico", "altura ~155 cm sin fuente"]
+}

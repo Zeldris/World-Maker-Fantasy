@@ -1,0 +1,22 @@
+{
+  "tipo": "location",
+  "slug": "pastos-de-la-deriva",
+  "nombre": "Los Pastos de la Deriva",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Praderas abiertas al este de Los Manaderos, donde la hierba dura más tiempo que en el núcleo del clan; hasta aquí siguen las manadas de Corredores de Cauce su migración y hasta aquí llevan los Serhu a sus múrgoles. Sin asentamiento fijo: se ocupa por temporadas.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:180; docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Los Pastos de la Deriva, Pasto Solar, Gradias); hierba: decisión de la usuaria, 2026-10-25",
+  "prompt": {
+    "lugar": "grassland landscape",
+    "sujeto": "A wide, open steppe of gently rolling grassland that stretches to the horizon, an empty wild land with only grazing herds on it.",
+    "cuerpo": "It is covered in tall straw-yellow grass tinged with orange, with patches of bare red clay showing between the tufts and a few low bushes of dense, deep green with small broad leaves.",
+    "rasgos": [
+      "Far off on the horizon a line of dark volcanic peaks rises through a haze of fine red dust.",
+      "In the middle distance graze a few slender, antelope-like animals with rust-red backs, pure white bellies and long, thin, straight horns."
+    ],
+    "pose": "The grass bends under a dry wind that carries thin streamers of red dust across the plain.",
+    "entorno": "",
+    "luz": "Low sun just above the horizon casts a warm golden light across the grass tips and long soft shadows over the red earth, under a few low clouds."
+  },
+  "propuestas": ["relieve: gently rolling", "manada: a few slender antelope-like animals (Cuernahoja)", "viento con polvo", "hora: sol bajo"]
+}

@@ -1,0 +1,22 @@
+{
+  "tipo": "flora",
+  "slug": "cardo-brujula",
+  "nombre": "Cardo Brújula",
+  "region": "Llanuras del Viento Rojo",
+  "zona": "agujas-iman",
+  "momento": "dia",
+  "canon": "Cardo espinoso de tallo rígido y flor cerrada de un gris metálico apagado (con matiz violáceo: decisión de la usuaria, 2026-10-25), con una única fibra central imantada que, colgada de un hilo, siempre señala el mismo rumbo.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:11484 (planta) y 6930 (ítem); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Las Agujas Imán)",
+  "prompt": {
+    "sujeto": "An upright, spiky thistle with a stiff, thorny stem as tall as an adult orc's open hand, its grey-green leaves edged with fine thorns.",
+    "cuerpo": "At the tip sits a single closed, egg-shaped flower in a dull metallic grey with a faint muted violet tint at its base, with a matte, almost forged sheen.",
+    "rasgos": [
+      "From the centre of the flower a lone rigid, magnetised fibre points steadily in one direction.",
+      "A few dark grains of iron sand cling to the thorns, drawn to the plant."
+    ],
+    "pose": "Two or three of the thistles grow close together in the lee of a field of black magnetic rocks, where wind-combed ridges of dark iron sand pile up.",
+    "entorno": "Fine red dust drifts in the air above red clay, and a low, hazy horizon glows behind them.",
+    "luz": "Soft morning light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns."
+  },
+  "propuestas": ["altura: an adult orc's open hand (25 cm sin fuente original)", "hojas grey-green", "granos de arena pegados a las espinas", "two or three"]
+}
