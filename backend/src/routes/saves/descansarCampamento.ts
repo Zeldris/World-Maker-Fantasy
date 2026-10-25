@@ -39,8 +39,10 @@ export async function descansarCampamentoRoutes(app: FastifyInstance) {
       select: { id: true },
     });
     // P305: con hambre o sed el descanso no cura (el estado empeora al amanecer): el modal lo avisa antes de confirmar.
-    const ahora = save.worldState?.fictionalMinutes ?? 0;
-    const carencia = carenciaPersonaje(comidaPct(save.lastAteAtMinutes, ahora), aguaPct(save.lastDrankAtMinutes, ahora));
+    // Se mira al amanecer, que es cuando el worker la aplica (`advancePlayerSurvival`): la sed baja un 25 % cada 5 h y
+    // quien se acuesta con agua puede despertar sin ella. Mismo reloj por defecto que el POST.
+    const alAmanecer = nextMorning8am(save.worldState?.fictionalMinutes ?? 480);
+    const carencia = carenciaPersonaje(comidaPct(save.lastAteAtMinutes, alAmanecer), aguaPct(save.lastDrankAtMinutes, alAmanecer));
     return { disponible: !!ownBuildingHere, carencia };
   });
 

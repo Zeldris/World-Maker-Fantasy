@@ -67,22 +67,26 @@ describe('Descansar en campamento (2026-09-08)', () => {
     expect(res.json().disponible).toBe(true);
   });
 
-  it('GET avisa de la carencia (P305): sin comer ni beber, "ambas"; con provisiones, null', async () => {
+  it('GET avisa de la carencia (P305), mirada al amanecer: sin comer ni beber, "ambas"; con provisiones, null', async () => {
     await prisma.building.create({
       data: { saveId, locationId, recipeKey: 'campamento', name: 'Campamento de prueba', kind: 'campamento', description: 'x', status: 'ACTIVO' },
     });
     const app = await buildApp();
+    const carencia = async () => (await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia;
     try {
-      // Día 3, 16:00 (4.600 min) con la última comida y bebida en el minuto 0: hambre y sed a 0 %.
-      await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 4600 } });
+      // Día 4, 20:00 (5.520 min); el descanso acaba el Día 5 a las 08:00 (6.240 min, 12 h después).
+      await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 5520 } });
       await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: 0, lastDrankAtMinutes: 0 } });
-      expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia).toBe('ambas');
-      // Solo ha bebido hace poco: queda el hambre.
-      await prisma.save.update({ where: { id: saveId }, data: { lastDrankAtMinutes: 4500 } });
-      expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia).toBe('hambre');
+      expect(await carencia()).toBe('ambas');
+      // Acaba de beber (al amanecer, sed al 50 %): queda el hambre.
+      await prisma.save.update({ where: { id: saveId }, data: { lastDrankAtMinutes: 5500 } });
+      expect(await carencia()).toBe('hambre');
       // Con las dos al día no hay aviso.
-      await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: 4500 } });
-      expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia).toBeNull();
+      await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: 5500 } });
+      expect(await carencia()).toBeNull();
+      // Bebió hace 10 h: ahora la sed está al 50 %, pero al amanecer (22 h) llega a 0 %: el aviso ya sale.
+      await prisma.save.update({ where: { id: saveId }, data: { lastDrankAtMinutes: 4920 } });
+      expect(await carencia()).toBe('sed');
     } finally {
       await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 500 } });
       await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: null, lastDrankAtMinutes: null } });

@@ -18,7 +18,7 @@ import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from 
 import { harvestAbilityForMetodo } from './harvestAbilities.js';
 import { stripRegionArticle } from './population.js';
 import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from './entityDiscovery.js';
-import { conDefinido } from './dynamicMode.js';
+import { aNombre, conDefinido } from './dynamicMode.js';
 import { harvestSourceRegion, harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
@@ -225,10 +225,10 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
 
 /// P310: para quien la jugadora ya conoce (la ha visto en escena), ni «quienquiera que sea» ni «no
 /// hay nadie con ese nombre»: Gorhorn sabe quién es, solo que ahora no está aquí.
-const ABSENT_KNOWN_NPC_LINES: ((nombre: string, quien: string, comprueba: string) => string)[] = [
-  (nombre) => `Gorhorn mira alrededor buscando a ${nombre}, pero ahora mismo no está en este lugar.`,
-  (nombre, quien, comprueba) => `${nombre.charAt(0).toUpperCase() + nombre.slice(1)} no está aquí ahora. Gorhorn ${comprueba}: tendrá que ir a buscar a ${quien} donde esté, o esperar a que vuelva.`,
-  (nombre, quien) => `Gorhorn se vuelve hacia donde esperaba ver a ${nombre}, pero no hay rastro por aquí. Habrá que dar con ${quien} en otro sitio.`,
+const ABSENT_KNOWN_NPC_LINES: ((aNpc: string, sujeto: string, quien: string, comprueba: string) => string)[] = [
+  (aNpc) => `Gorhorn mira alrededor buscando ${aNpc}, pero ahora mismo no está en este lugar.`,
+  (_aNpc, sujeto, quien, comprueba) => `${sujeto} no está aquí ahora. Gorhorn ${comprueba}: tendrá que ir a buscar a ${quien} donde esté, o esperar a que vuelva.`,
+  (aNpc, _sujeto, quien) => `Gorhorn se vuelve hacia donde esperaba ver ${aNpc}, pero no hay rastro por aquí. Habrá que dar con ${quien} en otro sitio.`,
 ];
 
 /// `articulo` y `genero` son los del catálogo (`Npc.articulo`/`Npc.genero`): con artículo, «a la Cazadora
@@ -238,7 +238,9 @@ export function absentSceneNpcNarrationFor(nombre: string, conocido = false, esF
   const pronombre = genero === 'F' ? 'la' : genero === 'M' ? 'lo' : null;
   const comprueba = pronombre ? `${pronombre} busca con la mirada` : 'lo comprueba con la mirada';
   // «esa persona» solo con personas; una fauna conocida es «ese animal».
-  return pickRandomLine(ABSENT_KNOWN_NPC_LINES)(conDefinido(nombre, articulo), esFauna ? 'ese animal' : 'esa persona', comprueba);
+  const sujeto = conDefinido(nombre, articulo);
+  // «a» + «el» se contrae («al Guardián Ketg», no «a el Guardián Ketg»): `aNombre`, como el «Responder» (P141).
+  return pickRandomLine(ABSENT_KNOWN_NPC_LINES)(aNombre(nombre, articulo), sujeto.charAt(0).toUpperCase() + sujeto.slice(1), esFauna ? 'ese animal' : 'esa persona', comprueba);
 }
 
 /// Verbo/preposición de diálogo DIRIGIDO a una persona concreta — más estrecho a propósito que

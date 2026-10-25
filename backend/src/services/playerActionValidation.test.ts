@@ -233,9 +233,16 @@ describe('P310: una conocida ausente no se trata como desconocida', () => {
       expect(f).not.toMatch(/(?<!la )Cazadora Serhu/i);
       expect(f).not.toMatch(/\blo (busca|comprueba)\b/);
       const m = absentSceneNpcNarrationFor('Guardián Ketg', true, false, 'el', 'M');
-      expect(m).toMatch(/el Guardián Ketg/i);
+      expect(m).toMatch(/\b(el|al) Guardián Ketg/i);
       expect(m).not.toMatch(/\bla busca\b/);
     }
+  });
+
+  it('con artículo «el», «a» se contrae: «al Guardián Ketg», nunca «a el» (P310, revisión)', () => {
+    const frases = new Set(Array.from({ length: 120 }, () => absentSceneNpcNarrationFor('Guardián Ketg', true, false, 'el', 'M')));
+    for (const f of frases) expect(f).not.toMatch(/\ba el\b/i);
+    expect([...frases].some((f) => /\bal Guardián Ketg\b/.test(f))).toBe(true);
+    expect([...frases].some((f) => /^El Guardián Ketg no está/.test(f))).toBe(true);
   });
 
   it('la narración de una conocida nunca dice «quienquiera que sea» ni «no hay nadie», y siempre cita el nombre', () => {
