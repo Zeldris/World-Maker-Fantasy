@@ -18,7 +18,7 @@ import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from 
 import { harvestAbilityForMetodo } from './harvestAbilities.js';
 import { stripRegionArticle } from './population.js';
 import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from './entityDiscovery.js';
-import { nombreEnFrase } from './dynamicMode.js';
+import { conDefinido } from './dynamicMode.js';
 import { harvestSourceRegion, harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
@@ -131,6 +131,10 @@ export interface AbsentSceneNpcClaim {
   conocido: boolean;
   /// P310 (revisión): es fauna (`entityTypeDeSerVivo`), no una persona: la frase no dice «esa persona».
   esFauna: boolean;
+  /// P310 (leve): `Npc.articulo` («la», «el») del catálogo, para decir «la Cazadora Serhu» y no «Cazadora Serhu».
+  articulo: string | null;
+  /// P310 (leve): `Npc.genero` ('M'/'F'), para concordar «lo/la busca». Sin dato, frase neutra.
+  genero: string | null;
 }
 
 /// Detecta si la acción del jugador interactúa con un NPC/fauna REAL de catálogo (existe de
@@ -183,7 +187,7 @@ const QUOTED_NAME_MATCH_REGEX = /'([^']+)'/;
 
 export async function detectsAbsentSceneNpcClaim(action: string, worldId: string, saveId: string, npcsInSceneSlugs: string[]): Promise<AbsentSceneNpcClaim | null> {
   if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
-  const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });
+  const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true, articulo: true, genero: true } });
   const matchable = allNpcs.map((n) => ({ id: n.slug, aliases: [n.name, ...n.aliases] }));
   const matchedSlugs = new Set(matchNpcAliases(action, matchable));
   const effectiveSceneSlugs = (await isPursuerOrcoInScene(action, saveId))
@@ -207,7 +211,7 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
     where: { saveId, entityType, entitySlug: absent.slug, fase: 'DESCUBIERTO' },
     select: { id: true },
   });
-  return { name: absent.name, conocido: vista !== null, esFauna: entityType === 'fauna' };
+  return { name: absent.name, conocido: vista !== null, esFauna: entityType === 'fauna', articulo: absent.articulo ?? null, genero: absent.genero ?? null };
 }
 
 /// Mismo criterio que `WRONG_WEAPON_LINES` — pool de 5, 1 cómica menos frecuente.
@@ -221,16 +225,20 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
 
 /// P310: para quien la jugadora ya conoce (la ha visto en escena), ni «quienquiera que sea» ni «no
 /// hay nadie con ese nombre»: Gorhorn sabe quién es, solo que ahora no está aquí.
-const ABSENT_KNOWN_NPC_LINES: ((nombre: string, quien: string) => string)[] = [
-  (nombre) => `Gorhorn mira alrededor buscando a ${nombreEnFrase(nombre)}, pero ahora mismo no está en este lugar.`,
-  (nombre, quien) => `${nombreEnFrase(nombre, true)} no está aquí ahora. Gorhorn lo comprueba con la mirada: tendrá que ir a buscar a ${quien} donde esté, o esperar a que vuelva.`,
-  (nombre, quien) => `Gorhorn se vuelve hacia donde esperaba ver a ${nombreEnFrase(nombre)}, pero no hay rastro por aquí. Habrá que dar con ${quien} en otro sitio.`,
+const ABSENT_KNOWN_NPC_LINES: ((nombre: string, quien: string, comprueba: string) => string)[] = [
+  (nombre) => `Gorhorn mira alrededor buscando a ${nombre}, pero ahora mismo no está en este lugar.`,
+  (nombre, quien, comprueba) => `${nombre.charAt(0).toUpperCase() + nombre.slice(1)} no está aquí ahora. Gorhorn ${comprueba}: tendrá que ir a buscar a ${quien} donde esté, o esperar a que vuelva.`,
+  (nombre, quien) => `Gorhorn se vuelve hacia donde esperaba ver a ${nombre}, pero no hay rastro por aquí. Habrá que dar con ${quien} en otro sitio.`,
 ];
 
-export function absentSceneNpcNarrationFor(nombre: string, conocido = false, esFauna = false): string {
-  const line = pickRandomLine(conocido ? ABSENT_KNOWN_NPC_LINES : ABSENT_NPC_LINES);
+/// `articulo` y `genero` son los del catálogo (`Npc.articulo`/`Npc.genero`): con artículo, «a la Cazadora
+/// Serhu»; con género, «la busca con la mirada» / «lo busca con la mirada»; sin él, «mira a su alrededor».
+export function absentSceneNpcNarrationFor(nombre: string, conocido = false, esFauna = false, articulo?: string | null, genero?: string | null): string {
+  if (!conocido) return pickRandomLine(ABSENT_NPC_LINES)(nombre);
+  const pronombre = genero === 'F' ? 'la' : genero === 'M' ? 'lo' : null;
+  const comprueba = pronombre ? `${pronombre} busca con la mirada` : 'lo comprueba con la mirada';
   // «esa persona» solo con personas; una fauna conocida es «ese animal».
-  return line(nombre, esFauna ? 'ese animal' : 'esa persona');
+  return pickRandomLine(ABSENT_KNOWN_NPC_LINES)(conDefinido(nombre, articulo), esFauna ? 'ese animal' : 'esa persona', comprueba);
 }
 
 /// Verbo/preposición de diálogo DIRIGIDO a una persona concreta — más estrecho a propósito que

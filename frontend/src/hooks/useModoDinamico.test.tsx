@@ -12,7 +12,7 @@ vi.mock('../lib/api', () => ({
   resolveImageUrl: vi.fn(() => null),
   responderModoDinamico: vi.fn(),
 }))
-import { abrirMenuNpc, chooseNpcInteraction, interactuarModoDinamico } from '../lib/api'
+import { abrirMenuNpc, chooseNpcInteraction, interactuarModoDinamico, interactuarModoDinamicoRecurso } from '../lib/api'
 import { useModoDinamico } from './useModoDinamico'
 import type { LogEntry } from '../types'
 
@@ -130,5 +130,39 @@ describe('P309 — la tarjeta conserva lo que manda el backend mientras interact
     expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({
       busy: false, error: 'No se pudo abrir', quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu',
     })
+  })
+})
+
+/// Leve de la revisión (P310): al reintentar, el error del intento anterior no se queda junto a «Esperando…».
+describe('el reintento limpia el error anterior mientras espera', () => {
+  const conError: LogEntry = {
+    ...encuentro,
+    dynamicModeOffer: { tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'jugador', busy: false, error: 'No se pudo abrir' },
+  }
+
+  it('Interactuar: busy sin error hasta que responde', async () => {
+    let soltar: (v: { menu: null }) => void = () => undefined
+    vi.mocked(abrirMenuNpc).mockReset().mockReturnValue(new Promise((r) => { soltar = r as never }))
+    vi.mocked(interactuarModoDinamico).mockReset().mockRejectedValue(new Error('otra vez'))
+    const { hook } = montar(conError)
+    let promesa: Promise<void> = Promise.resolve()
+    await act(async () => {
+      promesa = hook.result.current.handleInteractuarModoDinamico('e1', 'NPC', 'cazadora-serhu', 'Cazadora Serhu', 'jugador')
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: true, error: undefined })
+    await act(async () => {
+      soltar({ menu: null })
+      await promesa
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: false, error: 'otra vez' })
+  })
+
+  it('recurso (Ver qué hay en la zona): busy sin error', async () => {
+    vi.mocked(interactuarModoDinamicoRecurso).mockReset().mockReturnValue(new Promise(() => undefined))
+    const { hook } = montar(conError)
+    await act(async () => {
+      void hook.result.current.handleInteractuarModoDinamicoRecurso('e1', 'cazadora-serhu')
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: true, error: undefined })
   })
 })

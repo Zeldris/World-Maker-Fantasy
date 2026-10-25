@@ -142,7 +142,7 @@ describe('detectsAbsentSceneNpcClaim', () => {
 
   it('detecta interactuar con un NPC real de catálogo que no está en la escena actual', async () => {
     const result = await detectsAbsentSceneNpcClaim("Le pregunto a Torgash por su clan.", 'world1', 'save1', []);
-    expect(result).toEqual({ name: 'Torgash', conocido: false, esFauna: false });
+    expect(result).toEqual({ name: 'Torgash', conocido: false, esFauna: false, articulo: null, genero: null });
   });
 
   it('no dispara si el NPC mencionado SÍ está en la lista de escena', async () => {
@@ -198,14 +198,14 @@ describe('P310: una conocida ausente no se trata como desconocida', () => {
   it('con la ficha DESCUBIERTO marca conocido y pregunta por esa ficha en la partida y en fase DESCUBIERTO', async () => {
     findFirstDiscovered.mockResolvedValue({ id: 'd1' });
     const result = await detectsAbsentSceneNpcClaim('Le regalo a Gistera un pan y le digo: «Toma, es para ti».', 'world1', 'save1', []);
-    expect(result).toEqual({ name: 'Gistera Koh', conocido: true, esFauna: false });
+    expect(result).toEqual({ name: 'Gistera Koh', conocido: true, esFauna: false, articulo: null, genero: null });
     expect(findFirstDiscovered).toHaveBeenCalledWith(expect.objectContaining({ where: { saveId: 'save1', entityType: 'npc', entitySlug: 'gistera-koh', fase: 'DESCUBIERTO' } }));
   });
 
   it('sin ficha DESCUBIERTO sigue siendo desconocida', async () => {
     findFirstDiscovered.mockResolvedValue(null);
     const result = await detectsAbsentSceneNpcClaim('Le pregunto a Gistera Koh por su clan.', 'world1', 'save1', []);
-    expect(result).toEqual({ name: 'Gistera Koh', conocido: false, esFauna: false });
+    expect(result).toEqual({ name: 'Gistera Koh', conocido: false, esFauna: false, articulo: null, genero: null });
   });
 
   it('la ficha de una persona se busca como npc, y la de una fauna conocida, como fauna (entityTypeDeSerVivo)', async () => {
@@ -214,7 +214,7 @@ describe('P310: una conocida ausente no se trata como desconocida', () => {
     expect(findFirstDiscovered).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ entityType: 'npc' }) }));
     findManyNpc.mockResolvedValue([{ slug: 'murgol', name: 'Múrgol', aliases: ['murgol'] }]);
     const fauna = await detectsAbsentSceneNpcClaim('Ataco al murgol con mi lanza.', 'world1', 'save1', []);
-    expect(fauna).toEqual({ name: 'Múrgol', conocido: true, esFauna: true });
+    expect(fauna).toEqual({ name: 'Múrgol', conocido: true, esFauna: true, articulo: null, genero: null });
     expect(findFirstDiscovered).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ entityType: 'fauna', entitySlug: 'murgol' }) }));
   });
 
@@ -224,6 +224,18 @@ describe('P310: una conocida ausente no se trata como desconocida', () => {
     }
     const frases = new Set(Array.from({ length: 80 }, () => absentSceneNpcNarrationFor('Gistera Koh', true, false)));
     expect([...frases].some((f) => /esa persona/.test(f))).toBe(true);
+  });
+
+  it('la conocida ausente lleva su artículo y el pronombre concuerda con el género (P310)', () => {
+    for (let i = 0; i < 60; i++) {
+      const f = absentSceneNpcNarrationFor('Cazadora Serhu', true, false, 'la', 'F');
+      expect(f).toMatch(/la Cazadora Serhu/i);
+      expect(f).not.toMatch(/(?<!la )Cazadora Serhu/i);
+      expect(f).not.toMatch(/\blo (busca|comprueba)\b/);
+      const m = absentSceneNpcNarrationFor('Guardián Ketg', true, false, 'el', 'M');
+      expect(m).toMatch(/el Guardián Ketg/i);
+      expect(m).not.toMatch(/\bla busca\b/);
+    }
   });
 
   it('la narración de una conocida nunca dice «quienquiera que sea» ni «no hay nadie», y siempre cita el nombre', () => {

@@ -116,7 +116,7 @@ export function useModoDinamico({
     trasMenu?: boolean,
   ) {
     setCharacterLog((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: true } } : e)),
+      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: true, error: undefined } } : e)),
     )
     try {
       // P142: un NPC con menú propio (oficio, trabajo, noticias…) lo enseña primero, en el sitio
@@ -208,7 +208,7 @@ export function useModoDinamico({
   // `HarvestSelectionModal.onConfirm` (applyInventoryDelta + setCharacterLog + setFictionalDate) —
   // mismo backend (`resolverRecoleccion`), solo un disparador distinto.
   async function handleInteractuarModoDinamicoRecurso(entryId: string, targetSlug: string) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true, error: undefined } } : e)))
     const targetName = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer?.targetName ?? 'el recurso'
     try {
       const resultado = await interactuarModoDinamicoRecurso(saveId!, targetSlug)
