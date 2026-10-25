@@ -101,6 +101,8 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
 
     // El punto del mapa que se pulsó, para descontar de él; y su nombre (el de la ficha, P136), para
     // que el diario lo llame igual que la tarjeta.
+    // P136: con el inventario lleno, «no consigue nada aprovechable» engañaba (el recurso sí tenía qué dar).
+    const sinEspacioTexto = `${save.characterName} no puede cargar nada más: lleva el inventario lleno.`;
     const oferta = save.pendingDynamicModeOffer as { tipo?: string; targetSlug?: string; zonePointId?: string; targetName?: string } | null;
     const ofertaDeEste = oferta?.tipo === 'RECURSO' && oferta.targetSlug === targetSlug ? oferta : null;
     const zonePointId = ofertaDeEste?.zonePointId;
@@ -111,7 +113,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     if (candidato.yields.every((y) => y.sinTirada)) {
       const selections = candidato.yields.map((y) => ({ sourceSlug: targetSlug, itemSlug: y.itemSlug, cantidad: y.cantidadMaxima }));
       const resultado = await resolverRecoleccion(save, selections, true, undefined, zonePointId);
-      const logEntryFinal = resultado.logEntry ?? (await registrarFallo(`${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`, null, false));
+      const logEntryFinal = resultado.logEntry ?? (await registrarFallo(resultado.sinEspacio ? sinEspacioTexto : `${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`, null, false));
       return { exito: resultado.logEntry !== null, narration: logEntryFinal.text, abilityName: ability.ability.name, segundasTiradas: resultado.segundasTiradas, items: resultado.items, updatedItems: resultado.updatedItems, logEntry: logEntryFinal, ...(resultado.energia !== undefined ? { energia: resultado.energia } : {}) };
     }
 
@@ -148,7 +150,7 @@ export async function dynamicModeRecursoRoutes(app: FastifyInstance) {
     // recurso ya recolectado si el proceso moría entre medias.
     const resultado = await resolverRecoleccion(save, selections, true, roll, zonePointId);
 
-    const narracionSinLog = `${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`;
+    const narracionSinLog = resultado.sinEspacio ? sinEspacioTexto : `${save.characterName} no consigue nada aprovechable de ${nombreVisible} esta vez.`;
     const logEntryFinal =
       resultado.logEntry ??
       (await registrarFallo(narracionSinLog, { kind: 'recoleccion', tirada: roll, ...(resultado.segundasTiradas.length > 0 ? { segundas: resultado.segundasTiradas } : {}) }, false));
