@@ -7,7 +7,7 @@
 // size the file declares (<meta name="tamano" content="1600x900">, default 1600x900); .png and .jpg (game
 // screenshots) are taken as they are. Each source becomes <update-folder>/medios/<name>.webp (1600 px wide at
 // most) and <name>-mini.webp (720 px), the sizes the Portal uses. Without [source...], every source is rendered.
-// Needs ImageMagick (`convert` with WebP) and the Chromium Playwright brings or that the cloud pre-installs.
+// Needs ImageMagick (`magick`, or `convert` in version 6, with WebP) and the Chromium Playwright brings or that the cloud pre-installs.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -35,6 +35,29 @@ if (!fuentes.length) {
   console.error(`ERROR: ninguna fuente .html, .svg, .png o .jpg en ${fuenteDir}`);
   process.exit(1);
 }
+// Output names come from the stem: two sources with the same one would overwrite each other's WebP.
+const porNombre = new Map();
+const todas = readdirSync(fuenteDir).filter((f) => RENDERIZABLES.has(extname(f).toLowerCase()) || CAPTURAS.has(extname(f).toLowerCase()));
+for (const f of todas.sort()) {
+  const nombre = basename(f, extname(f));
+  if (porNombre.has(nombre)) {
+    console.error(`ERROR: ${porNombre.get(nombre)} y ${f} darían los dos medios/${nombre}.webp; cambia un nombre`);
+    process.exit(1);
+  }
+  porNombre.set(nombre, f);
+}
+
+function imagemagick() {
+  for (const orden of ['magick', 'convert']) {
+    try {
+      execFileSync(orden, ['-version'], { stdio: 'ignore' });
+      return orden;
+    } catch {}
+  }
+  console.error('ERROR: no encuentro ImageMagick (ni `magick` ni `convert`); hace falta con soporte de WebP');
+  process.exit(1);
+}
+const IM = imagemagick();
 
 function cargarPlaywright() {
   // Plain `import` resolves from this file's folder, where playwright is not installed; resolve it from the cwd,
@@ -61,7 +84,7 @@ function tamano(ruta) {
 function aWebp(png, nombre) {
   for (const [sufijo, ancho, calidad] of [['', 1600, 82], ['-mini', 720, 78]]) {
     const destino = join(salidaDir, `${nombre}${sufijo}.webp`);
-    execFileSync('convert', [png, '-resize', `${ancho}x>`, '-strip', '-quality', String(calidad), destino]);
+    execFileSync(IM, [png, '-resize', `${ancho}x>`, '-strip', '-quality', String(calidad), destino]);
     console.log(`${destino} (${Math.round(statSync(destino).size / 1024)} KB)`);
   }
 }

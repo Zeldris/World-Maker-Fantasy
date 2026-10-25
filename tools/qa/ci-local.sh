@@ -50,6 +50,7 @@ paso tools/playwright-e2e "Playwright para el test de navegador" "npm ci --silen
 paso . "tests de tools/qa" python3 -m unittest discover -s tools/qa/tests
 paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/opt-ai/scripts
 paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/scout-updates/scripts
+paso . "tests de gw-media-content" python3 -m unittest discover -s .claude/skills/gw-media-content/scripts
 paso . "resumen de los registros de hallazgos" 'for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done'
 
 echo "== backend"

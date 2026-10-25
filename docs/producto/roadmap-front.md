@@ -1601,6 +1601,9 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-233 · `selector` al lanzar cada subagente**~~ ✅ 2026-10-25: tres de cuatro subagentes fueron con Opus para trabajo mecánico; apuntado en `.claude/gw/opt-tokens.md` (costes conocidos).
 - **QA-234 · Leves del `/code-review` del PR de `claude/interfaz-imagenes`**: `commit-msg` compara «Actualizado» con la fecha de hoy y el pre-push con la del autor (difieren con `--amend` o `--date`); con `--amend` sin tocar la bitácora no la mira; el test corre también el `pre-commit` real, que mira el índice del proyecto; `resumen.py` repite los nombres de campo de `/api/estado` y `/api/elementos` sin un contrato común con `servidor.py`.
 
+Difusión (usuaria, 2026-10-24):
+- ~~**QA-235 · Carpeta de difusión y skill `gw-media-content`**~~ ✅ 2026-10-25: `docs/difusion/` (guía de canales, plantilla por actualización y el ejemplo `2026-10-23-mundo-vivo`, con tarjeta, diagrama y captura en `medios/`) y la skill `gw-media-content`, que crea o completa una carpeta solo con lo no publicado, para los canales pedidos. `render.mjs` pasa las fuentes de `medios/fuente/` a WebP; `comprobar.py` (en el check y en el CI) da por buena la carpeta. Test: `test_comprobar.py`. Queda: la usuaria valida el estilo del ejemplo.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
