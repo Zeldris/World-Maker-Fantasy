@@ -4,35 +4,26 @@
 pipefail, la tubería devuelve el código del último comando (tail), no el del que falló. Todo `.sh` bajo
 `image-generator/` y `docs/producto/plan-imagenes/` lo lleva en sus primeras 15 líneas, o dice por qué no con una línea
 `# sin pipefail: <motivo>` en esas mismas líneas (p. ej. generar.sh y probar.sh vigilan y matan procesos de sd-cli, y no
-se pueden probar sin los modelos de la Deck). Se excluyen los enlaces (`image-generator/modelos`, `bin` y `generated`
-apuntan a la copia principal) y cualquier `node_modules`.
+se pueden probar sin los modelos de la Deck). Solo los versionados (`git ls-files`): las carpetas ignoradas de la copia
+local (descargas, enlaces a la copia principal, `node_modules`) no cuentan.
 """
 import os
 import re
+import subprocess
 import unittest
 
 from comun import RAIZ
 
-CARPETAS = ['image-generator', os.path.join('docs', 'producto', 'plan-imagenes')]
+CARPETAS = ['image-generator', 'docs/producto/plan-imagenes']
 LINEAS = 15
-# En la raíz de image-generator/ estas tres son enlaces (o carpetas ignoradas por git) a la copia principal del repo.
-EXCLUIDAS_EN_RAIZ = {'modelos', 'bin', 'generated'}
 SIN_PIPEFAIL = re.compile(r'^\s*#\s*sin pipefail:\s*\S')
 
 
 def scripts_sh():
-    """Rutas (relativas a la raíz del repo) de todos los .sh de CARPETAS, sin enlaces ni node_modules."""
-    encontrados = []
-    for carpeta in CARPETAS:
-        base = os.path.join(RAIZ, carpeta)
-        for dirpath, dirnames, nombres in os.walk(base, followlinks=False):
-            dirnames[:] = sorted(d for d in dirnames if d != 'node_modules' and not os.path.islink(os.path.join(dirpath, d))
-                                 and not (dirpath == base and carpeta == 'image-generator' and d in EXCLUIDAS_EN_RAIZ))
-            for nombre in sorted(nombres):
-                ruta = os.path.join(dirpath, nombre)
-                if nombre.endswith('.sh') and not os.path.islink(ruta):
-                    encontrados.append(os.path.relpath(ruta, RAIZ))
-    return encontrados
+    """Rutas (relativas a la raíz del repo) de los .sh versionados de CARPETAS."""
+    salida = subprocess.run(['git', '-C', RAIZ, 'ls-files', '--', *(f'{c}/*.sh' for c in CARPETAS)],
+                            check=True, capture_output=True, text=True).stdout
+    return [r for r in salida.splitlines() if not os.path.islink(os.path.join(RAIZ, r))]
 
 
 def tiene_set_estricto(linea: str) -> bool:
@@ -63,10 +54,7 @@ class Pipefail(unittest.TestCase):
         for esperado in ('image-generator/scripts/generar.sh', 'image-generator/scripts/probar.sh',
                          'docs/producto/plan-imagenes/banco.sh'):
             self.assertIn(esperado, scripts, f'{esperado} no sale en la lista: el recorrido de carpetas está roto')
-        self.assertFalse([s for s in scripts if 'node_modules' in s.split(os.sep)], 'entra un node_modules')
-        for excluida in EXCLUIDAS_EN_RAIZ:
-            self.assertFalse([s for s in scripts if s.startswith(f'image-generator/{excluida}/')],
-                             f'entra image-generator/{excluida}/')
+        self.assertFalse([s for s in scripts if 'node_modules' in s.split('/')], 'entra un node_modules')
 
     def test_todo_script_tiene_pipefail_o_dice_por_que_no(self):
         malos = []

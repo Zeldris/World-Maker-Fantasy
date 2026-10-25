@@ -249,9 +249,10 @@ def state(root, transcript):
     for line in log_state(root, branch):
         print(line)
     for path, other in other_worktrees(root):
-        print(f"- Worktree {path}, branch {other} (its state: python3 {path}/.claude/gw/scripts/recuperar.py --estado):")
         rows = log_state(pathlib.Path(path), other)
-        if len(rows) == 1:  # with logRows, its row; a whole first section per worktree would be too long
+        # Only a worktree with its own row (logRows): a subagent's has none, and its "add your row" would mislead.
+        if len(rows) == 1 and f", row for `{other}`: " in rows[0]:
+            print(f"- Worktree {path}, branch {other} (its state: python3 {path}/.claude/gw/scripts/recuperar.py --estado):")
             print("  " + rows[0])
     status = git(root, "status", "--short").splitlines()
     if status:

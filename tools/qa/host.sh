@@ -21,6 +21,8 @@ if [ "$HOST_SH_SANDBOX" = 1 ] || [ -e /.flatpak-info ] || [ -n "$FLATPAK_ID" ]; 
     # Con cambios sin commit (QA-253), la copia sale de `git stash create`: un commit con el árbol tal como está, sin tocar
     # índice ni árbol (vacío si no hay cambios: entonces, HEAD). Los archivos sin seguimiento no entran: `git add` antes (`add -N` rompe stash create).
     COMMIT="$(git -C "$RAIZ" stash create)" || { echo "host.sh: no se pudieron recoger los cambios sin commit de $RAIZ" >&2; exit 1; }
+    # Un verde sobre la instantánea no prueba ningún commit (p. ej. el CI local de QA-215): se dice.
+    [ -z "$COMMIT" ] || echo "host.sh: $RAIZ tiene cambios sin commit; la orden corre sobre una instantánea (${COMMIT:0:8}), no sobre HEAD" >&2
     mkdir -p "$PRINCIPAL/logs" && VISIBLE="$(mktemp -d "$PRINCIPAL/logs/host-sh-wt.XXXXXX")" && rmdir "$VISIBLE" \
       && git -C "$RAIZ" worktree add -q --detach "$VISIBLE" "${COMMIT:-HEAD}" >/dev/null 2>&1 \
       || { echo "host.sh: no se pudo crear un worktree visible desde el host en $PRINCIPAL/logs; prueba: git worktree prune" >&2; exit 1; }

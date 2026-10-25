@@ -79,7 +79,9 @@ class Recuperar(unittest.TestCase):
         git(repo, 'commit', '-qm', 'base')
         wt = os.path.join(os.path.dirname(repo), 'wt')
         git(repo, 'worktree', 'add', '-q', '-b', 'otra', wt)
+        git(repo, 'worktree', 'add', '-q', '-b', 'worktree-agent-1', wt + '-agente')  # sin fila: no sale
         r = self.correr('--estado', '--root', repo)
+        self.assertNotIn('worktree-agent-1', r.stdout)
         self.assertIn('row for `principal`: lo de aquí', r.stdout)
         self.assertIn(f'- Worktree {wt}, branch otra (its state: python3 {wt}/.claude/gw/scripts/recuperar.py --estado):\n'
                       '  - Log (docs/registros/traspaso.md), row for `otra`: lo del worktree\n', r.stdout)

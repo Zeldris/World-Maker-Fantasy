@@ -33,6 +33,8 @@ class Hoja(unittest.TestCase):
             for semilla in (3, 7, 11, 13):
                 png(os.path.join(banco, prueba, 'intentos', f'banner-s{semilla}-p6.png'), 200, 80)
         png(os.path.join(banco, 'r8-x', 'intentos', 'banner-s3-p6.png'), 200, 80)  # otra ronda: no entra
+        png(os.path.join(banco, 'r90-x', 'intentos', 'banner-s3-p6.png'), 200, 80)  # r9 no coge r90
+        png(os.path.join(banco, 'hojas', 'r9-3.png'), 10, 10)  # de una pasada anterior: se borra
         r = self.correr(banco, 'r9')
         self.assertEqual(r.returncode, 0, r.stderr)
         lineas = r.stdout.splitlines()
@@ -42,6 +44,7 @@ class Hoja(unittest.TestCase):
         self.assertEqual(lineas[8:], ['  1 r9-b/intentos/banner-s3-p6.png', '  2 r9-b/intentos/banner-s7-p6.png'])
         self.assertEqual(tamano(f'{banco}/hojas/r9-1.png'), '200,120')  # 2 columnas × 3 filas de 100x40
         self.assertEqual(tamano(f'{banco}/hojas/r9-2.png'), '200,40')
+        self.assertFalse(os.path.exists(f'{banco}/hojas/r9-3.png'))
 
     def test_una_sola_imagen_y_ronda_vacia(self):
         banco = carpeta()

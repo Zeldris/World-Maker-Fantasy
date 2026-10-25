@@ -135,6 +135,7 @@ class Host(Entorno, unittest.TestCase):
         falso(d, 'flatpak-spawn', f'printf "%s\\n" "$@" > {d}/args\ncd "${{2#--directory=}}" && shift 2 && exec "$@"\n')
         r = self.correr_en(env, wt, 'cat', 'backend/package.json')
         self.assertEqual((r.returncode, r.stdout), (0, '{"cambio": 1}'), r.stderr)
+        self.assertIn('la orden corre sobre una instantánea', r.stderr)
         self.assertIn('--directory=' + principal + '/logs/host-sh-wt.', leer(d + '/args'))
         self.assertEqual([n for n in os.listdir(principal + '/logs') if n.startswith('host-sh-wt.')], [])
         # El árbol, el índice y la lista de stash del worktree quedan como estaban.
