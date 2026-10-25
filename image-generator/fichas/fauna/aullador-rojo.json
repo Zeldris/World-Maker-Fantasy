@@ -33,10 +33,16 @@
       "pose": "She crouches low at the front of the stalking pack, with two more of the pack behind her."
     }
   },
+  "condiciones": {
+    "estacion:invierno": {
+      "entorno": "Around them lie bare red clay and short, thin straw-yellow grass tinged with orange."
+    }
+  },
   "propuestas": [
     "ancla",
     "paleta: rust red, darker underparts, amber eyes, dark muzzle",
     "escala: hip / mid-thigh of an adult orc",
-    "pose: crouching, two more of the pack"
+    "pose: crouching, two more of the pack",
+    "condiciones estacion:invierno: entorno de hierba corta para no contradecir la pose «tall grass» (la pose sigue agazapada en hierba alta; revisar)"
   ]
 }

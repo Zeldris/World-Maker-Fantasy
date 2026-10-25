@@ -1,4 +1,4 @@
-# Plantilla de prompt desde la ficha (`IMG-4`, `IMG-5`)
+# Plantilla de prompt desde la ficha (`IMG-4`, `IMG-5`, `IMG-14`)
 
 **Estado:** sacada de [`borradores/plantilla-prompt.md`](borradores/plantilla-prompt.md) el 2026-10-25 con las
 decisiones de la usuaria del [plan](plan.md#decidido-usuaria-2026-10-25). Lo marcado **[propuesta]** espera su
@@ -29,6 +29,11 @@ Klein 4B, que no reescribe el prompt, pide frases descriptivas largas y, con cfg
    funcionaron tenían ~250). Si se pasa, se quitan bloques en este orden: B6 (luz), B5 (entorno), B4 (pose); nunca
    B1-B3. Si se queda corto, solo se avisa.
 8. Un campo que falta o está vacío omite su bloque sin dejar hueco.
+9. **Coherencia con el momento** (`IMG-14`, **[propuesta]**): el prompt final (tras recortar) no puede nombrar el sol
+   de día en una escena de noche (`sun`, `sunlit`, `sunlight`, `daylight`, `midday`, `noon`) ni las estrellas o la
+   noche en una de día (`star(s)`, `starlit`, `night`); el atardecer no se comprueba. Los patrones están en
+   `coherencia` de `mundo.json`, no en el código. Un momento o una estación desconocidos, o una clave de
+   `condiciones` mal escrita, también son error (regla 9) y el mensaje lista los valores válidos.
 
 ## Bloques
 
@@ -38,18 +43,49 @@ Klein 4B, que no reescribe el prompt, pide frases descriptivas largas y, con cfg
 | B2 Cuerpo, cobertura y color | `prompt.cuerpo` | se omite |
 | B3 Rasgos distintivos | `prompt.rasgos` (lista de frases, en orden) | se omite |
 | B4 Pose y escena viva | `prompt.pose` | se omite |
-| B5 Entorno | `prompt.entorno`; si la clave no está, «The setting is {paisaje de la región}.»; si está vacía, nada | ver izquierda |
-| B6 Luz | `prompt.luz`; si no está, la `luz` de la región | se omite |
+| B5 Entorno | `prompt.entorno`; si la clave no está, «The setting is {paisaje de la región}.» y, con `--estacion`, la frase de `regiones[r].estaciones[estación]` detrás; si está vacía, nada | ver izquierda |
+| B6 Luz | `prompt.luz` (tras variante y condiciones); si no está, `regiones[r].luz[momento]` | se omite |
 | B7 Encuadre | `encuadres[perfil]` | — |
 | B8 Estilo | `estilos[perfil]` (D8): `base` con `{clase}` y el `acabado` de `porTipo[tipo]`; `thumbnail` es alias de `icono` | — |
-| B9 Preámbulo | `preambulo[momento]` (`dia` o `noche`; por defecto, el `momento` de la ficha) | — |
+| B9 Preámbulo | `preambulo[momento]` (`dia`, `atardecer` o `noche`; por defecto, el `momento` de la ficha, y si no, `dia`) | — |
 
 **Variantes** (`variantes.<nombre>`, p. ej. `macho`, `hembra`): cada clave sustituye la del mismo nombre en `prompt`;
 una clave terminada en `+` (`rasgos+`) se añade al final de la lista. Pedir una variante que no existe es un error.
 
+**Condiciones** (`condiciones.<clave>`): ver la sección siguiente.
+
 **Estilo por perfil (D8, usuaria):** `banner` realista (fotografía cinematográfica, también en zonas: 35 mm fauna,
 100 mm macro flora, 24 mm paisaje, 85 mm retrato); `icono` y `thumbnail` al óleo; `mapa`, punto medio entre realismo
 y óleo. Los textos concretos de `estilos` son **[propuesta]**.
+
+## Condiciones: momento y estación (`IMG-14`)
+
+Decidido por la usuaria (2026-10-25): el momento del día y la estación son parámetros aparte de las variantes del
+sujeto (macho, hembra). El detalle de los valores, los textos y los límites son **[propuesta]** hasta su aprobación.
+
+- **Momentos:** `dia`, `atardecer`, `noche` (`--momento`; sin él, el `momento` de la ficha y, si no, `dia`).
+  **Estaciones:** `primavera`, `verano`, `otono`, `invierno` (`--estacion`, opcional; las claves internas del motor,
+  `backend/src/services/worldClock.ts`). Sin estación, el prompt es el de antes.
+- **`mundo.json`:** `preambulo` gana `atardecer`. Cada región tiene `luz` como objeto `{dia, atardecer, noche}` (la de
+  día es la que había) y `estaciones` `{primavera, verano, otono, invierno}` con una frase de paisaje por estación,
+  sacada de las glosas de [`estaciones.md`](../../rpgtarkor/lore-mundo/estaciones.md) (primavera, «la estación de las
+  crecidas»; verano, «la seca»; otoño, «la cosecha», con migraciones; invierno, «la estación larga»). Lo que el canon
+  no dice (casi todo fuera de las Llanuras) está escrito como frase plausible y su clave consta en la lista
+  `propuestas` de la región. Una `luz` de región que sea un texto vale para todos los momentos.
+- **`condiciones` en la ficha:** bloque opcional con las claves `momento:<m>`, `estacion:<e>` y la combinada
+  `estacion:<e>+momento:<m>`. Cada valor sustituye claves de `prompt` igual que una variante (`rasgos+` añade). Una
+  clave que no case con esos formatos o con un valor conocido es un error.
+- **Orden de aplicación:** `prompt` → variante → estación → momento → combinada (gana la última). Una ficha con luz
+  propia de día (p. ej. el cardo brújula) necesita su `momento:noche` y `momento:atardecer`, o la regla 9 la rechaza
+  de noche; una zona que cambia con la estación (Pastos de la Deriva) lo cuenta en `estacion:<e>` sobre `cuerpo`.
+- **B5:** la frase de estación de la región solo se añade al entorno por defecto («The setting is…»). Una ficha con
+  `entorno` propio decide ella con su condición `estacion:<e>`.
+- **`--fondo`:** el sujeto recibe también sus condiciones, y el prompt de fondo no cambia por la zona (la pone el
+  `-r`). La zona de fondo tiene que ser de la misma condición: el `--json` devuelve `condicion`, `«<estacion|->/<momento>»`
+  (p. ej. `invierno/noche`, `-/dia`), para que quien genere elija la imagen aprobada de esa condición (`IMG-12`).
+- **Longitud:** más condiciones no cambian la regla 7; si una ficha se pasa, se recorta B6, B5, B4 y `recortados` lo
+  dice. Con los datos de hoy solo el aullador rojo recorta (B6 en todos los momentos, ya antes en `dia`; con las
+  variantes, a veces también B5).
 
 ## Segunda pasada: la zona como fondo (D10)
 
@@ -62,10 +98,11 @@ Deck). Las mismas comprobaciones de las reglas 3-5 (con el nombre del sujeto y e
 ## Uso
 
 ```
-python3 image-generator/scripts/prompt_ficha.py <ficha.json> <perfil> [--variante macho] [--momento dia|noche] \
-    [--fondo <ficha-zona.json>] [--json]
+python3 image-generator/scripts/prompt_ficha.py <ficha.json> <perfil> [--variante macho] \
+    [--momento dia|atardecer|noche] [--estacion primavera|verano|otono|invierno] [--fondo <ficha-zona.json>] [--json]
 ```
 
-Imprime el prompt; con `--json`, `{"prompt", "palabras", "recortados", "avisos", "propuestas"}`. Sale con código 2 y el
+Imprime el prompt; con `--json`, `{"prompt", "palabras", "recortados", "avisos", "propuestas", "momento", "estacion",
+"condicion"}`. Sale con código 2 y el
 motivo (palabra, regla, alternativa) si el prompt rompe una regla. Para generar:
 `PROMPT_ARCHIVO=<prompt.txt> image-generator/scripts/probar.sh <tipo> <slug> <perfil> <semilla> <pasos> [-r <zona.png>]`.

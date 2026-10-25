@@ -18,5 +18,19 @@
     "entorno": "Fine red dust drifts in the air above red clay, and a low, hazy horizon glows behind them.",
     "luz": "Soft morning light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns."
   },
-  "propuestas": ["altura: an adult orc's open hand (25 cm sin fuente original)", "hojas grey-green", "granos de arena pegados a las espinas", "two or three"]
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "Warm low evening light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns."
+    },
+    "momento:noche": {
+      "luz": "A soft, even pearly glow under the stars gently outlines the metallic sheen of the flower and the thorns."
+    }
+  },
+  "propuestas": [
+    "altura: an adult orc's open hand (25 cm sin fuente original)",
+    "hojas grey-green",
+    "granos de arena pegados a las espinas",
+    "two or three",
+    "condiciones momento:atardecer / momento:noche: luz propia que sustituye «Soft morning light»"
+  ]
 }

@@ -1,8 +1,9 @@
 {
   "_leyenda": "IMG-4: lo común a todos los prompts de Helek Sirik (Berig), en inglés porque entra tal cual. Lo explica docs/producto/plan-imagenes/guia-visual-mundo.md; lo usa image-generator/scripts/prompt_ficha.py. Las claves de _propuestas esperan la aprobación de la usuaria.",
-  "_propuestas": ["preambulo", "estilos", "longitud", "fondo"],
+  "_propuestas": ["preambulo", "estilos", "longitud", "fondo", "preambulo.atardecer", "regiones.*.luz", "regiones.*.estaciones", "coherencia"],
   "preambulo": {
     "dia": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. By day the sky is an ordinary daylight sky with a light warm haze. The mood is wild, quiet and lived-in, with muted natural colours, a subtle filmic grade and a single accent colour per scene. The image is completely textless.",
+    "atardecer": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. At dusk the sky glows amber and rose with a light warm haze. The mood is wild, quiet and lived-in, with long soft shadows, muted natural colours, a subtle filmic grade and a single accent colour per scene. The image is completely textless.",
     "noche": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. By night the sky is full of stars under a soft, even pearly glow. The mood is wild, quiet and lived-in, with deep cool shadows, muted natural colours and firelight as the only warm light. The image is completely textless."
   },
   "estilos": {
@@ -35,29 +36,90 @@
   "regiones": {
     "Llanuras del Viento Rojo": {
       "paisaje": "a vast red clay steppe with tufts of dry straw-yellow grass tinged with orange, scattered savanna scrub and low volcanic peaks far off in the haze, fine red dust drifting on the wind",
-      "luz": "Low sun just above the horizon through a haze of red dust throws a warm golden rim light."
+      "luz": {
+        "dia": "Low sun just above the horizon through a haze of red dust throws a warm golden rim light.",
+        "atardecer": "A large low sun sinks into the red dust haze, staining the sky amber and deep rose and stretching long violet shadows across the plain.",
+        "noche": "Stars shine in a clear sky over the plain, a soft, even pearly glow lights the red dust and the grass tips, and the shadows are deep and cool."
+      },
+      "estaciones": {
+        "primavera": "Seasonal floods fill the dry watercourses and the hollows with shallow brown water, and fresh green shoots show among the straw-yellow grass tinged with orange.",
+        "verano": "The dry season has cracked the red clay and parched the grass to brittle straw-yellow tinged with orange, leaving the watercourses as pale empty beds.",
+        "otono": "It is the harvest season: the grass stands tall and heavy with seed, low plants bear ripe fruit among the tufts, and long files of migrating animals cross the plain.",
+        "invierno": "The long season has flattened and thinned the grass, which lies pale straw-yellow tinged with orange over bare red clay, and a cold wind sweeps the plain under a low pale sky."
+      },
+      "propuestas": ["luz.atardecer", "luz.noche", "estaciones.invierno"]
     },
     "Cristal Helado": {
       "paisaje": "high ice-capped mountains above a tundra of dark volcanic rock patched with snow, glaciers and sheer sea cliffs",
-      "luz": "Pale low arctic sun, cold blue shadows and crisp clear air glinting with ice."
+      "luz": {
+        "dia": "Pale low arctic sun, cold blue shadows and crisp clear air glinting with ice.",
+        "atardecer": "A low, pale sun sets behind the peaks, flushing the ice and snow pink and orange while the shadows turn deep blue.",
+        "noche": "Stars glitter over the ice under a soft, even pearly glow that lights the snow and glaciers, with deep blue shadows and frost glinting in the cold air."
+      },
+      "estaciones": {
+        "primavera": "Meltwater runs in thin streams over the dark rock, the glaciers creak and shed blocks of ice into the sea, and the patches of snow shrink.",
+        "verano": "Bare dark rock shows through the thinned snow, the ice faces glint wet in long pale light and the sea cliffs echo with meltwater.",
+        "otono": "Fresh snow dusts the dark rock again, the first sea ice rims the shore and the air turns sharply clear.",
+        "invierno": "Deep snow buries the tundra and the rock, the glaciers are bound in thick blue ice, and the long cold holds everything still."
+      },
+      "propuestas": ["luz.atardecer", "luz.noche", "estaciones.primavera", "estaciones.verano", "estaciones.otono"]
     },
     "Ciénaga Troncal": {
       "paisaje": "a dense swamp of tangled trunks and climbing vines, dark standing water and flat muddy clearings",
-      "luz": "Soft humid light filtered green through the canopy, with a warm haze rising off the water."
+      "luz": {
+        "dia": "Soft humid light filtered green through the canopy, with a warm haze rising off the water.",
+        "atardecer": "Low amber light slants through the canopy and turns the haze rising off the water gold, while the dark water mirrors a warm sky.",
+        "noche": "Stars show through gaps in the canopy, a soft pearly glow gleams on the dark water and a pale haze hangs low over it."
+      },
+      "estaciones": {
+        "primavera": "Rising water floods the muddy clearings, new vines climb the trunks and the swamp is loud with life.",
+        "verano": "The water has shrunk to dark pools between cracked mud flats, and a heavy humid heat sits under the canopy.",
+        "otono": "Leaves and bark fall into the water and carpet it in dull russet, while fruit hangs heavy on the vines.",
+        "invierno": "A cold grey mist lies over the still water, the vines hang bare and the clearings are hard with chilled mud."
+      },
+      "propuestas": ["luz.atardecer", "luz.noche", "estaciones.primavera", "estaciones.verano", "estaciones.otono", "estaciones.invierno"]
     },
     "Margen Silencioso": {
       "paisaje": "a temperate rainforest of black-wooded conifers and dense dark foliage over marshy ground, the air clear and perfectly still",
-      "luz": "Dim green light under a thick canopy is pierced by a few sharp shafts of sun."
+      "luz": {
+        "dia": "Dim green light under a thick canopy is pierced by a few sharp shafts of sun.",
+        "atardecer": "Low amber light slants between the black trunks in a few warm shafts, while the canopy above stays dim and green.",
+        "noche": "Deep cool darkness fills the space under the canopy, with stars glimpsed through gaps in the branches and a soft pearly glow on the wet leaves."
+      },
+      "estaciones": {
+        "primavera": "Pale new needles tip the black branches, the marshy ground is soaked with meltwater and ferns uncurl in the still air.",
+        "verano": "The conifers stand dense and dark, the marshy ground has firmed up and the still air is warm and heavy with resin.",
+        "otono": "Rust-brown needles drift down onto the dark marsh and mushrooms crowd the roots.",
+        "invierno": "Frost rimes the black bark and the edges of the marsh are crusted with ice, while the canopy stays dark and still."
+      },
+      "propuestas": ["luz.atardecer", "luz.noche", "estaciones.primavera", "estaciones.verano", "estaciones.otono", "estaciones.invierno"]
     },
     "Meseta del Orden": {
       "paisaje": "a grey stone desert of flat slabs and stepped terraces laid out with unnatural symmetry, sparse iron-grey grass, distant fortress walls of polished stone and black iron",
-      "luz": "Harsh high sun on grey stone, crisp hard shadows and a clear pale sky."
+      "luz": {
+        "dia": "Harsh high sun on grey stone, crisp hard shadows and a clear pale sky.",
+        "atardecer": "A low sun reddens the grey stone and lays long hard shadows from the terraces and walls under an amber sky.",
+        "noche": "Stars fill a clear sky over the grey stone, a soft, even pearly glow outlines the slabs and terraces, and the shadows are hard and cold."
+      },
+      "estaciones": {
+        "primavera": "A thin film of green creeps along the cracks of the grey slabs after the rains.",
+        "verano": "Heat shimmers over the grey slabs and the iron-grey grass is dry and brittle.",
+        "otono": "A dry wind drives grey dust across the terraces and the sparse grass turns dull brown.",
+        "invierno": "The cold grey stone is rimed with white frost, the grass lies flat and stiff, and the sky is pale and hard."
+      },
+      "propuestas": ["luz.atardecer", "luz.noche", "estaciones.primavera", "estaciones.verano", "estaciones.otono", "estaciones.invierno"]
     }
   },
   "fondo": {
     "_nota": "Segunda pasada (D10): la zona aprobada va como -r; el prompt solo describe al sujeto y pide respetar la escena.",
     "entrada": "In this {lugar}, keep the scenery, sky and light exactly as they are, and place in the foreground",
     "cierre": "It matches the {estilo} style and the light of the scene."
+  },
+  "estaciones": ["primavera", "verano", "otono", "invierno"],
+  "coherencia": {
+    "_nota": "IMG-14: el prompt final tiene que casar con su momento (regla 9). Patrones sobre el prompt completo, tras recortar.",
+    "noche": { "patron": "\\b(sun|sunlit|sunlight|daylight|midday|noon)\\b", "motivo": "el modelo pinta un cielo de día aunque el preámbulo sea de noche", "alternativa": "luz de noche: «stars under a soft, even pearly glow» (condición momento:noche en la ficha o luz.noche de la región)" },
+    "dia": { "patron": "\\b(stars?|starlit|night)\\b", "motivo": "el modelo pinta un cielo estrellado en pleno día", "alternativa": "luz de día (condición momento:dia en la ficha o luz.dia de la región)" }
   },
   "longitud": { "min": 120, "max": 280 },
   "vetadas": [

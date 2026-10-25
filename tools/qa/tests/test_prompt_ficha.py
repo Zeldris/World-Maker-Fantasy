@@ -295,7 +295,8 @@ class Cli(unittest.TestCase):
         code, out, _ = self.correr(self.ficha(), 'icono', '--variante', 'macho', '--json', '--mundo', self.mundo)
         self.assertEqual(code, 0)
         d = json.loads(out)
-        self.assertEqual(sorted(d), ['avisos', 'palabras', 'prompt', 'propuestas', 'recortados'])
+        self.assertEqual(sorted(d), ['avisos', 'condicion', 'estacion', 'momento', 'palabras', 'prompt', 'propuestas', 'recortados'])
+        self.assertEqual((d['momento'], d['estacion'], d['condicion']), ('dia', None, '-/dia'))
         self.assertEqual(d['prompt'], montar(perfil='icono', variante='macho')['prompt'])
 
     def test_fondo_y_momento(self):
@@ -352,6 +353,271 @@ class DatosReales(unittest.TestCase):
         self.assertTrue(p.endswith('It matches the photographic style and the light of the scene.'))
         self.assertIn('pale healed streaks', p)
         self.assertNotIn('A grounded fantasy world', p)
+
+
+MUNDO_C = copy.deepcopy(MUNDO)
+MUNDO_C['preambulo'] = {'dia': 'PREAMBULO-DIA.', 'atardecer': 'PREAMBULO-ATARDECER.', 'noche': 'PREAMBULO-NOCHE.'}
+MUNDO_C['estaciones'] = list(pf.ESTACIONES)
+MUNDO_C['regiones'] = {'R': {
+    'paisaje': 'a red steppe',
+    'luz': {'dia': 'LUZ-DIA.', 'atardecer': 'LUZ-ATARDECER.', 'noche': 'LUZ-NOCHE.'},
+    'estaciones': {'primavera': 'SEASON-PRIMAVERA.', 'verano': 'SEASON-VERANO.', 'otono': 'SEASON-OTONO.',
+                   'invierno': 'SEASON-INVIERNO.'}}}
+MUNDO_C['coherencia'] = _REAL['coherencia']
+
+
+def ficha_c(condiciones=None, **prompt):
+    """Ficha sin luz ni entorno propios (usa los de la región) y con condiciones."""
+    f = copy.deepcopy(FICHA)
+    del f['prompt']['luz'], f['prompt']['entorno']
+    f['prompt'].update(prompt)
+    f['condiciones'] = condiciones or {}
+    return f
+
+
+class Condiciones(unittest.TestCase):
+    def rota(self, ficha, **kw):
+        with self.assertRaises(pf.ReglaRota) as c:
+            pf.construir(ficha, MUNDO_C, 'banner', **kw)
+        return str(c.exception)
+
+    def test_luz_de_la_region_por_momento(self):
+        for mom, luz in (('dia', 'LUZ-DIA.'), ('atardecer', 'LUZ-ATARDECER.'), ('noche', 'LUZ-NOCHE.')):
+            with self.subTest(mom):
+                p = pf.construir(ficha_c(), MUNDO_C, 'banner', momento=mom)['prompt']
+                self.assertIn(luz, p)
+                self.assertEqual(sum(x in p for x in ('LUZ-DIA.', 'LUZ-ATARDECER.', 'LUZ-NOCHE.')), 1)
+                self.assertTrue(p.endswith(f'PREAMBULO-{mom.upper()}.'))
+
+    def test_luz_de_la_ficha_gana_a_la_de_la_region(self):
+        p = pf.construir(ficha_c(luz='Own light.'), MUNDO_C, 'banner', momento='noche')['prompt']
+        self.assertIn('Own light.', p)
+        self.assertNotIn('LUZ-NOCHE.', p)
+
+    def test_luz_de_region_como_texto_vale_para_todos_los_momentos(self):
+        mundo = copy.deepcopy(MUNDO)
+        mundo['preambulo']['atardecer'] = 'PREAMBULO-ATARDECER.'
+        f = copy.deepcopy(FICHA)
+        del f['prompt']['luz']
+        p = pf.construir(f, mundo, 'banner', momento='atardecer')['prompt']
+        self.assertIn('Low golden sun.', p)
+        self.assertTrue(p.endswith('PREAMBULO-ATARDECER.'))
+
+    def test_estacion_anade_su_frase_al_paisaje_de_b5(self):
+        p = pf.construir(ficha_c(), MUNDO_C, 'banner', estacion='invierno')['prompt']
+        self.assertIn('The setting is a red steppe. SEASON-INVIERNO.', p)
+        self.assertNotIn('SEASON-VERANO.', p)
+
+    def test_sin_estacion_el_prompt_es_el_de_siempre(self):
+        p = pf.construir(ficha_c(), MUNDO_C, 'banner')['prompt']
+        self.assertIn('The setting is a red steppe. LUZ-DIA.', p)
+        self.assertNotIn('SEASON', p)
+
+    def test_ficha_con_entorno_propio_no_cambia_con_la_estacion(self):
+        f = copy.deepcopy(FICHA)
+        self.assertEqual(pf.construir(f, MUNDO_C, 'banner', estacion='verano')['prompt'],
+                         pf.construir(f, MUNDO_C, 'banner')['prompt'])
+
+    def test_condicion_sustituye_claves_y_mas_anade(self):
+        f = ficha_c({'estacion:verano': {'cuerpo': 'Cracked coat.', 'rasgos+': ['Dusty paws.']}})
+        p = pf.construir(f, MUNDO_C, 'banner', estacion='verano')['prompt']
+        self.assertIn('Cracked coat.', p)
+        self.assertNotIn('Rust red coat.', p)
+        self.assertIn('Long legs. Black tail. Dusty paws.', p)
+        self.assertIn('Rust red coat.', pf.construir(f, MUNDO_C, 'banner', estacion='invierno')['prompt'])
+
+    def test_precedencia_prompt_variante_estacion_momento_combinada(self):
+        f = ficha_c({
+            'estacion:invierno': {'pose': 'POSE-ESTACION.', 'cuerpo': 'CUERPO-ESTACION.', 'sujeto': 'SUJETO-ESTACION.',
+                                  'rasgos+': ['R-E.']},
+            'momento:noche': {'pose': 'POSE-MOMENTO.', 'cuerpo': 'CUERPO-MOMENTO.', 'rasgos+': ['R-M.']},
+            'estacion:invierno+momento:noche': {'pose': 'POSE-COMBINADA.'}})
+        f['variantes']['hembra']['cuerpo'] = 'CUERPO-VARIANTE.'
+
+        def c(**kw):
+            return pf.construir(f, MUNDO_C, 'banner', **kw)['prompt']
+        # prompt < variante
+        self.assertIn('CUERPO-VARIANTE.', c(variante='hembra'))
+        self.assertNotIn('Rust red coat.', c(variante='hembra'))
+        # variante < estación
+        self.assertIn('SUJETO-ESTACION.', c(variante='hembra', estacion='invierno'))
+        self.assertNotIn('A slender beast.', c(variante='hembra', estacion='invierno'))
+        self.assertIn('CUERPO-ESTACION.', c(variante='hembra', estacion='invierno'))
+        # estación < momento
+        p = c(variante='hembra', estacion='invierno', momento='noche')
+        self.assertIn('CUERPO-MOMENTO.', p)
+        self.assertNotIn('CUERPO-ESTACION.', p)
+        # momento < combinada
+        self.assertIn('POSE-COMBINADA.', p)
+        self.assertNotIn('POSE-MOMENTO.', p)
+        # los rasgos+ se acumulan en ese orden
+        self.assertIn('Long legs. Black tail. R-E. R-M.', p)
+        # sin la combinada manda el momento; con otro momento manda la estación
+        self.assertIn('POSE-MOMENTO.', c(estacion='verano', momento='noche'))
+        self.assertIn('POSE-ESTACION.', c(estacion='invierno', momento='dia'))
+
+    def test_combinada_solo_con_ambas(self):
+        f = ficha_c({'estacion:invierno+momento:noche': {'cuerpo': 'FROST.'}})
+        self.assertNotIn('FROST.', pf.construir(f, MUNDO_C, 'banner', estacion='invierno')['prompt'])
+        self.assertNotIn('FROST.', pf.construir(f, MUNDO_C, 'banner', momento='noche')['prompt'])
+        self.assertIn('FROST.', pf.construir(f, MUNDO_C, 'banner', estacion='invierno', momento='noche')['prompt'])
+
+    def test_condicion_de_momento_cambia_la_luz(self):
+        f = ficha_c({'momento:noche': {'luz': 'Stars over the plain.'}})
+        p = pf.construir(f, MUNDO_C, 'banner', momento='noche')['prompt']
+        self.assertIn('Stars over the plain.', p)
+        self.assertNotIn('LUZ-NOCHE.', p)
+
+    def test_momento_de_la_ficha_cuenta_para_las_condiciones(self):
+        f = ficha_c({'momento:atardecer': {'cuerpo': 'DUSK-BODY.'}})
+        f['momento'] = 'atardecer'
+        r = pf.construir(f, MUNDO_C, 'banner')
+        self.assertIn('DUSK-BODY.', r['prompt'])
+        self.assertEqual(r['condicion'], '-/atardecer')
+
+    def test_valores_desconocidos_son_error_con_los_validos(self):
+        m = self.rota(ficha_c(), estacion='monzon')
+        self.assertIn('monzon', m)
+        for e in ('primavera', 'verano', 'otono', 'invierno'):
+            self.assertIn(e, m)
+        m = self.rota(ficha_c(), momento='amanecer')
+        self.assertIn('amanecer', m)
+        for e in ('dia', 'atardecer', 'noche'):
+            self.assertIn(e, m)
+
+    def test_clave_de_condicion_invalida_en_la_ficha(self):
+        m = self.rota(ficha_c({'momento:amanecer': {'luz': 'X.'}}))
+        self.assertIn('momento:amanecer', m)
+        self.assertIn('regla 9', m)
+        self.assertIn('estacion:', self.rota(ficha_c({'estacion:monzon': {'luz': 'X.'}})))
+
+    def test_json_trae_momento_estacion_y_condicion(self):
+        r = pf.construir(ficha_c(), MUNDO_C, 'banner', momento='atardecer', estacion='otono')
+        self.assertEqual((r['momento'], r['estacion'], r['condicion']), ('atardecer', 'otono', 'otono/atardecer'))
+        self.assertEqual(pf.construir(ficha_c(), MUNDO_C, 'banner', momento='noche')['condicion'], '-/noche')
+
+
+class Coherencia(unittest.TestCase):
+    def rota(self, ficha, **kw):
+        with self.assertRaises(pf.ReglaRota) as c:
+            pf.construir(ficha, MUNDO_C, 'banner', **kw)
+        return str(c.exception)
+
+    def test_noche_con_sol_es_error_con_motivo(self):
+        for palabra in ('sun', 'sunlit', 'sunlight', 'daylight', 'midday', 'noon'):
+            with self.subTest(palabra):
+                m = self.rota(con_prompt(luz=f'The {palabra} falls on the grass.'), momento='noche')
+                self.assertIn(f'«{palabra}»', m)
+                self.assertIn('regla 9', m)
+                self.assertIn('noche', m)
+                self.assertIn('cielo de día', m)
+                self.assertIn('stars under a soft, even pearly glow', m)
+
+    def test_dia_con_estrellas_es_error_con_motivo(self):
+        for palabra in ('star', 'stars', 'starlit', 'night'):
+            with self.subTest(palabra):
+                m = self.rota(con_prompt(luz=f'A {palabra} over the grass.'), momento='dia')
+                self.assertIn(f'«{palabra}»', m)
+                self.assertIn('regla 9', m)
+                self.assertIn('cielo estrellado en pleno día', m)
+
+    def test_la_condicion_que_arregla_la_luz_evita_el_error(self):
+        f = con_prompt(luz='Low sun over the grass.')
+        f['condiciones'] = {'momento:noche': {'luz': 'Stars over the grass.'}}
+        self.assertIn('Stars over the grass.', pf.construir(f, MUNDO_C, 'banner', momento='noche')['prompt'])
+        f['condiciones'] = {}
+        self.assertIn('regla 9', self.rota(f, momento='noche'))
+
+    def test_atardecer_no_se_comprueba_y_palabras_parecidas_no_saltan(self):
+        pf.construir(con_prompt(luz='A low sun and a star-shaped leaf.'), MUNDO_C, 'banner', momento='atardecer')
+        pf.construir(con_prompt(luz='A sunny meadow, a starling and nightfall.'), MUNDO_C, 'banner', momento='dia')
+        pf.construir(con_prompt(luz='A sundial stone.'), MUNDO_C, 'banner', momento='noche')
+
+    def test_sin_coherencia_en_el_mundo_no_se_comprueba(self):
+        pf.construir(con_prompt(luz='The sun.'), MUNDO, 'banner', momento='noche')
+
+    def test_tambien_en_fondo(self):
+        m = self.rota(con_prompt(pose='It stands in the midday heat.'), momento='noche', fondo=ZONA)
+        self.assertIn('«midday»', m)
+        self.assertIn('regla 9', m)
+
+
+class FondoConCondicion(unittest.TestCase):
+    def test_el_sujeto_recibe_sus_condiciones_y_el_json_dice_la_condicion(self):
+        f = ficha_c({'estacion:invierno': {'cuerpo': 'FROSTED-COAT.'}, 'momento:noche': {'pose': 'It prowls in the dark.'}})
+        r = pf.construir(f, MUNDO_C, 'banner', estacion='invierno', momento='noche', fondo=ZONA)
+        self.assertIn('FROSTED-COAT.', r['prompt'])
+        self.assertIn('It prowls in the dark.', r['prompt'])
+        self.assertEqual(r['condicion'], 'invierno/noche')
+        self.assertEqual((r['momento'], r['estacion']), ('noche', 'invierno'))
+
+    def test_el_prompt_de_fondo_no_cambia_si_el_sujeto_no_tiene_condiciones(self):
+        f = ficha_c()
+        a = pf.construir(f, MUNDO_C, 'banner', fondo=ZONA)
+        b = pf.construir(f, MUNDO_C, 'banner', momento='noche', fondo=ZONA)
+        self.assertEqual(a['prompt'], b['prompt'])
+        self.assertEqual((a['condicion'], b['condicion']), ('-/dia', '-/noche'))
+
+    def test_cli_estacion_y_atardecer(self):
+        d = carpeta()
+        mundo, ficha = os.path.join(d, 'm.json'), os.path.join(d, 'f.json')
+        escribir(mundo, json.dumps(MUNDO_C))
+        escribir(ficha, json.dumps(ficha_c()))
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = pf.main([ficha, 'banner', '--momento', 'atardecer', '--estacion', 'verano', '--json', '--mundo', mundo])
+        self.assertEqual(code, 0)
+        r = json.loads(out.getvalue())
+        self.assertEqual(r['condicion'], 'verano/atardecer')
+        self.assertIn('SEASON-VERANO.', r['prompt'])
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            code = pf.main([ficha, 'banner', '--estacion', 'monzon', '--mundo', mundo])
+        self.assertEqual(code, 2)
+        self.assertIn('monzon', err.getvalue())
+
+
+class DatosRealesCondiciones(unittest.TestCase):
+    fichas = [('fauna/aullador-rojo', 'macho'), ('fauna/aullador-rojo', 'hembra'), ('flora/cardo-brujula', None),
+              ('location/pastos-de-la-deriva', None), ('npc/hulki', None)]
+
+    def test_todas_montan_en_banner_en_los_tres_momentos(self):
+        for ruta, variante in self.fichas:
+            for mom in ('dia', 'atardecer', 'noche'):
+                with self.subTest(ruta=ruta, variante=variante, momento=mom):
+                    r = pf.construir(DatosReales.ficha(ruta), _REAL, 'banner', variante=variante, momento=mom)
+                    self.assertLessEqual(r['palabras'], _REAL['longitud']['max'])
+                    self.assertEqual(r['condicion'], f'-/{mom}')
+
+    def test_pastos_en_las_cuatro_estaciones_y_momentos(self):
+        for est in pf.ESTACIONES:
+            for mom in ('dia', 'atardecer', 'noche'):
+                with self.subTest(estacion=est, momento=mom):
+                    r = pf.construir(DatosReales.ficha('location/pastos-de-la-deriva'), _REAL, 'banner', estacion=est,
+                                     momento=mom)
+                    self.assertLessEqual(r['palabras'], _REAL['longitud']['max'])
+                    self.assertEqual(r['condicion'], f'{est}/{mom}')
+
+    def test_cada_ficha_en_cada_estacion(self):
+        for ruta, variante in self.fichas:
+            for est in pf.ESTACIONES:
+                with self.subTest(ruta=ruta, estacion=est):
+                    pf.construir(DatosReales.ficha(ruta), _REAL, 'banner', variante=variante, estacion=est)
+
+    def test_la_noche_de_pastos_tiene_estrellas_y_ningun_sol(self):
+        p = pf.construir(DatosReales.ficha('location/pastos-de-la-deriva'), _REAL, 'banner', momento='noche')['prompt']
+        self.assertIn('Stars', p)
+        self.assertFalse(re.search(_REAL['coherencia']['noche']['patron'], p, re.I))
+        self.assertNotIn('Low sun', p)
+
+    def test_hierba_de_pastos_siempre_amarillo_pajizo_anaranjado(self):
+        for est in pf.ESTACIONES:
+            p = pf.construir(DatosReales.ficha('location/pastos-de-la-deriva'), _REAL, 'banner', estacion=est)['prompt']
+            self.assertIn('straw-yellow grass tinged with orange', p, est)
+
+    def test_aullador_sobre_pastos_con_condicion(self):
+        r = pf.construir(DatosReales.ficha('fauna/aullador-rojo'), _REAL, 'banner', variante='macho', estacion='invierno',
+                         momento='noche', fondo=DatosReales.ficha('location/pastos-de-la-deriva'))
+        self.assertEqual(r['condicion'], 'invierno/noche')
 
 
 if __name__ == '__main__':

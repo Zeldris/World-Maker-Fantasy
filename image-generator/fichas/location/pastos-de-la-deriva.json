@@ -18,5 +18,40 @@
     "entorno": "",
     "luz": "Low sun just above the horizon casts a warm golden light across the grass tips and long soft shadows over the red earth, under a few low clouds."
   },
-  "propuestas": ["relieve: gently rolling", "manada: a few slender antelope-like animals (Cuernahoja)", "viento con polvo", "hora: sol bajo"]
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "The sun sits huge and low on the horizon, turning the sky amber and rose, setting the grass tips aglow in warm orange and laying long soft shadows over the red earth."
+    },
+    "momento:noche": {
+      "luz": "Stars glitter in a clear sky above the plain, a soft, even pearly glow washes over the grass tips and the shadows over the red earth are deep and cool."
+    },
+    "estacion:primavera": {
+      "cuerpo": "It is covered in tall straw-yellow grass tinged with orange, with fresh green shoots at the base of the tufts, shallow flood water gleaming in the hollows between patches of red clay and a few low bushes of dense, deep green with small broad leaves."
+    },
+    "estacion:verano": {
+      "cuerpo": "Brittle straw-yellow grass tinged with orange stands in thin tufts over wide patches of cracked bare red clay, with a few low bushes of dense, deep green with small broad leaves."
+    },
+    "estacion:otono": {
+      "cuerpo": "Tall straw-yellow grass tinged with orange stands heavy with seed heads between patches of red clay, with low plants bearing ripe fruit among the tufts and a few low bushes of dense, deep green with small broad leaves."
+    },
+    "estacion:invierno": {
+      "cuerpo": "Short, flattened straw-yellow grass tinged with orange lies thin over wide stretches of bare red clay, with a few low bushes of dense, deep green with small broad leaves.",
+      "pose": "A cold dry wind combs the thin grass and carries thin streamers of red dust across the plain."
+    },
+    "estacion:invierno+momento:noche": {
+      "luz": "Stars glitter in a clear sky above the plain, a soft, even pearly glow lies on the flattened grass tips and a thin frost glints over the red earth in deep cool shadows."
+    }
+  },
+  "propuestas": [
+    "relieve: gently rolling",
+    "manada: a few slender antelope-like animals (Cuernahoja)",
+    "viento con polvo",
+    "hora: sol bajo",
+    "condiciones: luz de atardecer y de noche",
+    "condiciones estacion:primavera: brotes verdes y agua de crecida en las hondonadas",
+    "condiciones estacion:verano: hierba quebradiza y arcilla agrietada",
+    "condiciones estacion:otono: espigas con semilla y plantas con fruto maduro",
+    "condiciones estacion:invierno: hierba corta y aplastada, viento frío (la hierba sigue amarillo pajizo anaranjado)",
+    "condiciones estacion:invierno+momento:noche: escarcha fina"
+  ]
 }
