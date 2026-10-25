@@ -96,6 +96,21 @@ Hay que decidir cuál manda (D9).
 - Telda: árbol de 1-2 m, pero empalizadas de «troncos de Telda de 4-5 m».
 - Nabieus: «piel gris apagada» (`rasgoFisico`) o «ninguna tonalidad» (`genesis.md`).
 
+### Decidido (usuaria, 2026-10-25)
+
+- **D1-D7, D9, D10:** como recomienda la tabla.
+- **D8, por perfil y no por tipo:** `banner` realista (fotografía cinematográfica, también en zonas); `icono` y
+  `thumbnail` (son lo mismo) al óleo; `mapa`, punto medio entre realismo y óleo. La luz sale de la ficha (sin ocaso
+  forzado para la fauna).
+- **Cardo Brújula:** gris metálico apagado con matiz violáceo.
+- **Hierba de las Llanuras:** amarillo pajizo anaranjado; rojo solo en la Sabana Alta.
+- **Telda:** crece hasta 4-6 m (lo de 1-2 m son ejemplares jóvenes); de ahí salen los troncos de las empalizadas.
+- **Nabieus:** gris casi neutro, sin brillo, que apenas se distingue de la sombra.
+- **Aullador:** manda el canon (flaco, patas desproporcionadamente largas); la imagen del juego se rehace.
+
+Las fichas y la guía ya los usan. Pasarlos al canon (`docs/rpgtarkor/`, `worldCatalog.ts`, `berigLore.ts`) va por el
+runbook `ampliar-lore.md`, con Álvaro: ningún agente edita el lore.
+
 **Datos que faltan** y el borrador inventó como «[propuesta]»: alturas de las razas, ojos y hocico del aullador,
 aspecto del Jakut Tusha de Hulki, altura de la planta entera del Cardo.
 
