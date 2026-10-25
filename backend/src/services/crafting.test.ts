@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, craftDurationSecondsFor, type CraftingRecipe } from './crafting.js';
+import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, planCraftConsumption, craftDurationSecondsFor, objetoFabricado, type CraftingRecipe } from './crafting.js';
+import { items } from '../scripts/worldCatalog.js';
 import type { AttributeBlock } from './dice.js';
 import { EMPTY_SECONDARY_ATTRIBUTES } from './secondaryAttributes.js';
 import type { CatalogLookup, InventoryRowLike } from './ingredients.js';
@@ -873,5 +874,37 @@ describe('QA-16: ninguna receta pisa a otra', () => {
     expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un asado de las Llanuras con carne y boungo')).map((r) => r.key)).toEqual(['plainsRoast']);
     expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un guiso de jusha con carne')).map((r) => r.key)).toEqual(['murgolStew']);
     expect(CRAFTING_RECIPES.filter((r) => detectsCraftIntent(r, 'Preparo un asado de las Llanuras con carne de jusha')).map((r) => r.key)).toEqual(['plainsRoast']);
+  });
+});
+
+describe('recetas contra el catálogo (QA-240)', () => {
+  const porSlug = new Map(items.map((i) => [i.slug, i]));
+
+  it('cada ingrediente exacto es un objeto del catálogo', () => {
+    const faltan = CRAFTING_RECIPES.flatMap((r) =>
+      r.ingredients.flatMap((ing) => (ing.match.kind === 'exact' && !porSlug.has(ing.match.catalogSlug) ? [`${r.key} ← ${ing.match.catalogSlug}`] : [])),
+    );
+    expect(faltan).toEqual([]);
+  });
+
+  it('cada receta con ficha se llama como su ficha', () => {
+    const distintos = CRAFTING_RECIPES.flatMap((r) => {
+      const ficha = r.resultCatalogSlug ? porSlug.get(r.resultCatalogSlug) : undefined;
+      return ficha && ficha.name !== r.resultName ? [`${r.resultName} ≠ ${ficha.name}`] : [];
+    });
+    expect(distintos).toEqual([]);
+  });
+
+  it('lo fabricado sale con el nombre, la descripción y los bonos de su ficha', async () => {
+    const mochila = recipe('tannedBackpack');
+    const ficha = porSlug.get(mochila.resultCatalogSlug!)!;
+    const db = {
+      itemCatalog: {
+        findFirst: async ({ where }: { where: { slug: string } }) =>
+          where.slug === ficha.slug ? { name: ficha.name, description: ficha.description, statBonuses: ficha.statBonuses ?? null } : null,
+      },
+    } as unknown as Parameters<typeof objetoFabricado>[0];
+    const hecho = await objetoFabricado(db, 'mundo', mochila);
+    expect(hecho).toEqual({ name: 'Mochila Curtida', description: ficha.description, statBonuses: { inventorySlots: 10 } });
   });
 });

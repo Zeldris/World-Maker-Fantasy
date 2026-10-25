@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { cazadoresFuera } from './partidasFacciones.js';
-import { CRAFTING_RECIPES, type CraftingRecipe } from './crafting.js';
+import { CRAFTING_RECIPES, objetoFabricado, type CraftingRecipe } from './crafting.js';
 import { daysCrossed, escalonCocinaDe, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
 import { comidaDelDia, porcionDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
 import { estacionFor } from './worldClock.js';
@@ -229,9 +229,10 @@ export async function producirFacciones(
             const actual = cuenta.get(slug) ?? 0;
             if (!cabeEnStock(actual)) continue;
             cuenta.set(slug, actual + 1);
+            const fabricado = await objetoFabricado(prisma, worldId, receta);
             nuevos.push({
-              factionId, name: receta.resultName, description: receta.resultDescription, catalogSlug: slug,
-              statBonuses: receta.statBonuses ? (receta.statBonuses as Prisma.InputJsonValue) : undefined,
+              factionId, name: fabricado.name, description: fabricado.description, catalogSlug: slug,
+              statBonuses: fabricado.statBonuses ?? undefined,
             });
           }
         }

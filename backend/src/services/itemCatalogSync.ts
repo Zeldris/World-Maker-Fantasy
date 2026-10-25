@@ -1,6 +1,5 @@
 import { Prisma, type EquipSlot, type PrismaClient } from '@prisma/client';
 import { equipSlotFamily } from './equipment.js';
-import { CRAFTING_RECIPES } from './crafting.js';
 
 /// Resincronización de objetos de catálogo en partidas existentes (Fase B del plan 0.1,
 /// 2026-09-29). `InventoryItem` y `AlmacenItem` COPIAN `statBonuses` (y el inventario, la ranura
@@ -43,26 +42,17 @@ function iguales(a: unknown, b: unknown): boolean {
 }
 
 /// Función pura. `catalogo` = fila de ItemCatalog de ese `catalogSlug` (undefined si ya no existe
-/// → no se toca nada). `recetaStatBonuses` = bonus que da HOY la receta que fabrica ese slug
-/// (undefined = ninguna receta lo fabrica).
-///
-/// Regla de qué se sobrescribe: los objetos crafteados pueden diferir LEGÍTIMAMENTE del catálogo
-/// (la receta fija sus propios `statBonuses`: hacha restaurada, sin bonus en varias prendas...; no
-/// hay niveles de calidad ni campo que marque un crafteo en AlmacenItem). Por eso, si la fila ya
-/// coincide con lo que da la receta actual, es una copia válida y NO se toca. Cualquier otra
-/// diferencia (copia vieja del catálogo o de una receta ya cambiada) se resetea al catálogo.
+/// → no se toca nada). Toda diferencia de bonus se resetea al catálogo, también en lo fabricado:
+/// desde `QA-240` (2026-10-25, «el catálogo manda») la receta ya no fija bonus propios, así que
+/// una copia fabricada con los bonus viejos de su receta vuelve a los de su ficha.
 export function cambiosParaSincronizar(
   fila: FilaSincronizable,
   catalogo: EntradaCatalogo | undefined,
-  recetaStatBonuses?: unknown,
-  tieneReceta = false,
 ): CambiosSincronizacion | null {
   if (!fila.catalogSlug || !catalogo) return null;
   const cambios: CambiosSincronizacion = {};
 
-  const coincideConCatalogo = iguales(fila.statBonuses, catalogo.statBonuses);
-  const copiaDeReceta = tieneReceta && iguales(fila.statBonuses, recetaStatBonuses);
-  if (!coincideConCatalogo && !copiaDeReceta) cambios.statBonuses = normalizar(catalogo.statBonuses);
+  if (!iguales(fila.statBonuses, catalogo.statBonuses)) cambios.statBonuses = normalizar(catalogo.statBonuses);
 
   // Misma validación que el equipar (routes/saves/inventario.ts): la ranura debe estar en la
   // familia de la equipSlot del catálogo; sin equipSlot no es equipable.
@@ -73,10 +63,6 @@ export function cambiosParaSincronizar(
 
   return Object.keys(cambios).length > 0 ? cambios : null;
 }
-
-const RECETAS_POR_SLUG = new Map(
-  CRAFTING_RECIPES.filter((r) => r.resultCatalogSlug).map((r) => [r.resultCatalogSlug!, r.statBonuses] as const),
-);
 
 export interface ResumenSincronizacion {
   revisados: number;
@@ -121,7 +107,7 @@ export async function sincronizarObjetosDeCatalogo(
     for (const row of lote) {
       resumen.revisados++;
       const cat = (await catalogoDe(row.save.worldId)).get(row.catalogSlug!);
-      const c = cambiosParaSincronizar(row, cat, RECETAS_POR_SLUG.get(row.catalogSlug!), RECETAS_POR_SLUG.has(row.catalogSlug!));
+      const c = cambiosParaSincronizar(row, cat);
       if (!c) continue;
       await prisma.inventoryItem.update({
         where: { id: row.id },
@@ -151,7 +137,7 @@ export async function sincronizarObjetosDeCatalogo(
       const worldId = row.save?.worldId ?? row.faction?.worldId;
       if (!worldId) continue;
       const cat = (await catalogoDe(worldId)).get(row.catalogSlug!);
-      const c = cambiosParaSincronizar(row, cat, RECETAS_POR_SLUG.get(row.catalogSlug!), RECETAS_POR_SLUG.has(row.catalogSlug!));
+      const c = cambiosParaSincronizar(row, cat);
       if (!c || c.statBonuses === undefined) continue;
       await prisma.almacenItem.update({ where: { id: row.id }, data: { statBonuses: jsonInput(c.statBonuses) } });
       resumen.almacenActualizados++;

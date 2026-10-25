@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
+import type { Prisma } from '@prisma/client';
 import { normalizeText } from './travel.js';
-import type { Attribute, AttributeBlock } from './dice.js';
+import type { AttributeBlock } from './dice.js';
 import type { SecondaryAttributeBlock } from './secondaryAttributes.js';
 import { checkRequisitos, type Requisitos, type RequisitoShortfall } from './requisitos.js';
 import { totalQuantity, planConsumption, type IngredientRequirement, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
@@ -44,11 +45,6 @@ export interface CraftingRecipe {
   /// del resultado para poder mirar sus requisitos de equipar (ver requisitos.ts). Opcional: no
   /// todas las recetas tienen fila propia en el catálogo del mundo.
   resultCatalogSlug?: string;
-  /// 'defensa' incluido a propósito (mismo criterio que ItemCatalog/InventoryItem, ver
-  /// equipment.ts § effectiveDefense): el peto de gargantúa es armadura, no un arma con uno de
-  /// los 6 atributos jugables. Mapa de varios bonus a la vez (2026-08-03, sustituye al par
-  /// statBonusAttribute/statBonusAmount) — mismo patrón que `Requisitos`.
-  statBonuses?: Partial<Record<Attribute | 'defensa', number>>;
   /// Sesión de diseño 2026-07-23: nivel de rareza/dificultad del objeto (1-5), mínimos de
   /// atributo del PJ para poder craftearlo, y a qué oficio pertenece (id de professions.ts) — el
   /// nivel de ESE oficio alivia el requisito (ver professionProgress.ts), nunca la tirada general.
@@ -76,11 +72,10 @@ export const AXE_REPAIR_RECIPE: CraftingRecipe = {
     { match: { kind: 'exact', catalogSlug: 'hacha-guerra-maktor-rota' }, cantidad: 1, label: 'hacha de guerra rota' },
     { match: { kind: 'exact', catalogSlug: 'sal-trueque' }, cantidad: 1, label: 'sal de trueque' },
   ],
-  resultName: 'Hacha de guerra Maktor restaurada',
+  resultName: 'Hacha de guerra Maktor',
   resultCatalogSlug: 'hacha-guerra-maktor-restaurada',
   resultDescription:
     'El hacha rota del clan, reforjada — la cabeza reasentada y el filo devuelto. Lo único del Clan Maktor que ha vuelto a estar entero.',
-  statBonuses: { fuerza: 3 },
   // Sesión de diseño 2026-07-23: reforjar el hacha del clan a un arma de tier 3 exige fuerza real
   // (blandirla y guiar al herrero) — oficio 'herrero' porque ocurre en la fragua del campamento.
   tier: 3,
@@ -121,9 +116,6 @@ export const GARGANTUA_ARMOR_RECIPE: CraftingRecipe = {
   resultName: 'Peto de placas óseas de gargantúa',
   resultCatalogSlug: 'peto-placas-gargantua',
   resultDescription: 'Armadura pesada montada a mano en el campamento del clan, con placas óseas y tendón de gargantúa.',
-  // Rebalanceo (decisión de Álvaro, 2026-09-29): mismo bonus que el catálogo (peto-placas-gargantua),
-  // PESADO = Fuerza+Constitución, total +7 (antes Con 6 en la receta, desalineado del catálogo).
-  statBonuses: { fuerza: 3, constitucion: 4 },
   // Sesión de diseño 2026-07-23: montar armadura pesada de placas óseas exige fuerza — mismo
   // oficio 'herrero' que el hacha (misma fragua del campamento, no hace falta un oficio aparte).
   tier: 3,
@@ -224,7 +216,6 @@ export const CORACELO_MACE_RECIPE: CraftingRecipe = {
   resultName: 'Maza de Coracelo',
   resultCatalogSlug: 'maza-coracelo',
   resultDescription: 'Maza corta rematada con el bulto de escamas de la cola de un Coracelo, remachada a un mango de madera en la fragua del campamento.',
-  statBonuses: { fuerza: 2, constitucion: 1 },
   // Sesión de lore 2026-08-22 (La Sabana Alta): la cola del Coracelo es "dura como el hierro" —
   // mismo oficio 'herrero' que el resto de armamento orco tosco (maza-orca, hacha reforjada),
   // requiere fragua real, no crafteo de campo.
@@ -268,7 +259,7 @@ export const IRON_INGOT_RECIPE: CraftingRecipe = {
   nounRegex: /^(?!.*imantad).*(?:lingote.*hierro|hierro.*lingote)/,
   location: 'campamento-serhu',
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'mena-hierro-llanuras' }, cantidad: 4, label: 'mena de hierro' }],
-  resultName: 'Lingote de hierro',
+  resultName: 'Lingote de Hierro de Llanura Roja',
   resultCatalogSlug: 'lingote-de-hierro',
   resultDescription: 'Metal fundido en la fragua del campamento y colado en un molde sencillo — listo para forjar.',
   tier: 2,
@@ -303,7 +294,7 @@ export const MAGNETIZED_IRON_INGOT_RECIPE: CraftingRecipe = {
       orMatch: { match: { kind: 'exact', catalogSlug: 'saquito-arena-iman' }, unitsPerMatch: 4 },
     },
   ],
-  resultName: 'Lingote de hierro imantado',
+  resultName: 'Lingote de Hierro Imantado de Llanura Roja',
   resultCatalogSlug: 'lingote-hierro-imantado',
   resultDescription: 'Mena de hierro fundida junto a arena imán en la fragua del campamento — conserva un tirón magnético débil pero constante.',
   tier: 2,
@@ -551,7 +542,7 @@ export const FIRST_AID_BANDAGE_RECIPE: CraftingRecipe = {
   nounRegex: /vendaje/,
   location: null,
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'manojo-salvia-polvo' }, cantidad: 1, label: 'manojo de salvia del polvo' }],
-  resultName: 'Vendaje improvisado',
+  resultName: 'Vendaje improvisado orco de las Llanuras',
   resultCatalogSlug: 'vendaje-improvisado-orcos-llanuras',
   resultDescription: 'Tiras de tela atadas sobre un manojo machacado de salvia del polvo — primeros auxilios de campaña, lo justo para dejar de desangrarse.',
   tier: 1,
@@ -842,7 +833,6 @@ export const HAND_AXE_RECIPE: CraftingRecipe = {
   resultName: 'Hacha de mano orca',
   resultCatalogSlug: 'hacha-de-mano-orca',
   resultDescription: 'Hacha pequeña de cabeza de hierro y mango corto, forjada en la fragua del campamento — versión ligera de una mano, para la mano secundaria.',
-  statBonuses: { fuerza: 3 },
   tier: 2,
   requisitos: { fuerza: 8, destreza: 6 },
   oficio: 'herrero-orcos-llanuras',
@@ -957,8 +947,6 @@ export const QUITINA_ARMOR_RECIPE: CraftingRecipe = {
   resultName: 'Armadura de quitina roja',
   resultCatalogSlug: 'armadura-quitina-roja',
   resultDescription: 'Placas de quitina roja cosidas sobre un refuerzo de caparazón de Espina del Viento y quitina de Escorante — ligera, pero resiste bien el corte.',
-  // Rebalanceo (decisión de Álvaro, 2026-09-29): MEDIO = Destreza+Voluntad (antes Con 4).
-  statBonuses: { voluntad: 4 },
   tier: 3,
   requisitos: { destreza: 10 },
   oficio: 'curtidor-orcos-llanuras',
@@ -1164,7 +1152,7 @@ export const SPINE_POULTICE_RECIPE: CraftingRecipe = {
   location: null,
   ingredients: [
     { match: { kind: 'exact', catalogSlug: 'veneno-espina' }, cantidad: 1, label: 'aguijón con veneno de Espina del Viento' },
-    { match: { kind: 'exact', catalogSlug: 'flor-de-ceniza' }, cantidad: 2, label: 'Flor de Ceniza' },
+    { match: { kind: 'exact', catalogSlug: 'infusion-petalos-flor-ceniza' }, cantidad: 2, label: 'pétalos de Flor de Ceniza' },
     { match: { kind: 'exact', catalogSlug: 'resina-telda-gris' }, cantidad: 1, label: 'Resina Telda Gris' },
   ],
   resultName: 'Ungüento de Espina',
@@ -1174,7 +1162,7 @@ export const SPINE_POULTICE_RECIPE: CraftingRecipe = {
   tier: 3,
   oficio: 'alquimista-orcos-llanuras',
   narrationWant:
-    'El personaje quiere preparar un Ungüento de Espina, pero no puede hacerlo ahora mismo (hacen falta 1 aguijón con veneno de Espina del Viento, 2 Flor de Ceniza y 1 Resina Telda Gris a la vez) — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
+    'El personaje quiere preparar un Ungüento de Espina, pero no puede hacerlo ahora mismo (hacen falta 1 aguijón con veneno de Espina del Viento, 2 pétalos de Flor de Ceniza y 1 Resina Telda Gris a la vez) — narra que lo intenta o lo considera, pero no que lo prepara de verdad.',
   narrationDo:
     'El personaje diluye el veneno de Espina del Viento con Flor de Ceniza y Resina Telda Gris hasta formar una pasta ámbar — narra la escena con naturalidad. El objeto ya se gestiona automáticamente por el backend.',
 };
@@ -1253,7 +1241,6 @@ export const FEATHER_HEADDRESS_RECIPE: CraftingRecipe = {
   resultName: 'Tocado de plumas',
   resultCatalogSlug: 'tocado-plumas',
   resultDescription: 'Plumas rojizas de Corretolvas y plumas de Tura Jusha trenzadas en un tocado ceremonial — más presencia que protección.',
-  statBonuses: { carisma: 2 },
   tier: 1,
   requisitos: { destreza: 6 },
   oficio: 'curtidor-orcos-llanuras',
@@ -1272,7 +1259,6 @@ export const TOWRGU_CLAWS_RECIPE: CraftingRecipe = {
   resultName: 'Zarpas de Towrgu',
   resultCatalogSlug: 'zarpas-towrgu',
   resultDescription: 'Garras de Towrgu montadas sobre un guantelete de cuero — arma de cercanía, tan rápida como brutal.',
-  statBonuses: { destreza: 3 },
   tier: 5,
   requisitos: { destreza: 14 },
   oficio: 'curtidor-orcos-llanuras',
@@ -1291,7 +1277,6 @@ export const JUSHA_SCALE_PLATES_RECIPE: CraftingRecipe = {
   resultName: 'Placas de escama de Jusha',
   resultCatalogSlug: 'placas-escama-jusha',
   resultDescription: 'Escamas de Jusha Esmeralda cosidas en hilera sobre cuero fino — armadura ligera, se mueve con quien la lleva.',
-  statBonuses: { destreza: 2, voluntad: 2 },
   tier: 2,
   requisitos: { destreza: 8 },
   oficio: 'curtidor-orcos-llanuras',
@@ -1326,7 +1311,6 @@ export const FERIKE_CAPE_RECIPE: CraftingRecipe = {
   resultName: 'Capa de melena de Ferike',
   resultCatalogSlug: 'capa-melena-ferike',
   resultDescription: 'Capa cosida con la melena de la cola de un Ferike macho — objeto de prestigio real, casi nadie ha visto una de cerca.',
-  statBonuses: { carisma: 5 },
   tier: 7,
   requisitos: { destreza: 16 },
   oficio: 'curtidor-orcos-llanuras',
@@ -1354,7 +1338,7 @@ export const MENA_HIERRO_EXTRACCION_RECIPE: CraftingRecipe = {
   nounRegex: NEVER_MATCH_REGEX,
   location: null,
   ingredients: [],
-  resultName: 'Mena de hierro de las Llanuras',
+  resultName: 'Mena de Hierro de las Llanuras',
   resultCatalogSlug: 'mena-hierro-llanuras',
   resultDescription: 'Mena extraída de la boca de mina del reino.',
   tier: 1,
@@ -1384,7 +1368,7 @@ export const HIERBAS_EXTRACCION_RECIPE: CraftingRecipe = {
   nounRegex: NEVER_MATCH_REGEX,
   location: null,
   ingredients: [],
-  resultName: 'Manojo de Salvia del Polvo',
+  resultName: 'Manojo de salvia del polvo',
   resultCatalogSlug: 'manojo-salvia-polvo',
   resultDescription: 'Hierbas recogidas y secadas en la herboristería del reino.',
   tier: 1,
@@ -1482,6 +1466,30 @@ export function detectsCraftIntent(recipe: CraftingRecipe, action: string): bool
 const CRAFT_TIER_DURATION_SECONDS: Record<number, number> = { 1: 5, 2: 20, 3: 35, 4: 50, 5: 60 };
 export function craftDurationSecondsFor(recipe: CraftingRecipe): number {
   return CRAFT_TIER_DURATION_SECONDS[recipe.tier ?? 1] ?? 5;
+}
+
+/// `QA-240` (usuaria, 2026-10-25, «el catálogo manda»): lo fabricado sale con el nombre, la
+/// descripción y los bonos de su ficha de ItemCatalog, igual que el mismo objeto comprado o
+/// saqueado (antes la Mochila Curtida fabricada daba 0 huecos y la ficha decía +10). La receta
+/// solo pone el texto de la lista de recetas, o el objeto entero si no tiene fila de catálogo.
+export interface ObjetoFabricado {
+  name: string;
+  description: string;
+  statBonuses: Prisma.JsonValue | null;
+}
+export async function objetoFabricado(
+  db: Pick<Prisma.TransactionClient, 'itemCatalog'>,
+  worldId: string,
+  recipe: CraftingRecipe,
+): Promise<ObjetoFabricado> {
+  const ficha = recipe.resultCatalogSlug
+    ? await db.itemCatalog.findFirst({
+        where: { worldId, slug: recipe.resultCatalogSlug },
+        select: { name: true, description: true, statBonuses: true },
+      })
+    : null;
+  if (!ficha) return { name: recipe.resultName, description: recipe.resultDescription, statBonuses: null };
+  return { name: ficha.name, description: ficha.description || recipe.resultDescription, statBonuses: ficha.statBonuses };
 }
 
 /// Precheck barato, de solo lectura, callable ANTES de montar todo lo que `narrateAndPersistTurn`

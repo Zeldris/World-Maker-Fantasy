@@ -613,7 +613,7 @@ export const CURTIDURIA_RECIPE: ConstructionRecipe = {
     { match: { kind: 'category', tipo: 'RECURSO', category: 'madera' }, cantidad: 10, label: 'leña' },
     { match: { kind: 'category', tipo: 'RECURSO', category: 'piel' }, cantidad: 8, label: 'piel' },
     { match: { kind: 'exact', catalogSlug: 'cuerda-tendon' }, cantidad: 3, label: 'cuerda de tendón' },
-    { match: { kind: 'exact', catalogSlug: 'cuchillo-deshuello' }, cantidad: 1, label: 'cuchillo de deshuello' },
+    { match: { kind: 'exact', catalogSlug: 'cuchillo-deshuello' }, cantidad: 1, label: 'cuchillo de desuello' },
   ],
   oficio: 'curtidor-orcos-llanuras',
   oficioProducido: 'curtidor-orcos-llanuras',

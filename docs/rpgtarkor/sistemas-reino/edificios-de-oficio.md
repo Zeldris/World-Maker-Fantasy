@@ -100,7 +100,7 @@ aproximadamente el doble y pide un material procesado, que obliga a tener la cad
 | # | Edificio (`key` propuesta) | Oficio | Clase X4 | Qué hace | Pieza propia del oficio (nivel 1) |
 |---|---|---|---|---|---|
 | 1 | Herrería (`herreria`) | herrero | procesado + producción | lingotes (hierro, Yerreo, Hiyerro), reparar el hacha, armas y armaduras de metal | 1 piedra de afilar |
-| 2 | Curtiduría (`curtiduria`) | curtidor | procesado | pieles crudas → cuero curtido; armaduras de piel pesada | 1 cuchillo de deshuello |
+| 2 | Curtiduría (`curtiduria`) | curtidor | procesado | pieles crudas → cuero curtido; armaduras de piel pesada | 1 cuchillo de desuello |
 | 3 | Peletería (`peleteria`) | peletero | producción | ropa y abrigo de piel (capas, capuchas, guantes) | 1 kit de costura de hueso |
 | 4 | Desolladero (`desolladero`) | desollador | procesado | despieza las presas que entran al almacén: carne, piel, hueso, garra | 1 cuchillo de hielo sílice |
 | 5 | Corrales (`corrales`) | domador | extracción (animal) | leche, lana y crías de los animales domados; aclimata capturas antes de la Jaula | 4 cuerdas de tendón |

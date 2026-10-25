@@ -115,7 +115,7 @@ rumbo ahí dentro sin algo que marque el camino.
 El mineral más común y representativo de Cristal Helado, presente en las laderas de sus montañas en
 cantidad — no un hallazgo raro, es el recurso que define económicamente la zona, igual que el hierro
 corriente define a Las Llanuras. Cristal resistente, usado para fabricar herramientas,
-especialmente cuchillos de deshuello para las duras pieles de la fauna salvaje local. Lo trabaja
+especialmente cuchillos de desuello para las duras pieles de la fauna salvaje local. Lo trabaja
 sobre todo el Clan Helsig: el filo de hielo sílice no se forja, se talla.
 
 ## Fauna y flora

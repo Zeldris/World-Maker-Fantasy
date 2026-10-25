@@ -883,8 +883,8 @@ Pez migratorio de 1-1,40 m, gris oscuro, de cuerpo ancho y circular casi sin col
 muy desarrolladas y escamas grandes como armadura. Solo aparece en otoño y es el más codiciado de la
 costa. Da Carne de Toluh (tier 7) y Escamas de Toluh (tier 7), muy buscadas para armaduras.
 
-#### Bulco de Arena
-*Nadantes · Catálogo: `bulco-de-arena`.*
+#### Rugoconcha
+*Nadantes · Catálogo: `rugoconcha` (antes «Bulco de Arena», renombrada 2026-10-05, `CR-43`, para no confundirla con el Bolco, hoy Holdo).*
 
 Caracol de mar de 5-15 cm, de concha rugosa entre rojo oscuro y marrón claro. Es marisco y se obtiene
 con la habilidad Buscar (tier 1).

@@ -34,7 +34,7 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Toluh | NADANTES | 4-6 | INOFENSIVO | Playa de Ceniza Blanca |
 | Negueo Turquesa | NADANTES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
 | Negueo Solar | NADANTES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
-| Bulco de Arena | NADANTES | 1 | INOFENSIVO | Playa de Ceniza Blanca |
+| Rugoconcha | NADANTES | 1 | INOFENSIVO | Playa de Ceniza Blanca |
 | Terinte | RONDINES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
 | Benusa Pesquera | CORVENES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
 | Manesti Azul | NADANTES | 1-2 | INOFENSIVO | Playa de Ceniza Blanca |

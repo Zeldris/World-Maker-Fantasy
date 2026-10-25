@@ -596,3 +596,28 @@ Las fichas contaban reglas que el motor ya no aplica. Reescritas con el sí de l
 - Conservan el nombre: Golpe Certero del Cazador, Instinto Asesino del Maestro Asesino, Golpe Adaptado del Druida Adaptado, y Tiro Inmovilizador, Tiro Múltiple y Postura de Tirador del Maestro Arquero.
 - Partidas ya empezadas: el renombrado es por clase y rama (`HABILIDADES_RENOMBRADAS_POR_CLASE` en `habilidadesRenombradas.ts`); el caso del Selecto se distingue por la descripción. Tests: `habilidadesRenombradas.test.ts` (sin nombres repetidos en el catálogo) y `detail.habilidadesIniciales.integration.test.ts`.
 - **Pendiente:** las imágenes de estas ocho habilidades van por el nombre (`slugify`), así que hay que generarlas de nuevo.
+
+## 2026-10-25 — `QA-240`, bloque 3: objetos y recetas de la enciclopedia
+
+Aplicado con el sí de la usuaria.
+
+**Recetas contra el catálogo:**
+- **El catálogo manda** sobre lo fabricado («Catálogo manda»). Las recetas ya no traen `statBonuses` propios: `objetoFabricado()` (`crafting.ts`) toma nombre, descripción y bonus de la ficha `resultCatalogSlug`. Lo usan el crafteo del turno, el del tick diario y la economía de facción. `itemCatalogSync` deja de exceptuar las copias fabricadas: vuelven a los bonus de su ficha.
+- Seis `resultName` igualados al catálogo: Hacha de guerra Maktor, Lingote de Hierro de Llanura Roja, Lingote de Hierro Imantado de Llanura Roja, Vendaje improvisado orco de las Llanuras, Mena de Hierro de las Llanuras y Manojo de salvia del polvo.
+- Ungüento de Espina: pedía un ingrediente inexistente; ahora pide «pétalos de Flor de Ceniza» (`infusion-petalos-flor-ceniza`).
+- Tests en `crafting.test.ts` («recetas contra el catálogo»): cada ingrediente exacto existe, cada `resultName` coincide con su ficha y una Mochila Curtida fabricada da +10 huecos.
+
+**Objetos del catálogo:**
+- `infusion-petalos-flor-ceniza` pasa a «Pétalos de Flor de Ceniza» (es el pétalo, la infusión es su uso). El slug no cambia.
+- «Cuchillo de deshuello» → **Cuchillo de desuello de hielo sílice**. El slug no cambia y el alias antiguo se conserva. También se corrige «deshuello» en las condiciones, en `construction.ts` y `loreChunks.ts` y en el canon (`cristal-helado.md`, `edificios-de-oficio.md`).
+- Los cuchillos de desuello no los vendía nadie, y la Curtiduría los pide. Ahora los lleva y los vende el Maestro Desollador Serhu (2 cuchillos de desuello y un desollador de sílice).
+- Abalorios: carisma +3 → **+1**. Valían más que objetos de rango superior.
+- Lingote de Yerreo: 12 → **70 goirnos**. Valía menos que su mena.
+- «Bulco de Arena» → **Rugoconcha** en el canon (`llanuras-del-viento-rojo.md`, `items.md` y los resúmenes de `canon-opencode`). El motor ya usaba `rugoconcha` desde `CR-43`.
+
+**Pendiente de este bloque (leve):**
+- Peletero, desollador y domador no tienen recetas.
+- La placa de gargantúa pide fuerza 18 para fabricarla y solo F14/C16 para llevarla. Es una decisión de diseño.
+- «Kit de costura de hueso»: anglicismo.
+- Objetos del catálogo que nadie vende, suelta ni fabrica.
+- Las partidas ya empezadas conservan el nombre antiguo de sus objetos fabricados. La sincronización solo repone bonus y hueco.

@@ -60,7 +60,7 @@ Fuente: docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md. Sincroni
 - **El Vientre del Engaño**: hondonada estéril donde nacen las tormentas.
 - **Los Túmulos del Honor**: tótems funerarios; terreno neutral sagrado.
 - **Costa norte**: Playa de Ceniza Blanca (pacífica, oficio Pescador; Junba Verde, Temune, Jashil,
-  Negueo, Toluh en otoño, Bulco, Terinte, Benusa, Manesti) · Los Acantilados Partidos (Celubia
+  Negueo, Toluh en otoño, Rugoconcha, Terinte, Benusa, Manesti) · Los Acantilados Partidos (Celubia
   Pálida, Terkash; allí se hace la prueba de la cornisa) · La Desembocadura Callada · Las Pozas de
   Marea.
 - **El reino enterrado**: Las Dunas Ahogadas (restos visibles; NO hay entrada) · Ciudad Hundida,

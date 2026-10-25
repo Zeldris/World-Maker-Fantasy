@@ -3720,7 +3720,12 @@ export const npcs: NpcInput[] = [
     reclutablePct: 0,
     atributoResistencia: 'fuerza',
     capturablePct: 0,
-    loadout: [],
+    // QA-240 (usuaria, 2026-10-25): vende los dos cuchillos de desuello, que antes no daba nadie
+    // (la Curtiduría pide el de hielo sílice y solo lo llevaba la domadora).
+    loadout: [
+      { itemSlug: 'cuchillo-deshuello', cantidad: 2 },
+      { itemSlug: 'desollador-silice' },
+    ],
   },
   {
     slug: 'desolladora-serhu',
@@ -5688,8 +5693,9 @@ export const items: ItemCatalogInput[] = [
 
   {
     slug: 'cuchillo-deshuello',
-    name: 'Cuchillo de deshuello de hielo sílice',
-    aliases: ['cuchillo de deshuello'],
+    // QA-240 (2026-10-25): «deshuello» → «desuello» (de desollar); el slug se queda.
+    name: 'Cuchillo de desuello de hielo sílice',
+    aliases: ['cuchillo de desuello', 'cuchillo de deshuello'],
     category: 'herramienta',
     tipo: 'EQUIPABLE',
     valorGoirnos: 5,
@@ -6533,13 +6539,14 @@ export const items: ItemCatalogInput[] = [
     // Slug ajustado (petición explícita, 2026-08-15: "renombrases el slug con el nombre del
     // archivo" — imagen ya subida "infusion-petalos-flor-ceniza-banner.png").
     slug: 'infusion-petalos-flor-ceniza',
-    name: 'Infusión de Pétalos de Flor de Ceniza',
-    aliases: ['pétalos de flor de ceniza'],
+    // QA-240 (2026-10-25): se recolecta crudo, así que se llama por lo que es; slug e imagen intactos.
+    name: 'Pétalos de Flor de Ceniza',
+    aliases: ['pétalos de flor de ceniza', 'infusión de pétalos de flor de ceniza'],
     category: 'medicinal',
     tipo: 'CONSUMIBLE', 
     valorGoirnos: 9,
     equipSlot: 'CONSUMIBLE_1', 
-    description: 'Infusión que adormece el dolor y deja dormir a un herido.',
+    description: 'Pétalos de Flor de Ceniza: en infusión adormecen el dolor y dejan dormir a un herido.',
     dimensiones: 'Puñado de pétalos de 3 a 4 cm.',
     curaHasta: 'GRAVE',
     curaEnergia: 10,
@@ -7140,7 +7147,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Yerreo fundido en lingote — se obtiene fundiendo su mena, o directamente de las garras del Kirelon Arenoso si el cazador es herrero con fragua a mano.',
     dimensiones: 'Lingote de 15 cm.',
     tier: 4,
-    valorGoirnos: 12,
+    valorGoirnos: 70, // QA-240 (2026-10-25): antes 12, por debajo de las 4 menas (60) que cuesta fundirlo
   },
 
   {
@@ -8125,8 +8132,9 @@ export const items: ItemCatalogInput[] = [
     // Pasada de objetos narrativos sin función real en juego (2026-09-02, "al menos todo objeto
     // que se almacene en el inventario" debía aportar algo) — al ser equipable, el gancho natural
     // es statBonuses, no venta/lore: cuentas de trueque llevadas como adorno, encaja con la
-    // sociabilidad que representa el carisma.
-    statBonuses: { carisma: 3 },
+    // sociabilidad que representa el carisma. QA-240 (2026-10-25): +1, no +3 — sin tier y por 2
+    // Goirnos daba más que el Tocado de plumas (tier 1, +2).
+    statBonuses: { carisma: 1 },
     description: 'Puñado de cuentas de hueso, piedra pulida y vidrio volcánico ensartadas en cordel — trueque menor.',
     dimensiones: 'Cuentas de 1 cm en cordel de 30 cm.',
   },
@@ -9422,7 +9430,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA', 
     itemSlug: 'piel-canizor', 
     cantidad: 1, 
-    condicion: 'cuchillo (deshuello) — la piel de una hembra vale más' 
+    condicion: 'cuchillo (desuello) — la piel de una hembra vale más' 
   },
 
   { 
@@ -9473,7 +9481,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA', 
     itemSlug: 'piel-corredor', 
     cantidad: 1, 
-    condicion: 'cuchillo (deshuello)' 
+    condicion: 'cuchillo (desuello)' 
   },
 
   { 
@@ -10311,7 +10319,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-rondador',
     cantidad: 1,
-    condicion: 'cuchillo de deshuello',
+    condicion: 'cuchillo de desuello',
   },
 
   { 
@@ -10348,7 +10356,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-salamandra',
     cantidad: 1,
-    condicion: 'cuchillo de deshuello',
+    condicion: 'cuchillo de desuello',
   },
 
   { 
