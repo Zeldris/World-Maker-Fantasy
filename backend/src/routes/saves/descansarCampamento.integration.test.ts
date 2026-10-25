@@ -67,6 +67,28 @@ describe('Descansar en campamento (2026-09-08)', () => {
     expect(res.json().disponible).toBe(true);
   });
 
+  it('GET avisa de la carencia (P305): sin comer ni beber, "ambas"; con provisiones, null', async () => {
+    await prisma.building.create({
+      data: { saveId, locationId, recipeKey: 'campamento', name: 'Campamento de prueba', kind: 'campamento', description: 'x', status: 'ACTIVO' },
+    });
+    const app = await buildApp();
+    try {
+      // Día 3, 16:00 (4.600 min) con la última comida y bebida en el minuto 0: hambre y sed a 0 %.
+      await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 4600 } });
+      await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: 0, lastDrankAtMinutes: 0 } });
+      expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia).toBe('ambas');
+      // Solo ha bebido hace poco: queda el hambre.
+      await prisma.save.update({ where: { id: saveId }, data: { lastDrankAtMinutes: 4500 } });
+      expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia).toBe('hambre');
+      // Con las dos al día no hay aviso.
+      await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: 4500 } });
+      expect((await app.inject({ method: 'GET', url: `/saves/${saveId}/descansar-campamento` })).json().carencia).toBeNull();
+    } finally {
+      await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 500 } });
+      await prisma.save.update({ where: { id: saveId }, data: { lastAteAtMinutes: null, lastDrankAtMinutes: null } });
+    }
+  });
+
   it('GET con un Building EN_CONSTRUCCION (no ACTIVO): no disponible', async () => {
     await prisma.building.create({
       data: { saveId, locationId, recipeKey: 'campamento', name: 'Campamento a medias', kind: 'campamento', description: 'x', status: 'EN_CONSTRUCCION' },

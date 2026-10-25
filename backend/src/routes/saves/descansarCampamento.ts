@@ -4,6 +4,7 @@ import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './share
 import { nextMorning8am, formatFictionalDate } from '../../services/worldClock.js';
 import { avanzarRelojConTick } from '../../services/dailyTick.js';
 import { energiaMaxFor } from '../../services/energy.js';
+import { aguaPct, carenciaPersonaje, comidaPct } from '../../services/companionSupervivencia.js';
 import type { CondicionFisica } from '@prisma/client';
 
 const CONDICION_ORDER: CondicionFisica[] = ['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO'];
@@ -26,15 +27,21 @@ export async function descansarCampamentoRoutes(app: FastifyInstance) {
   /// Visibilidad condicional del botón — GET barato, sin mutar nada. El frontend lo consulta al
   /// entrar en una Location nueva (o al abrir el panel) para decidir si mostrar la habilidad.
   app.get<{ Params: { id: string } }>('/saves/:id/descansar-campamento', async (request, reply) => {
-    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, currentLocationId: true } });
+    const save = await prisma.save.findUnique({
+      where: { id: request.params.id },
+      select: { id: true, currentLocationId: true, lastAteAtMinutes: true, lastDrankAtMinutes: true, worldState: { select: { fictionalMinutes: true } } },
+    });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
-    if (!save.currentLocationId) return { disponible: false };
+    if (!save.currentLocationId) return { disponible: false, carencia: null };
 
     const ownBuildingHere = await prisma.building.findFirst({
       where: { saveId: save.id, locationId: save.currentLocationId, status: 'ACTIVO' },
       select: { id: true },
     });
-    return { disponible: !!ownBuildingHere };
+    // P305: con hambre o sed el descanso no cura (el estado empeora al amanecer): el modal lo avisa antes de confirmar.
+    const ahora = save.worldState?.fictionalMinutes ?? 0;
+    const carencia = carenciaPersonaje(comidaPct(save.lastAteAtMinutes, ahora), aguaPct(save.lastDrankAtMinutes, ahora));
+    return { disponible: !!ownBuildingHere, carencia };
   });
 
   app.post<{ Params: { id: string } }>('/saves/:id/descansar-campamento', async (request, reply) => {

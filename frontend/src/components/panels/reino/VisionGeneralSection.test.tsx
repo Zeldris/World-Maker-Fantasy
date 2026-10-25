@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 
 vi.mock('../../../lib/api', () => ({
   getDescansarCampamentoDisponible: vi.fn().mockResolvedValue({ disponible: false }),
@@ -7,6 +7,7 @@ vi.mock('../../../lib/api', () => ({
   postDescansarCampamento: vi.fn(),
   traspasarTesoro: vi.fn(),
 }))
+import { getDescansarCampamentoDisponible } from '../../../lib/api'
 import { VisionGeneralSection } from './VisionGeneralSection'
 import type { KingdomStatsInfo, TerritoryInfo } from '../../../types'
 
@@ -32,5 +33,38 @@ describe('VisionGeneralSection — aviso de rebelión (P299)', () => {
       <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={stats(0)} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
     )
     expect(queryByText(/para la rebelión/)).toBeNull()
+  })
+})
+
+// P305 — el modal de descansar promete la cura solo con provisiones.
+describe('VisionGeneralSection — modal de descansar (P305)', () => {
+  afterEach(cleanup)
+
+  async function abrirModal(carencia: 'hambre' | 'sed' | 'ambas' | null) {
+    vi.mocked(getDescansarCampamentoDisponible).mockResolvedValue({ disponible: true, carencia })
+    const r = render(
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[]} kingdomStats={null} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(await r.findByText(/Descansar en el campamento/, { selector: 'button' }))
+    return r
+  }
+
+  it('con provisiones promete la cura hasta Herido', async () => {
+    const { findByText } = await abrirModal(null)
+    expect(await findByText(/curándote hasta Herido/)).toBeTruthy()
+  })
+
+  it('sin comida ni bebida avisa de que no cura y empeora, y no promete la cura', async () => {
+    const { findByText, queryByText } = await abrirModal('ambas')
+    expect(await findByText(/Sin comida ni bebida, el descanso no cura y tu estado empeora/)).toBeTruthy()
+    await waitFor(() => expect(queryByText(/curándote hasta Herido/)).toBeNull())
+  })
+
+  it('solo con hambre o solo con sed lo dice con su causa', async () => {
+    const a = await abrirModal('hambre')
+    expect(await a.findByText(/Sin comida, el descanso no cura/)).toBeTruthy()
+    cleanup()
+    const b = await abrirModal('sed')
+    expect(await b.findByText(/Sin bebida, el descanso no cura/)).toBeTruthy()
   })
 })

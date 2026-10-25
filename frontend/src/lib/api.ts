@@ -996,7 +996,8 @@ export async function moveCompanionToCombatGroup(id: string, companionId: string
 /// Location actual (mismo criterio que fija el punto de guardado real). GET consulta visibilidad
 /// sin mutar nada; POST ejecuta el salto a las 08:00 del día siguiente, guarda partida y cura hasta
 /// HERIDO como techo.
-export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean }> {
+/// `carencia` (P305): hambre o sed por debajo del umbral; con ella el descanso no cura y el estado empeora.
+export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean; carencia?: 'hambre' | 'sed' | 'ambas' | null }> {
   return fetchJson(`${API_URL}/saves/${id}/descansar-campamento`)
 }
 
