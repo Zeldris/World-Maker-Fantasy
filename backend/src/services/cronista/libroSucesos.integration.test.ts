@@ -3,6 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { advanceCorpseAndRecoveryTimeouts } from '../companionSupervivencia.js';
 import { registrarSuceso } from './sucesos.js';
+import { darNoticiaDeSuceso } from './difusion.js';
 
 // CR-1 (hito 0.2, roadmap-cronista.md § 5.1): el esquema del Libro de Sucesos contra Postgres real —
 // un suceso con sus actores, una cadena causa → efecto, y todo se va con la partida.
@@ -193,6 +194,19 @@ describe('registrarSuceso (CR-2)', () => {
     const segunda = await alianza(64 * 1440);
     expect(segunda).not.toBe(primera);
     expect(await alianza(64 * 1440 + 30)).toBe(segunda); // el mismo pacto nuevo, visto otra vez, sí se junta
+  });
+
+  // Revisión P247: el aviso del duplicado descartado no pisa la noticia (ni su meta) del primero.
+  it('descartar una alianza repetida no sobrescribe la noticia del primero', async () => {
+    const actores = [{ entidadTipo: 'FACCION' as const, entidadId: 'faccion-p', papel: 'AFECTADO' as const }, { entidadTipo: 'FACCION' as const, entidadId: 'faccion-q', papel: 'AFECTADO' as const }];
+    const alianza = (min: number) => registrarSuceso(prisma, { saveId, tipo: 'ALIANZA', fictionalMinutes: min, origen: 'MUNDO', actores, datos: { faccionA: 'P', faccionB: 'Q' } });
+    const primero = await alianza(80 * 1440);
+    await darNoticiaDeSuceso(prisma, saveId, primero, { texto: 'P y Q sellan una alianza.', facciones: ['P', 'Q'], region: null, meta: { categoria: 'REINO' } });
+    const repetido = await alianza(80 * 1440 + 30);
+    expect(repetido).toBe(primero);
+    await darNoticiaDeSuceso(prisma, saveId, repetido, { texto: 'otra frase', facciones: ['Q'], region: null, meta: null });
+    const { noticia } = await prisma.suceso.findUniqueOrThrow({ where: { id: primero }, select: { noticia: true } });
+    expect(noticia).toMatchObject({ texto: 'P y Q sellan una alianza.', meta: { categoria: 'REINO' } });
   });
 });
 

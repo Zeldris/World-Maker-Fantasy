@@ -109,10 +109,12 @@ export function motivoGuerra(presion: number): number {
   return Math.min(1, 0.2 + 0.8 * ((presion - 80) / 20));
 }
 
-/// Puro (Q5): por qué vienen unos bandidos, en una frase.
-export function porQueVienenBandidos(p: { grupo: string; gente: number; riqueza: number; comida: number; botinGuardado: number; lleno: boolean }): string {
+/// Puro (Q5): por qué vienen unos bandidos, en una frase. Con `objetos` (los del Almacén del Reino, que
+/// también son botín), un Reino sin Goirnos ni comida pero con el Almacén lleno no «se queda sin nada».
+export function porQueVienenBandidos(p: { grupo: string; gente: number; riqueza: number; comida: number; botinGuardado: number; lleno: boolean; objetos?: number }): string {
   if (p.riqueza >= 100) return `${p.grupo} han reunido ${p.gente} y saben que guardas ${p.riqueza} Goirnos.`;
   if (p.comida >= 100) return `${p.grupo} han reunido ${p.gente} y vienen a por tu comida.`;
+  if ((p.objetos ?? 0) >= OBJETOS_MINIMOS) return `${p.grupo} han reunido ${p.gente} y saben que guardas objetos en el Almacén.`;
   if (p.lleno) return `${p.grupo} ya no caben en su campamento y salen a buscar botín.`;
   return `${p.grupo} se han quedado sin nada y salen a buscar botín.`;
 }

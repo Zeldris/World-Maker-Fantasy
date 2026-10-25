@@ -37,6 +37,11 @@ describe('decisión de asalto (CR-67)', () => {
     expect(facil.manda).toBe(Math.ceil(normal.manda / 2));
     expect(decidirAtaque({ fuerza: 6, enCasa: 2, defensa: 0, motivo: 0.5, intensidad: 'NORMAL', tamano: 'FACIL' }).manda).toBe(2);
     expect(porQueVienenBandidos({ grupo: 'Los renegados', gente: 6, riqueza: 0, comida: 0, botinGuardado: 0, lleno: true })).toContain('no caben');
+    // Revisión P253: con solo objetos en el Almacén no «se han quedado sin nada»: vienen a por ellos.
+    const soloObjetos = porQueVienenBandidos({ grupo: 'Los renegados', gente: 6, riqueza: 0, comida: 0, botinGuardado: 500, lleno: false, objetos: 4 });
+    expect(soloObjetos).toContain('Almacén');
+    expect(soloObjetos).not.toContain('sin nada');
+    expect(porQueVienenBandidos({ grupo: 'Los renegados', gente: 6, riqueza: 0, comida: 0, botinGuardado: 500, lleno: false, objetos: 3 })).toContain('sin nada');
   });
 
   it('motivos: el botín atrae a los bandidos; la presión, a una facción en guerra', () => {

@@ -7,7 +7,8 @@
 //   alcanza la región donde está el personaje ese día, en una ventana de pocos días.
 // - `conocer` es la única puerta: apunta el `Conocimiento` y escribe la noticia en «El mundo» con la
 //   que guardó su emisor (`Suceso.noticia`) o con la frase del suceso, como rumor si no está confirmado.
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
@@ -222,7 +223,9 @@ export async function difundir(prisma: PrismaClient, saveId: string, opciones: {
 /// Noticia de un suceso del motor (narrador de fondo, decisiones de facción): se guarda con el suceso
 /// y llega ya si toca (Q10); si no, la recibe quien se entere después, por la vía que sea.
 export async function darNoticiaDeSuceso(tx: Tx, saveId: string, sucesoId: string, noticia: NoticiaDeSuceso): Promise<boolean> {
-  await tx.suceso.update({ where: { id: sucesoId }, data: { noticia: noticia as unknown as Prisma.InputJsonValue } });
+  // Revisión P247: `registrarSuceso` devuelve el id del primero cuando descarta un duplicado (misma alianza
+  // vista por dos sistemas). La noticia del primero, con su meta (categoría, oportunidad), no se pisa.
+  await tx.suceso.updateMany({ where: { id: sucesoId, noticia: { equals: Prisma.DbNull } }, data: { noticia: noticia as unknown as Prisma.InputJsonValue } });
   return (await difundirEn(tx, saveId, { sucesoIds: [sucesoId] })) > 0;
 }
 

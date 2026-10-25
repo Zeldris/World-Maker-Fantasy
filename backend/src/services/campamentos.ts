@@ -216,7 +216,7 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
       const grupo = ocupanteDe(c.ocupante)?.grupo ?? 'Los bandidos';
       const r = await crearViajero(tx, {
         saveId, tipo: TIPO_ASALTO, origenLocationId: c.locationId, destinoLocationId: blanco.locationId, dia,
-        carga: { campamentoId: c.id, motivo: porQueVienenBandidos({ grupo, gente: c.gente, riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, lleno: c.gente >= c.tope }) },
+        carga: { campamentoId: c.id, motivo: porQueVienenBandidos({ grupo, gente: c.gente, riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, lleno: c.gente >= c.tope, objetos: base.objetos }) },
         miembros: [{ genericos: d.manda, rol: 'bandido' }],
       });
       if (!r.ok) return;
