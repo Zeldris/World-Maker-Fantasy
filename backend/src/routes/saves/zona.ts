@@ -920,7 +920,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     const enEntradaSegura = enRadioSeguro(celda, entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId)));
     const faunaHostilEnEntrada = (tipo: string, temperamento: string) => enEntradaSegura && tipo === 'FAUNA' && esTemperamentoHostil(temperamento);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
+    // P269/P329 (revisión): un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso, como el que tiene ficha.
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {

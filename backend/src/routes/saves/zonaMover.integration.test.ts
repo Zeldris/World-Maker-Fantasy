@@ -1020,6 +1020,30 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(puntoAfter.y).toBe(75);
   });
 
+  // Revisión de P269/P329: un agresivo único convaleciente (derrotado y perdonado) no persigue en el mapa.
+  it('persecución: un NPC único AGRESIVO convaleciente no persigue (sigue su ruta); sano otra vez, sí', async () => {
+    const punto = await prisma.zonePoint.create({
+      data: {
+        locationId, saveId, x: 125, y: 25, origenX: 125, origenY: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true,
+        ruta: [{ x: 125, y: 25 }, { x: 475, y: 25 }],
+      },
+    });
+    await prisma.npcState.create({ data: { saveId, npcId: principalNpcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+    const app = await buildApp();
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 375 } } });
+    const sigueRuta = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(sigueRuta.x).toBe(475); // su ruta, no hacia el jugador (que daría 75,75)
+    expect(sigueRuta.y).toBe(25);
+
+    await prisma.npcState.updateMany({ where: { saveId, npcId: principalNpcId }, data: { condicionFisica: 'ILESO' } });
+    await prisma.zonePoint.update({ where: { id: punto.id }, data: { x: 125, y: 25, pasoRuta: 0 } });
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull } });
+    await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 375 } } });
+    const persigue = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(persigue.x).toBe(75);
+    expect(persigue.y).toBe(75);
+  });
+
   it('persecución (2026-09-17): fuera del radio de 2 celdas, el AGRESIVO sigue su ruta normal, ignora al jugador', async () => {
     const punto = await prisma.zonePoint.create({
       data: {
@@ -1159,6 +1183,25 @@ describe('POST /saves/:id/zona/mover', () => {
       expect(body.colision).toMatchObject({ targetSlug: 'test-mover-dinamico', targetName: 'Merodeador Dinámico de Prueba', temperamento: 'AGRESIVO' });
       expect(body.jugador).toEqual({ x: 75, y: 25 });
       expect(body.caminoRestante).toEqual([]);
+    }, 15_000);
+
+    // Revisión de P269/P329: un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso.
+    it('un NPC único dinámico convaleciente no corta el paso; sano otra vez, sí', async () => {
+      await prisma.$executeRaw`
+        INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
+        VALUES (${crypto.randomUUID()}, ${saveId}, 'Un Enemigo Único de Prueba ronda cerca de la Zona de Prueba Cuadrícula.', NULL, ${new Date()})
+      `;
+      await prisma.npcState.create({
+        data: { saveId, npcId: principalNpcId, scope: '', condicionFisica: 'CONVALECIENTE', zonaPosX: 75, zonaPosY: 25, zonaLocationId: locationId },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(res.statusCode).toBe(200);
+      expect(JSON.parse(res.body).colision).toBeNull();
+      await prisma.npcState.updateMany({ where: { saveId, npcId: principalNpcId }, data: { condicionFisica: 'ILESO' } });
+      await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull } });
+      const otra = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+      expect(JSON.parse(otra.body).colision).toMatchObject({ targetSlug: 'test-mover-principal' });
     }, 15_000);
 
     it('un NPC dinámico SIN posición asignada todavía (nunca se movió/vio en Zona) no puede colisionar ni avisar — fallback seguro', async () => {

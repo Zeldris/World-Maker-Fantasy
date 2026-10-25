@@ -685,11 +685,18 @@ export async function avanzarZonePointsUnPaso(
     (
       await tx.npc.findMany({
         where: { slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
-        select: { slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true, faction: true },
+        select: { id: true, slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true, faction: true },
       })
     ).map((n) => [n.slug, n]),
   );
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
+  // P269/P329 (revisión): un NPC único convaleciente no persigue (como tampoco corta el paso, `zonePointNpcConvalecienteNoActua`).
+  // Solo PRINCIPAL: su NpcState es uno por partida (scope ''); el de fauna es por especie y lugar.
+  const principalesIds = [...npcsPorSlug.values()].filter((n) => n.kind === 'PRINCIPAL').map((n) => n.id);
+  const estadosPrincipales = principalesIds.length
+    ? await tx.npcState.findMany({ where: { saveId, npcId: { in: principalesIds }, scope: '' }, select: { npcId: true, condicionFisica: true } })
+    : [];
+  const convalecientesIds = new Set(estadosPrincipales.filter((s) => zonePointNpcConvalecienteNoActua('PRINCIPAL', s.condicionFisica)).map((s) => s.npcId));
   // P116 (QA-27): la fauna hostil no persigue ni entra en el radio seguro de las entradas.
   const entradas = entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId));
   const esZonaDeInicioMov = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
@@ -711,7 +718,7 @@ export async function avanzarZonePointsUnPaso(
       const esAgresivoEfectivo = npc ? ['AGRESIVO', 'ENEMIGO'].includes(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus ?? {})) : false;
       // P88: en la zona de inicio la fauna hostil defiende su guarida, no persigue.
       const faunaHostil = esAgresivoEfectivo && punto.tipo === 'FAUNA';
-      const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
+      const persigue = esAgresivoEfectivo && !(npc && convalecientesIds.has(npc.id)) && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
       // P116: desde fuera, la fauna hostil no pisa el radio seguro de una entrada (espera este paso).
       const noPuedeEntrar = (celda: Celda) => muros.has(claveCelda(celda)) || (faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas));
       const objetivoPersecucion = persigue && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;
