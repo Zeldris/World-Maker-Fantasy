@@ -29,6 +29,13 @@ revisión (8 llamadas, 667k de entrada). La revisión de código antes de `main`
      confirmación de la retro lo lleva a `main`».
    - **Destino:** este repo, y también Galivelop-workflow por el lado de `requireRetro`.
 
+4. **`ci-local.sh` en un worktree da tres rojos falsos (herramienta).** `QA-215` pide pasarlo en un worktree, pero
+   tres tests de `tools/qa/tests` fallan ahí: `test_commit_msg` (2) porque `.git` es un archivo y no una carpeta, y
+   `test_host` (1) porque compara contra el directorio del worktree. Fallan igual con `main` solo (`076fe877`) y pasan
+   en el checkout normal.
+   - **Propuesta:** que esos tests tomen la raíz con `git rev-parse` y el índice con `git rev-parse --git-path index`.
+   - **Destino:** este repo.
+
 ## opt-tokens
 
 - **Curva:** sin propuesta. El contexto medio es de 121k, los suelos de unos 96k y los techos de unos 130k, con 24
