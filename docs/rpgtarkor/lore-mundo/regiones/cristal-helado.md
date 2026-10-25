@@ -152,8 +152,9 @@ entero está mal visto: se raspa la mitad y se deja la otra para que vuelva.
 
 Pez de 20-35 cm, casi transparente, que vive bajo el hielo del lago en agua a punto de congelarse. Su
 sangre lleva sustancias que le impiden cristalizar (como ciertos peces reales de aguas polares). Se
-mueve despacio y se pesca por agujeros en el hielo con sedal de tendón.
-**Recurso:** Carne de Escarchín (t1), grasa y muy apreciada en invierno.
+mueve despacio y se pesca por agujeros en el hielo con sedal de tendón. Es la única pesca de la región, y
+tan importante como la mina en los años de hambre.
+**Recurso:** Carne de Escarchín (t1), grasa y muy apreciada en invierno y en los años de hambre.
 
 ## Cómo se conecta con el resto de Berig
 
@@ -188,6 +189,8 @@ mueve despacio y se pesca por agujeros en el hielo con sedal de tendón.
 - 2026-09-27 (segunda pasada): el Escarchín y la pesca de invierno del Lago Cristalice.
 - 2026-10-25 (QA-240): la fauna y la flora de la región ya están en el juego; se quitan las marcas
   «pendiente de código».
+- 2026-10-25 (`QA-240`): el Escarchín es la única pesca de la región (lo que ya decía el juego) y la
+  Hielaga suma en el juego el Cuerno de Hielaga que daba el canon.
 
 ---
 

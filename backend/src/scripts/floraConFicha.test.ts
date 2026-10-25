@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { fauna, harvestSourceDescriptions, harvestSourceDisplayName, harvestYields, npcs } from './worldCatalog.js';
+import { fauna, harvestSourceDescriptions, harvestSourceDisplayName, harvestSourceRegion, harvestYields, npcs } from './worldCatalog.js';
+import { worldPopulations } from './worldPopulation.js';
 
 /// QA-240: la Enciclopedia saca el nombre y la descripción de una planta o un mineral de estos dos
 /// diccionarios. Sin entrada, enseñaba el slug («musgo-callado») y una ficha vacía.
@@ -17,5 +18,17 @@ describe('rendimientos de recolección sin repetir (QA-240)', () => {
   it('ninguna fuente da el mismo objeto dos veces por el mismo método', () => {
     const claves = harvestYields.map((y) => `${y.sourceSlug}|${y.metodoObtencion}|${y.itemSlug}`);
     expect(claves.filter((c, i) => claves.indexOf(c) !== i)).toEqual([]);
+  });
+});
+
+/// QA-240: sin región, `detectsWrongRegionHarvestClaim` dejaba cazar una hielaga en las Llanuras;
+/// sin fila de población, el mundo no sabía cuántas había.
+describe('fauna cazable con región y población (QA-240)', () => {
+  it('toda la fauna con despiece tiene región de origen y fila de población', () => {
+    const cazables = [...new Set(harvestYields.filter((y) => y.sourceCategory === 'fauna').map((y) => y.sourceSlug))]
+      .filter((s) => fauna.some((f) => f.slug === s));
+    const conPoblacion = new Set(worldPopulations.filter((p) => p.targetType === 'FAUNA').map((p) => p.targetSlug));
+    expect(cazables.filter((s) => !harvestSourceRegion[s])).toEqual([]);
+    expect(cazables.filter((s) => !conPoblacion.has(s))).toEqual([]);
   });
 });

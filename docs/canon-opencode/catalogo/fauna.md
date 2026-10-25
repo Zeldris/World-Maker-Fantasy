@@ -1,6 +1,6 @@
 # CATÁLOGO: fauna
 Qué es: toda la fauna existente, con familia, nivel y temperamento reales, para calibrar especies nuevas y no duplicar.
-Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-09-27.
+Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-10-25.
 
 ## En el catálogo del juego (Llanuras del Viento Rojo)
 | Especie | Familia | Nivel | Temperamento | Zona |
@@ -43,7 +43,7 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Zense Ceniza | CORVENES | 1-3 | CAUTELOSO | toda la región |
 | Canizor | ACECHANTES | 1-4 | CAUTELOSO | toda la región |
 
-## Solo en el lore (sin código todavía)
+## En el catálogo del juego (fuera de las Llanuras)
 | Especie | Región | Familia | Nivel | Temperamento |
 |---|---|---|---|---|
 | Sombras de Kroj | Margen | UMBRIAS | 3-8 | AGRESIVO |
@@ -62,8 +62,12 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Nievón | Cristal Helado | ACECHANTES | 5-11 | AGRESIVO |
 | Escarchín | Cristal Helado (Lago Cristalice) | NADANTES | 1-2 | INOFENSIVO |
 | Vreskal | Meseta | ORDENADOS | 1-3 | INOFENSIVO |
-| Espina del Viento | Llanuras (Fosa Horadada) | peligro ambiental, sin combate | — | — |
-| Vaeth | Margen | espíritu, no fauna | — | — |
+
+## Sin ficha de combate
+| Especie | Región | Qué es |
+|---|---|---|
+| Espina del Viento | Llanuras (Fosa Horadada) | peligro ambiental, sin combate |
+| Vaeth | Margen | espíritu, no fauna |
 
 ## Calibración
 - Presa pequeña o ambiental: nivel 1-2, INOFENSIVO o CAUTELOSO. Carroñeros: 1-3.

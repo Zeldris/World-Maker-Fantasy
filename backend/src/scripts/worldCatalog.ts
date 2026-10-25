@@ -8860,6 +8860,19 @@ export const items: ItemCatalogInput[] = [
     lugarOrigen: 'Cristal Helado.',
     tier: 2,
   },
+  // QA-240: el canon de Cristal Helado da tres recursos a la Hielaga y faltaba este.
+  {
+    slug: 'cuerno-hielaga',
+    name: 'Cuerno de Hielaga',
+    aliases: ['cuerno de hielaga'],
+    category: 'hueso',
+    tipo: 'RECURSO',
+    valorGoirnos: 4,
+    description: 'Cuerno corto de la Hielaga, el bóvido de montaña que es la presa principal de los Helsig.',
+    dimensiones: 'Cuernos de 15-20 cm.',
+    lugarOrigen: 'Cristal Helado.',
+    tier: 2,
+  },
   {
     slug: 'piel-nievon',
     name: 'Piel de Nievón',
@@ -10722,6 +10735,14 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'Cristal Helado',
   },
   {
+    sourceSlug: 'hielaga',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'cuerno-hielaga',
+    cantidad: 1,
+    condicion: 'Cristal Helado',
+  },
+  {
     sourceSlug: 'nievon',
     sourceCategory: 'fauna',
     metodoObtencion: 'CAZA',
@@ -11304,6 +11325,26 @@ export const harvestSourceRegion: Record<string, string> = {
   // este mapa (y que `distribucion` en `worldPopulation.ts`); su propia descripción dice "caza en
   // grupo en El Margen Silencioso".
   'sombra-de-kroj': 'Margen Silencioso',
+  // QA-240: 18 animales no tenían región, y en las Llanuras se dejaba
+  // «cazar una hielaga» (`detectsWrongRegionHarvestClaim`). Región del canon de cada una.
+  hielaga: 'Cristal Helado',
+  nievon: 'Cristal Helado',
+  escarchin: 'Cristal Helado',
+  tragalodo: 'Ciénaga Troncal',
+  borbol: 'Ciénaga Troncal',
+  zancapilote: 'Ciénaga Troncal',
+  vreskal: 'Meseta del Orden',
+  hetris: 'Margen Silencioso',
+  mekiosi: 'Margen Silencioso',
+  vistue: 'Margen Silencioso',
+  leshra: 'Margen Silencioso',
+  morvasa: 'Margen Silencioso',
+  brozan: 'Margen Silencioso',
+  hoscon: 'Margen Silencioso',
+  imanio: 'Llanuras del Viento Rojo',
+  nuente: 'Llanuras del Viento Rojo',
+  'celubia-palida': 'Llanuras del Viento Rojo',
+  terkash: 'Llanuras del Viento Rojo',
   // Fuera del núcleo jugable (2026-08-13) — condicion explícita: "Solo en Ciénaga Troncal — fuera
   // del núcleo jugable actual". Solo documentación, sin fila de `WorldPopulation`.
   'trepador-ocaso': 'Ciénaga Troncal',

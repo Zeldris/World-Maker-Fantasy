@@ -685,3 +685,16 @@ Aplicado con el sí de la usuaria («11 plantas sin nombre, Margen: tres errores
 - Orcos: `Durk` (senda) y `Durk'helske`, la Senda del Sílice («la senda helada»). También en el chunk
   de la Ciénaga.
 - El tablón de Keseg Prisilke decía «en el cónclave»; ahora dice «en el salón».
+
+**Fauna de Ciénaga, Cristal y Meseta** (sí de la usuaria). Las fichas coincidían con el canon; lo que fallaba
+estaba alrededor:
+- 18 animales cazables no tenían región (`harvestSourceRegion`): los 7 de estas regiones, 7 del Margen y 4 de
+  las Llanuras (Imanio, Nuente, Celubia Pálida, Terkash). En las Llanuras se dejaba «cazar una hielaga».
+  Test nuevo en `floraConFicha.test.ts` (rojo sin el arreglo).
+- 14 de ellos no tenían población; se siembran con el criterio de siempre (Borbol 3000/5000 … Tragalodo y
+  Mekiosi 40/80; la Hielaga, 400/600 porque se raciona).
+- Cuerno de Hielaga (t2), que daba el canon, como objeto y en el despiece.
+- Chunk nuevo «Fauna de Cristal Helado» (Hielaga, Nievón, Escarchín); el de la Meseta nombra al Vreskal.
+- `meseta-del-orden.md`: fuera cuatro «pendiente de código» y el hueco de Los del Obelisco. `cristal-helado.md`:
+  el Escarchín es la única pesca de la región (lo decía el juego). `canon-opencode/catalogo/fauna.md`: la tabla
+  «Solo en el lore» pasa a «En el catálogo del juego (fuera de las Llanuras)».
