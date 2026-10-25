@@ -676,4 +676,12 @@ Aplicado con el sí de la usuaria («11 plantas sin nombre, Margen: tres errores
 - Los Goshg no tienen edificios, ni Keseg Sael ni los Goirntes tienen tablones (también falta en el canon).
 - El Ferike no da hueso ni carne.
 - Sin revisar contra el canon: la fauna de la Ciénaga, de Cristal Helado y de la Meseta.
-- Las propuestas de traducción de elementos de facción (Nabieus, Faerus, orcos) esperan el sí de la usuaria.
+
+**Traducciones de elementos de facción** (sí de la usuaria, las cuatro), en `lenguas-helek.md`:
+- Nabieus: `Ilsk` (ver, observar) y `Ilsk'sael`, el Archivo del Refugio («lo visto, callado»). No lleva
+  `Karo` (carta) porque en el Archivo nunca se guardan cartas. También en el chunk del Refugio.
+- Faerus: `Thak` (garra) y `Thak'ashi`, el Árbol de las marcas («garra y olor»), que sale también en el
+  tablón de Feg Tusha. `Hesh` (piel) y `Hesh'yegr`, la Tolda de Kegi («la piel del Vergel»).
+- Orcos: `Durk` (senda) y `Durk'helske`, la Senda del Sílice («la senda helada»). También en el chunk
+  de la Ciénaga.
+- El tablón de Keseg Prisilke decía «en el cónclave»; ahora dice «en el salón».

@@ -9166,7 +9166,8 @@ export const factionRelationsIniciales: FactionRelationInput[] = [
   { source: 'Clan Serhu', target: 'Clan Helsig', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Helsig' },
   { source: 'Clan Serhu', target: 'Clan Goshg', presion: 70, motivo: 'worldAgenda: incursiones Serhu contra Goshg' },
   { source: 'Concordia de Hierro', target: 'Clan Helsig', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Helsig' },
-  { source: 'Concordia de Hierro', target: 'Clan Goshg', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Goshg' },  { source: 'Clan Helsig', target: 'Clan Goshg', presion: 30, motivo: 'QA-240: la Senda del Sílice, hielo sílice por madera y resina' },
+  { source: 'Concordia de Hierro', target: 'Clan Goshg', presion: 65, motivo: 'worldAgenda: la Concordia empuja a Serhu contra Goshg' },
+  { source: 'Clan Helsig', target: 'Clan Goshg', presion: 30, motivo: 'QA-240: la Senda del Sílice, hielo sílice por madera y resina' },
 ];
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -12550,9 +12551,9 @@ const TABLONES_DE_AVISOS: { factionSlug: string; raza: string; locationSlug: str
   { factionSlug: 'Clan Serhu', raza: 'orcos', locationSlug: 'campamento-serhu-interior', description: 'Un poste junto al salón, con pieles clavadas y marcas talladas: cada marca, una cacería o un encargo del clan.' },
   { factionSlug: 'Clan Helsig', raza: 'orcos', locationSlug: 'campamento-helsig-interior', description: 'Un poste de hielo sílice tallado a la entrada de las minas, con marcas de encargo del clan.' },
   { factionSlug: 'Clan Goshg', raza: 'orcos', locationSlug: 'campamento-goshg-interior', description: 'Un poste sobre los pilotes, junto a las pasarelas, con marcas de los encargos de las dos tribus.' },
-  { factionSlug: 'Feg Tusha', raza: 'faerus', locationSlug: 'campamento-feg-tusha-interior', description: 'Un árbol del poblado colgado con marcas de garra y olor que la manada sabe leer.' },
+  { factionSlug: 'Feg Tusha', raza: 'faerus', locationSlug: 'campamento-feg-tusha-interior', description: 'El Thak\'ashi: un árbol del poblado colgado con marcas de garra y olor que la manada sabe leer.' },
   { factionSlug: 'Feg Ger', raza: 'faerus', locationSlug: 'jakut-ger-interior', description: 'Un árbol junto al Vergel con marcas de garra; los tratantes de la manada cuelgan ahí lo que necesitan.' },
-  { factionSlug: 'Keseg Prisilke', raza: 'nabieus', locationSlug: 'conclave-keseg-prisilke-interior', description: 'Un muro de cordeles anudados en el cónclave: cada nudo es un aviso que solo se lee de cerca.' },
+  { factionSlug: 'Keseg Prisilke', raza: 'nabieus', locationSlug: 'conclave-keseg-prisilke-interior', description: 'Un muro de cordeles anudados en el salón: cada nudo es un aviso que solo se lee de cerca.' },
 ];
 factionBuildings.push(
   ...TABLONES_DE_AVISOS.map((t) => ({

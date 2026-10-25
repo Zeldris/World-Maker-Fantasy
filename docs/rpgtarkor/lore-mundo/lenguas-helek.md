@@ -59,6 +59,8 @@
         . `Vash'grath` - **La primera pieza** — préstamo del Feg entre los Maktor, sin traducir, igual que los Goirntes usan "Concordia" sin traducirla al Kerost
         . `Ikar'hyanios` - **Jefe/a de los Ancestros** — título honorífico póstumo de quien murió con honor real (duelo, cacería ritual), no de rango social
         . `Sedsar'tugh` - **Salón de Honor** — nombre genérico del edificio ceremonial de cualquier campamento, previo a que cada clan lo renombre a su manera (`Ketg'sedsar`, `Helsig'sedsar`, `Goshg'sedsar` son variantes locales de este mismo concepto)
+        . `Durk` - **Senda** | **camino que se recorre a menudo**
+        . `Durk'helske` - **La Senda del Sílice** (lit. "la senda helada", por el hielo sílice que baja por ella) — la ruta de comercio Helsig ↔ Goshg (ver [clanes-orcos.md](clanes-orcos.md)) *(2026-10-25, `QA-240`)*
 
 - Faerus `` (sin lengua propia con nombre fijado todavía — hablan solo `Feg`, ver más abajo).
   **Lengua deliberadamente simple y bestial** (2026-09-23): a diferencia de Kektira (gramática
@@ -86,6 +88,10 @@
         . `Grath'sil` - **Tierra que arde** — cómo llaman los Faerus a la guerra entre continentes ("dos manadas enloquecidas peleándose mientras el bosque arde", ver [razas.md](razas.md)); no tienen palabra para "guerra" en abstracto, solo esta imagen concreta
         . `Leshra` - **Ave de noche** — nombre del ave de la familia Umbrias del Margen
         . `Ashi'krul` - **El colmillo que huele** — la daga Faerus tallada en colmillo de Ferike hembra
+        . `Thak` - **Garra**
+        . `Thak'ashi` - **El Árbol de las marcas** (lit. "garra y olor") — las dos marcas que deja el cazador: la garra dice qué (presa, peligro, territorio) y el olor de quién y cuándo; origen del tablón de avisos Faerus (ver [razas.md § Faerus](razas.md#faerus--los-furiosos)) *(2026-10-25, `QA-240`)*
+        . `Hesh` - **Piel** | **cuero** (palabra propia, distinta de `Makut` orco)
+        . `Hesh'yegr` - **La Tolda de Kegi** (lit. "la piel del Vergel") — el toldo de pieles al borde del Vergel donde los Feg Ger comercian sin dejar entrar al forastero (ver [cronologia.md](cronologia.md)) *(2026-10-25, `QA-240`)*
 
 - Naebius `` (los Nabieus llaman a su propia lengua simplemente **el silencio** — no tiene nombre
   fijado en ninguna lengua ajena, mismo criterio que el Refugio sin Nombre, ver [areas.md](areas.md)).
@@ -112,6 +118,8 @@
         . `Keseg Sael` - **El fin del callar** — nombre interno del clan del Refugio sin Nombre; no se pronuncia ante extranjeros
         . `Tovh` - **Palma** | **mano abierta**
         . `Tovh'vhurne` - **Escuchar con la palma** — leer vibraciones del suelo, las raíces o el agua apoyando la mano; lo que el `Tannis'sael` hace con las personas, aplicado al terreno
+        . `Ilsk` - **Ver** | **observar**
+        . `Ilsk'sael` - **El Archivo del Refugio** (lit. "lo visto, callado") — las cámaras de tablillas de observación bajo el Refugio: lo que un Nabieus ha visto, medido o contado, nunca cartas (por eso no es `Karo`), y nadie habla dentro (ver [margen-silencioso.md](regiones/margen-silencioso.md)) *(2026-10-25, `QA-240`)*
 
 - Goirmes `Kerost` — lengua oficializada por los Goirntes como lengua común de Berig ("seca y de
   consonantes cortadas", ver [areas.md](areas.md)); distinta de `Sirikel`, la lengua común general
