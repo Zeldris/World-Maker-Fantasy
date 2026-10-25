@@ -24,8 +24,8 @@ const EXPORTS_CON_SECCION = new Set([
 ]);
 
 export function recortar(texto: unknown, max = 200): string {
-  const t = String(texto ?? '').replace(/\s+/g, ' ').trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+  const t = [...String(texto ?? '').replace(/\s+/g, ' ').trim()]; // por caracteres, no por unidades UTF-16
+  return t.length > max ? `${t.slice(0, max - 1).join('')}…` : t.join('');
 }
 
 function arr(v: unknown): Array<Record<string, any>> {
@@ -51,8 +51,9 @@ export function contieneSlug(v: unknown, slug: string, prof = 0): boolean {
   return false;
 }
 
+/** El texto como palabra entera, con su plural («Hielagas»): «hielag» no es «Hielaga», ni «Oso» es «reposo». */
 function palabraEntera(texto: string): RegExp {
-  return new RegExp(`(^|[^\\p{L}\\p{N}-])${texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}\\p{N}-])`, 'iu');
+  return new RegExp(`(^|[^\\p{L}\\p{N}-])${texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:e?s)?($|[^\\p{L}\\p{N}-])`, 'iu');
 }
 
 function resumenCampos(o: Record<string, any>, campos: string[]): string {
@@ -120,7 +121,7 @@ export function secciones(slug: string, d: FichaDatos): string[] {
   const usan = d.recetas.filter((r) => arr(r.ingredients).some((i) => [i.match, i.orMatch?.match].some((m) => m?.kind === 'exact' && m.catalogSlug === slug)));
   if (fabrican.length || usan.length) {
     const m = (x: Record<string, any> | undefined) => x?.catalogSlug ?? `${x?.category}*`;
-    const l = (r: Record<string, any>) => `  ${r.key}: ${arr(r.ingredients).map((i) => `${i.cantidad} ${m(i.match)}${i.orMatch ? ` (o ${m(i.orMatch.match)})` : ''}`).join(' + ')} → ${r.resultCantidad ?? 1} ${r.resultName}${r.location ? ` @${[r.location].flat().join('|')}` : ''}`;
+    const l = (r: Record<string, any>) => `  ${r.key}: ${arr(r.ingredients).map((i) => `${i.cantidad} ${m(i.match)}${i.orMatch ? ` (o 1 ${m(i.orMatch.match)} por cada ${i.orMatch.unitsPerMatch ?? 1})` : ''}`).join(' + ')} → ${r.resultCantidad ?? 1} ${r.resultName}${r.location ? ` @${[r.location].flat().join('|')}` : ''}`;
     if (fabrican.length) out.push(`# Recetas que lo fabrican (${fabrican.length})\n${fabrican.map(l).join('\n')}`);
     if (usan.length) out.push(`# Recetas que lo usan (${usan.length})\n${usan.map(l).join('\n')}`);
   }
@@ -209,10 +210,11 @@ export function canon(slug: string, nombre: string | null, raiz = RAIZ, max = 10
   const lineas = CARPETAS_CANON.flatMap((c) => mdBajo(join(raiz, c))).flatMap((f) =>
     readFileSync(f, 'utf8').split('\n').map((texto, i) => ({ donde: `${relative(raiz, f)}:${i + 1}`, texto })),
   );
-  const n = nombre?.toLowerCase();
-  const porSlug = lineas.filter((l) => l.texto.includes(slug)).slice(0, max);
+  const s = palabraEntera(slug);
+  const n = nombre ? palabraEntera(nombre) : null;
+  const porSlug = lineas.filter((l) => s.test(l.texto)).slice(0, max);
   const vistas = new Set(porSlug.map((l) => l.donde));
-  const porNombre = n ? lineas.filter((l) => !vistas.has(l.donde) && l.texto.toLowerCase().includes(n)).slice(0, max) : [];
+  const porNombre = n ? lineas.filter((l) => !vistas.has(l.donde) && n.test(l.texto)).slice(0, max) : [];
   return [...porSlug, ...porNombre].map((l) => recortar(`${l.donde}:${l.texto}`, 160));
 }
 

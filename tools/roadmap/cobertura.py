@@ -29,6 +29,7 @@ PREF='CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR|IMG|VOZ'
 ID=rf'(?:{PREF})-\d+[a-z]?'
 files=['roadmap-front.md','roadmap-front-ux.md','roadmap-front-zona.md','roadmap-front-reino.md','roadmap-cronista.md','roadmap-imagenes.md','roadmap-voces.md']
 defs={}
+titulo={}  # QA-246: id → título de su primera definición en el árbol
 repetidas={}  # QA-246: id → [(archivo, línea)] de las definiciones que siguen a la primera
 DEF=rf'^\s*-\s*(?:~~)?\*\*({ID})\b|^\|\s*(?:~~)?({ID})(?:~~)?\s*\||^\s*(?:~~)?\*\*({ID})\s*·'
 def num(i):
@@ -40,9 +41,9 @@ def definiciones(texto):
             i=next(g for g in m.groups() if g)
             yield n,i,re.split(r'\*\*|\|',l[m.end():].replace('~~',''))[0].strip(' ·')
 for f in files:
-    for n,i,_ in definiciones(open(D+f).read()):
+    for n,i,tit in definiciones(open(D+f).read()):
         if i in defs: repetidas.setdefault(i,[]).append((f,n))
-        else: defs[i]=(f,n)
+        else: defs[i]=(f,n); titulo[i]=tit
 def git(*a):
     """QA-246: salida de una orden de git en el repo, o None si git falla (sin origin/main, sin repo)."""
     try:
@@ -138,8 +139,11 @@ def libre(pref):
     main=textos_en('origin/main')
     if not main: print('aviso: sin origin/main; solo cuenta el árbol de trabajo',file=sys.stderr)
     textos=[open(D+f).read() for f in files+['21-roadmap.md']]+list(main.values())
-    # Solo menciones escritas con su prefijo: en «QA-12 y 400» el 400 no es un identificador.
+    # Menciones con su prefijo, rangos «A…B» y lo que reserva el mapa del árbol («ZON-37, 70-73»); en la prosa,
+    # «QA-12 y 400» no reserva el 400.
     nums=[int(n) for t in textos for n in re.findall(rf'(?<![\w-]){pref}-(\d+)',t)]
+    nums+=[int(n) for t in textos for n in re.findall(rf'(?<![\w-]){pref}-\d+\s*(?:…|\.\.\.)\s*(?:{pref}-)?(\d+)',t.replace('`',''))]
+    nums+=[num(i)[1] for i in asignado if i.startswith(pref+'-')]
     return f'{pref}-{max(nums,default=0)+1}'
 def choques():
     """QA-246: tareas que esta rama y origin/main han definido las dos desde su base común, con otro título.
@@ -149,8 +153,7 @@ def choques():
     if not base: return []
     en_main=titulos(textos_en('origin/main').values())
     nuevas_main=set(en_main)-set(titulos(textos_en(base).values()))
-    aqui=titulos(open(D+f).read() for f in files)
-    return sorted((i for i in defs if i in nuevas_main and aqui[i]!=en_main[i]),key=num)
+    return sorted((i for i in defs if i in nuevas_main and titulo[i]!=en_main[i]),key=num)
 # QA-101: sin ejecutarse como script (p. ej. desde tools/qa/matriz-pruebas.py), solo calcula `defs` y `asignado`.
 if __name__ == '__main__' and sys.argv[1:2] == ['--fila']:
     if len(sys.argv) != 3: sys.exit('uso: cobertura.py --fila <ID>')

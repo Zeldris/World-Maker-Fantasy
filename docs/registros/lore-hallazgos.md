@@ -753,3 +753,15 @@ cargarla.
   con `git cat-file --batch` lo abarataría.
 - Los parecidos de `ficha.sh` no proponen lugares ni facciones; esos slugs sí salen en «Otras
   exportaciones».
+
+**Segunda vuelta (revisión de los arreglos):** arreglados la cantidad de la alternativa `orMatch`
+(«1 por cada 4»), `--libre`, que había dejado de contar los rangos y las reservas del mapa, y
+`--canon`, que pasa a buscar por palabra entera con plural, como los chunks. También el recorte
+por caracteres de verdad (no por unidades UTF-16), la doble lectura de los roadmaps y la carpeta
+temporal del test. Leves:
+- «DEFINIDAS DOS VECES» se apoya en la excepción `UX-6`: `DEF` toma por definición cualquier
+  viñeta en negrita con el id (`- **UX-6:**`). Exigir ` ·` tras el id quitaría la excepción, pero
+  hay que revisar antes qué definiciones reales se escriben sin él.
+- Una tarea traída de una tercera rama y renombrada después en un solo lado cuenta como choque
+  hasta traer `main`.
+- `canon()` carga todas las líneas del canon para quedarse con 20.

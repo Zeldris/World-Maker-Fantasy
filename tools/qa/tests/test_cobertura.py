@@ -106,6 +106,16 @@ class MainRemoto(unittest.TestCase):
         self.git('init', '-q')
         self.assertEqual(self.cob('--libre', 'QA').stdout.strip(), 'QA-21')
 
+    def test_libre_cuenta_rangos_y_lo_que_reserva_el_mapa(self):
+        escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-3 · Tres**: también `QA-3`…`25`\n')
+        self.git('init', '-q')
+        self.assertEqual(self.cob('--libre', 'QA').stdout.strip(), 'QA-26')
+        self.assertEqual(self.cob('--libre', 'ZON').stdout.strip(), 'ZON-1')
+        with open(os.path.join(self.producto, '21-roadmap.md'), encoding='utf-8') as f:
+            mapa = f.read()
+        escribir(os.path.join(self.producto, '21-roadmap.md'), mapa.replace('| `QA-2` |', '| `QA-2`, ZON-37, 70-73 |'))
+        self.assertEqual(self.cob('--libre', 'ZON').stdout.strip(), 'ZON-74')
+
     def test_libre_sin_origin_main_avisa(self):
         escribir(os.path.join(self.producto, 'roadmap-front.md'), '- **QA-30 · Treinta**\n')
         self.git('init', '-q')
