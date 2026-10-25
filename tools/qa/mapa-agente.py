@@ -2,9 +2,10 @@
 """QA-108 (2026-10-19): que el mapa del agente (docs/mapa-agente.md) no apunte a nada que ya no existe (CI).
 
 Mira cada referencia entre comillas invertidas que empiece por una ruta del repo (`b/` = backend/src/,
-`f/` = frontend/src/, `backend/`, `frontend/`, `tools/`, `docs/`):
+`f/` = frontend/src/, `backend/`, `frontend/`, `tools/`, `docs/`, `image-generator/`, `voice-generator/`; en una ruta con `<…>`, que es un patrón, se mira la carpeta de antes del `<`, salvo si git la ignora):
   - `ruta`           el archivo o la carpeta existe (con `*`, que haya al menos uno);
-  - `ruta#nombre`    además, el archivo define `nombre` (función, constante, clase, tipo o modelo de Prisma);
+  - `ruta#nombre`    además, el archivo define `nombre` (función, constante, clase, tipo o modelo de Prisma;
+                     en Python, `def` o `NOMBRE =` sin sangría; en bash, `nombre()`);
   - `nombre` suelto  (en camelCase, tras una `ruta#…` en la misma viñeta) sale en ese mismo archivo (puede ser
                      una llamada o un campo: el mapa nombra secciones del turno por lo que llaman).
 Sale con 1 si alguna está rota.
@@ -15,7 +16,7 @@ import glob, os, re, subprocess, sys
 RAIZ = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True).stdout.strip()
 MAPA = os.path.join(RAIZ, 'docs', 'mapa-agente.md')
 PREFIJOS = {'b/': 'backend/src/', 'f/': 'frontend/src/'}
-REF = re.compile(r'`((?:b|f|backend|frontend|tools|docs)/[^`\s#]+)(?:#([A-Za-z_][\w]*))?`')
+REF = re.compile(r'`((?:b|f|backend|frontend|tools|docs|image-generator|voice-generator)/[^`\s#]+)(?:#([A-Za-z_][\w]*))?`')
 SUELTO = re.compile(r'`([a-z]+[A-Z]\w*)`')
 
 
@@ -25,12 +26,13 @@ def texto_de(ruta, cache={}):
     return cache[ruta]
 
 
-def define(texto, nombre):
+def define(texto, nombre, python=False):
     n = re.escape(nombre)
     return re.search(
-        rf'(?:\b(?:function\*?|const|let|var|class|interface|type|enum|model)\s+{n}\b)'  # declaración
-        # método (con o sin modificadores): sus paréntesis van seguidos de `{`, no de `;` como una llamada
-        rf'|(?:^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*(?::[^;{{=]*)?\{{)',
+        rf'(?:\b(?:function\*?|const|let|var|class|interface|type|enum|model|def)\s+{n}\b)'  # declaración
+        + (rf'|(?:^{n}\s*(?::[^=\n]*)?=(?!=))' if python else '')  # constante de Python: asignación sin sangría
+        # método (con o sin modificadores) o función de bash: sus paréntesis van seguidos de `{`, no de `;` como una llamada
+        + rf'|(?:^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*(?::[^;{{=]*)?\{{)',
         texto, re.M) is not None
 
 
@@ -68,11 +70,21 @@ def main():
                 if ruta.startswith(corto):
                     ruta = largo + ruta[len(corto):]
             ruta_actual = ruta
+            if '<' in ruta:  # patrón: basta con que exista la carpeta fija de delante
+                fija = ruta[:ruta.index('<')].rsplit('/', 1)[0]
+                # ignorada por git (`generated/` o `generated/*`): es la salida que crea el generador
+                if not os.path.isdir(os.path.join(RAIZ, fija)) and \
+                        subprocess.run(['git', 'check-ignore', '-q', fija + '/_'], cwd=RAIZ).returncode != 0:
+                    rotas.append(f'mapa-agente.md:{nl}: no existe {fija}/')
+                if nombre:
+                    rotas.append(f'mapa-agente.md:{nl}: {ruta} es un patrón: su #{nombre} no se puede comprobar')
+                archivos = None
+                continue
             todos = glob.glob(os.path.join(RAIZ, ruta))
             archivos = [a for a in todos if os.path.isfile(a)]
             if not todos:
                 rotas.append(f'mapa-agente.md:{nl}: no existe {ruta}')
-            elif nombre and not any(define(texto_de(a), nombre) for a in archivos):
+            elif nombre and not any(define(texto_de(a), nombre, a.endswith('.py')) for a in archivos):
                 rotas.append(f'mapa-agente.md:{nl}: {ruta} no define {nombre}')
             if not nombre or '*' in ruta:
                 archivos = None  # los nombres sueltos solo siguen a una referencia `archivo#función`

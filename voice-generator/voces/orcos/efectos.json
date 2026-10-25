@@ -1,0 +1,7 @@
+{
+  "nota": "Doc 02, «Voces de ejemplo»: leve saturación, ecualización con graves, sin reverberación. Cifras de partida, a ajustar de oído.",
+  "cadena": [
+    {"tipo": "saturacion", "ganancia": 4, "color": 10},
+    {"tipo": "graves", "db": 5, "hz": 120}
+  ]
+}

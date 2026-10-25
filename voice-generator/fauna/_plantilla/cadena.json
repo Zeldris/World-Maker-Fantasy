@@ -1,0 +1,8 @@
+{
+  "nota": "Plantilla: cópiala a fauna/<slug-de-la-especie>/ (el slug de la enciclopedia). Cadena de ejemplo, a ajustar de oído.",
+  "cadena": [
+    {"tipo": "tono", "semitonos": -3},
+    {"tipo": "paso_bajo", "hz": 4000},
+    {"tipo": "saturacion", "ganancia": 2}
+  ]
+}

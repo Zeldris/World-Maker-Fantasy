@@ -1,0 +1,11 @@
+# Lo pesado y lo que depende de esta máquina no se sube: lo baja y lo compila scripts/instalar.sh (VOZ-1), siguiendo
+# docs/arquitectura/reutilizables/02-voces-y-sonidos-locales.md.
+qwentts/
+modelos/
+descargas/
+bin/
+# Todo lo generado (tomas de diseño, frases producidas, banco, el .spk y el .rvq de cada referencia fijada, fauna):
+# se rehace con los scripts. La referencia elegida (voces/<raza>/<voz>/referencia.wav) sí va en git.
+generated/
+# Sonidos base de fauna (CC0 o propios): fuera de git; su licencia, en fauna/<especie>/licencias.tsv.
+sonidos/

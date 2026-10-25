@@ -220,3 +220,22 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
+
+## Voces y sonidos (generación local, `QA-241`)
+
+En pausa hasta traer el repo aparte de la usuaria (`VOZ-6`); al traerlo, esta sección se rehace con lo que llegue.
+
+- **Scripts:** `voice-generator/scripts/`; cada uno dice su uso en las tres primeras líneas (`sed -n 2,4p`).
+  `instalar.sh` (motor y modelos), `banco.sh` (tiempos por modelo y dispositivo), `disenar.sh` (tomas desde la
+  ficha), `fijar.sh` (referencia, `.spk` y `.rvq`), `producir.sh` (frases), `escuchar.sh` (efectos de la raza con
+  SoX), `fauna.sh` (sonidos de una especie). Lo común, en `voice-generator/scripts/comun.sh#lanzar` (segundo plano
+  con tope de tiempo y de memoria), `voice-generator/scripts/comun.sh#memoria_inicial` y
+  `voice-generator/scripts/comun.sh#una_a_la_vez`.
+- **Fichas:** `voice-generator/voces/<raza>/<voz>/v1/diseno.json` y `voice-generator/voces/<raza>/efectos.json`;
+  `voice-generator/fauna/<especie>/cadena.json`. Las valida `voice-generator/scripts/voces.py#errores_ficha` (deriva
+  infantil) y `voice-generator/scripts/voces.py#errores_cadena`; `python3 voice-generator/scripts/voces.py comprobar`
+  las mira todas (también `instruct`, `texto`, `semilla`, `sox` sobre una). Test:
+  `python3 -m unittest discover -s tools/qa/tests -p test_voces.py`.
+- **Documento:** `docs/arquitectura/reutilizables/02-voces-y-sonidos-locales.md`; lee solo su apartado («Diseñar la
+  voz de una raza», «Fauna y criaturas», «Acoplamiento a Tarkor») con `grep -n '^## '` + `sed -n`. Tareas,
+  `docs/producto/roadmap-voces.md`.

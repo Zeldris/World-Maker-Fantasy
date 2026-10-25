@@ -1,0 +1,9 @@
+{
+  "nota": "Doc 02 («casi sin voz audible»): paso alto, coro sutil, volumen bajo y reverberación larga y oscura. Cifras de partida, a ajustar de oído.",
+  "cadena": [
+    {"tipo": "paso_alto", "hz": 300},
+    {"tipo": "coro"},
+    {"tipo": "volumen", "db": -8},
+    {"tipo": "reverberacion", "reverberancia": 80, "amortiguacion": 80, "sala": 100, "retardo_ms": 20, "humedo_db": -2}
+  ]
+}

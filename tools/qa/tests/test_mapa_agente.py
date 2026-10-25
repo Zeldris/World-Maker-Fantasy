@@ -49,6 +49,37 @@ class MapaAgente(unittest.TestCase):
     def test_nombre_suelto_sin_archivo_delante_no_se_mira(self):
         self.assertEqual(self.comprobar('- `cualquierCosa` en `b/`\n').returncode, 0)
 
+    def test_generadores_con_funciones_de_python_y_bash(self):
+        escribir(os.path.join(self.repo, 'voice-generator/scripts/voces.py'), 'CAMPOS = (\'a\',)\ndef comprobar(carpeta):\n    OTRO = 1\n    return []\n')
+        escribir(os.path.join(self.repo, 'voice-generator/scripts/comun.sh'), 'lanzar() {\n  "$@"\n}\nlanzar echo\n')
+        r = self.comprobar('- `voice-generator/scripts/voces.py#comprobar`, `voice-generator/scripts/voces.py#CAMPOS`, '
+                           '`voice-generator/scripts/comun.sh#lanzar`.\n')
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn('0 referencias rotas en 3', r.stdout)
+        r = self.comprobar('- `voice-generator/scripts/comun.sh#echo`, `voice-generator/scripts/voces.py#OTRO` y '
+                           '`image-generator/no.sh`\n')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('voice-generator/scripts/voces.py no define OTRO', r.stdout)  # con sangría no es del módulo
+        escribir(os.path.join(self.repo, 'backend/src/b.ts'), 'estado = nuevo;\n')
+        self.assertIn('no define estado', self.comprobar('- `b/b.ts#estado`\n').stdout)  # en TS no es una definición
+        self.assertIn('voice-generator/scripts/comun.sh no define echo', r.stdout)
+        self.assertIn('no existe image-generator/no.sh', r.stdout)
+
+    def test_ruta_con_patron_mira_su_carpeta_fija(self):
+        os.makedirs(os.path.join(self.repo, 'voice-generator/voces'))
+        escribir(os.path.join(self.repo, 'image-generator/.gitignore'), 'generated/*\n')
+        r = self.comprobar('- `voice-generator/voces/<raza>/v1/`, `docs/<tema>.md` y `image-generator/generated/<tipo>/`\n')
+        self.assertEqual(r.returncode, 0, r.stdout)  # la carpeta ignorada por git la crea el generador
+        self.assertIn('0 referencias rotas en 3', r.stdout)
+        r = self.comprobar('- `voice-generator/vocez/<raza>/efectos.json` y `voice-generator/voces/<raza>/x.py#crear`\n')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('mapa-agente.md:1: no existe voice-generator/vocez/', r.stdout)
+        self.assertIn('voice-generator/voces/<raza>/x.py es un patrón: su #crear no se puede comprobar', r.stdout)
+
+    def test_patron_corta_los_nombres_sueltos(self):
+        r = self.comprobar('- `b/a.ts#calcular` y las fichas en `docs/<tema>.md` usan `otraCosa`\n')
+        self.assertEqual(r.returncode, 0, r.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()
