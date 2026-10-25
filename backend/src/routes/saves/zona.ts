@@ -462,6 +462,13 @@ export async function zonaRoutes(app: FastifyInstance) {
         })
       : [];
     const npcStateByKey = new Map(npcStates.map((s) => [`${s.npcId}|${s.scope}`, s]));
+    // P269/P329 (revisión de e0b760d): un PRINCIPAL convaleciente no persigue ni corta el paso
+    // (`avanzarZonePointsUnPaso`, `detectarEncuentroEnCelda`): tampoco sale hostil (ni radio de amenaza ni «¡te persigue!»).
+    const convalecientesSlugsZonePoint = new Set(
+      npcFaunaZonePointIds
+        .filter((n) => zonePointNpcConvalecienteNoActua(n.kind, npcStateByKey.get(`${n.id}|${scopeFor(n.kind, locationId)}`)?.condicionFisica))
+        .map((n) => n.slug),
+    );
 
     // Ausente por combate ganado (regla 4b): dentro de la ventana de 6h Y sin cambiar de Location
     // desde que se marcó — ambas condiciones a la vez (mismo `zonaLocationId`), coherente con la
@@ -748,7 +755,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           companion: companion ? { slug: companion.slug, nombre: yaDescubierto ? companion.nombre : '???' } : undefined,
           // ZON-50/ZON-33/ZON-53 (decisión de la usuaria, ronda de Z-D): la amenaza y la patrulla solo
           // de lo ya descubierto; lo desconocido sigue sorprendiendo.
-          hostil: yaDescubierto && (hostilBySlugZonePoint.get(p.targetSlug) ?? false),
+          hostil: yaDescubierto && !convalecientesSlugsZonePoint.has(p.targetSlug) && (hostilBySlugZonePoint.get(p.targetSlug) ?? false),
           ruta: yaDescubierto && Array.isArray(p.ruta) && p.ruta.length > 1 ? (p.ruta as { x: number; y: number }[]) : undefined,
           // ZON-58 / ZON-16: agotado o con candado (solo recursos ya descubiertos).
           ...(p.tipo === 'RECURSO' && yaDescubierto ? estadoRecurso.get(p.targetSlug) : {}),

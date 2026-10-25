@@ -18,7 +18,7 @@ import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTempl
 import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
-import { ambitoPoblacion, copiaDeFila } from './mundoPartida.js';
+import { ambitoPoblacion, copiaDeFila, npcDeLaPartida } from './mundoPartida.js';
 import { celdasDeEntrada, enRadioSeguro } from './entradasZona.js';
 import { murosDe } from './murosZona.js';
 
@@ -665,7 +665,9 @@ export async function avanzarZonePointsUnPaso(
   });
   if (puntosCrudos.length === 0) return [];
   // P185 (QA-27): ni la fauna ni los NPC cruzan los muros (la empalizada de Colmillo Ceniza).
-  const muros = murosDe((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug);
+  const zona = await tx.location.findUnique({ where: { id: locationId }, select: { slug: true, worldId: true } });
+  if (!zona) return [];
+  const muros = murosDe(zona.slug);
   // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
   // punto gateado sin su misión aceptada todavía no "patrulla": narrativamente no está en la zona.
   const questSlugsAceptados = await questSlugsAceptadosPara(tx, saveId);
@@ -678,13 +680,13 @@ export async function avanzarZonePointsUnPaso(
   // Sistema de plantillas de movimiento (2026-09-17) — Npc cargados en batch por `targetSlug`
   // (nunca FK real, mismo criterio de siempre) para poder inferir la plantilla GENERAL de cada
   // punto sin ruta artesanal ni plantilla específica asignada. `faction` (2026-09-17, persecución)
-  // se carga a la vez para resolver `effectiveTemperamento` sin una segunda query. `worldId` no
-  // hace falta filtrarlo aparte: `targetSlug` ya es único dentro de un mundo y esta función solo
-  // opera sobre puntos de UNA Location concreta, que ya pertenece a un único World.
+  // se carga a la vez para resolver `effectiveTemperamento` sin una segunda query. Filtrado por el
+  // mundo de la zona y la partida: el slug solo es único dentro de un mundo, y el id se usa para
+  // buscar el NpcState del convaleciente (revisión de P269/P329).
   const npcsPorSlug = new Map(
     (
       await tx.npc.findMany({
-        where: { slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
+        where: { worldId: zona.worldId, ...npcDeLaPartida(saveId), slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
         select: { id: true, slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true, faction: true },
       })
     ).map((n) => [n.slug, n]),
@@ -699,7 +701,7 @@ export async function avanzarZonePointsUnPaso(
   const convalecientesIds = new Set(estadosPrincipales.filter((s) => zonePointNpcConvalecienteNoActua('PRINCIPAL', s.condicionFisica)).map((s) => s.npcId));
   // P116 (QA-27): la fauna hostil no persigue ni entra en el radio seguro de las entradas.
   const entradas = entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId));
-  const esZonaDeInicioMov = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
+  const esZonaDeInicioMov = ZONAS_DE_INICIO.has(zona.slug ?? '');
   // B30 (pruebas 2026-09-28): dos grupos de la misma especie deambulando acababan en la MISMA celda
   // (un pin tapaba al otro). Celdas ocupadas en este paso — el tramo de cada callback hasta su
   // primer `await` es síncrono y en orden, así que reservar aquí no tiene carreras.
@@ -709,6 +711,9 @@ export async function avanzarZonePointsUnPaso(
     puntos.map(async (punto) => {
       const actual = celdaDePixel({ x: punto.x, y: punto.y });
       const npc = npcsPorSlug.get(punto.targetSlug) ?? null;
+      // P269/P329 (revisión de e0b760d): un NPC único convaleciente no actúa ni se mueve (REVIEW.md
+      // «Muertos y caídos»): ni persigue ni patrulla; se queda en su sitio hasta recuperarse.
+      if (npc && convalecientesIds.has(npc.id)) return null;
 
       // Persecución (2026-09-17) — "cualquier enemigo en la zona" en el diseño de Álvaro; hoy el
       // único enemigo real detectable en Zona es el propio jugador (no hay Companions rivales ni
@@ -718,7 +723,7 @@ export async function avanzarZonePointsUnPaso(
       const esAgresivoEfectivo = npc ? ['AGRESIVO', 'ENEMIGO'].includes(effectiveTemperamento(npc.temperamento, npc.faction, factionsStatus ?? {})) : false;
       // P88: en la zona de inicio la fauna hostil defiende su guarida, no persigue.
       const faunaHostil = esAgresivoEfectivo && punto.tipo === 'FAUNA';
-      const persigue = esAgresivoEfectivo && !(npc && convalecientesIds.has(npc.id)) && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
+      const persigue = esAgresivoEfectivo && !(esZonaDeInicioMov && punto.tipo === 'FAUNA') && !(faunaHostil && celdaJugador && enRadioSeguro(celdaJugador, entradas));
       // P116: desde fuera, la fauna hostil no pisa el radio seguro de una entrada (espera este paso).
       const noPuedeEntrar = (celda: Celda) => muros.has(claveCelda(celda)) || (faunaHostil && enRadioSeguro(celda, entradas) && !enRadioSeguro(actual, entradas));
       const objetivoPersecucion = persigue && celdaJugador && enRangoDePersecucion(actual, celdaJugador) ? celdaJugador : null;

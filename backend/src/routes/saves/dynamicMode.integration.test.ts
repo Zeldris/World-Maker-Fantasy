@@ -811,6 +811,34 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(logEntry?.text).toContain('Agresor de Prueba (dynamicMode)');
     });
 
+    // P116: la huida de «te corta el paso» usa la misma regla que las de session.ts — la entrada
+    // guardada fuera del radio seguro se cambia por la entrada más cercana, y la oferta forzada se
+    // quita. La zona de prueba no tiene coordenadas: con un vecino, su única salida es la puerta de
+    // abajo, (400,550), celda (8,11).
+    it('quienInicia: "jugador" — "Huir" con la entrada fuera del radio seguro vuelve a la entrada más cercana y quita la oferta', async () => {
+      const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+      const vecina = await prisma.location.create({ data: { worldId: world.id, slug: 'test-dynamicmode-huida-vecina', name: 'Vecina huida', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: [] } });
+      const link = await prisma.locationLink.create({ data: { fromId: locationId, toId: vecina.id, minutosBase: 10, terreno: 'llano' } });
+      try {
+        const oferta = { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'jugador', combateForzado: true };
+        await prisma.save.update({
+          where: { id: saveId },
+          data: { pendingCombatNpcSlugs: [], pendingDynamicModeOffer: oferta, zonaPosX: 40, zonaPosY: 60, zonaPosEntradaX: 400, zonaPosEntradaY: 300 }, // celda (8,6), a 5 de la puerta
+        });
+        const app = await buildApp();
+        await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/interactuar`, payload: oferta });
+        const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Huir' } });
+        expect(res.statusCode).toBe(200);
+
+        const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+        expect(saveAfter.pendingDynamicModeOffer).toBeNull();
+        expect({ col: Math.floor(saveAfter.zonaPosX! / 50), row: Math.floor(saveAfter.zonaPosY! / 50) }).toEqual({ col: 8, row: 11 });
+      } finally {
+        await prisma.locationLink.delete({ where: { id: link.id } });
+        await prisma.location.delete({ where: { id: vecina.id } });
+      }
+    });
+
     // Bug real jugando en vivo (2026-09-20, verificación en vivo tras implementar combateForzado:
     // "Ese encuentro ya no está disponible aquí" al pulsar Combatir) — el body de `/interactuar` y
     // `/responder` recibe el `targetName` que ya vio el frontend, que para un NPC de nombre propio

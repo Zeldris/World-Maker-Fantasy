@@ -1020,8 +1020,9 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(puntoAfter.y).toBe(75);
   });
 
-  // Revisión de P269/P329: un agresivo único convaleciente (derrotado y perdonado) no persigue en el mapa.
-  it('persecución: un NPC único AGRESIVO convaleciente no persigue (sigue su ruta); sano otra vez, sí', async () => {
+  // Revisión de P269/P329: un agresivo único convaleciente (derrotado y perdonado) no persigue ni patrulla:
+  // REVIEW.md «Muertos y caídos», un convaleciente no actúa ni se mueve.
+  it('persecución: un NPC único AGRESIVO convaleciente se queda en su sitio (ni persigue ni sigue su ruta); sano otra vez, persigue', async () => {
     const punto = await prisma.zonePoint.create({
       data: {
         locationId, saveId, x: 125, y: 25, origenX: 125, origenY: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true,
@@ -1031,9 +1032,9 @@ describe('POST /saves/:id/zona/mover', () => {
     await prisma.npcState.create({ data: { saveId, npcId: principalNpcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
     const app = await buildApp();
     await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 375 } } });
-    const sigueRuta = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
-    expect(sigueRuta.x).toBe(475); // su ruta, no hacia el jugador (que daría 75,75)
-    expect(sigueRuta.y).toBe(25);
+    const quieto = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    // Ni hacia el jugador (75,75) ni por su ruta (475,25): en su sitio, sin avanzar la ruta.
+    expect({ x: quieto.x, y: quieto.y, pasoRuta: quieto.pasoRuta }).toEqual({ x: 125, y: 25, pasoRuta: 0 });
 
     await prisma.npcState.updateMany({ where: { saveId, npcId: principalNpcId }, data: { condicionFisica: 'ILESO' } });
     await prisma.zonePoint.update({ where: { id: punto.id }, data: { x: 125, y: 25, pasoRuta: 0 } });
@@ -1042,6 +1043,58 @@ describe('POST /saves/:id/zona/mover', () => {
     const persigue = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
     expect(persigue.x).toBe(75);
     expect(persigue.y).toBe(75);
+  });
+
+  // Revisión de P269/P329: GET /zona sacaba hostil a un PRINCIPAL convaleciente y el cliente le pintaba radio de
+  // amenaza y «¡te persigue!» (ZonaPanel, riesgoDeRuta), aunque ya no persigue ni corta el paso.
+  it('GET /zona: un NPC único AGRESIVO convaleciente no sale hostil; sano otra vez, sí', async () => {
+    await prisma.zonePoint.create({
+      data: { locationId, saveId, x: 475, y: 475, origenX: 475, origenY: 475, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true },
+    });
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'test-mover-principal', fase: 'DESCUBIERTO' } });
+    await prisma.npcState.create({ data: { saveId, npcId: principalNpcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+    try {
+      const app = await buildApp();
+      const puntoDe = async () => {
+        const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/zona` });
+        expect(res.statusCode).toBe(200);
+        return (res.json().puntos as { targetSlug: string; hostil: boolean; descubierto: boolean }[]).find((p) => p.targetSlug === 'test-mover-principal');
+      };
+      expect(await puntoDe()).toMatchObject({ descubierto: true, hostil: false });
+      await prisma.npcState.updateMany({ where: { saveId, npcId: principalNpcId }, data: { condicionFisica: 'ILESO' } });
+      expect(await puntoDe()).toMatchObject({ descubierto: true, hostil: true });
+    } finally {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entitySlug: 'test-mover-principal' } });
+    }
+  });
+
+  // Revisión de P269/P329 (leve): los Npc se buscaban por slug sin mundo; uno de otro mundo con el mismo slug
+  // podía quedarse con el punto y su id no tiene el NpcState del convaleciente.
+  it('persecución: un NPC de otro mundo con el mismo slug no tapa al convaleciente de esta partida', async () => {
+    const otroMundo = await prisma.world.create({
+      data: { slug: 'test-mover-otro-mundo', name: 'Otro mundo', tagline: 'x', synopsis: 'x', tone: 'x', lethality: 'MEDIA', theme: {} },
+    });
+    try {
+      await prisma.npc.create({
+        data: {
+          worldId: otroMundo.id, kind: 'PRINCIPAL', slug: 'test-mover-principal', name: 'Gemelo de otro mundo', aliases: [], role: 'x', level: 1,
+          attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 }, bio: 'x', personality: 'x', homeLocationSlug: null, temperamento: 'CAUTELOSO',
+        },
+      });
+      const punto = await prisma.zonePoint.create({
+        data: {
+          locationId, saveId, x: 125, y: 25, origenX: 125, origenY: 25, tipo: 'NPC', targetSlug: 'test-mover-principal', cantidad: 1, activo: true,
+          ruta: [{ x: 125, y: 25 }, { x: 475, y: 25 }],
+        },
+      });
+      await prisma.npcState.create({ data: { saveId, npcId: principalNpcId, scope: '', condicionFisica: 'CONVALECIENTE' } });
+      const app = await buildApp();
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 375 } } });
+      const quieto = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+      expect({ x: quieto.x, y: quieto.y }).toEqual({ x: 125, y: 25 });
+    } finally {
+      await prisma.world.delete({ where: { id: otroMundo.id } });
+    }
   });
 
   it('persecución (2026-09-17): fuera del radio de 2 celdas, el AGRESIVO sigue su ruta normal, ignora al jugador', async () => {
