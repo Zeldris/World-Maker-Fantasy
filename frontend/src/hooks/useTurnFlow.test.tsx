@@ -260,7 +260,7 @@ describe('handleSubmit — turno normal exitoso', () => {
     const entrada = { id: 'k1', channel: 'world', text: 'Gorhorn termina de construir Ayuntamiento.', timeLabel: 'Día 1', createdAt: '2026-10-25T00:00:00Z' } as LogEntry
     const ayuntamiento = { id: 'b1', recipeKey: 'ayuntamiento', tier: 1, name: 'Ayuntamiento', kind: 'x', status: 'ACTIVO', description: '' } as BuildingInfo
     const setKingdomLog = vi.fn()
-    mockGetSave.mockResolvedValue({ kingdomLog: [entrada] })
+    mockGetSave.mockResolvedValue({ kingdomLog: [entrada] } as never)
     mockClassify.mockResolvedValue(baseClassifyResponse())
     mockNarrate.mockResolvedValueOnce(baseNarrateResponse({ buildings: [ayuntamiento] }))
     const { result } = renderHook(() => useHarness('Día 1, mañana', undefined, false, { buildings: [], setKingdomLog }))
