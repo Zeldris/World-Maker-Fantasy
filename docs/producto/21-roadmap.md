@@ -278,8 +278,8 @@ en CI, y la latencia está medida. Se etiqueta `v0.1.0-alpha`.
 **Roadmaps temáticos en este hito:** Cronista fase 8; mapa de zona Z-F; Reino R-F; resto de modales y UX-E. Ver [Mapa de roadmaps](#qué-entra-en-cada-hito).
 
 
-- Oficios de la Ciénaga (`carpintero-orcos-cienaga`, `cocinero-orcos-cienaga`, resinero) y los
-  Maestros Goshg, para que sus talleres del lore sean edificios. **[A]**
+- Los Maestros Goshg (los oficios de la Ciénaga ya existen) y un oficio de resina, para que sus
+  talleres del lore sean edificios. **[A]**
 - Edificios de facción Goshg en `campamento-goshg-interior`. **[H]**
 - Zonas, fauna y recorrido de la región. **[A]**
 

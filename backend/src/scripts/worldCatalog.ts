@@ -9887,6 +9887,23 @@ export const harvestYields: HarvestYieldInput[] = [
     cantidad: 1,
     condicion: 'objeto especial, muy baja probabilidad de loot — solo machos, tienen cola',
   },
+  // QA-240: el canon del Ferike también da hueso y carne; misma cantidad que el Rondador de Brasas.
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'hueso-ligero',
+    cantidad: 3,
+    condicion: 'Lado de la selva, Llanuras del Viento Rojo',
+  },
+  {
+    sourceSlug: 'ferike',
+    sourceCategory: 'fauna',
+    metodoObtencion: 'CAZA',
+    itemSlug: 'racion-carne',
+    cantidad: 3,
+    condicion: 'Lado de la selva, Llanuras del Viento Rojo',
+  },
 
   // --- Boungo (El Osario de la Manada) ---
 

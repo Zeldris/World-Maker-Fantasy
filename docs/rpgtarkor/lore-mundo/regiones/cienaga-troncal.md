@@ -44,9 +44,9 @@ los mejores trabajando la madera de los tres clanes, y sus talleres lo reflejan:
 - **Talla de tótems**: sin techo, junto al salón. De aquí salen los tótems de madera de ciénaga que
   los demás clanes compran o piden.
 
-En el código, los Goshg solo tienen un oficio (primeros auxilios), así que el único edificio de oficio
-que les corresponde hoy es la **Casa de curas**. Para que los talleres de arriba sean edificios de
-verdad hacen falta oficios nuevos: carpintero y cocinero de la Ciénaga, y un resinero (ver
+En el código existen los oficios de la Ciénaga (carpintero y cocinero incluidos), pero ningún Maestro
+Goshg los enseña, y cada edificio de oficio necesita el suyo: los talleres de arriba y la **Casa de
+curas** esperan a los Maestros Goshg (hito `0.5`). Falta además un oficio de resina (ver
 [edificios-de-oficio.md](../../sistemas-reino/edificios-de-oficio.md) § 6).
 
 ### Jeyselt (Fin Susurrado)
@@ -206,6 +206,7 @@ Tragalodo.
 - 2026-10-25 (QA-240): la fauna, la flora y las descripciones de los lugares ya están en el juego; se
   quitan las marcas «pendiente de código». Jeyselt: *Jeyselt* es el nombre del poblado en su lengua y *Fin
   Susurrado* el de lengua común (antes se leía al revés).
+- 2026-10-25 (`QA-240`): los oficios de la Ciénaga ya existen; a los talleres Goshg les faltan los Maestros.
 
 ---
 

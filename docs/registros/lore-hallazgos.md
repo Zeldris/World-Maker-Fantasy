@@ -698,3 +698,9 @@ estaba alrededor:
 - `meseta-del-orden.md`: fuera cuatro «pendiente de código» y el hueco de Los del Obelisco. `cristal-helado.md`:
   el Escarchín es la única pesca de la región (lo decía el juego). `canon-opencode/catalogo/fauna.md`: la tabla
   «Solo en el lore» pasa a «En el catálogo del juego (fuera de las Llanuras)».
+
+**Leves del bloque 4** (sí de la usuaria):
+- Ferike: hueso ligero y carne, 3 de cada uno, como decía el canon.
+- Edificios Goshg: los oficios de la Ciénaga existen, pero no hay ningún Maestro Goshg; el canon
+  (`cienaga-troncal.md`, `edificios-de-oficio.md`) decía «solo primeros auxilios». Queda en el hito `0.5`.
+- Tablones de Keseg Sael y de los Goirntes: no tienen interior donde colgarlos. Quedan en el hito `0.6`.
