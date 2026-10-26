@@ -170,3 +170,12 @@ plantilla: «fotorreal» (lo de ChatGPT es *concept art* fotorrealista, de pelí
   naranja pero el suelo y el animal quedan neutros, más limpio y de render. Palancas: «three times as long as a fox»
   y «the crest runs from the nape to the tail tip» en la ficha; «the pack are more of the same creature» en la pose;
   bruma roja y contraluz en la luz del atardecer.
+- **Cuernahoja** (49 min, `r12-fotorreal-cuernahoja-fotorreal/intentos/banner-s3-p16-20261026-161849.png`): de
+  «no se parece en nada» a reconocible. Cuernos de hoja nervados, pelaje óxido y crema, patas de tres dedos con garra,
+  desierto rojo con mesas a los lados, polvo y cielo azul: todo está. Falta: (1) el **cuello**, corto como de vicuña;
+  el de ChatGPT es de jirafa, tan largo como las patas; (2) de **frente** y simétrico, casi de dibujo, frente a los
+  tres cuartos de ChatGPT; (3) los **cuernos** salen curvados como de carnero; en ChatGPT son dos hojas planas hacia
+  los lados; (4) la **manada** son ciervos sin cuernos de hoja: el mismo fallo que la manada del aullador. Ficha
+  retocada: ancla «a slim giraffe with the head of a small deer», cuello «giraffe-long», cuernos «stick straight out
+  sideways», pose en tres cuartos y «more of the same leaf-horned grazers». **Lección común**: el modelo no repite la
+  especie en el fondo; la cadena de planos lo resuelve copiando el sujeto (r13).
