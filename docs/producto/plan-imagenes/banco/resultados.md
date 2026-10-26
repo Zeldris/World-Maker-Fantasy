@@ -120,3 +120,17 @@ ancho con mucho paisaje, suelo con textura fina, cielo cubierto y dramático en 
 el modelo de 4B no da a este tamaño. Queda `-r` como palanca de paleta (casi el doble de tiempo) y se prueba un
 modelo más grande en la CPU (FLUX.3 Klein).
 
+## r10 · FLUX.3 Image Klein en la CPU
+
+`flux3-image-klein-Q8_0` con `Qwen3VL-4B-Instruct-Q4_K_M` y `flux2-vae`, `--backend cpu` (sin el tope de 2 GB de la
+GPU, que no le deja arrancar), 1280x512, 16 pasos, cfg 1, semilla 3, el prompt `aullador-guia` de r8
+(`generated/banco/r10-flux3-cpu`). Arranca y acaba (2026-10-26): **62 min** (muestreo 3340 s, ~209 s por paso; VAE
+en la CPU 376 s), con ~6 GB libres como mínimo.
+
+**Leída, al lado del klein de r8:** el salto de calidad más grande del banco. Pelo, hierba y suelo con textura fina,
+la manada con profundidad real, colmillos curvos del canon, cielo con nubes y polvo con volumen; klein, al lado,
+parece plástico. Es lo más cerca de ChatGPT en detalle, no en composición (sujeto centrado y sol en el horizonte), y
+el aullador sale escuálido y con el rojo del pelo como mojado. Sirve para tandas de noche (unas 8 por noche), no para
+probar en el momento. Palancas sin probar: VAE en la GPU (`--backend diffusion=cpu`, ~6 min menos), `-t 8` (hoy 4
+hilos) y menos pasos.
+
