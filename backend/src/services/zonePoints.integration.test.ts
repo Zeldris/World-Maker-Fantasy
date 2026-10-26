@@ -137,10 +137,24 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
         data: { locationId, saveId, x: 200, y: 200, tipo: 'NPC', targetSlug: npc.slug, cantidad: 1, activo: true },
       });
       npcZonePointId = npcZonePoint.id;
+      // QA-256 (P327): un PRINCIPAL sin descubrir sale con su nombre visible; estos tests miran el nombre real.
+      await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: npc.slug } });
     });
 
     afterAll(async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
       await prisma.zonePoint.delete({ where: { id: npcZonePointId } });
+    });
+
+    it('un PRINCIPAL sin descubrir sale con su nombre visible, no con el real (QA-256, P327)', async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      try {
+        const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+        expect(resumen?.npc).not.toContain('Gistera');
+        expect(resumen?.npc).toMatch(/desconocid/i);
+      } finally {
+        await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      }
     });
 
     // Revisión de P269/P329 (leve): el nombre sale del mundo de la partida, no de otro con el mismo slug.

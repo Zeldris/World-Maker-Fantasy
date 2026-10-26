@@ -324,7 +324,7 @@ async function resolveClassificationForTurn(params: {
           requiereTirada: true,
           atributo: (selectedAbility?.preferredAttribute as ClassificationResult['atributo']) ?? tabulatedAttackAttribute(action),
           dificultad,
-          razon: `Ataque directo o intención hostil declarada contra ${tabulatedTarget.name} — clasificado por tabla, sin llamada a Ollama.`,
+          razon: `Ataque directo o intención hostil declarada contra ${tabulatedTarget.nombreVisible ?? tabulatedTarget.name} — clasificado por tabla, sin llamada a Ollama.`,
           banda: 'instantanea',
           duracionEstimadaMinutos: 0,
         };

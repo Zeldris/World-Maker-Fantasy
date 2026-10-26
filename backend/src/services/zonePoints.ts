@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient, type ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
+import { nombresVisiblesDeNpcs } from './dynamicMode.js';
 import { sourceDisplayNameFor, faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { factionRepFor, FACTION_REP_HOSTIL } from './reputation.js';
 import {
@@ -828,8 +829,9 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
   // a secas: uno de otro mundo con el mismo slug le ponía su nombre al punto.
   // El turno ya sabe el mundo y lo pasa (sin consulta extra); sin él, se lee de la partida.
   const worldId = worldIdConocido ?? (npcSlugs.length ? (await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } }))?.worldId : undefined);
-  const npcRows = npcSlugs.length && worldId ? await prisma.npc.findMany({ where: { worldId, ...npcDeLaPartida(saveId), slug: { in: npcSlugs } }, select: { slug: true, name: true } }) : [];
-  const npcNameBySlug = new Map(npcRows.map((n) => [n.slug, n.name]));
+  const npcRows = npcSlugs.length && worldId ? await prisma.npc.findMany({ where: { worldId, ...npcDeLaPartida(saveId), slug: { in: npcSlugs } }, select: { slug: true, name: true, kind: true, raza: true, genero: true } }) : [];
+  // QA-256 (P327): al narrador se le dice «Orco desconocido», no el nombre de un PRINCIPAL que Gorhorn aún no conoce.
+  const npcNameBySlug = await nombresVisiblesDeNpcs(prisma, saveId, npcRows);
 
   const nombreDe = (p: (typeof puntos)[number]): string => {
     // EDIFICIO no resuelve contra `Npc` — no tiene fila propia ahí (gobernado por
