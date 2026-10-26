@@ -39,6 +39,18 @@ class MarcaHallazgo(unittest.TestCase):
         self.assertEqual(self.marcar('P1', ' pendiente ', '✅ hecho').returncode, 0)
         self.assertIn('| P1 | Uno | ✅ hecho |', self.leer())
 
+    def test_texto_viejo_de_solo_espacios_falla_sin_tocar_nada(self):
+        r = self.marcar('P1', '  ', '✅ ')
+        self.assertIn('texto viejo de P1 está vacío', r.stderr)
+        self.assertEqual(self.leer(), REGISTRO)
+
+    def test_sin_coincidencia_en_fila_larga_muestra_el_final(self):
+        largo = 'viejo ' * 60 + 'Reabierto 2026-10-26: falta X'
+        self.assertEqual(self.marcar('P1', 'pendiente', largo).returncode, 0)
+        r = self.marcar('P1', 'no está', 'x')
+        self.assertIn('…', r.stderr)
+        self.assertIn('Reabierto 2026-10-26: falta X', r.stderr)
+
     def test_sin_coincidencia_muestra_el_estado_actual(self):
         r = self.marcar('P2', 'no está', 'x')
         self.assertIn('0 filas de P2', r.stderr)
