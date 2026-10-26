@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
-import { PUERTA_INTERIOR, enFila, posicionPuertaAInterior } from './puertasInterior.js';
+import { PUERTA_INTERIOR, celdaLibreCercana, celdasFijasOcupadas, enFila, posicionPuertaAInterior } from './puertasInterior.js';
 import { celdaDePixel, pixelDeCelda, posicionesDeSalidas, type Celda } from './zonaPosicion.js';
 
 type Db = Prisma.TransactionClient | PrismaClient;
@@ -26,7 +26,13 @@ export async function posicionesDeSalidasDeZona(
   const interiores = esInterior ? conectadas : conectadas.filter((c) => c.kind === 'interior' && (c.x == null || c.y == null));
   if (interiores.length > 0) {
     const base = esInterior ? PUERTA_INTERIOR : await posicionPuertaAInterior(db, saveId, location.id);
-    interiores.forEach((destino, indice) => posiciones.set(destino.id, enFila(base, interiores.length, indice)));
+    // P211: la puerta de fuera no cae en la casilla de un recurso ni de un edificio (con varias puertas,
+    // la de cada una de la fila; la base de una sola ya viene libre de `posicionPuertaAInterior`).
+    const ocupadas = esInterior || interiores.length < 2 ? null : await celdasFijasOcupadas(db, saveId, location.id);
+    interiores.forEach((destino, indice) => {
+      const puerta = enFila(base, interiores.length, indice);
+      posiciones.set(destino.id, ocupadas ? celdaLibreCercana(puerta, ocupadas) : puerta);
+    });
   }
   if (!esInterior) {
     const conCoordenadas = conectadas.filter((d): d is DestinoDeSalida & { x: number; y: number } => d.x != null && d.y != null);
