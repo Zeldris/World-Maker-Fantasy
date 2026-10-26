@@ -154,6 +154,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-26** — ~~`QA-257`, `QA-258`~~ (retro de los arreglos de la puerta): tandas de arreglos de 5 hallazgos y ~90 llamadas con la revisión con Opus cada dos (`AGENTS.md` § `orchestrate-dealer`) y `marca-hallazgo.py` que quita los espacios del borde y enseña el estado actual al fallar. `QA-256` sigue en curso.
 - **2026-10-25** — ~~`QA-252`…`QA-255`~~ (retro de `claude/plan-imagenes`): ganchos de `.githooks/` en worktrees, `host.sh` con cambios sin commit (`git stash create`), `test_pipefail.py` y `banco.sh` que avisa al esperar memoria.
 - **2026-10-25** — ~~`QA-249`…`QA-251`~~ (opt-tokens de `claude/plan-imagenes`): `docs/producto/plan-imagenes/hoja.sh` (hojas de contactos del banco), `recuperar.py --estado` con la fila de cada worktree y `model` explícito en cada subagente.
 - **2026-10-25** — ~~`QA-245`…`QA-248`~~ (retro del lore de la enciclopedia): `tools/qa/ficha.sh <slug>`, `cobertura.py --libre` y aviso de identificador abierto también en `main`, auditorías de lore en tandas pequeñas (`ampliar-lore.md` § 0.5) y sección «Enciclopedia y lore» en `docs/mapa-agente.md`.
@@ -163,4 +164,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-25** — ~~`QA-228`…`QA-233`~~ (retro de `claude/interfaz-imagenes`): test de que la lista de imágenes cubre toda la unión `ImagePromptEntityType`, la interfaz en el mapa del agente, `image-generator/interfaz/resumen.py` (lista y trabajo en texto), la fase antes de `main` en la fila de la bitácora, `bitacora.py check` en `commit-msg` y `selector` para cada subagente.
 - **2026-10-24** — ~~`CFG-43`~~: interfaz local del generador de imágenes (`image-generator/abrir.sh`, `interfaz/servidor.py` sin dependencias): pegar o traer el prompt usado o base, generar con `probar.sh` (`PROMPT_ARCHIVO`, `LIBERAR_OLLAMA=1`), progreso del muestreo, notas por imagen y «Elegir esta» a `generated/<tipo>/<slug>/<slug>-<perfil>.png`; la lista trae toda la enciclopedia.
 - **2026-10-24** — ~~`QA-227`~~: `tools/qa/host.sh` rehace el worktree del pre-push en `logs/` de la copia principal y no en `.git/` (Vite 8 niega `**/.git/**` y vitest no encontraba su setupFiles).
-- **2026-10-24** — ~~`QA-222`…`QA-226`~~ (retro de `claude/imagenes-local`): sección «Imágenes» en `docs/mapa-agente.md`, análisis de `CFG-42` en un subagente, `tools/qa/backend-dev.sh` (reinicia el backend de desarrollo y espera a `/health`), `sql.sh` contra `tarkor` en el mapa y `generar.sh` avisando de que el tercer argumento es una ruta.
