@@ -2170,11 +2170,12 @@ export type ConfirmarCazaResultado =
 /// regional como el viejo botón suelto "Cazar" (`confirmarCaza`, que la Fase 4 retira). Misma forma
 /// de respuesta que `confirmarCaza` — el llamador reutiliza el mismo tratamiento de resultado
 /// (`handleHuntResolved`, GameView.tsx).
-export async function cazarEnZona(saveId: string, zonePointId: string): Promise<ConfirmarCazaResultado> {
+/// P307: la fauna de la escena sin punto en el mapa se caza por `targetSlug` (el backend crea el punto al momento).
+export async function cazarEnZona(saveId: string, zonePointId: string | undefined, targetSlug?: string): Promise<ConfirmarCazaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/cazar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ zonePointId }),
+    body: JSON.stringify(zonePointId ? { zonePointId } : { targetSlug }),
   })
 }
 

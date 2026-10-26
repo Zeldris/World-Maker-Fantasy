@@ -33,7 +33,7 @@ export interface ManejadoresOferta {
   /// P141: «a quién» ya en frase, de la oferta (`aQuien`, backend).
   onResponderEscribiendo?: (aQuien: string) => void
   onVerRecursoDetalle?: (entryId: string, targetSlug: string, targetName: string, metodo?: MetodoObtencion | null) => void
-  onCazarEnZona?: (entryId: string, zonePointId: string) => void
+  onCazarEnZona?: (entryId: string, zonePointId: string | undefined, targetSlug?: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
 }
 
@@ -129,10 +129,11 @@ export function presentacionOferta(entryId: string, offer: OfertaModoDinamico, h
       ...(offer.tipo === 'NPC' && h.onResponderEscribiendo
         ? [{ label: '✍️ Responder', tone: 'accent' as const, disabled: offer.busy, onClick: () => h.onResponderEscribiendo!(offer.aQuien ?? `a ${offer.targetName}`) }]
         : []),
-      // Cazar desde la tarjeta (Fase 2, 2026-09-28) — solo FAUNA no forzada con el `zonePointId` real
-      // del grupo con el que se ha chocado.
-      ...(offer.tipo === 'FAUNA' && offer.zonePointId && !offer.combateForzado
-        ? [{ label: offer.busy ? 'Cazando...' : 'Cazar', tone: 'primary' as const, disabled: offer.busy, onClick: () => h.onCazarEnZona?.(entryId, offer.zonePointId!) }]
+      // Cazar desde la tarjeta (Fase 2, 2026-09-28) — solo FAUNA no forzada: con el `zonePointId` real del
+      // grupo con el que se ha chocado, o (P307) sin él, la fauna de la escena, por `targetSlug`: el
+      // backend crea el punto en la zona al elegirlo.
+      ...(offer.tipo === 'FAUNA' && !offer.combateForzado
+        ? [{ label: offer.busy ? 'Cazando...' : 'Cazar', tone: 'primary' as const, disabled: offer.busy, onClick: () => h.onCazarEnZona?.(entryId, offer.zonePointId, offer.zonePointId ? undefined : offer.targetSlug) }]
         : []),
       ...(offer.combateForzado ? [] : [{ label: 'Ignorar', tone: 'neutral' as const, disabled: offer.busy, onClick: () => h.onDismissDynamicModeOffer?.(entryId) }]),
     ],

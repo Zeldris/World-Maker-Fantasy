@@ -71,10 +71,10 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
   }
 
   /// Devuelve si la caza salió (para que el mapa de zona se cierre y deje ver Combatir/Huir, P9).
-  async function handleCazarEnZona(entryId: string, zonePointId: string): Promise<boolean> {
+  async function handleCazarEnZona(entryId: string, zonePointId: string | undefined, targetSlug?: string): Promise<boolean> {
     setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true, error: undefined } } : e)))
     try {
-      const result = await cazarEnZona(saveId!, zonePointId)
+      const result = await cazarEnZona(saveId!, zonePointId, targetSlug)
       setCharacterLog((prev) => prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: undefined } : e)))
       handleHuntResolved(result)
       return true

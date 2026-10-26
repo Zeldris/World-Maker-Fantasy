@@ -165,6 +165,68 @@ describe('POST /saves/:id/zona/cazar', () => {
     expect(res.statusCode).toBe(409);
   });
 
+  // P307 (usuaria, 2026-10-26): la fauna de la escena (tarjeta sin punto en el mapa, como el Corredor de
+  // Cauce de Hogar Ketg) se caza por `targetSlug`: el punto se crea al momento y la caza es la normal.
+  describe('P307 — Cazar la fauna de la escena sin punto de zona', () => {
+    it('crea el punto de fauna en la zona de Gorhorn, abre la caza normal y limpia la oferta', async () => {
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba' } },
+      });
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-debil' } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.resuelveSinCombate).toBe(true);
+      expect(body.exito).toBe(true);
+      expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', exito: true, npcName: 'Bestia Débil de Prueba' });
+      expect((await prisma.npcState.findFirst({ where: { saveId, npcId: debilNpcId } }))?.condicionFisica).toBe('MUERTO');
+      // El punto se creó, se descontó y (sin etiqueta de ancla) se retiró del todo.
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId, targetSlug: 'test-cazar-debil', cantidad: { gt: 0 }, activo: true } })).toBe(0);
+      expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingDynamicModeOffer).toBeNull();
+    });
+
+    it('con un grupo de esa especie ya en la zona, caza ese (el más cercano) y no crea otro', async () => {
+      const cerca = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 410, y: 310, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 2, activo: true, lastUpdatedAtMinutes: 480 },
+      });
+      await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 40, y: 40, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 3, activo: true, lastUpdatedAtMinutes: 480 },
+      });
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', targetName: 'Bestia Fuerte de Prueba' } },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
+      expect(res.statusCode).toBe(200);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(1);
+      expect(await prisma.zonePoint.findUnique({ where: { id: cerca.id } })).toBeNull();
+    });
+
+    it('rechaza con 409 un targetSlug que no es el de la oferta pendiente o una oferta que ya trae punto', async () => {
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba' } },
+      });
+      const app = await buildApp();
+      const otra = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
+      expect(otra.statusCode).toBe(409);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
+
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'x', zonePointId: 'otro', cantidad: 1 } },
+      });
+      const conPunto = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-debil' } });
+      expect(conPunto.statusCode).toBe(409);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
+    });
+  });
+
   it('punto de 1 presa débil, tirada de caza limpia forzada a éxito: mata sin combate y el ZonePoint se descuenta (ancla a 0 → activo:false)', async () => {
     const punto = await prisma.zonePoint.create({
       data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia Débil de Prueba', lastUpdatedAtMinutes: 480 },

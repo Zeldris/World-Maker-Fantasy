@@ -872,3 +872,41 @@ export function faccionMasComun(facciones: string[]): string | null {
   for (const [f, n] of cuenta) if (mejor === null || n > cuenta.get(mejor)!) mejor = f;
   return mejor;
 }
+
+/// P307: «Cazar» en la fauna de la escena (una tarjeta de Interactuar sin punto en el mapa, p. ej. el
+/// Corredor de Cauce de Hogar Ketg). Si la zona ya tiene un punto vivo de esa especie, se caza ese
+/// (el más cercano a Gorhorn); si no, se crea uno de un individuo en la celda de Gorhorn en este
+/// momento, para que la caza normal (riesgo, botín, descuento del punto) tenga a qué apuntar.
+export async function puntoDeFaunaDeEscena(
+  db: Pick<PrismaClient, 'zonePoint'>,
+  save: { id: string; currentLocationId: string | null; zonaPosX: number | null; zonaPosY: number | null; worldState?: { fictionalMinutes: number } | null },
+  targetSlug: string,
+) {
+  if (!save.currentLocationId) return null;
+  const existentes = await db.zonePoint.findMany({
+    where: { saveId: save.id, locationId: save.currentLocationId, tipo: 'FAUNA', targetSlug, activo: true, cantidad: { gt: 0 } },
+  });
+  const cx = save.zonaPosX ?? LIENZO_CENTRO.x;
+  const cy = save.zonaPosY ?? LIENZO_CENTRO.y;
+  if (existentes.length > 0) {
+    return [...existentes].sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]!;
+  }
+  const pixel = pixelDeCelda(celdaDePixel({ x: cx, y: cy }));
+  return db.zonePoint.create({
+    data: {
+      saveId: save.id,
+      locationId: save.currentLocationId,
+      tipo: 'FAUNA',
+      targetSlug,
+      x: pixel.x,
+      y: pixel.y,
+      origenX: pixel.x,
+      origenY: pixel.y,
+      cantidad: 1,
+      activo: true,
+      lastUpdatedAtMinutes: save.worldState?.fictionalMinutes ?? null,
+    },
+  });
+}
+
+const LIENZO_CENTRO = { x: 400, y: 300 };

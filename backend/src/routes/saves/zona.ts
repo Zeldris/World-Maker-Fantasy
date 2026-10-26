@@ -30,6 +30,7 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   zonePointNpcConvalecienteNoActua,
   questSlugsAceptadosPara,
   recalcularZonePointsDeLocation,
+  puntoDeFaunaDeEscena,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
 import { aNombre, conDefinido, conIndefinido, quienEnAviso, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
@@ -1499,9 +1500,11 @@ export async function zonaRoutes(app: FastifyInstance) {
   /// regional como el viejo botón suelto de `cazar.ts` (que la Fase 4 retira). Misma forma de
   /// respuesta que `POST /saves/:id/cazar/confirmar` — el frontend reutiliza el mismo tratamiento
   /// de resultado (`handleHuntResolved`, GameView.tsx).
-  app.post<{ Params: { id: string }; Body: { zonePointId: string } }>('/saves/:id/zona/cazar', async (request, reply) => {
-    const { zonePointId } = request.body;
-    if (!zonePointId) return reply.status(400).send({ error: 'Falta el campo: zonePointId' });
+  app.post<{ Params: { id: string }; Body: { zonePointId?: string; targetSlug?: string } }>('/saves/:id/zona/cazar', async (request, reply) => {
+    const { zonePointId, targetSlug } = request.body;
+    // P307: la fauna de la escena (una tarjeta sin punto en el mapa, p. ej. el Corredor de Cauce de
+    // Hogar Ketg) se caza por `targetSlug`: el punto se crea o se reutiliza al elegir «Cazar».
+    if (!zonePointId && !targetSlug) return reply.status(400).send({ error: 'Falta el campo: zonePointId' });
 
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -1522,12 +1525,15 @@ export async function zonaRoutes(app: FastifyInstance) {
     // pendiente sea EXACTAMENTE este `zonePointId` y de tipo FAUNA; cualquier otra cosa (sin
     // oferta, NPC/RECURSO, o un `zonePointId` distinto ya descartado) se rechaza con un mensaje
     // claro, nunca caza "por sorpresa" algo con lo que no se ha colisionado de verdad.
-    const oferta = save.pendingDynamicModeOffer as { tipo?: string; zonePointId?: string } | null;
-    if (!oferta || oferta.tipo !== 'FAUNA' || oferta.zonePointId !== zonePointId) {
+    const oferta = save.pendingDynamicModeOffer as { tipo?: string; zonePointId?: string; targetSlug?: string; combateForzado?: boolean } | null;
+    const esDeEscena = !zonePointId && !!oferta && !oferta.zonePointId && oferta.targetSlug === targetSlug;
+    if (!oferta || oferta.tipo !== 'FAUNA' || (esDeEscena && oferta.combateForzado) || (!esDeEscena && (!zonePointId || oferta.zonePointId !== zonePointId))) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }
 
-    const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
+    const puntoBruto = esDeEscena
+      ? await puntoDeFaunaDeEscena(prisma, save, targetSlug!)
+      : await prisma.zonePoint.findUnique({ where: { id: zonePointId! } });
     const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
     const npc = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
     // La oferta ya se resuelve aquí (igual que el resto de caminos de "Interactuar",

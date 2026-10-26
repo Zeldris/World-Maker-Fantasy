@@ -119,7 +119,7 @@ interface LogPanelProps {
   /// `plan-mecanicas-por-zona-2026-09-28.md`) — solo se ofrece para FAUNA no forzada con
   /// `zonePointId` (un grupo real con el que se ha colisionado en el mapa); caza ESE grupo exacto,
   /// nunca por sorteo de población regional como el viejo botón suelto "Cazar".
-  onCazarEnZona?: (entryId: string, zonePointId: string) => void
+  onCazarEnZona?: (entryId: string, zonePointId: string | undefined, targetSlug?: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
   /// Menú contextual de interacción con NPC (2026-09-06, `entry.npcInteractionOffer`) — mismo
   /// criterio opcional que `onInteractuarModoDinamico`, un solo callback para cualquier opción

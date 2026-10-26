@@ -183,6 +183,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - **Código:** `b/services/caza.ts#iniciarCaza`, `groupVarianceDiario`, `descontarZonePointCaza`; recolectar
   `b/routes/saves/recolectar.ts`; capturar y domar `b/routes/saves/companeros.ts` (`/capturar/:npcSlug`); ganado
   `b/routes/saves/ganado.ts` y `b/services/cronista/ganadoReino.ts`.
+  Cazar la fauna de la escena sin punto (P307): `zona/cazar` con `{ targetSlug }` → `b/services/zonePoints.ts#puntoDeFaunaDeEscena`.
 - **Tests:** `b/services/caza.integration.test.ts`, `cazaRiesgo.test.ts`, `partidasCaza.integration.test.ts`,
   `b/routes/saves/recolectar*.test.ts`, `zonaCazar.integration.test.ts`, `ganado*.integration.test.ts`.
 - **Datos:** `ZonePoint` (cantidad), `HarvestYield`, `Ganado`, `Companion`.
