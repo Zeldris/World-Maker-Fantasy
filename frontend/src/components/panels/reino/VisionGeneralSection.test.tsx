@@ -86,6 +86,19 @@ describe('VisionGeneralSection — modal de descansar (P305)', () => {
     await waitFor(() => expect(queryByText(/curándote hasta Herido/)).toBeNull())
   })
 
+  it('fase 1 hacia main: el modal no se abre con la carencia vieja; espera a la relectura del clic', async () => {
+    vi.mocked(getDescansarCampamentoDisponible)
+      .mockResolvedValueOnce({ disponible: true, carencia: null })
+      .mockResolvedValueOnce({ disponible: true, carencia: 'ambas' })
+    const r = render(
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[]} kingdomStats={null} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(await r.findByText(/Descansar en el campamento/, { selector: 'button' }))
+    expect(r.queryByText(/curándote hasta Herido/)).toBeNull()
+    expect(await r.findByText(/Sin comida ni bebida, el descanso no cura/)).toBeTruthy()
+    expect(r.queryByText(/curándote hasta Herido/)).toBeNull()
+  })
+
   it('solo con hambre o solo con sed lo dice con su causa', async () => {
     const a = await abrirModal('hambre')
     expect(await a.findByText(/Sin comida, el descanso no cura/)).toBeTruthy()

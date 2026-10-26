@@ -9338,6 +9338,19 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
     expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
   }, 30_000);
 
+  // Fase 1 hacia main: caso mixto. Se saluda a alguien no agresivo con un AGRESIVO en la escena: entra el agresivo, no
+  // el saludado (aunque el narrador proponga combate con él).
+  it('caso mixto: saludar a Torgash Ketg con el orco AGRESIVO en escena abre combate solo con el orco', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 mixto)');
+    const { classification, combateIniciado } = await saludar(
+      saveId,
+      "Saludo a 'Torgash Ketg' y le pregunto por el 'Orco enfurecido'.",
+      'torgash-ketg',
+    );
+    expect(classification.requiereTirada).toBe(false);
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
+
   it('con reputación neutra, saludar a Torgash Ketg (CAUTELOSO) no tira dados ni abre combate', async () => {
     const saveId = await partida('Gorhorn de prueba (P306 neutra cauteloso)', undefined, 'campamento-serhu');
     const { classification, roll, combateIniciado } = await saludar(

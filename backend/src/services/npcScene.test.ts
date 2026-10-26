@@ -1146,6 +1146,12 @@ describe('P327 — nombre visible de un NPC aún no descubierto', () => {
 });
 
 describe('detectsGreetingOrQuestion (P306)', () => {
+  it('fase 1 hacia main: «la mata de bayas» es el arbusto, no una amenaza; «te mato» sigue sin ser saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Hola! ¿Has visto la mata de bayas junto al río?')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le pregunto si esas matas dan fruto.')).toBe(true);
+    expect(detectsGreetingOrQuestion('¡Hola! Te mato si das un paso.')).toBe(false);
+  });
+
   it('un saludo o una pregunta cuentan como saludo', () => {
     expect(detectsGreetingOrQuestion('¡Hola! ¿Qué tal el camino?')).toBe(true);
     expect(detectsGreetingOrQuestion('Le pregunto por el paso del norte.')).toBe(true);

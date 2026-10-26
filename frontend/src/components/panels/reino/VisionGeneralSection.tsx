@@ -279,9 +279,12 @@ export function VisionGeneralSection({
       {descansarDisponible && (
         <button type="button"
           onClick={() => {
-            setConfirmandoDescanso(true)
-            // El hambre y la sed cambian con el reloj: se relee al abrir el modal para no avisar con un dato viejo.
-            getDescansarCampamentoDisponible(saveId).then((res) => setCarencia(res.carencia ?? null)).catch(() => {})
+            // El hambre y la sed cambian con el reloj: se relee antes de abrir el modal para no avisar con un dato
+            // viejo (fase 1 hacia main: abrirlo antes dejaba confirmar con el aviso anterior).
+            getDescansarCampamentoDisponible(saveId)
+              .then((res) => setCarencia(res.carencia ?? null))
+              .catch(() => {})
+              .finally(() => setConfirmandoDescanso(true))
           }}
           disabled={!!consulta}
           title={consulta ?? undefined}
