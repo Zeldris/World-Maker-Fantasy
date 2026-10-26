@@ -14,7 +14,7 @@
 //   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
 //   sin-aliados                     QA-262, P128: los compañeros del Grupo 1 pasan a otro grupo (`moverCompaneroDeGrupo`, la regla del arrastre del panel): un combate que se abra después solo lleva a la jugadora
-//   punto-retirado:<especie>[:<n>] QA-262, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0, como lo deja el Cronista (efectos `crearPuntoZona` y `retirarPuntoZona`)
+//   punto-retirado:<especie>[:<n>] QA-262, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0; estado sintético (el juego no lo produce hoy) para la defensa de `opcionesDePartida`, con los efectos `crearPuntoZona` y `retirarPuntoZona`
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.

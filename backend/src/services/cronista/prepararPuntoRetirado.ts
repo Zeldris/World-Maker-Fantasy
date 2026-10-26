@@ -1,7 +1,8 @@
 // QA-262 (2026-10-26): el paso `punto-retirado:<especie>[:<n>]` de `prepararReino.ts` (P313). Un punto de fauna RETIRADO con presas
-// (`activo` false y `cantidad` > 0) es lo que deja el Cronista cuando retira un punto del mapa (efecto `retirarPuntoZona`): Reino ›
-// Partidas no lo lista ni lo lanza (`opcionesDePartida`). Aquí se crea y se retira con los mismos efectos del Cronista
-// (`crearPuntoZona` y `retirarPuntoZona`, `aplicarEfecto`), no con un `update` a mano (QA-151).
+// (`activo` false y `cantidad` > 0) es un estado SINTÉTICO: el juego no lo produce hoy (el Cronista solo retira puntos de NPC y la
+// caza deja `cantidad` 0). Sirve para comprobar la defensa de `opcionesDePartida` (`partidasReino.ts`): Reino › Partidas no lo lista
+// ni lo lanza. Se crea y se retira con los efectos del juego (`crearPuntoZona` y `retirarPuntoZona`, `aplicarEfecto`), no con un
+// `update` a mano (QA-151). Se comprueba al cargar, sin avanzar: con ~4 h de juego en el lugar el recálculo de la zona lo cambia.
 import type { PrismaClient } from '@prisma/client';
 import { aplicarEfecto } from './efectos.js';
 import { FAUNA_AMBIENTAL } from '../../scripts/worldCatalog.js';
