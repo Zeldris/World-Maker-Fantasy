@@ -41,10 +41,14 @@ function resolveBannerUrl(target: EnciclopediaLinkTarget): string | null {
 /// P208 (usuaria, 2026-10-26): la ficha grande bajo la narración solo sale si el texto citado es el
 /// nombre de la entrada o un alias de más de una palabra. Un alias de una palabra («piedra», «leña»)
 /// sigue siendo un enlace subrayado en el texto, pero no abre una ficha: la palabra suelta es corriente
-/// en la prosa y no quiere decir que la escena trate de esa entrada.
+/// en la prosa y no quiere decir que la escena trate de esa entrada. Excepción (usuaria, 2026-10-26): el
+/// alias de un NPC, personaje o lugar es un nombre propio («Torgash», «ketg'sedsar») y sí abre la ficha.
+const TIPOS_DE_NOMBRE_PROPIO = new Set(['npc', 'personaje', 'location'])
+
 export function mencionAbreFicha(texto: string, target: EnciclopediaLinkTarget): boolean {
   const limpio = texto.trim().toLowerCase()
   if (limpio === target.name.trim().toLowerCase()) return true
+  if (TIPOS_DE_NOMBRE_PROPIO.has(target.entityType ?? '')) return true
   return limpio.split(/\s+/).length > 1
 }
 

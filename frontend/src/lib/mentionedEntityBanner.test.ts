@@ -90,6 +90,13 @@ describe('pickMentionedEntityBanner', () => {
     expect(pickMentionedEntityBanner('El MÚRGOL DEL CLAN bala.', index, new Set())?.target.entitySlug).toBe('murgol')
   })
 
+  it('P208: el alias de una palabra de un NPC es un nombre propio y sí abre la ficha', () => {
+    const npc = makeNpc({ slug: 'torgash-ketg', name: 'Torgash el Viejo', aliases: ['Torgash'], imageUrls: { thumbnail: null, banner: '/torgash.png' } })
+    const index = buildEnciclopediaIndex(emptyResponse({ npcs: [npc] }))
+
+    expect(pickMentionedEntityBanner('Torgash te saluda con la cabeza.', index, new Set())?.target.entitySlug).toBe('torgash-ketg')
+  })
+
   it('sin regex (índice vacío), devuelve null', () => {
     const match = pickMentionedEntityBanner('Cualquier texto.', { regex: null, entries: new Map(), bySlugKey: new Map() }, new Set())
     expect(match).toBeNull()
