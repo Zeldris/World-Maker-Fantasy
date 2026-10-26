@@ -36,7 +36,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - El reino de la jugadora es la `Faction` con `saveId` y `origenSlug: null`. Sus cifras están en `KingdomStats`
   (`comida`, `bebida`, `felicidad`…); «Almacén comida 60 · agua 60» en la interfaz es el **tope**, no lo guardado.
 - **Copias de partida** (`QA-257`): `mundoPartida.ts#clonarConCandado` copia por partida las facciones (`saveId` +
-  `origenSlug`) y la población (`saveId`); los territorios, edificios y almacén de una facción copia cuelgan de ella
+  `origenSlug`) y la población (`saveId`); los lugares creados jugando (interiores) llevan `saveId` (`QA-31`); los territorios, edificios y almacén de una facción copia cuelgan de ella
   **sin `saveId`**. Van por slug, sin FK (la cascada no las protege): `targetSlug` de `WorldPopulation` y `ZonePoint`,
   `Npc.homeLocationSlug`, `Companion.sourceSlug` y `Save.pendingCombatNpcSlugs`. Ejemplo: `scripts/retirarHuerfanos.ts`.
 - El catálogo es `ItemCatalog` (no `CatalogItem`); los objetos de la jugadora, `InventoryItem`; los del reino, `AlmacenItem`.
@@ -204,7 +204,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Enciclopedia y lore (`QA-248`)
 
 - **Todo lo de un slug:** `bash tools/qa/ficha.sh <slug> [--canon]` (`QA-245`) da la ficha, el despiece, la región,
-  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon.
+  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon. Acaba con «# Fuente»: el
+  `archivo:línea` de cada aparición del slug en `b/scripts` y `b/services` (`QA-260`), para editar sin `grep`.
 - **Código:** la ruta `/world/:slug/enciclopedia` de `b/routes/world.ts` monta una sección por pestaña:
   `b/routes/world.ts#buildFaunaFloraSection`, `buildItemsSection`, `buildNpcsSection`, `buildLocationsSection`,
   `buildFactionsSection`, `buildHistoriaSection`, `buildRazasSection`, `buildClassesSection` y

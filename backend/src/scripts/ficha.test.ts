@@ -87,13 +87,14 @@ describe('ficha (claves heredadas y canon)', () => {
 });
 
 describe('ficha (fuente)', () => {
-  it('QA-260: ruta:línea del slug exacto entre comillas, sin tests, sin prefijos y con tope', () => {
+  it('QA-260: ruta:línea del slug exacto, entre comillas o como clave, en scripts y servicios, sin tests, sin prefijos y con tope', () => {
     const raiz = mkdtempSync(join(tmpdir(), 'ficha-fuente-'));
     const sc = join(raiz, 'backend', 'src', 'scripts');
     mkdirSync(sc, { recursive: true });
-    mkdirSync(join(raiz, 'backend', 'src', 'services'), { recursive: true });
-    writeFileSync(join(sc, 'a.ts'), "const x = 1;\n  { slug: 'guchapo', name: 'Guchapo' },\n  { slug: 'guchapo-joven' },\n");
+    mkdirSync(join(raiz, 'backend', 'src', 'services', 'cronista'), { recursive: true });
+    writeFileSync(join(sc, 'a.ts'), "const x = 1;\n  { slug: 'guchapo', name: 'Guchapo' },\n  { slug: 'guchapo-joven' },\n  guchapo: 'Llanuras',\n  guchapos: 1,\n");
     writeFileSync(join(raiz, 'backend', 'src', 'services', 'sexDimorphism.ts'), 'const m = { "guchapo": 1 };\n');
+    writeFileSync(join(raiz, 'backend', 'src', 'services', 'cronista', 'usosFauna.ts'), 'const u = {\n  guchapo: { carne: 1 },\n};\n');
     writeFileSync(join(sc, 'a.test.ts'), "expect('guchapo')\n");
     writeFileSync(join(sc, 'b.ts'), `${"f('muchos');\n".repeat(30)}`);
     let l: string[], m: string[];
@@ -103,7 +104,12 @@ describe('ficha (fuente)', () => {
     } finally {
       rmSync(raiz, { recursive: true, force: true });
     }
-    expect(l).toEqual(["backend/src/scripts/a.ts:2: { slug: 'guchapo', name: 'Guchapo' },", 'backend/src/services/sexDimorphism.ts:1: const m = { "guchapo": 1 };']);
+    expect(l).toEqual([
+      "backend/src/scripts/a.ts:2: { slug: 'guchapo', name: 'Guchapo' },",
+      "backend/src/scripts/a.ts:4: guchapo: 'Llanuras',",
+      'backend/src/services/cronista/usosFauna.ts:2: guchapo: { carne: 1 },',
+      'backend/src/services/sexDimorphism.ts:1: const m = { "guchapo": 1 };',
+    ]);
     expect(m).toHaveLength(26);
     expect(m[0]).toBe("backend/src/scripts/b.ts:1: f('muchos');");
     expect(m[25]).toBe('… y 5 más');

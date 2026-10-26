@@ -4,7 +4,7 @@
 #   bash tools/qa/ficha.sh <slug>            # la ficha; con un slug que no existe, 5 parecidos y código 1
 #   bash tools/qa/ficha.sh <slug> --canon    # además, dónde lo nombra el canon (docs/rpgtarkor y docs/canon-opencode)
 #   bash tools/qa/ficha.sh --ayuda
-# La salida acaba con «# Fuente»: archivo:línea de cada aparición del slug en el código (QA-260).
+# La salida acaba con «# Fuente»: archivo:línea del slug (entre comillas o como clave) en backend/src/scripts y services (QA-260).
 # La lógica está en backend/src/scripts/ficha.ts (ficha.test.ts); el script pasa por host.sh (npx en la Deck).
 set -u
 cd "$(git rev-parse --show-toplevel)"
