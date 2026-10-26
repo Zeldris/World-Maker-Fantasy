@@ -6,7 +6,7 @@ import { alivioForLevel } from '../../services/professionProgress.js';
 import { effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { CRAFTING_RECIPES } from '../../services/crafting.js';
-import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, type ConstructionRecipe } from '../../services/construction.js';
+import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, ocupadosDelTopePorRegion, type ConstructionRecipe } from '../../services/construction.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 export interface RecipeStatus {
@@ -99,10 +99,10 @@ export async function constructionRecipeStatusFor(params: {
     const regionAyuntamiento = params.regionAyuntamiento === undefined ? await regionDelAyuntamiento(saveId) : params.regionAyuntamiento;
     if (regionAyuntamiento) regionDelTope = regionAyuntamiento;
   }
+  // Mismo conteo que el veto de la obra (`ocupadosDelTopePorRegion`): uno DANADO ocupa el tope (se repara, no se
+  // levanta otro); sin región conocida no cuenta ninguno, en vez de contar los de todo el mundo.
   const unicaYaLevantada = recipe.maxPerRegion
-    ? (await prisma.building.count({
-        where: { saveId, recipeKey: recipe.key, status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] }, location: { region: regionDelTope ?? undefined } },
-      })) >= recipe.maxPerRegion
+    ? (await ocupadosDelTopePorRegion(prisma, { saveId, recipeKey: recipe.key, region: regionDelTope })).total >= recipe.maxPerRegion
     : false;
   return {
     recipeKey: recipe.key,

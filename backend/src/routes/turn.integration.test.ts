@@ -9673,6 +9673,30 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     expect(sinItem.blocked?.narration).toMatch(/No tienes pan en el inventario/);
   });
 
+  it('P327 (usuaria 2026-10-26): «le regalo X al orco desconocido» llega al orco oculto con su punto en esta zona', async () => {
+    narrateAction.mockClear();
+    const { saveId, locationId } = await partidaConOrco('Gorhorn P327 regalo visible');
+    await prisma.zonePoint.create({ data: { saveId, locationId, tipo: 'NPC', targetSlug: npcSlug, x: 10, y: 10 } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    const body = await clasificar(saveId, 'Le regalo mi cuchillo de pedernal al orco desconocido.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(body.roll).toBeUndefined();
+    expect(body.blocked?.narration).toMatch(/no acepta entregas/);
+    expect(body.blocked?.narration).toMatch(/orco desconocido/i);
+    expect(body.blocked?.narration).not.toMatch(/Orco enfurecido/);
+  });
+
+  it('P327: un PRINCIPAL oculto de la misma raza sin contacto (su punto en otra zona) no entra en escena por «el orco desconocido»', async () => {
+    const { saveId, worldId } = await partidaConOrco('Gorhorn P327 sin contacto');
+    const otra = await prisma.location.findFirstOrThrow({ where: { worldId, slug: { not: 'hondonada-del-eco' } } });
+    await prisma.zonePoint.create({ data: { saveId, locationId: otra.id, tipo: 'NPC', targetSlug: npcSlug, x: 10, y: 10 } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const body = await clasificar(saveId, 'Le regalo mi cuchillo de pedernal al orco desconocido.');
+    expect(body.blocked?.narration ?? '').not.toMatch(/no acepta entregas/);
+    expect(body.blocked?.narration ?? '').not.toMatch(/orco desconocido/i);
+  });
+
   it('fase 1 hacia main (P241): un objeto equipado sí lo tienes (pide desequiparlo)', async () => {
     const { saveId } = await partidaConOrco('Gorhorn P241 equipado');
     await prisma.companion.create({ data: { saveId, name: 'Orco enfurecido', role: 'x', notes: '', tipo: 'NPC', sourceSlug: npcSlug } });

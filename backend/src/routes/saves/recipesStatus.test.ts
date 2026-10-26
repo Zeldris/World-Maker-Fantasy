@@ -238,6 +238,47 @@ describe('GET /saves/:id/recipes-status', () => {
     findFirstBuilding.mockReset();
   });
 
+  it('P255 (usuaria 2026-10-26): un Mercado DANADO sigue ocupando el tope (se repara, no se levanta otro)', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: { id: 'loc1', slug: 'algun-sitio', region: 'Las Llanuras del Viento Rojo' },
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    // El único Mercado de la región está DANADO: solo lo cuenta un conteo que incluya ese estado.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string; status?: string | { in: string[] } } }) => {
+      const { recipeKey, status } = args.where;
+      const cuentaDanado = status === 'DANADO' || (typeof status === 'object' && status.in.includes('DANADO'));
+      return recipeKey === 'mercado' && cuentaDanado ? 1 : 0;
+    });
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const mercado = body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === 'mercado' && r.recipeCategory === 'construccion');
+    expect(mercado.unicaYaLevantada).toBe(true);
+  });
+
+  it('P255: sin región conocida (sin lugar ni Ayuntamiento) no cuenta los edificios únicos de todo el mundo', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: null,
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    findFirstBuilding.mockResolvedValue(null);
+    // Hay un Mercado en alguna región: un filtro sin región lo contaría.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string; location?: { region?: string } } }) =>
+      args.where.recipeKey === 'mercado' && !args.where.location?.region ? 1 : 0,
+    );
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const mercado = body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === 'mercado' && r.recipeCategory === 'construccion');
+    expect(mercado.unicaYaLevantada).toBe(false);
+  });
+
   it('P218: oculta las recetas de construcción de otra raza; sin raza en la receta o en el personaje siguen visibles', async () => {
     const save = (raza: string | null) => ({
       worldId: 'world1',

@@ -574,7 +574,7 @@ export async function detectNpcsInScene(params: {
       select: { targetNpcId: true },
     }),
     prisma.npcState.findMany({ where: { saveId: params.saveId }, select: { npcId: true } }),
-    prisma.save.findUnique({ where: { id: params.saveId }, select: { npcsRetiredForever: true } }),
+    prisma.save.findUnique({ where: { id: params.saveId }, select: { npcsRetiredForever: true, pendingDynamicMode: true, pendingDynamicModeOffer: true } }),
   ]);
   if (npcs.length === 0) return [];
   const retiredForeverSlugs = new Set(saveRow?.npcsRetiredForever ?? []);
@@ -628,6 +628,17 @@ export async function detectNpcsInScene(params: {
   const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs);
   const haystack = [params.action, ...relevantFacts].join('\n');
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
+  const ocultoNombrado = await ocultoNombradoPorSuVisible({
+    action: params.action,
+    saveId: params.saveId,
+    currentLocationId: params.currentLocationId,
+    candidatos: candidateNpcs.filter((npc) => !retiredForeverSlugs.has(npc.slug)),
+    estaEnCombate,
+    slugsDelModoDinamico: [saveRow?.pendingDynamicMode, saveRow?.pendingDynamicModeOffer]
+      .map((m) => (m && typeof m === 'object' && !Array.isArray(m) && typeof (m as { targetSlug?: unknown }).targetSlug === 'string' ? (m as { targetSlug: string }).targetSlug : null))
+      .filter((slug): slug is string => slug !== null),
+  });
+  if (ocultoNombrado) matchedIds.add(ocultoNombrado);
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
   const matchedNpcs = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
@@ -645,6 +656,66 @@ export async function detectNpcsInScene(params: {
     params.saveId,
     matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P327 (usuaria, 2026-10-26): ¿nombra el texto a alguien por el nombre con que la jugadora lo ve? «Orco desconocido»
+/// casa con «le regalo pan al orco desconocido» (y «la orca desconocida»); además, «el desconocido» / «la desconocida» a
+/// secas, con su género. «Alguien» (sin raza conocida) nunca: sale en cualquier frase.
+export function nombraPorNombreVisible(texto: string, nombreVisible: string): boolean {
+  const visible = normalizeText(nombreVisible);
+  const m = /^(\S+) desconocid([oa])$/.exec(visible);
+  if (!m) return false;
+  const t = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
+  if (t.includes(` ${visible} `)) return true;
+  return m[2] === 'a' ? / la desconocida /.test(t) : / (?:el|al|del) desconocido /.test(t);
+}
+
+/// P327 (usuaria, 2026-10-26): la jugadora no sabe el nombre de un PRINCIPAL sin descubrir; lo nombra como lo ve («el
+/// orco desconocido»). Solo vale para un oculto que ya esté en contacto este turno, nunca para todos los de esa raza
+/// del mundo. Señales, de la más segura a la menos: en combate con la jugadora; el del modo dinámico (Interactuar en
+/// curso u oferta pendiente); con su punto activo en el mapa de esta zona. Un `NpcState` a secas no basta: dice que
+/// se le trató alguna vez en la partida, no que esté aquí. Tampoco los `sessionFacts`: «el orco desconocido» de una
+/// escena vieja puede ser otro. Si en la señal más fuerte que casa hay dos ocultos con el mismo nombre visible, no se
+/// adivina: ninguno (la acción sigue como sin destinatario, igual que si no lo nombrara).
+async function ocultoNombradoPorSuVisible(params: {
+  action: string;
+  saveId: string;
+  currentLocationId: string | null;
+  candidatos: { id: string; slug: string; kind: NpcKind; raza: string | null; genero: string | null }[];
+  estaEnCombate: (npc: { id: string; slug: string }) => boolean;
+  slugsDelModoDinamico: string[];
+}): Promise<string | null> {
+  if (!/desconocid[oa]/.test(normalizeText(params.action))) return null;
+  const principales = params.candidatos.filter((n) => n.kind === 'PRINCIPAL');
+  if (principales.length === 0) return null;
+  const delModo = new Set(params.slugsDelModoDinamico);
+  const enCombate = principales.filter((n) => params.estaEnCombate(n));
+  const enModo = principales.filter((n) => delModo.has(n.slug));
+  const enZona = params.currentLocationId
+    ? await prisma.zonePoint
+        .findMany({
+          where: { saveId: params.saveId, locationId: params.currentLocationId, tipo: 'NPC', activo: true, targetSlug: { in: principales.map((n) => n.slug) } },
+          select: { targetSlug: true },
+        })
+        .then((puntos) => {
+          const slugs = new Set(puntos.map((p) => p.targetSlug));
+          return principales.filter((n) => slugs.has(n.slug));
+        })
+    : [];
+  const enContacto = [...new Map([...enCombate, ...enModo, ...enZona].map((n) => [n.id, n])).values()];
+  if (enContacto.length === 0) return null;
+  const vistos = await prisma.discoveredEntity.findMany({
+    where: { saveId: params.saveId, entityType: 'npc', entitySlug: { in: enContacto.map((n) => n.slug) } },
+    select: { entitySlug: true },
+  });
+  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const casa = (n: (typeof principales)[number]) => !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero));
+  for (const grupo of [enCombate, enModo, enZona]) {
+    const nombrados = grupo.filter(casa);
+    if (nombrados.length === 1) return nombrados[0].id;
+    if (nombrados.length > 1) return null;
+  }
+  return null;
 }
 
 /// P327: marca `nombreVisible` en los NPC con nombre propio que Gorhorn aún no conoce, para que ni la

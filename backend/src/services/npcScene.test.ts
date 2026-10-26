@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -1192,5 +1192,20 @@ describe('sinNombreReal (revisión P327)', () => {
     expect(sinNombreReal('Ugrak guarda el paso. Todos temen a Ugrak.', oculto)).toBe('El orco desconocido guarda el paso. Todos temen a el orco desconocido.');
     expect(sinNombreReal('Orco enfurecido ruge. Otro Orco pasa.', { name: 'Orco enfurecido', nombreVisible: 'Orco desconocido' })).toBe('El orco desconocido ruge. Otro Orco pasa.');
     expect(sinNombreReal('La Sastre cose. La casa calla.', { name: 'La Sastre', nombreVisible: 'Orca desconocida' })).toBe('La orca desconocida cose. La casa calla.');
+  });
+});
+
+describe('nombraPorNombreVisible (P327, usuaria 2026-10-26)', () => {
+  it('casa con el nombre visible entero y con «el/la desconocido/a» a secas, con su género', () => {
+    expect(nombraPorNombreVisible('Le regalo pan al orco desconocido.', 'Orco desconocido')).toBe(true);
+    expect(nombraPorNombreVisible('Saludo a la Orca Desconocida', 'Orca desconocida')).toBe(true);
+    expect(nombraPorNombreVisible('Le doy agua al desconocido', 'Orco desconocido')).toBe(true);
+    expect(nombraPorNombreVisible('Hablo con la desconocida', 'Orca desconocida')).toBe(true);
+    expect(nombraPorNombreVisible('Hablo con la desconocida', 'Orco desconocido')).toBe(false);
+    expect(nombraPorNombreVisible('Hablo con el desconocido', 'Orca desconocida')).toBe(false);
+  });
+
+  it('«Alguien» (sin raza conocida) nunca casa: sale en cualquier frase', () => {
+    expect(nombraPorNombreVisible('Busco a alguien que me ayude', 'Alguien')).toBe(false);
   });
 });

@@ -23,7 +23,7 @@ import {
   detectsHostileSearchIntent,
   detectsVerbalAcceptanceIntent,
   tabulatedAttackAttribute,
-  conNombreVisible,
+  nombraPorNombreVisible,
   type NpcInScene,
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
@@ -730,12 +730,19 @@ export async function turnRoutes(app: FastifyInstance) {
       // Fase 1 hacia main: lo equipado también está en el inventario (Entregar pide desequiparlo), y al
       // destinatario se le nombra como la jugadora lo ve («al orco desconocido»), no solo por su nombre real.
       const inventario = await prisma.inventoryItem.findMany({ where: { saveId }, select: { name: true, slot: true } });
-      const visibles = await conNombreVisible(prisma, saveId, npcsInSceneForValidation);
-      const nombresDe = (n: NpcInScene) => (n.nombreVisible ? [n.name, n.nombreVisible] : [n.name]);
+      // P327: `detectNpcsInScene` ya trae `nombreVisible` y mete en escena al oculto nombrado por él; el destinatario
+      // casa por su nombre real o por el visible («al orco desconocido», «a la desconocida»). Sin nadie nombrado, el
+      // primero en escena, como antes.
+      const visibles = npcsInSceneForValidation;
+      const SOLO_DESCONOCIDO: Record<string, string> = { o: 'desconocido', a: 'desconocida' };
+      const nombresDe = (n: NpcInScene) => (n.nombreVisible ? [n.name, n.nombreVisible, SOLO_DESCONOCIDO[n.nombreVisible.slice(-1)] ?? ''].filter(Boolean) : [n.name]);
       const giftClaim = detectsGiftToNpcClaim(action, inventario.map((i) => i.name), visibles.flatMap(nombresDe));
       if (giftClaim) {
         const accionNorm = normalizeText(action);
-        const destinatario = visibles.find((n) => nombresDe(n).some((x) => accionNorm.includes(normalizeText(x)))) ?? visibles[0];
+        const destinatario =
+          visibles.find((n) => accionNorm.includes(normalizeText(n.name))) ??
+          visibles.find((n) => n.nombreVisible && nombraPorNombreVisible(action, n.nombreVisible)) ??
+          visibles[0];
         const nombreFrase = destinatario.nombreVisible ? nombreEnFrase(destinatario.nombreVisible) : conDefinido(destinatario.name, destinatario.articulo);
         const soloEquipado = giftClaim.itemEnInventario !== null && !inventario.some((i) => i.slot === null && i.name === giftClaim.itemEnInventario);
         const puedeEntregar = await puedeRecibirEntregas(saveId, save.worldId, destinatario.slug);
