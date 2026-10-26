@@ -8,15 +8,15 @@
   "fuentes": "backend/src/scripts/worldCatalog.ts:180; docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Los Pastos de la Deriva, Pasto Solar, Gradias); hierba: decisión de la usuaria, 2026-10-25",
   "prompt": {
     "lugar": "grassland landscape",
-    "sujeto": "A wide, open steppe of gently rolling grassland that stretches to the horizon, an empty wild land with only grazing herds on it.",
-    "cuerpo": "It is covered in tall straw-yellow grass tinged with orange, with patches of bare red clay showing between the tufts and a few low bushes of dense, deep green with small broad leaves.",
+    "sujeto": "A vast, flat grassland plain that runs out to a far horizon, empty and wild.",
+    "cuerpo": "It is covered in tufts of grass that shade from fresh green to straw gold, with patches of bare red earth between them and scattered dark, leafless thorny shrubs.",
     "rasgos": [
-      "Far off on the horizon a line of jagged black volcanic peaks rises through a haze of fine red dust.",
-      "In the middle distance graze a few tall, narrow-bodied grazers with rust-red backs, pure white bellies and a single pair of flat, blade-like horns swept straight back."
+      "Large rust-red boulders sit in the foreground, and a faint dirt trail winds from the foreground into the distance.",
+      "Far off on the right, a long escarpment of red sandstone cliffs and flat-topped mesas rises out of the haze, with lone buttes standing on the plain."
     ],
-    "pose": "The grass bends under a dry wind that carries thin streamers of red dust across the plain.",
+    "pose": "A dry wind combs the grass and blows streaks of glowing dust across the plain.",
     "entorno": "",
-    "luz": "Low sun just above the horizon casts a warm golden light across the grass tips and long soft shadows over the red earth, under a few low clouds."
+    "luz": "The low sun sits behind a golden haze on the left, filling the sky with amber light and thin clouds and setting the grass tips aglow."
   },
   "condiciones": {
     "momento:atardecer": {
@@ -43,17 +43,8 @@
     }
   },
   "propuestas": [
-    "relieve: gently rolling",
-    "manada: a few slender antelope-like animals (Cuernahoja)",
-    "viento con polvo",
-    "hora: sol bajo",
-    "condiciones: luz de atardecer y de noche",
-    "condiciones estacion:primavera: brotes verdes y agua de crecida en las hondonadas",
-    "condiciones estacion:verano: hierba quebradiza y arcilla agrietada",
-    "condiciones estacion:otono: espigas con semilla y plantas con fruto maduro",
-    "condiciones estacion:invierno: hierba corta y aplastada, viento frío (la hierba sigue amarillo pajizo anaranjado)",
-    "condiciones estacion:invierno+momento:noche: escarcha fina",
-    "picos «jagged black» (salían pardos)",
-    "Cuernahoja sin «antelope-like» (salían impalas): cuernos planos como hojas, sin fuente"
-  ]
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el canon de la ficha anterior: mesetas de arenisca roja en vez de picos volcánicos negros"
+  ],
+  "imagenJuego": "backend/uploads/images/location/pastos-de-la-deriva-dia-verano-banner.png"
 }

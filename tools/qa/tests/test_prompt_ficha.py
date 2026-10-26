@@ -351,7 +351,7 @@ class DatosReales(unittest.TestCase):
         p = r['prompt']
         self.assertTrue(p.startswith('In this grassland landscape, keep the scenery, sky and light exactly as they are'))
         self.assertTrue(p.endswith('It matches the photographic style and the light of the scene.'))
-        self.assertIn('pale healed streaks', p)
+        self.assertIn('taller crest of spikes', p)  # la variante macho
         self.assertNotIn('A grounded fantasy world', p)
 
 

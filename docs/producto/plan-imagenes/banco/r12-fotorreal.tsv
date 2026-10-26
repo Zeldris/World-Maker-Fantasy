@@ -1,0 +1,6 @@
+# Plantilla «fotorreal» (usuaria, 2026-10-26: igualar las imágenes del juego, diseño incluido): fichas reescritas desde los
+# banners de ChatGPT, estilo realista con encuadre libre, FLUX.3 en la CPU. Sin -r: el texto solo tiene que reproducirlas.
+aullador-fotorreal	16	prompts/aullador-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8
+cuernahoja-fotorreal	16	prompts/cuernahoja-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8
+cardo-fotorreal	16	prompts/cardo-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8
+pastos-fotorreal	16	prompts/pastos-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8

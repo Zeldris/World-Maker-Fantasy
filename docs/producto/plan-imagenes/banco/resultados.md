@@ -141,3 +141,21 @@ por capas y los Cuernahoja del canon (vientre blanco, cuernos hacia atrás). Sig
 azul: lejos del aire ámbar y del primer plano con rocas y sendero de ChatGPT. Eso es lo que prueba `realista` (r11).
 `diffusion=cpu -t 8` queda como el modo de FLUX.3.
 
+## r11 · Estilo `realista` con FLUX.3 (pastos y aullador)
+
+Lo común a los banners de ChatGPT como estilo: profundidad por capas, bruma ámbar, paleta ocre y óxido, menos empuje
+que `cine2`. **Leída (2026-10-26):** casi la misma imagen que r10 en los dos, algo más cálida y suave y con piedras
+delante. Con la misma semilla, FLUX.3 compone desde la descripción de la ficha (que va primero); el párrafo de estilo
+del final apenas pesa. Cardo y hulki no se generaron: la cola se paró al cambiar de objetivo.
+
+Además, el Cuernahoja de pastos no se parece al de ChatGPT (usuaria): son diseños distintos, y la usuaria decide
+(2026-10-26) que **lo que hay en las imágenes del juego es lo que se quiere igualar**, diseño incluido; lo que falte se
+generará después con la plantilla ya afinada, sin referencia. Las fichas se reescriben desde los banners de ChatGPT
+(campo `imagenJuego`) y lo que choca con el canon queda en sus `propuestas` para una propuesta de lore.
+
+## r12 · Plantilla `fotorreal`: fichas desde los banners de ChatGPT
+
+Aullador (al atardecer, como el de ChatGPT), Cuernahoja (ficha nueva), Cardo y Pastos con las fichas reescritas, el
+estilo `realista` con el encuadre libre (la pose dice dónde va el sujeto) y FLUX.3 en la CPU, sin `-r`. Nombre de la
+plantilla: «fotorreal» (lo de ChatGPT es *concept art* fotorrealista, de película, más que fantasía realista).
+

@@ -1,0 +1,38 @@
+{
+  "tipo": "fauna",
+  "slug": "cuernahoja",
+  "nombre": "Cuernahoja",
+  "region": "Llanuras del Viento Rojo",
+  "zona": "pastos-de-la-deriva",
+  "momento": "dia",
+  "canon": "Fauna de 120-180 cm, tipo gacela, con cuernos finos y largos de cabra montesa (sin apenas espiral), cuello ancho y pelaje muy corto, rojo por arriba y blanco por el vientre. Come pasto y hojas altas gracias al cuello largo. Vive en manada. Las hembras llevan más rojo que los machos y cuernos más anchos.",
+  "fuentes": "docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Cuernahoja)",
+  "imagenJuego": "backend/uploads/images/fauna/cuernahoja-macho-banner.png",
+  "prompt": {
+    "sujeto": "A tall, slender herd grazer with a very long, upright neck and long, thin legs, its small head held far above an adult orc.",
+    "cuerpo": "Its small, deer-like head has large dark eyes and a short tuft of beard. The very short coat is rust red along the back and neck and creamy white on the belly, throat and inner legs.",
+    "rasgos": [
+      "Two wide, flat horns shaped like broad leaves spread out sideways from the top of its head, pale bone grey and veined like real leaves.",
+      "Each long leg ends in a large splayed foot of three clawed toes, like a big bird's."
+    ],
+    "pose": "It stands in the centre of the foreground facing the viewer with its head held high, while the rest of the herd grazes and wanders around it.",
+    "entorno": "Around them lies red desert earth with dry scrub and tufts of pale grass, with red sandstone mesas and spires in the distance.",
+    "luz": "Clear daylight under a blue sky with scattered white clouds."
+  },
+  "variantes": {
+    "macho": {
+      "rasgos+": [
+        "This male has the larger, wider-spreading leaf horns of the herd."
+      ]
+    },
+    "hembra": {
+      "rasgos+": [
+        "This female has a deeper red coat and shorter, broader leaf horns."
+      ]
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el canon: cuernos de hoja (el canon: finos y largos de cabra montesa), pies de ave de tres dedos, cuello de jirafa"
+  ]
+}

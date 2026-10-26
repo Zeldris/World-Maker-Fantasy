@@ -4,47 +4,40 @@
   "nombre": "Aullador Rojo",
   "region": "Llanuras del Viento Rojo",
   "zona": "pastos-de-la-deriva",
-  "momento": "dia",
+  "momento": "atardecer",
   "canon": "Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas; pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, hilera de púas oscuras erizadas en el lomo, colmillos curvos amarillentos exagerados, costillas marcadas, cola negra tupida que borra sus huellas.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:1479 (bio); backend/src/services/sexDimorphism.ts:99-111 (dimorfismo); detalle campo a campo en docs/producto/plan-imagenes/borradores/fichas-piloto.json",
   "prompt": {
-    "sujeto": "A lean, long-legged pack hunter with a narrow deep chest, a sloping back and disproportionately long, thin legs, standing about as high as an adult orc's hip.",
-    "ancla": "a maned wolf, only gaunter and wilder",
-    "cuerpo": "Its ribs show beneath tight skin, tufts of black hair ring its ankles, and its long dark muzzle carries oversized, curved, yellowish fangs. The rough, tangled coat is a dull rust red with darker underparts and amber eyes.",
+    "sujeto": "A long, low-slung pack hunter with a very long, stretched body carried close to the ground on short, sturdy legs with dark curved claws, about as long as an adult orc is tall.",
+    "ancla": "a red fox stretched to the length of a weasel",
+    "cuerpo": "Its narrow fox-like head has tall pointed ears, an amber eye and two long, pale sabre fangs hanging down past its lower jaw. The short, dense coat is a warm rust brown, paler along the flanks in faint stripes.",
     "rasgos": [
-      "Dull rust-red mineral dust is caked into the fur along the flanks, like dry dirt worked into the coat.",
-      "A ridge of dark bristling spines runs down its back to the tail.",
-      "Its thick black tail drags behind it, brushing away its own tracks."
+      "A crest of overlapping black armoured plates runs along its spine from the neck to the tail, edged with a row of sharp, glowing red spikes.",
+      "Its long banded tail ends in a dark, spiny tuft."
     ],
-    "pose": "It crouches low and stalks through the grass, with two more of the pack behind it.",
-    "entorno": "Around them lie red clay and tall straw-yellow grass tinged with orange."
+    "pose": "It walks in profile across the whole width of the foreground, low to the ground, while the rest of the pack lopes behind it as dark shapes in the dust.",
+    "entorno": "Around them stretches cracked red earth with sparse dry tufts, and dark whirling dust devils rise far off on the plain."
   },
   "variantes": {
     "macho": {
       "rasgos+": [
-        "This male is heavier in the neck and shoulders, with a thick, bristling mane-like ruff and pale healed streaks across the muzzle."
+        "This male is heavier in the neck and shoulders, with longer fangs and a taller crest of spikes."
       ]
     },
     "hembra": {
-      "sujeto": "A lean, long-legged pack hunter with a narrow deep chest, a sloping back and disproportionately long, thin legs, standing about as high as an adult orc's mid-thigh.",
       "rasgos+": [
-        "This female is visibly smaller and slighter, with a smooth, sleek neck, a narrow head and especially long legs for her slender body."
-      ],
-      "pose": "She crouches low at the front of the stalking pack, with two more of the pack behind her."
+        "This female is visibly smaller and slighter, with a narrower head and a lower crest of spikes."
+      ]
     }
   },
   "condiciones": {
     "estacion:invierno": {
-      "entorno": "Around them lie bare red clay and short, thin straw-yellow grass tinged with orange."
+      "entorno": "Around them stretches bare cracked red earth with a few short dry tufts, and dark whirling dust devils rise far off on the plain."
     }
   },
   "propuestas": [
-    "ancla",
-    "paleta: rust red, darker underparts, amber eyes, dark muzzle",
-    "escala: hip / mid-thigh of an adult orc",
-    "pose: crouching, two more of the pack",
-    "condiciones estacion:invierno: entorno de hierba corta (la pose ya dice solo «grass», vale para todas las estaciones)",
-    "vetas como «dull rust-red mineral dust caked into the fur» (los «streaks» salían como cortes y los «glinting flecks», como gotas; banco r6-r7)",
-    "diferencia macho/hembra más marcada"
-  ]
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el canon: cuerpo largo y patas cortas (el canon: patas desproporcionadamente largas), cresta de placas con púas rojas, colmillos de sable"
+  ],
+  "imagenJuego": "backend/uploads/images/fauna/aullador-rojo-macho-banner.png"
 }

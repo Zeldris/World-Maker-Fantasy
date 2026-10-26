@@ -12,7 +12,8 @@ FICHAS = {'pastos': ('location/pastos-de-la-deriva.json', []),
           'aullador': ('fauna/aullador-rojo.json', ['--variante', 'macho']),
           'aullador_noche': ('fauna/aullador-rojo.json', ['--variante', 'macho', '--momento', 'noche']),
           'hulki': ('npc/hulki.json', []),
-          'cardo': ('flora/cardo-brujula.json', [])}
+          'cardo': ('flora/cardo-brujula.json', []),
+          'cuernahoja': ('fauna/cuernahoja.json', ['--variante', 'macho'])}
 
 
 def cine(m):
@@ -117,11 +118,20 @@ def realista(m):
     return m
 
 
+def fotorreal(m):
+    """r12, plantilla «fotorreal» (usuaria, 2026-10-26: igualar las imágenes del juego, diseño incluido): realista con
+    las fichas reescritas desde los banners de ChatGPT, y el encuadre sin sitio fijo para el sujeto, que lo da la pose."""
+    m = realista(m)
+    m['encuadres']['banner'] = ('Wide cinematic panorama in layered depth, from textured ground close to the camera to '
+                                'land fading into warm haze on the horizon.')
+    return m
+
+
 # estilo: (cambio de mundo.json, cambio del texto final)
 ESTILOS = {'actual': (lambda m: m, None), 'guia': (lambda m: m, None), 'cine': (cine, None), 'cine2': (cine2, None), 'corto': (corto, None),
            'arte': (arte, None), 'fantasia': (cine2, fantasia),
            'polvo': (cine2, polvo), 'concepto': (concepto, None), 'ref': (lambda m: m, ref),
-           'realista': (realista, None)}
+           'realista': (realista, None), 'fotorreal': (fotorreal, None)}
 
 
 def main():
