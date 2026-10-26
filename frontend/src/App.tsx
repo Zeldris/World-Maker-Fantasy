@@ -23,7 +23,7 @@ function App() {
         <Route path="/multijugador" element={<ComingSoon />} />
         {/* Solo admin (petición explícita de Álvaro, 2026-09-21) — sin enlace en ningún flujo de
             jugador salvo el texto discreto de Home.tsx; no se lleva al instalador. */}
-        {/* INS-33: en el juego empaquetado (`window.__TARKOR__`) estas rutas no se montan (no hay ruta comodín: la URL queda en blanco). */}
+        {/* INS-33: en el juego empaquetado (`window.__TARKOR__`) estas rutas no se montan (no hay ruta comodín: una URL `/admin/*` escrita a mano no casa con ninguna ruta). */}
         {!empaquetado && (
           <>
             <Route path="/admin/enciclopedia" element={<AdminEnciclopedia />} />

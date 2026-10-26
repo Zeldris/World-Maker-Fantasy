@@ -39,10 +39,10 @@ export function useModoDesarrollador(): boolean {
   return useSyncExternalStore(suscribir, leerModoDesarrollador, () => false)
 }
 
-/// INS-33: en el juego empaquetado las herramientas de admin no existen, ni con el modo activo ni con el contexto.
 /// La página de admin enseña las herramientas siempre, esté o no el modo desarrollador activo.
 export const HerramientasAdminContext = createContext(false)
 
+/// INS-33: en el juego empaquetado las herramientas de admin no existen, ni con el modo activo ni con el contexto.
 export function useHerramientasAdminVisibles(): boolean {
   const enAdmin = useContext(HerramientasAdminContext)
   const modoDesarrollador = useModoDesarrollador()
