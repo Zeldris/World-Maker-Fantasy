@@ -201,3 +201,26 @@ Ronda `r14-borradores.tsv`, semilla 3, FLUX.3 Q8 en la CPU, prompt `r14-aullador
   SATAVG 28,4: dentro de la aceptación.
 - De paso: `medir/stats.sh` daba STATS vacío con los PNG de sd-cli (el ffmpeg 8.1 de la Deck vuelca el tEXt largo del
   prompt con bytes nulos y grep lo tomaba por binario); arreglado con `grep -a` y test.
+
+## r14 · Escalera de fuerza del boceto (`IMG-19b`, 2026-10-26)
+
+Ronda `r14-boceto.tsv`, 640x256 / 8 pasos, semilla 3, `-i bocetos/<boceto>-640.png --extra-sample-args
+strength_as_noise_level=true`; rejillas en `generated/banco/r14-boceto-*-rejilla*.png`. Con `-i` el muestreo se acorta:
+2,5 min a 0,75, 3,5 a 0,85, 4,5 a 0,92 y 6,5 a 0,97 (frente a 9 del txt2img).
+
+| Prueba | Fuerza | Cuerpo ≥ 3× | Cresta nuca → cola | Tres cuartos | Nota |
+|---|---|---|---|---|---|
+| depredador | 0,75 | sí | sí | no | copia el SVG: dibujo plano, nada fotográfico |
+| depredador | 0,85 | sí | sí | no | igual de plano |
+| depredador | 0,92 | sí | sí | no | plano con algo de textura y patas duplicadas |
+| depredador | **0,97** | **sí** (~4×) | **sí** | no | **fotorreal**: pelo, placas, polvo y manada de la misma especie; mira a la izquierda como el boceto |
+| depredador, boceto blando (gblur 4 + grano) | 0,92 | sí | sí | no | el grano se queda en la imagen: descartado |
+| herbívoro | **0,97** | – | – | casi | fotorreal, cuello largo, manada igual entre mesas; los cuernos salen como cuatro hojas finas |
+| herbívoro | 0,95 | – | – | no | clava los dos cuernos-hoja planos y las patas de ave, pero el suelo plano del boceto se cuela como franja lisa |
+
+- **El boceto sirve como mando a 0,95-0,97** (no a 0,85 como estimaba la investigación: por debajo de ~0,95 FLUX.3
+  copia el relleno plano). Fuerza de partida: **0,97**; 0,95 cuando un rasgo del boceto (los cuernos) pesa más que el
+  fondo.
+- **Tres cuartos: no**, en ninguna fuerza, porque los dos bocetos dibujan la cabeza de perfil; el modelo sigue al
+  boceto. Para el tres cuartos hay que redibujar la cabeza en el SVG (decisión de la usuaria: los bocetos ya tienen
+  su sí).
