@@ -181,3 +181,23 @@ plantilla: «fotorreal» (lo de ChatGPT es *concept art* fotorrealista, de pelí
   especie en el fondo; la cadena de planos lo resuelve copiando el sujeto (r13).
 - **Cardo y Pastos**: sin hacer. La usuaria paró la ronda (2026-10-26, 17:20) para afinar antes con las
   investigaciones ([técnicas de diseño](../investigacion-tecnicas-diseno.md), motor, LoRA y prompts de criaturas).
+
+## r14 · Plantilla `fotorreal` de `IMG-16` en borrador y a tamaño final (`IMG-19a`, 2026-10-26)
+
+Ronda `r14-borradores.tsv`, semilla 3, FLUX.3 Q8 en la CPU, prompt `r14-aullador-fotorreal.txt` (356 palabras).
+
+- **Borrador 640x256 / 8 pasos** (9 min: 524 s de muestreo; mínimo libre 4,9 GB): misma composición que la de
+  16 pasos. Aullador en el centro mirando a la derecha, cola a la izquierda, sol bajo a la derecha, horizonte a ~45 %,
+  manada a los dos lados. **El borrador vale como anticipo de la composición** (aceptación de `19a`).
+- **`--preview proj`**: escribe un PNG de 80x32 por paso; desde el paso 2 (~2 min) se leen el sujeto, la cola, la
+  manada y el sol. Sirve para abortar pronto un borrador mal compuesto; no para juzgar detalle.
+- **1280x512 / 16 pasos** (49,5 min; mínimo libre 5,1 GB), `r14-borradores-aullador-1280/intentos/banner-s3-p16-20261026-183902.png`,
+  candidato txt2img de referencia de Fase 2. Frente a r12 arregla dos de los cuatro fallos: la **manada ya es la misma
+  especie** (crestas rojas, colmillos) y la **cresta llega a la punta de la cola**. Sigue: la **proporción** (más
+  largo que un zorro, pero no tres cuerpos) y la cabeza de **perfil**, no de tres cuartos; los dos los ataca el boceto
+  (`19b`).
+- **Medida** (`medir.sh fauna atardecer`, mediana frente a los 5 GPT): sin gradar Y 24,1 · Cb 6,2 · Cr 5,1, YAVG 97,9
+  (algo por encima de la ventana 70-95); gradada con la LUT de atardecer Y 19,5 · Cb 5,8 · Cr 7,0, YAVG 84,9,
+  SATAVG 28,4: dentro de la aceptación.
+- De paso: `medir/stats.sh` daba STATS vacío con los PNG de sd-cli (el ffmpeg 8.1 de la Deck vuelca el tEXt largo del
+  prompt con bytes nulos y grep lo tomaba por binario); arreglado con `grep -a` y test.

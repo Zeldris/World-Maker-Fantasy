@@ -79,7 +79,9 @@ desde el panel vive en tablas que siembran.
   55-60 %); se mira en los borradores de `IMG-19`. **S**
 - **IMG-19 · Tanda de borradores** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-19--tanda-de-borradores-método-bocetos-planos-y-armonización-p--m)):
   640x256 a 8 pasos; valida el borrador, la fuerza del boceto y la armonización del montaje (`-i` frente a `-r`).
-  Depende de `IMG-16`…`IMG-18`. **M**
+  Depende de `IMG-16`…`IMG-18`. **M** 🚧 2026-10-26: **19a ✅** el borrador de 640x256 / 8 pasos (9 min) anticipa la
+  composición del de 1280x512 / 16 (49,5 min) y `--preview proj` se lee desde el paso 2 ([resultados r14](plan-imagenes/banco/resultados.md));
+  `planos.sh` armoniza con `strength_as_noise_level`. **Falta:** 19b (`r14-boceto.tsv`) y 19c.
 - **IMG-20 · Codificador de texto Q8 (opcional)** [A] (2026-10-26): A/B con la misma semilla tras `IMG-23`, con
   permiso para descargar 4,3 GB. **S**
 - **IMG-21 · Aullador y cuernahoja por planos** [A] (2026-10-26): candidato a 16 pasos, gradado y medido, que

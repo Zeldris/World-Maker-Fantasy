@@ -6,6 +6,7 @@ import shutil
 import struct
 import subprocess
 import unittest
+import zlib
 
 from comun import RAIZ, carpeta
 
@@ -21,6 +22,17 @@ def sintetica(ruta: str, filtro: str = '') -> str:
     subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=1280x512:d=1',
                     *(['-vf', filtro] if filtro else []), '-frames:v', '1', ruta], check=True)
     return ruta
+
+
+def con_prompt(png: str, texto: str) -> str:
+    """Añade al PNG un chunk tEXt «parameters» como el que escribe sd-cli con el prompt."""
+    with open(png, 'rb') as f:
+        d = f.read()
+    datos = b'parameters\0' + texto.encode()
+    chunk = struct.pack('>I', len(datos)) + b'tEXt' + datos + struct.pack('>I', zlib.crc32(b'tEXt' + datos))
+    with open(png, 'wb') as f:
+        f.write(d[:33] + chunk + d[33:])  # tras la firma (8) y el IHDR (25)
+    return png
 
 
 def tamano(png: str) -> tuple:
@@ -90,6 +102,13 @@ class Gradar(unittest.TestCase):
                            capture_output=True, text=True)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn('momento desconocido', r.stderr + r.stdout)
+
+    def test_stats_lee_un_png_con_el_prompt_de_sd_cli(self):
+        # El ffmpeg 8.1 de la Deck vuelca el tEXt largo con bytes nulos: grep sin -a lo tomaba por binario y STATS salía vacío.
+        con_prompt(self.orig, 'Wide cinematic panorama from a low camera angle, layered depth. ' * 80)
+        r = subprocess.run(['bash', STATS, self.orig], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertRegex(r.stdout, r'YAVG=[0-9.]+ .*SATAVG=[0-9.]+ .*HF=[0-9.]+')
 
     def test_hornear_escribe_una_lut_3d(self):
         cube = os.path.join(self.d, 'atardecer.cube')
