@@ -100,3 +100,12 @@ perfil ganador es klein Q8 + `cine2` con polvo mate, euler, 6 pasos y VAE peque�
 va a todo `banner` y al preámbulo de día; el sol bajo con el cielo encendido, solo al de atardecer. La luz de la región
 sigue mandando (la de día de las Llanuras ya es un sol bajo). Prompts del estilo `guia` (`prompts.py guia`), más el
 aullador de noche. Pendiente de leer.
+
+## r9 · Aspecto: arte conceptual y `-r` de ChatGPT
+
+Puestas al lado de los banners de ChatGPT del juego, las nuestras no se parecen ni de lejos (usuaria, 2026-10-26):
+aullador de documental, pastos de postal de sabana, cardo como un huevo en macro. Los de ChatGPT son arte conceptual,
+no fotografía. `concepto`: *concept art* / *matte painting* en todo banner y la flora en su paisaje, sin lente macro.
+`ref`: el banner de ChatGPT de Pastos de la Deriva como `-r` y una frase que pide su estilo en otra escena.
+Pendiente de leer.
+

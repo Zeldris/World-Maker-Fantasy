@@ -71,10 +71,28 @@ def polvo(texto):
                          'like dry dirt worked into the coat.')
 
 
+def concepto(m):
+    """r9: arte conceptual en vez de fotografía (los banners de ChatGPT lo son) y la flora sin lente macro, en su paisaje."""
+    m['estilos']['banner']['base'] = ('Epic fantasy {clase} concept art, a hyper-detailed digital matte painting '
+                                      'with photorealistic textures, dramatic rim lighting, volumetric dust, vivid '
+                                      'saturated colours.')
+    m['estilos']['banner']['porTipo']['npc']['clase'] = 'portrait'  # «fantasy fantasy portrait»
+    for tipo, pt in m['estilos']['banner']['porTipo'].items():
+        pt['acabado'] = {'flora': 'Several of the plants stand in their wide landscape, ultra detailed botanical and '
+                                  'mineral texture.'}.get(tipo, 'Ultra detailed texture throughout.')
+    return m
+
+
+def ref(texto):
+    """r9: con un banner de ChatGPT como -r, el prompt pide su estilo, no su escena (sin negaciones, que el modelo lee al revés)."""
+    return ('Match the painting style, colour palette, light and rendering of the reference image in an entirely new '
+            'scene. ' + texto)
+
+
 # estilo: (cambio de mundo.json, cambio del texto final)
 ESTILOS = {'actual': (lambda m: m, None), 'guia': (lambda m: m, None), 'cine': (cine, None), 'cine2': (cine2, None), 'corto': (corto, None),
            'arte': (arte, None), 'fantasia': (cine2, fantasia),
-           'polvo': (cine2, polvo)}
+           'polvo': (cine2, polvo), 'concepto': (concepto, None), 'ref': (lambda m: m, ref)}
 
 
 def main():
