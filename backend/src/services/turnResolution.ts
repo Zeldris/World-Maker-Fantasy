@@ -2100,8 +2100,10 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
   const marcaCapitan = terminado ? null : await marcaDelCapitan(prisma, saveId, encounterId);
   const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
   const enemigoNpcRows = enemigoNpcIds.length
-    ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, atributoResistencia: true } })
+    ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, atributoResistencia: true } })
     : [];
+  const nombreVisiblePorSlug = new Map<string, string>();
+  for (const n of enemigoNpcRows) nombreVisiblePorSlug.set(n.slug, (await nombreVisibleDeNpc(prisma, saveId, n)).nombre);
   const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
   // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
   // SOLITARIO siempre tiene `condicionFisicaGrupo: null` (ver comentario del campo en
@@ -2134,7 +2136,8 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
     const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
     return {
       slug: npcRow.slug,
-      name: npcRow.name,
+      // P327: un PRINCIPAL aún desconocido sigue siendo «el orco desconocido» también en el combate.
+      name: nombreVisiblePorSlug.get(npcRow.slug) ?? npcRow.name,
       condicionFisica: p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO',
       saqueado: false,
       lootedItemNames: [] as string[],
@@ -2493,6 +2496,12 @@ async function resolveCombatSlugsAndPersist(params: {
   // P233: si el combate empieza en este turno, empieza cuando empezó el turno (antes de su COMBATE_PERDIDO).
   await guardarSlugsDeCombate(prisma, saveId, combatSlugsToPersist, { ahora: params.inicioTurno });
 
+  // P327: nombre con que la jugadora ve a cada rival (un PRINCIPAL sin descubrir va por su raza).
+  const nombreVisiblePorSlug = new Map<string, string>();
+  for (const slug of combatSlugs) {
+    const n = npcsInScene.find((x) => x.slug === slug);
+    if (n) nombreVisiblePorSlug.set(slug, (await nombreVisibleDeNpc(prisma, saveId, n)).nombre);
+  }
   const combateIniciado = combatSlugs.length
     ? {
         npcs: combatSlugs
@@ -2510,7 +2519,7 @@ async function resolveCombatSlugsAndPersist(params: {
           // esta respuesta tiene que traer la condición fresca ella sola.
           .map((n) => ({
             slug: n.slug,
-            name: n.name,
+            name: nombreVisiblePorSlug.get(n.slug) ?? n.name,
             condicionFisica:
               npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id ? npcTargetNewCondicion : n.condicionFisica,
             saqueado: n.saqueado,
@@ -7081,10 +7090,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // decide SI algo se descubre en absoluto (como mucho CITADO); estar de verdad en `npcsInScene`
   // este turno es lo que decide si esa detección sube a DESCUBIERTO (ficha completa con imagen) en
   // vez de quedarse en CITADO (nombre+región nada más) — ver `recordEntityDiscoveries`.
+  // P327: atacar a un PRINCIPAL aún desconocido no lo identifica (sigue siendo «el orco desconocido» hasta que
+  // se presente o se descubra); solo el objetivo conocido (o un rol o especie) entra por esta vía.
+  const objetivoAtaqueIdentificable = npcAttackTarget && !(await nombreVisibleDeNpc(prisma, saveId, npcAttackTarget)).oculto ? npcAttackTarget.name : '';
   await recordEntityDiscoveries({
     saveId,
     worldId,
-    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos, npcAttackTarget?.name ?? ''].join('\n'),
+    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos, objetivoAtaqueIdentificable].join('\n'),
     npcSlugsInScene: npcsInScene.map((n) => n.slug),
   });
 

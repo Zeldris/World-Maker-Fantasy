@@ -323,19 +323,12 @@ describe('POST /saves/:id/zona/cazar', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5); // roll 4 -> delta 0 -> cantidadReal=3
 
     const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: `/saves/${saveId}/modo-dinamico/interactuar`,
-      payload: {
-        tipo: 'FAUNA',
-        targetSlug: 'test-cazar-agresivo',
-        targetName: 'Bestia Agresiva de Prueba',
-        quienInicia: 'npc',
-        combateForzado: true,
-        zonePointId: punto.id,
-        cantidad: 3,
-      },
-    });
+    // P27: Interactuar saca la decisión; el combate de grupo se abre al elegir Combatir.
+    const payload = { tipo: 'FAUNA', targetSlug: 'test-cazar-agresivo', targetName: 'Bestia Agresiva de Prueba', quienInicia: 'npc', combateForzado: true, zonePointId: punto.id, cantidad: 3 };
+    const paso = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/interactuar`, payload });
+    expect(paso.statusCode, paso.body).toBe(200);
+    expect(JSON.parse(paso.body).opciones).toEqual(['Combatir', 'Huir']);
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Combatir' } });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     // Combate múltiple (`actionText`), nunca el 1v1 clásico (`combate` directo) — "un agresivo que

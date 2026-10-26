@@ -1114,9 +1114,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         // AGRESIVO/ENEMIGO) — Destreza jugador vs Destreza NPC, mismo patrón que `rollInitiative` de
         // combate. Para el resto de temperamentos solo decide el FRAMING narrativo de la primera
         // vuelta (ver `buildDynamicModeTurnoPrompt`, dynamicModeNarracion.ts); para AGRESIVO/ENEMIGO
-        // decide además si el jugador puede elegir (lo vio primero) o el combate se abre
-        // directamente (el agresivo lo vio primero) — ver `narrarAperturaCombateForzado`,
-        // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
+        // decide además el aviso («te ha visto antes» = emboscada si peleas); P27: en los dos casos
+        // Interactuar saca la decisión y el combate solo empieza al elegir Combatir — ver
+        // `narrarAperturaCombateForzado`, dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
         // P166/P177 (QA-27, decidido por la usuaria 2026-10-17): la tirada solo va con alguien hostil, que
         // es cuando decide si puedes huir. Con alguien tranquilo (también dentro de un poblado) no hay
         // sorpresa: te topas con él y punto, como en BG3 y D&D (sorpresa solo al esconderse o emboscar) y

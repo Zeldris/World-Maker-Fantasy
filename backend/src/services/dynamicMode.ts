@@ -281,9 +281,12 @@ export function respuestaGisteraDesdeOpcion(opcion: string): RespuestaGistera | 
 export const COMBATE_FORZADO_OPCION_COMBATIR = 'Combatir';
 export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
 
-export function narrarAperturaCombateForzado(targetName: string, cantidad?: number | null): GisteraTurnoOutput {
+export function narrarAperturaCombateForzado(targetName: string, cantidad?: number | null, quienInicia: 'jugador' | 'npc' = 'jugador'): GisteraTurnoOutput {
+  // P27 (decidido por la usuaria 2026-10-26): también cuando te vieron primero hay decisión (Pelear o Huir);
+  // el combate solo empieza al elegir Combatir.
+  const encuentro = quienInicia === 'npc' ? `${nombreDeEncuentro(targetName, cantidad, true)} te ha visto antes y` : `Os encontráis y os miráis — ${nombreDeEncuentro(targetName, cantidad)}`;
   return {
-    narration: `Os encontráis y os miráis — ${nombreDeEncuentro(targetName, cantidad)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
+    narration: `${encuentro} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
     opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
     cierra: false,
   };
@@ -423,11 +426,13 @@ export interface PendingDynamicMode {
   /// Colisión AGRESIVO/ENEMIGO en Zona (2026-09-20, "todo debe saltar el interactuar, incluido un
   /// agresivo" — petición explícita de Álvaro tras confirmar que antes el Orco solo dejaba un aviso
   /// de texto sin abrir nada) — true cuando este encuentro puede desembocar en combate real desde
-  /// el propio modal, sin depender de un turno de texto libre posterior. Solo se da cuando
-  /// `quienInicia: 'jugador'` (el jugador lo vio primero, así que puede elegir combatir o huir —
-  /// ver `narrarVueltaCombateForzado`); si el NPC/fauna vio primero al jugador, el combate se abre
-  /// DIRECTAMENTE sin pasar por `pendingDynamicMode` en absoluto (nunca hay elección posible).
+  /// el propio modal, sin depender de un turno de texto libre posterior. P27 (2026-10-26): se da
+  /// también cuando el NPC/fauna vio primero al jugador (`emboscada`); en los dos casos hay decisión
+  /// (combatir o huir, ver `narrarAperturaCombateForzado`) y el combate solo empieza al elegir Combatir.
   combateForzado?: true;
+  /// P27 (decidido por la usuaria 2026-10-26): el NPC/fauna vio primero a la jugadora (`quienInicia: 'npc'`);
+  /// si elige Combatir, el combate se abre como emboscada (P90), no como ataque suyo.
+  emboscada?: true;
   /// P244 (decidido por la usuaria 2026-10-26): el NPC ya era conocido (DESCUBIERTO) al abrir la
   /// conversación: reencuentro, sin presentación. Se guarda para que las vueltas siguientes (LLM) no
   /// vuelvan a presentarlo.

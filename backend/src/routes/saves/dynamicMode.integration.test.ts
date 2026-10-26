@@ -34,11 +34,21 @@ vi.mock('../../services/worldFacts.js', async (importOriginal) => {
 });
 
 const { dynamicModeRoutes } = await import('./dynamicMode.js');
+const { detailRoutes } = await import('./detail.js');
 
 async function buildApp() {
   const app = Fastify();
   await app.register(dynamicModeRoutes);
   return app;
+}
+
+/// P27 (decidido por la usuaria 2026-10-26): Interactuar con quien te corta el paso nunca abre el combate; sale
+/// la decisión (Combatir/Huir) y el combate empieza al elegir Combatir. Devuelve la respuesta de Combatir.
+async function interactuarYCombatir(app: Awaited<ReturnType<typeof buildApp>>, saveId: string, payload: Record<string, unknown>) {
+  const paso = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/interactuar`, payload });
+  expect(paso.statusCode, paso.body).toBe(200);
+  expect(JSON.parse(paso.body)).toMatchObject({ cierra: false, opciones: ['Combatir', 'Huir'] });
+  return app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Combatir' } });
 }
 
 describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', () => {
@@ -788,11 +798,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       await prisma.combatEncounter.deleteMany({ where: { saveId } });
       const punto = await prisma.zonePoint.create({ data: { saveId, locationId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'aullador-rojo', cantidad: 3, activo: true } });
       const app = await buildApp();
-      const res = await app.inject({
-        method: 'POST',
-        url: `/saves/${saveId}/modo-dinamico/interactuar`,
-        payload: { tipo: 'FAUNA', targetSlug: 'aullador-rojo', targetName: 'Aullador Rojo', quienInicia: 'npc', combateForzado: true, zonePointId: punto.id, cantidad: 3 },
-      });
+      const res = await interactuarYCombatir(app, saveId, { tipo: 'FAUNA', targetSlug: 'aullador-rojo', targetName: 'Aullador Rojo', quienInicia: 'npc', combateForzado: true, zonePointId: punto.id, cantidad: 3 });
       expect(res.statusCode, res.body).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.actionText).toMatch(/^Me defiendo de /);
@@ -834,11 +840,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
     it('abre el combate de varios con los dos y devuelve el texto del turno siguiente', async () => {
       const app = await buildApp();
-      const res = await app.inject({
-        method: 'POST',
-        url: `/saves/${saveId}/modo-dinamico/interactuar`,
-        payload: { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true },
-      });
+      const res = await interactuarYCombatir(app, saveId, { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true });
       expect(res.statusCode).toBe(200);
       expect(JSON.parse(res.body).actionText).toContain('test-cr49-jefe');
       // P90: la vieron antes ellos (`quienInicia: 'npc'`): emboscada, sin acción suya en el diario.
@@ -851,11 +853,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       await prisma.combatEncounter.deleteMany({ where: { saveId } });
       await prisma.npcState.create({ data: { saveId, npcId: ids[0]!, scope: '', condicionFisica: 'MUERTO', muerto: true } });
       const app = await buildApp();
-      const res = await app.inject({
-        method: 'POST',
-        url: `/saves/${saveId}/modo-dinamico/interactuar`,
-        payload: { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true },
-      });
+      const res = await interactuarYCombatir(app, saveId, { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'test-cr49-jefe', quienInicia: 'npc', combateForzado: true });
       expect(res.statusCode).toBe(400);
       expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(0);
     });
@@ -906,19 +904,28 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       await prisma.location.delete({ where: { id: locationId } });
     });
 
-    it('quienInicia: "npc" — abre combate DIRECTAMENTE, sin pendingDynamicMode, sin narración LLM', async () => {
+    it('P27 — quienInicia: "npc": Interactuar NO abre el combate, saca la decisión; el combate solo empieza con Combatir', async () => {
       // La oferta real que deja /zona/mover — debe quedar resuelta al abrir el combate (2026-09-28:
       // antes se quedaba en BD y reaparecía tras recargar, bloqueando cualquier encuentro nuevo).
       await prisma.save.update({
         where: { id: saveId },
-        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true } },
+        data: { pendingCombatNpcSlugs: [], pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true } },
       });
       const app = await buildApp();
-      const res = await app.inject({
-        method: 'POST',
-        url: `/saves/${saveId}/modo-dinamico/interactuar`,
-        payload: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true },
-      });
+      const payload = { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true };
+      const paso = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/interactuar`, payload });
+      expect(paso.statusCode).toBe(200);
+      const pasoBody = JSON.parse(paso.body);
+      // Decisión, no combate: sin `combate`, la conversación sigue abierta con Combatir/Huir y te vieron antes.
+      expect(pasoBody.combate).toBeUndefined();
+      expect(pasoBody.cierra).toBe(false);
+      expect(pasoBody.opciones).toEqual(['Combatir', 'Huir']);
+      expect(pasoBody.narration).toContain('te ha visto antes');
+      const trasInteractuar = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(trasInteractuar.pendingCombatNpcSlugs).toEqual([]);
+      expect(trasInteractuar.pendingDynamicMode).toMatchObject({ combateForzado: true, emboscada: true, targetSlug: 'test-dynamicmode-agresivo' });
+
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Combatir' } });
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.cierra).toBe(true);
@@ -928,6 +935,24 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(saveAfter.pendingDynamicMode).toBeNull();
       expect(saveAfter.pendingDynamicModeOffer).toBeNull();
       expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
+    });
+
+    it('P27 — quienInicia: "npc": elegir Huir tras Interactuar cierra sin combate', async () => {
+      await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [], zonaPosX: 40, zonaPosY: 60, zonaPosEntradaX: 12, zonaPosEntradaY: 88 } });
+      const app = await buildApp();
+      await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true },
+      });
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Huir' } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(true);
+      expect(body.combate).toBeUndefined();
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
+      expect(saveAfter.pendingDynamicMode).toBeNull();
     });
 
     it('quienInicia: "jugador" — ofrece Combatir/Huir, sin narración LLM, pendingDynamicMode marcado combateForzado', async () => {
@@ -1067,21 +1092,34 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
       it('quienInicia: "npc", targetName oculto ("Alguien") — igualmente abre combate real', async () => {
         const app = await buildApp();
-        const res = await app.inject({
-          method: 'POST',
-          url: `/saves/${saveId}/modo-dinamico/interactuar`,
-          // Mismo shape exacto que manda el frontend cuando el NPC no está descubierto todavía —
-          // ver `NOMBRE_OCULTO_GENERICO`, dynamicMode.ts § servicio.
-          payload: { tipo: 'NPC', targetSlug: 'test-dynamicmode-principal-oculto', targetName: 'Alguien', quienInicia: 'npc', combateForzado: true },
-        });
+        const res = await interactuarYCombatir(app, saveId, { tipo: 'NPC', targetSlug: 'test-dynamicmode-principal-oculto', targetName: 'Alguien', quienInicia: 'npc', combateForzado: true });
         expect(res.statusCode).toBe(200);
         const body = JSON.parse(res.body);
         expect(body.cierra).toBe(true);
-        // El shape del combate SÍ lleva el nombre REAL (nunca "Alguien") — es lo que ve CombatPanel.
-        expect(body.combate).toMatchObject({ npcs: [{ slug: 'test-dynamicmode-principal-oculto', name: 'Verdadero Nombre de Prueba', condicionFisica: 'ILESO' }] });
+        // P327 (decidido por la usuaria 2026-10-26): mientras Gorhorn no conozca al PRINCIPAL, el combate lo
+        // nombra como la tarjeta («Alguien», sin raza en esta fixture), nunca por su nombre real, y abrir el
+        // combate no lo descubre (antes B9 lo identificaba al instante).
+        expect(body.combate).toMatchObject({ npcs: [{ slug: 'test-dynamicmode-principal-oculto', name: 'Alguien', condicionFisica: 'ILESO' }] });
+        expect(JSON.stringify(body)).not.toContain('Verdadero Nombre de Prueba');
+        expect(await prisma.discoveredEntity.count({ where: { saveId, entityType: 'npc', entitySlug: 'test-dynamicmode-principal-oculto' } })).toBe(0);
 
         const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
         expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-principal-oculto']);
+
+        // Recargar la partida a mitad del combate tampoco lo identifica (GET /saves/:id).
+        const detalleApp = Fastify();
+        await detalleApp.register(detailRoutes);
+        const detalle = await detalleApp.inject({ method: 'GET', url: `/saves/${saveId}` });
+        expect(detalle.statusCode).toBe(200);
+        expect(JSON.parse(detalle.body).combateIniciado.npcs[0].name).toBe('Alguien');
+      });
+
+      it('P327: una vez descubierto, el combate sí lo nombra por su nombre real', async () => {
+        await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'test-dynamicmode-principal-oculto', fase: 'DESCUBIERTO' } });
+        const app = await buildApp();
+        const res = await interactuarYCombatir(app, saveId, { tipo: 'NPC', targetSlug: 'test-dynamicmode-principal-oculto', targetName: 'Verdadero Nombre de Prueba', quienInicia: 'npc', combateForzado: true });
+        expect(res.statusCode).toBe(200);
+        expect(JSON.parse(res.body).combate).toMatchObject({ npcs: [{ name: 'Verdadero Nombre de Prueba' }] });
       });
     });
   });

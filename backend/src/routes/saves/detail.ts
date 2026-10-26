@@ -20,7 +20,7 @@ import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
 import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
-import type { PendingDynamicMode } from '../../services/dynamicMode.js';
+import { nombreVisibleDeNpc, type PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
@@ -274,7 +274,7 @@ export async function detailRoutes(app: FastifyInstance) {
       : [];
     const combatEnemigoNpcIds = combatParticipantesReales.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
     const combatEnemigoNpcRows = combatEnemigoNpcIds.length
-      ? await prisma.npc.findMany({ where: { id: { in: combatEnemigoNpcIds } }, select: { id: true, slug: true, name: true, atributoResistencia: true } })
+      ? await prisma.npc.findMany({ where: { id: { in: combatEnemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, atributoResistencia: true } })
       : [];
     const combatNpcRowById = new Map(combatEnemigoNpcRows.map((n) => [n.id, n]));
     const combatSoloNpcIds = combatParticipantesReales
@@ -300,6 +300,11 @@ export async function detailRoutes(app: FastifyInstance) {
 
     // CR-45: la marca del capitán también tras recargar.
     const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
+    // P327: en el combate, un PRINCIPAL aún desconocido sigue siendo «el orco desconocido».
+    const nombreVisiblePorSlug = new Map<string, string>();
+    for (const n of [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]) {
+      nombreVisiblePorSlug.set(n.slug, (await nombreVisibleDeNpc(prisma, save.id, n)).nombre);
+    }
     const combateIniciado = activeCombatEncounter
       ? {
           npcs: combatEnemigosParaDisplay.map((p) => {
@@ -307,7 +312,7 @@ export async function detailRoutes(app: FastifyInstance) {
             const state = p.condicionFisicaGrupo === null ? combatSoloStateByNpcId.get(p.npcId!) : undefined;
             return {
               slug: npcRow.slug,
-              name: npcRow.name,
+              name: nombreVisiblePorSlug.get(npcRow.slug) ?? npcRow.name,
               condicionFisica: p.condicionFisicaGrupo ?? state?.condicionFisica ?? 'ILESO',
               saqueado: state?.saqueado ?? false,
               lootedItemNames: state?.lootedItemNames ?? [],
@@ -330,7 +335,7 @@ export async function detailRoutes(app: FastifyInstance) {
             const state = pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`);
             return {
               slug: n.slug,
-              name: n.name,
+              name: nombreVisiblePorSlug.get(n.slug) ?? n.name,
               condicionFisica: state?.condicionFisica ?? 'ILESO',
               saqueado: state?.saqueado ?? false,
               // Saqueo parcial (2026-07-31) — sin esto, recargar la partida a mitad de un saqueo

@@ -7,7 +7,7 @@ import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
-import { deNombre, nombreDeEncuentro,
+import { deNombre, nombreDeEncuentro, nombreVisibleDeNpc,
   MAX_VUELTAS_MODO_DINAMICO,
   MINUTOS_POR_VUELTA_MODO_DINAMICO,
   resumenModoDinamicoParaLog,
@@ -171,7 +171,8 @@ async function abrirCombateForzadoDesdeInteractuar(
       );
       if (!abierto) return null;
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
-      await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
+      // P327: un PRINCIPAL aún desconocido no se identifica por abrirse el combate (ver abajo).
+      if (!(await nombreVisibleDeNpc(prisma, save.id, persona)).oculto) await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
       // P90: si la vieron antes ellos, es una emboscada, no una acción suya (sin línea en el diario; lo
       // cuenta la narración). Mismo formato que la caza (`accionEnDiarioDeCaza`).
       const actionText = emboscada ? `Me defiendo de '${persona.name}' y de los suyos, que me tienden una emboscada.` : `Me enfrento a ${persona.name} y a los suyos.`;
@@ -228,8 +229,13 @@ async function abrirCombateForzadoDesdeInteractuar(
   // B9 (pruebas 2026-09-28): el encuentro decía "Alguien se abalanza..." pero la ficha de combate
   // mostraba al instante el nombre real y toda su historia. Al quedar cara a cara en combate se le
   // identifica: queda descubierto, así mapa, Enciclopedia y ficha cuentan lo mismo desde aquí.
-  await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: target.name, npcSlugsInScene: [target.slug] });
-  return { combate: combateNpcShape(target) };
+  // P327 (decidido por la usuaria 2026-10-26): mientras Gorhorn no conozca a un PRINCIPAL, toda la escena lo
+  // llama «el orco desconocido»: la tarjeta lo llamaba así y al abrir el combate saltaba su nombre real
+  // («Orco enfurecido»). Ya no se le identifica por quedar cara a cara (antes B9); el nombre cambia solo al
+  // presentarse o descubrirse. Un rol o una especie (no PRINCIPAL) sigue descubriéndose como antes.
+  const visible = await nombreVisibleDeNpc(prisma, save.id, target);
+  if (!visible.oculto) await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: target.name, npcSlugsInScene: [target.slug] });
+  return { combate: combateNpcShape({ ...target, name: visible.nombre }) };
 }
 
 function combateNpcShape(target: { slug: string; name: string; condicionFisica: string; saqueado: boolean; lootedItemNames: string[]; analizado: boolean; capturable: boolean; activeEffects: unknown; targetedForKill: boolean }) {
@@ -282,24 +288,11 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         return reply.status(409).send({ error: 'Ya hay un modo dinámico en curso' });
       }
 
-      const fictionalMinutesActuales0 = save.worldState?.fictionalMinutes ?? 480;
-
-      // AGRESIVO/ENEMIGO (2026-09-20, "todo debe provocar el interactuar, incluido un agresivo") —
-      // bifurcación ANTES de cualquier narración: si el NPC/fauna vio primero al jugador
-      // (`quienInicia: 'npc'`), no hay nada que elegir — combate directo, sin `pendingDynamicMode`
-      // de por medio. Si el jugador lo vio primero, sí hay elección real (ver más abajo, tras
-      // narrar la apertura con `narrarAperturaCombateForzado`) — la rama de "npc" se resuelve aquí
-      // mismo porque no necesita ninguna narración previa, el combate ya empieza.
-      if (combateForzado && quienInicia === 'npc') {
-        const resultadoCombate = await abrirCombateForzadoDesdeInteractuar(save, targetSlug, targetName, fictionalMinutesActuales0, zonePointId, cantidad, true);
-        if (!resultadoCombate) {
-          // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
-          // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).
-          await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
-          return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
-        }
-        return { narration: '', opciones: [], cierra: true, vuelta: 1, timeLabel: formatFictionalDate(fictionalMinutesActuales0), newQuestOfferInfo: null, ...resultadoCombate };
-      }
+      // AGRESIVO/ENEMIGO (2026-09-20, "todo debe provocar el interactuar, incluido un agresivo") — P27
+      // (decidido por la usuaria 2026-10-26): Interactuar con quien te corta el paso NUNCA abre el combate
+      // directamente, tampoco cuando te vio primero: sale el paso de decisión (Combatir/Huir, más abajo, con
+      // `narrarAperturaCombateForzado`) y el combate solo empieza al elegir Combatir (`/responder`).
+      // `quienInicia: 'npc'` solo marca la emboscada (P90) para cuando elija pelear.
 
       const esGistera = targetSlug === 'gistera-koh';
 
@@ -329,7 +322,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           select: { id: true },
         }));
       const turno = combateForzado
-        ? narrarAperturaCombateForzado(targetName, cantidad)
+        ? narrarAperturaCombateForzado(targetName, cantidad, quienInicia)
         : esGistera
           ? reencuentro
             ? narrarReencuentroGistera(!!(await prisma.quest.findFirst({ where: { saveId: save.id, questSlug: ORCO_ENFURECIDO_QUEST_SLUG }, select: { id: true } })))
@@ -375,6 +368,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             locationContext: currentLocation,
             historialNarracion,
             ...(combateForzado ? { combateForzado: true as const } : {}),
+            ...(combateForzado && quienInicia === 'npc' ? { emboscada: true as const } : {}),
             ...(reencuentro ? { reencuentro: true as const } : {}),
             // Agresivo en grupo (Fase 2, 2026-09-28) — se persisten para que `/responder` (el
             // jugador elige "Combatir" tras verlo primero) sepa que este encuentro es un grupo real
@@ -466,6 +460,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           fictionalMinutesActuales,
           pending.zonePointId,
           pending.cantidad,
+          pending.emboscada === true,
         );
         if (!resultadoCombate) {
           // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
