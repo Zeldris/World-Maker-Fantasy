@@ -197,7 +197,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Catálogo y siembra
 
 - **Código:** datos en `b/scripts/worldCatalog.ts`; siembra `b/scripts/seed-catalog.ts` con
-  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate, `domable:<especie>` en `b/services/cronista/prepararDoma.ts` y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
+  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate, `convaleciente:<npc>:combate` en `b/services/cronista/prepararConvaleciente.ts` (el convaleciente con su tarjeta en el diario), `domable:<especie>` en `b/services/cronista/prepararDoma.ts` y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
 

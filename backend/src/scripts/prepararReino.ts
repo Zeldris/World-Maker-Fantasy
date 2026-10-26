@@ -7,7 +7,7 @@
 //   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
-//   convaleciente:<npc>             el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo)
+//   convaleciente:<npc>[:combate]   el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo); con `:combate` (QA-261, P95/P320) el combate sigue sin resolver en `pendingCombatNpcSlugs` (`dejarConvalecienteEnCombate`) y sale la tarjeta Matar/Capturar/Clemente; el animal sigue ausente del mapa, como tras la derrota real
 //   lider-muere:<facción>           CR-43: el líder muere de viejo por la vía del motor (`morirDeViejo`, la de `envejecerDia`) y, si hacen falta, destacan jóvenes (`crearNpc` DESTACA) hasta 2 candidatos; la cohesión queda en 20-50 tras la baja; la sucesión (y la escisión con nombre) sale al avanzar (`matarLiderDeFaccion`)
 //   alianza:<A>:<B>                 P247: alianza, ruptura y alianza nueva de la facción A con la B (`recordFactionEvent` NEGOCIACION_TREGUA y EXPANSION_TERRITORIAL_AGRESIVA: `aliarTrasRuptura`)
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
@@ -32,13 +32,14 @@ import type { AttributeBlock } from '../services/dice.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
+import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
 import { hacerDomador } from '../services/progresionPersonaje.js';
 import { parsearPasosReino } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc> lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -129,6 +130,10 @@ for (const paso of pasos) {
     );
     if (!abierto) rechaza('combate: ya hay un combate en curso.');
     else dice(`Combate abierto contra ${miembros.map((m) => `${m.nombre} (Int ${m.inteligencia})`).join(', ')}`);
+  } else if (paso.tipo === 'convaleciente' && paso.enCombate) {
+    const r = await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: paso.npcSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Convaleciente en combate: ${r.nombre} (${r.scope}); combate sin resolver con ${r.rivales.join(', ')}`);
   } else if (paso.tipo === 'convaleciente') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.npcSlug }, select: { id: true, slug: true, kind: true } });
     if (!npc) { rechaza(`convaleciente: no hay NPC ${paso.npcSlug}.`); continue; }

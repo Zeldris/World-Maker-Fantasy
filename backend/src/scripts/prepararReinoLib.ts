@@ -7,7 +7,7 @@ export type PasoReino =
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
   | { tipo: 'combate'; npcSlugs: string[] }
   | { tipo: 'ganado'; especie: string; n: number }
-  | { tipo: 'convaleciente'; npcSlug: string }
+  | { tipo: 'convaleciente'; npcSlug: string; enCombate: boolean }
   | { tipo: 'lider-muere'; facSlug: string }
   | { tipo: 'alianza'; facA: string; facB: string }
   | { tipo: 'vasallo-paga'; vasalloSlug: string }
@@ -17,7 +17,7 @@ export type PasoReino =
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate),
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-261),
 /// `lider-muere:<facción>` (QA-259, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-260, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
@@ -54,8 +54,8 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       if (!r[0] || n == null) return { error: `«${arg}»: falta ganado:<especie>:<n>.` };
       pasos.push({ tipo: 'ganado', especie: r[0], n });
     } else if (clave === 'convaleciente') {
-      if (!r[0] || r.length > 1) return { error: `«${arg}»: falta convaleciente:<slug del NPC>.` };
-      pasos.push({ tipo: 'convaleciente', npcSlug: r[0] });
+      if (!r[0] || r.length > 2 || (r[1] != null && r[1] !== 'combate')) return { error: `«${arg}»: falta convaleciente:<slug del NPC>[:combate].` };
+      pasos.push({ tipo: 'convaleciente', npcSlug: r[0], enCombate: r[1] === 'combate' });
     } else if (clave === 'lider-muere') {
       if (!r[0] || r.length > 1) return { error: `«${arg}»: falta lider-muere:<slug de la facción>.` };
       pasos.push({ tipo: 'lider-muere', facSlug: r[0] });

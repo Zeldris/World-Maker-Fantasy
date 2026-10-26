@@ -16,12 +16,14 @@
 #                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>], reclutar:<npc>, guarnicion,
-#                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>,
+#                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
 #                                               combate:<npc>,<npc>…; QA-259: lider-muere:<facción> (el líder muere de viejo con 2
 #                                               candidatos), alianza:<A>:<B> (alianza, ruptura y alianza nueva), vasallo-paga:<vasallo>
 #                                               (fondos para la cuota entera sin saldar la deuda); QA-260: domable:<especie>
 #                                               (un animal domable vencido y atado en una Jaula libre, para «Al corral»),
-#                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir)
+#                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir);
+#                                               QA-261: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
+#                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
 #                                               y, en dar-reino, edificio:<receta> de más tier que el personaje (se da como lo
 #                                               levantaría la Casa de obras; p. ej. ayuntamiento-mediano y después jaula-grande)
 #   escenario.sh probar <nombre> <orden…>        (QA-153) restaura la instantánea en una base temporal `prueba_<pid>` del mismo
