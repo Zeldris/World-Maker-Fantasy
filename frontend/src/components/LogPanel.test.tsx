@@ -257,3 +257,24 @@ describe('LogPanel — tarjeta de convaleciente en combate', () => {
     expect((getByRole('button', { name: 'Matar' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+/// P306/P307 (usuaria, 2026-10-26): la tarjeta de capítulo completado explica que se cierra uno cada 15 acciones.
+describe('LogPanel — tarjeta «Capítulo completado»', () => {
+  const baseProps = { title: 'Tu personaje', subtitle: 'x', accent: 'accent' as const, emptyHint: 'vacío' }
+  Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo
+  const entrada = (xpHitoLabel: string): LogEntry => ({
+    id: 'e1', channel: 'character', text: 'Saludo.', timeLabel: 'Día 1', createdAt: new Date().toISOString(),
+    xpDelta: 100, xpHitoDelta: 100, xpHitoLabel,
+  })
+
+  it('explica que un capítulo se cierra cada 15 acciones', () => {
+    const { getByText } = render(<LogPanel {...baseProps} entries={[entrada('Capítulo completado')]} />)
+    expect(getByText(/Capítulo completado \(\+100 XP\)/)).toBeTruthy()
+    expect(getByText(/Cada 15 acciones se cierra un capítulo/)).toBeTruthy()
+  })
+
+  it('otro hito no lleva la explicación', () => {
+    const { queryByText } = render(<LogPanel {...baseProps} entries={[entrada('Descubrimiento')]} />)
+    expect(queryByText(/se cierra un capítulo/)).toBeNull()
+  })
+})
