@@ -161,7 +161,8 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
 - **Diseño** (`grilling`, `selector`; usuaria, 2026-10-07): toda ronda, también las de detalle, se contrasta con los
   `designReferences` de `.claude/gw.json` buscando cómo lo resuelven (`WebSearch`); **X4 marca el camino** siempre
   que se pueda, y la ronda acaba con las fuentes enlazadas. Si una pregunta pide decidir números o reglas que sobre
-  el papel no se sienten, `prototype` con el enlace en esa pregunta.
+  el papel no se sienten, `prototype` con el enlace en esa pregunta. **Toda duda** que se lleve a la usuaria, también
+  las `QUESTIONS` de una tanda de pruebas, va contrastada igual, con las fuentes (usuaria, 2026-10-26).
 - **`prototype`:** el HTML de lógica se queda en `docs/prototipos/<tarea>-<tema>.html` (no hay rama aparte); el
   veredicto, en la entrada de la tarea en su roadmap con el enlace.
 - **`domain-modeling`:** `GLOSSARY.md` es el vocabulario del motor y del producto; el lore canónico vive en
