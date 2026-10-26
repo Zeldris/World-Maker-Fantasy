@@ -65,7 +65,7 @@ infusión de espiga roja 10, Ungüento de Espina 12 (t3). Los medicinales curan 
 herida (GRAVE → HERIDO → ILESO).
 
 ## Herramientas (habilitan oficios)
-Pico de minero, cuchillo de deshuello de hielo sílice, kit de costura de hueso, piedra de afilar,
+Pico de minero, cuchillo de desuello de hielo sílice, kit de costura de hueso, piedra de afilar,
 piedras de chispa, trampa de lazo, cuerda de tendón, caña de pescar + cebo, antorcha de resina de
 ciénaga, Incisivos de Miruina (curtidor y peletero).
 

@@ -317,7 +317,7 @@ describe('loreContextFor — construccion/crafteo/personaje/ability (contenido e
 
   it('crafteo: busca por key en CRAFTING_RECIPES', async () => {
     const result = await loreContextFor('w1', 'crafteo', 'axeRepair');
-    expect(result?.name).toBe('Hacha de guerra Maktor restaurada');
+    expect(result?.name).toBe('Hacha de guerra Maktor');
     expect(await loreContextFor('w1', 'crafteo', 'no-existe')).toBeNull();
   });
 

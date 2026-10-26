@@ -529,7 +529,7 @@ constitución y destreza repetidas. Columna Estado añadida (se había perdido a
 
 | Nivel | Habilidad | Atributo | Efecto | Rol | Estado |
 |---|---|---|---|---|---|
-| 12 | Golpe Adaptado | Fuerza | `ATAQUE` | ataque | ✅ lista, sembrada |
+| 12 | Golpe Llano *(antes «Golpe Adaptado», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Fuerza | `ATAQUE` | ataque | ✅ lista, sembrada |
 | 16 | Golpe Calculado | Inteligencia | `ATAQUE` — golpe técnico, no de fuerza bruta | ataque | ✅ lista, sembrada |
 | 19 | Golpe Desequilibrante | Destreza | `ATAQUE` + `ATURDIMIENTO` | ataque | ✅ lista, sembrada |
 | 24 | Aliento de Batalla | Voluntad | `AGUANTE` + `RECUPERACION` | utilidad | ✅ lista, sembrada |
@@ -626,11 +626,11 @@ Columna Estado añadida (se había perdido al escribir esta tabla) y corregido e
 |---|---|---|---|---|
 | 12 | Disparo Certero | Destreza | `ATAQUE` | ✅ lista, sembrada |
 | 16 | Instinto de Cazador | Inteligencia | `AGUANTE` — lees la intención del rival y esquivas antes del golpe aumentando tu inteligencia en +4 | ✅ lista, sembrada |
-| 19 | Tiro Inmovilizador | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista, sembrada |
+| 19 | Tiro a la Pata *(antes «Tiro Inmovilizador», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` + `ATURDIMIENTO` | ✅ lista, sembrada |
 | 24 | Tensar al Límite | Fuerza | `ATAQUE` + `CANALIZAR` + `LETAL` — tensa el arco al máximo, más potencia por pura resistencia física | ✅ lista, sembrada — `CANALIZAR` tiene motor real desde el 2026-09-09 (1v1 y combate múltiple) |
 | 28 | Concentración Absoluta | Voluntad | `ATAQUE` — paciencia y foco antes de disparar, no técnica | ✅ lista, sembrada |
 | 32 | Puntería Perfecta | Destreza | `ATAQUE` — el disparo definitivo de precisión | ✅ lista, sembrada |
-| 36 | Tiro Multiple | Destreza | `ATAQUE` + `MULTIPLE` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts` como "Tiro Múltiple") |
+| 36 | Tiro Pasante *(antes «Tiro Múltiple», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` + `MULTIPLE` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts` como "Tiro Múltiple") |
 | 40 | Disparo Definitivo *(capstone)* | Destreza | `ATAQUE` + `AGUANTE` + `CONTRA` + `LIMITADO` | ⛔ combina rol ataque Y rol defensa en la MISMA habilidad ("si es en turno de ataque... si es en defensa...") — el motor asigna un único `rol` por `SavedAction`, no hay forma de que la misma ficha se comporte distinto según quién inicia el intercambio |
 
 **7 de 8 sembradas** (12, 16, 19, 24, 28, 32, 36 — corregido 2026-09-15, auditoría de lore:
@@ -638,7 +638,7 @@ Columna Estado añadida (se había perdido al escribir esta tabla) y corregido e
 entonces). Solo 40 (rol dual ataque/defensa en una sola ficha, limitación estructural real, no solo
 un efecto sin construir) sigue bloqueada de verdad.
 
-### Instintivo — 7 de 8 listas (corregido 2026-09-15, auditoría de lore — la cabecera se había quedado en "6 de 8" mientras el propio párrafo-resumen de esta sección ya reflejaba 7/8 desde el 2026-09-14)
+### Instintivo — 8 de 8 listas, completo (corregido 2026-10-25, `QA-243`: Instinto Reactivo ya está sembrado; antes, 2026-09-15, auditoría de lore — la cabecera se había quedado en "6 de 8" mientras el propio párrafo-resumen de esta sección ya reflejaba 7/8 desde el 2026-09-14)
 
 Columna Estado añadida (se había perdido al escribir esta tabla):
 
@@ -646,14 +646,14 @@ Columna Estado añadida (se había perdido al escribir esta tabla):
 |---|---|---|---|---|
 | 12 | Barrido Instintivo | Destreza | `ATURDIMIENTO` (reactiva, rol defensa) | ✅ lista, sembrada |
 | 16 | Golpe Rápido | Destreza | `ATAQUE` | ✅ lista, sembrada |
-| 19 | Instinto Reactivo | Destreza | `AGUANTE` + `CONTRA` | ⚠️ bloqueada de verdad todavía — sin sembrar, aunque `CONTRA`+defensa YA tiene motor real (mismo patrón que Vórtice Menor) |
+| 19 | Instinto Reactivo | Destreza | `AGUANTE` + `CONTRA` | ✅ lista, sembrada (comprobado en `classAbilities.ts` el 2026-10-25, `QA-243`) |
 | 24 | Furia Instintiva | Fuerza | `ATAQUE` + `DEBILIDAD` | ✅ lista, sembrada (auditoría 2026-08-31 — confirmada en `classAbilities.ts`) |
 | 28 | Instinto de Reserva | Inteligencia | `AGUANTE` + `RECUPERACION` + `AREA` | ✅ lista, sembrada 2026-09-14 — `AREA` real, variante defensiva: dispara por margen decisivo (contragolpea con éxito), activa `CombatParticipant.areaDefensaPorRondas`; mientras viva, redirige cada golpe futuro dirigido al aliado protegido hacia quien la activó |
 | 32 | Golpe Gemelo | Fuerza | `ATAQUE` + `MULTIPLE` | ✅ **lista, sembrada 2026-08-31** — corregido un bug de siembra real: estaba dada de alta por error en Supervivencia nv.32 en vez de aquí (mismo nombre, mismo atributo), movida a su especialización correcta. Tramo único (siempre 2 objetivos si conecta), sin condición de margen propia de la ficha |
-| 36 | Instinto Asesino | Constitución | `AGUANTE` + `ATURDIMIENTO` + `LIMITADO` — reacción primaria, pura adrenalina | ✅ lista, sembrada |
+| 36 | Reflejo Primario *(antes «Instinto Asesino», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Constitución | `AGUANTE` + `ATURDIMIENTO` + `LIMITADO` — reacción primaria, pura adrenalina | ✅ lista, sembrada |
 | 40 | Velocidad Letal *(capstone)* | Destreza | `ATAQUE` + `LETAL` | ✅ lista, sembrada |
 
-**7 de 8 sembradas** (12/16/24/28/32/36/40 — 28 (Instinto de Reserva) cerrada 2026-09-14 por `AREA`
+**8 de 8 sembradas** (corregido 2026-10-25, `QA-243`: 19 ya está en `classAbilities.ts`) — Instintivo completo. Antes: 7 de 8 (12/16/24/28/32/36/40 — 28 (Instinto de Reserva) cerrada 2026-09-14 por `AREA`
 real, variante defensiva — corregido 2026-09-07: 24 ya estaba sembrada desde la pasada 2026-08-31,
 esta tabla la seguía marcando como bloqueada). Solo 19 (`CONTRA`+defensa, sí sembrable ya sin tocar
 motor pero pendiente de dar de alta) sigue sin sembrar.
@@ -798,7 +798,7 @@ redirige a UN controlado a la vez) — un bloqueo distinto del de `AREA`, ya cer
 
 **Chamán completo (recuento real, corregido 2026-09-07 — auditoría de lore contra `classAbilities.ts`
 tras la siembra de 22 habilidades del 2026-08-31, que esta sección nunca reflejó): Totémico 1/8,
-Rúnico 6/8, Convocador 6/8, Opresor 6/8 (actualizado 2026-09-14, AREA real cierra 32/36).**
+Rúnico 6/8, Convocador 7/8, Opresor 6/8 (actualizado 2026-09-14, AREA real cierra 32/36; Convocador 6 → 7 el 2026-10-25, `QA-243`, contra `classAbilities.ts`).**
 
 ---
 
@@ -838,7 +838,7 @@ verdad — ninguna otra ficha de todo el documento combina esos 2 efectos.
 
 Mismo atributo/efecto/nivel que Maestro Arquero en los 8 huecos, solo cambia el arma y el texto de
 sabor (arco → ballesta): Perno Certero (12), Perno Inmovilizador (16), Cálculo de Viento (19,
-idéntica), Postura de Tirador (24, idéntica), Perno Perforante (28), Segundo Aliento del Cazador
+idéntica), Postura de Ballestero (24, la Postura de Tirador del Maestro Arquero con otro nombre desde 2026-10-25, `QA-243`), Perno Perforante (28), Segundo Aliento del Cazador
 (32, idéntica), Recarga en Cadena (36), Perno del Ocaso *(capstone, 40)*. **Actualizado
 2026-09-14, mismo reparto que Maestro Arquero** (ver nota de esa sección): **7 de 8 listas** —
 solo 40 (`CANALIZAR`+`LETAL`) sigue bloqueada de verdad.
@@ -909,7 +909,7 @@ Gira en torno a `PROVOCACION` (agro, motor real desde 2026-09-14, ver Guardián 
 **7 de 8 listas** (12/16/19/28/32/36/40) — solo "Sangre Hirviendo" espera. Constitución mayoría
 (5/8: 12/16/24/36/40) con fuerza/carisma/voluntad repartidas.
 
-**Caballero completo**: Orden 6/8, Valor 3/8, Dolor 7/8.
+**Caballero completo**: Orden 6/8, Valor 8/8, Dolor 7/8 (Valor corregido 2026-10-25, `QA-243`).
 
 ---
 
@@ -1016,7 +1016,7 @@ Destreza se repite a propósito (define a la clase), igual que Chamán repitió 
 | 1 | Estudio del Blanco | Inteligencia | `ANALISIS` | ✅ lista |
 | 4 | Reflejos de Sombra | Destreza | `AGUANTE` | ✅ lista |
 | 6 | Respiración Silenciosa | Voluntad | `RECUPERACION` | ✅ lista |
-| 8 | Golpe Certero | Destreza | `ATAQUE` (reactiva) | ✅ lista |
+| 8 | Golpe Oportuno *(antes «Golpe Certero», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` (reactiva) | ✅ lista |
 
 ### Maestro Asesino — generalista: precisión, crítico puro
 
@@ -1078,14 +1078,14 @@ repartidas.
 | 19 | Instinto de Caza | Voluntad | `AGUANTE` | ✅ lista |
 | 24 | Golpe Selecto | Fuerza | `ATAQUE` | ✅ lista |
 | 28 | Ventaja del Cazador | Inteligencia | `AUMENTO` | ⚠️ bloqueada |
-| 32 | Golpe Certero | Destreza | `ATAQUE` | ✅ lista |
+| 32 | Golpe a la Marca *(antes «Golpe Certero», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Destreza | `ATAQUE` | ✅ lista |
 | 36 | Sentencia | Constitución | `ATURDIMIENTO` | ✅ lista |
 | 40 | Ejecución del Elegido *(capstone)* | Destreza | `ATAQUE` — daño masivo solo contra el objetivo marcado | ✅ lista |
 
 **6 de 8 listas** (16/19/24/32/36/40). Destreza mayoría (3/8: 16/32/40) con inteligencia/voluntad/
 fuerza/constitución repartidas.
 
-**Asesino completo**: Maestro Asesino 7/8, Tóxico 3/8, Danzante 8/8, Selecto 6/8.
+**Asesino completo**: Maestro Asesino 7/8, Tóxico 8/8, Danzante 8/8, Selecto 6/8 (Tóxico corregido 2026-10-25, `QA-243`).
 
 ---
 
@@ -1149,7 +1149,7 @@ bloqueado por `INVOCACION` multi-objetivo (12/16/19/40).
 |---|---|---|---|---|
 | 12 | Garras Desgarradoras | Fuerza | `ATAQUE` | ✅ lista |
 | 16 | Mordisco Feroz | Destreza | `ATAQUE` | ✅ lista |
-| 19 | Instinto Asesino | Constitución | `ATURDIMIENTO` | ✅ lista |
+| 19 | Arrebato Salvaje *(antes «Instinto Asesino», renombrada 2026-10-25, `QA-243`: el nombre se repetía en otra clase)* | Constitución | `ATURDIMIENTO` | ✅ lista |
 | 24 | Embestida Salvaje | Fuerza | `ATAQUE` | ✅ lista |
 | 28 | Furia Primal | Voluntad | `RECUPERACION` | ✅ lista |
 | 32 | Zarpazo Doble | Destreza | `ATAQUE` | ✅ lista |
@@ -1176,14 +1176,15 @@ bloqueado por `INVOCACION` multi-objetivo (12/16/19/40).
 **8 de 8 listas.** 3 ataque / 2 defensa / 3 utilidad, la especialización más repartida en atributos
 de toda la sesión.
 
-**Druida completo**: Cambiaformas 8/8, Aullador 2/8, Salvaje 8/8, Adaptado 8/8.
+**Druida completo**: Cambiaformas 8/8, Aullador 4/8, Salvaje 8/8, Adaptado 8/8 (Aullador corregido 2026-10-25, `QA-243`).
 
 ---
 
 ## Las 9 clases, resumen final de bloqueo
 
 Repaso a fondo completo (tronco + especializaciones) de las 9 clases. Recuento de huecos listos
-sobre 8 por especialización:
+sobre 8 por especialización (tabla regenerada el 2026-10-25, `QA-243`, contando `allClassAbilityUnlocks()` de
+`classAbilities.ts`; manda el código si vuelven a separarse):
 
 **Corrección 2026-09-07 (auditoría de lore, contra `classAbilities.ts` real)**: Guerrero, Cazador y
 Chamán recibieron una siembra de 22 habilidades más el 2026-08-31 que esta tabla nunca reflejó — y
@@ -1194,16 +1195,17 @@ entonces). Caballero/Segador/Asesino/Druida verificados sin discrepancia contra 
 
 | Clase | Especializaciones (listas/8) |
 |---|---|
-| Guerrero | Berserker 3, Guardián 4, Lancero 6, Especialista 5 |
-| Cazador | Domador 1, Supervivencia 7, Tirador 6, Instintivo 6 |
-| Chamán | Totémico 1, Rúnico 6, Convocador 6, Opresor 4 |
-| Arquero | Maestro Arquero 1, Maestro Ballestero 1 |
-| Caballero | Orden 6, Valor 3, Dolor 7 |
-| Segador | Parca 3, Maldito 4, Ilustrado 6, Transmutador 2 |
-| Asesino | Maestro Asesino 7, Tóxico 3, Danzante 8, Selecto 6 |
-| Druida | Cambiaformas 8, Aullador 2, Salvaje 8, Adaptado 8 |
+| Guerrero | Berserker 7, Guardián 7, Lancero 7, Especialista 8 |
+| Cazador | Domador 5, Supervivencia 8, Tirador 7, Instintivo 8 |
+| Chamán | Totémico 1, Rúnico 6, Convocador 7, Opresor 6 |
+| Arquero | Maestro Arquero 7, Maestro Ballestero 7 |
+| Caballero | Orden 6, Valor 8, Dolor 7 |
+| Segador | Parca 8, Maldito 8, Ilustrado 8, Transmutador 8 |
+| Asesino | Maestro Asesino 7, Tóxico 8, Danzante 8, Selecto 6 |
+| Druida | Cambiaformas 8, Aullador 4, Salvaje 8, Adaptado 8 |
+| Mago | sin tronco ni especializaciones en el motor todavía (solo identidad, ver § Mago) |
 
-Patrón consistente en las 34 especializaciones: lo bloqueado es siempre `AUMENTO`/`DEBILIDAD`/
+Patrón consistente en las 29 especializaciones construidas: lo bloqueado es siempre `AUMENTO`/`DEBILIDAD`/
 `CANALIZAR`/`RETIRAR`/`CURAZION`/`REFLEJAR` (duración de turnos) o `INVOCACION`/`COMPANERO`/
 `CONTROL` multi-objetivo (2+ controlados a la vez) — nunca falta de diseño. `PROVOCACION` (agro/
 redirección de objetivo), `MARCAR` (fuerza el objetivo de tu Companion) y `AREA` (alcanza a todo un

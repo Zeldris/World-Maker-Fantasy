@@ -1,0 +1,59 @@
+{
+  "tipo": "location",
+  "slug": "pastos-de-la-deriva",
+  "nombre": "Los Pastos de la Deriva",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Praderas abiertas al este de Los Manaderos, donde la hierba dura más tiempo que en el núcleo del clan; hasta aquí siguen las manadas de Corredores de Cauce su migración y hasta aquí llevan los Serhu a sus múrgoles. Sin asentamiento fijo: se ocupa por temporadas.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:180; docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Los Pastos de la Deriva, Pasto Solar, Gradias); hierba: decisión de la usuaria, 2026-10-25",
+  "prompt": {
+    "lugar": "grassland landscape",
+    "sujeto": "A wide, open steppe of gently rolling grassland that stretches to the horizon, an empty wild land with only grazing herds on it.",
+    "cuerpo": "It is covered in tall straw-yellow grass tinged with orange, with patches of bare red clay showing between the tufts and a few low bushes of dense, deep green with small broad leaves.",
+    "rasgos": [
+      "Far off on the horizon a line of jagged black volcanic peaks rises through a haze of fine red dust.",
+      "In the middle distance graze a few tall, narrow-bodied grazers with rust-red backs, pure white bellies and a single pair of flat, blade-like horns swept straight back."
+    ],
+    "pose": "The grass bends under a dry wind that carries thin streamers of red dust across the plain.",
+    "entorno": "",
+    "luz": "Low sun just above the horizon casts a warm golden light across the grass tips and long soft shadows over the red earth, under a few low clouds."
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "The sun sits huge and low on the horizon, turning the sky amber and rose, setting the grass tips aglow in warm orange and laying long soft shadows over the red earth."
+    },
+    "momento:noche": {
+      "luz": "Stars glitter in a clear sky above the plain, a soft, even pearly glow washes over the grass tips and the shadows over the red earth are deep and cool."
+    },
+    "estacion:primavera": {
+      "cuerpo": "It is covered in tall straw-yellow grass tinged with orange, with fresh green shoots at the base of the tufts, shallow flood water gleaming in the hollows between patches of red clay and a few low bushes of dense, deep green with small broad leaves."
+    },
+    "estacion:verano": {
+      "cuerpo": "Brittle straw-yellow grass tinged with orange stands in thin tufts over wide patches of cracked bare red clay, with a few low bushes of dense, deep green with small broad leaves."
+    },
+    "estacion:otono": {
+      "cuerpo": "Tall straw-yellow grass tinged with orange stands heavy with seed heads between patches of red clay, with low plants bearing ripe fruit among the tufts and a few low bushes of dense, deep green with small broad leaves."
+    },
+    "estacion:invierno": {
+      "cuerpo": "Short, flattened straw-yellow grass tinged with orange lies thin over wide stretches of bare red clay, with a few low bushes of dense, deep green with small broad leaves.",
+      "pose": "A cold dry wind combs the thin grass and carries thin streamers of red dust across the plain."
+    },
+    "estacion:invierno+momento:noche": {
+      "luz": "Stars glitter in a clear sky above the plain, a soft, even pearly glow lies on the flattened grass tips and a thin frost glints over the red earth in deep cool shadows."
+    }
+  },
+  "propuestas": [
+    "relieve: gently rolling",
+    "manada: a few slender antelope-like animals (Cuernahoja)",
+    "viento con polvo",
+    "hora: sol bajo",
+    "condiciones: luz de atardecer y de noche",
+    "condiciones estacion:primavera: brotes verdes y agua de crecida en las hondonadas",
+    "condiciones estacion:verano: hierba quebradiza y arcilla agrietada",
+    "condiciones estacion:otono: espigas con semilla y plantas con fruto maduro",
+    "condiciones estacion:invierno: hierba corta y aplastada, viento frío (la hierba sigue amarillo pajizo anaranjado)",
+    "condiciones estacion:invierno+momento:noche: escarcha fina",
+    "picos «jagged black» (salían pardos)",
+    "Cuernahoja sin «antelope-like» (salían impalas): cuernos planos como hojas, sin fuente"
+  ]
+}

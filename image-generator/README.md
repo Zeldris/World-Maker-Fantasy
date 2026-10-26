@@ -15,11 +15,11 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
 | `descargas/` | el zip original del binario | no |
-| `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf`; para comparar, `flux-2-klein-base-4b-Q8_0.gguf` y `flux3-image-klein-Q8_0.gguf` (no arranca en la Deck) | no |
-| `modelos/text/` | `Qwen3-4B-Q4_K_M.gguf` (codificador de texto); `Qwen3VL-4B-Instruct-Q4_K_M.gguf` (el de FLUX.3) | no |
+| `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf`; para comparar, `flux-2-klein-base-4b-Q8_0.gguf` y `flux3-image-klein-Q8_0.gguf` (no arranca en la Deck); `z_image_turbo-Q4_K.gguf` (Z-Image-Turbo, Apache 2.0, banco de `IMG-15`) | no |
+| `modelos/text/` | `Qwen3-4B-Q4_K_M.gguf` (codificador de texto); `Qwen3VL-4B-Instruct-Q4_K_M.gguf` (el de FLUX.3); para el banco de `IMG-15`, `Qwen3-4B-Q8_0.gguf` y `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (el de Z-Image) | no |
 | `modelos/upscale/` | `RealESRGAN_x4plus.pth` (ampliación, BSD-3) | no |
 | `referencias/` | imágenes de referencia (`-r`); `referencias/images/` es la copia de `backend/uploads/images/` que hace `abrir.sh` (solo las que falten) | no |
-| `modelos/vae/` | `full_encoder_small_decoder.safetensors` (FLUX.2-small-decoder, Apache 2.0) | no |
+| `modelos/vae/` | `full_encoder_small_decoder.safetensors` (FLUX.2-small-decoder, Apache 2.0); para el banco de `IMG-15`, `flux2-vae.safetensors` (completo, Apache 2.0) y `ae-flux1.safetensors` (el de Z-Image) | no |
 | `generated/<tipo>/<slug>/` | todo lo generado por elemento (`CFG-43`): `<slug>-<perfil>.png` la elegida (nombre del juego), `intentos/`, `prompts/` y `logs/` (`<perfil>-s<semilla>-p<pasos>-<AAAAMMDD-HHMMSS>.*`), `registro.tsv`, `notas.md` y `elegidas.tsv` | no |
 
 Lo anterior a este cambio (`pruebas/<tanda>/` y `salida/images/`) sigue donde estaba, sin migrar; la interfaz ya no lo lee.
@@ -76,7 +76,7 @@ image-generator/scripts/generar.sh <directorio-de-salida> <nombre> <archivo-prom
 ```
 
 Un banner de 1280×512 tarda ~110 s; con `-r referencia.png` (args extra al final), ~200 s. Otro modelo: variables
-`MODELO`, `LLM`, `CFG` y `TOPE`. Resultados de cada opción: «Banco del múrgol» en el documento del reutilizable. El prompt que funcione se guarda como «prompt usado» en la enciclopedia
+`MODELO`, `LLM`, `VAE`, `CFG` y `TOPE`. Resultados de cada opción: «Banco del múrgol» en el documento del reutilizable. El prompt que funcione se guarda como «prompt usado» en la enciclopedia
 (`CFG-38`), para que quede el exacto con el que se generó la imagen.
 
 ## Memoria: lo que no se toca

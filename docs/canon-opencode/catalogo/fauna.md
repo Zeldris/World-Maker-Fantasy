@@ -1,6 +1,6 @@
 # CATÁLOGO: fauna
 Qué es: toda la fauna existente, con familia, nivel y temperamento reales, para calibrar especies nuevas y no duplicar.
-Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-09-27.
+Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-10-25.
 
 ## En el catálogo del juego (Llanuras del Viento Rojo)
 | Especie | Familia | Nivel | Temperamento | Zona |
@@ -9,7 +9,7 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Corredor de Cauce | BESTIONES | 1-2 | INOFENSIVO | toda la región |
 | Corretolvas | ZANCUDOS | 1 | INOFENSIVO | toda la región |
 | Cruzavientos | CORVENES | 5-10 | AGRESIVO | Pilares Rotos |
-| Gargantúa de Ceniza | BESTIONES | 6-12 | AGRESIVO | toda la región |
+| Gargantúa de Ceniza | BESTIONES | 6-12 | CAUTELOSO | toda la región |
 | Múrgol | BESTIONES | 1-5 | INOFENSIVO | toda la región |
 | Rondador de Brasas | ACECHANTES | 2-6 | AGRESIVO | Filo de las Brasas |
 | Salamandra de Escoria | MUDOS_SALVAJE | 3-4 | CAUTELOSO | Filo de las Brasas |
@@ -34,7 +34,7 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Toluh | NADANTES | 4-6 | INOFENSIVO | Playa de Ceniza Blanca |
 | Negueo Turquesa | NADANTES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
 | Negueo Solar | NADANTES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
-| Bulco de Arena | NADANTES | 1 | INOFENSIVO | Playa de Ceniza Blanca |
+| Rugoconcha | NADANTES | 1 | INOFENSIVO | Playa de Ceniza Blanca |
 | Terinte | RONDINES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
 | Benusa Pesquera | CORVENES | 1-2 | CAUTELOSO | Playa de Ceniza Blanca |
 | Manesti Azul | NADANTES | 1-2 | INOFENSIVO | Playa de Ceniza Blanca |
@@ -43,7 +43,7 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Zense Ceniza | CORVENES | 1-3 | CAUTELOSO | toda la región |
 | Canizor | ACECHANTES | 1-4 | CAUTELOSO | toda la región |
 
-## Solo en el lore (sin código todavía)
+## En el catálogo del juego (fuera de las Llanuras)
 | Especie | Región | Familia | Nivel | Temperamento |
 |---|---|---|---|---|
 | Sombras de Kroj | Margen | UMBRIAS | 3-8 | AGRESIVO |
@@ -62,8 +62,12 @@ Fuente: backend/src/scripts/worldCatalog.ts + regiones/*.md. Sincronizado: 2026-
 | Nievón | Cristal Helado | ACECHANTES | 5-11 | AGRESIVO |
 | Escarchín | Cristal Helado (Lago Cristalice) | NADANTES | 1-2 | INOFENSIVO |
 | Vreskal | Meseta | ORDENADOS | 1-3 | INOFENSIVO |
-| Espina del Viento | Llanuras (Fosa Horadada) | peligro ambiental, sin combate | — | — |
-| Vaeth | Margen | espíritu, no fauna | — | — |
+
+## Sin ficha de combate
+| Especie | Región | Qué es |
+|---|---|---|
+| Espina del Viento | Llanuras (Fosa Horadada) | peligro ambiental, sin combate |
+| Vaeth | Margen | espíritu, no fauna |
 
 ## Calibración
 - Presa pequeña o ambiental: nivel 1-2, INOFENSIVO o CAUTELOSO. Carroñeros: 1-3.

@@ -1,0 +1,11 @@
+# Samplers y schedulers de klein (euler hoy), prompt cine2. La última --sampling-method gana sobre la de generar.sh.
+aullador-dpm2m	6	prompts/aullador-cine2.txt	-	--sampling-method dpm++2m
+aullador-resms	6	prompts/aullador-cine2.txt	-	--sampling-method res_multistep
+aullador-ersde	6	prompts/aullador-cine2.txt	-	--sampling-method er_sde
+aullador-euler-p9	9	prompts/aullador-cine2.txt	-	-
+pastos-dpm2m	6	prompts/pastos-cine2.txt	-	--sampling-method dpm++2m
+pastos-resms	6	prompts/pastos-cine2.txt	-	--sampling-method res_multistep
+pastos-ersde	6	prompts/pastos-cine2.txt	-	--sampling-method er_sde
+pastos-euler-p9	9	prompts/pastos-cine2.txt	-	-
+# El texto de las motas del aullador: polvo mate en vez de motas brillantes (salían como gotas).
+aullador-polvo	6	prompts/aullador-polvo.txt	-	-

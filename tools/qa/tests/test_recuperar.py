@@ -5,7 +5,8 @@ import os
 import subprocess
 import unittest
 
-from comun import GW, aviso, carpeta, compactacion, orden, registro, respuesta, resultado, ruido, texto, usuaria
+from comun import (GW, aviso, carpeta, compactacion, config_gw, escribir, git, orden, registro, respuesta, resultado,
+                   ruido, texto, usuaria)
 
 PARTES = [
     *ruido(),
@@ -64,6 +65,26 @@ class Recuperar(unittest.TestCase):
         r = self.correr('--estado', entrada=json.dumps({'transcript_path': 'RUTA', 'source': 'compact'}), sesion=False)
         self.assertIn('- Compactions in this session: 1', r.stdout)
         self.assertRegex(r.stdout, r'--sesion \S+s\.jsonl')
+
+    def test_estado_da_tambien_la_fila_de_cada_worktree(self):
+        # IMG-15: el gancho corre en la carpeta donde se abrió la sesión; la que trabaja en un worktree no veía su fila
+        # y releía la bitácora entera (22 veces en una sesión).
+        repo = os.path.join(carpeta(), 'repo')
+        os.makedirs(repo)
+        git(repo, 'init', '-q', '-b', 'principal')
+        config_gw(repo)
+        escribir(os.path.join(repo, 'docs', 'registros', 'traspaso.md'),
+                 '| **Tarea en curso · `principal`** | lo de aquí |\n| **Tarea en curso · `otra`** | lo del worktree |\n')
+        git(repo, 'add', '-A')
+        git(repo, 'commit', '-qm', 'base')
+        wt = os.path.join(os.path.dirname(repo), 'wt')
+        git(repo, 'worktree', 'add', '-q', '-b', 'otra', wt)
+        git(repo, 'worktree', 'add', '-q', '-b', 'worktree-agent-1', wt + '-agente')  # sin fila: no sale
+        r = self.correr('--estado', '--root', repo)
+        self.assertNotIn('worktree-agent-1', r.stdout)
+        self.assertIn('row for `principal`: lo de aquí', r.stdout)
+        self.assertIn(f'- Worktree {wt}, branch otra (its state: python3 {wt}/.claude/gw/scripts/recuperar.py --estado):\n'
+                      '  - Log (docs/registros/traspaso.md), row for `otra`: lo del worktree\n', r.stdout)
 
     def test_sin_patron_da_la_ayuda(self):
         self.assertEqual(self.correr().returncode, 2)

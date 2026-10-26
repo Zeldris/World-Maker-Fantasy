@@ -1,0 +1,6 @@
+# r1: VAE. Mismo prompt (estilo cine) con el decodificador pequeño de hoy y con el VAE completo de FLUX.2 (Apache 2.0).
+pastos-vae-small	6	prompts/pastos-cine.txt	-	-
+pastos-vae-full	6	prompts/pastos-cine.txt	VAE=flux2-vae.safetensors	-
+pastos-vae-diffusers	6	prompts/pastos-cine.txt	VAE=flux2-klein-vae-diffusers.safetensors	-
+aullador-vae-small	6	prompts/aullador-cine.txt	-	-
+aullador-vae-full	6	prompts/aullador-cine.txt	VAE=flux2-vae.safetensors	-

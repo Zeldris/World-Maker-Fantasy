@@ -13,7 +13,9 @@
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 hookdir="$(cd "$(dirname "$0")" && pwd)"
-root="$(git -C "$hookdir" rev-parse --show-toplevel 2>/dev/null)" || {
+# In a linked worktree git exports GIT_DIR (.git/worktrees/<name>): with it, `git -C <hookdir>` would take the hooks
+# folder as the top level (WMF QA-252). The root comes from the hook's path alone.
+root="$(env -u GIT_DIR -u GIT_WORK_TREE git -C "$hookdir" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "pre-commit: $hookdir is not inside a git work tree; point git at the project's hooks: git config core.hooksPath .githooks" >&2; exit 1; }
 cd "$root" || exit 1
 

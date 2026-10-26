@@ -142,7 +142,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // este guard, fijar la clase ahora la duplicaría. Comparado por nombre (igual que el resto
       // del motor identifica una SavedAction "de serie" — no hay otro id compartido entre el
       // catálogo estático de habilidades y la fila ya persistida).
-      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => nombreActualDeHabilidad(a.name)));
+      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true, description: true } })).map((a) => nombreActualDeHabilidad(a.name, { clase, especializacion: null }, a.description)));
 
       const nuevasHabilidades = Array.from({ length: save.level }, (_, i) => i + 1)
         .flatMap((lvl) => classAbilityUnlocksFor(save.characterName, lvl, clase))
@@ -217,7 +217,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       // Mismo guard anti-duplicado que `/saves/:id/clase` — por si alguna habilidad de esta rama
       // ya existiera por otro camino (ninguno conocido hoy para especialización, pero el mismo
       // criterio defensivo del endpoint hermano se mantiene por consistencia).
-      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true } })).map((a) => nombreActualDeHabilidad(a.name)));
+      const yaTiene = new Set((await tx.savedAction.findMany({ where: { saveId: save.id, category: 'combate' }, select: { name: true, description: true } })).map((a) => nombreActualDeHabilidad(a.name, { clase: save.clase, especializacion }, a.description)));
 
       const nuevasHabilidades = especializacionAbilityUnlocksFor(save.clase!, especializacion, save.level)
         .filter((ability) => !yaTiene.has(ability.name))

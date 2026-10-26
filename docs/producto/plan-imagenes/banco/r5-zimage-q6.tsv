@@ -1,0 +1,5 @@
+# Z-Image-Turbo en Q6_K: ¿la blandura de r4 es de la cuantización? Con el prompt cine (como r4) y con cine2.
+aullador-q6-cine	8	prompts/aullador-cine.txt	MODELO=z_image_turbo-Q6_K.gguf,LLM=Qwen3-4B-Instruct-2507-Q4_K_M.gguf,VAE=ae-flux1.safetensors,TOPE=2100	-
+aullador-q6-cine2	8	prompts/aullador-cine2.txt	MODELO=z_image_turbo-Q6_K.gguf,LLM=Qwen3-4B-Instruct-2507-Q4_K_M.gguf,VAE=ae-flux1.safetensors,TOPE=2100	-
+pastos-q6-cine	8	prompts/pastos-cine.txt	MODELO=z_image_turbo-Q6_K.gguf,LLM=Qwen3-4B-Instruct-2507-Q4_K_M.gguf,VAE=ae-flux1.safetensors,TOPE=2100	-
+pastos-q6-cine2	8	prompts/pastos-cine2.txt	MODELO=z_image_turbo-Q6_K.gguf,LLM=Qwen3-4B-Instruct-2507-Q4_K_M.gguf,VAE=ae-flux1.safetensors,TOPE=2100	-

@@ -198,6 +198,25 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
 
+## Enciclopedia y lore (`QA-248`)
+
+- **Todo lo de un slug:** `bash tools/qa/ficha.sh <slug> [--canon]` (`QA-245`) da la ficha, el despiece, la región,
+  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon.
+- **Código:** la ruta `/world/:slug/enciclopedia` de `b/routes/world.ts` monta una sección por pestaña:
+  `b/routes/world.ts#buildFaunaFloraSection`, `buildItemsSection`, `buildNpcsSection`, `buildLocationsSection`,
+  `buildFactionsSection`, `buildHistoriaSection`, `buildRazasSection`, `buildClassesSection` y
+  `buildCraftingRecipesSection`.
+- **Datos:** en `b/scripts/worldCatalog.ts`. La flora y los minerales sin NPC toman el nombre de
+  `harvestSourceDisplayName` y la descripción de `harvestSourceDescriptions`. La región sale de `harvestSourceRegion`,
+  que usa también `b/services/playerActionValidation.ts#detectsWrongRegionHarvestClaim`. La población está en
+  `b/scripts/worldPopulation.ts`, el texto del RAG en `b/scripts/loreChunks.ts`, y los renombres de habilidades en
+  `b/services/habilidadesRenombradas.ts#renombrarHabilidadesDePartida`, que se aplica al cargar la partida.
+- **Tests de integridad:** `b/scripts/floraConFicha.test.ts` comprueba la ficha, la región y la población de toda
+  fuente. `b/services/crafting.test.ts` comprueba que cada receta está alineada con su ficha de catálogo.
+- **Interfaz:** `f/components/panels/EnciclopediaPanel.tsx`.
+- **Canon:** primero el resumen de `docs/canon-opencode/` (empieza por `00-nucleo.md`); `docs/rpgtarkor/` solo para
+  el detalle. Los hallazgos de cada auditoría van en `docs/registros/lore-hallazgos.md`.
+
 ## Imágenes (prompts y generación local)
 
 - **Código:** `b/services/imagePromptGenerator.ts#generateImagePrompt` (reglas de FLUX en el prompt del sistema,
@@ -219,6 +238,9 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+- **Banco de calidad (`IMG-15`):** `docs/producto/plan-imagenes/banco.sh <ronda>` (un TSV por ronda en `banco/`,
+  resultados en `banco/resultados.md`); para mirar una ronda, `bash docs/producto/plan-imagenes/hoja.sh <prefijo>` (hojas de
+  contactos de 6 con la leyenda en texto, `QA-249`), y solo la finalista a tamaño completo.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
 

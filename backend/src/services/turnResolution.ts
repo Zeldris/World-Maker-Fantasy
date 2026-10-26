@@ -54,7 +54,7 @@ import { compassNarrationText, type CompassLinkInfo } from './compassNarration.j
 import { energiaMaxFor, energiaPasivaEntre, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
-import { CRAFTING_RECIPES, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
+import { CRAFTING_RECIPES, objetoFabricado, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
 import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, fichaDeEdificioParaPanel, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
@@ -5742,14 +5742,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       // `resultCantidad` (2026-08-30) — mismo formato de sufijo `(N)` que ya usa el resto del
       // inventario apilable, nunca N filas separadas para el mismo resultado de un solo crafteo.
       const resultCantidad = recipe.resultCantidad ?? 1;
+      const fabricado = await objetoFabricado(tx, worldId, recipe);
       const created = await tx.inventoryItem.create({
         data: {
           saveId,
-          name: resultCantidad > 1 ? `${recipe.resultName} (${resultCantidad})` : recipe.resultName,
-          description: recipe.resultDescription,
+          name: resultCantidad > 1 ? `${fabricado.name} (${resultCantidad})` : fabricado.name,
+          description: fabricado.description,
           origin: 'crafteo',
           catalogSlug: recipe.resultCatalogSlug,
-          statBonuses: recipe.statBonuses ?? Prisma.JsonNull,
+          statBonuses: fabricado.statBonuses ?? Prisma.JsonNull,
         },
       });
       // Bug real (auditoría 2026-08-11, "pruebas por API"): `catalogBySlug` (arriba) solo trae los

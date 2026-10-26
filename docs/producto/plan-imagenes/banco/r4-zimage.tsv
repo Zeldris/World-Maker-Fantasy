@@ -1,0 +1,3 @@
+# r4: Z-Image-Turbo Q4_K (Apache 2.0, 6B, 8 pasos, cfg 1), su VAE (el de FLUX.1) y Qwen3-4B-Instruct-2507. Prompt: estilo cine.
+pastos-zimage	8	prompts/pastos-cine.txt	MODELO=z_image_turbo-Q4_K.gguf,LLM=Qwen3-4B-Instruct-2507-Q4_K_M.gguf,VAE=ae-flux1.safetensors,TOPE=1800	-
+aullador-zimage	8	prompts/aullador-cine.txt	MODELO=z_image_turbo-Q4_K.gguf,LLM=Qwen3-4B-Instruct-2507-Q4_K_M.gguf,VAE=ae-flux1.safetensors,TOPE=1800	-

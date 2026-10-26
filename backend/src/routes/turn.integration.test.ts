@@ -5102,7 +5102,7 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
 
     // Nada aplicado todavía — ni consumido el ingrediente ni creado el resultado.
     const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(inventory.some((i) => i.name === 'Vendaje improvisado')).toBe(false);
+    expect(inventory.some((i) => i.name === 'Vendaje improvisado orco de las Llanuras')).toBe(false);
     expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(true);
   });
 
@@ -5124,11 +5124,11 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
     // Prefijo exacto, no texto completo (adorno de ramas deterministas, 2026-08-22): tras la frase
     // mecánica fija se añade una de varias frases de color elegidas al azar (turnResolution.ts §
     // CRAFT_FLAVOR/pickFlavor) — el prefijo es lo único que de verdad importa comprobar aquí.
-    expect(craftEntry?.text).toMatch(/^Gorhorn de prueba \(crafteo con espera real\) craftea: Vendaje improvisado\. /);
+    expect(craftEntry?.text).toMatch(/^Gorhorn de prueba \(crafteo con espera real\) craftea: Vendaje improvisado orco de las Llanuras\. /);
     expect(craftEntry?.text).not.toContain('El golpe conecta'); // no es el texto del mock del LLM
 
     const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(inventory.some((i) => i.name === 'Vendaje improvisado')).toBe(true);
+    expect(inventory.some((i) => i.name === 'Vendaje improvisado orco de las Llanuras')).toBe(true);
     expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(false); // ingrediente consumido
   }, 20_000);
 
@@ -5137,7 +5137,7 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
     // Recuento ANTES, no presencia a secas (mismo saveId que el test anterior — ya hay un Vendaje
     // improvisado de verdad en el inventario desde entonces; lo que importa es que cancelar no
     // añada uno MÁS ni consuma este nuevo manojo de salvia).
-    const vendajesAntes = (await prisma.inventoryItem.findMany({ where: { saveId } })).filter((i) => i.name === 'Vendaje improvisado').length;
+    const vendajesAntes = (await prisma.inventoryItem.findMany({ where: { saveId } })).filter((i) => i.name === 'Vendaje improvisado orco de las Llanuras').length;
 
     const app = await buildApp();
     const classifyRes = await app.inject({
@@ -5153,7 +5153,7 @@ describe('Crafteo con espera real (2026-08-20): transit con busyUntil, resoluci�
     expect(await prisma.characterTransit.findUnique({ where: { saveId } })).toBeNull();
 
     const inventory = await prisma.inventoryItem.findMany({ where: { saveId } });
-    expect(inventory.filter((i) => i.name === 'Vendaje improvisado').length).toBe(vendajesAntes); // ninguno nuevo
+    expect(inventory.filter((i) => i.name === 'Vendaje improvisado orco de las Llanuras').length).toBe(vendajesAntes); // ninguno nuevo
     expect(inventory.some((i) => i.name.startsWith('Manojo de salvia del polvo'))).toBe(true); // sin consumir
   });
 });

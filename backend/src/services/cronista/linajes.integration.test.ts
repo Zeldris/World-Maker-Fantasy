@@ -66,11 +66,13 @@ describe('linajes y rastros (CR-52) — en una partida', () => {
   });
 
   const npc = (name: string) => prisma.npc.findFirstOrThrow({ where: { worldId, name, saveId: null } });
+  // QA-243: Ufag y Gisot son PRINCIPAL, no plantillas, y entran en el linaje Ketg.
+  const KETG = ['Gisot Ketg', 'Torgash Ketg', 'Ufag Ketg', 'Ulkha Ketg'];
 
-  it('los apellidos del canon son linajes (Ketg con Torgash y Ulkha) y el personaje funda el suyo; idempotente', async () => {
+  it('los apellidos del canon son linajes (Ketg con Torgash, Ulkha, Ufag y Gisot) y el personaje funda el suyo; idempotente', async () => {
     const ketg = await prisma.linaje.findFirstOrThrow({ where: { saveId, nombre: 'Ketg' }, include: { miembros: true } });
     expect(ketg.origen).toBe('CATALOGO');
-    expect(ketg.miembros.map((m) => m.entidadId).sort()).toEqual([(await npc('Torgash Ketg')).id, (await npc('Ulkha Ketg')).id].sort());
+    expect(ketg.miembros.map((m) => m.entidadId).sort()).toEqual((await Promise.all(KETG.map(async (n) => (await npc(n)).id))).sort());
     expect((await linajeDe(prisma, saveId, 'PERSONAJE', saveId))?.nombre).toBe('Gorhorn');
     const antes = await prisma.linajeMiembro.count({ where: { saveId } });
     await prisma.$transaction((tx) => asegurarLinajes(tx, saveId, AHORA));
@@ -108,7 +110,7 @@ describe('linajes y rastros (CR-52) — en una partida', () => {
     const linajes = await linajesConocidos(prisma, saveId);
     expect(linajes[0]).toMatchObject({ nombre: 'Gorhorn', propio: true, miembros: [{ tipo: 'PERSONAJE', nombre: 'Gorhorn' }] });
     const conocido = linajes.find((l) => l.nombre === 'Ketg')!;
-    expect(conocido.miembros.map((m) => m.nombre).sort()).toEqual(['Torgash Ketg', 'Ulkha Ketg']);
+    expect(conocido.miembros.map((m) => m.nombre).sort()).toEqual(KETG);
     expect(conocido.historia.map((h) => h.sucesoId)).toEqual([id]);
     expect(conocido.historia[0]!.actores.some((a) => a.nombre === 'los Ketg')).toBe(true);
   });
@@ -124,7 +126,8 @@ describe('linajes y rastros (CR-52) — en una partida', () => {
   });
 
   it('cuando cae quien llevaba una venganza, la toma el adulto vivo de su linaje', async () => {
-    const [torgash, ulkha] = [await npc('Torgash Ketg'), await npc('Ulkha Ketg')];
+    // El heredero es el primer adulto vivo por slug: Gisot va antes que Ufag y Ulkha.
+    const [torgash, gisot] = [await npc('Torgash Ketg'), await npc('Gisot Ketg')];
     await prisma.hilo.create({
       data: {
         saveId, patron: 'VENGANZA', clave: `VENGANZA:${torgash.id}`, tension: 5, sucesoIds: [], abiertoEn: AHORA, resumen: 'Torgash quiere vengar a alguien.',
@@ -138,7 +141,7 @@ describe('linajes y rastros (CR-52) — en una partida', () => {
     await procesarReacciones(prisma, saveId);
     const viejo = await prisma.hilo.findFirstOrThrow({ where: { saveId, clave: `VENGANZA:${torgash.id}` } });
     expect(viejo.estado).toBe('CERRADO');
-    const nuevo = await prisma.hilo.findFirstOrThrow({ where: { saveId, clave: `VENGANZA:${ulkha.id}` } });
+    const nuevo = await prisma.hilo.findFirstOrThrow({ where: { saveId, clave: `VENGANZA:${gisot.id}` } });
     expect(nuevo.estado).toBe('ABIERTO');
     expect(nuevo.tension).toBe(6);
     expect(nuevo.resumen).toContain('linaje Ketg');

@@ -47,7 +47,7 @@ reúnen para planear sus siguientes movimientos. El *Jakut* propiamente dicho es
 en la horquilla del árbol: quien se sienta en ella decide mientras está sentado (ver
 [razas.md § Faerus](../razas.md#faerus--los-furiosos)). Fue el primer Jakut (~0-600) y el modelo del
 de Kegi *(aprobado 2026-10-06 · no implementado en el código)*.
-**Quién vive aquí** *(fichas en [npcs.md](../../personajes/npcs.md), pendientes de código)*: **Hulki**,
+**Quién vive aquí** *(fichas en [npcs.md](../../personajes/npcs.md))*: **Hulki**,
 la vieja que más a menudo está en el Jakut; **Tira**, la cazadora que reparte la primera pieza;
 **Kiri**, vigía del dosel en forma de Hetris; **Lusa**, que cuida a los heridos que no se abandonan;
 y **Gero**, el joven que corre entre Hashma y Kegi.
@@ -114,8 +114,6 @@ precipicios, y los vigías bajan antes del anochecer sin excepción.
 **Terreno:** rocoso, árido. **Teaser:** "Desde aquí se ve la Meseta entera. Lo que oyes detrás no es tu eco."
 
 ## Flora
-
-Todas pendientes de código.
 
 ### Musgo Callado
 *Muscarias (Florial, con la huella de Kroj) · todo el Margen.*
@@ -287,7 +285,7 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
 - La región está en el catálogo desde el 2026-09-28: fauna, flora, los tres lugares nuevos, los
   NPC de Hashma y Aven Tessk, portavoz del cónclave de Keseg Sael (el motor lo usa como líder).
 - Sigue fuera del núcleo jugable: sin `ZonePoint` ni recorrido.
-- Nada documentado en la costa occidental ni en el Puesto Rabioso del Márgen.
+- Nada documentado en la costa occidental ni en el Puesto Rabioso del Margen.
 
 ## Historial de cambios
 
@@ -300,6 +298,8 @@ nombran. Los Ferikes viven en el borde con las Llanuras; ver
   (entre ellas la Leshra, primera de la familia Umbrias) y los Faerus de Hashma.
 - 2026-10-06 (tanda OpenCode del 2026-10-03, revisada por Claude): origen del Jakut Tusha y de la tala del borde; el Pacto del Umbral y las costumbres Faerus van en `razas.md`. Sin código.
 - 2026-09-27 (pasada de conexión): familia, nivel y temperamento de Sombras de Kroj, Hetris, Mekiosi y Vistue; El Claro de la Manada arrasado tras El Detonante (canon de Riko que faltaba aquí); sección de conexiones (el Margen como muro del Imperio, la tala del borde).
+- 2026-10-25 (QA-243): la flora y los vecinos de Hashma ya están en el juego; se quitan las marcas
+  «pendiente de código». «Puesto Rabioso del Márgen» pasa a escribirse «del Margen».
 
 ---
 

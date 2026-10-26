@@ -119,6 +119,19 @@ class PreCommit(unittest.TestCase):
         self.assertIn('git restore --staged', r.stderr)
         self.assertIn('docs/borradores-opencode/idea.md', r.stderr)
 
+    def test_en_un_worktree_saca_la_raiz_del_worktree(self):
+        # QA-252: en un worktree git exporta GIT_DIR y el gancho tomaba .githooks por raíz; el commit pasaba sin mirar
+        # nada (o fallaba sin decir por qué) y hubo que usar envoltorios hechos a mano.
+        wt = os.path.join(carpeta(), 'wt')
+        git(self.repo, 'worktree', 'add', '-q', '-b', 'otra', wt)
+        escribir(os.path.join(wt, 'docs/borradores-opencode/idea.md'), 'texto')
+        git(wt, 'add', '-A')
+        r = subprocess.run(['git', '-c', 'core.hooksPath=.githooks', 'commit', '-q', '-m', 'x'], cwd=wt,
+                           env={**ENV_GIT, 'CLAUDECODE': '1'}, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn('git restore --staged', r.stderr)
+        self.assertIn('docs/borradores-opencode/idea.md', r.stderr)
+
     def test_sin_claudecode_deja_pasar_el_borrador(self):
         self.preparar('docs/borradores-opencode/idea.md')
         self.assertEqual(self.correr(False).returncode, 0)

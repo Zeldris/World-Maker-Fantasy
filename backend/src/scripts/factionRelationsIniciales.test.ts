@@ -30,6 +30,8 @@ describe('factionRelationsIniciales', () => {
     expect(tipo('Concordia de Hierro', 'Feg Tusha')).toBe('GUERRA');
     expect(tipo('Clan Serhu', 'Feg Tusha')).toBe('GUERRA');
     expect(tipo('Clan Serhu', 'Feg Ger')).toBe('TRATADO_COMERCIAL');
-    expect(tipo('Clan Helsig', 'Clan Goshg')).toBe('NEUTRAL');
+    // QA-243: la Senda del Sílice (hielo sílice por madera y resina) los une; antes no tenían fila.
+    expect(tipo('Clan Helsig', 'Clan Goshg')).toBe('TRATADO_COMERCIAL');
+    expect(tipo('Clan Helsig', 'Feg Tusha')).toBe('NEUTRAL');
   });
 });
