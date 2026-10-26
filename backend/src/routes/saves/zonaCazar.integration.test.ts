@@ -184,8 +184,9 @@ describe('POST /saves/:id/zona/cazar', () => {
       expect(body.exito).toBe(true);
       expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', exito: true, npcName: 'Bestia Débil de Prueba' });
       expect((await prisma.npcState.findFirst({ where: { saveId, npcId: debilNpcId } }))?.condicionFisica).toBe('MUERTO');
-      // El punto se creó, se descontó y (sin etiqueta de ancla) se retiró del todo.
+      // El punto se creó y se descontó; P313: se queda agotado (no se borra) para que la tarjeta diga «sin presas».
       expect(await prisma.zonePoint.count({ where: { saveId, locationId, targetSlug: 'test-cazar-debil', cantidad: { gt: 0 }, activo: true } })).toBe(0);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId, targetSlug: 'test-cazar-debil', cantidad: 0, activo: false } })).toBe(1);
       expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingDynamicModeOffer).toBeNull();
     });
 
@@ -209,6 +210,23 @@ describe('POST /saves/:id/zona/cazar', () => {
       expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: lejos.id } })).cantidad).toBe(3);
       const trasCaza = await prisma.zonePoint.findUnique({ where: { id: cerca.id } });
       expect(trasCaza === null || trasCaza.cantidad < 2).toBe(true);
+    });
+
+    // P313 (usuaria, 2026-10-26): el punto agotado se reutiliza (no se crea otro) y cazar ahí dice que no hay presas.
+    it('P313: con el punto de esa especie agotado, no crea otro y dice que no quedan presas', async () => {
+      const agotado = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 0, activo: false, lastUpdatedAtMinutes: 480 },
+      });
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba' } },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-debil' } });
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.body).error).toBe('No quedan presas de Bestia Débil de Prueba por ahora.');
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(1);
+      expect(await prisma.zonePoint.findUniqueOrThrow({ where: { id: agotado.id } })).toMatchObject({ cantidad: 0, activo: false });
     });
 
     it('rechaza con 409 un targetSlug que no es el de la oferta pendiente o una oferta que ya trae punto', async () => {
@@ -390,9 +408,9 @@ describe('POST /saves/:id/zona/cazar', () => {
     const enemigos = participantes.filter((p) => p.bando === 'ENEMIGO' && p.npcId === fuerteNpcId);
     expect(enemigos).toHaveLength(3);
 
-    // Fila de grupo (sin `label`) descontada a 0 -> se borra del todo (nunca queda a 0 inactiva).
-    const puntoTrasCaza = await prisma.zonePoint.findUnique({ where: { id: punto.id } });
-    expect(puntoTrasCaza).toBeNull();
+    // P313: una fila de grupo descontada a 0 se queda, agotada (`cantidad` 0, inactiva); no se borra.
+    const puntoTrasCaza = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoTrasCaza).toMatchObject({ cantidad: 0, activo: false });
   });
 
   it('agresivo en grupo (cantidad>1) por Interactuar (quienInicia npc): abre combate múltiple vía iniciarCaza, nunca el 1v1 clásico', async () => {
@@ -419,8 +437,8 @@ describe('POST /saves/:id/zona/cazar', () => {
     const participantes = await prisma.combatParticipant.findMany({ where: { encounterId: encounter.id } });
     expect(participantes.filter((p) => p.bando === 'ENEMIGO' && p.npcId === agresivoNpcId)).toHaveLength(3);
 
-    const puntoTrasCaza = await prisma.zonePoint.findUnique({ where: { id: punto.id } });
-    expect(puntoTrasCaza).toBeNull();
+    const puntoTrasCaza = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoTrasCaza).toMatchObject({ cantidad: 0, activo: false });
   });
 });
 

@@ -1550,6 +1550,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npc = slugPresa ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: slugPresa } }) : null;
     const puntoBruto = esDeEscena ? (npc ? await puntoDeFaunaDeEscena(prisma, save, targetSlug!) : null) : puntoDelMapa;
     const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
+    // P313: un punto agotado se conserva (no se borra): la caza dice que no hay presas por ahora.
+    if (punto && npc && (!punto.activo || punto.cantidad <= 0)) {
+      return reply.status(409).send({ error: `No quedan presas de ${npc.name} por ahora.` });
+    }
     if (!punto || !punto.activo || punto.cantidad <= 0 || !npc) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }

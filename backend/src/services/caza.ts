@@ -184,23 +184,18 @@ export function groupVarianceDiario(personaje: string, especie: string, cantidad
 
 /// Grupos de fauna reales (Fase 2, 2026-09-28) — el `ZonePoint` del que sale un objetivo pierde
 /// exactamente los individuos ENFRENTADOS (nunca los avistados/elegidos: si el grupo se dispersa
-/// sin comprometerse, `enfrentados` puede ser 0 y el punto no pierde nada). Si llega a 0: la fila
-/// ancla (`label` no nulo, la curada de catálogo) nunca se borra, se deja `activo:false`; cualquier
-/// otra fila de grupo se borra del todo (mismo criterio que `reconciliarGrupos`, zonePoints.ts).
+/// sin comprometerse, `enfrentados` puede ser 0 y el punto no pierde nada). P313 (usuaria,
+/// 2026-10-26): si llega a 0 el punto NO se borra, se queda `activo:false` con `cantidad:0` (agotado):
+/// Reino › Partidas lo lista como «sin presas por ahora», la caza dice que no hay presas, y el
+/// recálculo de la zona (`recalcularZonePointsDeLocation`) lo repone hacia la población regional con
+/// el tiempo. Antes solo la fila ancla (`label` no nulo) se conservaba y las demás se borraban, con lo
+/// que ni el punto creado al vuelo por P307 ni un grupo cazado dejaban rastro de «explorado y agotado».
 export async function descontarZonePointCaza(tx: Prisma.TransactionClient, saveId: string, zonePointId: string, enfrentados: number): Promise<void> {
   if (enfrentados <= 0) return;
   const punto = await tx.zonePoint.findUnique({ where: { id: zonePointId } });
   if (!punto || punto.saveId !== saveId) return; // ya no existe (o es de otra partida) (carrera rara) — nada que descontar.
   const nuevaCantidad = Math.max(0, punto.cantidad - enfrentados);
-  if (nuevaCantidad === 0) {
-    if (punto.label != null) {
-      await tx.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: 0, activo: false } });
-    } else {
-      await tx.zonePoint.delete({ where: { id: zonePointId } });
-    }
-  } else {
-    await tx.zonePoint.update({ where: { id: zonePointId }, data: { cantidad: nuevaCantidad } });
-  }
+  await tx.zonePoint.update({ where: { id: zonePointId }, data: nuevaCantidad === 0 ? { cantidad: 0, activo: false } : { cantidad: nuevaCantidad } });
 }
 
 /// P187 (QA-27, decidido por la usuaria 2026-10-15): cazar un animal de un bando (`ZonePoint.factionSlug`)

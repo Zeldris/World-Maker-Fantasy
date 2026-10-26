@@ -877,20 +877,23 @@ export function faccionMasComun(facciones: string[]): string | null {
 /// Corredor de Cauce de Hogar Ketg). Si la zona ya tiene un punto vivo de esa especie, se caza ese
 /// (el más cercano a Gorhorn); si no, se crea uno de un individuo en la celda de Gorhorn en este
 /// momento, para que la caza normal (riesgo, botín, descuento del punto) tenga a qué apuntar.
+/// P313 (usuaria, 2026-10-26): un punto agotado ya no se borra, así que, si no hay ninguno vivo, se
+/// devuelve el agotado de esa especie (sin crear otro): quien llama dice que no hay presas por ahora.
 export async function puntoDeFaunaDeEscena(
   db: Pick<PrismaClient, 'zonePoint'>,
   save: { id: string; currentLocationId: string | null; zonaPosX: number | null; zonaPosY: number | null; worldState?: { fictionalMinutes: number } | null },
   targetSlug: string,
 ) {
   if (!save.currentLocationId) return null;
-  const existentes = await db.zonePoint.findMany({
-    where: { saveId: save.id, locationId: save.currentLocationId, tipo: 'FAUNA', targetSlug, activo: true, cantidad: { gt: 0 } },
+  const delaEspecie = await db.zonePoint.findMany({
+    where: { saveId: save.id, locationId: save.currentLocationId, tipo: 'FAUNA', targetSlug },
   });
   const cx = save.zonaPosX ?? LIENZO_CENTRO.x;
   const cy = save.zonaPosY ?? LIENZO_CENTRO.y;
-  if (existentes.length > 0) {
-    return [...existentes].sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]!;
-  }
+  const masCercano = (puntos: typeof delaEspecie) => [...puntos].sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]!;
+  const vivos = delaEspecie.filter((p) => p.activo && p.cantidad > 0);
+  if (vivos.length > 0) return masCercano(vivos);
+  if (delaEspecie.length > 0) return masCercano(delaEspecie);
   const pixel = pixelDeCelda(celdaDePixel({ x: cx, y: cy }));
   return db.zonePoint.create({
     data: {

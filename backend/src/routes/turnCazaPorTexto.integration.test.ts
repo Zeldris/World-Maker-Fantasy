@@ -116,7 +116,7 @@ describe('B29 — atacar por texto a fauna adyacente (/turn/classify)', () => {
     expect(classifyAction).not.toHaveBeenCalled();
     const accion = await prisma.logEntry.findFirst({ where: { saveId, isPlayerAction: true } });
     expect(accion?.text).toBe('Ataco al Corrolanto Débil.');
-    // Un punto sin ancla se borra al llegar a 0 individuos (descontarZonePointCaza).
+    // Al llegar a 0 individuos el punto se queda agotado (P313, descontarZonePointCaza).
     const trasCaza = await prisma.zonePoint.findUnique({ where: { id: p.id } });
     expect(trasCaza === null || trasCaza.cantidad === 0).toBe(true);
   });

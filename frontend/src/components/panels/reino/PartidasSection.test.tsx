@@ -90,4 +90,14 @@ describe('PartidasSection (CR-63 63d)', () => {
     expect((await findByRole('status')).textContent).toMatch(/Urga no tiene arma/)
     expect((getByLabelText(/Urga/) as HTMLInputElement).disabled).toBe(true)
   })
+
+  // P313 (usuaria, 2026-10-26): una especie agotada se queda en la lista, con «sin presas por ahora», y no se lanza.
+  it('P313: una especie agotada dice «sin presas por ahora» y no deja lanzar la partida', async () => {
+    const agotada: OpcionesPartida = { ...opciones, destinos: [{ id: 'coto', name: 'La Hondonada', region: 'Llanuras', especies: [{ slug: 'murgol', name: 'Múrgol', cantidad: 0, capturable: true }] }] }
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: agotada })
+    const { findByRole, getByLabelText, getByRole } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect((await findByRole('status')).textContent).toMatch(/Múrgol: sin presas por ahora en La Hondonada/)
+    fireEvent.click(getByLabelText('Ana'))
+    expect((getByRole('button', { name: 'Lanzar partida (1)' }) as HTMLButtonElement).disabled).toBe(true)
+  })
 })
