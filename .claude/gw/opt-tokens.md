@@ -41,6 +41,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **`python3 tools/roadmap/cobertura.py --fila <ID>`** (`QA-242`): definición, hito (con su fila) y menciones de una tarea en `21-roadmap.md`, recortadas, en vez de leer el mapa de roadmaps; sale con 1 si no está definida o no tiene hito.
 - **`bash tools/qa/ficha.sh <slug> [--canon]`** (`QA-245`): todo lo de un slug (ficha, despiece, región, enciclopedia, población, recetas, chunks y canon) en una salida, en vez de `grep`/`sed` sobre `worldCatalog.ts` (140 lecturas en `QA-243`). Sección «Enciclopedia y lore» de `docs/mapa-agente.md` (`QA-248`).
 - **Auditorías de lore en tandas de una región o un catálogo** (`QA-247`, `ampliar-lore.md` § 0.5), con unas 30 llamadas como tope.
+- **Tandas de arreglos de 5 hallazgos y ~90 llamadas** (`QA-257`, `AGENTS.md` § `orchestrate-dealer`); la revisión con Opus junta dos tandas.
+- **`marca-hallazgo.py` dice el estado actual al fallar** (`QA-258`): con 0 filas, los primeros 200 caracteres del estado; quita los espacios del borde del texto viejo.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto
   (`--tipo <tipo>`); la captura, solo para lo visual. La interfaz, en la sección «Imágenes» del mapa (`QA-229`).
@@ -88,6 +90,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **El registro de la sesión** pesa cientos de MB: medirlo con `medir.py`, nunca leerlo.
 
 - **Subagentes de auditoría con un bloque entero** (`QA-243`, 2026-10-25): 9 subagentes, 32M de entrada (el 40 % de la sesión), con un contexto medio de 102-118k. De ahí `QA-247`.
+
+- **Tandas de arreglos largas** (`claude/wonderful-volta-662qt8`, 2026-10-26): 8-11 hallazgos y 165-183 llamadas por
+  tanda, 103k de contexto medio sobre 53k de arranque; los subagentes, el 92 % de la entrada. De ahí `QA-257`.
 
 - **Imágenes del banco una a una** (`claude/plan-imagenes`, 2026-10-25): 66 lecturas de PNG, 3,99M arrastrados. De ahí `QA-249`.
 - **Subagente mecánico sin `model`** (misma sesión): heredó Opus (2,9M de entrada), la segunda vez tras `QA-233`. Toda

@@ -35,6 +35,15 @@ class MarcaHallazgo(unittest.TestCase):
         self.assertIn('| P2 | Dos \\| con barra | ✅ hecho |', self.leer())
         self.assertIn('| P1 | Uno | pendiente |', self.leer())
 
+    def test_espacios_en_el_borde_del_texto_viejo_no_impiden_casar(self):
+        self.assertEqual(self.marcar('P1', ' pendiente ', '✅ hecho').returncode, 0)
+        self.assertIn('| P1 | Uno | ✅ hecho |', self.leer())
+
+    def test_sin_coincidencia_muestra_el_estado_actual(self):
+        r = self.marcar('P2', 'no está', 'x')
+        self.assertIn('0 filas de P2', r.stderr)
+        self.assertIn('estado actual: pendiente (texto)', r.stderr)
+
     def test_sin_coincidencia_falla_y_no_toca_nada(self):
         r = self.marcar('P1', 'no está', 'x')
         self.assertNotEqual(r.returncode, 0)

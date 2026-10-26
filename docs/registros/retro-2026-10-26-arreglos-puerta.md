@@ -1,6 +1,6 @@
 # Retro y opt-tokens · `claude/wonderful-volta-662qt8` (2026-10-26)
 
-**Estado:** presentada a la usuaria (2026-10-26), pendiente de su decisión.
+**Estado:** decidida por la usuaria (2026-10-26): aplicadas las tres (1 → `QA-256`, 2 → `QA-257`, 3 → `QA-258`); las de Galivelop-workflow se quedan aquí para `gw-harvest`.
 
 Sesión de los arreglos de la puerta de pruebas: las tandas por sistema (Reino, Mundo, Zona, NPC, Combate/caza,
 Supervivencia), las decisiones de la usuaria del 2026-10-26 (P241, P243-P245, P27, P327, P306, P307, P211, P313, P208)

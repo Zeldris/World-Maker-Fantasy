@@ -1636,6 +1636,11 @@ Retro de `claude/plan-imagenes` (usuaria, 2026-10-25; [`retro-2026-10-25-plan-im
 - ~~**QA-254 · `set -euo pipefail` en los scripts de imágenes**~~ ✅ 2026-10-25: `banco.sh` sin `pipefail` nunca decía FALLO. `tools/qa/tests/test_pipefail.py` lo exige en todo `.sh` de `image-generator/` y `docs/producto/plan-imagenes/`, o una línea `# sin pipefail: <motivo>`; `abrir.sh`, `calidad.sh`, `pilotos.sh` y `banco/recorte.sh` lo llevan; `generar.sh`, `probar.sh`, los de `spike/` y `obsoleto/`, con su motivo.
 - ~~**QA-255 · `banco.sh` avisa mientras espera memoria**~~ ✅ 2026-10-25: la ronda 7 se quedó parada sin decir nada. Cada 5 min, una línea con los MB libres y los que pide.
 
+Retro y opt-tokens de los arreglos de la puerta (usuaria, 2026-10-26; [`retro-2026-10-26-arreglos-puerta.md`](../registros/retro-2026-10-26-arreglos-puerta.md)):
+- **QA-256 · Test centinela del nombre oculto** 🚧 2026-10-26: cuatro fugas del PRINCIPAL sin descubrir (P327) pasaron la revisión de cada tanda. Un test de integración que recorra saludo, réplica, regalo, combate de grupo, emboscada, diario y `GET /saves/:id` y falle si sale su nombre real.
+- ~~**QA-257 · Tandas de arreglos más cortas**~~ ✅ 2026-10-26: 8-11 hallazgos y 165-183 llamadas por tanda. `AGENTS.md` § `orchestrate-dealer`: como mucho 5 hallazgos y ~90 llamadas; la revisión con Opus junta dos tandas.
+- ~~**QA-258 · `marca-hallazgo.py` más claro al fallar**~~ ✅ 2026-10-26: un espacio al borde del texto viejo daba «0 filas». Lo quita y, con 0 filas, enseña el estado actual (`test_marca_hallazgo.py`).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
