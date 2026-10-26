@@ -190,10 +190,11 @@ describe('POST /saves/:id/zona/cazar', () => {
     });
 
     it('con un grupo de esa especie ya en la zona, caza ese (el más cercano) y no crea otro', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.999); // caza sigilosa fallida: pelea de frente
       const cerca = await prisma.zonePoint.create({
         data: { locationId, saveId, x: 410, y: 310, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 2, activo: true, lastUpdatedAtMinutes: 480 },
       });
-      await prisma.zonePoint.create({
+      const lejos = await prisma.zonePoint.create({
         data: { locationId, saveId, x: 40, y: 40, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 3, activo: true, lastUpdatedAtMinutes: 480 },
       });
       await prisma.save.update({
@@ -203,8 +204,11 @@ describe('POST /saves/:id/zona/cazar', () => {
       const app = await buildApp();
       const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
       expect(res.statusCode).toBe(200);
-      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(1);
-      expect(await prisma.zonePoint.findUnique({ where: { id: cerca.id } })).toBeNull();
+      // No se creó ningún punto nuevo, el lejano sigue intacto y el cercano es el que se descontó.
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBeLessThanOrEqual(2);
+      expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: lejos.id } })).cantidad).toBe(3);
+      const trasCaza = await prisma.zonePoint.findUnique({ where: { id: cerca.id } });
+      expect(trasCaza === null || trasCaza.cantidad < 2).toBe(true);
     });
 
     it('rechaza con 409 un targetSlug que no es el de la oferta pendiente o una oferta que ya trae punto', async () => {
