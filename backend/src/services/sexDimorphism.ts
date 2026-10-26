@@ -231,7 +231,7 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
     },
     hembra: {
       rasgoFisico: 'Criatura voladora nocturna de cuerpo grande, vuelo silencioso.',
-      description: 'Es quien imita las voces humanas con más precisión, y suele ir en el centro del grupo de caza dirigiéndolo.',
+      description: 'Es quien devuelve los sonidos ajenos con más precisión, y suele ir en el centro del grupo de caza dirigiéndolo.',
       medidaCm: 122,
       edadMaxima: 17,
     },
@@ -255,7 +255,7 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
   'canizor': {
     macho: {
       rasgoFisico: 'Fiera de cabeza y mandíbula de tigre sobre porte lobuno, pelaje corto y de tonos claros, complexión más fina y estilizada que la del resto de la especie.',
-      description: 'Marca territorio en solitario con aullidos largos al caer la noche, y es quien con más frecuencia doman los altos cargos del Clan Maktor.',
+      description: 'Marca territorio en solitario con aullidos largos al caer la noche, y era el que más domaban los altos cargos Maktor, hoy extintos.',
       medidaCm: 95,
       edadMaxima: 16,
     },
@@ -512,7 +512,7 @@ export const RAZA_VARIANTE_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = 
       description:
         'Corre las cacerías rituales igual que cualquiera del clan, aunque rara vez es quien marca el ritmo real de la persecución; viste solo un taparrabos curtido, un chaleco de cuero negro que deja el pecho al descubierto y una capa de plumas cenicientas atada a la cintura, va descalzo salvo por tiras de cuero envueltas en los pies, y combate con un hacha de guerra a dos manos forjada en hierro negro.',
       medidaCm: 196,
-      edadMaxima: 75,
+      edadMaxima: 52,
     },
     // Hembra basada en imagen de referencia real subida por la usuaria (`orco-llanura-hembra.txt`).
     hembra: {
@@ -521,7 +521,7 @@ export const RAZA_VARIANTE_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = 
       description:
         'Es quien de verdad marca el ritmo en las cacerías rituales de los Corredores de Cauce — las cicatrices de sus hombros son la prueba de cuántas veces lo ha demostrado.',
       medidaCm: 190,
-      edadMaxima: 78,
+      edadMaxima: 64,
     },
   },
   'orcos-cristal-helado': {
@@ -529,13 +529,13 @@ export const RAZA_VARIANTE_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = 
       rasgoFisico: 'Cuerpo recio y compacto, manos y dedos gruesos curtidos por las minas de hielo sílice.',
       description: 'Trabaja las minas igual que cualquiera del Clan Helsig.',
       medidaCm: 188,
-      edadMaxima: 78,
+      edadMaxima: 54,
     },
     hembra: {
       rasgoFisico: 'Cuerpo recio y compacto, con una capa de grasa notablemente gruesa bajo la piel — la mejor adaptada al frío extremo de todo el clan.',
       description: 'Aguanta jornadas enteras en el hielo que ningún macho resiste sin relevo — el Clan Helsig confía en ellas las guardias más largas de las minas.',
       medidaCm: 183,
-      edadMaxima: 80,
+      edadMaxima: 64,
     },
   },
   'orcos-cienaga-troncal': {
@@ -546,14 +546,14 @@ export const RAZA_VARIANTE_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = 
       description:
         'Se mueve por la ciénaga igual que cualquiera del Clan Goshg, cubierto solo con un taparrabos de cuero curtido, armado con una espada-hacha híbrida y un morral tejido donde guarda Raíz de Fuego recogida al paso.',
       medidaCm: 193,
-      edadMaxima: 72,
+      edadMaxima: 50,
     },
     hembra: {
       rasgoFisico:
         'Cuerpo musculoso e imponente, piel de un verde musgo muy intenso veteada de rojo pálido, el color más oscuro y uniforme de todo el Clan Goshg.',
       description: 'Es quien se adentra más profundo en la ciénaga sin ser vista — el Clan Goshg le confía el rastreo silencioso que ningún macho iguala.',
       medidaCm: 190,
-      edadMaxima: 75,
+      edadMaxima: 62,
     },
   },
   'goirntes-meseta': {

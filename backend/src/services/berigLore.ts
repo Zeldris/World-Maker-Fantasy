@@ -221,7 +221,7 @@ export const BERIG_RAZAS: RazaInfo[] = [
         slug: 'nabieus-margen',
         name: 'Nabieus del Margen Silencioso',
         shortLabel: 'Margen Silencioso',
-        rasgoFisico: 'Cuerpos delgados, piel gris apagada que no refleja ni absorbe la luz, casi sin voz audible.',
+        rasgoFisico: 'Cuerpos delgados, piel gris apagada que atrapa la luz —a la vista, un hueco—, casi sin voz audible.',
         description:
           'La población base, la más numerosa — dispersa por la mitad oriental del Margen Silencioso, mensajeros, correos y ojos de la Concordia de Hierro desde El Refugio sin Nombre.',
       },

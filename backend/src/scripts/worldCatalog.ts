@@ -374,7 +374,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'hito',
     description:
-      'Una hondonada seca y estéril donde nada crece, y donde nacen —según los pastores— todas las tormentas de arena magnética de la región. El punto exacto, aunque nadie vivo lo sepa ya, donde las hijas de Madre desataron sin saberlo la sequía y el viento que sepultaron el Reino Nabierus.',
+      'Una hondonada seca y estéril donde nada crece, y donde nacen —según los pastores— todas las tormentas de arena magnética de la región. Los viejos dicen que de aquí salió el viento que cubrió lo que hay debajo.',
     aliases: ['el vientre del engaño', 'vientre del engaño'],
     x: -10,
     y: -40,
@@ -751,7 +751,7 @@ export const locations: LocationInput[] = [
     region: 'Ciénaga Troncal',
     kind: 'asentamiento',
     description:
-      'Poblado del clan Nabieus Keseg Prisilke, en la explanada más pequeña del sur de la ciénaga. En lengua común se le llama Fin Susurrado, el nombre de su clan. Sus habitantes tienen cuerpos adaptados a las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.',
+      'Poblado del clan Nabieus Keseg Prisilke, en la explanada más pequeña del sur de la ciénaga. En lengua común se le llama Fin Susurrado, tomado del nombre de su clan. Sus habitantes tienen cuerpos adaptados a las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.',
     aliases: ['jeyselt', 'jeyselet', 'fin susurrado', 'keseg prisilke', 'conclave fin susurrado'],
   },
   {
@@ -1556,7 +1556,7 @@ export const fauna: NpcInput[] = [
     level: 1,
     levelMax: 4,
     attributes: { fuerza: 9, destreza: 10, constitucion: 8, inteligencia: 6, voluntad: 7, carisma: 3, magia: 0 },
-    bio: 'Fiera de cuerpo corto de pelo, cruce entre un gran felino y un cánido salvaje — cabeza y mandíbula de tigre sobre un porte lobuno, fiero y de mirada fija. Las hembras son más corpulentas, de pelaje más abundante; los machos, más finos, de pelo más corto y tonos más claros. A diferencia de los Aulladores Rojos, caza y vive en solitario, marcando territorio con aullidos largos al caer la noche. Los orcos lo llaman Makt\'orik, "Guardián del aullido nocturno" — el Clan Maktor le debe su nombre a uno domado por su fundadora hace generaciones, y desde entonces sus jefes y altos cargos siguen la misma costumbre.',
+    bio: 'Fiera de cuerpo corto de pelo, cruce entre un gran felino y un cánido salvaje — cabeza y mandíbula de tigre sobre un porte lobuno, fiero y de mirada fija. Las hembras son más corpulentas, de pelaje más abundante; los machos, más finos, de pelo más corto y tonos más claros. A diferencia de los Aulladores Rojos, caza y vive en solitario, marcando territorio con aullidos largos al caer la noche. Los orcos lo llaman Makt\'orik, "Guardián del aullido nocturno" — el Clan Maktor le debe su nombre a uno domado por su fundadora hace generaciones, y desde entonces sus jefes y altos cargos tuvieron la misma costumbre.',
     personality: 'Territorial y desconfiado con desconocidos, pero de lealtad total una vez domado.',
     loadout: [],
     ataqueNatural: 'Zarpazo profundo seguido de una dentellada a la garganta si el primer golpe no basta.',
@@ -4342,11 +4342,9 @@ export const npcs: NpcInput[] = [
     bio: 'Goirnte de la Meseta del Orden — piel gris apagada, más floja y menos tensa de lo normal en los suyos, como si hubiera dejado de concentrarse en nada desde hace tiempo. Exmiembro de la facción radical, hoy fugitivo y escondido.',
     personality: 'Habla en círculos y nunca termina las frases que rozan "esa noche"; sobresalta con los ruidos de metal.',
     raza: 'goirntes',
-    // Cazador / Supervivencia (2026-08-24, Grupo 3 § Sistema de clases) — fugitivo escondido, ya
-    // rompió con la disciplina militar goirnte (dejó la facción radical), no encaja como
-    // Caballero. Cazador no está ligado a ninguna raza — Supervivencia por vivir escondido.
-    clase: 'CAZADOR',
-    especializacion: 'SUPERVIVENCIA',
+    // Arquero (QA-256, 2026-10-26): el canon no da Cazador a los Goirntes (02-razas.md); sin
+    // especialización, que llega al nivel 10.
+    clase: 'ARQUERO',
     temperamento: 'INOFENSIVO',
     comerciablePct: 15,
     reclutablePct: 35,
@@ -4760,7 +4758,7 @@ export const npcs: NpcInput[] = [
     role: 'Traficante de información independiente',
     level: 3,
     attributes: { fuerza: 5, destreza: 10, constitucion: 5, inteligencia: 15, voluntad: 10, carisma: 12, magia: 4 },
-    bio: 'Nabieus del Margen Silencioso — piel gris apagada que no refleja ni absorbe la luz, cuerpo delgado y casi sin peso, como el resto de los suyos. Compra y vende información a ambas alianzas por igual, sin lealtades — y siempre parece saber justo lo que más incomodaría oír a quien tiene delante.',
+    bio: 'Nabieus del Margen Silencioso — piel gris apagada que atrapa la luz —a la vista, un hueco—, cuerpo delgado y casi sin peso, como el resto de los suyos. Compra y vende información a ambas alianzas por igual, sin lealtades — y siempre parece saber justo lo que más incomodaría oír a quien tiene delante.',
     personality: 'Habla más alto que cualquier otro Nabieus — deliberadamente, un gesto casi obsceno entre los suyos que usa para incomodar y marcar distancia con su propio pueblo.',
     raza: 'nabieus',
     // Segador, exclusiva nabieus / Ilustrado (2026-08-24, Grupo 3 § Sistema de clases) — "traficante
@@ -5181,7 +5179,7 @@ export const npcs: NpcInput[] = [
     role: 'Portavoz del cónclave de Keseg Sael',
     level: 16,
     attributes: { fuerza: 5, destreza: 8, constitucion: 6, inteligencia: 20, voluntad: 18, carisma: 9, magia: 4 },
-    bio: 'Viejo, casi transparente a la vista, se sabe de memoria cientos de tablillas del Archivo del Refugio sin Nombre. No es líder: repite, con una voz que es poco más que aire, lo último que decidió el Keseg\'Vhurne (el cónclave), y se calla si nadie ha decidido nada.',
+    bio: 'Viejo, casi un hueco en el aire, se sabe de memoria cientos de tablillas del Archivo del Refugio sin Nombre. No es líder: repite, con una voz que es poco más que aire, lo último que decidió el Keseg\'Vhurne (el cónclave), y se calla si nadie ha decidido nada.',
     personality: 'Nunca termina una frase que el otro pueda terminar por él.',
     homeLocationSlug: 'refugio-sin-nombre',
     raza: 'nabieus',
@@ -5717,7 +5715,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     valorGoirnos: 5,
     equipSlot: 'ACCESORIO',
-    description: 'Cuerda trenzada de tendón seco, resistente y algo rígida al tacto — hecha de tendón de Corredor de Cauce.',
+    description: 'Cuerda trenzada de tendón seco, resistente y algo rígida al tacto — hecha de tendón de Múrgol.',
     dimensiones: 'Rollo de 8 metros, 4 mm de grosor.',
   },
 
@@ -8397,7 +8395,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     valorGoirnos: 6,
     equipSlot: 'ARMA_SECUNDARIA',
-    description: 'Vara flexible de madera de Telda con sedal de tendón trenzado y anzuelo de hueso tallado — imprescindible para pescar en la costa.',
+    description: 'Vara flexible de madera de Junba Verde con sedal de tendón trenzado y anzuelo de hueso tallado — imprescindible para pescar en la costa.',
     dimensiones: 'Vara de 1,80 m.',
     lugarOrigen: 'Playa de Ceniza Blanca.',
     herramientaParaOficio: ['pescador-pescar'],
@@ -11636,7 +11634,7 @@ export const harvestSourceDescriptions: Record<string, string> = {
   'fango-quio':
     'El fango de las orillas de Los Manaderos, donde los Quios, gusanos blancos con manchas marrones, filtran restos orgánicos. Se sacan a mano del barro.',
   'murgoles-domados-campamento':
-    'El pequeño recinto de múrgoles domados dentro de la empalizada del Campamento del Clan Serhu — de las pocas cosas que el clan produce sin cazar ni recolectar.',
+    'El pequeño recinto de múrgoles domados tras la empalizada, en la parte trasera de Karot Veku — de las pocas cosas que el clan produce sin cazar ni recolectar.',
   'arena-iman':
     'Limaduras oscuras y finas que las tormentas de arena magnética dejan acumuladas a sotavento de las rocas, brillo metálico apagado bajo el sol, se pegan a cualquier hoja de metal cercana.',
   'bulbo-del-cauce':
