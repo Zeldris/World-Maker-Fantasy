@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -1142,5 +1142,38 @@ describe('P327 — nombre visible de un NPC aún no descubierto', () => {
     expect(npcSceneBlockFor(conocido, 1)).not.toContain('NOMBRE OCULTO');
     expect(nombreNarrado(conocido)).toBe('Orco enfurecido');
     expect(nombreNarrado(oculto(), true)).toBe('La orca desconocida');
+  });
+});
+
+describe('detectsGreetingOrQuestion (P306)', () => {
+  it('un saludo o una pregunta cuentan como saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Hola! ¿Qué tal el camino?')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le pregunto por el paso del norte.')).toBe(true);
+  });
+
+  it('una amenaza de muerte o un gesto violento no se cuelan como saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Hola! Te mato.')).toBe(false);
+    expect(detectsGreetingOrQuestion('Le grito: «¡te voy a matar!»')).toBe(false);
+    expect(detectsGreetingOrQuestion('Desenvaino y le digo «prepárate».')).toBe(false);
+    expect(detectsGreetingOrQuestion('Le clavo la lanza y le digo adiós.')).toBe(false);
+    expect(detectsGreetingOrQuestion('¡Muere, bestia!')).toBe(false);
+  });
+
+  it('atacar, amenazar o intentar influir no es un saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Ataco al orco con el hacha!')).toBe(false);
+    expect(detectsGreetingOrQuestion('Le amenazo: «¡dame el oro!»')).toBe(false);
+  });
+});
+
+describe('sinNombreReal (revisión P327)', () => {
+  const oculto = { name: 'Ugrak Tuerto', nombreVisible: 'Orco desconocido' };
+  it('con el nombre oculto, cambia el nombre completo por el visible, en mayúscula al empezar frase', () => {
+    expect(sinNombreReal('Ugrak Tuerto guarda el paso. Dicen que Ugrak Tuerto no duerme.', oculto)).toBe(
+      'El orco desconocido guarda el paso. Dicen que el orco desconocido no duerme.',
+    );
+  });
+  it('sin nombre oculto, o dentro de otra palabra, no toca nada', () => {
+    expect(sinNombreReal('Ugrak Tuerto guarda el paso.', { name: 'Ugrak Tuerto' })).toBe('Ugrak Tuerto guarda el paso.');
+    expect(sinNombreReal('Los Ugrak Tuertos del norte.', oculto)).toBe('Los Ugrak Tuertos del norte.');
   });
 });

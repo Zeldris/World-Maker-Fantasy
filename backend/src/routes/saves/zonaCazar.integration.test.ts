@@ -229,6 +229,19 @@ describe('POST /saves/:id/zona/cazar', () => {
       expect(conPunto.statusCode).toBe(409);
       expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
     });
+
+    it('un doble clic en «Cazar» abre una sola caza: la segunda petición ya no encuentra la oferta (409)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.999);
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', targetName: 'Bestia Fuerte de Prueba' } },
+      });
+      const app = await buildApp();
+      const pedir = () => app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
+      const respuestas = await Promise.all([pedir(), pedir()]);
+      expect(respuestas.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+      expect(JSON.parse(respuestas.find((r) => r.statusCode === 409)!.body).error).toMatch(/ya no está disponible/);
+    });
   });
 
   it('punto de 1 presa débil, tirada de caza limpia forzada a éxito: mata sin combate y el ZonePoint se descuenta (ancla a 0 → activo:false)', async () => {

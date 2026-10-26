@@ -1190,7 +1190,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         exchangeNarrationBlock =
           `${nombreNarrado(npcParaIntercambio, true)} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${independentExchangeContextBlock(independent, nombreNarrado(npcParaIntercambio), characterName)} ${utilityNarration}`.trim();
         combatExchangeRoll = independent.defensor;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
+        npcAbilityUsed = { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
         // `margen` no tiene sentido en el camino independiente (cada lado se juzga por su cuenta,
         // nunca hay "quién gana" conjunto) — 0 de relleno, el frontend nunca lo lee para
         // `resultado: 'independiente'`.
@@ -1307,7 +1307,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
         exchangeNarrationBlock = `${nombreNarrado(npcParaIntercambio, true)} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, nombreNarrado(npcParaIntercambio), characterName, jugadorPuedeContragolpear)}`;
         combatExchangeRoll = exchange.defensor;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
+        npcAbilityUsed = { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: false,
           atacante: exchange.atacante,
@@ -1409,7 +1409,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         exchangeNarrationBlock = `${characterName} completa su canalización de "${canalizacion.abilityName}" contra ${nombreNarrado(npcParaIntercambio)}. ${exchangeContextBlock(exchange, characterName, nombreNarrado(npcParaIntercambio), npcPuedeContragolpearCanalizacion)}`;
         combatExchangeRoll = exchange.atacante;
         // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
-        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -1566,7 +1566,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         exchangeNarrationBlock =
           `${nombreNarrado(npcParaIntercambio, true)} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${independentExchangeContextBlock(independent, characterName, nombreNarrado(npcParaIntercambio))} ${hitSeverityHint(nombreNarrado(npcParaIntercambio), npcTargetNewCondicion)} ${utilityNarrationJugador} ${utilityNarrationNpc}`.trim();
         combatExchangeRoll = independent.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        npcAbilityUsed = { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = { atacanteEsJugador: true, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente', margen: 0 };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
         exchangeHappened = true;
@@ -1662,7 +1662,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         exchangeNarrationBlock = `${exchange.golpeDeGracia ? '' : `${nombreNarrado(npcParaIntercambio, true)} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). `}${exchangeContextBlock(exchange, characterName, nombreNarrado(npcParaIntercambio), npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
         // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
-        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -6680,7 +6680,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           // CR-16: quien te vence lo recuerda y sube (estilo Némesis).
           ...actorRivalCombate,
         ],
-        datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
+        // P327: el Libro de Sucesos guarda el nombre real; `npcAbilityUsed.npcName` es el que ve la jugadora.
+        datos: { personaje: characterName, rival: (npcAbilityUsed ? npcParaIntercambio?.name : null) ?? npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
       });
     }
 

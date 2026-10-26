@@ -5,7 +5,7 @@ import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
 import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
 import { includesNameOrPlural } from './itemReference.js';
-import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
+import { detectsAttackIntent, detectsHostileSearchIntent, sinNombreReal } from './npcScene.js';
 import { similarity, factSimilarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
 import type { CondicionFisica, Clase } from '@prisma/client';
@@ -936,8 +936,8 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
     'Interpretas a UN SOLO personaje dentro de una escena de rol de mesa. Tu única tarea es escribir su respuesta HABLADA, en primera persona, a lo que el jugador le acaba de decir o preguntar — nunca la narración de la escena, ni acotaciones de gesto, ni el nombre del personaje delante. Responde solo con su réplica entre comillas, 1-2 frases, nada más.';
 
   const prompt = `PERSONAJE QUE ERES: ${ctx.npc.name} — ${ctx.npc.role}.
-Personalidad: ${ctx.npc.personality}
-Trasfondo: ${ctx.npc.bio}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${ctx.characterName} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
+Personalidad: ${sinNombreReal(ctx.npc.personality, ctx.npc)}
+Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${ctx.characterName} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
 
 HECHOS YA ESTABLECIDOS (no los contradigas ni reveles nada que no sepas todavía según tu propio trasfondo):
 ${factsBlock(ctx.sessionFacts)}

@@ -1531,15 +1531,25 @@ export async function zonaRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }
 
-    const puntoBruto = esDeEscena
-      ? await puntoDeFaunaDeEscena(prisma, save, targetSlug!)
-      : await prisma.zonePoint.findUnique({ where: { id: zonePointId! } });
-    const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
-    const npc = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
     // La oferta ya se resuelve aquí (igual que el resto de caminos de "Interactuar",
     // dynamicMode.ts) — se limpia siempre, tanto en éxito como en el rechazo de abajo, para que
-    // nunca reaparezca sola tras un F5.
-    await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    // nunca reaparezca sola tras un F5. Revisión P307 (2026-10-26): se reclama con un `updateMany`
+    // condicionado a que siga siendo ESTA oferta, antes de crear el punto: con un doble clic, la
+    // segunda petición ya no la encuentra y no crea un segundo punto ni abre una segunda caza.
+    const reclamada = await prisma.save.updateMany({
+      where: { id: save.id, pendingDynamicModeOffer: { equals: oferta as Prisma.InputJsonValue } },
+      data: { pendingDynamicModeOffer: Prisma.JsonNull },
+    });
+    if (reclamada.count === 0) {
+      return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
+    }
+
+    // El NPC de catálogo se busca antes de crear el punto de escena, para no dejar un punto huérfano.
+    const puntoDelMapa = esDeEscena ? null : await prisma.zonePoint.findUnique({ where: { id: zonePointId! } });
+    const slugPresa = esDeEscena ? targetSlug! : puntoDelMapa?.targetSlug;
+    const npc = slugPresa ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: slugPresa } }) : null;
+    const puntoBruto = esDeEscena ? (npc ? await puntoDeFaunaDeEscena(prisma, save, targetSlug!) : null) : puntoDelMapa;
+    const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
     if (!punto || !punto.activo || punto.cantidad <= 0 || !npc) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }

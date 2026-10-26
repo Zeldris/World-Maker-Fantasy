@@ -7,7 +7,7 @@ import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './share
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
-import { deNombre, nombreDeEncuentro, nombreVisibleDeNpc,
+import { deNombre, nombreDeEncuentro, nombreVisibleDeNpc, aNombre,
   MAX_VUELTAS_MODO_DINAMICO,
   MINUTOS_POR_VUELTA_MODO_DINAMICO,
   resumenModoDinamicoParaLog,
@@ -173,11 +173,14 @@ async function abrirCombateForzadoDesdeInteractuar(
       if (!abierto) return null;
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
       // P327: un PRINCIPAL aún desconocido no se identifica por abrirse el combate (ver abajo).
-      if (!(await nombreVisibleDeNpc(prisma, save.id, persona)).oculto) await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
+      const visiblePersona = await nombreVisibleDeNpc(prisma, save.id, persona);
+      if (!visiblePersona.oculto) await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: persona.name, npcSlugsInScene: [persona.slug] });
       // P90: si la vieron antes ellos, es una emboscada, no una acción suya (sin línea en el diario; lo
-      // cuenta la narración). Mismo formato que la caza (`accionEnDiarioDeCaza`).
+      // cuenta la narración). Mismo formato que la caza (`accionEnDiarioDeCaza`). Revisión P327: la acción
+      // (que el turno casa por nombre) lleva el real; la línea del diario, el que conoce Gorhorn.
       const actionText = emboscada ? `Me defiendo de '${persona.name}' y de los suyos, que me tienden una emboscada.` : `Me enfrento a ${persona.name} y a los suyos.`;
-      return { actionText, accionEnDiario: accionEnDiarioDeCaza(actionText) };
+      const enDiario = visiblePersona.oculto ? `Me enfrento ${aNombre(visiblePersona.nombre)} y a los suyos.` : actionText;
+      return { actionText, accionEnDiario: emboscada ? accionEnDiarioDeCaza(actionText) : enDiario };
     }
   }
 

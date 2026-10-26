@@ -849,6 +849,24 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(encuentro.participantes.filter((p) => p.bando === 'ENEMIGO').map((p) => p.npcId).sort()).toEqual([...ids].sort());
     });
 
+    it('revisión P327: con el jefe PRINCIPAL sin conocer, el diario lo llama «el orco desconocido» y la acción sigue con su nombre', async () => {
+      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      await prisma.npc.update({ where: { id: ids[0]! }, data: { kind: 'PRINCIPAL' } });
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'test-cr49-jefe' } });
+      try {
+        const app = await buildApp();
+        const res = await interactuarYCombatir(app, saveId, { tipo: 'NPC', targetSlug: 'test-cr49-jefe', targetName: 'Orco desconocido', quienInicia: 'jugador', combateForzado: true });
+        expect(res.statusCode, res.body).toBe(200);
+        const body = JSON.parse(res.body);
+        expect(body.actionText).toContain('test-cr49-jefe');
+        expect(body.accionEnDiario).toBe('Me enfrento al orco desconocido y a los suyos.');
+      } finally {
+        await prisma.npc.update({ where: { id: ids[0]! }, data: { kind: 'PLANTILLA' } });
+        await prisma.combatEncounter.deleteMany({ where: { saveId } });
+        await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
+      }
+    });
+
     it('contra alguien ya muerto no se abre combate de grupo', async () => {
       await prisma.combatEncounter.deleteMany({ where: { saveId } });
       await prisma.npcState.create({ data: { saveId, npcId: ids[0]!, scope: '', condicionFisica: 'MUERTO', muerto: true } });

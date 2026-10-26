@@ -9350,6 +9350,13 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
     const { combateIniciado } = await saludar(saveId, "Ataco al 'Orco enfurecido' con el hacha.");
     expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
   }, 30_000);
+
+  it('una amenaza de muerte con saludo («¡Hola! Te mato») no cuenta como saludo: tira y abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 amenaza)');
+    const { classification, combateIniciado } = await saludar(saveId, "¡Hola, 'Orco enfurecido'! Te mato.");
+    expect(classification.requiereTirada).toBe(true);
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
 });
 
 // P327 (pruebas 0.3, decidido por la usuaria 2026-10-26): mientras Gorhorn no conoce a un NPC con nombre propio, ni
@@ -9392,12 +9399,28 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     return JSON.stringify(narrateAction.mock.calls.at(-1)?.[0] ?? {});
   }
 
+  // Ya en combate, el primer intercambio con habilidad del orco: el nombre que ve la jugadora en la insignia.
+  async function rivalDelIntercambio(saveId: string): Promise<string | undefined> {
+    const action = "Ataco al 'Orco enfurecido' con el hacha.";
+    const app = await buildApp();
+    let rival: string | undefined;
+    for (let turno = 0; turno < 4 && !rival; turno++) {
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      rival = (lastNdjsonLine(res.payload) as { npcAbilityUsed?: { npcName: string } | null }).npcAbilityUsed?.npcName;
+    }
+    await app.close();
+    return rival;
+  }
+
   it('sin descubrir, el contexto del narrador lo llama «el orco desconocido», con la nota de nombre oculto', async () => {
     const saveId = await partida('Gorhorn de prueba (P327 oculto)', false);
     const ctx = await atacar(saveId);
     expect(ctx).toContain('PERSONAJE EN ESCENA: el orco desconocido');
     expect(ctx).toContain('NOMBRE OCULTO');
     expect(ctx).not.toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+    // La insignia del intercambio («X se defiende con…») tampoco lo nombra (revisión P327).
+    expect(await rivalDelIntercambio(saveId)).toBe('Orco desconocido');
   }, 30_000);
 
   it('ya descubierto, el contexto sigue con su nombre y sin la nota', async () => {
@@ -9405,6 +9428,7 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     const ctx = await atacar(saveId);
     expect(ctx).toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
     expect(ctx).not.toContain('NOMBRE OCULTO');
+    expect(await rivalDelIntercambio(saveId)).toBe('Orco enfurecido');
   }, 30_000);
 });
 

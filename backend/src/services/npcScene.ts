@@ -674,6 +674,16 @@ export function nombreNarrado(n: Pick<NpcInScene, 'name' | 'nombreVisible'>, alI
   return nombreEnFrase(n.nombreVisible ?? n.name, alInicio);
 }
 
+/// Revisión P327 (2026-10-26): la bio y la personalidad de un NPC con nombre oculto pueden traer su nombre propio;
+/// antes de mandarlas al modelo, el nombre completo se cambia por el visible («el orco desconocido»).
+export function sinNombreReal(texto: string, n: Pick<NpcInScene, 'name' | 'nombreVisible'>): string {
+  if (!n.nombreVisible || !n.name.trim()) return texto;
+  const escapado = n.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return texto.replace(new RegExp(`(?<![\\p{L}])${escapado}(?![\\p{L}])`, 'gu'), (_m, offset: number) =>
+    nombreNarrado(n, /(^|[.!?¡¿])\s*$/.test(texto.slice(0, offset))),
+  );
+}
+
 /// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25)
 /// — nombres de NPC "candidatos plausibles aquí" (mismo filtro geográfico que `detectNpcsInScene`
 /// usa internamente: PRINCIPAL/quest activa/ya encontrado antes/itinerante/región coincidente)
@@ -974,6 +984,10 @@ export function detectsDialogueIntent(action: string): boolean {
 /// con esa intención sí es una tirada, no un simple saludo.
 const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\bmient|\bsobor|\bregate|\bnegoci|\bchantaj|\bseduc|\brobo\b|\brobar\b|\bhurt|\bsoborn/;
 
+/// P306 (revisión, 2026-10-26): amenazas de muerte y gestos violentos que `ATTACK_INTENT_REGEX` no recoge («¡Hola! Te
+/// mato», «desenvaino y le digo…», «le clavo la lanza»). Solo excluyen el saludo: no abren combate por sí solos.
+const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
+
 /// P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC (texto libre o Responder) no pide
 /// tirada ni abre combate. Es diálogo (`detectsDialogueIntent`) sin verbo de ataque, sin búsqueda hostil (salvo
 /// que sea aceptar ayudar) y sin intención de influir. Que la facción del NPC sea hostil lo decide quien lo usa
@@ -983,7 +997,8 @@ export function detectsGreetingOrQuestion(action: string): boolean {
     detectsDialogueIntent(action) &&
     !detectsAttackIntent(action) &&
     !(detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)) &&
-    !INFLUENCE_INTENT_REGEX.test(normalizeText(action))
+    !INFLUENCE_INTENT_REGEX.test(normalizeText(action)) &&
+    !VIOLENCE_INTENT_REGEX.test(normalizeText(action))
   );
 }
 
@@ -1180,8 +1195,8 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
   // modelo lo infiera solo de la bio/personalidad.
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR: nunca le pongas diálogo entre comillas ni palabras humanas — solo comportamiento animal (gruñidos, chillidos, gestos, movimientos).` : '';
   return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${nombreOcultoHintFor(npc)}${generoHintFor(npc)}${faunaSinHablaHint}${facRepHintFor(npc, factionsStatus)}${claseHintFor(npc)}${receptividadHintFor(npc)}${activeEffectsHintFor(npc)}
-Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
-Personalidad: ${npc.personality}
+Descripción/hechos ya establecidos (nunca los contradigas): ${sinNombreReal(npc.bio, npc)}
+Personalidad: ${sinNombreReal(npc.personality, npc)}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;
 }
 
