@@ -29,7 +29,8 @@ Fuente: docs/rpgtarkor/ (todo). Sincronizado: 2026-10-06.
 - Nada puede pasar después del 4.010. Los orcos viven 40-50 años y son adultos a los 10.
 
 ## Reservado (NO resolver, NO explicar)
-Qué descubrió el Reino Nabierus; qué encontró o sabe Tarkor, y su regreso; los seres de la Isla y
+Qué descubrió el Reino Nabierus; qué encontró o sabe Tarkor, y por qué volvió transformado (que
+volvió así es saber común; lo reservado es el porqué, `QA-256`); los seres de la Isla y
 de El Giro; la Ciudad Hundida, el Archivo Cegado y el Observatorio Roto (tras un terremoto futuro);
 el destino de las Semillas Perdidas; la Entidad Desconocida; qué sabe Tarsen Vold del Detonante.
 

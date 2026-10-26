@@ -71,4 +71,5 @@ ciénaga, Incisivos de Miruina (curtidor y peletero).
 
 ## Documentos (desbloquean entradas de la Enciclopedia)
 Correspondencia sellada de la Concordia, Croquis de rutas de patrulla, Diario de un soldado
-goirntes, Sello de patrulla de la Concordia, Tablilla quemada (la caída de los Maktor). Solo hay 5.
+goirntes, Sello de patrulla de la Concordia, Tablilla quemada (la caída de los Maktor), Colmillo de
+Canizor con dos marcas y Calco del Primer Edicto del Tributo. Solo hay 7.

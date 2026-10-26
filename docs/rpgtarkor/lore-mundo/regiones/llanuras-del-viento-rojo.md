@@ -242,7 +242,7 @@ quien superó la cacería ritual.
 
 **El Ketg'lukar (interior jugable).** Cruzada la empalizada, el poblado se organiza en torno a una
 plaza central de tierra apisonada, con sendas marcadas por el paso constante. Cada taller de oficio
-(forja, curtiduría, cocina común, herboristería, alquimia, corrales del Domador, desolladero) tiene
+(forja, curtiduría, cocina común, herboristería, alquimia, corrales del Ganadero, desolladero) tiene
 su propia ubicación en el mapa de la zona. El interior completo es el **Ketg'lukar** (`Lukar` =
 Hogar). En su centro simbólico se alza el **Ketg'sedsar**, el Salón del Colmillo Ceniza (`Sedsar` =
 Salón), donde la Terk'ikar y el Kort'ikar reciben a quien cruza la entrada.
@@ -259,9 +259,9 @@ Salón), donde la Terk'ikar y el Kort'ikar reciben a quien cruza la entrada.
   Cuerno**, recipientes de cuerno de Múrgol y Flor Salvatura en conserva. Es el único lugar del
   poblado donde se trabaja a fuego lento, a contrapelo del carácter del clan, y los demás Serhu lo
   miran con cierta desconfianza.
-- **Corrales del Domador** *(en código · Maestro Domador Serhu)*: recinto dentro de la
-  empalizada con postes de **Huesos de Gargantúa** del Osario y un abrevadero de piedra que se llena
-  a mano desde el Pozo. Aquí se aclimatan las bestias recién domadas antes de pasar al recinto de
+- **Corrales del Ganadero** *(en código · Maestro Domador Serhu, que enseña el oficio de ganadero;
+  `CR-55`, 2026-10-06)*: recinto dentro de la empalizada con postes de **Huesos de Gargantúa** del
+  Osario y un abrevadero de piedra que se llena a mano desde el Pozo. Aquí se aclimatan las bestias recién domadas antes de pasar al recinto de
   Múrgol de fuera. La Terk'ikar Ulkha Ketg, que es Domadora, lo visita a diario.
 - **Desolladero del Clan Serhu** *(en código · Maestro Desollador Serhu)*: a sotavento,
   junto a la salida trasera hacia el recinto de Múrgol. Bastidores de **cornamenta de Múrgol** para
@@ -280,7 +280,7 @@ trabaja fuera del poblado, en el **Embarcadero de pesca**, en la Playa de Ceniza
 vive el Maestro Pescador (decisión de Álvaro, 2026-09-29: la Playa es un puesto avanzado Serhu). Falta el **Obrador de piedra** (constructor), que espera a tener Maestro.
 
 **Maestros de oficio.** Por cada uno de los 12 oficios orcos de las Llanuras (herrero, curtidor,
-peletero, desollador, domador, carpintero, sastre, herborista, primeros auxilios, alquimista,
+peletero, desollador, ganadero, carpintero, sastre, herborista, primeros auxilios, alquimista,
 cocinero y pescador) hay un **Maestro `<Oficio>` Serhu** (PRINCIPAL, único, enseña el oficio a quien
 cumpla la reputación mínima y una misión propia todavía por definir; protegido, no capturable). Los
 12 están sembrados. Se ha diseñado también un **`<Oficio>` Serhu** trabajador (PLANTILLA, capturable
@@ -1006,7 +1006,7 @@ investigadora que sus descendientes de hoy, los Nabieus, siguen llevando en la s
 ## Huecos conocidos
 
 - **Talleres de Karot Veku** descritos pero sin edificio en el catálogo: herboristería, alquimia,
-  corrales del Domador, desolladero y carpintería (ya tienen descripción y Maestro asignado).
+  corrales del Ganadero, desolladero y carpintería (ya tienen descripción y Maestro asignado).
 - El **trabajador de Reino** (`<Oficio>` Serhu PLANTILLA) no existe para ningún oficio.
 - El **Puesto Rabioso del Margen** es solo un rótulo del mapa, sin `Location`.
 - La **Espina del Viento** no tiene ficha de combate, por diseño.
