@@ -737,7 +737,7 @@ export async function getSave(id: string): Promise<SaveDetail> {
 }
 
 /// P219 (c): condición, Hambre y Sed para el sondeo del HUD, sin la partida entera.
-export async function getSupervivencia(id: string): Promise<Pick<SaveDetail, 'condicionFisica' | 'hambre' | 'sed'>> {
+export async function getSupervivencia(id: string): Promise<Pick<SaveDetail, 'condicionFisica' | 'hambre' | 'sed'> & { aviso?: string | null }> {
   return fetchJson(`${API_URL}/saves/${id}/supervivencia`)
 }
 
@@ -996,7 +996,8 @@ export async function moveCompanionToCombatGroup(id: string, companionId: string
 /// Location actual (mismo criterio que fija el punto de guardado real). GET consulta visibilidad
 /// sin mutar nada; POST ejecuta el salto a las 08:00 del día siguiente, guarda partida y cura hasta
 /// HERIDO como techo.
-export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean }> {
+/// `carencia` (P305): hambre o sed por debajo del umbral; con ella el descanso no cura y el estado empeora.
+export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean; carencia?: 'hambre' | 'sed' | 'ambas' | null }> {
   return fetchJson(`${API_URL}/saves/${id}/descansar-campamento`)
 }
 
@@ -1849,6 +1850,8 @@ export interface SubditoInfo {
   tarea?: TareaSubdito
   /// Casa de obras (P277): nivel de oficio de constructor (1-9); da velocidad (los tiers los abre la Casa de obras).
   nivelConstructor?: number
+  /// P318: lleva arma (soldado, vigía o cazador adulto) y no la tiene: se marca «(sin arma)» en la lista.
+  sinArma?: boolean
 }
 
 export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero' | 'constructor'
@@ -2167,11 +2170,12 @@ export type ConfirmarCazaResultado =
 /// regional como el viejo botón suelto "Cazar" (`confirmarCaza`, que la Fase 4 retira). Misma forma
 /// de respuesta que `confirmarCaza` — el llamador reutiliza el mismo tratamiento de resultado
 /// (`handleHuntResolved`, GameView.tsx).
-export async function cazarEnZona(saveId: string, zonePointId: string): Promise<ConfirmarCazaResultado> {
+/// P307: la fauna de la escena sin punto en el mapa se caza por `targetSlug` (el backend crea el punto al momento).
+export async function cazarEnZona(saveId: string, zonePointId: string | undefined, targetSlug?: string): Promise<ConfirmarCazaResultado> {
   return fetchJson(`${API_URL}/saves/${saveId}/zona/cazar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ zonePointId }),
+    body: JSON.stringify(zonePointId ? { zonePointId } : { targetSlug }),
   })
 }
 
@@ -2255,6 +2259,9 @@ export interface DynamicModeTurno {
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
   combate?: { npcs: NpcInSceneInfo[] } | null
+  /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,
+  /// llega junto al combate que abre). La misma que se ve tras recargar.
+  huidaLogEntry?: LogEntry
   /// Agresivo en grupo (Fase 2, 2026-09-28) — llega en vez de `combate` cuando el encuentro forzado
   /// es un grupo real de FAUNA (`cantidad > 1`, ver `iniciarCaza`/`services/caza.ts`): el backend ya
   /// creó el `CombatEncounter` múltiple, este texto se manda por el turno normal

@@ -155,6 +155,53 @@ describe('asaltos de los campamentos (CR-50 50b)', () => {
   });
 });
 
+/// P253: unos bandidos no van a por un Reino sin nada que llevarse, por mucha necesidad que tengan.
+describe('asaltos al Reino vacío (P253)', () => {
+  let saveId: string;
+  let campId: string;
+
+  beforeAll(async () => {
+    const { enlacesDelMundo, rutaMasCorta } = await import('./viajeros.js');
+    const { ownerKeyFor } = await import('./reinoOwner.js');
+    const { posicionEnZona } = await import('./viajerosCruce.js');
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const enlaces = await enlacesDelMundo(prisma, world.id);
+    const llanuras = await prisma.location.findMany({ where: { worldId: world.id, region: 'Las Llanuras del Viento Rojo' }, select: { id: true } });
+    let par: [string, string] | null = null;
+    for (const a of llanuras) for (const b of llanuras) if (!par && a.id !== b.id && rutaMasCorta(enlaces, a.id, b.id)) par = [a.id, b.id];
+    const [campLoc, capitalLoc] = par!;
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn (P253)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x', attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'G' },
+    })).id;
+    await prisma.kingdomStats.create({ data: { saveId, ownerKey: ownerKeyFor({ saveId }), riqueza: 0, comida: 0 } });
+    await prisma.building.create({ data: { saveId, locationId: capitalLoc, recipeKey: 'ayuntamiento', name: 'Karot', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
+    const c = await prisma.campamento.create({ data: { saveId, locationId: campLoc, region: 'Las Llanuras del Viento Rojo', ocupante: 'renegados-goirntes', cabecilla: 'Cabecilla de los renegados', gente: 8, tope: 8, creadoDia: 10, ultimoRefuerzoDia: 10 } });
+    const p = await prisma.zonePoint.create({ data: { saveId, locationId: campLoc, tipo: 'NPC', targetSlug: 'goirnte-renegado', cantidad: 9, ...posicionEnZona(c.id) } });
+    campId = (await prisma.campamento.update({ where: { id: c.id }, data: { zonePointId: p.id } })).id;
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('con el Reino a cero no salen (aunque no tengan botín guardado y estén llenos); con algo que llevarse, sí', async () => {
+    const { lanzarAsaltosAlReino } = await import('./campamentos.js');
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(0);
+    expect(await prisma.viajero.count({ where: { saveId, tipo: 'ASALTO' } })).toBe(0);
+    // Una pizca (por debajo de lo que merece el viaje) tampoco.
+    await prisma.kingdomStats.updateMany({ where: { saveId }, data: { riqueza: 5, comida: 20 } });
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(0);
+    // Revisión P253: sin Goirnos ni comida, pero con el Almacén lleno, también hay que llevarse.
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 4 }, (_, i) => ({ saveId, name: `Maza orca ${i}`, description: 'x', catalogSlug: 'maza-orca' })) });
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(1);
+    await prisma.viajero.deleteMany({ where: { saveId, tipo: 'ASALTO' } });
+    await prisma.campamento.updateMany({ where: { saveId }, data: { ultimoAsaltoReinoDia: null } });
+    await prisma.almacenItem.deleteMany({ where: { saveId } });
+    await prisma.kingdomStats.updateMany({ where: { saveId }, data: { riqueza: 300 } });
+    expect(await lanzarAsaltosAlReino(prisma, saveId, 30)).toBe(1);
+    expect((await prisma.campamento.findUniqueOrThrow({ where: { id: campId } })).ultimoAsaltoReinoDia).toBe(30);
+  });
+});
+
 /// CR-50 (50d, Q7): se conoce un campamento si estuviste allí, si te llegó el rumor o si lo ve una Torre.
 describe('conocer los campamentos (CR-50 50d)', () => {
   let saveId: string;

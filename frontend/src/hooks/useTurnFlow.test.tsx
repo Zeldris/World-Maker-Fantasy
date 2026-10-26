@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useRef, useState } from 'react'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useTurnFlow } from './useTurnFlow'
 import type { ChatComposerHandle } from '../components/ChatComposer'
 import type { CondicionFisica, InitiativeRollInfo, LogEntry, QuestInfo, TerritoryInfo, BuildingInfo, SubjectInfo } from '../types'
@@ -99,7 +99,7 @@ function baseClassifyResponse(overrides: Partial<Awaited<ReturnType<typeof reque
   }
 }
 
-function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unknown) => void, thinkingInicial = false) {
+function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unknown) => void, thinkingInicial = false, reino?: { buildings: BuildingInfo[]; setKingdomLog: (log: LogEntry[]) => void }) {
   const [characterLog, setCharacterLog] = useState<LogEntry[]>([])
   const [characterThinking, setCharacterThinking] = useState(thinkingInicial)
   const [condicionFisica, setCondicionFisica] = useState<CondicionFisica>('ILESO')
@@ -146,6 +146,8 @@ function useHarness(fictionalDate = 'Día 1, mañana', onCazaPorTexto?: (r: unkn
     setQuests: vi.fn(),
     setTerritories: vi.fn(),
     setBuildings: vi.fn(),
+    buildings: reino?.buildings,
+    setKingdomLog: reino?.setKingdomLog as never,
     setSubjects: vi.fn(),
     setKingdomStats: vi.fn(),
     setDeathCount: vi.fn(),
@@ -250,6 +252,43 @@ describe('handleSubmit — turno normal exitoso', () => {
     expect(result.current.condicionFisica).toBe('HERIDO')
     expect(result.current.xp).toBe(5)
     expect(result.current.characterLog.some((e) => e.text === 'La escena continúa.')).toBe(true)
+  })
+
+  // P209: el turno que levanta el ayuntamiento escribe una entrada KINGDOM que la respuesta no trae; sin
+  // pedirla, la pestaña «Reino» seguía vacía hasta recargar.
+  it('P209: un ayuntamiento nuevo en la respuesta refresca el registro del reino; sin hito nuevo no lo pide', async () => {
+    const entrada = { id: 'k1', channel: 'world', text: 'Gorhorn termina de construir Ayuntamiento.', timeLabel: 'Día 1', createdAt: '2026-10-25T00:00:00Z' } as LogEntry
+    const ayuntamiento = { id: 'b1', recipeKey: 'ayuntamiento', tier: 1, name: 'Ayuntamiento', kind: 'x', status: 'ACTIVO', description: '' } as BuildingInfo
+    const setKingdomLog = vi.fn()
+    mockGetSave.mockResolvedValue({ kingdomLog: [entrada] } as never)
+    mockClassify.mockResolvedValue(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse({ buildings: [ayuntamiento] }))
+    const { result } = renderHook(() => useHarness('Día 1, mañana', undefined, false, { buildings: [], setKingdomLog }))
+    await act(() => result.current.turn.handleSubmit('Construyo el ayuntamiento.'))
+    await waitFor(() => expect(setKingdomLog).toHaveBeenCalledWith([entrada]))
+
+    setKingdomLog.mockClear()
+    mockGetSave.mockClear()
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse({ buildings: [ayuntamiento] }))
+    const { result: segundo } = renderHook(() => useHarness('Día 1, tarde', undefined, false, { buildings: [ayuntamiento], setKingdomLog }))
+    await act(() => segundo.current.turn.handleSubmit('Miro alrededor.'))
+    expect(mockGetSave).not.toHaveBeenCalled()
+    expect(setKingdomLog).not.toHaveBeenCalled()
+  })
+
+  // Fase 1 hacia main (P209): la obra que termina pasa de EN_CONSTRUCCION a ACTIVO sin cambiar de nivel, y
+  // es entonces cuando el backend escribe la entrada KINGDOM.
+  it('P209: la obra que pasa de EN_CONSTRUCCION a ACTIVO sin cambiar de nivel refresca el registro del reino', async () => {
+    const entrada = { id: 'k2', channel: 'world', text: 'Gorhorn termina de construir Ayuntamiento.', timeLabel: 'Día 2', createdAt: '2026-10-26T00:00:00Z' } as LogEntry
+    const enObra = { id: 'b1', recipeKey: 'ayuntamiento', tier: 1, name: 'Ayuntamiento', kind: 'x', status: 'EN_CONSTRUCCION', description: '' } as BuildingInfo
+    const terminado = { ...enObra, status: 'ACTIVO' } as BuildingInfo
+    const setKingdomLog = vi.fn()
+    mockGetSave.mockResolvedValue({ kingdomLog: [entrada] } as never)
+    mockClassify.mockResolvedValue(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse({ buildings: [terminado] }))
+    const { result } = renderHook(() => useHarness('Día 2, mañana', undefined, false, { buildings: [enObra], setKingdomLog }))
+    await act(() => result.current.turn.handleSubmit('Sigo con la obra.'))
+    await waitFor(() => expect(setKingdomLog).toHaveBeenCalledWith([entrada]))
   })
 
   // Bug real jugando en vivo (2026-09-04): el turno que ABRE combate calcula/persiste

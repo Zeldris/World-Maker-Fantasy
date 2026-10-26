@@ -286,7 +286,7 @@ export function GameModals() {
       <Presencia>
         {simpleModal === 'travel' && saveId && (
           <Capa id="viajar">
-          <TravelDestinationModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno} />
+          <TravelDestinationModal saveId={saveId} onSelect={handleViajeElegido} onCancel={closeSimpleModal} bloqueoTurno={bloqueoTurno ?? permisoMover.motivo} />
           </Capa>
         )}
       </Presencia>
@@ -497,8 +497,8 @@ export function GameModals() {
                 // P9 (QA-27): cazar acaba en combate o en Combatir/Huir en el diario; el mapa se cierra
                 // en cuanto la caza sale, para no dejar esas opciones debajo. Si falla, sigue abierto
                 // con el error en la tarjeta.
-                onCazarEnZona: async (id, zonePointId) => {
-                  if (await handleCazarEnZona(id, zonePointId)) cerrarMapa()
+                onCazarEnZona: async (id, zonePointId, targetSlug) => {
+                  if (await handleCazarEnZona(id, zonePointId, targetSlug)) cerrarMapa()
                 },
                 onDismissDynamicModeOffer: handleDismissDynamicModeOffer,
               })

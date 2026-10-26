@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { CONSTRUCTION_RECIPES, planRecipeConsumption, baseNameOf, computeBuildBlockedReason, buildingTierFor, type ConstructionRecipe } from '../../services/construction.js';
-import { constructionRecipeStatusFor, type RecipeStatus } from './recipesStatus.js';
+import { constructionRecipeStatusFor, regionDelAyuntamiento, type RecipeStatus } from './recipesStatus.js';
 import { checkIngredients, type CatalogLookup } from '../../services/ingredients.js';
 
 /// Concepto de "parcela" estilo Travian/Tribal Wars (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4,
@@ -62,6 +62,7 @@ export async function parcelasRoutes(app: FastifyInstance) {
         ? CONSTRUCTION_RECIPES.filter((r) => r.key === parcela.recipeKeyFijo)
         : candidateRecipesForBasica();
 
+    const regionAyuntamiento = await regionDelAyuntamiento(save.id);
     const candidates: RecipeStatus[] = await Promise.all(
       candidateRecipes.map((recipe) =>
         constructionRecipeStatusFor({
@@ -72,6 +73,7 @@ export async function parcelasRoutes(app: FastifyInstance) {
           currentLocationId: parcela.locationId,
           inventoryRows,
           catalogBySlug,
+          regionAyuntamiento,
         }),
       ),
     );

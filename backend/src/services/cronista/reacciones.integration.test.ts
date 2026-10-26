@@ -92,6 +92,10 @@ describe('reacciones inmediatas (CR-10)', () => {
     await procesarReacciones(prisma, saveId, () => 0);
     expect((await prisma.building.findUniqueOrThrow({ where: { id: edificio.id } })).status).toBe('DANADO');
     expect(await sucesos('EDIFICIO_DANADO')).toHaveLength(1);
+    // P315: la jugadora se entera por el diario del Reino, no al ir a construir.
+    const avisos = await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM', text: { contains: 'sufre daños por una tormenta' } } });
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]!.text).toContain('Choza sufre daños por una tormenta: no cuenta hasta repararlo');
   });
 
   it('una cascada que se alimenta a sí misma se corta en el tope de niveles y lo que sobra pasa al día siguiente', async () => {

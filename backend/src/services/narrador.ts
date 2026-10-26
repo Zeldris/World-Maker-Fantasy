@@ -5,7 +5,7 @@ import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
 import { normalizeText, fuzzyMatchCandidates, findFuzzyStemMatch } from './travel.js';
 import { includesNameOrPlural } from './itemReference.js';
-import { detectsAttackIntent, detectsHostileSearchIntent } from './npcScene.js';
+import { detectsAttackIntent, detectsHostileSearchIntent, sinNombreReal } from './npcScene.js';
 import { similarity, factSimilarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
 import type { CondicionFisica, Clase } from '@prisma/client';
@@ -43,6 +43,9 @@ export type HitoTipo = 'descubrimiento' | 'objetivo_menor' | 'objetivo_mayor';
 
 export interface NarrationResult {
   narration: string;
+  /// P245: `true` cuando el texto viene de `deterministicFallbackNarration` (el narrador no respondió).
+  /// Lo mira turnResolution.ts para no mostrar en un diálogo la copia de la acción de la jugadora.
+  fallbackDeterminista?: true;
   newFacts: string[];
   /// Solo presente cuando la acción resulta de verdad en conseguir/fabricar un objeto físico
   /// duradero — la mayoría de turnos no tocan esto (ver instrucción en el prompt).
@@ -905,7 +908,8 @@ export function dropSuggestionsNamingStaleNpc<T extends { name: string }>(
 }
 
 export interface NpcReplyContext {
-  npc: { name: string; personality: string; bio: string; role: string };
+  /// `nombreVisible` (P327): Gorhorn aún no conoce su nombre — no se presenta ni se nombra a sí mismo.
+  npc: { name: string; personality: string; bio: string; role: string; nombreVisible?: string };
   characterName: string;
   action: string;
   sessionFacts: string[];
@@ -931,9 +935,10 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
   const system =
     'Interpretas a UN SOLO personaje dentro de una escena de rol de mesa. Tu única tarea es escribir su respuesta HABLADA, en primera persona, a lo que el jugador le acaba de decir o preguntar — nunca la narración de la escena, ni acotaciones de gesto, ni el nombre del personaje delante. Responde solo con su réplica entre comillas, 1-2 frases, nada más.';
 
-  const prompt = `PERSONAJE QUE ERES: ${ctx.npc.name} — ${ctx.npc.role}.
-Personalidad: ${ctx.npc.personality}
-Trasfondo: ${ctx.npc.bio}
+  // Fase 1 hacia main (P327): con el nombre oculto, el modelo no ve el real (no puede decir lo que no sabe).
+  const prompt = `PERSONAJE QUE ERES: ${ctx.npc.nombreVisible ?? ctx.npc.name} — ${ctx.npc.role}.
+Personalidad: ${sinNombreReal(ctx.npc.personality, ctx.npc)}
+Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${ctx.characterName} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
 
 HECHOS YA ESTABLECIDOS (no los contradigas ni reveles nada que no sepas todavía según tu propio trasfondo):
 ${factsBlock(ctx.sessionFacts)}
@@ -1738,6 +1743,7 @@ export function deterministicFallbackNarration(ctx: {
   return {
     // P94 (QA-27): la acción se repite tal cual; sin las comillas con que el juego cita al rival.
     narration: `${sinComillasSueltas(action)} ${resultado}`,
+    fallbackDeterminista: true,
     newFacts: [],
     newItem: null,
     newCompanion: null,
@@ -1747,6 +1753,14 @@ export function deterministicFallbackNarration(ctx: {
     condicionFisica: null,
     combateIniciado: null,
   };
+}
+
+/// P245 (decisión de la usuaria, 2026-10-26): en un diálogo con un NPC, el texto de respaldo no copia la
+/// acción de la jugadora (ya está en «TU ACCIÓN») ni dice «La acción transcurre sin incidentes»: una réplica
+/// breve y neutra del NPC y el aviso de que el narrador no respondió. `quien` ya viene con su artículo y en
+/// mayúscula inicial («El orco desconocido», «Gistera Koh»). La réplica real, si la hay, se añade detrás.
+export function narracionDeRespaldoEnDialogo(quien: string): string {
+  return `${quien} te escucha en silencio. (El narrador no ha respondido a esta escena.)`;
 }
 
 // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"): el modelo

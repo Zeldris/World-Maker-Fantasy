@@ -57,8 +57,8 @@ export interface ConstructionRecipe {
   /// Reglas de construcciones/reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — cuántos
   /// slots de compañero desbloquea esta construcción una vez `ACTIVO`. undefined = 0.
   companionSlots?: number;
-  /// Máximo de construcciones ACTIVAS/EN_CONSTRUCCION de esta receta por región (`Location.region`
-  /// de su `locationId`) — el Campamento es 1; el resto no tiene tope propio (puede que sí tengan
+  /// Máximo de construcciones ACTIVAS/EN_CONSTRUCCION/DANADAS (`ESTADOS_DEL_TOPE_POR_REGION`) de esta receta por
+  /// región (`Location.region` de su `locationId`) — el Campamento es 1; el resto no tiene tope propio (puede que sí tengan
   /// `reinoBuildingCapacity`, ver abajo, que es un tope distinto y compartido entre recetas).
   maxPerRegion?: number;
   /// true = necesita un Ayuntamiento (cualquier nivel) ya construido en la partida antes de poder
@@ -384,6 +384,8 @@ export const MAKTOR_CLAN_TOTEM_RECIPE: ConstructionRecipe = {
   // Mismo criterio que antes en crafting.ts: acto de memoria, no de destreza — solo Carisma, sin
   // oficio.
   requiresAyuntamiento: true,
+  // Uno por región (usuaria, 2026-10-25): es un monumento único, no se ofrece otra vez si ya está.
+  maxPerRegion: 1,
 };
 
 // Ayuntamiento (2026-08-04, renombrado desde "Atalaya de vigía" — docs/17-reglas-construcciones-
@@ -1868,6 +1870,27 @@ function cuartelAvanzadoCapacityForTier(tier: number): number {
 /// en el mismo Cuartel, ver `computeBuildBlockedReason`).
 const CUARTEL_UPGRADE_RECIPE_KEYS: string[] = CONSTRUCTION_RECIPES.filter((r) => r.cuartelUpgradeBonus).map((r) => r.key);
 
+/// P255 (usuaria, 2026-10-26): estados que ocupan el tope `maxPerRegion`. Uno DANADO sigue levantado: se repara, no
+/// se levanta otro. Lo usan el veto de la obra (`computeBuildBlockedReason`) y lo que ofrece Reino › Edificios
+/// (`unicaYaLevantada`, recipesStatus.ts), para que los dos cuenten igual.
+export const ESTADOS_DEL_TOPE_POR_REGION = ['ACTIVO', 'EN_CONSTRUCCION', 'DANADO'] as const;
+
+/// Cuántos edificios de esta receta ocupan el tope en la región, y cuántos de ellos están dañados. Sin región
+/// (no se sabe dónde se levantaría) no cuenta ninguno: la obra se valida al levantarla, con su lugar.
+export async function ocupadosDelTopePorRegion(
+  db: Pick<Prisma.TransactionClient, 'building'>,
+  params: { saveId: string; recipeKey: string; region: string | null; excludeBuildingId?: string },
+): Promise<{ total: number; danados: number }> {
+  const { saveId, recipeKey, region, excludeBuildingId } = params;
+  if (!region) return { total: 0, danados: 0 };
+  const base = { saveId, recipeKey, location: { region }, ...(excludeBuildingId ? { id: { not: excludeBuildingId } } : {}) };
+  const [total, danados] = await Promise.all([
+    db.building.count({ where: { ...base, status: { in: [...ESTADOS_DEL_TOPE_POR_REGION] } } }),
+    db.building.count({ where: { ...base, status: 'DANADO' } }),
+  ]);
+  return { total, danados };
+}
+
 /// Reglas de reino (2026-08-04, docs/mecanicas/17-reglas-construcciones-reino.md) — cupo por región, cercanía/
 /// cupo del Ayuntamiento, mejora en el nivel justo anterior, y unicidad del Ayuntamiento. Recibe
 /// `db` como parámetro (en vez de cerrar sobre `prisma`) para poder llamarse dos veces con el mismo
@@ -1945,17 +1968,13 @@ export async function computeBuildBlockedReason(params: {
     }
   }
   if (buildRecipe.maxPerRegion) {
-    const sameRegionCount = await db.building.count({
-      where: {
-        saveId,
-        recipeKey: buildRecipe.key,
-        status: { in: ['ACTIVO', 'EN_CONSTRUCCION'] },
-        location: { region: activeRegion ?? undefined },
-        ...(excludeBuildingId ? { id: { not: excludeBuildingId } } : {}),
-      },
-    });
-    if (sameRegionCount >= buildRecipe.maxPerRegion) {
-      return `ya tiene ${buildRecipe.name} activo en esta región (máximo ${buildRecipe.maxPerRegion} por región)`;
+    // El tope se cuenta en la región del lugar donde se levanta: sin `activeRegion`, la de ese lugar (nunca «todo el mundo»).
+    const region = activeRegion ?? (await db.location.findUnique({ where: { id: currentLocationRecord.id }, select: { region: true } }))?.region ?? null;
+    const tope = await ocupadosDelTopePorRegion(db, { saveId, recipeKey: buildRecipe.key, region, excludeBuildingId });
+    if (tope.total >= buildRecipe.maxPerRegion) {
+      return tope.danados > 0
+        ? `ya tiene ${buildRecipe.name} en esta región, dañado: repáralo (Reino › Edificios) en vez de levantar otro (máximo ${buildRecipe.maxPerRegion} por región)`
+        : `ya tiene ${buildRecipe.name} activo en esta región (máximo ${buildRecipe.maxPerRegion} por región)`;
     }
   }
   if (buildRecipe.requiresAyuntamiento) {

@@ -83,6 +83,23 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     expect((await stats()).ganadoDiasSinComer).toBe(3);
   });
 
+  it('P330: sin animales los días sin comer y sin beber se reinician (no se arrastran los de los que ya murieron)', async () => {
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { forraje: 0, ganadoDiasSinComer: 4, ganadoDiasSinBeber: 2 } });
+    await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
+    const s = await stats();
+    expect(s.ganadoDiasSinComer).toBe(0);
+    expect(s.ganadoDiasSinBeber).toBe(0);
+  });
+
+  it('P330: 12 días sin forraje acaban con el rebaño y el contador no queda en un número viejo', async () => {
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { forraje: 0 } });
+    await animal('M');
+    await animal('F');
+    for (let i = 0; i < 12; i++) await avanzarGanadoReino(prisma, saveId, DIA + i, AHORA + i * 1440, () => 0.99);
+    expect(await prisma.ganado.count({ where: { saveId } })).toBe(0);
+    expect((await stats()).ganadoDiasSinComer).toBe(0);
+  });
+
   it('las Fibrerías dan 10 de forraje por trabajador', async () => {
     const fibreria = await prisma.building.create({ data: { saveId, recipeKey: 'fibreria', name: 'Fibrería', kind: 'fibreria', status: 'ACTIVO', description: 'x' } });
     await prisma.companion.create({ data: { saveId, name: 'Segadora', role: 'aliado', notes: '', tipo: 'NPC', rolReino: 'trabajador', buildingId: fibreria.id } });

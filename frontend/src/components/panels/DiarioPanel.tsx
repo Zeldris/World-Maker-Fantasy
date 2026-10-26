@@ -7,6 +7,7 @@ import { ExtendedRollBadge } from '../ExtendedRollBadge'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { EnciclopediaLinkedText } from '../EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
+import { notaDeHito } from '../../lib/hitos'
 
 interface DiarioPanelProps {
   saveId: string
@@ -218,7 +219,7 @@ export function DiarioPanel({ saveId }: DiarioPanelProps) {
                       </span>
                     )}
                     {!!item.xpHitoDelta && (
-                      <span className="rounded-full border border-quest-600/50 bg-quest-500/10 px-1.5 py-0.5 font-mono text-2xs text-quest-400">
+                      <span title={notaDeHito(item.xpHitoLabel) ?? undefined} className="rounded-full border border-quest-600/50 bg-quest-500/10 px-1.5 py-0.5 font-mono text-2xs text-quest-400">
                         📖 {item.xpHitoLabel ?? 'Hito'} (+{item.xpHitoDelta} XP)
                       </span>
                     )}

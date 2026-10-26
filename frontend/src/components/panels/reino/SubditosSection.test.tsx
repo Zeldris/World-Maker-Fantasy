@@ -81,7 +81,7 @@ describe('SubditosSection — súbditos (REI-118)', () => {
     const { findByText } = render(
       <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
     )
-    expect(await findByText('Camas: 0/2 (0 súbditos, 0 compañeros, 2 temporales del Ayuntamiento solo para súbditos)')).toBeTruthy()
+    expect(await findByText('Camas: 0 ocupadas de 2 · 2 libres (0 súbditos, 0 compañeros, 2 temporales del Ayuntamiento solo para súbditos)')).toBeTruthy()
   })
 
   it('P284/P301: con edificios dañados avisa de las camas perdidas y el Cocinero avisa de su Cocina', async () => {
@@ -97,6 +97,18 @@ describe('SubditosSection — súbditos (REI-118)', () => {
     expect(await findByText(/Su Cocina está dañada/)).toBeTruthy()
   })
 
+  it('P318: el súbdito sin arma sale marcado «(sin arma)» y el que la tiene, no', async () => {
+    vi.mocked(getSubditos).mockResolvedValue({
+      subditos: [sub({ id: 'a', name: 'Brakka', role: 'cazador', rol: 'cazador', sinArma: true }), sub({ id: 'b', name: 'Doru', role: 'cazador', rol: 'cazador', sinArma: false })],
+      camas: { total: 4, companeros: 0, subditos: 2, libres: 2 },
+    })
+    const { findByText, queryAllByText } = render(
+      <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
+    )
+    await findByText(/Brakka/)
+    expect(queryAllByText(/\(sin arma\)/)).toHaveLength(1)
+  })
+
   it('las camas compartidas, el rol de un adulto se cambia y una cría no tiene rol', async () => {
     vi.mocked(getSubditos).mockResolvedValue({
       subditos: [sub({ id: 'a', pareja: 'Grosh Ketg', crias: 1 }), sub({ id: 'b', name: 'Doru Ketg', edad: 1, adulto: false })],
@@ -106,7 +118,7 @@ describe('SubditosSection — súbditos (REI-118)', () => {
     const { findByText, getByRole, getByText } = render(
       <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
     )
-    expect(await findByText('Camas: 3/4 (2 súbditos, 1 compañero)')).toBeTruthy()
+    expect(await findByText('Camas: 3 ocupadas de 4 · 1 libre (2 súbditos, 1 compañero)')).toBeTruthy()
     expect(getByText('cría')).toBeTruthy()
     expect(getByText('Pareja de Grosh Ketg · 1 cría')).toBeTruthy()
     expect(getByText('Urga Koh')).toBeTruthy()
@@ -174,7 +186,7 @@ describe('SubditosSection — llegadas (REI-119)', () => {
     vi.mocked(getSubditos).mockResolvedValue({
       ahora: 0, subditos: [], camas: { total: 0, companeros: 0, subditos: 0, libres: 0 },
       requisitosLlegada: [
-        { clave: 'cama', nombre: 'Cama libre', cumple: true, cifra: '0/2', motivo: 'No hay cama libre.' },
+        { clave: 'cama', nombre: 'Cama libre', cumple: true, cifra: '2 libres de 4', motivo: 'No hay cama libre.' },
         { clave: 'comida', nombre: 'Comida', cumple: false, cifra: '0', motivo: 'No hay comida.' },
         { clave: 'agua', nombre: 'Agua', cumple: true, cifra: '12', motivo: 'No hay agua.' },
         { clave: 'felicidad', nombre: 'Felicidad', cumple: true, cifra: '55, mínimo 40', motivo: 'Poca fama.' },
@@ -184,7 +196,7 @@ describe('SubditosSection — llegadas (REI-119)', () => {
       <SubditosSection saveId="s1" subjects={[]} companions={[]} inventory={[]} almacenItems={[]} plantillasEquipo={[]} onRefreshSave={async () => {}} />,
     )
     const lista = await findByLabelText('Requisitos para que llegue alguien')
-    expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (0/2) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
+    expect(lista.textContent).toBe('Para que llegue alguien: Cama libre ✓ (2 libres de 4) · Comida ✗ (0) · Agua ✓ (12) · Felicidad ✓ (55, mínimo 40)')
   })
 })
 
@@ -210,7 +222,7 @@ describe('SubditosSection — P230 fallo de carga', () => {
       fireEvent.click(await findByRole('button', { name: /Reintentar/ }))
     })
     expect(getSubditos).toHaveBeenCalledTimes(2)
-    expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
+    expect(await findByText(/Camas: 0 ocupadas de 3 · 3 libres/)).toBeTruthy()
   })
 
   it('P236 — con la carga fallida no sale «Aún no vive nadie»; con la carga ok y vacía, sí', async () => {
@@ -233,7 +245,7 @@ describe('SubditosSection — P230 fallo de carga', () => {
     const { findByRole, queryByRole, findByText, rerender } = render(<SubditosSection {...props} subjects={[]} />)
     await findByRole('alert')
     rerender(<SubditosSection {...props} subjects={[{ id: 'nuevo' } as never]} />)
-    expect(await findByText(/Camas: 0\/3/)).toBeTruthy()
+    expect(await findByText(/Camas: 0 ocupadas de 3 · 3 libres/)).toBeTruthy()
     expect(queryByRole('alert')).toBeNull()
   })
 
@@ -244,7 +256,7 @@ describe('SubditosSection — P230 fallo de carga', () => {
     vi.mocked(cambiarRolSubdito).mockRejectedValueOnce(new Error('500'))
     const props = { saveId: 's1', companions: [], inventory: [], almacenItems: [], plantillasEquipo: [], onRefreshSave: async () => {} }
     const { findByText, findByRole, getByRole, rerender } = render(<SubditosSection {...props} subjects={[]} />)
-    await findByText(/Camas: 1\/4/)
+    await findByText(/Camas: 1 ocupada de 4 · 3 libres/)
     fireEvent.click(getByRole('button', { name: /^Rol de / }))
     await act(async () => {
       fireEvent.click(getByRole('option', { name: /Soldado/ }))

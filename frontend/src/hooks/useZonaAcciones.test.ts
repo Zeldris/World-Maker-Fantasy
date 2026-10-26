@@ -43,4 +43,16 @@ describe('P9 — handleCazarEnZona dice si la caza salió', () => {
     expect(salio).toBe(false)
     expect(p.handleSubmit).not.toHaveBeenCalled()
   })
+
+  it('al reintentar, el error anterior de la tarjeta se limpia mientras espera (leve P310)', async () => {
+    vi.mocked(cazarEnZona).mockReturnValue(new Promise(() => undefined))
+    const p = params()
+    const { result } = renderHook(() => useZonaAcciones(p))
+    act(() => {
+      void result.current.handleCazarEnZona('e1', 'zp1')
+    })
+    const actualizar = p.setCharacterLog.mock.calls[0][0] as (prev: unknown[]) => Array<{ dynamicModeOffer?: Record<string, unknown> }>
+    const [entrada] = actualizar([{ id: 'e1', dynamicModeOffer: { busy: false, error: 'Ya no está aquí' } }])
+    expect(entrada.dynamicModeOffer).toMatchObject({ busy: true, error: undefined })
+  })
 })

@@ -20,6 +20,7 @@ import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { constructionToDetailTarget, locationToDetailTarget, personajeToDetailTarget } from '../../lib/enciclopediaTargets'
 import type { EnciclopediaLinkTarget } from '../../lib/enciclopediaIndex'
 import type { RumorConLugar } from '../../lib/leyendas'
+import { nombreDeEdificio } from '../../lib/edificios'
 
 // Las 3 recetas de Ayuntamiento (construction.ts, backend) comparten `recipeKey: 'ayuntamiento'`
 // en la fila real de `Building` tras mejorar — solo `Building.tier` distingue pequeño/mediano/
@@ -279,7 +280,7 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
       options.push({
         id: `building:${b.id}`,
         icon: CONSTRUCTION_RECIPE_ICONS[b.recipeKey!] ?? '🏗️',
-        label: b.name,
+        label: nombreDeEdificio(b.name),
         onSelect: () => onEntityDetail?.(constructionToDetailTarget(recipe)),
       })
     }

@@ -87,6 +87,9 @@ export async function deathRoutes(app: FastifyInstance) {
           actores: [{ entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AFECTADO' }],
           datos: { personaje: save.characterName, lugar: respawnLocation?.name ?? 'un lugar que reconoce' },
         });
+        // P304: el combate de grupo donde murió no sigue abierto (los compañeros vivos mantenían a su
+        // bando «en combate» y la jugadora reaparecía con el HUD «En combate» y el compositor bloqueado).
+        await tx.combatEncounter.updateMany({ where: { saveId: save.id, estado: 'EN_CURSO' }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
         await tx.save.update({
           where: { id: save.id },
           data: {

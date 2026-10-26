@@ -137,10 +137,67 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
         data: { locationId, saveId, x: 200, y: 200, tipo: 'NPC', targetSlug: npc.slug, cantidad: 1, activo: true },
       });
       npcZonePointId = npcZonePoint.id;
+      // QA-256 (P327): un PRINCIPAL sin descubrir sale con su nombre visible; estos tests miran el nombre real.
+      await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: npc.slug } });
     });
 
     afterAll(async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
       await prisma.zonePoint.delete({ where: { id: npcZonePointId } });
+    });
+
+    it('un PRINCIPAL sin descubrir sale con su nombre visible, no con el real (QA-256, P327)', async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      try {
+        const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+        expect(resumen?.npc).not.toContain('Gistera');
+        expect(resumen?.npc).toMatch(/desconocid/i);
+      } finally {
+        await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      }
+    });
+
+    // Revisión de P327: un punto NPC que no se resuelve contra los NPC del mundo no se nombra por su slug (suele salir del
+    // nombre real, p. ej. `zarghul-ojonegro`); sale con el nombre genérico.
+    it('un punto NPC que no se resuelve no manda su slug al narrador', async () => {
+      const punto = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 300, y: 300, tipo: 'NPC', targetSlug: 'zarghul-ojonegro-sin-fila', cantidad: 1, activo: true },
+      });
+      try {
+        const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+        expect(resumen?.npc).not.toMatch(/zarghul|ojonegro/i);
+        expect(resumen?.npc).toContain('Alguien');
+        expect(resumen?.npc).toContain('Gistera Koh');
+      } finally {
+        await prisma.zonePoint.delete({ where: { id: punto.id } });
+      }
+    });
+
+    // Revisión de P269/P329 (leve): el nombre sale del mundo de la partida, no de otro con el mismo slug.
+    it('un NPC de otro mundo con el mismo slug no le pone su nombre al punto', async () => {
+      // Slug único por pasada (y limpieza de restos): una pasada cortada a medias no tumba las siguientes.
+      const slugOtroMundo = `test-zonepoints-otro-mundo-${Date.now()}`;
+      await prisma.world.deleteMany({ where: { slug: { startsWith: 'test-zonepoints-otro-mundo' } } });
+      const otroMundo = await prisma.world.create({
+        data: { slug: slugOtroMundo, name: 'Otro mundo', tagline: 'x', synopsis: 'x', tone: 'x', lethality: 'MEDIA', theme: {} },
+      });
+      try {
+        await prisma.npc.create({
+          data: {
+            worldId: otroMundo.id, kind: 'PRINCIPAL', slug: 'gistera-koh', name: 'Gemela de otro mundo', aliases: [], role: 'x', level: 1,
+            attributes: { fuerza: 8, destreza: 8, constitucion: 8, inteligencia: 4, voluntad: 4, carisma: 2, magia: 0 }, bio: 'x', personality: 'x', homeLocationSlug: null, temperamento: 'CAUTELOSO',
+          },
+        });
+        const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+        expect(resumen?.npc).toContain('Gistera Koh');
+        expect(resumen?.npc).not.toContain('Gemela de otro mundo');
+        // Con el mundo ya sabido (lo pasa el turno) da lo mismo, sin leer la partida.
+        const mundoPartida = (await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } })).worldId;
+        const conMundo = await zonePointsSummaryFor(prisma, locationId, saveId, mundoPartida);
+        expect(conMundo).toEqual(resumen);
+      } finally {
+        await prisma.world.delete({ where: { id: otroMundo.id } });
+      }
     });
 
     it('el NPC real aparece en `npc`, la fauna aparece en `fauna`, nunca en la misma cadena', async () => {

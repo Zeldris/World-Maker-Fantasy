@@ -106,4 +106,14 @@ describe('CR-12 — ritmo del mundo en Configuración', () => {
     fireEvent.click(getByRole('button', { name: 'Aplicar' }))
     expect(setRitmoMundo).toHaveBeenCalledWith('s1', { intensidadAsaltos: 'DURA', tamanoAsaltos: 'FACIL' })
   })
+
+  it('P257: el texto bajo la intensidad cambia con el nivel elegido', async () => {
+    const { getByText, getByRole, queryByText } = render(<PanelAjustes guardados={AJUSTES_POR_DEFECTO} partidaId="s1" onCerrar={vi.fn()} />)
+    fireEvent.click(getByText('Partida'))
+    await waitFor(() => expect(getByRole('radio', { name: 'Dura' })).toBeTruthy())
+    expect(getByText(/^Normal: atacan cuando son bastante más fuertes/)).toBeTruthy()
+    fireEvent.click(getByRole('radio', { name: 'Dura' }))
+    expect(getByText(/^Dura: se atreven con poca ventaja/)).toBeTruthy()
+    expect(queryByText(/^Normal: atacan cuando/)).toBeNull()
+  })
 })

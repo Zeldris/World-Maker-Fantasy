@@ -56,6 +56,21 @@ describe('PartidasSection (CR-63 63d)', () => {
     expect(postLanzarPartida).toHaveBeenCalledWith('s', { tipo: 'CAZA', especie: 'murgol', destinoLocationId: 'coto', companionIds: ['c1'], subjectIds: ['s1'], permanente: true })
   })
 
+  // P313: sin destinos no se dice «aún no conoces ningún lugar»: puede ser que ya estén cazados.
+  it('sin destinos con presas no dice que no conozcas ningún lugar: pueden estar ya cazados', async () => {
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, destinos: [] } })
+    const { findByText, queryByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect(await findByText(/ya cazaste las de los que conoces/)).toBeTruthy()
+    expect(queryByText(/Aún no conoces ningún lugar/)).toBeNull()
+  })
+
+  // Leve de la revisión de P313: el backend también deja fuera los lugares con presas sin camino desde el Reino.
+  it('sin destinos también dice que puede no haber camino desde el Reino', async () => {
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, destinos: [] } })
+    const { findByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect(await findByText(/ninguno tiene camino desde tu Reino/)).toBeTruthy()
+  })
+
   it('sin nadie libre lo dice', async () => {
     vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, cazadores: [], grupos: [] } })
     const { findByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
@@ -74,5 +89,15 @@ describe('PartidasSection (CR-63 63d)', () => {
     const { findByRole, getByLabelText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
     expect((await findByRole('status')).textContent).toMatch(/Urga no tiene arma/)
     expect((getByLabelText(/Urga/) as HTMLInputElement).disabled).toBe(true)
+  })
+
+  // P313 (usuaria, 2026-10-26): una especie agotada se queda en la lista, con «sin presas por ahora», y no se lanza.
+  it('P313: una especie agotada dice «sin presas por ahora» y no deja lanzar la partida', async () => {
+    const agotada: OpcionesPartida = { ...opciones, destinos: [{ id: 'coto', name: 'La Hondonada', region: 'Llanuras', especies: [{ slug: 'murgol', name: 'Múrgol', cantidad: 0, capturable: true }] }] }
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: agotada })
+    const { findByRole, getByLabelText, getByRole } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect((await findByRole('status')).textContent).toMatch(/Múrgol: sin presas por ahora en La Hondonada/)
+    fireEvent.click(getByLabelText('Ana'))
+    expect((getByRole('button', { name: 'Lanzar partida (1)' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })

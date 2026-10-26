@@ -77,6 +77,22 @@ export function decidirAtaque(p: { fuerza: number; enCasa: number; defensa: numb
   return { ataca: true, manda, defensa: p.defensa, margen };
 }
 
+/// P253: lo mínimo que tiene que valer un Reino (riqueza + comida/2) para que unos bandidos vayan a por
+/// él. Por debajo no hay nada que llevarse (el botín topa en un cuarto de lo que hay), por mucha
+/// necesidad que tengan. Cifra provisional, como las demás.
+export const OBJETIVO_MINIMO = 20;
+/// Objetos del Almacén con los que ya se llevan uno (el botín topa en un cuarto: `BOTIN_TOPE` de asaltos.ts).
+export const OBJETOS_MINIMOS = 4;
+
+/// Puro (P253, Q1): ¿hay algo que llevarse? Sin esto, la necesidad (poco botín guardado, campamento
+/// lleno) sola empujaba a asaltar un Reino vacío («no encuentran nada que llevarse»). Los objetos del
+/// Almacén también son botín (`botinDe`): un Reino sin Goirnos ni comida pero con el Almacén lleno no
+/// queda a salvo. Solo vale para un asentamiento: a un viajero se le asalta por el camino, lleve lo que
+/// lleve (CR-50 Q4).
+export function reinoTieneQueLlevarse(riqueza: number, comida: number, objetos = 0): boolean {
+  return riqueza + comida / 2 >= OBJETIVO_MINIMO || objetos >= OBJETOS_MINIMOS;
+}
+
 /// Puro (Q1): motivo de unos bandidos: lo que vale el objetivo (riqueza y comida) y su necesidad
 /// (poco botín guardado o campamento lleno). La intensidad pesa el botín.
 export function motivoBandidos(p: { riqueza: number; comida: number; botinGuardado: number; gente: number; tope: number; intensidad: Intensidad }): number {
@@ -93,10 +109,12 @@ export function motivoGuerra(presion: number): number {
   return Math.min(1, 0.2 + 0.8 * ((presion - 80) / 20));
 }
 
-/// Puro (Q5): por qué vienen unos bandidos, en una frase.
-export function porQueVienenBandidos(p: { grupo: string; gente: number; riqueza: number; comida: number; botinGuardado: number; lleno: boolean }): string {
+/// Puro (Q5): por qué vienen unos bandidos, en una frase. Con `objetos` (los del Almacén del Reino, que
+/// también son botín), un Reino sin Goirnos ni comida pero con el Almacén lleno no «se queda sin nada».
+export function porQueVienenBandidos(p: { grupo: string; gente: number; riqueza: number; comida: number; botinGuardado: number; lleno: boolean; objetos?: number }): string {
   if (p.riqueza >= 100) return `${p.grupo} han reunido ${p.gente} y saben que guardas ${p.riqueza} Goirnos.`;
   if (p.comida >= 100) return `${p.grupo} han reunido ${p.gente} y vienen a por tu comida.`;
+  if ((p.objetos ?? 0) >= OBJETOS_MINIMOS) return `${p.grupo} han reunido ${p.gente} y saben que guardas objetos en el Almacén.`;
   if (p.lleno) return `${p.grupo} ya no caben en su campamento y salen a buscar botín.`;
   return `${p.grupo} se han quedado sin nada y salen a buscar botín.`;
 }

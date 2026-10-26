@@ -75,9 +75,9 @@ El modelo solo propone el **tipo** de hito; el backend lo traduce a número con 
 | `descubrimiento` | 50 | Primera vez en una región nueva; primer contacto con un clan; encontrar el rastro de un Maktor superviviente |
 | `objetivo_menor` | 100 | Cerrar un trato comercial importante; ganar el primer súbdito con nombre; ayudar al Kort'ikar en apuros |
 | `objetivo_mayor` | 300 | Completar una misión de largo recorrido; reclamar un territorio; que un clan reconozca el nombre de los Maktor |
-| `capitulo` | 500 | Cierre de capítulo — se dispara automáticamente al crear un `SessionSummary`, no lo propone el modelo |
+| `capitulo` | 100 | Cierre de capítulo (cada 15 acciones de la jugadora fuera de combate, `TURNS_PER_CHAPTER`) — se dispara automáticamente al crear un `SessionSummary`, no lo propone el modelo. Era 500 hasta el 2026-10-26 (P306/P307: pesaba como cinco misiones por seguir jugando) |
 
-- **Tope: 1 hito por turno** (si el modelo devuelve varios, el backend se queda con el de mayor valor). Evita que un turno efusivo del Narrador reparta 500 XP de golpe.
+- **Tope: 1 hito por turno** (si el modelo devuelve varios, el backend se queda con el de mayor valor). Evita que un turno efusivo del Narrador reparta cientos de XP de golpe.
 - `capitulo` es el único hito **determinista**: lo emite el backend al crear un `SessionSummary`, sin pasar por el modelo. Así el sistema de memoria por capítulos que ya existe se convierte gratis en el latido de progresión de fondo.
 - Los eventos de Reino (§ 5.4) también entran por tablas deterministas del backend, no por el modelo.
 

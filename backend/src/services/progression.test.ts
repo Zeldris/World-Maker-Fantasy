@@ -91,6 +91,11 @@ describe('xpForRollSuccess', () => {
 });
 
 describe('xpForHitos', () => {
+  // P306/P307 (usuaria, 2026-10-26): cerrar un capítulo (cada 15 acciones) vale 100 XP, no 500.
+  it('el hito capitulo vale 100 XP, menos que un objetivo mayor', () => {
+    expect(xpForHitos(['capitulo'])).toBe(100)
+    expect(xpForHitos(['capitulo', 'objetivo_mayor'])).toBe(300)
+  })
   it('0 si no hay hitos', () => {
     expect(xpForHitos([])).toBe(0);
   });

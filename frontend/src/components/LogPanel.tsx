@@ -27,6 +27,7 @@ import { presentacionMenuNpc, presentacionOferta } from '../lib/ofertaModoDinami
 import { combatKeyFor } from '../lib/gameViewHelpers'
 import { retrasoEnVivo } from '../lib/presentacionTurno'
 import { alSaltarTiradas } from '../lib/duracionTirada'
+import { notaDeHito } from '../lib/hitos'
 import { professions } from '../data/professions'
 import { Chip } from './base/Chip'
 
@@ -118,7 +119,7 @@ interface LogPanelProps {
   /// `plan-mecanicas-por-zona-2026-09-28.md`) — solo se ofrece para FAUNA no forzada con
   /// `zonePointId` (un grupo real con el que se ha colisionado en el mapa); caza ESE grupo exacto,
   /// nunca por sorteo de población regional como el viejo botón suelto "Cazar".
-  onCazarEnZona?: (entryId: string, zonePointId: string) => void
+  onCazarEnZona?: (entryId: string, zonePointId: string | undefined, targetSlug?: string) => void
   onDismissDynamicModeOffer?: (entryId: string) => void
   /// Menú contextual de interacción con NPC (2026-09-06, `entry.npcInteractionOffer`) — mismo
   /// criterio opcional que `onInteractuarModoDinamico`, un solo callback para cualquier opción
@@ -642,7 +643,7 @@ export const LogPanel = memo(function LogPanel({
               )}
               {/* UX 2026-09-01 (hallazgo jugando en vivo): antes el XP de hito/capítulo se sumaba
                   sin más al chip "+N XP" de abajo — si la tirada del turno FALLABA pero el hito
-                  era grande (p.ej. "capitulo", 500 XP), el jugador veía un "+500 XP" pegado a un
+                  era grande (p.ej. "objetivo_mayor", 300 XP), el jugador veía un "+300 XP" pegado a un
                   "Fallo" en rojo, como si el juego premiara el fracaso. Caja propia, mismo patrón
                   visual que "Misión completada" de arriba, para que quede claro que ese XP viene
                   de otra fuente (progreso de historia/Reino) y no de lo que acaba de intentar. */}
@@ -652,6 +653,7 @@ export const LogPanel = memo(function LogPanel({
                     <span aria-hidden="true">📖</span>
                     <span>{entry.xpHitoLabel ?? 'Hito alcanzado'} (+{entry.xpHitoDelta} XP)</span>
                   </p>
+                  {notaDeHito(entry.xpHitoLabel) && <p className="mt-1 text-2xs text-wood-300">{notaDeHito(entry.xpHitoLabel)}</p>}
                 </div>
               )}
               {entry.entityBanner && (

@@ -107,6 +107,23 @@ describe('ZonaPanel — UX-7', () => {
     vi.clearAllMocks()
   })
 
+  // P206/P326: con un agresivo cortando el paso el turno se acepta, pero el aviso de la salida no deja viajar.
+  it('con bloqueoMovimiento, el botón «Viajar» del aviso de la salida está deshabilitado con el motivo', async () => {
+    const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: true, teaser: null, description: null, imageUrl: null }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
+    const onViajarA = vi.fn()
+    const utils = render(<ZonaPanel saveId="s1" onViajarA={onViajarA} bloqueoMovimiento="Primero reacciona a quien te corta el paso." />)
+    await act(async () => {})
+    const marcador = Array.from(utils.container.querySelectorAll('svg g > title')).find((t) => t.textContent === 'Vado')!.parentElement!
+    await act(async () => {
+      fireEvent.click(marcador)
+    })
+    const boton = utils.getByRole('dialog').querySelector('button[title="Primero reacciona a quien te corta el paso."]') as HTMLButtonElement
+    expect(boton.disabled).toBe(true)
+    fireEvent.click(boton)
+    expect(onViajarA).not.toHaveBeenCalled()
+  })
+
   it('con bloqueoMovimiento, ir hacia una salida lejana no llama a moverEnZona y enseña el motivo', async () => {
     const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: false, teaser: null, description: null, imageUrl: null }
     vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)

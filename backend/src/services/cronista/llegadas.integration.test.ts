@@ -19,7 +19,10 @@ describe('llegadas (REI-119) — reglas puras', () => {
   // P220b: la lista entera de requisitos (no solo el primero que falla) y el motivo sale de ella.
   it('requisitosDeLlegada da todos los requisitos con estado y cifra', () => {
     const r = requisitosDeLlegada({ ...base, camasLibres: 2, camasTotales: 2, comida: 0, bebida: 12, felicidad: 55 });
-    expect(r.map((q) => [q.clave, q.cumple, q.cifra])).toEqual([['cama', true, '0/2'], ['comida', false, '0'], ['agua', true, '12'], ['felicidad', true, '55, mínimo 40']]);
+    expect(r.map((q) => [q.clave, q.cumple, q.cifra])).toEqual([['cama', true, '2 libres de 2'], ['comida', false, '0'], ['agua', true, '12'], ['felicidad', true, '55, mínimo 40']]);
+    // P258: la cifra dice cuántas camas libres hay, no cuántas están ocupadas (antes «0/2» con 2 libres se leía al revés).
+    expect(requisitosDeLlegada({ ...base, camasLibres: 3, camasTotales: 4 })[0]!.cifra).toBe('3 libres de 4');
+    expect(requisitosDeLlegada({ ...base, camasLibres: 1, camasTotales: 4 })[0]!.cifra).toBe('1 libre de 4');
     const sin = requisitosDeLlegada({ ...base, camasLibres: 0, camasTotales: 2, comida: 0, bebida: 0, felicidad: 39 });
     expect(sin.every((q) => !q.cumple)).toBe(true);
     expect(motivoSinLlegada({ ...base, camasLibres: 0, comida: 0 })).toBe(sin[0]!.motivo);

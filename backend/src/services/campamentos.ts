@@ -9,7 +9,7 @@ import { posicionEnZona } from './viajerosCruce.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { slugify } from '../lib/slugify.js';
 import { ajustesAsaltos, asentamientosDelReino, contextoDefensa, defensaVista } from './defensaReino.js';
-import { decidirAtaque, defensaEstimada, DIAS_POR_REFUERZO_INTENSIDAD, motivoBandidos, porQueVienenBandidos } from './cronista/decisionAsalto.js';
+import { decidirAtaque, defensaEstimada, DIAS_POR_REFUERZO_INTENSIDAD, motivoBandidos, porQueVienenBandidos, reinoTieneQueLlevarse } from './cronista/decisionAsalto.js';
 import { topeTrasExito } from './cronista/campamentosBandidos.js';
 import { crearViajero, enlacesDelMundo, lugaresATramos, type Enlace, type ViajeroFila } from './viajeros.js';
 import { TIPO_ASALTO } from './defensaReino.js';
@@ -192,7 +192,8 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
     const defensas = new Map<string, number>();
     for (const a of asentamientos) defensas.set(a.id, await defensaVista(tx, saveId, a, ahora, ctx));
     const k = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { riqueza: true, comida: true } });
-    return { asentamientos, defensas, riqueza: k?.riqueza ?? 0, comida: k?.comida ?? 0, ...(await ajustesAsaltos(tx, saveId)) };
+    const objetos = await tx.almacenItem.count({ where: { saveId } });
+    return { asentamientos, defensas, riqueza: k?.riqueza ?? 0, comida: k?.comida ?? 0, objetos, ...(await ajustesAsaltos(tx, saveId)) };
   });
   if (!base) return 0;
   let salen = 0;
@@ -207,13 +208,15 @@ export async function lanzarAsaltosAlReino(prisma: PrismaClient, saveId: string,
       const blanco = base.asentamientos.filter((a) => a.region === c.region).sort((x, y) => base.defensas.get(x.id)! - base.defensas.get(y.id)!)[0];
       if (!blanco) return;
       if (salen > 0) return; // P285: un asalto al Reino por tanda; el enfriamiento corre desde hoy.
+      // P253: a un Reino sin nada que llevarse no se va, por mucha necesidad que haya.
+      if (!reinoTieneQueLlevarse(base.riqueza, base.comida, base.objetos)) return;
       const motivo = motivoBandidos({ riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, gente: c.gente, tope: c.tope, intensidad: base.intensidad });
       const d = decidirAtaque({ fuerza: c.gente, enCasa: BANDIDOS_EN_CASA, defensa: base.defensas.get(blanco.id)!, motivo, intensidad: base.intensidad, tamano: base.tamano });
       if (!d.ataca) return;
       const grupo = ocupanteDe(c.ocupante)?.grupo ?? 'Los bandidos';
       const r = await crearViajero(tx, {
         saveId, tipo: TIPO_ASALTO, origenLocationId: c.locationId, destinoLocationId: blanco.locationId, dia,
-        carga: { campamentoId: c.id, motivo: porQueVienenBandidos({ grupo, gente: c.gente, riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, lleno: c.gente >= c.tope }) },
+        carga: { campamentoId: c.id, motivo: porQueVienenBandidos({ grupo, gente: c.gente, riqueza: base.riqueza, comida: base.comida, botinGuardado: c.botinGoirnos + c.botinComida, lleno: c.gente >= c.tope, objetos: base.objetos }) },
         miembros: [{ genericos: d.manda, rol: 'bandido' }],
       });
       if (!r.ok) return;

@@ -4,6 +4,7 @@ import {
   stripLeakedJson,
   stripNonLatinScript,
   deterministicFallbackNarration,
+  narracionDeRespaldoEnDialogo,
   isTooSimilarToLast,
   sanitizeSuggestions,
   hasFalseCombatMiss,
@@ -1911,6 +1912,13 @@ describe('deterministicFallbackNarration', () => {
 
   it('sin tirada, narra igualmente sin romper', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration.length).toBeGreaterThan(0);
+  });
+
+  it('P245: se marca como respaldo, y el de un diálogo no copia la acción ni dice «sin incidentes»', () => {
+    expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).fallbackDeterminista).toBe(true);
+    const texto = narracionDeRespaldoEnDialogo('El orco desconocido');
+    expect(texto).toBe('El orco desconocido te escucha en silencio. (El narrador no ha respondido a esta escena.)');
+    expect(texto).not.toMatch(/sin incidentes/);
   });
 });
 

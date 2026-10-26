@@ -19,4 +19,15 @@ describe('PanelDrawer', () => {
     expect(panel.className).toContain('min-h-0')
     expect(getByText('contenido').parentElement?.className).toContain('overflow-y-auto')
   })
+
+  // P207: un lector de pantalla tiene que anunciar el cajón como diálogo modal con el nombre del panel.
+  it('P207: el cajón es un diálogo modal con el título como nombre', () => {
+    const { getByRole } = render(
+      <PanelDrawer title="Habilidades" onClose={() => {}}>
+        <p>contenido</p>
+      </PanelDrawer>,
+    )
+    const dialogo = getByRole('dialog', { name: 'Habilidades' })
+    expect(dialogo.getAttribute('aria-modal')).toBe('true')
+  })
 })

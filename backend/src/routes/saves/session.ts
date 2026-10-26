@@ -2,16 +2,15 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
-import { contraataqueDifficultyFor, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
-import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
-import { rollCheck } from '../../services/dice.js';
-import type { AttributeBlock } from '../../services/dice.js';
+import { scopeFor, hasPendingLoot } from '../../services/npcScene.js';
+import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEntry } from './shared.js';
 import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
+import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -198,10 +197,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
-    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-    const defensa = effectiveDefense(save.inventoryItems);
-    const dificultad = contraataqueDifficultyFor(maxNpcLevel, save.level, defensa);
-    const roll = rollCheck(attributes, 'destreza', dificultad);
+    const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
 
     // Bug real reportado jugando (2026-08-30, mismo endpoint hermano de huir-en-curso): texto fijo
@@ -250,7 +246,8 @@ export async function sessionRoutes(app: FastifyInstance) {
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
         await tx.save.update({
           where: { id: save.id },
-          data: { pendingCombatNpcSlugs: [], combateDesde: null, zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined },
+          // P116: vuelve a la entrada (dentro del radio seguro) y quita la oferta de combate forzado.
+          data: { pendingCombatNpcSlugs: [], combateDesde: null, ...(await datosDeHuidaDeZona(tx, save.id, save.currentLocationId, { x: locked.zonaPosEntradaX, y: locked.zonaPosEntradaY })) },
         });
       }
       return { kind: 'ok' as const, entrada };
@@ -297,10 +294,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
-    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-    const defensa = effectiveDefense(save.inventoryItems);
-    const dificultad = contraataqueDifficultyFor(maxNpcLevel, save.level, defensa);
-    const roll = rollCheck(attributes, 'destreza', dificultad);
+    const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
 
     const nuevaCondicion = roll.success ? save.condicionFisica : oneStepWorseThan(save.condicionFisica);
@@ -347,7 +341,8 @@ export async function sessionRoutes(app: FastifyInstance) {
           // Punto del jugador en el mapa de Zona (2026-09-04) — solo si consigue huir de verdad
           // (roll.success): vuelve al punto de ENTRADA. Si falla, el combate sigue y el jugador se
           // queda donde está, junto al enemigo.
-          ...(roll.success ? { pendingCombatNpcSlugs: [], combateDesde: null, zonaPosX: locked.zonaPosEntradaX ?? undefined, zonaPosY: locked.zonaPosEntradaY ?? undefined } : {}),
+          // P116: como en la huida previa, vuelve a la entrada (radio seguro) y quita la oferta forzada.
+          ...(roll.success ? { pendingCombatNpcSlugs: [], combateDesde: null, ...(await datosDeHuidaDeZona(tx, save.id, save.currentLocationId, { x: locked.zonaPosEntradaX, y: locked.zonaPosEntradaY })) } : {}),
         },
       });
       return { kind: 'ok' as const, entrada };

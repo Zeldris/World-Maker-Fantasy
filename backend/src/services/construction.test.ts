@@ -292,6 +292,10 @@ describe('Campos de reglas de reino en las recetas (2026-08-04)', () => {
     expect(MAKTOR_CLAN_TOTEM_RECIPE.requiresAyuntamiento).toBe(true);
   });
 
+  it('tótem del Clan Maktor: uno por región (usuaria, 2026-10-25)', () => {
+    expect(MAKTOR_CLAN_TOTEM_RECIPE.maxPerRegion).toBe(1);
+  });
+
   it('las 3 recetas de Ayuntamiento comparten key y suben de nivel/capacidad', () => {
     expect(AYUNTAMIENTO_PEQUENO_RECIPE.key).toBe('ayuntamiento');
     expect(AYUNTAMIENTO_PEQUENO_RECIPE.ayuntamientoNivel).toBe(1);

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador, resolverTurnosAutonomosHastaJugadora } from './combateMultipleOrquestacion.js';
+import { abrirTurnoJugadora, iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador, resolverTurnosAutonomosHastaJugadora } from './combateMultipleOrquestacion.js';
 import type { HabilidadParaIntercambio } from './combateMultiple.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 
@@ -203,6 +203,36 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
+  // P327 (2026-10-26): un enemigo con nombre propio que Gorhorn aún no conoce sale en los textos del combate
+  // por su raza («Orco desconocido»); en cuanto lo descubre, por su nombre.
+  it('un enemigo con nombre propio sin descubrir sale como «Orco desconocido» y, descubierto, por su nombre', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
+    expect(enemigo.kind).toBe('PRINCIPAL');
+    const rondaCon = async () => {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-jugadora-g11', destreza: 1000, inteligencia: 6 },
+        ]),
+      );
+      const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      await prisma.combatEncounter.delete({ where: { id: encounterId } });
+      await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+      return ronda;
+    };
+
+    const oculto = await rondaCon();
+    expect(oculto.intercambiosContraJugadora[0].atacanteNombre).toBe('Orco desconocido');
+
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: enemigo.slug } });
+    try {
+      const conocido = await rondaCon();
+      expect(conocido.intercambiosContraJugadora[0].atacanteNombre).toBe(enemigo.name);
+    } finally {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId } });
+    }
+  }, 30_000);
+
   // P192 (QA-27, opción A de la usuaria): con un rival más rápido en su duelo, la jugadora sigue teniendo su
   // turno: ataca con su propio intercambio (antes, su acción caía en `avanzarSinAtacar` y no hacía nada).
   it('con un rival más rápido en su duelo, la jugadora tira su propio intercambio en su turno', async () => {
@@ -273,6 +303,44 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     expect(ronda.intercambiosContraJugadora.filter((i) => i.display.atacante.rollMode === 'ventaja').length).toBeLessThanOrEqual(2);
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(save.condicionFisica).not.toBe('MUERTO');
+
+    await prisma.combatEncounter.delete({ where: { id: encounterId } });
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+  }, 30_000);
+
+  // P129 reabierto (2026-10-23, tanda 22): con la jugadora a media iniciativa, su turno cruza el cambio de
+  // ronda (los que van tras ella en una y antes que ella en la siguiente). Recibía 4 ataques de más y pasaba
+  // de Ileso a Muerto; el tope cuenta ahora por turno suyo, como lo abre `turnResolution`.
+  it('a media iniciativa, su turno cruza la ronda: como mucho 2 ataques de más y no muere desde Ilesa', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const efectoFuerza: ActiveEffect = { attribute: 'fuerza', magnitude: -9, turnsRemaining: 99, sourceAbility: 'Efecto de prueba' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoFuerza] as unknown as object, condicionFisica: 'ILESO' } });
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 500, inteligencia: 10 },
+        ...[1000, 999, 2, 1].map((destreza, i) => ({ bando: 'ENEMIGO' as const, tipo: 'NPC' as const, npcId: enemigo.id, npcScope: `itinerante-p129-ventana-${i}`, destreza, inteligencia: 6 })),
+      ]),
+    );
+    const inicio = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+    if (inicio.esperandoEleccionJugadora) {
+      await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: inicio.ordenIniciativa[0] });
+    }
+    const habilidad: HabilidadParaIntercambio = { name: 'Ataque Básico', description: '', attribute: 'fuerza', effects: [], rol: 'ataque', energyCost: 0, energyRegen: 0 };
+
+    const ventanaJugadora = await abrirTurnoJugadora(prisma, saveId, encounterId);
+    // Empezó su turno Ilesa y ya va Grave: el cambio de ronda no renueva el tope (antes lo dejaba en Grave).
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'GRAVE' } });
+    const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida, ventanaJugadora });
+    await resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+    const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida, ventanaJugadora });
+
+    const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    expect(encounter.ronda).toBeGreaterThanOrEqual(2);
+    const deMas = [...antes.intercambiosContraJugadora, ...despues.intercambiosContraJugadora].filter((i) => i.display.atacante.rollMode === 'ventaja');
+    expect(deMas.length).toBeLessThanOrEqual(2);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).condicionFisica).not.toBe('MUERTO');
+    const jugadora = await prisma.combatParticipant.findFirstOrThrow({ where: { encounterId, tipo: 'JUGADOR' } });
+    expect(jugadora.condicionInicioRonda).toBe('ILESO');
 
     await prisma.combatEncounter.delete({ where: { id: encounterId } });
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });

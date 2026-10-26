@@ -7,7 +7,8 @@
 //   alcanza la región donde está el personaje ese día, en una ventana de pocos días.
 // - `conocer` es la única puerta: apunta el `Conocimiento` y escribe la noticia en «El mundo» con la
 //   que guardó su emisor (`Suceso.noticia`) o con la frase del suceso, como rumor si no está confirmado.
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { REGION_OWNING_FACTIONS } from '../reputation.js';
 import { cuentaComoHecho, llegaSola, npcSabe, regionDeSlug, type SucesoConAlcance, type Via } from './conocimiento.js';
 import { npcSinMorirEnPartida } from '../mundoPartida.js';
@@ -149,7 +150,7 @@ export async function conocer(
 
 /// Lo que llega solo (Q10): sucesos recientes que el personaje no sabe y cuya noticia ya alcanza la
 /// región donde está; y los rumores que ahí se confirman (18e). Devuelve cuántos supo o confirmó.
-export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?: string[] } = {}): Promise<number> {
+export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?: string[]; ventanaDias?: number } = {}): Promise<number> {
   const save = await tx.save.findUnique({
     where: { id: saveId },
     select: { currentLocation: { select: { region: true } }, worldState: { select: { fictionalMinutes: true } } },
@@ -161,7 +162,7 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
       saveId,
       ...difundible,
       importancia: { gte: 4 },
-      fictionalMinutes: { gte: ahora - VENTANA_DIAS_LLEGA_SOLA * MINUTOS_DIA, lte: ahora },
+      fictionalMinutes: { gte: ahora - (opciones.ventanaDias ?? VENTANA_DIAS_LLEGA_SOLA) * MINUTOS_DIA, lte: ahora },
       conocimientos: { none: {} },
       ...(opciones.sucesoIds ? { id: { in: opciones.sucesoIds } } : {}),
     },
@@ -171,10 +172,11 @@ export async function difundirEn(tx: Tx, saveId: string, opciones: { sucesoIds?:
   const personaje = { region: save.currentLocation?.region ?? null, aliadas: await aliadasDelReino(tx, saveId) };
   if (sucesos.length === 0) return opciones.sucesoIds ? 0 : confirmarRumores(tx, saveId, ahora, personaje);
   const alcance = await alcanceDeSucesos(tx, saveId, sucesos);
+  const reino = await tx.faction.findFirst({ where: { saveId, origenSlug: null, disueltaEn: null }, select: { name: true } });
   let sabidos = 0;
   for (const s of sucesos) {
     const a = alcance.get(s.id)!;
-    const llega = llegaSola(a, personaje);
+    const llega = llegaSola(a, { ...personaje, reino: reino?.name ?? null });
     if (!llega || ahora - s.fictionalMinutes < llega.dias * MINUTOS_DIA) continue;
     const r = await conocer(tx, {
       saveId, sucesoId: s.id, via: llega.via, confirmado: llega.confirmado, minutos: ahora, escribirNoticia: true, region: a.origenes[0] ?? null,
@@ -206,15 +208,24 @@ async function confirmarRumores(tx: Tx, saveId: string, ahora: number, personaje
   return confirmados;
 }
 
+/// P316 (REVIEW.md, «salto de varios días»): tras un salto de N días la pasada es una sola, así que su
+/// ventana cubre los días saltados además de los 5 de siempre, con tope en lo que aún se comenta (30).
+/// Si no, de un salto largo solo llegaban los últimos 5 días y el resto del mundo no se enteraba nunca.
+export function ventanaTrasSalto(diasSimulados: number): number {
+  return Math.min(Math.max(VENTANA_DIAS_LLEGA_SOLA, diasSimulados + VENTANA_DIAS_LLEGA_SOLA), DIAS_MEMORIA_NPC);
+}
+
 /// `difundirEn` en su propia transacción (tras cada día simulado y tras cada acción).
-export async function difundir(prisma: PrismaClient, saveId: string): Promise<number> {
-  return prisma.$transaction((tx) => difundirEn(tx, saveId), { maxWait: 10_000, timeout: 20_000 });
+export async function difundir(prisma: PrismaClient, saveId: string, opciones: { ventanaDias?: number } = {}): Promise<number> {
+  return prisma.$transaction((tx) => difundirEn(tx, saveId, opciones), { maxWait: 10_000, timeout: 20_000 });
 }
 
 /// Noticia de un suceso del motor (narrador de fondo, decisiones de facción): se guarda con el suceso
 /// y llega ya si toca (Q10); si no, la recibe quien se entere después, por la vía que sea.
 export async function darNoticiaDeSuceso(tx: Tx, saveId: string, sucesoId: string, noticia: NoticiaDeSuceso): Promise<boolean> {
-  await tx.suceso.update({ where: { id: sucesoId }, data: { noticia: noticia as unknown as Prisma.InputJsonValue } });
+  // Revisión P247: `registrarSuceso` devuelve el id del primero cuando descarta un duplicado (misma alianza
+  // vista por dos sistemas). La noticia del primero, con su meta (categoría, oportunidad), no se pisa.
+  await tx.suceso.updateMany({ where: { id: sucesoId, noticia: { equals: Prisma.DbNull } }, data: { noticia: noticia as unknown as Prisma.InputJsonValue } });
   return (await difundirEn(tx, saveId, { sucesoIds: [sucesoId] })) > 0;
 }
 

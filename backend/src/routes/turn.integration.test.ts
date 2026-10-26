@@ -19,7 +19,7 @@ import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import { ownerKeyFor } from '../services/reinoOwner.js';
 import type { NarrationResult } from '../services/narrador.js';
-import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
+import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -6720,6 +6720,24 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     expect(res.json().blocked.narration).toMatch(/^A pie, de una zona a otra se va por sus caminos/);
   });
 
+  // P206/P326: con un agresivo cortando el paso no se viaja (ni con montura, ni desde la salida del mapa).
+  it('con un agresivo cortando el paso, un viaje elegido no sale: ni el envío ni la vista previa', async () => {
+    const app = await buildApp();
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'cruzavientos', targetName: 'Cruzavientos', quienInicia: 'jugador', combateForzado: true } },
+    });
+    try {
+      const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true } });
+      expect(res.json().blocked.narration).toMatch(/cortándote el paso: antes tienes que combatir o huir/);
+      expect(await prisma.characterTransit.findUnique({ where: { saveId } })).toBeNull();
+      const previa = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: 'Viajo hacia la zona de prueba destino', enCombate: false, viajeElegido: true, preview: true } });
+      expect(previa.json().travel ?? null).toBeNull();
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    }
+  });
+
   it('el viaje se trunca en la ubicación intermedia, con el agresor ya asignado en el tránsito, y guarda el destino original para retomarlo', async () => {
     const app = await buildApp();
     const classifyRes = await app.inject({
@@ -8664,7 +8682,9 @@ describe('Remate a un NPC ya CONVALECIENTE se narra explícitamente como golpe f
 
     const narrateCallArgs = narrateAction.mock.calls.at(-1)?.[0] as { worldFacts?: string[] };
     const hint = narrateCallArgs.worldFacts?.find((f) => f.includes('REMATE — YA RESUELTO'));
-    expect(hint).toContain('Orco enfurecido');
+    // P327: el orco aún no es conocido por Gorhorn, así que el hint lo nombra por su raza.
+    expect(hint).toContain('orco desconocido');
+    expect(hint).not.toContain('Orco enfurecido');
     expect(hint).toContain('golpe final');
     expect(hint).not.toContain('EFECTO DE HABILIDAD'); // no es el camino LETAL, es el gemelo nuevo
   }, 15_000);
@@ -9269,6 +9289,176 @@ describe('CR-49 — atacar a Torgash en su campamento trae a los suyos', () => {
   }, 30_000);
 });
 
+// P306 (pruebas 0.3, decidido por la usuaria 2026-10-26): un saludo o una pregunta a un NPC no pide tirada ni abre
+// combate, aunque el clasificador (Ollama) lo lea como hostil, salvo que la reputación de Gorhorn con la facción del
+// NPC sea hostil (< 1000, el mismo umbral que el color ENEMIGO del mapa).
+describe('P306 — un saludo no pide tirada ni abre combate salvo reputación hostil', () => {
+  const saves: string[] = [];
+
+  async function partida(nombre: string, factionsStatus?: Record<string, number>, lugar = 'hondonada-del-eco'): Promise<string> {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: lugar } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: nombre, characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    saves.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id, ...(factionsStatus ? { factionsStatus } : {}) } });
+    await asegurarMundoDePartida(prisma, save.id);
+    return save.id;
+  }
+
+  afterAll(async () => {
+    for (const id of saves) await prisma.save.delete({ where: { id } });
+  });
+
+  // El clasificador simulado dice lo peor: «hostil», con tirada, y el narrador propone combate con el saludado.
+  async function saludar(saveId: string, action: string, npcSlug = 'orco-enfurecido-hondonada') {
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'carisma', dificultad: 12, razon: 'hostil', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'El orco gruñe.', newFacts: [], combateIniciado: { npcSlugs: [npcSlug] } });
+    const app = await buildApp();
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    const done = lastNdjsonLine(res.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    await app.close();
+    return { classification, roll, combateIniciado: done.combateIniciado };
+  }
+
+  // Segunda decisión de la usuaria (2026-10-26): un NPC AGRESIVO sigue atacando aunque lo saludes; el saludo solo
+  // deja de abrir combate con los no agresivos.
+  it('con reputación neutra, saludar al orco AGRESIVO no tira dados pero él ataca igual: abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 neutra agresivo)');
+    const { classification, roll, combateIniciado } = await saludar(saveId, "Saludo al 'Orco enfurecido': ¿quién eres?");
+    expect(classification.requiereTirada).toBe(false);
+    expect(roll ?? null).toBeNull();
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
+
+  // Fase 1 hacia main: caso mixto. Se saluda a alguien no agresivo con un AGRESIVO en la escena: entra el agresivo, no
+  // el saludado (aunque el narrador proponga combate con él).
+  it('caso mixto: saludar a Torgash Ketg con el orco AGRESIVO en escena abre combate solo con el orco', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 mixto)');
+    const { classification, combateIniciado } = await saludar(
+      saveId,
+      "Saludo a 'Torgash Ketg' y le pregunto por el 'Orco enfurecido'.",
+      'torgash-ketg',
+    );
+    expect(classification.requiereTirada).toBe(false);
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
+
+  it('con reputación neutra, saludar a Torgash Ketg (CAUTELOSO) no tira dados ni abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 neutra cauteloso)', undefined, 'campamento-serhu');
+    const { classification, roll, combateIniciado } = await saludar(
+      saveId,
+      "Saludo a 'Torgash Ketg' con un gesto del clan y le pregunto cómo va la caza",
+      'torgash-ketg',
+    );
+    expect(classification.requiereTirada).toBe(false);
+    expect(roll ?? null).toBeNull();
+    expect(combateIniciado?.npcs ?? []).toHaveLength(0);
+    expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(0);
+  }, 30_000);
+
+  it('con reputación hostil con su facción, el mismo saludo sí tira y sí abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 hostil)', { 'Clan Serhu': 500 });
+    const { classification, roll, combateIniciado } = await saludar(saveId, "Saludo al 'Orco enfurecido': ¿quién eres?");
+    expect(classification.requiereTirada).toBe(true);
+    expect(roll).toBeTruthy();
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
+
+  it('atacar al orco con reputación neutra sigue abriendo combate (el saludo no tapa un ataque)', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 ataque)');
+    const { combateIniciado } = await saludar(saveId, "Ataco al 'Orco enfurecido' con el hacha.");
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
+
+  it('una amenaza de muerte con saludo («¡Hola! Te mato») no cuenta como saludo: tira y abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 amenaza)');
+    const { classification, combateIniciado } = await saludar(saveId, "¡Hola, 'Orco enfurecido'! Te mato.");
+    expect(classification.requiereTirada).toBe(true);
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
+});
+
+// P327 (pruebas 0.3, decidido por la usuaria 2026-10-26): mientras Gorhorn no conoce a un NPC con nombre propio, ni
+// la narración ni los textos del combate lo nombran por su nombre: «el orco desconocido». El Libro de Sucesos puede
+// guardar el real.
+describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador', () => {
+  const saves: string[] = [];
+
+  async function partida(nombre: string, conocido: boolean): Promise<string> {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: nombre, characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    saves.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    await asegurarMundoDePartida(prisma, save.id);
+    await prisma.discoveredEntity.deleteMany({ where: { saveId: save.id, entityType: 'npc', entitySlug: 'orco-enfurecido-hondonada' } });
+    if (conocido) await prisma.discoveredEntity.create({ data: { saveId: save.id, entityType: 'npc', entitySlug: 'orco-enfurecido-hondonada' } });
+    return save.id;
+  }
+
+  afterAll(async () => {
+    for (const id of saves) await prisma.save.delete({ where: { id } });
+  });
+
+  async function atacar(saveId: string): Promise<string> {
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockClear();
+    const action = "Ataco al 'Orco enfurecido' con el hacha.";
+    const app = await buildApp();
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
+    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    await app.close();
+    return JSON.stringify(narrateAction.mock.calls.at(-1)?.[0] ?? {});
+  }
+
+  // Ya en combate, el primer intercambio con habilidad del orco: el nombre que ve la jugadora en la insignia.
+  async function rivalDelIntercambio(saveId: string): Promise<string | undefined> {
+    const action = "Ataco al 'Orco enfurecido' con el hacha.";
+    const app = await buildApp();
+    let rival: string | undefined;
+    for (let turno = 0; turno < 4 && !rival; turno++) {
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      rival = (lastNdjsonLine(res.payload) as { npcAbilityUsed?: { npcName: string } | null }).npcAbilityUsed?.npcName;
+    }
+    await app.close();
+    return rival;
+  }
+
+  it('sin descubrir, el contexto del narrador lo llama «el orco desconocido», con la nota de nombre oculto', async () => {
+    const saveId = await partida('Gorhorn de prueba (P327 oculto)', false);
+    const ctx = await atacar(saveId);
+    expect(ctx).toContain('PERSONAJE EN ESCENA: el orco desconocido');
+    expect(ctx).toContain('NOMBRE OCULTO');
+    expect(ctx).not.toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+    // La insignia del intercambio («X se defiende con…») tampoco lo nombra (revisión P327).
+    expect(await rivalDelIntercambio(saveId)).toBe('Orco desconocido');
+  }, 30_000);
+
+  it('ya descubierto, el contexto sigue con su nombre y sin la nota', async () => {
+    const saveId = await partida('Gorhorn de prueba (P327 conocido)', true);
+    const ctx = await atacar(saveId);
+    expect(ctx).toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+    expect(ctx).not.toContain('NOMBRE OCULTO');
+    expect(await rivalDelIntercambio(saveId)).toBe('Orco enfurecido');
+  }, 30_000);
+});
+
 // P233 (pruebas 0.3, 2026-10-19): morir en un combate sin haber caído convaleciente EN ESE combate
 // (Gorhorn entró ya convaleciente contra el Orco enfurecido) no registraba COMBATE_PERDIDO y la
 // muerte no llevaba al NPC que mata: el orco no ganaba «Vencedor de», ni contaba para RIVALIDAD.
@@ -9405,4 +9595,113 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
 
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(2);
   }, 30_000);
+});
+
+describe('Tanda NPC (decisiones 2026-10-26)', () => {
+  const npcSlug = 'orco-enfurecido-hondonada';
+  const creadas: string[] = [];
+
+  async function partidaConOrco(nombre: string): Promise<{ saveId: string; npcId: string; worldId: string; locationId: string }> {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: npcSlug } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: { userId, worldId: world.id, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id },
+    });
+    creadas.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    await prisma.npcState.create({ data: { saveId: save.id, npcId: npc.id, scope: '', condicionFisica: 'ILESO' } });
+    return { saveId: save.id, npcId: npc.id, worldId: world.id, locationId: location.id };
+  }
+
+  afterAll(async () => {
+    for (const id of creadas) await prisma.save.delete({ where: { id } }).catch(() => undefined);
+  });
+
+  async function clasificar(saveId: string, action: string) {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(res.statusCode, res.body).toBe(200);
+    return res.json() as { blocked?: { narration: string }; roll?: unknown };
+  }
+
+  it('P245: en diálogo, si el narrador no responde, el respaldo no copia la acción ni dice «sin incidentes»', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P245');
+    const accion = "Hablo con 'Orco enfurecido' sobre el camino.";
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
+    await doTurn(saveId, accion);
+    const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
+    expect(texto).toMatch(/te escucha en silencio/);
+    expect(texto).toMatch(/narrador no ha respondido/);
+    expect(texto).not.toMatch(/sin incidentes/);
+    expect(texto).not.toMatch(/sobre el camino/);
+    // El nombre es el que la jugadora le conoce: sin descubrir, por su raza.
+    expect(texto).toMatch(/^El orco desconocido/);
+  }, 20_000);
+
+  it('P245: fuera de un diálogo el respaldo sigue igual (copia la acción con su resultado)', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P245 sin diálogo');
+    const accion = 'Examino el terreno cercano.';
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
+    await doTurn(saveId, accion);
+    const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
+    expect(texto).toMatch(/Examino el terreno cercano\. La acción transcurre sin incidentes\./);
+  }, 20_000);
+
+  it('P241: «le regalo X a Y» en texto libre no tira ni narra; sin botón Entregar para ese NPC lo dice así', async () => {
+    narrateAction.mockClear();
+    const { saveId } = await partidaConOrco('Gorhorn P241 sin botón');
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    const body = await clasificar(saveId, 'Le regalo al Orco enfurecido mi cuchillo de pedernal.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(body.roll).toBeUndefined();
+    expect(body.blocked?.narration).toMatch(/no acepta entregas/);
+    expect(body.blocked?.narration).not.toMatch(/botón/);
+    expect(await prisma.inventoryItem.count({ where: { saveId, name: 'Cuchillo de pedernal' } })).toBe(1);
+  });
+
+  it('P241: con botón Entregar (compañero) remite al botón; si X no está en el inventario, lo dice', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P241 compañero');
+    await prisma.companion.create({ data: { saveId, name: 'Orco enfurecido', role: 'x', notes: '', tipo: 'NPC', sourceSlug: npcSlug } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    const conBoton = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
+    expect(conBoton.blocked?.narration).toMatch(/botón Entregar/);
+    const sinItem = await clasificar(saveId, 'Le entrego mi pan al Orco enfurecido.');
+    expect(sinItem.blocked?.narration).toMatch(/No tienes pan en el inventario/);
+  });
+
+  it('P327 (usuaria 2026-10-26): «le regalo X al orco desconocido» llega al orco oculto con su punto en esta zona', async () => {
+    narrateAction.mockClear();
+    const { saveId, locationId } = await partidaConOrco('Gorhorn P327 regalo visible');
+    await prisma.zonePoint.create({ data: { saveId, locationId, tipo: 'NPC', targetSlug: npcSlug, x: 10, y: 10 } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    const body = await clasificar(saveId, 'Le regalo mi cuchillo de pedernal al orco desconocido.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(body.roll).toBeUndefined();
+    expect(body.blocked?.narration).toMatch(/no acepta entregas/);
+    expect(body.blocked?.narration).toMatch(/orco desconocido/i);
+    expect(body.blocked?.narration).not.toMatch(/Orco enfurecido/);
+  });
+
+  it('P327: un PRINCIPAL oculto de la misma raza sin contacto (su punto en otra zona) no entra en escena por «el orco desconocido»', async () => {
+    const { saveId, worldId } = await partidaConOrco('Gorhorn P327 sin contacto');
+    const otra = await prisma.location.findFirstOrThrow({ where: { worldId, slug: { not: 'hondonada-del-eco' } } });
+    await prisma.zonePoint.create({ data: { saveId, locationId: otra.id, tipo: 'NPC', targetSlug: npcSlug, x: 10, y: 10 } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const body = await clasificar(saveId, 'Le regalo mi cuchillo de pedernal al orco desconocido.');
+    expect(body.blocked?.narration ?? '').not.toMatch(/no acepta entregas/);
+    expect(body.blocked?.narration ?? '').not.toMatch(/orco desconocido/i);
+  });
+
+  it('fase 1 hacia main (P241): un objeto equipado sí lo tienes (pide desequiparlo)', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P241 equipado');
+    await prisma.companion.create({ data: { saveId, name: 'Orco enfurecido', role: 'x', notes: '', tipo: 'NPC', sourceSlug: npcSlug } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial', slot: 'ARMA_PRINCIPAL' } });
+    const equipado = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
+    expect(equipado.blocked?.narration).toMatch(/desequípalo y usa el botón Entregar/);
+  });
 });

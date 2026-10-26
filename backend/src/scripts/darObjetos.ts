@@ -4,6 +4,9 @@
 // Uso: DATABASE_URL=… npx tsx src/scripts/darObjetos.ts <saveId> <slug>:<n> [<slug>:<n>…]
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { effectiveInventorySlotsBonus } from '../services/equipment.js';
+import { inventoryCapacityFor, totalInventoryUnits } from '../services/inventoryCapacity.js';
+import { avisoDeCarga } from './darObjetosLib.js';
 
 const [saveId, ...pares] = process.argv.slice(2);
 if (!saveId || pares.length === 0) {
@@ -42,4 +45,16 @@ await prisma.$transaction(
   ),
 );
 for (const { item, cantidad } of lote) console.log(`${cantidad} × ${item.name}`);
+// Avisa (sin bloquear: se ha dado igual) si la carga resultante pasa la capacidad de la partida.
+const partida = await prisma.save.findUnique({ where: { id: saveId }, select: { attributes: true } });
+if (partida) {
+  const [items, equipados] = await Promise.all([
+    prisma.inventoryItem.findMany({ where: { saveId }, select: { name: true } }),
+    prisma.inventoryItem.findMany({ where: { saveId, slot: { not: null } }, select: { statBonuses: true } }),
+  ]);
+  const atributos = partida.attributes as { fuerza: number; constitucion: number };
+  const capacidad = inventoryCapacityFor(atributos.fuerza, atributos.constitucion, effectiveInventorySlotsBonus(equipados));
+  const aviso = avisoDeCarga(totalInventoryUnits(items), capacidad);
+  if (aviso) console.warn(aviso);
+}
 await prisma.$disconnect();

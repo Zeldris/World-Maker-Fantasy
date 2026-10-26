@@ -53,10 +53,12 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
     nombre: nombres.find((n) => n.slotIndex === slot)?.name ?? `Grupo ${slot + 1}`,
     companeros: companeros.filter((c) => c.combatGroupSlotIndex === slot && !fuera.companions.has(c.id)).map((c) => ({ id: c.id, name: c.name })),
   })).filter((g) => g.companeros.length > 0);
-  // Destinos: lugares que conoces con fauna a la vista y camino desde el Reino.
+  // Destinos: lugares que conoces con fauna a la vista y camino desde el Reino. P313: un punto agotado
+  // se queda (con `cantidad` 0) para que la lista diga «sin presas por ahora»; vuelve a tener con el tiempo.
+  // Uno retirado (`activo` false con presas, p. ej. por el Cronista) no cuenta: ni se lista ni se lanza.
   const visitados = await tx.locationVisit.findMany({ where: { saveId }, select: { locationId: true } });
   const enlaces = await enlacesDelMundo(tx, save.worldId);
-  const puntos = await tx.zonePoint.findMany({ where: { saveId, tipo: 'FAUNA', activo: true, cantidad: { gt: 0 }, locationId: { in: visitados.map((v) => v.locationId) } }, select: { locationId: true, targetSlug: true, cantidad: true } });
+  const puntos = await tx.zonePoint.findMany({ where: { saveId, tipo: 'FAUNA', locationId: { in: visitados.map((v) => v.locationId) }, OR: [{ activo: true }, { cantidad: 0 }] }, select: { locationId: true, targetSlug: true, cantidad: true } });
   const fauna = await tx.npc.findMany({ where: { worldId: save.worldId, saveId: null, slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } }, select: { slug: true, name: true, capturablePct: true } });
   const lugares = await tx.location.findMany({ where: { id: { in: [...new Set(puntos.map((p) => p.locationId))] } }, select: { id: true, name: true, region: true }, orderBy: { name: 'asc' } });
   const destinos = lugares
@@ -93,6 +95,7 @@ export async function lanzarPartida(tx: Tx, saveId: string, p: PeticionPartida, 
   if (!destino) return { ok: false, motivo: 'No conoces ese lugar o no hay camino hasta él.' };
   const especie = destino.especies.find((e) => e.slug === p.especie);
   if (!especie) return { ok: false, motivo: 'No has visto esa especie allí.' };
+  if (especie.cantidad <= 0) return { ok: false, motivo: `No quedan presas de ${especie.name} en ${destino.name} por ahora.` };
   if (p.tipo === 'CAPTURA' && !especie.capturable) return { ok: false, motivo: `${especie.name} no se deja capturar.` };
   const libresComp = new Set(op.grupos.flatMap((g) => g.companeros.map((c) => c.id)));
   const libresSub = new Set(op.cazadores.map((c) => c.id));

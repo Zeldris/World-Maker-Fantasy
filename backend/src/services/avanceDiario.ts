@@ -21,7 +21,7 @@ import { patrullasContraCampamentos } from './ataquesCampamento.js';
 import { lanzarEjercitosContraElReino } from './guerraReino.js';
 import './asaltos.js';
 import { asegurarDefensasDeFacciones } from './defensaFacciones.js';
-import { difundir } from './cronista/difusion.js';
+import { difundir, ventanaTrasSalto } from './cronista/difusion.js';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { decaerRelaciones, producirFacciones } from './factionEconomy.js';
@@ -196,9 +196,10 @@ export async function avanzarMundoHasta(
   // toquen ahora (días, región), y otra vuelta de reacciones por lo que hayan registrado.
   await paso('reacciones', () => procesarReacciones(prisma, saveId, random));
   if ((await paso('consecuencias', () => evaluarConsecuencias(prisma, saveId, {}, random))).disparadas > 0) await paso('reacciones', () => procesarReacciones(prisma, saveId, random));
-  // CR-18 (18b): lo que llega solo (≥ 7 o de una aliada) a la región donde está el personaje; antes
-  // del resumen, para que lo que llega al final de un viaje entre en él.
-  await paso('difundir', () => difundir(prisma, saveId));
+  // CR-18 (18b): lo que llega solo (≥ 5, P316, o de una aliada) a la región donde está el personaje;
+  // antes del resumen, para que lo que llega al final de un viaje entre en él. La ventana cubre los
+  // días saltados (P316), no solo los 5 últimos.
+  await paso('difundir', () => difundir(prisma, saveId, { ventanaDias: ventanaTrasSalto(diasSimulados) }));
   // CR-12 (12d) / UX-31: varios días de golpe (viaje, descanso largo) → un solo resumen en «El mundo».
   if (diasSimulados >= 2) await paso('agruparNoticias', () => agruparNoticias(prisma, saveId, marcaNoticias));
   // CR-40 (40e): misiones del motor exploradas, objetivos caídos o plazos vencidos.

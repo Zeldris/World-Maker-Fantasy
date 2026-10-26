@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado } from './dynamicMode.js';
+import { describe, it, expect, vi } from 'vitest';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, nombresVisiblesDeNpcs, narrarAperturaCombateForzado, resumenModoDinamicoParaLog } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -190,3 +190,44 @@ describe('nombreDeEncuentro con varias especies', () => {
   });
 });
 
+
+describe('resumenModoDinamicoParaLog (P243)', () => {
+  it('junta las vueltas en orden con una línea en blanco entre ellas', () => {
+    expect(resumenModoDinamicoParaLog(['uno', 'dos', 'tres'])).toBe('uno\n\ndos\n\ntres');
+  });
+
+  it('una vuelta que repite tal cual la anterior se cuenta una sola vez (el discurso de Gistera salía 3 veces)', () => {
+    expect(resumenModoDinamicoParaLog(['aviso', 'discurso', 'discurso', 'discurso', 'despedida'])).toBe('aviso\n\ndiscurso\n\ndespedida');
+  });
+
+  it('un texto que vuelve tras otro distinto no es una repetición pegada: se conserva', () => {
+    expect(resumenModoDinamicoParaLog(['a', 'b', 'a'])).toBe('a\n\nb\n\na');
+  });
+
+  it('sin vueltas, texto vacío', () => {
+    expect(resumenModoDinamicoParaLog([])).toBe('');
+  });
+});
+
+describe('nombresVisiblesDeNpcs (fase 1 hacia main)', () => {
+  it('una sola consulta para todos los PRINCIPAL; oculta solo a los no descubiertos', async () => {
+    const findMany = vi.fn().mockResolvedValue([{ entitySlug: 'gistera-koh' }]);
+    const db = { discoveredEntity: { findMany } } as never;
+    const nombres = await nombresVisiblesDeNpcs(db, 's1', [
+      { slug: 'ugrak', name: 'Ugrak Tuerto', kind: 'PRINCIPAL', raza: 'ORCO', genero: 'M' },
+      { slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', raza: 'ORCO', genero: 'F' },
+      { slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' },
+    ]);
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(nombres.get('ugrak')).toBe(nombreOcultoPorRaza('ORCO', 'M'));
+    expect(nombres.get('gistera-koh')).toBe('Gistera Koh');
+    expect(nombres.get('kirelon')).toBe('Kirelon');
+  });
+
+  it('sin PRINCIPAL no consulta', async () => {
+    const findMany = vi.fn();
+    const nombres = await nombresVisiblesDeNpcs({ discoveredEntity: { findMany } } as never, 's1', [{ slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' }]);
+    expect(findMany).not.toHaveBeenCalled();
+    expect(nombres.get('kirelon')).toBe('Kirelon');
+  });
+});

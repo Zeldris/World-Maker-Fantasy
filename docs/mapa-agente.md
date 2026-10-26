@@ -96,6 +96,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `quienEnAviso`, `nombreVisibleDeNpc`, `conDefinido`, `conIndefinido`, `pluralDeEspecie` y
   `b/services/ofertaNombre.ts#nombrarOferta`. Responder:
   `b/routes/saves/dynamicMode.ts` (`/modo-dinamico/responder`, `/ignorar`) y `dynamicModeRecurso.ts`.
+- **Nombre de un NPC sin descubrir en la escena (narración, combate):** `b/services/npcScene.ts#conNombreVisible`
+  (pone `NpcInScene.nombreVisible`) y `nombreNarrado`; el combate múltiple, en `combateMultipleOrquestacion.ts#datosVivosDe`.
 - **Campos de la oferta** (`quien`, `aQuien`, `deBando`): se rellenan en
   `b/routes/saves/zona.ts#detectarEncuentroEnCelda` y en el turno; los lee `b/services/dynamicMode.ts#quienEnAviso`.
 - **Tests:** `b/routes/saves/zona*.integration.test.ts`, `b/services/zonaPosicion.test.ts`, `zonePoints*.test.ts`,
@@ -146,7 +148,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   secciones en `f/components/panels/reino/`; estado `f/hooks/useKingdomState.ts#useKingdomState`.
 - **Trampas:** recetas actuales: ayuntamiento piedra 14, madera 6, hueso 6, resina 8, mena 2, fibras 8; choza piel
   10, `hueso-largo-gargantua` 6, `cuerda-tendon` 4 (para dar materiales: `tools/qa/escenario.sh dar`). El registro
-  del reino no se refresca hasta recargar (P209).
+  del reino se refresca al levantar o mejorar el campamento o el ayuntamiento (`useTurnFlow#hitoDeReinoNuevo`, P209);
+  las demás entradas KINGDOM (súbditos, caravanas, tick diario) llegan al recargar.
 
 ## Súbditos y llegadas
 
@@ -182,6 +185,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - **Código:** `b/services/caza.ts#iniciarCaza`, `groupVarianceDiario`, `descontarZonePointCaza`; recolectar
   `b/routes/saves/recolectar.ts`; capturar y domar `b/routes/saves/companeros.ts` (`/capturar/:npcSlug`); ganado
   `b/routes/saves/ganado.ts` y `b/services/cronista/ganadoReino.ts`.
+  Cazar la fauna de la escena sin punto (P307): `zona/cazar` con `{ targetSlug }` → `b/services/zonePoints.ts#puntoDeFaunaDeEscena`.
 - **Tests:** `b/services/caza.integration.test.ts`, `cazaRiesgo.test.ts`, `partidasCaza.integration.test.ts`,
   `b/routes/saves/recolectar*.test.ts`, `zonaCazar.integration.test.ts`, `ganado*.integration.test.ts`.
 - **Datos:** `ZonePoint` (cantidad), `HarvestYield`, `Ganado`, `Companion`.

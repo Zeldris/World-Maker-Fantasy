@@ -31,8 +31,10 @@ export async function pickStationaryInterruption(
   perChunkProbability: number,
   random: () => number = Math.random,
 ): Promise<StationaryInterruption | null> {
+  // P313 (revisión, 2026-10-26): solo los puntos activos; un grupo de fauna agotado (`cantidad` 0,
+  // `activo` false, ya no se borra) o un NPC reclutado no interrumpen el descanso.
   const zonePoints = await prisma.zonePoint.findMany({
-    where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] } },
+    where: { saveId, locationId, tipo: { in: ['FAUNA', 'NPC'] }, activo: true },
   });
   if (zonePoints.length === 0) return null;
 

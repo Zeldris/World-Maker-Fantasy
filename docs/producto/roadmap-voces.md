@@ -15,7 +15,9 @@ La fase V-A se hizo como excepción a la regla de las pruebas de juego (usuaria,
 desarrollo que no tocan el juego ni el backend. Los scripts se escribieron en la nube, sin modelos ni Deck: **lo
 que depende del motor lo prueba la usuaria en la Deck** y, hasta entonces, cada tarea queda 🚧.
 
-**⏸ En pausa (usuaria, 2026-10-25):** la usuaria prepara el generador a fondo en un repositorio aparte. Cuando esté,
+**⏸ En pausa (usuaria, 2026-10-25):** la usuaria prepara el generador a fondo en un repositorio aparte,
+`Zeldris/galivelop-voice-generator` (privado; `Zeldris/galivelop-developer` es otro proyecto, el modelo de
+desarrollo de código). Cuando esté,
 se trae aquí, se adapta a este flujo y sustituye o completa lo de la fase V-A, siguiendo el camino del generador de
 imágenes (`roadmap-imagenes.md`, `CFG-43`) hasta que todo se controle desde el panel de administración (`VOZ-6`).
 Hasta entonces no se toca `voice-generator/` ni se prueba en la Deck lo de esta rama.
@@ -52,8 +54,8 @@ Hasta entonces no se toca `voice-generator/` ni se prueba en la Deck lo de esta 
   especies (de la Hondonada) y sus sonidos CC0, y escucharlas en la Deck.
 - **VOZ-6 · Control de las voces desde el panel de administración** [A] (usuaria, 2026-10-25): el mismo camino que
   el de las imágenes (`CFG-43`): elegir raza y voz, generar tomas, escucharlas con y sin efectos, apuntar notas y
-  fijar la elegida, todo desde el panel admin. Se hace con lo que llegue del repositorio aparte. **M**
-  ⏸ 2026-10-25 (usuaria): se espera a que la usuaria acabe el proyecto genérico de voces que prepara en otro repo;
+  fijar la elegida, todo desde el panel admin. Se hace con lo que llegue de `Zeldris/galivelop-voice-generator`. **M**
+  ⏸ 2026-10-25 (usuaria): se espera a que la usuaria acabe ese proyecto genérico de voces;
   entonces se trae su versión adaptada a este código y se usa donde la calidad conseguida lo justifique. Al traerla:
   el simulacro con binarios falsos (`QA-240`) y la sección «Voces y sonidos» de `docs/mapa-agente.md` al día.
 

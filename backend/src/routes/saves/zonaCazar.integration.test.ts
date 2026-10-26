@@ -165,6 +165,103 @@ describe('POST /saves/:id/zona/cazar', () => {
     expect(res.statusCode).toBe(409);
   });
 
+  // P307 (usuaria, 2026-10-26): la fauna de la escena (tarjeta sin punto en el mapa, como el Corredor de
+  // Cauce de Hogar Ketg) se caza por `targetSlug`: el punto se crea al momento y la caza es la normal.
+  describe('P307 — Cazar la fauna de la escena sin punto de zona', () => {
+    it('crea el punto de fauna en la zona de Gorhorn, abre la caza normal y limpia la oferta', async () => {
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba' } },
+      });
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-debil' } });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.resuelveSinCombate).toBe(true);
+      expect(body.exito).toBe(true);
+      expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', exito: true, npcName: 'Bestia Débil de Prueba' });
+      expect((await prisma.npcState.findFirst({ where: { saveId, npcId: debilNpcId } }))?.condicionFisica).toBe('MUERTO');
+      // El punto se creó y se descontó; P313: se queda agotado (no se borra) para que la tarjeta diga «sin presas».
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId, targetSlug: 'test-cazar-debil', cantidad: { gt: 0 }, activo: true } })).toBe(0);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId, targetSlug: 'test-cazar-debil', cantidad: 0, activo: false } })).toBe(1);
+      expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingDynamicModeOffer).toBeNull();
+    });
+
+    it('con un grupo de esa especie ya en la zona, caza ese (el más cercano) y no crea otro', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.999); // caza sigilosa fallida: pelea de frente
+      const cerca = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 410, y: 310, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 2, activo: true, lastUpdatedAtMinutes: 480 },
+      });
+      const lejos = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 40, y: 40, tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', cantidad: 3, activo: true, lastUpdatedAtMinutes: 480 },
+      });
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', targetName: 'Bestia Fuerte de Prueba' } },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
+      expect(res.statusCode).toBe(200);
+      // No se creó ningún punto nuevo, el lejano sigue intacto y el cercano es el que se descontó.
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBeLessThanOrEqual(2);
+      expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: lejos.id } })).cantidad).toBe(3);
+      const trasCaza = await prisma.zonePoint.findUnique({ where: { id: cerca.id } });
+      expect(trasCaza === null || trasCaza.cantidad < 2).toBe(true);
+    });
+
+    // P313 (usuaria, 2026-10-26): el punto agotado se reutiliza (no se crea otro) y cazar ahí dice que no hay presas.
+    it('P313: con el punto de esa especie agotado, no crea otro y dice que no quedan presas', async () => {
+      const agotado = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 0, activo: false, lastUpdatedAtMinutes: 480 },
+      });
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba' } },
+      });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-debil' } });
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.body).error).toBe('No quedan presas de Bestia Débil de Prueba por ahora.');
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(1);
+      expect(await prisma.zonePoint.findUniqueOrThrow({ where: { id: agotado.id } })).toMatchObject({ cantidad: 0, activo: false });
+    });
+
+    it('rechaza con 409 un targetSlug que no es el de la oferta pendiente o una oferta que ya trae punto', async () => {
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'Bestia Débil de Prueba' } },
+      });
+      const app = await buildApp();
+      const otra = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
+      expect(otra.statusCode).toBe(409);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
+
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-debil', targetName: 'x', zonePointId: 'otro', cantidad: 1 } },
+      });
+      const conPunto = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-debil' } });
+      expect(conPunto.statusCode).toBe(409);
+      expect(await prisma.zonePoint.count({ where: { saveId, locationId } })).toBe(0);
+    });
+
+    it('un doble clic en «Cazar» abre una sola caza: la segunda petición ya no encuentra la oferta (409)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.999);
+      await prisma.save.update({
+        where: { id: saveId },
+        data: { pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-cazar-fuerte', targetName: 'Bestia Fuerte de Prueba' } },
+      });
+      const app = await buildApp();
+      const pedir = () => app.inject({ method: 'POST', url: `/saves/${saveId}/zona/cazar`, payload: { targetSlug: 'test-cazar-fuerte' } });
+      const respuestas = await Promise.all([pedir(), pedir()]);
+      expect(respuestas.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+      expect(JSON.parse(respuestas.find((r) => r.statusCode === 409)!.body).error).toMatch(/ya no está disponible/);
+    });
+  });
+
   it('punto de 1 presa débil, tirada de caza limpia forzada a éxito: mata sin combate y el ZonePoint se descuenta (ancla a 0 → activo:false)', async () => {
     const punto = await prisma.zonePoint.create({
       data: { locationId, saveId, x: 400, y: 300, tipo: 'FAUNA', targetSlug: 'test-cazar-debil', cantidad: 1, activo: true, label: 'Bestia Débil de Prueba', lastUpdatedAtMinutes: 480 },
@@ -181,7 +278,7 @@ describe('POST /saves/:id/zona/cazar', () => {
     const body = JSON.parse(res.body);
     expect(body.resuelveSinCombate).toBe(true);
     expect(body.exito).toBe(true);
-    expect(body.combate.npcs).toEqual([{ slug: 'test-cazar-debil', name: 'Bestia Débil de Prueba', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: [] }]);
+    expect(body.combate.npcs).toEqual([{ slug: 'test-cazar-debil', name: 'Bestia Débil de Prueba', condicionFisica: 'MUERTO', saqueado: false, lootedItemNames: [], analizado: false, capturable: false, activeEffects: [], targetedForKill: false }]);
     // Fase 10 (2026-09-29) — la caza sigilosa es una tirada visible (d100 vs probabilidad real) y
     // queda en `LogEntry.roll`.
     expect(body.cazaLimpia).toMatchObject({ kind: 'caza-sigilo', roll: 1, exito: true, npcName: 'Bestia Débil de Prueba' });
@@ -311,9 +408,9 @@ describe('POST /saves/:id/zona/cazar', () => {
     const enemigos = participantes.filter((p) => p.bando === 'ENEMIGO' && p.npcId === fuerteNpcId);
     expect(enemigos).toHaveLength(3);
 
-    // Fila de grupo (sin `label`) descontada a 0 -> se borra del todo (nunca queda a 0 inactiva).
-    const puntoTrasCaza = await prisma.zonePoint.findUnique({ where: { id: punto.id } });
-    expect(puntoTrasCaza).toBeNull();
+    // P313: una fila de grupo descontada a 0 se queda, agotada (`cantidad` 0, inactiva); no se borra.
+    const puntoTrasCaza = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoTrasCaza).toMatchObject({ cantidad: 0, activo: false });
   });
 
   it('agresivo en grupo (cantidad>1) por Interactuar (quienInicia npc): abre combate múltiple vía iniciarCaza, nunca el 1v1 clásico', async () => {
@@ -323,19 +420,12 @@ describe('POST /saves/:id/zona/cazar', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5); // roll 4 -> delta 0 -> cantidadReal=3
 
     const app = await buildApp();
-    const res = await app.inject({
-      method: 'POST',
-      url: `/saves/${saveId}/modo-dinamico/interactuar`,
-      payload: {
-        tipo: 'FAUNA',
-        targetSlug: 'test-cazar-agresivo',
-        targetName: 'Bestia Agresiva de Prueba',
-        quienInicia: 'npc',
-        combateForzado: true,
-        zonePointId: punto.id,
-        cantidad: 3,
-      },
-    });
+    // P27: Interactuar saca la decisión; el combate de grupo se abre al elegir Combatir.
+    const payload = { tipo: 'FAUNA', targetSlug: 'test-cazar-agresivo', targetName: 'Bestia Agresiva de Prueba', quienInicia: 'npc', combateForzado: true, zonePointId: punto.id, cantidad: 3 };
+    const paso = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/interactuar`, payload });
+    expect(paso.statusCode, paso.body).toBe(200);
+    expect(JSON.parse(paso.body).opciones).toEqual(['Combatir', 'Huir']);
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Combatir' } });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     // Combate múltiple (`actionText`), nunca el 1v1 clásico (`combate` directo) — "un agresivo que
@@ -347,8 +437,8 @@ describe('POST /saves/:id/zona/cazar', () => {
     const participantes = await prisma.combatParticipant.findMany({ where: { encounterId: encounter.id } });
     expect(participantes.filter((p) => p.bando === 'ENEMIGO' && p.npcId === agresivoNpcId)).toHaveLength(3);
 
-    const puntoTrasCaza = await prisma.zonePoint.findUnique({ where: { id: punto.id } });
-    expect(puntoTrasCaza).toBeNull();
+    const puntoTrasCaza = await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } });
+    expect(puntoTrasCaza).toMatchObject({ cantidad: 0, activo: false });
   });
 });
 

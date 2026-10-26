@@ -35,6 +35,8 @@ export interface DynamicModeTurnoInput {
   /// en vueltas siguientes (no aplica, ya se decidió en la primera) y en el guion 100% determinista
   /// de Gistera (`narrarVueltaGistera`, sin LLM, no pasa por este prompt).
   quienInicia?: 'jugador' | 'npc';
+  /// P244 (2026-10-26): el personaje ya conoce a este NPC (DESCUBIERTO): reencuentro, sin presentación.
+  reencuentro?: boolean;
 }
 
 const NARRATION_FORMAT = {
@@ -104,6 +106,11 @@ export function buildDynamicModeTurnoPrompt(input: DynamicModeTurnoInput): { pro
     : input.quienInicia === 'jugador'
       ? `Esta es la primera vuelta — el jugador es quien encuentra/observa primero a ${quien}, todavía sin haber sido visto ni haber dicho o hecho nada — describe lo que el jugador percibe al toparse con la escena, no una reacción de ${quien} hacia él.`
       : `Esta es la primera vuelta — el juego toma la iniciativa, ${quien} es quien busca la interacción, el jugador no ha dicho nada todavía.`;
+  // P244: reencuentro con un NPC ya conocido — nada de presentaciones ni de «primer encuentro».
+  const reencuentroHint =
+    input.reencuentro && input.tipo === 'NPC'
+      ? `\n${input.targetName} y el jugador YA se conocen: es un reencuentro. NO lo presentes, no digas su nombre como si fuera nuevo ni cuentes quién es; reconócelo como alguien ya visto.`
+      : '';
   const cierreHint =
     input.vuelta >= input.maxVueltas
       ? 'Esta es la ÚLTIMA vuelta posible — "cierra" debe ser true, resuelve la interacción de forma natural aunque el jugador no haya zanjado nada.'
@@ -135,7 +142,7 @@ MODO DINÁMICO — mini-interacción puntual con ${quien}, vuelta ${input.vuelta
 
 ${capacidadHint}
 ${contextoBloque}
-${apertura}
+${apertura}${reencuentroHint}
 
 Narra en 1-2 frases cortas qué pasa en esta vuelta, ANCLADA en los datos reales de arriba (quién es ${input.targetName} y dónde está el jugador) — nunca inventes lugares, objetos, sucesos o motivos que no vengan ya de ese contexto o del resumen del personaje. Después, propón entre 2 y 3 opciones concretas y breves (verbos de acción, ej. "Aceptar la oferta", "Preguntar por el camino", "Rechazar y seguir tu camino") que el jugador pueda elegir para responder. ${cierreHint}`;
 
@@ -174,7 +181,12 @@ export function deterministicDynamicModeTurno(input: DynamicModeTurnoInput): Dyn
     // texto de fallback determinista — invisibles hasta ahora porque nunca se ejercitaba con
     // hasSecondPersonLeak, y en la práctica el LLM casi siempre acierta antes de agotar los 2
     // intentos (este texto solo se ve si Ollama falla dos veces seguidas).
-    narration: input.tipo === 'NPC' ? `${quien} se acerca, con intención de hablar.` : `${quien} anda cerca, atento a la escena.`,
+    narration:
+      input.tipo === 'NPC'
+        ? input.reencuentro
+          ? `${quien} reconoce al personaje y se acerca, con intención de hablar.`
+          : `${quien} se acerca, con intención de hablar.`
+        : `${quien} anda cerca, atento a la escena.`,
     opciones: ['Acercarte', 'Ignorarlo y seguir tu camino'],
     cierra: input.vuelta >= input.maxVueltas,
   };

@@ -58,6 +58,45 @@ describe('pickMentionedEntityBanner', () => {
     expect(match?.target.entitySlug).toBe('gruth')
   })
 
+  // P208 (usuaria, 2026-10-26): «piedra» (alias de una palabra de una roca) no abre una ficha grande.
+  function fuente(sourceSlug: string, sourceName: string, aliases: string[]): EnciclopediaResponse['faunaFlora'][number] {
+    return { kind: 'flora', sourceSlug, sourceName, aliases, description: 'x', yields: [], imagePrompts: { thumbnail: null, banner: null }, imageUrls: { thumbnail: null, banner: `/${sourceSlug}.png` } } as unknown as EnciclopediaResponse['faunaFlora'][number]
+  }
+
+  it('P208: un alias de una palabra no abre la ficha; el nombre de la entrada o un alias de varias palabras, sí', () => {
+    const index = buildEnciclopediaIndex(emptyResponse({ faunaFlora: [fuente('roca-pilares-rotos', 'Roca de Llanura Roja', ['piedra', 'piedras', 'piedra roja'])] }))
+
+    expect(pickMentionedEntityBanner('Levantas la primera piedra del ayuntamiento.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('Apilas las piedras junto al muro.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('Levantas la primera piedra roja del ayuntamiento.', index, new Set())?.target.entitySlug).toBe('roca-pilares-rotos')
+    expect(pickMentionedEntityBanner('Levantas la roca de llanura roja.', index, new Set())?.target.entitySlug).toBe('roca-pilares-rotos')
+  })
+
+  it('P208: el nombre de una sola palabra sigue abriendo la ficha; su alias de una palabra, no', () => {
+    const index = buildEnciclopediaIndex(emptyResponse({ faunaFlora: [fuente('yerreo', 'Yerreo', ['mineral'])] }))
+
+    expect(pickMentionedEntityBanner('Hay mineral en la pared.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('Hay yerreo en la pared.', index, new Set())?.target.entitySlug).toBe('yerreo')
+  })
+
+  // Revisión de P208: casos límite. Mayúsculas y tildes no cambian nada; un plural o un alias con guion o
+  // apóstrofo es una sola palabra: solo enlace, como «piedra».
+  it('P208: mayúsculas, tildes, plurales y alias con guion', () => {
+    const index = buildEnciclopediaIndex(emptyResponse({ faunaFlora: [fuente('murgol', 'Múrgol', ['múrgoles', 'medio-múrgol', 'múrgol del clan'])] }))
+
+    expect(pickMentionedEntityBanner('Un MÚRGOL te mira.', index, new Set())?.target.entitySlug).toBe('murgol')
+    expect(pickMentionedEntityBanner('Los Múrgoles pastan.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('Un medio-múrgol se aparta.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('El MÚRGOL DEL CLAN bala.', index, new Set())?.target.entitySlug).toBe('murgol')
+  })
+
+  it('P208: el alias de una palabra de un NPC es un nombre propio y sí abre la ficha', () => {
+    const npc = makeNpc({ slug: 'torgash-ketg', name: 'Torgash el Viejo', aliases: ['Torgash'], imageUrls: { thumbnail: null, banner: '/torgash.png' } })
+    const index = buildEnciclopediaIndex(emptyResponse({ npcs: [npc] }))
+
+    expect(pickMentionedEntityBanner('Torgash te saluda con la cabeza.', index, new Set())?.target.entitySlug).toBe('torgash-ketg')
+  })
+
   it('sin regex (índice vacío), devuelve null', () => {
     const match = pickMentionedEntityBanner('Cualquier texto.', { regex: null, entries: new Map(), bySlugKey: new Map() }, new Set())
     expect(match).toBeNull()

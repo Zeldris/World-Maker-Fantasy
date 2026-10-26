@@ -116,7 +116,7 @@ export function useModoDinamico({
     trasMenu?: boolean,
   ) {
     setCharacterLog((prev) =>
-      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: true } } : e)),
+      prev.map((e) => (e.id === entryId ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: true, error: undefined } } : e)),
     )
     try {
       // P142: un NPC con menú propio (oficio, trabajo, noticias…) lo enseña primero, en el sitio
@@ -183,7 +183,7 @@ export function useModoDinamico({
           e.id === entryId
             ? {
                 ...e,
-                dynamicModeOffer: yaNoDisponible ? undefined : { tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, riesgoCaza: e.dynamicModeOffer?.riesgoCaza, busy: false, error: motivo },
+                dynamicModeOffer: yaNoDisponible ? undefined : { ...e.dynamicModeOffer, tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad, busy: false, error: motivo },
                 ...(yaNoDisponible ? { text: `${e.text} (${motivo})` } : {}),
               }
             : e,
@@ -208,7 +208,7 @@ export function useModoDinamico({
   // `HarvestSelectionModal.onConfirm` (applyInventoryDelta + setCharacterLog + setFictionalDate) —
   // mismo backend (`resolverRecoleccion`), solo un disparador distinto.
   async function handleInteractuarModoDinamicoRecurso(entryId: string, targetSlug: string) {
-    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true } } : e)))
+    setCharacterLog((prev) => prev.map((e) => (e.id === entryId && e.dynamicModeOffer ? { ...e, dynamicModeOffer: { ...e.dynamicModeOffer, busy: true, error: undefined } } : e)))
     const targetName = characterLog.find((e) => e.id === entryId)?.dynamicModeOffer?.targetName ?? 'el recurso'
     try {
       const resultado = await interactuarModoDinamicoRecurso(saveId!, targetSlug)
@@ -317,6 +317,8 @@ export function useModoDinamico({
     try {
       const turno = await responderModoDinamico(saveId!, opcion)
       setFictionalDate(turno.timeLabel)
+      // P27/P166: Huir deja su línea en el diario (con la tirada si te vieron antes), antes del combate si falló.
+      if (turno.huidaLogEntry) setCharacterLog((prev) => [...prev, { ...turno.huidaLogEntry!, channel: 'character' }])
       // AGRESIVO/ENEMIGO, el jugador eligió "Combatir" (2026-09-20) — mismo patrón que
       // `handleInteractuarModoDinamico`: se cierra este modal y se abre CombatPanel directo.
       if (turno.combate) {

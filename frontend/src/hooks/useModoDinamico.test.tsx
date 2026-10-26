@@ -12,7 +12,7 @@ vi.mock('../lib/api', () => ({
   resolveImageUrl: vi.fn(() => null),
   responderModoDinamico: vi.fn(),
 }))
-import { abrirMenuNpc, chooseNpcInteraction, interactuarModoDinamico } from '../lib/api'
+import { abrirMenuNpc, chooseNpcInteraction, interactuarModoDinamico, interactuarModoDinamicoRecurso, responderModoDinamico } from '../lib/api'
 import { useModoDinamico } from './useModoDinamico'
 import type { LogEntry } from '../types'
 
@@ -21,11 +21,11 @@ const encuentro: LogEntry = {
   dynamicModeOffer: { tipo: 'NPC', targetSlug: 'maestro-cocinero-serhu', targetName: 'Alguien', quienInicia: 'jugador' },
 }
 
-function montar() {
+function montar(inicial: LogEntry = encuentro) {
   const setActiveDynamicMode = vi.fn()
   const handleSubmit = vi.fn()
   const hook = renderHook(() => {
-    const [characterLog, setCharacterLog] = useState<LogEntry[]>([encuentro])
+    const [characterLog, setCharacterLog] = useState<LogEntry[]>([inicial])
     const md = useModoDinamico({
       saveId: 's1', characterLog, characterName: 'Gorhorn', fictionalDate: '', enciclopediaIndex: { bySlugKey: new Map() } as never,
       setCharacterLog, setFictionalDate: vi.fn(), setCombateIniciado: vi.fn(), setActiveDynamicMode, setInventory: vi.fn(), setXp: vi.fn(),
@@ -94,5 +94,92 @@ describe('P142 — menú fijo del NPC desde el encuentro del mapa', () => {
     })
     expect(hook.result.current.characterLog[0].dynamicModeOffer).toBeUndefined()
     expect(hook.result.current.characterLog[0].npcInteractionOffer).toBeUndefined()
+  })
+})
+
+/// P309: al pulsar «Interactuar» la tarjeta pasaba a «Interactuando...» y perdía `quien` (el nombre con
+/// artículo que manda el backend), `aQuien` y `deBando`: la cabecera quedaba «Cazadora Serhu busca…».
+describe('P309 — la tarjeta conserva lo que manda el backend mientras interactúa', () => {
+  const cazadora: LogEntry = {
+    ...encuentro,
+    dynamicModeOffer: {
+      tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'jugador',
+      quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu', deBando: { faccion: 'Clan Serhu', deQuien: 'del Clan Serhu', reputacion: -50 },
+    },
+  }
+
+  it('mientras espera (busy) sigue con `quien`, `aQuien` y `deBando`', async () => {
+    let soltar: (v: { menu: null }) => void = () => undefined
+    vi.mocked(abrirMenuNpc).mockReset()
+    vi.mocked(abrirMenuNpc).mockReturnValue(new Promise((r) => { soltar = r as never }))
+    vi.mocked(interactuarModoDinamico).mockReset()
+    vi.mocked(interactuarModoDinamico).mockRejectedValue(new Error('No se pudo abrir'))
+    const { hook } = montar(cazadora)
+    let promesa: Promise<void> = Promise.resolve()
+    await act(async () => {
+      promesa = hook.result.current.handleInteractuarModoDinamico('e1', 'NPC', 'cazadora-serhu', 'Cazadora Serhu', 'jugador')
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({
+      busy: true, quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu', deBando: { reputacion: -50 },
+    })
+    await act(async () => {
+      soltar({ menu: null })
+      await promesa
+    })
+    // Tras el fallo, la tarjeta sigue siendo la misma, con el motivo.
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({
+      busy: false, error: 'No se pudo abrir', quien: 'La Cazadora Serhu', aQuien: 'a la Cazadora Serhu',
+    })
+  })
+})
+
+/// Leve de la revisión (P310): al reintentar, el error del intento anterior no se queda junto a «Esperando…».
+describe('el reintento limpia el error anterior mientras espera', () => {
+  const conError: LogEntry = {
+    ...encuentro,
+    dynamicModeOffer: { tipo: 'NPC', targetSlug: 'cazadora-serhu', targetName: 'Cazadora Serhu', quienInicia: 'jugador', busy: false, error: 'No se pudo abrir' },
+  }
+
+  it('Interactuar: busy sin error hasta que responde', async () => {
+    let soltar: (v: { menu: null }) => void = () => undefined
+    vi.mocked(abrirMenuNpc).mockReset().mockReturnValue(new Promise((r) => { soltar = r as never }))
+    vi.mocked(interactuarModoDinamico).mockReset().mockRejectedValue(new Error('otra vez'))
+    const { hook } = montar(conError)
+    let promesa: Promise<void> = Promise.resolve()
+    await act(async () => {
+      promesa = hook.result.current.handleInteractuarModoDinamico('e1', 'NPC', 'cazadora-serhu', 'Cazadora Serhu', 'jugador')
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: true, error: undefined })
+    await act(async () => {
+      soltar({ menu: null })
+      await promesa
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: false, error: 'otra vez' })
+  })
+
+  it('recurso (Ver qué hay en la zona): busy sin error', async () => {
+    vi.mocked(interactuarModoDinamicoRecurso).mockReset().mockReturnValue(new Promise(() => undefined))
+    const { hook } = montar(conError)
+    await act(async () => {
+      void hook.result.current.handleInteractuarModoDinamicoRecurso('e1', 'cazadora-serhu')
+    })
+    expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: true, error: undefined })
+  })
+})
+
+/// P27/P166: Huir de quien te vio antes tira dados; la entrada con la tirada entra en el diario al momento, también
+/// cuando falla y abre el combate.
+describe('P27 — Huir ante quien corta el paso deja su tirada en el diario', () => {
+  beforeEach(() => vi.mocked(responderModoDinamico).mockReset())
+
+  it('huida fallida: la entrada con la tirada entra en el diario y se abre el combate', async () => {
+    const huidaLogEntry = { id: 'h1', channel: 'character', text: 'Gorhorn intenta alejarse, pero no le dejan escapar: toca pelear.', timeLabel: '', createdAt: '', roll: { roll: 3 } } as unknown as LogEntry
+    vi.mocked(responderModoDinamico).mockResolvedValue({ narration: '', opciones: [], cierra: true, vuelta: 2, timeLabel: '', huidaLogEntry, combate: { npcs: [] } } as never)
+    const { hook } = montar()
+    await act(async () => {
+      await hook.result.current.handleElegirDynamicMode('Huir')
+    })
+    expect(hook.result.current.characterLog.map((e) => e.id)).toEqual(['e1', 'h1'])
+    expect(hook.result.current.characterLog[1]).toMatchObject({ roll: { roll: 3 } })
   })
 })

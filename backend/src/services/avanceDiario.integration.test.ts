@@ -99,10 +99,11 @@ describe('avanzarMundoHasta (CR-7)', () => {
     });
     const res = await app.inject({ method: 'POST', url: `/saves/${a}/accion-de-prueba` });
     expect(res.statusCode).toBe(200);
-    // El gancho va tras enviar la respuesta.
+    // El gancho va tras enviar la respuesta. Avanzar dos días tarda ~0,8 s y con la suite entera pasaba del segundo
+    // que espera `vi.waitFor` por defecto (CI local, 2026-10-26).
     await vi.waitFor(async () => {
       expect((await prisma.worldState.findUniqueOrThrow({ where: { saveId: a } })).ultimoDiaSimulado).toBe(2);
-    });
+    }, { timeout: 15_000 });
     await app.close();
   }, 30_000);
 });

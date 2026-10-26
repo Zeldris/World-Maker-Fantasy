@@ -387,4 +387,20 @@ describe('POST /saves/:id/modo-dinamico/recurso/:targetSlug — recoger sin tira
     expect(body.exito).toBe(true);
     expect([...(body.items ?? []), ...(body.updatedItems ?? [])].some((i: { name: string }) => /leche/i.test(i.name))).toBe(true);
   });
+
+  it('con el inventario lleno dice que no cabe, no que el recinto no da nada (P136)', async () => {
+    const lleno = await prisma.inventoryItem.create({ data: { saveId, name: 'Piedra (500)', description: 'x', catalogSlug: 'bloque-piedra-tallada' } });
+    try {
+      await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'murgoles-domados-campamento', targetName: 'Recinto de múrgoles domados' } } });
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/recurso/murgoles-domados-campamento` });
+      expect(res.statusCode, res.body).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.exito).toBe(false);
+      expect(body.narration).toMatch(/inventario lleno/);
+      expect(body.narration).not.toMatch(/nada aprovechable/);
+    } finally {
+      await prisma.inventoryItem.delete({ where: { id: lleno.id } });
+    }
+  });
 });

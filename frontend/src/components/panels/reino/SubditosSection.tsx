@@ -3,12 +3,14 @@ import type { AlmacenItemInfo, CompanionInfo, EquipSlot, InventoryItemInfo, Plan
 import { PanelSection } from '../../PanelSection'
 import { SelectorJuego } from '../../SelectorJuego'
 import { AlmacenSection } from './AlmacenSection'
+import { textoDeCamas } from '../../../lib/camas'
 import { crearPlantilla, borrarPlantilla, asignarPlantillaCompanion, asignarPlantillaSubject, fijarRolReinoCompanion, getSubditos, cambiarRolSubdito, cambiarTareaSubdito, responderLlegada, type SubditoInfo, type TareaSubdito, type CamasReino, type CandidatoLlegada, type RequisitoLlegada, type SalidaSubdito } from '../../../lib/api'
 import { lineaDeSubdito, plazoDeLlegada } from '../../../lib/subditos'
 import { SLOT_LABEL, SLOT_ORDER } from '../../../lib/equipSlots'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
+import { nombreDeEdificio } from '../../../lib/edificios'
 
 /// Selector compartido de plantilla — súbdito o compañero integrado en el Reino, mismo desplegable.
 /// Exportado (2026-08-27, auditoría de diseño/UX § 1.3: "cuando `rolReino` no es null, la tarjeta
@@ -445,14 +447,13 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
       {datos && (
         <p className="mb-2 text-2xs text-wood-400">
-          Camas: {datos.camas.companeros + datos.camas.subditos}/{datos.camas.total + (datos.camas.temporales ?? 0)} ({datos.camas.subditos} súbdito{datos.camas.subditos === 1 ? '' : 's'}, {datos.camas.companeros} compañero{datos.camas.companeros === 1 ? '' : 's'}
-          {datos.camas.temporales ? `, ${datos.camas.temporales} temporales del Ayuntamiento solo para súbditos` : ''})
+          {textoDeCamas(datos.camas)}
         </p>
       )}
       {/* P284: lo dañado no da camas hasta repararlo. */}
       {(datos?.danados ?? []).filter((d) => d.camas > 0).length > 0 && (
         <p className="mb-2 text-2xs text-cost-400" role="status">
-          Sin camas hasta repararlos ({(datos?.danados ?? []).filter((d) => d.camas > 0).map((d) => `${d.name}: ${d.camas}`).join(', ')}): Reino › Edificios › Reparar.
+          Sin camas hasta repararlos ({(datos?.danados ?? []).filter((d) => d.camas > 0).map((d) => `${nombreDeEdificio(d.name)}: ${d.camas}`).join(', ')}): Reino › Edificios › Reparar.
         </p>
       )}
       {/* P220b: todos los requisitos para que llegue alguien, con su estado y su cifra (como en X4). */}
@@ -511,7 +512,10 @@ function SubditosLista({ saveId, subjects, plantillasEquipo, onRefreshSave }: { 
             <div key={s.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-wood-100">{s.name}</p>
+                  <p className="font-medium text-wood-100">
+                    {s.name}
+                    {s.sinArma && <span className="text-amber-300"> (sin arma)</span>}
+                  </p>
                   <p className="text-2xs text-wood-400">{lineaDeSubdito(s) || s.role}</p>
                   {s.pareja && (
                     <p className="text-2xs text-wood-400">
