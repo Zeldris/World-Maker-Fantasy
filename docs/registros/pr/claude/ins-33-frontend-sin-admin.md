@@ -17,10 +17,11 @@ herramientas de admin ni la creación de personaje desde cero. Se detecta con `w
 
 El backend no cambia (`INS-34…36`).
 
-Retro sin decidir: [`retro-2026-10-26-ins-33.md`](../../retro-2026-10-26-ins-33.md).
+Retro aprobada por la usuaria (`QA-262`…`QA-265`): [`retro-2026-10-26-ins-33.md`](../../retro-2026-10-26-ins-33.md).
 
 ## Evidencia
 
+- Retro aplicada: `QA-262` (`AGENTS.md`), `QA-263` (`import/first`: `error` en `src/lib/`, `warn` en el resto), `QA-264` (`docs/mapa-agente.md`); `QA-265` va a Galivelop-workflow. `tsc`, `oxlint` (0 errores) y vitest (798) en verde.
 - 9 tests nuevos (`App.empaquetado.test.tsx`, `empaquetado.test.ts`, `CharacterSelect.test.tsx`) que fallan sin el
   arreglo (comprobado desde el repo del instalador).
 - Antes de los leves: `tsc`, `oxlint` y vitest, 798 tests en 168 archivos, en verde.

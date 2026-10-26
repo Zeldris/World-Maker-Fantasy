@@ -115,7 +115,8 @@ subagente de cada tanda), antes de la primera acción, relee
 - **El PR de una sesión local lo crea Claude en la nube** (usuaria, 2026-10-21, `QA-184`): en la Deck no hay `gh` ni
   herramienta de GitHub. Tras la fase 3, la local sube la descripción a `docs/registros/pr/<rama>.md` y deja en su
   fila de la bitácora «PR listo» con el título, en el último commit; la nube comprueba que nada va detrás de ese
-  commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión.
+  commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión. Una sesión sin URL de PR escribe «PR
+  listo», nunca «PR abierto» ni «en borrador»: esas palabras en la bitácora solo van con la URL del PR (`QA-262`).
 - **Tareas del instalador (`INS-*`)** (usuaria, 2026-10-26, `QA-259`): viven en el plan de
   [Instalador-WMF-Tarkor](https://github.com/Zeldris/Instalador-WMF-Tarkor), no en los roadmaps de WMF ni en `taskId`,
   y no rompen la pausa de pruebas: las pide la usuaria. Aquí solo llevan su fila «Tarea en curso» con el enlace a su plan.
