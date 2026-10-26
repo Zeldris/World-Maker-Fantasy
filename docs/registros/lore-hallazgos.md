@@ -783,3 +783,56 @@ temporal del test. Leves:
     «hielo sílice y cuchillos Helsig», como el trozo RAG de Ciénaga Troncal.
   - El Pacto del Umbral (`cronologia.md`, `razas.md`) y la Tolda de Kegi (`cronologia.md`, `clanes-orcos.md`) ya no
     dicen «no implementado en el código»: dicen en qué entrada de la historia los cuenta el juego.
+
+## 2026-10-26 — `QA-256`: segunda pasada por la enciclopedia
+
+Diez tandas de auditoría, una por región o catálogo (`QA-247`). No hay ningún hallazgo grave; salen unos 80 medios y
+unos 70 leves. La usuaria aprobó los cuatro bloques con la opción recomendada:
+
+- **Canon al día con el juego** («Ampliar el canon»):
+  - `oficios-edificios.md` incluye ya los oficios ganadero (antes domador) y minero de las Llanuras, todo lo
+    construible y los 14 edificios de oficio.
+  - El oficio ganadero entra en `edificios-de-oficio.md` y en `llanuras-del-viento-rojo.md`.
+  - `items.md` lista los 7 documentos.
+  - En `00-nucleo.md` lo reservado de Tarkor es el porqué de su vuelta, no el hecho de que volviera transformado
+    («El porqué, no el hecho»).
+  - Kegi queda en las Llanuras, como dice el canon («Llanuras, como el canon»).
+- **Bloque 2, filas huérfanas** («Retirar sin referencias»): `retirarHuerfanos.ts` hace que el seed retire los
+  lugares, facciones y NPC que ya no están en el catálogo, pero solo los que ninguna partida referencia. En la base
+  local se fueron 11 filas viejas: 8 lugares, `kegi` (que estaba en el Margen), `hashma`, `jeyselt`,
+  `cazador-serhu`, `ulkha` y la facción de catálogo `concordia-de-hierro-moderada`. Con eso desaparecen los
+  duplicados (Hashma y Feg Tusha, Ulkha y Ulkha Ketg, los dos Kegi) sin fusionar nada.
+- **Bloque 1, textos** («Sí, todo»): se reescribieron unos 160 textos para quitar notas de diseño, jerga del motor,
+  inglés e ids a la vista, y se corrigieron erratas sin cambiar lo que cuentan.
+  - «Fuga en Bandada» y «Brasa Rabiosa».
+  - «Jumba» pasa a «Junba», también en el canon.
+  - «Llanuras del Viento Rojo» completo, salvo en los nombres canónicos de la roca y los lingotes.
+- **Bloque 3, el juego choca con el canon** («Todos según el canon»):
+  - Los orcos viven hasta 50-54 años y las hembras hasta 62-64 (antes, 72-80). El dato solo se muestra.
+  - La piel de los Nabieus «atrapa la luz: a la vista, un hueco», en la raza, en Sella Marn y en Aven Tessk.
+  - Kael Dorn pasa a Arquero: el canon no da Cazador a los Goirntes.
+  - La cuerda se hace de tendón de Múrgol, porque el Corredor de Cauce está en moratoria.
+  - La caña de pescar es de madera de Junba Verde.
+  - Los múrgoles domados están tras la empalizada de Karot Veku, no dentro.
+  - El Canizor se cuenta en pasado: los Maktor ya no existen.
+  - La Sombra de Kroj hembra «devuelve los sonidos ajenos», no voces humanas.
+  - El nombre del poblado es «Fin Susurrado, tomado del nombre de su clan», también en `cienaga-troncal.md`.
+  - El Vientre del Engaño queda solo como rumor de los viejos. El canon conserva la frase entera.
+- **Falsos positivos descartados:**
+  - El Detonante sigue a `historia.md:51` y no explica lo reservado.
+  - La fecha del Pacto del Canizor no choca: los Maktor están en las Llanuras desde el 2.000, y lo del 2.900 es la
+    migración de una parte del clan.
+  - El Yerreo en las garras del Kirelon es canon (`cronologia.md:20`).
+- **Sin tocar** (leves, sin aprobar o que pedirían lore nuevo):
+  - Nombres de receta con artículo («un pozo»).
+  - `liquen-humedo`.
+  - La región de `ruptidar`.
+  - Las 54 `lugarOrigen` vacías.
+  - Las categorías de placas.
+  - Las comparaciones con animales reales: el canon admite «tigre» y «cánido» en el Canizor; las demás siguen sin
+    cambiar.
+  - Atributos de 22-24 en NPC de nivel menor de 20.
+  - Gogorath de nivel 18.
+  - Descripciones cortas.
+
+`actualizar-mundo.sh` en verde (resiembra y 92 trozos de lore reindexados).
