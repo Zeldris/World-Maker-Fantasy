@@ -13,6 +13,7 @@
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
 //   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
+//   punto-retirado:<especie>[:<n>] QA-262, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0, como lo deja el Cronista (efectos `crearPuntoZona` y `retirarPuntoZona`)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -27,6 +28,7 @@ import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePersonas, type MiembroDeGrupo } from '../services/combatePersonas.js';
 import { scopeFor } from '../services/npcScene.js';
 import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
+import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
 import { formatFictionalDate } from '../services/worldClock.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
@@ -39,7 +41,7 @@ import { parsearPasosReino } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -160,6 +162,10 @@ for (const paso of pasos) {
     const r = await hacerDomador(prisma, { saveId, nivel: paso.nivel });
     if ('error' in r) rechaza(r.error);
     else dice(`Domador: nivel ${r.nivel}, ${r.especializacion}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
+  } else if (paso.tipo === 'punto-retirado') {
+    const r = await dejarPuntoRetirado(prisma, { saveId, especie: paso.especie, ...(paso.n != null ? { cantidad: paso.n } : {}) });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.yaEstaba ? `Punto retirado: ya había uno de ${r.nombre} en ${r.lugar} con ${r.cantidad} presas` : `Punto retirado: ${r.nombre} en ${r.lugar}, ${r.cantidad} presas, activo false`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }
