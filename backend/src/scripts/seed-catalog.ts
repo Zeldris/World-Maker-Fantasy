@@ -280,8 +280,14 @@ async function main() {
   console.log(`  Entradas de Historia (${historiaEntries.length})...`);
   const allNpcSlugsForHistoria = new Set(allNpcs.map((n) => n.slug));
   for (const entry of historiaEntries) {
-    if (!itemIdBySlug.has(entry.documentoItemSlug)) {
+    if (entry.documentoItemSlug && entry.lugarSlug) {
+      throw new Error(`HistoriaEntry "${entry.slug}" tiene documento y lugar: se descubre por uno solo.`);
+    }
+    if (entry.documentoItemSlug && !itemIdBySlug.has(entry.documentoItemSlug)) {
       throw new Error(`HistoriaEntry "${entry.slug}" referencia un objeto desconocido: ${entry.documentoItemSlug}`);
+    }
+    if (entry.lugarSlug && !locationIdBySlug.has(entry.lugarSlug)) {
+      throw new Error(`HistoriaEntry "${entry.slug}" referencia un lugar desconocido: ${entry.lugarSlug}`);
     }
     if (entry.translatorNpcSlug && !allNpcSlugsForHistoria.has(entry.translatorNpcSlug)) {
       throw new Error(`HistoriaEntry "${entry.slug}" referencia un NPC traductor desconocido: ${entry.translatorNpcSlug}`);
@@ -297,7 +303,8 @@ async function main() {
         year: entry.year,
         text: entry.text,
         requiresTranslation: entry.requiresTranslation ?? false,
-        documentoItemSlug: entry.documentoItemSlug,
+        documentoItemSlug: entry.documentoItemSlug ?? null,
+        lugarSlug: entry.lugarSlug ?? null,
         translatorNpcSlug: entry.translatorNpcSlug ?? null,
       },
       create: {
@@ -308,7 +315,8 @@ async function main() {
         year: entry.year,
         text: entry.text,
         requiresTranslation: entry.requiresTranslation ?? false,
-        documentoItemSlug: entry.documentoItemSlug,
+        documentoItemSlug: entry.documentoItemSlug ?? null,
+        lugarSlug: entry.lugarSlug ?? null,
         translatorNpcSlug: entry.translatorNpcSlug ?? null,
       },
     });

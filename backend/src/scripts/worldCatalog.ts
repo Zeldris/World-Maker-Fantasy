@@ -9205,7 +9205,10 @@ export interface HistoriaEntryInput {
   requiresTranslation?: boolean;
   /// Debe existir en `items` (validado en seed-catalog.ts) — el objeto físico que, al
   /// descubrirse/poseerse, desbloquea esta entrada.
-  documentoItemSlug: string;
+  documentoItemSlug?: string;
+  /// QA-244 (usuaria, 2026-10-26): sin documento, la entrada se abre al visitar este lugar (como las bóvedas de
+  /// datos de X4); sin documento ni lugar, es saber común y está abierta desde el principio. Nunca los dos.
+  lugarSlug?: string;
   /// Solo si requiresTranslation=true — debe existir en `npcs`/`fauna` (validado en seed-catalog.ts).
   translatorNpcSlug?: string;
 }
