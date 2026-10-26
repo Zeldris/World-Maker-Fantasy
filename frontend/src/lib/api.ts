@@ -58,8 +58,10 @@ import type {
 // 1) `window.__TARKOR__.apiUrl`, que Tauri inyecta antes de cualquier script con el puerto libre que elige al arrancar;
 // 2) `VITE_API_URL`, para apuntar a otro backend (staging, otra máquina) sin tocar código;
 // 3) `http://localhost:3001`, el valor por defecto de desarrollo. Sin barra final.
+import { leerTarkor } from './empaquetado'
+
 export function apiBaseUrl(): string {
-  const tauri = typeof window === 'undefined' ? undefined : window.__TARKOR__?.apiUrl
+  const tauri = leerTarkor()?.apiUrl
   const url = typeof tauri === 'string' && tauri !== '' ? tauri : (import.meta.env.VITE_API_URL ?? 'http://localhost:3001')
   return url.replace(/\/+$/, '')
 }

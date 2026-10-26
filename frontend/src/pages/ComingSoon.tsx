@@ -9,8 +9,8 @@ export function ComingSoon() {
       </span>
       <h1 className="font-serif text-3xl text-wood-100">Multijugador — próximamente</h1>
       <p className="max-w-md text-sm leading-relaxed text-wood-400">
-        El modo multijugador (salas compartidas) todavía está en diseño. El MVP se centra primero en pulir el
-        modo en solitario.
+        El modo multijugador (salas compartidas) todavía está en construcción para futuras versiones. Por ahora
+        el juego se centra en el modo en solitario.
       </p>
       <button type="button"
         onClick={() => navigate('/')}

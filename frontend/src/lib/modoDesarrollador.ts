@@ -1,4 +1,5 @@
 import { createContext, useContext, useSyncExternalStore } from 'react'
+import { esEmpaquetado } from './empaquetado'
 
 /// CFG-33 (hito 0.1, roadmap-front.md H17) — "modo desarrollador", apagado por defecto. Mientras está
 /// apagado, las herramientas de prompts de imagen (`ImagePromptSlot`) no aparecen en la partida (Clase,
@@ -38,11 +39,12 @@ export function useModoDesarrollador(): boolean {
   return useSyncExternalStore(suscribir, leerModoDesarrollador, () => false)
 }
 
+/// INS-33: en el juego empaquetado las herramientas de admin no existen, ni con el modo activo ni con el contexto.
 /// La página de admin enseña las herramientas siempre, esté o no el modo desarrollador activo.
 export const HerramientasAdminContext = createContext(false)
 
 export function useHerramientasAdminVisibles(): boolean {
   const enAdmin = useContext(HerramientasAdminContext)
   const modoDesarrollador = useModoDesarrollador()
-  return enAdmin || modoDesarrollador
+  return !esEmpaquetado() && (enAdmin || modoDesarrollador)
 }
