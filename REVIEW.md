@@ -136,6 +136,8 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
 
 - **Tarea cerrada.** Tachada en su roadmap con `✅ fecha`, qué se hizo y qué queda, y en el mapa de
   `docs/producto/21-roadmap.md`; la bitácora al día en el mismo commit (`CLAUDE.md`).
+- **Tareas `INS-*`.** Son del repo del instalador: sin hito en los roadmaps de WMF ni fila en el mapa; basta su fila
+  de la bitácora con el enlace a su plan (`AGENTS.md`, `QA-259`). No es un hallazgo de «sin hito» ni de pausa de pruebas.
 - **Lore.** Nada editado en `docs/rpgtarkor/` (`AGENTS.md`); las propuestas, en
   `docs/borradores-opencode/propuestas-lore.md`.
 
