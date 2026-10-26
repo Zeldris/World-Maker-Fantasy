@@ -96,6 +96,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `quienEnAviso`, `nombreVisibleDeNpc`, `conDefinido`, `conIndefinido`, `pluralDeEspecie` y
   `b/services/ofertaNombre.ts#nombrarOferta`. Responder:
   `b/routes/saves/dynamicMode.ts` (`/modo-dinamico/responder`, `/ignorar`) y `dynamicModeRecurso.ts`.
+- **Nombre de un NPC sin descubrir en la escena (narración, combate):** `b/services/npcScene.ts#conNombreVisible`
+  (pone `NpcInScene.nombreVisible`) y `nombreNarrado`; el combate múltiple, en `combateMultipleOrquestacion.ts#datosVivosDe`.
 - **Campos de la oferta** (`quien`, `aQuien`, `deBando`): se rellenan en
   `b/routes/saves/zona.ts#detectarEncuentroEnCelda` y en el turno; los lee `b/services/dynamicMode.ts#quienEnAviso`.
 - **Tests:** `b/routes/saves/zona*.integration.test.ts`, `b/services/zonaPosicion.test.ts`, `zonePoints*.test.ts`,

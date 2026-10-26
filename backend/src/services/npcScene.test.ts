@@ -30,6 +30,7 @@ const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
+const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -44,10 +45,12 @@ vi.mock('../lib/prisma.js', () => ({
     // 2026-08-28) — `detectNpcsInScene` consulta `Save.npcsRetiredForever` ahora. `[]` por defecto
     // (ningún test de este archivo prueba ese caso en concreto todavía).
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    // P327: `detectNpcsInScene` consulta qué NPC con nombre propio ya conoce la jugadora.
+    discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscovered(...args) },
   },
 }));
 
-const { detectNpcsInScene, candidateNpcNamesNotInScene } = await import('./npcScene.js');
+const { detectNpcsInScene, candidateNpcNamesNotInScene, conNombreVisible, nombreNarrado, npcSceneLineFor, calibrationLineFor } = await import('./npcScene.js');
 
 // Tercer barrido (2026-09-28) — alias reales con colisiones contra palabras muy frecuentes.
 const NPCS_BARRIDO_2026_09_28 = [
@@ -1095,5 +1098,49 @@ describe('detectsInventoryReviewIntent', () => {
   it('no dispara con una acción que no tiene nada que ver con revisar el inventario', () => {
     expect(detectsInventoryReviewIntent("Ataco a 'Orco enfurecido' con mi hacha.")).toBe(false);
     expect(detectsInventoryReviewIntent('Camino hacia el pozo a rellenar el odre.')).toBe(false);
+  });
+});
+
+// P327 (2026-10-26): mientras Gorhorn no conoce a un NPC con nombre propio, lo que se cuenta al
+// narrador lo llama «el orco desconocido», nunca por su nombre, aunque el motor lo siga emparejando
+// por el real.
+describe('P327 — nombre visible de un NPC aún no descubierto', () => {
+  const oculto = () => npcFixture({ name: 'Gistera Koh', slug: 'gistera-koh', articulo: null, genero: 'F', raza: 'orcos', nombreVisible: 'Orca desconocida' });
+
+  beforeEach(() => {
+    findManyDiscovered.mockReset();
+    findManyDiscovered.mockResolvedValue([]);
+  });
+
+  it('conNombreVisible oculta al PRINCIPAL sin descubrir y deja al conocido y al genérico', async () => {
+    findManyDiscovered.mockResolvedValue([{ entitySlug: 'orco-enfurecido' }]);
+    const principalOculto = npcFixture({ slug: 'gistera-koh', name: 'Gistera Koh', genero: 'F', raza: 'orcos', articulo: null });
+    const principalConocido = npcFixture({ slug: 'orco-enfurecido' });
+    const generico = npcFixture({ slug: 'guchapo', name: 'Guchapo', kind: 'GENERICO' as NpcInScene['kind'] });
+    const [a, b, c] = await conNombreVisible({ discoveredEntity: { findMany: findManyDiscovered } } as never, 'save-1', [principalOculto, principalConocido, generico]);
+    expect(a!.nombreVisible).toBe('Orca desconocida');
+    expect(a!.name).toBe('Gistera Koh');
+    expect(b!.nombreVisible).toBeUndefined();
+    expect(c!.nombreVisible).toBeUndefined();
+  });
+
+  it('el bloque y la línea para el narrador usan «la orca desconocida» y prohíben el nombre propio', () => {
+    const bloque = npcSceneBlockFor(oculto(), 1);
+    expect(bloque).toContain('PERSONAJE EN ESCENA: la orca desconocida');
+    expect(bloque).toContain('NOMBRE OCULTO');
+    expect(bloque).toContain('GÉNERO DE LA ORCA DESCONOCIDA');
+    expect(bloque.split('Descripción/hechos')[0]).not.toContain('Gistera');
+    const linea = npcSceneLineFor(oculto(), 1);
+    expect(linea).toContain('la orca desconocida');
+    expect(linea).not.toContain('Gistera');
+    expect(calibrationLineFor([oculto()], 1)).not.toContain('Gistera');
+  });
+
+  it('un NPC conocido sigue por su nombre y sin la nota de nombre oculto', () => {
+    const conocido = npcFixture();
+    expect(npcSceneBlockFor(conocido, 1)).toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+    expect(npcSceneBlockFor(conocido, 1)).not.toContain('NOMBRE OCULTO');
+    expect(nombreNarrado(conocido)).toBe('Orco enfurecido');
+    expect(nombreNarrado(oculto(), true)).toBe('La orca desconocida');
   });
 });

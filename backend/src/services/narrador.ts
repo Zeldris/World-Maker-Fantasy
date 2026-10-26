@@ -908,7 +908,8 @@ export function dropSuggestionsNamingStaleNpc<T extends { name: string }>(
 }
 
 export interface NpcReplyContext {
-  npc: { name: string; personality: string; bio: string; role: string };
+  /// `nombreVisible` (P327): Gorhorn aún no conoce su nombre — no se presenta ni se nombra a sí mismo.
+  npc: { name: string; personality: string; bio: string; role: string; nombreVisible?: string };
   characterName: string;
   action: string;
   sessionFacts: string[];
@@ -936,7 +937,7 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
 
   const prompt = `PERSONAJE QUE ERES: ${ctx.npc.name} — ${ctx.npc.role}.
 Personalidad: ${ctx.npc.personality}
-Trasfondo: ${ctx.npc.bio}
+Trasfondo: ${ctx.npc.bio}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${ctx.characterName} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
 
 HECHOS YA ESTABLECIDOS (no los contradigas ni reveles nada que no sepas todavía según tu propio trasfondo):
 ${factsBlock(ctx.sessionFacts)}

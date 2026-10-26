@@ -203,6 +203,36 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);
 
+  // P327 (2026-10-26): un enemigo con nombre propio que Gorhorn aún no conoce sale en los textos del combate
+  // por su raza («Orco desconocido»); en cuanto lo descubre, por su nombre.
+  it('un enemigo con nombre propio sin descubrir sale como «Orco desconocido» y, descubierto, por su nombre', async () => {
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
+    expect(enemigo.kind).toBe('PRINCIPAL');
+    const rondaCon = async () => {
+      const { encounterId } = await prisma.$transaction((tx) =>
+        iniciarCombatEncounter(tx, saveId, [
+          { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1, inteligencia: 10 },
+          { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-jugadora-g11', destreza: 1000, inteligencia: 6 },
+        ]),
+      );
+      const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+      await prisma.combatEncounter.delete({ where: { id: encounterId } });
+      await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
+      return ronda;
+    };
+
+    const oculto = await rondaCon();
+    expect(oculto.intercambiosContraJugadora[0].atacanteNombre).toBe('Orco desconocido');
+
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: enemigo.slug } });
+    try {
+      const conocido = await rondaCon();
+      expect(conocido.intercambiosContraJugadora[0].atacanteNombre).toBe(enemigo.name);
+    } finally {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId } });
+    }
+  }, 30_000);
+
   // P192 (QA-27, opción A de la usuaria): con un rival más rápido en su duelo, la jugadora sigue teniendo su
   // turno: ataca con su propio intercambio (antes, su acción caía en `avanzarSinAtacar` y no hacía nada).
   it('con un rival más rápido en su duelo, la jugadora tira su propio intercambio en su turno', async () => {

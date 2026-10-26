@@ -11,6 +11,7 @@ import { effectiveTemperamento } from './reputation.js';
 import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { npcVivoEnPartida } from './mundoPartida.js';
+import { nombreOcultoPorRaza, nombreEnFrase } from './dynamicMode.js';
 
 /// Detección determinista de "NPC en escena" (docs/mecanicas/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -81,6 +82,11 @@ export interface NpcInScene {
   id: string;
   slug: string;
   name: string;
+  /// P327: el nombre con que la jugadora VE a este NPC mientras Gorhorn no lo conozca («Orco
+  /// desconocido»; `DiscoveredEntity`, ver `nombreVisibleDeNpc`). Solo se rellena si está oculto: el
+  /// narrador, los textos del combate y de la caza lo usan en vez de `name`, que queda para emparejar
+  /// (alias, habilidades, fichas) y para el Libro de Sucesos. Ausente = se ve por su nombre.
+  nombreVisible?: string;
   /// "el"/"la" para reforzar el género correcto de nombres descriptivos en el contexto del
   /// Narrador (ver comentario completo en schema.prisma § Npc.articulo) — null para nombres
   /// propios que no lo necesitan.
@@ -634,9 +640,38 @@ export async function detectNpcsInScene(params: {
   });
   const stateByKey = new Map(states.map((s) => [`${s.npcId}|${s.scope}`, s]));
 
-  return matchedNpcs.map((npc) =>
-    buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`)),
+  return conNombreVisible(
+    prisma,
+    params.saveId,
+    matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P327: marca `nombreVisible` en los NPC con nombre propio que Gorhorn aún no conoce, para que ni la
+/// narración ni los textos deterministas del turno revelen su identidad («el orco desconocido»).
+/// Una sola consulta por escena; solo los `PRINCIPAL` pueden estar ocultos.
+export async function conNombreVisible(
+  db: Pick<typeof prisma, 'discoveredEntity'>,
+  saveId: string,
+  npcs: NpcInScene[],
+): Promise<NpcInScene[]> {
+  const principales = npcs.filter((n) => n.kind === 'PRINCIPAL');
+  if (principales.length === 0) return npcs;
+  const vistos = await db.discoveredEntity.findMany({
+    where: { saveId, entityType: 'npc', entitySlug: { in: principales.map((n) => n.slug) } },
+    select: { entitySlug: true },
+  });
+  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  return npcs.map((n) => {
+    if (n.kind !== 'PRINCIPAL' || conocidos.has(n.slug)) return n;
+    return { ...n, nombreVisible: nombreOcultoPorRaza(n.raza, n.genero) };
+  });
+}
+
+/// P327: cómo nombrar a un NPC en lo que se cuenta a la jugadora o al narrador: «el orco desconocido»
+/// si Gorhorn aún no lo conoce, su nombre si no. `alInicio` capitaliza para empezar frase.
+export function nombreNarrado(n: Pick<NpcInScene, 'name' | 'nombreVisible'>, alInicio = false): string {
+  return nombreEnFrase(n.nombreVisible ?? n.name, alInicio);
 }
 
 /// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25)
@@ -1033,7 +1068,15 @@ function npcYaResuelto(npc: NpcInScene): boolean {
 /// de texto a ciegas, que podría corromper una mención legítima en femenino de OTRO NPC real
 /// (Gistera Koh) presente en la misma escena.
 function displayName(npc: NpcInScene): string {
+  if (npc.nombreVisible) return nombreNarrado(npc);
   return npc.articulo ? `${npc.articulo} ${npc.name}` : npc.name;
+}
+
+/// P327: mientras Gorhorn no conoce a un NPC con nombre propio, la bio y la personalidad que se pasan
+/// al narrador pueden nombrarlo. Se le prohíbe usarlo: nunca «Gistera Koh» en lo que lee la jugadora.
+function nombreOcultoHintFor(npc: NpcInScene): string {
+  if (!npc.nombreVisible) return '';
+  return ` NOMBRE OCULTO: Gorhorn aún no sabe cómo se llama. Nárralo siempre como «${nombreNarrado(npc)}» y NUNCA escribas su nombre propio, aunque aparezca en la descripción de abajo; tampoco lo hagas hablar de sí mismo por su nombre.`;
 }
 
 /// Refuerzo explícito de género para NOMBRES PROPIOS (bug real jugando, 2026-07-30: Gistera Koh,
@@ -1046,7 +1089,7 @@ function displayName(npc: NpcInScene): string {
 function generoHintFor(npc: NpcInScene): string {
   if (!npc.genero) return '';
   const [propio, opuesto] = npc.genero === 'F' ? ['femenino ("ella"/"la")', 'masculino ("él"/"el")'] : ['masculino ("él"/"el")', 'femenino ("ella"/"la")'];
-  return ` GÉNERO DE ${npc.name.toUpperCase()}: ${propio} — si te refieres a ${npc.name} sin usar su nombre (p.ej. por su raza o rol), hazlo siempre en ${propio}, NUNCA en ${opuesto}, aunque su raza o rol suene distinto por defecto.`;
+  return ` GÉNERO DE ${nombreNarrado(npc).toUpperCase()}: ${propio} — si te refieres a ${nombreNarrado(npc)} sin usar su nombre (p.ej. por su raza o rol), hazlo siempre en ${propio}, NUNCA en ${opuesto}, aunque su raza o rol suene distinto por defecto.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 1: el narrador conocía el
@@ -1068,7 +1111,7 @@ function facRepHintFor(npc: NpcInScene, factionsStatus: Record<string, number>):
     AGRESIVO: 'con hostilidad evidente — el jugador ya ha dañado su relación con esta facción',
     ENEMIGO: 'con hostilidad abierta y desconfianza total — el jugador es visto como un enemigo declarado de esta facción',
   };
-  return ` RELACIÓN CON ${npc.faction.toUpperCase()}: el jugador trata a ${npc.name} ${desc[t]} — refleja este trato en el tono de la escena, no lo narres neutro por defecto.`;
+  return ` RELACIÓN CON ${npc.faction.toUpperCase()}: el jugador trata a ${nombreNarrado(npc)} ${desc[t]} — refleja este trato en el tono de la escena, no lo narres neutro por defecto.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 3: `clase`/`especializacion`
@@ -1078,7 +1121,7 @@ function facRepHintFor(npc: NpcInScene, factionsStatus: Record<string, number>):
 function claseHintFor(npc: NpcInScene): string {
   if (!npc.clase) return '';
   const especializacionTxt = npc.especializacion ? `, especializado en ${npc.especializacion}` : '';
-  return ` CLASE DE ${npc.name.toUpperCase()}: ${npc.clase}${especializacionTxt} — su forma de combatir/actuar debe encajar con esta identidad (estilo de arma, tácticas, actitud), no la narres genérica.`;
+  return ` CLASE DE ${nombreNarrado(npc).toUpperCase()}: ${npc.clase}${especializacionTxt} — su forma de combatir/actuar debe encajar con esta identidad (estilo de arma, tácticas, actitud), no la narres genérica.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 4: los 5 `*Pct` ya
@@ -1097,7 +1140,7 @@ function receptividadHintFor(npc: NpcInScene): string {
   if (npc.cortejablePct > 0 && npc.cortejablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('cortejarlo/a');
   if (npc.capturablePct > 0 && npc.capturablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('capturarlo/a');
   if (bajos.length === 0) return '';
-  return ` ${npc.name} es MUY POCO RECEPTIVO a intentar ${bajos.join('/')} — si la acción va en esa dirección, no narres el intento como si fuera a salir bien, deja la duda/dificultad real abierta hasta que la tirada lo decida.`;
+  return ` ${nombreNarrado(npc, true)} es MUY POCO RECEPTIVO a intentar ${bajos.join('/')} — si la acción va en esa dirección, no narres el intento como si fuera a salir bien, deja la duda/dificultad real abierta hasta que la tirada lo decida.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 6: `activeEffects`
@@ -1109,7 +1152,7 @@ function activeEffectsHintFor(npc: NpcInScene): string {
   const desc = npc.activeEffects
     .map((e) => `${e.magnitude > 0 ? '+' : ''}${e.magnitude} ${e.attribute} por "${e.sourceAbility}" (${e.turnsRemaining} turnos restantes)`)
     .join(', ');
-  return ` ESTADO ACTIVO DE ${npc.name.toUpperCase()}: ${desc} — refleja este estado en cómo actúa/se mueve este turno (más fuerte/débil de lo normal según corresponda), no lo narres como si estuviera en condición normal.`;
+  return ` ESTADO ACTIVO DE ${nombreNarrado(npc).toUpperCase()}: ${desc} — refleja este estado en cómo actúa/se mueve este turno (más fuerte/débil de lo normal según corresponda), no lo narres como si estuviera en condición normal.`;
 }
 
 export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsStatus: Record<string, number> = {}): string {
@@ -1124,7 +1167,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
     const loot = npc.saqueado
       ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)'
       : `, todavía sin registrar. Si esta acción es saquearlo/registrarlo, esto es TODO lo que lleva encima, no existe ningún otro objeto: ${itemsLine(npc.items)}`;
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${generoHintFor(npc)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${nombreOcultoHintFor(npc)}${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Zense Ceniza, fauna sin habla,
@@ -1136,7 +1179,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
   // `carcassCandidatesFor`, recolectar.ts) — instrucción explícita en vez de confiar en que el
   // modelo lo infiera solo de la bio/personalidad.
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR: nunca le pongas diálogo entre comillas ni palabras humanas — solo comportamiento animal (gruñidos, chillidos, gestos, movimientos).` : '';
-  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}${facRepHintFor(npc, factionsStatus)}${claseHintFor(npc)}${receptividadHintFor(npc)}${activeEffectsHintFor(npc)}
+  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${nombreOcultoHintFor(npc)}${generoHintFor(npc)}${faunaSinHablaHint}${facRepHintFor(npc, factionsStatus)}${claseHintFor(npc)}${receptividadHintFor(npc)}${activeEffectsHintFor(npc)}
 Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
 Personalidad: ${npc.personality}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;
@@ -1156,7 +1199,7 @@ export function npcSceneLineFor(npc: NpcInScene, playerLevel: number): string {
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR.` : '';
-  return `PERSONAJE EN ESCENA (de fondo): ${displayName(npc)} — ${npc.role}, nivel ${npc.level} (acciones directas tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}`;
+  return `PERSONAJE EN ESCENA (de fondo): ${displayName(npc)} — ${npc.role}, nivel ${npc.level} (acciones directas tienden a ${label}).${nombreOcultoHintFor(npc)}${generoHintFor(npc)}${faunaSinHablaHint}`;
 }
 
 /// Línea corta para el clasificador (§ 2.2) — solo la calibración de dificultad, sin equipo.

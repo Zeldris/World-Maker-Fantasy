@@ -19,6 +19,7 @@ import {
   type ObjetivoCandidato,
   type HabilidadParaIntercambio,
 } from './combateMultiple.js';
+import { nombreVisibleDeNpc } from './dynamicMode.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, type NpcCombatAbility, type NpcForCombatAbilities } from './npcCombatAbilities.js';
 import { narrarTurnoCombateMultiple } from './combateMultipleNarracion.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
@@ -417,12 +418,15 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
   if (participant.tipo === 'NPC' && participant.npcId) {
     const npc = await tx.npc.findUnique({ where: { id: participant.npcId } });
     if (!npc) return null;
+    // P327: mientras Gorhorn no conoce a un NPC con nombre propio, ni la narración ni los textos del
+    // combate lo nombran por su nombre: va por su raza («Orco desconocido»).
+    const { nombre: nombreVisible } = await nombreVisibleDeNpc(tx, saveId, npc);
     // Miembro de grupo (condicionFisicaGrupo no nulo) — su condición real vive en el propio
     // CombatParticipant, NUNCA en NpcState (esa fila la comparten todos los miembros del grupo).
     // Energía/usageCounts se quedan "frescos" cada encuentro, ver comentario de `esGrupo` arriba.
     if (participant.condicionFisicaGrupo !== null) {
       return {
-        nombre: npc.name,
+        nombre: nombreVisible,
         attributes: npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level, npc.clase as Clase | null),
         condicionFisica: participant.condicionFisicaGrupo,
         energia: 100,
@@ -434,7 +438,7 @@ async function datosVivosDe({ tx, worldId, saveId, participant, weaponNames }: D
     const state = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: participant.npcScope } } });
     const npcActiveEffects = parseActiveEffects(state?.activeEffects);
     return {
-      nombre: npc.name,
+      nombre: nombreVisible,
       // CR-13 13c: con la vejez de esta partida (`NpcState.vejez`).
       attributes: effectiveAttributesConDuracion(restarVejez(npcAttributesForLevel(npc.attributes as unknown as AttributeBlock, npc.level + (state?.nivelesGanados ?? 0), npc.clase as Clase | null), state?.vejez ?? 0), npcActiveEffects),
       condicionFisica: state?.condicionFisica ?? 'ILESO',

@@ -8682,7 +8682,9 @@ describe('Remate a un NPC ya CONVALECIENTE se narra explícitamente como golpe f
 
     const narrateCallArgs = narrateAction.mock.calls.at(-1)?.[0] as { worldFacts?: string[] };
     const hint = narrateCallArgs.worldFacts?.find((f) => f.includes('REMATE — YA RESUELTO'));
-    expect(hint).toContain('Orco enfurecido');
+    // P327: el orco aún no es conocido por Gorhorn, así que el hint lo nombra por su raza.
+    expect(hint).toContain('orco desconocido');
+    expect(hint).not.toContain('Orco enfurecido');
     expect(hint).toContain('golpe final');
     expect(hint).not.toContain('EFECTO DE HABILIDAD'); // no es el camino LETAL, es el gemelo nuevo
   }, 15_000);
@@ -9347,6 +9349,62 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
     const saveId = await partida('Gorhorn de prueba (P306 ataque)');
     const { combateIniciado } = await saludar(saveId, "Ataco al 'Orco enfurecido' con el hacha.");
     expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
+});
+
+// P327 (pruebas 0.3, decidido por la usuaria 2026-10-26): mientras Gorhorn no conoce a un NPC con nombre propio, ni
+// la narración ni los textos del combate lo nombran por su nombre: «el orco desconocido». El Libro de Sucesos puede
+// guardar el real.
+describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador', () => {
+  const saves: string[] = [];
+
+  async function partida(nombre: string, conocido: boolean): Promise<string> {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: nombre, characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    saves.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    await asegurarMundoDePartida(prisma, save.id);
+    await prisma.discoveredEntity.deleteMany({ where: { saveId: save.id, entityType: 'npc', entitySlug: 'orco-enfurecido-hondonada' } });
+    if (conocido) await prisma.discoveredEntity.create({ data: { saveId: save.id, entityType: 'npc', entitySlug: 'orco-enfurecido-hondonada' } });
+    return save.id;
+  }
+
+  afterAll(async () => {
+    for (const id of saves) await prisma.save.delete({ where: { id } });
+  });
+
+  async function atacar(saveId: string): Promise<string> {
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockClear();
+    const action = "Ataco al 'Orco enfurecido' con el hacha.";
+    const app = await buildApp();
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
+    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    await app.close();
+    return JSON.stringify(narrateAction.mock.calls.at(-1)?.[0] ?? {});
+  }
+
+  it('sin descubrir, el contexto del narrador lo llama «el orco desconocido», con la nota de nombre oculto', async () => {
+    const saveId = await partida('Gorhorn de prueba (P327 oculto)', false);
+    const ctx = await atacar(saveId);
+    expect(ctx).toContain('PERSONAJE EN ESCENA: el orco desconocido');
+    expect(ctx).toContain('NOMBRE OCULTO');
+    expect(ctx).not.toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+  }, 30_000);
+
+  it('ya descubierto, el contexto sigue con su nombre y sin la nota', async () => {
+    const saveId = await partida('Gorhorn de prueba (P327 conocido)', true);
+    const ctx = await atacar(saveId);
+    expect(ctx).toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+    expect(ctx).not.toContain('NOMBRE OCULTO');
   }, 30_000);
 });
 
