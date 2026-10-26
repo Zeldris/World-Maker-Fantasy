@@ -52,7 +52,7 @@ export const loreChunks: LoreChunkInput[] = [
   {
     type: 'CULTURA',
     title: 'El Estallido y el nacimiento de los Orcos',
-    text: 'Las razas "diseñadas" (primero Kelife, Goirntes, Kalisar, Jusaly e Ilvenar; ya avanzada la era, Nabieus y Faerus) nacieron del trabajo deliberado de todas las Semillas. Cuando Tarkor regresó transformado, su magia salvaje se derramó sin control sobre Helek Sirik — de esa erupción nacieron los Orcos y otras razas y criaturas salvajes, que se multiplican con una facilidad que ninguna Semilla fiel había previsto.',
+    text: 'Las razas "diseñadas" (primero Kelife, Goirntes, Kalisar, Jusaly e Ilvenar; ya avanzada la era, Nabieus y Faerus) nacieron del trabajo deliberado de todas las Semillas. Cuando Tarkor regresó transformado, su magia salvaje se derramó sin control sobre Helek Sirik y se asentó mil años en Berig: de ella nacieron los Orcos y otras razas y criaturas salvajes, que se multiplican con una facilidad que ninguna Semilla fiel había previsto.',
     tags: ['orcos', 'magia-salvaje', 'estallido'],
     sourceDoc: 'genesis.md',
   },

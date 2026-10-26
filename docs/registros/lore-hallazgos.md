@@ -774,7 +774,12 @@ temporal del test. Leves:
   obsidiana, sin decir quién lo levantó.
 - Cómo se descubren (decidido con la usuaria, siguiendo a X4): siete, saber común; tres, por lugar. El Pacto del
   Umbral va a El Refugio sin Nombre porque el canon lo sella «en el borde noreste del Margen», no en Jeyselt.
-- Choques del canon vistos, sin arreglar: `genesis.md:202` hace nacer a los orcos «de esa erupción» y la cronología
-  los pone mil años después (el texto sigue la cronología); la Senda lleva «hielo sílice» en `cronologia.md:32` y
-  «cuchillos» en `clanes-orcos.md:305`; el Pacto del Umbral y la Tolda de Kegi siguen marcados «no implementado en el
-  código» en el canon, aunque la enciclopedia ya los cuenta.
+- Choques del canon vistos y arreglados el mismo día con el sí de la usuaria («arregla los hallazgos»):
+  - `genesis.md` hacía nacer a los orcos «de esa erupción», «en mitad de una erupción». Ahora nacen de la magia
+    salvaje tras mil años asentándose en Berig, como en la cronología, y en una tierra que esa magia dejó a su medida
+    (`cronologia.md`, los mil años salvajes). El trozo RAG «El Estallido y el nacimiento de los Orcos» de
+    `loreChunks.ts`, igual; `actualizar-mundo.sh` en verde.
+  - La Senda llevaba «hielo sílice» en `cronologia.md` y «cuchillos» en `clanes-orcos.md`. Las dos dicen ahora
+    «hielo sílice y cuchillos Helsig», como el trozo RAG de Ciénaga Troncal.
+  - El Pacto del Umbral (`cronologia.md`, `razas.md`) y la Tolda de Kegi (`cronologia.md`, `clanes-orcos.md`) ya no
+    dicen «no implementado en el código»: dicen en qué entrada de la historia los cuenta el juego.
