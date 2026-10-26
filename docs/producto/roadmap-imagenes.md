@@ -76,6 +76,10 @@ desde el panel vive en tablas que siembran.
   validar la noche con la primera imagen nocturna.
 - **IMG-18 · Bocetos SVG de forma** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-18--bocetos-svg-de-forma-revisados-por-la-usuaria-p--s)):
   depredador y herbívoro con `rsvg-convert`, campo `boceto` en la ficha; sí/no de la usuaria. Fase 0. **S**
+  🚧 2026-10-26: `bocetos/depredador.svg` y `herbivoro.svg` (vuelta 1 de 2: óxido y patas de carnívoro; cielo azul,
+  patas de ave y cuernos-hoja), `bocetos/rasterizar.sh` (1280, 1024x384 y 640; los PNG no se versionan), campo
+  `boceto` en aullador y cuernahoja, `test_bocetos.py`; `rsvg-convert` corre dentro de `host.sh` (2.62.3). **Falta:**
+  el sí de la usuaria a las rejillas (`generated/banco/r14-bocetos/`).
 - **IMG-19 · Tanda de borradores** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-19--tanda-de-borradores-método-bocetos-planos-y-armonización-p--m)):
   640x256 a 8 pasos; valida el borrador, la fuerza del boceto y la armonización del montaje (`-i` frente a `-r`).
   Depende de `IMG-16`…`IMG-18`. **M**

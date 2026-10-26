@@ -323,7 +323,7 @@ y, si fallan, vuelven a la usuaria.
 8. **Decisión 4:** las copias de `montar.sh` son la misma silueta escalada y oscurecida: pueden leerse como pegadas;
    se mitiga con volteo y escala por copia en `19c` y, si no basta, la manada por edición. `planos.sh` tal cual está
    hace la fase 2 casi a ruido total (sin `strength_as_noise_level`): se corrige antes de usarlo.
-9. **`rsvg-convert` dentro de `host.sh`** (sandbox Flatpak) no se ha comprobado; se hace en `IMG-18`.
+9. ~~**`rsvg-convert` dentro de `host.sh`**~~ ✅ 2026-10-26: corre (2.62.3), comprobado en `IMG-18`.
 10. **Memoria:** FLUX.3 ha corrido con 4,7-6 GB libres de mínimo; sumar el codificador Q8 o `-r` puede tirarlo. Por eso
     la regla de memoria va antes de cada generación y las vías con `-r` se prueban primero en borrador.
 11. **Tiempos `[E]`:** todos los costes de este plan son estimaciones sobre los 180 s/paso de r10-r12; la tabla de

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="512" viewBox="0 0 1280 512">
+<!-- Cuernahoja (IMG-18): esbelto y alto, cuello largo y fino casi vertical, cabeza pequena, cuernos-hoja verdes
+     laterales, patas de ave (muslo corto, tarso larguisimo, corvejon hacia atras, pie de tres dedos). Escena de dia. -->
+<defs><linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb8d8"/><stop offset="1" stop-color="#d8c8a8"/></linearGradient></defs>
+<rect width="1280" height="512" fill="url(#cielo)"/>
+<rect y="400" width="1280" height="112" fill="#8e3d24"/>
+<ellipse cx="700" cy="478" rx="230" ry="14" fill="#4a1d12" opacity=".55"/>
+<!-- patas lejanas (mas claras, algo mas cortas) -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M672 296 L664 336 L690 384 L676 466" stroke="#c9a878" stroke-width="9"/>
+<path d="M836 294 L826 334 L852 382 L838 466" stroke="#c9a878" stroke-width="9"/>
+<path d="M676 466 L650 474 M676 466 L678 478 M676 466 L702 474 M838 466 L812 474 M838 466 L840 478 M838 466 L864 474" stroke="#c9a878" stroke-width="6"/>
+</g>
+<g transform="translate(0 -40)">
+<!-- cuerpo esbelto, lomo a ~57 % de la altura -->
+<path d="M560 318 C570 282 690 272 800 284 C862 294 880 330 856 358 C800 382 640 380 586 366 C552 352 548 334 560 318Z" fill="#9a4a2a"/>
+<path d="M596 360 C680 376 780 374 850 350 C800 388 650 388 596 360Z" fill="#d8b890"/>
+<path d="M856 300 C892 298 924 318 934 350 C900 336 878 338 858 340Z" fill="#7a3a1c"/>
+<!-- muslos cortos de plumaje -->
+<path d="M590 322 C572 340 580 372 604 376 C626 372 632 340 622 320Z M752 316 C734 336 742 370 766 374 C788 370 794 338 784 316Z" fill="#8a4222"/>
+</g>
+<!-- patas cercanas de ave: tarso larguisimo y fino, corvejon hacia atras, tres dedos con garra -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M606 330 L598 342 L630 388 L614 470" stroke="#d8c09a" stroke-width="11"/>
+<path d="M768 328 L760 340 L792 386 L776 470" stroke="#d8c09a" stroke-width="11"/>
+<path d="M614 470 L582 480 M614 470 L616 484 M614 470 L646 480 M776 470 L744 480 M776 470 L778 484 M776 470 L808 480" stroke="#d8c09a" stroke-width="8"/>
+<path d="M582 480 L574 483 M616 484 L616 491 M646 480 L654 483 M744 480 L736 483 M778 484 L778 491 M808 480 L816 483" stroke="#2d241a" stroke-width="5"/>
+</g>
+<!-- cuello largo y fino, casi vertical -->
+<path d="M588 284 C578 230 566 165 552 100 L572 98 C586 165 604 225 622 268Z" fill="#a85c36"/>
+<path d="M560 104 L572 102 C588 165 604 215 614 255 C590 215 570 165 560 104Z" fill="#d8b890"/>
+<!-- cabeza pequena a tres cuartos, hocico a la izquierda -->
+<path d="M470 92 C480 72 520 64 552 72 C566 80 560 100 548 104 C520 110 490 108 474 100Z" fill="#b66a40"/>
+<path d="M470 90 C464 96 466 102 474 100 L486 92Z" fill="#d8b890"/>
+<ellipse cx="508" cy="82" rx="7" ry="5" fill="#2d241a"/>
+<ellipse cx="474" cy="94" rx="5" ry="4" fill="#2d241a"/>
+<!-- cuernos-hoja: dos laminas verdes grandes hacia los lados -->
+<path d="M520 70 C450 28 340 18 240 54 C340 86 450 90 530 78Z" fill="#3f8a3a"/>
+<path d="M256 55 C340 52 440 62 524 72" stroke="#2a6226" stroke-width="3" fill="none"/>
+<path d="M552 68 C640 20 770 12 860 44 C770 82 640 86 562 78Z" fill="#3f8a3a"/>
+<path d="M846 45 C760 46 650 56 556 72" stroke="#2a6226" stroke-width="3" fill="none"/>
+</svg>
