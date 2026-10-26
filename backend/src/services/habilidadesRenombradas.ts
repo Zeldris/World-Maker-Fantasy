@@ -2,7 +2,16 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 
 /// P100 (QA-27): habilidades renombradas en el catálogo (nombre viejo → nuevo). Las partidas las
 /// identifican por nombre, así que todo lo que compara nombres pasa por aquí.
-export const HABILIDADES_RENOMBRADAS: Readonly<Record<string, string>> = { 'Analisis Salvaje': 'Análisis Salvaje', 'Plumaje ferreo': 'Plumaje férreo' };
+export const HABILIDADES_RENOMBRADAS: Readonly<Record<string, string>> = {
+  'Analisis Salvaje': 'Análisis Salvaje',
+  'Plumaje ferreo': 'Plumaje férreo',
+  // QA-256: habilidades de fauna con tildes, sin inglés o con un nombre que case (la Corretolvas no vuela).
+  'Posicion defensiva': 'Posición defensiva',
+  'Filos centella': 'Filos Centella',
+  'Embestida Volatil': 'Embestida Volátil',
+  'Vuelo en Bandada': 'Fuga en Bandada',
+  'Brasa Berserker': 'Brasa Rabiosa',
+};
 
 /// QA-243: renombres que dependen de la clase — habilidades que se repetían entre clases (o dentro de
 /// la misma: el Asesino Selecto tenía dos «Golpe Certero»). Cada entrada vale para su clase y, si la

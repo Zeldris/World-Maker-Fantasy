@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CAMPOS_CON_NOMBRE_DE_HABILIDAD, HABILIDADES_RENOMBRADAS_POR_CLASE, nombreActualDeHabilidad } from './habilidadesRenombradas.js';
+import { CAMPOS_CON_NOMBRE_DE_HABILIDAD, HABILIDADES_RENOMBRADAS, HABILIDADES_RENOMBRADAS_POR_CLASE, nombreActualDeHabilidad } from './habilidadesRenombradas.js';
 import { allClassAbilityUnlocks } from './classAbilities.js';
 
 const ESQUEMA = readFileSync(join(import.meta.dirname, '../../prisma/schema.prisma'), 'utf8').split('\n');
@@ -43,6 +43,14 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(nombreActualDeHabilidad('Golpe Certero', selecto, deLaRama.description)).toBe('Golpe a la Marca');
     expect(nombreActualDeHabilidad('Golpe Certero', selecto, 'Un golpe reactivo, soltado en el instante exacto en que el rival baja la guardia.')).toBe('Golpe Oportuno');
     expect(nombreActualDeHabilidad('Golpe Certero', selecto)).toBe('Golpe Oportuno');
+  });
+
+  it('QA-256: cada renombre global deja el nombre nuevo en el catálogo y ninguna habilidad con el viejo', () => {
+    const fuentes = ['../scripts/worldCatalog.ts', './sexDimorphism.ts', './classAbilities.ts'].map((f) => readFileSync(join(import.meta.dirname, f), 'utf8')).join('\n');
+    for (const [viejo, nuevo] of Object.entries(HABILIDADES_RENOMBRADAS)) {
+      expect(fuentes, nuevo).toContain(`name: '${nuevo}'`);
+      expect(fuentes, viejo).not.toContain(`name: '${viejo}'`);
+    }
   });
 
   it('QA-243: ningún nombre de habilidad de clase se repite y cada nombre nuevo existe en el catálogo', () => {

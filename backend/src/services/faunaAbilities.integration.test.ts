@@ -49,9 +49,9 @@ describe('sistema de categorías de raza de fauna: integración real contra Post
     expect(abilities.some((a) => a.name === 'Flanqueo instintivo')).toBe(true);
     expect(abilities.some((a) => a.name === 'Presión de caza')).toBe(true);
     // Ninguna de las 3 específicas propias del Aullador Rojo (todas nivel 4+, worldCatalog.ts):
-    // Posicion defensiva (4), Filos centella (12), Instinto Solitario (20).
-    expect(abilities.some((a) => a.name === 'Posicion defensiva')).toBe(false);
-    expect(abilities.some((a) => a.name === 'Filos centella')).toBe(false);
+    // Posición defensiva (4), Filos Centella (12), Instinto Solitario (20).
+    expect(abilities.some((a) => a.name === 'Posición defensiva')).toBe(false);
+    expect(abilities.some((a) => a.name === 'Filos Centella')).toBe(false);
     expect(abilities.some((a) => a.name === 'Instinto Solitario')).toBe(false);
     // Ninguna de categoría de nivel superior (8/16/24/32).
     expect(abilities.some((a) => a.name === 'Aturdir por el flanco')).toBe(false);
@@ -68,8 +68,8 @@ describe('sistema de categorías de raza de fauna: integración real contra Post
     expect(abilities.some((a) => a.name === 'Aullido de acoso')).toBe(false); // nivel 24, todavía no
 
     // Las 3 específicas propias, todas desbloqueadas a nivel 20.
-    const posicionDefensiva = abilities.find((a) => a.name === 'Posicion defensiva');
-    const filosCentella = abilities.find((a) => a.name === 'Filos centella');
+    const posicionDefensiva = abilities.find((a) => a.name === 'Posición defensiva');
+    const filosCentella = abilities.find((a) => a.name === 'Filos Centella');
     const instintoSolitario = abilities.find((a) => a.name === 'Instinto Solitario');
     expect(posicionDefensiva).toBeDefined();
     expect(filosCentella).toBeDefined();
