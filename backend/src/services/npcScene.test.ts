@@ -1180,6 +1180,11 @@ describe('sinNombreReal (revisión P327)', () => {
   });
   it('sin nombre oculto, o dentro de otra palabra, no toca nada', () => {
     expect(sinNombreReal('Ugrak Tuerto guarda el paso.', { name: 'Ugrak Tuerto' })).toBe('Ugrak Tuerto guarda el paso.');
-    expect(sinNombreReal('Los Ugrak Tuertos del norte.', oculto)).toBe('Los Ugrak Tuertos del norte.');
+    expect(sinNombreReal('Los Ugrakos Tuertos del norte.', oculto)).toBe('Los Ugrakos Tuertos del norte.');
+  });
+  it('fase 1: también cambia el nombre de pila, pero no una palabra del visible ni un artículo', () => {
+    expect(sinNombreReal('Ugrak guarda el paso. Todos temen a Ugrak.', oculto)).toBe('El orco desconocido guarda el paso. Todos temen a el orco desconocido.');
+    expect(sinNombreReal('Orco enfurecido ruge. Otro Orco pasa.', { name: 'Orco enfurecido', nombreVisible: 'Orco desconocido' })).toBe('El orco desconocido ruge. Otro Orco pasa.');
+    expect(sinNombreReal('La Sastre cose. La casa calla.', { name: 'La Sastre', nombreVisible: 'Orca desconocida' })).toBe('La orca desconocida cose. La casa calla.');
   });
 });

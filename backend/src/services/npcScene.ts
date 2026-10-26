@@ -675,11 +675,19 @@ export function nombreNarrado(n: Pick<NpcInScene, 'name' | 'nombreVisible'>, alI
 }
 
 /// Revisión P327 (2026-10-26): la bio y la personalidad de un NPC con nombre oculto pueden traer su nombre propio;
-/// antes de mandarlas al modelo, el nombre completo se cambia por el visible («el orco desconocido»).
+/// antes de mandarlas al modelo, el nombre completo se cambia por el visible («el orco desconocido»). Fase 1 hacia
+/// main: también el de pila («Ugrak» de «Ugrak Tuerto»), salvo que sea una palabra del visible («Orco» de «Orco
+/// enfurecido») o un artículo o tratamiento.
+const NO_SON_NOMBRE_DE_PILA = new Set(['el', 'la', 'los', 'las', 'don', 'doña']);
 export function sinNombreReal(texto: string, n: Pick<NpcInScene, 'name' | 'nombreVisible'>): string {
-  if (!n.nombreVisible || !n.name.trim()) return texto;
-  const escapado = n.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return texto.replace(new RegExp(`(?<![\\p{L}])${escapado}(?![\\p{L}])`, 'gu'), (_m, offset: number) =>
+  const nombre = n.name.trim();
+  if (!n.nombreVisible || !nombre) return texto;
+  const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const formas = [nombre];
+  const [pila, ...resto] = nombre.split(/\s+/);
+  const delVisible = new Set(n.nombreVisible.toLowerCase().split(/\s+/));
+  if (resto.length > 0 && pila && pila.length >= 3 && /^\p{Lu}/u.test(pila) && !delVisible.has(pila.toLowerCase()) && !NO_SON_NOMBRE_DE_PILA.has(pila.toLowerCase())) formas.push(pila);
+  return texto.replace(new RegExp(`(?<![\\p{L}])(?:${formas.map(escapar).join('|')})(?![\\p{L}])`, 'gu'), (_m, offset: number) =>
     nombreNarrado(n, /(^|[.!?¡¿])\s*$/.test(texto.slice(0, offset))),
   );
 }

@@ -55,9 +55,10 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
   })).filter((g) => g.companeros.length > 0);
   // Destinos: lugares que conoces con fauna a la vista y camino desde el Reino. P313: un punto agotado
   // se queda (con `cantidad` 0) para que la lista diga «sin presas por ahora»; vuelve a tener con el tiempo.
+  // Uno retirado (`activo` false con presas, p. ej. por el Cronista) no cuenta: ni se lista ni se lanza.
   const visitados = await tx.locationVisit.findMany({ where: { saveId }, select: { locationId: true } });
   const enlaces = await enlacesDelMundo(tx, save.worldId);
-  const puntos = await tx.zonePoint.findMany({ where: { saveId, tipo: 'FAUNA', locationId: { in: visitados.map((v) => v.locationId) } }, select: { locationId: true, targetSlug: true, cantidad: true } });
+  const puntos = await tx.zonePoint.findMany({ where: { saveId, tipo: 'FAUNA', locationId: { in: visitados.map((v) => v.locationId) }, OR: [{ activo: true }, { cantidad: 0 }] }, select: { locationId: true, targetSlug: true, cantidad: true } });
   const fauna = await tx.npc.findMany({ where: { worldId: save.worldId, saveId: null, slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } }, select: { slug: true, name: true, capturablePct: true } });
   const lugares = await tx.location.findMany({ where: { id: { in: [...new Set(puntos.map((p) => p.locationId))] } }, select: { id: true, name: true, region: true }, orderBy: { name: 'asc' } });
   const destinos = lugares

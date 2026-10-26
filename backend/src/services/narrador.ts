@@ -935,7 +935,8 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
   const system =
     'Interpretas a UN SOLO personaje dentro de una escena de rol de mesa. Tu única tarea es escribir su respuesta HABLADA, en primera persona, a lo que el jugador le acaba de decir o preguntar — nunca la narración de la escena, ni acotaciones de gesto, ni el nombre del personaje delante. Responde solo con su réplica entre comillas, 1-2 frases, nada más.';
 
-  const prompt = `PERSONAJE QUE ERES: ${ctx.npc.name} — ${ctx.npc.role}.
+  // Fase 1 hacia main (P327): con el nombre oculto, el modelo no ve el real (no puede decir lo que no sabe).
+  const prompt = `PERSONAJE QUE ERES: ${ctx.npc.nombreVisible ?? ctx.npc.name} — ${ctx.npc.role}.
 Personalidad: ${sinNombreReal(ctx.npc.personality, ctx.npc)}
 Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${ctx.characterName} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
 
