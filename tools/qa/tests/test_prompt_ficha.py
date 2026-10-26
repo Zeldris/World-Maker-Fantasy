@@ -247,6 +247,204 @@ class Longitud(unittest.TestCase):
         self.assertEqual(r['palabras'], len(r['prompt'].split()))
 
 
+def mundo_foto(maximo=500):
+    """MUNDO con el perfil `fotorreal` (sin preámbulo; B7 y B8 de mentira) y su tope y sus recortables por perfil."""
+    m = copy.deepcopy(MUNDO)
+    m['estilos']['fotorreal'] = {'palabra': 'photographic', 'base': 'Style: matte painting. Mood: epic.',
+                                 'porTipo': {'fauna': {'acabado': 'Shot on a 35mm lens. The image is completely textless.'}}}
+    m['encuadres']['fotorreal'] = 'ENC-FOTO.'
+    m['longitud'] = {'min': 1, 'max': 320, 'fotorreal': {'max': maximo}, 'recortables': {'fotorreal': ['B3b']}}
+    return m
+
+
+FICHA_FOTO = {
+    'tipo': 'fauna', 'slug': 'bicho', 'nombre': 'Bichoraro', 'region': 'R', 'momento': 'dia',
+    'prompt': {'sujeto': 'SUJETO.', 'proporcion': 'PROPORCION.', 'ancla': 'the head of a red fox on the torso of a weasel',
+               'cuerpo': 'CUERPO.', 'rasgos': ['RASGOS.'], 'rasgosSecundarios': 'SECUNDARIOS.',
+               'pose': 'POSE with its weight on one leg.', 'manada': 'MANADA of six.', 'entorno': 'ENTORNO.', 'luz': 'The low sun rims the fur.'},
+}
+
+
+def foto(prompt=None, mundo=None, **kw):
+    f = copy.deepcopy(FICHA_FOTO)
+    f['prompt'].update(prompt or {})
+    return pf.construir(f, mundo or mundo_foto(), 'fotorreal', **kw)
+
+
+class Fotorreal(unittest.TestCase):
+    """IMG-16 (plan-fotorreal.md, decisión 1): perfil `fotorreal`, sin preámbulo, con su orden, su tope y sus avisos."""
+
+    def test_orden_de_bloques_y_sin_preambulo(self):
+        p = foto()['prompt']
+        orden = ['ENC-FOTO.', 'SUJETO.', 'PROPORCION.', 'RASGOS.', 'SECUNDARIOS.', 'Its silhouette recalls the head of a red fox',
+                 'CUERPO.', 'POSE with', 'MANADA of six.', 'ENTORNO.', 'The low sun rims', 'Style: matte painting. Mood: epic.',
+                 'Shot on a 35mm lens.']
+        pos = [p.index(t) for t in orden]
+        self.assertEqual(pos, sorted(pos))
+        self.assertTrue(p.startswith('ENC-FOTO.'))
+        self.assertTrue(p.endswith('The image is completely textless.'))
+        self.assertNotIn('PREAMBULO', p)
+
+    def test_los_campos_nuevos_son_opcionales_y_no_dejan_huecos(self):
+        f = copy.deepcopy(FICHA_FOTO)
+        for k in ('proporcion', 'rasgosSecundarios', 'manada', 'ancla'):
+            del f['prompt'][k]
+        p = pf.construir(f, mundo_foto(), 'fotorreal')['prompt']
+        self.assertNotIn('  ', p)
+        self.assertNotIn('silhouette', p)
+        self.assertNotIn('PROPORCION', p)
+
+    def test_texto_fijo_de_mundo_json_no_pasa_de_60_palabras(self):
+        for tipo in ('fauna', 'flora', 'location', 'npc'):
+            with self.subTest(tipo=tipo):
+                fijo = _REAL['encuadres']['fotorreal'] + ' ' + pf._estilo(_REAL, 'fotorreal', tipo)
+                self.assertLessEqual(len(fijo.split()), 60)
+                self.assertTrue(fijo.endswith('The image is completely textless.'))
+        self.assertNotIn('B9', pf.ORDEN_FOTORREAL)
+
+    def test_tope_y_recortables_por_perfil_en_mundo_json(self):
+        self.assertEqual(_REAL['longitud']['fotorreal']['max'], 520)
+        self.assertEqual(_REAL['longitud']['max'], 320)  # el resto de perfiles sigue en 320
+        self.assertEqual(_REAL['longitud']['recortables'], {'fotorreal': ['B3b']})
+
+    def test_lo_unico_que_se_recorta_es_b3b_y_solo_si_pasa_del_tope(self):
+        entero = foto()
+        self.assertEqual(entero['recortados'], [])
+        self.assertIn('SECUNDARIOS.', entero['prompt'])
+        r = foto(mundo=mundo_foto(entero['palabras'] - 1))
+        self.assertEqual(r['recortados'], ['B3b'])
+        self.assertNotIn('SECUNDARIOS.', r['prompt'])
+        self.assertLessEqual(r['palabras'], entero['palabras'] - 1)
+
+    def test_b5_y_b6_nunca_se_recortan_aunque_pase_del_tope(self):
+        r = foto(mundo=mundo_foto(1))
+        self.assertEqual(r['recortados'], ['B3b'])
+        for t in ('ENTORNO.', 'The low sun rims', 'POSE with', 'MANADA of six.'):
+            self.assertIn(t, r['prompt'])
+        self.assertTrue(any('regla 7' in a and 'aun sin B3b' in a for a in r['avisos']))
+
+    def test_el_tope_del_perfil_manda_sobre_el_general(self):
+        m = mundo_foto(520)
+        m['longitud']['max'] = 5
+        self.assertEqual(foto(mundo=m)['recortados'], [])
+        m['longitud']['fotorreal'] = 'no es un dict'  # sin tope propio vale el general
+        self.assertEqual(foto(mundo=m)['recortados'], ['B3b'])
+
+    def test_recortables_por_perfil_se_leen_de_mundo(self):
+        m = copy.deepcopy(MUNDO)
+        m['longitud'] = {'min': 1, 'max': 1, 'recortables': {'banner': ['B5']}}
+        r = montar(mundo=m)
+        self.assertEqual(r['recortados'], ['B5'])
+        self.assertIn('Soft morning light.', r['prompt'])
+        self.assertTrue(any('aun sin B5' in a for a in r['avisos']))
+
+    def test_avisos_vacios_en_la_ficha_correcta(self):
+        self.assertEqual(foto()['avisos'], [])
+
+    def test_aviso_ancla_repetida_mas_de_dos_veces(self):
+        self.assertEqual(foto({'cuerpo': 'A fox head.'})['avisos'], [])  # fox: el ancla y una vez más, dos en total
+        a = foto({'cuerpo': 'A fox head, a fox tail and a fox paw.'})['avisos']
+        self.assertTrue(any('P2' in x and '«fox»' in x for x in a), a)
+        self.assertFalse(any('«head»' in x for x in a))  # una parte del cuerpo no es el animal
+
+    def test_animales_del_ancla(self):
+        self.assertEqual(pf._animales_ancla('a red fox stretched to the length of a weasel'), ['fox', 'weasel'])
+        self.assertEqual(pf._animales_ancla('the small head of a deer on the upright neck of a giraffe'), ['deer', 'giraffe'])
+        self.assertEqual(pf._animales_ancla(None), [])
+
+    def test_aviso_pose_sin_asimetria(self):
+        a = foto({'pose': 'It stands in profile.'})['avisos']
+        self.assertTrue(any('P4' in x for x in a), a)
+        for ok in ('Its head is turned.', 'One leg lifted.', 'Weight on one leg.', 'In three-quarter view.', 'Caught mid-stride.'):
+            with self.subTest(ok):
+                self.assertEqual(foto({'pose': ok})['avisos'], [])
+
+    def test_aviso_de_pose_solo_en_fauna(self):
+        f = copy.deepcopy(FICHA_FOTO)
+        f.update(tipo='flora')
+        f['prompt']['pose'] = 'Several plants stand on a slope.'
+        self.assertEqual(pf.construir(f, mundo_foto(), 'fotorreal')['avisos'], [])
+
+    def test_aviso_manada_por_anafora(self):
+        for frase in ('more of the same follow', 'the rest of the pack follows', 'six others follow'):
+            with self.subTest(frase):
+                self.assertTrue(any('P3' in x for x in foto({'manada': frase})['avisos']))
+
+    def test_aviso_mas_de_una_fuente_de_luz(self):
+        a = foto({'luz': 'The low sun rims the fur and a campfire glows on the ground.'})['avisos']
+        self.assertTrue(any('P5' in x for x in a), a)
+        self.assertEqual(foto({'luz': 'The sun is low and its sunlight rims the fur.'})['avisos'], [])  # una sola fuente
+
+    def test_los_avisos_no_rompen_el_prompt(self):
+        r = foto({'pose': 'It stands.', 'manada': 'more of the same', 'luz': 'The sun and a torch.'})
+        self.assertEqual(len([a for a in r['avisos'] if a.startswith('P')]), 3)
+        self.assertIn('ENTORNO.', r['prompt'])
+
+    def test_cli_json_lleva_recortados_y_avisos_y_acepta_perfil_con_nombre(self):
+        d = carpeta()
+        ficha, mundo = os.path.join(d, 'f.json'), os.path.join(d, 'm.json')
+        escribir(ficha, json.dumps({**FICHA_FOTO, 'prompt': {**FICHA_FOTO['prompt'], 'pose': 'It stands.'}}))
+        escribir(mundo, json.dumps(mundo_foto(1)))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = pf.main([ficha, '--perfil', 'fotorreal', '--json', '--mundo', mundo])
+        self.assertEqual(code, 0)
+        j = json.loads(out.getvalue())
+        self.assertEqual(j['recortados'], ['B3b'])
+        self.assertTrue(any('P4' in a for a in j['avisos']))
+        self.assertTrue(any('regla 7' in a for a in j['avisos']))
+
+    def test_banner_no_cambia_ignora_los_campos_nuevos_y_no_avisa(self):
+        base = montar(mundo=mundo_foto())
+        f = copy.deepcopy(FICHA)
+        f['prompt'].update(proporcion='PROPORCION.', manada='MANADA.', rasgosSecundarios='SECUNDARIOS.',
+                           pose='It stands.', cuerpo='A maned wolf, a maned wolf, a maned wolf.')
+        otra = copy.deepcopy(FICHA)
+        otra['prompt'].update(pose='It stands.', cuerpo='A maned wolf, a maned wolf, a maned wolf.')
+        r = montar(f, mundo_foto())
+        self.assertEqual(r['prompt'], montar(otra, mundo_foto())['prompt'])
+        self.assertEqual(r['avisos'], [])
+        self.assertTrue(r['prompt'].endswith('PREAMBULO-DIA.'))
+        self.assertTrue(r['prompt'].startswith('A lean beast.'))
+        self.assertEqual(base['recortados'], [])
+
+    def test_campos_nuevos_validos_en_variantes_y_condiciones(self):
+        f = copy.deepcopy(FICHA_FOTO)
+        f['variantes'] = {'macho': {'manada+': 'MAS MANADA.', 'proporcion': 'OTRA PROPORCION.'}}
+        p = pf.construir(f, mundo_foto(), 'fotorreal', variante='macho')['prompt']
+        self.assertIn('OTRA PROPORCION.', p)
+
+
+class FotorrealDatosReales(unittest.TestCase):
+    """Aceptación de IMG-16: las cuatro fichas piloto, en `fotorreal` con mundo.json real."""
+    casos = [('fauna/aullador-rojo', 'macho'), ('fauna/aullador-rojo', 'hembra'), ('fauna/cuernahoja', 'macho'),
+             ('flora/cardo-brujula', None), ('location/pastos-de-la-deriva', None)]
+
+    def test_sin_recortes_ni_avisos_y_entre_260_y_400_palabras(self):
+        for ruta, variante in self.casos:
+            with self.subTest(ruta=ruta, variante=variante):
+                r = pf.construir(DatosReales.ficha(ruta), _REAL, 'fotorreal', variante=variante)
+                self.assertEqual((r['recortados'], r['avisos']), ([], []))
+                self.assertTrue(260 <= r['palabras'] <= 400, r['palabras'])
+                self.assertTrue(r['prompt'].endswith('The image is completely textless.'))
+                self.assertFalse(re.search(_REAL['negaciones'], r['prompt'], re.I))
+
+    def test_de_dia_y_al_atardecer_en_las_cuatro_estaciones(self):
+        # la noche no: las fichas de fauna aún no tienen condición `momento:noche` y su luz nombra el sol
+        for ruta, variante in self.casos:
+            for mom in ('dia', 'atardecer'):
+                for est in pf.ESTACIONES:
+                    with self.subTest(ruta=ruta, momento=mom, estacion=est):
+                        r = pf.construir(DatosReales.ficha(ruta), _REAL, 'fotorreal', variante=variante, momento=mom, estacion=est)
+                        self.assertEqual(r['recortados'], [])
+
+    def test_la_manada_y_la_proporcion_entran_en_el_aullador(self):
+        p = pf.construir(DatosReales.ficha('fauna/aullador-rojo'), _REAL, 'fotorreal', variante='macho')['prompt']
+        self.assertIn('as long as five of its own heads', p)
+        self.assertIn('a pack of six hunters, each one a long, low hunter', p)
+        self.assertLess(p.index('as long as five'), p.index('Its silhouette recalls'))  # la proporción, antes del ancla
+
+
 class Fondo(unittest.TestCase):
     def test_fondo_banner(self):
         r = montar(fondo=ZONA)

@@ -8,15 +8,16 @@
   "fuentes": "backend/src/scripts/worldCatalog.ts:180; docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Los Pastos de la Deriva, Pasto Solar, Gradias); hierba: decisión de la usuaria, 2026-10-25",
   "prompt": {
     "lugar": "grassland landscape",
-    "sujeto": "A vast, flat grassland plain that runs out to a far horizon, empty and wild.",
-    "cuerpo": "It is covered in tufts of grass that shade from fresh green to straw gold, with patches of bare red earth between them and scattered dark, leafless thorny shrubs.",
+    "sujeto": "A vast, flat grassland plain that runs out to a far horizon, empty and wild. In the foreground, large rust-red boulders and loose red gravel lie close to the camera, and a faint dirt trail winds from beneath them into the distance.",
+    "proporcion": "The plain is so wide that the far escarpment looks as thin as a finger held at arm's length.",
+    "cuerpo": "In the middle distance the ground is covered in tufts of grass that shade from fresh green to straw gold, with patches of bare red earth between them and scattered dark, leafless thorny shrubs.",
     "rasgos": [
-      "Large rust-red boulders sit in the foreground, and a faint dirt trail winds from the foreground into the distance.",
-      "Far off on the right, a long escarpment of red sandstone cliffs and flat-topped mesas rises out of the haze, with lone buttes standing on the plain."
+      "On the far horizon on the right, a long escarpment of red sandstone cliffs and flat-topped mesas rises out of the haze, with lone buttes standing on the plain."
     ],
+    "rasgosSecundarios": "Every tuft of grass and every stone in the foreground shows fine detail, and the ground softens into haze with distance.",
     "pose": "A dry wind combs the grass and blows streaks of glowing dust across the plain.",
-    "entorno": "",
-    "luz": "The low sun sits behind a golden haze on the left, filling the sky with amber light and thin clouds and setting the grass tips aglow."
+    "entorno": "A wide, high sky arches over the plain with long thin bands of cloud, and fine red dust hangs in the far air, thinning the distant shapes into soft layers.",
+    "luz": "The low sun sits behind a golden haze on the left, filling the sky with amber light and setting the grass tips aglow."
   },
   "condiciones": {
     "momento:atardecer": {
@@ -44,7 +45,8 @@
   },
   "propuestas": [
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
-    "choca con el canon de la ficha anterior: mesetas de arenisca roja en vez de picos volcánicos negros"
+    "choca con el canon de la ficha anterior: mesetas de arenisca roja en vez de picos volcánicos negros",
+    "IMG-16 (perfil fotorreal): descrito por capas (primer plano, plano medio, horizonte); diseño de imagen, no canon"
   ],
   "imagenJuego": "backend/uploads/images/location/pastos-de-la-deriva-dia-verano-banner.png"
 }

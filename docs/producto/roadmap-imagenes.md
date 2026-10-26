@@ -59,12 +59,21 @@ desde el panel vive en tablas que siembran.
   **Plan final (2026-10-26):** fase de diseño con 7 investigaciones (`plan-imagenes/investigacion-*.md`) y la
   usuaria delega el criterio; el plan, escrito con Fable y revisado, es [`plan-fotorreal.md`](plan-imagenes/plan-fotorreal.md)
   y sigue en `IMG-16`…`IMG-23`. `IMG-15` se cierra con `IMG-23`.
-- **IMG-16 · Prompt `fotorreal` que llega entero** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-16--prompt-fotorreal-en-prompt_fichapy-con-tests-p--s)):
-  texto fijo ≤ 60 palabras, entorno y luz nunca recortados, orden de pie de foto, campos `proporcion`, `manada` y
-  `rasgosSecundarios`, avisos y tests; 4 fichas reescritas. Fase 0, sin generar. **S**
+- ~~**IMG-16 · Prompt `fotorreal` que llega entero**~~ ✅ 2026-10-26 [A] ([plan](plan-imagenes/plan-fotorreal.md#img-16--prompt-fotorreal-en-prompt_fichapy-con-tests-p--s)):
+  perfil `fotorreal` en `mundo.json` (sin preámbulo, `Style/Mood`, lente por tipo, tope 520, solo `B3b` recortable),
+  `prompt_ficha.py` con su orden y los avisos P2-P5 (solo en `fotorreal`; el de pose, solo en fauna) y `--perfil`;
+  4 fichas reescritas (aullador 356 palabras, cuernahoja 360, cardo 287, pastos 269; sin recortes ni avisos) y
+  `banco/prompts/r14-*-fotorreal.txt`; 104 tests en `test_prompt_ficha.py`. Las dos fichas de fauna llevan ya el
+  campo `boceto` de `IMG-18`. **Pendiente:** con `--momento noche`, aullador y cuernahoja rompen la regla 9 (su `luz`
+  nombra el sol y en `fotorreal` B6 ya no se recorta); faltan condiciones `momento:noche`, en `IMG-23`. **S**
 - **IMG-17 · Gradación y medida en ffmpeg** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-17--gradación-y-medida-en-ffmpeg-calibradas-contra-los-banners-de-gpt-p--s)):
   `gradar.sh` por momento calibrado contra los banners de GPT, `medir.sh` (signalstats + EMD) y rejilla; LUT 3D.
-  Fase 0. **S**
+  Fase 0. **S** 🚧 2026-10-26: hechos `gradar.sh` (con `--hornear`), `medir.sh`, `medir/` (`stats.sh`, `emd.py`,
+  `rejilla.sh`), `estilo/gradacion.json` y `test_gradar.py` (8). Calibración: atardecer (EMD Cb/Cr 5,1/6,4) y día
+  (5,7/4,7) pasan sin alejar los GPT de control; noche sin validar (no hay generación nocturna). Las ventanas de
+  YAVG/SATAVG de día y noche salen de sus referencias (las del plan solo valen para atardecer). **Falta:** el sí de la
+  usuaria a los tres tintes en las rejillas (`generated/banco/r14-gradacion/`), hornear las LUT aceptadas y
+  validar la noche con la primera imagen nocturna.
 - **IMG-18 · Bocetos SVG de forma** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-18--bocetos-svg-de-forma-revisados-por-la-usuaria-p--s)):
   depredador y herbívoro con `rsvg-convert`, campo `boceto` en la ficha; sí/no de la usuaria. Fase 0. **S**
 - **IMG-19 · Tanda de borradores** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-19--tanda-de-borradores-método-bocetos-planos-y-armonización-p--m)):

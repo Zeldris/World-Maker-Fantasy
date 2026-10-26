@@ -2,6 +2,7 @@
 """IMG-15: escribe los prompts del banco en banco/prompts/<ficha>-<estilo>.txt con prompt_ficha.py y una variante
 del estilo de mundo.json. Los estilos son pruebas, no la guía: lo que gane pasa a mundo.json con la usuaria.
 Uso: python3 docs/producto/plan-imagenes/banco/prompts.py [estilo…]
+     python3 docs/producto/plan-imagenes/banco/prompts.py --perfil fotorreal   (IMG-16: r14-<ficha>-fotorreal.txt)
 Con estilos, escribe solo esos: los prompts de rondas pasadas no cambian aunque cambie mundo.json (r8: «guia», mundo.json con el estilo ganador)."""
 import copy, json, pathlib, subprocess, sys, tempfile
 
@@ -134,8 +135,25 @@ ESTILOS = {'actual': (lambda m: m, None), 'guia': (lambda m: m, None), 'cine': (
            'realista': (realista, None), 'fotorreal': (fotorreal, None)}
 
 
+PERFIL_R14 = ('pastos', 'aullador', 'cardo', 'cuernahoja')  # las fichas de r14 con el perfil de mundo.json (sin hulki ni la noche)
+
+
+def perfil(nombre):
+    """IMG-16: el perfil de mundo.json tal cual (sin variantes de estilo), a r14-<ficha>-<perfil>.txt."""
+    for nom in PERFIL_R14:
+        ficha, args = FICHAS[nom]
+        r = subprocess.run([sys.executable, G / 'scripts/prompt_ficha.py', G / 'fichas' / ficha, nombre, *args],
+                           capture_output=True, text=True)
+        if r.returncode:
+            sys.exit(f'{nom}-{nombre}: {r.stdout}{r.stderr}')
+        (OUT / f'r14-{nom}-{nombre}.txt').write_text(r.stdout)
+        print(f'r14-{nom}-{nombre}: {len(r.stdout.split())} palabras')
+
+
 def main():
     OUT.mkdir(exist_ok=True)
+    if sys.argv[1:2] == ['--perfil']:
+        return perfil(sys.argv[2]) if len(sys.argv) == 3 else sys.exit('uso: prompts.py --perfil <perfil>')
     base = json.load(open(G / 'estilo/mundo.json'))
     with tempfile.TemporaryDirectory() as t:
         for est, (f, post) in ESTILOS.items():

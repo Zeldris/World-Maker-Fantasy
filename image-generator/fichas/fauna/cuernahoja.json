@@ -7,18 +7,25 @@
   "momento": "dia",
   "canon": "Fauna de 120-180 cm, tipo gacela, con cuernos finos y largos de cabra montesa (sin apenas espiral), cuello ancho y pelaje muy corto, rojo por arriba y blanco por el vientre. Come pasto y hojas altas gracias al cuello largo. Vive en manada. Las hembras llevan más rojo que los machos y cuernos más anchos.",
   "fuentes": "docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Cuernahoja)",
+  "boceto": {
+    "archivo": "bocetos/herbivoro.svg",
+    "fuerza": 0.85
+  },
   "imagenJuego": "backend/uploads/images/fauna/cuernahoja-macho-banner.png",
   "prompt": {
-    "sujeto": "A tall, slender herd grazer with a giraffe-long, upright neck as long as its long, thin legs, its small head held far above an adult orc.",
-    "ancla": "a slim giraffe with the head of a small deer",
-    "cuerpo": "Its small, deer-like head has large dark eyes and a short tuft of beard. The very short coat is rust red along the back and neck and creamy white on the belly, throat and inner legs.",
+    "sujeto": "A tall, slender herd grazer with an upright neck and long, thin legs.",
+    "proporcion": "Its neck is as long as its legs: from the shoulder to the top of the head it measures the same as from the shoulder to the ground, so the head is held about three and a half metres above the earth.",
+    "ancla": "the small head of a deer on the upright neck of a giraffe",
+    "cuerpo": "Its head is small, with large dark eyes and a short tuft of beard. The very short coat is rust red along the back and neck and creamy white on the belly, throat and inner legs.",
     "rasgos": [
-      "Two wide, flat horns shaped like broad leaves stick straight out sideways from the top of its head like a pair of big flat leaf blades, pale bone grey and veined like real leaves.",
+      "Two wide, flat horns shaped like broad leaf blades, pale bone grey and veined like real leaves, stick out straight sideways from the top of its head.",
       "Each long leg ends in a large splayed foot of three clawed toes, like a big bird's."
     ],
-    "pose": "It stands in the centre of the foreground in three-quarter view with its head held high, while more of the same tall leaf-horned grazers stand and wander around it, each with the same flat leaf horns.",
-    "entorno": "Around them lies red desert earth with dry scrub and tufts of pale grass, with red sandstone mesas and spires in the distance.",
-    "luz": "Clear daylight under a blue sky with scattered white clouds."
+    "rasgosSecundarios": "Its long neck is thick at the base and tapers toward the head.",
+    "pose": "Seen in three-quarter view from a low camera angle, it is caught mid-step with its weight on the far hind leg and its small head turned toward the viewer, filling three quarters of the image height.",
+    "manada": "Around it graze and wander five more grazers at different distances, each one a tall slender animal with a long upright neck, a small head and two flat pale leaf-blade horns sticking out sideways, smaller and softer with distance.",
+    "entorno": "The land is red desert earth with dry scrub and tufts of pale grass, and red sandstone mesas and spires stand on the horizon.",
+    "luz": "Clear daylight under a blue sky with scattered white clouds, the sun high and to the left so the long neck and the horns cast crisp shadows on the ground."
   },
   "variantes": {
     "macho": {
@@ -34,6 +41,7 @@
   },
   "propuestas": [
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
-    "choca con el canon: cuernos de hoja (el canon: finos y largos de cabra montesa), pies de ave de tres dedos, cuello de jirafa"
+    "choca con el canon: cuernos de hoja (el canon: finos y largos de cabra montesa), pies de ave de tres dedos, cuello de jirafa",
+    "IMG-16 (perfil fotorreal): cuello de 3,5 m de alto (el canon: 120-180 cm de animal) y cabeza «de ciervo sobre cuello de jirafa»; diseño de imagen, no canon"
   ]
 }

@@ -8,16 +8,18 @@
   "canon": "Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas; pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, hilera de púas oscuras erizadas en el lomo, colmillos curvos amarillentos exagerados, costillas marcadas, cola negra tupida que borra sus huellas.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:1479 (bio); backend/src/services/sexDimorphism.ts:99-111 (dimorfismo); detalle campo a campo en docs/producto/plan-imagenes/borradores/fichas-piloto.json",
   "prompt": {
-    "sujeto": "A long, low-slung pack hunter with an extremely long, stretched body, three times the length of a fox, carried close to the ground on short, sturdy legs with dark curved claws.",
-    "ancla": "a red fox stretched to the length of a weasel",
-    "cuerpo": "Its narrow fox-like head has tall pointed ears, an amber eye and two long, pale sabre fangs hanging down past its lower jaw. The short, dense coat is a warm rust brown, paler along the flanks in faint stripes.",
+    "sujeto": "A long, low pack hunter with a deep chest and a flexible spine, carried close to the ground on short, strong legs that end in dark curved claws.",
+    "proporcion": "Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep.",
+    "ancla": "the narrow head of a red fox on the long, supple torso of a weasel",
+    "cuerpo": "Its head is narrow, with tall pointed ears, an amber eye and two long pale sabre fangs hanging below the lower jaw. The short, dense coat is warm rust brown, paler in faint stripes along the flanks.",
     "rasgos": [
-      "A crest of overlapping black armoured plates runs unbroken from the nape of its neck along the spine and down the whole tail to its tip, edged with a row of sharp, glowing red spikes.",
-      "Its long banded tail ends in a dark, spiny tuft."
+      "A crest of overlapping black armoured plates runs unbroken from the nape along the whole spine and down the long banded tail to its dark spiny tip, edged with a row of sharp glowing red spikes."
     ],
-    "pose": "It walks in profile across the whole width of the foreground, low to the ground, while more of the same long, crested hunters lope behind it as dark silhouettes in the dust.",
-    "entorno": "Around them stretches cracked red earth with sparse dry tufts, and dark whirling dust devils rise far off on the plain.",
-    "luz": "The low sun behind the pack rims their fur and spikes with fiery light, and a dense red-orange haze tints the whole scene, earth and sky alike."
+    "rasgosSecundarios": "Tufts of black hair cling to its ankles, and its ribs show faintly under the short coat.",
+    "pose": "Seen from a low camera angle in full side profile, it stalks forward with its weight on one foreleg and its head turned slightly toward the viewer.",
+    "manada": "Behind it lopes a pack of six hunters, each one a long, low hunter with a rust coat, a black plate crest with red spikes and pale sabre fangs, smaller and hazier with distance.",
+    "entorno": "The ground is cracked red earth with sparse dry tufts, and dark dust devils rise far off on the plain.",
+    "luz": "The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike."
   },
   "variantes": {
     "macho": {
@@ -33,12 +35,17 @@
   },
   "condiciones": {
     "estacion:invierno": {
-      "entorno": "Around them stretches bare cracked red earth with a few short dry tufts, and dark whirling dust devils rise far off on the plain."
+      "entorno": "The ground is bare cracked red earth with a few short dry tufts, and dark dust devils rise far off on the plain."
     }
   },
   "propuestas": [
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
-    "choca con el canon: cuerpo largo y patas cortas (el canon: patas desproporcionadamente largas), cresta de placas con púas rojas, colmillos de sable"
+    "choca con el canon: cuerpo largo y patas cortas (el canon: patas desproporcionadamente largas), cresta de placas con púas rojas, colmillos de sable",
+    "IMG-16 (perfil fotorreal): proporcion y manada nuevas; «cabeza de zorro sobre el torso de una comadreja» y la escala del cuerpo (torso de cinco cabezas) son diseño de imagen, no canon"
   ],
+  "boceto": {
+    "archivo": "bocetos/depredador.svg",
+    "fuerza": 0.85
+  },
   "imagenJuego": "backend/uploads/images/fauna/aullador-rojo-macho-banner.png"
 }

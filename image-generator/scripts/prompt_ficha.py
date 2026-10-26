@@ -3,7 +3,7 @@
 
 Sin LLM, sin prompt negativo y sin dependencias: misma ficha, perfil y variante dan siempre el mismo texto.
 Uso:
-  prompt_ficha.py <ficha.json> <perfil> [--variante macho] [--momento dia|atardecer|noche]
+  prompt_ficha.py <ficha.json> <perfil>|--perfil <perfil> [--variante macho] [--momento dia|atardecer|noche]
                   [--estacion primavera|verano|otono|invierno (o el enum del motor: PRIMAVERA…)] [--fondo <ficha-zona.json>] [--json]
 Sale con 2 y el motivo (palabra, regla, alternativa) si el prompt rompe una regla.
 """
@@ -15,11 +15,22 @@ import re
 import sys
 
 MUNDO = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'estilo', 'mundo.json')
-RECORTABLES = ('B6', 'B5', 'B4')  # orden en que se quitan si el prompt se pasa de largo
+RECORTABLES = ('B6', 'B5', 'B4')  # orden en que se quitan si el prompt se pasa de largo (por perfil: longitud.recortables)
+FOTORREAL = 'fotorreal'  # IMG-16: sin preámbulo, orden propio, campos proporcion/manada/rasgosSecundarios y avisos propios
+ORDEN = ('B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9')
+ORDEN_FOTORREAL = ('B7', 'B1', 'B3', 'B3b', 'ANCLA', 'B2', 'B4', 'B5', 'B6', 'B8')  # B1 lleva la proporción (P2, P8)
+POSE_ASIMETRICA = r'turned|lifted|weight|three-quarter|mid-stride'  # P4: las poses de frente salen simétricas
+MANADA_ANAFORA = r'more of the same|the rest of|\bothers\b'  # P3: el modelo no resuelve la anáfora
+# P5: una sola fuente de luz nombrada en B6; cada grupo es una fuente
+FUENTES_LUZ = (r'\bsun(?:light|lit|set|rise)?\b|\bdaylight\b', r'\bstars?\b|\bstarlight\b', r'\bfire(?:light|s)?\b|\bcampfires?\b',
+               r'\btorch(?:es|light)?\b|\blanterns?\b|\blamps?\b|\bcandles?\b', r'\blightning\b')
+# partes del cuerpo que el ancla nombra («the head of a red fox»): no son el animal
+PARTES_ANCLA = ('head', 'body', 'torso', 'neck', 'legs', 'length', 'size', 'shape', 'build', 'frame', 'coat', 'tail', 'face')
 ESTACIONES = ('primavera', 'verano', 'otono', 'invierno')  # claves internas, en minúsculas y sin eñe (otoño = otono)
 # El enum del motor (`Estacion`, backend/src/services/worldClock.ts) va en mayúsculas; se acepta y se normaliza.
 ESTACIONES_MOTOR = {'PRIMAVERA': 'primavera', 'VERANO': 'verano', 'OTONO': 'otono', 'INVIERNO': 'invierno'}
-CAMPOS = ('sujeto', 'ancla', 'cuerpo', 'rasgos', 'pose', 'entorno', 'luz', 'lugar')  # claves válidas de `prompt`
+CAMPOS = ('sujeto', 'ancla', 'cuerpo', 'rasgos', 'pose', 'entorno', 'luz', 'lugar',
+          'proporcion', 'manada', 'rasgosSecundarios')  # claves válidas de `prompt` (las tres últimas solo las lee `fotorreal`)
 
 
 class ReglaRota(Exception):
@@ -95,13 +106,22 @@ def _aplicar_condiciones(p: dict, ficha: dict, estacion, momento):
             _aplicar(p, conds[clave])
 
 
-def _b1(p: dict) -> str:
+def _frase_ancla(p: dict) -> str:
+    return f'Its silhouette recalls {str(p["ancla"]).strip()}.' if p.get('ancla') else ''
+
+
+def _b1(p: dict, con_ancla=True) -> str:
     sujeto = _frases(p.get('sujeto'))
     if not sujeto:
         raise ReglaRota('regla 8: B1 (prompt.sujeto) es obligatorio')
-    if p.get('ancla'):
-        sujeto += f' Its silhouette recalls {str(p["ancla"]).strip()}.'
-    return sujeto
+    return ' '.join(x for x in (sujeto, _frase_ancla(p) if con_ancla else '') if x)
+
+
+def _animales_ancla(ancla) -> list:
+    """Los nombres de animal del ancla: la palabra que cierra cada «a/an/the … <nombre>» antes de una preposición o del final."""
+    nombres = re.findall(r'\b(?:a|an|the)\s+(?:[a-z-]+\s+)*?([a-z-]+)(?=\s+(?:with|on|of|to|from|in|and|stretched)\b|\s*$)',
+                         str(ancla or '').strip().rstrip('.').lower())
+    return sorted({n for n in nombres if n not in PARTES_ANCLA})
 
 
 def _estilo_perfil(mundo: dict, perfil: str) -> dict:
@@ -120,6 +140,27 @@ def _estilo(mundo: dict, perfil: str, tipo: str) -> str:
     base = e['base'].replace('{clase}', por_tipo.get('clase', ''))
     base = re.sub(r'\s+', ' ', base).replace(' ,', ',').strip()
     return ' '.join(x for x in (base, por_tipo.get('acabado', '')) if x)
+
+
+def _avisos_fotorreal(prompt: str, p: dict, tipo: str, b6: str) -> list:
+    """Avisos de las prácticas P2-P5 (no rompen el prompt): ancla repetida, pose simétrica, manada por anáfora, luz doble."""
+    avisos = []
+    for animal in _animales_ancla(p.get('ancla')):
+        n = len(re.findall(rf'(?<!\w){re.escape(animal)}s?(?!\w)', prompt, re.I))
+        if n > 2:
+            avisos.append(f'P2 (ancla repetida): «{animal}» aparece {n} veces en el prompt; el ancla manda sobre los rasgos '
+                          'si se repite. Dejarla en 2 como mucho y describir el resto en medidas del propio cuerpo')
+    pose = _frases(p.get('pose'))
+    if tipo == 'fauna' and pose and not re.search(POSE_ASIMETRICA, pose, re.I):
+        avisos.append('P4 (pose simétrica): la pose no dice ninguna de «turned, lifted, weight, three-quarter, mid-stride»; '
+                      'pedir peso en una pata, cabeza girada o una pata adelantada')
+    for m in re.finditer(MANADA_ANAFORA, _frases(p.get('manada')), re.I):
+        avisos.append(f'P3 (manada por anáfora): «{m.group(0)}» en `manada`; repetir la frase nominal completa con los '
+                      'rasgos de silueta, sin «more of the same»')
+    fuentes = [g for g in FUENTES_LUZ if re.search(g, b6, re.I)]
+    if len(fuentes) > 1:
+        avisos.append(f'P5 (luz doble): B6 nombra {len(fuentes)} fuentes de luz; dejar una sola y lo que hace con el sujeto')
+    return avisos
 
 
 def _comprobar(prompt: str, mundo: dict, nombres: list, momento=None):
@@ -171,7 +212,10 @@ def construir(ficha: dict, mundo: dict, perfil: str, variante=None, momento=None
     condicion = f'{estacion or "-"}/{mom}'
     p = _aplicar_variante(ficha, variante)
     _aplicar_condiciones(p, ficha, estacion, mom)
-    b1, b2, b3, b4 = _b1(p), _frases(p.get('cuerpo')), _frases(p.get('rasgos')), _frases(p.get('pose'))
+    foto = perfil == FOTORREAL
+    # en `fotorreal` la proporción va dentro de B1, antes del ancla (P2), y la manada pegada a la pose (P3)
+    b1 = _b1(p, con_ancla=not foto)
+    b2, b3, b4 = _frases(p.get('cuerpo')), _frases(p.get('rasgos')), _frases(p.get('pose'))
     avisos, recortados = [], []
     propuestas = list(ficha.get('propuestas') or [])
 
@@ -207,27 +251,42 @@ def construir(ficha: dict, mundo: dict, perfil: str, variante=None, momento=None
     b6 = _frases(p['luz']) if 'luz' in p else luz_region
     b7 = mundo['encuadres'][perfil]
     b8 = _estilo(mundo, perfil, tipo)
-    b9 = mundo['preambulo'][mom]
-    bloques = {'B1': b1, 'B2': b2, 'B3': b3, 'B4': b4, 'B5': b5, 'B6': b6, 'B7': b7, 'B8': b8, 'B9': b9}
+    bloques = {'B1': b1, 'B2': b2, 'B3': b3, 'B4': b4, 'B5': b5, 'B6': b6, 'B7': b7, 'B8': b8}
+    if foto:  # sin preámbulo: el texto fijo son B7 y B8 (decisión 1 de plan-fotorreal.md)
+        orden = ORDEN_FOTORREAL
+        bloques['B1'] = ' '.join(x for x in (b1, _frases(p.get('proporcion'))) if x)
+        bloques['B3b'] = _frases(p.get('rasgosSecundarios'))
+        bloques['ANCLA'] = _frase_ancla(p)
+        bloques['B4'] = ' '.join(x for x in (b4, _frases(p.get('manada'))) if x)
+    else:
+        orden = ORDEN
+        bloques['B9'] = mundo['preambulo'][mom]
 
     def montar():
-        return ' '.join(bloques[k] for k in ('B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9') if bloques[k])
+        return ' '.join(bloques[k] for k in orden if bloques[k])
 
     lon = mundo.get('longitud') or {}
+    # tope y recortables por perfil (longitud.<perfil>.max, longitud.recortables.<perfil>); sin ellos, los de siempre
+    por_perfil = lon.get(perfil) if isinstance(lon.get(perfil), dict) else {}
+    tope = por_perfil.get('max', lon.get('max', 10 ** 9))
+    recortables = tuple((lon.get('recortables') or {}).get(perfil, RECORTABLES))
     prompt = montar()
-    for k in RECORTABLES:
-        if len(prompt.split()) <= lon.get('max', 10 ** 9):
+    for k in recortables:
+        if len(prompt.split()) <= tope:
             break
-        if bloques[k]:
+        if bloques.get(k):
             bloques[k] = ''
             recortados.append(k)
             prompt = montar()
     n = len(prompt.split())
-    if n > lon.get('max', 10 ** 9):
-        avisos.append(f'regla 7: {n} palabras, más del máximo ({lon["max"]}) aun sin B4-B6')
+    if n > tope:
+        sin = 'B4-B6' if recortables == RECORTABLES else ', '.join(recortables) or 'ningún bloque'
+        avisos.append(f'regla 7: {n} palabras, más del máximo ({tope}) aun sin {sin}')
     if n < lon.get('min', 0):
         avisos.append(f'regla 7: {n} palabras, menos del mínimo ({lon["min"]})')
     _comprobar(prompt, mundo, [ficha.get('nombre')], mom)
+    if foto:
+        avisos += _avisos_fotorreal(prompt, p, tipo, bloques['B6'])
     return {'prompt': prompt, 'palabras': n, 'recortados': recortados, 'avisos': avisos, 'propuestas': propuestas,
             'momento': mom, 'estacion': estacion, 'condicion': condicion}
 
@@ -240,7 +299,8 @@ def _cargar(ruta):
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description='Monta el prompt de imagen desde una ficha.')
     ap.add_argument('ficha')
-    ap.add_argument('perfil')
+    ap.add_argument('perfil', nargs='?')
+    ap.add_argument('--perfil', dest='perfil_opc', help='igual que el perfil posicional')
     ap.add_argument('--variante')
     ap.add_argument('--momento')
     ap.add_argument('--estacion')
@@ -248,6 +308,9 @@ def main(argv=None) -> int:
     ap.add_argument('--mundo', default=MUNDO)
     ap.add_argument('--json', action='store_true')
     a = ap.parse_args(argv)
+    a.perfil = a.perfil_opc or a.perfil
+    if not a.perfil:
+        ap.error('falta el perfil (posicional o --perfil)')
     try:
         r = construir(_cargar(a.ficha), _cargar(a.mundo), a.perfil, a.variante, a.momento,
                       _cargar(a.fondo) if a.fondo else None, a.estacion)

@@ -1,6 +1,6 @@
 {
   "_leyenda": "IMG-4: lo común a todos los prompts de Helek Sirik (Berig), en inglés porque entra tal cual. Lo explica docs/producto/plan-imagenes/guia-visual-mundo.md; lo usa image-generator/scripts/prompt_ficha.py. Las claves de _propuestas esperan la aprobación de la usuaria.",
-  "_propuestas": ["preambulo", "estilos", "longitud", "fondo", "preambulo.atardecer", "regiones.*.luz", "regiones.*.estaciones", "coherencia"],
+  "_propuestas": ["preambulo", "estilos", "longitud", "fondo", "preambulo.atardecer", "regiones.*.luz", "regiones.*.estaciones", "coherencia", "estilos.fotorreal", "encuadres.fotorreal", "longitud.fotorreal", "longitud.recortables"],
   "preambulo": {
     "dia": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. By day the sky is clear with a light warm haze, drifting dust catches the light, with deep aerial perspective and strong contrast. The mood is wild, quiet and lived-in, with vivid, saturated natural colours, deep shadows and glowing rim light. The image is completely textless.",
     "atardecer": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. At dusk the low sun sets the sky ablaze in saturated amber, orange and crimson, and thick drifting dust glows in the backlight, with deep aerial perspective and strong contrast. The mood is wild, quiet and lived-in, with long shadows, vivid, saturated warm colours and glowing rim light. The image is completely textless.",
@@ -24,6 +24,17 @@
       "porTipo": {}
     },
     "thumbnail": "icono",
+    "fotorreal": {
+      "_nota": "IMG-16 (plan-fotorreal.md, decisión 1): sin preámbulo; el texto fijo son encuadre + base + acabado (<= 60 palabras) y cierra con la línea Style/Mood (investigacion-estilo-serie.md 5.4). La lente va por tipo en porTipo.",
+      "palabra": "photographic",
+      "base": "Style: photorealistic fantasy matte painting, cinematic concept art, soft golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded.",
+      "porTipo": {
+        "fauna": { "acabado": "Shot on a full-frame camera with a 35mm lens. The image is completely textless." },
+        "flora": { "acabado": "Shot on a full-frame camera with a 50mm lens. The image is completely textless." },
+        "location": { "acabado": "Shot on a full-frame camera with a 24mm lens. The image is completely textless." },
+        "npc": { "acabado": "Shot on a full-frame camera with an 85mm lens. The image is completely textless." }
+      }
+    },
     "mapa": {
       "palabra": "painterly",
       "base": "Painterly realism halfway between a photograph and an oil painting: realistic terrain, light and texture rendered with soft, visible brushwork.",
@@ -32,6 +43,7 @@
   },
   "encuadres": {
     "banner": "Wide panoramic framing with open sky across the top sixth of the image, the subject slightly off-centre with room around it and the whole subject fully inside the frame.",
+    "fotorreal": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame.",
     "thumbnail": "Close, centred framing of a single subject with clear space above the top of it and a plain, softly blurred background, so the silhouette still reads when small.",
     "icono": "A single centred subject filling most of the frame on a plain, softly painted background.",
     "mapa": "Empty terrain seen from straight above: ground, vegetation, paths and natural landmarks, the whole area in frame at one consistent scale and perspective."
@@ -124,7 +136,7 @@
     "noche": { "patron": "\\b(sun|sunlit|sunlight|daylight|midday|noon)\\b", "motivo": "el modelo pinta un cielo de día aunque el preámbulo sea de noche", "alternativa": "luz de noche: «stars under a soft, even pearly glow» (condición momento:noche en la ficha o luz.noche de la región)" },
     "dia": { "patron": "\\b(stars?|starlit|night)\\b", "motivo": "el modelo pinta un cielo estrellado en pleno día", "alternativa": "luz de día (condición momento:dia en la ficha o luz.dia de la región)" }
   },
-  "longitud": { "min": 120, "max": 320 },
+  "longitud": { "min": 120, "max": 320, "fotorreal": { "max": 520 }, "recortables": { "fotorreal": ["B3b"] } },
   "vetadas": [
     { "patron": "\\bmoons?\\b|\\bmoonlit\\b|\\bmoonlight\\b", "motivo": "el modelo pinta una luna aunque sea para negarla; Helek Sirik no tiene luna", "alternativa": "no nombrarla; de noche, «stars under a soft, even pearly glow»" },
     { "patron": "crystal dust|\\bheavens\\b", "motivo": "«crystal dust across the heavens» pinta estrellas de día", "alternativa": "«a light warm haze» de día; el velo perlado solo en el preámbulo de noche" },

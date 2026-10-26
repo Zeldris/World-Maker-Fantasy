@@ -1,0 +1,140 @@
+{
+  "_leyenda": "IMG-17: la gradación de ffmpeg y los banners de GPT contra los que se mide. Lo usan image-generator/scripts/gradar.sh y medir.sh; el porqué, en docs/producto/plan-imagenes/plan-fotorreal.md.",
+  "_notas": [
+    "Aceptación del plan: mediana del EMD Cb ≲ 6 y Cr ≲ 7,5 frente a los 5 banners de GPT (falla si pasa de 11,4/13,5); sobre un GPT de control no empeora más de 1.",
+    "stats: ventana de YAVG y SATAVG por momento. El plan da 70-95 y 15-30 (media de los 134 banners), pero los 5 de referencia de día (YAVG 103-133, SATAVG 12-17) y de noche (YAVG 31-52, SATAVG 2-10) caen fuera, así que las ventanas de día y noche salen de ellos; la de atardecer es la del plan.",
+    "tinte: se aplica después de la base (curves y eq acumulan); solo curvas y eq, para poder hornearlo a una LUT 3D."
+  ],
+  "base": {
+    "color": "curves=master='0/0.02 0.2/0.17 0.5/0.48 0.85/0.84 1/0.96':red='0/0.02 0.5/0.51 1/0.99':blue='0/0.02 0.5/0.47 1/0.93'",
+    "acabado": "unsharp=13:13:0.35:13:13:0.35,vignette=angle=PI/9:mode=forward,noise=alls=3:allf=t+u:all_seed=7"
+  },
+  "momentos": {
+    "dia": {
+      "tinte": "eq=saturation=0.64",
+      "emd": {
+        "cb": 6,
+        "cr": 7.5,
+        "falla": {
+          "cb": 11.4,
+          "cr": 13.5
+        }
+      },
+      "stats": {
+        "YAVG": [
+          100,
+          135
+        ],
+        "SATAVG": [
+          10,
+          30
+        ]
+      }
+    },
+    "atardecer": {
+      "tinte": "curves=red='0/0 0.5/0.52 1/1':green='0/0 0.5/0.49 1/0.98':blue='0/0 0.5/0.45 1/0.90',eq=saturation=0.94",
+      "emd": {
+        "cb": 6,
+        "cr": 7.5,
+        "falla": {
+          "cb": 11.4,
+          "cr": 13.5
+        }
+      },
+      "stats": {
+        "YAVG": [
+          70,
+          95
+        ],
+        "SATAVG": [
+          15,
+          30
+        ]
+      }
+    },
+    "noche": {
+      "tinte": "curves=master='0/0 0.5/0.33 1/0.86':red='0/0 0.5/0.46 1/0.94':blue='0/0.01 0.5/0.57 1/1',eq=saturation=0.5",
+      "emd": {
+        "cb": 6,
+        "cr": 7.5,
+        "falla": {
+          "cb": 11.4,
+          "cr": 13.5
+        }
+      },
+      "stats": {
+        "YAVG": [
+          30,
+          55
+        ],
+        "SATAVG": [
+          2,
+          12
+        ]
+      }
+    }
+  },
+  "regiones": {},
+  "referencias": {
+    "fauna": {
+      "dia": {
+        "archivos": [
+          "fauna/coracelo-macho-banner.png",
+          "fauna/imanio-macho-banner.png",
+          "fauna/bulco-de-arena-banner.png",
+          "fauna/celubia-palida-banner.png",
+          "fauna/guchapo-macho-banner.png"
+        ],
+        "porque": "Cielo despejado o nublado claro y luz de día: coracelo (llanura abierta, cielo azul), imanio (agujas de roca bajo cielo azul), bulco (charca con cielo gris claro), celubia (acantilado y mar, cielo azul claro) y guchapo (marisma de día). Sin el cuernahoja (su pareja del r12) ni los atardeceres."
+      },
+      "atardecer": {
+        "archivos": [
+          "fauna/corretolvas-macho-banner.png",
+          "fauna/corredor-de-cauce-macho-banner.png",
+          "fauna/murgol-macho-banner.png",
+          "fauna/salamandra-de-escoria-macho-banner.png",
+          "fauna/towrgu-macho-banner.png"
+        ],
+        "porque": "Las llanuras al sol bajo, con cielo ámbar y carmesí y polvo en contraluz, como pide el aullador: corretolvas, corredor de cauce, murgol, salamandra de escoria y towrgu. Sin el aullador (su pareja del r12)."
+      },
+      "noche": {
+        "archivos": [
+          "fauna/miruina-macho-banner.png",
+          "fauna/rondador-de-brasas-macho-banner.png",
+          "fauna/nuente-macho-banner.png",
+          "fauna/kirelon-arenoso-macho-banner.png",
+          "fauna/jusha-esmeralda-macho-banner.png"
+        ],
+        "porque": "Escenas nocturnas o de penumbra azul: miruina (cielo estrellado sobre agua), rondador de brasas (noche con brasas), nuente (tormenta de noche), kirelon (crepúsculo oscuro) y jusha (bajo el agua, casi negro)."
+      }
+    }
+  },
+  "controles": {
+    "fauna": {
+      "dia": {
+        "archivos": [
+          "fauna/cuernahoja-macho-banner.png",
+          "fauna/tragalodo-banner.png",
+          "fauna/ruptidar-macho-banner.png"
+        ],
+        "porque": "Tres GPT que no están entre las referencias: el cuernahoja (pareja del r12 de día), el tragalodo (ciénaga) y el ruptidar (arena dorada)."
+      },
+      "atardecer": {
+        "archivos": [
+          "fauna/gargantua-de-ceniza-macho-banner.png",
+          "fauna/espina-del-viento-macho-banner.png",
+          "fauna/zense-ceniza-macho-banner.png"
+        ],
+        "porque": "Tres GPT de atardecer que no están entre las referencias: gargantua de ceniza, espina del viento y zense de ceniza."
+      },
+      "noche": {
+        "archivos": [
+          "fauna/ferike-macho-banner.png",
+          "fauna/morvasa-banner.png",
+          "fauna/mekiosi-banner.png"
+        ],
+        "porque": "Tres GPT oscuros que no están entre las referencias: ferike, morvasa y mekiosi."
+      }
+    }
+  }
+}
