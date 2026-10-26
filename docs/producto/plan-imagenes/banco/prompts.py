@@ -89,10 +89,39 @@ def ref(texto):
             'scene. ' + texto)
 
 
+def realista(m):
+    """r11, plantilla «fantasía-realista» para FLUX.3: lo común a los banners de ChatGPT del juego. Profundidad por
+    capas (suelo con textura delante, el sujeto en medio, lo lejano en bruma), bruma ámbar que suaviza cielo y luz,
+    paleta ocre, óxido y oro, y menos empuje que cine2 (en FLUX.3 sale sobreprocesado, el pelo como mojado)."""
+    for momento, cielo in (('dia', 'By day a warm amber haze of fine dust fills the air and softens the sky and the '
+                                   'light, thin clouds catch the glow, with deep aerial perspective.'),
+                           ('atardecer', 'At dusk a heavy sky of amber and crimson dust and cloud glows over the land and '
+                                         'the low sun burns through the haze, with deep aerial perspective.')):
+        m['preambulo'][momento] = ('A grounded fantasy world with a physical, natural logic, where everything is handmade '
+                                   'from wood, hide, bone, stone and dark iron. ' + cielo + ' The mood is wild, quiet and '
+                                   'lived-in, with a warm natural palette of ochre, rust and gold, soft deep shadows and '
+                                   'gentle glowing highlights. The image is completely textless.')
+    m['estilos']['banner']['base'] = ('Photorealistic epic fantasy {clase} scene, a cinematic film still with big-budget '
+                                      'realism and rich fine detail everywhere.')
+    m['estilos']['banner']['porTipo']['npc']['clase'] = 'portrait'
+    acabados = {'fauna': 'Low camera at ground level, ultra detailed fur, hide and earth texture.',
+                'flora': 'Several of the plants grow across the scene among sparse wild vegetation, ultra detailed '
+                         'botanical and rock texture.',
+                'location': 'Deep focus from the near ground to the horizon, ultra detailed ground, grass and rock texture.',
+                'npc': 'Ultra detailed skin, fur and leather texture.'}
+    for tipo, pt in m['estilos']['banner']['porTipo'].items():
+        pt['acabado'] = acabados.get(tipo, pt['acabado'])
+    m['encuadres']['banner'] = ('Wide cinematic panorama in layered depth: textured ground, stones and dry grass close to '
+                                'the camera along the bottom edge, the subject in the middle ground, and the land beyond '
+                                'fading into warm haze, with sky across the top third.')
+    return m
+
+
 # estilo: (cambio de mundo.json, cambio del texto final)
 ESTILOS = {'actual': (lambda m: m, None), 'guia': (lambda m: m, None), 'cine': (cine, None), 'cine2': (cine2, None), 'corto': (corto, None),
            'arte': (arte, None), 'fantasia': (cine2, fantasia),
-           'polvo': (cine2, polvo), 'concepto': (concepto, None), 'ref': (lambda m: m, ref)}
+           'polvo': (cine2, polvo), 'concepto': (concepto, None), 'ref': (lambda m: m, ref),
+           'realista': (realista, None)}
 
 
 def main():
