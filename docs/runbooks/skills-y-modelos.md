@@ -174,4 +174,8 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   para. Al escribir en un roadmap una tarea pendiente que implemente un subagente, se le apunta
   su peldaño de partida (p. ej. `modelo: sonnet-medium`), para que la otra cuenta no tenga que decidirlo otra vez;
   las tareas ya cerradas y las del entorno que hace la sesión principal no lo llevan. Detalle en el `selector`.
+- **Fable** (`model: "fable"`; usuaria, 2026-10-26): disponible con Claude Max, pero **solo mientras quede cuota**;
+  agotada, no se puede usar. Nunca es un peldaño imprescindible: todo encargo a Fable tiene que poder repetirse con
+  `opus`, y un fallo por cuota no cuenta como fallo del peldaño. Se prueba donde el juicio pesa (verificar
+  hallazgos, cribar falsos positivos) y se compara con `medir.py` (`POR MODELO`) antes de darle sitio fijo.
 - En la duda, el de más riesgo.
