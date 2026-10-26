@@ -9211,8 +9211,9 @@ export interface HistoriaEntryInput {
   translatorNpcSlug?: string;
 }
 
-// Los 7 objetos `category: 'documento'` del catálogo de arriba (más 10 hechos sin documento, QA-244) (5 previos + 2 de la tanda A-12/A-14), cada uno enganchado
-// a su propia entrada de lore. Años anclados a docs/rpgtarkor/lore-mundo/cronologia.md (hoy, año ~4.010 —
+// Una entrada por cada uno de los 7 objetos `category: 'documento'` del catálogo de arriba (5 previos + 2 de la tanda
+// A-12/A-14), enganchada a su documento; y 10 hechos sin documento (QA-244), de saber común o abiertos al visitar su
+// lugar (`lugarSlug`), nunca las dos cosas. Años anclados a docs/rpgtarkor/lore-mundo/cronologia.md (hoy, año ~4.010 —
 // "El Detonante" ~4.005-4.008 formó la Concordia de Hierro actual).
 export const historiaEntries: HistoriaEntryInput[] = [
   {

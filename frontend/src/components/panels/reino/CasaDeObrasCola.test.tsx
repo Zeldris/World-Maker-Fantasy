@@ -24,7 +24,7 @@ describe('Casa de obras — cola', () => {
   it('pinta la Casa, sus constructores, la cola en orden y el aviso 🔒', async () => {
     vi.spyOn(api, 'getObras').mockResolvedValue(datos())
     const { findByText, getByText, getByLabelText } = render(<CasaDeObrasCola saveId="s1" />)
-    expect(await findByText(/Nivel 1: obras hasta tier 3/)).toBeTruthy()
+    expect(await findByText(/Nivel 1: obras hasta nivel 3/)).toBeTruthy()
     expect(getByText(/Druk, nivel 2/)).toBeTruthy()
     expect(getByText(/🔒6: la Casa de obras de nivel 1/)).toBeTruthy()
     const items = getByLabelText('Cola de obras').querySelectorAll('li')

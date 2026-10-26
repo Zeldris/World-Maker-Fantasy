@@ -177,7 +177,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           const alreadyBuilt = !opt.status?.name && buildings.some((b) => b.recipeKey === opt.recipeKey)
           const soloCasa = (opt.tier ?? 1) > TIER_MAXIMO_PERSONAJE
           const reason = soloCasa
-            ? `Tier ${opt.tier}: el personaje solo levanta hasta tier ${TIER_MAXIMO_PERSONAJE}; encárgala a la Casa de obras.`
+            ? `Obra de nivel ${opt.tier}: el personaje solo levanta hasta nivel ${TIER_MAXIMO_PERSONAJE}; encárgala a la Casa de obras.`
             : cuartelBuildDisabledReason(status, hasCuartel, opt.needsCuartel, alreadyBuilt) ?? bloqueoTurno ?? (construyendo ? 'Enviando la orden de construir…' : null)
           const coste = status?.ingredients?.length ? status.ingredients.map((i) => `${i.label} ${i.tienes}/${i.necesitas}`).join(' · ') : null
           return (

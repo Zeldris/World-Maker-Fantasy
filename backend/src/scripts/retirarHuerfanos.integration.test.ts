@@ -27,6 +27,10 @@ describe('retirar lo huérfano del catálogo (Postgres real)', () => {
     });
     saveId = save.id;
     await prisma.locationVisit.create({ data: { saveId, locationId: conPartida.id } });
+    // Edificio de la copia de partida de una facción: sin saveId, cuelga de la facción copia (mundoPartida.ts).
+    const conEdificio = await prisma.location.create({ data: lugar('huerfano-con-edificio-copia') });
+    const copia = await prisma.faction.create({ data: { worldId, saveId, origenSlug: 'faccion-viva', slug: 'faccion-viva', name: 'Viva', raza: 'x', description: 'x' } });
+    await prisma.building.create({ data: { factionId: copia.id, locationId: conEdificio.id, name: 'b', kind: 'x', description: 'x' } });
     // Un punto de zona de plantilla cuelga del huérfano libre: es del mundo y se va con él.
     const libre = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'huerfano-libre' } });
     await prisma.zonePoint.create({ data: { locationId: libre.id, saveId: null, x: 1, y: 1, origenX: 1, origenY: 1, tipo: 'RECURSO', targetSlug: 'x' } });
@@ -41,6 +45,11 @@ describe('retirar lo huérfano del catálogo (Postgres real)', () => {
     await prisma.npc.create({ data: npc('npc-huerfano') });
     const conEstado = await prisma.npc.create({ data: npc('npc-con-estado') });
     await prisma.npcState.create({ data: { saveId, npcId: conEstado.id } });
+    // Fauna cuya población de partida (sin FK, por slug) sigue viva.
+    await prisma.npc.create({ data: npc('npc-con-poblacion') });
+    await prisma.worldPopulation.create({
+      data: { worldId, saveId, targetType: 'FAUNA', targetSlug: 'npc-con-poblacion', label: 'x', poblacion: 5, poblacionMax: 10, distribucion: {} },
+    });
   });
 
   afterAll(async () => {
@@ -48,11 +57,14 @@ describe('retirar lo huérfano del catálogo (Postgres real)', () => {
     await prisma.world.delete({ where: { id: worldId } });
   });
 
-  it('retira el lugar sin referencias (y su punto de plantilla) y conserva el que tiene una visita', async () => {
+  it('retira el lugar sin referencias (y su punto de plantilla) y conserva el que tiene una visita o un edificio de una facción copia', async () => {
     const r = await retirarLugaresHuerfanos(prisma, worldId, ['vivo']);
     expect(r.retirados).toEqual(['huerfano-libre']);
-    expect(r.conservados).toEqual([{ slug: 'huerfano-con-visita', motivo: '1 visita(s)' }]);
-    expect(await prisma.location.count({ where: { worldId } })).toBe(2);
+    expect(r.conservados).toEqual([
+      { slug: 'huerfano-con-edificio-copia', motivo: '1 edificio(s) de partida' },
+      { slug: 'huerfano-con-visita', motivo: '1 visita(s)' },
+    ]);
+    expect(await prisma.location.count({ where: { worldId } })).toBe(3);
     expect(await prisma.zonePoint.count({ where: { location: { worldId } } })).toBe(0);
   });
 
@@ -63,9 +75,12 @@ describe('retirar lo huérfano del catálogo (Postgres real)', () => {
     expect(r.conservados[0].motivo).toContain('territorio');
   });
 
-  it('retira el NPC sin referencias y conserva el que tiene estado de partida', async () => {
+  it('retira el NPC sin referencias y conserva el que tiene estado o población de partida', async () => {
     const r = await retirarNpcsHuerfanos(prisma, worldId, ['npc-vivo']);
     expect(r.retirados).toEqual(['npc-huerfano']);
-    expect(r.conservados).toEqual([{ slug: 'npc-con-estado', motivo: '1 estado(s) de partida' }]);
+    expect(r.conservados).toEqual([
+      { slug: 'npc-con-estado', motivo: '1 estado(s) de partida' },
+      { slug: 'npc-con-poblacion', motivo: '1 población de partida' },
+    ]);
   });
 });

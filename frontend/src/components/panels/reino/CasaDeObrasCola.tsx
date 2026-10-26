@@ -53,11 +53,11 @@ export function CasaDeObrasCola({ saveId, version = 0 }: { saveId: string; versi
     <PanelSection title="Casa de obras">
       {casa ? (
         <p className="mb-1.5 text-2xs text-wood-400">
-          Nivel {casa.nivel}: obras hasta tier {casa.tierMaximo} · constructores {constructores.length}/{casa.plazas}
+          Nivel {casa.nivel}: obras hasta nivel {casa.tierMaximo} · constructores {constructores.length}/{casa.plazas}
           {constructores.length > 0 && ` (${constructores.map((c) => `${c.name}, nivel ${c.nivel}`).join('; ')})`}
         </p>
       ) : (
-        <p className="mb-1.5 text-2xs text-wood-500">Sin Casa de obras: constrúyela para encargar obras de más de tier 3 y reparaciones.</p>
+        <p className="mb-1.5 text-2xs text-wood-500">Sin Casa de obras: constrúyela para encargar obras de más de nivel 3 y reparaciones.</p>
       )}
       {error && <p role="alert" className="mb-1.5 text-2xs text-cost-400">{error}</p>}
       {cola.length === 0 ? (
