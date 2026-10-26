@@ -6274,7 +6274,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // CR-32: a quien te escucha puedes proponerle que se una o que te informe.
         puedeReclutar: puedeOfrecerTrabajo,
       });
-      npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
+      // P327: la oferta (respuesta de /turn/narrate y `pendingNpcInteractionOffer` de GET /saves/:id) lleva el nombre
+      // que la jugadora le conoce; el frontend lo usa en «Ataco a '<nombre>'.».
+      const visibleOferta = await nombreVisibleDeNpc(tx, saveId, npcInteractionCandidate);
+      npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: visibleOferta.nombre, options: opciones };
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });
     }
 

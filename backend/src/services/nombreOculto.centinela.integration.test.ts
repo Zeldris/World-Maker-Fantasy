@@ -15,8 +15,12 @@ import * as ollama from '../lib/ollama.js';
 /// cada prompt enviado queda registrado. Un camino nuevo que nombre al PRINCIPAL oculto se añade aquí como un `it`.
 const NOMBRE_REAL = 'Zarghul Ojonegro';
 const PROHIBIDOS = [/zarghul/i, /ojonegro/i];
-const SLUG = 'test-centinela-oculto';
-const SLUG_ALIADO = 'test-centinela-aliado';
+/// Slug único por pasada (`Location` y `Npc` tienen `@@unique([worldId, slug])`): una pasada cortada a medias no tumba
+/// las siguientes. Los restos de pasadas anteriores se borran al empezar (`limpiarRestos`).
+const PASADA = Date.now().toString(36);
+const SLUG = `test-centinela-oculto-${PASADA}`;
+const SLUG_ALIADO = `test-centinela-aliado-${PASADA}`;
+const SLUG_OTRO = `test-centinela-otro-${PASADA}`;
 const FACCION = 'Banda de Prueba Centinela';
 
 const mock = vi.hoisted(() => ({
@@ -78,6 +82,16 @@ function sinFugas(desde: number, vistoPorLaJugadora: string[] = vistas) {
   }
 }
 
+/// Restos de una pasada cortada: partidas, puntos, zonas y NPC de pruebas anteriores (por prefijo, no por slug exacto).
+async function limpiarRestos(worldId: string) {
+  const zonas = await prisma.location.findMany({ where: { worldId, slug: { startsWith: 'test-centinela' } }, select: { id: true } });
+  const ids = zonas.map((z) => z.id);
+  await prisma.save.deleteMany({ where: { OR: [{ characterName: { startsWith: 'Gorhorn centinela' } }, { currentLocationId: { in: ids } }] } });
+  await prisma.zonePoint.deleteMany({ where: { locationId: { in: ids } } });
+  await prisma.location.deleteMany({ where: { id: { in: ids } } });
+  await prisma.npc.deleteMany({ where: { worldId, slug: { startsWith: 'test-centinela' } } });
+}
+
 describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale ni a la jugadora ni al modelo', () => {
   const guardas: { saves: string[]; npcs: string[]; locations: string[] } = { saves: [], npcs: [], locations: [] };
   let worldId: string;
@@ -90,6 +104,7 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
     vi.spyOn(ollama, 'ollamaGenerateStream').mockImplementation(async (o) => responder(o));
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
     worldId = world.id;
+    await limpiarRestos(worldId);
     // El PRINCIPAL de prueba es una copia del Orco enfurecido (mismas habilidades, para que haya `npcAbilityUsed`)
     // con otro nombre, alias y una bio/personalidad que lo nombran, como las de catálogo.
     const base = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'orco-enfurecido-hondonada' } });
@@ -99,6 +114,9 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
       data: {
         ...(copia as object),
         worldId, kind: 'PRINCIPAL', slug: SLUG, name: NOMBRE_REAL, aliases: ['zarghul ojonegro', 'zarghul'], articulo: null, genero: 'M', raza: 'orcos', faction: FACCION,
+        // `interactionTypes` no vacío: con él el diálogo ofrece el menú de interacción (`npcInteractionOffer`), camino por
+        // el que se coló el nombre real en la oferta.
+        interactionTypes: ['NPC_LORE'],
         bio: `${NOMBRE_REAL} guarda el paso. Zarghul no habla con extraños.`, personality: `Zarghul es suspicaz. ${NOMBRE_REAL} cuenta cada paso.`,
       } as never,
     });
@@ -109,7 +127,15 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
         bio: 'Un orco de la banda.', personality: 'Callado.',
       } as never,
     });
-    guardas.npcs.push(zarghul.id, aliado.id);
+    // Otro NPC (nombre propio, ya conocido) que puede estar delante del oculto en la escena.
+    const otro = await prisma.npc.create({
+      data: {
+        ...(copia as object),
+        worldId, kind: 'PLANTILLA', slug: SLUG_OTRO, name: 'Vigilante de Prueba', aliases: ['vigilante de prueba'], articulo: 'el', genero: 'M', raza: 'orcos', faction: FACCION,
+        bio: 'Un vigilante.', personality: 'Callado.',
+      } as never,
+    });
+    guardas.npcs.push(zarghul.id, aliado.id, otro.id);
   });
 
   afterAll(async () => {
@@ -123,9 +149,9 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
   });
 
   /// Una partida con Zarghul (sin descubrir) en una zona propia; con `conBanda`, un aliado de su facción cerca.
-  async function partida(nombre: string, opciones: { conBanda?: boolean } = {}): Promise<{ saveId: string; locationId: string }> {
+  async function partida(nombre: string, opciones: { conBanda?: boolean; conOtro?: boolean } = {}): Promise<{ saveId: string; locationId: string }> {
     const location = await prisma.location.create({
-      data: { worldId, slug: `test-centinela-${guardas.locations.length}`, name: 'Zona de Prueba Centinela', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: [`zona de prueba centinela ${guardas.locations.length}`] },
+      data: { worldId, slug: `test-centinela-${PASADA}-${guardas.locations.length}`, name: 'Zona de Prueba Centinela', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: [`zona de prueba centinela ${guardas.locations.length}`] },
     });
     guardas.locations.push(location.id);
     const save = await prisma.save.create({
@@ -141,6 +167,7 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
       await prisma.zonePoint.create({ data: { saveId: save.id, locationId: location.id, tipo: 'NPC', targetSlug: SLUG_ALIADO, x: 450, y: 300 } });
       aliadoConPunto = true;
     }
+    if (opciones.conOtro) await prisma.zonePoint.create({ data: { saveId: save.id, locationId: location.id, tipo: 'NPC', targetSlug: SLUG_OTRO, x: 350, y: 300 } });
     expect(await prisma.discoveredEntity.count({ where: { saveId: save.id, entityType: 'npc', entitySlug: SLUG } })).toBe(0);
     return { saveId: save.id, locationId: location.id };
   }
@@ -210,6 +237,31 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
     await app.close();
   }, 60_000);
 
+  it('oferta de interacción: `npcInteractionOffer` (respuesta de /turn/narrate) y `pendingNpcInteractionOffer` (GET /saves/:id) llevan el nombre visible', async () => {
+    const { desde } = nueva();
+    const { saveId } = await partida('Gorhorn centinela oferta');
+    const app = await buildApp();
+    const hecho = await turno(app, saveId, 'Saludo al orco desconocido.');
+    expect((hecho.npcInteractionOffer as { npcName?: string } | null | undefined)?.npcName, 'oferta de /turn/narrate').toBe('Orco desconocido');
+    const ficha = await detalle(app, saveId);
+    expect(ficha.pendingNpcInteractionOffer?.npcName, 'oferta pendiente de GET /saves/:id').toBe('Orco desconocido');
+    sinFugas(desde);
+    await app.close();
+  }, 60_000);
+
+  it('ataque citando el nombre visible entre comillas, con otro NPC delante: se tabula contra el oculto, no contra el primero de la escena', async () => {
+    const { saveId } = await partida('Gorhorn centinela comillas', { conOtro: true });
+    const app = await buildApp();
+    mock.clasificacion = { ...ATAQUE };
+    // En combate con el Vigilante: sin el nombre citado, el objetivo sería él (`ongoingCombatTarget`).
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [SLUG_OTRO] } });
+    const c = await clasificar(app, saveId, "Ataco a 'Orco desconocido'.", true);
+    const razon = (c.classification as { razon?: string }).razon ?? '';
+    expect(razon).toMatch(/contra el orco desconocido —/);
+    expect(razon).not.toMatch(/Vigilante/i);
+    await app.close();
+  }, 30_000);
+
   it('regalo: «le doy … al orco desconocido» no tira, no nombra al orco y no lo descubre', async () => {
     const { desde } = nueva();
     const { saveId } = await partida('Gorhorn centinela regalo');
@@ -265,7 +317,10 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
       expect(typeof actionText).toBe('string');
       vistas.push(JSON.stringify(visible));
       if (quienInicia === 'jugador') expect(cuerpo.accionEnDiario).toBe('Me enfrento al orco desconocido y a los suyos.');
-      await diario(saveId);
+      const lineas = await diario(saveId);
+      // Dentro de la frase el nombre oculto lleva artículo («el orco desconocido»), no como nombre propio.
+      const apertura = lineas.find((t) => t.startsWith('Comienza el combate'));
+      expect(apertura, 'línea de apertura del combate de grupo').toMatch(/contra un grupo \(el orco desconocido, /);
       const ficha = await detalle(app, saveId);
       expect(ficha.combateIniciado, 'el combate de grupo debería estar en curso').toBeTruthy();
     }

@@ -157,6 +157,22 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
       }
     });
 
+    // Revisión de P327: un punto NPC que no se resuelve contra los NPC del mundo no se nombra por su slug (suele salir del
+    // nombre real, p. ej. `zarghul-ojonegro`); sale con el nombre genérico.
+    it('un punto NPC que no se resuelve no manda su slug al narrador', async () => {
+      const punto = await prisma.zonePoint.create({
+        data: { locationId, saveId, x: 300, y: 300, tipo: 'NPC', targetSlug: 'zarghul-ojonegro-sin-fila', cantidad: 1, activo: true },
+      });
+      try {
+        const resumen = await zonePointsSummaryFor(prisma, locationId, saveId);
+        expect(resumen?.npc).not.toMatch(/zarghul|ojonegro/i);
+        expect(resumen?.npc).toContain('Alguien');
+        expect(resumen?.npc).toContain('Gistera Koh');
+      } finally {
+        await prisma.zonePoint.delete({ where: { id: punto.id } });
+      }
+    });
+
     // Revisión de P269/P329 (leve): el nombre sale del mundo de la partida, no de otro con el mismo slug.
     it('un NPC de otro mundo con el mismo slug no le pone su nombre al punto', async () => {
       // Slug único por pasada (y limpieza de restos): una pasada cortada a medias no tumba las siguientes.

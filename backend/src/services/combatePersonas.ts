@@ -10,7 +10,7 @@ import type { AttributeBlock } from './dice.js';
 import { iniciarCombatEncounter, type CombatienteInicial } from './combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { scopeFor } from './npcScene.js';
-import { nombresVisiblesDeNpcs } from './dynamicMode.js';
+import { nombresVisiblesDeNpcs, nombreEnFrase } from './dynamicMode.js';
 import { celdaDePixel } from './zonaPosicion.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
@@ -145,11 +145,12 @@ export async function abrirCombateDePersonas(
     await lockRowForUpdate(tx, 'Save', save.id, ['id']);
     if (await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true }, select: { id: true } })) return null;
     const { encounterId, iniciativa, ordenCapitan } = await iniciarCombatEncounter(tx, save.id, combatientes);
-    const nombres = [...new Set(combatientes.filter((c) => c.bando === 'ENEMIGO').map((c) => c.nombre))].join(', ');
+    // Dentro de la frase, «el orco desconocido» (no «Orco desconocido» como nombre propio).
+    const nombres = [...new Set(combatientes.filter((c) => c.bando === 'ENEMIGO').map((c) => nombreEnFrase(c.nombre ?? '')))].join(', ');
     await tx.logEntry.create({
       data: {
         saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, timeLabel: save.timeLabel, fictionalMinutes: save.fictionalMinutes,
-        text: `Comienza el combate contra ${miembros.length > 1 ? `un grupo (${nombres})` : nombres}: cada combatiente tira iniciativa.${ordenCapitan ? ` ${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.` : ''}`,
+        text: `Comienza el combate contra ${miembros.length > 1 ? `un grupo (${nombres})` : nombres}: cada combatiente tira iniciativa.${ordenCapitan ? ` ${nombreEnFrase(ordenCapitan.capitan, true)} ordena caer sobre ${nombreEnFrase(ordenCapitan.objetivo)}.` : ''}`,
         roll: { kind: 'combate-grupo', engagement: [], iniciativa } as unknown as Prisma.InputJsonValue,
       },
     });

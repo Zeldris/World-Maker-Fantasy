@@ -24,6 +24,7 @@ import {
   detectsVerbalAcceptanceIntent,
   tabulatedAttackAttribute,
   nombraPorNombreVisible,
+  nombreNarrado,
   type NpcInScene,
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
@@ -275,7 +276,10 @@ async function resolveClassificationForTurn(params: {
       // manda sobre el orden de detección.
       const quotedTargetMatch = action.match(/'([^']+)'/);
       const explicitTarget = quotedTargetMatch
-        ? (npcsInScene.find((n) => normalizeText(n.name) === normalizeText(quotedTargetMatch[1])) ?? null)
+        ? (npcsInScene.find((n) => normalizeText(n.name) === normalizeText(quotedTargetMatch[1])) ??
+            // P327: el frontend cita el nombre que la jugadora ve («Orco desconocido»), no el real.
+            npcsInScene.find((n) => n.nombreVisible && normalizeText(n.nombreVisible) === normalizeText(quotedTargetMatch[1])) ??
+            null)
         : null;
       // Extendido fuera de combate (auditoría 2026-07-24, "revisa todo bien bien" — clasificación
       // determinista antes de Ollama, no solo corrección después): "Busco combatir contra el Orco
@@ -324,7 +328,7 @@ async function resolveClassificationForTurn(params: {
           requiereTirada: true,
           atributo: (selectedAbility?.preferredAttribute as ClassificationResult['atributo']) ?? tabulatedAttackAttribute(action),
           dificultad,
-          razon: `Ataque directo o intención hostil declarada contra ${tabulatedTarget.nombreVisible ?? tabulatedTarget.name} — clasificado por tabla, sin llamada a Ollama.`,
+          razon: `Ataque directo o intención hostil declarada contra ${nombreNarrado(tabulatedTarget)} — clasificado por tabla, sin llamada a Ollama.`,
           banda: 'instantanea',
           duracionEstimadaMinutos: 0,
         };
@@ -768,7 +772,12 @@ export async function turnRoutes(app: FastifyInstance) {
     // Fase 3 (acotada a comillas, docs/mecanicas/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE
     // COMILLAS que no existe en absoluto en el catálogo del mundo — a diferencia del chequeo de
     // arriba (existe pero no está en esta escena), aquí no existe en ningún sitio.
-    const fabricatedNpcClaim = await detectsFabricatedNpcClaim(action, save.worldId);
+    // P327: citar entre comillas el nombre visible de alguien en escena («Ataco a 'Orco desconocido'.», lo que arma el
+    // frontend con la oferta) no es inventar a nadie: el nombre real no existe para la jugadora.
+    const citadoEntreComillas = action.match(/'([^']+)'/)?.[1] ?? null;
+    const citaUnVisibleDeLaEscena =
+      !!citadoEntreComillas && npcsInSceneForValidation.some((n) => n.nombreVisible && normalizeText(n.nombreVisible) === normalizeText(citadoEntreComillas));
+    const fabricatedNpcClaim = citaUnVisibleDeLaEscena ? null : await detectsFabricatedNpcClaim(action, save.worldId);
     if (fabricatedNpcClaim) {
       return resolveBlockedTurn(fabricatedNpcNarrationFor(fabricatedNpcClaim.quotedName));
     }

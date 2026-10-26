@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient, type ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
-import { nombresVisiblesDeNpcs } from './dynamicMode.js';
+import { nombresVisiblesDeNpcs, NOMBRE_OCULTO_GENERICO } from './dynamicMode.js';
 import { sourceDisplayNameFor, faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { factionRepFor, FACTION_REP_HOSTIL } from './reputation.js';
 import {
@@ -838,8 +838,9 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
     // `Building`/`construction.ts`, fuera del alcance de esta pieza), solo `label` o el slug crudo.
     // Para NPC, el nombre real SIEMPRE gana sobre `label` (evita que un label de escenario tipo
     // "Punto de vigilancia (Orco Enfurecido)" sustituya al nombre de la persona) — para el resto,
-    // `label` sigue ganando si existe, es descripción de escenario, no de identidad.
-    const nombre = p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? p.targetSlug) : (p.label ?? (p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug)));
+    // `label` sigue ganando si existe, es descripción de escenario, no de identidad. Un NPC que no se resuelve contra
+    // `npcRows` (otro mundo, borrado) no se nombra por el slug, que suele salir de su nombre real: «Alguien» (P327).
+    const nombre = p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? NOMBRE_OCULTO_GENERICO) : (p.label ?? (p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug)));
     return p.cantidad > 1 ? `${nombre} ×${p.cantidad}` : nombre;
   };
   // Grupos de fauna (2026-09-28): una especie repartida en varios `ZonePoint` (ver
