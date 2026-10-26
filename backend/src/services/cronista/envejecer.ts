@@ -13,6 +13,15 @@ import { aplicarEfecto } from './efectos.js';
 import { anosDeVejez, atributosPorEdad, edadEnAnios, nacidoEnDe, probMuerteDeViejoPorDia } from './edades.js';
 import type { Atributos } from './herencia.js';
 
+/// La muerte de un NPC con nombre «de viejo»: efecto `matarNpc`, que si era líder abre la sucesión (reacciones de
+/// CR-10/CR-11). La usan `envejecerDia` y el paso `lider-muere` de `prepararReino.ts` (QA-259, QA-151: la misma escritura).
+export function morirDeViejo(
+  prisma: PrismaClient,
+  { saveId, worldId, ahora, npcId, random = Math.random }: { saveId: string; worldId: string; ahora: number; npcId: string; random?: () => number },
+) {
+  return prisma.$transaction((tx) => aplicarEfecto({ tx, saveId, worldId, fictionalMinutes: ahora, origen: 'MUNDO', random }, { tipo: 'matarNpc', npcId, causa: 'de viejo' }));
+}
+
 export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: number, random: () => number = Math.random): Promise<{ ajustados: number; muertos: string[] }> {
   const save = await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true, worldState: { select: { fictionalMinutes: true } } } });
   if (!save?.worldState) return { ajustados: 0, muertos: [] };
@@ -53,7 +62,7 @@ export async function envejecerDia(prisma: PrismaClient, saveId: string, dia: nu
       }
     }
     if (random() < probMuerteDeViejoPorDia(npc.raza, edad)) {
-      const r = await prisma.$transaction((tx) => aplicarEfecto({ tx, saveId, worldId, fictionalMinutes: ahora, origen: 'MUNDO', random }, { tipo: 'matarNpc', npcId: npc.id, causa: 'de viejo' }));
+      const r = await morirDeViejo(prisma, { saveId, worldId, ahora, npcId: npc.id, random });
       if (r.aplicado) muertos.push(npc.id);
     }
   }

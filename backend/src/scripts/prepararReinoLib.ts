@@ -7,12 +7,17 @@ export type PasoReino =
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
   | { tipo: 'combate'; npcSlugs: string[] }
   | { tipo: 'ganado'; especie: string; n: number }
-  | { tipo: 'convaleciente'; npcSlug: string };
+  | { tipo: 'convaleciente'; npcSlug: string }
+  | { tipo: 'lider-muere'; facSlug: string }
+  | { tipo: 'alianza'; facA: string; facB: string }
+  | { tipo: 'vasallo-paga'; vasalloSlug: string };
 
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate). Se ejecutan en el orden dado.
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate),
+/// `lider-muere:<facción>` (QA-259, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
+/// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];
@@ -47,6 +52,15 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     } else if (clave === 'convaleciente') {
       if (!r[0] || r.length > 1) return { error: `«${arg}»: falta convaleciente:<slug del NPC>.` };
       pasos.push({ tipo: 'convaleciente', npcSlug: r[0] });
+    } else if (clave === 'lider-muere') {
+      if (!r[0] || r.length > 1) return { error: `«${arg}»: falta lider-muere:<slug de la facción>.` };
+      pasos.push({ tipo: 'lider-muere', facSlug: r[0] });
+    } else if (clave === 'alianza') {
+      if (!r[0] || !r[1] || r.length > 2) return { error: `«${arg}»: falta alianza:<facción A>:<facción B>.` };
+      pasos.push({ tipo: 'alianza', facA: r[0], facB: r[1] });
+    } else if (clave === 'vasallo-paga') {
+      if (!r[0] || r.length > 1) return { error: `«${arg}»: falta vasallo-paga:<slug del vasallo>.` };
+      pasos.push({ tipo: 'vasallo-paga', vasalloSlug: r[0] });
     } else {
       return { error: `«${arg}»: paso desconocido.` };
     }

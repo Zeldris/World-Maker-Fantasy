@@ -8,6 +8,9 @@
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
 //   convaleciente:<npc>             el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo)
+//   lider-muere:<facción>           CR-43: el líder muere de viejo por la vía del motor (`morirDeViejo`, la de `envejecerDia`) y, si hacen falta, destacan jóvenes (`crearNpc` DESTACA) hasta 2 candidatos; la cohesión queda en 20-50 tras la baja; la sucesión (y la escisión con nombre) sale al avanzar (`matarLiderDeFaccion`)
+//   alianza:<A>:<B>                 P247: alianza, ruptura y alianza nueva de la facción A con la B (`recordFactionEvent` NEGOCIACION_TREGUA y EXPANSION_TERRITORIAL_AGRESIVA: `aliarTrasRuptura`)
+//   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): al revisar la semana, `pagada-con-deuda` (`vasalloPagaConDeuda`)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -25,12 +28,13 @@ import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
 import { formatFictionalDate } from '../services/worldClock.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
+import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { parsearPasosReino } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc> combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc> lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -127,6 +131,18 @@ for (const paso of pasos) {
     // Lo escribe `dejarNpcConvaleciente` (`turnLootKill.ts`), la misma función de datos que usa la derrota real en combate: condición y reloj, ausencia de zona de 6 h y grupo.
     const { scope } = await prisma.$transaction((tx) => dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora }));
     dice(`Convaleciente: ${npc.slug} (${scope})`);
+  } else if (paso.tipo === 'lider-muere') {
+    const r = await matarLiderDeFaccion(prisma, { saveId, faccionSlug: paso.facSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Líder muerto: ${r.lider} (${r.faccion}, cohesión ${r.cohesion}); candidatos: ${r.candidatos.join(', ')}`);
+  } else if (paso.tipo === 'alianza') {
+    const r = await aliarTrasRuptura(prisma, { saveId, facA: paso.facA, facB: paso.facB });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Alianza ${paso.facA} → ${paso.facB}: sellada, rota y sellada otra vez (${r.eventos} eventos)`);
+  } else if (paso.tipo === 'vasallo-paga') {
+    const r = await vasalloPagaConDeuda(prisma, { saveId, vasalloSlug: paso.vasalloSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Vasallo ${paso.vasalloSlug}: cuota ${r.cuota}, deuda ${r.deuda}, riqueza ${r.riqueza} (paga la cuota entera y arrastra la deuda)`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }
