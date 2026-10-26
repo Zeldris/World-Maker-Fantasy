@@ -317,6 +317,8 @@ export function useModoDinamico({
     try {
       const turno = await responderModoDinamico(saveId!, opcion)
       setFictionalDate(turno.timeLabel)
+      // P27/P166: Huir deja su línea en el diario (con la tirada si te vieron antes), antes del combate si falló.
+      if (turno.huidaLogEntry) setCharacterLog((prev) => [...prev, { ...turno.huidaLogEntry!, channel: 'character' }])
       // AGRESIVO/ENEMIGO, el jugador eligió "Combatir" (2026-09-20) — mismo patrón que
       // `handleInteractuarModoDinamico`: se cierra este modal y se abre CombatPanel directo.
       if (turno.combate) {

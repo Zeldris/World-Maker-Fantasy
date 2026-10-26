@@ -937,22 +937,52 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
     });
 
-    it('P27 — quienInicia: "npc": elegir Huir tras Interactuar cierra sin combate', async () => {
+    // P27/P166 (revisión 2026-10-26): la tarjeta antes del combate no cambia el coste de huir. Si el rival te vio
+    // antes, Huir pide la misma tirada que `/combat/flee` (antes la emboscada abría el combate y solo quedaba esa
+    // huida); con 1 en el d20 no escapas y empieza el combate como emboscada, con 20 escapas a la entrada.
+    async function huirDeEmboscada(app: Awaited<ReturnType<typeof buildApp>>, d20: number) {
       await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [], zonaPosX: 40, zonaPosY: 60, zonaPosEntradaX: 12, zonaPosEntradaY: 88 } });
-      const app = await buildApp();
       await app.inject({
         method: 'POST',
         url: `/saves/${saveId}/modo-dinamico/interactuar`,
         payload: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true },
       });
-      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Huir' } });
-      expect(res.statusCode).toBe(200);
+      const azar = vi.spyOn(Math, 'random').mockReturnValue((d20 - 1) / 20);
+      try {
+        return await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Huir' } });
+      } finally {
+        azar.mockRestore();
+      }
+    }
+
+    it('P27 — quienInicia: "npc": Huir tira dados; si falla, no escapa y empieza el combate como emboscada', async () => {
+      const app = await buildApp();
+      const res = await huirDeEmboscada(app, 1);
+      expect(res.statusCode, res.body).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.cierra).toBe(true);
+      expect(body.combate).toMatchObject({ npcs: [{ slug: 'test-dynamicmode-agresivo' }] });
+      expect(body.huidaLogEntry).toMatchObject({ roll: { attribute: 'destreza', roll: 1, success: false } });
+      expect(body.huidaLogEntry.text).toContain('no le dejan escapar');
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+      // Sigue donde estaba: no ha escapado a la entrada.
+      expect({ x: saveAfter.zonaPosX, y: saveAfter.zonaPosY }).toEqual({ x: 40, y: 60 });
+    });
+
+    it('P27 — quienInicia: "npc": Huir con la tirada a favor escapa a la entrada sin combate, y la tirada queda en el diario', async () => {
+      const app = await buildApp();
+      const res = await huirDeEmboscada(app, 20);
+      expect(res.statusCode, res.body).toBe(200);
       const body = JSON.parse(res.body);
       expect(body.cierra).toBe(true);
       expect(body.combate).toBeUndefined();
+      expect(body.huidaLogEntry).toMatchObject({ roll: { attribute: 'destreza', roll: 20, success: true } });
       const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveAfter.pendingCombatNpcSlugs).toEqual([]);
       expect(saveAfter.pendingDynamicMode).toBeNull();
+      expect({ x: saveAfter.zonaPosX, y: saveAfter.zonaPosY }).toEqual({ x: 12, y: 88 });
     });
 
     it('quienInicia: "jugador" — ofrece Combatir/Huir, sin narración LLM, pendingDynamicMode marcado combateForzado', async () => {
@@ -1022,6 +1052,10 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
       const logEntry = await prisma.logEntry.findFirst({ where: { saveId }, orderBy: { createdAt: 'desc' } });
       expect(logEntry?.text).toContain('Agresor de Prueba (dynamicMode)');
+      // P27: la vio ella primero: huir no tira dados.
+      expect(logEntry?.roll).toBeNull();
+      expect(body.huidaLogEntry).toMatchObject({ id: logEntry?.id });
+      expect(body.huidaLogEntry.roll).toBeUndefined();
     });
 
     // P116: la huida de «te corta el paso» usa la misma regla que las de session.ts — la entrada

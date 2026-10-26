@@ -12,7 +12,7 @@ vi.mock('../lib/api', () => ({
   resolveImageUrl: vi.fn(() => null),
   responderModoDinamico: vi.fn(),
 }))
-import { abrirMenuNpc, chooseNpcInteraction, interactuarModoDinamico, interactuarModoDinamicoRecurso } from '../lib/api'
+import { abrirMenuNpc, chooseNpcInteraction, interactuarModoDinamico, interactuarModoDinamicoRecurso, responderModoDinamico } from '../lib/api'
 import { useModoDinamico } from './useModoDinamico'
 import type { LogEntry } from '../types'
 
@@ -164,5 +164,22 @@ describe('el reintento limpia el error anterior mientras espera', () => {
       void hook.result.current.handleInteractuarModoDinamicoRecurso('e1', 'cazadora-serhu')
     })
     expect(hook.result.current.characterLog[0].dynamicModeOffer).toMatchObject({ busy: true, error: undefined })
+  })
+})
+
+/// P27/P166: Huir de quien te vio antes tira dados; la entrada con la tirada entra en el diario al momento, también
+/// cuando falla y abre el combate.
+describe('P27 — Huir ante quien corta el paso deja su tirada en el diario', () => {
+  beforeEach(() => vi.mocked(responderModoDinamico).mockReset())
+
+  it('huida fallida: la entrada con la tirada entra en el diario y se abre el combate', async () => {
+    const huidaLogEntry = { id: 'h1', channel: 'character', text: 'Gorhorn intenta alejarse, pero no le dejan escapar: toca pelear.', timeLabel: '', createdAt: '', roll: { roll: 3 } } as unknown as LogEntry
+    vi.mocked(responderModoDinamico).mockResolvedValue({ narration: '', opciones: [], cierra: true, vuelta: 2, timeLabel: '', huidaLogEntry, combate: { npcs: [] } } as never)
+    const { hook } = montar()
+    await act(async () => {
+      await hook.result.current.handleElegirDynamicMode('Huir')
+    })
+    expect(hook.result.current.characterLog.map((e) => e.id)).toEqual(['e1', 'h1'])
+    expect(hook.result.current.characterLog[1]).toMatchObject({ roll: { roll: 3 } })
   })
 })

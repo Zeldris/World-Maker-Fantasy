@@ -3,7 +3,7 @@ import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { rejectIfEnded, rejectIfPendingDeath } from './shared.js';
+import { rejectIfEnded, rejectIfPendingDeath, toFrontendLogEntry } from './shared.js';
 import { characterSummaryFor } from '../../services/characterSummary.js';
 import { advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
 import { loadSessionFacts, appendSessionFacts } from '../../services/worldFacts.js';
@@ -25,7 +25,8 @@ import { aceptarQuest, ORCO_ENFURECIDO_QUEST_SLUG } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
 import { abrirCombateDePersonas, grupoDePersona } from '../../services/combatePersonas.js';
 import { iniciarCaza, accionEnDiarioDeCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
-import type { AttributeBlock } from '../../services/dice.js';
+import type { AttributeBlock, RollResult } from '../../services/dice.js';
+import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 
@@ -443,15 +444,39 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'No hay ningún modo dinámico en curso' });
     }
 
-    // AGRESIVO/ENEMIGO, el jugador ya eligió (2026-09-20) — "Combatir" abre combate directo
-    // (mismo mecanismo que el caso `quienInicia: 'npc'` de `/interactuar`, el jugador ataca con
-    // ventaja por haberlo visto primero); "Huir" cierra sin combate, gratis (decisión explícita de
-    // Álvaro: la tirada de "quién ve a quién" ya decidió si hay elección, huir en sí no vuelve a
-    // tirar dados). Cualquier otra respuesta se trata como huida — nunca se cuelga esperando texto
-    // que este modal no ofrece.
+    // AGRESIVO/ENEMIGO, el jugador ya eligió (2026-09-20) — "Combatir" abre combate directo (con
+    // `emboscada` si el rival la vio antes, P90). "Huir" cuando la vio ella primero cierra sin combate,
+    // gratis (decisión de Álvaro: la tirada de "quién ve a quién" ya decidió si hay elección). P27/P166
+    // (revisión 2026-10-26): si el rival la vio antes, Huir cuesta lo que costaba cuando la emboscada abría
+    // el combate sin preguntar: la tirada de huir de `/combat/flee` (`tiradaDeHuida`); si falla, empieza el
+    // combate como emboscada. Cualquier otra respuesta se trata como huida — nunca se cuelga esperando
+    // texto que este modal no ofrece.
     if (pending.combateForzado) {
       await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicMode: Prisma.JsonNull } });
-      if (respuesta === COMBATE_FORZADO_OPCION_COMBATIR) {
+      // P27/P166: huir de quien te vio antes no es gratis (ver arriba).
+      let huidaFallida: Awaited<ReturnType<typeof prisma.logEntry.create>> | null = null;
+      let rollHuida: RollResult | null = null;
+      if (respuesta !== COMBATE_FORZADO_OPCION_COMBATIR && pending.emboscada === true) {
+        const rival = await prisma.npc.findFirst({ where: { slug: pending.targetSlug, OR: [{ worldId: save.worldId, saveId: null }, { saveId: save.id }] }, select: { level: true } });
+        const equipados = await prisma.inventoryItem.findMany({ where: { saveId: save.id, slot: { not: null } } });
+        rollHuida = tiradaDeHuida(save, equipados, rival?.level ?? 1);
+        if (!rollHuida.success) {
+          const minutos = save.worldState?.fictionalMinutes ?? 480;
+          huidaFallida = await prisma.logEntry.create({
+            data: {
+              saveId: save.id,
+              channel: 'CHARACTER',
+              text: `${save.characterName} intenta alejarse ${deNombre(nombreDeEncuentro(pending.targetName, pending.cantidad))}, pero no le dejan escapar: toca pelear.`,
+              timeLabel: formatFictionalDate(minutos),
+              fictionalMinutes: minutos,
+              roll: rollHuida as unknown as Prisma.InputJsonValue,
+              isPlayerAction: false,
+              isSystemMessage: true,
+            },
+          });
+        }
+      }
+      if (respuesta === COMBATE_FORZADO_OPCION_COMBATIR || huidaFallida) {
         const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
         const resultadoCombate = await abrirCombateForzadoDesdeInteractuar(
           save,
@@ -466,9 +491,20 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           // El agresor ya no está (muerto, retirado...) — la oferta se descarta: sin esto el jugador
           // quedaba atascado (no se puede ignorar ni moverse con un combate forzado pendiente).
           await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
+          // Sin rival no hay huida fallida que contar.
+          if (huidaFallida) await prisma.logEntry.delete({ where: { id: huidaFallida.id } });
           return reply.status(400).send({ error: 'Ese encuentro ya no está disponible aquí.' });
         }
-        return { narration: '', opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel: formatFictionalDate(fictionalMinutesActuales), newQuestOfferInfo: null, ...resultadoCombate };
+        return {
+          narration: '',
+          opciones: [],
+          cierra: true,
+          vuelta: pending.vuelta + 1,
+          timeLabel: formatFictionalDate(fictionalMinutesActuales),
+          newQuestOfferInfo: null,
+          ...(huidaFallida ? { huidaLogEntry: toFrontendLogEntry(huidaFallida) } : {}),
+          ...resultadoCombate,
+        };
       }
       const nuevoFictionalMinutes = advanceFictionalMinutes(save.worldState?.fictionalMinutes ?? 480, MINUTOS_POR_VUELTA_MODO_DINAMICO);
       const timeLabel = formatFictionalDate(nuevoFictionalMinutes);
@@ -477,13 +513,17 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // jugador se quedaba pegado al agresor y el siguiente paso volvía a toparse con él).
       // P116: la misma función que las huidas de session.ts (entrada dentro del radio seguro, sin oferta); dentro de
       // la transacción, como en ellas, para que lea las entradas con el mismo cliente que escribe (revisión P116, leve).
-      await prisma.$transaction(async (tx) => {
+      const entradaHuida = await prisma.$transaction(async (tx) => {
         const datosHuida = await datosDeHuidaDeZona(tx, save.id, save.currentLocationId, { x: save.zonaPosEntradaX, y: save.zonaPosEntradaY });
         await tx.worldState.update({ where: { saveId: save.id }, data: { fictionalMinutes: nuevoFictionalMinutes, fictionalDateLabel: timeLabel } });
-        await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
+        const entrada = await tx.logEntry.create({
+          data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: nuevoFictionalMinutes, ...(rollHuida ? { roll: rollHuida as unknown as Prisma.InputJsonValue } : {}), isPlayerAction: false, isSystemMessage: true },
+        });
         await tx.save.update({ where: { id: save.id }, data: datosHuida });
+        return entrada;
       });
-      return { narration: text, opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel, newQuestOfferInfo: null };
+      // La entrada guardada (con la tirada si la hubo), la misma que se ve tras recargar (QA-73).
+      return { narration: text, opciones: [], cierra: true, vuelta: pending.vuelta + 1, timeLabel, newQuestOfferInfo: null, huidaLogEntry: toFrontendLogEntry(entradaHuida) };
     }
 
     const esGistera = pending.targetSlug === 'gistera-koh';

@@ -682,26 +682,32 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
     const n = normalizeText(nombre);
     if (n.length > 0) resto = resto.split(n).join(' ');
   }
-  const enInventario = inventoryItemNames.find((nombre) => {
-    const n = normalizeText(nombre);
-    if (resto.includes(n)) return true;
-    const palabras = n.split(/\s+/).filter((p) => p.length >= 4 && !GIFT_STOP_WORDS.has(p));
-    return palabras.length > 0 && palabras.every((p) => resto.includes(p));
-  });
-  if (weak && !enInventario) return null;
-  // Para el texto de «No tienes …», fuera también el nombre de pila del destinatario («a Gistera mi pan»).
+  // Para el objeto, fuera también el nombre de pila del destinatario («a Gistera mi pan»).
   let restoSinNpc = resto;
   for (const nombre of npcNames) {
     for (const token of normalizeText(nombre).split(/\s+/)) {
       if (token.length >= 4) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
     }
   }
+  // Lo que se da: la primera cláusula tras el verbo, sin artículos ni preposiciones en los bordes.
   const palabras = restoSinNpc
-    .split(/[,.;:!?¡¿«»"']|\s+(?:y|para|como|porque|pero)\s+/)[0]
+    .split(/[,.;:!?¡¿«»"']|\s+(?:y|para|como|porque|pero|mientras)\s+/)[0]
     .split(/\s+/)
     .filter((p) => p.length > 0);
   while (palabras.length > 0 && GIFT_STOP_WORDS.has(palabras[0])) palabras.shift();
   while (palabras.length > 0 && GIFT_STOP_WORDS.has(palabras[palabras.length - 1])) palabras.pop();
+  const enInventario = weak
+    ? // Revisión P241: con «doy/ofrezco» lo dado tiene que ser el objeto («le doy mi cuchillo»), no algo que
+      // sale después en la frase («doy un paso atrás y saco la cuerda», «le doy la vuelta al cuchillo»).
+      (inventoryItemNames.find((nombre) => palabras.join(' ').startsWith(normalizeText(nombre))) ??
+      inventoryItemNames.find((nombre) => palabras.length > 0 && normalizeText(nombre).split(/\s+/).filter((p) => !GIFT_STOP_WORDS.has(p)).includes(palabras[0])))
+    : inventoryItemNames.find((nombre) => {
+        const n = normalizeText(nombre);
+        if (resto.includes(n)) return true;
+        const palabrasItem = n.split(/\s+/).filter((p) => p.length >= 4 && !GIFT_STOP_WORDS.has(p));
+        return palabrasItem.length > 0 && palabrasItem.every((p) => resto.includes(p));
+      });
+  if (weak && !enInventario) return null;
   const itemTexto = palabras.join(' ');
   if (!enInventario && itemTexto.length === 0) return null;
   return { itemEnInventario: enInventario ?? null, itemTexto };

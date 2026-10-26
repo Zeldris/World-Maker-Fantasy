@@ -2,10 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { registrarSuceso, minutosDeFiccion } from '../../services/cronista/sucesos.js';
-import { contraataqueDifficultyFor, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
-import { effectiveAttributes, effectiveDefense } from '../../services/equipment.js';
-import { rollCheck } from '../../services/dice.js';
-import type { AttributeBlock } from '../../services/dice.js';
+import { scopeFor, hasPendingLoot } from '../../services/npcScene.js';
+import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEntry } from './shared.js';
 import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
@@ -199,10 +197,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
-    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-    const defensa = effectiveDefense(save.inventoryItems);
-    const dificultad = contraataqueDifficultyFor(maxNpcLevel, save.level, defensa);
-    const roll = rollCheck(attributes, 'destreza', dificultad);
+    const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
 
     // Bug real reportado jugando (2026-08-30, mismo endpoint hermano de huir-en-curso): texto fijo
@@ -299,10 +294,7 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
-    const attributes = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems);
-    const defensa = effectiveDefense(save.inventoryItems);
-    const dificultad = contraataqueDifficultyFor(maxNpcLevel, save.level, defensa);
-    const roll = rollCheck(attributes, 'destreza', dificultad);
+    const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
 
     const nuevaCondicion = roll.success ? save.condicionFisica : oneStepWorseThan(save.condicionFisica);

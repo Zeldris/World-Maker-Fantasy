@@ -611,6 +611,21 @@ describe('detectsGiftToNpcClaim (P241)', () => {
     expect(detectsGiftToNpcClaim('Le doy mi cataplasma de salvia a Gistera Koh.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cataplasma de salvia' });
   });
 
+  it('revisión P241: con «doy» lo dado es el objeto directo, no algo que sale después en la frase', () => {
+    for (const frase of [
+      'Doy un paso atrás y saco la cuerda.',
+      'Me doy la vuelta y guardo mi cuchillo de pedernal.',
+      'Le doy la vuelta al cuchillo de pedernal mientras hablo con Gistera.',
+      'Doy media vuelta con el pan en la mano.',
+      'Le doy un vistazo a la cataplasma de salvia.',
+      'Le doy las gracias a Gistera y le pregunto por el cuchillo de pedernal.',
+    ]) {
+      expect(detectsGiftToNpcClaim(frase, inventario, npcs), frase).toBeNull();
+    }
+    expect(detectsGiftToNpcClaim('Le doy a Gistera mi cuchillo de pedernal.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cuchillo de pedernal' });
+    expect(detectsGiftToNpcClaim('Le ofrezco el cuchillo a Gistera Koh.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cuchillo de pedernal' });
+  });
+
   it('un ataque o un regalo como sustantivo no es una entrega', () => {
     expect(detectsGiftToNpcClaim('Ataco al orco y le entrego un golpe.', inventario, npcs)).toBeNull();
     expect(detectsGiftToNpcClaim('Miro el regalo de Gistera Koh.', inventario, npcs)).toBeNull();

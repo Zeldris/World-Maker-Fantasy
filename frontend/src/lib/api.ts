@@ -2258,6 +2258,9 @@ export interface DynamicModeTurno {
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
   combate?: { npcs: NpcInSceneInfo[] } | null
+  /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,
+  /// llega junto al combate que abre). La misma que se ve tras recargar.
+  huidaLogEntry?: LogEntry
   /// Agresivo en grupo (Fase 2, 2026-09-28) — llega en vez de `combate` cuando el encuentro forzado
   /// es un grupo real de FAUNA (`cantidad > 1`, ver `iniciarCaza`/`services/caza.ts`): el backend ya
   /// creó el `CombatEncounter` múltiple, este texto se manda por el turno normal
