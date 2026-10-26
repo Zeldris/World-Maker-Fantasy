@@ -8,13 +8,15 @@
 //                         contra el tope de materiales, 60 base)
 //   edificio:<receta>     añade ya terminado (ACTIVO) un edificio de esa receta (`ConstructionRecipe.key`, p. ej. granero),
 //                         en la Location del Ayuntamiento y junto a él, con las condiciones de `computeBuildBlockedReason`; si la receta
-//                         mejora otra (`upgradesRecipeKey`) actualiza ese edificio, como `turnResolution.ts`
+//                         mejora otra (`upgradesRecipeKey`) actualiza ese edificio, como `turnResolution.ts`.
+//                         Una obra de más tier del que levanta el personaje (la Jaula grande, tier 6) se da como la
+//                         levantaría la Casa de obras (`quien: 'casa-de-obras'`, `quienLevanta`), sin su cola ni su nivel (QA-260)
 // Uso: DATABASE_URL=… npx tsx src/scripts/darReino.ts <saveId> comida=60 goirnos=300 almacen:cuerdas:10
 // Lo lanza `tools/qa/escenario.sh dar-reino`.
 import { prisma } from '../lib/prisma.js';
 import { CONSTRUCTION_RECIPES, buildingTierFor, computeBuildBlockedReason } from '../services/construction.js';
 import { materialesDelAlmacen, suministrosDelReino } from '../services/cronista/economiaReino.js';
-import { parsearPeticionReino, posicionJuntoAlAyuntamiento, primerExcesoDeTope } from './darReinoLib.js';
+import { parsearPeticionReino, posicionJuntoAlAyuntamiento, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const peticion = parsearPeticionReino(args);
@@ -53,7 +55,7 @@ try {
   await prisma.$transaction(async (tx) => {
     for (const { clave, receta } of edificios) {
       // Mismas condiciones que al construir en el juego (cupo del Ayuntamiento, nivel previo, sitio, único por región…).
-      const motivo = await computeBuildBlockedReason({ db: tx, saveId, worldId: save.worldId, buildRecipe: receta!, activeRegion: ayto!.location!.region, currentLocationRecord: { id: ayto!.location!.id } });
+      const motivo = await computeBuildBlockedReason({ db: tx, saveId, worldId: save.worldId, buildRecipe: receta!, activeRegion: ayto!.location!.region, currentLocationRecord: { id: ayto!.location!.id }, quien: quienLevanta(receta!.tier) });
       if (motivo) throw new Rechazo(`«${clave}»: ${motivo}.`);
       if (receta!.upgradesRecipeKey) {
         // Como turnResolution.ts: la mejora actualiza el edificio existente de la receta base, no crea otro.

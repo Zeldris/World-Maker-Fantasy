@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsearPeticionReino, posicionJuntoAlAyuntamiento, primerExcesoDeTope } from './darReinoLib.js';
+import { parsearPeticionReino, posicionJuntoAlAyuntamiento, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
 
 describe('posición y topes (QA-143)', () => {
   it('coloca junto al Ayuntamiento sin coincidir con otro edificio', () => {
@@ -33,5 +33,14 @@ describe('petición de recursos del Reino (QA-143)', () => {
     expect(parsearPeticionReino(['oro=5'])).toHaveProperty('error');
     expect(parsearPeticionReino(['comida=-3'])).toHaveProperty('error');
     expect(parsearPeticionReino(['almacen:cuerdas:0'])).toHaveProperty('error');
+  });
+});
+
+describe('quién levanta una obra (QA-260)', () => {
+  it('el personaje hasta su tier máximo y la Casa de obras por encima', () => {
+    expect(quienLevanta(1)).toBe('personaje');
+    expect(quienLevanta(3)).toBe('personaje');
+    expect(quienLevanta(4)).toBe('casa-de-obras');
+    expect(quienLevanta(6)).toBe('casa-de-obras');
   });
 });

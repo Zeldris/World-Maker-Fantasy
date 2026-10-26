@@ -11,6 +11,8 @@
 //   lider-muere:<facción>           CR-43: el líder muere de viejo por la vía del motor (`morirDeViejo`, la de `envejecerDia`) y, si hacen falta, destacan jóvenes (`crearNpc` DESTACA) hasta 2 candidatos; la cohesión queda en 20-50 tras la baja; la sucesión (y la escisión con nombre) sale al avanzar (`matarLiderDeFaccion`)
 //   alianza:<A>:<B>                 P247: alianza, ruptura y alianza nueva de la facción A con la B (`recordFactionEvent` NEGOCIACION_TREGUA y EXPANSION_TERRITORIAL_AGRESIVA: `aliarTrasRuptura`)
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
+//   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
+//   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -29,12 +31,14 @@ import { formatFictionalDate } from '../services/worldClock.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
+import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
+import { hacerDomador } from '../services/progresionPersonaje.js';
 import { parsearPasosReino } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc> lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc> lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -143,6 +147,14 @@ for (const paso of pasos) {
     const r = await vasalloPagaConDeuda(prisma, { saveId, vasalloSlug: paso.vasalloSlug });
     if ('error' in r) rechaza(r.error);
     else dice(`Vasallo ${paso.vasalloSlug}: cuota ${r.cuota}, deuda ${r.deuda}, riqueza ${r.riqueza}; revisión del día ${r.dia}: ${r.estado} (${r.porcentaje} % de la cuota, sigue la deuda)`);
+  } else if (paso.tipo === 'domable') {
+    const r = await dejarDomableEnJaula(prisma, { saveId, especie: paso.especie });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Domable: ${r.nombre} atado en una Jaula (felicidad 0; falta ganar su confianza)`);
+  } else if (paso.tipo === 'domador') {
+    const r = await hacerDomador(prisma, { saveId, nivel: paso.nivel });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Domador: nivel ${r.nivel}, ${r.especializacion}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

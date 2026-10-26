@@ -22,6 +22,16 @@ export async function prepararCaptura(tx: Tx, saveId: string, especie: string, c
   return { ok: true, cuerdas: filas.length };
 }
 
+/// Deja un animal capturado y atado (GRAVE, felicidad 0) en una Jaula libre apta para su especie; false si no queda ninguna.
+/// Es la escritura de la partida de captura (`descargarCaptura`), aparte para que `domable:` de `prepararReino.ts` (QA-260)
+/// deje el animal exactamente igual, sin rehacerla a mano.
+export async function atarEnJaula(tx: Tx, saveId: string, npcId: string, especie: string, scope: string): Promise<boolean> {
+  const [jaula] = await jaulasLibresPara(tx, saveId, especie);
+  if (!jaula) return false;
+  await tx.npcState.create({ data: { saveId, npcId, scope, condicionFisica: 'GRAVE', capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaula.id } });
+  return true;
+}
+
 /// Q6: al volver, cada animal atado entra en una Jaula libre (si se llenó mientras tanto, se suelta) y
 /// las cuerdas que no usó vuelven al Almacén.
 export async function descargarCaptura(tx: Tx, v: ViajeroFila, dia: number): Promise<{ enJaula: number; sueltos: number }> {
@@ -33,13 +43,8 @@ export async function descargarCaptura(tx: Tx, v: ViajeroFila, dia: number): Pro
   let enJaula = 0;
   let sueltos = 0;
   for (let i = 0; i < (carga.capturados ?? 0) && npc; i++) {
-    const [jaula] = await jaulasLibresPara(tx, v.saveId, carga.especie);
-    if (!jaula) {
-      sueltos++;
-      continue;
-    }
-    await tx.npcState.create({ data: { saveId: v.saveId, npcId: npc.id, scope: `partida-${v.id}-${dia}-${i}`, condicionFisica: 'GRAVE', capturado: true, capturaFelicidad: 0, capturaJaulaBuildingId: jaula.id } });
-    enJaula++;
+    if (await atarEnJaula(tx, v.saveId, npc.id, carga.especie, `partida-${v.id}-${dia}-${i}`)) enJaula++;
+    else sueltos++;
   }
   const sobran = carga.cuerdas ?? 0;
   if (sobran > 0) {
