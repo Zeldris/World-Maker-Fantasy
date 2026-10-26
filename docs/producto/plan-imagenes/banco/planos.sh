@@ -16,7 +16,7 @@ case $RONDA in
   r13) PW=${PW:-1280} PH=${PH:-512} SW=${SW:-1024} SH=${SH:-384} PASOS=${PASOS:-16} BOCETO=${BOCETO:-} ;;
   *) PW=${PW:-640} PH=${PH:-256} SW=${SW:-512} SH=${SH:-192} PASOS=${PASOS:-8}
      BOCETO=${BOCETO-$R/image-generator/bocetos/depredador-verde-512.png}
-     export HERO=${HERO:-20:248:600} MANADA=${MANADA:-45:150:100 180:145:75:v 490:152:115} ;;
+     export HERO=${HERO:-50:246:520} MANADA=${MANADA:-45:150:100 200:145:75:v 500:152:115} ;;
 esac
 export MODELO=flux3-image-klein-Q8_0.gguf LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf VAE=flux2-vae.safetensors
 export TOPE=${TOPE:-10800} LIBERAR_OLLAMA=${LIBERAR_OLLAMA:-0}
