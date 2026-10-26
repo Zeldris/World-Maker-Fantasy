@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { canon, ficha, parecidos, secciones, contieneSlug, recortar, nombreVisible, cargarDatos, type FichaDatos } from './ficha.js';
+import { canon, ficha, fuente, parecidos, secciones, contieneSlug, recortar, nombreVisible, cargarDatos, type FichaDatos } from './ficha.js';
 
 const falso: FichaDatos = {
   catalogo: {
@@ -83,6 +83,30 @@ describe('ficha (claves heredadas y canon)', () => {
     expect(l.some((x) => x.startsWith('docs/canon-opencode/b.md:1:'))).toBe(false); // más de 10 por slug: no entra
     expect(l.filter((x) => x.startsWith('docs/canon-opencode/c.md'))).toEqual(['docs/canon-opencode/c.md:3:unos Bicho Raros sí']);
     expect(recortar('🐉'.repeat(300)).length).toBe(2 * 199 + 1); // 199 dragones enteros y «…»
+  });
+});
+
+describe('ficha (fuente)', () => {
+  it('QA-260: ruta:línea del slug exacto entre comillas, sin tests, sin prefijos y con tope', () => {
+    const raiz = mkdtempSync(join(tmpdir(), 'ficha-fuente-'));
+    const sc = join(raiz, 'backend', 'src', 'scripts');
+    mkdirSync(sc, { recursive: true });
+    mkdirSync(join(raiz, 'backend', 'src', 'services'), { recursive: true });
+    writeFileSync(join(sc, 'a.ts'), "const x = 1;\n  { slug: 'guchapo', name: 'Guchapo' },\n  { slug: 'guchapo-joven' },\n");
+    writeFileSync(join(raiz, 'backend', 'src', 'services', 'sexDimorphism.ts'), 'const m = { "guchapo": 1 };\n');
+    writeFileSync(join(sc, 'a.test.ts'), "expect('guchapo')\n");
+    writeFileSync(join(sc, 'b.ts'), `${"f('muchos');\n".repeat(30)}`);
+    let l: string[], m: string[];
+    try {
+      l = fuente('guchapo', raiz);
+      m = fuente('muchos', raiz, 25);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+    expect(l).toEqual(["backend/src/scripts/a.ts:2: { slug: 'guchapo', name: 'Guchapo' },", 'backend/src/services/sexDimorphism.ts:1: const m = { "guchapo": 1 };']);
+    expect(m).toHaveLength(26);
+    expect(m[0]).toBe("backend/src/scripts/b.ts:1: f('muchos');");
+    expect(m[25]).toBe('… y 5 más');
   });
 });
 

@@ -218,6 +218,32 @@ export function canon(slug: string, nombre: string | null, raiz = RAIZ, max = 10
   return [...porSlug, ...porNombre].map((l) => recortar(`${l.donde}:${l.texto}`, 160));
 }
 
+/** QA-260: dónde se define el slug en el código: líneas de `backend/src/scripts/*.ts` (sin tests) y sexDimorphism.ts con `'slug'` o `"slug"` exacto. */
+export function fuente(slug: string, raiz = RAIZ, max = 25): string[] {
+  const dirScripts = join(raiz, 'backend', 'src', 'scripts');
+  let nombres: string[] = [];
+  try {
+    nombres = readdirSync(dirScripts).filter((n) => n.endsWith('.ts') && !n.endsWith('.test.ts')).sort();
+  } catch {
+    /* sin carpeta: nada que buscar */
+  }
+  const archivos = [...nombres.map((n) => join(dirScripts, n)), join(raiz, 'backend', 'src', 'services', 'sexDimorphism.ts')];
+  const comillas = [`'${slug}'`, `"${slug}"`];
+  const hits: string[] = [];
+  for (const f of archivos) {
+    let texto: string;
+    try {
+      texto = readFileSync(f, 'utf8');
+    } catch {
+      continue;
+    }
+    texto.split('\n').forEach((l, i) => {
+      if (comillas.some((q) => l.includes(q))) hits.push(recortar(`${relative(raiz, f)}:${i + 1}: ${l}`, 120));
+    });
+  }
+  return hits.length > max ? [...hits.slice(0, max), `… y ${hits.length - max} más`] : hits;
+}
+
 export async function cargarDatos(): Promise<FichaDatos> {
   const catalogo = (await import('./worldCatalog.js')) as unknown as Record<string, unknown>;
   const { worldPopulations } = await import('./worldPopulation.js');
@@ -237,6 +263,8 @@ async function main(): Promise<void> {
   const r = ficha(slug, d);
   console.log(r.texto);
   if (args.includes('--canon')) console.log(`# Canon (${CARPETAS_CANON.join(', ')})\n${canon(slug, nombreVisible(slug, d)).join('\n')}`);
+  const f = fuente(slug);
+  if (f.length) console.log(`# Fuente (archivo:línea)\n${f.map((x) => `  ${x}`).join('\n')}`);
   process.exit(r.encontrado ? 0 : 1);
 }
 
