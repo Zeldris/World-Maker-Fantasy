@@ -1632,6 +1632,12 @@ Retro de la segunda pasada por la enciclopedia (usuaria, 2026-10-26; [`retro-202
 - ~~**QA-259 · Tope de llamadas en las tandas de edición**~~ ✅ 2026-10-26: el bloque 1 de `QA-256` fue una tanda de 66 llamadas con 103k de contexto medio (6,8M, el 13 % de la sesión). Tope de 30-40 en `ampliar-lore.md` § 0.5 y en `.claude/gw/opt-tokens.md`.
 - ~~**QA-260 · Leer por partes: registros por secciones y `ficha.sh` con `archivo:línea`**~~ ✅ 2026-10-26: `worldCatalog.ts` se leyó 44 veces (542k arrastrados) y `lore-hallazgos.md` 17 (300k). `ficha.sh` acaba con la sección «Fuente (archivo:línea)» (`ficha.ts`, con test); la lectura por secciones, en `.claude/gw/opt-tokens.md`.
 - ~~**QA-261 · Guardia de nombres de habilidad renombrados**~~ ✅ 2026-10-26 (usuaria, 2026-10-26, tras el CI local): los textos de `QA-256` renombraron cinco habilidades de fauna sin pasarlas por `HABILIDADES_RENOMBRADAS` (`QA-68`); la revisión no lo vio y lo cazó un test de fauna de forma casual. `backend/src/services/habilidadesConocidas.json` guarda todos los nombres que una partida puede guardar, y `habilidadesRenombradas.test.ts` falla si uno desaparece del catálogo sin renombre o si falta uno nuevo en la lista.
+  **Leves de la revisión** (pendientes):
+  - los nombres viejos de los renombres por clase («Golpe Certero»…) siguen vivos en otra clase, y la guardia no los vigila;
+  - `Save.pendingNpcAttack.abilityName` no lleva la marca `QA-68`: una partida guardada con un ataque pendiente conserva el nombre viejo;
+  - el mundo sin resembrar conserva los nombres viejos en `Npc.habilidadesRaciales`;
+  - «Fuga en Bandada» promete una huida que el motor no hace (no está en `HABILIDADES_DE_HUIDA`; ya pasaba con «Vuelo en Bandada»);
+  - las 13 categorías de fauna, repetidas a mano en el test.
 
 Opt-tokens de `claude/plan-imagenes` (usuaria, 2026-10-25; 296 llamadas con 116k de contexto medio):
 - ~~**QA-249 · Hoja de contactos del banco de imágenes**~~ ✅ 2026-10-25: se leyeron 66 imágenes del banco una a una (3,99M arrastrados). `bash docs/producto/plan-imagenes/hoja.sh <prefijo> [columnas]` junta una ronda en hojas de 6 casillas (ffmpeg; la leyenda, en texto); la hoja sirve para descartar y la finalista se abre entera. Test: `tools/qa/tests/test_hoja_banco.py`.

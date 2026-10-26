@@ -1719,8 +1719,8 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // 2) `chooseNpcAbility(rival, 'defensa', ...)` — primer random decide si prefiere defensiva
     //    (línea `random() < 0.7`); 0.99 (`>=0.7`) fuerza caer al roster COMPLETO (línea
     //    `affordable[...]`, no solo defensivas). Segundo random elige el índice: roster real del
-    //    Aullador Rojo `[Ataque base, Posición defensiva, Filos Centella, Instinto Solitario,
-    //    Esquivar, Defenderse, Descansar]` (7) — `Math.floor(0.1*7)=0` → Ataque base (`rol:'ataque'`,
+    //    Aullador Rojo `[Ataque Básico, Posición defensiva, Filos Centella, Instinto Solitario,
+    //    Esquivar, Defenderse, Descansar]` (7) — `Math.floor(0.1*7)=0` → Ataque Básico (`rol:'ataque'`,
     //    justo lo que exige `utilityTriggered`).
     // 3-4) `rollD20` del atacante y del defensor (combatExchange.ts) — ambos con roll alto
     //    (`Math.floor(0.9*20)+1=19`) para que la tirada del opresor tenga éxito con margen incluso

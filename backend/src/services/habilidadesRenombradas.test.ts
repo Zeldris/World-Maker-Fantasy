@@ -37,7 +37,10 @@ const CATEGORIAS_DE_FAUNA: Record<FaunaCategoria, true> = {
   ESCAMADOS: true, NADANTES: true, ORDENADOS: true, UMBRIAS: true, MUDOS_SALVAJE: true, ROKRATS_ESTALLIDO: true,
 };
 
+let catalogo: Set<string> | null = null;
+
 function nombresDelCatalogo(): Set<string> {
+  if (catalogo) return catalogo;
   const nombres = new Set<string>();
   // Clase y especialización.
   for (const u of allClassAbilityUnlocks()) nombres.add(u.ability.name);
@@ -46,14 +49,13 @@ function nombresDelCatalogo(): Set<string> {
     for (const u of faunaCategoriaAbilityUnlocksFor(categoria)) nombres.add(u.ability.name);
   }
   for (const n of [...fauna, ...npcs]) for (const h of n.habilidadesRaciales ?? []) nombres.add(h.name);
-  // Armas: básica, avanzada y real de cada categoría (en mano principal y en la secundaria) y desarmado.
+  // Armas: básica, avanzada y real de cada categoría en la mano principal (la secundaria no da nombres nuevos) y desarmado.
   const sinArma: EquippedWeaponSlot[] = [];
   for (const a of weaponAbilitiesFor(sinArma, 40)) nombres.add(a.name);
   for (const tipoArma of Object.keys(WEAPON_CATEGORY_ATTRIBUTE) as (keyof typeof WEAPON_CATEGORY_ATTRIBUTE)[]) {
-    for (const slot of ['ARMA_PRINCIPAL', 'ARMA_SECUNDARIA'] as const) {
-      // BACULO, BASTON, GRIMORIO y VARA no tienen habilidad real (WEAPON_REAL_ATAQUE_CONTENT): salen sin nombre.
-      for (const a of weaponAbilitiesFor([{ slot, tipoArma }], 40)) if (a.name) nombres.add(a.name);
-    }
+    // La avanzada de BACULO, BASTON, GRIMORIO y VARA sale sin nombre: WEAPON_ABILITY_AVANZADA_CONTENT solo tiene
+    // fuerza y destreza (fallo de main, apuntado en la bitácora).
+    for (const a of weaponAbilitiesFor([{ slot: 'ARMA_PRINCIPAL', tipoArma }], 40)) if (a.name) nombres.add(a.name);
   }
   // Genéricas, iniciales de personaje, profesiones y recolección.
   for (const a of GENERIC_COMBAT_ABILITIES) nombres.add(a.name);
@@ -63,6 +65,7 @@ function nombresDelCatalogo(): Set<string> {
     const h = harvestAbilityForMetodo(metodo);
     if (h) nombres.add(h.ability.name);
   }
+  catalogo = nombres;
   return nombres;
 }
 
@@ -91,12 +94,12 @@ describe('habilidades renombradas (P100, QA-68)', () => {
   });
 
   it('QA-256: cada renombre global deja el nombre nuevo en el catálogo y ninguna habilidad con el viejo', () => {
-    const fuentes = ['../scripts/worldCatalog.ts', './sexDimorphism.ts', './classAbilities.ts'].map((f) => readFileSync(join(import.meta.dirname, f), 'utf8')).join('\n');
+    const actuales = nombresDelCatalogo();
     for (const [viejo, nuevo] of Object.entries(HABILIDADES_RENOMBRADAS)) {
-      expect(fuentes, nuevo).toContain(`name: '${nuevo}'`);
-      expect(fuentes, viejo).not.toContain(`name: '${viejo}'`);
+      expect(actuales.has(nuevo), nuevo).toBe(true);
+      expect(actuales.has(viejo), viejo).toBe(false);
     }
-  });
+  }, 60000);
 
   it('QA-243: ningún nombre de habilidad de clase se repite y cada nombre nuevo existe en el catálogo', () => {
     const nombres = allClassAbilityUnlocks().map((u) => u.ability.name);
@@ -112,7 +115,7 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     const actuales = nombresDelCatalogo();
     const viejos = new Set([...Object.keys(HABILIDADES_RENOMBRADAS), ...HABILIDADES_RENOMBRADAS_POR_CLASE.map((r) => r.viejo)]);
     const perdidos = (habilidadesConocidas as string[]).filter((n) => !actuales.has(n) && !viejos.has(n));
-    expect(perdidos.map((n) => `añade "${n}" a HABILIDADES_RENOMBRADAS (QA-68) o, si se retira sin sustituto, quítalo de habilidadesConocidas.json`)).toEqual([]);
+    expect(perdidos.map((n) => `añade "${n}" a HABILIDADES_RENOMBRADAS (QA-68); quitarlo de habilidadesConocidas.json es retirar la habilidad, y lo decide la usuaria`)).toEqual([]);
   }, 60000);
 
   it('QA-261: habilidadesConocidas.json recoge cada nombre del catálogo actual y cada nombre viejo de los renombres', () => {
