@@ -27,7 +27,7 @@ Retro sin decidir: [`retro-2026-10-26-ins-33.md`](../../retro-2026-10-26-ins-33.
 - `/code-review --max-findings all` contra `origin/main`: sin hallazgos graves ni medios; 3 leves de forma arreglados
   (`import` de `api.ts`, comentario de `modoDesarrollador.ts`, comentario de `App.tsx`). Queda uno apuntado en la
   bitácora: `setTab('custom')` y la rama `tab === 'custom'` quedan sin alcanzar, a propósito.
-- CI local: ver la bitácora (cuota de Actions agotada, `QA-215`).
+- CI local (`tools/qa/ci-local.sh`, cuota de Actions agotada, `QA-215`) sobre `be03ecf` (`main` sin commits nuevos): todo en verde salvo la descarga de Chromium para Playwright (el proxy bloquea `cdn.playwright.dev`). Backend: 3953 tests en 321 archivos. Frontend: lint, build y 798 tests en 168 archivos.
 
 ## Riesgo
 
