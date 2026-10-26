@@ -43,6 +43,9 @@ export type HitoTipo = 'descubrimiento' | 'objetivo_menor' | 'objetivo_mayor';
 
 export interface NarrationResult {
   narration: string;
+  /// P245: `true` cuando el texto viene de `deterministicFallbackNarration` (el narrador no respondió).
+  /// Lo mira turnResolution.ts para no mostrar en un diálogo la copia de la acción de la jugadora.
+  fallbackDeterminista?: true;
   newFacts: string[];
   /// Solo presente cuando la acción resulta de verdad en conseguir/fabricar un objeto físico
   /// duradero — la mayoría de turnos no tocan esto (ver instrucción en el prompt).
@@ -1738,6 +1741,7 @@ export function deterministicFallbackNarration(ctx: {
   return {
     // P94 (QA-27): la acción se repite tal cual; sin las comillas con que el juego cita al rival.
     narration: `${sinComillasSueltas(action)} ${resultado}`,
+    fallbackDeterminista: true,
     newFacts: [],
     newItem: null,
     newCompanion: null,
@@ -1747,6 +1751,14 @@ export function deterministicFallbackNarration(ctx: {
     condicionFisica: null,
     combateIniciado: null,
   };
+}
+
+/// P245 (decisión de la usuaria, 2026-10-26): en un diálogo con un NPC, el texto de respaldo no copia la
+/// acción de la jugadora (ya está en «TU ACCIÓN») ni dice «La acción transcurre sin incidentes»: una réplica
+/// breve y neutra del NPC y el aviso de que el narrador no respondió. `quien` ya viene con su artículo y en
+/// mayúscula inicial («El orco desconocido», «Gistera Koh»). La réplica real, si la hay, se añade detrás.
+export function narracionDeRespaldoEnDialogo(quien: string): string {
+  return `${quien} te escucha en silencio. (El narrador no ha respondido a esta escena.)`;
 }
 
 // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"): el modelo

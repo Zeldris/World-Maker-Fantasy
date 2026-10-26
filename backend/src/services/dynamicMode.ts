@@ -291,6 +291,10 @@ export function narrarAperturaCombateForzado(targetName: string, cantidad?: numb
 
 const GISTERA_TEXTO_PRESENTACION =
   'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
+/// P243 (decidido por la usuaria 2026-10-26): desde la segunda vez que se pulsa «Preguntar más antes de
+/// decidir», Gistera no repite el discurso: dice brevemente que ya lo contó.
+export const GISTERA_TEXTO_YA_CONTADO =
+  'Gistera te mira con impaciencia, sin dejar de vigilar las rocas. «Ya te lo he contado todo, Gorhorn. No hay más que decir: decide, y deprisa.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
 
 /// P105 (QA-27): la despedida de Gistera al aceptar en la conversación. Si ya se dijo, aceptar la
@@ -301,7 +305,7 @@ export const GISTERA_DESPEDIDA_EN_CONVERSACION =
 /// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de
 /// vuelta — "preguntar" recicla la presentación (misma vuelta lógica, no avanza a la 3), y
 /// "aceptar"/"rechazar" ambos SALEN de la vuelta 2, pero a desenlaces distintos.
-export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null): GisteraTurnoOutput {
+export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null, yaContado = false): GisteraTurnoOutput {
   if (vuelta === 1) {
     return {
       narration:
@@ -327,11 +331,41 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
       cierra: true,
     };
   }
+  if (respuesta === 'preguntar' && yaContado) {
+    return { narration: GISTERA_TEXTO_YA_CONTADO, opciones: GISTERA_OPCIONES_PRESENTACION, cierra: false };
+  }
   // 'observar' / 'acercarse' (vuelta 1→2) Y 'preguntar' (recicla la presentación, se queda en la
   // misma vuelta lógica) llevan las tres a este mismo texto — Gistera ya te ha visto en cuanto te
   // acercas o te quedas mirando, no hace falta una rama de vuelta extra solo para eso; "preguntar"
   // simplemente vuelve a presentar la oferta para que el jugador decida con calma.
   return { narration: GISTERA_TEXTO_PRESENTACION, opciones: GISTERA_OPCIONES_PRESENTACION, cierra: false };
+}
+
+/// P244 (decidido por la usuaria 2026-10-26): Interactuar con Gistera cuando Gorhorn ya la conoce abre un
+/// reencuentro, sin avistamiento ni presentación. Con la misión ya tomada (`questTomada`) no hay nada
+/// que ofrecer: el reencuentro cierra solo. Sin ella (rechazó o salió tras presentarse) le deja volver a
+/// decidir; «Aceptar» y «Rechazar» siguen los mismos desenlaces de `narrarVueltaGistera`.
+export function narrarReencuentroGistera(questTomada: boolean): GisteraTurnoOutput {
+  if (questTomada) {
+    return {
+      narration:
+        'Gistera Koh te reconoce y te dedica un gesto breve, sin dejar de vigilar las rocas. Ya sabes lo que te pidió; no tiene nada nuevo que añadir.',
+      opciones: [],
+      cierra: true,
+    };
+  }
+  return {
+    narration:
+      'Gistera Koh te reconoce y se detiene un instante, jadeante, mirando hacia atrás. «Gorhorn... ¿has cambiado de idea? El que me persigue sigue cerca.»',
+    opciones: ['Aceptar ayudarla', 'Rechazar y seguir tu camino'],
+    cierra: false,
+  };
+}
+
+/// P243: a la segunda vez que se pulsa «Preguntar más» la presentación ya consta dos veces en el historial
+/// de la conversación (la vuelta 2 y la primera pulsación). Desde ahí, «Preguntar más» ya no suma minutos.
+export function gisteraYaLoContoAntes(historialPrevio: string[]): boolean {
+  return historialPrevio.filter((texto) => texto === GISTERA_TEXTO_PRESENTACION).length >= 2;
 }
 
 /// Puro — compone el texto que se vuelca al `LogEntry` de personaje al cerrarse el modo dinámico
@@ -394,6 +428,10 @@ export interface PendingDynamicMode {
   /// ver `narrarVueltaCombateForzado`); si el NPC/fauna vio primero al jugador, el combate se abre
   /// DIRECTAMENTE sin pasar por `pendingDynamicMode` en absoluto (nunca hay elección posible).
   combateForzado?: true;
+  /// P244 (decidido por la usuaria 2026-10-26): el NPC ya era conocido (DESCUBIERTO) al abrir la
+  /// conversación: reencuentro, sin presentación. Se guarda para que las vueltas siguientes (LLM) no
+  /// vuelvan a presentarlo.
+  reencuentro?: true;
   /// Agresivo en grupo (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — id/cantidad
   /// del `ZonePoint` colisionado, presentes solo cuando `combateForzado` viene de un grupo de
   /// FAUNA real (`cantidad > 1`, ver `dynamicModeOffer.zonePointId`/`cantidad`, zona.ts). Con

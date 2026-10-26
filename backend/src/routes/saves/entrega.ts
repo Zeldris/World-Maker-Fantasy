@@ -29,11 +29,19 @@ import { CONDICIONES_INTERACTUABLE } from '../../services/death.js';
 /// schema.prisma).
 /// CR-12 (12d): quien pide materiales en un encargo pendiente (`ENCARGO_MATERIALES`) también puede
 /// recibir objetos: es la única excepción a «solo compañeros» (decisión de la usuaria del 2026-09-06).
-async function slugsDeEncargados(saveId: string, worldId: string): Promise<Set<string>> {
+export async function slugsDeEncargados(saveId: string, worldId: string): Promise<Set<string>> {
   const encargos = await prisma.consecuencia.findMany({ where: { saveId, regla: 'ENCARGO_MATERIALES', estado: 'PENDIENTE', npcId: { not: null } }, select: { npcId: true } });
   if (encargos.length === 0) return new Set();
   const npcs = await prisma.npc.findMany({ where: { worldId, id: { in: encargos.map((e) => e.npcId!) } }, select: { slug: true } });
   return new Set(npcs.map((n) => n.slug));
+}
+
+/// P241: ¿hay botón Entregar para este NPC? Solo compañeros de equipo y encargados de ENCARGO_MATERIALES (mismo
+/// criterio que `/entregables` y `POST /entregar/:npcSlug`).
+export async function puedeRecibirEntregas(saveId: string, worldId: string, npcSlug: string): Promise<boolean> {
+  const companero = await prisma.companion.findFirst({ where: { saveId, sourceSlug: npcSlug }, select: { id: true } });
+  if (companero) return true;
+  return (await slugsDeEncargados(saveId, worldId)).has(npcSlug);
 }
 
 export async function entregaRoutes(app: FastifyInstance) {

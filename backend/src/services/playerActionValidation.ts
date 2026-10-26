@@ -650,3 +650,74 @@ export function harvestSkillMisuseNarrationFor(nombre: string): string {
   const line = pickRandomLine(HARVEST_SKILL_MISUSE_LINES);
   return line(nombre);
 }
+
+export interface GiftToNpcClaim {
+  /// El objeto del inventario que menciona la frase (nombre real), o null si no tiene nada con ese nombre.
+  itemEnInventario: string | null;
+  /// Lo que la jugadora dice que entrega («mi cuchillo» → «cuchillo»), para decir «No tienes …».
+  itemTexto: string;
+}
+
+/// «entrego/regalo/doy/ofrezco X a Y» (P241, decisión de la usuaria 2026-10-26): en texto libre no
+/// se entrega nada, así que el turno no tira dados, no da XP ni narra: se responde con una frase
+/// fija (la entrega real es el botón Entregar, `entrega.ts`). `entrego`/`regalo` bastan; `doy` y
+/// `ofrezco` valen para mil cosas («le doy un golpe», «doy gracias»), así que solo cuentan si lo
+/// que se da es un objeto del inventario. Un ataque no es un regalo. Que haya un NPC en escena lo
+/// exige quien llama.
+const GIFT_STRONG_REGEX = /(?<!\b(?:el|un|mi|tu|su|ese|este|del|al|por)\s)\b(?:entrego|regalo|entregamos|regalamos)\b/;
+export const GIFT_ANY_REGEX = /\b(?:entrego|regalo|entregamos|regalamos|doy|ofrezco|damos|ofrecemos)\b/i;
+const GIFT_WEAK_REGEX = /\b(?:doy|ofrezco|damos|ofrecemos)\b/;
+const GIFT_STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'mi', 'mis', 'tu', 'su', 'este', 'esta', 'esto', 'a', 'al', 'le', 'les', 'para', 'con', 'que', 'por', 'en', 'y', 'e', 'o']);
+
+export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string[], npcNames: string[]): GiftToNpcClaim | null {
+  if (detectsAttackIntent(action)) return null;
+  const normalized = normalizeText(action);
+  const strong = normalized.match(GIFT_STRONG_REGEX);
+  const weak = strong ? null : normalized.match(GIFT_WEAK_REGEX);
+  const verbo = strong ?? weak;
+  if (!verbo || verbo.index === undefined) return null;
+  // Lo entregado: el resto de la frase sin el verbo ni el destinatario.
+  let resto = ` ${normalized.slice(verbo.index + verbo[0].length)} `;
+  for (const nombre of npcNames) {
+    const n = normalizeText(nombre);
+    if (n.length > 0) resto = resto.split(n).join(' ');
+  }
+  const enInventario = inventoryItemNames.find((nombre) => {
+    const n = normalizeText(nombre);
+    if (resto.includes(n)) return true;
+    const palabras = n.split(/\s+/).filter((p) => p.length >= 4 && !GIFT_STOP_WORDS.has(p));
+    return palabras.length > 0 && palabras.every((p) => resto.includes(p));
+  });
+  if (weak && !enInventario) return null;
+  // Para el texto de «No tienes …», fuera también el nombre de pila del destinatario («a Gistera mi pan»).
+  let restoSinNpc = resto;
+  for (const nombre of npcNames) {
+    for (const token of normalizeText(nombre).split(/\s+/)) {
+      if (token.length >= 4) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
+    }
+  }
+  const palabras = restoSinNpc
+    .split(/[,.;:!?¡¿«»"']|\s+(?:y|para|como|porque|pero)\s+/)[0]
+    .split(/\s+/)
+    .filter((p) => p.length > 0);
+  while (palabras.length > 0 && GIFT_STOP_WORDS.has(palabras[0])) palabras.shift();
+  while (palabras.length > 0 && GIFT_STOP_WORDS.has(palabras[palabras.length - 1])) palabras.pop();
+  const itemTexto = palabras.join(' ');
+  if (!enInventario && itemTexto.length === 0) return null;
+  return { itemEnInventario: enInventario ?? null, itemTexto };
+}
+
+/// `nombreNpc` ya viene como lo ve la jugadora (con artículo, sin revelar un nombre que no conoce).
+/// `puedeEntregar`: el NPC es compañero o encargado de ENCARGO_MATERIALES (`entrega.ts#puedeRecibirEntregas`),
+/// los únicos con botón Entregar; si no, no se promete un botón que no sale.
+export function giftToNpcNarrationFor(claim: GiftToNpcClaim, nombreNpc: string, puedeEntregar: boolean): string {
+  if (!claim.itemEnInventario) {
+    return claim.itemTexto
+      ? `No tienes ${claim.itemTexto} en el inventario, así que no hay nada que entregar.`
+      : 'No tienes eso en el inventario, así que no hay nada que entregar.';
+  }
+  if (puedeEntregar) {
+    return `Para entregar ${claim.itemEnInventario} a ${nombreNpc}, usa el botón Entregar: en texto libre no se entrega nada.`;
+  }
+  return `${nombreNpc.charAt(0).toUpperCase()}${nombreNpc.slice(1)} no acepta entregas: solo se entrega a los compañeros de tu equipo o a quien te pide materiales en un encargo.`;
+}

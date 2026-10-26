@@ -12,6 +12,8 @@ import { deNombre, nombreDeEncuentro,
   MINUTOS_POR_VUELTA_MODO_DINAMICO,
   resumenModoDinamicoParaLog,
   narrarVueltaGistera,
+  narrarReencuentroGistera,
+  gisteraYaLoContoAntes,
   respuestaGisteraDesdeOpcion,
   narrarAperturaCombateForzado,
   COMBATE_FORZADO_OPCION_COMBATIR,
@@ -19,7 +21,7 @@ import { deNombre, nombreDeEncuentro,
   type DynamicModeTipo,
 } from '../../services/dynamicMode.js';
 import { narrarVueltaModoDinamico } from '../../services/dynamicModeNarracion.js';
-import { aceptarQuest } from './quests.js';
+import { aceptarQuest, ORCO_ENFURECIDO_QUEST_SLUG } from './quests.js';
 import { detectNpcsInScene } from '../../services/npcScene.js';
 import { abrirCombateDePersonas, grupoDePersona } from '../../services/combatePersonas.js';
 import { iniciarCaza, accionEnDiarioDeCaza, type CazaTarget, type TiradaGrupoInfo, type CombateGrupoLogRoll, type TiradaCazaLimpia } from '../../services/caza.js';
@@ -320,10 +322,18 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
       // AGRESIVO/ENEMIGO, el jugador lo vio primero (2026-09-20) — texto fijo determinista
       // ofreciendo Combatir/Huir (ver `narrarAperturaCombateForzado`, dynamicMode.ts), nunca
       // conversación LLM ni el guion de Gistera (ella nunca es AGRESIVO/ENEMIGO por diseño).
+      // P244: un NPC que Gorhorn ya conoce (DESCUBIERTO) abre un reencuentro, no el primer encuentro.
+      const reencuentro =
+        !combateForzado && tipo === 'NPC' && !!(await prisma.discoveredEntity.findFirst({
+          where: { saveId: save.id, entityType: 'npc', entitySlug: targetSlug, fase: 'DESCUBIERTO' },
+          select: { id: true },
+        }));
       const turno = combateForzado
         ? narrarAperturaCombateForzado(targetName, cantidad)
         : esGistera
-          ? narrarVueltaGistera(1, null)
+          ? reencuentro
+            ? narrarReencuentroGistera(!!(await prisma.quest.findFirst({ where: { saveId: save.id, questSlug: ORCO_ENFURECIDO_QUEST_SLUG }, select: { id: true } })))
+            : narrarVueltaGistera(1, null)
           : // Guion determinista de Gistera Koh (2026-09-09, ver comentario de `narrarVueltaGistera`,
             // dynamicMode.ts — bug real: "ya no estamos usando los mensajes deterministas... y qué
             // tiene que ver el tótem con ella") — cero llamadas a Ollama, texto fijo revisado por Álvaro.
@@ -337,6 +347,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
               targetBio: targetNpc?.bio ?? null,
               locationContext: currentLocation,
               quienInicia,
+              reencuentro,
             });
 
       const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
@@ -364,6 +375,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
             locationContext: currentLocation,
             historialNarracion,
             ...(combateForzado ? { combateForzado: true as const } : {}),
+            ...(reencuentro ? { reencuentro: true as const } : {}),
             // Agresivo en grupo (Fase 2, 2026-09-28) — se persisten para que `/responder` (el
             // jugador elige "Combatir" tras verlo primero) sepa que este encuentro es un grupo real
             // y abra combate múltiple en vez del 1v1 clásico.
@@ -486,8 +498,11 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
     // salte a un desenlace que nunca ocurrió. El resto de respuestas SÍ avanza como siempre.
     const respuestaGistera = esGistera ? respuestaGisteraDesdeOpcion(respuesta) : null;
     const siguienteVuelta = esGistera && respuestaGistera === 'preguntar' ? pending.vuelta : pending.vuelta + 1;
+    // P243: desde la segunda vez, «Preguntar más» no repite el discurso ni avanza el reloj.
+    const historialPrevio = pending.historialNarracion ?? [pending.narration];
+    const preguntaRepetida = esGistera && respuestaGistera === 'preguntar' && gisteraYaLoContoAntes(historialPrevio);
     const turno = esGistera
-      ? narrarVueltaGistera(siguienteVuelta, respuestaGistera)
+      ? narrarVueltaGistera(siguienteVuelta, respuestaGistera, preguntaRepetida)
       : await narrarVueltaModoDinamico({
           tipo: pending.tipo,
           targetName: pending.targetName,
@@ -495,6 +510,7 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
           maxVueltas: MAX_VUELTAS_MODO_DINAMICO,
           characterSummary,
           respuestaJugador: respuesta,
+          reencuentro: pending.reencuentro,
           // Contexto real resuelto en la primera vuelta (2026-08-27, ver comentario de
           // PendingDynamicMode) — reutilizado tal cual, nunca re-consultado.
           targetBio: pending.targetBio,
@@ -502,13 +518,14 @@ export async function dynamicModeRoutes(app: FastifyInstance) {
         });
 
     const fictionalMinutesActuales = save.worldState?.fictionalMinutes ?? 480;
-    const nuevoFictionalMinutes = advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
+    const nuevoFictionalMinutes = preguntaRepetida
+      ? fictionalMinutesActuales
+      : advanceFictionalMinutes(fictionalMinutesActuales, MINUTOS_POR_VUELTA_MODO_DINAMICO);
     const nuevaFictionalDateLabel = formatFictionalDate(nuevoFictionalMinutes);
 
     // Franja 0 (2026-09-08) — partidas ya en curso antes de esta migración pueden no tener
     // `historialNarracion` todavía (campo nuevo en un Json sin migración de esquema); se reconstruye
     // con la última vuelta conocida en vez de perder el historial anterior por completo.
-    const historialPrevio = pending.historialNarracion ?? [pending.narration];
     const historialNarracion = [...historialPrevio, turno.narration];
     const pendingDynamicMode: PendingDynamicMode | null = turno.cierra
       ? null

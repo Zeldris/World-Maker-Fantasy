@@ -419,3 +419,17 @@ describe('buildDynamicModeTurnoPrompt — framing de "¿quién ve a quién prime
     expect(prompt).not.toContain('encuentra/observa primero');
   });
 });
+
+describe('buildDynamicModeTurnoPrompt — reencuentro con un NPC ya conocido (P244)', () => {
+  it('con reencuentro, el prompt prohíbe presentar al NPC; sin él, no lo dice', () => {
+    const con = buildDynamicModeTurnoPrompt({ ...BASE_INPUT, reencuentro: true }).prompt;
+    expect(con).toContain('YA se conocen');
+    expect(con).toContain('NO lo presentes');
+    expect(buildDynamicModeTurnoPrompt(BASE_INPUT).prompt).not.toContain('YA se conocen');
+  });
+
+  it('el fallback determinista de un reencuentro no lo presenta como un encuentro nuevo', () => {
+    const out = deterministicDynamicModeTurno({ ...BASE_INPUT, reencuentro: true });
+    expect(out.narration).toContain('reconoce');
+  });
+});

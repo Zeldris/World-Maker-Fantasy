@@ -504,6 +504,9 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       // escena) no debe generar una segunda oferta duplicada. `pendingQuestOfferInfo` limpio a mano
       // (en producción esto ya lo habría hecho `/quests/aceptar` al crear la Quest de verdad).
       await prisma.save.update({ where: { id: saveId }, data: { pendingQuestOfferInfo: Prisma.JsonNull } });
+      // P244: con Gistera ya DESCUBIERTO el segundo Interactuar abre un reencuentro (test aparte, más
+      // abajo); este caso es el del primer encuentro con la Quest ya creada por otro camino.
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
       const app = await buildApp();
 
       await app.inject({
@@ -538,7 +541,117 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       await prisma.quest.deleteMany({ where: { saveId } });
     });
 
+    // P244 (decidido por la usuaria 2026-10-26): Interactuar con un NPC ya conocido (DESCUBIERTO) abre un
+    // reencuentro, sin avistamiento ni presentación.
+    it('P244 Gistera Koh ya conocida: Interactuar abre un reencuentro sin presentación (sin la misión: vuelve a decidir)', async () => {
+      await prisma.quest.deleteMany({ where: { saveId } });
+      await prisma.discoveredEntity.upsert({
+        where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } },
+        create: { saveId, entityType: 'npc', entitySlug: 'gistera-koh', fase: 'DESCUBIERTO' },
+        update: { fase: 'DESCUBIERTO' },
+      });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.narration).toContain('te reconoce');
+      expect(body.narration).not.toContain('ves a una orca');
+      expect(body.narration).not.toContain('Soy Gistera Koh');
+      expect(body.opciones).toEqual(['Aceptar ayudarla', 'Rechazar y seguir tu camino']);
+      expect(body.cierra).toBe(false);
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+    });
+
+    it('P244 Gistera Koh ya conocida y con la misión tomada: el reencuentro cierra solo, sin ofrecer nada', async () => {
+      await prisma.quest.create({
+        data: { saveId, title: 'Acabar con el Orco Enfurecido', description: 'x', questSlug: 'orco-enfurecido-hondonada-gistera', status: 'ACTIVA' },
+      });
+      const app = await buildApp();
+      const res = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.narration).toContain('te reconoce');
+      expect(body.cierra).toBe(true);
+      expect(body.opciones).toEqual([]);
+      const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      expect(saveAfter.pendingDynamicMode).toBeNull();
+      await prisma.quest.deleteMany({ where: { saveId } });
+    });
+
+    it('P244 otro NPC (LLM) ya conocido: el narrador recibe reencuentro:true y la conversación lo recuerda; sin descubrir, no', async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } });
+      const app = await buildApp();
+      narrarVueltaModoDinamico.mockClear();
+      narrarVueltaModoDinamico.mockResolvedValueOnce({ narration: 'Maestro Kade te saluda.', opciones: ['Hablar', 'Irte'], cierra: false });
+      const nuevo = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
+      });
+      expect(nuevo.statusCode).toBe(200);
+      expect(narrarVueltaModoDinamico.mock.calls[0][0].reencuentro).toBeFalsy();
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/ignorar` });
+
+      await prisma.discoveredEntity.upsert({
+        where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: 'maestro-kade' } },
+        create: { saveId, entityType: 'npc', entitySlug: 'maestro-kade', fase: 'DESCUBIERTO' },
+        update: { fase: 'DESCUBIERTO' },
+      });
+      narrarVueltaModoDinamico.mockClear();
+      narrarVueltaModoDinamico.mockResolvedValueOnce({ narration: 'Maestro Kade te reconoce.', opciones: ['Hablar', 'Irte'], cierra: false });
+      const conocido = await app.inject({
+        method: 'POST',
+        url: `/saves/${saveId}/modo-dinamico/interactuar`,
+        payload: { tipo: 'NPC', targetSlug: 'maestro-kade', targetName: 'Maestro Kade' },
+      });
+      expect(conocido.statusCode).toBe(200);
+      expect(narrarVueltaModoDinamico.mock.calls[0][0].reencuentro).toBe(true);
+      narrarVueltaModoDinamico.mockResolvedValueOnce({ narration: 'Sigue la charla.', opciones: [], cierra: true });
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta: 'Hablar' } });
+      expect(narrarVueltaModoDinamico.mock.calls[1][0].reencuentro).toBe(true);
+    });
+
+    it('P243 Gistera Koh: desde la segunda vez, «Preguntar más» no avanza el reloj y dice que ya lo contó', async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      const app = await buildApp();
+      const reloj = async () => (await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).fictionalMinutes;
+      const responder = async (respuesta: string) =>
+        JSON.parse((await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/responder`, payload: { respuesta } })).body);
+
+      await app.inject({ method: 'POST', url: `/saves/${saveId}/modo-dinamico/interactuar`, payload: { tipo: 'NPC', targetSlug: 'gistera-koh', targetName: 'Gistera Koh' } });
+      const presentacion = await responder('Me acerco a ella');
+      expect(presentacion.narration).toContain('Soy Gistera Koh');
+      const primera = await responder('Preguntar más antes de decidir');
+      expect(primera.narration).toContain('Soy Gistera Koh');
+      const antes = await reloj();
+
+      const segunda = await responder('Preguntar más antes de decidir');
+      expect(segunda.narration).toContain('Ya te lo he contado todo');
+      expect(segunda.narration).not.toContain('Soy Gistera Koh');
+      expect(segunda.opciones).toEqual(['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino']);
+      expect(segunda.cierra).toBe(false);
+      expect(await reloj()).toBe(antes);
+      const tercera = await responder('Preguntar más antes de decidir');
+      expect(tercera.narration).toContain('Ya te lo he contado todo');
+      expect(await reloj()).toBe(antes);
+
+      // Y la conversación sigue: se puede rechazar con normalidad (el reloj vuelve a avanzar).
+      const rechazo = await responder('Rechazar y seguir tu camino');
+      expect(rechazo.cierra).toBe(true);
+      expect(await reloj()).toBe(antes + 2);
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+    });
+
     it('Gistera Koh: rechazar su ayuda cierra la conversación SIN generar ninguna oferta de misión', async () => {
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
       const app = await buildApp();
       await app.inject({
         method: 'POST',

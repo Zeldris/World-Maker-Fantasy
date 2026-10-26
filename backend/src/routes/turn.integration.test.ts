@@ -19,7 +19,7 @@ import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import { ownerKeyFor } from '../services/reinoOwner.js';
 import type { NarrationResult } from '../services/narrador.js';
-import { hasFalseTravelClaim, hasFalsePhantomTravel } from '../services/narrador.js';
+import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -9423,4 +9423,81 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
 
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'COMBATE_PERDIDO' } })).toBe(2);
   }, 30_000);
+});
+
+describe('Tanda NPC (decisiones 2026-10-26)', () => {
+  const npcSlug = 'orco-enfurecido-hondonada';
+  const creadas: string[] = [];
+
+  async function partidaConOrco(nombre: string): Promise<{ saveId: string; npcId: string; worldId: string; locationId: string }> {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: npcSlug } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: { userId, worldId: world.id, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id },
+    });
+    creadas.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id } });
+    await prisma.npcState.create({ data: { saveId: save.id, npcId: npc.id, scope: '', condicionFisica: 'ILESO' } });
+    return { saveId: save.id, npcId: npc.id, worldId: world.id, locationId: location.id };
+  }
+
+  afterAll(async () => {
+    for (const id of creadas) await prisma.save.delete({ where: { id } }).catch(() => undefined);
+  });
+
+  async function clasificar(saveId: string, action: string) {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
+    expect(res.statusCode).toBe(200);
+    return res.json() as { blocked?: { narration: string }; roll?: unknown };
+  }
+
+  it('P245: en diálogo, si el narrador no responde, el respaldo no copia la acción ni dice «sin incidentes»', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P245');
+    const accion = "Hablo con 'Orco enfurecido' sobre el camino.";
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
+    await doTurn(saveId, accion);
+    const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
+    expect(texto).toMatch(/te escucha en silencio/);
+    expect(texto).toMatch(/narrador no ha respondido/);
+    expect(texto).not.toMatch(/sin incidentes/);
+    expect(texto).not.toMatch(/sobre el camino/);
+    // El nombre es el que la jugadora le conoce: sin descubrir, por su raza.
+    expect(texto).toMatch(/^El orco desconocido/);
+  }, 20_000);
+
+  it('P245: fuera de un diálogo el respaldo sigue igual (copia la acción con su resultado)', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P245 sin diálogo');
+    const accion = 'Examino el terreno cercano.';
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
+    await doTurn(saveId, accion);
+    const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
+    expect(texto).toMatch(/Examino el terreno cercano\. La acción transcurre sin incidentes\./);
+  }, 20_000);
+
+  it('P241: «le regalo X a Y» en texto libre no tira ni narra; sin botón Entregar para ese NPC lo dice así', async () => {
+    narrateAction.mockClear();
+    const { saveId } = await partidaConOrco('Gorhorn P241 sin botón');
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    const body = await clasificar(saveId, 'Le regalo al Orco enfurecido mi cuchillo de pedernal.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(body.roll).toBeUndefined();
+    expect(body.blocked?.narration).toMatch(/no acepta entregas/);
+    expect(body.blocked?.narration).not.toMatch(/botón/);
+    expect(await prisma.inventoryItem.count({ where: { saveId, name: 'Cuchillo de pedernal' } })).toBe(1);
+  });
+
+  it('P241: con botón Entregar (compañero) remite al botón; si X no está en el inventario, lo dice', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P241 compañero');
+    await prisma.companion.create({ data: { saveId, name: 'Orco enfurecido', role: 'x', notes: '', tipo: 'NPC', sourceSlug: npcSlug } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial' } });
+    const conBoton = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
+    expect(conBoton.blocked?.narration).toMatch(/botón Entregar/);
+    const sinItem = await clasificar(saveId, 'Le entrego mi pan al Orco enfurecido.');
+    expect(sinItem.blocked?.narration).toMatch(/No tienes pan en el inventario/);
+  });
 });

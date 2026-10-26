@@ -29,7 +29,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -81,7 +81,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
@@ -4774,6 +4774,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
   // final de la respuesta HTTP completa.
   if (!wasLlmNarrated) onNarrationChunk?.(narration.narration);
+
+  // P245: el narrador no respondió y era un diálogo con un NPC: el respaldo no copia la acción ni dice
+  // «sin incidentes»; réplica neutra con el nombre que la jugadora le conoce + aviso. Fuera de un
+  // diálogo (o en un intercambio de combate) el respaldo sigue como siempre. Si el streaming ya sacó el
+  // texto antiguo, el cliente recibe el definitivo en la respuesta.
+  if (wasLlmNarrated && narration.fallbackDeterminista && dialogueTarget && !combatExchangeDisplayFinal) {
+    const visible = await nombreVisibleDeNpc(prisma, saveId, dialogueTarget);
+    const quien = visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, dialogueTarget.articulo);
+    narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1));
+  }
 
   // Narración mentirosa si el modelo agota los 3 reintentos (bug real jugando en vivo, 2026-08-06,
   // auditoría "revisa la partida" en directo): `hasFalseTravelClaim` (narrador.ts) ya descarta y

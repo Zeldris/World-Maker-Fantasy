@@ -44,6 +44,8 @@ const {
   BINDING_VERB_REGEX,
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
+  detectsGiftToNpcClaim,
+  giftToNpcNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -582,5 +584,43 @@ describe('harvestSkillMisuseNarrationFor', () => {
     for (let i = 0; i < 20; i++) {
       expect(harvestSkillMisuseNarrationFor('matorral de cuerno').length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('detectsGiftToNpcClaim (P241)', () => {
+  const inventario = ['Cuchillo de pedernal', 'Cataplasma de salvia'];
+  const npcs = ['Gistera Koh'];
+
+  it('«Le regalo a Gistera mi cuchillo» con el cuchillo en el inventario: lo reconoce', () => {
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera Koh mi cuchillo de pedernal.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cuchillo de pedernal' });
+  });
+
+  it('«Le entrego mi pan a Gistera» sin pan en el inventario: dice qué no tiene', () => {
+    const claim = detectsGiftToNpcClaim('Le entrego mi pan a Gistera Koh.', inventario, npcs);
+    expect(claim).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+    expect(giftToNpcNarrationFor(claim!, 'Gistera Koh', true)).toBe('No tienes pan en el inventario, así que no hay nada que entregar.');
+  });
+
+  it('con solo el nombre de pila del destinatario, «No tienes» no lo arrastra', () => {
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera mi pan.', inventario, npcs)).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+  });
+
+  it('«doy» solo cuenta si lo que se da está en el inventario (le doy un golpe / doy gracias no son regalos)', () => {
+    expect(detectsGiftToNpcClaim('Le doy un golpe seco a Gistera Koh.', inventario, npcs)).toBeNull();
+    expect(detectsGiftToNpcClaim('Doy las gracias a Gistera Koh.', inventario, npcs)).toBeNull();
+    expect(detectsGiftToNpcClaim('Le doy mi cataplasma de salvia a Gistera Koh.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cataplasma de salvia' });
+  });
+
+  it('un ataque o un regalo como sustantivo no es una entrega', () => {
+    expect(detectsGiftToNpcClaim('Ataco al orco y le entrego un golpe.', inventario, npcs)).toBeNull();
+    expect(detectsGiftToNpcClaim('Miro el regalo de Gistera Koh.', inventario, npcs)).toBeNull();
+  });
+
+  it('la frase remite al botón Entregar solo si el NPC lo tiene; si no, dice que no acepta entregas', () => {
+    const claim = { itemEnInventario: 'Cuchillo de pedernal', itemTexto: 'cuchillo de pedernal' };
+    expect(giftToNpcNarrationFor(claim, 'la compañera', true)).toContain('botón Entregar');
+    const sinBoton = giftToNpcNarrationFor(claim, 'Gistera Koh', false);
+    expect(sinBoton).toContain('no acepta entregas');
+    expect(sinBoton).not.toContain('botón');
   });
 });

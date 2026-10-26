@@ -26,6 +26,8 @@ import {
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
 import { normalizeText } from '../services/travel.js';
+import { nombreVisibleDeNpc, nombreEnFrase, conDefinido } from '../services/dynamicMode.js';
+import { puedeRecibirEntregas } from './saves/entrega.js';
 import { detectsOwnedItemQuote } from '../services/itemReference.js';
 import { prisma } from '../lib/prisma.js';
 import { toFrontendLogEntry } from './saves/shared.js';
@@ -61,6 +63,9 @@ import {
   BINDING_VERB_REGEX,
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
+  detectsGiftToNpcClaim,
+  giftToNpcNarrationFor,
+  GIFT_ANY_REGEX,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -698,6 +703,21 @@ export async function turnRoutes(app: FastifyInstance) {
     // ya calculado arriba.
     if (await detectsUnresolvedDialogueTargetClaim(action, npcsInSceneForValidation.map((n) => n.slug), save.worldId, saveId, save.currentLocationId)) {
       return resolveBlockedTurn(unresolvedDialogueTargetNarrationFor());
+    }
+
+    // «Le entrego/regalo/doy X a Y» en texto libre (P241, decisión de la usuaria 2026-10-26): no tira, no da XP ni narra;
+    // la entrega real es el botón Entregar. Si X no está en el inventario, lo dice. Con NPC en escena y sin ataque.
+    if (!enCombate && npcsInSceneForValidation.length > 0 && GIFT_ANY_REGEX.test(action)) {
+      const inventario = await prisma.inventoryItem.findMany({ where: { saveId, slot: null }, select: { name: true } });
+      const giftClaim = detectsGiftToNpcClaim(action, inventario.map((i) => i.name), npcsInSceneForValidation.map((n) => n.name));
+      if (giftClaim) {
+        const accionNorm = normalizeText(action);
+        const destinatario = npcsInSceneForValidation.find((n) => accionNorm.includes(normalizeText(n.name))) ?? npcsInSceneForValidation[0];
+        const { nombre, oculto } = await nombreVisibleDeNpc(prisma, saveId, destinatario);
+        const nombreFrase = oculto ? nombreEnFrase(nombre) : conDefinido(nombre, destinatario.articulo);
+        const puedeEntregar = await puedeRecibirEntregas(saveId, save.worldId, destinatario.slug);
+        return resolveBlockedTurn(giftToNpcNarrationFor(giftClaim, nombreFrase, puedeEntregar));
+      }
     }
 
     // Atar/inmovilizar a alguien sin cuerdas reales en el inventario (hallazgo real jugando en
