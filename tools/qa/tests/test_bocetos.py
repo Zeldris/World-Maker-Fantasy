@@ -38,6 +38,26 @@ class TestBocetos(unittest.TestCase):
         negros = [e for e in leer_svg('depredador').iter(SVG + 'path') if e.get('fill', '').lower() == '#0c0c0c']
         self.assertTrue(negros, 'falta la cresta en negro')
 
+    def test_fondo_marcado_para_el_verde(self):
+        """IMG-19c: el cielo y el suelo llevan class="fondo" (verde.css los pinta de verde croma para el sujeto)."""
+        for n in NOMBRES:
+            with self.subTest(n):
+                fondo = [e for e in leer_svg(n).iter() if e.get('class') == 'fondo']
+                self.assertEqual(len(fondo), 2, 'cielo y suelo')
+
+    @unittest.skipUnless(shutil.which('rsvg-convert') and shutil.which('ffmpeg'), 'sin rsvg-convert o ffmpeg')
+    def test_verde_css_deja_el_fondo_en_verde_croma(self):
+        d = carpeta()
+        for n in NOMBRES:
+            with self.subTest(n):
+                png = os.path.join(d, f'{n}-verde.png')
+                subprocess.run(['rsvg-convert', '-s', os.path.join(BOCETOS, 'verde.css'), '-w', '640', '-h', '256',
+                                os.path.join(BOCETOS, n + '.svg'), '-o', png], check=True)
+                for x, y in ((2, 2), (2, 250), (630, 250)):  # cielo y las dos esquinas del suelo
+                    px = subprocess.run(['ffmpeg', '-v', 'error', '-i', png, '-vf', f'crop=1:1:{x}:{y}', '-f', 'rawvideo',
+                                         '-pix_fmt', 'rgb24', '-'], capture_output=True, check=True).stdout
+                    self.assertEqual(px, bytes((0x00, 0xb1, 0x40)), (x, y))
+
     @unittest.skipUnless(shutil.which('rsvg-convert'), 'sin rsvg-convert')
     def test_rasteriza(self):
         d = carpeta()

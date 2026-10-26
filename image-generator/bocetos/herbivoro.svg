@@ -2,9 +2,9 @@
 <!-- Cuernahoja (IMG-18): esbelto y alto, cuello largo y fino casi vertical, cabeza pequena, cuernos-hoja verdes
      laterales, patas de ave (muslo corto, tarso larguisimo, corvejon hacia atras, pie de tres dedos). Escena de dia. -->
 <defs><linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb8d8"/><stop offset="1" stop-color="#d8c8a8"/></linearGradient></defs>
-<rect width="1280" height="512" fill="url(#cielo)"/>
-<rect y="400" width="1280" height="112" fill="#8e3d24"/>
-<ellipse cx="700" cy="478" rx="230" ry="14" fill="#4a1d12" opacity=".55"/>
+<rect class="fondo" width="1280" height="512" fill="url(#cielo)"/>
+<rect class="fondo" y="400" width="1280" height="112" fill="#8e3d24"/>
+<ellipse class="sombra" cx="700" cy="478" rx="230" ry="14" fill="#4a1d12" opacity=".55"/>
 <!-- patas lejanas (mas claras, algo mas cortas) -->
 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
 <path d="M672 296 L664 336 L690 384 L676 466" stroke="#c9a878" stroke-width="9"/>
