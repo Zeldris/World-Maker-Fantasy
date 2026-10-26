@@ -159,3 +159,14 @@ Aullador (al atardecer, como el de ChatGPT), Cuernahoja (ficha nueva), Cardo y P
 estilo `realista` con el encuadre libre (la pose dice dónde va el sujeto) y FLUX.3 en la CPU, sin `-r`. Nombre de la
 plantilla: «fotorreal» (lo de ChatGPT es *concept art* fotorrealista, de película, más que fantasía realista).
 
+
+- **Aullador** (48 min, `r12-fotorreal-aullador-fotorreal/intentos/banner-s3-p16-20261026-153036.png`): el mayor
+  salto del banco, ya es el mismo animal. Cabeza de zorro, colmillos de sable, cresta de placas negras con púas rojas,
+  cola anillada, tierra roja agrietada, remolinos de polvo, sol bajo y la manada al fondo. La calidad (pelo, placas,
+  profundidad) está a la altura. Falta: (1) **proporción**: el de ChatGPT es mucho más largo y bajo, como una
+  comadreja de tres cuerpos; aquí es un zorro grande con patas de zorro; (2) la **cresta** de ChatGPT va de la nuca a
+  la punta de la cola; aquí cubre solo el lomo; (3) la **manada** son hienas o jabalíes, no la misma especie en
+  silueta; (4) el **color**: ChatGPT tiñe todo de rojo anaranjado con contraluz y bruma densa; aquí el cielo es
+  naranja pero el suelo y el animal quedan neutros, más limpio y de render. Palancas: «three times as long as a fox»
+  y «the crest runs from the nape to the tail tip» en la ficha; «the pack are more of the same creature» en la pose;
+  bruma roja y contraluz en la luz del atardecer.
