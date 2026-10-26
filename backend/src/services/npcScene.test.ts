@@ -1151,6 +1151,12 @@ describe('detectsGreetingOrQuestion (P306)', () => {
     expect(detectsGreetingOrQuestion('Le pregunto por el paso del norte.')).toBe(true);
   });
 
+  it('«cómo va la caza» (la frase del hallazgo) es saludo: «caza» es el sustantivo, no el verbo', () => {
+    expect(detectsGreetingOrQuestion('Saludo con un gesto del clan y le pregunto cómo va la caza')).toBe(true);
+    expect(detectsGreetingOrQuestion('¿Qué tal tu caza, Torgash?')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le digo «te caza el orco» y le cazo.')).toBe(false);
+  });
+
   it('una amenaza de muerte o un gesto violento no se cuelan como saludo', () => {
     expect(detectsGreetingOrQuestion('¡Hola! Te mato.')).toBe(false);
     expect(detectsGreetingOrQuestion('Le grito: «¡te voy a matar!»')).toBe(false);

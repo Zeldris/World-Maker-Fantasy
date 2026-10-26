@@ -9295,9 +9295,9 @@ describe('CR-49 — atacar a Torgash en su campamento trae a los suyos', () => {
 describe('P306 — un saludo no pide tirada ni abre combate salvo reputación hostil', () => {
   const saves: string[] = [];
 
-  async function partida(nombre: string, factionsStatus?: Record<string, number>): Promise<string> {
+  async function partida(nombre: string, factionsStatus?: Record<string, number>, lugar = 'hondonada-del-eco'): Promise<string> {
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: lugar } });
     const save = await prisma.save.create({
       data: {
         userId: await getDefaultUserId(), worldId: world.id, characterName: nombre, characterArchetype: 'guerrero',
@@ -9314,12 +9314,12 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
     for (const id of saves) await prisma.save.delete({ where: { id } });
   });
 
-  // El clasificador simulado dice lo peor: «hostil», con tirada, y el narrador propone combate con el orco.
-  async function saludar(saveId: string, action: string) {
+  // El clasificador simulado dice lo peor: «hostil», con tirada, y el narrador propone combate con el saludado.
+  async function saludar(saveId: string, action: string, npcSlug = 'orco-enfurecido-hondonada') {
     classifyAction.mockResolvedValueOnce({
       requiereTirada: true, atributo: 'carisma', dificultad: 12, razon: 'hostil', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
-    narrateAction.mockResolvedValueOnce({ narration: 'El orco gruñe.', newFacts: [], combateIniciado: { npcSlugs: ['orco-enfurecido-hondonada'] } });
+    narrateAction.mockResolvedValueOnce({ narration: 'El orco gruñe.', newFacts: [], combateIniciado: { npcSlugs: [npcSlug] } });
     const app = await buildApp();
     const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
     const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
@@ -9328,9 +9328,23 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
     return { classification, roll, combateIniciado: done.combateIniciado };
   }
 
-  it('con reputación neutra, saludar al orco no tira dados ni abre combate', async () => {
-    const saveId = await partida('Gorhorn de prueba (P306 neutra)');
+  // Segunda decisión de la usuaria (2026-10-26): un NPC AGRESIVO sigue atacando aunque lo saludes; el saludo solo
+  // deja de abrir combate con los no agresivos.
+  it('con reputación neutra, saludar al orco AGRESIVO no tira dados pero él ataca igual: abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 neutra agresivo)');
     const { classification, roll, combateIniciado } = await saludar(saveId, "Saludo al 'Orco enfurecido': ¿quién eres?");
+    expect(classification.requiereTirada).toBe(false);
+    expect(roll ?? null).toBeNull();
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
+
+  it('con reputación neutra, saludar a Torgash Ketg (CAUTELOSO) no tira dados ni abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 neutra cauteloso)', undefined, 'campamento-serhu');
+    const { classification, roll, combateIniciado } = await saludar(
+      saveId,
+      "Saludo a 'Torgash Ketg' con un gesto del clan y le pregunto cómo va la caza",
+      'torgash-ketg',
+    );
     expect(classification.requiereTirada).toBe(false);
     expect(roll ?? null).toBeNull();
     expect(combateIniciado?.npcs ?? []).toHaveLength(0);

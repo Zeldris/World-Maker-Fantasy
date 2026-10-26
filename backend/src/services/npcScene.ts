@@ -988,15 +988,20 @@ const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\
 /// mato», «desenvaino y le digo…», «le clavo la lanza»). Solo excluyen el saludo: no abren combate por sí solos.
 const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
 
+const CAZA_SUSTANTIVO_REGEX = /\b(la|una|esta|esa|su|tu|mi|vuestra|nuestra)\s+caza\b/gi;
+
 /// P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC (texto libre o Responder) no pide
 /// tirada ni abre combate. Es diálogo (`detectsDialogueIntent`) sin verbo de ataque, sin búsqueda hostil (salvo
 /// que sea aceptar ayudar) y sin intención de influir. Que la facción del NPC sea hostil lo decide quien lo usa
 /// (`reputacionHostil`): este helper solo mira el texto.
 export function detectsGreetingOrQuestion(action: string): boolean {
+  // P306: «le pregunto cómo va la caza» (la frase del hallazgo): «caza» tras artículo o posesivo es el sustantivo,
+  // no el verbo de `HOSTILE_SEARCH_REGEX`. Solo se quita para decidir si es saludo; el resto sigue leyendo el texto.
+  const sinCazaSustantivo = action.replace(CAZA_SUSTANTIVO_REGEX, ' ');
   return (
     detectsDialogueIntent(action) &&
     !detectsAttackIntent(action) &&
-    !(detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)) &&
+    !(detectsHostileSearchIntent(sinCazaSustantivo) && !detectsVerbalAcceptanceIntent(action)) &&
     !INFLUENCE_INTENT_REGEX.test(normalizeText(action)) &&
     !VIOLENCE_INTENT_REGEX.test(normalizeText(action))
   );

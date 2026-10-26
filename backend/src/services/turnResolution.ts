@@ -2303,8 +2303,10 @@ async function resolveCombatSlugsAndPersist(params: {
   // P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC no abre combate salvo que la
   // reputación de Gorhorn con la facción de alguien en escena sea hostil (`reputacionHostil`, el mismo umbral
   // que el color ENEMIGO del mapa y la banda 0 de `effectiveTemperamento`). Ni el `combateIniciado` del narrador,
-  // ni una bajada de condición, ni un NPC AGRESIVO de catálogo lo deciden por su cuenta tras un saludo. Un
+  // ni una bajada de condición lo deciden por su cuenta tras un saludo (un NPC AGRESIVO sí, ver abajo). Un
   // verbo de ataque o de búsqueda hostil en la misma frase sí sigue valiendo (el saludo no los tapa).
+  // P306 (usuaria, 2026-10-26, segunda decisión): un NPC AGRESIVO (temperamento efectivo, `agresivoSlugsInScene`)
+  // sigue atacando aunque lo saludes, como antes; el saludo solo apaga el combate con los no agresivos.
   const saludoSinHostilidad =
     !enCombate &&
     detectsGreetingOrQuestion(action) &&
@@ -2388,13 +2390,13 @@ async function resolveCombatSlugsAndPersist(params: {
   // caso concreto del hallazgo 17 de arriba (`attackMissedNonAggressiveTarget`).
   const shouldForceCombat =
     !enCombate &&
-    !saludoSinHostilidad &&
     combatSlugsFromModel.length === 0 &&
     npcsInSceneVivos.length > 0 &&
     (agresivoSlugsInScene.length > 0 ||
-      (isCondicionDowngrade(condicionFisicaJugador, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
-      (detectsAttackIntent(action) && !attackMissedNonAggressiveTarget) ||
-      (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)));
+      (!saludoSinHostilidad &&
+        ((isCondicionDowngrade(condicionFisicaJugador, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
+          (detectsAttackIntent(action) && !attackMissedNonAggressiveTarget) ||
+          (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)))));
   // Bug real (auditoría 2026-07-23, "ha metido un murgol que no pinta nada"): la red de seguridad
   // metía a TODOS los NPCs detectados en escena como participantes de combate (aliados, fauna de
   // paso...), no solo al hostil. Si la acción cita un nombre real entre comillas (`explicitTarget`,
@@ -2438,7 +2440,10 @@ async function resolveCombatSlugsAndPersist(params: {
     const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
     return t !== 'AMIGABLE' && t !== 'INOFENSIVO' && t !== 'CAUTELOSO';
   });
-  const forcedCombatSlugs = explicitTargetVivo
+  // P306: tras un saludo solo entran los agresivos; el saludado pacífico (citado entre comillas) no.
+  const forcedCombatSlugs = saludoSinHostilidad
+    ? agresivoSlugsInScene
+    : explicitTargetVivo
     ? [explicitTargetVivo.slug]
     : agresivoSlugsInScene.length > 0
       ? agresivoSlugsInScene

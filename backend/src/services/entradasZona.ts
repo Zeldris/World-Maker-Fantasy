@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { PUERTA_INTERIOR, celdaLibreCercana, celdasFijasOcupadas, enFila, posicionPuertaAInterior } from './puertasInterior.js';
-import { celdaDePixel, pixelDeCelda, posicionesDeSalidas, type Celda } from './zonaPosicion.js';
+import { celdaDePixel, claveCelda, pixelDeCelda, posicionesDeSalidas, type Celda } from './zonaPosicion.js';
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -30,8 +30,11 @@ export async function posicionesDeSalidasDeZona(
     // la de cada una de la fila; la base de una sola ya viene libre de `posicionPuertaAInterior`).
     const ocupadas = esInterior || interiores.length < 2 ? null : await celdasFijasOcupadas(db, saveId, location.id);
     interiores.forEach((destino, indice) => {
-      const puerta = enFila(base, interiores.length, indice);
-      posiciones.set(destino.id, ocupadas ? celdaLibreCercana(puerta, ocupadas) : puerta);
+      const deseada = enFila(base, interiores.length, indice);
+      const puerta = ocupadas ? celdaLibreCercana(deseada, ocupadas) : deseada;
+      // Dos puertas recolocadas no van a parar a la misma casilla libre.
+      ocupadas?.add(claveCelda(celdaDePixel(puerta)));
+      posiciones.set(destino.id, puerta);
     });
   }
   if (!esInterior) {

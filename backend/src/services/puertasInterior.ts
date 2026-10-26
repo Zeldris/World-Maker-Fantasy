@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { GRID_COLS, GRID_ROWS, celdaDePixel, claveCelda, pixelDeCelda } from './zonaPosicion.js';
+import { murosDe } from './murosZona.js';
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -21,15 +22,18 @@ const PUERTA_EXTERIOR_SIN_EDIFICIO = { x: 400, y: 450 } as const;
 const SEPARACION_DEL_EDIFICIO = 100;
 
 /// P211 (usuaria, 2026-10-26): celdas que ocupan las fichas fijas de la zona (recursos y edificios,
-/// también los agotados: siguen en su sitio). La puerta de un interior no comparte casilla con ninguna:
-/// en la Llanura Roja la entrada a Hogar de Maktor caía en la misma casilla que la Veta de Yerreo y
-/// al pulsarla en el mapa salía el recurso, sin llegar a entrar.
+/// también los agotados: siguen en su sitio) y los muros de la zona (`murosDe`, P185). La puerta de un
+/// interior no comparte casilla con ninguna: en la Llanura Roja la entrada a Hogar de Maktor caía en la
+/// misma casilla que la Veta de Yerreo y al pulsarla en el mapa salía el recurso, sin llegar a entrar.
 export async function celdasFijasOcupadas(db: Db, saveId: string, locationId: string): Promise<Set<string>> {
-  const fijos = await db.zonePoint.findMany({
-    where: { locationId, tipo: { in: ['RECURSO', 'EDIFICIO'] }, OR: [{ saveId }, { saveId: null }] },
-    select: { x: true, y: true },
-  });
-  return new Set(fijos.map((p) => claveCelda(celdaDePixel(p))));
+  const [fijos, location] = await Promise.all([
+    db.zonePoint.findMany({
+      where: { locationId, tipo: { in: ['RECURSO', 'EDIFICIO'] }, OR: [{ saveId }, { saveId: null }] },
+      select: { x: true, y: true },
+    }),
+    db.location.findUnique({ where: { id: locationId }, select: { slug: true } }),
+  ]);
+  return new Set([...fijos.map((p) => claveCelda(celdaDePixel(p))), ...murosDe(location?.slug)]);
 }
 
 /// P211: `deseada` si su celda está libre; si no, el centro de la celda libre más cercana (anillos de
