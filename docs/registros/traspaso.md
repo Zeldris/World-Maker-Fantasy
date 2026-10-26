@@ -154,6 +154,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-10-26** — ~~`QA-257`…`QA-260`~~ (retro de la segunda pasada por la enciclopedia): «Copias de partida» en `docs/mapa-agente.md`, regla de `REVIEW.md` para `where` anidados de Prisma, tope de llamadas en las tandas de edición y `ficha.sh` con `archivo:línea`.
 - **2026-10-26** — ~~`QA-256`~~: segunda pasada por la enciclopedia: diez tandas contra el canon, cuatro bloques aprobados; canon al día (oficios, edificios, documentos, lo reservado de Tarkor), el seed retira lugares, facciones y NPC huérfanos (`retirarHuerfanos.ts`), unos 160 textos limpios y diez arreglos según el canon; `./actualizar-mundo.sh` en verde. Registro en `lore-hallazgos.md`.
 - **2026-10-26** — ~~`QA-244`~~: la historia de la enciclopedia, completa: una entrada sin documento es saber común o se abre al visitar su lugar (como X4); diez hechos de la cronología con texto del canon y el sí de la usuaria.
 - **2026-10-26** — ~~`QA-243`~~: la enciclopedia, auditada contra el canon sección a sección (NPC, clases, objetos, lugares, facciones, fauna y flora); `./actualizar-mundo.sh` en verde en la Deck; las imágenes de habilidades pasan a `IMG-9`.
@@ -163,4 +164,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-25** — ~~`QA-241`…`QA-242`~~ (retro de las voces): sección «Voces y sonidos» en `docs/mapa-agente.md` y `mapa-agente.py` mirando `image-generator/` y `voice-generator/` (funciones de Python y bash); `cobertura.py --fila <ID>` (definición, hito y menciones recortadas), con tests. `QA-240` queda abierta dentro de `VOZ-6`.
 - **2026-10-25** — ~~`QA-236`…`QA-239`~~ (retro de la difusión): `test_herramientas_con_test`, `skills-con-tests.py` y `bitacora-check.sh` en el check; regla de «lleva a `main`» con la usuaria fuera en `AGENTS.md`; `ci-local.sh` en un worktree sin rojos falsos ni `node_modules` vaciados.
 - **2026-10-25** — ~~`QA-235`~~: `docs/difusion/` (guía de canales, plantilla por actualización y ejemplo del Mundo vivo con tarjeta, diagrama y captura) y la skill `gw-media-content`: `render.mjs` (fuentes a WebP) y `comprobar.py` (en el check y el CI, 11 tests).
-- **2026-10-25** — ~~`QA-228`…`QA-233`~~ (retro de `claude/interfaz-imagenes`): test de que la lista de imágenes cubre toda la unión `ImagePromptEntityType`, la interfaz en el mapa del agente, `image-generator/interfaz/resumen.py` (lista y trabajo en texto), la fase antes de `main` en la fila de la bitácora, `bitacora.py check` en `commit-msg` y `selector` para cada subagente.
