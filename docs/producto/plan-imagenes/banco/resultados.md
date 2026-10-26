@@ -134,3 +134,10 @@ el aullador sale escuálido y con el rojo del pelo como mojado. Sirve para tanda
 probar en el momento. Palancas sin probar: VAE en la GPU (`--backend diffusion=cpu`, ~6 min menos), `-t 8` (hoy 4
 hilos) y menos pasos.
 
+Pastos con FLUX.3 (prompt `pastos-guia`, `--backend diffusion=cpu -t 8`: el VAE en la GPU y 8 hilos): **49 min**
+(muestreo 2873 s, ~180 s por paso, un 14 % menos que con 4 hilos; VAE 40 s en vez de 376), ~4,7 GB libres como
+mínimo. **Leída:** fotografía de estepa creíble, mucho mejor que klein: hierba con textura, arcilla roja, profundidad
+por capas y los Cuernahoja del canon (vientre blanco, cuernos hacia atrás). Sigue siendo postal de safari con cielo
+azul: lejos del aire ámbar y del primer plano con rocas y sendero de ChatGPT. Eso es lo que prueba `realista` (r11).
+`diffusion=cpu -t 8` queda como el modo de FLUX.3.
+
