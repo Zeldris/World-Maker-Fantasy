@@ -107,12 +107,13 @@ interface UseTurnFlowParams {
 const RECETAS_CON_REGISTRO_DE_REINO = ['campamento', 'ayuntamiento']
 
 /// P209: el backend escribe una entrada KINGDOM al terminar de construir o mejorar el campamento o el
-/// ayuntamiento (`writeKingdomLogForBuild`); es un hito si aparece uno de ellos o sube de nivel.
+/// ayuntamiento (`writeKingdomLogForBuild`); es un hito si aparece uno de ellos, sube de nivel o termina
+/// la obra (EN_CONSTRUCCION → ACTIVO con el mismo nivel; fase 1 hacia main).
 function hitoDeReinoNuevo(antes: BuildingInfo[], despues: BuildingInfo[]): boolean {
   return despues.some((b) => {
     if (!b.recipeKey || !RECETAS_CON_REGISTRO_DE_REINO.includes(b.recipeKey)) return false
     const previo = antes.find((a) => a.id === b.id)
-    return !previo || previo.tier !== b.tier
+    return !previo || previo.tier !== b.tier || previo.status !== b.status
   })
 }
 

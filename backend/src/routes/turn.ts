@@ -23,12 +23,13 @@ import {
   detectsHostileSearchIntent,
   detectsVerbalAcceptanceIntent,
   tabulatedAttackAttribute,
+  conNombreVisible,
   type NpcInScene,
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
 import { parseFactionsStatus, reputacionHostil } from '../services/reputation.js';
 import { normalizeText } from '../services/travel.js';
-import { nombreVisibleDeNpc, nombreEnFrase, conDefinido } from '../services/dynamicMode.js';
+import { nombreEnFrase, conDefinido } from '../services/dynamicMode.js';
 import { puedeRecibirEntregas } from './saves/entrega.js';
 import { detectsOwnedItemQuote } from '../services/itemReference.js';
 import { prisma } from '../lib/prisma.js';
@@ -726,15 +727,19 @@ export async function turnRoutes(app: FastifyInstance) {
     // «Le entrego/regalo/doy X a Y» en texto libre (P241, decisión de la usuaria 2026-10-26): no tira, no da XP ni narra;
     // la entrega real es el botón Entregar. Si X no está en el inventario, lo dice. Con NPC en escena y sin ataque.
     if (!enCombate && npcsInSceneForValidation.length > 0 && GIFT_ANY_REGEX.test(action)) {
-      const inventario = await prisma.inventoryItem.findMany({ where: { saveId, slot: null }, select: { name: true } });
-      const giftClaim = detectsGiftToNpcClaim(action, inventario.map((i) => i.name), npcsInSceneForValidation.map((n) => n.name));
+      // Fase 1 hacia main: lo equipado también está en el inventario (Entregar pide desequiparlo), y al
+      // destinatario se le nombra como la jugadora lo ve («al orco desconocido»), no solo por su nombre real.
+      const inventario = await prisma.inventoryItem.findMany({ where: { saveId }, select: { name: true, slot: true } });
+      const visibles = await conNombreVisible(prisma, saveId, npcsInSceneForValidation);
+      const nombresDe = (n: NpcInScene) => (n.nombreVisible ? [n.name, n.nombreVisible] : [n.name]);
+      const giftClaim = detectsGiftToNpcClaim(action, inventario.map((i) => i.name), visibles.flatMap(nombresDe));
       if (giftClaim) {
         const accionNorm = normalizeText(action);
-        const destinatario = npcsInSceneForValidation.find((n) => accionNorm.includes(normalizeText(n.name))) ?? npcsInSceneForValidation[0];
-        const { nombre, oculto } = await nombreVisibleDeNpc(prisma, saveId, destinatario);
-        const nombreFrase = oculto ? nombreEnFrase(nombre) : conDefinido(nombre, destinatario.articulo);
+        const destinatario = visibles.find((n) => nombresDe(n).some((x) => accionNorm.includes(normalizeText(x)))) ?? visibles[0];
+        const nombreFrase = destinatario.nombreVisible ? nombreEnFrase(destinatario.nombreVisible) : conDefinido(destinatario.name, destinatario.articulo);
+        const soloEquipado = giftClaim.itemEnInventario !== null && !inventario.some((i) => i.slot === null && i.name === giftClaim.itemEnInventario);
         const puedeEntregar = await puedeRecibirEntregas(saveId, save.worldId, destinatario.slug);
-        return resolveBlockedTurn(giftToNpcNarrationFor(giftClaim, nombreFrase, puedeEntregar));
+        return resolveBlockedTurn(giftToNpcNarrationFor(giftClaim, nombreFrase, puedeEntregar, soloEquipado));
       }
     }
 

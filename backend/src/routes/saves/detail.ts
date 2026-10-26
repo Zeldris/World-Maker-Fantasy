@@ -20,7 +20,7 @@ import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
 import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
-import { nombreVisibleDeNpc, type PendingDynamicMode } from '../../services/dynamicMode.js';
+import { nombresVisiblesDeNpcs, type PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
@@ -301,10 +301,7 @@ export async function detailRoutes(app: FastifyInstance) {
     // CR-45: la marca del capitán también tras recargar.
     const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
     // P327: en el combate, un PRINCIPAL aún desconocido sigue siendo «el orco desconocido».
-    const nombreVisiblePorSlug = new Map<string, string>();
-    for (const n of [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]) {
-      nombreVisiblePorSlug.set(n.slug, (await nombreVisibleDeNpc(prisma, save.id, n)).nombre);
-    }
+    const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, save.id, [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]);
     const combateIniciado = activeCombatEncounter
       ? {
           npcs: combatEnemigosParaDisplay.map((p) => {

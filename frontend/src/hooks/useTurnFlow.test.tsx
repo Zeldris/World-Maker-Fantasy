@@ -276,6 +276,21 @@ describe('handleSubmit — turno normal exitoso', () => {
     expect(setKingdomLog).not.toHaveBeenCalled()
   })
 
+  // Fase 1 hacia main (P209): la obra que termina pasa de EN_CONSTRUCCION a ACTIVO sin cambiar de nivel, y
+  // es entonces cuando el backend escribe la entrada KINGDOM.
+  it('P209: la obra que pasa de EN_CONSTRUCCION a ACTIVO sin cambiar de nivel refresca el registro del reino', async () => {
+    const entrada = { id: 'k2', channel: 'world', text: 'Gorhorn termina de construir Ayuntamiento.', timeLabel: 'Día 2', createdAt: '2026-10-26T00:00:00Z' } as LogEntry
+    const enObra = { id: 'b1', recipeKey: 'ayuntamiento', tier: 1, name: 'Ayuntamiento', kind: 'x', status: 'EN_CONSTRUCCION', description: '' } as BuildingInfo
+    const terminado = { ...enObra, status: 'ACTIVO' } as BuildingInfo
+    const setKingdomLog = vi.fn()
+    mockGetSave.mockResolvedValue({ kingdomLog: [entrada] } as never)
+    mockClassify.mockResolvedValue(baseClassifyResponse())
+    mockNarrate.mockResolvedValueOnce(baseNarrateResponse({ buildings: [terminado] }))
+    const { result } = renderHook(() => useHarness('Día 2, mañana', undefined, false, { buildings: [enObra], setKingdomLog }))
+    await act(() => result.current.turn.handleSubmit('Sigo con la obra.'))
+    await waitFor(() => expect(setKingdomLog).toHaveBeenCalledWith([entrada]))
+  })
+
   // Bug real jugando en vivo (2026-09-04): el turno que ABRE combate calcula/persiste
   // `nextInitiativeRoll` desde siempre (turnResolution.ts), pero este hook nunca lo aplicaba al
   // estado — el badge de iniciativa solo aparecía a partir del SEGUNDO intercambio. Mismo patrón

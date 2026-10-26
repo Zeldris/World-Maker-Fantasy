@@ -81,7 +81,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
@@ -2102,8 +2102,7 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
   const enemigoNpcRows = enemigoNpcIds.length
     ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, atributoResistencia: true } })
     : [];
-  const nombreVisiblePorSlug = new Map<string, string>();
-  for (const n of enemigoNpcRows) nombreVisiblePorSlug.set(n.slug, (await nombreVisibleDeNpc(prisma, saveId, n)).nombre);
+  const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, saveId, enemigoNpcRows);
   const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
   // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
   // SOLITARIO siempre tiene `condicionFisicaGrupo: null` (ver comentario del campo en
@@ -2512,11 +2511,7 @@ async function resolveCombatSlugsAndPersist(params: {
   await guardarSlugsDeCombate(prisma, saveId, combatSlugsToPersist, { ahora: params.inicioTurno });
 
   // P327: nombre con que la jugadora ve a cada rival (un PRINCIPAL sin descubrir va por su raza).
-  const nombreVisiblePorSlug = new Map<string, string>();
-  for (const slug of combatSlugs) {
-    const n = npcsInScene.find((x) => x.slug === slug);
-    if (n) nombreVisiblePorSlug.set(slug, (await nombreVisibleDeNpc(prisma, saveId, n)).nombre);
-  }
+  const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, saveId, npcsInScene.filter((x) => combatSlugs.includes(x.slug)));
   const combateIniciado = combatSlugs.length
     ? {
         npcs: combatSlugs

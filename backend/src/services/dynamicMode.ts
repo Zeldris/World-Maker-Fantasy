@@ -160,6 +160,21 @@ export async function nombreVisibleDeNpc(
   return visto ? { nombre: npc.name, oculto: false } : { nombre: nombreOcultoPorRaza(npc.raza, npc.genero), oculto: true };
 }
 
+/// Fase 1 hacia main: lo mismo que `nombreVisibleDeNpc` para varios NPC con una sola consulta (combate, ficha
+/// de la partida), en vez de una por rival. Devuelve el nombre visible por slug.
+export async function nombresVisiblesDeNpcs(
+  db: Pick<PrismaClient, 'discoveredEntity'>,
+  saveId: string,
+  npcs: { slug: string; name: string; kind: string; raza?: string | null; genero?: string | null }[],
+): Promise<Map<string, string>> {
+  const principales = npcs.filter((n) => n.kind === 'PRINCIPAL').map((n) => n.slug);
+  const vistos = principales.length
+    ? await db.discoveredEntity.findMany({ where: { saveId, entityType: 'npc', entitySlug: { in: principales } }, select: { entitySlug: true } })
+    : [];
+  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  return new Map(npcs.map((n) => [n.slug, n.kind !== 'PRINCIPAL' || conocidos.has(n.slug) ? n.name : nombreOcultoPorRaza(n.raza, n.genero)]));
+}
+
 /// P63 (QA-27): dentro de una frase, el nombre oculto por raza lleva artículo («el orco desconocido
 /// no tiene intención…»), no se lee como nombre propio. Cualquier otro nombre pasa tal cual.
 export function nombreEnFrase(nombre: string, alInicio = false): string {

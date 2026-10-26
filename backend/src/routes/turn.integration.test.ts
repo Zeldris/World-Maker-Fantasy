@@ -9609,7 +9609,7 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
   async function clasificar(saveId: string, action: string) {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } });
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode, res.body).toBe(200);
     return res.json() as { blocked?: { narration: string }; roll?: unknown };
   }
 
@@ -9658,5 +9658,13 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     expect(conBoton.blocked?.narration).toMatch(/botón Entregar/);
     const sinItem = await clasificar(saveId, 'Le entrego mi pan al Orco enfurecido.');
     expect(sinItem.blocked?.narration).toMatch(/No tienes pan en el inventario/);
+  });
+
+  it('fase 1 hacia main (P241): un objeto equipado sí lo tienes (pide desequiparlo)', async () => {
+    const { saveId } = await partidaConOrco('Gorhorn P241 equipado');
+    await prisma.companion.create({ data: { saveId, name: 'Orco enfurecido', role: 'x', notes: '', tipo: 'NPC', sourceSlug: npcSlug } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Cuchillo de pedernal', description: 'x', origin: 'inicial', slot: 'ARMA_PRINCIPAL' } });
+    const equipado = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
+    expect(equipado.blocked?.narration).toMatch(/desequípalo y usa el botón Entregar/);
   });
 });

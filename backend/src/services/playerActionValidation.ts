@@ -716,14 +716,17 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
 /// `nombreNpc` ya viene como lo ve la jugadora (con artículo, sin revelar un nombre que no conoce).
 /// `puedeEntregar`: el NPC es compañero o encargado de ENCARGO_MATERIALES (`entrega.ts#puedeRecibirEntregas`),
 /// los únicos con botón Entregar; si no, no se promete un botón que no sale.
-export function giftToNpcNarrationFor(claim: GiftToNpcClaim, nombreNpc: string, puedeEntregar: boolean): string {
+/// `equipado`: el objeto solo está equipado (fase 1 hacia main); el botón Entregar pide desequiparlo antes.
+export function giftToNpcNarrationFor(claim: GiftToNpcClaim, nombreNpc: string, puedeEntregar: boolean, equipado = false): string {
   if (!claim.itemEnInventario) {
     return claim.itemTexto
       ? `No tienes ${claim.itemTexto} en el inventario, así que no hay nada que entregar.`
       : 'No tienes eso en el inventario, así que no hay nada que entregar.';
   }
   if (puedeEntregar) {
-    return `Para entregar ${claim.itemEnInventario} a ${nombreNpc}, usa el botón Entregar: en texto libre no se entrega nada.`;
+    return equipado
+      ? `Para entregar ${claim.itemEnInventario} a ${nombreNpc}, desequípalo y usa el botón Entregar: en texto libre no se entrega nada.`
+      : `Para entregar ${claim.itemEnInventario} a ${nombreNpc}, usa el botón Entregar: en texto libre no se entrega nada.`;
   }
   return `${nombreNpc.charAt(0).toUpperCase()}${nombreNpc.slice(1)} no acepta entregas: solo se entrega a los compañeros de tu equipo o a quien te pide materiales en un encargo.`;
 }

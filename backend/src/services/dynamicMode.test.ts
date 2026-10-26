@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, narrarAperturaCombateForzado, resumenModoDinamicoParaLog } from './dynamicMode.js';
+import { describe, it, expect, vi } from 'vitest';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, nombresVisiblesDeNpcs, narrarAperturaCombateForzado, resumenModoDinamicoParaLog } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -206,5 +206,28 @@ describe('resumenModoDinamicoParaLog (P243)', () => {
 
   it('sin vueltas, texto vacío', () => {
     expect(resumenModoDinamicoParaLog([])).toBe('');
+  });
+});
+
+describe('nombresVisiblesDeNpcs (fase 1 hacia main)', () => {
+  it('una sola consulta para todos los PRINCIPAL; oculta solo a los no descubiertos', async () => {
+    const findMany = vi.fn().mockResolvedValue([{ entitySlug: 'gistera-koh' }]);
+    const db = { discoveredEntity: { findMany } } as never;
+    const nombres = await nombresVisiblesDeNpcs(db, 's1', [
+      { slug: 'ugrak', name: 'Ugrak Tuerto', kind: 'PRINCIPAL', raza: 'ORCO', genero: 'M' },
+      { slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', raza: 'ORCO', genero: 'F' },
+      { slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' },
+    ]);
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(nombres.get('ugrak')).toBe(nombreOcultoPorRaza('ORCO', 'M'));
+    expect(nombres.get('gistera-koh')).toBe('Gistera Koh');
+    expect(nombres.get('kirelon')).toBe('Kirelon');
+  });
+
+  it('sin PRINCIPAL no consulta', async () => {
+    const findMany = vi.fn();
+    const nombres = await nombresVisiblesDeNpcs({ discoveredEntity: { findMany } } as never, 's1', [{ slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' }]);
+    expect(findMany).not.toHaveBeenCalled();
+    expect(nombres.get('kirelon')).toBe('Kirelon');
   });
 });
