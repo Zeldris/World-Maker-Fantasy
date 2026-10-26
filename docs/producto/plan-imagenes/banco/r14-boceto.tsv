@@ -1,0 +1,6 @@
+# IMG-19b (plan-fotorreal, Fase 1): escalera de fuerza del boceto en borrador (640x256 / 8 pasos).
+# Aceptación por fuerza (control-forma §5): cuerpo ≥ 3× largo; cresta continua nuca → cola; cabeza de tres cuartos.
+# El herbívoro se añade con la fuerza ganadora y una vecina cuando se sepa cuál gana.
+depredador-085	8	prompts/r14-aullador-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8 --extra-sample-args strength_as_noise_level=true -i $G/bocetos/depredador-640.png --strength 0.85
+depredador-075	8	prompts/r14-aullador-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8 --extra-sample-args strength_as_noise_level=true -i $G/bocetos/depredador-640.png --strength 0.75
+depredador-092	8	prompts/r14-aullador-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8 --extra-sample-args strength_as_noise_level=true -i $G/bocetos/depredador-640.png --strength 0.92
