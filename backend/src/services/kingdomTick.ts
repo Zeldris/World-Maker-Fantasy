@@ -76,6 +76,28 @@ export const FELICIDAD_BAJA_UMBRAL = 20;
 export const DIAS_PARA_CONSOLIDAR = 7;
 export const DIAS_PARA_REBELION = 7;
 
+/// Los indicadores del reino tal como viajan al cliente (detalle de la partida y respuesta del turno): los
+/// contadores de días y los umbrales que los acompañan, para que el frontend no copie `DIAS_PARA_*` (P299,
+/// REVIEW.md «Sin copias entre backend y frontend»).
+export function kingdomStatsParaCliente(row: Pick<KingdomStatsBlock, 'poblacion' | 'felicidad' | 'comida' | 'bebida' | 'riqueza' | 'soldados' | 'trabajadores' | 'visitantes' | 'diasFelicidadBaja' | 'diasFelicidadAlta'>) {
+  return {
+    poblacion: row.poblacion,
+    felicidad: row.felicidad,
+    comida: row.comida,
+    bebida: row.bebida,
+    riqueza: row.riqueza,
+    soldados: row.soldados,
+    trabajadores: row.trabajadores,
+    visitantes: row.visitantes,
+    // B.19 — causa REAL de que un territorio pase a DISPUTADO/PERDIDO o se consolide: la felicidad sostenida
+    // del propio reino (`dailyTick.ts`), nunca el conflicto de facciones del mundo.
+    diasFelicidadBaja: row.diasFelicidadBaja,
+    diasFelicidadAlta: row.diasFelicidadAlta,
+    diasParaRebelion: DIAS_PARA_REBELION,
+    diasParaConsolidar: DIAS_PARA_CONSOLIDAR,
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }

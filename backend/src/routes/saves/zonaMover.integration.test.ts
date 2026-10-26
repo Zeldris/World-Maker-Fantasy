@@ -823,6 +823,27 @@ describe('POST /saves/:id/zona/mover', () => {
     expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toMatchObject([{ targetSlug: 'test-mover-pacifico', tipo: 'FAUNA' }]);
   });
 
+  // P177: con otra conversación abierta (P186) el primer ser vivo del radio se pasa de largo, pero la
+  // búsqueda ya había parado en él y no miró al otro, silenciado y pasado su rato: se olvidaba y volvía a salir.
+  it('una colisión que se pasa de largo (P186) no hace olvidar a los silenciados que no llegó a mirar (P177)', async () => {
+    // Los dos junto a (1,0); el primero, sin silenciar, es el que para la búsqueda.
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 125, y: 75, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 125, y: 75 }] } });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 125, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-guardia', cantidad: 1, activo: true, ruta: [{ x: 125, y: 25 }] } });
+    // Visto hace más de 60 minutos: ya no está en su rato, solo lo retiene seguir en su radio.
+    const recordado = { targetSlug: 'test-mover-guardia', locationId, minutos: 0, tipo: 'FAUNA' };
+    await prisma.save.update({
+      where: { id: saveId },
+      data: { zonaUltimoEncuentro: [recordado], pendingDynamicMode: { tipo: 'NPC', targetSlug: 'otra-persona', targetName: 'Otra persona', vuelta: 1 } },
+    });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 } } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: Prisma.JsonNull } });
+    const body = JSON.parse(res.body);
+    expect(body.colision).toBeNull();
+    expect(body.dynamicModeOffer).toBeNull();
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).zonaUltimoEncuentro).toEqual([recordado]);
+  });
+
   // P186 (QA-27): tras una escena, con la conversación aún abierta, el primer clic en una salida daba un
   // paso y paraba sin aviso ni «Reanudar» al toparse con alguien pacífico: había que volver a pulsar.
   it('con una conversación abierta, alguien pacífico en el camino no corta el viaje (P186)', async () => {

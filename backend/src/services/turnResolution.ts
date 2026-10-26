@@ -33,7 +33,7 @@ import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTr
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
-import { DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
+import { DEFAULT_KINGDOM_STATS, kingdomStatsParaCliente } from './kingdomTick.js';
 import { runDailyTick } from './dailyTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
@@ -608,6 +608,10 @@ export interface NarrateAndPersistResult {
     soldados: number;
     trabajadores: number;
     visitantes: number;
+    diasFelicidadBaja: number;
+    diasFelicidadAlta: number;
+    diasParaRebelion: number;
+    diasParaConsolidar: number;
   } | null;
   /// deathCount/factionsStatus/professionProgress (auditoría 2026-08-06) — mismo criterio que
   /// territories/buildings/subjects/kingdomStats arriba: el frontend necesita el valor YA
@@ -7329,18 +7333,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     description: b.description,
   }));
   const subjects = subjectRows.map((s) => ({ id: s.id, territoryId: s.territoryId, name: s.name, role: s.role, notes: s.notes }));
-  const kingdomStats = kingdomStatsRow
-    ? {
-        poblacion: kingdomStatsRow.poblacion,
-        felicidad: kingdomStatsRow.felicidad,
-        comida: kingdomStatsRow.comida,
-        bebida: kingdomStatsRow.bebida,
-        riqueza: kingdomStatsRow.riqueza,
-        soldados: kingdomStatsRow.soldados,
-        trabajadores: kingdomStatsRow.trabajadores,
-        visitantes: kingdomStatsRow.visitantes,
-      }
-    : null;
+  const kingdomStats = kingdomStatsRow ? kingdomStatsParaCliente(kingdomStatsRow) : null;
 
   return {
     narration,

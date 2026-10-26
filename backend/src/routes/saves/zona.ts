@@ -821,6 +821,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     /// Los de `silenciados` que siguen en el radio de `celda` — el caller olvida los demás (el jugador
     /// ya salió de su radio), salvo un ser vivo en su rato de P177.
     silenciadosCerca: Set<string>;
+    /// P177: la búsqueda paró en el primer encuentro (colisión, aunque P186 la anulase) o ante una oferta ya
+    /// abierta: `silenciadosCerca` está incompleto y el caller no debe olvidar los silenciados que no se miraron.
+    busquedaCortada?: boolean;
     colision: { targetSlug: string; targetName: string; temperamento: string } | null;
     dynamicModeOffer:
       | {
@@ -1100,6 +1103,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
       | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null = null;
+    // P177: los bucles de arriba paran en la primera colisión sin mirar los demás; si luego P186 la anula,
+    // `silenciadosCerca` queda incompleto y hay que avisarlo.
+    let busquedaCortada = colision !== null;
     if (colision) {
       const combateForzado = esTemperamentoHostil(colision.temperamento);
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
@@ -1229,7 +1235,10 @@ export async function zonaRoutes(app: FastifyInstance) {
           continue;
         }
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
-        if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) break;
+        if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) {
+          busquedaCortada = true;
+          break;
+        }
         // P136 (QA-27): el mismo nombre que la ficha del mapa (su `label`, si lo tiene), no el de catálogo.
         const nombre = punto.label ?? sourceDisplayNameFor(punto.targetSlug);
         // B7 (pruebas 2026-09-28): un recurso por encima del nivel de oficio del jugador (p.ej. el
@@ -1267,7 +1276,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         break; // Solo el primer recurso — no acumula varios a la vez.
       }
     }
-    return { silenciadosCerca, colision, dynamicModeOffer, logEntry };
+    return { silenciadosCerca, busquedaCortada, colision, dynamicModeOffer, logEntry };
   }
 
   /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — el jugador hace
@@ -1426,7 +1435,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       // función que al recolectar). P161: la energía nueva vuelve en la respuesta, para el HUD.
       const energiaTrasPaso = await sumarEnergiaPasiva(tx, save.id, save.worldState?.fictionalMinutes ?? 480, minutosTrasPaso);
 
-      const { silenciadosCerca, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
+      const { silenciadosCerca, busquedaCortada, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
         tx,
         save.id,
         save.worldId,
@@ -1444,12 +1453,13 @@ export async function zonaRoutes(app: FastifyInstance) {
       );
       // Un encuentro nuevo se suma a los recordados. Si no lo hay, se olvida cada uno en cuanto este
       // paso deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer), pasado el rato
-      // de P177. Con encuentro no se olvida nada: la detección para en el primero y no los ha mirado todos.
+      // de P177. Con encuentro no se olvida nada: la detección para en el primero y no los ha mirado todos;
+      // tampoco si paró por una colisión que P186 pasó de largo o por otra oferta abierta (`busquedaCortada`).
       const encuentroNuevo = dynamicModeOffer ?? avistadoSinOferta;
       const quedan = recordados.filter((e) => encuentroEnfriando(e, minutosAhora) || (e.locationId === save.currentLocationId && silenciadosCerca.has(e.targetSlug)));
       const zonaUltimoEncuentro = encuentroNuevo
         ? conEncuentro(recordados, encuentroNuevo)
-        : quedan.length === recordados.length
+        : busquedaCortada || quedan.length === recordados.length
           ? undefined
           : quedan.length > 0
             ? (quedan as unknown as Prisma.InputJsonValue)

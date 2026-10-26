@@ -13,8 +13,9 @@ import type { KingdomStatsInfo, TerritoryInfo } from '../../../types'
 
 const stats = (diasFelicidadBaja: number): KingdomStatsInfo => ({
   poblacion: 5, felicidad: 10, comida: 5, bebida: 5, riqueza: 5, soldados: 0, trabajadores: 0, visitantes: 0,
-  diasFelicidadBaja, diasFelicidadAlta: 0,
+  diasFelicidadBaja, diasFelicidadAlta: 0, diasParaRebelion: 7, diasParaConsolidar: 7,
 })
+const perdido = { id: 't2', name: 'Costa', description: 'd', control: 'PERDIDO', population: 0 } as unknown as TerritoryInfo
 const territorio = { id: 't1', name: 'Llanuras', description: 'd', control: 'CONTROLADO', population: 3 } as unknown as TerritoryInfo
 
 // P299 / REI-14 — aviso antes de perder el territorio por rebelión.
@@ -28,12 +29,29 @@ describe('VisionGeneralSection — aviso de rebelión (P299)', () => {
     expect(getByText(/Felicidad baja: 3 de 7 días para la rebelión/)).toBeTruthy()
   })
 
-  it('con 7 días o más ya no cuenta hacia la rebelión: dice que el reino se ha rebelado (P299, reabierto)', () => {
+  it('con 7 días o más y un territorio perdido dice que el reino se ha rebelado (P299, reabierto)', () => {
     const { getByText, queryByText } = render(
-      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={stats(14)} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[perdido]} kingdomStats={stats(14)} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
     )
     expect(getByText(/El reino se ha rebelado: 14 días seguidos/)).toBeTruthy()
     expect(queryByText(/de 7 días para la rebelión/)).toBeNull()
+  })
+
+  // dailyTick solo rebela los territorios que existen: sin ninguno perdido todavía no hay rebelión que contar.
+  it('con 7 días o más pero ningún territorio perdido no dice que se ha rebelado, sino que se rebelará (P299)', () => {
+    const { getByText, queryByText } = render(
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={stats(8)} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
+    )
+    expect(queryByText(/se ha rebelado/)).toBeNull()
+    expect(getByText(/8 días seguidos \(el límite son 7\)/)).toBeTruthy()
+  })
+
+  // REVIEW.md, «Sin copias entre backend y frontend»: el umbral es el que manda el backend.
+  it('usa el umbral que llega del backend, no una copia (P299)', () => {
+    const { getByText } = render(
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={{ ...stats(3), diasParaRebelion: 10 }} buildings={[]} ayuntamiento onRefreshSave={async () => {}} />,
+    )
+    expect(getByText(/Felicidad baja: 3 de 10 días para la rebelión/)).toBeTruthy()
   })
 
   it('sin días de felicidad baja no avisa', () => {

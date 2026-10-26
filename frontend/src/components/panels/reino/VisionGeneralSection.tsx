@@ -7,12 +7,9 @@ import { ConfirmModal } from '../../ConfirmModal'
 import { TooltipAnchor } from '../../TooltipAnchor'
 import { useModoConsulta } from '../../../context/useModoConsulta'
 
-// Días seguidos de felicidad baja que rebelan el reino (`DIAS_PARA_REBELION` de kingdomTick.ts).
-const DIAS_PARA_REBELION = 7
-
 // `diasFelicidadBaja`/`diasFelicidadAlta` (B.19) quedan fuera a propósito — son metadatos de
 // "cuántos días lleva así", no un recurso del reino que tenga sentido como tarjeta en Economía.
-type KingdomStatKey = Exclude<keyof KingdomStatsInfo, 'diasFelicidadBaja' | 'diasFelicidadAlta'>
+type KingdomStatKey = Exclude<keyof KingdomStatsInfo, 'diasFelicidadBaja' | 'diasFelicidadAlta' | 'diasParaRebelion' | 'diasParaConsolidar'>
 
 const KINGDOM_STAT_LABEL: Record<KingdomStatKey, string> = {
   poblacion: 'Población',
@@ -226,26 +223,34 @@ export function VisionGeneralSection({
             </div>
           </details>
           {/* B.19 (checklist frontend 2026-08-27) — causa REAL de un cambio de control: felicidad
-              baja/alta sostenida (7 días, DIAS_PARA_REBELION/CONSOLIDAR en el backend), nunca el
+              baja/alta sostenida (`diasParaRebelion`/`diasParaConsolidar`, que manda el backend), nunca el
               conflicto de facciones del mundo (sistema distinto, ver ZonaPanel > control regional).
               Solo se muestra cuando ya hay días acumulados de verdad, no en cada visita. */}
-          {/* P299 (reabierto 2026-10-22): a partir de 7 días el reino ya se rebeló (`DIAS_PARA_REBELION`, dailyTick):
-              «14 de 7 días para la rebelión» hablaba en futuro de algo que ya había pasado. */}
-          {kingdomStats && kingdomStats.diasFelicidadBaja >= DIAS_PARA_REBELION && (
+          {/* P299 (reabierto 2026-10-22): «14 de 7 días para la rebelión» hablaba en futuro de algo que ya había
+              pasado. La rebelión es un hecho solo si hay un territorio PERDIDO (`dailyTick` rebela únicamente los
+              territorios que existen); con los días cumplidos y ninguno perdido todavía, falta que pase el día.
+              El umbral llega del backend (`diasParaRebelion`), no se copia aquí. */}
+          {kingdomStats && kingdomStats.diasFelicidadBaja >= kingdomStats.diasParaRebelion && territories.some((t) => t.control === 'PERDIDO') && (
             <p className="mb-2 text-2xs text-danger-400">
               ⚠️ El reino se ha rebelado: {kingdomStats.diasFelicidadBaja} días seguidos con la felicidad baja. Mientras siga así,
               cada territorio se pierde con sus edificios. Sube la felicidad (comida, agua, camas).
             </p>
           )}
-          {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && kingdomStats.diasFelicidadBaja < DIAS_PARA_REBELION && (
+          {kingdomStats && kingdomStats.diasFelicidadBaja >= kingdomStats.diasParaRebelion && !territories.some((t) => t.control === 'PERDIDO') && (
             <p className="mb-2 text-2xs text-danger-400">
-              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de 7 días para la rebelión — si llegas a 7 seguidos, el reino se rebela
+              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} días seguidos (el límite son {kingdomStats.diasParaRebelion}) — al pasar el día el
+              reino se rebela y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) ya.
+            </p>
+          )}
+          {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && kingdomStats.diasFelicidadBaja < kingdomStats.diasParaRebelion && (
+            <p className="mb-2 text-2xs text-danger-400">
+              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de {kingdomStats.diasParaRebelion} días para la rebelión — si llegas a {kingdomStats.diasParaRebelion} seguidos, el reino se rebela
               y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) antes.
             </p>
           )}
           {kingdomStats && kingdomStats.diasFelicidadAlta > 0 && (
             <p className="mb-2 text-2xs text-accent2-400">
-              ✓ Felicidad alta desde hace {kingdomStats.diasFelicidadAlta} día{kingdomStats.diasFelicidadAlta === 1 ? '' : 's'} — sostenida 7 días
+              ✓ Felicidad alta desde hace {kingdomStats.diasFelicidadAlta} día{kingdomStats.diasFelicidadAlta === 1 ? '' : 's'} — sostenida {kingdomStats.diasParaConsolidar} días
               seguidos, tus territorios se consolidan.
             </p>
           )}

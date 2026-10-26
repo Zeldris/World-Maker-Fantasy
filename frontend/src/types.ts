@@ -206,6 +206,10 @@ export interface KingdomStatsInfo {
   /// nunca el conflicto de facciones del mundo, que es un sistema completamente distinto.
   diasFelicidadBaja: number
   diasFelicidadAlta: number
+  /// P299: los umbrales vienen del backend (`DIAS_PARA_REBELION`/`DIAS_PARA_CONSOLIDAR`, kingdomTick.ts); el
+  /// frontend no los copia.
+  diasParaRebelion: number
+  diasParaConsolidar: number
 }
 
 export interface WorldTheme {

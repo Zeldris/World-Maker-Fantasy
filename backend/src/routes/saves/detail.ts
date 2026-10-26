@@ -7,6 +7,7 @@ import { energiaMaxFor } from '../../services/energy.js';
 import { destinationsFrom } from '../../services/travel.js';
 import { type Requisitos } from '../../services/requisitos.js';
 import { scopeFor } from '../../services/npcScene.js';
+import { kingdomStatsParaCliente } from '../../services/kingdomTick.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, attributeBonusesFromEquipment, type StatBonusMap } from '../../services/equipment.js';
 import { APP_VERSION } from '../../lib/version.js';
 import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
@@ -605,25 +606,7 @@ export async function detailRoutes(app: FastifyInstance) {
       activeSkillBarId: save.activeSkillBarId,
       habilidadSlots: maxCombatAbilitiesFor(save.level),
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),
-      kingdomStats: save.kingdomStats
-        ? {
-            poblacion: save.kingdomStats.poblacion,
-            felicidad: save.kingdomStats.felicidad,
-            comida: save.kingdomStats.comida,
-            bebida: save.kingdomStats.bebida,
-            riqueza: save.kingdomStats.riqueza,
-            soldados: save.kingdomStats.soldados,
-            trabajadores: save.kingdomStats.trabajadores,
-            visitantes: save.kingdomStats.visitantes,
-            // B.19 (checklist frontend 2026-08-27) — el hallazgo original suponía que un territorio
-            // DISPUTADO/PERDIDO se explicaba por el conflicto de facciones (WorldState.agenda), pero
-            // son dos sistemas de causalidad DISTINTA: `Territory.control` cambia por felicidad
-            // sostenida del propio reino (turnResolution.ts, DIAS_PARA_REBELION/CONSOLIDAR), nunca
-            // por el conflicto del mundo. Se expone la causa REAL en vez de inventar un enlace falso.
-            diasFelicidadBaja: save.kingdomStats.diasFelicidadBaja,
-            diasFelicidadAlta: save.kingdomStats.diasFelicidadAlta,
-          }
-        : null,
+      kingdomStats: save.kingdomStats ? kingdomStatsParaCliente(save.kingdomStats) : null,
       currentLocation: save.currentLocation
         ? {
             id: save.currentLocation.id,
