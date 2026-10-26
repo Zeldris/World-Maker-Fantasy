@@ -33,6 +33,17 @@ export const FACTION_REP_MERCY_DELTA = -50;
 /// índice en este array es lo que desplaza `effectiveTemperamento` de abajo.
 const TEMPERAMENTO_ORDER: Temperamento[] = ['AMIGABLE', 'INOFENSIVO', 'CAUTELOSO', 'AGRESIVO', 'ENEMIGO'];
 
+/// Reputación por debajo de la cual una facción es hostil a Gorhorn: la banda 0 de `effectiveTemperamento`
+/// (empuja +2 hacia ENEMIGO) y el color ENEMIGO de los puntos del mapa (`zonePointColorFor`). Un solo umbral para
+/// los tres sitios (P306): un saludo solo abre combate si la facción del NPC es hostil de verdad.
+export const FACTION_REP_HOSTIL = 1000;
+
+/// Puro — ¿es hostil la facción de este NPC para la jugadora? Sin facción (fauna, independientes) no hay
+/// reputación de la que fiarse: no.
+export function reputacionHostil(faction: string | null, factionsStatus: Record<string, number>): boolean {
+  return !!faction && factionRepFor(factionsStatus, faction) < FACTION_REP_HOSTIL;
+}
+
 export function factionRepFor(factionsStatus: Record<string, number>, faction: string): number {
   return factionsStatus[faction] ?? FACTION_REP_DEFAULT;
 }

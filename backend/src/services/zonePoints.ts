@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient, type ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
 import { sourceDisplayNameFor, faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
-import { factionRepFor } from './reputation.js';
+import { factionRepFor, FACTION_REP_HOSTIL } from './reputation.js';
 import {
   celdaDePixel,
   pixelDeCelda,
@@ -40,7 +40,7 @@ export function zonePointColorFor(factionSlug: string | null, factionsStatus: Re
   if (!factionSlug) return tipo === 'RECURSO' ? 'INERTE' : 'SIN_FACCION';
   const rep = factionRepFor(factionsStatus, factionSlug);
   if (rep >= 3000) return 'ALIADO';
-  if (rep < 1000) return 'ENEMIGO';
+  if (rep < FACTION_REP_HOSTIL) return 'ENEMIGO';
   return 'NEUTRO';
 }
 

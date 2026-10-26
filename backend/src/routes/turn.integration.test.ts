@@ -9287,6 +9287,69 @@ describe('CR-49 — atacar a Torgash en su campamento trae a los suyos', () => {
   }, 30_000);
 });
 
+// P306 (pruebas 0.3, decidido por la usuaria 2026-10-26): un saludo o una pregunta a un NPC no pide tirada ni abre
+// combate, aunque el clasificador (Ollama) lo lea como hostil, salvo que la reputación de Gorhorn con la facción del
+// NPC sea hostil (< 1000, el mismo umbral que el color ENEMIGO del mapa).
+describe('P306 — un saludo no pide tirada ni abre combate salvo reputación hostil', () => {
+  const saves: string[] = [];
+
+  async function partida(nombre: string, factionsStatus?: Record<string, number>): Promise<string> {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId: world.id, characterName: nombre, characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    saves.push(save.id);
+    await prisma.worldState.create({ data: { saveId: save.id, ...(factionsStatus ? { factionsStatus } : {}) } });
+    await asegurarMundoDePartida(prisma, save.id);
+    return save.id;
+  }
+
+  afterAll(async () => {
+    for (const id of saves) await prisma.save.delete({ where: { id } });
+  });
+
+  // El clasificador simulado dice lo peor: «hostil», con tirada, y el narrador propone combate con el orco.
+  async function saludar(saveId: string, action: string) {
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'carisma', dificultad: 12, razon: 'hostil', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockResolvedValueOnce({ narration: 'El orco gruñe.', newFacts: [], combateIniciado: { npcSlugs: ['orco-enfurecido-hondonada'] } });
+    const app = await buildApp();
+    const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: false } })).json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: false } });
+    const done = lastNdjsonLine(res.payload) as { combateIniciado: { npcs: { slug: string }[] } | null };
+    await app.close();
+    return { classification, roll, combateIniciado: done.combateIniciado };
+  }
+
+  it('con reputación neutra, saludar al orco no tira dados ni abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 neutra)');
+    const { classification, roll, combateIniciado } = await saludar(saveId, "Saludo al 'Orco enfurecido': ¿quién eres?");
+    expect(classification.requiereTirada).toBe(false);
+    expect(roll ?? null).toBeNull();
+    expect(combateIniciado?.npcs ?? []).toHaveLength(0);
+    expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(0);
+  }, 30_000);
+
+  it('con reputación hostil con su facción, el mismo saludo sí tira y sí abre combate', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 hostil)', { 'Clan Serhu': 500 });
+    const { classification, roll, combateIniciado } = await saludar(saveId, "Saludo al 'Orco enfurecido': ¿quién eres?");
+    expect(classification.requiereTirada).toBe(true);
+    expect(roll).toBeTruthy();
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
+
+  it('atacar al orco con reputación neutra sigue abriendo combate (el saludo no tapa un ataque)', async () => {
+    const saveId = await partida('Gorhorn de prueba (P306 ataque)');
+    const { combateIniciado } = await saludar(saveId, "Ataco al 'Orco enfurecido' con el hacha.");
+    expect(combateIniciado?.npcs.map((n) => n.slug)).toContain('orco-enfurecido-hondonada');
+  }, 30_000);
+});
+
 // P233 (pruebas 0.3, 2026-10-19): morir en un combate sin haber caído convaleciente EN ESE combate
 // (Gorhorn entró ya convaleciente contra el Orco enfurecido) no registraba COMBATE_PERDIDO y la
 // muerte no llevaba al NPC que mata: el orco no ganaba «Vencedor de», ni contaba para RIVALIDAD.

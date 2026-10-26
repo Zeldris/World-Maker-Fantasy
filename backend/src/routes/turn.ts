@@ -19,12 +19,14 @@ import {
   utilityDifficultyFor,
   detectsAttackIntent,
   detectsDialogueIntent,
+  detectsGreetingOrQuestion,
   detectsHostileSearchIntent,
   detectsVerbalAcceptanceIntent,
   tabulatedAttackAttribute,
   type NpcInScene,
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
+import { parseFactionsStatus, reputacionHostil } from '../services/reputation.js';
 import { normalizeText } from '../services/travel.js';
 import { nombreVisibleDeNpc, nombreEnFrase, conDefinido } from '../services/dynamicMode.js';
 import { puedeRecibirEntregas } from './saves/entrega.js';
@@ -181,8 +183,10 @@ async function resolveClassificationForTurn(params: {
   fictionalMinutes: number;
   /// P74 (QA-27): último descanso, para no cobrar horas a un descanso que el enfriamiento rechaza.
   lastRestAtMinutes?: number | null;
+  /// Reputación de facciones (P306): decide si un saludo sigue sin tirada o la facción del NPC es hostil.
+  factionsStatus: Record<string, number>;
 }): Promise<ClassificationResolution> {
-  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, pendingCanalizacion, fictionalMinutes } = params;
+  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, pendingCanalizacion, fictionalMinutes, factionsStatus } = params;
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): si un `preview:true`
   // anterior con este MISMO texto exacto ya hizo el trabajo caro, se reutiliza sin repetirlo
@@ -533,6 +537,20 @@ async function resolveClassificationForTurn(params: {
         } else if (classification.banda !== 'instantanea') {
           classification.banda = bandaForMinutos(classification.duracionEstimadaMinutos);
         }
+      }
+      // P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC en escena no pide tirada, lo
+      // diga o no el clasificador (Ollama), salvo que la reputación con la facción de alguien en escena sea
+      // hostil (`reputacionHostil`). Dentro de un combate, con ataque pendiente o canalización, nunca se toca.
+      if (
+        classification.requiereTirada &&
+        !enCombate &&
+        !pendingNpcAttack &&
+        !pendingCanalizacion &&
+        npcsInScene.length > 0 &&
+        detectsGreetingOrQuestion(action) &&
+        !npcsInScene.some((n) => reputacionHostil(n.faction, factionsStatus))
+      ) {
+        classification.requiereTirada = false;
       }
       roll = classification.requiereTirada ? rollCheck(attributes, classification.atributo, classification.dificultad) : undefined;
     }
@@ -900,6 +918,7 @@ export async function turnRoutes(app: FastifyInstance) {
         pendingCanalizacion: save.pendingCanalizacion as unknown as PendingCanalizacion | null,
         fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
         lastRestAtMinutes: save.lastRestAtMinutes,
+        factionsStatus: parseFactionsStatus(save.worldState?.factionsStatus),
       }));
     } catch (err) {
       request.log.error(err);

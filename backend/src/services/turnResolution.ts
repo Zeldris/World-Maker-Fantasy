@@ -41,11 +41,11 @@ import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
-import { applyFactionRepDelta, effectiveTemperamento, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
+import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -2300,7 +2300,16 @@ async function resolveCombatSlugsAndPersist(params: {
   // `agresivoSlugsInScene` más abajo). Un NPC pacífico solo puede entrar en combate por la vía
   // determinista de siempre (intercambio/ejecución/`shouldForceCombat`), nunca porque el modelo lo
   // proponga sin más.
-  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
+  // P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC no abre combate salvo que la
+  // reputación de Gorhorn con la facción de alguien en escena sea hostil (`reputacionHostil`, el mismo umbral
+  // que el color ENEMIGO del mapa y la banda 0 de `effectiveTemperamento`). Ni el `combateIniciado` del narrador,
+  // ni una bajada de condición, ni un NPC AGRESIVO de catálogo lo deciden por su cuenta tras un saludo. Un
+  // verbo de ataque o de búsqueda hostil en la misma frase sí sigue valiendo (el saludo no los tapa).
+  const saludoSinHostilidad =
+    !enCombate &&
+    detectsGreetingOrQuestion(action) &&
+    !npcsInSceneVivos.some((n) => reputacionHostil(n.faction, factionsStatus));
+  const combatSlugsFromModel = saludoSinHostilidad ? [] : (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
     npcsInSceneVivos.some((n) => {
       if (n.slug !== slug) return false;
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
@@ -2379,6 +2388,7 @@ async function resolveCombatSlugsAndPersist(params: {
   // caso concreto del hallazgo 17 de arriba (`attackMissedNonAggressiveTarget`).
   const shouldForceCombat =
     !enCombate &&
+    !saludoSinHostilidad &&
     combatSlugsFromModel.length === 0 &&
     npcsInSceneVivos.length > 0 &&
     (agresivoSlugsInScene.length > 0 ||

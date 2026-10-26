@@ -935,6 +935,23 @@ export function detectsDialogueIntent(action: string): boolean {
   return DIALOGUE_INTENT_REGEX.test(normalizeText(action));
 }
 
+/// Verbos con los que la jugadora intenta INFLUIR en el NPC (persuadir, intimidar, mentir, robar...): hablar
+/// con esa intención sí es una tirada, no un simple saludo.
+const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\bmient|\bsobor|\bregate|\bnegoci|\bchantaj|\bseduc|\brobo\b|\brobar\b|\bhurt|\bsoborn/;
+
+/// P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC (texto libre o Responder) no pide
+/// tirada ni abre combate. Es diálogo (`detectsDialogueIntent`) sin verbo de ataque, sin búsqueda hostil (salvo
+/// que sea aceptar ayudar) y sin intención de influir. Que la facción del NPC sea hostil lo decide quien lo usa
+/// (`reputacionHostil`): este helper solo mira el texto.
+export function detectsGreetingOrQuestion(action: string): boolean {
+  return (
+    detectsDialogueIntent(action) &&
+    !detectsAttackIntent(action) &&
+    !(detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)) &&
+    !INFLUENCE_INTENT_REGEX.test(normalizeText(action))
+  );
+}
+
 /// Paleta de verbos + clasificación tabulada (roadmap de velocidad, 2026-07-19, prioridad 2): un
 /// ataque dentro del popup de combate contra un NPC ya en escena no necesita gastar una llamada
 /// entera al clasificador (25-50s) solo para que el modelo elija el mismo atributo de siempre —
