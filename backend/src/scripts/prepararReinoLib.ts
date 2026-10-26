@@ -19,9 +19,9 @@ export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUER
 /// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
 /// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate),
 /// `lider-muere:<facción>` (QA-259, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
-/// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda). 
+/// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-260, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel ≥ 10 y elige la especialización Domador). Se ejecutan en el orden dado.
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];
@@ -70,7 +70,7 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       pasos.push({ tipo: 'domable', especie: r[0] });
     } else if (clave === 'domador') {
       const nivel = entero(r[0]);
-      if (nivel == null || r.length > 1 || nivel < 10) return { error: `«${arg}»: falta domador:<nivel>, de 10 en adelante.` };
+      if (nivel == null || r.length > 1 || nivel < 10 || nivel > 19) return { error: `«${arg}»: falta domador:<nivel>, de 10 a 19 (desde el 20 cambian las habilidades de arma).` };
       pasos.push({ tipo: 'domador', nivel });
     } else {
       return { error: `«${arg}»: paso desconocido.` };
