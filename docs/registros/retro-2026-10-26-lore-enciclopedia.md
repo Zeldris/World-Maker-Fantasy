@@ -1,7 +1,8 @@
 # Retro y opt-tokens · `claude/lore-enciclopedia` (2026-10-26)
 
 **Estado:** aprobada entera por la usuaria (2026-10-26) y aplicada en la rama: 1 → `QA-257`, 2 → `QA-258`,
-3 → `QA-259`, 6 → `QA-260`. La 4 y la 5 se quedan en «Para Galivelop-workflow» para `gw-harvest`.
+3 → `QA-259`, 6 → `QA-260`. La 4 y la 5 se quedan en «Para Galivelop-workflow» para `gw-harvest`. Tras el CI local, la 7 → `QA-261`
+(aprobada).
 
 Sesión de `QA-243`, `QA-244` y `QA-256`:
 - la historia, sin documento: saber común o por lugar, con la migración `20261026120000_historia_sin_documento`;
@@ -83,6 +84,12 @@ Ordenadas por gravedad. Entre paréntesis, a dónde va cada una.
 6. **Leer por partes** (proyecto, opt-tokens, prioridad baja). `lore-hallazgos.md` se lee por secciones
    (`grep -n "^## "` y luego `sed -n`). Para los textos de `worldCatalog.ts`, `ficha.sh` ya da la ruta: falta que dé
    también el `archivo:línea` de cada texto visible. Ahorro: unos 0,5M por sesión de lore. Riesgo: ninguno.
+
+7. **Guardia de nombres de habilidad** (proyecto, comprobación; añadida tras el CI local). Los textos limpios
+   renombraron cinco habilidades de fauna («Posicion defensiva», «Vuelo en Bandada», «Brasa Berserker»…) sin
+   pasarlas por `HABILIDADES_RENOMBRADAS`. La regla `QA-68` de `REVIEW.md` existe, pero la revisión no lo vio: lo
+   cazó un test de fauna que buscaba la habilidad por nombre. Propuesta: una lista guardada de todos los nombres y un
+   test que falle si uno desaparece sin renombre. Lo mecánico, a un script y no al revisor.
 
 ## Para Galivelop-workflow
 
