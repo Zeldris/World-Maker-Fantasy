@@ -26,10 +26,10 @@ describe('pickStationaryInterruption', () => {
     expect(npcFindMany).not.toHaveBeenCalled();
   });
 
-  it('un RECURSO nunca "interrumpe" — el filtro ya lo excluye en la query (comprobado por el where pasado)', async () => {
+  it('un RECURSO nunca "interrumpe", ni un punto agotado (P313) — el filtro ya lo excluye en la query (comprobado por el where pasado)', async () => {
     zonePointFindMany.mockResolvedValueOnce([]);
     await pickStationaryInterruption('world1', 'save1', 'loc1', 480, 1, () => 0);
-    expect(zonePointFindMany).toHaveBeenCalledWith({ where: { saveId: 'save1', locationId: 'loc1', tipo: { in: ['FAUNA', 'NPC'] } } });
+    expect(zonePointFindMany).toHaveBeenCalledWith({ where: { saveId: 'save1', locationId: 'loc1', tipo: { in: ['FAUNA', 'NPC'] }, activo: true } });
   });
 
   it('con ZonePoint real y tirada favorable, elige un candidato ponderado por población', async () => {

@@ -79,6 +79,17 @@ describe('pickMentionedEntityBanner', () => {
     expect(pickMentionedEntityBanner('Hay yerreo en la pared.', index, new Set())?.target.entitySlug).toBe('yerreo')
   })
 
+  // Revisión de P208: casos límite. Mayúsculas y tildes no cambian nada; un plural o un alias con guion o
+  // apóstrofo es una sola palabra: solo enlace, como «piedra».
+  it('P208: mayúsculas, tildes, plurales y alias con guion', () => {
+    const index = buildEnciclopediaIndex(emptyResponse({ faunaFlora: [fuente('murgol', 'Múrgol', ['múrgoles', 'medio-múrgol', 'múrgol del clan'])] }))
+
+    expect(pickMentionedEntityBanner('Un MÚRGOL te mira.', index, new Set())?.target.entitySlug).toBe('murgol')
+    expect(pickMentionedEntityBanner('Los Múrgoles pastan.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('Un medio-múrgol se aparta.', index, new Set())).toBeNull()
+    expect(pickMentionedEntityBanner('El MÚRGOL DEL CLAN bala.', index, new Set())?.target.entitySlug).toBe('murgol')
+  })
+
   it('sin regex (índice vacío), devuelve null', () => {
     const match = pickMentionedEntityBanner('Cualquier texto.', { regex: null, entries: new Map(), bySlugKey: new Map() }, new Set())
     expect(match).toBeNull()
