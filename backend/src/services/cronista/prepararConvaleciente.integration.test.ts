@@ -85,6 +85,9 @@ describe('dejarConvalecienteEnCombate (QA-261, P95/P320)', () => {
     const r = await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' });
     expect(r).toEqual({ error: expect.stringContaining('grupo con más miembros') });
     expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingCombatNpcSlugs).toEqual([]);
-    expect((await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: npc.id } })).condicionFisica).toBe('ILESO');
+    // La transacción vuelve atrás: ni la condición ni el miembro vencido que `dejarNpcConvaleciente` llegó a escribir.
+    const estado = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: npc.id } });
+    expect(estado.condicionFisica).toBe('ILESO');
+    expect(estado.groupDefeated).toBe(0);
   });
 });
