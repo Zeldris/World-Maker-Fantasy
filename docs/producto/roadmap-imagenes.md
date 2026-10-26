@@ -66,20 +66,17 @@ desde el panel vive en tablas que siembran.
   `banco/prompts/r14-*-fotorreal.txt`; 104 tests en `test_prompt_ficha.py`. Las dos fichas de fauna llevan ya el
   campo `boceto` de `IMG-18`. **Pendiente:** con `--momento noche`, aullador y cuernahoja rompen la regla 9 (su `luz`
   nombra el sol y en `fotorreal` B6 ya no se recorta); faltan condiciones `momento:noche`, en `IMG-23`. **S**
-- **IMG-17 · Gradación y medida en ffmpeg** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-17--gradación-y-medida-en-ffmpeg-calibradas-contra-los-banners-de-gpt-p--s)):
-  `gradar.sh` por momento calibrado contra los banners de GPT, `medir.sh` (signalstats + EMD) y rejilla; LUT 3D.
-  Fase 0. **S** 🚧 2026-10-26: hechos `gradar.sh` (con `--hornear`), `medir.sh`, `medir/` (`stats.sh`, `emd.py`,
-  `rejilla.sh`), `estilo/gradacion.json` y `test_gradar.py` (8). Calibración: atardecer (EMD Cb/Cr 5,1/6,4) y día
-  (5,7/4,7) pasan sin alejar los GPT de control; noche sin validar (no hay generación nocturna). Las ventanas de
-  YAVG/SATAVG de día y noche salen de sus referencias (las del plan solo valen para atardecer). **Falta:** el sí de la
-  usuaria a los tres tintes en las rejillas (`generated/banco/r14-gradacion/`), hornear las LUT aceptadas y
-  validar la noche con la primera imagen nocturna.
-- **IMG-18 · Bocetos SVG de forma** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-18--bocetos-svg-de-forma-revisados-por-la-usuaria-p--s)):
-  depredador y herbívoro con `rsvg-convert`, campo `boceto` en la ficha; sí/no de la usuaria. Fase 0. **S**
-  🚧 2026-10-26: `bocetos/depredador.svg` y `herbivoro.svg` (vuelta 1 de 2: óxido y patas de carnívoro; cielo azul,
-  patas de ave y cuernos-hoja), `bocetos/rasterizar.sh` (1280, 1024x384 y 640; los PNG no se versionan), campo
-  `boceto` en aullador y cuernahoja, `test_bocetos.py`; `rsvg-convert` corre dentro de `host.sh` (2.62.3). **Falta:**
-  el sí de la usuaria a las rejillas (`generated/banco/r14-bocetos/`).
+- ~~**IMG-17 · Gradación y medida en ffmpeg**~~ ✅ 2026-10-26 [A] ([plan](plan-imagenes/plan-fotorreal.md#img-17--gradación-y-medida-en-ffmpeg-calibradas-contra-los-banners-de-gpt-p--s)):
+  `gradar.sh` (con `--hornear`), `medir.sh`, `medir/` (`stats.sh`, `emd.py`, `rejilla.sh`), `estilo/gradacion.json`
+  y `test_gradar.py` (8). Calibración: atardecer (EMD Cb/Cr 5,1/6,4) y día (5,7/4,7) pasan sin alejar los GPT de
+  control; las ventanas de YAVG/SATAVG de día y noche salen de sus referencias. La usuaria dio el sí a los tres tintes;
+  LUT horneadas en `estilo/lut/` (36³, ~1 MB cada una; a 43 dB de PSNR de la orden de curvas). **Pendiente:** validar
+  la noche con la primera imagen nocturna (`IMG-23`). **S**
+- ~~**IMG-18 · Bocetos SVG de forma**~~ ✅ 2026-10-26 [A] ([plan](plan-imagenes/plan-fotorreal.md#img-18--bocetos-svg-de-forma-revisados-por-la-usuaria-p--s)):
+  `bocetos/depredador.svg` y `herbivoro.svg` (vuelta 1 de 2, con el sí de la usuaria), `bocetos/rasterizar.sh`
+  (1280, 1024x384 y 640; los PNG no se versionan), campo `boceto` en aullador y cuernahoja, `test_bocetos.py` (4);
+  `rsvg-convert` corre dentro de `host.sh` (2.62.3). El lomo del herbívoro queda al ~48 % de la altura (el plan decía
+  55-60 %); se mira en los borradores de `IMG-19`. **S**
 - **IMG-19 · Tanda de borradores** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-19--tanda-de-borradores-método-bocetos-planos-y-armonización-p--m)):
   640x256 a 8 pasos; valida el borrador, la fuerza del boceto y la armonización del montaje (`-i` frente a `-r`).
   Depende de `IMG-16`…`IMG-18`. **M**
@@ -90,7 +87,9 @@ desde el panel vive en tablas que siembran.
 - **IMG-22 · Cardo brújula y Pastos de la Deriva** [A] (2026-10-26): txt2img con el prompt nuevo, gradado y
   medido. **S**
 - **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26): una orden
-  reproduce el candidato de `IMG-21` dentro del umbral; docs y tests. Cierra `IMG-15`. **M**
+  reproduce el candidato de `IMG-21` dentro del umbral; docs y tests. También: condiciones `momento:noche` en las
+  fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`). Cierra
+  `IMG-15`. **M**
 - **IMG-7 · Modelo de datos: `Propuesta` y `FichaVisual`** [A] (usuaria, 2026-10-25): migración Prisma (puerta de un
   solo sentido), importador de los 3 `.md` de propuestas (~159), exportación de lo aprobado al formato de
   `propuestas-aprobadas.md`, fichas exportadas a JSON versionado, API Fastify con escritura solo desde `127.0.0.1` y

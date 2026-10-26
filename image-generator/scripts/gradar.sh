@@ -31,20 +31,20 @@ if [ "${1:-}" = "--hornear" ]; then
   LUT=${3:-$G/estilo/lut/${REG:+$REG-}$MOM.cube}
   mapfile -t O < <(orden "$MOM" "$REG")
   T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-  # Una malla neutra (haldclut nivel 8: 64x64x64 colores) pasa por las curvas y se vuelca a .cube (rojo varía más rápido).
-  ffmpeg -y -v error -f lavfi -i haldclutsrc=8 -vf "format=gbrp,${O[0]},format=rgb24" -frames:v 1 "$T/hald.png"
+  # Una malla neutra (haldclut nivel 6: 36x36x36 colores, ~1 MB por LUT) pasa por las curvas y se vuelca a .cube (rojo varía más rápido).
+  ffmpeg -y -v error -f lavfi -i haldclutsrc=6 -vf "format=gbrp,${O[0]},format=rgb24" -frames:v 1 "$T/hald.png"
   ffmpeg -y -v error -i "$T/hald.png" -f rawvideo -pix_fmt rgb24 "$T/hald.raw"
   mkdir -p "$(dirname "$LUT")"
   python3 -I - "$T/hald.raw" "$LUT" "$MOM" <<'PY'
 import sys
 crudo = open(sys.argv[1], 'rb').read()
-n = 64
+n = 36
 assert len(crudo) == n ** 3 * 3, len(crudo)
 with open(sys.argv[2], 'w') as f:
     f.write(f'TITLE "gradacion {sys.argv[3]}"\nLUT_3D_SIZE {n}\n')
     for i in range(n ** 3):
         r, g, b = crudo[i * 3:i * 3 + 3]
-        f.write(f'{r / 255:.6f} {g / 255:.6f} {b / 255:.6f}\n')
+        f.write(f'{r / 255:.4f} {g / 255:.4f} {b / 255:.4f}\n')
 PY
   echo "LUT escrita: $LUT"
   exit 0

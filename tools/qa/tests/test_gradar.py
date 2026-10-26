@@ -97,8 +97,8 @@ class Gradar(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         with open(cube) as f:
             lineas = f.read().splitlines()
-        self.assertIn('LUT_3D_SIZE 64', lineas)
-        self.assertEqual(len(lineas), 2 + 64 ** 3)
+        self.assertIn('LUT_3D_SIZE 36', lineas)
+        self.assertEqual(len(lineas), 2 + 36 ** 3)
 
 
 if __name__ == '__main__':
