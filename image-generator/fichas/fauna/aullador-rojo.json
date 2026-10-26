@@ -8,15 +8,16 @@
   "canon": "Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas; pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, hilera de púas oscuras erizadas en el lomo, colmillos curvos amarillentos exagerados, costillas marcadas, cola negra tupida que borra sus huellas.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:1479 (bio); backend/src/services/sexDimorphism.ts:99-111 (dimorfismo); detalle campo a campo en docs/producto/plan-imagenes/borradores/fichas-piloto.json",
   "prompt": {
-    "sujeto": "A long, low-slung pack hunter with a very long, stretched body carried close to the ground on short, sturdy legs with dark curved claws, about as long as an adult orc is tall.",
+    "sujeto": "A long, low-slung pack hunter with an extremely long, stretched body, three times the length of a fox, carried close to the ground on short, sturdy legs with dark curved claws.",
     "ancla": "a red fox stretched to the length of a weasel",
     "cuerpo": "Its narrow fox-like head has tall pointed ears, an amber eye and two long, pale sabre fangs hanging down past its lower jaw. The short, dense coat is a warm rust brown, paler along the flanks in faint stripes.",
     "rasgos": [
-      "A crest of overlapping black armoured plates runs along its spine from the neck to the tail, edged with a row of sharp, glowing red spikes.",
+      "A crest of overlapping black armoured plates runs unbroken from the nape of its neck along the spine and down the whole tail to its tip, edged with a row of sharp, glowing red spikes.",
       "Its long banded tail ends in a dark, spiny tuft."
     ],
-    "pose": "It walks in profile across the whole width of the foreground, low to the ground, while the rest of the pack lopes behind it as dark shapes in the dust.",
-    "entorno": "Around them stretches cracked red earth with sparse dry tufts, and dark whirling dust devils rise far off on the plain."
+    "pose": "It walks in profile across the whole width of the foreground, low to the ground, while more of the same long, crested hunters lope behind it as dark silhouettes in the dust.",
+    "entorno": "Around them stretches cracked red earth with sparse dry tufts, and dark whirling dust devils rise far off on the plain.",
+    "luz": "The low sun behind the pack rims their fur and spikes with fiery light, and a dense red-orange haze tints the whole scene, earth and sky alike."
   },
   "variantes": {
     "macho": {
