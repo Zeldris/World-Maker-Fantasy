@@ -1641,6 +1641,12 @@ Retro y opt-tokens de los arreglos de la puerta (usuaria, 2026-10-26; [`retro-20
 - ~~**QA-257 · Tandas de arreglos más cortas**~~ ✅ 2026-10-26: 8-11 hallazgos y 165-183 llamadas por tanda. `AGENTS.md` § `orchestrate-dealer`: como mucho 5 hallazgos y ~90 llamadas; la revisión con Opus junta dos tandas.
 - ~~**QA-258 · `marca-hallazgo.py` más claro al fallar**~~ ✅ 2026-10-26: un espacio al borde del texto viejo daba «0 filas». Lo quita y, con 0 filas, enseña el estado actual (`test_marca_hallazgo.py`).
 
+Pasos de preparación de la ronda de la puerta (usuaria, 2026-10-26; [`plan-comprobacion-puerta.md`](../registros/plan-comprobacion-puerta.md)): los ids que siguen sin ver piden un estado al que no llega ningún escenario. Cada paso va en `escenario.sh preparar` (`prepararReino.ts`), solo con funciones del juego (`QA-151`), con su test, y deja un escenario guardado:
+- **QA-259 · Preparar sucesos del mundo**: la muerte de un líder goirnte (`CR-43`), una alianza nueva tras una ruptura de las mismas facciones (`P247`) y un vasallo que paga la cuota entera con deuda vieja (`P314`).
+- **QA-260 · Preparar ganado y captura**: un animal domable a la vista para «Al corral» (`CR-55`), una especie guardiana en el corral con un Domador de nivel 10 (`CR-56`) y una Jaula grande para capturar con cuerdas (`CR-63`).
+- **QA-261 · Convaleciente a la vista**: un NPC o animal convaleciente que siga en la zona, para ver la tarjeta y «Clemente» (`P95`, `P320`); hoy la convalecencia y la ausencia de la zona duran lo mismo (tanda 33).
+- **QA-262 · Preparar NPC frescos, punto retirado y hambre**: NPC ya vencidos de vuelta a sanos para morir otra vez en combate (`P128`), un punto de fauna retirado con presas (`P313`) y un Reino que empieza a pasar hambre mientras se avanza (`P316`).
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
