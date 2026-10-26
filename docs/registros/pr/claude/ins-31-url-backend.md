@@ -23,7 +23,12 @@ Retro sin decidir: [`retro-2026-10-26-ins-31.md`](../../retro-2026-10-26-ins-31.
 
 - `apiBaseUrl.test.ts`, 8 casos: el orden de las tres fuentes, los valores no válidos de `apiUrl` (cadena vacía,
   número, `null`, `undefined`) y la barra final.
-- CI local (`tools/qa/ci-local.sh`, cuota de Actions agotada, `QA-215`) sobre la fusión con `main` (CIFRAS).
+- CI local (`tools/qa/ci-local.sh`, cuota de Actions agotada, `QA-215`) sobre la fusión con `main` (`a099e75`,
+  avance rápido): los tres jobs en verde salvo un paso. Backend: lint, tsc, migraciones, esquema, `reindex-lore`,
+  `seed-catalog` y vitest con Postgres, 3953 tests en 321 archivos. Frontend: lint, build y vitest, 788 tests en
+  165 archivos. El paso rojo es la descarga de Chromium para Playwright: el proxy del contenedor bloquea
+  `cdn.playwright.dev`. El test de navegador (`test_ayudas_mcp.py`, 8 tests, con `CI=true`) pasa aparte con el
+  Chromium ya instalado en `/opt/pw-browsers`.
 
 ## Riesgo
 
