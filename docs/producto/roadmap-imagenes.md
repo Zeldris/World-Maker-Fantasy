@@ -77,12 +77,15 @@ desde el panel vive en tablas que siembran.
   (1280, 1024x384 y 640; los PNG no se versionan), campo `boceto` en aullador y cuernahoja, `test_bocetos.py` (4);
   `rsvg-convert` corre dentro de `host.sh` (2.62.3). El lomo del herbívoro queda al ~48 % de la altura (el plan decía
   55-60 %); se mira en los borradores de `IMG-19`. **S**
-- **IMG-19 · Tanda de borradores** [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-19--tanda-de-borradores-método-bocetos-planos-y-armonización-p--m)):
+- ~~**IMG-19 · Tanda de borradores**~~ ✅ 2026-10-26 [A] (2026-10-26, [plan](plan-imagenes/plan-fotorreal.md#img-19--tanda-de-borradores-método-bocetos-planos-y-armonización-p--m)):
   640x256 a 8 pasos; valida el borrador, la fuerza del boceto y la armonización del montaje (`-i` frente a `-r`).
-  Depende de `IMG-16`…`IMG-18`. **M** 🚧 2026-10-26: **19a ✅** el borrador de 640x256 / 8 pasos (9 min) anticipa la
+  Depende de `IMG-16`…`IMG-18`. **M** ✅ 2026-10-26: **19a ✅** el borrador de 640x256 / 8 pasos (9 min) anticipa la
   composición del de 1280x512 / 16 (49,5 min) y `--preview proj` se lee desde el paso 2 ([resultados r14](plan-imagenes/banco/resultados.md));
   `planos.sh` armoniza con `strength_as_noise_level`. **19b ✅** el boceto manda a 0,95-0,97 (por debajo sale plano
-  como el SVG); tres cuartos no, porque los bocetos tienen la cabeza de perfil. **Falta:** 19c.
+  como el SVG); tres cuartos no, porque los bocetos tienen la cabeza de perfil. **19c ✅** la cadena de planos en borrador cuesta
+  ~25 min; `montar.sh` recorta por dominancia del verde (FLUX.3 no pinta verde croma) y la armonización gana con
+  `-i` a 0,5 (72 s, menor EMD, silueta intacta); `-r` arranca pero tarda ×9 y vira a azul desaturado. **Pendiente de
+  la usuaria:** redibujar la cabeza de los bocetos en tres cuartos y cuernos del herbívoro a 0,95 o 0,97.
 - **IMG-20 · Codificador de texto Q8 (opcional)** [A] (2026-10-26): A/B con la misma semilla tras `IMG-23`, con
   permiso para descargar 4,3 GB. **S**
 - **IMG-21 · Aullador y cuernahoja por planos** [A] (2026-10-26): candidato a 16 pasos, gradado y medido, que

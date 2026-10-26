@@ -224,3 +224,28 @@ strength_as_noise_level=true`; rejillas en `generated/banco/r14-boceto-*-rejilla
 - **Tres cuartos: no**, en ninguna fuerza, porque los dos bocetos dibujan la cabeza de perfil; el modelo sigue al
   boceto. Para el tres cuartos hay que redibujar la cabeza en el SVG (decisión de la usuaria: los bocetos ya tienen
   su sí).
+
+## r14 · Planos en pequeño y armonización (`IMG-19c`, 2026-10-26)
+
+`RONDA=r14 planos.sh 1|2|3`, 640x256 / 8 pasos, semilla 3; imágenes en `generated/banco/r14-planos/intentos/` y
+rejilla (montaje, `-i` 0,5, `-i` 0,7, `-r`) en `generated/banco/r14-planos/rejilla-armonias.png`.
+
+- **Plancha** `r14-plancha` (412 s) y **sujeto** `r14-sujeto` sobre `bocetos/depredador-verde-512.png` a 0,97 (254 s):
+  el sujeto sale fotorreal, con colmillos de sable, cresta de la nuca a la punta y cuerpo ~4×; cabeza de perfil, como
+  el boceto.
+- **El verde no sale croma**: FLUX.3 pinta un verde de estudio apagado y en degradado (#4f7b3c → #83a454), y el
+  `chromakey` de `montar.sh` por el color de la esquina se llevaba también el pelaje oscuro (caja 103x50, montaje sin
+  animal). `montar.sh` recorta ahora por **dominancia del verde** (fondo si el verde pasa en más de `UMBRAL`=12 al rojo
+  y al azul, apertura de 1 px): caja 428x159, el animal entero. Sirve igual con el verde croma puro de r13.
+- **Montaje** (`HERO=50:246:520`, tres copias con volteo y escala): composición limpia, la manada se lee como la misma
+  especie. Sin armonizar ya da mediana Cb 5,2 · Cr 7,6, pero se nota pegado (borde nítido, sin luz de contorno).
+
+| Armonización | Tiempo | EMD Y · Cb · Cr | Mediana Cb · Cr | SATAVG | SSIM con el montaje | A ojo |
+|---|---|---|---|---|---|---|
+| **`-i` 0,5** | **72 s** | **13,7 · 2,4 · 2,2** | 6,6 · 5,7 | 28,4 | 0,73 | **gana**: integra la luz cálida y el polvo; silueta, cresta y colmillos intactos; la manada se queda |
+| `-i` 0,7 | 121 s | 16,1 · 3,7 · 1,2 | 5,3 · 6,3 | 30,0 | 0,66 | más integrado (la copia de la derecha pasa a dos animales); cresta algo menor y pelaje más amarillo |
+| `-r` (ref) | 638 s | 13,0 · 13,7 · 20,3 | 16,7 · 23,1 | 10,5 | 0,88 | **arranca en la Deck** (mínimo libre 4,4 GB) y conserva el montaje, pero vira a un crepúsculo azul desaturado: fuera de la gradación |
+
+- **Decisión 5 cerrada por `-i` a 0,5** (menor EMD sin perder la silueta, y la más barata); 0,7 queda de recurso si el
+  montaje a 1280 se nota pegado. `-r` cuesta ×9 y estropea el color: descartada para armonizar.
+- **Coste real de la cadena en borrador**: ~25 min (plancha 7 + sujeto 4 + armonía 1-2), frente a los 35-50 estimados.

@@ -307,9 +307,10 @@ y, si fallan, vuelven a la usuaria.
 2. **Decisión 3 (inpainting por partes):** `--mask` es una máscara de latente sin modelo de inpainting; nadie lo ha
    publicado sobre FLUX.3 ([control-forma §2.4](investigacion-control-forma.md#24-inpainting-por-partes---mask)). Se
    prueba solo si hace falta y como mucho dos partes.
-3. **Decisión 5:** la comunidad (y el hilo #1516) prefiere `-r` a `-i` para rearmonizar, pero en la Deck FLUX.3 con
+3. ~~**Decisión 5:** la comunidad (y el hilo #1516) prefiere `-r` a `-i` para rearmonizar, pero en la Deck FLUX.3 con
    `-r` no arrancó por memoria (README G) y cuesta ×1,5-2. Es probable que la comparación la gane `-i` por coste, no
-   por calidad; se apunta así.
+   por calidad; se apunta así.~~ ✅ `19c`: `-r` arranca a 640x256 pero cuesta ×9 y vira a azul desaturado; gana `-i`
+   a 0,5 también por calidad ([resultados r14](banco/resultados.md)).
 4. **Decisión 6:** la tarjeta de AtomicChat midió la cuantización del modelo de difusión en una H100, no la del
    codificador; r2 vio el Q8 neutro con klein 4B. La descarga (4,3 GB, +1,8 GB de pico) puede no aportar nada.
 5. **Decisión 7:** no hay fuente de que la composición a 4-8 pasos y 640x256 coincida con la de 16 a 1280x512; la
