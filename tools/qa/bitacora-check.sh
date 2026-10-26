@@ -12,7 +12,9 @@ rama="$(git branch --show-current)"
 # Foto de la copia de trabajo: un commit hijo de HEAD con un índice temporal (git stash create no ve lo no añadido).
 indice="$(mktemp)"
 trap 'rm -f "$indice"' EXIT
-cp "$(git rev-parse --git-path index)" "$indice" 2>/dev/null || rm -f "$indice"  # sin índice, git parte de cero
+# -p: con la hora del índice de verdad; una copia más nueva hace que git dé por limpio un archivo cambiado en su mismo
+# segundo y con el mismo tamaño (racy git) y la foto no lo ve (CI local, 2026-10-26: 3 fallos en 40).
+cp -p "$(git rev-parse --git-path index)" "$indice" 2>/dev/null || rm -f "$indice"  # sin índice, git parte de cero
 foto="$(GIT_INDEX_FILE="$indice" git add -A && GIT_INDEX_FILE="$indice" git write-tree)" &&
   foto="$(git commit-tree "$foto" -p HEAD -m bitacora-check)" ||
   { echo "bitacora-check: no se pudo tomar la foto de la copia de trabajo" >&2; exit 1; }
