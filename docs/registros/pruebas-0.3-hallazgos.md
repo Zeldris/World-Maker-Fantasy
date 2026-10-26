@@ -12,10 +12,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (56): P16, P27, P49, P66, P99, P116, P129, P133, P136, P158, P169, P173, P177,
+- **Pendientes** (58): P16, P27, P49, P66, P99, P116, P129, P133, P136, P158, P169, P173, P177,
   P188, P203, P205, P248, P250, P251, P252, P254, P259, P262, P263, P264, P265, P266, P267, P269,
   P270, P272, P273, P274, P299, P308, P309, P311, P317, P319, P325, P327, P328, P331, P332, P333,
-  P334, P335, P336, P337, P338, P339, P340, P341, P342, P343, P344.
+  P334, P335, P336, P337, P338, P339, P340, P341, P342, P343, P344, P345, P346.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (34): P12, P29, P45, P46, P51, P69, P70, P82, P107, P124, P125, P131,
   P151, P155, P163, P175, P180, P182, P184, P186, P189, P191, P223, P243, P253, P279, P288, P292,
@@ -395,3 +395,5 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P342 | Tanda 38 (2026-10-26, reino-vasallo-paga-con-deuda): la línea PATRULLA_VASALLO «paga su cuota… pero arrastra N Goirnos» y la de «pasa a pagar… una cuota semanal» solo salen en el panel del Reino; no llegan al diario ni a Leyendas (0 filas de Conocimiento). | Pendiente (leve) |
 | P343 | Tanda 38 (2026-10-26, reino-alianza-tras-ruptura, Leyendas día 39): dentro del día, Leyendas ordena ALIANZA, CAMBIO, CAMBIO, ALIANZA, así que las dos «pasa de alianza a tratado comercial» salen seguidas y con el mismo texto y parecen un duplicado, aunque en el Libro alternan. | Pendiente (leve) |
 | P344 | Tanda 39 (2026-10-26, reino-combate-sin-aliados): tras perder (muerte 2 de 4) y reaparecer, `escenario.sh preparar <partida> combate:ulkha-ketg,hulki,herrero-serhu` abre el combate pero, con COMBATIR y Ataque Básico, el ataque sale como texto libre al narrador («No hay nadie así en este mundo que Gorhorn sepa», «El nombre de Orca desconocida no le suena a nada») y la ronda no se resuelve. Puede ser el combate preparado (rivales sin presentar) o el panel; sin analizar. | Pendiente (medio, por analizar; bloquea P128) |
+| P345 | Tanda 40 (2026-10-26, mv-ganado-al-corral): el tameo del Corretolvas no llega al umbral. Con Cazador nv2, unos 100 intentos dieron ~8 victorias y la felicidad máxima fue 45/80; con Domador nv10 (`preparar domador:10`), 50 intentos dieron 4 victorias y un máximo de 15/40. Se gana +15 y se pierde −10 (`resolverIntento`, `companionSupervivencia.ts`), y `domesticablePct` 40 suma +6 de resistencia, así que con ~8 % de victorias la felicidad baja de media y «Al corral» no sale nunca. Contraste: en D&D 5e el DM fija la CD de Trato con animales y los sistemas de doma más usados son de éxitos acumulados sin pérdida, o con un tope de fallos; en BG3 es una tirada; Medieval Dynasty y Manor Lords no doman (los animales se compran). | Pendiente (medio, por decidir: ¿se afina el tameo o es intencionado?; bloquea CR-55 «Al corral» con Corretolvas) |
+| P346 | Tanda 40 (2026-10-26, mv-colmillo-jaula-grande): la partida de captura vuelve («Captura de Múrgol · en casa desde el día 41 · Trae 2 piezas y 1 atado») y en la base el Múrgol queda capturado en la Jaula grande (`capturaJaulaBuildingId`), pero en pantalla no se ve en ningún sitio: en «Mientras pasaban los días» no sale el aviso de que queda atado en la Jaula, y Corrales dice «Aún no tienes corrales del Ganadero». Contraste: Manor Lords enseña los animales en el panel del edificio que los guarda (Pasture, Livestock Trading Post). | Pendiente (leve, por decidir dónde se ve el atado) |
