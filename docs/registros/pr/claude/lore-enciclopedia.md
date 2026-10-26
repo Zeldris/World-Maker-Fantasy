@@ -1,4 +1,4 @@
-**Título:** La historia sin documento y la segunda pasada por la enciclopedia; el seed retira lo huérfano (QA-243, QA-244, QA-256, QA-257…QA-260)
+**Título:** La historia sin documento y la segunda pasada por la enciclopedia; el seed retira lo huérfano (QA-243, QA-244, QA-256, QA-257…QA-261)
 
 ## Summary
 
@@ -40,7 +40,10 @@ seed-catalog.ts
 Además:
 - textos de la enciclopedia sin notas de diseño, jerga del motor, inglés ni erratas («tier» → «nivel», también en
   el frontend);
-- fichas según el canon: edades de los orcos, Kael Dorn arquero, materiales y lugares de origen.
+- fichas según el canon: edades de los orcos, Kael Dorn arquero, materiales y lugares de origen;
+- cinco habilidades de fauna renombradas («Posicion defensiva» → «Posición defensiva», «Vuelo en Bandada» →
+  «Fuga en Bandada», «Brasa Berserker» → «Brasa Rabiosa»…), con su entrada en `HABILIDADES_RENOMBRADAS` para que
+  las partidas guardadas pasen al nombre nuevo (`QA-68`).
 
 **Retro aplicada** (`docs/registros/retro-2026-10-26-lore-enciclopedia.md`):
 
@@ -53,6 +56,8 @@ Además:
 +  tope de 30-40 llamadas también en las tandas de edición (QA-259)
  tools/qa/ficha.sh
 +  acaba con «# Fuente»: archivo:línea del slug en backend/src/scripts y services (QA-260)
+ backend/src/services/habilidadesConocidas.json
++  los 495 nombres de habilidad que una partida puede guardar; el test falla si uno desaparece sin renombre (QA-261)
 ```
 
 ## Evidence
@@ -72,7 +77,16 @@ Además:
   - **Antes:** había que hacer `grep`/`sed` sobre `worldCatalog.ts`, que se leyó 44 veces en la sesión.
   - **Después:** `ficha.sh guchapo` acaba con 13 líneas `archivo:línea`, entre ellas `sexDimorphism.ts:311`,
     `usosFauna.ts:37` y `companionSupervivencia.ts:114`. Lo cubre `ficha.test.ts › fuente` (rojo sin el arreglo).
-- **CI local** (`tools/qa/ci-local.sh`, los tres jobs de `ci.yml`): CIFRAS_CI
+- **Guardia de nombres (`QA-261`).** Sin las entradas de `HABILIDADES_RENOMBRADAS`, `habilidadesRenombradas.test.ts`
+  falla con «añade "Vuelo en Bandada" a HABILIDADES_RENOMBRADAS (QA-68)…». Con ellas, 8/8.
+- **CI local** (`tools/qa/ci-local.sh`, los tres jobs de `ci.yml`), en verde sobre `7c5da8d7`:
+
+  | | tsc | vitest | oxlint |
+  |---|---|---|---|
+  | backend | 0 errores | 3822 tests (316 archivos) | 0 errores, 15 avisos |
+  | frontend | 0 errores | 725 tests (156 archivos) | 0 errores, 29 avisos |
+
+  Los commits posteriores (`QA-261` y sus arreglos) solo tocan tests y documentos; el pre-push pasó sus tests.
 
 ## Merge Danger
 
@@ -92,6 +106,7 @@ Quedan como leves pendientes (bitácora):
 - un aviso cuando se descubre una historia por lugar;
 - las cuentas del retiro por lotes;
 - el campo `pendiente` de `usosFauna`;
-- `ficha.sh` con `archivo:línea` por campo.
+- `ficha.sh` con `archivo:línea` por campo;
+- los de `QA-261`, en `roadmap-front.md`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
