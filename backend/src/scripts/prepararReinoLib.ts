@@ -13,7 +13,8 @@ export type PasoReino =
   | { tipo: 'vasallo-paga'; vasalloSlug: string }
   | { tipo: 'domable'; especie: string }
   | { tipo: 'domador'; nivel: number }
-  | { tipo: 'punto-retirado'; especie: string; n: number | null };
+  | { tipo: 'punto-retirado'; especie: string; n: number | null }
+  | { tipo: 'sin-aliados' };
 
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
@@ -22,7 +23,7 @@ export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUER
 /// `lider-muere:<facción>` (QA-259, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-260, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-262, P313: un punto de fauna retirado por el Cronista que aún tiene n presas, 3 si no se dice). Se ejecutan en el orden dado.
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-262, P313: un punto de fauna retirado por el Cronista que aún tiene n presas, 3 si no se dice). `sin-aliados` (QA-262, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];
@@ -69,6 +70,8 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     } else if (clave === 'domable') {
       if (!r[0] || r.length > 1) return { error: `«${arg}»: falta domable:<especie de ganado>.` };
       pasos.push({ tipo: 'domable', especie: r[0] });
+    } else if (clave === 'sin-aliados' && r.length === 0) {
+      pasos.push({ tipo: 'sin-aliados' });
     } else if (clave === 'punto-retirado') {
       const n = r[1] === undefined ? null : entero(r[1]);
       if (!r[0] || r.length > 2 || (r[1] !== undefined && (n == null || n > 20))) return { error: `«${arg}»: falta punto-retirado:<especie>[:<n>], con n de 1 a 20.` };

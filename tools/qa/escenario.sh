@@ -24,7 +24,7 @@
 #                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir);
 #                                               QA-261: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
-#                                               QA-262: punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
+#                                               QA-262: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
 #                                               y, en dar-reino, edificio:<receta> de más tier que el personaje (se da como lo
 #                                               levantaría la Casa de obras; p. ej. ayuntamiento-mediano y después jaula-grande)
@@ -115,6 +115,6 @@ case "${1:-}" in
     exit "$codigo"
     ;;
   *)
-    sed -n '2,26p' "$0"; exit 2
+    sed -n '2,37p' "$0"; exit 2
     ;;
 esac

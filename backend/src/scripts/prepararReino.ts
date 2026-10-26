@@ -13,6 +13,7 @@
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
 //   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
+//   sin-aliados                     QA-262, P128: los compañeros del Grupo 1 pasan a otro grupo (`moverCompaneroDeGrupo`, la regla del arrastre del panel): un combate que se abra después solo lleva a la jugadora
 //   punto-retirado:<especie>[:<n>] QA-262, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0, como lo deja el Cronista (efectos `crearPuntoZona` y `retirarPuntoZona`)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
@@ -28,6 +29,7 @@ import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePersonas, type MiembroDeGrupo } from '../services/combatePersonas.js';
 import { scopeFor } from '../services/npcScene.js';
 import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
+import { dejarSinAliados } from '../services/cronista/prepararSinAliados.js';
 import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
 import { formatFictionalDate } from '../services/worldClock.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -41,7 +43,7 @@ import { parsearPasosReino } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -162,6 +164,10 @@ for (const paso of pasos) {
     const r = await hacerDomador(prisma, { saveId, nivel: paso.nivel });
     if ('error' in r) rechaza(r.error);
     else dice(`Domador: nivel ${r.nivel}, ${r.especializacion}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
+  } else if (paso.tipo === 'sin-aliados') {
+    const r = await dejarSinAliados(prisma, { saveId });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.yaEstaba ? 'Sin aliados: el Grupo 1 ya estaba sin compañeros' : `Sin aliados: ${r.movidos.join(', ')} fuera del Grupo 1 (grupo${r.grupos.length > 1 ? 's' : ''} ${r.grupos.map((g) => g + 1).join(', ')})`);
   } else if (paso.tipo === 'punto-retirado') {
     const r = await dejarPuntoRetirado(prisma, { saveId, especie: paso.especie, ...(paso.n != null ? { cantidad: paso.n } : {}) });
     if ('error' in r) rechaza(r.error);
