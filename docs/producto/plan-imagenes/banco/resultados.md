@@ -179,3 +179,5 @@ plantilla: «fotorreal» (lo de ChatGPT es *concept art* fotorrealista, de pelí
   retocada: ancla «a slim giraffe with the head of a small deer», cuello «giraffe-long», cuernos «stick straight out
   sideways», pose en tres cuartos y «more of the same leaf-horned grazers». **Lección común**: el modelo no repite la
   especie en el fondo; la cadena de planos lo resuelve copiando el sujeto (r13).
+- **Cardo y Pastos**: sin hacer. La usuaria paró la ronda (2026-10-26, 17:20) para afinar antes con las
+  investigaciones ([técnicas de diseño](../investigacion-tecnicas-diseno.md), motor, LoRA y prompts de criaturas).
