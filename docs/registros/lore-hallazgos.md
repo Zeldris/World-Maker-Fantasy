@@ -765,3 +765,16 @@ temporal del test. Leves:
 - Una tarea traída de una tercera rama y renombrada después en un solo lado cuenta como choque
   hasta traer `main`.
 - `canon()` carga todas las líneas del canon para quedarse con 20.
+
+## 2026-10-26 — `QA-244`: la historia de la enciclopedia, completa
+
+- Diez hechos de la cronología sin documento entran en la enciclopedia, con el sí de la usuaria a cada texto
+  («Sí, los diez tal cual»). Cada frase sale del canon (`cronologia.md`, `genesis.md`, `clanes-orcos.md`,
+  `razas.md`, `historia.md`). Nada de lo RESERVADO se explica: los seres de la Isla, solo como rumor; el muro de
+  obsidiana, sin decir quién lo levantó.
+- Cómo se descubren (decidido con la usuaria, siguiendo a X4): siete, saber común; tres, por lugar. El Pacto del
+  Umbral va a El Refugio sin Nombre porque el canon lo sella «en el borde noreste del Margen», no en Jeyselt.
+- Choques del canon vistos, sin arreglar: `genesis.md:202` hace nacer a los orcos «de esa erupción» y la cronología
+  los pone mil años después (el texto sigue la cronología); la Senda lleva «hielo sílice» en `cronologia.md:32` y
+  «cuchillos» en `clanes-orcos.md:305`; el Pacto del Umbral y la Tolda de Kegi siguen marcados «no implementado en el
+  código» en el canon, aunque la enciclopedia ya los cuenta.

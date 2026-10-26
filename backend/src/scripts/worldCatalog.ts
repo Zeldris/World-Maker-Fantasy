@@ -9213,7 +9213,7 @@ export interface HistoriaEntryInput {
   translatorNpcSlug?: string;
 }
 
-// Los 7 objetos `category: 'documento'` del catálogo de arriba (5 previos + 2 de la tanda A-12/A-14), cada uno enganchado
+// Los 7 objetos `category: 'documento'` del catálogo de arriba (más 10 hechos sin documento, QA-244) (5 previos + 2 de la tanda A-12/A-14), cada uno enganchado
 // a su propia entrada de lore. Años anclados a docs/rpgtarkor/lore-mundo/cronologia.md (hoy, año ~4.010 —
 // "El Detonante" ~4.005-4.008 formó la Concordia de Hierro actual).
 export const historiaEntries: HistoriaEntryInput[] = [
@@ -9272,6 +9272,81 @@ export const historiaEntries: HistoriaEntryInput[] = [
     year: 3600,
     text: 'Un calco del Ord\'teandu (edicto) grabado en el obelisco de leyes de El Baluarte de Goirme, con el que empieza el Yugo de Hierro: tributo anual de mineral y contingentes de guerra obligatorios que cada clan entrega "en defensa del orden". Lo firmó la casta de Ketg en nombre de los clanes de las Llanuras; los grupos emigrados a Cristal Helado y a la Ciénaga quedaron obligados después por extensión, sin haber firmado nada. El texto sigue grabado y no dice "donde el mando decida": Los del Obelisco lo citan de memoria contra el uso actual de los contingentes orcos. Para un Goirnte el edicto nunca se derogó, solo se "reajustó".',
     documentoItemSlug: 'calco-edicto-tributo',
+  },
+  // QA-244 (usuaria, 2026-10-26): los hechos de la cronología sin documento, con el sí de la usuaria a cada texto.
+  // Con `lugarSlug`, se abren al visitar ese lugar; sin él, son saber común (abiertos desde el principio).
+  {
+    slug: 'el-estallido',
+    title: 'El Estallido',
+    era: 'comun',
+    year: 1000,
+    text: 'Tarkor regresó transformado y, con él, la magia entró en Helek Sirik sin diseño ni medida. No la guiaron las Semillas ni la ordenó Madre: se derramó sobre el mundo como una erupción. Las Semillas fieles lo vivieron como la primera herida y esperaron la orden de contenerla. Nunca llegó. Goirme lo tuvo por un desorden que debió corregirse de raíz, y la facción radical de los Goirntes sigue viendo la magia salvaje como una amenaza para el orden verdadero. En Berig, la variante que cuajó entonces se asentó sobre las Llanuras muertas. Mil años más tarde daría a los primeros orcos.',
+  },
+  {
+    slug: 'nacimiento-de-los-orcos',
+    title: 'El nacimiento de los orcos',
+    era: 'comun',
+    year: 2000,
+    text: 'Mil años de magia salvaje gestándose en Berig cristalizaron en cuatro orcos: Kekta, Tevya, Megug y Kegoht. Surgieron en el desierto que hoy son las Llanuras del Viento Rojo, entonces tierra demasiado dura para ninguna civilización. Nadie sabe cómo nacieron. Unos dicen que brotaron del propio desierto, otros que salieron de huevos, otros que antes eran un solo ser. No tuvieron Semilla que los guiara. Las Terk\'ikar aún dicen a los recién nacidos: «Con ira nos quemaron, con honor nos rebelamos, y aún así nadie domó nuestros caminos». Los cuatro se trataban como hermanos sin serlo de sangre. De Kekta, de Tevya y de sus hijos saldrían los primeros clanes.',
+  },
+  {
+    slug: 'el-borde',
+    title: 'El Borde',
+    era: 'comun',
+    year: 2100,
+    text: 'La frontera norte de los Goirntes llegó hasta el Margen Silencioso y ahí se detuvo. Las columnas no podían cruzarlo; los Nabieus sí. Ofrecieron llevar el correo del orden a través del laberinto, a cambio de que ninguna columna entrara en su mitad. Los Goirntes aceptaron. Así nació el oficio que luego se llamaría Karo\'sael, «el que no pregunta»: llevar la carta sellada sin abrirla ni preguntar qué lleva. Desde entonces el Imperio rodea el Margen por la costa, y un mensajero Nabieus lo cruza en dos o tres jornadas. El trato duró siglos, hasta que el Yugo de Hierro lo rompió.',
+    lugarSlug: 'cruce-de-las-ausencias',
+  },
+  {
+    slug: 'golpe-de-ketg',
+    title: 'El Golpe de Ketg',
+    era: 'comun',
+    year: 2850,
+    text: 'Cincuenta años después de las guerras contra los Goirntes empezaron los conflictos dentro del propio pueblo orco. Nietka, Terk\'ikar de la Tribu Tarkurok, fue traicionada por su marido y Kort\'ikar, Ketg, ancho, fuerte e inteligente, de ambición cruel. Con ayuda Goirnte, Ketg fundó el Clan Serhu y tomó el control de las llanuras. En el Clan Maktor, su Kort\'ikar Prehk, guerrero fácil de manipular, dejó que Ketg tomara también a los Maktor. Quedaron aislados, con permiso para vivir en la zona más dura de la llanura y sin poder crecer nunca por encima de los Serhu.',
+  },
+  {
+    slug: 'la-mesa-del-lazo',
+    title: 'La Mesa del Lazo',
+    era: 'comun',
+    year: 2855,
+    text: 'Tras la traición de Ketg, la Terk\'ikar Maktor Tregig vio fallar a dos jefes de guerra: uno por ambición, Ketg, y otro por debilidad, Prehk. Sin fuerza para rebelarse, reunió en secreto a los Maktor ante una losa de piedra roja con un surco en el centro y fijó el Drogh\'tugh, el Lazo del honor. Reconocer los errores de quienes te precedieron. Proteger al clan incluso de su propio líder, si lo daña. Aceptar que la unidad vale más que cualquier mando. Todo Maktor lo pronuncia allí a los diez años. Tras cada juramento se echa tierra fresca en el surco, y el montículo junto a la mesa crece con cada generación.',
+  },
+  {
+    slug: 'senda-del-silice',
+    title: 'La Senda del Sílice',
+    era: 'comun',
+    year: 3000,
+    text: 'Los grupos que habían emigrado, ya asentados, abrieron el comercio que les dejaría crecer. Por el borde oriental de las Llanuras bajaba el hielo sílice de los Helsig y subían la madera y la resina de los Goshg. Los Maktor maltrechos cambiaron pieles por madera de ciénaga: de ahí la madera del gran tótem. Parte de lo que sacaban llegó hasta Kegi, a la Tolda de los Feg Ger. Los Serhu, dentro del cerco de los Goirntes, quedaron fuera de la Senda. Por eso crecieron tres veces más despacio que los clanes emigrados. La Senda cruza el Desfiladero Esmeralda y sigue viva hoy.',
+    lugarSlug: 'desfiladero-esmeralda',
+  },
+  {
+    slug: 'purga-silenciosa',
+    title: 'La Purga Silenciosa',
+    era: 'comun',
+    year: 3650,
+    text: 'Se llama así porque no hubo batalla que cantar. En el curso de una sola estación, funcionarios clave del orden amanecieron desaparecidos, obra de los Nabieus, aunque jamás se probó. A la vez, todos los clanes orcos dejaron de entregar tributo y contingente, sin previo aviso. El orden, incapaz de castigar a todos sin desangrarse, cedió autonomía parcial a ambos pueblos. Los archivos goirntes no registran una revuelta, sino un «reajuste de los tratados». Los clanes cantan la Purga como victoria. Casi ningún Kort\'ikar presume de cómo se ganó: la autonomía no llegó con duelo ni desafío abierto, sino con métodos de sombra.',
+  },
+  {
+    slug: 'pacto-del-umbral',
+    title: 'El Pacto del Umbral',
+    era: 'comun',
+    year: 3650,
+    text: 'Tras la Purga Silenciosa, los clanes Nabieus Keseg Sael y Keseg Prisilke se reunieron en el borde noreste del Margen y pusieron las dos palmas sobre la misma piedra. Nadie diría a un forastero dónde vive el otro clan. Nadie dejaría señal que llevara a un asentamiento. Nadie entraría en el territorio del otro sin que lo supiera. Desde entonces, el Karo\'sael, llevar sin abrir, incluye callar dónde están los suyos. Quien lo rompe queda fuera del silencio y nadie le vuelve a hablar. El pacto se repite en cada Keseg\'Vhurne, el cónclave en que los Nabieus deciden lo grave sin hablar.',
+    lugarSlug: 'refugio-sin-nombre',
+  },
+  {
+    slug: 'guerra-de-la-isla-cambiante',
+    title: 'La Guerra de la Isla Cambiante',
+    era: 'comun',
+    year: 3900,
+    text: 'En el estrecho que separa Vaelira de Berig se descubrió una isla que nunca mantiene la misma forma ni extensión. Ambos continentes la reclamaron para estudiarla, controlarla y aprovechar sus recursos. La guerra, casi toda en el mar y en la propia isla, fue la más letal de la historia conocida. Las expediciones que tocaban su tierra volvían incompletas, o volvían solo sus barcos, o no volvían. Corre el rumor de que unos seres que ya vivían en ella la controlan y la cambian, y nadie que los vio sobrevivió para describirlos. Terminó en un tratado frágil: la isla quedó sellada bajo vigilancia conjunta, sin que ninguno de los dos bandos pudiera explotarla.',
+  },
+  {
+    slug: 'el-detonante',
+    title: 'El Detonante',
+    era: 'comun',
+    year: 4005,
+    text: 'Tras décadas de paz vigilada, una facción radical de los Goirntes intentó forzar un asalto a la Isla Cambiante sin el consenso del tratado. Salió mal: los seres que la habitan mataron a la mayoría de los asaltantes y los hicieron huir. A los pocos meses la isla había desaparecido. En el norte de cada continente apareció una extensión de tierra nueva, de la que vinieron seres que nadie, salvo Madre, conocía. Berig acusó a saboteadores de Vaelira; Vaelira lo negó y sospechó un ardid de los propios Goirntes. La propaganda de ambos bandos volvió la sospecha certeza, y estalló la guerra. De ella nació la Concordia de Hierro, y la tierra nueva quedó oculta tras un muro de obsidiana.',
   },
 ];
 
