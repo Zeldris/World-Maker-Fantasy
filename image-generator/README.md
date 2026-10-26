@@ -63,14 +63,14 @@ Sin interfaz, lo mismo desde la terminal (`W=… H=…` cambian el tamaño; `PRO
 pegado en vez del de la base):
 
 ```bash
-image-generator/scripts/probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=4] [-r referencia.png]
+image-generator/scripts/probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=6] [-r referencia.png]
 # p. ej.: image-generator/scripts/probar.sh fauna cuernahoja-macho banner 7
 ```
 
 ## Generar con un prompt propio
 
 ```bash
-image-generator/scripts/generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla=42] [pasos=4]
+image-generator/scripts/generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla=42] [pasos=6]
 # p. ej.: image-generator/scripts/generar.sh image-generator/generated/murgol/pruebas v5-1280x512 image-generator/prompts/murgol/v5.txt 1280 512
 # deja la imagen en <directorio>/intentos/, el log en logs/ y el prompt en prompts/
 ```

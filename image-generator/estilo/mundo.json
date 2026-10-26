@@ -2,15 +2,15 @@
   "_leyenda": "IMG-4: lo común a todos los prompts de Helek Sirik (Berig), en inglés porque entra tal cual. Lo explica docs/producto/plan-imagenes/guia-visual-mundo.md; lo usa image-generator/scripts/prompt_ficha.py. Las claves de _propuestas esperan la aprobación de la usuaria.",
   "_propuestas": ["preambulo", "estilos", "longitud", "fondo", "preambulo.atardecer", "regiones.*.luz", "regiones.*.estaciones", "coherencia"],
   "preambulo": {
-    "dia": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. By day the sky is an ordinary daylight sky with a light warm haze. The mood is wild, quiet and lived-in, with muted natural colours, a subtle filmic grade and a single accent colour per scene. The image is completely textless.",
-    "atardecer": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. At dusk the sky glows amber and rose with a light warm haze. The mood is wild, quiet and lived-in, with long soft shadows, muted natural colours, a subtle filmic grade and a single accent colour per scene. The image is completely textless.",
+    "dia": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. By day the sky is clear with a light warm haze, drifting dust catches the light, with deep aerial perspective and strong contrast. The mood is wild, quiet and lived-in, with vivid, saturated natural colours, deep shadows and glowing rim light. The image is completely textless.",
+    "atardecer": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. At dusk the low sun sets the sky ablaze in saturated amber, orange and crimson, and thick drifting dust glows in the backlight, with deep aerial perspective and strong contrast. The mood is wild, quiet and lived-in, with long shadows, vivid, saturated warm colours and glowing rim light. The image is completely textless.",
     "noche": "A grounded fantasy world with a physical, natural logic, where everything is handmade from wood, hide, bone, stone and dark iron. By night the sky is full of stars under a soft, even pearly glow. The mood is wild, quiet and lived-in, with deep cool shadows, muted natural colours and firelight as the only warm light. The image is completely textless."
   },
   "estilos": {
     "_nota": "D8 (usuaria, 2026-10-25): banner realista, icono y thumbnail al óleo (thumbnail es icono), mapa a medio camino.",
     "banner": {
       "palabra": "photographic",
-      "base": "Cinematic {clase} photograph, natural muted colours, subtle filmic grade.",
+      "base": "Epic fantasy {clase} photograph, hyper-detailed and razor-sharp, dramatic rim lighting, volumetric dust, vivid saturated colours.",
       "porTipo": {
         "fauna": { "clase": "wildlife", "acabado": "Shot on a full-frame camera with a 35mm lens, ultra detailed fur, hide and scale texture." },
         "flora": { "clase": "nature", "acabado": "Shot with a 100mm macro lens, ultra detailed botanical and mineral texture." },

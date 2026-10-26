@@ -1,6 +1,6 @@
 #!/bin/bash
 # Prueba de la usuaria: genera la imagen de una entidad con su prompt de la enciclopedia (tabla ImagePrompt).
-# Uso: probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=4] [args extra de sd-cli…]
+# Uso: probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=6] [args extra de sd-cli…]
 # p. ej.: probar.sh fauna cuernahoja-macho banner 7
 # Usa el prompt usado (CFG-38) si lo hay, si no el base. Tamaño por perfil, a la medida que aguanta la Deck
 # (se escala después); W=… H=… lo cambian, y MUNDO=… el mundo (helek-sirik). Llama a generar.sh (protecciones
@@ -12,7 +12,7 @@
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 [ $# -ge 3 ] || { sed -n 3,4p "$0"; exit 2; }
-T=$1; S=$2; P=$3; SEED=${4:-42}; STEPS=${5:-4}; EXTRA=("${@:6}")
+T=$1; S=$2; P=$3; SEED=${4:-42}; STEPS=${5:-6}; EXTRA=("${@:6}")
 case $P in
   banner) DW=1280; DH=512 ;;
   thumbnail) DW=768; DH=768 ;;

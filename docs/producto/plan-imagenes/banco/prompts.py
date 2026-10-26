@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """IMG-15: escribe los prompts del banco en banco/prompts/<ficha>-<estilo>.txt con prompt_ficha.py y una variante
 del estilo de mundo.json. Los estilos son pruebas, no la guía: lo que gane pasa a mundo.json con la usuaria.
-Uso: python3 docs/producto/plan-imagenes/banco/prompts.py"""
+Uso: python3 docs/producto/plan-imagenes/banco/prompts.py [estilo…]
+Con estilos, escribe solo esos: los prompts de rondas pasadas no cambian aunque cambie mundo.json (r8: «guia», mundo.json con el estilo ganador)."""
 import copy, json, pathlib, subprocess, sys, tempfile
 
 R = pathlib.Path(__file__).resolve().parents[4]
@@ -9,6 +10,7 @@ G = R / 'image-generator'
 OUT = pathlib.Path(__file__).parent / 'prompts'
 FICHAS = {'pastos': ('location/pastos-de-la-deriva.json', []),
           'aullador': ('fauna/aullador-rojo.json', ['--variante', 'macho']),
+          'aullador_noche': ('fauna/aullador-rojo.json', ['--variante', 'macho', '--momento', 'noche']),
           'hulki': ('npc/hulki.json', []),
           'cardo': ('flora/cardo-brujula.json', [])}
 
@@ -70,7 +72,7 @@ def polvo(texto):
 
 
 # estilo: (cambio de mundo.json, cambio del texto final)
-ESTILOS = {'actual': (lambda m: m, None), 'cine': (cine, None), 'cine2': (cine2, None), 'corto': (corto, None),
+ESTILOS = {'actual': (lambda m: m, None), 'guia': (lambda m: m, None), 'cine': (cine, None), 'cine2': (cine2, None), 'corto': (corto, None),
            'arte': (arte, None), 'fantasia': (cine2, fantasia),
            'polvo': (cine2, polvo)}
 
@@ -80,9 +82,13 @@ def main():
     base = json.load(open(G / 'estilo/mundo.json'))
     with tempfile.TemporaryDirectory() as t:
         for est, (f, post) in ESTILOS.items():
+            if sys.argv[1:] and est not in sys.argv[1:]:
+                continue
             mp = pathlib.Path(t) / f'{est}.json'
             json.dump(f(copy.deepcopy(base)), open(mp, 'w'))
             for nom, (ficha, args) in FICHAS.items():
+                if nom == 'aullador_noche' and est != 'guia':
+                    continue  # la noche solo se comprueba con el estilo de mundo.json (r8)
                 r = subprocess.run([sys.executable, G / 'scripts/prompt_ficha.py', G / 'fichas' / ficha, 'banner',
                                     '--mundo', mp, *args], capture_output=True, text=True)
                 if r.returncode:

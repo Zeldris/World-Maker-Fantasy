@@ -378,7 +378,7 @@ class Trabajo:
         if perfil not in PERFILES:
             raise Invalido(f'perfil desconocido: {perfil}')
         semilla = entero(peticion.get('semilla', 42), 'la semilla', 0, 2 ** 31 - 1)
-        pasos = entero(peticion.get('pasos', 4), 'los pasos', 1, 20)
+        pasos = entero(peticion.get('pasos', 6), 'los pasos', 1, 20)
         extra = []
         if peticion.get('usarReferencia'):
             ref = referencia_de(tipo, slug_, perfil)

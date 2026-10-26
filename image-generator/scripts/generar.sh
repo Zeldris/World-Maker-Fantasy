@@ -13,7 +13,7 @@
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
-D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-4}; EXTRA=("${@:8}")
+D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")
 mkdir -p "$D/intentos" "$D/logs" "$D/prompts"
 # MIN_INICIO_MB: klein baja la memoria libre ~2,2 GB y Z-Image ~3,5 GB (IMG-15); el vigilante mata con menos de 1500.
 MIN_INICIO_MB=${MIN_INICIO_MB:-7000}; MIN_VIGILA_MB=1500
