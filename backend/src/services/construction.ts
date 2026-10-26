@@ -964,7 +964,7 @@ export const CASA_DE_CURAS_RECIPE: ConstructionRecipe = {
   key: 'casa-de-curas',
   tier: 2,
   name: 'una casa de curas orca de las Llanuras',
-  description: 'Camastros y mesas de vendaje donde los compañeros heridos del reino se recuperan más rápido — servicio, no solo producción: mientras esté ACTIVA, cura un estado más cada día.',
+  description: 'Camastros y mesas de vendaje donde los compañeros heridos del reino se recuperan más rápido — servicio, no solo producción: mientras esté en pie, cura un estado más cada día.',
   raza: 'orcos',
   nounRegex: /casa de curas|casa-de-curas/,
   requirements: [
@@ -1682,7 +1682,7 @@ export const CASA_DE_OBRAS_AMPLIADA_RECIPE: ConstructionRecipe = {
   key: 'casa-de-obras-2',
   tier: 3,
   name: 'una casa de obras ampliada',
-  description: 'Un segundo andamio y un taller cubierto para tallar vigas: dos constructores a la vez y obras de hasta tier 6.',
+  description: 'Un segundo andamio y un taller cubierto para tallar vigas: dos constructores a la vez y obras de hasta nivel 6.',
   nounRegex: /(?=.*\bcasa\b)(?=.*\bobras\b)(?=.*ampliad)/,
   requirements: [
     { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 2, label: 'viga de madera tallada' },
@@ -1699,7 +1699,7 @@ export const CASA_DE_OBRAS_GRAN_RECIPE: ConstructionRecipe = {
   key: 'casa-de-obras-3',
   tier: 6,
   name: 'una gran casa de obras',
-  description: 'Grúas de madera, un patio de cantería y almacén propio de andamios: tres constructores a la vez y obras de hasta tier 9.',
+  description: 'Grúas de madera, un patio de cantería y almacén propio de andamios: tres constructores a la vez y obras de hasta nivel 9.',
   nounRegex: /(?=.*\bgran\b)(?=.*\bcasa\b)(?=.*\bobras\b)/,
   requirements: [
     { match: { kind: 'exact', catalogSlug: 'viga-madera-tallada' }, cantidad: 4, label: 'viga de madera tallada' },
@@ -1907,7 +1907,7 @@ export async function computeBuildBlockedReason(params: {
 }): Promise<string | null> {
   const { db, saveId, worldId, buildRecipe, activeRegion, currentLocationRecord, excludeBuildingId, quien = 'personaje' } = params;
   if (quien === 'personaje' && buildRecipe.tier > TIER_MAXIMO_PERSONAJE) {
-    return `es una obra de tier ${buildRecipe.tier} y el personaje solo levanta hasta tier ${TIER_MAXIMO_PERSONAJE}: encárgala a la Casa de obras (Reino › Edificios)`;
+    return `es una obra de nivel ${buildRecipe.tier} y el personaje solo levanta hasta nivel ${TIER_MAXIMO_PERSONAJE}: encárgala a la Casa de obras (Reino › Edificios)`;
   }
   // Hueco real confirmado jugando en vivo (2026-09-08): nada impedía construir un campamento
   // personal DENTRO de la misma Location que ya tiene infraestructura de una facción NPC sembrada
@@ -2081,7 +2081,7 @@ export async function computeBuildBlockedReason(params: {
       return 'tu Ayuntamiento está dañado: repáralo (Reino › Edificios) antes de levantar esto';
     }
     if (!ayuntamiento || (ayuntamiento.tier ?? 1) < ayuntamientoNivelMinimo) {
-      return `es una obra de tier ${buildRecipe.tier}: necesita un Ayuntamiento ${ayuntamientoNivelMinimo === 2 ? 'mediano' : 'grande'} o superior`;
+      return `es una obra de nivel ${buildRecipe.tier}: necesita un Ayuntamiento ${ayuntamientoNivelMinimo === 2 ? 'mediano' : 'grande'} o superior`;
     }
   }
   // Corrales del Ganadero (§ 3: "necesitan al menos una Jaula del reino, las capturas pasan de la

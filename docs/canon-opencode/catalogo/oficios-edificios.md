@@ -56,5 +56,5 @@ oficio distintos de estos: si hace falta uno nuevo, primero hace falta el oficio
 ## Materiales de construcción que existen
 Madera y Hojas de Telda, Musgo Rojo (tejados), Chudos Rojizos (techado), Huesos de Gargantúa
 (postes y pilares), Roca de Llanura Roja, Rovalnica, Roca Luclara (t6), Cera Lebude, resinas (Telda
-Gris, Lucre Blanco, Jumba, Trepador Ocaso), madera de Trepador Ocaso (pilotes y canoas), bloque de
+Gris, Lucre Blanco, Junba, Trepador Ocaso), madera de Trepador Ocaso (pilotes y canoas), bloque de
 piedra tallada, viga de madera tallada, columna de hueso y cordaje trenzado.

@@ -2935,7 +2935,7 @@ describe('Ayuntamiento: fundación, desbloqueo de reino y mejora in-place', () =
     narrateAction.mockClear();
     await doTurn(saveId, 'Mejoro mi ayuntamiento a mediano.');
     expect(narrateAction).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(narrateAction.mock.calls[0])).toMatch(/solo levanta hasta tier 3/);
+    expect(JSON.stringify(narrateAction.mock.calls[0])).toMatch(/solo levanta hasta nivel 3/);
 
     const after = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'ayuntamiento' } });
     expect(after.id).toBe(before.id);

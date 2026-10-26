@@ -436,13 +436,13 @@ export const FAUNA_SEXO_VARIANTES: Record<string, SexoVariantesEntry> = {
   },
   nuente: {
     macho: {
-      rasgoFisico: 'Bestia nocturna de cuerpo de rana y alas de murciélago, cabeza tipo golem con forma de búho, halos en los ojos, pelaje blanco con mechas azul marino.',
+      rasgoFisico: 'Bestia nocturna de cuerpo rechoncho y alas membranosas, cabeza redonda y maciza, halos en los ojos, pelaje blanco con mechas azul marino.',
       description: 'Caza en solitario por las noches de Las Agujas Imán, silencioso y calculador con quien no lo busca.',
       medidaCm: 98,
       edadMaxima: 16,
     },
     hembra: {
-      rasgoFisico: 'Bestia nocturna de la misma mezcla de rana y murciélago, halos oculares más marcados, mechas azul marino más extendidas por las alas.',
+      rasgoFisico: 'Bestia nocturna del mismo cuerpo rechoncho y alas membranosas, halos oculares más marcados, mechas azul marino más extendidas por las alas.',
       description: 'Es quien "ve" el magnetismo con más precisión en la oscuridad total — ningún macho localiza a un Imanio escondido tan rápido como ella.',
       medidaCm: 102,
       edadMaxima: 18,

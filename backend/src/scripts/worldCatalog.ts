@@ -49,7 +49,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'hito',
     description:
-      'Un campo de rocas negras brillante (formadas de arena imán) imantadas y levitando magneticamente, donde las tormentas de arena magnética peinan la arena en crestas y estalactitas flotantes. El sentido de la orientación se pierde entre ellas; a sotavento se acumula arena imán y crece el Cardo Brújula.',
+      'Un campo de rocas negras y brillantes, formadas de arena imán, imantadas y suspendidas por el magnetismo, donde las tormentas de arena magnética peinan la arena en crestas y estalactitas flotantes. El sentido de la orientación se pierde entre ellas; a sotavento se acumula arena imán y crece el Cardo Brújula.',
     // 'las agujas' quitado a propósito (auditoría 2026-08-02, "revisar partida"): prefijo literal de
     // 'las agujas iman'/'las agujas imán' — el enlazador de texto clicable (enciclopediaIndex.ts)
     // partía "Avanzo a las Agujas Imán" en pin("Las Agujas Imán") + "Iman" suelto repetido detrás,
@@ -66,7 +66,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'asentamiento',
     description:
-      'El asentamiento del Clan Serhu, cerca del Pozo de Cauce Viejo del que dependen para el agua — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Hogar de la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg. Se llega visto desde lejos por los vigías del clan.',
+      'El asentamiento del Clan Serhu, cerca del Pozo de Cauce Viejo del que dependen para el agua — empalizada de estacas afiladas rodeando chozas de techo cónico, con vigías apostados en las torres de la entrada. Hogar de la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg. Los vigías del clan ven llegar al viajero desde lejos.',
     // 'clan serhu'/'los serhu' quitados a propósito (auditoría 2026-08-02, "revisar partida"): se
     // usan todo el rato para describir la AFILIACIÓN de un personaje ("una orca marcada del Clan
     // Serhu"), no el sitio — el enlazador de texto clicable (enciclopediaIndex.ts) los enlazaba
@@ -94,7 +94,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'interior',
     description:
-      'Dentro de la empalizada de Karot Veku: tierra apisonada en torno a una plaza central, sendas marcadas por el paso constante entre los distintos puntos del poblado — cada construcción real (Ketg\'lukar, talleres de cada oficio) tiene su propia ubicación marcada en el mapa de la zona, sin representarlas ya prefijadas en el fondo. En el centro simbólico, el Ketg\'sedsar Karot Veku — el Salón Ketg del Colmillo Ceniza —, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
+      'Dentro de la empalizada de Karot Veku: tierra apisonada en torno a una plaza central, con sendas marcadas por el paso constante entre el Ketg\'lukar y los talleres de cada oficio. En el centro simbólico, el Ketg\'sedsar Karot Veku — el Salón Ketg del Colmillo Ceniza —, donde la Terk\'ikar Ulkha Ketg y el Kort\'ikar Torgash Ketg reciben a quien cruza la entrada.',
     aliases: ['ketg\'lukar', 'ketg\'sedsar','ketglukar', 'ketgsedsar'],
     teaser: 'Más allá de la empalizada debe abrirse la vida cotidiana del clan, aunque nadie ajeno la haya visto de cerca',
   },
@@ -118,7 +118,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'mirador',
     description:
-      'Una cresta de roca oscura al noreste de Los Restos de Maktor, donde la estepa empieza a ceder ante la tierra volcánica — el primer lugar de las Llanuras desde el que los volcanes activos que solo se veían "a lo lejos" se distinguen de verdad, con su calima de calor y ceniza en el aire. Territorio real de la Salamandra de Escoria, que antes solo aparecía aquí como avanzadilla ocasional.',
+      'Una cresta de roca oscura al noreste de Los Restos de Maktor, donde la estepa empieza a ceder ante la tierra volcánica — el primer lugar de las Llanuras desde el que se distinguen los volcanes activos, con su calima de calor y ceniza en el aire. Territorio de la Salamandra de Escoria.',
     aliases: ['el filo de las brasas'],
     x: 16,
     y: 31,
@@ -212,7 +212,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'punto de agua',
     description:
-      'Uno de los pocos puntos de agua permanentes de la región, sobre la corriente subterránea que siguen los Corredores de Cauce — cruce de viajeros para bien o para mal. Actualmente hay construido un pozo antiguo que es utilizado por el Clan Serhu.',
+      'Uno de los pocos puntos de agua permanentes de la región, sobre la corriente subterránea que siguen los Corredores de Cauce — cruce de viajeros para bien o para mal. Los Serhu lo aprovechan con un pozo antiguo de piedra.',
     aliases: ['el pozo de cauce viejo'],
     x: 13.5,
     y: 0,
@@ -283,7 +283,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'costa',
     description:
-      'El punto donde la corriente subterránea que alimenta El Pozo de Cauce Viejo y Los Manaderos aflora por fin al mar, en una marisma salobre de chudos y barro — cierra el recorrido completo del agua de las Llanuras, desde su nacimiento tierra adentro hasta el mar.',
+      'El punto donde la corriente subterránea que alimenta El Pozo de Cauce Viejo y Los Manaderos aflora por fin al mar, en una marisma salobre de chudos y barro.',
     aliases: ['la desembocadura callada', 'desembocadura callada'],
     x: -2,
     y: 42,
@@ -296,7 +296,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'costa',
     description:
-      'Franja de arena clara entre dos brazos bajos de roca, en el tramo norte de la costa, y puesto avanzado del Clan Serhu, con su Embarcadero de pesca. Es la zona costera más accesible y menos hostil de toda la región: el único punto donde el mar se alcanza y se usa sin escalar ni cruzar marisma.',
+      'Franja de arena clara entre dos brazos bajos de roca, en el tramo norte de la costa, y puesto avanzado del Clan Serhu, con su Embarcadero de pesca. Es la zona costera más accesible y menos hostil de toda la región: aquí el mar se alcanza y se usa sin escalar ni cruzar marisma.',
     aliases: ['playa de ceniza blanca', 'la playa de ceniza blanca'],
     x: -20,
     y: 22,
@@ -335,11 +335,11 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'asentamiento',
     description:
-      'Puesto avanzado del Clan Serhu en la costa norte, botes de fondo plano varados sobre travesaños de madera y redes tendidas a secar — primer contacto real del clan con el mar. Pesca y transporte de corta distancia a lo largo de la costa; ningún Serhu se aventura mar adentro.',
+      'Puesto avanzado del Clan Serhu en la costa norte, botes de fondo plano varados sobre travesaños de madera y redes tendidas a secar. Pesca y transporte de corta distancia a lo largo de la costa; ningún Serhu se aventura mar adentro.',
     aliases: ['el embarcadero de ceniza', 'embarcadero de ceniza'],
     x: -21,
     y: 54,
-    teaser: 'Botes varados y redes al secar, el único punto donde se dice que el clan tocó el mar',
+    teaser: 'Botes varados y redes al secar, uno de los pocos puntos donde se dice que el clan toca el mar',
   },
 
   {
@@ -400,7 +400,7 @@ export const locations: LocationInput[] = [
     region: 'Las Llanuras del Viento Rojo',
     kind: 'hito',
     description:
-      'Campo de grietas humeantes y vidrio volcánico negro más allá de El Filo de las Brasas — más hostil y menos transitado que el propio Filo, donde el calor sale directo de la tierra.',
+      'Campo de grietas humeantes y vidrio volcánico negro dentro de El Filo de las Brasas — más hostil y menos transitado que el propio Filo, donde el calor sale directo de la tierra.',
     aliases: ['las fumarolas negras', 'fumarolas negras'],
     x: 19,
     y: 42,
@@ -545,7 +545,7 @@ export const locations: LocationInput[] = [
     region: 'La Meseta del Orden',
     kind: 'puesto de control',
     description:
-      'El puesto de control en el extremo sur del corredor costero occidental, donde el camino que bordea El Margen Silencioso entra en la Meseta del Orden. Toda columna de la Concordia que va o vuelve del Cruce de las Cenizas pasa por aquí — la otra puerta de las que siempre llegan en columna y por una sola. Una explanada de piedra gris pulida con tres caminos que se cruzan en ángulos exactos: el corredor costero, el que sube al Baluarte de Goirme y el que lleva a las forjas de la frontera norte. Un obelisco menor lleva los edictos de paso, y los inspectores anotan cada carga, cada nombre y cada hora — un registro de entrada sin su salida es un asunto inacabado, y se persigue. Una escuadra de doce y dos inspectores de la casta de ley lo guardan de forma permanente.',
+      'El puesto de control en el extremo sur del corredor costero occidental, donde el camino que bordea El Margen Silencioso entra en la Meseta del Orden. Toda columna de la Concordia que va o vuelve del Cruce de las Cenizas pasa por aquí — la puerta sur del corredor, como el Cruce de las Cenizas lo es por el norte. Una explanada de piedra gris pulida con tres caminos que se cruzan en ángulos exactos: el corredor costero, el que sube al Baluarte de Goirme y el que lleva a las forjas de la frontera norte. Un obelisco menor lleva los edictos de paso, y los inspectores anotan cada carga, cada nombre y cada hora — un registro de entrada sin su salida es un asunto inacabado, y se persigue. Una escuadra de doce y dos inspectores de la casta de ley lo guardan de forma permanente.',
     aliases: ['el puesto del corredor', 'puesto del corredor'],
   },
   {
@@ -599,7 +599,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'asentamiento',
     description:
-      'A los pies de la ladera, la tribu orca del Clan Helsig (Honor Helado), expertos en tallar hielo sílice, turnos de mina y caza escasa. Aquí trabajó Gorhorn tres meses de joven, y aquí sigue Hagar.',
+      'Campamento minero a los pies de la ladera, hogar de la tribu orca del Clan Helsig (Honor Helado). Sus gentes tallan hielo sílice, hacen turnos de mina y viven de una caza escasa. Aquí trabajó Gorhorn tres meses de joven, y aquí sigue Hagar.',
     aliases: ['helske tugh', 'campamento del clan helsig', 'honor helado'],
   },
   {
@@ -612,7 +612,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'interior',
     description:
-      'Dentro de la empalizada de Helske Tugh se encuentra el salón Helsig\'sedsar, en el centro del poblado — junto a los talleres de oficio de los suyos, cada uno con su propia ubicación en el mapa de la zona.',
+      'Dentro de la empalizada de Helske Tugh se encuentra el salón Helsig\'sedsar, en el centro del poblado — junto a los talleres de oficio de los suyos.',
     aliases: ['helsig\'lukar', 'helsig\'sedsar', 'helsiglukar', 'helsigsedsar'],
   },
   {
@@ -621,7 +621,7 @@ export const locations: LocationInput[] = [
     region: 'Cristal Helado',
     kind: 'región',
     description:
-      "Región de tundra congelada, con grandes yacimientos de hielo sílice en las profundidades del hielo, una amplia zona de roca negra cubierta de nieve y lagos helados cuyas grietas dejan ver en el fondo el brillo del hielo sílice. La zona es rica en minerales y fauna adaptada al frío extremo, pero pobre en vegetación.",
+      "Región de tundra congelada, con grandes yacimientos de hielo sílice en las profundidades del hielo, una amplia zona de roca negra cubierta de nieve y lagos helados cuyas grietas dejan ver en el fondo el brillo del hielo sílice. La zona es rica en minerales, pero pobre en vegetación y en caza.",
     aliases: ['veta helada'],
   },
   {
@@ -918,7 +918,7 @@ export const locations: LocationInput[] = [
       // con presencia hasta el borde de Ciénaga Troncal (vecina real, no una frontera cerrada);
       // los Faerus ocupan el resto — la mayor parte de la región — con puestos avanzados que
       // cruzan algo la frontera norte hacia las Llanuras.
-      'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de las tierras salvajes del norte — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera norte con las Llanuras del Viento Rojo.',
+      'Cinturón denso de selva templada, pantanos y bosques de coníferas de madera negra que separa la Meseta del Orden de la Ciénaga Troncal y del extremo sur de las Llanuras del Viento Rojo — un laberinto donde el sonido parece apagarse de forma antinatural. Los Nabieus predominan en la mitad oriental, con presencia dispersa hasta el borde de Ciénaga Troncal; los Faerus ocupan la mayor parte del resto de la región, con pequeños puestos avanzados que se adentran algo más allá de la frontera norte con las Llanuras del Viento Rojo.',
     aliases: ['el margen silencioso'],
   },
 
@@ -1493,8 +1493,8 @@ export const fauna: NpcInput[] = [
     // sí"), coordinación de grupo real.
     faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
-      { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
-      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rápidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🐺', name: 'Posición defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y, a la mínima oportunidad, contraataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🔄', name: 'Filos Centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rápidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
       { icon: '🐾', name: 'Instinto Solitario', description: 'En cuanto se queda solo, se retira a toda velocidad — casi imposible rematarlo en la huida.', categoria: 'utilidad', preferredAttribute: 'inteligencia', level: 20, effects: ['AGUANTE'] },
     ],
   },
@@ -1605,7 +1605,7 @@ export const fauna: NpcInput[] = [
     habilidadesRaciales: [
       { icon: '🏃', name: 'Fuga audaz', description: 'Al primer sobresalto intenta huir siendo casi imposible pararlo.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
       { icon: '🦴', name: 'Placas del Lomo', description: 'La hilera de placas óseas del lomo amortigua un golpe que a otra bestia la habría derribado.', categoria: 'defensa', preferredAttribute: 'fuerza', level: 12, effects: ['AGUANTE'] },
-      { icon: '💥', name: 'Embestida Volatil', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
+      { icon: '💥', name: 'Embestida Volátil', description: 'Carga con todo su peso y puede derribar a quien no logre apartarse a tiempo.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
     ],
   },
 
@@ -1633,8 +1633,8 @@ export const fauna: NpcInput[] = [
     // (texto literal de su bio), ave terrestre de patas largas.
     faunaCategoria: 'ZANCUDOS',
     habilidadesRaciales: [
-      { icon: '💥', name: 'Picoteo Incesante', description: 'En un ataque agil, ejecuta continuos picotazos en las partes mas debil de su agresor. Busca atacar las partes mas blandas y desprotegidas.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
-      { icon: '🐦', name: 'Vuelo en Bandada', description: 'Se coloca en posición de carrera y antes de que te des cuenta huye del combate y desaparece entre las tormentas de arena roja.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
+      { icon: '💥', name: 'Picoteo Incesante', description: 'En un ataque ágil, ejecuta continuos picotazos en las partes más débiles de su agresor. Busca atacar las partes más blandas y desprotegidas.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE'] },
+      { icon: '🐦', name: 'Fuga en Bandada', description: 'Se coloca en posición de carrera y antes de que te des cuenta huye del combate y desaparece entre las tormentas de arena roja.', categoria: 'utilidad', preferredAttribute: 'destreza', level: 12, effects: ['AGUANTE'] },
     ],
   },
 
@@ -1682,7 +1682,7 @@ export const fauna: NpcInput[] = [
     // 4/12/20/28, un tramo más allá del patrón estándar de 3 (4/12/20).
     faunaCategoria: 'CORVENES',
     habilidadesRaciales: [
-      { icon: '🌬️', name: 'Vuelo Errático', description: 'Despliega sus alas rígidas y se mueve rapido haciendo movimientos impredecibles siendo muy dificil alcanzarlo', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🌬️', name: 'Vuelo Errático', description: 'Despliega sus alas rígidas y se mueve rápido haciendo movimientos impredecibles, y es muy difícil alcanzarlo', categoria: 'utilidad', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
       { icon: '💥', name: 'Embestida Aérea', description: 'Carga con todo su peso desde el aire embistiendo con su afilado plumaje a sus enemigos', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
       { icon: '🩸', name: 'Garras Sangrantes', description: 'Busca tus puntos débiles y los ataca con sus garras afiladas buscando desgarrar tendones.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 20, effects: ['ATAQUE', 'ATURDIMIENTO'] },
       { icon: '🌋', name: 'Coraza Ceniza', description: 'Coloca sus alas al frente creando un escudo de plumaje sólido que le protege casi de cualquier ataque.', categoria: 'defensa', preferredAttribute: 'constitucion', level: 28, effects: ['AGUANTE'] },
@@ -1790,8 +1790,8 @@ export const fauna: NpcInput[] = [
     faunaCategoria: 'ACECHANTES',
     habilidadesRaciales: [
       { icon: '🌒', name: 'Acecho Nocturno', description: 'Ronda el borde de la luz sin ser visto — el primer golpe contra un objetivo que no lo ha notado cae con fuerza extra.', categoria: 'ataque', preferredAttribute: 'destreza', level: 4, effects: ['ATAQUE', 'ATURDIMIENTO'] },
-      { icon: '🩸', name: 'Mordisco Abrasado', description: 'Propina un mordisco abrasador que cercena la carné con sus colmillos y la calcina a la vez. Recupera una parte de la energia si el golpe es crítico y le resta esa misma energia a su rival.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE', 'RECUPERACION'] },
-      { icon: '🔥', name: 'Brasa Berserker', description: 'En un fuerte aullido y en posicion defensiv, acelera su sangre dejando ver las venas de fuego y expulsando vapor pudiendo endurecer su cuerpo brevemente para detener el impacto. Si la defensa acierta tambien recupera un poco sus heridas, uso unico por combate.', categoria: 'defensa', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE', 'RECUPERACION'] },
+      { icon: '🩸', name: 'Mordisco Abrasado', description: 'Propina un mordisco abrasador que cercena la carne con sus colmillos y la calcina a la vez. Recupera una parte de la energía si el golpe es crítico y le resta esa misma energía a su rival.', categoria: 'ataque', preferredAttribute: 'fuerza', level: 12, effects: ['ATAQUE', 'RECUPERACION'] },
+      { icon: '🔥', name: 'Brasa Rabiosa', description: 'En un fuerte aullido y en posición defensiva, acelera su sangre dejando ver las venas de fuego y expulsando vapor, y puede endurecer su cuerpo brevemente para detener el impacto. Si la defensa acierta, también recupera un poco sus heridas; solo una vez por combate.', categoria: 'defensa', preferredAttribute: 'destreza', level: 20, effects: ['AGUANTE', 'RECUPERACION'] },
     ],
   },
 
@@ -1806,7 +1806,7 @@ export const fauna: NpcInput[] = [
     level: 3,
     levelMax: 4,
     attributes: { fuerza: 13, destreza: 9, constitucion: 13, inteligencia: 5, voluntad: 8, carisma: 2, magia: 4 },
-    bio: 'Reptil de complexión robusta y baja, hocico alargado y dientes afilados siempre visibles, y una hilera de protuberancias rocosas en el lomo que arden con vetas de lava y desprenden humo — escamas como escoria volcánica que retienen calor, tocarla quema. Come Raíz de Fuego sin inmutarse. Su territorio real es El Filo de las Brasas, en el borde volcánico del núcleo (checklist 2026-07-21/22, ampliación del núcleo) — antes solo aparecía como avanzadilla rara más al sur, ahora se la encuentra donde de verdad vive.',
+    bio: 'Reptil de complexión robusta y baja, hocico alargado y dientes afilados siempre visibles, y una hilera de protuberancias rocosas en el lomo que arden con vetas de lava y desprenden humo — escamas como escoria volcánica que retienen calor, tocarla quema. Come Raíz de Fuego sin inmutarse. Su territorio es El Filo de las Brasas, en el borde volcánico de las Llanuras.',
     personality: 'Lenta y territorial; avisa hinchando la garganta con un silbido de vapor antes de cargar.',
     homeLocationSlug: 'filo-de-las-brasas',
     loadout: [],
@@ -1916,7 +1916,7 @@ export const fauna: NpcInput[] = [
     level: 1,
     levelMax: 1,
     attributes: { fuerza: 1, destreza: 4, constitucion: 3, inteligencia: 1, voluntad: 2, carisma: 1, magia: 0 },
-    bio: 'Reptil serpentiforme de 30 a 60 cm, se desliza bajo la arena filtrando materia orgánica descompuesta y dejando limpia la arena superficial. Cuerpo seco y duro como piedra en vida, coraza inerte que sostienen sus propios órganos; al morir, esa coraza se deshace en arena. Presente en cualquier zona arenosa de la región, no solo en un único punto.',
+    bio: 'Reptil serpentiforme de 30 a 60 cm, se desliza bajo la arena filtrando materia orgánica descompuesta y dejando limpia la arena superficial. Cuerpo seco y duro como piedra en vida, coraza inerte que sostienen sus propios órganos; al morir, esa coraza se deshace en arena. Presente en cualquier zona arenosa de las Llanuras.',
     personality: 'Totalmente inofensivo, indiferente a cualquier presencia.',
     loadout: [],
     ataqueNatural: 'No ataca.',
@@ -2222,7 +2222,7 @@ export const fauna: NpcInput[] = [
     level: 5,
     levelMax: 9,
     attributes: { fuerza: 8, destreza: 14, constitucion: 7, inteligencia: 9, voluntad: 8, carisma: 2, magia: 3 },
-    bio: 'Bestia nocturna de 80-120 cm, mezcla deliberada casi alienígena — cuerpo de rana, alas de murciélago, cabeza tipo golem con forma de búho, halos en los ojos, orejas puntiagudas y finas (no necesita oír), pelaje blanco acabado en mechas azul marino. En vez de ecolocalización por sonido, "ve" el magnetismo de las cosas — se mueve con total agilidad en la oscuridad total. Solo sale de noche; caza Imanios. Garras afiladas y boca preparada para sorber los fluidos de su presa.',
+    bio: 'Bestia nocturna de 80-120 cm, de cuerpo rechoncho y alas membranosas, cabeza redonda y maciza, halos en los ojos, orejas puntiagudas y finas (no necesita oír), pelaje blanco acabado en mechas azul marino. En vez de ecolocalización por sonido, "ve" el magnetismo de las cosas — se mueve con total agilidad en la oscuridad total. Solo sale de noche; caza Imanios. Garras afiladas y boca preparada para sorber los fluidos de su presa.',
     personality: 'Silencioso y calculador, no agresivo hacia quien no lo busca.',
     homeLocationSlug: 'agujas-iman',
     loadout: [],
@@ -2688,7 +2688,7 @@ export const fauna: NpcInput[] = [
     level: 1,
     levelMax: 2,
     attributes: { fuerza: 4, destreza: 6, constitucion: 6, inteligencia: 3, voluntad: 5, carisma: 1, magia: 0 },
-    bio: 'El Zense Ceniza encuentra la carroña desde el aire, dando círculos sobre la llanura — en el Margen eso es imposible, el dosel cerrado no deja ver el suelo. El Hoscón ha resuelto el problema caminando: vuela poco y bajo, y recorre el suelo del bosque siguiendo el olor. Ave de 60-85 cm, plumaje gris pardo apagado, cuello pelado y pico ancho y plano para raspar hueso, con patas fuertes y alas cortas. Nombre de "hosco": huraño, siempre de espaldas a quien lo mira. Donde camina un Hoscón hay algo muerto cerca, y los cazadores Faerus lo siguen igual que los orcos siguen al Zense.',
+    bio: 'El Zense Ceniza encuentra la carroña desde el aire, dando círculos sobre la llanura — en el Margen eso es imposible, el dosel cerrado no deja ver el suelo. El Hoscón ha resuelto el problema caminando: vuela poco y bajo, y recorre el suelo del bosque siguiendo el olor. Ave de 60-85 cm, plumaje gris pardo apagado, cuello pelado y pico ancho y plano para raspar hueso, con patas fuertes y alas cortas. Donde camina un Hoscón hay algo muerto cerca, y los cazadores Faerus lo siguen igual que los orcos siguen al Zense.',
     personality: 'Huraño, siempre de espaldas a quien lo mira.',
     loadout: [],
     ataqueNatural: 'No ataca — carroñero puro.',
@@ -2740,7 +2740,7 @@ export const fauna: NpcInput[] = [
     level: 5,
     levelMax: 11,
     attributes: { fuerza: 14, destreza: 13, constitucion: 12, inteligencia: 4, voluntad: 8, carisma: 1, magia: 0 },
-    bio: 'Felino bajo y largo, de 150-190 cm, de pelaje blanco hueco que aísla tanto que no deja escapar calor a la superficie. Espera enterrado bajo la nieve polvo junto a los pasos de las Hielagas, a veces días enteros; respira por un orificio que deja un pequeño cráter de escarcha, la única señal de que está ahí. Los Helsig enseñan a sus críos a mirar la nieve antes que el horizonte. Es el mismo patrón que el Mekiosi del Margen, en frío.',
+    bio: 'Felino bajo y largo, de 150-190 cm, de pelaje blanco hueco que aísla tanto que no deja escapar calor a la superficie. Espera enterrado bajo la nieve polvo junto a los pasos de las Hielagas, a veces días enteros; respira por un orificio que deja un pequeño cráter de escarcha, la única señal de que está ahí. Los Helsig enseñan a sus críos a mirar la nieve antes que el horizonte.',
     personality: 'Paciente hasta el extremo — puede esperar enterrado días enteros.',
     loadout: [],
     ataqueNatural: 'Embestida desde bajo la nieve, sin aviso.',
@@ -3079,7 +3079,7 @@ export const npcs: NpcInput[] = [
     level: 1,
     levelMax: 2,
     attributes: { fuerza: 8, destreza: 6, constitucion: 11, inteligencia: 4, voluntad: 11, carisma: 4, magia: 0 },
-    bio: 'Orco corpulento de piel beige y parda, curtida como la propia estepa de las Llanuras — cualquier pintura o marca de clan que llevara se ha desdibujado bajo meses de polvo y mala vida. Guerrero sin clan visible, separado de los suyos por la guerra o la desgracia — arquetipo instanciable, no un individuo con historia propia.',
+    bio: 'Orco corpulento de piel beige y parda, curtida como la propia estepa de las Llanuras — cualquier pintura o marca de clan que llevara se ha desdibujado bajo meses de polvo y mala vida. Guerrero sin clan visible, separado de los suyos por la guerra o la desgracia.',
     personality: 'Desconfiado, a la defensiva, impredecible según cómo se le aborde.',
     raza: 'orcos',
     // Especialista (2026-08-24, Grupo 3 § Sistema de clases) — "arquetipo instanciable, no un
@@ -3381,8 +3381,8 @@ export const npcs: NpcInput[] = [
     capturablePct: 0,
     faunaCategoria: 'GUELISES',
     habilidadesRaciales: [
-      { icon: '🐺', name: 'Posicion defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y a la minima oportunidad contra ataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
-      { icon: '🔄', name: 'Filos centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rápidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
+      { icon: '🐺', name: 'Posición defensiva', description: 'Adopta una posición defensiva al enfrentar a sus enemigos y, a la mínima oportunidad, contraataca', categoria: 'defensa', preferredAttribute: 'destreza', level: 4, effects: ['AGUANTE'] },
+      { icon: '🔄', name: 'Filos Centella', description: 'Se coloca en tu punto ciego y busca tus puntos débiles para atacar rápidamente con sus pronunciados colmillos.', categoria: 'ataque', preferredAttribute: 'destreza', level: 12, effects: ['ATAQUE'] },
       { icon: '🦴', name: 'Adiestrado para Quedarse', description: 'A diferencia de su especie, nunca huye solo — entrenado para no abandonar a Tirag pase lo que pase.', categoria: 'utilidad', preferredAttribute: 'voluntad', level: 20, effects: ['AGUANTE'] },
     ],
   },
@@ -3404,7 +3404,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestro Herrero del Clan Serhu',
     level: 5,
     attributes: { fuerza: 18, destreza: 10, constitucion: 16, inteligencia: 10, voluntad: 12, carisma: 9, magia: 2 },
-    bio: 'Orco corpulento de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Funde la mena que trae el resto del clan en lingotes reales — sin él, Karot Veku no tendría hachas de guerra propias, solo las heredadas.',
+    bio: 'Orco corpulento de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Funde la mena que trae el resto del clan en lingotes — sin él, Karot Veku no tendría hachas de guerra propias, solo las heredadas.',
     personality: 'Paciente con quien de verdad quiere aprender, cortante con quien solo busca un favor rápido.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'herrero-orcos-llanuras',
@@ -3430,7 +3430,7 @@ export const npcs: NpcInput[] = [
     role: 'Herrero del Clan Serhu',
     level: 1,
     attributes: { fuerza: 8, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
-    bio: 'Orco corpulento de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Aprendices del maestro herrero.',
+    bio: 'Orco joven de hombros anchos y antebrazos aún sin curtir, con el delantal lleno de chamuscones. Aprende el oficio junto al Maestro Herrero y se encarga de mantener viva la fragua.',
     personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro herrero.',
     homeLocationSlug: 'campamento-serhu-interior',
     raza: 'orcos',
@@ -3454,7 +3454,7 @@ export const npcs: NpcInput[] = [
     role: 'Herrera del Clan Serhu',
     level: 1,
     attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
-    bio: 'Orca corpulenta de manos cubiertas de quemaduras viejas ya curtidas, cejas chamuscadas por décadas frente a la fragua. Aprendices del maestro herrero.',
+    bio: 'Orca joven de brazos fuertes y trenza recogida bajo un pañuelo, con marcas de chispas en las muñecas. Aprende el oficio junto al Maestro Herrero y maneja ya el martillo pequeño.',
     personality: 'Pocas palabras, su funcion es trabajar y ayudar al maestro herrero.',
     homeLocationSlug: 'campamento-serhu-interior',
     raza: 'orcos',
@@ -3478,7 +3478,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestra Curtidora del Clan Serhu',
     level: 5,
     attributes: { fuerza: 12, destreza: 15, constitucion: 13, inteligencia: 11, voluntad: 13, carisma: 10, magia: 2 },
-    bio: 'Orca de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Cada pieza de cuero real que sale de Karot Veku ha pasado por sus manos primero.',
+    bio: 'Orca de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Cada pieza de cuero que sale de Karot Veku ha pasado por sus manos primero.',
     personality: 'Directa, poco dada a rodeos — enseña haciendo, no explicando de más.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'curtidor-orcos-llanuras',
@@ -3504,7 +3504,7 @@ export const npcs: NpcInput[] = [
     role: 'Curtidora del Clan Serhu',
     level: 1,
     attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
-    bio: 'Orca de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Aprendices de la maestra curtidora.',
+    bio: 'Orca joven de dedos aún poco manchados de tinte, con un cuchillo curvo de desollador que le queda grande. Aprende el oficio junto a la Maestra Curtidora y rasca pieles de la mañana a la noche.',
     personality: 'Pocas palabras, su funcion es trabajar y ayudar a la maestra curtidora.',
     homeLocationSlug: 'campamento-serhu-interior',
     raza: 'orcos',
@@ -3528,7 +3528,7 @@ export const npcs: NpcInput[] = [
     role: 'Curtidor del Clan Serhu',
     level: 1,
     attributes: { fuerza: 9, destreza: 6, constitucion: 6, inteligencia: 4, voluntad: 6, carisma: 2, magia: 0 },
-    bio: 'Orco de dedos ágiles y manchados del tinte oscuro de las pieles que trabaja, siempre con un cuchillo curvo de desollador al cinto. Aprendices de la maestra curtidora.',
+    bio: 'Orco joven y flaco, con las manos rojas de tanto lavar pieles en el pozo. Aprende el oficio junto a la Maestra Curtidora y ya sabe curtir sin estropear el cuero.',
     personality: 'Pocas palabras, su funcion es trabajar y ayudar a la maestra curtidora.',
     homeLocationSlug: 'campamento-serhu-interior',
     raza: 'orcos',
@@ -3634,7 +3634,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestro Alquimista del Clan Serhu',
     level: 5,
     attributes: { fuerza: 9, destreza: 11, constitucion: 12, inteligencia: 16, voluntad: 13, carisma: 8, magia: 4 },
-    bio: 'Orco de dedos manchados de pigmentos y quemaduras pequeñas de morteros que hierven más de la cuenta, rodeado siempre de un olor agrio que no se va del todo. Convierte lo que trae la herborista en pociones y elixires reales, algunos más fiables que otros.',
+    bio: 'Orco de dedos manchados de pigmentos y quemaduras pequeñas de morteros que hierven más de la cuenta, rodeado siempre de un olor agrio que no se va del todo. Convierte lo que trae la herborista en pociones y elixires, algunos más fiables que otros.',
     personality: 'Metódico hasta la obsesión con las proporciones, impaciente con quien interrumpe una mezcla a medias.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'alquimista-orcos-llanuras',
@@ -3767,7 +3767,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestro Peletero del Clan Serhu',
     level: 5,
     attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
-    bio: 'Orco de manos ásperas por el manejo constante de pieles curtidas, siempre rodeado de cortes y retales a medio coser. Da forma a capas y forros reales de Karot Veku a partir de lo que ya preparó la curtidora.',
+    bio: 'Orco de manos ásperas por el manejo constante de pieles curtidas, siempre rodeado de cortes y retales a medio coser. Da forma a las capas y forros de Karot Veku a partir de lo que ya preparó la curtidora.',
     personality: 'Práctico, orgulloso de su trabajo sin alardear de él, generoso con los aprendices de verdad.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'peletero-orcos-llanuras',
@@ -3925,7 +3925,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestro Carpintero del Clan Serhu',
     level: 5,
     attributes: { fuerza: 14, destreza: 16, constitucion: 12, inteligencia: 11, voluntad: 10, carisma: 8, magia: 2 },
-    bio: 'Orco de antebrazos nudosos y astillas siempre prendidas a la ropa, huele a resina de trepador del ocaso incluso lejos de su taller. Da forma a los mangos de las armas y a los soportes de Karot Veku — sin él, cada hacha real se quedaría en solo el filo.',
+    bio: 'Orco de antebrazos nudosos y astillas siempre prendidas a la ropa, huele a resina de trepador del ocaso incluso lejos de su taller. Da forma a los mangos de las armas y a los soportes de Karot Veku — sin él, cada hacha se quedaría en solo el filo.',
     personality: 'Meticuloso hasta la exasperación con el veteado de la madera, impaciente con quien no respeta la herramienta.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'carpintero-orcos-llanuras',
@@ -3952,7 +3952,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestra Sastre del Clan Serhu',
     level: 5,
     attributes: { fuerza: 9, destreza: 17, constitucion: 11, inteligencia: 13, voluntad: 12, carisma: 11, magia: 2 },
-    bio: 'Orca de dedos rápidos y un punzón siempre a mano, cose arneses y prendas de cuero curtido con una precisión que desentona con la rudeza del resto del campamento. Cada arnés real de Karot Veku ha pasado por su rueca antes de salir a la llanura.',
+    bio: 'Orca de dedos rápidos y un punzón siempre a mano, cose arneses y prendas de cuero curtido con una precisión que desentona con la rudeza del resto del campamento. Cada arnés de Karot Veku ha pasado por su aguja antes de salir a la llanura.',
     personality: 'Habladora mientras trabaja, exigente con el acabado — no deja salir nada a medio coser.',
     homeLocationSlug: 'campamento-serhu-interior',
     teachesProfession: 'sastre-orcos-llanuras',
@@ -4140,7 +4140,7 @@ export const npcs: NpcInput[] = [
     level: 2,
     levelMax: 3,
     attributes: { fuerza: 12, destreza: 10, constitucion: 11, inteligencia: 7, voluntad: 13, carisma: 8, magia: 4 },
-    bio: 'Goirnte de la Meseta del Orden — piel gris, fría al tacto, que se tensa visiblemente cuando se concentra, rasgo propio de su pueblo. Uniformado con la disciplina que exige su casta de nacimiento. Soldado raso de una patrulla de la Concordia de Hierro que vigila la frontera de las Llanuras. Una patrulla tipo son 3 soldados + 1 oficial.',
+    bio: 'Goirnte de la Meseta del Orden — piel gris, fría al tacto, que se tensa visiblemente cuando se concentra, rasgo propio de su pueblo. Uniformado con la disciplina que exige su casta de nacimiento. Soldado raso de una patrulla de la Concordia de Hierro que vigila la frontera de las Llanuras.',
     personality: 'Disciplinado, sigue órdenes sin cuestionar demasiado.',
     // Ancla a la frontera real (2026-07-30, petición explícita en vivo: "ha hablado de goirntes en
     // una zona poco probable... ha mezclado dos zonas estando yo en la Hondonada del Eco") — sin
@@ -4571,7 +4571,7 @@ export const npcs: NpcInput[] = [
     role: 'Maestra Peletera del Clan Helsig',
     level: 5,
     attributes: { fuerza: 11, destreza: 15, constitucion: 12, inteligencia: 12, voluntad: 11, carisma: 10, magia: 2 },
-    bio: 'Orca de manos ásperas por el manejo constante de pieles curtidas, siempre rodeada de cortes y retales a medio coser. Da forma a capas y forros reales de Helske Tugh a partir de lo que ya preparó la curtidora.',
+    bio: 'Orca de manos ásperas por el manejo constante de pieles curtidas, siempre rodeada de cortes y retales a medio coser. Da forma a las capas y forros de Helske Tugh a partir de lo que ya preparó la curtidora.',
     personality: 'Práctica, orgullosa de su trabajo sin alardear de él, generosa con los aprendices de verdad.',
     homeLocationSlug: 'campamento-helsig-interior',
     teachesProfession: 'peletero-orcos-cristal',
@@ -4910,7 +4910,7 @@ export const npcs: NpcInput[] = [
     role: "Terk'ikar del Clan Goshg",
     level: 20,
     attributes: { fuerza: 13, destreza: 12, constitucion: 17, inteligencia: 15, voluntad: 18, carisma: 16, magia: 0 },
-    bio: 'Orca del Clan Goshg, de las dos tribus hermanadas de Ciénaga Troncal — gobierna Silh Makut desde el salón Goshg\'sedsar, manos curtidas de tallar tótems en la misma madera oscura que trabaja su gente. Reparte la caza de Trepadores Ocaso y Cornantes entre las dos tribus con el mismo cuidado con que casa a sus jóvenes entre sí. Su hermano menor, el Kort\'ikar Dulgren, lidera la guerra mientras ella sostiene el resto — mantiene, como los Helsig, un perfil neutral y defensivo ante los Goirntes.',
+    bio: 'Orca del Clan Goshg, de las dos tribus hermanadas de Ciénaga Troncal — gobierna Silh Makut desde el salón Goshg\'sedsar, manos curtidas de tallar tótems en la misma madera oscura que trabaja su gente. Reparte la caza de Trepadores Ocaso y Cornantes entre las dos tribus con el mismo cuidado con que casa a sus jóvenes entre sí. Su hermano menor, el Kort\'ikar Dulgren, lidera la guerra mientras ella sostiene el resto — mantiene, como los demás clanes del norte, un perfil neutral y defensivo ante los Goirntes.',
     personality: 'Paciente y conciliadora entre las dos tribus, pero inflexible en cuanto a mantener el perfil bajo del clan ante forasteros.',
     homeLocationSlug: 'campamento-goshg-interior',
     raza: 'orcos',
@@ -4936,7 +4936,7 @@ export const npcs: NpcInput[] = [
     role: "Kort'ikar del Clan Goshg",
     level: 20,
     attributes: { fuerza: 18, destreza: 15, constitucion: 18, inteligencia: 10, voluntad: 14, carisma: 11, magia: 0 },
-    bio: 'Orco del Clan Goshg, hermano menor de la Terk\'ikar Doshka — complexión recia de quien caza Cornantes en aguas poco profundas, cicatrices de dientes y garras en los antebrazos. Lidera la guerra y la defensa de las dos tribus mientras Doshka gobierna el resto. Mantiene, como los Helsig, un perfil neutral y defensivo ante los Goirntes, evitando la confrontación abierta salvo que el clan esté en juego de verdad.',
+    bio: 'Orco del Clan Goshg, hermano menor de la Terk\'ikar Doshka — complexión recia de quien caza Cornantes en aguas poco profundas, cicatrices de dientes y garras en los antebrazos. Lidera la guerra y la defensa de las dos tribus mientras Doshka gobierna el resto. Mantiene, como los demás clanes del norte, un perfil neutral y defensivo ante los Goirntes, evitando la confrontación abierta salvo que el clan esté en juego de verdad.',
     personality: 'Protector hasta lo brusco, nunca decide nada que afecte al clan entero sin hablarlo antes con Doshka.',
     homeLocationSlug: 'campamento-goshg-interior',
     raza: 'orcos',
@@ -4971,7 +4971,7 @@ export const npcs: NpcInput[] = [
     role: 'Primer Censor de la Concordia de Hierro, líder de la facción radical',
     level: 7,
     attributes: { fuerza: 9, destreza: 9, constitucion: 11, inteligencia: 16, voluntad: 15, carisma: 12, magia: 3 },
-    bio: 'Goirnte alto y enjuto, con la piel gris casi azulada por los años de archivo y la cabeza afeitada. Los ojos obsidiana no se apartan nunca de quien le habla. Viste la toga gris de la casta de ley, sin una sola insignia — presume de no necesitarlas. Es el líder de la facción radical y, por tanto, de la Concordia de Hierro: no es un general, eso es Vrask Ombra, sino un censor, de la misma casta de ley que Yovenne Tal. Esa es la tragedia política de la Meseta: las dos cabezas del orden salieron de la misma casta y leyeron las mismas leyes. Donde Yovenne lee "el edicto obliga también al que lo grabó", Tarsen lee "el orden que no se defiende no es orden". Pertenece a los círculos radicales que conocen la verdad completa del Detonante; qué sabe exactamente queda reservado. Vrask Ombra le obedece sin creerle. A Yovenne la respeta como rival legítima: nunca la ha amenazado, porque eso sería desorden. Kael Dorn es el cabo suelto que más le preocupa.',
+    bio: 'Goirnte alto y enjuto, con la piel gris casi azulada por los años de archivo y la cabeza afeitada. Los ojos obsidiana no se apartan nunca de quien le habla. Viste la toga gris de la casta de ley, sin una sola insignia — presume de no necesitarlas. Es el líder de la facción radical y, por tanto, de la Concordia de Hierro: no es un general, eso es Vrask Ombra, sino un censor, de la misma casta de ley que Yovenne Tal. Esa es la tragedia política de la Meseta: las dos cabezas del orden salieron de la misma casta y leyeron las mismas leyes. Donde Yovenne lee "el edicto obliga también al que lo grabó", Tarsen lee "el orden que no se defiende no es orden". Pertenece a los círculos radicales, de los que se dice que conocen más del Detonante de lo que cuentan. Vrask Ombra le obedece sin creerle. A Yovenne la respeta como rival legítima: nunca la ha amenazado, porque eso sería desorden. Kael Dorn es el cabo suelto que más le preocupa.',
     personality: 'Frío, paciente, convencido. No odia a nadie: ordena. Habla en frases completas, sin prisa, y termina siempre lo que empieza. Nunca levanta la voz. No le hace falta.',
     raza: 'goirntes',
     clase: 'CABALLERO',
@@ -5051,7 +5051,7 @@ export const npcs: NpcInput[] = [
     role: 'Vigía del dosel',
     level: 5,
     attributes: { fuerza: 10, destreza: 16, constitucion: 9, inteligencia: 10, voluntad: 9, carisma: 4, magia: 5 },
-    bio: 'Joven, delgado y de brazos largos. Pasa las noches en el dosel en forma de Hetris — su forma de Cambiaformas es fauna real del Margen. Es el primero que ve llegar a una patrulla y el último en bajar.',
+    bio: 'Joven, delgado y de brazos largos. Pasa las noches en el dosel en forma de Hetris, como las que viven en el Margen. Es el primero que ve llegar a una patrulla y el último en bajar.',
     personality: 'Callado, nervioso en el suelo y tranquilo en las ramas.',
     homeLocationSlug: 'campamento-feg-tusha-interior',
     raza: 'faerus',
@@ -5074,7 +5074,7 @@ export const npcs: NpcInput[] = [
     role: 'Cuida a los Feg\'nur, los heridos que no se abandonan',
     level: 4,
     attributes: { fuerza: 7, destreza: 10, constitucion: 10, inteligencia: 13, voluntad: 14, carisma: 9, magia: 6 },
-    bio: 'Mayor, de movimientos lentos. Cuida en una plataforma aparte a los heridos de la manada, con Musgo Callado para que duerman y Flor de Víspera para calmarlos. Es lo más parecido a una sanadora que tienen los Faerus, aunque no enseña ningún oficio del motor: el oficio de curación Faerus está por diseñar.',
+    bio: 'Mayor, de movimientos lentos. Cuida en una plataforma aparte a los heridos de la manada, con Musgo Callado para que duerman y Flor de Víspera para calmarlos. Es lo más parecido a una sanadora que tienen los Faerus.',
     personality: 'Cálida con los suyos y fría con los demás, hasta que un forastero herido le cambia el juicio.',
     homeLocationSlug: 'campamento-feg-tusha-interior',
     raza: 'faerus',
@@ -5126,7 +5126,7 @@ export const npcs: NpcInput[] = [
     role: 'La que más a menudo está en el Jakut Ger',
     level: 18,
     attributes: { fuerza: 19, destreza: 18, constitucion: 16, inteligencia: 17, voluntad: 16, carisma: 12, magia: 5 },
-    bio: 'Pelaje corto, rojizo con matices verdes, más fino que el de Hashma — piel de hojas que susurra. Madura, fuerte y de hombros anchos para ser Faerus, con una muesca en la oreja izquierda. Conoció a Gorhorn durante el año que pasó con la manada: lo recuerda como "el orco que olía a pena y no a miedo". Nunca compartió con él la primera pieza, y aún no sabe si fue un error. Si Gorhorn vuelve a Kegi, podría ofrecerle la Vash\'grath — sería el primer orco en recibirla desde los Maktor, y renovaría el pacto antiguo. Es una misión posible, no un hecho canonizado.',
+    bio: 'Pelaje corto, rojizo con matices verdes, más fino que el de Hashma — piel de hojas que susurra. Madura, fuerte y de hombros anchos para ser Faerus, con una muesca en la oreja izquierda. Conoció a Gorhorn durante el año que pasó con la manada: lo recuerda como "el orco que olía a pena y no a miedo". Nunca compartió con él la primera pieza, y aún no sabe si fue un error. Si un orco en duelo llegara a Kegi, quizá ella le ofreciera la Vash\'grath, y con ella se renovaría el pacto antiguo.',
     personality: 'Reservada y leal. Pone a prueba antes de confiar.',
     homeLocationSlug: 'jakut-ger-interior',
     raza: 'faerus',
@@ -5385,7 +5385,7 @@ export const items: ItemCatalogInput[] = [
     category: 'arma',
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
-    description: 'Hoja corta de hierro sin adornos, mango de madera desgastada — común, sin origen especial.',
+    description: 'Hoja corta de hierro sin adornos, mango de madera desgastada.',
     statBonuses: { destreza: 3 },
     dimensiones: 'Hoja de 15 cm, mango de 10 cm.',
     tier: 2,
@@ -5425,7 +5425,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Hoja corta de aleación gris pulida, empuñadura ajustada — manufactura refinada goirntes.',
     statBonuses: { destreza: 3 },
     dimensiones: 'Hoja de 20 cm.',
-    lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     tier: 2,
     valorGoirnos: 16,
     requisitos: { destreza: 11, fuerza: 5 },
@@ -5445,7 +5445,7 @@ export const items: ItemCatalogInput[] = [
     tier: 1,
     valorGoirnos: 9,
     requisitos: { fuerza: 8, destreza: 4 },
-    lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     tipoArma: 'ESPADA_1_MANO',
   },
 
@@ -5469,7 +5469,7 @@ export const items: ItemCatalogInput[] = [
     tier: 1,
     valorGoirnos: 10,
     requisitos: { constitucion: 8, fuerza: 6 },
-    lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     tipoArma: 'ESCUDO',
   },
 
@@ -5525,7 +5525,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Hacha pesada de cabeza de hierro ennegrecido y mango de madera envuelto en tiras de cuero — el arma orca por excelencia.',
     statBonuses: { fuerza: 3 },
     dimensiones: 'Astil de 80 cm, cabeza de hierro de 20 cm de ancho.',
-    lugarOrigen: 'Manufactura orca, sin clan de origen único.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     // Sesión de diseño 2026-07-23: arma común (tier 1) — requisito modesto, cualquier guerrero
     // orco adulto puede blandirla.
     tier: 2,
@@ -5541,7 +5541,7 @@ export const items: ItemCatalogInput[] = [
     category: 'arma',
     tipo: 'EQUIPABLE',
     equipSlot: 'ARMA_PRINCIPAL',
-    description: 'El hacha de guerra de su clan, con la cabeza de metal mellada y partida por la mitad, el astil envuelto en varias vueltas de tiras de cuero — la usa como una maza pesada.',
+    description: 'El hacha de guerra de su clan, con la cabeza de metal mellada y partida por la mitad, el astil envuelto en varias vueltas de tiras de cuero — Gorhorn la usa como una maza pesada.',
     statBonuses: { fuerza: 1 },
     dimensiones: 'Astil de 75 cm, cabeza de hierro partida por la mitad.',
     lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo.',
@@ -5562,7 +5562,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Hacha pequeña de cabeza de hierro y mango corto — versión ligera de una mano, para la mano secundaria.',
     statBonuses: { fuerza: 3 },
     dimensiones: 'Mango de 35 cm, cabeza de 12 cm.',
-    lugarOrigen: 'Manufactura orca.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 2,
     valorGoirnos: 16,
     requisitos: { fuerza: 8, destreza: 6, constitucion: 5},
@@ -5615,7 +5615,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Maza de cabeza nudosa de hueso reforzado con remaches de hierro, mango corto envuelto en cuero — tosca, pesada, hecha para aplastar, no para el filo.',
     statBonuses: { fuerza: 1, voluntad: 1 },
     dimensiones: 'Mango de 55 cm, cabeza nudosa de 15 cm de diámetro.',
-    lugarOrigen: 'Manufactura orca.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 1,
     valorGoirnos: 9,
     requisitos: { fuerza: 6, destreza: 4, constitucion: 4 },
@@ -5634,7 +5634,7 @@ export const items: ItemCatalogInput[] = [
     description: 'Maza corta rematada con el bulto de escamas de la cola de un Coracelo, resistencia equiparable al hierro — remachada a un mango de madera por un herrero orco.',
     statBonuses: { fuerza: 2, constitucion: 1 },
     dimensiones: 'Mango de 45 cm, cabeza de escamas de 15 cm.',
-    lugarOrigen: 'Manufactura orca, La Sabana Alta.',
+    lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
     tier: 3,
     valorGoirnos: 21,
     requisitos: { fuerza: 9, destreza: 5, constitucion: 5 },
@@ -5705,7 +5705,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'EQUIPABLE',
     valorGoirnos: 5,
     equipSlot: 'ARMA_SECUNDARIA',
-    description: 'Hoja corta y curva de hielo sílice, más gruesa que un cuchillo normal para no quebrarse contra piel dura — para pieles duras, canon de Cristal Helado.',
+    description: 'Hoja corta y curva de hielo sílice, más gruesa que un cuchillo normal para no quebrarse contra piel dura — para pieles duras, como las de Cristal Helado.',
     dimensiones: 'Hoja curva de 14 cm, notablemente más gruesa que un cuchillo estándar.',
     lugarOrigen: 'Clan Helsig, Cristal Helado.',
   },
@@ -5778,7 +5778,7 @@ export const items: ItemCatalogInput[] = [
     name: 'Cuerdas',
     category: 'cordaje',
     tipo: 'MATERIAL',
-    description: 'Cuerdas trenzadas de fibra vegetal, bastas pero resistentes — atan a un rival vencido antes de que se recupere. Se gastan al usarlas.',
+    description: 'Cuerdas trenzadas de fibra vegetal, bastas pero resistentes — atan a un rival vencido antes de que se recupere.',
     dimensiones: 'Rollo de 5 metros, 6 mm de grosor.',
     // CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — requisito real de
     // POST /capturar/:npcSlug (companeros.ts), sustituye a trampa-de-lazo (que no era
@@ -5962,7 +5962,7 @@ export const items: ItemCatalogInput[] = [
     pesoArmadura: 'MEDIO',
     statBonuses: { defensa: 2 },
     dimensiones: 'Cota hasta la cadera, anillas de 1 cm de diámetro.',
-    lugarOrigen: 'Manufactura goirnte, Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     // Sesión de diseño 2026-07-23: aguantar el peso de una cota completa toda una jornada exige
     // resistencia física real. Requisito movido de 'resistenciaFisica' (atributo secundario) a
     // Constitución (2026-08-22, remodelado de atributos secundarios): resistenciaFisica se
@@ -6031,7 +6031,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'ACCESORIO',
     description: 'Lana encerada, enrollada al hombro.', 
     dimensiones: 'Manta enrollada de 150x90 cm.', 
-    lugarOrigen: 'Meseta del Orden.' ,
+    lugarOrigen: 'La Meseta del Orden.' ,
     statBonuses: {constitucion: 2, voluntad: 1 },
     tier: 2,
     valorGoirnos: 16,
@@ -6073,7 +6073,7 @@ export const items: ItemCatalogInput[] = [
     pesoArmadura: 'MEDIO',
     statBonuses: { destreza: 1, voluntad: 1 }, // MEDIO da Destreza+Voluntad (decisión de Álvaro, 2026-09-29: antes con Constitución)
     dimensiones: 'Cubren de la cadera al tobillo.',
-    lugarOrigen: 'Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     tier: 1,
     valorGoirnos: 9,
     requisitos: { fuerza: 8, destreza: 8, constitucion: 6 },
@@ -6293,7 +6293,7 @@ export const items: ItemCatalogInput[] = [
     category: 'consumible',
     tipo: 'CONSUMIBLE',
     valorGoirnos: 5,
-    description: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa, vacío hasta que se llena en una fuente real.',
+    description: 'Odre de cuero curtido cosido a mano, correa larga para llevar al hombro — imprescindible en la estepa.',
     dimensiones: 'Capacidad de 2 litros, correa de 70 cm.',
   },
 
@@ -6365,7 +6365,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Petaca de metal con licor claro y fuerte — ración líquida de campaña, limpia heridas o da valor.',
     dimensiones: 'Petaca de 15 cm, 250 ml.',
-    lugarOrigen: 'Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     curaEnergia: 30,
   },
 
@@ -6414,7 +6414,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE',
     valorGoirnos: 6,
     equipSlot: 'CONSUMIBLE_1',
-    description: 'Bulto envuelto en tela basta con lo justo para aguantar el camino — unidad estándar de raciones, "para N días".',
+    description: 'Bulto envuelto en tela basta con lo justo para aguantar el camino.',
     dimensiones: 'Bulto de 15x10 cm por ración.',
     // Sistema de fatiga (2026-07-29, bug real encontrado jugando en vivo): es el consumible real
     // del kit inicial de Gorhorn (ver startingInventory.ts) — sin esto, "comer para recuperar
@@ -6433,7 +6433,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Bloque compacto de comida prensada envuelto en papel encerado — más compacta y mejor conservada que la de campaña orca.',
     dimensiones: 'Bloque de 12x8 cm.',
-    lugarOrigen: 'Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
     curaEnergia: 15,
     curaHambre: 20,
   },
@@ -6704,7 +6704,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Carne de múrgol guisada a fuego lento en su propia leche — un plato de obrador que da de comer a una casa entera.',
     dimensiones: 'Olla de 1 kg.',
-    lugarOrigen: 'Cocinas de obrador de las Llanuras del Viento Rojo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     curaEnergia: 20,
     // 2 raciones de carne (14) y 1 de leche (4) × 2.
     curaHambre: 64,
@@ -6719,7 +6719,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Masa de trigo escarlata amasada con leche de múrgol y endulzada con miel de Lebude — pan tierno de obrador.',
     dimensiones: 'Hogaza de 400 g.',
-    lugarOrigen: 'Cocinas de obrador de las Llanuras del Viento Rojo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     curaEnergia: 14,
     // 2 de trigo (3), 1 de leche (4) y 1 de miel (4) × 2.
     curaHambre: 28,
@@ -6734,7 +6734,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Leche de múrgol cuajada, prensada y curada en la bodega de un gran obrador — aguanta semanas y alimenta mucho.',
     dimensiones: 'Rueda de 800 g.',
-    lugarOrigen: 'Cocinas de gran obrador de las Llanuras del Viento Rojo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     curaEnergia: 16,
     // 4 de leche (4) × 2,5.
     curaHambre: 40,
@@ -6749,7 +6749,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'CONSUMIBLE_1',
     description: 'Carne asada a la brasa con Boungo y torta de trigo escarlata — el banquete de un gran obrador de las Llanuras.',
     dimensiones: 'Bandeja de 2 kg.',
-    lugarOrigen: 'Cocinas de gran obrador de las Llanuras del Viento Rojo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     curaEnergia: 24,
     // 2 raciones de carne (14), 2 Boungo (4) y 1 de trigo (3) × 2,5.
     curaHambre: 98,
@@ -6838,7 +6838,7 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 6,
     description: 'Metal refinado de la Meseta del Orden, moldeado en lingote — bien de comercio serio, no baratija.', 
     dimensiones: 'Lingote de 20x5x5 cm.', 
-    lugarOrigen: 'Meseta del Orden.' 
+    lugarOrigen: 'La Meseta del Orden.' 
   },
 
   {
@@ -6850,7 +6850,7 @@ export const items: ItemCatalogInput[] = [
     category: 'metal',
     tipo: 'MATERIAL',
     valorGoirnos: 3,
-    description: 'Metal fundido y colado en un molde sencillo, de la mena que se encuentra por toda la Llanura Roja — ya listo para forjar en la fragua del campamento.',
+    description: 'Metal fundido y colado en un molde sencillo, de la mena que se encuentra por toda la llanura — ya listo para forjar en la fragua del campamento.',
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
 
@@ -6863,7 +6863,7 @@ export const items: ItemCatalogInput[] = [
     category: 'metal',
     tipo: 'MATERIAL',
     valorGoirnos: 3,
-    description: 'Lingote de hierro de la Llanura Roja fundido junto a arena imán — conserva un tirón magnético débil pero constante, notable si se acerca a otro metal.',
+    description: 'Lingote de hierro de la llanura fundido junto a arena imán — conserva un tirón magnético débil pero constante, notable si se acerca a otro metal.',
     dimensiones: 'Lingote de 20x5x5 cm.',
   },
 
@@ -6927,7 +6927,7 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 1,
     description: 'Hojas grisáceas extremadamente duras y ricas en minerales — materia prima de las aleaciones goirntes, sin procesar todavía.',
     dimensiones: 'Hojas de 20 a 30 cm.',
-    lugarOrigen: 'Meseta del Orden.',
+    lugarOrigen: 'La Meseta del Orden.',
   },
 
   // Materia prima nueva (2026-08-15, petición explícita: "estos 3 no deberían ser extraibles sino
@@ -6942,7 +6942,7 @@ export const items: ItemCatalogInput[] = [
     category: 'hierba',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Tallo espinoso rematado en una flor cerrada de un morado apagado, que siempre gira despacio hasta señalar el mismo rumbo — sin tallar todavía tiene curiosidad, pero ningún uso práctico.',
+    description: 'Tallo espinoso rematado en una flor cerrada de un morado apagado, que siempre gira despacio hasta señalar el mismo rumbo — sin tallar es solo una curiosidad, sin ningún uso práctico.',
     dimensiones: 'Tallo de 25 cm.',
     lugarOrigen: 'Las Agujas Imán, Llanuras del Viento Rojo.',
   },
@@ -7005,7 +7005,7 @@ export const items: ItemCatalogInput[] = [
     category: 'madera',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Trozos de madera oscura y retorcida, corteza agrietada — arde lento y caliente. Producto de la fórmula de leña ya existente.',
+    description: 'Trozos de madera oscura y retorcida, corteza agrietada — arde lento y caliente. Es la única leña de la llanura.',
     dimensiones: 'Trozos de 20 a 40 cm.',
   },
 
@@ -7033,7 +7033,7 @@ export const items: ItemCatalogInput[] = [
     category: 'piedra',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig — solo tiene sentido de verdad si se abre Cristal Helado.',
+    description: 'Bloque en bruto de hielo sílice de las minas de Cristal Helado, todavía sin tallar por manos Helsig.',
     dimensiones: 'Bloque en bruto de 15x10 cm.',
     lugarOrigen: 'Cristal Helado.'
   },
@@ -7082,7 +7082,7 @@ export const items: ItemCatalogInput[] = [
     category: 'piedra',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Bloques y cascotes de roca rojiza erosionada, típica de toda la Llanura Roja — sirven para levantar muros, cimientos o un campamento.',
+    description: 'Bloques y cascotes de roca rojiza erosionada, típica de toda la llanura — sirven para levantar muros, cimientos o un campamento.',
     dimensiones: 'Bloques de 20 a 30 cm.'
   },
 
@@ -7126,7 +7126,7 @@ export const items: ItemCatalogInput[] = [
     category: 'fibras',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Tallos fibrosos de las enredaderas que trepan por sombra en la Hondonada del Eco y la base de Los Pilares Rotos — material base de crafteo ligero.',
+    description: 'Tallos fibrosos de las enredaderas que trepan por sombra en la Hondonada del Eco y la base de Los Pilares Rotos — material ligero y flexible.',
     dimensiones: 'Fibras de 30 a 60 cm.',
   },
 
@@ -7165,7 +7165,7 @@ export const items: ItemCatalogInput[] = [
     // la Aguja de Cardo Brújula) — nombre parecido, aleación distinta y muy superior: aquí entra
     // Yerreo, no solo arena imán. Alias sin solape con "hierro imantado" para que el detector no
     // confunda las dos recetas.
-    description: 'La mejor aleación orca de las Llanuras — hierro, Yerreo y Arena Imán fundidos juntos. Material de las armas de mayor tier que un herrero de la región puede forjar. No debe confundirse con el Lingote de hierro imantado (aleación mucho más simple, sin Yerreo).',
+    description: 'La mejor aleación orca de las Llanuras — hierro, Yerreo y Arena Imán fundidos juntos. Material de las mejores armas que un herrero de la región puede forjar. No debe confundirse con el Lingote de hierro imantado (aleación mucho más simple, sin Yerreo).',
     dimensiones: 'Lingote de 15 cm.',
     tier: 7,
     valorGoirnos: 21,
@@ -7188,7 +7188,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['pieza de quitina'],
     category: 'quitina',
     tipo: 'MATERIAL',
-    description: 'Varios trozos de quitina roja de Gesgurio, trabajados hasta formar una pieza completa lista para crafteo.',
+    description: 'Varios trozos de quitina roja de Gesgurio, trabajados hasta formar una pieza completa.',
     dimensiones: 'Pieza de 10 cm.',
     tier: 2,
     valorGoirnos: 6,
@@ -7236,7 +7236,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['garras de kirelon'],
     category: 'hueso',
     tipo: 'RECURSO',
-    description: 'Garras del Kirelon Arenoso, compuestas en su mayoría de Yerreo — un herrero con fragua a mano puede fundirlas directo en 2 Lingotes de Yerreo.',
+    description: 'Garras del Kirelon Arenoso, ricas en Yerreo, que un herrero puede fundir.',
     dimensiones: 'Garras de 12 cm.',
     tier: 5,
     valorGoirnos: 15,
@@ -7270,8 +7270,8 @@ export const items: ItemCatalogInput[] = [
   // de tronco claro rematado en una maraña de lianas y hojas que le da forma de seta.
   {
     slug: 'madera-jumba',
-    name: 'Madera Jumba',
-    aliases: ['madera jumba', 'madera de junba verde'],
+    name: 'Madera de Junba',
+    aliases: ['madera jumba', 'madera de junba verde', 'madera junba'],
     category: 'madera',
     tipo: 'RECURSO',
     description: 'Madera clara y ligera del tronco de Junba Verde — fácil de trabajar, típica del mobiliario costero.',
@@ -7282,8 +7282,8 @@ export const items: ItemCatalogInput[] = [
 
   {
     slug: 'resina-jumba-verde',
-    name: 'Resina Jumba Verde',
-    aliases: ['resina jumba', 'resina de junba verde'],
+    name: 'Resina de Junba Verde',
+    aliases: ['resina jumba', 'resina jumba verde', 'resina de junba verde'],
     category: 'resina',
     tipo: 'RECURSO',
     description: 'Resina verde intensa de las lianas de Junba Verde — pegajosa, de olor dulzón.',
@@ -7372,7 +7372,7 @@ export const items: ItemCatalogInput[] = [
     category: 'madera',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Madera clara de los árboles Telda —Común en El Pozo de Cauce Viejo, Ceniza en El Cruce de las Cenizas, misma especie y mismo recurso.',
+    description: 'Madera clara de los árboles Telda —Común en El Pozo de Cauce Viejo, Ceniza en El Cruce de las Cenizas.',
     dimensiones: 'Tablones de 80 cm.',
   },
 
@@ -7395,7 +7395,7 @@ export const items: ItemCatalogInput[] = [
     category: 'planta',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos. Misma hoja para Telda Común, Telda Ceniza y Telda Atardecer, solo cambian el tronco y la resina entre variantes.',
+    description: 'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos, que dan por igual los Telda Común, Ceniza y Atardecer.',
     dimensiones: 'Hojas de 30 a 50 cm.',
     lugarOrigen: 'Llanuras del Viento Rojo.',
   },
@@ -7418,7 +7418,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cera de lebude'],
     category: 'cera',
     tipo: 'RECURSO',
-    description: 'Cera de las colmenas de Lebude, en forma de pequeñas montañas junto a los Telda — material de construcción.',
+    description: 'Cera de las colmenas de Lebude, en forma de pequeñas montañas junto a los árboles Telda — material de construcción.',
     dimensiones: 'Bloques de 10x10 cm.',
     tier: 3,
     valorGoirnos: 6,
@@ -7454,7 +7454,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['piel de ferike'],
     category: 'piel',
     tipo: 'RECURSO',
-    description: 'Pelaje espeso de Ferike, raíz negra y puntas verde oscuro — material para abalorios de tier alto.',
+    description: 'Pelaje espeso de Ferike, raíz negra y puntas verde oscuro — material para abalorios de calidad.',
     dimensiones: 'Piel de 1,5 m².',
     tier: 6,
     valorGoirnos: 20,
@@ -7478,7 +7478,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['melena de ferike', 'melena de cola'],
     category: 'pelo',
     tipo: 'RECURSO',
-    description: 'Espigas de pelo negro de la cola-maza de un Ferike macho — objeto especial, muy baja probabilidad de loot, ingrediente del crafteo de mayor calidad de su tier.',
+    description: 'Espigas de pelo negro de la cola-maza de un Ferike macho — casi nadie las consigue, y sirven para lo mejor que se hace con pelo.',
     dimensiones: 'Mechón de 40 cm.',
     tier: 7,
     valorGoirnos: 30,
@@ -7514,7 +7514,7 @@ export const items: ItemCatalogInput[] = [
     category: 'hueso',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Piezas grandes del esqueleto de El Osario de la Manada — material de construcción, distinto del Hueso largo (materia prima de lanzas) y la Placa ósea (armadura).',
+    description: 'Piezas grandes del esqueleto de El Osario de la Manada — se usan para levantar muros y puestos.',
     dimensiones: 'Huesos de 60 a 100 cm.',
   },
 
@@ -7537,7 +7537,7 @@ export const items: ItemCatalogInput[] = [
     tipo: 'CONSUMIBLE',
     valorGoirnos: 4,
     equipSlot: 'CONSUMIBLE_1',
-    description: 'Boungo asado sobre brasas por un cocinero orco — la primera receta real del oficio de cocinero-orcos-llanuras, más allá de las raciones reasignadas.',
+    description: 'Boungo asado sobre brasas por un cocinero orco — la seta del Osario, que solo se da en otoño.',
     dimensiones: 'Ración de 150 g.',
     curaEnergia: 12,
     // CR-61 (61d): plato de Taller, 2 Boungo (4 cada uno) × 1,5.
@@ -7590,7 +7590,7 @@ export const items: ItemCatalogInput[] = [
     category: 'alimento',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Carne de Jusha Esmeralda, sabor amargo pero comestible — ingrediente de cocinero-orcos-llanuras.',
+    description: 'Carne de Jusha Esmeralda, sabor amargo pero comestible — ingrediente de la cocina orca.',
     dimensiones: 'Filetes de 100 g.',
   },
 
@@ -7764,7 +7764,7 @@ export const items: ItemCatalogInput[] = [
     category: 'hierba',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Hierba roja de La Sabana Alta, más alta y densa que el Pasto Solar del que desciende — el tono rojo viene de la mezcla de esa raza de pasto con la mineralización, también roja, del agua de la zona.',
+    description: 'Hierba roja de La Sabana Alta, más alta y densa que el Pasto Solar del que desciende — el tono rojo viene de la mezcla de esa variedad de pasto con la mineralización, también roja, del agua de la zona.',
     dimensiones: 'Manojo de 200 g.',
     lugarOrigen: 'La Sabana Alta, Llanuras del Viento Rojo.',
   },
@@ -7775,7 +7775,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['madera de telda atardecer', 'telda atardecer'],
     category: 'madera',
     tipo: 'RECURSO',
-    description: 'Madera de la misma especie que la Telda Común y la Telda Ceniza, pero con tronco y hojas de tonos rojos — la mejor madera de todas las variantes de Telda conocidas, propia de La Sabana Alta.',
+    description: 'Madera de la Telda de tronco y hojas de tonos rojos — la mejor madera de todas las Telda conocidas, propia de La Sabana Alta.',
     dimensiones: 'Tablones de 80 cm.',
     tier: 4,
     valorGoirnos: 10,
@@ -7800,7 +7800,7 @@ export const items: ItemCatalogInput[] = [
     category: 'alimento',
     tipo: 'RECURSO',
     valorGoirnos: 1,
-    description: 'Espigas de un rojo intenso, base para harinas — crece salvaje en La Sabana Alta. Los orcos de las Llanuras nunca han logrado cultivarlo de verdad: la presión Goirnte y el terreno que ocupan no les han dejado desarrollar una agricultura propia, una de las razones reales de que el clan nunca se haya expandido como civilización.',
+    description: 'Espigas de un rojo intenso, base para harinas — crece salvaje en La Sabana Alta. Los orcos nunca han logrado cultivarlo.',
     dimensiones: 'Espigas de 25 cm.',
   },
 
@@ -7810,7 +7810,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['roca luclara'],
     category: 'piedra',
     tipo: 'RECURSO',
-    description: 'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos. Material de construcción de tier alto para edificaciones de Las Llanuras.',
+    description: 'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos. Piedra de obra de la Sabana Alta.',
     dimensiones: 'Bloques de 25 cm.',
     tier: 6,
     valorGoirnos: 20,
@@ -7898,7 +7898,7 @@ export const items: ItemCatalogInput[] = [
     aliases: ['cola de coracelo'],
     category: 'escamas',
     tipo: 'RECURSO',
-    description: 'El bulto de escamas duras del final de la cola de un Coracelo, que el animal usa en vida para partir roca — resistencia equiparable al hierro. Material crudo para crafteos que no son de construcción.',
+    description: 'El bulto de escamas duras del final de la cola de un Coracelo, que el animal usa en vida para partir roca — resistencia equiparable al hierro.',
     dimensiones: 'Bulto de 15 cm.',
     tier: 4,
     valorGoirnos: 10,
@@ -7997,7 +7997,7 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 1,
     description: 'Bloque de resina ambarina y pegajosa — sella e impermeabiliza.',
     dimensiones: 'Bloque de 10x10 cm.',
-    lugarOrigen: 'Margen Silencioso.',
+    lugarOrigen: 'El Margen Silencioso.',
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -8037,9 +8037,9 @@ export const items: ItemCatalogInput[] = [
     category: 'documento',
     tipo: 'NARRATIVO', 
     valorGoirnos: 3,
-    description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre, una familia en la Meseta, humaniza el saqueo.', 
+    description: 'Cuaderno de tapas de cuero gastado, letra apretada — un nombre y una familia en la Meseta a la que el soldado quería volver.', 
     dimensiones: 'Cuaderno de 15x10 cm.', 
-    lugarOrigen: 'Meseta del Orden.' 
+    lugarOrigen: 'La Meseta del Orden.' 
   },
 
   // Objeto con efecto mecánico real (petición explícita, 2026-07-23): tenerlo en el inventario
@@ -8118,8 +8118,8 @@ export const items: ItemCatalogInput[] = [
     category: 'documento',
     tipo: 'NARRATIVO',
     valorGoirnos: 3,
-    description: 'Calco del Ord\'teandu grabado en el obelisco de leyes de El Baluarte de Goirme: el primer tratado desigual impuesto a los clanes orcos, con su tributo anual de mineral y sus contingentes de guerra entregados "en defensa del orden". El texto no dice "donde el mando decida".',
-    lugarOrigen: 'Meseta del Orden.',
+    description: 'Calco del Ord\'teandu grabado en el obelisco de leyes de El Baluarte de Goirme: el primer tratado desigual impuesto a los clanes orcos, con su tributo anual de mineral y sus contingentes de guerra entregados "en defensa del orden".',
+    lugarOrigen: 'La Meseta del Orden.',
   },
 
   // --- valor ---
@@ -8252,9 +8252,9 @@ export const items: ItemCatalogInput[] = [
     category: 'valor',
     tipo: 'NARRATIVO',
     valorGoirnos: 15,
-    description: 'Pluma larga de un negro casi azulado que absorbe la luz — objeto de trueque con el Margen Silencioso.',
+    description: 'Pluma larga de un negro casi azulado que absorbe la luz — adorno y objeto de trueque.',
     dimensiones: 'Pluma de 25 cm.',
-    lugarOrigen: 'Margen Silencioso.',
+    lugarOrigen: 'El Margen Silencioso.',
     // PENDIENTE DE IMPLEMENTAR (pasada de objetos narrativos sin uso, 2026-09-02, decisión
     // explícita de la usuaria): ingrediente para craftear un Arco tier 5. Ver memoria
     // tarkor_pasada_objetos_narrativos_2026-09-02. No implementado todavía.
@@ -8343,7 +8343,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'COSMETICO_ESPALDA',
     description: 'El tótem del Clan Maktor, atado con cuerdas a la espalda — el objeto más importante de Gorhorn, lo único que le queda de sus ancestros.',
     dimensiones: 'Talla de madera de unos 40 cm, tallada a mano.',
-    lugarOrigen: 'Gran tótem de la plaza del Clan Maktor — fragmento que Gorhorn arrancó al huir de la incursión que aniquiló al clan.',
+    lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo.',
   },
 
   {
@@ -8355,7 +8355,7 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 8,
     equipSlot: 'COSMETICO_ESPALDA',
     statBonuses: { carisma: 1 },
-    description: 'Fragmento de madera de ciénaga tallada, roto por la mitad, con restos de un símbolo de clan irreconocible — gancho de un posible superviviente Maktor.',
+    description: 'Fragmento de madera de ciénaga tallada, roto por la mitad, con restos de un símbolo de clan irreconocible.',
     dimensiones: 'Fragmento de 15 cm.',
     // Se queda tras la ampliación de lore 2026-08-21 (a diferencia del Juguete/Brazalete, sí
     // retirados): es ingrediente real de `MAKTOR_CLAN_TOTEM_RECIPE` (construction.ts), pendiente
@@ -8461,7 +8461,7 @@ export const items: ItemCatalogInput[] = [
     valorGoirnos: 1,
     description: 'Huevo pardo, pequeño y de cáscara dura, que las hembras de Corretolvas ponen a diario entre la paja del corral — en libertad los esconden en la hierba rojiza y casi nadie los encuentra.',
     dimensiones: 'Huevo de unos 4 cm.',
-    lugarOrigen: 'Corrales de las Llanuras del Viento Rojo.',
+    lugarOrigen: 'Llanuras del Viento Rojo.',
     tier: 1,
   },
 
@@ -8685,7 +8685,7 @@ export const items: ItemCatalogInput[] = [
     category: 'hueso',
     tipo: 'RECURSO',
     valorGoirnos: 12,
-    description: 'Colmillo de una hembra de Ferike — más fuerte y grande que el de un macho, la variante de mayor calidad, mismo criterio que el Enganche de hueso de Cuernahoja. Es el material con el que se talla la daga Ashi\'krul.',
+    description: 'Colmillo de una hembra de Ferike — más fuerte y grande que el de un macho, la variante de mayor calidad. Es el material con el que se talla la daga Ashi\'krul.',
     dimensiones: 'Colmillos de 25-40 cm.',
     lugarOrigen: 'El Cruce de las Cenizas.',
     tier: 6,
@@ -8699,7 +8699,7 @@ export const items: ItemCatalogInput[] = [
     equipSlot: 'ARMA_SECUNDARIA',
     tipoArma: 'DAGA',
     valorGoirnos: 30,
-    description: 'Daga Faerus tallada en un colmillo de Ferike hembra, con la empuñadura envuelta en piel de Ferike. El Ferike solo teme a los Faerus, y la hembra es la cazadora y alfa de su manada — llevar su colmillo dice que su portador cazó a quien caza. Se talla en Kegi, dentro del Feg Ger; no se fabrica con ningún oficio del jugador, se compra o se gana.',
+    description: 'Daga Faerus tallada en un colmillo de Ferike hembra, con la empuñadura envuelta en piel de Ferike. El Ferike solo teme a los Faerus, y la hembra es la cazadora y alfa de su manada — llevar su colmillo dice que su portador cazó a quien caza. Se talla en Kegi, dentro del Feg Ger.',
     statBonuses: { destreza: 4 },
     dimensiones: 'Hoja de 25 cm tallada en el propio colmillo.',
     lugarOrigen: 'Kegi, Feg Ger.',
@@ -9222,7 +9222,7 @@ export const historiaEntries: HistoriaEntryInput[] = [
     title: 'Correo interceptado de la Concordia',
     era: 'comun',
     year: 4009,
-    text: 'Un rollo de pergamino sellado con cera y el emblema de la Concordia de Hierro, interceptado antes de llegar a su destinatario. Órdenes de mando cifradas en el lenguaje burocrático de los obeliscos — quien lo lea con cuidado encontrará más de lo que debería saber sobre los movimientos de la Concordia en la frontera de las Llanuras.',
+    text: 'Un rollo de pergamino sellado con cera y el emblema de la Concordia de Hierro, interceptado antes de llegar a su destinatario. Órdenes de mando cifradas en el lenguaje burocrático de los obeliscos, sobre los movimientos de la Concordia en la frontera de las Llanuras.',
     documentoItemSlug: 'correspondencia-concordia',
   },
   {
@@ -9294,7 +9294,7 @@ export const historiaEntries: HistoriaEntryInput[] = [
     title: 'El Borde',
     era: 'comun',
     year: 2100,
-    text: 'La frontera norte de los Goirntes llegó hasta el Margen Silencioso y ahí se detuvo. Las columnas no podían cruzarlo; los Nabieus sí. Ofrecieron llevar el correo del orden a través del laberinto, a cambio de que ninguna columna entrara en su mitad. Los Goirntes aceptaron. Así nació el oficio que luego se llamaría Karo\'sael, «el que no pregunta»: llevar la carta sellada sin abrirla ni preguntar qué lleva. Desde entonces el Imperio rodea el Margen por la costa, y un mensajero Nabieus lo cruza en dos o tres jornadas. El trato duró siglos, hasta que el Yugo de Hierro lo rompió.',
+    text: 'La frontera norte de los Goirntes llegó hasta el Margen Silencioso y ahí se detuvo. Las columnas no podían cruzarlo; los Nabieus sí. Ofrecieron llevar el correo del orden a través del laberinto, a cambio de que ninguna columna entrara en su mitad. Los Goirntes aceptaron. Así nació el oficio que luego se llamaría Karo\'sael, «el que lleva sin preguntar»: llevar la carta sellada sin abrirla ni preguntar qué lleva. Desde entonces el Imperio rodea el Margen por la costa, y un mensajero Nabieus lo cruza en dos o tres jornadas. El trato duró siglos, hasta que el Yugo de Hierro lo rompió.',
     lugarSlug: 'cruce-de-las-ausencias',
   },
   {
@@ -9331,7 +9331,7 @@ export const historiaEntries: HistoriaEntryInput[] = [
     title: 'El Pacto del Umbral',
     era: 'comun',
     year: 3650,
-    text: 'Tras la Purga Silenciosa, los clanes Nabieus Keseg Sael y Keseg Prisilke se reunieron en el borde noreste del Margen y pusieron las dos palmas sobre la misma piedra. Nadie diría a un forastero dónde vive el otro clan. Nadie dejaría señal que llevara a un asentamiento. Nadie entraría en el territorio del otro sin que lo supiera. Desde entonces, el Karo\'sael, llevar sin abrir, incluye callar dónde están los suyos. Quien lo rompe queda fuera del silencio y nadie le vuelve a hablar. El pacto se repite en cada Keseg\'Vhurne, el cónclave en que los Nabieus deciden lo grave sin hablar.',
+    text: 'Tras la Purga Silenciosa, los clanes Nabieus Keseg Sael y Keseg Prisilke se reunieron en el borde noreste del Margen y pusieron las dos palmas sobre la misma piedra. Nadie diría a un forastero dónde vive el otro clan. Nadie dejaría señal que llevara a un asentamiento. Nadie entraría en el territorio del otro sin que lo supiera. Desde entonces, el Karo\'sael, llevar sin preguntar, incluye callar dónde están los suyos. Quien lo rompe queda fuera del silencio y nadie le vuelve a hablar. El pacto se repite en cada Keseg\'Vhurne, el cónclave en que los Nabieus deciden lo grave sin hablar.',
     lugarSlug: 'refugio-sin-nombre',
   },
   {
@@ -9415,7 +9415,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'esquirla-celeste-caida',
     cantidad: 1,
-    condicion: 'extremadamente rara — tratar como añadido narrativo ocasional tras una tormenta fuerte, nunca drop garantizado',
+    condicion: 'rarísima; solo tras una tormenta fuerte',
     climaRequerido: 'TORMENTA_EXTREMA',
   },
 
@@ -9516,7 +9516,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'bulbo-cauce',
     cantidad: 1,
-    condicion: '1 por hora de recolección — fórmula determinista en timedActions.ts, patrón leña',
+    condicion: 'una por hora de recolección',
   },
 
   // --- Canizor (añadido 2026-08-03, sesión "ampliamos lore") ---
@@ -9638,7 +9638,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'grano-espiga-roja',
     cantidad: 1,
-    condicion: '1 por hora de recolección — fórmula determinista en timedActions.ts, patrón leña',
+    condicion: 'una por hora de recolección',
   },
 
   // --- Espina del Viento ---
@@ -9649,7 +9649,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'veneno-espina',
     cantidad: 1,
-    condicion: 'extracción cuidadosa (destreza, Media 15 — falla = veneno perdido, no herida automática)',
+    condicion: 'extracción cuidadosa; si falla, el veneno se pierde',
   },
 
   { 
@@ -9668,7 +9668,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'infusion-petalos-flor-ceniza',
     cantidad: 1,
-    condicion: 'solo en suelo de ceniza — borde norte del núcleo y zona volcánica',
+    condicion: 'solo en suelo de ceniza — borde norte de las Llanuras y zonas volcánicas',
   },
 
   // --- Gargantúa de Ceniza ---
@@ -9679,7 +9679,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'placa-osea-gargantua',
     cantidad: 2,
-    condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
+    condicion: 'solo de un cadáver o de una cacería ritual del clan',
   },
 
   {
@@ -9688,7 +9688,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'hueso-largo-gargantua',
     cantidad: 1,
-    condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
+    condicion: 'solo de un cadáver o de una cacería ritual del clan',
   },
 
   {
@@ -9697,7 +9697,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'piel-gargantua',
     cantidad: 1,
-    condicion: 'SOLO cadáver ya muerto o cacería ritual de clan — nunca loot casual',
+    condicion: 'solo de un cadáver o de una cacería ritual del clan',
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -9963,7 +9963,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'melena-cola-ferike',
     cantidad: 1,
-    condicion: 'objeto especial, muy baja probabilidad de loot — solo machos, tienen cola',
+    condicion: 'rara; solo de machos, que son los que tienen cola',
   },
   // QA-243: el canon del Ferike también da hueso y carne; misma cantidad que el Rondador de Brasas.
   {
@@ -9972,7 +9972,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'hueso-ligero',
     cantidad: 3,
-    condicion: 'Lado de la selva, Llanuras del Viento Rojo',
+    condicion: 'en el borde de la selva del Cruce de las Cenizas',
   },
   {
     sourceSlug: 'ferike',
@@ -9980,7 +9980,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'CAZA',
     itemSlug: 'racion-carne',
     cantidad: 3,
-    condicion: 'Lado de la selva, Llanuras del Viento Rojo',
+    condicion: 'en el borde de la selva del Cruce de las Cenizas',
   },
 
   // --- Boungo (El Osario de la Manada) ---
@@ -10287,7 +10287,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'liquen-humedo',
     cantidad: 1,
-    condicion: 'reconocerlo (los pastores de las Llanuras lo conocen — para Gorhorn no requiere tirada)',
+    condicion: 'reconocerlo (los pastores de las Llanuras lo conocen de niños)',
     sinTirada: true,
   },
 
@@ -10306,7 +10306,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'TALA',
     itemSlug: 'lena-matorral-cuerno',
     cantidad: 1,
-    condicion: 'la cantidad real la calcula la fórmula de leña ya existente en timedActions.ts',
+    condicion: 'la cantidad depende de lo seco que esté el matorral',
   },
 
   // --- Múrgol ---
@@ -10411,7 +10411,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'MINERIA',
     itemSlug: 'piedra',
     cantidad: 3,
-    condicion: 'formación rocosa erosionada — buena cantera improvisada, 3 piedras por recolección',
+    condicion: 'formación rocosa erosionada — buena cantera improvisada',
   },
 
   // --- Rondador de Brasas ---
@@ -10478,7 +10478,7 @@ export const harvestYields: HarvestYieldInput[] = [
     metodoObtencion: 'EXTRACCION',
     itemSlug: 'manojo-salvia-polvo',
     cantidad: 1,
-    condicion: 'reconocerla; los orcos de las Llanuras la conocen de niños, así que Gorhorn no necesita tirada',
+    condicion: 'reconocerla (los orcos de las Llanuras la conocen de niños)',
     sinTirada: true,
   },
 
@@ -10504,7 +10504,7 @@ export const harvestYields: HarvestYieldInput[] = [
     condicion: 'Solo en Ciénaga Troncal',
   },
 
-  // --- Veta de Hierro de las Llanuras Rojas (slug sin tocar: veta-hierro-pilares-rotos) ---
+  // --- Veta de Hierro de la Llanura (slug sin tocar: veta-hierro-pilares-rotos) ---
 
   // Receta de refinado nueva (2026-07-29, petición explícita: "convertir una mena de mineral en
   // un lingote") — misma formación rocosa que ya da piedra, con una veta de hierro real dentro.
@@ -11569,7 +11569,7 @@ export const harvestSourceDisplayName: Record<string, string> = {
   // Renombrada de "Veta de hierro de Los Pilares Rotos" (2026-09-06, bug real jugando en vivo) —
   // mismo criterio que 'roca-pilares-rotos' arriba: es hierro corriente de toda la llanura, no
   // exclusivo de esta Location; slug sin tocar.
-  'veta-hierro-pilares-rotos': 'Veta de Hierro de las Llanuras Rojas',
+  'veta-hierro-pilares-rotos': 'Veta de Hierro de la Llanura',
 
   // Flora/mineral añadida 2026-08-23 (auditoría lore↔código, tabla desactualizada desde
   // 2026-08-03) — nombres reales tomados del `ItemCatalogInput` correspondiente en `items` arriba.
@@ -11630,7 +11630,7 @@ export function sourceDisplayNameFor(sourceSlug: string, npcName?: string | null
 export const harvestSourceDescriptions: Record<string, string> = {
   // QA-27 (2026-10-09): fuentes de la fauna ambiental, con lo que ya dice el lore de cada especie.
   'colmena-lebude':
-    'Colmenas de Lebude en forma de pequeñas montañas unidas entre sí, junto a los Telda Común. De ellas salen la Cera y la Miel Lebude; los Lebudes, negros con rayas gris ceniza, zumban alrededor y su picadura deja mermado a quien se descuida.',
+    'Colmenas de Lebude en forma de pequeñas montañas unidas entre sí, junto a los árboles Telda Común. De ellas salen la Cera y la Miel Lebude; los Lebudes, negros con rayas gris ceniza, zumban alrededor y su picadura deja mermado a quien se descuida.',
   'pared-arcilla-gesgurio':
     'Las paredes de arcilla roja de la Hondonada, donde los Gesgurios se camuflan con su caparazón del mismo color. Entre las grietas quedan trozos de caparazón con púas oscuras.',
   'fango-quio':
@@ -11665,7 +11665,7 @@ export const harvestSourceDescriptions: Record<string, string> = {
   'restos-personales-maktor':
     'Objetos personales medio enterrados entre los cimientos quemados de Los Restos de Maktor — cuero ennegrecido, hueso tallado, todo cubierto de una fina capa de ceniza vieja.',
   'roca-pilares-rotos':
-    'Bloques y cascotes de roca rojiza, erosionados por el viento y el paso del tiempo — superficie áspera, veteada de ocre y gris, típica de toda la Llanura Roja.',
+    'Bloques y cascotes de roca rojiza, erosionados por el viento y el paso del tiempo — superficie áspera, veteada de ocre y gris, típica de toda la llanura.',
   'salvia-del-polvo':
     'Mata baja de hojas grises apagadas y aroma amargo, crece pegada al suelo en hondonadas y rincones de sombra — machacada entre los dedos suelta un jugo oscuro que corta hemorragias.',
   'sombra-de-kroj':
@@ -11689,7 +11689,7 @@ export const harvestSourceDescriptions: Record<string, string> = {
   gradias:
     'Arbusto de ramas fibrosas y hojas anchas que sueltan toda su agua acumulada al triturarlas.',
   'hojas-telda-fuente':
-    'Hojas grandes de los árboles Telda, de 30 a 50 cm — la misma hoja para Telda Común, Telda Ceniza y Telda Atardecer, solo cambian tronco y resina entre variantes.',
+    'Hojas grandes de los árboles Telda, de 30 a 50 cm — material de tejados y cobertizos orcos.',
   'chudos-rojizos':
     'Chudos rojizos de las charcas de Los Manaderos, tallos de 80 cm a 1,2 m — material de tejido y techado.',
   'lucre-blanco':
@@ -11713,13 +11713,13 @@ export const harvestSourceDescriptions: Record<string, string> = {
   'resina-telda-fuente':
     'Resina gris que exudan los árboles Telda, Común o Ceniza — pegamento de uso general.',
   'roca-luclara':
-    'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos, material de construcción de tier alto.',
+    'Piedra clara, casi blanca, similar al mármol — los Towrgu excavan en ella sus propios nidos, piedra de obra de la Sabana Alta.',
   rovalnica:
     'Roca de construcción negra con vetas rojas, de El Filo de las Brasas.',
   'telda-atardecer':
-    'Árbol de la misma especie que la Telda Común y la Telda Ceniza, pero de tronco y hojas de tonos rojos — la mejor madera de las variantes de Telda, propia de La Sabana Alta.',
+    'Telda de tronco y hojas de tonos rojos — la mejor madera de todas las Telda, propia de La Sabana Alta.',
   'telda-ceniza':
-    'Árbol Telda de El Cruce de las Cenizas, misma especie y mismo recurso que la Telda Común de El Pozo de Cauce Viejo.',
+    'Árbol Telda de El Cruce de las Cenizas, de corteza más oscura y grisácea; da la misma madera clara que la Telda Común de El Pozo de Cauce Viejo.',
   'telda-comun':
     'Árbol de madera clara que crece en El Pozo de Cauce Viejo.',
   'trigo-escarlata':

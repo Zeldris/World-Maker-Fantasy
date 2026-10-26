@@ -855,8 +855,8 @@ baja de vez en cuando desde Karot Veku para enseñar el oficio.
 *Veldrias · Catálogo: `madera-jumba`, `resina-jumba-verde`.*
 
 Tronco claro como la arena de la playa, de 3 m de alto, rematado en una maraña de lianas y hojas de
-un verde intenso que le da forma de seta (hasta 3,50 m contando el copete). Da Madera Jumba (tier 2)
-y Resina Jumba Verde (tier 2).
+un verde intenso que le da forma de seta (hasta 3,50 m contando el copete). Da Madera de Junba (tier 2)
+y Resina de Junba Verde (tier 2).
 
 #### Temune
 *Marelas · Catálogo: `algas-temune`.*

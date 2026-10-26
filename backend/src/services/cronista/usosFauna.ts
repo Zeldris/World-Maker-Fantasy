@@ -58,6 +58,5 @@ export function usosLegibles(especie: string): string[] {
   if (u.guardia) r.push('guardia del Reino');
   if (u.companero) r.push(u.companero === 'explorador' ? 'compañero explorador' : 'compañero de combate');
   if (u.montura) r.push(`montura (${u.montura.length === 4 ? 'todos los pueblos' : u.montura.map((p) => NOMBRE_PUEBLO[p]).join(' y ')})`);
-  if (u.pendiente) r.push(`por saber: ${u.pendiente}`);
   return r;
 }

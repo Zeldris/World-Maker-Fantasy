@@ -136,7 +136,7 @@ export type Reparto = Map<string, { constructorId: string } | { aviso: string }>
 /// Puro: por qué una obra no puede ni intentarse hoy (🔒 por nivel de Casa, o sin constructores).
 function bloqueoDeObra(o: ObraParaReparto, hayConstructores: boolean, nivelCasa: number): string | null {
   const tope = tierMaximoDeCasa(nivelCasa);
-  if (o.tipo !== 'REPARAR' && o.tier > tope) return `🔒${o.tier}: la Casa de obras de nivel ${nivelCasa} llega hasta tier ${tope}`;
+  if (o.tipo !== 'REPARAR' && o.tier > tope) return `🔒${o.tier}: la Casa de obras de nivel ${nivelCasa} llega hasta nivel ${tope}`;
   if (!hayConstructores) return 'Sin constructores: pon a algún súbdito trabajador con la tarea «Constructor».';
   return null;
 }
