@@ -10,7 +10,7 @@
 //   convaleciente:<npc>             el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo)
 //   lider-muere:<facción>           CR-43: el líder muere de viejo por la vía del motor (`morirDeViejo`, la de `envejecerDia`) y, si hacen falta, destacan jóvenes (`crearNpc` DESTACA) hasta 2 candidatos; la cohesión queda en 20-50 tras la baja; la sucesión (y la escisión con nombre) sale al avanzar (`matarLiderDeFaccion`)
 //   alianza:<A>:<B>                 P247: alianza, ruptura y alianza nueva de la facción A con la B (`recordFactionEvent` NEGOCIACION_TREGUA y EXPANSION_TERRITORIAL_AGRESIVA: `aliarTrasRuptura`)
-//   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): al revisar la semana, `pagada-con-deuda` (`vasalloPagaConDeuda`)
+//   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -142,7 +142,7 @@ for (const paso of pasos) {
   } else if (paso.tipo === 'vasallo-paga') {
     const r = await vasalloPagaConDeuda(prisma, { saveId, vasalloSlug: paso.vasalloSlug });
     if ('error' in r) rechaza(r.error);
-    else dice(`Vasallo ${paso.vasalloSlug}: cuota ${r.cuota}, deuda ${r.deuda}, riqueza ${r.riqueza} (paga la cuota entera y arrastra la deuda)`);
+    else dice(`Vasallo ${paso.vasalloSlug}: cuota ${r.cuota}, deuda ${r.deuda}, riqueza ${r.riqueza}; revisión del día ${r.dia}: ${r.estado} (${r.porcentaje} % de la cuota, sigue la deuda)`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

@@ -9,13 +9,14 @@ import type { FactionRelationType, PrismaClient } from '@prisma/client';
 import { aplicarEfecto } from './efectos.js';
 import { candidatosALider, COHESION_CAIDA, COHESION_ESCISION } from './reglasConsecuencias.js';
 import { morirDeViejo } from './envejecer.js';
-import { asegurarVasallajes, cuotaSemanal } from './vasallaje.js';
+import { BAJA_COHESION_MUERTE_LIDER } from './reacciones.js';
+import { asegurarVasallajes, cuotaSemanal, revisarVasallajes } from './vasallaje.js';
 import { recordFactionEvent, type FactionEventType } from '../factionRelations.js';
 
 /// Lo que baja la cohesión al morir el líder (`MUERTE_LIDER_BAJA_COHESION`, reacciones.ts): la facción tiene que quedar
 /// entre `COHESION_CAIDA` y `COHESION_ESCISION` para que la sucesión escinda en vez de disolver o suceder a secas.
-const BAJA_POR_MUERTE_DE_LIDER = 25;
 const COHESION_DE_PARTIDA = 70;
+const MINUTOS_DIA = 1440;
 
 export type ResultadoLider = { lider: string; faccion: string; candidatos: string[]; cohesion: number };
 
@@ -41,13 +42,14 @@ export async function matarLiderDeFaccion(prisma: PrismaClient, { saveId, faccio
 
   // Cohesión: con menos de `COHESION_CAIDA` + 25 la facción se disolvería; con más de `COHESION_ESCISION` + 25 no se escindiría.
   let cohesion = faccion.cohesion;
-  if (cohesion - BAJA_POR_MUERTE_DE_LIDER < COHESION_CAIDA || cohesion - BAJA_POR_MUERTE_DE_LIDER > COHESION_ESCISION) {
+  if (cohesion - BAJA_COHESION_MUERTE_LIDER < COHESION_CAIDA || cohesion - BAJA_COHESION_MUERTE_LIDER > COHESION_ESCISION) {
     await prisma.$transaction((tx) => aplicarEfecto({ ...ctx, tx }, { tipo: 'cambiarCohesion', faccionSlug, delta: COHESION_DE_PARTIDA - cohesion }));
     cohesion = COHESION_DE_PARTIDA;
   }
   const r = await morirDeViejo(prisma, { saveId, worldId: save.worldId, ahora, npcId: lider.id, random });
   if (!r.aplicado) return { error: `lider-muere: ${lider.name} no ha muerto (ya estaba muerto).` };
-  return { lider: lider.name, faccion: faccion.name, candidatos: candidatos.map((c) => c.name), cohesion };
+  // La reacción `MUERTE_LIDER_BAJA_COHESION` ya ha restado la baja: se devuelve la cohesión de después.
+  return { lider: lider.name, faccion: faccion.name, candidatos: candidatos.map((c) => c.name), cohesion: cohesion - BAJA_COHESION_MUERTE_LIDER };
 }
 
 const MAX_EMPUJES = 15;
@@ -86,9 +88,11 @@ export async function aliarTrasRuptura(prisma: PrismaClient, { saveId, facA, fac
 }
 
 /// El vasallo con deuda (la vieja se recorta a una cuota con `asegurarVasallajes`) y fondos para pagar la cuota de la semana
-/// entera sin llegar a saldar lo pendiente: al revisar la semana (`revisarVasallajes`) sale `pagada-con-deuda` (P314). Los
-/// fondos se ajustan con el efecto `ajustarReino` del juego.
-export async function vasalloPagaConDeuda(prisma: PrismaClient, { saveId, vasalloSlug, random = Math.random }: { saveId: string; vasalloSlug: string; random?: () => number }): Promise<{ cuota: number; deuda: number; riqueza: number } | { error: string }> {
+/// entera sin llegar a saldar lo pendiente, y la revisión de esa semana (`revisarVasallajes`), que sale `pagada-con-deuda`
+/// (P314). Los fondos se ajustan con el efecto `ajustarReino` del juego y la revisión se corre en la misma transacción: entre
+/// un día y el siguiente la facción gasta y la riqueza saldría de la franja (al avanzar un día salía «parcial»). Solo se
+/// adelanta la revisión de mañana como mucho; el avance diario ya no la repite (`ultimaSemana`).
+export async function vasalloPagaConDeuda(prisma: PrismaClient, { saveId, vasalloSlug, random = Math.random }: { saveId: string; vasalloSlug: string; random?: () => number }): Promise<{ cuota: number; deuda: number; riqueza: number; dia: number; estado: string; porcentaje: number } | { error: string }> {
   const save = await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true, worldState: { select: { fictionalMinutes: true } } } });
   if (!save?.worldState) return { error: `No hay partida ${saveId} con reloj.` };
   const ahora = save.worldState.fictionalMinutes;
@@ -98,10 +102,29 @@ export async function vasalloPagaConDeuda(prisma: PrismaClient, { saveId, vasall
   if (v.deuda <= 0) return { error: `vasallo-paga: ${vasalloSlug} está al corriente, sin deuda que arrastrar (que pase una semana sin fondos).` };
   const stats = await prisma.kingdomStats.findFirst({ where: { faction: { saveId, slug: vasalloSlug } }, select: { soldados: true, riqueza: true } });
   if (!stats) return { error: `vasallo-paga: ${vasalloSlug} no tiene reino.` };
+  const dia = Math.floor(ahora / MINUTOS_DIA);
+  const proximaRevision = Math.max(dia, (v.ultimaSemana ?? dia - 7) + 7);
+  if (proximaRevision - dia > 1) return { error: `vasallo-paga: la revisión de ${vasalloSlug} es el día ${proximaRevision} y hoy es el ${dia}; avanza hasta el día ${proximaRevision - 1} y repite.` };
   const cuota = cuotaSemanal(stats.soldados);
   if (cuota <= 0) return { error: `vasallo-paga: ${vasalloSlug} no tiene soldados, no hay cuota.` };
   // Cuota entera y menos que (cuota + lo pendiente): paga el 100 % sin saldar la deuda.
   const riqueza = cuota + Math.floor(Math.min(v.deuda, cuota) / 2);
-  await prisma.$transaction((tx) => aplicarEfecto({ tx, saveId, worldId: save.worldId, fictionalMinutes: ahora, origen: 'MUNDO', random }, { tipo: 'ajustarReino', faccionSlug: vasalloSlug, riqueza: riqueza - stats.riqueza }));
-  return { cuota, deuda: v.deuda, riqueza };
+  const antes = new Date();
+  try {
+    await prisma.$transaction(async (tx) => {
+      const r = await aplicarEfecto({ tx, saveId, worldId: save.worldId, fictionalMinutes: ahora, origen: 'MUNDO', random }, { tipo: 'ajustarReino', faccionSlug: vasalloSlug, riqueza: riqueza - stats.riqueza });
+      if (!r.aplicado && riqueza !== stats.riqueza) throw new Error(`el motor no ha ajustado la riqueza de ${vasalloSlug}`);
+      await revisarVasallajes(tx, saveId, proximaRevision, ahora, random);
+    });
+  } catch (e) {
+    return { error: `vasallo-paga: ${e instanceof Error ? e.message : String(e)}.` };
+  }
+  const linea = await prisma.suceso.findFirst({
+    where: { saveId, tipo: 'PATRULLA_VASALLO', createdAt: { gte: antes }, actores: { some: { entidadTipo: 'FACCION', entidadId: vasalloSlug } } },
+    orderBy: { createdAt: 'desc' },
+    select: { datos: true },
+  });
+  const datos = (linea?.datos ?? {}) as { estado?: string; porcentaje?: number };
+  if (datos.estado !== 'pagada-con-deuda') return { error: `vasallo-paga: la revisión del día ${proximaRevision} ha salido «${datos.estado ?? 'sin línea'}», no «pagada-con-deuda».` };
+  return { cuota, deuda: v.deuda, riqueza, dia: proximaRevision, estado: datos.estado, porcentaje: datos.porcentaje ?? 0 };
 }

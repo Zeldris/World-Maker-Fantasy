@@ -47,6 +47,8 @@ describe('pasos de preparación de sucesos del mundo (QA-259)', () => {
     // La sucesión sigue abierta: sale al avanzar (1-3 días).
     await procesarReacciones(prisma, saveId);
     expect(await prisma.consecuencia.count({ where: { saveId, regla: 'SUCESION_PENDIENTE', estado: 'PENDIENTE' } })).toBe(1);
+    // La cohesión que dice el paso es la de después de la baja por la muerte del líder.
+    expect((await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'concordia-de-hierro' } })).cohesion).toBe(r.cohesion);
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 480 + 3 * DIA } });
     await evaluarConsecuencias(prisma, saveId);
     await procesarReacciones(prisma, saveId);
@@ -97,19 +99,23 @@ describe('pasos de preparación de sucesos del mundo (QA-259)', () => {
     await prisma.kingdomStats.update({ where: { id: serhu.id }, data: { riqueza: 0 } });
     await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 14, 14 * DIA, () => 0.99));
     await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 14 * DIA } });
+    // Con la revisión a una semana, los ingresos de los días que faltan sacarían la riqueza de la franja: se niega.
+    expect(await vasalloPagaConDeuda(prisma, { saveId, vasalloSlug: 'clan-serhu' })).toMatchObject({ error: expect.stringContaining('avanza hasta el día 20') });
+    await prisma.worldState.update({ where: { saveId }, data: { fictionalMinutes: 20 * DIA } });
 
-    const r = await vasalloPagaConDeuda(prisma, { saveId, vasalloSlug: 'clan-serhu' });
+    const r = await vasalloPagaConDeuda(prisma, { saveId, vasalloSlug: 'clan-serhu', random: () => 0.99 });
     if ('error' in r) throw new Error(r.error);
     const cuota = cuotaSemanal(serhu.soldados);
-    expect(r).toMatchObject({ cuota, deuda: cuota });
-    expect((await prisma.kingdomStats.findFirstOrThrow({ where: { faction: { saveId, slug: 'clan-serhu' } } })).riqueza).toBe(r.riqueza);
+    expect(r).toMatchObject({ cuota, deuda: cuota, dia: 21, estado: 'pagada-con-deuda', porcentaje: 100 });
     expect(r.riqueza).toBeGreaterThanOrEqual(cuota);
     expect(r.riqueza).toBeLessThan(2 * cuota);
-
-    await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 21, 21 * DIA, () => 0.99));
-    const linea = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'PATRULLA_VASALLO' }, orderBy: { fictionalMinutes: 'desc' } });
+    const linea = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'PATRULLA_VASALLO' }, orderBy: { createdAt: 'desc' } });
     expect(linea.datos).toMatchObject({ estado: 'pagada-con-deuda', porcentaje: 100 });
     // Pagó la cuota entera y sigue debiendo lo que no llegó a cubrir de lo pendiente.
     expect((await prisma.vasallaje.findFirstOrThrow({ where: { saveId } })).deuda).toBe(2 * cuota - r.riqueza);
+    // El avance diario del día 21 no repite la revisión ya hecha.
+    const lineas = await prisma.suceso.count({ where: { saveId, tipo: 'PATRULLA_VASALLO' } });
+    await prisma.$transaction((tx) => revisarVasallajes(tx, saveId, 21, 21 * DIA, () => 0.99));
+    expect(await prisma.suceso.count({ where: { saveId, tipo: 'PATRULLA_VASALLO' } })).toBe(lineas);
   });
 });
