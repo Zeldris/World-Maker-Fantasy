@@ -1,4 +1,4 @@
-// QA-262 (2026-10-26): el paso `sin-aliados` de `prepararReino.ts` (P128: llegar a la 4.ª muerte en dificultad Media con el
+// QA-266 (2026-10-26): el paso `sin-aliados` de `prepararReino.ts` (P128: llegar a la 4.ª muerte en dificultad Media con el
 // combate abierto sin compañeros). Saca a los compañeros del Grupo 1 (el que combate con el personaje, `abrirCombateDePersonas`)
 // a otro grupo con la misma regla que el arrastre del panel (`moverCompaneroDeGrupo`, tope de 4 por grupo): no se borra ni se
 // duerme a nadie a mano (QA-151). Los grupos nuevos salen con `nextFreeCombatGroupSlot`, como `POST /saves/:id/combat-groups`.

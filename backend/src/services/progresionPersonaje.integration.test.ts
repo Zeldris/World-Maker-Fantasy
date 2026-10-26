@@ -6,8 +6,8 @@ import { hacerDomador, subirDeNivel } from './progresionPersonaje.js';
 import { esDomador, maxSlotsDomadorFor } from './companionSupervivencia.js';
 import { levelForXp } from './progression.js';
 
-// QA-260 (CR-56): el paso `domador:<nivel>` de `prepararReino.ts`, contra una partida real.
-describe('hacerDomador (QA-260, CR-56)', () => {
+// QA-264 (CR-56): el paso `domador:<nivel>` de `prepararReino.ts`, contra una partida real.
+describe('hacerDomador (QA-264, CR-56)', () => {
   const saveIds: string[] = [];
 
   async function partida(nombre: string, extra: { clase?: Clase | null; level?: number } = {}) {
@@ -29,7 +29,7 @@ describe('hacerDomador (QA-260, CR-56)', () => {
   });
 
   it('un Cazador de nivel 3 queda Domador de nivel 10, con su XP, sus puntos de atributo y su rama', async () => {
-    const saveId = await partida('Domadora (QA-260)');
+    const saveId = await partida('Domadora (QA-264)');
     const r = await hacerDomador(prisma, { saveId, nivel: 10 });
     expect(r).toEqual({ nivel: 10, especializacion: Especializacion.DOMADOR, puntosDeAtributo: 4 }); // ASI en los niveles 4 y 8
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
@@ -45,7 +45,7 @@ describe('hacerDomador (QA-260, CR-56)', () => {
   });
 
   it('repetido no duplica nada', async () => {
-    const saveId = await partida('Domadora repetida (QA-260)');
+    const saveId = await partida('Domadora repetida (QA-264)');
     await hacerDomador(prisma, { saveId, nivel: 10 });
     const habilidades = await prisma.savedAction.count({ where: { saveId } });
     const r = await hacerDomador(prisma, { saveId, nivel: 10 });
@@ -54,13 +54,13 @@ describe('hacerDomador (QA-260, CR-56)', () => {
   });
 
   it('se niega, con el motivo, bajo el nivel 10, desde el 20, sin clase, con otra clase o con otra especialización', async () => {
-    const baja = await partida('Baja (QA-260)');
+    const baja = await partida('Baja (QA-264)');
     expect(await hacerDomador(prisma, { saveId: baja, nivel: 9 })).toEqual({ error: expect.stringContaining('a partir del nivel 10') });
-    const alta = await partida('Alta (QA-260)');
+    const alta = await partida('Alta (QA-264)');
     expect(await hacerDomador(prisma, { saveId: alta, nivel: 20 })).toEqual({ error: expect.stringContaining('hasta el nivel 19') });
-    const sinClase = await partida('Sin clase (QA-260)', { clase: null });
+    const sinClase = await partida('Sin clase (QA-264)', { clase: null });
     expect(await hacerDomador(prisma, { saveId: sinClase, nivel: 10 })).toEqual({ error: expect.stringContaining('no tiene clase') });
-    const guerrera = await partida('Guerrera (QA-260)', { clase: Clase.GUERRERO });
+    const guerrera = await partida('Guerrera (QA-264)', { clase: Clase.GUERRERO });
     expect(await hacerDomador(prisma, { saveId: guerrera, nivel: 10 })).toEqual({ error: expect.stringContaining('no es una especialización de GUERRERO') });
     // Y no deja nada a medias: ni nivel ni especialización.
     for (const id of [baja, alta, sinClase, guerrera]) {
@@ -70,7 +70,7 @@ describe('hacerDomador (QA-260, CR-56)', () => {
   });
 
   it('no baja de nivel', async () => {
-    const saveId = await partida('Alta ya (QA-260)', { level: 12 });
+    const saveId = await partida('Alta ya (QA-264)', { level: 12 });
     await prisma.$transaction(async (tx) => {
       expect(await subirDeNivel(tx, saveId, 10)).toEqual({ ok: false, motivo: expect.stringContaining('ya es de nivel 12') });
     });

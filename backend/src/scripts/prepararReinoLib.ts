@@ -19,11 +19,11 @@ export type PasoReino =
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-261),
-/// `lider-muere:<facción>` (QA-259, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-265),
+/// `lider-muere:<facción>` (QA-263, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
-/// `domable:<especie>` (QA-260, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-262, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `sin-aliados` (QA-262, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). Se ejecutan en el orden dado.
+/// `domable:<especie>` (QA-264, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];

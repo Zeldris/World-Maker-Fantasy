@@ -5,9 +5,9 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { dejarPuntoRetirado } from './prepararPuntoRetirado.js';
 import { FAUNA_AMBIENTAL } from '../../scripts/worldCatalog.js';
 
-// QA-262 (P313): el paso `punto-retirado:<especie>[:<n>]` de `prepararReino.ts` deja un punto de fauna retirado con presas
+// QA-266 (P313): el paso `punto-retirado:<especie>[:<n>]` de `prepararReino.ts` deja un punto de fauna retirado con presas
 // (`activo` false y `cantidad` > 0), que es el que Reino › Partidas no tiene que listar.
-describe('dejarPuntoRetirado (QA-262, P313)', () => {
+describe('dejarPuntoRetirado (QA-266, P313)', () => {
   const saveIds: string[] = [];
 
   async function partida(nombre: string, opciones: { endedAt?: Date; sinLugar?: boolean } = {}) {
@@ -31,7 +31,7 @@ describe('dejarPuntoRetirado (QA-262, P313)', () => {
   });
 
   it('deja un punto de fauna retirado con las presas pedidas, en el lugar actual', async () => {
-    const { saveId, lugarId } = await partida('Punto retirado (QA-262)');
+    const { saveId, lugarId } = await partida('Punto retirado (QA-266)');
     const r = await dejarPuntoRetirado(prisma, { saveId, especie: 'kirelon-arenoso', cantidad: 4 });
     expect(r).toMatchObject({ cantidad: 4, yaEstaba: false });
     const puntos = await prisma.zonePoint.findMany({ where: { saveId, locationId: lugarId, tipo: 'FAUNA', targetSlug: 'kirelon-arenoso', cantidad: 4 } });
@@ -40,7 +40,7 @@ describe('dejarPuntoRetirado (QA-262, P313)', () => {
   });
 
   it('es idempotente: la segunda vez no crea otro punto', async () => {
-    const { saveId, lugarId } = await partida('Punto retirado repetido (QA-262)');
+    const { saveId, lugarId } = await partida('Punto retirado repetido (QA-266)');
     await dejarPuntoRetirado(prisma, { saveId, especie: 'kirelon-arenoso' });
     const segunda = await dejarPuntoRetirado(prisma, { saveId, especie: 'kirelon-arenoso', cantidad: 9 });
     expect(segunda).toMatchObject({ cantidad: 3, yaEstaba: true });
@@ -49,11 +49,11 @@ describe('dejarPuntoRetirado (QA-262, P313)', () => {
 
   it('rechaza con un motivo claro: partida inexistente o terminada, sin lugar, especie inexistente, no fauna, ambiental y presas fuera de rango', async () => {
     expect(await dejarPuntoRetirado(prisma, { saveId: 'no-existe', especie: 'kirelon-arenoso' })).toEqual({ error: 'punto-retirado: no hay partida no-existe.' });
-    const terminada = await partida('Terminada (QA-262)', { endedAt: new Date() });
+    const terminada = await partida('Terminada (QA-266)', { endedAt: new Date() });
     expect(await dejarPuntoRetirado(prisma, { saveId: terminada.saveId, especie: 'kirelon-arenoso' })).toEqual({ error: 'punto-retirado: la partida ha terminado.' });
-    const sinLugar = await partida('Sin lugar (QA-262)', { sinLugar: true });
+    const sinLugar = await partida('Sin lugar (QA-266)', { sinLugar: true });
     expect(await dejarPuntoRetirado(prisma, { saveId: sinLugar.saveId, especie: 'kirelon-arenoso' })).toEqual({ error: 'punto-retirado: la partida no está en ningún lugar.' });
-    const { saveId } = await partida('Rechazos (QA-262)');
+    const { saveId } = await partida('Rechazos (QA-266)');
     expect(await dejarPuntoRetirado(prisma, { saveId, especie: 'no-existe' })).toEqual({ error: 'punto-retirado: no hay fauna no-existe.' });
     const persona = await prisma.npc.findFirstOrThrow({ where: { saveId: null, faunaCategoria: null } });
     expect(await dejarPuntoRetirado(prisma, { saveId, especie: persona.slug })).toEqual({ error: `punto-retirado: ${persona.slug} no es fauna.` });

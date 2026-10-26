@@ -1,4 +1,4 @@
-// QA-261 (2026-10-26): el paso `convaleciente:<npc>:combate` de `prepararReino.ts` (P95, P320), con las escrituras del juego y no
+// QA-265 (2026-10-26): el paso `convaleciente:<npc>:combate` de `prepararReino.ts` (P95, P320), con las escrituras del juego y no
 // a mano (QA-151). Tras ganarle un combate a un rival suelto, el juego deja CONVALECIENTE al NPC y ausente de la zona 6 h
 // (`dejarNpcConvaleciente`: así debe quedar, el animal vencido ya no está en el mapa) y mantiene el combate sin resolver en
 // `Save.pendingCombatNpcSlugs` (`guardarSlugsDeCombate`, como `resolveCombatSlugsAndPersist` de `turnResolution.ts`): de ahí sale la tarjeta

@@ -14,7 +14,7 @@ import { anosDeVejez, atributosPorEdad, edadEnAnios, nacidoEnDe, probMuerteDeVie
 import type { Atributos } from './herencia.js';
 
 /// La muerte de un NPC con nombre «de viejo»: efecto `matarNpc`, que si era líder abre la sucesión (reacciones de
-/// CR-10/CR-11). La usan `envejecerDia` y el paso `lider-muere` de `prepararReino.ts` (QA-259, QA-151: la misma escritura).
+/// CR-10/CR-11). La usan `envejecerDia` y el paso `lider-muere` de `prepararReino.ts` (QA-263, QA-151: la misma escritura).
 export function morirDeViejo(
   prisma: PrismaClient,
   { saveId, worldId, ahora, npcId, random = Math.random }: { saveId: string; worldId: string; ahora: number; npcId: string; random?: () => number },

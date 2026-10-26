@@ -10,7 +10,7 @@
 //                         en la Location del Ayuntamiento y junto a él, con las condiciones de `computeBuildBlockedReason`; si la receta
 //                         mejora otra (`upgradesRecipeKey`) actualiza ese edificio, como `turnResolution.ts`.
 //                         Una obra de más tier del que levanta el personaje (la Jaula grande, tier 6) se da como la
-//                         levantaría la Casa de obras (`quien: 'casa-de-obras'`, `quienLevanta`), sin su cola ni su nivel (QA-260)
+//                         levantaría la Casa de obras (`quien: 'casa-de-obras'`, `quienLevanta`), sin su cola ni su nivel (QA-264)
 // Uso: DATABASE_URL=… npx tsx src/scripts/darReino.ts <saveId> comida=60 goirnos=300 almacen:cuerdas:10
 // Lo lanza `tools/qa/escenario.sh dar-reino`.
 import { prisma } from '../lib/prisma.js';

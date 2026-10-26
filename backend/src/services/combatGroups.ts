@@ -23,7 +23,7 @@ export function nextFreeCombatGroupSlot(existingSlotIndexes: number[]): number {
 }
 
 /// Mover un compañero a otro grupo respeta el tope de 4 combatientes por bando (el PJ ocupa un hueco del Grupo 1). Lo usan el
-/// endpoint `PATCH /saves/:id/companeros/:companionId/grupo` y el paso `sin-aliados` de `prepararReino.ts` (QA-262), para que la
+/// endpoint `PATCH /saves/:id/companeros/:companionId/grupo` y el paso `sin-aliados` de `prepararReino.ts` (QA-266), para que la
 /// preparación pase por la misma regla y no la rehaga a mano (QA-151). Devuelve `null` en `error` si va bien.
 export type ResultadoMoverCompanero =
   | { ok: true; id: string; combatGroupSlotIndex: number }

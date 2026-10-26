@@ -63,7 +63,7 @@ function attributeCapForLevel(level: number): number {
   return BASE_ATTRIBUTE_CAP + extraAsiEvents;
 }
 
-/// QA-260: XP con la que se llega justo a ese nivel (umbral de la tabla), para que la preparación de escenarios suba de
+/// QA-264: XP con la que se llega justo a ese nivel (umbral de la tabla), para que la preparación de escenarios suba de
 /// nivel por `applyXp` en vez de escribir `Save.level` a mano.
 export function xpForLevel(level: number): number {
   return LEVEL_THRESHOLDS[Math.min(Math.max(level, 1), MAX_LEVEL) - 1];

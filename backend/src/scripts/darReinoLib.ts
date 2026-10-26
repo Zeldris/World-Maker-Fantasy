@@ -1,7 +1,7 @@
 // QA-143: interpreta los argumentos de `darReino.ts` (puro, para probarlo sin base).
 import { TIER_MAXIMO_PERSONAJE } from '../services/construction.js';
 
-/// QA-260: quién levanta una obra de ese tier. El personaje llega hasta `TIER_MAXIMO_PERSONAJE`; más (la Jaula grande,
+/// QA-264: quién levanta una obra de ese tier. El personaje llega hasta `TIER_MAXIMO_PERSONAJE`; más (la Jaula grande,
 /// tier 6), solo la Casa de obras. `dar-reino` usa la misma comprobación del juego con ese `quien`, sin pasar por la cola
 /// de la Casa (constructores, nivel de la Casa, días de obra): es una herramienta de preparación.
 export function quienLevanta(tier: number): 'personaje' | 'casa-de-obras' {

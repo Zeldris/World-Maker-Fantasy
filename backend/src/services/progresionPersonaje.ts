@@ -1,5 +1,5 @@
 // Progresión del personaje que comparten la ruta `PATCH /saves/:id/especializacion` y la preparación de escenarios
-// (QA-260, `prepararReino.ts domador:<nivel>`): una sola escritura para cada cosa, la del juego.
+// (QA-264, `prepararReino.ts domador:<nivel>`): una sola escritura para cada cosa, la del juego.
 //   - `fijarEspecializacion`: lo que hace la ruta al elegir especialización, ya con la fila de `Save` bloqueada.
 //   - `subirDeNivel`: sube al personaje a un nivel por `applyXp` (XP del umbral, puntos de atributo, habilidades de clase
 //     de cada nivel cruzado, línea del diario), como `turnResolution.ts` al ganar XP.

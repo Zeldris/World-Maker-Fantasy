@@ -1,4 +1,4 @@
-// QA-262 (2026-10-26): el paso `punto-retirado:<especie>[:<n>]` de `prepararReino.ts` (P313). Un punto de fauna RETIRADO con presas
+// QA-266 (2026-10-26): el paso `punto-retirado:<especie>[:<n>]` de `prepararReino.ts` (P313). Un punto de fauna RETIRADO con presas
 // (`activo` false y `cantidad` > 0) es un estado SINTÉTICO: el juego no lo produce hoy (el Cronista solo retira puntos de NPC y la
 // caza deja `cantidad` 0). Sirve para comprobar la defensa de `opcionesDePartida` (`partidasReino.ts`): Reino › Partidas no lo lista
 // ni lo lanza. Se crea y se retira con los efectos del juego (`crearPuntoZona` y `retirarPuntoZona`, `aplicarEfecto`), no con un

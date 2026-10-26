@@ -17,14 +17,14 @@
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>], reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
-#                                               combate:<npc>,<npc>…; QA-259: lider-muere:<facción> (el líder muere de viejo con 2
+#                                               combate:<npc>,<npc>…; QA-263: lider-muere:<facción> (el líder muere de viejo con 2
 #                                               candidatos), alianza:<A>:<B> (alianza, ruptura y alianza nueva), vasallo-paga:<vasallo>
-#                                               (fondos para la cuota entera sin saldar la deuda); QA-260: domable:<especie>
+#                                               (fondos para la cuota entera sin saldar la deuda); QA-264: domable:<especie>
 #                                               (un animal domable vencido y atado en una Jaula libre, para «Al corral»),
 #                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir);
-#                                               QA-261: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
+#                                               QA-265: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
-#                                               QA-262: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
+#                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
 #                                               y, en dar-reino, edificio:<receta> de más tier que el personaje (se da como lo
 #                                               levantaría la Casa de obras; p. ej. ayuntamiento-mediano y después jaula-grande)

@@ -5,9 +5,9 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { dejarSinAliados } from './prepararSinAliados.js';
 import { moverCompaneroDeGrupo } from '../combatGroups.js';
 
-// QA-262 (P128): el paso `sin-aliados` de `prepararReino.ts` saca a los compañeros del Grupo 1 con la regla del arrastre del
+// QA-266 (P128): el paso `sin-aliados` de `prepararReino.ts` saca a los compañeros del Grupo 1 con la regla del arrastre del
 // panel, para que el combate que se abra después lleve solo a la jugadora (`abrirCombateDePersonas` mira el slot 0).
-describe('dejarSinAliados (QA-262, P128)', () => {
+describe('dejarSinAliados (QA-266, P128)', () => {
   const saveIds: string[] = [];
 
   async function partida(nombre: string, opciones: { endedAt?: Date } = {}) {
@@ -33,7 +33,7 @@ describe('dejarSinAliados (QA-262, P128)', () => {
   const nuevo = (saveId: string, name: string) => prisma.companion.create({ data: { saveId, name, role: 'aliado', notes: '', combatGroupSlotIndex: 0 } });
 
   it('saca a todos los compañeros del Grupo 1 a un grupo nuevo y es idempotente', async () => {
-    const { saveId } = await partida('Sin aliados (QA-262)');
+    const { saveId } = await partida('Sin aliados (QA-266)');
     await nuevo(saveId, 'Uno');
     await nuevo(saveId, 'Dos');
     const r = await dejarSinAliados(prisma, { saveId });
@@ -47,7 +47,7 @@ describe('dejarSinAliados (QA-262, P128)', () => {
   });
 
   it('con más de 4 compañeros abre otro grupo, sin pasar el tope por grupo', async () => {
-    const { saveId } = await partida('Sin aliados 5 (QA-262)');
+    const { saveId } = await partida('Sin aliados 5 (QA-266)');
     for (const n of ['A', 'B', 'C', 'D', 'E']) await nuevo(saveId, n);
     const r = await dejarSinAliados(prisma, { saveId });
     expect(r).toMatchObject({ yaEstaba: false, grupos: [1, 2] });
@@ -57,17 +57,17 @@ describe('dejarSinAliados (QA-262, P128)', () => {
   });
 
   it('una partida sin compañeros ya está sin aliados; rechaza la inexistente y la terminada', async () => {
-    const { saveId } = await partida('Sin compañeros (QA-262)');
+    const { saveId } = await partida('Sin compañeros (QA-266)');
     expect(await dejarSinAliados(prisma, { saveId })).toMatchObject({ yaEstaba: true });
     expect(await dejarSinAliados(prisma, { saveId: 'no-existe' })).toEqual({ error: 'sin-aliados: no hay partida no-existe.' });
-    const { saveId: fin } = await partida('Terminada (QA-262)', { endedAt: new Date() });
+    const { saveId: fin } = await partida('Terminada (QA-266)', { endedAt: new Date() });
     await nuevo(fin, 'Fiel');
     expect(await dejarSinAliados(prisma, { saveId: fin })).toEqual({ error: 'sin-aliados: la partida ha terminado.' });
     expect(await prisma.companion.count({ where: { saveId: fin, combatGroupSlotIndex: 0 } })).toBe(1);
   });
 
   it('moverCompaneroDeGrupo respeta el tope del Grupo 1 y los límites (slot inválido, compañero ajeno)', async () => {
-    const { saveId } = await partida('Mover (QA-262)');
+    const { saveId } = await partida('Mover (QA-266)');
     const cs = [];
     for (const n of ['A', 'B', 'C', 'D']) cs.push(await nuevo(saveId, n));
     await prisma.companion.updateMany({ where: { saveId }, data: { combatGroupSlotIndex: 1 } });
