@@ -7,6 +7,7 @@ import { xpForProfessionLevel } from '../services/professionProgress.js';
 import { typeForPresion, stageForPresion } from '../services/factionRelations.js';
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
+import { avisarRetiro, retirarFaccionesHuerfanas, retirarLugaresHuerfanos, retirarNpcsHuerfanos } from './retirarHuerfanos.js';
 
 /// Siembra el catálogo de mundo estructurado (docs/mecanicas/12-mundo-estructurado.md): ubicaciones,
 /// rutas, NPCs, armería y recursos cosechables de las Llanuras del Viento Rojo. Idempotente
@@ -508,6 +509,13 @@ async function main() {
     backfilledItems++;
   }
   console.log(`    ${backfilledItems} objeto(s) de inventario actualizado(s).`);
+
+  // QA-256 (2026-10-26): como los objetos de arriba, el upsert nunca retiraba lugares, facciones ni NPC que salen
+  // del catálogo (slugs renombrados). Se retira la fila de catálogo sin referencias de partida; la que tenga alguna
+  // se queda y se avisa. Orden: lugares, facciones y, al final, NPC (`Faction.liderNpcId` queda en null si él se va).
+  avisarRetiro('Lugares', await retirarLugaresHuerfanos(prisma, worldId, locations.map((l) => l.slug)));
+  avisarRetiro('Facciones', await retirarFaccionesHuerfanas(prisma, worldId, factions.map((f) => f.slug)));
+  avisarRetiro('NPC', await retirarNpcsHuerfanos(prisma, worldId, allNpcs.map((n) => n.slug)));
 
   console.log('Catálogo de mundo sembrado correctamente.');
 }
