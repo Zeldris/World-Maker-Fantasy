@@ -6,19 +6,25 @@
 # Variables (px sobre la plancha):
 #   HERO="x:pie:ancho" (por defecto 40:495:1200); MANADA="x:pie:ancho[:v] …" (v = volteada; por defecto tres);
 #   SOMBRA=0.55 (opacidad de la sombra de contacto), CALIDO=0.04 (gradación cálida), GRANO=4,
-#   UMBRAL=12 (es fondo el píxel cuyo verde pasa en más de UMBRAL al rojo y al azul)
+#   UMBRAL=12 (es fondo el píxel cuyo verde pasa en más de UMBRAL al rojo y al azul),
+#   FONDO=verde|magenta (P6 de pautas.md: magenta para sujetos verdes; es fondo si rojo y azul pasan al verde)
 set -euo pipefail
 PL=$1; SU=$2; OUT=$3
 HERO=${HERO:-40:495:1200}; MANADA=${MANADA:-90:300:200 360:290:150:v 980:305:230}
-SOMBRA=${SOMBRA:-0.55}; CALIDO=${CALIDO:-0.04}; GRANO=${GRANO:-4}; UMBRAL=${UMBRAL:-12}
+SOMBRA=${SOMBRA:-0.55}; CALIDO=${CALIDO:-0.04}; GRANO=${GRANO:-4}; UMBRAL=${UMBRAL:-12}; FONDO=${FONDO:-verde}
+case $FONDO in
+  verde) DOMINA='g(X,Y)-max(r(X,Y),b(X,Y))'; SPILL=',despill=type=green' ;;
+  magenta) DOMINA='min(r(X,Y),b(X,Y))-g(X,Y)'; SPILL='' ;;
+  *) echo "ABORTO: FONDO=$FONDO (verde|magenta)"; exit 2 ;;
+esac
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 ff() { ffmpeg -hide_banner -loglevel error -y "$@"; }
 
-# 1) Recorte por dominancia del verde, no por el color de la esquina: FLUX.3 pinta el «chroma-key green» apagado y
-# en degradado (r14), y chromakey se lleva también el pelaje oscuro. Alfa abierto 1 px (quita el moteado) y suavizado.
+# 1) Recorte por dominancia del color de fondo (verde por defecto), no por el color de la esquina: FLUX.3 pinta el
+# «chroma-key green» apagado y en degradado (r14), y chromakey se lleva también el pelaje oscuro. Alfa abierto 1 px (quita el moteado) y suavizado.
 ff -i "$SU" -filter_complex "[0:v]format=rgba,split[c][k];
-  [k]geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(g(X,Y)-max(r(X,Y),b(X,Y)),$UMBRAL),255,0)',format=rgba,
-  alphaextract,erosion,dilation,gblur=sigma=0.8[m];[c]despill=type=green[d];[d][m]alphamerge" "$T/recorte.png"
+  [k]geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt($DOMINA,$UMBRAL),255,0)',format=rgba,
+  alphaextract,erosion,dilation,gblur=sigma=0.8[m];[c]null$SPILL[d];[d][m]alphamerge" "$T/recorte.png"
 # 2) Caja del sujeto (bbox del alfa) y recorte ajustado.
 # bbox escribe la caja en el registro de nivel info (ff lo calla)
 read -r X1 X2 Y1 Y2 < <(ffmpeg -hide_banner -i "$T/recorte.png" -vf "alphaextract,lut=y='if(gt(val,128),255,0)',bbox=min_val=200" \
