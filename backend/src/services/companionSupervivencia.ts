@@ -57,12 +57,28 @@ export function felicidadUmbralFor(domador: boolean): number {
   return domador ? FELICIDAD_UMBRAL_DOMADOR : FELICIDAD_UMBRAL_GENERAL;
 }
 
+/// P351 (decisión de la usuaria, 2026-10-27): el nivel del oficio con que se doma suma a la tirada como el
+/// bonificador de competencia de D&D 5e: +2 en los niveles 1-4, +3 en 5-8, +4 en 9-12, +5 en 13-16 y +6 desde el 17.
+export function bonificadorCompetencia(nivel: number): number {
+  return Math.min(6, 2 + Math.floor((Math.max(1, nivel) - 1) / 4));
+}
+
+/// Lo que el nivel suma a la tirada de doma: el Cazador (cualquier especialización) suma su competencia y el
+/// Domador el doble (como la dote Beast Trainer). Quien no es Cazador no suma nada; las personas (persuasión) tampoco,
+/// el caller solo lo pide para fauna.
+export function bonoDeDomaPorNivel(clase: string | null, nivel: number, domador: boolean): number {
+  if (clase !== 'CAZADOR') return 0;
+  return bonificadorCompetencia(nivel) * (domador ? 2 : 1);
+}
+
 /// Un intento de alimentar/persuadir: tirada opuesta + Felicidad actualizada. Puro — el caller
 /// persiste `NpcState.capturaFelicidad` con el resultado.
 export interface IntentoResult {
   roll: OpposedRollResult;
   felicidadTras: number;
   umbralCompletado: boolean;
+  /// P351: lo que el nivel del oficio sumó a la tirada (0 si no suma).
+  bonoCompetencia: number;
 }
 
 /// Bug real (auditoría de lore 2026-08-25, decisión de la usuaria "hay que engancharlo"):
@@ -86,13 +102,22 @@ export function resolverIntento(
   random: () => number = Math.random,
   /// CR-14: bono o malus de las etiquetas del personaje (Clemente, Carnicero…).
   bonoSocial: number = 0,
+  /// P351: bonificador de competencia del nivel del oficio con que se doma (`bonoDeDomaPorNivel`); se suma al lado
+  /// del jugador, como la resistencia extra al del objetivo.
+  bonoCompetencia: number = 0,
 ): IntentoResult {
   const rollBase = rollOpposed(playerAttributes, playerAttribute, resistenciaAttributes, resistenciaAttribute, random);
   const resistenciaExtra = Math.floor((100 - disposicionPct) / 10) - bonoSocial;
-  const margen = rollBase.margen - resistenciaExtra;
-  const roll: OpposedRollResult = { ...rollBase, resistenciaResult: rollBase.resistenciaResult + resistenciaExtra, margen, gano: margen > 0 };
+  const margen = rollBase.margen + bonoCompetencia - resistenciaExtra;
+  const roll: OpposedRollResult = {
+    ...rollBase,
+    playerResult: rollBase.playerResult + bonoCompetencia,
+    resistenciaResult: rollBase.resistenciaResult + resistenciaExtra,
+    margen,
+    gano: margen > 0,
+  };
   const felicidadTras = felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : 0);
-  return { roll, felicidadTras, umbralCompletado: felicidadTras >= felicidadUmbralFor(domador) };
+  return { roll, felicidadTras, umbralCompletado: felicidadTras >= felicidadUmbralFor(domador), bonoCompetencia };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

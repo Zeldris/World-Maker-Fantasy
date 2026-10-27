@@ -1598,7 +1598,7 @@ export async function postIntentarTameo(
   saveId: string,
   npcSlug: string,
   attribute: Attribute,
-): Promise<{ roll: OpposedRollInfo; felicidad: number; umbral: number; umbralCompletado: boolean }> {
+): Promise<{ roll: OpposedRollInfo; felicidad: number; umbral: number; umbralCompletado: boolean; bonoCompetencia?: number }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/intentar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

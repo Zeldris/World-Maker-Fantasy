@@ -74,6 +74,40 @@ describe('TameoModal — DAD-1, DAD-2', () => {
   })
 })
 
+/// P351: el nivel del oficio suma a la tirada de doma y la tirada lo dice.
+describe('TameoModal — competencia por nivel (P351)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mockIntentar.mockReset()
+  })
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
+
+  const pendiente = { npcSlug: 'corredor', name: 'Corredor de cauce', tipo: 'FAUNA' as const, felicidad: 10, umbral: 100, atributoResistencia: null, enJaula: true }
+
+  it('enseña lo que suma el nivel y calla cuando no suma nada', async () => {
+    mockIntentar
+      .mockResolvedValueOnce({ ...(respuesta(true, 40) as object), bonoCompetencia: 4 } as never)
+      .mockResolvedValueOnce({ ...(respuesta(false, 40) as object), bonoCompetencia: 0 } as never)
+    const { getByRole, getByText, queryByText } = render(
+      <TameoModal saveId="s1" pendiente={pendiente} onConfirmado={() => {}} onSoltado={() => {}} onCancel={() => {}} />,
+    )
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Carisma' }))
+    })
+    expect(getByText('Tu nivel suma +4 a la tirada.')).toBeTruthy()
+    act(() => {
+      vi.advanceTimersByTime(2 * ROLL_DURATION_MS + 10)
+    })
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Carisma' }))
+    })
+    expect(queryByText(/Tu nivel suma/)).toBeNull()
+  })
+})
+
 /// P347/P349: «Al corral» sin Corral del Ganadero sale desactivado y con el motivo; con él, deja un aviso.
 describe('TameoModal — Al corral (P347, P349)', () => {
   afterEach(cleanup)

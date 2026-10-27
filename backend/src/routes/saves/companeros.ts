@@ -24,6 +24,7 @@ import {
   maxSlotsDomadorFor,
   felicidadUmbralFor,
   resolverIntento,
+  bonoDeDomaPorNivel,
   jaulaTamanoRequeridoFor,
   capturaSlotsFor,
   plazoCapturaHorasForTier,
@@ -458,10 +459,12 @@ export async function companerosRoutes(app: FastifyInstance) {
         Math.random,
         // CR-14 (Q4): las etiquetas pesan al convencer a un capturado (solo personas, no fauna).
         esFauna ? 0 : bonoSocialDeEtiquetas(await etiquetasActivas(prisma, save.id), 'RENDIDO'),
+        // P351: el nivel del Cazador (el doble si es Domador) suma a la doma de fauna.
+        esFauna ? bonoDeDomaPorNivel(save.clase, save.level, domador) : 0,
       );
 
       await prisma.npcState.update({ where: { id: state.id }, data: { capturaFelicidad: intento.felicidadTras } });
-      return { roll: intento.roll, felicidad: intento.felicidadTras, umbral: felicidadUmbralFor(domador), umbralCompletado: intento.umbralCompletado };
+      return { roll: intento.roll, felicidad: intento.felicidadTras, umbral: felicidadUmbralFor(domador), umbralCompletado: intento.umbralCompletado, bonoCompetencia: intento.bonoCompetencia };
     },
   );
 

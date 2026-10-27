@@ -30,7 +30,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
   // DAD-1/DAD-2 (hito 0.1, H18/H19) — `seq` da una `key` nueva a cada tirada (sin ella React
   // reutilizaba el `DiceRollVs` y la segunda tirada no se animaba) y `aterrizada` difiere el
   // veredicto, el color y la subida de Felicidad hasta que los dos dados han caído.
-  const [tirada, setTirada] = useState<{ seq: number; roll: OpposedRollInfo; felicidad: number; aterrizada: boolean } | null>(null)
+  const [tirada, setTirada] = useState<{ seq: number; roll: OpposedRollInfo; felicidad: number; bonoCompetencia: number; aterrizada: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   const { error, runCatchingError } = useSubmitError()
 
@@ -45,7 +45,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
       return
     }
     // `busy` sigue activo hasta que caigan los dados (`handleAterrizada`): sin solapar tiradas.
-    setTirada((prev) => ({ seq: (prev?.seq ?? 0) + 1, roll: res.roll, felicidad: res.felicidad, aterrizada: false }))
+    setTirada((prev) => ({ seq: (prev?.seq ?? 0) + 1, roll: res.roll, felicidad: res.felicidad, bonoCompetencia: res.bonoCompetencia ?? 0, aterrizada: false }))
   }
 
   function handleAterrizada(seq: number, felicidad: number) {
@@ -160,6 +160,12 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
                 showDifficulty={false}
                 onAllLanded={() => handleAterrizada(seq, felicidad)}
               />
+              {/* P351: el nivel del oficio suma a la tirada (competencia, el doble para el Domador). */}
+              {tirada.bonoCompetencia > 0 && (
+                <p className="mt-1 text-wood-400">
+                  Tu nivel suma +{tirada.bonoCompetencia} a la tirada{pendiente.atributoResistencia ? ' (Domador: el doble)' : ''}.
+                </p>
+              )}
             </div>
           )
         })()}
