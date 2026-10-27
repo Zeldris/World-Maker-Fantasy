@@ -2095,7 +2095,7 @@ async function posicionDeSalidaHacia(locationId: string, coords: { x: number; y:
 /// Vista del combate de grupo para el panel (participantes con su condición real), y
 /// `pendingCombatNpcSlugs` sincronizado — extraída del turno para usarla también al abrir un
 /// combate de personas en grupo (CR-49).
-async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminado: boolean) {
+export async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminado: boolean) {
   const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId } });
   // CR-45: el capitán lleva la marca de a quién manda ir (tú o uno de tus compañeros).
   const marcaCapitan = terminado ? null : await marcaDelCapitan(prisma, saveId, encounterId);

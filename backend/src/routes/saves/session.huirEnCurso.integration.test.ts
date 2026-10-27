@@ -5,6 +5,7 @@ import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
 import { abrirCombateDePersonas } from '../../services/combatePersonas.js';
 import { scopeFor } from '../../services/npcScene.js';
+import { vistaCombateDeGrupo } from '../../services/turnResolution.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 /// Ronda de correcciones 2026-08-28 (P3.2): "Huir DENTRO de combate debe tener riesgo real" — antes
@@ -209,6 +210,23 @@ describe('/combat/huir-en-curso en el combate de varios (P357, P355)', () => {
     const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
     expect(encounter.estado).toBe('RESUELTO');
     expect(encounter.resolvedAt).not.toBeNull();
+    await app.close();
+  });
+
+  // Revisión de 5a867e9: jugando de verdad, `vistaCombateDeGrupo` (al abrir el combate de varios desde el
+  // turno y tras cada turno de grupo) deja `pendingCombatNpcSlugs` con los ENEMIGO; huir tiene que cerrar
+  // el encuentro también así, o el turno siguiente lo recupera EN_CURSO (`activeCombatEncounter`).
+  it('con pendingCombatNpcSlugs lleno (como lo deja vistaCombateDeGrupo): escapa, el encuentro queda RESUELTO y los slugs vacíos', async () => {
+    await vistaCombateDeGrupo(saveId, encounterId, false);
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingCombatNpcSlugs).toEqual(expect.arrayContaining(['ulkha-ketg', 'hulki']));
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/huir-en-curso` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ escaped: true, condicionFisica: 'ILESO' });
+    const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    expect(encounter.estado).toBe('RESUELTO');
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingCombatNpcSlugs).toEqual([]);
     await app.close();
   });
 

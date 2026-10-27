@@ -11,6 +11,7 @@ import { applyFactionRepDeltaForResolution } from '../../services/turnResolution
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
+import { objetivosValidos } from '../../services/combateMultiple.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -282,14 +283,21 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (rejectIfPendingDeath(save, reply)) return;
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
-    // P357: el combate de varios (CombatEncounter) no escribe `pendingCombatNpcSlugs`; sin esto, huir
-    // de él daba 404 con el encuentro EN_CURSO. Sus rivales salen de los participantes ENEMIGO.
-    const encuentro = pendingSlugs.length === 0
-      ? await prisma.combatEncounter.findFirst({
-          where: { saveId: save.id, estado: 'EN_CURSO', jugable: true },
-          select: { id: true, participantes: { where: { bando: 'ENEMIGO', npcId: { not: null } }, select: { npcId: true } } },
-        })
-      : null;
+    // P357: el combate de varios (CombatEncounter) puede o no escribir `pendingCombatNpcSlugs`
+    // (`vistaCombateDeGrupo` lo deja con los slugs de los ENEMIGO al abrirlo desde el turno y tras cada
+    // turno de grupo), así que el encuentro EN_CURSO jugable se busca siempre, con o sin slugs; el
+    // turno siguiente lo recupera igual (`activeCombatEncounter`). Sus rivales salen de los
+    // participantes ENEMIGO.
+    const encuentro = await prisma.combatEncounter.findFirst({
+      where: { saveId: save.id, estado: 'EN_CURSO', jugable: true },
+      select: {
+        id: true,
+        participantes: {
+          where: { bando: 'ENEMIGO', tipo: 'NPC', npcId: { not: null }, huido: false },
+          select: { npcId: true, npcScope: true, condicionFisicaGrupo: true },
+        },
+      },
+    });
     if (pendingSlugs.length === 0 && !encuentro) {
       return reply.status(404).send({ error: 'No hay ningún combate en curso del que huir' });
     }
@@ -300,9 +308,26 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'No puedes intentar huir estando convaleciente — resuelve tu propia condición primero.' });
     }
 
-    const npcs = encuentro
-      ? await prisma.npc.findMany({ where: { id: { in: encuentro.participantes.map((p) => p.npcId!) } }, select: { level: true } })
-      : await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } }, select: { level: true } });
+    let npcs: { level: number }[];
+    if (encuentro) {
+      // Solo cuentan los rivales que siguen en pie (como `bandoSigueEnCombate`): sin huidos, sin
+      // invocaciones (tipo INVOCACION, fuera del filtro de arriba) y sin convalecientes ni muertos.
+      // Un miembro de grupo lleva su condición en el participante; un solitario, en su `NpcState`.
+      const solitarios = encuentro.participantes.filter((p) => p.condicionFisicaGrupo === null);
+      const estados = solitarios.length
+        ? await prisma.npcState.findMany({
+            where: { saveId: save.id, npcId: { in: solitarios.map((p) => p.npcId!) } },
+            select: { npcId: true, scope: true, condicionFisica: true },
+          })
+        : [];
+      const enPie = encuentro.participantes.filter((p) => {
+        const condicion = p.condicionFisicaGrupo ?? estados.find((e) => e.npcId === p.npcId && e.scope === p.npcScope)?.condicionFisica ?? 'ILESO';
+        return objetivosValidos([{ participantId: p.npcId!, condicionFisica: condicion }]).length > 0;
+      });
+      npcs = await prisma.npc.findMany({ where: { id: { in: enPie.map((p) => p.npcId!) } }, select: { level: true } });
+    } else {
+      npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } }, select: { level: true } });
+    }
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
     const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
