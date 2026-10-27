@@ -297,3 +297,34 @@ banner en `generated/banco/r14-sujetos-rejilla.png`, `r14-sujetos-rejilla-v3.png
 - **La nota por puntos es generosa**: el cruzavientos saca 5/7 y se lee como otro animal. La columna «se lee como»
   (el banner, el ancla, otro animal) es la que separa lo que vale.
 - **Canon frente a banner**: el agente siguió el banner en cinco especies y lo dejó dicho; es la regla que se adopta.
+
+## r16 · Los remedios de r15 en las seis que fallaron (`IMG-21`, 2026-10-27)
+
+`r16-sujetos.tsv`: un agente barato reescribió los 6 prompts con [`pautas.md`](../pautas.md) v2 (F6b-F9, P6-P8) y el
+banner delante; el razonamiento de cada uno, en [`r16-forma.md`](r16-forma.md). Misma semilla (3) y pasos que r15;
+512x192, salvo morvasa a 384x320 (P7); jusha sobre magenta y morvasa sobre azul (P6). ~375 s cada uno, memoria libre
+mínima 3,2 GB. Rejilla r16 / r15 / banner en `generated/banco/r16-sujetos-<especie>/rejilla.png`.
+
+| Especie | Remedio | Forma | Se lee como | Lo que pasa |
+|---|---|---|---|---|
+| gargantua-de-ceniza | sin ancla; placas que crecen de la piel (F8) | 4,5/7 | a medias | ya no es un rinoceronte: bestia acorazada con púas y placa en la cabeza; las placas siguen siendo losas encima, no el blindaje nudoso del banner |
+| morvasa | cobra real; lienzo alto (P7); fondo azul | 5/7 | el ancla | la S se alza entera y las venas magenta sobreviven al recorte; cuerpo en un lazo plano, no la pila alta del banner, y la cola en el suelo |
+| cruzavientos | otra ancla (harpía); placas de hueso (F7) | 5/7 | el ancla | harpía con cresta de púas de marfil: el ancla trae su cresta de plumas; el cuerpo, escamado a medias; el banner tiene la cabeza gris oscura y el prompt pidió marfil |
+| guchapo | sin ancla; «half-sphere» | 5/7 | el ancla | sigue siendo un sapo de cabeza alzada: los ojos saltones y la lengua bastan para llamarlo; la lengua sale en dos puntas |
+| espina-del-viento | sin cochinilla; bandas descritas (F7) | 4,5/7 | otro animal | sigue saliendo cochinilla: «broad, overlapping bands… rounded shield» es la forma de la cochinilla dicha con otras palabras; cuernos de marfil, rojizos en el banner |
+| jusha-esmeralda | otra ancla (mero); fondo magenta | 4,5/7 | otro animal | un black bass casi idéntico al de r15 sin nombrarlo: «freshwater fish, deep body» y «3 veces más largo que alto» (copiado de r15; el banner mide ~4,5) lo llaman |
+
+- **Quitar el ancla funciona si lo que queda no es la firma de otro animal**: el gargantúa deja de ser rinoceronte
+  con un plan corporal genérico («barrel-shaped body, pillar-like legs»); el guchapo sigue siendo sapo porque ojos
+  saltones y lengua son la firma del sapo, y el pez de río hondo es el black bass por defecto.
+- **Otra ancla trae sus propios rasgos**: la harpía quita el águila calva y pone su cresta.
+- **Describir la parte con la forma del animal que contaminaba lo vuelve a traer**: las bandas anchas solapadas con
+  escudo redondo son una cochinilla aunque no se nombre.
+- **Los colores y los números salieron del texto o de la ronda anterior, no del banner**: marfil donde el banner es
+  gris oscuro o rojizo; la proporción del pez, copiada de r15. Es lo que más aleja tres de los seis.
+- **Con la misma semilla, la composición casi no se mueve**: jusha, guchapo y espina repiten encuadre y pose de r15;
+  solo cambia cuando cambia la clase del sujeto (gargantúa, que además camina hacia el otro lado sin pedirlo: P8).
+- **P6 y P7 funcionan**: magenta y azul recortan sin agujeros (`generated/banco/r16-recorte-magenta-azul.png`, con el
+  filtro de `montar.sh`); el lienzo alto alza la S.
+- **Se lee como el banner: ninguna de seis** (gargantúa, a medias). Por prompt solo, las formas raras tocan techo con
+  esta guía; lo que queda es medir en el banner (F10) y, donde la silueta no sale, el boceto (F5, `IMG-24`).

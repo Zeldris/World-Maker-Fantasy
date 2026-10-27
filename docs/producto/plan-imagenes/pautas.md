@@ -36,10 +36,13 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 | F4 | **Un rasgo pequeño necesita sitio en la imagen**: a 512 px de ancho del sujeto, unos pies o unos ojos no se pueden juzgar. Se pide «clearly visible» y se juzga en un recorte o a tamaño final. | 🔬 | r14: los pies de ave del cuernahoja no se leen a 512 |
 | F5 | **Para forma rara, plantilla de boceto** como `--init-img` a 0,95-0,97 con `strength_as_noise_level=true`; por debajo de ~0,92 el resultado sale plano como el dibujo. **El boceto manda sobre el prompt**: si dibuja la cabeza de perfil, el prompt de tres cuartos no la gira. | ✅ | `IMG-19b` (escalera 0,75-0,97) y bocetos v2 |
 | F6 | **El ancla se nombra una vez, con su diferencia** («only gaunter and wilder»); si no, el modelo pinta el animal real (zorro, carnero). | ✅ | r12 |
-| F6b | **El ancla se elige por silueta, porque gana a su diferencia**: «only thicker», «only with a heavier head» o «only far rounder» casi no mueven la forma. Sirve el animal que ya tiene la silueta de la referencia; si lo que define a la criatura es justo la diferencia, se busca otra ancla que la tenga o se describe el plan corporal sin ancla. | ✅ (lo que falla) / 🔬 (el remedio) | r15: correcaminos acierta; black bass, rinoceronte y rana toro salen tal cual |
+| F6b | **El ancla se elige por silueta, porque gana a su diferencia**: «only thicker», «only with a heavier head» o «only far rounder» casi no mueven la forma. Sirve el animal que ya tiene la silueta de la referencia; si lo que define a la criatura es justo la diferencia, se busca otra ancla que la tenga o se describe el plan corporal sin ancla. | ✅ | r15: correcaminos acierta; black bass, rinoceronte y rana toro salen tal cual. r16: el gargantúa sin ancla deja de ser rinoceronte |
+| F6c | **Sin ancla, lo que queda no puede ser la firma de otro animal**: el plan corporal genérico funciona («barrel-shaped body, pillar-like legs»), pero unos ojos saltones con lengua llaman al sapo y un «pez de río de cuerpo hondo», al black bass. Otra ancla de silueta trae sus propios rasgos (la harpía, su cresta). La silueta se dice con los números medidos en la referencia (F10), sin los rasgos que delatan al animal por defecto. | ✅ | r16: gargantúa sale; guchapo, jusha y cruzavientos no |
 | F7 | **Una parte no se compara con otro animal**: el ancla de una parte contagia al cuerpo entero. La parte se describe con palabras de forma y material. | ✅ | r15: «como una cochinilla» hace cochinilla el escorpión; placas blancas en la cabeza vuelven el águila un águila calva |
-| F8 | **Un material no se compara con un objeto**: se pinta el objeto encima, como un disfraz. Se describe su forma y textura y que crece de la piel («irregular knobbly bone plates with short spikes, growing out of the hide»). | 🔬 | r15: «plated like the shell of an armadillo» → losas planas sobre un rinoceronte |
+| F7b | **Tampoco se describe con la forma del animal que contaminaba**: «broad, overlapping bands… a rounded shield» es una cochinilla sin nombrarla. Se describe la forma de la referencia (plano, bajo, alargado, con espinas en el lomo), no la del lore. | ✅ | r16: espina-del-viento sigue cochinilla |
+| F8 | **Un material no se compara con un objeto**: se pinta el objeto encima, como un disfraz. Se describe su forma y textura y que crece de la piel («irregular knobbly bone plates with short spikes, growing out of the hide»). | ✅ (sin objeto) / 🔬 (que crezca de la piel) | r15: «plated like the shell of an armadillo» → losas planas sobre un rinoceronte. r16: sin el objeto salen placas con púas, pero siguen siendo losas encima |
 | F9 | **Las cuentas no se cumplen por prompt**: si el número importa (placas, ojos, puntas), va en el boceto (F5, `IMG-24`); en el prompt, «a row of», «many», sin número. | ✅ | r15: 7 placas, 4 ojos y lengua en 3 puntas; ninguna sale |
+| F10 | **Colores y proporciones se miden en la referencia, no se toman del texto**: el lore dice «marfil» y el banner lo pinta gris oscuro o rojizo; el número de una ronda anterior no vale (pez a «3 veces», el banner ~4,5). Sin referencia (elemento nuevo), del texto. | ✅ | r16: cruzavientos, espina y jusha se alejan por esto |
 
 ## 3. Pautas de pose y composición
 
@@ -50,9 +53,9 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 | P3 | **Composición por planos**: plancha sin sujeto + sujeto sobre verde + montaje + armonización. Separa lo que el modelo mezcla mal (fondo y criatura). | ✅ | `IMG-19c` |
 | P4 | **El fondo verde no sale croma**: «chroma-key green» da un verde de estudio apagado y en degradado. Se recorta por dominancia del verde (`UMBRAL`=12 en `montar.sh`), no por el color de la esquina. | ✅ | r14 |
 | P5 | **La luz del sujeto es la de la plancha**: el prompt del sujeto nombra la dirección («daylight from the left»), para que el montaje no se vea pegado. | ✅ | r14 |
-| P6 | **El fondo del sujeto, de un color que el sujeto no tenga**: con criaturas verdes el recorte por dominancia del verde las agujerea. Verde para lo demás, magenta para lo verde y azul para lo verde con magenta (`montar.sh` con `FONDO=verde|magenta|azul`). | ✅ (el fallo) / 🔬 (magenta) | r15: pez y serpiente con agujeros (`generated/banco/r15-recorte-verdes.png`) |
-| P7 | **Las formas altas no caben en 512x192** (la S de una serpiente, un cuello alzado): el sujeto se genera en un lienzo más alto y se escala en el montaje. Las alas abiertas de frente sí caben. | 🔬 | r15: morvasa aplastada; cruzavientos cabe |
-| P8 | **La dirección del sujeto no se controla por prompt** («flying to the left» sale de frente); se voltea en el montaje (`montar.sh` ya voltea copias). | ✅ (cuadrúpedos) / 🔬 | r15: cruzavientos |
+| P6 | **El fondo del sujeto, de un color que el sujeto no tenga**: con criaturas verdes el recorte por dominancia del verde las agujerea. Verde para lo demás, magenta para lo verde y azul para lo verde con magenta (`montar.sh` con `FONDO=verde|magenta|azul`). | ✅ | r15: pez y serpiente con agujeros (`generated/banco/r15-recorte-verdes.png`); r16: jusha en magenta y morvasa en azul, limpios (`r16-recorte-magenta-azul.png`) |
+| P7 | **Las formas altas no caben en 512x192** (la S de una serpiente, un cuello alzado): el sujeto se genera en un lienzo más alto y se escala en el montaje. Las alas abiertas de frente sí caben. | ✅ | r15: morvasa aplastada; cruzavientos cabe. r16: a 384x320 la S se alza entera |
+| P8 | **La dirección del sujeto no se controla por prompt** («flying to the left» sale de frente); se voltea en el montaje (`montar.sh` ya voltea copias). | ✅ | r15: cruzavientos; r16: el gargantúa cambia de lado sin pedirlo |
 
 **Pose por plan corporal** (de los banners de GPT, el estándar de la casa; vista lateral del pez, convención de la
 ilustración científica):
@@ -61,9 +64,9 @@ ilustración científica):
 |---|---|---|
 | Cuadrúpedo (corredor, pesado, pequeño) | Cuerpo de perfil, cabeza a tres cuartos, los dos ojos | ✅ aullador, cuernahoja, nuente |
 | Ave corredora | Todo de perfil, también la cabeza | ✅ corretolvas |
-| Ave en vuelo | Alas abiertas y levantadas, de frente o a tres cuartos; el cuerpo, corto | 🔬 cruzavientos (cabe; la dirección, P8) |
+| Ave en vuelo | Alas abiertas y levantadas, de frente o a tres cuartos; el cuerpo, corto | ✅ cruzavientos (cabe; la dirección, P8) |
 | Pez | Perfil lateral, flotando | ✅ jusha |
-| Serpiente | Enroscada, el tercio delantero levantado en S, cabeza a tres cuartos; lienzo alto (P7) | 🔬 morvasa |
+| Serpiente | Enroscada, el tercio delantero levantado en S, cabeza a tres cuartos; lienzo alto (P7) | ✅ la S (morvasa r16) / 🔬 la pila de lazos |
 | Artrópodo | Perfil bajo o tres cuartos desde delante; «all eyes visible» en vez de «both eyes» | 🔬 espina-del-viento |
 | Anfibio | Sentado, de perfil, cabeza a tres cuartos | ✅ guchapo |
 
@@ -77,6 +80,10 @@ ilustración científica):
 | Armonización | `-i` del montaje a 0,5 con `strength_as_noise_level=true` (0,7 si se ve pegado); `-r` descartada (×9 y vira a azul) | ~1-2 min | ✅ `IMG-19c` |
 | Gradación | `gradar.sh <img> <momento>` (LUT por momento) | segundos | ✅ `IMG-17` |
 | Final | 1280x512, 16 pasos, solo cuando la receta ya pasa en borrador | ~49 min (tanda de noche) | 🔬 `IMG-23` |
+
+**R1 · Una pauta se prueba en dos semillas.** Con la misma semilla, un prompt reescrito repite encuadre y pose casi
+igual (r16: jusha, guchapo y espina, como en r15); sirve para comparar un cambio pequeño, pero un remedio que no
+cambia la clase del sujeto no se ve. ✅ r16.
 
 ## 5. Criterio de parecido con la referencia
 
@@ -104,10 +111,13 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
 ## 6. Abierto (lo que mide la tanda de `IMG-21` y `IMG-22`)
 
 - Si F1 adelgaza un torso con una medida («body no thicker than its head is long») o hace falta la plantilla de boceto.
-- El remedio de F6b (otra ancla o ninguna), F8 (material que crece de la piel), P6 (fondo magenta) y P7 (lienzo alto),
-  con las especies que fallaron en r15.
+- r17: los cinco que no se leen como su banner, con F10 (colores y proporción medidos en el banner) y dos semillas
+  (R1). Lo que siga sin salir por prompt, al boceto por plan corporal (F5, `IMG-24`): en r16 ninguna de seis se lee
+  como su banner.
+- Cómo hacer que un material crezca de la piel (F8) y la pila de lazos de la serpiente.
 - F1 sin cabeza ni patas como unidad (serpiente, pez, artrópodo): longitud del cuerpo en grosores.
 - Si las pautas se pueden seguir **sin retoque a mano**: en r15 un agente barato escribió los 8 prompts con esta guía y
-  la referencia; solo uno de los 8 se lee como su referencia, y lo que no supo escribir entró como F6b-F9 y P6-P8.
+  la referencia; solo uno de los 8 se lee como su referencia, y lo que no supo escribir entró como F6b-F9 y P6-P8. En
+  r16, con esas pautas, ninguno de los seis restantes; las que faltaban entraron como F6c, F7b, F10 y R1.
 - Otros planes corporales (ave, reptil, artrópodo, acuático…) y otros tipos (flora, lugar, objeto, raza).
 - Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`).

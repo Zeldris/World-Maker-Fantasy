@@ -99,7 +99,9 @@ desde el panel vive en tablas que siembran.
   r15, 8 planes corporales con prompts de un agente: solo el ave corredora se lee como su banner; pautas nuevas
   F6b-F9 (ancla por silueta, partes y materiales sin comparar, sin cuentas) y P6-P8 (fondo magenta para lo verde,
   lienzo alto, dirección por volteo) y pose por plan corporal ([resultados](plan-imagenes/banco/resultados.md)).
-  Falta: probar los remedios 🔬 (otra ancla, material que crece de la piel, magenta con `montar.sh`, lienzo alto).
+  r16, los remedios en las seis que fallaron: ninguna se lee como su banner (gargantúa, a medias); funcionan P6
+  (magenta y azul) y P7 (lienzo alto); pautas nuevas F6c, F7b, F10 (colores y proporción medidos en el banner) y R1
+  (dos semillas). Falta: r17 con F10 y dos semillas; lo que no salga por prompt, al boceto por plan (`IMG-24`).
 - **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27): 2-3 elementos con
   banner por tipo en borrador (cardo brújula y Pastos de la Deriva entre ellos); cada tipo, su sección de
   `pautas.md`. **M**
