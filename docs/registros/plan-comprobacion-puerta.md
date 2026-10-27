@@ -37,6 +37,7 @@ arranca **después** de `cargar`. Lo que solo se ve con Ollama real o en la Deck
 | 41 | Repesca: fin de partida en Medio | un escenario con 3 muertes y un combate fresco sin aliados (falta: arreglar P344 o prepararlo) | P128, P344 | pendiente |
 | 42 | Repesca: «Al corral» y Enciclopedia de usos | `t40-murgol-atado-jaula-grande` (Múrgol atado, Domador nv10) | CR-55 («Al corral»), CR-56 (Enciclopedia de usos), P346 | hecha 2026-10-27: CR-56 entero; tameo del Múrgol a 80/80, pero sin Corral «Al corral» no se puede (P347); P346 en parte (el aviso y Compañeros sí); nuevos P347-P348 |
 | 43 | Repesca: construir un Corral y «Al corral» | `t42-murgol-80-sin-corral` (Múrgol a 80/80, sin Corral): construir el Corral del Ganadero desde Reino › Edificios con las acciones del juego | CR-55 («Al corral»), P346 (Jaula y Corrales) | hecha 2026-10-27: CR-55 entero; P346 se reproduce; nuevo P349 (sin aviso al pasar al corral) |
+| 44 | Repesca: sucesos del mundo con más días y daños de tormenta | `reino-lider-goirnte-muerto` (+ `avanzar 1` ×5, hasta el día 45) para P341; `t20-mundo` (+ `avanzar 9` hasta un EDIFICIO_DANADO del Reino) para P315 | P341 (cambio de líder y escisión en Leyendas y El mundo), P315 (dónde se ve en pantalla el aviso de daños por tormenta) | en curso 2026-10-27 |
 
 ## Para la sesión local
 
