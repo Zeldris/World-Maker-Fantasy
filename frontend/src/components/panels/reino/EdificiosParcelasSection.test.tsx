@@ -128,3 +128,26 @@ describe('P346 — la tarjeta de la Jaula enseña a quien tiene atado', () => {
     expect(getAllByText(/Atado:/)).toHaveLength(1)
   })
 })
+
+describe('P350 — el edificio dañado dice por qué y cuándo', () => {
+  afterEach(cleanup)
+  const ed = (id: string, name: string, over: Partial<BuildingInfo>): BuildingInfo => ({ id, recipeKey: 'pozo', name, kind: 'pozo', status: 'DANADO', description: 'x', ...over })
+
+  it('con causa y día: «Dañado por una tormenta el día 1522.»; sin causa, solo el día; sin suceso, «Dañado.»', () => {
+    const buildings = [
+      ed('1', 'Pozo A', { danio: { causa: 'una tormenta', dia: 1522 } }),
+      ed('2', 'Granero B', { recipeKey: 'granero', kind: 'granero', danio: { causa: null, dia: 1531 } }),
+      ed('3', 'Cisterna C', { recipeKey: 'cisterna', kind: 'cisterna', danio: null }),
+    ]
+    const { getByText } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={[]} onBuild={() => {}} />)
+    expect(getByText('Dañado por una tormenta el día 1522.')).toBeTruthy()
+    expect(getByText('Dañado el día 1531.')).toBeTruthy()
+    expect(getByText('Dañado.')).toBeTruthy()
+  })
+
+  it('un edificio en pie no lleva esa línea', () => {
+    const { queryByText } = render(<EdificiosParcelasSection buildings={[ed('1', 'Pozo A', { status: 'ACTIVO' })]} recipesStatus={[]} onBuild={() => {}} />)
+    expect(queryByText('Dañado.')).toBeNull()
+    expect(queryByText(/Dañado .*el día/)).toBeNull()
+  })
+})

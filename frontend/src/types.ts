@@ -824,6 +824,8 @@ export interface BuildingInfo {
   description: string
   /// P346: quien está atado en esta Jaula (null si no es Jaula o está vacía).
   ocupante?: OcupanteJaula | null
+  /// P350: por qué y cuándo se dañó (solo con status DANADO). `causa` null = no se guardó; `dia` es el que ve la jugadora.
+  danio?: { causa: string | null; dia: number } | null
 }
 
 /// P346: el atado de una Jaula (lo manda el backend, `ocupantesDeJaulas`).

@@ -12,16 +12,16 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (57): P16, P27, P49, P66, P99, P116, P129, P133, P136, P158, P169, P173, P177,
+- **Pendientes** (56): P16, P27, P49, P66, P99, P116, P129, P133, P136, P158, P169, P173, P177,
   P188, P203, P205, P248, P250, P251, P252, P254, P259, P262, P263, P264, P265, P266, P267, P269,
   P270, P272, P273, P274, P299, P308, P309, P311, P317, P319, P325, P327, P328, P331, P332, P333,
-  P334, P335, P336, P337, P338, P339, P340, P342, P343, P344, P348, P350.
+  P334, P335, P336, P337, P338, P339, P340, P342, P343, P344, P348.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (34): P12, P29, P45, P46, P51, P69, P70, P82, P107, P124, P125, P131,
   P151, P155, P163, P175, P180, P182, P184, P186, P189, P191, P223, P243, P253, P279, P288, P292,
   P294, P295, P300, P301, P306, P307.
-- **Arreglados, sin comprobar jugando** (18): P90, P128, P200, P201, P204, P241, P242, P244, P245,
-  P268, P271, P290, P310, P324, P345, P346, P347, P349.
+- **Arreglados, sin comprobar jugando** (19): P90, P128, P200, P201, P204, P241, P242, P244, P245,
+  P268, P271, P290, P310, P324, P345, P346, P347, P349, P350.
 - **Comprobados jugando** (213): P1, P2, P3, P4, P6, P7, P8, P9, P11, P13, P14, P15, P17, P18, P19,
   P20, P21, P24, P26, P28, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43, P47, P50, P53,
   P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68, P72, P73, P74, P76, P77, P78,
@@ -400,4 +400,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P347 | Tanda 42 (2026-10-27, t40-murgol-atado-jaula-grande): con el tameo del Múrgol a 80/80 sale el botón «AL CORRAL» aunque el Reino no tiene ningún Corral del Ganadero (solo la Jaula grande); al pulsarlo responde en rojo «No tienes ningún corral del Ganadero.» (409). Es un callejón: el botón se ofrece sin poder usarse y no dice qué construir. Contraste: en Manor Lords el ganado solo llega si hay un Pasture que lo aloje (gamerguides.com, livestock explained). | arreglado (2026-10-27, el botón «AL CORRAL» sale desactivado con «Construye un Corral del Ganadero» cuando no hay corral en pie (hayCorral en tameo-pendientes), sin comprobar jugando). Antes: Pendiente (leve: no ofrecer «AL CORRAL» sin corral, o desactivado con «Construye un Corral del Ganadero») |
 | P348 | Tanda 42 (2026-10-27, t40-murgol-atado-jaula-grande): el Inventario dice «Capacidad: 170/37 objetos» (en rojo); sin investigar si son las unidades sueltas (munición, piezas) que cuentan como objetos o si la capacidad está mal calculada. | Pendiente (leve, por investigar en una sesión de arreglos) |
 | P349 | Tanda 43 (2026-10-27, t42-murgol-80-sin-corral): al pulsar «🐑 AL CORRAL» con el Corral ya construido, el Múrgol desaparece de Compañeros › «Pendientes de tamear/persuadir» sin ningún texto, aviso ni línea en el diario (el endpoint solo devuelve ganadoId/buildingId/sexo); solo se sabe mirando Reino › Corrales («Múrgol — Taller · 1/6 · 0 ♂ · 1 ♀ · Sin ganadero: no produce…»). Contraste: Medieval Dynasty avisa en la pestaña de animales con iconos (sin casa, sin comida) y X4 apunta los sucesos de sus naves y estaciones en el Logbook. | arreglado (2026-10-27, el POST al-corral devuelve el aviso «El <animal> entra en los Corrales del Ganadero.», se ve en Compañeros y queda en el diario del Reino, sin comprobar jugando). Antes: Pendiente (leve: un aviso «El Múrgol entra en los Corrales del Ganadero» y su línea en el diario; a una sesión de arreglos, junto a P346) |
-| P350 | Tanda 44 (2026-10-27, `t20-mundo` → `t44-tormenta-edificios`, día 1522): el daño por tormenta de un edificio del Reino solo se cuenta en el Diario; Reino › Edificios, adonde manda el aviso, lo lista como DAÑADO con «Reparar» sin decir qué pasó ni cuándo, y Reino › Visión general no avisa de edificios dañados. | Pendiente (leve, UX). Contraste: X4 tiene un Logbook por objeto en su ficha (Object Information, parches de enero de 2021) y Medieval Dynasty marca los edificios dañados con un icono en la lista de edificios; se propone a la usuaria una línea del motivo en Reino › Edificios. |
+| P350 | Tanda 44 (2026-10-27, `t20-mundo` → `t44-tormenta-edificios`, día 1522): el daño por tormenta de un edificio del Reino solo se cuenta en el Diario; Reino › Edificios, adonde manda el aviso, lo lista como DAÑADO con «Reparar» sin decir qué pasó ni cuándo, y Reino › Visión general no avisa de edificios dañados. | arreglado (2026-10-27, Reino › Edificios dice «Dañado por <causa> el día N» (causa y día del suceso EDIFICIO_DANADO: sin migración) y Visión general avisa de cuántos edificios están dañados, sin comprobar jugando). Antes: Pendiente (leve, UX). Contraste: X4 tiene un Logbook por objeto en su ficha (Object Information, parches de enero de 2021) y Medieval Dynasty marca los edificios dañados con un icono en la lista de edificios; se propone a la usuaria una línea del motivo en Reino › Edificios. |

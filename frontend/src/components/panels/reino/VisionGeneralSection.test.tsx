@@ -9,7 +9,7 @@ vi.mock('../../../lib/api', () => ({
 }))
 import { getDescansarCampamentoDisponible } from '../../../lib/api'
 import { VisionGeneralSection } from './VisionGeneralSection'
-import type { KingdomStatsInfo, TerritoryInfo } from '../../../types'
+import type { BuildingInfo, KingdomStatsInfo, TerritoryInfo } from '../../../types'
 
 const stats = (diasFelicidadBaja: number): KingdomStatsInfo => ({
   poblacion: 5, felicidad: 10, comida: 5, bebida: 5, riqueza: 5, soldados: 0, trabajadores: 0, visitantes: 0,
@@ -105,5 +105,25 @@ describe('VisionGeneralSection — modal de descansar (P305)', () => {
     cleanup()
     const b = await abrirModal('sed')
     expect(await b.findByText(/Sin bebida, el descanso no cura/)).toBeTruthy()
+  })
+})
+
+// P350 — Reino › Visión general avisa de cuántos edificios están dañados.
+describe('VisionGeneralSection — edificios dañados (P350)', () => {
+  afterEach(cleanup)
+  const ed = (id: string, status: BuildingInfo['status']): BuildingInfo => ({ id, recipeKey: 'pozo', name: 'un pozo', kind: 'pozo', status, description: 'x' })
+
+  it('cuenta los dañados (singular y plural) y no avisa si no hay ninguno', () => {
+    const vista = (buildings: BuildingInfo[]) => render(
+      <VisionGeneralSection saveId="s1" kingdomName="Reino" territories={[territorio]} kingdomStats={null} buildings={buildings} ayuntamiento onRefreshSave={async () => {}} />,
+    )
+    const uno = vista([ed('1', 'DANADO'), ed('2', 'ACTIVO')])
+    expect(uno.getByText(/1 edificio dañado: no cuenta hasta repararlo/)).toBeTruthy()
+    cleanup()
+    const dos = vista([ed('1', 'DANADO'), ed('2', 'DANADO'), ed('3', 'ACTIVO')])
+    expect(dos.getByText(/2 edificios dañados: no cuentan hasta repararlos/)).toBeTruthy()
+    cleanup()
+    const ninguno = vista([ed('1', 'ACTIVO')])
+    expect(ninguno.queryByText(/dañado/)).toBeNull()
   })
 })
