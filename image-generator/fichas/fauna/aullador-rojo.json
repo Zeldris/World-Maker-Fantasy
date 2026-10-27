@@ -7,6 +7,28 @@
   "momento": "atardecer",
   "canon": "Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas; pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, hilera de púas oscuras erizadas en el lomo, colmillos curvos amarillentos exagerados, costillas marcadas, cola negra tupida que borra sus huellas.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:1479 (bio); backend/src/services/sexDimorphism.ts:99-111 (dimorfismo); detalle campo a campo en docs/producto/plan-imagenes/borradores/fichas-piloto.json",
+  "boceto": {
+    "plan": "depredador",
+    "fuerza": 0.97,
+    "largo": 7,
+    "patas": 1.0,
+    "grosorPatas": 0.4,
+    "cuello": 0.5,
+    "anguloCuello": 20,
+    "cabeza": 1.6,
+    "orejas": 0.6,
+    "colmillos": true,
+    "cola": 2.4,
+    "grosorCola": 0.45,
+    "anguloCola": 25,
+    "colaPuas": true,
+    "cresta": {
+      "forma": "puas",
+      "alto": 0.55,
+      "hasta": "cola",
+      "puntas": "#b3121a"
+    }
+  },
   "prompt": {
     "sujeto": "A long, low pack hunter with a deep chest and a flexible spine, carried close to the ground on short, strong legs that end in dark curved claws.",
     "proporcion": "Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep.",
@@ -43,9 +65,5 @@
     "choca con el canon: cuerpo largo y patas cortas (el canon: patas desproporcionadamente largas), cresta de placas con púas rojas, colmillos de sable",
     "IMG-16 (perfil fotorreal): proporcion y manada nuevas; «cabeza de zorro sobre el torso de una comadreja» y la escala del cuerpo (torso de cinco cabezas) son diseño de imagen, no canon"
   ],
-  "boceto": {
-    "archivo": "bocetos/depredador.svg",
-    "fuerza": 0.85
-  },
   "imagenJuego": "backend/uploads/images/fauna/aullador-rojo-macho-banner.png"
 }

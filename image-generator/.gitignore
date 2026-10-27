@@ -13,3 +13,5 @@ referencias/
 generated/
 # IMG-18: rasterizados de los bocetos SVG (pequeños y deterministas); se regeneran con bocetos/rasterizar.sh.
 bocetos/*.png
+# IMG-24: los SVG los genera bocetos/plantilla.py a partir de la ficha (bocetos/rasterizar.sh).
+bocetos/*.svg

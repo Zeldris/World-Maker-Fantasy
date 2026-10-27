@@ -11,6 +11,7 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | Carpeta | Qué guarda | En git |
 |---|---|---|
 | `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `probar.sh` (prompt de la enciclopedia, para las pruebas de la usuaria; deja todo en `generated/<tipo>/<slug>/`); `obsoleto/` lo que no se debe volver a lanzar | sí |
+| `bocetos/` | bocetos de forma para `--init-img` (`IMG-18`, `IMG-24`): `plantilla.py` dibuja el SVG desde el plan corporal y los números de `boceto` de la ficha (`--planes` los lista; `-p clave=valor` prueba un número), `rasterizar.sh` genera y rasteriza (1280, 1024x384, 640 y sobre verde con `verde.css`) | el script, el guion y el CSS sí; los SVG y PNG generados no |
 | `interfaz/` | la interfaz de pruebas (`servidor.py` e `index.html`, sin dependencias), que abre `abrir.sh` (`CFG-43`) | sí |
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |

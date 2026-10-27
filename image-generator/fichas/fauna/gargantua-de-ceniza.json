@@ -1,0 +1,82 @@
+{
+  "tipo": "fauna",
+  "slug": "gargantua-de-ceniza",
+  "nombre": "Gargantúa de Ceniza",
+  "region": "Llanuras del Viento Rojo",
+  "zona": "pastos-de-la-deriva",
+  "momento": "atardecer",
+  "canon": "Bestia grande y pesada, de piel gris ceniza curtida bajo una coraza natural de placas óseas gruesas y blanquecinas que se solapan como escamas; costillas visibles bajo la piel cuando respira hondo, andar lento y pisadas que tiemblan en el suelo. Reptil herbívoro del tamaño de una casa, con placas óseas volcánicas. Solo se caza de adulta con lanzas de hueso, en cacerías serias.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:1703 (bio); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:41-47 (Gargantúas de Ceniza); medidas y colores del banner en docs/producto/plan-imagenes/banco/r17-forma.md (## gargantua-de-ceniza)",
+  "boceto": {
+    "plan": "herbivoro",
+    "fuerza": 0.97,
+    "largo": 1.75,
+    "patas": 0.5,
+    "grosorPatas": 0.5,
+    "tipoPatas": "columna",
+    "cuello": 0.25,
+    "anguloCuello": -15,
+    "grosorCuello": 0.8,
+    "cabeza": 0.875,
+    "hocico": 0.8,
+    "orejas": 0,
+    "cola": 0.6,
+    "grosorCola": 0.5,
+    "anguloCola": 30,
+    "cresta": {
+      "forma": "losas",
+      "alto": 0.4,
+      "hasta": "grupa",
+      "cabeza": true
+    },
+    "cuernos": [
+      {
+        "largo": 0.6,
+        "direccion": "nariz"
+      },
+      {
+        "largo": 0.35,
+        "direccion": "mandibula"
+      }
+    ],
+    "color": "#5a4a3e"
+  },
+  "imagenJuego": "backend/uploads/images/fauna/gargantua-de-ceniza-macho-banner.png",
+  "prompt": {
+    "sujeto": "A huge, heavy, four-legged armoured beast with a barrel-shaped body, a heavy head carried low and four thick, wrinkled, pillar-like legs ending in broad, round feet.",
+    "proporcion": "The body is one and three quarters as long as it is deep, the head is half as long, and each leg is about half as thick as the body is deep.",
+    "cuerpo": "Below the slabs the flanks are dark umber-grey hide, wrinkled into deep, parallel, vertical ribbed grooves like a corrugated wall. The legs and belly are dark grey-brown.",
+    "rasgos": [
+      "Thick, pitted slabs of pale, sandy bone-cream armour, each a different size with rough edges and sharp spikes, stand edge-on along the spine and angle up and backward, forming a jagged ridge, with smaller slabs stacked over the shoulders and hips like roof tiles.",
+      "The largest slab is a wide, flaring, spiked shield that covers the top of the head.",
+      "A thick, curved, dark horn rises from each side of the lower jaw, a long, curved horn rises from the snout, and the small eyes sit deep under the plated brow."
+    ],
+    "rasgosSecundarios": "The slabs are cream-beige and grey with darker stains in their pits, and the horns are dark brown-grey.",
+    "pose": "Seen from a low camera angle, the body in full side profile, it walks mid-stride with one front foot lifted and its heavy head low, turned slightly toward the viewer with both eyes showing.",
+    "manada": "Behind it, smaller and hazier with distance, two more beasts plod along, each one a huge, heavy, four-legged armoured beast with a barrel-shaped body, a jagged ridge of pale bone slabs along the spine, a wide spiked shield over the head and a long curved horn on the snout.",
+    "entorno": "The ground is cracked red earth, and heavy red dust rises around the feet of the beasts; a wall of red sandstone cliffs stands on the right, low mesas on the left horizon, and a faint herd of the same beasts walks far off on the plain.",
+    "luz": "The low sun sits at the left horizon under a golden-orange sky streaked with thin clouds, and its warm light rims the bone slabs and horns while the drifting dust glows orange and a red-orange haze tints the earth."
+  },
+  "variantes": {
+    "macho": {
+      "rasgos+": [
+        "This male is heavier in the head and shoulders, with longer horns and a wider shield over the head."
+      ]
+    },
+    "hembra": {
+      "rasgos+": [
+        "This female is slightly smaller and slighter, with shorter horns and a narrower shield over the head."
+      ]
+    }
+  },
+  "condiciones": {
+    "momento:noche": {
+      "luz": "Deep blue night under a sky full of stars with a soft, even pearly glow, and a cool silver-blue light rims the bone slabs and horns while the drifting dust glows faintly."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el canon: losas óseas de canto en cresta dentada (el canon: placas que se solapan como escamas), flancos acanalados como chapa ondulada, tres cuernos (uno a cada lado de la mandíbula y uno largo en el hocico) y lámina espinosa sobre la cabeza, colores beige crema y marrón umbra (el canon: piel gris ceniza y placas blanquecinas)",
+    "IMG-24 (plantillas de boceto): ficha creada desde el prompt r17 del banco para probar el boceto por plan corporal"
+  ]
+}

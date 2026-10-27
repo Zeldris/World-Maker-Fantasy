@@ -152,4 +152,5 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
   F10, tres de los seis (guchapo, morvasa, espina); lo que faltaba entró como F10b y F10c. En r18, jusha: cuatro de seis
   con la guía tal cual, sin retoque a mano; es el cierre de `IMG-21`.
 - Otros planes corporales (ave, reptil, artrópodo, acuático…) y otros tipos (flora, lugar, objeto, raza).
-- Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`).
+- ~~Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`)~~ ✅ 2026-10-27:
+  `image-generator/bocetos/plantilla.py`, seis planes; queda probar en imagen (r19, gargantúa y cruzavientos).

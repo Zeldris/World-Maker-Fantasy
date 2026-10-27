@@ -241,6 +241,10 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+- **Bocetos por plan corporal (`IMG-24`):** `image-generator/bocetos/plantilla.py#componer` (el SVG desde un plan y
+  sus números, escalado al lienzo 1280x512) y `#validar` (cada valor malo, con su motivo); los planes y sus parámetros,
+  `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con
+  `boceto.plan`, `--planes` o un plan) deja los PNG junto al SVG. Test: `tools/qa/tests/test_bocetos.py`.
 - **Banco de calidad (`IMG-15`):** `docs/producto/plan-imagenes/banco.sh <ronda>` (un TSV por ronda en `banco/`,
   resultados en `banco/resultados.md`); para mirar una ronda, `bash docs/producto/plan-imagenes/hoja.sh <prefijo>` (hojas de
   contactos de 6 con la leyenda en texto, `QA-249`), y solo la finalista a tamaño completo.

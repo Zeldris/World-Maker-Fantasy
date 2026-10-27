@@ -115,9 +115,14 @@ desde el panel vive en tablas que siembran.
   escala; docs y tests. También: condiciones `momento:noche` en las
   fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`). Cierra
   `IMG-15`. **M**
-- **IMG-24 · Plantillas de boceto por plan corporal** [P] (2026-10-27): 5-6 plantillas paramétricas (depredador,
-  herbívoro, ave, reptil, alargado, artrópodo) generadas desde unos números de la ficha, en vez de un SVG a mano por
-  criatura; cuerpo de perfil y cabeza a tres cuartos. Depende de `IMG-18`; la usa `IMG-21`. **M**
+- ~~**IMG-24 · Plantillas de boceto por plan corporal**~~ ✅ 2026-10-27 [P] (2026-10-27): seis planes paramétricos
+  (depredador, herbívoro, reptil, ave, alargado, artrópodo) en `image-generator/bocetos/plantilla.py`, sin
+  dependencias: la ficha pasa de `boceto.archivo` a `boceto.plan` y sus números (largo, patas, cuello, cola, cresta,
+  cuernos, color…), todo relativo a la unidad del plan y escalado al lienzo; cuerpo de perfil y cabeza a tres cuartos
+  (P1), las cuentas en el boceto (F9), un valor fuera de rango para con el motivo. `rasterizar.sh` genera desde las
+  fichas; fuera los SVG a mano de `IMG-18`. Fichas nuevas de gargantúa de ceniza y cruzavientos con su plan (las que
+  `IMG-21` dejó aquí). `test_bocetos.py` (12). Depende de `IMG-18`; la usa `IMG-21`. **M** Pendiente: generar
+  gargantúa y cruzavientos con su boceto (r19) para ver si las plantillas valen tanto como los SVG a mano.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):

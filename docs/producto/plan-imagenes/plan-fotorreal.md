@@ -133,6 +133,8 @@ investigación, y el depredador «sigue leyéndose más lateral que de tres cuar
   `rsvg-convert -w 1280 -h 512 depredador.svg -o depredador-1280.png`.
 - Campo de ficha `boceto: {"archivo": "bocetos/depredador.svg", "fuerza": 0.85}` en el aullador y el cuernahoja
   (`prompt_ficha.py` lo ignora; lo leerán `generar.sh`/`probar.sh` en `IMG-23`). Sin el campo, la ficha va por txt2img.
+  Desde `IMG-24` el campo es `boceto: {"plan": "depredador", "fuerza": 0.97, ...números}` y el SVG lo genera
+  `bocetos/plantilla.py`; los dos SVG a mano ya no existen.
 - Test `tools/qa/tests/test_bocetos.py`: cada SVG es XML válido, de 2,5:1, y rasteriza si hay `rsvg-convert`
   (se salta si no); comprobación en la Deck de que `rsvg-convert` corre dentro de `tools/qa/host.sh`.
 

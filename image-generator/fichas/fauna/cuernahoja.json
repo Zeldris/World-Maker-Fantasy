@@ -8,8 +8,28 @@
   "canon": "Fauna de 120-180 cm, tipo gacela, con cuernos finos y largos de cabra montesa (sin apenas espiral), cuello ancho y pelaje muy corto, rojo por arriba y blanco por el vientre. Come pasto y hojas altas gracias al cuello largo. Vive en manada. Las hembras llevan más rojo que los machos y cuernos más anchos.",
   "fuentes": "docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Cuernahoja)",
   "boceto": {
-    "archivo": "bocetos/herbivoro.svg",
-    "fuerza": 0.85
+    "plan": "herbivoro",
+    "fuerza": 0.95,
+    "largo": 3.3,
+    "patas": 1.7,
+    "grosorPatas": 0.2,
+    "tipoPatas": "ave",
+    "cuello": 2.1,
+    "anguloCuello": 78,
+    "grosorCuello": 0.4,
+    "cabeza": 0.9,
+    "hocico": 0.7,
+    "orejas": 0.25,
+    "cola": 0.4,
+    "grosorCola": 0.2,
+    "anguloCola": 40,
+    "cuernos": [
+      {
+        "largo": 1.0,
+        "direccion": "lado",
+        "forma": "hoja"
+      }
+    ]
   },
   "imagenJuego": "backend/uploads/images/fauna/cuernahoja-macho-banner.png",
   "prompt": {
