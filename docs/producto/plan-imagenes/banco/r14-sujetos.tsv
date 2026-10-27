@@ -1,0 +1,4 @@
+# IMG-19c → IMG-21: sujetos sobre verde con los bocetos v2 (cabeza a tres cuartos; cuernos color hueso a ~media altura),
+# 512x192 / 8 pasos. Veredicto contra el banner GPT (imagenJuego) en rejilla. Fuerza: 0,97 depredador, 0,95 herbívoro (19b).
+aullador	8	prompts/r14-sujeto.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8 --extra-sample-args strength_as_noise_level=true -i $G/bocetos/depredador-verde-512.png --strength 0.97
+cuernahoja	8	prompts/r14-sujeto-cuernahoja.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8 --extra-sample-args strength_as_noise_level=true -i $G/bocetos/herbivoro-verde-512.png --strength 0.95

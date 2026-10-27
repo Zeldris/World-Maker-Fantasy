@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="512" viewBox="0 0 1280 512">
-<!-- Cuernahoja (IMG-18): esbelto y alto, cuello largo y fino casi vertical, cabeza pequena, cuernos-hoja verdes
-     laterales, patas de ave (muslo corto, tarso larguisimo, corvejon hacia atras, pie de tres dedos). Escena de dia. -->
+<!-- Cuernahoja (IMG-18): esbelto y alto, cuello largo y fino casi vertical, cabeza pequena, cuernos-hoja color
+     hueso con nervios (envergadura ~media altura del animal, banner GPT), patas de ave (muslo corto, tarso larguisimo, corvejon hacia atras, pie de tres dedos). Cabeza girada a tres cuartos hacia quien
+     mira (IMG-19c). Escena de dia. -->
 <defs><linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb8d8"/><stop offset="1" stop-color="#d8c8a8"/></linearGradient></defs>
 <rect class="fondo" width="1280" height="512" fill="url(#cielo)"/>
 <rect class="fondo" y="400" width="1280" height="112" fill="#8e3d24"/>
@@ -29,14 +30,17 @@
 <!-- cuello largo y fino, casi vertical -->
 <path d="M588 284 C578 230 566 165 552 100 L572 98 C586 165 604 225 622 268Z" fill="#a85c36"/>
 <path d="M560 104 L572 102 C588 165 604 215 614 255 C590 215 570 165 560 104Z" fill="#d8b890"/>
-<!-- cabeza pequena a tres cuartos, hocico a la izquierda -->
-<path d="M470 92 C480 72 520 64 552 72 C566 80 560 100 548 104 C520 110 490 108 474 100Z" fill="#b66a40"/>
-<path d="M470 90 C464 96 466 102 474 100 L486 92Z" fill="#d8b890"/>
-<ellipse cx="508" cy="82" rx="7" ry="5" fill="#2d241a"/>
-<ellipse cx="474" cy="94" rx="5" ry="4" fill="#2d241a"/>
-<!-- cuernos-hoja: dos laminas verdes grandes hacia los lados -->
-<path d="M520 70 C450 28 340 18 240 54 C340 86 450 90 530 78Z" fill="#3f8a3a"/>
-<path d="M256 55 C340 52 440 62 524 72" stroke="#2a6226" stroke-width="3" fill="none"/>
-<path d="M552 68 C640 20 770 12 860 44 C770 82 640 86 562 78Z" fill="#3f8a3a"/>
-<path d="M846 45 C760 46 650 56 556 72" stroke="#2a6226" stroke-width="3" fill="none"/>
+<!-- cabeza pequena girada a tres cuartos hacia quien mira: cara alargada hacia abajo, dos ojos, barbilla con mechon -->
+<path d="M540 66 C556 58 580 60 590 72 C596 90 584 118 566 138 C556 148 544 146 540 136 C532 116 530 86 540 66Z" fill="#b66a40"/>
+<path d="M548 112 C556 104 572 104 580 112 C574 128 564 142 556 144 C548 140 544 124 548 112Z" fill="#d8b890"/>
+<ellipse cx="552" cy="90" rx="6" ry="5" fill="#2d241a"/>
+<ellipse cx="580" cy="88" rx="5" ry="4.5" fill="#2d241a"/>
+<ellipse cx="562" cy="140" rx="5" ry="3" fill="#2d241a"/>
+<path d="M552 146 L556 160 L562 146Z" fill="#7a3a1c"/>
+<path d="M536 80 L516 92 L538 92Z M592 78 L612 88 L590 90Z" fill="#a85c36"/>
+<!-- cuernos-hoja: dos laminas anchas color hueso, de lado y algo hacia arriba, con nervio central y laterales -->
+<path d="M548 66 C520 40 476 30 446 42 C470 62 512 72 548 72Z" fill="#cbbfa6"/>
+<path d="M452 43 C482 52 516 62 546 69 M470 46 L480 58 M490 48 L498 62 M510 54 L516 66" stroke="#8f8470" stroke-width="2.5" fill="none"/>
+<path d="M582 64 C610 36 654 26 684 38 C660 58 618 68 582 70Z" fill="#cbbfa6"/>
+<path d="M678 39 C648 48 614 58 584 67 M660 42 L650 54 M640 44 L632 58 M620 50 L614 62" stroke="#8f8470" stroke-width="2.5" fill="none"/>
 </svg>
