@@ -1738,7 +1738,7 @@ export async function postEntregarForraje(saveId: string, catalogSlug: string): 
 export async function postLlevarConsigo(saveId: string, ganadoId: string): Promise<{ companionId: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/llevar`, { method: 'POST' })
 }
-export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string }> {
+export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
 export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {

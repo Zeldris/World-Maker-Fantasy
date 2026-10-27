@@ -7,13 +7,13 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../services/construction.js';
 import { COCINA_RECIPE_KEYS } from '../../services/kingdomTick.js';
-import { avisarEnReino, cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
+import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, requisitosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
-import { corralesDelReino, meterEnCorral } from '../../services/cronista/ganadoReino.js';
+import { avisarEntradaAlCorral, corralesDelReino, meterEnCorral } from '../../services/cronista/ganadoReino.js';
 import { pasaAComidaDelReino } from '../../services/crafting.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
@@ -581,8 +581,7 @@ export async function companerosRoutes(app: FastifyInstance) {
         if (!metido.ok) return metido;
         await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
         // P349: el aviso para la pantalla y su línea en el diario (canal Reino), que antes no dejaba rastro.
-        const aviso = `El ${npc.name} entra en los Corrales del Ganadero.`;
-        await avisarEnReino(tx, save.id, aviso, save.worldState?.fictionalMinutes ?? 0);
+        const aviso = await avisarEntradaAlCorral(tx, save.id, npc.name, save.worldState?.fictionalMinutes ?? 0);
         return { ...metido, aviso };
       });
       if (!r.ok) return reply.status('codigo' in r ? r.codigo : 409).send({ error: r.motivo });

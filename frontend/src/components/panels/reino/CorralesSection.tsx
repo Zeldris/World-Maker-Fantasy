@@ -18,6 +18,7 @@ const PASTOS: { slug: string; label: string }[] = [
 export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: string; inventory: InventoryItemInfo[]; onRefreshSave: () => Promise<void> }) {
   const [datos, setDatos] = useState<CorralesInfo | null>(null)
   const [busy, setBusy] = useState(false)
+  const [avisoOk, setAvisoOk] = useState<string | null>(null)
   const { fallo, informar, limpiar } = useErrorConReintento()
   const consulta = useModoConsulta()
 
@@ -35,8 +36,11 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
 
   async function accion(fn: () => Promise<unknown>, mensaje: string) {
     setBusy(true)
+    setAvisoOk(null)
     try {
-      await fn()
+      const r = await fn()
+      // P352: lo que cuenta el backend de lo ocurrido (el diario del Reino ya lo guarda él).
+      if (r && typeof r === 'object' && 'aviso' in r && typeof r.aviso === 'string') setAvisoOk(r.aviso)
       await Promise.all([cargar(), onRefreshSave()])
     } catch (e) {
       informar(mensaje, e)
@@ -52,6 +56,11 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
   return (
     <div className="flex flex-col gap-5">
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
+      {avisoOk && (
+        <p role="status" className="rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-3.5 py-2 text-xs text-emerald-200">
+          {avisoOk}
+        </p>
+      )}
       <PanelSection title="Forraje">
         <p className="text-xs text-wood-300">
           🌾 <span className="font-mono tabular-nums">{datos.forraje}</span> guardado · cabe <span className="font-mono tabular-nums">{datos.huecoForraje}</span> más

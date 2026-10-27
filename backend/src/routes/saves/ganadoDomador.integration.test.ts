@@ -56,6 +56,10 @@ describe('Domadora: llevar contigo y devolver al corral (CR-56 56b)', () => {
     await prisma.companion.update({ where: { id: c.id }, data: { condicionFisica: 'ILESO' } });
     const vuelta = await app.inject({ method: 'POST', url: `/saves/${saveId}/companeros/${c.id}/al-corral` });
     expect(vuelta.statusCode).toBe(200);
+    // P352: el mismo aviso y la misma línea en el diario del Reino que el «Al corral» de un animal recién domado (P349).
+    const especie = (await prisma.npc.findFirstOrThrow({ where: { saveId: null, slug: 'canizor' }, select: { name: true } })).name;
+    expect(vuelta.json().aviso).toBe(`El ${especie} entra en los Corrales del Ganadero.`);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: `El ${especie} entra en los Corrales del Ganadero.` } })).toBe(1);
     const devuelto = await prisma.ganado.findFirstOrThrow({ where: { saveId, sexo: 'F' } });
     expect(devuelto.nacidoEn).toBe(AHORA - 300 * 1440);
     expect(await prisma.companion.count({ where: { saveId } })).toBe(0);

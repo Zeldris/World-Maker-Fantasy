@@ -98,13 +98,15 @@ describe('CorralesSection — guardias y Domadora (CR-56)', () => {
       corrales: [{ ...datos.corrales[0]!, especie: 'canizor', especieNombre: 'Canizor', guardia: true, produccionDia: [], animales: [{ id: 'g1', sexo: 'F', edadDias: 300, etapa: 'ADULTO', diasParaSiguiente: 600, puedeLlevar: true }] }],
     })
     vi.mocked(postLlevarConsigo).mockResolvedValue({ companionId: 'c1' })
-    vi.mocked(postDevolverAlCorral).mockResolvedValue({ buildingId: 'b1' })
-    const { findByText, getByRole } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    vi.mocked(postDevolverAlCorral).mockResolvedValue({ buildingId: 'b1', aviso: 'El Aullador Rojo entra en los Corrales del Ganadero.' })
+    const { findByText, findByRole, getByRole } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
     await findByText(/Guardia: defiende el Reino/)
     await act(async () => fireEvent.click(getByRole('button', { name: 'Llevar contigo' })))
     expect(postLlevarConsigo).toHaveBeenCalledWith('s1', 'g1')
     await act(async () => fireEvent.click(getByRole('button', { name: 'Devolver al corral' })))
     expect(postDevolverAlCorral).toHaveBeenCalledWith('s1', 'c9')
+    // P352: lo que ha pasado se ve, no solo se guarda en el diario.
+    expect((await findByRole('status')).textContent).toBe('El Aullador Rojo entra en los Corrales del Ganadero.')
   })
 })
 
