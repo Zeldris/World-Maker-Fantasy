@@ -48,6 +48,8 @@ vi.mock('../lib/prisma.js', () => ({
     discoveredEntity: { findFirst: () => Promise.resolve(null), findMany: () => Promise.resolve([]) },
     logEntry: { create: (...args: unknown[]) => logEntryCreate(...args) },
     combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
+    // P344: los rivales del combate de varios en curso (`enCombateConDelTurno`); aquí no hay ninguno.
+    combatParticipant: { findMany: () => Promise.resolve([]) },
   },
 }));
 
