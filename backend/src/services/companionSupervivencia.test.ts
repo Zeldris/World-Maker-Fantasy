@@ -91,10 +91,23 @@ describe('resolverIntento', () => {
     expect(result.umbralCompletado).toBe(false);
   });
 
-  it('perder resta Felicidad, nunca por debajo de 0', () => {
-    const result = resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', 5, false, 100, () => 0.5);
+  // P345 (decisión de la usuaria, 2026-10-26): éxitos acumulados como en D&D 5e, un fallo no resta.
+  it('perder NO resta Felicidad: se queda como estaba', () => {
+    const result = resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', 25, false, 100, () => 0.5);
     expect(result.roll.gano).toBe(false);
-    expect(result.felicidadTras).toBe(0); // 5 - 10, topado en 0
+    expect(result.felicidadTras).toBe(25);
+  });
+
+  it('los éxitos se acumulan aunque entre medias haya fallos (P345)', () => {
+    let felicidad = 0;
+    for (const gana of [true, false, false, true, false, true]) {
+      const r = gana
+        ? resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', felicidad, false, 100, () => 0.9)
+        : resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', felicidad, false, 100, () => 0.5);
+      expect(r.roll.gano).toBe(gana);
+      felicidad = r.felicidadTras;
+    }
+    expect(felicidad).toBe(3 * FELICIDAD_GANANCIA);
   });
 
   it('el umbral se completa en cuanto la Felicidad acumulada lo alcanza', () => {

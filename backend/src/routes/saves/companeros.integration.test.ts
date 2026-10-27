@@ -225,7 +225,7 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.roll.gano).toBe(false);
-    expect(body.felicidad).toBe(0); // FELICIDAD_PERDIDA (10) topada en 0
+    expect(body.felicidad).toBe(0); // un fallo no resta (P345): sigue en 0
 
     const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: corretolvasId } });
     expect(state.capturaFelicidad).toBe(0);

@@ -15,7 +15,9 @@ import { npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const FELICIDAD_GANANCIA = 15;
-export const FELICIDAD_PERDIDA = 10;
+/// P345 (decisión de la usuaria, 2026-10-26): como en D&D 5e (éxitos acumulados), un intento fallido NO resta
+/// Felicidad; solo los éxitos suman (+`FELICIDAD_GANANCIA`). Antes se perdían 10 por fallo y, con ~8 % de victorias,
+/// la Felicidad bajaba de media y la doma de un Corretolvas no llegaba nunca al umbral.
 /// "Necesita SUSTANCIALMENTE menos Felicidad acumulada" (§2) — la mitad, no una diferencia
 /// simbólica.
 export const FELICIDAD_UMBRAL_GENERAL = 80;
@@ -89,7 +91,7 @@ export function resolverIntento(
   const resistenciaExtra = Math.floor((100 - disposicionPct) / 10) - bonoSocial;
   const margen = rollBase.margen - resistenciaExtra;
   const roll: OpposedRollResult = { ...rollBase, resistenciaResult: rollBase.resistenciaResult + resistenciaExtra, margen, gano: margen > 0 };
-  const felicidadTras = Math.max(0, felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : -FELICIDAD_PERDIDA));
+  const felicidadTras = felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : 0);
   return { roll, felicidadTras, umbralCompletado: felicidadTras >= felicidadUmbralFor(domador) };
 }
 
