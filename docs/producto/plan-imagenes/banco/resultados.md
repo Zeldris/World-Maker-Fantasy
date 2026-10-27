@@ -249,3 +249,17 @@ rejilla (montaje, `-i` 0,5, `-i` 0,7, `-r`) en `generated/banco/r14-planos/rejil
 - **Decisión 5 cerrada por `-i` a 0,5** (menor EMD sin perder la silueta, y la más barata); 0,7 queda de recurso si el
   montaje a 1280 se nota pegado. `-r` cuesta ×9 y estropea el color: descartada para armonizar.
 - **Coste real de la cadena en borrador**: ~25 min (plancha 7 + sujeto 4 + armonía 1-2), frente a los 35-50 estimados.
+
+## r14 · Sujetos v2/v3 cotejados con GPT (`IMG-21`, 2026-10-27)
+
+`r14-sujetos.tsv` (512x192, 8 pasos, semilla 3; boceto a 0,97 el depredador y 0,95 el herbívoro). Rejillas junto al
+banner en `generated/banco/r14-sujetos-rejilla.png`, `r14-sujetos-rejilla-v3.png`, `r14-bocetos-v2.png` y
+`r14-pies.png`.
+
+- **Bocetos v2**: cabeza a tres cuartos (dos ojos, dos orejas) con el cuerpo de perfil, como los dos banners; el
+  prompt solo no la gira si el boceto la dibuja de perfil (el boceto manda).
+- **Cuernahoja**: cuernos color hueso con vetas («bone grey… veined»), de ~½ de la altura del animal, a 0,95; a 0,97
+  pierden el color. Los pies de ave grandes no se pueden juzgar a 512 px.
+- **Aullador v3**: la cresta estrecha y continua («no wider than a hand… unbroken from the nape») iguala al banner; el
+  torso sigue más grueso que la «cinta» del banner pese a «long, slim».
+- El candidato a 1280 se paró: la usuaria reorienta el plan a pautas en borrador ([`pautas.md`](../pautas.md)).

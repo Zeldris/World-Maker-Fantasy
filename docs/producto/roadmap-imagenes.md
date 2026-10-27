@@ -84,18 +84,36 @@ desde el panel vive en tablas que siembran.
   `planos.sh` armoniza con `strength_as_noise_level`. **19b ✅** el boceto manda a 0,95-0,97 (por debajo sale plano
   como el SVG); tres cuartos no, porque los bocetos tienen la cabeza de perfil. **19c ✅** la cadena de planos en borrador cuesta
   ~25 min; `montar.sh` recorta por dominancia del verde (FLUX.3 no pinta verde croma) y la armonización gana con
-  `-i` a 0,5 (72 s, menor EMD, silueta intacta); `-r` arranca pero tarda ×9 y vira a azul desaturado. **Pendiente de
-  la usuaria:** redibujar la cabeza de los bocetos en tres cuartos y cuernos del herbívoro a 0,95 o 0,97.
+  `-i` a 0,5 (72 s, menor EMD, silueta intacta); `-r` arranca pero tarda ×9 y vira a azul desaturado. Lo que quedaba
+  de la usuaria se decidió con guías de diseño y los banners GPT (2026-10-27): cuerpo de perfil y cabeza a tres
+  cuartos (bocetos v2) y cuernos color hueso a 0,95.
 - **IMG-20 · Codificador de texto Q8 (opcional)** [A] (2026-10-26): A/B con la misma semilla tras `IMG-23`, con
   permiso para descargar 4,3 GB. **S**
-- **IMG-21 · Aullador y cuernahoja por planos** [A] (2026-10-26): candidato a 16 pasos, gradado y medido, que
-  iguale su banner del juego. Depende de `IMG-19`. **M**
-- **IMG-22 · Cardo brújula y Pastos de la Deriva** [A] (2026-10-26): txt2img con el prompt nuevo, gradado y
-  medido. **S**
+- **IMG-21 · Pautas con la fauna** [A] (2026-10-26; reorientada por la usuaria el 2026-10-27: «el objetivo es juntar
+  pautas y estándares para que mediante prompt seamos capaces de conseguir los resultados más cercanos a las imágenes
+  de ref… no que estemos enfrascados en sacar imágenes ya finales»): borradores baratos en 6-8 especies con banner de
+  planes corporales distintos, con prompts escritos por un agente desde [`pautas.md`](plan-imagenes/pautas.md) sin
+  retoque a mano, y nota de forma y EMD junto al banner; cada fallo repetido, una pauta o un aviso de
+  `prompt_ficha.py` ([plan](plan-imagenes/plan-fotorreal.md#img-21--pautas-con-la-fauna-a--m)). **M** 🚧 2026-10-27:
+  aullador y cuernahoja en borrador (bocetos v2, sujetos v3 cotejados con GPT) y primera versión de `pautas.md`;
+  falta la tanda amplia.
+- **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27): 2-3 elementos con
+  banner por tipo en borrador (cardo brújula y Pastos de la Deriva entre ellos); cada tipo, su sección de
+  `pautas.md`. **M**
 - **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26): una orden
-  reproduce el candidato de `IMG-21` dentro del umbral; docs y tests. También: condiciones `momento:noche` en las
+  saca el borrador de cualquier ficha con la receta de `pautas.md`, y una sola imagen final a 1280 comprueba que
+  escala; docs y tests. También: condiciones `momento:noche` en las
   fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`). Cierra
   `IMG-15`. **M**
+- **IMG-24 · Plantillas de boceto por plan corporal** [P] (2026-10-27): 5-6 plantillas paramétricas (depredador,
+  herbívoro, ave, reptil, alargado, artrópodo) generadas desde unos números de la ficha, en vez de un SVG a mano por
+  criatura; cuerpo de perfil y cabeza a tres cuartos. Depende de `IMG-18`; la usa `IMG-21`. **M**
+- **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
+  elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
+  gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L**
+- **IMG-26 · El generador en un repo genérico** [A] (usuaria, 2026-10-27): el motor (scripts, montaje, gradación,
+  medida, plantillas, `pautas.md`) a otro repo, lo más genérico posible (juegos o fantasía en general); lo de Tarkor
+  queda como configuración de un mundo. Depende de `IMG-25`. **L**
 - **IMG-7 · Modelo de datos: `Propuesta` y `FichaVisual`** [A] (usuaria, 2026-10-25): migración Prisma (puerta de un
   solo sentido), importador de los 3 `.md` de propuestas (~159), exportación de lo aprobado al formato de
   `propuestas-aprobadas.md`, fichas exportadas a JSON versionado, API Fastify con escritura solo desde `127.0.0.1` y

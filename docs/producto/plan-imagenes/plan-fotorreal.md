@@ -1,4 +1,4 @@
-# Plan de la plantilla «fotorreal» (`IMG-16`…`IMG-23`)
+# Plan de la plantilla «fotorreal» (`IMG-16`…`IMG-26`)
 
 **Fecha:** 2026-10-26. **Objetivo** (usuaria, 2026-10-26, en `IMG-15`): que el generador local (sd-cli + FLUX.3 Image
 Klein Q8 GGUF, CPU de la Deck, ~49 min por banner de 1280x512 a 16 pasos) iguale en calidad y en diseño los banners
@@ -194,45 +194,49 @@ ninguno. *Coste:* 1 borrador (7 min) + 1 candidato (49 min) si procede; descarga
 `19a`. *Si falla:* el Q8 se queda en disco como `LLM=` opcional y el perfil sigue en Q4_K_M; se apunta que r2 ya lo
 vio neutro con klein 4B ([motor §3](investigacion-motor.md#3-codificador-de-texto)).
 
-## Fase 2 · La imagen buena
+## Fase 2 · Las pautas, medidas en borrador
 
-Cada criatura cierra con un **candidato** a 1280x512 / 16 pasos, gradado con `gradar.sh` y medido con `medir.sh`, en
-una rejilla junto a su banner de GPT (`imagenJuego` de la ficha) para el sí/no de la usuaria. Se apunta en
-`resultados.md` la receta exacta (prompt, semilla, fuerza, vía de armonización, tiempos reales) porque es lo que
-`IMG-23` convierte en perfil.
+**Reorientación (usuaria, 2026-10-27):** el objetivo son **pautas y estándares** para que, por prompt, el resultado
+se acerque lo más posible a la referencia, no imágenes finales. La Fase 2 deja de cerrar cada criatura con un
+candidato a 1280x512 (horas de Deck por imagen) y pasa a probar en **borrador, barato y en muchos elementos**; cada
+prueba deja una pauta en [`pautas.md`](pautas.md) (estructura del prompt, pautas de forma y pose, receta y criterio
+de parecido). La imagen final llega con la interfaz de creación continua (`IMG-25`), y el generador acaba en un repo
+genérico (`IMG-26`). Nada puede depender de un retoque a mano por elemento: por eso los bocetos pasan a plantillas por
+plan corporal (`IMG-24`).
 
-### IMG-21 · Aullador rojo y cuernahoja [A] · M
+### IMG-21 · Pautas con la fauna [A] · M
 
-**Aullador** (atardecer, Llanuras del Viento Rojo), por planos:
-1. Plancha 1280x512 / 16 pasos con `r14-plancha` (49 min). Se guarda como plancha de la región: la reutilizan el
-   cuernahoja si cae en la misma región y `IMG-12` más adelante.
-2. Sujeto sobre verde 1024x384 / 16 pasos con `r14-sujeto`; con `-i bocetos/depredador-1024.png` a la fuerza ganadora
-   de `19b` si el boceto ganó (≈ 15-25 min), si no, txt2img (≈ 30 min).
-3. `montar.sh` con `HERO` y `MANADA` de `19c` (segundos) y la armonización ganadora de `19c` a 1280x512 (6-15 min
-   con `-i`; 50-100 min si ganó `-r`).
-4. Si falla un rasgo (cresta, colmillos): inpainting por partes con `--mask` sobre la zona y `-i` del candidato,
-   fuerza 0,6-0,7 (12-23 min por parte, máximo dos partes). Sin evidencia publicada en FLUX.3: la primera vez se mira
-   si el resto de la imagen queda intacto.
-5. `gradar.sh … atardecer` + `medir.sh`.
+1. **Hecho** (r14, 2026-10-27): aullador y cuernahoja en borrador, con los sujetos v2/v3 cotejados con su banner.
+   Salen P1 (cuerpo de perfil, cabeza a tres cuartos), F1-F3 (medidas del cuerpo, rasgo continuo, color por
+   material) y la cadena de planos en borrador. Primera versión de [`pautas.md`](pautas.md).
+2. **Tanda amplia**: 6-8 especies con banner de planes corporales distintos (cuadrúpedo depredador, herbívoro con
+   cuernos, ave, reptil o escamado, artrópodo, acuático o alargado). El prompt de cada una lo escribe un subagente
+   barato con `pautas.md` y el banner delante, sin retoque a mano: así se mide si la guía se puede seguir. Por
+   especie, un sujeto en borrador sobre verde (512x192, 8 pasos, ~4 min) y, si falla la forma, otro con la plantilla
+   de su plan (`IMG-24`).
+3. Rejilla junto al banner y nota de forma de [`pautas.md` §5](pautas.md#5-criterio-de-parecido-con-la-referencia);
+   tabla especie × punto en `resultados.md`. Cada fallo repetido se convierte en una pauta y, si se puede comprobar,
+   en un aviso de `prompt_ficha.py` con su test.
 
-**Cuernahoja** (día, desierto de mesas rojas): igual, con `herbivoro.svg`, la vía de armonización ya decidida y
-`gradar.sh … dia`; si su entorno de ficha no es la llanura, plancha propia (49 min).
+**Aceptación:** la mayoría de la tanda pasa la lista de forma (sí o parcial en cada punto) solo con prompt y
+plantilla; las pautas que salen, escritas con su evidencia; los avisos comprobables, con tests. **Coste:** ~10-14
+borradores (~1-1,5 h de Deck). **Si falla:** si un plan corporal no se acerca ni con plantilla, se apunta como límite
+del motor (candidato a LoRA si un día hay GPU) y la tanda sigue.
 
-**Aceptación:** los tres sí/no de forma de `19b` en el candidato; la manada se lee como la misma especie; EMD dentro
-de `IMG-17`; y la usuaria dice que **iguala el diseño** de `imagenJuego` (proporción, rasgos del canon, luz) o
-apunta qué falta. **Coste:** aullador 2,5-3,5 h (5-7 generaciones), cuernahoja 2-3 h (4-6); con `-r` como
-armonización, +1 h cada uno. **Bloquea:** `IMG-19`, `IMG-17`, `IMG-18`. **Si falla:** una criatura que tras el
-inpainting no cumple la forma se cierra como «falla la forma» con su mejor candidato, y la decisión de LoRA fuera de
-la Deck ([lora](investigacion-lora.md#recomendación)) vuelve a la usuaria; el resto del plan sigue.
+### IMG-22 · Pautas con flora, lugar, objeto y raza [A] · M
 
-### IMG-22 · Cardo brújula y Pastos de la Deriva [A] · S
+Lo mismo por tipo, con 2-3 elementos con banner de cada uno (8 de flora, 45 de lugar, 23 de objeto, 18 de raza):
+txt2img en borrador con el encuadre del tipo (la planta en su paisaje a 35 mm, no macro; el lugar por capas; el
+objeto como bodegón; la raza como figura entera). Cardo brújula y Pastos de la Deriva entran aquí. Cada tipo añade su
+sección a `pautas.md`. **Aceptación** y **si falla**, como `IMG-21`. **Coste:** ~10 borradores (~1-1,5 h).
 
-Sin sujeto animal: una pasada txt2img 1280x512 / 16 pasos con su `r14-*-fotorreal.txt` (P9: la planta en su paisaje
-a 35 mm, no macro; el lugar por capas suelo → media distancia → horizonte), gradación por momento y medida. Si el
-cardo necesita aislar la planta (se come el encuadre o sale genérica), se pasa a planos como `IMG-21` (+1 h).
-**Aceptación:** EMD dentro de `IMG-17`, y el sí de la usuaria frente a su `imagenJuego`. **Coste:** 2 generaciones,
-~1,8 h (hasta 3 h con planos en el cardo). **Bloquea:** `IMG-16`, `IMG-17`, `19a`. **Si falla:** se repite con otra
-semilla una vez (49 min); si sigue, se apunta qué falla del prompt y se cierra con el mejor.
+### IMG-24 · Plantillas de boceto por plan corporal [P] · M
+
+Un SVG dibujado a mano por criatura no escala a la creación continua. Se sustituyen por 5-6 plantillas paramétricas
+(depredador cuadrúpedo, herbívoro, ave, reptil, alargado, artrópodo) que un script genera con unos pocos números de la
+ficha (largo/alto del cuerpo, cuello, cola, patas), todas con el cuerpo de perfil y la cabeza a tres cuartos (P1).
+`depredador.svg` y `herbivoro.svg` son las dos primeras. La ficha pasa de `boceto: <png>` a `plan: <nombre>` y sus
+números. Tests como `test_bocetos.py`. **Depende de** `IMG-18`; **lo usa** `IMG-21`.
 
 ## Fase 3 · La plantilla
 
@@ -256,12 +260,28 @@ semilla una vez (49 min); si sigue, se apunta qué falla del prompt y se cierra 
   produce los flags esperados, `--boceto` añade `-i` y `strength_as_noise_level=true`, `GRADAR=0` no llama a
   `gradar.sh`); los de `IMG-16`/`IMG-17` siguen verdes.
 
-**Aceptación:** una sola orden, `bash image-generator/scripts/probar.sh fauna aullador-rojo fotorreal 3 16`, reproduce
-el candidato de `IMG-21` (misma receta; el PNG puede diferir por el hilo de la CPU, pero el EMD queda dentro del
-umbral); check del proyecto en verde; la usuaria aprueba la receta como plantilla. **Coste:** 1-2 generaciones
-(1-2 h de Deck), 3-4 h de agente. **Bloquea:** `IMG-21` (necesita una receta que haya ganado). **Si falla:** si la
+**Aceptación:** una sola orden, `bash image-generator/scripts/probar.sh <tipo> <ficha> fotorreal`, saca el borrador de
+cualquier ficha con la receta de [`pautas.md`](pautas.md) (y su plantilla de boceto si la pide), y la misma orden a
+1280x512 / 16 pasos saca una imagen final que cumple el criterio de parecido (una sola, en tanda de noche, para
+comprobar que la receta escala); check del proyecto en verde; la usuaria aprueba la receta como plantilla. **Coste:** 1-2 generaciones
+(1-2 h de Deck), 3-4 h de agente. **Bloquea:** `IMG-21`, `IMG-22` (necesita una receta que haya ganado). **Si falla:** si la
 reproducción se va del umbral, se compara receta y log con el candidato (semilla, pasos, mandos) hasta cuadrar; no se
 cierra con una receta que no reproduce.
+
+## Fase 4 · Creación continua y generador genérico
+
+### IMG-25 · Interfaz de creación continua [A] · L
+
+Sobre la interfaz local de `CFG-43` (`abrir.sh`): cola de elementos del juego sin imagen (o con una a rehacer); de la
+ficha al prompt con `pautas.md`; borrador para el sí/no; imagen final en tanda de noche, gradada y medida; guardado
+en `backend/uploads/images/` con su receta. **Depende de** `IMG-23` e `IMG-7` (`FichaVisual`).
+
+### IMG-26 · El generador en un repo genérico [A] · L
+
+Separar el motor (scripts, `montar.sh`, `gradar.sh`, `medir/`, plantillas de boceto, `pautas.md`) de lo de Tarkor
+(`mundo.json`, fichas, `guia-visual-mundo.md`, LUT calibradas con sus banners), que pasa a ser la configuración de un
+mundo. El repo nuevo sirve para juegos o fantasía en general, y WMF lo usa como dependencia. **Depende de**
+`IMG-25`.
 
 ## Presupuesto y orden
 
@@ -270,19 +290,17 @@ cierra con una receta que no reproduce.
 | Fase 0 (`IMG-16`, `IMG-17`, `IMG-18`) | 0 | ~15 min (ffmpeg, rsvg) | 5-8 h |
 | `IMG-19` | ~10 | 2-2,5 h | 1 h |
 | `IMG-20` | 1-2 | 1 h | 0,5 h |
-| `IMG-21` | 9-13 | 4,5-6,5 h (+2 h si gana `-r`) | 2 h |
-| `IMG-22` | 2-3 | 1,8-3 h | 1 h |
+| `IMG-21` (borradores) | ~10-14 | 1-1,5 h | 2 h |
+| `IMG-22` (borradores) | ~10 | 1-1,5 h | 1,5 h |
+| `IMG-24` | 0 | segundos (rsvg) | 3-4 h |
 | `IMG-23` | 1-2 | 1-2 h | 3-4 h |
-| **Total** | **~25-30** | **~11-15 h** (peor caso ~18 h) | ~13-16 h |
+| **Total (Fases 0-3)** | **~35-40** | **~7-9 h** (casi todo borrador) | ~17-20 h |
 
 Las horas de Deck son de generador en marcha: caben en tandas de noche; mientras tanto no se pasan check ni tests.
 
-**Orden por valor/coste:** Fase 0 primero (gratis y lo desbloquea todo; `IMG-16` antes que `IMG-17` e `IMG-18`, que
-pueden ir en paralelo a subagentes baratos) → `19a` (7 min, valida el método de borradores) → `19b` (30 min, decide
-el mando de más valor: la forma, que es lo que más falla en r12) → `19c` (cierra la armonización) → `IMG-21`
-aullador → cuernahoja → `IMG-22` → `IMG-23`; `IMG-20` (permiso + 7 min) solo si sobra tiempo, tras `IMG-23`. Si la usuaria quiere ver una imagen buena
-pronto, el candidato de `19a` (49 min) ya es el aullador txt2img con el prompt nuevo y la gradación: una comparación
-honesta con r12 antes de meter planos ni bocetos.
+**Orden por valor/coste:** Fase 0 → `IMG-19` (hechas) → `IMG-21` tanda amplia de fauna, con `IMG-24` en cuanto un
+plan corporal falle sin boceto → `IMG-22` → `IMG-23` (la receta pasa a perfil; una sola imagen final para comprobar
+que escala) → `IMG-25` → `IMG-26`; `IMG-20` (permiso + 7 min) solo si sobra tiempo, tras `IMG-23`.
 
 ## Descartado por ahora
 
