@@ -3,6 +3,9 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
+import { abrirCombateDePersonas } from '../../services/combatePersonas.js';
+import { scopeFor } from '../../services/npcScene.js';
+import type { AttributeBlock } from '../../services/dice.js';
 
 /// Ronda de correcciones 2026-08-28 (P3.2): "Huir DENTRO de combate debe tener riesgo real" — antes
 /// se resolvía como un intercambio de ataque/defensa normal disfrazado (indistinguible de
@@ -161,4 +164,61 @@ describe('/combat/huir-en-curso', () => {
     expect(saveAfter.condicionFisica).toBe('ILESO');
     expect(saveAfter.pendingCombatNpcSlugs).toEqual([npcSlug, 'otro-npc-que-se-unio']);
   }, 20_000);
+});
+
+// P357 (tanda 46, 2026-10-27): en el combate de varios (CombatEncounter, que no escribe
+// `pendingCombatNpcSlugs`), HUIR daba 404 «No hay ningún combate en curso del que huir». P355: si
+// escapa, el encuentro queda RESUELTO (si no, sus rivales seguirían contando como presentes).
+describe('/combat/huir-en-curso en el combate de varios (P357, P355)', () => {
+  let saveId: string;
+  let encounterId: string;
+
+  beforeEach(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const attributes = { fuerza: 10, destreza: 18, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 };
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn de prueba (P357)', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x', attributes, portraitInitial: 'G', currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const npcs = await Promise.all(['ulkha-ketg', 'hulki'].map((slug) => prisma.npc.findFirstOrThrow({ where: { slug, saveId: null } })));
+    const miembros = npcs.map((n) => {
+      const a = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, location.id), destreza: a.destreza, inteligencia: a.inteligencia, esGrupo: false };
+    });
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes, fictionalMinutes: 600, timeLabel: 'Día 1' }, miembros);
+    encounterId = abierto!.encounterId;
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('roll exitoso: escapa y el encuentro queda RESUELTO', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/huir-en-curso` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ escaped: true, condicionFisica: 'ILESO' });
+    const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    expect(encounter.estado).toBe('RESUELTO');
+    expect(encounter.resolvedAt).not.toBeNull();
+    await app.close();
+  });
+
+  it('roll fallido: recibe el golpe directo y el encuentro sigue EN_CURSO', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/huir-en-curso` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ escaped: false, condicionFisica: 'HERIDO' });
+    expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } })).estado).toBe('EN_CURSO');
+    await app.close();
+  });
 });

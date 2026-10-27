@@ -282,7 +282,15 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (rejectIfPendingDeath(save, reply)) return;
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
-    if (pendingSlugs.length === 0) {
+    // P357: el combate de varios (CombatEncounter) no escribe `pendingCombatNpcSlugs`; sin esto, huir
+    // de él daba 404 con el encuentro EN_CURSO. Sus rivales salen de los participantes ENEMIGO.
+    const encuentro = pendingSlugs.length === 0
+      ? await prisma.combatEncounter.findFirst({
+          where: { saveId: save.id, estado: 'EN_CURSO', jugable: true },
+          select: { id: true, participantes: { where: { bando: 'ENEMIGO', npcId: { not: null } }, select: { npcId: true } } },
+        })
+      : null;
+    if (pendingSlugs.length === 0 && !encuentro) {
       return reply.status(404).send({ error: 'No hay ningún combate en curso del que huir' });
     }
     if (save.condicionFisica === 'CONVALECIENTE' || save.condicionFisica === 'MUERTO') {
@@ -292,7 +300,9 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'No puedes intentar huir estando convaleciente — resuelve tu propia condición primero.' });
     }
 
-    const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
+    const npcs = encuentro
+      ? await prisma.npc.findMany({ where: { id: { in: encuentro.participantes.map((p) => p.npcId!) } }, select: { level: true } })
+      : await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } }, select: { level: true } });
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
     const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
@@ -329,6 +339,13 @@ export async function sessionRoutes(app: FastifyInstance) {
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
+      // P357/P355: el encuentro tiene que seguir EN_CURSO (un turno en paralelo pudo cerrarlo); si escapa,
+      // queda RESUELTO, y sus rivales dejan de contar como presentes (`enCombateConDelTurno`).
+      if (encuentro) {
+        const sigue = await tx.combatEncounter.count({ where: { id: encuentro.id, estado: 'EN_CURSO' } });
+        if (!sigue) return { kind: 'cambiado' as const };
+        if (roll.success) await tx.combatEncounter.update({ where: { id: encuentro.id }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+      }
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
