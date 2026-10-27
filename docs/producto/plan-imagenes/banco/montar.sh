@@ -7,7 +7,8 @@
 #   HERO="x:pie:ancho" (por defecto 40:495:1200); MANADA="x:pie:ancho[:v] …" (v = volteada; por defecto tres);
 #   SOMBRA=0.55 (opacidad de la sombra de contacto), CALIDO=0.04 (gradación cálida), GRANO=4,
 #   UMBRAL=12 (es fondo el píxel cuyo verde pasa en más de UMBRAL al rojo y al azul),
-#   FONDO=verde|magenta (P6 de pautas.md: magenta para sujetos verdes; es fondo si rojo y azul pasan al verde)
+#   FONDO=verde|magenta|azul (P6 de pautas.md: un color que el sujeto no tenga; es fondo el píxel en que ese color
+#   domina: magenta para sujetos verdes, azul para verdes con magenta)
 set -euo pipefail
 PL=$1; SU=$2; OUT=$3
 HERO=${HERO:-40:495:1200}; MANADA=${MANADA:-90:300:200 360:290:150:v 980:305:230}
@@ -15,7 +16,8 @@ SOMBRA=${SOMBRA:-0.55}; CALIDO=${CALIDO:-0.04}; GRANO=${GRANO:-4}; UMBRAL=${UMBR
 case $FONDO in
   verde) DOMINA='g(X,Y)-max(r(X,Y),b(X,Y))'; SPILL=',despill=type=green' ;;
   magenta) DOMINA='min(r(X,Y),b(X,Y))-g(X,Y)'; SPILL='' ;;
-  *) echo "ABORTO: FONDO=$FONDO (verde|magenta)"; exit 2 ;;
+  azul) DOMINA='b(X,Y)-max(r(X,Y),g(X,Y))'; SPILL=',despill=type=blue' ;;
+  *) echo "ABORTO: FONDO=$FONDO (verde|magenta|azul)"; exit 2 ;;
 esac
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 ff() { ffmpeg -hide_banner -loglevel error -y "$@"; }
