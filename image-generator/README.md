@@ -86,6 +86,6 @@ de matar el proceso). `generar.sh` (y `probar.sh`, que lo llama) lo evita con:
 
 - `--params-backend disk --max-vram vulkan0=2`: pesos leídos del disco por segmentos y 2 GB de GPU a la vez. Sin
   esto, con la Deck recién reiniciada el gestor ve ~9 GB «libres» y duplica el modelo entero en RAM y GTT.
-- Nunca subir `--max-vram` ni volver a `--offload-to-cpu` (`scripts/obsoleto/lote.sh` usa `vulkan0=6`: bloqueó la Deck).
+- Nunca subir `--max-vram` ni volver a `--offload-to-cpu` (el antiguo `lote.sh`, retirado en `QA-271`, usaba `vulkan0=6`: bloqueó la Deck).
 - Un vigilante que mata el proceso si quedan menos de 1,5 GB libres o si el driver dice «0 MB libres». El tope del
   cgroup no basta: la memoria GTT no cuenta en él.

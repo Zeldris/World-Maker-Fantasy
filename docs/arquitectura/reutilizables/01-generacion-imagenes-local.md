@@ -201,7 +201,7 @@ FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambi
 
 ## Demo del 2026-10-24 (medido en la Deck)
 
-Con [`demo.sh`](../../../image-generator/scripts/obsoleto/demo.sh) (hoy `probar.sh`) y los prompts reales del juego (tabla
+Con `demo.sh` (retirado en `QA-271`; hoy `probar.sh`) y los prompts reales del juego (tabla
 `ImagePrompt`, sin LLM). Imágenes, logs y prompts en `image-generator/pruebas/demo/` (fuera de git).
 
 | Prompt | Tamaño | Total | Memoria libre mínima | Frente a la imagen actual del juego |

@@ -1652,6 +1652,9 @@ Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.m
 - ~~**QA-264 · Entrada «Modo empaquetado» en el mapa del agente**~~ ✅ 2026-10-26: `docs/mapa-agente.md` (`empaquetado.ts`, usos y tests) para `INS-34…36` y `INS-41`.
 - ~~**QA-265 · Aviso de «PR abierto» sin URL en `bitacora.py`**~~ ✅ 2026-10-26 (solo apuntada): propuesta para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
 
+Limpieza del repo (usuaria, 2026-10-27):
+- **QA-271 · Fuera el código muerto** 🚧 2026-10-27: nada lo usa ni lo cita. Retirados `backend/src/scripts/test-retrieval.ts`, `test-worldtick.ts` y `migrate-arcano-a-magia-2026-09-01.sql` (ya aplicada), `debug/` (cargas y resultados de pruebas a mano de septiembre) e `image-generator/scripts/obsoleto/` (`demo.sh` y `lote.sh`; las tres menciones, como texto). Falta: check y tests en verde y a `main` por el camino normal.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
