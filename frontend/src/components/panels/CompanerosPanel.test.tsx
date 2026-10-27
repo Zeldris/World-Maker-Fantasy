@@ -37,4 +37,23 @@ describe('CompanerosPanel — al corral (P349)', () => {
     await act(async () => fireEvent.click(getByRole('button', { name: /Al corral/ })))
     expect(await findByText('El Múrgol entra en los Corrales del Ganadero.')).toBeTruthy()
   })
+
+  it('el aviso se quita al abrir otro pendiente (no se queda pegado)', async () => {
+    const murgol = { npcSlug: 'murgol', name: 'Múrgol', tipo: 'FAUNA' as const, felicidad: 80, umbral: 80, atributoResistencia: null, enJaula: true, alCorral: true, hayCorral: true }
+    const canizor = { npcSlug: 'canizor', name: 'Cánizor', tipo: 'FAUNA' as const, felicidad: 10, umbral: 80, atributoResistencia: null, enJaula: true, alCorral: true, hayCorral: true }
+    let llevado = false
+    vi.mocked(getTameoPendientes).mockImplementation(async () => ({ pendientes: llevado ? [canizor] : [murgol, canizor] }))
+    vi.mocked(postAlCorral).mockImplementation(async () => {
+      llevado = true
+      return { ganadoId: 'g1', buildingId: 'b1', sexo: 'F', aviso: 'El Múrgol entra en los Corrales del Ganadero.' }
+    })
+    const { findByText, getByRole, queryByText } = render(
+      <CompanerosPanel saveId="s1" companions={[]} inventory={[]} plantillasEquipo={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />,
+    )
+    fireEvent.click(await findByText(/Múrgol/))
+    await act(async () => fireEvent.click(getByRole('button', { name: /Al corral/ })))
+    expect(await findByText('El Múrgol entra en los Corrales del Ganadero.')).toBeTruthy()
+    fireEvent.click(await findByText(/Cánizor/))
+    expect(queryByText('El Múrgol entra en los Corrales del Ganadero.')).toBeNull()
+  })
 })

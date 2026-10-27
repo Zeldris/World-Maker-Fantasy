@@ -161,12 +161,18 @@ export function jaulaRecipeKeyFor(tamano: JaulaTamano): string {
 
 const JAULA_KEYS = JAULA_ORDEN.map(jaulaRecipeKeyFor);
 
+/// Quién cuenta como atado en una Jaula: de esta partida y de verdad capturado. Un solo criterio para `jaulasLibresPara`
+/// (qué jaulas están libres) y `ocupantesDeJaulas` (qué se enseña), para que no se desfasen.
+function atadoEnJaula(saveId: string) {
+  return { saveId, capturado: true } as const;
+}
+
 /// Jaulas activas de la partida con hueco donde cabe un animal de `faunaSlug`, de la más pequeña que
 /// alcanza a la más grande (1 animal por Jaula). Llamar dentro de la transacción que la ocupa.
 export async function jaulasLibresPara(tx: Prisma.TransactionClient, saveId: string, faunaSlug: string): Promise<{ id: string; recipeKey: string | null }[]> {
   const requerido = jaulaTamanoRequeridoFor(faunaSlug);
   const jaulas = await tx.building.findMany({ where: { saveId, status: 'ACTIVO', recipeKey: { in: JAULA_KEYS } }, select: { id: true, recipeKey: true }, orderBy: { createdAt: 'asc' } });
-  const ocupadas = new Set((await tx.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map((s) => s.capturaJaulaBuildingId));
+  const ocupadas = new Set((await tx.npcState.findMany({ where: { ...atadoEnJaula(saveId), capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map((s) => s.capturaJaulaBuildingId));
   const tamano = (key: string | null) => JAULA_ORDEN[JAULA_KEYS.indexOf(key ?? '')] ?? 'PEQUENA';
   return jaulas
     .filter((j) => !ocupadas.has(j.id) && jaulaAlcanzaPara(tamano(j.recipeKey), requerido))
@@ -185,7 +191,7 @@ export interface OcupanteDeJaula {
 /// (`NpcState.capturaJaulaBuildingId`), solo lectura: sirve a todos los caminos que mandan los edificios al cliente.
 export async function ocupantesDeJaulas(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<Map<string, OcupanteDeJaula>> {
   const estados = await db.npcState.findMany({
-    where: { saveId, capturado: true, capturaJaulaBuildingId: { not: null } },
+    where: { ...atadoEnJaula(saveId), capturaJaulaBuildingId: { not: null } },
     select: { npcId: true, capturaFelicidad: true, capturaJaulaBuildingId: true },
   });
   if (estados.length === 0) return new Map();
@@ -200,11 +206,12 @@ export async function ocupantesDeJaulas(db: Prisma.TransactionClient | PrismaCli
   return mapa;
 }
 
-/// P346: las Jaulas activas del Reino con su atado, para Reino › Corrales (donde el atado espera a que lo domes).
-export async function jaulasDelReino(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<{ id: string; name: string; tamano: JaulaTamano; ocupante: OcupanteDeJaula | null }[]> {
-  const jaulas = await db.building.findMany({ where: { saveId, status: 'ACTIVO', recipeKey: { in: JAULA_KEYS } }, select: { id: true, name: true, recipeKey: true }, orderBy: { createdAt: 'asc' } });
+/// P346: las Jaulas del Reino con su atado, para Reino › Corrales (donde el atado espera a que lo domes). Las dañadas
+/// también salen, con su estado: el atado de una Jaula dañada sigue ahí (como en `edificiosParaCliente`).
+export async function jaulasDelReino(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<{ id: string; name: string; tamano: JaulaTamano; estado: 'ACTIVO' | 'DANADO'; ocupante: OcupanteDeJaula | null }[]> {
+  const jaulas = await db.building.findMany({ where: { saveId, status: { in: ['ACTIVO', 'DANADO'] }, recipeKey: { in: JAULA_KEYS } }, select: { id: true, name: true, recipeKey: true, status: true }, orderBy: { createdAt: 'asc' } });
   const ocupantes = await ocupantesDeJaulas(db, saveId);
-  return jaulas.map((j) => ({ id: j.id, name: j.name, tamano: JAULA_ORDEN[JAULA_KEYS.indexOf(j.recipeKey ?? '')] ?? 'PEQUENA', ocupante: ocupantes.get(j.id) ?? null }));
+  return jaulas.map((j) => ({ id: j.id, name: j.name, tamano: JAULA_ORDEN[JAULA_KEYS.indexOf(j.recipeKey ?? '')] ?? 'PEQUENA', estado: j.status === 'DANADO' ? 'DANADO' : 'ACTIVO', ocupante: ocupantes.get(j.id) ?? null }));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -2731,16 +2731,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // turno de llegada al DESTINO abría/mantenía un combate fantasma contra un enemigo que ya
     // había quedado atrás, físicamente en otra ubicación. `regionLocationId` (arriba) ya calcula
     // el destino real cuando hay `travel` — reutilizarlo aquí en vez del origen crudo.
-    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({
+    // P353: el rival del combate en curso está en escena aunque el texto no lo nombre (como en turn.ts, P344). Se encadena
+    // con `.then` (no con `await` dentro del array): un `await` aquí frenaría el arranque de las demás promesas del `Promise.all`.
+    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : enCombateConDelTurno({ saveId, enCombate, pendingCombatNpcSlugs: pendingCombatNpcSlugs ?? [], pendingNpcAttackNpcId: pendingNpcAttack?.npcId ?? null }).then((enCombateCon) => detectNpcsInScene({
           action,
           worldId,
           sessionFacts,
           saveId,
           currentLocationId: regionLocationId,
           fictionalMinutes: fictionalMinutesActuales,
-          // P353: el rival del combate en curso está en escena aunque el texto no lo nombre (como en turn.ts, P344).
-          enCombateCon: await enCombateConDelTurno({ saveId, enCombate, pendingCombatNpcSlugs: pendingCombatNpcSlugs ?? [], pendingNpcAttackNpcId: pendingNpcAttack?.npcId ?? null }),
-        }),
+          enCombateCon,
+        })),
     travel ? Promise.resolve(null) : detectHarvest({ action, worldId, saveId, currentLocationId }),
     // Distingue fauna (animales, sin habla) de NPCs de verdad dentro de `npcsInScene` — ambos
     // comparten la misma tabla Npc/detección por alias (ver comentario del bloque de diálogo más

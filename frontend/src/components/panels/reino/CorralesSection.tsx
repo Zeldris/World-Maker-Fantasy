@@ -90,7 +90,7 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
           <ul className="flex flex-col gap-1">
             {datos.jaulas!.map((j) => (
               <li key={j.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
-                <span>{j.name}</span>
+                <span>{j.name}{j.estado === 'DANADO' && <span className="text-2xs text-red-300"> · dañada</span>}</span>
                 <span className="text-2xs text-wood-400">
                   {j.ocupante ? (
                     <>

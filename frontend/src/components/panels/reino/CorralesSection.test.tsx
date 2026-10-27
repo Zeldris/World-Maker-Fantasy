@@ -129,4 +129,15 @@ describe('CorralesSection — el atado de la Jaula (P346)', () => {
     expect(getByText('Corretolvas')).toBeTruthy()
     expect(getByText('Vacía')).toBeTruthy()
   })
+
+  it('una Jaula dañada se marca como dañada y su atado sigue viéndose', async () => {
+    vi.mocked(getCorrales).mockResolvedValue({
+      ...datos,
+      jaulas: [{ id: 'j3', name: 'Jaula mediana', tamano: 'MEDIANA', estado: 'DANADO', ocupante: { npcSlug: 'canizor', name: 'Cánizor atado', tipo: 'FAUNA', felicidad: 7 } }],
+    })
+    const { findByText, getByText } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await findByText(/Jaula mediana/)
+    expect(getByText(/dañada/)).toBeTruthy()
+    expect(getByText('Cánizor atado')).toBeTruthy()
+  })
 })

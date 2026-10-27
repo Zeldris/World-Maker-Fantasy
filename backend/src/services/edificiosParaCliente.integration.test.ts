@@ -4,10 +4,12 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ganadoRoutes } from '../routes/saves/ganado.js';
 import { edificiosParaCliente } from './edificiosParaCliente.js';
+import { jaulasDelReino, jaulasLibresPara } from './companionSupervivencia.js';
 import { aplicarEfecto, type CtxEfecto } from './cronista/efectos.js';
 
 /// P346: el atado de la Jaula grande (`NpcState.capturaJaulaBuildingId`) tiene que llegar a la tarjeta de la Jaula
-/// (Reino › Edificios) y a Reino › Corrales. P219-style: el mismo constructor sirve a GET /saves/:id y a un turno.
+/// (Reino › Edificios) y a Reino › Corrales. Prueba el constructor (`edificiosParaCliente`) y GET /saves/:id/corrales;
+/// que GET /saves/:id y la respuesta del turno lo usen es cosa del grep de sus llamadas, no de este archivo.
 describe('P346 — el atado de la Jaula llega al cliente', () => {
   let saveId: string;
   let jaulaGrandeId: string;
@@ -56,6 +58,26 @@ describe('P346 — el atado de la Jaula llega al cliente', () => {
     expect(jaulas).toHaveLength(2);
     expect(jaulas.find((j) => j.id === jaulaGrandeId)).toMatchObject({ tamano: 'GRANDE', ocupante: { npcSlug: 'corretolvas', felicidad: 15 } });
     expect(jaulas.find((j) => j.id === jaulaVaciaId)?.ocupante).toBeNull();
+  });
+
+  it('una Jaula dañada sigue en Corrales › Jaulas con su estado y su atado', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const murgol = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'murgol', saveId: null } });
+    const danadaId = (await prisma.building.create({ data: { saveId, recipeKey: 'jaula-mediana', name: 'Jaula mediana', kind: 'jaula-mediana', status: 'DANADO', description: 'x' } })).id;
+    await prisma.npcState.create({ data: { saveId, npcId: murgol.id, scope: '', condicionFisica: 'ILESO', capturado: true, capturaFelicidad: 7, capturaJaulaBuildingId: danadaId } });
+    const jaulas = await jaulasDelReino(prisma, saveId);
+    expect(jaulas.find((j) => j.id === danadaId)).toMatchObject({ estado: 'DANADO', ocupante: { npcSlug: 'murgol', felicidad: 7 } });
+    expect(jaulas.find((j) => j.id === jaulaGrandeId)?.estado).toBe('ACTIVO');
+  });
+
+  it('jaulasLibresPara ignora un NpcState que no está capturado: su Jaula sigue libre', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const salamandra = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'salamandra-de-escoria', saveId: null } });
+    // Resto de un atado ya soltado o domado: apunta a la Jaula pequeña pero `capturado` es false.
+    await prisma.npcState.create({ data: { saveId, npcId: salamandra.id, scope: '', condicionFisica: 'ILESO', capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: jaulaVaciaId } });
+    const libres = await prisma.$transaction((tx) => jaulasLibresPara(tx, saveId, 'salamandra-de-escoria'));
+    expect(libres.map((j) => j.id)).toContain(jaulaVaciaId);
+    expect(libres.map((j) => j.id)).not.toContain(jaulaGrandeId);
   });
 });
 

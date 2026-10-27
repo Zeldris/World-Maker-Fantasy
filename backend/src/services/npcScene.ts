@@ -513,6 +513,26 @@ export function filterFarewellFacts(sessionFacts: string[], candidateNpcs: NpcWi
   });
 }
 
+/// P344: quien está en combate con la jugadora está en escena (`enCombateCon` de `detectNpcsInScene`): los rivales del
+/// 1v1 (`pendingCombatNpcSlugs` y el del ataque pendiente, solo con `enCombate`, como hasta ahora) y, siempre, los NPC
+/// del combate de varios en curso (`CombatEncounter` EN_CURSO), que no escribe `pendingCombatNpcSlugs`. Sin ellos, un
+/// rival oculto sin punto activo en el mapa de esta zona (p. ej. el combate de `preparar combate:`) no estaba en
+/// escena para la validación del turno y «contra 'Faerus desconocida'» se bloqueaba como un nombre inventado.
+export async function enCombateConDelTurno(params: {
+  saveId: string;
+  enCombate: boolean | undefined;
+  pendingCombatNpcSlugs: string[];
+  pendingNpcAttackNpcId: string | null;
+}): Promise<{ slugs: string[]; npcIds: string[] } | undefined> {
+  const participantes = await prisma.combatParticipant.findMany({
+    where: { tipo: 'NPC', npcId: { not: null }, encounter: { saveId: params.saveId, estado: 'EN_CURSO', jugable: true } },
+    select: { npcId: true },
+  });
+  const slugs = params.enCombate ? params.pendingCombatNpcSlugs : [];
+  const npcIds = [...new Set([...(params.enCombate && params.pendingNpcAttackNpcId ? [params.pendingNpcAttackNpcId] : []), ...participantes.map((p) => p.npcId!)])];
+  return slugs.length || npcIds.length ? { slugs, npcIds } : undefined;
+}
+
 /// Busca NPCs en escena a partir del texto de la acción Y de los hechos ya establecidos de la
 /// sesión (para que un NPC mencionado en un turno anterior "el Kort'ikar Torgash llegó" siga
 /// reconociéndose en turnos siguientes aunque el jugador ya no repita su nombre completo).
@@ -536,26 +556,6 @@ export function filterFarewellFacts(sessionFacts: string[], candidateNpcs: NpcWi
 /// (sigue haciendo falta para erratas reales), pero ahora solo se compara contra quienes de
 /// verdad son un candidato plausible aquí — mismo criterio de acotar por región que ya usa
 /// `selectDiscoveries` (discovery.ts) para fauna cosechable, extendido a NPCs:
-/// P344: quien está en combate con la jugadora está en escena (`enCombateCon` de `detectNpcsInScene`): los rivales del
-/// 1v1 (`pendingCombatNpcSlugs` y el del ataque pendiente, solo con `enCombate`, como hasta ahora) y, siempre, los NPC
-/// del combate de varios en curso (`CombatEncounter` EN_CURSO), que no escribe `pendingCombatNpcSlugs`. Sin ellos, un
-/// rival oculto sin punto activo en el mapa de esta zona (p. ej. el combate de `preparar combate:`) no estaba en
-/// escena para la validación del turno y «contra 'Faerus desconocida'» se bloqueaba como un nombre inventado.
-export async function enCombateConDelTurno(params: {
-  saveId: string;
-  enCombate: boolean | undefined;
-  pendingCombatNpcSlugs: string[];
-  pendingNpcAttackNpcId: string | null;
-}): Promise<{ slugs: string[]; npcIds: string[] } | undefined> {
-  const participantes = await prisma.combatParticipant.findMany({
-    where: { tipo: 'NPC', npcId: { not: null }, encounter: { saveId: params.saveId, estado: 'EN_CURSO', jugable: true } },
-    select: { npcId: true },
-  });
-  const slugs = params.enCombate ? params.pendingCombatNpcSlugs : [];
-  const npcIds = [...new Set([...(params.enCombate && params.pendingNpcAttackNpcId ? [params.pendingNpcAttackNpcId] : []), ...participantes.map((p) => p.npcId!)])];
-  return slugs.length || npcIds.length ? { slugs, npcIds } : undefined;
-}
-
 export async function detectNpcsInScene(params: {
   action: string;
   worldId: string;

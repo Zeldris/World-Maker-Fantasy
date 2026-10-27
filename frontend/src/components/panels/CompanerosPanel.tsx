@@ -45,11 +45,13 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
   const [equipoAbierto, setEquipoAbierto] = useState<CompanionInfo | null>(null)
   const [gruposAbierto, setGruposAbierto] = useState(false)
   // P349: lo que acaba de pasar al llevar un animal al corral (el diario del Reino lo guarda el backend).
+  // Se limpia al abrir otro pendiente o al hacer otra acción: no se queda pegado hasta recargar.
   const [aviso, setAviso] = useState<string | null>(null)
   // CR-42: lo último que te ha contado cada compañero de su tierra.
   const [contado, setContado] = useState<Record<string, string>>({})
   const [preguntando, setPreguntando] = useState<string | null>(null)
   const preguntarTierra = async (companionId: string) => {
+    setAviso(null)
     setPreguntando(companionId)
     try {
       const r = await preguntarTierraCompanero(saveId, companionId)
@@ -80,7 +82,10 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
   return (
     <div className="flex flex-col gap-4">
       <button type="button"
-        onClick={() => setCapturaOpen(true)}
+        onClick={() => {
+          setAviso(null)
+          setCapturaOpen(true)
+        }}
         disabled={!!consulta}
         title={consulta ?? undefined}
         className="tactile w-full rounded-lg border border-accent-600/60 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10"
@@ -90,7 +95,10 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
 
       {companions.length > 0 && (
         <button type="button"
-          onClick={() => setGruposAbierto(true)}
+          onClick={() => {
+            setAviso(null)
+            setGruposAbierto(true)
+          }}
           className="tactile w-full rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-wood-300 transition-colors hover:border-accent-600/60 hover:text-accent-300"
         >
           ⚔️ Grupos de combate
@@ -109,7 +117,10 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
             {pendientes.map((p) => (
               <button type="button"
                 key={p.npcSlug}
-                onClick={() => setTameoAbierto(p)}
+                onClick={() => {
+                  setAviso(null)
+                  setTameoAbierto(p)
+                }}
                 disabled={!!consulta}
                 title={consulta ?? undefined}
                 className="tactile flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5 text-left transition-colors hover:border-accent-600/60"
@@ -204,7 +215,10 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
                 </div>
               )}
               <button type="button"
-                onClick={() => setEquipoAbierto(companion)}
+                onClick={() => {
+                  setAviso(null)
+                  setEquipoAbierto(companion)
+                }}
                 className="tactile mt-2 rounded border border-iron-700 px-2 py-1 text-2xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300"
               >
                 Equipo
@@ -238,11 +252,12 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
           pendiente={tameoAbierto}
           onConfirmado={async (aviso) => {
             setTameoAbierto(null)
-            if (aviso) setAviso(aviso)
+            setAviso(aviso ?? null)
             await refreshPendientes()
             await onRefreshSave()
           }}
           onSoltado={() => {
+            setAviso(null)
             setTameoAbierto(null)
             refreshPendientes()
           }}

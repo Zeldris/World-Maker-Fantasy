@@ -1,6 +1,7 @@
 import type { Building, Prisma, PrismaClient } from '@prisma/client';
 import { fichaDeEdificioParaPanel } from './construction.js';
 import { costeDeReparar } from './asaltos.js';
+import { dayForFictionalMinutes } from './worldClock.js';
 import { ocupantesDeJaulas, type OcupanteDeJaula } from './companionSupervivencia.js';
 
 /// Edificio tal como lo recibe el panel del Reino. Un único constructor para GET /saves/:id y para la respuesta de un
@@ -38,7 +39,7 @@ async function danosDeEdificios(db: Prisma.TransactionClient | PrismaClient, sav
   for (const f of filas) {
     if (mapa.has(f.entidadId)) continue;
     const causa = (f.suceso.datos as { causa?: unknown } | null)?.causa;
-    mapa.set(f.entidadId, { causa: typeof causa === 'string' && causa.trim() ? causa : null, dia: Math.floor(f.suceso.fictionalMinutes / 1440) + 1 });
+    mapa.set(f.entidadId, { causa: typeof causa === 'string' && causa.trim() ? causa : null, dia: dayForFictionalMinutes(f.suceso.fictionalMinutes) });
   }
   return mapa;
 }
