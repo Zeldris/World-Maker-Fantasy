@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 # IMG-18/IMG-24: genera los bocetos SVG de forma con plantilla.py y los rasteriza (`--init-img` del sujeto, ver
 # docs/producto/plan-imagenes/plan-fotorreal.md).
 # Uso: bocetos/rasterizar.sh [<ficha.json> | <plan> | <nombre> ...]
@@ -13,7 +14,6 @@
 # esos 16 px libres a propósito). Necesita rsvg-convert y ffmpeg.
 # Para el sujeto sobre verde de la cadena de planos (IMG-19c), <nombre>-verde-1024.png y <nombre>-verde-512.png
 # (512x192): verde.css pinta de verde croma lo marcado class="fondo" y quita la sombra (class="sombra").
-set -euo pipefail
 cd "$(dirname "$0")"
 nombres=()
 if [ $# -eq 0 ]; then
