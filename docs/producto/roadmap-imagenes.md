@@ -101,7 +101,10 @@ desde el panel vive en tablas que siembran.
   lienzo alto, dirección por volteo) y pose por plan corporal ([resultados](plan-imagenes/banco/resultados.md)).
   r16, los remedios en las seis que fallaron: ninguna se lee como su banner (gargantúa, a medias); funcionan P6
   (magenta y azul) y P7 (lienzo alto); pautas nuevas F6c, F7b, F10 (colores y proporción medidos en el banner) y R1
-  (dos semillas). Falta: r17 con F10 y dos semillas; lo que no salga por prompt, al boceto por plan (`IMG-24`).
+  (dos semillas). r17, F10 y dos semillas en las seis: guchapo, morvasa y espina se leen como su banner (la vista del
+  banner, los grosores medidos y el color sin la luz: F10b, F10c); jusha mejora sin llegar; gargantúa y cruzavientos
+  repiten r16 y pasan al boceto por plan (`IMG-24`, R2). Falta: r18 solo con jusha (y espina si se afina el aguijón);
+  con cuatro de seis se cierra (R3).
 - **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27): 2-3 elementos con
   banner por tipo en borrador (cardo brújula y Pastos de la Deriva entre ellos); cada tipo, su sección de
   `pautas.md`. **M**

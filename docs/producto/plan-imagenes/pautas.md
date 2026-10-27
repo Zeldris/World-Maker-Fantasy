@@ -1,6 +1,6 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
-**Versión:** 3 (r16; v1 hasta r14, v2 con r15; R2 y R3 el 2026-10-27).
+**Versión:** 4 (r17; v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27).
 
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
@@ -44,7 +44,9 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 | F7b | **Tampoco se describe con la forma del animal que contaminaba**: «broad, overlapping bands… a rounded shield» es una cochinilla sin nombrarla. Se describe la forma de la referencia (plano, bajo, alargado, con espinas en el lomo), no la del lore. | ✅ | r16: espina-del-viento sigue cochinilla |
 | F8 | **Un material no se compara con un objeto**: se pinta el objeto encima, como un disfraz. Se describe su forma y textura y que crece de la piel («irregular knobbly bone plates with short spikes, growing out of the hide»). | ✅ (sin objeto) / 🔬 (que crezca de la piel) | r15: «plated like the shell of an armadillo» → losas planas sobre un rinoceronte. r16: sin el objeto salen placas con púas, pero siguen siendo losas encima |
 | F9 | **Las cuentas no se cumplen por prompt**: si el número importa (placas, ojos, puntas), va en el boceto (F5, `IMG-24`); en el prompt, «a row of», «many», sin número. | ✅ | r15: 7 placas, 4 ojos y lengua en 3 puntas; ninguna sale |
-| F10 | **Colores y proporciones se miden en la referencia, no se toman del texto**: el lore dice «marfil» y el banner lo pinta gris oscuro o rojizo; el número de una ronda anterior no vale (pez a «3 veces», el banner ~4,5). Sin referencia (elemento nuevo), del texto. | ✅ | r16: cruzavientos, espina y jusha se alejan por esto |
+| F10 | **Colores y proporciones se miden en la referencia, no se toman del texto**: el lore dice «marfil» y el banner lo pinta gris oscuro o rojizo; el número de una ronda anterior no vale (pez a «3 veces», el banner ~4,5). Sin referencia (elemento nuevo), del texto. | ✅ | r16: cruzavientos, espina y jusha se alejan por esto; r17: guchapo, morvasa y espina se leen como su banner al medir; gargantúa y cruzavientos no se mueven (la medida no cambia una silueta de ancla) |
+| F10b | **El color que va al prompt es el del material, no el que tiñe la luz de la referencia**: la media de un recorte del banner sale naranja al atardecer o azul bajo el agua; se toma la zona iluminada de frente y se descuenta la dominante («cream-beige», no el `#9a7054` de la media). | ✅ | r17: espina (granate y óxido), morvasa (plata y rosa) y guchapo (canela y salvia) aciertan el color; en r16 el texto («marfil») fallaba |
+| F10c | **Si la referencia no es de perfil, se pide su vista, no la de la tabla de pose**: la proporción medida depende de la vista (de frente, de tres cuartos), y la vista es parte de lo que «se lee como» la referencia. La tabla de pose por plan corporal vale para un elemento sin referencia. | ✅ | r17: el guchapo de frente (2,1 de ancho/alto) se lee como su banner; de perfil (r15, r16) era un sapo con la cabeza alzada |
 
 ## 3. Pautas de pose y composición
 
@@ -121,13 +123,24 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
 ## 6. Abierto (lo que mide la tanda de `IMG-21` y `IMG-22`)
 
 - Si F1 adelgaza un torso con una medida («body no thicker than its head is long») o hace falta la plantilla de boceto.
-- r17: los seis de r16, con F10 (colores y proporción medidos en el banner) y dos semillas
-  (R1). Lo que siga sin salir por prompt, al boceto por plan corporal (F5, `IMG-24`): en r16 ninguna de seis se lee
-  como su banner.
+- r18: solo jusha (mejora en r17 sin llegar: la silueta sigue siendo de perca) y, si se quiere afinar el aguijón, espina.
+  Gargantúa y cruzavientos, dos rondas iguales, van al boceto por plan corporal (F5, `IMG-24`, R2). Con cuatro de seis
+  se cierra `IMG-21` (R3).
+- Qué denominador se mide (F10) en un pez o un ave en vuelo: longitud total o estándar, profundidad con o sin aletas; r16
+  y r17 dan 3, 4 y 4,5 sobre el mismo banner según dónde se corte. Hay que fijar uno por plan corporal.
+- Qué cifras distingue el modelo: no se sabe si «one and a half» y «twice» salen distintos; medir con un mismo prompt y
+  solo la cifra cambiada.
+- Cuándo vale parecer el animal por defecto (F6c): el guchapo es un sapo en la cara y la espina un escorpión en la cola, y
+  eso es el banner. Criterio provisional (r17): la firma vale si el banner la tiene; se quita solo la parte que no.
+- F9 y las cuentas pequeñas: seis surcos, cuatro ojos, tres lazos salieron bien en r17; distinguir «contar hasta 3-4» de
+  «contar 7» antes de aflojar F9.
+- Dos materiales en una pieza (cuerno rojo con punta de marfil, cabeza de hueso sobre cara oscura): F3 no cubre el
+  degradado dentro de una parte; en r17 salió a medias (espina).
 - Cómo hacer que un material crezca de la piel (F8) y la pila de lazos de la serpiente.
 - F1 sin cabeza ni patas como unidad (serpiente, pez, artrópodo): longitud del cuerpo en grosores.
 - Si las pautas se pueden seguir **sin retoque a mano**: en r15 un agente barato escribió los 8 prompts con esta guía y
   la referencia; solo uno de los 8 se lee como su referencia, y lo que no supo escribir entró como F6b-F9 y P6-P8. En
-  r16, con esas pautas, ninguno de los seis restantes; las que faltaban entraron como F6c, F7b, F10 y R1.
+  r16, con esas pautas, ninguno de los seis restantes; las que faltaban entraron como F6c, F7b, F10 y R1. En r17, con
+  F10, tres de los seis (guchapo, morvasa, espina); lo que faltaba entró como F10b y F10c.
 - Otros planes corporales (ave, reptil, artrópodo, acuático…) y otros tipos (flora, lugar, objeto, raza).
 - Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`).

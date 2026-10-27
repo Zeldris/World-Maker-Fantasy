@@ -328,3 +328,38 @@ mínima 3,2 GB. Rejilla r16 / r15 / banner en `generated/banco/r16-sujetos-<espe
   filtro de `montar.sh`); el lienzo alto alza la S.
 - **Se lee como el banner: ninguna de seis** (gargantúa, a medias). Por prompt solo, las formas raras tocan techo con
   esta guía; lo que queda es medir en el banner (F10) y, donde la silueta no sale, el boceto (F5, `IMG-24`).
+
+## r17 · F10 (medir en el banner) y dos semillas en las seis de r16 (`IMG-21`, 2026-10-27)
+
+`r17-sujetos.tsv`: un agente barato reescribió los 6 prompts con [`pautas.md`](../pautas.md) v3 (F6c, F7b, F10) y el
+banner medido en píxeles y en medias de color con ffmpeg; el razonamiento y las medidas, en [`r17-forma.md`](r17-forma.md).
+Semillas 3 y 7 (R1), 8 pasos, 512x192 salvo morvasa 384x320; fondos como en r16. 375-423 s cada una (sampling ~360 s,
+`--backend diffusion=cpu -t 8`), memoria libre mínima 2,8 GB; las doce, ~80 min. Rejilla r17 s3 / r17 s7 / r16 / banner en
+`generated/banco/r17-sujetos-<especie>/rejilla.png`.
+
+| Especie | Qué cambió el prompt | Se lee como | Frente a r16 | Lo que pasa |
+|---|---|---|---|---|
+| guchapo | vista frontal del banner (no la pose de la tabla); 2,1 de ancho/alto; bolsa de garganta | **su banner** (las dos semillas) | mejora clara | sapo de frente, aplanado, lengua partida en puntas y bolsa pálida; los ojos salen demasiado grandes |
+| morvasa | sin ancla; pila de tres lazos del grosor del cuello; bulbo con cuerno; aletas de hoja | **su banner** (s7 más) | mejora clara | cuerpo enroscado en pila, cresta tras la cabeza, venas rosas, cola con bulbo y gancho; s7 apila los lazos, s3 los tiende |
+| espina-del-viento | 4 largo/alto; surcos en vez de bandas; colores medidos (granate, óxido, cuerno rojo y marfil) | **su banner** en silueta | sale de la cochinilla | escorpión: pinzas largas y finas, cuerpo segmentado y estrecho, cola en arco; el aguijón es un bulbo rojo sin pinza, y el acabado es de juguete (plástico, sin textura) |
+| jusha-esmeralda | sin ancla ni «freshwater, deep body»; 4 veces; banda azul; cabeza larga y roma | a medias | mejora | más alargado, dorsal espinosa, dientes y banda azul; la silueta sigue siendo de perca (cabeza corta, cuerpo alto) |
+| gargantua-de-ceniza | losas de canto en cresta; flancos acanalados; colores crema y gris | el ancla de r16 | **igual** (2.ª ronda) | la misma bestia acorazada de r16 con las losas lisas como baldosas; ni la cresta de canto ni la roca nudosa del banner; con s3 repite el encuadre de r16 |
+| cruzavientos | envergadura 3,5; cabeza 2/3 del torso; hueso gris en vez de marfil; cuerpo umbra | el ancla de r16 | **igual** (2.ª ronda) | águila con cresta pálida en las dos semillas; la cabeza oscura acorazada del banner no aparece, y las medidas no cambian la silueta del ancla |
+
+- **F10 funciona cuando la medida cambia la clase o la vista**: el guchapo sale al pedir la vista del banner (frontal)
+  y no la de la tabla de pose; la morvasa, al describir la pila con grosores medidos; la espina, al sustituir la forma
+  de la cochinilla por lo que mide el banner (estrecho, en cuña, surcos). Tres de seis se leen como su banner (r16: cero).
+- **F10 no mueve una silueta que ya es la del ancla**: gargantúa y cruzavientos repiten r16 con otras cifras y otros
+  colores; con la misma semilla, hasta el encuadre. Dos rondas sin mejora: los dos salen del banco por prompt y pasan al
+  boceto por plan corporal (`IMG-24`, R2). Es la señal de que en estas dos la forma es trabajo del boceto, no del texto.
+- **Dos semillas sí enseñan algo**: en morvasa la s7 apila y la s3 tiende; en el resto las dos semillas coinciden en la
+  clase, así que el veredicto no depende de la semilla (R1 ✅).
+- **El color medido con la luz descontada acierta** (espina, morvasa, guchapo): sin «marfil», sin el naranja del
+  atardecer; entra como F10b. **La vista del banner manda sobre la tabla de pose** cuando no es de perfil: F10c.
+- **Lo que queda en las tres que se leen como su banner es acabado, no forma**: ojos grandes del guchapo, el aguijón de
+  la espina y su acabado plástico. Eso no es trabajo del banco (R3): queda para la interfaz (`IMG-25`) o la receta final.
+- **Las diez dificultades de [`r17-forma.md`](r17-forma.md)**: 1 y 2 entran como F10b y F10c; 3 (qué denominador),
+  4 (qué cifras distingue el modelo), 5 (cuándo parecer el animal por defecto vale), 7 (contar hasta 3-4) y 9 (dos
+  materiales en una pieza) van a «Abierto» de `pautas.md`; 6, 8 y 10 ya estaban.
+- **Siguiente (R2): r18 solo con jusha** (mejora, pero no llega), y espina si se quiere afinar el aguijón; con cuatro
+  de seis se cierra `IMG-21` (R3). Gargantúa y cruzavientos esperan a `IMG-24`.
