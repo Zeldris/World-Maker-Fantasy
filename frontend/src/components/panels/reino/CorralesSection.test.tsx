@@ -107,3 +107,24 @@ describe('CorralesSection — guardias y Domadora (CR-56)', () => {
     expect(postDevolverAlCorral).toHaveBeenCalledWith('s1', 'c9')
   })
 })
+
+describe('CorralesSection — el atado de la Jaula (P346)', () => {
+  afterEach(() => {
+    cleanup()
+    vi.clearAllMocks()
+  })
+
+  it('enseña quién espera atado en cada Jaula y cuál está vacía', async () => {
+    vi.mocked(getCorrales).mockResolvedValue({
+      ...datos,
+      jaulas: [
+        { id: 'j1', name: 'Jaula grande', tamano: 'GRANDE', ocupante: { npcSlug: 'corretolvas', name: 'Corretolvas', tipo: 'FAUNA', felicidad: 15 } },
+        { id: 'j2', name: 'Jaula pequeña', tamano: 'PEQUENA', ocupante: null },
+      ],
+    })
+    const { findByText, getByText } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await findByText('Jaula grande')
+    expect(getByText('Corretolvas')).toBeTruthy()
+    expect(getByText('Vacía')).toBeTruthy()
+  })
+})

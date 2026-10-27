@@ -14,7 +14,7 @@ import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
-import { fichaDeEdificioParaPanel } from '../../services/construction.js';
+import { edificiosParaCliente } from '../../services/edificiosParaCliente.js';
 import { comidaPct, aguaPct, avisoCarenciaPersonaje, carenciaPersonaje } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
@@ -29,7 +29,6 @@ import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
-import { costeDeReparar } from '../../services/asaltos.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
@@ -502,19 +501,7 @@ export async function detailRoutes(app: FastifyInstance) {
         control: t.control,
         population: t.population,
       })),
-      buildings: save.buildings.map((b) => fichaDeEdificioParaPanel({
-        id: b.id,
-        territoryId: b.territoryId,
-        locationId: b.locationId,
-        recipeKey: b.recipeKey,
-        tier: b.tier,
-        name: b.name,
-        kind: b.kind,
-        status: b.status,
-        caida: b.caida,
-        costeReparar: b.status === 'DANADO' || b.caida ? costeDeReparar(b.recipeKey, b.tier) : null,
-        description: b.description,
-      })),
+      buildings: await edificiosParaCliente(prisma, save.id, save.buildings),
       subjects: save.subjects.map((s) => ({
         id: s.id,
         territoryId: s.territoryId,

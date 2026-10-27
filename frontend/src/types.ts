@@ -822,6 +822,16 @@ export interface BuildingInfo {
   /// P284: materiales que cuesta repararlo; null si no hace falta.
   costeReparar?: number | null
   description: string
+  /// P346: quien está atado en esta Jaula (null si no es Jaula o está vacía).
+  ocupante?: OcupanteJaula | null
+}
+
+/// P346: el atado de una Jaula (lo manda el backend, `ocupantesDeJaulas`).
+export interface OcupanteJaula {
+  npcSlug: string
+  name: string
+  tipo: 'FAUNA' | 'NPC'
+  felicidad: number
 }
 
 export interface SubjectInfo {

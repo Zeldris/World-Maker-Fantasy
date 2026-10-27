@@ -52,6 +52,7 @@ import type {
   SubjectInfo,
   TerritoryInfo,
   ZonaParcelaInfo,
+  OcupanteJaula,
 } from '../types'
 import { leerTarkor } from './empaquetado'
 
@@ -1647,6 +1648,8 @@ export interface CorralesInfo {
   diasSinBeber: number
   /// CR-56 (Q4): compañeros animales que pueden volver al corral.
   fueraDelCorral?: { id: string; name: string }[]
+  /// P346: las Jaulas del Reino con quien espera atado en ellas.
+  jaulas?: { id: string; name: string; tamano: 'PEQUENA' | 'MEDIANA' | 'GRANDE'; ocupante: OcupanteJaula | null }[]
   corrales: CorralInfo[]
 }
 // CR-63 (63d): Reino › Partidas — partidas de caza y captura.

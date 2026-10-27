@@ -76,6 +76,27 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
         )}
       </PanelSection>
 
+      {(datos.jaulas?.length ?? 0) > 0 && (
+        <PanelSection title="Jaulas">
+          <ul className="flex flex-col gap-1">
+            {datos.jaulas!.map((j) => (
+              <li key={j.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
+                <span>{j.name}</span>
+                <span className="text-2xs text-wood-400">
+                  {j.ocupante ? (
+                    <>
+                      Atado: <span className="text-accent-300">{j.ocupante.name}</span> · Felicidad <span className="font-mono tabular-nums">{j.ocupante.felicidad}</span>
+                    </>
+                  ) : (
+                    'Vacía'
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </PanelSection>
+      )}
+
       <PanelSection title="Corrales">
         {datos.corrales.length === 0 && <p className="text-xs text-wood-500">Aún no tienes corrales del Ganadero. Constrúyelos en Edificios y lleva allí los animales que domestiques.</p>}
         <div className="flex flex-col gap-3">

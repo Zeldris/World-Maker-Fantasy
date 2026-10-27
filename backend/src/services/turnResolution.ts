@@ -55,7 +55,7 @@ import { energiaMaxFor, energiaPasivaEntre, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import { CRAFTING_RECIPES, objetoFabricado, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
-import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, fichaDeEdificioParaPanel, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
+import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { abilityUnlocksAlSubirANivel, savedActionDataFromAbility } from './classAbilities.js';
@@ -75,6 +75,7 @@ import { detectsSearchIntent } from './discovery.js';
 import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
 import { nextCondicionFisica, resolveDeathOutcome, whisperText, isValidRestLocationKind, isCondicionDowngrade, nextCondicionForAttack, saludForCondicion, saludBandFor, healCeilingFor, applySequentialHeals, npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js';
 import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct, COMIDA_MINUTOS_POR_TRAMO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
+import { edificiosParaCliente } from './edificiosParaCliente.js';
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
@@ -7359,17 +7360,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     control: t.control,
     population: t.population,
   }));
-  const buildings = buildingRows.map((b) => fichaDeEdificioParaPanel({
-    id: b.id,
-    territoryId: b.territoryId,
-    locationId: b.locationId,
-    recipeKey: b.recipeKey,
-    tier: b.tier,
-    name: b.name,
-    kind: b.kind,
-    status: b.status,
-    description: b.description,
-  }));
+  const buildings = await edificiosParaCliente(prisma, saveId, buildingRows);
   const subjects = subjectRows.map((s) => ({ id: s.id, territoryId: s.territoryId, name: s.name, role: s.role, notes: s.notes }));
   const kingdomStats = kingdomStatsRow ? kingdomStatsParaCliente(kingdomStatsRow) : null;
 

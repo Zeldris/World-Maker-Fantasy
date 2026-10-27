@@ -114,3 +114,17 @@ describe('P278 — la lista distingue cada edificio y cuántos hay', () => {
     expect(queryByText(/n\.º/)).toBeNull()
   })
 })
+
+describe('P346 — la tarjeta de la Jaula enseña a quien tiene atado', () => {
+  afterEach(cleanup)
+
+  it('con ocupante dice quién y su Felicidad; sin él no dice nada', () => {
+    const buildings = [
+      { id: 'j1', recipeKey: 'jaula-grande', name: 'Jaula grande', kind: 'jaula-grande', status: 'ACTIVO', description: 'x', ocupante: { npcSlug: 'corretolvas', name: 'Corretolvas', tipo: 'FAUNA', felicidad: 15 } },
+      { id: 'j2', recipeKey: 'jaula-pequena', name: 'Jaula pequeña', kind: 'jaula-pequena', status: 'ACTIVO', description: 'x', ocupante: null },
+    ] as unknown as BuildingInfo[]
+    const { getAllByText, getByText } = render(<EdificiosParcelasSection buildings={buildings} recipesStatus={[]} onBuild={() => {}} />)
+    expect(getByText(/Atado: Corretolvas/)).toBeTruthy()
+    expect(getAllByText(/Atado:/)).toHaveLength(1)
+  })
+})

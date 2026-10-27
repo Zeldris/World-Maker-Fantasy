@@ -148,8 +148,42 @@ export async function jaulasLibresPara(tx: Prisma.TransactionClient, saveId: str
     .sort((a, b) => JAULA_ORDEN.indexOf(tamano(a.recipeKey)) - JAULA_ORDEN.indexOf(tamano(b.recipeKey)));
 }
 
+/// P346: el atado que ocupa una Jaula, para enseñarlo en su tarjeta (Reino › Edificios) y en Reino › Corrales.
+export interface OcupanteDeJaula {
+  npcSlug: string;
+  name: string;
+  tipo: 'FAUNA' | 'NPC';
+  felicidad: number;
+}
+
+/// Ocupante de cada Jaula de la partida, por id de edificio (1 por Jaula). Misma fuente que `jaulasLibresPara`
+/// (`NpcState.capturaJaulaBuildingId`), solo lectura: sirve a todos los caminos que mandan los edificios al cliente.
+export async function ocupantesDeJaulas(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<Map<string, OcupanteDeJaula>> {
+  const estados = await db.npcState.findMany({
+    where: { saveId, capturado: true, capturaJaulaBuildingId: { not: null } },
+    select: { npcId: true, capturaFelicidad: true, capturaJaulaBuildingId: true },
+  });
+  if (estados.length === 0) return new Map();
+  const npcs = await db.npc.findMany({ where: { id: { in: estados.map((e) => e.npcId) } }, select: { id: true, slug: true, name: true, ataqueNatural: true } });
+  const porId = new Map(npcs.map((n) => [n.id, n]));
+  const mapa = new Map<string, OcupanteDeJaula>();
+  for (const e of estados) {
+    const npc = porId.get(e.npcId);
+    if (!npc || !e.capturaJaulaBuildingId) continue;
+    mapa.set(e.capturaJaulaBuildingId, { npcSlug: npc.slug, name: npc.name, tipo: npc.ataqueNatural !== null ? 'FAUNA' : 'NPC', felicidad: e.capturaFelicidad });
+  }
+  return mapa;
+}
+
+/// P346: las Jaulas activas del Reino con su atado, para Reino › Corrales (donde el atado espera a que lo domes).
+export async function jaulasDelReino(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<{ id: string; name: string; tamano: JaulaTamano; ocupante: OcupanteDeJaula | null }[]> {
+  const jaulas = await db.building.findMany({ where: { saveId, status: 'ACTIVO', recipeKey: { in: JAULA_KEYS } }, select: { id: true, name: true, recipeKey: true }, orderBy: { createdAt: 'asc' } });
+  const ocupantes = await ocupantesDeJaulas(db, saveId);
+  return jaulas.map((j) => ({ id: j.id, name: j.name, tamano: JAULA_ORDEN[JAULA_KEYS.indexOf(j.recipeKey ?? '')] ?? 'PEQUENA', ocupante: ocupantes.get(j.id) ?? null }));
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// Rediseño de captura (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — la captura se
+// Rediseño de captura (2026-08-28,docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — la captura se
 // materializa como InventoryItem en tránsito (ver `InventoryItem.capturaNpcId`, schema.prisma) en
 // vez de vivir in-situ en NpcState. Slots que ocupa en el inventario y plazo de expiración antes de
 // depositarla en Jaula/Celda de Retención.
