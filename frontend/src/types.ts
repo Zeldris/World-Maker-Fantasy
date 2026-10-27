@@ -1058,6 +1058,8 @@ export interface NpcInSceneInfo {
   huido?: boolean
   /// CR-45: es el capitán de su bando y manda caer sobre este (`'ti'` o el nombre de un compañero).
   ordenaCaerSobre?: string
+  /// P353/P356: con varios rivales, `'duelo'` es contra quien te enfrentas de verdad esta ronda y `'de-paso'` quien te golpea sin tirada tuya.
+  frenteATi?: 'duelo' | 'de-paso'
   // Estado real de NpcState al empezar este combate (2026-07-19) — evita que el popup asuma
   // siempre ILESO/sin saquear para un NPC que ya venía herido o saqueado de un encuentro anterior.
   condicionFisica: CondicionFisica

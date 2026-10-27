@@ -865,6 +865,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
             // CR-45: la orden del capitán cambia cada ronda; manda siempre la del backend.
             const actual = bySlug.get(key)!
             if (actual.ordenaCaerSobre !== real.ordenaCaerSobre) bySlug.set(key, { ...actual, ordenaCaerSobre: real.ordenaCaerSobre })
+            // P353/P356: igual, el duelo de la ronda lo manda siempre el backend.
+            const trasOrden = bySlug.get(key)!
+            if (trasOrden.frenteATi !== real.frenteATi) bySlug.set(key, { ...trasOrden, frenteATi: real.frenteATi })
           }
           return Array.from(bySlug.values())
         })

@@ -25,7 +25,7 @@ import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
-import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
+import { marcaDelCapitan, marcasDeEnfrentamiento } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
@@ -295,6 +295,7 @@ export async function detailRoutes(app: FastifyInstance) {
     );
     // CR-45: la marca del capitán también tras recargar.
     const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
+    const marcasEnfrentamiento = activeCombatEncounter ? await marcasDeEnfrentamiento(prisma, save.id, activeCombatEncounter.id) : new Map<string, 'duelo' | 'de-paso'>();
     // P327: en el combate, un PRINCIPAL aún desconocido sigue siendo «el orco desconocido».
     const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, save.id, [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]);
     // P354: «#N» por el nombre que se muestra (el visible), igual que el turno y `resolverObjetivoPorTexto`.
@@ -325,6 +326,8 @@ export async function detailRoutes(app: FastifyInstance) {
               instanceNumber: combatInstanceNumberByParticipantId.get(p.id) ?? null,
               ...(p.huido ? { huido: true } : {}),
               ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
+              // P353/P356: con quién te enfrentas (tu duelo) y quién te golpea de paso.
+              ...(marcasEnfrentamiento.get(p.id) ? { frenteATi: marcasEnfrentamiento.get(p.id) } : {}),
             };
           }),
         }

@@ -236,6 +236,18 @@ export function instanceNumbersByParticipantId(combatientes: { participantId: st
   return resultado;
 }
 
+/// P353/P356 (opción A de la usuaria, 2026-10-27): la línea de la ronda que dice con quién se enfrenta de verdad la
+/// jugadora cuando hay varios rivales. `duelo` y `dePaso` ya vienen con su nombre en frase («el Orco», «Faerus desconocida»).
+/// Elegido por cita: «Te enfrentas a X». Elegido por el rival (el primero que la reclamó): «X te ha elegido: te defiendes de él».
+/// Los demás que la reclamaban: «Y te golpea de paso» / «Y y Z te golpean de paso».
+export function textoConQuienTeEnfrentas(p: { duelo: string; dueloFemenino?: boolean; eligio: boolean; dePaso: string[] }): string {
+  const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const base = p.eligio ? `Te enfrentas a ${p.duelo}` : `${mayuscula(p.duelo)} te ha elegido: te defiendes de ${p.dueloFemenino ? 'ella' : 'él'}`;
+  if (p.dePaso.length === 0) return `${base}.`;
+  const lista = p.dePaso.length === 1 ? p.dePaso[0] : `${p.dePaso.slice(0, -1).join(', ')} y ${p.dePaso[p.dePaso.length - 1]}`;
+  return `${base}; ${lista} te ${p.dePaso.length === 1 ? 'golpea' : 'golpean'} de paso.`;
+}
+
 export interface CandidatoObjetivoPorTexto {
   participantId: string;
   npcId: string | null;

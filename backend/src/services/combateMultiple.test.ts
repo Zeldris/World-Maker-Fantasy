@@ -14,6 +14,7 @@ import {
   instanceNumbersByParticipantId,
   resolverObjetivoPorTexto,
   resolverCitaPorTexto,
+  textoConQuienTeEnfrentas,
   esUnoContraVarios,
   INTELIGENCIA_TACTICA_UMBRAL,
   MAX_COMBATIENTES_POR_BANDO,
@@ -1109,5 +1110,19 @@ describe('resolverCitaPorTexto (P353)', () => {
     expect(resolverCitaPorTexto('ataco', candidatos, nombres, norm)).toBeUndefined();
     expect(resolverCitaPorTexto("ataco contra 'Nadie'", candidatos, nombres, norm)).toBeUndefined();
     expect(resolverObjetivoPorTexto("ataco contra 'Nadie'", candidatos, nombres, norm)).toBe('p1');
+  });
+});
+
+describe('textoConQuienTeEnfrentas (P353/P356, opción A de la usuaria)', () => {
+  it('si ella eligió, dice contra quién se enfrenta y quién la golpea de paso', () => {
+    expect(textoConQuienTeEnfrentas({ duelo: 'la faerus desconocida', eligio: true, dePaso: ['el Orco'] })).toBe(
+      'Te enfrentas a la faerus desconocida; el Orco te golpea de paso.',
+    );
+  });
+  it('si no eligió, dice quién la ha elegido y de quién se defiende (género y plural)', () => {
+    expect(textoConQuienTeEnfrentas({ duelo: 'el Orco', eligio: false, dePaso: [] })).toBe('El Orco te ha elegido: te defiendes de él.');
+    expect(textoConQuienTeEnfrentas({ duelo: 'la Faerus', dueloFemenino: true, eligio: false, dePaso: ['el Orco', 'Hulki'] })).toBe(
+      'La Faerus te ha elegido: te defiendes de ella; el Orco y Hulki te golpean de paso.',
+    );
   });
 });

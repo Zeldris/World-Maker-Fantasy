@@ -15,12 +15,14 @@ import {
   objetivosExtraFor,
   resolverEnganchesRonda,
   esUnoContraVarios,
+  textoConQuienTeEnfrentas,
+  instanceNumbersByParticipantId,
   resolverIntercambioCompleto,
   type Bando,
   type ObjetivoCandidato,
   type HabilidadParaIntercambio,
 } from './combateMultiple.js';
-import { nombreVisibleDeNpc } from './dynamicMode.js';
+import { nombreVisibleDeNpc, nombresVisiblesDeNpcs, conDefinido } from './dynamicMode.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, type NpcCombatAbility, type NpcForCombatAbilities } from './npcCombatAbilities.js';
 import { narrarTurnoCombateMultiple } from './combateMultipleNarracion.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
@@ -2605,4 +2607,79 @@ export async function marcaDelCapitan(
   const companero = await db.companion.findUnique({ where: { id: objetivo.companionId }, select: { name: true, condicionFisica: true } });
   if (!companero || caido(companero.condicionFisica)) return null;
   return { capitanId: capitan.id, ordenaCaerSobre: companero.name };
+}
+
+/// P353/P356: con quién se enfrenta la jugadora esta ronda. `duelo` es el rival cuyo duelo es el suyo (se miran
+/// mutuamente); `dePaso`, los que la tienen de objetivo sin ser su duelo (golpe gratis). Solo cuenta quien sigue en pie.
+/// Null si no hay duelo o si queda un solo rival (nada que aclarar).
+export async function enfrentamientoDeLaJugadora(
+  db: PrismaClient | Prisma.TransactionClient,
+  saveId: string,
+  encounterId: string,
+): Promise<{ duelo: string; dePaso: string[]; rivales: { id: string; npcId: string }[] } | null> {
+  const participantes = await db.combatParticipant.findMany({ where: { encounterId } });
+  const jugadora = participantes.find((p) => p.tipo === 'JUGADOR');
+  if (!jugadora?.objetivoActualId) return null;
+  const rivalesNpc = participantes.filter((p) => p.bando !== jugadora.bando && p.tipo === 'NPC' && p.npcId && !p.huido);
+  const sueltos = rivalesNpc.filter((p) => p.condicionFisicaGrupo === null).map((p) => p.npcId!);
+  const estados = sueltos.length ? await db.npcState.findMany({ where: { saveId, npcId: { in: sueltos } }, select: { npcId: true, condicionFisica: true } }) : [];
+  const condicionSuelta = new Map(estados.map((e) => [e.npcId, e.condicionFisica]));
+  const vivos = rivalesNpc.filter((p) => {
+    const c = p.condicionFisicaGrupo ?? condicionSuelta.get(p.npcId!) ?? 'ILESO';
+    return c !== 'CONVALECIENTE' && c !== 'MUERTO';
+  });
+  if (vivos.length < 2) return null;
+  const duelo = vivos.find((p) => p.id === jugadora.objetivoActualId && p.objetivoActualId === jugadora.id);
+  if (!duelo) return null;
+  return {
+    duelo: duelo.id,
+    dePaso: vivos.filter((p) => p.id !== duelo.id && p.objetivoActualId === jugadora.id).map((p) => p.id),
+    rivales: vivos.map((p) => ({ id: p.id, npcId: p.npcId! })),
+  };
+}
+
+/// Panel: `'duelo'` / `'de-paso'` por participante rival (P353/P356). Vacío si no hay nada que aclarar.
+export async function marcasDeEnfrentamiento(
+  db: PrismaClient | Prisma.TransactionClient,
+  saveId: string,
+  encounterId: string,
+): Promise<Map<string, 'duelo' | 'de-paso'>> {
+  const f = await enfrentamientoDeLaJugadora(db, saveId, encounterId);
+  const marcas = new Map<string, 'duelo' | 'de-paso'>();
+  if (!f) return marcas;
+  marcas.set(f.duelo, 'duelo');
+  for (const id of f.dePaso) marcas.set(id, 'de-paso');
+  return marcas;
+}
+
+/// La línea de la ronda con quién se enfrenta la jugadora (null si no hay varios rivales o no hay duelo).
+/// `eligio`: lo decidió ella citando a un rival; si no, el duelo es el del primero que la reclamó.
+export async function textoEnfrentamientoRonda(params: {
+  db: PrismaClient | Prisma.TransactionClient;
+  saveId: string;
+  encounterId: string;
+  eligio: boolean;
+}): Promise<string | null> {
+  const { db, saveId, encounterId, eligio } = params;
+  const f = await enfrentamientoDeLaJugadora(db, saveId, encounterId);
+  if (!f) return null;
+  const npcs = await db.npc.findMany({
+    where: { id: { in: f.rivales.map((r) => r.npcId) } },
+    select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, articulo: true },
+  });
+  const npcPorId = new Map(npcs.map((n) => [n.id, n]));
+  const visiblePorSlug = await nombresVisiblesDeNpcs(db, saveId, npcs);
+  const nombreDe = (n: (typeof npcs)[number]) => visiblePorSlug.get(n.slug) ?? n.name;
+  const numeros = instanceNumbersByParticipantId(
+    f.rivales.filter((r) => npcPorId.has(r.npcId)).map((r) => ({ participantId: r.id, npcId: r.npcId, nombre: nombreDe(npcPorId.get(r.npcId)!) })),
+  );
+  const enFrase = (participantId: string): string => {
+    const r = f.rivales.find((x) => x.id === participantId)!;
+    const n = npcPorId.get(r.npcId)!;
+    const visible = nombreDe(n);
+    const numero = numeros.get(participantId);
+    return `${conDefinido(visible, visible === n.name ? n.articulo : null)}${numero ? ` #${numero}` : ''}`;
+  };
+  const nDuelo = npcPorId.get(f.rivales.find((r) => r.id === f.duelo)!.npcId)!;
+  return textoConQuienTeEnfrentas({ duelo: enFrase(f.duelo), dueloFemenino: nDuelo.genero === 'F', eligio, dePaso: f.dePaso.map(enFrase) });
 }

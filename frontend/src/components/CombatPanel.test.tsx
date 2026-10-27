@@ -1,4 +1,4 @@
-import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import { setFactorDados } from '../lib/duracionTirada'
 import { CombatPanel } from './CombatPanel'
@@ -96,5 +96,36 @@ describe('CombatPanel: iniciativa repetida con las mismas tiradas (P288)', () =>
     const sano = { ...orco(false), condicion: 'ILESO' } as CombatNpcDisplay
     render(panel([sano], tirada(), true))
     expect(montajesDados.n).toBe(1)
+  })
+})
+
+// P353/P356 (opción A de la usuaria): el panel dice contra quién te enfrentas de verdad y quién te golpea de paso.
+describe('CombatPanel: con quién te enfrentas (P353/P356)', () => {
+  const rival = (slug: string, name: string, frenteATi?: 'duelo' | 'de-paso'): CombatNpcDisplay =>
+    ({ ...orco(false), slug, name, condicion: 'ILESO', participantId: `p-${slug}`, ...(frenteATi ? { frenteATi } : {}) }) as CombatNpcDisplay
+
+  beforeEach(() => {
+    // jsdom no tiene estos métodos: se ponen solo durante estos tests.
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+  })
+
+  it('marca tu duelo y a quien te golpea de paso, cada uno en su rival', () => {
+    render(panel([rival('orco', 'El Orco', 'de-paso'), rival('faerus', 'Faerus desconocida', 'duelo')]))
+    const duelo = screen.getByTestId('combate-frente-duelo')
+    const dePaso = screen.getByTestId('combate-frente-de-paso')
+    expect(duelo.closest('div')?.textContent).toContain('Faerus desconocida')
+    expect(dePaso.closest('div')?.textContent).toContain('El Orco')
+    expect(dePaso.closest('div')?.textContent).not.toContain('Faerus')
+  })
+
+  it('sin marca (un solo rival o sin duelo), no pinta nada', () => {
+    render(panel([rival('orco', 'El Orco')]))
+    expect(screen.queryByTestId('combate-frente-duelo')).toBeNull()
+    expect(screen.queryByTestId('combate-frente-de-paso')).toBeNull()
   })
 })

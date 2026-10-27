@@ -88,7 +88,7 @@ import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
 import { nombrarOferta } from './ofertaNombre.js';
 import { narradorPuedeCerrar } from './startingQuests.js';
-import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, marcasDeEnfrentamiento, textoEnfrentamientoRonda, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverCitaPorTexto, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
@@ -2135,6 +2135,7 @@ export async function vistaCombateDeGrupo(saveId: string, encounterId: string, t
       return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
     }),
   );
+  const marcasEnfrentamiento = terminado ? new Map<string, 'duelo' | 'de-paso'>() : await marcasDeEnfrentamiento(prisma, saveId, encounterId);
   const npcs = enemigosParaDisplay.map((p) => {
     const npcRow = npcRowById.get(p.npcId!)!;
     const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
@@ -2156,6 +2157,8 @@ export async function vistaCombateDeGrupo(saveId: string, encounterId: string, t
       // CR-44 (44c): escapó; el panel lo da por resuelto.
       ...(p.huido ? { huido: true } : {}),
       ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
+      // P353/P356: con quién te enfrentas (tu duelo) y quién te golpea de paso.
+      ...(marcasEnfrentamiento.get(p.id) ? { frenteATi: marcasEnfrentamiento.get(p.id) } : {}),
     };
   });
   await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
@@ -4615,6 +4618,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // dejaría un golpe real sin poder deshacerlo. Ver comentario largo de
     // `esperandoEleccionJugadora` en schema.prisma.
     const encounterFresco = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    let eleccionPropiaDeLaJugadora = false;
     if (encounterFresco.esperandoEleccionJugadora) {
       // Mismo criterio de siempre: nombre citado entre comillas contra los ENEMIGO vivos; sin cita
       // real o sin match, cae al primer enemigo vivo (nunca se queda sin elegir).
@@ -4654,8 +4658,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // P353 (regla B): en 1 contra varios solo una cita real gana el duelo; el primer vivo por defecto no.
         const citaValida = resolverCitaPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId) !== undefined;
         await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId, citaValida });
+        eleccionPropiaDeLaJugadora = citaValida;
       }
     }
+    // P353/P356: con varios rivales, la ronda dice con quién se enfrenta de verdad y quién la golpea de paso.
+    const textoEnfrentamiento = await textoEnfrentamientoRonda({ db: prisma, saveId, encounterId, eligio: eleccionPropiaDeLaJugadora });
+    if (textoEnfrentamiento) narraciones.push(textoEnfrentamiento);
 
     // Turnos autónomos pendientes de esta ronda (ahora ya con el enganche fijo) hasta que le toca
     // a la jugadora — cubre también el caso defensivo de un reinicio de backend a media ronda.

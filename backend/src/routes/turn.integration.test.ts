@@ -9487,6 +9487,43 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     expect(body.classification).toBeDefined();
     await app.close();
   }, 30_000);
+
+  // P353/P356 (regla B de la usuaria, 2026-10-27): 1 contra 2 rivales sin descubrir; ella cita a uno y ese es su duelo
+  // aunque el otro la reclamara antes. El turno completo (clasificar + narrar) lo dice en la ronda y no lo bloquea
+  // por «nombre inventado» (camino de reserva de `detectNpcsInScene` con `enCombateCon`, P344).
+  it('1 contra 2: la cita «contra \'Faerus desconocida\'» es su duelo y el otro rival la golpea de paso', async () => {
+    const saveId = await partida('Gorhorn de prueba (P353)', false);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const ulkha = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const hulki = await prisma.npc.findFirstOrThrow({ where: { slug: 'hulki', saveId: null } });
+    await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: { in: ['ulkha-ketg', 'hulki'] } } });
+    const miembro = (n: typeof hulki) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro(ulkha), miembro(hulki)]);
+    expect(abierto).not.toBeNull();
+    // Sin aliados vivos y con 2 rivales, la ronda espera la cita de la jugadora aunque ya la hayan reclamado.
+    expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: abierto!.encounterId } })).esperandoEleccionJugadora).toBe(true);
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = "Golpeo con el arma, contra 'Faerus desconocida'.";
+    const app = await buildApp();
+    const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as {
+      blocked?: { narration: string }; classification?: unknown; roll?: unknown;
+    };
+    expect(clasificado.blocked?.narration).toBeUndefined();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    await app.close();
+    classifyAction.mockReset();
+    const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
+    expect(narracion).toMatch(/Te enfrentas a la faerus desconocida; .+ te golpea de paso\./);
+    // El otro rival (no el citado) es quien la golpea de paso: aparece con su nombre visible tras «;».
+    const otro = narracion.split('; ')[1] ?? '';
+    expect(otro).not.toMatch(/faerus/i);
+  }, 60_000);
 });
 
 // P233 (pruebas 0.3, 2026-10-19): morir en un combate sin haber caído convaleciente EN ESE combate

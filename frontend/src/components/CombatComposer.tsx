@@ -23,6 +23,8 @@ export interface CombatNpcDisplay {
   huido?: boolean
   // CR-45: es el capitán y manda caer sobre este (`'ti'` o un compañero); cambia cada ronda.
   ordenaCaerSobre?: string
+  // P353/P356: tu duelo de la ronda, o quien te golpea de paso (cambia cada ronda).
+  frenteATi?: 'duelo' | 'de-paso'
   // Rediseño de "Matar" (2026-08-30, ver tarkor_rediseno_matar_combate_real_2026-08-30): pulsar
   // "Matar" ya NO remata directo — solo marca al NPC como objetivo elegido para desbloquear el
   // panel (`combatHasPendingConvalecientes`) y ocultar su tarjeta persistente del log, dejando que

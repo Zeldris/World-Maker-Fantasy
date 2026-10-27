@@ -546,6 +546,25 @@ export function CombatPanel({
                 ⚑ a por {npc.ordenaCaerSobre}
               </span>
             )}
+            {/* P353/P356: contra quién te enfrentas de verdad esta ronda y quién te golpea de paso. */}
+            {npc.frenteATi === 'duelo' && (
+              <span
+                data-testid="combate-frente-duelo"
+                className="rounded border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 text-2xs text-accent-200"
+                title="Tu duelo de esta ronda: te defiendes de este rival"
+              >
+                ⚔ tu duelo
+              </span>
+            )}
+            {npc.frenteATi === 'de-paso' && (
+              <span
+                data-testid="combate-frente-de-paso"
+                className="rounded border border-danger-600/50 bg-danger-500/10 px-1.5 py-0.5 text-2xs text-danger-200"
+                title="Te golpea de paso esta ronda: no es tu duelo"
+              >
+                te golpea de paso
+              </span>
+            )}
           </div>
         ))}
       </div>
