@@ -6,12 +6,13 @@
 #       trata cualquier fuerza casi como ruido total
 #   3 → armonización con el montaje como referencia (-r) y el prompt <ronda>-armonia-ref.txt
 # Entre las fases se mira el montaje y se ajusta HERO/MANADA (montar.sh) a la plancha. Lo que ya existe se salta.
-# Prompts: banco/prompts/<ronda>-{plancha,sujeto,armonia,armonia-ref}.txt. Imágenes: generated/banco/<ronda>-planos/.
+# Prompts: banco/prompts/<ronda>-{plancha,sujeto,armonia,armonia-ref}.txt. Imágenes: generated/banco/<ronda>-<CARPETA>/
+# (CARPETA=planos por defecto; el candidato a tamaño final de IMG-21 va en otra para no saltarse por el borrador).
 # r13 va a 1280x512 / 16 pasos; r14 es borrador (640x256, sujeto 512x192, 8 pasos) y el sujeto parte del boceto verde
 # (bocetos/rasterizar.sh) con FUERZA_BOCETO (0,97, IMG-19b). PW/PH, SW/SH, PASOS, BOCETO y TOPE lo cambian.
 set -euo pipefail
 R=$(cd "$(dirname "$0")/../../../.." && pwd); B=$R/docs/producto/plan-imagenes/banco
-RONDA=${RONDA:-r13}; D=$R/image-generator/generated/banco/$RONDA-planos; I=$D/intentos; P=$B/prompts/$RONDA
+RONDA=${RONDA:-r13}; D=$R/image-generator/generated/banco/$RONDA-${CARPETA:-planos}; I=$D/intentos; P=$B/prompts/$RONDA
 case $RONDA in
   r13) PW=${PW:-1280} PH=${PH:-512} SW=${SW:-1024} SH=${SH:-384} PASOS=${PASOS:-16} BOCETO=${BOCETO:-} ;;
   *) PW=${PW:-640} PH=${PH:-256} SW=${SW:-512} SH=${SH:-192} PASOS=${PASOS:-8}

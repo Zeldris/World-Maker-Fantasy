@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="512" viewBox="0 0 1280 512">
 <!-- Cuernahoja (IMG-18): esbelto y alto, cuello largo y fino casi vertical, cabeza pequena, cuernos-hoja color
-     hueso con nervios (envergadura ~media altura del animal, banner GPT), patas de ave (muslo corto, tarso larguisimo, corvejon hacia atras, pie de tres dedos). Cabeza girada a tres cuartos hacia quien
+     hueso con nervios (envergadura ~media altura del animal, banner GPT), patas de ave (muslo corto, tarso larguisimo, corvejon hacia atras, pie grande de tres dedos con garra). Cabeza girada a tres cuartos hacia quien
      mira (IMG-19c). Escena de dia. -->
 <defs><linearGradient id="cielo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fb8d8"/><stop offset="1" stop-color="#d8c8a8"/></linearGradient></defs>
 <rect class="fondo" width="1280" height="512" fill="url(#cielo)"/>
@@ -10,7 +10,7 @@
 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
 <path d="M672 296 L664 336 L690 384 L676 466" stroke="#c9a878" stroke-width="9"/>
 <path d="M836 294 L826 334 L852 382 L838 466" stroke="#c9a878" stroke-width="9"/>
-<path d="M676 466 L650 474 M676 466 L678 478 M676 466 L702 474 M838 466 L812 474 M838 466 L840 478 M838 466 L864 474" stroke="#c9a878" stroke-width="6"/>
+<path d="M676 466 L636 478 M676 466 L680 484 M676 466 L714 476 M838 466 L798 478 M838 466 L842 484 M838 466 L876 476" stroke="#c9a878" stroke-width="8"/>
 </g>
 <g transform="translate(0 -40)">
 <!-- cuerpo esbelto, lomo a ~57 % de la altura -->
@@ -24,8 +24,8 @@
 <g fill="none" stroke-linecap="round" stroke-linejoin="round">
 <path d="M606 330 L598 342 L630 388 L614 470" stroke="#d8c09a" stroke-width="11"/>
 <path d="M768 328 L760 340 L792 386 L776 470" stroke="#d8c09a" stroke-width="11"/>
-<path d="M614 470 L582 480 M614 470 L616 484 M614 470 L646 480 M776 470 L744 480 M776 470 L778 484 M776 470 L808 480" stroke="#d8c09a" stroke-width="8"/>
-<path d="M582 480 L574 483 M616 484 L616 491 M646 480 L654 483 M744 480 L736 483 M778 484 L778 491 M808 480 L816 483" stroke="#2d241a" stroke-width="5"/>
+<path d="M614 470 L566 484 M614 470 L618 492 M614 470 L660 482 M776 470 L728 484 M776 470 L780 492 M776 470 L822 482" stroke="#d8c09a" stroke-width="11"/>
+<path d="M566 484 L552 490 M618 492 L620 502 M660 482 L674 488 M728 484 L714 490 M780 492 L782 502 M822 482 L836 488" stroke="#2d241a" stroke-width="6"/>
 </g>
 <!-- cuello largo y fino, casi vertical -->
 <path d="M588 284 C578 230 566 165 552 100 L572 98 C586 165 604 225 622 268Z" fill="#a85c36"/>
