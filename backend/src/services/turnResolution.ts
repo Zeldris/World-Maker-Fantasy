@@ -6923,10 +6923,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // INS-34: el build empaquetado no captura (esbuild pliega la condición con `define` y el `import()` no entra en el
     // bundle). En desarrollo sigue siendo fire-and-forget: un fallo del import o de la captura no rompe el turno.
     if (process.env.TARKOR_EMPAQUETADO !== '1') {
+      const paramsCaptura = { saveId, worldId, ctx: narrationCtx, localNarration: narration, localModel: env.ollamaModelNarrador };
       void import('./liveTeacherCapture.js')
-        .then(({ captureLiveTeacherExample }) =>
-          captureLiveTeacherExample({ saveId, worldId, ctx: narrationCtx, localNarration: narration, localModel: env.ollamaModelNarrador }),
-        )
+        .then(({ captureLiveTeacherExample }) => captureLiveTeacherExample(paramsCaptura))
         .catch((err) => console.warn('[live-teacher-capture] falló la captura en vivo:', err));
     }
   }

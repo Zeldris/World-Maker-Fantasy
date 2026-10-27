@@ -845,7 +845,6 @@ export async function worldRoutes(app: FastifyInstance) {
           }
         }
 
-        const { generateImagePrompt } = await import('../services/imagePromptGenerator.js');
         const subject = await loreContextFor(world.id, entityType as ImagePromptEntityType, entitySlug);
         if (!subject) {
           return reply.status(404).send({ error: 'Entidad no encontrada en este mundo' });
@@ -860,6 +859,7 @@ export async function worldRoutes(app: FastifyInstance) {
         let prompt: string;
         let provider: string;
         try {
+          const { generateImagePrompt } = await import('../services/imagePromptGenerator.js');
           ({ prompt, provider } = await generateImagePrompt(
             entityType as ImagePromptEntityType,
             subject.name,
