@@ -89,7 +89,7 @@ desde el panel vive en tablas que siembran.
   cuartos (bocetos v2) y cuernos color hueso a 0,95.
 - **IMG-20 · Codificador de texto Q8 (opcional)** [A] (2026-10-26): A/B con la misma semilla tras `IMG-23`, con
   permiso para descargar 4,3 GB. **S**
-- **IMG-21 · Pautas con la fauna** [A] (2026-10-26; reorientada por la usuaria el 2026-10-27: «el objetivo es juntar
+- ~~**IMG-21 · Pautas con la fauna**~~ ✅ 2026-10-27 [A] (2026-10-26; reorientada por la usuaria el 2026-10-27: «el objetivo es juntar
   pautas y estándares para que mediante prompt seamos capaces de conseguir los resultados más cercanos a las imágenes
   de ref… no que estemos enfrascados en sacar imágenes ya finales»): borradores baratos en 6-8 especies con banner de
   planes corporales distintos, con prompts escritos por un agente desde [`pautas.md`](plan-imagenes/pautas.md) sin
@@ -103,8 +103,10 @@ desde el panel vive en tablas que siembran.
   (magenta y azul) y P7 (lienzo alto); pautas nuevas F6c, F7b, F10 (colores y proporción medidos en el banner) y R1
   (dos semillas). r17, F10 y dos semillas en las seis: guchapo, morvasa y espina se leen como su banner (la vista del
   banner, los grosores medidos y el color sin la luz: F10b, F10c); jusha mejora sin llegar; gargantúa y cruzavientos
-  repiten r16 y pasan al boceto por plan (`IMG-24`, R2). Falta: r18 solo con jusha (y espina si se afina el aguijón);
-  con cuatro de seis se cierra (R3).
+  repiten r16 y pasan al boceto por plan (`IMG-24`, R2). r18, solo jusha (R2): con la cabeza medida y un ancla de
+  cabeza roma se lee como su banner (la s7, con la dorsal del ancla). **Cerrada con cuatro de seis** (R3);
+  `pautas.md` v4 es la entrega. Queda fuera del banco: gargantúa y cruzavientos (`IMG-24`) y el acabado de las
+  cuatro (`IMG-25`, receta final).
 - **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27): 2-3 elementos con
   banner por tipo en borrador (cardo brújula y Pastos de la Deriva entre ellos); cada tipo, su sección de
   `pautas.md`. **M**

@@ -363,3 +363,28 @@ Semillas 3 y 7 (R1), 8 pasos, 512x192 salvo morvasa 384x320; fondos como en r16.
   materiales en una pieza) van a «Abierto» de `pautas.md`; 6, 8 y 10 ya estaban.
 - **Siguiente (R2): r18 solo con jusha** (mejora, pero no llega), y espina si se quiere afinar el aguijón; con cuatro
   de seis se cierra `IMG-21` (R3). Gargantúa y cruzavientos esperan a `IMG-24`.
+
+## r18 · Solo jusha, con ancla de cabeza roma y perfil de profundidad (`IMG-21`, 2026-10-27)
+
+Primera ronda con R2: una sola especie, la única de r17 que mejoraba sin llegar. `r18-sujetos.tsv`: un agente barato
+reescribió el prompt con [`pautas.md`](../pautas.md) v4 y el banner medido ([`r18-forma.md`](r18-forma.md)): cabeza tan
+honda como el cuerpo y en una sola línea hasta el hocico (F10), ancla bowfin por la cabeza roma (F6b/F6c: lucio,
+barracuda y gar traen hocico puntiagudo), huso con pedúnculo a un tercio de la profundidad, dorsal espinosa en la mitad
+del lomo, colores de r17 (la media del banner, a luminancia ~20/255, no distingue verde de azul: F10b no llega ahí).
+Semillas 3 y 7, 374-375 s cada una, memoria libre mínima 3,4 GB (con el narrador de Ollama descargado). Rejilla
+r18 s3 / r18 s7 / r17 s7 / banner en `generated/banco/r18-sujetos-jusha-esmeralda/rejilla.png`.
+
+| Semilla | Se lee como | Frente a r17 | Lo que pasa |
+|---|---|---|---|
+| 3 | **su banner** | mejora clara | huso con cabeza larga y roma que baja en una línea al hocico, dientes, banda azul, dorsal de púas altas en la mitad del lomo, pedúnculo estrecho; más esbelto que el banner, que es más macizo y rugoso |
+| 7 | a medias | mejora de silueta | el mismo huso y la misma cabeza, pero la dorsal sale blanda y corta, al final del lomo (la del bowfin, que `r18-forma.md` ya daba como riesgo): un salmón con dientes |
+
+- **La cabeza se movió por la medida y el ancla a la vez**: «as deep as the body, one smooth line to the snout» más
+  el bowfin quitan la perca en las dos semillas. Con una sola ronda no se sabe cuál de las dos lo hizo (dificultad 4 de
+  `r18-forma.md`); no hace falta saberlo para la pauta: F6b + F10 juntas.
+- **El ancla deja su firma en una de dos semillas** (R1 sirvió para verlo): la dorsal larga y blanda del bowfin sale
+  en la s7 aunque el prompt mida la dorsal espinosa. Un ancla con un rasgo que la referencia no tiene es una apuesta
+  por semilla; entra como nota en F6c.
+- **Cuatro de seis se leen como su banner** (guchapo, morvasa, espina, jusha): se cierra `IMG-21` (R3). Lo que
+  queda no es del banco: gargantúa y cruzavientos, al boceto por plan corporal (`IMG-24`); el acabado de las cuatro
+  (ojos, aguijón, plástico, masa del pez), a la interfaz (`IMG-25`) y a la receta final.

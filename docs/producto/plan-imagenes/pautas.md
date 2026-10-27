@@ -1,6 +1,6 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
-**Versión:** 4 (r17; v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27).
+**Versión:** 4 (r17 y r18; v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner.
 
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
@@ -38,8 +38,8 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 | F4 | **Un rasgo pequeño necesita sitio en la imagen**: a 512 px de ancho del sujeto, unos pies o unos ojos no se pueden juzgar. Se pide «clearly visible» y se juzga en un recorte o a tamaño final. | 🔬 | r14: los pies de ave del cuernahoja no se leen a 512 |
 | F5 | **Para forma rara, plantilla de boceto** como `--init-img` a 0,95-0,97 con `strength_as_noise_level=true`; por debajo de ~0,92 el resultado sale plano como el dibujo. **El boceto manda sobre el prompt**: si dibuja la cabeza de perfil, el prompt de tres cuartos no la gira. | ✅ | `IMG-19b` (escalera 0,75-0,97) y bocetos v2 |
 | F6 | **El ancla se nombra una vez, con su diferencia** («only gaunter and wilder»); si no, el modelo pinta el animal real (zorro, carnero). | ✅ | r12 |
-| F6b | **El ancla se elige por silueta, porque gana a su diferencia**: «only thicker», «only with a heavier head» o «only far rounder» casi no mueven la forma. Sirve el animal que ya tiene la silueta de la referencia; si lo que define a la criatura es justo la diferencia, se busca otra ancla que la tenga o se describe el plan corporal sin ancla. | ✅ | r15: correcaminos acierta; black bass, rinoceronte y rana toro salen tal cual. r16: el gargantúa sin ancla deja de ser rinoceronte |
-| F6c | **Sin ancla, lo que queda no puede ser la firma de otro animal**: el plan corporal genérico funciona («barrel-shaped body, pillar-like legs»), pero unos ojos saltones con lengua llaman al sapo y un «pez de río de cuerpo hondo», al black bass. Otra ancla de silueta trae sus propios rasgos (la harpía, su cresta). La silueta se dice con los números medidos en la referencia (F10), sin los rasgos que delatan al animal por defecto. | ✅ | r16: gargantúa sale; guchapo, jusha y cruzavientos no |
+| F6b | **El ancla se elige por silueta, porque gana a su diferencia**: «only thicker», «only with a heavier head» o «only far rounder» casi no mueven la forma. Sirve el animal que ya tiene la silueta de la referencia; si lo que define a la criatura es justo la diferencia, se busca otra ancla que la tenga o se describe el plan corporal sin ancla. | ✅ | r15: correcaminos acierta; black bass, rinoceronte y rana toro salen tal cual. r16: el gargantúa sin ancla deja de ser rinoceronte. r18: el bowfin (cabeza roma) con la cabeza medida quita la perca al jusha en las dos semillas |
+| F6c | **Sin ancla, lo que queda no puede ser la firma de otro animal**: el plan corporal genérico funciona («barrel-shaped body, pillar-like legs»), pero unos ojos saltones con lengua llaman al sapo y un «pez de río de cuerpo hondo», al black bass. Otra ancla de silueta trae sus propios rasgos (la harpía, su cresta). La silueta se dice con los números medidos en la referencia (F10), sin los rasgos que delatan al animal por defecto. Un ancla con un rasgo que la referencia no tiene lo cuela en alguna semilla aunque el prompt mida el rasgo bueno (r18: la dorsal blanda del bowfin en una de dos). | ✅ | r16: gargantúa sale; guchapo, jusha y cruzavientos no. r18: jusha sale con el bowfin, con su dorsal en una semilla |
 | F7 | **Una parte no se compara con otro animal**: el ancla de una parte contagia al cuerpo entero. La parte se describe con palabras de forma y material. | ✅ | r15: «como una cochinilla» hace cochinilla el escorpión; placas blancas en la cabeza vuelven el águila un águila calva |
 | F7b | **Tampoco se describe con la forma del animal que contaminaba**: «broad, overlapping bands… a rounded shield» es una cochinilla sin nombrarla. Se describe la forma de la referencia (plano, bajo, alargado, con espinas en el lomo), no la del lore. | ✅ | r16: espina-del-viento sigue cochinilla |
 | F8 | **Un material no se compara con un objeto**: se pinta el objeto encima, como un disfraz. Se describe su forma y textura y que crece de la piel («irregular knobbly bone plates with short spikes, growing out of the hide»). | ✅ (sin objeto) / 🔬 (que crezca de la piel) | r15: «plated like the shell of an armadillo» → losas planas sobre un rinoceronte. r16: sin el objeto salen placas con púas, pero siguen siendo losas encima |
@@ -123,9 +123,17 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
 ## 6. Abierto (lo que mide la tanda de `IMG-21` y `IMG-22`)
 
 - Si F1 adelgaza un torso con una medida («body no thicker than its head is long») o hace falta la plantilla de boceto.
-- r18: solo jusha (mejora en r17 sin llegar: la silueta sigue siendo de perca) y, si se quiere afinar el aguijón, espina.
-  Gargantúa y cruzavientos, dos rondas iguales, van al boceto por plan corporal (F5, `IMG-24`, R2). Con cuatro de seis
-  se cierra `IMG-21` (R3).
+- `IMG-21` cerrada en r18 (cuatro de seis). Gargantúa y cruzavientos, dos rondas iguales, van al boceto por plan
+  corporal (F5, `IMG-24`, R2); el acabado de las cuatro buenas, a la interfaz (`IMG-25`) y la receta final.
+- Cómo se elige el ancla cuando ningún animal común tiene la silueta entera (cabeza larga *y* roma): en r18 se hizo una
+  tabla «trae / choca» a ojo y se pagó el rasgo de más (la dorsal) con una medida; falta la regla y saber si el modelo
+  la sigue (en r18, en una semilla no).
+- Un cuerpo sin una sola profundidad (pez en huso): si se pide el perfil, el máximo o la forma («deepest just behind
+  the head, narrowing to a third»); en r18 forma más dos números funcionó.
+- Cuándo se aísla una variable (A/B del ancla con el mismo prompt, ~25 min) y cuándo se acepta el paquete: R2 limita
+  las rondas, no los cambios por ronda; r18 cambió ancla, cabeza y aletas a la vez y acertó sin saber cuál lo hizo.
+- F10b con una referencia muy oscura (luminancia ~20/255): la media no distingue verde de azul; r18 se quedó con el
+  color ya validado en r17. Falta decir con qué se aclara y hasta dónde fiarse.
 - Qué denominador se mide (F10) en un pez o un ave en vuelo: longitud total o estándar, profundidad con o sin aletas; r16
   y r17 dan 3, 4 y 4,5 sobre el mismo banner según dónde se corte. Hay que fijar uno por plan corporal.
 - Qué cifras distingue el modelo: no se sabe si «one and a half» y «twice» salen distintos; medir con un mismo prompt y
@@ -141,6 +149,7 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
 - Si las pautas se pueden seguir **sin retoque a mano**: en r15 un agente barato escribió los 8 prompts con esta guía y
   la referencia; solo uno de los 8 se lee como su referencia, y lo que no supo escribir entró como F6b-F9 y P6-P8. En
   r16, con esas pautas, ninguno de los seis restantes; las que faltaban entraron como F6c, F7b, F10 y R1. En r17, con
-  F10, tres de los seis (guchapo, morvasa, espina); lo que faltaba entró como F10b y F10c.
+  F10, tres de los seis (guchapo, morvasa, espina); lo que faltaba entró como F10b y F10c. En r18, jusha: cuatro de seis
+  con la guía tal cual, sin retoque a mano; es el cierre de `IMG-21`.
 - Otros planes corporales (ave, reptil, artrópodo, acuático…) y otros tipos (flora, lugar, objeto, raza).
 - Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`).
