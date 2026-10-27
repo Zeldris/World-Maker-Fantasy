@@ -438,6 +438,39 @@ describe('resolverObjetivoPorTexto', () => {
     const candidatos = [{ participantId: 'p1', npcId: 'buitre-npc', vivo: false }];
     expect(resolverObjetivoPorTexto("Ataco a 'Buitre'.", candidatos, nombreByNpcId, normalize)).toBeNull();
   });
+
+  // P353: el panel cita el nombre que la jugadora VE («Faerus desconocida»), no el real.
+  describe('nombre visible (P353)', () => {
+    const nombres = new Map([
+      ['orco-npc', 'Orco'],
+      ['faerus-npc', 'Faerus Valdren'],
+    ]);
+    const visibles = new Map([
+      ['orco-npc', 'Orco'],
+      ['faerus-npc', 'Faerus desconocida'],
+    ]);
+    const candidatos = [
+      { participantId: 'a', npcId: 'orco-npc', vivo: true },
+      { participantId: 'b', npcId: 'faerus-npc', vivo: true },
+    ];
+
+    it("«contra 'Faerus desconocida'» apunta a ese rival, no al primer vivo", () => {
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida'.", candidatos, nombres, normalize, visibles)).toBe('b');
+    });
+
+    it('el nombre real sigue valiendo y la cita sin match sigue cayendo al primer vivo', () => {
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus Valdren'.", candidatos, nombres, normalize, visibles)).toBe('b');
+      expect(resolverObjetivoPorTexto("Ataco contra 'Nadie'.", candidatos, nombres, normalize, visibles)).toBe('a');
+    });
+
+    it('el nombre visible admite «#N» entre duplicados', () => {
+      const dobles = [
+        { participantId: 'x', npcId: 'faerus-npc', vivo: true },
+        { participantId: 'y', npcId: 'faerus-npc', vivo: true },
+      ];
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #2'.", dobles, nombres, normalize, visibles)).toBe('y');
+    });
+  });
 });
 
 describe('particionarEnSubCombates', () => {

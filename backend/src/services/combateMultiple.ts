@@ -246,7 +246,17 @@ export interface CandidatoObjetivoPorTexto {
 /// TODOS los candidatos recibidos, no solo los vivos, para que "buitre #2" no cambie de significado
 /// solo porque otro miembro del grupo ya cayó). Sin cita real o sin match, cae al primer vivo (nunca
 /// se queda sin elegir) — `null` si no queda ninguno.
-export function resolverObjetivoPorTexto(action: string, candidatos: CandidatoObjetivoPorTexto[], nombreByNpcId: Map<string, string>, normalizeText: (s: string) => string): string | null {
+///
+/// P353: la cita del panel lleva el nombre que la jugadora VE («Faerus desconocida» mientras no ha descubierto a
+/// un PRINCIPAL), no el real. `nombreVisibleByNpcId` (`nombresVisiblesDeNpcs`) se compara igual que el real, con y sin
+/// «#N»; sin él, la cita no casaba con nadie y el objetivo caía al primer vivo.
+export function resolverObjetivoPorTexto(
+  action: string,
+  candidatos: CandidatoObjetivoPorTexto[],
+  nombreByNpcId: Map<string, string>,
+  normalizeText: (s: string) => string,
+  nombreVisibleByNpcId?: Map<string, string>,
+): string | null {
   const vivos = candidatos.filter((c) => c.vivo);
   const instanceNumberByParticipantId = instanceNumbersByParticipantId(
     candidatos.filter((c): c is CandidatoObjetivoPorTexto & { npcId: string } => !!c.npcId).map((c) => ({ participantId: c.participantId, npcId: c.npcId })),
@@ -256,10 +266,12 @@ export function resolverObjetivoPorTexto(action: string, candidatos: CandidatoOb
   const targetPorNombre = quotedNormalizado
     ? vivos.find((c) => {
         if (!c.npcId) return false;
-        const nombreBase = normalizeText(nombreByNpcId.get(c.npcId) ?? '');
-        if (nombreBase === quotedNormalizado) return true;
         const numero = instanceNumberByParticipantId.get(c.participantId);
-        return numero != null && normalizeText(`${nombreBase} #${numero}`) === quotedNormalizado;
+        return [nombreByNpcId.get(c.npcId), nombreVisibleByNpcId?.get(c.npcId)].some((nombre) => {
+          if (!nombre) return false;
+          const nombreBase = normalizeText(nombre);
+          return nombreBase === quotedNormalizado || (numero != null && normalizeText(`${nombreBase} #${numero}`) === quotedNormalizado);
+        });
       })
     : undefined;
   return targetPorNombre?.participantId ?? vivos[0]?.participantId ?? null;

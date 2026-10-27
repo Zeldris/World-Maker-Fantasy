@@ -12,16 +12,16 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (55): P16, P27, P49, P66, P99, P116, P129, P133, P136, P158, P169, P173, P177,
+- **Pendientes** (54): P16, P27, P49, P66, P99, P116, P129, P133, P136, P158, P169, P173, P177,
   P188, P203, P205, P248, P250, P251, P252, P254, P259, P262, P263, P264, P265, P266, P267, P269,
   P270, P272, P273, P274, P299, P308, P309, P311, P317, P319, P325, P327, P328, P331, P332, P333,
-  P334, P335, P336, P337, P338, P339, P340, P342, P343, P353.
+  P334, P335, P336, P337, P338, P339, P340, P342, P343.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (34): P12, P29, P45, P46, P51, P69, P70, P82, P107, P124, P125, P131,
   P151, P155, P163, P175, P180, P182, P184, P186, P189, P191, P223, P243, P253, P279, P288, P292,
   P294, P295, P300, P301, P306, P307.
-- **Arreglados, sin comprobar jugando** (21): P90, P128, P200, P201, P204, P241, P242, P244, P245,
-  P268, P271, P290, P310, P324, P345, P346, P347, P349, P350, P351, P352.
+- **Arreglados, sin comprobar jugando** (22): P90, P128, P200, P201, P204, P241, P242, P244, P245,
+  P268, P271, P290, P310, P324, P345, P346, P347, P349, P350, P351, P352, P353.
 - **Comprobados jugando** (215): P1, P2, P3, P4, P6, P7, P8, P9, P11, P13, P14, P15, P17, P18, P19,
   P20, P21, P24, P26, P28, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43, P47, P50, P53,
   P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68, P72, P73, P74, P76, P77, P78,
@@ -403,4 +403,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P350 | Tanda 44 (2026-10-27, `t20-mundo` → `t44-tormenta-edificios`, día 1522): el daño por tormenta de un edificio del Reino solo se cuenta en el Diario; Reino › Edificios, adonde manda el aviso, lo lista como DAÑADO con «Reparar» sin decir qué pasó ni cuándo, y Reino › Visión general no avisa de edificios dañados. | arreglado (2026-10-27, Reino › Edificios dice «Dañado por <causa> el día N» (causa y día del suceso EDIFICIO_DANADO: sin migración) y Visión general avisa de cuántos edificios están dañados, sin comprobar jugando). Antes: Pendiente (leve, UX). Contraste: X4 tiene un Logbook por objeto en su ficha (Object Information, parches de enero de 2021) y Medieval Dynasty marca los edificios dañados con un icono en la lista de edificios; se propone a la usuaria una línea del motivo en Reino › Edificios. |
 | P351 | Arreglos A (2026-10-27, análisis de P345): el nivel de Domador o de Cazador no entra en la tirada de doma (`resolverIntento`, d20 + atributo/2). Con el mismo atributo, Cazador 2 y Domador 10 tienen la misma probabilidad con el Corretolvas (11/14/20/30 % con atributo 8/10/14/20); el Domador solo gana ver la resistencia y un umbral menor (40 en vez de 80). Contraste: en D&D 5e, Trato con animales suma el bonificador de competencia, que sube con el nivel. | arreglado (2026-10-27, la doma suma el bonificador de competencia del nivel del Cazador, +2 a +6 como en D&D 5e, y el Domador el doble: bonoDeDomaPorNivel en resolverIntento, el modal lo dice; para quien no es Cazador y la persuasión de personas no cambia, sin comprobar jugando). Antes: pendiente (medio, decidido 2026-10-27 por la usuaria: el nivel del oficio con que se doma suma a la tirada como la competencia de D&D 5e, +2 a +6 por nivel, y el Domador suma el doble, como la dote Beast Trainer; a arreglos C) |
 | P352 | Arreglos A (2026-10-27): «Devolver al corral» de un compañero (`devolverAlCorral`) no deja aviso ni línea en el diario, a diferencia del nuevo «AL CORRAL» de P349. | arreglado (2026-10-27, devolverAlCorral deja el mismo aviso y la misma línea KINGDOM que el «Al corral» de P349, con avisarEntradaAlCorral compartido; Reino › Corrales enseña el aviso, sin comprobar jugando). Antes: pendiente (leve: el mismo aviso y la misma línea en el diario que P349) |
-| P353 | Arreglos B (2026-10-27, reino-combate-sin-aliados): en el combate de varios, la cita del panel se compara con el nombre real del rival (`nombreByNpcId` en `resolverObjetivoPorTexto`, turnResolution.ts), así que un rival sin descubrir («Faerus desconocida») nunca casa por su nombre visible y el golpe va al primer enemigo vivo (jugando, el golpe contra Faerus fue al Orco). Pasa con `esperandoEleccionJugadora`. Además, el camino de reserva de `detectNpcsInScene` en turnResolution.ts no recibe `enCombateCon`. | Pendiente (medio: comparar con `nombresVisiblesDeNpcs`; a arreglos C) |
+| P353 | Arreglos B (2026-10-27, reino-combate-sin-aliados): en el combate de varios, la cita del panel se compara con el nombre real del rival (`nombreByNpcId` en `resolverObjetivoPorTexto`, turnResolution.ts), así que un rival sin descubrir («Faerus desconocida») nunca casa por su nombre visible y el golpe va al primer enemigo vivo (jugando, el golpe contra Faerus fue al Orco). Pasa con `esperandoEleccionJugadora`. Además, el camino de reserva de `detectNpcsInScene` en turnResolution.ts no recibe `enCombateCon`. | arreglado (2026-10-27, `resolverObjetivoPorTexto` compara la cita también con el nombre visible de `nombresVisiblesDeNpcs` y el camino de reserva de `detectNpcsInScene` recibe `enCombateCon`, sin comprobar jugando). Antes: Pendiente (medio) |

@@ -45,7 +45,7 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -2731,7 +2731,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // turno de llegada al DESTINO abría/mantenía un combate fantasma contra un enemigo que ya
     // había quedado atrás, físicamente en otra ubicación. `regionLocationId` (arriba) ya calcula
     // el destino real cuando hay `travel` — reutilizarlo aquí en vez del origen crudo.
-    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId: regionLocationId, fictionalMinutes: fictionalMinutesActuales }),
+    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({
+          action,
+          worldId,
+          sessionFacts,
+          saveId,
+          currentLocationId: regionLocationId,
+          fictionalMinutes: fictionalMinutesActuales,
+          // P353: el rival del combate en curso está en escena aunque el texto no lo nombre (como en turn.ts, P344).
+          enCombateCon: await enCombateConDelTurno({ saveId, enCombate, pendingCombatNpcSlugs: pendingCombatNpcSlugs ?? [], pendingNpcAttackNpcId: pendingNpcAttack?.npcId ?? null }),
+        }),
     travel ? Promise.resolve(null) : detectHarvest({ action, worldId, saveId, currentLocationId }),
     // Distingue fauna (animales, sin habla) de NPCs de verdad dentro de `npcsInScene` — ambos
     // comparten la misma tabla Npc/detección por alias (ver comentario del bloque de diálogo más
@@ -4607,8 +4616,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const participantesVivos = await prisma.combatParticipant.findMany({ where: { encounterId } });
       const enemigos = participantesVivos.filter((p) => p.bando === 'ENEMIGO');
       const enemigoNpcIds = enemigos.filter((p) => p.npcId).map((p) => p.npcId!);
-      const enemigoNpcs = enemigoNpcIds.length ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, name: true } }) : [];
+      const enemigoNpcs = enemigoNpcIds.length ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true } }) : [];
       const nombreByNpcId = new Map(enemigoNpcs.map((n) => [n.id, n.name]));
+      // P353: el panel cita el nombre que la jugadora ve («Faerus desconocida»), no el real.
+      const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, saveId, enemigoNpcs);
+      const nombreVisibleByNpcId = new Map(enemigoNpcs.map((n) => [n.id, nombreVisiblePorSlug.get(n.slug) ?? n.name]));
       // Bug real (2026-08-25, cazado al cerrar saqueo/desuello): un grupo puede tener varios
       // individuos con el MISMO nombre citado, algunos ya CONVALECIENTE/MUERTO — sin este filtro,
       // `.find()` podía emparejar el primero del array (orden de creación, no de vida), dejando a
@@ -4632,7 +4644,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           return condicion !== 'CONVALECIENTE' && condicion !== 'MUERTO';
         })(),
       }));
-      const targetParticipantId = resolverObjetivoPorTexto(action, candidatos, nombreByNpcId, normalizeText);
+      const targetParticipantId = resolverObjetivoPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId);
       if (targetParticipantId) {
         await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId });
       }
