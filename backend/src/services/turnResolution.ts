@@ -69,7 +69,6 @@ import { destinationsFrom, normalizeText, detectsTravelIntent, detectsVagueMovem
 import { descansoRechazadoPorEnfriamiento, intentaDescansar, type Produccion } from './timedActions.js';
 import { puntoDeEntradaParaDireccion, posicionesDeSalidas, direccionDeEntrada, posicionDeObjetivo, minutoDeReaparicion, moverJugadorA, volverAEntrada, celdaDePixel, mismaCelda, celdaAdyacenteOMisma } from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
-import { captureLiveTeacherExample } from './liveTeacherCapture.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { detectsSearchIntent } from './discovery.js';
 import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
@@ -6921,7 +6920,15 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // que comparar contra un profesor cloud. Cubre también el camino diferido de worldTick.ts sin
   // cableado aparte: ambos convergen en esta misma función.
   if (wasLlmNarrated) {
-    void captureLiveTeacherExample({ saveId, worldId, ctx: narrationCtx, localNarration: narration, localModel: env.ollamaModelNarrador });
+    // INS-34: el build empaquetado no captura (esbuild pliega la condición con `define` y el `import()` no entra en el
+    // bundle). En desarrollo sigue siendo fire-and-forget: un fallo del import o de la captura no rompe el turno.
+    if (process.env.TARKOR_EMPAQUETADO !== '1') {
+      void import('./liveTeacherCapture.js')
+        .then(({ captureLiveTeacherExample }) =>
+          captureLiveTeacherExample({ saveId, worldId, ctx: narrationCtx, localNarration: narration, localModel: env.ollamaModelNarrador }),
+        )
+        .catch((err) => console.warn('[live-teacher-capture] falló la captura en vivo:', err));
+    }
   }
   // Persistencia de hechos nuevos (2026-07-30, ver worldFacts.ts): fuera de la transacción a
   // propósito — embebe cada hecho nuevo vía Ollama, mismo criterio que `narrateAction`/`retrieveLore`
