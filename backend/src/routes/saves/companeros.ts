@@ -13,7 +13,7 @@ import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from '../../ser
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
-import { avisarEntradaAlCorral, corralesDelReino, meterEnCorral } from '../../services/cronista/ganadoReino.js';
+import { avisarEntradaAlCorral, corralesDelReino, elegirCorral, meterEnCorral } from '../../services/cronista/ganadoReino.js';
 import { pasaAComidaDelReino } from '../../services/crafting.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
@@ -398,8 +398,12 @@ export async function companerosRoutes(app: FastifyInstance) {
     );
     const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
     const npcById = new Map(npcs.map((n) => [n.id, n]));
-    // P347: «Al corral» solo se ofrece con un Corral del Ganadero en pie (el mismo filtro que `meterEnCorral`).
-    const hayCorral = npcs.some((n) => n.ataqueNatural !== null && esGanado(n.slug)) && (await corralesDelReino(prisma, save.id)).length > 0;
+    // P347: «Al corral» solo se ofrece con un Corral del Ganadero en pie. Un corral en pie no basta: `elegirCorral`
+    // (el mismo filtro que `meterEnCorral`) también rechaza por escalón mínimo, plazas o especie distinta, y entonces
+    // el botón saldría activo y daría 409; el motivo viaja por pendiente (`motivoCorral`). Los corrales se cargan una vez.
+    const hayGanado = npcs.some((n) => n.ataqueNatural !== null && esGanado(n.slug));
+    const corrales = hayGanado ? await corralesDelReino(prisma, save.id) : [];
+    const hayCorral = corrales.length > 0;
 
     const pendientes = states
       .map((state) => {
@@ -408,6 +412,8 @@ export async function companerosRoutes(app: FastifyInstance) {
         const esFauna = npc.ataqueNatural !== null;
         // Ventaja de información del Domador (§2) — SOLO para fauna, nunca persuasión de NPC.
         const mostrarResistencia = esFauna && domador;
+        const elegido = esFauna && esGanado(npc.slug) && hayCorral ? elegirCorral(corrales, npc.slug) : null;
+        const motivoSinCorral = elegido && 'motivo' in elegido ? elegido.motivo : null;
         return {
           npcSlug: npc.slug,
           name: npc.name,
@@ -419,6 +425,7 @@ export async function companerosRoutes(app: FastifyInstance) {
           // CR-55 (Q3): el ganado puede ir al corral en vez de ser compañero.
           alCorral: esFauna && esGanado(npc.slug),
           hayCorral,
+          motivoCorral: motivoSinCorral,
         };
       })
       .filter((p): p is NonNullable<typeof p> => !!p);
@@ -581,7 +588,7 @@ export async function companerosRoutes(app: FastifyInstance) {
         if (!metido.ok) return metido;
         await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
         // P349: el aviso para la pantalla y su línea en el diario (canal Reino), que antes no dejaba rastro.
-        const aviso = await avisarEntradaAlCorral(tx, save.id, npc.name, save.worldState?.fictionalMinutes ?? 0);
+        const aviso = await avisarEntradaAlCorral(tx, save.id, npc.name, npc.articulo, save.worldState?.fictionalMinutes ?? 0);
         return { ...metido, aviso };
       });
       if (!r.ok) return reply.status('codigo' in r ? r.codigo : 409).send({ error: r.motivo });

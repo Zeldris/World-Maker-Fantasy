@@ -35,7 +35,9 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
   const { error, runCatchingError } = useSubmitError()
 
   const umbralCompletado = pendiente.felicidad >= pendiente.umbral
-  const sinCorral = pendiente.hayCorral === false
+  // Sin corral en pie, el texto fijo; con corral que no admite a este animal, el motivo del backend (P347).
+  const motivoCorral = pendiente.hayCorral === false ? MOTIVO_SIN_CORRAL : (pendiente.motivoCorral ?? null)
+  const sinCorral = motivoCorral !== null
 
   async function handleIntentar(attribute: Attribute) {
     setBusy(true)
@@ -105,12 +107,12 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
                   type="button"
                   onClick={handleAlCorral}
                   disabled={busy || sinCorral}
-                  title={sinCorral ? MOTIVO_SIN_CORRAL : undefined}
+                  title={motivoCorral ?? undefined}
                   className={confirmButtonClasses('accent')}
                 >
                   🐑 Al corral
                 </button>
-                {sinCorral && <span className="text-2xs text-wood-400">{MOTIVO_SIN_CORRAL}</span>}
+                {motivoCorral && <span className="text-2xs text-wood-400">{motivoCorral}</span>}
               </>
             )}
           </>

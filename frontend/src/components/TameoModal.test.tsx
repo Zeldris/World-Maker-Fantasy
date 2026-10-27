@@ -122,6 +122,16 @@ describe('TameoModal — Al corral (P347, P349)', () => {
     expect(getByText('Construye un Corral del Ganadero')).toBeTruthy()
   })
 
+  it('con corral en pie que no admite al animal, el botón sale desactivado con el motivo del backend', () => {
+    const motivo = 'No hay plaza: cada corral guarda una sola especie y los tuyos están llenos u ocupados por otra.'
+    const { getByRole, getByText, queryByText } = render(
+      <TameoModal saveId="s1" pendiente={{ ...murgol, hayCorral: true, motivoCorral: motivo }} onConfirmado={() => {}} onSoltado={() => {}} onCancel={() => {}} />,
+    )
+    expect((getByRole('button', { name: /Al corral/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(getByText(motivo)).toBeTruthy()
+    expect(queryByText('Construye un Corral del Ganadero')).toBeNull()
+  })
+
   it('P349: con Corral lo lleva y pasa el aviso del backend a quien abrió el modal', async () => {
     vi.mocked(postAlCorral).mockResolvedValue({ ganadoId: 'g1', buildingId: 'b1', sexo: 'F', aviso: 'El Múrgol entra en los Corrales del Ganadero.' })
     const onConfirmado = vi.fn()

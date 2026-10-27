@@ -115,6 +115,27 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     expect(await prisma.ganado.count({ where: { saveId, especie: 'corretolvas' } })).toBe(0);
   });
 
+  it('el pendiente que ningún corral admite lo dice (motivoCorral) en vez de salir con «Al corral» activo y dar 409', async () => {
+    const app = await buildApp();
+    const lista = (await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` })).json().pendientes as { npcSlug: string; hayCorral: boolean; motivoCorral: string | null }[];
+    const corretolvas = lista.find((p) => p.npcSlug === 'corretolvas');
+    // Hay corral en pie (hayCorral), pero el único guarda Múrgoles: el motivo es el mismo que daría el 409.
+    expect(corretolvas?.hayCorral).toBe(true);
+    expect(corretolvas?.motivoCorral).toMatch(/No hay plaza/);
+  });
+
+  it('el aviso de entrada lleva el artículo de la especie: «La Salamandra de Escoria», no «El Salamandra…»', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const salamandra = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'salamandra-de-escoria', saveId: null } });
+    await prisma.building.create({ data: { saveId, recipeKey: 'corrales', name: 'Corrales del Ganadero', kind: 'ganadero-orcos-llanuras', status: 'ACTIVO', description: 'x', tier: 1 } });
+    await prisma.npcState.create({ data: { saveId, npcId: salamandra.id, scope: '', condicionFisica: 'ILESO', capturado: true, capturaFelicidad: 90 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/salamandra-de-escoria/al-corral`, payload: {} });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().aviso).toBe('La Salamandra de Escoria entra en los Corrales del Ganadero.');
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: 'La Salamandra de Escoria entra en los Corrales del Ganadero.' } })).toBe(1);
+  });
+
   it('cada pasto entregado da 2 de forraje, hasta el tope compartido con la comida', async () => {
     await prisma.inventoryItem.createMany({ data: Array.from({ length: 3 }, () => ({ saveId, name: 'Pasto Solar', description: 'x', catalogSlug: 'pasto-solar' })) });
     const app = await buildApp();

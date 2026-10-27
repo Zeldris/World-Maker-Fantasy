@@ -1577,6 +1577,8 @@ export interface TameoPendiente {
   alCorral?: boolean
   /// P347: hay un Corral del Ganadero en pie; sin él, «Al corral» sale desactivado.
   hayCorral?: boolean
+  /// Hay corral en pie pero ninguno admite a este animal (escalón, plazas, otra especie): el motivo; `null` si cabe.
+  motivoCorral?: string | null
 }
 export async function getTameoPendientes(saveId: string): Promise<{ pendientes: TameoPendiente[] }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes`)
@@ -1651,7 +1653,7 @@ export interface CorralesInfo {
   /// CR-56 (Q4): compañeros animales que pueden volver al corral.
   fueraDelCorral?: { id: string; name: string }[]
   /// P346: las Jaulas del Reino con quien espera atado en ellas.
-  jaulas?: { id: string; name: string; tamano: 'PEQUENA' | 'MEDIANA' | 'GRANDE'; ocupante: OcupanteJaula | null }[]
+  jaulas?: { id: string; name: string; tamano: 'PEQUENA' | 'MEDIANA' | 'GRANDE'; estado?: 'ACTIVO' | 'DANADO'; ocupante: OcupanteJaula | null }[]
   corrales: CorralInfo[]
 }
 // CR-63 (63d): Reino › Partidas — partidas de caza y captura.
