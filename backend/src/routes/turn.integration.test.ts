@@ -24,6 +24,8 @@ import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
+import { abrirCombateDePersonas } from '../services/combatePersonas.js';
+import { scopeFor } from '../services/npcScene.js';
 import { appendSessionFacts } from '../services/worldFacts.js';
 import { esperarSegundoPlano } from '../services/avanceDiario.js';
 import { procesarReacciones } from '../services/cronista/reacciones.js';
@@ -9456,6 +9458,34 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     expect(ctx).toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
     expect(ctx).not.toContain('NOMBRE OCULTO');
     expect(await rivalDelIntercambio(saveId)).toBe('Orco enfurecido');
+  }, 30_000);
+
+  // P344: en el combate de varios (`CombatEncounter`, que no escribe `pendingCombatNpcSlugs`), el ataque del panel va
+  // «contra 'Faerus desconocida'» aunque el punto del rival no esté en el mapa de esta zona (el combate de
+  // `escenario.sh preparar … combate:`). Antes la validación no la veía en escena y lo bloqueaba como nombre inventado.
+  it('en el combate de varios en curso, el nombre visible de un rival sin punto en la zona no se bloquea', async () => {
+    const saveId = await partida('Gorhorn de prueba (P344)', false);
+    const hulki = await prisma.npc.findFirstOrThrow({ where: { slug: 'hulki', saveId: null } });
+    await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'hulki' } });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Dos rivales sin descubrir y sin punto en esta zona, como en el combate preparado.
+    const ulkha = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const miembro = (n: typeof hulki) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro(ulkha), miembro(hulki)]);
+    expect(abierto).not.toBeNull();
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = "Golpeo con el arma, contra 'Faerus desconocida'.";
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const body = res.json() as { blocked?: { narration: string }; classification?: unknown; roll?: unknown };
+    expect(body.blocked?.narration).toBeUndefined();
+    expect(body.classification).toBeDefined();
+    await app.close();
   }, 30_000);
 });
 

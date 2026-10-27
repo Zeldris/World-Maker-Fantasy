@@ -25,6 +25,7 @@ import {
   tabulatedAttackAttribute,
   nombraPorNombreVisible,
   nombreNarrado,
+  enCombateConDelTurno,
   type NpcInScene,
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
@@ -219,7 +220,7 @@ async function resolveClassificationForTurn(params: {
       fictionalMinutes,
       // El rival del combate en curso siempre está en escena, lo nombre o no el texto (una defensa
       // nunca lo nombra) — ver `enCombateCon` en npcScene.ts.
-      enCombateCon: enCombate ? { slugs: pendingCombatNpcSlugs, npcIds: pendingNpcAttack ? [pendingNpcAttack.npcId] : [] } : undefined,
+      enCombateCon: await enCombateConDelTurno({ saveId, enCombate, pendingCombatNpcSlugs, pendingNpcAttackNpcId: pendingNpcAttack?.npcId ?? null }),
     });
 
     // Viaje por el grafo de ubicaciones (docs/mecanicas/12-mundo-estructurado.md § 1.4): el modelo nunca
@@ -708,6 +709,13 @@ export async function turnRoutes(app: FastifyInstance) {
       saveId,
       currentLocationId: save.currentLocationId,
       fictionalMinutes: blockedFictionalMinutes,
+      // P344: los rivales del combate en curso están en escena, aunque su punto no esté en el mapa de esta zona.
+      enCombateCon: await enCombateConDelTurno({
+        saveId,
+        enCombate,
+        pendingCombatNpcSlugs: (save.pendingCombatNpcSlugs as string[] | null) ?? [],
+        pendingNpcAttackNpcId: (save.pendingNpcAttack as unknown as PendingNpcAttack | null)?.npcId ?? null,
+      }),
     });
     const absentNpcClaim = await detectsAbsentSceneNpcClaim(
       action,
