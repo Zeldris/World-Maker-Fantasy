@@ -1,7 +1,7 @@
 # Retro y opt-tokens · `claude/lore-enciclopedia` (2026-10-26)
 
 **Estado:** aprobada entera por la usuaria (2026-10-26) y aplicada en la rama: 1 → `QA-257`, 2 → `QA-258`,
-3 → `QA-259`, 6 → `QA-260`. La 4 y la 5 se quedan en «Para Galivelop-workflow» para `gw-harvest`. Tras el CI local, la 7 → `QA-261`
+3 → `QA-259`, 6 → `QA-272`. La 4 y la 5 se quedan en «Para Galivelop-workflow» para `gw-harvest`. Tras el CI local, la 7 → `QA-273`
 (aprobada).
 
 Sesión de `QA-243`, `QA-244` y `QA-256`:

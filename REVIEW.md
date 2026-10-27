@@ -45,7 +45,7 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
   habilidad lleva en el esquema «Guarda nombres de habilidad (QA-68)» y su función en `RENOMBRAR`
   (`habilidadesRenombradas.ts`); el test de ese archivo exige que coincidan. Pasó con P100: las barras
   (`SkillBar.abilityNames`) se quedaban con el nombre viejo.
-  Además, `habilidadesConocidas.json` (`QA-261`) guarda todos los nombres de habilidad del catálogo: si uno
+  Además, `habilidadesConocidas.json` (`QA-273`) guarda todos los nombres de habilidad del catálogo: si uno
   desaparece sin entrar en `HABILIDADES_RENOMBRADAS`, falla el test. Un nombre quitado de ese JSON es una habilidad
   retirada: el revisor comprueba que la usuaria lo decidió y que no es un renombre escondido.
 - **Un borrado o una actualización con condición sobre relaciones** (`where` anidado de Prisma: `none`, `some`,

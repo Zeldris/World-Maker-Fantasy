@@ -87,7 +87,7 @@ describe('ficha (claves heredadas y canon)', () => {
 });
 
 describe('ficha (fuente)', () => {
-  it('QA-260: ruta:línea del slug exacto, entre comillas o como clave, en scripts y servicios, sin tests, sin prefijos y con tope', () => {
+  it('QA-272: ruta:línea del slug exacto, entre comillas o como clave, en scripts y servicios, sin tests, sin prefijos y con tope', () => {
     const raiz = mkdtempSync(join(tmpdir(), 'ficha-fuente-'));
     const sc = join(raiz, 'backend', 'src', 'scripts');
     mkdirSync(sc, { recursive: true });

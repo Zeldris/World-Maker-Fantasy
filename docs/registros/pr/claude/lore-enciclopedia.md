@@ -1,4 +1,4 @@
-**Título:** La historia sin documento y la segunda pasada por la enciclopedia; el seed retira lo huérfano (QA-243, QA-244, QA-256, QA-257…QA-261)
+**Título:** La historia sin documento y la segunda pasada por la enciclopedia; el seed retira lo huérfano (QA-243, QA-244, QA-256, QA-257…QA-259, QA-272, QA-273)
 
 ## Summary
 
@@ -55,9 +55,9 @@ Además:
  docs/runbooks/ampliar-lore.md, .claude/gw/opt-tokens.md
 +  tope de 30-40 llamadas también en las tandas de edición (QA-259)
  tools/qa/ficha.sh
-+  acaba con «# Fuente»: archivo:línea del slug en backend/src/scripts y services (QA-260)
++  acaba con «# Fuente»: archivo:línea del slug en backend/src/scripts y services (QA-272)
  backend/src/services/habilidadesConocidas.json
-+  los 495 nombres de habilidad que una partida puede guardar; el test falla si uno desaparece sin renombre (QA-261)
++  los 495 nombres de habilidad que una partida puede guardar; el test falla si uno desaparece sin renombre (QA-273)
 ```
 
 ## Evidence
@@ -77,7 +77,7 @@ Además:
   - **Antes:** había que hacer `grep`/`sed` sobre `worldCatalog.ts`, que se leyó 44 veces en la sesión.
   - **Después:** `ficha.sh guchapo` acaba con 13 líneas `archivo:línea`, entre ellas `sexDimorphism.ts:311`,
     `usosFauna.ts:37` y `companionSupervivencia.ts:114`. Lo cubre `ficha.test.ts › fuente` (rojo sin el arreglo).
-- **Guardia de nombres (`QA-261`).** Sin las entradas de `HABILIDADES_RENOMBRADAS`, `habilidadesRenombradas.test.ts`
+- **Guardia de nombres (`QA-273`).** Sin las entradas de `HABILIDADES_RENOMBRADAS`, `habilidadesRenombradas.test.ts`
   falla con «añade "Vuelo en Bandada" a HABILIDADES_RENOMBRADAS (QA-68)…». Con ellas, 8/8.
 - **CI local** (`tools/qa/ci-local.sh`, los tres jobs de `ci.yml`), en verde sobre `7c5da8d7`:
 
@@ -86,7 +86,7 @@ Además:
   | backend | 0 errores | 3822 tests (316 archivos) | 0 errores, 15 avisos |
   | frontend | 0 errores | 725 tests (156 archivos) | 0 errores, 29 avisos |
 
-  Los commits posteriores (`QA-261` y sus arreglos) solo tocan tests y documentos; el pre-push pasó sus tests.
+  Los commits posteriores (`QA-273` y sus arreglos) solo tocan tests y documentos; el pre-push pasó sus tests.
 
 ## Merge Danger
 
@@ -101,12 +101,12 @@ filas no vuelven si se revierte el código, aunque nunca borra nada que tenga re
 - La pestaña de historia cambia qué está descubierto.
 - Las partidas guardadas no cambian: sus copias de facciones, población y lugares llevan `saveId` y no se tocan.
 
-Quedan como leves pendientes (bitácora):
+Quedan como leves pendientes (aquí y en la bitácora de la rama):
 - un CHECK en la base para «documento o lugar»;
 - un aviso cuando se descubre una historia por lugar;
 - las cuentas del retiro por lotes;
 - el campo `pendiente` de `usosFauna`;
 - `ficha.sh` con `archivo:línea` por campo;
-- los de `QA-261`, en `roadmap-front.md`.
+- los de `QA-273`, en `roadmap-front.md`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

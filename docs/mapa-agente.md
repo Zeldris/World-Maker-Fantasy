@@ -205,7 +205,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 - **Todo lo de un slug:** `bash tools/qa/ficha.sh <slug> [--canon]` (`QA-245`) da la ficha, el despiece, la región,
   la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon. Acaba con «# Fuente»: el
-  `archivo:línea` de cada aparición del slug en `b/scripts` y `b/services` (`QA-260`), para editar sin `grep`.
+  `archivo:línea` de cada aparición del slug en `b/scripts` y `b/services` (`QA-272`), para editar sin `grep`.
 - **Código:** la ruta `/world/:slug/enciclopedia` de `b/routes/world.ts` monta una sección por pestaña:
   `b/routes/world.ts#buildFaunaFloraSection`, `buildItemsSection`, `buildNpcsSection`, `buildLocationsSection`,
   `buildFactionsSection`, `buildHistoriaSection`, `buildRazasSection`, `buildClassesSection` y

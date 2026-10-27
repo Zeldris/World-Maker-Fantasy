@@ -220,7 +220,7 @@ export function canon(slug: string, nombre: string | null, raiz = RAIZ, max = 10
   return [...porSlug, ...porNombre].map((l) => recortar(`${l.donde}:${l.texto}`, 160));
 }
 
-/** QA-260: dónde aparece el slug en el código de `backend/src/scripts` y `backend/src/services` (sin tests): entre
+/** QA-272: dónde aparece el slug en el código de `backend/src/scripts` y `backend/src/services` (sin tests): entre
  * comillas (`'slug'`, `"slug"`) o como clave sin comillas (`slug: …`, como en los diccionarios de worldCatalog.ts y
  * sexDimorphism.ts). Una línea por aparición, `ruta:línea: texto`, con tope. */
 export function fuente(slug: string, raiz = RAIZ, max = 40): string[] {

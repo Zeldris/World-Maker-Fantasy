@@ -44,7 +44,7 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **Tandas de edición con tope de 30-40 llamadas** (`QA-259`): un bloque más grande se parte en 2-3 tandas con el mismo
   encargo, y la principal revisa el diff entero. El bloque 1 de `QA-256` fue una sola tanda: 66 llamadas, 103k de
   contexto medio y 6,8M de entrada (el 13 % de la sesión).
-- **Registros largos por secciones** (`QA-260`): `lore-hallazgos.md` (17 lecturas, 300k arrastrados en `QA-256`) se lee
+- **Registros largos por secciones** (`QA-272`): `lore-hallazgos.md` (17 lecturas, 300k arrastrados en `QA-256`) se lee
   con `grep -n "^## "` y `sed -n` de la sección; `ficha.sh` acaba con el `archivo:línea` del slug en `backend/src/scripts` y `services`.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto

@@ -30,7 +30,7 @@ function camposMarcados(): string[] {
   return marcados.sort();
 }
 
-/// QA-261: todos los nombres de habilidad que una partida puede guardar hoy, de cada fuente del motor.
+/// QA-273: todos los nombres de habilidad que una partida puede guardar hoy, de cada fuente del motor.
 /// Una categoría de fauna nueva no compila hasta que entra aquí.
 const CATEGORIAS_DE_FAUNA: Record<FaunaCategoria, true> = {
   GUELISES: true, ACECHANTES: true, CORVENES: true, ZANCUDOS: true, BESTIONES: true, RONDINES: true, QUITINOS: true,
@@ -111,14 +111,14 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(camposMarcados()).toEqual([...CAMPOS_CON_NOMBRE_DE_HABILIDAD].sort());
   });
 
-  it('QA-261: ningún nombre de habilidad que una partida pudo guardar desaparece del catálogo sin renombre', () => {
+  it('QA-273: ningún nombre de habilidad que una partida pudo guardar desaparece del catálogo sin renombre', () => {
     const actuales = nombresDelCatalogo();
     const viejos = new Set([...Object.keys(HABILIDADES_RENOMBRADAS), ...HABILIDADES_RENOMBRADAS_POR_CLASE.map((r) => r.viejo)]);
     const perdidos = (habilidadesConocidas as string[]).filter((n) => !actuales.has(n) && !viejos.has(n));
     expect(perdidos.map((n) => `añade "${n}" a HABILIDADES_RENOMBRADAS (QA-68); quitarlo de habilidadesConocidas.json es retirar la habilidad, y lo decide la usuaria`)).toEqual([]);
   }, 60000);
 
-  it('QA-261: habilidadesConocidas.json recoge cada nombre del catálogo actual y cada nombre viejo de los renombres', () => {
+  it('QA-273: habilidadesConocidas.json recoge cada nombre del catálogo actual y cada nombre viejo de los renombres', () => {
     const conocidas = new Set(habilidadesConocidas as string[]);
     const faltan = [...nombresDelCatalogo(), ...Object.keys(HABILIDADES_RENOMBRADAS), ...HABILIDADES_RENOMBRADAS_POR_CLASE.map((r) => r.viejo)].filter((n) => !conocidas.has(n));
     expect([...new Set(faltan)].sort().map((n) => `añade "${n}" a habilidadesConocidas.json`)).toEqual([]);
