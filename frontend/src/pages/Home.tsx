@@ -4,6 +4,7 @@ import { PanelRivets } from '../components/Rivet'
 import { VersionTag } from '../components/VersionTag'
 import { BotonAjustes } from '../components/BotonAjustes'
 import { listSaves, type SaveSummary } from '../lib/api'
+import { esEmpaquetado } from '../lib/empaquetado'
 
 export function Home() {
   const navigate = useNavigate()
@@ -81,9 +82,12 @@ export function Home() {
       {/* Solo admin (petición explícita de Álvaro, 2026-09-21: "para generar los prompts de
           imágenes de forma cómoda") — deliberadamente discreto, sin icono ni destacado, para que
           no se lea como una opción de juego. */}
-      <button type="button" onClick={() => navigate('/admin/enciclopedia')} className="text-2xs text-wood-700 transition-colors hover:text-wood-400">
-        Admin: enciclopedia completa
-      </button>
+      {/* INS-33: el juego empaquetado no lleva admin. */}
+      {!esEmpaquetado() && (
+        <button type="button" onClick={() => navigate('/admin/enciclopedia')} className="text-2xs text-wood-700 transition-colors hover:text-wood-400">
+          Admin: enciclopedia completa
+        </button>
+      )}
 
       <VersionTag />
     </div>

@@ -265,3 +265,15 @@ En pausa hasta traer el repo aparte de la usuaria (`VOZ-6`); al traerlo, esta se
 - **Documento:** `docs/arquitectura/reutilizables/02-voces-y-sonidos-locales.md`; lee solo su apartado («Diseñar la
   voz de una raza», «Fauna y criaturas», «Acoplamiento a Tarkor») con `grep -n '^## '` + `sed -n`. Tareas,
   `docs/producto/roadmap-voces.md`.
+
+## Modo empaquetado (`window.__TARKOR__`, `INS-33`)
+
+El juego dentro de la app de escritorio (Tauri) recibe `window.__TARKOR__` antes de cualquier script; en desarrollo y
+en la web no existe. Contrato y plan en el repo del instalador (no se modifica desde aquí).
+
+- **Entrada:** `frontend/src/lib/empaquetado.ts#leerTarkor` (lectura única del objeto) y
+  `frontend/src/lib/empaquetado.ts#esEmpaquetado` (síncrona).
+- **Dónde se usa:** `frontend/src/App.tsx` (no monta `/admin/*`), `frontend/src/pages/Home.tsx` (sin enlace de admin,
+  «Crear desde cero» deshabilitada), `frontend/src/lib/modoDesarrollador.ts#useHerramientasAdminVisibles` (siempre
+  `false`) y `frontend/src/lib/api.ts` (`apiBaseUrl()` lee `leerTarkor()?.apiUrl`, `INS-31`).
+- **Tests:** `frontend/src/lib/empaquetado.test.ts` y `frontend/src/App.empaquetado.test.tsx`.
