@@ -10,7 +10,8 @@ la lee `.claude/gw/scripts/config.py`).
 ## Al empezar cualquier sesión
 
 1. Lee la bitácora, [`docs/registros/traspaso.md`](docs/registros/traspaso.md): rama, tarea en curso, qué falta y
-   siguiente paso.
+   siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recuperar.py --estado`; el archivo
+   entero, solo si falta algo (`QA-261`).
 2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
 3. Comprueba que el check está en verde (y los tests como dice la bitácora) antes de tocar nada: las órdenes de
    `check` en `.claude/gw.json` (`python3 .claude/gw/scripts/config.py get check`).
@@ -114,7 +115,11 @@ subagente de cada tanda), antes de la primera acción, relee
 - **El PR de una sesión local lo crea Claude en la nube** (usuaria, 2026-10-21, `QA-184`): en la Deck no hay `gh` ni
   herramienta de GitHub. Tras la fase 3, la local sube la descripción a `docs/registros/pr/<rama>.md` y deja en su
   fila de la bitácora «PR listo» con el título, en el último commit; la nube comprueba que nada va detrás de ese
-  commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión.
+  commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión. Una sesión sin URL de PR escribe «PR
+  listo», nunca «PR abierto» ni «en borrador»: esas palabras en la bitácora solo van con la URL del PR (`QA-262`).
+- **Tareas del instalador (`INS-*`)** (usuaria, 2026-10-26, `QA-259`): viven en el plan de
+  [Instalador-WMF-Tarkor](https://github.com/Zeldris/Instalador-WMF-Tarkor), no en los roadmaps de WMF ni en `taskId`,
+  y no rompen la pausa de pruebas: las pide la usuaria. Aquí solo llevan su fila «Tarea en curso» con el enlace a su plan.
 - La rama de un subagente vuelve con `bash tools/qa/fusionar.sh <rama> "<mensaje>" --revisada` (no la de `.claude/gw/scripts/`): la de WMF
   resuelve sola los conflictos del registro de hallazgos (`resolver_hallazgos.py`) y pasa los tests del paquete tocado.
 
@@ -169,7 +174,8 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
 - **`orchestrate-dealer`:** el encargo apunta a la fila de la bitácora, el P-número del registro, la fila de la
   matriz y la función de `docs/mapa-agente.md`. Antes de repartir una tanda, la principal comprueba que el escenario
   da el estado que pide cada id (montura, lugar visitado, animal, convaleciente…); si falta, el primer trozo lo
-  prepara (`QA-216`). Una tanda de juego, 6-8 hallazgos y ~60 llamadas; al llegar,
+  prepara (`QA-216`). Una tanda de juego, 6-8 hallazgos y ~60 llamadas; una de arreglos, como mucho 5
+  hallazgos y ~90 llamadas, y la revisión con Opus junta dos tandas (`QA-257`). Al llegar la de juego,
   `tools/qa/escenario.sh guardar` y la siguiente lo carga (`QA-147`); si el encargo escribe en la partida, se prueba
   con `escenario.sh probar` (`QA-153`) y pasa por las funciones del juego que aplican esas reglas, sin rehacerlas a
   mano (`QA-151`). Los P-números de `FOUND` van al registro de la ronda y los de `TOOLS` a

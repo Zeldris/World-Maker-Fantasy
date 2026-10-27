@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 interface PanelDrawerProps {
   title: string
@@ -32,6 +32,7 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
   // El propio contenedor recibe el foco (tabIndex -1: enfocable por código, fuera del tab order
   // normal) en vez de intentar adivinar cuál es "el primer campo" de cada panel distinto.
   const scrollRef = useRef<HTMLDivElement>(null)
+  const tituloId = useId()
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 })
     scrollRef.current?.focus()
@@ -52,13 +53,14 @@ export function PanelDrawer({ title, subtitle, onClose, children, accent = 'acce
         // (`bg-iron-900/75`) por sí solo ya cumple la función de atenuar el fondo.
         className={`${saliendo ? 'animate-overlay-out' : 'animate-overlay-in'} absolute inset-0 bg-iron-900/75`}
       />
-      <div className={`plank-panel ${saliendo ? 'animate-drawer-down' : 'animate-drawer-up'} relative z-10 mx-auto flex h-[min(85vh,100%)] min-h-0 w-full max-w-4xl flex-col rounded-t-2xl border-b-0 shadow-[0_-16px_48px_-16px_rgba(0,0,0,0.85)]`}>
+      {/* P207: el cajón se anuncia como diálogo modal con su título, igual que los de ModalShell. */}
+      <div role="dialog" aria-modal="true" aria-labelledby={tituloId} className={`plank-panel ${saliendo ? 'animate-drawer-down' : 'animate-drawer-up'} relative z-10 mx-auto flex h-[min(85vh,100%)] min-h-0 w-full max-w-4xl flex-col rounded-t-2xl border-b-0 shadow-[0_-16px_48px_-16px_rgba(0,0,0,0.85)]`}>
         <span className="rivet rivet-tl" />
         <span className="rivet rivet-tr" />
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-iron-700" />
         <div className="relative flex items-center justify-between px-5 pb-3 pt-1.5">
           <div>
-            <h2 className="font-serif text-lg tracking-wide text-wood-100">{title}</h2>
+            <h2 id={tituloId} className="font-serif text-lg tracking-wide text-wood-100">{title}</h2>
             {subtitle && <p className="text-xs text-wood-500">{subtitle}</p>}
           </div>
           <button type="button"

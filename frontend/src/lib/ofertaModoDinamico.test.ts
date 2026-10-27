@@ -21,4 +21,21 @@ describe('presentacionOferta', () => {
     expect(recinto.warning?.text).toBe('Es del Clan Serhu: si te ven cogerlo, perderás reputación con ellos (-50).')
     expect(presentacionOferta('e1', { tipo: 'FAUNA', targetSlug: 'guchapo', targetName: 'Guchapo' }, {}).warning).toBeUndefined()
   })
+
+  // P307: la fauna de la escena (sin punto en el mapa) también se puede cazar desde su tarjeta.
+  it('ofrece Cazar en la fauna sin punto de zona y manda el targetSlug; con punto, su zonePointId', () => {
+    const llamadas: unknown[][] = []
+    const h = { onCazarEnZona: (...a: unknown[]) => void llamadas.push(a) }
+    const escena = presentacionOferta('e1', { tipo: 'FAUNA', targetSlug: 'corredor-de-cauce', targetName: 'Corredor de Cauce' }, h)
+    const cazar = escena.actions.find((a) => a.label === 'Cazar')
+    expect(cazar).toBeDefined()
+    cazar!.onClick()
+    expect(llamadas).toEqual([['e1', undefined, 'corredor-de-cauce']])
+    const conPunto = presentacionOferta('e2', { tipo: 'FAUNA', targetSlug: 'guchapo', targetName: 'Guchapo', zonePointId: 'zp1' }, h)
+    conPunto.actions.find((a) => a.label === 'Cazar')!.onClick()
+    expect(llamadas[1]).toEqual(['e2', 'zp1', undefined])
+    // Nunca en un NPC ni cuando la fauna te corta el paso.
+    expect(presentacionOferta('e3', { tipo: 'NPC', targetSlug: 'x', targetName: 'X' }, h).actions.some((a) => a.label === 'Cazar')).toBe(false)
+    expect(presentacionOferta('e4', { tipo: 'FAUNA', targetSlug: 'x', targetName: 'X', combateForzado: true }, h).actions.some((a) => a.label === 'Cazar')).toBe(false)
+  })
 })

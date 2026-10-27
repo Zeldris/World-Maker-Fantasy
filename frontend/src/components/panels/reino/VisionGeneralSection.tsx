@@ -9,7 +9,7 @@ import { useModoConsulta } from '../../../context/useModoConsulta'
 
 // `diasFelicidadBaja`/`diasFelicidadAlta` (B.19) quedan fuera a propósito — son metadatos de
 // "cuántos días lleva así", no un recurso del reino que tenga sentido como tarjeta en Economía.
-type KingdomStatKey = Exclude<keyof KingdomStatsInfo, 'diasFelicidadBaja' | 'diasFelicidadAlta'>
+type KingdomStatKey = Exclude<keyof KingdomStatsInfo, 'diasFelicidadBaja' | 'diasFelicidadAlta' | 'diasParaRebelion' | 'diasParaConsolidar'>
 
 const KINGDOM_STAT_LABEL: Record<KingdomStatKey, string> = {
   poblacion: 'Población',
@@ -63,6 +63,19 @@ const TERRITORY_STATE_HINT: Record<TerritoryInfo['control'], string> = {
   PERDIDO: 'La felicidad cayó demasiado tiempo — el territorio se rebeló.',
 }
 
+const SIN_PROVISIONES: Record<'hambre' | 'sed' | 'ambas', string> = {
+  ambas: 'Sin comida ni bebida',
+  hambre: 'Sin comida',
+  sed: 'Sin bebida',
+}
+
+/// P305: solo se promete la cura con provisiones; con carencia el descanso no cura y el estado empeora.
+function mensajeDescanso(carencia: 'hambre' | 'sed' | 'ambas' | null): string {
+  const guarda = 'Esto GUARDA la partida — reaparecerás aquí si mueres más adelante.'
+  if (!carencia) return `Descansarás hasta el amanecer (08:00 del día siguiente), curándote hasta Herido. ${guarda}`
+  return `Descansarás hasta el amanecer (08:00 del día siguiente). ${SIN_PROVISIONES[carencia]}, el descanso no cura y tu estado empeora. ${guarda}`
+}
+
 interface VisionGeneralSectionProps {
   saveId: string
   kingdomName: string | null
@@ -96,6 +109,8 @@ export function VisionGeneralSection({
   // (mismo criterio de "Building propio ACTIVO en la Location actual" que fija el punto de
   // guardado real), no una SavedAction fija de barra.
   const [descansarDisponible, setDescansarDisponible] = useState(false)
+  // P305: con hambre o sed el descanso no cura; el modal lo dice antes de confirmar.
+  const [carencia, setCarencia] = useState<'hambre' | 'sed' | 'ambas' | null>(null)
   const [confirmandoDescanso, setConfirmandoDescanso] = useState(false)
   const [descansando, setDescansando] = useState(false)
   const [errorDescanso, setErrorDescanso] = useState<string | null>(null)
@@ -103,7 +118,9 @@ export function VisionGeneralSection({
     let cancelado = false
     getDescansarCampamentoDisponible(saveId)
       .then((res) => {
-        if (!cancelado) setDescansarDisponible(res.disponible)
+        if (cancelado) return
+        setDescansarDisponible(res.disponible)
+        setCarencia(res.carencia ?? null)
       })
       .catch(() => {
         if (!cancelado) setDescansarDisponible(false)
@@ -206,18 +223,34 @@ export function VisionGeneralSection({
             </div>
           </details>
           {/* B.19 (checklist frontend 2026-08-27) — causa REAL de un cambio de control: felicidad
-              baja/alta sostenida (7 días, DIAS_PARA_REBELION/CONSOLIDAR en el backend), nunca el
+              baja/alta sostenida (`diasParaRebelion`/`diasParaConsolidar`, que manda el backend), nunca el
               conflicto de facciones del mundo (sistema distinto, ver ZonaPanel > control regional).
               Solo se muestra cuando ya hay días acumulados de verdad, no en cada visita. */}
-          {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && (
+          {/* P299 (reabierto 2026-10-22): «14 de 7 días para la rebelión» hablaba en futuro de algo que ya había
+              pasado. La rebelión es un hecho solo si hay un territorio PERDIDO (`dailyTick` rebela únicamente los
+              territorios que existen); con los días cumplidos y ninguno perdido todavía, falta que pase el día.
+              El umbral llega del backend (`diasParaRebelion`), no se copia aquí. */}
+          {kingdomStats && kingdomStats.diasFelicidadBaja >= kingdomStats.diasParaRebelion && territories.some((t) => t.control === 'PERDIDO') && (
             <p className="mb-2 text-2xs text-danger-400">
-              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de 7 días para la rebelión — si llegas a 7 seguidos, el reino se rebela
+              ⚠️ El reino se ha rebelado: {kingdomStats.diasFelicidadBaja} días seguidos con la felicidad baja. Mientras siga así,
+              cada territorio se pierde con sus edificios. Sube la felicidad (comida, agua, camas).
+            </p>
+          )}
+          {kingdomStats && kingdomStats.diasFelicidadBaja >= kingdomStats.diasParaRebelion && !territories.some((t) => t.control === 'PERDIDO') && (
+            <p className="mb-2 text-2xs text-danger-400">
+              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} días seguidos (el límite son {kingdomStats.diasParaRebelion}) — al pasar el día el
+              reino se rebela y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) ya.
+            </p>
+          )}
+          {kingdomStats && kingdomStats.diasFelicidadBaja > 0 && kingdomStats.diasFelicidadBaja < kingdomStats.diasParaRebelion && (
+            <p className="mb-2 text-2xs text-danger-400">
+              ⚠️ Felicidad baja: {kingdomStats.diasFelicidadBaja} de {kingdomStats.diasParaRebelion} días para la rebelión — si llegas a {kingdomStats.diasParaRebelion} seguidos, el reino se rebela
               y pierde el territorio con sus edificios. Sube la felicidad (comida, agua, camas) antes.
             </p>
           )}
           {kingdomStats && kingdomStats.diasFelicidadAlta > 0 && (
             <p className="mb-2 text-2xs text-accent2-400">
-              ✓ Felicidad alta desde hace {kingdomStats.diasFelicidadAlta} día{kingdomStats.diasFelicidadAlta === 1 ? '' : 's'} — sostenida 7 días
+              ✓ Felicidad alta desde hace {kingdomStats.diasFelicidadAlta} día{kingdomStats.diasFelicidadAlta === 1 ? '' : 's'} — sostenida {kingdomStats.diasParaConsolidar} días
               seguidos, tus territorios se consolidan.
             </p>
           )}
@@ -245,7 +278,14 @@ export function VisionGeneralSection({
 
       {descansarDisponible && (
         <button type="button"
-          onClick={() => setConfirmandoDescanso(true)}
+          onClick={() => {
+            // El hambre y la sed cambian con el reloj: se relee antes de abrir el modal para no avisar con un dato
+            // viejo (fase 1 hacia main: abrirlo antes dejaba confirmar con el aviso anterior).
+            getDescansarCampamentoDisponible(saveId)
+              .then((res) => setCarencia(res.carencia ?? null))
+              .catch(() => {})
+              .finally(() => setConfirmandoDescanso(true))
+          }}
           disabled={!!consulta}
           title={consulta ?? undefined}
           className="tactile w-full rounded-lg border border-accent-600/60 bg-wood-950/40 px-3.5 py-2 text-xs font-bold uppercase tracking-wide text-accent-300 transition-colors hover:bg-accent-500/10"
@@ -257,7 +297,7 @@ export function VisionGeneralSection({
       {confirmandoDescanso && (
         <ConfirmModal
           title="Descansar en el campamento"
-          message="Descansarás hasta el amanecer (08:00 del día siguiente), curándote hasta Herido. Esto GUARDA la partida — reaparecerás aquí si mueres más adelante."
+          message={mensajeDescanso(carencia)}
           confirmLabel="Descansar"
           tone="accent"
           confirming={descansando}

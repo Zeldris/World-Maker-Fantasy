@@ -16,7 +16,7 @@ describe('shouldCreateChapter', () => {
 /// Cobertura nueva (auditoría 2026-08-06, bug real): `claimChapterIfDue` reclamaba el `saveId` en
 /// el Set en memoria DESPUÉS de dos `await` — dos turnos casi simultáneos para la misma partida
 /// podían pasar los dos el `has()` antes de que ninguno reclamara, disparando cada uno su propio
-/// hito "capítulo" (500 XP) y su propio `SessionSummary` duplicado con el mismo `chapterNumber`.
+/// hito "capítulo" (100 XP) y su propio `SessionSummary` duplicado con el mismo `chapterNumber`.
 const findFirstSessionSummary = vi.fn();
 const countLogEntry = vi.fn();
 

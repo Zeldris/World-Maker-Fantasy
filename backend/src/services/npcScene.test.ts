@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -30,6 +30,7 @@ const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
+const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -44,10 +45,12 @@ vi.mock('../lib/prisma.js', () => ({
     // 2026-08-28) — `detectNpcsInScene` consulta `Save.npcsRetiredForever` ahora. `[]` por defecto
     // (ningún test de este archivo prueba ese caso en concreto todavía).
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
+    // P327: `detectNpcsInScene` consulta qué NPC con nombre propio ya conoce la jugadora.
+    discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscovered(...args) },
   },
 }));
 
-const { detectNpcsInScene, candidateNpcNamesNotInScene } = await import('./npcScene.js');
+const { detectNpcsInScene, candidateNpcNamesNotInScene, conNombreVisible, nombreNarrado, npcSceneLineFor, calibrationLineFor } = await import('./npcScene.js');
 
 // Tercer barrido (2026-09-28) — alias reales con colisiones contra palabras muy frecuentes.
 const NPCS_BARRIDO_2026_09_28 = [
@@ -301,6 +304,16 @@ describe('detectsAttackIntent', () => {
   it('no confunde "hierro" con "hiere"/"hiero" (auditoría 2026-07-29, tras el bug real de "ataque"~"saque" en turnResolution.ts)', () => {
     expect(detectsAttackIntent('Aprieto los dientes, aguanto con mi Puño de Hierro y me preparo')).toBe(false)
     expect(detectsAttackIntent('Reviso mi armadura de hierro antes de seguir')).toBe(false)
+  });
+
+  it('P261: "hacer", "viene", "tiene", "quiero" no se confunden con "hiere"/"hiero"/"lacerar" por la tolerancia a erratas', () => {
+    expect(detectsAttackIntent('Pienso en lo que me pidió Gistera Koh y qué hacer con el orco')).toBe(false)
+    expect(detectsAttackIntent('Le digo al orco que Gistera Koh viene hacia aquí')).toBe(false)
+    expect(detectsAttackIntent('Miro al orco mientras Gistera Koh tiene razón')).toBe(false)
+    expect(detectsAttackIntent('Quiero hablar con el orco y con Gistera Koh')).toBe(false)
+    // Lo literal sigue contando.
+    expect(detectsAttackIntent('Hiero al orco con la espada')).toBe(true)
+    expect(detectsAttackIntent('Intento lacerar al orco')).toBe(true)
   });
 });
 
@@ -1085,5 +1098,114 @@ describe('detectsInventoryReviewIntent', () => {
   it('no dispara con una acción que no tiene nada que ver con revisar el inventario', () => {
     expect(detectsInventoryReviewIntent("Ataco a 'Orco enfurecido' con mi hacha.")).toBe(false);
     expect(detectsInventoryReviewIntent('Camino hacia el pozo a rellenar el odre.')).toBe(false);
+  });
+});
+
+// P327 (2026-10-26): mientras Gorhorn no conoce a un NPC con nombre propio, lo que se cuenta al
+// narrador lo llama «el orco desconocido», nunca por su nombre, aunque el motor lo siga emparejando
+// por el real.
+describe('P327 — nombre visible de un NPC aún no descubierto', () => {
+  const oculto = () => npcFixture({ name: 'Gistera Koh', slug: 'gistera-koh', articulo: null, genero: 'F', raza: 'orcos', nombreVisible: 'Orca desconocida' });
+
+  beforeEach(() => {
+    findManyDiscovered.mockReset();
+    findManyDiscovered.mockResolvedValue([]);
+  });
+
+  it('conNombreVisible oculta al PRINCIPAL sin descubrir y deja al conocido y al genérico', async () => {
+    findManyDiscovered.mockResolvedValue([{ entitySlug: 'orco-enfurecido' }]);
+    const principalOculto = npcFixture({ slug: 'gistera-koh', name: 'Gistera Koh', genero: 'F', raza: 'orcos', articulo: null });
+    const principalConocido = npcFixture({ slug: 'orco-enfurecido' });
+    const generico = npcFixture({ slug: 'guchapo', name: 'Guchapo', kind: 'GENERICO' as NpcInScene['kind'] });
+    const [a, b, c] = await conNombreVisible({ discoveredEntity: { findMany: findManyDiscovered } } as never, 'save-1', [principalOculto, principalConocido, generico]);
+    expect(a!.nombreVisible).toBe('Orca desconocida');
+    expect(a!.name).toBe('Gistera Koh');
+    expect(b!.nombreVisible).toBeUndefined();
+    expect(c!.nombreVisible).toBeUndefined();
+  });
+
+  it('el bloque y la línea para el narrador usan «la orca desconocida» y prohíben el nombre propio', () => {
+    const bloque = npcSceneBlockFor(oculto(), 1);
+    expect(bloque).toContain('PERSONAJE EN ESCENA: la orca desconocida');
+    expect(bloque).toContain('NOMBRE OCULTO');
+    expect(bloque).toContain('GÉNERO DE LA ORCA DESCONOCIDA');
+    expect(bloque.split('Descripción/hechos')[0]).not.toContain('Gistera');
+    const linea = npcSceneLineFor(oculto(), 1);
+    expect(linea).toContain('la orca desconocida');
+    expect(linea).not.toContain('Gistera');
+    expect(calibrationLineFor([oculto()], 1)).not.toContain('Gistera');
+  });
+
+  it('un NPC conocido sigue por su nombre y sin la nota de nombre oculto', () => {
+    const conocido = npcFixture();
+    expect(npcSceneBlockFor(conocido, 1)).toContain('PERSONAJE EN ESCENA: el Orco enfurecido');
+    expect(npcSceneBlockFor(conocido, 1)).not.toContain('NOMBRE OCULTO');
+    expect(nombreNarrado(conocido)).toBe('Orco enfurecido');
+    expect(nombreNarrado(oculto(), true)).toBe('La orca desconocida');
+  });
+});
+
+describe('detectsGreetingOrQuestion (P306)', () => {
+  it('fase 1 hacia main: «la mata de bayas» es el arbusto, no una amenaza; «te mato» sigue sin ser saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Hola! ¿Has visto la mata de bayas junto al río?')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le pregunto si esas matas dan fruto.')).toBe(true);
+    expect(detectsGreetingOrQuestion('¡Hola! Te mato si das un paso.')).toBe(false);
+  });
+
+  it('un saludo o una pregunta cuentan como saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Hola! ¿Qué tal el camino?')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le pregunto por el paso del norte.')).toBe(true);
+  });
+
+  it('«cómo va la caza» (la frase del hallazgo) es saludo: «caza» es el sustantivo, no el verbo', () => {
+    expect(detectsGreetingOrQuestion('Saludo con un gesto del clan y le pregunto cómo va la caza')).toBe(true);
+    expect(detectsGreetingOrQuestion('¿Qué tal tu caza, Torgash?')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le digo «te caza el orco» y le cazo.')).toBe(false);
+  });
+
+  it('una amenaza de muerte o un gesto violento no se cuelan como saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Hola! Te mato.')).toBe(false);
+    expect(detectsGreetingOrQuestion('Le grito: «¡te voy a matar!»')).toBe(false);
+    expect(detectsGreetingOrQuestion('Desenvaino y le digo «prepárate».')).toBe(false);
+    expect(detectsGreetingOrQuestion('Le clavo la lanza y le digo adiós.')).toBe(false);
+    expect(detectsGreetingOrQuestion('¡Muere, bestia!')).toBe(false);
+  });
+
+  it('atacar, amenazar o intentar influir no es un saludo', () => {
+    expect(detectsGreetingOrQuestion('¡Ataco al orco con el hacha!')).toBe(false);
+    expect(detectsGreetingOrQuestion('Le amenazo: «¡dame el oro!»')).toBe(false);
+  });
+});
+
+describe('sinNombreReal (revisión P327)', () => {
+  const oculto = { name: 'Ugrak Tuerto', nombreVisible: 'Orco desconocido' };
+  it('con el nombre oculto, cambia el nombre completo por el visible, en mayúscula al empezar frase', () => {
+    expect(sinNombreReal('Ugrak Tuerto guarda el paso. Dicen que Ugrak Tuerto no duerme.', oculto)).toBe(
+      'El orco desconocido guarda el paso. Dicen que el orco desconocido no duerme.',
+    );
+  });
+  it('sin nombre oculto, o dentro de otra palabra, no toca nada', () => {
+    expect(sinNombreReal('Ugrak Tuerto guarda el paso.', { name: 'Ugrak Tuerto' })).toBe('Ugrak Tuerto guarda el paso.');
+    expect(sinNombreReal('Los Ugrakos Tuertos del norte.', oculto)).toBe('Los Ugrakos Tuertos del norte.');
+  });
+  it('fase 1: también cambia el nombre de pila, pero no una palabra del visible ni un artículo', () => {
+    expect(sinNombreReal('Ugrak guarda el paso. Todos temen a Ugrak.', oculto)).toBe('El orco desconocido guarda el paso. Todos temen a el orco desconocido.');
+    expect(sinNombreReal('Orco enfurecido ruge. Otro Orco pasa.', { name: 'Orco enfurecido', nombreVisible: 'Orco desconocido' })).toBe('El orco desconocido ruge. Otro Orco pasa.');
+    expect(sinNombreReal('La Sastre cose. La casa calla.', { name: 'La Sastre', nombreVisible: 'Orca desconocida' })).toBe('La orca desconocida cose. La casa calla.');
+  });
+});
+
+describe('nombraPorNombreVisible (P327, usuaria 2026-10-26)', () => {
+  it('casa con el nombre visible entero y con «el/la desconocido/a» a secas, con su género', () => {
+    expect(nombraPorNombreVisible('Le regalo pan al orco desconocido.', 'Orco desconocido')).toBe(true);
+    expect(nombraPorNombreVisible('Saludo a la Orca Desconocida', 'Orca desconocida')).toBe(true);
+    expect(nombraPorNombreVisible('Le doy agua al desconocido', 'Orco desconocido')).toBe(true);
+    expect(nombraPorNombreVisible('Hablo con la desconocida', 'Orca desconocida')).toBe(true);
+    expect(nombraPorNombreVisible('Hablo con la desconocida', 'Orco desconocido')).toBe(false);
+    expect(nombraPorNombreVisible('Hablo con el desconocido', 'Orca desconocida')).toBe(false);
+  });
+
+  it('«Alguien» (sin raza conocida) nunca casa: sale en cualquier frase', () => {
+    expect(nombraPorNombreVisible('Busco a alguien que me ayude', 'Alguien')).toBe(false);
   });
 });

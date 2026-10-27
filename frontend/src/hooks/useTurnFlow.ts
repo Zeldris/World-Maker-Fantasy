@@ -74,6 +74,10 @@ interface UseTurnFlowParams {
   setQuests: Dispatch<SetStateAction<QuestInfo[]>>
   setTerritories: Dispatch<SetStateAction<TerritoryInfo[]>>
   setBuildings: Dispatch<SetStateAction<BuildingInfo[]>>
+  /// P209: edificios actuales y setter del registro del reino; el turno que levanta o mejora el campamento o el
+  /// ayuntamiento escribe una entrada KINGDOM que la respuesta no trae, así que se pide al guardar.
+  buildings?: BuildingInfo[]
+  setKingdomLog?: Dispatch<SetStateAction<LogEntry[]>>
   setSubjects: Dispatch<SetStateAction<SubjectInfo[]>>
   setKingdomStats: Dispatch<SetStateAction<KingdomStatsInfo | null>>
   setDeathCount: Dispatch<SetStateAction<number>>
@@ -98,6 +102,19 @@ interface UseTurnFlowParams {
   setBusyUntil: Dispatch<SetStateAction<string | null>>
   setBusyActivity: Dispatch<SetStateAction<string | null>>
   setBusyDuracionMinutos: Dispatch<SetStateAction<number | null>>
+}
+
+const RECETAS_CON_REGISTRO_DE_REINO = ['campamento', 'ayuntamiento']
+
+/// P209: el backend escribe una entrada KINGDOM al terminar de construir o mejorar el campamento o el
+/// ayuntamiento (`writeKingdomLogForBuild`); es un hito si aparece uno de ellos, sube de nivel o termina
+/// la obra (EN_CONSTRUCCION → ACTIVO con el mismo nivel; fase 1 hacia main).
+function hitoDeReinoNuevo(antes: BuildingInfo[], despues: BuildingInfo[]): boolean {
+  return despues.some((b) => {
+    if (!b.recipeKey || !RECETAS_CON_REGISTRO_DE_REINO.includes(b.recipeKey)) return false
+    const previo = antes.find((a) => a.id === b.id)
+    return !previo || previo.tier !== b.tier || previo.status !== b.status
+  })
 }
 
 /// A.1 (checklist frontend 2026-08-27, "GameView.tsx es un god file... handleSubmit sigue entero
@@ -144,6 +161,8 @@ export function useTurnFlow(params: UseTurnFlowParams) {
     setQuests,
     setTerritories,
     setBuildings,
+    buildings,
+    setKingdomLog,
     setSubjects,
     setKingdomStats,
     setDeathCount,
@@ -369,6 +388,9 @@ export function useTurnFlow(params: UseTurnFlowParams) {
       // criterio que `quests`: el backend ya manda la lista/valor completo cada turno.
       setTerritories(updatedTerritories)
       setBuildings(updatedBuildings)
+      if (setKingdomLog && hitoDeReinoNuevo(buildings ?? [], updatedBuildings)) {
+        getSave(saveId).then((save) => setKingdomLog(save.kingdomLog)).catch(() => {})
+      }
       setSubjects(updatedSubjects)
       setKingdomStats(updatedKingdomStats)
       // Bug real (auditoría 2026-08-06): mismo problema que arriba — el contador de muertes, la

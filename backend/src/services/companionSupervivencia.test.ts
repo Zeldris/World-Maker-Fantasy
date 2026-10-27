@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   avisoCarenciaPersonaje,
+  carenciaPersonaje,
   esDomador,
   felicidadUmbralFor,
   FELICIDAD_UMBRAL_GENERAL,
@@ -233,5 +234,14 @@ describe('avisoCarenciaPersonaje (P219)', () => {
     // La primera frase dice solo lo que falta (revisión previa al PR).
     expect(avisoCarenciaPersonaje(100, 0)).toMatch(/^Sin beber lo necesario, .* Busca agua\.$/);
     expect(avisoCarenciaPersonaje(0, 100)).toMatch(/^Sin comer lo necesario, .* Busca alimento\.$/);
+  });
+});
+
+describe('carenciaPersonaje (P305)', () => {
+  it('dice qué falta o null si el personaje está provisto', () => {
+    expect(carenciaPersonaje(0, 0)).toBe('ambas');
+    expect(carenciaPersonaje(0, 100)).toBe('hambre');
+    expect(carenciaPersonaje(100, 0)).toBe('sed');
+    expect(carenciaPersonaje(25, 25)).toBeNull(); // en el umbral aún no es carencia (como condicionPorSupervivencia)
   });
 });

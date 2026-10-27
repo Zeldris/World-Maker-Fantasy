@@ -3,6 +3,7 @@ import { ModalShell } from './ModalShell'
 import { useAjustes } from '../context/useAjustes'
 import { AJUSTES_POR_DEFECTO, type Ajustes } from '../lib/ajustes'
 import { ACCIONES_ATAJO, asignarAtajo, teclaValida, type AccionAtajo } from '../lib/atajos'
+import { ayudaIntensidadAsaltos } from '../lib/asaltos'
 import { getRitmoMundo, setRitmoMundo, type RitmoMundo } from '../lib/api'
 
 // CFG-4 (hito 0.2, roadmap-front.md § 2.1) — panel de configuración: pestañas laterales, vista
@@ -321,7 +322,7 @@ export function PanelAjustes({ guardados, partidaId = null, onCerrar }: { guarda
                 etiqueta="Intensidad de los asaltos"
                 valor={ritmo.intensidadAsaltos}
                 onChange={(v) => setRitmo('intensidadAsaltos', v)}
-                ayuda="Con cuánta decisión atacan bandidos y enemigos cuando ven tu Reino débil o rico. Nunca dejan de hacerlo."
+                ayuda={ayudaIntensidadAsaltos(ritmo.intensidadAsaltos)}
                 opciones={[
                   { valor: 'CONTENIDA', label: 'Contenida' },
                   { valor: 'NORMAL', label: 'Normal' },

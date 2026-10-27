@@ -1,7 +1,8 @@
 import { Prisma, type PrismaClient, type ZonePointTipo } from '@prisma/client';
 import { stripRegionArticle } from './population.js';
+import { nombresVisiblesDeNpcs, NOMBRE_OCULTO_GENERICO } from './dynamicMode.js';
 import { sourceDisplayNameFor, faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
-import { factionRepFor } from './reputation.js';
+import { factionRepFor, FACTION_REP_HOSTIL } from './reputation.js';
 import {
   celdaDePixel,
   pixelDeCelda,
@@ -18,7 +19,7 @@ import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTempl
 import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';
 import type { MomentoDelDia } from './worldClock.js';
-import { ambitoPoblacion, copiaDeFila } from './mundoPartida.js';
+import { ambitoPoblacion, copiaDeFila, npcDeLaPartida } from './mundoPartida.js';
 import { celdasDeEntrada, enRadioSeguro } from './entradasZona.js';
 import { murosDe } from './murosZona.js';
 
@@ -40,7 +41,7 @@ export function zonePointColorFor(factionSlug: string | null, factionsStatus: Re
   if (!factionSlug) return tipo === 'RECURSO' ? 'INERTE' : 'SIN_FACCION';
   const rep = factionRepFor(factionsStatus, factionSlug);
   if (rep >= 3000) return 'ALIADO';
-  if (rep < 1000) return 'ENEMIGO';
+  if (rep < FACTION_REP_HOSTIL) return 'ENEMIGO';
   return 'NEUTRO';
 }
 
@@ -121,6 +122,14 @@ export function zonePointVisiblePara(targetSlug: string, questSlugsAceptados: Re
 /// temporal, nunca se retira por una muerte individual (la población regional sigue existiendo).
 export function zonePointNpcMuertoParaSiempre(kind: string, condicionFisica: string | undefined): boolean {
   return kind === 'PRINCIPAL' && condicionFisica === 'MUERTO';
+}
+
+/// Puro — P269/P329 (REVIEW.md, «muertos y caídos»): un NPC único convaleciente no actúa, así que su
+/// `ZonePoint` no corta el paso ni abre combate. Solo `kind: 'PRINCIPAL'`: el `NpcState` de fauna y
+/// plantillas es uno por especie y lugar (`scopeFor`, npcScene.ts), y un individuo convaleciente
+/// silenciaría a todos los de su especie en la zona (mismo criterio que `estaAusente` en `GET /zona`).
+export function zonePointNpcConvalecienteNoActua(kind: string, condicionFisica: string | undefined): boolean {
+  return kind === 'PRINCIPAL' && condicionFisica === 'CONVALECIENTE';
 }
 
 /// Puro — ¿esta especie está activa AHORA MISMO según `faunaMomentoDelDia` (worldCatalog.ts)?
@@ -657,7 +666,9 @@ export async function avanzarZonePointsUnPaso(
   });
   if (puntosCrudos.length === 0) return [];
   // P185 (QA-27): ni la fauna ni los NPC cruzan los muros (la empalizada de Colmillo Ceniza).
-  const muros = murosDe((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug);
+  const zona = await tx.location.findUnique({ where: { id: locationId }, select: { slug: true, worldId: true } });
+  if (!zona) return [];
+  const muros = murosDe(zona.slug);
   // Gate de aparición narrativa (ver comentario junto a `zonePointVisiblePara` más arriba) — un
   // punto gateado sin su misión aceptada todavía no "patrulla": narrativamente no está en la zona.
   const questSlugsAceptados = await questSlugsAceptadosPara(tx, saveId);
@@ -670,21 +681,28 @@ export async function avanzarZonePointsUnPaso(
   // Sistema de plantillas de movimiento (2026-09-17) — Npc cargados en batch por `targetSlug`
   // (nunca FK real, mismo criterio de siempre) para poder inferir la plantilla GENERAL de cada
   // punto sin ruta artesanal ni plantilla específica asignada. `faction` (2026-09-17, persecución)
-  // se carga a la vez para resolver `effectiveTemperamento` sin una segunda query. `worldId` no
-  // hace falta filtrarlo aparte: `targetSlug` ya es único dentro de un mundo y esta función solo
-  // opera sobre puntos de UNA Location concreta, que ya pertenece a un único World.
+  // se carga a la vez para resolver `effectiveTemperamento` sin una segunda query. Filtrado por el
+  // mundo de la zona y la partida: el slug solo es único dentro de un mundo, y el id se usa para
+  // buscar el NpcState del convaleciente (revisión de P269/P329).
   const npcsPorSlug = new Map(
     (
       await tx.npc.findMany({
-        where: { slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
-        select: { slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true, faction: true },
+        where: { worldId: zona.worldId, ...npcDeLaPartida(saveId), slug: { in: [...new Set(puntos.map((p) => p.targetSlug))] } },
+        select: { id: true, slug: true, kind: true, role: true, temperamento: true, faunaCategoria: true, medio: true, faction: true },
       })
     ).map((n) => [n.slug, n]),
   );
   const celdaJugador = jugador ? celdaDePixel(jugador) : null;
+  // P269/P329 (revisión): un NPC único convaleciente no persigue (como tampoco corta el paso, `zonePointNpcConvalecienteNoActua`).
+  // Solo PRINCIPAL: su NpcState es uno por partida (scope ''); el de fauna es por especie y lugar.
+  const principalesIds = [...npcsPorSlug.values()].filter((n) => n.kind === 'PRINCIPAL').map((n) => n.id);
+  const estadosPrincipales = principalesIds.length
+    ? await tx.npcState.findMany({ where: { saveId, npcId: { in: principalesIds }, scope: '' }, select: { npcId: true, condicionFisica: true } })
+    : [];
+  const convalecientesIds = new Set(estadosPrincipales.filter((s) => zonePointNpcConvalecienteNoActua('PRINCIPAL', s.condicionFisica)).map((s) => s.npcId));
   // P116 (QA-27): la fauna hostil no persigue ni entra en el radio seguro de las entradas.
   const entradas = entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId));
-  const esZonaDeInicioMov = ZONAS_DE_INICIO.has((await tx.location.findUnique({ where: { id: locationId }, select: { slug: true } }))?.slug ?? '');
+  const esZonaDeInicioMov = ZONAS_DE_INICIO.has(zona.slug ?? '');
   // B30 (pruebas 2026-09-28): dos grupos de la misma especie deambulando acababan en la MISMA celda
   // (un pin tapaba al otro). Celdas ocupadas en este paso — el tramo de cada callback hasta su
   // primer `await` es síncrono y en orden, así que reservar aquí no tiene carreras.
@@ -694,6 +712,9 @@ export async function avanzarZonePointsUnPaso(
     puntos.map(async (punto) => {
       const actual = celdaDePixel({ x: punto.x, y: punto.y });
       const npc = npcsPorSlug.get(punto.targetSlug) ?? null;
+      // P269/P329 (revisión de e0b760d): un NPC único convaleciente no actúa ni se mueve (REVIEW.md
+      // «Muertos y caídos»): ni persigue ni patrulla; se queda en su sitio hasta recuperarse.
+      if (npc && convalecientesIds.has(npc.id)) return null;
 
       // Persecución (2026-09-17) — "cualquier enemigo en la zona" en el diseño de Álvaro; hoy el
       // único enemigo real detectable en Zona es el propio jugador (no hay Companions rivales ni
@@ -793,7 +814,7 @@ export interface ZonePointsSummaryPorTipo {
   edificio: string | null;
 }
 
-export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string): Promise<ZonePointsSummaryPorTipo | null> {
+export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: string, saveId: string, worldIdConocido?: string): Promise<ZonePointsSummaryPorTipo | null> {
   await asegurarZonePointsDePartida(prisma, saveId, locationId);
   const puntosCrudos = await prisma.zonePoint.findMany({ where: { saveId, locationId, activo: true } });
   if (puntosCrudos.length === 0) return null;
@@ -804,16 +825,22 @@ export async function zonePointsSummaryFor(prisma: PrismaClient, locationId: str
   if (puntos.length === 0) return null;
 
   const npcSlugs = [...new Set(puntos.filter((p) => p.tipo === 'NPC').map((p) => p.targetSlug))];
-  const npcRows = npcSlugs.length ? await prisma.npc.findMany({ where: { slug: { in: npcSlugs } }, select: { slug: true, name: true } }) : [];
-  const npcNameBySlug = new Map(npcRows.map((n) => [n.slug, n.name]));
+  // Revisión de P269/P329 (leve): los Npc se buscan en el mundo de la partida (y los nacidos en ella), no por slug
+  // a secas: uno de otro mundo con el mismo slug le ponía su nombre al punto.
+  // El turno ya sabe el mundo y lo pasa (sin consulta extra); sin él, se lee de la partida.
+  const worldId = worldIdConocido ?? (npcSlugs.length ? (await prisma.save.findUnique({ where: { id: saveId }, select: { worldId: true } }))?.worldId : undefined);
+  const npcRows = npcSlugs.length && worldId ? await prisma.npc.findMany({ where: { worldId, ...npcDeLaPartida(saveId), slug: { in: npcSlugs } }, select: { slug: true, name: true, kind: true, raza: true, genero: true } }) : [];
+  // QA-256 (P327): al narrador se le dice «Orco desconocido», no el nombre de un PRINCIPAL que Gorhorn aún no conoce.
+  const npcNameBySlug = await nombresVisiblesDeNpcs(prisma, saveId, npcRows);
 
   const nombreDe = (p: (typeof puntos)[number]): string => {
     // EDIFICIO no resuelve contra `Npc` — no tiene fila propia ahí (gobernado por
     // `Building`/`construction.ts`, fuera del alcance de esta pieza), solo `label` o el slug crudo.
     // Para NPC, el nombre real SIEMPRE gana sobre `label` (evita que un label de escenario tipo
     // "Punto de vigilancia (Orco Enfurecido)" sustituya al nombre de la persona) — para el resto,
-    // `label` sigue ganando si existe, es descripción de escenario, no de identidad.
-    const nombre = p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? p.targetSlug) : (p.label ?? (p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug)));
+    // `label` sigue ganando si existe, es descripción de escenario, no de identidad. Un NPC que no se resuelve contra
+    // `npcRows` (otro mundo, borrado) no se nombra por el slug, que suele salir de su nombre real: «Alguien» (P327).
+    const nombre = p.tipo === 'NPC' ? (npcNameBySlug.get(p.targetSlug) ?? NOMBRE_OCULTO_GENERICO) : (p.label ?? (p.tipo === 'EDIFICIO' ? p.targetSlug : sourceDisplayNameFor(p.targetSlug)));
     return p.cantidad > 1 ? `${nombre} ×${p.cantidad}` : nombre;
   };
   // Grupos de fauna (2026-09-28): una especie repartida en varios `ZonePoint` (ver
@@ -848,3 +875,44 @@ export function faccionMasComun(facciones: string[]): string | null {
   for (const [f, n] of cuenta) if (mejor === null || n > cuenta.get(mejor)!) mejor = f;
   return mejor;
 }
+
+/// P307: «Cazar» en la fauna de la escena (una tarjeta de Interactuar sin punto en el mapa, p. ej. el
+/// Corredor de Cauce de Hogar Ketg). Si la zona ya tiene un punto vivo de esa especie, se caza ese
+/// (el más cercano a Gorhorn); si no, se crea uno de un individuo en la celda de Gorhorn en este
+/// momento, para que la caza normal (riesgo, botín, descuento del punto) tenga a qué apuntar.
+/// P313 (usuaria, 2026-10-26): un punto agotado ya no se borra, así que, si no hay ninguno vivo, se
+/// devuelve el agotado de esa especie (sin crear otro): quien llama dice que no hay presas por ahora.
+export async function puntoDeFaunaDeEscena(
+  db: Pick<PrismaClient, 'zonePoint'>,
+  save: { id: string; currentLocationId: string | null; zonaPosX: number | null; zonaPosY: number | null; worldState?: { fictionalMinutes: number } | null },
+  targetSlug: string,
+) {
+  if (!save.currentLocationId) return null;
+  const delaEspecie = await db.zonePoint.findMany({
+    where: { saveId: save.id, locationId: save.currentLocationId, tipo: 'FAUNA', targetSlug },
+  });
+  const cx = save.zonaPosX ?? LIENZO_CENTRO.x;
+  const cy = save.zonaPosY ?? LIENZO_CENTRO.y;
+  const masCercano = (puntos: typeof delaEspecie) => [...puntos].sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]!;
+  const vivos = delaEspecie.filter((p) => p.activo && p.cantidad > 0);
+  if (vivos.length > 0) return masCercano(vivos);
+  if (delaEspecie.length > 0) return masCercano(delaEspecie);
+  const pixel = pixelDeCelda(celdaDePixel({ x: cx, y: cy }));
+  return db.zonePoint.create({
+    data: {
+      saveId: save.id,
+      locationId: save.currentLocationId,
+      tipo: 'FAUNA',
+      targetSlug,
+      x: pixel.x,
+      y: pixel.y,
+      origenX: pixel.x,
+      origenY: pixel.y,
+      cantidad: 1,
+      activo: true,
+      lastUpdatedAtMinutes: save.worldState?.fictionalMinutes ?? null,
+    },
+  });
+}
+
+const LIENZO_CENTRO = { x: 400, y: 300 };

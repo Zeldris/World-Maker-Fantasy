@@ -130,4 +130,17 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${cria.id}/sacrificar` });
     expect(res.statusCode).toBe(400);
   });
+
+  it('P330: el aviso de carencia solo cuenta con animales en los corrales (sin ellos, 0 días)', async () => {
+    const owner = ownerKeyFor({ saveId });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { ganadoDiasSinComer: 4, ganadoDiasSinBeber: 2 } });
+    const app = await buildApp();
+    const con = (await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json();
+    expect(con.diasSinComer).toBe(4);
+    expect(con.diasSinBeber).toBe(2);
+    await prisma.ganado.deleteMany({ where: { saveId } });
+    const sin = (await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json();
+    expect(sin.diasSinComer).toBe(0);
+    expect(sin.diasSinBeber).toBe(0);
+  });
 });

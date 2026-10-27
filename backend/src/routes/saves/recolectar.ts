@@ -766,6 +766,8 @@ export async function resolverRecoleccion(
         // más abajo — nunca un rechazo duro de toda la petición: si solo caben 3 de las 9 pedidas,
         // se añaden esas 3 (mismo criterio de "coger lo que se pueda" que el resto de este motor).
         let unitsRemaining = Math.max(0, capacity - totalInventoryUnits(currentItems));
+        // P136: con el inventario ya lleno no se coge nada; el caller lo dice así en vez de «no consigue nada».
+        const sinEspacio = unitsRemaining <= 0;
         // P109 (QA-27): lo que se lleva de cada fuente RECURSO, para descontarlo de su punto del mapa.
         const unidadesPorFuente = new Map<string, number>();
 
@@ -1124,7 +1126,7 @@ export async function resolverRecoleccion(
           }
         }
 
-        return { touched, logEntry, segundasTiradas, recompensas, energia: energiaTrasRecolectar };
+        return { touched, logEntry, segundasTiradas, recompensas, energia: energiaTrasRecolectar, sinEspacio };
       });
 
       // Hecho de sesión (fuera de la transacción, igual que `appendSessionFacts` en /explorar —
@@ -1177,5 +1179,5 @@ export async function resolverRecoleccion(
         }
       }
 
-  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas, ...(touched.energia !== null ? { energia: touched.energia } : {}) };
+  return { items: [...items, ...touched.recompensas], updatedItems, logEntry: touched.logEntry, segundasTiradas: touched.segundasTiradas, sinEspacio: touched.sinEspacio, ...(touched.energia !== null ? { energia: touched.energia } : {}) };
 }

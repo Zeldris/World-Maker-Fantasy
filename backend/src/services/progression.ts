@@ -106,12 +106,14 @@ const XP_BY_HITO: Record<HitoTipo, number> = {
   descubrimiento: 50,
   objetivo_menor: 100,
   objetivo_mayor: 300,
-  capitulo: 500,
+  // P306/P307 (decidido por la usuaria, 2026-10-26): 100, no 500. Un capítulo se cierra cada 15 acciones
+  // (`TURNS_PER_CHAPTER`, chapterSummary.ts) y 500 XP por «solo» seguir jugando pesaba como cinco misiones.
+  capitulo: 100,
 };
 
 /// Etiqueta legible del hito de mayor valor de un turno (UX 2026-09-01: separar visualmente el
 /// XP de hito del XP normal de tirada — antes un único chip "+N XP" sumaba ambos, y si la tirada
-/// fallaba pero había un hito grande [p.ej. "capitulo", 500 XP], el jugador veía un "+500 XP"
+/// fallaba pero había un hito grande [p.ej. "objetivo_mayor", 300 XP], el jugador veía un "+300 XP"
 /// pegado a un "Fallo" en rojo, como si el juego premiara el fracaso). Solo para mostrar, nunca
 /// para calcular — `xpForHitos` sigue siendo la única fuente de verdad del número.
 const HITO_LABEL: Record<HitoTipo, string> = {

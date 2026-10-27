@@ -10,7 +10,7 @@ export function avisosDeEconomia(e: EconomiaReino): string[] {
   if (e.diasSinCobrar > 0) avisos.push(`${e.diasSinCobrar === 1 ? 'Un día' : `${e.diasSinCobrar} días`} sin pagar los sueldos: a los 7 empiezan a desertar.`)
   if (e.aguaDia < e.bocas) avisos.push('Entra menos agua de la que se bebe: construye un Pozo.')
   if (e.sinHerramienta) avisos.push(`${e.sinHerramienta} trabajador${e.sinHerramienta === 1 ? '' : 'es'} sin herramienta: producen la mitad.`)
-  if (e.sinArma) avisos.push(`${e.sinArma} soldado${e.sinArma === 1 ? '' : 's'} sin arma: cuentan la mitad en la defensa.`)
+  if (e.sinArma) avisos.push(`${e.sinArma} soldado${e.sinArma === 1 ? '' : 's'}, vigía${e.sinArma === 1 ? '' : 's'} o cazador${e.sinArma === 1 ? '' : 'es'} sin arma (marcados en Súbditos): en la defensa cuentan la mitad y un cazador sin arma no sale de caza.`)
   return avisos
 }
 

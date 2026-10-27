@@ -18,6 +18,7 @@ import { ConfirmModal } from '../../ConfirmModal'
 import { ErrorBanner } from '../../../components/ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
+import { nombreDeEdificio } from '../../../lib/edificios'
 
 interface ProduccionSectionProps {
   saveId: string
@@ -222,7 +223,7 @@ function BuildingProduccionCard({
 
   return (
     <div className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-3">
-      <p className="font-medium text-wood-100">{building.name}</p>
+      <p className="font-medium text-wood-100">{nombreDeEdificio(building.name)}</p>
       {fallo && <div className="mt-2"><ErrorBanner fallo={fallo} onCerrar={limpiar} /></div>}
 
       <p className="mt-2 text-2xs uppercase tracking-wide text-wood-500">Trabajadores</p>

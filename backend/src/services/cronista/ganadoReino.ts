@@ -190,7 +190,11 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
   const vacio: ResumenGanadoDia = { comido: true, bebido: true, producido: {}, comidaDeLeche: 0, crias: 0, muertos: 0 };
   const animales = corrales.flatMap((c) => c.animales);
   if (animales.length === 0) {
-    if (forraje !== stats.forraje) await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje } });
+    // P330: sin animales no hay nadie con hambre ni sed; los días sin comer o beber de los que ya murieron no se
+    // arrastran (el aviso de Reino › Corrales decía «lleva 4 días sin forraje» con el corral vacío desde hacía 8).
+    if (forraje !== stats.forraje || stats.ganadoDiasSinComer !== 0 || stats.ganadoDiasSinBeber !== 0) {
+      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje, ganadoDiasSinComer: 0, ganadoDiasSinBeber: 0 } });
+    }
     return vacio;
   }
 

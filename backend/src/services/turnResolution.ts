@@ -29,11 +29,11 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
-import { DEFAULT_KINGDOM_STATS } from './kingdomTick.js';
+import { DEFAULT_KINGDOM_STATS, kingdomStatsParaCliente } from './kingdomTick.js';
 import { runDailyTick } from './dailyTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
@@ -41,11 +41,11 @@ import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
-import { applyFactionRepDelta, effectiveTemperamento, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
+import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -69,7 +69,6 @@ import { destinationsFrom, normalizeText, detectsTravelIntent, detectsVagueMovem
 import { descansoRechazadoPorEnfriamiento, intentaDescansar, type Produccion } from './timedActions.js';
 import { puntoDeEntradaParaDireccion, posicionesDeSalidas, direccionDeEntrada, posicionDeObjetivo, minutoDeReaparicion, moverJugadorA, volverAEntrada, celdaDePixel, mismaCelda, celdaAdyacenteOMisma } from './zonaPosicion.js';
 import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClaim } from './chapterSummary.js';
-import { captureLiveTeacherExample } from './liveTeacherCapture.js';
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { detectsSearchIntent } from './discovery.js';
 import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
@@ -81,13 +80,13 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
 import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
 import { nombrarOferta } from './ofertaNombre.js';
 import { narradorPuedeCerrar } from './startingQuests.js';
-import { resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
 import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
@@ -608,6 +607,10 @@ export interface NarrateAndPersistResult {
     soldados: number;
     trabajadores: number;
     visitantes: number;
+    diasFelicidadBaja: number;
+    diasFelicidadAlta: number;
+    diasParaRebelion: number;
+    diasParaConsolidar: number;
   } | null;
   /// deathCount/factionsStatus/professionProgress (auditoría 2026-08-06) — mismo criterio que
   /// territories/buildings/subjects/kingdomStats arriba: el frontend necesita el valor YA
@@ -1142,7 +1145,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         let utilityNarration = '';
         if (defensorRol === 'utilidad') {
           const jugadorDisparo = utilityTriggered(defensorRol, abilityEffects, independent.defensor.efectoAplica, pendingNpcAttack.rol);
-          utilityNarration = utilityNarrationHint(abilityEffects, jugadorDisparo, characterName, npcParaIntercambio.name);
+          utilityNarration = utilityNarrationHint(abilityEffects, jugadorDisparo, characterName, nombreNarrado(npcParaIntercambio));
           if (jugadorDisparo) {
             // Independientes (2026-08-15, "que una habilidad pueda tener múltiples AbilityEffects")
             // — cada efecto reconocido se aplica por su cuenta, no es un else-if: una habilidad con
@@ -1184,9 +1187,9 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           }
         }
         exchangeNarrationBlock =
-          `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${independentExchangeContextBlock(independent, npcParaIntercambio.name, characterName)} ${utilityNarration}`.trim();
+          `${nombreNarrado(npcParaIntercambio, true)} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${independentExchangeContextBlock(independent, nombreNarrado(npcParaIntercambio), characterName)} ${utilityNarration}`.trim();
         combatExchangeRoll = independent.defensor;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
+        npcAbilityUsed = { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
         // `margen` no tiene sentido en el camino independiente (cada lado se juzga por su cuenta,
         // nunca hay "quién gana" conjunto) — 0 de relleno, el frontend nunca lo lee para
         // `resultado: 'independiente'`.
@@ -1301,9 +1304,9 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // `oneStepWorseThan` a secas — mismo criterio que el camino independiente: si la habilidad
         // de defensa del jugador lleva también `LETAL`, el contragolpe debe matar.
         npcTargetNewCondicion = npcAttackHits ? nextCondicionForAttack(abilityEffects, npcParaIntercambio.condicionFisica) : null;
-        exchangeNarrationBlock = `${npcParaIntercambio.name} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, npcParaIntercambio.name, characterName, jugadorPuedeContragolpear)}`;
+        exchangeNarrationBlock = `${nombreNarrado(npcParaIntercambio, true)} ataca con "${pendingNpcAttack.abilityName}" (${pendingNpcAttack.abilityDescription || 'sin descripción propia'}). ${exchangeContextBlock(exchange, nombreNarrado(npcParaIntercambio), characterName, jugadorPuedeContragolpear)}`;
         combatExchangeRoll = exchange.defensor;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
+        npcAbilityUsed = { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: pendingNpcAttack.abilityName, rol: 'ataque', maxUsesPerCombat: pendingNpcAttack.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: false,
           atacante: exchange.atacante,
@@ -1399,13 +1402,13 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         jugadorGolpeEfectos = jugadorRecibeGolpe ? npcDefensa.effects : [];
         if (!pendingNpcStillHere && canalizacion.effects.includes('LETAL')) {
           abilityEffectHint = npcAttackHits
-            ? `EFECTO DE HABILIDAD — YA RESUELTO: la canalización se completa y el golpe letal contra ${npcParaIntercambio.name} conecta, matándolo en el acto sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
+            ? `EFECTO DE HABILIDAD — YA RESUELTO: la canalización se completa y el golpe letal contra ${nombreNarrado(npcParaIntercambio)} conecta, matándolo en el acto sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
             : `EFECTO DE HABILIDAD — YA RESUELTO: la canalización se completa pero el golpe letal no llega a conectar esta vez — narra el intento fallido, nunca su muerte.`;
         }
-        exchangeNarrationBlock = `${characterName} completa su canalización de "${canalizacion.abilityName}" contra ${npcParaIntercambio.name}. ${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpearCanalizacion)}`;
+        exchangeNarrationBlock = `${characterName} completa su canalización de "${canalizacion.abilityName}" contra ${nombreNarrado(npcParaIntercambio)}. ${exchangeContextBlock(exchange, characterName, nombreNarrado(npcParaIntercambio), npcPuedeContragolpearCanalizacion)}`;
         combatExchangeRoll = exchange.atacante;
         // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
-        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -1435,7 +1438,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           effects: abilityEffects,
           npcId: npcParaIntercambio.id,
         };
-        exchangeNarrationBlock = `${characterName} empieza a canalizar "${input.selectedAbility?.name ?? 'su habilidad'}" contra ${npcParaIntercambio.name} — el golpe se completará el próximo turno si nada lo interrumpe antes.`;
+        exchangeNarrationBlock = `${characterName} empieza a canalizar "${input.selectedAbility?.name ?? 'su habilidad'}" contra ${nombreNarrado(npcParaIntercambio)} — el golpe se completará el próximo turno si nada lo interrumpe antes.`;
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
         exchangeHappened = true;
       } else {
@@ -1500,7 +1503,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         let utilityNarrationNpc = '';
         if (jugadorRol === 'utilidad') {
           const jugadorDisparo = utilityTriggered(jugadorRol, abilityEffects, independent.atacante.efectoAplica, npcDefensa.rol);
-          utilityNarrationJugador = utilityNarrationHint(abilityEffects, jugadorDisparo, characterName, npcParaIntercambio.name);
+          utilityNarrationJugador = utilityNarrationHint(abilityEffects, jugadorDisparo, characterName, nombreNarrado(npcParaIntercambio));
           if (jugadorDisparo && abilityEffects.includes('ANALISIS')) analizarRivalExito = true;
           // Contraataque/Grito de Guerra/Instinto Salvaje elegidos como acción OFENSIVA (no como
           // defensa a ciegas) son un uso atípico — su gancho reactivo exige que el RIVAL haya
@@ -1533,7 +1536,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         }
         if (npcDefensa.rol === 'utilidad') {
           const npcDisparo = utilityTriggered(npcDefensa.rol, npcDefensa.effects, independent.defensor.efectoAplica, jugadorRol);
-          utilityNarrationNpc = utilityNarrationHint(npcDefensa.effects, npcDisparo, npcParaIntercambio.name, characterName);
+          utilityNarrationNpc = utilityNarrationHint(npcDefensa.effects, npcDisparo, nombreNarrado(npcParaIntercambio), characterName);
           if (npcDisparo) {
             if (npcDefensa.effects.includes('ATAQUE')) {
               // Contraataque del NPC: además del golpe base (si lo hubo), el jugador recibe un
@@ -1560,9 +1563,9 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           }
         }
         exchangeNarrationBlock =
-          `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${independentExchangeContextBlock(independent, characterName, npcParaIntercambio.name)} ${hitSeverityHint(npcParaIntercambio.name, npcTargetNewCondicion)} ${utilityNarrationJugador} ${utilityNarrationNpc}`.trim();
+          `${nombreNarrado(npcParaIntercambio, true)} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). ${independentExchangeContextBlock(independent, characterName, nombreNarrado(npcParaIntercambio))} ${hitSeverityHint(nombreNarrado(npcParaIntercambio), npcTargetNewCondicion)} ${utilityNarrationJugador} ${utilityNarrationNpc}`.trim();
         combatExchangeRoll = independent.atacante;
-        npcAbilityUsed = { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        npcAbilityUsed = { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = { atacanteEsJugador: true, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente', margen: 0 };
         if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'ataque' };
         exchangeHappened = true;
@@ -1655,10 +1658,10 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           if (abilityEffects.includes('AUMENTO')) nuevosJugadorActiveEffects = pushActiveEffect(nuevosJugadorActiveEffects, nuevoEfecto);
           if (abilityEffects.includes('DEBILIDAD')) nuevosNpcActiveEffects = pushActiveEffect(nuevosNpcActiveEffects, nuevoEfecto);
         }
-        exchangeNarrationBlock = `${exchange.golpeDeGracia ? '' : `${npcParaIntercambio.name} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). `}${exchangeContextBlock(exchange, characterName, npcParaIntercambio.name, npcPuedeContragolpear)}`;
+        exchangeNarrationBlock = `${exchange.golpeDeGracia ? '' : `${nombreNarrado(npcParaIntercambio, true)} se defiende con "${npcDefensa.name}" (${npcDefensa.description}). `}${exchangeContextBlock(exchange, characterName, nombreNarrado(npcParaIntercambio), npcPuedeContragolpear)}`;
         combatExchangeRoll = exchange.atacante;
         // P148 (QA-27): un golpe de gracia no tiene defensa: ni cabecera «se defiende con…» ni uso gastado.
-        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
+        npcAbilityUsed = exchange.golpeDeGracia ? null : { npcName: npcParaIntercambio.nombreVisible ?? npcParaIntercambio.name, abilityName: npcDefensa.name, rol: 'defensa', maxUsesPerCombat: npcDefensa.maxUsesPerCombat };
         combatExchangeDisplay = {
           atacanteEsJugador: true,
           atacante: exchange.atacante,
@@ -1707,7 +1710,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // cuando el jugador ataca, nunca en la defensa a ciegas).
       if (!pendingNpcStillHere && abilityEffects.includes('LETAL')) {
         abilityEffectHint = npcAttackHits
-          ? `EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal contra ${npcParaIntercambio.name} conecta y lo mata en el acto, sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
+          ? `EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal contra ${nombreNarrado(npcParaIntercambio)} conecta y lo mata en el acto, sin importar en qué estado estuviera antes — narra el golpe final, no una herida más.`
           : `EFECTO DE HABILIDAD — YA RESUELTO: el golpe letal no llega a conectar esta vez — narra el intento fallido, nunca su muerte.`;
       }
 
@@ -1721,7 +1724,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
       // habilidad elegida — confirmado que ya trae su propio lore, p.ej. fuego/físico), así que
       // este hint solo añade la instrucción de REMATE, sin repetir el nombre de la habilidad.
       if (npcAttackHits && npcParaIntercambio.condicionFisica === 'CONVALECIENTE' && npcTargetNewCondicion === 'MUERTO' && !abilityEffects.includes('LETAL')) {
-        const remateHint = `REMATE — YA RESUELTO: ${npcParaIntercambio.name} ya estaba al borde de la muerte (convaleciente) y este golpe acaba con su vida — narra explícitamente que es el golpe final a través de la habilidad concreta usada, nunca como un impacto más de combate normal.`;
+        const remateHint = `REMATE — YA RESUELTO: ${nombreNarrado(npcParaIntercambio, true)} ya estaba al borde de la muerte (convaleciente) y este golpe acaba con su vida — narra explícitamente que es el golpe final a través de la habilidad concreta usada, nunca como un impacto más de combate normal.`;
         exchangeNarrationBlock = exchangeNarrationBlock ? `${exchangeNarrationBlock} ${remateHint}` : remateHint;
       }
 
@@ -2096,8 +2099,9 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
   const marcaCapitan = terminado ? null : await marcaDelCapitan(prisma, saveId, encounterId);
   const enemigoNpcIds = participantesFinal.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
   const enemigoNpcRows = enemigoNpcIds.length
-    ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, atributoResistencia: true } })
+    ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, atributoResistencia: true } })
     : [];
+  const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, saveId, enemigoNpcRows);
   const npcRowById = new Map(enemigoNpcRows.map((n) => [n.id, n]));
   // Bug real de display (2026-08-25, hallado al cerrar saqueo/desuello): un participante
   // SOLITARIO siempre tiene `condicionFisicaGrupo: null` (ver comentario del campo en
@@ -2130,7 +2134,8 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
     const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
     return {
       slug: npcRow.slug,
-      name: npcRow.name,
+      // P327: un PRINCIPAL aún desconocido sigue siendo «el orco desconocido» también en el combate.
+      name: nombreVisiblePorSlug.get(npcRow.slug) ?? npcRow.name,
       condicionFisica: p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO',
       saqueado: false,
       lootedItemNames: [] as string[],
@@ -2293,7 +2298,18 @@ async function resolveCombatSlugsAndPersist(params: {
   // `agresivoSlugsInScene` más abajo). Un NPC pacífico solo puede entrar en combate por la vía
   // determinista de siempre (intercambio/ejecución/`shouldForceCombat`), nunca porque el modelo lo
   // proponga sin más.
-  const combatSlugsFromModel = (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
+  // P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC no abre combate salvo que la
+  // reputación de Gorhorn con la facción de alguien en escena sea hostil (`reputacionHostil`, el mismo umbral
+  // que el color ENEMIGO del mapa y la banda 0 de `effectiveTemperamento`). Ni el `combateIniciado` del narrador,
+  // ni una bajada de condición lo deciden por su cuenta tras un saludo (un NPC AGRESIVO sí, ver abajo). Un
+  // verbo de ataque o de búsqueda hostil en la misma frase sí sigue valiendo (el saludo no los tapa).
+  // P306 (usuaria, 2026-10-26, segunda decisión): un NPC AGRESIVO (temperamento efectivo, `agresivoSlugsInScene`)
+  // sigue atacando aunque lo saludes, como antes; el saludo solo apaga el combate con los no agresivos.
+  const saludoSinHostilidad =
+    !enCombate &&
+    detectsGreetingOrQuestion(action) &&
+    !npcsInSceneVivos.some((n) => reputacionHostil(n.faction, factionsStatus));
+  const combatSlugsFromModel = saludoSinHostilidad ? [] : (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
     npcsInSceneVivos.some((n) => {
       if (n.slug !== slug) return false;
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
@@ -2375,9 +2391,10 @@ async function resolveCombatSlugsAndPersist(params: {
     combatSlugsFromModel.length === 0 &&
     npcsInSceneVivos.length > 0 &&
     (agresivoSlugsInScene.length > 0 ||
-      (isCondicionDowngrade(condicionFisicaJugador, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
-      (detectsAttackIntent(action) && !attackMissedNonAggressiveTarget) ||
-      (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)));
+      (!saludoSinHostilidad &&
+        ((isCondicionDowngrade(condicionFisicaJugador, narration.condicionFisica) && !allNpcsInSceneArePacificos) ||
+          (detectsAttackIntent(action) && !attackMissedNonAggressiveTarget) ||
+          (detectsHostileSearchIntent(action) && !detectsVerbalAcceptanceIntent(action)))));
   // Bug real (auditoría 2026-07-23, "ha metido un murgol que no pinta nada"): la red de seguridad
   // metía a TODOS los NPCs detectados en escena como participantes de combate (aliados, fauna de
   // paso...), no solo al hostil. Si la acción cita un nombre real entre comillas (`explicitTarget`,
@@ -2421,7 +2438,10 @@ async function resolveCombatSlugsAndPersist(params: {
     const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
     return t !== 'AMIGABLE' && t !== 'INOFENSIVO' && t !== 'CAUTELOSO';
   });
-  const forcedCombatSlugs = explicitTargetVivo
+  // P306: tras un saludo solo entran los agresivos; el saludado pacífico (citado entre comillas) no.
+  const forcedCombatSlugs = saludoSinHostilidad
+    ? agresivoSlugsInScene
+    : explicitTargetVivo
     ? [explicitTargetVivo.slug]
     : agresivoSlugsInScene.length > 0
       ? agresivoSlugsInScene
@@ -2489,6 +2509,8 @@ async function resolveCombatSlugsAndPersist(params: {
   // P233: si el combate empieza en este turno, empieza cuando empezó el turno (antes de su COMBATE_PERDIDO).
   await guardarSlugsDeCombate(prisma, saveId, combatSlugsToPersist, { ahora: params.inicioTurno });
 
+  // P327: nombre con que la jugadora ve a cada rival (un PRINCIPAL sin descubrir va por su raza).
+  const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, saveId, npcsInScene.filter((x) => combatSlugs.includes(x.slug)));
   const combateIniciado = combatSlugs.length
     ? {
         npcs: combatSlugs
@@ -2506,7 +2528,7 @@ async function resolveCombatSlugsAndPersist(params: {
           // esta respuesta tiene que traer la condición fresca ella sola.
           .map((n) => ({
             slug: n.slug,
-            name: n.name,
+            name: nombreVisiblePorSlug.get(n.slug) ?? n.name,
             condicionFisica:
               npcAttackTarget && npcAttackHits && npcTargetNewCondicion && n.id === npcAttackTarget.id ? npcTargetNewCondicion : n.condicionFisica,
             saqueado: n.saqueado,
@@ -2791,7 +2813,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     if (alreadyInScene) {
       const t = effectiveTemperamento(alreadyInScene.temperamento, alreadyInScene.faction, factionsStatus);
       if (t !== 'AGRESIVO' && t !== 'ENEMIGO') {
-        interruptionCandidateForOffer = { targetSlug: alreadyInScene.slug, targetName: alreadyInScene.name };
+        interruptionCandidateForOffer = { targetSlug: alreadyInScene.slug, targetName: alreadyInScene.nombreVisible ?? alreadyInScene.name };
       }
     } else {
       const interruptionNpc: NpcWithItems | null = await prisma.npc.findUnique({
@@ -2806,10 +2828,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           create: { saveId, npcId: interruptionNpc.id, scope: interruptionScope, condicionFisica: 'ILESO' },
           update: {},
         });
-        npcsInSceneWithInterruption = [...npcsInSceneRaw, buildNpcInScene(interruptionNpc, interruptionState)];
+        const [interruptionInScene] = await conNombreVisible(prisma, saveId, [buildNpcInScene(interruptionNpc, interruptionState)]);
+        npcsInSceneWithInterruption = [...npcsInSceneRaw, interruptionInScene!];
         const t = effectiveTemperamento(interruptionNpc.temperamento, interruptionNpc.faction, factionsStatus);
         if (t !== 'AGRESIVO' && t !== 'ENEMIGO') {
-          interruptionCandidateForOffer = { targetSlug: interruptionNpc.slug, targetName: interruptionNpc.name };
+          interruptionCandidateForOffer = { targetSlug: interruptionNpc.slug, targetName: interruptionInScene!.nombreVisible ?? interruptionNpc.name };
         }
       }
     }
@@ -2867,7 +2890,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       const pursuerState = await prisma.npcState.findUnique({
         where: { saveId_npcId_scope: { saveId, npcId: pursuerNpc.id, scope: scopeFor(pursuerNpc.kind, currentLocationId) } },
       });
-      npcsInSceneWithInterruption = [...npcsInSceneWithInterruption, buildNpcInScene(pursuerNpc, pursuerState ?? undefined)];
+      npcsInSceneWithInterruption = [...npcsInSceneWithInterruption, ...(await conNombreVisible(prisma, saveId, [buildNpcInScene(pursuerNpc, pursuerState ?? undefined)]))];
       pursuerRevealedThisTurn = true;
     }
   }
@@ -3758,7 +3781,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // modelo confundió una fauna ("Colmena de Lebude") con el apellido de una persona inventada
     // ("el pescador de Lebude"). Solo NPC son personas reales con las que se puede hablar — el
     // resto se etiqueta explícitamente como NO personas.
-    const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId, saveId);
+    const zonePointsSummary = await zonePointsSummaryFor(prisma, regionLocationId, saveId, worldId);
     if (zonePointsSummary?.npc) contextBlocks.push(`PERSONAJES AQUÍ AHORA MISMO (son gente real, puedes hablar con ellos): ${zonePointsSummary.npc}`);
     if (zonePointsSummary?.fauna) contextBlocks.push(`FAUNA AQUÍ AHORA MISMO (animales, NO son personas): ${zonePointsSummary.fauna}`);
     if (zonePointsSummary?.recurso) contextBlocks.push(`RECURSOS AQUÍ AHORA MISMO (materiales, NO son personas ni animales): ${zonePointsSummary.recurso}`);
@@ -4618,7 +4641,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // Bug real de timeout de transacción (2026-08-25, ver comentario de cabecera en
     // combateMultipleOrquestacion.ts) — esto YA NO va envuelto en `prisma.$transaction`: la propia
     // función gestiona sus transacciones cortas internamente y llama a Ollama fuera de ellas.
-    const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
+    // P129: lo que pase hasta su próximo turno cuenta como su ronda (2 ataques de más, sin Ileso → Muerto).
+    const ventanaJugadora = await abrirTurnoJugadora(prisma, saveId, encounterId);
+    const antes = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, ventanaJugadora });
     narraciones.push(...antes.narraciones);
     const intercambiosContraJugadora = [...antes.intercambiosContraJugadora];
     golpesSinTiradaContraJugadora.push(...antes.golpesSinTiradaContraJugadora);
@@ -4690,7 +4715,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
 
       if (!combatEncounterTerminado) {
-        const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId });
+        const despues = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, ventanaJugadora });
         narraciones.push(...despues.narraciones);
         intercambiosContraJugadora.push(...despues.intercambiosContraJugadora);
         golpesSinTiradaContraJugadora.push(...despues.golpesSinTiradaContraJugadora);
@@ -4768,6 +4793,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
   // final de la respuesta HTTP completa.
   if (!wasLlmNarrated) onNarrationChunk?.(narration.narration);
+
+  // P245: el narrador no respondió y era un diálogo con un NPC: el respaldo no copia la acción ni dice
+  // «sin incidentes»; réplica neutra con el nombre que la jugadora le conoce + aviso. Fuera de un
+  // diálogo (o en un intercambio de combate) el respaldo sigue como siempre. Si el streaming ya sacó el
+  // texto antiguo, el cliente recibe el definitivo en la respuesta.
+  if (wasLlmNarrated && narration.fallbackDeterminista && dialogueTarget && !combatExchangeDisplayFinal) {
+    const visible = await nombreVisibleDeNpc(prisma, saveId, dialogueTarget);
+    const quien = visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, dialogueTarget.articulo);
+    narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1));
+  }
 
   // Narración mentirosa si el modelo agota los 3 reintentos (bug real jugando en vivo, 2026-08-06,
   // auditoría "revisa la partida" en directo): `hasFalseTravelClaim` (narrador.ts) ya descarta y
@@ -4916,7 +4951,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (dialogueTarget) {
     try {
       const npcReply = await generateNpcReply({
-        npc: { name: dialogueTarget.name, personality: dialogueTarget.personality, bio: dialogueTarget.bio, role: dialogueTarget.role },
+        npc: { name: dialogueTarget.name, personality: dialogueTarget.personality, bio: dialogueTarget.bio, role: dialogueTarget.role, ...(dialogueTarget.nombreVisible ? { nombreVisible: dialogueTarget.nombreVisible } : {}) },
         characterName,
         action,
         sessionFacts,
@@ -6238,7 +6273,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         // CR-32: a quien te escucha puedes proponerle que se una o que te informe.
         puedeReclutar: puedeOfrecerTrabajo,
       });
-      npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: npcInteractionCandidate.name, options: opciones };
+      // P327: la oferta (respuesta de /turn/narrate y `pendingNpcInteractionOffer` de GET /saves/:id) lleva el nombre
+      // que la jugadora le conoce; el frontend lo usa en «Ataco a '<nombre>'.».
+      const visibleOferta = await nombreVisibleDeNpc(tx, saveId, npcInteractionCandidate);
+      npcInteractionOffer = { npcSlug: npcInteractionCandidate.slug, npcName: visibleOferta.nombre, options: opciones };
       await tx.save.update({ where: { id: saveId }, data: { pendingNpcInteractionOffer: npcInteractionOffer } });
     }
 
@@ -6644,7 +6682,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           // CR-16: quien te vence lo recuerda y sube (estilo Némesis).
           ...actorRivalCombate,
         ],
-        datos: { personaje: characterName, rival: npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
+        // P327: el Libro de Sucesos guarda el nombre real; `npcAbilityUsed.npcName` es el que ve la jugadora.
+        datos: { personaje: characterName, rival: (npcAbilityUsed ? npcParaIntercambio?.name : null) ?? npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal?.rivalNombre ?? 'sus enemigos' },
       });
     }
 
@@ -6881,7 +6920,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // que comparar contra un profesor cloud. Cubre también el camino diferido de worldTick.ts sin
   // cableado aparte: ambos convergen en esta misma función.
   if (wasLlmNarrated) {
-    void captureLiveTeacherExample({ saveId, worldId, ctx: narrationCtx, localNarration: narration, localModel: env.ollamaModelNarrador });
+    // INS-34: el build empaquetado no captura (esbuild pliega la condición con `define` y el `import()` no entra en el
+    // bundle). En desarrollo sigue siendo fire-and-forget: un fallo del import o de la captura no rompe el turno.
+    if (process.env.TARKOR_EMPAQUETADO !== '1') {
+      const paramsCaptura = { saveId, worldId, ctx: narrationCtx, localNarration: narration, localModel: env.ollamaModelNarrador };
+      void import('./liveTeacherCapture.js')
+        .then(({ captureLiveTeacherExample }) => captureLiveTeacherExample(paramsCaptura))
+        .catch((err) => console.warn('[live-teacher-capture] falló la captura en vivo:', err));
+    }
   }
   // Persistencia de hechos nuevos (2026-07-30, ver worldFacts.ts): fuera de la transacción a
   // propósito — embebe cada hecho nuevo vía Ollama, mismo criterio que `narrateAction`/`retrieveLore`
@@ -7065,10 +7111,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // decide SI algo se descubre en absoluto (como mucho CITADO); estar de verdad en `npcsInScene`
   // este turno es lo que decide si esa detección sube a DESCUBIERTO (ficha completa con imagen) en
   // vez de quedarse en CITADO (nombre+región nada más) — ver `recordEntityDiscoveries`.
+  // P327: atacar a un PRINCIPAL aún desconocido no lo identifica (sigue siendo «el orco desconocido» hasta que
+  // se presente o se descubra); solo el objetivo conocido (o un rol o especie) entra por esta vía.
+  const objetivoAtaqueIdentificable = npcAttackTarget && !(await nombreVisibleDeNpc(prisma, saveId, npcAttackTarget)).oculto ? npcAttackTarget.name : '';
   await recordEntityDiscoveries({
     saveId,
     worldId,
-    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos, npcAttackTarget?.name ?? ''].join('\n'),
+    mentionedText: [narration.narration, ...narration.newFacts, ...newQuestObjetivos, objetivoAtaqueIdentificable].join('\n'),
     npcSlugsInScene: npcsInScene.map((n) => n.slug),
   });
 
@@ -7328,18 +7377,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     description: b.description,
   }));
   const subjects = subjectRows.map((s) => ({ id: s.id, territoryId: s.territoryId, name: s.name, role: s.role, notes: s.notes }));
-  const kingdomStats = kingdomStatsRow
-    ? {
-        poblacion: kingdomStatsRow.poblacion,
-        felicidad: kingdomStatsRow.felicidad,
-        comida: kingdomStatsRow.comida,
-        bebida: kingdomStatsRow.bebida,
-        riqueza: kingdomStatsRow.riqueza,
-        soldados: kingdomStatsRow.soldados,
-        trabajadores: kingdomStatsRow.trabajadores,
-        visitantes: kingdomStatsRow.visitantes,
-      }
-    : null;
+  const kingdomStats = kingdomStatsRow ? kingdomStatsParaCliente(kingdomStatsRow) : null;
 
   return {
     narration,

@@ -27,8 +27,10 @@ import { faccionMasComun, ZONAS_DE_INICIO,
   zonePointVisiblePara,
   zonePointActivoAhora,
   zonePointNpcMuertoParaSiempre,
+  zonePointNpcConvalecienteNoActua,
   questSlugsAceptadosPara,
   recalcularZonePointsDeLocation,
+  puntoDeFaunaDeEscena,
   type ZonePointColor,
 } from '../../services/zonePoints.js';
 import { aNombre, conDefinido, conIndefinido, quienEnAviso, pluralDeEspecie, nombreEnFrase, nombreOcultoPorRaza } from '../../services/dynamicMode.js';
@@ -103,6 +105,24 @@ const ESTACION_A_SLUG: Record<string, EstacionSlug> = { PRIMAVERA: 'primavera', 
 /// P177 (QA-27): minutos de juego que un NPC (no hostil) con el que ya te has encontrado tarda en
 /// volver a salirte al paso en la misma zona.
 export const ENFRIAMIENTO_ENCUENTRO_MINUTOS = 60;
+
+/// Un encuentro que la zona recuerda (`Save.zonaUltimoEncuentro`). P177 (reabierto 2026-10-17): se
+/// recuerda cada uno, no solo el último; con uno solo, otro encuentro en medio liberaba al anterior
+/// (en el Pozo se alternaban un Guchapo y la Telda Común a cada paso).
+interface EncuentroRecordado { targetSlug: string; locationId: string; minutos?: number; tipo?: string }
+
+/// Lee `Save.zonaUltimoEncuentro`: la lista, o el objeto suelto que guardaban las partidas de antes.
+export function encuentrosRecordados(valor: unknown): EncuentroRecordado[] {
+  const esEncuentro = (v: unknown): v is EncuentroRecordado =>
+    !!v && typeof v === 'object' && typeof (v as { targetSlug?: unknown }).targetSlug === 'string' && typeof (v as { locationId?: unknown }).locationId === 'string';
+  if (Array.isArray(valor)) return valor.filter(esEncuentro);
+  return esEncuentro(valor) ? [valor] : [];
+}
+
+/// Un ser vivo (no un recurso) con el que te topaste hace menos de `ENFRIAMIENTO_ENCUENTRO_MINUTOS`.
+function encuentroEnfriando(e: EncuentroRecordado, minutosAhora: number): boolean {
+  return e.minutos != null && e.tipo !== undefined && e.tipo !== 'RECURSO' && minutosAhora - e.minutos < ENFRIAMIENTO_ENCUENTRO_MINUTOS;
+}
 
 /// Icono de parcela en el mapa de Zona (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — una
 /// por cada `Parcela` sembrada en la Location actual (solo zonas-interior de Capital/Cuartel
@@ -461,6 +481,13 @@ export async function zonaRoutes(app: FastifyInstance) {
         })
       : [];
     const npcStateByKey = new Map(npcStates.map((s) => [`${s.npcId}|${s.scope}`, s]));
+    // P269/P329 (revisión de e0b760d): un PRINCIPAL convaleciente no persigue ni corta el paso
+    // (`avanzarZonePointsUnPaso`, `detectarEncuentroEnCelda`): tampoco sale hostil (ni radio de amenaza ni «¡te persigue!»).
+    const convalecientesSlugsZonePoint = new Set(
+      npcFaunaZonePointIds
+        .filter((n) => zonePointNpcConvalecienteNoActua(n.kind, npcStateByKey.get(`${n.id}|${scopeFor(n.kind, locationId)}`)?.condicionFisica))
+        .map((n) => n.slug),
+    );
 
     // Ausente por combate ganado (regla 4b): dentro de la ventana de 6h Y sin cambiar de Location
     // desde que se marcó — ambas condiciones a la vez (mismo `zonaLocationId`), coherente con la
@@ -747,7 +774,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           companion: companion ? { slug: companion.slug, nombre: yaDescubierto ? companion.nombre : '???' } : undefined,
           // ZON-50/ZON-33/ZON-53 (decisión de la usuaria, ronda de Z-D): la amenaza y la patrulla solo
           // de lo ya descubierto; lo desconocido sigue sorprendiendo.
-          hostil: yaDescubierto && (hostilBySlugZonePoint.get(p.targetSlug) ?? false),
+          hostil: yaDescubierto && !convalecientesSlugsZonePoint.has(p.targetSlug) && (hostilBySlugZonePoint.get(p.targetSlug) ?? false),
           ruta: yaDescubierto && Array.isArray(p.ruta) && p.ruta.length > 1 ? (p.ruta as { x: number; y: number }[]) : undefined,
           // ZON-58 / ZON-16: agotado o con candado (solo recursos ya descubiertos).
           ...(p.tipo === 'RECURSO' && yaDescubierto ? estadoRecurso.get(p.targetSlug) : {}),
@@ -781,10 +808,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza del jugador, `Save.attributes` ya cargado
     // por el caller. Ver `quienIniciaEncuentro`, zonaPosicion.ts.
     destrezaJugador: number,
-    // Último encuentro ya ofrecido en ESTA Location (`Save.zonaUltimoEncuentro`, 2026-09-28) — ese
-    // objetivo se salta mientras siga en el radio de la celda; `null` = no saltar nada (el caller
-    // pasa `null` también cuando el jugador pulsa su propia casilla: petición explícita).
-    ultimoEncuentroSlug: string | null,
+    // Encuentros ya ofrecidos en ESTA Location (`Save.zonaUltimoEncuentro`, 2026-09-28; todos desde
+    // P177) — se saltan; `null` = no saltar nada (el caller pasa `null` también cuando el jugador
+    // pulsa su propia casilla: petición explícita).
+    silenciados: ReadonlySet<string> | null,
     // Nivel del jugador (`Save.level`) — solo para `riesgoCaza` de la oferta FAUNA (F9-1).
     nivelJugador: number,
     // P143: celda a la que se camina; `null` = pulsar la propia casilla (petición explícita).
@@ -792,9 +819,12 @@ export async function zonaRoutes(app: FastifyInstance) {
     // Celdas de las entradas ya calculadas en este paso (P116); si no, se calculan aquí.
     entradasConocidas?: Celda[],
   ): Promise<{
-    /// `true` si el objetivo de `ultimoEncuentroSlug` sigue en el radio de `celda` — el caller solo
-    /// limpia `Save.zonaUltimoEncuentro` cuando esto es `false` (el jugador ya salió de su radio).
-    ultimoEncuentroSigueCerca: boolean;
+    /// Los de `silenciados` que siguen en el radio de `celda` — el caller olvida los demás (el jugador
+    /// ya salió de su radio), salvo un ser vivo en su rato de P177.
+    silenciadosCerca: Set<string>;
+    /// P177: la búsqueda paró en el primer encuentro (colisión, aunque P186 la anulase) o ante una oferta ya
+    /// abierta: `silenciadosCerca` está incompleto y el caller no debe olvidar los silenciados que no se miraron.
+    busquedaCortada?: boolean;
     colision: { targetSlug: string; targetName: string; temperamento: string } | null;
     dynamicModeOffer:
       | {
@@ -866,8 +896,11 @@ export async function zonaRoutes(app: FastifyInstance) {
     const npcStateBySlugColision = new Map(
       npcs.map((n) => [n.slug, npcStatesColision.find((s) => s.npcId === n.id && s.scope === scopeFor(n.kind, locationId))]),
     );
+    // P269/P329 (REVIEW.md, «muertos y caídos»): un NPC único convaleciente (derrotado, y más si se le perdonó
+    // con Clemente) no actúa: no corta el paso ni abre combate (`zonePointNpcConvalecienteNoActua`). Su ficha sigue en el mapa; cuando se recupera
+    // (`npcRecoversFromConvaleciente`) vuelve a la acción.
     const puntosVivos = puntos.filter(
-      (p) => !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+      (p) => !zonePointNpcConvalecienteNoActua(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica) && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
     );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único
@@ -916,7 +949,8 @@ export async function zonaRoutes(app: FastifyInstance) {
     const enEntradaSegura = enRadioSeguro(celda, entradasConocidas ?? (await celdasDeEntrada(tx, saveId, locationId)));
     const faunaHostilEnEntrada = (tipo: string, temperamento: string) => enEntradaSegura && tipo === 'FAUNA' && esTemperamentoHostil(temperamento);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
+    // P269/P329 (revisión): un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso, como el que tiene ficha.
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {
@@ -981,7 +1015,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     let colisionCantidad = 1;
     // P190: el bando dueño del punto colisionado (un rebaño del clan), si lo tiene.
     let colisionDeBando: string | null = null;
-    let ultimoEncuentroSigueCerca = false;
+    const silenciadosCerca = new Set<string>();
     for (const punto of puntosVivos) {
       const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
       const npc = npcBySlug.get(punto.targetSlug);
@@ -995,8 +1029,8 @@ export async function zonaRoutes(app: FastifyInstance) {
         if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
         if (noCortaElPaso(punto.tipo, temperamento, celdaPunto) || faunaHostilEnEntrada(punto.tipo, temperamento)) continue;
         // Un AGRESIVO/ENEMIGO nunca se silencia: si sigue encima del jugador, vuelve a cortarle el paso.
-        if (punto.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
-          ultimoEncuentroSigueCerca = true;
+        if (silenciados?.has(punto.targetSlug) && !esTemperamentoHostil(temperamento)) {
+          silenciadosCerca.add(punto.targetSlug);
           continue;
         }
         colision = { targetSlug: punto.targetSlug, targetName: nombre, temperamento, articulo: nombre === nombreReal ? npc?.articulo : null, genero: npc?.genero };
@@ -1017,8 +1051,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           const temperamento = conRencor(effectiveTemperamento(dinamico.temperamento, dinamico.faction, factionsStatus), rencoresColision.has(dinamico.id));
           if (esTemperamentoHostil(temperamento) && (await enGracia())) continue;
           if (noCortaElPaso(dinamico.tipo, temperamento, celdaDinamico) || faunaHostilEnEntrada(dinamico.tipo, temperamento)) continue;
-          if (dinamico.targetSlug === ultimoEncuentroSlug && !esTemperamentoHostil(temperamento)) {
-            ultimoEncuentroSigueCerca = true;
+          if (silenciados?.has(dinamico.targetSlug) && !esTemperamentoHostil(temperamento)) {
+            silenciadosCerca.add(dinamico.targetSlug);
             continue;
           }
           colision = { targetSlug: dinamico.targetSlug, targetName: nombreDinamico, temperamento, articulo: nombreDinamico === dinamico.targetName ? dinamico.articulo : null, genero: dinamico.genero };
@@ -1070,6 +1104,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         }
       | null = null;
     let logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: IniciativaEncuentroLogRoll } | null = null;
+    // P177: los bucles de arriba paran en la primera colisión sin mirar los demás; si luego P186 la anula,
+    // `silenciadosCerca` queda incompleto y hay que avisarlo.
+    let busquedaCortada = colision !== null;
     if (colision) {
       const combateForzado = esTemperamentoHostil(colision.temperamento);
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
@@ -1078,9 +1115,10 @@ export async function zonaRoutes(app: FastifyInstance) {
         // AGRESIVO/ENEMIGO) — Destreza jugador vs Destreza NPC, mismo patrón que `rollInitiative` de
         // combate. Para el resto de temperamentos solo decide el FRAMING narrativo de la primera
         // vuelta (ver `buildDynamicModeTurnoPrompt`, dynamicModeNarracion.ts); para AGRESIVO/ENEMIGO
-        // decide además si el jugador puede elegir (lo vio primero) o el combate se abre
-        // directamente (el agresivo lo vio primero) — ver `narrarAperturaCombateForzado`,
-        // dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
+        // decide además el aviso («te ha visto antes» = emboscada si peleas, y huir pide la tirada de
+        // `tiradaDeHuida`); P27: en los dos casos Interactuar saca la decisión y el combate solo empieza
+        // al elegir Combatir (o al fallar esa huida) — ver
+        // `narrarAperturaCombateForzado`, dynamicMode.ts, y la ruta `/modo-dinamico/interactuar`.
         // P166/P177 (QA-27, decidido por la usuaria 2026-10-17): la tirada solo va con alguien hostil, que
         // es cuando decide si puedes huir. Con alguien tranquilo (también dentro de un poblado) no hay
         // sorpresa: te topas con él y punto, como en BG3 y D&D (sorpresa solo al esconderse o emboscar) y
@@ -1094,7 +1132,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           const textoHuida = `${nombreEnFrase(colision.targetName, true)} reconoce a ${characterName} de lejos y huye antes de que pueda acercarse.`;
           const creada = await tx.logEntry.create({ data: { saveId, channel: 'CHARACTER', text: textoHuida, timeLabel, fictionalMinutes, isPlayerAction: false, isSystemMessage: true } });
           // Queda como último encuentro: mientras sigas en su radio no vuelve a «huir» a cada paso.
-          return { ultimoEncuentroSigueCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug, tipo: colisionTipo ?? undefined } };
+          return { silenciadosCerca, colision: null, dynamicModeOffer: null, logEntry: { id: creada.id, text: textoHuida, timeLabel, createdAt: creada.createdAt.toISOString() }, avistadoSinOferta: { targetSlug: colision.targetSlug, tipo: colisionTipo ?? undefined } };
         }
         // QA-99: la oferta también se arma en la oferta ambiental del turno (`turnResolution.ts`, junto a
         // `decideOfertaModoDinamico`): un campo o una regla nueva, en las dos.
@@ -1194,12 +1232,15 @@ export async function zonaRoutes(app: FastifyInstance) {
       for (const punto of recursosCrudos) {
         const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
         if (!celdaAdyacenteOMisma(celda, celdaPunto) || !alcanzableDesde(locationSlugColision, celda, celdaPunto)) continue;
-        if (punto.targetSlug === ultimoEncuentroSlug) {
-          ultimoEncuentroSigueCerca = true;
+        if (silenciados?.has(punto.targetSlug)) {
+          silenciadosCerca.add(punto.targetSlug);
           continue;
         }
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
-        if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) break;
+        if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) {
+          busquedaCortada = true;
+          break;
+        }
         // P136 (QA-27): el mismo nombre que la ficha del mapa (su `label`, si lo tiene), no el de catálogo.
         const nombre = punto.label ?? sourceDisplayNameFor(punto.targetSlug);
         // B7 (pruebas 2026-09-28): un recurso por encima del nivel de oficio del jugador (p.ej. el
@@ -1221,7 +1262,7 @@ export async function zonaRoutes(app: FastifyInstance) {
             });
             logEntry = { id: created.id, text, timeLabel, createdAt: created.createdAt.toISOString() };
             await recordEntityDiscoveries({ saveId, worldId, mentionedText: sourceDisplayNameFor(punto.targetSlug) }, tx);
-            return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug, tipo: 'RECURSO' } };
+            return { silenciadosCerca, colision, dynamicModeOffer: null, logEntry, avistadoSinOferta: { targetSlug: punto.targetSlug, tipo: 'RECURSO' } };
           }
         }
         // Sin tirada de iniciativa — un recurso nunca "busca" al jugador, siempre es él quien lo
@@ -1237,7 +1278,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         break; // Solo el primer recurso — no acumula varios a la vez.
       }
     }
-    return { ultimoEncuentroSigueCerca, colision, dynamicModeOffer, logEntry };
+    return { silenciadosCerca, busquedaCortada, colision, dynamicModeOffer, logEntry };
   }
 
   /// Sistema de movimiento por cuadrícula (2026-09-08, "estilo Mount & Blade") — el jugador hace
@@ -1291,18 +1332,20 @@ export async function zonaRoutes(app: FastifyInstance) {
     const momentoActual = momentoDelDiaFor(save.worldState?.fictionalMinutes ?? 480);
     // "¿Quién ve a quién primero?" (2026-09-17) — Destreza real del jugador para `quienIniciaEncuentro`.
     const destrezaJugador = effectiveAttributes(save.attributes as AttributeBlock, save.inventoryItems).destreza ?? 10;
-    // Último encuentro ya ofrecido (2026-09-28) — solo cuenta si fue en ESTA Location (un slug de
+    // Encuentros ya ofrecidos (2026-09-28) — solo silencian si fueron en ESTA Location (un slug de
     // otra zona no debe silenciar nada aquí).
-    const ultimoEncuentro = save.zonaUltimoEncuentro as { targetSlug: string; locationId: string; minutos?: number; tipo?: string } | null;
-    const ultimoEncuentroSlug = ultimoEncuentro && ultimoEncuentro.locationId === save.currentLocationId ? ultimoEncuentro.targetSlug : null;
+    const recordados = encuentrosRecordados(save.zonaUltimoEncuentro);
+    const silenciados = new Set(recordados.filter((e) => e.locationId === save.currentLocationId).map((e) => e.targetSlug));
     const minutosAhora = save.worldState?.fictionalMinutes ?? 480;
-    const marcaUltimoEncuentro = (offer: { targetSlug: string; tipo?: string } | null) =>
-      offer ? ({ targetSlug: offer.targetSlug, locationId: save.currentLocationId!, minutos: minutosAhora, ...(offer.tipo ? { tipo: offer.tipo } : {}) } as unknown as Prisma.InputJsonValue) : undefined;
+    // Un encuentro nuevo se suma a los recordados (si ya estaba, se renueva su hora).
+    const conEncuentro = (lista: EncuentroRecordado[], offer: { targetSlug: string; tipo?: string }) =>
+      [
+        ...lista.filter((e) => !(e.targetSlug === offer.targetSlug && e.locationId === save.currentLocationId)),
+        { targetSlug: offer.targetSlug, locationId: save.currentLocationId!, minutos: minutosAhora, ...(offer.tipo ? { tipo: offer.tipo } : {}) },
+      ] as unknown as Prisma.InputJsonValue;
     // P177 (QA-27): tras toparte con alguien (ignorado o no), ese mismo NPC o fauna no vuelve a salirte al
     // paso hasta que pase un rato, aunque te alejes y vuelvas: antes salía tres veces en 10 minutos en
     // Hogar Ketg. Un recurso sí se vuelve a ofrecer al volver (se va a por él).
-    const ultimoEncuentroEnfriando =
-      ultimoEncuentro?.minutos != null && ultimoEncuentro.tipo !== undefined && ultimoEncuentro.tipo !== 'RECURSO' && minutosAhora - ultimoEncuentro.minutos < ENFRIAMIENTO_ENCUENTRO_MINUTOS;
 
     // Camino ya en curso hacia el mismo destino (varias llamadas seguidas del frontend animando
     // paso a paso) vs. un destino NUEVO (el jugador clicó en otro sitio a mitad de camino) — en
@@ -1342,7 +1385,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         if (dynamicModeOffer) {
           await tx.save.update({
             where: { id: save.id },
-            data: { pendingDynamicModeOffer: dynamicModeOffer as unknown as Prisma.InputJsonValue, zonaUltimoEncuentro: marcaUltimoEncuentro(dynamicModeOffer) },
+            data: { pendingDynamicModeOffer: dynamicModeOffer as unknown as Prisma.InputJsonValue, zonaUltimoEncuentro: conEncuentro(recordados, dynamicModeOffer) },
           });
         }
         // El mundo no da un paso si el jugador tampoco lo da (mismo criterio "un paso tuyo = un
@@ -1394,7 +1437,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       // función que al recolectar). P161: la energía nueva vuelve en la respuesta, para el HUD.
       const energiaTrasPaso = await sumarEnergiaPasiva(tx, save.id, save.worldState?.fictionalMinutes ?? 480, minutosTrasPaso);
 
-      const { ultimoEncuentroSigueCerca, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
+      const { silenciadosCerca, busquedaCortada, colision, dynamicModeOffer, logEntry, avistadoSinOferta } = await detectarEncuentroEnCelda(
         tx,
         save.id,
         save.worldId,
@@ -1405,20 +1448,24 @@ export async function zonaRoutes(app: FastifyInstance) {
         minutosTrasPaso,
         etiquetaTrasPaso,
         destrezaJugador,
-        ultimoEncuentroSlug,
+        silenciados,
         save.level,
         celdaDestino,
         entradas,
       );
-      // Un encuentro nuevo pasa a ser el "último"; si no, se olvida el anterior en cuanto este paso
-      // deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer), pasado el rato de P177.
-      const zonaUltimoEncuentro = dynamicModeOffer
-        ? marcaUltimoEncuentro(dynamicModeOffer)
-        : avistadoSinOferta
-          ? marcaUltimoEncuentro(avistadoSinOferta)
-          : save.zonaUltimoEncuentro && !ultimoEncuentroSigueCerca && !ultimoEncuentroEnfriando
-          ? Prisma.JsonNull
-          : undefined;
+      // Un encuentro nuevo se suma a los recordados. Si no lo hay, se olvida cada uno en cuanto este
+      // paso deja al jugador fuera de su radio (volver a acercarse lo vuelve a ofrecer), pasado el rato
+      // de P177. Con encuentro no se olvida nada: la detección para en el primero y no los ha mirado todos;
+      // tampoco si paró por una colisión que P186 pasó de largo o por otra oferta abierta (`busquedaCortada`).
+      const encuentroNuevo = dynamicModeOffer ?? avistadoSinOferta;
+      const quedan = recordados.filter((e) => encuentroEnfriando(e, minutosAhora) || (e.locationId === save.currentLocationId && silenciadosCerca.has(e.targetSlug)));
+      const zonaUltimoEncuentro = encuentroNuevo
+        ? conEncuentro(recordados, encuentroNuevo)
+        : busquedaCortada || quedan.length === recordados.length
+          ? undefined
+          : quedan.length > 0
+            ? (quedan as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull;
 
       // Una colisión detiene el avance AQUÍ — el jugador no llega más allá del punto de encuentro,
       // y no queda camino pendiente (tiene que decidir qué hacer antes de seguir moviéndose).
@@ -1453,9 +1500,11 @@ export async function zonaRoutes(app: FastifyInstance) {
   /// regional como el viejo botón suelto de `cazar.ts` (que la Fase 4 retira). Misma forma de
   /// respuesta que `POST /saves/:id/cazar/confirmar` — el frontend reutiliza el mismo tratamiento
   /// de resultado (`handleHuntResolved`, GameView.tsx).
-  app.post<{ Params: { id: string }; Body: { zonePointId: string } }>('/saves/:id/zona/cazar', async (request, reply) => {
-    const { zonePointId } = request.body;
-    if (!zonePointId) return reply.status(400).send({ error: 'Falta el campo: zonePointId' });
+  app.post<{ Params: { id: string }; Body: { zonePointId?: string; targetSlug?: string } }>('/saves/:id/zona/cazar', async (request, reply) => {
+    const { zonePointId, targetSlug } = request.body;
+    // P307: la fauna de la escena (una tarjeta sin punto en el mapa, p. ej. el Corredor de Cauce de
+    // Hogar Ketg) se caza por `targetSlug`: el punto se crea o se reutiliza al elegir «Cazar».
+    if (!zonePointId && !targetSlug) return reply.status(400).send({ error: 'Falta el campo: zonePointId' });
 
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, include: { currentLocation: true, worldState: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
@@ -1476,18 +1525,35 @@ export async function zonaRoutes(app: FastifyInstance) {
     // pendiente sea EXACTAMENTE este `zonePointId` y de tipo FAUNA; cualquier otra cosa (sin
     // oferta, NPC/RECURSO, o un `zonePointId` distinto ya descartado) se rechaza con un mensaje
     // claro, nunca caza "por sorpresa" algo con lo que no se ha colisionado de verdad.
-    const oferta = save.pendingDynamicModeOffer as { tipo?: string; zonePointId?: string } | null;
-    if (!oferta || oferta.tipo !== 'FAUNA' || oferta.zonePointId !== zonePointId) {
+    const oferta = save.pendingDynamicModeOffer as { tipo?: string; zonePointId?: string; targetSlug?: string; combateForzado?: boolean } | null;
+    const esDeEscena = !zonePointId && !!oferta && !oferta.zonePointId && oferta.targetSlug === targetSlug;
+    if (!oferta || oferta.tipo !== 'FAUNA' || (esDeEscena && oferta.combateForzado) || (!esDeEscena && (!zonePointId || oferta.zonePointId !== zonePointId))) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }
 
-    const puntoBruto = await prisma.zonePoint.findUnique({ where: { id: zonePointId } });
-    const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
-    const npc = punto ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: punto.targetSlug } }) : null;
     // La oferta ya se resuelve aquí (igual que el resto de caminos de "Interactuar",
     // dynamicMode.ts) — se limpia siempre, tanto en éxito como en el rechazo de abajo, para que
-    // nunca reaparezca sola tras un F5.
-    await prisma.save.update({ where: { id: save.id }, data: { pendingDynamicModeOffer: Prisma.JsonNull } });
+    // nunca reaparezca sola tras un F5. Revisión P307 (2026-10-26): se reclama con un `updateMany`
+    // condicionado a que siga siendo ESTA oferta, antes de crear el punto: con un doble clic, la
+    // segunda petición ya no la encuentra y no crea un segundo punto ni abre una segunda caza.
+    const reclamada = await prisma.save.updateMany({
+      where: { id: save.id, pendingDynamicModeOffer: { equals: oferta as Prisma.InputJsonValue } },
+      data: { pendingDynamicModeOffer: Prisma.JsonNull },
+    });
+    if (reclamada.count === 0) {
+      return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
+    }
+
+    // El NPC de catálogo se busca antes de crear el punto de escena, para no dejar un punto huérfano.
+    const puntoDelMapa = esDeEscena ? null : await prisma.zonePoint.findUnique({ where: { id: zonePointId! } });
+    const slugPresa = esDeEscena ? targetSlug! : puntoDelMapa?.targetSlug;
+    const npc = slugPresa ? await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: slugPresa } }) : null;
+    const puntoBruto = esDeEscena ? (npc ? await puntoDeFaunaDeEscena(prisma, save, targetSlug!) : null) : puntoDelMapa;
+    const punto = puntoBruto && puntoBruto.saveId === save.id ? puntoBruto : null;
+    // P313: un punto agotado se conserva (no se borra): la caza dice que no hay presas por ahora.
+    if (punto && npc && (!punto.activo || punto.cantidad <= 0)) {
+      return reply.status(409).send({ error: `No quedan presas de ${npc.name} por ahora.` });
+    }
     if (!punto || !punto.activo || punto.cantidad <= 0 || !npc) {
       return reply.status(409).send({ error: 'Ese grupo ya no está disponible aquí — puede que se te haya adelantado.' });
     }

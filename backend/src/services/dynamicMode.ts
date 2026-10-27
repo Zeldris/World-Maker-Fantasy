@@ -160,6 +160,21 @@ export async function nombreVisibleDeNpc(
   return visto ? { nombre: npc.name, oculto: false } : { nombre: nombreOcultoPorRaza(npc.raza, npc.genero), oculto: true };
 }
 
+/// Fase 1 hacia main: lo mismo que `nombreVisibleDeNpc` para varios NPC con una sola consulta (combate, ficha
+/// de la partida), en vez de una por rival. Devuelve el nombre visible por slug.
+export async function nombresVisiblesDeNpcs(
+  db: Pick<PrismaClient, 'discoveredEntity'>,
+  saveId: string,
+  npcs: { slug: string; name: string; kind: string; raza?: string | null; genero?: string | null }[],
+): Promise<Map<string, string>> {
+  const principales = npcs.filter((n) => n.kind === 'PRINCIPAL').map((n) => n.slug);
+  const vistos = principales.length
+    ? await db.discoveredEntity.findMany({ where: { saveId, entityType: 'npc', entitySlug: { in: principales } }, select: { entitySlug: true } })
+    : [];
+  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  return new Map(npcs.map((n) => [n.slug, n.kind !== 'PRINCIPAL' || conocidos.has(n.slug) ? n.name : nombreOcultoPorRaza(n.raza, n.genero)]));
+}
+
 /// P63 (QA-27): dentro de una frase, el nombre oculto por raza lleva artículo («el orco desconocido
 /// no tiene intención…»), no se lee como nombre propio. Cualquier otro nombre pasa tal cual.
 export function nombreEnFrase(nombre: string, alInicio = false): string {
@@ -281,9 +296,12 @@ export function respuestaGisteraDesdeOpcion(opcion: string): RespuestaGistera | 
 export const COMBATE_FORZADO_OPCION_COMBATIR = 'Combatir';
 export const COMBATE_FORZADO_OPCION_HUIR = 'Huir';
 
-export function narrarAperturaCombateForzado(targetName: string, cantidad?: number | null): GisteraTurnoOutput {
+export function narrarAperturaCombateForzado(targetName: string, cantidad?: number | null, quienInicia: 'jugador' | 'npc' = 'jugador'): GisteraTurnoOutput {
+  // P27 (decidido por la usuaria 2026-10-26): también cuando te vieron primero hay decisión (Pelear o Huir);
+  // el combate solo empieza al elegir Combatir.
+  const encuentro = quienInicia === 'npc' ? `${nombreDeEncuentro(targetName, cantidad, true)} te ha visto antes y` : `Os encontráis y os miráis — ${nombreDeEncuentro(targetName, cantidad)}`;
   return {
-    narration: `Os encontráis y os miráis — ${nombreDeEncuentro(targetName, cantidad)} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
+    narration: `${encuentro} no tiene intención de dejarte pasar. Toca decidir ya: combatir o huir.`,
     opciones: [COMBATE_FORZADO_OPCION_COMBATIR, COMBATE_FORZADO_OPCION_HUIR],
     cierra: false,
   };
@@ -291,6 +309,10 @@ export function narrarAperturaCombateForzado(targetName: string, cantidad?: numb
 
 const GISTERA_TEXTO_PRESENTACION =
   'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
+/// P243 (decidido por la usuaria 2026-10-26): desde la segunda vez que se pulsa «Preguntar más antes de
+/// decidir», Gistera no repite el discurso: dice brevemente que ya lo contó.
+export const GISTERA_TEXTO_YA_CONTADO =
+  'Gistera te mira con impaciencia, sin dejar de vigilar las rocas. «Ya te lo he contado todo, Gorhorn. No hay más que decir: decide, y deprisa.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
 
 /// P105 (QA-27): la despedida de Gistera al aceptar en la conversación. Si ya se dijo, aceptar la
@@ -301,7 +323,7 @@ export const GISTERA_DESPEDIDA_EN_CONVERSACION =
 /// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de
 /// vuelta — "preguntar" recicla la presentación (misma vuelta lógica, no avanza a la 3), y
 /// "aceptar"/"rechazar" ambos SALEN de la vuelta 2, pero a desenlaces distintos.
-export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null): GisteraTurnoOutput {
+export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null, yaContado = false): GisteraTurnoOutput {
   if (vuelta === 1) {
     return {
       narration:
@@ -327,6 +349,9 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
       cierra: true,
     };
   }
+  if (respuesta === 'preguntar' && yaContado) {
+    return { narration: GISTERA_TEXTO_YA_CONTADO, opciones: GISTERA_OPCIONES_PRESENTACION, cierra: false };
+  }
   // 'observar' / 'acercarse' (vuelta 1→2) Y 'preguntar' (recicla la presentación, se queda en la
   // misma vuelta lógica) llevan las tres a este mismo texto — Gistera ya te ha visto en cuanto te
   // acercas o te quedas mirando, no hace falta una rama de vuelta extra solo para eso; "preguntar"
@@ -334,12 +359,44 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
   return { narration: GISTERA_TEXTO_PRESENTACION, opciones: GISTERA_OPCIONES_PRESENTACION, cierra: false };
 }
 
+/// P244 (decidido por la usuaria 2026-10-26): Interactuar con Gistera cuando Gorhorn ya la conoce abre un
+/// reencuentro, sin avistamiento ni presentación. Con la misión ya tomada (`questTomada`) no hay nada
+/// que ofrecer: el reencuentro cierra solo. Sin ella (rechazó o salió tras presentarse) le deja volver a
+/// decidir; «Aceptar» y «Rechazar» siguen los mismos desenlaces de `narrarVueltaGistera`.
+export function narrarReencuentroGistera(questTomada: boolean): GisteraTurnoOutput {
+  if (questTomada) {
+    return {
+      narration:
+        'Gistera Koh te reconoce y te dedica un gesto breve, sin dejar de vigilar las rocas. Ya sabes lo que te pidió; no tiene nada nuevo que añadir.',
+      opciones: [],
+      cierra: true,
+    };
+  }
+  return {
+    narration:
+      'Gistera Koh te reconoce y se detiene un instante, jadeante, mirando hacia atrás. «Gorhorn... ¿has cambiado de idea? El que me persigue sigue cerca.»',
+    opciones: ['Aceptar ayudarla', 'Rechazar y seguir tu camino'],
+    cierra: false,
+  };
+}
+
+/// P243: a la segunda vez que se pulsa «Preguntar más» la presentación ya consta dos veces en el historial
+/// de la conversación (la vuelta 2 y la primera pulsación). Desde ahí, «Preguntar más» ya no suma minutos.
+export function gisteraYaLoContoAntes(historialPrevio: string[]): boolean {
+  return historialPrevio.filter((texto) => texto === GISTERA_TEXTO_PRESENTACION).length >= 2;
+}
+
 /// Puro — compone el texto que se vuelca al `LogEntry` de personaje al cerrarse el modo dinámico
 /// (Franja 0, 2026-09-08). Todas las vueltas narradas, concatenadas en orden (decisión explícita
 /// de la usuaria: "todas las vueltas concatenadas" — conserva el detalle completo de la
 /// conversación, coherente con cómo se lee el resto del log).
+///
+/// P243: dos vueltas seguidas con el mismo texto (el guion de Gistera, con «Preguntar más antes de
+/// decidir», vuelve a decir la presentación entera) se cuentan una vez: el Diario llevaba el mismo
+/// discurso 3 veces seguidas. Solo se quita la repetición PEGADA a la anterior; un texto que vuelve
+/// tras otro distinto se conserva.
 export function resumenModoDinamicoParaLog(historialNarracion: string[]): string {
-  return historialNarracion.join('\n\n');
+  return historialNarracion.filter((texto, i) => i === 0 || texto !== historialNarracion[i - 1]).join('\n\n');
 }
 
 /// Máximo de vueltas antes de forzar el cierre del modo dinámico (evita que una conversación se
@@ -384,11 +441,17 @@ export interface PendingDynamicMode {
   /// Colisión AGRESIVO/ENEMIGO en Zona (2026-09-20, "todo debe saltar el interactuar, incluido un
   /// agresivo" — petición explícita de Álvaro tras confirmar que antes el Orco solo dejaba un aviso
   /// de texto sin abrir nada) — true cuando este encuentro puede desembocar en combate real desde
-  /// el propio modal, sin depender de un turno de texto libre posterior. Solo se da cuando
-  /// `quienInicia: 'jugador'` (el jugador lo vio primero, así que puede elegir combatir o huir —
-  /// ver `narrarVueltaCombateForzado`); si el NPC/fauna vio primero al jugador, el combate se abre
-  /// DIRECTAMENTE sin pasar por `pendingDynamicMode` en absoluto (nunca hay elección posible).
+  /// el propio modal, sin depender de un turno de texto libre posterior. P27 (2026-10-26): se da
+  /// también cuando el NPC/fauna vio primero al jugador (`emboscada`); en los dos casos hay decisión
+  /// (combatir o huir, ver `narrarAperturaCombateForzado`) y el combate solo empieza al elegir Combatir.
   combateForzado?: true;
+  /// P27 (decidido por la usuaria 2026-10-26): el NPC/fauna vio primero a la jugadora (`quienInicia: 'npc'`);
+  /// si elige Combatir, el combate se abre como emboscada (P90), no como ataque suyo.
+  emboscada?: true;
+  /// P244 (decidido por la usuaria 2026-10-26): el NPC ya era conocido (DESCUBIERTO) al abrir la
+  /// conversación: reencuentro, sin presentación. Se guarda para que las vueltas siguientes (LLM) no
+  /// vuelvan a presentarlo.
+  reencuentro?: true;
   /// Agresivo en grupo (Fase 2, 2026-09-28, `plan-mecanicas-por-zona-2026-09-28.md`) — id/cantidad
   /// del `ZonePoint` colisionado, presentes solo cuando `combateForzado` viene de un grupo de
   /// FAUNA real (`cantidad > 1`, ver `dynamicModeOffer.zonePointId`/`cantidad`, zona.ts). Con

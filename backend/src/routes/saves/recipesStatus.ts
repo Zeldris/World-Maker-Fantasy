@@ -6,7 +6,7 @@ import { alivioForLevel } from '../../services/professionProgress.js';
 import { effectiveAttributes, effectiveSecondaryAttributes } from '../../services/equipment.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { CRAFTING_RECIPES } from '../../services/crafting.js';
-import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, type ConstructionRecipe } from '../../services/construction.js';
+import { CONSTRUCTION_RECIPES, computeBuildBlockedReason, ocupadosDelTopePorRegion, type ConstructionRecipe } from '../../services/construction.js';
 import type { AttributeBlock } from '../../services/dice.js';
 
 export interface RecipeStatus {
@@ -40,11 +40,25 @@ export interface RecipeStatus {
   /// Si Reino › Edificios ofrece construirlo: lo que cuelga del Ayuntamiento y las Jaulas (P282: los
   /// Corrales piden una Jaula y el panel no la ofrecía).
   panelReino?: boolean;
+  /// P255: receta con tope por región (`maxPerRegion`: Mercado, Tablón, Campamento…) que ya está levantada
+  /// (o en obra) en la región donde se levantaría (la del Ayuntamiento si lo pide, si no la del personaje): Reino › Edificios deja de ofrecerla. Las repetibles
+  /// (Choza, Pozo, Granero…) no llevan tope y no se marcan nunca.
+  unicaYaLevantada?: boolean;
 }
 
 /// Edificios que se ofrecen en Reino › Edificios (P282): los del Ayuntamiento y las Jaulas.
 export function esDelPanelReino(recipe: ConstructionRecipe): boolean {
   return recipe.requiresAyuntamiento === true || recipe.key.startsWith('jaula-');
+}
+
+/// Región del Ayuntamiento de la partida (o `null` si no hay): la consulta se hace una vez por petición y se
+/// pasa a `constructionRecipeStatusFor`, no una por receta.
+export async function regionDelAyuntamiento(saveId: string): Promise<string | null> {
+  const ayuntamiento = await prisma.building.findFirst({
+    where: { saveId, recipeKey: 'ayuntamiento', status: { in: ['ACTIVO', 'DANADO'] } },
+    select: { location: { select: { region: true } } },
+  });
+  return ayuntamiento?.location?.region ?? null;
 }
 
 /// Extraído de `recipesStatusRoutes` (docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 7.4, 2026-09-21) — mismo
@@ -59,6 +73,8 @@ export async function constructionRecipeStatusFor(params: {
   currentLocationId: string | null;
   inventoryRows: InventoryRowLike[];
   catalogBySlug: Map<string, CatalogLookup>;
+  /// Región del Ayuntamiento, ya consultada (`regionDelAyuntamiento`); sin darla, se consulta aquí.
+  regionAyuntamiento?: string | null;
 }): Promise<RecipeStatus> {
   const { recipe, saveId, worldId, activeRegion, currentLocationId, inventoryRows, catalogBySlug } = params;
   const ingredients = checkIngredients(recipe.requirements, inventoryRows, catalogBySlug);
@@ -76,6 +92,18 @@ export async function constructionRecipeStatusFor(params: {
           currentLocationRecord: { id: currentLocationId },
         })
       : null;
+  // P255 (leve de la revisión): lo que cuelga del Ayuntamiento se levanta, y «Encargar» lo valida, en la región
+  // del Ayuntamiento, no en la del personaje; el tope por región se cuenta donde se va a levantar de verdad.
+  let regionDelTope = activeRegion;
+  if (recipe.maxPerRegion && recipe.requiresAyuntamiento) {
+    const regionAyuntamiento = params.regionAyuntamiento === undefined ? await regionDelAyuntamiento(saveId) : params.regionAyuntamiento;
+    if (regionAyuntamiento) regionDelTope = regionAyuntamiento;
+  }
+  // Mismo conteo que el veto de la obra (`ocupadosDelTopePorRegion`): uno DANADO ocupa el tope (se repara, no se
+  // levanta otro); sin región conocida no cuenta ninguno, en vez de contar los de todo el mundo.
+  const unicaYaLevantada = recipe.maxPerRegion
+    ? (await ocupadosDelTopePorRegion(prisma, { saveId, recipeKey: recipe.key, region: regionDelTope })).total >= recipe.maxPerRegion
+    : false;
   return {
     recipeKey: recipe.key,
     recipeCategory: 'construccion',
@@ -91,6 +119,7 @@ export async function constructionRecipeStatusFor(params: {
     nivel: recipe.ayuntamientoNivel ?? recipe.edificioOficioNivel ?? null,
     tier: recipe.tier,
     panelReino: esDelPanelReino(recipe),
+    unicaYaLevantada,
   };
 }
 
@@ -154,6 +183,7 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
     });
 
     const activeRegion = save.currentLocation?.region ?? null;
+    const regionAyuntamiento = await regionDelAyuntamiento(save.id); // una vez por petición, no por receta
     const construction: RecipeStatus[] = await Promise.all(
       // P218 (decisión de la usuaria, 2026-10-19): una receta con `raza` de otra raza que la del
       // personaje no se lista (misma comparación directa de slugs de BERIG_RAZAS que el resto del
@@ -168,6 +198,7 @@ export async function recipesStatusRoutes(app: FastifyInstance) {
           currentLocationId: save.currentLocation?.id ?? null,
           inventoryRows,
           catalogBySlug,
+          regionAyuntamiento,
         }),
       ),
     );

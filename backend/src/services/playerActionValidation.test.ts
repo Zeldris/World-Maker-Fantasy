@@ -7,6 +7,7 @@ const findManyHarvestYield = vi.fn();
 const findFirstQuest = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
+const findFirstDiscovered = vi.fn();
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     npc: { findMany: (...args: unknown[]) => findManyNpc(...args) },
@@ -14,6 +15,7 @@ vi.mock('../lib/prisma.js', () => ({
     harvestYield: { findMany: (...args: unknown[]) => findManyHarvestYield(...args) },
     quest: { findFirst: (...args: unknown[]) => findFirstQuest(...args), findMany: (...args: unknown[]) => findManyQuest(...args) },
     npcState: { findMany: (...args: unknown[]) => findManyNpcState(...args) },
+    discoveredEntity: { findFirst: (...args: unknown[]) => findFirstDiscovered(...args) },
   },
 }));
 
@@ -42,6 +44,8 @@ const {
   BINDING_VERB_REGEX,
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
+  detectsGiftToNpcClaim,
+  giftToNpcNarrationFor,
 } = await import('./playerActionValidation.js');
 
 describe('detectsUnequippedWeaponClaim', () => {
@@ -135,11 +139,12 @@ describe('detectsAbsentSceneNpcClaim', () => {
     // Sin misión activa por defecto — la mayoría de los tests de este describe no la necesitan;
     // el describe siguiente (isPursuerOrcoInScene) la sobreescribe caso a caso.
     findFirstQuest.mockReset().mockResolvedValue(null);
+    findFirstDiscovered.mockReset().mockResolvedValue(null);
   });
 
   it('detecta interactuar con un NPC real de catálogo que no está en la escena actual', async () => {
     const result = await detectsAbsentSceneNpcClaim("Le pregunto a Torgash por su clan.", 'world1', 'save1', []);
-    expect(result).toEqual({ name: 'Torgash' });
+    expect(result).toEqual({ name: 'Torgash', conocido: false, esFauna: false, articulo: null, genero: null });
   });
 
   it('no dispara si el NPC mencionado SÍ está en la lista de escena', async () => {
@@ -182,6 +187,72 @@ describe('detectsAbsentSceneNpcClaim', () => {
       [],
     );
     expect(result).not.toBeNull();
+  });
+});
+
+describe('P310: una conocida ausente no se trata como desconocida', () => {
+  beforeEach(() => {
+    findManyNpc.mockReset().mockResolvedValue([{ slug: 'gistera-koh', name: 'Gistera Koh', aliases: ['gistera koh', 'gistera'] }]);
+    findFirstQuest.mockReset().mockResolvedValue(null);
+    findFirstDiscovered.mockReset();
+  });
+
+  it('con la ficha DESCUBIERTO marca conocido y pregunta por esa ficha en la partida y en fase DESCUBIERTO', async () => {
+    findFirstDiscovered.mockResolvedValue({ id: 'd1' });
+    const result = await detectsAbsentSceneNpcClaim('Le regalo a Gistera un pan y le digo: «Toma, es para ti».', 'world1', 'save1', []);
+    expect(result).toEqual({ name: 'Gistera Koh', conocido: true, esFauna: false, articulo: null, genero: null });
+    expect(findFirstDiscovered).toHaveBeenCalledWith(expect.objectContaining({ where: { saveId: 'save1', entityType: 'npc', entitySlug: 'gistera-koh', fase: 'DESCUBIERTO' } }));
+  });
+
+  it('sin ficha DESCUBIERTO sigue siendo desconocida', async () => {
+    findFirstDiscovered.mockResolvedValue(null);
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Gistera Koh por su clan.', 'world1', 'save1', []);
+    expect(result).toEqual({ name: 'Gistera Koh', conocido: false, esFauna: false, articulo: null, genero: null });
+  });
+
+  it('la ficha de una persona se busca como npc, y la de una fauna conocida, como fauna (entityTypeDeSerVivo)', async () => {
+    findFirstDiscovered.mockResolvedValue({ id: 'd1' });
+    await detectsAbsentSceneNpcClaim('Le regalo a Gistera un pan y le digo: «Toma, es para ti».', 'world1', 'save1', []);
+    expect(findFirstDiscovered).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ entityType: 'npc' }) }));
+    findManyNpc.mockResolvedValue([{ slug: 'murgol', name: 'Múrgol', aliases: ['murgol'] }]);
+    const fauna = await detectsAbsentSceneNpcClaim('Ataco al murgol con mi lanza.', 'world1', 'save1', []);
+    expect(fauna).toEqual({ name: 'Múrgol', conocido: true, esFauna: true, articulo: null, genero: null });
+    expect(findFirstDiscovered).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ entityType: 'fauna', entitySlug: 'murgol' }) }));
+  });
+
+  it('una fauna conocida ausente nunca se llama «esa persona»; una persona sí', () => {
+    for (let i = 0; i < 40; i++) {
+      expect(absentSceneNpcNarrationFor('Múrgol', true, true)).not.toMatch(/persona/i);
+    }
+    const frases = new Set(Array.from({ length: 80 }, () => absentSceneNpcNarrationFor('Gistera Koh', true, false)));
+    expect([...frases].some((f) => /esa persona/.test(f))).toBe(true);
+  });
+
+  it('la conocida ausente lleva su artículo y el pronombre concuerda con el género (P310)', () => {
+    for (let i = 0; i < 60; i++) {
+      const f = absentSceneNpcNarrationFor('Cazadora Serhu', true, false, 'la', 'F');
+      expect(f).toMatch(/la Cazadora Serhu/i);
+      expect(f).not.toMatch(/(?<!la )Cazadora Serhu/i);
+      expect(f).not.toMatch(/\blo (busca|comprueba)\b/);
+      const m = absentSceneNpcNarrationFor('Guardián Ketg', true, false, 'el', 'M');
+      expect(m).toMatch(/\b(el|al) Guardián Ketg/i);
+      expect(m).not.toMatch(/\bla busca\b/);
+    }
+  });
+
+  it('con artículo «el», «a» se contrae: «al Guardián Ketg», nunca «a el» (P310, revisión)', () => {
+    const frases = new Set(Array.from({ length: 120 }, () => absentSceneNpcNarrationFor('Guardián Ketg', true, false, 'el', 'M')));
+    for (const f of frases) expect(f).not.toMatch(/\ba el\b/i);
+    expect([...frases].some((f) => /\bal Guardián Ketg\b/.test(f))).toBe(true);
+    expect([...frases].some((f) => /^El Guardián Ketg no está/.test(f))).toBe(true);
+  });
+
+  it('la narración de una conocida nunca dice «quienquiera que sea» ni «no hay nadie», y siempre cita el nombre', () => {
+    for (let i = 0; i < 40; i++) {
+      const texto = absentSceneNpcNarrationFor('Gistera Koh', true);
+      expect(texto).toContain('Gistera Koh');
+      expect(texto).not.toMatch(/quienquiera|sea quien sea|nadie|ni rastro de/i);
+    }
   });
 });
 
@@ -513,5 +584,58 @@ describe('harvestSkillMisuseNarrationFor', () => {
     for (let i = 0; i < 20; i++) {
       expect(harvestSkillMisuseNarrationFor('matorral de cuerno').length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('detectsGiftToNpcClaim (P241)', () => {
+  const inventario = ['Cuchillo de pedernal', 'Cataplasma de salvia'];
+  const npcs = ['Gistera Koh'];
+
+  it('«Le regalo a Gistera mi cuchillo» con el cuchillo en el inventario: lo reconoce', () => {
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera Koh mi cuchillo de pedernal.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cuchillo de pedernal' });
+  });
+
+  it('«Le entrego mi pan a Gistera» sin pan en el inventario: dice qué no tiene', () => {
+    const claim = detectsGiftToNpcClaim('Le entrego mi pan a Gistera Koh.', inventario, npcs);
+    expect(claim).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+    expect(giftToNpcNarrationFor(claim!, 'Gistera Koh', true)).toBe('No tienes pan en el inventario, así que no hay nada que entregar.');
+  });
+
+  it('con solo el nombre de pila del destinatario, «No tienes» no lo arrastra', () => {
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera mi pan.', inventario, npcs)).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+  });
+
+  it('«doy» solo cuenta si lo que se da está en el inventario (le doy un golpe / doy gracias no son regalos)', () => {
+    expect(detectsGiftToNpcClaim('Le doy un golpe seco a Gistera Koh.', inventario, npcs)).toBeNull();
+    expect(detectsGiftToNpcClaim('Doy las gracias a Gistera Koh.', inventario, npcs)).toBeNull();
+    expect(detectsGiftToNpcClaim('Le doy mi cataplasma de salvia a Gistera Koh.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cataplasma de salvia' });
+  });
+
+  it('revisión P241: con «doy» lo dado es el objeto directo, no algo que sale después en la frase', () => {
+    for (const frase of [
+      'Doy un paso atrás y saco la cuerda.',
+      'Me doy la vuelta y guardo mi cuchillo de pedernal.',
+      'Le doy la vuelta al cuchillo de pedernal mientras hablo con Gistera.',
+      'Doy media vuelta con el pan en la mano.',
+      'Le doy un vistazo a la cataplasma de salvia.',
+      'Le doy las gracias a Gistera y le pregunto por el cuchillo de pedernal.',
+    ]) {
+      expect(detectsGiftToNpcClaim(frase, inventario, npcs), frase).toBeNull();
+    }
+    expect(detectsGiftToNpcClaim('Le doy a Gistera mi cuchillo de pedernal.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cuchillo de pedernal' });
+    expect(detectsGiftToNpcClaim('Le ofrezco el cuchillo a Gistera Koh.', inventario, npcs)).toMatchObject({ itemEnInventario: 'Cuchillo de pedernal' });
+  });
+
+  it('un ataque o un regalo como sustantivo no es una entrega', () => {
+    expect(detectsGiftToNpcClaim('Ataco al orco y le entrego un golpe.', inventario, npcs)).toBeNull();
+    expect(detectsGiftToNpcClaim('Miro el regalo de Gistera Koh.', inventario, npcs)).toBeNull();
+  });
+
+  it('la frase remite al botón Entregar solo si el NPC lo tiene; si no, dice que no acepta entregas', () => {
+    const claim = { itemEnInventario: 'Cuchillo de pedernal', itemTexto: 'cuchillo de pedernal' };
+    expect(giftToNpcNarrationFor(claim, 'la compañera', true)).toContain('botón Entregar');
+    const sinBoton = giftToNpcNarrationFor(claim, 'Gistera Koh', false);
+    expect(sinBoton).toContain('no acepta entregas');
+    expect(sinBoton).not.toContain('botón');
   });
 });

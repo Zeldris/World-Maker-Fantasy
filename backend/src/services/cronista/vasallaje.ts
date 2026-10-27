@@ -218,7 +218,11 @@ export async function revisarVasallajes(tx: Tx, saveId: string, dia: number, aho
             : cuota === 0
               ? { estado: 'sin-soldados' as const, pendiente: pago.pendiente, ...(pago.pagado > 0 ? { pagado: pago.pagado } : {}) }
               : pago.fraccion > 0
-              ? { estado: 'parcial' as const, porcentaje: porcentajePagado(pago.fraccion), patrulla: patrullo, pendiente: pago.pendiente }
+              ? {
+                  // P314: la cuota entera pagada con deuda arrastrada no es un «pago parcial»: tiene su propio estado.
+                  estado: (porcentajePagado(pago.fraccion) >= 100 ? 'pagada-con-deuda' : 'parcial') as 'pagada-con-deuda' | 'parcial',
+                  porcentaje: porcentajePagado(pago.fraccion), patrulla: patrullo, pendiente: pago.pendiente,
+                }
               : { estado: 'impagado' as const }),
           ...(nuevos > 0 ? { rearmados: nuevos } : {}),
         },
@@ -266,7 +270,7 @@ export async function vasallajesVista(tx: Tx, saveId: string, dia: number): Prom
   const lineas = await lineasNuevas(tx, saveId, new Map(filas.filter((f) => f.deuda > 0).map((f) => [f.vasalloSlug, nombres.get(f.vasalloSlug) ?? f.vasalloSlug])));
   const porcentajes = new Map<string, number | null>();
   // Sin soldados no hay cuota ni patrulla: 0 (nunca «pago parcial 100 %»); la interfaz lo dice por `cuota: 0`.
-  for (const [slug, { ultima: d }] of lineas) porcentajes.set(slug, d?.estado === 'parcial' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' || d?.estado === 'sin-soldados' ? 0 : null);
+  for (const [slug, { ultima: d }] of lineas) porcentajes.set(slug, d?.estado === 'parcial' || d?.estado === 'pagada-con-deuda' ? (d.porcentaje ?? 0) : d?.estado === 'impagado' || d?.estado === 'sin-soldados' ? 0 : null);
   return filas.map((f) => ({
     vasalloSlug: f.vasalloSlug,
     vasalloNombre: nombres.get(f.vasalloSlug) ?? f.vasalloSlug,

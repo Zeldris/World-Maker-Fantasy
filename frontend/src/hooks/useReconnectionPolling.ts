@@ -107,7 +107,7 @@ export function useReconnectionPolling(): UseReconnectionPollingResult {
           {
             id: `err-${Date.now()}`,
             channel: 'character',
-            text: 'No se pudo contactar con el Narrador. ¿Está el backend corriendo en localhost:3001?',
+            text: 'No se pudo contactar con el Narrador. ¿Está el backend corriendo?',
             timeLabel: fictionalDate,
             createdAt: new Date().toISOString(),
           },

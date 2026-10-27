@@ -37,6 +37,8 @@ export function CharacterSelect() {
   const { worldId } = useParams()
   const { selectedCharacter: elegido, setSelectedWorld, setSelectedCharacter } = useSession()
   const world = worlds.find((w) => w.id === worldId) ?? null
+  // INS-33: «Crear desde cero» está en construcción; la pestaña sale deshabilitada y `tab` siempre es 'pregen'.
+  // El formulario y `confirmCustom()` se dejan sin alcanzar para retomarlos.
   const [tab, setTab] = useState<'pregen' | 'custom'>('pregen')
   const playableCharacters = pregeneratedCharacters.filter((c) => PLAYABLE_CHARACTER_IDS.has(c.id))
   // Con un único preseleccionado jugable sale ya elegido (Fase G del 0.1, hallazgo G2).
@@ -106,14 +108,12 @@ export function CharacterSelect() {
           Preseleccionados
         </button>
         <button type="button"
-          onClick={() => setTab('custom')}
-          className={`border-b-2 px-3 py-2 text-sm transition-colors ${
-            tab === 'custom'
-              ? 'border-accent-500 font-medium text-accent-300'
-              : 'border-transparent text-wood-400 hover:text-wood-200'
-          }`}
+          disabled
+          aria-disabled="true"
+          className="cursor-default border-b-2 border-transparent px-3 py-2 text-sm text-wood-600"
         >
           Crear desde cero
+          <span className="ml-2 text-2xs tracking-wide text-wood-500 uppercase">En construcción</span>
         </button>
       </div>
 

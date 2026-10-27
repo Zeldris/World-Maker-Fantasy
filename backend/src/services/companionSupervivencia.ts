@@ -304,6 +304,14 @@ export async function advanceCompanionSurvival(prisma: PrismaClient): Promise<{ 
   return { companionsAfectados };
 }
 
+/// P305: qué carencia (comida o agua por debajo del umbral) impide curar y empeora la condición; null si no hay.
+export type CarenciaPersonaje = 'hambre' | 'sed' | 'ambas';
+export function carenciaPersonaje(comida: number, agua: number): CarenciaPersonaje | null {
+  const sinComida = comida < UMBRAL_DESCUIDO_PCT;
+  const sinAgua = agua < UMBRAL_DESCUIDO_PCT;
+  return sinComida && sinAgua ? 'ambas' : sinComida ? 'hambre' : sinAgua ? 'sed' : null;
+}
+
 /// P219: texto del aviso cuando la carencia empeora la condición (puro, determinista).
 export function avisoCarenciaPersonaje(comida: number, agua: number): string {
   const causa = comida < UMBRAL_DESCUIDO_PCT && agua < UMBRAL_DESCUIDO_PCT ? 'el hambre y la sed' : comida < UMBRAL_DESCUIDO_PCT ? 'el hambre' : 'la sed';

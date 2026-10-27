@@ -255,11 +255,17 @@ def main(args: list[str]) -> None:
     if len(args) != 3:
         sys.exit(__doc__)
     pid, viejo, nuevo = args
-    viejo, nuevo = viejo.replace('|', '\\|'), nuevo.replace('|', '\\|')
+    # QA-258: un espacio en el borde del texto viejo no casaba nunca
+    viejo, nuevo = viejo.strip().replace('|', '\\|'), nuevo.replace('|', '\\|')
+    if not viejo:
+        sys.exit(f'{ruta}: el texto viejo de {pid} está vacío')
 
     filas = [i for i, l in enumerate(lineas) if l.startswith(f'| {pid} |') and viejo in partir(l)[1]]
     if len(filas) != 1:
-        sys.exit(f'{ruta}: {len(filas)} filas de {pid} con ese texto en el estado (hace falta exactamente una)')
+        del_pid = [partir(l)[1].strip() for l in lineas if l.startswith(f'| {pid} |')]
+        # el estado vigente va al final de la fila (QA-92): se enseña el final
+        actual = ''.join(f'\n  estado actual: {"…" if len(e) > 200 else ""}{e[-200:]}' for e in del_pid) if not filas else ''
+        sys.exit(f'{ruta}: {len(filas)} filas de {pid} con ese texto en el estado (hace falta exactamente una){actual}')
     antes, texto = partir(lineas[filas[0]])
     lineas[filas[0]] = f'{antes}{texto.replace(viejo, nuevo, 1)} |'
     guardar(ruta, lineas)

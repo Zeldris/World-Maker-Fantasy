@@ -140,6 +140,8 @@ describe('efectos del motor (CR-9)', () => {
     const edificio = await prisma.building.findFirstOrThrow({ where: { faction: { saveId }, status: 'ACTIVO' } });
     expect((await aplicar({ tipo: 'danarEdificio', buildingId: edificio.id, causa: 'una tormenta' })).sucesoId).not.toBeNull();
     expect((await prisma.building.findUniqueOrThrow({ where: { id: edificio.id } })).status).toBe('DANADO');
+    // P315: el de una facción solo va al Libro de Sucesos, no al diario del Reino.
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'sufre daños' } } })).toBe(0);
     expect(await aplicar({ tipo: 'danarEdificio', buildingId: edificio.id })).toMatchObject({ aplicado: false });
     expect(await aplicar({ tipo: 'repararEdificio', buildingId: edificio.id })).toEqual({ aplicado: true, sucesoId: null });
     const ajeno = await prisma.building.findFirst({ where: { faction: { saveId: null } }, select: { id: true } });

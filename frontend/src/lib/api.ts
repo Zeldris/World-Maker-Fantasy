@@ -53,10 +53,17 @@ import type {
   TerritoryInfo,
   ZonaParcelaInfo,
 } from '../types'
+import { leerTarkor } from './empaquetado'
 
-// VITE_API_URL permite apuntar a otro backend (staging, otra máquina) sin tocar código;
-// localhost:3001 sigue siendo el valor por defecto para desarrollo local.
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+// URL base del backend, resuelta en tiempo de ejecución y sin esperas (INS-31). Orden:
+// 1) `window.__TARKOR__.apiUrl`, que Tauri inyecta antes de cualquier script con el puerto libre que elige al arrancar;
+// 2) `VITE_API_URL`, para apuntar a otro backend (staging, otra máquina) sin tocar código;
+// 3) `http://localhost:3001`, el valor por defecto de desarrollo. Sin barra final.
+export function apiBaseUrl(): string {
+  const tauri = leerTarkor()?.apiUrl
+  const url = typeof tauri === 'string' && tauri !== '' ? tauri : (import.meta.env.VITE_API_URL ?? 'http://localhost:3001')
+  return url.replace(/\/+$/, '')
+}
 
 /// P229: el backend contestó con un error HTTP (5xx…): no es un corte de red, así que no hay nada
 /// resolviéndose en segundo plano que sondear (useTurnFlow no cae al sondeo de reconexión).
@@ -184,7 +191,7 @@ export async function requestTurnClassify(params: {
   /// P164: viaje elegido en el mapa (salida o «Viajar»); el texto escrito a pie no cambia de zona.
   viajeElegido?: boolean
 }): Promise<ClassifyResponse> {
-  const response = await fetch(`${API_URL}/turn/classify`, {
+  const response = await fetch(`${apiBaseUrl()}/turn/classify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -428,7 +435,7 @@ export async function requestTurnNarrate(
   },
   handlers?: TurnNarrateHandlers,
 ): Promise<NarrateResponse> {
-  const response = await fetch(`${API_URL}/turn/narrate`, {
+  const response = await fetch(`${apiBaseUrl()}/turn/narrate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -536,16 +543,16 @@ export interface AlcanceTorre {
   slugs: string[]
 }
 export async function getExpedicionesMapa(saveId: string): Promise<{ expediciones: ExpedicionEnMapa[]; alcances?: AlcanceTorre[]; campamentos?: CampamentoInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/expediciones/mapa`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/expediciones/mapa`)
 }
 
 export async function getNuevasDelMundo(saveId: string, desde: string): Promise<{ entradas: LogEntry[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/mundo/nuevas?desde=${encodeURIComponent(desde)}`)
 }
 
 /// CR-34 (34e): aceptar o rechazar la propuesta de tratado o alianza de una facción al Reino.
 export async function responderPropuesta(saveId: string, propuestaId: string, acepta: boolean): Promise<{ respuesta: 'ACEPTADA' | 'RECHAZADA' }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/mundo/propuestas/${encodeURIComponent(propuestaId)}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/mundo/propuestas/${encodeURIComponent(propuestaId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ acepta }),
@@ -553,7 +560,7 @@ export async function responderPropuesta(saveId: string, propuestaId: string, ac
 }
 
 export async function requestSurroundings(params: { saveId: string }, signal?: AbortSignal): Promise<EntornoResponse> {
-  return fetchJson(`${API_URL}/entorno`, {
+  return fetchJson(`${apiBaseUrl()}/entorno`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -576,7 +583,7 @@ export interface CreateSaveParams {
 }
 
 export async function createSave(params: CreateSaveParams): Promise<{ id: string }> {
-  return fetchJson(`${API_URL}/saves`, {
+  return fetchJson(`${apiBaseUrl()}/saves`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -733,12 +740,12 @@ export interface SaveDetail {
 }
 
 export async function getSave(id: string): Promise<SaveDetail> {
-  return fetchJson(`${API_URL}/saves/${id}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${id}`)
 }
 
 /// P219 (c): condición, Hambre y Sed para el sondeo del HUD, sin la partida entera.
-export async function getSupervivencia(id: string): Promise<Pick<SaveDetail, 'condicionFisica' | 'hambre' | 'sed'>> {
-  return fetchJson(`${API_URL}/saves/${id}/supervivencia`)
+export async function getSupervivencia(id: string): Promise<Pick<SaveDetail, 'condicionFisica' | 'hambre' | 'sed'> & { aviso?: string | null }> {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/supervivencia`)
 }
 
 export interface SaveSummary {
@@ -772,11 +779,11 @@ export interface RitmoMundo {
 }
 
 export async function getRitmoMundo(id: string): Promise<RitmoMundo> {
-  return fetchJson(`${API_URL}/saves/${id}/ritmo`)
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/ritmo`)
 }
 
 export async function setRitmoMundo(id: string, cambios: Partial<RitmoMundo>): Promise<Partial<RitmoMundo>> {
-  return fetchJson(`${API_URL}/saves/${id}/ritmo`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/ritmo`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(cambios),
@@ -784,7 +791,7 @@ export async function setRitmoMundo(id: string, cambios: Partial<RitmoMundo>): P
 }
 
 export async function updateSaveName(id: string, saveName: string | null): Promise<{ saveName: string | null }> {
-  return fetchJson(`${API_URL}/saves/${id}/name`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/name`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ saveName }),
@@ -795,7 +802,7 @@ export async function restartSave(
   id: string,
   intro?: { introCharacterText?: string; introWorldText?: string },
 ): Promise<{ id: string }> {
-  return fetchJson(`${API_URL}/saves/${id}/restart`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/restart`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(intro ?? {}),
@@ -808,7 +815,7 @@ export async function restartSave(
 /// punto de guardado ni tutorial superado) — GameView.tsx usa esto para decidir si sincroniza el
 /// estado en el sitio o navega de vuelta al selector, mismo criterio que "Reiniciar" ya usa hoy.
 export async function resolveDeath(id: string): Promise<{ restartedTotal: boolean; respawnLocationId?: string | null }> {
-  return fetchJson(`${API_URL}/saves/${id}/death/resolve`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/death/resolve`, { method: 'POST' })
 }
 
 // Pausar/reanudar la partida (roadmap 2026-07-20: "quiero que la partida se pause si salgo de
@@ -817,7 +824,7 @@ export async function resolveDeath(id: string): Promise<{ restartedTotal: boolea
 // cancelar a media petición si la pestaña ya se está cerrando). `resumeSave` se llama al volver a
 // entrar; el backend alarga el tránsito activo exactamente lo que ha durado la pausa.
 export function pauseSave(id: string): void {
-  const url = `${API_URL}/saves/${id}/pause`
+  const url = `${apiBaseUrl()}/saves/${id}/pause`
   if (navigator.sendBeacon) {
     navigator.sendBeacon(url, new Blob([], { type: 'text/plain' }))
   } else {
@@ -826,11 +833,11 @@ export function pauseSave(id: string): void {
 }
 
 export async function resumeSave(id: string): Promise<void> {
-  await fetch(`${API_URL}/saves/${id}/resume`, { method: 'POST' })
+  await fetch(`${apiBaseUrl()}/saves/${id}/resume`, { method: 'POST' })
 }
 
 export async function cancelTransit(id: string): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${id}/transit/cancel`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/transit/cancel`, { method: 'POST' })
 }
 
 // Cerrar el combate al pulsar "Salir" en la pantalla de victoria/derrota (bug real 2026-09-04/05):
@@ -838,7 +845,7 @@ export async function cancelTransit(id: string): Promise<void> {
 // composer para siempre en la siguiente recarga. El backend valida que no quede nada pendiente de
 // verdad (409 si sí) antes de vaciar el array — el frontend solo lo llama, no decide.
 export async function requestCerrarCombate(id: string): Promise<void> {
-  await fetchJson(`${API_URL}/saves/${id}/combat/cerrar`, { method: 'POST' })
+  await fetchJson(`${apiBaseUrl()}/saves/${id}/combat/cerrar`, { method: 'POST' })
 }
 
 // Huir antes de entrar al combate (2026-07-24) — una sola tirada determinista en el backend, sin
@@ -847,7 +854,7 @@ export async function requestCerrarCombate(id: string): Promise<void> {
 // desglose) — se pinta con RollBadge, igual que cualquier otra tirada del juego.
 /// QA-73: `logEntry` es la entrada que guardó el backend (la misma que se ve tras recargar).
 export async function requestFlee(id: string): Promise<{ escaped: boolean; logEntry: LogEntry }> {
-  return fetchJson(`${API_URL}/saves/${id}/combat/flee`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat/flee`, { method: 'POST' })
 }
 
 // Huir DENTRO de un combate ya iniciado (ronda de correcciones 2026-08-28, P3.2) — misma tirada
@@ -856,14 +863,14 @@ export async function requestFlee(id: string): Promise<{ escaped: boolean; logEn
 export async function requestHuirEnCurso(
   id: string,
 ): Promise<{ escaped: boolean; condicionFisica: string; logEntry: LogEntry }> {
-  return fetchJson(`${API_URL}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat/huir-en-curso`, { method: 'POST' })
 }
 
 export async function spendAttributePoint(
   id: string,
   attribute: Attribute,
 ): Promise<{ attributes: AttributeBlock; pendingAttributePoints: number }> {
-  return fetchJson(`${API_URL}/saves/${id}/attribute-points`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/attribute-points`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ attribute }),
@@ -874,7 +881,7 @@ export async function spendAttributePoint(
 // rechaza con 409 si ya hay especialización asignada; el mensaje ya llega listo para mostrar tal
 // cual (ver fetchJson).
 export async function assignEspecializacion(id: string, especializacion: Especializacion): Promise<{ especializacion: Especializacion }> {
-  return fetchJson(`${API_URL}/saves/${id}/especializacion`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/especializacion`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ especializacion }),
@@ -884,7 +891,7 @@ export async function assignEspecializacion(id: string, especializacion: Especia
 // Elección obligatoria de clase al empezar a jugar (2026-09-01, fix de bug real: personaje custom
 // se quedaba sin clase para siempre) — decisión única, mismo criterio que assignEspecializacion.
 export async function assignClase(id: string, clase: Clase): Promise<{ clase: Clase }> {
-  return fetchJson(`${API_URL}/saves/${id}/clase`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/clase`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clase }),
@@ -895,7 +902,7 @@ export async function createSavedAction(
   id: string,
   params: { name: string; promptText: string; icon: string; description: string; category: SavedActionCategory },
 ): Promise<SavedActionInfo> {
-  return fetchJson(`${API_URL}/saves/${id}/habilidades`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/habilidades`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -907,7 +914,7 @@ export async function updateSavedAction(
   habilidadId: string,
   params: { name: string; promptText: string; icon: string; description: string },
 ): Promise<SavedActionInfo> {
-  return fetchJson(`${API_URL}/saves/${id}/habilidades/${habilidadId}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/habilidades/${habilidadId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -915,13 +922,13 @@ export async function updateSavedAction(
 }
 
 export async function deleteSavedAction(id: string, habilidadId: string): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${id}/habilidades/${habilidadId}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/habilidades/${habilidadId}`, { method: 'DELETE' })
 }
 
 /// "Cinturón de combate" (2026-08-28, pendiente 2026-08-27 punto 3) — reemplaza la lista completa
 /// en el orden recibido; la respuesta es la lista YA saneada por el backend (fuente de verdad real).
 export async function setActiveCombatAbilities(id: string, names: string[]): Promise<{ activeCombatAbilityNames: string[] }> {
-  return fetchJson(`${API_URL}/saves/${id}/combat-abilities`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat-abilities`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ names }),
@@ -932,11 +939,11 @@ export async function setActiveCombatAbilities(id: string, names: string[]): Pro
 /// 10: sin categoría propia, ver SkillBarInfo) — mismo criterio que el cinturón de combate: el
 /// cliente manda el estado final ya decidido, el backend sanea y persiste.
 export async function createSkillBar(id: string): Promise<SkillBarInfo> {
-  return fetchJson(`${API_URL}/saves/${id}/skill-bars`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/skill-bars`, { method: 'POST' })
 }
 
 export async function updateSkillBar(id: string, barId: string, params: { name?: string; abilityNames?: string[] }): Promise<SkillBarInfo> {
-  return fetchJson(`${API_URL}/saves/${id}/skill-bars/${barId}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/skill-bars/${barId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -944,11 +951,11 @@ export async function updateSkillBar(id: string, barId: string, params: { name?:
 }
 
 export async function deleteSkillBar(id: string, barId: string): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${id}/skill-bars/${barId}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/skill-bars/${barId}`, { method: 'DELETE' })
 }
 
 export async function setActiveSkillBar(id: string, skillBarId: string | null): Promise<{ activeSkillBarId: string | null }> {
-  return fetchJson(`${API_URL}/saves/${id}/active-skill-bar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/active-skill-bar`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ skillBarId }),
@@ -965,15 +972,15 @@ export interface CombatGroupInfo {
 }
 
 export async function getCombatGroups(id: string): Promise<{ groups: CombatGroupInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${id}/combat-groups`)
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat-groups`)
 }
 
 export async function createCombatGroup(id: string): Promise<{ slotIndex: number; name: string }> {
-  return fetchJson(`${API_URL}/saves/${id}/combat-groups`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat-groups`, { method: 'POST' })
 }
 
 export async function renameCombatGroup(id: string, slotIndex: number, name: string): Promise<{ slotIndex: number; name: string }> {
-  return fetchJson(`${API_URL}/saves/${id}/combat-groups/${slotIndex}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat-groups/${slotIndex}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
@@ -981,11 +988,11 @@ export async function renameCombatGroup(id: string, slotIndex: number, name: str
 }
 
 export async function deleteCombatGroup(id: string, slotIndex: number): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${id}/combat-groups/${slotIndex}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/combat-groups/${slotIndex}`, { method: 'DELETE' })
 }
 
 export async function moveCompanionToCombatGroup(id: string, companionId: string, combatGroupSlotIndex: number): Promise<{ id: string; combatGroupSlotIndex: number }> {
-  return fetchJson(`${API_URL}/saves/${id}/companeros/${companionId}/grupo`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/companeros/${companionId}/grupo`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ combatGroupSlotIndex }),
@@ -996,16 +1003,17 @@ export async function moveCompanionToCombatGroup(id: string, companionId: string
 /// Location actual (mismo criterio que fija el punto de guardado real). GET consulta visibilidad
 /// sin mutar nada; POST ejecuta el salto a las 08:00 del día siguiente, guarda partida y cura hasta
 /// HERIDO como techo.
-export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean }> {
-  return fetchJson(`${API_URL}/saves/${id}/descansar-campamento`)
+/// `carencia` (P305): hambre o sed por debajo del umbral; con ella el descanso no cura y el estado empeora.
+export async function getDescansarCampamentoDisponible(id: string): Promise<{ disponible: boolean; carencia?: 'hambre' | 'sed' | 'ambas' | null }> {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/descansar-campamento`)
 }
 
 export async function postDescansarCampamento(id: string): Promise<{ condicionFisica: CondicionFisica; timeLabel: string; logEntry: LogEntry }> {
-  return fetchJson(`${API_URL}/saves/${id}/descansar-campamento`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/descansar-campamento`, { method: 'POST' })
 }
 
 export async function setItemSlot(id: string, itemId: string, slot: EquipSlot | null): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${id}/inventario/${itemId}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/inventario/${itemId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slot }),
@@ -1016,11 +1024,11 @@ export async function setItemSlot(id: string, itemId: string, slot: EquipSlot | 
 /// mapa de Zona (`ZonaDinamicoInfo`, tipo 'OBJETO') hasta que alguien lo recoja con
 /// `recogerDroppedItem`.
 export async function tirarItem(id: string, itemId: string): Promise<{ itemName: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
-  return fetchJson(`${API_URL}/saves/${id}/inventario/${itemId}/tirar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/inventario/${itemId}/tirar`, { method: 'POST' })
 }
 
 export async function recogerDroppedItem(id: string, droppedItemId: string): Promise<{ itemName: string; logEntry: { id: string; text: string; timeLabel: string; createdAt: string } }> {
-  return fetchJson(`${API_URL}/saves/${id}/dropped-items/${droppedItemId}/recoger`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/dropped-items/${droppedItemId}/recoger`, { method: 'POST' })
 }
 
 /// Persiste qué entidad se mostró como banner bajo una narración (rework 2026-07-24) — el frontend
@@ -1028,7 +1036,7 @@ export async function recogerDroppedItem(id: string, droppedItemId: string): Pro
 /// sobreviva a una recarga dentro de la ventana de 24h que devuelve GET /saves/:id. Fire-and-forget
 /// desde el llamador: si falla, la imagen simplemente no sobrevive a una recarga, nada más grave.
 export async function setLogEntryBanner(saveId: string, logEntryId: string, entityType: string, entitySlug: string): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${saveId}/log/${logEntryId}/entity-banner`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/log/${logEntryId}/entity-banner`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ entityType, entitySlug }),
@@ -1086,20 +1094,20 @@ export interface DiarioResponse {
 /// Fetch aparte y solo bajo demanda (se llama al abrir la pestaña Diario) — GET /saves/:id ya no
 /// carga esto para no sobrecargar la petición que se repite en cada carga de partida.
 export async function getDiario(saveId: string): Promise<DiarioResponse> {
-  return fetchJson(`${API_URL}/saves/${saveId}/diario`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/diario`)
 }
 
 /// Roster estático de recetas de oficio (rediseño de profesiones, 2026-08-07) — independiente de
 /// partida, se pide una vez al cargar Habilidades > Profesiones.
 export async function getProfessionRecipes(): Promise<ProfessionRecipeInfo[]> {
-  return fetchJson(`${API_URL}/profession-recipes`)
+  return fetchJson(`${apiBaseUrl()}/profession-recipes`)
 }
 
 /// Cuánto tienes de cada ingrediente de las recetas ya conocidas, EN ESTA PARTIDA (2026-08-13) —
 /// a diferencia de getProfessionRecipes (estático), depende del inventario/atributos/ubicación
 /// reales, así que se recarga cada vez que el inventario cambia (ver GameView.tsx).
 export async function getRecipesStatus(saveId: string): Promise<{ recipes: RecipeStatusInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/recipes-status`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/recipes-status`)
 }
 
 /// Pop-up de recolección (rediseño de profesiones, 2026-08-07) — "ya localizado en la zona".
@@ -1111,7 +1119,7 @@ export async function getRecolectarLocalizado(
   saveId: string,
   oficio: string,
 ): Promise<{ sources: HarvestSourceCandidate[]; puedeExplorar: boolean; enCooldown?: boolean; roll?: GatheringRollInfo }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/recolectar/${oficio}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/recolectar/${oficio}`)
 }
 
 /// Confirmar selección del pop-up de recolección (cantidades parciales, no todo-o-nada).
@@ -1132,7 +1140,7 @@ export async function confirmarRecoleccion(
   /// P161 (QA-27): energía tras recolectar, si recuperó algo con el rato que pasó.
   energia?: number
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/recolectar/confirmar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/recolectar/confirmar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ selections }),
@@ -1144,7 +1152,7 @@ export async function confirmarRecoleccion(
 /// backend narrador.ts). Sin body: el backend reúne el contexto (log reciente + NPCs en escena) él
 /// solo a partir del `saveId`.
 export async function requestSuggestions(saveId: string): Promise<{ suggestions: string[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/suggestions`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/suggestions`, { method: 'POST' })
 }
 
 /// Paneles nuevos (2026-08-17, comentarios de startingAbilities.ts): "Volver al campamento",
@@ -1156,7 +1164,7 @@ export interface CampInfo {
   region: string
 }
 export async function getCampamentos(saveId: string): Promise<{ camps: CampInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/campamentos`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/campamentos`)
 }
 
 export interface TravelDestinationInfo {
@@ -1173,7 +1181,7 @@ export interface TravelDestinationInfo {
 }
 /// P164: `montura` (CR-57): sin ella, la lista se ve pero no se puede ir directo (`motivoSinMontura`).
 export async function getDestinosViaje(saveId: string): Promise<{ hasMap: boolean; montura?: boolean; motivoSinMontura?: string; destinations: TravelDestinationInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/destinos-viaje`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/destinos-viaje`)
 }
 
 /// Candidato de "Saquear zona" — igual que `NpcInSceneInfo` pero con `items` (el backend manda el
@@ -1183,7 +1191,7 @@ export interface LootZoneCandidate extends NpcInSceneInfo {
   items: { name: string; cantidad: number }[]
 }
 export async function getSaquearZona(saveId: string): Promise<{ candidates: LootZoneCandidate[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/saquear-zona`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/saquear-zona`)
 }
 
 /// Grupo 3 § Mundo determinista, Capa 1 (2026-08-25, docs/rpgtarkor/lore-mundo/mundo-determinista.md) — zonas
@@ -1333,13 +1341,13 @@ export interface ZonaResponse {
   tablon?: { buildingId: string; nombre: string; faccion: string | null } | null
 }
 export async function getZona(saveId: string): Promise<ZonaResponse> {
-  return fetchJson(`${API_URL}/saves/${saveId}/zona`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/zona`)
 }
 
 /// Detalle bajo demanda de una parcela (2026-09-21) — se pide al abrir su modal, mismo criterio
 /// que el resto del panel (el mapa solo pinta iconos con lo mínimo).
 export async function getParcela(saveId: string, parcelaId: string): Promise<ParcelaDetailInfo> {
-  return fetchJson(`${API_URL}/saves/${saveId}/parcelas/${parcelaId}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/parcelas/${parcelaId}`)
 }
 
 /// Construir DIRECTO en una parcela (2026-09-21) — sin /turn/narrate, sin LLM (mismo criterio que
@@ -1347,7 +1355,7 @@ export async function getParcela(saveId: string, parcelaId: string): Promise<Par
 /// `Building` real creado y el `LogEntry` determinista del evento; el caller decide si refresca
 /// `getZona`/`getSave` tras la llamada.
 export async function construirEnParcela(saveId: string, parcelaId: string, recipeKey: string): Promise<{ building: BuildingInfo; logEntry: LogEntry }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/parcelas/${parcelaId}/construir`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/parcelas/${parcelaId}/construir`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ recipeKey }),
@@ -1414,7 +1422,7 @@ export interface MoverZonaResultado {
   energia?: number
 }
 export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
-  return fetchJson(`${API_URL}/saves/${saveId}/zona/mover`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/zona/mover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ destino }),
@@ -1431,7 +1439,7 @@ export interface CapturableCandidate {
   tipo: 'FAUNA' | 'NPC'
 }
 export async function getCapturables(saveId: string): Promise<{ candidates: CapturableCandidate[]; tieneCuerdas: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/capturables`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/capturables`)
 }
 /// Rediseño de captura (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — atar ya no
 /// asigna una Jaula directamente: la captura se materializa como InventoryItem en tránsito
@@ -1459,7 +1467,7 @@ export async function postCapturar(
   /// cierra (deja al NPC vivo), mismo criterio que `dejarVivir`. `[]` si ninguna.
   misionesPendientes: string[]
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/capturar/${npcSlug}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/capturar/${npcSlug}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ participantId }),
@@ -1476,14 +1484,14 @@ export interface EntregableNpc {
 export async function getEntregables(
   saveId: string,
 ): Promise<{ items: { id: string; name: string; description: string }[]; npcs: EntregableNpc[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/entregables`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/entregables`)
 }
 export async function postEntregar(
   saveId: string,
   npcSlug: string,
   itemId: string,
 ): Promise<{ npcSlug: string; itemName: string; logEntry: LogEntry }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/entregar/${npcSlug}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/entregar/${npcSlug}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ itemId }),
@@ -1502,22 +1510,22 @@ export interface AprenderOficioMaestro {
   motivoBloqueo: string | null
 }
 export async function getAprenderOficioMaestros(saveId: string): Promise<{ maestros: AprenderOficioMaestro[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/aprender-oficio`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/aprender-oficio`)
 }
 export async function postAprenderOficio(saveId: string, npcSlug: string): Promise<{ professionId: string; logEntry: LogEntry }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/npc/${npcSlug}/aprender-oficio`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/npc/${npcSlug}/aprender-oficio`, { method: 'POST' })
 }
 
 /// Deposita una captura EN EL INVENTARIO (`InventoryItem.capturaNpcId` no null) en una Jaula con
 /// hueco — solo fauna tiene edificio de destino hoy (NPC espera la Celda de Retención, pausada).
 export async function postDepositarCaptura(saveId: string, itemId: string): Promise<{ ok: true; jaulaBuildingId: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/capturas/${itemId}/depositar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/capturas/${itemId}/depositar`, { method: 'POST' })
 }
 
 /// Suelta/libera una captura TODAVÍA EN EL INVENTARIO (antes de depositar) — disponible en
 /// cualquier momento. Distinto de `postSoltarTameo` (abajo), que suelta una captura YA depositada.
 export async function postSoltarCaptura(saveId: string, itemId: string): Promise<{ ok: true }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/capturas/${itemId}/soltar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/capturas/${itemId}/soltar`, { method: 'POST' })
 }
 
 /// CONVALECIENTE deja de ser "victoria automática" (2026-08-26) — "Dejarlo vivir" saca al NPC del
@@ -1541,7 +1549,7 @@ export async function dejarVivir(
   /// jugador de que el objetivo sigue vivo y esas misiones siguen abiertas. `[]` si ninguna.
   misionesPendientes: string[]
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/combat/dejar-vivir/${npcSlug}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ participantId }),
@@ -1553,7 +1561,7 @@ export async function dejarVivir(
 /// `NpcState.targetedForKill`, no resuelve nada por sí mismo (el remate real sigue siendo un
 /// intercambio normal, riesgo real). Solo combate 1v1 clásico por ahora.
 export async function requestMatar(saveId: string, npcSlug: string): Promise<void> {
-  await fetchJson(`${API_URL}/saves/${saveId}/combat/matar/${npcSlug}`, { method: 'POST' })
+  await fetchJson(`${apiBaseUrl()}/saves/${saveId}/combat/matar/${npcSlug}`, { method: 'POST' })
 }
 
 export interface TameoPendiente {
@@ -1568,7 +1576,7 @@ export interface TameoPendiente {
   alCorral?: boolean
 }
 export async function getTameoPendientes(saveId: string): Promise<{ pendientes: TameoPendiente[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes`)
 }
 
 export interface OpposedRollInfo {
@@ -1588,18 +1596,18 @@ export async function postIntentarTameo(
   npcSlug: string,
   attribute: Attribute,
 ): Promise<{ roll: OpposedRollInfo; felicidad: number; umbral: number; umbralCompletado: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/intentar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/intentar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ attribute }),
   })
 }
 export async function postConfirmarTameo(saveId: string, npcSlug: string): Promise<{ companion: CompanionInfo }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/confirmar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/confirmar`, { method: 'POST' })
 }
 /// CR-55 (Q3): el animal domesticado va a un corral del Ganadero de su especie (o a uno vacío).
 export async function postAlCorral(saveId: string, npcSlug: string): Promise<{ ganadoId: string; buildingId: string; sexo: 'M' | 'F' }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/al-corral`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/al-corral`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
@@ -1676,16 +1684,16 @@ export interface CampamentoInfo {
   gente: number
 }
 export async function getPartidas(saveId: string): Promise<{ partidas: PartidaInfo[]; opciones: OpcionesPartida; campamentos?: CampamentoInfo[]; guerreros?: { id: string; name: string; rol: string }[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/partidas`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/partidas`)
 }
 export async function postLanzarPartida(
   saveId: string,
   p: { tipo: 'CAZA' | 'CAPTURA'; especie: string; destinoLocationId: string; companionIds: string[]; subjectIds: string[]; permanente: boolean },
 ): Promise<{ ok: boolean; id: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/partidas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/partidas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
 }
 export async function postOrdenPartida(saveId: string, viajeroId: string, accion: 'parar' | 'volver' | 'destino', destinoLocationId?: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/partidas/${viajeroId}/orden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, destinoLocationId }) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/partidas/${viajeroId}/orden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, destinoLocationId }) })
 }
 
 // CR-63 (63e, Q9): viajeros de paso donde está el personaje.
@@ -1700,40 +1708,40 @@ export interface ViajeroAqui {
   piezas: number
 }
 export async function getViajerosAqui(saveId: string): Promise<{ viajeros: ViajeroAqui[]; vendibles?: { id: string; name: string; precio: number }[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/aqui`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/viajeros/aqui`)
 }
 export async function postPreguntarViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; lineas: string[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/preguntar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/viajeros/${viajeroId}/preguntar`, { method: 'POST' })
 }
 export async function postVenderAViajero(saveId: string, viajeroId: string, itemId: string): Promise<{ ok: boolean; precio: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/vender`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId }) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/viajeros/${viajeroId}/vender`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId }) })
 }
 export async function postComprarAViajero(saveId: string, viajeroId: string): Promise<{ ok: boolean; items: string[]; precio: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/viajeros/${viajeroId}/comprar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/viajeros/${viajeroId}/comprar`, { method: 'POST' })
 }
 
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
-  return fetchJson(`${API_URL}/saves/${saveId}/corrales`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/corrales`)
 }
 export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/forraje/entregar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/forraje/entregar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ catalogSlug }),
   })
 }
 export async function postLlevarConsigo(saveId: string, ganadoId: string): Promise<{ companionId: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/llevar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/llevar`, { method: 'POST' })
 }
 export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
 export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
 }
 
 export async function postSoltarTameo(saveId: string, npcSlug: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tameo-pendientes/${npcSlug}/soltar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/soltar`, { method: 'POST' })
 }
 
 /// Equipo de compañero (§6) — mismo patrón que `setItemSlot` (equipo del jugador), scopeado a un
@@ -1744,7 +1752,7 @@ export async function setCompanionItemSlot(
   itemId: string,
   slot: EquipSlot | null,
 ): Promise<{ id: string; slot: EquipSlot | null; companionId: string | null }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/equipo/${itemId}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/equipo/${itemId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slot }),
@@ -1753,10 +1761,10 @@ export async function setCompanionItemSlot(
 
 /// Almacén de Reino (§7).
 export async function depositarEnAlmacen(saveId: string, itemId: string): Promise<{ ok: boolean; autoEquipados: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/almacen/depositar/${itemId}`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar/${itemId}`, { method: 'POST' })
 }
 export async function retirarDeAlmacen(saveId: string, almacenItemId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/almacen/retirar/${almacenItemId}`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/retirar/${almacenItemId}`, { method: 'POST' })
 }
 
 /// Plantillas de equipo (§7).
@@ -1764,24 +1772,24 @@ export async function crearPlantilla(
   saveId: string,
   params: { name: string; rol: string; personalizada?: boolean; slots: PlantillaEquipoInfo['slots']; prioridad?: number },
 ): Promise<PlantillaEquipoInfo> {
-  return fetchJson(`${API_URL}/saves/${saveId}/plantillas`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/plantillas`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   })
 }
 export async function borrarPlantilla(saveId: string, plantillaId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/plantillas/${plantillaId}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/plantillas/${plantillaId}`, { method: 'DELETE' })
 }
 export async function asignarPlantillaCompanion(saveId: string, companionId: string, plantillaEquipoId: string | null, rolReino?: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/plantilla`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/plantilla`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ plantillaEquipoId, rolReino }),
   })
 }
 export async function fijarRolReinoCompanion(saveId: string, companionId: string, rolReino: string | null): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/rol-reino`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/rol-reino`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rolReino }),
@@ -1816,12 +1824,12 @@ export interface EconomiaReino {
 }
 
 export async function getEconomiaReino(saveId: string): Promise<EconomiaReino> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/economia`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/economia`)
 }
 
 /// Positivo: de la bolsa al tesoro; negativo: del tesoro a la bolsa.
 export async function traspasarTesoro(saveId: string, cantidad: number): Promise<{ ok: boolean; bolsa: number; tesoro: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/tesoro`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/tesoro`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cantidad }),
@@ -1849,6 +1857,8 @@ export interface SubditoInfo {
   tarea?: TareaSubdito
   /// Casa de obras (P277): nivel de oficio de constructor (1-9); da velocidad (los tiers los abre la Casa de obras).
   nivelConstructor?: number
+  /// P318: lleva arma (soldado, vigía o cazador adulto) y no la tiene: se marca «(sin arma)» en la lista.
+  sinArma?: boolean
 }
 
 export type TareaSubdito = 'recolector' | 'pescador' | 'cocinero' | 'ganadero' | 'fibrero' | 'constructor'
@@ -1889,11 +1899,11 @@ export interface SalidaSubdito {
 }
 
 export async function getSubditos(saveId: string): Promise<{ ahora?: number; subditos: SubditoInfo[]; camas: CamasReino; danados?: { id: string; name: string; camas: number; cocina: boolean }[]; candidatos?: CandidatoLlegada[]; salidas?: SalidaSubdito[]; requisitosLlegada?: RequisitoLlegada[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/subditos`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/subditos`)
 }
 
 export async function responderLlegada(saveId: string, subjectId: string, acepta: boolean): Promise<{ ok: boolean; name?: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/subditos/${subjectId}/llegada`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/subditos/${subjectId}/llegada`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ acepta }),
@@ -1901,7 +1911,7 @@ export async function responderLlegada(saveId: string, subjectId: string, acepta
 }
 
 export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/rol`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/subjects/${subjectId}/rol`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rol }),
@@ -1909,7 +1919,7 @@ export async function cambiarRolSubdito(saveId: string, subjectId: string, rol: 
 }
 
 export async function cambiarTareaSubdito(saveId: string, subjectId: string, tarea: TareaSubdito): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/tarea`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/subjects/${subjectId}/tarea`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tarea }),
@@ -1917,7 +1927,7 @@ export async function cambiarTareaSubdito(saveId: string, subjectId: string, tar
 }
 
 export async function asignarPlantillaSubject(saveId: string, subjectId: string, plantillaEquipoId: string | null): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/subjects/${subjectId}/plantilla`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/subjects/${subjectId}/plantilla`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ plantillaEquipoId }),
@@ -1928,7 +1938,7 @@ export async function asignarPlantillaSubject(saveId: string, subjectId: string,
 /// mundo-vivo-x4.md § 4.4-ter) — trabajador↔edificio, sin filtrado de receta por tipo de edificio
 /// (decisión confirmada: el motor real solo mira nivel de oficio, nunca el `Building`).
 export async function asignarCompanionABuilding(saveId: string, companionId: string, buildingId: string | null): Promise<{ ok: boolean; companion: { id: string; buildingId: string | null } }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/asignar-edificio`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/asignar-edificio`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ buildingId }),
@@ -1947,13 +1957,13 @@ export interface OrdenProduccionInfo {
 }
 
 export async function getOrdenesProduccion(saveId: string, buildingId: string): Promise<{ ordenes: OrdenProduccionInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/ordenes`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/edificios/${buildingId}/ordenes`)
 }
 
 /// Recetas que un edificio puede producir según su oficio (P-3, decisión de Álvaro, 2026-09-29).
 /// `oficio` null = edificio sin oficio, sin filtro.
 export async function getRecetasProduccionEdificio(saveId: string, buildingId: string): Promise<{ oficio: string | null; recipeKeys: string[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/recetas-produccion`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/edificios/${buildingId}/recetas-produccion`)
 }
 
 export async function crearOrdenProduccion(
@@ -1961,7 +1971,7 @@ export async function crearOrdenProduccion(
   buildingId: string,
   params: { recipeKey: string; modo?: 'unico' | 'reponer'; limite?: number | null; prioridad?: number },
 ): Promise<{ ok: boolean; orden: OrdenProduccionInfo }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/ordenes`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/edificios/${buildingId}/ordenes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -1973,7 +1983,7 @@ export async function actualizarOrdenProduccion(
   ordenId: string,
   params: { prioridad?: number; limite?: number | null; activa?: boolean },
 ): Promise<{ ok: boolean; orden: OrdenProduccionInfo }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/ordenes/${ordenId}`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ordenes/${ordenId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -1981,7 +1991,7 @@ export async function actualizarOrdenProduccion(
 }
 
 export async function borrarOrdenProduccion(saveId: string, ordenId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/ordenes/${ordenId}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ordenes/${ordenId}`, { method: 'DELETE' })
 }
 
 export interface AlmacenLimiteInfo {
@@ -1990,11 +2000,11 @@ export interface AlmacenLimiteInfo {
 }
 
 export async function getAlmacenLimites(saveId: string): Promise<{ limites: AlmacenLimiteInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/almacen-limites`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen-limites`)
 }
 
 export async function setAlmacenLimite(saveId: string, catalogSlug: string, limite: number | null): Promise<{ ok: boolean; catalogSlug: string; limite: number | null }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/almacen-limites`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen-limites`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ catalogSlug, limite }),
@@ -2026,7 +2036,7 @@ export async function postDiplomacia(
   saveId: string,
   params: { companionId: string; targetFactionSlug: string; accion: 'negociar' | 'sabotear' | 'espiar' },
 ): Promise<DiplomaciaResultado> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/diplomacia`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/diplomacia`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -2042,11 +2052,11 @@ export interface MercadoItemInfo {
 }
 
 export async function getMercado(saveId: string, targetFactionSlug: string): Promise<{ ok: boolean; tratado: boolean; items: MercadoItemInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/mercado/${targetFactionSlug}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/mercado/${targetFactionSlug}`)
 }
 
 export async function postMercadoComprar(saveId: string, targetFactionSlug: string, almacenItemId: string): Promise<{ ok: boolean; precio: number; item: string; targetFaction: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/mercado/comprar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/mercado/comprar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ targetFactionSlug, almacenItemId }),
@@ -2054,7 +2064,7 @@ export async function postMercadoComprar(saveId: string, targetFactionSlug: stri
 }
 
 export async function postMercadoVender(saveId: string, targetFactionSlug: string, almacenItemId: string): Promise<{ ok: boolean; precio: number; item: string; targetFaction: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/mercado/vender`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/mercado/vender`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ targetFactionSlug, almacenItemId }),
@@ -2094,14 +2104,14 @@ export interface ComercioInfo {
 }
 
 export async function getComercio(saveId: string): Promise<ComercioInfo> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/comercio`)
 }
 
 export async function postOrdenComercio(
   saveId: string,
   orden: { catalogSlug: string; tipo: 'COMPRA' | 'VENTA'; umbral: number; lote: number; factionSlug: string | null },
 ): Promise<{ orden: OrdenComercioInfo }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio/ordenes`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/comercio/ordenes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(orden),
@@ -2109,7 +2119,7 @@ export async function postOrdenComercio(
 }
 
 export async function deleteOrdenComercio(saveId: string, ordenId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/comercio/ordenes/${ordenId}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/comercio/ordenes/${ordenId}`, { method: 'DELETE' })
 }
 
 /// Relaciones entre facciones NPC (Fase 4, 2026-09-21, docs/rpgtarkor/sistemas-reino/mundo-vivo-x4.md § 4.3) —
@@ -2130,7 +2140,7 @@ export interface FactionRelationInfo {
 
 export async function getFactionRelations(worldSlug: string, saveId?: string): Promise<{ relations: FactionRelationInfo[] }> {
   const query = saveId ? `?saveId=${saveId}` : ''
-  return fetchJson(`${API_URL}/world/${worldSlug}/faction-relations${query}`)
+  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/faction-relations${query}`)
 }
 
 /// Resultado de la caza desde la zona (`cazarEnZona`, más abajo). Con una única presa débil puede
@@ -2167,11 +2177,12 @@ export type ConfirmarCazaResultado =
 /// regional como el viejo botón suelto "Cazar" (`confirmarCaza`, que la Fase 4 retira). Misma forma
 /// de respuesta que `confirmarCaza` — el llamador reutiliza el mismo tratamiento de resultado
 /// (`handleHuntResolved`, GameView.tsx).
-export async function cazarEnZona(saveId: string, zonePointId: string): Promise<ConfirmarCazaResultado> {
-  return fetchJson(`${API_URL}/saves/${saveId}/zona/cazar`, {
+/// P307: la fauna de la escena sin punto en el mapa se caza por `targetSlug` (el backend crea el punto al momento).
+export async function cazarEnZona(saveId: string, zonePointId: string | undefined, targetSlug?: string): Promise<ConfirmarCazaResultado> {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/zona/cazar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ zonePointId }),
+    body: JSON.stringify(zonePointId ? { zonePointId } : { targetSlug }),
   })
 }
 
@@ -2180,7 +2191,7 @@ export async function cazarEnZona(saveId: string, zonePointId: string): Promise<
 /// (tier 1) manda aquí el formulario. Bloqueo de nombre para Gorhorn verificado en el backend, no
 /// solo aquí (ver reino.ts).
 export async function fundarReino(id: string, kingdomName: string, description?: string): Promise<{ kingdomName: string }> {
-  return fetchJson(`${API_URL}/saves/${id}/reino/fundar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${id}/reino/fundar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ kingdomName, description }),
@@ -2206,7 +2217,7 @@ export async function aceptarMision(
   /// QA-54: la recompensa de `questCompletedInfo`, lista para el inventario (P32).
   newInventoryItems?: InventoryItemInfo[]
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/quests/aceptar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/quests/aceptar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, description }),
@@ -2218,7 +2229,7 @@ export async function aceptarMision(
 /// (`pendingQuestOfferInfo`), así que cancelar debe limpiarla de verdad en el backend, no solo
 /// localmente en React, o reaparece tras recargar.
 export async function cancelarMision(saveId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/quests/cancelar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/quests/cancelar`, { method: 'POST' })
 }
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — resultado de una vuelta,
@@ -2255,6 +2266,9 @@ export interface DynamicModeTurno {
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
   combate?: { npcs: NpcInSceneInfo[] } | null
+  /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,
+  /// llega junto al combate que abre). La misma que se ve tras recargar.
+  huidaLogEntry?: LogEntry
   /// Agresivo en grupo (Fase 2, 2026-09-28) — llega en vez de `combate` cuando el encuentro forzado
   /// es un grupo real de FAUNA (`cantidad > 1`, ver `iniciarCaza`/`services/caza.ts`): el backend ya
   /// creó el `CombatEncounter` múltiple, este texto se manda por el turno normal
@@ -2288,7 +2302,7 @@ export async function interactuarModoDinamico(
   zonePointId?: string,
   cantidad?: number,
 ): Promise<DynamicModeTurno> {
-  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/interactuar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/modo-dinamico/interactuar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tipo, targetSlug, targetName, quienInicia, combateForzado, zonePointId, cantidad }),
@@ -2296,7 +2310,7 @@ export async function interactuarModoDinamico(
 }
 
 export async function responderModoDinamico(saveId: string, respuesta: string): Promise<DynamicModeTurno> {
-  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/responder`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/modo-dinamico/responder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ respuesta }),
@@ -2313,7 +2327,7 @@ export async function ignorarModoDinamico(saveId: string, targetSlug?: string): 
   /// resumir (ignorar una oferta sin llegar a abrirla).
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string } | null
 }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/ignorar`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/modo-dinamico/ignorar`, {
     method: 'POST',
     ...(targetSlug ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetSlug }) } : {}),
   })
@@ -2337,7 +2351,7 @@ export interface DynamicModeRecursoResultado {
 }
 
 export async function interactuarModoDinamicoRecurso(saveId: string, targetSlug: string): Promise<DynamicModeRecursoResultado> {
-  return fetchJson(`${API_URL}/saves/${saveId}/modo-dinamico/recurso/${targetSlug}`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/modo-dinamico/recurso/${targetSlug}`, { method: 'POST' })
 }
 
 /// Menú contextual de interacción con NPC (2026-09-06) — `accion` le dice a GameView.tsx qué modal/
@@ -2376,7 +2390,7 @@ export interface FichaEdificio {
 }
 
 export async function getFichaEdificio(saveId: string, zonePointId: string): Promise<FichaEdificio> {
-  return fetchJson(`${API_URL}/saves/${saveId}/zona/edificio/${zonePointId}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/zona/edificio/${zonePointId}`)
 }
 
 /// P178: «Interactuar» junto a un edificio: el menú de quien lo lleva, o por qué no lo hay.
@@ -2384,16 +2398,16 @@ export async function interactuarEdificio(
   saveId: string,
   zonePointId: string,
 ): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: false }; logEntry: LogEntry } | { menu: null; motivo: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/zona/edificio/${zonePointId}/interactuar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/zona/edificio/${zonePointId}/interactuar`, { method: 'POST' })
 }
 
 /// P142: menú fijo del NPC del encuentro del mapa; `null` si no tiene (se abre la escena libre).
 export async function abrirMenuNpc(saveId: string, npcSlug: string): Promise<{ menu: { npcSlug: string; npcName: string; options: string[]; desdeEncuentro: true } | null }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/abrir`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/npc-interaction/${npcSlug}/abrir`, { method: 'POST' })
 }
 
 export async function chooseNpcInteraction(saveId: string, npcSlug: string, opcion: string): Promise<NpcInteractionAccion> {
-  return fetchJson(`${API_URL}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/npc-interaction/${npcSlug}/elegir`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ opcion }),
@@ -2401,18 +2415,18 @@ export async function chooseNpcInteraction(saveId: string, npcSlug: string, opci
 }
 
 export async function deleteSave(id: string): Promise<void> {
-  return fetchJson(`${API_URL}/saves/${id}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${id}`, { method: 'DELETE' })
 }
 
 /// Versión del backend (`GET /version`) — se compara con la del build del frontend para que un
 /// desajuste sea visible.
 export async function getServerVersion(): Promise<string> {
-  const { version } = await fetchJson<{ version: string }>(`${API_URL}/version`)
+  const { version } = await fetchJson<{ version: string }>(`${apiBaseUrl()}/version`)
   return version
 }
 
 export async function listSaves(): Promise<SaveSummary[]> {
-  return fetchJson(`${API_URL}/saves`)
+  return fetchJson(`${apiBaseUrl()}/saves`)
 }
 
 export interface WorldLocationInfo {
@@ -2761,7 +2775,7 @@ export interface EnciclopediaAbilityInfo {
 /// no Vite. Null pasa a través tal cual, para poder encadenar `resolveImageUrl(x.imageUrls.banner)`
 /// sin comprobar null antes en cada sitio de uso.
 export function resolveImageUrl(path: string | null): string | null {
-  return path ? `${API_URL}${path}` : null
+  return path ? `${apiBaseUrl()}${path}` : null
 }
 
 export interface EnciclopediaClassUnlock {
@@ -2904,7 +2918,7 @@ export interface EnciclopediaResponse {
 /// siempre, p.ej. si algún día se navega el catálogo fuera del contexto de una partida concreta).
 export async function getEnciclopedia(worldSlug: string, saveId?: string | null): Promise<EnciclopediaResponse> {
   const query = saveId ? `?saveId=${encodeURIComponent(saveId)}` : ''
-  return fetchJson(`${API_URL}/world/${worldSlug}/enciclopedia${query}`)
+  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/enciclopedia${query}`)
 }
 
 // 'faction'/'historia' (2026-08-06) — mismo literal que el backend, ver imagePromptGenerator.ts.
@@ -2949,7 +2963,7 @@ export async function requestImagePrompt(
   sizeProfile: ImagePromptSizeProfile,
   regenerate?: boolean,
 ): Promise<ImagePromptResult> {
-  return fetchJson(`${API_URL}/world/${worldSlug}/image-prompt`, {
+  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/image-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ entityType, entitySlug, sizeProfile, regenerate }),
@@ -2971,7 +2985,7 @@ export async function getImagePrompt(
   sizeProfile: ImagePromptSizeProfile,
 ): Promise<ImagePromptGuardado> {
   const q = new URLSearchParams({ entityType, entitySlug, sizeProfile })
-  return fetchJson(`${API_URL}/world/${worldSlug}/image-prompt?${q}`)
+  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/image-prompt?${q}`)
 }
 
 /// Guarda el prompt usado; con texto vacío o null lo borra. Necesita que ya exista el prompt base.
@@ -2982,7 +2996,7 @@ export async function saveImagePromptUsado(
   sizeProfile: ImagePromptSizeProfile,
   promptUsado: string | null,
 ): Promise<Pick<ImagePromptGuardado, 'promptUsado' | 'promptUsadoAt'>> {
-  return fetchJson(`${API_URL}/world/${worldSlug}/image-prompt/usado`, {
+  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/image-prompt/usado`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ entityType, entitySlug, sizeProfile, promptUsado }),
@@ -2990,7 +3004,7 @@ export async function saveImagePromptUsado(
 }
 
 export async function getWorldLocations(worldSlug: string): Promise<WorldLocationsResponse> {
-  return fetchJson(`${API_URL}/world/${worldSlug}/locations`)
+  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/locations`)
 }
 
 // ─── Libro de Sucesos, vista de administración (CR-4, hito 0.2) ───────────────────────────────
@@ -3029,7 +3043,7 @@ export async function getLibroDeSucesos(
   if (filtros.antesDe) params.set('antesDe', filtros.antesDe)
   if (filtros.limite) params.set('limite', String(filtros.limite))
   const qs = params.toString()
-  return fetchJson(`${API_URL}/saves/${saveId}/libro${qs ? `?${qs}` : ''}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/libro${qs ? `?${qs}` : ''}`)
 }
 
 // ─────────────────────────── CR-40 (40g): misiones secundarias del motor ───────────────────────────
@@ -3055,7 +3069,7 @@ export interface AvisoMisionInfo {
 }
 
 export async function getAvisosTablon(saveId: string, buildingId: string): Promise<{ tablon: { buildingId: string; nombre: string; faccion: string | null }; avisos: AvisoMisionInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}`)
 }
 
 /// CR-18 (18d): un bando del tablón (lo oficial de su región y su facción de los últimos días).
@@ -3068,19 +3082,19 @@ export interface BandoInfo {
 
 /// Lee los bandos de un tablón (y los apunta como sabidos).
 export async function leerBandosTablon(saveId: string, buildingId: string): Promise<{ bandos: BandoInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}/bandos/leer`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tablones/${encodeURIComponent(buildingId)}/bandos/leer`, { method: 'POST' })
 }
 
 export async function aceptarAviso(saveId: string, avisoId: string): Promise<{ questId: string; title: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/misiones/avisos/${encodeURIComponent(avisoId)}/aceptar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/misiones/avisos/${encodeURIComponent(avisoId)}/aceptar`, { method: 'POST' })
 }
 
 export async function entregarMision(saveId: string, questId: string): Promise<{ status: string; progreso: number; cantidad: number | null }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/entregar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/entregar`, { method: 'POST' })
 }
 
 export async function abandonarMision(saveId: string, questId: string): Promise<{ status: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/abandonar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/misiones/${encodeURIComponent(questId)}/abandonar`, { method: 'POST' })
 }
 
 // ─────────────────────────── Leyendas de la partida (CR-19/CR-20, hito 0.2) ───────────────────────────
@@ -3121,17 +3135,17 @@ export async function getLeyendas(saveId: string, params: { familia?: FamiliaSuc
   if (params.familia) q.set('familia', params.familia)
   if (params.cursor) q.set('cursor', params.cursor)
   const qs = q.toString()
-  return fetchJson(`${API_URL}/saves/${saveId}/leyendas${qs ? `?${qs}` : ''}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/leyendas${qs ? `?${qs}` : ''}`)
 }
 
 /// CR-20 (20b): sección «En tu partida» de una ficha de la Enciclopedia (npc, faction o location).
 export async function getLeyendasFicha(saveId: string, ficha: 'npc' | 'faction' | 'location', slug: string): Promise<{ entradas: EntradaLeyenda[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/ficha/${ficha}/${encodeURIComponent(slug)}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/leyendas/ficha/${ficha}/${encodeURIComponent(slug)}`)
 }
 
 /// Lo que el personaje sabe de una entidad (ficha «En tu partida»).
 export async function getLeyendasEntidad(saveId: string, tipo: string, entidadId: string): Promise<{ entradas: EntradaLeyenda[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/leyendas/entidad/${encodeURIComponent(tipo)}/${encodeURIComponent(entidadId)}`)
 }
 
 /// CR-14 (hito 0.3): título ganado por el personaje, con el porqué.
@@ -3144,7 +3158,7 @@ export interface EtiquetaInfo {
 }
 
 export async function getEtiquetas(saveId: string): Promise<{ etiquetas: EtiquetaInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/etiquetas`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/etiquetas`)
 }
 
 /// CR-17 (hito 0.3): una historia en marcha (o ya cerrada) que el personaje conoce.
@@ -3159,7 +3173,7 @@ export interface HiloInfo {
 }
 
 export async function getHilos(saveId: string): Promise<{ hilos: HiloInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/hilos`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/leyendas/hilos`)
 }
 
 /// CR-52 (hito 0.3): una familia (apellido) o un rastro faerus que conoce el personaje.
@@ -3183,12 +3197,12 @@ export interface LinajeInfo {
 }
 
 export async function getLinajes(saveId: string): Promise<{ linajes: LinajeInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/leyendas/linajes`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/leyendas/linajes`)
 }
 
 /// CR-42 (hito 0.3): «¿Qué se sabe en tu tierra?» a un compañero.
 export async function preguntarTierraCompanero(saveId: string, companionId: string): Promise<{ frase: string; contadas: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/companeros/${companionId}/tierra`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/tierra`, { method: 'POST' })
 }
 
 // CR-65 (65f): Reino › Defensa.
@@ -3225,20 +3239,20 @@ export interface AvistamientoInfo {
 }
 /// `danados`: Ayuntamiento o Cuartel dañados (P284), que no defienden hasta repararlos.
 export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/defensa`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/defensa`)
 }
 export async function postGuarnicion(saveId: string, subjectId: string, asentamientoId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/defensa/guarnicion`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId, asentamientoId }) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/defensa/guarnicion`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subjectId, asentamientoId }) })
 }
 export async function postEquiposMilicia(saveId: string, armeriaId: string, cantidad: number): Promise<{ ok: boolean; comprados: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/defensa/armeria/${armeriaId}/equipos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cantidad }) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/defensa/armeria/${armeriaId}/equipos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cantidad }) })
 }
 export async function postLlamarMilicia(saveId: string, asentamientoId: string): Promise<{ ok: boolean; armados: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/defensa/${asentamientoId}/milicia`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/defensa/${asentamientoId}/milicia`, { method: 'POST' })
 }
 /// P284/P296/P301: repara un edificio dañado (mitad de su coste en materiales del Almacén).
 export async function postRepararEdificio(saveId: string, buildingId: string): Promise<{ ok: boolean; coste: number }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/edificios/${buildingId}/reparar`, { method: 'POST' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/edificios/${buildingId}/reparar`, { method: 'POST' })
 }
 
 /// Casa de obras (P277/P284): la Casa, sus constructores y la cola de obras y reparaciones.
@@ -3258,21 +3272,21 @@ export interface CasaDeObrasInfo {
   cola: ObraEnCola[]
 }
 export async function getObras(saveId: string): Promise<CasaDeObrasInfo> {
-  return fetchJson(`${API_URL}/saves/${saveId}/obras`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/obras`)
 }
 export async function postObra(saveId: string, encargo: { recipeKey: string } | { buildingId: string }): Promise<{ ok: boolean; id: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/obras`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(encargo) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/obras`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(encargo) })
 }
 export async function deleteObra(saveId: string, obraId: string): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/obras/${obraId}`, { method: 'DELETE' })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/obras/${obraId}`, { method: 'DELETE' })
 }
 export async function putOrdenObras(saveId: string, ids: string[]): Promise<{ ok: boolean }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/obras/orden`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/obras/orden`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
 }
 
 // CR-50 (50d): manda una partida a por un campamento de bandidos.
 export async function postAtacarCampamento(saveId: string, campamentoId: string, p: { companionIds: string[]; subjectIds: string[] }): Promise<{ ok: boolean; id: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/campamentos/${campamentoId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/campamentos/${campamentoId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
 }
 
 // CR-37 (37c): guerra con el Reino.
@@ -3303,14 +3317,14 @@ export interface VasallajeInfo {
   motivoRuptura: string | null
 }
 export async function getVasallajes(saveId: string): Promise<{ vasallajes: VasallajeInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/reino/vasallajes`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/reino/vasallajes`)
 }
 export async function getGuerra(saveId: string): Promise<{ enemigas: EnemigaInfo[] }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/guerra`)
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/guerra`)
 }
 export async function postTributo(saveId: string, factionId: string, goirnos: number): Promise<{ ok: boolean; pagado: number; relacion: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/guerra/${factionId}/tributo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goirnos }) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/guerra/${factionId}/tributo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goirnos }) })
 }
 export async function postAtacarAsentamiento(saveId: string, factionId: string, p: { companionIds: string[]; subjectIds: string[] }): Promise<{ ok: boolean; id: string }> {
-  return fetchJson(`${API_URL}/saves/${saveId}/guerra/${factionId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/guerra/${factionId}/atacar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
 }

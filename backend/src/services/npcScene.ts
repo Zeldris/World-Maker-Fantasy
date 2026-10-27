@@ -11,6 +11,7 @@ import { effectiveTemperamento } from './reputation.js';
 import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { npcVivoEnPartida } from './mundoPartida.js';
+import { nombreOcultoPorRaza, nombreEnFrase } from './dynamicMode.js';
 
 /// Detección determinista de "NPC en escena" (docs/mecanicas/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -81,6 +82,11 @@ export interface NpcInScene {
   id: string;
   slug: string;
   name: string;
+  /// P327: el nombre con que la jugadora VE a este NPC mientras Gorhorn no lo conozca («Orco
+  /// desconocido»; `DiscoveredEntity`, ver `nombreVisibleDeNpc`). Solo se rellena si está oculto: el
+  /// narrador, los textos del combate y de la caza lo usan en vez de `name`, que queda para emparejar
+  /// (alias, habilidades, fichas) y para el Libro de Sucesos. Ausente = se ve por su nombre.
+  nombreVisible?: string;
   /// "el"/"la" para reforzar el género correcto de nombres descriptivos en el contexto del
   /// Narrador (ver comentario completo en schema.prisma § Npc.articulo) — null para nombres
   /// propios que no lo necesitan.
@@ -568,7 +574,7 @@ export async function detectNpcsInScene(params: {
       select: { targetNpcId: true },
     }),
     prisma.npcState.findMany({ where: { saveId: params.saveId }, select: { npcId: true } }),
-    prisma.save.findUnique({ where: { id: params.saveId }, select: { npcsRetiredForever: true } }),
+    prisma.save.findUnique({ where: { id: params.saveId }, select: { npcsRetiredForever: true, pendingDynamicMode: true, pendingDynamicModeOffer: true } }),
   ]);
   if (npcs.length === 0) return [];
   const retiredForeverSlugs = new Set(saveRow?.npcsRetiredForever ?? []);
@@ -622,6 +628,17 @@ export async function detectNpcsInScene(params: {
   const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs);
   const haystack = [params.action, ...relevantFacts].join('\n');
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
+  const ocultoNombrado = await ocultoNombradoPorSuVisible({
+    action: params.action,
+    saveId: params.saveId,
+    currentLocationId: params.currentLocationId,
+    candidatos: candidateNpcs.filter((npc) => !retiredForeverSlugs.has(npc.slug)),
+    estaEnCombate,
+    slugsDelModoDinamico: [saveRow?.pendingDynamicMode, saveRow?.pendingDynamicModeOffer]
+      .map((m) => (m && typeof m === 'object' && !Array.isArray(m) && typeof (m as { targetSlug?: unknown }).targetSlug === 'string' ? (m as { targetSlug: string }).targetSlug : null))
+      .filter((slug): slug is string => slug !== null),
+  });
+  if (ocultoNombrado) matchedIds.add(ocultoNombrado);
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
   const matchedNpcs = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
@@ -634,8 +651,115 @@ export async function detectNpcsInScene(params: {
   });
   const stateByKey = new Map(states.map((s) => [`${s.npcId}|${s.scope}`, s]));
 
-  return matchedNpcs.map((npc) =>
-    buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`)),
+  return conNombreVisible(
+    prisma,
+    params.saveId,
+    matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
+  );
+}
+
+/// P327 (usuaria, 2026-10-26): ¿nombra el texto a alguien por el nombre con que la jugadora lo ve? «Orco desconocido»
+/// casa con «le regalo pan al orco desconocido» (y «la orca desconocida»); además, «el desconocido» / «la desconocida» a
+/// secas, con su género. «Alguien» (sin raza conocida) nunca: sale en cualquier frase.
+export function nombraPorNombreVisible(texto: string, nombreVisible: string): boolean {
+  const visible = normalizeText(nombreVisible);
+  const m = /^(\S+) desconocid([oa])$/.exec(visible);
+  if (!m) return false;
+  const t = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
+  if (t.includes(` ${visible} `)) return true;
+  return m[2] === 'a' ? / la desconocida /.test(t) : / (?:el|al|del) desconocido /.test(t);
+}
+
+/// P327 (usuaria, 2026-10-26): la jugadora no sabe el nombre de un PRINCIPAL sin descubrir; lo nombra como lo ve («el
+/// orco desconocido»). Solo vale para un oculto que ya esté en contacto este turno, nunca para todos los de esa raza
+/// del mundo. Señales, de la más segura a la menos: en combate con la jugadora; el del modo dinámico (Interactuar en
+/// curso u oferta pendiente); con su punto activo en el mapa de esta zona. Un `NpcState` a secas no basta: dice que
+/// se le trató alguna vez en la partida, no que esté aquí. Tampoco los `sessionFacts`: «el orco desconocido» de una
+/// escena vieja puede ser otro. Si en la señal más fuerte que casa hay dos ocultos con el mismo nombre visible, no se
+/// adivina: ninguno (la acción sigue como sin destinatario, igual que si no lo nombrara).
+async function ocultoNombradoPorSuVisible(params: {
+  action: string;
+  saveId: string;
+  currentLocationId: string | null;
+  candidatos: { id: string; slug: string; kind: NpcKind; raza: string | null; genero: string | null }[];
+  estaEnCombate: (npc: { id: string; slug: string }) => boolean;
+  slugsDelModoDinamico: string[];
+}): Promise<string | null> {
+  if (!/desconocid[oa]/.test(normalizeText(params.action))) return null;
+  const principales = params.candidatos.filter((n) => n.kind === 'PRINCIPAL');
+  if (principales.length === 0) return null;
+  const delModo = new Set(params.slugsDelModoDinamico);
+  const enCombate = principales.filter((n) => params.estaEnCombate(n));
+  const enModo = principales.filter((n) => delModo.has(n.slug));
+  const enZona = params.currentLocationId
+    ? await prisma.zonePoint
+        .findMany({
+          where: { saveId: params.saveId, locationId: params.currentLocationId, tipo: 'NPC', activo: true, targetSlug: { in: principales.map((n) => n.slug) } },
+          select: { targetSlug: true },
+        })
+        .then((puntos) => {
+          const slugs = new Set(puntos.map((p) => p.targetSlug));
+          return principales.filter((n) => slugs.has(n.slug));
+        })
+    : [];
+  const enContacto = [...new Map([...enCombate, ...enModo, ...enZona].map((n) => [n.id, n])).values()];
+  if (enContacto.length === 0) return null;
+  const vistos = await prisma.discoveredEntity.findMany({
+    where: { saveId: params.saveId, entityType: 'npc', entitySlug: { in: enContacto.map((n) => n.slug) } },
+    select: { entitySlug: true },
+  });
+  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const casa = (n: (typeof principales)[number]) => !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero));
+  for (const grupo of [enCombate, enModo, enZona]) {
+    const nombrados = grupo.filter(casa);
+    if (nombrados.length === 1) return nombrados[0].id;
+    if (nombrados.length > 1) return null;
+  }
+  return null;
+}
+
+/// P327: marca `nombreVisible` en los NPC con nombre propio que Gorhorn aún no conoce, para que ni la
+/// narración ni los textos deterministas del turno revelen su identidad («el orco desconocido»).
+/// Una sola consulta por escena; solo los `PRINCIPAL` pueden estar ocultos.
+export async function conNombreVisible(
+  db: Pick<typeof prisma, 'discoveredEntity'>,
+  saveId: string,
+  npcs: NpcInScene[],
+): Promise<NpcInScene[]> {
+  const principales = npcs.filter((n) => n.kind === 'PRINCIPAL');
+  if (principales.length === 0) return npcs;
+  const vistos = await db.discoveredEntity.findMany({
+    where: { saveId, entityType: 'npc', entitySlug: { in: principales.map((n) => n.slug) } },
+    select: { entitySlug: true },
+  });
+  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  return npcs.map((n) => {
+    if (n.kind !== 'PRINCIPAL' || conocidos.has(n.slug)) return n;
+    return { ...n, nombreVisible: nombreOcultoPorRaza(n.raza, n.genero) };
+  });
+}
+
+/// P327: cómo nombrar a un NPC en lo que se cuenta a la jugadora o al narrador: «el orco desconocido»
+/// si Gorhorn aún no lo conoce, su nombre si no. `alInicio` capitaliza para empezar frase.
+export function nombreNarrado(n: Pick<NpcInScene, 'name' | 'nombreVisible'>, alInicio = false): string {
+  return nombreEnFrase(n.nombreVisible ?? n.name, alInicio);
+}
+
+/// Revisión P327 (2026-10-26): la bio y la personalidad de un NPC con nombre oculto pueden traer su nombre propio;
+/// antes de mandarlas al modelo, el nombre completo se cambia por el visible («el orco desconocido»). Fase 1 hacia
+/// main: también el de pila («Ugrak» de «Ugrak Tuerto»), salvo que sea una palabra del visible («Orco» de «Orco
+/// enfurecido») o un artículo o tratamiento.
+const NO_SON_NOMBRE_DE_PILA = new Set(['el', 'la', 'los', 'las', 'don', 'doña']);
+export function sinNombreReal(texto: string, n: Pick<NpcInScene, 'name' | 'nombreVisible'>): string {
+  const nombre = n.name.trim();
+  if (!n.nombreVisible || !nombre) return texto;
+  const escapar = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const formas = [nombre];
+  const [pila, ...resto] = nombre.split(/\s+/);
+  const delVisible = new Set(n.nombreVisible.toLowerCase().split(/\s+/));
+  if (resto.length > 0 && pila && pila.length >= 3 && /^\p{Lu}/u.test(pila) && !delVisible.has(pila.toLowerCase()) && !NO_SON_NOMBRE_DE_PILA.has(pila.toLowerCase())) formas.push(pila);
+  return texto.replace(new RegExp(`(?<![\\p{L}])(?:${formas.map(escapar).join('|')})(?![\\p{L}])`, 'gu'), (_m, offset: number) =>
+    nombreNarrado(n, /(^|[.!?¡¿])\s*$/.test(texto.slice(0, offset))),
   );
 }
 
@@ -749,12 +873,16 @@ function isNegatedMatch(normalized: string, matchIndex: number): boolean {
 /// Verbo de ataque directo (roadmap 2026-07-19: "roadmap 2" de calibración de combate, y
 /// reutilizado por la clasificación tabulada en turn.ts) — mismo regex que la red de seguridad de
 /// `combateIniciado` en turnResolution.ts, vive aquí para no duplicarlo entre los dos módulos.
-const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero/;
+const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer/;
 
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;
 // "atac" (4) y la frase "cargo contra" se quedan con la coincidencia exacta del regex.
-const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'hiere', 'hiero', 'amputo','lacer','asesin','espadazo'];
+// P261 (2026-10-25): 'hiere', 'hiero' y 'lacer' NO entran aquí. Con solo 5 letras, la distancia ≤2
+// los casaba con verbos de todos los días («hacer», «viene», «tiene», «quiere», «quiero»), y el
+// guard del NPC ausente cortaba «Pienso en lo que me pidió Gistera Koh y qué hacer con el orco».
+// Siguen cubiertos por la coincidencia exacta del regex de arriba.
+const ATTACK_INTENT_STEMS = ['asalt', 'golpe', 'hachazo', 'apunal', 'dispar', 'arremet', 'amputo','asesin','espadazo'];
 
 // Auditoría 2026-07-29 (tras el bug real de "ataque"~"saque" en turnResolution.ts § LOOT_INTENT):
 // "hierro" está a distancia 1-2 de "hiero"/"hiere" — un material/nombre de habilidad normal
@@ -931,6 +1059,35 @@ export function detectsDialogueIntent(action: string): boolean {
   return DIALOGUE_INTENT_REGEX.test(normalizeText(action));
 }
 
+/// Verbos con los que la jugadora intenta INFLUIR en el NPC (persuadir, intimidar, mentir, robar...): hablar
+/// con esa intención sí es una tirada, no un simple saludo.
+const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\bmient|\bsobor|\bregate|\bnegoci|\bchantaj|\bseduc|\brobo\b|\brobar\b|\bhurt|\bsoborn/;
+
+/// P306 (revisión, 2026-10-26): amenazas de muerte y gestos violentos que `ATTACK_INTENT_REGEX` no recoge («¡Hola! Te
+/// mato», «desenvaino y le digo…», «le clavo la lanza»). Solo excluyen el saludo: no abren combate por sí solos.
+const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
+
+const CAZA_SUSTANTIVO_REGEX = /\b(la|una|esta|esa|su|tu|mi|vuestra|nuestra)\s+caza\b/gi;
+/// Fase 1 hacia main: «la mata de bayas» es el arbusto, no «matar» (`VIOLENCE_INTENT_REGEX`).
+const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas|aquellas|las|cada)\s+matas?\b/g;
+
+/// P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC (texto libre o Responder) no pide
+/// tirada ni abre combate. Es diálogo (`detectsDialogueIntent`) sin verbo de ataque, sin búsqueda hostil (salvo
+/// que sea aceptar ayudar) y sin intención de influir. Que la facción del NPC sea hostil lo decide quien lo usa
+/// (`reputacionHostil`): este helper solo mira el texto.
+export function detectsGreetingOrQuestion(action: string): boolean {
+  // P306: «le pregunto cómo va la caza» (la frase del hallazgo): «caza» tras artículo o posesivo es el sustantivo,
+  // no el verbo de `HOSTILE_SEARCH_REGEX`. Solo se quita para decidir si es saludo; el resto sigue leyendo el texto.
+  const sinCazaSustantivo = action.replace(CAZA_SUSTANTIVO_REGEX, ' ');
+  return (
+    detectsDialogueIntent(action) &&
+    !detectsAttackIntent(action) &&
+    !(detectsHostileSearchIntent(sinCazaSustantivo) && !detectsVerbalAcceptanceIntent(action)) &&
+    !INFLUENCE_INTENT_REGEX.test(normalizeText(action)) &&
+    !VIOLENCE_INTENT_REGEX.test(normalizeText(action).replace(MATA_SUSTANTIVO_REGEX, ' '))
+  );
+}
+
 /// Paleta de verbos + clasificación tabulada (roadmap de velocidad, 2026-07-19, prioridad 2): un
 /// ataque dentro del popup de combate contra un NPC ya en escena no necesita gastar una llamada
 /// entera al clasificador (25-50s) solo para que el modelo elija el mismo atributo de siempre —
@@ -1012,7 +1169,15 @@ function npcYaResuelto(npc: NpcInScene): boolean {
 /// de texto a ciegas, que podría corromper una mención legítima en femenino de OTRO NPC real
 /// (Gistera Koh) presente en la misma escena.
 function displayName(npc: NpcInScene): string {
+  if (npc.nombreVisible) return nombreNarrado(npc);
   return npc.articulo ? `${npc.articulo} ${npc.name}` : npc.name;
+}
+
+/// P327: mientras Gorhorn no conoce a un NPC con nombre propio, la bio y la personalidad que se pasan
+/// al narrador pueden nombrarlo. Se le prohíbe usarlo: nunca «Gistera Koh» en lo que lee la jugadora.
+function nombreOcultoHintFor(npc: NpcInScene): string {
+  if (!npc.nombreVisible) return '';
+  return ` NOMBRE OCULTO: Gorhorn aún no sabe cómo se llama. Nárralo siempre como «${nombreNarrado(npc)}» y NUNCA escribas su nombre propio, aunque aparezca en la descripción de abajo; tampoco lo hagas hablar de sí mismo por su nombre.`;
 }
 
 /// Refuerzo explícito de género para NOMBRES PROPIOS (bug real jugando, 2026-07-30: Gistera Koh,
@@ -1025,7 +1190,7 @@ function displayName(npc: NpcInScene): string {
 function generoHintFor(npc: NpcInScene): string {
   if (!npc.genero) return '';
   const [propio, opuesto] = npc.genero === 'F' ? ['femenino ("ella"/"la")', 'masculino ("él"/"el")'] : ['masculino ("él"/"el")', 'femenino ("ella"/"la")'];
-  return ` GÉNERO DE ${npc.name.toUpperCase()}: ${propio} — si te refieres a ${npc.name} sin usar su nombre (p.ej. por su raza o rol), hazlo siempre en ${propio}, NUNCA en ${opuesto}, aunque su raza o rol suene distinto por defecto.`;
+  return ` GÉNERO DE ${nombreNarrado(npc).toUpperCase()}: ${propio} — si te refieres a ${nombreNarrado(npc)} sin usar su nombre (p.ej. por su raza o rol), hazlo siempre en ${propio}, NUNCA en ${opuesto}, aunque su raza o rol suene distinto por defecto.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 1: el narrador conocía el
@@ -1047,7 +1212,7 @@ function facRepHintFor(npc: NpcInScene, factionsStatus: Record<string, number>):
     AGRESIVO: 'con hostilidad evidente — el jugador ya ha dañado su relación con esta facción',
     ENEMIGO: 'con hostilidad abierta y desconfianza total — el jugador es visto como un enemigo declarado de esta facción',
   };
-  return ` RELACIÓN CON ${npc.faction.toUpperCase()}: el jugador trata a ${npc.name} ${desc[t]} — refleja este trato en el tono de la escena, no lo narres neutro por defecto.`;
+  return ` RELACIÓN CON ${npc.faction.toUpperCase()}: el jugador trata a ${nombreNarrado(npc)} ${desc[t]} — refleja este trato en el tono de la escena, no lo narres neutro por defecto.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 3: `clase`/`especializacion`
@@ -1057,7 +1222,7 @@ function facRepHintFor(npc: NpcInScene, factionsStatus: Record<string, number>):
 function claseHintFor(npc: NpcInScene): string {
   if (!npc.clase) return '';
   const especializacionTxt = npc.especializacion ? `, especializado en ${npc.especializacion}` : '';
-  return ` CLASE DE ${npc.name.toUpperCase()}: ${npc.clase}${especializacionTxt} — su forma de combatir/actuar debe encajar con esta identidad (estilo de arma, tácticas, actitud), no la narres genérica.`;
+  return ` CLASE DE ${nombreNarrado(npc).toUpperCase()}: ${npc.clase}${especializacionTxt} — su forma de combatir/actuar debe encajar con esta identidad (estilo de arma, tácticas, actitud), no la narres genérica.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 4: los 5 `*Pct` ya
@@ -1076,7 +1241,7 @@ function receptividadHintFor(npc: NpcInScene): string {
   if (npc.cortejablePct > 0 && npc.cortejablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('cortejarlo/a');
   if (npc.capturablePct > 0 && npc.capturablePct < LOW_RECEPTIVITY_THRESHOLD) bajos.push('capturarlo/a');
   if (bajos.length === 0) return '';
-  return ` ${npc.name} es MUY POCO RECEPTIVO a intentar ${bajos.join('/')} — si la acción va en esa dirección, no narres el intento como si fuera a salir bien, deja la duda/dificultad real abierta hasta que la tirada lo decida.`;
+  return ` ${nombreNarrado(npc, true)} es MUY POCO RECEPTIVO a intentar ${bajos.join('/')} — si la acción va en esa dirección, no narres el intento como si fuera a salir bien, deja la duda/dificultad real abierta hasta que la tirada lo decida.`;
 }
 
 /// Auditoría "narrador vs. catálogo del mundo" (2026-08-30, hallazgo 6: `activeEffects`
@@ -1088,7 +1253,7 @@ function activeEffectsHintFor(npc: NpcInScene): string {
   const desc = npc.activeEffects
     .map((e) => `${e.magnitude > 0 ? '+' : ''}${e.magnitude} ${e.attribute} por "${e.sourceAbility}" (${e.turnsRemaining} turnos restantes)`)
     .join(', ');
-  return ` ESTADO ACTIVO DE ${npc.name.toUpperCase()}: ${desc} — refleja este estado en cómo actúa/se mueve este turno (más fuerte/débil de lo normal según corresponda), no lo narres como si estuviera en condición normal.`;
+  return ` ESTADO ACTIVO DE ${nombreNarrado(npc).toUpperCase()}: ${desc} — refleja este estado en cómo actúa/se mueve este turno (más fuerte/débil de lo normal según corresponda), no lo narres como si estuviera en condición normal.`;
 }
 
 export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsStatus: Record<string, number> = {}): string {
@@ -1103,7 +1268,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
     const loot = npc.saqueado
       ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)'
       : `, todavía sin registrar. Si esta acción es saquearlo/registrarlo, esto es TODO lo que lleva encima, no existe ningún otro objeto: ${itemsLine(npc.items)}`;
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${generoHintFor(npc)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${nombreOcultoHintFor(npc)}${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Zense Ceniza, fauna sin habla,
@@ -1115,9 +1280,9 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
   // `carcassCandidatesFor`, recolectar.ts) — instrucción explícita en vez de confiar en que el
   // modelo lo infiera solo de la bio/personalidad.
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR: nunca le pongas diálogo entre comillas ni palabras humanas — solo comportamiento animal (gruñidos, chillidos, gestos, movimientos).` : '';
-  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}${facRepHintFor(npc, factionsStatus)}${claseHintFor(npc)}${receptividadHintFor(npc)}${activeEffectsHintFor(npc)}
-Descripción/hechos ya establecidos (nunca los contradigas): ${npc.bio}
-Personalidad: ${npc.personality}
+  return `PERSONAJE EN ESCENA: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}, nivel ${npc.level} (acciones directas contra él/ella tienden a ${label}).${nombreOcultoHintFor(npc)}${generoHintFor(npc)}${faunaSinHablaHint}${facRepHintFor(npc, factionsStatus)}${claseHintFor(npc)}${receptividadHintFor(npc)}${activeEffectsHintFor(npc)}
+Descripción/hechos ya establecidos (nunca los contradigas): ${sinNombreReal(npc.bio, npc)}
+Personalidad: ${sinNombreReal(npc.personality, npc)}
 LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, lo que lleva encima es TODO lo que puede aparecer — no existe ningún otro objeto.`;
 }
 
@@ -1135,7 +1300,7 @@ export function npcSceneLineFor(npc: NpcInScene, playerLevel: number): string {
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR.` : '';
-  return `PERSONAJE EN ESCENA (de fondo): ${displayName(npc)} — ${npc.role}, nivel ${npc.level} (acciones directas tienden a ${label}).${generoHintFor(npc)}${faunaSinHablaHint}`;
+  return `PERSONAJE EN ESCENA (de fondo): ${displayName(npc)} — ${npc.role}, nivel ${npc.level} (acciones directas tienden a ${label}).${nombreOcultoHintFor(npc)}${generoHintFor(npc)}${faunaSinHablaHint}`;
 }
 
 /// Línea corta para el clasificador (§ 2.2) — solo la calibración de dificultad, sin equipo.

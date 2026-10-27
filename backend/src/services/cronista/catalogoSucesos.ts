@@ -67,9 +67,10 @@ export interface DatosSuceso {
   /// CR-62: `resultado`, cómo acabó la pelea (combate de fondo).
   ESCARAMUZA: { faccionA: string; faccionB: string; region?: string; resultado?: string };
   /// CR-59 (P297): la semana de un vasallo: al corriente (paga y patrulla), pago parcial (patrullas en
-  /// proporción, `porcentaje` y si patrulló) o impagado (patrullas suspendidas), decisión 2026-10-22.
+  /// proporción, `porcentaje` y si patrulló), `pagada-con-deuda` (paga lo de la semana pero sigue debiendo
+  /// lo anterior) o impagado (patrullas suspendidas), decisión 2026-10-22.
   /// `deuda` solo en las líneas de antes de esa decisión.
-  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'impagado' | 'migrado' | 'sin-soldados'; porcentaje?: number; patrulla?: boolean; vasalloSlug?: string; pendiente?: number; pagado?: number; deuda?: number; rearmados?: number };
+  PATRULLA_VASALLO: { vasallo: string; senor: string; estado?: 'al-corriente' | 'parcial' | 'pagada-con-deuda' | 'impagado' | 'migrado' | 'sin-soldados'; porcentaje?: number; patrulla?: boolean; vasalloSlug?: string; pendiente?: number; pagado?: number; deuda?: number; rearmados?: number };
   // FACCION
   FACCION_CAE: { faccion: string };
   FACCION_ESCINDIDA: { faccion: string; nueva: string };
@@ -194,7 +195,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
       ? `${d.vasallo} no puede pagar su cuota a ${d.senor}: vasallaje impagado, patrullas suspendidas.`
       : d.estado === 'sin-soldados'
         ? `${d.vasallo} no tiene soldados con los que patrullar para ${d.senor}${d.pagado ? `; paga ${d.pagado} Goirnos y` : ' y'} arrastra ${d.pendiente ?? 0} Goirnos pendientes.`
-      : d.estado === 'parcial' && (d.porcentaje ?? 0) >= 100
+      : d.estado === 'pagada-con-deuda' || (d.estado === 'parcial' && (d.porcentaje ?? 0) >= 100)
         ? `${d.vasallo} paga su cuota a ${d.senor}${d.patrulla === false ? '' : ' y cumple su patrulla'}, pero arrastra ${d.pendiente ?? 0} Goirnos pendientes: sin rearme hasta saldarlos.`
         : d.estado === 'parcial'
           ? `${d.vasallo} paga a ${d.senor} solo parte de su cuota: pago parcial ${d.porcentaje ?? 0} %, patrullas al ${d.porcentaje ?? 0} %.${d.patrulla ? ' Esta semana cumple su patrulla.' : ' Esta semana no patrulla.'}`

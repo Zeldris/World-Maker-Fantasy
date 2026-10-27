@@ -23,6 +23,7 @@ import { LeyendaZona } from '../zona/LeyendaZona'
 import { useMovimientoZona } from '../../hooks/useMovimientoZona'
 import type { LogEntry, ProfessionRecipeInfo, ZonaParcelaInfo } from '../../types'
 import { useMisiones } from '../../context/misionesContext'
+import { nombreDeEdificio } from '../../lib/edificios'
 
 interface ZonaPanelProps {
   saveId: string
@@ -672,7 +673,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
                   className="cursor-pointer"
                 >
                   <ParcelaMarker x={p.x} y={p.y} ocupada={p.building !== null} estado={p.building?.status} escala={escala} />
-                  <title>{p.building ? p.building.name : 'Parcela vacía'}</title>
+                  <title>{p.building ? nombreDeEdificio(p.building.name) : 'Parcela vacía'}</title>
                 </g>
               ))}
               {data.puntos.map((p) => (
@@ -906,7 +907,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         <ZonaSalidaModal
           salida={selectedSalida}
           onCancel={() => setSelectedSalida(null)}
-          bloqueoTurno={bloqueoTurno}
+          // P206/P326: con un agresivo cortando el paso (fase `encuentro`) el turno sí se acepta, pero irse
+          // de la zona no: el mismo motivo que bloquea la brújula.
+          bloqueoTurno={bloqueoTurno ?? bloqueoMovimiento}
           onViajar={(actionText) => {
             setSelectedSalida(null)
             onViajarA?.(actionText)

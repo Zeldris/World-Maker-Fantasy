@@ -6,7 +6,7 @@ import { crearViajero, enlacesDelMundo } from './viajeros.js';
 import { cazarEnDestino } from './partidasCaza.js';
 import { DIAS_VISIBLE_VUELTA, lanzarPartida, opcionesDePartida, partidasDelReino } from './partidasReino.js';
 import { guerrerosLibres } from './ataquesCampamento.js';
-import { subditosSinArma } from './cronista/subditos.js';
+import { datosDeSubditos, subditosSinArma } from './cronista/subditos.js';
 
 /// P280/P281/P283 (CR-63, Q3 y Q4): un cazador sin arma no sale; si sale, el diario cuenta el fracaso;
 /// la que ya volvió dice el día y deja de listarse pasada una semana.
@@ -52,6 +52,12 @@ describe('partidas de caza: arma y vuelta (P280, P281, P283)', () => {
 
   it('subditosSinArma marca al alta más reciente', async () => {
     expect([...(await subditosSinArma(prisma, saveId, HOY * 1440))]).toEqual([desarmado]);
+  });
+
+  it('P318: la lista de Reino › Súbditos (datosDeSubditos) marca al sin arma y solo a él', async () => {
+    const datos = await datosDeSubditos(prisma, saveId, HOY * 1440);
+    expect(datos.find((d) => d.id === desarmado)?.sinArma).toBe(true);
+    expect(datos.find((d) => d.id === armado)?.sinArma).toBe(false);
   });
 
   it('las opciones marcan al sin arma y lanzarPartida lo rechaza (P281)', async () => {

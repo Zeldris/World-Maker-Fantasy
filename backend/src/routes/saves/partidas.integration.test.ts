@@ -87,6 +87,38 @@ describe('Reino › Partidas (CR-63 63d)', () => {
     expect((v.orden as { repetir: boolean }).repetir).toBe(true);
   });
 
+  // P313 (usuaria, 2026-10-26): una especie agotada sigue en la lista (con 0) y no se puede mandar a nadie a por ella.
+  it('P313: una especie agotada sigue en las opciones con cantidad 0 y no se lanza', async () => {
+    const agotado = await prisma.zonePoint.create({ data: { saveId, locationId: coto, tipo: 'FAUNA', targetSlug: 'especie-agotada-p313', x: 200, y: 200, cantidad: 0, activo: false } });
+    try {
+      const app = await buildApp();
+      const r = (await app.inject({ method: 'GET', url: `/saves/${saveId}/partidas` })).json();
+      const destino = r.opciones.destinos.find((d: { id: string }) => d.id === coto);
+      expect(destino.especies).toEqual(expect.arrayContaining([expect.objectContaining({ slug: 'especie-agotada-p313', cantidad: 0 })]));
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/partidas`, payload: { tipo: 'CAZA', especie: 'especie-agotada-p313', destinoLocationId: coto, subjectIds: [cazadores[0]] } });
+      expect(res.statusCode).toBeGreaterThanOrEqual(400);
+      expect(res.body).toMatch(/No quedan presas de especie-agotada-p313 en .* por ahora/);
+    } finally {
+      await prisma.zonePoint.delete({ where: { id: agotado.id } });
+    }
+  });
+
+  // Revisión P313: un punto retirado (activo false con presas, `retirarPuntoZona`) no cuenta como presa.
+  it('revisión P313: un punto retirado con presas no sale en las opciones ni se lanza', async () => {
+    const retirado = await prisma.zonePoint.create({ data: { saveId, locationId: coto, tipo: 'FAUNA', targetSlug: 'especie-retirada-p313', x: 210, y: 210, cantidad: 4, activo: false } });
+    try {
+      const app = await buildApp();
+      const r = (await app.inject({ method: 'GET', url: `/saves/${saveId}/partidas` })).json();
+      const destino = r.opciones.destinos.find((d: { id: string }) => d.id === coto);
+      expect(destino.especies.map((e: { slug: string }) => e.slug)).not.toContain('especie-retirada-p313');
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/partidas`, payload: { tipo: 'CAZA', especie: 'especie-retirada-p313', destinoLocationId: coto, subjectIds: [cazadores[0]] } });
+      expect(res.statusCode).toBeGreaterThanOrEqual(400);
+      expect(res.body).toMatch(/No has visto esa especie allí/);
+    } finally {
+      await prisma.zonePoint.delete({ where: { id: retirado.id } });
+    }
+  });
+
   it('órdenes: cambiar de destino de camino, parar la repetición y volver', async () => {
     const app = await buildApp();
     const v = await prisma.viajero.findFirstOrThrow({ where: { saveId } });

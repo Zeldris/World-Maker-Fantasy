@@ -9,7 +9,10 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 ## Herramientas que ya ahorran
 
 - `python3 .claude/gw/scripts/recuperar.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
-  compactación.
+  compactación. `--estado` es también la lectura de la bitácora al empezar (`QA-261`, `AGENTS.md` paso 1): `traspaso.md`
+  entero se leyó 4 veces en la sesión de `INS-31` (37k arrastrados).
+- **«Último commit en `main`» solo con la última fusión** (`QA-260`): la celda arrastraba 9 fusiones (~1,5k tokens por
+  lectura de la bitácora); las anteriores, en `git log --first-parent origin/main`.
 - `orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 
 - **Rondas de pruebas en texto** (`QA-104`): `tools/playwright-e2e/mcp/estado.js` (HUD, modales y cajones con sus
@@ -46,6 +49,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
   contexto medio y 6,8M de entrada (el 13 % de la sesión).
 - **Registros largos por secciones** (`QA-272`): `lore-hallazgos.md` (17 lecturas, 300k arrastrados en `QA-274`) se lee
   con `grep -n "^## "` y `sed -n` de la sección; `ficha.sh` acaba con el `archivo:línea` del slug en `backend/src/scripts` y `services`.
+- **Tandas de arreglos de 5 hallazgos y ~90 llamadas** (`QA-257`, `AGENTS.md` § `orchestrate-dealer`); la revisión con Opus junta dos tandas.
+- **`marca-hallazgo.py` dice el estado actual al fallar** (`QA-258`): con 0 filas, los primeros 200 caracteres del estado; quita los espacios del borde del texto viejo.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
 - **`image-generator/interfaz/resumen.py`** (`QA-230`): la lista y el trabajo de la interfaz de imágenes en texto
   (`--tipo <tipo>`); la captura, solo para lo visual. La interfaz, en la sección «Imágenes» del mapa (`QA-229`).
@@ -93,6 +98,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **El registro de la sesión** pesa cientos de MB: medirlo con `medir.py`, nunca leerlo.
 
 - **Subagentes de auditoría con un bloque entero** (`QA-243`, 2026-10-25): 9 subagentes, 32M de entrada (el 40 % de la sesión), con un contexto medio de 102-118k. De ahí `QA-247`.
+
+- **Tandas de arreglos largas** (`claude/wonderful-volta-662qt8`, 2026-10-26): 8-11 hallazgos y 165-183 llamadas por
+  tanda, 103k de contexto medio sobre 53k de arranque; los subagentes, el 92 % de la entrada. De ahí `QA-257`.
 
 - **Imágenes del banco una a una** (`claude/plan-imagenes`, 2026-10-25): 66 lecturas de PNG, 3,99M arrastrados. De ahí `QA-249`.
 - **Subagente mecánico sin `model`** (misma sesión): heredó Opus (2,9M de entrada), la segunda vez tras `QA-233`. Toda

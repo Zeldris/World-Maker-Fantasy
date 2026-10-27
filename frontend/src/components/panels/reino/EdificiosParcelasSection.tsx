@@ -3,6 +3,7 @@ import type { BuildingInfo, RecipeStatusInfo } from '../../../types'
 import { PanelSection } from '../../PanelSection'
 import { TooltipAnchor } from '../../TooltipAnchor'
 import { cuartelBuildDisabledReason } from '../../../lib/cuartelBuild'
+import { nombreDeEdificio } from '../../../lib/edificios'
 import { postObra, postRepararEdificio } from '../../../lib/api'
 import { CasaDeObrasCola } from './CasaDeObrasCola'
 
@@ -80,15 +81,9 @@ export function numerarEdificios(buildings: BuildingInfo[]): { numero: Map<strin
     grupo.forEach((b, i) => numero.set(b.id, { n: i + 1, de: grupo.length }))
     if (grupo.length < 2) continue
     const danados = grupo.filter((b) => b.status === 'DANADO').length
-    resumen.push(`${grupo.length} × ${labelDeReceta(grupo[0]!.name)}${danados ? ` (${danados} dañado${danados === 1 ? '' : 's'})` : ''}`)
+    resumen.push(`${grupo.length} × ${nombreDeEdificio(grupo[0]!.name)}${danados ? ` (${danados} dañado${danados === 1 ? '' : 's'})` : ''}`)
   }
   return { numero, resumen }
-}
-
-/// P218 — «un pozo» -> «Pozo».
-function labelDeReceta(name: string): string {
-  const sinArticulo = name.replace(/^(un|una|el|la)\s+/i, '')
-  return sinArticulo.charAt(0).toUpperCase() + sinArticulo.slice(1)
 }
 
 /// P218 — todo lo que el reino puede levantar sale del catálogo del backend (`recipesStatus`), no de
@@ -103,6 +98,8 @@ function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: Recipe
   for (const s of candidatas) {
     if (vistas.has(s.recipeKey)) continue
     const fija = fijas.get(s.recipeKey)
+    // P255: una receta única por región (Mercado, Tablón…) que ya está en pie no se vuelve a ofrecer; las repetibles (Choza, Pozo…) sí.
+    if (s.unicaYaLevantada && !fijas.has(s.recipeKey)) continue
     const mejora = s.upgradesRecipeKey ?? null
     // Una mejora solo se ofrece sobre su edificio y si aún no está en ese nivel: mejorar actualiza la
     // misma fila (sube `tier`, `recipeKey` sigue siendo el del nivel 1). Las del Ayuntamiento, solo
@@ -116,7 +113,7 @@ function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: Recipe
     if (fija) {
       out.push({ ...fija, status: construcciones.includes(s) ? s : undefined, tier: s.tier })
     } else if (s.name) {
-      out.push({ recipeKey: s.recipeKey, label: mejora ? `Mejorar a ${labelDeReceta(s.name)}` : labelDeReceta(s.name), actionText: `Me pongo a construir ${s.name}`, needsCuartel: false, status: s, tier: s.tier })
+      out.push({ recipeKey: s.recipeKey, label: mejora ? `Mejorar a ${nombreDeEdificio(s.name)}` : nombreDeEdificio(s.name), actionText: `Me pongo a construir ${s.name}`, needsCuartel: false, status: s, tier: s.tier })
     }
   }
   return out
@@ -242,7 +239,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           <div key={b.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3.5 py-2.5">
             <p className="flex items-center justify-between font-medium text-wood-100">
               <span>
-                {b.name}
+                {nombreDeEdificio(b.name)}
                 {numero.get(b.id) && numero.get(b.id)!.de > 1 && <span className="ml-1.5 text-2xs font-normal text-wood-500">n.º {numero.get(b.id)!.n}</span>}
               </span>
               {/* REI-115 (hito 0.1) — el significado del estado al pasar por encima, no solo en la leyenda. */}

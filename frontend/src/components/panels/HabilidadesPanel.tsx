@@ -220,8 +220,10 @@ export function HabilidadesPanel({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-2 border-b border-iron-700">
+      <div role="tablist" aria-label="Tipo de habilidad" className="flex gap-2 border-b border-iron-700">
         <button type="button"
+          role="tab"
+          aria-selected={tab === 'general'}
           onClick={() => setTab('general')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'general' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -230,6 +232,8 @@ export function HabilidadesPanel({
           Generales
         </button>
         <button type="button"
+          role="tab"
+          aria-selected={tab === 'combate'}
           onClick={() => setTab('combate')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'combate' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -238,6 +242,8 @@ export function HabilidadesPanel({
           Combate
         </button>
         <button type="button"
+          role="tab"
+          aria-selected={tab === 'profesion'}
           onClick={() => setTab('profesion')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'profesion' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'
@@ -246,6 +252,8 @@ export function HabilidadesPanel({
           Profesiones
         </button>
         <button type="button"
+          role="tab"
+          aria-selected={tab === 'reino'}
           onClick={() => setTab('reino')}
           className={`border-b-2 px-3 py-2 text-sm transition-colors ${
             tab === 'reino' ? 'border-accent-500 font-medium text-accent-300' : 'border-transparent text-wood-400 hover:text-wood-200'

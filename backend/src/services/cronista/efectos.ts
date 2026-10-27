@@ -31,6 +31,7 @@ import { registrarSuceso, type NuevoSuceso } from './sucesos.js';
 import type { TipoSuceso } from './catalogoSucesos.js';
 import { aplicarCambioAprobacion, type Valor } from './aprobacion.js';
 import { aplicarNivelGanado, aplicarRecuerdo } from './recuerdos.js';
+import { avisarEnReino } from './subditos.js';
 import { apellidoDe, fundarLinaje, linajeParaNacido, nombreConLinaje, unirALinaje } from './linajes.js';
 import { aplicarAbrirHilo, aplicarCerrarHilo, registradorDeHilo, type ActorHilo, type Patron } from './hilos.js';
 import { guardarSlugsDeCombate } from '../combateDesde.js';
@@ -488,6 +489,11 @@ async function danarEdificio(ctx: CtxEfecto, e: Extract<Efecto, { tipo: 'danarEd
     actores: [{ entidadTipo: 'EDIFICIO', entidadId: edificio.id, papel: 'VICTIMA' }],
     datos: { edificio: edificio.name, ...(e.causa ? { causa: e.causa } : {}) },
   });
+  // P315: un edificio del Reino dañado se cuenta en el diario del Reino (antes la jugadora se enteraba al ir a
+  // construir y ver «Tu Ayuntamiento está dañado»). Los de una facción solo van al Libro de Sucesos.
+  if (edificio.saveId === ctx.saveId) {
+    await avisarEnReino(ctx.tx, ctx.saveId, `${edificio.name} sufre daños${e.causa ? ` por ${e.causa}` : ''}: no cuenta hasta repararlo (Reino › Edificios).`, ctx.fictionalMinutes);
+  }
   return { aplicado: true, sucesoId };
 }
 

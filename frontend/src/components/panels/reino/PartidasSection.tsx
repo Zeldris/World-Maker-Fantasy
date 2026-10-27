@@ -139,7 +139,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
 
       <PanelSection title="Nueva partida">
         {!opciones.origen && <p className="text-xs text-wood-500">Tu Reino necesita un edificio desde el que salir.</p>}
-        {opciones.origen && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Aún no conoces ningún lugar con fauna a la vista: explóralos antes de mandar a nadie.</p>}
+        {opciones.origen && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Ahora mismo no hay ningún lugar que conozcas con presas a la vista: o aún no has explorado donde las hay, o ya cazaste las de los que conoces, o ninguno tiene camino desde tu Reino. Explora otros lugares antes de mandar a nadie.</p>}
         {opciones.origen && nadieDisponible && (
           <p className="text-xs text-wood-500">
             {fuera.length > 0
@@ -162,11 +162,16 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
               />
               <SelectorJuego ariaLabel="Destino" value={destino.id} opciones={opciones.destinos.map((d) => ({ value: d.id, label: d.name, descripcion: d.region }))} onChange={(v) => setDestinoId(v)} className="min-w-[10rem]" />
               {especieElegida ? (
-                <SelectorJuego ariaLabel="Especie" value={especieElegida.slug} opciones={especies.map((e) => ({ value: e.slug, label: e.name, descripcion: `${e.cantidad} a la vista` }))} onChange={(v) => setEspecie(v)} className="min-w-[8rem]" />
+                <SelectorJuego ariaLabel="Especie" value={especieElegida.slug} opciones={especies.map((e) => ({ value: e.slug, label: e.name, descripcion: e.cantidad > 0 ? `${e.cantidad} a la vista` : 'sin presas por ahora' }))} onChange={(v) => setEspecie(v)} className="min-w-[8rem]" />
               ) : (
                 <span className="text-2xs text-wood-500">Nada que se pueda capturar allí.</span>
               )}
             </div>
+            {especieElegida && especieElegida.cantidad <= 0 && (
+              <p className="text-2xs text-amber-300" role="status">
+                {especieElegida.name}: sin presas por ahora en {destino.name}. Vuelven con el tiempo.
+              </p>
+            )}
             <fieldset className="flex flex-col gap-1">
               <legend className="text-2xs uppercase tracking-[0.12em] text-wood-500">Quién va</legend>
               {[...opciones.grupos.map((g) => ({ titulo: g.nombre, gente: g.companeros })), ...(opciones.cazadores.length > 0 ? [{ titulo: 'Cazadores', gente: opciones.cazadores }] : [])].map((bloque) => (
@@ -193,7 +198,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
             </label>
             <button
               type="button"
-              disabled={busy || !!consulta || !especieElegida || companionIds.length + subjectIds.length === 0}
+              disabled={busy || !!consulta || !especieElegida || especieElegida.cantidad <= 0 || companionIds.length + subjectIds.length === 0}
               title={consulta ?? undefined}
               onClick={() =>
                 void accion(async () => {

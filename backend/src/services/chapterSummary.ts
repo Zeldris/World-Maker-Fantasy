@@ -6,11 +6,11 @@ import { createInFlightClaimSet } from '../lib/inFlightClaimSet.js';
 
 /// Memoria de partida por capítulos (docs/producto/01-analisis-producto.md § "Resumen/Memoria de partida",
 /// docs/mecanicas/10-niveles-xp-reino.md § 3.2/§ 7): cada N acciones del jugador, el backend (no el modelo)
-/// decide crear un `SessionSummary` nuevo y dispara el hito `capitulo` (500 XP, determinista,
+/// decide crear un `SessionSummary` nuevo y dispara el hito `capitulo` (100 XP, determinista,
 /// nunca propuesto por el Narrador) — así el sistema de memoria por capítulos que ya existía en
 /// el schema se convierte gratis en el latido de fondo de la progresión.
 
-const TURNS_PER_CHAPTER = 15;
+export const TURNS_PER_CHAPTER = 15;
 
 export function shouldCreateChapter(actionsSinceLastSummary: number): boolean {
   return actionsSinceLastSummary >= TURNS_PER_CHAPTER;
@@ -37,7 +37,7 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   // construcción/saqueo/despiece) — dos turnos casi simultáneos para la misma partida (doble
   // envío, o un turno en vivo solapando la resolución diferida de worldTick.ts) pasaban los dos
   // el `has()` de arriba antes de que ninguno reclamara, y los dos acababan disparando su propio
-  // hito "capitulo" (500 XP cada uno) y su propio `SessionSummary` con el mismo `chapterNumber`
+  // hito "capitulo" (100 XP cada uno) y su propio `SessionSummary` con el mismo `chapterNumber`
   // (sin `@@unique` que lo impida en el schema). Reclamar YA, antes de cualquier `await`, cierra
   // el hueco: `claim` es síncrono, así que el segundo turno ve el reclamo del primero sin ceder
   // el control de por medio.
@@ -47,7 +47,7 @@ export async function claimChapterIfDue(saveId: string): Promise<boolean> {
   const since = lastSummary?.createdAt ?? new Date(0);
   const actionsSinceLastSummary = await prisma.logEntry.count({
     // B12 (pruebas 2026-09-28): cada botón de combate contaba como acción y una sola pelea casi
-    // completaba un capítulo (500 XP, 5× una misión). Las acciones de combate no cuentan.
+    // completaba un capítulo (500 XP entonces, 5× una misión). Las acciones de combate no cuentan.
     where: { saveId, channel: 'CHARACTER', isPlayerAction: true, combate: false, createdAt: { gt: since } },
   });
   if (!shouldCreateChapter(actionsSinceLastSummary)) {

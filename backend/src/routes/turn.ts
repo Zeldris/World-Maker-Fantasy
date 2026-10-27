@@ -19,13 +19,19 @@ import {
   utilityDifficultyFor,
   detectsAttackIntent,
   detectsDialogueIntent,
+  detectsGreetingOrQuestion,
   detectsHostileSearchIntent,
   detectsVerbalAcceptanceIntent,
   tabulatedAttackAttribute,
+  nombraPorNombreVisible,
+  nombreNarrado,
   type NpcInScene,
 } from '../services/npcScene.js';
 import { detectsSearchIntent } from '../services/discovery.js';
+import { parseFactionsStatus, reputacionHostil } from '../services/reputation.js';
 import { normalizeText } from '../services/travel.js';
+import { nombreEnFrase, conDefinido } from '../services/dynamicMode.js';
+import { puedeRecibirEntregas } from './saves/entrega.js';
 import { detectsOwnedItemQuote } from '../services/itemReference.js';
 import { prisma } from '../lib/prisma.js';
 import { toFrontendLogEntry } from './saves/shared.js';
@@ -61,6 +67,9 @@ import {
   BINDING_VERB_REGEX,
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
+  detectsGiftToNpcClaim,
+  giftToNpcNarrationFor,
+  GIFT_ANY_REGEX,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -176,8 +185,10 @@ async function resolveClassificationForTurn(params: {
   fictionalMinutes: number;
   /// P74 (QA-27): último descanso, para no cobrar horas a un descanso que el enfriamiento rechaza.
   lastRestAtMinutes?: number | null;
+  /// Reputación de facciones (P306): decide si un saludo sigue sin tirada o la facción del NPC es hostil.
+  factionsStatus: Record<string, number>;
 }): Promise<ClassificationResolution> {
-  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, pendingCanalizacion, fictionalMinutes } = params;
+  const { saveId, action, enCombate, savedActionId, preview, worldId, currentLocationId, level, attributes, sessionFacts, characterSummary, pendingCombatNpcSlugs, pendingNpcAttack, pendingCanalizacion, fictionalMinutes, factionsStatus } = params;
 
   // Solapar classify con el tecleo (roadmap de velocidad, 2026-07-19): si un `preview:true`
   // anterior con este MISMO texto exacto ya hizo el trabajo caro, se reutiliza sin repetirlo
@@ -265,7 +276,10 @@ async function resolveClassificationForTurn(params: {
       // manda sobre el orden de detección.
       const quotedTargetMatch = action.match(/'([^']+)'/);
       const explicitTarget = quotedTargetMatch
-        ? (npcsInScene.find((n) => normalizeText(n.name) === normalizeText(quotedTargetMatch[1])) ?? null)
+        ? (npcsInScene.find((n) => normalizeText(n.name) === normalizeText(quotedTargetMatch[1])) ??
+            // P327: el frontend cita el nombre que la jugadora ve («Orco desconocido»), no el real.
+            npcsInScene.find((n) => n.nombreVisible && normalizeText(n.nombreVisible) === normalizeText(quotedTargetMatch[1])) ??
+            null)
         : null;
       // Extendido fuera de combate (auditoría 2026-07-24, "revisa todo bien bien" — clasificación
       // determinista antes de Ollama, no solo corrección después): "Busco combatir contra el Orco
@@ -314,7 +328,7 @@ async function resolveClassificationForTurn(params: {
           requiereTirada: true,
           atributo: (selectedAbility?.preferredAttribute as ClassificationResult['atributo']) ?? tabulatedAttackAttribute(action),
           dificultad,
-          razon: `Ataque directo o intención hostil declarada contra ${tabulatedTarget.name} — clasificado por tabla, sin llamada a Ollama.`,
+          razon: `Ataque directo o intención hostil declarada contra ${nombreNarrado(tabulatedTarget)} — clasificado por tabla, sin llamada a Ollama.`,
           banda: 'instantanea',
           duracionEstimadaMinutos: 0,
         };
@@ -529,6 +543,20 @@ async function resolveClassificationForTurn(params: {
           classification.banda = bandaForMinutos(classification.duracionEstimadaMinutos);
         }
       }
+      // P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC en escena no pide tirada, lo
+      // diga o no el clasificador (Ollama), salvo que la reputación con la facción de alguien en escena sea
+      // hostil (`reputacionHostil`). Dentro de un combate, con ataque pendiente o canalización, nunca se toca.
+      if (
+        classification.requiereTirada &&
+        !enCombate &&
+        !pendingNpcAttack &&
+        !pendingCanalizacion &&
+        npcsInScene.length > 0 &&
+        detectsGreetingOrQuestion(action) &&
+        !npcsInScene.some((n) => reputacionHostil(n.faction, factionsStatus))
+      ) {
+        classification.requiereTirada = false;
+      }
       roll = classification.requiereTirada ? rollCheck(attributes, classification.atributo, classification.dificultad) : undefined;
     }
 
@@ -688,7 +716,7 @@ export async function turnRoutes(app: FastifyInstance) {
       npcsInSceneForValidation.map((n) => n.slug),
     );
     if (absentNpcClaim) {
-      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name), absentNpcClaim.name);
+      return resolveBlockedTurn(absentSceneNpcNarrationFor(absentNpcClaim.name, absentNpcClaim.conocido, absentNpcClaim.esFauna, absentNpcClaim.articulo, absentNpcClaim.genero), absentNpcClaim.name);
     }
 
     // Diálogo dirigido a "alguien" por descripción libre, sin que ningún alias real haya resuelto
@@ -698,6 +726,32 @@ export async function turnRoutes(app: FastifyInstance) {
     // ya calculado arriba.
     if (await detectsUnresolvedDialogueTargetClaim(action, npcsInSceneForValidation.map((n) => n.slug), save.worldId, saveId, save.currentLocationId)) {
       return resolveBlockedTurn(unresolvedDialogueTargetNarrationFor());
+    }
+
+    // «Le entrego/regalo/doy X a Y» en texto libre (P241, decisión de la usuaria 2026-10-26): no tira, no da XP ni narra;
+    // la entrega real es el botón Entregar. Si X no está en el inventario, lo dice. Con NPC en escena y sin ataque.
+    if (!enCombate && npcsInSceneForValidation.length > 0 && GIFT_ANY_REGEX.test(action)) {
+      // Fase 1 hacia main: lo equipado también está en el inventario (Entregar pide desequiparlo), y al
+      // destinatario se le nombra como la jugadora lo ve («al orco desconocido»), no solo por su nombre real.
+      const inventario = await prisma.inventoryItem.findMany({ where: { saveId }, select: { name: true, slot: true } });
+      // P327: `detectNpcsInScene` ya trae `nombreVisible` y mete en escena al oculto nombrado por él; el destinatario
+      // casa por su nombre real o por el visible («al orco desconocido», «a la desconocida»). Sin nadie nombrado, el
+      // primero en escena, como antes.
+      const visibles = npcsInSceneForValidation;
+      const SOLO_DESCONOCIDO: Record<string, string> = { o: 'desconocido', a: 'desconocida' };
+      const nombresDe = (n: NpcInScene) => (n.nombreVisible ? [n.name, n.nombreVisible, SOLO_DESCONOCIDO[n.nombreVisible.slice(-1)] ?? ''].filter(Boolean) : [n.name]);
+      const giftClaim = detectsGiftToNpcClaim(action, inventario.map((i) => i.name), visibles.flatMap(nombresDe));
+      if (giftClaim) {
+        const accionNorm = normalizeText(action);
+        const destinatario =
+          visibles.find((n) => accionNorm.includes(normalizeText(n.name))) ??
+          visibles.find((n) => n.nombreVisible && nombraPorNombreVisible(action, n.nombreVisible)) ??
+          visibles[0];
+        const nombreFrase = destinatario.nombreVisible ? nombreEnFrase(destinatario.nombreVisible) : conDefinido(destinatario.name, destinatario.articulo);
+        const soloEquipado = giftClaim.itemEnInventario !== null && !inventario.some((i) => i.slot === null && i.name === giftClaim.itemEnInventario);
+        const puedeEntregar = await puedeRecibirEntregas(saveId, save.worldId, destinatario.slug);
+        return resolveBlockedTurn(giftToNpcNarrationFor(giftClaim, nombreFrase, puedeEntregar, soloEquipado));
+      }
     }
 
     // Atar/inmovilizar a alguien sin cuerdas reales en el inventario (hallazgo real jugando en
@@ -718,7 +772,12 @@ export async function turnRoutes(app: FastifyInstance) {
     // Fase 3 (acotada a comillas, docs/mecanicas/18-validacion-accion-jugador.md): NPC/fauna nombrado ENTRE
     // COMILLAS que no existe en absoluto en el catálogo del mundo — a diferencia del chequeo de
     // arriba (existe pero no está en esta escena), aquí no existe en ningún sitio.
-    const fabricatedNpcClaim = await detectsFabricatedNpcClaim(action, save.worldId);
+    // P327: citar entre comillas el nombre visible de alguien en escena («Ataco a 'Orco desconocido'.», lo que arma el
+    // frontend con la oferta) no es inventar a nadie: el nombre real no existe para la jugadora.
+    const citadoEntreComillas = action.match(/'([^']+)'/)?.[1] ?? null;
+    const citaUnVisibleDeLaEscena =
+      !!citadoEntreComillas && npcsInSceneForValidation.some((n) => n.nombreVisible && normalizeText(n.nombreVisible) === normalizeText(citadoEntreComillas));
+    const fabricatedNpcClaim = citaUnVisibleDeLaEscena ? null : await detectsFabricatedNpcClaim(action, save.worldId);
     if (fabricatedNpcClaim) {
       return resolveBlockedTurn(fabricatedNpcNarrationFor(fabricatedNpcClaim.quotedName));
     }
@@ -880,6 +939,7 @@ export async function turnRoutes(app: FastifyInstance) {
         pendingCanalizacion: save.pendingCanalizacion as unknown as PendingCanalizacion | null,
         fictionalMinutes: save.worldState?.fictionalMinutes ?? 480,
         lastRestAtMinutes: save.lastRestAtMinutes,
+        factionsStatus: parseFactionsStatus(save.worldState?.factionsStatus),
       }));
     } catch (err) {
       request.log.error(err);
@@ -893,6 +953,18 @@ export async function turnRoutes(app: FastifyInstance) {
     // Una salida es un camino directo al destino (aunque el más corto en minutos pase por otra zona).
     const porUnCamino = async (t: TravelResolution) =>
       t.path.length <= 2 || (!!save.currentLocationId && (await prisma.locationLink.count({ where: { fromId: save.currentLocationId, toId: t.toLocationId } })) > 0);
+    // P206/P326: con un agresivo cortando el paso (oferta o conversación de `combateForzado` sin resolver) no se
+    // viaja: antes hay que combatir o huir. Vale para los dos caminos (salida del mapa y lista de «Viajar»).
+    const cortanElPaso =
+      !!(save.pendingDynamicModeOffer as { combateForzado?: boolean } | null)?.combateForzado ||
+      !!(save.pendingDynamicMode as { combateForzado?: boolean } | null)?.combateForzado;
+    if (travel && cortanElPaso) {
+      const aviso = `No puedes irte hacia ${travel.toLocationName} con alguien cortándote el paso: antes tienes que combatir o huir.`;
+      if (!preview) return resolveBlockedTurn(aviso);
+      travel = null;
+      classification = { requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: aviso, banda: 'instantanea', duracionEstimadaMinutos: 0 };
+      roll = undefined;
+    }
     if (travel && !(viajeElegido && ((await porUnCamino(travel)) || (await tieneMontura(prisma, saveId))))) {
       const aviso = `A pie, de una zona a otra se va por sus caminos: abre el mapa de zona y sal por el que lleva hacia ${travel.toLocationName}.`;
       if (!preview) return resolveBlockedTurn(aviso);

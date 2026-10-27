@@ -16,8 +16,10 @@ describe('deuda de vida (CR-11)', () => {
   async function perdonar(nombre: string) {
     const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
     const hondonada = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'hondonada-del-eco' } });
-    const otra = await prisma.location.findFirstOrThrow({ where: { worldId, region: { not: hondonada.region } } });
-    const perdonado = await prisma.npc.findFirstOrThrow({ where: { worldId, kind: 'PRINCIPAL', muertoEnMundo: false, temperamento: { not: 'ENEMIGO' } }, orderBy: { slug: 'asc' } });
+    const otra = await prisma.location.findFirstOrThrow({ where: { worldId, saveId: null, region: { not: hondonada.region } } });
+    // Del catálogo (`saveId: null`): un NPC nacido en otra partida (p. ej. la de otro test) no está vivo en esta y
+    // la deuda se pierde sin punto (`npcVivoEnPartida`); con `orderBy: slug` salía el primero de cualquier partida.
+    const perdonado = await prisma.npc.findFirstOrThrow({ where: { worldId, saveId: null, kind: 'PRINCIPAL', muertoEnMundo: false, temperamento: { not: 'ENEMIGO' } }, orderBy: { slug: 'asc' } });
     const save = await prisma.save.create({
       data: {
         userId: await getDefaultUserId(), worldId, characterName: nombre, characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',

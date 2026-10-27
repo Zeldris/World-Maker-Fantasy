@@ -7,6 +7,7 @@ import { energiaMaxFor } from '../../services/energy.js';
 import { destinationsFrom } from '../../services/travel.js';
 import { type Requisitos } from '../../services/requisitos.js';
 import { scopeFor } from '../../services/npcScene.js';
+import { kingdomStatsParaCliente } from '../../services/kingdomTick.js';
 import { effectiveAttributes, effectiveSecondaryAttributes, attributeBonusesFromEquipment, type StatBonusMap } from '../../services/equipment.js';
 import { APP_VERSION } from '../../lib/version.js';
 import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
@@ -14,12 +15,12 @@ import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
 import { fichaDeEdificioParaPanel } from '../../services/construction.js';
-import { comidaPct, aguaPct } from '../../services/companionSupervivencia.js';
+import { comidaPct, aguaPct, avisoCarenciaPersonaje, carenciaPersonaje } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
 import { entornoTemporalFor } from '../../services/worldClock.js';
 import { parseAgenda } from '../../services/worldAgenda.js';
-import type { PendingDynamicMode } from '../../services/dynamicMode.js';
+import { nombresVisiblesDeNpcs, type PendingDynamicMode } from '../../services/dynamicMode.js';
 import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.js';
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
@@ -40,7 +41,12 @@ export async function detailRoutes(app: FastifyInstance) {
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     const ahora = save.worldState?.fictionalMinutes ?? 0;
-    return { condicionFisica: save.condicionFisica, hambre: comidaPct(save.lastAteAtMinutes, ahora), sed: aguaPct(save.lastDrankAtMinutes, ahora) };
+    const hambre = comidaPct(save.lastAteAtMinutes, ahora);
+    const sed = aguaPct(save.lastDrankAtMinutes, ahora);
+    // P323: el worker baja la condición entre turnos y su aviso queda solo en el diario de la BD; el sondeo del HUD
+    // lo recibe aquí para enseñarlo al momento (null si no hay carencia).
+    const aviso = carenciaPersonaje(hambre, sed) ? avisoCarenciaPersonaje(hambre, sed) : null;
+    return { condicionFisica: save.condicionFisica, hambre, sed, aviso };
   });
 
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
@@ -268,7 +274,7 @@ export async function detailRoutes(app: FastifyInstance) {
       : [];
     const combatEnemigoNpcIds = combatParticipantesReales.filter((p) => p.tipo === 'NPC' && p.npcId).map((p) => p.npcId!);
     const combatEnemigoNpcRows = combatEnemigoNpcIds.length
-      ? await prisma.npc.findMany({ where: { id: { in: combatEnemigoNpcIds } }, select: { id: true, slug: true, name: true, atributoResistencia: true } })
+      ? await prisma.npc.findMany({ where: { id: { in: combatEnemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, atributoResistencia: true } })
       : [];
     const combatNpcRowById = new Map(combatEnemigoNpcRows.map((n) => [n.id, n]));
     const combatSoloNpcIds = combatParticipantesReales
@@ -294,6 +300,8 @@ export async function detailRoutes(app: FastifyInstance) {
 
     // CR-45: la marca del capitán también tras recargar.
     const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
+    // P327: en el combate, un PRINCIPAL aún desconocido sigue siendo «el orco desconocido».
+    const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, save.id, [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]);
     const combateIniciado = activeCombatEncounter
       ? {
           npcs: combatEnemigosParaDisplay.map((p) => {
@@ -301,7 +309,7 @@ export async function detailRoutes(app: FastifyInstance) {
             const state = p.condicionFisicaGrupo === null ? combatSoloStateByNpcId.get(p.npcId!) : undefined;
             return {
               slug: npcRow.slug,
-              name: npcRow.name,
+              name: nombreVisiblePorSlug.get(npcRow.slug) ?? npcRow.name,
               condicionFisica: p.condicionFisicaGrupo ?? state?.condicionFisica ?? 'ILESO',
               saqueado: state?.saqueado ?? false,
               lootedItemNames: state?.lootedItemNames ?? [],
@@ -324,7 +332,7 @@ export async function detailRoutes(app: FastifyInstance) {
             const state = pendingCombatStateByKey.get(`${n.id}|${scopeFor(n.kind, save.currentLocationId)}`);
             return {
               slug: n.slug,
-              name: n.name,
+              name: nombreVisiblePorSlug.get(n.slug) ?? n.name,
               condicionFisica: state?.condicionFisica ?? 'ILESO',
               saqueado: state?.saqueado ?? false,
               // Saqueo parcial (2026-07-31) — sin esto, recargar la partida a mitad de un saqueo
@@ -600,25 +608,7 @@ export async function detailRoutes(app: FastifyInstance) {
       activeSkillBarId: save.activeSkillBarId,
       habilidadSlots: maxCombatAbilitiesFor(save.level),
       professionProgress: save.professionProgress.map((p) => ({ professionId: p.professionId, nivel: p.nivel, xp: p.xp })),
-      kingdomStats: save.kingdomStats
-        ? {
-            poblacion: save.kingdomStats.poblacion,
-            felicidad: save.kingdomStats.felicidad,
-            comida: save.kingdomStats.comida,
-            bebida: save.kingdomStats.bebida,
-            riqueza: save.kingdomStats.riqueza,
-            soldados: save.kingdomStats.soldados,
-            trabajadores: save.kingdomStats.trabajadores,
-            visitantes: save.kingdomStats.visitantes,
-            // B.19 (checklist frontend 2026-08-27) — el hallazgo original suponía que un territorio
-            // DISPUTADO/PERDIDO se explicaba por el conflicto de facciones (WorldState.agenda), pero
-            // son dos sistemas de causalidad DISTINTA: `Territory.control` cambia por felicidad
-            // sostenida del propio reino (turnResolution.ts, DIAS_PARA_REBELION/CONSOLIDAR), nunca
-            // por el conflicto del mundo. Se expone la causa REAL en vez de inventar un enlace falso.
-            diasFelicidadBaja: save.kingdomStats.diasFelicidadBaja,
-            diasFelicidadAlta: save.kingdomStats.diasFelicidadAlta,
-          }
-        : null,
+      kingdomStats: save.kingdomStats ? kingdomStatsParaCliente(save.kingdomStats) : null,
       currentLocation: save.currentLocation
         ? {
             id: save.currentLocation.id,

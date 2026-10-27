@@ -11,7 +11,7 @@ import type { LogEntry } from '../types'
 /// de deuda técnica 2026-08-25). Usa `buildEnciclopediaIndex` REAL (mismo fixture mínimo que
 /// enciclopediaIndex.test.ts, `makeNpc`/`emptyResponse`) en vez de mockear `pickMentionedEntityBanner`
 /// — así se ejercita el flujo completo texto→match→banner, no solo la superficie del hook.
-/// `resolveImageUrl` es pura (concatena API_URL), tampoco se mockea. Solo `setLogEntryBanner`
+/// `resolveImageUrl` solo concatena `apiBaseUrl()` (sin I/O), tampoco se mockea. Solo `setLogEntryBanner`
 /// (persistencia fire-and-forget) es I/O real y se mockea.
 vi.mock('../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/api')>()

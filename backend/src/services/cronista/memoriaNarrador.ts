@@ -125,7 +125,8 @@ export async function verdadObligatoria(db: Db, e: Escena): Promise<string[]> {
   }
 
   const etiquetas = await db.etiqueta.findMany({ where: { saveId: e.saveId, entidadTipo: 'PERSONAJE', activa: true }, select: { texto: true }, take: 6 });
-  if (etiquetas.length) lineas.push(`A la jugadora la conocen como: ${etiquetas.map((t) => t.texto).join(', ')}.`);
+  const lineaEtiquetas = lineaDeEtiquetas(etiquetas.map((t) => t.texto));
+  if (lineaEtiquetas) lineas.push(lineaEtiquetas);
 
   const companeros = await db.companion.findMany({
     where: { saveId: e.saveId, tipo: 'NPC', rolReino: null, condicionFisica: { not: 'MUERTO' }, combatGroupSlotIndex: 0 },
@@ -209,12 +210,28 @@ export async function memoriaPorRelevancia(db: Db, e: Escena, excluir: Set<strin
     take: 200,
   });
   const ctx = { ahora: e.ahora, palabras: palabrasClave(e.accion), actoresEscena: new Set([...e.npcs.map((n) => n.id), ...(e.locationId ? [e.locationId] : [])]) };
-  return candidatos
-    .filter((s) => !excluir.has(s.id))
-    .map((s) => ({ s, p: puntuar({ ...s, actorIds: s.actores.map((a) => a.entidadId) }, ctx) }))
-    .sort((a, b) => b.p - a.p)
-    .slice(0, MAX_MEMORIA)
-    .map(({ s }) => s.texto);
+  return sinTextosRepetidos(
+    candidatos
+      .filter((s) => !excluir.has(s.id))
+      .map((s) => ({ s, p: puntuar({ ...s, actorIds: s.actores.map((a) => a.entidadId) }, ctx) }))
+      .sort((a, b) => b.p - a.p)
+      .map(({ s }) => s.texto),
+  ).slice(0, MAX_MEMORIA);
+}
+
+/// Puro (P247): un mismo texto (p. ej. «Gorhorn despierta de nuevo en X», una vez por cada muerte) ocupa un
+/// solo hueco de la memoria, no tres de diez. Conserva el primero (el mejor puntuado) y el orden.
+export function sinTextosRepetidos(textos: string[]): string[] {
+  return [...new Set(textos)];
+}
+
+/// P271: «A la jugadora la conocen como: Clemente» hacía que el modelo la llamara «Clemente» a la cara
+/// («¿Qué noticias traes de los Maktor, Clemente?»). Las etiquetas son rasgos que le atribuyen por lo que ha
+/// hecho, en minúscula y dichos como tales, y la línea avisa de que no son ni su nombre ni un apodo. Solo baja la
+/// primera letra: «Amigo de los Maktor» o «Salvador de <región>» guardan la mayúscula del nombre propio.
+export function lineaDeEtiquetas(textos: string[]): string | null {
+  if (textos.length === 0) return null;
+  return `Fama de la jugadora, por lo que ha hecho (rasgos que le atribuyen, no su nombre ni un apodo con el que dirigirse a ella): ${textos.map((t) => t.charAt(0).toLowerCase() + t.slice(1)).join(', ')}.`;
 }
 
 /// El bloque completo para el narrador (o '' si no hay nada que contar).

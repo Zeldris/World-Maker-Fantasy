@@ -17,6 +17,8 @@ import { ANACHRONISM_REGEX } from './narrador.js';
 import { matchHarvestSource, matchesVerbForMetodo, matchesAnyHarvestVerb } from './harvest.js';
 import { harvestAbilityForMetodo } from './harvestAbilities.js';
 import { stripRegionArticle } from './population.js';
+import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from './entityDiscovery.js';
+import { aNombre, conDefinido } from './dynamicMode.js';
 import { harvestSourceRegion, harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { CONSTRUCTION_RECIPES } from './construction.js';
 import { prisma } from '../lib/prisma.js';
@@ -124,6 +126,15 @@ export function wrongWeaponNarrationFor(armaReal: string): string {
 export interface AbsentSceneNpcClaim {
   /// Nombre real de catálogo del NPC/fauna reclamado ("Torgash") — para la frase de vuelta.
   name: string;
+  /// P310: la jugadora ya la ha visto en escena (`DiscoveredEntity` en fase DESCUBIERTO). Una
+  /// conocida ausente («Gistera Koh», la dadora de la misión) no se trata como «quienquiera que sea».
+  conocido: boolean;
+  /// P310 (revisión): es fauna (`entityTypeDeSerVivo`), no una persona: la frase no dice «esa persona».
+  esFauna: boolean;
+  /// P310 (leve): `Npc.articulo` («la», «el») del catálogo, para decir «la Cazadora Serhu» y no «Cazadora Serhu».
+  articulo: string | null;
+  /// P310 (leve): `Npc.genero` ('M'/'F'), para concordar «lo/la busca». Sin dato, frase neutra.
+  genero: string | null;
 }
 
 /// Detecta si la acción del jugador interactúa con un NPC/fauna REAL de catálogo (existe de
@@ -176,7 +187,7 @@ const QUOTED_NAME_MATCH_REGEX = /'([^']+)'/;
 
 export async function detectsAbsentSceneNpcClaim(action: string, worldId: string, saveId: string, npcsInSceneSlugs: string[]): Promise<AbsentSceneNpcClaim | null> {
   if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
-  const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });
+  const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true, articulo: true, genero: true } });
   const matchable = allNpcs.map((n) => ({ id: n.slug, aliases: [n.name, ...n.aliases] }));
   const matchedSlugs = new Set(matchNpcAliases(action, matchable));
   const effectiveSceneSlugs = (await isPursuerOrcoInScene(action, saveId))
@@ -193,7 +204,14 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
     if (quotedNpc && effectiveSceneSlugs.includes(quotedNpc.slug)) return null;
   }
   const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
-  return absent ? { name: absent.name } : null;
+  if (!absent) return null;
+  // La ficha se busca con el tipo que le toca (`entityTypeDeSerVivo`, REVIEW.md): una fauna y un NPC con el mismo slug no se confunden.
+  const entityType = entityTypeDeSerVivo(absent.slug, FUENTES_DE_CATALOGO);
+  const vista = await prisma.discoveredEntity.findFirst({
+    where: { saveId, entityType, entitySlug: absent.slug, fase: 'DESCUBIERTO' },
+    select: { id: true },
+  });
+  return { name: absent.name, conocido: vista !== null, esFauna: entityType === 'fauna', articulo: absent.articulo ?? null, genero: absent.genero ?? null };
 }
 
 /// Mismo criterio que `WRONG_WEAPON_LINES` — pool de 5, 1 cómica menos frecuente.
@@ -205,9 +223,24 @@ const ABSENT_NPC_LINES: ((nombre: string) => string)[] = [
   (nombre) => `Gorhorn frunce el ceño. «¿${nombre}? Aquí no hay nadie con ese nombre, que yo vea...» Baja la guardia, un poco confuso.`,
 ];
 
-export function absentSceneNpcNarrationFor(nombre: string): string {
-  const line = pickRandomLine(ABSENT_NPC_LINES);
-  return line(nombre);
+/// P310: para quien la jugadora ya conoce (la ha visto en escena), ni «quienquiera que sea» ni «no
+/// hay nadie con ese nombre»: Gorhorn sabe quién es, solo que ahora no está aquí.
+const ABSENT_KNOWN_NPC_LINES: ((aNpc: string, sujeto: string, quien: string, comprueba: string) => string)[] = [
+  (aNpc) => `Gorhorn mira alrededor buscando ${aNpc}, pero ahora mismo no está en este lugar.`,
+  (_aNpc, sujeto, quien, comprueba) => `${sujeto} no está aquí ahora. Gorhorn ${comprueba}: tendrá que ir a buscar a ${quien} donde esté, o esperar a que vuelva.`,
+  (aNpc, _sujeto, quien) => `Gorhorn se vuelve hacia donde esperaba ver ${aNpc}, pero no hay rastro por aquí. Habrá que dar con ${quien} en otro sitio.`,
+];
+
+/// `articulo` y `genero` son los del catálogo (`Npc.articulo`/`Npc.genero`): con artículo, «a la Cazadora
+/// Serhu»; con género, «la busca con la mirada» / «lo busca con la mirada»; sin él, «mira a su alrededor».
+export function absentSceneNpcNarrationFor(nombre: string, conocido = false, esFauna = false, articulo?: string | null, genero?: string | null): string {
+  if (!conocido) return pickRandomLine(ABSENT_NPC_LINES)(nombre);
+  const pronombre = genero === 'F' ? 'la' : genero === 'M' ? 'lo' : null;
+  const comprueba = pronombre ? `${pronombre} busca con la mirada` : 'lo comprueba con la mirada';
+  // «esa persona» solo con personas; una fauna conocida es «ese animal».
+  const sujeto = conDefinido(nombre, articulo);
+  // «a» + «el» se contrae («al Guardián Ketg», no «a el Guardián Ketg»): `aNombre`, como el «Responder» (P141).
+  return pickRandomLine(ABSENT_KNOWN_NPC_LINES)(aNombre(nombre, articulo), sujeto.charAt(0).toUpperCase() + sujeto.slice(1), esFauna ? 'ese animal' : 'esa persona', comprueba);
 }
 
 /// Verbo/preposición de diálogo DIRIGIDO a una persona concreta — más estrecho a propósito que
@@ -616,4 +649,84 @@ const HARVEST_SKILL_MISUSE_LINES: ((nombre: string) => string)[] = [
 export function harvestSkillMisuseNarrationFor(nombre: string): string {
   const line = pickRandomLine(HARVEST_SKILL_MISUSE_LINES);
   return line(nombre);
+}
+
+export interface GiftToNpcClaim {
+  /// El objeto del inventario que menciona la frase (nombre real), o null si no tiene nada con ese nombre.
+  itemEnInventario: string | null;
+  /// Lo que la jugadora dice que entrega («mi cuchillo» → «cuchillo»), para decir «No tienes …».
+  itemTexto: string;
+}
+
+/// «entrego/regalo/doy/ofrezco X a Y» (P241, decisión de la usuaria 2026-10-26): en texto libre no
+/// se entrega nada, así que el turno no tira dados, no da XP ni narra: se responde con una frase
+/// fija (la entrega real es el botón Entregar, `entrega.ts`). `entrego`/`regalo` bastan; `doy` y
+/// `ofrezco` valen para mil cosas («le doy un golpe», «doy gracias»), así que solo cuentan si lo
+/// que se da es un objeto del inventario. Un ataque no es un regalo. Que haya un NPC en escena lo
+/// exige quien llama.
+const GIFT_STRONG_REGEX = /(?<!\b(?:el|un|mi|tu|su|ese|este|del|al|por)\s)\b(?:entrego|regalo|entregamos|regalamos)\b/;
+export const GIFT_ANY_REGEX = /\b(?:entrego|regalo|entregamos|regalamos|doy|ofrezco|damos|ofrecemos)\b/i;
+const GIFT_WEAK_REGEX = /\b(?:doy|ofrezco|damos|ofrecemos)\b/;
+const GIFT_STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'mi', 'mis', 'tu', 'su', 'este', 'esta', 'esto', 'a', 'al', 'le', 'les', 'para', 'con', 'que', 'por', 'en', 'y', 'e', 'o']);
+
+export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string[], npcNames: string[]): GiftToNpcClaim | null {
+  if (detectsAttackIntent(action)) return null;
+  const normalized = normalizeText(action);
+  const strong = normalized.match(GIFT_STRONG_REGEX);
+  const weak = strong ? null : normalized.match(GIFT_WEAK_REGEX);
+  const verbo = strong ?? weak;
+  if (!verbo || verbo.index === undefined) return null;
+  // Lo entregado: el resto de la frase sin el verbo ni el destinatario.
+  let resto = ` ${normalized.slice(verbo.index + verbo[0].length)} `;
+  for (const nombre of npcNames) {
+    const n = normalizeText(nombre);
+    if (n.length > 0) resto = resto.split(n).join(' ');
+  }
+  // Para el objeto, fuera también el nombre de pila del destinatario («a Gistera mi pan»).
+  let restoSinNpc = resto;
+  for (const nombre of npcNames) {
+    for (const token of normalizeText(nombre).split(/\s+/)) {
+      if (token.length >= 4) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
+    }
+  }
+  // Lo que se da: la primera cláusula tras el verbo, sin artículos ni preposiciones en los bordes.
+  const palabras = restoSinNpc
+    .split(/[,.;:!?¡¿«»"']|\s+(?:y|para|como|porque|pero|mientras)\s+/)[0]
+    .split(/\s+/)
+    .filter((p) => p.length > 0);
+  while (palabras.length > 0 && GIFT_STOP_WORDS.has(palabras[0])) palabras.shift();
+  while (palabras.length > 0 && GIFT_STOP_WORDS.has(palabras[palabras.length - 1])) palabras.pop();
+  const enInventario = weak
+    ? // Revisión P241: con «doy/ofrezco» lo dado tiene que ser el objeto («le doy mi cuchillo»), no algo que
+      // sale después en la frase («doy un paso atrás y saco la cuerda», «le doy la vuelta al cuchillo»).
+      (inventoryItemNames.find((nombre) => palabras.join(' ').startsWith(normalizeText(nombre))) ??
+      inventoryItemNames.find((nombre) => palabras.length > 0 && normalizeText(nombre).split(/\s+/).filter((p) => !GIFT_STOP_WORDS.has(p)).includes(palabras[0])))
+    : inventoryItemNames.find((nombre) => {
+        const n = normalizeText(nombre);
+        if (resto.includes(n)) return true;
+        const palabrasItem = n.split(/\s+/).filter((p) => p.length >= 4 && !GIFT_STOP_WORDS.has(p));
+        return palabrasItem.length > 0 && palabrasItem.every((p) => resto.includes(p));
+      });
+  if (weak && !enInventario) return null;
+  const itemTexto = palabras.join(' ');
+  if (!enInventario && itemTexto.length === 0) return null;
+  return { itemEnInventario: enInventario ?? null, itemTexto };
+}
+
+/// `nombreNpc` ya viene como lo ve la jugadora (con artículo, sin revelar un nombre que no conoce).
+/// `puedeEntregar`: el NPC es compañero o encargado de ENCARGO_MATERIALES (`entrega.ts#puedeRecibirEntregas`),
+/// los únicos con botón Entregar; si no, no se promete un botón que no sale.
+/// `equipado`: el objeto solo está equipado (fase 1 hacia main); el botón Entregar pide desequiparlo antes.
+export function giftToNpcNarrationFor(claim: GiftToNpcClaim, nombreNpc: string, puedeEntregar: boolean, equipado = false): string {
+  if (!claim.itemEnInventario) {
+    return claim.itemTexto
+      ? `No tienes ${claim.itemTexto} en el inventario, así que no hay nada que entregar.`
+      : 'No tienes eso en el inventario, así que no hay nada que entregar.';
+  }
+  if (puedeEntregar) {
+    return equipado
+      ? `Para entregar ${claim.itemEnInventario} a ${nombreNpc}, desequípalo y usa el botón Entregar: en texto libre no se entrega nada.`
+      : `Para entregar ${claim.itemEnInventario} a ${nombreNpc}, usa el botón Entregar: en texto libre no se entrega nada.`;
+  }
+  return `${nombreNpc.charAt(0).toUpperCase()}${nombreNpc.slice(1)} no acepta entregas: solo se entrega a los compañeros de tu equipo o a quien te pide materiales en un encargo.`;
 }

@@ -137,3 +137,10 @@ describe('npcInSceneToCombatDisplay (CR-44)', () => {
     expect(npcInSceneToCombatDisplay(base).ordenaCaerSobre).toBeUndefined()
   })
 })
+
+describe('npcInSceneToCombatDisplay (P308)', () => {
+  it('una respuesta sin activeEffects (caza limpia) no deja el campo sin definir', () => {
+    const sinEfectos = { slug: 'murgol', name: 'Múrgol', condicionFisica: 'MUERTO' as const, saqueado: false, lootedItemNames: [] } as unknown as Parameters<typeof npcInSceneToCombatDisplay>[0]
+    expect(npcInSceneToCombatDisplay(sinEfectos).activeEffects).toEqual([])
+  })
+})

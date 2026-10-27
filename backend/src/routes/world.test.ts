@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 
 /// Cobertura nueva (auditoría 2026-07-22): `world.ts` tenía 0% de test pese a ser el endpoint que
@@ -800,5 +800,44 @@ describe('CFG-38 — prompt de imagen usado', () => {
     expect(res.statusCode).toBe(404);
     expect(res.json().error).toMatch(/prompt base/);
     expect(updateImagePrompt).not.toHaveBeenCalled();
+  });
+});
+
+describe('INS-34 — POST /world/:slug/image-prompt según TARKOR_EMPAQUETADO', () => {
+  const clave = { entityType: 'fauna', entitySlug: 'murgol-macho', sizeProfile: 'banner' };
+  beforeEach(() => {
+    findUniqueWorld.mockReset().mockResolvedValue({ id: 'w1', slug: 'berig' });
+    findUniqueImagePrompt.mockReset().mockResolvedValue({ prompt: 'base generada', provider: 'x' });
+    findManyImagePrompt.mockReset().mockResolvedValue([]);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('sin la constante, la ruta está registrada (devuelve el prompt cacheado)', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/world/berig/image-prompt', payload: clave });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ prompt: 'base generada', provider: 'x', cached: true });
+  });
+
+  it('con la constante, la ruta no existe (404 de Fastify) y no toca la BD', async () => {
+    vi.stubEnv('TARKOR_EMPAQUETADO', '1');
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/world/berig/image-prompt', payload: clave });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().message).toBe('Route POST:/world/berig/image-prompt not found');
+    expect(findUniqueWorld).not.toHaveBeenCalled();
+  });
+
+  it('con la constante, el GET de la enciclopedia y el GET de image-prompt siguen', async () => {
+    vi.stubEnv('TARKOR_EMPAQUETADO', '1');
+    findUniqueImagePrompt.mockResolvedValue({ prompt: 'p', promptUsado: null, promptUsadoAt: null });
+    const app = await buildApp();
+    const enc = await app.inject({ method: 'GET', url: '/world/berig/enciclopedia' });
+    expect(enc.statusCode).not.toBe(404);
+    const get = await app.inject({ method: 'GET', url: '/world/berig/image-prompt', query: clave });
+    expect(get.statusCode).toBe(200);
+    expect(get.json().prompt).toBe('p');
   });
 });

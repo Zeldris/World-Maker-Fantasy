@@ -10,6 +10,7 @@ import type { AttributeBlock } from './dice.js';
 import { iniciarCombatEncounter, type CombatienteInicial } from './combateMultipleOrquestacion.js';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { scopeFor } from './npcScene.js';
+import { nombresVisiblesDeNpcs, nombreEnFrase } from './dynamicMode.js';
 import { celdaDePixel } from './zonaPosicion.js';
 import { lockRowForUpdate } from '../routes/saves/shared.js';
 import { companeroDispuestoACombatir } from './cronista/aprobacion.js';
@@ -117,6 +118,12 @@ export async function abrirCombateDePersonas(
   save: { id: string; characterName: string; attributes: AttributeBlock; fictionalMinutes: number; timeLabel: string },
   miembros: MiembroDeGrupo[],
 ): Promise<{ encounterId: string } | null> {
+  // QA-256 (P327): el diario y la iniciativa del grupo nombran a cada rival como lo ve la jugadora («Orco desconocido»);
+  // el nombre real de un PRINCIPAL sin descubrir no sale de aquí. Los participantes no guardan el nombre: solo lo usan
+  // las tiradas de iniciativa y la orden del capitán.
+  const rivales = await prisma.npc.findMany({ where: { id: { in: miembros.map((m) => m.npcId) } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true } });
+  const visiblePorSlug = await nombresVisiblesDeNpcs(prisma, save.id, rivales);
+  const nombreVisibleDe = new Map(rivales.map((n) => [n.id, visiblePorSlug.get(n.slug) ?? n.name]));
   const companeros = await prisma.companion.findMany({
     where: { saveId: save.id, combatGroupSlotIndex: 0, condicionFisica: { not: 'MUERTO' }, ...companeroDispuestoACombatir },
     select: { id: true, name: true, attributes: true },
@@ -131,18 +138,19 @@ export async function abrirCombateDePersonas(
         return { bando: 'JUGADOR' as const, tipo: 'COMPANION' as const, companionId: c.id, destreza: a.destreza, inteligencia: a.inteligencia, constitucion: a.constitucion, nombre: c.name };
       }),
     ...miembros.slice(0, MAX_COMBATIENTES_POR_BANDO).map((m) => ({
-      bando: 'ENEMIGO' as const, tipo: 'NPC' as const, npcId: m.npcId, npcScope: m.scope, destreza: m.destreza, inteligencia: m.inteligencia, esGrupo: m.esGrupo, nombre: m.nombre,
+      bando: 'ENEMIGO' as const, tipo: 'NPC' as const, npcId: m.npcId, npcScope: m.scope, destreza: m.destreza, inteligencia: m.inteligencia, esGrupo: m.esGrupo, nombre: nombreVisibleDe.get(m.npcId) ?? m.nombre,
     })),
   ];
   return prisma.$transaction(async (tx) => {
     await lockRowForUpdate(tx, 'Save', save.id, ['id']);
     if (await tx.combatEncounter.findFirst({ where: { saveId: save.id, estado: 'EN_CURSO', jugable: true }, select: { id: true } })) return null;
     const { encounterId, iniciativa, ordenCapitan } = await iniciarCombatEncounter(tx, save.id, combatientes);
-    const nombres = [...new Set(miembros.map((m) => m.nombre))].join(', ');
+    // Dentro de la frase, «el orco desconocido» (no «Orco desconocido» como nombre propio).
+    const nombres = [...new Set(combatientes.filter((c) => c.bando === 'ENEMIGO').map((c) => nombreEnFrase(c.nombre ?? '')))].join(', ');
     await tx.logEntry.create({
       data: {
         saveId: save.id, channel: 'CHARACTER', isSystemMessage: true, timeLabel: save.timeLabel, fictionalMinutes: save.fictionalMinutes,
-        text: `Comienza el combate contra ${miembros.length > 1 ? `un grupo (${nombres})` : nombres}: cada combatiente tira iniciativa.${ordenCapitan ? ` ${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.` : ''}`,
+        text: `Comienza el combate contra ${miembros.length > 1 ? `un grupo (${nombres})` : nombres}: cada combatiente tira iniciativa.${ordenCapitan ? ` ${nombreEnFrase(ordenCapitan.capitan, true)} ordena caer sobre ${nombreEnFrase(ordenCapitan.objetivo)}.` : ''}`,
         roll: { kind: 'combate-grupo', engagement: [], iniciativa } as unknown as Prisma.InputJsonValue,
       },
     });

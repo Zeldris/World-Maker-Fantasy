@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Fastify from 'fastify';
+import { DIAS_PARA_REBELION, DIAS_PARA_CONSOLIDAR } from '../../services/kingdomTick.js';
 
 /// Cobertura nueva (deuda técnica 2026-07-30, auditoría técnica: "detail.ts... tiene 0 tests pese
 /// a ser el ensamblado más grande del split de saves.ts"). Alcance: 404 de partida no encontrada,
@@ -150,9 +151,28 @@ describe('GET /saves/:id', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/saves/s1/supervivencia' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ condicionFisica: 'GRAVE', hambre: 100, sed: 100 });
+    expect(res.json()).toEqual({ condicionFisica: 'GRAVE', hambre: 100, sed: 100, aviso: null });
     findUniqueSave.mockResolvedValue(null);
     expect((await app.inject({ method: 'GET', url: '/saves/no-existe/supervivencia' })).statusCode).toBe(404);
+  });
+
+  it('P323: GET /saves/:id/supervivencia lleva el aviso cuando hay hambre o sed', async () => {
+    // Bebió en el minuto 0 y comió en el 2.500; ahora es el 3.000: hambre 100 % y sed 0 %.
+    findUniqueSave.mockResolvedValue({ condicionFisica: 'HERIDO', lastAteAtMinutes: 2500, lastDrankAtMinutes: 0, worldState: { fictionalMinutes: 3000 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/s1/supervivencia' });
+    expect(res.json()).toMatchObject({ condicionFisica: 'HERIDO', sed: 0, aviso: 'Sin beber lo necesario, la sed te debilita y tu estado empeora. Busca agua.' });
+  });
+
+  // P299 (REVIEW.md, «Sin copias entre backend y frontend»): los umbrales de rebelión y consolidación viajan con los
+  // contadores de días, para que el panel del Reino no los copie.
+  it('P299: kingdomStats lleva los umbrales de rebelión y consolidación', async () => {
+    findUniqueSave.mockResolvedValue(baseSave({
+      kingdomStats: { poblacion: 5, felicidad: 10, comida: 5, bebida: 5, riqueza: 5, soldados: 0, trabajadores: 0, visitantes: 0, diasFelicidadBaja: 3, diasFelicidadAlta: 0 },
+    }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/saves/save1' });
+    expect(res.json().kingdomStats).toMatchObject({ diasFelicidadBaja: 3, diasParaRebelion: DIAS_PARA_REBELION, diasParaConsolidar: DIAS_PARA_CONSOLIDAR });
   });
 
   it('pendingDynamicMode null por defecto', async () => {

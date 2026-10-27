@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decidirAtaque, defensaEstimada, margenNecesario, motivoBandidos, motivoGuerra, porQueVienenBandidos } from './decisionAsalto.js';
+import { decidirAtaque, defensaEstimada, margenNecesario, motivoBandidos, motivoGuerra, porQueVienenBandidos, reinoTieneQueLlevarse } from './decisionAsalto.js';
 
 /// CR-67 (67a): asaltos por estado (principio 10 del Cronista).
 describe('decisión de asalto (CR-67)', () => {
@@ -37,12 +37,25 @@ describe('decisión de asalto (CR-67)', () => {
     expect(facil.manda).toBe(Math.ceil(normal.manda / 2));
     expect(decidirAtaque({ fuerza: 6, enCasa: 2, defensa: 0, motivo: 0.5, intensidad: 'NORMAL', tamano: 'FACIL' }).manda).toBe(2);
     expect(porQueVienenBandidos({ grupo: 'Los renegados', gente: 6, riqueza: 0, comida: 0, botinGuardado: 0, lleno: true })).toContain('no caben');
+    // Revisión P253: con solo objetos en el Almacén no «se han quedado sin nada»: vienen a por ellos.
+    const soloObjetos = porQueVienenBandidos({ grupo: 'Los renegados', gente: 6, riqueza: 0, comida: 0, botinGuardado: 500, lleno: false, objetos: 4 });
+    expect(soloObjetos).toContain('Almacén');
+    expect(soloObjetos).not.toContain('sin nada');
+    expect(porQueVienenBandidos({ grupo: 'Los renegados', gente: 6, riqueza: 0, comida: 0, botinGuardado: 500, lleno: false, objetos: 3 })).toContain('sin nada');
   });
 
   it('motivos: el botín atrae a los bandidos; la presión, a una facción en guerra', () => {
     expect(motivoBandidos({ riqueza: 0, comida: 0, botinGuardado: 500, gente: 4, tope: 8, intensidad: 'NORMAL' })).toBe(0);
     expect(motivoBandidos({ riqueza: 1000, comida: 0, botinGuardado: 0, gente: 8, tope: 8, intensidad: 'NORMAL' })).toBe(1);
     expect(motivoBandidos({ riqueza: 500, comida: 0, botinGuardado: 500, gente: 4, tope: 8, intensidad: 'DURA' })).toBeGreaterThan(motivoBandidos({ riqueza: 500, comida: 0, botinGuardado: 500, gente: 4, tope: 8, intensidad: 'CONTENIDA' }));
+    // P253: la necesidad sola no mueve a nadie contra un Reino sin nada que llevarse (solo a un Reino; a un viajero se le asalta igual).
+    expect(reinoTieneQueLlevarse(0, 0)).toBe(false);
+    expect(reinoTieneQueLlevarse(5, 20)).toBe(false);
+    expect(reinoTieneQueLlevarse(20, 0)).toBe(true);
+    expect(reinoTieneQueLlevarse(0, 40)).toBe(true);
+    // Revisión P253: los objetos del Almacén también son botín (se llevan uno desde 4).
+    expect(reinoTieneQueLlevarse(0, 0, 3)).toBe(false);
+    expect(reinoTieneQueLlevarse(0, 0, 4)).toBe(true);
     const g = [79, 80, 90, 100].map(motivoGuerra);
     expect(g[0]).toBe(0);
     expect(g[1]).toBeCloseTo(0.2);

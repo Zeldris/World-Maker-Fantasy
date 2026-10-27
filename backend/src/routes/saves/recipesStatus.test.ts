@@ -191,6 +191,94 @@ describe('GET /saves/:id/recipes-status', () => {
     expect(por('campamento').requiresAyuntamiento).toBe(false);
   });
 
+  it('P255: una receta con tope por región ya levantada sale unicaYaLevantada; las repetibles (choza, pozo) y la que aún no está, no', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: { id: 'loc1', slug: 'algun-sitio', region: 'Las Llanuras del Viento Rojo' },
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    // Hay un Mercado y un Pozo en la región; solo el Mercado tiene tope de 1 por región.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string } }) => (args.where.recipeKey === 'mercado' || args.where.recipeKey === 'pozo' ? 1 : 0));
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const por = (k: string) => body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === k && r.recipeCategory === 'construccion');
+    expect(por('mercado').unicaYaLevantada).toBe(true);
+    expect(por('pozo').unicaYaLevantada).toBe(false);
+    expect(por('choza').unicaYaLevantada).toBe(false);
+    expect(por('tablon-avisos').unicaYaLevantada).toBe(false);
+  });
+
+  it('P255: el tope por región de lo que pide Ayuntamiento se cuenta en la región del Ayuntamiento, no en la del personaje (como «Encargar»)', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: { id: 'loc1', slug: 'algun-sitio', region: 'Region del personaje' },
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    findFirstBuilding.mockImplementation(async (args: { where: { recipeKey?: string } }) =>
+      args.where.recipeKey === 'ayuntamiento' ? { location: { region: 'Region del Ayuntamiento' } } : null,
+    );
+    // El Mercado y el Tablón solo existen en la región del Ayuntamiento; el Campamento (sin Ayuntamiento) solo en la del personaje.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string; location?: { region?: string } } }) => {
+      const { recipeKey, location } = args.where;
+      if (recipeKey === 'mercado') return location?.region === 'Region del Ayuntamiento' ? 1 : 0;
+      if (recipeKey === 'campamento') return location?.region === 'Region del personaje' ? 1 : 0;
+      return 0;
+    });
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const por = (k: string) => body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === k && r.recipeCategory === 'construccion');
+    expect(por('mercado').unicaYaLevantada).toBe(true);
+    expect(por('campamento').unicaYaLevantada).toBe(true);
+    findFirstBuilding.mockReset();
+  });
+
+  it('P255 (usuaria 2026-10-26): un Mercado DANADO sigue ocupando el tope (se repara, no se levanta otro)', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: { id: 'loc1', slug: 'algun-sitio', region: 'Las Llanuras del Viento Rojo' },
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    // El único Mercado de la región está DANADO: solo lo cuenta un conteo que incluya ese estado.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string; status?: string | { in: string[] } } }) => {
+      const { recipeKey, status } = args.where;
+      const cuentaDanado = status === 'DANADO' || (typeof status === 'object' && status.in.includes('DANADO'));
+      return recipeKey === 'mercado' && cuentaDanado ? 1 : 0;
+    });
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const mercado = body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === 'mercado' && r.recipeCategory === 'construccion');
+    expect(mercado.unicaYaLevantada).toBe(true);
+  });
+
+  it('P255: sin región conocida (sin lugar ni Ayuntamiento) no cuenta los edificios únicos de todo el mundo', async () => {
+    findUniqueSave.mockResolvedValue({
+      worldId: 'world1',
+      attributes: BASE_ATTRIBUTES,
+      secondaryAttributes: BASE_SECONDARY,
+      currentLocation: null,
+      professionProgress: [],
+      inventoryItems: [],
+    });
+    findFirstBuilding.mockResolvedValue(null);
+    // Hay un Mercado en alguna región: un filtro sin región lo contaría.
+    countBuilding.mockImplementation(async (args: { where: { recipeKey?: string; location?: { region?: string } } }) =>
+      args.where.recipeKey === 'mercado' && !args.where.location?.region ? 1 : 0,
+    );
+    const app = await buildApp();
+    const body = (await app.inject({ method: 'GET', url: '/saves/save1/recipes-status' })).json();
+    const mercado = body.recipes.find((r: { recipeKey: string; recipeCategory: string }) => r.recipeKey === 'mercado' && r.recipeCategory === 'construccion');
+    expect(mercado.unicaYaLevantada).toBe(false);
+  });
+
   it('P218: oculta las recetas de construcción de otra raza; sin raza en la receta o en el personaje siguen visibles', async () => {
     const save = (raza: string | null) => ({
       worldId: 'world1',

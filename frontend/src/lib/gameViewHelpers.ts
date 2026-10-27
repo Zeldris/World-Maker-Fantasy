@@ -103,7 +103,8 @@ export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay
     yaSaqueado: npc.saqueado,
     lootedItemNames: npc.lootedItemNames,
     analizado: npc.analizado,
-    activeEffects: npc.activeEffects,
+    // P308: una respuesta sin `activeEffects` (la caza limpia) rompía `ActiveEffectChips`.
+    activeEffects: npc.activeEffects ?? [],
     participantId: npc.participantId,
     instanceNumber: npc.instanceNumber,
     capturable: npc.capturable,
