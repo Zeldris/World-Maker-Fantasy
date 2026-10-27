@@ -216,16 +216,21 @@ export function objetivosExtraFor(excluirParticipantId: string, candidatos: Obje
 /// que puede variar entre llamadas) — así "buitre #2" significa lo mismo tanto para el backend (al
 /// interpretar el texto citado) como para el frontend (al mostrar el numerito), sin depender de que
 /// ambos iteren en el mismo orden por casualidad.
-export function instanceNumbersByParticipantId(combatientes: { participantId: string; npcId: string }[]): Map<string, number> {
-  const countByNpcId = new Map<string, number>();
-  for (const c of combatientes) countByNpcId.set(c.npcId, (countByNpcId.get(c.npcId) ?? 0) + 1);
+///
+/// P354: se agrupa por el nombre que VE la jugadora (`nombre`, el visible), no por `npcId`: dos PRINCIPAL distintos
+/// aún sin descubrir se llaman igual («Faerus desconocida» ×2) y, numerados por `npcId`, salían sin número y la cita
+/// elegía siempre al primero. Sin `nombre`, se agrupa por `npcId` como antes.
+export function instanceNumbersByParticipantId(combatientes: { participantId: string; npcId: string; nombre?: string }[]): Map<string, number> {
+  const clave = (c: { npcId: string; nombre?: string }) => (c.nombre != null ? `n:${c.nombre.trim().toLowerCase()}` : `id:${c.npcId}`);
+  const countByClave = new Map<string, number>();
+  for (const c of combatientes) countByClave.set(clave(c), (countByClave.get(clave(c)) ?? 0) + 1);
   const ordenEstable = [...combatientes].sort((a, b) => a.participantId.localeCompare(b.participantId));
-  const seenByNpcId = new Map<string, number>();
+  const seenByClave = new Map<string, number>();
   const resultado = new Map<string, number>();
   for (const c of ordenEstable) {
-    if ((countByNpcId.get(c.npcId) ?? 0) <= 1) continue;
-    const numero = (seenByNpcId.get(c.npcId) ?? 0) + 1;
-    seenByNpcId.set(c.npcId, numero);
+    if ((countByClave.get(clave(c)) ?? 0) <= 1) continue;
+    const numero = (seenByClave.get(clave(c)) ?? 0) + 1;
+    seenByClave.set(clave(c), numero);
     resultado.set(c.participantId, numero);
   }
   return resultado;
@@ -259,7 +264,10 @@ export function resolverObjetivoPorTexto(
 ): string | null {
   const vivos = candidatos.filter((c) => c.vivo);
   const instanceNumberByParticipantId = instanceNumbersByParticipantId(
-    candidatos.filter((c): c is CandidatoObjetivoPorTexto & { npcId: string } => !!c.npcId).map((c) => ({ participantId: c.participantId, npcId: c.npcId })),
+    candidatos
+      .filter((c): c is CandidatoObjetivoPorTexto & { npcId: string } => !!c.npcId)
+      // P354: el mismo nombre que muestra el panel (visible y, si no, el real), para que «#N» signifique lo mismo.
+      .map((c) => ({ participantId: c.participantId, npcId: c.npcId, nombre: nombreVisibleByNpcId?.get(c.npcId) ?? nombreByNpcId.get(c.npcId) })),
   );
   const quotedMatch = action.match(/'([^']+)'/);
   const quotedNormalizado = quotedMatch ? normalizeText(quotedMatch[1]) : null;

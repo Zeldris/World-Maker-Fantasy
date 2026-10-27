@@ -470,6 +470,27 @@ describe('resolverObjetivoPorTexto', () => {
       ];
       expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #2'.", dobles, nombres, normalize, visibles)).toBe('y');
     });
+
+    // P354: dos PRINCIPAL distintos aún sin descubrir se ven igual; «#N» va por el nombre visible, no por npcId.
+    it('dos rivales distintos con el mismo nombre visible se numeran y la cita «#2» elige al segundo (P354)', () => {
+      const nombresDos = new Map([
+        ['faerus-npc', 'Faerus Valdren'],
+        ['hulki-npc', 'Hulki'],
+      ]);
+      const visiblesDos = new Map([
+        ['faerus-npc', 'Faerus desconocida'],
+        ['hulki-npc', 'Faerus desconocida'],
+      ]);
+      const distintos = [
+        { participantId: 'x', npcId: 'faerus-npc', vivo: true },
+        { participantId: 'y', npcId: 'hulki-npc', vivo: true },
+      ];
+      expect(
+        instanceNumbersByParticipantId(distintos.map((c) => ({ ...c, nombre: visiblesDos.get(c.npcId) }))),
+      ).toEqual(new Map([['x', 1], ['y', 2]]));
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #2'.", distintos, nombresDos, normalize, visiblesDos)).toBe('y');
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #1'.", distintos, nombresDos, normalize, visiblesDos)).toBe('x');
+    });
   });
 });
 

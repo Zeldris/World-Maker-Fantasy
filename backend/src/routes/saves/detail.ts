@@ -293,14 +293,17 @@ export async function detailRoutes(app: FastifyInstance) {
     const combatEnemigosParaDisplay = combatParticipantesReales.filter(
       (p) => p.tipo === 'NPC' && p.npcId && combatNpcRowById.has(p.npcId) && !p.dismissedGrupo,
     );
-    const combatInstanceNumberByParticipantId = instanceNumbersByParticipantId(
-      combatEnemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
-    );
-
     // CR-45: la marca del capitán también tras recargar.
     const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
     // P327: en el combate, un PRINCIPAL aún desconocido sigue siendo «el orco desconocido».
     const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, save.id, [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]);
+    // P354: «#N» por el nombre que se muestra (el visible), igual que el turno y `resolverObjetivoPorTexto`.
+    const combatInstanceNumberByParticipantId = instanceNumbersByParticipantId(
+      combatEnemigosParaDisplay.map((p) => {
+        const row = combatNpcRowById.get(p.npcId!)!;
+        return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
+      }),
+    );
     const combateIniciado = activeCombatEncounter
       ? {
           npcs: combatEnemigosParaDisplay.map((p) => {

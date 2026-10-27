@@ -2129,7 +2129,11 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
   // que el backend interpreta al citarlo — null para un enemigo solitario (ver comentario de
   // `NpcInSceneInfo.instanceNumber`, types.ts, frontend).
   const instanceNumberByParticipantIdDisplay = instanceNumbersByParticipantId(
-    enemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
+    // P354: por el nombre que se muestra (el visible), igual que `resolverObjetivoPorTexto`.
+    enemigosParaDisplay.map((p) => {
+      const row = npcRowById.get(p.npcId!)!;
+      return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
+    }),
   );
   const npcs = enemigosParaDisplay.map((p) => {
     const npcRow = npcRowById.get(p.npcId!)!;
