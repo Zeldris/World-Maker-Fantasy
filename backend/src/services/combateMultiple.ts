@@ -255,13 +255,15 @@ export interface CandidatoObjetivoPorTexto {
 /// P353: la cita del panel lleva el nombre que la jugadora VE («Faerus desconocida» mientras no ha descubierto a
 /// un PRINCIPAL), no el real. `nombreVisibleByNpcId` (`nombresVisiblesDeNpcs`) se compara igual que el real, con y sin
 /// «#N»; sin él, la cita no casaba con nadie y el objetivo caía al primer vivo.
-export function resolverObjetivoPorTexto(
+/// P353: solo la cita real (nombre entre comillas que casa con un rival vivo); `undefined` si no hay cita o no casa.
+/// `resolverObjetivoPorTexto` añade el primer vivo por defecto.
+export function resolverCitaPorTexto(
   action: string,
   candidatos: CandidatoObjetivoPorTexto[],
   nombreByNpcId: Map<string, string>,
   normalizeText: (s: string) => string,
   nombreVisibleByNpcId?: Map<string, string>,
-): string | null {
+): { participantId: string } | undefined {
   const vivos = candidatos.filter((c) => c.vivo);
   const instanceNumberByParticipantId = instanceNumbersByParticipantId(
     candidatos
@@ -282,7 +284,17 @@ export function resolverObjetivoPorTexto(
         });
       })
     : undefined;
-  return targetPorNombre?.participantId ?? vivos[0]?.participantId ?? null;
+  return targetPorNombre;
+}
+
+export function resolverObjetivoPorTexto(
+  action: string,
+  candidatos: CandidatoObjetivoPorTexto[],
+  nombreByNpcId: Map<string, string>,
+  normalizeText: (s: string) => string,
+  nombreVisibleByNpcId?: Map<string, string>,
+): string | null {
+  return resolverCitaPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId)?.participantId ?? candidatos.find((c) => c.vivo)?.participantId ?? null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -362,6 +374,11 @@ export function resolverEnganchesRonda(
   /// los compañeros eligiendo a los demás deshacían la orden y los golpes acababan en la jugadora.
   /// Una provocación sigue mandando sobre la orden, y un señalado oculto no es candidato.
   ordenCapitan: { seguidores: Set<string>; objetivoId: string } | null = null,
+  /// P353, regla B de la usuaria (2026-10-27): 1 contra varios (la jugadora sin aliados vivos en su bando). Si cita
+  /// a un rival válido (candidato real: vivo, visible o el único de su bando), ese rival pasa a ser su duelo de la
+  /// ronda aunque otro la haya reclamado antes; los demás rivales que la reclamaron se quedan con su golpe gratis
+  /// contra ella. Con aliados, o sin cita válida, la regla de siempre. Una provocación a la jugadora sigue mandando.
+  eleccionJugadora: { jugadorId: string; objetivoId: string } | null = null,
 ): Map<string, string | null> {
   const bandoDe = new Map(combatientes.map((c) => [c.participantId, c.bando]));
   // Seguidores del capitán que esta ronda cumplen la orden (ni la regla 3 ni la 4 se la quitan).
@@ -422,7 +439,29 @@ export function resolverEnganchesRonda(
     else if (objetivoProvisional.has(id)) resultado.set(id, objetivoProvisional.get(id)!);
     else resultado.set(id, null);
   }
+  if (eleccionJugadora && esUnoContraVarios(combatientes, eleccionJugadora.jugadorId)) {
+    const { jugadorId, objetivoId } = eleccionJugadora;
+    const bandoJugadora = bandoDe.get(jugadorId)!;
+    const candidatosCrudos = combatientes.filter((c) => c.bando !== bandoJugadora);
+    const candidatosVisibles = candidatosCrudos.filter((c) => !ocultos.has(c.participantId));
+    const candidatos = (candidatosVisibles.length > 0 ? candidatosVisibles : candidatosCrudos).map((c) => c.participantId);
+    const provocadorId = provocaciones.get(jugadorId);
+    const provocada = !!provocadorId && candidatos.includes(provocadorId);
+    if (candidatos.includes(objetivoId) && !provocada) {
+      // Duelo mutuo con el citado; quien la reclamó antes y no es él sigue apuntándola: golpe gratis.
+      resultado.set(jugadorId, objetivoId);
+      resultado.set(objetivoId, jugadorId);
+    }
+  }
   return resultado;
+}
+
+/// P353: ¿es un 1 contra varios? La jugadora es la única de su bando en `combatientes` (los vivos que cuentan) y hay
+/// al menos un rival. Solo entonces la regla B deja que su cita gane el duelo de la ronda.
+export function esUnoContraVarios(combatientes: { participantId: string; bando: Bando }[], jugadorId: string): boolean {
+  const yo = combatientes.find((c) => c.participantId === jugadorId);
+  if (!yo) return false;
+  return !combatientes.some((c) => c.bando === yo.bando && c.participantId !== jugadorId) && combatientes.some((c) => c.bando !== yo.bando);
 }
 
 /// ¿Es esto un duelo real (mutuo) o un golpe gratis? Ver comentario de cabecera de

@@ -21,6 +21,17 @@ import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 /// necesitar un Save con atributos reales de personaje.
 const dobleNarracionRapida = async () => 'Narración de prueba.';
 
+/// P353 (regla B): en 1 contra varios la ronda espera la cita de la jugadora aunque ya la hayan reclamado. Lo que hace
+/// `turnResolution` cuando su acción no cita a nadie: cierra la espera dejando el enganche de siempre (`citaValida: false`).
+/// No-op si la ronda no espera nada.
+async function sinCitaDeLaJugadora(saveId: string, worldId: string, encounterId: string) {
+  const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+  if (encounter.estado === 'RESUELTO' || !encounter.esperandoEleccionJugadora) return;
+  const primero = encounter.participantes.find((p) => p.bando === 'ENEMIGO');
+  if (!primero) return;
+  await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: primero.id, citaValida: false });
+}
+
 /// Helper de tests (Fase 3 § 3a, 2026-08-27) — resuelve turnos autónomos hasta que le toca a la
 /// jugadora (el orden de iniciativa es real, nunca garantiza que actúe primero) y entonces resuelve
 /// SU turno con la habilidad dada, devolviendo ese resultado — mismo patrón de bucle que el test
@@ -31,6 +42,10 @@ async function resolverHastaJugadoraActua(saveId: string, worldId: string, encou
     if (encounter.estado === 'RESUELTO') return null;
     const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
     const actual = encounter.participantes.find((p) => p.id === actualId)!;
+    if (encounter.esperandoEleccionJugadora) {
+      await sinCitaDeLaJugadora(saveId, worldId, encounterId);
+      continue;
+    }
     if (actual.tipo === 'JUGADOR') {
       return resolverTurnoJugador({ prisma, worldId, saveId, encounterId, accion: { habilidad }, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     }
@@ -270,6 +285,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
         { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-p55-b', destreza: 999, inteligencia: 6 },
       ]),
     );
+    await sinCitaDeLaJugadora(saveId, worldId, encounterId);
 
     const ronda = await resolverTurnosAutonomosHastaJugadora({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
 
@@ -468,6 +484,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       if (encounter.estado === 'RESUELTO') {
         terminado = true;
         break;
+      }
+      if (encounter.esperandoEleccionJugadora) {
+        await sinCitaDeLaJugadora(saveId, worldId, encounterId);
+        continue;
       }
       const actualId = encounter.ordenIniciativa[encounter.turnoActual % encounter.ordenIniciativa.length];
       const actual = encounter.participantes.find((p) => p.id === actualId)!;
@@ -1738,6 +1758,10 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     for (let i = 0; i < 10 && !resultadoAtaque; i++) {
       const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
       if (encounter.estado === 'RESUELTO') break;
+      if (encounter.esperandoEleccionJugadora) {
+        await sinCitaDeLaJugadora(saveId, worldId, encounterId);
+        continue;
+      }
       const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
       if (resultado?.atacanteNombre === atacante.name) resultadoAtaque = resultado;
     }

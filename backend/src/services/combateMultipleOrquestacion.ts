@@ -14,6 +14,7 @@ import {
   objetivoExtraFor,
   objetivosExtraFor,
   resolverEnganchesRonda,
+  esUnoContraVarios,
   resolverIntercambioCompleto,
   type Bando,
   type ObjetivoCandidato,
@@ -177,7 +178,11 @@ export async function iniciarCombatEncounter(
   };
   const ordenIds = orden.map((e) => e.participantId);
   const enganches = resolverEnganchesRonda(ordenIds, combatientesParaEnganche, elegirObjetivoInicial, new Set(), new Map(), new Map(), objetivoCapitan ? { seguidores: sigueAlCapitan, objetivoId: objetivoCapitan } : null);
-  const esperandoJugadora = jugadorParticipantId !== null && enganches.get(jugadorParticipantId) === null;
+  // P353 (regla B): en 1 contra varios la ronda espera la cita de la jugadora aunque ya la hayan reclamado.
+  const esperandoJugadora =
+    jugadorParticipantId !== null &&
+    (enganches.get(jugadorParticipantId) === null ||
+      (esUnoContraVarios(combatientesParaEnganche, jugadorParticipantId) && combatientesParaEnganche.filter((c) => c.bando !== 'JUGADOR').length >= 2));
 
   await Promise.all(
     [...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })),
@@ -535,6 +540,9 @@ interface CalcularEnganchesRondaParams {
   jugadoraTargetId: string | null;
   /// CR-45: objetivo que el capitán ya anunció esta ronda (se mantiene si sigue en pie).
   objetivoCapitanPrevio?: string | null;
+  /// P353 (regla B): `jugadoraTargetId` viene de una cita real de la jugadora a un rival (no del primer vivo por
+  /// defecto). En 1 contra varios, esa cita gana el duelo aunque otro la reclamara antes.
+  eleccionPorCita?: boolean;
 }
 
 async function calcularEnganchesRonda({
@@ -545,6 +553,7 @@ async function calcularEnganchesRonda({
   weaponNamesPorDefecto,
   jugadoraTargetId,
   objetivoCapitanPrevio = null,
+  eleccionPorCita = false,
 }: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean; ordenCapitan: OrdenCapitan | null }> {
   const datosPorParticipante = new Map<string, DatosCombatiente | null>();
   await Promise.all(
@@ -626,8 +635,20 @@ async function calcularEnganchesRonda({
       .filter((p) => p.marcaObjetivoRondas != null && p.marcaObjetivoRondas > 0 && p.marcaObjetivoId && idsVivos.has(p.marcaObjetivoId))
       .map((p) => [p.id, p.marcaObjetivoId!] as const),
   );
-  const enganches = resolverEnganchesRonda(encounter.ordenIniciativa, combatientes, elegirObjetivoPara, ocultosOExpulsados, provocaciones, marcas, objetivoCapitan ? { seguidores: sigueAlCapitan, objetivoId: objetivoCapitan } : null);
-  const esperandoJugadora = jugadoraId !== null && enganches.get(jugadoraId) === null;
+  const enganches = resolverEnganchesRonda(
+    encounter.ordenIniciativa,
+    combatientes,
+    elegirObjetivoPara,
+    ocultosOExpulsados,
+    provocaciones,
+    marcas,
+    objetivoCapitan ? { seguidores: sigueAlCapitan, objetivoId: objetivoCapitan } : null,
+    eleccionPorCita && jugadoraId && jugadoraTargetId ? { jugadorId: jugadoraId, objetivoId: jugadoraTargetId } : null,
+  );
+  // P353 (regla B): en 1 contra varios la jugadora puede citar a quien quiere como duelo aunque ya la hayan
+  // reclamado, así que la ronda espera su cita (`fijarEleccionRondaJugador`) también cuando no está sin objetivo.
+  const puedeElegirPorB = jugadoraId !== null && jugadoraTargetId === null && esUnoContraVarios(combatientes, jugadoraId) && combatientes.filter((c) => c.bando !== 'JUGADOR').length >= 2;
+  const esperandoJugadora = jugadoraId !== null && (enganches.get(jugadoraId) === null || puedeElegirPorB);
   const ordenCapitan =
     capitan && objetivoCapitan
       ? { capitanId: capitan.id, objetivoId: objetivoCapitan, capitan: datosPorParticipante.get(capitan.id)?.nombre ?? '', objetivo: datosPorParticipante.get(objetivoCapitan)?.nombre ?? '' }
@@ -2524,6 +2545,9 @@ export interface FijarEleccionRondaJugadorParams {
   encounterId: string;
   jugadoraTargetId: string;
   weaponNamesPorDefecto?: string[];
+  /// P353 (regla B): false = no hubo cita válida (el objetivo es el primer vivo por defecto): en 1 contra varios
+  /// se queda el enganche de siempre y solo se cierra la espera. Por defecto true (una elección explícita).
+  citaValida?: boolean;
 }
 
 export async function fijarEleccionRondaJugador({
@@ -2533,6 +2557,7 @@ export async function fijarEleccionRondaJugador({
   encounterId,
   jugadoraTargetId,
   weaponNamesPorDefecto = [],
+  citaValida = true,
 }: FijarEleccionRondaJugadorParams): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
@@ -2545,6 +2570,7 @@ export async function fijarEleccionRondaJugador({
       weaponNamesPorDefecto,
       jugadoraTargetId,
       objetivoCapitanPrevio: encounter.objetivoCapitanId,
+      eleccionPorCita: citaValida,
     });
     await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
     await tx.combatEncounter.update({

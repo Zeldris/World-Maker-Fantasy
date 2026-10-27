@@ -90,7 +90,7 @@ import { nombrarOferta } from './ofertaNombre.js';
 import { narradorPuedeCerrar } from './startingQuests.js';
 import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
-import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
+import { instanceNumbersByParticipantId, resolverCitaPorTexto, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { aplicarHuidaNpc, decidirHuidaPorHabilidad, decidirMoralTrasIntercambio, textoTiradaHuida } from './huidaNpc.js';
@@ -4651,7 +4651,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }));
       const targetParticipantId = resolverObjetivoPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId);
       if (targetParticipantId) {
-        await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId });
+        // P353 (regla B): en 1 contra varios solo una cita real gana el duelo; el primer vivo por defecto no.
+        const citaValida = resolverCitaPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId) !== undefined;
+        await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId, citaValida });
       }
     }
 
