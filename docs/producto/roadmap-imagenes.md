@@ -121,8 +121,9 @@ desde el panel vive en tablas que siembran.
   cuernos, color…), todo relativo a la unidad del plan y escalado al lienzo; cuerpo de perfil y cabeza a tres cuartos
   (P1), las cuentas en el boceto (F9), un valor fuera de rango para con el motivo. `rasterizar.sh` genera desde las
   fichas; fuera los SVG a mano de `IMG-18`. Fichas nuevas de gargantúa de ceniza y cruzavientos con su plan (las que
-  `IMG-21` dejó aquí). `test_bocetos.py` (12). Depende de `IMG-18`; la usa `IMG-21`. **M** Pendiente: generar
-  gargantúa y cruzavientos con su boceto (r19) para ver si las plantillas valen tanto como los SVG a mano.
+  `IMG-21` dejó aquí). `test_bocetos.py` (12). Depende de `IMG-18`; la usa `IMG-21`. **M** r19 (gargantúa y cruzavientos con
+  su boceto, [`resultados.md`](plan-imagenes/banco/resultados.md)): el gargantúa pasa a leerse como su banner con el
+  mismo prompt de r17; el cruzavientos no cambia (lo que le falta es acabado, `IMG-25`). Cinco de seis.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):

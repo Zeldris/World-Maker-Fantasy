@@ -388,3 +388,29 @@ r18 s3 / r18 s7 / r17 s7 / banner en `generated/banco/r18-sujetos-jusha-esmerald
 - **Cuatro de seis se leen como su banner** (guchapo, morvasa, espina, jusha): se cierra `IMG-21` (R3). Lo que
   queda no es del banco: gargantúa y cruzavientos, al boceto por plan corporal (`IMG-24`); el acabado de las cuatro
   (ojos, aguijón, plástico, masa del pez), a la interfaz (`IMG-25`) y a la receta final.
+
+## r19 · Gargantúa y cruzavientos con el boceto generado por plan corporal (`IMG-24`, 2026-10-27)
+
+Primera ronda con los bocetos de `bocetos/plantilla.py` en vez de SVG a mano: la ficha lleva `boceto.plan` y sus
+números (gargantúa: `herbivoro` con patas de columna, cuello corto y bajo, cresta de losas y dos cuernos; cruzavientos:
+`ave` con pico de gancho y cresta de púas), `rasterizar.sh` deja el sujeto sobre verde a 512x192 y va como
+`--init-img` a 0,97 (F5). Prompts de r17 sin tocar: lo único que cambia es el boceto. Semillas 3 y 7, 285-300 s cada
+una (menos que sin boceto), memoria libre mínima 3,2 GB con el narrador de Ollama descargado. Rejilla r19 s3 / r19 s7 /
+boceto / r17 s7 / banner en `generated/banco/r19-sujetos-<especie>/rejilla.png`.
+
+| Especie | Semilla | Se lee como | Frente a r17 | Lo que pasa |
+|---|---|---|---|---|
+| gargantúa | 3 | casi su banner | mejora clara | bestia maciza y baja, cabeza por delante y a ras con los dos colmillos, losas sobre el lomo y la nuca; las patas de columna salen; la cabeza menos hundida que en el banner y las losas más grandes y cuadradas que las placas aquilladas de GPT |
+| gargantúa | 7 | **su banner** | mejora clara | lo mismo, con el ojo cercano visible (cabeza a tres cuartos, P1), los colmillos hacia abajo, lomo de losas y púas y la grupa corta; donde r17 daba un saurópodo con cola larga mirando a la derecha |
+| cruzavientos | 3 | a medias | igual o peor | el ave sale pequeña y con las alas alzadas en V (la V del plan `ave` leída como alas arriba), vista desde arriba; cresta y pico de gancho sí |
+| cruzavientos | 7 | casi su banner | igual | alas abiertas de punta a punta, cresta de púas, pico de gancho, garras; lo mismo que r17 s7, que ya estaba ahí; lo que falta (tamaño, plumas óseas, cuerpo acorazado) no es de forma |
+
+- **La plantilla vale tanto como el SVG a mano donde el boceto manda** (R2 confirmado): el gargantúa cambia de
+  saurópodo a bestia acorazada con las mismas palabras que en r17; mira a la izquierda en las dos semillas porque el
+  boceto mira a la izquierda (P8: la dirección se decide en el boceto, no en el prompt).
+- **Para el ave el boceto no añade**: r17 ya tenía la silueta; la V de las alas del plan `ave` da alas alzadas en
+  una semilla. Lo que le falta al cruzavientos (escala, plumas como escamas, pecho acorazado) es acabado, no forma:
+  pasa a `IMG-25` con las otras cuatro. El plan `ave` se deja como está (alas en V) hasta que otra ave lo necesite.
+- **Las losas del plan salen cuadradas**: para placas aquilladas como las del banner haría falta otra forma de cresta
+  (`forma: quillas`); se apunta como tarea solo si otra criatura la pide. Con lo de r19, cinco de seis se leen como
+  su banner (guchapo, morvasa, espina, jusha y gargantúa); el cruzavientos, a un paso.
