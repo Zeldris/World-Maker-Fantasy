@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { retirarFaccionesHuerfanas, retirarLugaresHuerfanos, retirarNpcsHuerfanos } from './retirarHuerfanos.js';
 
-/// QA-256 (2026-10-26): el seed retira lugares, facciones y NPC que salen del catálogo, pero solo si ninguna partida
+/// QA-274 (2026-10-26): el seed retira lugares, facciones y NPC que salen del catálogo, pero solo si ninguna partida
 /// los referencia. Mundo propio del test: no toca el catálogo real.
 describe('retirar lo huérfano del catálogo (Postgres real)', () => {
   let worldId: string;

@@ -510,7 +510,7 @@ async function main() {
   }
   console.log(`    ${backfilledItems} objeto(s) de inventario actualizado(s).`);
 
-  // QA-256 (2026-10-26): como los objetos de arriba, el upsert nunca retiraba lugares, facciones ni NPC que salen
+  // QA-274 (2026-10-26): como los objetos de arriba, el upsert nunca retiraba lugares, facciones ni NPC que salen
   // del catálogo (slugs renombrados). Se retira la fila de catálogo sin referencias de partida; la que tenga alguna
   // se queda y se avisa. Orden: lugares, facciones y, al final, NPC (`Faction.liderNpcId` queda en null si él se va).
   avisarRetiro('Lugares', await retirarLugaresHuerfanos(prisma, worldId, locations.map((l) => l.slug)));

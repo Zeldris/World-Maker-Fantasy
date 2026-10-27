@@ -93,7 +93,7 @@ describe('habilidades renombradas (P100, QA-68)', () => {
     expect(nombreActualDeHabilidad('Golpe Certero', selecto)).toBe('Golpe Oportuno');
   });
 
-  it('QA-256: cada renombre global deja el nombre nuevo en el catálogo y ninguna habilidad con el viejo', () => {
+  it('QA-274: cada renombre global deja el nombre nuevo en el catálogo y ninguna habilidad con el viejo', () => {
     const actuales = nombresDelCatalogo();
     for (const [viejo, nuevo] of Object.entries(HABILIDADES_RENOMBRADAS)) {
       expect(actuales.has(nuevo), nuevo).toBe(true);

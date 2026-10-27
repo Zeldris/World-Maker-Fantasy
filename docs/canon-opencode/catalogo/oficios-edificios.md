@@ -1,7 +1,7 @@
 # CATÁLOGO: oficios, recetas de Reino y edificios
 Qué es: qué oficios existen, quién los enseña, qué puede construir el jugador y qué edificios de
 facción hay.
-Fuente: worldCatalog.ts, crafting.ts, construction.ts, docs/mecanicas/17. Sincronizado: 2026-10-26 (`QA-256`).
+Fuente: worldCatalog.ts, crafting.ts, construction.ts, docs/mecanicas/17. Sincronizado: 2026-10-26 (`QA-274`).
 
 ## Oficios (usar SOLO estos)
 - **Llanuras** (Maestro Serhu en Karot Veku): herrero, curtidor, peletero, desollador, ganadero,

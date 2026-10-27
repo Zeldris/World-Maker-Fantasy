@@ -4342,7 +4342,7 @@ export const npcs: NpcInput[] = [
     bio: 'Goirnte de la Meseta del Orden — piel gris apagada, más floja y menos tensa de lo normal en los suyos, como si hubiera dejado de concentrarse en nada desde hace tiempo. Exmiembro de la facción radical, hoy fugitivo y escondido.',
     personality: 'Habla en círculos y nunca termina las frases que rozan "esa noche"; sobresalta con los ruidos de metal.',
     raza: 'goirntes',
-    // Arquero (QA-256, 2026-10-26): el canon no da Cazador a los Goirntes (02-razas.md); sin
+    // Arquero (QA-274, 2026-10-26): el canon no da Cazador a los Goirntes (02-razas.md); sin
     // especialización, que llega al nivel 10.
     clase: 'ARQUERO',
     temperamento: 'INOFENSIVO',

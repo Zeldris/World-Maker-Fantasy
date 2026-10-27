@@ -35,7 +35,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 - El reino de la jugadora es la `Faction` con `saveId` y `origenSlug: null`. Sus cifras están en `KingdomStats`
   (`comida`, `bebida`, `felicidad`…); «Almacén comida 60 · agua 60» en la interfaz es el **tope**, no lo guardado.
-- **Copias de partida** (`QA-257`): `mundoPartida.ts#clonarConCandado` copia por partida las facciones (`saveId` +
+- **Copias de partida** (`QA-275`): `mundoPartida.ts#clonarConCandado` copia por partida las facciones (`saveId` +
   `origenSlug`) y la población (`saveId`); los lugares creados jugando (interiores) llevan `saveId` (`QA-31`); los territorios, edificios y almacén de una facción copia cuelgan de ella
   **sin `saveId`**. Van por slug, sin FK (la cascada no las protege): `targetSlug` de `WorldPopulation` y `ZonePoint`,
   `Npc.homeLocationSlug`, `Companion.sourceSlug` y `Save.pendingCombatNpcSlugs`. Ejemplo: `scripts/retirarHuerfanos.ts`.

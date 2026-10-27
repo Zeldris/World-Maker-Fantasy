@@ -1,4 +1,4 @@
-**Título:** La historia sin documento y la segunda pasada por la enciclopedia; el seed retira lo huérfano (QA-243, QA-244, QA-256, QA-257…QA-259, QA-272, QA-273)
+**Título:** La historia sin documento y la segunda pasada por la enciclopedia; el seed retira lo huérfano (QA-243, QA-244, QA-272…QA-277)
 
 ## Summary
 
@@ -22,7 +22,7 @@ datos de X4) o, sin documento ni lugar, es saber común. Se calcula al leer, com
 
 También entran diez hechos de la cronología, y en el canon se arreglaron los tres choques con el juego.
 
-**`QA-256`: el seed retira lugares, facciones y NPC que ya no están en el catálogo**, pero solo si ninguna partida
+**`QA-274`: el seed retira lugares, facciones y NPC que ya no están en el catálogo**, pero solo si ninguna partida
 los referencia. Si alguna lo hace, se quedan y se avisa por consola con el motivo.
 
 ```text
@@ -49,11 +49,11 @@ Además:
 
 ```diff
  docs/mapa-agente.md
-+  «Copias de partida»: qué clona mundoPartida.ts, qué cuelga sin saveId y qué va por slug sin FK (QA-257)
++  «Copias de partida»: qué clona mundoPartida.ts, qué cuelga sin saveId y qué va por slug sin FK (QA-275)
  REVIEW.md
-+  un where anidado de Prisma en un borrado lleva test contra Postgres (QA-258)
++  un where anidado de Prisma en un borrado lleva test contra Postgres (QA-276)
  docs/runbooks/ampliar-lore.md, .claude/gw/opt-tokens.md
-+  tope de 30-40 llamadas también en las tandas de edición (QA-259)
++  tope de 30-40 llamadas también en las tandas de edición (QA-277)
  tools/qa/ficha.sh
 +  acaba con «# Fuente»: archivo:línea del slug en backend/src/scripts y services (QA-272)
  backend/src/services/habilidadesConocidas.json

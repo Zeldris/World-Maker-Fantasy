@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 
-/// QA-256 (2026-10-26): el seed retiraba los objetos que salen del catálogo pero no los lugares, facciones ni NPC:
+/// QA-274 (2026-10-26): el seed retiraba los objetos que salen del catálogo pero no los lugares, facciones ni NPC:
 /// los slugs renombrados o retirados se quedaban en la base y la enciclopedia los seguía mostrando. Aquí se retira
 /// solo la fila de CATÁLOGO (`saveId` null) cuyo slug ya no está en `worldCatalog.ts` y a la que NINGUNA partida
 /// referencia. Lo que sí cuelga de ella y es del mundo (puntos de zona de plantilla, KingdomStats y edificios de

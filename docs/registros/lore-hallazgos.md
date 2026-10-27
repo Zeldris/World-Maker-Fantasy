@@ -784,7 +784,7 @@ temporal del test. Leves:
   - El Pacto del Umbral (`cronologia.md`, `razas.md`) y la Tolda de Kegi (`cronologia.md`, `clanes-orcos.md`) ya no
     dicen «no implementado en el código»: dicen en qué entrada de la historia los cuenta el juego.
 
-## 2026-10-26 — `QA-256`: segunda pasada por la enciclopedia
+## 2026-10-26 — `QA-274`: segunda pasada por la enciclopedia
 
 Diez tandas de auditoría, una por región o catálogo (`QA-247`). No hay ningún hallazgo grave; salen unos 80 medios y
 unos 70 leves. La usuaria aprobó los cuatro bloques con la opción recomendada:

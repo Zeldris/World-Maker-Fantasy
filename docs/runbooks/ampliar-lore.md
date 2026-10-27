@@ -23,7 +23,7 @@ Cuando la sesión revisa lo que ya hay (como en `QA-243`), la auditoría se repa
 - devuelve una tabla de hallazgos con columnas elemento · qué dice el juego · qué dice el canon · propuesta.
 
 La principal revisa la tabla, la presenta a la usuaria y apunta lo aplicado en `docs/registros/lore-hallazgos.md`.
-Los arreglos aprobados se aplican también en tandas de 30-40 llamadas (`QA-259`), con el mismo encargo, y la principal
+Los arreglos aprobados se aplican también en tandas de 30-40 llamadas (`QA-277`), con el mismo encargo, y la principal
 revisa el diff entero.
 Medida en `QA-243`: con un bloque por tanda, el contexto medio llegó a 110k y las tandas fueron el 40 % de la
 entrada de la sesión.

@@ -1,10 +1,10 @@
 # Retro y opt-tokens · `claude/lore-enciclopedia` (2026-10-26)
 
-**Estado:** aprobada entera por la usuaria (2026-10-26) y aplicada en la rama: 1 → `QA-257`, 2 → `QA-258`,
-3 → `QA-259`, 6 → `QA-272`. La 4 y la 5 se quedan en «Para Galivelop-workflow» para `gw-harvest`. Tras el CI local, la 7 → `QA-273`
+**Estado:** aprobada entera por la usuaria (2026-10-26) y aplicada en la rama: 1 → `QA-275`, 2 → `QA-276`,
+3 → `QA-277`, 6 → `QA-272`. La 4 y la 5 se quedan en «Para Galivelop-workflow» para `gw-harvest`. Tras el CI local, la 7 → `QA-273`
 (aprobada).
 
-Sesión de `QA-243`, `QA-244` y `QA-256`:
+Sesión de `QA-243`, `QA-244` y `QA-274`:
 - la historia, sin documento: saber común o por lugar, con la migración `20261026120000_historia_sin_documento`;
 - la segunda pasada por la enciclopedia, con el canon al día;
 - el seed sin huérfanos;

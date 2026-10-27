@@ -49,7 +49,7 @@ mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo
   desaparece sin entrar en `HABILIDADES_RENOMBRADAS`, falla el test. Un nombre quitado de ese JSON es una habilidad
   retirada: el revisor comprueba que la usuaria lo decidió y que no es un renombre escondido.
 - **Un borrado o una actualización con condición sobre relaciones** (`where` anidado de Prisma: `none`, `some`,
-  `every`) lleva test de integración contra Postgres (`QA-258`, retro del 2026-10-26): tsc no valida esos nombres de
+  `every`) lleva test de integración contra Postgres (`QA-276`, retro del 2026-10-26): tsc no valida esos nombres de
   relación (aceptó `almacen` por `almacenItems` en `retirarHuerfanos.ts`). Si borra filas de catálogo, el test pone
   también una referencia de partida sin FK y una copia de partida (`docs/mapa-agente.md`, «Copias de partida»).
 

@@ -5,7 +5,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 export const HABILIDADES_RENOMBRADAS: Readonly<Record<string, string>> = {
   'Analisis Salvaje': 'Análisis Salvaje',
   'Plumaje ferreo': 'Plumaje férreo',
-  // QA-256: habilidades de fauna con tildes, sin inglés o con un nombre que case (la Corretolvas no vuela).
+  // QA-274: habilidades de fauna con tildes, sin inglés o con un nombre que case (la Corretolvas no vuela).
   'Posicion defensiva': 'Posición defensiva',
   'Filos centella': 'Filos Centella',
   'Embestida Volatil': 'Embestida Volátil',
