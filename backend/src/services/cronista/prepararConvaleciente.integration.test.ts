@@ -7,10 +7,10 @@ import { detailRoutes } from '../../routes/saves/detail.js';
 import { dejarConvalecienteEnCombate } from './prepararConvaleciente.js';
 import { scopeFor } from '../npcScene.js';
 
-// QA-265 (P95, P320): el paso `convaleciente:<npc>:combate` de `prepararReino.ts`, contra una partida real. Lo que se comprueba
+// QA-270 (P95, P320): el paso `convaleciente:<npc>:combate` de `prepararReino.ts`, contra una partida real. Lo que se comprueba
 // es lo que ve la usuaria: `GET /saves/:id` devuelve `combateIniciado` con el rival «convaleciente» (la tarjeta con Matar,
 // Capturar y Clemente), y la ausencia de zona de 6 h sigue ahí (es lo previsto: el animal vencido no está en el mapa).
-describe('dejarConvalecienteEnCombate (QA-265, P95/P320)', () => {
+describe('dejarConvalecienteEnCombate (QA-270, P95/P320)', () => {
   const saveIds: string[] = [];
 
   async function partida(nombre: string, opciones: { endedAt?: Date; sinLugar?: boolean } = {}) {
@@ -34,7 +34,7 @@ describe('dejarConvalecienteEnCombate (QA-265, P95/P320)', () => {
   });
 
   it('deja al Guchapo convaleciente, ausente de la zona 6 h y como rival sin resolver: GET /saves/:id enseña el combate con él', async () => {
-    const saveId = await partida('Convaleciente (QA-265)');
+    const saveId = await partida('Convaleciente (QA-270)');
     const r = await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' });
     expect(r).toMatchObject({ rivales: ['guchapo'] });
 
@@ -52,7 +52,7 @@ describe('dejarConvalecienteEnCombate (QA-265, P95/P320)', () => {
   });
 
   it('es idempotente: repetirlo no duplica el rival, y conserva los que ya había', async () => {
-    const saveId = await partida('Idempotente (QA-265)');
+    const saveId = await partida('Idempotente (QA-270)');
     await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' });
     expect(await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' })).toMatchObject({ rivales: ['guchapo'] });
     await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: ['otro-rival'] } });
@@ -60,12 +60,12 @@ describe('dejarConvalecienteEnCombate (QA-265, P95/P320)', () => {
   });
 
   it('se niega, con el motivo, con una partida terminada, sin lugar, inexistente, con un NPC que no existe o con un combate en curso', async () => {
-    const terminada = await partida('Terminada (QA-265)', { endedAt: new Date() });
+    const terminada = await partida('Terminada (QA-270)', { endedAt: new Date() });
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: terminada, npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('ha terminado') });
-    const sinLugar = await partida('Sin lugar (QA-265)', { sinLugar: true });
+    const sinLugar = await partida('Sin lugar (QA-270)', { sinLugar: true });
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: sinLugar, npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('no está en ningún lugar') });
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: 'no-existe', npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('no hay partida') });
-    const viva = await partida('Sin NPC (QA-265)');
+    const viva = await partida('Sin NPC (QA-270)');
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: viva, npcSlug: 'no-existe-especie' })).toEqual({ error: expect.stringContaining('no hay NPC') });
     await prisma.combatEncounter.create({ data: { saveId: viva, estado: 'EN_CURSO' } });
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: viva, npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('combate en curso') });
@@ -77,7 +77,7 @@ describe('dejarConvalecienteEnCombate (QA-265, P95/P320)', () => {
   });
 
   it('se niega si el NPC es de un grupo con más miembros en pie (quedaría ILESO), sin dejar el rival', async () => {
-    const saveId = await partida('Grupo (QA-265)');
+    const saveId = await partida('Grupo (QA-270)');
     const npc = await prisma.npc.findFirstOrThrow({ where: { slug: 'guchapo', saveId: null } });
     // La fauna lleva el lugar como scope (`scopeFor`): el grupo se siembra en el mismo estado que el paso va a escribir.
     const lugar = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId!;

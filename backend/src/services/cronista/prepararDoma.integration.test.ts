@@ -5,8 +5,8 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { dejarDomableEnJaula } from './prepararDoma.js';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
 
-// QA-264 (CR-55): el paso `domable:<especie>` de `prepararReino.ts`, contra una partida real.
-describe('dejarDomableEnJaula (QA-264, CR-55)', () => {
+// QA-269 (CR-55): el paso `domable:<especie>` de `prepararReino.ts`, contra una partida real.
+describe('dejarDomableEnJaula (QA-269, CR-55)', () => {
   const saveIds: string[] = [];
 
   async function partida(nombre: string, jaulas: string[]) {
@@ -32,7 +32,7 @@ describe('dejarDomableEnJaula (QA-264, CR-55)', () => {
   });
 
   it('deja el animal capturado y atado en la Jaula, con felicidad 0, y la jaula queda ocupada', async () => {
-    const saveId = await partida('Domable (QA-264)', ['jaula-mediana']);
+    const saveId = await partida('Domable (QA-269)', ['jaula-mediana']);
     const r = await dejarDomableEnJaula(prisma, { saveId, especie: 'corretolvas' });
     expect(r).toMatchObject({ especie: 'corretolvas' });
     const jaula = await prisma.building.findFirstOrThrow({ where: { saveId, recipeKey: 'jaula-mediana' } });
@@ -45,7 +45,7 @@ describe('dejarDomableEnJaula (QA-264, CR-55)', () => {
   });
 
   it('se niega, con el motivo, sin Jaula apta, con una especie que no es ganado o que no existe', async () => {
-    const saveId = await partida('Sin jaula (QA-264)', ['jaula-pequena']);
+    const saveId = await partida('Sin jaula (QA-269)', ['jaula-pequena']);
     expect(await dejarDomableEnJaula(prisma, { saveId, especie: 'murgol' })).toEqual({ error: expect.stringContaining('no hay Jaula libre') }); // el múrgol pide la grande
     expect(await dejarDomableEnJaula(prisma, { saveId, especie: 'lobo-gris' })).toEqual({ error: expect.stringContaining('no es una especie de ganado') });
     expect(await dejarDomableEnJaula(prisma, { saveId: 'no-existe', especie: 'murgol' })).toEqual({ error: expect.stringContaining('no hay partida') });

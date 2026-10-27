@@ -23,7 +23,7 @@ export async function prepararCaptura(tx: Tx, saveId: string, especie: string, c
 }
 
 /// Deja un animal capturado y atado (GRAVE, felicidad 0) en una Jaula libre apta para su especie; false si no queda ninguna.
-/// Es la escritura de la partida de captura (`descargarCaptura`), aparte para que `domable:` de `prepararReino.ts` (QA-264)
+/// Es la escritura de la partida de captura (`descargarCaptura`), aparte para que `domable:` de `prepararReino.ts` (QA-269)
 /// deje el animal exactamente igual, sin rehacerla a mano.
 export async function atarEnJaula(tx: Tx, saveId: string, npcId: string, especie: string, scope: string): Promise<boolean> {
   const [jaula] = await jaulasLibresPara(tx, saveId, especie);

@@ -1,4 +1,4 @@
-// QA-263 (2026-10-26): estados del mundo que `prepararReino.ts` deja listos para jugar sus ids, SOLO con las funciones del
+// QA-268 (2026-10-26): estados del mundo que `prepararReino.ts` deja listos para jugar sus ids, SOLO con las funciones del
 // juego (QA-151: nada de UPDATE/INSERT a mano). Aquí están las escrituras de cada paso para que el test las ejerza sin el
 // script (que se ejecuta al importarlo):
 //   - `matarLiderDeFaccion` (CR-43): el líder muere «de viejo» por la vía del motor del mundo (`morirDeViejo`) y la facción

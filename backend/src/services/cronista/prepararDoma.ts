@@ -1,4 +1,4 @@
-// QA-264 (2026-10-26): el animal atado de `domable:<especie>` en `prepararReino.ts` (CR-55 «Al corral»), con la escritura
+// QA-269 (2026-10-26): el animal atado de `domable:<especie>` en `prepararReino.ts` (CR-55 «Al corral»), con la escritura
 // del juego y no a mano (QA-151): `atarEnJaula` es la misma que usa la partida de captura al volver (`descargarCaptura`):
 // el animal queda capturado, GRAVE, con felicidad 0, en una Jaula libre apta para su especie. La confianza se gana
 // jugando (`/tameo-pendientes/:npcSlug/intentar`) y después ya puede ir «Al corral».

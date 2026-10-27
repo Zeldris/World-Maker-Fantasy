@@ -10,8 +10,8 @@ import { asegurarVasallajes, cuotaSemanal, revisarVasallajes } from './vasallaje
 import { resembrarFacciones } from './economiaFacciones.js';
 import { syncFactionPopulationToKingdomStats } from '../population.js';
 
-// QA-263: los pasos `lider-muere`, `alianza` y `vasallo-paga` de `prepararReino.ts`, contra el mundo de una partida.
-describe('pasos de preparación de sucesos del mundo (QA-263)', () => {
+// QA-268: los pasos `lider-muere`, `alianza` y `vasallo-paga` de `prepararReino.ts`, contra el mundo de una partida.
+describe('pasos de preparación de sucesos del mundo (QA-268)', () => {
   const saveIds: string[] = [];
   const DIA = 1440;
 
@@ -35,7 +35,7 @@ describe('pasos de preparación de sucesos del mundo (QA-263)', () => {
   });
 
   it('lider-muere (CR-43): muere el líder goirnte de viejo y, al pasar los días, la facción se escinde con nombre goirnte', async () => {
-    const { saveId } = await partida('Líder (QA-263)');
+    const { saveId } = await partida('Líder (QA-268)');
     const antes = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'concordia-de-hierro' } });
     const r = await matarLiderDeFaccion(prisma, { saveId, faccionSlug: 'concordia-de-hierro' });
     if ('error' in r) throw new Error(r.error);
@@ -58,12 +58,12 @@ describe('pasos de preparación de sucesos del mundo (QA-263)', () => {
   });
 
   it('lider-muere se niega sin líder o sin facción', async () => {
-    const { saveId } = await partida('Líder (QA-263) errores');
+    const { saveId } = await partida('Líder (QA-268) errores');
     expect(await matarLiderDeFaccion(prisma, { saveId, faccionSlug: 'no-existe' })).toMatchObject({ error: expect.stringContaining('no hay facción') });
   });
 
   it('alianza (P247): dos alianzas de las mismas facciones con una ruptura en medio; la segunda se cuenta', async () => {
-    const { saveId } = await partida('Alianza (QA-263)');
+    const { saveId } = await partida('Alianza (QA-268)');
     const r = await aliarTrasRuptura(prisma, { saveId, facA: 'clan-serhu', facB: 'concordia-de-hierro' });
     expect(r).not.toHaveProperty('error');
     const sucesos = await prisma.suceso.findMany({
@@ -81,12 +81,12 @@ describe('pasos de preparación de sucesos del mundo (QA-263)', () => {
   });
 
   it('alianza rechaza una facción que no existe', async () => {
-    const { saveId } = await partida('Alianza (QA-263) errores');
+    const { saveId } = await partida('Alianza (QA-268) errores');
     expect(await aliarTrasRuptura(prisma, { saveId, facA: 'clan-serhu', facB: 'nadie' })).toMatchObject({ error: expect.stringContaining('nadie') });
   });
 
   it('vasallo-paga (P314): con deuda vieja y fondos de cuota y media, la semana sale «pagada-con-deuda»', async () => {
-    const { saveId } = await partida('Vasallo (QA-263)', 0);
+    const { saveId } = await partida('Vasallo (QA-268)', 0);
     await prisma.$transaction(async (tx) => {
       await resembrarFacciones(tx, saveId);
       await syncFactionPopulationToKingdomStats(tx, { saveId });

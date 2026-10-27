@@ -36,7 +36,7 @@ describe('petición de recursos del Reino (QA-143)', () => {
   });
 });
 
-describe('quién levanta una obra (QA-264)', () => {
+describe('quién levanta una obra (QA-269)', () => {
   it('el personaje hasta su tier máximo y la Casa de obras por encima', () => {
     expect(quienLevanta(1)).toBe('personaje');
     expect(quienLevanta(3)).toBe('personaje');

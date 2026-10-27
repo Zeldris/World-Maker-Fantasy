@@ -13,7 +13,7 @@ import {
 import { Clase, Especializacion } from '@prisma/client';
 import { NIVEL_MINIMO_ESPECIALIZACION, fijarEspecializacion } from '../../services/progresionPersonaje.js';
 
-// QA-264: la constante vive en el servicio de progresión; se reexporta para quien la importaba de aquí.
+// QA-269: la constante vive en el servicio de progresión; se reexporta para quien la importaba de aquí.
 export { NIVEL_MINIMO_ESPECIALIZACION };
 
 /// Progresión "manual" del personaje (deuda técnica 2026-07-30, split de saves.ts): repartir un
@@ -212,7 +212,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       const freshSave = await lockRowForUpdate<{ especializacion: Especializacion | null }>(tx, 'Save', save.id, ['especializacion']);
       if (freshSave.especializacion) return null;
 
-      // QA-264: la escritura (habilidades de la rama, especialización y diario) es la del servicio, que reutiliza la
+      // QA-269: la escritura (habilidades de la rama, especialización y diario) es la del servicio, que reutiliza la
       // preparación de escenarios (`domador:<nivel>`).
       await fijarEspecializacion(tx, save, especializacion);
       return true;
