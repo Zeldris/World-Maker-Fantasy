@@ -49,6 +49,16 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
+  it('P347: sin un Corral del Ganadero en pie el pendiente lo dice (hayCorral false) y con él, true', async () => {
+    const app = await buildApp();
+    await prisma.building.update({ where: { id: corralId }, data: { status: 'DANADO' } });
+    const sin = await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` });
+    expect(sin.json().pendientes.find((p: { npcSlug: string }) => p.npcSlug === 'murgol')?.hayCorral).toBe(false);
+    await prisma.building.update({ where: { id: corralId }, data: { status: 'ACTIVO' } });
+    const con = await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` });
+    expect(con.json().pendientes.find((p: { npcSlug: string }) => p.npcSlug === 'murgol')?.hayCorral).toBe(true);
+  });
+
   it('el Múrgol domesticado entra al corral y su especie se puede volver a capturar', async () => {
     const app = await buildApp();
     const pendientes = await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` });
@@ -57,6 +67,10 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/murgol/al-corral`, payload: {} });
     expect(res.statusCode).toBe(200);
     expect(res.json().buildingId).toBe(corralId);
+    // P349: el aviso para la pantalla y la misma línea en el diario del Reino.
+    expect(res.json().aviso).toBe('El Múrgol entra en los Corrales del Ganadero.');
+    const linea = await prisma.logEntry.findFirst({ where: { saveId, channel: 'KINGDOM', text: 'El Múrgol entra en los Corrales del Ganadero.' } });
+    expect(linea).not.toBeNull();
     const animal = await prisma.ganado.findFirstOrThrow({ where: { saveId } });
     expect(animal.especie).toBe('murgol');
     // Recién adulto: un año o algo más.

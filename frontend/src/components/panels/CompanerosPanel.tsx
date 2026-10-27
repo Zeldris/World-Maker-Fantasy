@@ -44,6 +44,8 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
   const [tameoAbierto, setTameoAbierto] = useState<TameoPendiente | null>(null)
   const [equipoAbierto, setEquipoAbierto] = useState<CompanionInfo | null>(null)
   const [gruposAbierto, setGruposAbierto] = useState(false)
+  // P349: lo que acaba de pasar al llevar un animal al corral (el diario del Reino lo guarda el backend).
+  const [aviso, setAviso] = useState<string | null>(null)
   // CR-42: lo último que te ha contado cada compañero de su tierra.
   const [contado, setContado] = useState<Record<string, string>>({})
   const [preguntando, setPreguntando] = useState<string | null>(null)
@@ -93,6 +95,12 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
         >
           ⚔️ Grupos de combate
         </button>
+      )}
+
+      {aviso && (
+        <p role="status" className="rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-3.5 py-2 text-xs text-emerald-200">
+          {aviso}
+        </p>
       )}
 
       {pendientes.length > 0 && (
@@ -228,8 +236,9 @@ export function CompanerosPanel({ saveId, companions, inventory, onRefreshSave, 
           saveId={saveId}
           characterName={characterName}
           pendiente={tameoAbierto}
-          onConfirmado={async () => {
+          onConfirmado={async (aviso) => {
             setTameoAbierto(null)
+            if (aviso) setAviso(aviso)
             await refreshPendientes()
             await onRefreshSave()
           }}

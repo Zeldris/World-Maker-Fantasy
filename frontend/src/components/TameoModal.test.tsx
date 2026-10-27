@@ -6,9 +6,10 @@ vi.mock('../lib/api', () => ({
   postIntentarTameo: vi.fn(),
   postConfirmarTameo: vi.fn(),
   postSoltarTameo: vi.fn(),
+  postAlCorral: vi.fn(),
 }))
 
-import { postIntentarTameo } from '../lib/api'
+import { postIntentarTameo, postAlCorral } from '../lib/api'
 import { TameoModal } from './TameoModal'
 
 const mockIntentar = vi.mocked(postIntentarTameo)
@@ -70,5 +71,34 @@ describe('TameoModal — DAD-1, DAD-2', () => {
     })
     expect(getByText('No cede esta vez.')).toBeTruthy()
     expect(getByText('35 / 100')).toBeTruthy()
+  })
+})
+
+/// P347/P349: «Al corral» sin Corral del Ganadero sale desactivado y con el motivo; con él, deja un aviso.
+describe('TameoModal — Al corral (P347, P349)', () => {
+  afterEach(cleanup)
+
+  const murgol = { npcSlug: 'murgol', name: 'Múrgol', tipo: 'FAUNA' as const, felicidad: 80, umbral: 80, atributoResistencia: null, enJaula: true, alCorral: true }
+
+  it('P347: sin Corral del Ganadero el botón está desactivado y dice por qué', () => {
+    const { getByRole, getByText } = render(
+      <TameoModal saveId="s1" pendiente={{ ...murgol, hayCorral: false }} onConfirmado={() => {}} onSoltado={() => {}} onCancel={() => {}} />,
+    )
+    expect((getByRole('button', { name: /Al corral/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(getByText('Construye un Corral del Ganadero')).toBeTruthy()
+  })
+
+  it('P349: con Corral lo lleva y pasa el aviso del backend a quien abrió el modal', async () => {
+    vi.mocked(postAlCorral).mockResolvedValue({ ganadoId: 'g1', buildingId: 'b1', sexo: 'F', aviso: 'El Múrgol entra en los Corrales del Ganadero.' })
+    const onConfirmado = vi.fn()
+    const { getByRole, queryByText } = render(
+      <TameoModal saveId="s1" pendiente={{ ...murgol, hayCorral: true }} onConfirmado={onConfirmado} onSoltado={() => {}} onCancel={() => {}} />,
+    )
+    expect(queryByText('Construye un Corral del Ganadero')).toBeNull()
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: /Al corral/ }))
+    })
+    expect(postAlCorral).toHaveBeenCalledWith('s1', 'murgol')
+    expect(onConfirmado).toHaveBeenCalledWith('El Múrgol entra en los Corrales del Ganadero.')
   })
 })

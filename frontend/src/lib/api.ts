@@ -1575,6 +1575,8 @@ export interface TameoPendiente {
   enJaula: boolean
   /// CR-55 (Q3): es ganado y puede ir a un corral en vez de ser compañero.
   alCorral?: boolean
+  /// P347: hay un Corral del Ganadero en pie; sin él, «Al corral» sale desactivado.
+  hayCorral?: boolean
 }
 export async function getTameoPendientes(saveId: string): Promise<{ pendientes: TameoPendiente[] }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes`)
@@ -1607,7 +1609,7 @@ export async function postConfirmarTameo(saveId: string, npcSlug: string): Promi
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/confirmar`, { method: 'POST' })
 }
 /// CR-55 (Q3): el animal domesticado va a un corral del Ganadero de su especie (o a uno vacío).
-export async function postAlCorral(saveId: string, npcSlug: string): Promise<{ ganadoId: string; buildingId: string; sexo: 'M' | 'F' }> {
+export async function postAlCorral(saveId: string, npcSlug: string): Promise<{ ganadoId: string; buildingId: string; sexo: 'M' | 'F'; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/al-corral`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

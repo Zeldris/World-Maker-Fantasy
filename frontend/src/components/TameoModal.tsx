@@ -11,12 +11,15 @@ const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'intelige
 interface TameoModalProps {
   saveId: string
   pendiente: TameoPendiente
-  onConfirmado: () => void
+  /// `aviso`: lo que el backend cuenta de lo ocurrido (P349: «El Múrgol entra en los Corrales del Ganadero.»).
+  onConfirmado: (aviso?: string) => void
   onSoltado: () => void
   onCancel: () => void
   /// DAD-4 (hito 0.1) — nombre real del personaje en su lado de la tirada (sin él, "Tú").
   characterName?: string
 }
+
+const MOTIVO_SIN_CORRAL = 'Construye un Corral del Ganadero'
 
 /// Tameo/persuasión (Grupo 3 § Compañeros y supervivencia, 2026-08-25, docs/rpgtarkor/
 /// companeros-y-supervivencia.md § 2/3) — elegir un atributo propio, tirada opuesta real contra el
@@ -32,6 +35,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
   const { error, runCatchingError } = useSubmitError()
 
   const umbralCompletado = pendiente.felicidad >= pendiente.umbral
+  const sinCorral = pendiente.hayCorral === false
 
   async function handleIntentar(attribute: Attribute) {
     setBusy(true)
@@ -68,7 +72,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
       setBusy(false)
       return
     }
-    onConfirmado()
+    onConfirmado(ok.aviso)
   }
 
   async function handleSoltar() {
@@ -95,9 +99,19 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
               {busy ? 'Confirmando...' : 'Confirmar compañero'}
             </button>
             {pendiente.alCorral && (
-              <button type="button" onClick={handleAlCorral} disabled={busy} className={confirmButtonClasses('accent')}>
-                🐑 Al corral
-              </button>
+              <>
+                {/* P347: sin Corral del Ganadero no se ofrece; el motivo se ve, no solo en el tooltip. */}
+                <button
+                  type="button"
+                  onClick={handleAlCorral}
+                  disabled={busy || sinCorral}
+                  title={sinCorral ? MOTIVO_SIN_CORRAL : undefined}
+                  className={confirmButtonClasses('accent')}
+                >
+                  🐑 Al corral
+                </button>
+                {sinCorral && <span className="text-2xs text-wood-400">{MOTIVO_SIN_CORRAL}</span>}
+              </>
             )}
           </>
         )

@@ -7,13 +7,13 @@ import { inventoryCapacityFor, totalInventoryUnits } from '../../services/invent
 import type { AttributeBlock, Attribute } from '../../services/dice.js';
 import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../services/construction.js';
 import { COCINA_RECIPE_KEYS } from '../../services/kingdomTick.js';
-import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
+import { avisarEnReino, cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, requisitosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
 import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
 import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
-import { meterEnCorral } from '../../services/cronista/ganadoReino.js';
+import { corralesDelReino, meterEnCorral } from '../../services/cronista/ganadoReino.js';
 import { pasaAComidaDelReino } from '../../services/crafting.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
@@ -397,6 +397,8 @@ export async function companerosRoutes(app: FastifyInstance) {
     );
     const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
     const npcById = new Map(npcs.map((n) => [n.id, n]));
+    // P347: «Al corral» solo se ofrece con un Corral del Ganadero en pie (el mismo filtro que `meterEnCorral`).
+    const hayCorral = npcs.some((n) => n.ataqueNatural !== null && esGanado(n.slug)) && (await corralesDelReino(prisma, save.id)).length > 0;
 
     const pendientes = states
       .map((state) => {
@@ -415,6 +417,7 @@ export async function companerosRoutes(app: FastifyInstance) {
           enJaula: state.capturaJaulaBuildingId !== null,
           // CR-55 (Q3): el ganado puede ir al corral en vez de ser compañero.
           alCorral: esFauna && esGanado(npc.slug),
+          hayCorral,
         };
       })
       .filter((p): p is NonNullable<typeof p> => !!p);
@@ -572,11 +575,15 @@ export async function companerosRoutes(app: FastifyInstance) {
         if (await tx.companion.count({ where: { saveId: save.id, sourceSlug: npc.slug } })) return { ok: false as const, codigo: 400, motivo: 'Ese animal ya es tu compañero.' };
         if (state.capturaFelicidad < umbral) return { ok: false as const, codigo: 400, motivo: `Todavía no ha ganado suficiente confianza (${state.capturaFelicidad}/${umbral}).` };
         const metido = await meterEnCorral(tx, save.id, { slug: npc.slug, faunaCategoria: npc.faunaCategoria }, save.worldState?.fictionalMinutes ?? 0, Math.random, request.body?.buildingId);
-        if (metido.ok) await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
-        return metido;
+        if (!metido.ok) return metido;
+        await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
+        // P349: el aviso para la pantalla y su línea en el diario (canal Reino), que antes no dejaba rastro.
+        const aviso = `El ${npc.name} entra en los Corrales del Ganadero.`;
+        await avisarEnReino(tx, save.id, aviso, save.worldState?.fictionalMinutes ?? 0);
+        return { ...metido, aviso };
       });
       if (!r.ok) return reply.status('codigo' in r ? r.codigo : 409).send({ error: r.motivo });
-      return { ganadoId: r.ganadoId, buildingId: r.buildingId, sexo: r.sexo };
+      return { ganadoId: r.ganadoId, buildingId: r.buildingId, sexo: r.sexo, aviso: r.aviso };
     },
   );
 
