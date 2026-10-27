@@ -556,7 +556,7 @@ async function calcularEnganchesRonda({
   jugadoraTargetId,
   objetivoCapitanPrevio = null,
   eleccionPorCita = false,
-}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean; ordenCapitan: OrdenCapitan | null }> {
+}: CalcularEnganchesRondaParams): Promise<{ enganches: Map<string, string | null>; esperandoJugadora: boolean; ordenCapitan: OrdenCapitan | null; dueloPorSuEleccion: boolean }> {
   const datosPorParticipante = new Map<string, DatosCombatiente | null>();
   await Promise.all(
     encounter.participantes.map(async (p) => {
@@ -655,7 +655,12 @@ async function calcularEnganchesRonda({
     capitan && objetivoCapitan
       ? { capitanId: capitan.id, objetivoId: objetivoCapitan, capitan: datosPorParticipante.get(capitan.id)?.nombre ?? '', objetivo: datosPorParticipante.get(objetivoCapitan)?.nombre ?? '' }
       : null;
-  return { enganches, esperandoJugadora, ordenCapitan };
+  // El duelo de la jugadora sale de su propia elección: es mutuo con el rival que ella eligió y, en 1 contra varios,
+  // solo cuenta una cita real (si no, es el del primero que la reclamó). Lo usa el texto «te ha elegido» / «has elegido».
+  const dueloPorSuEleccion =
+    jugadoraId !== null && jugadoraTargetId !== null && enganches.get(jugadoraId) === jugadoraTargetId && enganches.get(jugadoraTargetId) === jugadoraId &&
+    (eleccionPorCita || !esUnoContraVarios(combatientes, jugadoraId));
+  return { enganches, esperandoJugadora, ordenCapitan, dueloPorSuEleccion };
 }
 
 interface EscribirCondicionYEnergiaParams {
@@ -2384,6 +2389,25 @@ interface AvanzarYComprobarFinParams {
   weaponNamesPorDefecto: string[];
 }
 
+/// Descuenta una ronda a OCULTACION, EXPULSAR, PROVOCACION y MARCAR (los efectos que `calcularEnganchesRonda` lee para
+/// decidir el enganche), una vez calculado el de la ronda nueva. `participantes` son las filas SIN descontar.
+async function descontarRondasDeEfectosDeEnganche(
+  tx: Prisma.TransactionClient,
+  participantes: { id: string; ocultoPorRondas: number | null; expulsadoPorRondas: number | null; provocadoPorRondas: number | null; marcaObjetivoRondas: number | null }[],
+): Promise<void> {
+  const mayorQueCero = (n: number | null): n is number => n != null && n > 0;
+  await Promise.all(
+    participantes.flatMap((p) => {
+      const data: Prisma.CombatParticipantUpdateInput = {};
+      if (mayorQueCero(p.ocultoPorRondas)) data.ocultoPorRondas = p.ocultoPorRondas - 1;
+      if (mayorQueCero(p.expulsadoPorRondas)) data.expulsadoPorRondas = p.expulsadoPorRondas - 1;
+      if (mayorQueCero(p.provocadoPorRondas)) data.provocadoPorRondas = p.provocadoPorRondas - 1;
+      if (mayorQueCero(p.marcaObjetivoRondas)) data.marcaObjetivoRondas = p.marcaObjetivoRondas - 1;
+      return Object.keys(data).length ? [tx.combatParticipant.update({ where: { id: p.id }, data })] : [];
+    }),
+  );
+}
+
 async function avanzarYComprobarFin({
   tx,
   worldId,
@@ -2461,13 +2485,6 @@ async function avanzarYComprobarFin({
       .filter((p) => p.controladoPorRondas != null && p.controladoPorRondas > 0)
       .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { controladoPorRondas: p.controladoPorRondas! - 1 } })),
   );
-  // OCULTACION real (Fase 3 § 3c, 2026-08-27) — mismo criterio de orden que CONTROL: la ronda
-  // nueva ya calculó su enganche (arriba) respetando quién estaba oculto ANTES de este decremento.
-  await Promise.all(
-    participantesFrescos
-      .filter((p) => p.ocultoPorRondas != null && p.ocultoPorRondas > 0)
-      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { ocultoPorRondas: p.ocultoPorRondas! - 1 } })),
-  );
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — mismo criterio de orden que CONTROL/OCULTACION: un
   // turno de duración menos por ronda que cruza. Solo tótems TODAVÍA vivos (`invocacionVidaRestante
   // > 0` — uno ya destruido a mitad de ronda por un golpe normal no "ataca" ni decrementa más,
@@ -2487,30 +2504,11 @@ async function avanzarYComprobarFin({
       tx.combatParticipant.update({ where: { id: p.id }, data: { invocacionRondasRestantes: Math.max(0, (p.invocacionRondasRestantes ?? 0) - 1) } }),
     ),
   );
-  // EXPULSAR real (Fase 3 § 3e, 2026-08-27) — mismo criterio de orden que CONTROL/OCULTACION: la
-  // ronda nueva ya calculó su enganche (arriba) respetando quién estaba expulsado ANTES de este
-  // decremento.
-  await Promise.all(
-    participantesFrescos
-      .filter((p) => p.expulsadoPorRondas != null && p.expulsadoPorRondas > 0)
-      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { expulsadoPorRondas: p.expulsadoPorRondas! - 1 } })),
-  );
-  // PROVOCACION real (2026-09-14) — mismo criterio de orden que CONTROL/OCULTACION/EXPULSAR: la
-  // ronda nueva ya calculó su enganche (arriba) respetando quién estaba provocado ANTES de este
-  // decremento (`calcularEnganchesRonda` lee `provocadoPorRondas` de `participantesFrescos`, que en
-  // este punto todavía no se ha tocado esta ronda).
-  await Promise.all(
-    participantesFrescos
-      .filter((p) => p.provocadoPorRondas != null && p.provocadoPorRondas > 0)
-      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { provocadoPorRondas: p.provocadoPorRondas! - 1 } })),
-  );
-  // MARCAR real (2026-09-14) — mismo criterio de orden que CONTROL/OCULTACION/EXPULSAR/PROVOCACION:
-  // la ronda nueva ya calculó su enganche (arriba) respetando la marca ANTES de este decremento.
-  await Promise.all(
-    participantesFrescos
-      .filter((p) => p.marcaObjetivoRondas != null && p.marcaObjetivoRondas > 0)
-      .map((p) => tx.combatParticipant.update({ where: { id: p.id }, data: { marcaObjetivoRondas: p.marcaObjetivoRondas! - 1 } })),
-  );
+  // OCULTACION, EXPULSAR, PROVOCACION y MARCAR: un turno de duración menos por ronda que cruza, siempre DESPUÉS de
+  // calcular el enganche de la ronda nueva (que los respeta tal como estaban). Si la ronda espera la cita de la
+  // jugadora, el descuento lo hace `fijarEleccionRondaJugador` tras recalcular con ellos intactos (P353): descontar
+  // aquí y recalcular luego perdía la 2.ª ronda de una provocación y citaba a un oculto en su última ronda.
+  if (!esperandoJugadora) await descontarRondasDeEfectosDeEnganche(tx, participantesFrescos);
   // AREA real, variantes defensiva/persistente (2026-09-14) — mismo criterio de orden que el resto:
   // cualquier redirección/refuerzo de intercambios de esta ronda ya se resolvió con el valor previo
   // al decremento.
@@ -2560,11 +2558,11 @@ export async function fijarEleccionRondaJugador({
   jugadoraTargetId,
   weaponNamesPorDefecto = [],
   citaValida = true,
-}: FijarEleccionRondaJugadorParams): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+}: FijarEleccionRondaJugadorParams): Promise<{ dueloPorSuEleccion: boolean }> {
+  return prisma.$transaction(async (tx) => {
     const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
-    if (!encounter.esperandoEleccionJugadora) return;
-    const { enganches, ordenCapitan } = await calcularEnganchesRonda({
+    if (!encounter.esperandoEleccionJugadora) return { dueloPorSuEleccion: false };
+    const { enganches, ordenCapitan, dueloPorSuEleccion } = await calcularEnganchesRonda({
       tx,
       worldId,
       saveId,
@@ -2579,6 +2577,10 @@ export async function fijarEleccionRondaJugador({
       where: { id: encounterId },
       data: { esperandoEleccionJugadora: false, capitanId: ordenCapitan?.capitanId ?? null, objetivoCapitanId: ordenCapitan?.objetivoId ?? null },
     });
+    // Los contadores que `avanzarYComprobarFin` dejó sin descontar al cruzar la ronda (ver allí): con el enganche ya
+    // calculado respetándolos, se descuentan ahora. En la ronda 1 (sin contadores) no hace nada.
+    await descontarRondasDeEfectosDeEnganche(tx, encounter.participantes);
+    return { dueloPorSuEleccion };
   });
 }
 
@@ -2617,15 +2619,19 @@ export async function enfrentamientoDeLaJugadora(
   saveId: string,
   encounterId: string,
 ): Promise<{ duelo: string; dePaso: string[]; rivales: { id: string; npcId: string }[] } | null> {
+  // Del encuentro de ESTA partida; y mientras la ronda espera la cita de la jugadora (`esperandoEleccionJugadora`) los
+  // enganches guardados son provisionales (en 1 contra varios, el del primero que la reclamó): no hay nada que aclarar.
+  const encuentro = await db.combatEncounter.findFirst({ where: { id: encounterId, saveId }, select: { esperandoEleccionJugadora: true } });
+  if (!encuentro || encuentro.esperandoEleccionJugadora) return null;
   const participantes = await db.combatParticipant.findMany({ where: { encounterId } });
   const jugadora = participantes.find((p) => p.tipo === 'JUGADOR');
   if (!jugadora?.objetivoActualId) return null;
   const rivalesNpc = participantes.filter((p) => p.bando !== jugadora.bando && p.tipo === 'NPC' && p.npcId && !p.huido);
   const sueltos = rivalesNpc.filter((p) => p.condicionFisicaGrupo === null).map((p) => p.npcId!);
-  const estados = sueltos.length ? await db.npcState.findMany({ where: { saveId, npcId: { in: sueltos } }, select: { npcId: true, condicionFisica: true } }) : [];
-  const condicionSuelta = new Map(estados.map((e) => [e.npcId, e.condicionFisica]));
+  const estados = sueltos.length ? await db.npcState.findMany({ where: { saveId, npcId: { in: sueltos } }, select: { npcId: true, scope: true, condicionFisica: true } }) : [];
+  const condicionSuelta = new Map(estados.map((e) => [`${e.npcId}|${e.scope}`, e.condicionFisica]));
   const vivos = rivalesNpc.filter((p) => {
-    const c = p.condicionFisicaGrupo ?? condicionSuelta.get(p.npcId!) ?? 'ILESO';
+    const c = p.condicionFisicaGrupo ?? condicionSuelta.get(`${p.npcId}|${p.npcScope}`) ?? 'ILESO';
     return c !== 'CONVALECIENTE' && c !== 'MUERTO';
   });
   if (vivos.length < 2) return null;

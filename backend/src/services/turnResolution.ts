@@ -4657,8 +4657,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (targetParticipantId) {
         // P353 (regla B): en 1 contra varios solo una cita real gana el duelo; el primer vivo por defecto no.
         const citaValida = resolverCitaPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId) !== undefined;
-        await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId, citaValida });
-        eleccionPropiaDeLaJugadora = citaValida;
+        eleccionPropiaDeLaJugadora = (await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId, citaValida })).dueloPorSuEleccion;
       }
     }
     // P353/P356: con varios rivales, la ronda dice con quién se enfrenta de verdad y quién la golpea de paso.

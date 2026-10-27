@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
-import { abrirTurnoJugadora, iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador, resolverTurnosAutonomosHastaJugadora } from './combateMultipleOrquestacion.js';
+import { abrirTurnoJugadora, iniciarCombatEncounter, resolverTurnoAutonomo, resolverTurnoJugador, fijarEleccionRondaJugador, resolverTurnosAutonomosHastaJugadora, marcasDeEnfrentamiento, textoEnfrentamientoRonda, enfrentamientoDeLaJugadora } from './combateMultipleOrquestacion.js';
 import type { HabilidadParaIntercambio } from './combateMultiple.js';
 import { parseActiveEffects, type ActiveEffect } from './activeEffects.js';
 
@@ -2816,6 +2816,9 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
       if (encounterActual.ronda > rondaInicial) break;
       await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
     }
+    // P353: la ronda nueva espera la elección de la jugadora y la marca se descuenta al fijarla (no al cruzar), para que
+    // el enganche definitivo la vea entera.
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: enemigoMarcadoP.id });
     const companionTrasRonda = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: companionP.id } });
     expect(companionTrasRonda.objetivoActualId).toBe(enemigoMarcadoP.id);
     expect(companionTrasRonda.marcaObjetivoRondas).toBeLessThan(3);
@@ -3244,4 +3247,140 @@ describe('Golpe no decisivo ("golpe_normal") contra un miembro de grupo SÍ baja
     // que consultar NpcState directamente (en vez de GET /saves/:id) da un falso "Ileso" engañoso.
     expect(npcStateCompartido?.condicionFisica ?? 'ILESO').toBe('ILESO');
   }, 30_000);
+});
+
+// P353 (regla B) — arreglo de la revisión de 263a46f/82566d6. En 1 contra varios la ronda espera la cita de la jugadora
+// tras cada cruce, y `fijarEleccionRondaJugador` recalcula el enganche: los contadores de ocultación/expulsión/
+// provocación/marca tienen que seguir intactos hasta entonces (el descuento lo hace fijar), y el panel no puede
+// marcar un duelo provisional mientras la ronda espera su cita.
+describe('1 contra varios: la espera de la cita (P353, regla B) respeta los efectos de la ronda y no marca duelos provisionales', () => {
+  let saveId: string;
+  let worldId: string;
+  let npcId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    worldId = world.id;
+    npcId = (await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } })).id;
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId,
+        characterName: 'Gorhorn de prueba (1 contra varios, cita)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+  });
+
+  afterAll(async () => {
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.npcState.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  /// Jugadora + dos rivales con orden fijo [e2, jugadora, e1] (y el aliado tras la jugadora si hay), sin esperar nada.
+  async function unoContraDos(extra: { aliado?: boolean } = {}) {
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        ...(extra.aliado ? [{ bando: 'JUGADOR' as const, tipo: 'NPC' as const, npcId, npcScope: `aliado-${saveId}`, destreza: 500, inteligencia: 4 }] : []),
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId, npcScope: `e2-${saveId}`, destreza: 100, inteligencia: 4 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId, npcScope: `e1-${saveId}`, destreza: 1, inteligencia: 4 },
+      ]),
+    );
+    const participantes = await prisma.combatParticipant.findMany({ where: { encounterId } });
+    const jugadora = participantes.find((p) => p.tipo === 'JUGADOR')!;
+    const aliado = participantes.find((p) => p.bando === 'JUGADOR' && p.tipo === 'NPC') ?? null;
+    const e2 = participantes.find((p) => p.npcScope === `e2-${saveId}`)!;
+    const e1 = participantes.find((p) => p.npcScope === `e1-${saveId}`)!;
+    await prisma.combatEncounter.update({
+      where: { id: encounterId },
+      data: { ordenIniciativa: [e2.id, jugadora.id, ...(aliado ? [aliado.id] : []), e1.id], turnoActual: 0, esperandoEleccionJugadora: false },
+    });
+    return { encounterId, jugadora, aliado, e1, e2 };
+  }
+
+  /// Cruza una ronda: el último de la cola (un rival) pasa su turno sin atacar y `avanzarYComprobarFin` calcula la ronda nueva.
+  async function cruzarRonda(encounterId: string, ultimoId: string) {
+    const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    await prisma.combatParticipant.update({ where: { id: ultimoId }, data: { objetivoActualId: null } });
+    await prisma.combatEncounter.update({ where: { id: encounterId }, data: { turnoActual: encounter.ordenIniciativa.length - 1 } });
+    await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto: [], narrarFn: dobleNarracionRapida });
+  }
+
+  const fresco = (id: string) => prisma.combatParticipant.findUniqueOrThrow({ where: { id } });
+
+  it('una provocación sobre la jugadora dura sus 2 rondas aunque cada ronda pase por su cita', async () => {
+    const { encounterId, jugadora, e1, e2 } = await unoContraDos();
+    // Provocada por e2 (PROVOCACION_RONDAS = 2): en las rondas 2 y 3 su cita a e1 no manda y el duelo es con e2.
+    await prisma.combatParticipant.update({ where: { id: jugadora.id }, data: { provocadoPorRondas: 2, provocadoPorId: e2.id } });
+
+    await cruzarRonda(encounterId, e1.id);
+    expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } })).esperandoEleccionJugadora).toBe(true);
+    expect((await fresco(jugadora.id)).provocadoPorRondas).toBe(2); // sin descontar hasta que fije su cita
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id });
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e2.id); // ronda 2
+    expect((await fresco(jugadora.id)).provocadoPorRondas).toBe(1);
+
+    await cruzarRonda(encounterId, e1.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id });
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e2.id); // ronda 3: la 2.ª ronda de la provocación (se perdía)
+    expect((await fresco(jugadora.id)).provocadoPorRondas).toBe(0);
+
+    await cruzarRonda(encounterId, e1.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id });
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e1.id); // ronda 4: ya libre, su cita es su duelo
+    expect((await fresco(e1.id)).objetivoActualId).toBe(jugadora.id);
+  });
+
+  it('un rival oculto en la ronda en que se descuenta no se puede citar como duelo, y el descuento se hace al fijar', async () => {
+    const { encounterId, jugadora, e1, e2 } = await unoContraDos();
+    await prisma.combatParticipant.update({ where: { id: e1.id }, data: { ocultoPorRondas: 1 } });
+
+    await cruzarRonda(encounterId, e1.id);
+    expect((await fresco(e1.id)).ocultoPorRondas).toBe(1);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id });
+    // Oculto en esta ronda: la cita no vale y el duelo es el de e2 (el primero que la reclamó).
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e2.id);
+    expect((await fresco(e2.id)).objetivoActualId).toBe(jugadora.id);
+    expect((await fresco(e1.id)).ocultoPorRondas).toBe(0);
+
+    await cruzarRonda(encounterId, e1.id);
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id });
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e1.id); // ya visible: su cita gana el duelo
+    expect((await fresco(e1.id)).objetivoActualId).toBe(jugadora.id);
+  });
+
+  it('mientras la ronda espera su cita no hay duelo que marcar (ni en el panel ni en el texto); al fijar, sí', async () => {
+    const { encounterId, jugadora, e1, e2 } = await unoContraDos();
+    await cruzarRonda(encounterId, e1.id);
+    // El enganche guardado es el provisional: e2 la reclamó y sería «su duelo».
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e2.id);
+    expect((await marcasDeEnfrentamiento(prisma, saveId, encounterId)).size).toBe(0);
+    expect(await textoEnfrentamientoRonda({ db: prisma, saveId, encounterId, eligio: false })).toBeNull();
+    // De otra partida no se ve nada.
+    expect(await enfrentamientoDeLaJugadora(prisma, 'otra-partida', encounterId)).toBeNull();
+
+    await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id });
+    const marcas = await marcasDeEnfrentamiento(prisma, saveId, encounterId);
+    expect(marcas.get(e1.id)).toBe('duelo');
+    expect(marcas.get(e2.id)).toBe('de-paso');
+  });
+
+  it('con aliados y sin cita, el duelo con el primer rival sale de su elección (eligio) salvo que la reclamen antes', async () => {
+    const { encounterId, jugadora, aliado, e1, e2 } = await unoContraDos({ aliado: true });
+    // Los dos rivales, provocados por el aliado, se lo piden a él: nadie reclama a la jugadora y ella elige a e1.
+    await prisma.combatParticipant.updateMany({ where: { id: { in: [e1.id, e2.id] } }, data: { provocadoPorRondas: 2, provocadoPorId: aliado!.id } });
+    await prisma.combatEncounter.update({ where: { id: encounterId }, data: { esperandoEleccionJugadora: true } });
+    const r = await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: e1.id, citaValida: false });
+    expect((await fresco(jugadora.id)).objetivoActualId).toBe(e1.id);
+    expect((await fresco(e1.id)).objetivoActualId).toBe(jugadora.id);
+    expect(r.dueloPorSuEleccion).toBe(true);
+  });
 });
