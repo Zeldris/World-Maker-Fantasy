@@ -36,16 +36,36 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 | F4 | **Un rasgo pequeño necesita sitio en la imagen**: a 512 px de ancho del sujeto, unos pies o unos ojos no se pueden juzgar. Se pide «clearly visible» y se juzga en un recorte o a tamaño final. | 🔬 | r14: los pies de ave del cuernahoja no se leen a 512 |
 | F5 | **Para forma rara, plantilla de boceto** como `--init-img` a 0,95-0,97 con `strength_as_noise_level=true`; por debajo de ~0,92 el resultado sale plano como el dibujo. **El boceto manda sobre el prompt**: si dibuja la cabeza de perfil, el prompt de tres cuartos no la gira. | ✅ | `IMG-19b` (escalera 0,75-0,97) y bocetos v2 |
 | F6 | **El ancla se nombra una vez, con su diferencia** («only gaunter and wilder»); si no, el modelo pinta el animal real (zorro, carnero). | ✅ | r12 |
+| F6b | **El ancla se elige por silueta, porque gana a su diferencia**: «only thicker», «only with a heavier head» o «only far rounder» casi no mueven la forma. Sirve el animal que ya tiene la silueta de la referencia; si lo que define a la criatura es justo la diferencia, se busca otra ancla que la tenga o se describe el plan corporal sin ancla. | ✅ (lo que falla) / 🔬 (el remedio) | r15: correcaminos acierta; black bass, rinoceronte y rana toro salen tal cual |
+| F7 | **Una parte no se compara con otro animal**: el ancla de una parte contagia al cuerpo entero. La parte se describe con palabras de forma y material. | ✅ | r15: «como una cochinilla» hace cochinilla el escorpión; placas blancas en la cabeza vuelven el águila un águila calva |
+| F8 | **Un material no se compara con un objeto**: se pinta el objeto encima, como un disfraz. Se describe su forma y textura y que crece de la piel («irregular knobbly bone plates with short spikes, growing out of the hide»). | 🔬 | r15: «plated like the shell of an armadillo» → losas planas sobre un rinoceronte |
+| F9 | **Las cuentas no se cumplen por prompt**: si el número importa (placas, ojos, puntas), va en el boceto (F5, `IMG-24`); en el prompt, «a row of», «many», sin número. | ✅ | r15: 7 placas, 4 ojos y lengua en 3 puntas; ninguna sale |
 
 ## 3. Pautas de pose y composición
 
 | # | Pauta | Estado | Evidencia |
 |---|---|---|---|
-| P1 | **Cuerpo de perfil, cabeza a tres cuartos hacia quien mira**, dicho explícito: «both eyes and both ears showing». El perfil da la silueta legible, y los tres cuartos dan profundidad y presencia. | ✅ | Banners GPT del aullador y del cuernahoja; guías de diseño de criaturas (decisión del 2026-10-27) |
+| P1 | **La pose sale de la referencia de su plan corporal** (tabla de abajo). En el cuadrúpedo, cuerpo de perfil y cabeza a tres cuartos, dicho explícito: «both eyes and both ears showing»; el perfil da la silueta legible y los tres cuartos, presencia. | ✅ | Banners GPT; guías de diseño de criaturas (decisión del 2026-10-27); r15 |
 | P2 | **La manada no se pide en el prompt**: el modelo pone otra especie (hienas, ciervos). Se monta con copias del sujeto (`montar.sh`), con escala, volteo, oscurecido y bruma por copia. | ✅ | r12, `IMG-19c` |
 | P3 | **Composición por planos**: plancha sin sujeto + sujeto sobre verde + montaje + armonización. Separa lo que el modelo mezcla mal (fondo y criatura). | ✅ | `IMG-19c` |
 | P4 | **El fondo verde no sale croma**: «chroma-key green» da un verde de estudio apagado y en degradado. Se recorta por dominancia del verde (`UMBRAL`=12 en `montar.sh`), no por el color de la esquina. | ✅ | r14 |
 | P5 | **La luz del sujeto es la de la plancha**: el prompt del sujeto nombra la dirección («daylight from the left»), para que el montaje no se vea pegado. | ✅ | r14 |
+| P6 | **El fondo del sujeto, de un color que el sujeto no tenga**: con criaturas verdes el recorte por dominancia del verde las agujerea. Verde para lo demás; magenta (recorte por dominancia de rojo+azul) para lo verde. `montar.sh` necesita el color de fondo como parámetro. | ✅ (el fallo) / 🔬 (magenta) | r15: pez y serpiente con agujeros (`generated/banco/r15-recorte-verdes.png`) |
+| P7 | **Las formas altas no caben en 512x192** (la S de una serpiente, un cuello alzado): el sujeto se genera en un lienzo más alto y se escala en el montaje. Las alas abiertas de frente sí caben. | 🔬 | r15: morvasa aplastada; cruzavientos cabe |
+| P8 | **La dirección del sujeto no se controla por prompt** («flying to the left» sale de frente); se voltea en el montaje (`montar.sh` ya voltea copias). | ✅ (cuadrúpedos) / 🔬 | r15: cruzavientos |
+
+**Pose por plan corporal** (de los banners de GPT, el estándar de la casa; vista lateral del pez, convención de la
+ilustración científica):
+
+| Plan | Pose | Estado |
+|---|---|---|
+| Cuadrúpedo (corredor, pesado, pequeño) | Cuerpo de perfil, cabeza a tres cuartos, los dos ojos | ✅ aullador, cuernahoja, nuente |
+| Ave corredora | Todo de perfil, también la cabeza | ✅ corretolvas |
+| Ave en vuelo | Alas abiertas y levantadas, de frente o a tres cuartos; el cuerpo, corto | 🔬 cruzavientos (cabe; la dirección, P8) |
+| Pez | Perfil lateral, flotando | ✅ jusha |
+| Serpiente | Enroscada, el tercio delantero levantado en S, cabeza a tres cuartos; lienzo alto (P7) | 🔬 morvasa |
+| Artrópodo | Perfil bajo o tres cuartos desde delante; «all eyes visible» en vez de «both eyes» | 🔬 espina-del-viento |
+| Anfibio | Sentado, de perfil, cabeza a tres cuartos | ✅ guchapo |
 
 ## 4. Receta
 
@@ -65,7 +85,9 @@ siempre en una rejilla lado a lado (`medir/rejilla.sh`):
 
 1. **Color**: `medir.sh <img> <tipo> <momento>`; mediana del EMD Cb ≲ 6 y Cr ≲ 7,5, y falla por encima de 11,4 / 13,5
    (`estilo/gradacion.json`). YAVG y SATAVG, dentro de la ventana del momento.
-2. **Forma**: lista de comprobación con una nota por punto (sí / parcial / no):
+2. **Forma**: primero, **se lee como** el elemento de la referencia, como el ancla o como otro animal: la nota por
+   puntos sola es generosa (r15: 5/7 y se lee como un águila calva). Después, la lista con una nota por punto
+   (sí / parcial / no):
    - proporción (cuántas veces más largo que alto, cuello, patas);
    - cada rasgo de la ficha presente, en su sitio y de su tamaño;
    - pose (P1);
@@ -76,10 +98,16 @@ siempre en una rejilla lado a lado (`medir/rejilla.sh`):
 
 Una pauta pasa a ✅ cuando acerca la nota de forma o el EMD en al menos dos elementos distintos.
 
+**Referencia frente a canon**: en lo visual manda la referencia (el banner); si contradice el texto del lore, se sigue
+la referencia y la contradicción se apunta para la revisión del lore, sin pedirla en el prompt.
+
 ## 6. Abierto (lo que mide la tanda de `IMG-21` y `IMG-22`)
 
 - Si F1 adelgaza un torso con una medida («body no thicker than its head is long») o hace falta la plantilla de boceto.
-- Si las pautas se pueden seguir **sin retoque a mano**: el prompt de cada elemento de la tanda lo escribe un agente
-  barato con esta guía y su referencia delante; lo que no sabe escribir es una pauta que falta.
+- El remedio de F6b (otra ancla o ninguna), F8 (material que crece de la piel), P6 (fondo magenta) y P7 (lienzo alto),
+  con las especies que fallaron en r15.
+- F1 sin cabeza ni patas como unidad (serpiente, pez, artrópodo): longitud del cuerpo en grosores.
+- Si las pautas se pueden seguir **sin retoque a mano**: en r15 un agente barato escribió los 8 prompts con esta guía y
+  la referencia; solo uno de los 8 se lee como su referencia, y lo que no supo escribir entró como F6b-F9 y P6-P8.
 - Otros planes corporales (ave, reptil, artrópodo, acuático…) y otros tipos (flora, lugar, objeto, raza).
 - Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`).

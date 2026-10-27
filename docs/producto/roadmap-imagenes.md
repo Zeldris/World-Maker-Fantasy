@@ -96,7 +96,10 @@ desde el panel vive en tablas que siembran.
   retoque a mano, y nota de forma y EMD junto al banner; cada fallo repetido, una pauta o un aviso de
   `prompt_ficha.py` ([plan](plan-imagenes/plan-fotorreal.md#img-21--pautas-con-la-fauna-a--m)). **M** 🚧 2026-10-27:
   aullador y cuernahoja en borrador (bocetos v2, sujetos v3 cotejados con GPT) y primera versión de `pautas.md`;
-  falta la tanda amplia.
+  r15, 8 planes corporales con prompts de un agente: solo el ave corredora se lee como su banner; pautas nuevas
+  F6b-F9 (ancla por silueta, partes y materiales sin comparar, sin cuentas) y P6-P8 (fondo magenta para lo verde,
+  lienzo alto, dirección por volteo) y pose por plan corporal ([resultados](plan-imagenes/banco/resultados.md)).
+  Falta: probar los remedios 🔬 (otra ancla, material que crece de la piel, magenta con `montar.sh`, lienzo alto).
 - **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27): 2-3 elementos con
   banner por tipo en borrador (cardo brújula y Pastos de la Deriva entre ellos); cada tipo, su sección de
   `pautas.md`. **M**
@@ -110,7 +113,11 @@ desde el panel vive en tablas que siembran.
   criatura; cuerpo de perfil y cabeza a tres cuartos. Depende de `IMG-18`; la usa `IMG-21`. **M**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
-  gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L**
+  gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
+  [`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md), con botones Aprobar, Publicar/Despublicar
+  (sustituye la imagen de GPT o la añade; despublicar la devuelve) y Rechazar/Borrar, y finales de noche solo de
+  borradores aprobados (usuaria, 2026-10-27). Antes de publicar, las referencias GPT a `referencias/images/`: hoy
+  `medir.sh` las lee de la misma carpeta a la que se publicaría.
 - **IMG-26 · El generador en un repo genérico** [A] (usuaria, 2026-10-27): el motor (scripts, montaje, gradación,
   medida, plantillas, `pautas.md`) a otro repo, lo más genérico posible (juegos o fantasía en general); lo de Tarkor
   queda como configuración de un mundo. Depende de `IMG-25`. **L**

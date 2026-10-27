@@ -263,3 +263,37 @@ banner en `generated/banco/r14-sujetos-rejilla.png`, `r14-sujetos-rejilla-v3.png
 - **Aullador v3**: la cresta estrecha y continua («no wider than a hand… unbroken from the nape») iguala al banner; el
   torso sigue más grueso que la «cinta» del banner pese a «long, slim».
 - El candidato a 1280 se paró: la usuaria reorienta el plan a pautas en borrador ([`pautas.md`](../pautas.md)).
+
+## r15 · Ocho planes corporales con prompts de un agente (`IMG-21`, 2026-10-27)
+
+`r15-sujetos.tsv`: un agente barato escribió los 8 prompts solo con [`pautas.md`](../pautas.md) v1 y el banner delante
+(sin boceto; 512x192, 8 pasos, semilla 3; ~375 s cada uno, memoria libre mínima 2,8 GB). Rejilla junto al banner en
+`generated/banco/r15-sujetos-<especie>/rejilla.png`; la lista de forma de cada especie, en
+[`r15-forma.md`](r15-forma.md). Nota de forma: sí = 1, parcial = ½, no = 0, sobre 7.
+
+| Especie | Plan | Ancla | Forma | Se lee como | Lo que falla |
+|---|---|---|---|---|---|
+| corretolvas | ave corredora | correcaminos | 6,5/7 | el banner | cresta más baja y echada atrás |
+| guchapo | anfibio redondo | rana toro | 5/7 | el ancla | rana gorda, no la masa del banner; lengua de una punta (se pidieron tres); sin venas rosas |
+| nuente | cuadrúpedo con ala | lechuza + lamprea (de partes) | 5/7 | a medias | cara de lechuza tierna, no máscara de piedra; ala de polilla sin dedos; pelaje a rayas, no a mechones |
+| cruzavientos | ave en vuelo | águila real + placas de pangolín | 5/7 | otro animal | sale un águila calva: placas blancas como plumas; cuerpo de plumas, no escamado; vuela de frente, no a la izquierda |
+| morvasa | serpiente | anaconda + cobra | 4,5/7 | a medias | la S alta no cabe en 512x192; sin cresta de púas ni cola en cuerno; venas en una raya |
+| espina-del-viento | artrópodo | escorpión + «como una cochinilla» | 4,5/7 | otro animal | el cuerpo entero sale cochinilla; ~10 placas (se pidieron 7); dos ojos (se pidieron cuatro) |
+| jusha-esmeralda | pez | black bass | 4,5/7 | el ancla | un black bass tal cual: ni hocico romo ni dientes planos ni brillo azul |
+| gargantua-de-ceniza | cuadrúpedo acorazado | rinoceronte + caparazón de armadillo | 3,5/7 | el ancla | rinoceronte con losas planas encima, como un disfraz; sin púas ni placas en la cabeza; cola de rinoceronte |
+
+- **El ancla gana a su diferencia** (F6 se queda corta): «only thicker» o «only with a heavier head» casi no cambian
+  la silueta. Acierta cuando el ancla ya es la silueta del banner (correcaminos) y falla cuando la diferencia es lo que
+  define al animal (bass, rinoceronte, rana).
+- **El ancla de una parte contagia al todo**: «como una cochinilla» para las placas hace cochinilla el cuerpo entero;
+  placas blancas en la cabeza de un águila la vuelven águila calva.
+- **Un material comparado con un objeto se pinta como objeto encima** («plated like the shell of an armadillo» → losas).
+- **Las cuentas no se cumplen**: 7 placas, 4 ojos, lengua en 3 puntas: ninguna de las tres.
+- **La pose de P1 solo vale para cuadrúpedos**: en el ave corredora y el pez el banner pone la cabeza de perfil; en el
+  nuente los dos ojos de frente sí salen. La dirección pedida en vuelo no se respeta.
+- **Las formas altas se aplastan** a 512x192 (la S de la serpiente); las alas abiertas de frente sí caben.
+- **Criaturas verdes y fondo verde**: el recorte por dominancia (P4) agujerea el pez y el cuello de la serpiente
+  (`generated/banco/r15-recorte-verdes.png`).
+- **La nota por puntos es generosa**: el cruzavientos saca 5/7 y se lee como otro animal. La columna «se lee como»
+  (el banner, el ancla, otro animal) es la que separa lo que vale.
+- **Canon frente a banner**: el agente siguió el banner en cinco especies y lo dejó dicho; es la regla que se adopta.
