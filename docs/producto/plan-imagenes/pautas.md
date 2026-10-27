@@ -1,5 +1,7 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
+**Versión:** 3 (r16; v1 hasta r14, v2 con r15).
+
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
 no sacar imágenes finales. Cada prueba deja aquí una pauta con su evidencia; la imagen final llega cuando la receta
@@ -54,11 +56,11 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 | P4 | **El fondo verde no sale croma**: «chroma-key green» da un verde de estudio apagado y en degradado. Se recorta por dominancia del verde (`UMBRAL`=12 en `montar.sh`), no por el color de la esquina. | ✅ | r14 |
 | P5 | **La luz del sujeto es la de la plancha**: el prompt del sujeto nombra la dirección («daylight from the left»), para que el montaje no se vea pegado. | ✅ | r14 |
 | P6 | **El fondo del sujeto, de un color que el sujeto no tenga**: con criaturas verdes el recorte por dominancia del verde las agujerea. Verde para lo demás, magenta para lo verde y azul para lo verde con magenta (`montar.sh` con `FONDO=verde|magenta|azul`). | ✅ | r15: pez y serpiente con agujeros (`generated/banco/r15-recorte-verdes.png`); r16: jusha en magenta y morvasa en azul, limpios (`r16-recorte-magenta-azul.png`) |
-| P7 | **Las formas altas no caben en 512x192** (la S de una serpiente, un cuello alzado): el sujeto se genera en un lienzo más alto y se escala en el montaje. Las alas abiertas de frente sí caben. | ✅ | r15: morvasa aplastada; cruzavientos cabe. r16: a 384x320 la S se alza entera |
+| P7 | **Las formas altas no caben en 512x192** (la S de una serpiente, un cuello alzado): el sujeto se genera en un lienzo más alto, 384x320, y se escala en el montaje. Las alas abiertas de frente sí caben. | ✅ | r15: morvasa aplastada; cruzavientos cabe. r16: a 384x320 la S se alza entera |
 | P8 | **La dirección del sujeto no se controla por prompt** («flying to the left» sale de frente); se voltea en el montaje (`montar.sh` ya voltea copias). | ✅ | r15: cruzavientos; r16: el gargantúa cambia de lado sin pedirlo |
 
 **Pose por plan corporal** (de los banners de GPT, el estándar de la casa; vista lateral del pez, convención de la
-ilustración científica):
+ilustración científica). El ✅ es de la pose; si la especie se lee como su banner, en [`resultados.md`](banco/resultados.md):
 
 | Plan | Pose | Estado |
 |---|---|---|
@@ -75,7 +77,7 @@ ilustración científica):
 | Paso | Valores | Coste en la Deck | Estado |
 |---|---|---|---|
 | Borrador | 640x256, 8 pasos; `--preview proj` se lee desde el paso 2 | ~7 min | ✅ `IMG-19a`: anticipa la composición de 1280x512 a 16 pasos |
-| Sujeto sobre verde | 512x192, 8 pasos; boceto a 0,95-0,97 (F5) | ~4 min | ✅ `IMG-19b` |
+| Sujeto sobre fondo liso (P6) | 512x192 (384x320 lo alto, P7), 8 pasos, dos semillas (R1); boceto a 0,95-0,97 (F5) | ~375 s por semilla | ✅ `IMG-19b`, r15, r16 |
 | Montaje | `montar.sh` (`HERO`, `MANADA`) | segundos | ✅ `IMG-19c` |
 | Armonización | `-i` del montaje a 0,5 con `strength_as_noise_level=true` (0,7 si se ve pegado); `-r` descartada (×9 y vira a azul) | ~1-2 min | ✅ `IMG-19c` |
 | Gradación | `gradar.sh <img> <momento>` (LUT por momento) | segundos | ✅ `IMG-17` |
@@ -111,7 +113,7 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
 ## 6. Abierto (lo que mide la tanda de `IMG-21` y `IMG-22`)
 
 - Si F1 adelgaza un torso con una medida («body no thicker than its head is long») o hace falta la plantilla de boceto.
-- r17: los cinco que no se leen como su banner, con F10 (colores y proporción medidos en el banner) y dos semillas
+- r17: los seis de r16, con F10 (colores y proporción medidos en el banner) y dos semillas
   (R1). Lo que siga sin salir por prompt, al boceto por plan corporal (F5, `IMG-24`): en r16 ninguna de seis se lee
   como su banner.
 - Cómo hacer que un material crezca de la piel (F8) y la pila de lazos de la serpiente.
