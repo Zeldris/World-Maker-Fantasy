@@ -9,7 +9,10 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 ## Herramientas que ya ahorran
 
 - `python3 .claude/gw/scripts/recuperar.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
-  compactación.
+  compactación. `--estado` es también la lectura de la bitácora al empezar (`QA-261`, `AGENTS.md` paso 1): `traspaso.md`
+  entero se leyó 4 veces en la sesión de `INS-31` (37k arrastrados).
+- **«Último commit en `main`» solo con la última fusión** (`QA-260`): la celda arrastraba 9 fusiones (~1,5k tokens por
+  lectura de la bitácora); las anteriores, en `git log --first-parent origin/main`.
 - `orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 
 - **Rondas de pruebas en texto** (`QA-104`): `tools/playwright-e2e/mcp/estado.js` (HUD, modales y cajones con sus

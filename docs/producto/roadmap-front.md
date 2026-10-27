@@ -1641,6 +1641,17 @@ Retro y opt-tokens de los arreglos de la puerta (usuaria, 2026-10-26; [`retro-20
 - ~~**QA-257 · Tandas de arreglos más cortas**~~ ✅ 2026-10-26: 8-11 hallazgos y 165-183 llamadas por tanda. `AGENTS.md` § `orchestrate-dealer`: como mucho 5 hallazgos y ~90 llamadas; la revisión con Opus junta dos tandas.
 - ~~**QA-258 · `marca-hallazgo.py` más claro al fallar**~~ ✅ 2026-10-26: un espacio al borde del texto viejo daba «0 filas». Lo quita y, con 0 filas, enseña el estado actual (`test_marca_hallazgo.py`).
 
+Retro y opt-tokens de `INS-31` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-31.md`](../registros/retro-2026-10-26-ins-31.md)):
+- ~~**QA-259 · Regla para las tareas del instalador**~~ ✅ 2026-10-26: la revisión marcó `INS-31` «sin hito ni bitácora» y como ruptura de la pausa de pruebas. `AGENTS.md` § «Ramas y `main`» y `REVIEW.md` § «Roadmap y documentos»: las `INS-*` viven en el plan del instalador y aquí solo llevan su fila de la bitácora.
+- ~~**QA-260 · «Último commit en `main`» solo con la última fusión**~~ ✅ 2026-10-26: la celda arrastraba 9 fusiones (~1,5k tokens en cada lectura). Las anteriores, en `git log --first-parent origin/main`.
+- ~~**QA-261 · La bitácora con `recuperar.py --estado`**~~ ✅ 2026-10-26: `traspaso.md` se leyó 4 veces con `sed` y `grep` (37k arrastrados). `AGENTS.md` paso 1 y `.claude/gw/opt-tokens.md`.
+
+Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.md`](../registros/retro-2026-10-26-ins-33.md)):
+- ~~**QA-262 · «PR listo», nunca «PR abierto» sin URL**~~ ✅ 2026-10-26: la bitácora dio por abierto un PR que no existía. `AGENTS.md`, viñeta de `QA-184`.
+- ~~**QA-263 · Regla `import/first` en el frontend**~~ ✅ 2026-10-26: un `import` tras un comentario llegó a la fase 1. `frontend/.oxlintrc.json`: `error` en `src/lib/`; `warn` en el resto (83 avisos viejos, casi todos tests con `vi.mock`).
+- ~~**QA-264 · Entrada «Modo empaquetado» en el mapa del agente**~~ ✅ 2026-10-26: `docs/mapa-agente.md` (`empaquetado.ts`, usos y tests) para `INS-34…36` y `INS-41`.
+- ~~**QA-265 · Aviso de «PR abierto» sin URL en `bitacora.py`**~~ ✅ 2026-10-26 (solo apuntada): propuesta para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

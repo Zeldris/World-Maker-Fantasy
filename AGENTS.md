@@ -10,7 +10,8 @@ la lee `.claude/gw/scripts/config.py`).
 ## Al empezar cualquier sesión
 
 1. Lee la bitácora, [`docs/registros/traspaso.md`](docs/registros/traspaso.md): rama, tarea en curso, qué falta y
-   siguiente paso.
+   siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recuperar.py --estado`; el archivo
+   entero, solo si falta algo (`QA-261`).
 2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
 3. Comprueba que el check está en verde (y los tests como dice la bitácora) antes de tocar nada: las órdenes de
    `check` en `.claude/gw.json` (`python3 .claude/gw/scripts/config.py get check`).
@@ -114,7 +115,11 @@ subagente de cada tanda), antes de la primera acción, relee
 - **El PR de una sesión local lo crea Claude en la nube** (usuaria, 2026-10-21, `QA-184`): en la Deck no hay `gh` ni
   herramienta de GitHub. Tras la fase 3, la local sube la descripción a `docs/registros/pr/<rama>.md` y deja en su
   fila de la bitácora «PR listo» con el título, en el último commit; la nube comprueba que nada va detrás de ese
-  commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión.
+  commit, pasa `revisado.sh`, crea el PR y sigue con el CI y la fusión. Una sesión sin URL de PR escribe «PR
+  listo», nunca «PR abierto» ni «en borrador»: esas palabras en la bitácora solo van con la URL del PR (`QA-262`).
+- **Tareas del instalador (`INS-*`)** (usuaria, 2026-10-26, `QA-259`): viven en el plan de
+  [Instalador-WMF-Tarkor](https://github.com/Zeldris/Instalador-WMF-Tarkor), no en los roadmaps de WMF ni en `taskId`,
+  y no rompen la pausa de pruebas: las pide la usuaria. Aquí solo llevan su fila «Tarea en curso» con el enlace a su plan.
 - La rama de un subagente vuelve con `bash tools/qa/fusionar.sh <rama> "<mensaje>" --revisada` (no la de `.claude/gw/scripts/`): la de WMF
   resuelve sola los conflictos del registro de hallazgos (`resolver_hallazgos.py`) y pasa los tests del paquete tocado.
 

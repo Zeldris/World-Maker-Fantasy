@@ -39,9 +39,10 @@ Resto de variables:
 
 **Alternativa (Supabase remoto):** solo si algún día hace falta jugar de verdad desde varios dispositivos a la vez con la misma partida sincronizada — ver `.env.example` para la plantilla comentada. Si se usa, habilitar la extensión a mano igual (Prisma no la gestiona vía schema, ver comentario en `schema.prisma`): `CREATE EXTENSION IF NOT EXISTS vector;`.
 
-El frontend lee `VITE_API_URL` (variable de entorno de Vite, `frontend/src/lib/api.ts`) con fallback
-a `http://localhost:3001` si no se define — apuntar a un backend en otra máquina ya no exige tocar
-código, solo definir `VITE_API_URL` en un `.env` del frontend antes de arrancar.
+El frontend toma la URL del backend con `apiBaseUrl()` (`frontend/src/lib/api.ts`, INS-31), en este orden:
+`window.__TARKOR__.apiUrl` (lo inyecta la app de escritorio, Tauri, con el puerto que elige al arrancar),
+`VITE_API_URL` (variable de entorno de Vite) y `http://localhost:3001` — apuntar a un backend en otra
+máquina no exige tocar código, solo definir `VITE_API_URL` en un `.env` del frontend antes de arrancar.
 
 ## 3bis. Postgres local vía podman (por defecto desde 2026-07-30)
 

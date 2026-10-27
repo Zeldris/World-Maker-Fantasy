@@ -33,6 +33,10 @@ su postgres -c "psql -tAc \"select 1 from pg_roles where rolname='tarkor'\"" | g
   || su postgres -c "psql -c \"create user tarkor with password 'tarkor' superuser\"" >/dev/null
 su postgres -c "psql -tAc \"select 1 from pg_database where datname='tarkor'\"" | grep -q 1 \
   || su postgres -c "psql -c 'create database tarkor owner tarkor'" >/dev/null
+# QA-266 (retro de INS-34): el contenedor puede venir sin pgvector; sin él ni el pre-push ni ci-local.sh arrancan.
+if [ ! -e /usr/share/postgresql/16/extension/vector.control ]; then
+  apt-get update -qq >/dev/null && apt-get install -y -qq postgresql-16-pgvector >/dev/null
+fi
 su postgres -c "psql -d tarkor -c 'create extension if not exists vector'" >/dev/null
 
 # Ollama simulado (lo necesitan reindex-lore y ~27 tests).
