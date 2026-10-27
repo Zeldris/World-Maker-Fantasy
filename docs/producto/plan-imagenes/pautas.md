@@ -1,6 +1,6 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
-**Versión:** 3 (r16; v1 hasta r14, v2 con r15).
+**Versión:** 3 (r16; v1 hasta r14, v2 con r15; R2 y R3 el 2026-10-27).
 
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
@@ -86,6 +86,14 @@ ilustración científica). El ✅ es de la pose; si la especie se lee como su ba
 **R1 · Una pauta se prueba en dos semillas.** Con la misma semilla, un prompt reescrito repite encuadre y pose casi
 igual (r16: jusha, guchapo y espina, como en r15); sirve para comparar un cambio pequeño, pero un remedio que no
 cambia la clase del sujeto no se ve. ✅ r16.
+
+**R2 · Parada por especie** (usuaria, 2026-10-27): una especie que no mejora en dos rondas seguidas sale del banco
+por prompt y pasa al boceto por plan corporal (`IMG-24`); no se le reescribe el prompt una tercera vez. Cada ronda
+lleva solo las especies que aún fallan (media ronda, ~40 min, se juzga el mismo día), no las seis.
+
+**R3 · Cierre de `IMG-21`**: se cierra cuando la mayoría de las especies del banco «se lee como» su banner, no todas;
+las que quedan son trabajo de `IMG-24` o de la interfaz, no del banco. El objetivo son pautas reutilizables
+([`objetivo`](plan-fotorreal.md)), no una imagen final por especie.
 
 ## 5. Criterio de parecido con la referencia
 
