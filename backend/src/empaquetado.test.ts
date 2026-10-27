@@ -24,8 +24,8 @@ async function empaquetar(empaquetado: boolean) {
     define: empaquetado ? { 'process.env.TARKOR_EMPAQUETADO': '"1"' } : {},
   });
   return {
-    ficheros: Object.keys(res.metafile.inputs).map((f) => f.replaceAll('\\', '/')),
-    codigo: res.outputFiles.map((o) => o.text).join('\n'),
+    ficheros: Object.keys(res.metafile!.inputs).map((f) => f.replaceAll('\\', '/')),
+    codigo: (res.outputFiles ?? []).map((o) => o.text).join('\n'),
   };
 }
 
