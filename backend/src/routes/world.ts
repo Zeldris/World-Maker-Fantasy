@@ -19,7 +19,7 @@ import { CONSTRUCTION_RECIPES } from '../services/construction.js';
 import { CRAFTING_RECIPES } from '../services/crafting.js';
 import { allProfessionAbilityUnlocks } from '../services/professionAbilities.js';
 import { slugify } from '../lib/slugify.js';
-import { generateImagePrompt, type ImagePromptEntityType, type ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
+import type { ImagePromptEntityType, ImagePromptSizeProfile } from '../services/imagePromptGenerator.js';
 import { ejemplosDePromptsUsados, loreContextFor } from '../services/imagePromptContext.js';
 import { imageUrlsFor, zoneMapImageUrl, iconoUrlFor } from '../lib/imageAssets.js';
 import { BERIG_RAZAS, BERIG_PERSONAJES } from '../services/berigLore.js';
@@ -813,73 +813,79 @@ export async function worldRoutes(app: FastifyInstance) {
   // sizeProfile explícito). Cacheado para siempre en ImagePrompt: si ya existe esa combinación
   // exacta, se devuelve directo sin volver a llamar a nada. seedImagePrompts.ts sigue existiendo
   // para un uso puntual por lotes, pero este endpoint es el camino principal.
-  app.post<{ Params: { slug: string }; Body: { entityType: string; entitySlug: string; sizeProfile: string; regenerate?: boolean } }>(
-    '/world/:slug/image-prompt',
-    async (request, reply) => {
-      const world = await prisma.world.findUnique({ where: { slug: request.params.slug } });
-      if (!world) {
-        return reply.status(404).send({ error: 'Mundo no encontrado' });
-      }
-
-      const { entityType, entitySlug, sizeProfile, regenerate } = request.body;
-      const errorClave = errorClaveImagePrompt(entityType, entitySlug, sizeProfile);
-      if (errorClave) {
-        return reply.status(400).send({ error: errorClave });
-      }
-
-      // Regenerar (petición explícita de la usuaria, 2026-07-22): "si le doy a regenerar vuelve a
-      // generar el prompt con la info actual de esa entrada" — se salta el caché de lectura y
-      // sobrescribe la fila existente en vez de solo crearla, para que el lore ya corregido (p.ej.
-      // una bio actualizada tras subir el arte real) se refleje en un prompt nuevo bajo el mismo
-      // entityType+entitySlug+sizeProfile, sin duplicar filas.
-      if (!regenerate) {
-        const existing = await prisma.imagePrompt.findUnique({
-          where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
-        });
-        if (existing) {
-          return { prompt: existing.prompt, provider: existing.provider, cached: true };
+  // INS-34: el build empaquetado del instalador no lleva curación ni proveedores cloud. esbuild sustituye
+  // `process.env.TARKOR_EMPAQUETADO` por "1" y pliega este `if`: la ruta no se registra (404) y el `import()` de
+  // abajo no entra en el bundle. La expresión tiene que ir literal aquí para que el plegado funcione.
+  if (process.env.TARKOR_EMPAQUETADO !== '1') {
+    app.post<{ Params: { slug: string }; Body: { entityType: string; entitySlug: string; sizeProfile: string; regenerate?: boolean } }>(
+      '/world/:slug/image-prompt',
+      async (request, reply) => {
+        const world = await prisma.world.findUnique({ where: { slug: request.params.slug } });
+        if (!world) {
+          return reply.status(404).send({ error: 'Mundo no encontrado' });
         }
-      }
 
-      const subject = await loreContextFor(world.id, entityType as ImagePromptEntityType, entitySlug);
-      if (!subject) {
-        return reply.status(404).send({ error: 'Entidad no encontrada en este mundo' });
-      }
+        const { entityType, entitySlug, sizeProfile, regenerate } = request.body;
+        const errorClave = errorClaveImagePrompt(entityType, entitySlug, sizeProfile);
+        if (errorClave) {
+          return reply.status(400).send({ error: errorClave });
+        }
 
-      // Bug real jugando en vivo (2026-09-06, "no está funcionando la generación de prompts" —
-      // el frontend solo mostraba "No se pudo generar", sin distinguir un fallo real de todos los
-      // proveedores de IA de cualquier otro error): sin este try/catch, un fallo aquí llegaba como
-      // 500 genérico de Fastify, sin `body.error` legible que el frontend pudiera mostrar.
-      // CFG-40: fuera del try, que atribuye cualquier fallo a los proveedores de IA.
-      const ejemplos = await ejemplosDePromptsUsados(world.id, entityType as ImagePromptEntityType, entitySlug, sizeProfile as ImagePromptSizeProfile);
-      let prompt: string;
-      let provider: string;
-      try {
-        ({ prompt, provider } = await generateImagePrompt(
-          entityType as ImagePromptEntityType,
-          subject.name,
-          subject.loreContext,
-          sizeProfile as ImagePromptSizeProfile,
-          // CFG-40: paisaje y luz de la región, y los prompts que la usuaria ya usó como ejemplos.
-          {
-            region: subject.region,
-            conMomento: subject.conMomento,
-            ejemplos,
-          },
-        ));
-      } catch (err) {
-        app.log.error({ err, entityType, entitySlug, sizeProfile }, '[image-prompt] todos los proveedores de IA fallaron');
-        return reply.status(502).send({ error: 'Los proveedores de generación de imágenes no respondieron — inténtalo de nuevo en unos minutos.' });
-      }
-      await prisma.imagePrompt.upsert({
-        where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
-        create: { worldId: world.id, entityType, entitySlug, sizeProfile, prompt, provider },
-        // Solo el prompt base: el usado (CFG-38) es de la usuaria y regenerar nunca lo pisa.
-        update: { prompt, provider },
-      });
-      return { prompt, provider, cached: false };
-    },
-  );
+        // Regenerar (petición explícita de la usuaria, 2026-07-22): "si le doy a regenerar vuelve a
+        // generar el prompt con la info actual de esa entrada" — se salta el caché de lectura y
+        // sobrescribe la fila existente en vez de solo crearla, para que el lore ya corregido (p.ej.
+        // una bio actualizada tras subir el arte real) se refleje en un prompt nuevo bajo el mismo
+        // entityType+entitySlug+sizeProfile, sin duplicar filas.
+        if (!regenerate) {
+          const existing = await prisma.imagePrompt.findUnique({
+            where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
+          });
+          if (existing) {
+            return { prompt: existing.prompt, provider: existing.provider, cached: true };
+          }
+        }
+
+        const subject = await loreContextFor(world.id, entityType as ImagePromptEntityType, entitySlug);
+        if (!subject) {
+          return reply.status(404).send({ error: 'Entidad no encontrada en este mundo' });
+        }
+
+        // Bug real jugando en vivo (2026-09-06, "no está funcionando la generación de prompts" —
+        // el frontend solo mostraba "No se pudo generar", sin distinguir un fallo real de todos los
+        // proveedores de IA de cualquier otro error): sin este try/catch, un fallo aquí llegaba como
+        // 500 genérico de Fastify, sin `body.error` legible que el frontend pudiera mostrar.
+        // CFG-40: fuera del try, que atribuye cualquier fallo a los proveedores de IA.
+        const ejemplos = await ejemplosDePromptsUsados(world.id, entityType as ImagePromptEntityType, entitySlug, sizeProfile as ImagePromptSizeProfile);
+        let prompt: string;
+        let provider: string;
+        try {
+          const { generateImagePrompt } = await import('../services/imagePromptGenerator.js');
+          ({ prompt, provider } = await generateImagePrompt(
+            entityType as ImagePromptEntityType,
+            subject.name,
+            subject.loreContext,
+            sizeProfile as ImagePromptSizeProfile,
+            // CFG-40: paisaje y luz de la región, y los prompts que la usuaria ya usó como ejemplos.
+            {
+              region: subject.region,
+              conMomento: subject.conMomento,
+              ejemplos,
+            },
+          ));
+        } catch (err) {
+          app.log.error({ err, entityType, entitySlug, sizeProfile }, '[image-prompt] todos los proveedores de IA fallaron');
+          return reply.status(502).send({ error: 'Los proveedores de generación de imágenes no respondieron — inténtalo de nuevo en unos minutos.' });
+        }
+        await prisma.imagePrompt.upsert({
+          where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
+          create: { worldId: world.id, entityType, entitySlug, sizeProfile, prompt, provider },
+          // Solo el prompt base: el usado (CFG-38) es de la usuaria y regenerar nunca lo pisa.
+          update: { prompt, provider },
+        });
+        return { prompt, provider, cached: false };
+      },
+    );
+  }
 
   // CFG-38 (usuaria, 2026-10-24): el prompt generado es solo la base; la usuaria lo mejora a mano y genera la
   // imagen con su versión. Se guarda aparte («prompt usado») para que quede el prompt exacto de cada imagen, y
