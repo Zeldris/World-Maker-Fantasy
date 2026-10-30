@@ -3,8 +3,11 @@
 Pregunta de la usuaria: ¿encajan los Recursive Language Models ([alexzhang13/rlm](https://github.com/alexzhang13/rlm))
 o el «Vectorless RAG» (estilo PageIndex) con nuestra IA local, o hay algo mejor? Solo análisis, sin código.
 
+**Estado: propuestas SIN REVISAR, fuera del roadmap** (usuaria, 2026-10-30); apuntadas en la bitácora,
+«Propuestas sin revisar».
+
 **Conclusión:** ni RLM ni Vectorless RAG, de momento. Lo que encaja es el peldaño 2 de la escalera del RAG
-(`QA-167`, [roadmap-front](../producto/roadmap-front.md)): búsqueda híbrida y entrada directa por entidad.
+que quedó sin hacer en `QA-167`: búsqueda híbrida y entrada directa por entidad.
 
 ## Punto de partida
 
@@ -45,7 +48,7 @@ o el «Vectorless RAG» (estilo PageIndex) con nuestra IA local, o hay algo mejo
 ## Alternativas, de más barata a más cara
 
 1. **Híbrida: BM25 + vector, mezcladas con RRF.** Ataca P251 y P272: BM25 encuentra nombres exactos. Postgres ya
-   trae `tsvector`, así que no hace falta otro servicio y la latencia casi no sube. Es el peldaño 2 de `QA-167`
+   trae `tsvector`, así que no hace falta otro servicio y la latencia casi no sube. Es el peldaño 2 que dejó `QA-167`
    ([wz-it](https://wz-it.com/en/knowledge/ki/hybrid-search-reranking/),
    [rebeccamdeprey](https://rebeccamdeprey.com/blog/hybrid-retrieval-in-practice)).
 2. **Entrada directa por entidad.** Si la acción nombra un clan, un NPC o un lugar conocido (BD o títulos de
@@ -62,5 +65,5 @@ o el «Vectorless RAG» (estilo PageIndex) con nuestra IA local, o hay algo mejo
    [graphrag-local-ollama](https://github.com/OnlyPiglet/graphrag-local-ollama)).
 
 **Recomendación:** 1 + 2 juntas, medidas con `npm run rag-eval` sobre `rag-casos.jsonl` (`P251`, `P272` como
-`debe_pasar`). Cuando se vuelva al roadmap entra como peldaño 2 de `QA-167`, o como tarea de una retro si la usuaria
-lo aprueba antes. P263 va aparte (prompt o ajuste fino).
+`debe_pasar`). Si la usuaria
+lo aprueba, entrará como tarea con su hito. P263 va aparte (prompt o ajuste fino).

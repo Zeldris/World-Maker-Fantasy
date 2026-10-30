@@ -5,6 +5,9 @@ Repo: [Donchitos/Claude-Code-Game-Studios](https://github.com/Donchitos/Claude-C
 `.claude/skills/LICENSE-mattpocock-skills`. Lo leyó un subagente con un clon superficial (no se ejecutó nada de ese
 repo), mirando los archivos clave, no las 638 piezas completas.
 
+**Estado: propuestas SIN REVISAR, fuera del roadmap** (usuaria, 2026-10-30); apuntadas en la bitácora,
+«Propuestas sin revisar».
+
 ## Qué es
 
 Una plantilla de Claude Code que monta un «estudio de juegos» para Godot, Unity y Unreal: 49 agentes en
@@ -36,5 +39,5 @@ código de juego.
 4. Ampliar el linter de skills con sus comprobaciones estáticas.
 5. Voice Profile y «verdad oculta», como propuesta de lore para Álvaro.
 
-Nada de esto se ha aplicado. Lo que la usuaria apruebe entra como tarea con hito (retro o roadmap). Las piezas
+Nada de esto se ha aplicado ni entra en el roadmap; se revisa más adelante. Las piezas
 genéricas del flujo (2, 4) encajan también como propuesta para Galivelop-workflow.

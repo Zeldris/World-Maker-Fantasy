@@ -16,7 +16,7 @@ cada commit.**
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/ins-34-backend-sin-curacion`** | Fusionada en `main` sin PR, CI local (2026-10-27, `QA-215`; retro aprobada por la usuaria): `INS-34` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md)), backend empaquetado sin curación ni cloud. Leves sin tarea: test del bundle en ESM y `esbuild` pinneado; `image-prompt` GET/PUT, variables cloud de `env.ts` y aviso de `LIVE_TEACHER_CAPTURE_ENABLED` siguen en el build. Siguiente: nada. |
 | **Tarea en curso · `claude/ins-33-frontend-sin-admin`** | Fusionada en `main` sin PR (2026-10-26, `47f6806`, `QA-215`; retro aprobada por la usuaria): `INS-33` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md), fase 3), frontend sin admin empaquetado, y retro `QA-262`…`QA-265`. Leve pendiente: rama `custom` de `CharacterSelect` inalcanzable a propósito. **Siguiente:** nada en esta rama; `INS-34`. |
-| **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Fusionada en `main` (2026-10-25, `QA-215`); retomada desde `main` el 2026-10-30. Hecho: `main` fusionado en `claude/wonderful-volta-662qt8` (`1674fc28`; ojo, `QA-266` repetido allí y en `main`) e [investigación](../ia/investigacion-2026-10-30-rag-rlm.md) de RLM y Vectorless RAG (descartados; peldaño 2 de `QA-167`). [Análisis](investigacion-2026-10-30-claude-code-game-studios.md) de `Claude-Code-Game-Studios`. **Siguiente:** la usuaria decide qué traer. |
+| **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | Fusionada en `main` (2026-10-25, `QA-215`); retomada desde `main` el 2026-10-30. Hecho: `main` fusionado en `claude/wonderful-volta-662qt8` (`1674fc28`; ojo, `QA-266` repetido allí y en `main`) e [investigación](../ia/investigacion-2026-10-30-rag-rlm.md) de RLM y Vectorless RAG (descartados; peldaño 2 de `QA-167`). [Análisis](investigacion-2026-10-30-claude-code-game-studios.md) de `Claude-Code-Game-Studios`. Todo apuntado en «Propuestas sin revisar». **Siguiente:** nada pendiente en esta rama. |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | Fusionada en `main` sin PR (2026-10-26, cuota de Actions agotada, `QA-215`; confirmado por la usuaria): arreglos de la puerta de pruebas (`QA-256`, P327) y retro `QA-257`, `QA-258`. Rama terminada. Pendiente leve: apodos de la bio y nombre visible en MiembroDeGrupo (P327), dos ocultos iguales en diario y resumen, constantes de hitos.ts, huida colgada si la apertura lanza, puerta sobre salida con coordenadas, tratado entre aliados. |
 | **Tarea en curso · `claude/pruebas-local`** | Rondas de pruebas en la Deck con Ollama real (2026-10-20; solo se apunta). Hecho: P238-P274 (graves: P240, P260); jugados UX-30, CR-21/22/23, CR-67; `/code-review`, `/opt-ai`, `/opt-tokens` y `/retro` pasados, sus propuestas aprobadas sin aplicar. Bloqueadas: CR-53/55/58/61/63/65 y CR-32/42. PR #68 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
 | **Tarea en curso · `claude/opt-ai-mejoras`** | ✅ `/opt-ai` (`QA-160`…`QA-168`): turno p50 61 → 29-35 s, primera palabra 45 → 17-19 s. `/code-review`, `/opt-tokens` y [retro](retro-2026-10-20-opt-ai-mejoras.md) hechos y aplicados (`QA-169`…`QA-175`; bench con `tools/qa/bench-ia.sh`). Tests: `tools/qa` 119 (2 de `test_host` fallan solo en el sandbox), `opt-ai` OK. PR #70 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
@@ -88,6 +88,20 @@ Lo nuevo que surja va a «Propuestas aprobadas…» (abajo) sin hito, como bande
    + oxlint en verde antes de subir; sin pasadas de juego (solo una captura si algo no se puede
    comprobar de otra forma). Las pruebas de juego, en la fase única antes de la beta (`0.8`).
    La etiqueta `v0.1.0-alpha` espera a cerrar E y F.
+
+## Propuestas sin revisar (fuera del roadmap)
+
+Apuntadas a petición de la usuaria (2026-10-30) para revisarlas más adelante: ni aprobadas ni con hito, no entran en
+el roadmap hasta que ella decida.
+
+| Propuesta | Detalle | Origen |
+|---|---|---|
+| RAG del lore: híbrida BM25 + vector y entrada directa por entidad | RLM y Vectorless RAG descartados por la latencia en la Deck; lo que ataca P251/P272 es buscar nombres exactos (`tsvector`) y meter seguro el trozo de la entidad nombrada. Después, Contextual Retrieval; reranker o `bge-m3` solo si no basta | [investigación](../ia/investigacion-2026-10-30-rag-rlm.md) (2026-10-30) |
+| Registro de entidades y cifras compartidas + script de consistencia | YAML con los números y nombres que cruzan sistemas, comprobado contra `docs/mecanicas` y `docs/producto` (como `cobertura.py`) | [Claude-Code-Game-Studios](investigacion-2026-10-30-claude-code-game-studios.md) (2026-10-30) |
+| «Sin datos, no se evalúa» en las skills de informe | Cabecera FOUND/ABSENT en `retro`, `opt-tokens`, `opt-ai`; también propuesta para Galivelop-workflow | ídem |
+| Revisión transversal de diseño antes de cerrar un hito | Contradicciones, estrategias dominantes, economía rota, deriva de pilares, todos los sistemas a la vez | ídem |
+| Linter de skills más completo | Las comprobaciones estáticas de su `skill-test`, junto a `doctor.py` y `skills-con-tests.py` | ídem |
+| Voice Profile y «verdad oculta» de cada misterio | Fichas de voz por personaje (podrían ayudar con P263) y respuesta verdadera documentada por misterio; iría a Álvaro por `propuestas-lore.md` | ídem |
 
 ## Propuestas aprobadas para el roadmap cuando acaben las pruebas
 

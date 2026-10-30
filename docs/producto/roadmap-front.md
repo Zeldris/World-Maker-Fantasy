@@ -1509,9 +1509,7 @@ turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
   ✅ 2026-10-20: prompt recortado del intento 2 y `num_ctx` 8192; ya narra la acción (15,5 s en la reproducción).
 - ~~**QA-167 · Escalera del RAG** (propuesta 5) con los casos de la ronda.~~
   ✅ 2026-10-20: peldaño 1, trozos de ~400 caracteres por título; recall@4 0,750 → 0,875. Queda fuera la pregunta doble
-  de P272 (peldaño 2, híbrida). 2026-10-30: [investigación](../ia/investigacion-2026-10-30-rag-rlm.md) de RLM y
-  Vectorless RAG (descartados por la latencia en la Deck); el peldaño 2 queda como híbrida BM25 + vector y entrada
-  directa por entidad, para cuando se vuelva al roadmap.
+  de P272 (peldaño 2, híbrida).
 - ~~**QA-168 · `keep_alive` de `clasificar`, experimento** (propuesta 8).~~
   ✅ 2026-10-20: `'5m'`; caben los tres modelos (≥1,8 GB libres), `clasificar` p50 6,9 → 2,8 s, turno p50 28,7 s.
 
