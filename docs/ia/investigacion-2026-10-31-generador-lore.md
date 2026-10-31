@@ -46,3 +46,33 @@ misiones secundarias.
 
 **Riesgo:** el 9B devuelve JSON a través de `opencode-ollama-toolcall-proxy`, y con modelos pequeños la salida
 estructurada suele fallar. Antes de decidir nada sobre B, hace falta un `prototype` que lo mida.
+
+## Añadido: AI-Novel-Writer / Pagekin (2026-10-31)
+
+Repo: [EthanYoQ/AI-Novel-Writer](https://github.com/EthanYoQ/AI-Novel-Writer), licencia **GPL-3.0** (solo ideas).
+Lo leyó un subagente con un clon superficial, sin ejecutar nada. Último commit: `59153ce`, del 2026-10-29. Versión
+1.4.0 en `package.json`; el proyecto sigue activo. Es una app de escritorio (Electron, React y SQLite) para escribir
+novelas por capítulos. Funciona con Ollama (el ejemplo usa `qwen3:14b`), pero no está pensada para modelos pequeños:
+mete todo el contexto y deja que el proveedor lo corte (su ADR-0023).
+
+Aporta poco nuevo para el agente de OpenCode:
+
+1. **Clave estable para cada aviso y una exención con motivo** (`src/shared/consistency-preflight.ts`,
+   `consistency-exemption-repository.ts`). Cada aviso del script de consistencia se identifica por un hash de
+   categoría, entidades y frase normalizada. Si Álvaro marca uno como «intencionado», deja de salir aunque cambie la
+   redacción. Es código, sin LLM. Los avisos citan su fuente y nunca bloquean.
+2. **Verificación dirigida en lugar de una revisión genérica**
+   (`docs/experiments/continuity-calibration-round01-results.md`). Por cada afirmación se pide un veredicto
+   `clear` / `conflict` / `unknown` con una cita que un script comprueba. En su prueba con 10 casos, la verificación
+   dirigida encontró 1 de los 2 errores; la revisión genérica, 0. No dio falsos positivos y respondió `unknown` cuando
+   faltaba evidencia. La muestra es pequeña, y una cita bien puesta no prueba que la inferencia sea correcta. Refina
+   la idea de «citar el canon» que ya teníamos.
+3. **Hilos abiertos con aviso de hilo dormido** (`src/shared/narrative-thread.ts`): plantado, avanzado, resuelto o
+   abandonado, con un aviso cuando un hilo lleva N propuestas sin avanzar. Para el lore sería una lista de preguntas
+   abiertas.
+4. **Evaluación con casos congelados**: las respuestas esperadas van fuera del prompt, con su hash. Sirve para medir
+   el prompt de `narrador-lore` entre versiones, al estilo de nuestro `rag-eval`.
+
+No encaja: su base de conocimiento (BM25 con vectores opcionales; nuestro agente no busca), los skills por fase (ya los
+tenemos) ni el contexto sin límite (nosotros tenemos un tope duro de 32k). Su documentación cita otros repos de
+continuidad, sin revisar: `mrigankad/Novel-OS`, `Yaemikoreal/OpenNovel` y `Nigh/show-me-the-story`.

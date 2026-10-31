@@ -106,6 +106,7 @@ el roadmap hasta que ella decida.
 | Contexto del narrador por prioridad y traza de recuperación | Trozos protegidos o recortables dentro de los 8192 tokens, estados de lore mostrado, y candidatos con puntuación por turno para depurar P251/P272 | ídem |
 | Agente de lore de OpenCode: citas del canon, script de consistencia, índice para recorrer | Cada afirmación de la propuesta cita su línea del canon (lo que no cita, «inventado»); script sin LLM de nombres, enums y cifras contra `00-nucleo.md` y el catálogo; `canon-opencode/` como árbol para el agente. Va a Álvaro | [generador de lore](../ia/investigacion-2026-10-31-generador-lore.md) (2026-10-31) |
 | Generador de lore en vivo: entidad en JSON validada por código | Para cuando se diseñe (junto a las misiones, `mundo-vivo-x4` §1 y §2.9): el LLM propone y el código valida contra el registro de entidades; estados del lore, voz y secreto de cada NPC. Antes, un `prototype` con el 9B | ídem |
+| Agente de lore: verificación dirigida, avisos con exención, hilos dormidos, evaluación congelada | Veredicto `clear`/`conflict`/`unknown` por afirmación con cita comprobada por script; clave estable por aviso y «intencionado» que no vuelve a salir; preguntas abiertas con aviso de dormidas; casos congelados para medir el prompt. Va a Álvaro | [AI-Novel-Writer](../ia/investigacion-2026-10-31-generador-lore.md#añadido-ai-novel-writer--pagekin-2026-10-31) (2026-10-31, GPL: solo ideas) |
 
 ## Propuestas aprobadas para el roadmap cuando acaben las pruebas
 
