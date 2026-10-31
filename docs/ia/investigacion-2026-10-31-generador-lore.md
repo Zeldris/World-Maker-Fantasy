@@ -76,3 +76,36 @@ Aporta poco nuevo para el agente de OpenCode:
 No encaja: su base de conocimiento (BM25 con vectores opcionales; nuestro agente no busca), los skills por fase (ya los
 tenemos) ni el contexto sin límite (nosotros tenemos un tope duro de 32k). Su documentación cita otros repos de
 continuidad, sin revisar: `mrigankad/Novel-OS`, `Yaemikoreal/OpenNovel` y `Nigh/show-me-the-story`.
+
+## Añadido: Novel-OS, OpenNovel y show-me-the-story (2026-10-31)
+
+Los tres tienen licencia MIT (confirmada en su `LICENSE`), así que se podría copiar código conservando el aviso. Lo leyó
+un subagente con un clon superficial de cada uno, sin ejecutar nada. Los tres dicen funcionar con Ollama o con una API
+compatible con OpenAI, pero ninguno está adaptado a modelos pequeños.
+
+- [mrigankad/Novel-OS](https://github.com/mrigankad/Novel-OS): Python y React, con 5 agentes. Un
+  `core/continuity_engine.py` sin LLM pasa sus avisos al prompt del guardián. Último commit: `1bd4b57`, del
+  2026-08-09; lleva unas 12 semanas parado.
+- [Yaemikoreal/OpenNovel](https://github.com/Yaemikoreal/OpenNovel): Python con LiteLLM. Guarda la memoria en Markdown,
+  en YAML y SQLite, y en vectores. `core/canon_checker.py` saca reglas del canon en Markdown y las comprueba por
+  palabras clave en chino. `core/context_assembler.py` usa una estrategia FRUGAL para contextos de menos de 32k. Último
+  commit: `2ac8371`, del 2026-08-01, un merge de dependabot.
+- [Nigh/show-me-the-story](https://github.com/Nigh/show-me-the-story): Go y Svelte, en un solo binario. Cada hecho
+  guarda una cita y una revisión, y caduca si su texto cambia (`internal/story/facts.go`). Es el más activo: último
+  commit `f790187`, del 2026-10-04.
+
+Casi todo repite lo que ya teníamos anotado: un script sin LLM con exención, la cita comprobada, la entrada por
+entidad y los hilos abiertos. Hay tres ideas nuevas, por orden:
+
+1. **Diff de avisos** (Novel-OS, `core/consequence.py`). El script de consistencia se pasa dos veces: sobre el canon
+   solo y sobre el canon con la propuesta. Solo se enseñan los avisos que trae la propuesta, y así Álvaro no ve el
+   ruido heredado del canon. Cuesta poco si cada aviso ya tiene su clave estable.
+2. **Descartar el aviso que no se ancla** (show-me-the-story, `internal/story/proofread.go`). Si el 9B marca un
+   conflicto y la cita que da no aparece literalmente en el canon, el script lo descarta. Es la cita comprobada, pero
+   aplicada a los avisos además de a las afirmaciones.
+3. **Presupuesto de contexto con lista de lo omitido** (Novel-OS, `core/context_pack.py`). Si lo que se le prepara al
+   agente no cabe en el presupuesto, se recorta y se le avisa con un «omitido: X, Y». Así sabe que no lo ha visto y no
+   lo inventa.
+
+No encaja: el detector de tramos planos, los resúmenes jerárquicos y los lotes de capítulos (son de novela larga), el
+grafo causal ni los límites de seguridad (`maxSteps` ya los cubre).
