@@ -3,7 +3,12 @@
 # Uso: generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla] [pasos] [args extra de sd-cli…]
 # p. ej. args extra: -r referencia.png (imagen de referencia de estilo)
 # Otro modelo, por variables: MODELO=<gguf de modelos/diffusion> LLM=<gguf de modelos/text> VAE=<de modelos/vae>
-# CFG=<escala> TOPE=<s>
+# CFG=<escala> TOPE=<s>   SDCLI=<binario> (por defecto bin/sd-cli; lo usan los tests con uno falso)
+# IMG-23: PERFIL=fotorreal pone la receta ganadora (FLUX.3 klein Q8, Qwen3-VL 4B, flux2-vae, TOPE 10800 y
+# `--backend diffusion=cpu -t 8` antes de los args extra); lo explícito (MODELO=…) manda. Perfil desconocido: exit 2.
+# BOCETO=<png> [FUERZA_BOCETO=0.97]: parte de ese boceto (--init-img/--strength + strength_as_noise_level); sin png: exit 3.
+# MOMENTO=dia|atardecer|noche con PERFIL=fotorreal: al acabar gradar.sh deja intentos/<nombre>-<momento>.png
+# (GRADAR=0 lo omite; REGION=<región> la pasa a gradar.sh; GRADAR_SH=<ruta> lo sustituye en los tests).
 # Deja imagen, log y copia del prompt en <directorio-de-salida>/{intentos,logs,prompts}/<nombre>.* (probar.sh le pasa
 # generated/<tipo>/<slug>); a mano, p. ej.: generar.sh image-generator/generated/murgol/pruebas v5 prompt.txt 1280 512
 # LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
@@ -14,6 +19,20 @@ set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
 D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")
+PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; SDCLI=${SDCLI:-$B/sd-cli}
+case $PERFIL in
+  "") ;;
+  fotorreal)
+    MODELO=${MODELO:-flux3-image-klein-Q8_0.gguf}; LLM=${LLM:-Qwen3VL-4B-Instruct-Q4_K_M.gguf}
+    VAE=${VAE:-flux2-vae.safetensors}; TOPE=${TOPE:-10800}
+    EXTRA=(--backend diffusion=cpu -t 8 "${EXTRA[@]}") ;;
+  *) echo "ABORTO: PERFIL desconocido: $PERFIL (solo fotorreal)"; exit 2 ;;
+esac
+case $MOMENTO in ""|dia|atardecer|noche) ;; *) echo "ABORTO: MOMENTO desconocido: $MOMENTO (dia, atardecer, noche)"; exit 2 ;; esac
+if [ -n "$BOCETO" ]; then
+  [ -f "$BOCETO" ] || { echo "ABORTO: el boceto no existe: $BOCETO"; exit 3; }
+  EXTRA=(--init-img "$BOCETO" --strength "${FUERZA_BOCETO:-0.97}" --extra-sample-args strength_as_noise_level=true "${EXTRA[@]}")
+fi
 mkdir -p "$D/intentos" "$D/logs" "$D/prompts"
 # MIN_INICIO_MB: klein baja la memoria libre ~2,2 GB y Z-Image ~3,5 GB (IMG-15); el vigilante mata con menos de 1500.
 MIN_INICIO_MB=${MIN_INICIO_MB:-7000}; MIN_VIGILA_MB=1500
@@ -44,7 +63,7 @@ LOG=$D/logs/$N.log
 
 t0=$(date +%s)
 # CFG-43: sd-cli con sus librerías ggml; las de Ollama (LD_LIBRARY_PATH del host) le quitan la GPU: «No devices found».
-LD_LIBRARY_PATH="$B" timeout "$TOPE" "$B/sd-cli" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
+LD_LIBRARY_PATH="$B" timeout "$TOPE" "$SDCLI" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
   --vae "$M/vae/$VAE" -p "$PROMPT" \
   --cfg-scale "$CFG" --steps "$STEPS" --sampling-method euler -W "$W" -H "$H" --seed "$SEED" \
   --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/intentos/$N.png" -v > "$LOG" 2>&1 &
@@ -60,4 +79,9 @@ while kill -0 $PID 2>/dev/null; do
 done
 wait $PID; rc=$?
 echo "$N salida=$rc total=$(( $(date +%s) - t0 ))s min_libre=${MIN}MB $(grep -o 'sampling completed, taking [0-9.]*s' "$LOG") $(grep -o 'decode_first_stage completed, taking [0-9.]*s' "$LOG")"
+if [ $rc -eq 0 ] && [ "$PERFIL" = fotorreal ] && [ -n "$MOMENTO" ] && [ "${GRADAR:-1}" != 0 ]; then
+  GRADADA=$D/intentos/$N-$MOMENTO.png
+  "${GRADAR_SH:-$G/scripts/gradar.sh}" "$D/intentos/$N.png" "$GRADADA" "$MOMENTO" ${REGION:+"$REGION"} \
+    && echo "gradada: $GRADADA" || { rc=$?; echo "ERROR: gradar.sh falló (salida $rc); queda la imagen sin gradar"; }
+fi
 exit $rc

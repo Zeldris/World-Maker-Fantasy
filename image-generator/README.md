@@ -80,6 +80,23 @@ Un banner de 1280×512 tarda ~110 s; con `-r referencia.png` (args extra al fina
 `MODELO`, `LLM`, `VAE`, `CFG` y `TOPE`. Resultados de cada opción: «Banco del múrgol» en el documento del reutilizable. El prompt que funcione se guarda como «prompt usado» en la enciclopedia
 (`CFG-38`), para que quede el exacto con el que se generó la imagen.
 
+## Perfil fotorreal
+
+FLUX.3 klein Q8 en CPU (receta del banco, `docs/producto/plan-imagenes/`). La ficha del elemento va en
+`image-generator/fichas/<tipo>/<slug>.json`; fotorreal no usa los prompts de la base. Cómo escribir el prompt:
+[`pautas.md`](../docs/producto/plan-imagenes/pautas.md).
+
+```bash
+bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal [semilla]      # borrador 640x256, 8 pasos, ~9 min en la Deck
+FINAL=1 bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal 7      # 1280x512, 16 pasos, ~49 min
+```
+
+- `MOMENTO=dia|atardecer|noche` (por defecto el de la ficha) elige la luz del prompt y, al acabar, `gradar.sh` deja
+  `intentos/<nombre>-<momento>.png`; `GRADAR=0` lo omite y `REGION=<región>` usa su gradación.
+- `BOCETO=<png>` (y `FUERZA_BOCETO`, por defecto 0.97) parte de un boceto; si el png no existe, aborta.
+- `PROMPT_ARCHIVO=<archivo>` usa ese prompt en vez de la ficha. Sin ficha ni prompt, aborta.
+- Antes de generar se comprueba la memoria: Ollama vacío y nada más pesado abierto (navegador, Steam, juego).
+
 ## Memoria: lo que no se toca
 
 La Deck se bloqueó el 2026-10-24 por falta de memoria (la VRAM es RAM compartida y, sin memoria, se congela en vez
