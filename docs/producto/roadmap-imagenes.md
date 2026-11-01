@@ -109,9 +109,12 @@ desde el panel vive en tablas que siembran.
   cuatro (`IMG-25`, receta final).
 - **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27) 🚧 en curso 2026-11-01: dos
   elementos por tipo (cardo brújula y salvia del polvo; Pastos de la Deriva y Cataratas de la Madre Fango; cuchillo de hielo
-  sílice y odre; orco de las Llanuras y faerus del Margen) medidos en su banner, prompts y pautas propuestas en
-  [`banco/r20-tipos.md`](plan-imagenes/banco/r20-tipos.md); ronda r20 lanzada (640x256, semilla 3). Falta: veredicto en
-  `resultados.md` y las secciones por tipo de `pautas.md`. **M**
+  sílice y odre; orco de las Llanuras y faerus del Margen) medidos en su banner, prompts y razonamiento en
+  [`banco/r20-tipos.md`](plan-imagenes/banco/r20-tipos.md). Ronda r20 (640x256, semilla 3): **seis de ocho se leen como su
+  banner** a la primera; salvia y faerus, a medias solo por la luz (la línea fija `Style` gana a la luz del cuerpo). Veredicto
+  en [`resultados.md`](plan-imagenes/banco/resultados.md#r20--dos-elementos-por-tipo-flora-lugar-objeto-y-raza-img-22-2026-11-01)
+  y `pautas.md` v5 con las secciones 7-11 (flora, lugar, objeto, raza, común). Falta: r20b (los dos a medias con la línea
+  sin la cláusula de luz, T1) y la semilla 7 (R1), en marcha; su veredicto cierra la tarea. **M**
 - **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26): una orden
   saca el borrador de cualquier ficha con la receta de `pautas.md`, y una sola imagen final a 1280 comprueba que
   escala; docs y tests. También: condiciones `momento:noche` en las

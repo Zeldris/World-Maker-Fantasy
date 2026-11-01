@@ -1,6 +1,6 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
-**Versión:** 4 (r17 y r18; v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner.
+**Versión:** 5 (r20: flora, lugar, objeto y raza, §7-§11; v4 con r17 y r18, v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner. `IMG-22` con r20: seis de ocho (dos por tipo) a la primera.
 
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
@@ -27,6 +27,13 @@ Orden fijo, en frases completas (decisión 1 del [plan](plan-fotorreal.md#marco-
 6. **Entorno** por capas: suelo → media distancia → horizonte.
 7. **Luz y momento**.
 8. Línea fija `Style: … Mood: …`.
+
+Lo que cambia por tipo (r20, [`banco/r20-tipos.md`](banco/r20-tipos.md)): en **flora**, «pose» es cómo crece y
+«compañía», las otras plantas de la especie; no hay fondo liso ni montaje (P2-P6 no aplican), el borrador sale en una
+pasada con el paisaje (§7). En **lugar** no hay sujeto, ancla, pose ni compañía: el prompt abre con el horizonte y
+las capas en fracciones (§8). En **objeto**, bodegón sobre una superficie del mundo con el fondo desenfocado; la
+orientación hace de pose (§9). En **raza**, la figura entera al tercio izquierdo; el ancla es el tipo de criatura y
+la compañía, su lugar habitado al fondo (§10). Lo común a los cuatro, en §11.
 
 ## 2. Pautas de forma
 
@@ -151,6 +158,81 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
   r16, con esas pautas, ninguno de los seis restantes; las que faltaban entraron como F6c, F7b, F10 y R1. En r17, con
   F10, tres de los seis (guchapo, morvasa, espina); lo que faltaba entró como F10b y F10c. En r18, jusha: cuatro de seis
   con la guía tal cual, sin retoque a mano; es el cierre de `IMG-21`.
-- Otros planes corporales (ave, reptil, artrópodo, acuático…) y otros tipos (flora, lugar, objeto, raza).
+- Otros planes corporales (ave, reptil, artrópodo, acuático…). ~~Otros tipos (flora, lugar, objeto, raza)~~ ✅ r20,
+  §7-§11.
+- **La línea fija `Style` frente a una luz fría u oscura** (T1): r20b mide si quitar la cláusula de luz de la línea
+  deja ganar a la luz del cuerpo; si sí, la línea de `mundo.json` se parte en acabado (fijo) y luz (del momento y el
+  clima del elemento), y es decisión de la usuaria (`IMG-23`).
+- Las pautas de tipo con un solo elemento a favor (FL3-FL5, O8, R-Z5-R-Z7) y la segunda semilla de r20 (R1).
+- Qué fracción del ancho sigue el modelo: el objeto sale mayor que la pedida (O2); no se sabe si pedir menos la baja.
+- Acabado `porTipo.item` (50 mm, O6) y la comparación con 85 mm, para `IMG-23`.
 - ~~Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`)~~ ✅ 2026-10-27:
   `image-generator/bocetos/plantilla.py`, seis planes; r19 lo confirma con el gargantúa.
+
+## 7. Flora
+
+La planta en su paisaje a 50 mm, no macro ni sujeto aislado: los banners son una escena de tres capas con el sujeto
+repartido (una fila de ejemplares, una masa reptante). Medidas y razonamiento en [`banco/r20-tipos.md`](banco/r20-tipos.md#flora).
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| FL1 | **La planta se pide en su paisaje, con cada capa en fracciones de la imagen** («cliff fills the right half», «sky slot a seventh wide»); sin fondo liso ni montaje, en una pasada. | ✅ | r20: cardo y salvia salen con sus capas y su pared |
+| FL2 | **La proporción se da entre las partes de la planta y contra un objeto de escala de la escena** (capullo 2/3 del tallo y 2 x su ancho; hoja 2,5 x larga que ancha, 2 x la piedra), no con adjetivos. | ✅ | r20: capullos y hojas con la forma del banner en los dos |
+| FL3 | **El tamaño del sujeto se dice como fracción de la imagen y la fila de ejemplares, por tamaños y no por número** («a diagonal row… the largest three quarters of the image tall, the last a tiny speck»), por F9. | 🔬 | r20: cardo a favor (la fila mengua hacia la izquierda); falta otro elemento |
+| FL4 | **Ancla vegetal solo para el capullo o la flor, una vez y con su diferencia**; la planta entera sin ancla. | 🔬 | r20: la alcachofa da el capullo sin traer su verde (cardo); un elemento |
+| FL5 | **Una planta sin silueta común se describe por forma de hoja, tallo y recorrido, sin ancla** («lance-shaped, climbing the wall in thin strands»). | 🔬 | r20: salvia a favor; un elemento |
+| FL6 | **El color de hoja y flor se mide en el banner descontando la luz** (F10b); en escena oscura se aclara el recorte y se decide a ojo. | ✅ | r20: carbón y plata del cardo, azul pizarra con motas de la salvia; el color acierta aunque la luz falle |
+
+## 8. Lugar
+
+Gran angular por capas a 24 mm, cámara baja; no hay sujeto ni ancla: el lugar es el sujeto
+([`r20-tipos.md`](banco/r20-tipos.md#lugar)).
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| L1 | **El horizonte (o el labio) y las capas se dicen en fracción del alto, y los elementos grandes en fracción del ancho; el prompt abre con ellas.** | ✅ | r20: 1/4 → 0,26 (pastos) y 0,22 (cataratas); la meseta a la derecha y la caída a ~0,37 del ancho |
+| L2 | **Tres capas nombradas** (foreground, middle distance, horizon o far layer), cada una con su material y su fracción; en un lugar vertical, la caída es el plano medio y el río alto, la capa lejana. | ✅ | r20: los dos |
+| L3 | **La luz se dice por dirección y posición de la fuente** (fuera de cuadro a la izquierda, contraluz detrás de la caída). La dirección sale; **el sol fuera de cuadro no**: pinta el disco. | ✅ dirección / 🔬 sin disco | r20: pastos y cataratas con la luz del banner; pastos y cardo con el disco |
+| L4 | **El color por material se mide aclarando el banner y descontando la dominante del cielo**: la hierba y el agua tienen su color aunque la luz los tiña. | ✅ | r20: hierba oliva con puntas de paja, agua café con leche y espuma crema |
+| L5 | **Sin ancla de lugar**: nombrar un paisaje real arrastra su fauna y su flora (F6c); se describe por capas y materiales. | 🔬 | r20: los dos sin ancla se leen como su banner; sin A/B con ancla |
+| L6 | **Huella humana mínima solo si el banner la tiene** (red, poste, senda), una frase y en su sitio. | ✅ | r20: la red en su poste, la senda a la derecha |
+
+## 9. Objeto
+
+Bodegón: el objeto entero sobre una superficie del mundo, cámara baja a tres cuartos, fondo desenfocado que dice de
+dónde es; lente 50 mm propuesta (`mundo.json` no tiene `porTipo.item`). [`r20-tipos.md`](banco/r20-tipos.md#objeto).
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| O1 | **El objeto entero, en bodegón**, apoyado en una superficie descrita (tablón, arcilla mojada) con el fondo en capas desenfocado. | ✅ | r20: cuchillo y odre |
+| O2 | **La fracción del ancho se pide como la del banner o algo mayor (F4), y el modelo la agranda** (1/2 → 3/4, 2/5 → 55 %); no se controla fino. | ✅ | r20: los dos salen mayores que lo pedido |
+| O3 | **Las proporciones se miden en la referencia con la unidad del propio objeto** (hoja frente a mango, cuerpo frente a cuello, correa frente a cuerpo); el canon da cifras que el banner contradice. | ✅ | r20: hoja ~2 x mango, bolsa 1,9 de largo/ancho |
+| O4 | **Un material emblemático se describe por forma y textura, sin objeto ni material real** (F8): «translucent, colourless mineral, rippled, hand-chipped, web of fine fracture lines». | ✅ | r20: el hielo sílice se lee como el del banner sin decir hielo ni vidrio; el cuero curtido, igual |
+| O5 | **Color por material descontando la luz del banner** (fría y apagada, o naranja rasante). | ✅ | r20: hoja incolora gris azulada, hueso crema, cuero tostado |
+| O6 | **Lente `item`: 50 mm**, el término medio de los dos banners; deja leer el fondo. | 🔬 | r20: a favor en los dos; sin A/B con 85 mm (`IMG-23`) |
+| O7 | **Un banner con muchos objetos se reduce a uno**; los demás, al fondo desenfocado en una frase. | 🔬 | r20: cuchillo a favor; un elemento |
+
+## 10. Raza
+
+Figura entera a 85 mm en 2,5:1: GPT la pone en el tercio izquierdo, a casi toda la altura, de tres cuartos hacia
+dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](banco/r20-tipos.md#raza).
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| R-Z1 | **La figura entera ocupa el tercio izquierdo y casi toda la altura** («full-length… filling the whole height of the frame on the left side»); el entorno se abre a la derecha por capas. | ✅ | r20: orco y faerus |
+| R-Z2 | **La postura baja (agachado, encorvada) hace que quepa en 2,5:1**; se dice la flexión («crouched», «torso tilted forward at forty-five degrees»). | ✅ | r20: los dos |
+| R-Z3 | **La cámara a la altura del pecho** («taken at chest height») y el horizonte en fracción del alto. | ✅ | r20: orco (0,42 → 0,44); el faerus no tiene horizonte |
+| R-Z4 | **Las proporciones se miden en cabezas** (alto, hombros, brazos, piernas) con la unidad fijada (con pelo o cresta) y dicha en el prompt. | ✅ | r20: hombros de 2,9 cabezas salen macizos; brazos hasta la rodilla y 3 cabezas con cresta, encorvada |
+| R-Z5 | **Una raza humanoide sin animal usa el tipo de criatura («orc») como ancla, con color, ropa y medidas dichos**: el modelo trae su verde y su armadura por defecto. | 🔬 | r20: orco arcilla tostada, sin verde; un elemento |
+| R-Z6 | **La persona disfrazada se evita con rasgos que un humano no tiene** (colmillos inferiores, quijada, orejas, hombros de 2,9 cabezas). | 🔬 | r20: orco a favor; un elemento |
+| R-Z7 | **El simio se evita con un ancla de postura («like a bear rearing up»), hocico corto con medida y cresta, no melena**; la cara no se compara con otro animal (F7). | 🔬 | r20: faerus sin simio ni oso; un elemento |
+| R-Z8 | **La ropa y el equipo se dicen como material con forma** (capa de plumas, falda de tiras de cuero, vendas de cuerda), sin compararlos con otro objeto (F8); el arma lleva su tamaño relativo a la figura. | ✅ | r20: los dos |
+
+## 11. Común a los tipos (r20)
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| T1 | **La línea fija `Style` gana a la luz del cuerpo cuando chocan**: con «soft golden-hour rim light, warm atmospheric haze» en la línea, un prompt que pide nublado o dosel cerrado sale a hora dorada. Remedio por medir: la línea sin la cláusula de luz, y la luz solo en el cuerpo. | ✅ el choque / 🔬 el remedio | r20: salvia y faerus a medias solo por esto, el cuchillo a medias; r20b mide el remedio |
+| T2 | **Las fracciones del alto se siguen, y se dice desde qué borde** («a quarter of the way down from the top»); «a third of the way up» es ambigua. | ✅ | r20: 1/4 → 0,26 y 0,22; 0,42 → 0,44; el cardo a 0,4 por la ambigüedad |
+| T3 | **La referencia manda sobre el canon en los cuatro tipos** (§5): los ocho prompts siguieron el banner donde contradice al texto (violeta, mata baja, volcanes, pantano, 18/10, músculo largo, ojos oscuros) y se leen como su banner. | ✅ | r20: los ocho; las contradicciones, en `r20-tipos.md` |
+| T4 | **Un agente barato escribe un prompt de cualquier tipo con esta guía y el banner medido, sin retoque a mano**: seis de ocho a la primera. | ✅ | r20 (en fauna, r15 dio uno de ocho con la v1) |

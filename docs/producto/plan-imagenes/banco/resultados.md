@@ -414,3 +414,46 @@ boceto / r17 s7 / banner en `generated/banco/r19-sujetos-<especie>/rejilla.png`.
 - **Las losas del plan salen cuadradas**: para placas aquilladas como las del banner haría falta otra forma de cresta
   (`forma: quillas`); se apunta como tarea solo si otra criatura la pide. Con lo de r19, cinco de seis se leen como
   su banner (guchapo, morvasa, espina, jusha y gargantúa); el cruzavientos, a un paso.
+
+## r20 · Dos elementos por tipo: flora, lugar, objeto y raza (`IMG-22`, 2026-11-01)
+
+`r20-tipos.tsv`: cuatro agentes baratos (uno por tipo) escribieron los 8 prompts con [`pautas.md`](../pautas.md) v4, la
+plantilla y el banner medido en píxeles y en color ([`r20-tipos.md`](r20-tipos.md)); txt2img a 640x256, 8 pasos, sin
+boceto, con el encuadre de cada tipo (la planta en su paisaje a 50 mm, el lugar por capas a 24 mm, el objeto en
+bodegón a 50 mm, la raza como figura entera a 85 mm) y la línea fija `Style` de `mundo.json` tal cual. Semilla 3,
+~525 s cada uno, memoria libre mínima 5,4 GB (sin Ollama). Rejilla borrador / banner por tipo en
+`generated/banco/r20-flora.png`, `r20-lugar.png`, `r20-objeto.png` y `r20-raza.png`.
+
+| Elemento | Tipo | Se lee como | Lo que pasa |
+|---|---|---|---|
+| cardo-brujula | flora | **su banner** | capullos de alcachofa con escamas carbón y destellos plata, tallos retorcidos con raíces, filamento desnudo que se arquea a la izquierda, fila diagonal que mengua hacia la izquierda sin pedir el número, rosetas verde plata, acantilado rojo en la mitad derecha y mesetas en bruma. El horizonte sale a ~0,4 del alto (pedido «a third of the way up», que era 1/3 desde abajo) y el sol como disco; más ordenado y luminoso que el banner |
+| salvia-del-polvo | flora | a medias | la enredadera de hojas lanceoladas azul-gris con motas, reptando por el suelo y trepando la pared derecha, la rendija de cielo gris perla, la cámara a ras y el suelo de placas rojas están; pero la escena sale soleada y cálida (paredes rojo vivo, luz dorada) donde el banner es sombrío y frío: la línea fija `Style` gana a «soft overcast light… deep shade» |
+| pastos-de-la-deriva | lugar | **su banner** | horizonte a 0,26 (pedido 1/4), meseta solo a la derecha, roca grande abajo a la derecha, arbustos secos a la izquierda, senda, hierba oliva con puntas de paja, cielo ámbar; menos naranja y menos bruma que el banner (muy saturado) y el sol como disco a la izquierda aunque se pidió fuera de cuadro |
+| cataratas-madre-fango | lugar | **su banner** | labio a 0,22 (pedido 1/4), caída café con leche de ~0,37 del ancho, espuma crema, muros columnares con selva, red en su poste a la izquierda, roca musgosa, peces saltando (más de los cuatro pedidos, F9), contraluz crema; la más parecida de la ronda |
+| cuchillo-hielo-silice | objeto | **su banner** | hoja translúcida incolora con red de fracturas, mango de hueso con glifos negros angulares (sin letras) y cuerda en los extremos, tablón agrietado, hueco de tienda con llanura nevada, caja con hielo y huesos, herramientas; punta a la izquierda (P8: esta vez obedece). Sale al ~75 % del ancho (pedido ~50 %) y más limpio y claro que el banner, que es sombrío: el hielo y la nieve conservan el frío, madera y tela salen cálidas |
+| odre-agua | objeto | **su banner** | bolsa en almohada de cuero tostado tumbada de lado, costura crema en cruz por todo el borde, tapón acanalado oscuro arriba a la izquierda, correa en lazo sobre el barro, arcilla mojada con huellas, estanque con el sol bajo detrás a la izquierda, mesetas rojas; ~55 % del ancho (pedido 2/5) y más limpio que el del banner, que va embarrado |
+| orcos-llanuras-macho | raza | **su banner** | figura en el tercio izquierdo a toda la altura, agachado, tres cuartos a la derecha; piel arcilla tostada con vetas rojo pardo (nada de verde), quijada con colmillos, orejas en punta, barba trenzada, capa de plumas, falda de tiras con flecos rojos, vendas, descalzo; hacha casi de su altura con cinta roja; valle de tiendas rojas con humo, mesetas, horizonte a ~0,44 (medido 0,42). La cara, más de orco (colmillos largos) que la del banner |
+| faerus-margen-hembra | raza | a medias | bípeda encorvada de hombros altos con cresta de hojas en tejas, hocico corto con colmillos, ojos violeta, dos cuchillos punta abajo, cuerdas, garras; setas luminosas y una cabaña sobre pilotes (no la aldea de plataformas y puentes); ni simio ni oso a cuatro patas. Pero sale a pleno sol dorado entre los troncos donde el banner es casi negro con ámbar y verde-azul: otra vez la línea `Style` |
+
+- **Seis de ocho se leen como su banner a la primera**, con la guía tal cual y sin retoque (en fauna, r15, fue uno de
+  ocho): la medida en el banner (F10, F10b, F10c) y el encuadre por tipo valen para flora, lugar, objeto y raza. Lo
+  que separa a los dos que quedan no es forma: es luz.
+- **La línea fija `Style` gana a la luz del cuerpo cuando chocan** (responde a FL8 y O7 de `r20-tipos.md`): salvia y
+  faerus piden nublado o dosel cerrado y salen a hora dorada; el cuchillo, a medias (hielo y nieve fríos, madera y tela
+  cálidas). Entra como T1 en `pautas.md`; **r20b** repite los dos con la línea sin la cláusula de luz (abajo).
+- **Las fracciones del alto se siguen**: horizonte a 1/4 → 0,26 (pastos), labio a 1/4 → 0,22 (cataratas), horizonte
+  del orco 0,42 → 0,44. La del cardo, pedida «a third of the way up», salió a 0,4: la frase es ambigua (desde arriba o
+  desde abajo) y hay que decir el borde («a third of the way down from the top»). Entra como T2.
+- **Las fracciones del ancho del objeto salen mayores que las pedidas** (1/2 → 3/4, 2/5 → 55 %): el bodegón se agranda
+  solo; para F4 es ventaja. O2 queda como «se pide la del banner o algo más, y sale mayor».
+- **El sol fuera de cuadro no se consigue**: pastos y cardo pintan el disco (L3, parcial: la dirección sí).
+- **Las cuentas siguen sin cumplirse** (peces: cuatro pedidos, salen seis o siete; F9). **La dirección** salió la pedida
+  en los ocho (punta a la izquierda, filamentos a la izquierda, figuras hacia la derecha): con una semilla no cambia P8.
+- **La ancla de criatura con el color dicho** evita el orco verde por defecto y la persona disfrazada (R-Z5, R-Z6); el
+  oso «solo para la postura» no trae un oso ni un simio (R-Z7); la alcachofa da el capullo sin traer su verde (FL4).
+  Un elemento cada una: quedan 🔬 a favor.
+- **Lo que queda en los seis buenos es acabado y saturación**, no forma: menos bruma y naranja que el banner en
+  pastos, el cuchillo y el odre más limpios, la cara del orco; no es trabajo del banco (R3).
+- Hallazgos para el contenido, no para las pautas: `pastos-de-la-deriva-dia-primavera-banner.png` y `…-dia-verano-banner.png`
+  son el mismo archivo; `mundo.json` no tiene acabado `porTipo.item` (50 mm propuesto, O6, para `IMG-23`); las
+  contradicciones banner/canon de los ocho están en `r20-tipos.md` para la revisión del lore.
