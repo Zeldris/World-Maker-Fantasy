@@ -429,10 +429,10 @@ class FotorrealDatosReales(unittest.TestCase):
                 self.assertTrue(r['prompt'].endswith('The image is completely textless.'))
                 self.assertFalse(re.search(_REAL['negaciones'], r['prompt'], re.I))
 
-    def test_de_dia_y_al_atardecer_en_las_cuatro_estaciones(self):
-        # la noche no: las fichas de fauna aún no tienen condición `momento:noche` y su luz nombra el sol
+    def test_en_los_tres_momentos_y_las_cuatro_estaciones(self):
+        # la noche, con la condición `momento:noche` de las fichas de fauna (IMG-23): su luz de día nombra el sol
         for ruta, variante in self.casos:
-            for mom in ('dia', 'atardecer'):
+            for mom in ('dia', 'atardecer', 'noche'):
                 for est in pf.ESTACIONES:
                     with self.subTest(ruta=ruta, momento=mom, estacion=est):
                         r = pf.construir(DatosReales.ficha(ruta), _REAL, 'fotorreal', variante=variante, momento=mom, estacion=est)

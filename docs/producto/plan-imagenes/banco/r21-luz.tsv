@@ -1,0 +1,5 @@
+# IMG-23 r21: la palanca de la luz fría u oscura (T1 de pautas.md). Salvia y faerus de r20 con la línea Style fija de mundo.json y la luz pedida de dos maneras: (a) la escena entera dicha oscura al principio del prompt; (b) el momento y el clima nombrados en la frase de luz. 640x256 / 8 pasos, semilla 3; rejilla r21 a / r21 b / r20 / banner.
+salvia-luz-primero	8	prompts/r21-salvia-luz-primero.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8
+faerus-luz-primero	8	prompts/r21-faerus-luz-primero.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8
+salvia-momento	8	prompts/r21-salvia-momento.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8
+faerus-momento	8	prompts/r21-faerus-momento.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8

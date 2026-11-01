@@ -63,5 +63,10 @@
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
     "choca con el canon: cuernos de hoja (el canon: finos y largos de cabra montesa), pies de ave de tres dedos, cuello de jirafa",
     "IMG-16 (perfil fotorreal): cuello de 3,5 m de alto (el canon: 120-180 cm de animal) y cabeza «de ciervo sobre cuello de jirafa»; diseño de imagen, no canon"
-  ]
+  ],
+  "condiciones": {
+    "momento:noche": {
+      "luz": "Under a starry night sky with a soft, even pearly glow, a cool silver light falls evenly from above, so the long neck and the horns cast faint, soft shadows on the dark ground."
+    }
+  }
 }

@@ -58,6 +58,9 @@
   "condiciones": {
     "estacion:invierno": {
       "entorno": "The ground is bare cracked red earth with a few short dry tufts, and dark dust devils rise far off on the plain."
+    },
+    "momento:noche": {
+      "luz": "Under a starry night sky with a soft, even pearly glow, a cool silver-blue light rims every coat and spike, the red spikes glinting faintly, while thin dust drifts low in deep cool shadow over the plain."
     }
   },
   "propuestas": [

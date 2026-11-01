@@ -116,12 +116,17 @@ desde el panel vive en tablas que siembran.
   [`resultados.md`](plan-imagenes/banco/resultados.md) (r20, r20b y semilla 7) y `pautas.md` v5.1 con las secciones
   7-11 (flora, lugar, objeto, raza, común). Queda, en `IMG-23`: la palanca de la luz fría u oscura (T1) y el acabado
   `porTipo.item` (O6). Las pautas de un solo elemento siguen 🔬. **M**
-- **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26): una orden
+- **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26) 🚧 en curso 2026-11-02: una orden
   saca el borrador de cualquier ficha con la receta de `pautas.md`, y una sola imagen final a 1280 comprueba que
   escala; docs y tests. También: condiciones `momento:noche` en las
   fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`); la palanca de la luz fría u oscura
   (T1 de `pautas.md`, de `IMG-22`) y el acabado `porTipo.item` (O6). Cierra
   `IMG-15`. **M**
+  Hecho: condiciones `momento:noche` en las fichas del aullador y el cuernahoja (luz de estrellas y brillo perlado, sin
+  sol; `test_prompt_ficha` prueba ya los tres momentos). La gradación de noche sobre r20 acerca el brillo de salvia y
+  faerus al banner pero apaga el color. En marcha: r21 (la luz oscura pedida al principio del prompt o con momento y
+  clima, `banco/r21-luz.tsv`) y el perfil en `generar.sh`/`probar.sh` con sus tests. Falta: la cadena de planos, la
+  imagen final a 1280x512 y la nocturna, y el sí de la usuaria a la receta.
 - ~~**IMG-24 · Plantillas de boceto por plan corporal**~~ ✅ 2026-10-27 [P] (2026-10-27): seis planes paramétricos
   (depredador, herbívoro, reptil, ave, alargado, artrópodo) en `image-generator/bocetos/plantilla.py`, sin
   dependencias: la ficha pasa de `boceto.archivo` a `boceto.plan` y sus números (largo, patas, cuello, cola, cresta,
