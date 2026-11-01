@@ -457,3 +457,33 @@ bodegón a 50 mm, la raza como figura entera a 85 mm) y la línea fija `Style` d
 - Hallazgos para el contenido, no para las pautas: `pastos-de-la-deriva-dia-primavera-banner.png` y `…-dia-verano-banner.png`
   son el mismo archivo; `mundo.json` no tiene acabado `porTipo.item` (50 mm propuesto, O6, para `IMG-23`); las
   contradicciones banner/canon de los ocho están en `r20-tipos.md` para la revisión del lore.
+
+## r20b y semilla 7 · La luz sin la línea `Style` y la segunda semilla de r20 (`IMG-22`, 2026-11-02)
+
+**r20b** repite salvia y faerus con la semilla 3 y la línea `Style` sin la cláusula de luz («soft golden-hour rim
+light, warm atmospheric haze» y «hazy» fuera). **La semilla 7** repite los ocho de r20 con el mismo prompt (R1).
+Rejillas (no versionadas): `generated/banco/r20b-luz.png` y `generated/banco/r20-s7-1.png` … `-4.png` (por elemento:
+semilla 7, semilla 3, banner).
+
+| Elemento | r20b (sin luz en `Style`) | Semilla 7 |
+|---|---|---|
+| cardo-brujula | — | **su banner**, como s3 (otra vez el disco del sol en cuadro) |
+| salvia-del-polvo | a medias: igual que r20, cañón claro y cálido donde el banner es sombrío | a medias, como s3 (luz) |
+| pastos-de-la-deriva | — | **su banner**, como s3 (disco del sol en cuadro) |
+| cataratas-madre-fango | — | **su banner**, como s3 (peces de más, F9) |
+| cuchillo-hielo-silice | — | **su banner**, como s3; la hoja, algo mayor |
+| odre-agua | — | **su banner**, como s3 |
+| orcos-llanuras-macho | — | **su banner**, como s3 |
+| faerus-margen-hembra | a medias: casi la misma imagen que r20, bosque dorado a pleno sol | a medias, como s3 (luz) |
+
+- **Quitar la luz de la línea `Style` no cambia la luz** (r20b): con la misma semilla, salvia y faerus salen casi
+  iguales que en r20. La línea fija no era la que ganaba: el modelo pinta la escena luminosa y cálida por defecto, y
+  «soft overcast light, deep shade» o «dim light under a closed canopy» en el cuerpo no bastan para oscurecerla. T1 se
+  reescribe así en `pautas.md`; la palanca de la luz queda por medir (decirla con más fuerza o antes en el prompt,
+  momento del día o clima explícitos, o gradación en el montaje) y no es parte de `IMG-22`.
+- **La semilla 7 da el mismo veredicto en los ocho** (seis su banner, dos a medias por la luz): las pautas de r20 pasan
+  R1. Con estos prompts medidos y largos, la segunda semilla cambia el detalle y casi nada del encuadre (horizonte,
+  tamaños, lados y poses repiten); el veredicto es estable.
+- **La dirección pedida se repite en la segunda semilla** (punta del cuchillo y del odre a la izquierda, orco y faerus
+  hacia la derecha): en escenas con la dirección dicha y medida, 16 de 16. P8 sigue para la criatura sola (r15, r16).
+- **El sol fuera de cuadro y las cuentas fallan también con la semilla 7** (L3, F9): confirmado, no es la semilla.

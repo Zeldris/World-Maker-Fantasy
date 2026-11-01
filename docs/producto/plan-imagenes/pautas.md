@@ -1,6 +1,6 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
-**Versión:** 5 (r20: flora, lugar, objeto y raza, §7-§11; v4 con r17 y r18, v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner. `IMG-22` con r20: seis de ocho (dos por tipo) a la primera.
+**Versión:** 5.1 (r20b y semilla 7, 2026-11-02: T1 rehecha, R1 pasada; v5 con r20: flora, lugar, objeto y raza, §7-§11; v4 con r17 y r18, v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner. `IMG-22` cerrada con r20: seis de ocho (dos por tipo) a la primera, el mismo veredicto en las dos semillas.
 
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
@@ -94,7 +94,8 @@ ilustración científica). El ✅ es de la pose; si la especie se lee como su ba
 
 **R1 · Una pauta se prueba en dos semillas.** Con la misma semilla, un prompt reescrito repite encuadre y pose casi
 igual (r16: jusha, guchapo y espina, como en r15); sirve para comparar un cambio pequeño, pero un remedio que no
-cambia la clase del sujeto no se ve. ✅ r16.
+cambia la clase del sujeto no se ve. ✅ r16. Con prompts medidos y largos (r20), la segunda semilla cambia el detalle
+y casi nada del encuadre: el veredicto de los ocho repitió en la semilla 7.
 
 **R2 · Parada por especie** (usuaria, 2026-10-27): una especie que no mejora en dos rondas seguidas sale del banco
 por prompt y pasa al boceto por plan corporal (`IMG-24`); no se le reescribe el prompt una tercera vez. Cada ronda
@@ -160,10 +161,11 @@ la referencia y la contradicción se apunta para la revisión del lore, sin pedi
   con la guía tal cual, sin retoque a mano; es el cierre de `IMG-21`.
 - Otros planes corporales (ave, reptil, artrópodo, acuático…). ~~Otros tipos (flora, lugar, objeto, raza)~~ ✅ r20,
   §7-§11.
-- **La línea fija `Style` frente a una luz fría u oscura** (T1): r20b mide si quitar la cláusula de luz de la línea
-  deja ganar a la luz del cuerpo; si sí, la línea de `mundo.json` se parte en acabado (fijo) y luz (del momento y el
-  clima del elemento), y es decisión de la usuaria (`IMG-23`).
-- Las pautas de tipo con un solo elemento a favor (FL3-FL5, O8, R-Z5-R-Z7) y la segunda semilla de r20 (R1).
+- **La luz fría u oscura** (T1): r20b mostró que quitar la luz de la línea `Style` no la cambia; el modelo pinta la
+  escena luminosa por defecto. Por medir: la luz dicha con más fuerza o al principio del prompt, el momento del día o
+  el clima explícitos, o la gradación en el montaje. La línea de `mundo.json` sigue igual.
+- Las pautas de tipo con un solo elemento a favor (FL3-FL5, O8, R-Z5-R-Z7): la semilla 7 las repite, pero siguen 🔬
+  hasta tener un segundo elemento (§5).
 - Qué fracción del ancho sigue el modelo: el objeto sale mayor que la pedida (O2); no se sabe si pedir menos la baja.
 - Acabado `porTipo.item` (50 mm, O6) y la comparación con 85 mm, para `IMG-23`.
 - ~~Plantillas de boceto genéricas por plan corporal en vez de un SVG por criatura (`IMG-24`)~~ ✅ 2026-10-27:
@@ -232,7 +234,7 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 
 | # | Pauta | Estado | Evidencia |
 |---|---|---|---|
-| T1 | **La línea fija `Style` gana a la luz del cuerpo cuando chocan**: con «soft golden-hour rim light, warm atmospheric haze» en la línea, un prompt que pide nublado o dosel cerrado sale a hora dorada. Remedio por medir: la línea sin la cláusula de luz, y la luz solo en el cuerpo. | ✅ el choque / 🔬 el remedio | r20: salvia y faerus a medias solo por esto, el cuchillo a medias; r20b mide el remedio |
+| T1 | **La escena sale luminosa y cálida aunque el cuerpo pida nublado o sombra**: salvia y faerus piden luz difusa o dosel cerrado y salen a pleno sol. No es la línea `Style`: sin su cláusula de luz (r20b, misma semilla) sale casi la misma imagen. El remedio está por medir (§6). | ✅ el fallo / ✗ quitar la luz de `Style` | r20: salvia y faerus a medias, el cuchillo a medias; r20b: sin cambio; semilla 7: igual |
 | T2 | **Las fracciones del alto se siguen, y se dice desde qué borde** («a quarter of the way down from the top»); «a third of the way up» es ambigua. | ✅ | r20: 1/4 → 0,26 y 0,22; 0,42 → 0,44; el cardo a 0,4 por la ambigüedad |
 | T3 | **La referencia manda sobre el canon en los cuatro tipos** (§5): los ocho prompts siguieron el banner donde contradice al texto (violeta, mata baja, volcanes, pantano, 18/10, músculo largo, ojos oscuros) y se leen como su banner. | ✅ | r20: los ocho; las contradicciones, en `r20-tipos.md` |
 | T4 | **Un agente barato escribe un prompt de cualquier tipo con esta guía y el banner medido, sin retoque a mano**: seis de ocho a la primera. | ✅ | r20 (en fauna, r15 dio uno de ocho con la v1) |

@@ -107,18 +107,20 @@ desde el panel vive en tablas que siembran.
   cabeza roma se lee como su banner (la s7, con la dorsal del ancla). **Cerrada con cuatro de seis** (R3);
   `pautas.md` v4 es la entrega. Queda fuera del banco: gargantúa y cruzavientos (`IMG-24`) y el acabado de las
   cuatro (`IMG-25`, receta final).
-- **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27) 🚧 en curso 2026-11-01: dos
+- ~~**IMG-22 · Pautas con flora, lugar, objeto y raza**~~ ✅ 2026-11-02 [A] (2026-10-26, reorientada el 2026-10-27): dos
   elementos por tipo (cardo brújula y salvia del polvo; Pastos de la Deriva y Cataratas de la Madre Fango; cuchillo de hielo
   sílice y odre; orco de las Llanuras y faerus del Margen) medidos en su banner, prompts y razonamiento en
-  [`banco/r20-tipos.md`](plan-imagenes/banco/r20-tipos.md). Ronda r20 (640x256, semilla 3): **seis de ocho se leen como su
-  banner** a la primera; salvia y faerus, a medias solo por la luz (la línea fija `Style` gana a la luz del cuerpo). Veredicto
-  en [`resultados.md`](plan-imagenes/banco/resultados.md#r20--dos-elementos-por-tipo-flora-lugar-objeto-y-raza-img-22-2026-11-01)
-  y `pautas.md` v5 con las secciones 7-11 (flora, lugar, objeto, raza, común). Falta: r20b (los dos a medias con la línea
-  sin la cláusula de luz, T1) y la semilla 7 (R1), en marcha; su veredicto cierra la tarea. **M**
+  [`banco/r20-tipos.md`](plan-imagenes/banco/r20-tipos.md). Ronda r20 (640x256): **seis de ocho se leen como su banner**
+  a la primera, con el mismo veredicto en las semillas 3 y 7 (R1); salvia y faerus, a medias solo por la luz. r20b mostró
+  que quitar la luz de la línea `Style` no la cambia: el modelo pinta la escena luminosa por defecto (T1). Veredicto en
+  [`resultados.md`](plan-imagenes/banco/resultados.md) (r20, r20b y semilla 7) y `pautas.md` v5.1 con las secciones
+  7-11 (flora, lugar, objeto, raza, común). Queda, en `IMG-23`: la palanca de la luz fría u oscura (T1) y el acabado
+  `porTipo.item` (O6). Las pautas de un solo elemento siguen 🔬. **M**
 - **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26): una orden
   saca el borrador de cualquier ficha con la receta de `pautas.md`, y una sola imagen final a 1280 comprueba que
   escala; docs y tests. También: condiciones `momento:noche` en las
-  fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`). Cierra
+  fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`); la palanca de la luz fría u oscura
+  (T1 de `pautas.md`, de `IMG-22`) y el acabado `porTipo.item` (O6). Cierra
   `IMG-15`. **M**
 - ~~**IMG-24 · Plantillas de boceto por plan corporal**~~ ✅ 2026-10-27 [P] (2026-10-27): seis planes paramétricos
   (depredador, herbívoro, reptil, ave, alargado, artrópodo) en `image-generator/bocetos/plantilla.py`, sin
