@@ -10,6 +10,8 @@
 # PROMPT_ARCHIVO=<archivo> usa ese prompt (pegado en la interfaz, CFG-43) en vez del de la base; el registro dice «pegado».
 # IMG-23: perfil fotorreal (FLUX.3 klein en CPU, ver «Perfil fotorreal» del README): prompt de la ficha
 # image-generator/fichas/<tipo>/<slug>.json (FICHAS=<carpeta> la cambia) con prompt_ficha.py, o PROMPT_ARCHIVO; sin Postgres.
+# PLANOS=<carpeta con plancha.txt, sujeto.txt y armonia.txt>: en vez de una imagen, la cadena de planos (planos.sh) en
+# <slug>/planos-<fecha>/; el boceto sale de BOCETO o de la ficha (plantilla.py + rasterizar.sh).
 # Borrador 640x256 y 8 pasos; FINAL=1, 1280x512 y 16. MOMENTO=dia|atardecer|noche (por defecto el de la ficha), BOCETO, GRADAR, REGION.
 # sin pipefail: depende del código de salida de generar.sh (RC=$?) tras vigilar y matar sd-cli; no se prueba sin los modelos de la Deck
 set -u
@@ -31,7 +33,15 @@ for v in "$T" "$S" "$MUNDO"; do [[ $v =~ ^[A-Za-z0-9_-]+$ ]] || { echo "ABORTO: 
 
 MOMENTO=${MOMENTO:-}; RECETA=
 FICHA=${FICHAS:-$G/fichas}/$T/$S.json
-if [ "$P" = fotorreal ] && [ -z "${PROMPT_ARCHIVO:-}" ]; then
+PLANOS=${PLANOS:-}
+if [ "$P" = fotorreal ] && [ -n "$PLANOS" ]; then
+  [ -d "$PLANOS" ] || { echo "ABORTO: PLANOS no es una carpeta: $PLANOS"; exit 3; }
+  PROMPT=planos; FUENTE=planos
+  if [ -f "$FICHA" ] && [ -z "$MOMENTO" ]; then
+    MOMENTO=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("momento") or "dia")' "$FICHA") \
+      || { echo "ABORTO: no se pudo leer la ficha $FICHA"; exit 3; }
+  fi
+elif [ "$P" = fotorreal ] && [ -z "${PROMPT_ARCHIVO:-}" ]; then
   [ -f "$FICHA" ] || { echo "ABORTO: fotorreal no usa los prompts de la base (no son de esa plantilla): escribe la ficha $FICHA o pasa PROMPT_ARCHIVO"; exit 3; }
   [ -n "$MOMENTO" ] || MOMENTO=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1])).get("momento") or "dia")' "$FICHA") \
     || { echo "ABORTO: no se pudo leer la ficha $FICHA"; exit 3; }
@@ -56,7 +66,22 @@ PF=$(mktemp); trap 'rm -f "$PF"' EXIT
 printf '%s\n' "$PROMPT" > "$PF"
 INI=$(date +%s)
 REGISTRO_EXTRA="${EXTRA[*]}"
-if [ "$P" = fotorreal ]; then
+if [ "$P" = fotorreal ] && [ -n "$PLANOS" ]; then
+  BOC=${BOCETO:-}
+  if [ -z "$BOC" ]; then
+    [ -f "$FICHA" ] || { echo "ABORTO: PLANOS necesita BOCETO o la ficha $FICHA (de ahí sale el boceto)"; exit 3; }
+    if [ "${FINAL:-0}" = 1 ]; then TB=1024; else TB=512; fi
+    SVG=$(python3 "$G/bocetos/plantilla.py" "$FICHA") && bash "$G/bocetos/rasterizar.sh" "$FICHA" > /dev/null \
+      || { echo "ABORTO: no se pudo hacer el boceto de $FICHA (¿tiene boceto.plan?)"; exit 3; }
+    BOC=$(dirname "$SVG")/$(basename "$SVG" .svg)-verde-$TB.png
+  fi
+  if [ "${FINAL:-0}" = 1 ]; then SWP=1024 SHP=384; else SWP=512 SHP=192; fi
+  PD=$D/planos-$(date +%Y%m%d-%H%M%S)
+  REGISTRO_EXTRA="fotorreal momento=${MOMENTO:--} boceto=$(basename "$BOC") planos=$PD ${EXTRA[*]}"
+  FUERZAS=${FUERZAS:-0.5 0.7}; PW=$W PH=$H FUERZAS="$FUERZAS" SW=${SW:-$SWP} SH=${SH:-$SHP} PASOS=$STEPS SEED=$SEED MOMENTO=$MOMENTO \
+    "$G/scripts/planos.sh" "$PLANOS" "$BOC" "$PD"; RC=$?
+  RES=$PD/intentos/armonia-${FUERZAS%% *}.png   # el registro y las notas van en la carpeta del elemento
+elif [ "$P" = fotorreal ]; then
   # Con PROMPT_ARCHIVO y sin MOMENTO no se grada.
   RECETA="fotorreal momento=${MOMENTO:--} boceto=$([ -n "${BOCETO:-}" ] && basename "$BOCETO" || echo -) "
   REGISTRO_EXTRA="$RECETA${EXTRA[*]}"
@@ -68,5 +93,5 @@ fi
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%sx%s\t%s\t%s\t%s\n' "$(date -Iseconds)" "$N" "$P" "$FUENTE" \
   "$SEED" "$STEPS" "$W" "$H" "$REGISTRO_EXTRA" "$RC" "$(( $(date +%s) - INI ))" >> "$D/registro.tsv"
 [ -f "$D/notas.md" ] || printf '# Notas de %s/%s\n\nUna línea por intento: nombre (de registro.tsv) y qué te parece, qué sobra o qué falta.\n\n' "$T" "$S" > "$D/notas.md"
-echo "imagen: $D/intentos/$N.png (prompt $FUENTE)"
+echo "imagen: ${RES:-$D/intentos/$N.png} (prompt $FUENTE)"
 exit $RC

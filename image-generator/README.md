@@ -95,6 +95,12 @@ FINAL=1 bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal 7      # 
   `intentos/<nombre>-<momento>.png`; `GRADAR=0` lo omite y `REGION=<región>` usa su gradación.
 - `BOCETO=<png>` (y `FUERZA_BOCETO`, por defecto 0.97) parte de un boceto; si el png no existe, aborta.
 - `PROMPT_ARCHIVO=<archivo>` usa ese prompt en vez de la ficha. Sin ficha ni prompt, aborta.
+- `PLANOS=<carpeta con plancha.txt, sujeto.txt y armonia.txt>` corre la cadena de planos (`scripts/planos.sh <prompts>
+  <boceto-verde.png> <salida>`) en vez de una sola imagen: fase 1, plancha + sujeto sobre verde guiado por el boceto y
+  montaje (`montar.sh`, con `HERO` y `MANADA`); fase 2, armonización img2img del montaje a `FUERZAS` (`0.5 0.7`). Sale en
+  `generated/<tipo>/<slug>/planos-<fecha>/intentos/` (`armonia-<fuerza>[-<momento>].png`, graduadas con `MOMENTO`) y
+  `registro.tsv` apunta `planos=<carpeta>`. El boceto es `BOCETO` o, si falta, el `-verde-512.png` (`-1024` con `FINAL=1`)
+  de la ficha (`plantilla.py` + `rasterizar.sh`). Lo que ya existe en la carpeta se salta.
 - Antes de generar se comprueba la memoria: Ollama vacío y nada más pesado abierto (navegador, Steam, juego).
 
 ## Memoria: lo que no se toca

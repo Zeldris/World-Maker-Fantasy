@@ -223,5 +223,168 @@ class ProbarFotorreal(Base):
         self.assertEqual(self.valor('--init-img'), self.png)
 
 
+SD_REGISTRO = '''#!/usr/bin/env python3
+import os, sys
+a = sys.argv[1:]
+open(os.environ["LLAMADAS_SD"], "a").write("\\t".join(a) + "\\n")
+open(a[a.index("-o") + 1], "wb").write(open(os.environ["PNG_BASE"], "rb").read())
+'''
+MONTAR_FALSO = '''#!/bin/bash
+echo "$@|HERO=${HERO-}|MANADA=${MANADA-}" >> "$LLAMADAS_MONTAR"
+cp "$1" "$3"
+'''
+PLANOS = os.path.join(G, 'scripts', 'planos.sh')
+
+
+class PlanosBase(Base):
+    """IMG-23: planos.sh (plancha + sujeto + montaje + armonizaciones) y PLANOS=<dir> de probar.sh, con falsos."""
+    def setUp(self):
+        super().setUp()
+        escribir(self.sd, SD_REGISTRO)
+        self.montar = os.path.join(self.d, 'montar-falso.sh')
+        escribir(self.montar, MONTAR_FALSO)
+        os.chmod(self.montar, 0o755)
+        self.llamadas = os.path.join(self.d, 'llamadas-sd.tsv')
+        self.llamadas_montar = os.path.join(self.d, 'llamadas-montar.txt')
+        self.prompts = os.path.join(self.d, 'prompts')
+        for t in ('plancha', 'sujeto', 'armonia'):
+            escribir(os.path.join(self.prompts, t + '.txt'), f'prompt {t}\n')
+        self.boceto = os.path.join(self.d, 'boceto-verde.png')
+        shutil.copy(self.png, self.boceto)
+        self.env.update(LLAMADAS_SD=self.llamadas, LLAMADAS_MONTAR=self.llamadas_montar, MONTAR=self.montar)
+        self.out = os.path.join(self.d, 'planos-out')
+
+    def planos(self, *, boceto=None, **env):
+        return self.correr(['bash', PLANOS, self.prompts, boceto or self.boceto, self.out], **env)
+
+    def llamadas_sd(self):
+        return [l.split('\t') for l in leer(self.llamadas).strip().split('\n')]
+
+    @staticmethod
+    def val(a, flag):
+        return a[a.index(flag) + 1]
+
+
+class Planos(PlanosBase):
+    def test_fases_en_orden_con_sus_argumentos(self):
+        r = self.planos(SEED='5', PASOS='4', HERO='1:2:3', MANADA='4:5:6')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        ll = self.llamadas_sd()
+        self.assertEqual([self.val(a, '-o').rsplit('/', 1)[1] for a in ll],
+                         ['plancha.png', 'sujeto.png', 'armonia-0.5.png', 'armonia-0.7.png'])
+        plancha, sujeto, a5, a7 = ll
+        for a in ll:  # siempre por generar.sh con el perfil fotorreal
+            self.assertTrue(self.val(a, '--diffusion-model').endswith('flux3-image-klein-Q8_0.gguf'))
+            self.assertEqual(a[a.index('--backend') + 1], 'diffusion=cpu')
+            self.assertEqual((self.val(a, '--seed'), self.val(a, '--steps')), ('5', '4'))
+        self.assertEqual((self.val(plancha, '-W'), self.val(plancha, '-H')), ('640', '256'))
+        self.assertNotIn('--init-img', plancha)
+        self.assertEqual(self.val(plancha, '-p'), 'prompt plancha')
+        self.assertEqual((self.val(sujeto, '-W'), self.val(sujeto, '-H')), ('512', '192'))
+        self.assertEqual((self.val(sujeto, '--init-img'), self.val(sujeto, '--strength')), (self.boceto, '0.97'))
+        self.assertEqual(self.val(sujeto, '--extra-sample-args'), 'strength_as_noise_level=true')
+        montaje = os.path.join(self.out, 'intentos', 'montaje.png')
+        for a, f in ((a5, '0.5'), (a7, '0.7')):
+            self.assertEqual((self.val(a, '-W'), self.val(a, '-H')), ('640', '256'))
+            self.assertEqual((self.val(a, '--init-img'), self.val(a, '--strength')), (montaje, f))
+            self.assertEqual(self.val(a, '--extra-sample-args'), 'strength_as_noise_level=true')
+            self.assertEqual(self.val(a, '-p'), 'prompt armonia')
+        m = leer(self.llamadas_montar).strip()
+        self.assertEqual(m, f'{self.out}/intentos/plancha.png {self.out}/intentos/sujeto.png {montaje}|HERO=1:2:3|MANADA=4:5:6')
+        self.assertFalse(os.path.exists(self.args_gradar))  # sin MOMENTO no se grada
+
+    def test_el_borrador_monta_con_las_posiciones_de_640_y_el_final_con_las_de_montar(self):
+        self.planos()
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=50:246:520|MANADA=45:150:100 200:145:75:v 500:152:115'))
+        os.remove(self.llamadas_montar)
+        shutil.rmtree(self.out)
+        self.planos(PW='1280', PH='512')
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=|MANADA='))
+
+    def test_lo_que_ya_existe_se_salta_y_las_fuerzas_se_cambian(self):
+        self.planos(FUERZAS='0.6')
+        self.planos(FUERZAS='0.6')
+        self.assertEqual(len(self.llamadas_sd()), 3)  # plancha, sujeto y armonia-0.6, una sola vez
+        self.assertEqual(self.val(self.llamadas_sd()[2], '--strength'), '0.6')
+
+    def test_el_momento_grada_solo_las_armonizaciones(self):
+        r = self.planos(MOMENTO='noche')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(leer(self.args_gradar).split()[1:], [os.path.join(self.out, 'intentos', 'armonia-0.7-noche.png'), 'noche'])
+        self.assertTrue(os.path.exists(os.path.join(self.out, 'intentos', 'armonia-0.5-noche.png')))
+        self.assertFalse(os.path.exists(os.path.join(self.out, 'intentos', 'plancha-noche.png')))
+
+    def test_el_boceto_del_entorno_no_se_cuela_en_la_plancha(self):
+        self.planos(BOCETO=self.boceto)
+        self.assertNotIn('--init-img', self.llamadas_sd()[0])
+
+    def test_falta_un_prompt_aborta_con_su_nombre(self):
+        os.remove(os.path.join(self.prompts, 'armonia.txt'))
+        r = self.planos()
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('falta el prompt', r.stdout)
+        self.assertIn('armonia.txt', r.stdout)
+        self.assertFalse(os.path.exists(self.llamadas))
+
+    def test_falta_el_boceto_aborta_sin_generar(self):
+        r = self.planos(boceto=os.path.join(self.d, 'no-esta.png'))
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('el boceto no existe', r.stdout)
+        self.assertFalse(os.path.exists(self.llamadas))
+
+    def test_sin_argumentos_da_el_uso(self):
+        r = self.correr(['bash', PLANOS])
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('Uso: planos.sh', r.stdout)
+
+
+class ProbarPlanos(PlanosBase):
+    def setUp(self):
+        super().setUp()
+        self.fichas = os.path.join(self.d, 'fichas')
+        os.makedirs(os.path.join(self.fichas, TIPO))
+        shutil.copy(FICHA_REAL, os.path.join(self.fichas, TIPO, 'aullador.json'))
+        self.salida = os.path.join(G, 'generated', TIPO)
+        self.addCleanup(shutil.rmtree, self.salida, True)
+        shutil.rmtree(self.salida, True)
+
+    def probar(self, *extra, **env):
+        return self.correr(['bash', PROBAR, TIPO, 'aullador', 'fotorreal', '7', *extra], **{'FICHAS': self.fichas, 'PLANOS': self.prompts, **env})
+
+    def test_plancha_sujeto_y_armonias_en_planos_fecha_con_el_registro(self):
+        r = self.probar(BOCETO=self.boceto, MOMENTO='dia')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        ll = self.llamadas_sd()
+        self.assertEqual(len(ll), 4)
+        self.assertEqual(self.val(ll[1], '--init-img'), self.boceto)
+        self.assertEqual(self.val(ll[0], '--seed'), '7')
+        self.assertEqual((self.val(ll[0], '-W'), self.val(ll[0], '--steps')), ('640', '8'))
+        carpetas = [c for c in os.listdir(os.path.join(self.salida, 'aullador')) if c.startswith('planos-')]
+        self.assertEqual(len(carpetas), 1)
+        pd = os.path.join(self.salida, 'aullador', carpetas[0])
+        self.assertTrue(os.path.exists(os.path.join(pd, 'intentos', 'armonia-0.5-dia.png')))  # graduada
+        reg = leer(os.path.join(self.salida, 'aullador', 'registro.tsv')).strip().split('\n')
+        self.assertEqual(len(reg[0].split('\t')), len(reg[1].split('\t')))
+        self.assertIn(f'planos={pd}', reg[1].split('\t')[7])
+        self.assertIn('armonia-0.5.png', r.stdout)
+
+    def test_final_usa_tamano_completo(self):
+        self.probar(BOCETO=self.boceto, MOMENTO='dia', FINAL='1')
+        ll = self.llamadas_sd()
+        self.assertEqual((self.val(ll[0], '-W'), self.val(ll[0], '-H'), self.val(ll[0], '--steps')), ('1280', '512', '16'))
+        self.assertEqual((self.val(ll[1], '-W'), self.val(ll[1], '-H')), ('1024', '384'))
+
+    def test_sin_boceto_ni_ficha_aborta(self):
+        r = self.correr(['bash', PROBAR, TIPO, 'sin-ficha', 'fotorreal', '7'], FICHAS=self.fichas, PLANOS=self.prompts)
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('PLANOS necesita BOCETO o la ficha', r.stdout)
+        self.assertFalse(os.path.exists(self.llamadas))
+
+    def test_planos_que_no_es_carpeta_aborta(self):
+        r = self.probar(PLANOS=os.path.join(self.d, 'nada'), BOCETO=self.boceto)
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('PLANOS no es una carpeta', r.stdout)
+
+
 if __name__ == '__main__':
     unittest.main()
