@@ -32,6 +32,7 @@
         "fauna": { "acabado": "Shot on a full-frame camera with a 35mm lens. The image is completely textless." },
         "flora": { "acabado": "Shot on a full-frame camera with a 50mm lens. The image is completely textless." },
         "location": { "acabado": "Shot on a full-frame camera with a 24mm lens. The image is completely textless." },
+        "item": { "acabado": "Shot on a full-frame camera with a 50mm lens. The image is completely textless." },
         "npc": { "acabado": "Shot on a full-frame camera with an 85mm lens. The image is completely textless." }
       }
     },

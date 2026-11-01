@@ -487,3 +487,25 @@ semilla 7, semilla 3, banner).
 - **La dirección pedida se repite en la segunda semilla** (punta del cuchillo y del odre a la izquierda, orco y faerus
   hacia la derecha): en escenas con la dirección dicha y medida, 16 de 16. P8 sigue para la criatura sola (r15, r16).
 - **El sol fuera de cuadro y las cuentas fallan también con la semilla 7** (L3, F9): confirmado, no es la semilla.
+
+## r21 · La palanca de la luz fría u oscura (`IMG-23`, 2026-11-02)
+
+Salvia y faerus de r20, semilla 3, con la línea `Style` fija y la luz pedida de dos maneras: **(a)** la escena entera
+dicha oscura al principio del prompt; **(b)** el momento y el clima en la frase de luz (salvia al anochecer con cielo
+de tormenta; faerus al anochecer, suelo casi negro, luz de ventanas y hongos). Rejilla (no versionada):
+`generated/banco/r21-luz.png` (por elemento: a, b, r20, banner). Antes, `generated/banco/r21-grad.png`: las dos de r20
+con `gradar.sh` de atardecer y de noche.
+
+| Elemento | (a) oscura al principio | (b) momento y clima | r20 |
+|---|---|---|---|
+| salvia-del-polvo | cielo cubierto y luz plana, sin sol: **la más cercana**, aunque más clara que el banner | cielo de tormenta, pero las paredes con luz rasante cálida | cañón claro, cielo blanco |
+| faerus-margen-hembra | bosque en penumbra sin rayos de sol, ventanas encendidas | igual que (a), algo más apagado | rayos de sol dorados |
+
+- **Decir la oscuridad en el prompt sí mueve la luz**, a diferencia de quitarla de `Style` (r20b): se van el sol y los
+  rayos dorados. **No llega a la clave del banner**: las dos siguen en un gris medio, y los hongos de faerus no brillan.
+  Entre las dos maneras hay poca diferencia; (a) pierde menos (el momento nombrado trae luz rasante cálida).
+- **La gradación sola oscurece pero mata el tono** (r21-grad): la de noche acerca el brillo al banner, pero la salvia
+  sale gris azulada y faerus pierde el brillo de los hongos.
+- **Receta para el perfil:** la oscuridad dicha al principio del prompt (la luz de `condiciones` de la ficha, que ya
+  abre el prompt en `momento:noche`) y, encima, la gradación de `gradar.sh`, que ya parte de una imagen sin sol. La
+  noche de verdad se valida con la primera imagen nocturna del perfil.
