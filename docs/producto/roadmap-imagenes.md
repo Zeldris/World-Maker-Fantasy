@@ -107,9 +107,11 @@ desde el panel vive en tablas que siembran.
   cabeza roma se lee como su banner (la s7, con la dorsal del ancla). **Cerrada con cuatro de seis** (R3);
   `pautas.md` v4 es la entrega. Queda fuera del banco: gargantúa y cruzavientos (`IMG-24`) y el acabado de las
   cuatro (`IMG-25`, receta final).
-- **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27): 2-3 elementos con
-  banner por tipo en borrador (cardo brújula y Pastos de la Deriva entre ellos); cada tipo, su sección de
-  `pautas.md`. **M**
+- **IMG-22 · Pautas con flora, lugar, objeto y raza** [A] (2026-10-26, reorientada el 2026-10-27) 🚧 en curso 2026-11-01: dos
+  elementos por tipo (cardo brújula y salvia del polvo; Pastos de la Deriva y Cataratas de la Madre Fango; cuchillo de hielo
+  sílice y odre; orco de las Llanuras y faerus del Margen) medidos en su banner, prompts y pautas propuestas en
+  [`banco/r20-tipos.md`](plan-imagenes/banco/r20-tipos.md); ronda r20 lanzada (640x256, semilla 3). Falta: veredicto en
+  `resultados.md` y las secciones por tipo de `pautas.md`. **M**
 - **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26): una orden
   saca el borrador de cualquier ficha con la receta de `pautas.md`, y una sola imagen final a 1280 comprueba que
   escala; docs y tests. También: condiciones `momento:noche` en las
