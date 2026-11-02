@@ -3,7 +3,7 @@
 Una misma actualización se cuenta distinto en cada sitio. La voz común es la del Portal: **cercana, concreta y
 honesta**, sin vender. Se enseña lo que hay, con sus pendientes, y se invita a mirar o a sumarse.
 
-## Twitter/X
+## X
 
 - **Para qué:** que alguien vea una imagen o una frase y entre al Portal.
 - **Formato:** hilo de 2 a 4 mensajes de **280 caracteres como mucho** (un enlace cuenta 23). El primero se sostiene

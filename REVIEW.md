@@ -1,9 +1,16 @@
-<!-- galivelop-workflow v0.2.0 -->
+<!-- galivelop-workflow v0.4.3 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`) comprueba en cada diff, además de los fallos de siempre. Son los
 fallos que más se han repetido en las revisiones de las fases (retros del 2026-10-07, `QA-16`). Lo
 mecánico ya lo comprueban los tests, el hook `pre-push` y la CI; aquí está lo que pide criterio.
+
+## Cómo se informa
+
+- Antes de dar un hallazgo, intenta refutarlo: busca el código, el test o el gancho que ya lo cubre. Solo se informa
+  de lo que sobrevive, con la ruta y la línea.
+- La revisión acaba con un veredicto, uno de tres: `SHIP` (nada que arreglar), `SHIP WITH FIXES` (hay arreglos, ninguno
+  bloquea) o `DO NOT SHIP` (algo grave o que rompe).
 
 ## El mundo avanza solo
 
@@ -152,6 +159,12 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
 - Un gancho de subida comprueba el commit que se sube, no la carpeta de trabajo, y falla cerrado cuando le falta un
   dato (un commit que no tiene, una API que no responde).
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos.
+- Una carpeta con nombre fijo en un directorio compartido (`$TMPDIR`, `/tmp`) es por usuario, se crea con permisos 700
+  y se rechaza si ya existe como symlink o de otro usuario; los archivos sueltos, con `mktemp`.
+- Un gancho que pregunta o bloquea se revisa **probando cómo saltárselo**: envoltorios con opciones que llevan valor
+  (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), el destino de los copiadores (`cp`,
+  `install`, `rsync`, `dd of=`, `-t DIR`), una carpeta antecesora de la protegida y una ruta relativa o con `..`; y
+  los falsos positivos habituales (leer o copiar **desde** la carpeta, `git restore --staged`). Cada forma, su caso.
 - Una orden con `npx` en `check` pasa por `tools/qa/host.sh` (sandbox Flatpak de la Deck, `QA-180`).
 - Un cambio en `.claude/gw.json` (sobre todo `check`, `relatedTests`, `protectedPaths` o `reviewMark`) o en
   `.githooks/` lleva su caso en `tools/qa/tests/` (`test_pre_commit.py`, `test_prepush_ramas.py`).

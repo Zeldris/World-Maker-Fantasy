@@ -146,10 +146,10 @@ class Cerradas(unittest.TestCase):
         return flujo('--root', self.repo, 'closed', self.base, sha)
 
     def test_tachada_sin_bitacora_falla(self):
-        """Con la fecha delante, como en la bitácora de WMF. El flujo da por apuntada una viñeta que empieza por el id
-        aunque no esté tachada (`- `QA-1` diagnosticado`): fricción 14 del piloto."""
+        """Una viñeta sin fecha que empieza por el id y no lo tacha (`- `QA-1` diagnosticado`) no la apunta: fricción
+        14 del piloto. Desde el flujo v0.4.3, una entrada con fecha delante (`- **2026-10-14** — …`) sí la apunta."""
         sha = self.commit('- ~~**QA-1 · Una**~~ ✅\n- ~~**QA-2 · Dos**~~ ✅\n',
-                          '## Hecho recientemente\n\n- **2026-10-14** — `QA-1` diagnosticado\n- ~~`QA-2`~~\n')
+                          '## Hecho recientemente\n\n- `QA-1` diagnosticado\n- ~~`QA-2`~~\n')
         r = self.correr(sha)
         self.assertEqual(r.returncode, 1)
         self.assertIn('QA-1', r.stdout)

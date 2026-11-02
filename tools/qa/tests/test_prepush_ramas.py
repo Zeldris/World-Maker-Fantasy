@@ -99,11 +99,15 @@ class PrepushRamas(unittest.TestCase):
         git(self.repo, 'branch', '-q', '-D', 's')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
 
-    def test_bitacora_mala_en_un_commit_intermedio_falla(self):
-        self.commit('docs/registros/traspaso.md', AL_DIA + '| **Tarea en curso · `r`** | a |\n| **Tarea en curso · `r`** | b |\n', 'dos filas')
+    def test_bitacora_mala_en_un_commit_intermedio_la_arregla_la_punta(self):
+        """Desde el flujo v0.4.3 se comprueba la bitácora de la punta que se sube: un commit posterior arregla la de
+        uno intermedio. Mala en la punta, falla."""
+        dos_filas = AL_DIA + '| **Tarea en curso · `r`** | a |\n| **Tarea en curso · `r`** | b |\n'
+        self.commit('docs/registros/traspaso.md', dos_filas, 'dos filas')
         sha = self.commit('docs/registros/traspaso.md', BITACORA_OK, 'arreglada')
-        codigo, _, _ = self.correr(sha, CERO)
-        self.assertEqual(codigo, 1)
+        self.assertEqual(self.correr(sha, CERO)[0], 0)
+        sha = self.commit('docs/registros/traspaso.md', dos_filas, 'otra vez dos filas')
+        self.assertEqual(self.correr(sha, CERO)[0], 1)
 
     def test_fecha_vieja_falla_solo_si_el_commit_cambia_la_bitacora(self):
         """QA-115: el commit de hoy que toca la bitácora la pone al día; uno que no la toca no cuenta."""

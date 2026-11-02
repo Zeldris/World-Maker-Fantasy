@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.2.0
+# galivelop-workflow v0.4.3
 """The only reader of a project's .claude/gw.json (one fact, one place).
 
 Validates the config against schema/gw.schema.json (a stdlib validator for the subset the schema uses) and fills the
@@ -9,18 +9,26 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
   python3 config.py get KEY             # scalar: one line; list: one item per line; object: JSON
   python3 config.py get KEY --json      # always JSON
   python3 config.py root                # the project root it resolved
+  python3 config.py related --kind fast|slow   # relatedTests commands to run, NUL-terminated, ready for `bash -c`
+                                        # (reads the changed files that exist, one per line, on stdin)
   python3 config.py --rev REV get KEY   # the config as commit REV has it (git show REV:.claude/gw.json), e.g. the
                                         # commit a hook is about to push; absent or invalid at REV -> exit 2
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
-in a project lives in .claude/gw/scripts/), else the git top level of $CLAUDE_PROJECT_DIR, else of the current
-directory. Fails closed: no config, invalid config or unknown key -> exit 2 with the command that fixes it.
+in a project lives in .claude/gw/scripts/), else the git top level of the current directory when it is
+$CLAUDE_PROJECT_DIR's repo (the same checkout or a linked worktree of it, where $CLAUDE_PROJECT_DIR names the main
+checkout), else of $CLAUDE_PROJECT_DIR (a plugin hook run from a sibling repo or from outside any repo), else of the
+current directory. GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE are
+ignored: git exports them to hooks, and with GIT_DIR set `rev-parse --show-toplevel` answers the folder it is
+given, not the repo's. Fails closed: no config, invalid config or unknown key -> exit 2 with the command that fixes it.
 Python 3.8+ (macOS ships 3.9).
 """
 import argparse
 import json
 import os
+import posixpath
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -34,12 +42,69 @@ class ConfigError(Exception):
 
 
 def git_toplevel(path):
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
     try:
         out = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, check=True).stdout.strip()
+                             capture_output=True, text=True, check=True, env=env).stdout.strip()
         return Path(out) if out else None
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+def git_common_dir(root):
+    """The repository a checkout belongs to (shared by the main checkout and its linked worktrees), or None."""
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    try:
+        out = subprocess.run(["git", "-C", str(root), "rev-parse", "--git-common-dir"],
+                             capture_output=True, text=True, check=True, env=env).stdout.strip()
+        return (Path(root) / out).resolve() if out else None  # relative to `root` when git prints it relative
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def non_capturing(pattern):
+    """`pattern` with every capturing group made non-capturing: `(A|B)-\\d+` -> `(?:A|B)-\\d+`, so re.findall of a
+    task id (taskId) returns whole matches and not the groups. Escaped parentheses, `[...]` classes and `(?...)`
+    constructs are left alone; a named group `(?P<n>` becomes `(?:`. Raises ConfigError on a back-reference, which
+    cannot survive the change."""
+    out, i, n, in_class = [], 0, len(pattern), False
+    backref = f"the pattern {pattern!r} uses a back-reference; write it without capturing groups"
+    while i < n:
+        c = pattern[i]
+        if c == "\\" and i + 1 < n:
+            if not in_class and pattern[i + 1] in "123456789":
+                raise ConfigError(backref)
+            out.append(pattern[i:i + 2])
+            i += 2
+            continue
+        if in_class:
+            in_class = c != "]"
+        elif c == "[":
+            in_class = True
+            out.append(c)
+            i += 1
+            if pattern[i:i + 1] == "^":
+                out.append("^")
+                i += 1
+            if pattern[i:i + 1] == "]":  # a leading ] is a literal
+                out.append("]")
+                i += 1
+            continue
+        elif c == "(":
+            if pattern.startswith("(?P=", i):
+                raise ConfigError(backref)
+            named = re.match(r"\(\?P<[^>]*>", pattern[i:])
+            if named:
+                out.append("(?:")
+                i += named.end()
+                continue
+            if pattern[i + 1:i + 2] != "?":
+                out.append("(?:")
+                i += 1
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
 
 
 def find_root(explicit=None):
@@ -51,11 +116,14 @@ def find_root(explicit=None):
     own = git_toplevel(HERE)
     if own is not None and (own / CONFIG_REL).is_file():
         return own
-    for candidate in (os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()):
-        if candidate:
-            root = git_toplevel(candidate)
-            if root is not None:
-                return root
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    project = git_toplevel(project_dir) if project_dir else None
+    cwd_root = git_toplevel(os.getcwd())
+    if project is not None and cwd_root is not None and git_common_dir(project) != git_common_dir(cwd_root):
+        return project  # the current directory is another repo (a sibling, a cloned dependency): not the project
+    root = cwd_root or project
+    if root is not None:
+        return root
     raise ConfigError("not inside a git repository; run from the project or pass --root <path>")
 
 
@@ -78,8 +146,14 @@ def validate(value, schema, path="$"):
         ok = isinstance(value, TYPES[expected]) and not (expected in ("integer", "number") and isinstance(value, bool))
         if not ok:
             return [f"{path}: expected {expected}, got {type(value).__name__}"]
+    if "anyOf" in schema:
+        tried = [validate(value, option, path) for option in schema["anyOf"]]
+        if all(tried):
+            return [f"{path}: matches none of the allowed forms: " + " | ".join("; ".join(t) for t in tried)]
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{path}: must be one of {schema['enum']}, got {value!r}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value < schema.get("minimum", value):
+        errors.append(f"{path}: must be at least {schema['minimum']}, got {value!r}")
     if isinstance(value, str):
         if len(value) < schema.get("minLength", 0):
             errors.append(f"{path}: must not be empty")
@@ -98,8 +172,32 @@ def validate(value, schema, path="$"):
         for key, item in value.items():
             if key in props:
                 errors += validate(item, props[key], f"{path}.{key}")
+            elif isinstance(schema.get("additionalProperties"), dict):
+                errors += validate(item, schema["additionalProperties"], f"{path}.{key}")
             elif schema.get("additionalProperties") is False:
                 errors.append(f"{path}: unknown key '{key}' (check spelling; allowed: {', '.join(sorted(props))})")
+    return errors
+
+
+def semantic_errors(config):
+    """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex, an agentMap
+    prefix that is not one folder name."""
+    errors = []
+    agent_map = config.get("agentMap")
+    if isinstance(agent_map, dict) and isinstance(agent_map.get("prefixes"), dict):
+        for short in agent_map["prefixes"]:
+            if not re.fullmatch(r"[^/\s]+/?", short) or short in (".", "..", "./", "../"):
+                errors.append(f"$.agentMap.prefixes: key {short!r} must be one folder-like name, with or without a "
+                              f"trailing '/' (e.g. \"b/\")")
+    related = config.get("relatedTests")
+    if isinstance(related, dict):
+        for kind in ("fast", "slow"):
+            for i, entry in enumerate(related.get(kind) or []):
+                if isinstance(entry, dict) and isinstance(entry.get("paths"), str):
+                    try:
+                        re.compile(entry["paths"])
+                    except re.error as exc:
+                        errors.append(f"$.relatedTests.{kind}[{i}].paths: {entry['paths']!r} is not a valid regex ({exc})")
     return errors
 
 
@@ -109,6 +207,51 @@ def with_defaults(config, schema):
         if key not in filled and "default" in prop:
             filled[key] = prop["default"]
     return filled
+
+
+def stale_refs(config):
+    """(patterns, skip) of the `staleRefs` key, whichever form it has: a list of regexes (skip empty) or
+    {"patterns": [...], "skip": [globs]} (both optional)."""
+    value = config.get("staleRefs") or []
+    if isinstance(value, dict):
+        return list(value.get("patterns") or []), list(value.get("skip") or [])
+    return list(value), []
+
+
+def glob_regex(glob):
+    """Compile a repo-relative glob to a regex. Only `*`, `**` and `?` are special (no brackets, no gitignore rules):
+    `*` and `?` stay inside one folder, `**` crosses folders (`**/` also matches no folder), a leading `./` or `/` is
+    dropped. An entry without metacharacters (`docs/registros`, with or without a trailing `/`) matches that file or
+    that folder and everything under it; a trailing `/` after metacharacters, or `/**`, also matches the folder."""
+    glob = glob[2:] if glob.startswith("./") else glob
+    glob = glob.lstrip("/")
+    if glob.endswith("/"):
+        glob = glob.rstrip("/")
+        glob += "/**" if re.search(r"[*?]", glob) else ""
+    if not re.search(r"[*?]", glob):
+        return re.compile(re.escape(glob) + r"(?:/.*)?\Z")
+    out, i = [], 0
+    while i < len(glob):
+        c = glob[i]
+        if glob.startswith("/**", i) and i + 3 == len(glob):
+            out.append("(?:/.*)?")
+            i += 3
+        elif glob.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif glob.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif c == "*":
+            out.append("[^/]*")
+            i += 1
+        elif c == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(c))
+            i += 1
+    return re.compile("".join(out) + r"\Z")
 
 
 def read_at(root, rev):
@@ -142,12 +285,43 @@ def load(root=None, rev=None):
     except json.JSONDecodeError as exc:
         raise ConfigError(f"{path}: invalid JSON at line {exc.lineno}: {exc.msg}")
     schema = json.loads(schema_path().read_text(encoding="utf-8"))
-    errors = validate(config, schema)
+    errors = validate(config, schema) or semantic_errors(config)
     if errors:
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
     config = with_defaults(config, schema)
     config["_root"] = root
     return config
+
+
+def related_commands(config, kind, files):
+    """The relatedTests commands of `kind` that apply to `files` (repo-relative paths that exist in the commit), each
+    as one shell command line. An entry is a string or {"command", "paths"?, "cwd"?}. `paths` (a regex searched in the
+    repo-relative path) narrows {files} and makes the entry run only when some file matches; `cwd` (a folder of the
+    repo) is where it runs and {files} arrive relative to it, files outside it being left out. Without either, the
+    old rules: a fast command runs always unless it uses {files}; a slow one only when some file changed. Every
+    command is run as `<checkWrapper> bash -c '<command>'` (with `cd CWD &&` inside when `cwd` is set), so the wrapper
+    covers a compound command whole."""
+    wrapper = (config.get("checkWrapper") or "").strip()
+    out = []
+    for entry in (config.get("relatedTests") or {}).get(kind) or []:
+        spec = {"command": entry} if isinstance(entry, str) else entry
+        command, paths, cwd = spec["command"], spec.get("paths"), spec.get("cwd")
+        scope = list(files)
+        if paths:
+            scope = [f for f in scope if re.search(paths, f)]
+        if cwd:
+            cwd = posixpath.normpath(cwd)
+            if cwd != ".":
+                scope = [f[len(cwd) + 1:] for f in scope if f.startswith(cwd + "/")]
+        uses_files = "{files}" in command
+        if kind == "slow" or paths or uses_files:
+            if not scope:
+                continue
+        inner = command.replace("{files}", " ".join(shlex.quote(f) for f in scope))
+        if cwd:
+            inner = f"cd {shlex.quote(cwd)} && {inner}"
+        out.append(f"{wrapper} bash -c {shlex.quote(inner)}" if wrapper else inner)
+    return out
 
 
 def main(argv=None):
@@ -157,6 +331,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate")
     sub.add_parser("root")
+    related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
+    related.add_argument("--kind", choices=("fast", "slow"), required=True)
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -171,6 +347,11 @@ def main(argv=None):
         return 0
     if args.command == "root":
         print(config["_root"])
+        return 0
+    if args.command == "related":
+        files = [line for line in sys.stdin.read().splitlines() if line]
+        for full in related_commands(config, args.kind, files):
+            sys.stdout.write(full + "\0")
         return 0
     value = config
     for part in args.key.split("."):
