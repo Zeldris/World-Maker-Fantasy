@@ -177,6 +177,12 @@ desde el panel vive en tablas que siembran.
   anillada, cresta, colmillos. **`pass_to_vlm=true` no cambia nada** (sin tokens de visión en el log: pediría el `mmproj`
   de Qwen3VL). Imágenes y logs en `generated/banco/img30/`. Queda abierto: la referencia solo existe para lo que ya tiene
   banner; para una criatura nueva habría que probar un banner de otra como referencia de acabado.
+- **IMG-31 · Banner ajeno como referencia de acabado** [A] (usuaria, 2026-11-02, de `IMG-30`) 🚧 en curso: con `-r`,
+  el banner GPT de **otra** criatura (cuernahoja) y el prompt de la ficha del aullador, a 640×256 y 8 pasos, frente al
+  mismo prompt sin referencia; también con «la referencia solo para el acabado» delante. Se mira si trae el acabado
+  sin arrastrar su criatura (EMD con `medir.sh` y a ojo contra el banner del aullador). Si sale, la referencia de
+  acabado entra en la receta y el LoRA de Kaggle pasa a ser opcional; si arrastra la criatura, Kaggle o `IMG-27`. Solo
+  horas de la Deck. **S**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
