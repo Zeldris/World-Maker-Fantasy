@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="gw-size" content="1600x900">
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1600px; height:900px; background:var(--fondo); color:var(--texto); font-family:'DejaVu Sans','Liberation Sans',sans-serif;
+         padding:56px 80px; display:flex; flex-direction:column; }
+  .cab { display:flex; justify-content:space-between; align-items:center; }
+  .marca { font-size:22px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  .plan { font-size:22px; letter-spacing:.12em; text-transform:uppercase; color:var(--fondo); background:var(--celeste); font-weight:bold; padding:6px 18px; border-radius:999px; }
+  h1 { font-size:46px; margin-top:16px; line-height:1.15; }
+  .antes { margin-top:22px; background:var(--superficie); border:2px dashed var(--borde); border-radius:14px; padding:18px 26px; font-size:24px; color:var(--tenue); line-height:1.4; }
+  .antes b { color:var(--texto); }
+  ol { list-style:none; display:flex; align-items:stretch; gap:56px; margin-top:auto; counter-reset:paso; }
+  li { flex:1; position:relative; background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:28px 26px; counter-increment:paso; }
+  li::before { content:counter(paso); display:inline-grid; place-items:center; width:46px; height:46px; border-radius:50%;
+               background:var(--celeste); color:var(--fondo); font-weight:bold; font-size:24px; }
+  li:not(:last-child)::after { content:'→'; position:absolute; right:-48px; top:50%; transform:translateY(-50%); font-size:40px; color:var(--celeste); }
+  li b { display:block; font-size:30px; margin-top:18px; line-height:1.2; }
+  li span { display:block; font-size:21px; color:var(--tenue); margin-top:12px; line-height:1.4; }
+  .pie { margin-top:auto; padding-top:20px; font-size:23px; color:var(--tenue); line-height:1.4; }
+</style>
+</head>
+<body>
+  <div class="cab"><div class="marca">Tarkor · World-Maker-Fantasy</div><div class="plan">En el plan</div></div>
+  <h1>De «sale y vuelve con una tirada» a «viaja de zona en zona por una ruta real»</h1>
+  <div class="antes"><b>Lo que se descarta:</b> un viaje abstracto con día de salida, día de vuelta y un riesgo que se tira al llegar. En el mapa, una banderita entre dos nodos.</div>
+  <ol>
+    <li><b>Sale</b><span>Expediciones, caravanas, partidas de caza, patrullas, refugiados, mensajeros o visitantes: todo lo que se desplaza es un viajero.</span></li>
+    <li><b>Sigue una ruta real</b><span>De zona en zona por los enlaces entre lugares y, dentro de cada zona, por sus celdas. Avanza cada día y está donde está.</span></li>
+    <li><b>Te lo cruzas</b><span>Puedes preguntarle por las regiones que ha atravesado, comerciar, escoltarlo, asaltarlo o dejarlo pasar.</span></li>
+    <li><b>Pasa donde está</b><span>Un asalto o una pelea con fauna ocurre en su sitio: en vivo si estás tú, de fondo si no.</span></li>
+  </ol>
+  <div class="pie">Las facciones usan los mismos viajeros y las mismas reglas que tú, como las IA de X4. Es el plan, no algo hecho todavía.</div>
+</body>
+</html>

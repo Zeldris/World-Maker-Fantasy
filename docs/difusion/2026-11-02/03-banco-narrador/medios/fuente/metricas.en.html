@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Metrics card: win rate of four narrator models (bars on a 0-1 scale) and p50 latency. -->
+<meta name="gw-size" content="1600x900">
+<title>Narrator bench</title>
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df;
+          --fuente:'DejaVu Sans','Liberation Sans',sans-serif; }
+  * { box-sizing:border-box; margin:0; }
+  body { width:1600px; height:900px; overflow:hidden; background:var(--fondo); color:var(--texto); font-family:var(--fuente);
+         background-image:radial-gradient(circle at 85% 12%, rgb(26 166 223 / .22), transparent 45%); padding:64px 96px; display:flex; flex-direction:column; }
+  .marca { font-size:26px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  .cabecera { display:flex; align-items:flex-end; gap:36px; margin-top:24px; }
+  .grande { font-size:130px; line-height:1; font-weight:bold; color:var(--celeste); }
+  .grande-texto { font-size:36px; line-height:1.25; color:var(--tenue); padding-bottom:12px; max-width:1000px; }
+  #grafico { margin-top:auto; display:flex; flex-direction:column; gap:20px; }
+  .fila { display:grid; grid-template-columns:400px 1fr 130px; align-items:center; gap:26px; font-size:30px; }
+  .fila .et { color:var(--tenue); text-align:right; }
+  .pista { height:40px; background:var(--superficie); border:2px solid var(--borde); border-radius:10px; overflow:hidden; }
+  .pista i { display:block; height:100%; background:var(--celeste); }
+  .fila.otro .pista i { background:#4a7a96; }
+  .fila b { font-size:34px; }
+  .lat { display:flex; gap:28px; margin-top:34px; }
+  .lat div { flex:1; background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:18px 28px; font-size:26px; color:var(--tenue); }
+  .lat b { color:var(--texto); font-size:34px; }
+  .pie { margin-top:26px; font-size:22px; color:var(--tenue); }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <div class="cabecera"><div class="grande">0.727</div><div class="grande-texto">win rate of Llama 3.1 8B, the narrator we already had, in a blind judging in both orders</div></div>
+  <div id="grafico"></div>
+  <div class="lat">
+    <div>Turn p50 with Llama 3.1: <b>29.3 s</b></div>
+    <div>Turn p50 with Gemma 4 e2b: <b>18.8 s</b></div>
+  </div>
+  <div class="pie">Steam Deck · judge consistency 0.939 · narrator bench, 2026-10-21</div>
+  <script type="application/json" id="datos">
+  [
+    {"etiqueta": "Llama 3.1 8B (current)", "valor": 0.727, "texto": "0.727", "propio": true},
+    {"etiqueta": "Gemma 4 e2b", "valor": 0.500, "texto": "0.500"},
+    {"etiqueta": "Qwen 3.5 4B", "valor": 0.394, "texto": "0.394"},
+    {"etiqueta": "Gemma 3 4B", "valor": 0.379, "texto": "0.379"}
+  ]
+  </script>
+  <script>
+    var datos = JSON.parse(document.getElementById("datos").textContent);
+    var grafico = document.getElementById("grafico");
+    datos.forEach(function (d) {
+      var fila = document.createElement("div");
+      fila.className = "fila" + (d.propio ? "" : " otro");
+      var et = document.createElement("span");
+      et.className = "et";
+      et.textContent = d.etiqueta;
+      var pista = document.createElement("div");
+      pista.className = "pista";
+      var barra = document.createElement("i");
+      barra.style.width = Math.round(d.valor * 100) + "%";
+      pista.appendChild(barra);
+      var texto = document.createElement("b");
+      texto.textContent = d.texto;
+      fila.appendChild(et);
+      fila.appendChild(pista);
+      fila.appendChild(texto);
+      grafico.appendChild(fila);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Tarjeta de métricas (formato metricas): una cifra grande, dos barras y tres datos de apoyo. Edita solo el JSON de
+     script#datos: "valor" es un número (la barra más larga es el mayor) y "texto" lo que se imprime junto a la barra. -->
+<meta name="gw-size" content="1600x900">
+<title>Metrics: a 24-hour agent session</title>
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; --fuente:'DejaVu Sans','Liberation Sans',sans-serif; }
+  * { box-sizing:border-box; margin:0; }
+  body { width:1600px; height:900px; overflow:hidden; background:var(--fondo); color:var(--texto); font-family:var(--fuente);
+         background-image:radial-gradient(circle at 85% 12%, rgb(26 166 223 / .22), transparent 45%); padding:72px 96px; display:flex; flex-direction:column; }
+  .marca { font-size:24px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  .cabecera { display:flex; align-items:flex-end; gap:36px; margin-top:26px; }
+  .grande { font-size:170px; line-height:1; font-weight:bold; color:var(--celeste); }
+  .grande-texto { font-size:40px; line-height:1.25; color:var(--texto); padding-bottom:16px; max-width:1000px; }
+  .sub { font-size:28px; color:var(--tenue); margin-top:44px; }
+  #grafico { margin-top:18px; display:flex; flex-direction:column; gap:20px; }
+  .fila { display:grid; grid-template-columns:560px 1fr 130px; align-items:center; gap:22px; font-size:28px; }
+  .fila .et { color:var(--texto); text-align:right; }
+  .pista { height:40px; background:var(--superficie); border:2px solid var(--borde); border-radius:10px; overflow:hidden; }
+  .pista i { display:block; height:100%; background:var(--celeste); }
+  .fila b { font-size:34px; color:var(--celeste); }
+  .apoyo { display:flex; gap:28px; margin-top:auto; }
+  .dato { flex:1; background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:20px 28px; }
+  .dato b { display:block; font-size:48px; color:var(--celeste); }
+  .dato span { font-size:22px; color:var(--tenue); }
+  .pie { margin-top:26px; font-size:22px; color:var(--tenue); }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <div class="cabecera"><div class="grande">349</div><div class="grande-texto">calls in 24 hours, in a single agent session with no subagents</div></div>
+  <div class="sub">What was dragged along in context the most (k = thousands)</div>
+  <div id="grafico"></div>
+  <div class="apoyo">
+    <div class="dato"><b>25</b><span>context compactions</span></div>
+    <div class="dato"><b>113k</b><span>average context (200k window)</span></div>
+    <div class="dato"><b>0</b><span>working subagents</span></div>
+  </div>
+  <div class="pie">Measured with a token-spend review, 2026-10-21</div>
+  <script type="application/json" id="datos">
+  [
+    {"etiqueta": "Handoff file, read 39 times", "valor": 305, "texto": "305k"},
+    {"etiqueta": "One documentation page", "valor": 144, "texto": "144k"}
+  ]
+  </script>
+  <script>
+    var datos = JSON.parse(document.getElementById("datos").textContent);
+    var mayor = Math.max.apply(null, datos.map(function (d) { return d.valor; })) || 1;
+    var grafico = document.getElementById("grafico");
+    datos.forEach(function (d) {
+      var fila = document.createElement("div");
+      fila.className = "fila";
+      var et = document.createElement("span");
+      et.className = "et";
+      et.textContent = d.etiqueta;
+      var pista = document.createElement("div");
+      pista.className = "pista";
+      var barra = document.createElement("i");
+      barra.style.width = Math.max(1, Math.round((d.valor / mayor) * 100)) + "%";
+      pista.appendChild(barra);
+      var texto = document.createElement("b");
+      texto.textContent = d.texto;
+      fila.appendChild(et);
+      fila.appendChild(pista);
+      fila.appendChild(texto);
+      grafico.appendChild(fila);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Diagram: one fight, two forms, one engine. Portal template (dark palette). -->
+<meta name="gw-size" content="1600x900">
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1600px; height:900px; background:var(--fondo); color:var(--texto); font-family:'DejaVu Sans','Liberation Sans',sans-serif;
+         padding:72px 80px; display:flex; flex-direction:column; }
+  .marca { font-size:22px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  h1 { font-size:56px; margin-top:20px; }
+  .mapa { margin-top:auto; display:grid; grid-template-columns:1fr 90px 440px 90px 1fr; grid-template-rows:200px 200px; gap:0 0; align-items:stretch; }
+  .caja { background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:26px 28px; margin:8px 0; }
+  .caja b { display:block; font-size:30px; line-height:1.2; }
+  .caja span { display:block; font-size:22px; color:var(--tenue); margin-top:12px; line-height:1.4; }
+  .motor { grid-column:3; grid-row:1 / span 2; margin:8px 0; background:var(--superficie); border:3px solid var(--celeste); border-radius:18px;
+           padding:34px 30px; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+  .motor small { font-size:20px; letter-spacing:.14em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  .motor b { display:block; font-size:40px; line-height:1.15; margin-top:14px; }
+  .motor span { display:block; font-size:23px; color:var(--tenue); margin-top:16px; line-height:1.45; }
+  .flecha { display:flex; align-items:center; justify-content:center; font-size:46px; color:var(--celeste); }
+  .pie { margin-top:auto; padding-top:40px; font-size:26px; color:var(--tenue); }
+  .pie em { color:var(--texto); font-style:normal; font-weight:bold; }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <h1>One fight, two forms, one engine</h1>
+  <div class="mapa">
+    <div class="caja" style="grid-column:1;grid-row:1"><b>With the player present</b><span>She and her party are there.</span></div>
+    <div class="flecha" style="grid-column:2;grid-row:1">→</div>
+    <div class="motor"><small>The same engine</small><b>Turn-based combat</b><span>Every fighter with their own attributes. Same rules, whether you are there or not.</span></div>
+    <div class="flecha" style="grid-column:4;grid-row:1">→</div>
+    <div class="caja" style="grid-column:5;grid-row:1"><b>Live</b><span>Turn by turn, with narration.</span></div>
+
+    <div class="caja" style="grid-column:1;grid-row:2"><b>Without her</b><span>Any other fight, including ones happening at the same time.</span></div>
+    <div class="flecha" style="grid-column:2;grid-row:2">→</div>
+    <div class="flecha" style="grid-column:4;grid-row:2">→</div>
+    <div class="caja" style="grid-column:5;grid-row:2"><b>In the background</b><span>Deterministic, no narration.</span></div>
+  </div>
+  <div class="pie"><em>No aggregate numbers:</em> a guard, a soldier or a renegade fights the same whether you are there or not.</div>
+</body>
+</html>

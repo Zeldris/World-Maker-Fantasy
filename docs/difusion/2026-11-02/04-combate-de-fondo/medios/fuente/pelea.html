@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<!-- Diagrama: una pelea, dos formas, un solo motor. Plantilla del Portal (paleta oscura). -->
+<meta name="gw-size" content="1600x900">
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { width:1600px; height:900px; background:var(--fondo); color:var(--texto); font-family:'DejaVu Sans','Liberation Sans',sans-serif;
+         padding:72px 80px; display:flex; flex-direction:column; }
+  .marca { font-size:22px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  h1 { font-size:56px; margin-top:20px; }
+  .mapa { margin-top:auto; display:grid; grid-template-columns:1fr 90px 440px 90px 1fr; grid-template-rows:200px 200px; gap:0 0; align-items:stretch; }
+  .caja { background:var(--superficie); border:2px solid var(--borde); border-radius:18px; padding:26px 28px; margin:8px 0; }
+  .caja b { display:block; font-size:30px; line-height:1.2; }
+  .caja span { display:block; font-size:22px; color:var(--tenue); margin-top:12px; line-height:1.4; }
+  .motor { grid-column:3; grid-row:1 / span 2; margin:8px 0; background:var(--superficie); border:3px solid var(--celeste); border-radius:18px;
+           padding:34px 30px; display:flex; flex-direction:column; justify-content:center; text-align:center; }
+  .motor small { font-size:20px; letter-spacing:.14em; text-transform:uppercase; color:var(--celeste); font-weight:bold; }
+  .motor b { display:block; font-size:40px; line-height:1.15; margin-top:14px; }
+  .motor span { display:block; font-size:23px; color:var(--tenue); margin-top:16px; line-height:1.45; }
+  .flecha { display:flex; align-items:center; justify-content:center; font-size:46px; color:var(--celeste); }
+  .pie { margin-top:auto; padding-top:40px; font-size:26px; color:var(--tenue); }
+  .pie em { color:var(--texto); font-style:normal; font-weight:bold; }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <h1>Una pelea, dos formas, un solo motor</h1>
+  <div class="mapa">
+    <div class="caja" style="grid-column:1;grid-row:1"><b>Con la jugadora delante</b><span>Ella y su grupo están presentes.</span></div>
+    <div class="flecha" style="grid-column:2;grid-row:1">→</div>
+    <div class="motor"><small>El mismo motor</small><b>Combate por turnos</b><span>Cada combatiente con sus atributos. Las mismas reglas, estés o no.</span></div>
+    <div class="flecha" style="grid-column:4;grid-row:1">→</div>
+    <div class="caja" style="grid-column:5;grid-row:1"><b>En vivo</b><span>Por turnos y con narración.</span></div>
+
+    <div class="caja" style="grid-column:1;grid-row:2"><b>Sin ella</b><span>Cualquier otra pelea, también las que ocurren a la vez.</span></div>
+    <div class="flecha" style="grid-column:2;grid-row:2">→</div>
+    <div class="flecha" style="grid-column:4;grid-row:2">→</div>
+    <div class="caja" style="grid-column:5;grid-row:2"><b>De fondo</b><span>Determinista y sin narración.</span></div>
+  </div>
+  <div class="pie"><em>Sin cifras en agregado:</em> un guardia, un soldado o un renegado pelean igual estés o no.</div>
+</body>
+</html>

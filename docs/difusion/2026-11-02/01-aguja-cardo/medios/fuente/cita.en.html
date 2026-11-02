@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="gw-size" content="1600x900">
+<title>Cita</title>
+<style>
+  :root { --fondo:#06121c; --superficie:#0c1d2b; --borde:#1b3447; --texto:#eaf4fa; --tenue:#9db4c4; --celeste:#1aa6df; }
+  * { box-sizing:border-box; margin:0; }
+  body { width:1600px; height:900px; overflow:hidden; background:var(--fondo); color:var(--texto); font-family:'DejaVu Sans','Liberation Sans',sans-serif;
+         background-image:radial-gradient(circle at 85% 15%, rgb(26 166 223 / .25), transparent 45%); padding:80px 112px; display:flex; flex-direction:column; position:relative; }
+  body::before { content:"\201C"; position:absolute; left:64px; top:96px; font-size:300px; line-height:1; color:var(--celeste); opacity:.3; }
+  .marca { font-size:26px; letter-spacing:.18em; text-transform:uppercase; color:var(--celeste); font-weight:bold; position:relative; }
+  blockquote { font-size:44px; line-height:1.28; font-weight:bold; max-width:1330px; margin-top:auto; position:relative; }
+  .autor { margin-top:48px; margin-bottom:auto; display:flex; align-items:center; gap:20px; font-size:28px; }
+  .autor::before { content:""; width:64px; height:4px; border-radius:2px; background:var(--celeste); }
+  .autor b { color:var(--texto); }
+  .autor span { color:var(--tenue); }
+  .pie { display:flex; justify-content:space-between; font-size:24px; color:var(--tenue); position:relative; }
+</style>
+</head>
+<body>
+  <div class="marca">Tarkor · World-Maker-Fantasy</div>
+  <blockquote>A field of black magnetised rocks where magnetic sandstorms comb the sand into ridges. The sense of direction is lost among them. Downwind, magnet sand builds up and the Compass Thistle grows, whose needle is the only thing that cancels the disorientation.</blockquote>
+  <div class="autor"><b>The Magnet Needles</b><span>Red Wind Plains · Tarkor canon (translated)</span></div>
+  <div class="pie"><span>Tarkor · lore</span><span>zeldris.github.io/Portal-Galivelop</span></div>
+</body>
+</html>
