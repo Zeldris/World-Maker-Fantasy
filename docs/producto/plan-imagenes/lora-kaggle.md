@@ -31,8 +31,9 @@ Con `ARRANQUE = True`, *Run All*. Lo que importa sale en la última celda; **pá
 
 - **¿sin memoria?: True** → no cabe en 16 GB. La vía se cae sin gasto y se sigue con `IMG-27`.
 - **pérdidas `nan`** → fp16 no aguanta. Claude ajusta el cuaderno (otra precisión o capas en fp32) antes de seguir.
-- **s/paso**: con él se calcula el entrenamiento entero (1500 pasos × s/paso; si pasa de ~11 h, se baja a 1000 o
-  se parte en dos sesiones).
+- **s/paso**: con él se calcula el entrenamiento entero (pasos × s/paso; si pasa de ~11 h, se baja o se parte en
+  dos sesiones). En fp32 salió a ~30 s/paso (2026-11-02): 1500 pasos serían ~12,5 h, así que se entrena con **1000**
+  (~8,5 h + ~25 min de preparación; ~7,5 vueltas a las 134 imágenes), con un punto intermedio cada 250.
 
 ## Paso 2: entrenamiento
 

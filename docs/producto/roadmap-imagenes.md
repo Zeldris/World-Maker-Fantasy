@@ -199,9 +199,9 @@ desde el panel vive en tablas que siembran.
   arranques en Kaggle: cabe en la T4 a 6,6 s/paso, pero el transformer en fp16 da pérdida `nan` (latentes y textos
   sanos); con el transformer en fp32 sigue `nan` (7 s/paso), así que no es desbordamiento: el diagnóstico por capas da
   `context_embedder` en nf4 (entrada sana); sin cuantizar sigue `nan`, porque `accelerator.prepare()` envuelve el
-  transformer en autocast fp16 y todo corría en fp16; el cuaderno quita ese envoltorio. Falta: el arranque en fp32 de
-  verdad (¿cabe?, ¿s/paso?), el entrenamiento y la
-  prueba del LoRA en la Deck.
+  transformer en autocast fp16 y todo corría en fp16; el cuaderno quita ese envoltorio. Sexto arranque (fp32 de
+  verdad): sin `nan` (pérdida 0,66-0,88), sin falta de memoria, ~30 s/paso, LoRA de 161 MB; el entrenamiento baja a
+  1000 pasos (~8,5 h) para caber en una sesión. Falta: el entrenamiento y la prueba del LoRA en la Deck.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
