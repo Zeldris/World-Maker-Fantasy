@@ -188,6 +188,12 @@ desde el panel vive en tablas que siembran.
   0.7) `-r` ajeno casi no cambia nada (EMD 15.7/15.3 → 15.8/14.9). **Veredicto:** la referencia ajena no da el acabado
   GPT ni la criatura; no entra en la receta. Para criaturas nuevas, la palanca que queda es el LoRA de estilo (pasos 1 y 2
   de `investigacion-lora-2.md`). Pruebas en `generated/banco/img31/`.
+- **IMG-32 · LoRA de estilo en Kaggle** [A] (usuaria, 2026-11-02, de `IMG-31`; pasos 1 y 2 de
+  [`investigacion-lora-2.md`](plan-imagenes/investigacion-lora-2.md)) 🚧 en curso: conjunto de los 134 banners GPT a
+  1280×512 (`image-generator/lora/conjunto.sh`), cuaderno de Kaggle que pone los textos con un modelo de visión y entrena
+  el LoRA con diffusers sobre el Klein base (arranque de 20 pasos y luego 1000-2000 con guardados), y prueba del LoRA en
+  la Deck sobre el Q8_0. La usuaria: cuenta de Kaggle, subir el zip, lanzar y bajar el LoRA. Puerta: si no cabe en 16 GB,
+  se cae sin gasto y se sigue con `IMG-27`. **M**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):

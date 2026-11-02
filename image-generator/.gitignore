@@ -18,3 +18,4 @@ bocetos/*.svg
 # IMG-30: binario nuevo de sd.cpp y LoRAs de prueba, descargados (no se suben).
 bin-nuevo/
 loras-prueba/
+lora/conjunto/
