@@ -108,9 +108,10 @@ Nunca sobre trabajo ya fusionado (`QA-77`). Detalle en el
 2. **Entorno:** `/opt-ai` si hubo tandas con Ollama real (`QA-142`), `/opt-tokens` y `/retro`, que revisa también
    `opt-tokens`. Sus propuestas se **presentan a la usuaria**; lo que confirme se aplica en la rama.
 3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de esos commits y sus arreglos; luego
-   `bash .claude/gw/scripts/revisado.sh` (escribe la marca, `.claude/revision-main.sha`, y hace su commit; sin retro
-   decidida no hay marca, `requireRetro`) y `git push`; la descripción con la skill `pr`. Solo entonces se crea el PR.
-   Sin la marca del mismo commit, los ganchos lo rechazan (`QA-50`).
+   `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: <paso>"` (el `commit-msg` pide esa línea; escribe la
+   marca, `.claude/revision-main.sha`, y hace su commit; sin retro decidida no hay marca, `requireRetro`) y
+   `git push`; la descripción con la skill `pr`. Solo entonces se crea el PR. Sin la marca del mismo commit, los
+   ganchos lo rechazan (`QA-50`).
 
 ## La bitácora (`docs/registros/traspaso.md`)
 

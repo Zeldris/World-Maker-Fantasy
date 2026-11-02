@@ -29,6 +29,26 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
   (`.githooks/commit-msg`, WMF `QA-210`): dos commits de subagentes salieron sin el dato que necesita el relevo.
   Como opción de `.claude/gw.json` (p. ej. `commitNextLine`), con la etiqueta en el idioma del proyecto.
 
+- Propuesta para el flujo P6 (skill + script, patch): la fase de cierre de `retro`/`pr` y la ayuda de `revisado.sh`
+  no avisan de que un `commit-msg` que pide `Siguiente:` (P5) rechaza el commit de la marca sin `--footer`. Si P5
+  entra, `revisado.sh` debería poner la línea por defecto (`Siguiente: crear el PR`) cuando la opción esté activa.
+- Propuesta para el flujo P7 (skill, minor): `gw-media-content/scripts/comprobar.py` sin argumentos sale con 2, y un
+  `check` que lo corría (`comprobar.py > /dev/null`, WMF hasta `f2e83984`) deja de validar `docs/difusion`. Una
+  opción para comprobar todas las piezas de `mediaContent.dir` (y no contar como error las normas de Reddit sin
+  leer, que dependen de la usuaria) devolvería la comprobación al `check`.
+- Propuestas para el flujo P8-P13 (scripts, patch), de la revisión de código del PR de WMF del 2026-11-02 sobre la
+  copia v0.4.3, sin verificar a fondo:
+  - P8 `bitacora.py closed`: acepta un id que aparezca en cualquier línea fechada, no solo en «Hecho recientemente»;
+    el test que lo cubre (`test_bitacora.py`, ~l. 148) se relajó.
+  - P9 gancho Stop `antes-de-parar.py`: no excluye `protectedPaths` (un borrador sin commit bloquea parar) y deja
+    parar si lo único tocado es la bitácora.
+  - P10 `prepush-ramas.sh`: comprueba la bitácora solo en la punta que se sube, no en cada commit nuevo.
+  - P11 `guardia-config.py`: a `GIT_WRITES` le faltan `reset --hard`, `stash pop`, `merge`, `checkout <rama>`, y
+    trata una ruta `$VAR` como la raíz.
+  - P12 `doctor.py`: ante un gancho sin cabecera (propio a propósito) recomienda `/gw-update`, que lo sobrescribiría.
+  - P13 `bitacora.py`: la regex `GLUED_ITEM` da falsos positivos; `recuperar.py fit_log` recorta primero las filas
+    de otros worktrees (P1).
+
 ## Se queda en WMF
 
 - `.githooks/commit-msg` como archivo propio (sin cabecera de versión; el doctor lo avisa): mientras P4 y P5 no estén
