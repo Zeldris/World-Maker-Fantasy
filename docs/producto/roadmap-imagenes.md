@@ -182,7 +182,9 @@ desde el panel vive en tablas que siembran.
   mismo prompt sin referencia; también con «la referencia solo para el acabado» delante. Se mira si trae el acabado
   sin arrastrar su criatura (EMD con `medir.sh` y a ojo contra el banner del aullador). Si sale, la referencia de
   acabado entra en la receta y el LoRA de Kaggle pasa a ser opcional; si arrastra la criatura, Kaggle o `IMG-27`. Solo
-  horas de la Deck. **S**
+  horas de la Deck. **S** Prueba 1 (2026-11-02): **no arrastra la cuernahoja** (ni cuello ni cuernos) y da más atmósfera
+  y profundidad (polvo, montes velados, manada difusa); EMD 21.3 → 18.6 (20.0 con la instrucción de acabado). **No arregla
+  la criatura** (patas largas en las tres) y cuesta +60 % (508 → 810 s). Prueba 2: la armonización de planos con `-r` ajeno.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
