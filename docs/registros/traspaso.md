@@ -178,6 +178,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-11-02** — ~~`QA-271`~~ (limpieza): fuera `test-retrieval.ts`, `test-worldtick.ts`, el SQL de arcano a magia (de un solo uso), `debug/` e `image-generator/scripts/obsoleto/`; retro con `QA-278` y `QA-279` al roadmap.
 - **2026-10-27** — ~~`QA-266`~~ (retro de `INS-34`): `entorno-nube.sh` instala `postgresql-16-pgvector` si falta. Las propuestas 1 (ya en el instalador) y 3 (no se aplica) no tocan este repo.
 - **2026-10-26** — ~~`QA-262`…`QA-265`~~ (retro de `INS-33`): «PR listo» solo con la URL del PR (`AGENTS.md`, `QA-184`), `import/first` en `frontend/.oxlintrc.json` (error en `src/lib/`, aviso en el resto), entrada «Modo empaquetado» en `docs/mapa-agente.md` y propuesta para Galivelop-workflow en la retro.
 - **2026-10-26** — ~~`QA-259`…`QA-261`~~ (retro de `INS-31`): regla de las tareas `INS-*` del instalador (`AGENTS.md` § «Ramas y `main`», `REVIEW.md`), «Último commit en `main`» solo con la última fusión y la bitácora leída con `recuperar.py --estado` (`AGENTS.md` paso 1).
@@ -187,5 +188,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-25** — ~~`QA-245`…`QA-248`~~ (retro del lore de la enciclopedia): `tools/qa/ficha.sh <slug>`, `cobertura.py --libre` y aviso de identificador abierto también en `main`, auditorías de lore en tandas pequeñas (`ampliar-lore.md` § 0.5) y sección «Enciclopedia y lore» en `docs/mapa-agente.md`.
 - **2026-10-25** — ~~`QA-241`…`QA-242`~~ (retro de las voces): sección «Voces y sonidos» en `docs/mapa-agente.md` y `mapa-agente.py` mirando `image-generator/` y `voice-generator/` (funciones de Python y bash); `cobertura.py --fila <ID>` (definición, hito y menciones recortadas), con tests. `QA-240` queda abierta dentro de `VOZ-6`.
 - **2026-10-25** — ~~`QA-236`…`QA-239`~~ (retro de la difusión): `test_herramientas_con_test`, `skills-con-tests.py` y `bitacora-check.sh` en el check; regla de «lleva a `main`» con la usuaria fuera en `AGENTS.md`; `ci-local.sh` en un worktree sin rojos falsos ni `node_modules` vaciados.
-- **2026-10-25** — ~~`QA-235`~~: `docs/difusion/` (guía de canales, plantilla por actualización y ejemplo del Mundo vivo con tarjeta, diagrama y captura) y la skill `gw-media-content`: `render.mjs` (fuentes a WebP) y `comprobar.py` (en el check y el CI, 11 tests).
-- **2026-10-25** — ~~`QA-228`…`QA-233`~~ (retro de `claude/interfaz-imagenes`): test de que la lista de imágenes cubre toda la unión `ImagePromptEntityType`, la interfaz en el mapa del agente, `image-generator/interfaz/resumen.py` (lista y trabajo en texto), la fase antes de `main` en la fila de la bitácora, `bitacora.py check` en `commit-msg` y `selector` para cada subagente.
