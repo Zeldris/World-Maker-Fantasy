@@ -14,7 +14,7 @@
   `/clear`, el gancho de inicio corre `python3 .claude/gw/scripts/recuperar.py --estado`, que devuelve el estado de
   la bitácora y los últimos commits; un detalle perdido se busca con
   `python3 .claude/gw/scripts/recuperar.py --buscar "<texto>"`. Lo que tenga que sobrevivir va a `docs/registros/traspaso.md`.
-- **El modo automático** puede pedir permiso para editar `.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`:
+- **El modo automático** puede pedir permiso para editar `.claude/settings.json`, `.claude/gw.json`, `.claude/gw/scripts/` y `.githooks/`:
   pregunta a la usuaria antes de tocarlos, o deja que haga ella el cambio.
 - **Sesión local (Deck):** no hay `gh` ni herramienta de GitHub; el PR lo crea la sesión de la nube (`QA-184`, ver
   `AGENTS.md`). La sesión de la nube usa las herramientas `mcp__github__*`.

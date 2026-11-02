@@ -4,7 +4,7 @@ Rama `claude/frontend-improvements-roadmap-0mpckt`, commits `f2e83984`..`f287d04
 (sesión entera): 158 llamadas, 114k de contexto medio, 4 compactaciones (techo ~143k), un subagente Opus de 17
 llamadas (el `/code-review`).
 
-**Estado:** sin decidir por la usuaria (se presenta antes del PR).
+**Estado:** aprobadas las tres (usuaria, 2026-11-02). R1 y R3 aplicadas en la rama; R2 propuesta a Galivelop-workflow.
 
 ## Propuestas
 
@@ -33,8 +33,8 @@ propósito; contrapeso: `doctor.py` y los tests de `tools/qa` tras aplicar.
 ## Ya hecho en la rama
 
 - La fase 3 documentada sin `--footer` (el `commit-msg` habría rechazado la marca): arreglado en `f287d043`.
-- Los hallazgos de la revisión en scripts del flujo, como P6-P13 en `docs/registros/propuestas-flujo.md`.
+- Los hallazgos de la revisión en scripts del flujo, como P6-P15 en `docs/registros/propuestas-flujo.md`.
 
 ## For Galivelop-workflow
 
-- R2 (arriba), y P1-P13 de `docs/registros/propuestas-flujo.md`.
+- R2 (arriba), y P1-P15 de `docs/registros/propuestas-flujo.md`.

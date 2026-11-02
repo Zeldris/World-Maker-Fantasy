@@ -64,9 +64,10 @@ nombre se corrige en un solo sitio.
 
 ## Lista de comprobación antes de publicar
 
-`python3 .claude/skills/gw-media-content/scripts/comprobar.py --prefijos-tarea QA,CR,ZON,UX,CFG,IMG,INS,P
---formato-propio web docs/difusion/AAAA-MM-DD/NN-<tema>` comprueba lo mecánico (huecos de plantilla, jerga, longitud
-en X, normas de Reddit, imágenes renderizadas y listadas); el resto, a mano:
+`python3 tools/qa/difusion.py` (va en el check) pasa `comprobar.py` de gw-media-content por cada pieza con los
+prefijos de tarea de WMF y comprueba lo mecánico (huecos de plantilla, jerga, longitud en X, imágenes renderizadas y
+listadas). Las normas de Reddit sin pegar solo avisan: antes de publicar en Reddit, la ficha tiene que pasar sin ese
+aviso. El resto, a mano:
 
 - [ ] Cada dato de los canales está en la ficha, con su fuente.
 - [ ] El lore citado está en `docs/canon-opencode/` o `docs/rpgtarkor/`.

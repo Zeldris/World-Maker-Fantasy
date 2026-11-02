@@ -61,6 +61,11 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **Salida de subagentes no fiable** (retro de `QA-176`): `medir.py` la da como «—» cuando su registro no la guarda.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
+- **`/gw-update` con desvíos locales** (retro del 2026-11-02, R3): la comparación archivo a archivo entre la copia
+  de WMF y la versión nueva la hace un subagente (Sonnet) que devuelve la tabla «desvío · arriba · decisión
+  propuesta»; la sesión principal solo decide. Luego `doctor.py` y los tests de `tools/qa`. La v0.4.3 sin esto:
+  `comprobar.py` leído 15 veces y `AGENTS.md` 26, ~0,6 M arrastrados por relecturas.
+
 ## Costes conocidos
 
 - **Subagentes con Opus para lo mecánico** (`claude/interfaz-imagenes`, 2026-10-25, `QA-233`): 3 de 4; el de reescribir
