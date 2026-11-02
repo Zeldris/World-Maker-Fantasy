@@ -1653,7 +1653,11 @@ Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.m
 - ~~**QA-265 · Aviso de «PR abierto» sin URL en `bitacora.py`**~~ ✅ 2026-10-26 (solo apuntada): propuesta para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
 
 Limpieza del repo (usuaria, 2026-10-27):
-- **QA-271 · Fuera el código muerto** 🚧 2026-10-27: nada lo usa; las menciones vivas, corregidas (la última, en `image-generator/README.md`, la cazó `/code-review`). Retirados `backend/src/scripts/test-retrieval.ts`, `test-worldtick.ts` y `migrate-arcano-a-magia-2026-09-01.sql` (de un solo uso contra la base local, según su cabecera; una base anterior al 2026-09-01 ya no tiene con qué migrar: puerta de un solo sentido, en la descripción), `debug/` (cargas y resultados de pruebas a mano de septiembre) e `image-generator/scripts/obsoleto/` (`demo.sh` y `lote.sh`; las tres menciones, como texto). Check y CI local en verde (2026-11-02). Falta: retro decidida y a `main`.
+- ~~**QA-271 · Fuera el código muerto**~~ ✅ 2026-11-02: nada lo usa; las menciones vivas, corregidas (la última, en `image-generator/README.md`, la cazó `/code-review`). Retirados `backend/src/scripts/test-retrieval.ts`, `test-worldtick.ts` y `migrate-arcano-a-magia-2026-09-01.sql` (de un solo uso contra la base local, según su cabecera; una base anterior al 2026-09-01 ya no tiene con qué migrar: puerta de un solo sentido, en la descripción), `debug/` (cargas y resultados de pruebas a mano de septiembre) e `image-generator/scripts/obsoleto/` (`demo.sh` y `lote.sh`; las tres menciones, como texto). Check y CI local en verde; retro decidida ([retro](../registros/retro-2026-10-27-limpieza.md)).
+- **QA-278 · `ci-local.sh` mira Postgres antes del backend** (retro de `QA-271`, usuaria 2026-11-02): si `tarkor-postgres`
+  no está en marcha, lo arranca o para con «Postgres parado», en vez de siete pasos en rojo sin motivo. Test en `tools/qa/tests/`.
+- **QA-279 · Las rutas borradas no se citan** (retro de `QA-271`, usuaria 2026-11-02): comprobación del check que lista, por
+  cada archivo borrado en la rama contra `origin/main`, sus menciones en `.md` y scripts vivos (sin registros ni retros).
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

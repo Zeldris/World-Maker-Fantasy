@@ -1,6 +1,6 @@
 # Retro · `claude/limpieza` (`QA-271`, 2026-10-27)
 
-**Estado:** pendiente: propuestas presentadas a la usuaria el 2026-11-02, sin decidir.
+**Estado:** decidida (usuaria, 2026-11-02): `QA-278` y `QA-279` aprobadas, en `roadmap-front.md` (limpieza del repo).
 
 ## Qué pasó (2026-11-02)
 
