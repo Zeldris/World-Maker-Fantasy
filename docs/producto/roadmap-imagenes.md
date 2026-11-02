@@ -153,14 +153,16 @@ desde el panel vive en tablas que siembran.
   `HERO` y `MANADA` de `montar.sh` salen del encuadre de la ficha (tamaño y lado del sujeto, número y distancia de la
   manada) y escalan con el ancho, en vez de las posiciones fijas de r14, con las que el aullador ocupa ~80 % del ancho
   y tapa la manada. Tests en `test_generar_perfil.py` y un borrador del aullador para comprobarlo. **S**
-- **IMG-28 · El sol fuera de cuadro** [A] (usuaria, 2026-11-02, de `IMG-23`): L3 de `pautas.md` (dirección ✅, sin
+- ~~**IMG-28 · El sol fuera de cuadro**~~ ✅ 2026-11-02 [A] (usuaria, 2026-11-02, de `IMG-23`): L3 de `pautas.md` (dirección ✅, sin
   disco 🔬): el modelo pinta el disco del sol aunque la ficha lo ponga fuera de cuadro (pastos, cardo y la final del
   aullador). Ronda del banco con palancas (no nombrar el sol, cielo sin fuente, recorte del cielo en el montaje) y lo
   que gane, a las fichas o a `prompt_ficha.py`. **S** 🚧 2026-11-02: ronda r22 preparada
   ([`r22-sol.tsv`](plan-imagenes/banco/r22-sol.tsv)): pastos y cardo de r20 con (a) la luz por dirección sin nombrar
   el sol y (b) además el cielo como degradado sin fuente. Resultado: sin la palabra *sun* no hay disco y la luz llega del
-  mismo lado; (b) no añade (L3 ✅ en `pautas.md`). Falta: quitar *sun* de la `luz` de las fichas cuyo banner no enseña
-  el disco (pastos, aullador, gargantúa, cruzavientos, cuernahoja, hulki: mirar cada banner).
+  mismo lado; (b) no añade (L3 ✅ en `pautas.md`). Fichas, banner a banner: sin *sun* la `luz` de pastos (verano) y
+  cuernahoja (sin disco en el banner) y la de hulki (sin banner; la copa tapa el cielo). Se quedan con el sol aullador,
+  gargantúa y cruzavientos, cuyo banner enseña el disco, y el `momento:atardecer` de pastos, que lo pide a propósito
+  (sin banner con el que comparar). Tests de fichas y prompt (152) en verde.
 - ~~**IMG-29 · Scout: condicionar con los banners del juego (LoRA y referencia)**~~ ✅ 2026-11-02 [A] (usuaria, 2026-11-02; [`investigacion-lora-2.md`](plan-imagenes/investigacion-lora-2.md): `sd.cpp` carga LoRAs diffusers de FLUX.3 desde `bb6a0cc` (25-10, nuestro `sd-cli` es anterior); entrenar en Kaggle es viable pero sin cifras de nadie en 16 GB; sin modo que fije el sujeto, solo `pass_to_vlm=true` por medir. Recomienda LoRA en GPU gratis con puerta: paso 0 en la Deck (recompilar, LoRA sobre Q8_0, `pass_to_vlm`), paso 1 arranque en Kaggle, paso 2 entrenar; decisión de la usuaria pendiente): tras
   `IMG-23`, lo que más se aleja de ChatGPT es la criatura en sí y el acabado (usuaria), y el prompt está cerca de su
   techo. Investigación corta sobre lo que `investigacion-lora.md` dejó bloqueado: (1) si `sd.cpp` carga ya LoRAs de
