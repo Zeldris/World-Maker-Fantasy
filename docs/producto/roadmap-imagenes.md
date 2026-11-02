@@ -49,7 +49,7 @@ desde el panel vive en tablas que siembran.
   ficha de zona añade `condiciones` con lo que cambia en cada una; el script rechaza una luz o un paisaje que no case
   con el momento pedido. Por zona se aprueban la de día de cada estación y una de noche (5 imágenes), y lo nativo se
   pinta sobre la de su misma condición (`IMG-12`). Depende de `IMG-5`. **M**
-- **IMG-15 · Calidad del generador local frente a ChatGPT** [A] (usuaria, 2026-10-25: «la calidad comparado con lo
+- ~~**IMG-15 · Calidad del generador local frente a ChatGPT**~~ ✅ 2026-11-02, con `IMG-23` [A] (usuaria, 2026-10-25: «la calidad comparado con lo
   que genero desde chatgpt sigue siendo muy mala»): banco con el mismo prompt y semilla, una palanca cada vez
   (`docs/producto/plan-imagenes/calidad.sh`): más pasos, hires fix, Real-ESRGAN, `flux-2-klein-base-4b` con cfg real;
   después, lo que hay que descargar: el decodificador VAE completo (hoy `full_encoder_small_decoder`) y el codificador
@@ -116,7 +116,7 @@ desde el panel vive en tablas que siembran.
   [`resultados.md`](plan-imagenes/banco/resultados.md) (r20, r20b y semilla 7) y `pautas.md` v5.1 con las secciones
   7-11 (flora, lugar, objeto, raza, común). Queda, en `IMG-23`: la palanca de la luz fría u oscura (T1) y el acabado
   `porTipo.item` (O6). Las pautas de un solo elemento siguen 🔬. **M**
-- **IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`** [A] (2026-10-26) 🚧 en curso 2026-11-02: una orden
+- ~~**IMG-23 · Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json`**~~ ✅ 2026-11-02 [A] (2026-10-26; la usuaria da el sí a la receta: oscuridad dicha al principio del prompt, gradación por momento y cadena de planos para el sujeto; lo que falla, en `IMG-27` e `IMG-28`): una orden
   saca el borrador de cualquier ficha con la receta de `pautas.md`, y una sola imagen final a 1280 comprueba que
   escala; docs y tests. También: condiciones `momento:noche` en las
   fichas de fauna (de `IMG-16`) y validar el tinte de noche con la primera imagen nocturna (de `IMG-17`); la palanca de la luz fría u oscura
@@ -149,6 +149,14 @@ desde el panel vive en tablas que siembran.
   `IMG-21` dejó aquí). `test_bocetos.py` (12). Depende de `IMG-18`; la usa `IMG-21`. **M** r19 (gargantúa y cruzavientos con
   su boceto, [`resultados.md`](plan-imagenes/banco/resultados.md)): el gargantúa pasa a leerse como su banner con el
   mismo prompt de r17; el cruzavientos no cambia (lo que le falta es acabado, `IMG-25`). Cinco de seis.
+- **IMG-27 · Encuadre del sujeto en la cadena de planos desde la ficha** [A] (usuaria, 2026-11-02, de `IMG-23`):
+  `HERO` y `MANADA` de `montar.sh` salen del encuadre de la ficha (tamaño y lado del sujeto, número y distancia de la
+  manada) y escalan con el ancho, en vez de las posiciones fijas de r14, con las que el aullador ocupa ~80 % del ancho
+  y tapa la manada. Tests en `test_generar_perfil.py` y un borrador del aullador para comprobarlo. **S**
+- **IMG-28 · El sol fuera de cuadro** [A] (usuaria, 2026-11-02, de `IMG-23`): L3 de `pautas.md` (dirección ✅, sin
+  disco 🔬): el modelo pinta el disco del sol aunque la ficha lo ponga fuera de cuadro (pastos, cardo y la final del
+  aullador). Ronda del banco con palancas (no nombrar el sol, cielo sin fuente, recorte del cielo en el montaje) y lo
+  que gane, a las fichas o a `prompt_ficha.py`. **S**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
