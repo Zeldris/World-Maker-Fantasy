@@ -100,7 +100,9 @@ FINAL=1 bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal 7      # 
   montaje (`montar.sh`, con `HERO` y `MANADA`); fase 2, armonización img2img del montaje a `FUERZAS` (`0.5 0.7`). Sale en
   `generated/<tipo>/<slug>/planos-<fecha>/intentos/` (`armonia-<fuerza>[-<momento>].png`, graduadas con `MOMENTO`) y
   `registro.tsv` apunta `planos=<carpeta>`. El boceto es `BOCETO` o, si falta, el `-verde-512.png` (`-1024` con `FINAL=1`)
-  de la ficha (`plantilla.py` + `rasterizar.sh`). Lo que ya existe en la carpeta se salta.
+  de la ficha (`plantilla.py` + `rasterizar.sh`). Lo que ya existe en la carpeta se salta. `HERO` y `MANADA` salen del
+  `encuadre` de la ficha (`scripts/encuadre.py`: horizonte; lado, ancho y pie del sujeto; número, distancia y volteo de
+  la manada, en fracciones del lienzo) o, sin ficha, del encuadre por defecto; darlos a mano manda.
 - Antes de generar se comprueba la memoria: Ollama vacío y nada más pesado abierto (navegador, Steam, juego).
 
 ## Memoria: lo que no se toca

@@ -5,6 +5,11 @@
   "region": "Llanuras del Viento Rojo",
   "zona": "pastos-de-la-deriva",
   "momento": "atardecer",
+  "encuadre": {
+    "horizonte": 0.43,
+    "sujeto": {"lado": "izquierda", "ancho": 0.62, "pie": 0.94},
+    "manada": {"numero": 6, "distancia": "media"}
+  },
   "canon": "Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas; pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, hilera de púas oscuras erizadas en el lomo, colmillos curvos amarillentos exagerados, costillas marcadas, cola negra tupida que borra sus huellas.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:1479 (bio); backend/src/services/sexDimorphism.ts:99-111 (dimorfismo); detalle campo a campo en docs/producto/plan-imagenes/borradores/fichas-piloto.json",
   "boceto": {

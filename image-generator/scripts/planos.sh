@@ -7,7 +7,8 @@
 # Fase 1: plancha + sujeto guiado por el boceto (FUERZA_BOCETO, 0.97) y montaje con montar.sh (HERO y MANADA, ver montar.sh).
 # Fase 2: armonización img2img del montaje a FUERZAS (0.5 0.7) con strength_as_noise_level. Lo que ya existe se salta.
 # Variables: SEED=3 PASOS=8 PW=640 PH=256 SW=512 SH=192 (FINAL: 1280x512, 1024x384, 16 pasos las pone probar.sh),
-# MOMENTO (gradúa solo las armonizaciones: armonia-<fuerza>-<momento>.png), SDCLI, MONTAR=<ruta> (los tests lo sustituyen).
+# MOMENTO (gradúa solo las armonizaciones: armonia-<fuerza>-<momento>.png), SDCLI, MONTAR=<ruta> (los tests lo sustituyen),
+# FICHA (su `encuadre` da HERO y MANADA, ver encuadre.py).
 # Siempre pasa por generar.sh con PERFIL=fotorreal. Salidas: 2 falta un txt o argumentos; 3 falta el boceto; el resto, el de generar.sh.
 set -euo pipefail
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
@@ -20,8 +21,9 @@ done
 PW=${PW:-640}; PH=${PH:-256}; SW=${SW:-512}; SH=${SH:-192}; PASOS=${PASOS:-8}; SEED=${SEED:-3}
 MOM=${MOMENTO:-}; I=$D/intentos
 export PERFIL=fotorreal
-# HERO y MANADA los lee montar.sh; los suyos son para 1280x512, y el borrador lleva los de banco/planos.sh (r14)
-[ "$PW" = 1280 ] || export HERO=${HERO:-50:246:520} MANADA=${MANADA:-45:150:100 200:145:75:v 500:152:115}
+# HERO y MANADA los lee montar.sh; si no vienen, salen del encuadre de FICHA (o el de por defecto) a la medida de la plancha (IMG-27)
+ENC=$(python3 "$G/scripts/encuadre.py" "${FICHA:--}" "$PW" "$PH") || { echo "ABORTO: encuadre de ${FICHA:--} (ver arriba)"; exit 2; }
+export HERO="${HERO-$(eval "$ENC"; echo "$HERO")}" MANADA="${MANADA-$(eval "$ENC"; echo "$MANADA")}"
 NOISE=(--extra-sample-args strength_as_noise_level=true)
 gen() { local n=$1 m=$2 b=$3; shift 3; BOCETO=$b MOMENTO=$m GRADAR=${GRADAR:-1} bash "$G/scripts/generar.sh" "$D" "$n" "$@"; }
 

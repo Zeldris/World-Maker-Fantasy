@@ -293,13 +293,31 @@ class Planos(PlanosBase):
         self.assertEqual(m, f'{self.out}/intentos/plancha.png {self.out}/intentos/sujeto.png {montaje}|HERO=1:2:3|MANADA=4:5:6')
         self.assertFalse(os.path.exists(self.args_gradar))  # sin MOMENTO no se grada
 
-    def test_el_borrador_monta_con_las_posiciones_de_640_y_el_final_con_las_de_montar(self):
+    def test_sin_ficha_monta_con_el_encuadre_por_defecto_a_la_medida_de_la_plancha(self):  # IMG-27
         self.planos()
-        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=50:246:520|MANADA=45:150:100 200:145:75:v 500:152:115'))
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=19:246:288|MANADA=82:127:50 282:140:76 483:153:101'))
         os.remove(self.llamadas_montar)
         shutil.rmtree(self.out)
         self.planos(PW='1280', PH='512')
-        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=|MANADA='))
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=38:492:576|MANADA=163:255:101 564:280:151 966:305:202'))
+
+    def test_el_encuadre_de_la_ficha_da_hero_y_manada_y_lo_dado_manda(self):  # IMG-27
+        f = os.path.join(self.d, 'ficha.json')
+        escribir(f, '{"prompt": {}, "encuadre": {"sujeto": {"lado": "derecha", "ancho": 0.5}}}')
+        self.planos(FICHA=f)
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=301:246:320|MANADA='))  # sin manada en el prompt
+        os.remove(self.llamadas_montar)
+        self.planos(FICHA=f, HERO='1:2:3')
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith('|HERO=1:2:3|MANADA='))
+
+    def test_un_encuadre_malo_aborta_sin_generar(self):  # IMG-27
+        f = os.path.join(self.d, 'ficha.json')
+        escribir(f, '{"encuadre": {"manada": {"numero": 9}}}')
+        r = self.planos(FICHA=f)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('manada.numero=9 fuera de rango', r.stderr)
+        self.assertIn('ABORTO: encuadre de', r.stdout)
+        self.assertFalse(os.path.exists(self.llamadas))
 
     def test_lo_que_ya_existe_se_salta_y_las_fuerzas_se_cambian(self):
         self.planos(FUERZAS='0.6')
@@ -367,6 +385,11 @@ class ProbarPlanos(PlanosBase):
         self.assertEqual(len(reg[0].split('\t')), len(reg[1].split('\t')))
         self.assertIn(f'planos={pd}', reg[1].split('\t')[7])
         self.assertIn('armonia-0.5.png', r.stdout)
+
+    def test_el_montaje_sale_del_encuadre_de_la_ficha(self):  # IMG-27: el aullador tiene el suyo
+        self.probar(BOCETO=self.boceto, MOMENTO='dia')
+        self.assertTrue(leer(self.llamadas_montar).strip().endswith(
+            '|HERO=19:241:397|MANADA=19:133:69 118:137:83 218:142:97 318:147:111 418:151:125 501:156:139'))
 
     def test_final_usa_tamano_completo(self):
         self.probar(BOCETO=self.boceto, MOMENTO='dia', FINAL='1')

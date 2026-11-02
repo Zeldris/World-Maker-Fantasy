@@ -78,6 +78,7 @@ if [ "$P" = fotorreal ] && [ -n "$PLANOS" ]; then
   if [ "${FINAL:-0}" = 1 ]; then SWP=1024 SHP=384; else SWP=512 SHP=192; fi
   PD=$D/planos-$(date +%Y%m%d-%H%M%S)
   REGISTRO_EXTRA="fotorreal momento=${MOMENTO:--} boceto=$(basename "$BOC") planos=$PD ${EXTRA[*]}"
+  [ -f "$FICHA" ] && export FICHA || unset FICHA   # su encuadre da HERO y MANADA (IMG-27)
   FUERZAS=${FUERZAS:-0.5 0.7}; PW=$W PH=$H FUERZAS="$FUERZAS" SW=${SW:-$SWP} SH=${SH:-$SHP} PASOS=$STEPS SEED=$SEED MOMENTO=$MOMENTO \
     "$G/scripts/planos.sh" "$PLANOS" "$BOC" "$PD"; RC=$?
   RES=$PD/intentos/armonia-${FUERZAS%% *}.png   # el registro y las notas van en la carpeta del elemento

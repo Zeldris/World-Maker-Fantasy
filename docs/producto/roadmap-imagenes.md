@@ -149,10 +149,19 @@ desde el panel vive en tablas que siembran.
   `IMG-21` dejó aquí). `test_bocetos.py` (12). Depende de `IMG-18`; la usa `IMG-21`. **M** r19 (gargantúa y cruzavientos con
   su boceto, [`resultados.md`](plan-imagenes/banco/resultados.md)): el gargantúa pasa a leerse como su banner con el
   mismo prompt de r17; el cruzavientos no cambia (lo que le falta es acabado, `IMG-25`). Cinco de seis.
-- **IMG-27 · Encuadre del sujeto en la cadena de planos desde la ficha** [A] (usuaria, 2026-11-02, de `IMG-23`):
+- ~~**IMG-27 · Encuadre del sujeto en la cadena de planos desde la ficha**~~ ✅ 2026-11-02 [A] (usuaria, 2026-11-02, de `IMG-23`):
   `HERO` y `MANADA` de `montar.sh` salen del encuadre de la ficha (tamaño y lado del sujeto, número y distancia de la
   manada) y escalan con el ancho, en vez de las posiciones fijas de r14, con las que el aullador ocupa ~80 % del ancho
-  y tapa la manada. Tests en `test_generar_perfil.py` y un borrador del aullador para comprobarlo. **S**
+  y tapa la manada. Tests en `test_generar_perfil.py` y un borrador del aullador para comprobarlo. **S** Hecho:
+  campo `encuadre` de la ficha (horizonte; lado, ancho y pie del sujeto; número, distancia y volteo de la manada, en
+  fracciones del lienzo) y `scripts/encuadre.py`, que lo pasa a `HERO`/`MANADA` con perspectiva de suelo plano (cada
+  copia mide, respecto al sujeto, lo que su pie dista del horizonte; menguan de una en una, F9, y la mayor va al lado
+  libre). `planos.sh` lo usa con la `FICHA` que le pasa `probar.sh` (sin ficha, el encuadre por defecto; dado a mano,
+  manda); fuera las posiciones fijas de r14; `MANADA=` vacía en `montar.sh` es sin manada. Tests: `test_encuadre.py`
+  (12) y cuatro en `test_generar_perfil.py`. Borrador: el aullador con su encuadre (izquierda, 0,62 del ancho, seis
+  copias a media distancia) sobre la plancha y el sujeto de `planos-20261102-010503`, solo `montar.sh`
+  (`generated/fauna/aullador-rojo/encuadre-img27.png`, no versionado): la manada se ve entera, menguando hacia el sujeto.
+  Queda de `IMG-25`/`IMG-32`: el sujeto que sale del modelo es alto y agazapado, no la cinta larga del banner.
 - ~~**IMG-28 · El sol fuera de cuadro**~~ ✅ 2026-11-02 [A] (usuaria, 2026-11-02, de `IMG-23`): L3 de `pautas.md` (dirección ✅, sin
   disco 🔬): el modelo pinta el disco del sol aunque la ficha lo ponga fuera de cuadro (pastos, cardo y la final del
   aullador). Ronda del banco con palancas (no nombrar el sol, cielo sin fuente, recorte del cielo en el montaje) y lo

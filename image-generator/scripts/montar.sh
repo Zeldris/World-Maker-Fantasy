@@ -11,7 +11,7 @@
 #   domina: magenta para sujetos verdes, azul para verdes con magenta)
 set -euo pipefail
 PL=$1; SU=$2; OUT=$3
-HERO=${HERO:-40:495:1200}; MANADA=${MANADA:-90:300:200 360:290:150:v 980:305:230}
+HERO=${HERO:-40:495:1200}; MANADA=${MANADA-90:300:200 360:290:150:v 980:305:230}   # MANADA= vacía: sin manada
 SOMBRA=${SOMBRA:-0.55}; CALIDO=${CALIDO:-0.04}; GRANO=${GRANO:-4}; UMBRAL=${UMBRAL:-12}; FONDO=${FONDO:-verde}
 case $FONDO in
   verde) DOMINA='g(X,Y)-max(r(X,Y),b(X,Y))'; SPILL=',despill=type=green' ;;
