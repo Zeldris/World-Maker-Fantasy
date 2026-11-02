@@ -197,7 +197,8 @@ desde el panel vive en tablas que siembran.
   Hecho (2026-11-02): conjunto (134 banners, zip de 191 MB), cuaderno `image-generator/lora/entrenar.ipynb` (argumentos
   comprobados contra el script de diffusers 0.42.1) y guía [`lora-kaggle.md`](plan-imagenes/lora-kaggle.md). Dos
   arranques en Kaggle: cabe en la T4 a 6,6 s/paso, pero el transformer en fp16 da pérdida `nan` (latentes y textos
-  sanos); el cuaderno lo pasa a fp32. Falta: el tercer arranque (fp32: ¿cabe?, ¿s/paso?), el entrenamiento y la
+  sanos); con el transformer en fp32 sigue `nan` (7 s/paso), así que no es desbordamiento. Falta: localizar la capa
+  con el diagnóstico por capas del cuaderno, arreglarla, el entrenamiento y la
   prueba del LoRA en la Deck.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
