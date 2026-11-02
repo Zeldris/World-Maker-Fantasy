@@ -169,6 +169,11 @@ desde el panel vive en tablas que siembran.
   (`akhaliq/flux-3-image-klein-angles-lora`) se aplica sobre `flux3-image-klein-Q8_0.gguf` en CPU («516/516» con
   `-r`), y medir `--ref-image-args pass_to_vlm=true` con un banner como referencia (¿fija la criatura?). Sin horas de
   la usuaria. Si sale, siguen los pasos 1 y 2 de `investigacion-lora-2.md` (Kaggle); si no, `IMG-27`. **S**
+  Hecho (2026-11-02): sin compilar, la release `master-1039-290148d` (trae `bb6a0cc`) en `image-generator/bin-nuevo/`.
+  El LoRA se aplica en CPU sobre Q8_0 (`at_runtime`): 456/516 tensores en texto a imagen y **516/516 con `-r`**
+  (búfer 316→772 y 359→875), y cambia la imagen como debe (misma semilla). `-r` con el banner del aullador ya acerca la
+  criatura (cuerpo largo y bajo, cola anillada, cresta, tono rojo); sin púas ni colmillos. 512 px a 4 pasos: 4-5 min,
+  9 min con `-r`. Falta: `-r` sola frente a `-r` con `pass_to_vlm` en otra escena.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
