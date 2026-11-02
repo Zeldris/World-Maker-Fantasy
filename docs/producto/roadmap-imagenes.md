@@ -157,6 +157,13 @@ desde el panel vive en tablas que siembran.
   disco 🔬): el modelo pinta el disco del sol aunque la ficha lo ponga fuera de cuadro (pastos, cardo y la final del
   aullador). Ronda del banco con palancas (no nombrar el sol, cielo sin fuente, recorte del cielo en el montaje) y lo
   que gane, a las fichas o a `prompt_ficha.py`. **S**
+- **IMG-29 · Scout: condicionar con los banners del juego (LoRA y referencia)** [A] (usuaria, 2026-11-02) 🚧 en curso: tras
+  `IMG-23`, lo que más se aleja de ChatGPT es la criatura en sí y el acabado (usuaria), y el prompt está cerca de su
+  techo. Investigación corta sobre lo que `investigacion-lora.md` dejó bloqueado: (1) si `sd.cpp` carga ya LoRAs de
+  FLUX.3 Image Klein; (2) el camino gratis para entrenar un LoRA de estilo con los ~135 banners (Kaggle, Colab
+  gratuito, ZeroGPU: trainer, VRAM, horas, formato que cargue `sd.cpp`); (3) generar la misma criatura del banner en
+  otra escena (edición con referencia de FLUX.3 Klein, adaptadores de imagen en `sd.cpp`). GPU gratis sí, pagar no
+  (usuaria, 2026-11-02). Sale con una recomendación: LoRA, referencia, o seguir con planos. **S**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
