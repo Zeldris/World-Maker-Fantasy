@@ -1,10 +1,10 @@
 # Reddit: ronda de pruebas del Mundo vivo
 
-**Subreddits:** `r/gamedev` (en, mejor en «Screenshot Saturday» o como post de devlog), `r/LocalLLaMA` (en, por el
-ángulo de agentes e IA local), `r/programacion` (es). Leer antes sus normas de autopromoción. Imágenes:
-`medios/flujo-pruebas.<idioma>.webp` (el diagrama) y `juego-combate.webp` del Portal.
+**Subreddits** en la ficha (`## Reddit`). Además del diagrama, `juego-combate.webp` del Portal.
 
 ## es
+
+Imagen: medios/flujo-pruebas.webp
 
 **Título:** Ponemos a agentes de IA a jugar a nuestro RPG para probarlo: lo que aprendimos en seis tandas
 
@@ -32,6 +32,8 @@ Van 44 de 48 tareas jugadas y salieron 11 hallazgos nuevos.
 Más del proyecto, con lo que falta: https://zeldris.github.io/Portal-Galivelop/
 
 ## en
+
+Imagen: medios/flujo-pruebas.en.webp
 
 **Title:** We have AI agents play-test our RPG: what six batches taught us
 

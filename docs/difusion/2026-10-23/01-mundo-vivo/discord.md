@@ -1,10 +1,13 @@
 # Discord: ronda de pruebas del Mundo vivo
 
-Adjuntar `medios/tarjeta.<idioma>.webp` y `medios/captura-mapa-pozo.webp` (captura del juego del 2026-10-24).
+Adjuntar la tarjeta y la captura del juego del 2026-10-24 (texto alternativo en la ficha).
 
 ## es
 
-## 🧪 Ronda de pruebas: el Mundo vivo
+Imagen: medios/tarjeta.webp
+Imagen: medios/captura-mapa-pozo.webp
+
+### 🧪 Ronda de pruebas: el Mundo vivo
 
 Seis tandas más jugando Tarkor, esta vez por el **Mundo vivo**. Comprobado a mano (bueno, a mano de agente):
 
@@ -26,7 +29,10 @@ Todo en el Portal 👉 https://zeldris.github.io/Portal-Galivelop/
 
 ## en
 
-## 🧪 Play-testing round: the living world
+Imagen: medios/tarjeta.en.webp
+Imagen: medios/captura-mapa-pozo.webp
+
+### 🧪 Play-testing round: the living world
 
 Six more batches playing Tarkor, this time through the **living world**. Checked by hand (well, by agent hand):
 
