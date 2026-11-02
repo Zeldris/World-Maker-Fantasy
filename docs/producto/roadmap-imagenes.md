@@ -198,8 +198,9 @@ desde el panel vive en tablas que siembran.
   comprobados contra el script de diffusers 0.42.1) y guía [`lora-kaggle.md`](plan-imagenes/lora-kaggle.md). Dos
   arranques en Kaggle: cabe en la T4 a 6,6 s/paso, pero el transformer en fp16 da pérdida `nan` (latentes y textos
   sanos); con el transformer en fp32 sigue `nan` (7 s/paso), así que no es desbordamiento: el diagnóstico por capas da
-  `context_embedder` en nf4 (entrada sana); el cuaderno la deja sin cuantizar. Falta: el arranque con ese arreglo, el
-  entrenamiento y la
+  `context_embedder` en nf4 (entrada sana); sin cuantizar sigue `nan`, porque `accelerator.prepare()` envuelve el
+  transformer en autocast fp16 y todo corría en fp16; el cuaderno quita ese envoltorio. Falta: el arranque en fp32 de
+  verdad (¿cabe?, ¿s/paso?), el entrenamiento y la
   prueba del LoRA en la Deck.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
