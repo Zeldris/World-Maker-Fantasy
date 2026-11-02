@@ -135,8 +135,11 @@ desde el panel vive en tablas que siembran.
   de la ficha** (`PLANOS=` con los prompts de r14, aullador, 886 s): la cadena va de punta a punta; el sujeto toma el
   cuerpo de cinta del boceto, más cerca del banner que la imagen sola. Las armonías gradadas a atardecer dan mediana
   EMD Y 13,4 / 11,7 (0.5 / 0.7); la de 0.7 integra mejor el recorte. Fallo: con las posiciones de r14 el héroe ocupa
-  ~80 % del ancho y tapa la manada; `HERO`/`MANADA` tendrían que salir del encuadre de la ficha. Falta: la imagen
-  final a 1280x512 y el sí de la usuaria a la receta.
+  ~80 % del ancho y tapa la manada; `HERO`/`MANADA` tendrían que salir del encuadre de la ficha. **Imagen final**
+  (`FINAL=1 probar.sh fauna aullador-rojo fotorreal`, 1280x512, 16 pasos): 2944 s (49 min) con 5,8 GB libres como
+  mínimo; escala sin defectos, manada y humo de fondo, mira a la izquierda como pide la ficha; gradada a atardecer,
+  mediana EMD Y 22,2 / Cb 6,3 / Cr 8,0. Fallan el disco del sol en cuadro (L3) y el cuerpo: patas largas de zorro, no
+  la cinta baja del banner, que sí da la cadena de planos. Falta: el sí de la usuaria a la receta.
 - ~~**IMG-24 · Plantillas de boceto por plan corporal**~~ ✅ 2026-10-27 [P] (2026-10-27): seis planes paramétricos
   (depredador, herbívoro, reptil, ave, alargado, artrópodo) en `image-generator/bocetos/plantilla.py`, sin
   dependencias: la ficha pasa de `boceto.archivo` a `boceto.plan` y sus números (largo, patas, cuello, cola, cresta,
