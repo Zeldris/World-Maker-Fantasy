@@ -15,7 +15,7 @@ Lo propio de WMF que la skill genérica no dice. Las reglas de contenido están 
    (detalle en [`rondas-de-pruebas.md`](../../docs/runbooks/rondas-de-pruebas.md)); `shot("nombre",{png:true})`
    guarda en `tools/playwright-e2e/shots/`. Al acabar, `kill $(lsof -ti tcp:9333)`.
 4. Recorta lo que importa y guárdalo como JPG (calidad ~88) en `medios/fuente/`:
-   `convert shots/x.png -crop 852x630+X+Y -quality 88 docs/difusion/<carpeta>/medios/fuente/captura-<tema>.jpg`.
+   `convert shots/x.png -crop 852x630+X+Y -quality 88 docs/difusion/AAAA-MM-DD/NN-<tema>/medios/fuente/captura-<tema>.jpg`.
 
 **Ojo:** el Ollama simulado de la nube escribe texto sin sentido. No se captura el diario, el Cronista ni nada que
 narre la IA; para eso, una captura hecha con el modelo real en la Deck (la pide la usuaria).
@@ -24,4 +24,5 @@ narre la IA; para eso, una captura hecha con el modelo real en la Deck (la pide 
 
 Las plantillas HTML de `_plantilla/medios/fuente/` usan la paleta oscura del Portal (fondo `#06121c`, superficie
 `#0c1d2b`, borde `#1b3447`, texto `#eaf4fa`, celeste `#1aa6df`) y fuentes locales (DejaVu Sans, Liberation Sans):
-se renderizan sin red. Una por idioma (`<nombre>.es.html`, `<nombre>.en.html`).
+se renderizan sin red. Una por idioma: `<nombre>.html` en español (el primer idioma) y `<nombre>.en.html`; tamaño en
+`<meta name="gw-size" content="1600x900">`.
