@@ -1,7 +1,27 @@
 # Retro · `claude/limpieza` (`QA-271`, 2026-10-27)
 
-**Estado:** pendiente (la retro de la rama se hace en la fase 2 antes de `main`; esta entrada se adelantó el
-2026-10-27 para que `gw-harvest` la recoja).
+**Estado:** pendiente: propuestas presentadas a la usuaria el 2026-11-02, sin decidir.
+
+## Qué pasó (2026-11-02)
+
+- El borrado y el check, en verde a la primera. El primer CI local salió con todo el backend en rojo: el contenedor
+  `tarkor-postgres` llevaba 4 días parado («container state improper» en 7 pasos). Arrancado a mano, verde (`d14741bf`).
+- `/code-review` cazó una mención viva a `obsoleto/` en `image-generator/README.md` que la entrada daba por corregida,
+  y que el SQL de arcano a magia era la única vía de migrar una base anterior al 2026-09-01 (se deja borrado: era de
+  un solo uso contra la base local; va como puerta de un solo sentido en la descripción).
+- Tokens (`/opt-tokens`, a ojo): la rama se cerró dentro de una sesión larga con otras dos tareas (LoRA en Kaggle e
+  `IMG-28`) y 8 compactaciones; lo de esta rama fue poco, pero se pagó con el contexto de las otras.
+
+## Propuestas para la usuaria
+
+1. **`QA-278` · `ci-local.sh` mira Postgres antes del backend:** si `tarkor-postgres` no está en marcha, lo arranca
+   (o para con «Postgres parado: `podman start tarkor-postgres`»), en vez de siete pasos en rojo sin decir por qué.
+   Test en `tools/qa/tests/`. Hito: la puerta de pruebas (herramienta de QA).
+2. **`QA-279` · Las rutas borradas no se citan:** una comprobación del check que, para cada archivo borrado en la rama
+   contra `origin/main`, busque su ruta en los `.md` y scripts vivos (sin registros ni retros) y la liste. Lo que
+   cazó la revisión a mano lo haría el script (regla «lo comprobable lo hace un script»).
+3. **Sin cambio:** una tarea pequeña como esta, en su propia sesión desde el principio; ya lo dice «cada sesión, su
+   rama», no hace falta otra regla.
 
 ## For Galivelop-workflow
 
