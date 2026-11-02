@@ -194,6 +194,9 @@ desde el panel vive en tablas que siembran.
   el LoRA con diffusers sobre el Klein base (arranque de 20 pasos y luego 1000-2000 con guardados), y prueba del LoRA en
   la Deck sobre el Q8_0. La usuaria: cuenta de Kaggle, subir el zip, lanzar y bajar el LoRA. Puerta: si no cabe en 16 GB,
   se cae sin gasto y se sigue con `IMG-27`. **M**
+  Hecho (2026-11-02): conjunto (134 banners, zip de 191 MB), cuaderno `image-generator/lora/entrenar.ipynb` (argumentos
+  comprobados contra el script de diffusers 0.42.1) y guía [`lora-kaggle.md`](plan-imagenes/lora-kaggle.md). Falta: el
+  arranque de 20 pasos en Kaggle (usuaria), el entrenamiento y la prueba del LoRA en la Deck.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
