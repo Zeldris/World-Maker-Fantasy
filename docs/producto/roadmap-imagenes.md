@@ -128,8 +128,11 @@ desde el panel vive en tablas que siembran.
   aunque queda más clara que el banner; la clave baja se termina con `gradar.sh`. Perfil en `generar.sh`/`probar.sh`
   (`PERFIL=fotorreal`, `BOCETO`, `MOMENTO`, gradación al final) con `test_generar_perfil.py` (20; rojo sin el perfil).
   `porTipo.item` a 50 mm en `mundo.json`. Cadena de planos: `scripts/planos.sh` (plancha, sujeto con boceto, montaje,
-  armonización a 0.5 y 0.7) y `PLANOS=<dir>` en `probar.sh` fotorreal; `montar.sh` pasa a `scripts/`. Falta: probar en
-  la Deck el boceto sacado de la ficha, la imagen final a 1280x512 y la nocturna, y el sí de la usuaria a la receta.
+  armonización a 0.5 y 0.7) y `PLANOS=<dir>` en `probar.sh` fotorreal; `montar.sh` pasa a `scripts/`. **Noche
+  validada** (`MOMENTO=noche probar.sh fauna aullador-rojo fotorreal`, 526 s): cruda, cielo estrellado pero suelo
+  iluminado como de día (T1); gradada, frente a los banners de noche de GPT la mediana EMD pasa de Y 35,8 / Cb 10,6 /
+  Cr 11,4 a 8,3 / 4,4 / 5,8, y las púas rojas se leen aunque el color baje (SATAVG 4,7, T5). Falta: probar en la Deck
+  el boceto sacado de la ficha, la imagen final a 1280x512, y el sí de la usuaria a la receta.
 - ~~**IMG-24 · Plantillas de boceto por plan corporal**~~ ✅ 2026-10-27 [P] (2026-10-27): seis planes paramétricos
   (depredador, herbívoro, reptil, ave, alargado, artrópodo) en `image-generator/bocetos/plantilla.py`, sin
   dependencias: la ficha pasa de `boceto.archivo` a `boceto.plan` y sus números (largo, patas, cuello, cola, cresta,
