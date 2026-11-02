@@ -57,7 +57,8 @@ material is in `.claude/skills/gw-media-content/`: `catalogo.md`, `reglas.json`,
      rules the user pasted (at least `reddit.normas_min_caracteres` characters, no `#` headings inside: paste them as
      plain lines). `Normas leídas:` is counted from the piece's date folder and is at most `reddit.normas_dias` days
      old. Take the rules from the note or the ficha when they are dated within that limit; otherwise ask the user to
-     paste them (Reddit cannot be read automatically, and rules are never invented), then continue.
+     paste them (Reddit cannot be read automatically, and rules are never invented), then continue. A post on the
+     user's own profile (the note's `Reddit:` says so) has only `- **Perfil:** u/<name>`: no rules, no other field.
    - **Extra channels** (declared in the note): one `<canal>.md` as the note says: a section per language within its
      `límite`, or the copied own-format template filled in. If the note gives neither, ask.
 6. **Check.** Build the command from the note as `nota.md` says (`--prefijos-tarea`, and `--limite <canal>=N` or

@@ -13,7 +13,7 @@ apply and you say so once.
 | Palette | the template's | CSS variable overrides for `medios/fuente/*.html` |
 | Screenshots | none | the steps that produce a screenshot of the running app |
 | Task prefixes | none | e.g. `INS,FLU`: task-id prefixes of the project, passed to `comprobar.py --prefijos-tarea` |
-| Reddit | none | per subreddit: the rules pasted by the user and the date read |
+| Reddit | none | per subreddit: the rules pasted by the user and the date read; or `u/<name>` (own profile: no rules) |
 
 ## Extra channels
 

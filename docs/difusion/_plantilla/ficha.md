@@ -27,7 +27,8 @@ Idiomas: es, en
 
 ## Reddit
 
-Solo si `reddit` está en `## Canales`. Por cada subreddit, una línea `Subreddit:` y, debajo, un apartado
+Solo si `reddit` está en `## Canales`. Si se publica en el perfil propio, basta `- **Perfil:** u/<usuario>` y se
+borra el resto de este apartado (no hay normas que pegar). Por cada subreddit, una línea `Subreddit:` y, debajo, un apartado
 `### Normas de r/<nombre>` con las normas pegadas tal cual (200 caracteres como mínimo). Lee las normas y apunta el día:
 `Normas leídas:` no puede estar en el futuro ni tener más de 90 días (contados desde la carpeta de fecha de la pieza).
 Las tres líneas de campos van antes del primer `###`, y el texto pegado no puede llevar títulos con `#` (pégalos como

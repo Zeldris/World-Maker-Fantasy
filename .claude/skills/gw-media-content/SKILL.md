@@ -62,7 +62,8 @@ channels and languages.
    ```
 
    A Reddit proposal also names the subreddit and says whether the note holds its dated rules; without them the
-   proposal says the user must paste them before the piece.
+   proposal says the user must paste them before the piece. When the note's `Reddit:` is the user's own profile
+   (`u/<name>`), the proposal names the profile and needs no rules.
 5. **Present and wait.** Show the list as a table (id, topic, hook, networks) and ask which to produce. Each picked
    one goes to `gw-media-content-now` with its id (`AAAA-MM-DD/P3`). Commit the proposals file with the project's
    commit format and a log row.

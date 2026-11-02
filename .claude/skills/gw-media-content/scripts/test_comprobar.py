@@ -955,6 +955,25 @@ class NormasDeReddit(Base):
         self.cambiar("ficha.md", "## Imágenes", f"### Normas de r/gamedev\n\n{NORMAS}\n## Imágenes")
         self.assertFallo("«### Normas de r/gamedev» appears more than once; merge the blocks into one")
 
+    def solo_perfil(self, perfil):
+        """Leave «## Reddit» with a «Perfil:» line only: no subreddit, no rules block."""
+        f = (self.carpeta / "ficha.md").read_text(encoding="utf-8")
+        self.escribir("ficha.md", re.sub(r"(## Reddit\n).*?(\n## Imágenes)",
+                                         lambda m: m.group(1) + f"\n- **Perfil:** {perfil}\n" + m.group(2), f, flags=re.S))
+
+    def test_en_el_perfil_propio_no_hay_normas_que_pegar(self):
+        self.solo_perfil("u/Alvaro-Garcia-Grana")
+        self.assertEqual(self.fallos(), "")
+
+    def test_un_perfil_con_un_nombre_raro(self):
+        self.solo_perfil("u/alvaro.garcia")
+        self.assertFallo("ficha.md: «Perfil:» «u/alvaro.garcia» is not a Reddit username; write it as u/<name>")
+
+    def test_perfil_y_subreddit_el_subreddit_sigue_pidiendo_normas(self):
+        self.cambiar("ficha.md", "- **Subreddit:** r/gamedev\n", "- **Perfil:** u/Alvaro-Garcia-Grana\n- **Subreddit:** r/gamedev\n")
+        self.cambiar("ficha.md", "### Normas de r/gamedev\n", "")
+        self.assertFallo("no rules block for r/gamedev")
+
     def test_un_subreddit_con_un_nombre_raro(self):
         self.cambiar("ficha.md", "r/gamedev\n- **Normas", "r/game.dev\n- **Normas")
         self.assertFallo("ficha.md: «Subreddit:» «r/game.dev» is not a subreddit name; write it as r/<name>")

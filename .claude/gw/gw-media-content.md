@@ -1,7 +1,15 @@
 # gw-media-content en World-Maker-Fantasy
 
+Reddit: u/Alvaro-Garcia-Grana (own profile, not a subreddit; no subreddit rules apply; usuaria, 2026-11-02)
+
 Lo propio de WMF que la skill genérica no dice. Las reglas de contenido están en
 [`docs/difusion/README.md`](../../docs/difusion/README.md); aquí, cómo se sacan las imágenes.
+
+## Reddit
+
+Las publicaciones de Reddit van al perfil propio de la usuaria (u/Alvaro-Garcia-Grana), no a subreddits ajenos: en
+`## Reddit` de la ficha basta `- **Perfil:** u/Alvaro-Garcia-Grana`, sin normas que pegar. El perfil ya publicó que el
+código de los tres proyectos de Galivelop es público en GitHub: ese tema no se repite.
 
 ## Capturas del juego
 

@@ -29,6 +29,8 @@ Reddit: with reddit.md, `## Reddit` in ficha.md holds `Subreddit:` lines (r/<nam
 `Autopromoción:`, all before the first `###`; and, for every subreddit, a subsection `### Normas de r/<name>` with the
 rules text pasted as is (at least `reddit.normas_min_caracteres` characters once whitespace is collapsed; the block
 ends at the next line that starts with `##`, so the pasted text cannot contain `#` headings: paste them as plain lines).
+A post on the user's own Reddit profile instead has `Perfil: u/<name>` in `## Reddit` and needs no subreddit fields
+and no rules block (with `Subreddit:` lines as well, those subreddits are checked as above).
 Known channels (in reglas.json): x, reddit, linkedin, discord. Any other ("extra") channel listed in `## Canales`
 has its file `<canal>.md` and takes images .webp, .png and .jpg (`canal_extra.imagen_formatos`). Without options it gets
 the generic checks only: template gaps, jargon, `Imagen:` lines and a `## <lang>` section per language, with no length
@@ -404,6 +406,7 @@ def comprobar_propio(canal, texto, prefijos=()):
 
 
 NOMBRE_SUB = re.compile(r"[A-Za-z0-9_]{2,21}")
+NOMBRE_USUARIO = re.compile(r"[A-Za-z0-9_-]{3,20}")
 FIN_BLOQUE = re.compile(r"(?m)^#{2,}(?:[ \t]|$)")
 BLOQUE_NORMAS = re.compile(r"(?mi)^###[ \t]+Normas[ \t]+de[ \t]+(?:/?r/)?(\S+)[ \t]*$")
 
@@ -453,6 +456,13 @@ def comprobar_reddit(ficha, reglas=None, hoy=None, dia_pieza=None):
     referencia = dia_pieza or hoy
     f = []
     cab = cabecera_reddit(ficha)
+    perfil = campo(cab, "Perfil")
+    if perfil and "{{" not in perfil:
+        nombre = re.sub(r"^/?u/", "", perfil.strip("`*_ "), flags=re.I)
+        if not NOMBRE_USUARIO.fullmatch(nombre):
+            f.append(f"ficha.md: «Perfil:» «{perfil}» is not a Reddit username; write it as u/<name>")
+        if not campo(cab, "Subreddit", "Subreddits"):
+            return f  # a post on the user's own profile: no subreddit rules apply
     for etiqueta, nombres in (("Subreddit", ("Subreddit", "Subreddits")), ("Normas leídas", ("Normas leídas", "Normas leidas")),
                               ("Autopromoción", ("Autopromoción", "Autopromocion"))):
         v = campo(cab, *nombres)
