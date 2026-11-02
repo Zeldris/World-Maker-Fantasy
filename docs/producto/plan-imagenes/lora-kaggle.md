@@ -10,8 +10,8 @@ de FLUX.3 enteros, 516/516 con `-r`: [`IMG-30`](../roadmap-imagenes.md)).
   (134 banners a 1280×512, 191 MB; fuera del repo). La segunda versión `clan-serhu-banner2.png` se queda fuera.
 - **Cuaderno:** [`image-generator/lora/entrenar.ipynb`](../../../image-generator/lora/entrenar.ipynb). Pone los
   textos con Qwen3-VL-2B (solo contenido, sin estilo, delante la palabra disparadora `wmfstyle`) y entrena con el
-  script de diffusers 0.42.1 (`train_dreambooth_lora_flux3_klein.py`) sobre `flux-3-image-klein-base`: nf4 y fp16
-  (la T4 no tiene bf16), cubos de 512×1280, lote 1, rank 16, LR 1e-4, guardado cada 250 pasos.
+  script de diffusers 0.42.1 (`train_dreambooth_lora_flux3_klein.py`) sobre `flux-3-image-klein-base`: transformer en nf4
+  calculando en fp32, VAE y Qwen3-VL en fp16 (la T4 no tiene bf16), cubos de 512×1280, lote 1, rank 16, LR 1e-4, guardado cada 250 pasos.
 
 ## Lo que hace la usuaria (una vez)
 
@@ -48,8 +48,9 @@ Si mejora el acabado, el LoRA entra en el perfil fotorreal y se decide su peso.
 
 ## Riesgos que el arranque resuelve
 
-- 16 GB con el transformer en nf4 y el codificador de texto en la CPU (`--offload`): sin cifras publicadas.
-- fp16 sin bf16 en FLUX.3: sin issues de NaN encontrados, pero tampoco pruebas de que aguante.
+- 16 GB: con todo en fp16, el arranque del 2026-11-02 cupo (6,6 s/paso). Con el transformer en fp32 falta medirlo.
+- fp16: el transformer de FLUX.3 da `nan` desde el primer paso (DIAG del 2026-11-02: latentes y textos sanos, salida
+  del transformer nan). El repo no trae `tokenizer/`: el cuaderno parchea el script para leerlo de `text_encoder/`.
 - Licencia: la FLUX Kommunity License no se pudo leer sin sesión; se lee al aceptarla (paso 1). Términos de OpenAI
   sobre usar los banners como datos: ver [`investigacion-lora.md`](investigacion-lora.md).
 - Cuota de Kaggle (~30 h/semana, sesión ≤ 12 h) sin confirmar en sus páginas: mirarla en el panel de la cuenta.
