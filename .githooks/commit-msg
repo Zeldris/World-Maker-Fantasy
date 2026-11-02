@@ -2,23 +2,42 @@
 # QA-210 (retro del PR de claude/pruebas-reino, 2026-10-22): dos commits de subagentes salieron sin `Siguiente:`, el
 # dato que necesita la sesión que toma el relevo (CLAUDE.md, «Mensajes de commit»). Con CLAUDECODE=1 el mensaje
 # lleva una línea `Siguiente: …`; los merges (también los de fusionar.sh, con mensaje propio) y los revert pasan. Fuera de Claude Code (Álvaro) no hace nada.
-set -euo pipefail
+# Es de WMF, no del flujo: el `commit-msg` de Galivelop-workflow v0.4.3 (la comprobación de la bitácora) va dentro,
+# con sus mejoras (raíz bien hallada en un worktree, rebase, rutas con tildes, falla cerrado), más la regla de `Siguiente:`.
+set -uo pipefail
 [ "${CLAUDECODE:-}" = "1" ] || exit 0
-# Un merge, un squash o un cherry-pick traen el mensaje de commits que ya existen.
-for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD SQUASH_MSG; do
+hookdir="$(cd "$(dirname "$0")" && pwd)"
+# Con GIT_DIR puesto (un worktree enlazado), `rev-parse --show-toplevel` daría la carpeta de los ganchos.
+raiz="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "commit-msg: $hookdir no está en un repo git; apunta git a los ganchos: git config core.hooksPath .githooks" >&2; exit 1; }
+# Un merge, un squash, un cherry-pick o un rebase traen el mensaje de commits que ya existen.
+for f in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD SQUASH_MSG rebase-merge rebase-apply; do
   ruta=$(git rev-parse --git-path "$f" 2>/dev/null || true)
   [ -n "$ruta" ] && [ -e "$ruta" ] && exit 0
 done
 # Retro de claude/interfaz-imagenes (2026-10-25): la bitácora que cambia el commit se comprueba aquí («Actualizado»
 # con la fecha de hoy, filas de <= 600), no solo en el pre-push, cuando ya hay commits encima que rehacer.
-raiz=$(cd "$(dirname "$0")/.." && pwd)
-log=$(python3 "$raiz/.claude/gw/scripts/config.py" get log 2>/dev/null || true)
-# Sin log en la config, o si el commit lo borra, no hay bitácora que comprobar.
-if [ -n "$log" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1 && ! git diff --cached --quiet -- "$log" \
-    && git cat-file -e ":$log" 2>/dev/null; then
-  tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
-  git show ":$log" > "$tmp"
-  python3 "$raiz/.claude/gw/scripts/bitacora.py" check "$tmp" --date "$(date +%F)" || exit 1
+config="$raiz/.claude/gw/scripts/config.py"
+[ -f "$config" ] || { echo "commit-msg: faltan los scripts del flujo ($config); reinstálalos: /gw-update" >&2; exit 1; }
+log=$(python3 "$config" --root "$raiz" get log 2>/dev/null || true)
+# Git corre el gancho en la raíz del árbol que hace el commit (con GIT_DIR/GIT_INDEX_FILE puestos): ese es el índice.
+# Fuera de un árbol de trabajo (los tests de tools/qa) no hay índice que mirar y solo queda la regla de `Siguiente:`.
+if [ -n "$log" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$log")" || exit 1
+  # Sin core.quotepath=false, git da entre comillas una ruta con tildes y no casa nunca.
+  preparados="$(git -c core.quotepath=false diff --cached --name-only --no-renames --diff-filter=d)" || {
+    echo "commit-msg: git diff falló; mira el repo: git status" >&2; exit 1; }
+  if printf '%s\n' "$preparados" | grep -Fxq -- "$log"; then
+    tmp=$(mktemp "${TMPDIR:-/tmp}/gw-commit-msg.XXXXXX") || exit 1
+    trap 'rm -f "$tmp"' EXIT
+    git show ":$log" > "$tmp" || { echo "commit-msg: no se lee la $log preparada; añádela otra vez: git add $log" >&2; exit 1; }
+    if ! salida="$(python3 "$raiz/.claude/gw/scripts/bitacora.py" --root "$raiz" check "$tmp" --date "$(date +%F)" 2>&1)"; then
+      printf '%s\n' "$salida" >&2
+      echo "commit-msg: la $log preparada no pasa la comprobación; arréglala, git add $log y repite el commit" >&2
+      exit 1
+    fi
+    [ -z "$salida" ] || printf '%s\n' "$salida" >&2  # los WARNING: no paran el commit
+  fi
 fi
 mensaje=$(grep -v '^#' "$1" || true)
 case "$(head -1 <<< "$mensaje")" in Merge*|Revert*) exit 0 ;; esac

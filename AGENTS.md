@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.2.0 -->
+<!-- galivelop-workflow v0.4.3 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -48,13 +48,17 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - Si hay que parar con algo a medias o en rojo: commit igualmente con `WIP:` al principio del mensaje y, en la
   bitácora, qué falla y por qué. Nunca dejar trabajo solo en local.
 - Push tras cada commit a la rama de trabajo (`git push -u origin <rama>`); si falla por red, reintentar con espera
-  2, 4, 8 y 16 s.
+  2, 4, 8 y 16 s. El push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de espera.
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`): el cambio
   puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
-- **Al cerrar una fase** (o una tarea grande), con la bitácora al día, se recomienda `/clear` antes de la siguiente.
+- **Al cerrar cada tarea o PR** (y cada fase), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
+  en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida.** Un CI que no arranca (sin cuota, sin runners)
-  cuenta como rojo: se dice a la usuaria y no se da nada por comprobado en el CI.
+  cuenta como rojo: se dice a la usuaria y no se da nada por comprobado en el CI. Entonces vale el check pasado en
+  local sobre el mismo commit (`.githooks/pre-push`, o `tools/qa/ci-local.sh` para ir a `main`, `QA-215`) **solo si la
+  usuaria lo confirma**, y se apunta en la bitácora como «comprobado solo en local». Un CI que arrancó y falló nunca
+  se sustituye así.
 
 ## Pruebas de juego
 
