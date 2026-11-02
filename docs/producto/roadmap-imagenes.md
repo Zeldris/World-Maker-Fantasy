@@ -164,6 +164,11 @@ desde el panel vive en tablas que siembran.
   gratuito, ZeroGPU: trainer, VRAM, horas, formato que cargue `sd.cpp`); (3) generar la misma criatura del banner en
   otra escena (edición con referencia de FLUX.3 Klein, adaptadores de imagen en `sd.cpp`). GPU gratis sí, pagar no
   (usuaria, 2026-11-02). Sale con una recomendación: LoRA, referencia, o seguir con planos. **S**
+- **IMG-30 · Paso 0 del LoRA: `sd.cpp` con LoRAs de FLUX.3 en la Deck** [A] (usuaria, 2026-11-02, de `IMG-29`) 🚧 en curso:
+  recompilar `sd-cli` a un commit ≥ `bb6a0cc` (hoy `95ff762`), comprobar que un LoRA diffusers de FLUX.3 Klein
+  (`akhaliq/flux-3-image-klein-angles-lora`) se aplica sobre `flux3-image-klein-Q8_0.gguf` en CPU («516/516» con
+  `-r`), y medir `--ref-image-args pass_to_vlm=true` con un banner como referencia (¿fija la criatura?). Sin horas de
+  la usuaria. Si sale, siguen los pasos 1 y 2 de `investigacion-lora-2.md` (Kaggle); si no, `IMG-27`. **S**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
