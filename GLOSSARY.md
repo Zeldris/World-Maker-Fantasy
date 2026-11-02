@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.2.0 -->
+<!-- galivelop-workflow v0.4.3 -->
 # Helek Sirik — motor y producto
 
 Vocabulario del motor del juego y del producto. El lore canónico vive en `docs/rpgtarkor/` y no se
@@ -237,7 +237,7 @@ Compraventa de recursos entre el Reino y una facción con tratado o alianza, con
 _Evitar_: mercado (ese es el del personaje con sus Goirnos)
 
 **Orden permanente**:
-Regla de compra o venta que la jugadora deja en el Mercado del Reino y que sus caravanas cumplen solas.
+Orden que se cumple sola, una y otra vez, hasta que se para o la paras: la de un viajero (ir, hacer, volver, descargar) o la regla de compra o venta que la jugadora deja en el Mercado del Reino y que sus caravanas cumplen.
 
 **Caravana**:
 Grupo que lleva mercancía entre dos lugares por días, visible en el mapa según lo que sabe el personaje y expuesto a asaltos.
@@ -276,9 +276,6 @@ Comida que aparece sin que nadie la produzca (por trabajador o por edificio); re
 
 **Jornada**:
 Lo que camina un viajero en un día: 8 horas por la ruta más corta de enlaces entre lugares.
-
-**Orden permanente**:
-Una orden que el viajero repite sola (ir, hacer, volver, descargar) hasta que se para o la paras.
 
 **Tarea**:
 Lo que hace cada día un súbdito trabajador: recolector, pescador, cocinero, ganadero o fibrero. De ella sale la comida del Reino; las facciones reparten a sus trabajadores en tareas según la costumbre de su pueblo.
