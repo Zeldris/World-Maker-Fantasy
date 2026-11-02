@@ -488,6 +488,20 @@ semilla 7, semilla 3, banner).
   hacia la derecha): en escenas con la dirección dicha y medida, 16 de 16. P8 sigue para la criatura sola (r15, r16).
 - **El sol fuera de cuadro y las cuentas fallan también con la semilla 7** (L3, F9): confirmado, no es la semilla.
 
+## r22 · El sol fuera de cuadro (`IMG-28`, 2026-11-02)
+
+Pastos y cardo de r20 (los dos pintaban el disco), semilla 3, 640x256 / 8 pasos: **(a)** la frase de luz por dirección
+sin la palabra *sun*; **(b)** además, el cielo dicho como degradado sin fuente. Rejilla (no versionada):
+`generated/banco/r22-sol.png` (por elemento: a, b, r20, banner).
+
+| Elemento | (a) sin nombrar el sol | (b) y cielo sin fuente | r20 |
+|---|---|---|---|
+| pastos-de-la-deriva | sin disco; cielo más claro a la izquierda, luz desde la izquierda | igual, algo más plano | disco en el horizonte izquierdo |
+| cardo-brujula | sin disco; contraluz cálido desde la derecha en las espinas | igual, algo más brumoso | disco junto a la pared |
+
+- **Sin la palabra, sin disco**: la dirección de la luz se mantiene. La palanca (b) no aporta y gasta palabras. Entra
+  en L3 de `pautas.md`. Una semilla y dos elementos; el resto de la composición sale casi idéntico a r20.
+
 ## r21 · La palanca de la luz fría u oscura (`IMG-23`, 2026-11-02)
 
 Salvia y faerus de r20, semilla 3, con la línea `Style` fija y la luz pedida de dos maneras: **(a)** la escena entera

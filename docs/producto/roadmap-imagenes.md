@@ -158,7 +158,9 @@ desde el panel vive en tablas que siembran.
   aullador). Ronda del banco con palancas (no nombrar el sol, cielo sin fuente, recorte del cielo en el montaje) y lo
   que gane, a las fichas o a `prompt_ficha.py`. **S** 🚧 2026-11-02: ronda r22 preparada
   ([`r22-sol.tsv`](plan-imagenes/banco/r22-sol.tsv)): pastos y cardo de r20 con (a) la luz por dirección sin nombrar
-  el sol y (b) además el cielo como degradado sin fuente. Falta: lanzarla, medir y pasar lo que gane.
+  el sol y (b) además el cielo como degradado sin fuente. Resultado: sin la palabra *sun* no hay disco y la luz llega del
+  mismo lado; (b) no añade (L3 ✅ en `pautas.md`). Falta: quitar *sun* de la `luz` de las fichas cuyo banner no enseña
+  el disco (pastos, aullador, gargantúa, cruzavientos, cuernahoja, hulki: mirar cada banner).
 - ~~**IMG-29 · Scout: condicionar con los banners del juego (LoRA y referencia)**~~ ✅ 2026-11-02 [A] (usuaria, 2026-11-02; [`investigacion-lora-2.md`](plan-imagenes/investigacion-lora-2.md): `sd.cpp` carga LoRAs diffusers de FLUX.3 desde `bb6a0cc` (25-10, nuestro `sd-cli` es anterior); entrenar en Kaggle es viable pero sin cifras de nadie en 16 GB; sin modo que fije el sujeto, solo `pass_to_vlm=true` por medir. Recomienda LoRA en GPU gratis con puerta: paso 0 en la Deck (recompilar, LoRA sobre Q8_0, `pass_to_vlm`), paso 1 arranque en Kaggle, paso 2 entrenar; decisión de la usuaria pendiente): tras
   `IMG-23`, lo que más se aleja de ChatGPT es la criatura en sí y el acabado (usuaria), y el prompt está cerca de su
   techo. Investigación corta sobre lo que `investigacion-lora.md` dejó bloqueado: (1) si `sd.cpp` carga ya LoRAs de
