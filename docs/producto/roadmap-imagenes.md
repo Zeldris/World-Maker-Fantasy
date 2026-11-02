@@ -177,14 +177,17 @@ desde el panel vive en tablas que siembran.
   anillada, cresta, colmillos. **`pass_to_vlm=true` no cambia nada** (sin tokens de visión en el log: pediría el `mmproj`
   de Qwen3VL). Imágenes y logs en `generated/banco/img30/`. Queda abierto: la referencia solo existe para lo que ya tiene
   banner; para una criatura nueva habría que probar un banner de otra como referencia de acabado.
-- **IMG-31 · Banner ajeno como referencia de acabado** [A] (usuaria, 2026-11-02, de `IMG-30`) 🚧 en curso: con `-r`,
+- ~~**IMG-31 · Banner ajeno como referencia de acabado**~~ ✅ 2026-11-02 [A] (usuaria, 2026-11-02, de `IMG-30`): con `-r`,
   el banner GPT de **otra** criatura (cuernahoja) y el prompt de la ficha del aullador, a 640×256 y 8 pasos, frente al
   mismo prompt sin referencia; también con «la referencia solo para el acabado» delante. Se mira si trae el acabado
   sin arrastrar su criatura (EMD con `medir.sh` y a ojo contra el banner del aullador). Si sale, la referencia de
   acabado entra en la receta y el LoRA de Kaggle pasa a ser opcional; si arrastra la criatura, Kaggle o `IMG-27`. Solo
   horas de la Deck. **S** Prueba 1 (2026-11-02): **no arrastra la cuernahoja** (ni cuello ni cuernos) y da más atmósfera
   y profundidad (polvo, montes velados, manada difusa); EMD 21.3 → 18.6 (20.0 con la instrucción de acabado). **No arregla
-  la criatura** (patas largas en las tres) y cuesta +60 % (508 → 810 s). Prueba 2: la armonización de planos con `-r` ajeno.
+  la criatura** (patas largas en las tres) y cuesta +60 % (508 → 810 s). Prueba 2: en la armonización de planos (0.5 y
+  0.7) `-r` ajeno casi no cambia nada (EMD 15.7/15.3 → 15.8/14.9). **Veredicto:** la referencia ajena no da el acabado
+  GPT ni la criatura; no entra en la receta. Para criaturas nuevas, la palanca que queda es el LoRA de estilo (pasos 1 y 2
+  de `investigacion-lora-2.md`). Pruebas en `generated/banco/img31/`.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
