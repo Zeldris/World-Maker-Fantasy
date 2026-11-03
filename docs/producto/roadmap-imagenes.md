@@ -222,7 +222,9 @@ desde el panel vive en tablas que siembran.
   peso 1): se aplica en CPU sobre Q8_0 (456/516 tensores, como el de `IMG-30`) y cuesta +7-8 % (508 → 546 s). **Aullador**
   (está en el conjunto): mucho más cerca del banner GPT, con neblina roja densa, remolinos de polvo y una manada con cresta. EMD Y
   21.3 → **13.8**. Las patas siguen largas. **Criatura nueva** (inventada, valle gris con niebla): casi igual que sin LoRA,
-  EMD 13.9 → 14.0. Falta: peso 1.5 y 2 en la criatura nueva y el veredicto.
+  EMD 13.9 → 14.0. Tanda 2, la criatura nueva a peso 1.5 y 2: más niebla y detalle, y las antenas salen plumosas
+  como pide el prompt. EMD 12.9 y 12.7. Aparecen fallos: filamentos colgando de la boca y, a peso 2, patas finas de
+  más. Falta: el veredicto de la usuaria sobre si entra en el perfil fotorreal y con qué peso.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
