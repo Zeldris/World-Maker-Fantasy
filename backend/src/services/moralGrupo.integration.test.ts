@@ -91,6 +91,31 @@ describe('CR-44 (44c) — moral en el combate de varios', () => {
     const otra = await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs.map((c) => (r.huidos.includes(c.participantId) ? { ...c, huido: true } : c)), random: d20(1, 1, 20) }));
     expect(otra.textos.some((t) => t.includes('sin quien los mande'))).toBe(false);
   });
+  it('P399: cada motivo de moral dice el suyo; dos turnos seguidos no dejan la misma línea dos veces', async () => {
+    const cs = await bandaDeTres();
+    const [capitan, segundo, tercero] = enemigos(cs);
+    capitan!.attributes = { ...capitan!.attributes!, inteligencia: 20 };
+    segundo!.attributes = { ...segundo!.attributes!, inteligencia: 20 };
+    const encounterId = (await prisma.combatParticipant.findUniqueOrThrow({ where: { id: cs[0]!.participantId } })).encounterId;
+    // Como en la tanda 76: cae la capitana, en el turno siguiente otro queda grave y luego fuera.
+    const turno = async () => {
+      const frescos = await prisma.combatParticipant.findMany({ where: { encounterId } });
+      const conMarca = cs.map((c) => ({ ...c, moralTirada: frescos.find((f) => f.id === c.participantId)!.moralTirada }));
+      return (await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: conMarca, random: d20(20) }))).textos;
+    };
+    capitan!.condicion = 'CONVALECIENTE';
+    const t1 = await turno();
+    tercero!.condicion = 'GRAVE';
+    const t2 = await turno();
+    tercero!.condicion = 'CONVALECIENTE';
+    const t3 = await turno();
+    const lineas = [...t1, ...t2, ...t3].filter((t) => t.includes('sostiene'));
+    expect(lineas).toHaveLength(3);
+    expect(new Set(lineas).size).toBe(3);
+    expect(t2.join(' ')).toContain('malherido');
+    expect(t3.join(' ')).toContain('mitad');
+  });
+
   it('CR-45: el capitán manda ya en la ronda de apertura; los suyos van a por su objetivo y queda marcado', async () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId } });
     const soldado: MiembroDeGrupo = { npcId: renegadoId, nombre: 'Goirnte Renegado', scope: '', destreza: 8, inteligencia: 8, esGrupo: true };

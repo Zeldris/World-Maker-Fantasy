@@ -86,7 +86,16 @@ export async function revisarMoralDelCombate(
   if (forma === 'ORDENADA' || enPie.length === 1) {
     const moral = tirarMoral(lider.attributes ?? ({} as AttributeBlock), desventaja, random);
     if (moral.aguanta) {
-      resultado.textos.push(`${nombre(lider)} sostiene a los suyos: siguen peleando.`);
+      // P399: cada motivo dice el suyo; si no, dos turnos seguidos dejaban la misma línea.
+      const motivo = capitanCaido
+        ? `${nombre(lider)} toma el mando y sostiene a los suyos`
+        : aLaMitad
+          ? `Con la mitad de los suyos fuera de combate, ${nombre(lider)} los sostiene`
+          : (() => {
+              const graves = [...new Set(recienGraves.map(nombre))];
+              return `Con ${graves.join(' y ')} ${graves.length > 1 ? 'malheridos' : 'malherido'}, ${nombre(lider)} sostiene a los suyos`;
+            })();
+      resultado.textos.push(`${motivo}: siguen peleando.`);
     } else if (escapan(lider)) {
       quienesHuyen.push(...enPie);
       resultado.textos.push(enPie.length > 1 ? `${nombre(lider)} ordena la retirada: los suyos se repliegan y escapan.` : `${nombre(lider)} pierde el valor y escapa del combate.`);
