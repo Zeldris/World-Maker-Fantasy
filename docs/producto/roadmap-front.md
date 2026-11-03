@@ -1695,8 +1695,11 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   reintento va sin la narración anterior en el prompt. P411: se quita la frase que repite 6 palabras seguidas del turno
   anterior, y la réplica lleva hablante si la narración acaba con otro. Bench `20-reintento` contra `19-foco`: turno p50
   28,6 s (−3,3), p95 58,6 s (−14,4), sin respaldo (P414 resuelto); la réplica llegaba sin comillas (ahora va entre «…»)
-  y sin diálogo la narración abría con Ulkha en 5 de 7 turnos (FOCO en todos los turnos fuera de combate). Falta:
-  bench 21 para el FOCO y jugarlo en una ronda.
+  y sin diálogo la narración abría con Ulkha en 5 de 7 turnos (FOCO en todos los turnos fuera de combate). Bench
+  `21-foco-todo` contra `20`: los 7 turnos sin diálogo abren con Gorhorn o el paisaje y nadie habla sin que le
+  pregunten; p50 28,2 s (−0,4), p95 70,3 s (+11,7, un reintento por repetir), sin respaldo. Los 2 de diálogo aún abren
+  con Ulkha. `quitarCitas` dejaba colgando la coletilla de una cita al abrir frase («pregunta finalmente…»): arreglado.
+  Falta: jugarlo en una ronda.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

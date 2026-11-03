@@ -952,8 +952,11 @@ const PRESENTA_EN_HECHO = /\b(se presenta|le dice su nombre|les dice su nombre|d
 /// réplica del NPC sea solo la de `generateNpcReply`. Deja la frase que la rodea («Ulkha frunce el ceño.»).
 /// Con comillas simples (bench 19: «le dice: 'Le digo a Ulkha Ketg: 'Me llamo Gorhorn.''») la cita abre tras espacio o
 /// dos puntos y cierra en la primera ' seguida de espacio o fin, para no cortar en los apóstrofos de «Terk'ikar».
+/// Una cita que abre la frase con su coletilla detrás («¿Qué buscas?», pregunta finalmente.) se va con la frase entera:
+/// sola, la coletilla queda colgando (bench 21: «no dice nada. pregunta finalmente, su voz baja»).
 export function quitarCitas(texto: string): string {
   return texto
+    .replace(/(^|[.!?…]\s+)[«“"][^«»“”"]*[»”"](?:\s*,\s*|\s+(?=\p{Ll}))[^.!?…«“"]*[.!?…]?/gu, '$1')
     .replace(/\s*:?\s*[«“"][^«»“”"]*[»”"]/g, '')
     .replace(/(^|\s*:?\s+|:)'[^«»“”"]*?'+(?=[.,;!?]*(\s|$))/g, (cita: string, _a: string, _b: string, pos: number, todo: string) => (/^\s+\p{Lu}/u.test(todo.slice(pos + cita.length)) ? '.' : ''))
     .replace(/\s+([.,;])/g, '$1')

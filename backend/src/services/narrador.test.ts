@@ -2060,6 +2060,13 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(buildNarrationPrompt({ ...base, enCombate: true }).prompt).not.toMatch(/FOCO:/);
   });
 
+  it('quitarCitas quita la coletilla de una cita que abre la frase (QA-289, bench 21)', () => {
+    expect(quitarCitas('Ulkha Ketg se detiene y no dice nada. «¿Qué buscas aquí?», pregunta finalmente, su voz baja pero firme. El viento sopla.')).toBe(
+      'Ulkha Ketg se detiene y no dice nada. El viento sopla.',
+    );
+    expect(quitarCitas('«Vete», gruñe el orco.')).toBe('');
+  });
+
   it('quitarCitas deja la narración sin réplicas, también con comillas mezcladas (QA-289 fila 1, bench 17)', () => {
     expect(quitarCitas('Ulkha Ketg se detiene. Su voz es baja: «¿Qué buscas aquí, Gorhorn?". Se ajusta el cuchillo.')).toBe('Ulkha Ketg se detiene. Su voz es baja. Se ajusta el cuchillo.')
     expect(quitarCitas('Ulkha frunce el ceño. "Soy Ulkha Ketg." Mira al norte.')).toBe('Ulkha frunce el ceño. Mira al norte.');
