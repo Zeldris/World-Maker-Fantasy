@@ -1678,9 +1678,14 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   prefijo y recordatorio corto al final (5); `min_p` (7; `repeat_penalty` quitado: penalizaba las palabras de la
   acción); `newFacts` ≤3 (8); lore por entidad (3, P251/P272: rag-eval recall 0,938, MRR 0,906, NPC en puesto 1).
   Bench `16-lore-entidad` contra `11-base`: turno p50 30,0 s (−4,7), p95 54,8 s (−7,3), sin intento 2 ni respaldo
-  (antes 14 %); la acción se narra en 5 de 7 turnos (en `15` se perdía con `repeat_penalty`). En curso la fila 2 (P266):
-  cada hecho guarda sus testigos y la réplica del NPC ve solo lo suyo, sin el nombre del jugador hasta que se presenta.
-  Falta: medirla y jugarla, y la fila 1 (una voz por llamada, P263/P311).
+  (antes 14 %); la acción se narra en 5 de 7 turnos (en `15` se perdía con `repeat_penalty`). Fila 2 (P266): cada
+  hecho guarda sus testigos y la réplica del NPC ve solo lo suyo, sin el nombre del jugador hasta que se presenta. El
+  bench `17-npc-sabe` (con dos turnos de diálogo) sacó P331: contestaba otro NPC (el primero detectado) y había dos
+  voces → `elegirInterlocutor` y fila 1: con réplica aparte el narrador solo narra gestos y `quitarCitas` quita lo que
+  cite. Bench `18-una-voz` contra `11-base` (10 turnos): turno p50 27,5 s (−7,2), p95 51,9 s (−10,2), sin intento 2
+  ni respaldo; contesta Ulkha, una sola voz, y no dice «Gorhorn» hasta que él se presenta. Falta: jugar el diálogo
+  en una ronda; el narrador aún se centra en el NPC en vez de la acción en 2-3 de 8 turnos («Reviso mi hacha»,
+  «Observo el cielo») y copió el turno anterior en uno; P331 en parte (un hecho de huellas mete al NPC en escena).
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):
