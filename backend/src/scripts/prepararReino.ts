@@ -21,6 +21,7 @@
 //   asalto:<facción>                P295: un ejército de esa facción (hasta 6 soldados, que dejan de estar en casa) sale contra la Capital (`crearViajero` ASALTO, como `lanzarEjercitosContraElReino`) desde su casa o, si la Torre de vigía no la alcanza, desde lo más lejano que ve, y corre la vigilancia del día (`vigilarDelReino`): aviso de la Torre en el diario del Reino. Queda EN MARCHA, sin resolver: «Llamar a la milicia» (Reino › Defensa) sigue pulsable hasta que se avance el día. Pide Torre de vigía en la Capital; la jugadora tiene que estar en la Capital (si no, la milicia se arma sola)
 //   mochila-libre[:<n>]             P367: deja n unidades de hueco (10 por defecto) en la mochila depositando objetos sueltos en el Almacén del Reino con la función de «Depositar» (`depositarEnAlmacen`), las filas más grandes primero. Depositar no mira la capacidad de la mochila. Con el tope de materiales del Almacén lleno, ese objeto no se deposita y se sigue con el siguiente
 //   nivel:<n>[:<atr>,<atr>…]        P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel. P386: con atributos (p. ej. `nivel:19:constitucion,fuerza`) reparte todos los puntos por turno entre ellos (`repartirPuntoDeAtributo`, la del botón), también con un combate abierto; sin ellos, quedan por repartir
+//   herido:<npc>[:grave|herido]     P370 (para P292): un NPC del combate en curso (un compañero) queda GRAVE (por defecto) o HERIDO con la escritura de un golpe recibido en el combate (`escribirCondicionYEnergia`): el capitán enemigo, que señala al más herido, lo elige en la ronda siguiente
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -44,6 +45,7 @@ import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
 import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
+import { dejarHeridoEnCombate } from '../services/cronista/prepararHerido.js';
 import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
 import { dejarEnEscasez } from '../services/cronista/prepararEscasez.js';
 import { lanzarAsaltoAlReino } from '../services/cronista/prepararAsalto.js';
@@ -53,7 +55,7 @@ import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n>[:<atributo>,…] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -216,6 +218,10 @@ for (const paso of pasos) {
       if (rep) dice(`  Repartidos: ${rep}`);
       if (r.sinRepartir) dice(`  ${r.sinRepartir} punto(s) sin repartir${paso.atributos.length ? ' (esos atributos llegaron al tope del nivel)' : ''}`);
     }
+  } else if (paso.tipo === 'herido') {
+    const r = await dejarHeridoEnCombate(prisma, { saveId, npcSlug: paso.npcSlug, condicion: paso.condicion });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Herido en combate: ${r.nombre} (${r.bando === 'ENEMIGO' ? 'rival' : 'bando de la jugadora'}) queda ${r.condicion}${r.bando === 'ENEMIGO' ? '' : '; el capitán enemigo lo señala desde la ronda siguiente si es el más herido'}`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

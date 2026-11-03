@@ -223,7 +223,7 @@ export async function iniciarCombatEncounter(
 /// Shape mínima de `CombatParticipant` que necesitan `datosVivosDe`/`escribirCondicionYEnergia` —
 /// coincide con lo que Prisma devuelve de verdad, nombrado aparte para no repetir el mismo objeto
 /// literal en cada firma.
-interface ParticipantRef {
+export interface ParticipantRef {
   id: string;
   tipo: string;
   npcId: string | null;
@@ -681,7 +681,7 @@ interface EscribirCondicionYEnergiaParams {
   activeEffectsNext: ActiveEffect[] | null;
 }
 
-async function escribirCondicionYEnergia({
+export async function escribirCondicionYEnergia({
   tx,
   saveId,
   participant,
