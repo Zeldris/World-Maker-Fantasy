@@ -9632,7 +9632,9 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     const soldado = { npcId: renegado.id, nombre: renegado.name, scope: '', destreza: 8, inteligencia: 20, esGrupo: true };
     const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [soldado, soldado]);
     expect(abierto).not.toBeNull();
-    const antes = new Date();
+    // Por id, no por hora: la línea de apertura del combate («Comienza el combate… ordena caer sobre…») puede caer en
+    // el mismo milisegundo que un `new Date()` tomado justo después y colarse en el diario del turno.
+    const previas = (await prisma.logEntry.findMany({ where: { saveId }, select: { id: true } })).map((e) => e.id);
     classifyAction.mockResolvedValue({
       requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -9642,7 +9644,7 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
     await app.close();
     classifyAction.mockReset();
-    const diario = await prisma.logEntry.findMany({ where: { saveId, channel: 'CHARACTER', createdAt: { gte: antes } }, orderBy: { createdAt: 'asc' } });
+    const diario = await prisma.logEntry.findMany({ where: { saveId, channel: 'CHARACTER', id: { notIn: previas } }, orderBy: { createdAt: 'asc' } });
     const orden = diario.findIndex((e) => e.isSystemMessage && e.text.includes('ordena caer sobre'));
     expect(orden).toBeGreaterThanOrEqual(0);
     // Tras la narración del turno (sin el arreglo salía justo tras el eco de la acción).
