@@ -1217,6 +1217,7 @@ describe('elegirInterlocutor (QA-289, bench 17)', () => {
   it('responde el NPC que la acción nombra, aunque no sea el primero detectado', () => {
     expect(elegirInterlocutor('Le pregunto a Ulkha Ketg qué la trae al paso.', null, [orco, ulkha])).toBe(ulkha);
     expect(elegirInterlocutor('Le digo a la jefa del clan Serhu que vengo en paz', null, [orco, ulkha])).toBe(ulkha);
+    expect(elegirInterlocutor('Le pregunto a Ulkha qué la trae', null, [{ id: 'o', name: 'Orco Enfurecido' }, { id: 'u', name: 'Ulkha Ketg' }])?.id).toBe('u');
   });
 
   it('el citado entre comillas manda; sin nombre, el primero; sin candidatos, nadie', () => {

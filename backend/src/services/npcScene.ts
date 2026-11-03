@@ -428,13 +428,15 @@ function esErrataDeAlias(alias: string, palabra: string): boolean {
 /// palabras de 5+ letras (evita falsos positivos en palabras cortas y comunes).
 /// A quién le habla el jugador (QA-289, bench 17): «Le pregunto a Ulkha Ketg…» sin comillas respondía el primer NPC
 /// detectado (un orco metido en escena por un hecho de sus huellas). Orden: el citado entre comillas, el que la
-/// acción nombra (nombre entero y luego alias), y si no nombra a nadie, el primero.
-export function elegirInterlocutor<T extends NpcWithAliases & { name: string }>(action: string, explicito: T | null, candidatos: T[]): T | null {
+/// acción nombra (nombre entero, nombre de pila y, si los trae, alias), y si no nombra a nadie, el primero.
+export function elegirInterlocutor<T extends { id: string; name: string; aliases?: string[] }>(action: string, explicito: T | null, candidatos: T[]): T | null {
   if (explicito) return explicito;
   const accion = normalizeText(action);
+  const nombra = (nombre: string) => nombre.length >= 4 && matchesAliasBoundary(accion, normalizeText(nombre));
   return (
-    candidatos.find((n) => matchesAliasBoundary(accion, normalizeText(n.name))) ??
-    candidatos.find((n) => matchNpcAliases(action, [n]).length > 0) ??
+    candidatos.find((n) => nombra(n.name)) ??
+    candidatos.find((n) => nombra(n.name.split(' ')[0]!)) ??
+    candidatos.find((n) => n.aliases && matchNpcAliases(action, [{ id: n.id, aliases: n.aliases }]).length > 0) ??
     candidatos[0] ??
     null
   );
