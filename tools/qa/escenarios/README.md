@@ -51,3 +51,4 @@ estado útil lo guarda aquí (`QA-105`).
 | `t55-hambre-sed-dia82` | `cmvex1v0300057d0pdjlbezcj` | Tras la tanda 55: reino-hambre-sed con 2 súbditos dados y 3 días avanzados, día 82, población 0, comida 6, territorio perdido | 2026-11-02 |
 | `t56-base` | `cmvex1v0300057d0pdjlbezcj` | t56: reino-sano-defensas con Gorhorn en el Pozo de Cauce Viejo, dia 39 | 2026-11-03 |
 | `t56-reino-dia75` | `cmvex1v0300057d0pdjlbezcj` | t56: reino-sano-defensas dia 75, Cocina ACTIVA con 2 cocineros y 3 trabajadores, Gorhorn en el Pozo | 2026-11-03 |
+| `t58-guchapo-mata-2muertes` | `cmvex1v0300057d0pdjlbezcj` | Gorhorn nivel 3 reaparecido en la Hondonada del Eco tras morir contra el Guchapo (muertes 2/4), día 39 10:3x; sin Guchapo cazado (faltan P12 y P51) | 2026-11-03 |
