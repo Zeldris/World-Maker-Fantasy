@@ -10,7 +10,10 @@ import type { Banda } from './narrador.js';
 /// P268: «Le entrego raciones de viaje al orco» cortaba el turno como viaje a un lugar desconocido: «de viaje»
 /// es un sustantivo (raciones, bolsa, equipo de viaje), no una intención de desplazarse. Salir, irse o ponerse
 /// «de viaje» sí lo es.
-const TRAVEL_INTENT_REGEX = /(?<!\bde )viaj|\b(?:salgo|salimos|me voy|nos vamos|voy|vamos|parto|partimos|me pongo|nos ponemos|sigo|seguimos) de viaje|camin|desplaz|ruta|tramo|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
+/// P418 (ronda 2 de QA-289): «Me ajusto el equipo y miro el camino» era un viaje a un lugar desconocido: `camin` casaba con
+/// el sustantivo. «camino» cuenta como verbo sin artículo ni determinante delante («Camino hacia el pozo»); y `ruta`
+/// y `tramo`, como palabra entera («Recojo frutas» no es viajar).
+const TRAVEL_INTENT_REGEX = /(?<!\bde )viaj|\b(?:salgo|salimos|me voy|nos vamos|voy|vamos|parto|partimos|me pongo|nos ponemos|sigo|seguimos) de viaje|(?<!\b(?:el|un|del|al|este|ese|aquel|mi|tu|su|por|otro) )\bcamino\b|\bcamin(?:a|amos|an|ar|ando|e)\b|desplaz|\brutas?\b|\btramos?\b|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
 
 /// Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
 /// repetida sin progreso tras el combate"): "avanzo por una salida" / "Continuo por la cueva" /

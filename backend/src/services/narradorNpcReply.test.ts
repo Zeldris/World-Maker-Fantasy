@@ -152,4 +152,58 @@ describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
     expect(unirReplica('Ulkha Ketg se presenta con una voz suave,', "'Soy Ulkha Ketg.'", ulkha)).toBe('Ulkha Ketg se presenta con una voz suave: «Soy Ulkha Ketg.»');
   });
 
+  it('si todas las frases repiten el turno anterior, cuenta como repetición (ronda 2, 12:21-12:22)', async () => {
+    const { repiteTodasLasFrases } = await import('./narrador.js');
+    const anterior = 'Ulkha Ketg mira a Gorhorn con una expresión seria, su mirada fija en los ojos de Gorhorn. La jefa del Clan Serhu se queda en silencio durante un momento.';
+    expect(repiteTodasLasFrases('Ulkha mira a Gorhorn con una expresión seria, su mirada fija en él. La jefa del Clan Serhu se queda en silencio durante un momento.', anterior)).toBe(true);
+    expect(repiteTodasLasFrases('Gorhorn deja el odre. La jefa del Clan Serhu se queda en silencio durante un momento.', anterior)).toBe(false);
+    expect(repiteTodasLasFrases('Ulkha mira a Gorhorn con una expresión seria.', undefined)).toBe(false);
+  });
+
+  it('la réplica que empieza igual que la anterior se pide otra vez; el eco se quita', async () => {
+    const { generateNpcReply, empiezaIgual, ultimaReplica } = await import('./narrador.js');
+    expect(empiezaIgual('«¿Qué sabes tú de mi clan?»', '«¿Qué sabes tú de ella?»')).toBe(true);
+    expect(empiezaIgual('«Vete de aquí.»', '«¿Qué sabes tú de ella?»')).toBe(false);
+    expect(ultimaReplica('Gorhorn pregunta. El orco responde: «¿Qué sabes tú de ella?» Y escupe.')).toBe('«¿Qué sabes tú de ella?»');
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué sabes tú de mi clan?»' }) })
+      .mockResolvedValueOnce({ text: JSON.stringify({ reply: '«No te importa, no te importa, no te importa…»' }) });
+    const npc = { name: 'Orco Enfurecido', role: 'guerrero', personality: '', bio: '' };
+    const reply = await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién es tu familia?', sessionFacts: [], replicaAnterior: '«¿Qué sabes tú de ella?»' });
+    expect(reply).toBe('«No te importa…»');
+    expect((ollamaGenerate.mock.calls[0]![0] as { prompt: string }).prompt).toContain('Tu réplica anterior fue «¿Qué sabes tú de ella?»');
+  });
+});
+
+describe('restos de diálogo en la narración (QA-289, ronda 2: P415, P416, P417)', () => {
+  it('quita preguntas sueltas, cierres sin apertura, coletillas sin cita y frases sobre la respuesta', async () => {
+    const { quitarRestosDeDialogo } = await import('./narrador.js');
+    expect(quitarRestosDeDialogo('¿Qué sabes tú de ella? ¿Por qué preguntas por ella?» El orco aprieta los puños.', 'Gorhorn')).toBe('El orco aprieta los puños.');
+    expect(quitarRestosDeDialogo('El orco duda, pero decide hablar. dice con una voz agitada.', 'Gorhorn')).toBe('El orco duda, pero decide hablar.');
+    expect(quitarRestosDeDialogo('Gorhorn inclina la cabeza con un gesto de respeto. dice Gorhorn con voz suave.', 'Gorhorn')).toBe('Gorhorn inclina la cabeza con un gesto de respeto.');
+    expect(quitarRestosDeDialogo('El orco se tensa. La respuesta del orco es un susurro.', 'Gorhorn')).toBe('El orco se tensa.');
+    expect(quitarRestosDeDialogo('Gorhorn le responde con calma. El orco se tensa.', 'Gorhorn')).toBe('Gorhorn le responde con calma. El orco se tensa.');
+    expect(quitarRestosDeDialogo('Gorhorn pregunta a Ulkha Ketg qué la trae al paso, y ella responde', 'Gorhorn')).toBe('Gorhorn pregunta a Ulkha Ketg qué la trae al paso, y ella responde');
+  });
+
+  it('sinEco quita trozos repetidos seguidos y deja la puntuación del último', async () => {
+    const { sinEco } = await import('./narrador.js');
+    expect(sinEco('«No te importa, no te importa, no te importa…»')).toBe('«No te importa…»');
+    expect(sinEco('«Vete. Vete ya.»')).toBe('«Vete. Vete ya.»');
+  });
+});
+
+describe('empezarPorElJugador (QA-289, ronda 2: P412)', () => {
+  it('si abre con el NPC, sus frases del principio pasan al final', async () => {
+    const { empezarPorElJugador } = await import('./narrador.js');
+    expect(empezarPorElJugador('Ulkha Ketg sonríe despacio. Gorhorn le tiende el odre. El viento sopla.', 'Ulkha Ketg', 'Gorhorn')).toBe(
+      'Gorhorn le tiende el odre. El viento sopla. Ulkha Ketg sonríe despacio.',
+    );
+    expect(empezarPorElJugador('Ulkha Ketg sonríe. Gorhorn se acerca. Gorhorn pregunta qué la trae al paso, y ella responde', 'Ulkha Ketg', 'Gorhorn')).toBe(
+      'Gorhorn se acerca. Ulkha Ketg sonríe. Gorhorn pregunta qué la trae al paso, y ella responde',
+    );
+    expect(empezarPorElJugador('Ulkha Ketg sonríe. El viento sopla.', 'Ulkha Ketg', 'Gorhorn')).toBe('Ulkha Ketg sonríe. El viento sopla.');
+    expect(empezarPorElJugador('Gorhorn le tiende el odre. Ulkha Ketg sonríe.', 'Ulkha Ketg', 'Gorhorn')).toBe('Gorhorn le tiende el odre. Ulkha Ketg sonríe.');
+  });
 });

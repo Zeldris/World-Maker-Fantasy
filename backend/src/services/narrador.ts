@@ -943,6 +943,8 @@ export interface NpcReplyContext {
   action: string;
   /// Solo lo que este NPC presenció o es público (`loadFactsKnownBy`, QA-289 fila 2).
   sessionFacts: string[];
+  /// P411: su réplica del turno anterior, si la hubo, para no empezar igual.
+  replicaAnterior?: string;
 }
 
 const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
@@ -975,15 +977,89 @@ const TRAMO_REPETIDO = 6;
 /// anterior se quita, sin reintento (~25 s). Si no queda otra frase, se deja como está.
 export function quitarFrasesRepetidas(narracion: string, anterior?: string): string {
   if (!anterior) return narracion;
-  const previas = palabras(anterior);
-  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - TRAMO_REPETIDO + 1)).map((_, i) => previas.slice(i, i + TRAMO_REPETIDO).join(' ')));
-  const repite = (f: string) => {
-    const p = palabras(f);
-    return p.some((_, i) => i + TRAMO_REPETIDO <= p.length && tramos.has(p.slice(i, i + TRAMO_REPETIDO).join(' ')));
-  };
+  const repite = repiteTramoDe(anterior);
   const todas = frases(narracion);
   const quedan = todas.filter((f) => !repite(f));
   return quedan.length === 0 || quedan.length === todas.length ? narracion : quedan.join(' ');
+}
+
+/// P411 (ronda 2 de QA-289, 12:21-12:22): Ulkha repetía casi literal las dos frases del turno anterior; `quitarFrasesRepetidas`
+/// las dejaba porque no quedaba otra. Si todas repiten, se rechaza el intento como repetición (el reintento va sin la
+/// narración anterior, P414).
+export function repiteTodasLasFrases(narracion: string, anterior?: string): boolean {
+  const todas = frases(narracion);
+  return !!anterior && todas.length > 0 && todas.every(repiteTramoDe(anterior));
+}
+
+function repiteTramoDe(anterior: string): (frase: string) => boolean {
+  const previas = palabras(anterior);
+  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - TRAMO_REPETIDO + 1)).map((_, i) => previas.slice(i, i + TRAMO_REPETIDO).join(' ')));
+  return (f) => {
+    const p = palabras(f);
+    return p.some((_, i) => i + TRAMO_REPETIDO <= p.length && tramos.has(p.slice(i, i + TRAMO_REPETIDO).join(' ')));
+  };
+}
+
+const VERBO_DE_HABLA = String.raw`(?:dice|pregunta|responde|contesta|replica|exclama|murmura|susurra|grita|añade|masculla|gruñe)`;
+
+/// Lo que deja en la narración un diálogo mal citado, una vez fuera las citas (ronda 2 de QA-289):
+/// - P415: una pregunta o exclamación suelta («¿Qué sabes tú de ella?») o el cierre de una cita sin su apertura: es habla.
+/// - P416: una coletilla sin su cita («dice Gorhorn con voz suave.»).
+/// - P417: una frase que describe la respuesta («La respuesta del orco es un susurro.») y luego no casa con la réplica, que
+///   va aparte. Si nombra al jugador se queda: es su acción.
+/// La frase final sin acabar («y ella responde») se deja: `unirReplica` la usa para presentar la réplica.
+export function quitarRestosDeDialogo(narracion: string, characterName: string): string {
+  const todas = frases(narracion);
+  return todas
+    .filter((f, i) => {
+      if (/^[¿¡]/.test(f) || /^[^«“"]*[»”"]/.test(f)) return false;
+      if (new RegExp(`^${VERBO_DE_HABLA}(?![\\p{L}])`, 'u').test(f)) return false;
+      const acabada = i < todas.length - 1 || /[.!?…]$/.test(f);
+      return !(acabada && /(^|[^\p{L}])(respuesta|responde|contesta|replica)(?![\p{L}])/iu.test(f) && !contieneNombre(f, characterName));
+    })
+    .join(' ');
+}
+
+/// P412 (ronda 2 de QA-289: abre con el NPC en 6 de 11 turnos pese a la línea FOCO): si la narración abre con el NPC, sus
+/// frases del principio pasan al final, justo antes de su réplica, y abre la primera en que el jugador sale antes que él.
+/// Si ninguna lo hace, se deja. La frase final sin acabar sigue la última, porque presenta la réplica.
+export function empezarPorElJugador(narracion: string, npc: string, characterName: string): string {
+  if (!abreConElNpc(narracion, npc, characterName)) return narracion;
+  const todas = frases(narracion);
+  const cola = /[.!?…»”"]$/.test(todas.at(-1) ?? '') ? [] : todas.splice(-1);
+  const i = todas.findIndex((f) => contieneNombre(f, characterName) && !abreConElNpc(f, npc, characterName));
+  if (i <= 0) return narracion;
+  return [...todas.slice(i), ...todas.slice(0, i), ...cola].join(' ');
+}
+
+/// P416: «No te importa, no te importa, no te importa…»: un trozo igual al anterior (entre comas o frases) se quita; el
+/// que queda se lleva la puntuación del último para no acabar en coma.
+export function sinEco(texto: string): string {
+  const trozos = texto.split(/(?<=[,;.!?…])\s+/);
+  const quedan: string[] = [];
+  for (const t of trozos) {
+    const previo = quedan.at(-1);
+    if (previo !== undefined && palabras(previo).join(' ') === palabras(t).join(' ') && palabras(t).length > 0) {
+      quedan[quedan.length - 1] = previo.replace(/[^\p{L}\p{N}]*$/u, '') + (t.match(/[^\p{L}\p{N}]*$/u)?.[0] ?? '');
+    } else {
+      quedan.push(t);
+    }
+  }
+  return quedan.join(' ');
+}
+
+/// P411 (ronda 2: el orco abre con «¿Qué sabes tú de…?» en 4 de 6 turnos): la réplica que empieza con las mismas 4
+/// palabras que la anterior de ese NPC se pide otra vez.
+const INICIO_REPETIDO = 4;
+export function empiezaIgual(reply: string, anterior?: string): boolean {
+  if (!anterior) return false;
+  const a = palabras(reply).slice(0, INICIO_REPETIDO).join(' ');
+  return palabras(reply).length >= INICIO_REPETIDO && a === palabras(anterior).slice(0, INICIO_REPETIDO).join(' ');
+}
+
+/// La última réplica citada de una narración («…»), para `empiezaIgual`.
+export function ultimaReplica(narracion?: string): string | undefined {
+  return narracion?.match(/«[^«»]*»(?![\s\S]*«)/)?.[0];
 }
 
 /// P411: a una pregunta al orco, la narración acababa con Ulkha y la réplica iba sin hablante: parecía de ella. Une la
@@ -1088,6 +1164,7 @@ ${factsBlock(hechos)}
 
 ${quien} te acaba de decir: "${accion}"
 
+${ctx.replicaAnterior ? `\nTu réplica anterior fue ${ctx.replicaAnterior}: no empieces igual ni repitas sus frases.\n` : ''}
 Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente con tu personalidad y tu trasfondo. Una única réplica — nunca dos intentos ni dos turnos de diálogo seguidos.`;
 
   // `format` estructurado (bug real jugando en vivo, 2026-09-03: Gistera Koh autocontradiciéndose
@@ -1099,9 +1176,12 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   // pero sí quita la ambigüedad estructural de "generar más de una respuesta suelta" — combinado con
   // el guard de abajo, doble red de seguridad.
   // P263: si la réplica habla de sí mismo como de otro («mi hermana, Ulkha Ketg»), un segundo intento; si repite, sin réplica.
+  // P411: si empieza igual que su réplica anterior, un segundo intento; si repite, se queda la segunda.
   for (let intento = 0; intento < 2; intento++) {
-    const reply = await pedirReplicaNpc(system, prompt);
-    if (reply === '' || !hablaDeSiComoOtro(reply, ctx.npc.name)) return reply;
+    const reply = sinEco(await pedirReplicaNpc(system, prompt));
+    if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) continue;
+    if (intento === 0 && empiezaIgual(reply, ctx.replicaAnterior)) continue;
+    return reply;
   }
   return '';
 }
@@ -1701,7 +1781,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       const narrationAndFacts = [parsed.narration, ...parsed.newFacts].join(' ');
       const rejection = [
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
-        { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE },
+        { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText) || repiteTodasLasFrases(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE },
         { check: () => hasRepeatedDialogueLine(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE_REPLICA },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },

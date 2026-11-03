@@ -29,7 +29,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -5022,13 +5022,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         characterName,
         action,
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
+        replicaAnterior: ultimaReplica(lastNarration?.text),
       });
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
       }
       if (npcReply) {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
-        narration.narration = unirReplica(quitarCitas(narration.narration), npcReply, dialogueTarget);
+        // P415-P417 (restos de habla sin cita) y P412 (abre con el NPC): el NPC habla solo en su réplica, al final.
+        const nombreNpc = dialogueTarget.nombreVisible ?? dialogueTarget.name;
+        const narracion = empezarPorElJugador(quitarRestosDeDialogo(quitarCitas(narration.narration), characterName), nombreNpc, characterName);
+        narration.narration = unirReplica(narracion, npcReply, dialogueTarget);
       }
     } catch (err) {
       console.warn(`[turno] generateNpcReply falló, se omite la réplica de este turno (saveId=${saveId}):`, err);
