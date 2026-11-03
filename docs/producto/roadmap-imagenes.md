@@ -216,7 +216,13 @@ desde el panel vive en tablas que siembran.
   `context_embedder` en nf4 (entrada sana); sin cuantizar sigue `nan`, porque `accelerator.prepare()` envuelve el
   transformer en autocast fp16 y todo corría en fp16; el cuaderno quita ese envoltorio. Sexto arranque (fp32 de
   verdad): sin `nan` (pérdida 0,66-0,88), sin falta de memoria, ~30 s/paso, LoRA de 161 MB; el entrenamiento baja a
-  1000 pasos (~8,5 h) para caber en una sesión. Falta: el entrenamiento y la prueba del LoRA en la Deck.
+  1000 pasos (~8,5 h) para caber en una sesión. Entrenamiento (2026-11-02/03): 1000/1000 pasos en 9 h 32 min, sin
+  `nan` (pérdida ~0,5-1,2, picos sueltos de hasta 2,75), LoRA de 161 MB (rank 16) en `image-generator/loras/wmf-estilo.safetensors`
+  (fuera del repo). Prueba en la Deck, tanda 1 (2026-11-03; `generated/banco/img32/`, 640×256, 8 pasos, semilla 42,
+  peso 1): se aplica en CPU sobre Q8_0 (456/516 tensores, como el de `IMG-30`) y cuesta +7-8 % (508 → 546 s). **Aullador**
+  (está en el conjunto): mucho más cerca del banner GPT, con neblina roja densa, remolinos de polvo y una manada con cresta. EMD Y
+  21.3 → **13.8**. Las patas siguen largas. **Criatura nueva** (inventada, valle gris con niebla): casi igual que sin LoRA,
+  EMD 13.9 → 14.0. Falta: peso 1.5 y 2 en la criatura nueva y el veredicto.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
