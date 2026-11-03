@@ -149,9 +149,10 @@ class LoraDeEstilo(Base):
     def test_lora_cambia_el_peso_y_cero_lo_quita(self):
         self.generar(PERFIL='fotorreal', LORA='1.5')
         self.assertTrue(self.valor('-p').endswith('<lora:wmf-estilo:1.5>'))
-        self.generar(PERFIL='fotorreal', LORA='0')
-        self.assertEqual(self.valor('-p'), 'un prompt de prueba')
-        self.assertNotIn('--lora-model-dir', self.args())
+        for cero in ('0', '0.0', '00'):
+            self.generar(PERFIL='fotorreal', LORA=cero)
+            self.assertEqual(self.valor('-p'), 'un prompt de prueba', cero)
+            self.assertNotIn('--lora-model-dir', self.args())
 
     def test_sin_el_archivo_avisa_y_sigue_sin_lora(self):
         r = self.generar(PERFIL='fotorreal', LORAS=os.path.join(self.d, 'no-hay'))
@@ -371,6 +372,19 @@ class Planos(PlanosBase):
         self.assertEqual(leer(self.args_gradar).split()[1:], [os.path.join(self.out, 'intentos', 'armonia-0.7-noche.png'), 'noche'])
         self.assertTrue(os.path.exists(os.path.join(self.out, 'intentos', 'armonia-0.5-noche.png')))
         self.assertFalse(os.path.exists(os.path.join(self.out, 'intentos', 'plancha-noche.png')))
+
+    def test_si_gradar_falla_la_cadena_acaba_y_al_relanzar_grada_lo_pendiente(self):
+        escribir(self.gr, '#!/bin/bash\nexit 4\n')
+        r = self.planos(MOMENTO='noche')
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.count('ERROR: gradar.sh falló'), 2)  # las dos armonizaciones, no solo la primera
+        self.assertEqual(len(self.llamadas_sd()), 4)
+        escribir(self.gr, GRADAR_FALSO)
+        r = self.planos(MOMENTO='noche')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(len(self.llamadas_sd()), 4)  # no regenera
+        for f in ('0.5', '0.7'):
+            self.assertTrue(os.path.exists(os.path.join(self.out, 'intentos', f'armonia-{f}-noche.png')))
 
     def test_el_boceto_del_entorno_no_se_cuela_en_la_plancha(self):
         self.planos(BOCETO=self.boceto)

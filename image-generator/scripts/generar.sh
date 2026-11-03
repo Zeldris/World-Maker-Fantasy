@@ -62,7 +62,7 @@ fi
 # QA-226: el tercer argumento es una ruta; con el texto del prompt, el mensaje lo dice sin repetir el texto entero.
 [ -s "$PF" ] || { echo "ABORTO: el tercer argumento es la ruta de un archivo de prompt, y «${PF:0:60}» no existe o está vacío"; exit 3; }
 PROMPT=$(cat "$PF")
-if [ "$PERFIL" = fotorreal ] && [ "$LORA" != 0 ]; then
+if [ "$PERFIL" = fotorreal ] && ! [[ $LORA =~ ^0+(\.0+)?$ ]]; then  # 0, 0.0, 00…: sin LoRA
   LORAS=${LORAS:-$G/loras}
   if [ -f "$LORAS/wmf-estilo.safetensors" ]; then
     PROMPT="wmfstyle, $PROMPT <lora:wmf-estilo:$LORA>"; EXTRA=(--lora-model-dir "$LORAS" "${EXTRA[@]}")

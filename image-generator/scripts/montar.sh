@@ -30,7 +30,7 @@ ff -i "$SU" -filter_complex "[0:v]format=rgba,split[c][k];
 # 2) Caja del sujeto (bbox del alfa) y recorte ajustado.
 # bbox escribe la caja en el registro de nivel info (ff lo calla)
 read -r X1 X2 Y1 Y2 < <(ffmpeg -hide_banner -i "$T/recorte.png" -vf "alphaextract,lut=y='if(gt(val,128),255,0)',bbox=min_val=200" \
-  -f null - 2>&1 | grep -o 'x1:[0-9]* x2:[0-9]* y1:[0-9]* y2:[0-9]*' | tail -1 | sed 's/[xy][12]://g' || true)
+  -f null - 2>&1 | grep -o 'x1:[0-9]* x2:[0-9]* y1:[0-9]* y2:[0-9]*' | tail -1 | sed 's/[xy][12]://g') || true  # sin caja, read falla: el ABORTO de abajo
 [ -n "${Y2:-}" ] || { echo "ABORTO: no se encontró el sujeto en $SU (¿todo pasa por verde? sube UMBRAL)"; exit 2; }
 ff -i "$T/recorte.png" -vf "crop=$((X2-X1+1)):$((Y2-Y1+1)):$X1:$Y1" "$T/sujeto.png"
 SW=$((X2-X1+1)); SH=$((Y2-Y1+1))

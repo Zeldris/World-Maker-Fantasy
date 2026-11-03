@@ -134,10 +134,11 @@ def _estilo_perfil(mundo: dict, perfil: str) -> dict:
     return e
 
 
-def _estilo(mundo: dict, perfil: str, tipo: str) -> str:
+def _estilo(mundo: dict, perfil: str, tipo: str, momento: str = 'dia') -> str:
     e = _estilo_perfil(mundo, perfil)
     por_tipo = (e.get('porTipo') or {}).get(tipo) or {}
-    base = e['base'].replace('{clase}', por_tipo.get('clase', ''))
+    # {luz}: la del momento (sin ella, «golden-hour» llegaba también a la noche)
+    base = e['base'].replace('{clase}', por_tipo.get('clase', '')).replace('{luz}', (e.get('luz') or {}).get(momento, ''))
     base = re.sub(r'\s+', ' ', base).replace(' ,', ',').strip()
     return ' '.join(x for x in (base, por_tipo.get('acabado', '')) if x)
 
@@ -250,7 +251,7 @@ def construir(ficha: dict, mundo: dict, perfil: str, variante=None, momento=None
     # clave ausente: luz de la región; cadena vacía: sin B6 (igual que `entorno: ""` quita B5, regla 8)
     b6 = _frases(p['luz']) if 'luz' in p else luz_region
     b7 = mundo['encuadres'][perfil]
-    b8 = _estilo(mundo, perfil, tipo)
+    b8 = _estilo(mundo, perfil, tipo, mom)
     bloques = {'B1': b1, 'B2': b2, 'B3': b3, 'B4': b4, 'B5': b5, 'B6': b6, 'B7': b7, 'B8': b8}
     if foto:  # sin preámbulo: el texto fijo son B7 y B8 (decisión 1 de plan-fotorreal.md)
         orden = ORDEN_FOTORREAL

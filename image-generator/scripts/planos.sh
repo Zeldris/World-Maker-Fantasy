@@ -9,7 +9,8 @@
 # Variables: SEED=3 PASOS=8 PW=640 PH=256 SW=512 SH=192 (FINAL: 1280x512, 1024x384, 16 pasos las pone probar.sh),
 # MOMENTO (gradúa solo las armonizaciones: armonia-<fuerza>-<momento>.png), SDCLI, MONTAR=<ruta> (los tests lo sustituyen),
 # FICHA (su `encuadre` da HERO y MANADA, ver encuadre.py).
-# Siempre pasa por generar.sh con PERFIL=fotorreal. Salidas: 2 falta un txt o argumentos; 3 falta el boceto; el resto, el de generar.sh.
+# Siempre pasa por generar.sh con PERFIL=fotorreal. Salidas: 1 falló alguna gradación; 2 falta un txt o argumentos;
+# 3 falta el boceto; el resto, el de generar.sh.
 set -euo pipefail
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 [ $# -eq 3 ] || { sed -n 3,4p "$0"; exit 2; }
@@ -30,8 +31,16 @@ gen() { local n=$1 m=$2 b=$3; shift 3; BOCETO=$b MOMENTO=$m GRADAR=${GRADAR:-1} 
 [ -s "$I/plancha.png" ] || gen plancha "" "" "$P/plancha.txt" "$PW" "$PH" "$SEED" "$PASOS"
 [ -s "$I/sujeto.png" ] || gen sujeto "" "$BOC" "$P/sujeto.txt" "$SW" "$SH" "$SEED" "$PASOS"
 bash "${MONTAR:-$G/scripts/montar.sh}" "$I/plancha.png" "$I/sujeto.png" "$I/montaje.png"
+# La gradación va aparte de generar.sh: si falla, la cadena sigue y al relanzar se grada lo que quedó sin gradar.
+MAL=0
 for s in ${FUERZAS:-0.5 0.7}; do
-  [ -s "$I/armonia-$s.png" ] || gen "armonia-$s" "$MOM" "" "$P/armonia.txt" "$PW" "$PH" "$SEED" "$PASOS" \
+  A=$I/armonia-$s.png
+  [ -s "$A" ] || gen "armonia-$s" "" "" "$P/armonia.txt" "$PW" "$PH" "$SEED" "$PASOS" \
     --init-img "$I/montaje.png" --strength "$s" "${NOISE[@]}"
+  if [ -n "$MOM" ] && [ "${GRADAR:-1}" != 0 ] && [ ! -s "$I/armonia-$s-$MOM.png" ]; then
+    "${GRADAR_SH:-$G/scripts/gradar.sh}" "$A" "$I/armonia-$s-$MOM.png" "$MOM" ${REGION:+"$REGION"} \
+      || { MAL=1; echo "ERROR: gradar.sh falló con $A; queda sin gradar (relanzar planos.sh lo reintenta)"; }
+  fi
 done
+[ $MAL = 0 ] || exit 1
 echo "Hecho: planos en $D"

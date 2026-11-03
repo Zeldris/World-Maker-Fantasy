@@ -5,6 +5,7 @@ import re
 import shutil
 import struct
 import subprocess
+import json
 import unittest
 import zlib
 
@@ -118,6 +119,46 @@ class Gradar(unittest.TestCase):
             lineas = f.read().splitlines()
         self.assertIn('LUT_3D_SIZE 36', lineas)
         self.assertEqual(len(lineas), 2 + 36 ** 3)
+
+
+
+@unittest.skipUnless(HAY_FFMPEG, 'sin ffmpeg')
+class LutConHuella(unittest.TestCase):
+    """La LUT horneada solo manda si sale de las curvas que tocan (región o gradacion.json editado: curvas y AVISO)."""
+
+    def setUp(self):
+        self.d = carpeta()
+        g = os.path.join(self.d, 'image-generator')
+        os.makedirs(os.path.join(g, 'scripts'))
+        shutil.copy(GRADAR, os.path.join(g, 'scripts'))
+        shutil.copytree(os.path.join(RAIZ, 'image-generator', 'estilo'), os.path.join(g, 'estilo'))
+        self.gradar_sh, self.json = os.path.join(g, 'scripts', 'gradar.sh'), os.path.join(g, 'estilo', 'gradacion.json')
+        self.orig = sintetica(os.path.join(self.d, 'orig.png'))
+
+    def gradar(self, *extra) -> str:
+        r = subprocess.run(['bash', self.gradar_sh, self.orig, os.path.join(self.d, 'sal.png'), 'dia', *extra],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stderr
+
+    def editar(self, cambio):
+        with open(self.json) as f:
+            j = json.load(f)
+        cambio(j)
+        with open(self.json, 'w') as f:
+            json.dump(j, f)
+
+    def test_la_lut_del_repo_casa_con_sus_curvas(self):
+        self.assertNotIn('AVISO', self.gradar())
+
+    def test_region_con_curvas_propias_no_toma_la_lut_general(self):
+        self.editar(lambda j: j.setdefault('regiones', {}).update({'r': {'dia': {'tinte': 'eq=saturation=1.3'}}}))
+        self.assertIn('AVISO: ', self.gradar('r'))
+        self.assertIn('no sale de las curvas de r', self.gradar('r'))
+
+    def test_curvas_editadas_tras_hornear(self):
+        self.editar(lambda j: j['momentos']['dia'].update({'tinte': 'eq=saturation=0.5'}))
+        self.assertIn('no sale de las curvas de dia', self.gradar())
 
 
 if __name__ == '__main__':

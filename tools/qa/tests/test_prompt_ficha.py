@@ -302,6 +302,13 @@ class Fotorreal(unittest.TestCase):
                 self.assertTrue(fijo.endswith('The image is completely textless.'))
         self.assertNotIn('B9', pf.ORDEN_FOTORREAL)
 
+    def test_la_luz_del_estilo_va_con_el_momento(self):
+        for mom in ('dia', 'atardecer', 'noche'):
+            with self.subTest(momento=mom):
+                r = pf.construir(DatosReales.ficha('fauna/aullador-rojo'), _REAL, 'fotorreal', variante='macho', momento=mom)
+                self.assertEqual('golden-hour' in r['prompt'], mom != 'noche')
+                self.assertNotIn('{luz}', r['prompt'])
+
     def test_tope_y_recortables_por_perfil_en_mundo_json(self):
         self.assertEqual(_REAL['longitud']['fotorreal']['max'], 520)
         self.assertEqual(_REAL['longitud']['max'], 320)  # el resto de perfiles sigue en 320
