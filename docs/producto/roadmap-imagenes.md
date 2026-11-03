@@ -229,13 +229,14 @@ desde el panel vive en tablas que siembran.
   las bandas del pelaje salen como correas, más marcadas a 1.5. **Veredicto (2026-11-03, la usuaria lo deja en manos
   de Claude):** el LoRA sirve para criaturas nuevas en escenas como las del juego. Entra en el perfil fotorreal a
   **peso 1**: 1.5 apenas mejora y trae más fallos. No arregla la forma de la criatura. Integración en `IMG-33`.
-- **IMG-33 · El LoRA de estilo en el perfil fotorreal** [A] (de `IMG-32`, 2026-11-03): `PERFIL=fotorreal` pasa a
+- ~~**IMG-33 · El LoRA de estilo en el perfil fotorreal**~~ [A] (de `IMG-32`, 2026-11-03): `PERFIL=fotorreal` pasa a
   `bin-nuevo/sd-cli` (release `master-1039`, la que aplica LoRAs de FLUX.3) con `--lora-model-dir image-generator/loras`,
   y el prompt de la ficha lleva `wmfstyle` delante y `<lora:wmf-estilo:1>` detrás; `LORA=0` lo quita y sin el
   archivo avisa y sigue sin él. Tests de `generar.sh`/`prompt_ficha.py` con el `sd-cli` falso; después, una imagen
-  del montaje con planos para ver que el binario nuevo no rompe la cadena. **S** 🚧 en curso (2026-11-03): hecho en
+  del montaje con planos para ver que el binario nuevo no rompe la cadena. **S** ✅ 2026-11-03: hecho en
   `generar.sh` (por ahí pasan ficha, `PROMPT_ARCHIVO` y planos), 5 tests en `test_generar_perfil.py` (`LoraDeEstilo`), README.
-  Falta: la prueba real en la Deck con `probar.sh`.
+  Prueba real (`probar.sh fauna aullador-rojo fotorreal 42`): carga `bin-nuevo`, aplica el LoRA y grada; 563 s, mínimo
+  5,4 GB libres. La cadena de planos no se corrió entera: su img2img con `bin-nuevo` ya se probó en `IMG-31`.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
