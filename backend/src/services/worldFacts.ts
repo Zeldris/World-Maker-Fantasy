@@ -108,19 +108,42 @@ export async function loadSessionFacts(saveId: string): Promise<string[]> {
 /// solo para el chequeo de duplicados (se muta localmente para que dos hechos nuevos casi
 /// idénticos ENTRE SÍ en el mismo turno también se filtren, no solo contra el historial previo) —
 /// nunca se reescribe en la base de datos, es un log de solo-inserción.
-export async function appendSessionFacts(saveId: string, existing: string[], newFacts: string[]): Promise<void> {
+///
+/// `presencia` (QA-289, P266): quién lo presenció. `testigos` = los NPC en escena (por nombre); `publico` =
+/// suceso del mundo que sabe cualquiera. Sin nada, no lo sabe ningún NPC (lo vio solo el jugador).
+export interface Presencia {
+  testigos?: string[];
+  publico?: boolean;
+}
+
+export async function appendSessionFacts(saveId: string, existing: string[], newFacts: string[], presencia: Presencia = {}): Promise<void> {
   if (newFacts.length === 0) return;
+  const testigos = [...new Set(presencia.testigos ?? [])];
+  const publico = presencia.publico ?? false;
   const seen = [...existing];
   for (const fact of newFacts) {
     if (seen.some((f) => factSimilarity(f, fact) >= DUPLICATE_THRESHOLD)) continue;
     seen.push(fact);
     const vector = await embed(fact);
     await prisma.$executeRaw`
-      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
-      VALUES (${crypto.randomUUID()}, ${saveId}, ${fact}, ${toVectorLiteral(vector)}::vector, ${new Date()})
+      INSERT INTO "SessionFact" (id, "saveId", text, embedding, testigos, publico, "createdAt")
+      VALUES (${crypto.randomUUID()}, ${saveId}, ${fact}, ${toVectorLiteral(vector)}::vector, ${testigos}::text[], ${publico}, ${new Date()})
     `;
   }
   await pruneOldFacts(saveId);
+}
+
+/// Lo que sabe un NPC (QA-289, fila 2 de `docs/ia/investigacion-narrador-repos.md`, P266): los últimos hechos que
+/// presenció o que son públicos, en orden cronológico. Es lo único que recibe su réplica (`generateNpcReply`).
+const MAX_FACTS_NPC = 8;
+export async function loadFactsKnownBy(saveId: string, npcName: string): Promise<string[]> {
+  const rows = await prisma.sessionFact.findMany({
+    where: { saveId, OR: [{ publico: true }, { testigos: { has: npcName } }] },
+    orderBy: { createdAt: 'desc' },
+    take: MAX_FACTS_NPC,
+    select: { text: true },
+  });
+  return rows.map((r) => r.text).reverse();
 }
 
 async function pruneOldFacts(saveId: string): Promise<void> {

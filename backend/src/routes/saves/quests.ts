@@ -204,7 +204,7 @@ export async function aceptarQuest(
     return { quest, logEntry, questCompletedInfo, newInventoryItems };
   });
 
-  await appendSessionFacts(save.id, sessionFactsForNarration, [text]);
+  await appendSessionFacts(save.id, sessionFactsForNarration, [text], { testigos: targetNpc ? [targetNpc.name] : [] });
   await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: `${text} ${description}` });
 
   return {

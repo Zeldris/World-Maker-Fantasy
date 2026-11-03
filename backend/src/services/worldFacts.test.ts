@@ -36,7 +36,7 @@ vi.mock('../lib/embeddings.js', () => ({
   toVectorLiteral: (vector: number[]) => `[${vector.join(',')}]`,
 }));
 
-const { loadSessionFacts, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO } = await import('./worldFacts.js');
+const { loadSessionFacts, loadFactsKnownBy, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO } = await import('./worldFacts.js');
 
 describe('loadSessionFacts', () => {
   beforeEach(() => findManySessionFact.mockReset());
@@ -47,6 +47,18 @@ describe('loadSessionFacts', () => {
     expect(result).toEqual(['hecho 1 (más antiguo)', 'hecho 2', 'hecho 3 (más reciente)']);
     expect(findManySessionFact).toHaveBeenCalledWith(
       expect.objectContaining({ where: { saveId: 'save1' }, orderBy: { createdAt: 'desc' } }),
+    );
+  });
+});
+
+describe('loadFactsKnownBy (QA-289 fila 2, P266)', () => {
+  beforeEach(() => findManySessionFact.mockReset());
+
+  it('pide solo los hechos públicos o que el NPC presenció, y los devuelve en orden cronológico', async () => {
+    findManySessionFact.mockResolvedValue([{ text: 'reciente' }, { text: 'antiguo' }]);
+    expect(await loadFactsKnownBy('save1', 'Ulkha Ketg')).toEqual(['antiguo', 'reciente']);
+    expect(findManySessionFact).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { saveId: 'save1', OR: [{ publico: true }, { testigos: { has: 'Ulkha Ketg' } }] } }),
     );
   });
 });
@@ -63,6 +75,16 @@ describe('appendSessionFacts', () => {
     await appendSessionFacts('save1', ['Gorhorn tiene un tótem de madera'], ['El Cruce de las Cenizas tiene patrullas de la Concordia']);
     expect(embed).toHaveBeenCalledWith('El Cruce de las Cenizas tiene patrullas de la Concordia');
     expect(executeRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it('guarda quién lo presenció (sin duplicados) y si es público; sin presencia, nadie y privado', async () => {
+    await appendSessionFacts('save1', [], ['Ulkha Ketg habla del clan'], { testigos: ['Ulkha Ketg', 'Ulkha Ketg'] });
+    await appendSessionFacts('save1', [], ['Cae la nieve en el paso'], { publico: true });
+    await appendSessionFacts('save1', [], ['Gorhorn recoge bayas']);
+    const valores = executeRaw.mock.calls.map((c) => c.slice(1));
+    expect(valores[0]).toEqual(expect.arrayContaining([['Ulkha Ketg'], false]));
+    expect(valores[1]).toEqual(expect.arrayContaining([[], true]));
+    expect(valores[2]).toEqual(expect.arrayContaining([[], false]));
   });
 
   it('descarta un hecho casi idéntico a uno ya existente (≥65% palabras compartidas) — no lo embebe ni lo inserta', async () => {

@@ -97,7 +97,7 @@ async function marcarNpcConocidoRapido(tx: Prisma.TransactionClient, saveId: str
 async function registrarNpcConocidoSessionFact(saveId: string, targetName: string): Promise<void> {
   try {
     const sessionFacts = await loadSessionFacts(saveId);
-    await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
+    await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`], { testigos: [targetName] });
   } catch (err) {
     console.warn(`[modo-dinamico] no se pudo guardar el hecho de sesión de ${targetName} (save ${saveId}):`, err instanceof Error ? err.message : err);
   }

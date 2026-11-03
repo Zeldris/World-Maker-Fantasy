@@ -29,7 +29,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, presentaNombreEnAccion, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -38,7 +38,7 @@ import { runDailyTick } from './dailyTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
-import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
+import { appendSessionFacts, loadFactsKnownBy, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
@@ -4953,12 +4953,16 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Nunca lanza si falla: perder la réplica de un turno es mucho mejor que perder el turno entero
   // por un timeout de esta llamada extra.
   if (dialogueTarget) {
+    // P266: si el jugador le dice su nombre, queda como hecho que presenció; su réplica ve solo lo que vio.
+    if (presentaNombreEnAccion(characterName, action)) {
+      narration.newFacts = [...narration.newFacts, `${characterName} le dice su nombre a ${dialogueTarget.name}.`];
+    }
     try {
       const npcReply = await generateNpcReply({
         npc: { name: dialogueTarget.name, personality: dialogueTarget.personality, bio: dialogueTarget.bio, role: dialogueTarget.role, ...(dialogueTarget.nombreVisible ? { nombreVisible: dialogueTarget.nombreVisible } : {}) },
         characterName,
         action,
-        sessionFacts,
+        sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
       });
       if (npcReply) {
         narration.narration = `${narration.narration} ${npcReply}`;
@@ -6937,7 +6941,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // propósito — embebe cada hecho nuevo vía Ollama, mismo criterio que `narrateAction`/`retrieveLore`
   // de no bloquear una transacción de DB con una llamada externa lenta.
   if (narration.newFacts.length) {
-    await appendSessionFacts(saveId, sessionFacts, narration.newFacts);
+    await appendSessionFacts(saveId, sessionFacts, narration.newFacts, { testigos: npcsInScene.map((n) => n.name) });
   }
   // Saqueo/desuello de CombatEncounter (2026-08-25) — hecho de sesión determinista, mismo criterio
   // que la Pieza A de la Capa 3 (mundo-determinista.md): sin nombrar aquí a cada caído,
@@ -6948,6 +6952,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       saveId,
       sessionFacts,
       combatEncounterLootSummary.map((c) => `${c.name} ${c.cantidad > 1 ? `(${c.cantidad} caídos)` : 'cae derrotado'} tras el combate.`),
+      { testigos: npcsInScene.map((n) => n.name) },
     );
   }
 

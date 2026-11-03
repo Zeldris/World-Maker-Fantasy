@@ -935,7 +935,32 @@ export interface NpcReplyContext {
   npc: { name: string; personality: string; bio: string; role: string; nombreVisible?: string };
   characterName: string;
   action: string;
+  /// Solo lo que este NPC presenció o es público (`loadFactsKnownBy`, QA-289 fila 2).
   sessionFacts: string[];
+}
+
+const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
+const PRESENTA_EN_HECHO = /\b(se presenta|le dice su nombre|les dice su nombre|dice llamarse|da su nombre|revela su nombre|su nombre es)\b/i;
+
+function contieneNombre(texto: string, nombre: string): boolean {
+  return new RegExp(`(^|[^\\p{L}])${nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'iu').test(texto);
+}
+
+/// P266: el NPC sabe cómo se llama el jugador solo si se lo ha dicho, en esta acción («Soy Gorhorn») o en un hecho
+/// que presenció («Gorhorn le dice su nombre a Ulkha Ketg»). Mientras no, su réplica no ve el nombre.
+export function npcConoceNombreDelJugador(characterName: string, action: string, hechosDelNpc: string[]): boolean {
+  if (presentaNombreEnAccion(characterName, action)) return true;
+  return hechosDelNpc.some((h) => contieneNombre(h, characterName) && PRESENTA_EN_HECHO.test(h));
+}
+
+export function presentaNombreEnAccion(characterName: string, action: string): boolean {
+  return contieneNombre(action, characterName) && PRESENTA_EN_ACCION.test(action);
+}
+
+const FORASTERO = 'el forastero';
+
+function sinNombreDelJugador(texto: string, characterName: string): string {
+  return texto.replace(new RegExp(`(^|[^\\p{L}])${characterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^\\p{L}])`, 'giu'), `$1${FORASTERO}`);
 }
 
 /// Réplica de NPC en su propia llamada dedicada (sesión de diseño 2026-07-23, "revisar partida" —
@@ -958,15 +983,20 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
   const system =
     'Interpretas a UN SOLO personaje dentro de una escena de rol de mesa. Tu única tarea es escribir su respuesta HABLADA, en primera persona, a lo que el jugador le acaba de decir o preguntar — nunca la narración de la escena, ni acotaciones de gesto, ni el nombre del personaje delante. Responde solo con su réplica entre comillas, 1-2 frases, nada más.';
 
+  // P266, espejo de P327: sin presentarse, el modelo no ve el nombre del jugador ni en los hechos ni en la acción.
+  const conoce = npcConoceNombreDelJugador(ctx.characterName, ctx.action, ctx.sessionFacts);
+  const hechos = conoce ? ctx.sessionFacts : ctx.sessionFacts.map((h) => sinNombreDelJugador(h, ctx.characterName));
+  const quien = conoce ? ctx.characterName : 'El forastero (no sabes cómo se llama: no le des ningún nombre)';
+  const accion = conoce ? ctx.action : sinNombreDelJugador(ctx.action, ctx.characterName);
   // Fase 1 hacia main (P327): con el nombre oculto, el modelo no ve el real (no puede decir lo que no sabe).
   const prompt = `PERSONAJE QUE ERES: ${ctx.npc.nombreVisible ?? ctx.npc.name} — ${ctx.npc.role}.
 Personalidad: ${sinNombreReal(ctx.npc.personality, ctx.npc)}
-Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${ctx.characterName} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
+Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${conoce ? ctx.characterName : 'El forastero'} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
 
-HECHOS YA ESTABLECIDOS (no los contradigas ni reveles nada que no sepas todavía según tu propio trasfondo):
-${factsBlock(ctx.sessionFacts)}
+LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más):
+${factsBlock(hechos)}
 
-${ctx.characterName} te acaba de decir: "${ctx.action}"
+${quien} te acaba de decir: "${accion}"
 
 Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente con tu personalidad y tu trasfondo. Una única réplica — nunca dos intentos ni dos turnos de diálogo seguidos.`;
 

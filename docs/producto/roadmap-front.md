@@ -1672,8 +1672,15 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   primero en el prompt (`ordenarHechosPorEstabilidad`; medido en `12-orden-hechos`, no gana: entre turnos la caché no
   se reaprovecha), `app.rechazo_texto` en el registro, `hasRepeatedDialogueLine` (la misma réplica citada del turno
   anterior). Guards sin falsos positivos: el de equipo cazaba «atacar», «atardecer» o «cinturón» (`ata\w*`, `ci[ñn]\w*`), y el de
-  segunda persona no quitaba las réplicas entre «…» ni “…”. Falta: dónde se corta la caché entre turnos (`14-casos`,
-  con `IA_CASOS`), voces mezcladas (P263, P311); después P251/P272 (lore), P266 y P252.
+  segunda persona no quitaba las réplicas entre «…» ni “…”. Investigación de repos de rol
+  (`docs/ia/investigacion-narrador-repos.md`); orden de la usuaria: filas 3-8, luego 2 y 1. Hechas 3-8: caché cortada
+  en el primer hecho (6, con `IA_CASOS`) → ventana de hechos estable y búsqueda por escena (4, P252); reglas fijas al
+  prefijo y recordatorio corto al final (5); `min_p` (7; `repeat_penalty` quitado: penalizaba las palabras de la
+  acción); `newFacts` ≤3 (8); lore por entidad (3, P251/P272: rag-eval recall 0,938, MRR 0,906, NPC en puesto 1).
+  Bench `16-lore-entidad` contra `11-base`: turno p50 30,0 s (−4,7), p95 54,8 s (−7,3), sin intento 2 ni respaldo
+  (antes 14 %); la acción se narra en 5 de 7 turnos (en `15` se perdía con `repeat_penalty`). En curso la fila 2 (P266):
+  cada hecho guarda sus testigos y la réplica del NPC ve solo lo suyo, sin el nombre del jugador hasta que se presenta.
+  Falta: medirla y jugarla, y la fila 1 (una voz por llamada, P263/P311).
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):
