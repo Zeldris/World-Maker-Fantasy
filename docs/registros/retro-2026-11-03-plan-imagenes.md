@@ -1,6 +1,6 @@
 # Retro de `claude/plan-imagenes` antes de `main` (2026-11-03)
 
-**Estado:** presentada a la usuaria; pendiente de su decisión.
+**Estado:** aprobada entera por la usuaria (2026-11-03) y aplicada: `QA-280`…`QA-284` (la 5 y la 6, juntas en `QA-284`).
 
 Rama de `IMG-15` a `IMG-33` (2026-10-26 → 2026-11-03, 90 commits): receta fotorreal, montaje, encuadre, gradación y
 LoRA de estilo. Fuentes: la sesión `78090f77` (166 llamadas, 3 compactaciones), `/code-review` contra `origin/main`

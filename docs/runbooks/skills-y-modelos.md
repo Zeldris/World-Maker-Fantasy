@@ -61,6 +61,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    sus 12 fallos llegaron a `main` (`QA-77`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
+   **Tareas `IMG-*`** (usuaria, 2026-11-03, `QA-280`): además, al cerrarlas, un `/code-review` del diff de la tarea;
+   los scripts de `image-generator/` no pasan por el CI con modelos y sus fallos se juntaban hasta la fase 1.
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está
    al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61). Aparte, `main` se trae
    siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).

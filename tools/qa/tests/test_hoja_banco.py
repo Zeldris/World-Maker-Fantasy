@@ -57,5 +57,20 @@ class Hoja(unittest.TestCase):
         self.assertIn('ABORTO: no hay imágenes', r.stdout)
 
 
+    def test_archivos_sueltos_en_su_orden(self):  # QA-283
+        banco, fuera = carpeta(), carpeta()
+        rutas = [os.path.join(fuera, f'{n}.png') for n in ('b', 'a', 'c')]
+        for r in rutas:
+            png(r, 200, 80)
+        r = self.correr(banco, '--archivos', 'gpt', *rutas)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[1:], [f'  {i + 1} {ruta}' for i, ruta in enumerate(rutas)])
+        self.assertTrue(os.path.exists(os.path.join(banco, 'hojas', 'gpt-1.png')))
+
+    def test_archivo_que_no_existe_aborta(self):
+        r = self.correr(carpeta(), '--archivos', 'gpt', '/no/esta.png')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('ABORTO: no existe /no/esta.png', r.stdout)
+
 if __name__ == '__main__':
     unittest.main()

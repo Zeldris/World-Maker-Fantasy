@@ -4,6 +4,8 @@
 FLUX.2 klein en la Deck, su interfaz `abrir.sh` y los prompts que le llegan del juego). Lo ya hecho del generador
 vive en `roadmap-front.md` (`CFG-38`…`CFG-43`); lo nuevo, aquí.
 **Orden y hito:** los fija el [mapa de roadmaps](21-roadmap.md#mapa-de-roadmaps).
+**A `main` por bloque** (usuaria, 2026-11-03, `QA-281`): la rama se lleva a `main` al cerrar cada bloque de tareas
+(p. ej. receta, montaje, LoRA), no al final: `claude/plan-imagenes` juntó 90 commits y 8 días.
 
 **Cómo se usa** (mismo convenio que [roadmap-front.md](roadmap-front.md)): al cerrar un punto se tacha con su
 commit; **[A]** pedido por Álvaro, **[P]** propuesta de Claude; esfuerzo **S** (horas) · **M** (1-2 días) ·

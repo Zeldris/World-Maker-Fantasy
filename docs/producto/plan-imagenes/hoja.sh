@@ -2,6 +2,8 @@
 # IMG-15 (opt-tokens): hoja de contactos de una ronda del banco. Cada imagen leída cuesta ~1,6k tokens y se arrastra hasta
 # la siguiente compactación (66 en una sesión, 3,99M arrastrados); una hoja de 6 cuesta lo que una sola.
 # Uso: bash docs/producto/plan-imagenes/hoja.sh <prefijo> [columnas=2]
+#      bash docs/producto/plan-imagenes/hoja.sh --archivos <nombre> <png>… (QA-283: banners sueltos, p. ej. de
+#      backend/uploads/, en hojas/<nombre>-<n>.png con 2 columnas)
 #   junta los PNG de generated/banco/<prefijo>/ y <prefijo>-*/intentos/ (r1 no coge r10) en hojas de POR_HOJA (6) casillas de ANCHO px (640), en
 #   generated/banco/hojas/<prefijo>-<n>.png, y escribe la leyenda (casilla → prueba/intento), en orden de lectura.
 # La hoja sirve para descartar; la imagen finalista se abre entera, que a este tamaño se pierde el detalle fino.
@@ -9,9 +11,17 @@
 set -euo pipefail
 R=$(cd "$(dirname "$0")/../../.." && pwd)
 BANCO=${BANCO_DIR:-$R/image-generator/generated/banco}
-PREFIJO=${1:?uso: hoja.sh <prefijo> [columnas]}; COLS=${2:-2}; W=${ANCHO:-640}; N=${POR_HOJA:-6}
-mapfile -t imgs < <({ compgen -G "$BANCO/$PREFIJO/intentos/*.png" || true; compgen -G "$BANCO/$PREFIJO-*/intentos/*.png" || true; } | sort)
-[ ${#imgs[@]} -gt 0 ] || { echo "ABORTO: no hay imágenes en $BANCO/$PREFIJO{,-*}/intentos/"; exit 2; }
+W=${ANCHO:-640}; N=${POR_HOJA:-6}
+if [ "${1:-}" = --archivos ]; then
+  [ $# -ge 3 ] || { echo "uso: hoja.sh --archivos <nombre> <png>…"; exit 2; }
+  PREFIJO=$2; COLS=2; shift 2; imgs=("$@")
+  for f in "${imgs[@]}"; do [ -f "$f" ] || { echo "ABORTO: no existe $f"; exit 2; }; done
+else
+  PREFIJO=${1:?uso: hoja.sh <prefijo> [columnas]}; COLS=${2:-2}
+  mapfile -t imgs < <({ compgen -G "$BANCO/$PREFIJO/intentos/*.png" || true; compgen -G "$BANCO/$PREFIJO-*/intentos/*.png" || true; } | sort)
+  [ ${#imgs[@]} -gt 0 ] || { echo "ABORTO: no hay imágenes en $BANCO/$PREFIJO{,-*}/intentos/"; exit 2; }
+fi
+[[ $PREFIJO =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ABORTO: «$PREFIJO» no vale como nombre de hoja"; exit 2; }
 tam=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${imgs[0]}" | tr , ' ') \
   || { echo "ABORTO: ffprobe no lee ${imgs[0]} (¿a medio escribir?)"; exit 1; }
 read -r w0 h0 <<< "$tam"
