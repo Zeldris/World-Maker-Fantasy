@@ -533,6 +533,43 @@ describe('GET /world/:slug/enciclopedia', () => {
     });
   });
 
+  describe('sección "Historia" — sin documento (QA-244)', () => {
+    it('sin documento ni lugar es saber común: descubierta desde el principio, sin fila en DiscoveredEntity', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyHistoriaEntry.mockResolvedValue([
+        { slug: 'el-estallido', title: 'El Estallido', era: 'comun', year: 1000, text: 'Texto común.', requiresTranslation: false, documentoItemSlug: null, lugarSlug: null, translatorNpcSlug: null },
+      ]);
+      const app = await buildApp();
+
+      const res = await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' });
+      const entry = res.json().historia[0];
+
+      expect(entry.discovered).toBe(true);
+      expect(entry.fase).toBe('DESCUBIERTO');
+      expect(entry.text).toBe('Texto común.');
+    });
+
+    it('con lugar, cerrada hasta visitarlo y abierta después', async () => {
+      findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
+      findManyHistoriaEntry.mockResolvedValue([
+        { slug: 'la-purga-silenciosa', title: 'La Purga Silenciosa', era: 'comun', year: 3650, text: 'Texto del lugar.', requiresTranslation: false, documentoItemSlug: null, lugarSlug: 'baluarte-de-goirme', translatorNpcSlug: null },
+      ]);
+      findManyLocation.mockResolvedValue([{ id: 'loc-baluarte', slug: 'baluarte-de-goirme', name: 'El Baluarte de Goirme', kind: 'asentamiento' }]);
+      const app = await buildApp();
+
+      const cerrada = (await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' })).json().historia[0];
+      expect(cerrada.discovered).toBe(false);
+      expect(cerrada.fase).toBe('NO_DESCUBIERTO');
+      expect(cerrada.text).toBeNull();
+
+      findManyLocationVisit.mockResolvedValue([{ locationId: 'loc-baluarte' }]);
+      const abierta = (await app.inject({ method: 'GET', url: '/world/helek-sirik/enciclopedia?saveId=save1' })).json().historia[0];
+      expect(abierta.discovered).toBe(true);
+      expect(abierta.fase).toBe('DESCUBIERTO');
+      expect(abierta.text).toBe('Texto del lugar.');
+    });
+  });
+
   describe('sección "Facciones"', () => {
     it('descubierta = true solo si su slug está en DiscoveredEntity', async () => {
       findUniqueWorld.mockResolvedValue({ id: 'world1', slug: 'helek-sirik' });
