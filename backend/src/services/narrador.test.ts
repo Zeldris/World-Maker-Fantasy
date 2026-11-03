@@ -6,6 +6,7 @@ import {
   deterministicFallbackNarration,
   narracionDeRespaldoEnDialogo,
   isTooSimilarToLast,
+  hasRepeatedDialogueLine,
   sanitizeSuggestions,
   hasFalseCombatMiss,
   hasFalseCombatAttacker,
@@ -110,6 +111,18 @@ describe('stripNonLatinScript', () => {
   it('deja intacta una narración normal en español (con acentos/ñ) sin ningún alfabeto no latino', () => {
     const narration = 'El niño camina años después, mañana será mejor — ¿qué hará Gorhorn?';
     expect(stripNonLatinScript(narration)).toBe(narration);
+  });
+});
+
+describe('hasRepeatedDialogueLine (QA-289)', () => {
+  const anterior = 'Ulkha Ketg levanta la vista del fuego. «¿Qué busca aquí, forastero?», pregunta sin moverse.';
+  it('la misma réplica del turno anterior, aunque cambie el resto, se rechaza', () => {
+    expect(hasRepeatedDialogueLine('Gorhorn se acerca al claro. Ulkha frunce el ceño: "¿Que busca aqui, forastero?"', anterior)).toBe(true);
+  });
+  it('una réplica nueva o muy corta pasa', () => {
+    expect(hasRepeatedDialogueLine('Ulkha se encoge de hombros. «El agua está más abajo.»', anterior)).toBe(false);
+    expect(hasRepeatedDialogueLine('«¡Alto!», grita Ulkha.', '«¡Alto!», dijo Ulkha.')).toBe(false);
+    expect(hasRepeatedDialogueLine('«¿Qué busca aquí, forastero?»', undefined)).toBe(false);
   });
 });
 

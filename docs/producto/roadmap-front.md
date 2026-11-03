@@ -1668,6 +1668,11 @@ Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.m
 
 Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejorar el narrador y sus tiempos», con el generador de imágenes en pausa):
 - **QA-289 · Tiempos y calidad del narrador, en bucle con Ollama real** 🚧 en curso: bucle medir → arreglar → medir con `bench-ia.sh` (tiempos, `opt-ai`) y tandas de juego que solo apuntan, con arreglos entre tandas (calidad). Cada mejora medida se presenta a la usuaria. Base: `11-base` contra `banco-actual` (2026-10-21).
+  Usuaria (2026-11-03): entra todo lo que mejore calidad y velocidad, con la calidad primero. Hecho: hechos estables
+  primero en el prompt (`ordenarHechosPorEstabilidad`; medido en `12-orden-hechos`, no gana: entre turnos la caché no
+  se reaprovecha), `app.rechazo_texto` en el registro, `hasRepeatedDialogueLine` (la misma réplica citada del turno
+  anterior). Falta: dónde se corta la caché entre turnos (`13-casos`, con `IA_CASOS`), falsos positivos del guard de
+  equipo y de la segunda persona, voces mezcladas (P263, P311); después P251/P272 (lore), P266 y P252.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

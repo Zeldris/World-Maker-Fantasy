@@ -16,6 +16,8 @@ export interface RegistroLlamada {
   evento?: 'rechazo';
   intento?: number;
   rechazo?: string;
+  /// QA-289: el texto descartado (recortado), para ver si el validador acertó; sin él no se distingue un falso positivo.
+  rechazoTexto?: string;
   model?: string;
   provider?: string;
   maxTokens?: number;
@@ -105,6 +107,7 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.turno': turnoIa.getStore()?.id,
     'app.intento': r.intento,
     'app.rechazo': r.rechazo,
+    'app.rechazo_texto': r.rechazoTexto,
     'app.num_ctx': r.numCtx,
     'app.keep_alive': r.keepAlive,
     'app.duration_ms': r.durationMs,

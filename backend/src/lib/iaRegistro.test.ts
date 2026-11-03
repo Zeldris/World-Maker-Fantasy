@@ -76,6 +76,8 @@ describe('iaRegistro', () => {
   it('evento de rechazo: sin operación, con intento y motivo (QA-162)', () => {
     const o = JSON.parse(lineaRegistro({ evento: 'rechazo', task: 'narrar', intento: 1, rechazo: 'segunda persona' }, 'deck'));
     expect(o).toMatchObject({ 'app.evento': 'rechazo', 'app.task': 'narrar', 'app.intento': 1, 'app.rechazo': 'segunda persona' });
+    const t = JSON.parse(lineaRegistro({ evento: 'rechazo', task: 'narrar', intento: 1, rechazo: 'segunda persona', rechazoTexto: 'Miras al norte.' }, 'deck'));
+    expect(t['app.rechazo_texto']).toBe('Miras al norte.');
     expect(o['gen_ai.operation.name']).toBeUndefined();
   });
 

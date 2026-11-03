@@ -1545,6 +1545,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       const rejection = [
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
+        { check: () => hasRepeatedDialogueLine(parsed.narration, ctx.lastNarrationText), reason: 'repetir una réplica citada del turno anterior' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },
         { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
@@ -1706,7 +1707,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
 
       if (rejection) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
-        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason });
+        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason, rechazoTexto: parsed.narration.slice(0, 600) });
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         rejectionReasons.push(rejection.reason);
@@ -1995,6 +1996,20 @@ const REPEAT_SIMILARITY_THRESHOLD = 0.7;
 export function isTooSimilarToLast(narration: string, lastNarrationText?: string): boolean {
   if (!lastNarrationText) return false;
   return similarity(narration, lastNarrationText) >= REPEAT_SIMILARITY_THRESHOLD;
+}
+
+/// QA-289 (opt-ai, pasada 02): la misma réplica de un NPC en dos turnos seguidos («¿Qué busca?») pasaba, porque el
+/// resto del texto cambia y `isTooSimilarToLast` mira la narración entera. Se compara cada réplica citada, sin
+/// mayúsculas, tildes ni signos; las de menos de 10 letras («¡Alto!», «Sí») se dejan, que repetirlas es normal.
+const citas = (t: string) =>
+  [...t.matchAll(/[«"“]([^«»"“”]+)[»"”]/g)]
+    .map((m) => m[1].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-zñ0-9 ]/g, '').replace(/\s+/g, ' ').trim())
+    .filter((c) => c.replace(/ /g, '').length >= 10);
+
+export function hasRepeatedDialogueLine(narration: string, lastNarrationText?: string): boolean {
+  if (!lastNarrationText) return false;
+  const anteriores = new Set(citas(lastNarrationText));
+  return citas(narration).some((c) => anteriores.has(c));
 }
 
 /// `factSimilarity` (worldFacts.ts), NO `similarity()` plana (bug real, 2026-08-20: "al darle a
