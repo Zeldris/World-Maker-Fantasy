@@ -246,6 +246,8 @@ export interface ParticipantRef {
   expulsadoPorRondas: number | null;
   /// Analizar Rival real en combate múltiple (2026-08-27) — ver comentario de la columna en schema.prisma.
   analizadoGrupo: boolean | null;
+  /// P391 — ver comentario de la columna en schema.prisma. Opcional: los dobles de los tests no lo traen.
+  marcadoParaMatar?: boolean;
   /// PROVOCACION real (2026-09-14) — ver comentario de las 2 columnas en schema.prisma.
   provocadoPorRondas: number | null;
   provocadoPorId: string | null;
@@ -827,6 +829,8 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
   canalizacionCompletada?: boolean;
   /// P129 (QA-27): ataque de más contra la jugadora (no es su duelo) — tira con ventaja.
   ventajaAtacante?: boolean;
+  /// P391: la jugadora remata a un NPC CONVALECIENTE que marcó con «Matar»: el guard de «defensor ya derrotado» no lo saca.
+  rematarConvaleciente?: boolean;
 }
 
 /// Núcleo compartido por `resolverTurnoAutonomo` (atacante NPC/COMPANION) y `resolverTurnoJugador`
@@ -844,7 +848,7 @@ interface EjecutarIntercambioParams extends TurnoAutonomoBaseParams {
 /// `narrarFn`, que corre fuera de cualquier transacción — mismo criterio que ya usa
 /// `narrateAndPersistTurn` para `appendSessionFacts`/`captureLiveTeacherExample`.
 async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): Promise<TurnoAutonomoResultado> {
-  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn, canalizacionCompletada, ventajaAtacante = false } = params;
+  const { prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque, atacanteRol, dualWieldBonus, defensor, weaponNamesPorDefecto, narrarFn, canalizacionCompletada, ventajaAtacante = false, rematarConvaleciente = false } = params;
 
   const actualCanalizando = parsePendingCanalizacionMultiple(actual.canalizando);
   // CANALIZAR real en combate múltiple (2026-09-14) — CASO EMPEZAR: el atacante usa una habilidad
@@ -874,7 +878,7 @@ async function ejecutarIntercambioYAvanzar(params: EjecutarIntercambioParams): P
   // sin que nadie llegue a tirar nunca. Solo MUERTO debe sacarla como defensora legítima, mismo
   // criterio que ya usa `calcularEnganchesRonda` (línea 373) para decidir quién sigue "vivo" en el
   // combate.
-  if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR') || datosDefensor.condicionFisica === 'MUERTO') {
+  if (!datosDefensor || (datosDefensor.condicionFisica === 'CONVALECIENTE' && defensor.tipo !== 'JUGADOR' && !rematarConvaleciente) || datosDefensor.condicionFisica === 'MUERTO') {
     return avanzarSinAtacar({ prisma, worldId, saveId, encounterId, encounter, weaponNamesPorDefecto, narrarFn });
   }
   const habilidadDefensa = chooseNpcAbility(datosDefensor.abilities, 'defensa', datosDefensor.energia, Math.random, datosDefensor.usageCounts);
@@ -2047,6 +2051,22 @@ export async function resolverTurnoJugador({
   // INVOCACION real (Fase 3 § 3d, 2026-08-27) — ver comentario largo de `invocarTotemYAvanzar`.
   if (accion.habilidad.effects.includes('INVOCACION')) {
     return invocarTotemYAvanzar({ prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadInvocacion: accion.habilidad, weaponNamesPorDefecto, narrarFn });
+  }
+
+  // P391: «Matar» sobre un rival CONVALECIENTE (`marcadoParaMatar`). Los enganches lo dejan fuera por convaleciente
+  // (`calcularEnganchesRonda`), así que su turno va a él aparte: un intercambio con tirada, como el remate del 1 contra
+  // 1 (el malus de CONVALECIENTE lo aplica `resolverIntercambioCompleto`). Con una canalización viva manda la
+  // canalización, como siempre.
+  if (!parsePendingCanalizacionMultiple(actual.canalizando)) {
+    for (const marcado of encounter.participantes.filter((p) => p.marcadoParaMatar && p.bando !== actual.bando && p.tipo !== 'JUGADOR')) {
+      const datosMarcado = await datosVivosDe({ tx: prisma, worldId, saveId, participant: marcado, weaponNames: weaponNamesPorDefecto });
+      if (datosMarcado?.condicionFisica !== 'CONVALECIENTE') continue;
+      return ejecutarIntercambioYAvanzar({
+        prisma, worldId, saveId, encounterId, encounter, actual, datosAtacante, habilidadAtaque: accion.habilidad,
+        atacanteRol: accion.habilidad.rol, dualWieldBonus: accion.dualWieldBonus ?? false, defensor: marcado, weaponNamesPorDefecto, narrarFn,
+        rematarConvaleciente: true,
+      });
+    }
   }
 
   const defensorId = actual.objetivoActualId;

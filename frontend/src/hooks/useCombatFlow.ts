@@ -500,8 +500,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // (React), sin llamar a ningún endpoint — recargar la página perdía la decisión, la tarjeta
   // MATAR/CLEMENTE reaparecía de cero y el composer volvía a bloquearse. Ahora se persiste en el
   // backend (`NpcState.targetedForKill`, `POST /saves/:id/combat/matar/:npcSlug`) — el estado
-  // optimista local sigue igual para respuesta inmediata sin esperar la red. Solo combate 1v1
-  // clásico por ahora (sin `participantId`) — combate múltiple sigue usando solo el estado local.
+  // optimista local sigue igual para respuesta inmediata sin esperar la red. En combate múltiple
+  // (P391) va con `participantId`: la marca queda en el participante y el siguiente turno lo remata.
   function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
     if (npcs.length === 0) return
     setCombatNpcStates((prev) => {
@@ -515,7 +515,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     })
     if (saveId) {
       for (const npc of npcs) {
-        if (!npc.participantId) requestMatar(saveId, npc.slug).catch(() => {})
+        requestMatar(saveId, npc.slug, npc.participantId).catch(() => {})
       }
     }
   }

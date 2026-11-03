@@ -2163,6 +2163,8 @@ export async function vistaCombateDeGrupo(
       activeEffects: [] as ActiveEffect[],
       participantId: p.id,
       instanceNumber: numeroInstancia,
+      // P391: la marca de «Matar» vive en el participante (sobrevive a recargar).
+      ...(p.marcadoParaMatar ? { targetedForKill: true } : {}),
       // CR-44 (44c): escapó; el panel lo da por resuelto.
       ...(p.huido ? { huido: true } : {}),
       ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),

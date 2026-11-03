@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
 import { detailRoutes } from './detail.js';
+import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
 
 async function buildApp() {
   const app = Fastify();
@@ -149,5 +150,80 @@ describe('POST /saves/:id/combat/matar/:npcSlug — guard de save.endedAt (audit
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/matar/${npcSlug}` });
     expect(res.statusCode).toBe(409);
+  });
+});
+
+/// P391 (2026-11-03): en combate múltiple, «Matar» con `participantId` marca SOLO a ese participante
+/// (`marcadoParaMatar`), y solo si de verdad está CONVALECIENTE; el resto del grupo no se toca.
+describe('POST /saves/:id/combat/matar/:npcSlug con participantId (combate múltiple, P391)', () => {
+  let saveId: string;
+  let encounterId: string;
+  let objetivo: { id: string };
+  let otro: { id: string };
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'aullador-rojo' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba (matar grupo)',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G',
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    const { encounterId: eid } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 10, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-matar-grupo', destreza: 8, inteligencia: 4, esGrupo: true },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigo.id, npcScope: 'itinerante-matar-grupo', destreza: 8, inteligencia: 4, esGrupo: true },
+      ]),
+    );
+    encounterId = eid;
+    [objetivo, otro] = await prisma.combatParticipant.findMany({ where: { encounterId, npcId: enemigo.id }, orderBy: { id: 'asc' } });
+    await prisma.combatParticipant.update({ where: { id: objetivo.id }, data: { condicionFisicaGrupo: 'CONVALECIENTE' } });
+    await prisma.combatParticipant.update({ where: { id: otro.id }, data: { condicionFisicaGrupo: 'HERIDO' } });
+  });
+
+  afterAll(async () => {
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('400 si ese participante no está CONVALECIENTE', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/matar/aullador-rojo`, payload: { participantId: otro.id } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/CONVALECIENTE/);
+    const p = await prisma.combatParticipant.findUniqueOrThrow({ where: { id: otro.id } });
+    expect(p.marcadoParaMatar).toBe(false);
+  });
+
+  it('marca marcadoParaMatar SOLO en el participante indicado', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/matar/aullador-rojo`, payload: { participantId: objetivo.id } });
+    expect(res.statusCode).toBe(204);
+    const [pObjetivo, pOtro] = await Promise.all([
+      prisma.combatParticipant.findUniqueOrThrow({ where: { id: objetivo.id } }),
+      prisma.combatParticipant.findUniqueOrThrow({ where: { id: otro.id } }),
+    ]);
+    expect(pObjetivo.marcadoParaMatar).toBe(true);
+    expect(pOtro.marcadoParaMatar).toBe(false);
+  });
+
+  it('GET /saves/:id tras recargar: el participante marcado trae targetedForKill:true', async () => {
+    const appDetail = await buildAppWithDetail();
+    const getRes = await appDetail.inject({ method: 'GET', url: `/saves/${saveId}` });
+    expect(getRes.statusCode).toBe(200);
+    const { combateIniciado } = getRes.json() as { combateIniciado: { npcs: { participantId?: string; targetedForKill?: boolean }[] } | null };
+    expect(combateIniciado?.npcs.find((n) => n.participantId === objetivo.id)?.targetedForKill).toBe(true);
+    expect(combateIniciado?.npcs.find((n) => n.participantId === otro.id)?.targetedForKill ?? false).toBe(false);
   });
 });

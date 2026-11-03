@@ -690,10 +690,10 @@ describe('handleDecapitarSeleccion', () => {
     const target = result.current.combat.combatNpcsDisplay[0]!
     act(() => result.current.combat.handleDecapitarSeleccion([target]))
 
-    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco')
+    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco', undefined)
   })
 
-  it('con participantId (combate múltiple) NO llama al backend — ese camino no lo soporta todavía', () => {
+  it('con participantId (combate múltiple, P391) avisa al backend con ese participante', () => {
     const { result } = renderHook(() =>
       useHarness({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE', participantId: 'p1' })] }),
     )
@@ -702,7 +702,7 @@ describe('handleDecapitarSeleccion', () => {
     const target = result.current.combat.combatNpcsDisplay[0]!
     act(() => result.current.combat.handleDecapitarSeleccion([target]))
 
-    expect(mockMatar).not.toHaveBeenCalled()
+    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco', 'p1')
   })
 })
 

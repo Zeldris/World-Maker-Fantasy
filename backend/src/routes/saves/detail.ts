@@ -324,6 +324,8 @@ export async function detailRoutes(app: FastifyInstance) {
               activeEffects: parseActiveEffects(state?.activeEffects),
               participantId: p.id,
               instanceNumber: combatInstanceNumberByParticipantId.get(p.id) ?? null,
+              // P391: la marca de «Matar» vive en el participante (sobrevive a recargar).
+              ...(p.marcadoParaMatar ? { targetedForKill: true } : {}),
               ...(p.huido ? { huido: true } : {}),
               ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
               // P353/P356: con quién te enfrentas (tu duelo) y quién te golpea de paso.

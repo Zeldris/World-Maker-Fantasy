@@ -1560,9 +1560,13 @@ export async function dejarVivir(
 /// "Matar" un CONVALECIENTE (2026-09-05, bug real: la decisión solo vivía en React,
 /// `combatNpcStates`/`targetedForKill` — se perdía al recargar) — solo marca la decisión en
 /// `NpcState.targetedForKill`, no resuelve nada por sí mismo (el remate real sigue siendo un
-/// intercambio normal, riesgo real). Solo combate 1v1 clásico por ahora.
-export async function requestMatar(saveId: string, npcSlug: string): Promise<void> {
-  await fetchJson(`${apiBaseUrl()}/saves/${saveId}/combat/matar/${npcSlug}`, { method: 'POST' })
+/// intercambio normal, riesgo real). En combate múltiple (P391), con `participantId`: la marca va al
+/// participante y el siguiente turno de la jugadora lo remata con tirada.
+export async function requestMatar(saveId: string, npcSlug: string, participantId?: string): Promise<void> {
+  await fetchJson(`${apiBaseUrl()}/saves/${saveId}/combat/matar/${npcSlug}`, {
+    method: 'POST',
+    ...(participantId ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId }) } : {}),
+  })
 }
 
 export interface TameoPendiente {

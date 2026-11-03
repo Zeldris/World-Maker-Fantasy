@@ -989,6 +989,67 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     }
   }, 30_000);
 
+  // P391 (2026-11-03): «Matar» sobre un convaleciente en combate múltiple — antes ningún ataque le llegaba (el guard de
+  // convaleciente lo saltaba) y la derrota lo seguía mostrando «Convaleciente». Con la marca, el siguiente turno de la
+  // jugadora es un intercambio con tirada contra él, aunque su duelo sea con otro.
+  it('P391: el siguiente turno de la jugadora remata con tirada al convaleciente marcado para matar', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'ILESO', energia: 100, activeEffects: [] } });
+    const efectoPrevioFuerza: ActiveEffect = { attribute: 'fuerza', magnitude: 100, turnsRemaining: 3, sourceAbility: 'Efecto de prueba (garantiza el golpe)' };
+    await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [efectoPrevioFuerza] as unknown as object } });
+    const [enemigoA, enemigoB] = await Promise.all([
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } }),
+      prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } }),
+    ]);
+    await Promise.all([
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoA.id, scope: 'itinerante-p391-a' } },
+        create: { saveId, npcId: enemigoA.id, scope: 'itinerante-p391-a', condicionFisica: 'CONVALECIENTE' },
+        update: { condicionFisica: 'CONVALECIENTE' },
+      }),
+      prisma.npcState.upsert({
+        where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-p391-b' } },
+        create: { saveId, npcId: enemigoB.id, scope: 'itinerante-p391-b' },
+        update: { condicionFisica: 'ILESO' },
+      }),
+    ]);
+    const { encounterId } = await prisma.$transaction((tx) =>
+      iniciarCombatEncounter(tx, saveId, [
+        { bando: 'JUGADOR', tipo: 'JUGADOR', destreza: 1000, inteligencia: 10 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoA.id, npcScope: 'itinerante-p391-a', destreza: 10, inteligencia: 6 },
+        { bando: 'ENEMIGO', tipo: 'NPC', npcId: enemigoB.id, npcScope: 'itinerante-p391-b', destreza: 10, inteligencia: 6 },
+      ]),
+    );
+    try {
+      const enc = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+      const jugadoraPId = enc.participantes.find((p) => p.tipo === 'JUGADOR')!.id;
+      const pA = enc.participantes.find((p) => p.npcScope === 'itinerante-p391-a')!;
+      const pB = enc.participantes.find((p) => p.npcScope === 'itinerante-p391-b')!;
+      await prisma.combatEncounter.update({ where: { id: encounterId }, data: { ordenIniciativa: [jugadoraPId, ...enc.ordenIniciativa.filter((id) => id !== jugadoraPId)] } });
+      // Su duelo es con B (el ileso): sin la marca, el golpe iría a B y A seguiría convaleciente.
+      await prisma.combatParticipant.update({ where: { id: jugadoraPId }, data: { objetivoActualId: pB.id } });
+      await prisma.combatParticipant.update({ where: { id: pB.id }, data: { objetivoActualId: jugadoraPId } });
+      await prisma.combatParticipant.update({ where: { id: pA.id }, data: { marcadoParaMatar: true } });
+
+      const golpe: HabilidadParaIntercambio = { name: 'Golpe (prueba)', description: '', attribute: 'fuerza', effects: ['ATAQUE'], rol: 'ataque', energyCost: 5, energyRegen: 0 };
+      const randomSpy = vi.spyOn(Math, 'random');
+      randomSpy.mockReturnValue(0.5);
+      let resultado;
+      try {
+        resultado = await resolverHastaJugadoraActua(saveId, worldId, encounterId, golpe);
+      } finally {
+        randomSpy.mockRestore();
+      }
+      expect(resultado).not.toBeNull();
+      const stateA = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoA.id, scope: 'itinerante-p391-a' } } });
+      expect(stateA?.condicionFisica).toBe('MUERTO');
+      const stateB = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: enemigoB.id, scope: 'itinerante-p391-b' } } });
+      expect(stateB?.condicionFisica ?? 'ILESO').toBe('ILESO');
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [] } });
+      await prisma.combatEncounter.deleteMany({ where: { saveId, id: encounterId } });
+    }
+  }, 30_000);
+
   // AUMENTO real, camino independiente (2026-09-15, docs/rpgtarkor/sistemas-combate/clases.md — Guardián 32, Valor
   // Compartido) — a diferencia de Vínculo Salvaje/Grito Animal (rol ataque, margen decisivo), Valor
   // Compartido es rol utilidad: dispara por `utilityTriggered` (exige que el RIVAL de este

@@ -403,7 +403,9 @@ export async function sessionRoutes(app: FastifyInstance) {
   // CLEMENTE reaparecía de cero y el composer volvía a bloquearse hasta pulsar Matar otra vez. Solo
   // camino 1v1 clásico (`NpcState`) por ahora — combate múltiple (`CombatParticipant`) usa un
   // sistema de condición paralelo (`condicionFisicaGrupo`) que queda fuera de esta pieza.
-  app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
+  // P391 (2026-11-03): con `participantId` (combate múltiple), la marca va al participante (`marcadoParaMatar`) y su
+  // siguiente turno lo remata con tirada (`resolverTurnoJugador`). Antes solo se marcaba en React y nada lo mataba.
+  app.post<{ Params: { id: string; npcSlug: string }; Body: { participantId?: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, pendingDeathResolution: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
@@ -415,6 +417,23 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
     if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+
+    const participantId = request.body?.participantId;
+    if (participantId) {
+      const participant = await prisma.combatParticipant.findUnique({ where: { id: participantId }, include: { encounter: { select: { saveId: true, estado: true } } } });
+      if (!participant || participant.npcId !== npc.id || participant.encounter.saveId !== save.id || participant.encounter.estado === 'RESUELTO') {
+        return reply.status(404).send({ error: 'Ese combatiente no existe en este combate.' });
+      }
+      const condicionReal =
+        participant.condicionFisicaGrupo ??
+        (await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope: participant.npcScope } } }))?.condicionFisica ??
+        'ILESO';
+      if (condicionReal !== 'CONVALECIENTE') {
+        return reply.status(400).send({ error: 'Solo puedes marcar para matar a un enemigo CONVALECIENTE.' });
+      }
+      if (!participant.marcadoParaMatar) await prisma.combatParticipant.update({ where: { id: participant.id }, data: { marcadoParaMatar: true } });
+      return reply.status(204).send();
+    }
 
     const scope = scopeFor(npc.kind, save.currentLocationId);
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });
