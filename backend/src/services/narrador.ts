@@ -1938,7 +1938,9 @@ export function hasEnglishLeak(narration: string): boolean {
 /// Comillas dobles rectas (mismo patrón que `lastLogHasDirectSpeech`, único formato real que usa
 /// el diálogo citado en este motor) — se retira TODO lo que caiga entre un par de comillas antes
 /// de buscar la 2ª persona, así que un NPC diciéndole "tu momento" al jugador nunca dispara esto.
-const QUOTED_SPEECH_REGEX = /"[^"]*"/g;
+/// QA-289: también «…» y “…”: con solo las comillas rectas, la réplica de un NPC entre angulares («¿Qué te trae?»)
+/// contaba como segunda persona del narrador y tiraba el intento.
+const QUOTED_SPEECH_REGEX = /"[^"]*"|«[^»]*»|“[^”]*”/g;
 const SECOND_PERSON_REGEX = /\b(tú|tu|tus|te|contigo)\b/i;
 
 export function hasSecondPersonLeak(narration: string): boolean {
@@ -2333,7 +2335,11 @@ export function hasFalseWeaponThrowClaim(narration: string, equippedWeaponNamesI
 /// Verbos curados a propósito (nunca "se pone"/"se quita": demasiado genéricos, "se pone en pie"/
 /// "se pone furioso"/"se quita de en medio" no tienen nada que ver con equipo) — mismo criterio de
 /// mismo-sentencia-que-el-nombre-real que `hasFalseItemUse`/`hasFalseInventoryReview`.
-const EQUIP_CHANGE_VERB_REGEX = /\b(arranc\w*|ata\w*|desata\w*|ci[ñn]\w*|revist\w*|desvist\w*)\b/i;
+/// QA-289: `ata\w*` y `ci[ñn]\w*` cazaban «atacar», «ataque», «atardecer», «cinturón» o «cinco» en la frase del arma
+/// («revisa el filo del hacha antes de atacar» se rechazaba): ahora solo las formas de «atar» y «ceñir». El texto ya
+/// llega sin tildes ni eñes (`normalizeText`).
+const EQUIP_CHANGE_VERB_REGEX =
+  /\b(arranc\w*|at(a|an|o|aba|aban|aron|e|en)|atar(se|la|lo|las|los|le|selo|sela)?|atand\w*|desat\w*|cin(e|en|o|eron|endo|endose)|cen(ir|ia|ian|ido)\w*|revist\w*|desvist\w*)\b/i;
 
 export function hasFalseEquipmentChangeClaim(narration: string, equippableItemNames?: string[]): boolean {
   if (!equippableItemNames || equippableItemNames.length === 0) return false;

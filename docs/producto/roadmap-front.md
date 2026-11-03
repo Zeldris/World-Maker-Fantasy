@@ -1671,8 +1671,9 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   Usuaria (2026-11-03): entra todo lo que mejore calidad y velocidad, con la calidad primero. Hecho: hechos estables
   primero en el prompt (`ordenarHechosPorEstabilidad`; medido en `12-orden-hechos`, no gana: entre turnos la caché no
   se reaprovecha), `app.rechazo_texto` en el registro, `hasRepeatedDialogueLine` (la misma réplica citada del turno
-  anterior). Falta: dónde se corta la caché entre turnos (`13-casos`, con `IA_CASOS`), falsos positivos del guard de
-  equipo y de la segunda persona, voces mezcladas (P263, P311); después P251/P272 (lore), P266 y P252.
+  anterior). Guards sin falsos positivos: el de equipo cazaba «atacar», «atardecer» o «cinturón» (`ata\w*`, `ci[ñn]\w*`), y el de
+  segunda persona no quitaba las réplicas entre «…» ni “…”. Falta: dónde se corta la caché entre turnos (`14-casos`,
+  con `IA_CASOS`), voces mezcladas (P263, P311); después P251/P272 (lore), P266 y P252.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

@@ -561,6 +561,10 @@ describe('hasSecondPersonLeak', () => {
 
   it('no dispara con diálogo citado de un NPC dirigiéndose al jugador en 2ª persona (legítimo)', () => {
     expect(hasSecondPersonLeak('El orco se detiene y pregunta: "¿Has visto algo? Dime la verdad, o te arrepentirás."')).toBe(false);
+    // QA-289: las réplicas entre angulares o tipográficas también son diálogo citado.
+    expect(hasSecondPersonLeak('Ulkha alza la vista: «¿Qué te trae por aquí, con tu hacha al hombro?»')).toBe(false);
+    expect(hasSecondPersonLeak('Ulkha murmura: “Te esperaba.” Luego vuelve al fuego.')).toBe(false);
+    expect(hasSecondPersonLeak('«Siéntate», dice Ulkha. Tu hacha brilla junto al fuego.')).toBe(true);
   });
 
   it('SÍ dispara si hay 2ª persona TANTO en la prosa como en el diálogo — la de fuera de comillas sigue siendo un fallo', () => {
@@ -1566,6 +1570,15 @@ describe('hasFalseEquipmentChangeClaim', () => {
   it('no dispara con "se pone"/"se quita" sueltos, sin nombrar ningún objeto real (demasiado genéricos)', () => {
     expect(hasFalseEquipmentChangeClaim('Gorhorn se pone en pie de un salto, furioso.', ITEMS)).toBe(false);
     expect(hasFalseEquipmentChangeClaim('Gorhorn se quita de en medio justo a tiempo.', ITEMS)).toBe(false);
+  });
+
+  it('no dispara con palabras que solo empiezan como «ata»/«cin»: atacar, atardecer, cinturón (QA-289, bench 11-base)', () => {
+    const ARMAS = ['Hacha de piedra'];
+    expect(hasFalseEquipmentChangeClaim('Gorhorn revisa el filo de su hacha de piedra antes de atacar.', ARMAS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('Al atardecer, el hacha de piedra brilla con un tono rojizo.', ARMAS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('El hacha de piedra sigue colgada del cinturón, con cinco muescas nuevas.', ARMAS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn ató el hacha de piedra a su espalda.', ARMAS)).toBe(true);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se ciñó el hacha de piedra al costado.', ARMAS)).toBe(true);
   });
 
   it('no dispara si el verbo y el objeto están en frases distintas', () => {
