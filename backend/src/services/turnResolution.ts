@@ -21,7 +21,7 @@
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
-import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
+import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora, type GolpeGratisContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -3222,8 +3222,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // P395: líneas de sistema que el combate de grupo escribe mientras se resuelve (la orden del capitán de la ronda
   // nueva, la moral): van tras la narración del turno, que se guarda después; si no, la orden salía encima de los
   // golpes de la ronda anterior y parecía mandarlos.
-  let lineasDiarioDelCombateIds: string[] = [];
-  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
+  // P397: cada una con cuántas líneas de sistema había antes de ella, para dejarla en el límite de su ronda entre
+  // los ataques que recibe la jugadora, y en la respuesta del turno (si no, no se veía hasta recargar).
+  let lineasDiarioDelCombate: { id: string; text: string; combate: boolean; orden: number }[] = [];
+  const golpesSinTiradaContraJugadora: GolpeGratisContraJugadora[] = [];
   const intercambiosExtra: LineaDelTurno[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
@@ -4613,6 +4615,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     combatEncounterId = encounterId;
     const narraciones: string[] = [];
     const inicioDiarioDelCombate = new Date();
+    const lineasSistemaAlEmpezar = await prisma.logEntry.count({ where: { saveId, channel: 'CHARACTER', isSystemMessage: true } });
 
     // Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3) — si la RONDA actual
     // todavía no sabe a quién quiere atacar la jugadora, hay que decidirlo YA, antes de resolver
@@ -4769,13 +4772,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const saveTrasEncuentro = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { condicionFisica: true, energia: true } });
     combatEncounterFinalCondicion = saveTrasEncuentro.condicionFisica;
     combatEncounterFinalEnergia = saveTrasEncuentro.energia;
-    lineasDiarioDelCombateIds = (
+    lineasDiarioDelCombate = (
       await prisma.logEntry.findMany({
         where: { saveId, channel: 'CHARACTER', isSystemMessage: true, createdAt: { gte: inicioDiarioDelCombate } },
         orderBy: { createdAt: 'asc' },
-        select: { id: true },
+        select: { id: true, text: true, combate: true },
       })
-    ).map((e) => e.id);
+    ).map((e, i) => ({ ...e, orden: lineasSistemaAlEmpezar + i + 1 }));
   }
 
   // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 7
@@ -6656,7 +6659,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       intercambiosAparte: intercambiosContraJugadoraExtra,
       golpesGratis: golpesSinTiradaContraJugadora,
     });
+    // P395/P397: las líneas de sistema del combate (la orden del capitán de cada ronda nueva, la moral) van tras la
+    // narración, cada una antes del primer ataque de su ronda, con la hora del turno y también en la respuesta.
+    const lineasDelCombatePendientes = [...lineasDiarioDelCombate];
+    const volcarLineasDelCombate = async (hasta: number) => {
+      while (lineasDelCombatePendientes[0] && lineasDelCombatePendientes[0].orden <= hasta) {
+        const sistema = lineasDelCombatePendientes.shift()!;
+        await tx.logEntry.update({ where: { id: sistema.id }, data: { createdAt: nextAfterMainLogCreatedAt(), fictionalMinutes: nuevoFictionalMinutes, timeLabel: nuevaFictionalDateLabel } });
+        intercambiosExtra.push({ logEntryId: sistema.id, text: sistema.text, combate: sistema.combate });
+      }
+    };
     for (const linea of lineas) {
+      if ((linea.tipo === 'intercambio' || linea.tipo === 'golpeGratis') && linea.lineasSistemaAntes !== undefined) await volcarLineasDelCombate(linea.lineasSistemaAntes);
+      if (linea.tipo === 'brujula') await volcarLineasDelCombate(Number.POSITIVE_INFINITY); // la brújula, siempre al final
       const { combate, combatExchange } = marcasDeLinea(linea);
       const entrada = await tx.logEntry.create({
         data: {
@@ -6672,8 +6687,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combate, ...(combatExchange ? { combatExchange } : {}), ...(linea.tipo === 'subidaDeNivel' ? { esSubidaDeNivel: true } : {}) });
     }
-    // P395: tras la narración y lo que sigue al golpe, en el orden en que se escribieron.
-    for (const id of lineasDiarioDelCombateIds) await tx.logEntry.update({ where: { id }, data: { createdAt: nextAfterMainLogCreatedAt() } });
+    await volcarLineasDelCombate(Number.POSITIVE_INFINITY);
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
     // si esta acción cuenta como descanso válido, luego se resuelve la transición de condición

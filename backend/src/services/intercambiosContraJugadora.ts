@@ -4,6 +4,16 @@ import type { CombatExchangeDisplay } from './combatExchange.js';
 export interface IntercambioContraJugadora {
   display: CombatExchangeDisplay;
   atacanteNombre: string;
+  /// P397: cuántas líneas de sistema del diario (la orden del capitán de cada ronda, la moral) había antes de este
+  /// ataque; sirve para dejar la orden de la ronda nueva entre los ataques de la ronda que acaba y los de la nueva.
+  lineasSistemaAntes?: number;
+}
+
+/// P55: golpe sin tirada contra la jugadora (`lineasSistemaAntes`, como en `IntercambioContraJugadora`).
+export interface GolpeGratisContraJugadora {
+  atacanteNombre: string;
+  nuevaCondicion: CondicionFisica;
+  lineasSistemaAntes?: number;
 }
 
 /// P55 (QA-27): en un combate de grupo, qué intercambio va en la narración del turno y cuáles van
@@ -34,8 +44,8 @@ export const CONDICION_EN_TEXTO: Record<CondicionFisica, string> = {
 export type LineaTrasElGolpe =
   | { tipo: 'subidaDeNivel'; texto: string }
   | { tipo: 'desbloqueo'; texto: string }
-  | { tipo: 'intercambio'; texto: string; combatExchange: CombatExchangeDisplay }
-  | { tipo: 'golpeGratis'; texto: string }
+  | { tipo: 'intercambio'; texto: string; combatExchange: CombatExchangeDisplay; lineasSistemaAntes?: number }
+  | { tipo: 'golpeGratis'; texto: string; lineasSistemaAntes?: number }
   | { tipo: 'brujula'; texto: string };
 
 /// P117 (QA-27, QA-70): en qué orden van al diario las líneas que siguen a la narración del turno.
@@ -48,7 +58,7 @@ export function lineasTrasElGolpe(p: {
   subidaDeNivel: string | null;
   desbloqueos: string[];
   intercambiosAparte: IntercambioContraJugadora[];
-  golpesGratis: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[];
+  golpesGratis: GolpeGratisContraJugadora[];
 }): LineaTrasElGolpe[] {
   return [
     ...(p.subidaDeNivel ? [{ tipo: 'subidaDeNivel' as const, texto: p.subidaDeNivel }] : []),
@@ -57,10 +67,12 @@ export function lineasTrasElGolpe(p: {
       tipo: 'intercambio' as const,
       texto: `${extra.atacanteNombre} te ataca.`,
       combatExchange: { ...extra.display, rivalNombre: extra.atacanteNombre },
+      ...(extra.lineasSistemaAntes !== undefined ? { lineasSistemaAntes: extra.lineasSistemaAntes } : {}),
     })),
     ...p.golpesGratis.map((golpe) => ({
       tipo: 'golpeGratis' as const,
       texto: `${golpe.atacanteNombre} te golpea sin que puedas defenderte (estás ocupado con otro rival). Estado: ${CONDICION_EN_TEXTO[golpe.nuevaCondicion]}.`,
+      ...(golpe.lineasSistemaAntes !== undefined ? { lineasSistemaAntes: golpe.lineasSistemaAntes } : {}),
     })),
     ...(p.brujula ? [{ tipo: 'brujula' as const, texto: p.brujula }] : []),
   ];

@@ -2105,9 +2105,9 @@ export interface ResolucionRondaCombate {
   /// Fase G del 0.1 (hallazgo G11): intercambios reales de esta tanda en los que la jugadora fue la
   /// defensora, en orden: los ataques que recibe antes de su turno (P192: su turno ya no se salta, pero
   /// sin esto no veía las tiradas de quienes actúan antes que ella).
-  intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[];
+  intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string; lineasSistemaAntes?: number }[];
   /// P55 (QA-27): golpes gratis (sin tirada) que recibió la jugadora en esta tanda, en orden.
-  golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[];
+  golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica; lineasSistemaAntes?: number }[];
 }
 
 export interface ResolverTurnosAutonomosHastaJugadoraParams {
@@ -2134,9 +2134,11 @@ export async function resolverTurnosAutonomosHastaJugadora({
 }: ResolverTurnosAutonomosHastaJugadoraParams): Promise<ResolucionRondaCombate> {
   const narraciones: string[] = [];
   const caidos: ParticipanteCaidoInfo[] = [];
-  const intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string }[] = [];
-  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
+  const intercambiosContraJugadora: { display: CombatExchangeDisplay; atacanteNombre: string; lineasSistemaAntes?: number }[] = [];
+  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica; lineasSistemaAntes?: number }[] = [];
   for (let i = 0; i < maxIteraciones; i++) {
+    // P397: las líneas de sistema que ya hay antes de este turno (la orden de una ronda nueva se escribe al cruzarla).
+    const lineasSistemaAntes = await prisma.logEntry.count({ where: { saveId, channel: 'CHARACTER', isSystemMessage: true } });
     const resultado = await resolverTurnoAutonomo({ prisma, worldId, saveId, encounterId, weaponNamesPorDefecto, narrarFn, ventanaJugadora });
     if (resultado === null) {
       const encounter = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
@@ -2153,9 +2155,9 @@ export async function resolverTurnosAutonomosHastaJugadora({
     if (resultado.narracion) narraciones.push(resultado.narracion);
     narraciones.push(...resultado.narracionesExtra);
     caidos.push(...resultado.caidos);
-    if (resultado.combatExchangeDisplay && resultado.defensorEsJugador) intercambiosContraJugadora.push({ display: resultado.combatExchangeDisplay, atacanteNombre: resultado.atacanteNombre });
+    if (resultado.combatExchangeDisplay && resultado.defensorEsJugador) intercambiosContraJugadora.push({ display: resultado.combatExchangeDisplay, atacanteNombre: resultado.atacanteNombre, lineasSistemaAntes });
     if (!resultado.combatExchangeDisplay && resultado.defensorEsJugador && resultado.condicionTrasGolpeGratis) {
-      golpesSinTiradaContraJugadora.push({ atacanteNombre: resultado.atacanteNombre, nuevaCondicion: resultado.condicionTrasGolpeGratis });
+      golpesSinTiradaContraJugadora.push({ atacanteNombre: resultado.atacanteNombre, nuevaCondicion: resultado.condicionTrasGolpeGratis, lineasSistemaAntes });
     }
     if (resultado.encounterTerminado) return { narraciones, encounterTerminado: true, caidos, esperandoAccionJugadora: false, esperandoEleccionRonda: false, intercambiosContraJugadora, golpesSinTiradaContraJugadora };
   }

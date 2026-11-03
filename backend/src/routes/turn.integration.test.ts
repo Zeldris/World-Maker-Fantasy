@@ -9546,15 +9546,22 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     const action = `Golpeo con el arma, contra '${renegado.name}'.`;
     const app = await buildApp();
     const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as { classification?: unknown; roll?: unknown };
-    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
     await app.close();
     classifyAction.mockReset();
     const diario = await prisma.logEntry.findMany({ where: { saveId, channel: 'CHARACTER', createdAt: { gte: antes } }, orderBy: { createdAt: 'asc' } });
     const orden = diario.findIndex((e) => e.isSystemMessage && e.text.includes('ordena caer sobre'));
-    // Tras la narración y los golpes de la ronda que acaba (sin el arreglo salía justo tras el eco de la acción).
-    const ultimaDelTurno = diario.map((e) => e.isSystemMessage).lastIndexOf(false);
     expect(orden).toBeGreaterThanOrEqual(0);
-    expect(orden).toBeGreaterThan(ultimaDelTurno);
+    // Tras la narración del turno (sin el arreglo salía justo tras el eco de la acción).
+    const narracion = diario.findIndex((e) => !e.isPlayerAction);
+    expect(orden).toBeGreaterThan(narracion);
+    // P397 (tanda 75): con la hora de ficción del turno, no la de antes de narrarlo, y en la respuesta del turno
+    // (`intercambiosExtra`), en su sitio entre los ataques recibidos: si no, no se veía en pantalla hasta recargar.
+    expect(diario[orden]!.fictionalMinutes).toBe(diario[narracion]!.fictionalMinutes);
+    const extras = (lastNdjsonLine(res.payload).intercambiosExtra ?? []) as { logEntryId: string }[];
+    const idsTrasNarracion = diario.slice(narracion + 1).map((e) => e.id);
+    expect(extras.map((e) => e.logEntryId)).toEqual(idsTrasNarracion.filter((id) => extras.some((e) => e.logEntryId === id)));
+    expect(extras.some((e) => e.logEntryId === diario[orden]!.id)).toBe(true);
   }, 60_000);
 });
 
