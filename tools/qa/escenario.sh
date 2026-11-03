@@ -56,6 +56,14 @@ ADMIN="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/$BASE}"
 DIR=tools/qa/escenarios
 INDICE="$DIR/README.md"
+# P407: `cargar` y `avanzar` paran y relanzan el juego; la página que tiene abierta el driver de Playwright se quedaba
+# con lo de antes (otro nivel) o en «ERR_CONNECTION_REFUSED» si se recargó mientras el juego estaba parado. Con el
+# juego ya listo, se le pide que recargue (la misma URL si era del juego; si no, la portada). Sin driver no hace nada.
+recargar_pagina() {
+  [ -s tools/playwright-e2e/driver.token ] || return 0
+  bash tools/playwright-e2e/orden.sh "const u = page.url(); await page.goto(u.startsWith(FRONT) ? u : FRONT, { waitUntil: 'domcontentloaded' }); return 'Página recargada: ' + page.url()" || true
+}
+
 case "${1:-}" in
   lista)
     sed -n '/^| /p' "$INDICE"
@@ -88,14 +96,16 @@ case "${1:-}" in
     # La huella del catálogo se borra: arrancar-juego.sh vuelve a sembrarlo si la instantánea es de antes.
     rm -f "logs/catalogo-$BASE.huella"
     bash tools/playwright-e2e/arrancar-juego.sh
+    recargar_pagina
     grep "^| \`$nombre\` |" "$INDICE" || true
     ;;
   avanzar)
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"
     [ -z "$extra" ] || [ "$extra" = "--reparar" ] || { echo "«$extra»: solo se admite --reparar"; exit 2; }
     bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
-    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { bash tools/playwright-e2e/arrancar-juego.sh; exit 1; }
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { bash tools/playwright-e2e/arrancar-juego.sh; recargar_pagina; exit 1; }
     bash tools/playwright-e2e/arrancar-juego.sh
+    recargar_pagina
     ;;
   dar)
     partida="${2:?falta la partida}"; shift 2

@@ -12,18 +12,18 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (82): P16, P27, P49, P66, P99, P116, P128, P129, P133, P136, P158, P169, P173,
+- **Pendientes** (78): P16, P27, P49, P66, P99, P116, P128, P129, P133, P136, P158, P169, P173,
   P177, P188, P203, P205, P248, P250, P251, P252, P254, P259, P262, P263, P264, P265, P266, P267,
   P269, P270, P272, P273, P274, P299, P308, P309, P311, P317, P319, P325, P327, P328, P331, P332,
   P333, P334, P335, P336, P337, P338, P339, P340, P342, P343, P358, P359, P360, P361, P362, P363,
   P364, P366, P368, P370, P371, P372, P374, P375, P376, P377, P379, P380, P381, P382, P383, P384,
-  P385, P394, P405, P406, P407.
+  P394.
 - **Pendientes de una decisión de la usuaria** (1): P373.
 - **Arreglados en parte** (33): P12, P29, P51, P69, P70, P82, P107, P131, P151, P155, P163, P175,
   P180, P182, P184, P186, P191, P223, P243, P245, P253, P288, P292, P294, P295, P300, P301, P306,
   P307, P310, P324, P355, P367.
-- **Arreglados, sin comprobar jugando** (10): P204, P244, P268, P271, P365, P369, P378, P386, P388,
-  P404.
+- **Arreglados, sin comprobar jugando** (14): P204, P244, P268, P271, P365, P369, P378, P385, P386,
+  P388, P404, P405, P406, P407.
 - **Comprobados jugando** (253): P1, P2, P3, P4, P6, P7, P8, P9, P11, P13, P14, P15, P17, P18, P19,
   P20, P21, P24, P26, P28, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43, P45, P46, P47,
   P50, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68, P72, P73, P74, P76,
@@ -461,5 +461,5 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P403 | Tanda 79 (2026-11-03, herramientas): con un rival CONVALECIENTE en pantalla, la ayuda `combate` de `orden.sh` espera 45 s y avisa «sigue desactivada» en vez de «rival convaleciente: elige Matar, Capturar o Clemente»: busca el texto «ESTÁ CONVALECIENTE» entero y en el DOM sale partido en dos nodos. Ver P392. Leve | ✅ 2026-11-03 (arreglado, comprobado jugando en la tanda 80: en 0,1 s «R0: rival CONVALECIENTE (Orca desconocida): elige Matar, Capturar o Clemente»): la causa era la mayúscula de CSS (innerText da «MATAR», y `/Matar/` no casaba); ahora busca en el DOM el botón cuyo texto real es «Matar» y nombra al rival. Test en `ayudas_mcp_navegador.mjs` |
 | P404 | Tanda 79 (2026-11-03, herramientas): en `orden.sh`, `getByRole('button',{name:/COMBATIR/})` no encuentra el botón (hay que usar `getByText('COMBATIR')` con `force`), y para elegir rival hay que pulsar el botón «⚔️ Nombre Estado» de la lista ENEMIGOS, no la tarjeta de arriba; falta en el runbook. Leve | ✅ 2026-11-03: al runbook `rondas-de-pruebas.md`: el nombre real del botón es «Combatir» (mayúsculas solo de CSS; `/Combatir/`) y el rival se elige en la lista ENEMIGOS |
 | P405 | Tanda 80 (2026-11-03, reino-combate-capitan): al recargar en pleno combate el panel de combate se cierra (la tarjeta «Estás convaleciente» sigue) y hay que volver a pulsar Combatir. Leve | ✅ Arreglado 2026-11-03, sin jugar. Diagnóstico: `combatOpen` vive solo en React y arranca en false; la recarga rehidrata `combateIniciado` pero no el panel, así que solo queda el aviso «⚔️ Combatir». Arreglo: al cargar la partida con un combate en curso (y sin muerte pendiente) se llama a `openCombat` conservando la iniciativa rehidratada (`abrirCombateAlCargar`, `combateResync.ts`). Tests: `combateResync.test.ts` y `useCombatFlow.test.tsx` (P405) |
-| P406 | Tanda 80 (2026-11-03, herramientas): `escenario.sh preparar … convaleciente:<npc>:combate` se niega con un combate abierto («ya hay un combate en curso»), así que no sirve sobre `reino-combate-capitan`; y al cargar ese escenario el aviso «Entra menos agua…» tapa «Combatir» (hace falta `forzar:true`). Leve | Pendiente |
-| P407 | Tanda 81 (2026-11-03, herramientas, nube): tras `escenario.sh cargar` + `preparar` sobre `reino-combate-capitan`, `orden.sh` dio `ERR_CONNECTION_REFUSED` y la página mostraba nivel 2; el subagente relanzó el juego (~45 s) y el modal «Reino» quedó abierto tapando la escena. Puede ser regresión de P400 (en la tanda 79 el driver siguió vivo). Leve | Pendiente |
+| P406 | Tanda 80 (2026-11-03, herramientas): `escenario.sh preparar … convaleciente:<npc>:combate` se niega con un combate abierto («ya hay un combate en curso»), así que no sirve sobre `reino-combate-capitan`; y al cargar ese escenario el aviso «Entra menos agua…» tapa «Combatir» (hace falta `forzar:true`). Leve | ✅ Arreglado 2026-11-03, sin jugar. Diagnóstico: el paso solo sabía preparar un combate nuevo (rival en `pendingCombatNpcSlugs`). Arreglo: con un combate en curso deja convaleciente al rival suelto que ya está en él (mismo scope) y se niega, con el motivo, si no está en el combate o va en grupo (`prepararConvaleciente.ts`; test P406 en `prepararConvaleciente.integration.test.ts`). El aviso «Entra menos agua…» es de la visión general del panel Reino, que se cierra al abrirse el combate (P405). |
+| P407 | Tanda 81 (2026-11-03, herramientas, nube): tras `escenario.sh cargar` + `preparar` sobre `reino-combate-capitan`, `orden.sh` dio `ERR_CONNECTION_REFUSED` y la página mostraba nivel 2; el subagente relanzó el juego (~45 s) y el modal «Reino» quedó abierto tapando la escena. Puede ser regresión de P400 (en la tanda 79 el driver siguió vivo). Leve | ✅ Arreglado 2026-11-03, sin jugar. Diagnóstico: `arrancar-juego.sh --parar-juego` reinicia el juego pero la página del driver se queda con el estado viejo (o con el error de conexión del reinicio). Arreglo: `escenario.sh cargar` y `avanzar` recargan la página del driver al terminar (`recargar_pagina`; test en `tools/qa/tests/test_escenario.py`). El modal «Reino» abierto lo cierra P405 al abrir el combate. |

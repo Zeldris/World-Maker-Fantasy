@@ -115,5 +115,22 @@ class Cargar(unittest.TestCase):
         self.assertEqual(texto.count('arrancar-juego.sh --parar-juego'), 2)
 
 
+    def test_cargar_recarga_la_pagina_del_driver_con_el_juego_ya_listo(self):
+        """P407: tras relanzar el juego, la página del driver se recarga (no se queda con lo de antes)."""
+        d = Probar.repo(self)
+        e2e = os.path.join(d, 'tools', 'playwright-e2e')
+        os.makedirs(e2e)
+        os.makedirs(os.path.join(d, 'logs'))
+        for nombre in ('arrancar-juego.sh', 'orden.sh'):
+            escribir(os.path.join(e2e, nombre), f'echo "{nombre} $*" >> "{d}/llamadas.log"\n')
+        escribir(os.path.join(e2e, 'driver.token'), 'clave')
+        env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
+        r = subprocess.run(['bash', 'tools/qa/escenario.sh', 'cargar', 'uno'], cwd=d, env=env, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        llamadas = [l for l in leer(os.path.join(d, 'llamadas.log')).splitlines() if l.split(' ')[0] in ('arrancar-juego.sh', 'orden.sh')]
+        self.assertEqual(llamadas[-2], 'arrancar-juego.sh ')
+        self.assertTrue(llamadas[-1].startswith('orden.sh ') and 'page.goto' in llamadas[-1], llamadas)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,8 @@
 // (`dejarNpcConvaleciente`: así debe quedar, el animal vencido ya no está en el mapa) y mantiene el combate sin resolver en
 // `Save.pendingCombatNpcSlugs` (`guardarSlugsDeCombate`, como `resolveCombatSlugsAndPersist` de `turnResolution.ts`): de ahí sale la tarjeta
 // «<NPC> está convaleciente» con Matar, Capturar y Clemente que reconstruye `GET /saves/:id` (`combateIniciado`). Sin ese slug, la
-// tarjeta no existe y el convaleciente no se ve en ninguna parte (tanda 33).
+// tarjeta no existe y el convaleciente no se ve en ninguna parte (tanda 33). P406 (2026-11-03): con un combate en curso, el rival
+// suelto que ya está en él queda convaleciente sin tocar `pendingCombatNpcSlugs`; si no está en ese combate, se niega con el motivo.
 import type { PrismaClient } from '@prisma/client';
 import { dejarNpcConvaleciente } from '../turnLootKill.js';
 import { guardarSlugsDeCombate } from '../combateDesde.js';
@@ -27,8 +28,19 @@ export async function dejarConvalecienteEnCombate(
       if (!save.currentLocationId) throw new Rechazo('convaleciente: la partida no está en ningún lugar.');
       const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: npcSlug }, select: { id: true, name: true, slug: true, kind: true } });
       if (!npc) throw new Rechazo(`convaleciente: no hay NPC ${npcSlug}.`);
-      if (await tx.combatEncounter.findFirst({ where: { saveId, estado: 'EN_CURSO' }, select: { id: true } })) {
-        throw new Rechazo('convaleciente: ya hay un combate en curso (lo resuelve el combate, no este paso).');
+      // P406: con un combate de grupo abierto (p. ej. `reino-combate-capitan`), el NPC tiene que ser uno de sus rivales: queda
+      // CONVALECIENTE en su `NpcState` (el que lee el combate para un rival suelto) y sale con Matar, Capturar y Clemente.
+      const encuentro = await tx.combatEncounter.findFirst({
+        where: { saveId, estado: 'EN_CURSO' },
+        select: { participantes: { where: { tipo: 'NPC' }, select: { npcId: true, npcScope: true, condicionFisicaGrupo: true, npc: { select: { slug: true } } } } },
+      });
+      if (encuentro) {
+        const p = encuentro.participantes.find((x) => x.npcId === npc.id);
+        if (!p) throw new Rechazo(`convaleciente: ${npc.name} no está en el combate en curso (rivales: ${encuentro.participantes.map((x) => x.npc?.slug).join(', ')}).`);
+        if (p.condicionFisicaGrupo !== null) throw new Rechazo(`convaleciente: ${npc.name} va en grupo en el combate en curso; este paso es para un rival suelto.`);
+        const { scope } = await dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora: save.worldState?.fictionalMinutes ?? 0 });
+        if (scope !== p.npcScope) throw new Rechazo(`convaleciente: ${npc.name} combate en otro sitio (${p.npcScope}), no en el lugar actual.`);
+        return { nombre: npc.name, scope, rivales: [...new Set(encuentro.participantes.map((x) => x.npc?.slug).filter((x): x is string => !!x))] };
       }
       const { scope } = await dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora: save.worldState?.fictionalMinutes ?? 0 });
       // Un miembro de un grupo con más vivos vuelve a ILESO (`datosNpcStateDeIntercambio`): no hay convaleciente que enseñar.

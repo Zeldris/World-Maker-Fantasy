@@ -59,7 +59,7 @@ describe('dejarConvalecienteEnCombate (QA-270, P95/P320)', () => {
     expect(await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' })).toMatchObject({ rivales: ['otro-rival', 'guchapo'] });
   });
 
-  it('se niega, con el motivo, con una partida terminada, sin lugar, inexistente, con un NPC que no existe o con un combate en curso', async () => {
+  it('se niega, con el motivo, con una partida terminada, sin lugar, inexistente, con un NPC que no existe o en un combate en curso sin ese rival', async () => {
     const terminada = await partida('Terminada (QA-270)', { endedAt: new Date() });
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: terminada, npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('ha terminado') });
     const sinLugar = await partida('Sin lugar (QA-270)', { sinLugar: true });
@@ -68,12 +68,25 @@ describe('dejarConvalecienteEnCombate (QA-270, P95/P320)', () => {
     const viva = await partida('Sin NPC (QA-270)');
     expect(await dejarConvalecienteEnCombate(prisma, { saveId: viva, npcSlug: 'no-existe-especie' })).toEqual({ error: expect.stringContaining('no hay NPC') });
     await prisma.combatEncounter.create({ data: { saveId: viva, estado: 'EN_CURSO' } });
-    expect(await dejarConvalecienteEnCombate(prisma, { saveId: viva, npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('combate en curso') });
+    expect(await dejarConvalecienteEnCombate(prisma, { saveId: viva, npcSlug: 'guchapo' })).toEqual({ error: expect.stringContaining('no está en el combate en curso') });
     // Nada de lo rechazado deja rastro.
     for (const id of [terminada, sinLugar, viva]) {
       expect(await prisma.npcState.count({ where: { saveId: id, condicionFisica: 'CONVALECIENTE' } })).toBe(0);
       expect((await prisma.save.findUniqueOrThrow({ where: { id } })).pendingCombatNpcSlugs).toEqual([]);
     }
+  });
+
+  it('P406: con un combate en curso, deja convaleciente al rival suelto que ya está en él, sin tocar los rivales pendientes', async () => {
+    const saveId = await partida('En combate (P406)');
+    const npc = await prisma.npc.findFirstOrThrow({ where: { slug: 'guchapo', saveId: null } });
+    const lugar = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId!;
+    await prisma.combatEncounter.create({
+      data: { saveId, estado: 'EN_CURSO', participantes: { create: [{ bando: 'JUGADOR', tipo: 'JUGADOR' }, { bando: 'ENEMIGO', tipo: 'NPC', npcId: npc.id, npcScope: scopeFor(npc.kind, lugar) }] } },
+    });
+    expect(await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' })).toMatchObject({ rivales: ['guchapo'] });
+    const estado = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: npc.id } });
+    expect(estado.condicionFisica).toBe('CONVALECIENTE');
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingCombatNpcSlugs).toEqual([]);
   });
 
   it('se niega si el NPC es de un grupo con más miembros en pie (quedaría ILESO), sin dejar el rival', async () => {
