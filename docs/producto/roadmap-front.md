@@ -1680,6 +1680,9 @@ Retro de `claude/plan-imagenes` (usuaria, 2026-11-03, [retro](../registros/retro
 - ~~**QA-283 · `hoja.sh --archivos`**~~ ✅ 2026-11-03: hojas de contactos de banners sueltos; test en `test_hoja_banco.py`.
 - ~~**QA-284 · Ir a la línea y `/clear` antes de `main`**~~ ✅ 2026-11-03: nota en `.claude/gw/opt-tokens.md`.
 
+PR desde la Deck (usuaria, 2026-11-03):
+- ~~**QA-285 · La sesión local crea sus PR con `gh`**~~ ✅ 2026-11-03: `gh` en `~/.local/bin` con la sesión de la usuaria y enlazado en el sandbox Flatpak de VS Code; sustituye a `QA-184` (`CLAUDE.md`, `AGENTS.md`, `ramas-y-main.md`, `skills-y-modelos.md`). Estrenada con los PR #80 y #81.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

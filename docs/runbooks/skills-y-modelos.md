@@ -81,14 +81,14 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    `git stash pop` después. Con `requireRetro`, el Estado de la retro tiene que decir «aplicadas», «rechazadas»,
    «aplazadas» o «decididas», y nada de «pendiente», «sin decidir», «aún no» (ni sus formas en inglés): con una de esas,
    aunque sea de una sola propuesta, no hay marca (retro del piloto de Galivelop-workflow, 2026-10-23).
-   Desde una sesión local (la Deck) el PR no se crea (`QA-184`): no hay `gh` ni herramienta de GitHub y el modo auto
-   no deja usar la credencial de git. La local sube la descripción a `docs/registros/pr/<rama>.md` y escribe en su fila
-   de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
-   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh --footer …` (la marca va en su propio commit, que se sube) y crea el PR con esa descripción.
+   Desde una sesión local (la Deck) el PR se crea con `gh` (`QA-285`, que sustituye a `QA-184`):
+   `gh pr create --body-file docs/registros/pr/<rama>.md`, y en su fila de la bitácora «PR abierto» con la URL. Sin
+   `gh` ni herramienta de GitHub, la sesión deja «PR listo» con el título y otra sesión que pueda crea el PR
+   (detalle en [`ramas-y-main.md`](ramas-y-main.md)).
    Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). El último commit antes del PR deja la fila de la rama
    como «PR a `main`; al fusionarse, rama terminada» (`QA-186`), para que `main` la reciba ya cerrada; la de una
-   sesión local, con su «PR listo» de `QA-184`, vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
+   sesión sin `gh`, con su «PR listo», vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
    sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
    subagentes de contexto limpio y la principal no arrastra lo leído. Si la sesión ya compactó alguna vez (lo dice el
    gancho de `QA-116` tras cada compactación), Claude lo dice a la usuaria al fusionar y le propone seguir tras un

@@ -16,5 +16,6 @@
   `python3 .claude/gw/scripts/recuperar.py --buscar "<texto>"`. Lo que tenga que sobrevivir va a `docs/registros/traspaso.md`.
 - **El modo automático** puede pedir permiso para editar `.claude/settings.json`, `.claude/gw.json`, `.claude/gw/scripts/` y `.githooks/`:
   pregunta a la usuaria antes de tocarlos, o deja que haga ella el cambio.
-- **Sesión local (Deck):** no hay `gh` ni herramienta de GitHub; el PR lo crea la sesión de la nube (`QA-184`, ver
-  `AGENTS.md`). La sesión de la nube usa las herramientas `mcp__github__*`.
+- **Sesión local (Deck):** crea sus PR con `gh` (`~/.local/bin/gh`, enlazado en el sandbox Flatpak de VS Code;
+  `QA-285`, que sustituye a `QA-184`). Si `gh auth status` falla, se dice a la usuaria y no se buscan credenciales.
+  La sesión de la nube usa las herramientas `mcp__github__*`.
