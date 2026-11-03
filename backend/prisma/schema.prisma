@@ -2903,7 +2903,10 @@ model HistoriaEntry {
   year                Int?
   text                String
   requiresTranslation Boolean @default(false)
-  documentoItemSlug   String
+  /// Cómo se descubre (QA-244): por el objeto `documentoItemSlug`, por visitar `lugarSlug` o, sin ninguno de los
+  /// dos, saber común abierto desde el principio. Nunca los dos a la vez (lo valida seed-catalog.ts).
+  documentoItemSlug   String?
+  lugarSlug           String?
   translatorNpcSlug   String?
 
   @@unique([worldId, slug])

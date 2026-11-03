@@ -172,7 +172,7 @@ export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'boungo' }, cantidad: 2, label: 'Boungo' }],
   resultName: 'Boungo asado',
   resultCatalogSlug: 'boungo-asado',
-  resultDescription: 'Boungo asado sobre brasas — sencillo, pero la primera receta real del oficio de cocinero-orcos-llanuras.',
+  resultDescription: 'Boungo asado sobre brasas — sencillo, pero de buen sabor.',
   tier: 1,
   oficio: 'cocinero-orcos-llanuras',
   narrationWant:
@@ -924,7 +924,7 @@ export const QUITINA_PLATES_RECIPE: CraftingRecipe = {
   ingredients: [{ match: { kind: 'exact', catalogSlug: 'trozo-quitina-roja' }, cantidad: 3, label: 'trozo de quitina roja' }],
   resultName: 'Pieza de quitina roja',
   resultCatalogSlug: 'pieza-quitina-roja',
-  resultDescription: 'Varios trozos de quitina roja de Gesgurio trabajados hasta formar una pieza completa, lista para crafteo.',
+  resultDescription: 'Varios trozos de quitina roja de Gesgurio trabajados hasta formar una pieza completa.',
   tier: 2,
   requisitos: { destreza: 8 },
   oficio: 'curtidor-orcos-llanuras',
