@@ -1943,8 +1943,9 @@ describe('deterministicFallbackNarration', () => {
 
   it('P245: se marca como respaldo, y el de un diálogo no copia la acción ni dice «sin incidentes»', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).fallbackDeterminista).toBe(true);
-    const texto = narracionDeRespaldoEnDialogo('El orco desconocido');
-    expect(texto).toBe('El orco desconocido te escucha en silencio. (El narrador no ha respondido a esta escena.)');
+    const texto = narracionDeRespaldoEnDialogo('El orco desconocido', 'Gorhorn');
+    expect(texto).toBe('El orco desconocido escucha a Gorhorn en silencio. (El narrador no ha respondido a esta escena.)');
+    expect(hasSecondPersonLeak(texto)).toBe(false);
     expect(texto).not.toMatch(/sin incidentes/);
   });
 });
@@ -2061,6 +2062,10 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(quitarCitas('Ulkha Ketg se detiene. Su voz es baja: «¿Qué buscas aquí, Gorhorn?". Se ajusta el cuchillo.')).toBe('Ulkha Ketg se detiene. Su voz es baja. Se ajusta el cuchillo.')
     expect(quitarCitas('Ulkha frunce el ceño. "Soy Ulkha Ketg." Mira al norte.')).toBe('Ulkha frunce el ceño. Mira al norte.');
     expect(quitarCitas('Gorhorn bebe del odre.')).toBe('Gorhorn bebe del odre.');
+    // Bench 19 (P412): comillas simples, también anidadas; los apóstrofos de «Terk'ikar» no son citas.
+    expect(quitarCitas("Ulkha Ketg mira a Gorhorn, firme cuando habla: '¿Qué regalo nos traes hoy, Gorhorn?'.")).toBe('Ulkha Ketg mira a Gorhorn, firme cuando habla.');
+    expect(quitarCitas("Gorhorn se acerca, decidido, y le dice: 'Le digo a Ulkha Ketg: 'Me llamo Gorhorn. ¿Y tú?'' Ulkha asiente.")).toBe('Gorhorn se acerca, decidido, y le dice. Ulkha asiente.');
+    expect(quitarCitas("La Terk'ikar Ulkha Ketg asiente.")).toBe("La Terk'ikar Ulkha Ketg asiente.");
   });
 
   it('hechosBlock es literal del prompt, para que el intento 2 pueda recortarlo', () => {

@@ -9633,7 +9633,7 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
     await doTurn(saveId, accion);
     const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
-    expect(texto).toMatch(/te escucha en silencio/);
+    expect(texto).toMatch(/escucha a Gorhorn P245 en silencio/);
     expect(texto).toMatch(/narrador no ha respondido/);
     expect(texto).not.toMatch(/sin incidentes/);
     expect(texto).not.toMatch(/sobre el camino/);

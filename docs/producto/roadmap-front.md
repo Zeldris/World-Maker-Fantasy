@@ -1686,6 +1686,12 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   ni respaldo; contesta Ulkha, una sola voz, y no dice «Gorhorn» hasta que él se presenta. Falta: jugar el diálogo
   en una ronda; el narrador aún se centra en el NPC en vez de la acción en 2-3 de 8 turnos («Reviso mi hacha»,
   «Observo el cielo») y copió el turno anterior en uno; P331 en parte (un hecho de huellas mete al NPC en escena).
+  Tras la ronda (2026-11-03): P263 (hechos con «(tú)», guard y reintento), P410 (`corregirNombresCasi`) y P412 (línea
+  FOCO + `[lint] foco`). Bench `19-foco` contra `18-una-voz` (10 turnos): turno p50 32,0 s (+4,4), p95 73,0 s (+21,1)
+  por un turno de diálogo en respaldo: en el 8 («Bebo agua») el narrador hizo hablar a Ulkha entre comillas simples y
+  en el 9 copió esa frase en los 3 intentos, sin hacer caso del FOCO (P414). En el 10 abre con Gorhorn; Ulkha se
+  presenta bien, sin «Ulka» ni hablar de sí como de otra. Arreglado: `quitarCitas` quita también las comillas simples
+  y el respaldo de diálogo va en tercera persona. Falta: P414, P411 y jugarlo en una ronda.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

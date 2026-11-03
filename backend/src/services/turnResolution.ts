@@ -4806,7 +4806,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (wasLlmNarrated && narration.fallbackDeterminista && dialogueTarget && !combatExchangeDisplayFinal) {
     const visible = await nombreVisibleDeNpc(prisma, saveId, dialogueTarget);
     const quien = visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, dialogueTarget.articulo);
-    narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1));
+    narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1), characterName);
   }
 
   // Narración mentirosa si el modelo agota los 3 reintentos (bug real jugando en vivo, 2026-08-06,

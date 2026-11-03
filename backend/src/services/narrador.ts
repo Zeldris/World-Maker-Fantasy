@@ -947,9 +947,12 @@ const PRESENTA_EN_HECHO = /\b(se presenta|le dice su nombre|les dice su nombre|d
 
 /// QA-289 (fila 1): quita lo citado entre comillas («…», “…”, "…", también mezcladas: «…") y los dos puntos que lo presentan, para que la
 /// réplica del NPC sea solo la de `generateNpcReply`. Deja la frase que la rodea («Ulkha frunce el ceño.»).
+/// Con comillas simples (bench 19: «le dice: 'Le digo a Ulkha Ketg: 'Me llamo Gorhorn.''») la cita abre tras espacio o
+/// dos puntos y cierra en la primera ' seguida de espacio o fin, para no cortar en los apóstrofos de «Terk'ikar».
 export function quitarCitas(texto: string): string {
   return texto
     .replace(/\s*:?\s*[«“"][^«»“”"]*[»”"]/g, '')
+    .replace(/(^|\s*:?\s+|:)'[^«»“”"]*?'+(?=[.,;!?]*(\s|$))/g, (cita: string, _a: string, _b: string, pos: number, todo: string) => (/^\s+\p{Lu}/u.test(todo.slice(pos + cita.length)) ? '.' : ''))
     .replace(/\s+([.,;])/g, '$1')
     .replace(/([.,;])[.,;]+/g, '$1')
     .replace(/\s{2,}/g, ' ')
@@ -1877,8 +1880,8 @@ export function deterministicFallbackNarration(ctx: {
 /// acción de la jugadora (ya está en «TU ACCIÓN») ni dice «La acción transcurre sin incidentes»: una réplica
 /// breve y neutra del NPC y el aviso de que el narrador no respondió. `quien` ya viene con su artículo y en
 /// mayúscula inicial («El orco desconocido», «Gistera Koh»). La réplica real, si la hay, se añade detrás.
-export function narracionDeRespaldoEnDialogo(quien: string): string {
-  return `${quien} te escucha en silencio. (El narrador no ha respondido a esta escena.)`;
+export function narracionDeRespaldoEnDialogo(quien: string, characterName: string): string {
+  return `${quien} escucha a ${characterName} en silencio. (El narrador no ha respondido a esta escena.)`;
 }
 
 // Bug real encontrado auditando la partida de Gorhorn (2026-07-23, "revisar partida"): el modelo
