@@ -9521,8 +9521,40 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
     expect(narracion).toMatch(/Te enfrentas a la faerus desconocida; .+ te golpea de paso\./);
     // El otro rival (no el citado) es quien la golpea de paso: aparece con su nombre visible tras «;».
-    const otro = narracion.split('; ')[1] ?? '';
+    // Solo quien golpea de paso: tras esa frase la narración sigue con los golpes de la ronda, que sí la nombran.
+    const otro = (narracion.split('; ')[1] ?? '').split(' te golpea de paso')[0]!;
+    expect(otro).toMatch(/desconocid/);
     expect(otro).not.toMatch(/faerus/i);
+  }, 60_000);
+
+  // P395 (tanda 74): la orden del capitán de la ronda nueva («X ordena caer sobre Y.») la escribe el combate mientras
+  // se resuelve, antes de guardar la narración del turno; salía encima de los golpes de la ronda anterior y parecía
+  // mandarlos. Tiene que quedar en el diario tras la narración del turno.
+  it('la orden del capitán de la ronda nueva queda en el diario tras la narración del turno', async () => {
+    const saveId = await partida('Gorhorn de prueba (P395)', true);
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'ulkha-ketg' } });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Ulkha Ketg (Inteligencia 20 en su ficha): el capitán de cada ronda se recalcula con la ficha.
+    const renegado = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const soldado = { npcId: renegado.id, nombre: renegado.name, scope: '', destreza: 8, inteligencia: 20, esGrupo: true };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [soldado, soldado]);
+    expect(abierto).not.toBeNull();
+    const antes = new Date();
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = `Golpeo con el arma, contra '${renegado.name}'.`;
+    const app = await buildApp();
+    const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as { classification?: unknown; roll?: unknown };
+    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    await app.close();
+    classifyAction.mockReset();
+    const diario = await prisma.logEntry.findMany({ where: { saveId, channel: 'CHARACTER', createdAt: { gte: antes } }, orderBy: { createdAt: 'asc' } });
+    const orden = diario.findIndex((e) => e.isSystemMessage && e.text.includes('ordena caer sobre'));
+    // Tras la narración y los golpes de la ronda que acaba (sin el arreglo salía justo tras el eco de la acción).
+    const ultimaDelTurno = diario.map((e) => e.isSystemMessage).lastIndexOf(false);
+    expect(orden).toBeGreaterThanOrEqual(0);
+    expect(orden).toBeGreaterThan(ultimaDelTurno);
   }, 60_000);
 });
 

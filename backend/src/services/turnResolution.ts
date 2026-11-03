@@ -3219,6 +3219,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
   // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
   let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
+  // P395: líneas de sistema que el combate de grupo escribe mientras se resuelve (la orden del capitán de la ronda
+  // nueva, la moral): van tras la narración del turno, que se guarda después; si no, la orden salía encima de los
+  // golpes de la ronda anterior y parecía mandarlos.
+  let lineasDiarioDelCombateIds: string[] = [];
   const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
   const intercambiosExtra: LineaDelTurno[] = [];
 
@@ -4608,6 +4612,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const encounterId = activeCombatEncounter.id;
     combatEncounterId = encounterId;
     const narraciones: string[] = [];
+    const inicioDiarioDelCombate = new Date();
 
     // Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3) — si la RONDA actual
     // todavía no sabe a quién quiere atacar la jugadora, hay que decidirlo YA, antes de resolver
@@ -4764,6 +4769,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const saveTrasEncuentro = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { condicionFisica: true, energia: true } });
     combatEncounterFinalCondicion = saveTrasEncuentro.condicionFisica;
     combatEncounterFinalEnergia = saveTrasEncuentro.energia;
+    lineasDiarioDelCombateIds = (
+      await prisma.logEntry.findMany({
+        where: { saveId, channel: 'CHARACTER', isSystemMessage: true, createdAt: { gte: inicioDiarioDelCombate } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      })
+    ).map((e) => e.id);
   }
 
   // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 7
@@ -6660,6 +6672,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combate, ...(combatExchange ? { combatExchange } : {}), ...(linea.tipo === 'subidaDeNivel' ? { esSubidaDeNivel: true } : {}) });
     }
+    // P395: tras la narración y lo que sigue al golpe, en el orden en que se escribieron.
+    for (const id of lineasDiarioDelCombateIds) await tx.logEntry.update({ where: { id }, data: { createdAt: nextAfterMainLogCreatedAt() } });
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
     // si esta acción cuenta como descanso válido, luego se resuelve la transición de condición
