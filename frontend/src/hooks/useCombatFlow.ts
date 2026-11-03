@@ -368,6 +368,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         sed,
         timeLabel: newTimeLabel,
         finDePartida,
+        justDied,
         newInventoryItems,
         removedInventoryItemIds,
         updatedInventoryItems,
@@ -719,6 +720,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     sed: number
     timeLabel: string
     finDePartida: boolean
+    justDied?: boolean
     newInventoryItems: InventoryItemInfo[]
     removedInventoryItemIds: string[]
     updatedInventoryItems: { id: string; name: string }[]
@@ -745,7 +747,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // por PRIMERA vez este intercambio (comparado contra el estado local de ANTES de este turno,
     // no contra el de la respuesta): un NPC que ya estaba CONVALECIENTE de un turno anterior no
     // vuelve a ofrecer tarjeta.
-    const newlyConvalecientes = (params.combate?.npcs ?? [])
+    // P398 (2026-11-03): si el personaje cae en este turno no hay nada que decidir sobre el rival.
+    const jugadoraCaida = !!params.justDied || params.finDePartida
+    const newlyConvalecientes = (jugadoraCaida ? [] : (params.combate?.npcs ?? []))
       .filter((n) => n.condicionFisica === 'CONVALECIENTE' && combatNpcsDisplay.find((d) => combatKeyFor(d) === combatKeyFor(n))?.condicion !== 'CONVALECIENTE')
       .map((n) => ({ npcSlug: n.slug, combatKey: combatKeyFor(n), npcName: n.name, capturable: n.capturable }))
     setCharacterLog((prev) => {

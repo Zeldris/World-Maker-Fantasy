@@ -603,6 +603,24 @@ describe('handleCombatTurnResolved — fusión de combateIniciado', () => {
       ])
     })
   })
+
+  // P398 (tanda 75, 2026-11-03): si el personaje cae en el mismo turno en que el rival queda convaleciente,
+  // la entrada del turno no ofrece Matar/Capturar/Clemente.
+  it('si el personaje cae en el mismo turno, no ofrece decidir sobre el rival convaleciente', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({ justDied: true, combateIniciado: { npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] } }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    await waitFor(() => expect(result.current.combat.combatPlayerJustDied).toBe(true))
+    expect(result.current.characterLog[0]?.text).toBeTruthy()
+    expect(result.current.characterLog[0]?.convalecienteOffers).toBeUndefined()
+  })
 })
 
 // REDISEÑADO 2026-08-30 (petición explícita, dos rondas: "matar tiene que abrir el combate de

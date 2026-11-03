@@ -154,6 +154,8 @@ interface LogPanelProps {
   /// P78 (QA-27): motivo por el que «Capturar» no se puede (sin cuerdas); null si se puede.
   motivoNoCapturar?: string | null
   onClementeConvaleciente?: (npcKey: string) => void
+  /// P398 (2026-11-03): el personaje acaba de caer en este combate; no se ofrece decidir sobre un rival convaleciente.
+  jugadoraCaida?: boolean
   /// Tirada en vivo vs histórica (2026-09-04, centralización de todas las tiradas del juego) —
   /// ids de `LogEntry` recién añadidas en ESTA sesión (turno normal/Huir resuelto en vivo, nunca
   /// tocado por la carga inicial de partida — ver `liveRevealedIdsRef`, GameView.tsx). Si el id de
@@ -249,6 +251,7 @@ export const LogPanel = memo(function LogPanel({
   onCapturarConvaleciente,
   motivoNoCapturar,
   onClementeConvaleciente,
+  jugadoraCaida,
   onViewFullHistory,
   liveEntryIds,
   bloqueoAcciones,
@@ -726,7 +729,7 @@ export const LogPanel = memo(function LogPanel({
             `!targetedForKill` (2026-08-30, bug real: la tarjeta reaparecía en cada turno mientras
             el NPC seguía convaleciente tras pulsar "Matar") — una vez elegido "Matar", la tarjeta
             desaparece (el panel de combate normal ya queda desbloqueado para atacar). */}
-        {combatNpcsDisplay
+        {!jugadoraCaida && combatNpcsDisplay
           ?.filter((n) => n.condicion === 'CONVALECIENTE' && !n.dismissed && !n.targetedForKill)
           .map((npc) => (
             <OfferCard
