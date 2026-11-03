@@ -1699,7 +1699,11 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   `21-foco-todo` contra `20`: los 7 turnos sin diálogo abren con Gorhorn o el paisaje y nadie habla sin que le
   pregunten; p50 28,2 s (−0,4), p95 70,3 s (+11,7, un reintento por repetir), sin respaldo. Los 2 de diálogo aún abren
   con Ulkha. `quitarCitas` dejaba colgando la coletilla de una cita al abrir frase («pregunta finalmente…»): arreglado.
-  Falta: jugarlo en una ronda.
+  Ronda 2 con Ollama real (2026-11-03, 13 turnos, `logs/ia/ronda-qa289-2.jsonl`; turnos de 31-70 s): comprobados
+  jugando P410 y P263; P414 en parte (sin diálogo nadie habla). Siguen P411 (Ulkha copia una frase del turno anterior),
+  P412 (abre con el NPC en 6 de 11) y P311 (réplicas sin hablante); salen P415-P421 (verbo de habla suelto, texto fijo
+  de movimiento para «miro el camino», NPC fuera de escena que contesta, nombre inventado). Falta: arreglar
+  P411/P412/P415-P420 y medirlo en el bench.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):
