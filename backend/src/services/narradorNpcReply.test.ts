@@ -194,6 +194,28 @@ describe('restos de diálogo en la narración (QA-289, ronda 2: P415, P416, P417
   });
 });
 
+describe('nombre inventado en la réplica (QA-289, ronda 2: P420)', () => {
+  const conocidos = new Set(['clan', 'serhu', 'maktor', 'ulkha', 'ketg']);
+
+  it('nombreInventado: un nombre propio a media frase fuera del vocabulario; al abrir frase, no', async () => {
+    const { nombreInventado } = await import('./narrador.js');
+    expect(nombreInventado('«El honor busca la verdad sobre la traición de los Goirntes, que han armado a mi clan.»', conocidos, [])).toBe('Goirntes');
+    expect(nombreInventado('«El Clan Serhu no olvida a los Maktor.»', conocidos, [])).toBeNull();
+    expect(nombreInventado('«Vete. Nadie te ha llamado.»', conocidos, [])).toBeNull();
+    expect(nombreInventado('«Saluda a Gorhorn de mi parte.»', conocidos, ['Gorhorn bebe del odre.'])).toBeNull();
+  });
+
+  it('generateNpcReply pide otra réplica si trae un nombre inventado', async () => {
+    const { generateNpcReply } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ reply: '«Busco la traición de los Goirntes.»' }) })
+      .mockResolvedValueOnce({ text: JSON.stringify({ reply: '«Busco a quien traicionó al Clan Serhu.»' }) });
+    const npc = { name: 'Ulkha Ketg', role: 'cazadora', personality: '', bio: '' };
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Qué buscas?', sessionFacts: [], nombresConocidos: conocidos })).toBe('«Busco a quien traicionó al Clan Serhu.»');
+  });
+});
+
 describe('empezarPorElJugador (QA-289, ronda 2: P412)', () => {
   it('si abre con el NPC, sus frases del principio pasan al final', async () => {
     const { empezarPorElJugador } = await import('./narrador.js');

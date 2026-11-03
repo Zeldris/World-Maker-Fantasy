@@ -1709,8 +1709,12 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   Ronda 2 con Ollama real (2026-11-03, 13 turnos, `logs/ia/ronda-qa289-2.jsonl`; turnos de 31-70 s): comprobados
   jugando P410 y P263; P414 en parte (sin diálogo nadie habla). Siguen P411 (Ulkha copia una frase del turno anterior),
   P412 (abre con el NPC en 6 de 11) y P311 (réplicas sin hablante); salen P415-P421 (verbo de habla suelto, texto fijo
-  de movimiento para «miro el camino», NPC fuera de escena que contesta, nombre inventado). Falta: arreglar
-  P411/P412/P415-P420 y medirlo en el bench.
+  de movimiento para «miro el camino», NPC fuera de escena que contesta, nombre inventado). Tras la ronda (2026-11-03):
+  arreglados sin comprobar P411 (todas las frases repetidas = reintento; réplica que empieza igual = otra), P412 (las
+  frases del NPC del principio pasan detrás, antes de la réplica), P415/P416 (restos de habla sin cita fuera; réplica
+  sin eco), P417 en parte, P418 (`TRAVEL_INTENT_REGEX` sin «el camino»), P420 (nombre inventado en la réplica = otra,
+  contra `nombresDelMundo`) y P421 (`lanza.sh` abre Reino solo con `LANZA_REINO=1`). P419 espera decisión de la
+  usuaria (presencia por zona, no por nombre). Falta: medirlo con `bench-ia.sh` y P419.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

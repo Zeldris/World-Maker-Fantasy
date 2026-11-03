@@ -9,6 +9,7 @@ import { detectsAttackIntent, detectsHostileSearchIntent, sinNombreReal } from '
 import { similarity, factSimilarity } from './worldFacts.js';
 import type { Attribute, RollResult } from './dice.js';
 import type { CondicionFisica, Clase } from '@prisma/client';
+import { palabrasConMayuscula, normalizarNombre } from './nombresDelMundo.js';
 
 const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'];
 
@@ -945,6 +946,8 @@ export interface NpcReplyContext {
   sessionFacts: string[];
   /// P411: su réplica del turno anterior, si la hubo, para no empezar igual.
   replicaAnterior?: string;
+  /// P420: nombres propios del mundo (`nombresDelMundo`), para no inventar pueblos ni personajes.
+  nombresConocidos?: Set<string>;
 }
 
 const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
@@ -1055,6 +1058,18 @@ export function empiezaIgual(reply: string, anterior?: string): boolean {
   if (!anterior) return false;
   const a = palabras(reply).slice(0, INICIO_REPETIDO).join(' ');
   return palabras(reply).length >= INICIO_REPETIDO && a === palabras(anterior).slice(0, INICIO_REPETIDO).join(' ');
+}
+
+/// P420 (ronda 2 de QA-289): «la traición de los Goirntes». Un nombre propio a media frase (no al abrirla) de 4 letras o
+/// más que no está en el vocabulario del mundo, ni en la acción o los hechos de este turno, es inventado. Devuelve el
+/// primero, o null.
+export function nombreInventado(reply: string, conocidos: Set<string>, contexto: string[]): string | null {
+  const delTurno = new Set(contexto.flatMap(palabrasConMayuscula));
+  for (const m of reply.matchAll(/(?<=[\p{L},;]\s+)\p{Lu}[\p{L}'’-]{3,}/gu)) {
+    const n = normalizarNombre(m[0]);
+    if (!conocidos.has(n) && !delTurno.has(n)) return m[0];
+  }
+  return null;
 }
 
 /// La última réplica citada de una narración («…»), para `empiezaIgual`.
@@ -1177,10 +1192,13 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   // el guard de abajo, doble red de seguridad.
   // P263: si la réplica habla de sí mismo como de otro («mi hermana, Ulkha Ketg»), un segundo intento; si repite, sin réplica.
   // P411: si empieza igual que su réplica anterior, un segundo intento; si repite, se queda la segunda.
+  // P420: lo mismo con un nombre propio inventado; si el segundo también lo trae, se queda y se registra.
   for (let intento = 0; intento < 2; intento++) {
     const reply = sinEco(await pedirReplicaNpc(system, prompt));
     if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) continue;
-    if (intento === 0 && empiezaIgual(reply, ctx.replicaAnterior)) continue;
+    const inventado = ctx.nombresConocidos ? nombreInventado(reply, ctx.nombresConocidos, [ctx.characterName, ctx.action, ...ctx.sessionFacts]) : null;
+    if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) continue;
+    if (inventado) console.warn(`[lint] nombre inventado en la réplica de ${ctx.npc.name}: «${inventado}»`);
     return reply;
   }
   return '';

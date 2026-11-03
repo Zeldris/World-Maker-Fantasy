@@ -40,6 +40,7 @@ import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
 import { appendSessionFacts, loadFactsKnownBy, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
+import { nombresDelMundo } from './nombresDelMundo.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
@@ -5023,6 +5024,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         action,
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
         replicaAnterior: ultimaReplica(lastNarration?.text),
+        nombresConocidos: await nombresDelMundo(worldId),
       });
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
