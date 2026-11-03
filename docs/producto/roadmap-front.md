@@ -1666,6 +1666,10 @@ Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.m
 - ~~**QA-264 · Entrada «Modo empaquetado» en el mapa del agente**~~ ✅ 2026-10-26: `docs/mapa-agente.md` (`empaquetado.ts`, usos y tests) para `INS-34…36` y `INS-41`.
 - ~~**QA-265 · Aviso de «PR abierto» sin URL en `bitacora.py`**~~ ✅ 2026-10-26 (solo apuntada): propuesta para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
 
+Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejorar el narrador y sus tiempos», con el generador de imágenes en pausa):
+- **QA-289 · Tiempos y calidad del narrador, en bucle con Ollama real** 🚧 en curso: bucle medir → arreglar → medir con `bench-ia.sh` (tiempos, `opt-ai`) y tandas de juego que solo apuntan, con arreglos entre tandas (calidad). Cada mejora medida se presenta a la usuaria. Base: `11-base` contra `banco-actual` (2026-10-21).
+- ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
+
 Limpieza del repo (usuaria, 2026-10-27):
 - ~~**QA-271 · Fuera el código muerto**~~ ✅ 2026-11-02: nada lo usa; las menciones vivas, corregidas (la última, en `image-generator/README.md`, la cazó `/code-review`). Retirados `backend/src/scripts/test-retrieval.ts`, `test-worldtick.ts` y `migrate-arcano-a-magia-2026-09-01.sql` (de un solo uso contra la base local, según su cabecera; una base anterior al 2026-09-01 ya no tiene con qué migrar: puerta de un solo sentido, en la descripción), `debug/` (cargas y resultados de pruebas a mano de septiembre) e `image-generator/scripts/obsoleto/` (`demo.sh` y `lote.sh`; las tres menciones, como texto). Check y CI local en verde; retro decidida ([retro](../registros/retro-2026-10-27-limpieza.md)).
 - **QA-278 · `ci-local.sh` mira Postgres antes del backend** (retro de `QA-271`, usuaria 2026-11-02): si `tarkor-postgres`

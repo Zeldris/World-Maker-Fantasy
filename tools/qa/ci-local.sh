@@ -33,7 +33,9 @@ paso . "bitácora" python3 .claude/gw/scripts/bitacora.py check
 # La copia de la base va dentro de .githooks/: el gancho saca la raíz del repo de su propia ruta.
 # Si no se puede escribir, el paso falla (no se salta en silencio). Ignorada en .gitignore y borrada al salir.
 copia="$dir/.githooks/.pre-commit-base"
-trap 'rm -f "$copia"' EXIT
+# QA-288: el Ollama simulado que se levanta abajo se para al salir; antes quedaba escuchando en 11434 y tapaba al real.
+mock_pid=""
+trap 'rm -f "$copia"; [ -n "$mock_pid" ] && kill "$mock_pid" 2>/dev/null' EXIT
 if [ -n "$base" ] && git -C "$dir" cat-file -e "$base:.githooks/pre-commit" 2>/dev/null; then
   paso . "pre-commit de la base sobre la rama" "git show $base:.githooks/pre-commit >\"$copia\" &&
     bash \"$copia\" --rango \"\$(git merge-base $base HEAD)..HEAD\""
@@ -57,7 +59,7 @@ paso . "resumen de los registros de hallazgos" 'for r in docs/registros/pruebas-
 
 echo "== backend"
 paso . "base tarkor_ci nueva con pgvector" "psql '$servidor/postgres' -qc 'DROP DATABASE IF EXISTS tarkor_ci' -c 'CREATE DATABASE tarkor_ci' && psql \"\$DATABASE_URL\" -qc 'CREATE EXTENSION IF NOT EXISTS vector'"
-curl -s -o /dev/null localhost:11434 || { nohup node "$dir/tools/ci/mock-ollama.mjs" >"$logs/mock-ollama.out" 2>&1 & sleep 2; }
+curl -s -o /dev/null localhost:11434 || { nohup node "$dir/tools/ci/mock-ollama.mjs" >"$logs/mock-ollama.out" 2>&1 & mock_pid=$!; sleep 2; }
 # QA-239: en un worktree, host.sh (desde los tests de tools/qa) deja node_modules y .env como enlaces a la copia
 # principal: `npm ci` vaciaría su node_modules a través del enlace, y su .env metería su configuración (el CI de
 # GitHub no tiene). Se quitan los enlaces y se instala aquí.
