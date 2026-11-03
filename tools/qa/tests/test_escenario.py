@@ -117,19 +117,49 @@ class Cargar(unittest.TestCase):
 
     def test_cargar_recarga_la_pagina_del_driver_con_el_juego_ya_listo(self):
         """P407: tras relanzar el juego, la página del driver se recarga (no se queda con lo de antes)."""
+        d = self.driver_falso()
+        r = self.correr(d, 'cargar', 'uno')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        llamadas = [l for l in leer(os.path.join(d, 'llamadas.log')).splitlines() if l.split(' ')[0] in ('arrancar-juego.sh', 'orden.sh')]
+        self.assertEqual(llamadas[-2], 'arrancar-juego.sh ')
+        self.assertEqual(llamadas[-1], 'orden.sh ')
+        orden = leer(os.path.join(d, 'orden.js'))
+        self.assertIn('page.goto', orden)
+
+    def driver_falso(self) -> str:
         d = Probar.repo(self)
         e2e = os.path.join(d, 'tools', 'playwright-e2e')
         os.makedirs(e2e)
         os.makedirs(os.path.join(d, 'logs'))
-        for nombre in ('arrancar-juego.sh', 'orden.sh'):
-            escribir(os.path.join(e2e, nombre), f'echo "{nombre} $*" >> "{d}/llamadas.log"\n')
+        # orden.sh falso: registra la llamada y guarda la orden JS que le llega por la entrada estándar.
+        escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar-juego.sh $*" >> "{d}/llamadas.log"\n')
+        escribir(os.path.join(e2e, 'orden.sh'), f'echo "orden.sh $*" >> "{d}/llamadas.log"; cat > "{d}/orden.js"\n')
         escribir(os.path.join(e2e, 'driver.token'), 'clave')
+        return d
+
+    def correr(self, d: str, *args: str):
         env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
-        r = subprocess.run(['bash', 'tools/qa/escenario.sh', 'cargar', 'uno'], cwd=d, env=env, capture_output=True, text=True)
+        return subprocess.run(['bash', 'tools/qa/escenario.sh', *args], cwd=d, env=env, capture_output=True, text=True)
+
+    def test_la_recarga_reintenta_hasta_ver_la_partida_y_si_no_avisa(self):
+        """P407 (tanda 82): el cliente de Vite recargaba con el backend caído; un solo goto lo enmascaraba."""
+        d = self.driver_falso()
+        self.assertEqual(self.correr(d, 'cargar', 'uno').returncode, 0)
+        orden = leer(os.path.join(d, 'orden.js'))
+        self.assertIn('No se encuentra esta partida', orden)
+        self.assertRegex(orden, r'for \(let i = 1; i <= 5')
+        self.assertIn('AVISO: la página del driver no carga la partida', orden)
+
+    def test_preparar_recarga_la_pagina_y_probar_no(self):
+        """P407 (tanda 82): `preparar nivel` cambiaba la partida y el HUD seguía con el nivel viejo."""
+        d = self.driver_falso()
+        r = self.correr(d, 'preparar', 'p1', 'nivel:19')
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        llamadas = [l for l in leer(os.path.join(d, 'llamadas.log')).splitlines() if l.split(' ')[0] in ('arrancar-juego.sh', 'orden.sh')]
-        self.assertEqual(llamadas[-2], 'arrancar-juego.sh ')
-        self.assertTrue(llamadas[-1].startswith('orden.sh ') and 'page.goto' in llamadas[-1], llamadas)
+        self.assertIn('orden.sh ', leer(os.path.join(d, 'llamadas.log')).splitlines())
+        os.remove(os.path.join(d, 'llamadas.log'))
+        r = self.correr(d, 'probar', 'uno', 'preparar', 'p1', 'nivel:19')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn('orden.sh', leer(os.path.join(d, 'llamadas.log')))
 
 
 if __name__ == '__main__':

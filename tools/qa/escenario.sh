@@ -59,9 +59,25 @@ INDICE="$DIR/README.md"
 # P407: `cargar` y `avanzar` paran y relanzan el juego; la página que tiene abierta el driver de Playwright se quedaba
 # con lo de antes (otro nivel) o en «ERR_CONNECTION_REFUSED» si se recargó mientras el juego estaba parado. Con el
 # juego ya listo, se le pide que recargue (la misma URL si era del juego; si no, la portada). Sin driver no hace nada.
+# Reabierto en la tanda 82: Vite vuelve unos 2 s antes que el backend y su cliente recarga solo la página vieja, que
+# pide la partida con el backend caído («No se encuentra esta partida»). Por eso no basta un `goto`: se repite hasta
+# que la página se queda en su URL sin ese error (5 intentos), y si no lo logra lo dice con un AVISO.
+# `preparar`, `dar` y `dar-reino` no paran el juego pero cambian la partida: también recargan (no dentro de `probar`,
+# que va contra una base temporal que la página no ve).
 recargar_pagina() {
   [ -s tools/playwright-e2e/driver.token ] || return 0
-  bash tools/playwright-e2e/orden.sh "const u = page.url(); await page.goto(u.startsWith(FRONT) ? u : FRONT, { waitUntil: 'domcontentloaded' }); return 'Página recargada: ' + page.url()" || true
+  [ -z "${ESCENARIO_URL:-}" ] || return 0
+  bash tools/playwright-e2e/orden.sh <<'JS' || true
+const u = page.url(); const destino = u.startsWith(FRONT) ? u : FRONT; let visto = '';
+for (let i = 1; i <= 5; i++) {
+  await page.goto(destino, { waitUntil: 'load' }).catch((e) => { visto = e.message.split('\n')[0]; });
+  await page.waitForTimeout(1500);
+  const texto = await page.locator('body').innerText().catch(() => '');
+  if (page.url() === destino && texto.trim() && !/No se encuentra esta partida|ERR_CONNECTION_REFUSED/.test(texto)) return 'Página recargada: ' + destino + (i > 1 ? ' (intento ' + i + ')' : '');
+  visto = visto || texto.trim().slice(0, 80); await page.waitForTimeout(1000);
+}
+return 'AVISO: la página del driver no carga la partida tras 5 intentos (' + page.url() + '): ' + visto;
+JS
 }
 
 case "${1:-}" in
@@ -109,15 +125,18 @@ case "${1:-}" in
     ;;
   dar)
     partida="${2:?falta la partida}"; shift 2
-    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darObjetos.ts "$partida" "$@")
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darObjetos.ts "$partida" "$@") || exit $?
+    recargar_pagina
     ;;
   dar-reino)
     partida="${2:?falta la partida}"; shift 2
-    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darReino.ts "$partida" "$@")
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/darReino.ts "$partida" "$@") || exit $?
+    recargar_pagina
     ;;
   preparar)
     partida="${2:?falta la partida}"; shift 2
-    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/prepararReino.ts "$partida" "$@")
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/prepararReino.ts "$partida" "$@") || exit $?
+    recargar_pagina
     ;;
   probar)
     nombre="${2:?falta el nombre}"; shift 2
