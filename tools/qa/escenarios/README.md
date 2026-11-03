@@ -52,3 +52,4 @@ estado útil lo guarda aquí (`QA-105`).
 | `t56-base` | `cmvex1v0300057d0pdjlbezcj` | t56: reino-sano-defensas con Gorhorn en el Pozo de Cauce Viejo, dia 39 | 2026-11-03 |
 | `t56-reino-dia75` | `cmvex1v0300057d0pdjlbezcj` | t56: reino-sano-defensas dia 75, Cocina ACTIVA con 2 cocineros y 3 trabajadores, Gorhorn en el Pozo | 2026-11-03 |
 | `t58-guchapo-mata-2muertes` | `cmvex1v0300057d0pdjlbezcj` | Gorhorn nivel 3 reaparecido en la Hondonada del Eco tras morir contra el Guchapo (muertes 2/4), día 39 10:3x; sin Guchapo cazado (faltan P12 y P51) | 2026-11-03 |
+| `t60-reaparecido-gracia-min58936` | `cmvex1v0300057d0pdjlbezcj` | Día 41 22:16, Gorhorn reaparecido tras morir contra Kirelon (💀 2/4) en la Hondonada (75,75); gracia hasta min 62536; Orco enfurecido muerto con Gistera de testigo | 2026-11-03 |
