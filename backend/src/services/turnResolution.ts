@@ -2094,7 +2094,13 @@ async function posicionDeSalidaHacia(locationId: string, coords: { x: number; y:
 /// Vista del combate de grupo para el panel (participantes con su condición real), y
 /// `pendingCombatNpcSlugs` sincronizado — extraída del turno para usarla también al abrir un
 /// combate de personas en grupo (CR-49).
-export async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminado: boolean) {
+export async function vistaCombateDeGrupo(
+  saveId: string,
+  encounterId: string,
+  terminado: boolean,
+  /// P401: marcas de la ronda recién jugada, para cuando la ronda nueva aún espera la cita (sin marcas propias).
+  marcasRondaJugada?: Map<string, 'duelo' | 'de-paso'>,
+) {
   const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId } });
   // CR-45: el capitán lleva la marca de a quién manda ir (tú o uno de tus compañeros).
   const marcaCapitan = terminado ? null : await marcaDelCapitan(prisma, saveId, encounterId);
@@ -2134,8 +2140,12 @@ export async function vistaCombateDeGrupo(saveId: string, encounterId: string, t
       return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
     }),
   );
-  const marcasEnfrentamiento = terminado ? new Map<string, 'duelo' | 'de-paso'>() : await marcasDeEnfrentamiento(prisma, saveId, encounterId);
+  const marcasVivas = terminado ? new Map<string, 'duelo' | 'de-paso'>() : await marcasDeEnfrentamiento(prisma, saveId, encounterId);
+  const marcasEnfrentamiento = terminado || marcasVivas.size > 0 || !marcasRondaJugada ? marcasVivas : marcasRondaJugada;
   const npcs = enemigosParaDisplay.map((p) => {
+    const condicion = p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO';
+    // Quien cayó o huyó en la ronda ya no es tu duelo ni te golpea.
+    const marca = p.huido || condicion === 'CONVALECIENTE' || condicion === 'MUERTO' ? undefined : marcasEnfrentamiento.get(p.id);
     const npcRow = npcRowById.get(p.npcId!)!;
     const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
     return {
@@ -2157,7 +2167,7 @@ export async function vistaCombateDeGrupo(saveId: string, encounterId: string, t
       ...(p.huido ? { huido: true } : {}),
       ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
       // P353/P356: con quién te enfrentas (tu duelo) y quién te golpea de paso.
-      ...(marcasEnfrentamiento.get(p.id) ? { frenteATi: marcasEnfrentamiento.get(p.id) } : {}),
+      ...(marca ? { frenteATi: marca } : {}),
     };
   });
   await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
@@ -4594,6 +4604,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let combatEncounterMode = false;
   let combatEncounterNarration = '';
   let combatEncounterTerminado = false;
+  // P401: las marcas «tu duelo»/«de paso» de la ronda que se acaba de jugar; al terminar el turno la ronda nueva ya
+  // espera la cita de la jugadora y `marcasDeEnfrentamiento` sale vacía, así que el panel usa estas.
+  let marcasRondaJugada = new Map<string, 'duelo' | 'de-paso'>();
   let combatEncounterCaidos: { tipo: string; npcId: string | null; nuevaCondicion: CondicionFisica }[] = [];
   let combatEncounterId: string | null = null;
   // Saqueo/desuello de CombatEncounter (2026-08-25, ver comentario completo más abajo, junto al
@@ -4669,6 +4682,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     }
     // P353/P356: con varios rivales, la ronda dice con quién se enfrenta de verdad y quién la golpea de paso.
     const textoEnfrentamiento = await textoEnfrentamientoRonda({ db: prisma, saveId, encounterId, eligio: eleccionPropiaDeLaJugadora });
+    marcasRondaJugada = await marcasDeEnfrentamiento(prisma, saveId, encounterId);
     if (textoEnfrentamiento) narraciones.push(textoEnfrentamiento);
 
     // Turnos autónomos pendientes de esta ronda (ahora ya con el enganche fijo) hasta que le toca
@@ -7070,7 +7084,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // nada todavía (petición explícita: solo se puede saquear/desollar al RESOLVERSE del todo, ver
   // `combatEncounterLootSummary` arriba). Este display es solo para el popup DURANTE el combate.
   const combateIniciado1v1 = combatEncounterMode
-    ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado)
+    ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado, marcasRondaJugada)
     : (await resolveCombatSlugsAndPersist({
         saveId,
         inicioTurno,

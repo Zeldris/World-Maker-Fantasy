@@ -9525,6 +9525,17 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     const otro = (narracion.split('; ')[1] ?? '').split(' te golpea de paso')[0]!;
     expect(otro).toMatch(/desconocid/);
     expect(otro).not.toMatch(/faerus/i);
+    // P401: el panel marca a la faerus como su duelo y al otro como «de paso», aunque al acabar el turno la ronda
+    // nueva ya espere su cita (entonces el enganche guardado es provisional y no daría marcas).
+    const { combateIniciado } = lastNdjsonLine(res.payload) as { combateIniciado: { npcs: { slug: string; condicionFisica: string; frenteATi?: string }[] } | null };
+    const enPie = (slug: string) => {
+      const n = combateIniciado?.npcs.find((x) => x.slug === slug);
+      return n && n.condicionFisica !== 'CONVALECIENTE' && n.condicionFisica !== 'MUERTO' ? n : null;
+    };
+    if (enPie('hulki') && enPie('ulkha-ketg')) {
+      expect(enPie('hulki')!.frenteATi).toBe('duelo');
+      expect(enPie('ulkha-ketg')!.frenteATi).toBe('de-paso');
+    }
   }, 60_000);
 
   // P353 (tanda 47): 1 contra 3 sin descubrir, con capitán (Ulkha Ketg). La cita de la ronda 1 a un rival que no la
