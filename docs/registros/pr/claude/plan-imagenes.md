@@ -73,6 +73,8 @@ Lo demás:
 **Blast Radius:** el generador de imágenes de la Deck (`image-generator/`) y las hojas del banco. Sin `PERFIL`,
 `generar.sh` se comporta como antes; la interfaz de `CFG-43` no cambia.
 
+Además, `IMG-4` (guía visual y plantilla) queda cerrada con el sí de la usuaria (2026-11-03), y `IMG-6` se rehace con la cadena fotorreal después de esta fusión.
+
 Quedan como leves pendientes:
 - `planos.sh` reutiliza armonías viejas tras un montaje nuevo;
 - en `probar.sh`, `RES` apunta a la imagen sin gradar; además corre `plantilla` dos veces, y un `FICHAS` relativo lo rompe;
