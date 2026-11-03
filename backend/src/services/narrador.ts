@@ -973,6 +973,22 @@ export function presentaNombreEnAccion(characterName: string, action: string): b
 
 const FORASTERO = 'el forastero';
 
+function marcarTu(texto: string, nombre: string): string {
+  return texto.replace(new RegExp(`(^|[^\\p{L}])(${escapar(nombre)})(?=$|[^\\p{L}])`, 'giu'), '$1$2 (tú)');
+}
+
+function escapar(texto: string): string {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/// P263 (ronda QA-289, 2026-11-03): Ulkha contesta «El mando sigue en manos de mi hermana, Ulkha Ketg… Yo, Ulkha Ketg,
+/// soy la que manda». Un posesivo a una o dos palabras de su propio nombre es hablar de sí como de otra persona;
+/// «mi nombre es Ulkha Ketg» no cuenta.
+export function hablaDeSiComoOtro(reply: string, nombre: string): boolean {
+  const m = new RegExp(`(^|[^\\p{L}])(mi|mis|su|sus|nuestra|nuestro|nuestras|nuestros)\\s+(?:[\\p{L}']+,?\\s+){0,2}${escapar(nombre)}(?=$|[^\\p{L}])`, 'iu').exec(reply);
+  return !!m && !/\b(nombre|llaman|llamo)\b/i.test(m[0]);
+}
+
 function sinNombreDelJugador(texto: string, characterName: string): string {
   return texto.replace(new RegExp(`(^|[^\\p{L}])${characterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^\\p{L}])`, 'giu'), `$1${FORASTERO}`);
 }
@@ -999,7 +1015,8 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
 
   // P266, espejo de P327: sin presentarse, el modelo no ve el nombre del jugador ni en los hechos ni en la acción.
   const conoce = npcConoceNombreDelJugador(ctx.characterName, ctx.action, ctx.sessionFacts);
-  const hechos = conoce ? ctx.sessionFacts : ctx.sessionFacts.map((h) => sinNombreDelJugador(h, ctx.characterName));
+  // P263: lo que los hechos dicen de este NPC lleva «(tú)», para que no hable de sí mismo como de otra persona.
+  const hechos = (conoce ? ctx.sessionFacts : ctx.sessionFacts.map((h) => sinNombreDelJugador(h, ctx.characterName))).map((h) => marcarTu(h, ctx.npc.name));
   const quien = conoce ? ctx.characterName : 'El forastero (no sabes cómo se llama: no le des ningún nombre)';
   const accion = conoce ? ctx.action : sinNombreDelJugador(ctx.action, ctx.characterName);
   // Fase 1 hacia main (P327): con el nombre oculto, el modelo no ve el real (no puede decir lo que no sabe).
@@ -1007,7 +1024,7 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
 Personalidad: ${sinNombreReal(ctx.npc.personality, ctx.npc)}
 Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNOMBRE OCULTO: ${conoce ? ctx.characterName : 'El forastero'} aún no sabe cómo te llamas (para él/ella eres «${ctx.npc.nombreVisible.toLowerCase()}»). No digas tu nombre propio ni te presentes con él en esta réplica.` : ''}
 
-LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más):
+LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más). Donde pone «(tú)» habla de ti: cuéntalo en primera persona («yo…»), nunca como si fuera otra persona:
 ${factsBlock(hechos)}
 
 ${quien} te acaba de decir: "${accion}"
@@ -1022,6 +1039,15 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   // no elimina el riesgo del todo (el modelo aún puede escribir dos frases dentro del mismo string),
   // pero sí quita la ambigüedad estructural de "generar más de una respuesta suelta" — combinado con
   // el guard de abajo, doble red de seguridad.
+  // P263: si la réplica habla de sí mismo como de otro («mi hermana, Ulkha Ketg»), un segundo intento; si repite, sin réplica.
+  for (let intento = 0; intento < 2; intento++) {
+    const reply = await pedirReplicaNpc(system, prompt);
+    if (reply === '' || !hablaDeSiComoOtro(reply, ctx.npc.name)) return reply;
+  }
+  return '';
+}
+
+async function pedirReplicaNpc(system: string, prompt: string): Promise<string> {
   const { text } = await ollamaGenerate({
     model: env.ollamaModelNarrador,
     system,

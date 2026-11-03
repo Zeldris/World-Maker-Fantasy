@@ -36,7 +36,7 @@ vi.mock('../lib/embeddings.js', () => ({
   toVectorLiteral: (vector: number[]) => `[${vector.join(',')}]`,
 }));
 
-const { loadSessionFacts, loadFactsKnownBy, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO } = await import('./worldFacts.js');
+const { loadSessionFacts, loadFactsKnownBy, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO, esParentescoConsigoMismo } = await import('./worldFacts.js');
 
 describe('loadSessionFacts', () => {
   beforeEach(() => findManySessionFact.mockReset());
@@ -198,5 +198,14 @@ describe('selectRelevantFacts', () => {
     queryRaw.mockResolvedValue([{ text: 'Gistera Koh se despidió y se marchó, no volverá a aparecer.' }, { text: 'hecho de relleno 2' }]);
     const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
     expect(result).not.toContain('Gistera Koh se despidió y se marchó, no volverá a aparecer.');
+  });
+});
+
+describe('esParentescoConsigoMismo (QA-289, P263)', () => {
+  it('descarta «X hermana de X» y deja los parentescos reales', () => {
+    expect(esParentescoConsigoMismo('Ulkha Ketg hermana de Ulkha Ketg.')).toBe(true);
+    expect(esParentescoConsigoMismo('Ulkha Ketg es la hija de Ulkha Ketg.')).toBe(true);
+    expect(esParentescoConsigoMismo('Torgash Ketg es hermano de Ulkha Ketg.')).toBe(false);
+    expect(esParentescoConsigoMismo('Ulkha Ketg habla con Gorhorn y luego Ulkha Ketg se marcha.')).toBe(false);
   });
 });

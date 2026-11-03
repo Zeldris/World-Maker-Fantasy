@@ -111,6 +111,22 @@ export async function loadSessionFacts(saveId: string): Promise<string[]> {
 ///
 /// `presencia` (QA-289, P266): quién lo presenció. `testigos` = los NPC en escena (por nombre); `publico` =
 /// suceso del mundo que sabe cualquiera. Sin nada, no lo sabe ningún NPC (lo vio solo el jugador).
+/// P263 (ronda QA-289, 2026-11-03): de una réplica mezclada se guardó «Ulkha Ketg hermana de Ulkha Ketg». Un hecho que
+/// hace a alguien pariente de sí mismo (mismo nombre propio de 2+ palabras a los dos lados) no se guarda.
+const PARENTESCO = /^(herman[oa]s?|hij[oa]s?|padre|madre|espos[oa]|prim[oa]|t[ií][oa]|sobrin[oa]|abuel[oa]|nieto|nieta|pareja|compañer[oa])$/i;
+export function esParentescoConsigoMismo(fact: string): boolean {
+  const nombre = /\p{Lu}[\p{L}']+(?:\s+\p{Lu}[\p{L}']+)+/gu;
+  const vistos = [...fact.matchAll(nombre)];
+  for (let i = 0; i < vistos.length; i++) {
+    for (let j = i + 1; j < vistos.length; j++) {
+      if (vistos[i]![0] !== vistos[j]![0]) continue;
+      const entre = fact.slice(vistos[i]!.index! + vistos[i]![0].length, vistos[j]!.index!);
+      if (entre.split(/[^\p{L}]+/u).some((w) => PARENTESCO.test(w))) return true;
+    }
+  }
+  return false;
+}
+
 export interface Presencia {
   testigos?: string[];
   publico?: boolean;
@@ -122,6 +138,7 @@ export async function appendSessionFacts(saveId: string, existing: string[], new
   const publico = presencia.publico ?? false;
   const seen = [...existing];
   for (const fact of newFacts) {
+    if (esParentescoConsigoMismo(fact)) continue;
     if (seen.some((f) => factSimilarity(f, fact) >= DUPLICATE_THRESHOLD)) continue;
     seen.push(fact);
     const vector = await embed(fact);

@@ -1351,3 +1351,25 @@ export function calibrationLineFor(npcs: NpcInScene[], playerLevel: number): str
     })
     .join(' ');
 }
+
+/// P410 (ronda QA-289, 2026-11-03): el narrador escribe «Ulka Ketg» por «Ulkha Ketg» con la ficha delante. Se corrige por
+/// código: un nombre de 2+ palabras, con mayúscula, misma cantidad de palabras y cada una a distancia ≤1 (las de 4+
+/// letras; las cortas, exactas). Solo nombres que el jugador ya conoce: corregir hacia uno oculto lo revelaría.
+export function corregirNombresCasi(texto: string, nombres: string[]): string {
+  const trozos = texto.split(/([^\p{L}']+)/u);
+  for (const nombre of new Set(nombres)) {
+    const partes = nombre.split(/\s+/);
+    if (partes.length < 2) continue;
+    for (let i = 0; i + 2 * (partes.length - 1) < trozos.length; i += 2) {
+      const palabras = partes.map((_, k) => trozos[i + 2 * k]!);
+      const casi = palabras.every((w, k) => {
+        const p = partes[k]!;
+        if (!/^\p{Lu}/u.test(w)) return false;
+        return p.length >= 4 ? levenshtein(w.toLowerCase(), p.toLowerCase()) <= 1 : w.toLowerCase() === p.toLowerCase();
+      });
+      const separadosPorEspacio = partes.slice(1).every((_, k) => /^\s+$/.test(trozos[i + 2 * k + 1]!));
+      if (casi && separadosPorEspacio && palabras.join(' ') !== nombre) partes.forEach((p, k) => { trozos[i + 2 * k] = p; });
+    }
+  }
+  return trozos.join('');
+}

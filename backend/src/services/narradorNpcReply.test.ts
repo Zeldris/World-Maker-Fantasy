@@ -6,7 +6,7 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerateStream: vi.fn(),
 }));
 
-const { generateNpcReply, npcConoceNombreDelJugador } = await import('./narrador.js');
+const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro } = await import('./narrador.js');
 
 describe('generateNpcReply (fase 1 hacia main, P327)', () => {
   beforeEach(() => {
@@ -59,5 +59,34 @@ describe('generateNpcReply y el nombre del jugador (QA-289 fila 2, P266)', () =>
     expect(npcConoceNombreDelJugador('Gorhorn', 'Me llamo Gorhorn', [])).toBe(true);
     expect(npcConoceNombreDelJugador('Gorhorn', 'Hola', ['Gorhorn se presenta ante la cazadora.'])).toBe(true);
     expect(npcConoceNombreDelJugador('Gorhorn', 'Soy Gorhornix', [])).toBe(false);
+  });
+});
+
+describe('generateNpcReply no habla de sí como de otra persona (QA-289, P263)', () => {
+  const npc = { name: 'Ulkha Ketg', role: "Terk'ikar del Clan Serhu", personality: '', bio: '' };
+  const mezclada = JSON.stringify({ reply: '«El mando sigue en manos de mi hermana, Ulkha Ketg.»' });
+  beforeEach(() => ollamaGenerate.mockReset());
+
+  it('los hechos sobre el NPC llevan «(tú)»', async () => {
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ reply: '«Mando yo.»' }) });
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién manda en el Clan Serhu?', sessionFacts: ['En Clan Serhu manda Ulkha Ketg.'] });
+    expect((ollamaGenerate.mock.calls[0]![0] as { prompt: string }).prompt).toContain('manda Ulkha Ketg (tú).');
+  });
+
+  it('si la réplica habla de sí como de otro, reintenta una vez; si repite, sin réplica', async () => {
+    ollamaGenerate.mockResolvedValueOnce({ text: mezclada }).mockResolvedValueOnce({ text: JSON.stringify({ reply: '«Mando yo.»' }) });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién manda?', sessionFacts: [] })).toBe('«Mando yo.»');
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: mezclada });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién manda?', sessionFacts: [] })).toBe('');
+    expect(ollamaGenerate).toHaveBeenCalledTimes(2);
+  });
+
+  it('hablaDeSiComoOtro: posesivo junto a su nombre sí; presentarse, no', () => {
+    expect(hablaDeSiComoOtro('«El mando sigue en manos de mi hermana, Ulkha Ketg.»', 'Ulkha Ketg')).toBe(true);
+    expect(hablaDeSiComoOtro('«Lo decide su jefa Ulkha Ketg.»', 'Ulkha Ketg')).toBe(true);
+    expect(hablaDeSiComoOtro('«Yo, Ulkha Ketg, soy la que manda.»', 'Ulkha Ketg')).toBe(false);
+    expect(hablaDeSiComoOtro('«Mi nombre es Ulkha Ketg.»', 'Ulkha Ketg')).toBe(false);
+    expect(hablaDeSiComoOtro('«Mi hermano Torgash Ketg guía la guerra.»', 'Ulkha Ketg')).toBe(false);
   });
 });

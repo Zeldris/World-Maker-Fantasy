@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -1241,5 +1241,18 @@ describe('elegirInterlocutor (QA-289, bench 17)', () => {
     expect(elegirInterlocutor("Le hablo a 'Orco Enfurecido' y a Ulkha", orco, [ulkha, orco])).toBe(orco);
     expect(elegirInterlocutor('Le pregunto qué hace aquí', null, [orco, ulkha])).toBe(orco);
     expect(elegirInterlocutor('Hola', null, [])).toBeNull();
+  });
+});
+
+describe('corregirNombresCasi (QA-289, P410)', () => {
+  it('corrige un nombre conocido escrito casi bien, y deja lo demás', () => {
+    expect(corregirNombresCasi('Ulka Ketg mira a Gorhorn. «Ulkha Ketg no se repite».', ['Ulkha Ketg'])).toBe('Ulkha Ketg mira a Gorhorn. «Ulkha Ketg no se repite».');
+    expect(corregirNombresCasi('Habla con Ulkha Ketg y Torgas Ketg.', ['Ulkha Ketg', 'Torgash Ketg'])).toBe('Habla con Ulkha Ketg y Torgash Ketg.');
+  });
+
+  it('no toca palabras en minúscula, nombres lejanos ni nombres de una palabra', () => {
+    expect(corregirNombresCasi('ulka ketg', ['Ulkha Ketg'])).toBe('ulka ketg');
+    expect(corregirNombresCasi('Ugrak Ketg', ['Ulkha Ketg'])).toBe('Ugrak Ketg');
+    expect(corregirNombresCasi('Gogorat ruge.', ['Gogorath'])).toBe('Gogorat ruge.');
   });
 });
