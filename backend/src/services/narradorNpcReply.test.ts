@@ -98,3 +98,29 @@ describe('abreConElNpc (QA-289, P412)', () => {
     expect(abreConElNpc('Gorhorn le tiende el odre. Ulkha Ketg sonríe.', 'Ulkha Ketg', 'Gorhorn')).toBe(false);
   });
 });
+
+describe('narrateAction tras repetir el turno anterior (QA-289, P414)', () => {
+  const anterior = 'Ulkha Ketg mira a Gorhorn con una expresión de sorpresa mientras él bebe del odre junto a la hoguera del paso.';
+  const ctx = {
+    worldFacts: [`TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${anterior}". Varía el vocabulario.`],
+    characterSummary: 'Gorhorn, orco del Clan Maktor.',
+    characterName: 'Gorhorn',
+    action: 'Le pregunto a Ulkha Ketg qué la trae al paso',
+    lastNarrationText: anterior,
+  };
+  beforeEach(() => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: anterior, newFacts: [] }) })
+      .mockResolvedValue({ text: JSON.stringify({ narration: 'Gorhorn deja el odre en la piedra y se vuelve hacia la cazadora con el ceño fruncido.', newFacts: [] }) });
+  });
+
+  it('el reintento va sin la narración anterior y no cae al respaldo', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    const res = await narrateAction(ctx as Parameters<typeof narrateAction>[0]);
+    expect(res.narration).toMatch(/^Gorhorn deja el odre/);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toContain('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+    expect(prompts[1]).not.toContain('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+  });
+});

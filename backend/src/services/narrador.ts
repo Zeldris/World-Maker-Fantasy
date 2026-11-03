@@ -364,6 +364,9 @@ interface ClassifyContext {
 const CTX_CRONISTA = 8192;
 
 const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+const RECHAZO_REPITE = 'repetir casi verbatim el turno anterior';
+const RECHAZO_REPITE_REPLICA = 'repetir una réplica citada del turno anterior';
+const REPETICION = new Set([RECHAZO_REPITE, RECHAZO_REPITE_REPLICA]);
 
 /// QA-289: la caché de prefijo de Ollama se cortaba al empezar los hechos de la escena, porque `contextBlocks` llega en
 /// orden de construcción y lo de este turno (intercambio, pistas, memoria, encuentro) va antes que lo de la zona. Lo que
@@ -1199,6 +1202,8 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   backgroundLoreBlock: string;
   /// Los hechos de la escena tal como van en `prompt` (sin la narración anterior), para que el intento 2 los recorte.
   hechosBlock: string;
+  /// El bloque «TU PROPIA NARRACIÓN DEL TURNO ANTERIOR», para quitarlo del reintento tras repetirla (P414).
+  narracionAnterior: string;
 } {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
@@ -1476,7 +1481,7 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['narration', 'newFacts'],
   };
 
-  return { prompt, format, backgroundLoreBlock, hechosBlock };
+  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior };
 }
 
 /// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce
@@ -1492,7 +1497,7 @@ export function allAttemptsRejectedForSameReason(reasons: string[], totalAttempt
 }
 
 export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
-  const { prompt, format, backgroundLoreBlock, hechosBlock } = buildNarrationPrompt(ctx);
+  const { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior } = buildNarrationPrompt(ctx);
 
   // Tres intentos en cascada. Visto en pruebas reales (2026-07-18): una acción concreta colgó
   // 4 de 4 veces con el modelo grande, incluso reduciendo hechos y relajando la regla de "no
@@ -1566,6 +1571,11 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   const retryPrompt = prompt
     .replace(hechosBlock, factsBlock(retryFacts))
     .replace(backgroundLoreBlock, '');
+  // P414 (bench 19, QA-289): con la narración anterior en el prompt, el modelo la copió en los 3 intentos y el turno cayó
+  // al respaldo. Tras un rechazo por repetirla, el reintento va sin ella; el guard sigue comparando con `lastNarrationText`.
+  const rejectionReasons: string[] = [];
+  const promptDeReintento = () =>
+    REPETICION.has(rejectionReasons[rejectionReasons.length - 1] ?? '') && narracionAnterior ? retryPrompt.replace(narracionAnterior, '') : retryPrompt;
 
   const attempt2 = () => {
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
@@ -1574,7 +1584,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     // sin dejarlo sin límite del todo.
     return ollamaGenerate({
       model: env.ollamaModelNarrador,
-      prompt: retryPrompt,
+      prompt: promptDeReintento(),
       format,
       maxTokens: 400,
       timeoutMs: 240_000,
@@ -1592,7 +1602,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   const attempt3 = () =>
     ollamaGenerate({
       model: env.ollamaModelCronista,
-      prompt: retryPrompt,
+      prompt: promptDeReintento(),
       format,
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
@@ -1611,7 +1621,6 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // de todos modos (`lastResult`), narrando la contaminación al jugador. Se registra la `reason`
   // de cada rechazo para poder distinguir ese caso de "tuvo éxito en el intento 2/3 tras un fallo
   // distinto cada vez" — solo cuando las 3 razones coinciden EXACTAMENTE se trata como no resuelto.
-  const rejectionReasons: string[] = [];
   const attempts = [attempt1, attempt2, attempt3];
   for (let idx = 0; idx < attempts.length; idx++) {
     try {
@@ -1641,8 +1650,8 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       const narrationAndFacts = [parsed.narration, ...parsed.newFacts].join(' ');
       const rejection = [
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
-        { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: 'repetir casi verbatim el turno anterior' },
-        { check: () => hasRepeatedDialogueLine(parsed.narration, ctx.lastNarrationText), reason: 'repetir una réplica citada del turno anterior' },
+        { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE },
+        { check: () => hasRepeatedDialogueLine(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE_REPLICA },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },
         { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
