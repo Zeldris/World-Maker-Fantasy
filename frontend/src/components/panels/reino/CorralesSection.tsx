@@ -18,6 +18,7 @@ const PASTOS: { slug: string; label: string }[] = [
 export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: string; inventory: InventoryItemInfo[]; onRefreshSave: () => Promise<void> }) {
   const [datos, setDatos] = useState<CorralesInfo | null>(null)
   const [busy, setBusy] = useState(false)
+  const [avisoOk, setAvisoOk] = useState<string | null>(null)
   const { fallo, informar, limpiar } = useErrorConReintento()
   const consulta = useModoConsulta()
 
@@ -35,8 +36,11 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
 
   async function accion(fn: () => Promise<unknown>, mensaje: string) {
     setBusy(true)
+    setAvisoOk(null)
     try {
-      await fn()
+      const r = await fn()
+      // P352: lo que cuenta el backend de lo ocurrido (el diario del Reino ya lo guarda él).
+      if (r && typeof r === 'object' && 'aviso' in r && typeof r.aviso === 'string') setAvisoOk(r.aviso)
       await Promise.all([cargar(), onRefreshSave()])
     } catch (e) {
       informar(mensaje, e)
@@ -52,6 +56,11 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
   return (
     <div className="flex flex-col gap-5">
       <ErrorBanner fallo={fallo} onCerrar={limpiar} />
+      {avisoOk && (
+        <p role="status" className="rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-3.5 py-2 text-xs text-emerald-200">
+          {avisoOk}
+        </p>
+      )}
       <PanelSection title="Forraje">
         <p className="text-xs text-wood-300">
           🌾 <span className="font-mono tabular-nums">{datos.forraje}</span> guardado · cabe <span className="font-mono tabular-nums">{datos.huecoForraje}</span> más
@@ -75,6 +84,27 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
           </div>
         )}
       </PanelSection>
+
+      {(datos.jaulas?.length ?? 0) > 0 && (
+        <PanelSection title="Jaulas">
+          <ul className="flex flex-col gap-1">
+            {datos.jaulas!.map((j) => (
+              <li key={j.id} className="flex items-center justify-between gap-2 text-xs text-wood-300">
+                <span>{j.name}{j.estado === 'DANADO' && <span className="text-2xs text-red-300"> · dañada</span>}</span>
+                <span className="text-2xs text-wood-400">
+                  {j.ocupante ? (
+                    <>
+                      Atado: <span className="text-accent-300">{j.ocupante.name}</span> · Felicidad <span className="font-mono tabular-nums">{j.ocupante.felicidad}</span>
+                    </>
+                  ) : (
+                    'Vacía'
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </PanelSection>
+      )}
 
       <PanelSection title="Corrales">
         {datos.corrales.length === 0 && <p className="text-xs text-wood-500">Aún no tienes corrales del Ganadero. Constrúyelos en Edificios y lleva allí los animales que domestiques.</p>}

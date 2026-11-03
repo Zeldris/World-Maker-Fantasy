@@ -148,6 +148,8 @@ export function VisionGeneralSection({
     }
   }
 
+  const danados = buildings.filter((b) => b.status === 'DANADO').length
+
   return (
     <div className="flex flex-col gap-5">
       {kingdomName ? (
@@ -173,6 +175,13 @@ export function VisionGeneralSection({
             )}
           </div>
         )
+      )}
+
+      {danados > 0 && (
+        // P350: antes solo se sabía yendo a Reino › Edificios o leyendo el Diario.
+        <p role="alert" className="rounded-lg border border-cost-600/50 bg-cost-600/10 px-3.5 py-2 text-xs text-cost-400">
+          ⚠️ {danados === 1 ? '1 edificio dañado' : `${danados} edificios dañados`}: no {danados === 1 ? 'cuenta' : 'cuentan'} hasta repararlo{danados === 1 ? '' : 's'} (Reino › Edificios).
+        </p>
       )}
 
       {kingdomStats && (

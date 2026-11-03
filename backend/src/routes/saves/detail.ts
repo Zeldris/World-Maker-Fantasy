@@ -14,7 +14,7 @@ import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
 import { toFrontendLogEntry } from './shared.js';
-import { fichaDeEdificioParaPanel } from '../../services/construction.js';
+import { edificiosParaCliente } from '../../services/edificiosParaCliente.js';
 import { comidaPct, aguaPct, avisoCarenciaPersonaje, carenciaPersonaje } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
 import { instanceNumbersByParticipantId } from '../../services/combateMultiple.js';
@@ -25,11 +25,10 @@ import { resolveActiveCombatAbilityNames } from '../../services/combatAbilities.
 import { sanitizeSkillBarAbilityNames, hasBaseSkillBar, defaultBaseSkillBarAbilities, SKILL_BAR_CATEGORIES, type SkillBarCategory } from '../../services/skillBars.js';
 import { especializacionesConHuecosPara, resumenMecanicoEspecializacion, clasesPermitidasParaRaza, CLASE_DESCRIPTION, especializacionAbilityUnlocksFor, savedActionDataFromAbility } from '../../services/classAbilities.js';
 import { NIVEL_MINIMO_ESPECIALIZACION } from './progression.js';
-import { marcaDelCapitan } from '../../services/combateMultipleOrquestacion.js';
+import { marcaDelCapitan, marcasDeEnfrentamiento } from '../../services/combateMultipleOrquestacion.js';
 import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js';
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
-import { costeDeReparar } from '../../services/asaltos.js';
 
 export async function detailRoutes(app: FastifyInstance) {
   /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
@@ -294,14 +293,18 @@ export async function detailRoutes(app: FastifyInstance) {
     const combatEnemigosParaDisplay = combatParticipantesReales.filter(
       (p) => p.tipo === 'NPC' && p.npcId && combatNpcRowById.has(p.npcId) && !p.dismissedGrupo,
     );
-    const combatInstanceNumberByParticipantId = instanceNumbersByParticipantId(
-      combatEnemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
-    );
-
     // CR-45: la marca del capitán también tras recargar.
     const marcaCapitan = activeCombatEncounter ? await marcaDelCapitan(prisma, save.id, activeCombatEncounter.id) : null;
+    const marcasEnfrentamiento = activeCombatEncounter ? await marcasDeEnfrentamiento(prisma, save.id, activeCombatEncounter.id) : new Map<string, 'duelo' | 'de-paso'>();
     // P327: en el combate, un PRINCIPAL aún desconocido sigue siendo «el orco desconocido».
     const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, save.id, [...combatEnemigoNpcRows, ...pendingCombatNpcsSinResolver]);
+    // P354: «#N» por el nombre que se muestra (el visible), igual que el turno y `resolverObjetivoPorTexto`.
+    const combatInstanceNumberByParticipantId = instanceNumbersByParticipantId(
+      combatEnemigosParaDisplay.map((p) => {
+        const row = combatNpcRowById.get(p.npcId!)!;
+        return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
+      }),
+    );
     const combateIniciado = activeCombatEncounter
       ? {
           npcs: combatEnemigosParaDisplay.map((p) => {
@@ -321,8 +324,12 @@ export async function detailRoutes(app: FastifyInstance) {
               activeEffects: parseActiveEffects(state?.activeEffects),
               participantId: p.id,
               instanceNumber: combatInstanceNumberByParticipantId.get(p.id) ?? null,
+              // P391: la marca de «Matar» vive en el participante (sobrevive a recargar).
+              ...(p.marcadoParaMatar ? { targetedForKill: true } : {}),
               ...(p.huido ? { huido: true } : {}),
               ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
+              // P353/P356: con quién te enfrentas (tu duelo) y quién te golpea de paso.
+              ...(marcasEnfrentamiento.get(p.id) ? { frenteATi: marcasEnfrentamiento.get(p.id) } : {}),
             };
           }),
         }
@@ -502,19 +509,7 @@ export async function detailRoutes(app: FastifyInstance) {
         control: t.control,
         population: t.population,
       })),
-      buildings: save.buildings.map((b) => fichaDeEdificioParaPanel({
-        id: b.id,
-        territoryId: b.territoryId,
-        locationId: b.locationId,
-        recipeKey: b.recipeKey,
-        tier: b.tier,
-        name: b.name,
-        kind: b.kind,
-        status: b.status,
-        caida: b.caida,
-        costeReparar: b.status === 'DANADO' || b.caida ? costeDeReparar(b.recipeKey, b.tier) : null,
-        description: b.description,
-      })),
+      buildings: await edificiosParaCliente(prisma, save.id, save.buildings),
       subjects: save.subjects.map((s) => ({
         id: s.id,
         territoryId: s.territoryId,

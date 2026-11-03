@@ -112,6 +112,7 @@ export function npcInSceneToCombatDisplay(npc: NpcInSceneInfo): CombatNpcDisplay
     // CR-44: quien huye queda resuelto (como quien se deja ir), sin nada que saquear.
     ...(npc.huido ? { huido: true, dismissed: true } : {}),
     ...(npc.ordenaCaerSobre ? { ordenaCaerSobre: npc.ordenaCaerSobre } : {}),
+    ...(npc.frenteATi ? { frenteATi: npc.frenteATi } : {}),
   }
 }
 

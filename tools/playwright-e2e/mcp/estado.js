@@ -74,7 +74,14 @@ async (page) => {
   // QA-76: los avisos se buscan elemento a elemento (párrafos y encabezados: «¡Victoria!» va en un h3).
   const parrafos = await page
     .locator('p, h1, h2, h3, h4, li')
-    .evaluateAll((els) => els.map((el) => Array.from(el.childNodes).map((n) => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim()));
+    .evaluateAll((els) =>
+      els.map((el) => {
+        // P409: los chips (`.chip-inline`) llevan la bio en un tooltip oculto; su texto no es parte del aviso.
+        const limpio = el.cloneNode(true);
+        limpio.querySelectorAll('.chip-tooltip').forEach((t) => t.remove());
+        return Array.from(limpio.childNodes).map((n) => n.textContent || '').join(' ').replace(/\s+/g, ' ').trim();
+      }),
+    );
   // P246: la tarjeta del encuentro sale en el diario y, con el mapa abierto, junto a la ficha (ZON-5): el mismo
   // aviso dos veces en pantalla no son dos avisos, así que se enseña una vez.
   // P320: «convaleciente» solo cuenta en frases cortas (un aviso, no una ficha): la nota de trasfondo de Gorhorn o la

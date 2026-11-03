@@ -120,6 +120,12 @@ function opcionesDeConstruccion(buildings: BuildingInfo[], recipesStatus: Recipe
 }
 
 /// Sub-tab "Edificios y Parcelas" del Reino (rediseño 2026-09-21) — extraído de `ReinoPanel.tsx`.
+/// P350: «Dañado por una tormenta el día 1522». Sin causa guardada (un daño antiguo): solo el día, o «Dañado».
+function textoDanio(danio: BuildingInfo['danio']): string {
+  if (!danio) return 'Dañado.'
+  return `Dañado${danio.causa ? ` por ${danio.causa}` : ''} el día ${danio.dia}.`
+}
+
 export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuild, bloqueoTurno, saveId, onRefreshSave }: EdificiosParcelasSectionProps) {
   // P302 — el cierre síncrono (ref) evita el doble clic antes de que React pinte el botón deshabilitado;
   // el estado lo deshabilita a la vista. Se suelta cuando termina la petición del turno.
@@ -254,6 +260,14 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
               {b.recipeKey === 'ayuntamiento' && b.tier && ` · Ayuntamiento ${AYUNTAMIENTO_TIER_LABEL[b.tier] ?? b.tier}`}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-wood-400">{b.description}</p>
+            {b.ocupante && (
+              <p className="mt-1 text-2xs text-accent-300">
+                Atado: {b.ocupante.name} · Felicidad <span className="font-mono tabular-nums">{b.ocupante.felicidad}</span>
+              </p>
+            )}
+            {b.status === 'DANADO' && (
+              <p className="mt-1 text-2xs text-cost-400">{textoDanio(b.danio)}</p>
+            )}
             {b.status === 'DANADO' && saveId && (
               <div className="mt-1.5 flex items-center gap-2 text-2xs">
                 <button

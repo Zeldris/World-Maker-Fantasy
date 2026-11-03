@@ -11,6 +11,7 @@ import { applyFactionRepDeltaForResolution } from '../../services/turnResolution
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
+import { objetivosValidos } from '../../services/combateMultiple.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -282,7 +283,22 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (rejectIfPendingDeath(save, reply)) return;
 
     const pendingSlugs = (save.pendingCombatNpcSlugs as string[] | null) ?? [];
-    if (pendingSlugs.length === 0) {
+    // P357: el combate de varios (CombatEncounter) puede o no escribir `pendingCombatNpcSlugs`
+    // (`vistaCombateDeGrupo` lo deja con los slugs de los ENEMIGO al abrirlo desde el turno y tras cada
+    // turno de grupo), así que el encuentro EN_CURSO jugable se busca siempre, con o sin slugs; el
+    // turno siguiente lo recupera igual (`activeCombatEncounter`). Sus rivales salen de los
+    // participantes ENEMIGO.
+    const encuentro = await prisma.combatEncounter.findFirst({
+      where: { saveId: save.id, estado: 'EN_CURSO', jugable: true },
+      select: {
+        id: true,
+        participantes: {
+          where: { bando: 'ENEMIGO', tipo: 'NPC', npcId: { not: null }, huido: false },
+          select: { npcId: true, npcScope: true, condicionFisicaGrupo: true },
+        },
+      },
+    });
+    if (pendingSlugs.length === 0 && !encuentro) {
       return reply.status(404).send({ error: 'No hay ningún combate en curso del que huir' });
     }
     if (save.condicionFisica === 'CONVALECIENTE' || save.condicionFisica === 'MUERTO') {
@@ -292,7 +308,26 @@ export async function sessionRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'No puedes intentar huir estando convaleciente — resuelve tu propia condición primero.' });
     }
 
-    const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } } });
+    let npcs: { level: number }[];
+    if (encuentro) {
+      // Solo cuentan los rivales que siguen en pie (como `bandoSigueEnCombate`): sin huidos, sin
+      // invocaciones (tipo INVOCACION, fuera del filtro de arriba) y sin convalecientes ni muertos.
+      // Un miembro de grupo lleva su condición en el participante; un solitario, en su `NpcState`.
+      const solitarios = encuentro.participantes.filter((p) => p.condicionFisicaGrupo === null);
+      const estados = solitarios.length
+        ? await prisma.npcState.findMany({
+            where: { saveId: save.id, npcId: { in: solitarios.map((p) => p.npcId!) } },
+            select: { npcId: true, scope: true, condicionFisica: true },
+          })
+        : [];
+      const enPie = encuentro.participantes.filter((p) => {
+        const condicion = p.condicionFisicaGrupo ?? estados.find((e) => e.npcId === p.npcId && e.scope === p.npcScope)?.condicionFisica ?? 'ILESO';
+        return objetivosValidos([{ participantId: p.npcId!, condicionFisica: condicion }]).length > 0;
+      });
+      npcs = await prisma.npc.findMany({ where: { id: { in: enPie.map((p) => p.npcId!) } }, select: { level: true } });
+    } else {
+      npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, slug: { in: pendingSlugs } }, select: { level: true } });
+    }
     const maxNpcLevel = npcs.reduce((max, n) => Math.max(max, n.level), 1);
     const roll = tiradaDeHuida(save, save.inventoryItems, maxNpcLevel);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
@@ -329,6 +364,13 @@ export async function sessionRoutes(app: FastifyInstance) {
       const freshSlugs = locked.pendingCombatNpcSlugs ?? [];
       const mismoSet = freshSlugs.length === pendingSlugs.length && freshSlugs.every((s) => pendingSlugs.includes(s));
       if (!mismoSet) return { kind: 'cambiado' as const };
+      // P357/P355: el encuentro tiene que seguir EN_CURSO (un turno en paralelo pudo cerrarlo); si escapa,
+      // queda RESUELTO, y sus rivales dejan de contar como presentes (`enCombateConDelTurno`).
+      if (encuentro) {
+        const sigue = await tx.combatEncounter.count({ where: { id: encuentro.id, estado: 'EN_CURSO' } });
+        if (!sigue) return { kind: 'cambiado' as const };
+        if (roll.success) await tx.combatEncounter.update({ where: { id: encuentro.id }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+      }
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
@@ -361,7 +403,9 @@ export async function sessionRoutes(app: FastifyInstance) {
   // CLEMENTE reaparecía de cero y el composer volvía a bloquearse hasta pulsar Matar otra vez. Solo
   // camino 1v1 clásico (`NpcState`) por ahora — combate múltiple (`CombatParticipant`) usa un
   // sistema de condición paralelo (`condicionFisicaGrupo`) que queda fuera de esta pieza.
-  app.post<{ Params: { id: string; npcSlug: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
+  // P391 (2026-11-03): con `participantId` (combate múltiple), la marca va al participante (`marcadoParaMatar`) y su
+  // siguiente turno lo remata con tirada (`resolverTurnoJugador`). Antes solo se marcaba en React y nada lo mataba.
+  app.post<{ Params: { id: string; npcSlug: string }; Body: { participantId?: string } }>('/saves/:id/combat/matar/:npcSlug', async (request, reply) => {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { id: true, worldId: true, currentLocationId: true, endedAt: true, pendingDeathResolution: true } });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (rejectIfEnded(save, reply)) return;
@@ -373,6 +417,23 @@ export async function sessionRoutes(app: FastifyInstance) {
 
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
     if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+
+    const participantId = request.body?.participantId;
+    if (participantId) {
+      const participant = await prisma.combatParticipant.findUnique({ where: { id: participantId }, include: { encounter: { select: { saveId: true, estado: true } } } });
+      if (!participant || participant.npcId !== npc.id || participant.encounter.saveId !== save.id || participant.encounter.estado === 'RESUELTO') {
+        return reply.status(404).send({ error: 'Ese combatiente no existe en este combate.' });
+      }
+      const condicionReal =
+        participant.condicionFisicaGrupo ??
+        (await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope: participant.npcScope } } }))?.condicionFisica ??
+        'ILESO';
+      if (condicionReal !== 'CONVALECIENTE') {
+        return reply.status(400).send({ error: 'Solo puedes marcar para matar a un enemigo CONVALECIENTE.' });
+      }
+      if (!participant.marcadoParaMatar) await prisma.combatParticipant.update({ where: { id: participant.id }, data: { marcadoParaMatar: true } });
+      return reply.status(204).send();
+    }
 
     const scope = scopeFor(npc.kind, save.currentLocationId);
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId: save.id, npcId: npc.id, scope } } });

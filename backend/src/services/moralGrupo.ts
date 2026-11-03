@@ -86,7 +86,20 @@ export async function revisarMoralDelCombate(
   if (forma === 'ORDENADA' || enPie.length === 1) {
     const moral = tirarMoral(lider.attributes ?? ({} as AttributeBlock), desventaja, random);
     if (moral.aguanta) {
-      resultado.textos.push(`${nombre(lider)} sostiene a los suyos: siguen peleando.`);
+      // P399: cada motivo dice el suyo; si no, dos turnos seguidos dejaban la misma línea.
+      const motivo = capitanCaido
+        ? `${nombre(lider)} toma el mando y sostiene a los suyos`
+        : aLaMitad
+          ? `Con la mitad de los suyos fuera de combate, ${nombre(lider)} los sostiene`
+          : (() => {
+              // P402: si quien sostiene es uno de los malheridos, no se le nombra dos veces.
+              const elMismo = recienGraves.some((m) => m.participantId === lider.participantId);
+              const graves = [...new Set(recienGraves.filter((m) => m.participantId !== lider.participantId).map(nombre))];
+              if (graves.length === 0) return `Aun malherido, ${nombre(lider)} sostiene a los suyos`;
+              const conGraves = `Con ${graves.join(' y ')} ${graves.length > 1 ? 'malheridos' : 'malherido'}`;
+              return elMismo ? `${conGraves}, ${nombre(lider)}, también herido, sostiene a los suyos` : `${conGraves}, ${nombre(lider)} sostiene a los suyos`;
+            })();
+      resultado.textos.push(`${motivo}: siguen peleando.`);
     } else if (escapan(lider)) {
       quienesHuyen.push(...enPie);
       resultado.textos.push(enPie.length > 1 ? `${nombre(lider)} ordena la retirada: los suyos se repliegan y escapan.` : `${nombre(lider)} pierde el valor y escapa del combate.`);

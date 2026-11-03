@@ -21,7 +21,7 @@
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
-import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora } from './intercambiosContraJugadora.js';
+import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora, type GolpeGratisContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
 import { cupoDeCamas } from './cronista/subditos.js';
 import { env } from '../config/env.js';
@@ -45,7 +45,7 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -55,7 +55,7 @@ import { energiaMaxFor, energiaPasivaEntre, nextEnergia } from './energy.js';
 import { WEAPON_ABILITY_LEVEL_AVANZADA, dualWieldAdjustedDifficulty, weaponCategoryForRealAbilityName, type EquippedWeaponSlot } from './weaponAbilities.js';
 import { syncDynamicCombatAbilities } from './dynamicAbilities.js';
 import { CRAFTING_RECIPES, objetoFabricado, detectsCraftIntent, canCraft, craftRequisitoShortfalls, bebeDeLaFuente, soloBebeDeLaFuente, planCraftConsumption, hasToolForOficio, OFICIOS_CON_HERRAMIENTA_REQUERIDA } from './crafting.js';
-import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, fichaDeEdificioParaPanel, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
+import { detectsBuildIntent, checkRecipe, planRecipeConsumption, baseNameOf, quantityOf, CONSTRUCTION_RECIPES, computeBuildBlockedReason, buildingTierFor, mejorarEnSitio, type ConstructionRecipe, type RecipeCheck } from './construction.js';
 import { shortfallLabel } from './requisitos.js';
 import { inventorySummaryFor, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { abilityUnlocksAlSubirANivel, savedActionDataFromAbility } from './classAbilities.js';
@@ -74,6 +74,7 @@ import { detectsSearchIntent } from './discovery.js';
 import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
 import { nextCondicionFisica, resolveDeathOutcome, whisperText, isValidRestLocationKind, isCondicionDowngrade, nextCondicionForAttack, saludForCondicion, saludBandFor, healCeilingFor, applySequentialHeals, npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js';
 import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct, COMIDA_MINUTOS_POR_TRAMO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
+import { edificiosParaCliente } from './edificiosParaCliente.js';
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momentoDelDiaFor, type EntornoTemporal } from './worldClock.js';
@@ -86,9 +87,9 @@ import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
 import { nombrarOferta } from './ofertaNombre.js';
 import { narradorPuedeCerrar } from './startingQuests.js';
-import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
+import { abrirTurnoJugadora, resolverTurnoJugador, resolverTurnosAutonomosHastaJugadora, fijarEleccionRondaJugador, marcaDelCapitan, marcasDeEnfrentamiento, textoEnfrentamientoRonda, type AccionJugadorCombate } from './combateMultipleOrquestacion.js';
 import { invalidateCarcassRollCache } from '../routes/saves/recolectar.js';
-import { instanceNumbersByParticipantId, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
+import { instanceNumbersByParticipantId, resolverCitaPorTexto, resolverObjetivoPorTexto, type HabilidadParaIntercambio } from './combateMultiple.js';
 import { prisma } from '../lib/prisma.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { aplicarHuidaNpc, decidirHuidaPorHabilidad, decidirMoralTrasIntercambio, textoTiradaHuida } from './huidaNpc.js';
@@ -2093,7 +2094,13 @@ async function posicionDeSalidaHacia(locationId: string, coords: { x: number; y:
 /// Vista del combate de grupo para el panel (participantes con su condición real), y
 /// `pendingCombatNpcSlugs` sincronizado — extraída del turno para usarla también al abrir un
 /// combate de personas en grupo (CR-49).
-async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminado: boolean) {
+export async function vistaCombateDeGrupo(
+  saveId: string,
+  encounterId: string,
+  terminado: boolean,
+  /// P401: marcas de la ronda recién jugada, para cuando la ronda nueva aún espera la cita (sin marcas propias).
+  marcasRondaJugada?: Map<string, 'duelo' | 'de-paso'>,
+) {
   const participantesFinal = await prisma.combatParticipant.findMany({ where: { encounterId } });
   // CR-45: el capitán lleva la marca de a quién manda ir (tú o uno de tus compañeros).
   const marcaCapitan = terminado ? null : await marcaDelCapitan(prisma, saveId, encounterId);
@@ -2127,9 +2134,18 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
   // que el backend interpreta al citarlo — null para un enemigo solitario (ver comentario de
   // `NpcInSceneInfo.instanceNumber`, types.ts, frontend).
   const instanceNumberByParticipantIdDisplay = instanceNumbersByParticipantId(
-    enemigosParaDisplay.map((p) => ({ participantId: p.id, npcId: p.npcId! })),
+    // P354: por el nombre que se muestra (el visible), igual que `resolverObjetivoPorTexto`.
+    enemigosParaDisplay.map((p) => {
+      const row = npcRowById.get(p.npcId!)!;
+      return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
+    }),
   );
+  const marcasVivas = terminado ? new Map<string, 'duelo' | 'de-paso'>() : await marcasDeEnfrentamiento(prisma, saveId, encounterId);
+  const marcasEnfrentamiento = terminado || marcasVivas.size > 0 || !marcasRondaJugada ? marcasVivas : marcasRondaJugada;
   const npcs = enemigosParaDisplay.map((p) => {
+    const condicion = p.condicionFisicaGrupo ?? soloCondicionByNpcId.get(p.npcId!) ?? 'ILESO';
+    // Quien cayó o huyó en la ronda ya no es tu duelo ni te golpea.
+    const marca = p.huido || condicion === 'CONVALECIENTE' || condicion === 'MUERTO' ? undefined : marcasEnfrentamiento.get(p.id);
     const npcRow = npcRowById.get(p.npcId!)!;
     const numeroInstancia = instanceNumberByParticipantIdDisplay.get(p.id) ?? null;
     return {
@@ -2147,9 +2163,13 @@ async function vistaCombateDeGrupo(saveId: string, encounterId: string, terminad
       activeEffects: [] as ActiveEffect[],
       participantId: p.id,
       instanceNumber: numeroInstancia,
+      // P391: la marca de «Matar» vive en el participante (sobrevive a recargar).
+      ...(p.marcadoParaMatar ? { targetedForKill: true } : {}),
       // CR-44 (44c): escapó; el panel lo da por resuelto.
       ...(p.huido ? { huido: true } : {}),
       ...(marcaCapitan && p.id === marcaCapitan.capitanId ? { ordenaCaerSobre: marcaCapitan.ordenaCaerSobre } : {}),
+      // P353/P356: con quién te enfrentas (tu duelo) y quién te golpea de paso.
+      ...(marca ? { frenteATi: marca } : {}),
     };
   });
   await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
@@ -2729,7 +2749,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // turno de llegada al DESTINO abría/mantenía un combate fantasma contra un enemigo que ya
     // había quedado atrás, físicamente en otra ubicación. `regionLocationId` (arriba) ya calcula
     // el destino real cuando hay `travel` — reutilizarlo aquí en vez del origen crudo.
-    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId: regionLocationId, fictionalMinutes: fictionalMinutesActuales }),
+    // P353: el rival del combate en curso está en escena aunque el texto no lo nombre (como en turn.ts, P344). Se encadena
+    // con `.then` (no con `await` dentro del array): un `await` aquí frenaría el arranque de las demás promesas del `Promise.all`.
+    npcsInScenePrecomputed ? Promise.resolve(npcsInScenePrecomputed) : enCombateConDelTurno({ saveId, enCombate, pendingCombatNpcSlugs: pendingCombatNpcSlugs ?? [], pendingNpcAttackNpcId: pendingNpcAttack?.npcId ?? null }).then((enCombateCon) => detectNpcsInScene({
+          action,
+          worldId,
+          sessionFacts,
+          saveId,
+          currentLocationId: regionLocationId,
+          fictionalMinutes: fictionalMinutesActuales,
+          enCombateCon,
+        })),
     travel ? Promise.resolve(null) : detectHarvest({ action, worldId, saveId, currentLocationId }),
     // Distingue fauna (animales, sin habla) de NPCs de verdad dentro de `npcsInScene` — ambos
     // comparten la misma tabla Npc/detección por alias (ver comentario del bloque de diálogo más
@@ -3201,7 +3231,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let combatExchangeDisplayFinal: CombatExchangeDisplay | null = combatExchangeDisplay;
   // P55 (QA-27): ataques contra la jugadora que no caben en `combatExchangeDisplayFinal`.
   let intercambiosContraJugadoraExtra: IntercambioContraJugadora[] = [];
-  const golpesSinTiradaContraJugadora: { atacanteNombre: string; nuevaCondicion: CondicionFisica }[] = [];
+  // P395: líneas de sistema que el combate de grupo escribe mientras se resuelve (la orden del capitán de la ronda
+  // nueva, la moral): van tras la narración del turno, que se guarda después; si no, la orden salía encima de los
+  // golpes de la ronda anterior y parecía mandarlos.
+  // P397: cada una con cuántas líneas de sistema había antes de ella, para dejarla en el límite de su ronda entre
+  // los ataques que recibe la jugadora, y en la respuesta del turno (si no, no se veía hasta recargar).
+  let lineasDiarioDelCombate: { id: string; text: string; combate: boolean; orden: number }[] = [];
+  const golpesSinTiradaContraJugadora: GolpeGratisContraJugadora[] = [];
   const intercambiosExtra: LineaDelTurno[] = [];
 
   // CR-44 (44b): moral del NPC golpeado en el 1v1. Si huye, el combate con él termina; si la moral
@@ -4570,6 +4606,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   let combatEncounterMode = false;
   let combatEncounterNarration = '';
   let combatEncounterTerminado = false;
+  // P401: las marcas «tu duelo»/«de paso» de la ronda que se acaba de jugar; al terminar el turno la ronda nueva ya
+  // espera la cita de la jugadora y `marcasDeEnfrentamiento` sale vacía, así que el panel usa estas.
+  let marcasRondaJugada = new Map<string, 'duelo' | 'de-paso'>();
   let combatEncounterCaidos: { tipo: string; npcId: string | null; nuevaCondicion: CondicionFisica }[] = [];
   let combatEncounterId: string | null = null;
   // Saqueo/desuello de CombatEncounter (2026-08-25, ver comentario completo más abajo, junto al
@@ -4590,6 +4629,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const encounterId = activeCombatEncounter.id;
     combatEncounterId = encounterId;
     const narraciones: string[] = [];
+    const inicioDiarioDelCombate = new Date();
+    const lineasSistemaAlEmpezar = await prisma.logEntry.count({ where: { saveId, channel: 'CHARACTER', isSystemMessage: true } });
 
     // Objetivo individual real (2026-08-26, docs/producto/21-roadmap.md § Fase 3) — si la RONDA actual
     // todavía no sabe a quién quiere atacar la jugadora, hay que decidirlo YA, antes de resolver
@@ -4599,14 +4640,18 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // dejaría un golpe real sin poder deshacerlo. Ver comentario largo de
     // `esperandoEleccionJugadora` en schema.prisma.
     const encounterFresco = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encounterId } });
+    let eleccionPropiaDeLaJugadora = false;
     if (encounterFresco.esperandoEleccionJugadora) {
       // Mismo criterio de siempre: nombre citado entre comillas contra los ENEMIGO vivos; sin cita
       // real o sin match, cae al primer enemigo vivo (nunca se queda sin elegir).
       const participantesVivos = await prisma.combatParticipant.findMany({ where: { encounterId } });
       const enemigos = participantesVivos.filter((p) => p.bando === 'ENEMIGO');
       const enemigoNpcIds = enemigos.filter((p) => p.npcId).map((p) => p.npcId!);
-      const enemigoNpcs = enemigoNpcIds.length ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, name: true } }) : [];
+      const enemigoNpcs = enemigoNpcIds.length ? await prisma.npc.findMany({ where: { id: { in: enemigoNpcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true } }) : [];
       const nombreByNpcId = new Map(enemigoNpcs.map((n) => [n.id, n.name]));
+      // P353: el panel cita el nombre que la jugadora ve («Faerus desconocida»), no el real.
+      const nombreVisiblePorSlug = await nombresVisiblesDeNpcs(prisma, saveId, enemigoNpcs);
+      const nombreVisibleByNpcId = new Map(enemigoNpcs.map((n) => [n.id, nombreVisiblePorSlug.get(n.slug) ?? n.name]));
       // Bug real (2026-08-25, cazado al cerrar saqueo/desuello): un grupo puede tener varios
       // individuos con el MISMO nombre citado, algunos ya CONVALECIENTE/MUERTO — sin este filtro,
       // `.find()` podía emparejar el primero del array (orden de creación, no de vida), dejando a
@@ -4630,11 +4675,17 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           return condicion !== 'CONVALECIENTE' && condicion !== 'MUERTO';
         })(),
       }));
-      const targetParticipantId = resolverObjetivoPorTexto(action, candidatos, nombreByNpcId, normalizeText);
+      const targetParticipantId = resolverObjetivoPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId);
       if (targetParticipantId) {
-        await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId });
+        // P353 (regla B): en 1 contra varios solo una cita real gana el duelo; el primer vivo por defecto no.
+        const citaValida = resolverCitaPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId) !== undefined;
+        eleccionPropiaDeLaJugadora = (await fijarEleccionRondaJugador({ prisma, worldId, saveId, encounterId, jugadoraTargetId: targetParticipantId, citaValida })).dueloPorSuEleccion;
       }
     }
+    // P353/P356: con varios rivales, la ronda dice con quién se enfrenta de verdad y quién la golpea de paso.
+    const textoEnfrentamiento = await textoEnfrentamientoRonda({ db: prisma, saveId, encounterId, eligio: eleccionPropiaDeLaJugadora });
+    marcasRondaJugada = await marcasDeEnfrentamiento(prisma, saveId, encounterId);
+    if (textoEnfrentamiento) narraciones.push(textoEnfrentamiento);
 
     // Turnos autónomos pendientes de esta ronda (ahora ya con el enganche fijo) hasta que le toca
     // a la jugadora — cubre también el caso defensivo de un reinicio de backend a media ronda.
@@ -4737,6 +4788,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const saveTrasEncuentro = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { condicionFisica: true, energia: true } });
     combatEncounterFinalCondicion = saveTrasEncuentro.condicionFisica;
     combatEncounterFinalEnergia = saveTrasEncuentro.energia;
+    lineasDiarioDelCombate = (
+      await prisma.logEntry.findMany({
+        where: { saveId, channel: 'CHARACTER', isSystemMessage: true, createdAt: { gte: inicioDiarioDelCombate } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, text: true, combate: true },
+      })
+    ).map((e, i) => ({ ...e, orden: lineasSistemaAlEmpezar + i + 1 }));
   }
 
   // Turno narrado de verdad por el LLM local (2026-08-11, captura en vivo de pares DPO) — las 7
@@ -6617,7 +6675,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       intercambiosAparte: intercambiosContraJugadoraExtra,
       golpesGratis: golpesSinTiradaContraJugadora,
     });
+    // P395/P397: las líneas de sistema del combate (la orden del capitán de cada ronda nueva, la moral) van tras la
+    // narración, cada una antes del primer ataque de su ronda, con la hora del turno y también en la respuesta.
+    const lineasDelCombatePendientes = [...lineasDiarioDelCombate];
+    const volcarLineasDelCombate = async (hasta: number) => {
+      while (lineasDelCombatePendientes[0] && lineasDelCombatePendientes[0].orden <= hasta) {
+        const sistema = lineasDelCombatePendientes.shift()!;
+        await tx.logEntry.update({ where: { id: sistema.id }, data: { createdAt: nextAfterMainLogCreatedAt(), fictionalMinutes: nuevoFictionalMinutes, timeLabel: nuevaFictionalDateLabel } });
+        intercambiosExtra.push({ logEntryId: sistema.id, text: sistema.text, combate: sistema.combate });
+      }
+    };
     for (const linea of lineas) {
+      if ((linea.tipo === 'intercambio' || linea.tipo === 'golpeGratis') && linea.lineasSistemaAntes !== undefined) await volcarLineasDelCombate(linea.lineasSistemaAntes);
+      if (linea.tipo === 'brujula') await volcarLineasDelCombate(Number.POSITIVE_INFINITY); // la brújula, siempre al final
       const { combate, combatExchange } = marcasDeLinea(linea);
       const entrada = await tx.logEntry.create({
         data: {
@@ -6633,6 +6703,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       });
       intercambiosExtra.push({ logEntryId: entrada.id, text: linea.texto, combate, ...(combatExchange ? { combatExchange } : {}), ...(linea.tipo === 'subidaDeNivel' ? { esSubidaDeNivel: true } : {}) });
     }
+    await volcarLineasDelCombate(Number.POSITIVE_INFINITY);
 
     // Condición física, descanso y muerte (docs/14 § 1, § 4) — en este orden: primero se fija
     // si esta acción cuenta como descanso válido, luego se resuelve la transición de condición
@@ -7015,7 +7086,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // nada todavía (petición explícita: solo se puede saquear/desollar al RESOLVERSE del todo, ver
   // `combatEncounterLootSummary` arriba). Este display es solo para el popup DURANTE el combate.
   const combateIniciado1v1 = combatEncounterMode
-    ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado)
+    ? await vistaCombateDeGrupo(saveId, combatEncounterId!, combatEncounterTerminado, marcasRondaJugada)
     : (await resolveCombatSlugsAndPersist({
         saveId,
         inicioTurno,
@@ -7365,17 +7436,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     control: t.control,
     population: t.population,
   }));
-  const buildings = buildingRows.map((b) => fichaDeEdificioParaPanel({
-    id: b.id,
-    territoryId: b.territoryId,
-    locationId: b.locationId,
-    recipeKey: b.recipeKey,
-    tier: b.tier,
-    name: b.name,
-    kind: b.kind,
-    status: b.status,
-    description: b.description,
-  }));
+  const buildings = await edificiosParaCliente(prisma, saveId, buildingRows);
   const subjects = subjectRows.map((s) => ({ id: s.id, territoryId: s.territoryId, name: s.name, role: s.role, notes: s.notes }));
   const kingdomStats = kingdomStatsRow ? kingdomStatsParaCliente(kingdomStatsRow) : null;
 

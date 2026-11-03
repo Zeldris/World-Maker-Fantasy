@@ -256,6 +256,13 @@ describe('LogPanel — tarjeta de convaleciente en combate', () => {
     )
     expect((getByRole('button', { name: 'Matar' }) as HTMLButtonElement).disabled).toBe(true)
   })
+
+  // P398 (tanda 75, 2026-11-03): con «Derrota · Has caído en combate» no se ofrece decidir sobre el rival.
+  it('con el personaje caído en el combate no sale la tarjeta', () => {
+    const { queryByRole } = render(<LogPanel {...baseProps} combatNpcsDisplay={orco} bloqueoCombate={null} jugadoraCaida />)
+    expect(queryByRole('button', { name: 'Matar' })).toBeNull()
+    expect(queryByRole('button', { name: 'Clemente' })).toBeNull()
+  })
 })
 
 /// P306/P307 (usuaria, 2026-10-26): la tarjeta de capítulo completado explica que se cierra uno cada 15 acciones.
