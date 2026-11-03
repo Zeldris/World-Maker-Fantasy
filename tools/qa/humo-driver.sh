@@ -1,19 +1,20 @@
 #!/bin/bash
 # QA-291: humo del driver con el juego y el navegador de verdad. Los tests de escenario.sh usan un driver falso y los de
-# mcp/estado.js, una página fija: P400 (el driver no recargaba tras `cargar`), P407 (ni tras `preparar`) y P409 (estado.js
-# leía el texto de los tooltips de los chips) se vieron jugando. Aquí: `cargar` un escenario pequeño, la página del driver
+# mcp/estado.js, una página fija: P400 (el driver no recargaba tras `cargar`) y P407 (ni tras `preparar`) se vieron
+# jugando. Aquí: `cargar` un escenario pequeño, la página del driver
 # abierta en la partida enseña lo cargado (estado.js: HUD con «Gorhorn» y «Nivel 1»), `preparar nivel:3` y la página
 # enseña «Nivel 3» (recarga de `preparar`), y un segundo `cargar` la devuelve a «Nivel 1» (recarga de `cargar`: sin ella
 # se queda en el «Nivel 3» de antes).
 # Uso: bash tools/qa/humo-driver.sh      (lo corre la CI tras «Escenarios de pruebas»)
 # Sin Postgres, Playwright o Chromium: en local sale 0 con «OMITIDO: …»; en la CI (CI=true) es un fallo.
-# En local se niega si el juego ya está en marcha (`cargar` lo pararía en plena ronda): HUMO_FORZAR=1 lo salta.
+# En local solo corre con HUMO_FORZAR=1: `cargar` borra la base de juego (una ronda sin guardar se pierde) y el driver
+# del humo reescribe driver.token mientras dura (el de 9333 no responde hasta que acaba).
 # Usa su propio driver (puerto 9399) y, al acabar, lo para junto al juego y restaura driver.token.
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
 . tools/qa/deck/_path.sh
 ESCENARIO=hondonada-inicio
-PARTIDA=cmvex1v0300057d0pdjlbezcj   # la de su fila en tools/qa/escenarios/README.md
+PARTIDA="$(sed -n "s/^| \`$ESCENARIO\` | \`\([^\`]*\)\`.*/\1/p" tools/qa/escenarios/README.md)"   # la de su fila del índice
 export DRIVER_PORT="${HUMO_DRIVER_PORT:-9399}"
 TOKEN=tools/playwright-e2e/driver.token
 
@@ -26,8 +27,9 @@ fallar() { echo "FALLO: $1" >&2; echo "--- estado de la página:" >&2; estado >&
 command -v psql >/dev/null && psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atqc 'select 1' >/dev/null 2>&1 || omitir "sin Postgres local (tarkor:tarkor@localhost:5432)"
 [ -d tools/playwright-e2e/node_modules/playwright ] || omitir "sin Playwright (cd tools/playwright-e2e && npm ci)"
 [ -d backend/node_modules ] && [ -d frontend/node_modules ] || omitir "faltan backend/node_modules o frontend/node_modules (npm ci)"
-if [ -z "${HUMO_FORZAR:-}" ] && [ "${CI:-}" != true ] && curl -s -m 2 -o /dev/null localhost:3001/health; then
-  omitir "el juego ya está en marcha en :3001 (una ronda en curso); páralo o HUMO_FORZAR=1"
+[ -n "$PARTIDA" ] || { echo "FALLO: $ESCENARIO no tiene fila en tools/qa/escenarios/README.md" >&2; exit 1; }
+if [ -z "${HUMO_FORZAR:-}" ] && [ "${CI:-}" != true ]; then
+  omitir "en local borra la base de juego (cargar) y pisa driver.token: HUMO_FORZAR=1 si no hay ronda sin guardar"
 fi
 
 token_previo="$(cat "$TOKEN" 2>/dev/null || true)"
@@ -35,7 +37,7 @@ mkdir -p logs
 limpiar() {
   [ -z "${PID_DRIVER:-}" ] || kill "$PID_DRIVER" 2>/dev/null
   bash tools/playwright-e2e/arrancar-juego.sh --parar >/dev/null 2>&1
-  # `--parar` baja el puerto del driver por defecto (9333), no el nuestro: ya está parado con su PID.
+  # `--parar` baja también ${DRIVER_PORT} (el nuestro, exportado arriba), nunca el 9333 de una ronda.
   if [ -n "$token_previo" ]; then printf '%s' "$token_previo" > "$TOKEN"; else rm -f "$TOKEN"; fi
 }
 trap limpiar EXIT
@@ -54,7 +56,8 @@ grep -q '^driver en' logs/humo-driver.log || { PID_DRIVER=; omitir "el driver no
 
 echo "== cargar $ESCENARIO"
 bash tools/qa/escenario.sh cargar "$ESCENARIO" >/dev/null || fallar "escenario.sh cargar $ESCENARIO"
-bash tools/playwright-e2e/orden.sh "await page.goto(FRONT + '/solitario/partida/$PARTIDA', { waitUntil: 'load' }); return 'abierta'" >/dev/null
+abierta="$(bash tools/playwright-e2e/orden.sh "await page.goto(FRONT + '/solitario/partida/$PARTIDA', { waitUntil: 'load' }); return 'abierta'" 2>&1)"
+grep -q abierta <<<"$abierta" || fallar "el driver no abre la partida: $(head -c 300 <<<"$abierta")"
 espera_hud 'Gorhorn.*Nivel 1( |$)' || fallar "tras cargar, el HUD no enseña a Gorhorn de Nivel 1"
 echo "ok: la partida cargada se ve (Gorhorn, Nivel 1)"
 
@@ -68,6 +71,6 @@ bash tools/qa/escenario.sh cargar "$ESCENARIO" >/dev/null || fallar "escenario.s
 espera_hud 'Gorhorn.*Nivel 1( |$)' || fallar "tras el segundo cargar, el HUD no vuelve a Nivel 1: la página no se recargó (P400/P407)"
 echo "ok: cargar recarga (vuelve a Nivel 1)"
 
-# P409: estado.js no mete el texto de los tooltips de los chips en el HUD (la bio de un chip no es del HUD).
-estado | grep -E '^HUD: ' | grep -Eiq 'tooltip|biograf' && fallar "el HUD de estado.js arrastra texto de un tooltip (P409)"
+# P409 (la bio oculta de los chips en la salida de estado.js) no se mira aquí: la partida recién cargada no tiene
+# chips; lo cubre tools/qa/tests/ayudas_mcp_navegador.mjs con una página fija.
 echo "Humo del driver: todo bien"
