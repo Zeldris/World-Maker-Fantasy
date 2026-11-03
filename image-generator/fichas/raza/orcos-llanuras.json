@@ -1,0 +1,54 @@
+{
+  "tipo": "raza",
+  "slug": "orcos-llanuras",
+  "nombre": "Orcos de las Llanuras",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Orcos de los clanes Maktor y Serhu: piel beige y arcilla curtida por el sol y el viento de la estepa, que se oscurece con la edad; complexión corpulenta pero de músculo largo y estilizado, hecha para las carreras de las cacerías rituales del Corredor de Cauce. Macho: trenzas negras atadas con cuero crudo, barba corta veteada de canas, colmillos largos marcados con patrones tribales rojos, cicatrices rituales en pecho y brazos; taparrabos, chaleco de cuero negro con el pecho al aire, capa de plumas cenicientas atada a la cintura, descalzo con tiras de cuero en los pies, hacha de guerra a dos manos de hierro negro. Hembra: colmillos anchos y largos, cabello negro veteado de rojo trenzado con cuentas de hueso, ojos ámbar muy separados, cicatrices rituales en los hombros.",
+  "fuentes": "backend/src/services/berigLore.ts:159-166 (variante orcos-llanuras); backend/src/services/sexDimorphism.ts:507-528 (macho y hembra); docs/rpgtarkor/lore-mundo/razas.md:110",
+  "prompt": {
+    "sujeto": "A full-length view of a huge, heavy-set orc crouched on the edge of a red rock cliff in the left third of the image, taken at chest height and turned three-quarters to the right, the whole figure from bare feet to the top of the hair filling almost the whole height of the frame.",
+    "proporcion": "Crouched, the figure is four and a half heads tall, with shoulders nearly three heads wide and long, lean arms about two heads long, every muscle long and ropy rather than bulky with fat.",
+    "ancla": "an orc",
+    "cuerpo": "The head is heavy and square, with a jutting lower jaw, long ivory tusks pointing up from the lower lip and small pointed ears swept back. The skin is warm clay-beige, sand-coloured where the light touches it and deeper brown in shade, weathered dry by wind and heat, with pale healed streaks across the body.",
+    "rasgos": [],
+    "rasgosSecundarios": "Strips of rawhide bind the feet and wrists, and thin red lines are painted in tribal patterns along both tusks.",
+    "pose": "The back foot is flat on the rock and the front foot raised on a higher ledge, the weight leaning forward over the bent front knee, the head turned toward the valley.",
+    "entorno": "Below the cliff a wide valley of red clay opens to the right, scattered with dark red hide tents and thin grey smoke, and beyond it layered red mesas meet a pale hazy horizon at the height of the chest.",
+    "luz": "Bright, hazy daylight falls from high on the right and throws warm gold rim light over the shoulders and the edges of the tusks."
+  },
+  "variantes": {
+    "macho": {
+      "rasgos+": [
+        "This male wears his black hair in long braids tied with rawhide, with a short black beard streaked with grey and pale healed streaks across his chest and arms.",
+        "He wears a loincloth of cured hide, an open black leather vest that leaves his chest bare and a cloak of ash-grey feathers knotted at the waist, and both hands grip a heavy two-handed war axe of black iron held across his body, its shaft nearly as long as he is tall."
+      ]
+    },
+    "hembra": {
+      "rasgos+": [
+        "This female has broad, long tusks, wide-set amber eyes and black hair streaked with red, braided with bone beads, with pale healed streaks across her shoulders and skin glistening with sweat.",
+        "She wears a dark leather bodice, a kilt of leather strips and a cloak of dark feathers, and grips a short iron axe in each hand, a strip of red cloth tied below each head."
+      ],
+      "pose": "She charges mid-stride across the red ground toward the right, her weight on the front foot, both axes raised and her mouth open in a roar, her head turned three-quarters toward the viewer.",
+      "entorno": "To the left stands a camp of red hide tents behind a palisade of sharpened stakes, and behind her to the right a war band of tusked warriors runs through the dust across a wide red plain toward low mesas on a pale hazy horizon."
+    }
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "The low sun sits on the right behind thin haze and rims the shoulders, tusks and feathers with fiery orange light."
+    },
+    "momento:noche": {
+      "luz": "Under a starry night sky with a soft, even pearly glow, a cool silver-blue light rims the shoulders and tusks, and deep cool shadows fill the valley below."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el banner, sigue al canon: barba corta veteada de canas (el banner del macho la trae larga y trenzada); hacha de guerra a dos manos de hierro negro (el banner: hacha doble de acero con tira carmesí); capa de plumas cenicientas atada a la cintura (el banner: capa oscura desde los hombros)",
+    "del banner y fuera del canon: la hembra lleva dos hachas cortas con tiras rojas y carga rugiendo con una horda detrás, junto a un campamento con empalizada; el canon no le da arma",
+    "del banner y fuera del canon: la hembra con corpiño de cuero oscuro, falda de tiras y capa de plumas (el canon no describe su ropa)",
+    "las cicatrices rituales del canon van como «pale healed streaks» (la palabra «scars» está vetada en mundo.json)",
+    "medidas en cabezas (cuatro y media agachado, hombros de casi tres): diseño de imagen (banco r20-orcos-llanuras-macho), no canon",
+    "el banner de la hembra está en backend/uploads/images/raza/orcos-llanuras-hembra-banner.png; `imagenJuego` solo admite uno y lleva el del macho"
+  ],
+  "imagenJuego": "backend/uploads/images/raza/orcos-llanuras-macho-banner.png"
+}

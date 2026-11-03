@@ -5,32 +5,35 @@
   "region": "Llanuras del Viento Rojo",
   "zona": "agujas-iman",
   "momento": "dia",
-  "canon": "Cardo espinoso de tallo rígido y flor cerrada de un gris metálico apagado (con matiz violáceo: decisión de la usuaria, 2026-10-25), con una única fibra central imantada que, colgada de un hilo, siempre señala el mismo rumbo.",
-  "fuentes": "backend/src/scripts/worldCatalog.ts:11484 (planta) y 6930 (ítem); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Las Agujas Imán)",
+  "canon": "Cardo espinoso de tallo rígido (unos 25 cm) rematado en una flor cerrada de un gris metálico apagado con matiz violáceo (decisión de la usuaria, 2026-10-25; el ítem dice «morado apagado»). Su fibra central rígida se vuelve una aguja imantada: colgada de un hilo, gira hasta señalar siempre el mismo rumbo. Crece en Las Agujas Imán, al abrigo de las rocas, donde se acumula la arena imantada.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:6939-6946 (ítem: tallo espinoso, flor cerrada de morado apagado, tallo de 25 cm); backend/src/scripts/worldCatalog.ts:47-60 (Las Agujas Imán); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:158-166 (fibra central imantada) y 546-564 (Agujas Imán, rocas flotantes)",
   "prompt": {
-    "sujeto": "A tall, rigid thistle of dark gunmetal silver, its thick stem twisted and covered in sharp metal thorns, with a few stiff blade-like leaves curling out from the base.",
-    "proporcion": "Each plant stands about two metres tall, and its closed bud is about the size of a human head.",
-    "cuerpo": "At the top sits a large closed bud like an artichoke forged from overlapping metal blades, dull metallic grey with a faint violet tint.",
+    "sujeto": "A small, rigid thistle seen from ground level, its thick spiny stem twisted like rope and topped by a single large closed bud, with a few stiff, narrow, blade-like leaves curling out from the base.",
+    "proporcion": "The bud is two thirds as tall as the stem and twice as wide, and the whole plant rises only a little above the stones around it.",
+    "cuerpo": "The bud is built like a closed artichoke from overlapping charcoal-grey blade-scales with a faint violet tint, their edges glinting silver, and the stem is the same dull grey, studded with short sharp thorns.",
     "rasgos": [
-      "From the tip of each bud a single long, thin, wiry filament arches up and bends in one direction, like an antenna."
+      "From the tip of each bud a single fine, stiff filament arches out and points the same way as all the others, toward the left of the image."
     ],
-    "rasgosSecundarios": "Fine metallic burrs crowd the stem below each bud, and the thorns catch the light like tiny steel needles.",
-    "pose": "In the middle ground, several of the thistles of different heights stand spread along a rocky slope, the nearest sharp and large, the farthest small and soft in the haze.",
-    "entorno": "In the foreground, red gravel, broken stones and tufts of dry grass cover the ground among low plants with broad, woolly silver-green leaves. On the right a towering red sandstone cliff rises over the slope, and far to the left a wide red desert with flat-topped mesas fades into the haze on the horizon, under a wide sky stained with amber.",
-    "luz": "Warm late-afternoon light falls through a thick amber haze, picking out the metallic sheen of the buds and thorns and casting long soft shadows across the gravel."
+    "rasgosSecundarios": "Fine grey burrs crowd the stem just below each bud, and tiny grains of black sand cling along the thorns.",
+    "pose": "The horizon lies a third of the way up the image; the nearest plant fills the lower left foreground, sharp and large, and a loose diagonal row of smaller ones runs back toward the middle ground, softer with each step.",
+    "entorno": "They grow in the lee of glossy black rocks, where dark grains drift against red sand. Black needle spires fill the right half of the middle ground with small black stones hanging still above them, and flat-topped red mesas, an eighth of the image tall, fade into haze under a wide amber sky.",
+    "luz": "Low warm amber light falls from the right through a light haze, picking out the silver edges of the scales and the thorns, and casting long soft shadows to the left across the sand."
   },
   "condiciones": {
     "momento:atardecer": {
-      "luz": "Warm low evening light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns and casting long soft shadows across the gravel."
+      "luz": "Warm low evening light falls from behind with a gentle backlight, rimming the silver edges of the scales and the thorns, and casting long soft shadows across the sand."
     },
     "momento:noche": {
-      "luz": "A soft, even pearly glow under the stars gently outlines the metallic sheen of the flower and the thorns, and deep cool shadows pool across the gravel."
+      "luz": "A soft, even pearly glow under the stars gently outlines the silver edges of the scales and the thorns, and deep cool shadows pool across the sand."
     }
   },
   "propuestas": [
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
-    "choca con el canon: alto como un orco (antes, como una mano), acantilado rojo en vez del campo de rocas imantadas",
-    "IMG-16 (perfil fotorreal): dos metros de alto y yema del tamaño de una cabeza (antes «como un orco»), el paisaje por capas; diseño de imagen, no canon"
+    "choca con el banner, sigue al canon: planta pequeña (tallo de 25 cm), vista a ras de suelo para que llene el plano; el banner y la ficha anterior la hacían de dos metros",
+    "choca con el banner, sigue al canon: el paisaje es el de Las Agujas Imán (rocas negras brillantes de arena compactada, agujas y piedras suspendidas), no el acantilado rojo del banner; las mesetas del horizonte sí se quedan",
+    "del banner y fuera del canon: yema como una alcachofa de escamas en hoja gris carbón con bordes plateados; tallo retorcido como una cuerda",
+    "filamento que sale de la yema y señala el mismo rumbo en todas las plantas: lectura visual de la fibra central imantada (el canon la sitúa dentro, al colgarla de un hilo), no canon",
+    "las rosetas lanosas verde plata del primer plano del banner se quitan: no hay planta así en Las Agujas Imán"
   ],
   "imagenJuego": "backend/uploads/images/flora/cardo-brujula-banner.png"
 }

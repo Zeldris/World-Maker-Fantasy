@@ -1,0 +1,51 @@
+{
+  "tipo": "fauna",
+  "slug": "corredor-de-cauce",
+  "nombre": "Corredor de Cauce",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Bestia veloz de seis patas y piel rojiza que se camufla en el polvo de la llanura: hocico alargado con grandes bigotes, ojos oscuros y redondos, orejas pequeñas pegadas al cráneo y una hilera de placas óseas superpuestas por el lomo hasta una cola larga y afilada en la punta. Va en manadas siguiendo las corrientes subterráneas; los clanes orcos la cazan en cacerías rituales (hoy bajo moratoria, presa sagrada). Huidiza. Macho con marcas oscuras a lo largo del lomo, para el trote largo; hembra de un rojizo claro uniforme, para el sprint corto.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:1583-1600 (bio); backend/src/services/sexDimorphism.ts:57-70 (dimorfismo); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:50-64; docs/canon-opencode/00-nucleo.md (moratoria)",
+  "prompt": {
+    "sujeto": "A lean, fast six-legged runner of the plains with a long, narrow body and long, slender legs built for speed.",
+    "proporcion": "Its body is as long as four of its own heads, its legs are longer than its chest is deep, and its thin tail is as long as its body.",
+    "ancla": "a greyhound, only longer in the body",
+    "cuerpo": "Its hairless, leathery skin is rust red, the colour of the dust around it. Its muzzle is long and narrow, with long pale whiskers sweeping back from the snout, its eyes are dark and round, and its small ears lie flat against the skull.",
+    "rasgos": [
+      "A row of overlapping brown bone plates runs from the nape along the whole spine and onto the long tail, which narrows to a sharp point."
+    ],
+    "rasgosSecundarios": "Its three pairs of legs are spaced evenly along the body, the middle pair just behind the chest, and fine creases run across the skin at every joint.",
+    "pose": "Seen in full side profile from a low camera angle, it leaps mid-stride across the frame from left to right, its legs stretched fore and aft and its head turned slightly toward the viewer.",
+    "manada": "Behind it a herd of lean six-legged runners with rust-red skin and plated backs races through a rolling cloud of dust, blurred and hazy with distance.",
+    "entorno": "The ground is cracked red earth with sparse dry tufts, and the dust kicked up by the herd hangs low over the plain toward a hazy horizon.",
+    "luz": "Bright, hazy daylight from high on the left warms the rust skin and the edges of the plates, while a thick orange haze of dust glows behind the herd."
+  },
+  "variantes": {
+    "macho": {
+      "rasgos+": [
+        "This male has dark markings running along the back beside the plates, and his legs are long and sturdy, built for a long, steady trot."
+      ]
+    },
+    "hembra": {
+      "rasgos+": [
+        "This female is slighter, with a light, even rust skin and long, fine legs built for short bursts of speed."
+      ]
+    }
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "The low sun sits behind the herd and rims the skin and plates with fiery orange light, while the drifting dust glows in the backlight."
+    },
+    "momento:noche": {
+      "luz": "Under a starry night sky with a soft, even pearly glow, a cool silver-blue light rims the skin and plates, while thin dust drifts low in deep cool shadow over the plain."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el canon, el prompt sigue al canon: el banner le pone dos cuernecillos hacia atrás en la cabeza, que el canon no tiene; se quitan",
+    "choque dentro del canon: la bio dice piel rojiza (y el banner, sin pelo) y sexDimorphism.ts habla de pelaje rojizo; la ficha sigue a la bio y al banner (piel sin pelo, curtida)",
+    "del banner y fuera del canon: placas pardas, bigotes claros, salto en perfil con la manada en la polvareda",
+    "«galgo, más largo de cuerpo» como ancla y las medidas en cabezas: diseño de imagen, no canon"
+  ],
+  "imagenJuego": "backend/uploads/images/fauna/corredor-de-cauce-macho-banner.png"
+}

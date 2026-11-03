@@ -1,0 +1,37 @@
+{
+  "tipo": "item",
+  "slug": "cuchillo-hielo-silice",
+  "nombre": "Cuchillo de hielo sílice",
+  "region": "Cristal Helado",
+  "momento": "dia",
+  "canon": "Arma y herramienta: hoja de hielo sílice de un blanco azulado translúcido, extremadamente dura y fría al tacto incluso lejos de la montaña, con la empuñadura de hueso tallada con marcas rúnicas; filo mineral, comercio con el Clan Helsig. Hoja de 18 cm y empuñadura de 10 cm. Origen: minas de Cristal Helado.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:5396-5408 (ítem cuchillo-hielo-silice)",
+  "prompt": {
+    "sujeto": "A close still-life photograph of a single hand-carved hunting knife lying on a heavy, cracked workbench, seen from a low three-quarter angle just above the table, the knife large in the frame and spanning about half its width, almost horizontal and tilted slightly upward to the right, the point to the left and the handle to the right.",
+    "proporcion": "The blade is nearly twice as long as the handle and about one fifth as wide as it is long, widest near the handle and tapering in a straight line to a needle-fine point.",
+    "cuerpo": "The blade is a translucent bluish-white mineral, brightest white along a web of fine fracture lines, with a rippled, hand-chipped surface and rough, uneven edges, so that the planks beneath show faintly through it, and a thin bloom of frost clings to its spine.",
+    "rasgos": [
+      "The handle is a straight cylinder of weathered bone-cream, about four times as long as it is thick, carved along its length with angular black runic marks and bound at each end with three wraps of tan twine."
+    ],
+    "rasgosSecundarios": "A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade.",
+    "pose": "The table is dark brown-grey planks, deeply cracked and grained, stained black in patches.",
+    "entorno": "Behind the table, softly out of focus, wooden crates of pale blue ice chunks stand at the left, a worn burlap sack rests at the right, and dark oxblood hide walls frame an opening that shows a pale snow plain and distant white mountains under an overcast sky.",
+    "luz": "Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer."
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "Low, pale copper light comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a long, soft shadow toward the viewer."
+    },
+    "momento:noche": {
+      "luz": "Warm light from a small oil lamp just out of frame on the right falls across the table, glinting in the fractures of the blade, while the opening behind shows a dark blue snow plain."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el banner, sigue al canon: hoja de casi el doble que la empuñadura (18 y 10 cm; el banner y el banco r20 decían «algo más del doble») y de un blanco azulado (el banner: incolora)",
+    "del banner y fuera del canon: tres vueltas de cordel en cada extremo del mango, marcas rúnicas negras y angulosas, banco de trabajo agrietado, cajas de hielo, saco de arpillera, paredes de piel granate y llanura nevada al fondo",
+    "se quitan del banner la calavera del poste y la caja de huesos amarillentos (sin restos a la vista; el núcleo prohíbe objetos de partes de razas sintientes)",
+    "escarcha en el lomo y gotas de deshielo: lectura visual de «fría al tacto incluso lejos de la montaña», no canon"
+  ],
+  "imagenJuego": "backend/uploads/images/item/cuchillo-hielo-silice-banner.png"
+}

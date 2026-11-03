@@ -1,0 +1,54 @@
+{
+  "tipo": "fauna",
+  "slug": "murgol",
+  "nombre": "Múrgol",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "atardecer",
+  "canon": "Ganado de los clanes de las Llanuras (lana, leche y carne): criatura lanuda y voluminosa de cuatro patas, pelaje gris ceniza con matices rojizos y polvo rojo siempre enredado en la lana espesa que le cae sobre los ojos; cornamenta ramificada, gruesa y muy extendida a los lados de la cabeza; dientes planos y cuadrados; ojos negros con un destello amarillento. Los rebaños Serhu llevan una muesca en la oreja. Dócil y gregario, se espanta con las tormentas. Macho de pecho ancho y pesado; hembra más compacta, con la ubre visible.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:1728-1760 (bio); backend/src/services/sexDimorphism.ts:113-126 (dimorfismo); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:75-82",
+  "prompt": {
+    "sujeto": "A massive, woolly four-legged grazing beast with a heavy, rounded body, short thick legs and a broad, low head.",
+    "proporcion": "Its body is as long as three of its own heads, and its wide antlers span nearly twice the width of its shoulders.",
+    "ancla": "a shaggy yak, only rounder and woollier",
+    "cuerpo": "Thick ash-grey wool hangs from its whole body in long matted cords streaked with rust red, heavy with tangled red dust, and a dense fringe falls over its black eyes, which catch a faint yellow glint. Its muzzle is broad and blunt, and its flat square teeth show as it chews.",
+    "rasgos": [
+      "Thick, pale bone antlers branch out wide to both sides of its head, each beam splitting into several blunt tines."
+    ],
+    "rasgosSecundarios": "A small clean notch is cut into the edge of one ear, and its broad hooves are caked in red dust.",
+    "pose": "Seen head-on from a low camera angle, it stands with its weight shifted onto one foreleg and its head turned slightly toward the viewer, a tuft of dry grass hanging from its mouth.",
+    "manada": "Behind it on either side two more woolly grazing beasts with ash-grey corded wool and wide pale antlers lower their heads to graze, smaller and hazier with distance.",
+    "entorno": "The ground is a wide red plain of cracked earth and sparse dry tufts, with low flat-topped red mesas along the far horizon.",
+    "luz": "The low sun sits on the right under bands of orange cloud and rims the wool and antlers with warm orange light, while a red-orange haze softens the plain behind the herd."
+  },
+  "variantes": {
+    "macho": {
+      "rasgos+": [
+        "This male has a broad, heavy chest and the thickest, widest antlers of the herd."
+      ]
+    },
+    "hembra": {
+      "rasgos+": [
+        "This female is more compact, with shorter, slimmer antlers and a visible udder under her belly wool."
+      ]
+    }
+  },
+  "condiciones": {
+    "momento:dia": {
+      "luz": "Bright clear light falls from high on the right, warming the rust streaks in the wool and casting short shadows under the herd, while a light warm haze softens the plain."
+    },
+    "momento:noche": {
+      "luz": "Under a starry night sky with a soft, even pearly glow, a cool silver-blue light rims the wool and antlers, and deep cool shadows pool across the plain."
+    },
+    "estacion:invierno": {
+      "entorno": "The ground is a wide red plain of bare cracked earth with a few short dry tufts, with low flat-topped red mesas along the far horizon."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choque dentro del canon: la bio da una cornamenta ramificada (y el banner también) y sexDimorphism.ts da al macho cuernos largos enroscados en la punta y a la hembra cuernos cortos casi rectos; la ficha sigue a la bio y al banner, y la variante solo cambia grosor y anchura",
+    "del banner y fuera del canon: lana en cordones apelmazados como rastas con vetas óxido, cornamenta de hueso pálido, vista de frente con dos animales pastando a los lados",
+    "muesca en la oreja: canon solo de los rebaños Serhu; aquí va siempre, a falta de una variante de clan",
+    "«yak lanudo, más redondo» como ancla y las medidas en cabezas: diseño de imagen, no canon"
+  ],
+  "imagenJuego": "backend/uploads/images/fauna/murgol-macho-banner.png"
+}
