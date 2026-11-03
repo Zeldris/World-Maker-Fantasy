@@ -203,8 +203,8 @@ desde el panel vive en tablas que siembran.
   0.7) `-r` ajeno casi no cambia nada (EMD 15.7/15.3 → 15.8/14.9). **Veredicto:** la referencia ajena no da el acabado
   GPT ni la criatura; no entra en la receta. Para criaturas nuevas, la palanca que queda es el LoRA de estilo (pasos 1 y 2
   de `investigacion-lora-2.md`). Pruebas en `generated/banco/img31/`.
-- **IMG-32 · LoRA de estilo en Kaggle** [A] (usuaria, 2026-11-02, de `IMG-31`; pasos 1 y 2 de
-  [`investigacion-lora-2.md`](plan-imagenes/investigacion-lora-2.md)) 🚧 en curso: conjunto de los 134 banners GPT a
+- ~~**IMG-32 · LoRA de estilo en Kaggle**~~ ✅ 2026-11-03 [A] (usuaria, 2026-11-02, de `IMG-31`; pasos 1 y 2 de
+  [`investigacion-lora-2.md`](plan-imagenes/investigacion-lora-2.md)): conjunto de los 134 banners GPT a
   1280×512 (`image-generator/lora/conjunto.sh`), cuaderno de Kaggle que pone los textos con un modelo de visión y entrena
   el LoRA con diffusers sobre el Klein base (arranque de 20 pasos y luego 1000-2000 con guardados), y prueba del LoRA en
   la Deck sobre el Q8_0. La usuaria: cuenta de Kaggle, subir el zip, lanzar y bajar el LoRA. Puerta: si no cabe en 16 GB,
@@ -224,7 +224,16 @@ desde el panel vive en tablas que siembran.
   21.3 → **13.8**. Las patas siguen largas. **Criatura nueva** (inventada, valle gris con niebla): casi igual que sin LoRA,
   EMD 13.9 → 14.0. Tanda 2, la criatura nueva a peso 1.5 y 2: más niebla y detalle, y las antenas salen plumosas
   como pide el prompt. EMD 12.9 y 12.7. Aparecen fallos: filamentos colgando de la boca y, a peso 2, patas finas de
-  más. Falta: el veredicto de la usuaria sobre si entra en el perfil fotorreal y con qué peso.
+  más. Tanda 3, criatura nueva en escena cálida como los banners (pradera dorada al atardecer): EMD Y 47.2 → **30.7**
+  (peso 1) y 29.6 (1.5). A ojo, luz y neblina más de banner, la vela de púas como pide el prompt y mesetas al fondo;
+  las bandas del pelaje salen como correas, más marcadas a 1.5. **Veredicto (2026-11-03, la usuaria lo deja en manos
+  de Claude):** el LoRA sirve para criaturas nuevas en escenas como las del juego. Entra en el perfil fotorreal a
+  **peso 1**: 1.5 apenas mejora y trae más fallos. No arregla la forma de la criatura. Integración en `IMG-33`.
+- **IMG-33 · El LoRA de estilo en el perfil fotorreal** [A] (de `IMG-32`, 2026-11-03): `PERFIL=fotorreal` pasa a
+  `bin-nuevo/sd-cli` (release `master-1039`, la que aplica LoRAs de FLUX.3) con `--lora-model-dir image-generator/loras`,
+  y el prompt de la ficha lleva `wmfstyle` delante y `<lora:wmf-estilo:1>` detrás; `LORA=0` lo quita y sin el
+  archivo avisa y sigue sin él. Tests de `generar.sh`/`prompt_ficha.py` con el `sd-cli` falso; después, una imagen
+  del montaje con planos para ver que el binario nuevo no rompe la cadena. **S**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
