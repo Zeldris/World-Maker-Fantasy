@@ -224,7 +224,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // y llama a `openCombat()` en la misma sincronía — sin este parámetro, la función leía
   // `combateIniciado` del cierre de ESTE render (el `setState` de la línea anterior todavía no se
   // había aplicado), que en ese flujo es siempre `null`. `openCombat` devolvía sin hacer nada.
-  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null) {
+  // P405: `conservarIniciativa` al reabrir tras una recarga, donde `syncFromSave` acaba de
+  // rehidratar `lastInitiativeRoll` en este mismo lote de setState.
+  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null, opts?: { conservarIniciativa?: boolean }) {
     const combate = combatOverride ?? combateIniciado
     if (!combate) return
     setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
@@ -241,7 +243,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // reaparece el aviso "⚔️ Combatir". Si `openCombat()` lo reseteaba aquí sin más, reabrir el
     // popup mostraba los controles de ataque en vez del prompt de "Defenderte", aunque el backend
     // (`Save.pendingNpcAttack`) siga esperando esa defensa de todos modos.
-    setLastInitiativeRoll(null)
+    if (!opts?.conservarIniciativa) setLastInitiativeRoll(null)
     if (activePanel && combatDisabledTabs.includes(activePanel)) {
       setActivePanel(null)
     }

@@ -133,7 +133,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     markCarcassPending: () => setCarcassPending(true),
   })
 
-  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, energia, endedAt, carcassPending, lastInitiativeRoll }
+  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, energia, endedAt, carcassPending, lastInitiativeRoll, setLastInitiativeRoll }
 }
 
 beforeEach(() => {
@@ -185,6 +185,18 @@ describe('openCombat', () => {
     })
     expect(result.current.combat.combatOpen).toBe(true)
     expect(result.current.combat.combatNpcsDisplay[0]?.slug).toBe('murgol')
+  })
+
+  it('P405: con conservarIniciativa (recarga) no borra la iniciativa recién rehidratada', () => {
+    const { result } = renderHook(() => useHarness())
+    const combate = { npcs: [npc({ slug: 'orco', name: 'Orco' })] }
+    const tirada = { ganador: 'npc', jugador: {}, npc: {} } as unknown as InitiativeRollInfo
+    act(() => {
+      result.current.setLastInitiativeRoll(tirada)
+      result.current.combat.openCombat(combate, { conservarIniciativa: true })
+    })
+    expect(result.current.combat.combatOpen).toBe(true)
+    expect(result.current.lastInitiativeRoll).toBe(tirada)
   })
 
   it('no abre nada si no hay combate ni override', () => {

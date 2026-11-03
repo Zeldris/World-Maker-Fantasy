@@ -10,7 +10,7 @@ import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
 import { etiquetaDeFase } from '../lib/gamePhase'
-import { combateTrasResync } from '../lib/combateResync'
+import { abrirCombateAlCargar, combateTrasResync } from '../lib/combateResync'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -1193,6 +1193,8 @@ export function useGameViewState() {
         setWorldIdSlug(save.worldSlug)
         setWorldName(save.worldName)
         syncFromSave(save)
+        // P405: recargar en pleno combate deja el panel abierto, no el aviso «⚔️ Combatir».
+        if (abrirCombateAlCargar(save)) combat.openCombat(save.combateIniciado, { conservarIniciativa: true })
         // Hallazgo de UX jugando en vivo (2026-09-03): un turno puede tardar minutos (cola de
         // Ollama) — mientras se espera, el composer se deshabilita con el mensaje "Esperando la
         // narración..." (ver disabledReason más abajo), pero ese estado solo vive en memoria de
