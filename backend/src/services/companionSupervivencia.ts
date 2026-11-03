@@ -15,7 +15,9 @@ import { npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const FELICIDAD_GANANCIA = 15;
-export const FELICIDAD_PERDIDA = 10;
+/// P345 (decisión de la usuaria, 2026-10-26): como en D&D 5e (éxitos acumulados), un intento fallido NO resta
+/// Felicidad; solo los éxitos suman (+`FELICIDAD_GANANCIA`). Antes se perdían 10 por fallo y, con ~8 % de victorias,
+/// la Felicidad bajaba de media y la doma de un Corretolvas no llegaba nunca al umbral.
 /// "Necesita SUSTANCIALMENTE menos Felicidad acumulada" (§2) — la mitad, no una diferencia
 /// simbólica.
 export const FELICIDAD_UMBRAL_GENERAL = 80;
@@ -55,12 +57,28 @@ export function felicidadUmbralFor(domador: boolean): number {
   return domador ? FELICIDAD_UMBRAL_DOMADOR : FELICIDAD_UMBRAL_GENERAL;
 }
 
+/// P351 (decisión de la usuaria, 2026-10-27): el nivel del oficio con que se doma suma a la tirada como el
+/// bonificador de competencia de D&D 5e: +2 en los niveles 1-4, +3 en 5-8, +4 en 9-12, +5 en 13-16 y +6 desde el 17.
+export function bonificadorCompetencia(nivel: number): number {
+  return Math.min(6, 2 + Math.floor((Math.max(1, nivel) - 1) / 4));
+}
+
+/// Lo que el nivel suma a la tirada de doma: el Cazador (cualquier especialización) suma su competencia y el
+/// Domador el doble (como la dote Beast Trainer). Quien no es Cazador no suma nada; las personas (persuasión) tampoco,
+/// el caller solo lo pide para fauna.
+export function bonoDeDomaPorNivel(clase: string | null, nivel: number, domador: boolean): number {
+  if (clase !== 'CAZADOR') return 0;
+  return bonificadorCompetencia(nivel) * (domador ? 2 : 1);
+}
+
 /// Un intento de alimentar/persuadir: tirada opuesta + Felicidad actualizada. Puro — el caller
 /// persiste `NpcState.capturaFelicidad` con el resultado.
 export interface IntentoResult {
   roll: OpposedRollResult;
   felicidadTras: number;
   umbralCompletado: boolean;
+  /// P351: lo que el nivel del oficio sumó a la tirada (0 si no suma).
+  bonoCompetencia: number;
 }
 
 /// Bug real (auditoría de lore 2026-08-25, decisión de la usuaria "hay que engancharlo"):
@@ -84,13 +102,22 @@ export function resolverIntento(
   random: () => number = Math.random,
   /// CR-14: bono o malus de las etiquetas del personaje (Clemente, Carnicero…).
   bonoSocial: number = 0,
+  /// P351: bonificador de competencia del nivel del oficio con que se doma (`bonoDeDomaPorNivel`); se suma al lado
+  /// del jugador, como la resistencia extra al del objetivo.
+  bonoCompetencia: number = 0,
 ): IntentoResult {
   const rollBase = rollOpposed(playerAttributes, playerAttribute, resistenciaAttributes, resistenciaAttribute, random);
   const resistenciaExtra = Math.floor((100 - disposicionPct) / 10) - bonoSocial;
-  const margen = rollBase.margen - resistenciaExtra;
-  const roll: OpposedRollResult = { ...rollBase, resistenciaResult: rollBase.resistenciaResult + resistenciaExtra, margen, gano: margen > 0 };
-  const felicidadTras = Math.max(0, felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : -FELICIDAD_PERDIDA));
-  return { roll, felicidadTras, umbralCompletado: felicidadTras >= felicidadUmbralFor(domador) };
+  const margen = rollBase.margen + bonoCompetencia - resistenciaExtra;
+  const roll: OpposedRollResult = {
+    ...rollBase,
+    playerResult: rollBase.playerResult + bonoCompetencia,
+    resistenciaResult: rollBase.resistenciaResult + resistenciaExtra,
+    margen,
+    gano: margen > 0,
+  };
+  const felicidadTras = felicidadActual + (roll.gano ? FELICIDAD_GANANCIA : 0);
+  return { roll, felicidadTras, umbralCompletado: felicidadTras >= felicidadUmbralFor(domador), bonoCompetencia };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -134,20 +161,61 @@ export function jaulaRecipeKeyFor(tamano: JaulaTamano): string {
 
 const JAULA_KEYS = JAULA_ORDEN.map(jaulaRecipeKeyFor);
 
+/// Quién cuenta como atado en una Jaula: de esta partida y de verdad capturado. Un solo criterio para `jaulasLibresPara`
+/// (qué jaulas están libres) y `ocupantesDeJaulas` (qué se enseña), para que no se desfasen.
+function atadoEnJaula(saveId: string) {
+  return { saveId, capturado: true } as const;
+}
+
 /// Jaulas activas de la partida con hueco donde cabe un animal de `faunaSlug`, de la más pequeña que
 /// alcanza a la más grande (1 animal por Jaula). Llamar dentro de la transacción que la ocupa.
 export async function jaulasLibresPara(tx: Prisma.TransactionClient, saveId: string, faunaSlug: string): Promise<{ id: string; recipeKey: string | null }[]> {
   const requerido = jaulaTamanoRequeridoFor(faunaSlug);
   const jaulas = await tx.building.findMany({ where: { saveId, status: 'ACTIVO', recipeKey: { in: JAULA_KEYS } }, select: { id: true, recipeKey: true }, orderBy: { createdAt: 'asc' } });
-  const ocupadas = new Set((await tx.npcState.findMany({ where: { capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map((s) => s.capturaJaulaBuildingId));
+  const ocupadas = new Set((await tx.npcState.findMany({ where: { ...atadoEnJaula(saveId), capturaJaulaBuildingId: { in: jaulas.map((j) => j.id) } }, select: { capturaJaulaBuildingId: true } })).map((s) => s.capturaJaulaBuildingId));
   const tamano = (key: string | null) => JAULA_ORDEN[JAULA_KEYS.indexOf(key ?? '')] ?? 'PEQUENA';
   return jaulas
     .filter((j) => !ocupadas.has(j.id) && jaulaAlcanzaPara(tamano(j.recipeKey), requerido))
     .sort((a, b) => JAULA_ORDEN.indexOf(tamano(a.recipeKey)) - JAULA_ORDEN.indexOf(tamano(b.recipeKey)));
 }
 
+/// P346: el atado que ocupa una Jaula, para enseñarlo en su tarjeta (Reino › Edificios) y en Reino › Corrales.
+export interface OcupanteDeJaula {
+  npcSlug: string;
+  name: string;
+  tipo: 'FAUNA' | 'NPC';
+  felicidad: number;
+}
+
+/// Ocupante de cada Jaula de la partida, por id de edificio (1 por Jaula). Misma fuente que `jaulasLibresPara`
+/// (`NpcState.capturaJaulaBuildingId`), solo lectura: sirve a todos los caminos que mandan los edificios al cliente.
+export async function ocupantesDeJaulas(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<Map<string, OcupanteDeJaula>> {
+  const estados = await db.npcState.findMany({
+    where: { ...atadoEnJaula(saveId), capturaJaulaBuildingId: { not: null } },
+    select: { npcId: true, capturaFelicidad: true, capturaJaulaBuildingId: true },
+  });
+  if (estados.length === 0) return new Map();
+  const npcs = await db.npc.findMany({ where: { id: { in: estados.map((e) => e.npcId) } }, select: { id: true, slug: true, name: true, ataqueNatural: true } });
+  const porId = new Map(npcs.map((n) => [n.id, n]));
+  const mapa = new Map<string, OcupanteDeJaula>();
+  for (const e of estados) {
+    const npc = porId.get(e.npcId);
+    if (!npc || !e.capturaJaulaBuildingId) continue;
+    mapa.set(e.capturaJaulaBuildingId, { npcSlug: npc.slug, name: npc.name, tipo: npc.ataqueNatural !== null ? 'FAUNA' : 'NPC', felicidad: e.capturaFelicidad });
+  }
+  return mapa;
+}
+
+/// P346: las Jaulas del Reino con su atado, para Reino › Corrales (donde el atado espera a que lo domes). Las dañadas
+/// también salen, con su estado: el atado de una Jaula dañada sigue ahí (como en `edificiosParaCliente`).
+export async function jaulasDelReino(db: Prisma.TransactionClient | PrismaClient, saveId: string): Promise<{ id: string; name: string; tamano: JaulaTamano; estado: 'ACTIVO' | 'DANADO'; ocupante: OcupanteDeJaula | null }[]> {
+  const jaulas = await db.building.findMany({ where: { saveId, status: { in: ['ACTIVO', 'DANADO'] }, recipeKey: { in: JAULA_KEYS } }, select: { id: true, name: true, recipeKey: true, status: true }, orderBy: { createdAt: 'asc' } });
+  const ocupantes = await ocupantesDeJaulas(db, saveId);
+  return jaulas.map((j) => ({ id: j.id, name: j.name, tamano: JAULA_ORDEN[JAULA_KEYS.indexOf(j.recipeKey ?? '')] ?? 'PEQUENA', estado: j.status === 'DANADO' ? 'DANADO' : 'ACTIVO', ocupante: ocupantes.get(j.id) ?? null }));
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// Rediseño de captura (2026-08-28, docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — la captura se
+// Rediseño de captura (2026-08-28,docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — la captura se
 // materializa como InventoryItem en tránsito (ver `InventoryItem.capturaNpcId`, schema.prisma) en
 // vez de vivir in-situ en NpcState. Slots que ocupa en el inventario y plazo de expiración antes de
 // depositarla en Jaula/Celda de Retención.

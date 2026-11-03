@@ -529,7 +529,7 @@ export function filterFarewellFacts(sessionFacts: string[], candidateNpcs: NpcWi
   });
 }
 
-/// P331 (QA-289, bench 17): «La huella… de Orco enfurecido se dirige hacia el oeste» metía al orco en escena, y el
+/// P422 (QA-289, bench 17): «La huella… de Orco enfurecido se dirige hacia el oeste» metía al orco en escena, y el
 /// diálogo lo cogía de interlocutor. Un rastro (huellas, pisadas, excrementos…) dice que pasó por aquí, no que esté:
 /// se quita del hecho el tramo «<rastro> … de <alias>» antes de buscar nombres. Solo en los hechos; la acción no
 /// pasa por aquí. Devuelve el hecho normalizado (sin tildes ni mayúsculas), que es lo que compara `matchNpcAliases`.
@@ -549,6 +549,27 @@ export function sinRastrosDeNpc(fact: string, candidateNpcs: NpcWithAliases[]): 
     }
   }
   return texto;
+}
+
+/// P344: quien está en combate con la jugadora está en escena (`enCombateCon` de `detectNpcsInScene`): los rivales del
+/// 1v1 (`pendingCombatNpcSlugs` y el del ataque pendiente, solo con `enCombate`, como hasta ahora) y, siempre, los NPC
+/// del combate de varios en curso (`CombatEncounter` EN_CURSO), que no escribe `pendingCombatNpcSlugs`. Sin ellos, un
+/// rival oculto sin punto activo en el mapa de esta zona (p. ej. el combate de `preparar combate:`) no estaba en
+/// escena para la validación del turno y «contra 'Faerus desconocida'» se bloqueaba como un nombre inventado. Quien
+/// huyó ya no está en escena, aunque el encuentro siga EN_CURSO por otro rival.
+export async function enCombateConDelTurno(params: {
+  saveId: string;
+  enCombate: boolean | undefined;
+  pendingCombatNpcSlugs: string[];
+  pendingNpcAttackNpcId: string | null;
+}): Promise<{ slugs: string[]; npcIds: string[] } | undefined> {
+  const participantes = await prisma.combatParticipant.findMany({
+    where: { tipo: 'NPC', npcId: { not: null }, huido: false, encounter: { saveId: params.saveId, estado: 'EN_CURSO', jugable: true } },
+    select: { npcId: true },
+  });
+  const slugs = params.enCombate ? params.pendingCombatNpcSlugs : [];
+  const npcIds = [...new Set([...(params.enCombate && params.pendingNpcAttackNpcId ? [params.pendingNpcAttackNpcId] : []), ...participantes.map((p) => p.npcId!)])];
+  return slugs.length || npcIds.length ? { slugs, npcIds } : undefined;
 }
 
 /// Busca NPCs en escena a partir del texto de la acción Y de los hechos ya establecidos de la

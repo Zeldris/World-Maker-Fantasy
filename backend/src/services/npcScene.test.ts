@@ -219,7 +219,7 @@ describe('filterFarewellFacts', () => {
   });
 });
 
-describe('sinRastrosDeNpc (P331)', () => {
+describe('sinRastrosDeNpc (P422)', () => {
   const ORCO = { id: 'orco', aliases: ['orco enfurecido'] };
   const ULKHA = { id: 'ulkha', aliases: ['ulkha', 'ulkha ketg'] };
 

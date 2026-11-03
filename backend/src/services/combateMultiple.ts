@@ -216,19 +216,37 @@ export function objetivosExtraFor(excluirParticipantId: string, candidatos: Obje
 /// que puede variar entre llamadas) — así "buitre #2" significa lo mismo tanto para el backend (al
 /// interpretar el texto citado) como para el frontend (al mostrar el numerito), sin depender de que
 /// ambos iteren en el mismo orden por casualidad.
-export function instanceNumbersByParticipantId(combatientes: { participantId: string; npcId: string }[]): Map<string, number> {
-  const countByNpcId = new Map<string, number>();
-  for (const c of combatientes) countByNpcId.set(c.npcId, (countByNpcId.get(c.npcId) ?? 0) + 1);
+///
+/// P354: se agrupa por el nombre que VE la jugadora (`nombre`, el visible), no por `npcId`: dos PRINCIPAL distintos
+/// aún sin descubrir se llaman igual («Faerus desconocida» ×2) y, numerados por `npcId`, salían sin número y la cita
+/// elegía siempre al primero. Sin `nombre`, se agrupa por `npcId` como antes.
+export function instanceNumbersByParticipantId(combatientes: { participantId: string; npcId: string; nombre?: string }[]): Map<string, number> {
+  const clave = (c: { npcId: string; nombre?: string }) => (c.nombre != null ? `n:${c.nombre.trim().toLowerCase()}` : `id:${c.npcId}`);
+  const countByClave = new Map<string, number>();
+  for (const c of combatientes) countByClave.set(clave(c), (countByClave.get(clave(c)) ?? 0) + 1);
   const ordenEstable = [...combatientes].sort((a, b) => a.participantId.localeCompare(b.participantId));
-  const seenByNpcId = new Map<string, number>();
+  const seenByClave = new Map<string, number>();
   const resultado = new Map<string, number>();
   for (const c of ordenEstable) {
-    if ((countByNpcId.get(c.npcId) ?? 0) <= 1) continue;
-    const numero = (seenByNpcId.get(c.npcId) ?? 0) + 1;
-    seenByNpcId.set(c.npcId, numero);
+    if ((countByClave.get(clave(c)) ?? 0) <= 1) continue;
+    const numero = (seenByClave.get(clave(c)) ?? 0) + 1;
+    seenByClave.set(clave(c), numero);
     resultado.set(c.participantId, numero);
   }
   return resultado;
+}
+
+/// P353/P356 (opción A de la usuaria, 2026-10-27): la línea de la ronda que dice con quién se enfrenta de verdad la
+/// jugadora cuando hay varios rivales. `duelo` y `dePaso` ya vienen con su nombre en frase («el Orco», «Faerus desconocida»).
+/// Elegido por cita: «Te enfrentas a X». Elegido por el rival (el primero que la reclamó): «X te ha elegido: te defiendes de él».
+/// Los demás que la reclamaban: «Y te golpea de paso» / «Y y Z te golpean de paso».
+export function textoConQuienTeEnfrentas(p: { duelo: string; dueloFemenino?: boolean; eligio: boolean; dePaso: string[] }): string {
+  const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  // P354: «a el orco desconocido #2» se contrae en «al orco…».
+  const base = p.eligio ? `Te enfrentas ${/^el /i.test(p.duelo) ? `al ${p.duelo.slice(3)}` : `a ${p.duelo}`}` : `${mayuscula(p.duelo)} te ha elegido: te defiendes de ${p.dueloFemenino ? 'ella' : 'él'}`;
+  if (p.dePaso.length === 0) return `${base}.`;
+  const lista = p.dePaso.length === 1 ? p.dePaso[0] : `${p.dePaso.slice(0, -1).join(', ')} y ${p.dePaso[p.dePaso.length - 1]}`;
+  return `${base}; ${lista} te ${p.dePaso.length === 1 ? 'golpea' : 'golpean'} de paso.`;
 }
 
 export interface CandidatoObjetivoPorTexto {
@@ -246,23 +264,50 @@ export interface CandidatoObjetivoPorTexto {
 /// TODOS los candidatos recibidos, no solo los vivos, para que "buitre #2" no cambie de significado
 /// solo porque otro miembro del grupo ya cayó). Sin cita real o sin match, cae al primer vivo (nunca
 /// se queda sin elegir) — `null` si no queda ninguno.
-export function resolverObjetivoPorTexto(action: string, candidatos: CandidatoObjetivoPorTexto[], nombreByNpcId: Map<string, string>, normalizeText: (s: string) => string): string | null {
+///
+/// P353: la cita del panel lleva el nombre que la jugadora VE («Faerus desconocida» mientras no ha descubierto a
+/// un PRINCIPAL), no el real. `nombreVisibleByNpcId` (`nombresVisiblesDeNpcs`) se compara igual que el real, con y sin
+/// «#N»; sin él, la cita no casaba con nadie y el objetivo caía al primer vivo.
+/// P353: solo la cita real (nombre entre comillas que casa con un rival vivo); `undefined` si no hay cita o no casa.
+/// `resolverObjetivoPorTexto` añade el primer vivo por defecto.
+export function resolverCitaPorTexto(
+  action: string,
+  candidatos: CandidatoObjetivoPorTexto[],
+  nombreByNpcId: Map<string, string>,
+  normalizeText: (s: string) => string,
+  nombreVisibleByNpcId?: Map<string, string>,
+): { participantId: string } | undefined {
   const vivos = candidatos.filter((c) => c.vivo);
   const instanceNumberByParticipantId = instanceNumbersByParticipantId(
-    candidatos.filter((c): c is CandidatoObjetivoPorTexto & { npcId: string } => !!c.npcId).map((c) => ({ participantId: c.participantId, npcId: c.npcId })),
+    candidatos
+      .filter((c): c is CandidatoObjetivoPorTexto & { npcId: string } => !!c.npcId)
+      // P354: el mismo nombre que muestra el panel (visible y, si no, el real), para que «#N» signifique lo mismo.
+      .map((c) => ({ participantId: c.participantId, npcId: c.npcId, nombre: nombreVisibleByNpcId?.get(c.npcId) ?? nombreByNpcId.get(c.npcId) })),
   );
   const quotedMatch = action.match(/'([^']+)'/);
   const quotedNormalizado = quotedMatch ? normalizeText(quotedMatch[1]) : null;
   const targetPorNombre = quotedNormalizado
     ? vivos.find((c) => {
         if (!c.npcId) return false;
-        const nombreBase = normalizeText(nombreByNpcId.get(c.npcId) ?? '');
-        if (nombreBase === quotedNormalizado) return true;
         const numero = instanceNumberByParticipantId.get(c.participantId);
-        return numero != null && normalizeText(`${nombreBase} #${numero}`) === quotedNormalizado;
+        return [nombreByNpcId.get(c.npcId), nombreVisibleByNpcId?.get(c.npcId)].some((nombre) => {
+          if (!nombre) return false;
+          const nombreBase = normalizeText(nombre);
+          return nombreBase === quotedNormalizado || (numero != null && normalizeText(`${nombreBase} #${numero}`) === quotedNormalizado);
+        });
       })
     : undefined;
-  return targetPorNombre?.participantId ?? vivos[0]?.participantId ?? null;
+  return targetPorNombre;
+}
+
+export function resolverObjetivoPorTexto(
+  action: string,
+  candidatos: CandidatoObjetivoPorTexto[],
+  nombreByNpcId: Map<string, string>,
+  normalizeText: (s: string) => string,
+  nombreVisibleByNpcId?: Map<string, string>,
+): string | null {
+  return resolverCitaPorTexto(action, candidatos, nombreByNpcId, normalizeText, nombreVisibleByNpcId)?.participantId ?? candidatos.find((c) => c.vivo)?.participantId ?? null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -342,6 +387,11 @@ export function resolverEnganchesRonda(
   /// los compañeros eligiendo a los demás deshacían la orden y los golpes acababan en la jugadora.
   /// Una provocación sigue mandando sobre la orden, y un señalado oculto no es candidato.
   ordenCapitan: { seguidores: Set<string>; objetivoId: string } | null = null,
+  /// P353, regla B de la usuaria (2026-10-27): 1 contra varios (la jugadora sin aliados vivos en su bando). Si cita
+  /// a un rival válido (candidato real: vivo, visible o el único de su bando), ese rival pasa a ser su duelo de la
+  /// ronda aunque otro la haya reclamado antes; los demás rivales que la reclamaron se quedan con su golpe gratis
+  /// contra ella. Con aliados, o sin cita válida, la regla de siempre. Una provocación a la jugadora sigue mandando.
+  eleccionJugadora: { jugadorId: string; objetivoId: string } | null = null,
 ): Map<string, string | null> {
   const bandoDe = new Map(combatientes.map((c) => [c.participantId, c.bando]));
   // Seguidores del capitán que esta ronda cumplen la orden (ni la regla 3 ni la 4 se la quitan).
@@ -402,7 +452,29 @@ export function resolverEnganchesRonda(
     else if (objetivoProvisional.has(id)) resultado.set(id, objetivoProvisional.get(id)!);
     else resultado.set(id, null);
   }
+  if (eleccionJugadora && esUnoContraVarios(combatientes, eleccionJugadora.jugadorId)) {
+    const { jugadorId, objetivoId } = eleccionJugadora;
+    const bandoJugadora = bandoDe.get(jugadorId)!;
+    const candidatosCrudos = combatientes.filter((c) => c.bando !== bandoJugadora);
+    const candidatosVisibles = candidatosCrudos.filter((c) => !ocultos.has(c.participantId));
+    const candidatos = (candidatosVisibles.length > 0 ? candidatosVisibles : candidatosCrudos).map((c) => c.participantId);
+    const provocadorId = provocaciones.get(jugadorId);
+    const provocada = !!provocadorId && candidatos.includes(provocadorId);
+    if (candidatos.includes(objetivoId) && !provocada) {
+      // Duelo mutuo con el citado; quien la reclamó antes y no es él sigue apuntándola: golpe gratis.
+      resultado.set(jugadorId, objetivoId);
+      resultado.set(objetivoId, jugadorId);
+    }
+  }
   return resultado;
+}
+
+/// P353: ¿es un 1 contra varios? La jugadora es la única de su bando en `combatientes` (los vivos que cuentan) y hay
+/// al menos un rival. Solo entonces la regla B deja que su cita gane el duelo de la ronda.
+export function esUnoContraVarios(combatientes: { participantId: string; bando: Bando }[], jugadorId: string): boolean {
+  const yo = combatientes.find((c) => c.participantId === jugadorId);
+  if (!yo) return false;
+  return !combatientes.some((c) => c.bando === yo.bando && c.participantId !== jugadorId) && combatientes.some((c) => c.bando !== yo.bando);
 }
 
 /// ¿Es esto un duelo real (mutuo) o un golpe gratis? Ver comentario de cabecera de

@@ -225,10 +225,30 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.roll.gano).toBe(false);
-    expect(body.felicidad).toBe(0); // FELICIDAD_PERDIDA (10) topada en 0
+    expect(body.felicidad).toBe(0); // un fallo no resta (P345): sigue en 0
 
     const state = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: corretolvasId } });
     expect(state.capturaFelicidad).toBe(0);
+  });
+
+  // P351: el nivel del oficio con que se doma suma a la tirada; con el mismo dado (20 en los dos lados) la derrota del
+  // test de arriba (25 contra 34) pasa a victoria para un Domador de nivel 17 (+6 de competencia, el doble: 25 + 12 = 37).
+  it('POST /tameo-pendientes/:npcSlug/intentar suma al Domador el doble de la competencia de su nivel (P351)', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { clase: 'CAZADOR', especializacion: 'DOMADOR', level: 17 } });
+    try {
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      const app = await buildApp();
+      const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/corretolvas/intentar`, payload: { attribute: 'fuerza' } });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.bonoCompetencia).toBe(12);
+      expect(body.roll.playerResult).toBe(20 + 5 + 12);
+      expect(body.roll.gano).toBe(true);
+      expect(body.felicidad).toBe(15);
+    } finally {
+      await prisma.save.update({ where: { id: saveId }, data: { clase: null, especializacion: null, level: 1 } });
+      await prisma.npcState.updateMany({ where: { saveId, npcId: corretolvasId }, data: { capturaFelicidad: 0 } });
+    }
   });
 
   it('POST /tameo-pendientes/:npcSlug/soltar libera la Jaula sin perder el capturado', async () => {

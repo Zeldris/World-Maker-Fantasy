@@ -52,6 +52,7 @@ import type {
   SubjectInfo,
   TerritoryInfo,
   ZonaParcelaInfo,
+  OcupanteJaula,
 } from '../types'
 import { leerTarkor } from './empaquetado'
 
@@ -1559,9 +1560,13 @@ export async function dejarVivir(
 /// "Matar" un CONVALECIENTE (2026-09-05, bug real: la decisión solo vivía en React,
 /// `combatNpcStates`/`targetedForKill` — se perdía al recargar) — solo marca la decisión en
 /// `NpcState.targetedForKill`, no resuelve nada por sí mismo (el remate real sigue siendo un
-/// intercambio normal, riesgo real). Solo combate 1v1 clásico por ahora.
-export async function requestMatar(saveId: string, npcSlug: string): Promise<void> {
-  await fetchJson(`${apiBaseUrl()}/saves/${saveId}/combat/matar/${npcSlug}`, { method: 'POST' })
+/// intercambio normal, riesgo real). En combate múltiple (P391), con `participantId`: la marca va al
+/// participante y el siguiente turno de la jugadora lo remata con tirada.
+export async function requestMatar(saveId: string, npcSlug: string, participantId?: string): Promise<void> {
+  await fetchJson(`${apiBaseUrl()}/saves/${saveId}/combat/matar/${npcSlug}`, {
+    method: 'POST',
+    ...(participantId ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ participantId }) } : {}),
+  })
 }
 
 export interface TameoPendiente {
@@ -1574,6 +1579,10 @@ export interface TameoPendiente {
   enJaula: boolean
   /// CR-55 (Q3): es ganado y puede ir a un corral en vez de ser compañero.
   alCorral?: boolean
+  /// P347: hay un Corral del Ganadero en pie; sin él, «Al corral» sale desactivado.
+  hayCorral?: boolean
+  /// Hay corral en pie pero ninguno admite a este animal (escalón, plazas, otra especie): el motivo; `null` si cabe.
+  motivoCorral?: string | null
 }
 export async function getTameoPendientes(saveId: string): Promise<{ pendientes: TameoPendiente[] }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes`)
@@ -1595,7 +1604,7 @@ export async function postIntentarTameo(
   saveId: string,
   npcSlug: string,
   attribute: Attribute,
-): Promise<{ roll: OpposedRollInfo; felicidad: number; umbral: number; umbralCompletado: boolean }> {
+): Promise<{ roll: OpposedRollInfo; felicidad: number; umbral: number; umbralCompletado: boolean; bonoCompetencia?: number }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/intentar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1606,7 +1615,7 @@ export async function postConfirmarTameo(saveId: string, npcSlug: string): Promi
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/confirmar`, { method: 'POST' })
 }
 /// CR-55 (Q3): el animal domesticado va a un corral del Ganadero de su especie (o a uno vacío).
-export async function postAlCorral(saveId: string, npcSlug: string): Promise<{ ganadoId: string; buildingId: string; sexo: 'M' | 'F' }> {
+export async function postAlCorral(saveId: string, npcSlug: string): Promise<{ ganadoId: string; buildingId: string; sexo: 'M' | 'F'; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/tameo-pendientes/${npcSlug}/al-corral`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1647,6 +1656,8 @@ export interface CorralesInfo {
   diasSinBeber: number
   /// CR-56 (Q4): compañeros animales que pueden volver al corral.
   fueraDelCorral?: { id: string; name: string }[]
+  /// P346: las Jaulas del Reino con quien espera atado en ellas.
+  jaulas?: { id: string; name: string; tamano: 'PEQUENA' | 'MEDIANA' | 'GRANDE'; estado?: 'ACTIVO' | 'DANADO'; ocupante: OcupanteJaula | null }[]
   corrales: CorralInfo[]
 }
 // CR-63 (63d): Reino › Partidas — partidas de caza y captura.
@@ -1733,7 +1744,7 @@ export async function postEntregarForraje(saveId: string, catalogSlug: string): 
 export async function postLlevarConsigo(saveId: string, ganadoId: string): Promise<{ companionId: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/llevar`, { method: 'POST' })
 }
-export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string }> {
+export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
 export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {

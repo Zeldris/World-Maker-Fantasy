@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildExchangeNarrationPrompt, deterministicExchangeNarration, type TurnoNarracionInput } from './combateMultipleNarracion.js';
+import { buildExchangeNarrationPrompt, deterministicExchangeNarration, noNombraANingunCombatiente, type TurnoNarracionInput } from './combateMultipleNarracion.js';
 
 // Grupo 3 § Combate múltiple (2026-08-25) — solo las 2 piezas puras (prompt/fallback); la llamada
 // real a Ollama no se testea aquí, mismo criterio que narrateAction en narrador.test.ts.
@@ -58,5 +58,16 @@ describe('deterministicExchangeNarration', () => {
       expect(texto).toContain(base.atacanteNombre);
       expect(texto).toContain(base.defensorNombre);
     }
+  });
+});
+
+describe('noNombraANingunCombatiente (P389)', () => {
+  const nombres = { atacanteNombre: 'Hagar Kiugh', defensorNombre: 'Orca desconocida' };
+  it('el texto genérico del Ollama simulado no nombra a nadie y se descarta', () => {
+    expect(noNombraANingunCombatiente('El personaje observa con atención a su alrededor. El viento mueve la hierba y nada fuera de lo común ocurre.', nombres)).toBe(true);
+  });
+  it('basta con una palabra del nombre de cualquiera de los dos, sin mayúsculas ni tildes', () => {
+    expect(noNombraANingunCombatiente('Hagar lanza un tajo y conecta.', nombres)).toBe(false);
+    expect(noNombraANingunCombatiente('La ORCA retrocede herida.', nombres)).toBe(false);
   });
 });

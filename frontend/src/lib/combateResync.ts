@@ -10,3 +10,10 @@ export function combateTrasResync<T extends { npcs: unknown[] }>(
   if (guardado && guardado.npcs.length > 0) return guardado
   return panelAbierto ? actual : null
 }
+
+/// P405: al cargar la partida (recarga de página) con un combate en curso, el panel se reabre solo.
+/// Antes `combatOpen` arrancaba en false y solo quedaba el aviso «⚔️ Combatir», como si el combate
+/// empezara de nuevo. Con una muerte pendiente de resolver manda el modal de la Entidad, no el panel.
+export function abrirCombateAlCargar(save: { combateIniciado?: { npcs: unknown[] } | null; pendingDeathResolution?: boolean }): boolean {
+  return !!save.combateIniciado && save.combateIniciado.npcs.length > 0 && !save.pendingDeathResolution
+}

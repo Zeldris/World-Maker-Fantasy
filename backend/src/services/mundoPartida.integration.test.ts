@@ -107,7 +107,7 @@ describe('asegurarMundoDePartida (CR-6)', () => {
   it('un NPC muerto fuera de escena en una partida (NpcState.muerto) sigue vivo en otra', async () => {
     const a = await crearPartida('Mundo por partida (CR-7) muerto A');
     const b = await crearPartida('Mundo por partida (CR-7) muerto B');
-    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, muertoEnMundo: false }, orderBy: { slug: 'asc' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, muertoEnMundo: false, saveId: null }, orderBy: { slug: 'asc' } });
     await prisma.npcState.create({ data: { saveId: a, npcId: npc.id, scope: '', muerto: true, muertoEn: 480 } });
 
     expect(await prisma.npc.count({ where: { id: npc.id, ...npcVivoEnPartida(a) } })).toBe(0);

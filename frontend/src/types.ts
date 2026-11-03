@@ -822,6 +822,18 @@ export interface BuildingInfo {
   /// P284: materiales que cuesta repararlo; null si no hace falta.
   costeReparar?: number | null
   description: string
+  /// P346: quien está atado en esta Jaula (null si no es Jaula o está vacía).
+  ocupante?: OcupanteJaula | null
+  /// P350: por qué y cuándo se dañó (solo con status DANADO). `causa` null = no se guardó; `dia` es el que ve la jugadora.
+  danio?: { causa: string | null; dia: number } | null
+}
+
+/// P346: el atado de una Jaula (lo manda el backend, `ocupantesDeJaulas`).
+export interface OcupanteJaula {
+  npcSlug: string
+  name: string
+  tipo: 'FAUNA' | 'NPC'
+  felicidad: number
 }
 
 export interface SubjectInfo {
@@ -1046,6 +1058,8 @@ export interface NpcInSceneInfo {
   huido?: boolean
   /// CR-45: es el capitán de su bando y manda caer sobre este (`'ti'` o el nombre de un compañero).
   ordenaCaerSobre?: string
+  /// P353/P356: con varios rivales, `'duelo'` es contra quien te enfrentas de verdad esta ronda y `'de-paso'` quien te golpea sin tirada tuya.
+  frenteATi?: 'duelo' | 'de-paso'
   // Estado real de NpcState al empezar este combate (2026-07-19) — evita que el popup asuma
   // siempre ILESO/sin saquear para un NPC que ya venía herido o saqueado de un encuentro anterior.
   condicionFisica: CondicionFisica

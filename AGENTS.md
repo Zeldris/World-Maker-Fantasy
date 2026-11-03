@@ -36,7 +36,8 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - **El estado vive en los `.md`, no en la conversación** (usuaria, 2026-10-02): en el roadmap, junto al tachado,
   `✅ fecha` + qué se hizo y **qué queda pendiente** si se cerró solo en parte. Una tarea a medias se marca
   `🚧 en curso` con lo hecho y lo que falta.
-- **Ninguna tarea sin hito** (usuaria, 2026-10-02): toda tarea nueva entra en una fase de su roadmap o en una fila de
+- **Ninguna tarea sin hito** (usuaria, 2026-10-02): su número, con `python3 tools/roadmap/siguiente-id.py <serie>`
+  (mira las ramas remotas, `QA-290`); toda tarea nueva entra en una fase de su roadmap o en una fila de
   «Qué entra en cada hito» (`21-roadmap.md`); `python3 tools/roadmap/cobertura.py` tiene que dar «SIN HITO: 0».
 - Commit + push (`git push -u origin <rama>`, en segundo plano; por red, reintentos a 2, 4, 8 y 16 s) en cada punto
   estable: **nunca más de 30-45 minutos sin subir**, y **la bitácora en el mismo commit** que el trabajo. Algo a
@@ -99,7 +100,8 @@ subagente de cada tanda), antes de la primera acción, relee
 
 ## Antes de ir a `main`: tres fases
 
-Nunca sobre trabajo ya fusionado (`QA-77`). Detalle en el
+Nunca sobre trabajo ya fusionado (`QA-77`). En una rama larga (rondas de pruebas), la fase 1 se adelanta al cerrar
+cada bloque de ~10 tandas, solo del diff desde la última revisión (`QA-292`). Detalle en el
 [paso 6 del runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea) (usuaria, 2026-10-21, `QA-183`).
 
 1. **Código:** `git fetch origin main` y `/code-review --max-findings all` del diff contra `origin/main`, con el

@@ -13,6 +13,9 @@ import {
   resolverIntercambioCompleto,
   instanceNumbersByParticipantId,
   resolverObjetivoPorTexto,
+  resolverCitaPorTexto,
+  textoConQuienTeEnfrentas,
+  esUnoContraVarios,
   INTELIGENCIA_TACTICA_UMBRAL,
   MAX_COMBATIENTES_POR_BANDO,
   type CombatienteIniciativa,
@@ -437,6 +440,60 @@ describe('resolverObjetivoPorTexto', () => {
   it('sin ningún candidato vivo, devuelve null', () => {
     const candidatos = [{ participantId: 'p1', npcId: 'buitre-npc', vivo: false }];
     expect(resolverObjetivoPorTexto("Ataco a 'Buitre'.", candidatos, nombreByNpcId, normalize)).toBeNull();
+  });
+
+  // P353: el panel cita el nombre que la jugadora VE («Faerus desconocida»), no el real.
+  describe('nombre visible (P353)', () => {
+    const nombres = new Map([
+      ['orco-npc', 'Orco'],
+      ['faerus-npc', 'Faerus Valdren'],
+    ]);
+    const visibles = new Map([
+      ['orco-npc', 'Orco'],
+      ['faerus-npc', 'Faerus desconocida'],
+    ]);
+    const candidatos = [
+      { participantId: 'a', npcId: 'orco-npc', vivo: true },
+      { participantId: 'b', npcId: 'faerus-npc', vivo: true },
+    ];
+
+    it("«contra 'Faerus desconocida'» apunta a ese rival, no al primer vivo", () => {
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida'.", candidatos, nombres, normalize, visibles)).toBe('b');
+    });
+
+    it('el nombre real sigue valiendo y la cita sin match sigue cayendo al primer vivo', () => {
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus Valdren'.", candidatos, nombres, normalize, visibles)).toBe('b');
+      expect(resolverObjetivoPorTexto("Ataco contra 'Nadie'.", candidatos, nombres, normalize, visibles)).toBe('a');
+    });
+
+    it('el nombre visible admite «#N» entre duplicados', () => {
+      const dobles = [
+        { participantId: 'x', npcId: 'faerus-npc', vivo: true },
+        { participantId: 'y', npcId: 'faerus-npc', vivo: true },
+      ];
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #2'.", dobles, nombres, normalize, visibles)).toBe('y');
+    });
+
+    // P354: dos PRINCIPAL distintos aún sin descubrir se ven igual; «#N» va por el nombre visible, no por npcId.
+    it('dos rivales distintos con el mismo nombre visible se numeran y la cita «#2» elige al segundo (P354)', () => {
+      const nombresDos = new Map([
+        ['faerus-npc', 'Faerus Valdren'],
+        ['hulki-npc', 'Hulki'],
+      ]);
+      const visiblesDos = new Map([
+        ['faerus-npc', 'Faerus desconocida'],
+        ['hulki-npc', 'Faerus desconocida'],
+      ]);
+      const distintos = [
+        { participantId: 'x', npcId: 'faerus-npc', vivo: true },
+        { participantId: 'y', npcId: 'hulki-npc', vivo: true },
+      ];
+      expect(
+        instanceNumbersByParticipantId(distintos.map((c) => ({ ...c, nombre: visiblesDos.get(c.npcId) }))),
+      ).toEqual(new Map([['x', 1], ['y', 2]]));
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #2'.", distintos, nombresDos, normalize, visiblesDos)).toBe('y');
+      expect(resolverObjetivoPorTexto("Ataco contra 'Faerus desconocida #1'.", distintos, nombresDos, normalize, visiblesDos)).toBe('x');
+    });
   });
 });
 
@@ -979,5 +1036,96 @@ describe('resolverEnganchesRonda con la orden del capitán (CR-45, P292)', () =>
   it('si el señalado está oculto, cada uno elige como siempre', () => {
     const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(['hagar']), new Map(), new Map(), ordenCapitan);
     expect(r.get('ulkha')).not.toBe('hagar');
+  });
+});
+
+describe('resolverEnganchesRonda: 1 contra varios, la cita de la jugadora gana el duelo (P353, regla B)', () => {
+  // Combate real de reino-combate-sin-aliados: el Orco (capitán) tira antes que Faerus y los dos reclaman a la jugadora.
+  const orden = ['orco', 'faerus', 'hulki'];
+  const combatientes = [
+    { participantId: 'orco', bando: 'ENEMIGO' as const },
+    { participantId: 'faerus', bando: 'ENEMIGO' as const },
+    { participantId: 'hulki', bando: 'JUGADOR' as const },
+  ];
+  const elegir = (id: string, candidatos: string[]) => (id === 'hulki' ? null : candidatos[0] ?? null);
+
+  it('sin cita: la regla de siempre (el primero que la reclamó es el duelo, el otro golpea gratis)', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir);
+    expect(r.get('hulki')).toBe('orco');
+    expect(esDueloMutuo(r, 'hulki', 'orco')).toBe(true);
+    expect(esDueloMutuo(r, 'hulki', 'faerus')).toBe(false);
+  });
+
+  it('con cita a Faerus: duelo con Faerus y golpe gratis del Orco, que la había reclamado antes', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(), new Map(), new Map(), null, { jugadorId: 'hulki', objetivoId: 'faerus' });
+    expect(r.get('hulki')).toBe('faerus');
+    expect(r.get('faerus')).toBe('hulki');
+    expect(esDueloMutuo(r, 'hulki', 'faerus')).toBe(true);
+    // El Orco sigue apuntándola, pero ella ya no le devuelve la mirada: golpe gratis.
+    expect(r.get('orco')).toBe('hulki');
+    expect(esDueloMutuo(r, 'hulki', 'orco')).toBe(false);
+  });
+
+  it('con aliados vivos en su bando, la cita no cambia la regla de siempre', () => {
+    const conAliada = [...combatientes, { participantId: 'tirag', bando: 'JUGADOR' as const }];
+    const sin = resolverEnganchesRonda(['orco', 'faerus', 'hulki', 'tirag'], conAliada, elegir);
+    const con = resolverEnganchesRonda(['orco', 'faerus', 'hulki', 'tirag'], conAliada, elegir, new Set(), new Map(), new Map(), null, { jugadorId: 'hulki', objetivoId: 'faerus' });
+    expect([...con.entries()]).toEqual([...sin.entries()]);
+  });
+
+  it('una cita a alguien que no es candidato (oculto, con otro visible) no vale', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(['faerus']), new Map(), new Map(), null, { jugadorId: 'hulki', objetivoId: 'faerus' });
+    expect(r.get('hulki')).toBe('orco');
+  });
+
+  it('una provocación a la jugadora sigue mandando sobre su cita', () => {
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(), new Map([['hulki', 'orco']]), new Map(), null, { jugadorId: 'hulki', objetivoId: 'faerus' });
+    expect(r.get('hulki')).toBe('orco');
+  });
+
+  it('con la orden del capitán, los suyos siguen golpeándola; el citado es su duelo', () => {
+    const ordenCapitan = { seguidores: new Set(['orco', 'faerus']), objetivoId: 'hulki' };
+    const r = resolverEnganchesRonda(orden, combatientes, elegir, new Set(), new Map(), new Map(), ordenCapitan, { jugadorId: 'hulki', objetivoId: 'faerus' });
+    expect(esDueloMutuo(r, 'hulki', 'faerus')).toBe(true);
+    expect(r.get('orco')).toBe('hulki');
+    expect(esDueloMutuo(r, 'hulki', 'orco')).toBe(false);
+  });
+
+  it('esUnoContraVarios: solo si ella es la única de su bando y hay rival', () => {
+    expect(esUnoContraVarios(combatientes, 'hulki')).toBe(true);
+    expect(esUnoContraVarios([...combatientes, { participantId: 'tirag', bando: 'JUGADOR' as const }], 'hulki')).toBe(false);
+    expect(esUnoContraVarios(combatientes.filter((c) => c.bando === 'JUGADOR'), 'hulki')).toBe(false);
+  });
+});
+
+describe('resolverCitaPorTexto (P353)', () => {
+  const norm = (s: string) => s.toLowerCase();
+  const candidatos = [
+    { participantId: 'p1', npcId: 'n1', vivo: true },
+    { participantId: 'p2', npcId: 'n2', vivo: true },
+  ];
+  const nombres = new Map([['n1', 'Gorhorn'], ['n2', 'Faerus']]);
+  it('solo da algo cuando la cita casa con un rival vivo; sin cita o sin match, undefined (el primer vivo es de resolverObjetivoPorTexto)', () => {
+    expect(resolverCitaPorTexto("ataco contra 'Faerus'", candidatos, nombres, norm)?.participantId).toBe('p2');
+    expect(resolverCitaPorTexto('ataco', candidatos, nombres, norm)).toBeUndefined();
+    expect(resolverCitaPorTexto("ataco contra 'Nadie'", candidatos, nombres, norm)).toBeUndefined();
+    expect(resolverObjetivoPorTexto("ataco contra 'Nadie'", candidatos, nombres, norm)).toBe('p1');
+  });
+});
+
+describe('textoConQuienTeEnfrentas (P353/P356, opción A de la usuaria)', () => {
+  it('si ella eligió, dice contra quién se enfrenta y quién la golpea de paso', () => {
+    expect(textoConQuienTeEnfrentas({ duelo: 'la faerus desconocida', eligio: true, dePaso: ['el Orco'] })).toBe(
+      'Te enfrentas a la faerus desconocida; el Orco te golpea de paso.',
+    );
+  });
+  it('contrae «a el» en «al» (P354)', () => {
+    expect(textoConQuienTeEnfrentas({ duelo: 'el orco desconocido #2', eligio: true, dePaso: [] })).toBe('Te enfrentas al orco desconocido #2.');
+  });
+  it('si no eligió, dice quién la ha elegido y de quién se defiende (género y plural)', () => {
+    expect(textoConQuienTeEnfrentas({ duelo: 'el Orco', eligio: false, dePaso: [] })).toBe('El Orco te ha elegido: te defiendes de él.');
+    expect(textoConQuienTeEnfrentas({ duelo: 'la Faerus', dueloFemenino: true, eligio: false, dePaso: ['el Orco', 'Hulki'] })).toBe(
+      'La Faerus te ha elegido: te defiendes de ella; el Orco y Hulki te golpean de paso.',
+    );
   });
 });

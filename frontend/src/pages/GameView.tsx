@@ -43,6 +43,7 @@ export function GameView() {
     deathCount,
     dificultad,
     savedActions,
+    activeCombatAbilityNames,
     fictionalDate,
     entorno,
     setInput,
@@ -271,6 +272,9 @@ export function GameView() {
               ended={combat.combatEnded}
               pendingDecisions={combat.combatHasPendingConvalecientes}
               rematar={combat.combatNpcsDisplay.filter((n) => n.condicion === 'CONVALECIENTE' && n.targetedForKill && !n.dismissed).map((n) => n.name)}
+              sinEnergiaParaDanio={!savedActions.some(
+                (a) => a.category === 'combate' && a.rol === 'ataque' && (a.isGeneric || activeCombatAbilityNames.includes(a.name)) && a.energyCost <= energia,
+              )}
             />
         }
         // Petición explícita, 2026-08-15: "si se detecta combate: true que no saque sugerencias" —

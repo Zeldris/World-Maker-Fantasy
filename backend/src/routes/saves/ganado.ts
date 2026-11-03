@@ -5,7 +5,7 @@ import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje, sacrificar, llevarConsigo, devolverAlCorral } from '../../services/cronista/ganadoReino.js';
 import { esGanado, etapasDe, produccionDelDia } from '../../services/cronista/ganaderia.js';
 import { esCompanero, esGuardia } from '../../services/cronista/usosFauna.js';
-import { esDomador } from '../../services/companionSupervivencia.js';
+import { esDomador, jaulasDelReino } from '../../services/companionSupervivencia.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 
 export async function ganadoRoutes(app: FastifyInstance) {
@@ -29,6 +29,8 @@ export async function ganadoRoutes(app: FastifyInstance) {
         forraje: stats?.forraje ?? 0,
         huecoForraje: await huecoDeForraje(tx, save.id),
         forrajeDia: await forrajeDeFibrerias(tx, save.id),
+        // P346: quien espera atado en cada Jaula del Reino.
+        jaulas: await jaulasDelReino(tx, save.id),
         // P330: sin animales no hay carencia que avisar (los contadores viejos de partidas ya jugadas no cuentan).
         diasSinComer: hayAnimales ? (stats?.ganadoDiasSinComer ?? 0) : 0,
         diasSinBeber: hayAnimales ? (stats?.ganadoDiasSinBeber ?? 0) : 0,

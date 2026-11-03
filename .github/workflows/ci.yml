@@ -128,6 +128,14 @@ jobs:
       - name: Escenarios de pruebas
         working-directory: .
         run: bash tools/qa/comprobar-escenarios.sh
+      # QA-291: el driver de Playwright con el juego de verdad: cargar/preparar un escenario y ver la partida en la página
+      # (P400/P407/P409). Necesita el frontend, Playwright y Chromium; el Ollama simulado ya está en marcha.
+      - name: Humo del driver
+        working-directory: .
+        run: |
+          (cd frontend && npm ci)
+          (cd tools/playwright-e2e && npm ci && npx playwright install --with-deps chromium)
+          bash tools/qa/humo-driver.sh
 
   frontend:
     runs-on: ubuntu-latest

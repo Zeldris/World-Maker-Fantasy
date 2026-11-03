@@ -63,6 +63,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **Ir a la línea** (`QA-284`): `grep -n` a la tarea o a la clase de test, no releer (`roadmap-imagenes.md` 15 veces,
   `test_generar_perfil.py` 14, una con `cat` entero, 2026-11-03). Y `/clear` tras cerrar la última tarea, antes de
   preparar `main` (`QA-187`; aquella sesión siguió con suelo de ~65k y techo de 212k).
+- **Revisión por bloques** (`QA-292`): en una rama larga, `/code-review` del diff nuevo al cerrar cada bloque de
+  ~10 tandas; la de 152 commits antes de `main` costó 1,5M de entrada y dejó sistemas sin mirar (2026-11-03).
 - **Revisión por arreglo** (`QA-126`): `/code-review` corto del diff de cada subagente antes de fusionarlo.
 - **Tests de las herramientas** (`QA-113`): `medir.py` del flujo tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.

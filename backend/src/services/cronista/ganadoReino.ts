@@ -7,8 +7,9 @@ import type { Prisma } from '@prisma/client';
 import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { huecoDeMateriales, suministrosDelReino } from './economiaReino.js';
-import { esAdultoSubdito, regionDelReino, rolDeSubdito } from './subditos.js';
+import { avisarEnReino, esAdultoSubdito, regionDelReino, rolDeSubdito } from './subditos.js';
 import { esCompanero } from './usosFauna.js';
+import { conDefinido } from '../dynamicMode.js';
 import { esDomador, FELICIDAD_UMBRAL_DOMADOR, maxSlotsDomadorFor } from '../companionSupervivencia.js';
 import {
   comidaDe,
@@ -96,6 +97,20 @@ export function elegirCorral(corrales: CorralDelReino[], especie: string, buildi
   const vacio = conHueco.find((c) => c.especie === null);
   if (vacio) return vacio;
   return { motivo: 'No hay plaza: cada corral guarda una sola especie y los tuyos están llenos u ocupados por otra.' };
+}
+
+/// P349/P352: el aviso para la pantalla y su línea en el diario del Reino (canal KINGDOM) cuando un animal entra en los
+/// corrales, sea recién domado («Al corral») o un compañero que vuelve («Devolver al corral»). Devuelve el texto.
+/// El artículo es el de la especie (`Npc.articulo`: «la Salamandra de Escoria»); sin él, «el».
+export function fraseEntradaAlCorral(especieNombre: string, articulo: string | null | undefined): string {
+  const quien = conDefinido(especieNombre, articulo ?? 'el');
+  return `${quien.charAt(0).toUpperCase()}${quien.slice(1)} entra en los Corrales del Ganadero.`;
+}
+
+export async function avisarEntradaAlCorral(tx: Tx, saveId: string, especieNombre: string, articulo: string | null | undefined, ahora: number): Promise<string> {
+  const aviso = fraseEntradaAlCorral(especieNombre, articulo);
+  await avisarEnReino(tx, saveId, aviso, ahora);
+  return aviso;
 }
 
 /// Mete en un corral un animal domesticado (adulto joven: recién entrado en la edad adulta). El sexo
@@ -370,7 +385,7 @@ export async function llevarConsigo(tx: Tx, saveId: string, ganadoId: string, ah
 
 /// «Devolver al corral» (Q4): un compañero animal de especie de ganado vuelve a un corral de su especie
 /// (o a uno vacío), con su sexo y su nacimiento.
-export async function devolverAlCorral(tx: Tx, saveId: string, companionId: string, ahora: number, random: () => number = Math.random): Promise<{ ok: true; buildingId: string } | { ok: false; motivo: string }> {
+export async function devolverAlCorral(tx: Tx, saveId: string, companionId: string, ahora: number, random: () => number = Math.random): Promise<{ ok: true; buildingId: string; aviso: string } | { ok: false; motivo: string }> {
   const c = await tx.companion.findFirst({ where: { id: companionId, saveId, tipo: 'FAUNA' } });
   if (!c?.sourceSlug || !esGanado(c.sourceSlug)) return { ok: false, motivo: 'Este compañero no se cría en corral.' };
   if (c.condicionFisica === 'MUERTO') return { ok: false, motivo: `${c.name} está muerto.` };
@@ -378,11 +393,13 @@ export async function devolverAlCorral(tx: Tx, saveId: string, companionId: stri
   const corral = elegirCorral(await corralesDelReino(tx, saveId), c.sourceSlug);
   if ('motivo' in corral) return { ok: false, motivo: corral.motivo };
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  const npc = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: c.sourceSlug }, select: { faunaCategoria: true } });
+  const npc = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: c.sourceSlug }, select: { name: true, articulo: true, faunaCategoria: true } });
   const e = etapasDe(c.sourceSlug, npc?.faunaCategoria ?? null);
   await tx.ganado.create({
     data: { saveId, buildingId: corral.id, especie: c.sourceSlug, sexo: c.sexo ?? (random() < 0.5 ? 'M' : 'F'), nacidoEn: c.nacidoEn ?? ahora - e.adulto * 1440 },
   });
   await tx.companion.delete({ where: { id: c.id } });
-  return { ok: true, buildingId: corral.id };
+  // P352: el mismo aviso y la misma línea en el diario que el «Al corral» de un animal recién domado (P349).
+  const aviso = await avisarEntradaAlCorral(tx, saveId, npc?.name ?? c.name, npc?.articulo, ahora);
+  return { ok: true, buildingId: corral.id, aviso };
 }

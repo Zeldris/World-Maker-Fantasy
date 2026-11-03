@@ -24,6 +24,8 @@ import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
+import { abrirCombateDePersonas } from '../services/combatePersonas.js';
+import { scopeFor, enCombateConDelTurno } from '../services/npcScene.js';
 import { appendSessionFacts } from '../services/worldFacts.js';
 import { esperarSegundoPlano } from '../services/avanceDiario.js';
 import { procesarReacciones } from '../services/cronista/reacciones.js';
@@ -9457,6 +9459,205 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     expect(ctx).not.toContain('NOMBRE OCULTO');
     expect(await rivalDelIntercambio(saveId)).toBe('Orco enfurecido');
   }, 30_000);
+
+  // P344: en el combate de varios (`CombatEncounter`, que no escribe `pendingCombatNpcSlugs`), el ataque del panel va
+  // «contra 'Faerus desconocida'» aunque el punto del rival no esté en el mapa de esta zona (el combate de
+  // `escenario.sh preparar … combate:`). Antes la validación no la veía en escena y lo bloqueaba como nombre inventado.
+  it('en el combate de varios en curso, el nombre visible de un rival sin punto en la zona no se bloquea', async () => {
+    const saveId = await partida('Gorhorn de prueba (P344)', false);
+    const hulki = await prisma.npc.findFirstOrThrow({ where: { slug: 'hulki', saveId: null } });
+    await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'hulki' } });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Dos rivales sin descubrir y sin punto en esta zona, como en el combate preparado.
+    const ulkha = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const miembro = (n: typeof hulki) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro(ulkha), miembro(hulki)]);
+    expect(abierto).not.toBeNull();
+    classifyAction.mockResolvedValueOnce({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = "Golpeo con el arma, contra 'Faerus desconocida'.";
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const body = res.json() as { blocked?: { narration: string }; classification?: unknown; roll?: unknown };
+    expect(body.blocked?.narration).toBeUndefined();
+    expect(body.classification).toBeDefined();
+    await app.close();
+  }, 30_000);
+
+  // Revisión antes de main (2026-11-03): un rival que huyó del combate de varios ya no está en escena, aunque el
+  // encuentro siga EN_CURSO por el otro rival.
+  it('en el combate de varios en curso, el rival que huyó no cuenta como en combate con la jugadora', async () => {
+    const saveId = await partida('Gorhorn de prueba (huido en escena)', false);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const ulkha = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const hulki = await prisma.npc.findFirstOrThrow({ where: { slug: 'hulki', saveId: null } });
+    const miembro = (n: typeof hulki) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro(ulkha), miembro(hulki)]);
+    expect(abierto).not.toBeNull();
+    await prisma.combatParticipant.updateMany({ where: { encounterId: abierto!.encounterId, npcId: hulki.id }, data: { huido: true } });
+    const enCombate = await enCombateConDelTurno({ saveId, enCombate: true, pendingCombatNpcSlugs: [], pendingNpcAttackNpcId: null });
+    expect(enCombate?.npcIds).toContain(ulkha.id);
+    expect(enCombate?.npcIds).not.toContain(hulki.id);
+  }, 30_000);
+
+  // P353/P356 (regla B de la usuaria, 2026-10-27): 1 contra 2 rivales sin descubrir; ella cita a uno y ese es su duelo
+  // aunque el otro la reclamara antes. El turno completo (clasificar + narrar) lo dice en la ronda y no lo bloquea
+  // por «nombre inventado» (camino de reserva de `detectNpcsInScene` con `enCombateCon`, P344).
+  it('1 contra 2: la cita «contra \'Faerus desconocida\'» es su duelo y el otro rival la golpea de paso', async () => {
+    const saveId = await partida('Gorhorn de prueba (P353)', false);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const ulkha = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const hulki = await prisma.npc.findFirstOrThrow({ where: { slug: 'hulki', saveId: null } });
+    await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: { in: ['ulkha-ketg', 'hulki'] } } });
+    const miembro = (n: typeof hulki) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro(ulkha), miembro(hulki)]);
+    expect(abierto).not.toBeNull();
+    // Sin aliados vivos y con 2 rivales, la ronda espera la cita de la jugadora aunque ya la hayan reclamado.
+    expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: abierto!.encounterId } })).esperandoEleccionJugadora).toBe(true);
+
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = "Golpeo con el arma, contra 'Faerus desconocida'.";
+    const app = await buildApp();
+    const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as {
+      blocked?: { narration: string }; classification?: unknown; roll?: unknown;
+    };
+    expect(clasificado.blocked?.narration).toBeUndefined();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    await app.close();
+    classifyAction.mockReset();
+    const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
+    expect(narracion).toMatch(/Te enfrentas a la faerus desconocida; .+ te golpea de paso\./);
+    // El otro rival (no el citado) es quien la golpea de paso: aparece con su nombre visible tras «;».
+    // Solo quien golpea de paso: tras esa frase la narración sigue con los golpes de la ronda, que sí la nombran.
+    const otro = (narracion.split('; ')[1] ?? '').split(' te golpea de paso')[0]!;
+    expect(otro).toMatch(/desconocid/);
+    expect(otro).not.toMatch(/faerus/i);
+    // P401: el panel marca a la faerus como su duelo y al otro como «de paso», aunque al acabar el turno la ronda
+    // nueva ya espere su cita (entonces el enganche guardado es provisional y no daría marcas).
+    const { combateIniciado } = lastNdjsonLine(res.payload) as { combateIniciado: { npcs: { slug: string; condicionFisica: string; frenteATi?: string }[] } | null };
+    const enPie = (slug: string) => {
+      const n = combateIniciado?.npcs.find((x) => x.slug === slug);
+      return n && n.condicionFisica !== 'CONVALECIENTE' && n.condicionFisica !== 'MUERTO' ? n : null;
+    };
+    if (enPie('hulki') && enPie('ulkha-ketg')) {
+      expect(enPie('hulki')!.frenteATi).toBe('duelo');
+      expect(enPie('ulkha-ketg')!.frenteATi).toBe('de-paso');
+    }
+  }, 60_000);
+
+  // P353 (tanda 47): 1 contra 3 sin descubrir, con capitán (Ulkha Ketg). La cita de la ronda 1 a un rival que no la
+  // reclamó también es su duelo (en la ronda 2 ya lo era; en la 1 salía «El orco desconocido te ha elegido»).
+  it('1 contra 3 con capitán: la cita de la ronda 1 es su duelo', async () => {
+    for (let intento = 0; intento < 6; intento++) {
+      const saveId = await partida(`Gorhorn de prueba (P353 tres ${intento})`, false);
+      const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const slugs = ['ulkha-ketg', 'hulki', 'herrero-serhu'];
+      const npcs = await Promise.all(slugs.map((slug) => prisma.npc.findFirstOrThrow({ where: { slug, saveId: null } })));
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: { in: slugs } } });
+      const miembro = (n: (typeof npcs)[number]) => {
+        const atr = n.attributes as unknown as AttributeBlock;
+        return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+      };
+      const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, npcs.map(miembro));
+      expect(abierto).not.toBeNull();
+      expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: abierto!.encounterId } })).esperandoEleccionJugadora).toBe(true);
+      classifyAction.mockResolvedValue({
+        requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+      });
+      const action = "Golpeo con el arma, contra 'Faerus desconocida'.";
+      const app = await buildApp();
+      const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as {
+        blocked?: { narration: string }; classification?: unknown; roll?: unknown;
+      };
+      expect(clasificado.blocked?.narration).toBeUndefined();
+      const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+      await app.close();
+      classifyAction.mockReset();
+      const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
+      expect(narracion, `intento ${intento}`).toMatch(/Te enfrentas a la faerus desconocida; /);
+    }
+  }, 180_000);
+
+  // P354 (tanda 47): tres rivales ocultos con el mismo nombre visible («Orco desconocido»); el panel cita «Orco desconocido #2»
+  // y /turn/classify lo daba por inventado («El nombre de Orco desconocido #2 no le suena a nada»): sin ronda y con gasto.
+  it('cita «Orco desconocido #2» con tres orcos ocultos iguales: no se bloquea y es su duelo con el segundo', async () => {
+    const saveId = await partida('Gorhorn de prueba (P354)', false);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const slugs = ['herrero-serhu', 'cocinero-serhu', 'ganadero-serhu'];
+    const npcs = await Promise.all(slugs.map((slug) => prisma.npc.findFirstOrThrow({ where: { slug, saveId: null } })));
+    await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: { in: slugs } } });
+    const miembro = (n: (typeof npcs)[number]) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, npcs.map(miembro));
+    expect(abierto).not.toBeNull();
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = "Ataco con el arma que llevo en la mano principal, contra 'Orco desconocido #2'.";
+    const app = await buildApp();
+    const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as {
+      blocked?: { narration: string }; classification?: unknown; roll?: unknown;
+    };
+    expect(clasificado.blocked?.narration).toBeUndefined();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    await app.close();
+    classifyAction.mockReset();
+    const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
+    expect(narracion).toMatch(/Te enfrentas al orco desconocido #2; /);
+  }, 60_000);
+
+  // P395 (tanda 74): la orden del capitán de la ronda nueva («X ordena caer sobre Y.») la escribe el combate mientras
+  // se resuelve, antes de guardar la narración del turno; salía encima de los golpes de la ronda anterior y parecía
+  // mandarlos. Tiene que quedar en el diario tras la narración del turno.
+  it('la orden del capitán de la ronda nueva queda en el diario tras la narración del turno', async () => {
+    const saveId = await partida('Gorhorn de prueba (P395)', true);
+    await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: 'ulkha-ketg' } });
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    // Ulkha Ketg (Inteligencia 20 en su ficha): el capitán de cada ronda se recalcula con la ficha.
+    const renegado = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const soldado = { npcId: renegado.id, nombre: renegado.name, scope: '', destreza: 8, inteligencia: 20, esGrupo: true };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [soldado, soldado]);
+    expect(abierto).not.toBeNull();
+    // Por id, no por hora: la línea de apertura del combate («Comienza el combate… ordena caer sobre…») puede caer en
+    // el mismo milisegundo que un `new Date()` tomado justo después y colarse en el diario del turno.
+    const previas = (await prisma.logEntry.findMany({ where: { saveId }, select: { id: true } })).map((e) => e.id);
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = `Golpeo con el arma, contra '${renegado.name}'.`;
+    const app = await buildApp();
+    const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as { classification?: unknown; roll?: unknown };
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    await app.close();
+    classifyAction.mockReset();
+    const diario = await prisma.logEntry.findMany({ where: { saveId, channel: 'CHARACTER', id: { notIn: previas } }, orderBy: { createdAt: 'asc' } });
+    const orden = diario.findIndex((e) => e.isSystemMessage && e.text.includes('ordena caer sobre'));
+    expect(orden).toBeGreaterThanOrEqual(0);
+    // Tras la narración del turno (sin el arreglo salía justo tras el eco de la acción).
+    const narracion = diario.findIndex((e) => !e.isPlayerAction);
+    expect(orden).toBeGreaterThan(narracion);
+    // P397 (tanda 75): con la hora de ficción del turno, no la de antes de narrarlo, y en la respuesta del turno
+    // (`intercambiosExtra`), en su sitio entre los ataques recibidos: si no, no se veía en pantalla hasta recargar.
+    expect(diario[orden]!.fictionalMinutes).toBe(diario[narracion]!.fictionalMinutes);
+    const extras = (lastNdjsonLine(res.payload).intercambiosExtra ?? []) as { logEntryId: string }[];
+    const idsTrasNarracion = diario.slice(narracion + 1).map((e) => e.id);
+    expect(extras.map((e) => e.logEntryId)).toEqual(idsTrasNarracion.filter((id) => extras.some((e) => e.logEntryId === id)));
+    expect(extras.some((e) => e.logEntryId === diario[orden]!.id)).toBe(true);
+  }, 60_000);
 });
 
 // P233 (pruebas 0.3, 2026-10-19): morir en un combate sin haber caído convaleciente EN ESE combate

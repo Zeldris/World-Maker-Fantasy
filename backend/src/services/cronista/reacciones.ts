@@ -38,6 +38,8 @@ export const FRACCION_QUE_HUYE = 0.3;
 /// ya ha quedado por debajo de 30).
 export const COHESION_HAMBRUNA = -10;
 export const PROB_REBELION_HAMBRUNA = 0.25;
+/// Lo que pierde de cohesión una facción al morir su líder (`MUERTE_LIDER_BAJA_COHESION`).
+export const BAJA_COHESION_MUERTE_LIDER = 25;
 
 export interface SucesoEnCola {
   id: string;
@@ -139,7 +141,7 @@ export const REACCIONES: Reaccion[] = [
     escucha: ['MUERTE_LIDER'],
     prioridad: 10,
     condicion: async (ctx) => !!actor(ctx.suceso, 'FACCION', 'AFECTADO'),
-    efectos: async (ctx) => [{ tipo: 'cambiarCohesion', faccionSlug: actor(ctx.suceso, 'FACCION', 'AFECTADO')!, delta: -25 }],
+    efectos: async (ctx) => [{ tipo: 'cambiarCohesion', faccionSlug: actor(ctx.suceso, 'FACCION', 'AFECTADO')!, delta: -BAJA_COHESION_MUERTE_LIDER }],
   },
   {
     // CR-11: la sucesión se decide a los 1-3 días (regla SUCESION_PENDIENTE, por cohesión).

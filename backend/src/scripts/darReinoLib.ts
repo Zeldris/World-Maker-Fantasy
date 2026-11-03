@@ -1,4 +1,13 @@
 // QA-143: interpreta los argumentos de `darReino.ts` (puro, para probarlo sin base).
+import { TIER_MAXIMO_PERSONAJE } from '../services/construction.js';
+
+/// QA-269: quién levanta una obra de ese tier. El personaje llega hasta `TIER_MAXIMO_PERSONAJE`; más (la Jaula grande,
+/// tier 6), solo la Casa de obras. `dar-reino` usa la misma comprobación del juego con ese `quien`, sin pasar por la cola
+/// de la Casa (constructores, nivel de la Casa, días de obra): es una herramienta de preparación.
+export function quienLevanta(tier: number): 'personaje' | 'casa-de-obras' {
+  return tier > TIER_MAXIMO_PERSONAJE ? 'casa-de-obras' : 'personaje';
+}
+
 export type PeticionReino = {
   comida: number;
   bebida: number;
@@ -62,15 +71,23 @@ export function posicionJuntoAlAyuntamiento(ayto: { x: number | null; y: number 
   return null;
 }
 
-/// Primer tope que se pasaría con lo pedido, o null.
-export function primerExcesoDeTope(
-  suma: { comida: number; bebida: number; materiales: number },
-  actual: { comida: number; bebida: number; materiales: number },
-  topes: { comida: number; bebida: number; materiales: number },
-): string | null {
-  const nombres = { comida: 'comida', bebida: 'bebida', materiales: 'materiales del Almacén (RECURSO)' } as const;
-  for (const k of ['comida', 'bebida', 'materiales'] as const) {
-    if (suma[k] > 0 && actual[k] + suma[k] > topes[k]) return `${nombres[k]}: ${actual[k]} + ${suma[k]} pasa del tope de ${topes[k]} (hueco ${Math.max(0, topes[k] - actual[k])}).`;
-  }
+/// P378: comida y bebida que pasan del tope dan lo que cabe (nunca negativo) y avisan, en vez de abortar todo.
+export function ajustarATopes(
+  pedido: { comida: number; bebida: number },
+  actual: { comida: number; bebida: number },
+  topes: { comida: number; bebida: number },
+): { comida: number; bebida: number; avisos: string[] } {
+  const avisos: string[] = [];
+  const dar = (k: 'comida' | 'bebida') => {
+    const cabe = Math.max(0, Math.min(pedido[k], topes[k] - actual[k]));
+    if (cabe < pedido[k]) avisos.push(`${k}: se dan ${cabe} de ${pedido[k]}: tope ${topes[k]} (hay ${actual[k]}).`);
+    return cabe;
+  };
+  return { comida: dar('comida'), bebida: dar('bebida'), avisos };
+}
+
+/// Tope de materiales del Almacén que se pasaría con lo pedido (los objetos no se parten: se rechaza), o null.
+export function primerExcesoDeTope(suma: { materiales: number }, actual: { materiales: number }, topes: { materiales: number }): string | null {
+  if (suma.materiales > 0 && actual.materiales + suma.materiales > topes.materiales) return `materiales del Almacén (RECURSO): ${actual.materiales} + ${suma.materiales} pasa del tope de ${topes.materiales} (hueco ${Math.max(0, topes.materiales - actual.materiales)}).`;
   return null;
 }
