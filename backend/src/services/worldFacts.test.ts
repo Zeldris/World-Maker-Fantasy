@@ -36,7 +36,7 @@ vi.mock('../lib/embeddings.js', () => ({
   toVectorLiteral: (vector: number[]) => `[${vector.join(',')}]`,
 }));
 
-const { loadSessionFacts, appendSessionFacts, selectRelevantFacts } = await import('./worldFacts.js');
+const { loadSessionFacts, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO } = await import('./worldFacts.js');
 
 describe('loadSessionFacts', () => {
   beforeEach(() => findManySessionFact.mockReset());
@@ -136,22 +136,20 @@ describe('selectRelevantFacts', () => {
     expect(queryRaw).not.toHaveBeenCalled();
   });
 
-  it('con más de 10, garantiza los 3 más recientes y completa con los más relevantes recuperados por similitud', async () => {
-    const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`); // hecho 12/13/14 = los 3 más recientes
-    queryRaw.mockResolvedValue([{ text: 'hecho 2' }, { text: 'hecho 5' }, { text: 'hecho 14' }]); // "hecho 14" ya está en recencia
-    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
-    expect(embed).toHaveBeenCalledWith('acción del jugador');
-    // Recencia garantizada (12,13,14) + relevantes no solapados (2,5) — sin duplicar "hecho 14".
-    expect(result).toEqual(['hecho 2', 'hecho 5', 'hecho 12', 'hecho 13', 'hecho 14']);
+  it('con más de 10, garantiza los recientes desde su ancla y detrás los relevantes, marcados como recuerdo (QA-289)', async () => {
+    const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`); // ancla de la ventana: «hecho 10»
+    queryRaw.mockResolvedValue([{ text: 'hecho 5' }, { text: 'hecho 2' }, { text: 'hecho 14' }]); // "hecho 14" ya está en recencia
+    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts, ['Ulkha Ketg', 'Paso de los Pilares Rotos']);
+    expect(embed).toHaveBeenCalledWith('acción del jugador · Ulkha Ketg · Paso de los Pilares Rotos');
+    expect(result).toEqual(['hecho 10', 'hecho 11', 'hecho 12', 'hecho 13', 'hecho 14', `${PREFIJO_RECUERDO}hecho 2`, `${PREFIJO_RECUERDO}hecho 5`]);
   });
 
-  it('devuelve el resultado final en orden cronológico (según el array original), no por score de similitud', async () => {
+  it('los recientes no cambian de inicio al añadir un hecho mientras su ancla siga en la ventana (QA-289)', () => {
     const facts = Array.from({ length: 15 }, (_, i) => `hecho ${i}`);
-    // La consulta "por relevancia" los devuelve en un orden distinto al cronológico.
-    queryRaw.mockResolvedValue([{ text: 'hecho 8' }, { text: 'hecho 1' }]);
-    const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
-    const indices = result.map((f) => facts.indexOf(f));
-    expect(indices).toEqual([...indices].sort((a, b) => a - b));
+    expect(ventanaReciente(facts)[0]).toBe('hecho 10');
+    expect(ventanaReciente([...facts, 'hecho 15'])[0]).toBe('hecho 13');
+    expect(ventanaReciente([...facts.slice(1), 'hecho 15'])[0]).toBe('hecho 13'); // podar el más viejo no la mueve
+    expect(ventanaReciente(facts.slice(0, 13)).length).toBeGreaterThanOrEqual(3);
   });
 
   // Causa raíz confirmada 2026-08-31 ("sessionFacts reintroduce NPCs retirados/cruza rasgos entre

@@ -1163,7 +1163,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones, sin que el enfrentamiento en sí (quién golpea, quién sale herido) se resuelva todavía en esta narración.'
       : '';
   const combatBlock = ctx.enCombate
-    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase (checklist consolidado P1.6, 2026-08-27, bug real: "bloquea eficazmente... sin daño, dejando una mancha roja en su pecho" — el propio texto se desmiente a sí mismo) — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
+    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
         ctx.npcFallsUnconsciousThisTurn
           ? ctx.npcFallsConvalecienteThisTurn
             ? // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): este mismo
@@ -1181,7 +1181,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           ? ' ADEMÁS, en este MISMO intercambio tú también recibes un golpe de vuelta — tu narración tiene que reflejar los DOS lados del choque (lo que le pasa al rival Y lo que te pasa a ti), nunca solo uno de los dos como si el otro no hubiera ocurrido.'
           : ''
       }`
-    : `Fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null. ${
+    : `Fuera de combate, "condicionFisica" solo mejora o va a null. ${
         hostileEngagement
           ? agresorSlugs.length > 0
             ? `Esta escena ES un enfrentamiento real contra ${npcSlugs.length === 1 ? 'el NPC ya' : 'los NPCs ya'} en escena — rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno), esto no es opcional aquí.${ambushHint}`
@@ -1196,7 +1196,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA" más abajo, nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esta misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.`
+              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} DIÁLOGO: si el jugador le habla a un NPC en escena, ese NPC le responde en primera persona entre comillas, con su nombre y su personalidad (ver DIÁLOGO arriba).`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
@@ -1234,13 +1234,19 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // QA-165 (`/opt-ai`, 2026-10-20): `lengthGuidance` (cambia al entrar o salir de combate y con la banda) iba al
   // principio de `fixedInstructions` y rompía toda la caché en ese turno (~6.400 tokens, ~50 s en la Deck). Va ahora
   // junto a la acción, y el bloque fijo empieza ya en PERSPECTIVA.
-  const fixedInstructions = `PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre (checklist consolidado P1.6/P1.7, 2026-08-27, bug real jugando en vivo: la narración saltaba a segunda persona a mitad de párrafo — "El orco... lanzándola hacia Gorhorn... Tu hacha... tu pecho" — mezclando registros dentro de la misma frase) — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida (bug real jugando en vivo, 2026-09-15: dos NPC sin relación entre sí dijeron literalmente la misma frase "¿Has visto algo?" — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el mismo motivo o situación). NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
+  const fixedInstructions = `PERSPECTIVA: NARRA SIEMPRE EN TERCERA PERSONA sobre el personaje del jugador, por su nombre — nunca "tú"/"tu"/"te" refiriéndote al personaje del jugador, aunque estas instrucciones a TI (el modelo) sí usen esa forma para hablarte. Solo el diálogo citado entre comillas de un NPC dirigiéndose al jugador puede usar la segunda persona dentro de esa cita — redacta SIEMPRE una frase nueva para esa cita, propia de TU escena real, nunca una frase genérica o previsible que pudiera repetirse turno tras turno o partida tras partida — un NPC nuevo tiene que sonar distinto de cualquier otro, aunque comparta el motivo o la situación. NUNCA termines la narración con preguntas retóricas dirigidas al jugador (nada de "¿qué harás?", "¿te arriesgas?", "¿continúas?") ni le ofrezcas explícitamente una lista de opciones a elegir — eso lo decide el jugador con su siguiente acción libre, no el narrador proponiéndoselo.
 
-TONO: el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario (auditoría 2026-08-12, "descolocación de tono" — bug real jugando en vivo: un acercamiento pacífico y explícito, manos vacías y en calma, se narró como si el personaje exigiera y desafiara). Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador.
+TONO: el tono/actitud que el jugador describe explícitamente en su propia acción (calma, cortesía, agresividad...) define cómo actúa y se comporta SU personaje en esta narración — nunca lo sustituyas por uno contrario. Esto no limita cómo reacciona el NPC: puede responder con su propia personalidad (hostil, huidizo, indiferente...) aunque el tono del jugador sea distinto — el tono ajeno del NPC no debe "contagiar" cómo se describe al personaje del jugador.
 
 MUNDO: JAMÁS menciones pólvora, armas de fuego, metal industrial, plástico, electricidad ni ningún objeto o tecnología moderna/anacrónica — ni como ambientación ni como detalle suelto. Si necesitas un olor o peligro genérico, usa algo coherente con el lugar (sudor, sangre, humo de leña, arcilla, azufre volcánico), nunca un cliché de videojuego moderno. No contradigas los hechos ya establecidos sobre el propio personaje (por ejemplo, si va solo, no le des compañeros, seguidores o un grupo propio que no existían antes) ni repitas como si fuera nuevo un lugar o hecho que ya aparece en HECHOS DEL MUNDO. Si a cualquier NPC (con nombre o improvisado) le describes un arma, armadura o material, usa solo los ya establecidos en este mundo (hierro, hueso, cuero o piel curtida, madera, hielo sílice, arcilla): nunca inventes un material distinto (nada de bronce, acero, cobre, obsidiana ni ningún otro que no hayas visto ya en HECHOS DEL MUNDO). Igual con cualquier animal o criatura que aparezca (con nombre o improvisado): usa solo fauna ya establecida en este mundo (la que se te da como pista de posible encuentro, la ya vista en HECHOS DEL MUNDO, o el bestiario propio de este lugar) — nunca un animal mundano del mundo real que no exista aquí (zorro, ciervo, conejo, lobo, oso...). Sí puedes improvisar libremente NPCs sin nombre o sucesos menores que no tengan peso en la trama (un viajero anónimo, un ruido, el clima).
 
 CAMPOS OPCIONALES (todos poco frecuentes, la mayoría de turnos van en null): si la narración revela algo que el personaje ahora sabe o que cambia la situación, añádelo también a "newFacts" como frase corta, para que se recuerde en turnos futuros. Solo si la acción resulta de verdad en que el personaje consigue o fabrica un objeto físico duradero (no algo que se consume o desaparece en la escena), rellena "newItem" con su nombre y descripción — en caso contrario déjalo en null. Igual para "newCompanion": solo si la acción resulta de verdad en ganar un aliado o compañero de verdad (nunca lo inventes de la nada ni contradigas que el personaje va solo), rellénalo con nombre/rol/notas; si no, déjalo en null.
+
+LORE Y PRESENCIA: No inventes fauna, flora, personajes con nombre, clanes ni objetos con historia propia que no aparezcan en HECHOS DEL MUNDO o en CONOCIMIENTO DE FONDO. Pero ojo: CONOCIMIENTO DE FONDO es solo trasfondo/ambientación — NUNCA es licencia para hacer aparecer en persona, en esta escena, a un personaje que solo esté ahí. Un personaje de CONOCIMIENTO DE FONDO puede motivar un detalle, un rumor, un objeto o una referencia indirecta, pero solo puede aparecer físicamente si además está en HECHOS DEL MUNDO o en NPCs EN ESCENA.
+
+DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA", nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esa misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.
+
+SALUD: fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null.
 
 Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
 
@@ -1258,7 +1264,7 @@ ${
 
   const groundingBlock = ctx.weaklyGrounded
     ? 'No tenemos hechos específicos sobre esto — describe el entorno o el resultado de forma genérica y creíble (terreno, clima, sensaciones), sin inventar fauna, personajes con nombre, clanes ni objetos con historia propia.'
-    : 'No inventes fauna, flora, personajes con nombre, clanes ni objetos con historia propia que no aparezcan en HECHOS DEL MUNDO o en CONOCIMIENTO DE FONDO. Pero ojo: CONOCIMIENTO DE FONDO es solo trasfondo/ambientación — NUNCA es licencia para hacer aparecer en persona, en esta escena, a un personaje que solo esté ahí. Un personaje de CONOCIMIENTO DE FONDO puede motivar un detalle, un rumor, un objeto o una referencia indirecta, pero solo puede aparecer físicamente si además está en HECHOS DEL MUNDO o en NPCs EN ESCENA.';
+    : 'Recuerda LORE Y PRESENCIA: nada inventado, y CONOCIMIENTO DE FONDO no pone a nadie en la escena.';
 
   // CONOCIMIENTO DE FONDO (roadmap 2026-07-24, ver comentario en TurnContext.backgroundLore):
   // bloque separado de HECHOS DEL MUNDO a propósito — el lore RAG se recupera por similitud
@@ -1306,7 +1312,8 @@ Responde solo con el JSON pedido, nada más.`;
     type: 'object',
     properties: {
       narration: { type: 'string' },
-      newFacts: { type: 'array', items: { type: 'string' } },
+      // QA-289: como mucho 3 hechos y cortos; más era repetir la narración en otra lista (y tiempo de escritura).
+      newFacts: { type: 'array', items: { type: 'string', maxLength: 160 }, maxItems: 3 },
       newItem: {
         type: ['object', 'null'],
         properties: {
@@ -1420,6 +1427,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // creativa — dejar la exploración en la temperatura normal del Modelfile (~0.9).
   const combatTemperature = ctx.enCombate ? 0.65 : undefined;
 
+  // QA-289 (investigación de repos de rol): min_p corta las palabras muy improbables sin quitar
+  // variedad, y una penalización suave de repetición sobre los últimos 256 tokens contra las frases
+  // repetidas. Valores de partida; se miden con `bench-ia.sh` y los rechazos por repetición.
+  const MUESTREO_NARRADOR = { min_p: 0.05, repeat_penalty: 1.05, repeat_last_n: 256 };
   const attempt1 = () => {
     const generateOptions = {
       model: env.ollamaModelNarrador,
@@ -1439,6 +1450,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       temperature: combatTemperature,
       tarea: 'narrar',
       intento: 1,
+      muestreo: MUESTREO_NARRADOR,
     };
     if (!ctx.onNarrationChunk) return ollamaGenerate(generateOptions);
 
@@ -1486,6 +1498,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       temperature: combatTemperature,
       tarea: 'narrar',
       intento: 2,
+      muestreo: MUESTREO_NARRADOR,
     });
   };
 

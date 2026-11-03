@@ -3356,6 +3356,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Región activa este turno (roadmap 2026-07-20, para el lint post-narración) — la del destino
   // si es un turno de viaje, si no la de la ubicación actual.
   let activeRegion: string | null = null;
+  // QA-289: zona de la escena, para buscar los hechos de sesión por escena (`selectRelevantFacts`).
+  let zonaEscena: string | undefined;
   // Punto del jugador en el mapa de Zona (2026-09-04) — al llegar a una Location nueva, aparece en
   // el borde del lienzo correspondiente a la dirección por la que se entra (nunca el centro). Se
   // calcula aquí (fuera de la transacción de escritura, con `destination` ya cargado para el
@@ -3416,6 +3418,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       zonasIntermedias.length > 0
         ? ` El trayecto pasa por ${zonasIntermedias.length === 1 ? 'una zona intermedia real' : `${zonasIntermedias.length} zonas intermedias reales`} (${zonasIntermedias.join(', ')}) — nómbra${zonasIntermedias.length === 1 ? 'la' : 'las'} de pasada en la narración, con algo breve y propio de cada una (terreno, un detalle sensorial), no como una simple lista.`
         : '';
+    zonaEscena = travel.toLocationName;
     contextBlocks.push(
       `LLEGADA A ${travel.toLocationName}: ${destination?.description ?? ''}\nRUTA RECORRIDA: ${ruta}\nLa narración de este turno tiene que TERMINAR con el personaje ya en ${travel.toLocationName}, mencionando algo concreto y propio de este lugar (no solo del paisaje del camino) — puedes describir brevemente el trayecto, pero nunca a costa de dejar la llegada implícita o sin situar.${tramoHint}`,
     );
@@ -3423,6 +3426,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const location = await prisma.location.findUnique({ where: { id: currentLocationId } });
     if (location) {
       activeRegion = location.region;
+      zonaEscena = location.name;
       currentLocationRecord = { id: location.id, kind: location.kind, slug: location.slug };
       const destinations = await destinationsFrom(currentLocationId, attributes);
       const destinosTxt = destinations.length
@@ -4489,7 +4493,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // obtención en prosa libre es pura alucinación.
   const harvestOrLootActiveThisTurn = !!harvestMatch || lootMode || buildMode || craftMode;
   const narrationCtx = {
-    worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts))],
+    worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts, [...npcsInScene.map((n) => n.name), ...(zonaEscena ? [zonaEscena] : [])]))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
     // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos
     // de la escena actual — fusionarlos bajo el mismo "HECHOS DEL MUNDO" le daba al modelo

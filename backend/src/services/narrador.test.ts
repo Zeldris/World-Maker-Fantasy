@@ -2020,9 +2020,25 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
   it('el estado y la narración anterior van detrás de los hechos de la escena', () => {
     const p = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
     const pos = (t: string) => p.indexOf(t);
-    expect(pos('PERSONAJE EN ESCENA')).toBeLessThan(pos('ESTADO DE LA PARTIDA'));
+    expect(pos('PERSONAJE EN ESCENA:')).toBeLessThan(pos('ESTADO DE LA PARTIDA'));
     expect(pos('ESTADO DE LA PARTIDA')).toBeLessThan(pos('TU PROPIA NARRACIÓN'));
-    expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO'));
+    expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO DEL MUNDO'));
+  });
+
+  it('el esquema pide como mucho 3 hechos nuevos y cortos (QA-289)', () => {
+    const nf = (buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).format.properties as Record<string, { maxItems?: number; items?: { maxLength?: number } }>).newFacts;
+    expect(nf.maxItems).toBe(3);
+    expect(nf.items?.maxLength).toBe(160);
+  });
+
+  it('las reglas fijas de lore, diálogo y salud van en el prefijo, y junto a la acción solo su recordatorio (QA-289)', () => {
+    const p = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.' }).prompt;
+    const cola = p.slice(p.indexOf('PERSONAJE:\n'));
+    expect(p.indexOf('LORE Y PRESENCIA: No inventes fauna')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
+    expect(p.indexOf('DIÁLOGO (obligatorio')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
+    expect(cola).not.toMatch(/No inventes fauna|DIÁLOGO \(obligatorio|nunca empeores/);
+    expect(cola).toMatch(/Recuerda LORE Y PRESENCIA/);
+    expect(cola).toMatch(/DIÁLOGO: si el jugador le habla a un NPC en escena/);
     expect(p).toContain('PERSONAJE:\nGorhorn, Superviviente.\n\nHECHOS DEL MUNDO');
   });
 
@@ -2061,7 +2077,7 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     while (a[n] === b[n]) n++;
     expect(n).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
     // Lo que no es de la zona sigue en su orden, detrás.
-    expect(a.indexOf('El golpe ya está resuelto')).toBeLessThan(a.indexOf('PERSONAJE EN ESCENA'));
+    expect(a.indexOf('El golpe ya está resuelto')).toBeLessThan(a.indexOf('PERSONAJE EN ESCENA:'));
   });
 });
 

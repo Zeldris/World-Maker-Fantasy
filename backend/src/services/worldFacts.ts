@@ -13,6 +13,9 @@ import { matchNpcAliases, type NpcWithAliases } from './npcScene.js';
 const MAX_STORED_FACTS = 50;
 const MAX_SENT_FACTS = 10;
 const RECENCY_GUARANTEED = 3;
+/// Tope de la ventana de recientes (QA-289): RECENCY_GUARANTEED + los que alcancen hasta un ancla.
+const MAX_VENTANA = 6;
+export const PREFIJO_RECUERDO = 'Antes en esta partida: ';
 // Bajado de 0.7 a 0.65 (auditoría 2026-08-02, "revisar partida" — bug real jugando en vivo): dos
 // hechos seguidos del mismo combate, "El Orco Enfurecido ha sido derrotado y ahora está herido,
 // ~50/100 de salud" / "El Orco Enfurecido ahora está herido, ~50/100 de salud", tenían 0.69 de
@@ -147,7 +150,13 @@ async function pruneOldFacts(saveId: string): Promise<void> {
 /// `loadSessionFacts`). Si hay MAX_SENT_FACTS o menos en total, no hace falta filtrar nada — ni
 /// una consulta ni un embedding de más en la mayoría de partidas cortas/medias, que es
 /// precisamente cuando esta mejora no hace falta todavía.
-export async function selectRelevantFacts(action: string, saveId: string, worldId: string, sessionFacts: string[]): Promise<string[]> {
+export async function selectRelevantFacts(
+  action: string,
+  saveId: string,
+  worldId: string,
+  sessionFacts: string[],
+  escena: string[] = [],
+): Promise<string[]> {
   // NPCs retirados para siempre (ver comentario arriba) — se excluyen de la fuente ANTES de
   // recortar por recencia/relevancia, para que ni siquiera cuenten como candidato "reciente
   // garantizado" (mismo criterio que `npcsRetiredForever` gana siempre en detectNpcsInScene).
@@ -167,13 +176,12 @@ export async function selectRelevantFacts(action: string, saveId: string, worldI
 
   if (filteredFacts.length <= MAX_SENT_FACTS) return filteredFacts;
 
-  // Los `RECENCY_GUARANTEED` más recientes van SIEMPRE primero en la combinación (nunca se
-  // recortan) — bug real encontrado probando en vivo (2026-07-30): con `relevant` primero y
-  // `recent` al final, un `.slice(0, MAX_SENT_FACTS)` podía descartar la recencia entera si la
-  // consulta de relevancia ya llenaba las 10 plazas ella sola.
-  const recent = filteredFacts.slice(-RECENCY_GUARANTEED);
+  // Los recientes van SIEMPRE (nunca se recortan) — bug real (2026-07-30): con `relevant` primero
+  // y `recent` al final, un `.slice(0, MAX_SENT_FACTS)` podía descartar la recencia entera.
+  const recent = ventanaReciente(filteredFacts);
   const remainingBudget = MAX_SENT_FACTS - recent.length;
-  const vector = await embed(action);
+  // QA-289: se busca por la escena (acción + NPC presentes + zona), no solo por la acción (P252).
+  const vector = await embed([action, ...escena].join(' · '));
   const rows = await prisma.$queryRaw<{ text: string }[]>`
     SELECT text FROM "SessionFact"
     WHERE "saveId" = ${saveId}
@@ -187,8 +195,27 @@ export async function selectRelevantFacts(action: string, saveId: string, worldI
     .map((r) => r.text)
     .filter((t) => filteredFacts.includes(t) && !recent.includes(t))
     .slice(0, remainingBudget);
-  const combined = new Set([...recent, ...relevant]);
-  // Orden final: cronológico según `filteredFacts` (no por score de similitud) — para que el
-  // Narrador los lea en secuencia natural, no mezclados por relevancia.
-  return filteredFacts.filter((f) => combined.has(f));
+  // QA-289: primero los recientes, cronológicos y con un inicio que no se mueve de un turno a otro
+  // (la caché de prefijo de Ollama llega hasta ellos); detrás, los recuerdos más antiguos que elige
+  // la similitud, también cronológicos y marcados para que el Narrador no los lea como presentes.
+  const recuerdos = filteredFacts.filter((f) => relevant.includes(f)).map((f) => PREFIJO_RECUERDO + f);
+  return [...recent, ...recuerdos];
+}
+
+/// QA-289: los recientes empiezan en un «ancla» elegida por el propio texto del hecho (como el
+/// troceado por contenido), no en `n - 3`: al añadir hechos o podar los viejos el inicio no se
+/// mueve, y el prefijo del prompt sigue siendo el mismo turno tras turno. Siempre entran los
+/// RECENCY_GUARANTEED últimos; sin ancla dentro de MAX_VENTANA, la ventana es la mínima.
+export function ventanaReciente(facts: string[]): string[] {
+  const minimo = Math.max(0, facts.length - RECENCY_GUARANTEED);
+  for (let i = minimo; i >= Math.max(0, facts.length - MAX_VENTANA); i--) {
+    if (esAncla(facts[i])) return facts.slice(i);
+  }
+  return facts.slice(minimo);
+}
+
+function esAncla(fact: string): boolean {
+  let h = 0;
+  for (const c of fact) h = (h * 31 + c.codePointAt(0)!) >>> 0;
+  return h % 3 === 0;
 }
