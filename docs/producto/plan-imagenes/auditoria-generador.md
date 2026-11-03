@@ -78,7 +78,7 @@ Hallazgos:
 - Estética de formulario administrativo (paleta beige/marrón, tarjetas planas); dos columnas fijas: la galería queda **debajo** de la ficha larga, así que se genera y se mira en sitios distintos y hay que hacer scroll (`scrollIntoView` en «Reutilizar»). Sin vista de lienzo central + historial lateral tipo Leonardo.
 - **Estado por intento = solo «elegida» y una nota.** No hay favorito, candidato, aprobado, descartado ni papelera; no se puede borrar un intento (ni el PNG ni el log); el almacén es append-only (`registro.tsv`, `elegidas.tsv`).
 - «Elegir esta» es por (elemento, perfil) y sobrescribe el PNG anterior sin guardarlo (`elegir()` -> `shutil.copyfile`); no hay deshacer (solo queda la fila antigua en `elegidas.tsv`). Re-elegir no revierte.
-- Una generación a la vez, sin cola ni lote; **no hay lote de semillas** (`probar.sh` es una imagen por llamada; `scripts/obsoleto/lote.sh` bloqueó la Deck por `--max-vram vulkan0=6`).
+- Una generación a la vez, sin cola ni lote; **no hay lote de semillas** (`probar.sh` es una imagen por llamada; el antiguo `lote.sh`, retirado en `QA-271`, bloqueó la Deck por `--max-vram vulkan0=6`).
 - Sin comparar dos intentos entre sí (solo intento vs. actual del juego, en el lightbox). Sin zoom/pan sincronizado.
 - Sin historial de prompts: el prompt vive en el textarea, `prompts/*.txt` y la tarjeta; no hay deshacer/versiones ni diff, y se pierde al cambiar de elemento (`$('prompt').value = ''` si `cambia`).
 - Filtros de la galería: solo perfil. Nada por estado, semilla, con/sin referencia, fecha ni nota. La lista de elementos filtra por categoría y texto, pero no por «sin imagen elegida / con intentos / pendiente».

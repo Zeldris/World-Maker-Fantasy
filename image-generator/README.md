@@ -10,7 +10,7 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 
 | Carpeta | Qué guarda | En git |
 |---|---|---|
-| `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `probar.sh` (prompt de la enciclopedia, para las pruebas de la usuaria; deja todo en `generated/<tipo>/<slug>/`); `obsoleto/` lo que no se debe volver a lanzar | sí |
+| `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `probar.sh` (prompt de la enciclopedia, para las pruebas de la usuaria; deja todo en `generated/<tipo>/<slug>/`) | sí |
 | `bocetos/` | bocetos de forma para `--init-img` (`IMG-18`, `IMG-24`): `plantilla.py` dibuja el SVG desde el plan corporal y los números de `boceto` de la ficha (`--planes` los lista; `-p clave=valor` prueba un número), `rasterizar.sh` genera y rasteriza (1280, 1024x384, 640 y sobre verde con `verde.css`) | el script, el guion y el CSS sí; los SVG y PNG generados no |
 | `interfaz/` | la interfaz de pruebas (`servidor.py` e `index.html`, sin dependencias), que abre `abrir.sh` (`CFG-43`) | sí |
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
@@ -118,6 +118,6 @@ de matar el proceso). `generar.sh` (y `probar.sh`, que lo llama) lo evita con:
 
 - `--params-backend disk --max-vram vulkan0=2`: pesos leídos del disco por segmentos y 2 GB de GPU a la vez. Sin
   esto, con la Deck recién reiniciada el gestor ve ~9 GB «libres» y duplica el modelo entero en RAM y GTT.
-- Nunca subir `--max-vram` ni volver a `--offload-to-cpu` (`scripts/obsoleto/lote.sh` usa `vulkan0=6`: bloqueó la Deck).
+- Nunca subir `--max-vram` ni volver a `--offload-to-cpu` (el antiguo `lote.sh`, retirado en `QA-271`, usaba `vulkan0=6`: bloqueó la Deck).
 - Un vigilante que mata el proceso si quedan menos de 1,5 GB libres o si el driver dice «0 MB libres». El tope del
   cgroup no basta: la memoria GTT no cuenta en él.
