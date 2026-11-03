@@ -133,6 +133,20 @@ describe('radar de la Torre y milicia (CR-65 65c)', () => {
     expect((await prisma.kingdomStats.findFirstOrThrow({ where: { saveId } })).trabajadores).toBe(3);
   });
 
+  // P385: un asalto que ya atacó y vuelve a su campamento, aún en la Capital (0 tramos), no «se ve venir»:
+  // ni sale en el radar de Defensa ni avisa ni retiene la milicia; el mapa sí lo dibuja.
+  it('un asalto de vuelta no sale en el radar ni avisa, pero el mapa lo sigue viendo', async () => {
+    const { vigilarDelReino, radarDelReino, convocarMilicia, TIPO_ASALTO } = await import('./defensaReino.js');
+    const asalto = await prisma.viajero.create({ data: { saveId, tipo: TIPO_ASALTO, estado: 'VUELTA', origenLocationId: lejos, destinoLocationId: casa, ubicacionLocationId: casa, ruta: [cerca], diaSalida: 30, ultimoDia: 31, miembros: { create: [{ genericos: 5, rol: 'bandido' }] } } });
+    expect(await prisma.$transaction((tx) => radarDelReino(tx, saveId, 32 * 1440))).toHaveLength(0);
+    const { expedicionesVisibles } = await import('./expedicionesMapa.js');
+    expect((await expedicionesVisibles(prisma, saveId)).find((e) => e.id === asalto.id)).toMatchObject({ hostil: true });
+    await prisma.$transaction((tx) => convocarMilicia(tx, saveId, capitalId, 32 * 1440));
+    expect(await vigilarDelReino(prisma, saveId, 32)).toBe(0);
+    expect(await prisma.subject.count({ where: { saveId, enMilicia: true } })).toBe(0);
+    await prisma.viajero.update({ where: { id: asalto.id }, data: { estado: 'TERMINADO' } });
+  });
+
   // P295: «Llamar a la milicia» dice por qué no sirve en vez de un 400 genérico.
   it('planMilicia explica por qué no arma a nadie y el radar lo avisa', async () => {
     const { planMilicia, convocarMilicia, radarDelReino, TIPO_ASALTO } = await import('./defensaReino.js');
