@@ -6,7 +6,7 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerateStream: vi.fn(),
 }));
 
-const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro } = await import('./narrador.js');
+const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc } = await import('./narrador.js');
 
 describe('generateNpcReply (fase 1 hacia main, P327)', () => {
   beforeEach(() => {
@@ -88,5 +88,13 @@ describe('generateNpcReply no habla de sí como de otra persona (QA-289, P263)',
     expect(hablaDeSiComoOtro('«Yo, Ulkha Ketg, soy la que manda.»', 'Ulkha Ketg')).toBe(false);
     expect(hablaDeSiComoOtro('«Mi nombre es Ulkha Ketg.»', 'Ulkha Ketg')).toBe(false);
     expect(hablaDeSiComoOtro('«Mi hermano Torgash Ketg guía la guerra.»', 'Ulkha Ketg')).toBe(false);
+  });
+});
+
+describe('abreConElNpc (QA-289, P412)', () => {
+  it('true si en la primera frase el NPC sale antes que el jugador', () => {
+    expect(abreConElNpc('Ulkha Ketg mira las raciones de viaje de Gorhorn con una sonrisa. Gorhorn calla.', 'Ulkha Ketg', 'Gorhorn')).toBe(true);
+    expect(abreConElNpc('Ulkha Ketg sonríe despacio. Gorhorn le tiende el odre.', 'Ulkha Ketg', 'Gorhorn')).toBe(true);
+    expect(abreConElNpc('Gorhorn le tiende el odre. Ulkha Ketg sonríe.', 'Ulkha Ketg', 'Gorhorn')).toBe(false);
   });
 });

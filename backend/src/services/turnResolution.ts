@@ -29,7 +29,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, presentaNombreEnAccion, quitarCitas, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -4965,6 +4965,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         action,
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
       });
+      if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName)) {
+        console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
+      }
       if (npcReply) {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
         narration.narration = `${quitarCitas(narration.narration)} ${npcReply}`;

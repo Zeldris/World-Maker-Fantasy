@@ -2050,6 +2050,13 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(cola).not.toMatch(/como mucho una frase corta/);
   });
 
+  it('con réplica aparte, tras la acción va el FOCO en el jugador; sin ella, no (QA-289, P412)', () => {
+    const base = { ...ctx('12:10', 'Gorhorn mira.'), characterName: 'Gorhorn', npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.' };
+    const p = buildNarrationPrompt({ ...base, replicaAparte: 'Ulkha Ketg' }).prompt;
+    expect(p.slice(p.indexOf('ACCIÓN DEL JUGADOR:'))).toMatch(/FOCO: la narración cuenta lo que hace Gorhorn; empieza por Gorhorn/);
+    expect(buildNarrationPrompt(base).prompt).not.toMatch(/FOCO:/);
+  });
+
   it('quitarCitas deja la narración sin réplicas, también con comillas mezcladas (QA-289 fila 1, bench 17)', () => {
     expect(quitarCitas('Ulkha Ketg se detiene. Su voz es baja: «¿Qué buscas aquí, Gorhorn?". Se ajusta el cuchillo.')).toBe('Ulkha Ketg se detiene. Su voz es baja. Se ajusta el cuchillo.')
     expect(quitarCitas('Ulkha frunce el ceño. "Soy Ulkha Ketg." Mira al norte.')).toBe('Ulkha frunce el ceño. Mira al norte.');

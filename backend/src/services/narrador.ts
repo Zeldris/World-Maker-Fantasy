@@ -981,6 +981,17 @@ function escapar(texto: string): string {
   return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/// P412 (ronda QA-289, 2026-11-03): en un turno con diálogo la narración abría con el NPC («Ulkha Ketg mira las raciones
+/// de Gorhorn…») y dejaba la acción del jugador detrás. True si en la primera frase el NPC sale antes que el jugador (o
+/// solo él). Solo se registra (`[lint] foco`) para medirlo en el bench; un reintento costaría ~25 s por turno.
+export function abreConElNpc(narracion: string, npc: string, characterName: string): boolean {
+  const primera = narracion.split(/(?<=[.!?…])\s+/)[0] ?? '';
+  const posicion = (nombre: string) => primera.search(new RegExp(`(^|[^\\p{L}])${escapar(nombre)}($|[^\\p{L}])`, 'iu'));
+  const delNpc = posicion(npc);
+  const delJugador = posicion(characterName);
+  return delNpc >= 0 && (delJugador < 0 || delNpc < delJugador);
+}
+
 /// P263 (ronda QA-289, 2026-11-03): Ulkha contesta «El mando sigue en manos de mi hermana, Ulkha Ketg… Yo, Ulkha Ketg,
 /// soy la que manda». Un posesivo a una o dos palabras de su propio nombre es hablar de sí como de otra persona;
 /// «mi nombre es Ulkha Ketg» no cuenta.
@@ -1266,7 +1277,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} ${ctx.replicaAparte ? `DIÁLOGO: lo que responde ${ctx.replicaAparte} lo escribe otra voz aparte; tú narra solo sus gestos, sin nada entre comillas.` : 'DIÁLOGO: como mucho una frase corta de un NPC entre comillas, y nunca hables por el personaje del jugador.'}`
+              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} ${ctx.replicaAparte ? `DIÁLOGO: lo que responde ${ctx.replicaAparte} lo escribe otra voz aparte; de ${ctx.replicaAparte}, como mucho un gesto breve, sin nada entre comillas.` : 'DIÁLOGO: como mucho una frase corta de un NPC entre comillas, y nunca hables por el personaje del jugador.'}`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
@@ -1375,7 +1386,7 @@ ${lengthGuidance}
 
 ACCIÓN DEL JUGADOR:
 "${ctx.action}"
-
+${ctx.replicaAparte ? `\nFOCO: la narración cuenta lo que hace ${ctx.characterName ?? 'el personaje del jugador'}; empieza por ${ctx.characterName ?? 'él'} y su acción. ${ctx.replicaAparte} sale como mucho en una frase breve al final.\n` : ''}
 Responde solo con el JSON pedido, nada más.`;
 
   const format = {
