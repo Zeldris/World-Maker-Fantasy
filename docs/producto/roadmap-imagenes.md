@@ -233,7 +233,9 @@ desde el panel vive en tablas que siembran.
   `bin-nuevo/sd-cli` (release `master-1039`, la que aplica LoRAs de FLUX.3) con `--lora-model-dir image-generator/loras`,
   y el prompt de la ficha lleva `wmfstyle` delante y `<lora:wmf-estilo:1>` detrás; `LORA=0` lo quita y sin el
   archivo avisa y sigue sin él. Tests de `generar.sh`/`prompt_ficha.py` con el `sd-cli` falso; después, una imagen
-  del montaje con planos para ver que el binario nuevo no rompe la cadena. **S**
+  del montaje con planos para ver que el binario nuevo no rompe la cadena. **S** 🚧 en curso (2026-11-03): hecho en
+  `generar.sh` (por ahí pasan ficha, `PROMPT_ARCHIVO` y planos), 5 tests en `test_generar_perfil.py` (`LoraDeEstilo`), README.
+  Falta: la prueba real en la Deck con `probar.sh`.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):

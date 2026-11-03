@@ -6,6 +6,8 @@
 # CFG=<escala> TOPE=<s>   SDCLI=<binario> (por defecto bin/sd-cli; lo usan los tests con uno falso)
 # IMG-23: PERFIL=fotorreal pone la receta ganadora (FLUX.3 klein Q8, Qwen3-VL 4B, flux2-vae, TOPE 10800 y
 # `--backend diffusion=cpu -t 8` antes de los args extra); lo explícito (MODELO=…) manda. Perfil desconocido: exit 2.
+# IMG-33: el perfil fotorreal usa bin-nuevo/sd-cli (aplica LoRAs de FLUX.3) y el LoRA de estilo de IMG-32 si está en
+# LORAS (por defecto loras/): `wmfstyle, ` delante del prompt y `<lora:wmf-estilo:$LORA>` detrás (LORA=1; 0 lo quita).
 # BOCETO=<png> [FUERZA_BOCETO=0.97]: parte de ese boceto (--init-img/--strength + strength_as_noise_level); sin png: exit 3.
 # MOMENTO=dia|atardecer|noche con PERFIL=fotorreal: al acabar gradar.sh deja intentos/<nombre>-<momento>.png
 # (GRADAR=0 lo omite; REGION=<región> la pasa a gradar.sh; GRADAR_SH=<ruta> lo sustituye en los tests).
@@ -19,15 +21,17 @@ set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
 D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")
-PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; SDCLI=${SDCLI:-$B/sd-cli}
+PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; LORA=${LORA:-1}
 case $PERFIL in
   "") ;;
   fotorreal)
     MODELO=${MODELO:-flux3-image-klein-Q8_0.gguf}; LLM=${LLM:-Qwen3VL-4B-Instruct-Q4_K_M.gguf}
-    VAE=${VAE:-flux2-vae.safetensors}; TOPE=${TOPE:-10800}
+    VAE=${VAE:-flux2-vae.safetensors}; TOPE=${TOPE:-10800}; B=$G/bin-nuevo
+    [[ $LORA =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "ABORTO: LORA=$LORA no es un peso (p. ej. 1, 1.5; 0 lo quita)"; exit 2; }
     EXTRA=(--backend diffusion=cpu -t 8 "${EXTRA[@]}") ;;
   *) echo "ABORTO: PERFIL desconocido: $PERFIL (solo fotorreal)"; exit 2 ;;
 esac
+SDCLI=${SDCLI:-$B/sd-cli}
 case $MOMENTO in ""|dia|atardecer|noche) ;; *) echo "ABORTO: MOMENTO desconocido: $MOMENTO (dia, atardecer, noche)"; exit 2 ;; esac
 if [ -n "$BOCETO" ]; then
   [ -f "$BOCETO" ] || { echo "ABORTO: el boceto no existe: $BOCETO"; exit 3; }
@@ -58,7 +62,15 @@ fi
 # QA-226: el tercer argumento es una ruta; con el texto del prompt, el mensaje lo dice sin repetir el texto entero.
 [ -s "$PF" ] || { echo "ABORTO: el tercer argumento es la ruta de un archivo de prompt, y «${PF:0:60}» no existe o está vacío"; exit 3; }
 PROMPT=$(cat "$PF")
-cp "$PF" "$D/prompts/$N.txt"
+if [ "$PERFIL" = fotorreal ] && [ "$LORA" != 0 ]; then
+  LORAS=${LORAS:-$G/loras}
+  if [ -f "$LORAS/wmf-estilo.safetensors" ]; then
+    PROMPT="wmfstyle, $PROMPT <lora:wmf-estilo:$LORA>"; EXTRA=(--lora-model-dir "$LORAS" "${EXTRA[@]}")
+  else
+    echo "AVISO: sin LoRA de estilo ($LORAS/wmf-estilo.safetensors no está; ver docs/producto/plan-imagenes/lora-kaggle.md)"
+  fi
+fi
+printf '%s\n' "$PROMPT" > "$D/prompts/$N.txt"
 LOG=$D/logs/$N.log
 
 t0=$(date +%s)

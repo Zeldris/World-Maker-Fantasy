@@ -15,6 +15,8 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | `interfaz/` | la interfaz de pruebas (`servidor.py` e `index.html`, sin dependencias), que abre `abrir.sh` (`CFG-43`) | sí |
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
+| `bin-nuevo/` | `sd-cli` del perfil fotorreal (release `master-1039-290148d`: LoRAs de FLUX.3) | no |
+| `loras/` | LoRA de estilo `wmf-estilo.safetensors` (`IMG-32`) | no |
 | `descargas/` | el zip original del binario | no |
 | `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf`; para comparar, `flux-2-klein-base-4b-Q8_0.gguf` y `flux3-image-klein-Q8_0.gguf` (no arranca en la Deck); `z_image_turbo-Q4_K.gguf` (Z-Image-Turbo, Apache 2.0, banco de `IMG-15`) | no |
 | `modelos/text/` | `Qwen3-4B-Q4_K_M.gguf` (codificador de texto); `Qwen3VL-4B-Instruct-Q4_K_M.gguf` (el de FLUX.3); para el banco de `IMG-15`, `Qwen3-4B-Q8_0.gguf` y `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (el de Z-Image) | no |
@@ -103,6 +105,10 @@ FINAL=1 bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal 7      # 
   de la ficha (`plantilla.py` + `rasterizar.sh`). Lo que ya existe en la carpeta se salta. `HERO` y `MANADA` salen del
   `encuadre` de la ficha (`scripts/encuadre.py`: horizonte; lado, ancho y pie del sujeto; número, distancia y volteo de
   la manada, en fracciones del lienzo) o, sin ficha, del encuadre por defecto; darlos a mano manda.
+- **LoRA de estilo** (`IMG-33`): el perfil usa `bin-nuevo/sd-cli` (release `master-1039`) y, si está
+  `loras/wmf-estilo.safetensors` (fuera del repo; cómo se entrena y se baja: `docs/producto/plan-imagenes/lora-kaggle.md`),
+  pone `wmfstyle, ` delante del prompt y `<lora:wmf-estilo:1>` detrás. `LORA=<peso>` lo cambia y `LORA=0` lo quita;
+  sin el archivo, avisa y genera sin él. Acerca la luz y la neblina a los banners GPT, no la forma de la criatura (`IMG-32`).
 - Antes de generar se comprueba la memoria: Ollama vacío y nada más pesado abierto (navegador, Steam, juego).
 
 ## Memoria: lo que no se toca

@@ -65,7 +65,7 @@ class Base(unittest.TestCase):
         escribir(self.prompt, 'un prompt de prueba\n')
         self.env = {k: v for k, v in os.environ.items() if k not in ('PERFIL', 'MOMENTO', 'BOCETO', 'GRADAR', 'REGION')}
         self.env.update(SDCLI=self.sd, GRADAR_SH=self.gr, ARGS_SD=self.args_sd, ARGS_GRADAR=self.args_gradar,
-                        PNG_BASE=self.png, MIN_INICIO_MB='0')
+                        PNG_BASE=self.png, MIN_INICIO_MB='0', LORAS=os.path.join(self.d, 'sin-loras'))
 
     def correr(self, cmd, **env):
         return subprocess.run(cmd, capture_output=True, text=True, env={**self.env, **env}, cwd=self.d)
@@ -128,6 +128,46 @@ class GenerarPerfil(Base):
         self.assertEqual(r.returncode, 3)
         self.assertIn('el boceto no existe', r.stdout)
         self.assertFalse(os.path.exists(self.args_sd))
+
+
+class LoraDeEstilo(Base):
+    """IMG-33: el perfil fotorreal usa bin-nuevo y el LoRA de estilo de IMG-32 si está; LORA=0 lo quita."""
+    def setUp(self):
+        super().setUp()
+        self.loras = os.path.join(self.d, 'loras')
+        os.makedirs(self.loras)
+        escribir(os.path.join(self.loras, 'wmf-estilo.safetensors'), 'falso')
+        self.env.update(LORAS=self.loras)
+
+    def test_fotorreal_lleva_la_palabra_disparadora_y_el_lora_a_peso_1(self):
+        r = self.generar(PERFIL='fotorreal')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.valor('-p'), 'wmfstyle, un prompt de prueba <lora:wmf-estilo:1>')
+        self.assertEqual(self.valor('--lora-model-dir'), self.loras)
+        self.assertEqual(leer(os.path.join(self.d, 'out', 'prompts', 'n1.txt')).strip(), self.valor('-p'))
+
+    def test_lora_cambia_el_peso_y_cero_lo_quita(self):
+        self.generar(PERFIL='fotorreal', LORA='1.5')
+        self.assertTrue(self.valor('-p').endswith('<lora:wmf-estilo:1.5>'))
+        self.generar(PERFIL='fotorreal', LORA='0')
+        self.assertEqual(self.valor('-p'), 'un prompt de prueba')
+        self.assertNotIn('--lora-model-dir', self.args())
+
+    def test_sin_el_archivo_avisa_y_sigue_sin_lora(self):
+        r = self.generar(PERFIL='fotorreal', LORAS=os.path.join(self.d, 'no-hay'))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn('AVISO: sin LoRA de estilo', r.stdout)
+        self.assertEqual(self.valor('-p'), 'un prompt de prueba')
+
+    def test_peso_que_no_es_numero_aborta_sin_generar(self):
+        r = self.generar(PERFIL='fotorreal', LORA='mucho')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('LORA=mucho no es un peso', r.stdout)
+        self.assertFalse(os.path.exists(self.args_sd))
+
+    def test_sin_perfil_no_hay_lora(self):
+        self.generar()
+        self.assertEqual(self.valor('-p'), 'un prompt de prueba')
 
 
 class Gradacion(Base):
