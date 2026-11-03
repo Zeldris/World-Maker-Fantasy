@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.2.0
+# galivelop-workflow v0.4.3
 # Claude Code SessionStart hook (startup|resume|clear): leaves the project ready to work. Idempotent.
 #   - git hooks: sets core.hooksPath to .githooks when it is unset and .githooks exists; when another hook manager
 #     owns the hooks (core.hooksPath elsewhere, or hooks installed in .git/hooks), it says how to chain the
 #     workflow's hooks instead of overwriting anything.
-#   - cloud (CLAUDE_CODE_REMOTE=true): runs the config's `install` commands only when the lockfiles (or the commands)
-#     changed since the last successful run; the hash lives in the git dir (gw-install.sha).
+#   - cloud (CLAUDE_CODE_REMOTE=true): runs the config's `install` commands and then its `setup` commands, in order,
+#     only when the lockfiles (or the commands) changed since the last successful run; the hash lives in the git dir
+#     (gw-install.sha). A failing or hanging command (GW_COMMAND_TIMEOUT seconds, default 900) is reported.
+#     The limit is a portable bash watchdog (no `timeout` needed, so it also works on stock macOS): the command runs
+#     in its own process group and, past the limit, the whole group gets TERM and, a few seconds later, KILL. A
+#     process that detaches itself from the group (setsid, nohup in a new session, a daemon) can survive.
 #   - warns when .claude/gw.json is missing or invalid, when its `version` is older than this copy of the workflow
 #     (the `# galivelop-workflow vX.Y.Z` header of this script), and when the session was started outside the repo
 #     root (its .claude/settings.json may not have loaded; VeriNews P3).
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
-# .claude/gw/scripts); from the plugin cache, the same fallback as config.py (CLAUDE_PROJECT_DIR, then the current
-# directory), only to find the repo. Bash 3.2 compatible.
+# .claude/gw/scripts); from the plugin cache, $CLAUDE_PROJECT_DIR, then the current
+# directory (config.py, run from that root, resolves the same one). Bash 3.2 compatible.
 set -uo pipefail
 start_pwd="$PWD"
 here="$(cd "$(dirname "$0")" && pwd)" || { echo "gw session-start: cannot find its own folder; reinstall the workflow: /gw-update"; exit 0; }
@@ -22,7 +26,7 @@ warn() { echo "gw session-start: $*"; }
 input=""
 if [ ! -t 0 ]; then input="$(cat 2>/dev/null || true)"; fi
 
-toplevel() { git -C "$1" rev-parse --show-toplevel 2>/dev/null; }
+toplevel() { (unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$1" rev-parse --show-toplevel 2>/dev/null); }
 root="$(toplevel "$here")"
 if [ -z "$root" ] || [ ! -f "$root/.claude/gw.json" ]; then
   root=""
@@ -50,6 +54,8 @@ fi
 real() { (cd "$1" 2>/dev/null && pwd -P); }
 if [ -n "$cwd" ]; then
   rcwd="$(real "$cwd")"; rroot="$(real "$root")"
+  # a cloud session always starts in /home/user, whatever repo it works on: not a mistake to warn about (Portal P1)
+  [ "${CLAUDE_CODE_REMOTE:-}" = true ] && [ "${cwd%/}" = /home/user ] && rcwd="$rroot"
   case "$rcwd/" in
     "$rroot"/*) ;;
     *) warn "this session was started in $cwd, outside the repo root ($root): the repo's .claude/settings.json (hooks, env) may not have loaded; restart Claude Code from the repo: cd $root && claude" ;;
@@ -111,15 +117,46 @@ else
   fi
 fi
 
-# --- Cloud dependencies -----------------------------------------------------------------------------------------
+# run_limited <seconds> <command> <log>: runs the command with bash in its own process group (set -m), output to the
+# log. A watchdog sleeps <seconds> and then marks the run as timed out, sends TERM to the group and, 5 s later, KILL.
+# Sets `timed_out` only when the watchdog fired (a command that exits 124 by itself is a plain failure). Returns the
+# command's exit status.
+run_limited() {
+  local limit="$1" cmd="$2" log="$3" flag pid wd status
+  flag="$(mktemp "${TMPDIR:-/tmp}/gw-timeout.XXXXXX")" || flag="${TMPDIR:-/tmp}/gw-timeout.$$"
+  rm -f "$flag"; timed_out=""
+  set -m
+  bash -c "$cmd" > "$log" 2>&1 < /dev/null &
+  pid=$!
+  ( sleep "$limit"; : > "$flag"; kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+    sleep 5; kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null ) > /dev/null 2>&1 < /dev/null &
+  wd=$!
+  set +m
+  wait "$pid" 2>/dev/null; status=$?
+  if [ "$status" -ne 0 ] && [ -e "$flag" ]; then
+    timed_out=1                       # the watchdog finishes its KILL pass on its own
+  else                                # also a command that succeeded just as the watchdog fired
+    kill -- "-$wd" 2>/dev/null || kill "$wd" 2>/dev/null   # command finished first: stop the watchdog and its sleeper
+    wait "$wd" 2>/dev/null
+  fi
+  rm -f "$flag"
+  return "$status"
+}
+
+# --- Cloud dependencies and setup -------------------------------------------------------------------------------
+# `install` commands, then `setup` commands, one after another in this one hook (separate SessionStart hooks run in
+# parallel, so ordering has to live here). A command that fails or runs past GW_COMMAND_TIMEOUT seconds (default 900)
+# is reported and stops the sequence; the stamp is not written, so the next session tries again.
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -n "$config_ok" ]; then
   installs="$(python3 "$config" --root "$root" get install 2>/dev/null)"
-  if [ -n "$installs" ]; then
+  setups="$(python3 "$config" --root "$root" get setup 2>/dev/null)"
+  if [ -n "$installs" ] || [ -n "$setups" ]; then
     locks="$(git ls-files -- 'package-lock.json' '*/package-lock.json' 'npm-shrinkwrap.json' 'yarn.lock' '*/yarn.lock' \
       'pnpm-lock.yaml' '*/pnpm-lock.yaml' 'bun.lock' 'bun.lockb' '*/bun.lock' 'Cargo.lock' '*/Cargo.lock' \
       'poetry.lock' '*/poetry.lock' 'uv.lock' '*/uv.lock' 'Pipfile.lock' 'requirements*.txt' '*/requirements*.txt' \
       'Gemfile.lock' 'go.sum' '*/go.sum' 'composer.lock' 'pom.xml' '*/pom.xml' 2>/dev/null)"
     sum="$( { printf '%s\n' "$installs"
+              if [ -n "$setups" ]; then printf 'setup:\n%s\n' "$setups"; fi
               printf '%s\n' "$locks" | while IFS= read -r f; do
                 [ -n "$f" ] && [ -f "$f" ] && printf '%s %s\n' "$(git hash-object -- "$f")" "$f"
               done; } | git hash-object --stdin)"
@@ -129,17 +166,24 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -n "$config_ok" ]; then
       :
     else
       failed=""
-      while IFS= read -r cmd; do
-        [ -n "$cmd" ] || continue
-        echo "gw session-start: installing dependencies: $cmd"
-        log="${TMPDIR:-/tmp}/gw-install.log"
-        if ! bash -c "$cmd" > "$log" 2>&1 < /dev/null; then
+      limit="${GW_COMMAND_TIMEOUT:-900}"
+      case "$limit" in ''|*[!0-9]*) limit=900 ;; esac
+      [ "$((10#$limit))" -gt 0 ] || limit=900   # 0 would kill every command at once
+      while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        kind="${entry%%:*}"; cmd="${entry#*:}"
+        echo "gw session-start: running $kind command: $cmd"
+        log="${TMPDIR:-/tmp}/gw-$kind.log"
+        run_limited "$limit" "$cmd" "$log"
+        status=$?
+        if [ "$status" -ne 0 ]; then
           tail -n 10 "$log"
-          warn "install command failed: '$cmd' (log: $log); fix it, then run it by hand: $cmd"
+          why="failed"; [ -n "$timed_out" ] && why="timed out after ${limit}s"
+          warn "$kind command $why: '$cmd' (log: $log); fix it, then run it by hand: $cmd"
           failed=1
           break
         fi
-      done <<<"$installs"
+      done <<<"$(printf '%s\n' "$installs" | sed 's/^/install:/;/^install:$/d'; printf '%s\n' "$setups" | sed 's/^/setup:/;/^setup:$/d')"
       if [ -z "$failed" ] && [ -n "$sum" ]; then printf '%s\n' "$sum" > "$stamp" 2>/dev/null || true; fi
     fi
   fi

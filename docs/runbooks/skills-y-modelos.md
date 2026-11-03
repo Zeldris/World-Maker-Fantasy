@@ -74,7 +74,7 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
       la usuaria se aplica en la rama.
    3. **Cierre:** si la fase 2 añadió código (herramientas, scripts, skills con tests), `/code-review --max-findings all`
       solo de esos commits (`<commit de la retro>..HEAD`) y sus arreglos: en la del banco del narrador encontró dos
-      fallos en lo recién aplicado. Luego `bash .claude/gw/scripts/revisado.sh` (escribe la marca y hace su commit; después `git push`), la descripción con `pr` y se crea el PR.
+      fallos en lo recién aplicado. Luego `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: <paso>"` (sin la línea, `commit-msg` rechaza el commit; escribe la marca y hace su commit; después `git push`), la descripción con `pr` y se crea el PR.
    `revisado.sh` no escribe la marca con archivos sin commit (p. ej. un borrador de Álvaro): `git stash -u` antes y
    `git stash pop` después. Con `requireRetro`, el Estado de la retro tiene que decir «aplicadas», «rechazadas»,
    «aplazadas» o «decididas», y nada de «pendiente», «sin decidir», «aún no» (ni sus formas en inglés): con una de esas,
@@ -82,7 +82,7 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    Desde una sesión local (la Deck) el PR no se crea (`QA-184`): no hay `gh` ni herramienta de GitHub y el modo auto
    no deja usar la credencial de git. La local sube la descripción a `docs/registros/pr/<rama>.md` y escribe en su fila
    de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
-   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh` (la marca va en su propio commit, que se sube) y crea el PR con esa descripción.
+   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh --footer …` (la marca va en su propio commit, que se sube) y crea el PR con esa descripción.
    Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). El último commit antes del PR deja la fila de la rama
    como «PR a `main`; al fusionarse, rama terminada» (`QA-186`), para que `main` la reciba ya cerrada; la de una

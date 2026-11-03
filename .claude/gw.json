@@ -1,6 +1,6 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.2.0",
+  "version": "0.4.3",
   "language": "es",
   "visibleLanguages": [],
   "log": "docs/registros/traspaso.md",
@@ -14,7 +14,7 @@
     "python3 tools/roadmap/cobertura.py > /dev/null",
     "python3 tools/qa/mapa-agente.py",
     "python3 tools/qa/matriz-pruebas.py --comprobar > /dev/null",
-    "python3 .claude/skills/gw-media-content/scripts/comprobar.py > /dev/null",
+    "python3 tools/qa/difusion.py",
     "bash tools/qa/bitacora-check.sh",
     "python3 tools/qa/skills-con-tests.py",
     "cd tools/qa/tests && python3 -m unittest -q test_herramientas_con_test"
