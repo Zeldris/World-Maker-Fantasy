@@ -962,6 +962,41 @@ export function quitarCitas(texto: string): string {
     .trim();
 }
 
+const frases = (t: string) => t.split(/(?<=[.!?…»”])\s+/).filter((f) => f.trim() !== '');
+const palabras = (t: string) =>
+  t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-zñ0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+const TRAMO_REPETIDO = 6;
+
+/// P411 (ronda QA-289, 2026-11-03): «se ajusta su cinturón de cuero mientras habla» salió dos turnos seguidos. La narración
+/// entera no se parecía lo bastante para `isTooSimilarToLast`; una frase que comparte 6 palabras seguidas con el turno
+/// anterior se quita, sin reintento (~25 s). Si no queda otra frase, se deja como está.
+export function quitarFrasesRepetidas(narracion: string, anterior?: string): string {
+  if (!anterior) return narracion;
+  const previas = palabras(anterior);
+  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - TRAMO_REPETIDO + 1)).map((_, i) => previas.slice(i, i + TRAMO_REPETIDO).join(' ')));
+  const repite = (f: string) => {
+    const p = palabras(f);
+    return p.some((_, i) => i + TRAMO_REPETIDO <= p.length && tramos.has(p.slice(i, i + TRAMO_REPETIDO).join(' ')));
+  };
+  const todas = frases(narracion);
+  const quedan = todas.filter((f) => !repite(f));
+  return quedan.length === 0 || quedan.length === todas.length ? narracion : quedan.join(' ');
+}
+
+/// P411: a una pregunta al orco, la narración acababa con Ulkha y la réplica iba sin hablante: parecía de ella. Si la
+/// última frase no nombra a quien contesta, la réplica lleva «El orco enfurecido responde:» delante.
+export function conHablante(
+  narracion: string,
+  reply: string,
+  npc: { name: string; nombreVisible?: string; articulo: string | null; genero: string | null },
+): string {
+  const visible = npc.nombreVisible ?? npc.name;
+  if (contieneNombre(frases(narracion).at(-1) ?? '', visible)) return reply;
+  const articulo = npc.nombreVisible ? (npc.genero === 'F' ? 'la' : 'el') : npc.articulo;
+  const quien = articulo ? `${articulo[0]!.toUpperCase()}${articulo.slice(1)} ${visible.toLowerCase()}` : visible;
+  return `${quien} responde: ${reply}`;
+}
+
 function contieneNombre(texto: string, nombre: string): boolean {
   return new RegExp(`(^|[^\\p{L}])${nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'iu').test(texto);
 }
@@ -1819,6 +1854,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         rejectionReasons.push(rejection.reason);
         continue;
       }
+      parsed.narration = quitarFrasesRepetidas(parsed.narration, ctx.lastNarrationText);
       return parsed;
     } catch (err) {
       // Roadmap de velocidad, 2026-07-20 (streaming): antes este catch tragaba el error en

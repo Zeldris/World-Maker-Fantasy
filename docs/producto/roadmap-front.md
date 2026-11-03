@@ -1692,7 +1692,8 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   en el 9 copió esa frase en los 3 intentos, sin hacer caso del FOCO (P414). En el 10 abre con Gorhorn; Ulkha se
   presenta bien, sin «Ulka» ni hablar de sí como de otra. Arreglado: `quitarCitas` quita también las comillas simples
   y el respaldo de diálogo va en tercera persona. P414: tras rechazar un intento por repetir el turno anterior, el
-  reintento va sin la narración anterior en el prompt. Falta: medirlo en un bench, P411 y jugarlo en una ronda.
+  reintento va sin la narración anterior en el prompt. P411: se quita la frase que repite 6 palabras seguidas del turno
+  anterior, y la réplica lleva hablante si la narración acaba con otro. Falta: medirlo en un bench y jugarlo en una ronda.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

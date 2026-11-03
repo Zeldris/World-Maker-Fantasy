@@ -29,7 +29,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, conHablante, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -4970,7 +4970,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
       if (npcReply) {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
-        narration.narration = `${quitarCitas(narration.narration)} ${npcReply}`;
+        const narrada = quitarCitas(narration.narration);
+        narration.narration = `${narrada} ${conHablante(narrada, npcReply, dialogueTarget)}`;
       }
     } catch (err) {
       console.warn(`[turno] generateNpcReply falló, se omite la réplica de este turno (saveId=${saveId}):`, err);

@@ -124,3 +124,22 @@ describe('narrateAction tras repetir el turno anterior (QA-289, P414)', () => {
     expect(prompts[1]).not.toContain('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
   });
 });
+
+describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
+  it('quita la frase que repite 6 palabras seguidas del turno anterior; si es la única, la deja', async () => {
+    const { quitarFrasesRepetidas } = await import('./narrador.js');
+    const anterior = 'Ulkha Ketg se ajusta su cinturón de cuero mientras habla. El viento sopla.';
+    expect(quitarFrasesRepetidas('Gorhorn bebe del odre. Ulkha se ajusta su cinturón de cuero mientras habla.', anterior)).toBe('Gorhorn bebe del odre.');
+    expect(quitarFrasesRepetidas('Ulkha se ajusta su cinturón de cuero mientras habla.', anterior)).toBe('Ulkha se ajusta su cinturón de cuero mientras habla.');
+    expect(quitarFrasesRepetidas('Gorhorn bebe del odre. Ulkha se ajusta el cinturón y calla.', anterior)).toBe('Gorhorn bebe del odre. Ulkha se ajusta el cinturón y calla.');
+  });
+
+  it('la réplica lleva hablante si la última frase no lo nombra', async () => {
+    const { conHablante } = await import('./narrador.js');
+    const orco = { name: 'Orco Enfurecido', articulo: 'el', genero: 'M' };
+    expect(conHablante('Gorhorn se acerca. Ulkha Ketg mira a Gorhorn.', '«¡Fuera!»', orco)).toBe('El orco enfurecido responde: «¡Fuera!»');
+    expect(conHablante('Gorhorn se acerca. El Orco Enfurecido gruñe.', '«¡Fuera!»', orco)).toBe('«¡Fuera!»');
+    expect(conHablante('Gorhorn pregunta.', '«Me llamo Ulkha.»', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Ulkha Ketg responde: «Me llamo Ulkha.»');
+    expect(conHablante('Gorhorn pregunta.', '«Aquí no.»', { name: 'Ulkha Ketg', nombreVisible: 'Orca desconocida', articulo: null, genero: 'F' })).toBe('La orca desconocida responde: «Aquí no.»');
+  });
+});
