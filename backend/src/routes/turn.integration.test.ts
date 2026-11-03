@@ -25,7 +25,7 @@ import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
 import { iniciarCombatEncounter } from '../services/combateMultipleOrquestacion.js';
 import { abrirCombateDePersonas } from '../services/combatePersonas.js';
-import { scopeFor } from '../services/npcScene.js';
+import { scopeFor, enCombateConDelTurno } from '../services/npcScene.js';
 import { appendSessionFacts } from '../services/worldFacts.js';
 import { esperarSegundoPlano } from '../services/avanceDiario.js';
 import { procesarReacciones } from '../services/cronista/reacciones.js';
@@ -9486,6 +9486,25 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     expect(body.blocked?.narration).toBeUndefined();
     expect(body.classification).toBeDefined();
     await app.close();
+  }, 30_000);
+
+  // Revisión antes de main (2026-11-03): un rival que huyó del combate de varios ya no está en escena, aunque el
+  // encuentro siga EN_CURSO por el otro rival.
+  it('en el combate de varios en curso, el rival que huyó no cuenta como en combate con la jugadora', async () => {
+    const saveId = await partida('Gorhorn de prueba (huido en escena)', false);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const ulkha = await prisma.npc.findFirstOrThrow({ where: { slug: 'ulkha-ketg', saveId: null } });
+    const hulki = await prisma.npc.findFirstOrThrow({ where: { slug: 'hulki', saveId: null } });
+    const miembro = (n: typeof hulki) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro(ulkha), miembro(hulki)]);
+    expect(abierto).not.toBeNull();
+    await prisma.combatParticipant.updateMany({ where: { encounterId: abierto!.encounterId, npcId: hulki.id }, data: { huido: true } });
+    const enCombate = await enCombateConDelTurno({ saveId, enCombate: true, pendingCombatNpcSlugs: [], pendingNpcAttackNpcId: null });
+    expect(enCombate?.npcIds).toContain(ulkha.id);
+    expect(enCombate?.npcIds).not.toContain(hulki.id);
   }, 30_000);
 
   // P353/P356 (regla B de la usuaria, 2026-10-27): 1 contra 2 rivales sin descubrir; ella cita a uno y ese es su duelo
