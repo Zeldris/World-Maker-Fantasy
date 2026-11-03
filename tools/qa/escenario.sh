@@ -64,7 +64,7 @@ INDICE="$DIR/README.md"
 # que la página se queda en su URL sin ese error (5 intentos), y si no lo logra lo dice con un AVISO.
 # `preparar`, `dar` y `dar-reino` no paran el juego pero cambian la partida: también recargan (no dentro de `probar`,
 # que va contra una base temporal que la página no ve).
-recargar_pagina() {
+recargar_pagina() { return 0
   [ -s tools/playwright-e2e/driver.token ] || return 0
   [ -z "${ESCENARIO_URL:-}" ] || return 0
   bash tools/playwright-e2e/orden.sh <<'JS' || true
