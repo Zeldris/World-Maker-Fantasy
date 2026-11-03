@@ -243,6 +243,13 @@ desde el panel vive en tablas que siembran.
   `generar.sh` (por ahí pasan ficha, `PROMPT_ARCHIVO` y planos), 5 tests en `test_generar_perfil.py` (`LoraDeEstilo`), README.
   Prueba real (`probar.sh fauna aullador-rojo fotorreal 42`): carga `bin-nuevo`, aplica el LoRA y grada; 563 s, mínimo
   5,4 GB libres. La cadena de planos no se corrió entera: su img2img con `bin-nuevo` ya se probó en `IMG-31`.
+- **IMG-34 · Forma de la criatura por esqueleto y fuerza media** [A] (usuaria, 2026-11-03, de `IMG-6`): el aullador sale
+  corto y de otra forma aunque la ficha lo describe bien. Investigación en
+  [`investigacion-esqueleto.md`](plan-imagenes/investigacion-esqueleto.md): la causa probable es `FUERZA_BOCETO` 0,97
+  (casi txt2img); se propone boceto de masas con luz y fondo en los colores del banner, `--init-img` a 0,6-0,75 y una
+  pasada a 0,4, y `rembg` (`isnet-general-use`) para medir proporciones y hacer máscaras. Prueba de 4 borradores
+  (A 0,75 · B 0,60 · C color plano · D repaso a 0,40), **solo con el sí de la usuaria**. Antes, leer
+  `noise_level_to_sigma` de sd.cpp. **M**
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
@@ -264,6 +271,11 @@ desde el panel vive en tablas que siembran.
 - **IMG-9 · Fichas visuales en bloque** [A] (usuaria, 2026-10-25): un LLM rellena borradores de ficha desde el canon
   (53 de fauna primero) como propuestas en la bandeja; el script de `IMG-5` lee `FichaVisual` en vez de `bio`.
   Depende de `IMG-8`. Fase 4. **L**
+  🚧 2026-11-03 (usuaria: «una descripción lo más completa posible» de cada elemento, guiada por su banner): piloto de
+  10 fichas desde los banners del juego (Hulki desde el de las Faerus del Margen, Cardo, Múrgol, Corredor de Cauce,
+  Orcos de las Llanuras, Goirntes de la Meseta, Manaderos, Agujas Imán, cuchillo de hielo sílice, choza orca); el canon
+  manda salvo en lo visual que no describe, y los choques van en `propuestas`. Falta: el visto bueno de la usuaria, las
+  ~125 con banner que quedan y luego las demás por tipo; `porTipo` de `raza`/`construccion` en `estilo/mundo.json`.
 - **IMG-10 · Estados por intento y papelera** [A] (usuaria, 2026-10-25): favorita, candidata, descartada (y
   aprobada, que hereda de `elegidas.tsv`) en `estados.json` por elemento; las descartadas se pueden borrar
   (papelera como carpeta). D7. Fase 5. **M**
