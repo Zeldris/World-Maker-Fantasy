@@ -2584,6 +2584,37 @@ export async function fijarEleccionRondaJugador({
   });
 }
 
+/// P393: rehace la orden del capitán y el enganche de la ronda en curso, con el mismo cálculo que al cruzar de ronda
+/// (`avanzarYComprobarFin`). La usa `preparar herido` (QA-151): sin esto, la orden de apertura seguía en la jugadora
+/// toda la ronda 1 y, como los golpes iban a ella, al cruzar de ronda volvía a ser la más herida. Solo al empezar una
+/// ronda (`turnoActual` 0): a mitad de ronda el enganche ya se está resolviendo. Devuelve la orden si cambió.
+export async function rehacerOrdenCapitanRonda(
+  tx: Prisma.TransactionClient,
+  { worldId, saveId, encounterId, weaponNamesPorDefecto = [] }: { worldId: string; saveId: string; encounterId: string; weaponNamesPorDefecto?: string[] },
+): Promise<OrdenCapitan | null> {
+  const encounter = await tx.combatEncounter.findUniqueOrThrow({ where: { id: encounterId }, include: { participantes: true } });
+  if (encounter.estado !== 'EN_CURSO' || encounter.turnoActual !== 0 || !encounter.capitanId) return null;
+  const { enganches, esperandoJugadora, ordenCapitan } = await calcularEnganchesRonda({
+    tx,
+    worldId,
+    saveId,
+    encounter: { ordenIniciativa: encounter.ordenIniciativa, participantes: encounter.participantes as (ParticipantRef & { bando: Bando })[] },
+    weaponNamesPorDefecto,
+    jugadoraTargetId: null,
+  });
+  if (!ordenCapitan || ordenCapitan.objetivoId === encounter.objetivoCapitanId) return null;
+  await Promise.all([...enganches.entries()].map(([id, objetivo]) => tx.combatParticipant.update({ where: { id }, data: { objetivoActualId: objetivo } })));
+  await tx.combatEncounter.update({
+    where: { id: encounterId },
+    data: { capitanId: ordenCapitan.capitanId, objetivoCapitanId: ordenCapitan.objetivoId, esperandoEleccionJugadora: esperandoJugadora },
+  });
+  const ws = await tx.worldState.findUnique({ where: { saveId }, select: { fictionalDateLabel: true, fictionalMinutes: true } });
+  await tx.logEntry.create({
+    data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text: `${ordenCapitan.capitan} ordena caer sobre ${ordenCapitan.objetivo}.`, timeLabel: ws?.fictionalDateLabel ?? '', fictionalMinutes: ws?.fictionalMinutes ?? 480 },
+  });
+  return ordenCapitan;
+}
+
 /// CR-45: la marca del panel — el capitán y a quién manda caer encima esta ronda (`'ti'` o el nombre
 /// de un compañero). Null si no hay capitán, ya no está en pie o su objetivo tampoco lo está.
 export async function marcaDelCapitan(

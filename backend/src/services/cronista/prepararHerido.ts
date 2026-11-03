@@ -2,12 +2,13 @@
 // (CR-45, `objetivoConcentrado`) señala al empezar cada ronda al más herido del otro bando y, a igual herida, al de menos
 // Constitución: como todos golpean a la jugadora, ella es siempre la más herida y la orden nunca pasa a un compañero mientras viva.
 // Este paso deja a un participante del combate en curso (un compañero, `COMPANION`, o un NPC) HERIDO o GRAVE con la misma
-// escritura que un golpe recibido en el combate (`escribirCondicionYEnergia`, QA-151); la orden se recalcula en la ronda siguiente.
+// escritura que un golpe recibido en el combate (`escribirCondicionYEnergia`, QA-151), y rehace en el acto la orden del capitán (P393).
 import type { PrismaClient } from '@prisma/client';
-import { escribirCondicionYEnergia } from '../combateMultipleOrquestacion.js';
+import { escribirCondicionYEnergia, rehacerOrdenCapitanRonda } from '../combateMultipleOrquestacion.js';
 
 export type CondicionHerida = 'HERIDO' | 'GRAVE';
-export type ResultadoHeridoEnCombate = { nombre: string; condicion: CondicionHerida; bando: string };
+/// `ordenaCaerSobre`: a quién manda ahora el capitán, si la herida le cambió la orden de esta ronda (P393).
+export type ResultadoHeridoEnCombate = { nombre: string; condicion: CondicionHerida; bando: string; ordenaCaerSobre?: string };
 
 class Rechazo extends Error {}
 
@@ -30,7 +31,9 @@ export async function dejarHeridoEnCombate(
       if (!participante) throw new Rechazo(`herido: ${npc?.name ?? npcSlug} no está en el combate en curso.`);
       await escribirCondicionYEnergia({ tx, saveId, participant: participante, condicionFisica: condicion, energia: null, abilityNameUsada: null, usageCounts: {}, activeEffectsNext: null });
       const nombre = companeros.find((c) => c.id === participante.companionId)?.name ?? npc?.name ?? npcSlug;
-      return { nombre, condicion, bando: participante.bando };
+      // P393: la orden del capitán se rehace ya, no en la ronda siguiente (si no, la ronda 1 entera va a la jugadora).
+      const orden = await rehacerOrdenCapitanRonda(tx, { worldId: save.worldId, saveId, encounterId: encuentro.id });
+      return { nombre, condicion, bando: participante.bando, ...(orden ? { ordenaCaerSobre: orden.objetivo } : {}) };
     });
   } catch (e) {
     if (e instanceof Rechazo) return { error: e.message };

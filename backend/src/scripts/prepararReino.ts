@@ -221,7 +221,7 @@ for (const paso of pasos) {
   } else if (paso.tipo === 'herido') {
     const r = await dejarHeridoEnCombate(prisma, { saveId, npcSlug: paso.npcSlug, condicion: paso.condicion });
     if ('error' in r) rechaza(r.error);
-    else dice(`Herido en combate: ${r.nombre} (${r.bando === 'ENEMIGO' ? 'rival' : 'bando de la jugadora'}) queda ${r.condicion}${r.bando === 'ENEMIGO' ? '' : '; el capitán enemigo lo señala desde la ronda siguiente si es el más herido'}`);
+    else dice(`Herido en combate: ${r.nombre} (${r.bando === 'ENEMIGO' ? 'rival' : 'bando de la jugadora'}) queda ${r.condicion}${r.ordenaCaerSobre ? `; el capitán ordena ya caer sobre ${r.ordenaCaerSobre}` : r.bando === 'ENEMIGO' ? '' : '; el capitán no cambia de objetivo (no es el más herido o la ronda ya empezó)'}`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

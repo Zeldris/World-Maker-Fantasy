@@ -24,9 +24,10 @@ describe('P370 — herido:<npc> en el combate en curso', () => {
       },
     })).id;
     await asegurarMundoDePartida(prisma, saveId);
-    renegadoId = (await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'goirnte-renegado', saveId: null } })).id;
+    // Ulkha Ketg (Inteligencia 20 en su ficha): el capitán se recalcula con la ficha, no con el miembro del grupo.
+    renegadoId = (await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'ulkha-ketg', saveId: null } })).id;
     companeroId = (await prisma.companion.create({
-      data: { saveId, name: 'Hagar (P370)', role: 'x', notes: 'x', sourceSlug: 'hagar-p370', attributes: ATR, aprobacion: 80, combatGroupSlotIndex: 0 },
+      data: { saveId, name: 'Hagar (P370)', role: 'x', notes: 'x', sourceSlug: 'hagar-p370', attributes: { ...ATR, constitucion: 14 }, aprobacion: 80, combatGroupSlotIndex: 0 },
     })).id;
   });
 
@@ -40,10 +41,19 @@ describe('P370 — herido:<npc> en el combate en curso', () => {
   });
 
   it('deja GRAVE al compañero del combate, en su ficha, y rechaza a quien no está', async () => {
-    const capitan: MiembroDeGrupo = { npcId: renegadoId, nombre: 'Goirnte Renegado', scope: '', destreza: 8, inteligencia: 20, esGrupo: true };
+    const capitan: MiembroDeGrupo = { npcId: renegadoId, nombre: 'Ulkha Ketg', scope: '', destreza: 8, inteligencia: 20, esGrupo: true };
     expect(await abrirCombateDePersonas(prisma, SAVE(), [capitan, capitan])).not.toBeNull();
+    // P393: con todos ilesos el capitán abre sobre Gorhorn (menos Constitución); herido Hagar, la orden pasa a él ya.
+    const encuentro = await prisma.combatEncounter.findFirstOrThrow({ where: { saveId, estado: 'EN_CURSO' }, include: { participantes: true } });
+    const gorhornP = encuentro.participantes.find((p) => p.tipo === 'JUGADOR')!;
+    const hagarP = encuentro.participantes.find((p) => p.companionId === companeroId)!;
+    expect(encuentro.objetivoCapitanId).toBe(gorhornP.id);
     const r = await dejarHeridoEnCombate(prisma, { saveId, npcSlug: 'hagar-p370', condicion: 'GRAVE' });
-    expect(r).toEqual({ nombre: 'Hagar (P370)', condicion: 'GRAVE', bando: 'JUGADOR' });
+    expect(r).toEqual({ nombre: 'Hagar (P370)', condicion: 'GRAVE', bando: 'JUGADOR', ordenaCaerSobre: 'Hagar (P370)' });
+    const tras = await prisma.combatEncounter.findUniqueOrThrow({ where: { id: encuentro.id }, include: { participantes: true } });
+    expect(tras.objetivoCapitanId).toBe(hagarP.id);
+    expect(tras.participantes.filter((p) => p.bando === 'ENEMIGO').map((p) => p.objetivoActualId)).toEqual([hagarP.id, hagarP.id]);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { endsWith: 'ordena caer sobre Hagar (P370).' } } })).toBe(1);
     expect((await prisma.companion.findUniqueOrThrow({ where: { id: companeroId } })).condicionFisica).toBe('GRAVE');
     const fuera = await dejarHeridoEnCombate(prisma, { saveId, npcSlug: 'no-existe-p370', condicion: 'HERIDO' });
     expect(fuera).toEqual({ error: expect.stringContaining('no está en el combate en curso') });
