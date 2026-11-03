@@ -1,4 +1,5 @@
 #!/bin/bash
+# sin pipefail: lanza sd-cli en segundo plano, vigila MemAvailable y mata procesos (kill/wait/grep toleran fallos a propósito); no se prueba sin los modelos de la Deck
 # Genera una imagen con FLUX.2 klein 4B en la Deck a partir de un archivo de prompt.
 # Uso: generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla] [pasos] [args extra de sd-cli…]
 # p. ej. args extra: -r referencia.png (imagen de referencia de estilo)
@@ -16,7 +17,6 @@
 # LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
 # Protecciones (2026-10-24, tras el bloqueo por memoria): memoria libre al empezar, Ollama vacío, vigilante de
 # MemAvailable, aborto si el driver dice 0 MB libres, timeout. Pesos leídos del disco con 2 GB de GPU: no subirlo.
-# sin pipefail: lanza sd-cli en segundo plano, vigila MemAvailable y mata procesos (kill/wait/grep toleran fallos a propósito); no se prueba sin los modelos de la Deck
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos

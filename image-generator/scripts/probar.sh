@@ -1,4 +1,5 @@
 #!/bin/bash
+# sin pipefail: depende del código de salida de generar.sh (RC=$?) tras vigilar y matar sd-cli; no se prueba sin los modelos de la Deck
 # Prueba de la usuaria: genera la imagen de una entidad con su prompt de la enciclopedia (tabla ImagePrompt).
 # Uso: probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=6] [args extra de sd-cli…]
 # p. ej.: probar.sh fauna cuernahoja-macho banner 7
@@ -13,7 +14,6 @@
 # PLANOS=<carpeta con plancha.txt, sujeto.txt y armonia.txt>: en vez de una imagen, la cadena de planos (planos.sh) en
 # <slug>/planos-<fecha>/; el boceto sale de BOCETO o de la ficha (plantilla.py + rasterizar.sh).
 # Borrador 640x256 y 8 pasos; FINAL=1, 1280x512 y 16. MOMENTO=dia|atardecer|noche (por defecto el de la ficha), BOCETO, GRADAR, REGION.
-# sin pipefail: depende del código de salida de generar.sh (RC=$?) tras vigilar y matar sd-cli; no se prueba sin los modelos de la Deck
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 [ $# -ge 3 ] || { sed -n 3,4p "$0"; exit 2; }
