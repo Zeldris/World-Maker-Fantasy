@@ -2958,7 +2958,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // preferible a colgar la partida entera por un problema de red ajeno a la propia narración.
   const retrieved = enCombate
     ? []
-    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags).catch((err) => {
+    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags, [action, ...npcsInScene.map((n) => n.name)]).catch((err) => {
         console.warn(`[retrieveLore] fallo o timeout, continuando sin lore RAG: ${err instanceof Error ? err.message : err}`);
         return [];
       });

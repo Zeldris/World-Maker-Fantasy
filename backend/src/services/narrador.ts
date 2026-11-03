@@ -1427,10 +1427,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // creativa — dejar la exploración en la temperatura normal del Modelfile (~0.9).
   const combatTemperature = ctx.enCombate ? 0.65 : undefined;
 
-  // QA-289 (investigación de repos de rol): min_p corta las palabras muy improbables sin quitar
-  // variedad, y una penalización suave de repetición sobre los últimos 256 tokens contra las frases
-  // repetidas. Valores de partida; se miden con `bench-ia.sh` y los rechazos por repetición.
-  const MUESTREO_NARRADOR = { min_p: 0.05, repeat_penalty: 1.05, repeat_last_n: 256 };
+  // QA-289 (investigación de repos de rol): min_p corta las palabras muy improbables sin quitar variedad.
+  // Sin repeat_penalty: Ollama la aplica también al final del prompt, que es la acción, y en el bench
+  // `15-filas-4-8` el narrador dejó de contar lo que hacía el jugador («Bebo un trago…» sin beber).
+  const MUESTREO_NARRADOR = { min_p: 0.05 };
   const attempt1 = () => {
     const generateOptions = {
       model: env.ollamaModelNarrador,

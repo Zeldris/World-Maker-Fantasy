@@ -46,6 +46,9 @@ export async function retrieveLore(
   worldId: string,
   topK = 4,
   excludeTags: string[] = [],
+  /// QA-289: textos donde buscar entidades con nombre (la acción y los NPC en escena, sin la región,
+  /// que nombraría su propia región en cada turno). Vacío: solo búsqueda semántica.
+  entidades: string[] = [],
 ): Promise<RetrievedLore[]> {
   const inicio = Date.now();
   let embedMs: number | undefined;
@@ -72,6 +75,33 @@ export async function retrieveLore(
       'retrieveLore',
     );
 
+    // QA-289 (P251, P272): los embeddings fallan con nombres propios; el trozo de una entidad que
+    // nombran la acción o la escena entra seguro (como las claves de World Info), y el resto por similitud.
+    const titulos = !entidades.length ? [] : (
+      await withQueryTimeout(
+        prisma.$queryRaw<{ title: string }[]>`
+          SELECT DISTINCT title FROM "LoreChunk" WHERE "worldId" = ${worldId} AND NOT (tags && ${excludeTags}::text[])
+        `,
+        15_000,
+        'retrieveLore',
+      )
+    ).map((r) => r.title);
+    const directos = titulosPorEntidad(titulos, entidades).slice(0, MAX_DIRECTOS);
+    const filasDirectas = directos.length
+      ? await withQueryTimeout(
+          prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
+            SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
+            FROM "LoreChunk"
+            WHERE "worldId" = ${worldId} AND title = ANY(${directos}::text[])
+            ORDER BY title, embedding <=> ${queryLiteral}::vector
+          `,
+          15_000,
+          'retrieveLore',
+        )
+      : [];
+    // Los directos, primero: `formatLoreForPrompt` corta por el final al pasar de MAX_LORE_CHARS.
+    const elegidos = [...filasDirectas, ...rows.filter((r) => !directos.includes(r.title))].slice(0, topK);
+
     // Registro opt-ai. El «id» de un trozo es su título (único en loreChunks.ts): el id real de
     // LoreChunk es un UUID nuevo en cada `reindex-lore`, así que no sirve para comparar casos.
     registrarLlamada({
@@ -79,13 +109,13 @@ export async function retrieveLore(
       task: 'rag',
       ragQuery: query,
       ragK: topK,
-      ragResults: rows.map((r) => ({ id: r.title, score: Math.round((1 - r.distance) * 10000) / 10000 })),
+      ragResults: elegidos.map((r) => ({ id: r.title, score: Math.round((1 - r.distance) * 10000) / 10000 })),
       ragEmbedMs: embedMs,
       ragSearchMs: Date.now() - inicioBusqueda,
       durationMs: Date.now() - inicio,
     });
 
-    return rows;
+    return elegidos;
   } catch (err) {
     registrarLlamada({
       operation: 'retrieval',
@@ -102,14 +132,49 @@ export async function retrieveLore(
   }
 }
 
+/// Tope de trozos que entran por nombre: el resto del `topK` sigue siendo semántico.
+const MAX_DIRECTOS = 2;
+
+const normalizar = (t: string) =>
+  t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9ñ' ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/// Nombre propio de un título de lore: lo que va antes de « (», « —», «, » o « y ».
+const cabeza = (titulo: string) => titulo.split(/ \(| —|, | y /)[0].trim();
+
+/// Nombres propios de dos o más palabras de un texto («Clan Serhu», «Ulkha Ketg»).
+const nombresPropios = (texto: string) =>
+  [...texto.matchAll(/\p{Lu}[\p{L}']+(?:\s+(?:de|del|la|las|los)?\s*\p{Lu}[\p{L}']+)+/gu)].map((m) => normalizar(m[0]));
+
+/// QA-289: títulos cuya entidad nombra el texto. Primero los que el texto nombra enteros (cabeza de dos o
+/// más palabras: «Gorhorn» solo saldría en casi cada turno); detrás, los que son ese nombre con un título
+/// delante («Terk'ikar Ulkha Ketg» con «Ulkha Ketg»), nunca un sitio que solo lo lleva («Campamento del Clan Serhu»).
+export function titulosPorEntidad(titulos: string[], textos: string[]): string[] {
+  const textosN = textos.map(normalizar);
+  const nombres = textos.flatMap(nombresPropios);
+  const contiene = (t: string, n: string) => ` ${t} `.includes(` ${n} `);
+  const rango = (titulo: string) => {
+    const c = normalizar(cabeza(titulo));
+    const palabras = c.split(' ').length;
+    if (palabras < 2) return -1;
+    if (textosN.some((t) => contiene(t, c))) return 0;
+    return nombres.some((n) => contiene(c, n) && palabras - n.split(' ').length <= 1) ? 1 : -1;
+  };
+  return titulos
+    .map((t) => ({ t, r: rango(t) }))
+    .filter((x) => x.r >= 0)
+    .sort((a, b) => a.r - b.r)
+    .map((x) => x.t);
+}
+
 /// True si ninguno de los fragmentos recuperados es realmente relevante — la acción pregunta
 /// por algo que nuestro lore no cubre (p. ej. "busca un lugar seguro para acampar": no tenemos
 /// ningún hecho sobre qué hace seguro un sitio concreto). Señal para relajar la regla de "no
 /// inventes" en ese turno — hipótesis de la usuaria, 2026-07-18: pedirle al modelo algo concreto
 /// y a la vez prohibirle inventar sin darle material real puede ser lo que provocaba el cuelgue
 /// reproducible visto en pruebas con esa acción exacta.
+/// Mira el más cercano de todos (QA-289: los que entran por nombre van primero sin ser los más cercanos).
 export function isWeaklyGrounded(chunks: RetrievedLore[]): boolean {
-  return chunks.length === 0 || chunks[0].distance > RELEVANCE_THRESHOLD;
+  return chunks.length === 0 || Math.min(...chunks.map((c) => c.distance)) > RELEVANCE_THRESHOLD;
 }
 
 /// Tope de caracteres total, independiente de topK — red de seguridad para que el prompt nunca
