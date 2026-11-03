@@ -39,7 +39,7 @@ export function normalizeText(text: string): string {
 /// Enciclopedia), unificado aquí para el backend.
 const MIN_ALIAS_MATCH_LENGTH = 4;
 
-function escapeForRegex(value: string): string {
+export function escapeForRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

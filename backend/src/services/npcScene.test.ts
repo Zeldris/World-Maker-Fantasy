@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -216,6 +216,23 @@ describe('filterFarewellFacts', () => {
   it('no toca una despedida de un NPC que no está entre los candidatos', () => {
     const facts = ['Me despido de un mercader cualquiera y sigo mi camino.'];
     expect(filterFarewellFacts(facts, [GISTERA])).toEqual(facts);
+  });
+});
+
+describe('sinRastrosDeNpc (P331)', () => {
+  const ORCO = { id: 'orco', aliases: ['orco enfurecido'] };
+  const ULKHA = { id: 'ulkha', aliases: ['ulkha', 'ulkha ketg'] };
+
+  it('un hecho que solo habla de las huellas del NPC no lo mete en escena', () => {
+    const fact = 'La huella… de Orco enfurecido se dirige hacia el oeste.';
+    expect(matchNpcAliases(sinRastrosDeNpc(fact, [ORCO]), [ORCO])).toEqual([]);
+    expect(matchNpcAliases(sinRastrosDeNpc('Encuentro el rastro reciente de un orco enfurecido.', [ORCO]), [ORCO])).toEqual([]);
+  });
+
+  it('conserva al NPC que está de verdad y a los demás nombrados en el mismo hecho', () => {
+    const fact = 'Ulkha Ketg señala las pisadas del orco enfurecido junto al paso.';
+    expect(matchNpcAliases(sinRastrosDeNpc(fact, [ORCO, ULKHA]), [ORCO, ULKHA])).toEqual(['ulkha']);
+    expect(matchNpcAliases(sinRastrosDeNpc('El orco enfurecido ruge junto a sus huellas.', [ORCO]), [ORCO])).toEqual(['orco']);
   });
 });
 

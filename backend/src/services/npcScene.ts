@@ -1,6 +1,6 @@
 import { restarVejez } from './cronista/edades.js';
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary, levenshtein } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary, levenshtein, escapeForRegex } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect, NpcInteractionType } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import { sumAttributes } from './equipment.js';
@@ -529,6 +529,28 @@ export function filterFarewellFacts(sessionFacts: string[], candidateNpcs: NpcWi
   });
 }
 
+/// P331 (QA-289, bench 17): «La huella… de Orco enfurecido se dirige hacia el oeste» metía al orco en escena, y el
+/// diálogo lo cogía de interlocutor. Un rastro (huellas, pisadas, excrementos…) dice que pasó por aquí, no que esté:
+/// se quita del hecho el tramo «<rastro> … de <alias>» antes de buscar nombres. Solo en los hechos; la acción no
+/// pasa por aquí. Devuelve el hecho normalizado (sin tildes ni mayúsculas), que es lo que compara `matchNpcAliases`.
+const RASTRO = String.raw`(?:huellas?|rastros?|pisadas?|excrementos?|heces|deposiciones|marcas? de garras|zarpazos?|olor)`;
+
+export function sinRastrosDeNpc(fact: string, candidateNpcs: NpcWithAliases[]): string {
+  let texto = normalizeText(fact);
+  for (const npc of candidateNpcs) {
+    for (const alias of npc.aliases) {
+      const a = normalizeText(alias);
+      if (a.length < 4) continue;
+      const tramo = new RegExp(
+        String.raw`(?<![\p{L}])${RASTRO}(?![\p{L}])[^.;]{0,40}?(?<![\p{L}])del?\s+(?:(?:el|la|los|las|un|una|unos|unas)\s+)?${escapeForRegex(a)}(?![\p{L}\p{N}])`,
+        'gu',
+      );
+      texto = texto.replace(tramo, ' ');
+    }
+  }
+  return texto;
+}
+
 /// Busca NPCs en escena a partir del texto de la acción Y de los hechos ya establecidos de la
 /// sesión (para que un NPC mencionado en un turno anterior "el Kort'ikar Torgash llegó" siga
 /// reconociéndose en turnos siguientes aunque el jugador ya no repita su nombre completo).
@@ -641,7 +663,7 @@ export async function detectNpcsInScene(params: {
   });
   if (candidateNpcs.length === 0) return [];
 
-  const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs);
+  const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs).map((f) => sinRastrosDeNpc(f, candidateNpcs));
   const haystack = [params.action, ...relevantFacts].join('\n');
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
   const ocultoNombrado = await ocultoNombradoPorSuVisible({
