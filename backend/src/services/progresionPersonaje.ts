@@ -102,3 +102,11 @@ export async function hacerDomador(prisma: { $transaction: <T>(f: (tx: Tx) => Pr
     throw e;
   }
 }
+
+/// P370: la jugadora de cualquier clase sube al nivel `nivel` (como al ganar XP: `subirDeNivel`), sin elegir
+/// especialización; los puntos de atributo quedan por repartir (como en el juego). Una transacción: si falla algo, no
+/// queda a medias.
+export async function hacerNivel(prisma: { $transaction: <T>(f: (tx: Tx) => Promise<T>) => Promise<T> }, { saveId, nivel }: { saveId: string; nivel: number }): Promise<{ desde: number; hasta: number; puntosDeAtributo: number } | { error: string }> {
+  const r = await prisma.$transaction((tx) => subirDeNivel(tx, saveId, nivel));
+  return r.ok ? { desde: r.desde, hasta: r.hasta, puntosDeAtributo: r.puntosDeAtributo } : { error: `nivel: ${r.motivo}` };
+}

@@ -30,6 +30,12 @@
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
+#                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
+#                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
+#                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]
+#                                               (deposita en el Almacén, con Depositar, hasta dejar n huecos libres; 10 por defecto), P370: nivel:<n> (sube de
+#                                               nivel como ganar XP, de 2 a 19, con los puntos sin repartir) y, en `dar`, el inventario no pasa de su capacidad
+#                                               (avisa y da lo que cabe)
 #                                               y, en dar-reino, edificio:<receta> de más tier que el personaje (se da como lo
 #                                               levantaría la Casa de obras; p. ej. ayuntamiento-mediano y después jaula-grande)
 #   escenario.sh probar <nombre> <orden…>        (QA-153) restaura la instantánea en una base temporal `prueba_<pid>` del mismo
@@ -122,6 +128,6 @@ case "${1:-}" in
     exit "$codigo"
     ;;
   *)
-    sed -n '2,41p' "$0"; exit 2
+    sed -n '2,47p' "$0"; exit 2
     ;;
 esac

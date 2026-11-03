@@ -16,7 +16,11 @@ export type PasoReino =
   | { tipo: 'punto-retirado'; especie: string; n: number | null }
   | { tipo: 'sin-aliados' }
   | { tipo: 'reparar' }
-  | { tipo: 'danar'; receta: string };
+  | { tipo: 'danar'; receta: string }
+  | { tipo: 'escasez'; facSlug: string; recurso: string | null }
+  | { tipo: 'asalto'; facSlug: string }
+  | { tipo: 'mochila-libre'; n: number | null }
+  | { tipo: 'nivel'; nivel: number };
 
 /// P378: `m`/`f` fija el sexo de todos; `alterna` (por defecto) da macho, hembra, macho… para que haya parejas posibles.
 export type SexoSubditos = 'm' | 'f' | 'alterna';
@@ -34,7 +38,8 @@ export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUER
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-269, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). Se ejecutan en el orden dado.
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). 
+/// P180: `escasez:<facción>[:comida]` (la facción, por su origenSlug, queda con carencia de comida: sus cocinas se dañan con el efecto de las tormentas hasta que `situacionDeFaccion` la ve; pedir trabajo o mirar su tablón saca entonces «le falta…» / «para el Clan…»). P295: `asalto:<facción>` (un ejército de esa facción sale contra la Capital y la vigilancia del día lo avista desde la Torre; queda EN MARCHA, sin resolver, para «Llamar a la milicia»). P367: `mochila-libre[:<n>]` (deja n unidades de hueco en la mochila, 10 si no se dice: lo que sobra va al Almacén del Reino con «Depositar»). P370: `nivel:<n>` (la jugadora, de cualquier clase, sube al nivel n, de 2 a 19, como al ganar XP; los puntos de atributo quedan por repartir). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
   const pasos: PasoReino[] = [];
@@ -99,6 +104,20 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     } else if (clave === 'danar') {
       if (!r[0] || r.length > 1 || !/^[a-z0-9-]+$/.test(r[0])) return { error: `«${arg}»: falta danar:<receta> (p. ej. danar:cocina).` };
       pasos.push({ tipo: 'danar', receta: r[0] });
+    } else if (clave === 'escasez') {
+      if (!r[0] || r.length > 2 || (r[1] !== undefined && r[1] === '')) return { error: `«${arg}»: falta escasez:<facción>[:comida].` };
+      pasos.push({ tipo: 'escasez', facSlug: r[0], recurso: r[1] ?? null });
+    } else if (clave === 'asalto') {
+      if (!r[0] || r.length > 1) return { error: `«${arg}»: falta asalto:<facción>.` };
+      pasos.push({ tipo: 'asalto', facSlug: r[0] });
+    } else if (clave === 'mochila-libre') {
+      const n = r[0] === undefined ? null : entero(r[0]);
+      if (r.length > 1 || (r[0] !== undefined && (n == null || n > 200))) return { error: `«${arg}»: falta mochila-libre[:<n>], con n de 1 a 200.` };
+      pasos.push({ tipo: 'mochila-libre', n });
+    } else if (clave === 'nivel') {
+      const nivel = entero(r[0]);
+      if (nivel == null || r.length > 1 || nivel < 2 || nivel > 19) return { error: `«${arg}»: falta nivel:<n>, de 2 a 19 (desde el 20 cambian las habilidades de arma).` };
+      pasos.push({ tipo: 'nivel', nivel });
     } else if (clave === 'domador') {
       const nivel = entero(r[0]);
       if (nivel == null || r.length > 1 || nivel < 10 || nivel > 19) return { error: `«${arg}»: falta domador:<nivel>, de 10 a 19 (desde el 20 cambian las habilidades de arma).` };

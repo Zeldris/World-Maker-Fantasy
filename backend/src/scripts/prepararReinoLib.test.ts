@@ -33,6 +33,19 @@ describe('pasos de prepararReino (3.2)', () => {
       expect(parsearPasosReino(mal)).toHaveProperty('error');
     }
   });
+  it('P180, P295, P367, P370: escasez, asalto, mochila-libre y nivel', () => {
+    expect(parsearPasosReino(['escasez:clan-serhu', 'escasez:clan-serhu:comida', 'asalto:clan-serhu', 'mochila-libre', 'mochila-libre:25', 'nivel:12'])).toEqual([
+      { tipo: 'escasez', facSlug: 'clan-serhu', recurso: null },
+      { tipo: 'escasez', facSlug: 'clan-serhu', recurso: 'comida' },
+      { tipo: 'asalto', facSlug: 'clan-serhu' },
+      { tipo: 'mochila-libre', n: null },
+      { tipo: 'mochila-libre', n: 25 },
+      { tipo: 'nivel', nivel: 12 },
+    ]);
+    for (const mal of [['escasez'], ['escasez:a:b:c'], ['asalto'], ['asalto:a:b'], ['mochila-libre:0'], ['mochila-libre:201'], ['mochila-libre:x'], ['nivel'], ['nivel:1'], ['nivel:20'], ['nivel:x']]) {
+      expect(parsearPasosReino(mal)).toHaveProperty('error');
+    }
+  });
   it('P378: el sexo alterna por defecto y se puede fijar', () => {
     expect([0, 1, 2, 3].map((i) => sexoDelSubdito('alterna', i))).toEqual(['M', 'F', 'M', 'F']);
     expect([0, 1, 2].map((i) => sexoDelSubdito('f', i))).toEqual(['F', 'F', 'F']);

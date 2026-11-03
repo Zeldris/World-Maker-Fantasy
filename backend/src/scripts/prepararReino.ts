@@ -17,6 +17,10 @@
 //   punto-retirado:<especie>[:<n>] QA-266, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0; estado sintético (el juego no lo produce hoy) para la defensa de `opcionesDePartida`, con los efectos `crearPuntoZona` y `retirarPuntoZona`
 //   reparar                         P369/P378: repara cada edificio DANADO (y Empalizada caída) con `repararEdificio`, la del botón «Reparar» de Reino › Edificios: cuesta la mitad de sus materiales del Almacén; si faltan, lo dice y sigue con los demás (sale con error, sin deshacer lo reparado)
 //   danar:<receta>                  P301: deja DANADO el edificio activo de esa receta (p. ej. danar:cocina) con el efecto `danarEdificio` de las tormentas (suceso y aviso en el diario del Reino incluidos)
+//   escasez:<facción>[:comida]      P180: la facción (origenSlug, p. ej. clan-serhu) queda con carencia de COMIDA: se dañan sus cocinas con el efecto `danarEdificio` de las tormentas hasta que `situacionDeFaccion` (la que lee el generador de misiones) la ve; su tablón y quien pide trabajo sacan entonces «le falta…» / «para el Clan…». Solo comida (la única carencia que cuelga encargos). Repara con `reparar`
+//   asalto:<facción>                P295: un ejército de esa facción (hasta 6 soldados, que dejan de estar en casa) sale contra la Capital (`crearViajero` ASALTO, como `lanzarEjercitosContraElReino`) desde su casa o, si la Torre de vigía no la alcanza, desde lo más lejano que ve, y corre la vigilancia del día (`vigilarDelReino`): aviso de la Torre en el diario del Reino. Queda EN MARCHA, sin resolver: «Llamar a la milicia» (Reino › Defensa) sigue pulsable hasta que se avance el día. Pide Torre de vigía en la Capital; la jugadora tiene que estar en la Capital (si no, la milicia se arma sola)
+//   mochila-libre[:<n>]             P367: deja n unidades de hueco (10 por defecto) en la mochila depositando objetos sueltos en el Almacén del Reino con la función de «Depositar» (`depositarEnAlmacen`), las filas más grandes primero. Depositar no mira la capacidad de la mochila. Con el tope de materiales del Almacén lleno, ese objeto no se deposita y se sigue con el siguiente
+//   nivel:<n>                       P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo por repartir, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -40,13 +44,16 @@ import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
 import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
-import { hacerDomador } from '../services/progresionPersonaje.js';
+import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
+import { dejarEnEscasez } from '../services/cronista/prepararEscasez.js';
+import { lanzarAsaltoAlReino } from '../services/cronista/prepararAsalto.js';
+import { dejarMochilaLibre } from '../services/cronista/prepararMochila.js';
 import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n> reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -184,6 +191,26 @@ for (const paso of pasos) {
     const r = await danarEdificioDeReceta(prisma, { saveId, receta: paso.receta });
     if ('error' in r) rechaza(r.error);
     else dice(`Dañado: ${r.nombre}`);
+  } else if (paso.tipo === 'escasez') {
+    const r = await dejarEnEscasez(prisma, { saveId, faccionSlug: paso.facSlug, recurso: paso.recurso });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.yaTenia ? `Escasez: ${paso.facSlug} ya tenía carencia de comida (${r.gravedad})` : `Escasez: ${paso.facSlug} con carencia de comida ${r.gravedad} tras dañar ${r.danados.join(', ')}`);
+  } else if (paso.tipo === 'asalto') {
+    const r = await lanzarAsaltoAlReino(prisma, { saveId, faccionSlug: paso.facSlug });
+    if ('error' in r) rechaza(r.error);
+    else {
+      dice(`Asalto: ${r.quien} manda ${r.van} soldados contra la Capital, a ${r.tramos} tramo${r.tramos === 1 ? '' : 's'} (sale de ${r.origen}); ${r.avisado ? 'la Torre lo ha avistado (aviso en el diario del Reino)' : 'la Torre no lo avistó'}`);
+      dice(r.milicia ? `  «Llamar a la milicia» no serviría ahora: ${r.milicia}` : '  «Llamar a la milicia» tiene adultos que armar');
+      if (!r.jugadoraEnCapital) dice('  AVISO: la jugadora no está en la Capital: la milicia se arma sola y no hay botón que pulsar');
+    }
+  } else if (paso.tipo === 'mochila-libre') {
+    const r = await dejarMochilaLibre(prisma, { saveId, hueco: paso.n });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.depositados === 0 ? `Mochila libre: ya había hueco (${r.despues}/${r.capacidad}, ${r.hueco} libres)` : `Mochila libre: ${r.depositados} objeto(s) al Almacén del Reino, ${r.antes} -> ${r.despues}/${r.capacidad} (${r.hueco} libres)${r.sinDepositar.length ? `; sin depositar ${r.sinDepositar.length}` : ''}`);
+  } else if (paso.tipo === 'nivel') {
+    const r = await hacerNivel(prisma, { saveId, nivel: paso.nivel });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.hasta === r.desde ? `Nivel: ya era ${r.hasta}` : `Nivel: ${r.desde} -> ${r.hasta}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }
