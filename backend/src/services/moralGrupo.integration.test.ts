@@ -116,6 +116,19 @@ describe('CR-44 (44c) — moral en el combate de varios', () => {
     expect(t3.join(' ')).toContain('mitad');
   });
 
+  it('P402: si quien sostiene es el propio malherido, la línea lo nombra una sola vez', async () => {
+    const cs = await bandaDeTres();
+    const [capitan] = enemigos(cs);
+    capitan!.attributes = { ...capitan!.attributes!, inteligencia: 20, voluntad: 20 };
+    const encounterId = (await prisma.combatParticipant.findUniqueOrThrow({ where: { id: cs[0]!.participantId } })).encounterId;
+    capitan!.condicion = 'GRAVE';
+    const r = await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs, random: d20(20) }));
+    const linea = r.textos.find((t) => t.includes('sostiene'))!;
+    expect(linea).toMatch(/^Aun malherido, /);
+    expect(linea.match(/malherido/g)).toHaveLength(1);
+    expect(linea).not.toMatch(/^Con /);
+  });
+
   it('CR-45: el capitán manda ya en la ronda de apertura; los suyos van a por su objetivo y queda marcado', async () => {
     await prisma.combatEncounter.deleteMany({ where: { saveId } });
     const soldado: MiembroDeGrupo = { npcId: renegadoId, nombre: 'Goirnte Renegado', scope: '', destreza: 8, inteligencia: 8, esGrupo: true };

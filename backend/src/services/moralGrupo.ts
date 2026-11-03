@@ -92,8 +92,12 @@ export async function revisarMoralDelCombate(
         : aLaMitad
           ? `Con la mitad de los suyos fuera de combate, ${nombre(lider)} los sostiene`
           : (() => {
-              const graves = [...new Set(recienGraves.map(nombre))];
-              return `Con ${graves.join(' y ')} ${graves.length > 1 ? 'malheridos' : 'malherido'}, ${nombre(lider)} sostiene a los suyos`;
+              // P402: si quien sostiene es uno de los malheridos, no se le nombra dos veces.
+              const elMismo = recienGraves.some((m) => m.participantId === lider.participantId);
+              const graves = [...new Set(recienGraves.filter((m) => m.participantId !== lider.participantId).map(nombre))];
+              if (graves.length === 0) return `Aun malherido, ${nombre(lider)} sostiene a los suyos`;
+              const conGraves = `Con ${graves.join(' y ')} ${graves.length > 1 ? 'malheridos' : 'malherido'}`;
+              return elMismo ? `${conGraves}, ${nombre(lider)}, también herido, sostiene a los suyos` : `${conGraves}, ${nombre(lider)} sostiene a los suyos`;
             })();
       resultado.textos.push(`${motivo}: siguen peleando.`);
     } else if (escapan(lider)) {

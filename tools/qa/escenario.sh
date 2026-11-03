@@ -80,7 +80,7 @@ case "${1:-}" in
   cargar)
     nombre="${2:?falta el nombre}"
     [ -f "$DIR/$nombre.dump" ] || { echo "No existe $DIR/$nombre.dump (escenario.sh lista)"; exit 1; }
-    bash tools/playwright-e2e/arrancar-juego.sh --parar > /dev/null
+    bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
     psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)" -c "CREATE DATABASE $BASE"
     # pg_restore sale con 1 por avisos que no rompen nada (p. ej. el comentario de la extensión `vector`): se
     # enseñan y se sigue, para que el juego se arranque siempre.
@@ -93,7 +93,7 @@ case "${1:-}" in
   avanzar)
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"
     [ -z "$extra" ] || [ "$extra" = "--reparar" ] || { echo "«$extra»: solo se admite --reparar"; exit 2; }
-    bash tools/playwright-e2e/arrancar-juego.sh --parar > /dev/null
+    bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
     (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { bash tools/playwright-e2e/arrancar-juego.sh; exit 1; }
     bash tools/playwright-e2e/arrancar-juego.sh
     ;;
