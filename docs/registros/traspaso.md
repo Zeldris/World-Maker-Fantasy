@@ -179,6 +179,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-11-03** — ~~`QA-286`~~, ~~`QA-287`~~ (retro de `claude/gh-en-la-deck`): varios PR listos, de uno en uno (`ramas-y-main.md`); ramas remotas en `recuperar.py` y `--footer` en el aviso de `revisado.sh`, para Galivelop-workflow.
 - **2026-11-03** — ~~`QA-285`~~: la sesión local de la Deck crea sus PR con `gh` (`~/.local/bin/gh`, enlazado en el sandbox Flatpak de VS Code); estrenada con los PR #80 y #81. Sustituye a `QA-184` en `CLAUDE.md`, `AGENTS.md`, `ramas-y-main.md` y `skills-y-modelos.md`.
 - **2026-11-03** — ~~`QA-280`…`QA-284`~~ (retro de `claude/plan-imagenes`): `/code-review` al cerrar cada `IMG-*`, a `main` por bloque, cadena fotorreal en `docs/mapa-agente.md`, `hoja.sh --archivos` y notas de `opt-tokens`.
 - **2026-11-02** — ~~`QA-271`~~ (limpieza): fuera `test-retrieval.ts`, `test-worldtick.ts`, el SQL de arcano a magia (de un solo uso), `debug/` e `image-generator/scripts/obsoleto/`; retro con `QA-278` y `QA-279` al roadmap.
@@ -188,4 +189,3 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - **2026-10-26** — ~~`QA-244`~~: la historia de la enciclopedia, completa: una entrada sin documento es saber común o se abre al visitar su lugar (como X4); diez hechos de la cronología con texto del canon y el sí de la usuaria.
 - **2026-10-26** — ~~`QA-243`~~: la enciclopedia, auditada contra el canon sección a sección (NPC, clases, objetos, lugares, facciones, fauna y flora); `./actualizar-mundo.sh` en verde en la Deck; las imágenes de habilidades pasan a `IMG-9`.
 - **2026-10-26** — ~~`QA-262`…`QA-265`~~ (retro de `INS-33`): «PR listo» solo con la URL del PR (`AGENTS.md`, `QA-184`), `import/first` en `frontend/.oxlintrc.json` (error en `src/lib/`, aviso en el resto), entrada «Modo empaquetado» en `docs/mapa-agente.md` y propuesta para Galivelop-workflow en la retro.
-- **2026-10-26** — ~~`QA-259`…`QA-261`~~ (retro de `INS-31`): regla de las tareas `INS-*` del instalador (`AGENTS.md` § «Ramas y `main`», `REVIEW.md`), «Último commit en `main`» solo con la última fusión y la bitácora leída con `recuperar.py --estado` (`AGENTS.md` paso 1).
