@@ -33,8 +33,9 @@
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
 #                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]
-#                                               (deposita en el Almacén, con Depositar, hasta dejar n huecos libres; 10 por defecto), P370: nivel:<n> (sube de
-#                                               nivel como ganar XP, de 2 a 19, con los puntos sin repartir) y, en `dar`, el inventario no pasa de su capacidad
+#                                               (deposita en el Almacén, con Depositar, hasta dejar n huecos libres; 10 por defecto), P370: nivel:<n>[:<atr>,…] (sube de
+#                                               nivel como ganar XP, de 2 a 19; sin atributos, los puntos quedan sin repartir; P386: con ellos,
+#                                               p. ej. nivel:19:constitucion,fuerza, los reparte todos por turno, también con un combate abierto) y, en `dar`, el inventario no pasa de su capacidad
 #                                               (avisa y da lo que cabe)
 #                                               y, en dar-reino, edificio:<receta> de más tier que el personaje (se da como lo
 #                                               levantaría la Casa de obras; p. ej. ayuntamiento-mediano y después jaula-grande)

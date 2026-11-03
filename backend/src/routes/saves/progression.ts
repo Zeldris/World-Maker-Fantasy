@@ -11,7 +11,7 @@ import {
   savedActionDataFromAbility,
 } from '../../services/classAbilities.js';
 import { Clase, Especializacion } from '@prisma/client';
-import { NIVEL_MINIMO_ESPECIALIZACION, fijarEspecializacion } from '../../services/progresionPersonaje.js';
+import { NIVEL_MINIMO_ESPECIALIZACION, fijarEspecializacion, repartirPuntoDeAtributo } from '../../services/progresionPersonaje.js';
 
 // QA-269: la constante vive en el servicio de progresión; se reexporta para quien la importaba de aquí.
 export { NIVEL_MINIMO_ESPECIALIZACION };
@@ -61,22 +61,7 @@ export async function progressionRoutes(app: FastifyInstance) {
       const attributeCap = attributeCapForLevel(save.level);
       let outcome: { kind: 'ok'; attributes: AttributeBlock; pendingAttributePoints: number } | { kind: 'no-points' } | { kind: 'at-max' };
       try {
-        outcome = await prisma.$transaction(async (tx) => {
-          const locked = await lockRowForUpdate<{ pendingAttributePoints: number; attributes: AttributeBlock }>(tx, 'Save', save.id, [
-            'pendingAttributePoints',
-            'attributes',
-          ]);
-          if (locked.pendingAttributePoints <= 0) return { kind: 'no-points' };
-          if (locked.attributes[attribute] >= attributeCap) return { kind: 'at-max' };
-          const updated = await tx.save.update({
-            where: { id: save.id },
-            data: {
-              pendingAttributePoints: { decrement: 1 },
-              attributes: { ...locked.attributes, [attribute]: locked.attributes[attribute] + 1 },
-            },
-          });
-          return { kind: 'ok', attributes: updated.attributes as AttributeBlock, pendingAttributePoints: updated.pendingAttributePoints };
-        });
+        outcome = await prisma.$transaction((tx) => repartirPuntoDeAtributo(tx, save.id, attribute, attributeCap));
       } catch (err) {
         // Deuda técnica cerrada (auditoría 2026-09-01): `catch {}` mudo aquí no distinguía un
         // deadlock/timeout real de Postgres de un caso de negocio normal — cualquier fallo real de

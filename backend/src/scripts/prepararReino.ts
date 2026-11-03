@@ -20,7 +20,7 @@
 //   escasez:<facción>[:comida]      P180: la facción (origenSlug, p. ej. clan-serhu) queda con carencia de COMIDA: se dañan sus cocinas con el efecto `danarEdificio` de las tormentas hasta que `situacionDeFaccion` (la que lee el generador de misiones) la ve; su tablón y quien pide trabajo sacan entonces «le falta…» / «para el Clan…». Solo comida (la única carencia que cuelga encargos). Repara con `reparar`
 //   asalto:<facción>                P295: un ejército de esa facción (hasta 6 soldados, que dejan de estar en casa) sale contra la Capital (`crearViajero` ASALTO, como `lanzarEjercitosContraElReino`) desde su casa o, si la Torre de vigía no la alcanza, desde lo más lejano que ve, y corre la vigilancia del día (`vigilarDelReino`): aviso de la Torre en el diario del Reino. Queda EN MARCHA, sin resolver: «Llamar a la milicia» (Reino › Defensa) sigue pulsable hasta que se avance el día. Pide Torre de vigía en la Capital; la jugadora tiene que estar en la Capital (si no, la milicia se arma sola)
 //   mochila-libre[:<n>]             P367: deja n unidades de hueco (10 por defecto) en la mochila depositando objetos sueltos en el Almacén del Reino con la función de «Depositar» (`depositarEnAlmacen`), las filas más grandes primero. Depositar no mira la capacidad de la mochila. Con el tope de materiales del Almacén lleno, ese objeto no se deposita y se sigue con el siguiente
-//   nivel:<n>                       P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo por repartir, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel
+//   nivel:<n>[:<atr>,<atr>…]        P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel. P386: con atributos (p. ej. `nivel:19:constitucion,fuerza`) reparte todos los puntos por turno entre ellos (`repartirPuntoDeAtributo`, la del botón), también con un combate abierto; sin ellos, quedan por repartir
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -53,7 +53,7 @@ import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n> reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n>[:<atributo>,…] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -208,9 +208,14 @@ for (const paso of pasos) {
     if ('error' in r) rechaza(r.error);
     else dice(r.depositados === 0 ? `Mochila libre: ya había hueco (${r.despues}/${r.capacidad}, ${r.hueco} libres)` : `Mochila libre: ${r.depositados} objeto(s) al Almacén del Reino, ${r.antes} -> ${r.despues}/${r.capacidad} (${r.hueco} libres)${r.sinDepositar.length ? `; sin depositar ${r.sinDepositar.length}` : ''}`);
   } else if (paso.tipo === 'nivel') {
-    const r = await hacerNivel(prisma, { saveId, nivel: paso.nivel });
+    const r = await hacerNivel(prisma, { saveId, nivel: paso.nivel, atributos: paso.atributos });
     if ('error' in r) rechaza(r.error);
-    else dice(r.hasta === r.desde ? `Nivel: ya era ${r.hasta}` : `Nivel: ${r.desde} -> ${r.hasta}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
+    else {
+      dice(r.hasta === r.desde ? `Nivel: ya era ${r.hasta}` : `Nivel: ${r.desde} -> ${r.hasta}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo ganados)` : ''}`);
+      const rep = Object.entries(r.repartidos).map(([a, n]) => `${a} +${n}`).join(', ');
+      if (rep) dice(`  Repartidos: ${rep}`);
+      if (r.sinRepartir) dice(`  ${r.sinRepartir} punto(s) sin repartir${paso.atributos.length ? ' (esos atributos llegaron al tope del nivel)' : ''}`);
+    }
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

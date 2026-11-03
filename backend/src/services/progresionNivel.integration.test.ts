@@ -32,6 +32,30 @@ describe('hacerNivel y dejarMochilaLibre (P370, P367)', () => {
     expect(await hacerNivel(prisma, { saveId, nivel: 20 })).toHaveProperty('error');
   });
 
+  it('nivel con atributos reparte todos los puntos por turno y salta el que llega al tope (P386)', async () => {
+    const saveId = await partida('Nivel con atributos (P386)');
+    const r = await hacerNivel(prisma, { saveId, nivel: 19, atributos: ['constitucion', 'fuerza'] });
+    if ('error' in r) throw new Error(r.error);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const attrs = save.attributes as Record<string, number>;
+    expect(r.puntosDeAtributo).toBeGreaterThan(0);
+    expect(save.pendingAttributePoints).toBe(r.sinRepartir);
+    expect((r.repartidos.constitucion ?? 0) + (r.repartidos.fuerza ?? 0) + r.sinRepartir).toBe(r.puntosDeAtributo);
+    expect(attrs.constitucion).toBe(5 + (r.repartidos.constitucion ?? 0));
+    expect(attrs.fuerza).toBe(5 + (r.repartidos.fuerza ?? 0));
+    expect(Math.abs((r.repartidos.constitucion ?? 0) - (r.repartidos.fuerza ?? 0))).toBeLessThanOrEqual(1);
+    expect(attrs.destreza).toBe(10);
+  });
+
+  it('nivel con un atributo ya en el tope no reparte nada y deja los puntos (P386)', async () => {
+    const saveId = await partida('Nivel tope (P386)');
+    await prisma.save.update({ where: { id: saveId }, data: { attributes: { fuerza: 30, destreza: 10, constitucion: 5, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 } } });
+    const r = await hacerNivel(prisma, { saveId, nivel: 8, atributos: ['fuerza'] });
+    if ('error' in r) throw new Error(r.error);
+    expect(r.repartidos).toEqual({});
+    expect(r.sinRepartir).toBe(r.puntosDeAtributo);
+  });
+
   it('mochila-libre deposita en el Almacén hasta dejar el hueco pedido', async () => {
     const saveId = await partida('Mochila (P367)');
     // capacidad = 20 + 5 + 5 = 30; se llena con 30 piezas

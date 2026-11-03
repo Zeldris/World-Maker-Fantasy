@@ -33,6 +33,10 @@ describe('pasos de prepararReino (3.2)', () => {
       expect(parsearPasosReino(mal)).toHaveProperty('error');
     }
   });
+  it('P386: nivel reparte los puntos en los atributos dados', () => {
+    expect(parsearPasosReino(['nivel:19:constitucion,fuerza'])).toEqual([{ tipo: 'nivel', nivel: 19, atributos: ['constitucion', 'fuerza'] }]);
+  });
+
   it('P180, P295, P367, P370: escasez, asalto, mochila-libre y nivel', () => {
     expect(parsearPasosReino(['escasez:clan-serhu', 'escasez:clan-serhu:comida', 'asalto:clan-serhu', 'mochila-libre', 'mochila-libre:25', 'nivel:12'])).toEqual([
       { tipo: 'escasez', facSlug: 'clan-serhu', recurso: null },
@@ -40,9 +44,9 @@ describe('pasos de prepararReino (3.2)', () => {
       { tipo: 'asalto', facSlug: 'clan-serhu' },
       { tipo: 'mochila-libre', n: null },
       { tipo: 'mochila-libre', n: 25 },
-      { tipo: 'nivel', nivel: 12 },
+      { tipo: 'nivel', nivel: 12, atributos: [] },
     ]);
-    for (const mal of [['escasez'], ['escasez:a:b:c'], ['asalto'], ['asalto:a:b'], ['mochila-libre:0'], ['mochila-libre:201'], ['mochila-libre:x'], ['nivel'], ['nivel:1'], ['nivel:20'], ['nivel:x']]) {
+    for (const mal of [['escasez'], ['escasez:a:b:c'], ['asalto'], ['asalto:a:b'], ['mochila-libre:0'], ['mochila-libre:201'], ['mochila-libre:x'], ['nivel'], ['nivel:1'], ['nivel:20'], ['nivel:x'], ['nivel:12:suerte'], ['nivel:12:fuerza,fuerza'], ['nivel:12:fuerza:x'], ['nivel:12:']]) {
       expect(parsearPasosReino(mal)).toHaveProperty('error');
     }
   });
