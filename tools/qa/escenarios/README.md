@@ -49,3 +49,5 @@ estado útil lo guarda aquí (`QA-105`).
 | `t52-pozo-escorante-muerto` | `cmvex1v0300057d0pdjlbezcj` | Como mv-pozo-sed50 en el día 39 10:21 con Gorhorn nivel 3 herido en El Pozo, un Escorante muerto sin desollar (P125 ya visto) y la montura de pruebas; sin Guchapo cazado (faltan P12 y P51) | 2026-11-02 |
 | `t54-mv-ganado-hondonada-inv-lleno` | `cmvex1v0300057d0pdjlbezcj` | mv-ganado tras la tanda 54: Gorhorn en la Hondonada del Eco junto a la Salvia del Polvo, día 39 13:52, inventario 170/37 (lleno: no deja recolectar), sed 0% y CONVALECIENTE | 2026-11-02 |
 | `t55-hambre-sed-dia82` | `cmvex1v0300057d0pdjlbezcj` | Tras la tanda 55: reino-hambre-sed con 2 súbditos dados y 3 días avanzados, día 82, población 0, comida 6, territorio perdido | 2026-11-02 |
+| `t56-base` | `cmvex1v0300057d0pdjlbezcj` | t56: reino-sano-defensas con Gorhorn en el Pozo de Cauce Viejo, dia 39 | 2026-11-03 |
+| `t56-reino-dia75` | `cmvex1v0300057d0pdjlbezcj` | t56: reino-sano-defensas dia 75, Cocina ACTIVA con 2 cocineros y 3 trabajadores, Gorhorn en el Pozo | 2026-11-03 |
