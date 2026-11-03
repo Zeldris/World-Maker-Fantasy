@@ -983,18 +983,22 @@ export function quitarFrasesRepetidas(narracion: string, anterior?: string): str
   return quedan.length === 0 || quedan.length === todas.length ? narracion : quedan.join(' ');
 }
 
-/// P411: a una pregunta al orco, la narración acababa con Ulkha y la réplica iba sin hablante: parecía de ella. Si la
-/// última frase no nombra a quien contesta, la réplica lleva «El orco enfurecido responde:» delante.
-export function conHablante(
+/// P411: a una pregunta al orco, la narración acababa con Ulkha y la réplica iba sin hablante: parecía de ella. Une la
+/// narración (ya sin citas) y la réplica: la réplica va entre «…» (bench 20: llegaba sin comillas); si la narración la
+/// presenta sin acabar la frase («y ella responde»), con dos puntos; si su última frase no nombra a quien contesta, con
+/// «El orco enfurecido responde:» delante.
+export function unirReplica(
   narracion: string,
   reply: string,
   npc: { name: string; nombreVisible?: string; articulo: string | null; genero: string | null },
 ): string {
+  const cita = /^[«“"—]/.test(reply) ? reply : `«${reply.replace(/^'+|'+$/g, '')}»`;
+  if (narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
   const visible = npc.nombreVisible ?? npc.name;
-  if (contieneNombre(frases(narracion).at(-1) ?? '', visible)) return reply;
+  if (contieneNombre(frases(narracion).at(-1) ?? '', visible)) return `${narracion} ${cita}`.trim();
   const articulo = npc.nombreVisible ? (npc.genero === 'F' ? 'la' : 'el') : npc.articulo;
   const quien = articulo ? `${articulo[0]!.toUpperCase()}${articulo.slice(1)} ${visible.toLowerCase()}` : visible;
-  return `${quien} responde: ${reply}`;
+  return `${narracion} ${quien} responde: ${cita}`.trim();
 }
 
 function contieneNombre(texto: string, nombre: string): boolean {
@@ -1410,6 +1414,15 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
   const hechosBlock = factsBlock(ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f))));
 
+  // P412: con réplica aparte, el NPC en una frase breve al final. Bench 20: sin diálogo, la narración abría con Ulkha en 5
+  // de 7 turnos (y en uno hablaba sin que nadie le preguntara); fuera de combate, la línea va en todos los turnos.
+  const jugador = ctx.characterName ?? 'el personaje del jugador';
+  const focoBlock = ctx.replicaAparte
+    ? `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. ${ctx.replicaAparte} sale como mucho en una frase breve al final.\n`
+    : ctx.enCombate
+      ? ''
+      : `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. Si hay otros personajes, salen después y en una frase breve.\n`;
+
   const prompt = `${GOOD_NARRATION_EXAMPLE}
 
 ${fixedInstructions}
@@ -1429,7 +1442,7 @@ ${lengthGuidance}
 
 ACCIÓN DEL JUGADOR:
 "${ctx.action}"
-${ctx.replicaAparte ? `\nFOCO: la narración cuenta lo que hace ${ctx.characterName ?? 'el personaje del jugador'}; empieza por ${ctx.characterName ?? 'él'} y su acción. ${ctx.replicaAparte} sale como mucho en una frase breve al final.\n` : ''}
+${focoBlock}
 Responde solo con el JSON pedido, nada más.`;
 
   const format = {

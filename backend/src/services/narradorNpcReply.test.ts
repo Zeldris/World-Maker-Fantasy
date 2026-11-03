@@ -135,11 +135,21 @@ describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
   });
 
   it('la réplica lleva hablante si la última frase no lo nombra', async () => {
-    const { conHablante } = await import('./narrador.js');
+    const { unirReplica } = await import('./narrador.js');
     const orco = { name: 'Orco Enfurecido', articulo: 'el', genero: 'M' };
-    expect(conHablante('Gorhorn se acerca. Ulkha Ketg mira a Gorhorn.', '«¡Fuera!»', orco)).toBe('El orco enfurecido responde: «¡Fuera!»');
-    expect(conHablante('Gorhorn se acerca. El Orco Enfurecido gruñe.', '«¡Fuera!»', orco)).toBe('«¡Fuera!»');
-    expect(conHablante('Gorhorn pregunta.', '«Me llamo Ulkha.»', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Ulkha Ketg responde: «Me llamo Ulkha.»');
-    expect(conHablante('Gorhorn pregunta.', '«Aquí no.»', { name: 'Ulkha Ketg', nombreVisible: 'Orca desconocida', articulo: null, genero: 'F' })).toBe('La orca desconocida responde: «Aquí no.»');
+    expect(unirReplica('Gorhorn se acerca. Ulkha Ketg mira a Gorhorn.', '«¡Fuera!»', orco)).toBe('Gorhorn se acerca. Ulkha Ketg mira a Gorhorn. El orco enfurecido responde: «¡Fuera!»');
+    expect(unirReplica('Gorhorn se acerca. El Orco Enfurecido gruñe.', '«¡Fuera!»', orco)).toBe('Gorhorn se acerca. El Orco Enfurecido gruñe. «¡Fuera!»');
+    expect(unirReplica('Gorhorn pregunta.', '«Me llamo Ulkha.»', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. Ulkha Ketg responde: «Me llamo Ulkha.»');
+    expect(unirReplica('Gorhorn pregunta.', '«Aquí no.»', { name: 'Ulkha Ketg', nombreVisible: 'Orca desconocida', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. La orca desconocida responde: «Aquí no.»');
   });
+
+  it('la réplica sin comillas va entre «…», y tras una frase sin acabar, con dos puntos (bench 20)', async () => {
+    const { unirReplica } = await import('./narrador.js');
+    const ulkha = { name: 'Ulkha Ketg', articulo: null, genero: 'F' };
+    expect(unirReplica('Gorhorn pregunta a Ulkha Ketg qué la trae al paso, y ella responde', 'Estoy aquí por las huellas.', ulkha)).toBe(
+      'Gorhorn pregunta a Ulkha Ketg qué la trae al paso, y ella responde: «Estoy aquí por las huellas.»',
+    );
+    expect(unirReplica('Ulkha Ketg se presenta con una voz suave,', "'Soy Ulkha Ketg.'", ulkha)).toBe('Ulkha Ketg se presenta con una voz suave: «Soy Ulkha Ketg.»');
+  });
+
 });

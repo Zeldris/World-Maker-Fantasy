@@ -2051,11 +2051,13 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(cola).not.toMatch(/como mucho una frase corta/);
   });
 
-  it('con réplica aparte, tras la acción va el FOCO en el jugador; sin ella, no (QA-289, P412)', () => {
+  it('tras la acción va el FOCO en el jugador, con réplica aparte y sin ella; en combate, no (QA-289, P412, bench 20)', () => {
     const base = { ...ctx('12:10', 'Gorhorn mira.'), characterName: 'Gorhorn', npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.' };
     const p = buildNarrationPrompt({ ...base, replicaAparte: 'Ulkha Ketg' }).prompt;
-    expect(p.slice(p.indexOf('ACCIÓN DEL JUGADOR:'))).toMatch(/FOCO: la narración cuenta lo que hace Gorhorn; empieza por Gorhorn/);
-    expect(buildNarrationPrompt(base).prompt).not.toMatch(/FOCO:/);
+    expect(p.slice(p.indexOf('ACCIÓN DEL JUGADOR:'))).toMatch(/FOCO: la narración cuenta lo que hace Gorhorn; empieza por Gorhorn.*Ulkha Ketg sale como mucho/);
+    const sinDialogo = buildNarrationPrompt({ ...base, action: 'Bebo del odre.' }).prompt;
+    expect(sinDialogo.slice(sinDialogo.indexOf('ACCIÓN DEL JUGADOR:'))).toMatch(/FOCO: la narración cuenta lo que hace Gorhorn;.*otros personajes, salen después/);
+    expect(buildNarrationPrompt({ ...base, enCombate: true }).prompt).not.toMatch(/FOCO:/);
   });
 
   it('quitarCitas deja la narración sin réplicas, también con comillas mezcladas (QA-289 fila 1, bench 17)', () => {
