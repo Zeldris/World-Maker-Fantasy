@@ -4,8 +4,8 @@
 [plan](plan-comprobacion-puerta.md)): tandas 38-82, arreglos hasta P409, preparación `QA-262`…`QA-270`. 152 commits
 sobre `main`. Revisión antes de `main`: 10 candidatos, 1 arreglado (rival huido en escena), 7 leves a la bitácora.
 
-**Estado:** las tres aprobadas por la usuaria (2026-11-03). La 1 (`QA-290`) y la 3 (`QA-292`), aplicadas; la 2
-(`QA-291`), en curso en la rama.
+**Estado:** las tres aprobadas por la usuaria (2026-11-03). Las tres aplicadas en la rama: `QA-290`, `QA-291` y
+`QA-292`.
 
 ## Candidatas, de más a menos grave
 

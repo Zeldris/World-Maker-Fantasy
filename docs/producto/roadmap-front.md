@@ -1696,7 +1696,7 @@ Retro de `claude/gh-en-la-deck` (usuaria, 2026-11-03, [retro](../registros/retro
 
 Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-11-03, [retro](../registros/retro-2026-11-03-ronda-puerta.md)):
 - ~~**QA-290 · Siguiente número libre de una serie de tareas**~~ ✅ 2026-11-03: `tools/roadmap/siguiente-id.py QA` mira la copia y todas las ramas remotas (esta rama renumeró dos veces, QA-259→263→268); test `test_siguiente_id.py`. Puntero en `AGENTS.md`.
-- **QA-291 · Prueba de humo del driver real**: cargar un escenario, recargar y leer el HUD con `estado.js` (P400, P407 y P409 eran fallos del driver, cada uno costó una tanda).
+- ~~**QA-291 · Prueba de humo del driver real**~~ ✅ 2026-11-03: `tools/qa/humo-driver.sh` carga `hondonada-inicio` con el driver y el juego reales, comprueba en el HUD de `estado.js` que `preparar nivel:3` y un segundo `cargar` recargan la página (P400/P407) y que no entran tooltips (P409); paso «Humo del driver» en la CI; test `test_humo_driver.py`. Rojo comprobado anulando `recargar_pagina()`. Pendiente: verlo verde en la CI de GitHub.
 - ~~**QA-292 · Revisión por bloques en una rama larga**~~ ✅ 2026-11-03: `/code-review` del diff desde la última revisión al cerrar cada bloque de ~10 tandas (152 commits en una sola revisión dejaron partes sin mirar). `AGENTS.md`.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
