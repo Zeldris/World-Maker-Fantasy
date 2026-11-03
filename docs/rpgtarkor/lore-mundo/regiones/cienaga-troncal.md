@@ -57,7 +57,7 @@ de la segunda huida Nabieus (ver [cronologia-mitica.md](../cronologia-mitica.md#
 Vive de la caza y de la madera de los Trepadores Ocaso más que de los mensajes; la Concordia le exige
 madera, como a los Goshg, con quienes comparte la Ciénaga en una convivencia práctica (intercambian
 madera y noticias, no se casan entre sí). *Jeyselt* es el
-nombre del poblado en su lengua; en lengua común se le llama *Fin Susurrado*, el nombre de su clan. Sus habitantes tienen cuerpos adaptados a
+nombre del poblado en su lengua; en lengua común se le llama *Fin Susurrado*, tomado del nombre de su clan. Sus habitantes tienen cuerpos adaptados a
 las zonas más difíciles del pantano, distintos de sus parientes del Margen Silencioso.
 
 ## Lugares

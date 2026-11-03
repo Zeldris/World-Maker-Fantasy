@@ -1,0 +1,8 @@
+# Lo que nos separa de los banners de ChatGPT (usuaria, 2026-10-26: «no se parecen ni de lejos»): arte conceptual en vez de
+# fotografía y la flora en su paisaje (concepto), o un banner de ChatGPT de la misma región como -r de estilo (ref, ~3,5 min).
+aullador-concepto	6	prompts/aullador-concepto.txt	-	-
+pastos-concepto	6	prompts/pastos-concepto.txt	-	-
+cardo-concepto	6	prompts/cardo-concepto.txt	-	-
+hulki-concepto	6	prompts/hulki-concepto.txt	-	-
+aullador-ref	6	prompts/aullador-ref.txt	-	-r $G/../backend/uploads/images/location/pastos-de-la-deriva-dia-verano-banner.png
+cardo-ref	6	prompts/cardo-ref.txt	-	-r $G/../backend/uploads/images/location/pastos-de-la-deriva-dia-verano-banner.png

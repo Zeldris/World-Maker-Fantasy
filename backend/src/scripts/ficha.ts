@@ -195,15 +195,17 @@ export function ficha(slug: string, d: FichaDatos): { texto: string; encontrado:
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CARPETAS_CANON = ['docs/rpgtarkor', 'docs/canon-opencode'];
 
-function mdBajo(dir: string): string[] {
+function archivosBajo(dir: string, vale: (nombre: string) => boolean): string[] {
   let entradas;
   try {
     entradas = readdirSync(dir, { withFileTypes: true });
   } catch {
     return [];
   }
-  return entradas.sort((a, b) => a.name.localeCompare(b.name)).flatMap((e) => (e.isDirectory() ? mdBajo(join(dir, e.name)) : e.name.endsWith('.md') ? [join(dir, e.name)] : []));
+  return entradas.sort((a, b) => a.name.localeCompare(b.name)).flatMap((e) => (e.isDirectory() ? archivosBajo(join(dir, e.name), vale) : vale(e.name) ? [join(dir, e.name)] : []));
 }
+
+const mdBajo = (dir: string) => archivosBajo(dir, (n) => n.endsWith('.md'));
 
 /** Dónde nombra el canon el slug y dónde su nombre visible: hasta `max` líneas de cada, sin repetir, recortadas. */
 export function canon(slug: string, nombre: string | null, raiz = RAIZ, max = 10): string[] {
@@ -216,6 +218,23 @@ export function canon(slug: string, nombre: string | null, raiz = RAIZ, max = 10
   const vistas = new Set(porSlug.map((l) => l.donde));
   const porNombre = n ? lineas.filter((l) => !vistas.has(l.donde) && n.test(l.texto)).slice(0, max) : [];
   return [...porSlug, ...porNombre].map((l) => recortar(`${l.donde}:${l.texto}`, 160));
+}
+
+/** QA-272: dónde aparece el slug en el código de `backend/src/scripts` y `backend/src/services` (sin tests): entre
+ * comillas (`'slug'`, `"slug"`) o como clave sin comillas (`slug: …`, como en los diccionarios de worldCatalog.ts y
+ * sexDimorphism.ts). Una línea por aparición, `ruta:línea: texto`, con tope. */
+export function fuente(slug: string, raiz = RAIZ, max = 40): string[] {
+  const esTs = (n: string) => n.endsWith('.ts') && !n.endsWith('.test.ts');
+  const archivos = ['scripts', 'services'].flatMap((c) => archivosBajo(join(raiz, 'backend', 'src', c), esTs));
+  const s = slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const patron = new RegExp(`(['"\`])${s}\\1|(^|[\\s{,])${s}\\s*:`);
+  const hits: string[] = [];
+  for (const f of archivos) {
+    readFileSync(f, 'utf8').split('\n').forEach((l, i) => {
+      if (patron.test(l)) hits.push(recortar(`${relative(raiz, f)}:${i + 1}: ${l.trim()}`, 120));
+    });
+  }
+  return hits.length > max ? [...hits.slice(0, max), `… y ${hits.length - max} más`] : hits;
 }
 
 export async function cargarDatos(): Promise<FichaDatos> {
@@ -237,6 +256,8 @@ async function main(): Promise<void> {
   const r = ficha(slug, d);
   console.log(r.texto);
   if (args.includes('--canon')) console.log(`# Canon (${CARPETAS_CANON.join(', ')})\n${canon(slug, nombreVisible(slug, d)).join('\n')}`);
+  const f = r.encontrado ? fuente(slug) : [];
+  if (f.length) console.log(`# Fuente (archivo:línea)\n${f.map((x) => `  ${x}`).join('\n')}`);
   process.exit(r.encontrado ? 0 : 1);
 }
 

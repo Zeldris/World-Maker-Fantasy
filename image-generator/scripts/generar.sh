@@ -1,19 +1,42 @@
 #!/bin/bash
+# sin pipefail: lanza sd-cli en segundo plano, vigila MemAvailable y mata procesos (kill/wait/grep toleran fallos a propósito); no se prueba sin los modelos de la Deck
 # Genera una imagen con FLUX.2 klein 4B en la Deck a partir de un archivo de prompt.
 # Uso: generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla] [pasos] [args extra de sd-cli…]
 # p. ej. args extra: -r referencia.png (imagen de referencia de estilo)
 # Otro modelo, por variables: MODELO=<gguf de modelos/diffusion> LLM=<gguf de modelos/text> VAE=<de modelos/vae>
-# CFG=<escala> TOPE=<s>
+# CFG=<escala> TOPE=<s>   SDCLI=<binario> (por defecto bin/sd-cli; lo usan los tests con uno falso)
+# IMG-23: PERFIL=fotorreal pone la receta ganadora (FLUX.3 klein Q8, Qwen3-VL 4B, flux2-vae, TOPE 10800 y
+# `--backend diffusion=cpu -t 8` antes de los args extra); lo explícito (MODELO=…) manda. Perfil desconocido: exit 2.
+# IMG-33: el perfil fotorreal usa bin-nuevo/sd-cli (aplica LoRAs de FLUX.3) y el LoRA de estilo de IMG-32 si está en
+# LORAS (por defecto loras/): `wmfstyle, ` delante del prompt y `<lora:wmf-estilo:$LORA>` detrás (LORA=1; 0 lo quita).
+# BOCETO=<png> [FUERZA_BOCETO=0.97]: parte de ese boceto (--init-img/--strength + strength_as_noise_level); sin png: exit 3.
+# MOMENTO=dia|atardecer|noche con PERFIL=fotorreal: al acabar gradar.sh deja intentos/<nombre>-<momento>.png
+# (GRADAR=0 lo omite; REGION=<región> la pasa a gradar.sh; GRADAR_SH=<ruta> lo sustituye en los tests).
 # Deja imagen, log y copia del prompt en <directorio-de-salida>/{intentos,logs,prompts}/<nombre>.* (probar.sh le pasa
 # generated/<tipo>/<slug>); a mano, p. ej.: generar.sh image-generator/generated/murgol/pruebas v5 prompt.txt 1280 512
 # LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
 # Protecciones (2026-10-24, tras el bloqueo por memoria): memoria libre al empezar, Ollama vacío, vigilante de
 # MemAvailable, aborto si el driver dice 0 MB libres, timeout. Pesos leídos del disco con 2 GB de GPU: no subirlo.
-# sin pipefail: lanza sd-cli en segundo plano, vigila MemAvailable y mata procesos (kill/wait/grep toleran fallos a propósito); no se prueba sin los modelos de la Deck
 set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
-D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-4}; EXTRA=("${@:8}")
+D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")
+PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; LORA=${LORA:-1}
+case $PERFIL in
+  "") ;;
+  fotorreal)
+    MODELO=${MODELO:-flux3-image-klein-Q8_0.gguf}; LLM=${LLM:-Qwen3VL-4B-Instruct-Q4_K_M.gguf}
+    VAE=${VAE:-flux2-vae.safetensors}; TOPE=${TOPE:-10800}; B=$G/bin-nuevo
+    [[ $LORA =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "ABORTO: LORA=$LORA no es un peso (p. ej. 1, 1.5; 0 lo quita)"; exit 2; }
+    EXTRA=(--backend diffusion=cpu -t 8 "${EXTRA[@]}") ;;
+  *) echo "ABORTO: PERFIL desconocido: $PERFIL (solo fotorreal)"; exit 2 ;;
+esac
+SDCLI=${SDCLI:-$B/sd-cli}
+case $MOMENTO in ""|dia|atardecer|noche) ;; *) echo "ABORTO: MOMENTO desconocido: $MOMENTO (dia, atardecer, noche)"; exit 2 ;; esac
+if [ -n "$BOCETO" ]; then
+  [ -f "$BOCETO" ] || { echo "ABORTO: el boceto no existe: $BOCETO"; exit 3; }
+  EXTRA=(--init-img "$BOCETO" --strength "${FUERZA_BOCETO:-0.97}" --extra-sample-args strength_as_noise_level=true "${EXTRA[@]}")
+fi
 mkdir -p "$D/intentos" "$D/logs" "$D/prompts"
 # MIN_INICIO_MB: klein baja la memoria libre ~2,2 GB y Z-Image ~3,5 GB (IMG-15); el vigilante mata con menos de 1500.
 MIN_INICIO_MB=${MIN_INICIO_MB:-7000}; MIN_VIGILA_MB=1500
@@ -39,12 +62,20 @@ fi
 # QA-226: el tercer argumento es una ruta; con el texto del prompt, el mensaje lo dice sin repetir el texto entero.
 [ -s "$PF" ] || { echo "ABORTO: el tercer argumento es la ruta de un archivo de prompt, y «${PF:0:60}» no existe o está vacío"; exit 3; }
 PROMPT=$(cat "$PF")
-cp "$PF" "$D/prompts/$N.txt"
+if [ "$PERFIL" = fotorreal ] && ! [[ $LORA =~ ^0+(\.0+)?$ ]]; then  # 0, 0.0, 00…: sin LoRA
+  LORAS=${LORAS:-$G/loras}
+  if [ -f "$LORAS/wmf-estilo.safetensors" ]; then
+    PROMPT="wmfstyle, $PROMPT <lora:wmf-estilo:$LORA>"; EXTRA=(--lora-model-dir "$LORAS" "${EXTRA[@]}")
+  else
+    echo "AVISO: sin LoRA de estilo ($LORAS/wmf-estilo.safetensors no está; ver docs/producto/plan-imagenes/lora-kaggle.md)"
+  fi
+fi
+printf '%s\n' "$PROMPT" > "$D/prompts/$N.txt"
 LOG=$D/logs/$N.log
 
 t0=$(date +%s)
 # CFG-43: sd-cli con sus librerías ggml; las de Ollama (LD_LIBRARY_PATH del host) le quitan la GPU: «No devices found».
-LD_LIBRARY_PATH="$B" timeout "$TOPE" "$B/sd-cli" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
+LD_LIBRARY_PATH="$B" timeout "$TOPE" "$SDCLI" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
   --vae "$M/vae/$VAE" -p "$PROMPT" \
   --cfg-scale "$CFG" --steps "$STEPS" --sampling-method euler -W "$W" -H "$H" --seed "$SEED" \
   --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/intentos/$N.png" -v > "$LOG" 2>&1 &
@@ -60,4 +91,9 @@ while kill -0 $PID 2>/dev/null; do
 done
 wait $PID; rc=$?
 echo "$N salida=$rc total=$(( $(date +%s) - t0 ))s min_libre=${MIN}MB $(grep -o 'sampling completed, taking [0-9.]*s' "$LOG") $(grep -o 'decode_first_stage completed, taking [0-9.]*s' "$LOG")"
+if [ $rc -eq 0 ] && [ "$PERFIL" = fotorreal ] && [ -n "$MOMENTO" ] && [ "${GRADAR:-1}" != 0 ]; then
+  GRADADA=$D/intentos/$N-$MOMENTO.png
+  "${GRADAR_SH:-$G/scripts/gradar.sh}" "$D/intentos/$N.png" "$GRADADA" "$MOMENTO" ${REGION:+"$REGION"} \
+    && echo "gradada: $GRADADA" || { rc=$?; echo "ERROR: gradar.sh falló (salida $rc); queda la imagen sin gradar"; }
+fi
 exit $rc

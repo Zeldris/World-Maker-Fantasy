@@ -35,6 +35,10 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 - El reino de la jugadora es la `Faction` con `saveId` y `origenSlug: null`. Sus cifras están en `KingdomStats`
   (`comida`, `bebida`, `felicidad`…); «Almacén comida 60 · agua 60» en la interfaz es el **tope**, no lo guardado.
+- **Copias de partida** (`QA-275`): `mundoPartida.ts#clonarConCandado` copia por partida las facciones (`saveId` +
+  `origenSlug`) y la población (`saveId`); los lugares creados jugando (interiores) llevan `saveId` (`QA-31`); los territorios, edificios y almacén de una facción copia cuelgan de ella
+  **sin `saveId`**. Van por slug, sin FK (la cascada no las protege): `targetSlug` de `WorldPopulation` y `ZonePoint`,
+  `Npc.homeLocationSlug`, `Companion.sourceSlug` y `Save.pendingCombatNpcSlugs`. Ejemplo: `scripts/retirarHuerfanos.ts`.
 - El catálogo es `ItemCatalog` (no `CatalogItem`); los objetos de la jugadora, `InventoryItem`; los del reino, `AlmacenItem`.
 - `Save` no tiene `updatedAt`: la última partida jugada sale del último `LogEntry`.
 - `LogEntry.channel` es `CHARACTER` (diario) o `KINGDOM` (registro del reino); `entityBannerSlug`/`entityBannerType`
@@ -204,7 +208,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Enciclopedia y lore (`QA-248`)
 
 - **Todo lo de un slug:** `bash tools/qa/ficha.sh <slug> [--canon]` (`QA-245`) da la ficha, el despiece, la región,
-  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon.
+  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon. Acaba con «# Fuente»: el
+  `archivo:línea` de cada aparición del slug en `b/scripts` y `b/services` (`QA-272`), para editar sin `grep`.
 - **Código:** la ruta `/world/:slug/enciclopedia` de `b/routes/world.ts` monta una sección por pestaña:
   `b/routes/world.ts#buildFaunaFloraSection`, `buildItemsSection`, `buildNpcsSection`, `buildLocationsSection`,
   `buildFactionsSection`, `buildHistoriaSection`, `buildRazasSection`, `buildClassesSection` y
@@ -241,9 +246,19 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+- **Bocetos por plan corporal (`IMG-24`):** `image-generator/bocetos/plantilla.py#componer` (el SVG desde un plan y
+  sus números, escalado al lienzo 1280x512) y `#validar` (cada valor malo, con su motivo); los planes y sus parámetros,
+  `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con
+  `boceto.plan`, `--planes` o un plan) deja los PNG junto al SVG. Test: `tools/qa/tests/test_bocetos.py`.
+- **Cadena fotorreal (`IMG-23`…`IMG-33`, `QA-282`):** `PERFIL=fotorreal` en `generar.sh` (receta, `bin-nuevo/sd-cli` y
+  el LoRA `image-generator/loras/<nombre>.safetensors`, que no se sube, `LORA=<peso>`); `image-generator/scripts/planos.sh` (plancha, sujeto, montaje y
+  armonías) con `montar.sh` y `encuadre.py` (el `encuadre` de la ficha); `gradar.sh` (gradación por momento, LUT en
+  `estilo/lut/`) y `medir.sh <img> <tipo> <momento>` (línea `MEDIANA Y=`), siempre con ruta absoluta desde un
+  worktree. Tests: `tools/qa/tests/test_generar_perfil.py`, `test_gradar.py`, `test_montar.py`, `test_encuadre.py`.
 - **Banco de calidad (`IMG-15`):** `docs/producto/plan-imagenes/banco.sh <ronda>` (un TSV por ronda en `banco/`,
   resultados en `banco/resultados.md`); para mirar una ronda, `bash docs/producto/plan-imagenes/hoja.sh <prefijo>` (hojas de
-  contactos de 6 con la leyenda en texto, `QA-249`), y solo la finalista a tamaño completo.
+  contactos de 6 con la leyenda en texto, `QA-249`; banners sueltos con `--archivos <nombre> <png>…`, `QA-283`), y solo
+  la finalista a tamaño completo.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
 

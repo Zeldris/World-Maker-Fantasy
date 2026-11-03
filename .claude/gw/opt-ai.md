@@ -62,19 +62,31 @@ reindexa, juega 8 turnos de `npm run benchmark-turno` con `IA_PERFIL=deck`, mues
 
 ## Generador de imágenes
 
-`/opt-ai` mide también `image-generator/` (usuaria, 2026-10-24): `sd-cli` (stable-diffusion.cpp, Vulkan) con FLUX.2
-klein 4B en la Deck, no Ollama, así que `medir.py` no lo ve. Fuentes, sin leer los logs enteros:
+`/opt-ai` mide también `image-generator/` (usuaria, 2026-10-24): `sd-cli` (stable-diffusion.cpp), no Ollama, así que
+`medir.py` no lo ve. Hay dos configuraciones, y se miden por separado:
 
-- `image-generator/generated/*/*/registro.tsv`: una fila por intento con perfil, semilla, pasos, tamaño, `extra`
-  (`-r <ruta>` = con referencia), `salida` (0 = bien) y `segundos`.
+- **La del juego** (`generar.sh` por defecto, `probar.sh` y la interfaz): FLUX.2 klein 4B Q8 en Vulkan con
+  `--max-vram vulkan0=2`. Base del 2026-10-24: thumbnail ~104 s y banner ~110 s sin referencia, ~200 s con una.
+- **La del banco de pautas** (`IMG-21`, `docs/producto/plan-imagenes/banco.sh`, desde 2026-10-25): FLUX.3 klein Q8
+  en la CPU (`MODELO=flux3-image-klein-Q8_0.gguf LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf VAE=flux2-vae.safetensors`,
+  `--backend diffusion=cpu -t 8`). Base del 2026-10-27 (r17): sujeto a 512x192 o 384x320 y 8 pasos, ~390 s
+  (`sampling` ~375 s) con ~2,7 GB libres como mínimo. Una semilla por pasada; dos semillas por pauta (`R1` de
+  `pautas.md`) son ~13 min por sujeto.
+
+Fuentes, sin leer los logs enteros:
+
+- `image-generator/generated/*/*/registro.tsv` (también `generated/banco/<ronda>-<especie>/`): una fila por intento
+  con perfil, semilla, pasos, tamaño, `extra` (`-r <ruta>` = con referencia; `--backend diffusion=cpu` = el banco),
+  `salida` (0 = bien) y `segundos`.
 - La última línea de cada `generated/*/*/logs/*.log` que escribe `generar.sh`: `total`, `min_libre` (RAM libre
   mínima, MB) y los tiempos de `sampling` y `decode_first_stage`.
 
-Se compara por perfil (`thumbnail`, `banner`…), pasos y con o sin referencia; base medida el 2026-10-24 en la Deck:
-thumbnail ~104 s y banner ~110 s sin referencia, ~200 s con una. Límites que no se proponen subir: `--max-vram 2`
-(la Deck comparte la memoria con el juego) y Ollama liberado antes de generar (`LIBERAR_OLLAMA=1`). Hasta que exista
-el script de `IMG-3`, se resume con `awk` sobre los `registro.tsv`. Lo que se propone (pasos, tamaño, cuantización,
-`--vae-tiling`, cuántas referencias) se apunta como tarea `IMG` en [`roadmap-imagenes.md`](../../docs/producto/roadmap-imagenes.md).
+Se compara por configuración, perfil (`thumbnail`, `banner`…; el banco apunta sus sujetos como `banner`), tamaño, pasos y con o sin referencia.
+Límites que no se proponen subir: `--max-vram 2` en Vulkan (la Deck comparte la memoria con el juego), más de 8 hilos
+en la CPU, y Ollama liberado antes de generar (`LIBERAR_OLLAMA=1`); con el generador en marcha no se corren el check
+ni los tests. Hasta que exista el script de `IMG-3`, se resume con `awk` sobre los `registro.tsv`. Lo que se propone
+(pasos, tamaño, cuantización, `--vae-tiling`, cuántas referencias, CPU o Vulkan para FLUX.3) se apunta como tarea
+`IMG` en [`roadmap-imagenes.md`](../../docs/producto/roadmap-imagenes.md).
 
 ## Tiempos aceptables
 

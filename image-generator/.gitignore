@@ -11,3 +11,12 @@ referencias/
 # Todo lo generado por elemento (CFG-43): generated/<tipo>/<slug>/ con intentos/, prompts/, logs/, registro.tsv, notas.md y la elegida
 # (<slug>-<perfil>.png, el nombre del juego: se copia a backend/uploads/images/<tipo>/ a mano).
 generated/
+# IMG-18: rasterizados de los bocetos SVG (pequeños y deterministas); se regeneran con bocetos/rasterizar.sh.
+bocetos/*.png
+# IMG-24: los SVG los genera bocetos/plantilla.py a partir de la ficha (bocetos/rasterizar.sh).
+bocetos/*.svg
+# IMG-30: binario nuevo de sd.cpp y LoRAs de prueba, descargados (no se suben).
+bin-nuevo/
+loras-prueba/
+lora/conjunto/
+loras/

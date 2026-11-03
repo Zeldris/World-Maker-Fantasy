@@ -144,7 +144,7 @@ bestias que se acercan; en el agua estancada, con la pierna metida, siente chapo
 sustituye a la gramática de los silencios, que sirve para leer a las personas: es lo mismo aplicado
 al terreno.
 
-**El cónclave y el Pacto del Umbral** *(aprobado 2026-10-06 · no implementado en el código)*. El **Keseg'Vhurne** nace de la escucha con la
+**El cónclave y el Pacto del Umbral** *(aprobado 2026-10-06 · en el juego, entrada «El Pacto del Umbral» de la historia, `QA-244`)*. El **Keseg'Vhurne** nace de la escucha con la
 palma: tras la segunda huida, los supervivientes se sientan en un círculo de piedras sueltas, cada uno
 con la palma en el suelo, y deciden lo grave sin hablar (ver
 [cronologia-mitica.md](cronologia-mitica.md#sin-fechar-después-de-la-segunda-huida-el-primer-kesegvhurne)).

@@ -61,6 +61,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    sus 12 fallos llegaron a `main` (`QA-77`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
+   **Tareas `IMG-*`** (usuaria, 2026-11-03, `QA-280`): además, al cerrarlas, un `/code-review` del diff de la tarea;
+   los scripts de `image-generator/` no pasan por el CI con modelos y sus fallos se juntaban hasta la fase 1.
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está
    al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61). Aparte, `main` se trae
    siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
@@ -79,14 +81,14 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    `git stash pop` después. Con `requireRetro`, el Estado de la retro tiene que decir «aplicadas», «rechazadas»,
    «aplazadas» o «decididas», y nada de «pendiente», «sin decidir», «aún no» (ni sus formas en inglés): con una de esas,
    aunque sea de una sola propuesta, no hay marca (retro del piloto de Galivelop-workflow, 2026-10-23).
-   Desde una sesión local (la Deck) el PR no se crea (`QA-184`): no hay `gh` ni herramienta de GitHub y el modo auto
-   no deja usar la credencial de git. La local sube la descripción a `docs/registros/pr/<rama>.md` y escribe en su fila
-   de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
-   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh --footer …` (la marca va en su propio commit, que se sube) y crea el PR con esa descripción.
+   Desde una sesión local (la Deck) el PR se crea con `gh` (`QA-285`, que sustituye a `QA-184`):
+   `gh pr create --body-file docs/registros/pr/<rama>.md`, y en su fila de la bitácora «PR abierto» con la URL. Sin
+   `gh` ni herramienta de GitHub, la sesión deja «PR listo» con el título y otra sesión que pueda crea el PR
+   (detalle en [`ramas-y-main.md`](ramas-y-main.md)).
    Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). El último commit antes del PR deja la fila de la rama
    como «PR a `main`; al fusionarse, rama terminada» (`QA-186`), para que `main` la reciba ya cerrada; la de una
-   sesión local, con su «PR listo» de `QA-184`, vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
+   sesión sin `gh`, con su «PR listo», vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
    sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
    subagentes de contexto limpio y la principal no arrastra lo leído. Si la sesión ya compactó alguna vez (lo dice el
    gancho de `QA-116` tras cada compactación), Claude lo dice a la usuaria al fusionar y le propone seguir tras un
@@ -174,4 +176,8 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   para. Al escribir en un roadmap una tarea pendiente que implemente un subagente, se le apunta
   su peldaño de partida (p. ej. `modelo: sonnet-medium`), para que la otra cuenta no tenga que decidirlo otra vez;
   las tareas ya cerradas y las del entorno que hace la sesión principal no lo llevan. Detalle en el `selector`.
+- **Fable** (`model: "fable"`; usuaria, 2026-10-26): disponible con Claude Max, pero **solo mientras quede cuota**;
+  agotada, no se puede usar. Nunca es un peldaño imprescindible: todo encargo a Fable tiene que poder repetirse con
+  `opus`, y un fallo por cuota no cuenta como fallo del peldaño. Se prueba donde el juicio pesa (verificar
+  hallazgos, cribar falsos positivos) y se compara con `medir.py` (`POR MODELO`) antes de darle sitio fijo.
 - En la duda, el de más riesgo.

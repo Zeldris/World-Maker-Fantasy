@@ -44,6 +44,11 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
 - **`python3 tools/roadmap/cobertura.py --fila <ID>`** (`QA-242`): definición, hito (con su fila) y menciones de una tarea en `21-roadmap.md`, recortadas, en vez de leer el mapa de roadmaps; sale con 1 si no está definida o no tiene hito.
 - **`bash tools/qa/ficha.sh <slug> [--canon]`** (`QA-245`): todo lo de un slug (ficha, despiece, región, enciclopedia, población, recetas, chunks y canon) en una salida, en vez de `grep`/`sed` sobre `worldCatalog.ts` (140 lecturas en `QA-243`). Sección «Enciclopedia y lore» de `docs/mapa-agente.md` (`QA-248`).
 - **Auditorías de lore en tandas de una región o un catálogo** (`QA-247`, `ampliar-lore.md` § 0.5), con unas 30 llamadas como tope.
+- **Tandas de edición con tope de 30-40 llamadas** (`QA-277`): un bloque más grande se parte en 2-3 tandas con el mismo
+  encargo, y la principal revisa el diff entero. El bloque 1 de `QA-274` fue una sola tanda: 66 llamadas, 103k de
+  contexto medio y 6,8M de entrada (el 13 % de la sesión).
+- **Registros largos por secciones** (`QA-272`): `lore-hallazgos.md` (17 lecturas, 300k arrastrados en `QA-274`) se lee
+  con `grep -n "^## "` y `sed -n` de la sección; `ficha.sh` acaba con el `archivo:línea` del slug en `backend/src/scripts` y `services`.
 - **Tandas de arreglos de 5 hallazgos y ~90 llamadas** (`QA-257`, `AGENTS.md` § `orchestrate-dealer`); la revisión con Opus junta dos tandas.
 - **`marca-hallazgo.py` dice el estado actual al fallar** (`QA-258`): con 0 filas, los primeros 200 caracteres del estado; quita los espacios del borde del texto viejo.
 - **`tools/qa/backend-dev.sh`** (`QA-224`): reinicia el backend de desarrollo y espera a `/health`, en vez de relanzarlo a mano.
@@ -53,6 +58,11 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `opt-ai`. L
   ronda en hojas de 6 (una lectura por hoja); la finalista, entera.
 - **`recuperar.py --estado` con los worktrees** (`QA-250`): da también la fila de la rama de cada worktree; la sesión
   que trabaja en uno no relee `traspaso.md`.
+- **Hoja de contactos con archivos sueltos** (`QA-283`): `hoja.sh --archivos <nombre> <png>…` para comparar banners
+  (de `backend/uploads/`, del banco), en vez de leerlos uno a uno (14 lecturas, ~890k arrastrados, 2026-11-03).
+- **Ir a la línea** (`QA-284`): `grep -n` a la tarea o a la clase de test, no releer (`roadmap-imagenes.md` 15 veces,
+  `test_generar_perfil.py` 14, una con `cat` entero, 2026-11-03). Y `/clear` tras cerrar la última tarea, antes de
+  preparar `main` (`QA-187`; aquella sesión siguió con suelo de ~65k y techo de 212k).
 - **Revisión por arreglo** (`QA-126`): `/code-review` corto del diff de cada subagente antes de fusionarlo.
 - **Tests de las herramientas** (`QA-113`): `medir.py` del flujo tiene el suyo en `tools/qa/tests/test_medir.py`; si se toca,
   se pasa `python3 -m unittest discover -s tools/qa/tests`.
