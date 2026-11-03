@@ -17,6 +17,9 @@ Lo general (cada sesión su rama, merge y nunca rebase, a `main` con confirmaci�
   ven los ganchos. Si `gh auth status` falla, se dice a la usuaria; nunca se busca la credencial de git. Una sesión
   sin URL de PR (sin `gh` ni herramienta de GitHub) escribe «PR listo», nunca «PR abierto» ni «en borrador»: esas
   palabras en la bitácora solo van con la URL del PR (`QA-262`), y el PR lo crea otra sesión que sí pueda.
+- **Varios PR listos a la vez, de uno en uno** (usuaria, 2026-11-03, `QA-286`): todos tocan la bitácora, así que al
+  fusionar uno el siguiente choca. Se abre y fusiona uno; el siguiente fusiona `main`, pone su marca y solo entonces
+  se abre.
 - **Tareas del instalador (`INS-*`)** (usuaria, 2026-10-26, `QA-259`): viven en el plan de
   [Instalador-WMF-Tarkor](https://github.com/Zeldris/Instalador-WMF-Tarkor), no en los roadmaps de WMF ni en `taskId`,
   y no rompen la pausa de pruebas: las pide la usuaria. Aquí solo llevan su fila «Tarea en curso» con el enlace a su plan.

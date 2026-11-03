@@ -1683,6 +1683,10 @@ Retro de `claude/plan-imagenes` (usuaria, 2026-11-03, [retro](../registros/retro
 PR desde la Deck (usuaria, 2026-11-03):
 - ~~**QA-285 · La sesión local crea sus PR con `gh`**~~ ✅ 2026-11-03: `gh` en `~/.local/bin` con la sesión de la usuaria y enlazado en el sandbox Flatpak de VS Code; sustituye a `QA-184` (`CLAUDE.md`, `AGENTS.md`, `ramas-y-main.md`, `skills-y-modelos.md`). Estrenada con los PR #80 y #81.
 
+Retro de `claude/gh-en-la-deck` (usuaria, 2026-11-03, [retro](../registros/retro-2026-11-03-gh-en-la-deck.md)):
+- ~~**QA-286 · Varios PR listos, de uno en uno**~~ ✅ 2026-11-03: al fusionar el #81, el #80 chocó en la bitácora (otra fusión, marca y CI). `ramas-y-main.md`.
+- ~~**QA-287 · Ramas remotas en `recuperar.py` y `--footer` en el aviso de `revisado.sh`**~~ ✅ 2026-11-03 (solo apuntada): propuestas para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
