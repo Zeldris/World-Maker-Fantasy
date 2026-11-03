@@ -1,0 +1,5 @@
+# IMG-28 r22: el sol fuera de cuadro (L3 de pautas.md). Pastos y cardo de r20, que pintan el disco, con dos palancas: (a) la luz por dirección sin nombrar el sol; (b) además, el cielo dicho como degradado sin fuente. 640x256 / 8 pasos, semilla 3; rejilla r22 a / r22 b / r20 / banner.
+pastos-sin-sol	8	prompts/r22-pastos-sin-sol.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8
+cardo-sin-sol	8	prompts/r22-cardo-sin-sol.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8
+pastos-cielo-sin-fuente	8	prompts/r22-pastos-cielo-sin-fuente.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8
+cardo-cielo-sin-fuente	8	prompts/r22-cardo-cielo-sin-fuente.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8

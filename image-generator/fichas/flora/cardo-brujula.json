@@ -8,31 +8,29 @@
   "canon": "Cardo espinoso de tallo rígido y flor cerrada de un gris metálico apagado (con matiz violáceo: decisión de la usuaria, 2026-10-25), con una única fibra central imantada que, colgada de un hilo, siempre señala el mismo rumbo.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:11484 (planta) y 6930 (ítem); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md (Las Agujas Imán)",
   "prompt": {
-    "sujeto": "An upright, spiky thistle with a stiff, thorny stem as tall as an adult orc's open hand, its grey-green leaves edged with fine thorns.",
-    "cuerpo": "At the tip sits a single closed, egg-shaped flower in a dull metallic grey with a faint muted violet tint at its base, with a matte, almost forged sheen.",
+    "sujeto": "A tall, rigid thistle of dark gunmetal silver, its thick stem twisted and covered in sharp metal thorns, with a few stiff blade-like leaves curling out from the base.",
+    "proporcion": "Each plant stands about two metres tall, and its closed bud is about the size of a human head.",
+    "cuerpo": "At the top sits a large closed bud like an artichoke forged from overlapping metal blades, dull metallic grey with a faint violet tint.",
     "rasgos": [
-      "From the centre of the flower a single hair-thin, stiff dark fibre rises, barely visible, pointing steadily in one direction.",
-      "Coarse dark grains of iron sand cling to the thorns and lie around the base, each grain almost as big as a thorn, showing how small the plant is."
+      "From the tip of each bud a single long, thin, wiry filament arches up and bends in one direction, like an antenna."
     ],
-    "pose": "Two or three of the thistles grow close together in the lee of a field of black magnetic rocks, where wind-combed ridges of dark iron sand pile up.",
-    "entorno": "Fine red dust drifts in the air above red clay, and a low, hazy horizon glows behind them.",
-    "luz": "Soft morning light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns."
+    "rasgosSecundarios": "Fine metallic burrs crowd the stem below each bud, and the thorns catch the light like tiny steel needles.",
+    "pose": "In the middle ground, several of the thistles of different heights stand spread along a rocky slope, the nearest sharp and large, the farthest small and soft in the haze.",
+    "entorno": "In the foreground, red gravel, broken stones and tufts of dry grass cover the ground among low plants with broad, woolly silver-green leaves. On the right a towering red sandstone cliff rises over the slope, and far to the left a wide red desert with flat-topped mesas fades into the haze on the horizon, under a wide sky stained with amber.",
+    "luz": "Warm late-afternoon light falls through a thick amber haze, picking out the metallic sheen of the buds and thorns and casting long soft shadows across the gravel."
   },
   "condiciones": {
     "momento:atardecer": {
-      "luz": "Warm low evening light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns."
+      "luz": "Warm low evening light falls from behind with a gentle backlight, picking out the metallic sheen of the flower and the thorns and casting long soft shadows across the gravel."
     },
     "momento:noche": {
-      "luz": "A soft, even pearly glow under the stars gently outlines the metallic sheen of the flower and the thorns."
+      "luz": "A soft, even pearly glow under the stars gently outlines the metallic sheen of the flower and the thorns, and deep cool shadows pool across the gravel."
     }
   },
   "propuestas": [
-    "altura: an adult orc's open hand (25 cm sin fuente original)",
-    "hojas grey-green",
-    "granos de arena pegados a las espinas",
-    "two or three",
-    "condiciones momento:atardecer / momento:noche: luz propia que sustituye «Soft morning light»",
-    "fibra «hair-thin… barely visible» (salía como aguja)",
-    "escala por los granos de arena"
-  ]
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "choca con el canon: alto como un orco (antes, como una mano), acantilado rojo en vez del campo de rocas imantadas",
+    "IMG-16 (perfil fotorreal): dos metros de alto y yema del tamaño de una cabeza (antes «como un orco»), el paisaje por capas; diseño de imagen, no canon"
+  ],
+  "imagenJuego": "backend/uploads/images/flora/cardo-brujula-banner.png"
 }

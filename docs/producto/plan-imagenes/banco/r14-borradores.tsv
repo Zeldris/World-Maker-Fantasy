@@ -1,0 +1,4 @@
+# IMG-19a (plan-fotorreal, Fase 1): ¿el borrador de 640x256 / 8 pasos anticipa la composición del de 1280x512 / 16?
+# Misma fila de modelo que r12-fotorreal.tsv. El borrador lleva --preview proj (vista previa por paso, ¿legible con FLUX.3?).
+aullador-borrador	8	prompts/r14-aullador-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=640,H=256,TOPE=1800	--backend diffusion=cpu -t 8 --preview proj --preview-interval 1 --preview-path $G/generated/banco/r14-borradores-aullador-borrador/preview-%03d.png
+aullador-1280	16	prompts/r14-aullador-fotorreal.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=7200	--backend diffusion=cpu -t 8

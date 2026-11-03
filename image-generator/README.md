@@ -11,9 +11,12 @@ viven las herramientas y sus salidas. No es parte del juego todavía: no hay tar
 | Carpeta | Qué guarda | En git |
 |---|---|---|
 | `scripts/` | `generar.sh` (una imagen, con las protecciones de memoria), `probar.sh` (prompt de la enciclopedia, para las pruebas de la usuaria; deja todo en `generated/<tipo>/<slug>/`) | sí |
+| `bocetos/` | bocetos de forma para `--init-img` (`IMG-18`, `IMG-24`): `plantilla.py` dibuja el SVG desde el plan corporal y los números de `boceto` de la ficha (`--planes` los lista; `-p clave=valor` prueba un número), `rasterizar.sh` genera y rasteriza (1280, 1024x384, 640 y sobre verde con `verde.css`) | el script, el guion y el CSS sí; los SVG y PNG generados no |
 | `interfaz/` | la interfaz de pruebas (`servidor.py` e `index.html`, sin dependencias), que abre `abrir.sh` (`CFG-43`) | sí |
 | `prompts/<tema>/` | prompts afinados a mano, versionados (`v1.txt`, `v2.txt`…), p. ej. `murgol/` | sí |
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
+| `bin-nuevo/` | `sd-cli` del perfil fotorreal (release `master-1039-290148d`: LoRAs de FLUX.3) | no |
+| `loras/` | LoRA de estilo `wmf-estilo.safetensors` (`IMG-32`) | no |
 | `descargas/` | el zip original del binario | no |
 | `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf`; para comparar, `flux-2-klein-base-4b-Q8_0.gguf` y `flux3-image-klein-Q8_0.gguf` (no arranca en la Deck); `z_image_turbo-Q4_K.gguf` (Z-Image-Turbo, Apache 2.0, banco de `IMG-15`) | no |
 | `modelos/text/` | `Qwen3-4B-Q4_K_M.gguf` (codificador de texto); `Qwen3VL-4B-Instruct-Q4_K_M.gguf` (el de FLUX.3); para el banco de `IMG-15`, `Qwen3-4B-Q8_0.gguf` y `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (el de Z-Image) | no |
@@ -63,14 +66,14 @@ Sin interfaz, lo mismo desde la terminal (`W=… H=…` cambian el tamaño; `PRO
 pegado en vez del de la base):
 
 ```bash
-image-generator/scripts/probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=4] [-r referencia.png]
+image-generator/scripts/probar.sh <tipo> <slug> <perfil> [semilla=42] [pasos=6] [-r referencia.png]
 # p. ej.: image-generator/scripts/probar.sh fauna cuernahoja-macho banner 7
 ```
 
 ## Generar con un prompt propio
 
 ```bash
-image-generator/scripts/generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla=42] [pasos=4]
+image-generator/scripts/generar.sh <directorio-de-salida> <nombre> <archivo-prompt> <ancho> <alto> [semilla=42] [pasos=6]
 # p. ej.: image-generator/scripts/generar.sh image-generator/generated/murgol/pruebas v5-1280x512 image-generator/prompts/murgol/v5.txt 1280 512
 # deja la imagen en <directorio>/intentos/, el log en logs/ y el prompt en prompts/
 ```
@@ -78,6 +81,35 @@ image-generator/scripts/generar.sh <directorio-de-salida> <nombre> <archivo-prom
 Un banner de 1280×512 tarda ~110 s; con `-r referencia.png` (args extra al final), ~200 s. Otro modelo: variables
 `MODELO`, `LLM`, `VAE`, `CFG` y `TOPE`. Resultados de cada opción: «Banco del múrgol» en el documento del reutilizable. El prompt que funcione se guarda como «prompt usado» en la enciclopedia
 (`CFG-38`), para que quede el exacto con el que se generó la imagen.
+
+## Perfil fotorreal
+
+FLUX.3 klein Q8 en CPU (receta del banco, `docs/producto/plan-imagenes/`). La ficha del elemento va en
+`image-generator/fichas/<tipo>/<slug>.json`; fotorreal no usa los prompts de la base. Cómo escribir el prompt:
+[`pautas.md`](../docs/producto/plan-imagenes/pautas.md).
+
+```bash
+bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal [semilla]      # borrador 640x256, 8 pasos, ~9 min en la Deck
+FINAL=1 bash image-generator/scripts/probar.sh <tipo> <slug> fotorreal 7      # 1280x512, 16 pasos, ~49 min
+```
+
+- `MOMENTO=dia|atardecer|noche` (por defecto el de la ficha) elige la luz del prompt y, al acabar, `gradar.sh` deja
+  `intentos/<nombre>-<momento>.png`; `GRADAR=0` lo omite y `REGION=<región>` usa su gradación.
+- `BOCETO=<png>` (y `FUERZA_BOCETO`, por defecto 0.97) parte de un boceto; si el png no existe, aborta.
+- `PROMPT_ARCHIVO=<archivo>` usa ese prompt en vez de la ficha. Sin ficha ni prompt, aborta.
+- `PLANOS=<carpeta con plancha.txt, sujeto.txt y armonia.txt>` corre la cadena de planos (`scripts/planos.sh <prompts>
+  <boceto-verde.png> <salida>`) en vez de una sola imagen: fase 1, plancha + sujeto sobre verde guiado por el boceto y
+  montaje (`montar.sh`, con `HERO` y `MANADA`); fase 2, armonización img2img del montaje a `FUERZAS` (`0.5 0.7`). Sale en
+  `generated/<tipo>/<slug>/planos-<fecha>/intentos/` (`armonia-<fuerza>[-<momento>].png`, graduadas con `MOMENTO`) y
+  `registro.tsv` apunta `planos=<carpeta>`. El boceto es `BOCETO` o, si falta, el `-verde-512.png` (`-1024` con `FINAL=1`)
+  de la ficha (`plantilla.py` + `rasterizar.sh`). Lo que ya existe en la carpeta se salta. `HERO` y `MANADA` salen del
+  `encuadre` de la ficha (`scripts/encuadre.py`: horizonte; lado, ancho y pie del sujeto; número, distancia y volteo de
+  la manada, en fracciones del lienzo) o, sin ficha, del encuadre por defecto; darlos a mano manda.
+- **LoRA de estilo** (`IMG-33`): el perfil usa `bin-nuevo/sd-cli` (release `master-1039`) y, si está
+  `loras/wmf-estilo.safetensors` (fuera del repo; cómo se entrena y se baja: `docs/producto/plan-imagenes/lora-kaggle.md`),
+  pone `wmfstyle, ` delante del prompt y `<lora:wmf-estilo:1>` detrás. `LORA=<peso>` lo cambia y `LORA=0` lo quita;
+  sin el archivo, avisa y genera sin él. Acerca la luz y la neblina a los banners GPT, no la forma de la criatura (`IMG-32`).
+- Antes de generar se comprueba la memoria: Ollama vacío y nada más pesado abierto (navegador, Steam, juego).
 
 ## Memoria: lo que no se toca
 

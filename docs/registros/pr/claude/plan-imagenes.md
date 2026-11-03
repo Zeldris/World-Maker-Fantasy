@@ -1,94 +1,89 @@
-**Título:** Plan de imágenes: fichas como datos, prompt desde la ficha y banco de calidad del generador local (IMG-4…IMG-6, IMG-14, IMG-15, QA-249…QA-255)
+**Título:** Cadena fotorreal del generador de imágenes: receta, encuadre, gradación y LoRA de estilo (IMG-15…IMG-33, QA-280…QA-284)
 
 ## Summary
 
-El plan de imágenes entra en el repo (`docs/producto/plan-imagenes/`, tareas `IMG-4`…`IMG-15` del hito 0.4, decisiones
-D1-D10). El generador local monta el prompt desde la ficha del elemento en vez de escribirlo a mano. El banco de
-calidad busca la configuración de la Deck que más se acerca a los banners de ChatGPT del juego.
+El generador local de la Deck tiene una receta **fotorreal** que se acerca a los banners de referencia de GPT. Las
+tareas `IMG-20`, `IMG-25` e `IMG-26` siguen abiertas y no entran. Solo cambian `image-generator/`,
+`docs/producto/plan-imagenes/`, los documentos del flujo y `tools/qa/tests/`; `backend/` y `frontend/` no se tocan.
+
+**La cadena, con `PERFIL=fotorreal`** (`IMG-16`, `IMG-17`, `IMG-23`, `IMG-27`, `IMG-28`, `IMG-33`):
 
 ```text
-image-generator/
-├── estilo/mundo.json          # IMG-4: guía visual del mundo (paleta, luz, materiales por región)
-├── fichas/<tipo>/<slug>.json  # IMG-4/6: fichas piloto (aullador rojo, cardo brújula, pastos de la deriva, Hulki)
-└── scripts/prompt_ficha.py    # IMG-5/14: ficha + estilo + --momento/--estacion → prompt; error si la ficha rompe una regla
-docs/producto/plan-imagenes/
-├── banco.sh, banco/           # IMG-15: rondas de pruebas (modelo, VAE, sampler, pasos, estilo), resultados.md
-├── hoja.sh                    # QA-249: una ronda en hojas de contactos de 6 (una lectura por hoja)
-└── pilotos.sh, calidad.sh     # IMG-6: pilotos con semilla fija; primer banco
+probar.sh <tipo> <slug> fotorreal [semilla]
+  prompt_ficha.py      ficha → prompt: oscuridad al principio, luz del estilo por momento, el sol fuera de cuadro
+  planos.sh            fondo, sujeto y manada por separado (armonías sin momento)
+    encuadre.py        `encuadre` de la ficha → HERO y MANADA, en fracciones del lienzo, con perspectiva
+    montar.sh          compone los planos
+  generar.sh           FLUX.3 klein Q8 + Qwen3-VL 4B, bin-nuevo/sd-cli
+                       LoRA de estilo `wmf-estilo` a peso 1 (LORA=0 lo quita; sin el archivo, avisa y sigue)
+  gradar.sh            gradación por momento (dia, atardecer, noche): LUT .cube con la huella de sus curvas
+  medir.sh             métricas contra los banners de GPT
 ```
 
-Resultado del banco (rondas 1-7, `banco/resultados.md`): **klein Q8 + estilo `cine2` con polvo mate, euler, 6 pasos,
-VAE pequeño, ~2,5 min por banner**; aguanta con otras semillas. Lo que más acerca a ChatGPT es el texto de estilo, no el
-modelo: el VAE completo, el codificador Q8, otros samplers, 9 pasos y Q6 no mejoran; Z-Image-Turbo es más pictórico y
-más fiel en fauna, pero tarda ~6-7 min.
+Lo demás:
 
-Cambios en el generador y sus herramientas:
+- bocetos paramétricos por plan corporal (`IMG-18`, `IMG-24`);
+- pautas de prompt con fauna, flora, lugar, objeto y raza (`IMG-19`, `IMG-21`, `IMG-22`), con su banco de rondas en
+  `docs/producto/plan-imagenes/banco/`;
+- un banner ajeno como referencia de acabado (`IMG-31`);
+- el LoRA entrenado en Kaggle (`IMG-29`, `IMG-30`, `IMG-32`). El `.safetensors` queda fuera del repo
+  (`image-generator/.gitignore`); `lora-kaggle.md` dice cómo rehacerlo.
 
-```diff
- generar.sh
-+  VAE= y MIN_INICIO_MB= por variable (banco)
--  cuenta como cargado todo lo que lista /api/ps
-+  solo lo que ocupa memoria (size > 0)
- tools/ci/mock-ollama.mjs
--  /api/ps lista tarkor-narrador
-+  /api/ps vacío, como un Ollama real sin nada en memoria (generar.sh intentaba descargarlo)
- interfaz/servidor.py
-+  generated/banco/ no son elementos ni cuentan para el tiempo estimado
-```
-
-Opt-tokens y retro de la sesión (aprobadas enteras por la usuaria):
+**Retro aplicada** (`docs/registros/retro-2026-11-03-plan-imagenes.md`):
 
 ```diff
- .githooks/pre-commit, pre-push
--  root=$(git -C "$hookdir" rev-parse --show-toplevel)        # en un worktree, GIT_DIR exportado → .githooks
-+  root=$(env -u GIT_DIR -u GIT_WORK_TREE git -C "$hookdir" …) # QA-252
- tools/qa/host.sh
--  worktree con cambios sin commit → rechazo
-+  copia visible desde `git stash create`, con aviso de instantánea        # QA-253
- .claude/gw/scripts/recuperar.py --estado
-+  la fila de la rama de cada worktree con fila propia                     # QA-250
- tools/qa/tests/test_pipefail.py
-+  todo .sh versionado de imágenes: set -euo pipefail o «# sin pipefail: <motivo>»   # QA-254
- docs/producto/plan-imagenes/banco.sh
-+  cada 5 min de espera de memoria, una línea con los MB libres            # QA-255
+ docs/runbooks/skills-y-modelos.md
++  /code-review del diff de cada tarea IMG-* al cerrarla (QA-280)
+ docs/producto/roadmap-imagenes.md
++  a main por bloque, no tras toda la rama (QA-281)
+ docs/mapa-agente.md
++  «Cadena fotorreal»: entradas y tests (QA-282)
+ docs/producto/plan-imagenes/hoja.sh
++  --archivos <nombre> <png>…: hoja de contactos de banners sueltos, en hojas/sueltas-<nombre>-<n>.png (QA-283)
+ .claude/gw/opt-tokens.md
++  /clear antes de preparar main; ir a la línea con grep -n en vez de releer (QA-284)
 ```
 
 ## Evidence
 
-Sin cambios en `backend/` ni `frontend/`: `tsc` y `oxlint` de los dos, en verde en el pre-push de `ad08aec4` (check de
-`.claude/gw.json`). Tests de `tools/qa/tests` tocados: 147 en verde (`test_prompt_ficha` 739 líneas, `test_interfaz_imagenes`,
-`test_hoja_banco`, `test_pipefail`, `test_recuperar`, `test_pre_commit`). Los tests nuevos fallan sin su arreglo
-(`rojo-sin-arreglo.sh`):
+- **`tools/qa/tests`**, los tests de esta rama:
 
-- **Before:** commit desde un worktree con un borrador de `docs/borradores-opencode/` preparado → el pre-commit no
-  encuentra la raíz y deja pasar el borrador.
-  **After:** `test_en_un_worktree_saca_la_raiz_del_worktree`: sale con 1 y pide `git restore --staged`.
-- **Before:** `host.sh` en el sandbox, desde un worktree con cambios → `tiene cambios sin commit`, sale con 1.
-  **After:** `test_en_el_sandbox_un_worktree_invisible_con_cambios_los_lleva_a_la_copia_visible`: la orden ve los
-  cambios, avisa de la instantánea y el árbol, el índice y `git stash list` quedan como estaban.
-- **Before:** una ficha que rompe una regla (noche con sol, día con estrellas, el nombre de la zona en el fondo, una
-  variante o un perfil que no existen) → un prompt roto sin aviso.
-  **After:** `test_prompt_ficha` (`test_noche_con_sol_es_error_con_motivo`, `test_fondo_rechaza_el_nombre_de_la_zona`…):
-  `prompt_ficha.py` sale con error y dice el motivo.
-- **Before:** `hoja.sh r1` cogía también `r10-*`. **After:** `test_hojas_de_seis_en_orden_con_leyenda` (`r9` no coge
-  `r90`; las hojas de una pasada anterior se borran).
+  | Archivo | Tests | Qué cubre |
+  |---|---|---|
+  | `test_prompt_ficha.py` | 105 | prompt por perfil y momento; la noche veta «golden-hour» |
+  | `test_generar_perfil.py` | 40 | receta, LoRA (`0`, `0.0`, `00` lo quitan), gradación, cadena de planos que acaba si `gradar.sh` falla |
+  | `test_gradar.py` | 12 | la LUT con otra huella cae a las curvas y avisa |
+  | `test_encuadre.py` | 12 | posiciones, escala, perspectiva, rangos |
+  | `test_hoja_banco.py` | 6 | `--archivos`: sin pisar hojas ajenas; rutas con `:`, `%` y `-` |
+  | `test_montar.py` | 1 | sin caja, ABORTO con motivo |
 
-`test_host.py` tiene 3 fallos en el sandbox de la Deck que salen igual sin estos cambios (PATH reducido); el CI local en
-el host o el CI de GitHub lo dirá.
+  Cada arreglo de las revisiones lleva un test que falla sin él (`rojo-sin-arreglo.sh`).
+- **Batería entera de `tools/qa`:** 493 tests en la Deck, 2 saltados. Los 5 fallos de `test_host.py` vienen del sandbox Flatpak (también
+  fallan en la copia principal, con `host.sh` sin tocar); el CI los corre fuera de él. `test_pipefail.py` cazó dos
+  notas «sin pipefail» que habían bajado de la línea 15, y un reenvío sin `set`: arreglado.
+- **Prueba real en la Deck** (`probar.sh fauna aullador-rojo fotorreal 42`): carga `bin-nuevo`, aplica el LoRA y
+  grada en 563 s. Lo visual (cuánto se acerca a GPT) lo juzga la usuaria con las hojas de contactos, no un test.
+- **Revisiones:** fase 1, `/code-review` contra `origin/main`: 15 hallazgos, los 4 medios arreglados. Fase 3,
+  `/code-review` de `hoja.sh`: 8 hallazgos, arreglados los que podían borrar o romper.
 
 ## Merge Danger
 
-**Door:** two-way
+**Door:** two-way. Sin migraciones ni cambios en las partidas guardadas. Revertir solo quita scripts y documentos.
 
-Ni migraciones ni partidas guardadas. Las fichas y la guía de estilo son datos nuevos que el juego todavía no lee.
+**Blast Radius:** el generador de imágenes de la Deck (`image-generator/`) y las hojas del banco. Sin `PERFIL`,
+`generar.sh` se comporta como antes; la interfaz de `CFG-43` no cambia.
 
-**Blast Radius:** herramientas
+Además, `IMG-4` (guía visual y plantilla) queda cerrada con el sí de la usuaria (2026-11-03), y `IMG-6` se rehace con la cadena fotorreal después de esta fusión.
 
-`pre-commit` y `pre-push` corren en cada commit y push: un fallo en la raíz bloquearía o dejaría pasar todo. Están
-probados en la copia principal (los tests) y en un worktree (los pushes de esta rama ya fueron sin envoltorios).
-`host.sh` ahora corre sobre cambios sin commit: un verde así no prueba ningún commit, y por eso lo avisa.
-
-Pendiente tras la fusión: leer pastos con Z-Image Q6, fijar el perfil ganador en `generar.sh` y las decisiones de la
-usuaria (D8, pilotos de `IMG-6`, textos «[propuesta]» de `IMG-4` e `IMG-14`).
+Quedan como leves pendientes:
+- `planos.sh` reutiliza armonías viejas tras un montaje nuevo;
+- en `probar.sh`, `RES` apunta a la imagen sin gradar; además corre `plantilla` dos veces, y un `FICHAS` relativo lo rompe;
+- `plantilla.py` no valida los colores hex;
+- `planos.sh` puede abortar en `encuadre.py` aunque se den `HERO` y `MANADA`;
+- en `encuadre.py`, `lado: centro` reparte mal las copias;
+- `medir/stats.sh` muere sin mensaje cuando no hay métricas;
+- el glob de `lora/conjunto.sh` va sin `nullglob`;
+- `banco/planos.sh` duplica la receta e ignora el LoRA;
+- en `hoja.sh`, el modo por prefijo no valida el nombre (viene del banco, no de fuera).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

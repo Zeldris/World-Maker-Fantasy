@@ -56,6 +56,48 @@ class Hoja(unittest.TestCase):
         self.assertEqual(r.returncode, 2)
         self.assertIn('ABORTO: no hay imágenes', r.stdout)
 
+    def test_archivos_sueltos_en_su_orden(self):  # QA-283
+        banco, fuera = carpeta(), carpeta()
+        rutas = [os.path.join(fuera, f'{n}.png') for n in ('b', 'a', 'c')]
+        png(os.path.join(fuera, 'limpia.png'), 200, 80)
+        for r in rutas:  # el png() de ffmpeg tropezaría con los mismos nombres
+            shutil.copy(os.path.join(fuera, 'limpia.png'), r)
+        r = self.correr(banco, '--archivos', 'gpt', *rutas)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.splitlines()[1:], [f'  {i + 1} {ruta}' for i, ruta in enumerate(rutas)])
+        self.assertTrue(os.path.exists(os.path.join(banco, 'hojas', 'sueltas-gpt-1.png')))
+
+    def test_archivos_no_pisa_las_hojas_de_otros(self):
+        banco, fuera = carpeta(), carpeta()
+        hojas = os.path.join(banco, 'hojas')
+        for h in ('gpt-1.png', 'sueltas-gpt-2-1.png', 'sueltas-gpt-7.png'):
+            png(os.path.join(hojas, h), 10, 10)
+        rutas = [os.path.join(fuera, 'a:1 %d.png'), os.path.join(fuera, '-b.png')]  # «:», «%d» y «-» llegan a ffmpeg
+        png(os.path.join(fuera, 'limpia.png'), 200, 80)
+        for r in rutas:  # el png() de ffmpeg tropezaría con los mismos nombres
+            shutil.copy(os.path.join(fuera, 'limpia.png'), r)
+        r = self.correr(banco, '--archivos', 'gpt', *rutas)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(hojas)), ['gpt-1.png', 'sueltas-gpt-1.png', 'sueltas-gpt-2-1.png'])
+
+    def test_archivos_sin_imagenes_nombre_malo_o_no_imagen_abortan_sin_borrar(self):
+        banco, fuera = carpeta(), carpeta()
+        vieja = os.path.join(banco, 'hojas', 'sueltas-x-1.png')
+        png(vieja, 10, 10)
+        texto = os.path.join(fuera, 'notas.png')
+        with open(texto, 'w') as f:
+            f.write('no es imagen')
+        for args, motivo in ((('x',), 'uso: hoja.sh --archivos'), (('a/b', vieja), 'no vale como nombre de hoja'),
+                             (('x', texto), 'ffprobe no lee')):
+            r = self.correr(banco, '--archivos', *args)
+            self.assertNotEqual(r.returncode, 0, args)
+            self.assertIn(motivo, r.stdout, args)
+        self.assertTrue(os.path.exists(vieja))
+
+    def test_archivo_que_no_existe_aborta(self):
+        r = self.correr(carpeta(), '--archivos', 'gpt', '/no/esta.png')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('ABORTO: no existe /no/esta.png', r.stdout)
 
 if __name__ == '__main__':
     unittest.main()

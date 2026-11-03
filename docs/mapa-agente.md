@@ -246,9 +246,19 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+- **Bocetos por plan corporal (`IMG-24`):** `image-generator/bocetos/plantilla.py#componer` (el SVG desde un plan y
+  sus números, escalado al lienzo 1280x512) y `#validar` (cada valor malo, con su motivo); los planes y sus parámetros,
+  `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con
+  `boceto.plan`, `--planes` o un plan) deja los PNG junto al SVG. Test: `tools/qa/tests/test_bocetos.py`.
+- **Cadena fotorreal (`IMG-23`…`IMG-33`, `QA-282`):** `PERFIL=fotorreal` en `generar.sh` (receta, `bin-nuevo/sd-cli` y
+  el LoRA `image-generator/loras/<nombre>.safetensors`, que no se sube, `LORA=<peso>`); `image-generator/scripts/planos.sh` (plancha, sujeto, montaje y
+  armonías) con `montar.sh` y `encuadre.py` (el `encuadre` de la ficha); `gradar.sh` (gradación por momento, LUT en
+  `estilo/lut/`) y `medir.sh <img> <tipo> <momento>` (línea `MEDIANA Y=`), siempre con ruta absoluta desde un
+  worktree. Tests: `tools/qa/tests/test_generar_perfil.py`, `test_gradar.py`, `test_montar.py`, `test_encuadre.py`.
 - **Banco de calidad (`IMG-15`):** `docs/producto/plan-imagenes/banco.sh <ronda>` (un TSV por ronda en `banco/`,
   resultados en `banco/resultados.md`); para mirar una ronda, `bash docs/producto/plan-imagenes/hoja.sh <prefijo>` (hojas de
-  contactos de 6 con la leyenda en texto, `QA-249`), y solo la finalista a tamaño completo.
+  contactos de 6 con la leyenda en texto, `QA-249`; banners sueltos con `--archivos <nombre> <png>…`, `QA-283`), y solo
+  la finalista a tamaño completo.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
 

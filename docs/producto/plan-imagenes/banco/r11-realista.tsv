@@ -1,0 +1,6 @@
+# Plantilla «fantasía-realista» (usuaria, 2026-10-26): FLUX.3 Klein en la CPU (r10) con el estilo realista de prompts.py,
+# lo común a los banners de ChatGPT: profundidad por capas, bruma ámbar, paleta ocre, menos empuje que cine2. ~50 min cada una.
+pastos-realista	16	prompts/pastos-realista.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8
+aullador-realista	16	prompts/aullador-realista.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8
+cardo-realista	16	prompts/cardo-realista.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8
+hulki-realista	16	prompts/hulki-realista.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,TOPE=10800	--backend diffusion=cpu -t 8

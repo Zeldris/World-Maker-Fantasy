@@ -1673,6 +1673,13 @@ Limpieza del repo (usuaria, 2026-10-27):
 - **QA-279 · Las rutas borradas no se citan** (retro de `QA-271`, usuaria 2026-11-02): comprobación del check que lista, por
   cada archivo borrado en la rama contra `origin/main`, sus menciones en `.md` y scripts vivos (sin registros ni retros).
 
+Retro de `claude/plan-imagenes` (usuaria, 2026-11-03, [retro](../registros/retro-2026-11-03-plan-imagenes.md)):
+- ~~**QA-280 · `/code-review` al cerrar cada tarea `IMG-*`**~~ ✅ 2026-11-03: paso 5 de `skills-y-modelos.md`.
+- ~~**QA-281 · El generador de imágenes, a `main` por bloque**~~ ✅ 2026-11-03: cabecera de `roadmap-imagenes.md`.
+- ~~**QA-282 · Cadena fotorreal en el mapa del agente**~~ ✅ 2026-11-03: `docs/mapa-agente.md`, sección «Imágenes».
+- ~~**QA-283 · `hoja.sh --archivos`**~~ ✅ 2026-11-03: hojas de contactos de banners sueltos; test en `test_hoja_banco.py`.
+- ~~**QA-284 · Ir a la línea y `/clear` antes de `main`**~~ ✅ 2026-11-03: nota en `.claude/gw/opt-tokens.md`.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
