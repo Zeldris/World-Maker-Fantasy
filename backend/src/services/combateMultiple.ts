@@ -242,7 +242,8 @@ export function instanceNumbersByParticipantId(combatientes: { participantId: st
 /// Los demás que la reclamaban: «Y te golpea de paso» / «Y y Z te golpean de paso».
 export function textoConQuienTeEnfrentas(p: { duelo: string; dueloFemenino?: boolean; eligio: boolean; dePaso: string[] }): string {
   const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
-  const base = p.eligio ? `Te enfrentas a ${p.duelo}` : `${mayuscula(p.duelo)} te ha elegido: te defiendes de ${p.dueloFemenino ? 'ella' : 'él'}`;
+  // P354: «a el orco desconocido #2» se contrae en «al orco…».
+  const base = p.eligio ? `Te enfrentas ${/^el /i.test(p.duelo) ? `al ${p.duelo.slice(3)}` : `a ${p.duelo}`}` : `${mayuscula(p.duelo)} te ha elegido: te defiendes de ${p.dueloFemenino ? 'ella' : 'él'}`;
   if (p.dePaso.length === 0) return `${base}.`;
   const lista = p.dePaso.length === 1 ? p.dePaso[0] : `${p.dePaso.slice(0, -1).join(', ')} y ${p.dePaso[p.dePaso.length - 1]}`;
   return `${base}; ${lista} te ${p.dePaso.length === 1 ? 'golpea' : 'golpean'} de paso.`;

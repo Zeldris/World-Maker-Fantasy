@@ -9527,6 +9527,69 @@ describe('P327 — el nombre de un NPC aún no descubierto no llega al narrador'
     expect(otro).not.toMatch(/faerus/i);
   }, 60_000);
 
+  // P353 (tanda 47): 1 contra 3 sin descubrir, con capitán (Ulkha Ketg). La cita de la ronda 1 a un rival que no la
+  // reclamó también es su duelo (en la ronda 2 ya lo era; en la 1 salía «El orco desconocido te ha elegido»).
+  it('1 contra 3 con capitán: la cita de la ronda 1 es su duelo', async () => {
+    for (let intento = 0; intento < 6; intento++) {
+      const saveId = await partida(`Gorhorn de prueba (P353 tres ${intento})`, false);
+      const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+      const slugs = ['ulkha-ketg', 'hulki', 'herrero-serhu'];
+      const npcs = await Promise.all(slugs.map((slug) => prisma.npc.findFirstOrThrow({ where: { slug, saveId: null } })));
+      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: { in: slugs } } });
+      const miembro = (n: (typeof npcs)[number]) => {
+        const atr = n.attributes as unknown as AttributeBlock;
+        return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+      };
+      const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, npcs.map(miembro));
+      expect(abierto).not.toBeNull();
+      expect((await prisma.combatEncounter.findUniqueOrThrow({ where: { id: abierto!.encounterId } })).esperandoEleccionJugadora).toBe(true);
+      classifyAction.mockResolvedValue({
+        requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+      });
+      const action = "Golpeo con el arma, contra 'Faerus desconocida'.";
+      const app = await buildApp();
+      const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as {
+        blocked?: { narration: string }; classification?: unknown; roll?: unknown;
+      };
+      expect(clasificado.blocked?.narration).toBeUndefined();
+      const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+      await app.close();
+      classifyAction.mockReset();
+      const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
+      expect(narracion, `intento ${intento}`).toMatch(/Te enfrentas a la faerus desconocida; /);
+    }
+  }, 180_000);
+
+  // P354 (tanda 47): tres rivales ocultos con el mismo nombre visible («Orco desconocido»); el panel cita «Orco desconocido #2»
+  // y /turn/classify lo daba por inventado («El nombre de Orco desconocido #2 no le suena a nada»): sin ronda y con gasto.
+  it('cita «Orco desconocido #2» con tres orcos ocultos iguales: no se bloquea y es su duelo con el segundo', async () => {
+    const saveId = await partida('Gorhorn de prueba (P354)', false);
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const slugs = ['herrero-serhu', 'cocinero-serhu', 'ganadero-serhu'];
+    const npcs = await Promise.all(slugs.map((slug) => prisma.npc.findFirstOrThrow({ where: { slug, saveId: null } })));
+    await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: { in: slugs } } });
+    const miembro = (n: (typeof npcs)[number]) => {
+      const atr = n.attributes as unknown as AttributeBlock;
+      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: atr.destreza, inteligencia: atr.inteligencia, esGrupo: false };
+    };
+    const abierto = await abrirCombateDePersonas(prisma, { id: saveId, characterName: save.characterName, attributes: ATTRS, fictionalMinutes: 600, timeLabel: 'Día 1' }, npcs.map(miembro));
+    expect(abierto).not.toBeNull();
+    classifyAction.mockResolvedValue({
+      requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'ataque', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const action = "Ataco con el arma que llevo en la mano principal, contra 'Orco desconocido #2'.";
+    const app = await buildApp();
+    const clasificado = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json() as {
+      blocked?: { narration: string }; classification?: unknown; roll?: unknown;
+    };
+    expect(clasificado.blocked?.narration).toBeUndefined();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: clasificado.classification, roll: clasificado.roll, enCombate: true } });
+    await app.close();
+    classifyAction.mockReset();
+    const narracion = (lastNdjsonLine(res.payload).narration as { narration: string }).narration;
+    expect(narracion).toMatch(/Te enfrentas al orco desconocido #2; /);
+  }, 60_000);
+
   // P395 (tanda 74): la orden del capitán de la ronda nueva («X ordena caer sobre Y.») la escribe el combate mientras
   // se resuelve, antes de guardar la narración del turno; salía encima de los golpes de la ronda anterior y parecía
   // mandarlos. Tiene que quedar en el diario tras la narración del turno.

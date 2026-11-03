@@ -335,10 +335,16 @@ const MIN_QUOTED_NAME_LENGTH = 3;
 /// inventado nombrado en diálogo) al falso positivo (bloquear cualquier diálogo normal con
 /// comillas) — mismo criterio ya usado en el resto de esta familia de detectores ("más vale dejar
 /// pasar que bloquear con dudas", ver `detectsWrongRegionHarvestClaim`).
+/// P354: el panel de combate cita a los combatientes de igual nombre con su número («Orco desconocido #2», «Buitre #1»;
+/// `combatDisplayNameFor` en el frontend); el número no es parte del nombre de nadie.
+export function sinNumeroDeCombatiente(nombre: string): string {
+  return nombre.replace(/\s*#\d+\s*$/, '').trim();
+}
+
 export async function detectsFabricatedNpcClaim(action: string, worldId: string): Promise<FabricatedNpcClaim | null> {
   const quotedMatch = action.match(QUOTED_NAME_REGEX);
   if (!quotedMatch) return null;
-  const quotedName = quotedMatch[1].trim();
+  const quotedName = sinNumeroDeCombatiente(quotedMatch[1]);
   if (quotedName.length < MIN_QUOTED_NAME_LENGTH) return null;
   if (!detectsAttackIntent(action) && !detectsHostileSearchIntent(action)) return null;
   const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true } });

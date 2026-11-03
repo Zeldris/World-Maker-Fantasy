@@ -129,3 +129,23 @@ describe('CombatPanel: con quién te enfrentas (P353/P356)', () => {
     expect(screen.queryByTestId('combate-frente-de-paso')).toBeNull()
   })
 })
+
+describe('CombatPanel: filas de estado de rivales de igual nombre (P354)', () => {
+  it('el «#N» va fuera del nombre truncado, así que se ve en cada fila', () => {
+    const rival = (n: number): CombatNpcDisplay =>
+      ({ ...orco(false), slug: `orco-${n}`, name: 'Orco desconocido', condicion: 'ILESO', participantId: `p-${n}`, instanceNumber: n }) as CombatNpcDisplay
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+    render(panel([rival(1), rival(2), rival(3)]))
+    const numeros = screen.getAllByTestId('numero-combatiente')
+    expect(numeros.map((n) => n.textContent?.trim())).toEqual(['#1', '#2', '#3'])
+    for (const n of numeros) {
+      expect(n.className).toContain('shrink-0')
+      expect(n.previousElementSibling?.className).toContain('truncate')
+    }
+  })
+})

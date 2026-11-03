@@ -534,7 +534,11 @@ export function CombatPanel({
         )}
         {npcs.map((npc) => (
           <div key={combatKeyFor(npc)} className="flex items-center gap-1.5">
-            <span className="max-w-24 truncate text-2xs text-wood-400">{combatDisplayNameFor(npc)}</span>
+            {/* P354: el «#N» fuera del truncado; si no, tres «Orco desconoci…» iguales. */}
+            <span className="flex min-w-0 max-w-28 text-2xs text-wood-400" title={combatDisplayNameFor(npc)}>
+              <span className="truncate">{npc.name}</span>
+              {npc.instanceNumber != null && <span className="shrink-0" data-testid="numero-combatiente">&nbsp;#{npc.instanceNumber}</span>}
+            </span>
             <HealthBar condicionFisica={npc.condicion} />
             <ActiveEffectChips effects={npc.activeEffects} />
             {/* CR-45: el capitán y a quién manda caer encima esta ronda. */}

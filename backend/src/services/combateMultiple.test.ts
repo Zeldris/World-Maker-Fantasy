@@ -1119,6 +1119,9 @@ describe('textoConQuienTeEnfrentas (P353/P356, opción A de la usuaria)', () => 
       'Te enfrentas a la faerus desconocida; el Orco te golpea de paso.',
     );
   });
+  it('contrae «a el» en «al» (P354)', () => {
+    expect(textoConQuienTeEnfrentas({ duelo: 'el orco desconocido #2', eligio: true, dePaso: [] })).toBe('Te enfrentas al orco desconocido #2.');
+  });
   it('si no eligió, dice quién la ha elegido y de quién se defiende (género y plural)', () => {
     expect(textoConQuienTeEnfrentas({ duelo: 'el Orco', eligio: false, dePaso: [] })).toBe('El Orco te ha elegido: te defiendes de él.');
     expect(textoConQuienTeEnfrentas({ duelo: 'la Faerus', dueloFemenino: true, eligio: false, dePaso: ['el Orco', 'Hulki'] })).toBe(

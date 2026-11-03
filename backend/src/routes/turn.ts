@@ -71,6 +71,7 @@ import {
   detectsGiftToNpcClaim,
   giftToNpcNarrationFor,
   GIFT_ANY_REGEX,
+  sinNumeroDeCombatiente,
 } from '../services/playerActionValidation.js';
 import { harvestSourceAliases } from '../scripts/worldCatalog.js';
 import { detectsPostCombatInteraction } from '../services/postCombatInteraction.js';
@@ -782,7 +783,9 @@ export async function turnRoutes(app: FastifyInstance) {
     // arriba (existe pero no está en esta escena), aquí no existe en ningún sitio.
     // P327: citar entre comillas el nombre visible de alguien en escena («Ataco a 'Orco desconocido'.», lo que arma el
     // frontend con la oferta) no es inventar a nadie: el nombre real no existe para la jugadora.
-    const citadoEntreComillas = action.match(/'([^']+)'/)?.[1] ?? null;
+    // P354: sin el «#N» con que el panel distingue a los de igual nombre visible («Orco desconocido #2»).
+    const citadoConNumero = action.match(/'([^']+)'/)?.[1];
+    const citadoEntreComillas = citadoConNumero ? sinNumeroDeCombatiente(citadoConNumero) : null;
     const citaUnVisibleDeLaEscena =
       !!citadoEntreComillas && npcsInSceneForValidation.some((n) => n.nombreVisible && normalizeText(n.nombreVisible) === normalizeText(citadoEntreComillas));
     const fabricatedNpcClaim = citaUnVisibleDeLaEscena ? null : await detectsFabricatedNpcClaim(action, save.worldId);

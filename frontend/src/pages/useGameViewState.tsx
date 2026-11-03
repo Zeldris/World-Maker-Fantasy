@@ -1483,6 +1483,8 @@ export function useGameViewState() {
     claseVisible && { id: 'clase', nivel: 'decision' },
     especializacionVisible && { id: 'especializacion', nivel: 'decision' },
     reinoVisible && { id: 'reino', nivel: 'decision' },
+    // P128: sin registrar, el gestor dejaba oculto (`display:none`) el modal de fin de partida.
+    endedAt && { id: 'fin-de-partida', nivel: 'critico' },
     confirmingExit && { id: 'salir', nivel: 'sistema' },
   ].filter((c): c is CapaAbierta => !!c)
   const estadoCapas = resolverCapas(capasAbiertas)
