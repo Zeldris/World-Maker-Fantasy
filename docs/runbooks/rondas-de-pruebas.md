@@ -157,6 +157,8 @@ Lo que sigue vigente del [registro de fallos](../registros/fallos-herramientas.m
 - Un cajón o modal abierto rompe `turno.js`, `mover.js` y `puntos.js`: cerrar con «Cerrar ✕» (o el clic por coordenadas) antes.
 - `turno.js` no encuentra el cuadro con la barra de habilidades activa: pulsar «Escribir» antes.
 - `combate.js` busca «Defensa» y el botón es «Defenderse»; con un combate de `escenario.sh` hay que pulsar COMBATIR antes.
+- Muchos botones y títulos van en mayúsculas solo por CSS (COMBATIR, MATAR, ENEMIGOS): por rol o por DOM se buscan con el texto real, `getByRole('button',{name:/Combatir/})`, no `/COMBATIR/` (P404). El rival se elige pulsando su botón «⚔️ Nombre Estado» de la lista ENEMIGOS del panel, no la tarjeta de arriba.
+- `combate` para ante un rival convaleciente (lo nombra: Matar, Capturar o Clemente, a mano) y si la jugadora está convaleciente; para seguir atacando así, `aunConvaleciente:true` (P392/P403).
 - Con Ollama real cada turno tarda 3-6 min: `combate.js` con `rondas:1` en bucle y esperar a que el HUD deje de decir «El narrador escribe».
 - Un encuentro hostil que corta el paso deja «Moverte por la zona» deshabilitado y `puntos.js` y `mover.js` fallan: resolverlo antes.
 - `o.sh pulsar` y `o.sh mover` dan `ERROR:` claro (tapado por otro panel, deshabilitado, fuera del mapa, encuentro abierto) y `mover` dice `POSICIÓN`/`HORA` antes → después, con `SIN MOVIMIENTO` si no avanza; `AVISO: (ninguno)` solo es «sin encuentro». `pulsar` acepta `{"contiene":"Ir hasta"}` solo y `forzar:true` (clic del DOM) para un botón tapado. Con la ficha de un punto, el menú pegado a él lleva «Ir hasta aquí» y «Ver ficha completa».

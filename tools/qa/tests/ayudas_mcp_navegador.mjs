@@ -146,6 +146,41 @@ test('estado: una nota larga que dice «convaleciente» no entra en AVISOS', asy
   assert.doesNotMatch(salida, /AVISOS:.*Gorhorn nació/);
 });
 
+// P392/P403: combate.js ante un convaleciente. La tarjeta del rival va en mayúsculas por CSS (innerText «MATAR»),
+// como OfferCard.tsx; el aviso de la jugadora es el de CombatPanel.tsx.
+const htmlCombate = ({ rival = false, jugadora = false } = {}) => `<body><style>.up{text-transform:uppercase}</style>
+  <h2>Combate — Ataque</h2><div>Nivel 19 · Vida 30</div>
+  ${jugadora ? '<div>⚠️ Estás convaleciente — puedes seguir intentándolo, pero muy penalizado.</div>' : ''}
+  <button aria-disabled="false" onclick="window.pulsados.push('habilidad')">⚔️ Ataque Básico</button>
+  <button onclick="window.pulsados.push('actuar');document.body.insertAdjacentHTML('beforeend','<p>Gana Gorhorn el intercambio</p>')">Actuar</button>
+  ${rival ? `<div class="rounded-lg"><p class="up"><span aria-hidden="true">⚠️</span><span>Ánade Gris está convaleciente</span></p>
+    <div><button class="up" onclick="window.pulsados.push('matar')">Matar</button><button class="up">Clemente</button></div></div>` : ''}
+  <script>window.pulsados = []</script></body>`;
+const pelea = async (tk, cfg) => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await page.setContent(htmlCombate(cfg));
+  await page.evaluate((t) => { window.tk = t; }, tk);
+  const salida = await (await ayuda('combate'))(page);
+  const pulsados = await page.evaluate(() => window.pulsados);
+  await page.close();
+  return { salida, pulsados };
+};
+test('combate: rival convaleciente (en mayúsculas por CSS) para con su nombre y no pulsa nada', async () => {
+  const r = await pelea({}, { rival: true });
+  assert.equal(r.salida, 'R0: rival CONVALECIENTE (Ánade Gris): elige Matar, Capturar o Clemente');
+  assert.deepEqual(r.pulsados, []);
+  assert.match((await pelea({ leer: true }, { rival: true })).salida, /^RIVAL CONVALECIENTE \(Ánade Gris\)/m);
+});
+test('combate: con la jugadora convaleciente no ataca salvo aunConvaleciente', async () => {
+  const r = await pelea({}, { jugadora: true });
+  assert.match(r.salida, /^R0: ESTÁS CONVALECIENTE: no ataco/);
+  assert.deepEqual(r.pulsados, []);
+  assert.match((await pelea({ leer: true }, { jugadora: true })).salida, /^ESTÁS CONVALECIENTE/m);
+  const sigue = await pelea({ aunConvaleciente: true }, { jugadora: true });
+  assert.deepEqual(sigue.pulsados, ['habilidad', 'actuar']);
+  assert.match(sigue.salida, /^R0 Ataque \(Ataque Básico\) .*Gana Gorhorn/);
+});
+
 let fallos = 0;
 for (const [nombre, f] of pruebas) {
   try { await f(); console.log('ok   ' + nombre); } catch (e) { fallos++; console.log('FALLA ' + nombre + '\n  ' + String(e.message).split('\n').join('\n  ')); }
