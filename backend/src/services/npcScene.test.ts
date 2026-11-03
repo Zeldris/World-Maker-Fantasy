@@ -31,6 +31,8 @@ const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
 const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
+const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string }[]);
+const findManyCompanion = vi.fn(async (..._args: unknown[]) => [] as { sourceSlug: string }[]);
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -47,6 +49,9 @@ vi.mock('../lib/prisma.js', () => ({
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     // P327: `detectNpcsInScene` consulta qué NPC con nombre propio ya conoce la jugadora.
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscovered(...args) },
+    // P419: presencia de un PRINCIPAL por su punto activo en la zona o por ser compañero.
+    zonePoint: { findMany: (...args: unknown[]) => findManyZonePoint(...args) },
+    companion: { findMany: (...args: unknown[]) => findManyCompanion(...args) },
   },
 }));
 
@@ -481,7 +486,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
 
-  it('un NPC PRINCIPAL es candidato en cualquier escena, sin importar la ubicación', async () => {
+  it('un NPC PRINCIPAL itinerante (sin casa) es candidato en cualquier escena', async () => {
     findManyNpc.mockResolvedValue([baseNpc({ kind: 'PRINCIPAL', homeLocationSlug: null })]);
     findUniqueLocation.mockResolvedValue(HONDONADA);
     findManyLocation.mockResolvedValue([]);
@@ -491,6 +496,45 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  // P419 (ronda 2 de QA-289): «Saludo a Ulkha Ketg» en la Hondonada la traía a escena aunque vive en el campamento
+  // Serhu. Usuaria, 2026-11-03: «exigir que esté».
+  describe('P419: un PRINCIPAL nombrado solo está si está en la zona', () => {
+    const ulkha = () => baseNpc({ id: 'ulkha', slug: 'ulkha-ketg', name: 'Ulkha Ketg', kind: 'PRINCIPAL', homeLocationSlug: 'campamento-serhu', aliases: ['ulkha', 'ulkha ketg'] });
+    const saludo = { action: 'Saludo a Ulkha Ketg', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada', fictionalMinutes: 480 };
+    beforeEach(() => {
+      findManyNpc.mockResolvedValue([ulkha()]);
+      findUniqueLocation.mockResolvedValue(HONDONADA);
+      findManyLocation.mockResolvedValue([]);
+      findManyNpcState.mockResolvedValue([{ npcId: 'ulkha' }]);
+      findManyZonePoint.mockResolvedValue([]);
+      findManyCompanion.mockResolvedValue([]);
+    });
+
+    it('con casa en otra zona y sin punto aquí, no está aunque se la conozca (NpcState)', async () => {
+      expect(await detectNpcsInScene(saludo)).toEqual([]);
+    });
+
+    it('con su punto activo en esta zona, está', async () => {
+      findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg' }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('si es compañera de la partida, está', async () => {
+      findManyCompanion.mockResolvedValue([{ sourceSlug: 'ulkha-ketg' }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('en su casa está aunque no tenga punto en el mapa (interiores)', async () => {
+      findUniqueLocation.mockResolvedValue({ slug: 'campamento-serhu', region: 'Llanuras del Viento Rojo' });
+      expect((await detectNpcsInScene({ ...saludo, currentLocationId: 'loc-serhu' })).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('con una misión activa que la apunta, está esté donde esté', async () => {
+      findManyQuest.mockResolvedValue([{ targetNpcId: 'ulkha' }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
   });
 
   // Cobertura nueva (auditoría 2026-08-14, bug real jugando en vivo: Sella Marn —Nabieus de una

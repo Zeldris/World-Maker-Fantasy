@@ -1713,8 +1713,9 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   arreglados sin comprobar P411 (todas las frases repetidas = reintento; réplica que empieza igual = otra), P412 (las
   frases del NPC del principio pasan detrás, antes de la réplica), P415/P416 (restos de habla sin cita fuera; réplica
   sin eco), P417 en parte, P418 (`TRAVEL_INTENT_REGEX` sin «el camino»), P420 (nombre inventado en la réplica = otra,
-  contra `nombresDelMundo`) y P421 (`lanza.sh` abre Reino solo con `LANZA_REINO=1`). P419 espera decisión de la
-  usuaria (presencia por zona, no por nombre). Falta: medirlo con `bench-ia.sh` y P419.
+  contra `nombresDelMundo`) y P421 (`lanza.sh` abre Reino solo con `LANZA_REINO=1`). P419 (usuaria: «exigir que
+  esté»): un `PRINCIPAL` nombrado solo está en escena si vive en esta zona, tiene su punto activo aquí o es compañero
+  (combate, misión y modo dinámico, como antes). Falta: medirlo con `bench-ia.sh`.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):

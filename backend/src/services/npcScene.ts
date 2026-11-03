@@ -669,9 +669,20 @@ export async function detectNpcsInScene(params: {
   // `faunaMomentoDelDia` y no coincide con el momento del día real de este turno — un Nuente
   // mencionado de día no debe poder aparecer en escena.
   const momentoActual = momentoDelDiaFor(params.fictionalMinutes);
+  const slugsDelModoDinamico = [saveRow?.pendingDynamicMode, saveRow?.pendingDynamicModeOffer]
+    .map((m) => (m && typeof m === 'object' && !Array.isArray(m) && typeof (m as { targetSlug?: unknown }).targetSlug === 'string' ? (m as { targetSlug: string }).targetSlug : null))
+    .filter((slug): slug is string => slug !== null);
+  const principalPresente = await principalPresenteEnZona({
+    npcs,
+    saveId: params.saveId,
+    currentLocationId: params.currentLocationId,
+    currentLocationSlug: currentLocation?.slug ?? null,
+    slugsDelModoDinamico,
+  });
   const candidateNpcs = npcs.filter((npc) => {
     if (estaEnCombate(npc)) return true;
     if (questTargetIds.has(npc.id)) return true;
+    if (npc.kind === 'PRINCIPAL' && !principalPresente(npc)) return false;
     if (encounteredIds.has(npc.id)) return true;
     if (npc.nucleoJugable === false) return false;
     const momentoRequerido = faunaMomentoDelDia[npc.slug];
@@ -693,9 +704,7 @@ export async function detectNpcsInScene(params: {
     currentLocationId: params.currentLocationId,
     candidatos: candidateNpcs.filter((npc) => !retiredForeverSlugs.has(npc.slug)),
     estaEnCombate,
-    slugsDelModoDinamico: [saveRow?.pendingDynamicMode, saveRow?.pendingDynamicModeOffer]
-      .map((m) => (m && typeof m === 'object' && !Array.isArray(m) && typeof (m as { targetSlug?: unknown }).targetSlug === 'string' ? (m as { targetSlug: string }).targetSlug : null))
-      .filter((slug): slug is string => slug !== null),
+    slugsDelModoDinamico,
   });
   if (ocultoNombrado) matchedIds.add(ocultoNombrado);
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
@@ -715,6 +724,28 @@ export async function detectNpcsInScene(params: {
     params.saveId,
     matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P419 (usuaria, 2026-11-03: «exigir que esté»): un `PRINCIPAL` ya no entra en escena solo por nombrarlo. Está si su
+/// casa es esta zona (35 de 61 no tienen punto en el mapa, casi todos de interiores), si tiene su punto activo aquí
+/// (se mudó: campamentos, Cronista), si es compañero de la partida o del modo dinámico; el itinerante (sin casa), como
+/// antes. Combate y misión activa se miran antes. Sin zona resuelta (viajando), no se acota.
+async function principalPresenteEnZona(params: {
+  npcs: { kind: NpcKind; homeLocationSlug: string | null }[];
+  saveId: string;
+  currentLocationId: string | null;
+  currentLocationSlug: string | null;
+  slugsDelModoDinamico: string[];
+}): Promise<(npc: { slug: string; homeLocationSlug: string | null }) => boolean> {
+  const enCasa = (npc: { homeLocationSlug: string | null }) => npc.homeLocationSlug === null || npc.homeLocationSlug === params.currentLocationSlug;
+  if (!params.currentLocationId || !params.currentLocationSlug) return () => true;
+  if (params.npcs.every((n) => n.kind !== 'PRINCIPAL' || enCasa(n))) return enCasa;
+  const [puntos, companeros] = await Promise.all([
+    prisma.zonePoint.findMany({ where: { saveId: params.saveId, locationId: params.currentLocationId, tipo: 'NPC', activo: true }, select: { targetSlug: true } }),
+    prisma.companion.findMany({ where: { saveId: params.saveId, sourceSlug: { not: null } }, select: { sourceSlug: true } }),
+  ]);
+  const aqui = new Set([...puntos.map((p) => p.targetSlug), ...companeros.map((c) => c.sourceSlug!), ...params.slugsDelModoDinamico]);
+  return (npc) => enCasa(npc) || aqui.has(npc.slug);
 }
 
 /// P327 (usuaria, 2026-10-26): ¿nombra el texto a alguien por el nombre con que la jugadora lo ve? «Orco desconocido»
