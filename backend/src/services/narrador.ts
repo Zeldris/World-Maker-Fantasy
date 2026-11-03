@@ -362,6 +362,29 @@ const CTX_CRONISTA = 8192;
 
 const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
 
+/// QA-289: la caché de prefijo de Ollama se cortaba al empezar los hechos de la escena, porque `contextBlocks` llega en
+/// orden de construcción y lo de este turno (intercambio, pistas, memoria, encuentro) va antes que lo de la zona. Lo que
+/// casi no cambia entre turnos en la misma zona sube delante, en este orden; el resto sigue detrás en su orden.
+const HECHOS_ESTABLES = [
+  'HECHOS PROTEGIDOS',
+  'UBICACIÓN ACTUAL:',
+  'CONTROL DE LA REGIÓN',
+  'TU DOMINIO AQUÍ:',
+  'PERSONAJES AQUÍ AHORA MISMO',
+  'FAUNA AQUÍ AHORA MISMO',
+  'RECURSOS AQUÍ AHORA MISMO',
+  'CONSTRUCCIONES AQUÍ AHORA MISMO',
+  'EQUIPO PUESTO AHORA MISMO',
+  'INVENTARIO ACTUAL:',
+];
+const rangoEstable = (f: string) => {
+  const i = HECHOS_ESTABLES.findIndex((p) => f.startsWith(p));
+  return i < 0 ? HECHOS_ESTABLES.length : i;
+};
+export function ordenarHechosPorEstabilidad(facts: string[]): string[] {
+  return facts.map((f, i) => ({ f, i, r: rangoEstable(f) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
+}
+
 function factsBlock(facts: string[]): string {
   return facts.length ? facts.map((f) => `- ${f}`).join('\n') : '(sin hechos previos registrados todavía)';
 }
@@ -1255,7 +1278,7 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
   const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
   const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
-  const hechosBlock = factsBlock(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)));
+  const hechosBlock = factsBlock(ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f))));
 
   const prompt = `${GOOD_NARRATION_EXAMPLE}
 

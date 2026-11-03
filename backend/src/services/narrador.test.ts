@@ -2023,6 +2023,20 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(n).toBeGreaterThan(a.indexOf('CONOCIMIENTO DE FONDO'));
     expect(b.indexOf('Narra en 1-2 frases muy breves')).toBeLessThan(b.indexOf('ACCIÓN DEL JUGADOR'));
   });
+
+  it('una pista de este turno no corta la caché antes de la zona: lo estable sube delante (QA-289)', () => {
+    const turno = (pista: string) => ({
+      ...ctx('12:10', 'Gorhorn mira.'),
+      worldFacts: [pista, 'UBICACIÓN ACTUAL: Paso de los Pilares Rotos', 'PERSONAJE EN ESCENA: Ulkha Ketg', 'INVENTARIO ACTUAL: hacha, odre', 'FAUNA AQUÍ AHORA MISMO (animales, NO son personas): Aullador Rojo'],
+    });
+    const a = buildNarrationPrompt(turno('El golpe ya está resuelto: falla.')).prompt;
+    const b = buildNarrationPrompt(turno('Nadie responde todavía.')).prompt;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    expect(n).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+    // Lo que no es de la zona sigue en su orden, detrás.
+    expect(a.indexOf('El golpe ya está resuelto')).toBeLessThan(a.indexOf('PERSONAJE EN ESCENA'));
+  });
 });
 
 describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a combatNotYetResolved (2026-08-22)', () => {
