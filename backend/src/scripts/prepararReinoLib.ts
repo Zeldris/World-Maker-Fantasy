@@ -1,6 +1,6 @@
 // 3.2 (2026-10-21): interpreta los pasos de `prepararReino.ts` (puro, para probarlo sin base).
 export type PasoReino =
-  | { tipo: 'subditos'; pueblo: string; n: number; rol: string | null }
+  | { tipo: 'subditos'; pueblo: string; n: number; rol: string | null; sexo: SexoSubditos }
   | { tipo: 'reclutar'; npcSlug: string }
   | { tipo: 'guarnicion' }
   | { tipo: 'milicia'; n: number }
@@ -14,11 +14,22 @@ export type PasoReino =
   | { tipo: 'domable'; especie: string }
   | { tipo: 'domador'; nivel: number }
   | { tipo: 'punto-retirado'; especie: string; n: number | null }
-  | { tipo: 'sin-aliados' };
+  | { tipo: 'sin-aliados' }
+  | { tipo: 'reparar' }
+  | { tipo: 'danar'; receta: string };
+
+/// P378: `m`/`f` fija el sexo de todos; `alterna` (por defecto) da macho, hembra, macho… para que haya parejas posibles.
+export type SexoSubditos = 'm' | 'f' | 'alterna';
+const SEXOS: Record<string, SexoSubditos> = { m: 'm', f: 'f', pareja: 'alterna', alterna: 'alterna' };
+
+/// Sexo del súbdito número `i` (desde 0) de un paso `subditos`.
+export function sexoDelSubdito(sexo: SexoSubditos, i: number): 'M' | 'F' {
+  return sexo === 'm' ? 'M' : sexo === 'f' ? 'F' : i % 2 === 0 ? 'M' : 'F';
+}
 
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
-/// `subditos:orcos:3[:soldado]`, `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
+/// `subditos:orcos:3[:soldado][:sexo=m|f|pareja]` (P378: sin `sexo=` alterna macho y hembra; `m`/`f` los fija), `reparar` (P369: repara todos los edificios DANADO con la función del botón «Reparar»), `danar:<receta>` (P301: deja DANADO el edificio activo de esa receta, como una tormenta), `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
 /// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-270),
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
@@ -33,7 +44,14 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     if (clave === 'subditos') {
       const n = entero(r[1]);
       if (!r[0] || n == null) return { error: `«${arg}»: falta subditos:<pueblo>:<n>[:<rol>].` };
-      pasos.push({ tipo: 'subditos', pueblo: r[0], n, rol: r[2] ?? null });
+      // Tras n: `[rol]` y/o `sexo=m|f|pareja` en cualquier orden (sin ambigüedad con los roles).
+      const extra = r.slice(2);
+      if (extra.length > 2) return { error: `«${arg}»: subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja].` };
+      const tSexo = extra.filter((t) => t.startsWith('sexo='));
+      const roles = extra.filter((t) => !t.startsWith('sexo='));
+      const sexo = tSexo.length ? SEXOS[tSexo[0]!.slice(5)] : 'alterna';
+      if (tSexo.length > 1 || roles.length > 1 || !sexo || (roles[0] !== undefined && roles[0] === '')) return { error: `«${arg}»: subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja].` };
+      pasos.push({ tipo: 'subditos', pueblo: r[0], n, rol: roles[0] ?? null, sexo });
     } else if (clave === 'reclutar') {
       if (!r[0]) return { error: `«${arg}»: falta reclutar:<slug del NPC>.` };
       pasos.push({ tipo: 'reclutar', npcSlug: r[0] });
@@ -76,6 +94,11 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const n = r[1] === undefined ? null : entero(r[1]);
       if (!r[0] || r.length > 2 || (r[1] !== undefined && (n == null || n > 20))) return { error: `«${arg}»: falta punto-retirado:<especie>[:<n>], con n de 1 a 20.` };
       pasos.push({ tipo: 'punto-retirado', especie: r[0], n });
+    } else if (clave === 'reparar' && r.length === 0) {
+      pasos.push({ tipo: 'reparar' });
+    } else if (clave === 'danar') {
+      if (!r[0] || r.length > 1 || !/^[a-z0-9-]+$/.test(r[0])) return { error: `«${arg}»: falta danar:<receta> (p. ej. danar:cocina).` };
+      pasos.push({ tipo: 'danar', receta: r[0] });
     } else if (clave === 'domador') {
       const nivel = entero(r[0]);
       if (nivel == null || r.length > 1 || nivel < 10 || nivel > 19) return { error: `«${arg}»: falta domador:<nivel>, de 10 a 19 (desde el 20 cambian las habilidades de arma).` };

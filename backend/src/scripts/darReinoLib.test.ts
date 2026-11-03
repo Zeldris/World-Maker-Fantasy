@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsearPeticionReino, posicionJuntoAlAyuntamiento, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
+import { parsearPeticionReino, posicionJuntoAlAyuntamiento, ajustarATopes, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
 
 describe('posición y topes (QA-143)', () => {
   it('coloca junto al Ayuntamiento sin coincidir con otro edificio', () => {
@@ -10,11 +10,17 @@ describe('posición y topes (QA-143)', () => {
     expect(b).not.toEqual(a);
     expect(posicionJuntoAlAyuntamiento({ x: null, y: null }, [])).toBeNull();
   });
-  it('rechaza lo que pasa del tope y dice el tope', () => {
-    const z = { comida: 0, bebida: 0, materiales: 0 };
-    expect(primerExcesoDeTope({ ...z, comida: 120 }, z, { comida: 60, bebida: 60, materiales: 60 })).toContain('tope de 60');
-    expect(primerExcesoDeTope({ ...z, comida: 120 }, z, { comida: 180, bebida: 60, materiales: 60 })).toBeNull();
-    expect(primerExcesoDeTope({ ...z, materiales: 10 }, { ...z, materiales: 55 }, { comida: 60, bebida: 60, materiales: 60 })).toContain('hueco 5');
+  it('rechaza los materiales que pasan del tope y dice el tope', () => {
+    expect(primerExcesoDeTope({ materiales: 70 }, { materiales: 0 }, { materiales: 60 })).toContain('tope de 60');
+    expect(primerExcesoDeTope({ materiales: 10 }, { materiales: 55 }, { materiales: 60 })).toContain('hueco 5');
+    expect(primerExcesoDeTope({ materiales: 5 }, { materiales: 55 }, { materiales: 60 })).toBeNull();
+  });
+  it('P378: comida y bebida que pasan del tope dan lo que cabe y avisan', () => {
+    const t = { comida: 60, bebida: 60 };
+    expect(ajustarATopes({ comida: 120, bebida: 10 }, { comida: 20, bebida: 0 }, t)).toEqual({ comida: 40, bebida: 10, avisos: ['comida: se dan 40 de 120: tope 60 (hay 20).'] });
+    expect(ajustarATopes({ comida: 5, bebida: 5 }, { comida: 0, bebida: 0 }, t)).toEqual({ comida: 5, bebida: 5, avisos: [] });
+    // ya por encima del tope: no da nada (nunca negativo)
+    expect(ajustarATopes({ comida: 5, bebida: 0 }, { comida: 70, bebida: 0 }, t)).toMatchObject({ comida: 0 });
   });
 });
 

@@ -1,6 +1,6 @@
 // 3.2 (2026-10-21): prepara estados del Reino que `darReino.ts` no alcanza, SOLO con las funciones del juego que aplican
 // sus reglas (QA-151: nada de UPDATE/INSERT a mano). Pasos, en el orden dado:
-//   subditos:<pueblo>:<n>[:<rol>]   n súbditos adultos (`crearSubdito`) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
+//   subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja]   n súbditos adultos (`crearSubdito`; P378: por defecto alternan macho y hembra, así hay parejas posibles; `sexo=m` o `sexo=f` los fija todos) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
 //                                   o su tarea de trabajador (`cambiarTareaSubdito`: ganadero, recolector, fibrero…)
 //   reclutar:<npc>                  un NPC con nombre se une como compañero real (`proponer` RECLUTAR, con la tirada ganada; pide cama libre)
 //   guarnicion                      cada soldado y vigía a la guarnición de la capital mientras haya plazas (`asignarGuarnicion`)
@@ -15,6 +15,8 @@
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
 //   sin-aliados                     QA-266, P128: los compañeros del Grupo 1 pasan a otro grupo (`moverCompaneroDeGrupo`, la regla del arrastre del panel): un combate que se abra después solo lleva a la jugadora
 //   punto-retirado:<especie>[:<n>] QA-266, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0; estado sintético (el juego no lo produce hoy) para la defensa de `opcionesDePartida`, con los efectos `crearPuntoZona` y `retirarPuntoZona`
+//   reparar                         P369/P378: repara cada edificio DANADO (y Empalizada caída) con `repararEdificio`, la del botón «Reparar» de Reino › Edificios: cuesta la mitad de sus materiales del Almacén; si faltan, lo dice y sigue con los demás (sale con error, sin deshacer lo reparado)
+//   danar:<receta>                  P301: deja DANADO el edificio activo de esa receta (p. ej. danar:cocina) con el efecto `danarEdificio` de las tormentas (suceso y aviso en el diario del Reino incluidos)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -29,6 +31,7 @@ import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePersonas, type MiembroDeGrupo } from '../services/combatePersonas.js';
 import { scopeFor } from '../services/npcScene.js';
 import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
+import { danarEdificioDeReceta, repararDanados } from '../services/cronista/prepararEdificios.js';
 import { dejarSinAliados } from '../services/cronista/prepararSinAliados.js';
 import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
 import { formatFictionalDate } from '../services/worldClock.js';
@@ -38,12 +41,12 @@ import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../s
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
 import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
 import { hacerDomador } from '../services/progresionPersonaje.js';
-import { parsearPasosReino } from './prepararReinoLib.js';
+import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>…`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -65,7 +68,7 @@ for (const paso of pasos) {
     for (let i = 0; i < paso.n; i++) {
       const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
       const s = await prisma.$transaction(async (tx) => {
-        const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, random: Math.random });
+        const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, genero: sexoDelSubdito(paso.sexo, i), random: Math.random });
         if (paso.rol && esTarea(paso.rol)) {
           // ganadero, recolector…: son tareas del trabajador, no roles.
           const r = await cambiarTareaSubdito(tx, saveId, nuevo.id, paso.rol, ahora);
@@ -172,6 +175,15 @@ for (const paso of pasos) {
     const r = await dejarPuntoRetirado(prisma, { saveId, especie: paso.especie, ...(paso.n != null ? { cantidad: paso.n } : {}) });
     if ('error' in r) rechaza(r.error);
     else dice(r.yaEstaba ? `Punto retirado: ya había uno de ${r.nombre} en ${r.lugar} con ${r.cantidad} presas` : `Punto retirado: ${r.nombre} en ${r.lugar}, ${r.cantidad} presas, activo false`);
+  } else if (paso.tipo === 'reparar') {
+    const r = await repararDanados(prisma, saveId);
+    for (const x of r.reparados) dice(`Reparado: ${x.nombre} (${x.coste} materiales)`);
+    if (r.reparados.length === 0 && r.sinReparar.length === 0) dice('Reparar: no hay edificios dañados');
+    for (const x of r.sinReparar) rechaza(`reparar: ${x.nombre} sigue dañado: ${x.motivo}`);
+  } else if (paso.tipo === 'danar') {
+    const r = await danarEdificioDeReceta(prisma, { saveId, receta: paso.receta });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Dañado: ${r.nombre}`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

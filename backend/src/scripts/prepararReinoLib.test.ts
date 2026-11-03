@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parsearPasosReino } from './prepararReinoLib.js';
+import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 
 describe('pasos de prepararReino (3.2)', () => {
   it('interpreta cada paso', () => {
-    expect(parsearPasosReino(['subditos:orcos:3:soldado', 'reclutar:tirag-susig', 'guarnicion', 'milicia:2', 'relacion:clan-goshg:EXPANSION_TERRITORIAL_AGRESIVA:2', 'combate:a,b', 'ganado:murgol:2', 'convaleciente:guchapo', 'convaleciente:guchapo:combate', 'lider-muere:goirntes', 'alianza:a:b', 'vasallo-paga:serhu', 'domable:murgol', 'domador:10', 'punto-retirado:kirelon-arenoso', 'punto-retirado:murgol:5', 'sin-aliados'])).toEqual([
-      { tipo: 'subditos', pueblo: 'orcos', n: 3, rol: 'soldado' },
+    expect(parsearPasosReino(['subditos:orcos:3:soldado', 'reclutar:tirag-susig', 'guarnicion', 'milicia:2', 'relacion:clan-goshg:EXPANSION_TERRITORIAL_AGRESIVA:2', 'combate:a,b', 'ganado:murgol:2', 'convaleciente:guchapo', 'convaleciente:guchapo:combate', 'lider-muere:goirntes', 'alianza:a:b', 'vasallo-paga:serhu', 'domable:murgol', 'domador:10', 'punto-retirado:kirelon-arenoso', 'punto-retirado:murgol:5', 'sin-aliados', 'reparar', 'danar:cocina', 'subditos:orcos:4:sexo=f', 'subditos:orcos:2:cazador:sexo=m', 'subditos:orcos:2:sexo=pareja:soldado'])).toEqual([
+      { tipo: 'subditos', pueblo: 'orcos', n: 3, rol: 'soldado', sexo: 'alterna' },
       { tipo: 'reclutar', npcSlug: 'tirag-susig' },
       { tipo: 'guarnicion' },
       { tipo: 'milicia', n: 2 },
@@ -21,11 +21,21 @@ describe('pasos de prepararReino (3.2)', () => {
       { tipo: 'punto-retirado', especie: 'kirelon-arenoso', n: null },
       { tipo: 'punto-retirado', especie: 'murgol', n: 5 },
       { tipo: 'sin-aliados' },
+      { tipo: 'reparar' },
+      { tipo: 'danar', receta: 'cocina' },
+      { tipo: 'subditos', pueblo: 'orcos', n: 4, rol: null, sexo: 'f' },
+      { tipo: 'subditos', pueblo: 'orcos', n: 2, rol: 'cazador', sexo: 'm' },
+      { tipo: 'subditos', pueblo: 'orcos', n: 2, rol: 'soldado', sexo: 'alterna' },
     ]);
   });
   it('rechaza lo que no entiende', () => {
-    for (const mal of [['sin-aliados:1'], ['punto-retirado'], ['punto-retirado:murgol:0'], ['punto-retirado:murgol:21'], ['punto-retirado:murgol:2:3'], [], ['subditos:orcos'], ['subditos:orcos:0'], ['relacion:x:NADA:1'], ['guarnicion:2'], ['combate:'], ['ganado:murgol'], ['ganado:murgol:0'], ['convaleciente'], ['convaleciente:a:b'], ['convaleciente:a:combate:b'], ['convaleciente:'], ['convaleciente::combate'], ['lider-muere'], ['lider-muere:a:b'], ['alianza:a'], ['alianza:a:b:c'], ['vasallo-paga'], ['vasallo-paga:a:b'], ['domable'], ['domable:a:b'], ['domador'], ['domador:9'], ['domador:20'], ['domador:diez'], ['domador:10:1'], ['otra']]) {
+    for (const mal of [['sin-aliados:1'], ['punto-retirado'], ['punto-retirado:murgol:0'], ['punto-retirado:murgol:21'], ['punto-retirado:murgol:2:3'], [], ['subditos:orcos'], ['subditos:orcos:0'], ['relacion:x:NADA:1'], ['guarnicion:2'], ['combate:'], ['ganado:murgol'], ['ganado:murgol:0'], ['convaleciente'], ['convaleciente:a:b'], ['convaleciente:a:combate:b'], ['convaleciente:'], ['convaleciente::combate'], ['lider-muere'], ['lider-muere:a:b'], ['alianza:a'], ['alianza:a:b:c'], ['vasallo-paga'], ['vasallo-paga:a:b'], ['domable'], ['domable:a:b'], ['domador'], ['domador:9'], ['domador:20'], ['domador:diez'], ['domador:10:1'], ['otra'], ['reparar:1'], ['danar'], ['danar:a:b'], ['danar:Cocina'], ['subditos:orcos:2:sexo=x'], ['subditos:orcos:2:sexo=m:sexo=f'], ['subditos:orcos:2:a:b:sexo=m']]) {
       expect(parsearPasosReino(mal)).toHaveProperty('error');
     }
+  });
+  it('P378: el sexo alterna por defecto y se puede fijar', () => {
+    expect([0, 1, 2, 3].map((i) => sexoDelSubdito('alterna', i))).toEqual(['M', 'F', 'M', 'F']);
+    expect([0, 1, 2].map((i) => sexoDelSubdito('f', i))).toEqual(['F', 'F', 'F']);
+    expect([0, 1].map((i) => sexoDelSubdito('m', i))).toEqual(['M', 'M']);
   });
 });

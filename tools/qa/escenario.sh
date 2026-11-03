@@ -7,15 +7,19 @@
 #   escenario.sh lista                          las instantáneas y qué tienen
 #   escenario.sh guardar <nombre> "<qué tiene>"  guarda la base de juego como tools/qa/escenarios/<nombre>.dump
 #   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego
-#   escenario.sh avanzar <partida> <días>        avanza N días con el avance diario de siempre (para el juego y lo
-#                                               vuelve a arrancar: el servidor no ve este avance en su cola)
+#   escenario.sh avanzar <partida> <días> [--reparar]  avanza N días con el avance diario de siempre (para el juego y lo
+#                                               vuelve a arrancar: el servidor no ve este avance en su cola). P369: con
+#                                               --reparar avanza día a día y repara tras cada día los edificios dañados con
+#                                               la función del botón «Reparar» (cuesta materiales; sin ellos lo avisa y sigue)
 #   escenario.sh dar <partida> <slug>:<n>…        mete objetos del catálogo en su inventario (origen «escenario de prueba»)
 #   escenario.sh dar-reino <partida> comida=N bebida=N goirnos=N tesoro=N almacen:<slug>:<n> edificio:<receta>…
 #                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
 #                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), edificio:<receta> ya terminado, objetos del
 #                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
-#                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>], reclutar:<npc>, guarnicion,
+#                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] (P378: por defecto alterna macho y hembra),
+#                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
+#                                               el edificio activo de esa receta, como una tormenta), reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
 #                                               combate:<npc>,<npc>…; QA-268: lider-muere:<facción> (el líder muere de viejo con 2
 #                                               candidatos), alianza:<A>:<B> (alianza, ruptura y alianza nueva), vasallo-paga:<vasallo>
@@ -79,9 +83,10 @@ case "${1:-}" in
     grep "^| \`$nombre\` |" "$INDICE" || true
     ;;
   avanzar)
-    partida="${2:?falta la partida}"; dias="${3:?faltan los días}"
+    partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"
+    [ -z "$extra" ] || [ "$extra" = "--reparar" ] || { echo "«$extra»: solo se admite --reparar"; exit 2; }
     bash tools/playwright-e2e/arrancar-juego.sh --parar > /dev/null
-    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias") || { bash tools/playwright-e2e/arrancar-juego.sh; exit 1; }
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { bash tools/playwright-e2e/arrancar-juego.sh; exit 1; }
     bash tools/playwright-e2e/arrancar-juego.sh
     ;;
   dar)
@@ -107,6 +112,8 @@ case "${1:-}" in
     psql "$ADMIN" -Atq -c "CREATE DATABASE $temporal" || { echo "No pude crear la base $temporal"; exit 1; }
     # Como en `cargar`: pg_restore sale con 1 por avisos que no rompen nada.
     pg_restore --no-owner -d "$tmpurl" "$DIR/$nombre.dump" 2>/dev/null || true
+    # Una instantánea vieja no trae las columnas nuevas: se aplican las migraciones (como `cargar`, que lo hace al arrancar).
+    (cd backend && DATABASE_URL="$tmpurl" DIRECT_URL="$tmpurl" npx prisma migrate deploy >/dev/null) || { echo "No pude aplicar las migraciones a $temporal"; exit 1; }
     codigo=0
     case "$1" in
       dar|dar-reino|preparar) ESCENARIO_URL="$tmpurl" bash "$0" "$@" || codigo=$? ;;
@@ -115,6 +122,6 @@ case "${1:-}" in
     exit "$codigo"
     ;;
   *)
-    sed -n '2,37p' "$0"; exit 2
+    sed -n '2,41p' "$0"; exit 2
     ;;
 esac
