@@ -21,8 +21,9 @@ genera() {
   local tipo=$1 slug=$2 var=${3:-}; shift 2; [ $# -gt 0 ] && shift
   [ "${1:-}" = -- ] && shift
   echo "== $tipo/$slug ${var:+($var)} $*"
-  local out; out=$(VARIANTE=$var bash "$R/image-generator/scripts/probar.sh" "$tipo" "$slug" fotorreal "$SEED" "$STEPS" "$@" | tee /dev/stderr) || true   # si probar.sh falla, lo dice el [ -s ] de abajo (ABORTO, exit 3)
-  IMAGEN=$(sed -n 's/^imagen: \([^ ]*\).*/\1/p' <<< "$out" | tail -1)
+  # tee a un archivo, no a /dev/stderr: con la salida a un log, abrir /dev/stderr lo vacía en cada imagen.
+  VARIANTE=$var bash "$R/image-generator/scripts/probar.sh" "$tipo" "$slug" fotorreal "$SEED" "$STEPS" "$@" | tee "$T/salida.txt" || true   # si probar.sh falla, lo dice el [ -s ] de abajo (ABORTO, exit 3)
+  IMAGEN=$(sed -n 's/^imagen: \([^ ]*\).*/\1/p' "$T/salida.txt" | tail -1)
   [ -s "$IMAGEN" ] || { echo "ABORTO: $slug${var:+ ($var)} no dejó imagen"; exit 3; }
   local gradada; gradada=$(ls -t "${IMAGEN%.png}"-*.png 2>/dev/null | head -1 || true)
   [ -n "$gradada" ] && IMAGEN=$gradada
