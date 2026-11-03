@@ -426,6 +426,20 @@ function esErrataDeAlias(alias: string, palabra: string): boolean {
 /// sistema determinista, aunque el modelo narrara la pelea con total normalidad. Si la coincidencia
 /// exacta falla, se prueba también con distancia de edición ≤2 palabra a palabra, solo sobre
 /// palabras de 5+ letras (evita falsos positivos en palabras cortas y comunes).
+/// A quién le habla el jugador (QA-289, bench 17): «Le pregunto a Ulkha Ketg…» sin comillas respondía el primer NPC
+/// detectado (un orco metido en escena por un hecho de sus huellas). Orden: el citado entre comillas, el que la
+/// acción nombra (nombre entero y luego alias), y si no nombra a nadie, el primero.
+export function elegirInterlocutor<T extends NpcWithAliases & { name: string }>(action: string, explicito: T | null, candidatos: T[]): T | null {
+  if (explicito) return explicito;
+  const accion = normalizeText(action);
+  return (
+    candidatos.find((n) => matchesAliasBoundary(accion, normalizeText(n.name))) ??
+    candidatos.find((n) => matchNpcAliases(action, [n]).length > 0) ??
+    candidatos[0] ??
+    null
+  );
+}
+
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {
   const normalized = normalizeText(text);
   // Sin puntuación pegada (2026-09-28): "mercado." o "arena," se comparaban tal cual y se saltaban

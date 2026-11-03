@@ -167,6 +167,9 @@ interface TurnContext {
   /// bloque "TU PROPIA NARRACIÓN DEL TURNO ANTERIOR" de `worldFacts` (turnResolution.ts), pero
   /// aparte y sin formatear — aquí hace falta el texto crudo para comparar, no la instrucción.
   lastNarrationText?: string;
+  /// QA-289 (fila 1, una voz por llamada; P263/P311): el NPC al que habla el jugador, cuya réplica escribe
+  /// `generateNpcReply` aparte. Con él, el narrador no pone palabras en boca de nadie.
+  replicaAparte?: string;
   /// Ver `hasFalseCombatHit` más abajo — true cuando el intercambio de combate de este turno
   /// (resolveExchange) resolvió 'ataque_falla' o 'parada_en_seco': los dos únicos resultados donde
   /// NINGÚN lado conecta un golpe de verdad. Si la narración describe contacto/daño de todos
@@ -942,6 +945,17 @@ export interface NpcReplyContext {
 const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
 const PRESENTA_EN_HECHO = /\b(se presenta|le dice su nombre|les dice su nombre|dice llamarse|da su nombre|revela su nombre|su nombre es)\b/i;
 
+/// QA-289 (fila 1): quita lo citado entre comillas («…», “…”, "…", también mezcladas: «…") y los dos puntos que lo presentan, para que la
+/// réplica del NPC sea solo la de `generateNpcReply`. Deja la frase que la rodea («Ulkha frunce el ceño.»).
+export function quitarCitas(texto: string): string {
+  return texto
+    .replace(/\s*:?\s*[«“"][^«»“”"]*[»”"]/g, '')
+    .replace(/\s+([.,;])/g, '$1')
+    .replace(/([.,;])[.,;]+/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function contieneNombre(texto: string, nombre: string): boolean {
   return new RegExp(`(^|[^\\p{L}])${nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'iu').test(texto);
 }
@@ -1226,7 +1240,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} DIÁLOGO: si el jugador le habla a un NPC en escena, ese NPC le responde en primera persona entre comillas, con su nombre y su personalidad (ver DIÁLOGO arriba).`
+              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} ${ctx.replicaAparte ? `DIÁLOGO: lo que responde ${ctx.replicaAparte} lo escribe otra voz aparte; tú narra solo sus gestos, sin nada entre comillas.` : 'DIÁLOGO: como mucho una frase corta de un NPC entre comillas, y nunca hables por el personaje del jugador.'}`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
@@ -1274,7 +1288,7 @@ CAMPOS OPCIONALES (todos poco frecuentes, la mayoría de turnos van en null): si
 
 LORE Y PRESENCIA: No inventes fauna, flora, personajes con nombre, clanes ni objetos con historia propia que no aparezcan en HECHOS DEL MUNDO o en CONOCIMIENTO DE FONDO. Pero ojo: CONOCIMIENTO DE FONDO es solo trasfondo/ambientación — NUNCA es licencia para hacer aparecer en persona, en esta escena, a un personaje que solo esté ahí. Un personaje de CONOCIMIENTO DE FONDO puede motivar un detalle, un rumor, un objeto o una referencia indirecta, pero solo puede aparecer físicamente si además está en HECHOS DEL MUNDO o en NPCs EN ESCENA.
 
-DIÁLOGO (obligatorio si el jugador pregunta, saluda o dirige la palabra a un NPC en escena): ese NPC EXACTO — usa su nombre y personalidad reales de "PERSONAJE EN ESCENA", nunca lo sustituyas por un rol genérico ni le cambies el sexo — tiene que responderle de verdad dentro de esa misma narración, hablando en primera persona entre comillas. Dejar la pregunta sin respuesta, resumirla en tercera persona genérica, o hacer que el propio personaje del jugador repita sus mismas palabras como si fueran la respuesta de otro, es un fallo grave. Si hay diálogo real (no solo tensión), puedes extenderte algo más de lo habitual para darle espacio a esa voz — no lo comprimas a una sola frase.
+DIÁLOGO (una sola voz): cuando el jugador habla a un NPC, la réplica de ese NPC la escribe otra voz aparte y se añade tras tu narración; tú narras cómo reacciona (gestos, mirada, silencio), con su nombre real de "PERSONAJE EN ESCENA" (nunca un rol genérico ni otro sexo), sin nada entre comillas. En los demás turnos, un NPC en escena puede decir como mucho una frase corta entre comillas, si viene a cuento. Nunca hables por el personaje del jugador ni le inventes respuestas, y no repitas lo que un NPC ya dijo.
 
 SALUD: fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null.
 

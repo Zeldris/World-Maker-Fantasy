@@ -29,7 +29,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, presentaNombreEnAccion, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, presentaNombreEnAccion, quitarCitas, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -45,7 +45,7 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -3680,7 +3680,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // real (no fauna); si no hay cita explícita, cae al primero real como hasta ahora.
   const dialoguePartners = npcsInScene.filter((n) => !faunaSlugs.has(n.slug));
   const explicitDialogueTarget = explicitTarget && !faunaSlugs.has(explicitTarget.slug) ? explicitTarget : null;
-  const dialogueTarget = detectsDialogueIntent(action) ? (explicitDialogueTarget ?? dialoguePartners[0] ?? null) : null;
+  const dialogueTarget = detectsDialogueIntent(action) ? elegirInterlocutor(action, explicitDialogueTarget, dialoguePartners) : null;
 
   // Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
   // habilidad suelta) — solo para NPC con `interactionTypes` sembrado a mano en el catálogo (la
@@ -4524,6 +4524,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
     criticalFactsCount: contextBlocks.length,
     lastNarrationText: lastNarration?.text,
+    ...(dialogueTarget ? { replicaAparte: dialogueTarget.nombreVisible ?? dialogueTarget.name } : {}),
     combatBothMissed,
     combatRealHitLanded,
     nonExchangeAttackHitLanded,
@@ -4965,7 +4966,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
       });
       if (npcReply) {
-        narration.narration = `${narration.narration} ${npcReply}`;
+        // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
+        narration.narration = `${quitarCitas(narration.narration)} ${npcReply}`;
       }
     } catch (err) {
       console.warn(`[turno] generateNpcReply falló, se omite la réplica de este turno (saveId=${saveId}):`, err);

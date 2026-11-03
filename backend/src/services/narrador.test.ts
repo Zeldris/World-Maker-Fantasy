@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  quitarCitas,
   reinoIntentDetected,
   stripLeakedJson,
   stripNonLatinScript,
@@ -2035,11 +2036,24 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     const p = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.' }).prompt;
     const cola = p.slice(p.indexOf('PERSONAJE:\n'));
     expect(p.indexOf('LORE Y PRESENCIA: No inventes fauna')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
-    expect(p.indexOf('DIÁLOGO (obligatorio')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
-    expect(cola).not.toMatch(/No inventes fauna|DIÁLOGO \(obligatorio|nunca empeores/);
+    expect(p.indexOf('DIÁLOGO (una sola voz)')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
+    expect(cola).not.toMatch(/No inventes fauna|DIÁLOGO \(una sola voz|nunca empeores/);
     expect(cola).toMatch(/Recuerda LORE Y PRESENCIA/);
-    expect(cola).toMatch(/DIÁLOGO: si el jugador le habla a un NPC en escena/);
+    expect(cola).toMatch(/DIÁLOGO: como mucho una frase corta de un NPC/);
     expect(p).toContain('PERSONAJE:\nGorhorn, Superviviente.\n\nHECHOS DEL MUNDO');
+  });
+
+  it('con réplica aparte, el recordatorio pide solo gestos, sin comillas (QA-289 fila 1)', () => {
+    const p = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.', replicaAparte: 'Ulkha Ketg' }).prompt;
+    const cola = p.slice(p.indexOf('PERSONAJE:\n'));
+    expect(cola).toContain('DIÁLOGO: lo que responde Ulkha Ketg lo escribe otra voz aparte');
+    expect(cola).not.toMatch(/como mucho una frase corta/);
+  });
+
+  it('quitarCitas deja la narración sin réplicas, también con comillas mezcladas (QA-289 fila 1, bench 17)', () => {
+    expect(quitarCitas('Ulkha Ketg se detiene. Su voz es baja: «¿Qué buscas aquí, Gorhorn?". Se ajusta el cuchillo.')).toBe('Ulkha Ketg se detiene. Su voz es baja. Se ajusta el cuchillo.')
+    expect(quitarCitas('Ulkha frunce el ceño. "Soy Ulkha Ketg." Mira al norte.')).toBe('Ulkha frunce el ceño. Mira al norte.');
+    expect(quitarCitas('Gorhorn bebe del odre.')).toBe('Gorhorn bebe del odre.');
   });
 
   it('hechosBlock es literal del prompt, para que el intento 2 pueda recortarlo', () => {

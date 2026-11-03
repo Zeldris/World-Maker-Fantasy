@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -1207,5 +1207,21 @@ describe('nombraPorNombreVisible (P327, usuaria 2026-10-26)', () => {
 
   it('«Alguien» (sin raza conocida) nunca casa: sale en cualquier frase', () => {
     expect(nombraPorNombreVisible('Busco a alguien que me ayude', 'Alguien')).toBe(false);
+  });
+});
+
+describe('elegirInterlocutor (QA-289, bench 17)', () => {
+  const orco = { id: 'o', name: 'Orco Enfurecido', aliases: ['orco enfurecido'] };
+  const ulkha = { id: 'u', name: 'Ulkha Ketg', aliases: ['ulkha', 'jefa del clan serhu'] };
+
+  it('responde el NPC que la acción nombra, aunque no sea el primero detectado', () => {
+    expect(elegirInterlocutor('Le pregunto a Ulkha Ketg qué la trae al paso.', null, [orco, ulkha])).toBe(ulkha);
+    expect(elegirInterlocutor('Le digo a la jefa del clan Serhu que vengo en paz', null, [orco, ulkha])).toBe(ulkha);
+  });
+
+  it('el citado entre comillas manda; sin nombre, el primero; sin candidatos, nadie', () => {
+    expect(elegirInterlocutor("Le hablo a 'Orco Enfurecido' y a Ulkha", orco, [ulkha, orco])).toBe(orco);
+    expect(elegirInterlocutor('Le pregunto qué hace aquí', null, [orco, ulkha])).toBe(orco);
+    expect(elegirInterlocutor('Hola', null, [])).toBeNull();
   });
 });
