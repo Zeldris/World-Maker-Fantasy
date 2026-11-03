@@ -146,6 +146,18 @@ test('estado: una nota larga que dice «convaleciente» no entra en AVISOS', asy
   assert.doesNotMatch(salida, /AVISOS:.*Gorhorn nació/);
 });
 
+// P409: los chips del diario llevan la bio en un tooltip oculto (`.chip-tooltip`); AVISOS lee el nombre, no la bio.
+test('estado: AVISOS no vuelca el tooltip oculto de los chips', async () => {
+  const estado = await ayuda('estado');
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const chip = (n) => `<button class="chip-inline"><span>🪓</span>${n}<span class="chip-tooltip" style="display:none">Nació en las llanuras de arena roja.</span></button>`;
+  await page.setContent(`<body><header>HUD</header><main><p>El orco te golpea de paso. Orca golpea a ${chip('Gorhorn')}, que acusa el impacto.</p></main></body>`);
+  const salida = await estado(page);
+  await page.close();
+  assert.match(salida, /AVISOS: El orco te golpea de paso\. Orca golpea a 🪓\s?Gorhorn , que acusa el impacto\.$/m);
+  assert.doesNotMatch(salida, /arena roja/);
+});
+
 // P392/P403: combate.js ante un convaleciente. La tarjeta del rival va en mayúsculas por CSS (innerText «MATAR»),
 // como OfferCard.tsx; el aviso de la jugadora es el de CombatPanel.tsx.
 const htmlCombate = ({ rival = false, jugadora = false } = {}) => `<body><style>.up{text-transform:uppercase}</style>

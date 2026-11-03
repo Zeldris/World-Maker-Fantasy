@@ -346,7 +346,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           lootItemNames: opts.lootItemNames,
           isItemUse: opts.isItemUse,
         },
-        { onExchangeResolved: (exchange, npcName) => setDiceReveal({ exchange, npcName }) },
+        { onExchangeResolved: (exchange, npcName) => { if (!exchange.golpeDeGracia) setDiceReveal({ exchange, npcName }) } },
       )
       setQuests(updatedQuests)
       // Bug real (auditoría 2026-08-06): matar/decapitar a un NPC de facción en combate cambia
@@ -919,7 +919,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // Bloquea composer/botones desde ya si hay iniciativa por delante, aunque todavía no haya
     // empezado a rodar (primero va el intercambio).
     if (params.nextInitiativeRoll && !params.finDePartida) setAwaitingNextInitiative(true)
-    if (params.combatExchangeDisplay && !params.finDePartida) {
+    // P408 (tanda 82): un golpe de gracia no se tira (`CombatExchangeBadge` solo lo cuenta), así que
+    // no hay dados que esperar: se aplica ya, como un turno sin intercambio. Antes esperaba a la
+    // reserva de 11 s y la tarjeta del rematado seguía «Convaleciente» mientras tanto.
+    if (params.combatExchangeDisplay && !params.combatExchangeDisplay.golpeDeGracia && !params.finDePartida) {
       setAwaitingExchangeApply(true)
       // Se resuelve una sola vez: por `onAllLanded` (lo normal) o por la reserva de abajo. La que
       // llega primero cancela la otra; sin esto la reserva volvía a aplicar el intercambio un

@@ -1172,6 +1172,26 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
     expect(result.current.combat.awaitingExchangeApply).toBe(false)
   })
 
+  it('P408: un golpe de gracia (no se tira) se aplica de inmediato, sin esperar a unos dados que no hay', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'CONVALECIENTE',
+        combatExchangeDisplay: { ...exchangeDisplay, golpeDeGracia: true },
+        combateIniciado: { npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'MUERTO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Remato a Ruptidar', {}))
+
+    expect(result.current.condicionFisica).toBe('CONVALECIENTE')
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('MUERTO')
+    expect(result.current.combat.awaitingExchangeApply).toBe(false)
+  })
+
   it('con finDePartida en el mismo turno que combatExchangeDisplay: se aplica de inmediato, sin retraso', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
