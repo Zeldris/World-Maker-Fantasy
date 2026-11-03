@@ -246,7 +246,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con
   `boceto.plan`, `--planes` o un plan) deja los PNG junto al SVG. Test: `tools/qa/tests/test_bocetos.py`.
 - **Cadena fotorreal (`IMG-23`…`IMG-33`, `QA-282`):** `PERFIL=fotorreal` en `generar.sh` (receta, `bin-nuevo/sd-cli` y
-  el LoRA de `image-generator/loras/`, `LORA=<peso>`); `image-generator/scripts/planos.sh` (plancha, sujeto, montaje y
+  el LoRA `image-generator/loras/<nombre>.safetensors`, que no se sube, `LORA=<peso>`); `image-generator/scripts/planos.sh` (plancha, sujeto, montaje y
   armonías) con `montar.sh` y `encuadre.py` (el `encuadre` de la ficha); `gradar.sh` (gradación por momento, LUT en
   `estilo/lut/`) y `medir.sh <img> <tipo> <momento>` (línea `MEDIANA Y=`), siempre con ruta absoluta desde un
   worktree. Tests: `tools/qa/tests/test_generar_perfil.py`, `test_gradar.py`, `test_montar.py`, `test_encuadre.py`.
