@@ -94,7 +94,7 @@ subagente de cada tanda), antes de la primera acción, relee
   los ganchos piden la marca de revisión), y **se fusiona solo con el CI en verde**, también con «fusiona
   directamente»: eso quita esperar revisiones, nunca el CI ni la retro presentada a la usuaria (`QA-95`).
 - **Casos especiales**, en [`ramas-y-main.md`](docs/runbooks/ramas-y-main.md): «lleva a `main`» con la usuaria fuera
-  (`QA-238`), cuota de Actions agotada (`QA-215`), PR de una sesión local (`QA-184`, «PR listo»), tareas `INS-*`
+  (`QA-238`), cuota de Actions agotada (`QA-215`), PR de una sesión local (`QA-285`, con `gh`; «PR listo» sin él), tareas `INS-*`
   (`QA-259`) y la rama de un subagente (`tools/qa/fusionar.sh`).
 
 ## Antes de ir a `main`: tres fases
