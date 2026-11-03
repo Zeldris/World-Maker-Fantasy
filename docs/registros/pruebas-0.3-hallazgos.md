@@ -12,16 +12,16 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (87): P16, P27, P49, P66, P99, P116, P128, P129, P133, P136, P158, P169, P173,
+- **Pendientes** (86): P16, P27, P49, P66, P99, P116, P128, P129, P133, P136, P158, P169, P173,
   P177, P188, P203, P205, P248, P250, P251, P252, P254, P259, P262, P263, P264, P265, P266, P267,
   P269, P270, P272, P273, P274, P299, P308, P309, P311, P317, P319, P325, P327, P328, P331, P332,
   P333, P334, P335, P336, P337, P338, P339, P340, P342, P343, P353, P354, P358, P359, P360, P361,
   P362, P363, P364, P366, P367, P368, P369, P370, P371, P372, P374, P375, P376, P377, P378, P379,
-  P380, P381, P382, P383, P384, P385, P386, P387, P388, P389.
+  P380, P381, P382, P383, P384, P385, P386, P387, P388.
 - **Pendientes de una decisión de la usuaria** (1): P373.
-- **Arreglados en parte** (32): P12, P29, P51, P69, P70, P82, P107, P131, P151, P155, P163, P175,
+- **Arreglados en parte** (33): P12, P29, P51, P69, P70, P82, P107, P131, P151, P155, P163, P175,
   P180, P182, P184, P186, P191, P223, P243, P245, P253, P288, P292, P294, P295, P300, P301, P306,
-  P307, P310, P324, P355.
+  P307, P310, P324, P355, P389.
 - **Arreglados, sin comprobar jugando** (5): P204, P244, P268, P271, P365.
 - **Comprobados jugando** (236): P1, P2, P3, P4, P6, P7, P8, P9, P11, P13, P14, P15, P17, P18, P19,
   P20, P21, P24, P26, P28, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43, P45, P46, P47,
@@ -442,4 +442,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P386 | Tanda 69 (2026-11-03, herramientas, reino-combate-capitan): `preparar nivel:19` sobre un escenario con el combate ya abierto deja los 10 puntos de atributo sin poder repartir («+1 Constitución» desactivado: «Estás en combate.», «Solo consulta»), así que Gorhorn sigue muriendo en la ronda 2 y P292 no se puede ver. Falta paso de preparación: repartir los puntos (p. ej. `nivel:<n>:<atributo>`) o un escenario del capitán con Gorhorn subido antes de abrir el combate | Herramienta 2026-11-03: `preparar nivel:<n>:<atributo>,…` reparte todos los puntos por turno con la función del botón (`repartirPuntoDeAtributo`), también con el combate abierto; probado sobre `reino-combate-capitan` (`nivel:19:constitucion,fuerza`: +5 y +5). Sin ver jugando (tanda 70) |
 | P387 | Tanda 69 (2026-11-03, herramientas, nube): el driver de Playwright (`tools/playwright-e2e/driver.mjs`) muere tras cada `escenario.sh cargar\|preparar\|avanzar` y `relanza.sh` es solo de la Deck; el subagente lo relanzó a mano con `setsid node tools/playwright-e2e/driver.mjs < /dev/null &` | pendiente |
 | P388 | Tanda 70 (2026-11-03, herramientas, reino-combate-capitan + `nivel:19:constitucion,fuerza`): en el panel de combate solo salen los 3 rivales, sin Tirag Susig, Hagar Kiugh ni Ruka, y Gorhorn nivel 19 muere igual en la ronda 2 (Defenderse y Esquivar, 3 intentos). Sin compañeros en el combate P292 no se puede ver: hace falta un escenario del capitán con los compañeros dentro del combate y una jugadora que aguante (con P370) | Herramienta 2026-11-03: el `reino-combate-capitan.dump` guardado (2026-10-21) era anterior a los compañeros en el Grupo 1; rehecho con `construir.sh hacer reino-combate-capitan`, el combate lleva a Tirag Susig y Hagar Kiugh (Ruka no es compañero). Tanda 71 (2026-11-03): parcial. Tirag Susig y Hagar Kiugh están en el combate (tiran iniciativa en el diario: Hagar 23, Tirag 16), pero en el panel de combate (ENEMIGOS y tarjetas de rivales) solo salen los 3 enemigos; ningún bando de Gorhorn visible y no atacan ni reciben golpes (P389). |
-| P389 | Tanda 71 (2026-11-03, reino-combate-capitan rehecho + nivel:19:constitucion,fuerza): con Tirag Susig y Hagar Kiugh dentro del combate (aparecen en la iniciativa del diario), el panel de combate no los muestra en ningún bando y nunca actúan: en 3 intentos, las rondas 1-2 solo golpean a Gorhorn la orca capitana (dos veces por ronda), el orco y la faerus, y Gorhorn (nivel 19) muere en la ronda 2. Sin compañeros activos P292 no se puede ver (relacionado con P388, P370) | Pendiente |
+| P389 | Tanda 71 (2026-11-03, reino-combate-capitan rehecho + nivel:19:constitucion,fuerza): con Tirag Susig y Hagar Kiugh dentro del combate (aparecen en la iniciativa del diario), el panel de combate no los muestra en ningún bando y nunca actúan: en 3 intentos, las rondas 1-2 solo golpean a Gorhorn la orca capitana (dos veces por ronda), el orco y la faerus, y Gorhorn (nivel 19) muere en la ronda 2. Sin compañeros activos P292 no se puede ver (relacionado con P388, P370) | ✅ 2026-11-03 (arreglado, falta jugarlo): diagnóstico: los compañeros SÍ actúan (golpe gratis, dejan HERIDO a su rival) y nadie les ataca porque el capitán manda todo a Gorhorn; el panel de combate solo lista rivales (de diseño). Lo que no se veía era su turno: con el Ollama simulado se narraba «El personaje observa con atención…», sin nombres. `noNombraANingunCombatiente` (combateMultipleNarracion.ts) descarta la narración que no nombra a ninguno de los dos y cae al determinista («Hagar Kiugh golpea a Orca desconocida, que acusa el impacto.»). Falta: verlo jugando (tanda 72, con P292); ¿lista de aliados en el panel? decide la usuaria |
