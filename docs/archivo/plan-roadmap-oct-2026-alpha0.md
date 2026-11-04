@@ -148,7 +148,7 @@ commit + push en `claude/wonderful-volta-662qt8` al cerrar cada fase, y tacha el
 - **`GameView.tsx`**: extraer a hooks al menos los bloques de estado+handlers de zona/caza/cadáveres
   (`zonaModalOpen`, `saquearSoloNpcSlug`, `handleCazarEnZona`, `handleHuntResolved`…) y de
   Reino/mercado si están en GameView, siguiendo el patrón de `hooks/useCombatFlow.ts`.
-- **Registros**: en `docs/registros/deuda-tecnica-hallazgos.md` marcar como resueltas las entradas
+- **Registros**: en `docs/records/deuda-tecnica-hallazgos.md` marcar como resueltas las entradas
   que el código ya resolvió (guards de `endedAt` en compañeros, `npcAttributesForLevel`, y
   cualquier otra que se compruebe con grep), y mover las cerradas de `revisar-partida-hallazgos.md`,
   `checklist-pruebas-juego.md` y `deuda-tecnica-hallazgos.md` a `docs/archivo/` (convención

@@ -1,7 +1,7 @@
 # Deuda técnica — hallazgos cerrados (2026-08-25 → 2026-09-15)
 
 **ARCHIVADO (2026-09-29, Fase 7 del plan de octubre):** entradas movidas SIN editar desde
-[../registros/deuda-tecnica-hallazgos.md](../registros/deuda-tecnica-hallazgos.md) porque el código
+[../records/deuda-tecnica-hallazgos.md](../records/deuda-tecnica-hallazgos.md) porque el código
 ya las resolvió (comprobado con grep; ver la tabla "Estado verificado" de ese archivo) o eran
 "confirmado sin hallazgo". El registro vivo conserva solo lo abierto/parcial.
 
@@ -143,7 +143,7 @@ partidas), pero esa petición concreta quedaba huérfana y sin ningún aviso al 
 (`turn.ts:641-673`), mismo patrón que ya usaba `/turn/narrate` (`request.log.error(err)` + 500
 genérico "Error clasificando el turno" al cliente, sin filtrar detalles internos). No corrige la
 causa de fondo (Ollama puede seguir colgándose alguna vez, ver
-`docs/registros/checklist-pruebas-juego.md` § "Cuelgue de Ollama"), pero convierte un cuelgue silencioso e
+`docs/records/checklist-pruebas-juego.md` § "Cuelgue de Ollama"), pero convierte un cuelgue silencioso e
 indefinido en un error visible e inmediato que permite reintentar. Pendiente de `tsc -b` real tras
 el próximo reinicio del backend (no se pudo compilar desde el sandbox de esta sesión, revisado a
 mano con cuidado: tipos ya importados, patrón idéntico al ya validado en `/turn/narrate`).

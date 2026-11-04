@@ -4,7 +4,7 @@
 **Qué cubre:** cómo se mueve el jugador dentro de una `Location`, cómo se mueve el mundo con él,
 cuándo hay encuentro y qué pasa después (Interactuar, combate, caza, recolección, saqueo). Es la
 forma principal de jugar desde las fases 1-5 del
-[plan de mecánicas por zona](../registros/plan-mecanicas-por-zona-2026-09-28.md): lo que ocurre en un
+[plan de mecánicas por zona](../records/plan-mecanicas-por-zona-2026-09-28.md): lo que ocurre en un
 punto del mapa se hace desde el mapa, no con botones sueltos.
 **Código:** `backend/src/services/zonaPosicion.ts` (geometría pura), `services/zonePoints.ts`
 (puntos del mundo), `services/dynamicMode.ts` (Interactuar), `services/caza.ts` (caza en grupo),

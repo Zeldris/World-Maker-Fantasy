@@ -4340,7 +4340,7 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
 });
 
 // Ciclo completo de "dar objeto a NPC" (2026-08-31, mecánica real — cierra el bug documentado en
-// docs/registros/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
+// docs/records/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
 // el inventario y reapareció en 4 turnos posteriores). Este test cubre justo el escenario que
 // entrega.integration.test.ts NO puede probar aislado: que el objeto entregado sobrevive a la
 // MUERTE del NPC y sale de verdad en un saqueo real vía /turn/narrate, mismo pipeline
@@ -7898,7 +7898,7 @@ describe('Ataque de apertura fallido contra fauna no agresiva no abre combate (h
 // ataque en vez de defensa) y perdía el intercambio contra la Destreza real del NPC. Causa raíz:
 // `Save.pendingNpcAttack` ya persistía bien, pero `GET /saves/:id` nunca lo exponía, así que el
 // frontend no podía rehidratar `combatAwaitingDefense` tras una recarga. Ver
-// docs/registros/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
+// docs/records/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
 describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga en defensa a ciegas, 2026-08-29)', () => {
   let saveId: string;
   let npcId: string;
@@ -7975,7 +7975,7 @@ describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga 
 });
 
 // Combate "fantasma" tras huir/viajar (BUG REAL confirmado 2 veces en vivo, mitigado parcialmente
-// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/registros/checklist-pruebas-juego.md).
+// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/records/checklist-pruebas-juego.md).
 // Investigación 2026-08-29: `detectNpcsInScene` (npcScene.ts) trata a un NPC "ya establecido en
 // esta partida" (tiene `NpcState` propio) como candidato SIEMPRE, sin importar la región actual
 // (`encounteredIds.has(npc.id)` gana sobre el filtro geográfico) — comportamiento INTENCIONAL, ya

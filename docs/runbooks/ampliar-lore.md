@@ -3,18 +3,18 @@
 **Qué es:** los pasos a seguir cuando la usuaria escriba **"ampliamos lore"** (o pida una sesión de
 añadir/mejorar lore en general, no un bug ni una feature de código). Objetivo: la próxima vez,
 arrancar directamente en este modo de trabajo en vez de tener que redescubrirlo. Ver también
-`docs/registros/ampliar-lore-checklist.md` — el registro persistente de qué se ha añadido y qué falta llevar
+`docs/records/ampliar-lore-checklist.md` — el registro persistente de qué se ha añadido y qué falta llevar
 a código, que sobrevive entre sesiones (a diferencia de la lista de tareas de una conversación).
 
 ## 0. Antes de nada
 
-Leer `docs/registros/ampliar-lore-checklist.md` — la sección "Pendiente de código" puede tener trabajo de una
+Leer `docs/records/ampliar-lore-checklist.md` — la sección "Pendiente de código" puede tener trabajo de una
 sesión anterior sin cerrar. Mencionarlo si hay algo ahí antes de seguir con lore nuevo.
 
 ## 0.5. Auditar la enciclopedia contra el canon (`QA-247`)
 
 Cuando la sesión revisa lo que ya hay (como en `QA-243`), la auditoría se reparte en **tandas pequeñas**
-(`orchestrate-dealer`, con Sonnet). Cada tanda:
+(`gw-orchestrate-dealer`, con Sonnet). Cada tanda:
 
 - cubre una región o un catálogo (la fauna de la Ciénaga, los objetos de Cristal Helado), no un bloque entero;
 - empieza por el resumen de `docs/canon-opencode/` y por la sección «Enciclopedia y lore» de `docs/mapa-agente.md`;
@@ -22,7 +22,7 @@ Cuando la sesión revisa lo que ya hay (como en `QA-243`), la auditoría se repa
 - tiene un tope de unas 30 llamadas;
 - devuelve una tabla de hallazgos con columnas elemento · qué dice el juego · qué dice el canon · propuesta.
 
-La principal revisa la tabla, la presenta a la usuaria y apunta lo aplicado en `docs/registros/lore-hallazgos.md`.
+La principal revisa la tabla, la presenta a la usuaria y apunta lo aplicado en `docs/records/lore-hallazgos.md`.
 Los arreglos aprobados se aplican también en tandas de 30-40 llamadas (`QA-277`), con el mismo encargo, y la principal
 revisa el diff entero.
 Medida en `QA-243`: con un bloque por tanda, el contexto medio llegó a 110k y las tandas fueron el 40 % de la
@@ -65,13 +65,13 @@ de golpe). El trabajo, en orden:
 5. **Actualizar todos los `.md` afectados**, no solo el que la usuaria mencionó — un cambio de
    biografía casi siempre toca personajes.md + areas.md + npcs.md a la vez si hay NPCs con bios
    cruzadas.
-6. **Registrar en `docs/registros/ampliar-lore-checklist.md`**: qué se escribió (MD, hecho ya) y qué queda
+6. **Registrar en `docs/records/ampliar-lore-checklist.md`**: qué se escribió (MD, hecho ya) y qué queda
    para cuando se haga la pasada de código (bios de NPCs en `worldCatalog.ts`, chunks RAG en
    `loreChunks.ts` + `npm run reindex-lore`, nuevas criaturas/objetos en el catálogo técnico, etc.)
    — la sesión de lore NO toca código salvo que la usuaria lo pida explícitamente; solo dejarlo
    anotado para la pasada posterior.
 7. **Si la sesión cambió vocabulario, tono o nombres de forma notable** (no una corrección menor),
-   anotarlo TAMBIÉN bajo "Pendiente de dataset" en `docs/registros/ampliar-lore-checklist.md` — el narrador
+   anotarlo TAMBIÉN bajo "Pendiente de dataset" en `docs/records/ampliar-lore-checklist.md` — el narrador
    fine-tuneado (`docs/ia/fine-tuning-ia-local.md`) aprendió de ejemplos generados con el lore de su
    momento; un cambio de fondo puede dejar ejemplos ya entrenados desalineados con el mundo actual
    sin que nada lo avise. No implica regenerar el dataset en la misma sesión — solo dejar constancia
@@ -332,6 +332,6 @@ objeto desaparece del todo del saqueo o se sustituye por otro coherente — nunc
 
 ---
 
-**Ver también:** [Checklist persistente](../registros/ampliar-lore-checklist.md) · [Índice del mundo](../rpgtarkor/lore-mundo/07-mundo-helek-sirik.md)
+**Ver también:** [Checklist persistente](../records/ampliar-lore-checklist.md) · [Índice del mundo](../rpgtarkor/lore-mundo/07-mundo-helek-sirik.md)
 (todo el lore) · [Revisar partida](revisar-partida.md) (runbook equivalente para auditar partidas
 jugadas, no para ampliar lore)

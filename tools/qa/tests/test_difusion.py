@@ -1,4 +1,4 @@
-"""Retro del 2026-11-02 (R1): `tools/qa/difusion.py` sobre una copia de una pieza de docs/difusion, con las normas
+"""Retro del 2026-11-02 (R1): `tools/qa/difusion.py` sobre una copia de una pieza de docs/media, con las normas
 de Reddit puestas sin pegar a propósito (así no depende de que la usuaria las pegue en la pieza real)."""
 import glob
 import os
@@ -11,7 +11,7 @@ import unittest
 from comun import RAIZ, carpeta, escribir, leer
 
 ORDEN = os.path.join(RAIZ, 'tools', 'qa', 'difusion.py')
-PIEZA = sorted(glob.glob(os.path.join(RAIZ, 'docs', 'difusion', '[0-9]*', '[0-9][0-9]-*')))[0]
+PIEZA = sorted(glob.glob(os.path.join(RAIZ, 'docs', 'media', '[0-9]*', '[0-9][0-9]-*')))[0]
 
 
 class Difusion(unittest.TestCase):
@@ -19,9 +19,9 @@ class Difusion(unittest.TestCase):
         self.dir = carpeta()
         self.pieza = os.path.join(self.dir, '2026-10-23', '01-tema')
         shutil.copytree(PIEZA, self.pieza)
-        self.ficha = os.path.join(self.pieza, 'ficha.md')
-        texto = re.sub(r'^- \*\*Normas leídas:\*\*.*$', '- **Normas leídas:** pendiente', leer(self.ficha), flags=re.M)
-        escribir(self.ficha, re.sub(r'^### Normas de .*?(?=^##)', '', texto, flags=re.M | re.S))
+        self.ficha = os.path.join(self.pieza, 'sheet.md')
+        texto = re.sub(r'^- \*\*Rules read:\*\*.*$', '- **Rules read:** pendiente', leer(self.ficha), flags=re.M)
+        escribir(self.ficha, re.sub(r'^### Rules of .*?(?=^##)', '', texto, flags=re.M | re.S))
 
     def correr(self, *extra):
         return subprocess.run([sys.executable, ORDEN, '--dir', self.dir, *extra], capture_output=True, text=True)
@@ -32,7 +32,7 @@ class Difusion(unittest.TestCase):
         self.assertIn('normas de Reddit sin pegar', r.stderr)
 
     def test_una_fecha_de_normas_mal_escrita_para_el_check(self):
-        escribir(self.ficha, leer(self.ficha).replace('**Normas leídas:** pendiente', '**Normas leídas:** 2026/11/02'))
+        escribir(self.ficha, leer(self.ficha).replace('**Rules read:** pendiente', '**Rules read:** 2026/11/02'))
         r = self.correr()
         self.assertEqual(r.returncode, 1)
         self.assertIn('2026/11/02', r.stderr)

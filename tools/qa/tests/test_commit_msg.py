@@ -58,7 +58,7 @@ class CommitMsg(unittest.TestCase):
     def test_una_bitacora_con_actualizado_viejo_falla_al_hacer_el_commit(self):
         repo = carpeta()
         subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=repo, env=ENV_GIT, check=True, capture_output=True)
-        log = os.path.join(repo, 'docs', 'registros', 'traspaso.md')
+        log = os.path.join(repo, 'docs', 'records', 'traspaso.md')
         fila = "| **Tarea en curso · `main`** | algo |\n"
 
         def commit(fecha):
@@ -84,7 +84,7 @@ class CommitMsg(unittest.TestCase):
 
     def test_un_revert_que_trae_la_fecha_vieja_de_la_bitacora_pasa(self):
         repo = carpeta()
-        log = os.path.join(repo, 'docs', 'registros', 'traspaso.md')
+        log = os.path.join(repo, 'docs', 'records', 'traspaso.md')
         hoy = subprocess.run(['date', '+%F'], capture_output=True, text=True).stdout.strip()
         subprocess.run(['git', 'init', '-q', '-b', 'main'], cwd=repo, env=ENV_GIT, check=True, capture_output=True)
         for fecha in ('2020-01-01', hoy):  # sin el gancho: la fecha vieja entra

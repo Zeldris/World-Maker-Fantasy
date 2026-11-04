@@ -157,7 +157,7 @@ peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend
   misión Orco Enfurecido saltándose botones (cerrada el mismo día), sub-partición de combate >4v4
   (cerrada horas después el mismo día en que se reabrió, commit `8535c85`, con test de integración
   real — quedó enterrada dentro de un commit de título ajeno "Renombra el atributo Arcano a Magia").
-  `docs/registros/checklist-pruebas-juego.md` y `docs/archivo/revisar-partida-hallazgos-historico.md` también
+  `docs/records/checklist-pruebas-juego.md` y `docs/archivo/revisar-partida-hallazgos-historico.md` también
   actualizados en los mismos puntos.
 
 **Verificación en vivo de la Pieza 5 + `questSlug` estructurado cerrado (2026-09-03, continuación de
@@ -247,7 +247,7 @@ cerrados**:
   síncrona, orden de turno fijado, scopes únicos) — puede que ya no sea reproducible, o que el
   patrón viva en otro punto no identificado. Reproducir en vivo si vuelve a aparecer.
 - Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (sin verificar
-  en esta ronda — muestra de 1 turno, `docs/registros/checklist-pruebas-juego.md` § 1).
+  en esta ronda — muestra de 1 turno, `docs/records/checklist-pruebas-juego.md` § 1).
 
 **Aparcado a propósito por decisión de diseño (no bugs, no urgente)** — verificado, 12/14 exactos,
 2 con matiz menor encontrado:

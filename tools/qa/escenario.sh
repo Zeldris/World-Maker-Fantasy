@@ -21,7 +21,8 @@
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
 #                                               el edificio activo de esa receta, como una tormenta), reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
-#                                               combate:<npc>,<npc>…, P370: herido:<npc>[:grave|herido] (un compañero del combate en curso queda GRAVE o HERIDO:
+#                                               combate:<npc>,<npc>… (de grupo), QA-293: combate1v1:<npc> (el 1v1 clásico contra ese NPC, viva donde viva: se lanza
+#                                               contra la jugadora como un agresor; el panel sale al recargar; para P373, la huida por habilidad), P370: herido:<npc>[:grave|herido] (un compañero del combate en curso queda GRAVE o HERIDO:
 #                                               el capitán enemigo, que manda caer sobre el más herido, lo señala en la ronda siguiente; para P292); QA-268: lider-muere:<facción> (el líder muere de viejo con 2
 #                                               candidatos), alianza:<A>:<B> (alianza, ruptura y alianza nueva), vasallo-paga:<vasallo>
 #                                               (fondos para la cuota entera sin saldar la deuda); QA-269: domable:<especie>

@@ -6,6 +6,7 @@ import type { CondicionFisica, Prisma, PrismaClient } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import { disparadoresDeMoral, formaDeRetirada, tieneMoral, tirarEscape, tirarMoral, vaClaramentePerdiendo, type TiradaEscape, type TiradaMoral } from './moralCombate.js';
 import { scopeFor, type NpcInScene } from './npcScene.js';
+import { HABILIDADES_DE_HUIDA } from './npcCombatAbilities.js';
 import { minutoDeReaparicion } from './zonaPosicion.js';
 import { registrarSuceso } from './cronista/sucesos.js';
 import { candidatosALider } from './cronista/reglasConsecuencias.js';
@@ -41,7 +42,7 @@ async function esLiderSinSucesor(db: Db, saveId: string, worldId: string, npcId:
 /// una de ellas y no le alcanzan, intenta huir de verdad con la tirada de escape de CR-44 (como
 /// retirarse en Bellwright o Medieval Dynasty, o el «se retira» de X4); si no escapa, sigue en el
 /// combate. Por nombre porque son tres fichas de catálogo con efecto AGUANTE.
-export const HABILIDADES_DE_HUIDA: readonly string[] = ['Huida a la madriguera', 'Instinto Solitario', 'Estampida instintiva'];
+export { HABILIDADES_DE_HUIDA };
 
 /// Huida con una habilidad de `HABILIDADES_DE_HUIDA`. Null si no toca o no escapa.
 export async function decidirHuidaPorHabilidad(

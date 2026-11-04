@@ -1,6 +1,6 @@
 """QA-113 (retro del 2026-10-19): toda herramienta de tools/qa (y medir.py de opt-tokens) llega con su test.
 
-`mapa-agente.py`, `enlaces-md.py`, `matriz-pruebas.py` y `medir.py` entraron sin test y el `/code-review` les
+`mapa-agente.py`, `md-links.py`, `matriz-pruebas.py` y `medir.py` entraron sin test y el `/code-review` les
 encontró seis fallos (cifras dobles en medir.py, bloques de código con sangría, `--generar` que borraba filas).
 Cada una tiene su `tests/test_<nombre>.py` (guiones como `_`), salvo las de EXCEPCIONES, que necesitan el juego,
 Postgres o una sesión de Claude y se prueban al usarlas.

@@ -10,7 +10,7 @@ lo sustituye solo ahí; falla si no hay exactamente una, para no tocar otra fila
 detrás de la última, con el siguiente número; `QA-55`: el número sale por encima del más alto de la copia
 local, de `origin/main` y de todas las ramas `origin/claude/*` (hace `git fetch` antes), para que dos
 cuentas que anotan a la vez no repitan número. Registro por defecto: el del hito más alto
-(`docs/registros/pruebas-<hito>-hallazgos.md`, p. ej. `pruebas-0.3-hallazgos.md`).
+(`docs/records/pruebas-<hito>-hallazgos.md`, p. ej. `pruebas-0.3-hallazgos.md`).
 
 QA-84 (retro del 2026-10-14): el resumen de la cabecera (qué hallazgos siguen pendientes, cuáles están
 arreglados y cuáles comprobados jugando) sale de la tabla, entre `INICIO_RESUMEN` y `FIN_RESUMEN`: las
@@ -28,12 +28,12 @@ import textwrap
 
 def registro_por_defecto() -> str:
     por_hito = {}
-    for ruta in glob.glob('docs/registros/pruebas-*-hallazgos.md'):
+    for ruta in glob.glob('docs/records/pruebas-*-hallazgos.md'):
         m = re.search(r'pruebas-(\d+)\.(\d+)-hallazgos\.md$', ruta)
         if m:
             por_hito[(int(m.group(1)), int(m.group(2)))] = ruta
     if not por_hito:
-        sys.exit('No hay ningún docs/registros/pruebas-<hito>-hallazgos.md (¿estás en la raíz del repo?)')
+        sys.exit('No hay ningún docs/records/pruebas-<hito>-hallazgos.md (¿estás en la raíz del repo?)')
     return por_hito[max(por_hito)]
 
 

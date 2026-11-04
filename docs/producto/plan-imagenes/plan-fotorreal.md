@@ -78,7 +78,7 @@ rasgos y la manada se pide por anáfora («more of the same»), que el modelo no
 - Tests en `tools/qa/tests/test_prompt_ficha.py` (hoy 69): orden de bloques en `fotorreal`; B5 y B6 nunca recortados
   aunque la ficha pase del tope; texto fijo ≤ 60 palabras; cada aviso nuevo; `--json` con `recortados` y `avisos`;
   el perfil `banner` no cambia (regresión). Cada test rojo sin su arreglo:
-  `bash .claude/gw/scripts/rojo-sin-arreglo.sh "cd tools/qa/tests && python3 -m unittest -q test_prompt_ficha" image-generator/scripts/prompt_ficha.py`.
+  `bash .claude/gw/scripts/red-without-fix.sh "cd tools/qa/tests && python3 -m unittest -q test_prompt_ficha" image-generator/scripts/prompt_ficha.py`.
 
 **Aceptación:** `python3 image-generator/scripts/prompt_ficha.py image-generator/fichas/fauna/aullador-rojo.json
 --perfil fotorreal --variante macho --json` (y el cuernahoja, el cardo y los pastos) da `recortados: []`, `avisos: []`,

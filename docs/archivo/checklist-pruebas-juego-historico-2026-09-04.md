@@ -1,7 +1,7 @@
 # Checklist de pruebas de juego — historial cerrado (2026-09-03 → 2026-09-04)
 
 **ARCHIVADO (2026-09-29, Fase 7 del plan de octubre):** secciones movidas SIN editar desde
-[../registros/checklist-pruebas-juego.md](../registros/checklist-pruebas-juego.md). Cubren el
+[../records/checklist-pruebas-juego.md](../records/checklist-pruebas-juego.md). Cubren el
 diagnóstico del cuelgue de Ollama (causa raíz, fix de `/turn/classify` y guards de duración) y la
 crónica de las mejoras hechas esa misma ronda (tiradas en vivo, Diario en pestañas, barras de
 habilidades, iniciativa, etc.), todas ya cerradas. Se conservan por valor de diagnóstico; comprobar
@@ -15,7 +15,7 @@ tras el sembrado de `FloraCategoria`/renombrado Chudo)
 **Contexto**: la usuaria pidió pruebas continuas nocturnas tras reiniciar backend y frontend con el
 código nuevo. Se creó una partida de prueba limpia (`cmtm3qi4b0001rirshc899tlc`, Gorhorn/Guerrero),
 se confirmó en vivo que el fix de reconexión de ayer (`useReconnectionPolling`/`mountedRef`,
-`docs/registros/checklist-pruebas-juego.md`/commit `2b2c31a`) sigue funcionando correctamente en producción
+`docs/records/checklist-pruebas-juego.md`/commit `2b2c31a`) sigue funcionando correctamente en producción
 real — tras recargar la página, el composer muestra "Esperando la narración de tu último turno..."
 en vez de quedar deshabilitado sin explicación, y el tooltip de equipo (commit `2b2c31a`) también
 sigue mostrando el nombre completo del objeto correctamente.

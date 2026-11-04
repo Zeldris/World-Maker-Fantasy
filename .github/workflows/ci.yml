@@ -21,16 +21,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # QA-107: `bitacora.py closed` compara con la base del PR
+          fetch-depth: 0  # QA-107: `handoff.py closed` compara con la base del PR
       - run: python3 tools/roadmap/cobertura.py
       # QA-101/QA-107: cada tarea cerrada de los hitos en prueba tiene su fila en la matriz de cobertura.
       - run: python3 tools/qa/matriz-pruebas.py --comprobar
       # QA-69/QA-85/QA-107: la bitácora (filas cortas, una por rama) y, en un PR, cada tarea tachada en un
       # roadmap también tachada en «Hecho recientemente». Antes solo lo miraba el pre-push.
       # Desde el piloto de Galivelop-workflow (2026-10-22), los scripts del flujo en `.claude/gw/scripts/`.
-      - run: python3 .claude/gw/scripts/bitacora.py check
+      - run: python3 .claude/gw/scripts/handoff.py check
       - if: github.event_name == 'pull_request'
-        run: python3 .claude/gw/scripts/bitacora.py closed ${{ github.event.pull_request.base.sha }} HEAD
+        run: python3 .claude/gw/scripts/handoff.py closed ${{ github.event.pull_request.base.sha }} HEAD
       # Piloto de Galivelop-workflow (2026-10-22): el pre-commit de la BASE sobre los commits del PR (secretos), para
       # que un PR no pueda rebajar el gancho que lo revisa. Viene del comprobar.yml del flujo, que no se usa: su
       # `check` ya lo repiten estos tres jobs.
@@ -44,7 +44,7 @@ jobs:
           trap 'rm -f .githooks/.pre-commit-base' EXIT
           bash .githooks/.pre-commit-base --rango "$(git merge-base "$base" HEAD)..HEAD"
       # QA-107: ningún enlace relativo roto (archivo o ancla) en los .md.
-      - run: python3 .claude/gw/scripts/enlaces-md.py
+      - run: python3 .claude/gw/scripts/md-links.py
       - run: python3 tools/qa/mapa-agente.py
       # QA-236: los tests de las skills, al lado de sus scripts, tienen su paso aquí y en ci-local.sh.
       - run: python3 tools/qa/skills-con-tests.py
@@ -60,16 +60,16 @@ jobs:
       - run: cd tools/playwright-e2e && npm ci && npx playwright install --with-deps chromium
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
       - run: python3 -m unittest discover -s tools/qa/tests
-      # QA-137: tests de medir.py de la skill opt-ai (el de WMF, medir-ia.py, va con tools/qa).
-      - run: python3 -m unittest discover -s .claude/skills/opt-ai/scripts
-      # QA-176: tests de los scripts de la skill scout-updates.
-      - run: python3 -m unittest discover -s .claude/skills/scout-updates/scripts
-      # Flujo v0.4.3: tests de medir.py de la skill opt-tokens.
-      - run: python3 -m unittest discover -s .claude/skills/opt-tokens/scripts
-      # QA-235: tests del comprobador de docs/difusion/ de la skill gw-media-content.
+      # QA-137: tests de measure.py de la skill gw-opt-ai (el de WMF, medir-ia.py, va con tools/qa).
+      - run: python3 -m unittest discover -s .claude/skills/gw-opt-ai/scripts
+      # QA-176: tests de los scripts de la skill gw-scout-updates.
+      - run: python3 -m unittest discover -s .claude/skills/gw-scout-updates/scripts
+      # Flujo v0.5.0: tests de measure.py de la skill gw-opt-tokens.
+      - run: python3 -m unittest discover -s .claude/skills/gw-opt-tokens/scripts
+      # QA-235: tests del comprobador de docs/media/ de la skill gw-media-content.
       - run: python3 -m unittest discover -s .claude/skills/gw-media-content/scripts
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
-      - run: for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
+      - run: for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
 
   backend:
     runs-on: ubuntu-24.04  # QA-28: trae Postgres 16

@@ -3466,7 +3466,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         : '(sin rutas conocidas desde aquí todavía)';
       contextBlocks.push(`UBICACIÓN ACTUAL: ${location.name} — ${location.description}\nDESDE AQUÍ SE PUEDE IR A: ${destinosTxt}.`);
 
-      // Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
+      // Bug real jugando (docs/records/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
       // sin progreso): "avanzo"/"continúo por la cueva" sin nombrar destino, con 2+ salidas reales
       // desde aquí, no se puede resolver solo (`resolveTravel` ya solo auto-resuelve cuando hay
       // EXACTAMENTE una salida) — sin este aviso, el modelo solía narrar ambientación genérica

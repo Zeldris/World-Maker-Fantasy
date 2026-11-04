@@ -12,7 +12,7 @@ import type { Banda } from './narrador.js';
 /// «de viaje» sí lo es.
 const TRAVEL_INTENT_REGEX = /(?<!\bde )viaj|\b(?:salgo|salimos|me voy|nos vamos|voy|vamos|parto|partimos|me pongo|nos ponemos|sigo|seguimos) de viaje|camin|desplaz|ruta|tramo|voy (a|hacia)|me dirijo|parto hacia|vuelvo a|regreso a|me acerco a/;
 
-/// Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
+/// Bug real jugando (docs/records/revisar-partida-hallazgos.md, 2026-08-01, "narración de ambientación
 /// repetida sin progreso tras el combate"): "avanzo por una salida" / "Continuo por la cueva" /
 /// "Continuo hasta llegar a la siguiente localización" no disparan `TRAVEL_INTENT_REGEX` (no
 /// nombran ningún verbo de viaje "hacia algo") y tampoco nombran un destino real, así que

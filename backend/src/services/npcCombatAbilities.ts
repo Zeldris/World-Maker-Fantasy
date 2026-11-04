@@ -6,6 +6,11 @@ import type { NpcHabilidadRacialInScene } from './npcScene.js';
 import { faunaCategoriaAbilitiesForLevel, type FaunaCategoria } from './faunaAbilities.js';
 import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
 
+/// Habilidades raciales de huida de la fauna (`CR-44`): con ellas el animal intenta escapar de
+/// verdad (`decidirHuidaPorHabilidad`, huidaNpc.ts). No dependen del nivel (usuaria, 2026-11-03,
+/// P373): el catálogo las pone en nivel 4 o 20 y ningún animal que las lleva llega ahí.
+export const HABILIDADES_DE_HUIDA: readonly string[] = ['Huida a la madriguera', 'Instinto Solitario', 'Estampida instintiva'];
+
 export interface NpcCombatAbility {
   name: string;
   /// Revisión de partida 2026-08-08, bug real jugando en vivo: un Múrgol (fauna sin arma, cuyo
@@ -183,7 +188,7 @@ export function npcCombatAbilitiesFor(npc: NpcForCombatAbilities, weaponNames: s
   // `NpcCombatAbility.effects` arriba). `categoria` (ataque/defensa/utilidad) ya existía y se
   // respeta tal cual, igual que antes.
   for (const racial of npc.habilidadesRaciales) {
-    if (racial.level > npc.level) continue;
+    if (racial.level > npc.level && !HABILIDADES_DE_HUIDA.includes(racial.name)) continue;
     abilities.push({
       name: racial.name,
       description: racial.description,

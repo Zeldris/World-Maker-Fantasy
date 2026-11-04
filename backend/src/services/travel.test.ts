@@ -93,7 +93,7 @@ describe('detectsTravelIntent', () => {
   });
 });
 
-// docs/registros/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/
+// docs/records/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/
 // "continúo" sin nombrar un destino real no disparaban ni detectsTravelIntent ni matchDestination.
 describe('detectsVagueMovementIntent', () => {
   it('detecta "avanzo"/"prosigo"/"me adentro" solos, sin necesitar más contexto', () => {
@@ -243,7 +243,7 @@ describe('initialLocationSlugFor', () => {
   });
 });
 
-// docs/registros/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): fallback de
+// docs/records/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): fallback de
 // movimiento vago sin destino nombrado — solo se auto-resuelve con EXACTAMENTE una salida real.
 describe('resolveTravel — fallback de movimiento vago (sin destino nombrado)', () => {
   const LOC_A = { id: 'loc-a', slug: 'zona-a', name: 'Zona A', description: '', region: 'Las Llanuras del Viento Rojo', kind: 'CAMPO', aliases: [] };

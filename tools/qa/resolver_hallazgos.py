@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""QA-135: resuelve los conflictos de merge de docs/registros/pruebas-0.3-hallazgos.md.
+"""QA-135: resuelve los conflictos de merge de docs/records/pruebas-0.3-hallazgos.md.
 
 Cada conflicto son filas de tabla emparejadas (mismo número de filas y mismo identificador en la columna 1): de cada
 par se queda con el lado cuyo estado (penúltima columna) no es «pendiente». Si los dos lados tienen estado (o los dos

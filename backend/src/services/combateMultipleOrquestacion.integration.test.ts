@@ -1992,7 +1992,9 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
   // — el margen del intercambio debe subir exactamente 2 puntos (Ataque base usa fuerza/destreza,
   // aquí fuerza por tenerla mayor en el fixture).
   it('Alfa de la Manada: con los 2 slots de Domador ocupados, el Companion Alfa gana +2 de fuerza real en su tirada', async () => {
-    const rival = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    // Rival sin habilidad de huida: desde P373 el Aullador rojo lleva «Instinto Solitario» a
+    // cualquier nivel, y con ella su defensa deja el margen en 0 en las dos corridas.
+    const rival = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } });
     const npcOrigenCompanion = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'corredor-de-cauce' } });
 
     async function margenDelCompanionAlfa(segundoSlotOcupado: boolean): Promise<number> {
