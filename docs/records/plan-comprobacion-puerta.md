@@ -115,6 +115,11 @@ sin tanda (usuaria, 2026-11-04; la fila ya decía comprobado lo que se arregló)
 P294 (18) y P355 (47). Tras la tanda 86 (usuaria, 2026-11-04): P12 (la huida, vista con el Brozán en la 85) y P69
 (el ganador bien pintado; el empate, con el test). P288 queda en parte solo por su parte local (Ollama real).
 
+**Paso 3.3 cerrado (usuaria, 2026-11-04)** tras la tanda 88. Quedan fuera de tanda, además: P253 (visto solo en
+`LogEntry`, con Gorhorn movida por SQL; se mira en pantalla cuando exista el paso `fuera:` de P427) y P180 (la
+variante «Al Clan Serhu le falta…» no sale: la escasez no llega a los encargos, `misiones.ts`; es código). Sigue el
+paso 3.4 (el resto de pendientes).
+
 ## Para la sesión local
 
 Solo se ve con el Ollama real (GPU de la Deck u otra máquina), no con el simulado: se lanza con `tools/qa/bench-ia.sh` o
