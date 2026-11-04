@@ -1699,6 +1699,9 @@ Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-1
 - ~~**QA-291 · Prueba de humo del driver real**~~ ✅ 2026-11-03: `tools/qa/humo-driver.sh` carga `hondonada-inicio` con el driver y el juego reales, comprueba en el HUD de `estado.js` que `preparar nivel:3` y un segundo `cargar` recargan la página (P400/P407; P409 ya lo cubre `ayudas_mcp_navegador.mjs`: la partida recién cargada no tiene chips); paso «Humo del driver» en la CI; test `test_humo_driver.py`. Rojo comprobado anulando `recargar_pagina()`; en local pide `HUMO_FORZAR=1` (borra la base de juego).
 - ~~**QA-292 · Revisión por bloques en una rama larga**~~ ✅ 2026-11-03: `/code-review` del diff desde la última revisión al cerrar cada bloque de ~10 tandas (152 commits en una sola revisión dejaron partes sin mirar). `AGENTS.md`.
 
+P373 de la ronda de la puerta (usuaria, 2026-11-04):
+- **QA-293 · Preparar un combate 1v1 en `escenario.sh`** 🚧 en curso 2026-11-04: `preparar <partida> combate1v1:<npc>` deja un combate 1v1 clásico con ese NPC (`combate:` abre siempre uno de grupo, sin lo propio del 1v1 como la huida por habilidad de la fauna). Falta: el paso, sus tests y probarlo con el Brozán.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),
