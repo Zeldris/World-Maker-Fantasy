@@ -1,9 +1,10 @@
 {
   "$schema": "gw/schema/gw.schema.json",
   "version": "0.4.3",
+  "schemaVersion": 1,
   "language": "es",
   "visibleLanguages": [],
-  "log": "docs/registros/traspaso.md",
+  "log": "docs/records/traspaso.md",
   "logRows": true,
   "protectedBranch": "main",
   "pushToProtected": "pr",
@@ -27,15 +28,32 @@
     "^\\.claude/skills/.*\\.md$"
   ],
   "roadmap": true,
-  "selector": {"cases": []},
+  "selector": {
+    "cases": []
+  },
   "logSections": [],
-  "designReferences": ["X4: Foundations", "D&D 5e", "Baldur's Gate 3", "Medieval Dynasty", "Bellwright", "Manor Lords"],
-  "protectedPaths": ["docs/borradores-opencode/"],
+  "designReferences": [
+    "X4: Foundations",
+    "D&D 5e",
+    "Baldur's Gate 3",
+    "Medieval Dynasty",
+    "Bellwright",
+    "Manor Lords"
+  ],
+  "protectedPaths": [
+    "docs/borradores-opencode/"
+  ],
   "staleRefs": [],
   "relatedTests": {
-    "fast": ["bash tools/qa/tests-vitest.sh unidad {files}"],
-    "slow": ["bash tools/qa/tests-vitest.sh integracion {files}"]
+    "fast": [
+      "bash tools/qa/tests-vitest.sh unidad {files}"
+    ],
+    "slow": [
+      "bash tools/qa/tests-vitest.sh integracion {files}"
+    ]
   },
-  "plan": ["docs/producto/"],
+  "plan": [
+    "docs/producto/"
+  ],
   "taskId": "(?:CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR)-\\d+[a-z]?"
 }
