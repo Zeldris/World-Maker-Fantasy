@@ -110,9 +110,9 @@ cada tanda comprueba **solo lo que falta**, mismas reglas que arriba.
 
 **Quedan fuera de tanda (2026-11-04):** a arreglar antes, P107 (con P328), P131 (con P363), P184 (con P375) y P151
 (la etiqueta de Hogar Ketg tapa su entrada y la del camino del noreste queda lejos de su flecha: es código); locales,
-P243, P245, P288 (la parte del Ollama real), P306, P307 y P324; decisión de la usuaria, P310; arte, P70. Propuestos
-para cerrar sin tanda (la fila ya dice comprobado lo que se arregló): P51 (59, en variante), P186 (13b-1), P294 (18) y
-P355 (47).
+P243, P245, P288 (la parte del Ollama real), P306, P307 y P324; decisión de la usuaria, P310; arte, P70. Cerrados
+sin tanda (usuaria, 2026-11-04; la fila ya decía comprobado lo que se arregló): P51 (59, en variante), P186 (13b-1),
+P294 (18) y P355 (47).
 
 ## Para la sesión local
 
