@@ -9,6 +9,10 @@
   "protectedBranch": "main",
   "pushToProtected": "pr",
   "install": [],
+  "ciInstall": [
+    "cd backend && npm ci",
+    "cd frontend && npm ci"
+  ],
   "check": [
     "bash tools/qa/host.sh bash -c 'cd backend && npx prisma generate > /dev/null && npx tsc --noEmit -p . && npm run --silent lint'",
     "bash tools/qa/host.sh bash -c 'cd frontend && npx tsc -b && npm run --silent lint'",
@@ -23,7 +27,7 @@
   "reviewMark": ".claude/revision-main.sha",
   "requireRetro": true,
   "content": [
-    "^docs/(rpgtarkor|registros|producto)/",
+    "^docs/(rpgtarkor|records|producto)/",
     "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$",
     "^\\.claude/skills/.*\\.md$"
   ],

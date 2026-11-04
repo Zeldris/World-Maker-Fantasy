@@ -284,7 +284,7 @@ _Evitar_: oficio (es la profesión con nivel de un trabajador o compañero, no l
 ## El trabajo con Claude
 
 **Bitácora**:
-`docs/registros/traspaso.md`: el estado del trabajo para la sesión que releva, con una fila por rama.
+`docs/records/traspaso.md`: el estado del trabajo para la sesión que releva, con una fila por rama.
 _Evitar_: traspaso, log
 
 **Relevo**:
