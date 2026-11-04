@@ -61,9 +61,14 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
   - P17 (v0.5.0) `check.yml` es obligatorio y corre en cada push de rama fuera de la protegida: con un CI propio
     (`ci.yml`, solo PR y `main`) se duplica en los PR y gasta cuota en cada push. Falta una clave (p. ej.
     `ciOnPush: false`) para dejarlo solo en los pull request.
+  - P18 (v0.5.0) `apply.py` deja un script con nombre viejo si otro archivo cita un nombre igual en otra ruta
+    (`tools/qa/fusionar.sh`, `tools/qa/mapa-agente.py`, o un comentario): debería casar la ruta entera
+    (`.claude/gw/scripts/<nombre>`). En WMF se quitaron a mano (usuaria, 2026-11-04). Y `apply.py --check` sale 1
+    con un gancho propio declarado: falta una clave para marcar archivos del proyecto (p. ej. `ownFiles`).
 
 ## Se queda en WMF
 
 - `.githooks/commit-msg` como archivo propio (sin cabecera de versión; el doctor lo avisa): mientras P4 y P5 no estén
-  arriba, `/gw-update` no debe reemplazarlo.
+  arriba, `/gw-update` no debe reemplazarlo. Con v0.5.0 (`commitNext: true`) sigue propio porque el del flujo pide
+  `Siguiente:` también fuera de Claude Code (usuaria, 2026-11-04); por eso `apply.py --check` sale 1 solo por él (P18).
 - Los textos en español de los comentarios y mensajes de los ganchos.
