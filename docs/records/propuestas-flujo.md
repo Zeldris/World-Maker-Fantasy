@@ -55,6 +55,12 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
     máquina que dura (la Deck).
   - P15 `guardia-config.py` protege también `.claude/gw.json`: la plantilla de `CLAUDE.md` que avisa de los permisos
     debería nombrarlo (WMF lo añadió a mano).
+  - P16 (v0.5.0) `apply.py --update` con un `log` que se mueve (`docs/registros` → `docs/records`): siembra la
+    plantilla de la bitácora en la ruta nueva antes del movimiento y sobrescribe la movida (se recuperó de `HEAD`).
+    Debería sembrar solo si, tras los movimientos, el archivo no existe.
+  - P17 (v0.5.0) `check.yml` es obligatorio y corre en cada push de rama fuera de la protegida: con un CI propio
+    (`ci.yml`, solo PR y `main`) se duplica en los PR y gasta cuota en cada push. Falta una clave (p. ej.
+    `ciOnPush: false`) para dejarlo solo en los pull request.
 
 ## Se queda en WMF
 
