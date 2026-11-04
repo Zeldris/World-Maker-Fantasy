@@ -1717,8 +1717,12 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   esté»): un `PRINCIPAL` nombrado solo está en escena si vive en esta zona, tiene su punto activo aquí o es compañero
   (combate, misión y modo dinámico, como antes). Bench 22 (`logs/bench-22-ronda2.json`, Ollama real, contra el 21):
   turno p50 24,7 s (−3,6), p95 42,3 s (−28,0), primera palabra p50 14,3 s (−1,5); 0 % reintentos (−11) y 0 % respaldo;
-  «Camino despacio hacia el borde del claro» sigue bloqueado como en el 21 (viaje sin destino conocido). Falta:
-  comprobar jugando con Ollama real los arreglos de la ronda 2 (P411-P421).
+  «Camino despacio hacia el borde del claro» sigue bloqueado como en el 21 (viaje sin destino conocido). Ronda 3 con
+  Ollama real (2026-11-03, 9 turnos de 25-47 s): comprobados jugando P411, P418, P419, P421 y P422; salen P423-P425.
+  Tras la ronda (2026-11-04), arreglados sin comprobar: P424 (preguntar a un NPC por una ausente no corta el turno),
+  P423 (el NPC no acepta en la narración lo que su réplica rechaza), P425 y P412 con Ulkha («Ella…» abre con la NPC;
+  sin frase del jugador abre el paisaje; fuera el guion suelto). Falta: ronda 4 con Ollama real (P412, P415, P416,
+  P420, P423-P425) y P417 en parte.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):
