@@ -9,6 +9,7 @@ export type PasoReino =
   | { tipo: 'milicia'; n: number }
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
   | { tipo: 'combate'; npcSlugs: string[] }
+  | { tipo: 'combate1v1'; npcSlug: string }
   | { tipo: 'ganado'; especie: string; n: number }
   | { tipo: 'convaleciente'; npcSlug: string; enCombate: boolean }
   | { tipo: 'lider-muere'; facSlug: string }
@@ -38,7 +39,7 @@ export function sexoDelSubdito(sexo: SexoSubditos, i: number): 'M' | 'F' {
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado][:sexo=m|f|pareja]` (P378: sin `sexo=` alterna macho y hembra; `m`/`f` los fija), `reparar` (P369: repara todos los edificios DANADO con la función del botón «Reparar»), `danar:<receta>` (P301: deja DANADO el edificio activo de esa receta, como una tormenta), `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…`, `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-270),
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…` (combate de grupo, `CombatEncounter`), `combate1v1:<npc>` (QA-293, P373: el combate 1v1 clásico contra ese NPC, traído adonde está la jugadora como un agresor que se lanza contra ella, el efecto `forzarCombate` del Cronista; el panel de combate sale al cargar la partida; se niega con un combate en curso o un NPC que no existe), `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-270),
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-269, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
@@ -78,6 +79,9 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const npcSlugs = (r[0] ?? '').split(',').filter(Boolean);
       if (npcSlugs.length === 0) return { error: `«${arg}»: falta combate:<npc>,<npc>…` };
       pasos.push({ tipo: 'combate', npcSlugs });
+    } else if (clave === 'combate1v1') {
+      if (!r[0] || r.length > 1 || r[0].includes(',')) return { error: `«${arg}»: falta combate1v1:<slug del NPC> (uno solo).` };
+      pasos.push({ tipo: 'combate1v1', npcSlug: r[0] });
     } else if (clave === 'ganado') {
       const n = entero(r[1]);
       if (!r[0] || n == null) return { error: `«${arg}»: falta ganado:<especie>:<n>.` };

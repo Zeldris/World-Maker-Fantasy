@@ -57,6 +57,15 @@ describe('pasos de prepararReino (3.2)', () => {
       expect(parsearPasosReino(mal)).toHaveProperty('error');
     }
   });
+  it('QA-293 (P373): combate1v1 abre el 1v1 contra un solo NPC', () => {
+    expect(parsearPasosReino(['combate1v1:brozan', 'combate:a,b'])).toEqual([
+      { tipo: 'combate1v1', npcSlug: 'brozan' },
+      { tipo: 'combate', npcSlugs: ['a', 'b'] },
+    ]);
+    for (const mal of [['combate1v1'], ['combate1v1:'], ['combate1v1:a,b'], ['combate1v1:a:b']]) {
+      expect(parsearPasosReino(mal)).toEqual({ error: expect.stringContaining('combate1v1:<slug del NPC>') });
+    }
+  });
   it('P378: el sexo alterna por defecto y se puede fijar', () => {
     expect([0, 1, 2, 3].map((i) => sexoDelSubdito('alterna', i))).toEqual(['M', 'F', 'M', 'F']);
     expect([0, 1, 2].map((i) => sexoDelSubdito('f', i))).toEqual(['F', 'F', 'F']);

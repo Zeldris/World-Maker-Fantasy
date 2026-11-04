@@ -23,6 +23,9 @@ reparte y apunta. Para pelear, `orden.sh --ayuda pelear` (acercarse, interactuar
 **Preparar antes de jugar** (`QA-216`, retro del 2026-10-23): la sesión que reparte comprueba que el escenario de
 cada id da el estado que pide (montura, lugar visitado, animal domable, convaleciente…); si no, la primera tanda lo
 prepara con `escenario.sh preparar` y lo guarda, sin rehacer reglas a mano (`QA-151`).
+`preparar … combate:<npc>,…` abre un combate de grupo; lo que solo pasa en el 1v1 clásico (la huida de la fauna por
+habilidad, P373) se prepara con `combate1v1:<npc>` (`QA-293`): el NPC, viva donde viva, se lanza contra la jugadora, y al
+recargar la página sale el panel de combate con él. Se niega si ya hay un combate en curso o el NPC no existe.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
