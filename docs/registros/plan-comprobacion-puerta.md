@@ -95,6 +95,25 @@ local»](#para-la-sesión-local); a arreglar antes P107 (la ficha del Orco tras 
 usuaria P310 (orden de las normas); arte P70 (imagen del Escorante). Propuestos para cerrar sin tanda, tras confirmar
 la fila: P29 (tanda 23b), P186 (13b-1), P294 (18), P355 (47) y P51 (59).
 
+## Lo que queda en parte (2026-11-04), tandas 86-88
+
+Repaso de los 33 «Arreglados en parte» del resumen (2026-11-04): 11 tenían ya jugado lo que les faltaba (P29, P82,
+P155, P163, P175, P182, P223, P292, P295, P300 y P301, en las tandas 23b-76) y pasan a «Comprobados jugando», con su
+historial detrás. De los 22 que quedan, van a tanda solo los que se alcanzan con los pasos de `escenario.sh` de hoy;
+cada tanda comprueba **solo lo que falta**, mismas reglas que arriba.
+
+| Tanda | Sistema | Escenario | Hallazgos y qué falta | Estado |
+|---|---|---|---|---|
+| 86 | Combate: huida del Guchapo, empate de iniciativa y recarga en pleno combate | `t52-pozo-escorante-muerto` + `escenario.sh preparar <partida> nivel:19:constitucion,fuerza combate1v1:guchapo` para P12; `mv-hondonada-hostiles` para P69; `reino-combate-capitan` para P288 | P12: alargar el 1v1 («Defenderse», sin «Matar») hasta que el Guchapo use «Huida a la madriguera» con éxito: el combate acaba con él huido, sin recibir el golpe (como P373 en la tanda 85; hasta 4 intentos). P69: tiradas de iniciativa hasta un empate: el panel y el resultado dicen el mismo ganador (azar: si no sale en ~6 tiradas, sin ver). P288: con la iniciativa perdida, recargar la página en pleno combate: el panel vuelve en «Combate — …», sin «En combate» vacío, y la ronda se juega | |
+| 87 | Colmillo Ceniza y Hogar Ketg: frases al azar | `t13a-colmillo` + `escenario.sh preparar <partida> escasez:clan-serhu` para P180; `mv-colmillo-ganado` para P191 | P180: pedir trabajo a la maestra de oficio y mirar el Poste tras `avanzar 1` hasta 3 veces: la variante «Al Clan Serhu le falta…» (la otra, «para el Clan Serhu», ya salió). P191: «Cazar» al rebaño de Múrgoles, recargando el escenario entre intentos (hasta 4): alguna vez el diario dice «solo consigo acorralar a N de los M» y el combate abre con N | |
+| 88 | Reino: asalto con Gorhorn fuera y Almacén con la mochila llena | `reino-sano-defensas` + `escenario.sh preparar <partida> asalto:<facción hostil>` con Gorhorn en el Pozo y `avanzar` hasta el asalto, para P253; `mv-ganado` (mochila 170/37) para P367 | P253: un asalto que toma Maktor con Gorhorn fuera no dice «Estabas allí»; si toma y no hay nada que llevarse, el aviso lo dice. P367: Reino › Almacén › Depositar con la mochila llena deposita (hasta el tope de materiales) y luego `preparar <partida> mochila-libre` deja hueco | |
+
+**Quedan fuera de tanda (2026-11-04):** a arreglar antes, P107 (con P328), P131 (con P363), P184 (con P375) y P151
+(la etiqueta de Hogar Ketg tapa su entrada y la del camino del noreste queda lejos de su flecha: es código); locales,
+P243, P245, P288 (la parte del Ollama real), P306, P307 y P324; decisión de la usuaria, P310; arte, P70. Propuestos
+para cerrar sin tanda (la fila ya dice comprobado lo que se arregló): P51 (59, en variante), P186 (13b-1), P294 (18) y
+P355 (47).
+
 ## Para la sesión local
 
 Solo se ve con el Ollama real (GPU de la Deck u otra máquina), no con el simulado: se lanza con `tools/qa/bench-ia.sh` o
