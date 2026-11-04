@@ -1700,7 +1700,7 @@ Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-1
 - ~~**QA-292 · Revisión por bloques en una rama larga**~~ ✅ 2026-11-03: `/code-review` del diff desde la última revisión al cerrar cada bloque de ~10 tandas (152 commits en una sola revisión dejaron partes sin mirar). `AGENTS.md`.
 
 P373 de la ronda de la puerta (usuaria, 2026-11-04):
-- **QA-293 · Preparar un combate 1v1 en `escenario.sh`** 🚧 en curso 2026-11-04: `preparar <partida> combate1v1:<npc>` deja un combate 1v1 clásico con ese NPC (`combate:` abre siempre uno de grupo, sin lo propio del 1v1 como la huida por habilidad de la fauna). Falta: el paso, sus tests y probarlo con el Brozán.
+- ~~**QA-293 · Preparar un combate 1v1 en `escenario.sh`**~~ ✅ 2026-11-04: `preparar <partida> combate1v1:<npc>` abre el combate 1v1 clásico contra ese NPC, viva donde viva, con el efecto `forzarCombate` del Cronista (`prepararCombate1v1.ts`); el panel sale al cargar y aguanta la recarga; se niega con un combate en curso, sin el NPC o con él muerto o convaleciente. Tests de parser e integración, rojos sin el arreglo; probado con el Brozán (t52).
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
