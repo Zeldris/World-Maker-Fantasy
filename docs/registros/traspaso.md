@@ -179,6 +179,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-11-04** — ~~`QA-293`~~: `escenario.sh preparar <partida> combate1v1:<npc>` abre el combate 1v1 clásico contra ese NPC (efecto `forzarCombate` del Cronista), para jugar lo propio del 1v1 como la huida de la fauna (P373).
 - **2026-11-03** — ~~`QA-290`~~, ~~`QA-291`~~, ~~`QA-292`~~ (retro de la ronda de la puerta): `tools/qa/humo-driver.sh`, humo del driver real en la CI; `tools/roadmap/siguiente-id.py` da el siguiente número libre mirando las ramas remotas; en una rama larga, revisión del código por bloques de ~10 tandas (`AGENTS.md`).
 - **2026-11-03** — ~~`QA-286`~~, ~~`QA-287`~~ (retro de `claude/gh-en-la-deck`): varios PR listos, de uno en uno (`ramas-y-main.md`); ramas remotas en `recuperar.py` y `--footer` en el aviso de `revisado.sh`, para Galivelop-workflow.
 - **2026-11-03** — ~~`QA-285`~~: la sesión local de la Deck crea sus PR con `gh` (`~/.local/bin/gh`, enlazado en el sandbox Flatpak de VS Code); estrenada con los PR #80 y #81. Sustituye a `QA-184` en `CLAUDE.md`, `AGENTS.md`, `ramas-y-main.md` y `skills-y-modelos.md`.
