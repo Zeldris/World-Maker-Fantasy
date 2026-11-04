@@ -1724,8 +1724,9 @@ Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejo
   sin frase del jugador abre el paisaje; fuera el guion suelto). Ronda 4 con Ollama real (2026-11-04, 9 turnos de
   23-89 s, `logs/ia/ronda-qa289-4.jsonl`, viaje a `campamento-serhu` jugando): comprobados P415, P416, P420, P424 y
   P425; P412 reabierto (abre con el NPC en 4 de 9, también sin diálogo: «Observo el cielo» abre con Ulkha); P423
-  sin provocar (el orco no dio réplica aparte). Falta: arreglar P412, provocar P423, `/opt-ai` del registro de la
-  ronda 4 y P417 en parte.
+  sin provocar (el orco no dio réplica aparte). P412 arreglado (2026-11-04, sin comprobar jugando): el campo
+  `loQueHace<Jugador>` del esquema abre la narración; bench `23-accion-delante`, 7 de 7 con Gorhorn. Falta: jugar P412
+  con diálogo (escenario `ronda-qa289-4`), provocar P423, `/opt-ai` del registro de la ronda 4 y P417 en parte.
 - ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
 
 Limpieza del repo (usuaria, 2026-10-27):
