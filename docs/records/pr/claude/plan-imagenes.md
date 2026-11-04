@@ -29,7 +29,7 @@ Lo demás:
 - el LoRA entrenado en Kaggle (`IMG-29`, `IMG-30`, `IMG-32`). El `.safetensors` queda fuera del repo
   (`image-generator/.gitignore`); `lora-kaggle.md` dice cómo rehacerlo.
 
-**Retro aplicada** (`docs/registros/retro-2026-11-03-plan-imagenes.md`):
+**Retro aplicada** (`docs/records/retro-2026-11-03-plan-imagenes.md`):
 
 ```diff
  docs/runbooks/skills-y-modelos.md

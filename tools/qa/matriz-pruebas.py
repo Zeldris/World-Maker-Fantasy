@@ -2,7 +2,7 @@
 """QA-101 (2026-10-19): matriz de cobertura de las pruebas jugando.
 
 Cada tarea cerrada (✅) de los hitos que se están probando (`0.0`…`0.3`, «Qué entra en cada hito» de
-21-roadmap.md; las `QA` no, son del entorno) tiene su fila en docs/registros/matriz-pruebas.md con su
+21-roadmap.md; las `QA` no, son del entorno) tiene su fila en docs/records/matriz-pruebas.md con su
 bloque y su estado:
   - jugado:      se ha visto funcionar jugando (fecha y hallazgo o recorrido en «Prueba»).
   - solo tests:  tiene tests, pero nadie lo ha jugado.
@@ -16,14 +16,14 @@ Uso:
                                                   o «Comprobado jugando»; si no, «sin jugar»)
   python3 tools/qa/matriz-pruebas.py --comprobar  sale con 1 si falta la fila de alguna tarea cerrada o una «jugado»
                                                   tiene la prueba en «parcial …» (pre-push)
-  (QA-217) --comprobar falla también si un plan `docs/registros/plan-comprobacion-*.md` nombra, en su columna
+  (QA-217) --comprobar falla también si un plan `docs/records/plan-comprobacion-*.md` nombra, en su columna
                                                   «Escenario», un `nombre` sin `tools/qa/escenarios/<nombre>.dump`
   python3 tools/qa/matriz-pruebas.py --bloque Reino  las filas sin jugar de ese bloque (para preparar una ronda)
 """
 import glob, io, os, re, sys, runpy, contextlib
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-MATRIZ = os.path.join(RAIZ, 'docs', 'registros', 'matriz-pruebas.md')
+MATRIZ = os.path.join(RAIZ, 'docs', 'records', 'matriz-pruebas.md')
 HITOS = {'0.0', '0.1', '0.2', '0.3'}
 REGISTROS = ['checklist-pruebas-juego.md', 'fase-g-0.1-hallazgos.md', 'pruebas-0.3-hallazgos.md', 'pruebas-nube-2026-09-28-hallazgos.md', 'sesion-jugadora-hallazgos.md']
 # Bloque de cada prefijo: lo que se juega junto en una ronda (QA-105).
@@ -86,7 +86,7 @@ def leer_matriz():
 def jugado_en_registros(ids):
     vistos = {}
     for f in REGISTROS:
-        ruta = os.path.join(RAIZ, 'docs', 'registros', f)
+        ruta = os.path.join(RAIZ, 'docs', 'records', f)
         if not os.path.exists(ruta):
             continue
         for l in open(ruta, encoding='utf-8'):
@@ -131,7 +131,7 @@ def escenarios_nombrados(texto):
 def escenarios_inexistentes():
     """QA-217: ['plan.md: nombre (línea N)'] de los escenarios de los planes que no tienen su .dump."""
     malos = []
-    for plan in sorted(glob.glob(os.path.join(RAIZ, 'docs', 'registros', 'plan-comprobacion-*.md'))):
+    for plan in sorted(glob.glob(os.path.join(RAIZ, 'docs', 'records', 'plan-comprobacion-*.md'))):
         for nombre, lineas in escenarios_nombrados(open(plan, encoding='utf-8').read()).items():
             if not os.path.exists(os.path.join(RAIZ, 'tools', 'qa', 'escenarios', nombre + '.dump')):
                 malos.append(f'{os.path.basename(plan)}: {nombre} (línea {lineas[0]})')

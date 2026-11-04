@@ -1,4 +1,4 @@
-"""QA-74: la bitácora (QA-69), con el `bitacora.py` de Galivelop-workflow (`.claude/gw/scripts/`, piloto del
+"""QA-74: la bitácora (QA-69), con el `handoff.py` de Galivelop-workflow (`.claude/gw/scripts/`, piloto del
 2026-10-22; sustituye a `tools/qa/bitacora.py`). Los mensajes del flujo están en inglés."""
 import os
 import subprocess
@@ -6,7 +6,7 @@ import unittest
 
 from comun import GW, carpeta, config_gw, escribir, git
 
-BITACORA = os.path.join(GW, 'bitacora.py')
+BITACORA = os.path.join(GW, 'handoff.py')
 
 
 def flujo(*args: str) -> subprocess.CompletedProcess:
@@ -73,7 +73,7 @@ class Ajenas(unittest.TestCase):
             '| **Tarea en curso · `a`** | uno |\n| **Tarea en curso · `b`** | dos |\n')
 
     def commit(self, repo: str, texto: str) -> str:
-        escribir(os.path.join(repo, 'docs/registros/traspaso.md'), texto)
+        escribir(os.path.join(repo, 'docs/records/traspaso.md'), texto)
         git(repo, 'add', '-A')
         git(repo, 'commit', '-q', '-m', 'x')
         return git(repo, 'rev-parse', 'HEAD')
@@ -123,7 +123,7 @@ class Ajenas(unittest.TestCase):
     def test_uso(self):
         r = flujo('own-row', 'x')
         self.assertEqual(r.returncode, 2)
-        self.assertIn('usage', r.stderr)
+        self.assertIn('own-row takes COMMIT BRANCH', r.stderr)
 
 
 class Cerradas(unittest.TestCase):
@@ -137,7 +137,7 @@ class Cerradas(unittest.TestCase):
 
     def commit(self, roadmap: str, bitacora: str) -> str:
         escribir(os.path.join(self.repo, 'docs/producto/roadmap.md'), roadmap)
-        escribir(os.path.join(self.repo, 'docs/registros/traspaso.md'), bitacora)
+        escribir(os.path.join(self.repo, 'docs/records/traspaso.md'), bitacora)
         git(self.repo, 'add', '-A')
         git(self.repo, 'commit', '-q', '-m', 'c')
         return git(self.repo, 'rev-parse', 'HEAD')

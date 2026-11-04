@@ -29,7 +29,7 @@ Un solo frente cada vez, en este orden. Lo que salga fuera de él va a la bandej
 2. **Ramas cerradas.** Una línea de trabajo por cuenta; cada sesión, su rama (`QA-136`). Las ramas ya fusionadas que
    solo llevan la bitácora por delante de `main` se cierran; `claude/instalador-empaquetado` (parada desde el
    2026-09-28) se retoma o se archiva, lo decide la usuaria.
-3. **Cerrar la puerta de pruebas** ([CLAUDE.md](../../AGENTS.md#pruebas-de-juego), [hallazgos](../registros/pruebas-0.3-hallazgos.md)),
+3. **Cerrar la puerta de pruebas** ([CLAUDE.md](../../AGENTS.md#pruebas-de-juego), [hallazgos](../records/pruebas-0.3-hallazgos.md)),
    que es el único frente activo. Lo que falta, al día: `python3 tools/qa/matriz-pruebas.py` (tareas sin jugar) y el
    resumen de cabecera de los hallazgos (`python3 tools/qa/marca-hallazgo.py --resumen`). Orden:
    1. Los graves (P240, P260) y las decisiones pendientes de la usuaria, si las hay.
@@ -45,7 +45,7 @@ Un solo frente cada vez, en este orden. Lo que salga fuera de él va a la bandej
    de trabajo por cuenta; cada tarea se juega al terminarla.
 
 **Bandeja de ideas:** lo nuevo (una mejora, una herramienta, una tarea de otro hito) se apunta en
-«Propuestas aprobadas para el roadmap cuando acaben las pruebas» de la [bitácora](../registros/traspaso.md), sin hito
+«Propuestas aprobadas para el roadmap cuando acaben las pruebas» de la [bitácora](../records/traspaso.md), sin hito
 ni identificador. Solo entra en un roadmap cuando la usuaria lo aprueba en la limpieza del paso 4 o al cerrar un hito.
 
 ---
@@ -124,7 +124,7 @@ por última vez.
 | **`0.5` Ciénaga Troncal** | Oficios y Maestros Goshg, zonas de la Ciénaga | **CR Fase 8:** pulido, simulaciones largas, exportar leyendas | **Zona** Z-F · **Reino** R-F (plano, red de producción) · resto de `MOD-10`…`MOD-34` · UX-E (`UX-21`…`UX-25`, `UX-27`, `UX-28`) |
 | **`0.6` Margen y Meseta** | Berig entero, control de escuadrones | Pesos y presupuesto ajustados con Berig entero | `BAS-2` completo y `BAS-4` (iconos y tokens), `BAS-6` · `ATM-3`…`ATM-5`, `ATM-7`, `ATM-8` · `PRE-1`, `PRE-2`, `PRE-4`, `PRE-6`, `PRE-7` · resto de `CFG` (`CFG-10`…`CFG-12`, `CFG-15`…`CFG-19`, `CFG-21`…`CFG-24`, `CFG-27`, `CFG-29`…`CFG-32`) · `ZON-21` (modo daltónico del mapa, con `CFG-29`) |
 | **`0.7` Personaje propio** | Creación completa, punto de inicio por raza | Sucesos fundacionales por origen del personaje; trasfondo del personaje con el Cronista (🧭 vía b) | `UX-15`, `UX-17` (asistente de nueva partida) · `PRE-3`, `PRE-5` · `UX-26` (primeros pasos) · `CR-72` (nombres por raza, `D-11`) |
-| **`0.8` Beta de Berig** | **Fase única de pruebas** (decisión de la usuaria, 2026-10-02): pasada de juego completa por todo lo implementado desde el `0.1` — retoma el guion y los hallazgos pendientes de [`fase-g-0.1-hallazgos.md`](../registros/fase-g-0.1-hallazgos.md) — y arreglo de lo que salga · Instalador, narrador afinado, curvas dinámicas, rendimiento · `CMB-9` (tope de combatientes de 4 a 6-8) | Destilar un cronista propio desde los ejemplos capturados | `CFG-7`, `CFG-8` nativos con Tauri · `CFG-25` y **Sonido** `SON-1`…`SON-6` · `VOZ-7`…`VOZ-11` (la voz en el juego) · `QA-1`…`QA-7` completo · `QA-26` (cifras provisionales) |
+| **`0.8` Beta de Berig** | **Fase única de pruebas** (decisión de la usuaria, 2026-10-02): pasada de juego completa por todo lo implementado desde el `0.1` — retoma el guion y los hallazgos pendientes de [`fase-g-0.1-hallazgos.md`](../records/fase-g-0.1-hallazgos.md) — y arreglo de lo que salga · Instalador, narrador afinado, curvas dinámicas, rendimiento · `CMB-9` (tope de combatientes de 4 a 6-8) | Destilar un cronista propio desde los ejemplos capturados | `CFG-7`, `CFG-8` nativos con Tauri · `CFG-25` y **Sonido** `SON-1`…`SON-6` · `VOZ-7`…`VOZ-11` (la voz en el juego) · `QA-1`…`QA-7` completo · `QA-26` (cifras provisionales) |
 | **`1.0` Vaelira** | Segundo continente | Legado entre partidas, si se aprueba (D-8 del Cronista) | `ATM-2` para las regiones de Vaelira |
 
 ### Dependencias que mandan el orden
@@ -353,7 +353,7 @@ que Berig sea estable.
 - Revisar la incoherencia de distancias: Karot Veku a ~110 km del Cruce en el mapa de Azgaar y a
   18-25 km en el grafo del juego. **[A]**
 - `ampliar lore` de Las Llanuras: parado en la zona 15-17 (ver
-  [ampliar-lore-checklist.md](../registros/ampliar-lore-checklist.md)). **[A]**
+  [ampliar-lore-checklist.md](../records/ampliar-lore-checklist.md)). **[A]**
 - Tras cada cambio de lore: fragmentos del RAG (`loreChunks.ts`) al día y `./actualizar-mundo.sh`
   en local. **[P]**
 - Documentación: convención "estado arriba, historial abajo" en el resto de `mecanicas/` y

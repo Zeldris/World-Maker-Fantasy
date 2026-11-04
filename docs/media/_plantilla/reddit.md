@@ -1,11 +1,11 @@
 # Reddit: <tema>
 
-El subreddit, el día en que se leyeron sus normas y lo que dicen de la autopromoción están en `ficha.md`. El título
+El subreddit, el día en que se leyeron sus normas y lo que dicen de la autopromoción están en `sheet.md`. El título
 lleva 300 caracteres como mucho. Aporta algo a la comunidad antes que promocionar.
 
 ## es
 
-**Título:** {{título}}
+**Title:** {{título}}
 
 {{cuerpo: qué es, por qué sirve y qué se pide a la comunidad}}
 

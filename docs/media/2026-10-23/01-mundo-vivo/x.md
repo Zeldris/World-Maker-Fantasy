@@ -1,10 +1,10 @@
 # X: ronda de pruebas del Mundo vivo
 
-Texto alternativo de las imágenes en la ficha. En el 2/, además, `juego-combate.webp` del Portal.
+Texto alternativo de las imágenes en `sheet.md`. En el 2/, además, `juego-combate.webp` del Portal.
 
 ## es
 
-Imagen: medios/tarjeta.webp
+Image: media/tarjeta.webp
 
 **1/** Esta semana, agentes de IA han jugado a Tarkor por nosotros: seis tandas por el Mundo vivo, en un navegador
 real, buscando lo que se rompe. 🧪 #gamedev #IA
@@ -20,7 +20,7 @@ https://zeldris.github.io/Portal-Galivelop/
 
 ## en
 
-Imagen: medios/tarjeta.en.webp
+Image: media/tarjeta.en.webp
 
 **1/** This week, AI agents played Tarkor for us: six batches through the living world, in a real browser, hunting for
 whatever breaks. 🧪 #gamedev #LocalAI

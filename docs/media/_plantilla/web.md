@@ -14,4 +14,4 @@ exige `es`, `gl` y `en`.
 }
 ```
 
-**Otros cambios en la ficha:** `actualizado`, `fase`, `hitos`, `cifras` o imágenes, si los hay.
+**Otros cambios en `sheet.md`:** `actualizado`, `fase`, `hitos`, `cifras` o imágenes, si los hay.

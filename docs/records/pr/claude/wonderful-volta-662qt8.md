@@ -27,7 +27,7 @@ listo, se traerá su versión adaptada a este código y se usará donde la calid
 el control desde el panel de administración). Al traerla toca hacer el simulacro con binarios falsos (`QA-240`) y
 poner al día la sección «Voces y sonidos» del mapa.
 
-Retro aplicada (`docs/registros/retro-2026-10-25-voces.md`):
+Retro aplicada (`docs/records/retro-2026-10-25-voces.md`):
 
 ```diff
  tools/qa/mapa-agente.py

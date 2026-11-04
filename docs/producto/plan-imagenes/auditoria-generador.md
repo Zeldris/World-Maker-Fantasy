@@ -46,13 +46,13 @@ Nota: los scripts y la ayuda del README a veces dicen «miniatura»; el perfil r
 
 ## 2. Roadmap (con estado)
 
-Fuente única de lo nuevo: `R/docs/producto/roadmap-imagenes.md` ("Fase I-A · Escenas compuestas con elementos ya generados", creado 2026-10-24 por la usuaria). Lo hecho: `R/docs/producto/roadmap-front.md` (CFG-38..CFG-43). Traspaso: `R/docs/registros/traspaso.md` (filas «Tarea en curso · claude/imagenes-local» y «claude/interfaz-imagenes», línea ~26-27; historial líneas ~157-163). Retros: `R/docs/registros/retro-2026-10-24-imagenes-local.md`, `retro-2026-10-25-interfaz-imagenes.md`; PRs: `R/docs/registros/pr/claude/imagenes-local.md`, `interfaz-imagenes.md`. Mapa de agente: `R/docs/mapa-agente.md` (sección «Imágenes»).
+Fuente única de lo nuevo: `R/docs/producto/roadmap-imagenes.md` ("Fase I-A · Escenas compuestas con elementos ya generados", creado 2026-10-24 por la usuaria). Lo hecho: `R/docs/producto/roadmap-front.md` (CFG-38..CFG-43). Traspaso: `R/docs/records/traspaso.md` (filas «Tarea en curso · claude/imagenes-local» y «claude/interfaz-imagenes», línea ~26-27; historial líneas ~157-163). Retros: `R/docs/records/retro-2026-10-24-imagenes-local.md`, `retro-2026-10-25-interfaz-imagenes.md`; PRs: `R/docs/records/pr/claude/imagenes-local.md`, `interfaz-imagenes.md`. Mapa de agente: `R/docs/mapa-agente.md` (sección «Imágenes»).
 
 | Id | Qué | Estado |
 |---|---|---|
 | **IMG-1** (`roadmap-imagenes.md`) | El prompt de una escena enlaza las imágenes de sus elementos: detectar elementos del catálogo nombrados y pasar sus imágenes elegidas como `-r` (varias), con texto que diga qué es cada una. Antes, medir cuántas referencias aguanta klein 4B con `--max-vram 2` y el tiempo. Esfuerzo M, [A] | **Abierto**, sin empezar |
 | **IMG-2** | Sin las imágenes de sus elementos, no se genera la escena: la interfaz bloquea y lista los que faltan con enlace para generar cada uno. Depende de IMG-1. S, [A] | **Abierto** |
-| **IMG-3** | Script que resume `generated/*/*/registro.tsv` y logs para `/opt-ai`. S, [P] | **Abierto** |
+| **IMG-3** | Script que resume `generated/*/*/registro.tsv` y logs para `/gw-opt-ai`. S, [P] | **Abierto** |
 | CFG-38 | Prompt de imagen usado editable (`promptUsado`, `promptUsadoAt`) | Hecho 2026-10-24 |
 | CFG-39 / CFG-40 | Generador de prompts con reglas FLUX / RAG (región, paisaje, luz, 2 prompts usados de ejemplo) | Hecho 2026-10-24 |
 | CFG-41 | LoRA de estilo | Abierto, tras CFG-42 |
@@ -62,7 +62,7 @@ Fuente única de lo nuevo: `R/docs/producto/roadmap-imagenes.md` ("Fase I-A · E
 Hallazgos:
 - **No existe ningún ítem de favoritos, candidatos, papelera/descartar ni rediseño de UI** en ningún roadmap, QA ni traspaso (búsqueda `IMG-`, `CFG-4`, `favorit`, `candidat` en `R/docs`). Hay que crearlos (p. ej. IMG-4..).
 - **La dependencia «zona primero, luego fauna con la zona de fondo» está cubierta a medias por IMG-1/IMG-2** (enlazar imágenes elegidas de elementos nombrados + bloquear si faltan), pero esos ítems están redactados para el caso «la escena nombra elementos» (zona -> fauna), es decir, al revés de lo que se quiere (fauna nativa -> zona de fondo). Hay que redactar un ítem nuevo o reformular IMG-1/IMG-2 para ambas direcciones.
-- Medición de referencias múltiples: pendiente (IMG-1). FLUX.3 admite hasta 10 referencias pero «no arranca en la Deck» (README G, tabla de modelos); klein 4B con `-r` único mide ~200 s (`R/docs/arquitectura/reutilizables/01-generacion-imagenes-local.md` líneas ~237-258, `R/.claude/gw/opt-ai.md`).
+- Medición de referencias múltiples: pendiente (IMG-1). FLUX.3 admite hasta 10 referencias pero «no arranca en la Deck» (README G, tabla de modelos); klein 4B con `-r` único mide ~200 s (`R/docs/arquitectura/reutilizables/01-generacion-imagenes-local.md` líneas ~237-258, `R/.claude/gw/gw-opt-ai.md`).
 - Documento de diseño del reutilizable: `R/docs/arquitectura/reutilizables/01-generacion-imagenes-local.md` (consistencia por referencia = «la palanca grande», líneas 246-258).
 
 ## 3. Funciones actuales de la UI y puntos débiles

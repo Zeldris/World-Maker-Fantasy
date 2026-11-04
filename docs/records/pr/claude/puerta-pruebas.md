@@ -26,7 +26,7 @@ mitad de los arreglados comprobados jugando y herramientas de escenarios para lo
 +    └── 5 .dump nuevos      # compañero NPC, defensas, guerra, hambre y sed, combate con capitán
 ```
 
-Retro aplicada (`docs/registros/retro-2026-10-21-puerta-pruebas.md`): `orchestrate-dealer` con tandas de 6-8
+Retro aplicada (`docs/records/retro-2026-10-21-puerta-pruebas.md`): `orchestrate-dealer` con tandas de 6-8
 hallazgos, captura solo para lo visual y revisión corta también sin worktree (`QA-189`, `QA-190`); `opt-tokens`
 lee solo la fila de la bitácora (`QA-194`). Quedan como tareas del 3.4: `QA-191` y `QA-193`.
 

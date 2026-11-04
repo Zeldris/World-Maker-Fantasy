@@ -6,7 +6,7 @@ primero. Marca cada post con `**1/**`, `**2/**`… Un hashtag como mucho.
 ## es
 
 **1/** {{gancho: lo que cambia para quien lo usa}}
-Imagen: medios/tarjeta.webp
+Image: media/tarjeta.webp
 
 **2/** {{el detalle o la cifra que lo respalda}}
 
@@ -15,7 +15,7 @@ Imagen: medios/tarjeta.webp
 ## en
 
 **1/** {{hook: what changes for the person using it}}
-Imagen: medios/tarjeta.webp
+Image: media/tarjeta.webp
 
 **2/** {{the detail or figure that backs it up}}
 

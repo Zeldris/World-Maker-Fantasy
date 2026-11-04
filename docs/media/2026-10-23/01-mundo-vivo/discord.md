@@ -1,11 +1,11 @@
 # Discord: ronda de pruebas del Mundo vivo
 
-Adjuntar la tarjeta y la captura del juego del 2026-10-24 (texto alternativo en la ficha).
+Adjuntar la tarjeta y la captura del juego del 2026-10-24 (texto alternativo en `sheet.md`).
 
 ## es
 
-Imagen: medios/tarjeta.webp
-Imagen: medios/captura-mapa-pozo.webp
+Image: media/tarjeta.webp
+Image: media/captura-mapa-pozo.webp
 
 ### 🧪 Ronda de pruebas: el Mundo vivo
 
@@ -29,8 +29,8 @@ Todo en el Portal 👉 https://zeldris.github.io/Portal-Galivelop/
 
 ## en
 
-Imagen: medios/tarjeta.en.webp
-Imagen: medios/captura-mapa-pozo.webp
+Image: media/tarjeta.en.webp
+Image: media/captura-mapa-pozo.webp
 
 ### 🧪 Play-testing round: the living world
 

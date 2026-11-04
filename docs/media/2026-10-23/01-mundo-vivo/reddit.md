@@ -1,12 +1,12 @@
 # Reddit: ronda de pruebas del Mundo vivo
 
-**Subreddits** en la ficha (`## Reddit`). Además del diagrama, `juego-combate.webp` del Portal.
+**Subreddits** en `sheet.md` (`## Reddit`). Además del diagrama, `juego-combate.webp` del Portal.
 
 ## es
 
-Imagen: medios/flujo-pruebas.webp
+Image: media/flujo-pruebas.webp
 
-**Título:** Ponemos a agentes de IA a jugar a nuestro RPG para probarlo: lo que aprendimos en seis tandas
+**Title:** Ponemos a agentes de IA a jugar a nuestro RPG para probarlo: lo que aprendimos en seis tandas
 
 Hacemos Tarkor, un RPG por texto en el que una IA local (Ollama, en tu equipo) narra y un motor con reglas y tiradas
 visibles decide qué pasa. El mundo sigue solo: facciones, fauna, caravanas y tu reino avanzan cada día.
@@ -33,7 +33,7 @@ Más del proyecto, con lo que falta: https://zeldris.github.io/Portal-Galivelop/
 
 ## en
 
-Imagen: medios/flujo-pruebas.en.webp
+Image: media/flujo-pruebas.en.webp
 
 **Title:** We have AI agents play-test our RPG: what six batches taught us
 

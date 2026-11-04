@@ -2,7 +2,7 @@
 
 ## Qué cambia
 
-- **`docs/difusion/`**: contenido para publicar en X, LinkedIn, Reddit, Discord y el Portal Galivelop, con una carpeta
+- **`docs/media/`**: contenido para publicar en X, LinkedIn, Reddit, Discord y el Portal Galivelop, con una carpeta
   por actualización. Incluye:
   - un `README.md` con las reglas;
   - una `guia-canales.md` con el tono, la longitud y las imágenes de cada canal;
@@ -26,7 +26,7 @@
   - `QA-239`: `ci-local.sh` en un worktree sin rojos falsos (`test_commit_msg`, `test_host` y `npm ci` sobre el enlace
     de `node_modules`).
 - **Roadmap, bitácora y retro:** `QA-235` a `QA-239` están tachadas en `roadmap-front.md` y en `21-roadmap.md`, y la retro está en
-  `docs/registros/retro-2026-10-25-difusion.md`.
+  `docs/records/retro-2026-10-25-difusion.md`.
 
 ## Evidencia
 

@@ -1002,7 +1002,7 @@ varios `ItemCatalogInput`, `HarvestYield` nuevos, filas de `WorldPopulation`).
 - **Contradicción real detectada y resuelta con la usuaria antes de tocar nada** (mismo patrón del
   runbook): el Tótem de clan roto era el disparador documentado del gancho de aventura "Un Maktor
   superviviente inesperado" (`docs/mecanicas/12-mundo-estructurado.md` § 4.3, `personajes.md` § Ganchos de
-  aventura) y ya había aparecido en una partida real jugada (`docs/registros/revisar-partida-hallazgos.md`).
+  aventura) y ya había aparecido en una partida real jugada (`docs/records/revisar-partida-hallazgos.md`).
   Preguntado antes de decidir — la usuaria eligió quitar los 3 sin excepción; el gancho sigue vivo
   solo por rumor/diálogo de NPC, nunca por objeto físico. Fila de `docs/mecanicas/12-mundo-estructurado.md`
   tachada con fecha, no borrada (regla del propio runbook de lore).

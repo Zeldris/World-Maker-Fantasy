@@ -10,7 +10,7 @@ sección del idioma.
 
 {{novedades en 3 o 4 viñetas}}
 
-Imagen: medios/tarjeta.webp
+Image: media/tarjeta.webp
 
 ---
 
@@ -22,7 +22,7 @@ Imagen: medios/tarjeta.webp
 
 {{news in 3 or 4 bullets}}
 
-Imagen: medios/tarjeta.webp
+Image: media/tarjeta.webp
 
 ---
 

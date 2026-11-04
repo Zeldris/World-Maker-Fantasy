@@ -2,7 +2,7 @@
 # QA-215 (usuaria, 2026-10-22): con la cuota de GitHub Actions agotada, el CI se pasa aquí y la rama se sube a main
 # sin PR (CLAUDE.md, «Ramas y main»). Repite los tres jobs de .github/workflows/ci.yml sobre un checkout limpio,
 # con una base de datos nueva (`tarkor_ci`, se borra y se crea) para no tocar la `tarkor` ni la de la ronda.
-# Uso: tools/qa/ci-local.sh [checkout, por defecto la raíz del repo] [base del diff para `bitacora.py closed`]
+# Uso: tools/qa/ci-local.sh [checkout, por defecto la raíz del repo] [base del diff para `handoff.py closed`]
 # Sale con 1 si algún paso falla; los registros quedan en el directorio que imprime al final.
 set -uo pipefail
 raiz="$(git rev-parse --show-toplevel)"
@@ -28,8 +28,8 @@ paso() {  # paso <subdirectorio> <descripción> <comando…>
 echo "== roadmap"
 paso . "cobertura del roadmap" python3 tools/roadmap/cobertura.py
 paso . "matriz de pruebas" python3 tools/qa/matriz-pruebas.py --comprobar
-paso . "bitácora" python3 .claude/gw/scripts/bitacora.py check
-[ -n "$base" ] && paso . "bitácora: tareas cerradas desde la base" python3 .claude/gw/scripts/bitacora.py closed "$base" HEAD
+paso . "bitácora" python3 .claude/gw/scripts/handoff.py check
+[ -n "$base" ] && paso . "bitácora: tareas cerradas desde la base" python3 .claude/gw/scripts/handoff.py closed "$base" HEAD
 # La copia de la base va dentro de .githooks/: el gancho saca la raíz del repo de su propia ruta.
 # Si no se puede escribir, el paso falla (no se salta en silencio). Ignorada en .gitignore y borrada al salir.
 copia="$dir/.githooks/.pre-commit-base"
@@ -39,7 +39,7 @@ if [ -n "$base" ] && git -C "$dir" cat-file -e "$base:.githooks/pre-commit" 2>/d
     bash \"$copia\" --rango \"\$(git merge-base $base HEAD)..HEAD\""
   rm -f "$copia"
 fi
-paso . "enlaces de los .md" python3 .claude/gw/scripts/enlaces-md.py
+paso . "enlaces de los .md" python3 .claude/gw/scripts/md-links.py
 paso . "mapa del agente" python3 tools/qa/mapa-agente.py
 paso . "tests de las skills en el CI" python3 tools/qa/skills-con-tests.py
 paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks); do bash -n \"\$f\" || exit 1; done
@@ -49,11 +49,11 @@ paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks
 # QA-219: Playwright para el test de navegador de pulsar.js/mover.js (sin Chromium en la máquina, el test se salta).
 paso tools/playwright-e2e "Playwright para el test de navegador" "npm ci --silent && npx playwright install chromium"
 paso . "tests de tools/qa" python3 -m unittest discover -s tools/qa/tests
-paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/opt-ai/scripts
-paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/scout-updates/scripts
-paso . "tests de opt-tokens" python3 -m unittest discover -s .claude/skills/opt-tokens/scripts
+paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/gw-opt-ai/scripts
+paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/gw-scout-updates/scripts
+paso . "tests de opt-tokens" python3 -m unittest discover -s .claude/skills/gw-opt-tokens/scripts
 paso . "tests de gw-media-content" python3 -m unittest discover -s .claude/skills/gw-media-content/scripts
-paso . "resumen de los registros de hallazgos" 'for r in docs/registros/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done'
+paso . "resumen de los registros de hallazgos" 'for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done'
 
 echo "== backend"
 paso . "base tarkor_ci nueva con pgvector" "psql '$servidor/postgres' -qc 'DROP DATABASE IF EXISTS tarkor_ci' -c 'CREATE DATABASE tarkor_ci' && psql \"\$DATABASE_URL\" -qc 'CREATE EXTENSION IF NOT EXISTS vector'"

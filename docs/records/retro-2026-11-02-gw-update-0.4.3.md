@@ -11,7 +11,7 @@ llamadas (el `/code-review`).
 ### R1. La difusión vuelve al check (comprobación automática, de WMF)
 
 `comprobar.py` sin argumentos sale con 2 desde v0.4.3 y salió del `check` (`.claude/gw.json`): nadie valida
-`docs/difusion`. Cambio: `tools/qa/difusion.sh`, que corre `comprobar.py --prefijos-tarea … --formato-propio web`
+`docs/media`. Cambio: `tools/qa/difusion.sh`, que corre `comprobar.py --prefijos-tarea … --formato-propio web`
 sobre cada pieza y no cuenta las normas de Reddit sin leer (dependen de la usuaria), con su test; una línea en
 `check`. Coste: un script y un test. Riesgo: ninguno; tocar `gw.json` pide su visto bueno.
 
@@ -33,8 +33,8 @@ propósito; contrapeso: `doctor.py` y los tests de `tools/qa` tras aplicar.
 ## Ya hecho en la rama
 
 - La fase 3 documentada sin `--footer` (el `commit-msg` habría rechazado la marca): arreglado en `f287d043`.
-- Los hallazgos de la revisión en scripts del flujo, como P6-P15 en `docs/registros/propuestas-flujo.md`.
+- Los hallazgos de la revisión en scripts del flujo, como P6-P15 en `docs/records/propuestas-flujo.md`.
 
 ## For Galivelop-workflow
 
-- R2 (arriba), y P1-P15 de `docs/registros/propuestas-flujo.md`.
+- R2 (arriba), y P1-P15 de `docs/records/propuestas-flujo.md`.

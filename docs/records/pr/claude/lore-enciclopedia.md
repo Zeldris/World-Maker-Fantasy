@@ -3,7 +3,7 @@
 ## Summary
 
 La enciclopedia, contrastada otra vez con el canon. Cada arreglo, con el sí de la usuaria y apuntado en
-`docs/registros/lore-hallazgos.md`.
+`docs/records/lore-hallazgos.md`.
 
 **`QA-244`: una entrada de historia ya no necesita documento.** Se descubre al visitar su lugar (como las bóvedas de
 datos de X4) o, sin documento ni lugar, es saber común. Se calcula al leer, como `unlocked`.
@@ -45,7 +45,7 @@ Además:
   «Fuga en Bandada», «Brasa Berserker» → «Brasa Rabiosa»…), con su entrada en `HABILIDADES_RENOMBRADAS` para que
   las partidas guardadas pasen al nombre nuevo (`QA-68`).
 
-**Retro aplicada** (`docs/registros/retro-2026-10-26-lore-enciclopedia.md`):
+**Retro aplicada** (`docs/records/retro-2026-10-26-lore-enciclopedia.md`):
 
 ```diff
  docs/mapa-agente.md

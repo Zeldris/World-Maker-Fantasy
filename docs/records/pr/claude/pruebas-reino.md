@@ -23,7 +23,7 @@ Retro (aprobada por la usuaria):
  docs/runbooks/rondas-de-pruebas.md
 -## Fallos de las herramientas        # 22,8 KB, lo leía entero cada tanda
 +## Trucos de las herramientas        # 17 vigentes (QA-208)
-+docs/registros/fallos-herramientas.md   # el historial
++docs/records/fallos-herramientas.md   # el historial
  CLAUDE.md «Al jugar»                   # lo relee quien juega (QA-209)
 +.githooks/commit-msg                   # pide «Siguiente:» con CLAUDECODE=1 (QA-210)
  tools/qa/escenario.sh guardar          # rechaza una descripción que no es frase o lleva el id (QA-211)

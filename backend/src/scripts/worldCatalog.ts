@@ -423,7 +423,7 @@ export const locations: LocationInput[] = [
   {
     slug: 'sabana-alta-colmillar',
     // Nombre corregido (auditoría de lore 2026-08-21): 'Colmillar' no aparece en ningún documento
-    // de lore — areas.md, docs/mecanicas/13-escala-del-mundo.md § 2.2ter y docs/registros/ampliar-lore-checklist.md
+    // de lore — areas.md, docs/mecanicas/13-escala-del-mundo.md § 2.2ter y docs/records/ampliar-lore-checklist.md
     // coinciden en llamarla simplemente "La Sabana Alta" (incluso la propia descripción de
     // 'paso-de-los-huesos' más arriba, en este mismo archivo, ya la nombra así sin "Colmillar").
     // Slug sin tocar (referenciado por locationTerrainTags y locationLinks más abajo).
@@ -12314,7 +12314,7 @@ export const zonePoints: ZonePointInput[] = [
 
   // ══════════════════════════════════════════════════════════════════════════
   // Ampliación 2026-09-28 — Fase 3 del plan "lo que funciona por zona se hace desde la zona"
-  // (docs/registros/plan-mecanicas-por-zona-2026-09-28.md): cobertura de mapa para toda fuente
+  // (docs/records/plan-mecanicas-por-zona-2026-09-28.md): cobertura de mapa para toda fuente
   // CAZA/TALA/MINERIA/EXTRACCION/PESCA/BUSQUEDA con presencia real en Las Llanuras del Viento
   // Rojo (`WorldPopulation.distribucion`/`HarvestYield`) que hasta ahora no tenía NINGÚN
   // `ZonePoint` en ninguna Location de la región — con las acciones de caza/recolección pasando a

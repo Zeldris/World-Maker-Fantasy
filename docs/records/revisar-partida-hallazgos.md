@@ -791,7 +791,7 @@ la sesión de pruebas encontró MÁS problemas del mismo área que esos fixes no
     hallazgo) — como el frontend ya no lo llama, el coste de LLM no se incurre. Sin tests rotos
     (ningún test frontend referenciaba el botón; el test backend del endpoint sigue en verde).
 43. **Revisar cuándo y cómo se lanza "¿Interactuar?" (el aviso de "Gesgurio busca tu atención...")**
-    — la usuaria pide anotarlo en el checklist de pruebas vivo (`docs/registros/checklist-pruebas-juego.md`)
+    — la usuaria pide anotarlo en el checklist de pruebas vivo (`docs/records/checklist-pruebas-juego.md`)
     como funcionalidad a probar a fondo y mejorar hasta que aporte valor real, no arreglarlo ya
     mismo. **CERRADO (2026-09-07)**: confirmado que ya estaba anotado en el checklist vivo
     (§ 6 "Modo dinámico", fila "Revisión de diseño de '¿Interactuar?'", `❌ sin probar a fondo,

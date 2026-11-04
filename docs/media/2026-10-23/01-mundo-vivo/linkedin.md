@@ -1,10 +1,10 @@
 # LinkedIn: ronda de pruebas del Mundo vivo
 
-El diagrama de cómo prueban los agentes (texto alternativo en la ficha).
+El diagrama de cómo prueban los agentes (texto alternativo en `sheet.md`).
 
 ## es
 
-Imagen: medios/flujo-pruebas.png
+Image: media/flujo-pruebas.png
 
 ¿Cómo se prueba un mundo que cambia aunque nadie lo toque?
 
@@ -28,7 +28,7 @@ https://zeldris.github.io/Portal-Galivelop/
 
 ## en
 
-Imagen: medios/flujo-pruebas.en.png
+Image: media/flujo-pruebas.en.png
 
 How do you test a world that keeps changing even when nobody touches it?
 

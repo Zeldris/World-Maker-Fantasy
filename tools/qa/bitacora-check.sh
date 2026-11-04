@@ -6,7 +6,7 @@
 # tareas que ya salieron de «Hecho recientemente»), cada tarea tachada en el plan también está en «Hecho recientemente».
 set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 1
-bita() { python3 .claude/gw/scripts/bitacora.py "$@"; }
+bita() { python3 .claude/gw/scripts/handoff.py "$@"; }
 bita check || exit 1
 rama="$(git branch --show-current)"
 # Foto de la copia de trabajo: un commit hijo de HEAD con un índice temporal (git stash create no ve lo no añadido).

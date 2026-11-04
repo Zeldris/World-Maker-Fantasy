@@ -3,7 +3,7 @@
 **Estado:** aprobada entera por la usuaria (2026-10-25) y aplicada en la rama: 1 → `QA-236`, 2 → `QA-237`, 3 →
 `QA-238`, 4 → `QA-239`. Las propuestas 1-3 quedan además para Galivelop-workflow.
 
-Es la sesión de `QA-235`: la carpeta `docs/difusion/` y la skill `gw-media-content`, con su tarjeta, su diagrama y su
+Es la sesión de `QA-235`: la carpeta `docs/media/` y la skill `gw-media-content`, con su tarjeta, su diagrama y su
 captura. Desde `2d4a082d` hubo 83 llamadas y 3 compactaciones. El contexto medio fue de 121k, con un techo de 144k por
 tramo, por debajo del umbral de 150k de `orchestrate-dealer`. Todo fue con Opus: la sesión principal y un subagente de
 revisión (8 llamadas, 667k de entrada). La revisión de código antes de `main` dio 13 hallazgos, todos arreglados en
@@ -26,7 +26,7 @@ revisión (8 llamadas, 667k de entrada). La revisión de código antes de `main`
    fue a dormir, pero `QA-95` dice que la retro se presenta antes de fusionar, y `requireRetro` pide su decisión. La
    sesión lo dejó todo listo y se paró antes de la marca de revisión.
    - **Propuesta:** escribir esa regla en `AGENTS.md`: «si la usuaria no está, se deja todo listo para un solo paso
-     (retro escrita, CI local en verde sobre la fusión con `main`, descripción en `docs/registros/pr/`) y su
+     (retro escrita, CI local en verde sobre la fusión con `main`, descripción en `docs/records/pr/`) y su
      confirmación de la retro lo lleva a `main`».
    - **Destino:** este repo, y también Galivelop-workflow por el lado de `requireRetro`.
 

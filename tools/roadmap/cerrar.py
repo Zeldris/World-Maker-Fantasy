@@ -5,7 +5,7 @@
      también si la descripción ocupa varias líneas) y añade ` ✅ <fecha>: <nota>`.
   2. En el mapa de `21-roadmap.md`: tacha `` `ID` ``; un rango `` `A`…`B` `` se tacha cuando se cierran todas las suyas
      en la misma orden (si no, avisa y lo deja).
-  3. Con `--bitacora "<resumen>"`, abre «Hecho recientemente» de `docs/registros/traspaso.md` con
+  3. Con `--bitacora "<resumen>"`, abre «Hecho recientemente» de `docs/records/traspaso.md` con
      `- **<fecha>** — ~~`ID`~~, … <resumen>` y deja las 10 últimas.
 
 Uso: python3 tools/roadmap/cerrar.py QA-n "nota" [QA-m "nota"…] [--bitacora "(origen): resumen"] [--fecha AAAA-MM-DD]
@@ -17,7 +17,7 @@ RAIZ = os.environ.get('CERRAR_RAIZ') or os.path.abspath(os.path.join(os.path.dir
 PRODUCTO = os.path.join(RAIZ, 'docs', 'producto')
 ROADMAPS = ['roadmap-front.md', 'roadmap-front-ux.md', 'roadmap-front-zona.md', 'roadmap-front-reino.md', 'roadmap-cronista.md', 'roadmap-imagenes.md', 'roadmap-voces.md']
 MAPA = os.path.join(PRODUCTO, '21-roadmap.md')
-BITACORA = os.path.join(RAIZ, 'docs', 'registros', 'traspaso.md')
+BITACORA = os.path.join(RAIZ, 'docs', 'records', 'traspaso.md')
 HECHOS = 10
 
 

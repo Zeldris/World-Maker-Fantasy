@@ -1,7 +1,7 @@
-<!-- galivelop-workflow v0.4.3 -->
+<!-- galivelop-workflow v0.5.0 -->
 # opt-ai — notas del proyecto
 
-Las lee primero la skill `opt-ai`; aquí vive todo lo propio de los modelos de IA local de Tarkor. El flujo las crea
+Las lee primero la skill `gw-opt-ai`; aquí vive todo lo propio de los modelos de IA local de Tarkor. El flujo las crea
 una vez; desde entonces son del proyecto. La lanza Claude al cerrar cada tanda de pruebas, antes de cambiar un modelo
 y cuando la usuaria nota lentitud. **Solo propone** (usuaria, 2026-10-20): lo aprobado entra como tarea con hito
 («Ninguna tarea sin hito», `AGENTS.md`). Diseño y decisiones: `docs/ia/skill-opt-ai.md`.
@@ -34,15 +34,15 @@ Los valores de `app.task` que emite el código (los comprueba `tools/qa/tests/te
 
 ## Ajustes
 
-Los lee `scripts/medir.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
+Los lee `scripts/measure.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
 
-```opt-ai
+```gw-opt-ai
 log: backend/ia/registro.jsonl
 exclude_tasks: calentar
 cold_ms: 100
 ```
 
-**Por turno** (`app.turno`, `app.intento`, rechazos `app.evento: rechazo`, `QA-162`): el `medir.py` del flujo no lo
+**Por turno** (`app.turno`, `app.intento`, rechazos `app.evento: rechazo`, `QA-162`): el `measure.py` del flujo no lo
 saca; lo da `python3 tools/qa/medir-ia.py <registro> [--anterior <registro>] [--perfil deck]` (la versión de WMF,
 con la tabla TURNOS: turno entero, primera palabra, % con intento 2 y con respaldo, rechazos por motivo).
 
@@ -57,13 +57,13 @@ reindexa, juega 8 turnos de `npm run benchmark-turno` con `IA_PERFIL=deck`, mues
 
 - Reindexar el lore: `npm run reindex-lore`. Recuperación: `backend/src/services/retrieval.ts`.
 - Evaluación del RAG: `npm run rag-eval` sobre el juego fijo `backend/ia/rag-casos.jsonl` (recall@k y MRR).
-- Las incoherencias: `docs/registros/pruebas-*-hallazgos.md`; las P de IA son las que inventan, contradicen el lore
+- Las incoherencias: `docs/records/pruebas-*-hallazgos.md`; las P de IA son las que inventan, contradicen el lore
   o se equivocan de nombre. Cada una pasa a caso de `rag-casos.jsonl` con `origen` = su P.
 
 ## Generador de imágenes
 
-`/opt-ai` mide también `image-generator/` (usuaria, 2026-10-24): `sd-cli` (stable-diffusion.cpp), no Ollama, así que
-`medir.py` no lo ve. Hay dos configuraciones, y se miden por separado:
+`/gw-opt-ai` mide también `image-generator/` (usuaria, 2026-10-24): `sd-cli` (stable-diffusion.cpp), no Ollama, así que
+`measure.py` no lo ve. Hay dos configuraciones, y se miden por separado:
 
 - **La del juego** (`generar.sh` por defecto, `probar.sh` y la interfaz): FLUX.2 klein 4B Q8 en Vulkan con
   `--max-vram vulkan0=2`. Base del 2026-10-24: thumbnail ~104 s y banner ~110 s sin referencia, ~200 s con una.

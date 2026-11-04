@@ -26,7 +26,7 @@ decir qué pasa con sus copias.
 pide la `/retro` antes de crear el PR, con sus propuestas presentadas a la usuaria y lo aprobado aplicado en la
 rama antes de crearlo. El gancho de `QA-50` solo exige la marca de `revisado.sh`, no la retro.
 
-**Propuesta (comprobación automática).** `revisado.sh` exige un `docs/registros/retro-*.md` añadido en la rama
+**Propuesta (comprobación automática).** `revisado.sh` exige un `docs/records/retro-*.md` añadido en la rama
 (desde que se separó de `main`) con una línea `**Estado` que diga lo que decidió la usuaria. Sin ella no pone la
 marca, y sin la marca el gancho no deja crear el PR.
 

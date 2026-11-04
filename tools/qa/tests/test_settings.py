@@ -1,9 +1,9 @@
 """QA-120 (retro del 2026-10-19): los ganchos de `.claude/settings.json`.
 
 `session-start.sh` corría también al compactar (sin `matcher`) y metía la instalación del entorno en el contexto tras
-cada compactación. Cada `SessionStart` dice cuándo corre, al compactar solo corre `recuperar.py --estado` (QA-116), y
+cada compactación. Cada `SessionStart` dice cuándo corre, al compactar solo corre `recover.py --state` (QA-116), y
 cada orden apunta a un archivo del repo que existe. Desde el piloto de Galivelop-workflow (2026-10-22), el
-`recuperar.py` es el del flujo (`.claude/gw/scripts/`).
+`recover.py` es el del flujo (`.claude/gw/scripts/`).
 """
 import json
 import os
@@ -27,7 +27,7 @@ class Settings(unittest.TestCase):
             self.assertIn('matcher', entrada, entrada)
             ordenes = [h['command'] for h in entrada['hooks']]
             if 'compact' in entrada['matcher'].split('|'):
-                self.assertEqual(ordenes, ['python3 "$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/recuperar.py --estado'])
+                self.assertEqual(ordenes, ['python3 "$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/recover.py --state'])
         self.assertTrue(any('compact' in e['matcher'].split('|') for e in inicio))
 
     def test_cada_orden_apunta_a_un_archivo_que_existe(self):
