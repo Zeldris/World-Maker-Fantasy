@@ -73,10 +73,10 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
 - **Salida de subagentes no fiable** (retro de `QA-176`): `measure.py` la da como «—» cuando su registro no la guarda.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
-- **`/gw-update` con desvíos locales** (R3 del 2026-11-02, `QA-296`): la regla está en `docs/runbooks/skills-wmf.md`.
-  La v0.4.3 sin ella: ~0,6 M arrastrados por relecturas; la v0.5.0, dos compactaciones en 12 minutos.
-
-- **Fase 1 de una `/gw-update` sin las copias del flujo** (`QA-294`): también en `skills-wmf.md`.
+- **`/gw-update` con desvíos locales** (R3 de la retro del 2026-11-02; movida con `QA-296`, R1 de la del
+  2026-11-04): la reconciliación por subagente, en `docs/runbooks/skills-wmf.md`; la fase 1 sin las copias
+  del flujo (`QA-294`), en el paso 6 de `skills-y-modelos.md`. La v0.4.3 sin la primera: ~0,6 M arrastrados por
+  relecturas; la v0.5.0, dos compactaciones en 12 minutos.
 - **Salidas acotadas** (`QA-295`): barridos con `grep -l` o `| head`; `mcp__github__actions_list` con
   `minimal_output` y `perPage` 3-5.
 
@@ -85,8 +85,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
 - **Revisión de una `/gw-update` entera** (`claude/gw-update-0.5.0`, 2026-11-04): 326 archivos, el 89 % de las líneas
   copias del flujo; el subagente de `/code-review` (Opus, 27 llamadas) metió 2,51 M de 4,24 M. De ahí `QA-294`.
   En la misma tarea, un `grep -rn` de 2,4k arrastró 29k y un `actions_list` de 1,4k, 18k (`QA-295`).
-- **Suelo fijo de ~77k por llamada**, también tras `/clear`: instrucciones del sistema y herramientas; igual que en
-  octubre, sin palanca desde el proyecto.
+- **Suelo fijo de ~77k por llamada**, también tras `/clear` (`measure.py`, sesión de `claude/gw-update-0.5.0`,
+  2026-11-04): instrucciones del sistema y herramientas; sin palanca desde el proyecto.
 
 - **Subagentes con Opus para lo mecánico** (`claude/interfaz-imagenes`, 2026-10-25, `QA-233`): 3 de 4; el de reescribir
   la interfaz con un plan cerrado fue con Sonnet y salió bien. Se aplica `gw-selector` al lanzar cada uno.

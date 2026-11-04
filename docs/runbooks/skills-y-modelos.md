@@ -72,8 +72,10 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
       de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)); contra un `main` local viejo revisa código
       que ya está en `main`. Se arregla lo que encuentre y se sube. En una rama de `/gw-update` (`QA-294`), el objetivo
       deja fuera las copias del flujo (`.claude/gw/scripts/`, `.claude/skills/`, `.githooks/`) idénticas a la versión
-      nueva: entran solo lo de WMF y los archivos con desvío local de la tabla de `/gw-update`; el resto lo cubren
-      `doctor.py` y `python3 -m unittest discover -s tools/qa/tests` (v0.5.0: el 89 % de las líneas eran copias, y la
+      nueva (lo dice `apply.py --check`, o un `diff` con el clon del flujo): entran solo lo de WMF y los archivos con
+      desvío local de la tabla de `/gw-update` (en `docs/records/propuestas-flujo.md`, `QA-296`); el resto lo
+      cubren `doctor.py`, `python3 -m unittest discover -s tools/qa/tests` y los de `.claude/skills/*/scripts` que
+      corre `ci.yml` (v0.5.0: el 89 % de las líneas eran copias, y la
       revisión, 2,5 M de entrada, el 59 % de la tarea).
    2. **Entorno:** si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/gw-opt-ai` (`QA-142`);
       luego `/gw-opt-tokens` y `retro` (paso 7). Va tras el código porque la retro aprende de sus hallazgos. Lo que apruebe

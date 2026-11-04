@@ -27,8 +27,12 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   mano (`QA-151`). Los P-números de `FOUND` van al registro de la ronda y los de `TOOLS` a
   [`fallos-herramientas.md`](../records/fallos-herramientas.md) (`QA-133`); con subagentes en paralelo, solo la
   principal escribe la bitácora y `docs/records/pruebas-0.3-hallazgos.md` (`QA-132`).
-- **`/gw-update`** (`QA-296`): la comparación de cada `.gw-new` con la copia de WMF la hace un subagente Sonnet
-  que devuelve la tabla «desvío · arriba · decisión propuesta»; la sesión principal solo decide. La fase 1 deja
-  fuera las copias idénticas del flujo (`QA-294`); las cubren `doctor.py` y los tests de `tools/qa`.
+- **`/gw-update`** (`QA-296`): la comparación entre la copia de WMF y la versión nueva (cada `.gw-new`, cada
+  archivo del flujo con desvío local, que `--update` sobrescribe sin `.gw-new`, y los rellenados como `REVIEW.md`)
+  la hace un subagente Sonnet que devuelve la tabla «archivo · desvío · arriba · decisión propuesta»; la sesión
+  principal solo decide. La tabla se guarda en `docs/records/propuestas-flujo.md` (sección de la versión), no en la
+  conversación. Tras aplicar, `doctor.py`, `apply.py --check` y los tests (`tools/qa/tests` y los
+  `.claude/skills/*/scripts` de `ci.yml`). La fase 1 de esa rama, en el
+  [paso 6 de `skills-y-modelos.md`](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea) (`QA-294`).
 - **`gw-opt-ai` y `gw-scout-updates`:** lo de WMF (Ollama real, `tools/qa/bench-ia.sh`, perfiles de la Deck) está en
   `.claude/gw/gw-opt-ai.md` y `.claude/gw/gw-scout-updates.md` (la memoria del scout sigue en `docs/scout/`); `gw-opt-tokens`, en `.claude/gw/gw-opt-tokens.md`.
