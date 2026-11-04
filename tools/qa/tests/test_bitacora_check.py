@@ -59,6 +59,16 @@ class BitacoraCheck(unittest.TestCase):
                            env={**ENV_GIT, 'BITACORA_COMPARTIDA': '1'}, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_sin_identidad_de_git_pasa(self):
+        # El runner de check.yml no tiene user.name (2026-11-04, PR 84): la foto es un commit desechable.
+        self.escribir('- ~~**QA-1 · Una**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-1`~~ hecho\n')
+        env = {k: v for k, v in ENV_GIT.items() if not k.startswith(('GIT_AUTHOR', 'GIT_COMMITTER')) and k != 'EMAIL'}
+        env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='user.useConfigOnly', GIT_CONFIG_VALUE_0='true')
+        r = subprocess.run(['bash', os.path.join(self.repo, 'tools', 'qa', 'bitacora-check.sh')], cwd='/',
+                           env=env, capture_output=True, text=True)
+        self.assertNotIn('no se pudo tomar la foto', r.stderr)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
     def test_una_fila_mal_formada_falla_aunque_la_rama_no_este_subida(self):
         git(self.repo, 'update-ref', '-d', 'refs/remotes/origin/main')
         escribir(os.path.join(self.repo, 'docs/records/traspaso.md'), '| **Tarea en curso** | algo |\n')

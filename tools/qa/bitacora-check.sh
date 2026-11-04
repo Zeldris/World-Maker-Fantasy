@@ -16,7 +16,10 @@ trap 'rm -f "$indice"' EXIT
 # segundo y con el mismo tamaño (racy git) y la foto no lo ve (CI local, 2026-10-26: 3 fallos en 40).
 cp -p "$(git rev-parse --git-path index)" "$indice" 2>/dev/null || rm -f "$indice"  # sin índice, git parte de cero
 foto="$(GIT_INDEX_FILE="$indice" git add -A && GIT_INDEX_FILE="$indice" git write-tree)" &&
-  foto="$(git commit-tree "$foto" -p HEAD -m bitacora-check)" ||
+  # Commit desechable: con identidad propia, que el runner del CI no tiene user.name (PR 84, 2026-11-04).
+  foto="$(GIT_AUTHOR_NAME=bitacora-check GIT_AUTHOR_EMAIL=bitacora-check@localhost \
+    GIT_COMMITTER_NAME=bitacora-check GIT_COMMITTER_EMAIL=bitacora-check@localhost \
+    git commit-tree "$foto" -p HEAD -m bitacora-check)" ||
   { echo "bitacora-check: no se pudo tomar la foto de la copia de trabajo" >&2; exit 1; }
 [ -z "$rama" ] || bita own-row "$foto" "$rama" || exit 1
 base="$(git rev-parse -q --verify "refs/remotes/origin/$rama" 2>/dev/null)" || exit 0  # rama sin subir: no hay base
