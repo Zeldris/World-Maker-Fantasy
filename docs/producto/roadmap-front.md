@@ -1699,6 +1699,10 @@ Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-1
 - ~~**QA-291 · Prueba de humo del driver real**~~ ✅ 2026-11-03: `tools/qa/humo-driver.sh` carga `hondonada-inicio` con el driver y el juego reales, comprueba en el HUD de `estado.js` que `preparar nivel:3` y un segundo `cargar` recargan la página (P400/P407; P409 ya lo cubre `ayudas_mcp_navegador.mjs`: la partida recién cargada no tiene chips); paso «Humo del driver» en la CI; test `test_humo_driver.py`. Rojo comprobado anulando `recargar_pagina()`; en local pide `HUMO_FORZAR=1` (borra la base de juego).
 - ~~**QA-292 · Revisión por bloques en una rama larga**~~ ✅ 2026-11-03: `/code-review` del diff desde la última revisión al cerrar cada bloque de ~10 tandas (152 commits en una sola revisión dejaron partes sin mirar). `AGENTS.md`.
 
+`/gw-opt-tokens` de `claude/gw-update-0.5.0` (usuaria, 2026-11-04):
+- ~~**QA-294 · Fase 1 de una `/gw-update` sin las copias del flujo**~~ ✅ 2026-11-04: el `/code-review` deja fuera las copias idénticas (`.claude/gw/scripts/`, `.claude/skills/`, `.githooks/`); entran lo de WMF y los desvíos locales; las copias, con `doctor.py` y los tests de `tools/qa`. Paso 6 de `skills-y-modelos.md` y `gw-opt-tokens.md`. Pendiente: proponerlo a Galivelop-workflow en la retro.
+- ~~**QA-295 · Salidas acotadas en barridos y CI**~~ ✅ 2026-11-04: `grep -l`/`| head` y `actions_list` con `minimal_output` y `perPage` 3-5, en `gw-opt-tokens.md`.
+
 P373 de la ronda de la puerta (usuaria, 2026-11-04):
 - ~~**QA-293 · Preparar un combate 1v1 en `escenario.sh`**~~ ✅ 2026-11-04: `preparar <partida> combate1v1:<npc>` abre el combate 1v1 clásico contra ese NPC, viva donde viva, con el efecto `forzarCombate` del Cronista (`prepararCombate1v1.ts`); el panel sale al cargar y aguanta la recarga; se niega con un combate en curso, sin el NPC o con él muerto o convaleciente. Tests de parser e integración, rojos sin el arreglo; probado con el Brozán (t52).
 
