@@ -1701,6 +1701,7 @@ Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-1
 
 `/gw-opt-tokens` de `claude/gw-update-0.5.0` (usuaria, 2026-11-04):
 - ~~**QA-294 · Fase 1 de una `/gw-update` sin las copias del flujo**~~ ✅ 2026-11-04: el `/code-review` deja fuera las copias idénticas (`.claude/gw/scripts/`, `.claude/skills/`, `.githooks/`); entran lo de WMF y los desvíos locales; las copias, con `doctor.py` y los tests de `tools/qa`. Paso 6 de `skills-y-modelos.md` y `gw-opt-tokens.md`. Pendiente: proponerlo a Galivelop-workflow en la retro.
+- ~~**QA-296 · Las reglas de `/gw-update` en `skills-wmf.md`**~~ ✅ 2026-11-04 (retro de la v0.5.0, R1): la reconciliación por subagente y la fase 1 sin copias, donde se lee al lanzar `/gw-update`; R2 y R3, a Galivelop-workflow (P19, P18).
 - ~~**QA-295 · Salidas acotadas en barridos y CI**~~ ✅ 2026-11-04: `grep -l`/`| head` y `actions_list` con `minimal_output` y `perPage` 3-5, en `gw-opt-tokens.md`.
 
 P373 de la ronda de la puerta (usuaria, 2026-11-04):

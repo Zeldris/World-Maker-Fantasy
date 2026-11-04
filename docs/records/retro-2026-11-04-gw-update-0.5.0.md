@@ -3,7 +3,8 @@
 Rama `claude/gw-update-0.5.0`, commits `839a3b84`..`de60c5dc`. El gasto ya lo midió `/gw-opt-tokens` (`QA-294`,
 `QA-295`, en `.claude/gw/gw-opt-tokens.md`); esta retro mira el resto: navegación, comprobaciones y skills.
 
-**Estado:** a la espera de la decisión de la usuaria.
+**Estado:** aprobadas las tres (usuaria, 2026-11-04). R1 aplicada en la rama (`QA-296`); R2 y R3 propuestas a
+Galivelop-workflow (P19 y P18 de `propuestas-flujo.md`).
 
 ## Propuestas, de más a menos grave
 
@@ -39,4 +40,4 @@ suyos; `--check` los da como «propios» y sale con 0. Hasta entonces, la excepc
 
 ## For Galivelop-workflow
 
-- R2 y R3 (arriba), con P16-P18 de `docs/records/propuestas-flujo.md`.
+- R2 (P19) y R3 (P18), con P16 y P17 de `docs/records/propuestas-flujo.md`.

@@ -73,13 +73,10 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
 - **Salida de subagentes no fiable** (retro de `QA-176`): `measure.py` la da como «—» cuando su registro no la guarda.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
 
-- **`/gw-update` con desvíos locales** (retro del 2026-11-02, R3): la comparación archivo a archivo entre la copia
-  de WMF y la versión nueva la hace un subagente (Sonnet) que devuelve la tabla «desvío · arriba · decisión
-  propuesta»; la sesión principal solo decide. Luego `doctor.py` y los tests de `tools/qa`. La v0.4.3 sin esto:
-  `comprobar.py` leído 15 veces y `AGENTS.md` 26, ~0,6 M arrastrados por relecturas.
+- **`/gw-update` con desvíos locales** (R3 del 2026-11-02, `QA-296`): la regla está en `docs/runbooks/skills-wmf.md`.
+  La v0.4.3 sin ella: ~0,6 M arrastrados por relecturas; la v0.5.0, dos compactaciones en 12 minutos.
 
-- **Fase 1 de una `/gw-update` sin las copias del flujo** (`QA-294`, paso 6 de `skills-y-modelos.md`): se revisa
-  lo de WMF y los desvíos locales; las copias idénticas, con `doctor.py` y los tests de `tools/qa`.
+- **Fase 1 de una `/gw-update` sin las copias del flujo** (`QA-294`): también en `skills-wmf.md`.
 - **Salidas acotadas** (`QA-295`): barridos con `grep -l` o `| head`; `mcp__github__actions_list` con
   `minimal_output` y `perPage` 3-5.
 

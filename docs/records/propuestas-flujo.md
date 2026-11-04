@@ -65,6 +65,10 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
     (`tools/qa/fusionar.sh`, `tools/qa/mapa-agente.py`, o un comentario): debería casar la ruta entera
     (`.claude/gw/scripts/<nombre>`). En WMF se quitaron a mano (usuaria, 2026-11-04). Y `apply.py --check` sale 1
     con un gancho propio declarado: falta una clave para marcar archivos del proyecto (p. ej. `ownFiles`).
+    Una comprobación siempre en rojo deja de mirarse (retro del 2026-11-04, R3).
+  - P19 (v0.5.0) La skill `gw-update` debería mandar la comparación de cada `.gw-new` a un subagente barato que
+    devuelva la tabla de desvíos, y su fase 1 dejar fuera las copias idénticas del flujo (retro del 2026-11-04, R2;
+    ya en dos actualizaciones de WMF).
 
 ## Se queda en WMF
 

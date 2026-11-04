@@ -27,5 +27,8 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   mano (`QA-151`). Los P-números de `FOUND` van al registro de la ronda y los de `TOOLS` a
   [`fallos-herramientas.md`](../records/fallos-herramientas.md) (`QA-133`); con subagentes en paralelo, solo la
   principal escribe la bitácora y `docs/records/pruebas-0.3-hallazgos.md` (`QA-132`).
+- **`/gw-update`** (`QA-296`): la comparación de cada `.gw-new` con la copia de WMF la hace un subagente Sonnet
+  que devuelve la tabla «desvío · arriba · decisión propuesta»; la sesión principal solo decide. La fase 1 deja
+  fuera las copias idénticas del flujo (`QA-294`); las cubren `doctor.py` y los tests de `tools/qa`.
 - **`gw-opt-ai` y `gw-scout-updates`:** lo de WMF (Ollama real, `tools/qa/bench-ia.sh`, perfiles de la Deck) está en
   `.claude/gw/gw-opt-ai.md` y `.claude/gw/gw-scout-updates.md` (la memoria del scout sigue en `docs/scout/`); `gw-opt-tokens`, en `.claude/gw/gw-opt-tokens.md`.
