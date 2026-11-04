@@ -99,6 +99,40 @@ describe('abreConElNpc (QA-289, P412)', () => {
   });
 });
 
+describe('acción del jugador delante (QA-289, P412, ronda 4)', () => {
+  it('abre con la acción en tercera persona si la primera frase no nombra al jugador', async () => {
+    const { conAccionDelanteDe } = await import('./narrador.js');
+    const cielo = 'Ulkha Ketg mira hacia el cielo, sus ojos se entrecierran. Después, su mirada regresa a Gorhorn.';
+    expect(conAccionDelanteDe(cielo, 'Observa el cielo sobre el campamento', 'Gorhorn', 'Observo el cielo sobre el campamento')).toBe(
+      `Gorhorn observa el cielo sobre el campamento. ${cielo}`,
+    );
+    expect(conAccionDelanteDe('Ulkha Ketg calla.', 'Gorhorn le pregunta por el Clan Serhu.', 'Gorhorn', 'Le pregunto por el Clan Serhu')).toBe(
+      'Gorhorn le pregunta por el Clan Serhu. Ulkha Ketg calla.',
+    );
+  });
+
+  it('se deja si ya abre con el jugador, si el campo copia la acción o llega vacío', async () => {
+    const { conAccionDelanteDe } = await import('./narrador.js');
+    const deGorhorn = 'Gorhorn revisa el filo de su hacha. Brilla al sol.';
+    expect(conAccionDelanteDe(deGorhorn, 'Revisa el filo de su hacha', 'Gorhorn', 'Reviso el filo de mi hacha')).toBe(deGorhorn);
+    expect(conAccionDelanteDe('El orco calla.', 'Reviso el filo de mi hacha', 'Gorhorn', 'Reviso el filo de mi hacha')).toBe('El orco calla.');
+    expect(conAccionDelanteDe('El orco calla.', '', 'Gorhorn', 'Reviso el filo de mi hacha')).toBe('El orco calla.');
+  });
+
+  it('narrateAction pide el campo fuera de combate, lo pone delante y no lo devuelve', async () => {
+    const { narrateAction, claveAccionDelJugador } = await import('./narrador.js');
+    const clave = claveAccionDelJugador('Gorhorn');
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ [clave]: 'observa el cielo', narration: 'Ulkha Ketg mira hacia el cielo.', newFacts: [] }) });
+    const res = await narrateAction({ worldFacts: [], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Observo el cielo' } as Parameters<typeof narrateAction>[0]);
+    expect(res.narration).toBe('Gorhorn observa el cielo. Ulkha Ketg mira hacia el cielo.');
+    expect(clave in res).toBe(false);
+    const opciones = ollamaGenerate.mock.calls[0]![0] as { prompt: string; format: { properties: Record<string, unknown> } };
+    expect(Object.keys(opciones.format.properties)[0]).toBe(clave);
+    expect(opciones.prompt).toContain(`En "${clave}"`);
+  });
+});
+
 describe('narrateAction tras repetir el turno anterior (QA-289, P414)', () => {
   const anterior = 'Ulkha Ketg mira a Gorhorn con una expresión de sorpresa mientras él bebe del odre junto a la hoguera del paso.';
   const ctx = {

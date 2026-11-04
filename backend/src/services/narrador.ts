@@ -1038,6 +1038,28 @@ export function empezarPorElJugador(narracion: string, npc: string, characterNam
   return [...todas.slice(i), ...todas.slice(0, i), ...cola].join(' ');
 }
 
+/// P412 (ronda 4 de QA-289): la clave del campo de la acción del jugador en el esquema de la narración. Lleva su nombre
+/// porque el modelo la escribe al generar, y es lo que le hace empezar por él.
+export function claveAccionDelJugador(characterName: string): string {
+  return `loQueHace${characterName.normalize('NFD').replace(/[^A-Za-z0-9]/g, '')}`;
+}
+
+/// P412 (ronda 4 de QA-289: «Ulkha Ketg mira hacia el cielo…» con «Observo el cielo»): si la primera frase no nombra al
+/// jugador, abre la narración «<Jugador> <su acción en tercera persona>.». Se deja como está si el campo llega vacío,
+/// copia la acción en primera persona o ya está en la primera frase.
+export function conAccionDelanteDe(narracion: string, accion: string, characterName: string, actionDelJugador: string): string {
+  const limpia = accion
+    .trim()
+    .replace(new RegExp(`^${escapar(characterName)}(?![\\p{L}])\\s*`, 'iu'), '')
+    .replace(/^[«“"']+|[«»“”"'.!?…,;:\s]+$/gu, '');
+  if (palabras(limpia).length < 2) return narracion;
+  if (palabras(limpia).join(' ') === palabras(actionDelJugador).join(' ')) return narracion;
+  const primera = frases(narracion)[0] ?? '';
+  if (contieneNombre(primera, characterName)) return narracion;
+  if (palabras(primera).join(' ').includes(palabras(limpia).join(' '))) return narracion;
+  return `${characterName} ${limpia[0]!.toLowerCase()}${limpia.slice(1)}. ${narracion}`.trim();
+}
+
 /// P416: «No te importa, no te importa, no te importa…»: un trozo igual al anterior (entre comas o frases) se quita; el
 /// que queda se lleva la puntuación del último para no acabar en coma.
 export function sinEco(texto: string): string {
@@ -1526,11 +1548,16 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   // P412: con réplica aparte, el NPC en una frase breve al final. Bench 20: sin diálogo, la narración abría con Ulkha en 5
   // de 7 turnos (y en uno hablaba sin que nadie le preguntara); fuera de combate, la línea va en todos los turnos.
   const jugador = ctx.characterName ?? 'el personaje del jugador';
+  // P412 (ronda 4 de QA-289: abre con el NPC en 4 de 9 pese a la línea FOCO): fuera de combate, el esquema pide antes de
+  // `narration` un campo con la acción del jugador en tercera persona; `conAccionDelanteDe` la pone delante si la
+  // narración no abre con él. Con la clave nombrándolo, la narración real dejó de abrir con Ulkha (2 de 2).
+  const claveAccion = ctx.enCombate || !ctx.characterName ? null : claveAccionDelJugador(ctx.characterName);
+  const campoAccion = claveAccion ? ` En "${claveAccion}", lo que hace ${ctx.characterName} en tercera persona, sin su nombre.` : '';
   const focoBlock = ctx.replicaAparte
-    ? `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. ${ctx.replicaAparte} sale como mucho en una frase breve al final.\n`
+    ? `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. ${ctx.replicaAparte} sale como mucho en una frase breve al final.${campoAccion}\n`
     : ctx.enCombate
       ? ''
-      : `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. Si hay otros personajes, salen después y en una frase breve.\n`;
+      : `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. Si hay otros personajes, salen después y en una frase breve.${campoAccion}\n`;
 
   const prompt = `${GOOD_NARRATION_EXAMPLE}
 
@@ -1557,6 +1584,7 @@ Responde solo con el JSON pedido, nada más.`;
   const format = {
     type: 'object',
     properties: {
+      ...(claveAccion ? { [claveAccion]: { type: 'string', maxLength: 160 } } : {}),
       narration: { type: 'string' },
       // QA-289: como mucho 3 hechos y cortos; más era repetir la narración en otra lista (y tiempo de escritura).
       newFacts: { type: 'array', items: { type: 'string', maxLength: 160 }, maxItems: 3 },
@@ -1977,6 +2005,12 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         continue;
       }
       parsed.narration = quitarFrasesRepetidas(parsed.narration, ctx.lastNarrationText);
+      if (ctx.characterName && !ctx.enCombate) {
+        const clave = claveAccionDelJugador(ctx.characterName);
+        const accion = (parsed as unknown as Record<string, unknown>)[clave];
+        delete (parsed as unknown as Record<string, unknown>)[clave];
+        parsed.narration = conAccionDelanteDe(parsed.narration, typeof accion === 'string' ? accion : '', ctx.characterName, ctx.action);
+      }
       return parsed;
     } catch (err) {
       // Roadmap de velocidad, 2026-07-20 (streaming): antes este catch tragaba el error en
