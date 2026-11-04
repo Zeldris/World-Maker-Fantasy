@@ -140,6 +140,9 @@ describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
     expect(unirReplica('Gorhorn se acerca. Ulkha Ketg mira a Gorhorn.', '«¡Fuera!»', orco)).toBe('Gorhorn se acerca. Ulkha Ketg mira a Gorhorn. El orco enfurecido responde: «¡Fuera!»');
     expect(unirReplica('Gorhorn se acerca. El Orco Enfurecido gruñe.', '«¡Fuera!»', orco)).toBe('Gorhorn se acerca. El Orco Enfurecido gruñe. «¡Fuera!»');
     expect(unirReplica('Gorhorn pregunta.', '«Me llamo Ulkha.»', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. Ulkha Ketg responde: «Me llamo Ulkha.»');
+    // P425: un guion suelto al abrir la réplica, dentro o fuera de la comilla, se quita.
+    expect(unirReplica('Gorhorn pregunta.', '«-La situación es inmutable.»', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. Ulkha Ketg responde: «La situación es inmutable.»');
+    expect(unirReplica('Gorhorn pregunta.', '- La situación es inmutable.', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. Ulkha Ketg responde: «La situación es inmutable.»');
     expect(unirReplica('Gorhorn pregunta.', '«Aquí no.»', { name: 'Ulkha Ketg', nombreVisible: 'Orca desconocida', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. La orca desconocida responde: «Aquí no.»');
   });
 
@@ -185,6 +188,11 @@ describe('restos de diálogo en la narración (QA-289, ronda 2: P415, P416, P417
     expect(quitarRestosDeDialogo('El orco se tensa. La respuesta del orco es un susurro.', 'Gorhorn')).toBe('El orco se tensa.');
     expect(quitarRestosDeDialogo('Gorhorn le responde con calma. El orco se tensa.', 'Gorhorn')).toBe('Gorhorn le responde con calma. El orco se tensa.');
     expect(quitarRestosDeDialogo('Gorhorn pregunta a Ulkha Ketg qué la trae al paso, y ella responde', 'Gorhorn')).toBe('Gorhorn pregunta a Ulkha Ketg qué la trae al paso, y ella responde');
+    // P423: la narración decidía la respuesta del NPC («acepta la oferta») y la réplica, aparte, la contradecía.
+    expect(quitarRestosDeDialogo('Gorhorn le tiende el odre. El orco acepta la oferta, pero su mirada sigue siendo furtiva. El viento sopla.', 'Gorhorn')).toBe('Gorhorn le tiende el odre. El viento sopla.');
+    expect(quitarRestosDeDialogo('Gorhorn le tiende el odre. Ella rechaza el agua con un gesto seco.', 'Gorhorn')).toBe('Gorhorn le tiende el odre.');
+    expect(quitarRestosDeDialogo('Gorhorn le tiende el odre. El orco se niega a mirarlo.', 'Gorhorn')).toBe('Gorhorn le tiende el odre.');
+    expect(quitarRestosDeDialogo('Gorhorn acepta el reto y da un paso al frente.', 'Gorhorn')).toBe('Gorhorn acepta el reto y da un paso al frente.');
   });
 
   it('sinEco quita trozos repetidos seguidos y deja la puntuación del último', async () => {
@@ -225,7 +233,19 @@ describe('empezarPorElJugador (QA-289, ronda 2: P412)', () => {
     expect(empezarPorElJugador('Ulkha Ketg sonríe. Gorhorn se acerca. Gorhorn pregunta qué la trae al paso, y ella responde', 'Ulkha Ketg', 'Gorhorn')).toBe(
       'Gorhorn se acerca. Ulkha Ketg sonríe. Gorhorn pregunta qué la trae al paso, y ella responde',
     );
-    expect(empezarPorElJugador('Ulkha Ketg sonríe. El viento sopla.', 'Ulkha Ketg', 'Gorhorn')).toBe('Ulkha Ketg sonríe. El viento sopla.');
+    expect(empezarPorElJugador('Ulkha Ketg sonríe. Ella se aparta el pelo.', 'Ulkha Ketg', 'Gorhorn', 'F')).toBe('Ulkha Ketg sonríe. Ella se aparta el pelo.');
+  });
+
+  it('P425: abre con «Ella» siendo NPC, o sin nombrar al jugador: abre la primera frase que no es del NPC', async () => {
+    const { empezarPorElJugador, abreConElNpc } = await import('./narrador.js');
+    expect(empezarPorElJugador('Ella se acerca a Gorhorn con una elegancia fluida. Gorhorn la saluda con la cabeza.', 'Ulkha Ketg', 'Gorhorn', 'F')).toBe(
+      'Gorhorn la saluda con la cabeza. Ella se acerca a Gorhorn con una elegancia fluida.',
+    );
+    expect(empezarPorElJugador('Ulkha Ketg se vuelve hacia él. El viento sopla en la hondonada.', 'Ulkha Ketg', 'Gorhorn')).toBe(
+      'El viento sopla en la hondonada. Ulkha Ketg se vuelve hacia él.',
+    );
+    expect(abreConElNpc('Él la mira. Ulkha Ketg calla.', 'Ulkha Ketg', 'Gorhorn', 'M')).toBe(false);
+    expect(abreConElNpc('Ella calla.', 'Ulkha Ketg', 'Gorhorn')).toBe(false);
     expect(empezarPorElJugador('Gorhorn le tiende el odre. Ulkha Ketg sonríe.', 'Ulkha Ketg', 'Gorhorn')).toBe('Gorhorn le tiende el odre. Ulkha Ketg sonríe.');
   });
 });

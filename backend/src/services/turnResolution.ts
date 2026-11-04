@@ -5026,14 +5026,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         replicaAnterior: ultimaReplica(lastNarration?.text),
         nombresConocidos: await nombresDelMundo(worldId),
       });
-      if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName)) {
+      if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
       }
       if (npcReply) {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
         // P415-P417 (restos de habla sin cita) y P412 (abre con el NPC): el NPC habla solo en su réplica, al final.
         const nombreNpc = dialogueTarget.nombreVisible ?? dialogueTarget.name;
-        const narracion = empezarPorElJugador(quitarRestosDeDialogo(quitarCitas(narration.narration), characterName), nombreNpc, characterName);
+        const narracion = empezarPorElJugador(quitarRestosDeDialogo(quitarCitas(narration.narration), characterName), nombreNpc, characterName, dialogueTarget.genero);
         narration.narration = unirReplica(narracion, npcReply, dialogueTarget);
       }
     } catch (err) {

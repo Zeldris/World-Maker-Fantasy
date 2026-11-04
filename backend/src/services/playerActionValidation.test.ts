@@ -178,6 +178,28 @@ describe('detectsAbsentSceneNpcClaim', () => {
     expect(result).toBeNull();
   });
 
+  // P424 (ronda 3 de QA-289): preguntar al orco, presente, por Ulkha, ausente, cortaba el turno con
+  // «Gorhorn mira alrededor buscando a Ulkha…»: la ausente es el tema de la pregunta, no a quien se habla.
+  it('P424: no dispara si la ausente es el tema de la pregunta y hay alguien en escena a quien preguntar', async () => {
+    for (const accion of [
+      'Le pregunto si sabe dónde puedo encontrar a Torgash',
+      'Le pregunto por Torgash.',
+      'Le pregunto al orco qué sabe de Torgash.',
+    ]) {
+      expect(await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['orco-enfurecido-hondonada'])).toBeNull();
+    }
+  });
+
+  it('P424: sigue disparando si la ausente es a quien se habla, aunque haya alguien en escena', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Torgash por su clan.', 'world1', 'save1', ['orco-enfurecido-hondonada']);
+    expect(result?.name).toBe('Torgash');
+  });
+
+  it('P424: sin nadie en escena a quien preguntar, preguntar por la ausente sigue cortando', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto por Torgash.', 'world1', 'save1', []);
+    expect(result?.name).toBe('Torgash');
+  });
+
   it('sin la misión del Orco ACTIVA: el mismo texto SÍ se bloquea (el Orco no está disponible sin la quest)', async () => {
     findFirstQuest.mockResolvedValueOnce(null);
     const result = await detectsAbsentSceneNpcClaim(

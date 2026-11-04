@@ -185,6 +185,19 @@ export async function isPursuerOrcoInScene(action: string, saveId: string): Prom
 /// contexto, no el destinatario de la acción.
 const QUOTED_NAME_MATCH_REGEX = /'([^']+)'/;
 
+/// P424: «Le pregunto si sabe dónde puedo encontrar a Ulkha», «le pregunto por Ulkha», «qué sabe de
+/// Ulkha»: la nombrada es el tema, no a quien se habla. Mira solo el texto antes del nombre, para que
+/// «Le pregunto a Torgash por su clan» siga siendo hablar con Torgash. Con una errata que no se
+/// encuentra literal, no hay exención.
+const TEMA_DE_PREGUNTA_REGEX = /\b(donde|por|sobre|acerca de|sabe de|sabes de|noticias de|paradero de)\b[^.;:]*$/;
+
+function esTemaDeLaPregunta(action: string, nombres: string[]): boolean {
+  const texto = normalizeText(action);
+  const posiciones = nombres.map((n) => texto.indexOf(normalizeText(n))).filter((i) => i >= 0);
+  if (posiciones.length === 0) return false;
+  return TEMA_DE_PREGUNTA_REGEX.test(texto.slice(0, Math.min(...posiciones)));
+}
+
 export async function detectsAbsentSceneNpcClaim(action: string, worldId: string, saveId: string, npcsInSceneSlugs: string[]): Promise<AbsentSceneNpcClaim | null> {
   if (!detectsAttackIntent(action) && !detectsDialogueIntent(action) && !detectsHostileSearchIntent(action)) return null;
   const allNpcs = await prisma.npc.findMany({ where: { worldId }, select: { slug: true, name: true, aliases: true, articulo: true, genero: true } });
@@ -205,6 +218,7 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
   }
   const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
   if (!absent) return null;
+  if (effectiveSceneSlugs.length > 0 && esTemaDeLaPregunta(action, [absent.name, ...absent.aliases])) return null;
   // La ficha se busca con el tipo que le toca (`entityTypeDeSerVivo`, REVIEW.md): una fauna y un NPC con el mismo slug no se confunden.
   const entityType = entityTypeDeSerVivo(absent.slug, FUENTES_DE_CATALOGO);
   const vista = await prisma.discoveredEntity.findFirst({

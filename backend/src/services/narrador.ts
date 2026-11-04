@@ -1010,6 +1010,7 @@ const VERBO_DE_HABLA = String.raw`(?:dice|pregunta|responde|contesta|replica|exc
 /// - P416: una coletilla sin su cita («dice Gorhorn con voz suave.»).
 /// - P417: una frase que describe la respuesta («La respuesta del orco es un susurro.») y luego no casa con la réplica, que
 ///   va aparte. Si nombra al jugador se queda: es su acción.
+/// - P423: una frase en que el NPC decide su respuesta («El orco acepta la oferta»), que la réplica luego contradice.
 /// La frase final sin acabar («y ella responde») se deja: `unirReplica` la usa para presentar la réplica.
 export function quitarRestosDeDialogo(narracion: string, characterName: string): string {
   const todas = frases(narracion);
@@ -1018,19 +1019,21 @@ export function quitarRestosDeDialogo(narracion: string, characterName: string):
       if (/^[¿¡]/.test(f) || /^[^«“"]*[»”"]/.test(f)) return false;
       if (new RegExp(`^${VERBO_DE_HABLA}(?![\\p{L}])`, 'u').test(f)) return false;
       const acabada = i < todas.length - 1 || /[.!?…]$/.test(f);
-      return !(acabada && /(^|[^\p{L}])(respuesta|responde|contesta|replica)(?![\p{L}])/iu.test(f) && !contieneNombre(f, characterName));
+      return !(acabada && /(^|[^\p{L}])(respuesta|responde|contesta|replica|acepta|rechaza|se niega|accede)(?![\p{L}])/iu.test(f) && !contieneNombre(f, characterName));
     })
     .join(' ');
 }
 
 /// P412 (ronda 2 de QA-289: abre con el NPC en 6 de 11 turnos pese a la línea FOCO): si la narración abre con el NPC, sus
 /// frases del principio pasan al final, justo antes de su réplica, y abre la primera en que el jugador sale antes que él.
-/// Si ninguna lo hace, se deja. La frase final sin acabar sigue la última, porque presenta la réplica.
-export function empezarPorElJugador(narracion: string, npc: string, characterName: string): string {
-  if (!abreConElNpc(narracion, npc, characterName)) return narracion;
+/// P425 (ronda 3): si ninguna nombra al jugador («Ulkha Ketg se vuelve hacia él…»), abre la primera que no es del NPC (el
+/// paisaje); si todas lo son, se deja. La frase final sin acabar sigue la última, porque presenta la réplica.
+export function empezarPorElJugador(narracion: string, npc: string, characterName: string, genero?: string | null): string {
+  if (!abreConElNpc(narracion, npc, characterName, genero)) return narracion;
   const todas = frases(narracion);
   const cola = /[.!?…»”"]$/.test(todas.at(-1) ?? '') ? [] : todas.splice(-1);
-  const i = todas.findIndex((f) => contieneNombre(f, characterName) && !abreConElNpc(f, npc, characterName));
+  const delJugador = todas.findIndex((f) => contieneNombre(f, characterName) && !abreConElNpc(f, npc, characterName, genero));
+  const i = delJugador >= 0 ? delJugador : todas.findIndex((f) => !contieneNombre(f, npc) && !abreConElNpc(f, npc, characterName, genero));
   if (i <= 0) return narracion;
   return [...todas.slice(i), ...todas.slice(0, i), ...cola].join(' ');
 }
@@ -1086,7 +1089,9 @@ export function unirReplica(
   reply: string,
   npc: { name: string; nombreVisible?: string; articulo: string | null; genero: string | null },
 ): string {
-  const cita = /^[«“"—]/.test(reply) ? reply : `«${reply.replace(/^'+|'+$/g, '')}»`;
+  // P425: «-La situación…»: un guion suelto al abrir no es la raya de diálogo.
+  const sinGuion = reply.replace(/^([«“"]?)\s*-+\s*/, '$1');
+  const cita = /^[«“"—]/.test(sinGuion) ? sinGuion : `«${sinGuion.replace(/^'+|'+$/g, '')}»`;
   if (narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
   const visible = npc.nombreVisible ?? npc.name;
   if (contieneNombre(frases(narracion).at(-1) ?? '', visible)) return `${narracion} ${cita}`.trim();
@@ -1123,8 +1128,11 @@ function escapar(texto: string): string {
 /// P412 (ronda QA-289, 2026-11-03): en un turno con diálogo la narración abría con el NPC («Ulkha Ketg mira las raciones
 /// de Gorhorn…») y dejaba la acción del jugador detrás. True si en la primera frase el NPC sale antes que el jugador (o
 /// solo él). Solo se registra (`[lint] foco`) para medirlo en el bench; un reintento costaría ~25 s por turno.
-export function abreConElNpc(narracion: string, npc: string, characterName: string): boolean {
+/// P425 (ronda 3: «Ella se acerca a Gorhorn…»): con una NPC, abrir con «Ella» es abrir con ella. «Él» no cuenta: puede ser
+/// el jugador.
+export function abreConElNpc(narracion: string, npc: string, characterName: string, genero?: string | null): boolean {
   const primera = narracion.split(/(?<=[.!?…])\s+/)[0] ?? '';
+  if (genero === 'F' && /^ella(?![\p{L}])/iu.test(primera)) return true;
   const posicion = (nombre: string) => primera.search(new RegExp(`(^|[^\\p{L}])${escapar(nombre)}($|[^\\p{L}])`, 'iu'));
   const delNpc = posicion(npc);
   const delJugador = posicion(characterName);
@@ -1425,7 +1433,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
               // hasta el sexo del NPC en dos turnos. La instrucción anterior ("Modo diálogo: si hay
               // conversación...") no era lo bastante explícita para un modelo pequeño; esta nombra el
               // fallo exacto a evitar.
-              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} ${ctx.replicaAparte ? `DIÁLOGO: lo que responde ${ctx.replicaAparte} lo escribe otra voz aparte; de ${ctx.replicaAparte}, como mucho un gesto breve, sin nada entre comillas.` : 'DIÁLOGO: como mucho una frase corta de un NPC entre comillas, y nunca hables por el personaje del jugador.'}`
+              `${agresorSlugs.length > 0 ? 'Si esta escena deriva en un enfrentamiento real (no solo tensión verbal), rellena "combateIniciado" con los NPCs implicados (usa exactamente los slugs ya listados, nunca inventes uno) — en caso contrario, null.' : 'Nadie en escena es agresivo, así que "combateIniciado" va a null.'}${nonHostileHint} ${ctx.replicaAparte ? `DIÁLOGO: lo que responde ${ctx.replicaAparte} lo escribe otra voz aparte; de ${ctx.replicaAparte}, como mucho un gesto breve, sin nada entre comillas y sin decidir su respuesta (ni acepta ni rechaza: eso lo dice su réplica).` : 'DIÁLOGO: como mucho una frase corta de un NPC entre comillas, y nunca hables por el personaje del jugador.'}`
             : 'No hay ningún NPC con datos conocidos en esta escena, así que "combateIniciado" tiene que ser null.'
       }`;
 
