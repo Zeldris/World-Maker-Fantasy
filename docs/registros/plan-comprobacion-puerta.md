@@ -112,7 +112,8 @@ cada tanda comprueba **solo lo que falta**, mismas reglas que arriba.
 (la etiqueta de Hogar Ketg tapa su entrada y la del camino del noreste queda lejos de su flecha: es código); locales,
 P243, P245, P288 (la parte del Ollama real), P306, P307 y P324; decisión de la usuaria, P310; arte, P70. Cerrados
 sin tanda (usuaria, 2026-11-04; la fila ya decía comprobado lo que se arregló): P51 (59, en variante), P186 (13b-1),
-P294 (18) y P355 (47).
+P294 (18) y P355 (47). Tras la tanda 86 (usuaria, 2026-11-04): P12 (la huida, vista con el Brozán en la 85) y P69
+(el ganador bien pintado; el empate, con el test). P288 queda en parte solo por su parte local (Ollama real).
 
 ## Para la sesión local
 
