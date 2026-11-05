@@ -111,7 +111,7 @@ stateDiagram-v2
 |---|---|---|
 | H13 | **Cuatro pantallas para empezar** con un solo mundo y un solo personaje jugable: mundo → personaje → partidas → partida. | [H] |
 | H14 | **La dificultad se elige debajo de la lista de partidas**, separada del botón *Nueva partida*, y se aplica "a tu próxima partida nueva": es fácil no verla. | [H] |
-| H15 | **"Crear desde cero" está visible** aunque crear personaje propio es el hito `0.7`; hay que confirmar si funciona de punta a punta. | [V] |
+| H15 | **"Crear desde cero" está visible** aunque crear personaje propio es el hito `1.1`; hay que confirmar si funciona de punta a punta. | [V] |
 | H16 | **Crear partida depende de datos en memoria** (`SessionContext`): recargar en `/partida/nueva` o un fallo al crear muestran **"No se encuentra esta partida"**, que no dice qué pasó. | [H] |
 | H17 | **Fin de partida**: a los 3,5 s se va solo a *Elige un mundo* (no a *Sus partidas*, como al salir), sin dejar leer el final ni ofrecer opciones. | [H] |
 | H18 | **Salir dice siempre "Tu progreso ya está guardado"**, también con un turno narrándose, un combate abierto o un viaje en curso. | [H] |
@@ -298,7 +298,7 @@ stateDiagram-v2
   **arreglo**~~ ✅ 2026-10-01: `SessionProvider` guarda mundo, personaje y dificultad en
   `sessionStorage`; `GameView` distingue "No se pudo crear la partida" (con *Reintentar*) de "Se ha
   perdido la elección" en vez del genérico "No se encuentra esta partida".
-- **UX-17 · "Crear desde cero"** oculto o marcado "Próximamente" hasta el hito `0.7`, si se
+- **UX-17 · "Crear desde cero"** oculto o marcado "Próximamente" hasta el hito `1.1`, si se
   confirma que no está listo. 🧭 Resuelve H15. **S**
 - **UX-18 · Epílogo de fin de partida** — pantalla de cierre con el último texto, un resumen (días,
   nivel, muertes, logros) y botones *Ver el diario* · *Volver a tus partidas* · *Nueva partida*.
@@ -465,7 +465,7 @@ El hito exacto de cada fase lo fija el [mapa de roadmaps](21-roadmap.md#qué-ent
 2. Qué se permite en *Pensando* y en *Combate* (matriz § 5).
 3. Si las decisiones obligatorias pueden abrirse antes de tiempo desde el aviso. (UX-10)
 4. Asistente de nueva partida en una sola pantalla. (UX-15)
-5. Ocultar "Crear desde cero" hasta el hito `0.7`. (UX-17)
+5. Ocultar "Crear desde cero" hasta el hito `1.1`. (UX-17)
 6. Atrás sin capas abiertas: menú de pausa o salir. (UX-20)
 7. Qué acciones se confirman y cuáles se deshacen. (UX-25)
 8. Avisar o no antes de actos de mucho peso, como matar a un líder. (UX-34)

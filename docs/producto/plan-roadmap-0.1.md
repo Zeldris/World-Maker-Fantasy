@@ -120,7 +120,7 @@ ejecutarlo en la Steam Deck con el Ollama real y pasar el JSON para fijar el obj
 hallazgos (21 arreglados) — estado por tramo y hallazgos en
 [`docs/records/fase-g-0.1-hallazgos.md`](../records/fase-g-0.1-hallazgos.md). El resto del guion
 pasa a la **fase única de pruebas** (ver [`21-roadmap.md`](21-roadmap.md#qué-entra-en-cada-hito),
-fila `0.8`): hasta entonces, implementación continua comprobando solo con tests.
+fila `0.7`): hasta entonces, implementación continua comprobando solo con tests.
 
 Guion: primer turno y Gistera; zona y movimiento; caza en solitario y en grupo (aviso de riesgo);
 cadáveres, saqueo y Goirnos; recolección con cada método (ficha de flora); combate con muerte y

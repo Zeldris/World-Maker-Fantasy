@@ -25,9 +25,9 @@ sin definir nuevos o retros pendientes; lo ejecuta la CI, QA-14)
 """
 import re, sys, os, subprocess
 D=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','docs','producto')+'/'
-PREF='CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR|IMG|VOZ'
+PREF='CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR|IMG|VOZ|IDI'
 ID=rf'(?:{PREF})-\d+[a-z]?'
-files=['roadmap-front.md','roadmap-front-ux.md','roadmap-front-zona.md','roadmap-front-reino.md','roadmap-cronista.md','roadmap-imagenes.md','roadmap-voces.md']
+files=['roadmap-front.md','roadmap-front-ux.md','roadmap-front-zona.md','roadmap-front-reino.md','roadmap-cronista.md','roadmap-imagenes.md','roadmap-voces.md','roadmap-idiomas.md']
 defs={}
 titulo={}  # QA-246: id → título de su primera definición en el árbol
 repetidas={}  # QA-246: id → [(archivo, línea)] de las definiciones que siguen a la primera
