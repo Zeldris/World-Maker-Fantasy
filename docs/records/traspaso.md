@@ -10,7 +10,7 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-11-04 |
+| **Actualizado** | 2026-11-05 |
 | **Ramas de trabajo** | Cada sesión, su rama con su fila «Tarea en curso» (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06), `claude/interfaz-imagenes` (desde el 2026-10-24, `CFG-43`), `claude/limpieza` (desde el 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0` (PR 84, falta borrarla), `claude/banco-narrador`, `claude/pruebas-local`, `claude/opt-ai-mejoras`. Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás ya están en `main` (historial: `git log --merges origin/main`). `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #85 de `claude/wonderful-volta-662qt8` (2026-11-04, `d35bfaa1`, CI en verde): tandas 87-88 de la puerta, cierre del paso 3.3 y su retro (tres propuestas aplazadas). |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
@@ -183,6 +183,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-11-05** — Nuevo roadmap aparte [`roadmap-mapas.md`](../producto/roadmap-mapas.md) (`MAP-1`…`MAP-12`, hito `0.4`), valorado con Fable: el `.map` de Azgaar se importa una vez y no se vuelve a escribir; formato y editor propios en `map-generator/`, canon protegido por tests. Empieza al cerrar las pruebas de juego.
 - **2026-11-04** — PR 85 fusionado (`d35bfaa1`, CI en verde): tandas 87-88 y cierre del paso 3.3; arreglado el resumen del registro 0.3 que rompía el job `roadmap`.
 - **2026-11-04** — Paso 3.3 de la puerta cerrado (usuaria): tanda 88 con P367 ✅; P253 y P180 fuera de tanda.
 - **2026-11-04** — Tanda 87 de la ronda de la puerta: P191 comprobado jugando (la caza del rebaño acorrala a 5 de 6 y lo dice en tercera persona); P180 sigue en parte, sin ver la variante de escasez.
