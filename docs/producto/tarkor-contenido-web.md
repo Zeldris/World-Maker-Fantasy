@@ -381,9 +381,9 @@ calor, suerte (que da ventaja) y honor.
 | 0.4 | Cristal Helado | 🗺️ |
 | 0.5 | Ciénaga Troncal | 🗺️ |
 | 0.6 | Margen Silencioso y Meseta del Orden | 🗺️ |
-| 0.7 | Personaje propio, de cualquier raza | 🗺️ |
-| 0.8 | Beta de Berig: instalador público, rendimiento en la Steam Deck, narrador afinado | 🗺️ |
+| 0.7 | Beta de Berig: instalador público, rendimiento en la Steam Deck, narrador afinado, el juego en inglés | 🗺️ |
 | 1.0 | Vaelira | 🗺️ |
+| 1.1 | Personaje propio, de cualquier raza | 🗺️ |
 
 ---
 

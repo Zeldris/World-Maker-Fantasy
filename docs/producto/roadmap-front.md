@@ -815,7 +815,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   inferior; darle presencia de encuentro (retrato del rival, dificultad como calavera 1-5). **S**
 - **CMB-9 · Subir el tope de 4 combatientes por grupo** a 6 u 8 (usuaria, 2026-10-07): el límite de 4
   nace de los tiempos de narración; en la fase de pulido, al mejorar esos tiempos, se sube
-  (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.8`. **M**
+  (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.7`. **M**
 - **CMB-10 · Castigo por estado en porcentaje** (usuaria, 2026-10-11, sale de P10 de `QA-27`): hoy el
   estado resta una cantidad fija al atributo de la tirada (−2 herido, −5 grave, −10 convaleciente,
   `CONDICION_MALUS`, death.ts), que pesa mucho más a un personaje débil que a uno fuerte. Pasa a un
@@ -978,7 +978,7 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
 - ~~**QA-25 · Cifras provisionales en un sitio**~~ ✅ 2026-10-08:
   [`cifras-provisionales.md`](cifras-provisionales.md) con cada cifra, su valor y su constante; se
   apunta en el mismo commit que la cifra. Motivo: decenas de cifras provisionales repartidas.
-- **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.8`): pasar por cada
+- **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.7`): pasar por cada
   fila de [`cifras-provisionales.md`](cifras-provisionales.md), ajustar la cifra y borrar la fila.
 - **QA-27 · Ronda de pruebas jugando** (`0.3`, pedida por la usuaria el 2026-10-09; pausa el roadmap):
   🚧 en curso. Jugar una partida como una jugadora normal en el navegador (Chromium con Playwright,

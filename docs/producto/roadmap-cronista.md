@@ -1479,7 +1479,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     el combate de varios con toda (texto, tarjeta de encuentro o «Combatir»), con el panel de la
     caza en grupo; después, resumen y saqueo de cada caído como en la caza (sin despellejar); el
     que huye no deja nada. Campamentos de bandidos con cabecilla y refuerzos: tarea aparte en el
-    `0.3` (`CR-50`). Pasos: 49a motor ✅ (`combatePersonas.ts`: banda por la `cantidad` de su punto, aliados de su facción a ≤ 3 casillas y la guardia de un interior; el turno que abre combate contra una persona con grupo abre el de varios) · 49b entradas ✅ (texto libre con objetivo citado, como lo envía el frontend; «Combatir» del encuentro y del modo dinámico; test del turno con Torgash en su campamento) · 49c bandas de verdad 🧭 (propuesta de lore escrita el 2026-10-05 en `propuestas-lore.md` § Personajes y NPCs; en cuanto se apruebe: puntos de patrulla de 2-3 en el mapa y los tres cabecillas; el motor ya las trata como banda por la `cantidad` de su punto) · 49d saqueo de personas ✅ (el resumen marca `esPersona` y el aviso de despellejar solo sale si cayó fauna; los caídos solitarios se resuelven con Matar/Capturar/Clemente como en el 1v1, por su `NpcState`; sin test propio: el cierre de un combate de varios con personas no tiene arnés todavía, queda para la fase de pruebas `0.8`).
+    `0.3` (`CR-50`). Pasos: 49a motor ✅ (`combatePersonas.ts`: banda por la `cantidad` de su punto, aliados de su facción a ≤ 3 casillas y la guardia de un interior; el turno que abre combate contra una persona con grupo abre el de varios) · 49b entradas ✅ (texto libre con objetivo citado, como lo envía el frontend; «Combatir» del encuentro y del modo dinámico; test del turno con Torgash en su campamento) · 49c bandas de verdad 🧭 (propuesta de lore escrita el 2026-10-05 en `propuestas-lore.md` § Personajes y NPCs; en cuanto se apruebe: puntos de patrulla de 2-3 en el mapa y los tres cabecillas; el motor ya las trata como banda por la `cantidad` de su punto) · 49d saqueo de personas ✅ (el resumen marca `esPersona` y el aviso de despellejar solo sale si cayó fauna; los caídos solitarios se resuelven con Matar/Capturar/Clemente como en el 1v1, por su `NpcState`; sin test propio: el cierre de un combate de varios con personas no tiene arnés todavía, queda para la fase de pruebas `0.7`).
   - ~~**CR-52** Linajes y rastros~~ ✅ 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`,
     migración `20261006070000_linajes`; linajes del canon y del personaje al avanzar el mundo, la cría
     hereda o la pareja funda, rastro que se escinde a partir de 12, el linaje como actor del Libro
@@ -1770,7 +1770,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     (`escaramuzas.ts`); más presión si hay muertos, de quien los pone hacia el otro bando.
   - ~~62d~~: en la caza, los grupos 2+ de la jugadora pelean de fondo contra el resto, con resumen;
     esos sub-combates se resuelven enteros (si llegan al tope de rondas, en tablas).
-  Queda: `CMB-9` (`0.8`) sube el tope de 4 con la jugadora; el lugar de las escaramuzas, con `CR-64`.
+  Queda: `CMB-9` (`0.7`) sube el tope de 4 con la jugadora; el lugar de las escaramuzas, con `CR-64`.
 - ~~**CR-61** Comida por oficios~~ ✅ 2026-10-07 (Q15 de la ronda de `CR-55`; ronda propia aceptada el 2026-10-07,
   decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-61-y-cr-63-ronda-aceptada-por-la-usuaria-el-2026-10-07)).
   Queda para `CR-63`: la caza de orcos y Faerus sigue en agregado (2,5 por cazador) hasta que salgan
@@ -2092,7 +2092,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   construcción son variantes orcas y el resto tiene nombres comunes («un pequeño ayuntamiento»).
   Repasar edificios, oficios de reino y elementos de facción, y dar a cada raza su nombre cuando el
   lore lo traiga (pedido por `AGENTS.md`, nunca editando `docs/rpgtarkor/`); los comunes se quedan.
-  Va al `0.7`, cuando se juega con cualquier raza. **S**
+  Va al `1.1`, cuando se juega con cualquier raza. **S**
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
