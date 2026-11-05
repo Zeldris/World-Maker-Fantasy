@@ -48,7 +48,8 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   fuera del mapa) y `comprobar.py`, que las ejecuta sobre `helek.json`. **M**
 - **MAP-4 · El juego lee del mapa propio** [P] (usuaria, 2026-11-05): las fronteras de `InteractiveMap.tsx` y la
   imagen de fondo se generan desde `helek.json` en vez de pegarse a mano; el juego se ve igual (comparación de
-  capturas antes y después). **S-M**
+  capturas antes y después). **El fondo sigue siendo la imagen exportada de Azgaar** hasta que `MAP-13` la iguale
+  y la usuaria lo apruebe (usuaria, 2026-11-05). **S-M**
 
 ## Fase M-B · Editor local propio
 
@@ -64,6 +65,14 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
 - **MAP-9 · Guardar con historial** [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
   estable (diff legible en git) y se puede deshacer; nunca escribe en el `.map`. **S**
 
+- **MAP-13 · Dibujo propio a la altura de Azgaar** [P] (usuaria, 2026-11-05): costas con trazo, iconos de
+  relieve, texturas de bioma y colocación de etiquetas sin solapes, en un estilo propio de Helek. Se compara lado a
+  lado con la imagen de Azgaar en las mismas vistas, y **solo con el visto bueno de la usuaria** pasa a ser el fondo
+  del juego. Es lo más caro del proyecto: hasta entonces la calidad visual no baja. **L**
+- **MAP-14 · Capas del juego** [P] (usuaria, 2026-11-05): lo que Azgaar no tiene: tormentas magnéticas de las
+  Llanuras, zonas de peligro, territorio de cada clan y rutas con km y tiempos, como capas editables del visor y
+  exportables al juego. **M**
+
 ## Fase M-C · Generar donde aporta
 
 - **MAP-10 · Tierras nuevas por generación** [P] (usuaria, 2026-11-05): relieve, costa, ríos y biomas por
@@ -74,6 +83,10 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   `backend/uploads/images/zona/`. **L**
 - **MAP-12 · Grafo de viaje con tiempos** [P] (usuaria, 2026-11-05): nodos y aristas con km y `minutosBase`
   derivados de rutas y terreno, en el formato de `frontend/src/data/map.ts`. **M**
+
+- **MAP-15 · Acabado pintado con el generador de imágenes** [P] (usuaria, 2026-11-05): pasar el dibujo de
+  `MAP-13` por `image-generator/` (como referencia o con LoRA) para un acabado ilustrado, sin mover costas ni
+  fronteras (se comprueba superponiendo las capas). Depende de `MAP-13`. **M**
 
 ## Pendiente de comprobar en la Deck
 
@@ -86,7 +99,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
 | Seguir con Azgaar y extraer por script | S-M | Seguro al leer, pero editar sigue atado a Azgaar y el retorno al `.map` rompía |
 | Azgaar en local o forkado | M-L | Sin modo sin interfaz; un fork se separa de un original muy activo; trae todo lo que no usamos |
 | Generador propio del continente entero | L, semanas | Rehace un mapa que ya es canon; lo caro es el dibujo y las etiquetas |
-| **Importar una vez + formato y editor propios + generar donde aporta** | M la base, L la generación | **Elegida**: sin volver a escribir el `.map`, sin lo que no se usa, con el canon protegido |
+| **Importar una vez + formato y editor propios + generar donde aporta** | M la base, L la generación | **Elegida**: sin volver a escribir el `.map`, sin lo que no se usa, con el canon protegido; el dibujo propio sustituye al de Azgaar solo cuando lo iguala (`MAP-13`) |
 
 Fuentes:
 

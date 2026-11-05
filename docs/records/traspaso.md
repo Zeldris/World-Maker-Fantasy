@@ -183,7 +183,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
-- **2026-11-05** — Nuevo roadmap aparte [`roadmap-mapas.md`](../producto/roadmap-mapas.md) (`MAP-1`…`MAP-12`, hito `0.4`), valorado con Fable: el `.map` de Azgaar se importa una vez y no se vuelve a escribir; formato y editor propios en `map-generator/`, canon protegido por tests. Empieza al cerrar las pruebas de juego.
+- **2026-11-05** — Nuevo roadmap aparte [`roadmap-mapas.md`](../producto/roadmap-mapas.md) (`MAP-1`…`MAP-15`, hito `0.4`), valorado con Fable: el `.map` de Azgaar se importa una vez y no se vuelve a escribir; formato y editor propios en `map-generator/`, canon protegido por tests; el fondo de Azgaar se queda hasta que el dibujo propio lo iguale y la usuaria lo apruebe (`MAP-13`). Empieza al cerrar las pruebas de juego.
 - **2026-11-04** — PR 85 fusionado (`d35bfaa1`, CI en verde): tandas 87-88 y cierre del paso 3.3; arreglado el resumen del registro 0.3 que rompía el job `roadmap`.
 - **2026-11-04** — Paso 3.3 de la puerta cerrado (usuaria): tanda 88 con P367 ✅; P253 y P180 fuera de tanda.
 - **2026-11-04** — Tanda 87 de la ronda de la puerta: P191 comprobado jugando (la caza del rebaño acorrala a 5 de 6 y lo dice en tercera persona); P180 sigue en parte, sin ver la variante de escasez.
