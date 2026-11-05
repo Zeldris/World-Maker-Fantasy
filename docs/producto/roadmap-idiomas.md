@@ -20,6 +20,11 @@ que permite que todo lo que se escriba a partir de ahí ya nazca traducible. Lo 
   sucesos, el lore del RAG. Vive en catálogos y semillas; su traducción se diseña aparte (`IDI-7`).
 - **Lo que escribe la IA** (narrador, Cronista, Escriba): no se traduce, se genera en el idioma de la partida
   (`IDI-8`).
+- **Las lenguas del mundo** (Sirikel, Kektira, Kerost, Nohade…, en `lenguas-helek.md`): no se traducen. Un
+  término en Kektira sigue en Kektira en la partida en español y en la inglesa; lo que cambia de idioma es su glosa
+  («Rokthar», «la gran tormenta» o «the great storm»). El Sirikel es la lengua común: se muestra en el idioma de la
+  jugadora, con sus sustantivos propios («Chudos», «Zense») sin traducir. El código lee los diccionarios del canon
+  y nunca los escribe; las palabras nuevas salen de sesiones de lore (`IDI-13`…`IDI-15`).
 - **El lore canónico** (`docs/rpgtarkor/`) no lo edita un agente: su traducción la propone una sesión de lore y la
   aprueba Álvaro (`IDI-11`).
 
@@ -37,6 +42,11 @@ que permite que todo lo que se escriba a partir de ahí ya nazca traducible. Lo 
   todo»): regla en `REVIEW.md` y un script en el check que avisa de textos literales nuevos en JSX/TSX y en los
   mensajes del backend, solo en las líneas que cambian, para no bloquear lo antiguo. **S**
 
+- **IDI-13 · Términos de las lenguas del mundo por clave** [A] (usuaria, 2026-11-05): una sola forma de pedir
+  textos para la interfaz y para los términos del mundo; `t('estacion.invierno')` da «Krenoth (Invierno)» o
+  «Invierno» según la raza del personaje. Se diseña junto con `IDI-1`, y une `loreLanguages.ts` con lo que
+  `worldClock.ts` repite a mano (`estacionNombreFor`, `climaNombreFor`). **M**
+
 **Hecho cuando:** una pantalla nueva no puede subir con textos escritos a mano sin que el check lo diga, y el juego
 se ve igual que antes.
 
@@ -52,6 +62,10 @@ se ve igual que antes.
 - **IDI-8 · 🧭 Narrador e IA por idioma** [A] (`0.6`): prompts por idioma, fragmentos del RAG del lore en el
   idioma de la partida, y el Cronista y el Escriba que escriben en ese idioma. **L**
 
+- **IDI-14 · Glosario del mundo en el juego** [A] (`0.4`, usuaria, 2026-11-05): cada término de las lenguas
+  del mundo con su glosa en el idioma de la jugadora, generado por script desde `lenguas-helek.md` (solo lectura).
+  **S**
+
 ## Fase IDI-C · Inglés (hito `0.7`, Beta de Berig, antes de Vaelira)
 
 - **IDI-9 · Selector de idioma** [A] (`0.7`): en Configuración; el de la interfaz se guarda por instalación y el
@@ -66,3 +80,9 @@ se ve igual que antes.
 
 **Hecho cuando:** Berig se juega entero en inglés, de la pantalla de inicio al narrador, y cambiar de idioma no
 rompe ninguna partida guardada.
+
+## Más adelante
+
+- **IDI-15 · 🧭 Entender una lengua según la raza** [A] (`1.1`, usuaria, 2026-11-05): un orco entiende el Kektira;
+  otro personaje ve «palabras en Kektira» y la glosa solo si las ha aprendido. Hito provisional, con Personaje
+  propio, cuando se juega con cualquier raza; se diseña con la usuaria antes de fijarlo. **M**
