@@ -25,6 +25,13 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 | Retomar el trabajo donde lo dejó la última sesión | [records/traspaso.md](records/traspaso.md) |
 | Ver hallazgos abiertos | [records/](#records--hallazgos-y-checklists-vivos) |
 
+## Licencias
+
+El código es [MIT](../LICENSE). El lore, el arte, los mapas y las voces de Tarkor son
+[CC BY-NC-SA 4.0](../LICENSE-CONTENIDO): se pueden compartir y adaptar citando la autoría, sin fines
+comerciales y con la misma licencia. Lo de terceros (fuentes, skills de mattpocock, sonidos de fauna,
+modelos de IA) conserva la suya.
+
 ## Carpetas
 
 ### `producto/` — qué es Tarkor y hacia dónde va

@@ -1707,6 +1707,9 @@ Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-1
 P373 de la ronda de la puerta (usuaria, 2026-11-04):
 - ~~**QA-293 · Preparar un combate 1v1 en `escenario.sh`**~~ ✅ 2026-11-04: `preparar <partida> combate1v1:<npc>` abre el combate 1v1 clásico contra ese NPC, viva donde viva, con el efecto `forzarCombate` del Cronista (`prepararCombate1v1.ts`); el panel sale al cargar y aguanta la recarga; se niega con un combate en curso, sin el NPC o con él muerto o convaleciente. Tests de parser e integración, rojos sin el arreglo; probado con el Brozán (t52).
 
+Licencias del proyecto (usuaria, 2026-11-05):
+- ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
+
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 
 Revisión cruzada (2026-10-01) con [roadmap-cronista.md](roadmap-cronista.md),

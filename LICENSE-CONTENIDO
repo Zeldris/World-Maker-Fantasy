@@ -1,0 +1,28 @@
+Contenido de World-Maker-Fantasy (Tarkor)
+
+Copyright (c) 2026 Galivelop and Álvaro García Graña (Zeldris)
+
+Todo lo que no es código está bajo la licencia Creative Commons
+Atribución-NoComercial-CompartirIgual 4.0 Internacional (CC BY-NC-SA 4.0):
+https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.es
+
+Es contenido, entre otros:
+- el lore y el mundo de Tarkor: docs/rpgtarkor/, docs/canon-opencode/,
+  docs/borradores-opencode/ y los textos de mundo de los catálogos y semillas;
+- las imágenes, mapas y arte: image-generator/generated/, image-generator/fichas/,
+  image-generator/estilo/, frontend/src/assets/maps/ y los iconos;
+- las voces y el audio: voice-generator/voces/ y lo generado a partir de ellas.
+
+Puedes compartir y adaptar este contenido si:
+- citas la autoría (Galivelop y Álvaro García Graña, «Zeldris») con un enlace
+  a la licencia y dices si hiciste cambios;
+- no lo usas con fines comerciales;
+- publicas lo que hagas a partir de él bajo esta misma licencia.
+
+El código del proyecto está bajo la licencia MIT (LICENSE).
+
+Lo de terceros conserva su propia licencia y no entra en ninguna de las dos:
+las fuentes (frontend/src/assets/fonts/LICENSE-*.txt), las skills de
+mattpocock/skills (.claude/skills/LICENSE-mattpocock-skills), los sonidos de
+fauna (voice-generator/fauna/*/licencias.tsv) y los modelos de IA que se usan
+para generar imágenes y voces.
