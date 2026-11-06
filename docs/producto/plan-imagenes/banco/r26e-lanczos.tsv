@@ -1,0 +1,2 @@
+# IMG-36 r26e: igual que r26c h-aullador, con reescalado lanczos de la entrada; sd-cli usa filter=auto sin antialias y deja bordes en escalera
+f2	16	prompts/r26-aullador-detalle.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png,FUERZA_BOCETO=0.50,W=1024,H=384	--image-preprocess target=init,filter=lanczos,antialias=true
