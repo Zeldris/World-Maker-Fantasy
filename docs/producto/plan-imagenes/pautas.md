@@ -1,6 +1,6 @@
 # Pautas de prompt y receta, medidas contra las referencias (`IMG-21`, `IMG-22`)
 
-**Versión:** 5.2 (r21, 2026-11-02: T1 con la oscuridad al principio, T5; v5.1 con r20b y semilla 7, 2026-11-02: T1 rehecha, R1 pasada; v5 con r20: flora, lugar, objeto y raza, §7-§11; v4 con r17 y r18, v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner. `IMG-22` cerrada con r20: seis de ocho (dos por tipo) a la primera, el mismo veredicto en las dos semillas.
+**Versión:** 5.3 (r23, 2026-11-06: receta de F0, §12; v5.2 con r21, 2026-11-02: T1 con la oscuridad al principio, T5; v5.1 con r20b y semilla 7, 2026-11-02: T1 rehecha, R1 pasada; v5 con r20: flora, lugar, objeto y raza, §7-§11; v4 con r17 y r18, v1 hasta r14, v2 con r15, v3 con r16; R2 y R3 el 2026-10-27). `IMG-21` cerrada con r18: cuatro de seis se leen como su banner. `IMG-22` cerrada con r20: seis de ocho (dos por tipo) a la primera, el mismo veredicto en las dos semillas.
 
 **Qué es** (usuaria, 2026-10-27): el objetivo del trabajo con el generador es **juntar pautas y estándares** para que,
 por prompt, el resultado se acerque lo más posible a las imágenes de referencia (los banners de ChatGPT del juego),
@@ -86,6 +86,7 @@ ilustración científica). El ✅ es de la pose; si la especie se lee como su ba
 | Paso | Valores | Coste en la Deck | Estado |
 |---|---|---|---|
 | Borrador | 640x256, 8 pasos; `--preview proj` se lee desde el paso 2 | ~7 min | ✅ `IMG-19a`: anticipa la composición de 1280x512 a 16 pasos |
+| F0 Boceto (§12) | FLUX.2 klein 4B en GPU, 512x192, 4 pasos, línea `Style` de masas planas | ~36 s | ✅ `IMG-35`, r23 |
 | Sujeto sobre fondo liso (P6) | 512x192 (384x320 lo alto, P7), 8 pasos, dos semillas (R1); boceto a 0,95-0,97 (F5) | ~375 s por semilla | ✅ `IMG-19b`, r15, r16 |
 | Montaje | `montar.sh` (`HERO`, `MANADA`) | segundos | ✅ `IMG-19c` |
 | Armonización | `-i` del montaje a 0,5 con `strength_as_noise_level=true` (0,7 si se ve pegado); `-r` descartada (×9 y vira a azul) | ~1-2 min | ✅ `IMG-19c` |
@@ -239,3 +240,14 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | T3 | **La referencia manda sobre el canon en los cuatro tipos** (§5): los ocho prompts siguieron el banner donde contradice al texto (violeta, mata baja, volcanes, pantano, 18/10, músculo largo, ojos oscuros) y se leen como su banner. | ✅ | r20: los ocho; las contradicciones, en `r20-tipos.md` |
 | T4 | **Un agente barato escribe un prompt de cualquier tipo con esta guía y el banner medido, sin retoque a mano**: seis de ocho a la primera. | ✅ | r20 (en fauna, r15 dio uno de ocho con la v1) |
 | T5 | **La gradación sola oscurece pero mata el tono**: `gradar.sh noche` sobre una escena a pleno sol la deja gris azulada y apaga los brillos propios. Se gradúa una imagen que ya sale sin sol. | ✅ | r21-grad: salvia gris azulada, los hongos de faerus apagados |
+
+## 12. F0 Boceto (r23)
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| B1 | **F0 sale con FLUX.2 klein 4B en GPU, 512x192 y 4 pasos**: ~36 s por imagen con la carga incluida, unas cinco veces menos que FLUX.3, y lo bastante rápido para reescribir el prompt y volver a mirar. | ✅ | r23: 14 imágenes, 33-38 s de `generate_image` y ~36 s entre archivos |
+| B2 | **El estilo del boceto se pide sustituyendo la línea `Style`** de la ficha, no añadiendo otra: *simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values, broad painted masses, minimal detail*. Da silueta limpia y poco detalle que distraiga. | ✅ | r23: mejor que sin cambiar y que lápiz con aguada en el aullador; legible en los cinco tipos, 2 semillas |
+| B3 | **FLUX.2 sacrifica la forma rara**: dibuja un zorro de patas altas, con menos cuerpo y sin los colmillos largos; le sale bien lo que tiene una forma común (cardo, llanura, cuchillo, choza). FLUX.3 a 384x144 respeta más el cuerpo largo y bajo, las placas y los colmillos, pero tarda ~170-200 s y casi no obedece la línea de masas planas (con el LoRA puesto). | ✅ | r23: aullador, todas las imágenes de cada motor |
+| B4 | **La semilla apenas cambia el encuadre en F0**: reintentar con otra semilla no da otra composición; para cambiarla hay que editar el prompt. | ✅ | r23: los cinco tipos, semillas 3 y 7 |
+| B5 | **Si F1 con FLUX.3 corrige la forma que F0 pierde.** Decide si FLUX.2 basta para los elementos de forma rara. | 🔬 | `IMG-34` |
+| B6 | **Fondo liso desde F0 en los tipos que se recortan** (P6): r23 usó las escenas de la ficha, sin fondo liso. | 🔬 | `IMG-37` |

@@ -523,3 +523,32 @@ con `gradar.sh` de atardecer y de noche.
 - **Receta para el perfil:** la oscuridad dicha al principio del prompt (la luz de `condiciones` de la ficha, que ya
   abre el prompt en `momento:noche`) y, encima, la gradación de `gradar.sh`, que ya parte de una imagen sin sol. La
   noche de verdad se valida con la primera imagen nocturna del perfil.
+
+## r23 · F0: motor, tamaño y estilo del boceto (`IMG-35`, 2026-11-06)
+
+20 imágenes en `generated/banco/r23-f0/` (`tiempos.tsv`, `rejilla-e1.png`, `rejilla-e2.png`, `rejilla-e3.png`), con los
+prompts de ficha de `prompt_ficha.py --perfil fotorreal` y el momento de la ficha. FLUX.2 sin LoRA; FLUX.3 con
+`PERFIL=fotorreal` y `wmf-estilo` a peso 1. Narrador de Ollama descargado, 10,8 GB disponibles al empezar.
+
+| Prueba | Motor | Tamaño y pasos | `generate_image` | Lectura |
+|---|---|---|---|---|
+| Aullador | FLUX.2 | 512x192, 4 | 38 s | Legible; zorro de patas altas |
+| Aullador | FLUX.2 | 512x192, 6 | 49 s | Casi igual que con 4 pasos |
+| Aullador | FLUX.2 | 1024x384, 6 | 101 s | Más detalle, la misma forma |
+| Aullador | FLUX.3 | 384x144, 4 | 187 s | La más cercana al cuerpo del banner: bajo, placas y colmillos |
+| Aullador con lápiz y aguada | FLUX.2 | 512x192, 4 | 34 s | Ilustración detallada, no boceto |
+| Aullador con masas planas | FLUX.2 | 512x192, 4 | 33 s | **Boceto de verdad**, silueta limpia |
+| 5 tipos con masas planas (9 imágenes) | FLUX.2 | 512x192, 4 | 33-34 s | Todos legibles en las dos semillas |
+| 5 tipos con masas planas (5 imágenes) | FLUX.3 | 384x144, 4 | 165-201 s | Más cerca en forma; ignora casi las masas planas |
+
+Textos que sustituyen desde `Style:` hasta el final del prompt, los dos con *The image is completely textless*:
+
+- **Lápiz:** *rough concept sketch in loose pencil lines with light ink wash, visible construction strokes, muted limited
+  colours, simple values, unfinished study on paper.*
+- **Masas planas:** *simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values,
+  broad painted masses, minimal detail.*
+
+- **Contra el banner:** se reconocen los cinco; el cuerpo de cinta del aullador no sale en ningún motor (en el banner es
+  mucho más largo y bajo). Los pastos salen más verdes y fríos que el banner. El cuchillo trae signos en el mango en las
+  tres imágenes, aunque el prompt pide *textless*.
+- **Pautas:** `pautas.md` §12. Queda por medir si F1 recupera la forma (`IMG-34`) y el fondo liso para recortar (`IMG-37`).

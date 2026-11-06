@@ -40,9 +40,9 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 
 ### Bloque A · Receta por fases
 
-- **IMG-35 · F0: boceto desde el prompt** [A] (usuaria, 2026-11-06): probar qué tamaño, pasos y texto de estilo dan un
-  boceto legible, con fauna, flora, un lugar, un objeto y una construcción. Sale el tiempo real de F0 y la pauta en
-  `pautas.md`. Las plantillas de `bocetos/plantilla.py` quedan como ayuda opcional. **Solo con el sí de la usuaria.** **M**
+- ~~**IMG-35 · F0: boceto desde el prompt** [A] (usuaria, 2026-11-06)~~ ✅ 2026-11-06: r23, 20 imágenes. Receta: FLUX.2 en
+  GPU, 512x192, 4 pasos, línea `Style` de masas planas; ~36 s, legible en los cinco tipos (`pautas.md` §12). **Pendiente, en
+  otras tareas:** si F1 recupera la forma rara que F0 pierde (`IMG-34`) y el fondo liso para recortar (`IMG-37`). **M**
 - **IMG-36 · F2 Detalle y F4 Final desde la imagen aceptada** [A] (usuaria, 2026-11-06): fuerza de F2 que añade detalle
   sin mover la forma (SSIM ≳ 0,7), y Final a 1280x512 partiendo de la imagen aceptada en vez de regenerarla desde cero.
   Mide tiempos con el LoRA y si la Final puede salir de día. **Solo con el sí de la usuaria.** **M**
