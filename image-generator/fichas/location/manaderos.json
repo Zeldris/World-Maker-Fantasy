@@ -1,0 +1,45 @@
+{
+  "tipo": "location",
+  "slug": "manaderos",
+  "nombre": "Los Manaderos",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Punto de agua de las Llanuras donde la corriente subterránea aflora en charcas estacionales entre chudos rojizos (juncos rojizos, material de tejido y techado); es otro punto de la misma corriente que alimenta El Pozo de Cauce Viejo. Aquí paren las hembras de Corredor de Cauce, y cazar crías ofende la costumbre orca. Es el ecosistema más completo de la región: verdileas acuáticas (alga), Jusha Esmeralda, Liquen y Bulbo del Cauce.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:146-155 (Los Manaderos); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:591-608 (Los Manaderos, Verdileas Acuáticas, Chudos Rojizos)",
+  "prompt": {
+    "lugar": "wetland landscape",
+    "sujeto": "A chain of shallow, still pools spread across a flat red plain, their water mirroring the sky. The horizon lies a third of the way up the image; in the foreground a wide pool reaches almost to the camera, edged with cracked red mud.",
+    "proporcion": "The nearest pool fills the lower third of the image, and the far ones shrink to thin bright slivers along the horizon.",
+    "cuerpo": "Dense clumps of tall reddish reeds with dark seed heads stand along every bank and in the shallows, reaching twice the height of the low banks, and threads of bright green algae float in the clear water at their feet.",
+    "rasgos": [
+      "On the far horizon, red sandstone buttes and flat-topped mesas, about an eighth of the image tall, rise out of a warm haze."
+    ],
+    "rasgosSecundarios": "Small red dragonflies hover over the water, and the mud between the pools is split into fine, curling plates.",
+    "pose": "The air is calm, and the reeds stand almost still, their reflections sharp in the water.",
+    "entorno": "A wide, high sky arches over the pools with long thin bands of cloud, and fine red dust hangs in the far air, softening the distant shapes into layers.",
+    "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow and laying bright streaks across the water."
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "The sun sits huge and low on the horizon, turning the sky and the still water amber and rose, and laying long soft shadows of the reeds across the mud."
+    },
+    "momento:noche": {
+      "luz": "Stars glitter in a clear sky and in the still water of the pools, a soft, even pearly glow washes over the reed tips, and the shadows over the red mud are deep and cool."
+    },
+    "estacion:verano": {
+      "proporcion": "The pools have shrunk inside wide margins of cracked mud; the nearest one fills the lower quarter of the image, and the far ones are thin bright slivers along the horizon."
+    },
+    "estacion:invierno": {
+      "cuerpo": "Clumps of tall reddish reeds, dry and bent at the tips, stand along every bank and in the shallows, reaching twice the height of the low banks, and a thin skin of frost edges the clear water at their feet."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "del banner y fuera del canon: libélulas rojas, barro rojo agrietado en placas, mesetas y cerros de arenisca roja en el horizonte, cielo naranja",
+    "los chudos rojizos con espigas oscuras (como eneas) son lectura visual de «juncos rojizos», no canon",
+    "las algas verdes del agua son las verdileas acuáticas leídas como hebras, no canon",
+    "las charcas «estacionales» del canon no dicen qué estación las llena: las condiciones de verano (charcas menguadas) e invierno (escarcha) son diseño de imagen",
+    "el banner de primavera (manaderos-dia-primavera-banner.png) es igual al de verano"
+  ],
+  "imagenJuego": "backend/uploads/images/location/manaderos-dia-verano-banner.png"
+}

@@ -1,0 +1,54 @@
+{
+  "tipo": "raza",
+  "slug": "goirntes-meseta",
+  "nombre": "Goirntes de la Meseta",
+  "region": "Meseta del Orden",
+  "momento": "dia",
+  "canon": "Goirntes de la Meseta del Orden, la población base: piel casi mineral y quitinosa, gris y tensa sobre huesos angulosos, que se endurece y deja ver un tenue brillo metálico cuando se concentran o se esfuerzan; ojos de un negro obsidiana frío; mentón ancho en los machos, algo más leve en las hembras. Se dedican casi en exclusiva a la forja y la transformación de minerales. Macho de complexión ancha y pesada, con brillo metálico marcado, más en las castas de fuerza (forja, patrulla, ejecución); hembra de complexión ancha y brillo sutil, más en las castas de cálculo (leyes, archivo, magistratura).",
+  "fuentes": "backend/src/services/berigLore.ts:104-110 (variante goirntes-meseta); backend/src/services/sexDimorphism.ts:559-572 (macho y hembra)",
+  "prompt": {
+    "sujeto": "A full-length view of a broad, heavy-set figure standing on top of a dark stone wall in the left third of the image, taken at chest height and turned three-quarters to the right, the whole figure filling almost the whole height of the frame.",
+    "proporcion": "The figure is about seven heads tall, with shoulders nearly three heads wide, a thick neck and heavy arms that reach to mid-thigh.",
+    "ancla": "a stocky, tuskless orc, only greyer and more angular",
+    "cuerpo": "The bald head is angular, with a heavy brow, sharp cheekbones and cold, glossy obsidian-black eyes. The skin is a flat mineral grey, hard and drawn tight over angular bones, divided into fine chitinous seams at the joints, with a faint metallic sheen along the cheekbones, knuckles and forearms.",
+    "rasgos": [
+      "Over the body sits heavy plate armour of blackened iron, riveted along every edge, and a torn rust-orange cloak hangs from the shoulders down to the calves."
+    ],
+    "rasgosSecundarios": "Soot darkens the creases of the knuckles, and the edges of the plates are worn bright where they rub.",
+    "pose": "The weight rests on the back leg, one hand on the parapet and the head turned toward the viewer with a cold, steady stare.",
+    "entorno": "Beyond the wall a dark industrial city of black stone spires and towers fills the right of the image, laced with timber scaffolding and tall iron cranes, with rust-orange banners hanging from the walls, torches burning along the battlements and dark smoke rising from forge chimneys, under a low, heavy sky of storm clouds.",
+    "luz": "Cold, flat grey light from the storm clouds falls from above, picking out the metallic sheen of the skin and the rivets of the armour, with deep shadow in the folds of the cloak."
+  },
+  "variantes": {
+    "macho": {
+      "rasgos+": [
+        "This male has a broad, heavy jaw and a very wide chin, and the metallic sheen of his skin is strong and clear across his brow and forearms."
+      ]
+    },
+    "hembra": {
+      "rasgos+": [
+        "This female has a slightly narrower chin and a faint, barely visible metallic sheen, and wears her black hair pulled back in a tight ponytail.",
+        "She holds a heavy iron mace with a flanged, spiked head across her body in both hands."
+      ],
+      "pose": "She stands square to the viewer with her weight on one leg, the mace held diagonally across her chest and her head turned slightly to the left, in front of rising stone stands where armoured guards keep watch."
+    }
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "A last band of copper light breaks low under the storm clouds from the right, catching the metallic sheen of the skin and the rivets of the armour."
+    },
+    "momento:noche": {
+      "luz": "Warm, flickering torchlight from the battlements falls from the right across the figure, catching the metallic sheen of the skin and the rivets of the armour, with deep cold shadow behind."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "del banner y fuera del canon: armadura de placas de hierro ennegrecido con remaches y capa rota de color óxido; ciudad industrial de agujas negras con andamios, grúas, antorchas y estandartes óxido bajo cielo de tormenta",
+    "del banner y fuera del canon: el macho calvo y la hembra con coleta negra y maza de cabeza con pestañas y púas, ante unas gradas con guardias; el canon no describe pelo, ropa ni armas",
+    "posible choque con el canon: la hembra del banner va armada como de casta de fuerza, y el canon la sitúa más en las castas de cálculo (leyes, archivo, magistratura)",
+    "las juntas quitinosas finas en las articulaciones son una lectura visual de «piel quitinosa», no canon",
+    "«orco robusto sin colmillos, más gris y anguloso» como ancla y las medidas en cabezas: diseño de imagen, no canon (los Goirntes no tienen ancla probada; R-Z5 solo se probó con el orco)",
+    "el banner de la hembra está en backend/uploads/images/raza/goirntes-meseta-hembra-banner.png; `imagenJuego` solo admite uno y lleva el del macho"
+  ],
+  "imagenJuego": "backend/uploads/images/raza/goirntes-meseta-macho-banner.png"
+}

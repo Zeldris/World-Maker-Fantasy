@@ -3,31 +3,43 @@
   "slug": "hulki",
   "nombre": "Hulki",
   "region": "Margen Silencioso",
+  "zona": "jakut-tusha",
   "momento": "dia",
-  "canon": "Vieja, con el pelaje encanecido en el hocico, delgada pero con los hombros de quien ha cargado presas toda la vida. Piel de hojas finas que susurra al moverse; pelaje denso en tonos de corteza y musgo, como toda la manada de Hashma.",
-  "fuentes": "backend/src/scripts/worldCatalog.ts:4984-4995 (bio); backend/src/services/berigLore.ts:243 y 273 (Faerus, Faerus del Margen); docs/canon-opencode/00-nucleo.md (sin túnica ni sandalias)",
+  "canon": "Faerus del Margen de la manada de Hashma: vieja, con el pelaje encanecido en el hocico, delgada pero con los hombros de quien ha cargado presas toda la vida; piel de hojas finas que susurra al moverse y pelaje denso en tonos de corteza y musgo. Se sienta en el Jakut Tusha, la gran plataforma en la horquilla del árbol más recio, y decide si un forastero pasa. Los Faerus no visten túnica ni sandalias.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:4994-5003 (bio); docs/rpgtarkor/personajes/npcs.md:25; backend/src/services/berigLore.ts:243 (Faerus: piel de hojas, cuerpo fibroso, postura de dos a cuatro patas) y 270-274 (Faerus del Margen: pelaje denso de corteza y musgo); docs/rpgtarkor/lore-mundo/regiones/margen-silencioso.md:41-52 (Jakut Tusha); docs/canon-opencode/00-nucleo.md (sin túnica ni sandalias)",
   "prompt": {
-    "sujeto": "A very old female forest creature of a fibrous, wiry build who moves on two or four limbs, holding herself upright in a low squat, with the broad strong shoulders of someone who has carried prey all her life.",
-    "cuerpo": "Her long, narrow muzzle, like that of a forest browser, has gone silver-grey at the tip, and the rest of her dense, short fur is in the tones of tree bark and moss. Patches of fine, overlapping leaf-like skin cover her shoulders and forearms and rustle softly when she moves. Her dark, cold eyes watch calmly and patiently.",
+    "sujeto": "A full-length view of a very old, lean female forest beast crouched on bent hind legs in the left third of the image, turned three-quarters to the right.",
+    "proporcion": "Crouched, she stands about three of her own heads tall counting the crest, her shoulders two and a half heads wide and her long arms hanging to her knees.",
+    "ancla": "a bear on its hind legs, only leaner, longer in the arm and more hunched",
+    "cuerpo": "Her muzzle is short and broad, gone silver-grey with age, and her eyes glow a soft violet under a heavy brow. Dense fur in the ochre and olive tones of bark and moss covers her lean body, over the broad, worn shoulders of a lifelong hauler of prey.",
     "rasgos": [
-      "She is bare of cloth and wears only a simple pendant of bone on a plaited fibre cord."
+      "Thin, overlapping olive leaves with dry ochre edges grow from her skin along the crown, nape and forearms, rising into a ragged crest above her head.",
+      "Her only gear is a plaited fibre cord wrapped around her waist and wrists."
     ],
-    "pose": "She sits on a high seat of lashed wooden poles among the branches of a village hung in the trees.",
-    "entorno": "Around her rise huge black-wooded conifer trunks and heavy dark foliage, the air clear and perfectly still."
+    "rasgosSecundarios": "Her knuckles are thick and calloused, and the leaves along her forearms are curled and faded at the tips.",
+    "pose": "She squats on the edge of a wide wooden platform in the fork of a massive tree, her weight on her heels and one long hand on the planks, her head turned toward the viewer with a calm, patient stare.",
+    "entorno": "Behind her rise huge black trunks wrapped in moss and dotted with pale blue-green glowing mushrooms; deeper back, platform huts joined by rope bridges hang among the branches, their small windows lit amber, in clear, perfectly still air.",
+    "luz": "Dim green light filters through a closed canopy that hides the sky, with a few thin shafts falling from the upper left onto her shoulders and the planks."
   },
-  "propuestas": [
-    "ojos dark, cold",
-    "colgante de hueso",
-    "asiento de varas atadas (el Jakut Tusha no está descrito)",
-    "gris plata del hocico",
-    "altura ~155 cm sin fuente",
-    "hocico «long, narrow… forest browser» y pelo corto (salía un simio de melena y barba)",
-    "piel de hojas en hombros y antebrazos",
-    "luz con el cielo tapado"
-  ],
   "condiciones": {
     "momento:dia": {
-      "luz": "Dim green light under a closed canopy that hides the sky completely, pierced by a few thin shafts of light."
+      "luz": "Dim green light filters through a closed canopy that hides the sky, with a few thin shafts falling from the upper left onto her shoulders and the planks."
+    },
+    "momento:atardecer": {
+      "luz": "Deep green dusk settles under the closed canopy, a few last warm shafts slanting low from the left across the planks."
+    },
+    "momento:noche": {
+      "luz": "Deep darkness fills the space under the canopy, broken only by the cold glow of the mushrooms and the warm amber of the hut windows rimming her silver muzzle."
     }
-  }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "del banner y fuera del canon: ojos de un violeta luminoso, cresta de hojas oliva con bordes ocres, setas luminosas azul verdosas en los troncos, chozas en plataformas unidas por puentes de cuerda con ventanas ámbar",
+    "del banner y fuera del canon: hocico corto y ancho (el canon solo dice que está encanecido); postura de oso erguido (el canon: de dos a cuatro patas)",
+    "choca con el banner, sigue al canon: sin los dos cuchillos de acero del banner (Hulki decide quién pasa, no lleva armas descritas) y vieja y delgada (el banner es la hembra genérica de la raza)",
+    "Jakut Tusha: el canon dice sala de piel y hueso con cráneos; el prompt solo pone la plataforma en la horquilla, sin cráneos ni sala",
+    "cordón de fibra trenzada en cintura y muñecas: del banner, sin fuente en el canon",
+    "medidas en cabezas (unas tres con la cresta, hombros de dos cabezas y media): diseño de imagen (banco r20-faerus-margen-hembra), no canon"
+  ],
+  "imagenJuego": "backend/uploads/images/raza/faerus-margen-hembra-banner.png"
 }

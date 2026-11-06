@@ -1,0 +1,38 @@
+{
+  "tipo": "location",
+  "slug": "agujas-iman",
+  "nombre": "Las Agujas Imán",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Hito de las Llanuras: un campo de rocas negras y brillantes, formadas de arena imán, imantadas y suspendidas por el magnetismo, donde las tormentas de arena magnética peinan la arena en crestas y estalactitas flotantes. El sentido de la orientación se pierde entre ellas; a sotavento se acumula arena imán y crece el Cardo Brújula. Las rocas imanidas flotan por repulsión magnética, y cuanto más alto flota una, más arena imán da.",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:47-60 (Las Agujas Imán); docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:546-564 (Las Agujas Imán, Rocas Imanidas)",
+  "prompt": {
+    "lugar": "desert landscape",
+    "sujeto": "A wide field of tall black rock spires rising from a red sand plain, glossy and sharp as needles. The horizon lies a third of the way up the image; in the foreground, red sand combed into long parallel ridges runs toward the camera, scattered with small black stones.",
+    "proporcion": "The tallest spires in the centre reach nearly to the top of the image, and the smaller ones around them stand at a quarter of that height.",
+    "cuerpo": "The spires are made of compacted black sand, glossy where the light strikes and grainy in shadow, clustered thickly at the centre around a dark hollow and thinning out toward the edges of the field.",
+    "rasgos": [
+      "Dozens of black rocks hang motionless in the air between the spires at different heights, some as large as boulders, some as small as fists, and slender black points hang from their undersides."
+    ],
+    "rasgosSecundarios": "Faint cold blue-green glints shine in the fractures of the nearest rocks, and drifts of dark grains pile up in the lee of every spire.",
+    "pose": "A dry wind lifts thin streamers of dark sand from the ridges and drags them sideways through the field.",
+    "entorno": "On the right, jagged red mountains rise behind the field, and a heavy crimson-purple wall of sandstorm cloud fills the sky above them, darker toward the top of the image.",
+    "luz": "Low warm light breaks in from the left under the storm cloud, catching the glossy faces of the spires and the floating rocks and laying long shadows across the combed sand."
+  },
+  "condiciones": {
+    "momento:atardecer": {
+      "luz": "A last band of deep red light breaks low under the storm cloud from the left, catching the glossy faces of the spires and the floating rocks and laying very long shadows across the combed sand."
+    },
+    "momento:noche": {
+      "luz": "Stars glitter in a clear patch of sky beside the storm cloud, a soft, even pearly glow lies on the glossy faces of the spires and the floating rocks, and deep cool shadows fill the combed sand."
+    }
+  },
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "del banner y fuera del canon: destellos fríos azul verdosos en las fracturas de las rocas (el canon no da brillo propio; puede leerse como magia), agujas agrupadas en torno a un hueco central, montañas rojas dentadas a la derecha",
+    "el muro de nubes carmesí y violeta del banner se lee como la tormenta de arena magnética del canon; el color es del banner",
+    "las «estalactitas flotantes» del canon van como puntas negras colgando de las rocas suspendidas: lectura visual, no canon",
+    "el banner de primavera (agujas-iman-dia-primavera-banner.png) es igual al de verano"
+  ],
+  "imagenJuego": "backend/uploads/images/location/agujas-iman-dia-verano-banner.png"
+}
