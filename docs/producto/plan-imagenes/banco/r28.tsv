@@ -1,0 +1,14 @@
+# IMG-46 r28: FLUX.2 con -r, sin masas planas, 4 pasos y semilla 3. Banner propio en los tres tipos que faltaban (propio-), referencia de otro elemento (aj-) y directo a 1280x512 con 6 pasos (d-)
+aj-aullador-canizor	4	prompts/r28-aullador-ajena.txt	W=480,H=192	-r $G/referencias/images/fauna/canizor-macho-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-aullador-coracelo	4	prompts/r28-aullador-ajena.txt	W=480,H=192	-r $G/referencias/images/fauna/coracelo-macho-banner.png --ref-image-args vae_input_max_pixels=262144
+propio-choza-basica-orco-llanuras	4	prompts/r28-choza-basica-orco-llanuras-propio.txt	W=480,H=192	-r $G/referencias/images/construccion/choza-basica-orco-llanuras-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-choza-basica-orco-llanuras-campamento	4	prompts/r28-choza-basica-orco-llanuras-ajena.txt	W=480,H=192	-r $G/referencias/images/construccion/campamento-base-orco-llanuras-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-choza-basica-orco-llanuras-serhu	4	prompts/r28-choza-basica-orco-llanuras-ajena.txt	W=480,H=192	-r $G/referencias/images/location/campamento-serhu-dia-primavera-banner.png --ref-image-args vae_input_max_pixels=262144
+propio-cardo-brujula	4	prompts/r28-cardo-brujula-propio.txt	W=480,H=192	-r $G/referencias/images/flora/cardo-brujula-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-cardo-brujula-salvia	4	prompts/r28-cardo-brujula-ajena.txt	W=480,H=192	-r $G/referencias/images/flora/salvia-del-polvo-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-cardo-brujula-flor	4	prompts/r28-cardo-brujula-ajena.txt	W=480,H=192	-r $G/referencias/images/flora/flor-de-ceniza-banner.png --ref-image-args vae_input_max_pixels=262144
+propio-cuchillo-hielo-silice	4	prompts/r28-cuchillo-hielo-silice-propio.txt	W=480,H=192	-r $G/referencias/images/item/cuchillo-hielo-silice-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-cuchillo-hielo-silice-corto	4	prompts/r28-cuchillo-hielo-silice-ajena.txt	W=480,H=192	-r $G/referencias/images/item/cuchillo-corto-banner.png --ref-image-args vae_input_max_pixels=262144
+aj-cuchillo-hielo-silice-hacha	4	prompts/r28-cuchillo-hielo-silice-ajena.txt	W=480,H=192	-r $G/referencias/images/item/hacha-guerra-maktor-rota-banner.png --ref-image-args vae_input_max_pixels=262144
+d-aullador	6	prompts/r28-aullador-propio.txt	W=1280,H=512,TOPE=1800	-r $G/referencias/images/fauna/aullador-rojo-macho-banner.png --ref-image-args vae_input_max_pixels=262144
+d-choza-basica-orco-llanuras	6	prompts/r28-choza-basica-orco-llanuras-propio.txt	W=1280,H=512,TOPE=1800	-r $G/referencias/images/construccion/choza-basica-orco-llanuras-banner.png --ref-image-args vae_input_max_pixels=262144
