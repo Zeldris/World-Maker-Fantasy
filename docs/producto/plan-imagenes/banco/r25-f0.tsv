@@ -1,0 +1,5 @@
+# IMG-34 r25: forma en F0. FLUX.2 sin LoRA, 512x192, 4 pasos, masas planas, semilla 3. Parte del prompt de r23 sin el zorro: v1 solo lo quita; v2 ancla de silueta (armiño, F6b); v3 proporción por el encuadre y el cuerpo; v4 las dos
+v1-sin-zorro	4	prompts/r25-v1-sin-zorro.txt	W=512,H=192	-
+v2-ancla	4	prompts/r25-v2-ancla.txt	W=512,H=192	-
+v3-marco	4	prompts/r25-v3-marco.txt	W=512,H=192	-
+v4-ancla-marco	4	prompts/r25-v4-ancla-marco.txt	W=512,H=192	-
