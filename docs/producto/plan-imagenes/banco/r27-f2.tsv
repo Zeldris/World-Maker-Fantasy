@@ -1,0 +1,2 @@
+# IMG-36 r27-f2: cadena de r27 a proporción 2,5 con lanczos; ver resultados.md
+aullador-sin-planas	16	prompts/r26-aullador-detalle.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r27-f0-aullador-sin-planas/intentos/banner-s3-p4-20261106-222810.png,FUERZA_BOCETO=0.50,W=960,H=384	--image-preprocess target=init,filter=lanczos,antialias=true
