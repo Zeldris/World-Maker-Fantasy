@@ -1,0 +1,4 @@
+# IMG-36 r26b: por qué F2 quita textura en r26 (a 0,50 se borran grietas y pelo). e: prompt con materiales, 0,81. f: igual sin LoRA. g: mismo prompt de r26 a 0,50 con 16 pasos (2 reales en vez de 1), para ver si el paso único es la causa
+e-detalle-s81	8	prompts/r26-aullador-detalle.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png,FUERZA_BOCETO=0.81,W=1024,H=384	-
+f-sinlora-s81	8	prompts/r26-aullador-detalle.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png,FUERZA_BOCETO=0.81,LORA=0,W=1024,H=384	-
+g-s50-p16	16	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png,FUERZA_BOCETO=0.50,W=1024,H=384	-
