@@ -249,5 +249,13 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | B2 | **El estilo del boceto se pide sustituyendo la línea `Style`** de la ficha, no añadiendo otra: *simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values, broad painted masses, minimal detail*. Da silueta limpia y poco detalle que distraiga. | ✅ | r23: mejor que sin cambiar y que lápiz con aguada en el aullador; legible en los cinco tipos, 2 semillas |
 | B3 | **FLUX.2 sacrifica la forma rara**: dibuja un zorro de patas altas, con menos cuerpo y sin los colmillos largos; le sale bien lo que tiene una forma común (cardo, llanura, cuchillo, choza). FLUX.3 a 384x144 respeta más el cuerpo largo y bajo, las placas y los colmillos, pero tarda ~170-200 s y casi no obedece la línea de masas planas (con el LoRA puesto). | ✅ | r23: aullador, todas las imágenes de cada motor |
 | B4 | **La semilla apenas cambia el encuadre en F0**: reintentar con otra semilla no da otra composición; para cambiarla hay que editar el prompt. | ✅ | r23: los cinco tipos, semillas 3 y 7 |
-| B5 | **Si F1 con FLUX.3 corrige la forma que F0 pierde.** Decide si FLUX.2 basta para los elementos de forma rara. | 🔬 | `IMG-34` |
+| B5 | **F1 no corrige la forma que F0 pierde**: con un boceto de FLUX.2, hasta sigma 0,920 conserva la silueta y las proporciones. La forma rara hay que conseguirla en F0. | ✅ | r24: aullador, una semilla |
 | B6 | **Fondo liso desde F0 en los tipos que se recortan** (P6): r23 usó las escenas de la ficha, sin fondo liso. | 🔬 | `IMG-37` |
+
+## 13. F1 Forma (r24)
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| FZ1 | **La fuerza es el sigma de arranque**, redondeado hacia abajo al calendario (`strength_as_noise_level`, shift 6,93). Se elige por los pasos que quedan: con 8 pasos, 0,93 deja 5; 0,88, 4; 0,81, 3; 0,70, 2. | ✅ | Código de sd.cpp; r24: los tiempos dan esos pasos, ~67 s cada uno a 640x240 |
+| FZ2 | **Fuerza de F1: 0,88 con 8 pasos** (sigma 0,874, ~5 min). Da pelo, volumen y luz; por debajo de ~0,85 el boceto de masas planas se queda como dibujo plano. | 🔬 | r24: aullador, una semilla; falta en otros tipos y con otra semilla |
+| FZ3 | **Con el mismo sigma, doblar los pasos no mejora**: el acabado depende del sigma, no de los pasos. | ✅ | r24: 0,70 con 8 y con 16 pasos dan casi la misma imagen |

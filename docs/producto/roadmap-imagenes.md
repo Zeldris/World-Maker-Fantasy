@@ -329,6 +329,9 @@ desde el panel vive en tablas que siembran.
   (casi txt2img). Se mide qué fuerza conserva el boceto aceptado en F0 y deja a la vez que aparezca la forma:
   prueba de 4 versiones (A 0,75 · B 0,60 · C color plano · D repaso a 0,40), **solo con el sí de la usuaria**. Antes,
   leer `noise_level_to_sigma` de sd.cpp. Deja la fuerza por defecto de F1 en `pautas.md`. **M**
+  🚧 2026-11-06 (r24, `pautas.md` §13): la fuerza es el sigma de arranque; la rejilla se rehízo por los pasos que quedan,
+  sin color plano (F0 ya es plano) y con el repaso a 0,40 para `IMG-36`. F1 da acabado, no forma: 0,88 con 8 pasos es la
+  fuerza provisional. Falta: confirmarla en otros tipos y con otra semilla, y ver si la forma se consigue en F0.
 - **IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás** [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado

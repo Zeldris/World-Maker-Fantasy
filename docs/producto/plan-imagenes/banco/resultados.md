@@ -552,3 +552,26 @@ Textos que sustituyen desde `Style:` hasta el final del prompt, los dos con *The
   mucho más largo y bajo). Los pastos salen más verdes y fríos que el banner. El cuchillo trae signos en el mango en las
   tres imágenes, aunque el prompt pide *textless*.
 - **Pautas:** `pautas.md` §12. Queda por medir si F1 recupera la forma (`IMG-34`) y el fondo liso para recortar (`IMG-37`).
+
+## r24 · F1: fuerza sobre el boceto de FLUX.2 (`IMG-34`, 2026-11-06)
+
+6 imágenes en `generated/banco/r24-f1-*`, con la rejilla junto al banner y al boceto en `generated/banco/r24-f1/rejilla.png`.
+FLUX.3 con `wmf-estilo` a peso 1, 640x240, prompt de ficha, semilla 3, sobre `r23-f0/intentos/e2-f2-planos.png`.
+Narrador de Ollama descargado; mínimo de 5,6 GB libres.
+
+En sd.cpp, `noise_level_to_sigma` es la identidad en los modelos de flujo: **la fuerza es el sigma de arranque**, y este
+se redondea al primero del calendario que no lo supera. Con shift 6,93, el calendario de 8 pasos es 1 · 0,980 · 0,954 ·
+0,920 · 0,874 · 0,806 · 0,698 · 0,497 · 0. Los tiempos confirman los pasos calculados: ~67 s por paso.
+
+| Prueba | Fuerza | Sigma real | Pasos (calendario → quedan) | `generate_image` | Lectura |
+|---|---|---|---|---|---|
+| A | 0,93 | 0,920 | 8 → 5 | 349 s | Pelo, costillas y placas con volumen; repinta sol y fondo. Sigue siendo un zorro de patas altas |
+| B | 0,88 | 0,874 | 8 → 4 | 282 s | Casi igual que A, con un paso menos |
+| C | 0,81 | 0,806 | 8 → 3 | 218 s | Empieza a mandar el boceto: dibujo plano, cresta partida |
+| D | 0,70 | 0,698 | 8 → 2 | 152 s | Dibujo plano, sin textura |
+| E | 0,70 | 0,698 | 16 → 4 | 284 s | Igual que D: el doble de pasos no aporta nada |
+| F | 0,50 | 0,497 | 16 → 2 | 152 s | Casi una copia del boceto |
+
+- **Contra el banner:** ninguna recupera el cuerpo de cinta. Hasta con 0,920 se conservan silueta, proporciones y pose
+  del boceto: F1 da acabado, no forma.
+- **Pautas:** `pautas.md` §13. Falta confirmar la fuerza en otros tipos y con otra semilla.
