@@ -250,7 +250,7 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | B3 | **FLUX.2 sacrifica la forma rara**: dibuja un zorro de patas altas, con menos cuerpo y sin los colmillos largos; le sale bien lo que tiene una forma común (cardo, llanura, cuchillo, choza). FLUX.3 a 384x144 respeta más el cuerpo largo y bajo, las placas y los colmillos, pero tarda ~170-200 s y casi no obedece la línea de masas planas (con el LoRA puesto). | ✅ | r23: aullador, todas las imágenes de cada motor |
 | B4 | **La semilla apenas cambia el encuadre en F0**: reintentar con otra semilla no da otra composición; para cambiarla hay que editar el prompt. | ✅ | r23: los cinco tipos, semillas 3 y 7 |
 | B5 | **F1 no corrige la forma que F0 pierde**: con un boceto de FLUX.2, hasta sigma 0,920 conserva la silueta y las proporciones. La forma rara hay que conseguirla en F0. | ✅ | r24: aullador, una semilla |
-| B5b | **Reescribir el prompt no da la forma rara en FLUX.2**: quitar el ancla o pedir medidas baja las patas, pero engorda el cuerpo. Para una forma rara, el boceto de FLUX.3 (~3 min) es lo más cercano, sin llegar a la referencia. | ✅ | r25: aullador, 4 prompts y una F1 sobre FLUX.3 |
+| B5b | **Reescribir el prompt no da la forma rara en FLUX.2** (con `-r`, sí: D8): quitar el ancla o pedir medidas baja las patas, pero engorda el cuerpo. Para una forma rara, el boceto de FLUX.3 (~3 min) es lo más cercano, sin llegar a la referencia. | ✅ | r25: aullador, 4 prompts y una F1 sobre FLUX.3 |
 | B6 | **Fondo liso desde F0 en los tipos que se recortan** (P6): r23 usó las escenas de la ficha, sin fondo liso. | 🔬 | `IMG-37` |
 
 ## 13. F1 Forma (r24)
@@ -262,14 +262,16 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | FZ4 | **Lo que dibuja el boceto se queda**: silueta, signos o encuadre no se corrigen en F1, así que se arreglan antes de aceptar F0. | ✅ | r24 y r25: cuerpo del aullador, signos del cuchillo y de la choza |
 | FZ3 | **Con el mismo sigma, doblar los pasos no mejora**: el acabado depende del sigma, no de los pasos. | ✅ | r24: 0,70 con 8 y con 16 pasos dan casi la misma imagen |
 
-## 14. F2 Detalle y Final (r26)
+## 14. F2 Detalle y Final (r26, r27)
 
 | # | Pauta | Estado | Evidencia |
 |---|---|---|---|
-| D1 | **F2: 1024x384, fuerza 0,50 con 16 pasos** (2 reales), ~5 min. Un único paso real borra la textura; más fuerza no añade detalle y baja el SSIM. | ✅ | r26 y r26b: aullador; r26c: otros tres tipos, SSIM 0,81-0,87 |
+| D1 | **F2: 960x384 (D7), fuerza 0,50 con 16 pasos** (2 reales), ~5 min. Un único paso real borra la textura; más fuerza no añade detalle y baja el SSIM. | ✅ | r26 y r26b: aullador; r26c: otros tres tipos, SSIM 0,81-0,87 |
 | D2 | **Los materiales se piden en el prompt de F2**, con una línea `Surface detail` y `razor-sharp fine texture` en vez de `soft`. Ayuda poco, pero añade guijarros, hierba y material. | ✅ | r26b, r26c |
 | D3 | **El LoRA no causa la pérdida de textura**: sin él, casi la misma imagen y ~25 s menos. | ✅ | r26b, una imagen |
 | D4 | **Agrandar siempre con `--image-preprocess target=init,filter=lanczos,antialias=true`.** Por defecto, `sd-cli` deja bordes en escalera. Lanczos los quita y sube el SSIM, con un halo claro en los bordes. | ✅ | r26e, r26f; bicúbico sin medir |
-| D5 | **La Final parte de F2 a 0,50 con 16 pasos: ~7 min frente a 49 desde cero, así que puede salir de día.** A 0,70 tarda el doble y no mejora. | 🔬 | r26d y r26f: solo aullador |
+| D5 | **La Final parte de F2 a 0,50 con 16 pasos: ~7,6 min a 1280x512 frente a 49 desde cero, así que puede salir de día.** A 0,70 tarda el doble y no mejora. | ✅ | r26d, r26f, r27: cuatro tipos, 453-466 s |
 | D6 | **El SSIM solo vigila la forma**: da por buena la imagen que pierde textura. Hace falta mirar el detalle de cerca. | ✅ | r26: la c pasa con 0,71 y es la peor en textura |
-| D7 | **La misma proporción en toda la cadena**: F0 y F1 van a 2,667 y el banner a 2,5, así que la Final de r26 queda en 1280x480. Cadena a 2,5, múltiplos de 16: 480x192, 640x256, 960x384, 1280x512. | 🔬 | Se prueba en r27 |
+| D7 | **La misma proporción en toda la cadena, 2,5**: 480x192, 640x256, 960x384, 1280x512, múltiplos de 16. | ✅ | r27: cuatro tipos, sin recortar la Final |
+| D8 | **Un `-r` limpio en F0 trae forma y encuadre que el prompt no da**, por ~12 s más (~48 s). Salto grande en el aullador, medio en choza y cuchillo, nulo en el cardo; no trae la textura. Solo vale con una referencia, y aquí era el propio banner: cota superior. | 🔬 | r27: una semilla por tipo; referencia de otro elemento sin medir |
+| D9 | **Con referencia, F0 sin masas planas y sin F1 queda más cerca del banner**, y ahorra ~5 min. | 🔬 | r27: solo aullador |

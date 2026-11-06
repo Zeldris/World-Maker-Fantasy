@@ -48,11 +48,11 @@ guardado. Cada uno se crea **suelto**, sin depender de que exista su zona ni otr
 
 | Fase | Entrada | Salida | Quién la genera | Coste |
 |---|---|---|---|---|
-| **F0 Boceto** | El prompt | Boceto legible | FLUX.2 en GPU, 512x192, 4 pasos (`IMG-35`, `pautas.md` §12) | ~36 s |
-| **F1 Forma** | Prompt + F0 aceptada | Masas y silueta | FLUX.3 con LoRA, img2img a 0,88, 640x240, 8 pasos (`IMG-34`, `pautas.md` §13) | ~5 min |
-| **F2 Detalle** | Prompt + F1 aceptada | Materiales y luz | Modelo, img2img (`IMG-36`) | Sin medir; 1-2 min antes del LoRA |
+| **F0 Boceto** | El prompt | Boceto legible | FLUX.2 en GPU, 480x192, 4 pasos (`IMG-35`, `pautas.md` §12) | ~36 s |
+| **F1 Forma** | Prompt + F0 aceptada | Masas y silueta | FLUX.3 con LoRA, img2img a 0,88, 640x256, 8 pasos (`IMG-34`, `pautas.md` §13) | ~5 min |
+| **F2 Detalle** | Prompt + F1 aceptada | Materiales y luz | FLUX.3 con LoRA, img2img a 0,50, 960x384, 16 pasos, lanczos (`IMG-36`, `pautas.md` §14) | ~5 min |
 | **F3 Recorte** | F2 aceptada | PNG con alfa; **no se aplica a fondos** | Sin modelo (`IMG-37`) | Segundos |
-| **F4 Final** | Prompt + F2 aceptada | 1280x512 gradada y medida | Modelo, tanda de noche (`IMG-44`) | Sin medir; 49 min desde cero |
+| **F4 Final** | Prompt + F2 aceptada | 1280x512 gradada y medida | FLUX.3 con LoRA, img2img a 0,50, 16 pasos, lanczos (`IMG-36`) | ~7,6 min |
 | **★ Marcada** | F4 aprobada | Imagen en la biblioteca | La usuaria | — |
 
 Cada fase enseña **intentos**. Aceptar uno es avanzar. Una sola imagen por intento: la regla R1 de dos semillas deja de
@@ -181,8 +181,8 @@ mayor es el cambio, antes hay que salir. Hipótesis, a medir en `IMG-38`:
 
 ### 1.5 La final en tanda de noche, gradada, medida, guardada
 
-Aceptar F3 pone el elemento en la cola de la noche (usuaria, 2026-11-06), salvo que `IMG-36` demuestre que puede salir
-de día. `tanda.sh` (`IMG-44`) genera cada F4 **desde la imagen aceptada, no desde cero**, para no perder el camino
+Aceptar F3 ponía el elemento en la cola de la noche (usuaria, 2026-11-06), salvo que `IMG-36` demostrara que puede salir
+de día: lo demuestra (~7,6 min en cuatro tipos), y la cola queda para lotes. `tanda.sh` (`IMG-44`) genera cada F4 **desde la imagen aceptada, no desde cero**, para no perder el camino
 elegido; grada con la LUT del momento, mide, recalcula la máscara sobre la Final si no es un fondo, y escribe la receta.
 Aplica la regla de memoria (§2.4) y un tope de hora. Si una Final falla la medida **no reintenta sola**. Por la mañana
 aparecen en la bandeja: se aprueba y se marca ★, se reintenta con otro prompt o se vuelve a una fase anterior.

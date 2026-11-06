@@ -619,5 +619,32 @@ Rondas `r26`, `r26b`, `r26c`, `r26d`, `r26e` y `r26f`, con las rejillas en `gene
 r26c repite la receta g con materiales en los otros tipos: cardo 0,87, cuchillo 0,81 y choza 0,82, 293-304 s; no mueve la composición y el material de la choza gana.
 
 - **Contra el banner:** coste resuelto, calidad no. Ninguna tiene el pelo, la tierra ni la cresta fina del banner: se lee como ilustración cuidada, y la forma sigue siendo la del boceto.
-- **Sin medir:** filtro bicúbico (quizá sin halo) y Final en otros tipos.
+- **Sin medir:** filtro bicúbico (quizá sin halo). La Final en otros tipos se mide en r27.
+- **Pautas:** `pautas.md` §14.
+
+## r27 · Solo con prompt frente al banner GPT como referencia (`IMG-36`, 2026-11-06)
+
+Rondas `r27-f0`, `r27-f1`, `r27-f2`, `r27-final` y `r27p-final`, con las comparaciones en `generated/banco/r27/` (`cmp-<tipo>.png`: arriba solo prompt, en medio con referencia, abajo el banner). Semilla 3. Cadena con referencia a 2,5: F0 480x192 con `-r` del propio banner, F1 640x256 a 0,88, F2 960x384 y Final 1280x512, a 0,50 con 16 pasos y lanczos. Solo con prompt: Final 1280x480 desde las F2 de r26.
+
+| Fase | Tiempo | SSIM con la fase anterior |
+|---|---|---|
+| F0 con `-r` | 46-49 s | — |
+| F1 | 296-317 s | 0,39-0,59 |
+| F2 | 275-288 s | 0,81-0,88 |
+| Final 1280x512 | 453-466 s | 0,86-0,92 |
+| Final 1280x480, solo prompt | 416-428 s | — |
+
+Cadena entera con referencia: ~18 min; sin F1, ~13.
+
+| Tipo | SSIM con el banner: prompt → referencia | Lectura |
+|---|---|---|
+| Aullador | 0,376 → 0,473 (sin F1) | Salto grande: cuerpo de cinta, cresta fina, encuadre y manada, que no salieron en ninguna ronda por prompt. El pelo sigue liso |
+| Choza | 0,273 → 0,280 | Salto medio: más huesos y parches rotos, pero limpios; el banner es oscuro y retorcido |
+| Cuchillo | 0,202 → 0,258 | Salto medio en el encuadre (abertura, cajón, saco); la hoja sigue siendo grande, limpia y opaca |
+| Cardo | 0,331 → 0,316 | Sin salto: flor lila y única, rocas de charol, sin el acantilado ni el cardo oscuro |
+
+- **Aullador con y sin masas planas:** sin ellas, y sin F1, queda más cerca del banner (`aullador-dos.png`); con ellas, placas y rayas de ilustración. Solo se probó en el aullador.
+- **Calidad:** ninguna alcanza la textura del banner. Con referencia mejora qué se pinta, no la materia con que se pinta.
+- **Sesgos:** el brazo de prompt arrastra escalones de sus F2 sin lanczos, y su aullador sale de la mejor F1 de r25. Una semilla por tipo. El SSIM con el banner depende mucho del encuadre: orienta, no mide calidad.
+- **Límite:** es una cota superior: el `-r` es el banner que se quiere conseguir, y un elemento nuevo no lo tiene.
 - **Pautas:** `pautas.md` §14.
