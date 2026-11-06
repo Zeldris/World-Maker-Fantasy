@@ -23,7 +23,7 @@ Lo guardado se borra desde el elemento o se reutiliza para variantes. Lo marcado
 publicar en el juego es un paso aparte. Detalle en
 [`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md).
 
-**Cuándo:** empieza al cerrar las pruebas de juego, salvo que la usuaria lo adelante (`AGENTS.md`, «Pruebas de juego»).
+**Cuándo:** el bloque A se adelanta a las pruebas de juego por decisión de la usuaria (2026-11-06); los bloques siguientes se deciden al cerrarlo. Cada generación sigue pidiendo su sí y la pregunta de memoria.
 Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
