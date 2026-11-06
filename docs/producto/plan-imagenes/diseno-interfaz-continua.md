@@ -1,5 +1,10 @@
 # Diseño de la interfaz de creación continua (`IMG-25`)
 
+> **Flujo por fases (usuaria, 2026-11-06).** §1.1, §1.2, §1.3b, §1.4, §1.5, §2.0, §2.6, §3.0 y §7 están rehechos con
+> él y **mandan sobre el resto**. Lo demás es de cuando el flujo era «borrador en dos semillas, sí/no y final»: donde
+> §2.1-§2.5 o §3.1 hablen de pares de candidatas o de estados como `borrador-hecho` o `final-en-cola`, siguen valiendo
+> sus datos y sus medidas, no ese flujo. Se ajustan al construir cada pantalla, después del prototipo (`IMG-39`).
+
 **Qué es** (usuaria, 2026-10-27: «vete haciendo el diseño de la interfaz dándole más datos y ampliando según tengamos
 los estándares»): el diseño de producto de la segunda etapa del generador. La primera etapa junta pautas
 ([`pautas.md`](pautas.md), `IMG-21`/`IMG-22`/`IMG-24`); esta interfaz las **consume** para llevar cada elemento de la
@@ -35,48 +40,51 @@ el borrador, no acelerar la final.
 
 ## 1. Flujo de punta a punta
 
-### 1.1 Estados por elemento
+### 1.1 Elemento, variante, fase e intento
 
-Un elemento tiene **un estado por perfil** (`banner`, `fotorreal`, `icono`, `thumbnail`, `mapa`): el aullador puede
-tener el banner aprobado y el icono sin ficha. El estado vive en `generated/<tipo>/<slug>/estado.json` (D7) y la
-interfaz lo deriva de ahí, no de la conversación ni del nombre de los archivos.
+**Elemento** es lo que la usuaria abre para trabajar: lo renombra, ve los pasos de cada imagen y borra o reutiliza lo
+guardado. Cada uno se crea **suelto**, sin depender de que exista su zona ni otros elementos. Tiene una o más
+**variantes** (macho, invierno, destruida…), y cada variante, su camino de fases:
 
-| Estado | Qué significa | Quién lo pone | Qué queda guardado |
-|---|---|---|---|
-| `sin-ficha` | En el catálogo, sin `fichas/<tipo>/<slug>.json` | `elementos()` al cruzar catálogo y fichas | Nada |
-| `ficha-borrador` | Ficha propuesta desde el lore (§1.3), no comprobada | El asistente de ficha o un agente | `fichas/<tipo>/<slug>.json` con `estado: borrador`, `fuentes[]` |
-| `ficha-lista` | `prompt_ficha.py --json` sale 0 y sin avisos, o con avisos aceptados a mano | La interfaz al validar | Ficha + `prompts/<perfil>-<fecha>.txt` |
-| `borrador-en-cola` | Borrador pedido, esperando turno | La usuaria («Borrador») | Fila en `cola.jsonl` |
-| `borrador-hecho` | Hay dos candidatas baratas, una por semilla (R1; 640x256 o sujeto+montaje) | `generar.sh` al terminar las dos | Dos `intentos/…png` + `receta.json` cada uno (mismo `par`) + medida |
-| `ajustar` | La usuaria pidió un cambio concreto | Comparación → «Ajustar» | Nota con el campo tocado; vuelve a `ficha-lista` |
-| `final-en-cola` | Borrador con **sí** sobre una de las dos candidatas; final a 1280x512 esperando la noche | «Sí» en la comparación | Fila en `cola.jsonl` con `tanda: noche` y la receta y semilla de la candidata elegida |
-| `final-hecha` | Final generada, gradada (`gradar.sh`) y medida (`medir.sh`) | `tanda.sh` | PNG gradado + `receta.json` con EMD, YAVG, SATAVG |
-| `final-fallida` | La final no pasa el criterio §5 de `pautas.md` (EMD > tope o nota de forma «no») | `tanda.sh` | Igual, marcada; no se enseña como candidata, no se borra |
-| `aprobada` | Sí de la usuaria sobre la final junto a su referencia; el tablero filtra por aprobadas | «Aprobar» | `elegidas.tsv`, `estado.json`, `notaForma` |
-| `publicada` | Copiada a `backend/uploads/images/<tipo>/<slug>-<perfil>.png`: **sustituye** la imagen de GPT si la hay y, si no, se añade; `ImagePrompt.promptUsado` escrito. El botón pasa a «Despublicar», que devuelve la de GPT (desde `referencias/images/`, §3.2) o deja el elemento sin imagen si no había; el estado vuelve a `aprobada` | «Publicar» / «Despublicar» (usuaria, 2026-10-27) | Receta adjunta al PNG (§3.1) |
-| `rehacer` | Aprobada o publicada con `pautasVersion` anterior a una pauta que afecta a su tipo | El cálculo de §4 | Igual que antes; aparece en la cola de rehacer |
-| `rechazada` | Descartada con motivo; solo se ve en el filtro «Rechazadas», y solo ahí está el botón «Borrar», que la elimina del disco | «Rechazar» (borrador o final; usuaria, 2026-10-27) | Movida a `generated/<tipo>/<slug>/rechazadas/` (D7), con su receta, hasta que se borra |
+| Fase | Entrada | Salida | Quién la genera | Coste |
+|---|---|---|---|---|
+| **F0 Boceto** | El prompt | Boceto legible | Modelo | Sin medir (`IMG-35`) |
+| **F1 Forma** | Prompt + F0 aceptada | Masas y silueta | Modelo, img2img (`IMG-34`) | ~6 min |
+| **F2 Detalle** | Prompt + F1 aceptada | Materiales y luz | Modelo, img2img (`IMG-36`) | Sin medir; 1-2 min antes del LoRA |
+| **F3 Recorte** | F2 aceptada | PNG con alfa; **no se aplica a fondos** | Sin modelo (`IMG-37`) | Segundos |
+| **F4 Final** | Prompt + F2 aceptada | 1280x512 gradada y medida | Modelo, tanda de noche (`IMG-44`) | Sin medir; 49 min desde cero |
+| **★ Marcada** | F4 aprobada | Imagen en la biblioteca | La usuaria | — |
 
-### 1.2 Transiciones
+Cada fase enseña **intentos**. Aceptar uno es avanzar. Una sola imagen por intento: la regla R1 de dos semillas deja de
+ser obligatoria, porque cada reintento ya aporta otra.
+
+### 1.2 Avanzar, regenerar, atrás
 
 ```
-sin-ficha ──asistente──▶ ficha-borrador ──prompt_ficha ok──▶ ficha-lista ──«Borrador»──▶ borrador-en-cola
-                                ▲                                 ▲                              │ generar.sh
-                                │ «Ajustar» (campo de la ficha)   │ «Ajustar» (semilla, fuerza)  ▼
-                                └─────────────────────────────────┴──────────────────────── borrador-hecho
-                                                                                                  │ «Sí»  «Rechazar» ─▶ rechazada
-                                                                                                  ▼
- publicada ◀──«Publicar»── aprobada ◀──«Aprobar»── final-hecha ◀── gradar+medir ── final-en-cola ─(noche)─▶ sd-cli
-     │                        │                        │                              ▲
-     └── pauta nueva (§4) ────┴────────▶ rehacer ───────┘── «Rechazar» ─▶ rechazada   └── final-fallida ─«Reintentar»┘
+              Atrás                Atrás
+           ◀───────────        ◀───────────
+Prompt ──▶ F0 ──Avanzar──▶ F1 ──Avanzar──▶ F2 ──Avanzar──▶ F3 ──Avanzar──▶ F4 ──Marcar──▶ ★
+           ▲│              ▲│              ▲│
+           └┘ Regenerar    └┘ Regenerar    └┘ Regenerar: prompt editado, u otra semilla si no cambia
 ```
 
-Reglas: (1) **nunca se salta el borrador**: la final cuesta cuatro borradores de dos semillas; (2) un «Rechazar» siempre lleva motivo de una
-lista corta (forma, color, pose, compañía, luz, otra) para que §4 y las retros lo cuenten; (3) «Ajustar» no genera
-nada, solo cambia la ficha o la receta y devuelve a `ficha-lista`; (4) una final que falla la medida **no se enseña
-primero**: la interfaz enseña las que pasan y deja las fallidas en una pestaña, para no gastar el sí/no de la usuaria
-en lo que ya se sabe que no vale; (5) publicar es reversible con «Despublicar», que restaura la imagen de GPT o ninguna; la copia de
-la referencia GPT en `referencias/images/` nunca se pisa (§3.2); (6) borrar solo existe dentro de «Rechazadas».
+Reglas:
+
+1. **No se avanza sin aceptar** (usuaria): hasta que la fase represente lo buscado, se edita el prompt y se reintenta.
+   El bucle no tiene límite.
+2. **Avanzar guarda** la imagen, el prompt, la semilla y la fase de origen. **Lo no aceptado se borra al avanzar**: la
+   imagen se elimina del disco y quedan su prompt y su semilla, para poder repetirlo (usuaria, 2026-11-06).
+3. **Atrás** reabre la fase anterior con lo aceptado. Si se acepta allí otra imagen, las fases posteriores de ese camino
+   quedan desfasadas: se avisa y siguen guardadas hasta que la usuaria las borre.
+4. **Borrar** lo guardado se hace desde el elemento, y avisa si una variante u otra imagen ★ parte de esa fase.
+5. **El prompt es libre en cada fase** (usuaria): la ficha, si existe, propone el primero con `prompt_ficha.py` y sus
+   avisos se enseñan, pero no bloquean. La trazabilidad la da el prompt guardado en cada intento.
+6. **Marcar no es publicar.** ★ deja la imagen disponible para combinar, y puede haber varias por elemento. Publicar
+   sigue siendo aparte y reversible: sustituye o añade la imagen del juego, y «Despublicar» devuelve la de GPT desde
+   `referencias/images/`, que nunca se pisa.
+7. **Una generación a la vez:** los reintentos van a una cola y las fases listas, a una bandeja de decisiones (`IMG-11`).
+   Con la vista previa se puede cancelar pronto un intento que no va bien.
+8. Una pauta nueva (§4) no cambia nada guardado: la interfaz avisa de las imágenes ★ hechas con una versión anterior.
 
 ### 1.3 La ficha visual desde el lore (cuando falta)
 
@@ -146,54 +154,61 @@ comparación (§2.3) lo pide; «Ajustar → boceto del plan» la enciende con la
 El estado `ficha-borrador` pasa a `ficha-lista` solo cuando `prompt_ficha.py` devuelve 0 avisos (o la usuaria acepta
 los que quedan desde la pantalla §2.2, y la aceptación se guarda). Un `ReglaRota` (salida 2) bloquea la cola.
 
-### 1.4 Del prompt al borrador y al sí/no
+### 1.3b Variantes desde una fase guardada
 
-1. La interfaz llama a `prompt_ficha.py <ficha> --perfil <perfil> --momento … --estacion … --json` y enseña `prompt`,
-   `palabras`, `recortados`, `avisos` (P2-P5, los de la r15 F7, F8, F9, P6, P8 y los de confirmación de la r16 F6c y
-   F7b, §4) y `propuestas` (§2.2). Guarda el prompt exacto en `prompts/`. El prompt no lleva números de partes (F9) ni
-   dirección («flying to the left», P8): los primeros van al boceto y la segunda, al montaje. Los colores y la
-   proporción que entran en los bloques Sujeto y Rasgos son los medidos en la referencia (F10), con su origen visible.
-2. «Borrador» encola **dos semillas** (R1, r16): con una sola, un prompt reescrito repite encuadre y pose casi igual
-   y un remedio que no cambia la clase del sujeto no se ve. Las dos son aleatorias salvo que la usuaria fije una (la
-   otra sigue siendo nueva); el trabajo es uno en `cola.jsonl` y produce dos intentos con el mismo `par`. La receta
-   corta es la de §4 de `pautas.md`: 640x256/8 pasos, `--preview proj`; si la ficha tiene `boceto` encendido o el
-   elemento es fauna con `plan`, el camino de **sujeto sobre fondo de recorte** (`sujeto-recorte`: `FONDO` y lienzo
-   del plan, P6/P7) + `montar.sh` (plantilla HERO/MANADA, `FONDO`, volteo si la referencia mira al otro lado, P8) +
-   armonización `-i` 0,5. La interfaz no conoce los flags: pide una **receta con nombre** (`borrador`,
-   `sujeto-recorte`, `final`) y el motor la traduce; así una receta nueva en `pautas.md` no toca la interfaz. El
-   coste se enseña doblado: ~12 min el sujeto (dos de ~375 s), ~14 min el 640x256.
-3. Al terminar las dos, `medir.sh <img> <tipo> <momento>` corre sobre cada una (dura segundos) y el par entra en la
-   comparación (§2.3), lado a lado con la referencia, con la rejilla y las referencias del mismo tipo y momento de
-   `gradacion.json`.
-4. La usuaria decide en dos tiempos (`pautas.md` §5, r15): primero **«se lee como»** el banner, el ancla u otro
-   animal (tres botones; la nota por puntos sola es generosa: el cruzavientos sacó 5/7 y era un águila calva), y
-   solo si se lee como el banner sigue la nota por puntos y el **Sí** (a `final-en-cola` con la semilla y receta de
-   la candidata elegida de las dos). El juicio se da **por candidata**: las dos de un par pueden leerse distinto, y
-   si las dos se leen igual que algo que no es el banner, es el prompt y no la semilla (R1). «Se lee como el ancla»
-   abre **Ajustar** con «cambiar ancla» (otra de la lista del plan, o ninguna); «otro animal» pide cuál y abre
-   Ajustar sobre el rasgo que lo trajo (F7/F8), guardando el animal en `contaminadoPor` para el aviso F7b del
-   siguiente intento. Cuando el par ya llevaba F10 y sigue sin leerse como el banner, Ajustar propone primero
-   **«boceto del plan»** (§1.3): enciende la plantilla de `IMG-24` del plan corporal con las `cuentas` de F9. Ajustar
-   también permite semilla, fuerza del boceto, un rasgo, momento o compañía; **Rechazar** lleva motivo.
+«Crear variante desde aquí» parte de cualquier fase guardada con el prompt editable, y sigue el mismo camino. Cuanto
+mayor es el cambio, antes hay que salir. Hipótesis, a medir en `IMG-38`:
+
+| Variante | Sale de | Motivo |
+|---|---|---|
+| Cría | F0 | Cambian las proporciones |
+| Macho, hembra | F0 o F1 | Depende de cuánto difieran los cuerpos (`sexDimorphism`) |
+| Lugar: estación, día, noche | F1 | La composición se mantiene; cambian la luz y el color (`--momento`, `--estacion`) |
+| Construcción destruida | F1 | Cambia la silueta |
+| Construcción ardiendo | F1 o F2 | Se mantiene la forma; se añaden fuego y humo |
+
+### 1.4 Cada fase: prompt, intento y decisión
+
+1. Al crear el elemento, si hay ficha, `prompt_ficha.py --json` propone prompt, avisos y `propuestas` (§2.2); si no, la
+   usuaria lo escribe. Los colores y la proporción medidos en la referencia (F10) se siguen proponiendo con su origen.
+2. Generar pide una **receta con nombre** por fase (`f0-boceto`, `f1-forma`…): la interfaz no conoce los flags; el motor
+   los traduce desde `pautas.md`, y una receta nueva no toca la interfaz. Los sujetos llevan su fondo de recorte (P6) y
+   su lienzo (P7) desde F0.
+3. Al terminar, `medir.sh` corre sobre el intento y entra en la pantalla (§2.0) al lado de la referencia y de la fase
+   anterior. La medida SSIM con la fase anterior avisa si se ha perdido la forma.
+4. La usuaria decide. La pregunta **«se lee como»** de `pautas.md` §5 se conserva como apoyo opcional cuando hay banner;
+   no sustituye a sus tres botones.
 
 ### 1.5 La final en tanda de noche, gradada, medida, guardada
 
-**Solo entran en la noche los borradores que la usuaria aprobó** (usuaria, 2026-10-27): ella da el visto bueno al
-borrador de día y la tanda arranca sola de noche con esos. Un modo automático (el borrador que pasa la medida de
-color y forma va solo a la final) queda para cuando `IMG-23` demuestre que el borrador predice la final (A5).
-
-`tanda.sh` (nuevo, genérico) consume `cola.jsonl` en orden: para cada `final-en-cola`, genera 1280x512/16 pasos con
-la semilla de la candidata elegida del par (la final va en **una** semilla, R1 es del borrador: la decisión ya está
-tomada), grada con la LUT del momento (`gradar.sh`), mide (`medir.sh`), escribe
-`receta.json` y el estado, y sigue mientras quede tiempo del tope (hora de fin) y memoria. Antes de arrancar aplica la
-regla de memoria (§2.4). Si una final falla la medida, **no reintenta sola**: lo apunta y la usuaria decide por la
-mañana (otra semilla, o aceptar que el borrador engañaba). El guardado es por elemento, con la receta completa
-dentro del PNG y en `receta.json`, y la publicación al backend es un paso aparte (§3.2).
+Aceptar F3 pone el elemento en la cola de la noche (usuaria, 2026-11-06), salvo que `IMG-36` demuestre que puede salir
+de día. `tanda.sh` (`IMG-44`) genera cada F4 **desde la imagen aceptada, no desde cero**, para no perder el camino
+elegido; grada con la LUT del momento, mide, recalcula la máscara sobre la Final si no es un fondo, y escribe la receta.
+Aplica la regla de memoria (§2.4) y un tope de hora. Si una Final falla la medida **no reintenta sola**. Por la mañana
+aparecen en la bandeja: se aprueba y se marca ★, se reintenta con otro prompt o se vuelve a una fase anterior.
 
 ## 2. Pantallas
 
 Dos columnas como hoy (lista | detalle), más una barra de estado del motor arriba. La lista es el tablero; el detalle
 cambia de pestaña según el estado del elemento. Bocetos en ASCII; las zonas se describen, no se dibujan en píxeles.
+
+### 2.0 Pantalla del elemento (`IMG-25`, la principal)
+
+```
+┌ aullador rojo ✎ · variante: macho ▾ [+ variante] ───────────────────────────────────── cola: 2 · bandeja: 3 ┐
+│ F0 ✓ ─ F1 ✓ ─ [F2 Detalle] ─ F3 · ─ F4 · ─ ★                                                               │
+├──────────────────────┬──────────────────────┬──────────────────────────────────────────────────────────────┤
+│ Referencia (banner)  │ Fase anterior (F1)   │ Intento 3 de F2                            [◀ 2/3 ▶]          │
+│                      │                      │ s=4021 · 2 min · SSIM 0,81 ✓ · EMD Cb 3,1                     │
+├──────────────────────┴──────────────────────┴──────────────────────────────────────────────────────────────┤
+│ Prompt de esta fase: [ ................................................................................ ]  │
+│ [Atrás]                          [Regenerar]                 [Avanzar]            [Crear variante desde aquí] │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Pulsar una fase hecha enseña lo guardado, con su prompt, y permite crear una variante desde ella o borrarla. En F4
+aprobada, el botón principal es **Marcar ★**. Atajos de teclado para los tres botones. Se prueba primero con la maqueta
+de `IMG-39`.
 
 ### 2.1 Tablero (cola)
 
@@ -260,6 +275,8 @@ cambia de pestaña según el estado del elemento. Bocetos en ASCII; las zonas se
 - Semilla y pasos no se editan aquí salvo en modo avanzado: la receta la elige el motor por nombre.
 
 ### 2.3 Comparación con la referencia
+
+*Pasa a ser un modo de ver de §2.0, con un solo intento en vez de dos candidatas.*
 
 ```
 ┌ aullador-rojo · borrador par 17 · s=4021 | s=9330 · 12:40 · pautas v3 ──── [◀ anterior] [siguiente ▶] ┐
@@ -349,7 +366,38 @@ cambia de pestaña según el estado del elemento. Bocetos en ASCII; las zonas se
   cualesquiera, también las dos hermanas.
 - `registro.tsv` y `notas.md` siguen como hoy; `receta.json` es lo nuevo y la tabla se construye de él.
 
+### 2.6 Combinar (`IMG-1`, `IMG-2`, `IMG-43`)
+
+```
+┌ Escena nueva ───────────────────────────────────────────────────────────────────────────────────────────┐
+│ Biblioteca ★ [tipo ▾] [buscar]  │ Lienzo: fondo ★ con las piezas colocadas          │ Capas             │
+│ ▢ pastos, atardecer             │ arrastrar, escalar, voltear                       │ 3 aullador macho  │
+│ ▢ aullador macho, perfil        │                                                   │ 2 cardo brújula   │
+│ ▢ cardo brújula                 │                                                   │ 1 pastos          │
+│ Falta: cuernahoja [crearlo]     │ X, Y, tamaño (también con teclado)                │                   │
+│                                              [Montar y armonizar]                                       │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+El editor parte de `layout-editor.js` de GVIG (puntero, teclado y campos numéricos). Después siguen las mismas fases y
+botones: montaje → armonización → final → ★. Una escena ★ se puede usar como pieza. Al armonizar hay que **proteger lo
+ya aprobado**; se prueba con `--mask` en `IMG-43`, y sin saber aún si funciona bien en la Deck.
+
 ## 3. Datos
+
+### 3.0 `camino.json`, el registro del elemento (`IMG-40`)
+
+Sustituye a `estado.json`: un archivo en `generated/<tipo>/<slug>/`, del que la interfaz deriva todo.
+
+```json
+{"nombre": "Aullador rojo", "variantes": {"macho": {"origen": null, "faseActual": "F2", "fases": {
+  "F0": {"aceptada": "f0-3.png", "prompt": "…", "semilla": 4021, "desde": null, "intentos": [
+    {"n": 1, "prompt": "…", "semilla": 7, "imagen": null}]}}}},
+ "marcadas": [{"imagen": "final-macho-1.png", "variante": "macho", "pautasVersion": "5.2"}]}
+```
+
+Una variante nueva guarda en `origen` la variante y la fase de la que parte. Cada imagen aceptada conserva su
+`receta.json` (§3.1). Migración: lo elegido en `elegidas.tsv` entra como imagen ★ sin camino.
 
 ### 3.1 Qué guarda cada elemento: la receta reproducible
 
@@ -503,6 +551,12 @@ InvokeAI, ya apuntados en `investigacion-interfaces.md`.
 | A7 | ¿Dónde vive `cola.jsonl` cuando llegue `IMG-11` (cola, ETA, lotes en BD) y el admin React (`IMG-13`)? Propuesta: disco mientras la Deck sea la única máquina; BD cuando haya dos. | Sesión principal | Nada ahora; se decide en E6 |
 | ~~A8~~ | ✅ Cerrada (usuaria, 2026-10-27): ¿finales solas o con visto bueno? Visto bueno al borrador; la noche genera solo las finales de los borradores aprobados. Modo automático, tras A5. | — | — |
 
+**Cambian con el flujo por fases (2026-11-06):** A2, prioridad para los tipos con banner. A5 y A13 quedan sin objeto,
+porque no hay borrador que prediga la final ni paso a boceto: todo sale de un boceto. A6 y A9, la usuaria decide con sus
+botones; «se lee como» es opcional. A7, en disco, porque no hay admin React. Nuevas: el tiempo y la calidad de F0
+(`IMG-35`), si la Final puede salir de día (`IMG-36`), desde qué fase sale cada variante (`IMG-38`) y si `--mask` protege
+las piezas (`IMG-43`).
+
 ### 6.2 Se amplía con las pautas
 
 | Llega | Qué cambia en la interfaz |
@@ -514,21 +568,19 @@ InvokeAI, ya apuntados en `investigacion-interfaces.md`.
 | `IMG-7` `FichaVisual` en BD | El adaptador lee la ficha del backend; `fuentes[]` enlazan a campos del catálogo; `Propuesta` (D3) sustituye a `propuestas[]` del JSON |
 | `IMG-10`/`IMG-12` estados y zona como fondo | `estado.json` pasa a BD; `montaje.fondo` apunta a la zona aprobada (D10) y la interfaz ofrece «fondo: zona de la ficha» cuando esa zona está `aprobada` |
 
-## 7. Propuesta de corte en entregas pequeñas
+## 7. Corte en tareas
 
-Todas sobre `servidor.py` + `index.html` (sin React hasta E6), cada una con su check y jugable en una sesión; ninguna
-crea tareas de roadmap aquí, es la propuesta para que la sesión principal reparta `IMG-25`.
+Todo sobre `servidor.py` e `index.html`, sin React. Las entregas E1-E6 anteriores quedan así; el orden está en
+[`roadmap-imagenes.md`](../roadmap-imagenes.md#plan-por-fases-usuaria-2026-11-06-manda-sobre-lo-anterior).
 
-| Entrega | Qué entra | Lo primero de `IMG-25` | Tamaño |
-|---|---|---|---|
-| **E1 Estados y receta** | `estado.json`, `receta.json` (+ chunk PNG) con `plan`, `sujeto`, `origenes`, `par` y `notaForma.seLeeComo`, `cola.jsonl` con prioridad y `semillas: [a, b]`, tablero con filtros, orden «decisión primero» y ETA que cuenta las dos semillas; `pautas.py --json` (pautas y planes) y `pautasVersion` en la receta; recetas con nombre en `generar.sh`, con `sujeto-recorte` tomando `FONDO` y lienzo del plan (384x320 la serpiente) y un borrador generando sus dos semillas (R1) | **Sí**: sin esto nada lo demás se puede medir ni rehacer. `montar.sh` ya acepta `FONDO=verde|magenta|azul` y voltea copias (P6 ✅, P8); queda que el volteo del sujeto HERO sea un parámetro | M |
-| **E2 Comparación** | Pantalla §2.3: referencias de `gradacion.json` (el banner propio primero), **las dos candidatas del par** a la vez (R1) con su medida cada una, tres modos de ver, rejilla, **«se lee como» por candidata** y luego la nota por puntos de la elegida, Sí/Ajustar (con «boceto del plan», «cambiar ancla» y «voltear»)/Rechazar con motivo; «vs. intento anterior» | **Sí**: es donde la usuaria decide; cierra A6 y A9 | M |
-| **E2b Ficha con plan** | En §2.2: campo `plan` con pose, lienzo, fondo y plantilla de boceto (apagada) derivados; selector de ancla por silueta y «ninguna»; `colores[]` y `proporcion` con `origen` visible (F10); avisos F7/F8/F9/P6/P8 en `prompt_ficha.py` con sus tests y los de confirmación F6c/F7b/F10 (`contaminadoPor` en el rasgo); «mover al boceto» (`boceto.cuentas`); `contradicciones[]` con su lista para la revisión del lore | Tras E1, antes de E3: sin el plan, las fichas nuevas repiten los fallos de r15 y, sin F10, los de r16 | S |
-| **E3 Tanda de noche** | `tanda.sh` sobre `cola.jsonl`, regla de memoria con pregunta, tope de hora, gradar+medir al terminar, `tandas/<fecha>.md`, revisión de la mañana, reanudar | Sí, tras E1-E2: es lo que convierte 49 min en noches útiles | M |
-| **E4 Ficha desde el lore** | Asistente determinista por tipo (§1.3) con `fuentes[]`, estado `ficha-borrador`, campos sin fuente marcados; propone `plan` por palabras del lore; **mide `colores[]` y `proporcion` en el banner** (F10, A10 cerrada: modo «dominantes» de `medir.sh` o script aparte, rejilla para la proporción) y los marca `origen: referencia`, o `texto` cuando no hay banner; tanda de agente para confirmar `plan`, elegir ancla por silueta con la lista de A3 y repartir los colores medidos por material | Después de r17 y la lista de anclas por plan (A3) | L |
-| **E5 Publicar** | Copia de referencias a `referencias/images/` (de ahí sale también lo que restaura «Despublicar»), `medir.sh` y `gradacion.json` apuntando ahí, `publicar()`/`despublicar()` al backend con token (D4), `promptUsado` (CFG-38) | Cuando haya una final aprobada que publicar (A1 cerrada) | S |
-| **E6 Admin React** | Las mismas pantallas sobre `/api/*` en `/admin/enciclopedia` (D6, `IMG-13`); `cola` y `estado` a BD si `IMG-11` | Último; nada del diseño depende de él | L |
+| Antes | Ahora |
+|---|---|
+| E1 Estados y receta | `IMG-40` (motor y `camino.json`) e `IMG-41` (base de interfaz) |
+| E2 Comparación, E2b Ficha con plan | `IMG-25` (pantalla del elemento) |
+| E3 Tanda de noche | `IMG-44` |
+| E4 Ficha desde el lore | `IMG-9`: propone el primer prompt, ya no es requisito para generar |
+| E5 Publicar | `IMG-45` |
+| E6 Admin React | Descartada (`IMG-13`) |
 
-Lo que se recomienda **no** hacer en `IMG-25`: un editor de prompt libre (rompe la trazabilidad de la receta), un
-LLM en la Deck para la ficha (la memoria es del motor), y reintentos automáticos de finales fallidas (49 min cada
-uno sin decisión de la usuaria).
+Se recomienda **no** hacer: un LLM en la Deck para la ficha (la memoria es del motor) ni reintentos automáticos de
+Final fallidas (horas de máquina sin decisión de la usuaria).

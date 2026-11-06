@@ -12,7 +12,7 @@ para cualquier mundo y pasará al repo del generador en `IMG-26`); lo propio de 
 
 **Cómo se lee:** cada pauta lleva su estado, ✅ medida (con la ronda de [`banco/resultados.md`](banco/resultados.md)
 que la sostiene) o 🔬 por medir, y los ejemplos dicen de qué elemento salen. Motor: FLUX.3 Image Klein Q8 en la CPU
-de la Deck (sd-cli), sin LoRA.
+de la Deck (sd-cli), con el LoRA `wmf-estilo` a peso 1 desde `IMG-33` (estas pautas se midieron antes, sin él).
 
 ## 1. Estructura del prompt
 

@@ -4,7 +4,7 @@ Pruebas de generación de imágenes en local (Steam Deck) con
 [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) y FLUX.2 klein 4B. El diseño, las decisiones
 abiertas y las fuentes están en
 [`01-generacion-imagenes-local.md`](../docs/arquitectura/reutilizables/01-generacion-imagenes-local.md); aquí solo
-viven las herramientas y sus salidas. No es parte del juego todavía: no hay tarea con hito.
+viven las herramientas y sus salidas. No es parte del juego todavía; sus tareas están en `docs/producto/roadmap-imagenes.md`.
 
 ## Estructura
 

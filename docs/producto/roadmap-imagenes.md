@@ -11,24 +11,102 @@ vive en `roadmap-front.md` (`CFG-38`…`CFG-43`); lo nuevo, aquí.
 commit; **[A]** pedido por Álvaro, **[P]** propuesta de Claude; esfuerzo **S** (horas) · **M** (1-2 días) ·
 **L** (varios días).
 
-## Fase I-A · Escenas compuestas con elementos ya generados
+## Plan por fases (usuaria, 2026-11-06): manda sobre lo anterior
+
+Cada elemento se crea **suelto** (fondos, flora, fauna y todos los demás). Se escribe un prompt, que genera un boceto;
+cada fase siguiente parte de ese prompt y de la imagen aceptada en la fase anterior. Avanzar acepta y guarda; si no vale,
+se edita el prompt y la fase lo reintenta; también se puede volver atrás. El bucle no tiene límite.
+
+`F0 Boceto → F1 Forma → F2 Detalle → F3 Recorte (no en fondos) → F4 Final (tanda de noche) → ★ Marcada`
+
+Lo guardado se borra desde el elemento o se reutiliza para variantes. Lo marcado ★ se combina con otras imágenes ★;
+publicar en el juego es un paso aparte. Detalle en
+[`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md).
+
+**Cuándo:** empieza al cerrar las pruebas de juego, salvo que la usuaria lo adelante (`AGENTS.md`, «Pruebas de juego»).
+Prioridad de tipos: los que tienen banner, para poder comparar.
+
+| Bloque | Objetivo | Tareas, en orden |
+|---|---|---|
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-37`, `IMG-38` |
+| **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
+| **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
+| **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
+| **E. Combinar** | Escenas con piezas ya aprobadas | `IMG-43`, `IMG-1`, `IMG-2` |
+| **F. Producción** | Crear el catálogo y llevarlo al juego | `IMG-9`, `IMG-44`, `IMG-45` |
+| **G. Con GVIG** | Compartir lo aprendido | `IMG-26` |
+
+Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
+
+### Bloque A · Receta por fases
+
+- **IMG-35 · F0: boceto desde el prompt** [A] (usuaria, 2026-11-06): probar qué tamaño, pasos y texto de estilo dan un
+  boceto legible, con fauna, flora, un lugar, un objeto y una construcción. Sale el tiempo real de F0 y la pauta en
+  `pautas.md`. Las plantillas de `bocetos/plantilla.py` quedan como ayuda opcional. **Solo con el sí de la usuaria.** **M**
+- **IMG-36 · F2 Detalle y F4 Final desde la imagen aceptada** [A] (usuaria, 2026-11-06): fuerza de F2 que añade detalle
+  sin mover la forma (SSIM ≳ 0,7), y Final a 1280x512 partiendo de la imagen aceptada en vez de regenerarla desde cero.
+  Mide tiempos con el LoRA y si la Final puede salir de día. **Solo con el sí de la usuaria.** **M**
+- **IMG-37 · F3 Recorte con transparencia** [A] (usuaria, 2026-11-06): guardar el recorte que hoy `montar.sh` deja en un
+  temporal, como PNG con alfa, y comparar el recorte por color con `rembg`. La pieza que se combina usa una máscara
+  recalculada sobre la Final; el recorte de F3 sirve para aprobarlo antes de gastar la noche. **S**
+- **IMG-38 · Variantes desde una fase guardada** [A] (usuaria, 2026-11-06): medir desde qué fase sale cada variante sin
+  perder la identidad: macho, hembra y cría; lugar por estación, día y noche; construcción entera, destruida y
+  ardiendo. Hipótesis en el diseño, §1.3b. Deja la tabla en `pautas.md`. **Solo con el sí de la usuaria.** **M**
+
+### Bloque B · Prototipo
+
+- **IMG-39 · Prototipo de la pantalla del elemento** [A] (usuaria, 2026-11-06): maqueta desechable con la skill
+  `prototype`, con imágenes ya generadas y sin motor, para que la usuaria pruebe avanzar, regenerar, atrás, variantes y
+  ★ antes de construirlo. **S**
+
+### Bloque C · Motor e interfaz base
+
+- **IMG-40 · Motor por fases y registro del elemento** [A] (usuaria, 2026-11-06): una orden por fase que recibe el
+  prompt y la imagen aceptada (hoy `planos.sh` corre la cadena de punta a punta), y `camino.json` por elemento con
+  variantes, fases aceptadas, prompt, semilla y origen. Al avanzar se borra la imagen de los intentos no aceptados y
+  quedan su prompt y su semilla. Sustituye a la entrega E1 y a `IMG-10`. **L**
+- **IMG-41 · Base de interfaz con lo rescatado de GVIG** [A] (usuaria, 2026-11-06): test de navegador sin Playwright,
+  API con simulador `?mock=1`, cola, atajos, trampa de foco y chip de medida de `galivelop-image-generator`, adaptados a
+  la hoja de estilos de Tarkor, sobre `servidor.py` e `index.html`. Se copia aquí y se conserva su licencia MIT; ese repo
+  no se toca. **M**
+
+### Bloque D · Pantalla del elemento
+
+- **IMG-42 · Variantes y biblioteca ★** [A] (usuaria, 2026-11-06): «crear variante desde aquí» en cualquier fase
+  guardada, con el prompt editable; varias imágenes ★ por elemento; biblioteca filtrable de todo lo marcado. Marcar es
+  distinto de publicar. Depende de `IMG-25` e `IMG-38`. **M**
+
+### Bloque E · Combinar
+
+- **IMG-43 · Montaje de varias capas y armonización protegida** [A] (usuaria, 2026-11-06): generalizar `montar.sh`, que
+  hoy admite un fondo, un sujeto y copias de ese sujeto, a piezas distintas con posición, tamaño y volteo; luz coherente
+  entre ellas; y comprobar si `--mask` protege las piezas aprobadas al armonizar. **M**
+
+### Bloque F · Producción
+
+- **IMG-44 · Tanda de noche** [A] (usuaria, 2026-11-06): `tanda.sh` con las Final en cola, regla de memoria con pregunta,
+  tope de hora, gradar y medir al terminar y revisión por la mañana, para aceptar o volver a una fase. Entrega E3. **M**
+- **IMG-45 · Publicar en el juego** [A] (usuaria, 2026-11-06): copia de las referencias de GPT a `referencias/images/`
+  antes de nada, y Publicar/Despublicar con una imagen ★. Entrega E5. **S**
+
+## Fase I-A · Escenas compuestas con elementos ya generados (reescrita: bloques C y E)
 
 Una imagen compuesta (un mapa, una llanura, una escena) nombra otros elementos del catálogo: «una llanura donde se
 ven múrgoles y cuernahojas». Hoy el prompt los describe con palabras y el modelo los inventa de nuevo, distintos de
 sus propias imágenes. Las imágenes por elemento ya viven en `image-generator/generated/<categoria>/<slug>/` y la
 elegida en `generated/<categoria>/<slug>/<slug>-<perfil>.png` (`CFG-43`).
 
-- **IMG-1 · El prompt de una escena enlaza las imágenes de sus elementos** [A] (usuaria, 2026-10-24): al preparar
-  el prompt de una imagen compuesta, se detectan los elementos del catálogo que nombra (por slug o nombre de la
-  enciclopedia) y se pasan sus imágenes elegidas como referencias (`-r` de `sd-cli`, varias a la vez), con el texto
-  que dice qué es cada una. Antes, medir en la Deck cuántas referencias aguanta klein 4B con `--max-vram 2` y cuánto
-  sube el tiempo (con una, ~200 s frente a ~105 s sin ella; ver `.claude/gw/gw-opt-ai.md`). **M**
-- **IMG-2 · Sin las imágenes de sus elementos, no se genera la escena** [A] (usuaria, 2026-10-24): si falta la
-  imagen elegida de algún elemento que nombra la escena, la interfaz no deja generarla y lista los que faltan, con
-  un enlace para generar cada uno primero. Depende de `IMG-1`. **S**
+- **IMG-1 · Combinar: colocar piezas marcadas sobre un fondo marcado** [A] (usuaria, 2026-10-24; reescrita el
+  2026-11-06): pantalla con la biblioteca de imágenes ★: se elige un fondo y sus piezas, y se coloca cada una (tamaño,
+  posición, volteo, orden). Base: el editor de cajas de GVIG (`layout-editor.js`) con la hoja de estilos de Tarkor.
+  Sustituye a pasar referencias `-r`, que hacía al modelo reinventar el elemento. Depende de `IMG-25` e `IMG-43`. **M**
+- **IMG-2 · Una escena avisa de las piezas que le faltan** [A] (usuaria, 2026-10-24; reescrita el 2026-11-06): si una
+  escena nombra un elemento del catálogo sin imagen ★, la pantalla de combinar lo lista con un enlace para crearlo.
+  Avisa, no bloquea: se puede combinar con lo que ya haya. Depende de `IMG-1`. **S**
 - **IMG-3 · Medir el generador con `/gw-opt-ai`** [P] (usuaria, 2026-10-24): un script que resume
   `generated/*/*/registro.tsv` y los logs (segundos, perfil, pasos, con o sin referencia, memoria libre mínima) para
   que `/gw-opt-ai` compare y proponga ajustes con números, sin leer los logs enteros. **S**
+  Entra en el bloque C: el registro incluye la fase y si el intento se aceptó (`IMG-40`).
 
 ## Fase I-B · Datos visuales, panel de lore y generador moderno
 
@@ -49,6 +127,8 @@ desde el panel vive en tablas que siembran.
 - **IMG-6 · Las 5 fichas piloto con semilla fija** [A] (usuaria, 2026-10-25): aullador macho y hembra, Cardo Brújula,
   Pastos de la Deriva y Hulki, sin `-r`; el aullador además en segunda pasada sobre su zona (`-r` de la zona). Las
   aprueba la usuaria. Depende de `IMG-5`. **S** 🚧 en curso: generadas el 2026-10-25 con `pilotos.sh 3 6` (semilla 3, 6 pasos, ~4,7 min cada una) en `image-generator/generated/<tipo>/<slug>/intentos/banner-s3-p6-20261025-14*.png` (sin subir). Primera lectura: Pastos y la segunda pasada del aullador sobre la zona, bien; las vetas minerales del aullador salen como cortes rosados; macho y hembra casi iguales; Hulki, simio de pelo blanco con barba; la fibra del Cardo, una aguja. Segunda tanda (fichas retocadas, `banner-s3-p6-20261025-15*.png`): Hulki ya lleva hocico largo, piel de hojas en los hombros y bosque cerrado, aunque con algo de barba; el Cardo tiene escala (grano de arena de hierro) y la fibra es un pelo; los picos de Pastos salen dentados y oscuros; el aullador sigue con motas rojas que parecen gotas, y la hembra apenas se distingue del macho; los Cuernahoja siguen pareciendo antílopes. Falta el veredicto de la usuaria. **2026-11-03 (usuaria):** esos pilotos son de antes de la cadena fotorreal y del LoRA; se rehacen los 5 con la cadena de hoy (`PERFIL=fotorreal`, LoRA de estilo) en una tanda de noche cuando `claude/plan-imagenes` esté en `main`, y el veredicto se da sobre esos.
+  **2026-11-06 (usuaria):** pasa a ser la prueba real del flujo por fases: los 5 pilotos recorren las fases en la
+  pantalla de `IMG-25`, en vez de salir de una tanda de noche directa. Depende de `IMG-25`.
 - ~~**IMG-14 · Momento del día y estación como condiciones**~~ ✅ 2026-10-25: `prompt_ficha.py` con `--momento`, `--estacion`, `condiciones` en la ficha y regla 9 de coherencia (69 tests); luces y estaciones por región en `mundo.json`, marcadas [propuesta]. Pendiente: que la usuaria apruebe esos textos y generar las 5 condiciones de cada zona (`IMG-12`). [A] (usuaria, 2026-10-25): `--momento dia|atardecer|noche`
   y `--estacion primavera|verano|otono|invierno`, aparte de las variantes del sujeto (macho, hembra). `mundo.json`
   da a cada región una luz por momento y un paisaje por estación (de `docs/rpgtarkor/lore-mundo/estaciones.md`); la
@@ -93,7 +173,7 @@ desde el panel vive en tablas que siembran.
   `-i` a 0,5 (72 s, menor EMD, silueta intacta); `-r` arranca pero tarda ×9 y vira a azul desaturado. Lo que quedaba
   de la usuaria se decidió con guías de diseño y los banners GPT (2026-10-27): cuerpo de perfil y cabeza a tres
   cuartos (bocetos v2) y cuernos color hueso a 0,95.
-- **IMG-20 · Codificador de texto Q8 (opcional)** [A] (2026-10-26): A/B con la misma semilla tras `IMG-23`, con
+- ~~**IMG-20 · Codificador de texto Q8 (opcional)**~~ ❌ descartada (usuaria, 2026-11-06) [A] (2026-10-26): A/B con la misma semilla tras `IMG-23`, con
   permiso para descargar 4,3 GB. **S**
 - ~~**IMG-21 · Pautas con la fauna**~~ ✅ 2026-10-27 [A] (2026-10-26; reorientada por la usuaria el 2026-10-27: «el objetivo es juntar
   pautas y estándares para que mediante prompt seamos capaces de conseguir los resultados más cercanos a las imágenes
@@ -243,48 +323,41 @@ desde el panel vive en tablas que siembran.
   `generar.sh` (por ahí pasan ficha, `PROMPT_ARCHIVO` y planos), 5 tests en `test_generar_perfil.py` (`LoraDeEstilo`), README.
   Prueba real (`probar.sh fauna aullador-rojo fotorreal 42`): carga `bin-nuevo`, aplica el LoRA y grada; 563 s, mínimo
   5,4 GB libres. La cadena de planos no se corrió entera: su img2img con `bin-nuevo` ya se probó en `IMG-31`.
-- **IMG-34 · Forma de la criatura por esqueleto y fuerza media** [A] (usuaria, 2026-11-03, de `IMG-6`): el aullador sale
-  corto y de otra forma aunque la ficha lo describe bien. Investigación en
+- **IMG-34 · F1 Forma: fuerza que respeta el boceto** [A] (usuaria, 2026-11-03, de `IMG-6`; bloque A desde el
+  2026-11-06): el aullador sale corto y de otra forma aunque la ficha lo describe bien. Investigación en
   [`investigacion-esqueleto.md`](plan-imagenes/investigacion-esqueleto.md): la causa probable es `FUERZA_BOCETO` 0,97
-  (casi txt2img); se propone boceto de masas con luz y fondo en los colores del banner, `--init-img` a 0,6-0,75 y una
-  pasada a 0,4, y `rembg` (`isnet-general-use`) para medir proporciones y hacer máscaras. Prueba de 4 borradores
-  (A 0,75 · B 0,60 · C color plano · D repaso a 0,40), **solo con el sí de la usuaria**. Antes, leer
-  `noise_level_to_sigma` de sd.cpp. **M**
-- **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
-  elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
-  gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):
-  [`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md), con botones Aprobar, Publicar/Despublicar
-  (sustituye la imagen de GPT o la añade; despublicar la devuelve) y Rechazar/Borrar, y finales de noche solo de
-  borradores aprobados (usuaria, 2026-10-27). Antes de publicar, las referencias GPT a `referencias/images/`: hoy
-  `medir.sh` las lee de la misma carpeta a la que se publicaría.
-- **IMG-26 · El generador en un repo genérico** [A] (usuaria, 2026-10-27): el motor (scripts, montaje, gradación,
-  medida, plantillas, `pautas.md`) a otro repo, lo más genérico posible (juegos o fantasía en general); lo de Tarkor
-  queda como configuración de un mundo. Depende de `IMG-25`. **L**
-- **IMG-7 · Modelo de datos: `Propuesta` y `FichaVisual`** [A] (usuaria, 2026-10-25): migración Prisma (puerta de un
-  solo sentido), importador de los 3 `.md` de propuestas (~159), exportación de lo aprobado al formato de
-  `propuestas-aprobadas.md`, fichas exportadas a JSON versionado, API Fastify con escritura solo desde `127.0.0.1` y
-  token en `.env` (D1, D3, D4). Fase 2. **L**
-- **IMG-8 · Panel admin de lore tipo CRM** [A] (usuaria, 2026-10-25): pestañas Propuestas y Fichas del
-  [prototipo](plan-imagenes/prototipo/index.html) en el admin React: ver, filtrar, diff, editar y aprobar o rechazar
-  en bloque las propuestas (de Claude y de OpenCode) y ver el lore ya volcado en la BD; un cambio a lore sembrado
-  entra como propuesta, no se escribe en su tabla. Atajos de teclado. Depende de `IMG-7`. Fase 3. **L**
+  (casi txt2img). Se mide qué fuerza conserva el boceto aceptado en F0 y deja a la vez que aparezca la forma:
+  prueba de 4 versiones (A 0,75 · B 0,60 · C color plano · D repaso a 0,40), **solo con el sí de la usuaria**. Antes,
+  leer `noise_level_to_sigma` de sd.cpp. Deja la fuerza por defecto de F1 en `pautas.md`. **M**
+- **IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás** [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
+  se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
+  a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
+  (si no cambia, con otra semilla); **Atrás** reabre la fase anterior. Renombrar, ver los pasos de cada imagen, borrar
+  lo guardado y marcar ★. Sustituye a las entregas E2 y E2b. Depende de `IMG-39`, `IMG-40` e `IMG-41`. **L** Diseño:
+  [`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md). Se conservan Publicar/Despublicar (`IMG-45`).
+- **IMG-26 · Conocimiento compartido con GVIG y variante para juegos** [A] (usuaria, 2026-10-27; reescrita el
+  2026-11-06): WMF Tarkor y `galivelop-image-generator` son dos productos con procesos distintos (fases y bocetos
+  frente a rondas y montaje) y no se migra uno al otro. Se intercambian diseño, interfaz, procesos y lo aprendido, sin
+  llevar la receta tal cual. Sigue abierta la variante para juegos sin relación con Tarkor; su forma se decide al llegar
+  aquí. Nada se modifica en ese repo desde este. **L**
 - **IMG-9 · Fichas visuales en bloque** [A] (usuaria, 2026-10-25): un LLM rellena borradores de ficha desde el canon
-  (53 de fauna primero) como propuestas en la bandeja; el script de `IMG-5` lee `FichaVisual` en vez de `bio`.
-  Depende de `IMG-8`. Fase 4. **L**
+  (53 de fauna primero), que proponen el prompt inicial de F0 en la pantalla de `IMG-25`. Siguen en JSON
+  (`image-generator/fichas/`): deja de depender de `IMG-8` (2026-11-06). **L**
   🚧 2026-11-03 (usuaria: «una descripción lo más completa posible» de cada elemento, guiada por su banner): piloto de
   10 fichas desde los banners del juego (Hulki desde el de las Faerus del Margen, Cardo, Múrgol, Corredor de Cauce,
   Orcos de las Llanuras, Goirntes de la Meseta, Manaderos, Agujas Imán, cuchillo de hielo sílice, choza orca); el canon
   manda salvo en lo visual que no describe, y los choques van en `propuestas`. Falta: el visto bueno de la usuaria, las
   ~125 con banner que quedan y luego las demás por tipo; `porTipo` de `raza`/`construccion` en `estilo/mundo.json`.
-- **IMG-10 · Estados por intento y papelera** [A] (usuaria, 2026-10-25): favorita, candidata, descartada (y
+- ~~**IMG-10 · Estados por intento y papelera**~~ ❌ sustituida por `IMG-40` (usuaria, 2026-11-06) [A] (usuaria, 2026-10-25): favorita, candidata, descartada (y
   aprobada, que hereda de `elegidas.tsv`) en `estados.json` por elemento; las descartadas se pueden borrar
   (papelera como carpeta). D7. Fase 5. **M**
-- **IMG-11 · Cola con tiempo estimado, lotes y ajustes reutilizables** [A] (usuaria, 2026-10-25): cola con ETA,
-  lotes de semillas, reutilizar los ajustes de una imagen, plantillas de ajustes y comparar imágenes. Fase 5. **M**
-- **IMG-12 · Zona aprobada como fondo de lo nativo** [A] (usuaria, 2026-10-25): primero se generan las zonas; la
+- **IMG-11 · Cola con tiempo estimado y bandeja de decisiones** [A] (usuaria, 2026-10-25; reescrita el 2026-11-06):
+  una generación a la vez, con tiempo estimado, vista previa y cancelar; una bandeja con las fases que esperan tu
+  decisión, para trabajar en varios elementos mientras otro genera. Depende de `IMG-40`. **M**
+- ~~**IMG-12 · Zona aprobada como fondo de lo nativo**~~ ❌ sustituida (usuaria, 2026-11-06: cada elemento se crea suelto, sin bloqueo por zona; una zona ★ se usa como fondo en `IMG-1`) [A] (usuaria, 2026-10-25): primero se generan las zonas; la
   fauna, flora y demás elementos nativos de una zona sin imagen aprobada quedan bloqueados, y con zona aprobada se
   genera en segunda pasada con la zona como `-r` (una por pasada en la Deck, D10). Generaliza `IMG-1` e `IMG-2`.
   Fase 5. **M**
-- **IMG-13 · Interfaz del generador en el admin** [A] (usuaria, 2026-10-25): pestaña Generador del prototipo en el
+- ~~**IMG-13 · Interfaz del generador en el admin**~~ ❌ descartada (usuaria, 2026-11-06: se queda la interfaz local) [A] (usuaria, 2026-10-25): pestaña Generador del prototipo en el
   admin React (`servidor.py` pasa a API, D6), con ideas de Leonardo y similares: galería, vista ampliada, revisión
   rápida con teclado y filtros. Hecho cuando se revisan 20 intentos solo con teclado. Fase 6. **L**
