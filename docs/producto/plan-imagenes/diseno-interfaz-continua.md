@@ -49,7 +49,7 @@ guardado. Cada uno se crea **suelto**, sin depender de que exista su zona ni otr
 | Fase | Entrada | Salida | Quién la genera | Coste |
 |---|---|---|---|---|
 | **F0 Boceto** | El prompt | Boceto legible | FLUX.2 en GPU, 512x192, 4 pasos (`IMG-35`, `pautas.md` §12) | ~36 s |
-| **F1 Forma** | Prompt + F0 aceptada | Masas y silueta | Modelo, img2img (`IMG-34`) | ~6 min |
+| **F1 Forma** | Prompt + F0 aceptada | Masas y silueta | FLUX.3 con LoRA, img2img a 0,88, 640x240, 8 pasos (`IMG-34`, `pautas.md` §13) | ~5 min |
 | **F2 Detalle** | Prompt + F1 aceptada | Materiales y luz | Modelo, img2img (`IMG-36`) | Sin medir; 1-2 min antes del LoRA |
 | **F3 Recorte** | F2 aceptada | PNG con alfa; **no se aplica a fondos** | Sin modelo (`IMG-37`) | Segundos |
 | **F4 Final** | Prompt + F2 aceptada | 1280x512 gradada y medida | Modelo, tanda de noche (`IMG-44`) | Sin medir; 49 min desde cero |

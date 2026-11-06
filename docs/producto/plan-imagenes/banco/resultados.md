@@ -574,4 +574,26 @@ se redondea al primero del calendario que no lo supera. Con shift 6,93, el calen
 
 - **Contra el banner:** ninguna recupera el cuerpo de cinta. Hasta con 0,920 se conservan silueta, proporciones y pose
   del boceto: F1 da acabado, no forma.
-- **Pautas:** `pautas.md` §13. Falta confirmar la fuerza en otros tipos y con otra semilla.
+- **Pautas:** `pautas.md` §13; la fuerza se confirma en r25.
+
+## r25 · Forma en F0 y fuerza de F1 en otros tipos (`IMG-34`, 2026-11-06)
+
+10 imágenes en `generated/banco/r25-f0-*` y `r25-f1-*`, con las rejillas en `generated/banco/r25/` (`f0.png`, `forma.png`,
+`tipos.png`, `banners.png`). Bocetos con FLUX.2, 512x192 y 4 pasos (37-39 s). F1 con FLUX.3 y `wmf-estilo`, 640x240, 0,88 y
+8 pasos: 264-295 s; las dos primeras coincidieron con un `pre-push` y tardaron unos 10 s más.
+
+| Prueba | Entrada | Lectura |
+|---|---|---|
+| F0 v1 | Prompt de ficha sin «fox» | Pierde la cara de zorro; el cuerpo no se alarga |
+| F0 v2 | Ancla de armiño | Más grueso |
+| F0 v3 | Proporción por el encuadre y por cabezas | Más pesado; la cabeza crece |
+| F0 v4 | Ancla y proporción | Patas más cortas; gordo y casi sin orejas |
+| F1 sobre v4 | Boceto v4 | Cuerpo de armadillo: lo más lejos del banner |
+| F1 sobre FLUX.3 | Boceto `e1-f3-384-p4` de r23 | **El más cercano:** placas, colmillos y cuerpo largo, con patas aún altas |
+| F1, semilla 7 | Boceto FLUX.2 de esa semilla | Cuerpo más largo que con la semilla 3; patas altas |
+| F1 cardo, cuchillo, choza | Sus bocetos de r23 | Acabado sin mover la composición; el cuchillo y la choza conservan los signos del boceto |
+
+- **Contra los banners:** ninguna imagen saca el cuerpo de cinta del aullador. En los otros tres tipos se mantiene la
+  composición del boceto, que no es la del banner, y falta el detalle de material, que queda para F2 (`IMG-36`).
+- **Sin medir:** `-r` con una referencia y más semillas de F0.
+- **Pautas:** `pautas.md` §12 y §13.

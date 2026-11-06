@@ -250,6 +250,7 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | B3 | **FLUX.2 sacrifica la forma rara**: dibuja un zorro de patas altas, con menos cuerpo y sin los colmillos largos; le sale bien lo que tiene una forma común (cardo, llanura, cuchillo, choza). FLUX.3 a 384x144 respeta más el cuerpo largo y bajo, las placas y los colmillos, pero tarda ~170-200 s y casi no obedece la línea de masas planas (con el LoRA puesto). | ✅ | r23: aullador, todas las imágenes de cada motor |
 | B4 | **La semilla apenas cambia el encuadre en F0**: reintentar con otra semilla no da otra composición; para cambiarla hay que editar el prompt. | ✅ | r23: los cinco tipos, semillas 3 y 7 |
 | B5 | **F1 no corrige la forma que F0 pierde**: con un boceto de FLUX.2, hasta sigma 0,920 conserva la silueta y las proporciones. La forma rara hay que conseguirla en F0. | ✅ | r24: aullador, una semilla |
+| B5b | **Reescribir el prompt no da la forma rara en FLUX.2**: quitar el ancla o pedir medidas baja las patas, pero engorda el cuerpo. Para una forma rara, el boceto de FLUX.3 (~3 min) es lo más cercano, sin llegar a la referencia. | ✅ | r25: aullador, 4 prompts y una F1 sobre FLUX.3 |
 | B6 | **Fondo liso desde F0 en los tipos que se recortan** (P6): r23 usó las escenas de la ficha, sin fondo liso. | 🔬 | `IMG-37` |
 
 ## 13. F1 Forma (r24)
@@ -257,5 +258,6 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | # | Pauta | Estado | Evidencia |
 |---|---|---|---|
 | FZ1 | **La fuerza es el sigma de arranque**, redondeado hacia abajo al calendario (`strength_as_noise_level`, shift 6,93). Se elige por los pasos que quedan: con 8 pasos, 0,93 deja 5; 0,88, 4; 0,81, 3; 0,70, 2. | ✅ | Código de sd.cpp; r24: los tiempos dan esos pasos, ~67 s cada uno a 640x240 |
-| FZ2 | **Fuerza de F1: 0,88 con 8 pasos** (sigma 0,874, ~5 min). Da pelo, volumen y luz; por debajo de ~0,85 el boceto de masas planas se queda como dibujo plano. | 🔬 | r24: aullador, una semilla; falta en otros tipos y con otra semilla |
+| FZ2 | **Fuerza de F1: 0,88 con 8 pasos** (sigma 0,874, ~5 min a 640x240). Da volumen, textura y luz sin mover la composición; a 0,81 o menos el boceto de masas planas se queda como dibujo plano. Sobre bocetos de FLUX.2 o FLUX.3, a diferencia de la plantilla SVG de F5. | ✅ | r24 y r25: fauna, flora, objeto y construcción; semillas 3 y 7 |
+| FZ4 | **Lo que dibuja el boceto se queda**: silueta, signos o encuadre no se corrigen en F1, así que se arreglan antes de aceptar F0. | ✅ | r24 y r25: cuerpo del aullador, signos del cuchillo y de la choza |
 | FZ3 | **Con el mismo sigma, doblar los pasos no mejora**: el acabado depende del sigma, no de los pasos. | ✅ | r24: 0,70 con 8 y con 16 pasos dan casi la misma imagen |

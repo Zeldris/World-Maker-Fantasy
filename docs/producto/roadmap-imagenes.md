@@ -323,15 +323,11 @@ desde el panel vive en tablas que siembran.
   `generar.sh` (por ahí pasan ficha, `PROMPT_ARCHIVO` y planos), 5 tests en `test_generar_perfil.py` (`LoraDeEstilo`), README.
   Prueba real (`probar.sh fauna aullador-rojo fotorreal 42`): carga `bin-nuevo`, aplica el LoRA y grada; 563 s, mínimo
   5,4 GB libres. La cadena de planos no se corrió entera: su img2img con `bin-nuevo` ya se probó en `IMG-31`.
-- **IMG-34 · F1 Forma: fuerza que respeta el boceto** [A] (usuaria, 2026-11-03, de `IMG-6`; bloque A desde el
-  2026-11-06): el aullador sale corto y de otra forma aunque la ficha lo describe bien. Investigación en
-  [`investigacion-esqueleto.md`](plan-imagenes/investigacion-esqueleto.md): la causa probable es `FUERZA_BOCETO` 0,97
-  (casi txt2img). Se mide qué fuerza conserva el boceto aceptado en F0 y deja a la vez que aparezca la forma:
-  prueba de 4 versiones (A 0,75 · B 0,60 · C color plano · D repaso a 0,40), **solo con el sí de la usuaria**. Antes,
-  leer `noise_level_to_sigma` de sd.cpp. Deja la fuerza por defecto de F1 en `pautas.md`. **M**
-  🚧 2026-11-06 (r24, `pautas.md` §13): la fuerza es el sigma de arranque; la rejilla se rehízo por los pasos que quedan,
-  sin color plano (F0 ya es plano) y con el repaso a 0,40 para `IMG-36`. F1 da acabado, no forma: 0,88 con 8 pasos es la
-  fuerza provisional. Falta: confirmarla en otros tipos y con otra semilla, y ver si la forma se consigue en F0.
+- ~~**IMG-34 · F1 Forma: fuerza que respeta el boceto** [A] (usuaria, 2026-11-03, de `IMG-6`; bloque A desde el
+  2026-11-06)~~ ✅ 2026-11-06: r24 y r25, 16 imágenes. Fuerza de F1: 0,88 con 8 pasos a 640x240, ~5 min, confirmada en
+  cuatro tipos y dos semillas (`pautas.md` §13). La fuerza es el sigma de arranque, leído en sd.cpp. F1 da acabado, no
+  forma. **Pendiente:** el cuerpo de cinta del aullador no sale en ninguna prueba; lo más cercano es F0 con FLUX.3. Sin medir:
+  `-r` y más semillas. El repaso a 0,40 pasa a `IMG-36`. **M**
 - **IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás** [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
