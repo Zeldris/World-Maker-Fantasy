@@ -1,0 +1,2 @@
+# IMG-36 r26f: Final del aullador desde la F2 de r26e, 1280x480, 0,50 con 16 pasos y lanczos
+a	16	prompts/r26-aullador-detalle.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r26e-lanczos-f2/intentos/banner-s3-p16-20261106-221047.png,FUERZA_BOCETO=0.50,W=1280,H=480	--image-preprocess target=init,filter=lanczos,antialias=true

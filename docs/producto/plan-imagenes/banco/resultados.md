@@ -597,3 +597,27 @@ se redondea al primero del calendario que no lo supera. Con shift 6,93, el calen
   composición del boceto, que no es la del banner, y falta el detalle de material, que queda para F2 (`IMG-36`).
 - **Sin medir:** `-r` con una referencia y más semillas de F0.
 - **Pautas:** `pautas.md` §12 y §13.
+
+## r26 · F2 Detalle y Final desde la imagen aceptada (`IMG-36`, 2026-11-06)
+
+Rondas `r26`, `r26b`, `r26c`, `r26d`, `r26e` y `r26f`, con las rejillas en `generated/banco/r26/`. FLUX.3 con `wmf-estilo`, semilla 3, sobre las F1 de r25. SSIM gris contra la fase anterior.
+
+| Prueba | Tamaño | Fuerza y pasos reales | Tiempo | SSIM | Lectura |
+|---|---|---|---|---|---|
+| a | 1024x384 | 0,81, 3 | 416 s | 0,58 | La forma no se mueve; textura similar a F1 |
+| b | 1024x384 | 0,70, 2 | 292 s | 0,64 | Más limpia |
+| c | 1024x384 | 0,50, 1 | 168 s | 0,71 | Pasa el SSIM, pero borra grietas y pelo |
+| d | 768x288 | 0,70, 2 | 199 s | 0,62 | Igual que b, con menos píxeles |
+| e | 1024x384 | 0,81, 3, con materiales | 416 s | 0,58 | Añade guijarros y hierba |
+| f | 1024x384 | Como e, sin LoRA | 392 s | 0,59 | Casi igual: el LoRA no es la causa |
+| g | 1024x384 | 0,50, 2 (16 pasos) | 291 s | 0,76 | Recupera grietas y placas nítidas |
+| r26e | 1024x384 | Como g, con materiales y lanczos | 292 s | 0,81 | Sin escalones; halo claro en los bordes |
+| r26d 0,50 | 1280x480 | 0,50, 2 | 416 s | 0,81 | Final en 7 min; bordes en escalera |
+| r26d 0,70 | 1280x480 | 0,70, 4 | 773 s | 0,72 | No mejora a la de 0,50 |
+| r26f | 1280x480 | 0,50, 2, con lanczos | 412 s | 0,87 | Sin escalones; aspecto pintado |
+
+r26c repite la receta g con materiales en los otros tipos: cardo 0,87, cuchillo 0,81 y choza 0,82, 293-304 s; no mueve la composición y el material de la choza gana.
+
+- **Contra el banner:** coste resuelto, calidad no. Ninguna tiene el pelo, la tierra ni la cresta fina del banner: se lee como ilustración cuidada, y la forma sigue siendo la del boceto.
+- **Sin medir:** filtro bicúbico (quizá sin halo) y Final en otros tipos.
+- **Pautas:** `pautas.md` §14.

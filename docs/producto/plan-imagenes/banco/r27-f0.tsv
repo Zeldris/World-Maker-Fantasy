@@ -1,0 +1,6 @@
+# IMG-36 r27 F0: banner GPT como -r con FLUX.2, 480x192 (proporción 2,5), 4 pasos, semilla 3. Masas planas en los cuatro tipos y, en el aullador, también sin ellas
+aullador	4	prompts/r27-f0-aullador.txt	W=480,H=192	-r $G/referencias/images/fauna/aullador-rojo-macho-banner.png --ref-image-args vae_input_max_pixels=262144
+cardo-brujula	4	prompts/r27-f0-cardo-brujula.txt	W=480,H=192	-r $G/referencias/images/flora/cardo-brujula-banner.png --ref-image-args vae_input_max_pixels=262144
+cuchillo-hielo-silice	4	prompts/r27-f0-cuchillo-hielo-silice.txt	W=480,H=192	-r $G/referencias/images/item/cuchillo-hielo-silice-banner.png --ref-image-args vae_input_max_pixels=262144
+choza-basica-orco-llanuras	4	prompts/r27-f0-choza-basica-orco-llanuras.txt	W=480,H=192	-r $G/referencias/images/construccion/choza-basica-orco-llanuras-banner.png --ref-image-args vae_input_max_pixels=262144
+aullador-sin-planas	4	prompts/r27-f0-aullador-sin-planas.txt	W=480,H=192	-r $G/referencias/images/fauna/aullador-rojo-macho-banner.png --ref-image-args vae_input_max_pixels=262144

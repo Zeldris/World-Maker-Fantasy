@@ -43,9 +43,10 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 - ~~**IMG-35 · F0: boceto desde el prompt** [A] (usuaria, 2026-11-06)~~ ✅ 2026-11-06: r23, 20 imágenes. Receta: FLUX.2 en
   GPU, 512x192, 4 pasos, línea `Style` de masas planas; ~36 s, legible en los cinco tipos (`pautas.md` §12). **Pendiente, en
   otras tareas:** si F1 recupera la forma rara que F0 pierde (`IMG-34`) y el fondo liso para recortar (`IMG-37`). **M**
-- **IMG-36 · F2 Detalle y F4 Final desde la imagen aceptada** [A] (usuaria, 2026-11-06): fuerza de F2 que añade detalle
-  sin mover la forma (SSIM ≳ 0,7), y Final a 1280x512 partiendo de la imagen aceptada en vez de regenerarla desde cero.
-  Mide tiempos con el LoRA y si la Final puede salir de día. **Solo con el sí de la usuaria.** **M**
+- **IMG-36 · F2 Detalle y F4 Final desde la imagen aceptada** [A] (usuaria, 2026-11-06): 🚧 en curso. Hecho (r26,
+  `pautas.md` §14): F2 a 1024x384, 0,50 y 16 pasos, ~5 min; Final del aullador en ~7 min frente a 49, así que puede salir
+  de día; agrandar con lanczos. **Falta:** Final en otros tipos y a 1280x512, en r27, que compara además la cadena solo
+  con prompt y con el banner GPT como `-r`. **Solo con el sí de la usuaria.** **M**
 - **IMG-37 · F3 Recorte con transparencia** [A] (usuaria, 2026-11-06): guardar el recorte que hoy `montar.sh` deja en un
   temporal, como PNG con alfa, y comparar el recorte por color con `rembg`. La pieza que se combina usa una máscara
   recalculada sobre la Final; el recorte de F3 sirve para aprobarlo antes de gastar la noche. **S**

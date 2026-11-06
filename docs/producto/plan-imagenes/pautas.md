@@ -261,3 +261,15 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | FZ2 | **Fuerza de F1: 0,88 con 8 pasos** (sigma 0,874, ~5 min a 640x240). Da volumen, textura y luz sin mover la composición; a 0,81 o menos el boceto de masas planas se queda como dibujo plano. Sobre bocetos de FLUX.2 o FLUX.3, a diferencia de la plantilla SVG de F5. | ✅ | r24 y r25: fauna, flora, objeto y construcción; semillas 3 y 7 |
 | FZ4 | **Lo que dibuja el boceto se queda**: silueta, signos o encuadre no se corrigen en F1, así que se arreglan antes de aceptar F0. | ✅ | r24 y r25: cuerpo del aullador, signos del cuchillo y de la choza |
 | FZ3 | **Con el mismo sigma, doblar los pasos no mejora**: el acabado depende del sigma, no de los pasos. | ✅ | r24: 0,70 con 8 y con 16 pasos dan casi la misma imagen |
+
+## 14. F2 Detalle y Final (r26)
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| D1 | **F2: 1024x384, fuerza 0,50 con 16 pasos** (2 reales), ~5 min. Un único paso real borra la textura; más fuerza no añade detalle y baja el SSIM. | ✅ | r26 y r26b: aullador; r26c: otros tres tipos, SSIM 0,81-0,87 |
+| D2 | **Los materiales se piden en el prompt de F2**, con una línea `Surface detail` y `razor-sharp fine texture` en vez de `soft`. Ayuda poco, pero añade guijarros, hierba y material. | ✅ | r26b, r26c |
+| D3 | **El LoRA no causa la pérdida de textura**: sin él, casi la misma imagen y ~25 s menos. | ✅ | r26b, una imagen |
+| D4 | **Agrandar siempre con `--image-preprocess target=init,filter=lanczos,antialias=true`.** Por defecto, `sd-cli` deja bordes en escalera. Lanczos los quita y sube el SSIM, con un halo claro en los bordes. | ✅ | r26e, r26f; bicúbico sin medir |
+| D5 | **La Final parte de F2 a 0,50 con 16 pasos: ~7 min frente a 49 desde cero, así que puede salir de día.** A 0,70 tarda el doble y no mejora. | 🔬 | r26d y r26f: solo aullador |
+| D6 | **El SSIM solo vigila la forma**: da por buena la imagen que pierde textura. Hace falta mirar el detalle de cerca. | ✅ | r26: la c pasa con 0,71 y es la peor en textura |
+| D7 | **La misma proporción en toda la cadena**: F0 y F1 van a 2,667 y el banner a 2,5, así que la Final de r26 queda en 1280x480. Cadena a 2,5, múltiplos de 16: 480x192, 640x256, 960x384, 1280x512. | 🔬 | Se prueba en r27 |
