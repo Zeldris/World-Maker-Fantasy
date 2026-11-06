@@ -1,0 +1,7 @@
+# IMG-34 r24: F1 Forma. FLUX.3 con LoRA sobre el boceto F0 de r23 (e2-f2-planos, FLUX.2), 640x240 (misma proporción que F0), prompt de ficha, semilla 3. Fuerza = sigma de arranque (noise_level_to_sigma es identidad); el nombre lleva el sigma real y los pasos del calendario; quedan a 5, b 4, c 3, d 2, e 4, f 2
+a-s92-p8	8	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r23-f0/intentos/e2-f2-planos.png,FUERZA_BOCETO=0.93,W=640,H=240	-
+b-s87-p8	8	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r23-f0/intentos/e2-f2-planos.png,FUERZA_BOCETO=0.88,W=640,H=240	-
+c-s81-p8	8	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r23-f0/intentos/e2-f2-planos.png,FUERZA_BOCETO=0.81,W=640,H=240	-
+d-s70-p8	8	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r23-f0/intentos/e2-f2-planos.png,FUERZA_BOCETO=0.70,W=640,H=240	-
+e-s70-p16	16	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r23-f0/intentos/e2-f2-planos.png,FUERZA_BOCETO=0.70,W=640,H=240	-
+f-s50-p16	16	prompts/r24-aullador.txt	PERFIL=fotorreal,BOCETO=/home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r23-f0/intentos/e2-f2-planos.png,FUERZA_BOCETO=0.50,W=640,H=240	-
