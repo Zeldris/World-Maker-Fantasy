@@ -94,6 +94,43 @@ class PantallaFases(Base):
         pagina.ws.close()
 
 
+    def test_casilla_de_referencia(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1&rapido=1')
+        pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        abrir = "[...document.querySelectorAll('#lista .elemento')].find((e) => e.textContent.includes('%s')).click()"
+        casilla = "document.getElementById('fasesUsarRef')"
+        meta = "document.querySelector('.marco.actual .meta').textContent"
+        # sin imagen del juego no hay nada que elegir
+        pagina.evaluate(abrir % 'Cardo')
+        pagina.wait("!document.getElementById('fases').hidden && !!document.querySelector('[data-accion=regenerar]')")
+        self.assertEqual(pagina.evaluate(f'!{casilla} || !{casilla}.isConnected'), True)
+        # con ella, sale desmarcada y el primer intento no la lleva
+        pagina.evaluate(abrir % 'Aullador')
+        pagina.wait(f"!!{casilla} && {casilla}.isConnected")
+        self.assertEqual(pagina.evaluate(f'{casilla}.checked'), False)
+        pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
+        pagina.wait(CONTADOR % '1/1', timeout=20)
+        self.assertNotIn('con referencia', pagina.evaluate(meta))
+        self.assertIn('s=3 ·', pagina.evaluate(meta))
+        # marcada: el intento la lleva, con la misma semilla para poder comparar, y lo cuenta «Cómo se hizo»
+        pagina.evaluate(f'{casilla}.click()')
+        pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
+        pagina.wait(CONTADOR % '2/2', timeout=20)
+        self.assertIn('con referencia', pagina.evaluate(meta))
+        self.assertIn('s=3 ·', pagina.evaluate(meta))
+        self.assertEqual(pagina.evaluate(f'{casilla}.checked'), True)
+        self.assertIn('con la imagen del juego (aullador-rojo-banner.png)', pagina.evaluate("document.querySelector('.como-se-hizo').textContent"))
+        # Avanzar sale con lo que se ve marcado, y la casilla sigue marcada en la fase siguiente
+        pagina.evaluate("document.querySelector('[data-siguiente=F4]').click()")
+        pagina.wait(CONTADOR % '1/1', timeout=20)
+        self.assertEqual(pagina.evaluate(FASE % 'F4' + ".getAttribute('aria-current')"), 'step')
+        self.assertIn('con referencia', pagina.evaluate(meta))
+        self.assertEqual(pagina.evaluate(f'{casilla}.checked'), True)
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
     def test_renombrar_marcar_estrella_borrar_y_como_se_hizo(self):
         pagina = self.nav.new_page()
         self.nav.take_problems()

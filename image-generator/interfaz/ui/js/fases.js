@@ -1,7 +1,7 @@
 /* Pantalla de fases del elemento (IMG-25, parte 1; diseño `diseno-interfaz-continua.md` §2.0 y la maqueta aprobada
    `docs/prototipos/img-39-pantalla-elemento.html`, que manda sobre el dibujo). Sobre las rutas de IMG-40:
    GET /api/camino y POST /api/fase/{generar,avanzar,atras}; igual con servidor.py que con el simulador (`?mock=1`).
-   Parte 2: renombrar el elemento (✎), «Cómo se hizo» (la cadena de pasos de una imagen), «Borrar esta fase» con aviso de
+   Casilla «usar la imagen del juego de referencia» por fase (usarReferencia en generar y avanzar). Parte 2: renombrar el elemento (✎), «Cómo se hizo» (la cadena de pasos de una imagen), «Borrar esta fase» con aviso de
    lo que arrastra (/api/fase/dependientes y /api/fase/borrar) y Marcar ★ en la Final (/api/fase/marcar, tecla M).
    Pasos F0 → F1 → F2 → F4 (F3 apagada hasta IMG-37), tres paneles (referencia, fase anterior, intento actual con su
    navegador), el prompt de la fase y Atrás / Regenerar / Avanzar. Sin innerHTML: todo con h() de dom.js.
@@ -17,12 +17,13 @@ import * as cola from './queue-poll.js';
 const PERFILES_REF = ['banner', 'thumbnail', 'mapa', 'icono'];
 const MOTIVO_F3 = 'F3 Recorte llega con IMG-37';
 const S = { tipo: null, slug: null, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '',
-  clave: null, generando: false, token: 0, btn: {}, info: {}, orden: [], editando: false };
+  clave: null, generando: false, token: 0, btn: {}, info: {}, orden: [], editando: false, usarRef: {} };
 let ctx = { ampliar: () => {}, seguir: () => {}, lista: async () => {} };
 let avisadaMarca = false;  // el aviso «marcar no es publicar» sale una vez por sesión
 
 const prompt = h('textarea', { id: 'fasesPrompt', spellcheck: 'false', 'aria-describedby': 'fasesPromptAyuda' });
 const campoNombre = h('input', { type: 'text', id: 'fasesNombre', maxlength: 120, 'aria-label': 'Nombre del elemento', autocomplete: 'off' });
+const casillaRef = h('input', { type: 'checkbox', id: 'fasesUsarRef' });
 const barra = h('progress', { max: 100, value: 2 });
 const barraTexto = h('div.hint');
 const progreso_ = h('div.progreso-fase', { role: 'status' }, barra, barraTexto);
@@ -70,7 +71,15 @@ const marcadaImg = (imagen) => !!imagen && ((S.camino && S.camino.marcadas) || [
 // Solo para apagar el botón: la regla es la de camino.intento_desfasado y la aplica el servidor.
 const desfasado = (v, a) => !!a.desde && a.entrada !== ((v.fases[a.desde] || {}).aceptada || null);
 const MOTIVO_DESFASE = 'Esta Final salió de un boceto que ya no es el aceptado: genera otra';
-const meta = (i) => `s=${i.semilla} · ${i.segundos} s · ${when(i.fecha)}`;
+const meta = (i) => `s=${i.semilla} · ${i.segundos} s · ${when(i.fecha)}${i.referencia ? ' · con referencia' : ''}`;
+/* Lo elegido en la casilla mientras se está en el elemento; si no, lo que llevó el último intento de la fase. */
+const claveRef = (f) => `${S.variante}/${f}`;
+function usaRef(v, f) {
+  const elegido = S.usarRef[claveRef(f)];
+  if (elegido !== undefined) return elegido;
+  const lista = intentos(v, f);
+  return lista.length ? !!lista[lista.length - 1].referencia : false;
+}
 
 /* ---------- carga ---------- */
 async function buscarReferencia(tipo, slug) {
@@ -81,7 +90,7 @@ async function buscarReferencia(tipo, slug) {
 }
 export async function abrir(tipo, slug) {
   const token = ++S.token;
-  Object.assign(S, { tipo, slug, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '', clave: null, editando: false });
+  Object.assign(S, { tipo, slug, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '', clave: null, editando: false, usarRef: {} });
   $('fases').hidden = false;
   render();
   try {
@@ -129,7 +138,7 @@ async function accion(fn) {
 }
 function lanzado() { S.generando = true; S.lectura = null; S.idx = null; barra.value = 2; barraTexto.textContent = 'Empezando…'; cola.refreshNow(); render(); ctx.seguir(); }
 const regenerar = () => accion(async () => {
-  await api.faseGenerar({ tipo: S.tipo, slug: S.slug, variante: S.variante, fase: variante().faseActual, prompt: prompt.value });
+  await api.faseGenerar({ tipo: S.tipo, slug: S.slug, variante: S.variante, fase: variante().faseActual, prompt: prompt.value, usarReferencia: !!S.ref && usaRef(variante(), variante().faseActual) });
   lanzado();
 });
 const atras = () => accion(async () => {
@@ -137,7 +146,11 @@ const atras = () => accion(async () => {
   S.camino = r.camino; S.lectura = null; S.idx = null; render();
 });
 const avanzar = (siguiente, n) => accion(async () => {
-  const r = await api.faseAvanzar({ tipo: S.tipo, slug: S.slug, variante: S.variante, fase: variante().faseActual, intento: n, siguiente });
+  const v = variante(), f = v.faseActual;
+  // la siguiente fase sale con lo que se ve marcado, salvo que ya se eligiera otra cosa en ella
+  const usar = !!S.ref && (S.usarRef[claveRef(siguiente)] ?? usaRef(v, f));
+  S.usarRef[claveRef(siguiente)] = usar;
+  const r = await api.faseAvanzar({ tipo: S.tipo, slug: S.slug, variante: S.variante, fase: f, intento: n, siguiente, usarReferencia: usar });
   S.camino = r.camino; S.lectura = null; S.idx = null;
   if (r.lanzado) lanzado();
   else { render(); toast(`Aceptado, pero no se lanzó ${nombreFase(siguiente)}: ${r.motivo || 'sin motivo'}`); }
@@ -217,18 +230,18 @@ function pasos(v) {
 
 /* La cadena que llevó a una imagen, de F0 a ella: por `desde`/`entrada` hacia atrás. `base` = lo de la imagen vista. */
 function comoSeHizo(v, f, base) {
-  const pasos = [{ fase: f, semilla: base.semilla, prompt: base.prompt, imagen: base.imagen, intentos: registro(v, f).intentos }];
+  const pasos = [{ fase: f, semilla: base.semilla, prompt: base.prompt, imagen: base.imagen, referencia: base.referencia, intentos: registro(v, f).intentos }];
   let { desde, entrada } = base;
   while (desde && pasos.length < 8) {
     const r = registro(v, desde), it = entrada ? r.intentos.find((i) => i.imagen === entrada) : null;
     if (!it) { pasos.push({ fase: desde, perdido: true }); break; }
-    pasos.push({ fase: desde, semilla: it.semilla, prompt: it.prompt, imagen: it.imagen, intentos: r.intentos });
+    pasos.push({ fase: desde, semilla: it.semilla, prompt: it.prompt, imagen: it.imagen, referencia: it.referencia, intentos: r.intentos });
     ({ desde, entrada } = it);
   }
   pasos.reverse();
   const lista = h('ol.como', {}, ...pasos.map((p) => h('li', {},
     p.imagen ? h('img.mini.ampliable', { src: srcImagen(p.imagen, p.intentos), alt: `${nombreFase(p.fase)}`, onclick: () => ctx.ampliar(srcImagen(p.imagen, p.intentos), nombreFase(p.fase)) }) : null,
-    h('div', {}, h('strong', {}, nombreFase(p.fase)), p.perdido ? ' · ya no está guardada' : ` · s=${p.semilla}`),
+    h('div', {}, h('strong', {}, nombreFase(p.fase)), p.perdido ? ' · ya no está guardada' : ` · s=${p.semilla}${p.referencia ? ` · con la imagen del juego (${p.referencia})` : ''}`),
     p.perdido ? null : h('div.meta', {}, p.prompt))));
   return h('details.como-se-hizo', { 'data-como': 'pasos' }, h('summary', {}, 'Cómo se hizo'), lista);
 }
@@ -279,7 +292,7 @@ function lecturaFase(v) {
     h('div.meta', {}, r.desfasada ? '⚠ desfasada: se aceptó otra imagen en la fase de la que sale. ' : '', r.semilla !== null && r.semilla !== undefined ? `s=${r.semilla}` : '',
       marcadaImg(r.aceptada) ? h('span.estrella', { title: 'Marcada: lista para combinar' }, ' ★') : null),
     h('pre.prompt-leido', {}, r.prompt || '(sin prompt guardado)'),
-    r.aceptada ? comoSeHizo(v, f, { semilla: r.semilla, prompt: r.prompt, imagen: r.aceptada, desde: r.desde, entrada: r.entrada }) : null,
+    r.aceptada ? comoSeHizo(v, f, { semilla: r.semilla, prompt: r.prompt, imagen: r.aceptada, desde: r.desde, entrada: r.entrada, referencia: (r.intentos.find((i) => i.imagen === r.aceptada) || {}).referencia }) : null,
     h('div.acciones', {}, h('button.btn.btn-primary', { type: 'button', onclick: () => { S.lectura = null; render(); } }, `Volver a ${nombreFase(v.faseActual)}`),
       botonBorrar(v, f)));
 }
@@ -313,6 +326,15 @@ function acciones(v, f) {
   return h('div.acciones', {}, h('div.acciones-izq', {}, b.atras, botonBorrar(v, f)), der);
 }
 
+function filaReferencia(v, f) {
+  if (!S.ref) return null;  // sin imagen del juego no hay nada que elegir
+  casillaRef.checked = usaRef(v, f);
+  casillaRef.disabled = S.generando;
+  return h('label.check', { for: 'fasesUsarRef', title: 'Tarda bastante más; el modelo puede reinventar el elemento (IMG-1)' }, casillaRef,
+    f === 'F4' ? ' Usar también la imagen del juego de referencia (junto al boceto) ' : ' Usar la imagen del juego de referencia ',
+    h('span.hint', {}, S.ref.ruta));
+}
+
 function nombreElemento() {
   if (S.editando) {
     return h('div.nombre-elemento', {}, campoNombre,
@@ -344,12 +366,14 @@ function render() {
     hijos.push(h('div.tres', {}, panelReferencia(), panelAnterior(v, f), panelIntento(v, f)),
       h('div.field', {}, h('label', { for: 'fasesPrompt' }, `Prompt de ${nombreFase(f)}`), prompt,
         h('div.hint', { id: 'fasesPromptAyuda' }, 'Editarlo mantiene la semilla; sin cambios, Regenerar usa otra.')),
+      filaReferencia(v, f),
       acciones(v, f));
     if (S.generando) hijos.push(progreso_);
   }
   raiz.replaceChildren(...hijos);
   if (S.editando) { campoNombre.focus(); campoNombre.select(); }
 }
+casillaRef.addEventListener('change', () => { S.usarRef[claveRef(variante().faseActual)] = casillaRef.checked; });
 prompt.addEventListener('input', () => {  // el motivo de «Regenerar» depende de que haya texto
   if (S.btn.regenerar) {
     const vacio = !prompt.value.trim();

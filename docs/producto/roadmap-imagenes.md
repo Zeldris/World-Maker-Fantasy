@@ -400,6 +400,8 @@ desde el panel vive en tablas que siembran.
   casilla «usar la imagen del juego de referencia» por fase, desmarcada por defecto y solo si el elemento tiene imagen;
   `usarReferencia` en `/api/fase/generar` y `fase.py`, apuntado en cada intento y visible en «Cómo se hizo». En la Final
   van dos `-r` (`sd-cli` lo admite), el boceto primero, con el prefijo que diga cuál es cuál; falta probarlo con una real.
+  **Casilla hecha (2026-11-07):** `fase.py --referencia`, `usarReferencia` en generar y avanzar; misma semilla al cambiar
+  la casilla, para comparar; tiempos estimados aparte. Probada con el simulador: falta una real con dos `-r` en la Final.
   **Parte 2 hecha (2026-11-07):** `camino.py` (`renombrar`, `tramo`, `dependientes`, `borrar_fase`, `marcar`), rutas
   `/api/camino/renombrar` y `/api/fase/{dependientes,borrar,marcar}`, igual en el simulador; en `fases.js`, nombre con ✎,
   «Cómo se hizo», «Borrar esta fase» con aviso y Marcar/Quitar ★ (`M`); «★ n» en la lista. Pantalla probada solo con

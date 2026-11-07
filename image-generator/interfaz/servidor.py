@@ -33,11 +33,12 @@ API (JSON salvo las imágenes):
   GET  /api/inicio                          además `fases`: [{id,nombre,receta,siguientes,disponible}] (camino.FASES)
   GET  /api/camino?tipo&slug                camino.json del elemento; cada variante lleva `siguientes` (calculado, según el
                                             tipo, desde su faseActual)
-  POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?}
+  POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?,usarReferencia?}
+                                            usarReferencia: añade la imagen del juego como -r; 400 si el elemento no tiene
                                             lanza `scripts/fase.py` (un trabajo a la vez, el mismo de /api/generar) → 202 {ok};
                                             400 si la fase no existe o no está disponible, falta la fase de entrada aceptada,
                                             el prompt está vacío o ya hay una generación
-  POST /api/fase/avanzar {tipo,slug,variante,fase,intento,siguiente}
+  POST /api/fase/avanzar {tipo,slug,variante,fase,intento,siguiente,usarReferencia?}
                                             acepta el intento (borra los demás) y lanza el primero de `siguiente` con el prompt
                                             aceptado → {camino, lanzado: true}; si no se pudo lanzar (ocupado…), la aceptación
                                             se queda: {camino, lanzado: false, motivo}; 400 si el camino no lo permite
@@ -280,8 +281,9 @@ def estimado(perfil, con_referencia):
 ESTIMADO_FASE = {'F0': 36, 'F1': 300, 'F2': 300, 'F4': 160}  # segundos, si aún no hay intentos de esa fase
 
 
-def estimado_fase(fase):
-    """Mediana de los segundos de los intentos con imagen de esa fase, de todos los camino.json (sin el banco)."""
+def estimado_fase(fase, con_juego=False):
+    """Mediana de los segundos de los intentos con imagen de esa fase, con o sin la imagen del juego, de todos los
+    camino.json (sin el banco)."""
     tiempos = []
     try:
         for t in os.listdir(GENERADO):
@@ -295,11 +297,13 @@ def estimado_fase(fase):
                     continue
                 for v in c.get('variantes', {}).values():
                     for i in v.get('fases', {}).get(fase, {}).get('intentos', []):
-                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)):
+                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)) and bool(i.get('referencia')) == con_juego:
                             tiempos.append(i['segundos'])
     except (FileNotFoundError, NotADirectoryError):
         pass
-    return int(round(statistics.median(tiempos))) if tiempos else ESTIMADO_FASE.get(fase, 120)
+    if tiempos:
+        return int(round(statistics.median(tiempos)))
+    return int(round(ESTIMADO_FASE.get(fase, 120) * (FACTOR_REFERENCIA if con_juego else 1)))
 
 
 def referencia_de(tipo, slug_, perfil):
@@ -415,6 +419,11 @@ class Trabajo(nucleo.Trabajo):
         texto = str(peticion.get('prompt') or '').strip()
         if not texto:
             raise Invalido('el prompt está vacío')
+        juego = None
+        if peticion.get('usarReferencia'):
+            juego = referencia_de(tipo, slug_, 'banner')
+            if not juego:
+                raise Invalido(f'no hay imagen de {tipo}/{slug_} en image-generator/referencias/images/')
         try:
             camino.fase_de_entrada(camino.leer(elemento_dir(tipo, slug_))['variantes'].get(variante, {}), fase)
         except camino.CaminoInvalido as e:
@@ -423,9 +432,11 @@ class Trabajo(nucleo.Trabajo):
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(texto + '\n')
         orden = [sys.executable, FASE, tipo, slug_, variante, fase, archivo] + ([] if semilla is None else [str(semilla)])
+        if juego:
+            orden += ['--referencia', os.path.join(REFERENCIAS, juego['ruta'])]
         datos = {'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': fase,
                  'perfil': f'{fase} {camino.POR_ID[fase]["nombre"]}', 'semilla': semilla,
-                 'pasos': fase_py.RECETAS[fase]['pasos'], 'conReferencia': fase == 'F4', 'estimado': estimado_fase(fase)}
+                 'pasos': fase_py.RECETAS[fase]['pasos'], 'conReferencia': fase == 'F4' or bool(juego), 'estimado': estimado_fase(fase, bool(juego))}
         self.empezar(orden, datos, env=dict(os.environ, IMG_RAIZ=RAIZ, **ADAPTADOR.entorno()), que='fase.py', ocupado=sd_cli_en_marcha,
                      limpiar=lambda: os.unlink(archivo),
                      motivo_ocupado='ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
@@ -553,7 +564,8 @@ def api_fase_avanzar(p):
     except camino.CaminoInvalido as e:
         raise Invalido(str(e))
     try:
-        TRABAJO.lanzar_fase({'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': siguiente, 'prompt': prompt})
+        TRABAJO.lanzar_fase({'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': siguiente, 'prompt': prompt,
+                             'usarReferencia': c.get('usarReferencia')})
         lanzado = {'lanzado': True}
     except Invalido as e:  # ocupado, sin entrada…: la aceptación se queda
         lanzado = {'lanzado': False, 'motivo': str(e)}

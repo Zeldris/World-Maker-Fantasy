@@ -83,11 +83,11 @@ function faseDeEntrada(v, fase) {
   if (c) return c;
   throw new CaminoInvalido(`Falta una fase aceptada (${ENTRADA[fase].join(' o ')}) para generar ${fase} ${POR_ID[fase].nombre}`);
 }
-function semillaPorDefecto(v, fase, prompt) {
+function semillaPorDefecto(v, fase, prompt, referencia) {
   const f = v && v.fases[fase];
   if (!f || !f.intentos.length) return fase === 'F0' ? SEMILLA_F0 : v.fases[faseDeEntrada(v, fase)].semilla;
   const ultimo = f.intentos[f.intentos.length - 1];
-  return prompt === ultimo.prompt ? Math.max(...f.intentos.map((i) => i.semilla)) + 1 : ultimo.semilla;
+  return prompt === ultimo.prompt && (referencia || null) === (ultimo.referencia || null) ? Math.max(...f.intentos.map((i) => i.semilla)) + 1 : ultimo.semilla;
 }
 const enUso = (v) => {
   const usadas = new Set();
@@ -204,7 +204,7 @@ function apuntarIntento(c, variante, fase, p) {
   if (!f.aceptada) Object.assign(f, { desde, entrada });
   const n = Math.max(0, ...f.intentos.map((i) => i.n)) + 1;
   f.intentos.push({ n, prompt: p.prompt, semilla: p.semilla, imagen: p.falla ? null : `${variante}-${fase.toLowerCase()}-${n}.png`,
-    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
+    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.referencia ? { referencia: p.referencia } : {}), ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
   v.faseActual = fase;
   return n;
 }
@@ -218,10 +218,13 @@ function lanzarFase(b) {
   const semilla = b.semilla === undefined || b.semilla === null ? null : Number(b.semilla);
   if (semilla !== null && !(Number.isInteger(semilla) && semilla >= 0 && semilla <= 2 ** 31 - 1)) return mal(400, 'la semilla: de 0 a 2147483647');
   const c = camino(tipo, slug), v = c.variantes[variante] || null;
+  const juego = b.usarReferencia ? (datos[`${tipo}/${slug}`] || {}).juego : null;
+  if (b.usarReferencia && !juego) return mal(400, `no hay imagen de ${tipo}/${slug} en image-generator/referencias/images/`);
+  const referencia = juego ? juego.split('/').pop() : null;
   try { faseDeEntrada(v, fase); } catch (e) { return mal(400, e.message); }
   verTrabajo();
   if (trabajo.enMarcha) return mal(400, 'ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe');
-  trabajo = { enMarcha: true, id: siguienteId++, tipo, slug, variante, fase, perfil: `${fase} ${POR_ID[fase].nombre}`, conReferencia: fase === 'F4',
+  trabajo = { enMarcha: true, id: siguienteId++, tipo, slug, variante, fase, perfil: `${fase} ${POR_ID[fase].nombre}`, conReferencia: fase === 'F4' || !!juego, referencia,
     inicio: Date.now(), salida: [], nombre: null, rc: null, pasos: PASOS_FASE[fase], semilla, estimado: ESTIMADO_FASE[fase], prompt };
   return ok({ ok: true }, 202);
 }
@@ -278,10 +281,10 @@ function verTrabajo() {
 }
 function terminarFase(seg) {
   const t = trabajo, c = camino(t.tipo, t.slug), v = c.variantes[t.variante];
-  const semilla = t.semilla === null ? semillaPorDefecto(v, t.fase, t.prompt) : t.semilla;
+  const semilla = t.semilla === null ? semillaPorDefecto(v, t.fase, t.prompt, t.referencia) : t.semilla;
   const origen = faseDeEntrada(v, t.fase);
   const falla = semilla === 13;
-  const n = apuntarIntento(c, t.variante, t.fase, { prompt: t.prompt, semilla, segundos: seg, falla,
+  const n = apuntarIntento(c, t.variante, t.fase, { prompt: t.prompt, semilla, segundos: seg, falla, referencia: t.referencia,
     entrada: origen ? [origen, v.fases[origen].aceptada] : null });
   const nombre = `${t.variante}-${t.fase.toLowerCase()}-${n}`;
   const error = 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)';
@@ -377,7 +380,7 @@ export async function transport(method, url, body) {
       verTrabajo();
       const { tipo, slug, variante, fase, siguiente } = body, c = camino(tipo, slug);
       try { avanzarCamino(c, tipo, variante, fase, Number(body.intento), siguiente); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }
-      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt });
+      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt, usarReferencia: body.usarReferencia });
       return ok({ camino: vistaCamino(tipo, slug), ...(r.status === 202 ? { lanzado: true } : { lanzado: false, motivo: r.json.error }) });
     }
     if (ruta === '/api/camino/renombrar') {

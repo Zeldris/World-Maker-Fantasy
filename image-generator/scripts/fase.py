@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""IMG-40: una orden por fase del generador. Uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla]
+"""IMG-40: una orden por fase del generador. Uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla] [--referencia <imagen>]
+--referencia añade la imagen del juego como -r en cualquier fase; en la Final va detrás del boceto y el prompt dice cuál es cuál.
 Toma la imagen aceptada de la fase de entrada, traduce la receta de la fase a generar.sh y apunta el intento en
 camino.json (también si falla). IMG_RAIZ cambia la raíz image-generator/; IMG_GENERAR sustituye a generar.sh (tests).
 Salida: «imagen: <ruta>.png» si salió. Códigos: el de generar.sh; 2 argumentos o fase inválida; 3 falta entrada o prompt."""
@@ -17,6 +18,11 @@ COSA = {'fauna': 'creature', 'flora': 'plant', 'item': 'object', 'construccion':
         'raza': 'figure', 'npc': 'figure'}
 PREFIJO_F4 = ('The same {cosa}, in the same composition, as the reference image, which is a rough study: '
               'keep its shapes and proportions and render it with full detail. ')
+PREFIJO_F4_CON_JUEGO = ('The same {cosa}, in the same composition, as the first reference image, which is a rough study: '
+                        'keep its shapes and proportions and render it with full detail. '
+                        'The second reference image shows this {cosa}: follow its colors and materials. ')
+PREFIJO_JUEGO = 'The reference image shows this {cosa}: follow its colors and materials. '
+LIMITE_REF = ['--ref-image-args', 'vae_input_max_pixels=262144']
 LANCZOS = ['--image-preprocess', 'target=init,filter=lanczos,antialias=true']
 # Recetas: tamaño, pasos, entorno (BOCETO/ref se rellenan con la imagen de entrada) y extra de sd-cli.
 RECETAS = {
@@ -38,8 +44,15 @@ def aborto(msg, codigo):
 
 
 def main(argv):
+    referencia = None
+    if '--referencia' in argv:
+        i = argv.index('--referencia')
+        if i + 1 >= len(argv):
+            aborto('--referencia pide la ruta de una imagen', 2)
+        referencia = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
     if len(argv) not in (5, 6):
-        aborto('uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla]', 2)
+        aborto('uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla] [--referencia <imagen>]', 2)
     tipo, slug, variante, fase, archivo = argv[:5]
     for v in (tipo, slug, variante):
         if not VALIDO.match(v):
@@ -58,6 +71,8 @@ def main(argv):
         prompt = open(archivo, encoding='utf-8').read().strip()
     except OSError:
         aborto(f'no se puede leer el archivo de prompt: {archivo}', 3)
+    if referencia and not os.path.isfile(referencia):
+        aborto(f'no existe la imagen de referencia: {referencia}', 3)
     raiz = os.environ.get('IMG_RAIZ') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     generar = os.environ.get('IMG_GENERAR') or os.path.join(raiz, 'scripts', 'generar.sh')
     d = os.path.join(raiz, 'generated', tipo, slug)
@@ -73,7 +88,7 @@ def main(argv):
             if not os.path.exists(os.path.join(d, 'intentos', img)):
                 aborto(f'falta la imagen aceptada de {origen}: intentos/{img}', 3)
         if semilla is None:
-            semilla = C.semilla_por_defecto(v, fase, prompt)
+            semilla = C.semilla_por_defecto(v, fase, prompt, os.path.basename(referencia) if referencia else None)
     except C.CaminoInvalido as e:
         aborto(str(e), 3)
     n = C.siguiente_n(cam, variante, fase)
@@ -88,7 +103,15 @@ def main(argv):
             env['BOCETO'] = ruta
         else:
             extra = ['-r', ruta] + extra
-            enviado = PREFIJO_F4.format(cosa=COSA.get(tipo, 'subject')) + prompt
+            enviado = (PREFIJO_F4_CON_JUEGO if referencia else PREFIJO_F4).format(cosa=COSA.get(tipo, 'subject')) + prompt
+    if referencia:
+        extra += ['-r', referencia]  # la de entrada va primero
+        if '--ref-image-args' not in extra:
+            extra += LIMITE_REF
+        if rec['entrada'] != '-r':
+            enviado = PREFIJO_JUEGO.format(cosa=COSA.get(tipo, 'subject')) + prompt
+        if fase == 'F0':  # el tope por defecto (900 s) se queda corto; F1 y F2 ya tienen el de fotorreal, mucho mayor
+            env.setdefault('TOPE', '1800')
     os.makedirs(d, exist_ok=True)
     fd, pf = tempfile.mkstemp(prefix='prompt-', suffix='.txt', dir=d)  # generar.sh lo copia a prompts/<nombre>.txt
     with os.fdopen(fd, 'w', encoding='utf-8') as f:
@@ -103,7 +126,8 @@ def main(argv):
     hay = os.path.exists(png)
     C.actualizar(d, lambda c: C.apuntar_intento(c, variante, fase, prompt, semilla, nombre + '.png' if hay else None,
                                                 seg, r.returncode, entrada, n=n,
-                                                error=None if hay else r.stdout[-2000:]))
+                                                error=None if hay else r.stdout[-2000:],
+                                                referencia=os.path.basename(referencia) if referencia else None))
     if hay:
         print('imagen: ' + os.path.abspath(png))
     return r.returncode

@@ -382,10 +382,10 @@ class TestFasePy(unittest.TestCase):
         escribir(self.prompt, 'un mono rojo')
         self.d = os.path.join(self.raiz, 'generated', 'fauna', 'aullador')
 
-    def fase(self, fase, tipo='fauna', variante='macho', extra_env=None, semilla=None):
+    def fase(self, fase, tipo='fauna', variante='macho', extra_env=None, semilla=None, extra=()):
         env = {**os.environ, 'IMG_RAIZ': self.raiz, 'IMG_GENERAR': self.gen, 'ARGS_GENERAR': self.args,
                'PERFIL': 'viejo', 'BOCETO': '/viejo.png', 'MOMENTO': 'noche', **(extra_env or {})}
-        cmd = [sys.executable, FASE, tipo, 'aullador', variante, fase, self.prompt] + ([str(semilla)] if semilla else [])
+        cmd = [sys.executable, FASE, tipo, 'aullador', variante, fase, self.prompt] + ([str(semilla)] if semilla else []) + list(extra)
         return subprocess.run(cmd, env=env, capture_output=True, text=True)
 
     def llamada(self):
@@ -432,6 +432,66 @@ class TestFasePy(unittest.TestCase):
                                          'which is a rough study: keep its shapes and proportions and render it '
                                          'with full detail. un mono rojo') for l in a))
         self.assertEqual(C.leer(self.d)['variantes']['macho']['fases']['F4']['intentos'][0]['prompt'], 'un mono rojo')
+
+    def juego(self):
+        ruta = os.path.join(self.raiz, 'juego', 'aullador-banner.png')
+        escribir(ruta, 'png')
+        return ruta
+
+    def test_referencia_en_f0_va_como_r_con_limite_y_se_apunta(self):
+        ruta = self.juego()
+        self.assertEqual(self.fase('F0', extra=['--referencia', ruta]).returncode, 0)
+        a = self.llamada()
+        self.assertIn(ruta, a)
+        self.assertEqual(a[a.index(ruta) - 1], '-r')
+        self.assertIn('vae_input_max_pixels=262144', a)
+        self.assertIn('TOPE=1800', a)
+        self.assertTrue(any(l == 'PROMPT=The reference image shows this creature: follow its colors and materials. un mono rojo' for l in a))
+        i = C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]
+        self.assertEqual((i['referencia'], i['prompt']), ('aullador-banner.png', 'un mono rojo'))
+
+    def test_referencia_en_f1_no_baja_el_tope_de_fotorreal(self):
+        ruta = self.juego()
+        self.assertEqual(self.fase('F0').returncode, 0)
+        self.aceptar('F0', 1, 'F1')
+        self.assertEqual(self.fase('F1', extra=['--referencia', ruta]).returncode, 0)
+        a = self.llamada()
+        self.assertIn('TOPE=<sin>', a)
+        self.assertIn(f'BOCETO={self.d}/intentos/macho-f0-1.png', a)
+        self.assertEqual(a[a.index(ruta) - 1], '-r')
+
+    def test_sin_casilla_no_cambia_nada(self):
+        self.assertEqual(self.fase('F0').returncode, 0)
+        a = self.llamada()
+        self.assertNotIn('-r', a)
+        self.assertIn('PROMPT=un mono rojo', a)
+        self.assertNotIn('referencia', C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0])
+
+    def test_referencia_en_la_final_va_detras_del_boceto_y_el_prompt_dice_cual_es_cual(self):
+        ruta = self.juego()
+        self.assertEqual(self.fase('F0').returncode, 0)
+        self.aceptar('F0', 1, 'F4')
+        self.assertEqual(self.fase('F4', extra=['--referencia', ruta]).returncode, 0)
+        a = self.llamada()
+        boceto = f'{self.d}/intentos/macho-f0-1.png'
+        self.assertEqual([a[k + 1] for k, x in enumerate(a) if x == '-r'], [boceto, ruta])
+        self.assertEqual(a.count('--ref-image-args'), 1)
+        p = next(l for l in a if l.startswith('PROMPT='))
+        self.assertIn('as the first reference image', p)
+        self.assertIn('The second reference image shows this creature', p)
+
+    def test_cambiar_la_casilla_mantiene_la_semilla_para_comparar(self):
+        ruta = self.juego()
+        self.assertEqual(self.fase('F0').returncode, 0)
+        self.assertEqual(self.fase('F0', extra=['--referencia', ruta]).returncode, 0)
+        self.assertEqual(self.fase('F0', extra=['--referencia', ruta]).returncode, 0)
+        ins = C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos']
+        self.assertEqual([i['semilla'] for i in ins], [3, 3, 4])
+
+    def test_referencia_que_no_existe_dice_por_que(self):
+        r = self.fase('F0', extra=['--referencia', '/no/esta.png'])
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('no existe la imagen de referencia: /no/esta.png', r.stdout)
 
     def test_f4_cosa_por_tipo_y_desde_f0(self):
         d = os.path.join(self.raiz, 'generated', 'flora', 'aullador')

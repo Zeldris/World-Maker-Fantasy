@@ -227,6 +227,29 @@ class Fases(T.Base):
                 escribir(os.path.join(d, 'intentos', nombre), 'x')
         C.actualizar(d, f)
 
+    def test_generar_con_referencia_pasa_la_imagen_del_juego_y_alarga_la_estimacion(self):
+        ruta = os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-banner.png')
+        escribir(ruta, 'IMG')
+        self.assertEqual(self.post_fase('generar', fase='F0', prompt='x', usarReferencia=True)[0], 202)
+        c = self.pedir('/api/cola')[1]['cola'][0]
+        self.assertEqual((c['conReferencia'], c['estimado']), (True, 68))
+        self.esperar()
+        self.assertEqual(self.args()[0]['argv'][5:], ['--referencia', ruta])
+
+    def test_avanzar_lleva_la_casilla_a_la_fase_siguiente(self):
+        ruta = os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-banner.png')
+        escribir(ruta, 'IMG')
+        self.sembrar(n=1)
+        codigo, r = self.post_fase('avanzar', fase='F0', intento=1, siguiente='F4', usarReferencia=True)
+        self.assertEqual((codigo, r['lanzado']), (200, True))
+        self.esperar()
+        self.assertEqual(self.args()[-1]['argv'][5:], ['--referencia', ruta])
+
+    def test_generar_con_referencia_sin_imagen_del_juego_dice_por_que(self):
+        codigo, r = self.post_fase('generar', fase='F0', prompt='x', usarReferencia=True)
+        self.assertEqual((codigo, r['error']), (400, 'no hay imagen de fauna/nievon en image-generator/referencias/images/'))
+        self.assertEqual(self.args(), [])
+
     def test_renombrar_guarda_el_nombre_y_lo_trae_elementos(self):
         codigo, r = self.pedir('/api/camino/renombrar', {'tipo': 'fauna', 'slug': 'nievon', 'nombre': '  Oso de nieve '})
         self.assertEqual((codigo, r['camino']['nombre']), (200, 'Oso de nieve'))

@@ -96,7 +96,8 @@ def fase_de_entrada(v, fase):
     raise CaminoInvalido(f'Falta una fase aceptada ({pide}) para generar {fase} {POR_ID[fase]["nombre"]}')
 
 
-def semilla_por_defecto(v, fase, prompt):
+def semilla_por_defecto(v, fase, prompt, referencia=None):
+    """Solo cambia si se repite lo mismo: con otro prompt, o con o sin la imagen del juego, se compara a igual semilla."""
     f = (v or {}).get('fases', {}).get(fase)
     intentos = f['intentos'] if f else []
     if not intentos:
@@ -104,12 +105,12 @@ def semilla_por_defecto(v, fase, prompt):
             return SEMILLA_F0
         return v['fases'][fase_de_entrada(v, fase)]['semilla']
     ultimo = intentos[-1]
-    if prompt == ultimo['prompt']:
+    if prompt == ultimo['prompt'] and referencia == ultimo.get('referencia'):
         return max(i['semilla'] for i in intentos) + 1
     return ultimo['semilla']
 
 
-def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None):
+def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None):
     """Apunta un intento (imagen=None si falló). `entrada` = (fase, imagen) de la que parte, o None; `n`, el número que
     dio siguiente_n al nombrar la imagen (si no, el siguiente). Devuelve n."""
     v = camino.setdefault('variantes', {}).setdefault(variante, {'origen': None, 'faseActual': 'F0', 'fases': {}})
@@ -123,6 +124,8 @@ def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, s
                'segundos': segundos, 'fecha': datetime.datetime.now().isoformat(timespec='seconds'), 'salida': salida}
     if error:
         intento['error'] = error
+    if referencia:
+        intento['referencia'] = referencia  # la imagen del juego que llevó (archivo, sin ruta)
     f['intentos'].append(intento)
     v['faseActual'] = fase
     return n
