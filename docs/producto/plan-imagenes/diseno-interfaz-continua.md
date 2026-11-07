@@ -214,6 +214,14 @@ Pulsar una fase hecha enseña lo guardado, con su prompt, y permite crear una va
 aprobada, el botón principal es **Marcar ★**. Atajos de teclado para los tres botones. Se prueba primero con la maqueta
 de `IMG-39`.
 
+**Veredicto de la maqueta** (`IMG-39`, usuaria, 2026-11-07): el flujo vale tal como lo hace
+[`img-39-pantalla-elemento.html`](../../prototipos/img-39-pantalla-elemento.html), que manda sobre el dibujo de arriba
+(camino corto F0 → Final, F1 y F2 opcionales). Reglas que fija: **avanzar** acepta el intento visto, borra la imagen de
+los no aceptados (quedan prompt y semilla) y pone a la cola solo el primer intento de la fase siguiente; los intentos de
+la Final sin ★ se quedan; **crear variante desde aquí** hereda lo aceptado hasta esa fase y abre la Final (Atrás lleva
+a F1/F2); desde la Final no sale variante; borrar una fase avisa de las variantes y ★ que arrastra; una fase aceptada
+de nuevo deja lo posterior desfasado (⚠), sin borrarlo. Lo primero al construirla es el diseño compartido de §3.4.
+
 ### 2.1 Tablero (cola)
 
 ```
@@ -474,6 +482,27 @@ interfaz y la noche. Un borrador es un trabajo con dos semillas y dos intentos; 
 
 Lo que **no** se decide ahora: si el admin React (D6, `IMG-13`) sustituye a `index.html` o lo embebe. El diseño
 vale para los dos porque todo lo que la pantalla necesita sale de `/api/*` de `servidor.py`.
+
+### 3.4 Diseño compartido con GVIG (`IMG-41`, `IMG-26`)
+
+La usuaria, 2026-11-07: «que las dos interfaces compartan diseño aunque luego tengan conceptos diferentes, pero así es
+más reusable todo». Las dos interfaces ya parten igual: servidor `ThreadingHTTPServer` solo con stdlib y página
+vanilla sin build. Inventario de GVIG leído (solo lectura) el 2026-11-07; rutas relativas a
+`galivelop-image-generator/gimg/ui/`.
+
+| Pieza | Qué se hace aquí |
+|---|---|
+| Tokens y CSS (`css/tokens.css`, `base.css`, `layout.css`, `components.css`) | Los mismos nombres (`--bg`, `--surface`, `--text`, `--accent`, `--ok`/`--warn`/`--bad`, `--focus`, `--tap` 44 px…), tema claro/oscuro por `data-theme` y `data-font-scale`; los valores, de la paleta de Tarkor. Sustituyen a `--fondo`, `--panel`… de `index.html` |
+| Utilidades sin dominio (`dom.js`, `lib/focus-trap.js`, `components/toast.js`, `confirm.js`, `lightbox.js`, `theme.js`, `font-scale.js`, `lib/gamepad.js`) | Se copian tal cual, con su licencia MIT |
+| `api.js` y el simulador `?mock=1` | Se copia el transporte (`setTransport`, errores, sin conexión); `paths` y `api` son de cada producto. El simulador de WMF sirve el contrato de fases de §3.0 |
+| Cola (`queue-poll.js`, `components/queue-bar.js`) | Pastilla y cajón iguales; la entrada de la cola es el contrato común (estado, elemento, fase/perfil, intento, progreso) y el enlace lleva a la pantalla de cada producto |
+| Atajos (`components/shortcuts.js`) | La mecánica y la ayuda; la tabla de teclas es de cada pantalla (Avanzar, Regenerar, Atrás, ★ aquí) |
+| Test de navegador (`tests/browser.py`, `test_ui.py`) | Se copian: CDP/BiDi sin Playwright y las reglas estáticas (CSP sin `onclick` ni `style` en línea, contraste, táctil ≥ 44 px) |
+| Servidor | Se separa el núcleo (router, comprobación de origen y JSON, estáticos con CSP, trabajo y cola) del adaptador de Tarkor (`catalogo()`, `ImagePrompt`, `MUNDO`) de §3.3 |
+| Conceptos (pedido, intento, plantilla, montaje, `layout-editor.js`, `measure-chip.js`) | No se copian: son de GVIG. Del chip de medida se puede rescatar su cola serie con `IntersectionObserver` |
+
+Las dos pantallas de WMF, la de `index.html` (CFG-43: lista, perfil, galería) y la del elemento por fases (`IMG-25`),
+se hacen con esas piezas. Lo que cambie aquí en el diseño común se apunta para GVIG (`IMG-26`); ese repo no se toca.
 
 ## 4. Cómo entra una pauta nueva
 

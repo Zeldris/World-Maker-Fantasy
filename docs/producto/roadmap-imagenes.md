@@ -64,13 +64,14 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 
 - **IMG-39 · Prototipo de la pantalla del elemento** [A] (usuaria, 2026-11-06): maqueta desechable con la skill
   `prototype`, con imágenes ya generadas y sin motor, para que la usuaria pruebe avanzar, regenerar, atrás, variantes y
-  ★ antes de construirlo. **S** 🚧 en curso 2026-11-07: maqueta lista,
+  ★ antes de construirlo. **S** ✅ 2026-11-07: maqueta
   [`img-39-pantalla-elemento.html`](../prototipos/img-39-pantalla-elemento.html) (en la Deck, con doble clic; para el
   móvil, `python3 docs/prototipos/img-39-construir.py --incrustar <salida>` la hace autocontenida). Cuatro elementos
   con las imágenes de r25-r31, camino corto F0 → Final, F1 y F2 opcionales, cola, bandeja, variantes, borrado con
-  aviso, biblioteca ★ y cinco recorridos guiados. **Falta:** que la usuaria la pruebe y el veredicto. Preguntas abiertas
-  que salen de la maqueta: si avanzar debe lanzar solo el primer intento de la fase siguiente; qué pasa con los
-  intentos de la Final sin ★ (hoy se quedan); si una variante «desde aquí» debe abrir la Final o la fase siguiente.
+  aviso, biblioteca ★ y cinco recorridos guiados. **Veredicto** (usuaria): el flujo vale tal como lo hace la maqueta;
+  lo primero es que las interfaces compartan diseño (`IMG-41`). Las tres preguntas que salieron quedan con lo que hace
+  la maqueta: avanzar lanza solo el primer intento de la fase siguiente; los intentos de la Final sin ★ se quedan; una
+  variante «desde aquí» hereda lo aceptado y abre la Final (Atrás lleva a F1/F2). Pasado al diseño §2.0.
 
 ### Bloque C · Motor e interfaz base
 
@@ -81,7 +82,10 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 - **IMG-41 · Base de interfaz con lo rescatado de GVIG** [A] (usuaria, 2026-11-06): test de navegador sin Playwright,
   API con simulador `?mock=1`, cola, atajos, trampa de foco y chip de medida de `galivelop-image-generator`, adaptados a
   la hoja de estilos de Tarkor, sobre `servidor.py` e `index.html`. Se copia aquí y se conserva su licencia MIT; ese repo
-  no se toca. **M**
+  no se toca. **M** **Diseño compartido** (usuaria, 2026-11-07: «que las dos interfaces compartan diseño aunque luego
+  tengan conceptos diferentes»): la interfaz de WMF toma la estructura y los componentes de GVIG con los mismos nombres
+  de tokens CSS, y cada producto cambia solo los valores (paleta de Tarkor frente a la violeta de Galivelop) y sus
+  pantallas de concepto (elemento, fases y variantes aquí; pedido, intento y montaje allí). Detalle en el diseño §3.4.
 
 ### Bloque D · Pantalla del elemento
 
