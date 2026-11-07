@@ -403,7 +403,14 @@ desde el panel vive en tablas que siembran.
   ya salen. **Falta para parecerse al banner:** volumen y lana larga enredada (sale flaco, de pelo corto, con el rojo
   a manchas), cornamenta ramificada y ancha (salen cuernos simples) y cielo de tormenta. El `promptUsado` del propio
   elemento, con el que se hizo el banner, no llega al modelo: `ejemplosDePromptsUsados` excluye el mismo sujeto.
-  **Pendiente:** decidir si se le pasa o si la pantalla lo propone en F0, y juzgar otros elementos.
+  **Propuesta, sin aprobar (2026-11-07), en este orden:** **1.** No pasárselo al modelo: reescribiría un texto que ya
+  funcionó. La pantalla ya lo propone en F0 si no hay intentos (`adaptador_tarkor.prompt`, usado antes que base), pero
+  sin decir de dónde sale, y arrastra «Use the reference image only as a guide…», que sobra si la casilla está
+  desmarcada: quitar ese inicio y enseñar la fuente. **2.** Generar F0 y Final de múrgol con ese prompt: si tampoco se
+  acerca al banner, el límite es del generador y no del texto, y eso cambia qué se arregla después. **3.** Para
+  elementos sin `promptUsado`, juzgar prompts de la IA en tres o cuatro de otros tipos antes de tocar más las reglas,
+  para no ajustarlas solo a múrgol. Hipótesis por comprobar: el modelo diluye lo distintivo del lore («cornamenta
+  ramificada» → «horns»). El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
 - ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
