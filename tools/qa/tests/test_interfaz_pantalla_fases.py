@@ -96,6 +96,35 @@ class PantallaFases(Base):
         pagina.ws.close()
 
 
+    def test_el_prompt_propuesto_pierde_el_inicio_y_dice_de_donde_sale(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1&rapido=1')
+        pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        abrir = "[...document.querySelectorAll('#lista .elemento')].find((e) => e.textContent.includes('%s')).click()"
+        fuente = "document.getElementById('fasesPromptFuente').textContent"
+        # el usado de la enciclopedia, sin «Use the reference image…»
+        pagina.evaluate(abrir % 'Llanos')
+        pagina.wait("document.getElementById('fasesPrompt').value !== ''")
+        self.assertEqual(pagina.evaluate("document.getElementById('fasesPrompt').value"), 'ash plains at dusk')
+        self.assertEqual(pagina.evaluate(fuente), 'Propuesto: el prompt con el que se hizo la imagen del juego.')
+        # al editarlo deja de ser el propuesto, y al volver al mismo texto lo es otra vez
+        editar = ("(() => { const p = document.getElementById('fasesPrompt'); p.value = '%s'; "
+                  "p.dispatchEvent(new Event('input', { bubbles: true })); })()")
+        pagina.evaluate(editar % 'otro')
+        self.assertEqual(pagina.evaluate(fuente), '')
+        pagina.evaluate(editar % 'ash plains at dusk')
+        self.assertIn('imagen del juego', pagina.evaluate(fuente))
+        # el base lo dice como base
+        pagina.evaluate(abrir % 'Aullador')
+        pagina.wait("document.getElementById('fasesPrompt').value.startsWith('a red howler')")
+        self.assertEqual(pagina.evaluate(fuente), 'Propuesto: el prompt base de la enciclopedia.')
+        # sin prompt, no se inventa una fuente
+        pagina.evaluate(abrir % 'Cardo')
+        pagina.wait("document.getElementById('fasesPrompt').value === ''")
+        self.assertEqual(pagina.evaluate(fuente), '')
+        self.assertEqual(self.nav.take_problems(), [])
+
     def test_casilla_de_referencia(self):
         pagina = self.nav.new_page()
         self.nav.take_problems()

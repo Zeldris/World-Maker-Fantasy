@@ -42,7 +42,8 @@ const datos = {
   },
   'zona/llanos-de-ceniza': {
     nombre: 'Llanos de ceniza', juego: 'zona/llanos-de-ceniza-mapa.png', perfilJuego: 'mapa',
-    prompts: { mapa: { usado: null, base: 'ash plains seen from above, cracked grey earth, old riverbeds, hand-drawn map style' } },
+    prompts: { mapa: { usado: null, base: 'ash plains seen from above, cracked grey earth, old riverbeds, hand-drawn map style' },
+      banner: { usado: 'Use the reference image only as a guide for lighting, contrast and shadows. Create a new image: ash plains at dusk', base: 'ash plains' } },
     intentos: [], elegidas: {},
   },
   'clase/cazador': { nombre: 'Cazador', juego: null, prompts: {}, intentos: [], elegidas: {} },

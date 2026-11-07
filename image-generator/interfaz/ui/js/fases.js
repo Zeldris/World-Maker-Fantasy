@@ -21,7 +21,8 @@ const S = { tipo: null, slug: null, camino: null, variante: null, lectura: null,
 let ctx = { ampliar: () => {}, seguir: () => {}, lista: async () => {} };
 let avisadaMarca = false;  // el aviso «marcar no es publicar» sale una vez por sesión
 
-const prompt = h('textarea', { id: 'fasesPrompt', spellcheck: 'false', 'aria-describedby': 'fasesPromptAyuda' });
+const prompt = h('textarea', { id: 'fasesPrompt', spellcheck: 'false', 'aria-describedby': 'fasesPromptAyuda fasesPromptFuente' });
+const fuentePrompt = h('div.hint', { id: 'fasesPromptFuente' });
 const campoNombre = h('input', { type: 'text', id: 'fasesNombre', maxlength: 120, 'aria-label': 'Nombre del elemento', autocomplete: 'off' });
 const casillaRef = h('input', { type: 'checkbox', id: 'fasesUsarRef' });
 const barra = h('progress', { max: 100, value: 2 });
@@ -59,6 +60,13 @@ function indiceVisto(lista) { return lista.length ? Math.min(S.idx === null ? li
 function srcImagen(imagen, lista) {
   const it = lista.find((i) => i.imagen === imagen);
   return paths.intento(S.tipo, S.slug, imagen.replace(/\.png$/, ''), it ? it.fecha : '');
+}
+/* IMG-50: el inicio de los prompts antiguos pide usar una imagen de referencia. Sobra: si la casilla está marcada, fase.py añade el suyo. */
+const sinInicioDeReferencia = (texto) => texto.replace(/^Use the reference image[^:]*:\s*/i, '');
+const FUENTES = { usado: 'con el que se hizo la imagen del juego', base: 'base de la enciclopedia' };
+function pintarFuente() {
+  const propuesto = !!S.promptEnc && prompt.value === S.promptEnc;
+  fuentePrompt.textContent = propuesto && FUENTES[S.fuenteEnc] ? `Propuesto: el prompt ${FUENTES[S.fuenteEnc]}.` : '';
 }
 function promptPorDefecto(v, f) {
   const lista = intentos(v, f);
@@ -105,14 +113,14 @@ async function buscarReferencia(tipo, slug) {
 }
 export async function abrir(tipo, slug) {
   const token = ++S.token;
-  Object.assign(S, { tipo, slug, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '', clave: null, editando: false, usarRef: {} });
+  Object.assign(S, { tipo, slug, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '', fuenteEnc: null, clave: null, editando: false, usarRef: {} });
   $('fases').hidden = false;
   render();
   try {
     const [camino, ref, enc, est] = await Promise.all([api.camino(tipo, slug), buscarReferencia(tipo, slug),
       api.prompt(tipo, slug, 'banner').catch(() => ({ prompt: '' })), api.estado()]);
     if (token !== S.token) return;
-    Object.assign(S, { camino, ref, promptEnc: enc.prompt || '' });
+    Object.assign(S, { camino, ref, promptEnc: sinInicioDeReferencia(enc.prompt || ''), fuenteEnc: enc.fuente || null });
     S.variante = Object.keys(camino.variantes)[0] || 'base';
     if (est.enMarcha) { S.generando = true; ctx.seguir(); }
   } catch (err) { if (token === S.token) S.aviso = describeError(err); }
@@ -378,9 +386,10 @@ function render() {
     S.lectura = null;
     const clave = `${S.tipo}/${S.slug}/${S.variante}/${f}/${intentos(v, f).length}`;
     if (clave !== S.clave) { S.clave = clave; prompt.value = promptPorDefecto(v, f); }
+    pintarFuente();
     hijos.push(h('div.tres', {}, panelReferencia(), panelAnterior(v, f), panelIntento(v, f)),
       h('div.field', {}, h('label', { for: 'fasesPrompt' }, `Prompt de ${nombreFase(f)}`), prompt,
-        h('div.hint', { id: 'fasesPromptAyuda' }, 'Editarlo mantiene la semilla; sin cambios, Regenerar usa otra.')),
+        h('div.hint', { id: 'fasesPromptAyuda' }, 'Editarlo mantiene la semilla; sin cambios, Regenerar usa otra.'), fuentePrompt),
       filaReferencia(v, f),
       acciones(v, f));
     if (S.generando) hijos.push(progreso_);
@@ -390,6 +399,7 @@ function render() {
 }
 casillaRef.addEventListener('change', () => { S.usarRef[claveRef(variante().faseActual)] = casillaRef.checked; });
 prompt.addEventListener('input', () => {  // el motivo de «Regenerar» depende de que haya texto
+  pintarFuente();
   if (S.btn.regenerar) {
     const vacio = !prompt.value.trim();
     S.btn.regenerar.disabled = vacio || S.generando;
