@@ -395,8 +395,15 @@ desde el panel vive en tablas que siembran.
   motivos. Con RAG (pgvector, 6 fragmentos, ≤6000 caracteres) y 32k de contexto. **M** ✅ 2026-11-07: POST
   `/image-prompt` responde 202 y GET `/image-prompt/estado`; la enciclopedia enseña «En cola (n)…» o «Generando…»;
   `abrir-enciclopedia.sh` levanta solo Postgres, Ollama en reposo, el backend con `TARKOR_SOLO_ENCICLOPEDIA=1` (sin
-  ticks ni precalentamiento) y el frontend. Pendiente: probarlo en la Deck con el 9B real (calidad del cuerpo,
-  tiempo por prompt), la usuaria.
+  ticks ni precalentamiento) y el frontend. **Prueba real con el 9B (2026-11-07), `fauna/murgol-macho`:** ~115 s por
+  prompt y 3 GB disponibles en el peor momento. El modelo copiaba los ejemplos de las reglas («the build of a maned
+  wolf»): ahora son huecos que se rellenan con el lore, y al modelo le llega «animal» en vez de «fauna». Con ese prompt,
+  sin editar (F0 39,9 s; Final con dos `-r` 204,7 s, ambas por las rutas de los botones): F0 EMD Cb 2,9 ✓ y Cr 2,2 ✓;
+  Final SSIM 0,549 ⚠, EMD Cb 1,9 ✓ y Cr 5,6 ✓ (con el v7 eran 12,0 ✗ y 20,2 ✗). Suelo rojo, luz cálida y animal bovino
+  ya salen. **Falta para parecerse al banner:** volumen y lana larga enredada (sale flaco, de pelo corto, con el rojo
+  a manchas), cornamenta ramificada y ancha (salen cuernos simples) y cielo de tormenta. El `promptUsado` del propio
+  elemento, con el que se hizo el banner, no llega al modelo: `ejemplosDePromptsUsados` excluye el mismo sujeto.
+  **Pendiente:** decidir si se le pasa o si la pantalla lo propone en F0, y juzgar otros elementos.
 - ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
@@ -411,8 +418,9 @@ desde el panel vive en tablas que siembran.
   aviso aunque la Final conserva pose y composición: el 0,7 parece estricto ahí, pero es un solo dato y no se cambia.
   El sujeto no se parece al banner: sale un carnero con un jersey rojo literal, por «resembling a worn wool sweater» del
   prompt v7. **Pendiente fuera de esta tarea (decide la usuaria):** corregir ese prompt y revisar el umbral de SSIM con
-  más Finales y con F1. **Sin probar con imágenes reales:** Regenerar y Avanzar desde los botones (lanzar por el servidor
-  solo está probado con tests y simulador).
+  más Finales y con F1. Atrás, Regenerar y Avanzar, probados después con imágenes reales por las rutas del servidor
+  (segunda Final, SSIM 0,549 ⚠, de nuevo con la composición conservada; números en `IMG-50`); el clic en los botones,
+  solo con tests y simulador.
   En tres partes: **1**, la pantalla de fases sobre las rutas de `IMG-40` (pasos, referencia,
   fase anterior, intentos con ◀ ▶, prompt, Atrás/Regenerar/Avanzar, atajos), también en `?mock=1`, con la generación
   suelta de CFG-43 plegada debajo; **2**, rutas y botones de renombrar, borrar lo guardado con aviso (regla 4) y marcar

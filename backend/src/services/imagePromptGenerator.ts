@@ -317,7 +317,8 @@ function contenidoUsuario(
   const maxCuerpo = Math.max(80, Math.min(260, tope - fijas - 10));
   return [
     `Subject (never write this name in the prompt): ${name}`,
-    `Kind: ${entityType}${sexo ? `, ${sexo}` : ''}`,
+    // «fauna» es un nombre interno: el modelo escribía «a faunal creature» y FLUX pinta cada palabra.
+    `Kind: ${entityType === 'fauna' ? 'animal' : entityType}${sexo ? `, ${sexo}` : ''}`,
     `Time of day: ${momento === 'dia' ? 'day' : momento === 'atardecer' ? 'dusk' : 'night'}`,
     `Image: ${perfil === 'banner' ? 'a wide cinematic banner' : perfil === 'mapa' ? 'a top-down map' : 'a small square icon'}; the framing sentence before your text is: "${encuadreFijo(mundo, perfil)}"`,
     region?.paisaje ? `Region landscape: ${region.paisaje}` : '',

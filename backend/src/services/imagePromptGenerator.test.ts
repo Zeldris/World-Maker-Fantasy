@@ -15,6 +15,12 @@ describe('IMG-50 — generateImagePrompt con el modelo local', () => {
     delete process.env.IMAGE_PROMPT_MODEL;
   });
 
+  it('al modelo le llega «animal», no el nombre interno «fauna»', async () => {
+    ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
+    await generateImagePrompt('fauna', 'Múrgol', 'Ganado lanudo, el macho.', 'banner');
+    expect(ollamaGenerate.mock.calls[0][0].prompt).toContain('Kind: animal, male');
+  });
+
   it('las reglas dan la forma de las frases sin contenido que el modelo pueda copiar a otro animal', async () => {
     // Prueba real con el múrgol (2026-11-07): un animal lanudo y voluminoso salió «a maned wolf» de patas largas.
     ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
