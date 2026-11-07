@@ -423,8 +423,9 @@ desde el panel vive en tablas que siembran.
   región; cuatro prompts regenerados y F0 de antes y después con la misma semilla ([resultado](plan-imagenes/img50-paso3.md#resultado-del-paso-4)):
   mejoran el cardo y las agujas, el hacha mejora en el entorno y **el Goirnte empeora** (sale un gólem). Las ocho F0 salen
   claras y doradas: la luz fija estorba en los banners oscuros, y el EMD no lo ve porque mide el tono, no la luminosidad.
-  **Pendiente, a la espera de la usuaria (paso 5):** quitar la luz dorada de la cola fija y probarlo con los mismos
-  prompts; medir también la luminosidad; que el validador vete «sun» y dejar de dárselo en la luz de región. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
+  **Pendiente, a la espera de la usuaria:** el paso 5 propuesto se
+  sustituye por [`plan-piezas-y-referencias.md`](plan-imagenes/plan-piezas-y-referencias.md) (usuaria, 2026-11-07: la luz
+  depende del lugar, primero las piezas; varias referencias adjuntas para combinar). Decisiones D1-D3 en su §8. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
 - ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
