@@ -407,8 +407,14 @@ desde el panel vive en tablas que siembran.
   funcionó. La pantalla ya lo proponía en F0 si no hay intentos (`adaptador_tarkor.prompt`, usado antes que base); ahora
   sin «Use the reference image only as a guide…» (si la casilla está marcada, `fase.py` añade su propio prefijo) y con
   una línea que dice de dónde sale, solo mientras el texto es el propuesto (`fases.js`). Solo 1 de los 156 prompts de la
-  base tiene `promptUsado`: el de múrgol, que empieza así. **2.** Generar F0 y Final de múrgol con ese prompt: si tampoco se
-  acerca al banner, el límite es del generador y no del texto, y eso cambia qué se arregla después. **3.** Para
+  base tiene `promptUsado`: el de múrgol, que empieza así. **2.** ✅ 2026-11-07 Generar F0 y Final de múrgol con ese prompt: si tampoco se
+  acerca al banner, el límite es del generador y no del texto. **Se acerca: el límite principal es el texto.** Variante
+  `usado`, semilla 4021, por las rutas del servidor (memoria mínima 8838 MB): F0 37,9 s, EMD Cb 3,3 ✓ y Cr 3,9 ✓; Final
+  203,8 s, SSIM 0,389 ⚠, EMD Cb 2,7 ✓ y Cr 5,6 ✓. Ya salen, y en F0 sin imagen de referencia, los tres animales, la
+  cornamenta ramificada y ancha, la lana larga y el cielo de atardecer con nubes. Falta: volumen (el del banner es más
+  masivo y enmarañado; aquí, mechones ordenados) y cielo más de tormenta. **El SSIM baja (0,549 → 0,389) con la imagen
+  que más se parece al banner:** no mide el parecido del sujeto, otro dato para revisar su umbral. Una sola semilla, y
+  ese prompt se escribió para esta imagen: no dice cuánto se lograría con un elemento sin banner. **3.** Para
   elementos sin `promptUsado`, juzgar prompts de la IA en tres o cuatro de otros tipos antes de tocar más las reglas,
   para no ajustarlas solo a múrgol. Hipótesis por comprobar: el modelo diluye lo distintivo del lore («cornamenta
   ramificada» → «horns»). El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
