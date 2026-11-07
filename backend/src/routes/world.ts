@@ -819,8 +819,7 @@ export async function worldRoutes(app: FastifyInstance) {
 
   // Generación de prompts de imagen BAJO DEMANDA (checklist 2026-07-21/22, punto 7 — petición
   // explícita de la usuaria: "hay que pedir 1 a 1 la imagen en cada petición, no que genere todos
-  // los prompts a la vez"). Un solo POST = como mucho una llamada real a un proveedor cloud (o a
-  // Ollama si ninguno está disponible) — nunca un lote, y nunca las dos tallas de golpe (se pide
+  // los prompts a la vez"). Un solo POST = como mucho un trabajo en la cola del modelo local (IMG-50) — nunca un lote, y nunca las dos tallas de golpe (se pide
   // sizeProfile explícito). Cacheado para siempre en ImagePrompt: si ya existe esa combinación
   // exacta, se devuelve directo sin volver a llamar a nada. seedImagePrompts.ts sigue existiendo
   // para un uso puntual por lotes, pero este endpoint es el camino principal.
@@ -861,39 +860,49 @@ export async function worldRoutes(app: FastifyInstance) {
           return reply.status(404).send({ error: 'Entidad no encontrada en este mundo' });
         }
 
-        // Bug real jugando en vivo (2026-09-06, "no está funcionando la generación de prompts" —
-        // el frontend solo mostraba "No se pudo generar", sin distinguir un fallo real de todos los
-        // proveedores de IA de cualquier otro error): sin este try/catch, un fallo aquí llegaba como
-        // 500 genérico de Fastify, sin `body.error` legible que el frontend pudiera mostrar.
-        // CFG-40: fuera del try, que atribuye cualquier fallo a los proveedores de IA.
+        // IMG-50: el prompt lo escribe el modelo local por una cola (carga, escribe, descarga). El POST encola y
+        // responde 202; el frontend pregunta por el estado en el GET de abajo hasta que sale `listo` o `error`.
+        // CFG-40: los prompts que la usuaria ya usó, como ejemplos.
         const ejemplos = await ejemplosDePromptsUsados(world.id, entityType as ImagePromptEntityType, entitySlug, sizeProfile as ImagePromptSizeProfile);
-        let prompt: string;
-        let provider: string;
-        try {
-          const { generateImagePrompt } = await import('../services/imagePromptGenerator.js');
-          ({ prompt, provider } = await generateImagePrompt(
-            entityType as ImagePromptEntityType,
-            subject.name,
-            subject.loreContext,
-            sizeProfile as ImagePromptSizeProfile,
-            // CFG-40: paisaje y luz de la región, y los prompts que la usuaria ya usó como ejemplos.
-            {
-              region: subject.region,
-              conMomento: subject.conMomento,
-              ejemplos,
-            },
-          ));
-        } catch (err) {
-          app.log.error({ err, entityType, entitySlug, sizeProfile }, '[image-prompt] todos los proveedores de IA fallaron');
-          return reply.status(502).send({ error: 'Los proveedores de generación de imágenes no respondieron — inténtalo de nuevo en unos minutos.' });
-        }
-        await prisma.imagePrompt.upsert({
-          where: { worldId_entityType_entitySlug_sizeProfile: { worldId: world.id, entityType, entitySlug, sizeProfile } },
-          create: { worldId: world.id, entityType, entitySlug, sizeProfile, prompt, provider },
-          // Solo el prompt base: el usado (CFG-38) es de la usuaria y regenerar nunca lo pisa.
-          update: { prompt, provider },
+        const { encolarImagePrompt } = await import('../services/imagePromptCola.js');
+        const estado = encolarImagePrompt({
+          worldId: world.id,
+          entityType: entityType as ImagePromptEntityType,
+          entitySlug,
+          sizeProfile: sizeProfile as ImagePromptSizeProfile,
+          name: subject.name,
+          loreContext: subject.loreContext,
+          region: subject.region,
+          conMomento: subject.conMomento,
+          ejemplos,
         });
-        return { prompt, provider, cached: false };
+        return reply.status(202).send(estado);
+      },
+    );
+
+    app.get<{ Params: { slug: string }; Querystring: { entityType: string; entitySlug: string; sizeProfile: string } }>(
+      '/world/:slug/image-prompt/estado',
+      async (request, reply) => {
+        const world = await prisma.world.findUnique({ where: { slug: request.params.slug } });
+        if (!world) {
+          return reply.status(404).send({ error: 'Mundo no encontrado' });
+        }
+        const { entityType, entitySlug, sizeProfile } = request.query;
+        const errorClave = errorClaveImagePrompt(entityType, entitySlug, sizeProfile);
+        if (errorClave) {
+          return reply.status(400).send({ error: errorClave });
+        }
+        const { estadoImagePrompt } = await import('../services/imagePromptCola.js');
+        const estado = estadoImagePrompt({
+          worldId: world.id,
+          entityType: entityType as ImagePromptEntityType,
+          entitySlug,
+          sizeProfile: sizeProfile as ImagePromptSizeProfile,
+        });
+        if (!estado) {
+          return reply.status(404).send({ error: 'Ese prompt no está en la cola' });
+        }
+        return estado;
       },
     );
   }

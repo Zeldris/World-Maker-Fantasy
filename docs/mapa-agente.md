@@ -227,11 +227,12 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 ## Imágenes (prompts y generación local)
 
-- **Código:** `b/services/imagePromptGenerator.ts#generateImagePrompt` (reglas de FLUX en el prompt del sistema,
-  `buildPrompt`, `REGION_ESCENA`); el contexto de lore, `b/services/imagePromptContext.ts#loreContextFor`, y los
+- **Código:** `b/services/imagePromptGenerator.ts#generateImagePrompt` (IMG-50: el modelo local escribe el cuerpo y
+  `colaFija`/`encuadreFijo` ponen lo de `image-generator/estilo/mundo.json`; `validarPrompt` y un reintento), la cola
+  en serie `b/services/imagePromptCola.ts#encolarImagePrompt` (con RAG); el contexto de lore, `b/services/imagePromptContext.ts#loreContextFor`, y los
   prompts usados como ejemplos, `b/services/imagePromptContext.ts#ejemplosDePromptsUsados`; rutas
-  `/world/:slug/image-prompt` (GET y POST) e `image-prompt/usado` (PUT) en `b/routes/world.ts`.
-- **Tests:** `b/services/imagePromptGenerator.test.ts`, `b/services/imagePromptContext.test.ts`,
+  `/world/:slug/image-prompt` (GET y POST, 202 en cola), `image-prompt/estado` (GET) e `image-prompt/usado` (PUT) en `b/routes/world.ts`.
+- **Tests:** `b/services/imagePromptGenerator.test.ts`, `b/services/imagePromptCola.test.ts`, `b/services/imagePromptContext.test.ts`,
   `f/components/ImagePromptDisplay.test.tsx`.
 - **Datos:** `backend/prisma/schema.prisma#ImagePrompt` (`prompt` base y `promptUsado`, por mundo, entidad y perfil),
   base `tarkor` (la de desarrollo): `TARKOR_DB_URL=postgresql://tarkor:tarkor@localhost:5432/tarkor tools/qa/sql.sh`.

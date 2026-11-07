@@ -243,6 +243,17 @@ desde el panel vive en tablas que siembran.
   `generar.sh` (por ahí pasan ficha, `PROMPT_ARCHIVO` y planos), 5 tests en `test_generar_perfil.py` (`LoraDeEstilo`), README.
   Prueba real (`probar.sh fauna aullador-rojo fotorreal 42`): carga `bin-nuevo`, aplica el LoRA y grada; 563 s, mínimo
   5,4 GB libres. La cadena de planos no se corrió entera: su img2img con `bin-nuevo` ya se probó en `IMG-31`.
+- ~~**IMG-50 · Prompts de imagen con el modelo local, por cola**~~ [A] (usuaria, 2026-11-07; excepción a la pausa del
+  roadmap aprobada ese día): el modelo de OpenCode (`qwen35-9b-32k` por Ollama, `IMAGE_PROMPT_MODEL` lo cambia)
+  sustituye a las APIs en la nube. Cola en serie (`imagePromptCola.ts`): cada trabajo carga el modelo, escribe y lo
+  descarga (`keepAlive 0`), y espera si `sd-cli` está corriendo. Formato de `claude/imagenes-por-fases` (`pautas.md`
+  v5.3 y `estilo/mundo.json`, como `prompt_ficha.py`): el modelo escribe solo el cuerpo y el código pone encuadre,
+  estilo y preámbulo, valida vetadas, negaciones, nombre propio, momento y longitud, y reintenta una vez con los
+  motivos. Con RAG (pgvector, 6 fragmentos, ≤6000 caracteres) y 32k de contexto. **M** ✅ 2026-11-07: POST
+  `/image-prompt` responde 202 y GET `/image-prompt/estado`; la enciclopedia enseña «En cola (n)…» o «Generando…»;
+  `abrir-enciclopedia.sh` levanta solo Postgres, Ollama en reposo, el backend con `TARKOR_SOLO_ENCICLOPEDIA=1` (sin
+  ticks ni precalentamiento) y el frontend. Pendiente: probarlo en la Deck con el 9B real (calidad del cuerpo,
+  tiempo por prompt), la usuaria.
 - **IMG-25 · Interfaz de creación continua** [A] (usuaria, 2026-10-27): sobre la interfaz de `CFG-43`, cola de
   elementos sin imagen, de la ficha al prompt con `pautas.md`, borrador para el sí/no, final en tanda de noche,
   gradado, medido y guardado con su receta. Depende de `IMG-23` e `IMG-7`. **L** Diseño (Fable, 2026-10-27):

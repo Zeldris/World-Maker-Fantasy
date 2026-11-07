@@ -76,7 +76,10 @@ app.listen({ port: env.port, host: '0.0.0.0' }).catch((err) => {
   process.exit(1);
 });
 
-startWorldTickWorker();
+// IMG-50: `abrir-enciclopedia.sh` levanta solo la enciclopedia y los prompts de imagen, sin el mundo vivo ni el
+// narrador: ni el worker de ticks ni el precalentamiento, que cargarían el modelo del narrador en Ollama.
+const soloEnciclopedia = process.env.TARKOR_SOLO_ENCICLOPEDIA === '1';
+if (!soloEnciclopedia) startWorldTickWorker();
 
 // Warm-up del narrador (2026-09-14, petición explícita de Álvaro tras medir en vivo que el primer
 // turno tras cada arranque tarda 2-3x más que uno en caliente). Dispara una generación mínima al
@@ -99,7 +102,7 @@ startWorldTickWorker();
 // Solo el narrador, NO el cronista (probado y descartado, 2026-09-14, cuando clasificar llevaba `keepAlive: '0'`).
 // Desde QA-168 clasificar lo mantiene 5 min, así que solo el primer clasificar tras arrancar sale en frío (~7 s);
 // precalentarlo tampoco ahorraría mucho si el primer turno tarda más de 5 min en llegar.
-void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000, keepAlive: '1h', tarea: 'calentar' })
+if (!soloEnciclopedia) void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000, keepAlive: '1h', tarea: 'calentar' })
   .then(() => app.log.info(`Narrador (${env.ollamaModelNarrador}) precalentado en Ollama (prefijo real cacheado).`))
   .catch((err) => app.log.warn(`Warm-up del narrador falló (no bloquea el arranque): ${err instanceof Error ? err.message : err}`));
 
