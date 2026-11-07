@@ -241,11 +241,13 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   argumento es la ruta de un archivo de prompt); todo por elemento en `image-generator/generated/<tipo>/<slug>/`
   (`intentos/`, `prompts/`, `logs/`, `registro.tsv`, `notas.md`, `elegidas.tsv`), fuera de git.
 - **Interfaz del generador (`CFG-43`):** la abre `image-generator/abrir.sh` (127.0.0.1:7861). Servidor,
-  `image-generator/interfaz/servidor.py`: `catalogo` (la enciclopedia con lo anidado y los enums de clase),
-  `elementos` (la lista), `Trabajo.lanzar` (una imagen a la vez), `leer_progreso`, `elegir`. Página,
+  `image-generator/interfaz/servidor.py` (rutas en `RUTAS`): `elementos` (la lista), `Trabajo.lanzar` (una imagen a
+  la vez), `leer_progreso`, `elegir`; el juego, en `adaptador_tarkor.py` (`Tarkor.catalogo`: la enciclopedia con lo
+  anidado y los enums de clase; `prompt`, ImagePrompt); lo común con GVIG, en `nucleo.py` (`Rutas`, `Manejador`,
+  `Trabajo` y la cola, `estatico`). Página,
   `image-generator/interfaz/index.html` (solo marcado) y `ui/js/app.js`: `elegirElemento`, `traerPrompt`,
   `pintarGaleria`. Diseño compartido con GVIG (`IMG-41`): tokens y utilidades en `ui/css/` (`app.css` es lo propio),
-  piezas copiadas en `ui/js/` (`dom.js`, `components/`), servidos por `servidor.py#estatico` (`/ui/<ruta>`, con CSP).
+  piezas copiadas en `ui/js/` (`dom.js`, `components/`), servidos por `nucleo.py#estatico` (`/ui/<ruta>`, con CSP).
   Toda llamada a la API pasa por `ui/js/api.js` (`api`, `paths`); `/?mock=1` la sirve `ui/mock/api-mock.js` en memoria,
   sin BD ni sd-cli (para mirar la página o probar un cambio de interfaz). La cola de la cabecera: `ui/js/queue-poll.js`
   (sondea `GET /api/cola`, `Trabajo.cola`) y `ui/js/components/queue-bar.js` (pastilla y cajón). Para ver la lista o el

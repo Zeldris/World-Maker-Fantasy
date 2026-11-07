@@ -8,6 +8,10 @@ Genera con `scripts/probar.sh <tipo> <slug> <perfil> [semilla] [pasos]` (que lla
 de memoria). El prompt viene de la tabla ImagePrompt (usado, si no el base) o pegado. Si en `referencias/images/` (la
 copia de `backend/uploads/images/` que hace `abrir.sh`) hay imagen de ese elemento, se ve y se puede usar de referencia.
 
+Capas (IMG-41): `nucleo.py` es lo común con GVIG (router, POST solo JSON y de la propia página, estáticos con CSP,
+errores, un trabajo a la vez y la cola); `adaptador_tarkor.py`, lo del juego (catálogo, ImagePrompt, MUNDO); este
+archivo, el generador (generated/, referencias, tiempos, progreso de sd-cli) y sus rutas.
+
 API (JSON salvo las imágenes):
   GET  /api/inicio                          perfiles y mundo
   GET  /api/elementos                       {elementos:[{tipo,slug,perfiles:[{perfil,usado}],juego,intentos,elegidas}], aviso}
@@ -28,30 +32,33 @@ API (JSON salvo las imágenes):
 
 Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.1.
 Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_API (backend del juego, ''
-= sin catálogo), IMG_PUERTO (7861).
+= sin catálogo), IMG_ESQUEMA (schema.prisma), IMG_PUERTO (7861).
 """
-import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time, unicodedata, urllib.request
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs, unquote
+import os, re, shlex, shutil, statistics, subprocess, sys, tempfile
+from urllib.parse import unquote
+from http.server import ThreadingHTTPServer  # noqa: F401 (los tests montan el servidor con él)
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
+if AQUI not in sys.path:
+    sys.path.insert(0, AQUI)  # nucleo y el adaptador, también cuando los tests cargan este archivo por ruta
+
+import nucleo  # noqa: E402
+from nucleo import Invalido, SLUG, STATIC_CSP, slug, entero  # noqa: E402,F401 (STATIC_CSP: lo miran los tests)
+import adaptador_tarkor  # noqa: E402
+
 RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
 PROBAR = os.environ.get('IMG_PROBAR', os.path.join(RAIZ, 'scripts', 'probar.sh'))
-PSQL = shlex.split(os.environ.get('IMG_PSQL', 'podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c'))
-MUNDO = os.environ.get('MUNDO', 'helek-sirik')
-API = os.environ.get('IMG_API', 'http://127.0.0.1:3001')
 GENERADO = os.path.join(RAIZ, 'generated')
 # IMG-41: la página se compone de /ui/ (CSS, JS y fuentes propios, base de diseño de GVIG); solo se sirve lo de esa carpeta.
 UI_DIR = os.path.join(AQUI, 'ui')
-TIPOS_UI = {'.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-            '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
-            '.json': 'application/json; charset=utf-8'}
-# La CSP de GVIG (gimg/server.py#STATIC_CSP): nada en línea ni externo.
-STATIC_CSP = ("default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self'; "
-              "frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
 REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
+ADAPTADOR = adaptador_tarkor.Tarkor(
+    psql=shlex.split(os.environ.get('IMG_PSQL', 'podman exec -i tarkor-postgres psql -U tarkor -d tarkor -At -c')),
+    mundo=os.environ.get('MUNDO', 'helek-sirik'),
+    api=os.environ.get('IMG_API', 'http://127.0.0.1:3001'),
+    esquema=os.environ.get('IMG_ESQUEMA', os.path.join(os.path.dirname(RAIZ), 'backend', 'prisma', 'schema.prisma')))
+SECCIONES = adaptador_tarkor.SECCIONES
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
-SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]*$')  # el juego respeta las mayúsculas (CAZADOR)
 # Los bancos de calidad (docs/producto/plan-imagenes/banco.sh y calidad.sh, IMG-15) dejan sus intentos en generated/banco/:
 # no son elementos del juego ni cuentan para el tiempo estimado (prueban otros modelos, pasos y tamaños).
 BANCO = 'banco'
@@ -61,24 +68,10 @@ ESTIMADO_BASE = {'thumbnail': 105, 'banner': 110, 'mapa': 110, 'icono': 80}  # s
 FACTOR_REFERENCIA = 1.9
 
 
-class Invalido(ValueError):
-    pass
-
-
-def slug(valor, campo):
-    if not isinstance(valor, str) or not SLUG.match(valor):
-        raise Invalido(f'«{valor}» no vale como {campo}: solo letras sin tilde, cifras y guiones')
-    return valor
-
-
-def entero(valor, campo, minimo, maximo):
-    try:
-        n = int(valor)
-    except (TypeError, ValueError):
-        raise Invalido(f'{campo} tiene que ser un número')
-    if not minimo <= n <= maximo:
-        raise Invalido(f'{campo}: de {minimo} a {maximo}')
-    return n
+def perfil_valido(perfil):
+    if perfil not in PERFILES:
+        raise Invalido(f'perfil desconocido: {perfil}')
+    return perfil
 
 
 def elemento_dir(tipo, slug_):
@@ -87,39 +80,8 @@ def elemento_dir(tipo, slug_):
 
 def destino_elegida(tipo, slug_, perfil):
     """Ruta con el nombre que busca el juego: generated/<tipo>/<slug>/<slug>-<perfil>.png."""
-    if perfil not in PERFILES:
-        raise Invalido(f'perfil desconocido: {perfil}')
+    perfil_valido(perfil)
     return os.path.join(elemento_dir(tipo, slug_), f'{slug_}-{perfil}.png')
-
-
-# --- base de datos (ImagePrompt) ---
-
-def consulta_json(sql):
-    r = subprocess.run(PSQL + [sql], capture_output=True, text=True, timeout=20)
-    if r.returncode != 0:
-        raise RuntimeError(f'la base no responde ({r.stderr.strip()[:200]}); ¿está arrancado tarkor-postgres?')
-    return json.loads(r.stdout.strip() or 'null')
-
-
-def donde(tipo, slug_, perfil):
-    return (f"\"worldId\"=(select id from \"World\" where slug='{slug(MUNDO, 'mundo')}') and "
-            f"\"entityType\"='{slug(tipo, 'tipo')}' and \"entitySlug\"='{slug(slug_, 'slug')}' and \"sizeProfile\"='{perfil}'")
-
-
-def entidades():
-    sql = ("select coalesce(json_agg(json_build_object('tipo',\"entityType\",'slug',\"entitySlug\",'perfil',\"sizeProfile\","
-           "'usado',\"promptUsado\" is not null) order by \"entityType\",\"entitySlug\",\"sizeProfile\"),'[]') "
-           f"from \"ImagePrompt\" where \"worldId\"=(select id from \"World\" where slug='{slug(MUNDO, 'mundo')}')")
-    # Una fila con un tipo o slug que no son rutas válidas (una tilde, un «:») no tumba la lista: se salta.
-    return [e for e in consulta_json(sql) or [] if SLUG.match(str(e.get('tipo'))) and SLUG.match(str(e.get('slug')))]
-
-
-def prompt_de(tipo, slug_, perfil):
-    fila = consulta_json(f"select json_build_object('usado',\"promptUsado\",'base',prompt) from \"ImagePrompt\" "
-                         f"where {donde(tipo, slug_, perfil)}")
-    if not fila:
-        return None
-    return {'prompt': fila['usado'] or fila['base'], 'fuente': 'usado' if fila['usado'] else 'base'}
 
 
 # --- elemento: registro.tsv (lo escribe probar.sh), notas.md y elegidas.tsv ---
@@ -208,99 +170,10 @@ def elegir(tipo, slug_, nombre):
     return rel
 
 
-# Sección de /world/<mundo>/enciclopedia → (carpeta de imágenes, campo del slug); fauna y flora según `esFauna`.
-SECCIONES = {'npcs': ('npc', 'slug'), 'items': ('item', 'slug'), 'faunaFlora': (None, 'sourceSlug'),
-             'locations': ('location', 'slug'), 'razas': ('raza', 'slug'), 'personajes': ('personaje', 'slug'),
-             'constructionRecipes': ('construccion', 'key'), 'craftingRecipes': ('crafteo', 'key'),
-             'factions': ('faction', 'slug'), 'historia': ('historia', 'slug')}
-ESQUEMA = os.environ.get('IMG_ESQUEMA', os.path.join(os.path.dirname(RAIZ), 'backend', 'prisma', 'schema.prisma'))
-
-
-def slugify(nombre):
-    """El `slugify` del backend (backend/src/lib/slugify.ts), que da el slug de cada habilidad."""
-    s_ = ''.join(c for c in unicodedata.normalize('NFD', nombre) if not unicodedata.combining(c)).lower()
-    return re.sub(r'[^a-z0-9]+', '-', s_).strip('-')
-
-
-def enum_prisma(nombre):
-    """Valores del enum `nombre` de schema.prisma: las clases y especializaciones usan el valor como slug."""
-    try:
-        with open(ESQUEMA, encoding='utf-8') as f:
-            m = re.search(rf'^enum {nombre} \{{(.*?)^\}}', f.read(), re.S | re.M)
-    except OSError:
-        return []
-    return re.findall(r'^\s*([A-Z][A-Z0-9_]*)\s*$', m.group(1), re.M) if m else []
-
-
-def catalogo():
-    """[(tipo, slug, nombre)] de toda la enciclopedia, del backend del juego (si no corre, error), con lo anidado
-    (variantes por sexo, de raza y de tiempo; el mapa de zona de cada lugar; las habilidades) y las clases y
-    especializaciones de schema.prisma."""
-    with urllib.request.urlopen(f'{API}/world/{slug(MUNDO, "mundo")}/enciclopedia', timeout=10) as r:
-        datos = json.load(r)
-    out = []
-
-    def sumar(tipo, s_, nombre):
-        if s_ and SLUG.match(s_):
-            out.append((tipo, s_, nombre))
-
-    def con_sexos(tipo, e, s_, nombre):
-        if not s_:
-            return
-        sumar(tipo, s_, nombre)
-        for v in e.get('variantesSexo') or []:
-            if v.get('sexo'):
-                sumar(tipo, f"{s_}-{v['sexo']}", f"{nombre} ({v['sexo']})")
-
-    for seccion, (tipo, campo) in SECCIONES.items():
-        for e in datos.get(seccion) or []:
-            t = tipo or ('fauna' if e.get('esFauna') else 'flora')
-            s_, nombre = e.get(campo), e.get('name') or e.get('sourceName') or e.get('title') or ''
-            con_sexos(t, e, s_, nombre)
-            for v in e.get('variantes') or []:  # variantes regionales de raza
-                con_sexos(t, v, v.get('slug'), v.get('name') or '')
-            if seccion == 'locations' and s_:
-                sumar('zona', s_, f'{nombre} (mapa)')
-                for v in e.get('variantesTiempo') or []:
-                    if not (v.get('momento') and v.get('estacion')):
-                        continue
-                    momento = f"{v.get('momento')}-{v.get('estacion')}"
-                    sumar('location', f'{s_}-{momento}', f'{nombre} ({momento})')
-                    sumar('zona', f'{s_}-{momento}', f'{nombre} (mapa, {momento})')
-
-    def habilidades(o):  # unlocks de clases y de fauna, estén donde estén
-        if isinstance(o, dict):
-            h = o.get('ability')
-            if isinstance(h, dict) and h.get('name'):
-                sumar('ability', slugify(h['name']), h['name'])
-            for v in o.values():
-                habilidades(v)
-        elif isinstance(o, list):
-            for v in o:
-                habilidades(v)
-    habilidades(datos)
-    for tipo, enum in (('clase', 'Clase'), ('especializacion', 'Especializacion')):
-        for valor in enum_prisma(enum):
-            sumar(tipo, valor, valor.replace('_', ' ').capitalize())
-    return out
-
-
 def elementos():
-    """(lista, aviso): toda la enciclopedia (backend del juego), las entidades con prompt en la BD, lo que hay en
-    generated/ y lo que tiene imagen en el juego."""
-    avisos, claves = [], {}
-    if API:
-        try:
-            for t, s_, nombre in catalogo():
-                claves.setdefault((t, s_), {'tipo': t, 'slug': s_, 'perfiles': []})['nombre'] = nombre
-        except (OSError, ValueError) as err:
-            avisos.append(f'Sin el catálogo completo (arranca el juego para verlo entero): {err}')
-    try:
-        for e in entidades() or []:
-            el = claves.setdefault((e['tipo'], e['slug']), {'tipo': e['tipo'], 'slug': e['slug'], 'perfiles': []})
-            el['perfiles'].append({'perfil': e['perfil'], 'usado': bool(e['usado'])})
-    except (RuntimeError, ValueError, subprocess.TimeoutExpired, OSError) as err:
-        avisos.append(f'Sin los prompts de la enciclopedia: {err}')
+    """(lista, aviso): lo del adaptador (toda la enciclopedia y las entidades con prompt), lo que hay en generated/ y
+    lo que tiene imagen en el juego."""
+    claves, avisos = ADAPTADOR.elementos()
     try:
         for t in os.listdir(GENERADO):
             if not SLUG.match(t) or t == BANCO or not os.path.isdir(os.path.join(GENERADO, t)):
@@ -369,7 +242,7 @@ def referencia_de(tipo, slug_, perfil):
     return None
 
 
-# --- generación (una a la vez) ---
+# --- progreso de sd-cli (del log que escribe generar.sh con -v) ---
 
 def sd_cli_en_marcha():
     """True si corre un sd-cli, aunque no lo lanzara este servidor (uno anterior que se cerró a medias)."""
@@ -377,114 +250,6 @@ def sd_cli_en_marcha():
         return subprocess.run(['pgrep', '-x', 'sd-cli'], stdout=subprocess.DEVNULL).returncode == 0
     except OSError:
         return False
-
-
-HISTORIAL = 20  # trabajos terminados que recuerda /api/cola (en memoria: se pierden al cerrar el servidor)
-
-
-class Trabajo:
-    def __init__(self):
-        self.cerrojo = threading.Lock()
-        self.estado = {'enMarcha': False}
-        self.siguiente = 1
-        self.historial = []  # entradas de /api/cola ya terminadas, la más reciente primero
-
-    def lanzar(self, peticion):
-        tipo = slug(peticion.get('tipo'), 'tipo')
-        slug_ = slug(peticion.get('slug'), 'slug')
-        perfil = peticion.get('perfil')
-        if perfil not in PERFILES:
-            raise Invalido(f'perfil desconocido: {perfil}')
-        semilla = entero(peticion.get('semilla', 42), 'la semilla', 0, 2 ** 31 - 1)
-        pasos = entero(peticion.get('pasos', 6), 'los pasos', 1, 20)
-        extra = []
-        if peticion.get('usarReferencia'):
-            ref = referencia_de(tipo, slug_, perfil)
-            if not ref:
-                raise Invalido(f'no hay imagen de {tipo}/{slug_} en image-generator/referencias/images/')
-            extra = ['-r', os.path.join(REFERENCIAS, ref['ruta'])]
-        env = dict(os.environ, LIBERAR_OLLAMA='1', MUNDO=MUNDO)
-        archivo = None
-        if not peticion.get('desdeBase'):
-            texto = str(peticion.get('prompt') or '').strip()
-            if not texto:
-                raise Invalido('el prompt está vacío')
-            fd, archivo = tempfile.mkstemp(prefix='prompt-', suffix='.txt')
-            with os.fdopen(fd, 'w', encoding='utf-8') as f:
-                f.write(texto + '\n')
-            env['PROMPT_ARCHIVO'] = archivo
-        with self.cerrojo:
-            if self.estado['enMarcha'] or sd_cli_en_marcha():
-                if archivo:
-                    os.unlink(archivo)
-                raise Invalido('ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
-            self.estado = {'enMarcha': True, 'id': self.siguiente, 'tipo': tipo, 'slug': slug_, 'perfil': perfil,
-                           'semilla': semilla, 'pasos': pasos, 'conReferencia': bool(extra),
-                           'inicio': time.time(), 'salida': [], 'nombre': None, 'rc': None,
-                           'estimado': estimado(perfil, bool(extra))}
-            self.siguiente += 1
-        orden = [PROBAR, tipo, slug_, perfil, str(semilla), str(pasos)] + extra
-        threading.Thread(target=self._correr, args=(orden, env, archivo), daemon=True).start()
-
-    def _correr(self, orden, env, archivo):
-        rc = 1
-        try:
-            p = subprocess.Popen(orden, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            for linea in p.stdout:
-                linea = linea.rstrip('\n')
-                with self.cerrojo:
-                    self.estado['salida'].append(linea)
-                    m = re.match(r'^imagen: .*/([A-Za-z0-9_-]+)\.png', linea)
-                    if m:
-                        self.estado['nombre'] = m.group(1)
-            rc = p.wait()
-        except OSError as e:
-            with self.cerrojo:
-                self.estado['salida'].append(f'ERROR: no se pudo lanzar probar.sh: {e}')
-            rc = 127
-        except Exception as e:  # sin esto, `enMarcha` se quedaría en True y no dejaría generar más
-            with self.cerrojo:
-                self.estado['salida'].append(f'ERROR: {e}')
-        finally:
-            if archivo:
-                os.unlink(archivo)
-            with self.cerrojo:
-                self.estado.update(enMarcha=False, rc=rc, fin=time.time())
-                self.historial.insert(0, self._entrada(self.estado))
-                del self.historial[HISTORIAL:]
-
-    @staticmethod
-    def _entrada(e, progreso=None):
-        """Una entrada de /api/cola (IMG-41): el contrato común con la cola de GVIG, con los nombres de aquí."""
-        rc = e.get('rc')
-        return {'id': e['id'], 'estado': 'generando' if e['enMarcha'] else ('hecho' if rc == 0 else 'fallido'),
-                'tipo': e['tipo'], 'slug': e['slug'], 'perfil': e['perfil'], 'semilla': e['semilla'], 'pasos': e['pasos'],
-                'conReferencia': e['conReferencia'], 'intento': e['nombre'] if rc == 0 else None,
-                'segundos': int((e.get('fin') or time.time()) - e['inicio']), 'estimado': e['estimado'],
-                'progreso': progreso, 'error': (e['salida'][-1] if e['salida'] else f'salida {rc}') if rc else None}
-
-    def cola(self):
-        """Lo que genera ahora (con su paso, del log de sd-cli) y lo terminado desde que se abrió el servidor."""
-        with self.cerrojo:
-            e = dict(self.estado) if self.estado['enMarcha'] else None
-            hechos = list(self.historial)
-        if not e:
-            return hechos
-        texto, paso, pasos = leer_progreso(e['tipo'], e['slug'], e['inicio'])
-        return [self._entrada(e, {'texto': texto, 'paso': paso, 'pasos': pasos})] + hechos
-
-    def ver(self):
-        with self.cerrojo:
-            e = dict(self.estado, salida=list(self.estado.get('salida', [])))
-        if e.get('inicio'):
-            e['segundos'] = int((e.get('fin') or time.time()) - e['inicio'])
-            texto, e['paso'], e['pasos'] = leer_progreso(e['tipo'], e['slug'], e['inicio'])
-            if e['enMarcha']:
-                e['progreso'] = texto
-            elif e.get('rc'):  # falló: el final del log de sd-cli, para ver el motivo
-                e['logFinal'] = cola_log(e['tipo'], e['slug'], e['inicio'], 3000)
-        e['salida'] = e['salida'][-8:]
-        return e
 
 
 def cola_log(tipo, slug_, desde, bytes_=8192):
@@ -519,146 +284,151 @@ def leer_progreso(tipo, slug_, desde):
     return 'cargando modelos', None, None
 
 
+# --- generación: el trabajo del núcleo con probar.sh ---
+
+class Trabajo(nucleo.Trabajo):
+    """El trabajo del núcleo con lo del generador: valida la petición y lanza `probar.sh`."""
+
+    def __init__(self, maximo=20):
+        super().__init__(maximo=maximo, resultado=re.compile(r'^imagen: .*/([A-Za-z0-9_-]+)\.png'),
+                         progreso=lambda e: leer_progreso(e['tipo'], e['slug'], e['inicio']),
+                         log_final=lambda e: cola_log(e['tipo'], e['slug'], e['inicio'], 3000))
+
+    def lanzar(self, peticion):
+        tipo = slug(peticion.get('tipo'), 'tipo')
+        slug_ = slug(peticion.get('slug'), 'slug')
+        perfil = perfil_valido(peticion.get('perfil'))
+        semilla = entero(peticion.get('semilla', 42), 'la semilla', 0, 2 ** 31 - 1)
+        pasos = entero(peticion.get('pasos', 6), 'los pasos', 1, 20)
+        extra = []
+        if peticion.get('usarReferencia'):
+            ref = referencia_de(tipo, slug_, perfil)
+            if not ref:
+                raise Invalido(f'no hay imagen de {tipo}/{slug_} en image-generator/referencias/images/')
+            extra = ['-r', os.path.join(REFERENCIAS, ref['ruta'])]
+        env = dict(os.environ, **ADAPTADOR.entorno())
+        archivo = None
+        if not peticion.get('desdeBase'):
+            texto = str(peticion.get('prompt') or '').strip()
+            if not texto:
+                raise Invalido('el prompt está vacío')
+            fd, archivo = tempfile.mkstemp(prefix='prompt-', suffix='.txt')
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write(texto + '\n')
+            env['PROMPT_ARCHIVO'] = archivo
+        datos = {'tipo': tipo, 'slug': slug_, 'perfil': perfil, 'semilla': semilla, 'pasos': pasos,
+                 'conReferencia': bool(extra), 'estimado': estimado(perfil, bool(extra))}
+        self.empezar([PROBAR, tipo, slug_, perfil, str(semilla), str(pasos)] + extra, datos, env=env, que='probar.sh',
+                     ocupado=sd_cli_en_marcha, limpiar=(lambda: os.unlink(archivo)) if archivo else None,
+                     motivo_ocupado='ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
+
+
 TRABAJO = Trabajo()
 
 
-class Manejador(BaseHTTPRequestHandler):
-    def log_message(self, *_):
-        pass
+# --- rutas ---
 
-    def responder(self, codigo, cuerpo, tipo='application/json; charset=utf-8', cabeceras=None):
-        datos = cuerpo if isinstance(cuerpo, bytes) else json.dumps(cuerpo, ensure_ascii=False).encode('utf-8')
-        self.send_response(codigo)
-        self.send_header('Content-Type', tipo)
-        self.send_header('Content-Length', str(len(datos)))
-        cabeceras = cabeceras or {}
-        if 'Cache-Control' not in cabeceras:
-            self.send_header('Cache-Control', 'no-store')
-        for nombre, valor in cabeceras.items():
-            self.send_header(nombre, valor)
-        self.end_headers()
-        self.wfile.write(datos)
+RUTAS = nucleo.Rutas()
 
-    def archivo(self, ruta, tipo):
-        if not os.path.isfile(ruta):
-            return self.responder(404, {'error': 'no existe'})
-        with open(ruta, 'rb') as f:
-            self.responder(200, f.read(), tipo)
 
-    def estatico(self, carpeta, ruta):
-        """Un archivo de `carpeta` (`ui/`, o la de la página) con la CSP de GVIG y `no-cache`. Nunca sale de ella (`..`, rutas absolutas, enlaces)."""
-        base = os.path.realpath(carpeta)
-        destino = os.path.realpath(os.path.join(base, ruta))
-        if not destino.startswith(base + os.sep):
-            return self.responder(403, {'error': 'fuera de la carpeta'})
-        tipo = TIPOS_UI.get(os.path.splitext(destino)[1].lower())
-        if tipo is None or not os.path.isfile(destino):
-            return self.responder(404, {'error': 'no existe'})
-        with open(destino, 'rb') as f:
-            datos = f.read()
-        self.responder(200, datos, tipo, {'Content-Security-Policy': STATIC_CSP, 'Cache-Control': 'no-cache'})
+@RUTAS.get('/')
+def pagina(p):
+    p.h.estatico(AQUI, 'index.html')
 
-    def atender(self, accion):
-        try:
-            return accion()
-        except Invalido as e:
-            self.responder(400, {'error': str(e)})
-        except (RuntimeError, json.JSONDecodeError, subprocess.TimeoutExpired) as e:
-            self.responder(502, {'error': str(e)})
-        except (OSError, UnicodeDecodeError) as e:
-            self.responder(500, {'error': f'{type(e).__name__}: {e}'})
 
-    def do_GET(self):
-        u = urlparse(self.path)
-        q = {k: v[0] for k, v in parse_qs(u.query).items()}
-        partes = u.path.strip('/').split('/')
-        if u.path == '/':
-            return self.estatico(AQUI, 'index.html')
-        if u.path.startswith('/ui/'):
-            rel = unquote(u.path[len('/ui/'):])
-            if not rel or rel.startswith('/') or '\\' in rel or '\0' in rel or any(x in ('', '..') for x in rel.split('/')):
-                return self.responder(403, {'error': 'ruta no permitida'})
-            return self.estatico(UI_DIR, rel)
-        if u.path == '/api/estado':
-            return self.responder(200, TRABAJO.ver())
-        if u.path == '/api/cola':
-            return self.responder(200, {'cola': TRABAJO.cola()})
-        if u.path == '/api/inicio':
-            return self.responder(200, {'perfiles': PERFILES, 'mundo': MUNDO})
-        if u.path == '/api/elementos':
-            def lista():
-                els, aviso = elementos()
-                self.responder(200, {'elementos': els, 'aviso': aviso})
-            return self.atender(lista)
-        if u.path == '/api/elemento':
-            return self.atender(lambda: self.responder(200, leer_elemento(q.get('tipo'), q.get('slug'))))
-        if u.path == '/api/prompt':
-            def p():
-                perfil = q.get('perfil')
-                if perfil not in PERFILES:
-                    raise Invalido(f'perfil desconocido: {perfil}')
-                r = prompt_de(q.get('tipo'), q.get('slug'), perfil)
-                self.responder(200 if r else 404, r or {'error': 'esa entidad no tiene prompt para ese perfil'})
-            return self.atender(p)
-        if u.path == '/api/referencia':
-            def r():
-                perfil = q.get('perfil')
-                if perfil not in PERFILES:
-                    raise Invalido(f'perfil desconocido: {perfil}')
-                self.responder(200, referencia_de(q.get('tipo'), q.get('slug'), perfil) or {'ruta': None})
-            return self.atender(r)
-        if len(partes) == 3 and partes[0] == 'ref':  # /ref/<tipo>/<slug>-<perfil>.<ext>
-            def ref():
-                base, _, ext = partes[2].rpartition('.')
-                if ext not in EXTENSIONES:
-                    raise Invalido('solo imágenes')
-                self.archivo(os.path.join(REFERENCIAS, slug(partes[1], 'tipo'), slug(base, 'nombre') + '.' + ext),
-                             EXTENSIONES[ext])
-            return self.atender(ref)
-        if len(partes) == 4 and partes[0] == 'img':  # /img/<tipo>/<slug>/<nombre>.png
-            def img():
-                nombre = partes[3][:-4] if partes[3].endswith('.png') else ''
-                self.archivo(os.path.join(elemento_dir(partes[1], partes[2]), 'intentos', slug(nombre, 'nombre') + '.png'),
-                             'image/png')
-            return self.atender(img)
-        if len(partes) == 4 and partes[0] == 'elegida':  # /elegida/<tipo>/<slug>/<perfil>.png
-            def elegida():
-                perfil = partes[3][:-4] if partes[3].endswith('.png') else ''
-                self.archivo(destino_elegida(partes[1], partes[2], perfil), 'image/png')
-            return self.atender(elegida)
-        self.responder(404, {'error': 'no existe'})
+@RUTAS.get('/ui/*')
+def ui(p):
+    rel = unquote(p.params['*'])
+    if not rel or rel.startswith('/') or '\\' in rel or '\0' in rel or any(x in ('', '..') for x in rel.split('/')):
+        return 403, {'error': 'ruta no permitida'}
+    p.h.estatico(UI_DIR, rel)
 
-    def do_POST(self):
-        # Otra web abierta en el navegador podría lanzar generaciones con un POST text/plain (sin preflight): solo
-        # JSON y desde esta misma página.
-        origen = self.headers.get('Origin')
-        if (self.headers.get('Content-Type') or '').split(';')[0].strip() != 'application/json' or \
-                (origen and urlparse(origen).netloc != self.headers.get('Host')):
-            return self.responder(403, {'error': 'solo desde la propia interfaz'})
-        try:
-            peticion = json.loads(self.rfile.read(int(self.headers.get('Content-Length') or 0)) or b'{}')
-        except json.JSONDecodeError:
-            return self.responder(400, {'error': 'cuerpo que no es JSON'})
-        u = urlparse(self.path).path
-        if u == '/api/generar':
-            return self.atender(lambda: (TRABAJO.lanzar(peticion), self.responder(202, {'ok': True})))
-        if u == '/api/nota':
-            return self.atender(lambda: (guardar_nota(peticion.get('tipo'), peticion.get('slug'), peticion.get('nombre'),
-                                                      peticion.get('texto', '')), self.responder(200, {'ok': True})))
-        if u == '/api/elegir':
-            return self.atender(lambda: self.responder(200, {'destino': elegir(peticion.get('tipo'), peticion.get('slug'),
-                                                                                peticion.get('nombre'))}))
-        self.responder(404, {'error': 'no existe'})
+
+@RUTAS.get('/api/estado')
+def api_estado(p):
+    return TRABAJO.ver()
+
+
+@RUTAS.get('/api/cola')
+def api_cola(p):
+    return {'cola': TRABAJO.cola()}
+
+
+@RUTAS.get('/api/inicio')
+def api_inicio(p):
+    return {'perfiles': PERFILES, 'mundo': ADAPTADOR.mundo}
+
+
+@RUTAS.get('/api/elementos')
+def api_elementos(p):
+    els, aviso = elementos()
+    return {'elementos': els, 'aviso': aviso}
+
+
+@RUTAS.get('/api/elemento')
+def api_elemento(p):
+    return leer_elemento(p.q.get('tipo'), p.q.get('slug'))
+
+
+@RUTAS.get('/api/prompt')
+def api_prompt(p):
+    r = ADAPTADOR.prompt(p.q.get('tipo'), p.q.get('slug'), perfil_valido(p.q.get('perfil')))
+    return (200, r) if r else (404, {'error': 'esa entidad no tiene prompt para ese perfil'})
+
+
+@RUTAS.get('/api/referencia')
+def api_referencia(p):
+    return referencia_de(p.q.get('tipo'), p.q.get('slug'), perfil_valido(p.q.get('perfil'))) or {'ruta': None}
+
+
+@RUTAS.get('/ref/{tipo}/{archivo}')
+def ref(p):
+    base, _, ext = p.params['archivo'].rpartition('.')
+    if ext not in EXTENSIONES:
+        raise Invalido('solo imágenes')
+    p.h.archivo(os.path.join(REFERENCIAS, slug(p.params['tipo'], 'tipo'), slug(base, 'nombre') + '.' + ext),
+                EXTENSIONES[ext])
+
+
+@RUTAS.get('/img/{tipo}/{slug}/{archivo}')
+def img(p):
+    a = p.params['archivo']
+    nombre = a[:-4] if a.endswith('.png') else ''
+    p.h.archivo(os.path.join(elemento_dir(p.params['tipo'], p.params['slug']), 'intentos', slug(nombre, 'nombre') + '.png'),
+                'image/png')
+
+
+@RUTAS.get('/elegida/{tipo}/{slug}/{archivo}')
+def elegida(p):
+    a = p.params['archivo']
+    p.h.archivo(destino_elegida(p.params['tipo'], p.params['slug'], a[:-4] if a.endswith('.png') else ''), 'image/png')
+
+
+@RUTAS.post('/api/generar')
+def api_generar(p):
+    TRABAJO.lanzar(p.cuerpo)
+    return 202, {'ok': True}
+
+
+@RUTAS.post('/api/nota')
+def api_nota(p):
+    c = p.cuerpo
+    guardar_nota(c.get('tipo'), c.get('slug'), c.get('nombre'), c.get('texto', ''))
+    return {'ok': True}
+
+
+@RUTAS.post('/api/elegir')
+def api_elegir(p):
+    c = p.cuerpo
+    return {'destino': elegir(c.get('tipo'), c.get('slug'), c.get('nombre'))}
+
+
+class Manejador(nucleo.Manejador):
+    rutas = RUTAS
 
 
 def main():
-    puerto = int(os.environ.get('IMG_PUERTO', '7861'))
-    servidor = ThreadingHTTPServer(('127.0.0.1', puerto), Manejador)
-    print(f'Generador de imágenes en http://127.0.0.1:{puerto}/ (Ctrl+C para pararlo)', flush=True)
-    try:
-        servidor.serve_forever()
-    except KeyboardInterrupt:
-        pass
+    nucleo.servir(Manejador, int(os.environ.get('IMG_PUERTO', '7861')), 'Generador de imágenes')
 
 
 if __name__ == '__main__':

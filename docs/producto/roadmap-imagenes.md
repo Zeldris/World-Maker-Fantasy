@@ -79,7 +79,7 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   prompt y la imagen aceptada (hoy `planos.sh` corre la cadena de punta a punta), y `camino.json` por elemento con
   variantes, fases aceptadas, prompt, semilla y origen. Al avanzar se borra la imagen de los intentos no aceptados y
   quedan su prompt y su semilla. Sustituye a la entrega E1 y a `IMG-10`. **L**
-- **IMG-41 · Base de interfaz con lo rescatado de GVIG** [A] 🚧 en curso (usuaria, 2026-11-06): test de navegador sin Playwright,
+- ~~**IMG-41 · Base de interfaz con lo rescatado de GVIG**~~ [A] (usuaria, 2026-11-06): ✅ 2026-11-07. Test de navegador sin Playwright,
   API con simulador `?mock=1`, cola, atajos, trampa de foco y chip de medida de `galivelop-image-generator`, adaptados a
   la hoja de estilos de Tarkor, sobre `servidor.py` e `index.html`. Se copia aquí y se conserva su licencia MIT; ese repo
   no se toca. **M** **Diseño compartido** (usuaria, 2026-11-07: «que las dos interfaces compartan diseño aunque luego
@@ -100,7 +100,12 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   interruptor de una tecla y la ayuda, botón «?» de la cabecera; la tabla de teclas la pone cada pantalla con
   `setScreenKeys`, hoy `/` filtrar y `G` generar) y mando (`lib/gamepad.js`, tal cual); el Esc del cajón de la cola ya
   no cierra además el último aviso; ayuda mirada en captura en los dos temas. El mando real se prueba en la Deck.
-  **Queda:** núcleo del servidor separado del adaptador.
+  **Parte 5 hecha (2026-11-07):** el servidor en tres capas: `interfaz/nucleo.py`, lo común con GVIG (`Rutas` por
+  patrón, POST solo JSON y de la propia página, estáticos con CSP, errores con su código, `Trabajo` de uno a la vez con
+  la cola), sin nada del juego ni del generador (un test lo mira con `ast`); `adaptador_tarkor.py` (`catalogo()`,
+  `ImagePrompt`, `MUNDO`, el entorno de `probar.sh`: `elementos()`, `prompt()`, `entorno()`), y `servidor.py`, el
+  generador y sus rutas. Mismas rutas y respuestas; probado también arrancado como lo abre `abrir.sh`. Para GVIG
+  (`IMG-26`): su `server.py` puede tomar `nucleo.py` tal cual. Queda fuera (va con `IMG-40`): las rutas de fases.
 
 ### Bloque D · Pantalla del elemento
 

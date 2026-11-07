@@ -1,4 +1,5 @@
 """CFG-43: la interfaz del generador de imágenes (image-generator/interfaz/servidor.py), con probar.sh y psql falsos."""
+import ast
 import importlib.util
 import json
 import os
@@ -376,7 +377,7 @@ class Http(Base):
         self.assertIn('no se pudo lanzar probar.sh', cola[0]['error'])
 
     def test_la_cola_recuerda_solo_las_ultimas(self):
-        self.s.HISTORIAL = 2
+        self.s.TRABAJO.maximo = 2
         for semilla in (1, 2, 3):
             self.pedir('/api/generar', {'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'thumbnail', 'semilla': semilla,
                                         'desdeBase': True})
@@ -444,6 +445,43 @@ class Referencia(Http):
         self.esperar()
         args = leer(os.path.join(self.raiz, 'args'))
         self.assertIn('-r\n' + os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-thumbnail.png'), args)
+
+
+class Nucleo(Base):
+    """IMG-41: el núcleo (lo común con GVIG) no sabe del juego ni del generador; eso va en el adaptador y el servidor."""
+
+    def test_el_nucleo_no_nombra_nada_de_tarkor_ni_del_generador(self):
+        arbol = ast.parse(leer(os.path.join(os.path.dirname(SERVIDOR), 'nucleo.py')))
+        # Los docstrings y comentarios sí pueden decir dónde va cada cosa: se miran nombres, imports y cadenas.
+        docs = {id(n.body[0].value) for n in ast.walk(arbol)
+                if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef)) and n.body
+                and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
+        usados = set()
+        for n in ast.walk(arbol):
+            if isinstance(n, ast.Name):
+                usados.add(n.id)
+            elif isinstance(n, ast.Attribute):
+                usados.add(n.attr)
+            elif isinstance(n, (ast.Import, ast.ImportFrom)):
+                usados.update([getattr(n, 'module', None) or ''] + [a.name for a in n.names])
+            elif isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs:
+                usados.add(n.value)
+        codigo = '\n'.join(usados)
+        self.assertIn('ThreadingHTTPServer', codigo)  # control: sí ve el código
+        for palabra in ('adaptador', 'servidor', 'MUNDO', 'mundo', 'ImagePrompt', 'psql', 'enciclopedia', 'generated',
+                        'probar', 'sd-cli', 'perfil', 'elemento'):
+            self.assertFalse(palabra in codigo, f'nucleo.py nombra «{palabra}»')
+
+    def test_las_rutas_casan_exactas_por_trozos_y_por_prefijo(self):
+        r = self.s.nucleo.Rutas()
+        for patron in ('/api/x', '/img/{tipo}/{nombre}', '/ui/*'):
+            r.get(patron)(patron)  # la «función» es el patrón, para ver cuál casó
+        self.assertEqual(r.buscar('GET', '/api/x'), ('/api/x', {}))
+        self.assertEqual(r.buscar('GET', '/img/fauna/a.png'), ('/img/{tipo}/{nombre}', {'tipo': 'fauna', 'nombre': 'a.png'}))
+        self.assertEqual(r.buscar('GET', '/img//a.png'), ('/img/{tipo}/{nombre}', {'tipo': '', 'nombre': 'a.png'}))
+        self.assertEqual(r.buscar('GET', '/ui/%2e%2e/x'), ('/ui/*', {'*': '%2e%2e/x'}))  # sin decodificar
+        for nada in (('GET', '/api/x/y'), ('GET', '/img/a'), ('GET', '/ui'), ('POST', '/api/x')):
+            self.assertEqual(r.buscar(*nada), (None, None))
 
 
 class Resumen(unittest.TestCase):
