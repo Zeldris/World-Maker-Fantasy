@@ -34,6 +34,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
 | **E. Combinar** | Escenas con piezas ya aprobadas | `IMG-43`, `IMG-1`, `IMG-2` |
 | **F. Producción** | Crear el catálogo y llevarlo al juego | `IMG-9`, `IMG-44`, `IMG-45` |
+| **H. Sin GPT** | Biblioteca propia en FLUX que sustituye a los banners GPT como referencia | `IMG-47`, `IMG-48`, `IMG-49` |
 | **G. Con GVIG** | Compartir lo aprendido | `IMG-26` |
 
 Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
@@ -87,6 +88,20 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 - **IMG-43 · Montaje de varias capas y armonización protegida** [A] (usuaria, 2026-11-06): generalizar `montar.sh`, que
   hoy admite un fondo, un sujeto y copias de ese sujeto, a piezas distintas con posición, tamaño y volteo; luz coherente
   entre ellas; y comprobar si `--mask` protege las piezas aprobadas al armonizar. **M**
+
+### Bloque H · Sin GPT
+
+Propuesta aceptada por la usuaria (2026-11-07): no depender de ChatGPT. La referencia ajena aporta poco (`pautas.md` E3),
+así que el estilo pasa a un LoRA y la forma sale del boceto propio. Solo lo marcado ★ entra en la biblioteca; los banners
+GPT quedan como canon fijo para medir la deriva.
+
+- **IMG-47 · Catálogo regenerado en FLUX** [A] (usuaria, 2026-11-07): cada banner GPT, como su propio `-r`, con FLUX.2 a
+  1280x512 (~3,7 min, r28). Primero unos 20 de dos tipos; las ~210, en tandas de noche, solo si la prueba sale bien. La
+  usuaria marca ★ las que valen. **M**
+- **IMG-48 · LoRA de estilo para FLUX.2** [A] (usuaria, 2026-11-07): ver si se puede entrenar como `wmf-estilo` (Kaggle,
+  `lora-kaggle.md`) y entrenarlo con lo ★ de `IMG-47`. **M**
+- **IMG-49 · Elemento nuevo sin GPT** [A] (usuaria, 2026-11-07): boceto propio + LoRA de `IMG-48` + Final directa;
+  comparar con un elemento que no tenga banner. Lo ★ nuevo entra en la biblioteca y en el siguiente LoRA. **M**
 
 ### Bloque F · Producción
 
