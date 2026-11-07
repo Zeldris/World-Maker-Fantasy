@@ -130,6 +130,103 @@ class GenerarPerfil(Base):
         self.assertFalse(os.path.exists(self.args_sd))
 
 
+class MotorDeGenerar(Base):
+    """IMG-53: MOTOR=<id> toma la receta de scripts/motores.py. Se copia generar.sh a una raíz de prueba (su image-generator/
+    sale de su ruta) con los archivos de los modelos vacíos, para no depender de lo que haya en la Deck ni en el CI."""
+    ARCHIVOS = {
+        'klein9b': ['diffusion/flux-2-klein-9b-Q4_0.gguf', 'text/Qwen3-8B-Q4_K_M.gguf', 'vae/full_encoder_small_decoder.safetensors'],
+        'qwen-edit': ['diffusion/qwen-image-edit-2511-Q3_K_S.gguf', 'text/Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf',
+                      'text/Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf', 'vae/qwen_image_vae.safetensors'],
+        'longcat': ['diffusion/longcat_edit_bfl_format-Q4_K_M.gguf', 'text/Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf',
+                    'text/Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf', 'vae/ae-flux1.safetensors'],
+        'flux3': ['diffusion/flux3-image-klein-Q8_0.gguf', 'text/Qwen3VL-4B-Instruct-Q4_K_M.gguf', 'vae/flux2-vae.safetensors'],
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.g = os.path.join(self.d, 'raiz')
+        os.makedirs(os.path.join(self.g, 'scripts'))
+        for f in ('generar.sh', 'motores.py'):
+            shutil.copy(os.path.join(G, 'scripts', f), os.path.join(self.g, 'scripts', f))
+        self.loras = os.path.join(self.g, 'loras')
+        self.env.update(LORAS=self.loras)
+        self.env.pop('SDCLI')  # el falso se pone por bin/ o bin-nuevo/ según el motor
+        for b in ('bin', 'bin-nuevo'):
+            os.makedirs(os.path.join(self.g, b))
+            shutil.copy(self.sd, os.path.join(self.g, b, 'sd-cli'))
+
+    def con(self, *motores):
+        for m in motores:
+            for a in self.ARCHIVOS[m]:
+                escribir(os.path.join(self.g, 'modelos', a), 'x')
+
+    def lanzar(self, **env):
+        return self.correr(['bash', os.path.join(self.g, 'scripts', 'generar.sh'), os.path.join(self.d, 'out'), 'n1', self.prompt,
+                            '480', '192', '7', '4'], **env)
+
+    def test_klein9b_cambia_modelo_y_texto_y_deja_el_vae_y_el_cfg(self):
+        self.con('klein9b')
+        r = self.lanzar(MOTOR='klein9b')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(self.valor('--diffusion-model').endswith('flux-2-klein-9b-Q4_0.gguf'))
+        self.assertTrue(self.valor('--llm').endswith('Qwen3-8B-Q4_K_M.gguf'))
+        self.assertTrue(self.valor('--vae').endswith('full_encoder_small_decoder.safetensors'))
+        self.assertEqual((self.valor('--cfg-scale'), self.valor('--steps')), ('1', '4'))
+        self.assertNotIn('--lora-model-dir', self.args())
+
+    def test_la_variable_explicita_manda_sobre_el_motor(self):
+        self.con('klein9b')
+        self.lanzar(MOTOR='klein9b', CFG='2')
+        self.assertEqual(self.valor('--cfg-scale'), '2')
+
+    def test_consistencia_aplica_el_lora_con_el_mecanismo_de_lora_model_dir(self):
+        self.con('klein9b')
+        escribir(os.path.join(self.loras, 'klein9b-consistencia.safetensors'), 'x')
+        r = self.lanzar(MOTOR='klein9b-consistencia')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.valor('--lora-model-dir'), self.loras)
+        self.assertEqual(self.valor('-p'), 'un prompt de prueba <lora:klein9b-consistencia:0.33>')
+        self.assertTrue(self.valor('--diffusion-model').endswith('flux-2-klein-9b-Q4_0.gguf'))
+
+    def test_qwen_edit_pone_su_receta_de_edicion(self):
+        self.con('qwen-edit')
+        r = self.lanzar(MOTOR='qwen-edit')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((self.valor('--cfg-scale'), self.valor('--flow-shift'), self.valor('--sampling-method')), ('2.5', '3', 'euler'))
+        self.assertEqual(self.valor('--model-args'), 'qwen_image_zero_cond_t=true')
+        self.assertEqual(self.valor('--llm_vision'), os.path.join(self.g, 'modelos', 'text', 'Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf'))
+        self.assertTrue(self.valor('--vae').endswith('qwen_image_vae.safetensors'))
+
+    def test_longcat_usa_bin_nuevo_y_cfg_45(self):
+        self.con('longcat')
+        escribir(os.path.join(self.g, 'bin', 'sd-cli'), '#!/bin/bash\necho "se usó bin/" > "$ARGS_SD"; exit 9\n')
+        os.chmod(os.path.join(self.g, 'bin', 'sd-cli'), 0o755)
+        r = self.lanzar(MOTOR='longcat')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.valor('--cfg-scale'), '4.5')
+        self.assertTrue(self.valor('--vae').endswith('ae-flux1.safetensors'))
+
+    def test_flux3_es_el_perfil_fotorreal(self):
+        self.con('flux3')
+        r = self.lanzar(MOTOR='flux3')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(self.valor('--diffusion-model').endswith('flux3-image-klein-Q8_0.gguf'))
+        self.assertIn('--backend', self.args())
+
+    def test_motor_con_archivo_ausente_aborta_con_3_y_dice_cual(self):
+        self.con('qwen-edit')
+        os.remove(os.path.join(self.g, 'modelos', 'vae', 'qwen_image_vae.safetensors'))
+        r = self.lanzar(MOTOR='qwen-edit')
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('el motor qwen-edit no está completo: falta modelos/vae/qwen_image_vae.safetensors', r.stdout)
+        self.assertFalse(os.path.exists(self.args_sd))
+
+    def test_motor_desconocido_aborta_con_2(self):
+        r = self.lanzar(MOTOR='raro')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('motor desconocido: raro', r.stdout)
+
+
 class LoraDeEstilo(Base):
     """IMG-33: el perfil fotorreal usa bin-nuevo y el LoRA de estilo de IMG-32 si está; LORA=0 lo quita."""
     def setUp(self):

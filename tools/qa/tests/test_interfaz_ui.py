@@ -348,7 +348,7 @@ class Navegador(Base):
         el = {'tipo': 'fauna', 'slug': 'aullador-rojo', 'variante': 'macho'}
         codigo, r = llamar('POST', '/api/fase/generar', {**el, 'fase': 'F4', 'prompt': 'x'})
         self.assertEqual(codigo, 400)
-        self.assertIn('Falta una fase aceptada (F2 o F1 o F0) para generar F4 Final', r['error'])
+        self.assertIn('Falta una fase aceptada (un paso P1…P9, F2, F1 o F0) para generar F4 Final', r['error'])
         self.assertIn('no está disponible', llamar('POST', '/api/fase/generar', {**el, 'fase': 'F3', 'prompt': 'x'})[1]['error'])
         self.assertEqual(llamar('POST', '/api/fase/generar', {**el, 'fase': 'F0', 'prompt': 'un aullador'}), [202, {'ok': True}])
         self.assertIn('ya hay una imagen generándose', llamar('POST', '/api/fase/generar', {**el, 'fase': 'F0', 'prompt': 'x'})[1]['error'])

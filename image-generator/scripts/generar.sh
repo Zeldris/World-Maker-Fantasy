@@ -12,6 +12,9 @@
 # BOCETO=<png> [FUERZA_BOCETO=0.97]: parte de ese boceto (--init-img/--strength + strength_as_noise_level); sin png: exit 3.
 # MOMENTO=dia|atardecer|noche con PERFIL=fotorreal: al acabar gradar.sh deja intentos/<nombre>-<momento>.png
 # (GRADAR=0 lo omite; REGION=<región> la pasa a gradar.sh; GRADAR_SH=<ruta> lo sustituye en los tests).
+# IMG-53: MOTOR=<id> elige un motor de la tabla de scripts/motores.py (klein4b, klein9b, klein9b-consistencia, qwen-edit,
+# longcat, flux3): fija modelo, texto, VAE, cfg, tope, bin, args extra (--llm_vision, --flow-shift…) y LoRA (`<lora:…>` en el
+# prompt); lo explícito (MODELO=…) manda y los pasos siguen siendo el argumento 7. Si falta un archivo del motor: exit 3.
 # Deja imagen, log y copia del prompt en <directorio-de-salida>/{intentos,logs,prompts}/<nombre>.* (probar.sh le pasa
 # generated/<tipo>/<slug>); a mano, p. ej.: generar.sh image-generator/generated/murgol/pruebas v5 prompt.txt 1280 512
 # LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
@@ -21,7 +24,13 @@ set -u
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
 D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")
-PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; LORA=${LORA:-1}
+PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; LORA=${LORA:-1}; MOTOR=${MOTOR:-}; SAMPLER=${SAMPLER:-}
+EXTRA_MOTOR=(); LORA_MOTOR=
+if [ -n "$MOTOR" ]; then
+  # la tabla está en un solo sitio (motores.py); imprime asignaciones, o «echo ABORTO…; exit 3|2» si falta algo
+  eval "$(python3 "$G/scripts/motores.py" shell "$MOTOR" "$G")"
+  EXTRA=("${EXTRA_MOTOR[@]}" "${EXTRA[@]}")
+fi
 case $PERFIL in
   "") ;;
   fotorreal)
@@ -70,6 +79,9 @@ if [ "$PERFIL" = fotorreal ] && ! [[ $LORA =~ ^0+(\.0+)?$ ]]; then  # 0, 0.0, 00
     echo "AVISO: sin LoRA de estilo ($LORAS/wmf-estilo.safetensors no está; ver docs/producto/plan-imagenes/lora-kaggle.md)"
   fi
 fi
+if [ -n "$LORA_MOTOR" ]; then  # IMG-53: LoRA del motor, con el mismo mecanismo (`<lora:nombre:peso>` + --lora-model-dir)
+  PROMPT="$PROMPT <lora:${LORA_MOTOR%%:*}:${LORA_MOTOR#*:}>"; EXTRA=(--lora-model-dir "${LORAS:-$G/loras}" "${EXTRA[@]}")
+fi
 printf '%s\n' "$PROMPT" > "$D/prompts/$N.txt"
 LOG=$D/logs/$N.log
 
@@ -77,7 +89,7 @@ t0=$(date +%s)
 # CFG-43: sd-cli con sus librerías ggml; las de Ollama (LD_LIBRARY_PATH del host) le quitan la GPU: «No devices found».
 LD_LIBRARY_PATH="$B" timeout "$TOPE" "$SDCLI" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
   --vae "$M/vae/$VAE" -p "$PROMPT" \
-  --cfg-scale "$CFG" --steps "$STEPS" --sampling-method euler -W "$W" -H "$H" --seed "$SEED" \
+  --cfg-scale "$CFG" --steps "$STEPS" --sampling-method "${SAMPLER:-euler}" -W "$W" -H "$H" --seed "$SEED" \
   --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/intentos/$N.png" -v > "$LOG" 2>&1 &
 PID=$!
 # $PID es el de `timeout`: un SIGKILL a él no llega a sd-cli, que seguiría con la memoria. Primero el hijo.

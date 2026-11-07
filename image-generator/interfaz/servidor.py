@@ -33,12 +33,22 @@ API (JSON salvo las imágenes):
   GET  /api/inicio                          además `fases`: [{id,nombre,receta,siguientes,disponible}] (camino.FASES)
   GET  /api/camino?tipo&slug                camino.json del elemento; cada variante lleva `siguientes` (calculado, según el
                                             tipo, desde su faseActual)
-  POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?,usarReferencia?}
+  GET  /api/inicio                          además `motores`: [{id,nombre,disponible,faltan:[archivos],pasos,
+                                            segundosEstimados:{paso,final},estimacion}] (scripts/motores.py; `estimacion`
+                                            true = aún no medido) y `motorPorDefecto` (klein4b); las fases incluyen P1…P9 (IMG-53)
+  POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?,usarReferencia?,motor?,semillas?,referencias?}
+                                            IMG-53: `fase` puede ser P1…P9 (cadena de pasos: Pn parte de la aceptada de P(n-1);
+                                            la Final, del paso aceptado más alto); `motor`: id de /api/inicio (solo en pasos y
+                                            Final; por defecto klein4b; 400 si falta un archivo suyo); `semillas` 1-4: intentos
+                                            seguidos con semillas consecutivas; `referencias`: [{rol: sujeto|lugar|equipo|estilo,
+                                            imagen}], imagen = archivo de image-generator/referencias/ o de
+                                            generated/<tipo>/<slug>/intentos/ (400 si sale de ahí o no existe; máx. 3 con
+                                            imagen de entrada, 4 sin ella; no se mezcla con usarReferencia)
                                             usarReferencia: añade la imagen del juego como -r; 400 si el elemento no tiene
                                             lanza `scripts/fase.py` (un trabajo a la vez, el mismo de /api/generar) → 202 {ok};
                                             400 si la fase no existe o no está disponible, falta la fase de entrada aceptada,
                                             el prompt está vacío o ya hay una generación
-  POST /api/fase/avanzar {tipo,slug,variante,fase,intento,siguiente,usarReferencia?}
+  POST /api/fase/avanzar {tipo,slug,variante,fase,intento,siguiente,usarReferencia?,motor?,semillas?,referencias?}
                                             acepta el intento (borra los demás) y lanza el primero de `siguiente` con el prompt
                                             aceptado → {camino, lanzado: true}; si no se pudo lanzar (ocupado…), la aceptación
                                             se queda: {camino, lanzado: false, motivo}; 400 si el camino no lo permite
@@ -76,6 +86,7 @@ from nucleo import Invalido, SLUG, STATIC_CSP, slug, entero  # noqa: E402,F401 (
 import adaptador_tarkor  # noqa: E402
 import camino  # noqa: E402
 import fase as fase_py  # noqa: E402
+import motores  # noqa: E402
 
 RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
 PROBAR = os.environ.get('IMG_PROBAR', os.path.join(RAIZ, 'scripts', 'probar.sh'))
@@ -278,12 +289,13 @@ def estimado(perfil, con_referencia):
     return int(round(ESTIMADO_BASE.get(perfil, 110) * (FACTOR_REFERENCIA if con_referencia else 1)))
 
 
-ESTIMADO_FASE = {'F0': 36, 'F1': 300, 'F2': 300, 'F4': 160}  # segundos, si aún no hay intentos de esa fase
+ESTIMADO_FASE = {'F0': 36, 'F1': 300, 'F2': 300, 'F4': 160, **{p: 40 for p in camino.PASOS}}  # segundos, si aún no hay intentos de esa fase
 
 
-def estimado_fase(fase, con_juego=False):
+def estimado_fase(fase, con_juego=False, motor=None):
     """Mediana de los segundos de los intentos con imagen de esa fase, con o sin la imagen del juego, de todos los
-    camino.json (sin el banco)."""
+    camino.json (sin el banco). IMG-53: en pasos y Final, solo los del mismo motor (los antiguos sin `motor` son klein4b)."""
+    motor = motor or motores.POR_DEFECTO
     tiempos = []
     try:
         for t in os.listdir(GENERADO):
@@ -297,13 +309,17 @@ def estimado_fase(fase, con_juego=False):
                     continue
                 for v in c.get('variantes', {}).values():
                     for i in v.get('fases', {}).get(fase, {}).get('intentos', []):
-                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)) and not i.get('referencias') and bool(i.get('referencia')) == con_juego:
+                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)) and not i.get('referencias') and bool(i.get('referencia')) == con_juego \
+                                and i.get('motor', motores.POR_DEFECTO) == motor:
                             tiempos.append(i['segundos'])
     except (FileNotFoundError, NotADirectoryError):
         pass
     if tiempos:
         return int(round(statistics.median(tiempos)))
-    return int(round(ESTIMADO_FASE.get(fase, 120) * (FACTOR_REFERENCIA if con_juego else 1)))
+    base = ESTIMADO_FASE.get(fase, 120)
+    if motor != motores.POR_DEFECTO and (fase == 'F4' or fase in camino.PASOS):  # estimación de la tabla de motores
+        base = motores.motor(motor)['segundos']['final' if fase == 'F4' else 'paso']
+    return int(round(base * (FACTOR_REFERENCIA if con_juego else 1)))
 
 
 def referencia_de(tipo, slug_, perfil):
@@ -359,6 +375,49 @@ def leer_progreso(tipo, slug_, desde):
 
 
 # --- generación: el trabajo del núcleo con probar.sh ---
+
+def _dentro(real, base):
+    return real == base or real.startswith(base.rstrip(os.sep) + os.sep)
+
+
+def resolver_referencias(brutas, tipo, slug_, max_n):
+    """IMG-53: [{rol, imagen}] de la petición -> [{rol, ruta}] con la ruta absoluta. `imagen` es un archivo de
+    image-generator/referencias/ o de generated/<tipo>/<slug>/intentos/ (de cualquier elemento): se admite relativa a
+    image-generator/ (`referencias/images/fauna/x.png`, `generated/fauna/nievon/intentos/a.png`), a referencias/images/
+    (`fauna/x.png`) o, sola, un intento de este elemento (`macho-p1-1.png`). Nada que salga de esas carpetas."""
+    if brutas is None:
+        return []
+    if not isinstance(brutas, list):
+        raise Invalido('referencias debe ser una lista [{rol, imagen}]')
+    if len(brutas) > max_n:
+        raise Invalido(f'como mucho {max_n} referencias con rol en esta fase (la imagen de entrada cuenta una de las {fase_py.MAX_REFERENCIAS})' if max_n < fase_py.MAX_REFERENCIAS
+                       else f'como mucho {max_n} referencias con rol')
+    permitidas = [os.path.realpath(REFERENCIAS), os.path.realpath(os.path.join(RAIZ, 'referencias'))]
+    base_gen = os.path.realpath(GENERADO)
+    salida = []
+    for r in brutas:
+        if not isinstance(r, dict) or r.get('rol') not in fase_py.ROLES:
+            raise Invalido(f'referencia sin un rol válido ({", ".join(fase_py.ROLES)})')
+        img = r.get('imagen')
+        if not isinstance(img, str) or not img or '\0' in img or os.path.isabs(img):
+            raise Invalido('referencia sin una imagen válida (ruta relativa a image-generator/)')
+        existe = False
+        for cand in (os.path.join(RAIZ, img), os.path.join(REFERENCIAS, img), os.path.join(elemento_dir(tipo, slug_), 'intentos', img)):
+            real = os.path.realpath(cand)
+            if not os.path.isfile(real):
+                continue
+            existe = True
+            rel = os.path.relpath(real, base_gen).split(os.sep)
+            en_intentos = _dentro(real, base_gen) and len(rel) >= 4 and rel[2] == 'intentos'
+            if en_intentos or any(_dentro(real, b) for b in permitidas):
+                salida.append({'rol': r['rol'], 'ruta': real})
+                break
+        else:
+            if existe:
+                raise Invalido(f'la referencia «{img}» está fuera de referencias/ y de generated/<tipo>/<slug>/intentos/')
+            raise Invalido(f'no existe la imagen de referencia «{img}»')
+    return salida
+
 
 class Trabajo(nucleo.Trabajo):
     """El trabajo del núcleo con lo del generador: valida la petición y lanza `probar.sh`."""
@@ -416,6 +475,23 @@ class Trabajo(nucleo.Trabajo):
         semilla = peticion.get('semilla')
         if semilla is not None:
             semilla = entero(semilla, 'la semilla', 0, 2 ** 31 - 1)
+        motor = peticion.get('motor')
+        paso = fase == 'F4' or fase in camino.PASOS
+        if motor is not None:
+            if motor not in motores.MOTORES:
+                raise Invalido(f'motor desconocido: {motor} ({", ".join(motores.MOTORES)})')
+            if not paso and motor != motores.POR_DEFECTO:
+                raise Invalido(f'el motor {motor} solo vale en los pasos (P1…P9) y en la Final, no en {fase}')
+            if paso and motor != motores.POR_DEFECTO and motores.faltan(motor, RAIZ):
+                raise Invalido(motores.mensaje_faltan(motor, motores.faltan(motor, RAIZ)))
+        semillas = entero(peticion.get('semillas', 1), 'semillas', 1, fase_py.MAX_SEMILLAS)
+        if camino.ENTRADA[fase] and fase_py.RECETAS[fase]['entrada'] == '-r':
+            tope_refs = fase_py.MAX_REFERENCIAS - 1
+        else:
+            tope_refs = fase_py.MAX_REFERENCIAS
+        refs = resolver_referencias(peticion.get('referencias'), tipo, slug_, tope_refs)
+        if refs and peticion.get('usarReferencia'):
+            raise Invalido('referencias con rol y usarReferencia no se mezclan')
         texto = str(peticion.get('prompt') or '').strip()
         if not texto:
             raise Invalido('el prompt está vacío')
@@ -433,13 +509,22 @@ class Trabajo(nucleo.Trabajo):
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(texto + '\n')
         orden = [sys.executable, FASE, tipo, slug_, variante, fase, archivo] + ([] if semilla is None else [str(semilla)])
+        if motor:
+            orden += ['--motor', motor]
+        if semillas > 1:
+            orden += ['--semillas', str(semillas)]
+        for r in refs:
+            orden += ['--ref', f'{r["rol"]}:{r["ruta"]}']
         if juego:
             orden += ['--referencia', os.path.join(REFERENCIAS, juego['ruta'])]
         elif del_juego:
             orden += ['--medir-con', os.path.join(REFERENCIAS, del_juego['ruta'])]
         datos = {'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': fase,
                  'perfil': f'{fase} {camino.POR_ID[fase]["nombre"]}', 'semilla': semilla,
-                 'pasos': fase_py.RECETAS[fase]['pasos'], 'conReferencia': fase == 'F4' or bool(juego), 'estimado': estimado_fase(fase, bool(juego))}
+                 'pasos': motores.motor(motor or motores.POR_DEFECTO)['pasos'] if paso else fase_py.RECETAS[fase]['pasos'],
+                 'conReferencia': bool(camino.ENTRADA[fase]) and fase_py.RECETAS[fase]['entrada'] == '-r' or bool(juego) or bool(refs),
+                 'estimado': estimado_fase(fase, bool(juego), motor) * semillas, 'motor': (motor or motores.POR_DEFECTO) if paso else None,
+                 'semillas': semillas}
         self.empezar(orden, datos, env=dict(os.environ, IMG_RAIZ=RAIZ, **ADAPTADOR.entorno()), que='fase.py', ocupado=sd_cli_en_marcha,
                      limpiar=lambda: os.unlink(archivo),
                      motivo_ocupado='ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
@@ -479,7 +564,8 @@ def api_cola(p):
 @RUTAS.get('/api/inicio')
 def api_inicio(p):
     return {'perfiles': PERFILES, 'mundo': ADAPTADOR.mundo, 'fases': [dict(f, siguientes=list(f['siguientes']))
-                                                                     for f in camino.FASES]}
+                                                                     for f in camino.FASES],
+            'motores': motores.lista(RAIZ), 'motorPorDefecto': motores.POR_DEFECTO}
 
 
 @RUTAS.get('/api/elementos')
@@ -568,7 +654,8 @@ def api_fase_avanzar(p):
         raise Invalido(str(e))
     try:
         TRABAJO.lanzar_fase({'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': siguiente, 'prompt': prompt,
-                             'usarReferencia': c.get('usarReferencia')})
+                             'usarReferencia': c.get('usarReferencia'), 'motor': c.get('motor'), 'semillas': c.get('semillas', 1),
+                             'referencias': c.get('referencias')})
         lanzado = {'lanzado': True}
     except Invalido as e:  # ocupado, sin entrada…: la aceptación se queda
         lanzado = {'lanzado': False, 'motivo': str(e)}

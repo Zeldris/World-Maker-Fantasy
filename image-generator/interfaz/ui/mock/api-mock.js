@@ -59,13 +59,27 @@ const FASES = [
   { id: 'F0', nombre: 'Boceto', receta: 'f0-boceto', siguientes: ['F1', 'F4'], disponible: true },
   { id: 'F1', nombre: 'Forma', receta: 'f1-forma', siguientes: ['F2', 'F4'], disponible: true },
   { id: 'F2', nombre: 'Detalle', receta: 'f2-detalle', siguientes: ['F4'], disponible: true },
+  // IMG-53: cadena de pasos P1…P9 (cada uno parte de la aceptada del anterior; la Final, del paso aceptado más alto)
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ id: `P${n}`, nombre: `Paso ${n}`, receta: 'paso', siguientes: n < 9 ? [`P${n + 1}`, 'F4'] : ['F4'], disponible: true })),
   { id: 'F4', nombre: 'Final', receta: 'f4-final', siguientes: ['F3'], disponible: true },
   { id: 'F3', nombre: 'Recorte', receta: 'recorte', siguientes: [], disponible: false },
 ];
 const POR_ID = Object.fromEntries(FASES.map((f) => [f.id, f]));
-const ENTRADA = { F0: [], F1: ['F0'], F2: ['F1'], F4: ['F2', 'F1', 'F0'], F3: ['F4'] };
-const PASOS_FASE = { F0: 4, F1: 8, F2: 16, F4: 4 };
-const ESTIMADO_FASE = { F0: 36, F1: 300, F2: 300, F4: 160 };
+const NOMBRES_PASO = [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `P${n}`);
+const ENTRADA = { F0: [], F1: ['F0'], F2: ['F1'], F4: [...NOMBRES_PASO].reverse().concat(['F2', 'F1', 'F0']), F3: ['F4'],
+  ...Object.fromEntries(NOMBRES_PASO.map((p, i) => [p, i ? [NOMBRES_PASO[i - 1]] : []])) };
+const PASOS_FASE = { F0: 4, F1: 8, F2: 16, F4: 4, ...Object.fromEntries(NOMBRES_PASO.map((p) => [p, 4])) };
+const ESTIMADO_FASE = { F0: 36, F1: 300, F2: 300, F4: 160, ...Object.fromEntries(NOMBRES_PASO.map((p) => [p, 40])) };
+/* IMG-53: motores (scripts/motores.py; segundos: paso a 480x192 y Final; `estimacion` = aún sin medir). qwen-edit y longcat
+   salen como no disponibles para que la interfaz enseñe ese estado. */
+const MOTORES = [
+  { id: 'klein4b', nombre: 'FLUX.2 klein 4B', disponible: true, faltan: [], pasos: 4, segundosEstimados: { paso: 40, final: 160 }, estimacion: false },
+  { id: 'klein9b', nombre: 'FLUX.2 klein 9B (Q4)', disponible: true, faltan: [], pasos: 4, segundosEstimados: { paso: 80, final: 320 }, estimacion: true },
+  { id: 'klein9b-consistencia', nombre: 'FLUX.2 klein 9B + consistencia', disponible: true, faltan: [], pasos: 4, segundosEstimados: { paso: 90, final: 360 }, estimacion: true },
+  { id: 'qwen-edit', nombre: 'Qwen-Image-Edit 2511 (Q3)', disponible: false, faltan: ['modelos/diffusion/qwen-image-edit-2511-Q3_K_S.gguf'], pasos: 20, segundosEstimados: { paso: 400, final: 1600 }, estimacion: true },
+  { id: 'longcat', nombre: 'LongCat Image Edit (Q4)', disponible: false, faltan: ['modelos/diffusion/longcat_edit_bfl_format-Q4_K_M.gguf'], pasos: 20, segundosEstimados: { paso: 400, final: 1600 }, estimacion: true },
+  { id: 'flux3', nombre: 'FLUX.3 klein (fotorrealista)', disponible: true, faltan: [], pasos: 8, segundosEstimados: { paso: 300, final: 900 }, estimacion: true },
+];
 const SEMILLA_F0 = 3;
 const caminos = {};
 const PASO_MS = new URLSearchParams(location.search).get('rapido') === '1' ? 50 : 2000;
@@ -82,11 +96,11 @@ function faseDeEntrada(v, fase) {
   if (!ENTRADA[fase].length) return null;
   const c = ENTRADA[fase].find((x) => v && v.fases[x] && v.fases[x].aceptada);
   if (c) return c;
-  throw new CaminoInvalido(`Falta una fase aceptada (${ENTRADA[fase].join(' o ')}) para generar ${fase} ${POR_ID[fase].nombre}`);
+  throw new CaminoInvalido(`Falta una fase aceptada (${fase === 'F4' ? 'un paso P1…P9, F2, F1 o F0' : ENTRADA[fase].join(' o ')}) para generar ${fase} ${POR_ID[fase].nombre}`);
 }
 function semillaPorDefecto(v, fase, prompt, referencia) {
   const f = v && v.fases[fase];
-  if (!f || !f.intentos.length) return fase === 'F0' ? SEMILLA_F0 : v.fases[faseDeEntrada(v, fase)].semilla;
+  if (!f || !f.intentos.length) return !ENTRADA[fase].length ? SEMILLA_F0 : v.fases[faseDeEntrada(v, fase)].semilla;
   const ultimo = f.intentos[f.intentos.length - 1];
   return prompt === ultimo.prompt && (referencia || null) === (ultimo.referencia || null) ? Math.max(...f.intentos.map((i) => i.semilla)) + 1 : ultimo.semilla;
 }
@@ -179,7 +193,7 @@ function borrarFase(c, variante, fase) {
   }
   c.marcadas = c.marcadas.filter((m) => !(m.variante === variante && b.has(m.imagen)));
   const sinSalida = !v.fases[v.faseActual] && ENTRADA[v.faseActual].length && !ENTRADA[v.faseActual].some((x) => v.fases[x] && v.fases[x].aceptada);
-  if (fases.includes(v.faseActual) || sinSalida) v.faseActual = desde || 'F0';
+  if (fases.includes(v.faseActual) || sinSalida) v.faseActual = desde || (NOMBRES_PASO.includes(fase) ? 'P1' : 'F0');
 }
 function intentoDesfasado(v, it) {
   return !!it.desde && it.entrada !== ((v.fases[it.desde] || {}).aceptada || null);
@@ -199,13 +213,13 @@ function marcarCamino(c, variante, n, marcada) {
 const conCamino = (fn) => { try { return fn(); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; } };
 
 function apuntarIntento(c, variante, fase, p) {
-  const v = c.variantes[variante] = c.variantes[variante] || { origen: null, faseActual: 'F0', fases: {} };
+  const v = c.variantes[variante] = c.variantes[variante] || { origen: null, faseActual: 'P1', fases: {} };
   const [desde, entrada] = p.entrada || [null, null];
   const f = v.fases[fase] = v.fases[fase] || { aceptada: null, prompt: null, semilla: null, desde, entrada, desfasada: false, intentos: [] };
   if (!f.aceptada) Object.assign(f, { desde, entrada });
   const n = Math.max(0, ...f.intentos.map((i) => i.n)) + 1;
   f.intentos.push({ n, prompt: p.prompt, semilla: p.semilla, imagen: p.falla ? null : `${variante}-${fase.toLowerCase()}-${n}.png`,
-    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.referencia ? { referencia: p.referencia } : {}), ...(p.medida ? { medida: p.medida } : {}), ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
+    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.referencia ? { referencia: p.referencia } : {}), ...(p.motor ? { motor: p.motor } : {}), ...(p.referencias ? { referencias: p.referencias } : {}), ...(p.medida ? { medida: p.medida } : {}), ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
   v.faseActual = fase;
   return n;
 }
@@ -222,11 +236,24 @@ function lanzarFase(b) {
   const juego = b.usarReferencia ? (datos[`${tipo}/${slug}`] || {}).juego : null;
   if (b.usarReferencia && !juego) return mal(400, `no hay imagen de ${tipo}/${slug} en image-generator/referencias/images/`);
   const referencia = juego ? juego.split('/').pop() : null;
+  // IMG-53: motor, semillas (1-4) y referencias con rol [{rol, imagen}] (solo se validan los campos; el simulador no abre las imágenes)
+  const esPaso = fase === 'F4' || NOMBRES_PASO.includes(fase);
+  const motor = b.motor ? MOTORES.find((m) => m.id === b.motor) : null;
+  if (b.motor && !motor) return mal(400, `motor desconocido: ${b.motor} (${MOTORES.map((m) => m.id).join(', ')})`);
+  if (motor && !esPaso && motor.id !== 'klein4b') return mal(400, `el motor ${motor.id} solo vale en los pasos (P1…P9) y en la Final, no en ${fase}`);
+  if (motor && esPaso && !motor.disponible) return mal(400, `el motor ${motor.id} no está completo: falta ${motor.faltan.join(', ')}`);
+  const semillas = b.semillas === undefined ? 1 : Number(b.semillas);
+  if (!(Number.isInteger(semillas) && semillas >= 1 && semillas <= 4)) return mal(400, 'semillas: de 1 a 4');
+  const referencias = Array.isArray(b.referencias) ? b.referencias : [];
+  if (referencias.some((r) => !['sujeto', 'lugar', 'equipo', 'estilo'].includes(r.rol) || !r.imagen || String(r.imagen).startsWith('/') || String(r.imagen).includes('..'))) return mal(400, 'referencia sin un rol válido o con una imagen fuera de referencias/ y de intentos/');
+  if (referencias.length > (ENTRADA[fase].length ? 3 : 4)) return mal(400, 'demasiadas referencias con rol');
   try { faseDeEntrada(v, fase); } catch (e) { return mal(400, e.message); }
   verTrabajo();
   if (trabajo.enMarcha) return mal(400, 'ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe');
-  trabajo = { enMarcha: true, id: siguienteId++, tipo, slug, variante, fase, perfil: `${fase} ${POR_ID[fase].nombre}`, conReferencia: fase === 'F4' || !!juego, referencia,
-    inicio: Date.now(), salida: [], nombre: null, rc: null, pasos: PASOS_FASE[fase], semilla, estimado: ESTIMADO_FASE[fase], prompt };
+  trabajo = { enMarcha: true, id: siguienteId++, tipo, slug, variante, fase, perfil: `${fase} ${POR_ID[fase].nombre}`, conReferencia: !!ENTRADA[fase].length && (fase === 'F4' || NOMBRES_PASO.includes(fase)) || !!juego || referencias.length > 0, referencia,
+    inicio: Date.now(), salida: [], nombre: null, rc: null, pasos: esPaso && motor ? motor.pasos : PASOS_FASE[fase], semilla,
+    estimado: (esPaso && motor && motor.id !== 'klein4b' ? motor.segundosEstimados[fase === 'F4' ? 'final' : 'paso'] : ESTIMADO_FASE[fase]) * semillas,
+    prompt, motor: esPaso ? (motor ? motor.id : 'klein4b') : null, semillas, referencias };
   return ok({ ok: true }, 202);
 }
 
@@ -295,8 +322,13 @@ function terminarFase(seg) {
   const semilla = t.semilla === null ? semillaPorDefecto(v, t.fase, t.prompt, t.referencia) : t.semilla;
   const origen = faseDeEntrada(v, t.fase);
   const falla = semilla === 13;
-  const n = apuntarIntento(c, t.variante, t.fase, { prompt: t.prompt, semilla, segundos: seg, falla, referencia: t.referencia,
-    entrada: origen ? [origen, v.fases[origen].aceptada] : null, medida: falla ? null : medidaSimulada(semilla, !!origen, !!(datos[`${t.tipo}/${t.slug}`] || {}).juego) });
+  let n;
+  for (let k = 0; k < (t.semillas || 1); k++) { // semillas consecutivas, un intento por cada una
+    n = apuntarIntento(c, t.variante, t.fase, { prompt: t.prompt, semilla: semilla + k, segundos: seg, falla, referencia: t.referencia,
+      motor: t.motor, referencias: t.referencias && t.referencias.length ? t.referencias : null,
+      entrada: origen ? [origen, v.fases[origen].aceptada] : null, medida: falla ? null : medidaSimulada(semilla + k, !!origen, !!(datos[`${t.tipo}/${t.slug}`] || {}).juego) });
+    if (falla) break;
+  }
   const nombre = `${t.variante}-${t.fase.toLowerCase()}-${n}`;
   const error = 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)';
   historial.unshift({ id: t.id, estado: falla ? 'fallido' : 'hecho', tipo: t.tipo, slug: t.slug, variante: t.variante, fase: t.fase, perfil: t.perfil,
@@ -343,7 +375,7 @@ export async function transport(method, url, body) {
   const q = Object.fromEntries(u.searchParams);
   const ruta = u.pathname;
   if (method === 'GET') {
-    if (ruta === '/api/inicio') return ok({ perfiles: PERFILES, mundo: 'helek-sirik (simulador ?mock=1)', fases: JSON.parse(JSON.stringify(FASES)) });
+    if (ruta === '/api/inicio') return ok({ perfiles: PERFILES, mundo: 'helek-sirik (simulador ?mock=1)', fases: JSON.parse(JSON.stringify(FASES)), motores: JSON.parse(JSON.stringify(MOTORES)), motorPorDefecto: 'klein4b' });
     if (ruta === '/api/camino') return ok(vistaCamino(q.tipo, q.slug));
     if (ruta === '/api/fase/dependientes') return conCamino(() => ok(dependientesCamino(camino(q.tipo, q.slug), q.variante, q.fase)));
     if (ruta === '/api/estado') return ok(verTrabajo());
@@ -391,7 +423,7 @@ export async function transport(method, url, body) {
       verTrabajo();
       const { tipo, slug, variante, fase, siguiente } = body, c = camino(tipo, slug);
       try { avanzarCamino(c, tipo, variante, fase, Number(body.intento), siguiente); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }
-      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt, usarReferencia: body.usarReferencia });
+      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt, usarReferencia: body.usarReferencia, motor: body.motor, semillas: body.semillas, referencias: body.referencias });
       return ok({ camino: vistaCamino(tipo, slug), ...(r.status === 202 ? { lanzado: true } : { lanzado: false, motivo: r.json.error }) });
     }
     if (ruta === '/api/camino/renombrar') {

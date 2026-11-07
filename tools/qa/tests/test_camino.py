@@ -170,6 +170,83 @@ class TestCamino(unittest.TestCase):
         self.assertEqual(sorted(ns), list(range(1, 41)))
 
 
+class TestPasos(unittest.TestCase):
+    """IMG-53: cadena de pasos P1…P9; F0/F1/F2 siguen para los caminos antiguos."""
+    def setUp(self):
+        self.d = carpeta()
+
+    def aceptar(self, c, v, f, n, sig):
+        con_imagenes(self.d, c, v, f)
+        C.avanzar(self.d, c, v, f, n, sig, 'fauna')
+
+    def cadena(self, c, hasta=3):
+        """Apunta y acepta P1…P<hasta> encadenados; devuelve el camino."""
+        entrada = None
+        for k in range(1, hasta + 1):
+            f = f'P{k}'
+            intento(c, 'm', f, entrada=entrada)
+            self.aceptar(c, 'm', f, 1, f'P{k + 1}')
+            entrada = (f, C.nombre_intento('m', f, 1) + '.png')
+        return c
+
+    def test_cadena_p1_p2_p3_f4_con_las_entradas_correctas(self):
+        c = self.cadena(C.vacio())
+        self.assertIsNone(C.fase_de_entrada({}, 'P1'))
+        v = c['variantes']['m']
+        self.assertEqual([C.fase_de_entrada(v, f) for f in ('P2', 'P3', 'P4', 'F4')], ['P1', 'P2', 'P3', 'P3'])
+        self.assertEqual(C.siguientes('P2', 'fauna'), ['P3', 'F4'])
+        self.assertEqual(C.siguientes('P9', 'fauna'), ['F4'])
+        self.assertEqual([v['fases'][f]['desde'] for f in ('P2', 'P3')], ['P1', 'P2'])
+        self.assertEqual(v['faseActual'], 'P4')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'Falta una fase aceptada .P1.'):
+            C.fase_de_entrada({}, 'P2')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'Falta una fase aceptada .un paso P1…P9'):
+            C.fase_de_entrada({}, 'F4')
+
+    def test_la_final_sin_pasos_sigue_saliendo_de_f2_f1_f0(self):
+        c = C.vacio()
+        intento(c, 'm', 'F0')
+        self.aceptar(c, 'm', 'F0', 1, 'F4')
+        self.assertEqual(C.fase_de_entrada(c['variantes']['m'], 'F4'), 'F0')
+
+    def test_semilla_por_defecto_de_p1_y_de_los_siguientes(self):
+        c = C.vacio()
+        self.assertEqual(C.semilla_por_defecto({}, 'P1', 'a'), C.SEMILLA_F0)
+        self.cadena(c, 1)
+        self.assertEqual(C.semilla_por_defecto(c['variantes']['m'], 'P2', 'otro'), 1)
+
+    def test_atras_en_pasos(self):
+        c = self.cadena(C.vacio(), 2)
+        C.atras(c, 'm')  # P3 sin registro: el paso anterior aceptado
+        self.assertEqual(c['variantes']['m']['faseActual'], 'P2')
+        C.atras(c, 'm')  # P2 con registro: su `desde`
+        self.assertEqual(c['variantes']['m']['faseActual'], 'P1')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'No hay fase anterior a P1'):
+            C.atras(c, 'm')
+
+    def test_borrar_un_paso_arrastra_los_siguientes_y_vuelve_al_anterior(self):
+        c = self.cadena(C.vacio(), 3)
+        intento(c, 'm', 'F4', entrada=('P3', 'm-p3-1.png'))
+        con_imagenes(self.d, c, 'm', 'F4')
+        self.assertEqual(C.dependientes(c, 'm', 'P2')['fases'], ['P2', 'P3', 'F4'])
+        C.borrar_fase(self.d, c, 'm', 'P2')
+        v = c['variantes']['m']
+        self.assertEqual([v['fases'][f]['aceptada'] for f in ('P1', 'P2', 'P3', 'F4')], ['m-p1-1.png', None, None, None])
+        self.assertEqual(v['faseActual'], 'P1')
+        self.assertTrue(os.path.exists(os.path.join(self.d, 'intentos', 'm-p1-1.png')))
+        self.assertFalse(os.path.exists(os.path.join(self.d, 'intentos', 'm-p3-1.png')))
+        C.borrar_fase(self.d, c, 'm', 'P1')
+        self.assertEqual(v['faseActual'], 'P1')  # la raíz de una cadena de pasos es P1, no F0
+
+    def test_reaceptar_un_paso_con_otra_imagen_desfasa_los_siguientes(self):
+        c = self.cadena(C.vacio(), 3)
+        intento(c, 'm', 'P1', semilla=9)
+        con_imagenes(self.d, c, 'm', 'P1')
+        C.avanzar(self.d, c, 'm', 'P1', 2, 'P2', 'fauna')
+        v = c['variantes']['m']
+        self.assertEqual([v['fases'][f]['desfasada'] for f in ('P2', 'P3')], [True, True])
+
+
 class TestRenombrarBorrarMarcar(unittest.TestCase):
     """IMG-25 (parte 2): renombrar, borrar lo guardado de una fase y marcar ★."""
 
@@ -741,6 +818,139 @@ class TestMedida(BaseFase):
         self.assertEqual([M.estado_emd('cb', v) for v in (6, 6.1, 11.4, 11.5)], ['ok', 'aviso', 'aviso', 'falla'])
         self.assertEqual([M.estado_emd('cr', v) for v in (7.5, 7.6, 13.5, 13.6)], ['ok', 'aviso', 'aviso', 'falla'])
         self.assertEqual([M.estado_emd('y', v) for v in (20, 20.1, 43, 43.1)], ['ok', 'aviso', 'aviso', 'falla'])
+
+
+GENERAR_FALSO_MOTOR = '''#!/bin/bash
+{ printf '%s\\n' "$@"; echo "MOTOR=${MOTOR-<sin>}"; echo "TOPE=${TOPE-<sin>}"; echo "PROMPT=$(cat "$3")"; } >> "$ARGS_GENERAR"
+[ -n "${FALLA:-}" ] && { echo "boom: sin memoria"; exit 1; }
+mkdir -p "$1/intentos"; echo png > "$1/intentos/$2.png"
+'''
+
+
+class TestFasePasos(BaseFase):
+    """IMG-53: pasos, motores y semillas de fase.py, con un generar.sh falso."""
+    def setUp(self):
+        super().setUp()
+        escribir(self.gen, GENERAR_FALSO_MOTOR)
+
+    def ref(self, nombre='sujeto.png'):
+        ruta = os.path.join(self.raiz, 'refs', nombre)
+        escribir(ruta, 'png')
+        return ruta
+
+    def paso1(self):
+        r = self.fase('P1')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        C.actualizar(self.d, lambda c: C.avanzar(self.d, c, 'macho', 'P1', 1, 'P2', 'fauna'))
+        os.remove(self.args)
+
+    def test_p1_es_como_f0_y_no_lleva_entrada(self):
+        r = self.fase('P1')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertEqual(a[:7], [self.d, 'macho-p1-1', a[2], '480', '192', '3', '4'])
+        self.assertNotIn('-r', a)
+        self.assertIn('MOTOR=<sin>', a); self.assertIn('TOPE=1800', a); self.assertIn('PROMPT=un mono rojo', a)
+        i = C.leer(self.d)['variantes']['macho']['fases']['P1']['intentos'][0]
+        self.assertEqual((i['motor'], i['semilla'], i['imagen']), ('klein4b', 3, 'macho-p1-1.png'))
+        self.assertEqual(C.leer(self.d)['variantes']['macho']['faseActual'], 'P1')
+
+    def test_p2_toma_la_aceptada_de_p1_como_r_con_el_prompt_tal_cual(self):
+        self.paso1()
+        r = self.fase('P2')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertEqual(a[3:7], ['480', '192', '3', '4'])
+        self.assertEqual(a[7:11], ['-r', f'{self.d}/intentos/macho-p1-1.png', '--ref-image-args', 'vae_input_max_pixels=262144'])
+        self.assertIn('PROMPT=un mono rojo', a)
+        i = C.leer(self.d)['variantes']['macho']['fases']['P2']['intentos'][0]
+        self.assertEqual((i['desde'], i['entrada'], i['prompt']), ('P1', 'macho-p1-1.png', 'un mono rojo'))
+
+    def test_p2_con_refs_antepone_la_imagen_actual_y_numera_los_roles_desde_2(self):
+        self.paso1()
+        suj, lug = self.ref('sujeto.png'), self.ref('lugar.png')
+        r = self.fase('P2', extra=['--ref', f'sujeto:{suj}', '--ref', f'lugar:{lug}'])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertEqual(a[7:15], ['-r', f'{self.d}/intentos/macho-p1-1.png', '--ref-image-args', 'vae_input_max_pixels=262144', '-r', suj, '-r', lug])
+        p = next(l for l in a if l.startswith('PROMPT='))
+        self.assertTrue(p.startswith('PROMPT=Image 1 is the current image: keep it exactly as it is except for what is asked. '
+                                     'Image 2 is a subject of this image'), p)
+        self.assertIn('Image 3 is the place', p)
+        self.assertTrue(p.endswith('un mono rojo'))
+        i = C.leer(self.d)['variantes']['macho']['fases']['P2']['intentos'][0]
+        self.assertEqual(i['referencias'], [{'rol': 'sujeto', 'imagen': 'sujeto.png'}, {'rol': 'lugar', 'imagen': 'lugar.png'}])
+
+    def test_un_paso_con_entrada_admite_como_mucho_tres_refs(self):
+        self.paso1()
+        refs = sum([['--ref', f'estilo:{self.ref(f"e{k}.png")}'] for k in range(4)], [])
+        r = self.fase('P2', extra=refs)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('P2 admite como mucho 3 --ref', r.stdout)
+
+    def test_la_final_parte_del_paso_aceptado_mas_alto(self):
+        self.paso1()
+        self.assertEqual(self.fase('P2').returncode, 0)
+        C.actualizar(self.d, lambda c: C.avanzar(self.d, c, 'macho', 'P2', 1, 'F4', 'fauna'))
+        r = self.fase('F4')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertIn(f'{self.d}/intentos/macho-p2-1.png', a)
+        self.assertEqual(C.leer(self.d)['variantes']['macho']['fases']['F4']['desde'], 'P2')
+
+    def test_motor_por_defecto_no_pone_motor_y_el_explicito_llega_a_generar_sh(self):
+        self.assertEqual(self.fase('P1').returncode, 0)
+        self.assertIn('MOTOR=<sin>', self.llamada())
+        os.remove(self.args)
+        for m in ('modelos/diffusion/flux-2-klein-9b-Q4_0.gguf', 'modelos/text/Qwen3-8B-Q4_K_M.gguf',
+                  'modelos/vae/full_encoder_small_decoder.safetensors', 'loras/klein9b-consistencia.safetensors'):
+            escribir(os.path.join(self.raiz, m), 'x')
+        r = self.fase('P1', extra=['--motor', 'klein9b-consistencia'])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertIn('MOTOR=klein9b-consistencia', a); self.assertIn('TOPE=3600', a)
+        i = C.leer(self.d)['variantes']['macho']['fases']['P1']['intentos'][-1]
+        self.assertEqual(i['motor'], 'klein9b-consistencia')
+
+    def test_la_receta_del_motor_sustituye_a_los_pasos_de_p_y_f4(self):
+        import motores
+        for m in ('modelos/diffusion/qwen-image-edit-2511-Q3_K_S.gguf', 'modelos/text/Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf',
+                  'modelos/text/Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf', 'modelos/vae/qwen_image_vae.safetensors'):
+            escribir(os.path.join(self.raiz, m), 'x')
+        self.assertEqual(motores.faltan('qwen-edit', self.raiz), [])
+        self.assertEqual(self.fase('P1', extra=['--motor', 'qwen-edit']).returncode, 0)
+        self.assertEqual(self.llamada()[6], '20')
+
+    def test_motor_con_archivo_ausente_aborta_con_3_y_dice_cual_y_no_apunta_nada(self):
+        escribir(os.path.join(self.raiz, 'modelos', 'diffusion', 'longcat_edit_bfl_format-Q4_K_M.gguf.part'), 'x')
+        r = self.fase('P1', extra=['--motor', 'longcat'])
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('el motor longcat no está completo: falta modelos/diffusion/longcat_edit_bfl_format-Q4_K_M.gguf (solo existe el .part', r.stdout)
+        self.assertFalse(os.path.exists(self.args))
+        self.assertEqual(C.leer(self.d)['variantes'], {})
+
+    def test_motor_desconocido_o_en_una_fase_antigua_aborta_con_2(self):
+        self.assertEqual(self.fase('P1', extra=['--motor', 'raro']).returncode, 2)
+        r = self.fase('F0', extra=['--motor', 'klein9b'])
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('solo vale en los pasos', r.stdout)
+
+    def test_semillas_2_genera_dos_intentos_con_semillas_consecutivas(self):
+        r = self.fase('P1', semilla=5, extra=['--semillas', '2'])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        its = C.leer(self.d)['variantes']['macho']['fases']['P1']['intentos']
+        self.assertEqual([(i['n'], i['semilla'], i['imagen']) for i in its], [(1, 5, 'macho-p1-1.png'), (2, 6, 'macho-p1-2.png')])
+        self.assertEqual(leer(self.args).count('MOTOR='), 2)
+
+    def test_semillas_fuera_de_rango_aborta_con_2(self):
+        for v in ('0', '5', 'x'):
+            self.assertEqual(self.fase('P1', extra=['--semillas', v]).returncode, 2)
+
+    def test_semillas_si_uno_falla_no_lanza_los_siguientes(self):
+        r = self.fase('P1', extra=['--semillas', '3'], extra_env={'FALLA': '1'})
+        self.assertNotEqual(r.returncode, 0)
+        its = C.leer(self.d)['variantes']['macho']['fases']['P1']['intentos']
+        self.assertEqual(len(its), 1)
 
 
 if __name__ == '__main__':

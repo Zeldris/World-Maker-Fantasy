@@ -75,6 +75,14 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   de estilo a 1280x512. Cada paso elige motor: klein 4B, klein 9B (± LoRA de consistencia), Qwen-Image-Edit 2511, LongCat
   Edit y FLUX.3 klein, con su receta según [`investigacion-modelos-y-pasos.md`](plan-imagenes/investigacion-modelos-y-pasos.md).
   Sale de la prueba por pasos de `plan-piezas-y-referencias.md`. Los prompts los afina la usuaria probando.
+  **Parte 1 (motor y API) hecha** ✅ 2026-11-07: fases `P1`…`P9` en `camino.py` (P1 sin entrada; `Pn` parte de la aceptada de
+  `P(n-1)`; la Final, del paso aceptado más alto; F0/F1/F2 intactas); `fase.py` con receta de paso (480x192, 4 pasos, tope 1800, entrada
+  como primer `-r`, «Image 1 is the current image…» si hay `--ref`), `--motor <id>` y `--semillas N` (1-4); tabla única de motores en
+  `scripts/motores.py` (klein4b, klein9b, klein9b-consistencia, qwen-edit, longcat, flux3) que lee también `generar.sh` (`MOTOR=<id>`);
+  archivo ausente: código 3 con el nombre; el motor se guarda en cada intento de `camino.json`; `/api/fase/generar` acepta `motor`,
+  `semillas` y `referencias: [{rol, imagen}]`, `/api/inicio` trae `motores` y las fases nuevas; simulador al día. **Queda (parte 2):**
+  la interfaz (selector de motor, pasos P1…P9, 2 semillas, referencias con rol, variantes que empiezan en P1), probar cada motor con
+  generaciones reales (qwen-edit y longcat esperan sus modelos) y medir los tiempos (hoy solo klein4b está medido).
 
 ### Bloque B · Prototipo
 

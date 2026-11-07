@@ -109,7 +109,7 @@ class Fases(T.Base):
 
     def test_generar_rechaza_con_su_motivo(self):
         casos = ((dict(fase='F1', prompt='x'), 'Falta una fase aceptada \\(F0\\) para generar F1 Forma'),
-                 (dict(fase='F4', prompt='x'), 'Falta una fase aceptada \\(F2 o F1 o F0\\)'),
+                 (dict(fase='F4', prompt='x'), 'Falta una fase aceptada \\(un paso P1…P9, F2, F1 o F0\\)'),
                  (dict(fase='F3', prompt='x'), 'F3 Recorte no está disponible todavía'),
                  (dict(fase='F9', prompt='x'), 'fase desconocida: F9'),
                  (dict(fase='F0', prompt='  '), 'el prompt está vacío'),
@@ -363,6 +363,99 @@ class Fases(T.Base):
         self.assertEqual(self.esperar()['nombre'], 'macho-f1-1')
         f1 = self.pedir('/api/camino?tipo=fauna&slug=nievon')[1]['variantes']['macho']['fases']['F1']
         self.assertEqual((f1['desde'], f1['entrada'], f1['intentos'][0]['semilla']), ('F0', 'macho-f0-1.png', 5))
+
+    # --- IMG-53: pasos, motores, semillas y referencias ---
+
+    def modelos(self, *rutas):
+        for r in rutas:
+            escribir(os.path.join(self.raiz, 'modelos', r), 'x')
+
+    def test_inicio_trae_los_pasos_y_los_motores_con_su_disponibilidad(self):
+        r = self.pedir('/api/inicio')[1]
+        self.assertEqual([f['id'] for f in r['fases']][3:12], [f'P{n}' for n in range(1, 10)])
+        self.assertEqual(r['motorPorDefecto'], 'klein4b')
+        self.assertEqual([m['id'] for m in r['motores']], ['klein4b', 'klein9b', 'klein9b-consistencia', 'qwen-edit', 'longcat', 'flux3'])
+        k = r['motores'][0]
+        self.assertEqual((k['disponible'], k['pasos'], k['segundosEstimados'], k['estimacion']), (False, 4, {'paso': 40, 'final': 160}, False))
+        self.assertIn('modelos/diffusion/flux-2-klein-4b-Q8_0.gguf', k['faltan'])
+        self.modelos('diffusion/flux-2-klein-4b-Q8_0.gguf', 'text/Qwen3-4B-Q4_K_M.gguf', 'vae/full_encoder_small_decoder.safetensors')
+        r = self.pedir('/api/inicio')[1]
+        self.assertEqual((r['motores'][0]['disponible'], r['motores'][0]['faltan']), (True, []))
+        q = next(m for m in r['motores'] if m['id'] == 'qwen-edit')
+        self.assertEqual((q['disponible'], q['pasos'], q['estimacion']), (False, 20, True))
+
+    def test_generar_p1_y_avanzar_p2_encadena_los_pasos_por_la_api(self):
+        self.assertEqual(self.post_fase('generar', fase='P1', prompt='un fondo', semilla=4)[0], 202)
+        e = self.pedir('/api/estado')[1]
+        self.assertEqual((e['fase'], e['perfil'], e['motor'], e['semillas'], e['estimado']), ('P1', 'P1 Paso 1', 'klein4b', 1, 40))
+        self.assertEqual(self.pedir('/api/cola')[1]['cola'][0]['pasos'], 4)
+        self.esperar()
+        self.sembrar(fase='P1', n=1)
+        codigo, r = self.post_fase('generar', fase='P2', prompt='x')
+        self.assertEqual(codigo, 400)
+        self.assertIn('Falta una fase aceptada (P1)', r['error'])
+        codigo, r = self.post_fase('avanzar', fase='P1', intento=1, siguiente='P2')
+        self.assertEqual((codigo, r['lanzado']), (200, True))
+        self.assertEqual(r['camino']['variantes']['macho']['siguientes'], ['P3', 'F4'])
+        self.esperar()
+
+    def test_generar_pasa_motor_semillas_y_referencias_a_fase_py(self):
+        self.modelos('diffusion/flux-2-klein-9b-Q4_0.gguf', 'text/Qwen3-8B-Q4_K_M.gguf', 'vae/full_encoder_small_decoder.safetensors')
+        escribir(os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'estilo.png'), 'x')
+        self.sembrar(fase='P1', n=1, faseActual='P1')
+        escribir(os.path.join(self.dir(), 'intentos', 'macho-p1-1.png'), 'x')
+        refs = [{'rol': 'estilo', 'imagen': 'referencias/images/fauna/estilo.png'}, {'rol': 'sujeto', 'imagen': 'macho-p1-1.png'}]
+        r = self.post_fase('generar', fase='P1', prompt='x', motor='klein9b', semillas=2, referencias=refs)
+        self.assertEqual(r[0], 202, r)
+        e = self.pedir('/api/estado')[1]
+        self.assertEqual((e['motor'], e['semillas'], e['conReferencia'], e['estimado']), ('klein9b', 2, True, 160))
+        self.esperar()
+        (a,) = [x for x in self.args() if x['argv'][3] == 'P1']
+        av = a['argv']
+        self.assertEqual(av[av.index('--motor') + 1], 'klein9b')
+        self.assertEqual(av[av.index('--semillas') + 1], '2')
+        rutas = [av[i + 1] for i, x in enumerate(av) if x == '--ref']
+        self.assertEqual([x.split(':')[0] for x in rutas], ['estilo', 'sujeto'])
+        self.assertTrue(rutas[0].endswith('/referencias/images/fauna/estilo.png'))
+        self.assertTrue(rutas[1].endswith('/generated/fauna/nievon/intentos/macho-p1-1.png'))
+
+    def test_referencias_fuera_de_las_carpetas_permitidas_dan_400(self):
+        escribir(os.path.join(self.raiz, 'secreto.txt'), 'x')
+        escribir(os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'ok.png'), 'x')
+        os.symlink(os.path.join(self.raiz, 'secreto.txt'), os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'enlace.png'))
+        for imagen, motivo in (('../../secreto.txt', 'fuera de referencias'), ('secreto.txt', 'fuera de referencias'),
+                               ('/etc/passwd', 'imagen válida'), ('referencias/images/fauna/enlace.png', 'fuera de referencias'),
+                               ('generated/fauna/nievon/prompts/x.txt', 'no existe|fuera'), ('nada.png', 'no existe')):
+            codigo, r = self.post_fase('generar', fase='P1', prompt='x', referencias=[{'rol': 'estilo', 'imagen': imagen}])
+            self.assertEqual(codigo, 400, imagen)
+            self.assertRegex(r['error'], motivo, imagen)
+        self.assertEqual(self.post_fase('generar', fase='P1', prompt='x', referencias=[{'rol': 'raro', 'imagen': 'fauna/ok.png'}])[0], 400)
+        self.assertEqual(self.args(), [])
+        self.assertEqual(self.post_fase('generar', fase='P1', prompt='x', referencias=[{'rol': 'estilo', 'imagen': 'fauna/ok.png'}])[0], 202)
+        self.esperar()
+
+    def test_motor_desconocido_sin_archivos_o_en_fase_antigua_y_semillas_fuera_de_rango_dan_400(self):
+        for cuerpo, motivo in ((dict(fase='P1', motor='raro'), 'motor desconocido: raro'),
+                               (dict(fase='P1', motor='qwen-edit'), 'el motor qwen-edit no está completo: falta modelos/diffusion/qwen-image-edit-2511-Q3_K_S.gguf'),
+                               (dict(fase='F0', motor='klein9b'), 'solo vale en los pasos'),
+                               (dict(fase='P1', semillas=5), 'semillas'),
+                               (dict(fase='P1', semillas=0), 'semillas')):
+            codigo, r = self.post_fase('generar', prompt='x', **cuerpo)
+            self.assertEqual(codigo, 400, cuerpo)
+            self.assertIn(motivo, r['error'])
+        self.assertEqual(self.args(), [])
+
+    def test_con_el_fase_py_real_dos_semillas_dejan_dos_intentos_con_su_motor(self):
+        self.s.FASE = os.path.join(SCRIPTS, 'fase.py')
+        generar = os.path.join(self.fake, 'generar.sh')
+        escribir(generar, GENERAR_FALSO)
+        os.environ['IMG_GENERAR'] = generar
+        self.addCleanup(os.environ.pop, 'IMG_GENERAR', None)
+        self.assertEqual(self.post_fase('generar', fase='P1', prompt='un fondo', semilla=5, semillas=2)[0], 202)
+        self.esperar()
+        p1 = self.pedir('/api/camino?tipo=fauna&slug=nievon')[1]['variantes']['macho']['fases']['P1']
+        self.assertEqual([(i['semilla'], i['motor'], i['imagen']) for i in p1['intentos']],
+                         [(5, 'klein4b', 'macho-p1-1.png'), (6, 'klein4b', 'macho-p1-2.png')])
 
 
 if __name__ == '__main__':

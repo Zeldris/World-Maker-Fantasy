@@ -18,8 +18,15 @@ FASES = [
     {'id': 'F4', 'nombre': 'Final', 'receta': 'f4-final', 'siguientes': ['F3'], 'disponible': True},
     {'id': 'F3', 'nombre': 'Recorte', 'receta': 'recorte', 'siguientes': [], 'disponible': False},  # llega con IMG-37
 ]
+# IMG-53: cadena de pasos P1…P9 (edición: cada uno parte de la aceptada del anterior); F0/F1/F2 siguen para caminos antiguos.
+PASOS = [f'P{n}' for n in range(1, 10)]
+FASES[3:3] = [{'id': p, 'nombre': f'Paso {n}', 'receta': 'paso', 'disponible': True,
+               'siguientes': ([PASOS[n]] if n < 9 else []) + ['F4']} for n, p in enumerate(PASOS, 1)]
 POR_ID = {f['id']: f for f in FASES}
-ENTRADA = {'F0': [], 'F1': ['F0'], 'F2': ['F1'], 'F4': ['F2', 'F1', 'F0'], 'F3': ['F4']}  # por orden de preferencia
+ENTRADA = {'F0': [], 'F1': ['F0'], 'F2': ['F1'], 'F3': ['F4'],  # por orden de preferencia
+           'F4': PASOS[::-1] + ['F2', 'F1', 'F0']}  # la Final parte del paso aceptado más alto
+ENTRADA.update({p: ([PASOS[n - 2]] if n > 1 else []) for n, p in enumerate(PASOS, 1)})
+FASE_INICIAL = 'P1'  # donde empieza una variante nueva (F0 sigue para las antiguas)
 SEMILLA_F0 = 3
 
 
@@ -92,7 +99,7 @@ def fase_de_entrada(v, fase):
     for c in ENTRADA[fase]:
         if fases.get(c, {}).get('aceptada'):
             return c
-    pide = ' o '.join(ENTRADA[fase])
+    pide = ' o '.join(ENTRADA[fase]) if fase != 'F4' else 'un paso P1…P9, F2, F1 o F0'
     raise CaminoInvalido(f'Falta una fase aceptada ({pide}) para generar {fase} {POR_ID[fase]["nombre"]}')
 
 
@@ -112,7 +119,7 @@ def semilla_por_defecto(v, fase, prompt, referencia=None, referencias=None):
     f = (v or {}).get('fases', {}).get(fase)
     intentos = f['intentos'] if f else []
     if not intentos:
-        if fase == 'F0':
+        if not ENTRADA[fase]:
             return SEMILLA_F0
         return v['fases'][fase_de_entrada(v, fase)]['semilla']
     ultimo = intentos[-1]
@@ -122,10 +129,10 @@ def semilla_por_defecto(v, fase, prompt, referencia=None, referencias=None):
     return ultimo['semilla']
 
 
-def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None, medida=None, referencias=None):
+def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None, medida=None, referencias=None, motor=None):
     """Apunta un intento (imagen=None si falló). `entrada` = (fase, imagen) de la que parte, o None; `n`, el número que
     dio siguiente_n al nombrar la imagen (si no, el siguiente). Devuelve n."""
-    v = camino.setdefault('variantes', {}).setdefault(variante, {'origen': None, 'faseActual': 'F0', 'fases': {}})
+    v = camino.setdefault('variantes', {}).setdefault(variante, {'origen': None, 'faseActual': FASE_INICIAL, 'fases': {}})
     desde, img_entrada = entrada if entrada else (None, None)
     f = v['fases'].setdefault(fase, {'aceptada': None, 'prompt': None, 'semilla': None, 'desde': desde,
                                      'entrada': img_entrada, 'desfasada': False, 'intentos': []})
@@ -140,6 +147,8 @@ def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, s
         intento['referencia'] = referencia  # la imagen del juego que llevó (archivo, sin ruta)
     if referencias:
         intento['referencias'] = referencias  # IMG-52: [{rol, imagen}] de --ref (archivo, sin ruta); sustituye a `referencia`
+    if motor:
+        intento['motor'] = motor  # IMG-53: id de la tabla de motores.py con que se generó
     if medida is not None:
         intento['medida'] = medida  # la de scripts/medir/medida.py; sigue ahí aunque se borre la imagen
     f['intentos'].append(intento)
@@ -320,7 +329,7 @@ def borrar_fase(d, camino, variante, fase):
         r.update(aceptada=None, prompt=None, semilla=None, desfasada=False)
     camino['marcadas'] = [m for m in camino.get('marcadas', []) if not (m.get('variante') == variante and m['imagen'] in borrables)]
     if v['faseActual'] in fases or _sin_salida(v, v['faseActual']):
-        v['faseActual'] = desde or 'F0'
+        v['faseActual'] = desde or (FASE_INICIAL if fase in PASOS else 'F0')
 
 
 def intento_desfasado(v, fase, intento):
