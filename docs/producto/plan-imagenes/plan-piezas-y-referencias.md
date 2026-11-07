@@ -147,6 +147,35 @@ color: acerca la imagen a su luz, no a la del banner. El orco no conserva sus pr
 se le cortan los pies y en la de campamento 1234 aparece un segundo palo. **Falta un control:** `r32` sin referencias, porque esta tanda
 cambió el prompt y las referencias a la vez y no separa cuánto mejora cada cosa. P1b sigue sin lanzarse hasta verlo.
 
+**Control (`r32` sin referencias):** sale el orco sobre fondo blanco (Y 77,5/75,3, Cb 6,5/6,6, Cr 7,0/7,3). El lugar y la
+luz los ponen las referencias, y el orco grueso sale también sin ellas, así que no lo causan. De paso, `r32` da un sujeto
+limpio sobre blanco, que sirve para el recorte.
+
+#### Prueba por pasos (2026-11-07, con el sí de la usuaria)
+
+Propuesta de la usuaria, no definitiva: fondo solo, luego orco sin equipo, luego detalles y al final el render. Se prueba
+con un cambio por paso; el valle es el de `r33` (semilla 42: Y 38,9, Cb 3,2, Cr 9,3), con la cornisa de la izquierda vacía.
+«Fondo intacto» es el SSIM del tercio derecho (`crop=220:192:260:0`) contra ese fondo; las medidas, Y / Cb / Cr contra el
+banner del orco, con las semillas 42 y 1234.
+
+| Paso | Cómo | Fondo intacto | Y | Cb | Cr | A ojo |
+|---|---|---|---|---|---|---|
+| Orco, vía A | `r34`, fondo como `--ref lugar` | 0,988 / 0,986 | 30,6 / 28,6 | 3,8 / 3,7 | 8,7 / 8,6 | Integrado, con la luz del fondo y la pose pedida; la cornisa se rehace un poco |
+| Orco, vía B | `r34`, `--mask` sobre el fondo a 0,97 | 0,994 / 0,993 | 29,0 / 27,8 | 4,6 / 2,8 | 7,2 / 5,7 | Integrado; cambia la cornisa entera y en 1234 sale una cola |
+| Orco, vía C | `r35` sobre verde, `montar.sh` y armonizado a 0,5 | 0,912 / 0,819 | 23,1 / 16,7 | 4,0 / 4,0 | 7,4 / 8,1 | Más dibujo 3D; el verde sale teñido de luz y hubo que limpiarlo a mano, y armonizar rehace el valle |
+| Maza | `r36` sobre la A 42, `--ref sujeto` y `--ref equipo` | 0,975 / 0,977 | 31,1 / 26,6 | 4,8 / 4,8 | 10,3 / 10,3 | Solo aparece la maza, con la luz del valle aunque su referencia es de noche; el orco no cambia |
+| Final corta | `r37` (prefijo F4 y «no cambies nada»), maza 42 como `-r` | — | **9,7** | **2,7** | **4,0** | La más cercana al banner hasta ahora: piel, roca y luz realistas, misma composición; pierde los colmillos y las grietas de la piel |
+| Final completa | `r38` (prefijo F4 y descripción entera) | — | 22,2 | 4,7 | 7,8 | Misma composición, pero lechosa y de dibujo: el texto largo vuelve a imponerse, como en P1a |
+
+Conclusiones (una semilla en la Final; se confirman con más elementos antes de reescribir el plan de fases):
+
+- **Por pasos funciona** sin montaje: el fondo como referencia y un prompt de solo cambio («Keep… Change only… Change nothing
+  else») añaden el orco y luego la maza sin rehacer lo demás. La vía C no escala (limpieza a mano) y la B no conserva más.
+- **La Final con prompt corto**, que solo pide no cambiar nada y el estilo, respeta lo construido y da el mejor color medido.
+  Con la descripción entera se pierde el realismo: el detalle va en los pasos, no en la Final.
+- **Falta:** que la Final conserve los rasgos de identidad (colmillos, grietas), otra semilla, y probar la noche o el
+  invierno como variante desde el fondo aceptado. Tiempos: F0 ~16-46 s por paso, Final ~158 s.
+
 Los tiempos parten de pocos datos: F0 ~37 s y ~48 s con una referencia; Final ~160 s con una y ~206 s con dos. Si siguiera
 igual, una Final con cuatro rondaría los 5 minutos, pero eso es una extrapolación y P3 lo comprueba.
 
