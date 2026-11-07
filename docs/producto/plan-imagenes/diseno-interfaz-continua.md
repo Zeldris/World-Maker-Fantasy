@@ -55,6 +55,10 @@ guardado. Cada uno se crea **suelto**, sin depender de que exista su zona ni otr
 | **F4 Final** | Prompt + F2 aceptada | 1280x512 gradada y medida | FLUX.3 con LoRA, img2img a 0,50, 16 pasos, lanczos (`IMG-36`) | ~7,6 min |
 | **★ Marcada** | F4 aprobada | Imagen en la biblioteca | La usuaria | — |
 
+**Camino corto, por decidir (`IMG-46`, `pautas.md` §15):** la Final puede salir directa del boceto aceptado, con FLUX.2
+a 1280x512 y el boceto como `-r`, en ~160 s y con mejor textura que F1 + F2 (~10 min). F1 y F2 quedarían solo para
+corregir la forma. Lo decide la usuaria; hasta entonces la tabla sigue como está.
+
 Cada fase enseña **intentos**. Aceptar uno es avanzar. Una sola imagen por intento: la regla R1 de dos semillas deja de
 ser obligatoria, porque cada reintento ya aporta otra.
 

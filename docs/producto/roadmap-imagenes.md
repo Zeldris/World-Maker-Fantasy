@@ -48,9 +48,10 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   cadena a proporción 2,5 (`pautas.md` §14, r26 y r27). Comparada con el banner GPT como `-r`: salto grande de forma en
   el aullador, medio en choza y cuchillo, nulo en el cardo; ninguna alcanza su textura. **Queda:** bicúbico sin medir, y
   sin decidir si el `-r` entra en la receta, porque un elemento nuevo no tiene banner. **M**
-- **IMG-46 · El mejor camino con referencia** [A] (usuaria, 2026-11-07): 🚧 en curso. Buscar, midiendo contra el banner, la
-  cadena que más se le acerque: referencia de otro elemento (el caso de un elemento nuevo), `-r` en F2 y Final, FLUX.2 a
-  más tamaño y F0 sin masas planas. Deja la receta en `pautas.md`. **Generaciones autorizadas por la usuaria.** **M**
+- ~~**IMG-46 · El mejor camino con referencia**~~ [A] (usuaria, 2026-11-07): ✅ 2026-11-07. r28-r31, `pautas.md` §15: la
+  Final sale de FLUX.2 a 1280x512 y 4 pasos, con el boceto aceptado como `-r`, en ~160 s; conserva el boceto y trae la
+  textura que la cadena de FLUX.3 no daba. Sin banner, así que sirve para un elemento nuevo. **Queda:** decidir con la
+  usuaria si F1 y F2 salen del diseño; la forma rara sigue dependiendo de F0, y la luz lavada, de la gradación. **M**
 - **IMG-37 · F3 Recorte con transparencia** [A] (usuaria, 2026-11-06): guardar el recorte que hoy `montar.sh` deja en un
   temporal, como PNG con alfa, y comparar el recorte por color con `rembg`. La pieza que se combina usa una máscara
   recalculada sobre la Final; el recorte de F3 sirve para aprobarlo antes de gastar la noche. **S**

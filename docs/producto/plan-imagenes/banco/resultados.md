@@ -665,3 +665,20 @@ Rejillas en `generated/banco/r28/` y `r29/`. FLUX.2 en GPU, semilla 3, sin masas
 - **La textura la da generar a tamaño grande con FLUX.2**; la cadena de FLUX.3 con pasos reales pocos no la recupera. Se contradice la premisa de r26.
 - **La forma la da la referencia del propio elemento.** Una ajena solo aporta acabado.
 
+## r30 y r31 · El boceto propio como referencia, sin banner (`IMG-46`, 2026-11-07)
+
+Rejillas en `generated/banco/r30/` y `r31/`. Bocetos sin referencia: FLUX.2 480x192, 4 pasos, 37 s; el aullador usa la F1 de FLUX.3 de r25. Final con FLUX.2 a 1280x512, el boceto como `-r` y el prefijo «the same … as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail».
+
+| Prueba | Tiempo | Lectura |
+|---|---|---|
+| a: boceto como `-r`, 6 pasos (4 tipos) | 220-224 s | **Conserva forma, encuadre y color del boceto y añade textura real** |
+| b: como a, más el boceto como init a 0,90 y 8 pasos (4) | 172-174 s | Casi el boceto tal cual, sin textura |
+| l: como a, con `Style` sin luz dorada ni bruma (2) | 221-223 s | Casi idéntica: la luz lavada no viene de esa línea |
+| r31: 4 pasos | 160 s | Igual que 6 de cerca |
+| r31: 8 pasos | 287 s | Igual que 6 |
+| r31: 960x384, 6 pasos | 154 s | Algo menos de detalle y no ahorra frente a 4 pasos a 1280x512 |
+| r31s: semilla 7 (choza) | 220 s | Casi la misma imagen: con `-r`, la semilla apenas cambia nada |
+
+- **Contra el banner:** la Final es tan buena como su boceto. Pelo, placas, huesos, cuero y hielo ya se leen como en el banner; lo que falta es la forma y el encuadre que el boceto no trae (cuerpo de cinta, choza retorcida, cardo oscuro) y una luz menos lavada.
+- **Pautas:** `pautas.md` §15.
+

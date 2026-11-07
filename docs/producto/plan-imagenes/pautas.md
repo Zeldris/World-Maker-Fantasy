@@ -273,5 +273,19 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | D5 | **La Final parte de F2 a 0,50 con 16 pasos: ~7,6 min a 1280x512 frente a 49 desde cero, así que puede salir de día.** A 0,70 tarda el doble y no mejora. | ✅ | r26d, r26f, r27: cuatro tipos, 453-466 s |
 | D6 | **El SSIM solo vigila la forma**: da por buena la imagen que pierde textura. Hace falta mirar el detalle de cerca. | ✅ | r26: la c pasa con 0,71 y es la peor en textura |
 | D7 | **La misma proporción en toda la cadena, 2,5**: 480x192, 640x256, 960x384, 1280x512, múltiplos de 16. | ✅ | r27: cuatro tipos, sin recortar la Final |
-| D8 | **Un `-r` limpio en F0 trae forma y encuadre que el prompt no da**, por ~12 s más (~48 s). Salto grande en el aullador, medio en choza y cuchillo, nulo en el cardo; no trae la textura. Solo vale con una referencia, y aquí era el propio banner: cota superior. | 🔬 | r27: una semilla por tipo; referencia de otro elemento sin medir |
+| D8 | **Un `-r` limpio en F0 trae forma y encuadre que el prompt no da**, por ~12 s más (~48 s). Salto grande en el aullador, medio en choza y cuchillo, nulo en el cardo; no trae la textura. Solo vale con una referencia, y aquí era el propio banner: cota superior. | ⚠️ | r27: una semilla por tipo; referencia de otro elemento sin medir |. Superada por §15
 | D9 | **Con referencia, F0 sin masas planas y sin F1 queda más cerca del banner**, y ahorra ~5 min. | 🔬 | r27: solo aullador |
+
+## 15. Final directa desde el boceto (r28-r31)
+
+| # | Pauta | Estado | Evidencia |
+|---|---|---|---|
+| E1 | **La Final sale de FLUX.2 en GPU a 1280x512 y 4 pasos, con el boceto aceptado como `-r`** (`--ref-image-args vae_input_max_pixels=262144`) y delante del prompt «The same <cosa>, in the same composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail». ~160 s. Sustituye a F1 y F2 de FLUX.3 (~18 min en total) y queda mejor en textura. | ✅ | r30: cuatro tipos; r31: pasos |
+| E2 | **La textura la da generar a tamaño grande con FLUX.2**, no la cadena de FLUX.3: sin referencia, en 150 s ya salen pelo, grietas y cuero. | ✅ | r29: cuatro tipos |
+| E3 | **La forma la da el `-r` del propio elemento**; una referencia de otro elemento solo aporta acabado y FLUX.2 vuelve a la forma común. | ✅ | r28, r29: cuatro tipos |
+| E4 | **El boceto como init no sirve para la Final**: de 0,60 a 0,90 conserva el boceto y no añade textura. | ✅ | r29, r30 |
+| E5 | **Ni más pasos ni menos tamaño ahorran**: 4, 6 y 8 pasos dan lo mismo de cerca; 960x384 tarda casi lo mismo que 1280x512 con 4. | 🔬 | r31: solo aullador |
+| E6 | **Con `-r`, la semilla apenas cambia la Final**: regenerarla da la misma imagen. Para otra versión se cambia el boceto. | 🔬 | r31s: choza, una semilla más |
+| E7 | **La Final es tan buena como su boceto**: la forma rara (cuerpo de cinta) y el encuadre del banner siguen dependiendo de F0. | ✅ | r30: el aullador hereda la forma del boceto de FLUX.3 |
+| E8 | **La luz sale lavada y no la mueve la línea `Style`**; queda por probar la gradación (`gradar.sh`). | ✅ | r30 l-: dos tipos |
+
