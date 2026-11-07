@@ -1,10 +1,16 @@
-# Propuesta: pipeline de assets con IA (DDD) — SIN REVISAR
+# Propuesta: pipeline de assets con IA (DDD) — ❌ DESCARTADA
 
 **Apuntado:** 2026-11-07, a petición de la usuaria, para revisarlo en otro momento.
 **Estado:** propuesta sin revisar. **No es un roadmap ni entra en ningún hito**: nada de aquí se implementa hasta que
 la usuaria lo revise y lo apruebe (y, mientras duren las pruebas de juego, no se abren tareas nuevas).
 El texto de abajo es el que dio la usuaria, tal cual; solo se han añadido bloques de código y tablas en Markdown para
 que se lea bien.
+
+**❌ Descartada (usuaria, 2026-11-07)** tras compararla con `roadmap-imagenes.md`: da por hecho un juego en pixel art
+sobre cuadrícula (sprites, tilesets, 3D) y hardware NVIDIA/Apple, y Tarkor usa ilustraciones (miniatura y banner
+~3:1, perfil `fotorreal`) generadas con FLUX.2 en la Deck. Manda el plan por fases del roadmap. Ideas sueltas que
+se podrían retomar algún día, **no aplicadas**: hashes de modelo/prompt/salida en `camino.json` (`IMG-40`), validador
+determinista y licencia por imagen antes de publicar (`IMG-45`), versión nueva al reemplazar una ★ publicada.
 
 **Para cruzarlo al revisar** (lo que ya hay en el repo):
 
