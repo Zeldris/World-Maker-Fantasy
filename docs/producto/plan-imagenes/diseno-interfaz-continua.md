@@ -49,15 +49,15 @@ guardado. Cada uno se crea **suelto**, sin depender de que exista su zona ni otr
 | Fase | Entrada | Salida | Quién la genera | Coste |
 |---|---|---|---|---|
 | **F0 Boceto** | El prompt | Boceto legible | FLUX.2 en GPU, 480x192, 4 pasos (`IMG-35`, `pautas.md` §12) | ~36 s |
-| **F1 Forma** | Prompt + F0 aceptada | Masas y silueta | FLUX.3 con LoRA, img2img a 0,88, 640x256, 8 pasos (`IMG-34`, `pautas.md` §13) | ~5 min |
-| **F2 Detalle** | Prompt + F1 aceptada | Materiales y luz | FLUX.3 con LoRA, img2img a 0,50, 960x384, 16 pasos, lanczos (`IMG-36`, `pautas.md` §14) | ~5 min |
-| **F3 Recorte** | F2 aceptada | PNG con alfa; **no se aplica a fondos** | Sin modelo (`IMG-37`) | Segundos |
-| **F4 Final** | Prompt + F2 aceptada | 1280x512 gradada y medida | FLUX.3 con LoRA, img2img a 0,50, 16 pasos, lanczos (`IMG-36`) | ~7,6 min |
+| **F1 Forma** (opcional) | Prompt + F0 aceptada, solo para corregir la forma | Masas y silueta | FLUX.3 con LoRA, img2img a 0,88, 640x256, 8 pasos (`IMG-34`, `pautas.md` §13) | ~5 min |
+| **F2 Detalle** (opcional) | Prompt + F1 aceptada | Materiales y luz | FLUX.3 con LoRA, img2img a 0,50, 960x384, 16 pasos, lanczos (`IMG-36`, `pautas.md` §14) | ~5 min |
+| **F3 Recorte** | F4 aceptada | PNG con alfa; **no se aplica a fondos** | Sin modelo (`IMG-37`) | Segundos |
+| **F4 Final** | Prompt + el último boceto aceptado como `-r` | 1280x512 gradada y medida | FLUX.2 en GPU, 1280x512, 4 pasos, prefijo «the same … rough study» (`IMG-46`, `pautas.md` §15) | ~160 s |
 | **★ Marcada** | F4 aprobada | Imagen en la biblioteca | La usuaria | — |
 
-**Camino corto, por decidir (`IMG-46`, `pautas.md` §15):** la Final puede salir directa del boceto aceptado, con FLUX.2
-a 1280x512 y el boceto como `-r`, en ~160 s y con mejor textura que F1 + F2 (~10 min). F1 y F2 quedarían solo para
-corregir la forma. Lo decide la usuaria; hasta entonces la tabla sigue como está.
+**Camino corto (`IMG-46`, `pautas.md` §15; usuaria, 2026-11-07):** la Final sale directa del boceto aceptado, con FLUX.2 y el
+boceto como `-r`; F1 y F2 quedan como opción para corregir la forma. El recorte pasa a hacerse sobre la Final. Falta
+revisar con ese orden el resto del diseño (§1.5, cola de noche) en `IMG-37` e `IMG-39`.
 
 Cada fase enseña **intentos**. Aceptar uno es avanzar. Una sola imagen por intento: la regla R1 de dos semillas deja de
 ser obligatoria, porque cada reintento ya aporta otra.
