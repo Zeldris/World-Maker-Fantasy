@@ -7,7 +7,7 @@ Plan del 2026-11-07. **Aprobada solo la fase 1** (`IMG-51`, `IMG-52` y las prueb
 - Además de la imagen del juego, poder adjuntar otras referencias, con un máximo, para combinar: «2 aulladores cazando
   1 múrgol, en la hondonada, con 1 orco guerrero reposando en los muros».
 
-Las tareas llevan letra (`T1`…): T1 es `IMG-51`, T2 es `IMG-52`; las demás reciben su `IMG-*` y su hito cuando se aprueben. Nada de esto está empezado.
+Las tareas llevan letra (`T1`…): T1 es `IMG-51`, T2 es `IMG-52`; las demás reciben su `IMG-*` y su hito cuando se aprueben. Hechas T1 y T2 (2026-11-07); faltan las pruebas P1-P3 y lo demás está sin empezar.
 
 ## 1. Qué podrás elegir
 

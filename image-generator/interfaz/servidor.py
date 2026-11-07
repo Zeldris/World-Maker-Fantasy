@@ -297,7 +297,7 @@ def estimado_fase(fase, con_juego=False):
                     continue
                 for v in c.get('variantes', {}).values():
                     for i in v.get('fases', {}).get(fase, {}).get('intentos', []):
-                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)) and bool(i.get('referencia')) == con_juego:
+                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)) and not i.get('referencias') and bool(i.get('referencia')) == con_juego:
                             tiempos.append(i['segundos'])
     except (FileNotFoundError, NotADirectoryError):
         pass

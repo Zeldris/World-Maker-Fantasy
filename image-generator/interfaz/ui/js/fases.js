@@ -79,7 +79,7 @@ const marcadaImg = (imagen) => !!imagen && ((S.camino && S.camino.marcadas) || [
 // Solo para apagar el botón: la regla es la de camino.intento_desfasado y la aplica el servidor.
 const desfasado = (v, a) => !!a.desde && a.entrada !== ((v.fases[a.desde] || {}).aceptada || null);
 const MOTIVO_DESFASE = 'Esta Final salió de un boceto que ya no es el aceptado: genera otra';
-const meta = (i) => `s=${i.semilla} · ${i.segundos} s · ${when(i.fecha)}${i.referencia ? ' · con referencia' : ''}`;
+const meta = (i) => `s=${i.semilla} · ${i.segundos} s · ${when(i.fecha)}${i.referencia ? ' · con referencia' : ''}${(i.referencias || []).length ? ` · con ${i.referencias.length} ${i.referencias.length === 1 ? 'referencia' : 'referencias'}` : ''}`;
 const MARCA_MEDIDA = { ok: '✓', aviso: '⚠', falla: '✗' };
 const decimal = (x, n) => x.toFixed(n).replace('.', ',');
 const valorMedido = (nombre, m, n, titulo) => h('span', { title: titulo }, `${nombre} ${decimal(m.valor, n)} ${MARCA_MEDIDA[m.estado]}`);
@@ -253,18 +253,18 @@ function pasos(v) {
 
 /* La cadena que llevó a una imagen, de F0 a ella: por `desde`/`entrada` hacia atrás. `base` = lo de la imagen vista. */
 function comoSeHizo(v, f, base) {
-  const pasos = [{ fase: f, semilla: base.semilla, prompt: base.prompt, imagen: base.imagen, referencia: base.referencia, intentos: registro(v, f).intentos }];
+  const pasos = [{ fase: f, semilla: base.semilla, prompt: base.prompt, imagen: base.imagen, referencia: base.referencia, referencias: base.referencias, intentos: registro(v, f).intentos }];
   let { desde, entrada } = base;
   while (desde && pasos.length < 8) {
     const r = registro(v, desde), it = entrada ? r.intentos.find((i) => i.imagen === entrada) : null;
     if (!it) { pasos.push({ fase: desde, perdido: true }); break; }
-    pasos.push({ fase: desde, semilla: it.semilla, prompt: it.prompt, imagen: it.imagen, referencia: it.referencia, intentos: r.intentos });
+    pasos.push({ fase: desde, semilla: it.semilla, prompt: it.prompt, imagen: it.imagen, referencia: it.referencia, referencias: it.referencias, intentos: r.intentos });
     ({ desde, entrada } = it);
   }
   pasos.reverse();
   const lista = h('ol.como', {}, ...pasos.map((p) => h('li', {},
     p.imagen ? h('img.mini.ampliable', { src: srcImagen(p.imagen, p.intentos), alt: `${nombreFase(p.fase)}`, onclick: () => ctx.ampliar(srcImagen(p.imagen, p.intentos), nombreFase(p.fase)) }) : null,
-    h('div', {}, h('strong', {}, nombreFase(p.fase)), p.perdido ? ' · ya no está guardada' : ` · s=${p.semilla}${p.referencia ? ` · con la imagen del juego (${p.referencia})` : ''}`),
+    h('div', {}, h('strong', {}, nombreFase(p.fase)), p.perdido ? ' · ya no está guardada' : ` · s=${p.semilla}${p.referencia ? ` · con la imagen del juego (${p.referencia})` : ''}${(p.referencias || []).length ? ` · con ${p.referencias.map((x) => `${x.rol}: ${x.imagen}`).join(', ')}` : ''}`),
     p.perdido ? null : h('div.meta', {}, p.prompt))));
   return h('details.como-se-hizo', { 'data-como': 'pasos' }, h('summary', {}, 'Cómo se hizo'), lista);
 }
@@ -315,7 +315,7 @@ function lecturaFase(v) {
     h('div.meta', {}, r.desfasada ? '⚠ desfasada: se aceptó otra imagen en la fase de la que sale. ' : '', r.semilla !== null && r.semilla !== undefined ? `s=${r.semilla}` : '',
       marcadaImg(r.aceptada) ? h('span.estrella', { title: 'Marcada: lista para combinar' }, ' ★') : null),
     h('pre.prompt-leido', {}, r.prompt || '(sin prompt guardado)'),
-    r.aceptada ? comoSeHizo(v, f, { semilla: r.semilla, prompt: r.prompt, imagen: r.aceptada, desde: r.desde, entrada: r.entrada, referencia: (r.intentos.find((i) => i.imagen === r.aceptada) || {}).referencia }) : null,
+    r.aceptada ? comoSeHizo(v, f, { semilla: r.semilla, prompt: r.prompt, imagen: r.aceptada, desde: r.desde, entrada: r.entrada, referencia: (r.intentos.find((i) => i.imagen === r.aceptada) || {}).referencia, referencias: (r.intentos.find((i) => i.imagen === r.aceptada) || {}).referencias }) : null,
     h('div.acciones', {}, h('button.btn.btn-primary', { type: 'button', onclick: () => { S.lectura = null; render(); } }, `Volver a ${nombreFase(v.faseActual)}`),
       botonBorrar(v, f)));
 }

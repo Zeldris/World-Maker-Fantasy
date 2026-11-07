@@ -208,6 +208,13 @@ class Fases(T.Base):
         self.assertEqual(self.s.estimado_fase('F1'), 20)
         self.assertEqual(self.s.estimado_fase('F0'), 36)
 
+    def test_el_estimado_no_cuenta_los_intentos_con_referencias_con_rol(self):
+        self.sembrar(slug='a', fase='F1', n=1, segundos=10)
+        d = self.dir('fauna', 'a')
+        C.actualizar(d, lambda c: c['variantes']['macho']['fases']['F1']['intentos'].append(
+            {'n': 9, 'imagen': 'x.png', 'segundos': 999, 'referencias': [{'rol': 'lugar', 'imagen': 'l.png'}]}))
+        self.assertEqual(self.s.estimado_fase('F1'), 10)
+
     def test_elementos_cuenta_tambien_los_intentos_del_camino(self):
         self.sembrar(n=3)
         el = [e for e in self.pedir('/api/elementos')[1]['elementos'] if e['slug'] == 'nievon']

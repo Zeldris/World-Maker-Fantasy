@@ -96,8 +96,19 @@ def fase_de_entrada(v, fase):
     raise CaminoInvalido(f'Falta una fase aceptada ({pide}) para generar {fase} {POR_ID[fase]["nombre"]}')
 
 
-def semilla_por_defecto(v, fase, prompt, referencia=None):
-    """Solo cambia si se repite lo mismo: con otro prompt, o con o sin la imagen del juego, se compara a igual semilla."""
+def referencias_de(intento):
+    """IMG-52: las referencias de un intento como lista [{rol, imagen}]: las de `referencias`; o, de un intento antiguo,
+    su `referencia` con el rol «juego»; o []."""
+    if intento.get('referencias'):
+        return list(intento['referencias'])
+    if intento.get('referencia'):
+        return [{'rol': 'juego', 'imagen': intento['referencia']}]
+    return []
+
+
+def semilla_por_defecto(v, fase, prompt, referencia=None, referencias=None):
+    """Solo cambia si se repite lo mismo: con otro prompt, o con otras referencias (roles, imágenes y orden), se compara
+    a igual semilla. `referencia` = archivo de --referencia; `referencias` = lista [{rol, imagen}] de --ref."""
     f = (v or {}).get('fases', {}).get(fase)
     intentos = f['intentos'] if f else []
     if not intentos:
@@ -105,12 +116,13 @@ def semilla_por_defecto(v, fase, prompt, referencia=None):
             return SEMILLA_F0
         return v['fases'][fase_de_entrada(v, fase)]['semilla']
     ultimo = intentos[-1]
-    if prompt == ultimo['prompt'] and referencia == ultimo.get('referencia'):
+    ahora = referencias_de({'referencias': referencias, 'referencia': referencia})
+    if prompt == ultimo['prompt'] and ahora == referencias_de(ultimo):
         return max(i['semilla'] for i in intentos) + 1
     return ultimo['semilla']
 
 
-def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None, medida=None):
+def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None, medida=None, referencias=None):
     """Apunta un intento (imagen=None si falló). `entrada` = (fase, imagen) de la que parte, o None; `n`, el número que
     dio siguiente_n al nombrar la imagen (si no, el siguiente). Devuelve n."""
     v = camino.setdefault('variantes', {}).setdefault(variante, {'origen': None, 'faseActual': 'F0', 'fases': {}})
@@ -126,6 +138,8 @@ def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, s
         intento['error'] = error
     if referencia:
         intento['referencia'] = referencia  # la imagen del juego que llevó (archivo, sin ruta)
+    if referencias:
+        intento['referencias'] = referencias  # IMG-52: [{rol, imagen}] de --ref (archivo, sin ruta); sustituye a `referencia`
     if medida is not None:
         intento['medida'] = medida  # la de scripts/medir/medida.py; sigue ahí aunque se borre la imagen
     f['intentos'].append(intento)

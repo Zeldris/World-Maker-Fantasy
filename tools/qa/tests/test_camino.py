@@ -496,6 +496,123 @@ class TestFasePy(BaseFase):
         self.assertEqual(r.returncode, 3)
         self.assertIn('no existe la imagen de referencia: /no/esta.png', r.stdout)
 
+    # --- IMG-52: varias referencias con rol ---
+    def refs(self, *roles):
+        rutas = []
+        for k, rol in enumerate(roles):
+            ruta = os.path.join(self.raiz, 'juego', f'{rol}{k}.png')
+            escribir(ruta, 'png')
+            rutas.append((rol, ruta))
+        return rutas, [x for rol, ruta in rutas for x in ('--ref', f'{rol}:{ruta}')]
+
+    def r_de(self, a):
+        return [a[k + 1] for k, x in enumerate(a) if x == '-r']
+
+    def sin_rastro(self):
+        self.assertFalse(os.path.exists(self.args), 'no se generó')
+        self.assertFalse(os.path.exists(os.path.join(self.d, 'camino.json')), 'no se apuntó nada')
+
+    def test_dos_ref_en_f0_van_en_orden_con_prefijo_numerado_y_se_apuntan(self):
+        rutas, extra = self.refs('lugar', 'estilo')
+        self.assertEqual(self.fase('F0', extra=extra).returncode, 0)
+        a = self.llamada()
+        self.assertEqual(self.r_de(a), [r for _, r in rutas])
+        self.assertEqual(a.count('--ref-image-args'), 1)
+        self.assertIn('TOPE=1800', a)
+        self.assertIn('PROMPT=Image 1 is the place: use its setting and its light. Image 2 is a style reference: '
+                      'follow only its finish and colors, not its contents. un mono rojo', a)
+        i = C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]
+        self.assertEqual(i['referencias'], [{'rol': 'lugar', 'imagen': 'lugar0.png'}, {'rol': 'estilo', 'imagen': 'estilo1.png'}])
+        self.assertEqual(i['prompt'], 'un mono rojo')
+        self.assertNotIn('referencia', i)
+
+    def test_ref_en_f4_el_boceto_es_la_image_1_y_las_ref_siguen_desde_la_2(self):
+        rutas, extra = self.refs('sujeto', 'equipo')
+        self.assertEqual(self.fase('F0').returncode, 0)
+        self.aceptar('F0', 1, 'F4')
+        self.assertEqual(self.fase('F4', extra=extra).returncode, 0)
+        a = self.llamada()
+        self.assertEqual(self.r_de(a), [f'{self.d}/intentos/macho-f0-1.png'] + [r for _, r in rutas])
+        self.assertEqual(a.count('--ref-image-args'), 1)
+        p = next(l for l in a if l.startswith('PROMPT='))
+        self.assertEqual(p, 'PROMPT=Image 1 is a rough study of this image: keep its composition, shapes and proportions and render '
+                            'it with full detail. Image 2 is a subject of this image: keep its exact identity, shape and colors. '
+                            'Image 3 is equipment worn or carried in this image: keep its design and materials. un mono rojo')
+
+    def test_cuatro_ref_en_f0_pasan_y_cinco_se_rechazan_sin_generar(self):
+        self.assertEqual(self.fase('F0', extra=self.refs('sujeto', 'lugar', 'equipo', 'estilo')[1]).returncode, 0)
+        self.assertEqual(len(self.r_de(self.llamada())), 4)
+        os.remove(self.args)
+        shutil.rmtree(self.d)
+        r = self.fase('F0', extra=self.refs('sujeto', 'lugar', 'equipo', 'estilo', 'sujeto')[1])
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('como mucho 4 --ref (hay 5)', r.stdout)
+        self.sin_rastro()
+
+    def test_en_f4_el_boceto_cuenta_cuatro_ref_se_rechazan_y_tres_pasan(self):
+        self.assertEqual(self.fase('F0').returncode, 0)
+        self.aceptar('F0', 1, 'F4')
+        os.remove(self.args)
+        antes = leer(os.path.join(self.d, 'camino.json'))
+        r = self.fase('F4', extra=self.refs('sujeto', 'lugar', 'equipo', 'estilo')[1])
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('F4 admite como mucho 3 --ref', r.stdout)
+        self.assertIn('el boceto de entrada cuenta', r.stdout)
+        self.assertFalse(os.path.exists(self.args), 'no se generó')
+        self.assertEqual(leer(os.path.join(self.d, 'camino.json')), antes, 'no se apuntó nada')
+        self.assertEqual(self.fase('F4', extra=self.refs('sujeto', 'lugar', 'equipo')[1]).returncode, 0)
+        self.assertEqual(len(self.r_de(self.llamada())), 4)
+
+    def test_ref_mal_escrita_aborta_con_2_y_dice_los_roles(self):
+        ruta = self.juego()
+        for mal in (f'bicho:{ruta}', ruta.replace(':', '')):
+            r = self.fase('F0', extra=['--ref', mal])
+            self.assertEqual(r.returncode, 2)
+            self.assertIn('sujeto, lugar, equipo, estilo', r.stdout)
+        self.sin_rastro()
+
+    def test_ref_con_dos_puntos_en_la_ruta_se_parte_por_el_primero(self):
+        ruta = os.path.join(self.raiz, 'juego', 'a:b.png')
+        escribir(ruta, 'png')
+        self.assertEqual(self.fase('F0', extra=['--ref', f'lugar:{ruta}']).returncode, 0)
+        self.assertEqual(self.r_de(self.llamada()), [ruta])
+        self.assertEqual(C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]['referencias'][0]['imagen'], 'a:b.png')
+
+    def test_ref_que_no_existe_aborta_con_3_y_la_ruta(self):
+        r = self.fase('F0', extra=['--ref', 'lugar:/no/esta.png'])
+        self.assertEqual(r.returncode, 3)
+        self.assertIn('no existe la imagen de referencia: /no/esta.png', r.stdout)
+        self.sin_rastro()
+
+    def test_ref_y_referencia_no_se_mezclan(self):
+        ruta = self.juego()
+        r = self.fase('F0', extra=['--referencia', ruta, '--ref', f'lugar:{ruta}'])
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('no se mezclan', r.stdout)
+        self.sin_rastro()
+
+    def test_semilla_con_ref_sube_si_se_repite_la_lista_y_no_si_cambia(self):
+        _, a = self.refs('lugar', 'estilo')
+        _, b = self.refs('lugar')
+        for extra in (a, a, b, a):
+            self.assertEqual(self.fase('F0', extra=extra).returncode, 0)
+        ins = C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos']
+        self.assertEqual([i['semilla'] for i in ins], [3, 4, 4, 4])
+
+    def test_referencias_de_cubre_los_tres_casos(self):
+        self.assertEqual(C.referencias_de({'referencias': [{'rol': 'lugar', 'imagen': 'a.png'}]}), [{'rol': 'lugar', 'imagen': 'a.png'}])
+        self.assertEqual(C.referencias_de({'referencia': 'x.png'}), [{'rol': 'juego', 'imagen': 'x.png'}])
+        self.assertEqual(C.referencias_de({}), [])
+
+    def test_con_ref_el_color_solo_se_mide_con_medir_con(self):
+        escribir(self.gen, GENERAR_IMAGEN)
+        _, extra = self.refs('lugar')
+        juego = imagen(os.path.join(self.raiz, 'juego.png'), 'color=0x508030:s=1280x512')
+        self.assertEqual(self.fase('F0', extra=extra).returncode, 0)
+        self.assertEqual(C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]['medida'], {})
+        self.assertEqual(self.fase('F0', extra=extra + ['--medir-con', juego]).returncode, 0)
+        self.assertIn('emd', C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][1]['medida'])
+
     def test_f4_cosa_por_tipo_y_desde_f0(self):
         d = os.path.join(self.raiz, 'generated', 'flora', 'aullador')
         self.assertEqual(self.fase('F0', tipo='flora').returncode, 0)
