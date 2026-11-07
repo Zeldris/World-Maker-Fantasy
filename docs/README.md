@@ -22,8 +22,15 @@ si no sabes dónde buscar, empieza por la tabla de "Qué quiero hacer".
 | Ampliar lore con OpenCode | [runbooks/ampliar-lore.md](runbooks/ampliar-lore.md) y [borradores-opencode/prompts/00-como-usar.md](borradores-opencode/prompts/00-como-usar.md) |
 | Revisar una partida real buscando fallos | [runbooks/revisar-partida.md](runbooks/revisar-partida.md) |
 | Saber qué código, tests y tablas tocar de un sistema (para agentes) | [mapa-agente.md](mapa-agente.md) |
-| Retomar el trabajo donde lo dejó la última sesión | [registros/traspaso.md](registros/traspaso.md) |
-| Ver hallazgos abiertos | [registros/](#registros--hallazgos-y-checklists-vivos) |
+| Retomar el trabajo donde lo dejó la última sesión | [records/traspaso.md](records/traspaso.md) |
+| Ver hallazgos abiertos | [records/](#records--hallazgos-y-checklists-vivos) |
+
+## Licencias
+
+El código es [MIT](../LICENSE). El lore, el arte, los mapas y las voces de Tarkor son
+[CC BY-NC-SA 4.0](../LICENSE-CONTENIDO): se pueden compartir y adaptar citando la autoría, sin fines
+comerciales y con la misma licencia. Lo de terceros (fuentes, skills de mattpocock, sonidos de fauna,
+modelos de IA) conserva la suya.
 
 ## Carpetas
 
@@ -92,26 +99,26 @@ aprobar propuestas. Si choca con `rpgtarkor/`, manda `rpgtarkor/`. Ver su
 [puntos-de-codigo-nuevo-contenido](runbooks/puntos-de-codigo-nuevo-contenido.md) ·
 [revisar-partida](runbooks/revisar-partida.md)
 
-### `registros/` — hallazgos y checklists vivos
+### `records/` — hallazgos y checklists vivos
 Se escriben durante las sesiones y se van cerrando. No son documentación de referencia.
-- [traspaso.md](registros/traspaso.md): **bitácora de traspaso entre sesiones** — rama, tarea en
+- [traspaso.md](records/traspaso.md): **bitácora de traspaso entre sesiones** — rama, tarea en
   curso y siguiente paso (reglas en `CLAUDE.md`).
-- [checklist-pruebas-juego.md](registros/checklist-pruebas-juego.md): pruebas de juego pendientes.
-- [pruebas-nube-2026-09-28-hallazgos.md](registros/pruebas-nube-2026-09-28-hallazgos.md) y
-  [plan-cierre-hallazgos-2026-09-28.md](registros/plan-cierre-hallazgos-2026-09-28.md): última
+- [checklist-pruebas-juego.md](records/checklist-pruebas-juego.md): pruebas de juego pendientes.
+- [pruebas-nube-2026-09-28-hallazgos.md](records/pruebas-nube-2026-09-28-hallazgos.md) y
+  [plan-cierre-hallazgos-2026-09-28.md](records/plan-cierre-hallazgos-2026-09-28.md): última
   tanda de pruebas (B1-B32) y su plan de cierre.
-- [plan-mecanicas-por-zona-2026-09-28.md](registros/plan-mecanicas-por-zona-2026-09-28.md): paso de
+- [plan-mecanicas-por-zona-2026-09-28.md](records/plan-mecanicas-por-zona-2026-09-28.md): paso de
   habilidades a mecánicas de zona.
-- [revisar-partida-hallazgos.md](registros/revisar-partida-hallazgos.md),
-  [sesion-jugadora-hallazgos.md](registros/sesion-jugadora-hallazgos.md),
-  [deuda-tecnica-hallazgos.md](registros/deuda-tecnica-hallazgos.md),
-  [lore-hallazgos.md](registros/lore-hallazgos.md),
-  [ampliar-lore-checklist.md](registros/ampliar-lore-checklist.md).
+- [revisar-partida-hallazgos.md](records/revisar-partida-hallazgos.md),
+  [sesion-jugadora-hallazgos.md](records/sesion-jugadora-hallazgos.md),
+  [deuda-tecnica-hallazgos.md](records/deuda-tecnica-hallazgos.md),
+  [lore-hallazgos.md](records/lore-hallazgos.md),
+  [ampliar-lore-checklist.md](records/ampliar-lore-checklist.md).
 
 ### `archivo/` — historia
 Roadmaps y registros antiguos, cerrados. Solo para arqueología. Incluye
 `deuda-tecnica-hallazgos-historico.md` y `checklist-pruebas-juego-historico-2026-09-04.md` (entradas
-cerradas movidas de `registros/` el 2026-09-29, sin editar).
+cerradas movidas de `registros/` (hoy `records/`) el 2026-09-29, sin editar).
 
 ### `ia/`
 - [fine-tuning-ia-local.md](ia/fine-tuning-ia-local.md): guía para entrenar un narrador local propio.

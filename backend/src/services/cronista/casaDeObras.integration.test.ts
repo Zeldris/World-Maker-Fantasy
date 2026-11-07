@@ -130,8 +130,8 @@ describe('construcción por oficio: tiers y Casa de obras', () => {
     });
 
     it(`el personaje solo levanta hasta tier ${TIER_MAXIMO_PERSONAJE}; la Casa de obras no tiene ese tope`, async () => {
-      expect(await bloqueo('ayuntamiento-mediano')).toMatch(/solo levanta hasta tier 3/);
-      expect(await bloqueo('ayuntamiento-mediano', 'casa-de-obras') ?? '').not.toMatch(/solo levanta hasta tier/);
+      expect(await bloqueo('ayuntamiento-mediano')).toMatch(/solo levanta hasta nivel 3/);
+      expect(await bloqueo('ayuntamiento-mediano', 'casa-de-obras') ?? '').not.toMatch(/solo levanta hasta nivel/);
     });
 
     it('P282: el personaje puede levantar la Jaula pequeña (T1)', async () => {

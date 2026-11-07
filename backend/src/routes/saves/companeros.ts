@@ -9,12 +9,10 @@ import { companionSlotsForRecipeKey, plazasTrabajadorParaTier } from '../../serv
 import { COCINA_RECIPE_KEYS } from '../../services/kingdomTick.js';
 import { cambiarRolSubdito, cambiarTareaSubdito, cupoDeCamas, datosDeSubditos } from '../../services/cronista/subditos.js';
 import { candidatosDeLlegada, requisitosDeLlegada, responderLlegada } from '../../services/cronista/llegadas.js';
-import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from '../../services/cronista/economiaReino.js';
 import { salidasRecientes } from '../../services/cronista/salidas.js';
-import { esGanado, comidaDe } from '../../services/cronista/ganaderia.js';
+import { esGanado } from '../../services/cronista/ganaderia.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
-import { meterEnCorral } from '../../services/cronista/ganadoReino.js';
-import { pasaAComidaDelReino } from '../../services/crafting.js';
+import { avisarEntradaAlCorral, corralesDelReino, elegirCorral, meterEnCorral } from '../../services/cronista/ganadoReino.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate } from './shared.js';
 import { FACTION_REP_CAPTURE_DELTA } from '../../services/reputation.js';
 import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
@@ -24,6 +22,7 @@ import {
   maxSlotsDomadorFor,
   felicidadUmbralFor,
   resolverIntento,
+  bonoDeDomaPorNivel,
   jaulaTamanoRequeridoFor,
   capturaSlotsFor,
   plazoCapturaHorasForTier,
@@ -36,6 +35,7 @@ import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } 
 import { valoresIniciales } from '../../services/cronista/aprobacion.js';
 import { preguntarCompanero } from '../../services/cronista/companeroTierra.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
+import { depositarEnAlmacen } from '../../services/cronista/almacenDeposito.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
@@ -397,6 +397,12 @@ export async function companerosRoutes(app: FastifyInstance) {
     );
     const npcs = await prisma.npc.findMany({ where: { id: { in: states.map((s) => s.npcId) }, worldId: save.worldId } });
     const npcById = new Map(npcs.map((n) => [n.id, n]));
+    // P347: «Al corral» solo se ofrece con un Corral del Ganadero en pie. Un corral en pie no basta: `elegirCorral`
+    // (el mismo filtro que `meterEnCorral`) también rechaza por escalón mínimo, plazas o especie distinta, y entonces
+    // el botón saldría activo y daría 409; el motivo viaja por pendiente (`motivoCorral`). Los corrales se cargan una vez.
+    const hayGanado = npcs.some((n) => n.ataqueNatural !== null && esGanado(n.slug));
+    const corrales = hayGanado ? await corralesDelReino(prisma, save.id) : [];
+    const hayCorral = corrales.length > 0;
 
     const pendientes = states
       .map((state) => {
@@ -405,6 +411,8 @@ export async function companerosRoutes(app: FastifyInstance) {
         const esFauna = npc.ataqueNatural !== null;
         // Ventaja de información del Domador (§2) — SOLO para fauna, nunca persuasión de NPC.
         const mostrarResistencia = esFauna && domador;
+        const elegido = esFauna && esGanado(npc.slug) && hayCorral ? elegirCorral(corrales, npc.slug) : null;
+        const motivoSinCorral = elegido && 'motivo' in elegido ? elegido.motivo : null;
         return {
           npcSlug: npc.slug,
           name: npc.name,
@@ -415,6 +423,8 @@ export async function companerosRoutes(app: FastifyInstance) {
           enJaula: state.capturaJaulaBuildingId !== null,
           // CR-55 (Q3): el ganado puede ir al corral en vez de ser compañero.
           alCorral: esFauna && esGanado(npc.slug),
+          hayCorral,
+          motivoCorral: motivoSinCorral,
         };
       })
       .filter((p): p is NonNullable<typeof p> => !!p);
@@ -455,10 +465,12 @@ export async function companerosRoutes(app: FastifyInstance) {
         Math.random,
         // CR-14 (Q4): las etiquetas pesan al convencer a un capturado (solo personas, no fauna).
         esFauna ? 0 : bonoSocialDeEtiquetas(await etiquetasActivas(prisma, save.id), 'RENDIDO'),
+        // P351: el nivel del Cazador (el doble si es Domador) suma a la doma de fauna.
+        esFauna ? bonoDeDomaPorNivel(save.clase, save.level, domador) : 0,
       );
 
       await prisma.npcState.update({ where: { id: state.id }, data: { capturaFelicidad: intento.felicidadTras } });
-      return { roll: intento.roll, felicidad: intento.felicidadTras, umbral: felicidadUmbralFor(domador), umbralCompletado: intento.umbralCompletado };
+      return { roll: intento.roll, felicidad: intento.felicidadTras, umbral: felicidadUmbralFor(domador), umbralCompletado: intento.umbralCompletado, bonoCompetencia: intento.bonoCompetencia };
     },
   );
 
@@ -572,11 +584,14 @@ export async function companerosRoutes(app: FastifyInstance) {
         if (await tx.companion.count({ where: { saveId: save.id, sourceSlug: npc.slug } })) return { ok: false as const, codigo: 400, motivo: 'Ese animal ya es tu compañero.' };
         if (state.capturaFelicidad < umbral) return { ok: false as const, codigo: 400, motivo: `Todavía no ha ganado suficiente confianza (${state.capturaFelicidad}/${umbral}).` };
         const metido = await meterEnCorral(tx, save.id, { slug: npc.slug, faunaCategoria: npc.faunaCategoria }, save.worldState?.fictionalMinutes ?? 0, Math.random, request.body?.buildingId);
-        if (metido.ok) await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
-        return metido;
+        if (!metido.ok) return metido;
+        await tx.npcState.update({ where: { id: state.id }, data: { capturado: false, capturaFelicidad: 0, capturaJaulaBuildingId: null } });
+        // P349: el aviso para la pantalla y su línea en el diario (canal Reino), que antes no dejaba rastro.
+        const aviso = await avisarEntradaAlCorral(tx, save.id, npc.name, npc.articulo, save.worldState?.fictionalMinutes ?? 0);
+        return { ...metido, aviso };
       });
       if (!r.ok) return reply.status('codigo' in r ? r.codigo : 409).send({ error: r.motivo });
-      return { ganadoId: r.ganadoId, buildingId: r.buildingId, sexo: r.sexo };
+      return { ganadoId: r.ganadoId, buildingId: r.buildingId, sexo: r.sexo, aviso: r.aviso };
     },
   );
 
@@ -696,31 +711,9 @@ export async function companerosRoutes(app: FastifyInstance) {
     if (rejectIfEnded(save, reply)) return;
     if (rejectIfPendingDeath(save, reply)) return;
 
-    const item = await prisma.inventoryItem.findFirst({ where: { id: request.params.itemId, saveId: request.params.id, slot: null, companionId: null, subjectId: null } });
-    if (!item) return reply.status(404).send({ error: 'Objeto no encontrado (o ya equipado)' });
-
-    // CR-53 (Q2): los materiales caben hasta el tope del Almacén (base y Leñeras).
-    if ((await esMaterial(prisma, request.params.id, item.catalogSlug)) && (await huecoDeMateriales(prisma, request.params.id)) <= 0) {
-      return reply.status(400).send({ error: await motivoMaterialesLlenos(prisma, request.params.id) });
-    }
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.inventoryItem.delete({ where: { id: item.id } });
-      // P215 (2026-10-19): la comida depositada cuenta para la Comida del Reino, como el plato de
-      // una Cocina (`dailyTick.ts`): se convierte en el acto (`curaHambre` 10 = 1 de comida, mínimo 1)
-      // y NO queda fila en el Almacén, así Retirar no puede duplicar la comida. Sin Reino fundado
-      // (sin KingdomStats) no hay dónde sumar y el objeto se guarda como cualquier otro.
-      const plato = item.catalogSlug ? await tx.itemCatalog.findFirst({ where: { worldId: save.worldId, slug: item.catalogSlug }, select: { curaHambre: true } }) : null;
-      if (plato?.curaHambre && pasaAComidaDelReino(item.catalogSlug, plato.curaHambre)) {
-        const comida = Math.max(1, comidaDe(plato.curaHambre, 1));
-        const { count } = await tx.kingdomStats.updateMany({ where: { ownerKey: ownerKeyFor({ saveId: request.params.id }) }, data: { comida: { increment: comida } } });
-        if (count > 0) return { equipados: 0, comida };
-      }
-      await tx.almacenItem.create({
-        data: { saveId: request.params.id, name: item.name, description: item.description, catalogSlug: item.catalogSlug, statBonuses: item.statBonuses ?? undefined },
-      });
-      return autoEquiparDesdeAlmacen(tx, request.params.id);
-    });
-    return { ok: true, autoEquipados: result.equipados, ...('comida' in result ? { comidaSumada: result.comida } : {}) };
+    const r = await depositarEnAlmacen(prisma, request.params.id, request.params.itemId);
+    if (!r.ok) return reply.status(r.status).send({ error: r.error });
+    return { ok: true, autoEquipados: r.autoEquipados, ...(r.comidaSumada !== undefined ? { comidaSumada: r.comidaSumada } : {}) };
   });
 
   /// Retirar un objeto del Almacén de vuelta a la mochila personal, sin equiparlo.

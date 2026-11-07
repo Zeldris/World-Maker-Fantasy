@@ -6,6 +6,7 @@
 #   bash tools/playwright-e2e/arrancar-juego.sh              # base, backend :3001 y frontend :5173
 #   bash tools/playwright-e2e/arrancar-juego.sh --rehacer    # además, borra la base y la siembra de cero
 #   bash tools/playwright-e2e/arrancar-juego.sh --parar      # para backend, frontend y driver (QA-65)
+#   bash tools/playwright-e2e/arrancar-juego.sh --parar-juego  # igual, pero deja el driver vivo (P400: escenario.sh)
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
 # WMF_MONTURA_PRUEBAS=1 (del entorno, solo pruebas): la jugadora cuenta como con montura y sale la lista «Viajar».
@@ -22,7 +23,7 @@ export DATABASE_URL="$URL" DIRECT_URL="$URL" OLLAMA_BASE_URL="${OLLAMA_BASE_URL:
 export TRAVEL_SEGUNDOS_PRIMER_TRAMO="${TRAVEL_SEGUNDOS_PRIMER_TRAMO:-5}"
 export TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA="${TRAVEL_SEGUNDOS_POR_TRAMO_EXTRA:-3}"
 export TRAVEL_SEGUNDOS_MAXIMOS="${TRAVEL_SEGUNDOS_MAXIMOS:-20}"
-# QA-160 (`/opt-ai` del 2026-10-20): las tandas son solo locales; la captura remota del `.env` queda apagada.
+# QA-160 (`/gw-opt-ai` del 2026-10-20): las tandas son solo locales; la captura remota del `.env` queda apagada.
 export LIVE_TEACHER_CAPTURE_ENABLED=false
 # QA-141: con IA real (`IA_PERFIL`), el registro va con ruta absoluta (el servidor corre en `backend/`).
 # shellcheck source=tools/playwright-e2e/ia-comprobaciones.sh
@@ -34,12 +35,19 @@ PSQL="psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq"
 
 # QA-65 (retro del 2026-10-12): la suite con base real, con el juego y el driver en marcha, sumaba
 # fallos por tiempo límite. `--parar` lo libera todo antes de pasarla.
-if [ "${1:-}" = "--parar" ]; then
+# P400: `--parar-juego` deja vivo el driver de Playwright; `escenario.sh` lo usa al cargar o avanzar, para no
+# tener que relanzarlo a mano tras cada instantánea.
+if [ "${1:-}" = "--parar" ] || [ "${1:-}" = "--parar-juego" ]; then
   if [ -s logs/backend.pid ]; then kill "$(cat logs/backend.pid)" 2>/dev/null || true; rm -f logs/backend.pid; fi
   # El Ollama simulado solo si lo lanzó este script (su PID); un Ollama real nunca se toca.
   if [ -s logs/mock-ollama.pid ]; then kill "$(cat logs/mock-ollama.pid)" 2>/dev/null || true; rm -f logs/mock-ollama.pid; fi
-  fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
-  echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
+  if [ "$1" = "--parar-juego" ]; then
+    fuser -k 3001/tcp 5173/tcp > /dev/null 2>&1 || true
+    echo "Juego parado (backend :3001, frontend :5173); el driver sigue."
+  else
+    fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
+    echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
+  fi
   exit 0
 fi
 

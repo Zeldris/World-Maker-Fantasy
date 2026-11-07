@@ -534,7 +534,11 @@ export function CombatPanel({
         )}
         {npcs.map((npc) => (
           <div key={combatKeyFor(npc)} className="flex items-center gap-1.5">
-            <span className="max-w-24 truncate text-2xs text-wood-400">{combatDisplayNameFor(npc)}</span>
+            {/* P354: el «#N» fuera del truncado; si no, tres «Orco desconoci…» iguales. */}
+            <span className="flex min-w-0 max-w-28 text-2xs text-wood-400" title={combatDisplayNameFor(npc)}>
+              <span className="truncate">{npc.name}</span>
+              {npc.instanceNumber != null && <span className="shrink-0" data-testid="numero-combatiente">&nbsp;#{npc.instanceNumber}</span>}
+            </span>
             <HealthBar condicionFisica={npc.condicion} />
             <ActiveEffectChips effects={npc.activeEffects} />
             {/* CR-45: el capitán y a quién manda caer encima esta ronda. */}
@@ -544,6 +548,25 @@ export function CombatPanel({
                 title={`Capitán: ordena a los suyos caer sobre ${npc.ordenaCaerSobre}`}
               >
                 ⚑ a por {npc.ordenaCaerSobre}
+              </span>
+            )}
+            {/* P353/P356: contra quién te enfrentas de verdad esta ronda y quién te golpea de paso. */}
+            {npc.frenteATi === 'duelo' && (
+              <span
+                data-testid="combate-frente-duelo"
+                className="rounded border border-accent-600/50 bg-accent-500/10 px-1.5 py-0.5 text-2xs text-accent-200"
+                title="Tu duelo de esta ronda: te defiendes de este rival"
+              >
+                ⚔ tu duelo
+              </span>
+            )}
+            {npc.frenteATi === 'de-paso' && (
+              <span
+                data-testid="combate-frente-de-paso"
+                className="rounded border border-danger-600/50 bg-danger-500/10 px-1.5 py-0.5 text-2xs text-danger-200"
+                title="Te golpea de paso esta ronda: no es tu duelo"
+              >
+                te golpea de paso
               </span>
             )}
           </div>

@@ -1,8 +1,8 @@
 #!/bin/bash
 # QA-210 (retro del PR de claude/pruebas-reino, 2026-10-22): dos commits de subagentes salieron sin `Siguiente:`, el
 # dato que necesita la sesión que toma el relevo (CLAUDE.md, «Mensajes de commit»). Con CLAUDECODE=1 el mensaje
-# lleva una línea `Siguiente: …`; los merges (también los de fusionar.sh, con mensaje propio) y los revert pasan. Fuera de Claude Code (Álvaro) no hace nada.
-# Es de WMF, no del flujo: el `commit-msg` de Galivelop-workflow v0.4.3 (la comprobación de la bitácora) va dentro,
+# lleva una línea `Siguiente: …`; los merges (también los de merge-branch.sh y tools/qa/fusionar.sh, con mensaje propio) y los revert pasan. Fuera de Claude Code (Álvaro) no hace nada.
+# Es de WMF, no del flujo: el `commit-msg` de Galivelop-workflow v0.5.0 (la comprobación de la bitácora) va dentro,
 # con sus mejoras (raíz bien hallada en un worktree, rebase, rutas con tildes, falla cerrado), más la regla de `Siguiente:`.
 set -uo pipefail
 [ "${CLAUDECODE:-}" = "1" ] || exit 0
@@ -31,7 +31,7 @@ if [ -n "$log" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     tmp=$(mktemp "${TMPDIR:-/tmp}/gw-commit-msg.XXXXXX") || exit 1
     trap 'rm -f "$tmp"' EXIT
     git show ":$log" > "$tmp" || { echo "commit-msg: no se lee la $log preparada; añádela otra vez: git add $log" >&2; exit 1; }
-    if ! salida="$(python3 "$raiz/.claude/gw/scripts/bitacora.py" --root "$raiz" check "$tmp" --date "$(date +%F)" 2>&1)"; then
+    if ! salida="$(python3 "$raiz/.claude/gw/scripts/handoff.py" --root "$raiz" check "$tmp" --date "$(date +%F)" 2>&1)"; then
       printf '%s\n' "$salida" >&2
       echo "commit-msg: la $log preparada no pasa la comprobación; arréglala, git add $log y repite el commit" >&2
       exit 1

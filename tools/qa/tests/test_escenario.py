@@ -19,7 +19,9 @@ class Probar(unittest.TestCase):
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'uno.dump'), 'x')
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'README.md'), '')
         os.makedirs(os.path.join(d, 'bin'))
-        for nombre in ('psql', 'pg_restore', 'pg_dump'):
+        # `probar` aplica las migraciones desde backend/ con npx (falso: solo lo registra).
+        os.makedirs(os.path.join(d, 'backend'))
+        for nombre in ('psql', 'pg_restore', 'pg_dump', 'npx'):
             ruta = os.path.join(d, 'bin', nombre)
             escribir(ruta, f'#!/bin/bash\necho "{nombre} $*" >> "{d}/llamadas.log"\n')
             os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
@@ -79,6 +81,85 @@ class Guardar(unittest.TestCase):
             self.assertIn('no describe', r.stdout)
         self.assertFalse(os.path.exists(os.path.join(d, 'tools', 'qa', 'escenarios', 'dos.dump')))
         self.assertFalse(os.path.exists(os.path.join(d, 'llamadas.log')))
+
+
+class Cargar(unittest.TestCase):
+    """P400: cargar (y avanzar) paran el juego sin matar el driver de Playwright (puerto 9333)."""
+
+    def repo(self) -> str:
+        d = Probar.repo(self)
+        os.makedirs(os.path.join(d, 'tools', 'playwright-e2e'))
+        for nombre in ('arrancar-juego.sh', 'ia-comprobaciones.sh'):
+            shutil.copy(os.path.join(QA, '..', 'playwright-e2e', nombre), os.path.join(d, 'tools', 'playwright-e2e', nombre))
+        os.makedirs(os.path.join(d, 'logs'))
+        ruta = os.path.join(d, 'bin', 'fuser')
+        escribir(ruta, f'#!/bin/bash\necho "fuser $*" >> "{d}/llamadas.log"\n')
+        os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
+        return d
+
+    def parar(self, d: str, modo: str) -> str:
+        env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
+        r = subprocess.run(['bash', 'tools/playwright-e2e/arrancar-juego.sh', modo], cwd=d, env=env, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return leer(os.path.join(d, 'llamadas.log'))
+
+    def test_parar_juego_deja_vivo_el_driver_y_parar_no(self):
+        d = self.repo()
+        self.assertIn('fuser -k 3001/tcp 5173/tcp', self.parar(d, '--parar-juego'))
+        self.assertNotIn('9333', leer(os.path.join(d, 'llamadas.log')))
+        self.assertIn('9333/tcp', self.parar(d, '--parar'))
+
+    def test_escenario_para_el_juego_sin_el_driver(self):
+        texto = leer(os.path.join(QA, 'escenario.sh'))
+        self.assertNotIn('arrancar-juego.sh --parar ', texto)
+        self.assertEqual(texto.count('arrancar-juego.sh --parar-juego'), 2)
+
+
+    def test_cargar_recarga_la_pagina_del_driver_con_el_juego_ya_listo(self):
+        """P407: tras relanzar el juego, la página del driver se recarga (no se queda con lo de antes)."""
+        d = self.driver_falso()
+        r = self.correr(d, 'cargar', 'uno')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        llamadas = [l for l in leer(os.path.join(d, 'llamadas.log')).splitlines() if l.split(' ')[0] in ('arrancar-juego.sh', 'orden.sh')]
+        self.assertEqual(llamadas[-2], 'arrancar-juego.sh ')
+        self.assertEqual(llamadas[-1], 'orden.sh ')
+        orden = leer(os.path.join(d, 'orden.js'))
+        self.assertIn('page.goto', orden)
+
+    def driver_falso(self) -> str:
+        d = Probar.repo(self)
+        e2e = os.path.join(d, 'tools', 'playwright-e2e')
+        os.makedirs(e2e)
+        os.makedirs(os.path.join(d, 'logs'))
+        # orden.sh falso: registra la llamada y guarda la orden JS que le llega por la entrada estándar.
+        escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar-juego.sh $*" >> "{d}/llamadas.log"\n')
+        escribir(os.path.join(e2e, 'orden.sh'), f'echo "orden.sh $*" >> "{d}/llamadas.log"; cat > "{d}/orden.js"\n')
+        escribir(os.path.join(e2e, 'driver.token'), 'clave')
+        return d
+
+    def correr(self, d: str, *args: str):
+        env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
+        return subprocess.run(['bash', 'tools/qa/escenario.sh', *args], cwd=d, env=env, capture_output=True, text=True)
+
+    def test_la_recarga_reintenta_hasta_ver_la_partida_y_si_no_avisa(self):
+        """P407 (tanda 82): el cliente de Vite recargaba con el backend caído; un solo goto lo enmascaraba."""
+        d = self.driver_falso()
+        self.assertEqual(self.correr(d, 'cargar', 'uno').returncode, 0)
+        orden = leer(os.path.join(d, 'orden.js'))
+        self.assertIn('No se encuentra esta partida', orden)
+        self.assertRegex(orden, r'for \(let i = 1; i <= 5')
+        self.assertIn('AVISO: la página del driver no carga la partida', orden)
+
+    def test_preparar_recarga_la_pagina_y_probar_no(self):
+        """P407 (tanda 82): `preparar nivel` cambiaba la partida y el HUD seguía con el nivel viejo."""
+        d = self.driver_falso()
+        r = self.correr(d, 'preparar', 'p1', 'nivel:19')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('orden.sh ', leer(os.path.join(d, 'llamadas.log')).splitlines())
+        os.remove(os.path.join(d, 'llamadas.log'))
+        r = self.correr(d, 'probar', 'uno', 'preparar', 'p1', 'nivel:19')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn('orden.sh', leer(os.path.join(d, 'llamadas.log')))
 
 
 if __name__ == '__main__':

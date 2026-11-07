@@ -12,11 +12,11 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Qué no leer
 
 - `docs/archivo/`, `docs/borradores-opencode/`, `tools/playwright-e2e/historico/`: historia, no el estado actual.
-- `docs/registros/checklist-pruebas-juego.md` y los `retro-*.md`: registros cerrados; la matriz
-  (`docs/registros/matriz-pruebas.md`) dice qué falta probar.
+- `docs/records/checklist-pruebas-juego.md` y los `retro-*.md`: registros cerrados; la matriz
+  (`docs/records/matriz-pruebas.md`) dice qué falta probar.
 - `docs/rpgtarkor/`: lore; solo cuando la tarea es de lore, y nunca se edita a mano (`AGENTS.md`).
 - `b/services/turnResolution.ts` entero (7.400 líneas): busca la sección (abajo) con `grep -n`.
-- El registro `.jsonl` de la sesión: se mide con `.claude/skills/opt-tokens/scripts/medir.py`.
+- El registro `.jsonl` de la sesión: se mide con `.claude/skills/gw-opt-tokens/scripts/measure.py`.
 
 ## Comandos
 
@@ -28,13 +28,17 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 | Añadir contenido (objeto, NPC, fauna, flora, habilidad, ubicación) | [nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Skills y modelo de cada tarea, flujo de PR | [skills-y-modelos.md](runbooks/skills-y-modelos.md) |
 | Fusionar la rama de un subagente (merge, conflictos de hallazgos, tests del paquete) | `tools/qa/fusionar.sh <rama> "<mensaje>"` (`QA-135`) |
-| Medir la IA local de una tanda, evaluar el RAG | `/opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
+| Medir la IA local de una tanda, evaluar el RAG | `/gw-opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
 | Tests de un archivo | `cd backend && npx vitest run <ruta>` (filtra con `grep -E "Test Files\|Tests \|FAIL"`) |
 
 ## Datos que se confunden
 
 - El reino de la jugadora es la `Faction` con `saveId` y `origenSlug: null`. Sus cifras están en `KingdomStats`
   (`comida`, `bebida`, `felicidad`…); «Almacén comida 60 · agua 60» en la interfaz es el **tope**, no lo guardado.
+- **Copias de partida** (`QA-275`): `mundoPartida.ts#clonarConCandado` copia por partida las facciones (`saveId` +
+  `origenSlug`) y la población (`saveId`); los lugares creados jugando (interiores) llevan `saveId` (`QA-31`); los territorios, edificios y almacén de una facción copia cuelgan de ella
+  **sin `saveId`**. Van por slug, sin FK (la cascada no las protege): `targetSlug` de `WorldPopulation` y `ZonePoint`,
+  `Npc.homeLocationSlug`, `Companion.sourceSlug` y `Save.pendingCombatNpcSlugs`. Ejemplo: `scripts/retirarHuerfanos.ts`.
 - El catálogo es `ItemCatalog` (no `CatalogItem`); los objetos de la jugadora, `InventoryItem`; los del reino, `AlmacenItem`.
 - `Save` no tiene `updatedAt`: la última partida jugada sale del último `LogEntry`.
 - `LogEntry.channel` es `CHARACTER` (diario) o `KINGDOM` (registro del reino); `entityBannerSlug`/`entityBannerType`
@@ -197,14 +201,15 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Catálogo y siembra
 
 - **Código:** datos en `b/scripts/worldCatalog.ts`; siembra `b/scripts/seed-catalog.ts` con
-  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
+  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate, `combate1v1:<npc>` en `b/services/cronista/prepararCombate1v1.ts` (el 1v1 clásico, con el efecto `forzarCombate`), `convaleciente:<npc>:combate` en `b/services/cronista/prepararConvaleciente.ts` (el convaleciente con su tarjeta en el diario), `domable:<especie>` en `b/services/cronista/prepararDoma.ts`, `punto-retirado:<especie>` en `b/services/cronista/prepararPuntoRetirado.ts`, `sin-aliados` en `b/services/cronista/prepararSinAliados.ts` (sobre `moverCompaneroDeGrupo` de `b/services/combatGroups.ts`) y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
 
 ## Enciclopedia y lore (`QA-248`)
 
 - **Todo lo de un slug:** `bash tools/qa/ficha.sh <slug> [--canon]` (`QA-245`) da la ficha, el despiece, la región,
-  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon.
+  la población, las recetas, los chunks y, con `--canon`, dónde lo nombra el canon. Acaba con «# Fuente»: el
+  `archivo:línea` de cada aparición del slug en `b/scripts` y `b/services` (`QA-272`), para editar sin `grep`.
 - **Código:** la ruta `/world/:slug/enciclopedia` de `b/routes/world.ts` monta una sección por pestaña:
   `b/routes/world.ts#buildFaunaFloraSection`, `buildItemsSection`, `buildNpcsSection`, `buildLocationsSection`,
   `buildFactionsSection`, `buildHistoriaSection`, `buildRazasSection`, `buildClassesSection` y
@@ -218,7 +223,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   fuente. `b/services/crafting.test.ts` comprueba que cada receta está alineada con su ficha de catálogo.
 - **Interfaz:** `f/components/panels/EnciclopediaPanel.tsx`.
 - **Canon:** primero el resumen de `docs/canon-opencode/` (empieza por `00-nucleo.md`); `docs/rpgtarkor/` solo para
-  el detalle. Los hallazgos de cada auditoría van en `docs/registros/lore-hallazgos.md`.
+  el detalle. Los hallazgos de cada auditoría van en `docs/records/lore-hallazgos.md`.
 
 ## Imágenes (prompts y generación local)
 
@@ -241,9 +246,19 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
   `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+- **Bocetos por plan corporal (`IMG-24`):** `image-generator/bocetos/plantilla.py#componer` (el SVG desde un plan y
+  sus números, escalado al lienzo 1280x512) y `#validar` (cada valor malo, con su motivo); los planes y sus parámetros,
+  `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con
+  `boceto.plan`, `--planes` o un plan) deja los PNG junto al SVG. Test: `tools/qa/tests/test_bocetos.py`.
+- **Cadena fotorreal (`IMG-23`…`IMG-33`, `QA-282`):** `PERFIL=fotorreal` en `generar.sh` (receta, `bin-nuevo/sd-cli` y
+  el LoRA `image-generator/loras/<nombre>.safetensors`, que no se sube, `LORA=<peso>`); `image-generator/scripts/planos.sh` (plancha, sujeto, montaje y
+  armonías) con `montar.sh` y `encuadre.py` (el `encuadre` de la ficha); `gradar.sh` (gradación por momento, LUT en
+  `estilo/lut/`) y `medir.sh <img> <tipo> <momento>` (línea `MEDIANA Y=`), siempre con ruta absoluta desde un
+  worktree. Tests: `tools/qa/tests/test_generar_perfil.py`, `test_gradar.py`, `test_montar.py`, `test_encuadre.py`.
 - **Banco de calidad (`IMG-15`):** `docs/producto/plan-imagenes/banco.sh <ronda>` (un TSV por ronda en `banco/`,
   resultados en `banco/resultados.md`); para mirar una ronda, `bash docs/producto/plan-imagenes/hoja.sh <prefijo>` (hojas de
-  contactos de 6 con la leyenda en texto, `QA-249`), y solo la finalista a tamaño completo.
+  contactos de 6 con la leyenda en texto, `QA-249`; banners sueltos con `--archivos <nombre> <png>…`, `QA-283`), y solo
+  la finalista a tamaño completo.
 - **Documento:** `docs/arquitectura/reutilizables/01-generacion-imagenes-local.md`; lee solo su apartado
   («Cómo escribir los prompts», «Parámetros recomendados», «Banco del múrgol») con `grep -n '^## '` + `sed -n`.
 

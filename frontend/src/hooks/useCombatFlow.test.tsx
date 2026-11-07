@@ -133,7 +133,7 @@ function useHarness(initialCombateIniciado: { npcs: NpcInSceneInfo[] } | null = 
     markCarcassPending: () => setCarcassPending(true),
   })
 
-  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, energia, endedAt, carcassPending, lastInitiativeRoll }
+  return { combat, combateIniciado, setCombateIniciado, inventory, characterLog, quests, deathCount, factionsStatus, xp, level, pendingAttributePoints, condicionFisica, energia, endedAt, carcassPending, lastInitiativeRoll, setLastInitiativeRoll }
 }
 
 beforeEach(() => {
@@ -185,6 +185,18 @@ describe('openCombat', () => {
     })
     expect(result.current.combat.combatOpen).toBe(true)
     expect(result.current.combat.combatNpcsDisplay[0]?.slug).toBe('murgol')
+  })
+
+  it('P405: con conservarIniciativa (recarga) no borra la iniciativa recién rehidratada', () => {
+    const { result } = renderHook(() => useHarness())
+    const combate = { npcs: [npc({ slug: 'orco', name: 'Orco' })] }
+    const tirada = { ganador: 'npc', jugador: {}, npc: {} } as unknown as InitiativeRollInfo
+    act(() => {
+      result.current.setLastInitiativeRoll(tirada)
+      result.current.combat.openCombat(combate, { conservarIniciativa: true })
+    })
+    expect(result.current.combat.combatOpen).toBe(true)
+    expect(result.current.lastInitiativeRoll).toBe(tirada)
   })
 
   it('no abre nada si no hay combate ni override', () => {
@@ -240,7 +252,7 @@ describe('handleCapturarSeleccion/handleDejarVivirSeleccion: identificador de co
   })
 })
 
-// BUG CERRADO (2026-08-29, ver docs/registros/checklist-pruebas-juego.md "recargar tras Convaleciente atasca
+// BUG CERRADO (2026-08-29, ver docs/records/checklist-pruebas-juego.md "recargar tras Convaleciente atasca
 // el combate del todo") — antes del fix, la tarjeta Matar/Capturar/Clemente solo nacía de
 // `entry.convalecienteOffers` (ligado al `characterLog` efímero de React) y nunca sobrevivía a una
 // recarga real, aunque el bloqueo del composer (`combatHasPendingConvalecientes`) sí persistía —
@@ -603,6 +615,24 @@ describe('handleCombatTurnResolved — fusión de combateIniciado', () => {
       ])
     })
   })
+
+  // P398 (tanda 75, 2026-11-03): si el personaje cae en el mismo turno en que el rival queda convaleciente,
+  // la entrada del turno no ofrece Matar/Capturar/Clemente.
+  it('si el personaje cae en el mismo turno, no ofrece decidir sobre el rival convaleciente', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({ justDied: true, combateIniciado: { npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE' })] } }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'ILESO' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+
+    await waitFor(() => expect(result.current.combat.combatPlayerJustDied).toBe(true))
+    expect(result.current.characterLog[0]?.text).toBeTruthy()
+    expect(result.current.characterLog[0]?.convalecienteOffers).toBeUndefined()
+  })
 })
 
 // REDISEÑADO 2026-08-30 (petición explícita, dos rondas: "matar tiene que abrir el combate de
@@ -672,10 +702,10 @@ describe('handleDecapitarSeleccion', () => {
     const target = result.current.combat.combatNpcsDisplay[0]!
     act(() => result.current.combat.handleDecapitarSeleccion([target]))
 
-    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco')
+    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco', undefined)
   })
 
-  it('con participantId (combate múltiple) NO llama al backend — ese camino no lo soporta todavía', () => {
+  it('con participantId (combate múltiple, P391) avisa al backend con ese participante', () => {
     const { result } = renderHook(() =>
       useHarness({ npcs: [npc({ slug: 'orco', name: 'Orco', condicionFisica: 'CONVALECIENTE', participantId: 'p1' })] }),
     )
@@ -684,7 +714,7 @@ describe('handleDecapitarSeleccion', () => {
     const target = result.current.combat.combatNpcsDisplay[0]!
     act(() => result.current.combat.handleDecapitarSeleccion([target]))
 
-    expect(mockMatar).not.toHaveBeenCalled()
+    expect(mockMatar).toHaveBeenCalledWith('save-1', 'orco', 'p1')
   })
 })
 
@@ -1139,6 +1169,26 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
     expect(result.current.condicionFisica).toBe('HERIDO')
     expect(result.current.energia).toBe(70)
     expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('HERIDO')
+    expect(result.current.combat.awaitingExchangeApply).toBe(false)
+  })
+
+  it('P408: un golpe de gracia (no se tira) se aplica de inmediato, sin esperar a unos dados que no hay', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        condicionFisica: 'CONVALECIENTE',
+        combatExchangeDisplay: { ...exchangeDisplay, golpeDeGracia: true },
+        combateIniciado: { npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'MUERTO' })] },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    act(() => result.current.setCombateIniciado({ npcs: [npc({ slug: 'ruptidar', name: 'Ruptidar', condicionFisica: 'CONVALECIENTE' })] }))
+    act(() => result.current.combat.openCombat())
+
+    await act(() => result.current.combat.submitCombatAction('Remato a Ruptidar', {}))
+
+    expect(result.current.condicionFisica).toBe('CONVALECIENTE')
+    expect(result.current.combat.combatNpcsDisplay[0]?.condicion).toBe('MUERTO')
     expect(result.current.combat.awaitingExchangeApply).toBe(false)
   })
 

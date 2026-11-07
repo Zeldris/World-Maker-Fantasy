@@ -4,9 +4,17 @@
 // «Estocada Veloz» y «Defenderse»), `rondas` (1 por defecto). En cada ronda elige la habilidad según la
 // fase (Ataque o Defensa) y pulsa el botón del panel de combate. Para y lo dice si el combate acaba,
 // si un rival queda CONVALECIENTE (Matar / Clemente) o si la habilidad está desactivada.
+// P392: también para si la jugadora está convaleciente (otro golpe puede matarla); `aunConvaleciente: true` sigue.
 async (page) => {
-  const { ataque = 'Ataque Básico', defensa = 'Defenderse', rondas = 1, leer = false } = await page.evaluate(() => window.tk || {});
+  const { ataque = 'Ataque Básico', defensa = 'Defenderse', rondas = 1, leer = false, aunConvaleciente = false } = await page.evaluate(() => window.tk || {});
   const salida = [];
+  // P403: la tarjeta del convaleciente va en mayúsculas por CSS (innerText da «MATAR», «ESTÁ CONVALECIENTE»),
+  // así que se mira el DOM: un botón visible cuyo texto real es «Matar», y el nombre del título de su tarjeta.
+  const rivalesConvalecientes = () => page.evaluate(() => Array.from(document.querySelectorAll('button'))
+    .filter((b) => b.textContent?.trim() === 'Matar' && b.offsetParent)
+    .map((b) => (b.closest('div.rounded-lg')?.querySelector('p > span:last-child')?.textContent || '').replace(/ está convaleciente$/, '').trim() || '¿?'));
+  const avisoConvaleciente = (nombres) => `rival CONVALECIENTE (${nombres.join(', ')}): elige Matar, Capturar o Clemente`;
+  const jugadoraConvaleciente = (t) => /Estás convaleciente/i.test(t);
   if (leer || rondas === 0) {
     const t = await page.locator('body').innerText();
     const fase = t.match(/Combate — (Ataque|Defensa)/);
@@ -16,8 +24,10 @@ async (page) => {
       .filter((b) => b.hasAttribute('aria-disabled') && b.offsetParent)
       .map((b) => (b.getAttribute('aria-disabled') === 'true' ? '(' : '') + b.innerText.replace(/\s+/g, ' ').trim().slice(0, 40) + (b.getAttribute('aria-disabled') === 'true' ? ')' : '')));
     const resumenes = t.match(/(Gana [^\n]+|Cada lado se juzga por su cuenta[^\n]+)/g) || [];
+    const conv = await rivalesConvalecientes();
     return [`FASE: ${fase[1]} | ${hud}`,
-      /ESTÁ CONVALECIENTE/i.test(t) && /Matar/.test(t) ? 'RIVAL CONVALECIENTE: Matar o Clemente' : '',
+      conv.length ? avisoConvaleciente(conv).replace(/^rival/, 'RIVAL') : '',
+      jugadoraConvaleciente(t) ? 'ESTÁS CONVALECIENTE: muy penalizada, otro golpe puede matarte' : '',
       /Tirando iniciativa|Resolviendo/.test(t) ? 'ESPERA: tirando iniciativa o resolviendo' : '',
       `HABILIDADES: ${habs.join(' | ') || '(ninguna a la vista)'}`,
       `ÚLTIMOS: ${resumenes.slice(-2).join(' / ').slice(0, 220) || '(ninguno)'}`].filter(Boolean).join('\n');
@@ -38,7 +48,9 @@ async (page) => {
     const antes = resumenes(t).length;
     const fase = t.match(/Combate — (Ataque|Defensa)/);
     if (!fase) { salida.push(`R${r}: no hay combate en marcha`); break; }
-    if (/ESTÁ CONVALECIENTE/i.test(t) && /Matar/.test(t)) { salida.push(`R${r}: rival CONVALECIENTE: elige Matar o Clemente`); break; }
+    const convalecientes = await rivalesConvalecientes();
+    if (convalecientes.length) { salida.push(`R${r}: ${avisoConvaleciente(convalecientes)}`); break; }
+    if (jugadoraConvaleciente(t) && !aunConvaleciente) { salida.push(`R${r}: ESTÁS CONVALECIENTE: no ataco (otro golpe puede matarte); juega a mano o pasa aunConvaleciente:true`); break; }
     const nombre = fase[1] === 'Defensa' ? defensa : ataque;
     // El nombre de la tarjeta empieza por el de la habilidad (tras su icono): anclado y escapado, no casa
     // a mitad de otro nombre ni rompe con un «(». Pásalo completo («Ataque Básico», no «Ataque»).

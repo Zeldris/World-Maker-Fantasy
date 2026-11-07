@@ -8,6 +8,8 @@ import {
   FELICIDAD_UMBRAL_DOMADOR,
   FELICIDAD_GANANCIA,
   resolverIntento,
+  bonificadorCompetencia,
+  bonoDeDomaPorNivel,
   jaulaTamanoRequeridoFor,
   jaulaAlcanzaPara,
   jaulaRecipeKeyFor,
@@ -91,10 +93,50 @@ describe('resolverIntento', () => {
     expect(result.umbralCompletado).toBe(false);
   });
 
-  it('perder resta Felicidad, nunca por debajo de 0', () => {
-    const result = resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', 5, false, 100, () => 0.5);
+  // P345 (decisión de la usuaria, 2026-10-26): éxitos acumulados como en D&D 5e, un fallo no resta.
+  it('perder NO resta Felicidad: se queda como estaba', () => {
+    const result = resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', 25, false, 100, () => 0.5);
     expect(result.roll.gano).toBe(false);
-    expect(result.felicidadTras).toBe(0); // 5 - 10, topado en 0
+    expect(result.felicidadTras).toBe(25);
+  });
+
+  it('los éxitos se acumulan aunque entre medias haya fallos (P345)', () => {
+    let felicidad = 0;
+    for (const gana of [true, false, false, true, false, true]) {
+      const r = gana
+        ? resolverIntento(playerAttrs, 'fuerza', resistenciaAttrs, 'fuerza', felicidad, false, 100, () => 0.9)
+        : resolverIntento(resistenciaAttrs, 'fuerza', playerAttrs, 'fuerza', felicidad, false, 100, () => 0.5);
+      expect(r.roll.gano).toBe(gana);
+      felicidad = r.felicidadTras;
+    }
+    expect(felicidad).toBe(3 * FELICIDAD_GANANCIA);
+  });
+
+  // P351 (decisión de la usuaria, 2026-10-27): el nivel del oficio suma a la doma como la competencia de D&D 5e.
+  it('la competencia por nivel es +2 (1-4), +3 (5-8), +4 (9-12), +5 (13-16) y +6 (17 o más)', () => {
+    const porNivel = [1, 4, 5, 8, 9, 12, 13, 16, 17, 40].map(bonificadorCompetencia);
+    expect(porNivel).toEqual([2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+  });
+
+  it('el Cazador suma su competencia, el Domador el doble y quien no es Cazador nada (P351)', () => {
+    expect(bonoDeDomaPorNivel('CAZADOR', 10, false)).toBe(4);
+    expect(bonoDeDomaPorNivel('CAZADOR', 10, true)).toBe(8);
+    expect(bonoDeDomaPorNivel('CAZADOR', 20, true)).toBe(12);
+    expect(bonoDeDomaPorNivel('GUERRERO', 10, false)).toBe(0);
+    expect(bonoDeDomaPorNivel(null, 10, false)).toBe(0);
+  });
+
+  it('el bono de competencia entra en la tirada: con el mismo dado, el nivel alto gana y el bajo pierde (P351)', () => {
+    // 10 contra 10: d20 + 5 cada lado, con el mismo dado empatan y el empate no gana; la competencia lo inclina.
+    const iguales: AttributeBlock = { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 0 };
+    const sin = resolverIntento(iguales, 'fuerza', iguales, 'fuerza', 0, false, 100, () => 0.5, 0, 0);
+    expect(sin.roll.gano).toBe(false);
+    const con = resolverIntento(iguales, 'fuerza', iguales, 'fuerza', 0, false, 100, () => 0.5, 0, 6);
+    expect(con.roll.gano).toBe(true);
+    expect(con.bonoCompetencia).toBe(6);
+    expect(con.roll.playerResult).toBe(sin.roll.playerResult + 6);
+    expect(con.roll.margen).toBe(sin.roll.margen + 6);
+    expect(con.felicidadTras).toBe(FELICIDAD_GANANCIA);
   });
 
   it('el umbral se completa en cuanto la Felicidad acumulada lo alcanza', () => {

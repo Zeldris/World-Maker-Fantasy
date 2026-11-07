@@ -2,16 +2,20 @@
 // siempre (`avanzarMundoHasta`): para probar lo que tarda días (llegadas, parejas, cosechas, asaltos) sin
 // jugarlos. Lo lanza `tools/qa/escenario.sh avanzar <partida> <días>`, con el juego parado: el servidor pone en
 // cola sus propios avances por partida (`enSegundoPlano`) y este proceso no la ve.
-// Uso: DATABASE_URL=… npx tsx src/scripts/avanzarDias.ts <saveId> <días>
+// P369: con `--reparar` avanza día a día y, tras cada día, repara los edificios DANADO con la función del botón «Reparar»
+// (`repararDanados`, cuesta materiales del Almacén; si faltan lo dice y sigue): esquiva las tormentas sin cambiar el motor.
+// Uso: DATABASE_URL=… npx tsx src/scripts/avanzarDias.ts <saveId> <días> [--reparar]
 import { prisma } from '../lib/prisma.js';
 import { avanzarMundoHasta } from '../services/avanceDiario.js';
 import { avanzarRelojConTick } from '../services/dailyTick.js';
 import { formatFictionalDate } from '../services/worldClock.js';
+import { repararDanados } from '../services/cronista/prepararEdificios.js';
 
-const [saveId, diasTexto] = process.argv.slice(2);
+const [saveId, diasTexto, ...resto] = process.argv.slice(2);
+const reparar = resto.includes('--reparar');
 const dias = Number(diasTexto);
 if (!saveId || !Number.isInteger(dias) || dias < 1) {
-  console.error('Uso: avanzarDias.ts <saveId> <días ≥ 1>');
+  console.error('Uso: avanzarDias.ts <saveId> <días ≥ 1> [--reparar]');
   process.exit(2);
 }
 const estado = await prisma.worldState.findUnique({ where: { saveId }, select: { fictionalMinutes: true, save: { select: { worldId: true } } } });
@@ -19,15 +23,31 @@ if (!estado) {
   console.error(`No hay partida ${saveId} (o no tiene reloj).`);
   process.exit(1);
 }
-const hasta = estado.fictionalMinutes + dias * 1440;
-// Reloj + tick diario del Reino (P216), una vez por medianoche cruzada.
-await prisma.$transaction((tx) => avanzarRelojConTick(tx, { saveId, worldId: estado.save.worldId, minutosAntes: estado.fictionalMinutes, minutosDespues: hasta }), { timeout: 120_000 });
-// `avanzarMundoHasta` simula como mucho `MAX_DIAS_POR_LLAMADA` días por llamada: se repite hasta ponerse al día.
+const hastaFinal = estado.fictionalMinutes + dias * 1440;
 let total = 0;
-for (;;) {
-  const { diasSimulados } = await avanzarMundoHasta(prisma, saveId, hasta);
-  if (diasSimulados === 0) break;
-  total += diasSimulados;
+let desde = estado.fictionalMinutes;
+const reparados: string[] = [];
+const sinReparar = new Map<string, string>();
+while (desde < hastaFinal) {
+  const hasta = reparar ? desde + 1440 : hastaFinal;
+  // Reloj + tick diario del Reino (P216), una vez por medianoche cruzada.
+  await prisma.$transaction((tx) => avanzarRelojConTick(tx, { saveId, worldId: estado.save.worldId, minutosAntes: desde, minutosDespues: hasta }), { timeout: 120_000 });
+  // `avanzarMundoHasta` simula como mucho `MAX_DIAS_POR_LLAMADA` días por llamada: se repite hasta ponerse al día.
+  for (;;) {
+    const { diasSimulados } = await avanzarMundoHasta(prisma, saveId, hasta);
+    if (diasSimulados === 0) break;
+    total += diasSimulados;
+  }
+  desde = hasta;
+  if (reparar) {
+    const r = await repararDanados(prisma, saveId);
+    reparados.push(...r.reparados.map((x) => x.nombre));
+    for (const x of r.sinReparar) sinReparar.set(x.nombre, x.motivo);
+  }
 }
-console.log(`${total} días simulados; ahora: ${formatFictionalDate(hasta)}`);
+console.log(`${total} días simulados; ahora: ${formatFictionalDate(hastaFinal)}`);
+if (reparar) {
+  console.log(`Reparados tras cada día: ${reparados.length}${reparados.length ? ` (${reparados.join(', ')})` : ''}`);
+  for (const [nombre, motivo] of sinReparar) console.log(`AVISO ${nombre} sigue dañado: ${motivo}`);
+}
 await prisma.$disconnect();

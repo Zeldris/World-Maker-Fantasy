@@ -48,6 +48,8 @@ vi.mock('../lib/prisma.js', () => ({
     discoveredEntity: { findFirst: () => Promise.resolve(null), findMany: () => Promise.resolve([]) },
     logEntry: { create: (...args: unknown[]) => logEntryCreate(...args) },
     combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
+    // P344: los rivales del combate de varios en curso (`enCombateConDelTurno`); aquí no hay ninguno.
+    combatParticipant: { findMany: () => Promise.resolve([]) },
   },
 }));
 
@@ -222,7 +224,7 @@ describe('POST /turn/classify — camino tabulado de combate (sin Ollama)', () =
       endedAt: null,
       characterTransit: null,
       worldState: { fictionalDateLabel: 'Día 1, mañana' },
-      pendingNpcAttack: { npcId: 'npc1', effect: null, attribute: 'destreza', energyCost: 15, abilityName: 'Vuelo en Bandada', energyRegen: 0 },
+      pendingNpcAttack: { npcId: 'npc1', effect: null, attribute: 'destreza', energyCost: 15, abilityName: 'Fuga en Bandada', energyRegen: 0 },
     });
     findManyNpc.mockResolvedValue([
       {

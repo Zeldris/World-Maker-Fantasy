@@ -1,4 +1,4 @@
-"""QA-113: prueba el script del flujo, .claude/skills/opt-tokens/scripts/medir.py (piloto Galivelop-workflow, 2026-10-22),
+"""QA-113: prueba el script del flujo, .claude/skills/gw-opt-tokens/scripts/measure.py (piloto Galivelop-workflow, 2026-10-22),
 con un registro de sesión de prueba (líneas de `comun`, QA-119). Banderas y salida en inglés."""
 import datetime as dt
 import json
@@ -8,7 +8,7 @@ import unittest
 
 from comun import QA, carpeta, compactacion, escribir, orden, registro, respuesta, resultado, ruido, texto
 
-MEDIR = os.path.join(QA, '..', '..', '.claude', 'skills', 'opt-tokens', 'scripts', 'medir.py')
+MEDIR = os.path.join(QA, '..', '..', '.claude', 'skills', 'gw-opt-tokens', 'scripts', 'measure.py')
 
 
 class Medir(unittest.TestCase):

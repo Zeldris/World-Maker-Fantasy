@@ -51,3 +51,5 @@ backend/ia/registro-*.jsonl
 
 # Copia del pre-commit de la base que ci-local.sh y ci.yml ejecutan dentro del repo (QA-215)
 .githooks/.pre-commit-base
+# galivelop-workflow: private, never committed
+.claude/gw.local.json

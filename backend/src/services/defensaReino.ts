@@ -139,12 +139,14 @@ export interface Avistamiento {
 }
 
 /// Q5 (X4: lo que entra en el alcance de tus satélites): los asaltos que se ven desde la Torre de
-/// cada asentamiento, a cuántos tramos están.
-export async function radarDelReino(tx: Tx, saveId: string, ahora: number): Promise<Avistamiento[]> {
+/// cada asentamiento, a cuántos tramos están. P385: solo los que vienen o ya llegan (`IDA`,
+/// `TRABAJANDO`); uno que vuelve tras asaltar no es una amenaza (ni retiene la milicia), salvo
+/// `conLosQueVuelven` (el mapa, que dibuja todo lo que la Torre ve pasar).
+export async function radarDelReino(tx: Tx, saveId: string, ahora: number, conLosQueVuelven = false): Promise<Avistamiento[]> {
   const asentamientos = (await asentamientosDelReino(tx, saveId)).filter((a) => a.efecto.radioTramos > 0);
   if (asentamientos.length === 0) return [];
   const hostiles = await tx.viajero.findMany({
-    where: { saveId, tipo: TIPO_ASALTO, estado: { not: 'TERMINADO' } },
+    where: { saveId, tipo: TIPO_ASALTO, estado: conLosQueVuelven ? { not: 'TERMINADO' } : { in: ['IDA', 'TRABAJANDO'] } },
     select: { id: true, ubicacionLocationId: true, carga: true, faction: { select: { name: true } }, miembros: { select: { genericos: true, companionId: true, subjectId: true } } },
     orderBy: { createdAt: 'asc' },
   });

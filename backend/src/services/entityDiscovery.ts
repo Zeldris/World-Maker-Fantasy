@@ -75,7 +75,7 @@ export async function recordEntityDiscoveries(
       client.historiaEntry.findMany({ where: { worldId: params.worldId } }),
     ]);
     const factionSlugByName = new Map(factionRows.map((f) => [f.name, f.slug]));
-    const historiaSlugByDocumentoItemSlug = new Map(historiaRows.map((h) => [h.documentoItemSlug, h.slug]));
+    const historiaSlugByDocumentoItemSlug = new Map(historiaRows.flatMap((h) => (h.documentoItemSlug ? [[h.documentoItemSlug, h.slug] as const] : [])));
 
     // Misma exclusión que /world/:slug/enciclopedia (world.ts): la fauna cazable también tiene
     // fila Npc para el motor de escena — cuenta como 'fauna', no como 'npc', para no duplicar.

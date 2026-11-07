@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.3 -->
+<!-- galivelop-workflow v0.5.0 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -8,8 +8,8 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 
 ## Al empezar cualquier sesión
 
-1. Lee la bitácora, [`docs/registros/traspaso.md`](docs/registros/traspaso.md): rama, tarea en curso, qué falta y
-   siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recuperar.py --estado`; el archivo
+1. Lee la bitácora, [`docs/records/traspaso.md`](docs/records/traspaso.md): rama, tarea en curso, qué falta y
+   siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recover.py --state`; el archivo
    entero, solo si falta algo (`QA-261`).
 2. `git fetch origin <rama>`: el último commit coincide con la bitácora, y el check está en verde antes de tocar nada
    (`python3 .claude/gw/scripts/config.py get check`).
@@ -17,7 +17,7 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 4. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día:
    `git fetch origin main` y, si trae commits, `git merge origin/main` (merge, nunca rebase: las ramas están subidas).
    Si el conflicto toca la misma lógica por los dos lados o dos migraciones, se para y se consulta a la usuaria.
-5. Al empezar cada tarea, aplica la skill `selector` y sigue el flujo de skills de una tarea (diseño, prototipo,
+5. Al empezar cada tarea, aplica la skill `gw-selector` y sigue el flujo de skills de una tarea (diseño, prototipo,
    bugs, PR, retro) de [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea).
 6. **La sesión se abre con el repo como carpeta de trabajo**; en otra no carga `.claude/settings.json` (ni sus
    ganchos): dilo a la usuaria, y mientras, `git config core.hooksPath .githooks` y la marca de revisión y el CI a mano.
@@ -36,7 +36,8 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - **El estado vive en los `.md`, no en la conversación** (usuaria, 2026-10-02): en el roadmap, junto al tachado,
   `✅ fecha` + qué se hizo y **qué queda pendiente** si se cerró solo en parte. Una tarea a medias se marca
   `🚧 en curso` con lo hecho y lo que falta.
-- **Ninguna tarea sin hito** (usuaria, 2026-10-02): toda tarea nueva entra en una fase de su roadmap o en una fila de
+- **Ninguna tarea sin hito** (usuaria, 2026-10-02): su número, con `python3 tools/roadmap/siguiente-id.py <serie>`
+  (mira las ramas remotas, `QA-290`); toda tarea nueva entra en una fase de su roadmap o en una fila de
   «Qué entra en cada hito» (`21-roadmap.md`); `python3 tools/roadmap/cobertura.py` tiene que dar «SIN HITO: 0».
 - Commit + push (`git push -u origin <rama>`, en segundo plano; por red, reintentos a 2, 4, 8 y 16 s) en cada punto
   estable: **nunca más de 30-45 minutos sin subir**, y **la bitácora en el mismo commit** que el trabajo. Algo a
@@ -70,10 +71,12 @@ subagente de cada tanda), antes de la primera acción, relee
 - **El check del proyecto** es la lista `check` de `.claude/gw.json` (cada orden con npx pasa por `tools/qa/host.sh`,
   el sandbox Flatpak de la Deck, `QA-180`); `.githooks/pre-push` lo corre con los tests de lo que cambia, y el CI
   (`.github/workflows/ci.yml`) añade los tests completos.
+- **Antes de subir, pásalo con `bash .claude/gw/scripts/check.sh`**: corre el check y, si sale en verde, lo apunta; el
+  `pre-push` no lo repite sobre el mismo árbol (`GW_CHECK_CACHE=0` lo desactiva).
 - **Lo comprobable lo hace un script**, no un agente: si una regla se sigue rompiendo, se convierte en una comprobación.
 - **Lo que depende de una máquina concreta no se da por probado con tests** (la Deck, Ollama real): se apunta como
   pendiente en el plan, con quién lo comprueba y dónde.
-- Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<orden del test>"
+- Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/red-without-fix.sh "<orden del test>"
   <archivo-del-arreglo>...`. Un test que espera un fallo comprueba **el motivo**, no solo el código de salida.
 - `python3 .claude/gw/scripts/doctor.py` dice si el flujo está bien montado, con la orden que arregla cada problema.
 
@@ -94,35 +97,36 @@ subagente de cada tanda), antes de la primera acción, relee
   los ganchos piden la marca de revisión), y **se fusiona solo con el CI en verde**, también con «fusiona
   directamente»: eso quita esperar revisiones, nunca el CI ni la retro presentada a la usuaria (`QA-95`).
 - **Casos especiales**, en [`ramas-y-main.md`](docs/runbooks/ramas-y-main.md): «lleva a `main`» con la usuaria fuera
-  (`QA-238`), cuota de Actions agotada (`QA-215`), PR de una sesión local (`QA-184`, «PR listo»), tareas `INS-*`
+  (`QA-238`), cuota de Actions agotada (`QA-215`; para un PR, `python3 .claude/gw/scripts/ci-local.py --record`), PR de una sesión local (`QA-285`, con `gh`; «PR listo» sin él), tareas `INS-*`
   (`QA-259`) y la rama de un subagente (`tools/qa/fusionar.sh`).
 
 ## Antes de ir a `main`: tres fases
 
-Nunca sobre trabajo ya fusionado (`QA-77`). Detalle en el
+Nunca sobre trabajo ya fusionado (`QA-77`). En una rama larga (rondas de pruebas), la fase 1 se adelanta al cerrar
+cada bloque de ~10 tandas, solo del diff desde la última revisión (`QA-292`). Detalle en el
 [paso 6 del runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea) (usuaria, 2026-10-21, `QA-183`).
 
 1. **Código:** `git fetch origin main` y `/code-review --max-findings all` del diff contra `origin/main`, con el
    criterio de `REVIEW.md`. Arreglos con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve
    se apunta como pendiente en la bitácora. Lo que casa con `content` de `.claude/gw.json` es contenido, no código.
-2. **Entorno:** `/opt-ai` si hubo tandas con Ollama real (`QA-142`), `/opt-tokens` y `/retro`, que revisa también
-   `opt-tokens`. Sus propuestas se **presentan a la usuaria**; lo que confirme se aplica en la rama.
+2. **Entorno:** `/gw-opt-ai` si hubo tandas con Ollama real (`QA-142`), `/gw-opt-tokens` y `/retro`, que revisa también
+   `gw-opt-tokens`. Sus propuestas se **presentan a la usuaria**; lo que confirme se aplica en la rama.
 3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de esos commits y sus arreglos; luego
-   `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: <paso>"` (el `commit-msg` pide esa línea; escribe la
+   `bash .claude/gw/scripts/reviewed.sh --footer "Siguiente: <paso>"` (el `commit-msg` pide esa línea; escribe la
    marca, `.claude/revision-main.sha`, y hace su commit; sin retro decidida no hay marca, `requireRetro`) y
    `git push`; la descripción con la skill `pr`. Solo entonces se crea el PR. Sin la marca del mismo commit, los
    ganchos lo rechazan (`QA-50`).
 
-## La bitácora (`docs/registros/traspaso.md`)
+## La bitácora (`docs/records/traspaso.md`)
 
 Al día siempre: hito y fase, cada rama con su fila «Tarea en curso · `<rama>`» (la tarea, lo que falta y el siguiente
-paso; ≤600 caracteres, `bitacora.py`, `QA-69`), estado de los tests, decisiones de Álvaro que bloquean algo, y
+paso; ≤600 caracteres, `handoff.py`, `QA-69`), estado de los tests, decisiones de Álvaro que bloquean algo, y
 «Hecho recientemente» con las tareas cerradas.
 
 ## Subagentes
 
 **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes de contexto limpio con la
-skill `orchestrate-dealer` (y los modelos que elija la skill `selector`) sin preguntar cada vez; la sesión principal
+skill `gw-orchestrate-dealer` (y los modelos que elija la skill `gw-selector`) sin preguntar cada vez; la sesión principal
 planea, decide y revisa. Esta línea es la autorización que piden las instrucciones del propio agente.
 
 - Cada subagente recibe un encargo: objetivo, rutas, restricciones, el check que debe pasar y qué tiene que devolver.
@@ -131,7 +135,7 @@ planea, decide y revisa. Esta línea es la autorización que piden las instrucci
 ## Las skills del flujo en este repositorio
 
 Lo propio de WMF de cada skill (diseño contra `designReferences` con X4 de guía, `prototype`, `domain-modeling`,
-`pr`, el tamaño de las tandas de `orchestrate-dealer`, `opt-ai`…) está en
+`pr`, el tamaño de las tandas de `gw-orchestrate-dealer`, `gw-opt-ai`…) está en
 [`skills-wmf.md`](docs/runbooks/skills-wmf.md): léelo al aplicar cualquiera de ellas.
 
 ## Reglas del proyecto

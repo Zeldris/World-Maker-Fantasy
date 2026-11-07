@@ -1,6 +1,7 @@
 import { env } from '../config/env.js';
 import { ollamaGenerate } from '../lib/ollama.js';
 import { hasFalseCombatHit, hasFalseCombatMiss, hasFalseUnconsciousNarration, hasFalseDeathClaim } from './narrador.js';
+import { normalizeText } from './travel.js';
 
 /// Grupo 3 § Combate múltiple (2026-08-25) — narración por LLM de UN turno individual dentro de
 /// una ronda con varios combatientes (decisión explícita de la usuaria, con el dato real de
@@ -58,8 +59,18 @@ export function deterministicExchangeNarration(input: TurnoNarracionInput): stri
   return `${input.atacanteNombre} se enfrenta a ${input.defensorNombre} en un nuevo choque.`;
 }
 
+/// P389: una narración que no nombra a ninguno de los dos (ni una palabra de 4+ letras de su nombre) no cuenta el
+/// intercambio: el Ollama simulado devuelve «El personaje observa con atención a su alrededor…» y el turno de un
+/// compañero no se veía en el diario. Cae al determinista, que nombra a los dos.
+export function noNombraANingunCombatiente(narration: string, input: Pick<TurnoNarracionInput, 'atacanteNombre' | 'defensorNombre'>): boolean {
+  const texto = normalizeText(narration);
+  const palabras = [input.atacanteNombre, input.defensorNombre].flatMap((n) => normalizeText(n).split(/[^\p{L}]+/u)).filter((w) => w.length >= 4);
+  return palabras.length > 0 && !palabras.some((w) => texto.includes(w));
+}
+
 function violaAlgunGuard(narration: string, input: TurnoNarracionInput): boolean {
   return (
+    noNombraANingunCombatiente(narration, input) ||
     hasFalseCombatHit(narration, input.combatBothMissed) ||
     hasFalseCombatMiss(narration, input.combatRealHitLanded) ||
     hasFalseUnconsciousNarration(narration, input.defensorQuedaConvalecienteEsteTurno) ||

@@ -1,6 +1,6 @@
 #!/bin/bash
 # QA-88/QA-98/QA-35, adaptado a `relatedTests` de Galivelop-workflow (piloto, 2026-10-22): los tests de lo que
-# cambia en el push. El `tests-relacionados.sh` del flujo lo llama con los archivos cambiados que siguen existiendo.
+# cambia en el push. El `related-tests.sh` del flujo lo llama con los archivos cambiados que siguen existiendo.
 #   unidad       `vitest related` de backend (solo el proyecto `unit`) y frontend, y el test de nombres de imágenes
 #                si cambia algo en backend/uploads/images/ (QA-35)
 #   integracion  los de BD real con el nombre de un archivo cambiado (`foo.ts` → `foo.integration.test.ts`)

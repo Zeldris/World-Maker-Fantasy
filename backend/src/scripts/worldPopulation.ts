@@ -247,7 +247,7 @@ export const worldPopulations: WorldPopulationInput[] = [
   {
     targetType: 'RECURSO',
     targetSlug: 'junba-verde',
-    label: 'Madera Jumba',
+    label: 'Madera de Junba',
     poblacion: 3000,
     poblacionMax: 3000,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
@@ -255,7 +255,7 @@ export const worldPopulations: WorldPopulationInput[] = [
   {
     targetType: 'RECURSO',
     targetSlug: 'junba-verde-resina-fuente',
-    label: 'Resina Jumba Verde',
+    label: 'Resina de Junba Verde',
     poblacion: 1500,
     poblacionMax: 1500,
     distribucion: { 'Llanuras del Viento Rojo': 1 },
@@ -271,7 +271,7 @@ export const worldPopulations: WorldPopulationInput[] = [
   {
     targetType: 'RECURSO',
     targetSlug: 'veta-hierro-pilares-rotos',
-    label: 'Veta de Hierro de las Llanuras Rojas',
+    label: 'Veta de Hierro de la Llanura',
     poblacion: 600,
     poblacionMax: 600,
     distribucion: { 'Llanuras del Viento Rojo': 1 },

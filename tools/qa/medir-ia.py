@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mide el registro por llamada de `opt-ai` (formato: docs/ia/opt-ai-registro.md). Solo biblioteca estándar.
+"""Mide el registro por llamada de `gw-opt-ai` (formato: docs/ia/opt-ai-registro.md). Solo biblioteca estándar.
 
 Uso:
   medir.py <registro.jsonl> [--anterior <registro.jsonl>] [--perfil X] [--con-calentar] [--json]

@@ -330,9 +330,20 @@ function buildFactionsSection(
 // texto real, `imagePrompts`/`imageUrls` se quedan en null mientras la entrada no esté traducida:
 // generar/mostrar una imagen de una escena que el texto todavía oculta sería otra forma de fugar
 // justo el contenido que el candado de traducción existe para proteger.
-function buildHistoriaSection(historiaRows: Awaited<ReturnType<typeof prisma.historiaEntry.findMany>>, ctx: EnciclopediaBuildContext) {
+//
+// Sin documento (QA-244, usuaria, 2026-10-26): con `lugarSlug`, descubierta al visitar ese lugar; sin documento ni
+// lugar, saber común, descubierta desde el principio. Se calcula al leer, como `unlocked`: no hay fila que guardar.
+function buildHistoriaSection(
+  historiaRows: Awaited<ReturnType<typeof prisma.historiaEntry.findMany>>,
+  locationIdBySlug: Map<string, string>,
+  ctx: EnciclopediaBuildContext,
+) {
   return historiaRows.map((h) => {
-    const discovered = ctx.isDiscovered('historia', h.slug);
+    const lugarId = h.lugarSlug ? locationIdBySlug.get(h.lugarSlug) : undefined;
+    const porDocumento = !!h.documentoItemSlug;
+    const discovered = porDocumento
+      ? ctx.isDiscovered('historia', h.slug)
+      : !h.lugarSlug || (!!lugarId && ctx.isLocationDiscovered(lugarId));
     const unlocked = discovered && (!h.requiresTranslation || ctx.isDiscovered('npc', h.translatorNpcSlug ?? ''));
     return {
       slug: h.slug,
@@ -341,7 +352,7 @@ function buildHistoriaSection(historiaRows: Awaited<ReturnType<typeof prisma.his
       year: h.year,
       requiresTranslation: h.requiresTranslation,
       discovered,
-      fase: ctx.discoveryFaseFor('historia', h.slug),
+      fase: porDocumento ? ctx.discoveryFaseFor('historia', h.slug) : discovered ? 'DESCUBIERTO' : 'NO_DESCUBIERTO',
       unlocked,
       // Nunca se manda el texto real si no está desbloqueado — no solo se oculta en pantalla, no
       // viaja por la red hasta que corresponde (petición explícita: escrito en idioma de las
@@ -771,7 +782,7 @@ export async function worldRoutes(app: FastifyInstance) {
       constructionRecipes: buildConstructionRecipesSection(ctx),
       craftingRecipes: buildCraftingRecipesSection(ctx),
       factions: buildFactionsSection(factionRows, ctx),
-      historia: buildHistoriaSection(historiaRows, ctx),
+      historia: buildHistoriaSection(historiaRows, new Map(locations.map((l) => [l.slug, l.id])), ctx),
       combate: buildCombateSection(),
       reputacion: buildReputacionSection(),
     };

@@ -815,7 +815,7 @@ Contenedor común: `PanelDrawer` (cajón inferior, `max-w-4xl`, 85 vh).
   inferior; darle presencia de encuentro (retrato del rival, dificultad como calavera 1-5). **S**
 - **CMB-9 · Subir el tope de 4 combatientes por grupo** a 6 u 8 (usuaria, 2026-10-07): el límite de 4
   nace de los tiempos de narración; en la fase de pulido, al mejorar esos tiempos, se sube
-  (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.8`. **M**
+  (`MAX_COMBATIENTES_POR_BANDO` y el tamaño de los grupos de combate). Hito `0.7`. **M**
 - **CMB-10 · Castigo por estado en porcentaje** (usuaria, 2026-10-11, sale de P10 de `QA-27`): hoy el
   estado resta una cantidad fija al atributo de la tirada (−2 herido, −5 grave, −10 convaleciente,
   `CONDICION_MALUS`, death.ts), que pesa mucho más a un personaje débil que a uno fuerte. Pasa a un
@@ -978,12 +978,12 @@ Retro del 2026-10-08 (`CR-63`, `CR-65`, `CR-50`, `CR-37`, `CR-67`; propuestas ap
 - ~~**QA-25 · Cifras provisionales en un sitio**~~ ✅ 2026-10-08:
   [`cifras-provisionales.md`](cifras-provisionales.md) con cada cifra, su valor y su constante; se
   apunta en el mismo commit que la cifra. Motivo: decenas de cifras provisionales repartidas.
-- **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.8`): pasar por cada
+- **QA-26 · Revisar las cifras provisionales jugando** (fase de pruebas del `0.7`): pasar por cada
   fila de [`cifras-provisionales.md`](cifras-provisionales.md), ajustar la cifra y borrar la fila.
 - **QA-27 · Ronda de pruebas jugando** (`0.3`, pedida por la usuaria el 2026-10-09; pausa el roadmap):
   🚧 en curso. Jugar una partida como una jugadora normal en el navegador (Chromium con Playwright,
   Ollama simulado, viajes acortados), apuntar cada bug o incoherencia en
-  [`pruebas-0.3-hallazgos.md`](../registros/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
+  [`pruebas-0.3-hallazgos.md`](../records/pruebas-0.3-hallazgos.md) y arreglarlo con su test.
   Hecho (2026-10-09): P1 (zonas saturadas: 2-3 sueltos y grupos de hasta 6), P2 (fauna ambiental
   fuera del mapa, con Colmena de Lebude, Pared de arcilla y Fango de los Quios como recursos), P3
   (la tirada del encuentro cuenta el equipo), P4 (cancelar un viaje), P6 (salir por la salida en la
@@ -1158,7 +1158,7 @@ usuaria `QA-62`…`QA-65`; la quinta propuesta, regresiones en la ronda, no entr
   frontend y driver) y paso 5 de `rondas-de-pruebas.md`.
 
 Retro de la tercera tanda de `QA-27` (2026-10-12, PR #49;
-[propuestas](../registros/retro-2026-10-12-qa27-tercera.md), aprobadas todas por la usuaria el 2026-10-13):
+[propuestas](../records/retro-2026-10-12-qa27-tercera.md), aprobadas todas por la usuaria el 2026-10-13):
 
 - ~~**QA-66 · El push dice qué sube**~~ ✅ 2026-10-13: `.githooks/pre-push` lista los commits que sube y
   que no están en ninguna rama remota conocida, y avisa si no sube ninguno. Motivo: una cadena `&&` cortada por `grep -c` (sale con 1 al contar
@@ -1200,7 +1200,7 @@ Retro del PR #51 (documentos reutilizables, 2026-10-13), aprobada por la usuaria
   inicio de sesión.
 ---
 
-Retro del PR #50 (2026-10-13; [propuestas](../registros/retro-2026-10-13-pr50.md), aprobadas todas por la
+Retro del PR #50 (2026-10-13; [propuestas](../records/retro-2026-10-13-pr50.md), aprobadas todas por la
 usuaria el 2026-10-13):
 
 - **QA-73 · Diario que el frontend escribe por su cuenta** (🚧 2026-10-13: hecho y con tests; jugado en
@@ -1280,7 +1280,7 @@ aprobada por la usuaria (las 6):
   las monturas. Motivo: P164.
 
 Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
-[registro](../registros/retro-2026-10-15-hallazgos-qa27.md)), aprobada por la usuaria (las 2):
+[registro](../records/retro-2026-10-15-hallazgos-qa27.md)), aprobada por la usuaria (las 2):
 
 - ~~**QA-88 · Los tests de lo que cambia, en el push**~~ ✅ 2026-10-15: `tools/qa/tests-relacionados.sh`
   desde `.githooks/pre-push` pasa `vitest related` sobre los archivos cambiados (backend, solo el proyecto
@@ -1294,7 +1294,7 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
   `posicionesPlantillas.test.ts` (instantánea de la posición de cada RECURSO y EDIFICIO del catálogo) y regla en
   `REVIEW.md` («Un fallo que vuelve»). Motivo: mover el recinto de múrgoles lo duplicaba en las partidas viejas.
 - ~~**QA-91 · Sin retro no hay marca de revisión**~~ ✅ 2026-10-17: `tools/qa/revisado.sh` exige una
-  `docs/registros/retro-*.md` añadida en la rama con su `**Estado` decidido por la usuaria. Motivo: el PR #60 se
+  `docs/records/retro-*.md` añadida en la rama con su `**Estado` decidido por la usuaria. Motivo: el PR #60 se
   creó con una retro corta y sin presentar.
 - ~~**QA-92 · El resumen del registro de hallazgos lee el último estado**~~ ✅ 2026-10-17: en
   `marca-hallazgo.py`, «reabierto» solo cuenta sin un ✅ detrás, «en parte» vale con o sin paréntesis y
@@ -1327,7 +1327,7 @@ Retro antes del PR de los hallazgos de `QA-27` (tandas 1 y 2, 2026-10-15,
 Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo implementado):
 
 - ~~**QA-101 · Matriz de cobertura de las pruebas**~~ ✅ 2026-10-19: `tools/qa/matriz-pruebas.py` y
-  `docs/registros/matriz-pruebas.md`, una fila por tarea cerrada del `0.0` al `0.3` con bloque y estado (jugado,
+  `docs/records/matriz-pruebas.md`, una fila por tarea cerrada del `0.0` al `0.3` con bloque y estado (jugado,
   solo tests, sin jugar, no se juega); da «SIN JUGAR: N de M» por bloque y el pre-push exige la fila de cada tarea
   cerrada. Estado inicial clasificado a mano: 123 de 169 sin jugar (el núcleo del `0.1` no tiene ID y no cuenta).
 - ~~**QA-102 · Escenarios preparados y avanzar días**~~ ✅ 2026-10-19: `tools/qa/escenario.sh` guarda la base de
@@ -1342,7 +1342,7 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
 - ~~**QA-105 · Rondas por bloques**~~ ✅ 2026-10-19: «Una ronda, un bloque» en `rondas-de-pruebas.md`: qué falta
   (matriz), escenario, jugar en texto con recorridos, apuntar en el registro y en la matriz, y cerrar el bloque.
 - ~~**QA-106 · Skill `opt-tokens`**~~ ✅ 2026-10-19 (usuaria): retro de gasto basada en `/retro` y en la guía oficial
-  de costes de Claude Code. `.claude/skills/opt-tokens/medir.py` mide el uso real de la API de la sesión, el contexto
+  de costes de Claude Code. `.claude/skills/gw-opt-tokens/medir.py` mide el uso real de la API de la sesión, el contexto
   medio por llamada y lo que cada herramienta y resultado arrastra; `SKILL.md` lista las palancas y el proceso
   (medir, buscar, proponer, aplicar lo aprobado); `proyecto.md` es lo propio de Tarkor (en otro proyecto se reescribe).
 - ~~**QA-107 · Más comprobaciones en la CI**~~ ✅ 2026-10-19 (usuaria): esquema sin migración pendiente (`prisma migrate
@@ -1363,7 +1363,7 @@ Proceso de pruebas (usuaria, 2026-10-19: menos tokens y cobertura de todo lo imp
 - ~~**QA-111 · Curva de contexto en `medir.py`**~~ ✅ 2026-10-19 (usuaria): suelo y techo medios entre compactaciones y
   llamadas por tramo, para ver sin cálculos aparte si compensa compactar antes.
 
-**Retro del PR del proceso de pruebas** (2026-10-19, [retro](../registros/retro-2026-10-19-proceso-pruebas.md);
+**Retro del PR del proceso de pruebas** (2026-10-19, [retro](../records/retro-2026-10-19-proceso-pruebas.md);
 aprobadas las cuatro por la usuaria):
 
 - ~~**QA-112 · `.claude/` versionado sin `-f`**~~ ✅ 2026-10-19: `.gitignore` con `.claude/*` y excepciones para
@@ -1379,15 +1379,15 @@ aprobadas las cuatro por la usuaria):
   registro de la sesión lo de antes de compactar (fragmentos recortados, sin resúmenes, subagentes ni búsquedas
   previas); `recuperar.py --estado` lo pone el gancho de `SessionStart` tras cada compactación (fila de la
   bitácora, `git status`, commits, compactaciones llevadas); presupuesto de 1 a 5 compactaciones por tarea en el
-  `selector`, con los cortes al acabar cada sub-bloque.
+  `gw-selector`, con los cortes al acabar cada sub-bloque.
 - ~~**QA-117 · Planificar con el grande, escribir con el medio**~~ ✅ 2026-10-19 (usuaria): `medir.py` reparte la
-  entrada por modelo (sesión principal y subagentes de `<sesión>/subagents/`); `opt-tokens` lo mira; el runbook
+  entrada por modelo (sesión principal y subagentes de `<sesión>/subagents/`); `gw-opt-tokens` lo mira; el runbook
   `skills-y-modelos.md` manda la implementación con plan cerrado a un subagente `sonnet` y la revisión a la sesión
   principal. La sesión del 2026-10-19 llevó el 92 % de la entrada en Opus.
 - ~~**QA-118 · Escalera de modelos y topes para subagentes**~~ ✅ 2026-10-19 (usuaria; ideas del workflow
   `implement-afk`): se empieza en el peldaño más barato y se sube uno por fallo, tope de dos fallos, un fallo al
   arrancar no cuenta, una tanda sin supervisión que no cierra nada para, y cada tarea nueva lleva su `modelo:` en
-  el roadmap (`selector` y runbook `skills-y-modelos.md`).
+  el roadmap (`gw-selector` y runbook `skills-y-modelos.md`).
 - ~~**QA-119 · Registros de sesión de prueba con la forma real**~~ ✅ 2026-10-19 (retro, segunda vuelta, 5): un
   único constructor de líneas en `tools/qa/tests/comun.py` (`respuesta`, `orden`, `resultado`, `aviso`,
   `compactacion`, `ruido`, `registro`), copiado del formato real, para `test_medir.py`, `test_recuperar.py` y
@@ -1397,28 +1397,28 @@ aprobadas las cuatro por la usuaria):
   orden apunte a un archivo que existe.
 - ~~**QA-121 · Sesión directora: skill `orchestrate-dealer`**~~ ✅ 2026-10-19 (usuaria: no depender de `/clear`):
   la principal parte la tarea y reparte cada trozo a un subagente de contexto limpio que devuelve 15 líneas; tope de
-  compactación a 200k; el `selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
+  compactación a 200k; el `gw-selector` y el runbook (pasos 1 y 6) la piden en toda tarea de más de un paso. Sustituye
   la sesión nueva tras cada PR de `QA-110`. De `implement-spec` (Matt Pocock): encargos con punteros y
-  frontera de arreglos en paralelo, cada uno en su worktree. Pendiente: medirla en el piloto (ronda del Reino) con `/opt-tokens`.
+  frontera de arreglos en paralelo, cada uno en su worktree. Pendiente: medirla en el piloto (ronda del Reino) con `/gw-opt-tokens`.
 - ~~**QA-122 · Puntos de `/clear`**~~ ✅ 2026-10-19 (usuaria, tras la ronda del Reino con 30 compactaciones): Claude
   recomienda `/clear` en puntos estables (tarea o tanda cerrada, ronda o bloque de pruebas cerrado, PR fusionado,
   contexto por encima de ~200k o presupuesto de compactaciones gastado), con la sesión lista antes (commit, push y
   bitácora con el siguiente paso); nunca entre el `/code-review` y la `/retro`. Tope de compactación de vuelta a 300k
   y gancho de `SessionStart` para `clear` con `recuperar.py --estado`. Runbook `skills-y-modelos.md`, paso 1.
 
-Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 2026-10-19: todo aprobado):
+Del `/gw-opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 2026-10-19: todo aprobado):
 
 - ~~**QA-123 · Tope de compactación de vuelta a 200k**~~ ✅ 2026-10-19: con 300k el techo pasó de ~145k a ~220k y el
   medio por llamada, de ~115k a ~150k. `.claude/settings.json`, runbook `skills-y-modelos.md` paso 1,
-  `orchestrate-dealer` y `selector`.
+  `gw-orchestrate-dealer` y `gw-selector`.
 - ~~**QA-124 · Rondas en un subagente `sonnet`**~~ ✅ 2026-10-19: la ronda `QA-105` la jugó la principal con Opus
-  (1.150 órdenes de Bash). `rondas-de-pruebas.md` («Quién juega») y la regla de rondas de `orchestrate-dealer`.
+  (1.150 órdenes de Bash). `rondas-de-pruebas.md` («Quién juega») y la regla de rondas de `gw-orchestrate-dealer`.
 - ~~**QA-125 · Ayudas del driver que fallaban**~~ ✅ 2026-10-19: `interactuar` también pulsa el `menuitem` del menú
   del NPC del mapa; `opcion` elige por número la n-ésima `[data-opcion]` (el número va en un `span aria-hidden`
   y no entraba en el nombre del botón); `pelear` nuevo (acercarse, interactuar, «Combatir» y rondas). README de
   `mcp/`. Pendiente: estrenarlas en la próxima ronda.
 - ~~**QA-126 · `/code-review` de cada arreglo de subagente antes de fusionarlo**~~ ✅ 2026-10-19: los arreglos de
-  P215-P220a llegaron con 9 fallos que solo cazó la revisión del PR. `orchestrate-dealer` (Reglas) y, en el
+  P215-P220a llegaron con 9 fallos que solo cazó la revisión del PR. `gw-orchestrate-dealer` (Reglas) y, en el
   encargo, buscar a todos los que usan lo que se cambia.
 - ~~**QA-127 · `medir.py` por tramo**~~ ✅ 2026-10-19: medio y techo de los últimos 8 tramos y medio sin el primer
   tramo a medias; el medio de 24 h mezclaba topes distintos. Test en `test_medir.py`.
@@ -1442,13 +1442,13 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-136 · Cada sesión, su propia rama**~~ ✅ 2026-10-20 (usuaria): regla en `CLAUDE.md` («Ramas y `main`»). La
   sesión local y la de la nube subían a la misma rama y se reescribían la fila de la bitácora.
 - ~~**QA-137 · La revisión corta mira el contrato**~~ ✅ 2026-10-20 (usuaria, retro del PR de `opt-ai`): el revisor de
-  cada rama compara con el doc del contrato y los llamadores reales (`orchestrate-dealer`, paso 3); test
-  `tools/qa/tests/test_opt_ai_tareas.py` (tareas de `opt-ai/proyecto.md` frente al backend) y los tests de `opt-ai` en la CI.
+  cada rama compara con el doc del contrato y los llamadores reales (`gw-orchestrate-dealer`, paso 3); test
+  `tools/qa/tests/test_opt_ai_tareas.py` (tareas de `gw-opt-ai/proyecto.md` frente al backend) y los tests de `gw-opt-ai` en la CI.
 - ~~**QA-138 · El mapa, tras fusionar la rama**~~ ✅ 2026-10-20 (usuaria): lo que nombra archivos de un worktree se escribe
-  después de fusionarlo (`orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
+  después de fusionarlo (`gw-orchestrate-dealer`, «Reglas»); antes, el pre-push rechazaba las rutas.
 - ~~**QA-139 · Commit WIP del subagente en worktree**~~ ✅ 2026-10-20 (usuaria): commit en cada punto estable; un reinicio
   perdió dos subagentes sin commit.
-- **QA-140 · Lanzar Claude desde el repo** 🚧 en curso (lote 1, retro de pruebas-local §1 y `/opt-tokens`):
+- **QA-140 · Lanzar Claude desde el repo** 🚧 en curso (lote 1, retro de pruebas-local §1 y `/gw-opt-tokens`):
   `Desarrollos/CLAUDE.md` de una línea («lanza `claude` desde `World-Maker-Fantasy/`») y la misma nota en el runbook de
   rondas. Hecho 2026-10-20: la nota (paso 0 de «Cómo se juega»). **Falta** `Desarrollos/CLAUDE.md`, fuera del repo: lo
   crea la sesión local en la Deck.
@@ -1457,7 +1457,7 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
   o `/api/ps` dicen CPU; `rag-eval` para el arranque (rc 1 → `reindex-lore`). Funciones en
   `tools/playwright-e2e/ia-comprobaciones.sh`, test `test_ia_comprobaciones.py`; paso 1 del runbook con la ruta absoluta.
 - ~~**QA-142 · `/opt-ai` en el flujo del PR**~~ ✅ 2026-10-20 (§3): `skills-y-modelos.md` paso 6 (fuente única), `CLAUDE.md` y el punto 7
-  del runbook apuntan ahí; fila en la tabla de reparto de `orchestrate-dealer`.
+  del runbook apuntan ahí; fila en la tabla de reparto de `gw-orchestrate-dealer`.
 - ~~**QA-143 · Permiso de `escenario.sh` y escenario del Reino con recursos**~~ ✅ 2026-10-20 (§4): regla `allow` en
   `.claude/settings.json` (también por `host.sh`, confirmada por la usuaria); el runbook ya no pide permiso; escenario
   `reino-dia39-recursos` (Granero, comida 180, bolsa 300 y tesoro 251 Goirnos, materiales en inventario y Almacén) y
@@ -1477,7 +1477,7 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-148 · `opt-ai`: lo que ya hay y tanda válida**~~ ✅ 2026-10-20 (§7): `proyecto.md` apunta «prefijo fijo primero» y el paso 0
   descarta la tanda que no corrió con la configuración del perfil.
 - ~~**QA-149 · Capturas más pequeñas**~~ ✅ 2026-10-20 (`/opt-tokens`): `shot()` del driver y `mcp/captura.js` salen en
-  JPEG calidad 50 (4,4 veces menos bytes), con `selector`, `clip`, `calidad` y `completo:true` (PNG de página entera).
+  JPEG calidad 50 (4,4 veces menos bytes), con `gw-selector`, `clip`, `calidad` y `completo:true` (PNG de página entera).
 - ~~**QA-150 · `tools/qa/host.sh` y `sql.sh`**~~ ✅ 2026-10-20 (`/opt-tokens`, tests `test_host.py` y `test_sql.py`): envoltorios para el sandbox Flatpak de la Deck
 - ~~**QA-151 · Reglas del juego en los scripts que escriben la partida**~~ ✅ 2026-10-20 (retro del lote 1): `orchestrate-dealer` pide en el encargo y en la revisión de cada rama que lo que escribe estado de la partida pase por las funciones del juego que aplican esas reglas (`darReino.ts` las rehacía a mano).
 - ~~**QA-152 · `fusionar.sh` borra la rama y el worktree del subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_fusionar.py`): tras fusionar y con los tests en verde, `git worktree remove` sin forzar y `git branch -d`; nunca la rama actual, `main` ni `claude/*`.
@@ -1485,7 +1485,7 @@ Del `/opt-tokens` y la `/retro` previos al PR de la ronda `QA-105` (usuaria, 202
 - ~~**QA-154 · `medir.py` da el arranque de cada subagente**~~ ✅ 2026-10-20 (retro del lote 1, `test_medir.py`): columna «arranque» (contexto de la primera llamada) y «Arranque medio»; el paso 1 de `opt-tokens` lo usa para ver qué encargos no compensan un subagente.
   (`flatpak-spawn --host --directory=<repo>`, SQL por stdin) que fuera de la Deck corren la orden tal cual.
 
-Propuestas de `/opt-ai` (primera medida en la Deck, 2026-10-20, aprobadas por la usuaria; [informe](../ia/opt-ai-registro.md)).
+Propuestas de `/gw-opt-ai` (primera medida en la Deck, 2026-10-20, aprobadas por la usuaria; [informe](../ia/opt-ai-registro.md)).
 Cada una se mide con `benchmark-turno` antes y después (perfil `deck`, `IA_REGISTRO` en las dos) y la medida va al
 informe; si empeora la calidad o no mejora, se revierte y se apunta. Objetivo por turno: primera palabra p50 ≤ 30 s,
 turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
@@ -1513,8 +1513,8 @@ turno p50 ≤ 45 s y p95 ≤ 75 s. Rama `claude/opt-ai-mejoras`.
 - ~~**QA-168 · `keep_alive` de `clasificar`, experimento** (propuesta 8).~~
   ✅ 2026-10-20: `'5m'`; caben los tres modelos (≥1,8 GB libres), `clasificar` p50 6,9 → 2,8 s, turno p50 28,7 s.
 
-Retro del PR de `claude/opt-ai-mejoras` ([retro](../registros/retro-2026-10-20-opt-ai-mejoras.md), aprobadas por la
-usuaria el 2026-10-20), con las tres de `/opt-tokens`.
+Retro del PR de `claude/opt-ai-mejoras` ([retro](../records/retro-2026-10-20-opt-ai-mejoras.md), aprobadas por la
+usuaria el 2026-10-20), con las tres de `/gw-opt-tokens`.
 - ~~**QA-169 · `/code-review low` de cada propuesta de `opt-ai` antes de su commit**: el bench mide tiempo, no fallos.~~ ✅ 2026-10-20: (`opt-ai` paso 4): al aplicar cada tarea, `/code-review low` de su diff antes del commit y del bench de después. La usuaria propuso mover el `/code-review` del PR tras `/opt-tokens` y `/opt-ai`; se quedó esta, porque los cuatro fallos venían de las propias tareas de `opt-ai`, que ya iban antes de esa revisión.
 - ~~**QA-170 · `keep_alive` y `num_ctx` alineados en todas las llamadas a un modelo** (`opt-ai`, `motores.md`).~~ ✅ 2026-10-20: nota en `motores.md` (Ollama) y en el paso 3: buscar todas las llamadas al modelo y alinearlas con una constante como `CTX_CRONISTA`.
 - ~~**QA-171 · `tools/roadmap/cerrar.py`**: cerrar una tarea en su roadmap, en el mapa y en la bitácora en una orden.~~ ✅ 2026-10-20: `cerrar.py QA-n "nota" … --bitacora` (`test_cerrar.py`): tacha en el roadmap (también en varias líneas) y en el mapa (los rangos, cuando quedan cerrados enteros) y abre «Hecho recientemente» con las 10 últimas; con él se cerraron estas.
@@ -1523,11 +1523,11 @@ usuaria el 2026-10-20), con las tres de `/opt-tokens`.
 - ~~**QA-174 · `.prettierrc.json` del backend con comillas simples**: que un archivo reescrito no cambie de estilo.~~ ✅ 2026-10-20: `singleQuote`, `trailingComma: all`, `printWidth` 120; sin reformatear lo que ya hay.
 - ~~**QA-175 · `POR ARCHIVO` en `medir.py` de `opt-tokens`**: lecturas y arrastre por archivo.~~ ✅ 2026-10-20: sección `POR ARCHIVO` (Read y Bash con orden de lectura; rutas relativas a otra carpeta, resueltas por `git ls-files`), con su test en `test_medir.py`. En esta sesión, `narrador.ts`: 61 lecturas, 1,6M arrastrados.
 
-Skill `scout-updates` (usuaria, 2026-10-20: el narrador sale lento y malo en la ronda local; [diseño](../ia/skill-scout-updates.md)).
-- **QA-176 · Skill `scout-updates`**: inventario del proyecto en `arquitectura.md`, propuestas acumuladas en `propuestas.md`, búsqueda citada y banco de calidad por pares; genérica, bajo demanda. Pedida por la usuaria durante la congelación del roadmap: cuenta como mejora del entorno, como las de las retros (confirmado el 2026-10-20).
+Skill `gw-scout-updates` (usuaria, 2026-10-20: el narrador sale lento y malo en la ronda local; [diseño](../ia/skill-scout-updates.md)).
+- **QA-176 · Skill `gw-scout-updates`**: inventario del proyecto en `arquitectura.md`, propuestas acumuladas en `propuestas.md`, búsqueda citada y banco de calidad por pares; genérica, bajo demanda. Pedida por la usuaria durante la congelación del roadmap: cuenta como mejora del entorno, como las de las retros (confirmado el 2026-10-20).
   🚧 2026-10-20: retro aplicada (manifiestos difíciles con salida esperada, `contrastar.py --seccion`, búsqueda en `sonnet`, salida de subagentes en `medir.py`); diseño, evaluaciones (`evals/`, con un proyecto de ejemplo no Tarkor), `inventario.py`, `contrastar.py` y `banco.py`, `SKILL.md`, referencias y captura de prompts (`IA_CASOS`) hechos; `docs/scout/` escrito (arquitectura con las restricciones confirmadas: memoria no mayor que el narrador actual, solo local, español, licencias, gratuito primero; propuestas sembradas con las comparativas de la decisión 14; rúbrica del narrador). Primera pasada completa hecha ([informe](../scout/informes/2026-10-20.md), propuestas P-005 a P-021). Validada el mismo día: tabla de cobertura (`contrastar.py --informe`), correcciones a P-014, P-015, P-017, P-018 y P-019, y sección `Planificados` (imágenes, voces, agente local, instalador) en la arquitectura; sin buscar aún Supabase, pgvector, SteamOS ni los planificados. Después: el generador de lore de OpenCode (`opencode.json`, `modelfiles/`) entra en la arquitectura e `inventario.py` lee `*.Modelfile` y `opencode.json`; borrados los Modelfiles descartados (`Modelfile`, `.fast`, `.nemo`, `.celeste`, `.qwen3cronista` y los `modelfiles/` sin uso; la captura DPO lee `Modelfile.llama31`, mismo SYSTEM). Decisiones de la usuaria (2026-10-20): la Deck es el mínimo (versión «plus» con modelos grandes, más adelante); planificados, en la Deck sin swap con Tarkor parado; P-005 a P-021 aceptadas (sus tareas, al volver al roadmap); el banco del narrador con P-005, P-006 y P-007 se hace en una sesión local en la Deck; fine-tune descartado (`Modelfile.finetuned` borrado). Banco del narrador hecho en la Deck el 2026-10-21 ([informe](../scout/informes/2026-10-21.md)): gana el actual llama31 (0,727) a gemma4:e2b, qwen3.5:4b y gemma3:4b; la usuaria rechaza P-005 a P-007, y P-007 se reabre si gemma4 queda dentro del ruido tras arreglar el prompt. Falta: búsqueda de los planificados, si la usuaria da el coste.
 
-Retro del PR de `claude/banco-narrador` ([retro](../registros/retro-2026-10-21-banco-narrador.md), aprobadas todas por la usuaria el 2026-10-21):
+Retro del PR de `claude/banco-narrador` ([retro](../records/retro-2026-10-21-banco-narrador.md), aprobadas todas por la usuaria el 2026-10-21):
 - ~~**QA-177 · `banco.py resumen --detalle`**: cara a cara, puntos por caso y motivos de las derrotas con el conteo de la tasa.~~ ✅ 2026-10-21: `--detalle` en `banco.py` (las claves `cara_a_cara`, `por_caso` y `derrotas` van siempre en `--json`), con su test en `test_banco.py`; `banco-calidad.md` dice que todas las cifras del informe salen de ahí.
 - ~~**QA-178 · Regla de decisión del banco**: adoptar, dentro del ruido o rechazar, y cuándo se reabre.~~ ✅ 2026-10-21: sección «Decisión» en `banco-calidad.md`: gana por más de ~0,15, adoptar; dentro del ruido, deciden memoria y latencia; pierde por más, rechazar, y se reabre si queda dentro del ruido tras el cambio que lo motive.
 - ~~**QA-179 · `medir.py` de `opt-tokens` sin contar ejecuciones como lecturas**: `bash tools/qa/host.sh …` contaba como leer `host.sh` (23 veces en la sesión del banco).~~ ✅ 2026-10-21: ✅ 2026-10-21: `medir.py` no cuenta como lectura una ruta que va justo detrás de `bash`, `sh`, `python3`, `node` o con `./` (en esta sesión, `host.sh` baja de 23 a 5 lecturas, las de verdad); su caso en `test_medir.py`.
@@ -1535,7 +1535,7 @@ Retro del PR de `claude/banco-narrador` ([retro](../registros/retro-2026-10-21-b
 - **QA-181 · Herramientas del driver que obligan a rodeos**: `estado.js` (panel «Tu personaje» del combate y narración entera), `viajar.js` (esperar la llegada), `turno.js` en combate y aviso cuando la caja de texto está desactivada (mapa de zona, escena). La usuaria aprueba dejarla para la próxima sesión de arreglos.
 - ~~**QA-182 · Aviso de tarea 🚧 sin tocar en el roadmap**: `bitacora.py` (pre-push) avisa, sin bloquear, si los commits de la rama nombran una tarea en curso y su línea del roadmap no cambia contra `main`.~~ ✅ 2026-10-21: ✅ 2026-10-21: `bitacora.py --en-curso <base> <sha>` avisa, sin fallar, de cada tarea 🚧 que nombran los commits (sin merges) y cuya entrada del roadmap (con sus líneas de continuación) no cambia; lo corre `prepush-ramas.sh` en cada push. Tests en `test_bitacora.py`.
 - ~~**QA-183 · El PR a `main` en tres fases**: código (`/code-review` y arreglos), entorno (`/opt-ai`, `/opt-tokens`, `/retro` y lo aprobado) y cierre (`/code-review` solo de lo que añadió la retro, `revisado.sh`, `pr`).~~ ✅ 2026-10-21 (usuaria): en `CLAUDE.md` y en el paso 6 de `skills-y-modelos.md`, fuente única del orden.
-- ~~**QA-184 · El PR de una sesión local lo crea Claude en la nube**: en la Deck no hay `gh` ni herramienta de GitHub y el modo auto no deja usar la credencial de git.~~ ✅ 2026-10-21 (usuaria): la local sube la descripción a `docs/registros/pr/<rama>.md` y deja «PR listo» en su fila de la bitácora; la nube comprueba el último commit, pasa `revisado.sh` y crea el PR (`CLAUDE.md`, paso 6 de `skills-y-modelos.md`).
+- ~~**QA-184 · El PR de una sesión local lo crea Claude en la nube**: en la Deck no hay `gh` ni herramienta de GitHub y el modo auto no deja usar la credencial de git.~~ ✅ 2026-10-21 (usuaria): la local sube la descripción a `docs/records/pr/<rama>.md` y deja «PR listo» en su fila de la bitácora; la nube comprueba el último commit, pasa `revisado.sh` y crea el PR (`CLAUDE.md`, paso 6 de `skills-y-modelos.md`).
 - ~~**QA-185 · Aviso de un hallazgo contado como pendiente sin decirlo**: `marca-hallazgo.py --resumen --comprobar` (CI) falla si una fila cae en «Pendientes» y su estado no empieza (tras negritas o emoji) por «pendiente(s)» o «abierto», ni la reabrió un «reabierto».~~ ✅ 2026-10-21 (retro del PR de la línea): `raro()` y tests en `test_marca_hallazgo.py`; el mismo PR ya cuenta «arreglado» sin ✅ y «Jugado ✓» (P215 y P218 salían como decisiones).
 - ~~**QA-186 · La fila de la rama al fusionar su PR**: las filas de los PR #68, #69 y #70 seguían diciendo «fusionar».~~ ✅ 2026-10-21 (retro del PR de la línea): el último commit antes del PR deja la fila como «al fusionarse, rama terminada» (paso 6 de `skills-y-modelos.md`).
 - ~~**QA-187 · `/clear` tras fusionar sin `orchestrate-dealer`**: una sesión en la nube encadenó 3 PR con 25 compactaciones.~~ ✅ 2026-10-21 (retro del PR de la línea): si la sesión ya compactó, se propone `/clear` al fusionar; paso 6 de `skills-y-modelos.md` y `opt-tokens/proyecto.md`.
@@ -1549,15 +1549,15 @@ Retro previa al PR de `claude/puerta-pruebas` (aprobadas por la usuaria el 2026-
 - **QA-193 · Vía de QA para forzar el azar en `prepararReino`**: activa solo con una variable de entorno de QA; fuerza el próximo suceso (ganar o empatar la iniciativa, emboscada de fauna, interrupción de viaje) para comprobar P29, P69, P90, P46 y P47.
 - ~~**QA-194 · La bitácora por su fila en la principal**: 12 lecturas de `traspaso.md`, ~419k tokens arrastrados.~~ ✅ 2026-10-21: `opt-tokens/proyecto.md` manda `python3 tools/qa/recuperar.py --estado` (da la fila, commits y compactaciones) y apunta lo de las capturas.
 
-Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-22, [retro](../registros/retro-2026-10-22-pruebas-3-3.md); 195, 197, 198 y 200 se aplican ya; 196 y 199 son del paso 3.4 de la línea):
+Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-22, [retro](../records/retro-2026-10-22-pruebas-3-3.md); 195, 197, 198 y 200 se aplican ya; 196 y 199 son del paso 3.4 de la línea):
 - ~~**QA-195 · Aviso de «reabierto» o «falta ver» que cuenta como hecho**: los subagentes escriben lo nuevo delante del estado viejo (P116 y P189 del 3.3).~~ ✅ 2026-10-22: `marca-hallazgo.py --resumen --comprobar` (CI) falla si un estado con «reabierto», o con «falta ver/comprobar» y contado como comprobado, cae en arreglado o comprobado; test en `test_marca_hallazgo.py`.
-- **QA-196 · Chuleta del driver en lugar de notas por tanda**: «Fallos de las herramientas» del runbook crece ~12 líneas por PR y cada tanda la lee entera (35k); rehacerla como chuleta por herramienta y borrar lo resuelto. Paso 3.4, junto a `QA-193`. 🚧 en parte 2026-10-22 (`QA-208`): el historial pasó a `docs/registros/fallos-herramientas.md` y el runbook tiene «Trucos de las herramientas» con los vigentes; falta ordenarlos por herramienta y depurar duplicados del registro.
+- **QA-196 · Chuleta del driver en lugar de notas por tanda**: «Fallos de las herramientas» del runbook crece ~12 líneas por PR y cada tanda la lee entera (35k); rehacerla como chuleta por herramienta y borrar lo resuelto. Paso 3.4, junto a `QA-193`. 🚧 en parte 2026-10-22 (`QA-208`): el historial pasó a `docs/records/fallos-herramientas.md` y el runbook tiene «Trucos de las herramientas» con los vigentes; falta ordenarlos por herramienta y depurar duplicados del registro.
 - ~~**QA-197 · `escenario.sh` en una orden sola**: el modo auto denegó `dar` en la tanda 13b-1 por ir encadenado con `o.sh pulsar`.~~ ✅ 2026-10-22: regla en `rondas-de-pruebas.md` (en una orden Bash sola; la usuaria lo autoriza para preparar la partida) y nota de la 13b-1 corregida. La regla `allow` ya existía.
 - ~~**QA-198 · Test de los atajos de la Deck**: `juego.sh` llegó sin `_path.sh` al PR.~~ ✅ 2026-10-22: `tools/qa/tests/test_atajos_deck.py` exige que todo `tools/qa/deck/*.sh` que lleve a `psql`, `pg_dump`, `pg_restore` o `arrancar-juego.sh` (directo o por otro atajo) cargue `_path.sh`; en rojo sin esa línea en `juego.sh`.
 - **QA-199 · Partidas intermedias de una tanda fuera de git**: el PR subió 5 `.dump` de ~900 KB; que `escenario.sh guardar` deje las intermedias en `logs/` (ignorado) y solo suba a `tools/qa/escenarios/` lo guardado con `--subir`. Paso 3.4.
 - ~~**QA-200 · Una tanda con Ollama real juega al menos 8 turnos**: con 3 turnos `/opt-ai` no tiene medida comparable.~~ ✅ 2026-10-22: regla 8 de `rondas-de-pruebas.md`; si no llega, `bash tools/qa/bench-ia.sh` al cerrar.
 
-`/opt-tokens` y retro previos al PR de `claude/frontend-improvements-roadmap-0mpckt` (aprobadas por la usuaria el 2026-10-22; 201-204 se aplican ya; 205-207 son del paso 3.4 de la línea):
+`/gw-opt-tokens` y retro previos al PR de `claude/frontend-improvements-roadmap-0mpckt` (aprobadas por la usuaria el 2026-10-22; 201-204 se aplican ya; 205-207 son del paso 3.4 de la línea):
 - ~~**QA-201 · Arreglos de una revisión con `sonnet`**: los tres agentes de arreglos del code-review fueron con `opus`, 7,4 M de entrada cada uno.~~ ✅ 2026-10-22: paso 2 de `orchestrate-dealer`; el revisor sigue en `opus`.
 - ~~**QA-202 · La principal hace el arreglo de un archivo**: un subagente arranca con ~52k y hace 70-80 llamadas; la principal cerró dos arreglos en ~10.~~ ✅ 2026-10-22: paso 1 de `orchestrate-dealer`.
 - ~~**QA-203 · Antes del PR, solo lo grave**: cada arreglo del code-review previo al PR traía más hallazgos y se acumularon los cambios.~~ ✅ 2026-10-22: regla de `orchestrate-dealer`; lo leve, a la fila compartida de la bitácora.
@@ -1566,8 +1566,8 @@ Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-
 - **QA-206 · `fusionar.sh` desde la raíz**: si se lanza dentro del worktree que borra acaba con error de `getcwd` (aunque fusiona), y con el agente vivo no borra el worktree sin decir por qué; que trabaje desde la raíz y avise del bloqueo. Paso 3.4.
 - **QA-207 · `medir.py`, contexto de toda la sesión**: con `--horas 0` da 382k de contexto medio frente a ~110k de los 8 tramos que enseña; que lo cuadre o diga «últimos 8». Paso 3.4.
 
-`/opt-tokens` y retro previos al PR de `claude/pruebas-reino` (aprobadas por la usuaria el 2026-10-22 y aplicadas en la rama):
-- ~~**QA-208 · Fallos de las herramientas fuera del runbook**: la sección ocupaba 22,8 KB de 34 KB y la leía entera cada subagente de tanda (~330k tokens por tanda).~~ ✅ 2026-10-22: historial en `docs/registros/fallos-herramientas.md`; en el runbook, «Trucos de las herramientas» con los 17 vigentes (34 → 14 KB).
+`/gw-opt-tokens` y retro previos al PR de `claude/pruebas-reino` (aprobadas por la usuaria el 2026-10-22 y aplicadas en la rama):
+- ~~**QA-208 · Fallos de las herramientas fuera del runbook**: la sección ocupaba 22,8 KB de 34 KB y la leía entera cada subagente de tanda (~330k tokens por tanda).~~ ✅ 2026-10-22: historial en `docs/records/fallos-herramientas.md`; en el runbook, «Trucos de las herramientas» con los 17 vigentes (34 → 14 KB).
 - ~~**QA-209 · El runbook de rondas lo lee quien juega**: la principal lo leyó entero sin jugar (~520k arrastrados).~~ ✅ 2026-10-22: `CLAUDE.md`, «Al jugar».
 - ~~**QA-210 · Gancho `commit-msg` con `Siguiente:`**: dos commits de subagentes salieron sin él.~~ ✅ 2026-10-22: `.githooks/commit-msg` (solo con `CLAUDECODE=1`; merges y revert pasan), con test.
 - ~~**QA-211 · `escenario.sh guardar` valida la descripción**: `t16-reino` y `t20-mundo` llevaban el id de la partida en el índice.~~ ✅ 2026-10-22: rechaza una palabra sola o un id, con test.
@@ -1578,7 +1578,7 @@ Retro previa al PR de `claude/pruebas-3.3` (aprobadas por la usuaria el 2026-10-
 Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-215 · A `main` sin PR con el CI en local**: sin minutos de Actions no hay CI de PR y no se podía fusionar.~~ ✅ 2026-10-22: `tools/qa/ci-local.sh` repite los tres jobs de `ci.yml` (base `tarkor_ci` nueva); con él en verde, merge a `main` y `git push origin HEAD:main` sin PR (`CLAUDE.md`, «Ramas y main»). Estrenado con `claude/pruebas-reino`; encontró un enlace roto en su descripción.
 
-`/opt-tokens` y retro previos al PR de `claude/pruebas-mundo-vivo` ([retro](../registros/retro-2026-10-23-pruebas-mundo-vivo.md); aprobadas por la usuaria el 2026-10-23 y aplicadas en la rama):
+`/gw-opt-tokens` y retro previos al PR de `claude/pruebas-mundo-vivo` ([retro](../records/retro-2026-10-23-pruebas-mundo-vivo.md); aprobadas por la usuaria el 2026-10-23 y aplicadas en la rama):
 - ~~**QA-216 · Preparar antes de jugar**~~ ✅ 2026-10-23 (regla en `AGENTS.md`, línea de `orchestrate-dealer`, y en «Qué se prueba» de `rondas-de-pruebas.md`): cuatro pasadas de juego cerraron casi nada porque el escenario no daba el estado que pedía cada hallazgo (~15 M de subagentes). Antes de repartir una tanda, la principal comprueba la precondición de cada id; si falta, primero se prepara.
 - ~~**QA-217 · El plan de comprobación nombra escenarios que existen**~~ ✅ 2026-10-23: `matriz-pruebas.py --comprobar` (ya en el check) falla con «ESCENARIO SIN .dump» si la columna «Escenario» de un `plan-comprobacion-*.md` nombra entre comillas invertidas un escenario sin `.dump` en `tools/qa/escenarios/` (ignora órdenes, «—», texto suelto y las demás columnas; vale con o sin `.dump`, con ruta o enlace); 10 tests en `test_matriz_pruebas.py`. Halló `t13a2-ketg` (plan 3.3, tanda 13a-3), un dump borrado a propósito en `367caf18`: el plan lo dice ahora sin comillas y apunta a `t13a3-ketg`.
 - ~~**QA-218 · `o.sh` sin lo que cada tanda redescubría**~~ ✅ 2026-10-23: `o.sh combate leer` (o `rondas:0`) solo mira; `o.sh viajar-a <lugar>` (`viajar-a.js`: abre Mapa › Viajar, elige por texto y si no está lista los que hay); `puntos.js` e `interactuar.js` dan `ERROR:` con el motivo (escena, combate, encuentro, modal encima) en vez de esperar 15 s; `captura.js` con `o.sh` guarda en `tools/playwright-e2e/shots/`. Tests de texto en `test_ayudas_mcp.py`. Probado en vivo: leer sin combate, `viajar-a` (lista vacía y «no está»), `puntos` abriendo el mapa, `interactuar` tapado, `captura`. **Pendiente:** la rama «con combate» de `leer` y el viaje real de `viajar-a` (la partida no tiene lugares visitados) sin probar en vivo; los tests de comportamiento son `QA-219`.
@@ -1592,7 +1592,7 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - ~~**QA-226 · `generar.sh` dice que el tercer argumento es una ruta**~~ ✅ 2026-10-24: con el texto del prompt abortaba repitiéndolo entero.
 - ~~**QA-227 · `host.sh` rehace el worktree del pre-push en `logs/`, no en `.git/`**~~ ✅ 2026-10-24: Vite 8 niega `**/.git/**` y los tests de frontend del pre-push fallaban todos («Cannot find module '/src/test/avisosDeReact.ts'»). Test: `test_host`.
 
-`/opt-tokens` y retro previos al PR de `claude/interfaz-imagenes` ([retro](../registros/retro-2026-10-25-interfaz-imagenes.md); aprobadas por la usuaria el 2026-10-25 y aplicadas en la rama):
+`/gw-opt-tokens` y retro previos al PR de `claude/interfaz-imagenes` ([retro](../records/retro-2026-10-25-interfaz-imagenes.md); aprobadas por la usuaria el 2026-10-25 y aplicadas en la rama):
 - ~~**QA-228 · La lista de imágenes cubre todos los tipos que ilustra el juego**~~ ✅ 2026-10-25: la lista de `CFG-43` se dio por completa tres veces sin serlo. `test_la_lista_cubre_todos_los_tipos_que_ilustra_el_juego` lee la unión `ImagePromptEntityType` de `imagePromptGenerator.ts` y falla si `catalogo()` no da alguno (rojo sin los mapas de `zona`).
 - ~~**QA-229 · La interfaz del generador en el mapa del agente**~~ ✅ 2026-10-25: `servidor.py` se leyó 43 veces. La sección «Imágenes» de `docs/mapa-agente.md` dice `generated/<tipo>/<slug>/` y da las entradas de `servidor.py`, `index.html`, `abrir.sh`, `resumen.py` y el test.
 - ~~**QA-230 · `image-generator/interfaz/resumen.py`**~~ ✅ 2026-10-25: elementos por tipo, aviso y estado del trabajo en unas líneas (`--tipo` lista uno), en vez de capturas de la página (29 imágenes en la sesión). Test: `Resumen` en `test_interfaz_imagenes.py`.
@@ -1602,55 +1602,113 @@ Cuota de GitHub Actions agotada (usuaria, 2026-10-22):
 - **QA-234 · Leves del `/code-review` del PR de `claude/interfaz-imagenes`**: `commit-msg` compara «Actualizado» con la fecha de hoy y el pre-push con la del autor (difieren con `--amend` o `--date`); con `--amend` sin tocar la bitácora no la mira; el test corre también el `pre-commit` real, que mira el índice del proyecto; `resumen.py` repite los nombres de campo de `/api/estado` y `/api/elementos` sin un contrato común con `servidor.py`.
 
 Difusión (usuaria, 2026-10-24):
-- ~~**QA-235 · Carpeta de difusión y skill `gw-media-content`**~~ ✅ 2026-10-25: `docs/difusion/` (guía de canales, plantilla por actualización y el ejemplo `2026-10-23-mundo-vivo`, con tarjeta, diagrama y captura en `medios/`) y la skill `gw-media-content`, que crea o completa una carpeta solo con lo no publicado, para los canales pedidos. `render.mjs` pasa las fuentes de `medios/fuente/` a WebP; `comprobar.py` (en el check y en el CI) da por buena la carpeta. Test: `test_comprobar.py`. Queda: la usuaria valida el estilo del ejemplo.
+- ~~**QA-235 · Carpeta de difusión y skill `gw-media-content`**~~ ✅ 2026-10-25: `docs/media/` (guía de canales, plantilla por actualización y el ejemplo `2026-10-23-mundo-vivo`, con tarjeta, diagrama y captura en `medios/`) y la skill `gw-media-content`, que crea o completa una carpeta solo con lo no publicado, para los canales pedidos. `render.mjs` pasa las fuentes de `medios/fuente/` a WebP; `comprobar.py` (en el check y en el CI) da por buena la carpeta. Test: `test_comprobar.py`. Queda: la usuaria valida el estilo del ejemplo.
 
-Retro de la difusión (usuaria, 2026-10-25; [`retro-2026-10-25-difusion.md`](../registros/retro-2026-10-25-difusion.md)):
+Retro de la difusión (usuaria, 2026-10-25; [`retro-2026-10-25-difusion.md`](../records/retro-2026-10-25-difusion.md)):
 - ~~**QA-236 · Los tests de las skills, en el check**~~ ✅ 2026-10-25: `test_herramientas_con_test` (que ya pedía el test de cada script de skill) entra en el check, y `tools/qa/skills-con-tests.py` (check, CI y `ci-local.sh`) falla si el CI no corre los tests de una skill. Test: `test_skills_con_tests.py`. Queda (leve, del code-review): busca el texto, así que un paso comentado cuenta, y solo ve `test_*.py` directos en `scripts/`.
 - ~~**QA-237 · La bitácora, en el check**~~ ✅ 2026-10-25: `tools/qa/bitacora-check.sh` en el check: `bitacora.py check`, `own-row` (ninguna fila ajena tocada desde el último commit) y, frente a la rama remota como el pre-push, `closed`, sobre una foto de la copia de trabajo que incluye lo no añadido. Test: `test_bitacora_check.py`. Queda (leve): la base es `origin/<rama actual>`, no el ref al que se sube.
 - ~~**QA-238 · «Lleva a `main`» con la usuaria fuera**~~ ✅ 2026-10-25: regla en `AGENTS.md` («Ramas y `main`»): todo a un paso y su decisión sobre la retro lo lleva a `main`.
 - ~~**QA-239 · `ci-local.sh` en un worktree, sin rojos falsos**~~ ✅ 2026-10-25: `test_commit_msg` usa un `hooksPath` solo con `commit-msg` (el pre-commit miraba el índice del repo real), `test_host` acepta el worktree de `logs/` y `ci-local.sh` quita los enlaces de `node_modules` y `.env` antes de `npm ci` (vaciaba el `node_modules` de la copia principal y metía su `.env`). Queda (leve): `test_host` en un worktree de subagente con cambios sin commit sigue dando rojo (host.sh se niega, a propósito).
 
-Retro de las voces (usuaria, 2026-10-25; [`retro-2026-10-25-voces.md`](../registros/retro-2026-10-25-voces.md)):
+Retro de las voces (usuaria, 2026-10-25; [`retro-2026-10-25-voces.md`](../records/retro-2026-10-25-voces.md)):
 - **QA-240 · Simulacro de `voice-generator/` con binarios falsos**: la revisión previa a `main` encontró en scripts nunca ejecutados que `lanzar` dejaba a `qwen-tts` sin el texto, que `fijar.sh` cambiaba la voz aunque fallara el codec y que `banco.sh` copiaba una toma a medias. Un test en `tools/qa/tests/` con `qwen-tts`, `qwen-codec` y `sox` falsos en el `PATH` que corra `fijar.sh`, `producir.sh` y `banco.sh` de punta a punta. Se escribe dentro de `VOZ-6`, sobre los scripts que lleguen del repo aparte. **S**
 - ~~**QA-241 · Las voces en el mapa del agente**~~ ✅ 2026-10-25: el doc 02 se leyó 8 veces y el `README.md` de imágenes 4 (~176k arrastrados). Sección «Voces y sonidos» en `docs/mapa-agente.md` (scripts, fichas, `voces.py`, apartados del doc 02), y `tools/qa/mapa-agente.py` mira también `image-generator/` y `voice-generator/` (con `def` de Python y funciones de bash; una ruta con `<…>` no se mira).
 - ~~**QA-242 · `cobertura.py --fila <ID>`**~~ ✅ 2026-10-25: `21-roadmap.md` se leyó 12 veces (74k arrastrados). La orden da la línea donde se define la tarea, su hito con la fila de «Qué entra en cada hito» y cada mención en `21-roadmap.md`, recortada; test en `tools/qa/tests/test_cobertura.py`.
 
 Lore de la enciclopedia (usuaria, 2026-10-25, rama `claude/lore-enciclopedia`):
-- **QA-243 · Asentar el lore de la enciclopedia** 🚧 en curso (en los primeros commits de la rama, `QA-240`): auditar cada sección (fauna y flora, NPC, razas y personajes, lugares, facciones e historia, objetos y recetas, clases, combate y reputación) contra el canon de `docs/rpgtarkor/`; cada arreglo, propuesto y aplicado solo con el sí de la usuaria, y apuntado en [`lore-hallazgos.md`](../registros/lore-hallazgos.md). Hecho (2026-10-25): NPC, fichas y clases, objetos y recetas, lugares, facciones, fauna y flora (con región y población de 18 animales), y cuatro traducciones en `lenguas-helek.md`. Leves: despiece del Ferike, hecho; edificios Goshg al `0.5` y tablones de Keseg Sael y Goirntes al `0.6`. Fases 1 y 2 antes de `main` hechas (retro → `QA-245`…`QA-248`). Queda: imágenes de las ocho habilidades renombradas (con `image-generator/`, en la Deck) y `./actualizar-mundo.sh` en la BD local tras fusionar. **M**
-- **QA-244 · La historia de la enciclopedia, completa**: hoy tiene 7 entradas y todas cuelgan de un documento. Faltan los hechos de la cronología sin documento: el Estallido (~1.000), el nacimiento de los orcos (2.000), El Borde (Karo'sael), el Golpe de Ketg (~2.850), la Mesa del Lazo (~2.855), la Senda del Sílice (~3.000-3.500), la Purga Silenciosa (~3.650), el Pacto del Umbral, la Guerra de la Isla Cambiante (~3.900) y El Detonante (~4.005-4.008). Hace falta que una entrada pueda no tener documento, y que cada texto salga del canon con el sí de la usuaria (salió del bloque 4 de `QA-243`; en los primeros commits, `QA-241`). **M**
+- ~~**QA-243 · Asentar el lore de la enciclopedia**~~ ✅ 2026-10-26 (en los primeros commits de la rama, `QA-240`): auditar cada sección (fauna y flora, NPC, razas y personajes, lugares, facciones e historia, objetos y recetas, clases, combate y reputación) contra el canon de `docs/rpgtarkor/`; cada arreglo, propuesto y aplicado solo con el sí de la usuaria, y apuntado en [`lore-hallazgos.md`](../records/lore-hallazgos.md). Hecho (2026-10-25): NPC, fichas y clases, objetos y recetas, lugares, facciones, fauna y flora (con región y población de 18 animales), y cuatro traducciones en `lenguas-helek.md`. Leves: despiece del Ferike, hecho; edificios Goshg al `0.5` y tablones de Keseg Sael y Goirntes al `0.6`. Fases 1 y 2 antes de `main` hechas (retro → `QA-245`…`QA-248`). 2026-10-26: `./actualizar-mundo.sh` en la BD local de la Deck, en verde (92 bloques reindexados). Las imágenes de las ocho habilidades renombradas no quedan a medias: ninguna habilidad tiene imagen todavía (`backend/uploads/images/ability/` vacía); van con las demás en `IMG-9` ([roadmap de imágenes](roadmap-imagenes.md)). **M**
+- ~~**QA-244 · La historia de la enciclopedia, completa**~~ ✅ 2026-10-26: decidido con la usuaria que una entrada sin documento se descubre por **saber común** (abierta desde el principio) o **por lugar** (al visitarlo, como las bóvedas de datos de X4). Código: `HistoriaEntry.documentoItemSlug` opcional y `lugarSlug` (migración `20261026120000_historia_sin_documento`), `buildHistoriaSection` y tests en `world.test.ts`. Diez entradas nuevas en `worldCatalog.ts`, con el sí de la usuaria a los diez textos: siete de saber común (el Estallido, el nacimiento de los orcos, el Golpe de Ketg, la Mesa del Lazo, la Purga Silenciosa, la Guerra de la Isla Cambiante y El Detonante) y tres por lugar (El Borde en El Cruce de las Ausencias, la Senda del Sílice en el Desfiladero Esmeralda y el Pacto del Umbral en El Refugio sin Nombre). Probado con una partida en la base local: 17 entradas, las de lugar se abren al visitarlo. Sale del bloque 4 de `QA-243` (en los primeros commits, `QA-241`). **M**
+- ~~**QA-274 · Segunda pasada por la enciclopedia**~~ ✅ 2026-10-26 (usuaria, 2026-10-26: «vamos luego con la segunda pasada»): contrastar cada sección de la enciclopedia ya asentada con el canon, en tandas pequeñas (`QA-247`), y traer los hallazgos a la usuaria; cada arreglo, con su sí, y apuntado en [`lore-hallazgos.md`](../records/lore-hallazgos.md). **Hecho:** los tres choques del canon de `QA-244` (origen de los orcos, carga de la Senda, marcas «no implementado»); diez tandas de auditoría (sin graves; unos 80 medios y 70 leves), con cuatro bloques aprobados por la usuaria; en el canon, oficios y edificios al día con el juego (ganadero y minero de las Llanuras, lo construible), los 7 documentos y lo reservado de Tarkor (el porqué, no el hecho del regreso). Bloque 2: el seed retira los lugares, facciones y NPC que salen del catálogo si ninguna partida los referencia (`retirarHuerfanos.ts`); fuera los 11 viejos, entre ellos `kegi` (en el Margen), `hashma` y `ulkha`, con lo que Kegi queda solo en las Llanuras (Yegr Kegi) y no hacen falta las fusiones. Bloque 1: unos 160 textos sin notas de diseño, jerga, inglés ni erratas («tier» → «nivel» también en tres mensajes de obras); «Madera/Resina de Junba» también en el canon (era errata). Bloque 3: orcos hasta 50-54 años (hembras 62-64), piel de los Nabieus que «atrapa la luz», Kael Dorn Arquero, cuerda de tendón de Múrgol, caña de Junba Verde, múrgoles tras la empalizada de Karot Veku, el Canizor en pasado, la Sombra de Kroj «devuelve» sonidos, Fin Susurrado «tomado del nombre de su clan» (también en el canon) y el Vientre del Engaño solo como rumor. Mundo resembrado y todo apuntado en `lore-hallazgos.md`. Pendiente (leve, sin aprobar): comparaciones con animales reales, atributos de 22-24 en NPC de nivel menor de 20, Gogorath de nivel 18, descripciones cortas, nombres de receta con artículo y `lugarOrigen` vacías.
 
-Retro del lore de la enciclopedia (usuaria, 2026-10-25; [`retro-2026-10-25-lore-enciclopedia.md`](../registros/retro-2026-10-25-lore-enciclopedia.md)):
+Retro del lore de la enciclopedia (usuaria, 2026-10-25; [`retro-2026-10-25-lore-enciclopedia.md`](../records/retro-2026-10-25-lore-enciclopedia.md)):
 - ~~**QA-245 · `tools/qa/ficha.sh <slug>`**~~ ✅ 2026-10-25: `worldCatalog.ts` se leyó 140 veces (1,5M arrastrados) para reunir lo de un slug. Una orden que dé, en una salida, la ficha del catálogo y sus alias, el despiece, la región, el nombre y la descripción de la enciclopedia, la población, las recetas que lo usan o lo fabrican, los chunks de lore y dónde lo nombra el canon. **Hecho:** `tools/qa/ficha.sh <slug> [--canon]` sobre `backend/src/scripts/ficha.ts` (barre además toda exportación de `worldCatalog.ts`; con un slug que no existe, cinco parecidos); tests en `ficha.test.ts` y `test_ficha.py`.
 - ~~**QA-246 · Aviso de identificador que ya usa `main`**~~ ✅ 2026-10-25: `QA-240` y `QA-241` chocaron con los de las voces y hubo que renumerar. `cobertura.py --libre <PREFIJO>` da el siguiente libre mirando también `origin/main`, y `cobertura.py` (en el check) avisa de una tarea definida en la rama y en `origin/main` con otro texto. **Hecho:** `--libre` (solo cuenta menciones con su prefijo) y dos líneas que fallan el check: «ABIERTAS TAMBIÉN EN MAIN» (definida en la rama y en `main` desde la base común, con otro título; sin `origin/main`, no falla) y «DEFINIDAS DOS VECES» (en el árbol, también tras traer `main`). Tests en `test_cobertura.py` (`MainRemoto`).
 - ~~**QA-247 · Auditorías de lore en tandas pequeñas**~~ ✅ 2026-10-25: las tandas de auditoría fueron el 40 % de la entrada, con 110k de contexto medio. Una tanda, una región o un catálogo, con el resumen de `docs/canon-opencode/` y `ficha.sh`, unas 30 llamadas como tope, y devuelve una tabla de hallazgos. **Hecho:** § 0.5 de [`ampliar-lore.md`](../runbooks/ampliar-lore.md) y línea en `.claude/gw/opt-tokens.md`.
 - ~~**QA-248 · La enciclopedia en el mapa del agente**~~ ✅ 2026-10-25: `routes/world.ts` se leyó 13 veces. Sección «Enciclopedia y lore» en `docs/mapa-agente.md` (de dónde saca cada pestaña sus datos, diccionarios, población, chunks, tests de integridad y canon). **Hecho:** sección «Enciclopedia y lore» en `docs/mapa-agente.md` (la comprueba `mapa-agente.py`).
+
+Retro de la segunda pasada por la enciclopedia (usuaria, 2026-10-26; [`retro-2026-10-26-lore-enciclopedia.md`](../records/retro-2026-10-26-lore-enciclopedia.md)):
+- ~~**QA-275 · Copias de partida en el mapa del agente**~~ ✅ 2026-10-26: al retiro de huérfanos de `QA-274` se le escaparon los edificios de las facciones copia (sin `saveId`) y las referencias por slug sin FK; las cazó la revisión. Entrada «Copias de partida» en «Datos que se confunden» de `docs/mapa-agente.md`.
+- ~~**QA-276 · Regla de revisión para `where` anidados de Prisma**~~ ✅ 2026-10-26: tsc aceptó `almacen` por `almacenItems` en un `deleteMany`; solo lo vio el test contra Postgres. Regla en `REVIEW.md` («Cada partida, lo suyo»): test de integración, y si borra catálogo, con referencia sin FK y copia de partida.
+- ~~**QA-277 · Tope de llamadas en las tandas de edición**~~ ✅ 2026-10-26: el bloque 1 de `QA-274` fue una tanda de 66 llamadas con 103k de contexto medio (6,8M, el 13 % de la sesión). Tope de 30-40 en `ampliar-lore.md` § 0.5 y en `.claude/gw/opt-tokens.md`.
+- ~~**QA-272 · Leer por partes: registros por secciones y `ficha.sh` con `archivo:línea`**~~ ✅ 2026-10-26: `worldCatalog.ts` se leyó 44 veces (542k arrastrados) y `lore-hallazgos.md` 17 (300k). `ficha.sh` acaba con la sección «Fuente (archivo:línea)» (`ficha.ts`, con test); la lectura por secciones, en `.claude/gw/opt-tokens.md`.
+- ~~**QA-273 · Guardia de nombres de habilidad renombrados**~~ ✅ 2026-10-26 (usuaria, 2026-10-26, tras el CI local): los textos de `QA-274` renombraron cinco habilidades de fauna sin pasarlas por `HABILIDADES_RENOMBRADAS` (`QA-68`); la revisión no lo vio y lo cazó un test de fauna de forma casual. `backend/src/services/habilidadesConocidas.json` guarda todos los nombres que una partida puede guardar, y `habilidadesRenombradas.test.ts` falla si uno desaparece del catálogo sin renombre o si falta uno nuevo en la lista.
+  **Leves de la revisión** (pendientes):
+  - los nombres viejos de los renombres por clase («Golpe Certero»…) siguen vivos en otra clase, y la guardia no los vigila;
+  - `Save.pendingNpcAttack.abilityName` no lleva la marca `QA-68`: una partida guardada con un ataque pendiente conserva el nombre viejo;
+  - el mundo sin resembrar conserva los nombres viejos en `Npc.habilidadesRaciales`;
+  - «Fuga en Bandada» promete una huida que el motor no hace (no está en `HABILIDADES_DE_HUIDA`; ya pasaba con «Vuelo en Bandada»);
+  - las 13 categorías de fauna, repetidas a mano en el test.
 
 Opt-tokens de `claude/plan-imagenes` (usuaria, 2026-10-25; 296 llamadas con 116k de contexto medio):
 - ~~**QA-249 · Hoja de contactos del banco de imágenes**~~ ✅ 2026-10-25: se leyeron 66 imágenes del banco una a una (3,99M arrastrados). `bash docs/producto/plan-imagenes/hoja.sh <prefijo> [columnas]` junta una ronda en hojas de 6 casillas (ffmpeg; la leyenda, en texto); la hoja sirve para descartar y la finalista se abre entera. Test: `tools/qa/tests/test_hoja_banco.py`.
 - ~~**QA-250 · `recuperar.py --estado` con los worktrees**~~ ✅ 2026-10-25: el gancho corre donde se abrió la sesión y daba la fila de otra rama; la sesión del worktree releyó `traspaso.md` 22 veces (376k). Ahora da también cada worktree con la fila de su rama. Test en `tools/qa/tests/test_recuperar.py`.
 - ~~**QA-251 · Modelo explícito en cada subagente y salidas de fondo con `tail`**~~ ✅ 2026-10-25: un subagente mecánico fue con Opus (2,9M de entrada; la segunda vez, tras `QA-233`) y una salida de fondo se leyó entera (11,7k, 363k arrastrados). Regla en `docs/runbooks/skills-y-modelos.md` y en `.claude/gw/opt-tokens.md`.
 
-Retro de `claude/plan-imagenes` (usuaria, 2026-10-25; [`retro-2026-10-25-plan-imagenes.md`](../registros/retro-2026-10-25-plan-imagenes.md)):
+Retro de `claude/plan-imagenes` (usuaria, 2026-10-25; [`retro-2026-10-25-plan-imagenes.md`](../records/retro-2026-10-25-plan-imagenes.md)):
 - ~~**QA-252 · Los ganchos de `.githooks/` en un worktree**~~ ✅ 2026-10-25: en un worktree git exporta `GIT_DIR` y `pre-commit`/`pre-push` tomaban `.githooks` por raíz; la sesión subió con envoltorios hechos a mano. La raíz sale con `env -u GIT_DIR -u GIT_WORK_TREE`. Test en `tools/qa/tests/test_pre_commit.py`; el push de este arreglo ya fue sin envoltorios. Pendiente (leve, revisión de la fase 3): el de `pre-push` no tiene test, y `config.py` (`git_toplevel`, que usa `commit-msg`) y los `.sh` de `.claude/gw/scripts/` tienen la misma causa (en un worktree leen el `gw.json` de la copia principal); va a Galivelop-workflow.
 - ~~**QA-253 · `host.sh` con cambios sin commit**~~ ✅ 2026-10-25: rechazaba un worktree con cambios y no se pudo pasar `node` antes del commit. La copia visible sale de `git stash create` (lo seguido, tal como está; lo sin seguimiento, con `git add` antes). Tests en `tools/qa/tests/test_host.py`. 3 tests de `test_host.py` fallan solo en el sandbox de la Deck (PATH reducido), también sin el cambio; en el host (`ci-local.sh`, 2026-10-25) pasan. Avisa por stderr cuando corre sobre la instantánea (un verde así no prueba ningún commit). Pendiente (leve): un proceso que se queda en segundo plano (`backend-dev.sh`) desde un worktree invisible sigue en la copia ya borrada; pasaba ya sin cambios.
-- ~~**QA-254 · `set -euo pipefail` en los scripts de imágenes**~~ ✅ 2026-10-25: `banco.sh` sin `pipefail` nunca decía FALLO. `tools/qa/tests/test_pipefail.py` lo exige en todo `.sh` de `image-generator/` y `docs/producto/plan-imagenes/`, o una línea `# sin pipefail: <motivo>`; `abrir.sh`, `calidad.sh`, `pilotos.sh` y `banco/recorte.sh` lo llevan; `generar.sh`, `probar.sh`, los de `spike/` y `obsoleto/`, con su motivo.
+- ~~**QA-254 · `set -euo pipefail` en los scripts de imágenes**~~ ✅ 2026-10-25: `banco.sh` sin `pipefail` nunca decía FALLO. `tools/qa/tests/test_pipefail.py` lo exige en todo `.sh` de `image-generator/` y `docs/producto/plan-imagenes/`, o una línea `# sin pipefail: <motivo>`; `abrir.sh`, `calidad.sh`, `pilotos.sh` y `banco/recorte.sh` lo llevan; `generar.sh`, `probar.sh`, los de `spike/` y `obsoleto/`, con su motivo (`obsoleto/` retirado en `QA-271`).
 - ~~**QA-255 · `banco.sh` avisa mientras espera memoria**~~ ✅ 2026-10-25: la ronda 7 se quedó parada sin decir nada. Cada 5 min, una línea con los MB libres y los que pide.
 
-Retro y opt-tokens de los arreglos de la puerta (usuaria, 2026-10-26; [`retro-2026-10-26-arreglos-puerta.md`](../registros/retro-2026-10-26-arreglos-puerta.md)):
+Retro y opt-tokens de los arreglos de la puerta (usuaria, 2026-10-26; [`retro-2026-10-26-arreglos-puerta.md`](../records/retro-2026-10-26-arreglos-puerta.md)):
 - ~~**QA-256 · Test centinela del nombre oculto**~~ ✅ 2026-10-26: cuatro fugas del PRINCIPAL sin descubrir (P327) pasaron la revisión de cada tanda. `backend/src/services/nombreOculto.centinela.integration.test.ts` monta a «Zarghul Ojonegro» sin descubrir y falla si su nombre o «Zarghul» sale en las respuestas de las rutas o en los prompts al LLM (Ollama espiado en la frontera, los constructores de prompt son los reales). Cubre saludo, réplica del NPC, regalo, ataque y combate 1v1, combate de grupo, emboscada (jugadora y NPC inicia), diario, `GET /saves/:id` y, al contrario, el nombre real una vez descubierto. Sin su arreglo falla (réplica del NPC revertida en `narrador.ts`). Encontró y arregló 3 fugas más: la `razon` de la clasificación por tabla (`routes/turn.ts`), «PERSONAJES AQUÍ AHORA MISMO» del prompt del narrador (`zonePointsSummaryFor`) y «Comienza el combate contra un grupo…»/iniciativa/orden del capitán (`abrirCombateDePersonas`). Fuera: el `npcsInScene` de `/turn/classify` lleva el nombre real a propósito (caché del cliente que la interfaz no muestra) y el `actionText` de `/modo-dinamico/responder` también (el turno casa por nombre); el test los excluye.
 - ~~**QA-257 · Tandas de arreglos más cortas**~~ ✅ 2026-10-26: 8-11 hallazgos y 165-183 llamadas por tanda. `AGENTS.md` § `orchestrate-dealer`: como mucho 5 hallazgos y ~90 llamadas; la revisión con Opus junta dos tandas.
 - ~~**QA-258 · `marca-hallazgo.py` más claro al fallar**~~ ✅ 2026-10-26: un espacio al borde del texto viejo daba «0 filas». Lo quita y, con 0 filas, enseña el estado actual (`test_marca_hallazgo.py`).
 
-Retro y opt-tokens de `INS-31` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-31.md`](../registros/retro-2026-10-26-ins-31.md)):
+Retro y opt-tokens de `INS-31` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-31.md`](../records/retro-2026-10-26-ins-31.md)):
 - ~~**QA-259 · Regla para las tareas del instalador**~~ ✅ 2026-10-26: la revisión marcó `INS-31` «sin hito ni bitácora» y como ruptura de la pausa de pruebas. `AGENTS.md` § «Ramas y `main`» y `REVIEW.md` § «Roadmap y documentos»: las `INS-*` viven en el plan del instalador y aquí solo llevan su fila de la bitácora.
 - ~~**QA-260 · «Último commit en `main`» solo con la última fusión**~~ ✅ 2026-10-26: la celda arrastraba 9 fusiones (~1,5k tokens en cada lectura). Las anteriores, en `git log --first-parent origin/main`.
 - ~~**QA-261 · La bitácora con `recuperar.py --estado`**~~ ✅ 2026-10-26: `traspaso.md` se leyó 4 veces con `sed` y `grep` (37k arrastrados). `AGENTS.md` paso 1 y `.claude/gw/opt-tokens.md`.
 
-Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.md`](../registros/retro-2026-10-26-ins-33.md)):
+Pasos de preparación de la ronda de la puerta (usuaria, 2026-10-26; [`plan-comprobacion-puerta.md`](../records/plan-comprobacion-puerta.md)): los ids que siguen sin ver piden un estado al que no llega ningún escenario. Cada paso va en `escenario.sh preparar` (`prepararReino.ts`), solo con funciones del juego (`QA-151`), con su test, y deja un escenario guardado:
+- ~~**QA-268 · Preparar sucesos del mundo**~~ ✅ 2026-10-26: tres pasos de `escenario.sh preparar` (`prepararSucesos.ts`, con tests en `prepararSucesos.integration.test.ts` y en `prepararReinoLib.test.ts`), solo con funciones del juego (`morirDeViejo`, extraída de `envejecerDia`, `aplicarEfecto`, `recordFactionEvent`, `asegurarVasallajes`). `lider-muere:<facción>` (`CR-43`): el líder muere de viejo con dos candidatos y la cohesión en la franja de la escisión (escenario `reino-lider-goirnte-muerto`, Concordia de Hierro). `alianza:<A>:<B>` (`P247`): alianza, ruptura y alianza nueva (`reino-alianza-tras-ruptura`, Serhu y Concordia). `vasallo-paga:<vasallo>` (`P314`): fondos para la cuota entera y deuda vieja sin saldar (`reino-vasallo-paga-con-deuda`; al avanzar 6 días sale `pagada-con-deuda` el día 43). Los tres parten de `reino-guerra-vasallaje`. Pendiente: jugar sus ids.
+- ~~**QA-269 · Preparar ganado y captura**~~ ✅ 2026-10-26: un animal domable a la vista para «Al corral» (`CR-55`), una especie guardiana en el corral con un Domador de nivel 10 (`CR-56`) y una Jaula grande para capturar con cuerdas (`CR-63`). Dos pasos nuevos de `escenario.sh preparar` y un arreglo de `dar-reino`, solo con funciones del juego (`QA-151`): `domable:<especie>` (`prepararDoma.ts#dejarDomableEnJaula`: nace un ejemplar de la especie, queda vencido y se ata en la jaula con `atarEnJaula`, extraída de `descargarCaptura`; falta ganar su confianza con el tameo), `domador:<nivel>` (`progresionPersonaje.ts#hacerDomador`, que comparte con la ruta `/especializacion` `fijarEspecializacion` y sube de nivel con `applyXp`, con los puntos de atributo por repartir; de 10 a 19) y `dar-reino` da `edificio:<receta>` de más tier como lo levantaría la Casa de obras (`quienLevanta`; la Jaula grande pide antes `edificio:ayuntamiento-mediano`). Tests: `prepararDoma.integration.test.ts`, `progresionPersonaje.integration.test.ts`, `prepararReinoLib.test.ts`, `darReinoLib.test.ts`. Escenarios `mv-ganado-al-corral` (CR-55), `mv-ganado-guardian-domador10` (CR-56: Rondador de Brasas macho y hembra en el corral; con `ganado:` y un segundo corral) y `mv-colmillo-jaula-grande` (CR-63: Jaula grande, Desolladero, 3 cazadores orcos, 10 cuerdas). Pendiente: jugar sus ids. Leves de la revisión: al test de `hacerDomador` le falta «ya es X» con otra especialización y probar que no deja nada a medias; falta un test de `dar-reino` de tier > 3; el scope de `prepararDoma.ts` solo es único por milisegundo; `hacerDomador` y `subirDeNivel` no pasan por `rejectIfEnded`, `rejectIfPendingDeath` ni `lockRowForUpdate` (son de escenario, no de juego).
+- ~~**QA-270 · Convaleciente a la vista**~~ ✅ 2026-10-26: un convaleciente con su tarjeta y «Clemente» a la vista (`P95`, `P320`). Diagnóstico: que la ausencia de la zona y la convalecencia duren lo mismo (6 h) es diseño, no fallo (`dejarNpcConvaleciente`, `MINUTOS_AUSENCIA_TRAS_DERROTA`: el animal vencido no está en el mapa); lo que faltaba al escenario era el combate sin resolver (`Save.pendingCombatNpcSlugs`), y la tarjeta «está convaleciente» con Matar, Capturar y Clemente es la del diario (`LogPanel.tsx`), que `GET /saves/:id` reconstruye como `combateIniciado`. Paso nuevo de `escenario.sh preparar`: `convaleciente:<npc>:combate` (`prepararConvaleciente.ts#dejarConvalecienteEnCombate`: `dejarNpcConvaleciente` más `guardarSlugsDeCombate`, solo funciones del juego, `QA-151`; se niega con partida terminada, sin lugar, NPC inexistente, combate en curso o NPC de un grupo con más miembros en pie). Tests: `prepararConvaleciente.integration.test.ts` (rojo sin el arreglo, comprobado con `rojo-sin-arreglo.sh`) y `prepararReinoLib.test.ts`. Escenario `mv-pozo-guchapo-conv-visible` (comprobado: Guchapo CONVALECIENTE, rival sin resolver y `combateIniciado` con `capturable`). Pendiente: jugar P95 y P320. Leve de la revisión: el paso no mira el estado previo y deja CONVALECIENTE a un NPC ya muerto, saqueado o capturado (sin tarjeta, porque `detail.ts` filtra los saqueados); debería negarse.
+- ~~**QA-266 · Preparar NPC frescos, punto retirado y hambre**~~ ✅ 2026-10-26: NPC ya vencidos de vuelta a sanos para morir otra vez en combate (`P128`), un punto de fauna retirado con presas (`P313`) y un Reino que empieza a pasar hambre mientras se avanza (`P316`). Hecho: `P313` con el paso `punto-retirado:<especie>[:<n>]` (`b/services/cronista/prepararPuntoRetirado.ts`: `crearPuntoZona` + `retirarPuntoZona`) y el escenario `t16-reino-punto-retirado` (un punto retirado de una especie nativa del lugar se borra al abrir la zona; el escenario usa una que el lugar no tiene); `P316` sin código, escenario `reino-hambre-inminente` (Pozo + 35 días avanzados; `avanzar 4` cruza los 3 días de hambre y nace la HAMBRUNA); `P128` no se prepara con rivales «frescos» (no hay camino del juego que cure a un NPC vencido sin fabricar el estado) sino quitando aliados: paso `sin-aliados` (`b/services/cronista/prepararSinAliados.ts` + `moverCompaneroDeGrupo`, extraído de `PATCH /saves/:id/companeros/:id/grupo`, misma regla del tope) y escenario `reino-combate-sin-aliados` (combate contra Ulkha Ketg, Hulki y Herrero Serhu, la jugadora sola). Cada paso con test de integración que falla sin el arreglo. El punto retirado con presas de `P313` es un estado sintético (el juego no lo produce hoy: el Cronista solo retira puntos de NPC y la caza deja `cantidad` 0) para comprobar la defensa de `opcionesDePartida`; se comprueba al cargar, sin avanzar (con ~4 h en el lugar el recálculo lo cambia). **Pendiente:** jugar `P128`, `P313` y `P316`; en `P313`, comprobar en la interfaz que Reino › Partidas no lista el punto retirado. Leves de la revisión: el test de `punto-retirado` no pasa por `opcionesDePartida` y usa `kirelon-arenoso`, que puede ser nativo del lugar; `dejarSinAliados` no es transaccional.
+- **QA-267 · Fin de partida a un combate**: un escenario con 3 muertes ya hechas y un combate fresco sin aliados, para ver la 4.ª muerte y `FinDePartidaModal` (`P128`; usuaria, 2026-10-26, tras la tanda 39). Las muertes pasan por las funciones del juego que las aplican (`QA-151`), con su paso de `escenario.sh preparar`, su test y el escenario guardado. Depende de `P344`, que se analiza en una sesión de arreglos: el combate que abre `preparar combate:` no avanza. Si el escenario nuevo usa ese paso, va después del arreglo.
+
+Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.md`](../records/retro-2026-10-26-ins-33.md)):
 - ~~**QA-262 · «PR listo», nunca «PR abierto» sin URL**~~ ✅ 2026-10-26: la bitácora dio por abierto un PR que no existía. `AGENTS.md`, viñeta de `QA-184`.
 - ~~**QA-263 · Regla `import/first` en el frontend**~~ ✅ 2026-10-26: un `import` tras un comentario llegó a la fase 1. `frontend/.oxlintrc.json`: `error` en `src/lib/`; `warn` en el resto (83 avisos viejos, casi todos tests con `vi.mock`).
 - ~~**QA-264 · Entrada «Modo empaquetado» en el mapa del agente**~~ ✅ 2026-10-26: `docs/mapa-agente.md` (`empaquetado.ts`, usos y tests) para `INS-34…36` y `INS-41`.
 - ~~**QA-265 · Aviso de «PR abierto» sin URL en `bitacora.py`**~~ ✅ 2026-10-26 (solo apuntada): propuesta para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
+
+Limpieza del repo (usuaria, 2026-10-27):
+- ~~**QA-271 · Fuera el código muerto**~~ ✅ 2026-11-02: nada lo usa; las menciones vivas, corregidas (la última, en `image-generator/README.md`, la cazó `/code-review`). Retirados `backend/src/scripts/test-retrieval.ts`, `test-worldtick.ts` y `migrate-arcano-a-magia-2026-09-01.sql` (de un solo uso contra la base local, según su cabecera; una base anterior al 2026-09-01 ya no tiene con qué migrar: puerta de un solo sentido, en la descripción), `debug/` (cargas y resultados de pruebas a mano de septiembre) e `image-generator/scripts/obsoleto/` (`demo.sh` y `lote.sh`; las tres menciones, como texto). Check y CI local en verde; retro decidida ([retro](../records/retro-2026-10-27-limpieza.md)).
+- **QA-278 · `ci-local.sh` mira Postgres antes del backend** (retro de `QA-271`, usuaria 2026-11-02): si `tarkor-postgres`
+  no está en marcha, lo arranca o para con «Postgres parado», en vez de siete pasos en rojo sin motivo. Test en `tools/qa/tests/`.
+- **QA-279 · Las rutas borradas no se citan** (retro de `QA-271`, usuaria 2026-11-02): comprobación del check que lista, por
+  cada archivo borrado en la rama contra `origin/main`, sus menciones en `.md` y scripts vivos (sin registros ni retros).
+
+Retro de `claude/plan-imagenes` (usuaria, 2026-11-03, [retro](../records/retro-2026-11-03-plan-imagenes.md)):
+- ~~**QA-280 · `/code-review` al cerrar cada tarea `IMG-*`**~~ ✅ 2026-11-03: paso 5 de `skills-y-modelos.md`.
+- ~~**QA-281 · El generador de imágenes, a `main` por bloque**~~ ✅ 2026-11-03: cabecera de `roadmap-imagenes.md`.
+- ~~**QA-282 · Cadena fotorreal en el mapa del agente**~~ ✅ 2026-11-03: `docs/mapa-agente.md`, sección «Imágenes».
+- ~~**QA-283 · `hoja.sh --archivos`**~~ ✅ 2026-11-03: hojas de contactos de banners sueltos; test en `test_hoja_banco.py`.
+- ~~**QA-284 · Ir a la línea y `/clear` antes de `main`**~~ ✅ 2026-11-03: nota en `.claude/gw/opt-tokens.md`.
+
+PR desde la Deck (usuaria, 2026-11-03):
+- ~~**QA-285 · La sesión local crea sus PR con `gh`**~~ ✅ 2026-11-03: `gh` en `~/.local/bin` con la sesión de la usuaria y enlazado en el sandbox Flatpak de VS Code; sustituye a `QA-184` (`CLAUDE.md`, `AGENTS.md`, `ramas-y-main.md`, `skills-y-modelos.md`). Estrenada con los PR #80 y #81.
+
+Retro de `claude/gh-en-la-deck` (usuaria, 2026-11-03, [retro](../records/retro-2026-11-03-gh-en-la-deck.md)):
+- ~~**QA-286 · Varios PR listos, de uno en uno**~~ ✅ 2026-11-03: al fusionar el #81, el #80 chocó en la bitácora (otra fusión, marca y CI). `ramas-y-main.md`.
+- ~~**QA-287 · Ramas remotas en `recuperar.py` y `--footer` en el aviso de `revisado.sh`**~~ ✅ 2026-11-03 (solo apuntada): propuestas para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
+
+Retro de la ronda de la puerta, `claude/wonderful-volta-662qt8` (usuaria, 2026-11-03, [retro](../records/retro-2026-11-03-ronda-puerta.md)):
+- ~~**QA-290 · Siguiente número libre de una serie de tareas**~~ ✅ 2026-11-03: `tools/roadmap/siguiente-id.py QA` mira la copia y todas las ramas remotas (esta rama renumeró dos veces, QA-259→263→268); test `test_siguiente_id.py`. Puntero en `AGENTS.md`.
+- ~~**QA-291 · Prueba de humo del driver real**~~ ✅ 2026-11-03: `tools/qa/humo-driver.sh` carga `hondonada-inicio` con el driver y el juego reales, comprueba en el HUD de `estado.js` que `preparar nivel:3` y un segundo `cargar` recargan la página (P400/P407; P409 ya lo cubre `ayudas_mcp_navegador.mjs`: la partida recién cargada no tiene chips); paso «Humo del driver» en la CI; test `test_humo_driver.py`. Rojo comprobado anulando `recargar_pagina()`; en local pide `HUMO_FORZAR=1` (borra la base de juego).
+- ~~**QA-292 · Revisión por bloques en una rama larga**~~ ✅ 2026-11-03: `/code-review` del diff desde la última revisión al cerrar cada bloque de ~10 tandas (152 commits en una sola revisión dejaron partes sin mirar). `AGENTS.md`.
+
+`/gw-opt-tokens` de `claude/gw-update-0.5.0` (usuaria, 2026-11-04):
+- ~~**QA-294 · Fase 1 de una `/gw-update` sin las copias del flujo**~~ ✅ 2026-11-04: el `/code-review` deja fuera las copias idénticas (`.claude/gw/scripts/`, `.claude/skills/`, `.githooks/`); entran lo de WMF y los desvíos locales; las copias, con `doctor.py` y los tests de `tools/qa`. Paso 6 de `skills-y-modelos.md` y `gw-opt-tokens.md`. Pendiente: proponerlo a Galivelop-workflow en la retro.
+- ~~**QA-296 · Las reglas de `/gw-update` en `skills-wmf.md`**~~ ✅ 2026-11-04 (retro de la v0.5.0, R1): la reconciliación por subagente y la fase 1 sin copias, donde se lee al lanzar `/gw-update`; R2 y R3, a Galivelop-workflow (P19, P18).
+- ~~**QA-295 · Salidas acotadas en barridos y CI**~~ ✅ 2026-11-04: `grep -l`/`| head` y `actions_list` con `minimal_output` y `perPage` 3-5, en `gw-opt-tokens.md`.
+
+P373 de la ronda de la puerta (usuaria, 2026-11-04):
+- ~~**QA-293 · Preparar un combate 1v1 en `escenario.sh`**~~ ✅ 2026-11-04: `preparar <partida> combate1v1:<npc>` abre el combate 1v1 clásico contra ese NPC, viva donde viva, con el efecto `forzarCombate` del Cronista (`prepararCombate1v1.ts`); el panel sale al cargar y aguanta la recarga; se niega con un combate en curso, sin el NPC o con él muerto o convaleciente. Tests de parser e integración, rojos sin el arreglo; probado con el Brozán (t52).
+
+Licencias del proyecto (usuaria, 2026-11-05):
+- ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
 
 ## 15. Lo que piden el Cronista, la zona y el Reino (`INT`)
 

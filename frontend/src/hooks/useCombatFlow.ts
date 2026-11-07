@@ -224,7 +224,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // y llama a `openCombat()` en la misma sincronía — sin este parámetro, la función leía
   // `combateIniciado` del cierre de ESTE render (el `setState` de la línea anterior todavía no se
   // había aplicado), que en ese flujo es siempre `null`. `openCombat` devolvía sin hacer nada.
-  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null) {
+  // P405: `conservarIniciativa` al reabrir tras una recarga, donde `syncFromSave` acaba de
+  // rehidratar `lastInitiativeRoll` en este mismo lote de setState.
+  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null, opts?: { conservarIniciativa?: boolean }) {
     const combate = combatOverride ?? combateIniciado
     if (!combate) return
     setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
@@ -241,7 +243,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // reaparece el aviso "⚔️ Combatir". Si `openCombat()` lo reseteaba aquí sin más, reabrir el
     // popup mostraba los controles de ataque en vez del prompt de "Defenderte", aunque el backend
     // (`Save.pendingNpcAttack`) siga esperando esa defensa de todos modos.
-    setLastInitiativeRoll(null)
+    if (!opts?.conservarIniciativa) setLastInitiativeRoll(null)
     if (activePanel && combatDisabledTabs.includes(activePanel)) {
       setActivePanel(null)
     }
@@ -344,7 +346,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           lootItemNames: opts.lootItemNames,
           isItemUse: opts.isItemUse,
         },
-        { onExchangeResolved: (exchange, npcName) => setDiceReveal({ exchange, npcName }) },
+        { onExchangeResolved: (exchange, npcName) => { if (!exchange.golpeDeGracia) setDiceReveal({ exchange, npcName }) } },
       )
       setQuests(updatedQuests)
       // Bug real (auditoría 2026-08-06): matar/decapitar a un NPC de facción en combate cambia
@@ -368,6 +370,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
         sed,
         timeLabel: newTimeLabel,
         finDePartida,
+        justDied,
         newInventoryItems,
         removedInventoryItemIds,
         updatedInventoryItems,
@@ -499,8 +502,8 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // (React), sin llamar a ningún endpoint — recargar la página perdía la decisión, la tarjeta
   // MATAR/CLEMENTE reaparecía de cero y el composer volvía a bloquearse. Ahora se persiste en el
   // backend (`NpcState.targetedForKill`, `POST /saves/:id/combat/matar/:npcSlug`) — el estado
-  // optimista local sigue igual para respuesta inmediata sin esperar la red. Solo combate 1v1
-  // clásico por ahora (sin `participantId`) — combate múltiple sigue usando solo el estado local.
+  // optimista local sigue igual para respuesta inmediata sin esperar la red. En combate múltiple
+  // (P391) va con `participantId`: la marca queda en el participante y el siguiente turno lo remata.
   function handleDecapitarSeleccion(npcs: CombatNpcDisplay[]) {
     if (npcs.length === 0) return
     setCombatNpcStates((prev) => {
@@ -514,7 +517,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     })
     if (saveId) {
       for (const npc of npcs) {
-        if (!npc.participantId) requestMatar(saveId, npc.slug).catch(() => {})
+        requestMatar(saveId, npc.slug, npc.participantId).catch(() => {})
       }
     }
   }
@@ -719,6 +722,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     sed: number
     timeLabel: string
     finDePartida: boolean
+    justDied?: boolean
     newInventoryItems: InventoryItemInfo[]
     removedInventoryItemIds: string[]
     updatedInventoryItems: { id: string; name: string }[]
@@ -745,7 +749,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // por PRIMERA vez este intercambio (comparado contra el estado local de ANTES de este turno,
     // no contra el de la respuesta): un NPC que ya estaba CONVALECIENTE de un turno anterior no
     // vuelve a ofrecer tarjeta.
-    const newlyConvalecientes = (params.combate?.npcs ?? [])
+    // P398 (2026-11-03): si el personaje cae en este turno no hay nada que decidir sobre el rival.
+    const jugadoraCaida = !!params.justDied || params.finDePartida
+    const newlyConvalecientes = (jugadoraCaida ? [] : (params.combate?.npcs ?? []))
       .filter((n) => n.condicionFisica === 'CONVALECIENTE' && combatNpcsDisplay.find((d) => combatKeyFor(d) === combatKeyFor(n))?.condicion !== 'CONVALECIENTE')
       .map((n) => ({ npcSlug: n.slug, combatKey: combatKeyFor(n), npcName: n.name, capturable: n.capturable }))
     setCharacterLog((prev) => {
@@ -865,6 +871,9 @@ export function useCombatFlow(params: UseCombatFlowParams) {
             // CR-45: la orden del capitán cambia cada ronda; manda siempre la del backend.
             const actual = bySlug.get(key)!
             if (actual.ordenaCaerSobre !== real.ordenaCaerSobre) bySlug.set(key, { ...actual, ordenaCaerSobre: real.ordenaCaerSobre })
+            // P353/P356: igual, el duelo de la ronda lo manda siempre el backend.
+            const trasOrden = bySlug.get(key)!
+            if (trasOrden.frenteATi !== real.frenteATi) bySlug.set(key, { ...trasOrden, frenteATi: real.frenteATi })
           }
           return Array.from(bySlug.values())
         })
@@ -910,7 +919,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     // Bloquea composer/botones desde ya si hay iniciativa por delante, aunque todavía no haya
     // empezado a rodar (primero va el intercambio).
     if (params.nextInitiativeRoll && !params.finDePartida) setAwaitingNextInitiative(true)
-    if (params.combatExchangeDisplay && !params.finDePartida) {
+    // P408 (tanda 82): un golpe de gracia no se tira (`CombatExchangeBadge` solo lo cuenta), así que
+    // no hay dados que esperar: se aplica ya, como un turno sin intercambio. Antes esperaba a la
+    // reserva de 11 s y la tarjeta del rematado seguía «Convaleciente» mientras tanto.
+    if (params.combatExchangeDisplay && !params.combatExchangeDisplay.golpeDeGracia && !params.finDePartida) {
       setAwaitingExchangeApply(true)
       // Se resuelve una sola vez: por `onAllLanded` (lo normal) o por la reserva de abajo. La que
       // llega primero cancela la otra; sin esto la reserva volvía a aplicar el intercambio un

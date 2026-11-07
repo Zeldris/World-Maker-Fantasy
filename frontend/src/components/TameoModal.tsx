@@ -11,12 +11,15 @@ const ATTRIBUTES: Attribute[] = ['fuerza', 'destreza', 'constitucion', 'intelige
 interface TameoModalProps {
   saveId: string
   pendiente: TameoPendiente
-  onConfirmado: () => void
+  /// `aviso`: lo que el backend cuenta de lo ocurrido (P349: «El Múrgol entra en los Corrales del Ganadero.»).
+  onConfirmado: (aviso?: string) => void
   onSoltado: () => void
   onCancel: () => void
   /// DAD-4 (hito 0.1) — nombre real del personaje en su lado de la tirada (sin él, "Tú").
   characterName?: string
 }
+
+const MOTIVO_SIN_CORRAL = 'Construye un Corral del Ganadero'
 
 /// Tameo/persuasión (Grupo 3 § Compañeros y supervivencia, 2026-08-25, docs/rpgtarkor/
 /// companeros-y-supervivencia.md § 2/3) — elegir un atributo propio, tirada opuesta real contra el
@@ -27,11 +30,14 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
   // DAD-1/DAD-2 (hito 0.1, H18/H19) — `seq` da una `key` nueva a cada tirada (sin ella React
   // reutilizaba el `DiceRollVs` y la segunda tirada no se animaba) y `aterrizada` difiere el
   // veredicto, el color y la subida de Felicidad hasta que los dos dados han caído.
-  const [tirada, setTirada] = useState<{ seq: number; roll: OpposedRollInfo; felicidad: number; aterrizada: boolean } | null>(null)
+  const [tirada, setTirada] = useState<{ seq: number; roll: OpposedRollInfo; felicidad: number; bonoCompetencia: number; aterrizada: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
   const { error, runCatchingError } = useSubmitError()
 
   const umbralCompletado = pendiente.felicidad >= pendiente.umbral
+  // Sin corral en pie, el texto fijo; con corral que no admite a este animal, el motivo del backend (P347).
+  const motivoCorral = pendiente.hayCorral === false ? MOTIVO_SIN_CORRAL : (pendiente.motivoCorral ?? null)
+  const sinCorral = motivoCorral !== null
 
   async function handleIntentar(attribute: Attribute) {
     setBusy(true)
@@ -41,7 +47,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
       return
     }
     // `busy` sigue activo hasta que caigan los dados (`handleAterrizada`): sin solapar tiradas.
-    setTirada((prev) => ({ seq: (prev?.seq ?? 0) + 1, roll: res.roll, felicidad: res.felicidad, aterrizada: false }))
+    setTirada((prev) => ({ seq: (prev?.seq ?? 0) + 1, roll: res.roll, felicidad: res.felicidad, bonoCompetencia: res.bonoCompetencia ?? 0, aterrizada: false }))
   }
 
   function handleAterrizada(seq: number, felicidad: number) {
@@ -68,7 +74,7 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
       setBusy(false)
       return
     }
-    onConfirmado()
+    onConfirmado(ok.aviso)
   }
 
   async function handleSoltar() {
@@ -95,9 +101,19 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
               {busy ? 'Confirmando...' : 'Confirmar compañero'}
             </button>
             {pendiente.alCorral && (
-              <button type="button" onClick={handleAlCorral} disabled={busy} className={confirmButtonClasses('accent')}>
-                🐑 Al corral
-              </button>
+              <>
+                {/* P347: sin Corral del Ganadero no se ofrece; el motivo se ve, no solo en el tooltip. */}
+                <button
+                  type="button"
+                  onClick={handleAlCorral}
+                  disabled={busy || sinCorral}
+                  title={motivoCorral ?? undefined}
+                  className={confirmButtonClasses('accent')}
+                >
+                  🐑 Al corral
+                </button>
+                {motivoCorral && <span className="text-2xs text-wood-400">{motivoCorral}</span>}
+              </>
             )}
           </>
         )
@@ -146,6 +162,12 @@ export function TameoModal({ saveId, pendiente: initial, onConfirmado, onSoltado
                 showDifficulty={false}
                 onAllLanded={() => handleAterrizada(seq, felicidad)}
               />
+              {/* P351: el nivel del oficio suma a la tirada (competencia, el doble para el Domador). */}
+              {tirada.bonoCompetencia > 0 && (
+                <p className="mt-1 text-wood-400">
+                  Tu nivel suma +{tirada.bonoCompetencia} a la tirada{pendiente.atributoResistencia ? ' (Domador: el doble)' : ''}.
+                </p>
+              )}
             </div>
           )
         })()}

@@ -1,0 +1,7 @@
+# IMG-21/IMG-22 r16: los 6 sujetos que fallaron en r15, con prompts reescritos con pautas.md v2 (F6b, F7, F8, F9, P6, P7), sin retoque a mano. Sujeto sobre verde (magenta en jusha, azul en morvasa), 512x192 salvo morvasa 384x320 / 8 pasos, sin boceto. Veredicto: lista de forma de r16-forma.md contra el banner, en rejilla.
+cruzavientos	8	prompts/r16-sujeto-cruzavientos.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8
+espina-del-viento	8	prompts/r16-sujeto-espina-del-viento.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8
+jusha-esmeralda	8	prompts/r16-sujeto-jusha-esmeralda.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8
+morvasa	8	prompts/r16-sujeto-morvasa.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=384,H=320,TOPE=1800	--backend diffusion=cpu -t 8
+guchapo	8	prompts/r16-sujeto-guchapo.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8
+gargantua-de-ceniza	8	prompts/r16-sujeto-gargantua-de-ceniza.txt	MODELO=flux3-image-klein-Q8_0.gguf,LLM=Qwen3VL-4B-Instruct-Q4_K_M.gguf,VAE=flux2-vae.safetensors,W=512,H=192,TOPE=1800	--backend diffusion=cpu -t 8

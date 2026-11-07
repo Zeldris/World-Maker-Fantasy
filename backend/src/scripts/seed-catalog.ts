@@ -7,6 +7,7 @@ import { xpForProfessionLevel } from '../services/professionProgress.js';
 import { typeForPresion, stageForPresion } from '../services/factionRelations.js';
 import { assertValidCategory } from '../services/itemTaxonomy.js';
 import { worldPopulations } from './worldPopulation.js';
+import { avisarRetiro, retirarFaccionesHuerfanas, retirarLugaresHuerfanos, retirarNpcsHuerfanos } from './retirarHuerfanos.js';
 
 /// Siembra el catálogo de mundo estructurado (docs/mecanicas/12-mundo-estructurado.md): ubicaciones,
 /// rutas, NPCs, armería y recursos cosechables de las Llanuras del Viento Rojo. Idempotente
@@ -280,8 +281,14 @@ async function main() {
   console.log(`  Entradas de Historia (${historiaEntries.length})...`);
   const allNpcSlugsForHistoria = new Set(allNpcs.map((n) => n.slug));
   for (const entry of historiaEntries) {
-    if (!itemIdBySlug.has(entry.documentoItemSlug)) {
+    if (entry.documentoItemSlug && entry.lugarSlug) {
+      throw new Error(`HistoriaEntry "${entry.slug}" tiene documento y lugar: se descubre por uno solo.`);
+    }
+    if (entry.documentoItemSlug && !itemIdBySlug.has(entry.documentoItemSlug)) {
       throw new Error(`HistoriaEntry "${entry.slug}" referencia un objeto desconocido: ${entry.documentoItemSlug}`);
+    }
+    if (entry.lugarSlug && !locationIdBySlug.has(entry.lugarSlug)) {
+      throw new Error(`HistoriaEntry "${entry.slug}" referencia un lugar desconocido: ${entry.lugarSlug}`);
     }
     if (entry.translatorNpcSlug && !allNpcSlugsForHistoria.has(entry.translatorNpcSlug)) {
       throw new Error(`HistoriaEntry "${entry.slug}" referencia un NPC traductor desconocido: ${entry.translatorNpcSlug}`);
@@ -297,7 +304,8 @@ async function main() {
         year: entry.year,
         text: entry.text,
         requiresTranslation: entry.requiresTranslation ?? false,
-        documentoItemSlug: entry.documentoItemSlug,
+        documentoItemSlug: entry.documentoItemSlug ?? null,
+        lugarSlug: entry.lugarSlug ?? null,
         translatorNpcSlug: entry.translatorNpcSlug ?? null,
       },
       create: {
@@ -308,7 +316,8 @@ async function main() {
         year: entry.year,
         text: entry.text,
         requiresTranslation: entry.requiresTranslation ?? false,
-        documentoItemSlug: entry.documentoItemSlug,
+        documentoItemSlug: entry.documentoItemSlug ?? null,
+        lugarSlug: entry.lugarSlug ?? null,
         translatorNpcSlug: entry.translatorNpcSlug ?? null,
       },
     });
@@ -500,6 +509,13 @@ async function main() {
     backfilledItems++;
   }
   console.log(`    ${backfilledItems} objeto(s) de inventario actualizado(s).`);
+
+  // QA-274 (2026-10-26): como los objetos de arriba, el upsert nunca retiraba lugares, facciones ni NPC que salen
+  // del catálogo (slugs renombrados). Se retira la fila de catálogo sin referencias de partida; la que tenga alguna
+  // se queda y se avisa. Orden: lugares, facciones y, al final, NPC (`Faction.liderNpcId` queda en null si él se va).
+  avisarRetiro('Lugares', await retirarLugaresHuerfanos(prisma, worldId, locations.map((l) => l.slug)));
+  avisarRetiro('Facciones', await retirarFaccionesHuerfanas(prisma, worldId, factions.map((f) => f.slug)));
+  avisarRetiro('NPC', await retirarNpcsHuerfanos(prisma, worldId, allNpcs.map((n) => n.slug)));
 
   console.log('Catálogo de mundo sembrado correctamente.');
 }

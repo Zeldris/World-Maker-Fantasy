@@ -1,7 +1,7 @@
 # Cifras provisionales
 
 Cifras que puso Claude sin que la usuaria las decidiera, para revisarlas jugando en la fase de pruebas
-del `0.8` (tarea `QA-26`). Cada fila dice dónde vive la constante: cambiarla es tocar solo esa línea.
+del `0.7` (tarea `QA-26`). Cada fila dice dónde vive la constante: cambiarla es tocar solo esa línea.
 Las cifras que decidió la usuaria en una ronda (escalones de defensa, tope de 12 bandidos, Fácil = la
 mitad…) no están aquí; están en las decisiones de su plan.
 

@@ -49,6 +49,16 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
+  it('P347: sin un Corral del Ganadero en pie el pendiente lo dice (hayCorral false) y con él, true', async () => {
+    const app = await buildApp();
+    await prisma.building.update({ where: { id: corralId }, data: { status: 'DANADO' } });
+    const sin = await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` });
+    expect(sin.json().pendientes.find((p: { npcSlug: string }) => p.npcSlug === 'murgol')?.hayCorral).toBe(false);
+    await prisma.building.update({ where: { id: corralId }, data: { status: 'ACTIVO' } });
+    const con = await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` });
+    expect(con.json().pendientes.find((p: { npcSlug: string }) => p.npcSlug === 'murgol')?.hayCorral).toBe(true);
+  });
+
   it('el Múrgol domesticado entra al corral y su especie se puede volver a capturar', async () => {
     const app = await buildApp();
     const pendientes = await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` });
@@ -57,6 +67,10 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/murgol/al-corral`, payload: {} });
     expect(res.statusCode).toBe(200);
     expect(res.json().buildingId).toBe(corralId);
+    // P349: el aviso para la pantalla y la misma línea en el diario del Reino.
+    expect(res.json().aviso).toBe('El Múrgol entra en los Corrales del Ganadero.');
+    const linea = await prisma.logEntry.findFirst({ where: { saveId, channel: 'KINGDOM', text: 'El Múrgol entra en los Corrales del Ganadero.' } });
+    expect(linea).not.toBeNull();
     const animal = await prisma.ganado.findFirstOrThrow({ where: { saveId } });
     expect(animal.especie).toBe('murgol');
     // Recién adulto: un año o algo más.
@@ -99,6 +113,27 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/corretolvas/al-corral`, payload: {} });
     expect(res.statusCode).toBe(409);
     expect(await prisma.ganado.count({ where: { saveId, especie: 'corretolvas' } })).toBe(0);
+  });
+
+  it('el pendiente que ningún corral admite lo dice (motivoCorral) en vez de salir con «Al corral» activo y dar 409', async () => {
+    const app = await buildApp();
+    const lista = (await app.inject({ method: 'GET', url: `/saves/${saveId}/tameo-pendientes` })).json().pendientes as { npcSlug: string; hayCorral: boolean; motivoCorral: string | null }[];
+    const corretolvas = lista.find((p) => p.npcSlug === 'corretolvas');
+    // Hay corral en pie (hayCorral), pero el único guarda Múrgoles: el motivo es el mismo que daría el 409.
+    expect(corretolvas?.hayCorral).toBe(true);
+    expect(corretolvas?.motivoCorral).toMatch(/No hay plaza/);
+  });
+
+  it('el aviso de entrada lleva el artículo de la especie: «La Salamandra de Escoria», no «El Salamandra…»', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const salamandra = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: 'salamandra-de-escoria', saveId: null } });
+    await prisma.building.create({ data: { saveId, recipeKey: 'corrales', name: 'Corrales del Ganadero', kind: 'ganadero-orcos-llanuras', status: 'ACTIVO', description: 'x', tier: 1 } });
+    await prisma.npcState.create({ data: { saveId, npcId: salamandra.id, scope: '', condicionFisica: 'ILESO', capturado: true, capturaFelicidad: 90 } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/tameo-pendientes/salamandra-de-escoria/al-corral`, payload: {} });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().aviso).toBe('La Salamandra de Escoria entra en los Corrales del Ganadero.');
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: 'La Salamandra de Escoria entra en los Corrales del Ganadero.' } })).toBe(1);
   });
 
   it('cada pasto entregado da 2 de forraje, hasta el tope compartido con la comida', async () => {

@@ -1,7 +1,7 @@
 # gw-media-content en World-Maker-Fantasy
 
 Lo propio de WMF que la skill genérica no dice. Las reglas de contenido están en
-[`docs/difusion/README.md`](../../docs/difusion/README.md); aquí, cómo se sacan las imágenes.
+[`docs/media/README.md`](../../docs/media/README.md); aquí, cómo se sacan las imágenes.
 
 ## Capturas del juego
 
@@ -14,15 +14,15 @@ Lo propio de WMF que la skill genérica no dice. Las reglas de contenido están 
 3. `nohup node tools/playwright-e2e/driver.mjs … &` y las órdenes con `tools/playwright-e2e/orden.sh "<js>"`
    (detalle en [`rondas-de-pruebas.md`](../../docs/runbooks/rondas-de-pruebas.md)); `shot("nombre",{png:true})`
    guarda en `tools/playwright-e2e/shots/`. Al acabar, `kill $(lsof -ti tcp:9333)`.
-4. Recorta lo que importa y guárdalo como JPG (calidad ~88) en `medios/fuente/`:
-   `convert shots/x.png -crop 852x630+X+Y -quality 88 docs/difusion/AAAA-MM-DD/NN-<tema>/medios/fuente/captura-<tema>.jpg`.
+4. Recorta lo que importa y guárdalo como JPG (calidad ~88) en `media/source/`:
+   `convert shots/x.png -crop 852x630+X+Y -quality 88 docs/media/AAAA-MM-DD/NN-<tema>/media/source/captura-<tema>.jpg`.
 
 **Ojo:** el Ollama simulado de la nube escribe texto sin sentido. No se captura el diario, el Cronista ni nada que
 narre la IA; para eso, una captura hecha con el modelo real en la Deck (la pide la usuaria).
 
 ## Tarjetas y diagramas
 
-Las plantillas HTML de `_plantilla/medios/fuente/` usan la paleta oscura del Portal (fondo `#06121c`, superficie
+Las plantillas HTML de `_plantilla/media/source/` usan la paleta oscura del Portal (fondo `#06121c`, superficie
 `#0c1d2b`, borde `#1b3447`, texto `#eaf4fa`, celeste `#1aa6df`) y fuentes locales (DejaVu Sans, Liberation Sans):
 se renderizan sin red. Una por idioma: `<nombre>.html` en español (el primer idioma) y `<nombre>.en.html`; tamaño en
 `<meta name="gw-size" content="1600x900">`.

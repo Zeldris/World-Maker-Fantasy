@@ -347,7 +347,7 @@ export function useTurnFlow(params: UseTurnFlowParams) {
         {
           onChunk: (delta) => setStreamingNarration((prev) => (prev ?? '') + delta),
           onReset: () => setStreamingNarration(null),
-          onExchangeResolved: (exchange, npcName) => setDiceReveal({ exchange, npcName }),
+          onExchangeResolved: (exchange, npcName) => { if (!exchange.golpeDeGracia) setDiceReveal({ exchange, npcName }) },
         },
       )
       setStreamingNarration(null)

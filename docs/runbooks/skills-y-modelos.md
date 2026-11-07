@@ -15,24 +15,24 @@ Lo sigue cualquier sesión, de cualquiera de las dos cuentas. Cada skill se carg
 Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
 `/grill-with-docs`.
 
-1. **Empezar la tarea:** cargar `selector`, clasificar la tarea con su tabla y decir en una línea
+1. **Empezar la tarea:** cargar `gw-selector`, clasificar la tarea con su tabla y decir en una línea
    qué skill y qué modelo pide, y su presupuesto de compactaciones (1 a 5, `QA-116`).
-   **Sesión directora** (`QA-121`): con `orchestrate-dealer`, la principal reparte cada trozo a un subagente de
+   **Sesión directora** (`QA-121`): con `gw-orchestrate-dealer`, la principal reparte cada trozo a un subagente de
    contexto limpio y solo recibe su resumen; se trabaja horas sin `/clear` ni `/compact` de la usuaria.
    **Puntos de `/clear`** (`QA-122`, usuaria, 2026-10-19): la compactación automática (tope de 200k, `QA-123`) es la red;
    el corte limpio es un `/clear` en un punto estable. Claude lo recomienda: al cerrar una tarea del roadmap o una
    tanda de arreglos, al cerrar una ronda o un bloque de pruebas, tras fusionar un PR, y cuando el contexto pasa de
    ~200k o la tarea ya gastó su presupuesto de compactaciones, siempre entre pasos y nunca a mitad de uno. Entre el
-   `/code-review` y la `/retro` de un PR no se limpia: `/opt-tokens` y la `/retro` leen esta sesión. Antes de
+   `/code-review` y la `/retro` de un PR no se limpia: `/gw-opt-tokens` y la `/retro` leen esta sesión. Antes de
    recomendarlo deja la sesión lista: todo con commit y push, la fila de la bitácora con el siguiente paso concreto
    y el estado de los tests, y lo que tenga que sobrevivir (una decisión, un dato a medias) en un `.md`. Entonces
    dice en una línea «Punto de `/clear`: todo subido (`<commit>`). Escribe `/clear` y después «sigue».»; Claude no
-   puede lanzarlo. Tras el `/clear`, el gancho de `SessionStart` pone el estado (`recuperar.py --estado`) y se sigue
+   puede lanzarlo. Tras el `/clear`, el gancho de `SessionStart` pone el estado (`recover.py --state`) y se sigue
    por «Al empezar cualquier sesión» de `CLAUDE.md`.
    **Compactar sin perder** (`QA-116`): el tope de 200k (`QA-109`, bajado a 200k en `QA-121`, a 300k en `QA-122` y de vuelta a
-   200k en `QA-123`: con 300k el techo pasó de ~145k a ~220k y el medio, de ~115k a ~150k por llamada) es la red. Tras cada compactación, el gancho de `SessionStart` (`recuperar.py --estado`) vuelve a poner la fila de la bitácora,
+   200k en `QA-123`: con 300k el techo pasó de ~145k a ~220k y el medio, de ~115k a ~150k por llamada) es la red. Tras cada compactación, el gancho de `SessionStart` (`recover.py --state`) vuelve a poner la fila de la bitácora,
    `git status`, los últimos commits y las compactaciones llevadas; un detalle de antes (un error, lo que dijo la
-   usuaria) se busca con `python3 .claude/gw/scripts/recuperar.py --buscar "<texto>"`, que lee el registro de la sesión sin
+   usuaria) se busca con `python3 .claude/gw/scripts/recover.py --search "<texto>"`, que lee el registro de la sesión sin
    cargarlo entero. Una sesión nueva no tiene ese registro: lo que tiene que sobrevivir, a la bitácora.
 2. **Si hay diseño o una decisión abierta:** `grilling` + `domain-modeling` (o `/grill-with-docs` si
    lo lanza la usuaria), con los juegos de referencia. **Toda ronda de diseño, también las de
@@ -54,13 +54,15 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    regla llega a todos) y nada que el frontend recalcule de lo que ya decide el backend (QA-81).
 4. **Si algo falla** (test rojo, intermitente, bug): `diagnosing-bugs` antes de tocar el código.
 5. **Cerrar la tarea:** tachada en su roadmap y en el mapa, bitácora al día, commit + push. El
-   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, después `/opt-tokens` (usuaria,
-   2026-10-19), después la `/retro` (que revisa también la skill `opt-tokens`) y lo que la usuaria apruebe de
+   `/code-review` y la `/retro` van al final, no por tanda: el `/code-review`, después `/gw-opt-tokens` (usuaria,
+   2026-10-19), después la `/retro` (que revisa también la skill `gw-opt-tokens`) y lo que la usuaria apruebe de
    ellas, todo **antes de crear** el PR a `main` (pasos 6 y 7) (usuaria, 2026-10-13; sustituye
    a `QA-75` y al `/code-review` cada 5-6 hallazgos de `QA-40`). El PR #53 se revisó ya fusionado y
    sus 12 fallos llegaron a `main` (`QA-77`). Al
    contárselo a la usuaria, el destino con su nombre: «en la rama de trabajo, no en `main`» o «en
    `main` (PR #N)» (QA-36).
+   **Tareas `IMG-*`** (usuaria, 2026-11-03, `QA-280`): además, al cerrarlas, un `/code-review` del diff de la tarea;
+   los scripts de `image-generator/` no pasan por el CI con modelos y sus fallos se juntaban hasta la fase 1.
    «Actualiza con main» (o «trae main») es traer `main` a la rama de trabajo en local y decir si está
    al día; sin commit de bitácora y sin subir, salvo que lo pida (QA-61). Aparte, `main` se trae
    siempre al empezar una tarea y al fusionar un PR (QA-72, `CLAUDE.md`).
@@ -68,26 +70,32 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
    la fuente única del orden:
    1. **Código:** `git fetch origin main` y `/code-review --max-findings all` del diff contra `origin/main` (sin el tope
       de 10 hallazgos, `QA-18`; criterio en [`REVIEW.md`](../../REVIEW.md)); contra un `main` local viejo revisa código
-      que ya está en `main`. Se arregla lo que encuentre y se sube.
-   2. **Entorno:** si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/opt-ai` (`QA-142`);
-      luego `/opt-tokens` y `retro` (paso 7). Va tras el código porque la retro aprende de sus hallazgos. Lo que apruebe
+      que ya está en `main`. Se arregla lo que encuentre y se sube. En una rama de `/gw-update` (`QA-294`), el objetivo
+      deja fuera las copias del flujo (`.claude/gw/scripts/`, `.claude/skills/`, `.githooks/`) idénticas a la versión
+      nueva (lo dice `apply.py --check`, o un `diff` con el clon del flujo): entran solo lo de WMF y los archivos con
+      desvío local de la tabla de `/gw-update` (en `docs/records/propuestas-flujo.md`, `QA-296`); el resto lo
+      cubren `doctor.py`, `python3 -m unittest discover -s tools/qa/tests` y los de `.claude/skills/*/scripts` que
+      corre `ci.yml` (v0.5.0: el 89 % de las líneas eran copias, y la
+      revisión, 2,5 M de entrada, el 59 % de la tarea).
+   2. **Entorno:** si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/gw-opt-ai` (`QA-142`);
+      luego `/gw-opt-tokens` y `retro` (paso 7). Va tras el código porque la retro aprende de sus hallazgos. Lo que apruebe
       la usuaria se aplica en la rama.
    3. **Cierre:** si la fase 2 añadió código (herramientas, scripts, skills con tests), `/code-review --max-findings all`
       solo de esos commits (`<commit de la retro>..HEAD`) y sus arreglos: en la del banco del narrador encontró dos
-      fallos en lo recién aplicado. Luego `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: <paso>"` (sin la línea, `commit-msg` rechaza el commit; escribe la marca y hace su commit; después `git push`), la descripción con `pr` y se crea el PR.
-   `revisado.sh` no escribe la marca con archivos sin commit (p. ej. un borrador de Álvaro): `git stash -u` antes y
+      fallos en lo recién aplicado. Luego `bash .claude/gw/scripts/reviewed.sh --footer "Siguiente: <paso>"` (sin la línea, `commit-msg` rechaza el commit; escribe la marca y hace su commit; después `git push`), la descripción con `pr` y se crea el PR.
+   `reviewed.sh` no escribe la marca con archivos sin commit (p. ej. un borrador de Álvaro): `git stash -u` antes y
    `git stash pop` después. Con `requireRetro`, el Estado de la retro tiene que decir «aplicadas», «rechazadas»,
    «aplazadas» o «decididas», y nada de «pendiente», «sin decidir», «aún no» (ni sus formas en inglés): con una de esas,
    aunque sea de una sola propuesta, no hay marca (retro del piloto de Galivelop-workflow, 2026-10-23).
-   Desde una sesión local (la Deck) el PR no se crea (`QA-184`): no hay `gh` ni herramienta de GitHub y el modo auto
-   no deja usar la credencial de git. La local sube la descripción a `docs/registros/pr/<rama>.md` y escribe en su fila
-   de la bitácora «PR listo para la nube» con el título; ese commit es el último y el revisado. Claude en la nube trae la rama,
-   comprueba que su último commit es el de esa fila y que no lleva nada detrás, pasa `revisado.sh --footer …` (la marca va en su propio commit, que se sube) y crea el PR con esa descripción.
+   Desde una sesión local (la Deck) el PR se crea con `gh` (`QA-285`, que sustituye a `QA-184`):
+   `gh pr create --body-file docs/records/pr/<rama>.md`, y en su fila de la bitácora «PR abierto» con la URL. Sin
+   `gh` ni herramienta de GitHub, la sesión deja «PR listo» con el título y otra sesión que pueda crea el PR
+   (detalle en [`ramas-y-main.md`](ramas-y-main.md)).
    Tras crear el PR, `subscribe_pr_activity` y se fusiona al llegar el CI en
    verde, nunca antes (`QA-62`: el gancho de `QA-50` lo bloquea). El último commit antes del PR deja la fila de la rama
    como «PR a `main`; al fusionarse, rama terminada» (`QA-186`), para que `main` la reciba ya cerrada; la de una
-   sesión local, con su «PR listo» de `QA-184`, vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
-   sesión como directora (`orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
+   sesión sin `gh`, con su «PR listo», vale igual. Al fusionarlo, la siguiente tarea sigue en la misma
+   sesión como directora (`gw-orchestrate-dealer`, `QA-121`, sustituye la sesión nueva de `QA-110`): el trabajo va a
    subagentes de contexto limpio y la principal no arrastra lo leído. Si la sesión ya compactó alguna vez (lo dice el
    gancho de `QA-116` tras cada compactación), Claude lo dice a la usuaria al fusionar y le propone seguir tras un
    `/clear`: el estado ya está en la bitácora (`QA-187`).
@@ -103,27 +111,27 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
 
 | Skill | Se invoca | Qué hace | Cuándo, en este proyecto |
 |---|---|---|---|
-| `selector` (propia) | sola, al empezar tarea | Elige skill y modelo según el caso | Siempre, al arrancar una tarea, un bug o un diseño |
-| `orchestrate-dealer` (propia) | Claude, en toda tarea de más de un paso (la apunta el `selector`) | La sesión principal parte y decide; cada trozo va a un subagente de contexto limpio que devuelve un resumen de 15 líneas | Tareas del roadmap, tandas de arreglos, rondas de pruebas (en serie): trabajar horas sin `/clear` (`QA-121`) |
+| `gw-selector` (propia) | sola, al empezar tarea | Elige skill y modelo según el caso | Siempre, al arrancar una tarea, un bug o un diseño |
+| `gw-orchestrate-dealer` (propia) | Claude, en toda tarea de más de un paso (la apunta el `gw-selector`) | La sesión principal parte y decide; cada trozo va a un subagente de contexto limpio que devuelve un resumen de 15 líneas | Tareas del roadmap, tandas de arreglos, rondas de pruebas (en serie): trabajar horas sin `/clear` (`QA-121`) |
 | `/grill-with-docs` | la usuaria o Claude al proponer diseño | Entrevista por rondas (preguntas numeradas, cada una con la respuesta recomendada) hasta no dejar nada supuesto; mantiene `GLOSSARY.md` y los ADR | Antes de diseñar algo grande: una fase nueva del Cronista, una mecánica, una decisión de Álvaro. Sustituye a las preguntas sueltas |
 | `grilling` | por debajo de la anterior | La entrevista en sí | — |
 | `domain-modeling` | por debajo de la anterior, o al discutir términos | Glosario (`GLOSSARY.md`) y decisiones difíciles de revertir (`docs/adr/`) | Términos del motor y producto (mundo de la partida, catálogo, Suceso…). El lore sigue en `docs/rpgtarkor/` y no se toca |
 | `diagnosing-bugs` | sola ante un bug o test rojo | Primero un test o comando que reproduzca el fallo; luego minimizar, hipótesis, arreglo y test de regresión | Bugs que encuentras jugando (como Matar/Clemente) y tests intermitentes (G16, P3.2) |
 | `/improve-codebase-architecture` | la usuaria o al cerrar fase | Busca módulos que simplificar y los presenta en un informe | Cada pocas fases. Candidatos claros: `turnResolution.ts` (más de 7.000 líneas), `turn.ts` |
 | `codebase-design` | por debajo de la anterior | Vocabulario para diseñar módulos con interfaz pequeña | — |
-| `opt-tokens` | Claude, antes de crear cada PR a `main` (tras el `/code-review`, antes de la `/retro`), o la usuaria con `/opt-tokens` | Mide dónde se fueron los tokens de la sesión (`medir.py`) y propone cómo gastar menos | Las propuestas las confirma la usuaria; lo confirmado entra como tarea con hito |
-| `opt-ai` | Claude o la usuaria con `/opt-ai`, tras cada tanda de pruebas con el modelo real, antes de cambiar de modelo o cuando la IA va lenta | Mide la IA local con el registro por llamada (`medir.py`), contrasta el RAG con las incoherencias de la tanda (`npm run rag-eval`) y propone configuración por perfil de máquina (la Steam Deck, siempre) | Solo propone; lo que confirme la usuaria entra como tarea con hito. Sin registro (`IA_REGISTRO`) no hay nada que medir |
-| `scout-updates` | Solo la usuaria con `/scout-updates [sección]` (gasta muchos tokens) | Inventaria la arquitectura (`docs/scout/arquitectura.md`, con sello por sección), busca actualizaciones con fuentes citadas, filtra por las restricciones (la Steam Deck) y compara modelos con un banco por pares a ciegas | Solo propone; lo propuesto queda en `docs/scout/propuestas.md` y lo aprobado entra como tarea con hito |
-| `retro` | Claude, antes de crear cada PR a `main` (tras el `/code-review` y `/opt-tokens`; revisa también la skill `opt-tokens`) y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Antes de cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
+| `gw-opt-tokens` | Claude, antes de crear cada PR a `main` (tras el `/code-review`, antes de la `/retro`), o la usuaria con `/gw-opt-tokens` | Mide dónde se fueron los tokens de la sesión (`measure.py`) y propone cómo gastar menos | Las propuestas las confirma la usuaria; lo confirmado entra como tarea con hito |
+| `gw-opt-ai` | Claude o la usuaria con `/gw-opt-ai`, tras cada tanda de pruebas con el modelo real, antes de cambiar de modelo o cuando la IA va lenta | Mide la IA local con el registro por llamada (`measure.py`), contrasta el RAG con las incoherencias de la tanda (`npm run rag-eval`) y propone configuración por perfil de máquina (la Steam Deck, siempre) | Solo propone; lo que confirme la usuaria entra como tarea con hito. Sin registro (`IA_REGISTRO`) no hay nada que medir |
+| `gw-scout-updates` | Solo la usuaria con `/gw-scout-updates [sección]` (gasta muchos tokens) | Inventaria la arquitectura (`docs/scout/arquitectura.md`, con sello por sección), busca actualizaciones con fuentes citadas, filtra por las restricciones (la Steam Deck) y compara modelos con un banco por pares a ciegas | Solo propone; lo propuesto queda en `docs/scout/propuestas.md` y lo aprobado entra como tarea con hito |
+| `retro` | Claude, antes de crear cada PR a `main` (tras el `/code-review` y `/gw-opt-tokens`; revisa también la skill `gw-opt-tokens`) y al cerrar fase o hito (o la usuaria con `/retro`) | Propone mejoras del entorno: comprobaciones automáticas, instrucciones, herramientas | Antes de cada PR y al final de cada fase. Las propuestas las revisa y confirma la usuaria; solo lo confirmado entra como tarea con hito |
 | `writing-for-agents` | sola al escribir para agentes | Cómo escribir CLAUDE.md, skills y documentos para agentes | Al tocar `CLAUDE.md`, la bitácora o una skill |
 | `prototype` | Claude, dentro de una ronda de diseño | Prototipo para tirar: un HTML con botones que mueve la lógica (o variantes de una pantalla) para probar una decisión antes de tomarla | Cuando la usuaria decide números o reglas (economía, ganadería, combate, ritmo). El HTML se publica como Artifact o se le envía; se guarda en `docs/prototipos/` y el veredicto va al roadmap |
 | `pr` | Claude, al abrir un PR a `main` | Descripción del PR: resumen visual del cambio, evidencia antes/después y peligro del merge | Cada PR a `main`, tras `/code-review`. Evidencia: los números de `tsc`, `vitest` y `oxlint` |
-| `gw-media-content` (propia) | Claude, cuando la usuaria pide publicaciones o contenido para redes o el Portal | Crea o completa una carpeta de `docs/difusion/` con los textos por canal (`es`/`en`, `gl` en el Portal) y sus imágenes: tarjeta, diagrama y capturas en WebP | Tras fusionar algo que se pueda contar. Solo prepara: publica la usuaria |
+| `gw-media-content` (propia) | Claude, cuando la usuaria pide publicaciones o contenido para redes o el Portal | Crea o completa una carpeta de `docs/media/` con los textos por canal (`es`/`en`, `gl` en el Portal) y sus imágenes: tarjeta, diagrama y capturas en WebP | Tras fusionar algo que se pueda contar. Solo prepara: publica la usuaria |
 
 ## Descartadas, y por qué
 
 - **`handoff`**: guarda el traspaso en una carpeta temporal; en la nube se pierde. Ya está la
-  bitácora (`docs/registros/traspaso.md`).
+  bitácora (`docs/records/traspaso.md`).
 - **`to-spec`, `to-tickets`, `triage`, `wayfinder`, `implement`, `setup-matt-pocock-skills`**:
   suponen un gestor de issues. Aquí el trabajo vive en los roadmaps `.md` con hitos; serían dos
   sistemas a la vez.
@@ -136,7 +144,7 @@ Nada cambia de las reglas de `CLAUDE.md`: las skills se apoyan en ellas, no las 
   a la usuaria le basta con pedirlo en español.
 - **`git-guardrails-claude-code`**, **`setup-pre-commit`**: bloquean `git push` o pasan la suite
   (unos 7 min) en cada commit, contra el commit + push constante.
-- **`ask-matt`**: es un selector de las skills de su repositorio; se sustituye por `selector`, que
+- **`ask-matt`**: es un selector de las skills de su repositorio; se sustituye por `gw-selector`, que
   además elige modelo.
 
 ## Selector de modelo
@@ -163,9 +171,9 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
 - **Planificar con el grande, escribir con el medio** (usuaria, 2026-10-19, `QA-117`): con el plan cerrado y escrito
   (archivos, funciones, tests que tienen que pasar), la implementación acotada va a un subagente `sonnet` con ese
   plan y la sesión principal revisa su diff antes del commit. Se queda en la sesión principal lo que pide
-  sostener contexto: el bug difícil, el motor con varios sistemas, lo que cambia el plan a mitad. `medir.py`
-  (`POR MODELO`) dice en cada `/opt-tokens` si se está haciendo.
-- **El modelo, siempre explícito** (`QA-251`): toda llamada a un subagente lleva `model` (el que dé el `selector`);
+  sostener contexto: el bug difícil, el motor con varios sistemas, lo que cambia el plan a mitad. `measure.py`
+  (`POR MODELO`) dice en cada `/gw-opt-tokens` si se está haciendo.
+- **El modelo, siempre explícito** (`QA-251`): toda llamada a un subagente lleva `model` (el que dé el `gw-selector`);
   sin él hereda el de la sesión (Opus), y así fueron dos encargos mecánicos (`QA-233`, `QA-251`).
 - **Escalera y topes** (`QA-118`, ideas del workflow `implement-afk` que se revisó el 2026-10-19; el resto no
   encaja: paralelo con base de datos compartida, issues, rebase forzado): cada subagente empieza en el peldaño
@@ -173,5 +181,9 @@ Tres tamaños: **grande** (Opus), **medio** (Sonnet), **ligero** (Haiku).
   dos fallos como tope; un fallo al arrancar no sube ni cuenta; una tanda sin supervisión que no cierra nada
   para. Al escribir en un roadmap una tarea pendiente que implemente un subagente, se le apunta
   su peldaño de partida (p. ej. `modelo: sonnet-medium`), para que la otra cuenta no tenga que decidirlo otra vez;
-  las tareas ya cerradas y las del entorno que hace la sesión principal no lo llevan. Detalle en el `selector`.
+  las tareas ya cerradas y las del entorno que hace la sesión principal no lo llevan. Detalle en el `gw-selector`.
+- **Fable** (`model: "fable"`; usuaria, 2026-10-26): disponible con Claude Max, pero **solo mientras quede cuota**;
+  agotada, no se puede usar. Nunca es un peldaño imprescindible: todo encargo a Fable tiene que poder repetirse con
+  `opus`, y un fallo por cuota no cuenta como fallo del peldaño. Se prueba donde el juicio pesa (verificar
+  hallazgos, cribar falsos positivos) y se compara con `measure.py` (`POR MODELO`) antes de darle sitio fijo.
 - En la duda, el de más riesgo.

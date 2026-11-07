@@ -1,4 +1,4 @@
-# Registro por llamada de `opt-ai` (formato común)
+# Registro por llamada de `gw-opt-ai` (formato común)
 
 Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variable no se escribe nada). Nombres
 `gen_ai.*` del vocabulario GenAI de OpenTelemetry (semantic-conventions-genai, estado «Development», consultado el
@@ -74,7 +74,7 @@ KV `q8_0`, `OLLAMA_IGPU_ENABLE=1`. Registro: `backend/ia/registro-2026-10-20.jso
   `narrar` 26 de 33 por timeout (90 s y 240 s), 12 de 17 turnos narrados por el respaldo; guardada como
   `registro-2026-10-20-solo-cpu.jsonl` y fuera de la comparación. En ella el RAG estaba roto (P274).
 
-**Informe de `/opt-ai`** (2026-10-20, con la skill; sustituye a las propuestas hechas a mano en la ronda, que revisó).
+**Informe de `/gw-opt-ai`** (2026-10-20, con la skill; sustituye a las propuestas hechas a mano en la ronda, que revisó).
 Propuestas **aprobadas por la usuaria el 2026-10-20, sin aplicar** (bitácora, «Propuestas aprobadas»).
 
 - **Por turno** (lo que espera la jugadora): 15 turnos, p50 63,6 s, p95 ~104 s, máx. 133 s. 7 de 15 necesitaron el

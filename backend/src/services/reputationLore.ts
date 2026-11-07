@@ -86,16 +86,16 @@ Otras raíces frecuentes en nombres de lugar: Karot (ceniza), Veku (colmillo), L
   {
     slug: 'crafteo',
     icon: '🔨',
-    title: 'Crafteo: fabricar tus propios objetos',
+    title: 'Fabricar tus propios objetos',
     text: `Muchos objetos del mundo no se encuentran, se fabrican — a partir de materiales que ya llevas encima, según una receta concreta. Cada receta pide un conjunto fijo de ingredientes y, a menudo, algo más: estar en el sitio adecuado (un taller, un fuego), tener los atributos mínimos que exige y, en algunos oficios, llevar encima su herramienta.
 
-Si conoces el oficio de la receta, cada nivel que tengas en él rebaja esos mínimos: la práctica suple la fuerza o la maña que te falte. El nivel de una receta (su "tier") marca cuánto tarda: de unos segundos para lo más sencillo a cerca de un minuto para lo más elaborado. Unas pocas recetas, además, hay que descubrirlas antes, al cerrar un encargo. Con todo eso en regla, el objeto sale: no hay tirada ni riesgo de estropearlo.`,
+Si conoces el oficio de la receta, cada nivel que tengas en él rebaja esos mínimos: la práctica suple la fuerza o la maña que te falte. El nivel de una receta marca cuánto tarda: de unos segundos para lo más sencillo a cerca de un minuto para lo más elaborado. Unas pocas recetas, además, hay que descubrirlas antes, al cerrar un encargo. Con todo eso en regla, el objeto sale: no hay tirada ni riesgo de estropearlo.`,
   },
   {
     slug: 'construcciones',
     icon: '🏗️',
     title: 'Construcciones: levantar algo permanente',
-    text: `Construir es distinto de craftear: en vez de un objeto que te llevas encima, levantas algo fijo en el mundo — un edificio, una mejora de tu territorio — que se queda ahí de forma permanente. Igual que el crafteo, cada construcción pide materiales concretos, pero ninguna exige atributos mínimos. Lo que manda es su nivel de obra ("tier", del 1 al 9): hasta el 3 la levantas tú con tus manos; del 4 en adelante hace falta una Casa de obras con súbditos constructores, y un Ayuntamiento mediano (niveles 4 a 6) o grande (7 a 9).
+    text: `Construir es distinto de fabricar un objeto: en vez de un objeto que te llevas encima, levantas algo fijo en el mundo — un edificio, una mejora de tu territorio — que se queda ahí de forma permanente. Igual que al fabricar objetos, cada construcción pide materiales concretos, pero ninguna exige atributos mínimos. Lo que manda es su nivel de obra (del 1 al 9): hasta el 3 la levantas tú con tus manos; del 4 en adelante hace falta una Casa de obras con súbditos constructores, y un Ayuntamiento mediano (niveles 4 a 6) o grande (7 a 9).
 
 Algunas construcciones además están ligadas a una raza o cultura concreta — reflejan cómo construye ese pueblo, no una plantilla genérica que sirva para cualquiera.`,
   },
