@@ -3,407 +3,110 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
 <title>Generador de imágenes</title>
-<!-- CFG-43: interfaz local del generador de imágenes, por elemento; la sirve servidor.py (image-generator/abrir.sh). -->
-<style>
-  :root { --fondo:#f6f4ef; --panel:#fff; --texto:#26231f; --suave:#6d665c; --borde:#ddd6ca; --acento:#8a5a2b;
-          --acento-texto:#fff; --ok:#2f7a3d; --ok-fondo:#e3f2e5; --error:#a33a2a; --error-fondo:#f8e4df; --hueco:#e9e3d8; }
-  @media (prefers-color-scheme: dark) {
-    :root { --fondo:#1b1916; --panel:#25221e; --texto:#ece6dc; --suave:#a59c8f; --borde:#3d3832; --acento:#c98a4b;
-            --acento-texto:#1b1916; --ok:#6cc17a; --ok-fondo:#1f3324; --error:#e07a68; --error-fondo:#3a211c; --hueco:#332f29; }
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--fondo); color:var(--texto); font:15px/1.45 system-ui, sans-serif; }
-  header { padding:12px 20px; border-bottom:1px solid var(--borde); display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; }
-  header h1 { font-size:18px; margin:0; }
-  header span { color:var(--suave); font-size:13px; }
-  main { display:grid; grid-template-columns:minmax(260px, 340px) 1fr; gap:20px; padding:20px; align-items:start; }
-  @media (max-width: 900px) { main { grid-template-columns:1fr; padding:12px; } }
-  section, aside { background:var(--panel); border:1px solid var(--borde); border-radius:8px; padding:16px; min-width:0; }
-  .derecha { display:grid; gap:20px; min-width:0; }
-  h2 { font-size:15px; margin:0 0 10px; }
-  h3 { font-size:14px; margin:14px 0 6px; }
-  label { display:block; font-size:13px; color:var(--suave); margin:10px 0 4px; }
-  input, select, textarea, button { font:inherit; color:inherit; }
-  input, select, textarea { width:100%; background:var(--fondo); border:1px solid var(--borde); border-radius:6px; padding:6px 8px; }
-  textarea { resize:vertical; }
-  button { border:1px solid var(--borde); background:var(--fondo); border-radius:6px; padding:6px 12px; cursor:pointer; }
-  button.principal { background:var(--acento); color:var(--acento-texto); border-color:var(--acento); font-weight:600; }
-  button:disabled { opacity:.5; cursor:default; }
-  small, .suave { color:var(--suave); font-size:12px; }
-  .fila { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-
-  /* columna de elementos */
-  #lista { max-height:min(62vh, 560px); overflow:auto; border:1px solid var(--borde); border-radius:6px; margin-top:8px; }
-  @media (max-width: 900px) { #lista { max-height:300px; } }
-  .elemento { display:flex; gap:10px; align-items:center; padding:6px 8px; cursor:pointer; border-bottom:1px solid var(--borde); }
-  .elemento:last-child { border-bottom:0; }
-  .elemento:hover { background:var(--fondo); }
-  .elemento.activo { background:var(--hueco); box-shadow:3px 0 0 var(--acento) inset; }
-  .miniatura { width:48px; height:48px; border-radius:5px; flex:none; object-fit:cover; background:var(--hueco); display:block; }
-  .elemento .nombre { font-size:14px; word-break:break-word; }
-  .marcas { display:flex; gap:6px; flex-wrap:wrap; font-size:12px; color:var(--suave); }
-  .marcas .eleg { color:var(--ok); font-weight:600; }
-  #nuevoForm { margin-top:8px; padding:10px; border:1px dashed var(--borde); border-radius:6px; }
-
-  /* ficha */
-  .cabecera { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
-  .cabecera img { max-width:200px; max-height:140px; border-radius:6px; border:1px solid var(--borde); cursor:zoom-in; display:block; }
-  .cabecera .hueco { width:120px; height:90px; border-radius:6px; background:var(--hueco); display:flex; align-items:center; justify-content:center; text-align:center; padding:6px; }
-  .cabecera h2 { font-size:18px; margin:0 0 2px; word-break:break-word; }
-  #perfiles { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
-  #perfiles button { display:flex; flex-direction:column; align-items:flex-start; line-height:1.25; }
-  #perfiles button.activo { background:var(--acento); color:var(--acento-texto); border-color:var(--acento); }
-  #perfiles button small { color:inherit; opacity:.8; }
-  #prompt { min-height:200px; font-family:ui-monospace, monospace; font-size:13px; }
-  .linea-fuente { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:4px; }
-  .compacto { display:grid; grid-template-columns:auto auto 1fr; gap:10px; align-items:end; margin-top:6px; }
-  .compacto label { margin:0 0 4px; }
-  .compacto input[type=number] { width:96px; }
-  .semilla { display:flex; gap:6px; }
-  #refBloque { margin-top:10px; }
-  #refBloque label { display:flex; gap:8px; align-items:center; color:inherit; margin:0; font-size:14px; }
-  #refBloque input { width:auto; }
-  #refPrevia { margin-top:8px; max-width:100%; max-height:200px; border-radius:6px; border:1px solid var(--borde); cursor:zoom-in; display:block; }
-  #generar { width:100%; padding:10px; margin-top:14px; }
-
-  /* progreso */
-  #progreso { margin-top:12px; }
-  .barra { height:12px; background:var(--hueco); border-radius:6px; overflow:hidden; }
-  .barra div { height:100%; width:0; background:var(--acento); transition:width .8s linear; }
-  #progresoTexto { font-size:13px; margin-top:6px; color:var(--suave); }
-  .aviso { padding:10px 12px; border-radius:6px; font-size:14px; margin-top:12px; }
-  .aviso.ok { background:var(--ok-fondo); color:var(--ok); }
-  .aviso.error { background:var(--error-fondo); color:var(--error); }
-  .aviso pre { white-space:pre-wrap; font-size:12px; max-height:240px; overflow:auto; color:var(--texto); margin:6px 0 0; }
-
-  /* galería */
-  .barra-galeria { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-  .barra-galeria select { width:auto; }
-  #galeria { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
-  .tarjeta { border:1px solid var(--borde); border-radius:8px; overflow:hidden; background:var(--fondo); position:relative; min-width:0; }
-  .tarjeta.elegida { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok) inset; }
-  .tarjeta.juego { border-style:dashed; }
-  .tarjeta img { width:100%; display:block; background:var(--hueco); cursor:zoom-in; }
-  .tarjeta .sin-imagen { padding:30px; text-align:center; color:var(--error); font-size:13px; }
-  .tarjeta .cuerpo { padding:10px; }
-  .distintivo { position:absolute; top:8px; left:8px; background:var(--ok); color:var(--acento-texto); font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px; }
-  .distintivo.neutro { background:var(--acento); }
-  .tarjeta .titulo { font-weight:600; font-size:14px; }
-  .tarjeta .datos { font-size:12px; color:var(--suave); margin:2px 0 8px; }
-  .tarjeta textarea { min-height:48px; font-size:13px; }
-  .tarjeta .botones { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
-  .tarjeta details { font-size:12px; margin-top:8px; }
-  .tarjeta details pre { white-space:pre-wrap; font-size:12px; margin:6px 0 0; }
-  .ok { color:var(--ok); font-size:12px; }
-  #grande { position:fixed; inset:0; background:#000d; display:none; align-items:center; justify-content:center; gap:12px; cursor:zoom-out; flex-wrap:wrap; padding:12px; overflow:auto; }
-  #grande figure { margin:0; text-align:center; color:#eee; font-size:13px; }
-  #grande img { max-width:min(96vw, 48vw); max-height:88vh; display:block; margin:0 auto 4px; }
-  #grande.solo img { max-width:96vw; }
-  @media (max-width: 900px) { #grande img, #grande.solo img { max-width:94vw; max-height:44vh; } #grande.solo img { max-height:88vh; } }
-</style>
+<!-- CFG-43: interfaz local del generador de imágenes, por elemento; la sirve servidor.py (image-generator/abrir.sh).
+     IMG-41: base de diseño de GVIG (ui/css, ui/js), con la paleta de Tarkor. Sin estilos, scripts ni manejadores en línea (CSP). -->
+<link rel="stylesheet" href="/ui/css/tokens.css">
+<link rel="stylesheet" href="/ui/css/base.css">
+<link rel="stylesheet" href="/ui/css/layout.css">
+<link rel="stylesheet" href="/ui/css/components.css">
+<link rel="stylesheet" href="/ui/css/app.css">
+<script type="module" src="/ui/js/app.js"></script>
 </head>
 <body>
-<header><h1>Generador de imágenes</h1><span id="mundo"></span></header>
-<main>
-  <aside>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header class="app-header">
+  <a class="brand" href="/"><span>Generador de imágenes</span></a>
+  <div class="crumbs"><span id="mundo" class="small muted"></span></div>
+  <div class="header-tools">
+    <button type="button" class="btn btn-icon" id="settings-btn" popovertarget="settings" aria-label="Ajustes">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    </button>
+  </div>
+  <div id="settings" class="settings-menu" popover role="group" aria-labelledby="settings-title">
+    <h2 id="settings-title">Ajustes</h2>
+    <label for="theme">Tema</label>
+    <select id="theme" class="select-inline">
+      <option value="auto">Automático</option>
+      <option value="dark">Oscuro</option>
+      <option value="light">Claro</option>
+    </select>
+    <label for="font-scale">Talla de texto</label>
+    <select id="font-scale" class="select-inline">
+      <option value="normal">Normal</option>
+      <option value="large">Grande</option>
+      <option value="xlarge">Muy grande</option>
+    </select>
+  </div>
+</header>
+
+<main id="main" class="app-main pantalla" tabindex="-1">
+  <aside class="card columna">
     <h2>Elemento</h2>
-    <select id="categoria" aria-label="Categoría"></select>
-    <input id="filtro" placeholder="Filtrar por nombre…" autocomplete="off" style="margin-top:8px">
-    <div id="avisoLista" class="suave"></div>
-    <div id="lista"></div>
-    <button id="nuevo" style="margin-top:8px;width:100%">+ Elemento nuevo</button>
-    <div id="nuevoForm" hidden>
-      <div class="suave">Para un prompt pegado de algo que aún no está en la enciclopedia.</div>
-      <label for="nuevoTipo">Categoría (tipo)</label><input id="nuevoTipo" list="tipos" placeholder="fauna"><datalist id="tipos"></datalist>
-      <label for="nuevoSlug">Nombre (slug)</label><input id="nuevoSlug" placeholder="nievon">
-      <button id="nuevoOk" class="principal" style="margin-top:10px;width:100%">Usar este elemento</button>
-      <div id="nuevoError" class="suave"></div>
+    <div class="stack">
+      <select id="categoria" aria-label="Categoría"></select>
+      <input id="filtro" type="search" placeholder="Filtrar por nombre…" autocomplete="off" aria-label="Filtrar por nombre">
+    </div>
+    <div id="avisoLista" class="hint"></div>
+    <div id="lista" class="lista"></div>
+    <button id="nuevo" type="button" class="btn ancho">+ Elemento nuevo</button>
+    <div id="nuevoForm" class="nuevo-form stack" hidden>
+      <div class="hint">Para un prompt pegado de algo que aún no está en la enciclopedia.</div>
+      <div class="field"><label for="nuevoTipo">Categoría (tipo)</label><input id="nuevoTipo" type="text" list="tipos" placeholder="fauna"><datalist id="tipos"></datalist></div>
+      <div class="field"><label for="nuevoSlug">Nombre (slug)</label><input id="nuevoSlug" type="text" placeholder="nievon"></div>
+      <button id="nuevoOk" type="button" class="btn btn-primary ancho">Usar este elemento</button>
+      <div id="nuevoError" class="field-error"></div>
     </div>
   </aside>
 
   <div class="derecha">
-    <section id="ficha" hidden>
+    <section id="ficha" class="card" hidden>
       <div class="cabecera">
         <div id="fichaImagen"></div>
-        <div><h2 id="fichaNombre"></h2><div class="suave" id="fichaDetalle"></div></div>
+        <div><h2 id="fichaNombre"></h2><div class="hint" id="fichaDetalle"></div></div>
       </div>
       <h3>Perfil</h3>
-      <div id="perfiles"></div>
-      <label for="prompt">Prompt (pégalo o edítalo)</label>
-      <textarea id="prompt" spellcheck="false"></textarea>
-      <div class="linea-fuente"><small id="fuente">Pegado</small><button id="volver" hidden>Volver al de la enciclopedia</button></div>
-      <div class="compacto">
-        <div><label for="semilla">Semilla</label>
-          <div class="semilla"><input id="semilla" type="number" value="42" min="0"><button id="azar" title="Semilla al azar">🎲</button></div></div>
-        <div><label for="pasos">Pasos</label><input id="pasos" type="number" value="6" min="1" max="20"></div>
-        <span></span>
+      <div id="perfiles" class="perfiles"></div>
+      <div class="field"><label for="prompt">Prompt (pégalo o edítalo)</label>
+        <textarea id="prompt" spellcheck="false"></textarea></div>
+      <div class="row-between linea-fuente"><span class="hint" id="fuente">Pegado</span><button id="volver" type="button" class="btn" hidden>Volver al de la enciclopedia</button></div>
+      <div class="row compacto">
+        <div class="field"><label for="semilla">Semilla</label>
+          <div class="with-button"><input id="semilla" type="number" value="42" min="0"><button id="azar" type="button" class="btn btn-icon" title="Semilla al azar" aria-label="Semilla al azar">🎲</button></div></div>
+        <div class="field"><label for="pasos">Pasos</label><input id="pasos" type="number" value="6" min="1" max="20"></div>
       </div>
-      <div id="refBloque" hidden>
-        <label><input type="checkbox" id="usarRef"> Usar la imagen actual del juego como referencia <small id="refNombre"></small></label>
-        <img id="refPrevia" alt="Imagen de referencia" hidden>
+      <div id="refBloque" class="ref-bloque stack" hidden>
+        <label class="check" for="usarRef"><input type="checkbox" id="usarRef"> Usar la imagen actual del juego como referencia <span class="hint" id="refNombre"></span></label>
+        <img id="refPrevia" class="ampliable ref-previa" alt="Imagen de referencia" hidden>
       </div>
-      <button class="principal" id="generar">Generar imagen</button>
+      <button class="btn btn-primary ancho" id="generar" type="button">Generar imagen</button>
       <div id="progreso" hidden>
-        <div class="barra"><div id="relleno"></div></div>
-        <div id="progresoTexto"></div>
+        <progress id="relleno" max="100" value="2"></progress>
+        <div id="progresoTexto" class="hint"></div>
       </div>
-      <div id="resultado" class="aviso" hidden></div>
+      <div id="resultado" class="notice" hidden></div>
     </section>
 
-    <section id="vacio"><h2>Elige un elemento</h2><p class="suave">Escoge uno de la lista (o crea uno nuevo) para ver su ficha, generar y comparar sus imágenes.</p></section>
+    <section id="vacio" class="card"><h2>Elige un elemento</h2><p class="muted">Escoge uno de la lista (o crea uno nuevo) para ver su ficha, generar y comparar sus imágenes.</p></section>
 
-    <section id="galeriaSeccion" hidden>
-      <div class="barra-galeria"><h2 style="margin:0">Imágenes del elemento</h2>
-        <select id="filtroPerfil" aria-label="Filtrar por perfil"></select>
-        <small>Nota de cada imagen → notas.md · «Elegir esta» → generated/&lt;tipo&gt;/&lt;slug&gt;/&lt;slug&gt;-&lt;perfil&gt;.png</small></div>
-      <div id="avisoGaleria" class="aviso ok" hidden></div>
-      <div id="galeria"></div>
+    <section id="galeriaSeccion" class="card" hidden>
+      <div class="row barra-galeria"><h2>Imágenes del elemento</h2>
+        <select id="filtroPerfil" class="select-inline" aria-label="Filtrar por perfil"></select>
+        <span class="hint">Nota de cada imagen → notas.md · «Elegir esta» → generated/&lt;tipo&gt;/&lt;slug&gt;/&lt;slug&gt;-&lt;perfil&gt;.png</span></div>
+      <div id="avisoGaleria" class="notice notice-ok" hidden></div>
+      <div id="galeria" class="galeria"></div>
     </section>
   </div>
 </main>
-<div id="grande"></div>
-<script>
-const $ = (id) => document.getElementById(id);
-const TAMANOS = { banner: '1280×512', thumbnail: '768×768', mapa: '832×624', icono: '512×512' };
-let elementos = [], actual = null, perfil = null, cargado = null, referencia = null, sondeo = null, esperaRef = null, perfilesBD = {};
 
-function h(tag, props, ...hijos) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(props || {})) { if (k === 'class') e.className = v; else if (k.startsWith('on')) e[k] = v; else e.setAttribute(k, v); }
-  for (const x of hijos.flat()) if (x !== null && x !== undefined) e.append(x);
-  return e;
-}
-async function api(ruta, cuerpo) {
-  const r = await fetch(ruta, cuerpo === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
-  const datos = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(datos.error || `error ${r.status}`);
-  return datos;
-}
-const q = encodeURIComponent;
-function guardar() { try { localStorage.setItem('generador-cfg43', JSON.stringify({ tipo: actual && actual.tipo, slug: actual && actual.slug, perfil })); } catch {} }
-function recordado() { try { return JSON.parse(localStorage.getItem('generador-cfg43') || 'null') || {}; } catch { return {}; } }
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<div id="alerts" class="sr-only" role="alert" aria-live="assertive"></div>
 
-/* ---------- ampliar ---------- */
-function ampliar(src, titulo, juego) {
-  const g = $('grande'); g.innerHTML = '';
-  g.className = juego ? '' : 'solo';
-  g.append(h('figure', {}, h('img', { src, alt: '' }), titulo));
-  if (juego) g.append(h('figure', {}, h('img', { src: juego, alt: '' }), 'Actual del juego'));
-  g.style.display = 'flex';
-}
-$('grande').onclick = () => { $('grande').style.display = 'none'; };
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('grande').style.display = 'none'; });
-
-/* ---------- lista de elementos ---------- */
-async function cargarElementos() {
-  const r = await api('/api/elementos');
-  elementos = r.elementos;
-  $('avisoLista').textContent = r.aviso || '';
-  const sel = $('categoria'), previa = sel.value;
-  const tipos = [...new Set(elementos.map((e) => e.tipo))].sort();
-  sel.innerHTML = ''; sel.add(new Option('Todas las categorías', ''));
-  for (const t of tipos) sel.add(new Option(`${t} (${elementos.filter((e) => e.tipo === t).length})`, t));
-  sel.value = tipos.includes(previa) ? previa : '';
-  $('tipos').replaceChildren(...tipos.map((t) => new Option('', t)));
-  pintarLista();
-}
-function pintarLista() {
-  const cat = $('categoria').value, texto = $('filtro').value.trim().toLowerCase();
-  const vistos = elementos.filter((e) => (!cat || e.tipo === cat) && (!texto || `${e.tipo} ${e.slug} ${e.nombre || ''}`.toLowerCase().includes(texto)));
-  const l = $('lista'); l.innerHTML = '';
-  for (const e of vistos) {
-    const marcas = h('div', { class: 'marcas' });
-    if (e.intentos) marcas.append(h('span', {}, `${e.intentos} intento${e.intentos === 1 ? '' : 's'}`));
-    if (e.elegidas.length) marcas.append(h('span', { class: 'eleg' }, '✓ elegida'));
-    const miniatura = e.juego ? h('img', { class: 'miniatura', loading: 'lazy', alt: '', src: `/ref/${e.juego}` }) : h('div', { class: 'miniatura', title: 'Sin imagen en el juego' });
-    l.append(h('div', { class: 'elemento' + (actual && actual.tipo === e.tipo && actual.slug === e.slug ? ' activo' : ''), onclick: () => elegirElemento(e.tipo, e.slug) },
-      miniatura, h('div', {}, h('div', { class: 'nombre' }, (e.nombre || e.slug) + (cat ? '' : ` · ${e.tipo}`)), e.nombre ? h('small', {}, e.slug) : '', marcas)));
-  }
-  if (!vistos.length) l.append(h('div', { class: 'elemento' }, h('small', {}, elementos.length ? 'Sin coincidencias.' : 'Aún no hay elementos: crea uno nuevo o genera sus prompts en la enciclopedia.')));
-}
-$('categoria').onchange = pintarLista;
-$('filtro').oninput = pintarLista;
-$('nuevo').onclick = () => { $('nuevoForm').hidden = !$('nuevoForm').hidden; };
-$('nuevoOk').onclick = () => {
-  const tipo = $('nuevoTipo').value.trim(), slug = $('nuevoSlug').value.trim();
-  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(tipo) || !/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(slug)) { $('nuevoError').textContent = 'Solo letras sin tilde, cifras, guiones y _.'; return; }
-  $('nuevoError').textContent = ''; $('nuevoForm').hidden = true;
-  elegirElemento(tipo, slug);
-};
-
-/* ---------- ficha del elemento ---------- */
-// El perfil que busca el juego para los tipos que no usan miniatura y banner (imageAssets.ts: zoneMapImageUrl, iconoUrlFor).
-const PERFIL_DEL_TIPO = { zona: 'mapa', clase: 'icono', especializacion: 'icono' };
-function datosElemento() { return elementos.find((e) => e.tipo === actual.tipo && e.slug === actual.slug) || { tipo: actual.tipo, slug: actual.slug, perfiles: [], intentos: 0, elegidas: [], juego: null }; }
-
-async function elegirElemento(tipo, slug, perfilInicial) {
-  const cambia = !actual || actual.tipo !== tipo || actual.slug !== slug;
-  actual = { tipo, slug };
-  const e = datosElemento();
-  perfilesBD = Object.fromEntries(e.perfiles.map((p) => [p.perfil, p.usado]));
-  $('vacio').hidden = true; $('ficha').hidden = false; $('galeriaSeccion').hidden = false;
-  $('fichaNombre').textContent = slug;
-  $('fichaDetalle').textContent = `${tipo} · ${e.intentos} intento${e.intentos === 1 ? '' : 's'}${e.elegidas.length ? ' · elegida: ' + e.elegidas.join(', ') : ''}`;
-  const caja = $('fichaImagen'); caja.innerHTML = '';
-  if (e.juego) caja.append(h('img', { src: `/ref/${e.juego}`, alt: 'Imagen actual del juego', title: 'Imagen actual del juego (clic para ampliar)', onclick: () => ampliar(`/ref/${e.juego}`, 'Actual del juego') }));
-  else caja.append(h('div', { class: 'hueco suave' }, 'El juego aún no tiene imagen'));
-  if (cambia) { $('prompt').value = ''; cargado = null; }
-  pintarPerfiles();
-  const inicial = perfilInicial || (!cambia ? perfil : null) || (recordado().tipo === tipo && recordado().slug === slug ? recordado().perfil : null)
-    || (e.perfiles[0] && e.perfiles[0].perfil) || PERFIL_DEL_TIPO[tipo] || 'thumbnail';
-  await seleccionarPerfil(inicial, cambia);
-  pintarLista();
-  await pintarGaleria();
-}
-function pintarPerfiles() {
-  const caja = $('perfiles'); caja.innerHTML = '';
-  for (const p of Object.keys(TAMANOS)) {
-    const nota = p in perfilesBD ? (perfilesBD[p] ? 'prompt usado' : 'prompt base') : 'sin prompt en la enciclopedia';
-    caja.append(h('button', { class: p === perfil ? 'activo' : '', onclick: () => seleccionarPerfil(p, true) }, p, h('small', {}, `${TAMANOS[p]} · ${nota}`)));
-  }
-  const filtro = $('filtroPerfil'), previo = filtro.value;
-  filtro.innerHTML = ''; filtro.add(new Option('Todos los perfiles', ''));
-  for (const p of Object.keys(TAMANOS)) filtro.add(new Option(p, p));
-  filtro.value = previo;
-}
-async function seleccionarPerfil(p, traer) {
-  perfil = p; guardar(); pintarPerfiles();
-  if (traer && p in perfilesBD) await traerPrompt();
-  else marcarFuente();
-  buscarReferencia();
-}
-async function traerPrompt() {
-  const pide = { tipo: actual.tipo, slug: actual.slug, perfil };  // si cambias de perfil antes de que llegue, se descarta
-  const vigente = () => actual.tipo === pide.tipo && actual.slug === pide.slug && perfil === pide.perfil;
-  try {
-    const r = await api(`/api/prompt?tipo=${q(pide.tipo)}&slug=${q(pide.slug)}&perfil=${q(pide.perfil)}`);
-    if (!vigente()) return;
-    $('prompt').value = r.prompt;
-    cargado = { ...pide, prompt: r.prompt, fuente: r.fuente };
-    marcarFuente();
-  } catch (err) { if (vigente()) $('fuente').textContent = err.message; }
-}
-function marcarFuente() {
-  const igual = !!cargado && cargado.prompt === $('prompt').value && cargado.tipo === actual.tipo && cargado.slug === actual.slug && cargado.perfil === perfil;
-  $('fuente').textContent = igual ? `Prompt ${cargado.fuente} de la enciclopedia (${cargado.tipo}/${cargado.slug}/${cargado.perfil})`
-    : (cargado && cargado.perfil === perfil) ? 'Editado aquí: se generará con este texto (el registro dirá «pegado»)' : 'Pegado';
-  $('volver').hidden = !(perfil in perfilesBD) || igual;
-  return igual;
-}
-$('prompt').addEventListener('input', marcarFuente);
-$('volver').onclick = traerPrompt;
-$('azar').onclick = () => { $('semilla').value = Math.floor(Math.random() * 1e6); };
-
-/* ---------- referencia ---------- */
-async function buscarReferencia() {
-  referencia = null;
-  if (actual) { try { const r = await api(`/api/referencia?tipo=${q(actual.tipo)}&slug=${q(actual.slug)}&perfil=${q(perfil)}`); if (r.ruta) referencia = r; } catch {} }
-  $('refBloque').hidden = !referencia;
-  if (referencia) $('refNombre').textContent = referencia.perfil === perfil ? `(${referencia.ruta})` : `(${referencia.ruta}: de otro perfil)`;
-  pintarReferencia();
-}
-function pintarReferencia() {
-  const ver = referencia && $('usarRef').checked;
-  $('refPrevia').hidden = !ver;
-  if (ver) $('refPrevia').src = `/ref/${referencia.ruta}`;
-}
-$('usarRef').onchange = pintarReferencia;
-$('refPrevia').onclick = () => ampliar($('refPrevia').src, 'Referencia');
-
-/* ---------- generar y progreso ---------- */
-function mostrarResultado(texto, ok, detalle) {
-  const r = $('resultado'); r.hidden = !texto; r.className = 'aviso ' + (ok ? 'ok' : 'error'); r.innerHTML = '';
-  if (!texto) return;
-  r.append(texto);
-  if (detalle) r.append(h('details', {}, h('summary', {}, 'Ver el final del log'), h('pre', {}, detalle)));
-}
-async function generar() {
-  const peticion = { tipo: actual.tipo, slug: actual.slug, perfil, prompt: $('prompt').value, desdeBase: marcarFuente(),
-    semilla: Number($('semilla').value), pasos: Number($('pasos').value), usarReferencia: !$('refBloque').hidden && $('usarRef').checked };
-  mostrarResultado('');
-  try { await api('/api/generar', peticion); $('generar').disabled = true; $('progreso').hidden = false; $('relleno').style.width = '2%'; $('progresoTexto').textContent = 'Empezando…'; seguir(); }
-  catch (err) { mostrarResultado(err.message, false); }
-}
-$('generar').onclick = generar;
-
-function seguir() {
-  clearTimeout(sondeo);
-  sondeo = setTimeout(async () => {
-    let e;
-    try { e = await api('/api/estado'); } catch (err) { mostrarResultado('El servidor no responde: ' + err.message, false); $('generar').disabled = false; return; }
-    if (e.enMarcha) {
-      $('progreso').hidden = false;
-      const resto = Math.max(0, e.estimado - e.segundos);
-      $('relleno').style.width = Math.max(2, Math.min(97, 100 * e.segundos / e.estimado)) + '%';
-      const fase = e.paso ? `paso ${e.paso}/${e.pasos}` : e.progreso;
-      $('progresoTexto').textContent = `${fase[0].toUpperCase() + fase.slice(1)} · ${e.segundos} s · ${resto ? 'quedan ~' + resto + ' s' : 'casi lista'}`;
-      return seguir();
-    }
-    $('generar').disabled = false; $('progreso').hidden = true;
-    if (e.rc === 0) mostrarResultado(`Lista en ${e.segundos} s: ${e.nombre}`, true);
-    else if (e.rc !== null && e.rc !== undefined) mostrarResultado(`Falló (salida ${e.rc}) tras ${e.segundos} s: ${e.salida.slice(-3).join(' · ')}`, false, e.logFinal || e.salida.join('\n'));
-    await cargarElementos();
-    if (actual) { const a = actual; await elegirElemento(a.tipo, a.slug, perfil); }
-  }, 1000);
-}
-
-/* ---------- galería ---------- */
-function datosIntento(f) {
-  return `${f.perfil} · semilla ${f.semilla} · ${f.pasos} pasos · ${f.conReferencia ? 'con referencia' : 'sin referencia'} · ${f.segundos} s · prompt ${f.prompt} · ${f.fecha.replace('T', ' ').slice(0, 16)}`;
-}
-async function pintarGaleria() {
-  const a = actual, g = $('galeria');
-  let filas;
-  try { filas = await api(`/api/elemento?tipo=${q(a.tipo)}&slug=${q(a.slug)}`); } catch (err) { g.textContent = err.message; return; }
-  if (!actual || actual.tipo !== a.tipo || actual.slug !== a.slug) return;
-  const filtro = $('filtroPerfil').value;
-  let juego = null;
-  try { const r = await api(`/api/referencia?tipo=${q(a.tipo)}&slug=${q(a.slug)}&perfil=${q(filtro || perfil)}`); if (r.ruta) juego = r; } catch {}
-  const juegoSrc = juego ? `/ref/${juego.ruta}` : null;
-  g.innerHTML = '';
-  if (juego) g.append(h('div', { class: 'tarjeta juego' }, h('span', { class: 'distintivo neutro' }, 'Actual del juego'),
-    h('img', { src: juegoSrc, alt: '', onclick: () => ampliar(juegoSrc, 'Actual del juego') }),
-    h('div', { class: 'cuerpo' }, h('div', { class: 'titulo' }, 'Actual del juego'), h('div', { class: 'datos' }, `${juego.ruta}${juego.perfil === (filtro || perfil) ? '' : ' (de otro perfil)'}`))));
-  const vistas = filas.filter((f) => !filtro || f.perfil === filtro);
-  vistas.sort((x, y) => Number(y.elegida) - Number(x.elegida));  // la elegida destacada, primero (estable)
-  if (!vistas.length) g.append(h('p', { class: 'suave' }, 'Aún no hay imágenes de este elemento: genera la primera.'));
-  for (const f of vistas) g.append(tarjeta(f, juegoSrc));
-}
-function tarjeta(f, juegoSrc) {
-  const a = actual, src = `/img/${q(a.tipo)}/${q(a.slug)}/${q(f.nombre)}.png?${q(f.fecha)}`;
-  const nota = h('textarea', { placeholder: 'Qué te parece, qué sobra, qué falta…' }); nota.value = f.nota;
-  const ok = h('span', { class: 'ok' });
-  nota.onchange = async () => { try { await api('/api/nota', { tipo: a.tipo, slug: a.slug, nombre: f.nombre, texto: nota.value }); ok.textContent = 'guardada ✓'; } catch (err) { ok.textContent = err.message; } };
-  nota.oninput = () => { ok.textContent = ''; };
-  const elegir = h('button', { class: 'principal', onclick: async () => {
-    try { const r = await api('/api/elegir', { tipo: a.tipo, slug: a.slug, nombre: f.nombre }); await cargarElementos(); await elegirElemento(a.tipo, a.slug, perfil);
-      const av = $('avisoGaleria'); av.hidden = false; av.className = 'aviso ok'; av.textContent = `Copiada a image-generator/${r.destino}. Para verla en el juego, cópiala a backend/uploads/images/${a.tipo}/.`; }
-    catch (err) { const av = $('avisoGaleria'); av.hidden = false; av.className = 'aviso error'; av.textContent = err.message; } } }, f.elegida ? '✓ Elegida (repetir)' : 'Elegir esta');
-  elegir.disabled = !f.imagen; elegir.title = f.destino;
-  const reutilizar = h('button', { onclick: () => {
-    perfil = f.perfil; pintarPerfiles(); $('prompt').value = f.textoPrompt; $('semilla').value = f.semilla; $('pasos').value = f.pasos;
-    cargado = null; marcarFuente(); guardar(); buscarReferencia(); $('ficha').scrollIntoView({ behavior: 'smooth' }); } }, 'Reutilizar prompt y semilla');
-  return h('div', { class: 'tarjeta' + (f.elegida ? ' elegida' : '') },
-    f.elegida ? h('span', { class: 'distintivo' }, '✓ Elegida') : null,
-    f.imagen ? h('img', { src, loading: 'lazy', alt: '', onclick: () => ampliar(src, f.nombre, juegoSrc) }) : h('div', { class: 'sin-imagen' }, `Sin imagen (salida ${f.salida})`),
-    h('div', { class: 'cuerpo' }, h('div', { class: 'titulo' }, f.perfil, h('small', {}, ' · ' + f.nombre)), h('div', { class: 'datos' }, datosIntento(f)),
-      nota, h('div', { class: 'botones' }, elegir, reutilizar, ok),
-      h('details', {}, h('summary', {}, 'Prompt'), h('pre', {}, f.textoPrompt))));
-}
-$('filtroPerfil').onchange = pintarGaleria;
-
-/* ---------- inicio ---------- */
-async function iniciar() {
-  const ini = await api('/api/inicio');
-  $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
-  await cargarElementos();
-  const e = await api('/api/estado');
-  const r = recordado();
-  if (e.enMarcha) { $('generar').disabled = true; $('progreso').hidden = false; await elegirElemento(e.tipo, e.slug, e.perfil); seguir(); }
-  else if (r.tipo && r.slug) await elegirElemento(r.tipo, r.slug, r.perfil);
-}
-iniciar().catch((err) => { $('avisoLista').textContent = err.message; });
-</script>
+<dialog id="lightbox" class="lightbox" aria-label="Imagen ampliada">
+  <img id="lightbox-img" alt="">
+  <div class="bar"><span id="lightbox-caption"></span><button type="button" class="btn" id="lightbox-close">Cerrar</button></div>
+</dialog>
+<dialog id="grande" class="grande" aria-label="Comparar con la imagen actual del juego"></dialog>
 </body>
 </html>

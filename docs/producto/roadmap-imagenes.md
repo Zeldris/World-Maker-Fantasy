@@ -79,13 +79,17 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   prompt y la imagen aceptada (hoy `planos.sh` corre la cadena de punta a punta), y `camino.json` por elemento con
   variantes, fases aceptadas, prompt, semilla y origen. Al avanzar se borra la imagen de los intentos no aceptados y
   quedan su prompt y su semilla. Sustituye a la entrega E1 y a `IMG-10`. **L**
-- **IMG-41 · Base de interfaz con lo rescatado de GVIG** [A] (usuaria, 2026-11-06): test de navegador sin Playwright,
+- **IMG-41 · Base de interfaz con lo rescatado de GVIG** [A] 🚧 en curso (usuaria, 2026-11-06): test de navegador sin Playwright,
   API con simulador `?mock=1`, cola, atajos, trampa de foco y chip de medida de `galivelop-image-generator`, adaptados a
   la hoja de estilos de Tarkor, sobre `servidor.py` e `index.html`. Se copia aquí y se conserva su licencia MIT; ese repo
   no se toca. **M** **Diseño compartido** (usuaria, 2026-11-07: «que las dos interfaces compartan diseño aunque luego
   tengan conceptos diferentes»): la interfaz de WMF toma la estructura y los componentes de GVIG con los mismos nombres
   de tokens CSS, y cada producto cambia solo los valores (paleta de Tarkor frente a la violeta de Galivelop) y sus
   pantallas de concepto (elemento, fases y variantes aquí; pedido, intento y montaje allí). Detalle en el diseño §3.4.
+  **Parte 1 hecha (2026-11-07):** `interfaz/ui/` con tokens, CSS, fuentes y utilidades (dom, foco, toast, confirm,
+  lightbox, tema, talla) de GVIG y su MIT, paleta de Tarkor con contraste por test; `index.html` sin estilos ni
+  scripts en línea; `/ui/` con CSP; `tools/qa/tests/browser.py` y `test_interfaz_ui.py`. **Queda:** `api.js` y
+  `?mock=1`, cola, atajos y gamepad, núcleo del servidor separado del adaptador; revisar a ojo los dos temas.
 
 ### Bloque D · Pantalla del elemento
 

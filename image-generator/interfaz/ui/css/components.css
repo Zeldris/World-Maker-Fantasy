@@ -1,0 +1,35 @@
+/* Copiado de galivelop-image-generator (MIT), ver ui/LICENSE-GVIG. */
+/* Componentes genéricos de GVIG: caja de luz, avisos flotantes, atajos, diálogo de confirmación y listas. Lo propio de
+   GVIG (tarjeta de intento, chip de medida, comparar, editor de cajas, nuevo pedido, piezas) no se copia. */
+
+/* caja de luz (tamaño real) */
+.lightbox { padding: 0; max-width: 96vw; max-height: 96vh; background: #000; border: 0; }
+.lightbox img { max-width: 96vw; max-height: calc(96vh - 52px); width: auto; height: auto; object-fit: contain; }
+.lightbox .bar { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--surface); color: var(--text); font-size: 0.8125rem; }
+.lightbox .bar .btn { margin-left: auto; }
+
+/* avisos flotantes (aria-live) */
+.toasts { position: fixed; right: 16px; bottom: 16px; z-index: 40; display: grid; gap: 8px; width: min(92vw, 380px); }
+@media (max-width: 640px) { .toasts { right: 50%; transform: translateX(50%); bottom: auto; top: calc(var(--header-h) + 8px); width: min(94vw, 520px); } }
+.toast { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: var(--r-s); background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text); box-shadow: var(--shadow); font-size: 0.875rem; }
+.toast-ok { border-color: var(--ok); }
+.toast-bad { border-color: var(--bad); }
+.toast .btn { margin-left: auto; min-height: var(--tap); }
+
+/* atajos */
+.shortcuts dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; align-items: center; }
+.shortcuts dt { display: flex; gap: 4px; }
+.shortcuts dd { margin: 0; font-size: 0.875rem; }
+.shortcuts h3 { margin: 8px 0 6px; color: var(--text-2); }
+
+/* diálogo de confirmación, columnas, avisos de campo y listas */
+.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.field-warn { color: var(--warn); font-size: 0.8125rem; }
+dialog.confirm { width: min(92vw, 420px); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 10px 16px; margin: 14px 0 0; align-items: center; }
+.facts dt { color: var(--text-2); font-size: 0.8125rem; font-weight: 500; }
+.facts dd { margin: 0; min-width: 0; }
+.check-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.check-item { display: grid; grid-template-columns: max-content 1fr; gap: 10px; align-items: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-s); background: var(--surface-2); }
+.queue-move { flex-wrap: nowrap; gap: 4px; }
+@media (max-width: 640px) { .cols-2 { grid-template-columns: 1fr; } .facts { grid-template-columns: 1fr; } }

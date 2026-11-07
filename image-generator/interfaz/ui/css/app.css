@@ -1,0 +1,72 @@
+/* Pantalla del elemento del generador de imágenes (CFG-43): lo propio de WMF, sobre los tokens y las utilidades de GVIG
+   (tokens.css, base.css, layout.css, components.css). Nada en línea: la CSP lo prohíbe. */
+
+.pantalla { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; max-width: 1600px; }
+.columna { min-width: 0; display: grid; gap: var(--gap); }
+.derecha { display: grid; gap: 20px; min-width: 0; }
+.derecha > .card { min-width: 0; display: grid; gap: var(--gap); align-content: start; }
+.derecha > .card > h2, .derecha > .card > h3 { margin: 0; }
+@media (max-width: 900px) { .pantalla { grid-template-columns: 1fr; } }
+.ancho { width: 100%; }
+
+/* columna de elementos */
+.lista { max-height: min(62vh, 560px); overflow: auto; border: 1px solid var(--border); border-radius: var(--r-s); }
+@media (max-width: 900px) { .lista { max-height: 300px; } }
+.elemento { display: flex; gap: 10px; align-items: center; min-height: var(--tap); padding: 6px 8px; cursor: pointer; border-bottom: 1px solid var(--border); }
+.elemento:last-child { border-bottom: 0; }
+.elemento:hover { background: var(--surface-2); }
+.elemento.activo { background: var(--accent-soft); box-shadow: 3px 0 0 var(--accent) inset; }
+.miniatura { width: 48px; height: 48px; border-radius: 5px; flex: none; object-fit: cover; background: var(--surface-2); display: block; }
+.elemento .nombre { word-break: break-word; }
+.marcas { display: flex; gap: 6px; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-2); }
+.marcas .eleg { color: var(--ok); font-weight: 600; }
+.nuevo-form { padding: 10px; border: 1px dashed var(--border-strong); border-radius: var(--r-s); }
+
+/* ficha */
+.cabecera { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.cabecera img { max-width: 200px; max-height: 140px; border-radius: 6px; border: 1px solid var(--border); }
+.cabecera .hueco { width: 120px; min-height: 90px; border-radius: 6px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; text-align: center; padding: 6px; }
+.cabecera h2 { font-size: 1.125rem; margin: 0 0 2px; word-break: break-word; }
+.ampliable { cursor: zoom-in; }
+.perfiles { display: flex; gap: 6px; flex-wrap: wrap; }
+.perfiles .btn { flex-direction: column; align-items: flex-start; line-height: 1.25; white-space: normal; text-align: left; }
+.perfiles .btn small { font-weight: 400; opacity: .85; }
+.perfiles .btn[aria-pressed="true"] { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
+#prompt { min-height: 200px; }
+.compacto { align-items: flex-end; }
+.compacto input[type="number"] { width: 96px; }
+.compacto .with-button { grid-template-columns: 96px auto; }
+.ref-bloque { margin-top: 2px; }
+.ref-previa { max-width: 100%; max-height: 200px; border-radius: 6px; border: 1px solid var(--border); }
+#progreso { display: grid; gap: 6px; }
+#resultado { display: block; }
+#resultado pre { white-space: pre-wrap; font-size: 0.75rem; max-height: 240px; overflow: auto; margin: 6px 0 0; }
+
+/* galería */
+.barra-galeria h2 { margin: 0; }
+.barra-galeria .select-inline { width: auto; }
+.galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.tarjeta { border: 1px solid var(--border); border-radius: var(--r-s); overflow: hidden; background: var(--surface-2); position: relative; min-width: 0; }
+.tarjeta.elegida { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok) inset; }
+.tarjeta.juego { border-style: dashed; }
+.tarjeta img { width: 100%; display: block; background: var(--border); }
+.tarjeta .sin-imagen { padding: 30px; text-align: center; color: var(--bad); font-size: 0.8125rem; }
+.tarjeta .cuerpo { padding: 10px; display: grid; gap: 6px; }
+.distintivo { position: absolute; top: 8px; left: 8px; z-index: 1; background: var(--ok); color: var(--on-status); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.distintivo.neutro { background: var(--accent-fill); color: var(--on-accent); }
+.tarjeta .titulo { font-weight: 600; }
+.tarjeta .datos { font-size: 0.75rem; color: var(--text-2); }
+.tarjeta textarea { min-height: var(--tap); font-size: 0.8125rem; font-family: var(--font-body); }
+.tarjeta .botones { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tarjeta details { font-size: 0.75rem; }
+.tarjeta details summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; }
+.tarjeta details pre { white-space: pre-wrap; font-size: 0.75rem; margin: 6px 0 0; }
+.ok { color: var(--ok); font-size: 0.75rem; }
+
+/* imagen ampliada junto a la actual del juego (la sola va por lightbox.js) */
+dialog.grande { padding: 12px; max-width: 98vw; max-height: 96vh; }
+dialog.grande[open] { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.grande figure { margin: 0; text-align: center; color: var(--text); font-size: 0.8125rem; }
+.grande img { max-width: min(96vw, 48vw); max-height: 80vh; margin: 0 auto 4px; }
+.grande .btn { flex-basis: 100%; }
+@media (max-width: 900px) { .grande img { max-width: 94vw; max-height: 36vh; } }

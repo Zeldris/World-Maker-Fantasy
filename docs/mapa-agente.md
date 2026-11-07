@@ -243,9 +243,12 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - **Interfaz del generador (`CFG-43`):** la abre `image-generator/abrir.sh` (127.0.0.1:7861). Servidor,
   `image-generator/interfaz/servidor.py`: `catalogo` (la enciclopedia con lo anidado y los enums de clase),
   `elementos` (la lista), `Trabajo.lanzar` (una imagen a la vez), `leer_progreso`, `elegir`. Página,
-  `image-generator/interfaz/index.html`: `elegirElemento`, `traerPrompt`, `pintarGaleria`. Para ver la lista o el
-  progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Test:
-  `python3 -m unittest discover -s tools/qa/tests -p test_interfaz_imagenes.py`.
+  `image-generator/interfaz/index.html` (solo marcado) y `ui/js/app.js`: `elegirElemento`, `traerPrompt`,
+  `pintarGaleria`. Diseño compartido con GVIG (`IMG-41`): tokens y utilidades en `ui/css/` (`app.css` es lo propio),
+  piezas copiadas en `ui/js/` (`dom.js`, `components/`), servidos por `servidor.py#estatico` (`/ui/<ruta>`, con CSP). Para ver la lista o el
+  progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Tests:
+  `python3 -m unittest discover -s tools/qa/tests -p "test_interfaz_*.py"` (`test_interfaz_ui.py` lleva el de navegador,
+  con `tools/qa/tests/browser.py`).
 - **Bocetos por plan corporal (`IMG-24`):** `image-generator/bocetos/plantilla.py#componer` (el SVG desde un plan y
   sus números, escalado al lienzo 1280x512) y `#validar` (cada valor malo, con su motivo); los planes y sus parámetros,
   `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con

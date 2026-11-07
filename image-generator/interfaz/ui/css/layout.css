@@ -1,0 +1,92 @@
+/* Copiado de galivelop-image-generator (MIT), ver ui/LICENSE-GVIG. */
+/* Disposición: cabecera, barra de cola, contenido, pantallas. Pensado para 1280×800 (Deck) y escritorio. */
+
+/* Cabecera de una altura por punto de corte (UI.1): una fila a >640 (marca · migas · herramientas) y dos a ≤640
+   (marca + herramientas; migas en una línea). `--header-h` lo mide app.js (ResizeObserver) para el cajón y el retoque. */
+.app-header {
+  position: sticky; top: 0; z-index: 20;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand crumbs tools";
+  align-items: center; column-gap: 12px;
+  height: var(--header-h-fixed); padding: 0 12px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  --header-h-fixed: 56px;
+}
+.brand { grid-area: brand; display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); min-width: var(--tap); color: var(--text); text-decoration: none; font-family: var(--font-title); font-weight: 700; white-space: nowrap; }
+.brand img { width: 28px; height: 28px; }
+.brand .sigla { color: var(--accent-text); }
+.crumbs { grid-area: crumbs; display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden; white-space: nowrap; font-size: 0.875rem; }
+.crumbs > a, .crumbs > b { flex: 0 1 auto; min-width: var(--tap); padding: 0 8px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: var(--tap); }
+.crumbs > a { color: var(--text-2); }
+.crumbs > b { font-weight: 600; flex-shrink: .4; }
+.crumbs .sep { color: var(--text-2); flex: none; }
+.header-tools { grid-area: tools; display: flex; gap: 6px; align-items: center; justify-content: flex-end; min-width: 0; }
+.header-tools > * { flex: none; }
+.header-tools #queue-pill { flex: 0 1 auto; min-width: 0; }
+.select-inline { min-height: var(--tap); padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--r-s); background: var(--surface-2); color: var(--text); font: 500 0.875rem var(--font-body); }
+
+/* menú «Ajustes»: popover nativo (Esc y clic fuera lo cierran solos) bajo la cabecera, a la derecha */
+.settings-menu {
+  position: fixed; inset: auto; top: calc(var(--header-h) + 6px); right: 12px; margin: 0;
+  width: min(280px, calc(100vw - 24px)); padding: 14px;
+  display: none; gap: 6px; grid-template-columns: 1fr;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--r); box-shadow: var(--shadow);
+}
+.settings-menu:popover-open { display: grid; }
+.settings-menu h2 { margin: 0 0 4px; font-size: 1rem; }
+.settings-menu label { font-size: 0.875rem; color: var(--text-2); margin-top: 6px; }
+.settings-menu .select-inline { width: 100%; }
+
+/* banda de «sin servicio» y errores globales */
+.banner { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--bad); background: var(--surface-2); color: var(--text); }
+.banner .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); flex: none; }
+
+/* barra de cola (pastilla en la cabecera + cajón desplegable) */
+.queue-pill { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-2); color: var(--text); font: 500 0.875rem var(--font-body); cursor: pointer; }
+.queue-pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); flex: none; }
+.queue-pill.is-running .dot { background: var(--ok); animation: pulse 1.6s ease-in-out infinite; }
+.queue-pill progress { width: 70px; height: 6px; }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.queue-drawer {
+  position: fixed; top: var(--header-h); right: 0; bottom: 0; z-index: 30;
+  width: min(100%, 440px); overflow: auto;
+  background: var(--surface); border-left: 1px solid var(--border); box-shadow: var(--shadow);
+  padding: 12px; display: grid; gap: 10px; align-content: start;
+}
+.queue-drawer[hidden] { display: none; }
+.queue-drawer h2 { margin: 0; font-size: 1.125rem; }
+.queue-drawer h2:focus { outline: none; }
+.queue-drawer .row, .queue-drawer .row-between { flex-wrap: wrap; min-width: 0; }
+.queue-drawer .stack { min-width: 0; }
+.queue-entry { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px 10px; align-items: center; padding: 10px; min-width: 0; border: 1px solid var(--border); border-radius: var(--r-s); background: var(--surface-2); }
+.queue-entry.is-running { border-color: var(--ok); }
+.queue-entry.is-failed { border-color: var(--bad); }
+.queue-entry .thumb { width: 64px; height: 40px; object-fit: cover; border-radius: 4px; background: var(--border); }
+.queue-entry .thumb-empty { width: 64px; height: 40px; border-radius: 4px; background: var(--border); }
+.queue-entry .who { font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-entry > .queue-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.queue-entry .what { overflow-wrap: anywhere; font-size: 0.8125rem; color: var(--text-2); }
+.queue-entry progress { height: 6px; margin-top: 4px; }
+
+/* contenido */
+.app-main { padding: 14px 16px 60px; max-width: 1600px; margin: 0 auto; }
+.page-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 14px; }
+.page-head h1 { margin-right: 4px; }
+
+/* pestañas */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.tabs a, .tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 8px 14px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--text-2); font: 500 0.9375rem var(--font-body); text-decoration: none; cursor: pointer; }
+.tabs [aria-selected="true"], .tabs [aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 12px; }
+.filters .field { min-width: 160px; }
+
+@media (max-width: 640px) {
+  .app-header { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 48px 44px; grid-template-areas: "brand tools" "crumbs crumbs"; --header-h-fixed: 92px; }
+  .brand > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .queue-pill { max-width: 100%; }
+  .queue-drawer { width: 100%; border-left: 0; }
+  .queue-pill > span:not(.dot) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .queue-pill progress { display: none; }
+  .app-main { padding: 10px 10px 60px; }
+  .cols-3 { grid-template-columns: 1fr 1fr; }
+}

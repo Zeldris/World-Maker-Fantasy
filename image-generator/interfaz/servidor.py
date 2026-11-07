@@ -18,6 +18,7 @@ API (JSON salvo las imágenes):
   GET  /api/estado                          generación en curso: progreso, paso, pasos, segundos, estimado, rc, logFinal
   GET  /img/<tipo>/<slug>/<nombre>.png      un intento;  GET /elegida/<tipo>/<slug>/<perfil>.png  la elegida
   GET  /ref/<tipo>/<slug>-<perfil>.<ext>    imagen del juego
+  GET  /, /ui/<ruta>                        la página y su CSS/JS/fuentes (solo `interfaz/ui/`), con la CSP de GVIG (IMG-41)
   POST /api/generar {tipo,slug,perfil,semilla,pasos,prompt|desdeBase,usarReferencia}
   POST /api/nota {tipo,slug,nombre,texto};  POST /api/elegir {tipo,slug,nombre}
 
@@ -27,7 +28,7 @@ Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (refere
 """
 import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile, threading, time, unicodedata, urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
@@ -36,6 +37,14 @@ PSQL = shlex.split(os.environ.get('IMG_PSQL', 'podman exec -i tarkor-postgres ps
 MUNDO = os.environ.get('MUNDO', 'helek-sirik')
 API = os.environ.get('IMG_API', 'http://127.0.0.1:3001')
 GENERADO = os.path.join(RAIZ, 'generated')
+# IMG-41: la página se compone de /ui/ (CSS, JS y fuentes propios, base de diseño de GVIG); solo se sirve lo de esa carpeta.
+UI_DIR = os.path.join(AQUI, 'ui')
+TIPOS_UI = {'.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+            '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
+            '.json': 'application/json; charset=utf-8'}
+# La CSP de GVIG (gimg/server.py#STATIC_CSP): nada en línea ni externo.
+STATIC_CSP = ("default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self'; "
+              "frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
 REFERENCIAS = os.environ.get('IMG_REFERENCIAS', os.path.join(RAIZ, 'referencias', 'images'))
 PERFILES = ('banner', 'thumbnail', 'mapa', 'icono')
 SLUG = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]*$')  # el juego respeta las mayúsculas (CAZADOR)
@@ -484,12 +493,16 @@ class Manejador(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
-    def responder(self, codigo, cuerpo, tipo='application/json; charset=utf-8'):
+    def responder(self, codigo, cuerpo, tipo='application/json; charset=utf-8', cabeceras=None):
         datos = cuerpo if isinstance(cuerpo, bytes) else json.dumps(cuerpo, ensure_ascii=False).encode('utf-8')
         self.send_response(codigo)
         self.send_header('Content-Type', tipo)
         self.send_header('Content-Length', str(len(datos)))
-        self.send_header('Cache-Control', 'no-store')
+        cabeceras = cabeceras or {}
+        if 'Cache-Control' not in cabeceras:
+            self.send_header('Cache-Control', 'no-store')
+        for nombre, valor in cabeceras.items():
+            self.send_header(nombre, valor)
         self.end_headers()
         self.wfile.write(datos)
 
@@ -498,6 +511,19 @@ class Manejador(BaseHTTPRequestHandler):
             return self.responder(404, {'error': 'no existe'})
         with open(ruta, 'rb') as f:
             self.responder(200, f.read(), tipo)
+
+    def estatico(self, carpeta, ruta):
+        """Un archivo de `carpeta` (`ui/`, o la de la página) con la CSP de GVIG y `no-cache`. Nunca sale de ella (`..`, rutas absolutas, enlaces)."""
+        base = os.path.realpath(carpeta)
+        destino = os.path.realpath(os.path.join(base, ruta))
+        if not destino.startswith(base + os.sep):
+            return self.responder(403, {'error': 'fuera de la carpeta'})
+        tipo = TIPOS_UI.get(os.path.splitext(destino)[1].lower())
+        if tipo is None or not os.path.isfile(destino):
+            return self.responder(404, {'error': 'no existe'})
+        with open(destino, 'rb') as f:
+            datos = f.read()
+        self.responder(200, datos, tipo, {'Content-Security-Policy': STATIC_CSP, 'Cache-Control': 'no-cache'})
 
     def atender(self, accion):
         try:
@@ -514,7 +540,12 @@ class Manejador(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         partes = u.path.strip('/').split('/')
         if u.path == '/':
-            return self.archivo(os.path.join(AQUI, 'index.html'), 'text/html; charset=utf-8')
+            return self.estatico(AQUI, 'index.html')
+        if u.path.startswith('/ui/'):
+            rel = unquote(u.path[len('/ui/'):])
+            if not rel or rel.startswith('/') or '\\' in rel or '\0' in rel or any(x in ('', '..') for x in rel.split('/')):
+                return self.responder(403, {'error': 'ruta no permitida'})
+            return self.estatico(UI_DIR, rel)
         if u.path == '/api/estado':
             return self.responder(200, TRABAJO.ver())
         if u.path == '/api/inicio':
