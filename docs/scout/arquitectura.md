@@ -55,7 +55,7 @@ siguen `gemma4:e2b` (0,500), `qwen3.5:4b` (0,394) y `gemma3:4b` (0,379). Ningún
 rechazó P-005, P-006 y P-007 el 2026-10-21. El fallo que más pesa en todos los modelos es del prompt: el
 orco de la misión activa aparece en escenas donde no está. Es de `gw-opt-ai`, y tras arreglarlo conviene repetir el banco
 con P-007. Para repetirlo: casos con `IA_CASOS=<ruta fuera del repositorio>`, SYSTEM de `ollama show --system
-tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`. Al repetirlo entra también Qwen3.5-9B en GGUF IQ4_XS (~5,5 GB, el único 9B que cabe; prefill más lento que el actual), además de P-007 (usuaria, 2026-11-07).
+tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
 
 ## Servicios externos
 <!-- seal: 2026-10-20 · bda4496b · backend/.env.example, backend/src/config/env.ts, backend/prisma/schema.prisma -->
