@@ -419,9 +419,12 @@ desde el panel vive en tablas que siembran.
   ([`img50-paso3.md`](plan-imagenes/img50-paso3.md)). La hipótesis de que diluye lo distintivo solo se cumple en parte
   (cardo → «cactus», hacha → «mace»); lo que más estorba es que copia ejemplos que quedan en las reglas («warm light low
   from the left» en 4 de 4; toda la plantilla de `npc` en el Goirnte). También escribe lo que no se ve, el validador deja
-  pasar nombres del mundo y raza e item llegan sin región. **Pendiente, a la espera de la usuaria (paso 4):** corregir eso,
-  regenerar los cuatro y comparar sus F0 con los banners; ahí se juzga también la luz dorada fija, que no casa con 4 de
-  los 7 banners vistos. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
+  pasar nombres del mundo y raza e item llegan sin región. **4.** ✅ 2026-11-07 Corregidos reglas, validador y
+  región; cuatro prompts regenerados y F0 de antes y después con la misma semilla ([resultado](plan-imagenes/img50-paso3.md#resultado-del-paso-4)):
+  mejoran el cardo y las agujas, el hacha mejora en el entorno y **el Goirnte empeora** (sale un gólem). Las ocho F0 salen
+  claras y doradas: la luz fija estorba en los banners oscuros, y el EMD no lo ve porque mide el tono, no la luminosidad.
+  **Pendiente, a la espera de la usuaria (paso 5):** quitar la luz dorada de la cola fija y probarlo con los mismos
+  prompts; medir también la luminosidad; que el validador vete «sun» y dejar de dárselo en la luz de región. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
 - ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
