@@ -267,7 +267,17 @@ class Navegador(Base):
         with socket.socket() as so:
             so.bind(('127.0.0.1', 0))
             self.puerto = so.getsockname()[1]
-        self.srv = self.s.ThreadingHTTPServer(('127.0.0.1', self.puerto), self.s.Manejador)
+        pedidas = self.pedidas = []  # lo que la página pide al servidor (con ?mock=1, nada de /api/)
+
+        class Registra(self.s.Manejador):
+            def do_GET(self_):
+                pedidas.append(self_.path)
+                return super().do_GET()
+
+            def do_POST(self_):
+                pedidas.append(self_.path)
+                return super().do_POST()
+        self.srv = self.s.ThreadingHTTPServer(('127.0.0.1', self.puerto), Registra)
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
         self.addCleanup(self.srv.server_close)
         self.addCleanup(self.srv.shutdown)
@@ -293,6 +303,38 @@ class Navegador(Base):
         self.assertEqual(pagina.evaluate('document.documentElement.dataset.fontScale'), 'large')
         pagina.pump(0.5)
         self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
+    def test_con_mock_la_pagina_funciona_sin_pedir_nada_a_la_api(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1')
+        pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        self.assertIn('Simulador', pagina.evaluate("document.getElementById('avisoLista').textContent"))
+        pagina.evaluate("document.querySelector('#lista .elemento').click()")
+        pagina.wait("document.querySelectorAll('#galeria .tarjeta img').length >= 2 && "
+                    "[...document.querySelectorAll('#galeria .tarjeta img')].every((i) => i.complete && i.naturalWidth > 0)")
+        # una generación de un paso acaba bien; con la semilla 13 el simulador falla y se ve el log
+        generar = ("(() => { document.getElementById('pasos').value = 1; document.getElementById('semilla').value = %d; "
+                   "document.getElementById('generar').click(); })()")
+        pagina.evaluate(generar % 5)
+        pagina.wait("document.getElementById('resultado').textContent.startsWith('Lista en')", timeout=20)
+        pagina.wait("!document.getElementById('generar').disabled")
+        pagina.evaluate(generar % 13)
+        pagina.wait("document.getElementById('resultado').textContent.startsWith('Falló')", timeout=20)
+        self.assertIn('out of memory', pagina.evaluate("document.querySelector('#resultado pre').textContent"))
+        self.assertEqual([p for p in self.pedidas if p.startswith('/api/')], [])
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
+    def test_un_error_de_servidor_py_llega_con_su_texto(self):
+        pagina = self.nav.new_page()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/')
+        pagina.wait("document.querySelectorAll('#lista .elemento').length >= 1")
+        r = pagina.evaluate("import('/ui/js/api.js').then((m) => m.get('/api/nada').then(() => 'sin error', "
+                            "(e) => [e instanceof m.ApiError, e.status, e.message].join('|')))")
+        self.assertEqual(r, 'true|404|no existe')
+        self.nav.take_problems()  # el 404 buscado sale en la consola
         pagina.ws.close()
 
 

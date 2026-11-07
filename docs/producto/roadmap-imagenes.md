@@ -88,8 +88,12 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   pantallas de concepto (elemento, fases y variantes aquí; pedido, intento y montaje allí). Detalle en el diseño §3.4.
   **Parte 1 hecha (2026-11-07):** `interfaz/ui/` con tokens, CSS, fuentes y utilidades (dom, foco, toast, confirm,
   lightbox, tema, talla) de GVIG y su MIT, paleta de Tarkor con contraste por test; `index.html` sin estilos ni
-  scripts en línea; `/ui/` con CSP; `tools/qa/tests/browser.py` y `test_interfaz_ui.py`. **Queda:** `api.js` y
-  `?mock=1`, cola, atajos y gamepad, núcleo del servidor separado del adaptador; revisar a ojo los dos temas.
+  scripts en línea; `/ui/` con CSP; `tools/qa/tests/browser.py` y `test_interfaz_ui.py`. **Parte 2 hecha
+  (2026-11-07):** `ui/js/api.js` (transporte de GVIG, `ApiError` que entiende el `{error: "texto"}` de `servidor.py`,
+  `OfflineError`, `paths` y `api` de WMF) y `ui/mock/api-mock.js` (`/?mock=1`: las rutas de hoy en memoria, imágenes
+  pintadas, generación de 2 s por paso, la semilla 13 falla); `app.js` ya no hace `fetch`. El contrato de fases de §3.0
+  entra en el simulador con `IMG-40`, que fija sus rutas. **Queda:** cola, atajos y gamepad, núcleo del servidor
+  separado del adaptador; revisar a ojo los dos temas (con `?mock=1` basta).
 
 ### Bloque D · Pantalla del elemento
 

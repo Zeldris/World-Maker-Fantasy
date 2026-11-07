@@ -245,7 +245,9 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `elementos` (la lista), `Trabajo.lanzar` (una imagen a la vez), `leer_progreso`, `elegir`. Página,
   `image-generator/interfaz/index.html` (solo marcado) y `ui/js/app.js`: `elegirElemento`, `traerPrompt`,
   `pintarGaleria`. Diseño compartido con GVIG (`IMG-41`): tokens y utilidades en `ui/css/` (`app.css` es lo propio),
-  piezas copiadas en `ui/js/` (`dom.js`, `components/`), servidos por `servidor.py#estatico` (`/ui/<ruta>`, con CSP). Para ver la lista o el
+  piezas copiadas en `ui/js/` (`dom.js`, `components/`), servidos por `servidor.py#estatico` (`/ui/<ruta>`, con CSP).
+  Toda llamada a la API pasa por `ui/js/api.js` (`api`, `paths`); `/?mock=1` la sirve `ui/mock/api-mock.js` en memoria,
+  sin BD ni sd-cli (para mirar la página o probar un cambio de interfaz). Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Tests:
   `python3 -m unittest discover -s tools/qa/tests -p "test_interfaz_*.py"` (`test_interfaz_ui.py` lleva el de navegador,
   con `tools/qa/tests/browser.py`).

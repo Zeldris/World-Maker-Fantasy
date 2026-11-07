@@ -1,22 +1,17 @@
 /* Pantalla del elemento del generador de imágenes (CFG-43), módulo de la página; la sirve servidor.py (/ui/js/app.js).
-   IMG-41: sobre la base de GVIG (dom.js, toast, lightbox, tema y talla de letra). Misma lógica y mismas rutas /api/ de antes. */
+   IMG-41: sobre la base de GVIG (dom.js, toast, lightbox, tema y talla de letra) y su cliente de API (api.js). Misma
+   lógica y mismas rutas /api/ de antes; con `?mock=1` en la URL carga ../mock/api-mock.js en lugar de servidor.py. */
 
 import { h, el as $, setVars } from './dom.js';
 import { initTheme } from './components/theme.js';
 import { initFontScale } from './components/font-scale.js';
 import { initLightbox, openLightbox } from './components/lightbox.js';
 import { toastOk, toastError } from './components/toast.js';
+import { api, paths, setTransport, onOffline, describeError } from './api.js';
 
 const TAMANOS = { banner: '1280×512', thumbnail: '768×768', mapa: '832×624', icono: '512×512' };
 let elementos = [], actual = null, perfil = null, cargado = null, referencia = null, sondeo = null, perfilesBD = {};
 
-async function api(ruta, cuerpo) {
-  const r = await fetch(ruta, cuerpo === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
-  const datos = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(datos.error || `error ${r.status}`);
-  return datos;
-}
-const q = encodeURIComponent;
 function guardar() { try { localStorage.setItem('generador-cfg43', JSON.stringify({ tipo: actual && actual.tipo, slug: actual && actual.slug, perfil })); } catch { /* sin almacenamiento */ } }
 function recordado() { try { return JSON.parse(localStorage.getItem('generador-cfg43') || 'null') || {}; } catch { return {}; } }
 
@@ -33,7 +28,7 @@ $('grande').addEventListener('click', (e) => { if (e.target === $('grande')) $('
 
 /* ---------- lista de elementos ---------- */
 async function cargarElementos() {
-  const r = await api('/api/elementos');
+  const r = await api.elementos();
   elementos = r.elementos;
   $('avisoLista').textContent = r.aviso || '';
   const sel = $('categoria'), previa = sel.value;
@@ -52,7 +47,7 @@ function pintarLista() {
     const marcas = h('div.marcas');
     if (e.intentos) marcas.append(h('span', {}, `${e.intentos} intento${e.intentos === 1 ? '' : 's'}`));
     if (e.elegidas.length) marcas.append(h('span.eleg', {}, '✓ elegida'));
-    const miniatura = e.juego ? h('img.miniatura', { loading: 'lazy', alt: '', src: `/ref/${e.juego}` }) : h('div.miniatura', { title: 'Sin imagen en el juego' });
+    const miniatura = e.juego ? h('img.miniatura', { loading: 'lazy', alt: '', src: paths.juego(e.juego) }) : h('div.miniatura', { title: 'Sin imagen en el juego' });
     const abrir = () => elegirElemento(e.tipo, e.slug);
     l.append(h('div.elemento', {
       class: actual && actual.tipo === e.tipo && actual.slug === e.slug ? 'activo' : '', role: 'button', tabindex: 0, onclick: abrir,
@@ -85,7 +80,7 @@ async function elegirElemento(tipo, slug, perfilInicial) {
   $('fichaNombre').textContent = slug;
   $('fichaDetalle').textContent = `${tipo} · ${e.intentos} intento${e.intentos === 1 ? '' : 's'}${e.elegidas.length ? ' · elegida: ' + e.elegidas.join(', ') : ''}`;
   const caja = $('fichaImagen'); caja.replaceChildren();
-  if (e.juego) caja.append(h('img.ampliable', { src: `/ref/${e.juego}`, alt: 'Imagen actual del juego', title: 'Imagen actual del juego (clic para ampliar)', onclick: () => ampliar(`/ref/${e.juego}`, 'Actual del juego') }));
+  if (e.juego) caja.append(h('img.ampliable', { src: paths.juego(e.juego), alt: 'Imagen actual del juego', title: 'Imagen actual del juego (clic para ampliar)', onclick: () => ampliar(paths.juego(e.juego), 'Actual del juego') }));
   else caja.append(h('div.hueco.muted', {}, 'El juego aún no tiene imagen'));
   if (cambia) { $('prompt').value = ''; cargado = null; }
   pintarPerfiles();
@@ -116,12 +111,12 @@ async function traerPrompt() {
   const pide = { tipo: actual.tipo, slug: actual.slug, perfil };  // si cambias de perfil antes de que llegue, se descarta
   const vigente = () => actual.tipo === pide.tipo && actual.slug === pide.slug && perfil === pide.perfil;
   try {
-    const r = await api(`/api/prompt?tipo=${q(pide.tipo)}&slug=${q(pide.slug)}&perfil=${q(pide.perfil)}`);
+    const r = await api.prompt(pide.tipo, pide.slug, pide.perfil);
     if (!vigente()) return;
     $('prompt').value = r.prompt;
     cargado = { ...pide, prompt: r.prompt, fuente: r.fuente };
     marcarFuente();
-  } catch (err) { if (vigente()) $('fuente').textContent = err.message; }
+  } catch (err) { if (vigente()) $('fuente').textContent = describeError(err); }
 }
 function marcarFuente() {
   const igual = !!cargado && cargado.prompt === $('prompt').value && cargado.tipo === actual.tipo && cargado.slug === actual.slug && cargado.perfil === perfil;
@@ -137,7 +132,7 @@ $('azar').onclick = () => { $('semilla').value = Math.floor(Math.random() * 1e6)
 /* ---------- referencia ---------- */
 async function buscarReferencia() {
   referencia = null;
-  if (actual) { try { const r = await api(`/api/referencia?tipo=${q(actual.tipo)}&slug=${q(actual.slug)}&perfil=${q(perfil)}`); if (r.ruta) referencia = r; } catch { /* sin referencia */ } }
+  if (actual) { try { const r = await api.referencia(actual.tipo, actual.slug, perfil); if (r.ruta) referencia = r; } catch { /* sin referencia */ } }
   $('refBloque').hidden = !referencia;
   if (referencia) $('refNombre').textContent = referencia.perfil === perfil ? `(${referencia.ruta})` : `(${referencia.ruta}: de otro perfil)`;
   pintarReferencia();
@@ -145,7 +140,7 @@ async function buscarReferencia() {
 function pintarReferencia() {
   const ver = referencia && $('usarRef').checked;
   $('refPrevia').hidden = !ver;
-  if (ver) $('refPrevia').src = `/ref/${referencia.ruta}`;
+  if (ver) $('refPrevia').src = paths.juego(referencia.ruta);
 }
 $('usarRef').onchange = pintarReferencia;
 $('refPrevia').onclick = () => ampliar($('refPrevia').src, 'Referencia');
@@ -161,8 +156,8 @@ async function generar() {
   const peticion = { tipo: actual.tipo, slug: actual.slug, perfil, prompt: $('prompt').value, desdeBase: marcarFuente(),
     semilla: Number($('semilla').value), pasos: Number($('pasos').value), usarReferencia: !$('refBloque').hidden && $('usarRef').checked };
   mostrarResultado('');
-  try { await api('/api/generar', peticion); $('generar').disabled = true; $('progreso').hidden = false; $('relleno').value = 2; $('progresoTexto').textContent = 'Empezando…'; seguir(); }
-  catch (err) { mostrarResultado(err.message, false); }
+  try { await api.generar(peticion); $('generar').disabled = true; $('progreso').hidden = false; $('relleno').value = 2; $('progresoTexto').textContent = 'Empezando…'; seguir(); }
+  catch (err) { mostrarResultado(describeError(err), false); }
 }
 $('generar').onclick = generar;
 
@@ -170,7 +165,7 @@ function seguir() {
   clearTimeout(sondeo);
   sondeo = setTimeout(async () => {
     let e;
-    try { e = await api('/api/estado'); } catch (err) { mostrarResultado('El servidor no responde: ' + err.message, false); $('generar').disabled = false; return; }
+    try { e = await api.estado(); } catch (err) { mostrarResultado(describeError(err), false); $('generar').disabled = false; return; }
     if (e.enMarcha) {
       $('progreso').hidden = false;
       const resto = Math.max(0, e.estimado - e.segundos);
@@ -194,12 +189,12 @@ function datosIntento(f) {
 async function pintarGaleria() {
   const a = actual, g = $('galeria');
   let filas;
-  try { filas = await api(`/api/elemento?tipo=${q(a.tipo)}&slug=${q(a.slug)}`); } catch (err) { g.textContent = err.message; return; }
+  try { filas = await api.elemento(a.tipo, a.slug); } catch (err) { g.textContent = describeError(err); return; }
   if (!actual || actual.tipo !== a.tipo || actual.slug !== a.slug) return;
   const filtro = $('filtroPerfil').value;
   let juego = null;
-  try { const r = await api(`/api/referencia?tipo=${q(a.tipo)}&slug=${q(a.slug)}&perfil=${q(filtro || perfil)}`); if (r.ruta) juego = r; } catch { /* sin imagen del juego */ }
-  const juegoSrc = juego ? `/ref/${juego.ruta}` : null;
+  try { const r = await api.referencia(a.tipo, a.slug, filtro || perfil); if (r.ruta) juego = r; } catch { /* sin imagen del juego */ }
+  const juegoSrc = juego ? paths.juego(juego.ruta) : null;
   g.replaceChildren();
   if (juego) g.append(h('div.tarjeta.juego', {}, h('span.distintivo.neutro', {}, 'Actual del juego'),
     h('img.ampliable', { src: juegoSrc, alt: '', onclick: () => ampliar(juegoSrc, 'Actual del juego') }),
@@ -210,16 +205,16 @@ async function pintarGaleria() {
   for (const f of vistas) g.append(tarjeta(f, juegoSrc));
 }
 function tarjeta(f, juegoSrc) {
-  const a = actual, src = `/img/${q(a.tipo)}/${q(a.slug)}/${q(f.nombre)}.png?${q(f.fecha)}`;
+  const a = actual, src = paths.intento(a.tipo, a.slug, f.nombre, f.fecha);
   const nota = h('textarea', { placeholder: 'Qué te parece, qué sobra, qué falta…', 'aria-label': 'Nota de la imagen' }); nota.value = f.nota;
   const ok = h('span.ok');
-  nota.onchange = async () => { try { await api('/api/nota', { tipo: a.tipo, slug: a.slug, nombre: f.nombre, texto: nota.value }); ok.textContent = 'guardada ✓'; } catch (err) { ok.textContent = err.message; } };
+  nota.onchange = async () => { try { await api.nota(a.tipo, a.slug, f.nombre, nota.value); ok.textContent = 'guardada ✓'; } catch (err) { ok.textContent = describeError(err); } };
   nota.oninput = () => { ok.textContent = ''; };
   const aviso = (texto, bien) => { const av = $('avisoGaleria'); av.hidden = false; av.className = 'notice ' + (bien ? 'notice-ok' : 'notice-bad'); av.textContent = texto; };
   const elegir = h('button.btn.btn-primary', { type: 'button', onclick: async () => {
-    try { const r = await api('/api/elegir', { tipo: a.tipo, slug: a.slug, nombre: f.nombre }); await cargarElementos(); await elegirElemento(a.tipo, a.slug, perfil);
+    try { const r = await api.elegir(a.tipo, a.slug, f.nombre); await cargarElementos(); await elegirElemento(a.tipo, a.slug, perfil);
       aviso(`Copiada a image-generator/${r.destino}. Para verla en el juego, cópiala a backend/uploads/images/${a.tipo}/.`, true); }
-    catch (err) { aviso(err.message, false); } } }, f.elegida ? '✓ Elegida (repetir)' : 'Elegir esta');
+    catch (err) { aviso(describeError(err), false); } } }, f.elegida ? '✓ Elegida (repetir)' : 'Elegir esta');
   elegir.disabled = !f.imagen; elegir.title = f.destino;
   const reutilizar = h('button.btn', { type: 'button', onclick: () => {
     perfil = f.perfil; pintarPerfiles(); $('prompt').value = f.textoPrompt; $('semilla').value = f.semilla; $('pasos').value = f.pasos;
@@ -242,16 +237,18 @@ function medirCabecera() {
   if (window.ResizeObserver) new ResizeObserver(poner).observe(cab);
 }
 async function iniciar() {
+  if (new URLSearchParams(location.search).get('mock') === '1') setTransport((await import('../mock/api-mock.js')).transport);
+  onOffline((sin) => { if (sin) toastError('Sin conexión con el servidor: ¿sigue abierto abrir.sh?'); });
   initTheme($('theme'));
   initFontScale($('font-scale'));
   initLightbox();
   medirCabecera();
-  const ini = await api('/api/inicio');
+  const ini = await api.inicio();
   $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
   await cargarElementos();
-  const e = await api('/api/estado');
+  const e = await api.estado();
   const r = recordado();
   if (e.enMarcha) { $('generar').disabled = true; $('progreso').hidden = false; await elegirElemento(e.tipo, e.slug, e.perfil); seguir(); }
   else if (r.tipo && r.slug) await elegirElemento(r.tipo, r.slug, r.perfil);
 }
-iniciar().catch((err) => { $('avisoLista').textContent = err.message; });
+iniciar().catch((err) => { $('avisoLista').textContent = describeError(err); });
