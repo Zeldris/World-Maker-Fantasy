@@ -1,13 +1,13 @@
 # Plan: piezas, luz por lugar y varias referencias
 
-Propuesta del 2026-11-07, **a la espera de la decisión de la usuaria**. Nace de `IMG-50` y de dos peticiones suyas:
+Plan del 2026-11-07. **Aprobada solo la fase 1** (`IMG-51`, `IMG-52` y las pruebas P1-P3); lo demás se decide con sus imágenes. Nace de `IMG-50` y de dos peticiones suyas:
 
 - «No se puede hacer un puzzle si no tienes las piezas»: antes del Goirnte tiene que existir su lugar, y la luz depende de
   ese lugar.
 - Además de la imagen del juego, poder adjuntar otras referencias, con un máximo, para combinar: «2 aulladores cazando
   1 múrgol, en la hondonada, con 1 orco guerrero reposando en los muros».
 
-Las tareas llevan letra (`T1`…): reciben su `IMG-*` y su hito cuando se aprueben. Nada de esto está empezado.
+Las tareas llevan letra (`T1`…): T1 es `IMG-51`, T2 es `IMG-52`; las demás reciben su `IMG-*` y su hito cuando se aprueben. Nada de esto está empezado.
 
 ## 1. Qué podrás elegir
 
@@ -119,7 +119,7 @@ Después, las tres pruebas. Cada tanda lleva antes su pregunta de memoria y su s
 |---|---|---|---|
 | **P1. Goirnte por piezas** | Meseta → cuerpo → armadura → conjunto, y compararlo con su banner y con las F0 de hoy | ¿Las piezas acercan al banner? | ~15 min |
 | **P2. La escena del ejemplo** | Rutas A y B, 2 semillas cada una | ¿Conserva la identidad? ¿Respeta «2 aulladores»? ¿Qué ruta manda? | ~30 min |
-| **P3. Coste por número de referencias** | Una F0 y una Final con 1, 2, 3 y 4 referencias, más 5 en Final (con boceto) | Tiempo, memoria y si el máximo real es 4 | ~25 min |
+| **P3. Coste por número de referencias** | Una F0 y una Final con 1, 2, 3 y 4 referencias (en la Final, boceto incluido) | Tiempo y memoria hasta el máximo de 4 | ~20 min |
 
 Los tiempos parten de pocos datos: F0 ~37 s y ~48 s con una referencia; Final ~160 s con una y ~206 s con dos. Si siguiera
 igual, una Final con cuatro rondaría los 5 minutos, pero eso es una extrapolación y P3 lo comprueba.
@@ -187,20 +187,20 @@ igual, una Final con cuatro rondaría los 5 minutos, pero eso es una extrapolaci
 |---|---|---|
 | El modelo reinventa las piezas | P2 | Ruta C; referencias solo para luz y estilo |
 | Lo pequeño desaparece o falla la cantidad | P2. BFL avisa de que «los pequeños pueden no aparecer» | Ruta B, o pedir más cerca al sujeto |
-| El tiempo crece con cada referencia | P3 | Máximo menor o limitar referencias en la Final |
+| El tiempo crece con cada referencia | P3 | Máximo menor |
 | Crear piezas se encadena sin fin | P1 | Avisar y no bloquear; solo un nivel de piezas propuesto |
 | Medir contra el banner no sirve para elementos nuevos | T8 | Prueba sin banner antes de sacar conclusiones generales |
 | Pocas muestras | Todas | Mínimo 2 semillas en P2; lo que dependa de una sola muestra se apunta como indicio |
 
-## 8. Decisiones de la usuaria
+## 8. Decisiones de la usuaria (2026-11-07)
 
-Las dudas de diseño visual (textos de luz, ambientes, prefijos) se resuelven con los banners. Estas son tuyas:
+Las dudas de diseño visual (textos de luz, ambientes, prefijos) se resuelven con los banners.
 
-| # | Decisión | Opciones | Recomendación |
-|---|---|---|---|
-| **D1** | Si falta una pieza | **a)** Avisar y ofrecer crearla **b)** Bloquear hasta crearla (recupera `IMG-12`) | **a)** Mantiene lo que decidiste el 2026-11-06 y evita cadenas sin fin; siempre verás qué falta |
-| **D2** | Máximo de referencias | **a)** 4 en total, boceto incluido en la Final **b)** 4 más el boceto, si P3 sale bien **c)** Otro número | **b)** si P3 lo permite, y si no, **a)**. Tu ejemplo necesita justo 4 |
-| **D3** | Por dónde empezar | **a)** Solo la fase 1 y decidir con las imágenes **b)** Aprobar ya todo el plan **c)** Primero cerrar las pruebas de juego | **a)** Se decide con evidencia, y si E3 se cumple, ahorra construir pantallas |
+| # | Decisión | Elegido |
+|---|---|---|
+| **D1** | Si falta una pieza | **Avisa** y ofrece crearla; no bloquea. `IMG-12` sigue descartada |
+| **D2** | Máximo de referencias | **4 en total**. En la Final el boceto cuenta como una, así que quedan 3 más y hay que elegir cuál se queda fuera |
+| **D3** | Por dónde empezar | **Solo la fase 1** y decidir el resto con las imágenes. Es el sí expreso para adelantarla a las pruebas de juego |
 
-Sea cual sea la respuesta, las tareas son trabajo nuevo de roadmap y las pruebas de juego siguen abiertas: hace falta tu sí
-expreso para adelantarlas, como con el bloque A y con `IMG-50`.
+Consecuencia de D2: en P3 no se prueba la Final con 5, y T2 rechaza pasar de 4. La ruta B de una escena de 4 piezas deja una
+fuera de las referencias; lo normal será el lugar, que ya va en el boceto.

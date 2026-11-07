@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38` |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, `IMG-51`, `IMG-52` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -59,6 +59,13 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 - **IMG-38 · Variantes desde una fase guardada** [A] (usuaria, 2026-11-06): medir desde qué fase sale cada variante sin
   perder la identidad: macho, hembra y cría; lugar por estación, día y noche; construcción entera, destruida y
   ardiendo. Hipótesis en el diseño, §1.3b. Deja la tabla en `pautas.md`. **Solo con el sí de la usuaria.** **M**
+
+- **IMG-51 · Medir también la luminosidad** [S] (usuaria, 2026-11-07; se adelanta a las pruebas de juego): EMD de la luminancia junto a
+  Cb y Cr en `medida.py`, en `camino.json` y en la pantalla. Hoy un Goirnte luminoso da «ok» frente a un banner casi negro.
+  Fase 1 de [`plan-piezas-y-referencias.md`](plan-imagenes/plan-piezas-y-referencias.md).
+- **IMG-52 · Varias referencias con rol en `fase.py`** [S] (usuaria, 2026-11-07; se adelanta a las pruebas de juego): `--ref <rol>:<imagen>`
+  repetible, lista `referencias` en `camino.json` que sigue leyendo el `referencia` antiguo, prefijo «image 1 is…» según el rol y
+  rechazo por encima de **4 en total**, boceto incluido. Después, las pruebas P1-P3 del plan, cada tanda con su pregunta de memoria y su sí.
 
 ### Bloque B · Prototipo
 
@@ -423,9 +430,9 @@ desde el panel vive en tablas que siembran.
   región; cuatro prompts regenerados y F0 de antes y después con la misma semilla ([resultado](plan-imagenes/img50-paso3.md#resultado-del-paso-4)):
   mejoran el cardo y las agujas, el hacha mejora en el entorno y **el Goirnte empeora** (sale un gólem). Las ocho F0 salen
   claras y doradas: la luz fija estorba en los banners oscuros, y el EMD no lo ve porque mide el tono, no la luminosidad.
-  **Pendiente, a la espera de la usuaria:** el paso 5 propuesto se
-  sustituye por [`plan-piezas-y-referencias.md`](plan-imagenes/plan-piezas-y-referencias.md) (usuaria, 2026-11-07: la luz
-  depende del lugar, primero las piezas; varias referencias adjuntas para combinar). Decisiones D1-D3 en su §8. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
+  **Pendiente:** el paso 5 propuesto se sustituye por
+  [`plan-piezas-y-referencias.md`](plan-imagenes/plan-piezas-y-referencias.md) (usuaria, 2026-11-07: la luz depende del lugar,
+  primero las piezas; varias referencias adjuntas para combinar). Aprobada su fase 1: `IMG-51`, `IMG-52` y las pruebas P1-P3. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
 - ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
