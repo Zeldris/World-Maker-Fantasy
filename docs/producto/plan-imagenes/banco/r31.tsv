@@ -1,0 +1,4 @@
+# IMG-46 r31: como r30 a- (boceto propio como -r, FLUX.2). Pasos 4 y 8 frente a 6, vista previa a 960x384 y otra semilla (la 7, con banco.sh r31s)
+p4-aullador	4	prompts/r30-aullador-auto.txt	W=1280,H=512,TOPE=1800	-r /home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png --ref-image-args vae_input_max_pixels=262144
+p8-aullador	8	prompts/r30-aullador-auto.txt	W=1280,H=512,TOPE=1800	-r /home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png --ref-image-args vae_input_max_pixels=262144
+m-aullador	6	prompts/r30-aullador-auto.txt	W=960,H=384,TOPE=1800	-r /home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png --ref-image-args vae_input_max_pixels=262144

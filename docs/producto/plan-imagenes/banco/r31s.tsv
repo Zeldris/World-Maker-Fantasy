@@ -1,0 +1,2 @@
+# IMG-46 r31s: r30 a- de la choza con semilla 7
+choza-basica-orco-llanuras	6	prompts/r30-choza-basica-orco-llanuras-auto.txt	W=1280,H=512,TOPE=1800	-r /home/deck/Desktop/Desarrollos/World-Maker-Fantasy/image-generator/generated/banco/r30-f0-choza-basica-orco-llanuras/intentos/banner-s3-p4-20261107-114711.png --ref-image-args vae_input_max_pixels=262144
