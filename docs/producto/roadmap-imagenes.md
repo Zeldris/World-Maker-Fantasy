@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, `IMG-53` |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~ |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -69,7 +69,7 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   prefijo «Image 1 is…» según el rol y rechazo por encima de **4 en total**, boceto incluido. Con `--ref`, el color solo se mide contra `--medir-con`.
   `--referencia` y la casilla de la interfaz siguen igual. Probado con tests y un generador simulado. **Pendiente:** con `sd-cli` real, más de 2 referencias
   y ver en pantalla «con N referencias»; lo cubren las pruebas P1-P3 del plan, cada tanda con su pregunta de memoria y su sí.
-- **IMG-53 · Cadena de pasos y selector de motor** [M] 🚧 en curso (usuaria, 2026-11-07; se adelanta a las pruebas de juego):
+- ~~**IMG-53 · Cadena de pasos y selector de motor**~~ [M] ✅ 2026-11-08 (usuaria, 2026-11-07; se adelanta a las pruebas de juego):
   sustituye F0→F1→F2→Final por pasos encadenados (paso 1 fondo; paso N parte del aceptado del anterior como `-r`, con
   prompt de «cambia solo esto» de la usuaria, referencias con rol opcionales y 2 semillas por paso) y una Final corta
   de estilo a 1280x512. Cada paso elige motor: klein 4B, klein 9B (± LoRA de consistencia), Qwen-Image-Edit 2511, LongCat
@@ -87,8 +87,9 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   por elemento); 1 o 2 semillas en los pasos (2 por defecto); referencias con rol (hasta 3, 4 en P1) entre la imagen del juego y los
   intentos del elemento, con «Fijar como ancla» (rol `sujeto`) en la imagen aceptada; los 400 de la API salen en un aviso. La Final
   trae el prompt corto r37: `/api/inicio` lo da como `promptPorDefecto` de la F4 y `/api/fase/avanzar` de un paso a la Final lo usa.
-  **Queda:** probar cada motor con generaciones reales (qwen-edit y longcat esperan sus modelos) y medir los tiempos (hoy solo
-  klein4b está medido).
+  **Motores probados** ✅ 2026-11-08 en la Deck, un paso `r41` a 480x192 sobre la maza 42: los cinco generan (klein 9B 107 s,
+  con consistencia 116 s, LongCat ~10 min, Qwen-Image-Edit ~21 min, FLUX.3 ~8 min; detalle en `plan-piezas-y-referencias.md`).
+  **Queda:** la prueba de la usuaria con la interfaz y sus prompts.
 
 ### Bloque B · Prototipo
 

@@ -170,6 +170,11 @@ banner del orco, con las semillas 42 y 1234.
 | Rasgos, F0 | `r40` sobre la maza 42, solo cambio | — | — | — | — | 42 apenas cambia; 1234 pone colmillos y grietas, pero pierde la barba |
 | Rasgos y nariz, F0 | `r41` (`r40`, nariz chata y conservar la barba) | — | — | — | — | 42: nariz bulbosa, sin grietas; 1234: nariz chata, colmillos hacia arriba, grietas y algo de barba |
 | Final sobre rasgos | `r37` sin cambios, `r41` 1234 como `-r` | — | **9,8** | 3,0 | 4,3 | Conserva colmillos, grietas y nariz más ancha, con el color de `r37`; un colmillo sale blanco y deshilachado, como bigote |
+| Motores (`IMG-53`), klein 9B | `r41` sobre la maza 42, semilla 42, 480×192 | — | — | — | — | 107 s; conserva la escena; grietas fuertes por todo el cuerpo, nariz grande, colmillos pequeños |
+| Motores, klein 9B + consistencia | igual | — | — | — | — | 116 s; casi igual que klein 9B, colmillos menos visibles |
+| Motores, LongCat Edit Q4 | igual | — | — | — | — | ~10 min; colmillos y barba rojiza, pero las grietas salen como un mosaico cuadriculado (a probar a más resolución) |
+| Motores, Qwen-Image-Edit 2511 Q3 | igual | — | — | — | — | ~21 min; el más fiel al cambio: colmillos grandes y nariz chata y ancha, escena intacta; sin grietas |
+| Motores, FLUX.3 klein Q8 | igual | — | — | — | — | ~8 min; barba y colmillos pequeños, piel lisa sin grietas |
 
 Conclusiones (una semilla en la Final; se confirman con más elementos antes de reescribir el plan de fases):
 
