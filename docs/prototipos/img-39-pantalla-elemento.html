@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maqueta IMG-39 · Pantalla del elemento</title>
+<style>
+:root{--bg:#0e1015;--panel:#161922;--panel2:#1d212c;--line:#2a2f3d;--text:#e6e8ee;--mute:#8b92a5;--accent:#c9a45c;--ok:#3fb982;--bad:#ef5b6b;--warn:#e5a93d;--r:10px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled,button.apagado{opacity:.45}
+button.pri{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:600}
+button.mini{padding:2px 8px;font-size:12px}
+main{max-width:1280px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}
+.mute{color:var(--mute)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.caja{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin:12px 0}
+.intro{font-size:13px}
+.intro b{color:var(--accent)}
+.pestanas{display:flex;gap:6px;margin:12px 0 0}
+.pestanas button.activa{border-color:var(--accent);color:var(--accent)}
+.rejilla{display:grid;grid-template-columns:220px 1fr;gap:12px}
+@media (max-width:860px){.rejilla{grid-template-columns:1fr}}
+.lista button{display:block;width:100%;text-align:left;margin:0 0 6px}
+.lista button.activa{border-color:var(--accent)}
+.lista small{display:block;color:var(--mute)}
+.cab{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.cab .nombre{font-size:18px;font-weight:600}
+.cab .der{margin-left:auto}
+.pasos{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.paso{border:1px solid var(--line);border-radius:20px;padding:4px 12px;background:var(--panel2);font-size:13px}
+.paso.abierta{border-color:var(--accent);color:var(--accent);font-weight:600}
+.paso.fuera{opacity:.45;border-style:dashed}
+.tres{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px}
+@media (max-width:860px){.tres{grid-template-columns:1fr}}
+.marco{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px}
+.marco h3{font-size:12px;margin:0 0 6px;color:var(--mute);font-weight:500;display:flex;gap:6px;align-items:center}
+.marco img{width:100%;border-radius:4px;display:block;aspect-ratio:5/2;object-fit:cover;background:#000}
+.hueco{aspect-ratio:5/2;display:flex;align-items:center;justify-content:center;text-align:center;border:1px dashed var(--line);border-radius:4px;color:var(--mute);font-size:12px;padding:8px}
+.meta{font-size:12px;color:var(--mute);margin-top:6px}
+.prev{position:relative}
+.prev img{filter:blur(var(--b,12px));opacity:var(--o,.4)}
+.barra{height:4px;background:var(--line);border-radius:2px;margin-top:6px}
+.barra i{display:block;height:100%;background:var(--accent);border-radius:2px}
+textarea{width:100%;min-height:90px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px}
+.botones{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}
+.motivo{font-size:12px;color:var(--warn);margin-top:6px;min-height:1em}
+.ultimo{border-left:3px solid var(--accent);padding:6px 10px;background:var(--panel2);border-radius:4px;font-size:13px}
+.estado table{border-collapse:collapse;width:100%;font-size:12px}
+.estado td,.estado th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+pre{font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto;background:var(--bg);padding:8px;border-radius:6px}
+.biblio{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.cola li{margin-bottom:4px}
+.recorrido ol{padding-left:20px}
+.recorrido li{margin:6px 0}
+.recorrido li.hecho button{opacity:.5}
+.recorrido li.siguiente button{border-color:var(--accent)}
+kbd{border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
+</style>
+</head>
+<body>
+<main>
+<h1>Maqueta de la pantalla del elemento <span class="mute">(IMG-39, desechable)</span></h1>
+<div class="caja intro">
+<p><b>Qué pregunta esta maqueta:</b> ¿el camino por fases de la pantalla del elemento (§2.0 del diseño) se siente bien
+al usarlo? Avanzar, regenerar, atrás, variantes y ★, con una sola generación a la vez y una cola. Sale de la receta
+actual: el boceto (F0) y luego la Final directa desde él; F1 Forma y F2 Detalle son opcionales.</p>
+<p><b>Qué no es:</b> no genera nada. Cada «Regenerar» saca, tras una espera simulada, la siguiente imagen real de las
+rondas r25-r31 de esa fase. Por eso las variantes salen con las mismas imágenes del elemento, y cuando se acaban se
+repiten (lo dice el intento). El recorte (F3) no está: aún no existe (IMG-37). Nada se guarda: al recargar, vuelve
+al principio.</p>
+<p class="mute">Los botones apagados se pueden pulsar: dicen por qué no se puede. Atajos: <kbd>R</kbd> regenerar · <kbd>A</kbd> atrás · <kbd>Intro</kbd> avanzar a la Final ·
+<kbd>F</kbd> avanzar por la fase opcional · <kbd>M</kbd> marcar ★ · <kbd>←</kbd> <kbd>→</kbd> intentos.</p>
+</div>
+
+<div class="pestanas" id="pestanas"></div>
+<div id="vistaPantalla">
+  <div class="ultimo" id="ultimo"></div>
+  <div class="rejilla">
+    <div>
+      <div class="caja lista" id="lista"></div>
+      <div class="caja cola" id="cola"></div>
+    </div>
+    <div>
+      <div class="caja">
+        <div class="cab" id="cab"></div>
+        <div class="pasos" id="pasos"></div>
+        <div class="tres" id="tres"></div>
+        <div style="margin-top:10px">
+          <div class="meta" id="promptTit"></div>
+          <textarea id="prompt"></textarea>
+          <div class="botones" id="botones"></div>
+          <div class="motivo" id="motivo"></div>
+        </div>
+      </div>
+      <div class="caja estado" id="estado"></div>
+    </div>
+  </div>
+</div>
+<div id="vistaBiblio" hidden><div class="caja" id="biblio"></div></div>
+<div id="vistaRecorridos" hidden><div class="caja recorrido" id="recorridos"></div></div>
+</main>
+
+<script>
+const DATOS = /*DATOS*/{
+ "aullador-rojo": {
+  "nombre": "Aullador rojo",
+  "tipo": "fauna",
+  "banner": "../../image-generator/referencias/images/fauna/aullador-rojo-macho-banner.png",
+  "prompts": {
+   "F0": "The same creature, in the same pose and composition, as the reference image. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A long, low pack hunter with a deep chest and a flexible spine, carried close to the ground on short, strong legs that end in dark curved claws. Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep. A crest of overlapping black armoured plates runs unbroken from the nape along the whole spine and down the long banded tail to its dark spiny tip, edged with a row of sharp glowing red spikes. Tufts of black hair cling to its ankles, and its ribs show faintly under the short coat. Its silhouette recalls the narrow head of a red fox on the long, supple torso of a weasel. Its head is narrow, with tall pointed ears, an amber eye and two long pale sabre fangs hanging below the lower jaw. The short, dense coat is warm rust brown, paler in faint stripes along the flanks. Seen from a low camera angle in full side profile, it stalks forward with its weight on one foreleg and its head turned slightly toward the viewer. Behind it lopes a pack of six hunters, each one a long, low hunter with a rust coat, a black plate crest with red spikes and pale sabre fangs, smaller and hazier with distance. The ground is cracked red earth with sparse dry tufts, and dark dust devils rise far off on the plain. The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike. Style: simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values, broad painted masses, minimal detail. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 35mm lens. The image is completely textless.",
+   "F1": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A long, low pack hunter with a deep chest and a flexible spine, carried close to the ground on short, strong legs that end in dark curved claws. Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep. A crest of overlapping black armoured plates runs unbroken from the nape along the whole spine and down the long banded tail to its dark spiny tip, edged with a row of sharp glowing red spikes. Tufts of black hair cling to its ankles, and its ribs show faintly under the short coat. Its silhouette recalls the narrow head of a red fox on the long, supple torso of a weasel. Its head is narrow, with tall pointed ears, an amber eye and two long pale sabre fangs hanging below the lower jaw. The short, dense coat is warm rust brown, paler in faint stripes along the flanks. Seen from a low camera angle in full side profile, it stalks forward with its weight on one foreleg and its head turned slightly toward the viewer. Behind it lopes a pack of six hunters, each one a long, low hunter with a rust coat, a black plate crest with red spikes and pale sabre fangs, smaller and hazier with distance. The ground is cracked red earth with sparse dry tufts, and dark dust devils rise far off on the plain. The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike. Surface detail: coarse matted fur with individual guard hairs, chipped and scratched dark horn plates, gritty cracked earth scattered with pebbles and brittle dry grass blades. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 35mm lens. The image is completely textless.",
+   "F2": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A long, low pack hunter with a deep chest and a flexible spine, carried close to the ground on short, strong legs that end in dark curved claws. Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep. A crest of overlapping black armoured plates runs unbroken from the nape along the whole spine and down the long banded tail to its dark spiny tip, edged with a row of sharp glowing red spikes. Tufts of black hair cling to its ankles, and its ribs show faintly under the short coat. Its silhouette recalls the narrow head of a red fox on the long, supple torso of a weasel. Its head is narrow, with tall pointed ears, an amber eye and two long pale sabre fangs hanging below the lower jaw. The short, dense coat is warm rust brown, paler in faint stripes along the flanks. Seen from a low camera angle in full side profile, it stalks forward with its weight on one foreleg and its head turned slightly toward the viewer. Behind it lopes a pack of six hunters, each one a long, low hunter with a rust coat, a black plate crest with red spikes and pale sabre fangs, smaller and hazier with distance. The ground is cracked red earth with sparse dry tufts, and dark dust devils rise far off on the plain. The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike. Surface detail: coarse matted fur with individual guard hairs, chipped and scratched dark horn plates, gritty cracked earth scattered with pebbles and brittle dry grass blades. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 35mm lens. The image is completely textless.",
+   "FIN": "The same creature, in the same pose and composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A long, low pack hunter with a deep chest and a flexible spine, carried close to the ground on short, strong legs that end in dark curved claws. Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep. A crest of overlapping black armoured plates runs unbroken from the nape along the whole spine and down the long banded tail to its dark spiny tip, edged with a row of sharp glowing red spikes. Tufts of black hair cling to its ankles, and its ribs show faintly under the short coat. Its silhouette recalls the narrow head of a red fox on the long, supple torso of a weasel. Its head is narrow, with tall pointed ears, an amber eye and two long pale sabre fangs hanging below the lower jaw. The short, dense coat is warm rust brown, paler in faint stripes along the flanks. Seen from a low camera angle in full side profile, it stalks forward with its weight on one foreleg and its head turned slightly toward the viewer. Behind it lopes a pack of six hunters, each one a long, low hunter with a rust coat, a black plate crest with red spikes and pale sabre fangs, smaller and hazier with distance. The ground is cracked red earth with sparse dry tufts, and dark dust devils rise far off on the plain. The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike. Surface detail: coarse matted fur with individual guard hairs, chipped and scratched dark horn plates, gritty cracked earth scattered with pebbles and brittle dry grass blades. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 35mm lens. The image is completely textless."
+  },
+  "pool": {
+   "F0": [
+    {
+     "ronda": "r27-f0-aullador",
+     "img": "../../image-generator/generated/banco/r27-f0-aullador/intentos/banner-s3-p4-20261106-222456.png"
+    },
+    {
+     "ronda": "r27-f0-aullador-sin-planas",
+     "img": "../../image-generator/generated/banco/r27-f0-aullador-sin-planas/intentos/banner-s3-p4-20261106-222810.png"
+    },
+    {
+     "ronda": "r25-f0-v1-sin-zorro",
+     "img": "../../image-generator/generated/banco/r25-f0-v1-sin-zorro/intentos/banner-s3-p4-20261106-200829.png"
+    },
+    {
+     "ronda": "r25-f0-v4-ancla-marco",
+     "img": "../../image-generator/generated/banco/r25-f0-v4-ancla-marco/intentos/banner-s3-p4-20261106-201023.png"
+    }
+   ],
+   "F1": [
+    {
+     "ronda": "r27-f1-aullador",
+     "img": "../../image-generator/generated/banco/r27-f1-aullador/intentos/banner-s3-p8-20261106-224144.png"
+    },
+    {
+     "ronda": "r25-f1-s7-aullador",
+     "img": "../../image-generator/generated/banco/r25-f1-s7-aullador/intentos/banner-s7-p8-20261106-203506.png"
+    },
+    {
+     "ronda": "r25-f1-forma-f3",
+     "img": "../../image-generator/generated/banco/r25-f1-forma-f3/intentos/banner-s3-p8-20261106-201126.png"
+    }
+   ],
+   "F2": [
+    {
+     "ronda": "r27-f2-aullador",
+     "img": "../../image-generator/generated/banco/r27-f2-aullador/intentos/banner-s3-p16-20261106-224640.png"
+    },
+    {
+     "ronda": "r26c-f2-h-aullador",
+     "img": "../../image-generator/generated/banco/r26c-f2-h-aullador/intentos/banner-s3-p16-20261106-212924.png"
+    },
+    {
+     "ronda": "r27-f2-aullador-sin-planas",
+     "img": "../../image-generator/generated/banco/r27-f2-aullador-sin-planas/intentos/banner-s3-p16-20261106-222935.png"
+    }
+   ],
+   "FIN": [
+    {
+     "ronda": "r30-a-aullador",
+     "img": "../../image-generator/generated/banco/r30-a-aullador/intentos/banner-s3-p6-20261107-114903.png"
+    },
+    {
+     "ronda": "r31-p4-aullador",
+     "img": "../../image-generator/generated/banco/r31-p4-aullador/intentos/banner-s3-p4-20261107-122428.png"
+    },
+    {
+     "ronda": "r30-b-aullador",
+     "img": "../../image-generator/generated/banco/r30-b-aullador/intentos/banner-s3-p8-20261107-115247.png"
+    },
+    {
+     "ronda": "r27-final-aullador",
+     "img": "../../image-generator/generated/banco/r27-final-aullador/intentos/banner-s3-p16-20261106-225117.png"
+    }
+   ]
+  }
+ },
+ "cardo-brujula": {
+  "nombre": "Cardo brújula",
+  "tipo": "flora",
+  "banner": "../../image-generator/referencias/images/flora/cardo-brujula-banner.png",
+  "prompts": {
+   "F0": "The same plant, in the same composition, as the reference image. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A small, rigid thistle seen from ground level, its thick spiny stem twisted like rope and topped by a single large closed bud, with a few stiff, narrow, blade-like leaves curling out from the base. The bud is two thirds as tall as the stem and twice as wide, and the whole plant rises only a little above the stones around it. From the tip of each bud a single fine, stiff filament arches out and points the same way as all the others, toward the left of the image. Fine grey burrs crowd the stem just below each bud, and tiny grains of black sand cling along the thorns. The bud is built like a closed artichoke from overlapping charcoal-grey blade-scales with a faint violet tint, their edges glinting silver, and the stem is the same dull grey, studded with short sharp thorns. The horizon lies a third of the way up the image; the nearest plant fills the lower left foreground, sharp and large, and a loose diagonal row of smaller ones runs back toward the middle ground, softer with each step. They grow in the lee of glossy black rocks, where dark grains drift against red sand. Black needle spires fill the right half of the middle ground with small black stones hanging still above them, and flat-topped red mesas, an eighth of the image tall, fade into haze under a wide amber sky. Low warm amber light falls from the right through a light haze, picking out the silver edges of the scales and the thorns, and casting long soft shadows to the left across the sand. Style: simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values, broad painted masses, minimal detail. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless.",
+   "F1": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A small, rigid thistle seen from ground level, its thick spiny stem twisted like rope and topped by a single large closed bud, with a few stiff, narrow, blade-like leaves curling out from the base. The bud is two thirds as tall as the stem and twice as wide, and the whole plant rises only a little above the stones around it. From the tip of each bud a single fine, stiff filament arches out and points the same way as all the others, toward the left of the image. Fine grey burrs crowd the stem just below each bud, and tiny grains of black sand cling along the thorns. The bud is built like a closed artichoke from overlapping charcoal-grey blade-scales with a faint violet tint, their edges glinting silver, and the stem is the same dull grey, studded with short sharp thorns. The horizon lies a third of the way up the image; the nearest plant fills the lower left foreground, sharp and large, and a loose diagonal row of smaller ones runs back toward the middle ground, softer with each step. They grow in the lee of glossy black rocks, where dark grains drift against red sand. Black needle spires fill the right half of the middle ground with small black stones hanging still above them, and flat-topped red mesas, an eighth of the image tall, fade into haze under a wide amber sky. Low warm amber light falls from the right through a light haze, picking out the silver edges of the scales and the thorns, and casting long soft shadows to the left across the sand. Surface detail: fibrous ribbed stems with tiny thorns, papery overlapping bracts with dry veined edges, gritty red earth scattered with pebbles and brittle grass blades. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless.",
+   "F2": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A small, rigid thistle seen from ground level, its thick spiny stem twisted like rope and topped by a single large closed bud, with a few stiff, narrow, blade-like leaves curling out from the base. The bud is two thirds as tall as the stem and twice as wide, and the whole plant rises only a little above the stones around it. From the tip of each bud a single fine, stiff filament arches out and points the same way as all the others, toward the left of the image. Fine grey burrs crowd the stem just below each bud, and tiny grains of black sand cling along the thorns. The bud is built like a closed artichoke from overlapping charcoal-grey blade-scales with a faint violet tint, their edges glinting silver, and the stem is the same dull grey, studded with short sharp thorns. The horizon lies a third of the way up the image; the nearest plant fills the lower left foreground, sharp and large, and a loose diagonal row of smaller ones runs back toward the middle ground, softer with each step. They grow in the lee of glossy black rocks, where dark grains drift against red sand. Black needle spires fill the right half of the middle ground with small black stones hanging still above them, and flat-topped red mesas, an eighth of the image tall, fade into haze under a wide amber sky. Low warm amber light falls from the right through a light haze, picking out the silver edges of the scales and the thorns, and casting long soft shadows to the left across the sand. Surface detail: fibrous ribbed stems with tiny thorns, papery overlapping bracts with dry veined edges, gritty red earth scattered with pebbles and brittle grass blades. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless.",
+   "FIN": "The same plant, in the same composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A small, rigid thistle seen from ground level, its thick spiny stem twisted like rope and topped by a single large closed bud, with a few stiff, narrow, blade-like leaves curling out from the base. The bud is two thirds as tall as the stem and twice as wide, and the whole plant rises only a little above the stones around it. From the tip of each bud a single fine, stiff filament arches out and points the same way as all the others, toward the left of the image. Fine grey burrs crowd the stem just below each bud, and tiny grains of black sand cling along the thorns. The bud is built like a closed artichoke from overlapping charcoal-grey blade-scales with a faint violet tint, their edges glinting silver, and the stem is the same dull grey, studded with short sharp thorns. The horizon lies a third of the way up the image; the nearest plant fills the lower left foreground, sharp and large, and a loose diagonal row of smaller ones runs back toward the middle ground, softer with each step. They grow in the lee of glossy black rocks, where dark grains drift against red sand. Black needle spires fill the right half of the middle ground with small black stones hanging still above them, and flat-topped red mesas, an eighth of the image tall, fade into haze under a wide amber sky. Low warm amber light falls from the right through a light haze, picking out the silver edges of the scales and the thorns, and casting long soft shadows to the left across the sand. Surface detail: fibrous ribbed stems with tiny thorns, papery overlapping bracts with dry veined edges, gritty red earth scattered with pebbles and brittle grass blades. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless."
+  },
+  "pool": {
+   "F0": [
+    {
+     "ronda": "r30-f0-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r30-f0-cardo-brujula/intentos/banner-s3-p4-20261107-114748.png"
+    },
+    {
+     "ronda": "r27-f0-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r27-f0-cardo-brujula/intentos/banner-s3-p4-20261106-222546.png"
+    }
+   ],
+   "F1": [
+    {
+     "ronda": "r27-f1-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r27-f1-cardo-brujula/intentos/banner-s3-p8-20261106-232742.png"
+    },
+    {
+     "ronda": "r25-f1-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r25-f1-cardo-brujula/intentos/banner-s3-p8-20261106-202114.png"
+    }
+   ],
+   "F2": [
+    {
+     "ronda": "r27-f2-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r27-f2-cardo-brujula/intentos/banner-s3-p16-20261106-233240.png"
+    },
+    {
+     "ronda": "r26c-f2-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r26c-f2-cardo-brujula/intentos/banner-s3-p16-20261106-213417.png"
+    }
+   ],
+   "FIN": [
+    {
+     "ronda": "r30-a-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r30-a-cardo-brujula/intentos/banner-s3-p6-20261107-120940.png"
+    },
+    {
+     "ronda": "r30-b-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r30-b-cardo-brujula/intentos/banner-s3-p8-20261107-121322.png"
+    },
+    {
+     "ronda": "r27-final-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r27-final-cardo-brujula/intentos/banner-s3-p16-20261106-233716.png"
+    },
+    {
+     "ronda": "r27p-final-cardo-brujula",
+     "img": "../../image-generator/generated/banco/r27p-final-cardo-brujula/intentos/banner-s3-p16-20261107-000941.png"
+    }
+   ]
+  }
+ },
+ "choza-basica-orco-llanuras": {
+  "nombre": "Choza básica orca",
+  "tipo": "construccion",
+  "banner": "../../image-generator/referencias/images/construccion/choza-basica-orco-llanuras-banner.png",
+  "prompts": {
+   "F0": "The same hut, in the same composition, as the reference image. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A single domed hut standing alone on a red desert plain, seen from a low camera angle three-quarters from the front, filling the left half of the image. The dome is about twice as wide as it is tall, and its low entrance reaches only a third of its height. A single low, dark doorway opens at the front, framed by a thick upright bone post carved with a bold black clan mark. The hides are weathered and faded where the wind strikes them, and red dust has piled in a low drift along the windward side. Its frame is a ring of huge, curved pale bones driven into the ground and bent together over the top, lashed at every crossing with thick cords of dark tendon. Sewn hides in patched shades of red-brown and tan are stretched tight between the bones as walls and roof, their seams stitched with coarse cord. A dry wind tugs at the loose edge of a hide near the base and blows a thin streamer of red dust past the doorway. The ground is cracked red earth with sparse dry tufts; to the left, tall red rock spires rise in the middle distance, and flat-topped mesas fade into haze on the far horizon under a wide sky of broken golden cloud. Warm, hazy daylight falls from high on the right, picking out the curve of the bones and the stitched seams, and laying a soft shadow to the left of the hut. Style: simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values, broad painted masses, minimal detail. Mood: epic, hazy, grounded.",
+   "F1": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A single domed hut standing alone on a red desert plain, seen from a low camera angle three-quarters from the front, filling the left half of the image. The dome is about twice as wide as it is tall, and its low entrance reaches only a third of its height. A single low, dark doorway opens at the front, framed by a thick upright bone post carved with a bold black clan mark. The hides are weathered and faded where the wind strikes them, and red dust has piled in a low drift along the windward side. Its frame is a ring of huge, curved pale bones driven into the ground and bent together over the top, lashed at every crossing with thick cords of dark tendon. Sewn hides in patched shades of red-brown and tan are stretched tight between the bones as walls and roof, their seams stitched with coarse cord. A dry wind tugs at the loose edge of a hide near the base and blows a thin streamer of red dust past the doorway. The ground is cracked red earth with sparse dry tufts; to the left, tall red rock spires rise in the middle distance, and flat-topped mesas fade into haze on the far horizon under a wide sky of broken golden cloud. Warm, hazy daylight falls from high on the right, picking out the curve of the bones and the stitched seams, and laying a soft shadow to the left of the hut. Surface detail: weathered cracked bone with pits and stains, stitched scarred rawhide with visible seams, frayed sinew lashings, gritty red earth scattered with pebbles and dry grass. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded.",
+   "F2": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A single domed hut standing alone on a red desert plain, seen from a low camera angle three-quarters from the front, filling the left half of the image. The dome is about twice as wide as it is tall, and its low entrance reaches only a third of its height. A single low, dark doorway opens at the front, framed by a thick upright bone post carved with a bold black clan mark. The hides are weathered and faded where the wind strikes them, and red dust has piled in a low drift along the windward side. Its frame is a ring of huge, curved pale bones driven into the ground and bent together over the top, lashed at every crossing with thick cords of dark tendon. Sewn hides in patched shades of red-brown and tan are stretched tight between the bones as walls and roof, their seams stitched with coarse cord. A dry wind tugs at the loose edge of a hide near the base and blows a thin streamer of red dust past the doorway. The ground is cracked red earth with sparse dry tufts; to the left, tall red rock spires rise in the middle distance, and flat-topped mesas fade into haze on the far horizon under a wide sky of broken golden cloud. Warm, hazy daylight falls from high on the right, picking out the curve of the bones and the stitched seams, and laying a soft shadow to the left of the hut. Surface detail: weathered cracked bone with pits and stains, stitched scarred rawhide with visible seams, frayed sinew lashings, gritty red earth scattered with pebbles and dry grass. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded.",
+   "FIN": "The same hut, in the same composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A single domed hut standing alone on a red desert plain, seen from a low camera angle three-quarters from the front, filling the left half of the image. The dome is about twice as wide as it is tall, and its low entrance reaches only a third of its height. A single low, dark doorway opens at the front, framed by a thick upright bone post carved with a bold black clan mark. The hides are weathered and faded where the wind strikes them, and red dust has piled in a low drift along the windward side. Its frame is a ring of huge, curved pale bones driven into the ground and bent together over the top, lashed at every crossing with thick cords of dark tendon. Sewn hides in patched shades of red-brown and tan are stretched tight between the bones as walls and roof, their seams stitched with coarse cord. A dry wind tugs at the loose edge of a hide near the base and blows a thin streamer of red dust past the doorway. The ground is cracked red earth with sparse dry tufts; to the left, tall red rock spires rise in the middle distance, and flat-topped mesas fade into haze on the far horizon under a wide sky of broken golden cloud. Warm, hazy daylight falls from high on the right, picking out the curve of the bones and the stitched seams, and laying a soft shadow to the left of the hut. Surface detail: weathered cracked bone with pits and stains, stitched scarred rawhide with visible seams, frayed sinew lashings, gritty red earth scattered with pebbles and dry grass. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded."
+  },
+  "pool": {
+   "F0": [
+    {
+     "ronda": "r30-f0-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r30-f0-choza-basica-orco-llanuras/intentos/banner-s3-p4-20261107-114711.png"
+    },
+    {
+     "ronda": "r27-f0-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r27-f0-choza-basica-orco-llanuras/intentos/banner-s3-p4-20261106-222722.png"
+    }
+   ],
+   "F1": [
+    {
+     "ronda": "r27-f1-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r27-f1-choza-basica-orco-llanuras/intentos/banner-s3-p8-20261106-225850.png"
+    },
+    {
+     "ronda": "r25-f1-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r25-f1-choza-basica-orco-llanuras/intentos/banner-s3-p8-20261106-203042.png"
+    }
+   ],
+   "F2": [
+    {
+     "ronda": "r27-f2-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r27-f2-choza-basica-orco-llanuras/intentos/banner-s3-p16-20261106-231532.png"
+    },
+    {
+     "ronda": "r26c-f2-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r26c-f2-choza-basica-orco-llanuras/intentos/banner-s3-p16-20261106-214414.png"
+    }
+   ],
+   "FIN": [
+    {
+     "ronda": "r30-a-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r30-a-choza-basica-orco-llanuras/intentos/banner-s3-p6-20261107-115926.png"
+    },
+    {
+     "ronda": "r31s-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r31s-choza-basica-orco-llanuras/intentos/banner-s7-p6-20261107-123431.png"
+    },
+    {
+     "ronda": "r30-b-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r30-b-choza-basica-orco-llanuras/intentos/banner-s3-p8-20261107-120307.png"
+    },
+    {
+     "ronda": "r27-final-choza-basica-orco-llanuras",
+     "img": "../../image-generator/generated/banco/r27-final-choza-basica-orco-llanuras/intentos/banner-s3-p16-20261106-232009.png"
+    }
+   ]
+  }
+ },
+ "cuchillo-hielo-silice": {
+  "nombre": "Cuchillo de hielo-sílice",
+  "tipo": "item",
+  "banner": "../../image-generator/referencias/images/item/cuchillo-hielo-silice-banner.png",
+  "prompts": {
+   "F0": "The same knife, in the same composition, as the reference image. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A close still-life photograph of a single hand-carved hunting knife lying on a heavy, cracked workbench, seen from a low three-quarter angle just above the table, the knife large in the frame and spanning about half its width, almost horizontal and tilted slightly upward to the right, the point to the left and the handle to the right. The blade is nearly twice as long as the handle and about one fifth as wide as it is long, widest near the handle and tapering in a straight line to a needle-fine point. The handle is a straight cylinder of weathered bone-cream, about four times as long as it is thick, carved along its length with angular black runic marks and bound at each end with three wraps of tan twine. A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade. The blade is a translucent bluish-white mineral, brightest white along a web of fine fracture lines, with a rippled, hand-chipped surface and rough, uneven edges, so that the planks beneath show faintly through it, and a thin bloom of frost clings to its spine. The table is dark brown-grey planks, deeply cracked and grained, stained black in patches. Behind the table, softly out of focus, wooden crates of pale blue ice chunks stand at the left, a worn burlap sack rests at the right, and dark oxblood hide walls frame an opening that shows a pale snow plain and distant white mountains under an overcast sky. Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer. Style: simple colour blocking study, flat shapes of solid colour with clear silhouettes, three values, broad painted masses, minimal detail. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless.",
+   "F1": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A close still-life photograph of a single hand-carved hunting knife lying on a heavy, cracked workbench, seen from a low three-quarter angle just above the table, the knife large in the frame and spanning about half its width, almost horizontal and tilted slightly upward to the right, the point to the left and the handle to the right. The blade is nearly twice as long as the handle and about one fifth as wide as it is long, widest near the handle and tapering in a straight line to a needle-fine point. The handle is a straight cylinder of weathered bone-cream, about four times as long as it is thick, carved along its length with angular black runic marks and bound at each end with three wraps of tan twine. A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade. The blade is a translucent bluish-white mineral, brightest white along a web of fine fracture lines, with a rippled, hand-chipped surface and rough, uneven edges, so that the planks beneath show faintly through it, and a thin bloom of frost clings to its spine. The table is dark brown-grey planks, deeply cracked and grained, stained black in patches. Behind the table, softly out of focus, wooden crates of pale blue ice chunks stand at the left, a worn burlap sack rests at the right, and dark oxblood hide walls frame an opening that shows a pale snow plain and distant white mountains under an overcast sky. Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer. Surface detail: translucent chipped ice with internal fractures and frost, worn bone grip with scratches and pores, splintered rough wood grain, coarse frayed sacking. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless.",
+   "F2": "Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A close still-life photograph of a single hand-carved hunting knife lying on a heavy, cracked workbench, seen from a low three-quarter angle just above the table, the knife large in the frame and spanning about half its width, almost horizontal and tilted slightly upward to the right, the point to the left and the handle to the right. The blade is nearly twice as long as the handle and about one fifth as wide as it is long, widest near the handle and tapering in a straight line to a needle-fine point. The handle is a straight cylinder of weathered bone-cream, about four times as long as it is thick, carved along its length with angular black runic marks and bound at each end with three wraps of tan twine. A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade. The blade is a translucent bluish-white mineral, brightest white along a web of fine fracture lines, with a rippled, hand-chipped surface and rough, uneven edges, so that the planks beneath show faintly through it, and a thin bloom of frost clings to its spine. The table is dark brown-grey planks, deeply cracked and grained, stained black in patches. Behind the table, softly out of focus, wooden crates of pale blue ice chunks stand at the left, a worn burlap sack rests at the right, and dark oxblood hide walls frame an opening that shows a pale snow plain and distant white mountains under an overcast sky. Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer. Surface detail: translucent chipped ice with internal fractures and frost, worn bone grip with scratches and pores, splintered rough wood grain, coarse frayed sacking. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless.",
+   "FIN": "The same knife, in the same composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail. Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame. A close still-life photograph of a single hand-carved hunting knife lying on a heavy, cracked workbench, seen from a low three-quarter angle just above the table, the knife large in the frame and spanning about half its width, almost horizontal and tilted slightly upward to the right, the point to the left and the handle to the right. The blade is nearly twice as long as the handle and about one fifth as wide as it is long, widest near the handle and tapering in a straight line to a needle-fine point. The handle is a straight cylinder of weathered bone-cream, about four times as long as it is thick, carved along its length with angular black runic marks and bound at each end with three wraps of tan twine. A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade. The blade is a translucent bluish-white mineral, brightest white along a web of fine fracture lines, with a rippled, hand-chipped surface and rough, uneven edges, so that the planks beneath show faintly through it, and a thin bloom of frost clings to its spine. The table is dark brown-grey planks, deeply cracked and grained, stained black in patches. Behind the table, softly out of focus, wooden crates of pale blue ice chunks stand at the left, a worn burlap sack rests at the right, and dark oxblood hide walls frame an opening that shows a pale snow plain and distant white mountains under an overcast sky. Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer. Surface detail: translucent chipped ice with internal fractures and frost, worn bone grip with scratches and pores, splintered rough wood grain, coarse frayed sacking. Style: photorealistic fantasy matte painting, razor-sharp fine texture, high micro-contrast, golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 50mm lens. The image is completely textless."
+  },
+  "pool": {
+   "F0": [
+    {
+     "ronda": "r30-f0-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r30-f0-cuchillo-hielo-silice/intentos/banner-s3-p4-20261107-114826.png"
+    },
+    {
+     "ronda": "r27-f0-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r27-f0-cuchillo-hielo-silice/intentos/banner-s3-p4-20261106-222634.png"
+    }
+   ],
+   "F1": [
+    {
+     "ronda": "r27-f1-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r27-f1-cuchillo-hielo-silice/intentos/banner-s3-p8-20261106-234451.png"
+    },
+    {
+     "ronda": "r25-f1-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r25-f1-cuchillo-hielo-silice/intentos/banner-s3-p8-20261106-202558.png"
+    }
+   ],
+   "F2": [
+    {
+     "ronda": "r27-f2-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r27-f2-cuchillo-hielo-silice/intentos/banner-s3-p16-20261106-235008.png"
+    },
+    {
+     "ronda": "r26c-f2-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r26c-f2-cuchillo-hielo-silice/intentos/banner-s3-p16-20261106-213910.png"
+    }
+   ],
+   "FIN": [
+    {
+     "ronda": "r30-a-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r30-a-cuchillo-hielo-silice/intentos/banner-s3-p6-20261107-121615.png"
+    },
+    {
+     "ronda": "r30-b-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r30-b-cuchillo-hielo-silice/intentos/banner-s3-p8-20261107-121958.png"
+    },
+    {
+     "ronda": "r27-final-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r27-final-cuchillo-hielo-silice/intentos/banner-s3-p16-20261106-235457.png"
+    },
+    {
+     "ronda": "r27p-final-cuchillo-hielo-silice",
+     "img": "../../image-generator/generated/banco/r27p-final-cuchillo-hielo-silice/intentos/banner-s3-p16-20261107-001637.png"
+    }
+   ]
+  }
+ }
+}/*FIN*/;
+</script>
+
+<script>
+// ===== Lógica (pura: sin DOM). Es la parte que se lleva a IMG-40 =====
+const Camino = (() => {
+  const FASES = ['F0', 'F1', 'F2', 'FIN'];
+  const NOMBRE = { F0: 'F0 Boceto', F1: 'F1 Forma', F2: 'F2 Detalle', FIN: 'Final' };
+  const OPCIONAL = { F1: true, F2: true };
+  const COSTE = { F0: '~36 s', F1: '~5 min', F2: '~5 min', FIN: '~160 s' };
+  const SIGUIENTES = { F0: ['FIN', 'F1'], F1: ['FIN', 'F2'], F2: ['FIN'], FIN: [] };
+  const SEMILLA = 3;
+
+  const nuevaVariante = (id, nombre, prompts, origen) => ({
+    id, nombre, origen, camino: ['F0'], actual: 'F0', aceptado: {},
+    intentos: { F0: [], F1: [], F2: [], FIN: [] }, prompts: { ...prompts }, vista: {},
+  });
+
+  function inicial(datos) {
+    const elementos = {};
+    for (const [slug, d] of Object.entries(datos)) {
+      elementos[slug] = { slug, nombre: d.nombre, tipo: d.tipo, varActual: 'base',
+        variantes: [nuevaVariante('base', 'base', d.prompts, null)], usados: { F0: 0, F1: 0, F2: 0, FIN: 0 } };
+    }
+    return { elementos, actual: Object.keys(datos)[0], cola: [], generando: null, bandeja: [], marcadas: [],
+      sig: 1, ultimo: 'Elemento nuevo: aún no hay boceto. Pulsa «Generar».' };
+  }
+
+  const elem = (s, slug = s.actual) => s.elementos[slug];
+  const variante = (e, id = e.varActual) => e.variantes.find(v => v.id === id);
+  const previa = (v, f) => { const i = v.camino.indexOf(f); return i > 0 ? v.camino[i - 1] : null; };
+  const intento = (v, id) => FASES.map(f => v.intentos[f].find(a => a.id === id)).find(Boolean) || null;
+  const baseActual = (v, f) => { const p = previa(v, f); return p ? (v.aceptado[p] ?? null) : null; };
+  const esMarcada = (s, slug, varId, id) => s.marcadas.some(m => m.slug === slug && m.varId === varId && m.id === id);
+
+  function desfasada(v, f) {
+    if (!(f in v.aceptado)) return false;
+    const p = previa(v, f);
+    if (!p) return false;
+    if (intento(v, v.aceptado[f]).base !== v.aceptado[p]) return true;
+    return desfasada(v, p);
+  }
+
+  function indiceVisto(v, f) {
+    const lista = v.intentos[f];
+    if (!lista.length) return -1;
+    if (v.vista[f] != null) return Math.max(0, Math.min(lista.length - 1, v.vista[f]));
+    const base = baseActual(v, f);
+    const acep = lista.findIndex(a => a.id === v.aceptado[f] && a.base === base);
+    if (acep >= 0) return acep;
+    for (let i = lista.length - 1; i >= 0; i--) if (lista[i].base === base && !lista[i].borrado) return i;
+    return lista.length - 1;
+  }
+  const visto = (v, f = v.actual) => v.intentos[f][indiceVisto(v, f)] || null;
+
+  // Por qué no se puede: null si se puede. La interfaz apaga el botón y enseña el motivo.
+  function motivo(s, accion, arg) {
+    const e = elem(s), v = variante(e), f = v.actual, a = visto(v);
+    const sobreIntento = () => {
+      if (!a) return 'Aún no hay intento en esta fase: genera uno.';
+      if (a.borrado) return 'La imagen de ese intento se borró al avanzar: «Repetir» la recupera con su prompt y su semilla.';
+      if (a.base !== baseActual(v, f)) return 'Ese intento sale de una fase anterior que ya no es la aceptada: regenera.';
+      const p = previa(v, f);
+      if (p && desfasada(v, p)) return 'La fase anterior está desfasada: vuelve atrás y avanza desde ella.';
+      return null;
+    };
+    switch (accion) {
+      case 'ATRAS': return previa(v, f) ? null : 'Estás en el boceto: no hay fase anterior.';
+      case 'AVANZAR':
+        if (f === 'FIN') return 'La Final no avanza: se marca ★.';
+        if (!SIGUIENTES[f].includes(arg)) return `De ${NOMBRE[f]} no se va a ${NOMBRE[arg]}.`;
+        return sobreIntento();
+      case 'MARCAR':
+        if (f !== 'FIN') return 'Solo se marca ★ en la Final.';
+        return sobreIntento();
+      case 'VARIANTE_DESDE':
+        if (f === 'FIN') return 'Desde la Final no sale variante: créala desde una fase anterior.';
+        if (!(f in v.aceptado)) return 'Primero acepta esta fase (avanza desde ella).';
+        if (desfasada(v, f)) return 'Esta fase está desfasada.';
+        return null;
+      case 'BORRAR':
+        return (f in v.aceptado || v.intentos[f].length) ? null : 'No hay nada guardado en esta fase.';
+    }
+    return null;
+  }
+
+  // Qué arrastra borrar una fase: variantes que salen de ella o de una posterior, y ★ de esta variante.
+  function dependientes(s, f) {
+    const e = elem(s), v = variante(e), i = v.camino.indexOf(f), tramo = v.camino.slice(i);
+    return {
+      variantes: e.variantes.filter(o => o.origen && o.origen.variante === v.id && tramo.includes(o.origen.fase)).map(o => o.nombre),
+      marcadas: s.marcadas.filter(m => m.slug === e.slug && m.varId === v.id && tramo.some(p => v.intentos[p].some(a => a.id === m.id))).length,
+    };
+  }
+
+  function encolar(s, e, v, f, prompt, semilla, pool, tamPool) {
+    let repetido = false;
+    if (pool == null) {
+      const igual = [...v.intentos[f], ...trabajos(s, e, v, f)].find(x => x.prompt === prompt && x.semilla === semilla);
+      if (igual) pool = igual.pool;
+      else { pool = e.usados[f] % tamPool; repetido = e.usados[f] >= tamPool; e.usados[f]++; }
+    }
+    s.cola.push({ id: 'g' + s.sig++, slug: e.slug, varId: v.id, fase: f, prompt, semilla, pool, repetido, base: baseActual(v, f) });
+    if (!s.generando) s.generando = s.cola.shift();
+  }
+
+  const trabajos = (s, e, v, f) => [s.generando, ...s.cola].filter(j => j && j.slug === e.slug && j.varId === v.id && j.fase === f);
+
+  function semillaNueva(s, v, f, prompt) {
+    const previas = [...v.intentos[f], ...trabajos(s, elem(s), v, f)];
+    if (!previas.length) return SEMILLA;
+    const mismo = previas.filter(x => x.prompt === prompt);
+    return mismo.length ? Math.max(...mismo.map(x => x.semilla)) + 1 : previas[previas.length - 1].semilla;
+  }
+
+  function reducir(s0, accion, datos) {
+    const s = structuredClone(s0);
+    const e = elem(s), v = variante(e), f = v.actual;
+    const tam = fase => datos[e.slug].pool[fase].length;
+    const no = motivo(s0, accion.tipo, accion.a);
+    if (no && ['ATRAS', 'AVANZAR', 'MARCAR', 'VARIANTE_DESDE', 'BORRAR'].includes(accion.tipo)) {
+      s.ultimo = '✋ ' + no; return s;
+    }
+    switch (accion.tipo) {
+      case 'ELEGIR_ELEMENTO': s.actual = accion.slug; s.ultimo = `Abierto: ${elem(s).nombre}.`; break;
+      case 'RENOMBRAR': e.nombre = accion.nombre; s.ultimo = `Renombrado a «${accion.nombre}». El nombre de la carpeta no cambia.`; break;
+      case 'ELEGIR_VARIANTE': e.varActual = accion.id; s.ultimo = `Variante «${variante(e).nombre}».`; break;
+      case 'ABRIR_FASE':
+        if (!v.camino.includes(accion.fase)) { s.ultimo = `✋ ${NOMBRE[accion.fase]} no está en el camino de esta variante.`; break; }
+        v.actual = accion.fase; s.ultimo = `Abierta ${NOMBRE[accion.fase]}, con lo guardado.`; break;
+      case 'ATRAS': v.actual = previa(v, f); s.ultimo = `Atrás: ${NOMBRE[v.actual]}. Si aceptas otro intento aquí, lo de después queda desfasado.`; break;
+      case 'VER': v.vista[f] = Math.max(0, Math.min(v.intentos[f].length - 1, indiceVisto(v, f) + accion.d)); break;
+      case 'EDITAR_PROMPT': v.prompts[f] = accion.texto; break;
+      case 'REGENERAR': {
+        const sem = semillaNueva(s, v, f, v.prompts[f]);
+        encolar(s, e, v, f, v.prompts[f], sem, null, tam(f));
+        s.ultimo = `${NOMBRE[f]} a la cola, semilla ${sem}` + (v.intentos[f].some(x => x.prompt === v.prompts[f]) ? ' (mismo prompt: otra semilla).' : ' (prompt nuevo: misma semilla).');
+        break;
+      }
+      case 'REPETIR': {
+        const a = intento(v, accion.id);
+        encolar(s, e, v, f, a.prompt, a.semilla, a.pool, tam(f));
+        s.ultimo = `Se repite el intento con su prompt y su semilla ${a.semilla}: sale la misma imagen.`; break;
+      }
+      case 'AVANZAR': {
+        const a = visto(v), dest = accion.a, antes = v.aceptado[f];
+        v.aceptado[f] = a.id;
+        let borrados = 0;
+        for (const x of v.intentos[f]) if (x.id !== a.id && !x.borrado) { x.borrado = true; borrados++; }
+        const i = v.camino.indexOf(f), resto = v.camino.slice(i + 1);
+        if (resto[0] !== dest) {
+          const quedan = resto.filter(p => FASES.indexOf(p) > FASES.indexOf(dest));
+          for (const p of resto) if (!quedan.includes(p) && p !== dest) delete v.aceptado[p];
+          v.camino = [...v.camino.slice(0, i + 1), dest, ...quedan];
+        }
+        v.actual = dest; delete v.vista[dest];
+        let msg = `Aceptado el intento de ${NOMBRE[f]}` + (borrados ? `; ${borrados} sin aceptar pierden la imagen y guardan prompt y semilla.` : '.');
+        if (antes && antes !== a.id && resto.length) msg += ' Lo que venía después queda desfasado (⚠), pero sigue guardado.';
+        if (!v.intentos[dest].some(x => x.base === a.id && !x.borrado)) {
+          encolar(s, e, v, dest, v.prompts[dest], semillaNueva(s, v, dest, v.prompts[dest]), null, tam(dest));
+          msg += ` Primer intento de ${NOMBRE[dest]} a la cola.`;
+        }
+        s.ultimo = msg; break;
+      }
+      case 'MARCAR': {
+        const a = visto(v), i = s.marcadas.findIndex(m => m.slug === e.slug && m.varId === v.id && m.id === a.id);
+        if (i >= 0) { s.marcadas.splice(i, 1); s.ultimo = 'Quitada la ★.'; }
+        else { s.marcadas.push({ slug: e.slug, varId: v.id, id: a.id }); v.aceptado.FIN = a.id; s.ultimo = '★ Marcada: ya está en la biblioteca para combinar. Marcar no es publicar.'; }
+        break;
+      }
+      case 'CREAR_VARIANTE': {
+        const id = 'v' + s.sig++;
+        const desde = accion.desde;
+        const nv = nuevaVariante(id, accion.nombre, v.prompts, desde ? { variante: v.id, fase: desde } : null);
+        if (desde) {
+          const i = v.camino.indexOf(desde);
+          nv.camino = [...v.camino.slice(0, i + 1), 'FIN'];
+          for (const p of v.camino.slice(0, i + 1)) { nv.aceptado[p] = v.aceptado[p]; nv.intentos[p] = [structuredClone(intento(v, v.aceptado[p]))]; }
+          nv.actual = 'FIN';
+          s.ultimo = `Variante «${accion.nombre}» desde ${NOMBRE[desde]}: hereda lo aceptado hasta ahí. Edita el prompt de la Final y genera (o vuelve atrás para pasar por F1/F2).`;
+        } else s.ultimo = `Variante «${accion.nombre}» desde el prompt: boceto nuevo.`;
+        e.variantes.push(nv); e.varActual = id; break;
+      }
+      case 'BORRAR': {
+        const i = v.camino.indexOf(f), tramo = v.camino.slice(i);
+        for (const p of tramo) {
+          delete v.aceptado[p];
+          for (const x of v.intentos[p]) { x.borrado = true; s.marcadas = s.marcadas.filter(m => !(m.slug === e.slug && m.varId === v.id && m.id === x.id)); }
+        }
+        v.camino = i ? v.camino.slice(0, i) : ['F0'];
+        v.actual = v.camino[v.camino.length - 1];
+        s.ultimo = `Borrado desde ${NOMBRE[f]}: quedan prompts y semillas, sin imágenes. Las variantes que salían de aquí conservan su copia.`; break;
+      }
+      case 'TERMINAR': {
+        const j = s.generando; if (!j) break;
+        const je = elem(s, j.slug), jv = variante(je, j.varId);
+        const n = { id: 'i' + s.sig++, fase: j.fase, prompt: j.prompt, semilla: j.semilla, pool: j.pool, repetido: j.repetido, base: j.base, borrado: false };
+        jv.intentos[j.fase].push(n);
+        const delante = s.actual === j.slug && je.varActual === j.varId && jv.actual === j.fase;
+        if (delante) jv.vista[j.fase] = jv.intentos[j.fase].length - 1;
+        else { s.bandeja.push({ slug: j.slug, varId: j.varId, fase: j.fase }); s.ultimo = `Listo ${NOMBRE[j.fase]} de ${je.nombre}: en la bandeja.`; }
+        s.generando = s.cola.shift() || null; break;
+      }
+      case 'CANCELAR': s.generando = s.cola.shift() || null; s.ultimo = 'Cancelado a medias: no queda imagen ni intento.'; break;
+      case 'QUITAR_COLA': s.cola = s.cola.filter(j => j.id !== accion.id); s.ultimo = 'Quitado de la cola.'; break;
+    }
+    // Abrir lo que está en la bandeja la vacía.
+    const ce = elem(s), cv = variante(ce);
+    s.bandeja = s.bandeja.filter(b => !(b.slug === ce.slug && b.varId === cv.id && b.fase === cv.actual));
+    return s;
+  }
+
+  return { FASES, NOMBRE, OPCIONAL, COSTE, SIGUIENTES, inicial, reducir, motivo, dependientes, elem, variante,
+    previa, intento, visto, indiceVisto, desfasada, baseActual, esMarcada };
+})();
+</script>
+
+<script>
+// ===== Página (desechable) =====
+const C = Camino;
+let S = C.inicial(DATOS);
+let pestana = 'pantalla';
+let velocidad = 1;           // 1: espera simulada corta; 0.15: casi al momento (recorridos)
+let inicioJob = null, idJob = null;
+const DUR = { F0: 2500, F1: 5000, F2: 5000, FIN: 4000 };
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const img = (slug, fase, pool) => DATOS[slug].pool[fase][pool];
+
+function hacer(accion) { S = C.reducir(S, accion, DATOS); pintar(); }
+
+function pintarPestanas() {
+  const p = [['pantalla', 'Pantalla del elemento'], ['biblio', `Biblioteca ★ (${S.marcadas.length})`], ['recorridos', 'Recorridos guiados']];
+  $('pestanas').innerHTML = p.map(([k, t]) => `<button class="${k === pestana ? 'activa' : ''}" data-p="${k}">${t}</button>`).join('');
+  $('vistaPantalla').hidden = pestana !== 'pantalla';
+  $('vistaBiblio').hidden = pestana !== 'biblio';
+  $('vistaRecorridos').hidden = pestana !== 'recorridos';
+}
+
+function pintarLista() {
+  $('lista').innerHTML = '<div class="meta" style="margin:0 0 8px">Elementos</div>' + Object.values(S.elementos).map(e => {
+    const v = C.variante(e), b = S.bandeja.filter(x => x.slug === e.slug).length;
+    const fase = C.NOMBRE[v.actual], stars = S.marcadas.filter(m => m.slug === e.slug).length;
+    return `<button class="${e.slug === S.actual ? 'activa' : ''}" data-elem="${e.slug}">${esc(e.nombre)}${b ? ` <span class="warn">● ${b}</span>` : ''}
+      <small>${e.tipo} · ${e.variantes.length} var. · en ${fase}${stars ? ' · ' + '★'.repeat(stars) : ''}</small></button>`;
+  }).join('');
+}
+
+function pintarCola() {
+  const g = S.generando;
+  let h = '<div class="meta" style="margin:0 0 6px">Motor: una generación a la vez</div>';
+  if (g) {
+    const p = inicioJob ? Math.min(1, (Date.now() - inicioJob) / (DUR[g.fase] * velocidad)) : 0;
+    h += `<div>Generando <b>${C.NOMBRE[g.fase]}</b> de ${esc(S.elementos[g.slug].nombre)} · s=${g.semilla}</div>
+      <div class="barra"><i style="width:${Math.round(p * 100)}%"></i></div>
+      <button class="mini" data-cancelar style="margin-top:6px">Cancelar</button>`;
+  } else h += '<div class="mute">Libre.</div>';
+  if (S.cola.length) h += '<div class="meta">En cola</div><ol>' + S.cola.map(j => `<li>${C.NOMBRE[j.fase]} · ${esc(S.elementos[j.slug].nombre)} · s=${j.semilla} <button class="mini" data-quitar="${j.id}">quitar</button></li>`).join('') + '</ol>';
+  if (S.bandeja.length) h += '<div class="meta">Bandeja (listo para decidir)</div><ul>' + S.bandeja.map(b => `<li><button class="mini" data-bandeja="${b.slug}|${b.varId}|${b.fase}">${esc(S.elementos[b.slug].nombre)} · ${C.NOMBRE[b.fase]}</button></li>`).join('') + '</ul>';
+  $('cola').innerHTML = h;
+}
+
+function estadoFase(v, f) {
+  if (!v.camino.includes(f)) return { cls: 'fuera', txt: C.OPCIONAL[f] ? 'opcional' : 'pendiente' };
+  if (C.desfasada(v, f)) return { cls: '', txt: '⚠ desfasada' };
+  if (f in v.aceptado) return { cls: '', txt: '✓' };
+  return { cls: '', txt: '·' };
+}
+
+function pintarCabecera() {
+  const e = C.elem(S), v = C.variante(e);
+  $('cab').innerHTML = `<span class="nombre">${esc(e.nombre)}</span> <button class="mini" data-renombrar>✎</button>
+    <span class="mute">${e.tipo}</span>
+    <span>variante <select id="selVar">${e.variantes.map(o => `<option value="${o.id}" ${o.id === v.id ? 'selected' : ''}>${esc(o.nombre)}${o.origen ? ` (de ${esc(C.variante(e, o.origen.variante).nombre)} · ${o.origen.fase})` : ''}</option>`).join('')}</select></span>
+    <button class="mini" data-var-prompt>+ variante desde el prompt</button>
+    <span class="der mute">cola: ${S.cola.length + (S.generando ? 1 : 0)} · bandeja: ${S.bandeja.length}</span>`;
+  const stars = S.marcadas.filter(m => m.slug === e.slug && m.varId === v.id).length;
+  $('pasos').innerHTML = C.FASES.map(f => {
+    const st = estadoFase(v, f);
+    return `<button class="paso ${st.cls} ${f === v.actual ? 'abierta' : ''}" data-fase="${f}">${C.NOMBRE[f]} ${st.txt}</button>`;
+  }).join('<span class="mute">─</span>') + `<span class="mute">─</span><span class="paso">★ ${stars}</span>`;
+}
+
+function marcoImagen(titulo, src, meta, extra = '') {
+  return `<div class="marco"><h3>${titulo}</h3>${src ? `<img src="${src}" alt="">` : `<div class="hueco">${meta}</div>`}${src && meta ? `<div class="meta">${meta}</div>` : ''}${extra}</div>`;
+}
+
+function pintarTres() {
+  const e = C.elem(S), v = C.variante(e), f = v.actual, d = DATOS[e.slug];
+  const ref = marcoImagen('Referencia (banner GPT)', d.banner, 'Solo para comparar. Un elemento nuevo no tendrá.');
+  const p = C.previa(v, f);
+  let ant;
+  if (!p) ant = marcoImagen('Fase anterior', null, 'El boceto sale solo del prompt.');
+  else {
+    const a = C.intento(v, v.aceptado[p]);
+    ant = marcoImagen(`Aceptada en ${C.NOMBRE[p]}${C.desfasada(v, p) ? ' <span class="warn">⚠ desfasada</span>' : ''}`, a ? img(e.slug, p, a.pool).img : null, a ? `s=${a.semilla} · ${img(e.slug, p, a.pool).ronda}` : '—');
+  }
+  const lista = v.intentos[f], i = C.indiceVisto(v, f), a = lista[i];
+  const g = S.generando, aqui = g && g.slug === e.slug && g.varId === v.id && g.fase === f;
+  let cur;
+  const nav = lista.length ? `<span style="margin-left:auto"><button class="mini" data-ver="-1">◀</button> ${i + 1}/${lista.length} <button class="mini" data-ver="1">▶</button></span>` : '';
+  if (aqui && inicioJob) {
+    const pr = Math.min(1, (Date.now() - inicioJob) / (DUR[g.fase] * velocidad));
+    cur = `<div class="marco"><h3>Vista previa de ${C.NOMBRE[f]} · s=${g.semilla} ${nav}</h3><div class="prev" style="--b:${Math.round((1 - pr) * 16)}px;--o:${(0.3 + pr * 0.6).toFixed(2)}"><img src="${img(e.slug, f, g.pool).img}" alt=""></div>
+      <div class="barra"><i style="width:${Math.round(pr * 100)}%"></i></div><div class="meta">En la Deck: ${C.COSTE[f]}. Si va mal, «Cancelar» en el motor.</div></div>`;
+  } else if (!a) {
+    cur = marcoImagen(`${C.NOMBRE[f]} · sin intentos`, null, `${f === 'F0' ? 'Elemento nuevo.' : 'Esta fase aún no tiene imagen.'} «${lista.length ? 'Regenerar' : 'Generar'}» la pide (${C.COSTE[f]} en la Deck).`);
+  } else {
+    const info = img(e.slug, f, a.pool), tags = [];
+    if (a.id === v.aceptado[f]) tags.push('<span class="ok">aceptado</span>');
+    if (C.esMarcada(S, e.slug, v.id, a.id)) tags.push('<span class="warn">★</span>');
+    if (a.base !== C.baseActual(v, f)) tags.push('<span class="warn">⚠ sale de otra fase anterior</span>');
+    if (a.repetido) tags.push('<span class="mute">(la maqueta no tiene más imágenes reales: repite)</span>');
+    const meta = `s=${a.semilla} · ${info.ronda} · ${C.COSTE[f]} ${tags.join(' ')}`;
+    if (a.borrado) cur = `<div class="marco"><h3>Intento ${i + 1} de ${C.NOMBRE[f]} ${nav}</h3><div class="hueco">Imagen borrada al avanzar.<br>Quedan su prompt y su semilla (s=${a.semilla}).<br><br><button class="mini" data-repetir="${a.id}">Repetir</button></div><div class="meta">${tags.join(' ')}</div></div>`;
+    else cur = `<div class="marco"><h3>Intento ${i + 1} de ${C.NOMBRE[f]} ${nav}</h3><img src="${info.img}" alt=""><div class="meta">${meta}</div></div>`;
+  }
+  $('tres').innerHTML = ref + ant + cur;
+}
+
+function boton(txt, accion, cls = '', key = '') {
+  const no = accion.tipo ? C.motivo(S, accion.tipo, accion.a) : null;
+  return `<button class="${cls} ${no ? 'apagado' : ''}" title="${esc(no || '')}" data-acc='${esc(JSON.stringify(accion))}' data-motivo="${esc(no || '')}">${txt}${key ? ` <kbd>${key}</kbd>` : ''}</button>`;
+}
+
+function pintarBotones() {
+  const e = C.elem(S), v = C.variante(e), f = v.actual;
+  const t = $('prompt');
+  if (document.activeElement !== t) t.value = v.prompts[f];
+  $('promptTit').textContent = `Prompt de ${C.NOMBRE[f]} (de las rondas; editarlo mantiene la semilla, sin cambios «Regenerar» usa otra)`;
+  const b = [boton('Atrás', { tipo: 'ATRAS' }, '', 'A'), boton(v.intentos[f].length ? 'Regenerar' : 'Generar', { tipo: 'REGENERAR' }, '', 'R')];
+  if (f === 'FIN') {
+    const a = C.visto(v);
+    b.push(boton(a && C.esMarcada(S, e.slug, v.id, a.id) ? 'Quitar ★' : 'Marcar ★', { tipo: 'MARCAR' }, 'pri', 'M'));
+  } else {
+    for (const [k, dest] of C.SIGUIENTES[f].entries())
+      b.push(boton(dest === 'FIN' ? 'Avanzar a la Final' : `Avanzar por ${C.NOMBRE[dest]}`, { tipo: 'AVANZAR', a: dest }, k === 0 ? 'pri' : '', k === 0 ? 'Intro' : 'F'));
+  }
+  b.push(`<span style="margin-left:auto"></span>`);
+  b.push(boton('Crear variante desde aquí', { tipo: 'VARIANTE_DESDE' }).replace('data-acc', 'data-var-desde data-acc'));
+  b.push(boton('Borrar esta fase', { tipo: 'BORRAR' }).replace('data-acc', 'data-borrar data-acc'));
+  $('botones').innerHTML = b.join('');
+}
+
+function pintarEstado() {
+  const e = C.elem(S);
+  const filas = e.variantes.map(v => C.FASES.filter(f => v.camino.includes(f) || v.intentos[f].length).map(f => {
+    const a = v.aceptado[f] ? C.intento(v, v.aceptado[f]) : null;
+    const con = v.intentos[f].filter(x => !x.borrado).length, bor = v.intentos[f].length - con;
+    const st = !v.camino.includes(f) ? 'fuera del camino' : C.desfasada(v, f) ? '⚠ desfasada' : a ? '✓ aceptada' : 'abierta';
+    return `<tr><td>${esc(v.nombre)}${v.origen ? `<br><span class="mute">de ${esc(C.variante(e, v.origen.variante).nombre)} · ${v.origen.fase}</span>` : ''}</td><td>${C.NOMBRE[f]}${f === v.actual ? ' ◂' : ''}</td><td>${st}</td>
+      <td>${a ? `${a.id} · s=${a.semilla} · ${img(e.slug, f, a.pool).ronda}` : '—'}</td><td>${con} con imagen · ${bor} solo prompt y semilla</td></tr>`;
+  }).join('')).join('');
+  const json = { elemento: e.slug, nombre: e.nombre, tipo: e.tipo, variantes: e.variantes.map(v => ({
+    id: v.id, nombre: v.nombre, origen: v.origen, camino: v.camino, aceptado: v.aceptado,
+    intentos: Object.fromEntries(C.FASES.map(f => [f, v.intentos[f].map(a => ({ id: a.id, prompt: a.prompt.slice(0, 40) + '…', semilla: a.semilla, base: a.base, imagen: a.borrado ? null : img(e.slug, f, a.pool).ronda, marcada: C.esMarcada(S, e.slug, v.id, a.id) }))]).filter(([, l]) => l.length)),
+  })) };
+  $('estado').innerHTML = `<div class="meta" style="margin:0 0 6px">Lo que guarda el elemento (el futuro <code>camino.json</code> de IMG-40)</div>
+    <table><tr><th>Variante</th><th>Fase</th><th>Estado</th><th>Aceptado</th><th>Intentos</th></tr>${filas}</table>
+    <details><summary class="mute">Verlo como JSON</summary><pre>${esc(JSON.stringify(json, null, 1))}</pre></details>`;
+}
+
+function pintarBiblio() {
+  const tipos = [...new Set(S.marcadas.map(m => S.elementos[m.slug].tipo))];
+  const filtro = window.filtroTipo || '';
+  const items = S.marcadas.filter(m => !filtro || S.elementos[m.slug].tipo === filtro);
+  $('biblio').innerHTML = `<div class="cab"><b>Biblioteca ★</b><span class="mute">todo lo marcado, para combinar (bloque E). Marcar no es publicar.</span>
+    <select id="selTipo" class="der"><option value="">todos los tipos</option>${tipos.map(t => `<option ${t === filtro ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    <div class="biblio" style="margin-top:10px">${items.map(m => {
+      const e = S.elementos[m.slug], v = C.variante(e, m.varId), a = C.intento(v, m.id);
+      return `<div class="marco"><img src="${img(m.slug, 'FIN', a.pool).img}" alt=""><div class="meta">${esc(e.nombre)} · ${esc(v.nombre)} · s=${a.semilla}${C.desfasada(v, 'FIN') ? ' <span class="warn">⚠ su camino cambió</span>' : ''}</div>
+        <button class="mini" data-abrir="${m.slug}|${m.varId}">Abrir</button></div>`;
+    }).join('') || '<p class="mute">Nada marcado aún.</p>'}</div>`;
+}
+
+// ===== Recorridos guiados =====
+const RECORRIDOS = [
+  { titulo: 'Camino corto', elem: 'cardo-brujula',
+    texto: 'Lo normal con la receta de hoy: boceto, otra semilla si no convence, y la Final directa desde el boceto. Mira que la Final enseña el boceto aceptado como «fase anterior».',
+    pasos: [['Generar el boceto', { tipo: 'REGENERAR' }], ['Regenerar (mismo prompt: otra semilla)', { tipo: 'REGENERAR' }],
+      ['Volver al primer intento ◀', { tipo: 'VER', d: -1 }], ['Avanzar a la Final', { tipo: 'AVANZAR', a: 'FIN' }],
+      ['Marcar ★', { tipo: 'MARCAR' }], ['Ver la biblioteca', 'biblio']] },
+  { titulo: 'Prompt editado y borrado al avanzar', elem: 'aullador-rojo',
+    texto: 'Editar el prompt mantiene la semilla. Al avanzar, el intento no aceptado pierde la imagen pero guarda prompt y semilla, y «Repetir» lo recupera igual.',
+    pasos: [['Generar el boceto', { tipo: 'REGENERAR' }], ['Editar el prompt (añade «longer muzzle»)', 'editar'],
+      ['Regenerar (prompt nuevo: misma semilla)', { tipo: 'REGENERAR' }], ['Avanzar por F1 Forma', { tipo: 'AVANZAR', a: 'F1' }],
+      ['Atrás al boceto', { tipo: 'ATRAS' }], ['Ver el intento borrado ◀', { tipo: 'VER', d: -1 }], ['Repetirlo', 'repetir']] },
+  { titulo: 'Atrás y fases desfasadas', elem: 'choza-basica-orco-llanuras',
+    texto: 'Volver al boceto y aceptar otro deja la Final desfasada (⚠): sigue guardada y no se puede marcar hasta que haya una que salga del nuevo boceto.',
+    pasos: [['Generar el boceto', { tipo: 'REGENERAR' }], ['Avanzar a la Final', { tipo: 'AVANZAR', a: 'FIN' }], ['Atrás', { tipo: 'ATRAS' }],
+      ['Regenerar el boceto', { tipo: 'REGENERAR' }], ['Avanzar a la Final con el nuevo', { tipo: 'AVANZAR', a: 'FIN' }],
+      ['Ver la Final vieja ◀', { tipo: 'VER', d: -1 }], ['Intentar marcarla ★ (no deja)', { tipo: 'MARCAR' }]] },
+  { titulo: 'Variante y borrar con aviso', elem: 'cuchillo-hielo-silice',
+    texto: 'Una variante sale de una fase aceptada y hereda lo de antes. Borrar esa fase en la variante base avisa de lo que arrastra; la variante conserva su copia.',
+    pasos: [['Generar el boceto', { tipo: 'REGENERAR' }], ['Avanzar a la Final', { tipo: 'AVANZAR', a: 'FIN' }], ['Marcar ★', { tipo: 'MARCAR' }],
+      ['Atrás al boceto', { tipo: 'ATRAS' }], ['Crear variante «hacha» desde aquí', { tipo: 'CREAR_VARIANTE', nombre: 'hacha', desde: 'F0' }],
+      ['Generar su Final', { tipo: 'REGENERAR' }], ['Volver a la variante base', { tipo: 'ELEGIR_VARIANTE', id: 'base' }],
+      ['Abrir el boceto', { tipo: 'ABRIR_FASE', fase: 'F0' }], ['Borrar el boceto (con aviso)', 'borrar']] },
+  { titulo: 'Cola y bandeja', elem: 'aullador-rojo',
+    texto: 'Una sola generación a la vez: mientras sale una, se trabaja en otro elemento; lo que termina fuera de la vista va a la bandeja.',
+    pasos: [['Generar el boceto del aullador', { tipo: 'REGENERAR' }], ['Ir al cardo', { tipo: 'ELEGIR_ELEMENTO', slug: 'cardo-brujula' }],
+      ['Generar el boceto del cardo (a la cola)', { tipo: 'REGENERAR' }], ['Esperar y abrir el aullador desde la bandeja', { tipo: 'ELEGIR_ELEMENTO', slug: 'aullador-rojo' }]] },
+];
+let rec = null, recPaso = 0;
+
+function pintarRecorridos() {
+  const h = RECORRIDOS.map((r, k) => `<button class="${rec === k ? 'activa' : ''}" data-rec="${k}">${r.titulo}</button>`).join(' ');
+  let cuerpo = '<p class="mute">Elige uno: empieza desde cero y te lleva a la pantalla, con los pasos aquí abajo y arriba.</p>';
+  if (rec != null) {
+    const r = RECORRIDOS[rec];
+    cuerpo = `<p>${r.texto}</p><ol>${r.pasos.map(([t], i) => `<li class="${i < recPaso ? 'hecho' : i === recPaso ? 'siguiente' : ''}"><button data-paso="${i}" ${i !== recPaso ? 'disabled' : ''}>${t}</button></li>`).join('')}</ol>`;
+  }
+  $('recorridos').innerHTML = `<div class="pestanas" style="margin:0 0 8px;flex-wrap:wrap">${h}</div>${cuerpo}`;
+}
+
+function pasoRecorrido(i) {
+  const [, acc] = RECORRIDOS[rec].pasos[i];
+  const v = C.variante(C.elem(S));
+  if (acc === 'biblio') pestana = 'biblio';
+  else if (acc === 'editar') { hacer({ tipo: 'EDITAR_PROMPT', texto: v.prompts[v.actual] + ' The muzzle is longer.' }); }
+  else if (acc === 'repetir') { const a = C.visto(v); if (a) hacer({ tipo: 'REPETIR', id: a.id }); }
+  else if (acc === 'borrar') borrarConAviso();
+  else hacer(acc);
+  recPaso = i + 1; pintar();
+}
+
+function borrarConAviso() {
+  const v = C.variante(C.elem(S)), d = C.dependientes(S, v.actual);
+  const avisos = [];
+  if (d.variantes.length) avisos.push(`salen de aquí las variantes: ${d.variantes.join(', ')} (conservan su copia)`);
+  if (d.marcadas) avisos.push(`se quitan ${d.marcadas} ★ de esta variante`);
+  if (confirm(`Borrar ${C.NOMBRE[v.actual]} y lo que sigue en «${v.nombre}».` + (avisos.length ? '\n\nOjo: ' + avisos.join('; ') + '.' : '') + '\n\nQuedan prompts y semillas.')) hacer({ tipo: 'BORRAR' });
+}
+
+function pintarRecuadroRecorrido() {
+  if (rec == null || pestana !== 'pantalla') return '';
+  const r = RECORRIDOS[rec], p = r.pasos[recPaso];
+  return p ? ` · <b>Recorrido «${r.titulo}», paso ${recPaso + 1}:</b> <button class="mini pri" data-paso="${recPaso}">${p[0]}</button>` : ` · Recorrido «${r.titulo}» terminado.`;
+}
+
+function pintar() {
+  pintarPestanas();
+  if (S.generando && S.generando.id !== idJob) { idJob = S.generando.id; inicioJob = Date.now(); }
+  if (!S.generando) { idJob = null; inicioJob = null; }
+  $('ultimo').innerHTML = esc(S.ultimo) + pintarRecuadroRecorrido();
+  pintarLista(); pintarCola(); pintarCabecera(); pintarTres(); pintarBotones(); pintarEstado(); pintarBiblio(); pintarRecorridos();
+}
+
+// Eventos
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (d.p) { pestana = d.p; pintar(); }
+  else if (d.elem) hacer({ tipo: 'ELEGIR_ELEMENTO', slug: d.elem });
+  else if (d.fase) hacer({ tipo: 'ABRIR_FASE', fase: d.fase });
+  else if (d.ver) hacer({ tipo: 'VER', d: +d.ver });
+  else if (d.repetir) hacer({ tipo: 'REPETIR', id: d.repetir });
+  else if (d.cancelar !== undefined) hacer({ tipo: 'CANCELAR' });
+  else if (d.quitar) hacer({ tipo: 'QUITAR_COLA', id: d.quitar });
+  else if (d.bandeja) { const [slug, varId, fase] = d.bandeja.split('|'); S = C.reducir(S, { tipo: 'ELEGIR_ELEMENTO', slug }, DATOS); S = C.reducir(S, { tipo: 'ELEGIR_VARIANTE', id: varId }, DATOS); hacer({ tipo: 'ABRIR_FASE', fase }); }
+  else if (d.abrir) { const [slug, varId] = d.abrir.split('|'); pestana = 'pantalla'; S = C.reducir(S, { tipo: 'ELEGIR_ELEMENTO', slug }, DATOS); S = C.reducir(S, { tipo: 'ELEGIR_VARIANTE', id: varId }, DATOS); hacer({ tipo: 'ABRIR_FASE', fase: 'FIN' }); }
+  else if (d.renombrar !== undefined) { const n = prompt('Nuevo nombre', C.elem(S).nombre); if (n) hacer({ tipo: 'RENOMBRAR', nombre: n }); }
+  else if (d.varPrompt !== undefined) { const n = prompt('Nombre de la variante (p. ej. cría, hembra, invierno)'); if (n) hacer({ tipo: 'CREAR_VARIANTE', nombre: n, desde: null }); }
+  else if (d.varDesde !== undefined && d.motivo) hacer({ tipo: 'VARIANTE_DESDE' });
+  else if (d.borrar !== undefined && d.motivo) hacer({ tipo: 'BORRAR' });
+  else if (d.varDesde !== undefined) { const n = prompt('Nombre de la variante (p. ej. noche, destruida, hacha)'); if (n) hacer({ tipo: 'CREAR_VARIANTE', nombre: n, desde: C.variante(C.elem(S)).actual }); }
+  else if (d.borrar !== undefined) borrarConAviso();
+  else if (d.rec) { rec = +d.rec; recPaso = 0; S = C.inicial(DATOS); S = C.reducir(S, { tipo: 'ELEGIR_ELEMENTO', slug: RECORRIDOS[rec].elem }, DATOS); velocidad = 0.3; pestana = 'pantalla'; pintar(); }
+  else if (d.paso) pasoRecorrido(+d.paso);
+  else if (d.acc) hacer(JSON.parse(d.acc));
+});
+document.addEventListener('mouseover', ev => { const t = ev.target.closest('button[data-motivo]'); $('motivo').textContent = t ? t.dataset.motivo : ''; });
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'selVar') hacer({ tipo: 'ELEGIR_VARIANTE', id: ev.target.value });
+  if (ev.target.id === 'selTipo') { window.filtroTipo = ev.target.value; pintar(); }
+});
+$('prompt').addEventListener('input', ev => { S = C.reducir(S, { tipo: 'EDITAR_PROMPT', texto: ev.target.value }, DATOS); pintarEstado(); });
+document.addEventListener('keydown', ev => {
+  if (['TEXTAREA', 'INPUT', 'SELECT'].includes(ev.target.tagName) || pestana !== 'pantalla') return;
+  if (ev.key === 'Enter' && ev.target.tagName === 'BUTTON') return;
+  const v = C.variante(C.elem(S)), sig = C.SIGUIENTES[v.actual];
+  const mapa = { r: { tipo: 'REGENERAR' }, a: { tipo: 'ATRAS' }, m: { tipo: 'MARCAR' }, ArrowLeft: { tipo: 'VER', d: -1 }, ArrowRight: { tipo: 'VER', d: 1 },
+    Enter: sig[0] && { tipo: 'AVANZAR', a: sig[0] }, f: sig[1] && { tipo: 'AVANZAR', a: sig[1] } };
+  const acc = mapa[ev.key]; if (acc) { ev.preventDefault(); hacer(acc); }
+});
+// Reloj del motor simulado
+setInterval(() => {
+  if (!S.generando || !inicioJob) return;
+  if (Date.now() - inicioJob >= DUR[S.generando.fase] * velocidad) hacer({ tipo: 'TERMINAR' });
+  else { pintarCola(); const e = C.elem(S), v = C.variante(e), g = S.generando; if (g.slug === e.slug && g.varId === v.id && g.fase === v.actual) pintarTres(); }
+}, 150);
+pintar();
+</script>
+</body>
+</html>

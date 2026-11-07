@@ -64,7 +64,13 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 
 - **IMG-39 · Prototipo de la pantalla del elemento** [A] (usuaria, 2026-11-06): maqueta desechable con la skill
   `prototype`, con imágenes ya generadas y sin motor, para que la usuaria pruebe avanzar, regenerar, atrás, variantes y
-  ★ antes de construirlo. **S**
+  ★ antes de construirlo. **S** 🚧 en curso 2026-11-07: maqueta lista,
+  [`img-39-pantalla-elemento.html`](../prototipos/img-39-pantalla-elemento.html) (en la Deck, con doble clic; para el
+  móvil, `python3 docs/prototipos/img-39-construir.py --incrustar <salida>` la hace autocontenida). Cuatro elementos
+  con las imágenes de r25-r31, camino corto F0 → Final, F1 y F2 opcionales, cola, bandeja, variantes, borrado con
+  aviso, biblioteca ★ y cinco recorridos guiados. **Falta:** que la usuaria la pruebe y el veredicto. Preguntas abiertas
+  que salen de la maqueta: si avanzar debe lanzar solo el primer intento de la fase siguiente; qué pasa con los
+  intentos de la Final sin ★ (hoy se quedan); si una variante «desde aquí» debe abrir la Final o la fase siguiente.
 
 ### Bloque C · Motor e interfaz base
 
