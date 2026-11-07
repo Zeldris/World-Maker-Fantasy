@@ -148,6 +148,13 @@ describe('loreContextFor — item', () => {
     expect(result?.loreContext).toBe('Categoría: arma. Un hacha pesada. Medidas: 90cm de largo Origen: Clan Maktor');
   });
 
+  it('la región sale del origen del objeto, si es una región núcleo (IMG-50)', async () => {
+    findUniqueItem.mockResolvedValueOnce({ name: 'Hacha', category: 'arma', description: 'Rota.', dimensiones: null, lugarOrigen: 'Clan Maktor, Llanuras del Viento Rojo' });
+    expect((await loreContextFor('w1', 'item', 'hacha'))?.region).toBe('Llanuras del Viento Rojo');
+    findUniqueItem.mockResolvedValueOnce({ name: 'Hacha', category: 'arma', description: 'Rota.', dimensiones: null, lugarOrigen: 'Clan Maktor' });
+    expect((await loreContextFor('w1', 'item', 'hacha'))?.region).toBeNull();
+  });
+
   it('sin dimensiones ni lugarOrigen, no añade esos fragmentos', async () => {
     findUniqueItem.mockResolvedValueOnce({ name: 'Piedra', category: 'material', description: 'Una piedra cualquiera.', dimensiones: null, lugarOrigen: null });
 
@@ -226,6 +233,13 @@ describe('loreContextFor — raza', () => {
 
     expect(result?.loreContext).toContain('Es de sexo hembra (mujer, femenino).');
     expect(result?.loreContext).toContain('Mide aproximadamente 190 cm');
+  });
+
+  it('la variante regional lleva la región núcleo de su nombre, con y sin sexo (IMG-50)', async () => {
+    expect((await loreContextFor('w1', 'raza', 'goirntes-meseta-macho'))?.region).toBe('Meseta del Orden');
+    expect((await loreContextFor('w1', 'raza', 'goirntes-meseta'))?.region).toBe('Meseta del Orden');
+    // La Frontera Norte no es una región núcleo: sin paisaje fijo, como antes.
+    expect((await loreContextFor('w1', 'raza', 'goirntes-frontera-norte-macho'))?.region).toBeNull();
   });
 
   it('slug de variante regional inexistente con sufijo de sexo: null', async () => {

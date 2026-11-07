@@ -147,7 +147,8 @@
     { "patron": "\\bmoons?\\b|\\bmoonlit\\b|\\bmoonlight\\b", "motivo": "el modelo pinta una luna aunque sea para negarla; Helek Sirik no tiene luna", "alternativa": "no nombrarla; de noche, «stars under a soft, even pearly glow»" },
     { "patron": "crystal dust|\\bheavens\\b", "motivo": "«crystal dust across the heavens» pinta estrellas de día", "alternativa": "«a light warm haze» de día; el velo perlado solo en el preámbulo de noche" },
     { "patron": "\\bscar(s|red)?\\b|\\bwounds?\\b|\\bgashe?s?\\b", "motivo": "«scars» sale como heridas abiertas", "alternativa": "«pale healed streaks»" },
-    { "patron": "fossili[sz]ed sand", "motivo": "las «vetas de arena fosilizada» salen como cortes rosados", "alternativa": "«thin glinting streaks of red mineral embedded in the coat»" }
+    { "patron": "fossili[sz]ed sand", "motivo": "las «vetas de arena fosilizada» salen como cortes rosados", "alternativa": "«thin glinting streaks of red mineral embedded in the coat»" },
+    { "patron": "\\bgoirntes?\\b|\\bnabieus?\\b|\\bfaerus?\\b|viento rojo|cristal helado|ci[eé]naga troncal|margen silencioso|meseta del orden|red wind plains?|plains of the red wind|frozen crystal|trunk swamp|silent margin|plateau of order|order plateau", "motivo": "es un nombre propio del mundo, o su calco en inglés; el modelo de imagen no lo conoce y pinta las palabras sueltas", "alternativa": "describir la cosa: el cuerpo de la raza, el paisaje de la región" }
   ],
   "negaciones": "\\b(no|not|without|never|none|nothing|nobody)\\b|n't\\b"
 }

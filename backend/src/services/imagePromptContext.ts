@@ -21,7 +21,7 @@ import type { MomentoDelDia } from './worldClock.js';
 export interface ImagePromptSubject {
   name: string;
   loreContext: string;
-  /// CFG-40: región núcleo (`REGION_CORE_NAMES`) para el escenario y la luz del prompt; solo fauna/flora y lugares.
+  /// CFG-40: región núcleo (`REGION_CORE_NAMES`) para el escenario y la luz del prompt: fauna/flora, lugares, objetos y variantes de raza.
   region?: string | null;
   /// CFG-40: el slug fija la hora del día (`-noche`, `-amanecer`…), así que la luz sale del lore y no de la región.
   conMomento?: boolean;
@@ -159,7 +159,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
     // vez de dejar que el generador la adivine o la deje ambigua.
     const medidas = item.dimensiones ? ` Medidas: ${item.dimensiones}` : '';
     const origen = item.lugarOrigen ? ` Origen: ${item.lugarOrigen}` : '';
-    return { name: item.name, loreContext: `Categoría: ${item.category}. ${item.description}${medidas}${origen}` };
+    return { name: item.name, loreContext: `Categoría: ${item.category}. ${item.description}${medidas}${origen}`, region: coreRegionOf(item.lugarOrigen) };
   }
 
   // Auditoría "revisar partida" (2026-08-30, "fauna y flora en carpetas separadas") — `'fauna'` y
@@ -227,7 +227,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
           const loreContext = RAZA_VARIANTE_SEXO_VARIANTES[sexoMatch.baseSlug]
             ? withSexoVariante(general, RAZA_VARIANTE_SEXO_VARIANTES, sexoMatch.baseSlug, sexoMatch.sexo)
             : withSexoVariante(general, RAZA_SEXO_VARIANTES, r.slug, sexoMatch.sexo);
-          return { name: variante.name, loreContext };
+          return { name: variante.name, loreContext, region: coreRegionOf(variante.name) };
         }
       }
       return null;
@@ -249,6 +249,7 @@ export async function loreContextFor(worldId: string, entityType: ImagePromptEnt
         return {
           name: variante.name,
           loreContext: `${r.rasgoFisico} ${r.rasgoCaracter} ${r.description} ${variante.rasgoFisico} ${variante.description}`,
+          region: coreRegionOf(variante.name),
         };
       }
     }

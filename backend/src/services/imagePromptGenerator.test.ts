@@ -32,6 +32,33 @@ describe('IMG-50 — generateImagePrompt con el modelo local', () => {
     expect(system).toContain('Everything about the subject comes from its lore');
   });
 
+  it('en ningún tipo quedan en las reglas ejemplos que el modelo copia tal cual', async () => {
+    // IMG-50, paso 3: «warm light low from the left» en 4 de 4 prompts, y la capa de la pauta de npc en un Goirnte.
+    ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
+    for (const tipo of ['fauna', 'flora', 'location', 'item', 'npc', 'raza', 'personaje'] as const) {
+      ollamaGenerate.mockClear();
+      await generateImagePrompt(tipo, 'Sujeto', 'x', 'banner');
+      const { system } = ollamaGenerate.mock.calls[0][0];
+      for (const copiado of ['warm light low', 'a soft even glow', 'heavy-set', 'seven heads', 'three heads', 'hide cape', 'laced at the chest']) {
+        expect(system).not.toContain(copiado);
+      }
+      expect(system).toContain('Write only what the eye sees');
+      expect(system).toContain('the plain English word for the common noun');
+    }
+  });
+
+  it('«grows from the skin» solo llega a criaturas y personas', async () => {
+    // Paso 3: «dull metallic grey growing from the skin» en un hacha de hierro.
+    ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
+    const sistemaDe = async (tipo: 'fauna' | 'raza' | 'npc' | 'item' | 'flora' | 'location') => {
+      ollamaGenerate.mockClear();
+      await generateImagePrompt(tipo, 'Sujeto', 'x', 'banner');
+      return ollamaGenerate.mock.calls[0][0].system as string;
+    };
+    for (const tipo of ['fauna', 'raza', 'npc'] as const) expect(await sistemaDe(tipo)).toContain('grows from the skin');
+    for (const tipo of ['item', 'flora', 'location'] as const) expect(await sistemaDe(tipo)).not.toContain('grows from the skin');
+  });
+
   it('llama a Ollama con el modelo de OpenCode, lo descarga al acabar y monta encuadre + cuerpo + estilo fotorreal en el banner', async () => {
     ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
     const { prompt, provider } = await generateImagePrompt('fauna', 'Aullador Rojo', 'Lobo de las llanuras.', 'banner', { region: 'Llanuras del Viento Rojo' });
@@ -104,6 +131,16 @@ describe('IMG-50 — validarPrompt (reglas 3, 4, 5, 7 y 9 de la plantilla)', () 
   it('el nombre salta como palabra entera, sin distinguir mayúsculas', () => {
     expect(validarPrompt('a field of ashes', base)).toEqual([]);
     expect(validarPrompt('the ash stands', base)[0]).toMatch(/proper name «Ash»/);
+  });
+
+  it('los nombres de razas y regiones saltan, también calcados al inglés, y sus palabras sueltas no', () => {
+    // Paso 3: «A male Goirnte» y «hints of the Red Wind Plains» pasaban el validador.
+    for (const nombre of ['A male Goirnte stands', 'two Nabieus', 'hints of the Red Wind Plains', 'the Meseta del Orden', 'a frozen crystal range']) {
+      expect(validarPrompt(nombre, base)[0]).toMatch(/nombre propio del mundo/);
+    }
+    for (const paisaje of ['a vast red clay steppe', 'fine red dust on the wind', 'a dense swamp of tangled trunks', 'terraces in strict order']) {
+      expect(validarPrompt(paisaje, base)).toEqual([]);
+    }
   });
 
   it('las estrellas de día y el sol de noche no casan con el momento', () => {

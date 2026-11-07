@@ -250,25 +250,26 @@ Write one paragraph, in this fixed order:
 
 Rules:
 - Everything about the subject comes from its lore: its build, size, colours and features. The [brackets] below show only the form of a sentence; fill them from the lore.
+- The first sentence says what the subject is, with the plain English word for the common noun its lore uses: that kind of thing, never a neighbouring kind and never what it gets used as.
+- Write only what the eye sees in this one still image: shape, material, colour and position. A behaviour, a use, a thought or a cause stays out; if it has a visible effect, write the effect.
 - Proportions are measured against the subject's own body ("[part] about [times] the length of [other part]"), and they keep the build the lore gives; never pixel sizes or aspect ratios.
 - A continuous feature says where it starts and where it ends ("[feature] running from [start] to [end]").
 - Colour goes by material ("[colour] [material]").
-- The real-world anchor appears once, with its difference ("the build of [a real animal with the same silhouette as the lore describes], only [its difference]").
-- A body part is never compared with another animal, and a material never with a man-made object: say the material grows from the skin.
+- The real-world anchor appears once, with its difference ("the build of [a real thing with the same silhouette as the lore describes], only [its difference]"). If the subject's own word is already a real thing, that word is the anchor: give only its difference.
 - No counts of repeated parts: "a row of", "many", "a few".
-- Light by direction and quality ("warm light low from the left", "a soft even glow"); never the word "sun". If the scene is dark, say so in the first sentence of the setting.
+- Light by direction and quality ("[quality] light [direction]"), taken from the region light when it is given; never the word "sun". If the scene is dark, say so in the first sentence of the setting.
 - Fractions of the frame start from an explicit edge ("the lower third, from the bottom edge").
 - Everything in positive terms: never write no, not, without, never, none, nothing, nobody or n't. What must be absent is simply left out.
-- Never write a proper name of the world (people, places, factions, species): describe the thing. Translate every Spanish word into English.
+- Never write a proper name of the world (people, places, factions, species): describe the thing. A common noun inside a name stays, translated. Translate every Spanish word into English.
 - Never use: moon, moonlit, moonlight, crystal dust, heavens, scar, scarred, wound, gash, fossilised sand. Healed marks are "pale healed streaks".
 - Return ONLY the paragraph: no title, no labels, no quotes, no line breaks.`;
 
 const PAUTAS_TIPO: Record<string, string> = {
-  fauna: `Creature: show the whole animal. A quadruped stands with its body in profile and its head turned three-quarters towards the camera, both eyes and both ears showing, weight on one side or mid-stride. A bird is shown perched in profile with the wings half open; a fish or water creature side-on in the water; a serpent in a loose S-curve with the head raised; an arthropod at a low three-quarter view with all legs on the ground; an amphibian crouched at three-quarters. Only one animal: never ask for the herd or the pack.`,
-  flora: `Plant or mineral: show it in its own landscape, in three layers given as fractions of the height from the bottom edge. Give the proportion between its parts (stem, leaves, flower, roots, or crystal and matrix). A plant anchor only for the bud or flower shape.`,
+  fauna: `Creature: show the whole animal. A quadruped stands with its body in profile and its head turned three-quarters towards the camera, both eyes and both ears showing, weight on one side or mid-stride. A bird is shown perched in profile with the wings half open; a fish or water creature side-on in the water; a serpent in a loose S-curve with the head raised; an arthropod at a low three-quarter view with all legs on the ground; an amphibian crouched at three-quarters. Only one animal: never ask for the herd or the pack. A body part is never compared with another animal, and a material never with a man-made object: say the material grows from the skin.`,
+  flora: `Plant or mineral: show it in its own landscape, in three layers given as fractions of the height from the bottom edge. Give the proportion between its parts (stem, leaves, flower, roots, or crystal and matrix). Another plant serves as anchor only for the bud or flower shape.`,
   location: `Place: there is no single subject and no anchor. Open with the horizon and give the layers as fractions of the image height from the bottom edge, naming three layers (foreground ground, middle distance, horizon). Keep the human trace minimal: a path, a cairn, a distant wall at most.`,
   item: `Object: a still life resting on a surface of the world (stone, hide, rough wood), the camera low at three-quarters and the background softly blurred. Name one emblematic material and describe it by form and texture.`,
-  npc: `Person or people: the whole figure in the left third of the image, at full height, in a low, grounded stance, the camera at chest height. Proportions in head-heights ("about seven heads tall", "shoulders three heads wide"). The anchor is the kind of creature ("built like a heavy-set human, only broader and greyer"). Clothing is described as material with shape ("a hide cape cut to the knee, laced at the chest").`,
+  npc: `Person or people: the whole figure in the left third of the image, at full height, in a low, grounded stance, the camera at chest height. Proportions in head-heights ("about [number] heads tall", "shoulders [number] heads wide"). The anchor is the kind of creature ("built like [a kind of creature], only [its difference]"). Clothing and gear come from the lore or fit the trade it gives, described as material with shape ("a [material] [garment] cut to [length], [how it fastens]"). A body part is never compared with another animal, and a material never with a man-made object: say the material grows from the skin.`,
   emblema: `Emblem: one clear symbolic subject with a strong readable silhouette, centred, on a plain painted background. Describe its shapes, materials and colours.`,
   escena: `Scene: one readable moment with a clear main figure or object, then the setting in layers.`,
   mapa: `Map: terrain seen straight from above. Describe the ground, vegetation, water, paths and natural landmarks and where they lie in the frame, from an explicit edge. Light is even and soft.`,
