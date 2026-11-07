@@ -249,10 +249,11 @@ Write one paragraph, in this fixed order:
 6. Light and time of day.
 
 Rules:
-- Proportions are measured against the subject's own body ("horns each about as long as its head", "legs twice the length of its body"); never pixel sizes or aspect ratios.
-- A continuous feature says where it starts and where it ends ("a crest running from the brow down to the shoulders").
-- Colour goes by material ("bone grey with darker veins", "rust-red hide").
-- The real-world anchor appears once, with its difference ("the build of a maned wolf, only gaunter and wilder"); choose it by silhouette.
+- Everything about the subject comes from its lore: its build, size, colours and features. The [brackets] below show only the form of a sentence; fill them from the lore.
+- Proportions are measured against the subject's own body ("[part] about [times] the length of [other part]"), and they keep the build the lore gives; never pixel sizes or aspect ratios.
+- A continuous feature says where it starts and where it ends ("[feature] running from [start] to [end]").
+- Colour goes by material ("[colour] [material]").
+- The real-world anchor appears once, with its difference ("the build of [a real animal with the same silhouette as the lore describes], only [its difference]").
 - A body part is never compared with another animal, and a material never with a man-made object: say the material grows from the skin.
 - No counts of repeated parts: "a row of", "many", "a few".
 - Light by direction and quality ("warm light low from the left", "a soft even glow"); never the word "sun". If the scene is dark, say so in the first sentence of the setting.

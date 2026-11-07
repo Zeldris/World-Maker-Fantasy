@@ -15,6 +15,17 @@ describe('IMG-50 — generateImagePrompt con el modelo local', () => {
     delete process.env.IMAGE_PROMPT_MODEL;
   });
 
+  it('las reglas dan la forma de las frases sin contenido que el modelo pueda copiar a otro animal', async () => {
+    // Prueba real con el múrgol (2026-11-07): un animal lanudo y voluminoso salió «a maned wolf» de patas largas.
+    ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
+    await generateImagePrompt('fauna', 'Múrgol', 'Ganado lanudo y voluminoso.', 'banner');
+    const { system } = ollamaGenerate.mock.calls[0][0];
+    for (const copiado of ['maned wolf', 'gaunter', 'twice the length', 'bone grey', 'rust-red', 'from the brow']) {
+      expect(system).not.toContain(copiado);
+    }
+    expect(system).toContain('Everything about the subject comes from its lore');
+  });
+
   it('llama a Ollama con el modelo de OpenCode, lo descarga al acabar y monta encuadre + cuerpo + estilo fotorreal en el banner', async () => {
     ollamaGenerate.mockResolvedValue({ text: CUERPO, raw: {} });
     const { prompt, provider } = await generateImagePrompt('fauna', 'Aullador Rojo', 'Lobo de las llanuras.', 'banner', { region: 'Llanuras del Viento Rojo' });
