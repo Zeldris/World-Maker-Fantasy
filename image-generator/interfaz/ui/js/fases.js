@@ -90,7 +90,7 @@ function lineaMedida(a) {
   const color = 'Distancia de color con la imagen del juego';
   const partes = [];
   if (m.ssim) partes.push(valorMedido('SSIM', m.ssim, 2, 'Parecido de forma con la imagen de la que parte: por debajo de 0,7 puede haberse perdido la forma. No mira el detalle.'));
-  if (m.emd) partes.push(valorMedido('EMD Cb', m.emd.cb, 1, `${color}: bien hasta 6, falla por encima de 11,4.`), valorMedido('Cr', m.emd.cr, 1, `${color}: bien hasta 7,5, falla por encima de 13,5.`));
+  if (m.emd) partes.push(valorMedido('EMD Cb', m.emd.cb, 1, `${color}: bien hasta 6, falla por encima de 11,4.`), valorMedido('Cr', m.emd.cr, 1, `${color}: bien hasta 7,5, falla por encima de 13,5.`), ...(m.emd.y ? [valorMedido('Y', m.emd.y, 1, 'Distancia de luminosidad con la imagen del juego: bien hasta 20, falla por encima de 43.')] : []));
   else if (!m.error) partes.push('sin medida de color: no tiene imagen del juego');
   if (m.error) partes.push(`no se pudo medir (${m.error})`);
   return h('div.meta', { 'data-medida': '' }, ...partes.flatMap((p, i) => (i ? [' · ', p] : [p])));

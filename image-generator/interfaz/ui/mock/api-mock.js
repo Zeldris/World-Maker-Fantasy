@@ -285,8 +285,8 @@ function medidaSimulada(semilla, conAnterior, conJuego) {
   const medida = {};
   if (conAnterior) { const valor = 0.55 + (semilla % 40) / 100; medida.ssim = { valor, estado: valor >= 0.7 ? 'ok' : 'aviso' }; }
   if (conJuego) {
-    const cb = 3 + semilla % 11, cr = 4 + semilla % 12;
-    medida.emd = { cb: { valor: cb, estado: cb <= 6 ? 'ok' : cb <= 11.4 ? 'aviso' : 'falla' }, cr: { valor: cr, estado: cr <= 7.5 ? 'ok' : cr <= 13.5 ? 'aviso' : 'falla' } };
+    const cb = 3 + semilla % 11, cr = 4 + semilla % 12, y = 10 + semilla % 50;
+    medida.emd = { cb: { valor: cb, estado: cb <= 6 ? 'ok' : cb <= 11.4 ? 'aviso' : 'falla' }, cr: { valor: cr, estado: cr <= 7.5 ? 'ok' : cr <= 13.5 ? 'aviso' : 'falla' }, y: { valor: y, estado: y <= 20 ? 'ok' : y <= 43 ? 'aviso' : 'falla' } };
   }
   return medida;
 }

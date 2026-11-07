@@ -112,7 +112,8 @@ Una imagen se juzga **contra la referencia de ese elemento** (en Tarkor, el bann
 siempre en una rejilla lado a lado (`medir/rejilla.sh`):
 
 1. **Color**: `medir.sh <img> <tipo> <momento>`; mediana del EMD Cb ≲ 6 y Cr ≲ 7,5, y falla por encima de 11,4 / 13,5
-   (`estilo/gradacion.json`). YAVG y SATAVG, dentro de la ventana del momento.
+   (`estilo/gradacion.json`). YAVG y SATAVG, dentro de la ventana del momento. Frente a la imagen del propio elemento,
+   `medida.py` añade el EMD de Y (bien ≲ 20, falla > 43, `IMG-51`): orienta, porque sale de 9 GPT de control.
 2. **Forma**: primero, **se lee como** el elemento de la referencia, como el ancla o como otro animal: la nota por
    puntos sola es generosa (r15: 5/7 y se lee como un águila calva). Después, la lista con una nota por punto
    (sí / parcial / no):

@@ -610,11 +610,20 @@ class TestMedida(BaseFase):
         m = M.medir(azul, juego=rojo)['emd']
         self.assertEqual((m['cb']['estado'], m['cr']['estado']), ('falla', 'falla'))
 
+    def test_luminosa_frente_a_casi_negra_falla_aunque_el_color_de_bien(self):
+        sys.path.insert(0, os.path.join(SCRIPTS, 'medir'))
+        import medida as M
+        clara = imagen(os.path.join(self.raiz, 'clara.png'), 'color=0xd0d0d0:s=640x256')
+        oscura = imagen(os.path.join(self.raiz, 'oscura.png'), 'color=0x101010:s=640x256')
+        m = M.medir(clara, juego=oscura)['emd']
+        self.assertEqual((m['cb']['estado'], m['cr']['estado'], m['y']['estado']), ('ok', 'ok', 'falla'))
+
     def test_limites_del_color(self):
         sys.path.insert(0, os.path.join(SCRIPTS, 'medir'))
         import medida as M
         self.assertEqual([M.estado_emd('cb', v) for v in (6, 6.1, 11.4, 11.5)], ['ok', 'aviso', 'aviso', 'falla'])
         self.assertEqual([M.estado_emd('cr', v) for v in (7.5, 7.6, 13.5, 13.6)], ['ok', 'aviso', 'aviso', 'falla'])
+        self.assertEqual([M.estado_emd('y', v) for v in (20, 20.1, 43, 43.1)], ['ok', 'aviso', 'aviso', 'falla'])
 
 
 if __name__ == '__main__':

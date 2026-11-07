@@ -1,5 +1,5 @@
 """IMG-25: la medida de un intento de fase, para enseñarla a su lado. Solo biblioteca estándar y ffmpeg, en segundos.
-Forma: SSIM en gris con la imagen de la que parte (pautas.md §5, ≳ 0,7). Color: EMD Cb y Cr con la imagen del juego del
+Forma: SSIM en gris con la imagen de la que parte (pautas.md §5, ≳ 0,7). Color y luminosidad (IMG-51): EMD Cb, Cr e Y con la imagen del juego del
 elemento, sin mediana ni momento (a diferencia de medir.sh, los elementos no llevan momento). Los umbrales y el estado
 (ok, aviso, falla) se deciden aquí; la interfaz solo los enseña. Medir nunca hace fallar un intento: lo que no se pueda
 medir queda en `error`. Uso: python3 medida.py <imagen> [<anterior|-> [<juego>]]   ->   JSON"""
@@ -13,7 +13,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import emd as E  # noqa: E402
 
 SSIM_MIN = 0.7
-EMD_LIMITES = {'cb': (6, 11.4), 'cr': (7.5, 13.5)}  # (se da por bueno hasta, falla por encima de), estilo/gradacion.json
+# (se da por bueno hasta, falla por encima de). Cb y Cr: estilo/gradacion.json. Y (IMG-51, 2026-11-07): mediana y máximo de
+# los 9 GPT de control frente a las referencias de su momento (19,3 y 43,1); de pocas muestras, y solo orienta.
+EMD_LIMITES = {'cb': (6, 11.4), 'cr': (7.5, 13.5), 'y': (20, 43)}
 FALLOS = (OSError, ValueError, subprocess.SubprocessError, SystemExit)  # emd.py sale con sys.exit si no puede leerla
 
 
@@ -35,7 +37,7 @@ def estado_emd(canal, valor):
 
 
 def medir(imagen, anterior=None, juego=None):
-    """{ssim?: {valor, estado}, emd?: {cb, cr}, error?}. Sin `emd` ni `error`, el elemento no tiene imagen del juego."""
+    """{ssim?: {valor, estado}, emd?: {cb, cr, y}, error?}. Sin `emd` ni `error`, el elemento no tiene imagen del juego."""
     medida, errores = {}, []
     if anterior:
         try:
@@ -45,8 +47,8 @@ def medir(imagen, anterior=None, juego=None):
             errores.append(f'SSIM: {e}')
     if juego:
         try:
-            _, cb, cr = [E.emd(x, y) for x, y in zip(E.planos(imagen), E.planos(juego))]
-            medida['emd'] = {c: {'valor': round(v, 1), 'estado': estado_emd(c, v)} for c, v in (('cb', cb), ('cr', cr))}
+            y, cb, cr = [E.emd(x, y) for x, y in zip(E.planos(imagen), E.planos(juego))]
+            medida['emd'] = {c: {'valor': round(v, 1), 'estado': estado_emd(c, v)} for c, v in (('cb', cb), ('cr', cr), ('y', y))}
         except FALLOS as e:
             errores.append(f'EMD: {e}')
     if errores:

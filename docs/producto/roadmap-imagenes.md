@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, `IMG-51`, `IMG-52` |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, `IMG-52` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -60,8 +60,9 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   perder la identidad: macho, hembra y cría; lugar por estación, día y noche; construcción entera, destruida y
   ardiendo. Hipótesis en el diseño, §1.3b. Deja la tabla en `pautas.md`. **Solo con el sí de la usuaria.** **M**
 
-- **IMG-51 · Medir también la luminosidad** [S] (usuaria, 2026-11-07; se adelanta a las pruebas de juego): EMD de la luminancia junto a
-  Cb y Cr en `medida.py`, en `camino.json` y en la pantalla. Hoy un Goirnte luminoso da «ok» frente a un banner casi negro.
+- ~~**IMG-51 · Medir también la luminosidad**~~ [S] ✅ 2026-11-07 (usuaria; se adelanta a las pruebas de juego): EMD de la luminancia junto a
+  Cb y Cr en `medida.py`, en `camino.json` y en la pantalla. Umbrales de Y: bien hasta 20, falla por encima de 43 (mediana y máximo de los 9 GPT
+  de control). El Goirnte `img50despues` pasa de «ok» a Y 96,8, falla. Los intentos antiguos no llevan Y y no se recalculan. Orienta, porque son pocas muestras.
   Fase 1 de [`plan-piezas-y-referencias.md`](plan-imagenes/plan-piezas-y-referencias.md).
 - **IMG-52 · Varias referencias con rol en `fase.py`** [S] (usuaria, 2026-11-07; se adelanta a las pruebas de juego): `--ref <rol>:<imagen>`
   repetible, lista `referencias` en `camino.json` que sigue leyendo el `referencia` antiguo, prefijo «image 1 is…» según el rol y
