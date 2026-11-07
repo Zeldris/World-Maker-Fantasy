@@ -414,10 +414,14 @@ desde el panel vive en tablas que siembran.
   cornamenta ramificada y ancha, la lana larga y el cielo de atardecer con nubes. Falta: volumen (el del banner es más
   masivo y enmarañado; aquí, mechones ordenados) y cielo más de tormenta. **El SSIM baja (0,549 → 0,389) con la imagen
   que más se parece al banner:** no mide el parecido del sujeto, otro dato para revisar su umbral. Una sola semilla, y
-  ese prompt se escribió para esta imagen: no dice cuánto se lograría con un elemento sin banner. **3.** Para
-  elementos sin `promptUsado`, juzgar prompts de la IA en tres o cuatro de otros tipos antes de tocar más las reglas,
-  para no ajustarlas solo a múrgol. Hipótesis por comprobar: el modelo diluye lo distintivo del lore («cornamenta
-  ramificada» → «horns»). El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
+  ese prompt se escribió para esta imagen: no dice cuánto se lograría con un elemento sin banner. **3.** ✅ 2026-11-07
+  Juzgados prompts de la IA en raza, flora, lugar y objeto, sin guardarlos ni generar imágenes
+  ([`img50-paso3.md`](plan-imagenes/img50-paso3.md)). La hipótesis de que diluye lo distintivo solo se cumple en parte
+  (cardo → «cactus», hacha → «mace»); lo que más estorba es que copia ejemplos que quedan en las reglas («warm light low
+  from the left» en 4 de 4; toda la plantilla de `npc` en el Goirnte). También escribe lo que no se ve, el validador deja
+  pasar nombres del mundo y raza e item llegan sin región. **Pendiente, a la espera de la usuaria (paso 4):** corregir eso,
+  regenerar los cuatro y comparar sus F0 con los banners; ahí se juzga también la luz dorada fija, que no casa con 4 de
+  los 7 banners vistos. El umbral de SSIM espera a tener Finales de otras semillas y alguna F1.
 - ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
