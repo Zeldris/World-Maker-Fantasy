@@ -648,3 +648,20 @@ Cadena entera con referencia: ~18 min; sin F1, ~13.
 - **Sesgos:** el brazo de prompt arrastra escalones de sus F2 sin lanczos, y su aullador sale de la mejor F1 de r25. Una semilla por tipo. El SSIM con el banner depende mucho del encuadre: orienta, no mide calidad.
 - **Límite:** es una cota superior: el `-r` es el banner que se quiere conseguir, y un elemento nuevo no lo tiene.
 - **Pautas:** `pautas.md` §14.
+
+## r28 y r29 · FLUX.2 a tamaño grande y referencia ajena (`IMG-46`, 2026-11-07)
+
+Rejillas en `generated/banco/r28/` y `r29/`. FLUX.2 en GPU, semilla 3, sin masas planas. A 1280x512, 6 pasos.
+
+| Prueba | Tiempo | Lectura |
+|---|---|---|
+| F0 480x192, banner propio | 49 s | Forma y encuadre cerca del banner; textura de boceto |
+| F0 480x192, referencia ajena (8) | 48-50 s | Toma el acabado, no la forma: el aullador vuelve a ser corto |
+| 1280x512 sin referencia (4) | 150 s | **Pelo, grietas y cuero reales**, mejor que la cadena de 18 min. Forma común: el aullador sale corto |
+| 1280x512, referencia ajena (4) | 196-222 s | Casi igual que sin referencia |
+| 1280x512, banner propio (4) | 220-222 s | **La más cercana**: forma y textura; luz lavada y bruma de más |
+| 1280x512, img2img desde F0 a 0,60 y 0,80 (4) | 80 s | Conserva la forma y no añade textura: F0 reescalado |
+
+- **La textura la da generar a tamaño grande con FLUX.2**; la cadena de FLUX.3 con pasos reales pocos no la recupera. Se contradice la premisa de r26.
+- **La forma la da la referencia del propio elemento.** Una ajena solo aporta acabado.
+

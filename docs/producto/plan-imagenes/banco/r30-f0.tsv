@@ -1,0 +1,4 @@
+# IMG-46 r30-f0: bocetos sin referencia, FLUX.2, 480x192, 4 pasos, semilla 3. El aullador usa r25-f1-forma-f3, la forma de FLUX.3
+choza-basica-orco-llanuras	4	prompts/r26-choza-basica-orco-llanuras-detalle.txt	W=480,H=192	-
+cardo-brujula	4	prompts/r26-cardo-brujula-detalle.txt	W=480,H=192	-
+cuchillo-hielo-silice	4	prompts/r26-cuchillo-hielo-silice-detalle.txt	W=480,H=192	-
