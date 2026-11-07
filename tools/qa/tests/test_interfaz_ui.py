@@ -327,6 +327,47 @@ class Navegador(Base):
         self.assertEqual(self.nav.take_problems(), [])
         pagina.ws.close()
 
+    def test_la_cola_de_la_cabecera_sigue_la_generacion_y_lleva_al_intento(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1')
+        pagina.wait("document.querySelector('#queue-pill button') && document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        pill = "document.querySelector('#queue-pill button')"
+        self.assertEqual(pagina.evaluate(f"{pill}.textContent"), 'Nada en marcha')
+        # el cajón: pendientes vacío, «Todas» con las dos de ejemplo; detrás queda inerte, Escape lo cierra y vuelve a la pastilla
+        pagina.evaluate(f"{pill}.click()")
+        pagina.wait("!document.getElementById('queue-drawer').hidden && document.getElementById('main').inert")
+        self.assertIn('Nada en marcha', pagina.evaluate("document.getElementById('queue-drawer').textContent"))
+        pagina.evaluate("document.querySelector('[data-fid=\"filter-todas\"]').click()")
+        pagina.wait("document.querySelectorAll('#queue-drawer .queue-entry').length === 2")
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('#queue-drawer .queue-entry')].map((e) => e.className).join(' ')"),
+                         'queue-entry is-failed queue-entry is-done')
+        pagina.evaluate("document.getElementById('queue-drawer').dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}))")
+        pagina.wait("document.getElementById('queue-drawer').hidden && !document.getElementById('main').inert")
+        self.assertEqual(pagina.evaluate("document.activeElement.dataset.fid"), 'pill')
+        # generar: la pastilla lo cuenta enseguida y, al acabar, el cajón la tiene primera con su miniatura
+        pagina.evaluate("document.querySelector('#lista .elemento').click()")
+        pagina.wait("!document.getElementById('ficha').hidden")
+        pagina.evaluate("(() => { document.getElementById('pasos').value = 2; document.getElementById('semilla').value = 5; "
+                        "document.getElementById('generar').click(); })()")
+        pagina.wait(f"{pill}.textContent.startsWith('1 generando') && {pill}.querySelector('progress')", timeout=10)
+        pagina.wait(f"{pill}.textContent === 'Nada en marcha'", timeout=20)
+        pagina.evaluate("document.querySelector('[data-fid=\"pill\"]').click()")
+        pagina.wait("document.querySelectorAll('#queue-drawer .queue-entry').length === 3")
+        primera = "document.querySelector('#queue-drawer .queue-entry')"
+        self.assertIn('semilla 5', pagina.evaluate(f"{primera}.textContent"))
+        pagina.wait(f"{primera}.querySelector('img.thumb').complete && {primera}.querySelector('img.thumb').naturalWidth > 0")
+        # «Ver el intento» cierra el cajón y abre el elemento en el perfil de la entrada
+        pagina.evaluate("[...document.querySelectorAll('#lista .elemento')].find((e) => e.textContent.includes('Cardo')).click()")
+        pagina.wait("document.getElementById('fichaNombre').textContent === 'cardo-brujula'")
+        pagina.evaluate("document.querySelector('[data-fid=\"pill\"]').click()")
+        pagina.wait("document.querySelectorAll('#queue-drawer .queue-entry').length === 3")
+        pagina.evaluate(f"{primera}.querySelector('.queue-actions button').click()")
+        pagina.wait("document.getElementById('queue-drawer').hidden && document.getElementById('fichaNombre').textContent === 'aullador-rojo'")
+        self.assertEqual([p for p in self.pedidas if p.startswith('/api/')], [])
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
     def test_un_error_de_servidor_py_llega_con_su_texto(self):
         pagina = self.nav.new_page()
         pagina.goto(f'http://127.0.0.1:{self.puerto}/')

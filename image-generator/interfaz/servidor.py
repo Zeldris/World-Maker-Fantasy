@@ -16,6 +16,10 @@ API (JSON salvo las imágenes):
   GET  /api/prompt?tipo&slug&perfil         prompt usado o base de la BD
   GET  /api/referencia?tipo&slug&perfil     imagen del juego {ruta, perfil} o {ruta: null}
   GET  /api/estado                          generación en curso: progreso, paso, pasos, segundos, estimado, rc, logFinal
+  GET  /api/cola                            {cola:[{id,estado: generando|hecho|fallido,tipo,slug,perfil,semilla,pasos,
+                                            conReferencia,intento,segundos,estimado,progreso:{texto,paso,pasos},error}]}
+                                            lo que corre y los últimos terminados de esta sesión del servidor (IMG-41);
+                                            `en-cola`, cancelar y mover llegan con IMG-11
   GET  /img/<tipo>/<slug>/<nombre>.png      un intento;  GET /elegida/<tipo>/<slug>/<perfil>.png  la elegida
   GET  /ref/<tipo>/<slug>-<perfil>.<ext>    imagen del juego
   GET  /, /ui/<ruta>                        la página y su CSS/JS/fuentes (solo `interfaz/ui/`), con la CSP de GVIG (IMG-41)
@@ -375,10 +379,15 @@ def sd_cli_en_marcha():
         return False
 
 
+HISTORIAL = 20  # trabajos terminados que recuerda /api/cola (en memoria: se pierden al cerrar el servidor)
+
+
 class Trabajo:
     def __init__(self):
         self.cerrojo = threading.Lock()
         self.estado = {'enMarcha': False}
+        self.siguiente = 1
+        self.historial = []  # entradas de /api/cola ya terminadas, la más reciente primero
 
     def lanzar(self, peticion):
         tipo = slug(peticion.get('tipo'), 'tipo')
@@ -409,9 +418,11 @@ class Trabajo:
                 if archivo:
                     os.unlink(archivo)
                 raise Invalido('ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
-            self.estado = {'enMarcha': True, 'tipo': tipo, 'slug': slug_, 'perfil': perfil, 'conReferencia': bool(extra),
+            self.estado = {'enMarcha': True, 'id': self.siguiente, 'tipo': tipo, 'slug': slug_, 'perfil': perfil,
+                           'semilla': semilla, 'pasos': pasos, 'conReferencia': bool(extra),
                            'inicio': time.time(), 'salida': [], 'nombre': None, 'rc': None,
                            'estimado': estimado(perfil, bool(extra))}
+            self.siguiente += 1
         orden = [PROBAR, tipo, slug_, perfil, str(semilla), str(pasos)] + extra
         threading.Thread(target=self._correr, args=(orden, env, archivo), daemon=True).start()
 
@@ -439,6 +450,28 @@ class Trabajo:
                 os.unlink(archivo)
             with self.cerrojo:
                 self.estado.update(enMarcha=False, rc=rc, fin=time.time())
+                self.historial.insert(0, self._entrada(self.estado))
+                del self.historial[HISTORIAL:]
+
+    @staticmethod
+    def _entrada(e, progreso=None):
+        """Una entrada de /api/cola (IMG-41): el contrato común con la cola de GVIG, con los nombres de aquí."""
+        rc = e.get('rc')
+        return {'id': e['id'], 'estado': 'generando' if e['enMarcha'] else ('hecho' if rc == 0 else 'fallido'),
+                'tipo': e['tipo'], 'slug': e['slug'], 'perfil': e['perfil'], 'semilla': e['semilla'], 'pasos': e['pasos'],
+                'conReferencia': e['conReferencia'], 'intento': e['nombre'] if rc == 0 else None,
+                'segundos': int((e.get('fin') or time.time()) - e['inicio']), 'estimado': e['estimado'],
+                'progreso': progreso, 'error': (e['salida'][-1] if e['salida'] else f'salida {rc}') if rc else None}
+
+    def cola(self):
+        """Lo que genera ahora (con su paso, del log de sd-cli) y lo terminado desde que se abrió el servidor."""
+        with self.cerrojo:
+            e = dict(self.estado) if self.estado['enMarcha'] else None
+            hechos = list(self.historial)
+        if not e:
+            return hechos
+        texto, paso, pasos = leer_progreso(e['tipo'], e['slug'], e['inicio'])
+        return [self._entrada(e, {'texto': texto, 'paso': paso, 'pasos': pasos})] + hechos
 
     def ver(self):
         with self.cerrojo:
@@ -548,6 +581,8 @@ class Manejador(BaseHTTPRequestHandler):
             return self.estatico(UI_DIR, rel)
         if u.path == '/api/estado':
             return self.responder(200, TRABAJO.ver())
+        if u.path == '/api/cola':
+            return self.responder(200, {'cola': TRABAJO.cola()})
         if u.path == '/api/inicio':
             return self.responder(200, {'perfiles': PERFILES, 'mundo': MUNDO})
         if u.path == '/api/elementos':

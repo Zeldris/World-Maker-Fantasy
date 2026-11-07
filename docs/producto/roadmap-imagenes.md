@@ -92,8 +92,11 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   (2026-11-07):** `ui/js/api.js` (transporte de GVIG, `ApiError` que entiende el `{error: "texto"}` de `servidor.py`,
   `OfflineError`, `paths` y `api` de WMF) y `ui/mock/api-mock.js` (`/?mock=1`: las rutas de hoy en memoria, imágenes
   pintadas, generación de 2 s por paso, la semilla 13 falla); `app.js` ya no hace `fetch`. El contrato de fases de §3.0
-  entra en el simulador con `IMG-40`, que fija sus rutas. **Queda:** cola, atajos y gamepad, núcleo del servidor
-  separado del adaptador; revisar a ojo los dos temas (con `?mock=1` basta).
+  entra en el simulador con `IMG-40`, que fija sus rutas. **Parte 3 hecha (2026-11-07):** cola de GVIG
+  (`ui/js/queue-poll.js`, `components/queue-bar.js`): pastilla en la cabecera y cajón con filtros, paso, tiempo que
+  queda, error y «Ver el intento» (abre el elemento); `GET /api/cola` en `servidor.py` (lo que genera y los últimos 20
+  terminados, en memoria) y en el simulador; los dos temas mirados en captura con `?mock=1`. Sin `store.js` ni i18n
+  (no los hay aquí). **Queda:** atajos y gamepad, núcleo del servidor separado del adaptador.
 
 ### Bloque D · Pantalla del elemento
 
@@ -377,7 +380,9 @@ desde el panel vive en tablas que siembran.
   2026-11-06): WMF Tarkor y `galivelop-image-generator` son dos productos con procesos distintos (fases y bocetos
   frente a rondas y montaje) y no se migra uno al otro. Se intercambian diseño, interfaz, procesos y lo aprendido, sin
   llevar la receta tal cual. Sigue abierta la variante para juegos sin relación con Tarkor; su forma se decide al llegar
-  aquí. Nada se modifica en ese repo desde este. **L**
+  aquí. Nada se modifica en ese repo desde este. **L** Para llevar a GVIG: `.queue-drawer h2:focus` quita el
+  contorno pero no la sombra de `:focus-visible`, y el título del cajón sale con halo al abrirlo (arreglado aquí en
+  `ui/css/layout.css`, `IMG-41`, 2026-11-07).
 - **IMG-9 · Fichas visuales en bloque** [A] (usuaria, 2026-10-25): un LLM rellena borradores de ficha desde el canon
   (53 de fauna primero), que proponen el prompt inicial de F0 en la pantalla de `IMG-25`. Siguen en JSON
   (`image-generator/fichas/`): deja de depender de `IMG-8` (2026-11-06). **L**
@@ -391,7 +396,9 @@ desde el panel vive en tablas que siembran.
   (papelera como carpeta). D7. Fase 5. **M**
 - **IMG-11 · Cola con tiempo estimado y bandeja de decisiones** [A] (usuaria, 2026-10-25; reescrita el 2026-11-06):
   una generación a la vez, con tiempo estimado, vista previa y cancelar; una bandeja con las fases que esperan tu
-  decisión, para trabajar en varios elementos mientras otro genera. Depende de `IMG-40`. **M**
+  decisión, para trabajar en varios elementos mientras otro genera. Depende de `IMG-40`. **M** La pastilla y el cajón
+  ya están (`IMG-41`, `GET /api/cola`); de `gimg/ui/js/components/queue-bar.js` de GVIG falta traer el estado
+  `en-cola` con su posición, cancelar, subir/bajar/primera y «Vaciar cola».
 - ~~**IMG-12 · Zona aprobada como fondo de lo nativo**~~ ❌ sustituida (usuaria, 2026-11-06: cada elemento se crea suelto, sin bloqueo por zona; una zona ★ se usa como fondo en `IMG-1`) [A] (usuaria, 2026-10-25): primero se generan las zonas; la
   fauna, flora y demás elementos nativos de una zona sin imagen aprobada quedan bloqueados, y con zona aprobada se
   genera en segunda pasada con la zona como `-r` (una por pasada en la Deck, D10). Generaliza `IMG-1` e `IMG-2`.

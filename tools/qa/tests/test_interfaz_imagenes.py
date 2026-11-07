@@ -354,6 +354,35 @@ class Http(Base):
         self.assertTrue(filas[0]['imagen'])
         self.assertEqual(self.bytes('/img/fauna/nievon/thumbnail-s7-p4-20261024-100000.png'), ('image/png', b'PNG'))
 
+    def test_la_cola_da_lo_que_genera_y_lo_terminado_con_su_motivo(self):
+        self.assertEqual(self.pedir('/api/cola'), (200, {'cola': []}))
+        self.pedir('/api/generar', {'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'thumbnail', 'semilla': 7, 'pasos': 4,
+                                    'desdeBase': True})
+        ahora = self.pedir('/api/cola')[1]['cola']
+        self.assertEqual([(e['id'], e['estado'], e['semilla'], e['pasos'], e['intento'], e['estimado']) for e in ahora],
+                         [(1, 'generando', 7, 4, None, 105)])
+        self.assertIn('texto', ahora[0]['progreso'])
+        self.esperar()
+        hecha = self.pedir('/api/cola')[1]['cola']
+        self.assertEqual([(e['id'], e['estado'], e['intento'], e['progreso'], e['error']) for e in hecha],
+                         [(1, 'hecho', 'thumbnail-s7-p4-20261024-100000', None, None)])
+        # una que no arranca queda fallida con la línea que lo dice, delante de la anterior
+        self.s.PROBAR = os.path.join(self.raiz, 'no-existe.sh')
+        self.pedir('/api/generar', {'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'banner', 'desdeBase': True})
+        self.esperar()
+        cola = self.pedir('/api/cola')[1]['cola']
+        self.assertEqual([(e['id'], e['estado'], e['perfil'], e['intento']) for e in cola],
+                         [(2, 'fallido', 'banner', None), (1, 'hecho', 'thumbnail', 'thumbnail-s7-p4-20261024-100000')])
+        self.assertIn('no se pudo lanzar probar.sh', cola[0]['error'])
+
+    def test_la_cola_recuerda_solo_las_ultimas(self):
+        self.s.HISTORIAL = 2
+        for semilla in (1, 2, 3):
+            self.pedir('/api/generar', {'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'thumbnail', 'semilla': semilla,
+                                        'desdeBase': True})
+            self.esperar()
+        self.assertEqual([e['semilla'] for e in self.pedir('/api/cola')[1]['cola']], [3, 2])
+
     def test_desde_base_no_pasa_prompt_archivo(self):
         self.pedir('/api/generar', {'tipo': 'fauna', 'slug': 'nievon', 'perfil': 'thumbnail', 'desdeBase': True})
         self.esperar()

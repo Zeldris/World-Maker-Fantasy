@@ -3,6 +3,7 @@
    de servidor.py (su docstring), en memoria: nada se guarda y al recargar vuelve a empezar.
    - Las imágenes se pintan con <canvas> (data: URL, que la CSP permite) sustituyendo `paths.intento` y `paths.juego`.
    - Una generación tarda 2 s por paso; con la semilla 13 falla, para ver el aviso de error y el log.
+   - /api/cola da lo que genera y lo terminado, y empieza con dos de ejemplo (una hecha y una fallida).
    - El contrato de fases (`camino.json`, diseño §3.0) entra aquí cuando `IMG-40` fije sus rutas.
    No se carga en uso normal: app.js solo lo importa si la URL lleva `?mock=1`. */
 
@@ -49,6 +50,14 @@ const elegirInicial = datos['fauna/aullador-rojo'];
 elegirInicial.elegidas.banner = elegirInicial.intentos[0].nombre;
 
 let trabajo = { enMarcha: false };
+/* La cola (GET /api/cola): lo terminado, el más reciente primero; empieza con los dos intentos de ejemplo del aullador. */
+const aullador = datos['fauna/aullador-rojo'].intentos;
+const entradaCola = (id, estado, f, extra = {}) => ({ id, estado, tipo: 'fauna', slug: 'aullador-rojo', perfil: f.perfil,
+  semilla: Number(f.semilla), pasos: Number(f.pasos), conReferencia: f.conReferencia, intento: estado === 'hecho' ? f.nombre : null,
+  segundos: Number(f.segundos), estimado: Number(f.segundos), progreso: null, error: null, ...extra });
+const historial = [entradaCola(2, 'fallido', aullador[2], { error: 'ERROR: sd-cli terminó con 1 (simulado)' }),
+  entradaCola(1, 'hecho', aullador[1])];
+let siguienteId = 3;
 
 /* ---------- imágenes pintadas ---------- */
 const cache = new Map();
@@ -92,6 +101,9 @@ function terminar(seg) {
   const f = intento(t.perfil, t.semilla, t.pasos, ahora(), { prompt: t.desdeBase ? 'base' : 'pegado', textoPrompt: t.prompt,
     conReferencia: t.conReferencia, extra: t.conReferencia ? '-r' : '', imagen: !falla, salida: falla ? '1' : '0', segundos: String(seg) });
   e.intentos.push(f);
+  historial.unshift({ id: t.id, estado: falla ? 'fallido' : 'hecho', tipo: t.tipo, slug: t.slug, perfil: t.perfil, semilla: t.semilla,
+    pasos: t.pasos, conReferencia: t.conReferencia, intento: falla ? null : f.nombre, segundos: seg, estimado: t.estimado,
+    progreso: null, error: falla ? 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' : null });
   trabajo = { ...t, enMarcha: false, fin: Date.now(), rc: falla ? 1 : 0, nombre: f.nombre,
     salida: [...t.salida, falla ? 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' : `listo: ${f.nombre}.png`],
     logFinal: falla ? 'ggml_vulkan: out of memory (simulado)\nsd-cli: fallo al decodificar' : undefined };
@@ -122,6 +134,13 @@ export async function transport(method, url, body) {
   if (method === 'GET') {
     if (ruta === '/api/inicio') return ok({ perfiles: PERFILES, mundo: 'helek-sirik (simulador ?mock=1)' });
     if (ruta === '/api/estado') return ok(verTrabajo());
+    if (ruta === '/api/cola') {
+      const t = verTrabajo();
+      const ahoraMismo = t.enMarcha ? [{ id: t.id, estado: 'generando', tipo: t.tipo, slug: t.slug, perfil: t.perfil, semilla: t.semilla,
+        pasos: t.pasos, conReferencia: t.conReferencia, intento: null, segundos: t.segundos, estimado: t.estimado,
+        progreso: { texto: t.progreso, paso: t.paso || null, pasos: t.paso ? t.pasos : null }, error: null }] : [];
+      return ok({ cola: [...ahoraMismo, ...historial] });
+    }
     if (ruta === '/api/elementos') {
       verTrabajo();
       return ok({ aviso: 'Simulador (?mock=1): datos de ejemplo, nada se guarda.', elementos: Object.entries(datos).map(([clave, e]) => {
@@ -148,7 +167,7 @@ export async function transport(method, url, body) {
       const pasos = Number(body.pasos), semilla = Number(body.semilla);
       if (!(pasos >= 1 && pasos <= 20)) return mal(400, 'los pasos tienen que ir de 1 a 20');
       const e = elemento(body.tipo, body.slug), p = e.prompts[body.perfil];
-      trabajo = { enMarcha: true, tipo: body.tipo, slug: body.slug, perfil: body.perfil, conReferencia: !!body.usarReferencia,
+      trabajo = { enMarcha: true, id: siguienteId++, tipo: body.tipo, slug: body.slug, perfil: body.perfil, conReferencia: !!body.usarReferencia,
         inicio: Date.now(), salida: [], nombre: null, rc: null, pasos, semilla, estimado: pasos * 2 + 1, desdeBase: !!body.desdeBase,
         prompt: body.desdeBase && p ? (p.usado || p.base) : body.prompt };
       return ok({ ok: true }, 202);

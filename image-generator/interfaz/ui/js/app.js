@@ -1,6 +1,7 @@
 /* Pantalla del elemento del generador de imágenes (CFG-43), módulo de la página; la sirve servidor.py (/ui/js/app.js).
    IMG-41: sobre la base de GVIG (dom.js, toast, lightbox, tema y talla de letra) y su cliente de API (api.js). Misma
-   lógica y mismas rutas /api/ de antes; con `?mock=1` en la URL carga ../mock/api-mock.js en lugar de servidor.py. */
+   lógica y mismas rutas /api/ de antes, más la cola en la cabecera (queue-poll.js, queue-bar.js); con `?mock=1` en
+   la URL carga ../mock/api-mock.js en lugar de servidor.py. */
 
 import { h, el as $, setVars } from './dom.js';
 import { initTheme } from './components/theme.js';
@@ -8,6 +9,8 @@ import { initFontScale } from './components/font-scale.js';
 import { initLightbox, openLightbox } from './components/lightbox.js';
 import { toastOk, toastError } from './components/toast.js';
 import { api, paths, setTransport, onOffline, describeError } from './api.js';
+import * as cola from './queue-poll.js';
+import { initQueueBar } from './components/queue-bar.js';
 
 const TAMANOS = { banner: '1280×512', thumbnail: '768×768', mapa: '832×624', icono: '512×512' };
 let elementos = [], actual = null, perfil = null, cargado = null, referencia = null, sondeo = null, perfilesBD = {};
@@ -156,7 +159,7 @@ async function generar() {
   const peticion = { tipo: actual.tipo, slug: actual.slug, perfil, prompt: $('prompt').value, desdeBase: marcarFuente(),
     semilla: Number($('semilla').value), pasos: Number($('pasos').value), usarReferencia: !$('refBloque').hidden && $('usarRef').checked };
   mostrarResultado('');
-  try { await api.generar(peticion); $('generar').disabled = true; $('progreso').hidden = false; $('relleno').value = 2; $('progresoTexto').textContent = 'Empezando…'; seguir(); }
+  try { await api.generar(peticion); cola.refreshNow(); $('generar').disabled = true; $('progreso').hidden = false; $('relleno').value = 2; $('progresoTexto').textContent = 'Empezando…'; seguir(); }
   catch (err) { mostrarResultado(describeError(err), false); }
 }
 $('generar').onclick = generar;
@@ -243,6 +246,9 @@ async function iniciar() {
   initFontScale($('font-scale'));
   initLightbox();
   medirCabecera();
+  // la cola (pastilla y cajón de GVIG): su enlace abre el elemento en el perfil de la entrada
+  initQueueBar($('queue-pill'), $('queue-drawer'), (e) => elegirElemento(e.tipo, e.slug, e.perfil));
+  cola.start();
   const ini = await api.inicio();
   $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
   await cargarElementos();

@@ -247,7 +247,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `pintarGaleria`. Diseño compartido con GVIG (`IMG-41`): tokens y utilidades en `ui/css/` (`app.css` es lo propio),
   piezas copiadas en `ui/js/` (`dom.js`, `components/`), servidos por `servidor.py#estatico` (`/ui/<ruta>`, con CSP).
   Toda llamada a la API pasa por `ui/js/api.js` (`api`, `paths`); `/?mock=1` la sirve `ui/mock/api-mock.js` en memoria,
-  sin BD ni sd-cli (para mirar la página o probar un cambio de interfaz). Para ver la lista o el
+  sin BD ni sd-cli (para mirar la página o probar un cambio de interfaz). La cola de la cabecera: `ui/js/queue-poll.js`
+  (sondea `GET /api/cola`, `Trabajo.cola`) y `ui/js/components/queue-bar.js` (pastilla y cajón). Para ver la lista o el
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Tests:
   `python3 -m unittest discover -s tools/qa/tests -p "test_interfaz_*.py"` (`test_interfaz_ui.py` lleva el de navegador,
   con `tools/qa/tests/browser.py`).

@@ -55,7 +55,7 @@
 }
 .queue-drawer[hidden] { display: none; }
 .queue-drawer h2 { margin: 0; font-size: 1.125rem; }
-.queue-drawer h2:focus { outline: none; }
+.queue-drawer h2:focus { outline: none; box-shadow: none; } /* GVIG dejaba la sombra de :focus-visible (apuntado en IMG-26) */
 .queue-drawer .row, .queue-drawer .row-between { flex-wrap: wrap; min-width: 0; }
 .queue-drawer .stack { min-width: 0; }
 .queue-entry { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px 10px; align-items: center; padding: 10px; min-width: 0; border: 1px solid var(--border); border-radius: var(--r-s); background: var(--surface-2); }

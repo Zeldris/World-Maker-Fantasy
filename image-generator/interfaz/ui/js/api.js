@@ -72,6 +72,7 @@ const qs = (q) => Object.entries(q).map(([k, v]) => `${enc(k)}=${enc(v)}`).join(
 export const paths = {
   inicio: () => '/api/inicio',
   estado: () => '/api/estado',
+  cola: () => '/api/cola',
   elementos: () => '/api/elementos',
   elemento: (tipo, slug) => `/api/elemento?${qs({ tipo, slug })}`,
   prompt: (tipo, slug, perfil) => `/api/prompt?${qs({ tipo, slug, perfil })}`,
@@ -88,6 +89,7 @@ export const paths = {
 export const api = {
   inicio: () => get(paths.inicio()),
   estado: () => get(paths.estado()),
+  cola: () => get(paths.cola()),
   elementos: () => get(paths.elementos()),
   elemento: (tipo, slug) => get(paths.elemento(tipo, slug)),
   prompt: (tipo, slug, perfil) => get(paths.prompt(tipo, slug, perfil)),
