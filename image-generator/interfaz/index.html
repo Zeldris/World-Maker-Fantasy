@@ -21,6 +21,7 @@
   <div class="crumbs"><span id="mundo" class="small muted"></span></div>
   <div class="header-tools">
     <div id="queue-pill"></div>
+    <button type="button" class="btn btn-icon" id="help" aria-label="Atajos de teclado y mando" aria-haspopup="dialog">?</button>
     <button type="button" class="btn btn-icon" id="settings-btn" popovertarget="settings" aria-label="Ajustes">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
     </button>
@@ -108,6 +109,11 @@
 <dialog id="lightbox" class="lightbox" aria-label="Imagen ampliada">
   <img id="lightbox-img" alt="">
   <div class="bar"><span id="lightbox-caption"></span><button type="button" class="btn" id="lightbox-close">Cerrar</button></div>
+</dialog>
+<dialog id="shortcuts" class="shortcuts" aria-labelledby="shortcuts-title">
+  <h2 id="shortcuts-title">Atajos de teclado y mando</h2>
+  <div id="shortcuts-body"></div>
+  <p class="row"><button type="button" class="btn" id="shortcuts-close">Cerrar</button></p>
 </dialog>
 <dialog id="grande" class="grande" aria-label="Comparar con la imagen actual del juego"></dialog>
 </body>

@@ -368,6 +368,83 @@ class Navegador(Base):
         self.assertEqual(self.nav.take_problems(), [])
         pagina.ws.close()
 
+    def test_atajos_de_teclado_y_mando(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1')
+        pagina.wait("document.querySelector('#queue-pill button') && document.querySelectorAll('#lista .elemento .nombre').length === 4")
+
+        def sin_interruptor():  # el perfil lo comparten los tests; si la página ya está cerrada, lo quitó el propio test
+            try:
+                pagina.evaluate("localStorage.removeItem('gvig.oneKey')")
+            except browser.CdpError:
+                pass
+        self.addCleanup(sin_interruptor)
+        ayuda, cajon = "document.getElementById('shortcuts').open", "!document.getElementById('queue-drawer').hidden"
+        # «?» abre la ayuda con las teclas globales y las de la pantalla; Esc la cierra
+        pagina.key('?')
+        pagina.wait(ayuda)
+        texto = pagina.evaluate("document.getElementById('shortcuts-body').textContent")
+        self.assertIn('Abrir o cerrar la cola', texto)
+        self.assertIn('En la pantalla del elemento', texto)
+        pagina.key('Escape')
+        pagina.wait('!' + ayuda)
+        # Q abre la cola; el Esc del cajón la cierra sin llevarse además el último aviso, que cae con el Esc siguiente
+        pagina.evaluate("import('/ui/js/components/toast.js').then((m) => m.toastOk('aviso de prueba'))")
+        pagina.wait("document.querySelectorAll('#toasts .toast').length === 1")
+        pagina.key('q')
+        pagina.wait(cajon)
+        pagina.key('Escape')
+        pagina.wait("document.getElementById('queue-drawer').hidden")
+        self.assertEqual(pagina.evaluate("document.querySelectorAll('#toasts .toast').length"), 1)
+        pagina.key('Escape')
+        pagina.wait("document.querySelectorAll('#toasts .toast').length === 0")
+        # «/» lleva al filtro, y en un campo de texto las letras se escriben (G no genera)
+        pagina.key('/')
+        self.assertEqual(pagina.evaluate('document.activeElement.id'), 'filtro')
+        pagina.key('g')
+        self.assertEqual(pagina.evaluate("document.getElementById('filtro').value"), 'g')
+        self.assertEqual(pagina.evaluate("document.getElementById('progreso').hidden"), True)
+        pagina.evaluate("(() => { const f = document.getElementById('filtro'); f.value = ''; f.dispatchEvent(new Event('input')); f.blur(); })()")
+        # G, con la ficha abierta y el foco fuera de los campos, genera
+        pagina.evaluate("document.querySelector('#lista .elemento').click()")
+        pagina.wait("!document.getElementById('ficha').hidden")
+        pagina.evaluate("(() => { document.getElementById('pasos').value = 1; document.getElementById('semilla').value = 5; document.activeElement.blur(); })()")
+        pagina.key('g')
+        pagina.wait("document.getElementById('resultado').textContent.startsWith('Lista en')", timeout=20)
+        # con los atajos de una tecla apagados (casilla de la ayuda), Q ya no abre la cola
+        pagina.evaluate("document.getElementById('help').click()")
+        pagina.wait(ayuda)
+        pagina.evaluate("document.querySelector('#shortcuts-body input[type=checkbox]').click()")
+        pagina.evaluate("document.getElementById('shortcuts-close').click()")
+        pagina.key('q')
+        self.assertEqual(pagina.evaluate("document.getElementById('queue-drawer').hidden"), True)
+        pagina.evaluate("localStorage.removeItem('gvig.oneKey')")
+        # mando estándar simulado: A pulsa el botón enfocado, la cruceta mueve el foco dentro del menú, B cierra, Y abre la ayuda
+        pagina.evaluate("""(() => { const pad = {index: 0, connected: true, mapping: 'standard', buttons: Array.from({length: 17}, () => ({pressed: false, value: 0}))};
+            window.__pad = pad; navigator.getGamepads = () => [pad];
+            const ev = new Event('gamepadconnected'); Object.defineProperty(ev, 'gamepad', {value: pad}); window.dispatchEvent(ev); })()""")
+
+        def boton(n):
+            pagina.evaluate('window.__pad.buttons[%d].pressed = true' % n)
+            pagina.pump(0.15)
+            pagina.evaluate('window.__pad.buttons[%d].pressed = false' % n)
+            pagina.pump(0.15)
+        ajustes = "document.getElementById('settings').matches(':popover-open')"
+        pagina.evaluate("document.getElementById('settings-btn').focus()")
+        boton(0)
+        pagina.wait(ajustes)
+        boton(13)
+        self.assertEqual(pagina.evaluate('document.activeElement.id'), 'theme')
+        boton(1)
+        pagina.wait('!' + ajustes)
+        boton(3)
+        pagina.wait(ayuda)
+        boton(1)
+        pagina.wait('!' + ayuda)
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
     def test_un_error_de_servidor_py_llega_con_su_texto(self):
         pagina = self.nav.new_page()
         pagina.goto(f'http://127.0.0.1:{self.puerto}/')

@@ -96,7 +96,11 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   (`ui/js/queue-poll.js`, `components/queue-bar.js`): pastilla en la cabecera y cajón con filtros, paso, tiempo que
   queda, error y «Ver el intento» (abre el elemento); `GET /api/cola` en `servidor.py` (lo que genera y los últimos 20
   terminados, en memoria) y en el simulador; los dos temas mirados en captura con `?mock=1`. Sin `store.js` ni i18n
-  (no los hay aquí). **Queda:** atajos y gamepad, núcleo del servidor separado del adaptador.
+  (no los hay aquí). **Parte 4 hecha (2026-11-07):** atajos de GVIG (`components/shortcuts.js`: la mecánica, el
+  interruptor de una tecla y la ayuda, botón «?» de la cabecera; la tabla de teclas la pone cada pantalla con
+  `setScreenKeys`, hoy `/` filtrar y `G` generar) y mando (`lib/gamepad.js`, tal cual); el Esc del cajón de la cola ya
+  no cierra además el último aviso; ayuda mirada en captura en los dos temas. El mando real se prueba en la Deck.
+  **Queda:** núcleo del servidor separado del adaptador.
 
 ### Bloque D · Pantalla del elemento
 
