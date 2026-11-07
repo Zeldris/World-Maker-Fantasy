@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~ |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, `IMG-53` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -69,6 +69,12 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   prefijo «Image 1 is…» según el rol y rechazo por encima de **4 en total**, boceto incluido. Con `--ref`, el color solo se mide contra `--medir-con`.
   `--referencia` y la casilla de la interfaz siguen igual. Probado con tests y un generador simulado. **Pendiente:** con `sd-cli` real, más de 2 referencias
   y ver en pantalla «con N referencias»; lo cubren las pruebas P1-P3 del plan, cada tanda con su pregunta de memoria y su sí.
+- **IMG-53 · Cadena de pasos y selector de motor** [M] 🚧 en curso (usuaria, 2026-11-07; se adelanta a las pruebas de juego):
+  sustituye F0→F1→F2→Final por pasos encadenados (paso 1 fondo; paso N parte del aceptado del anterior como `-r`, con
+  prompt de «cambia solo esto» de la usuaria, referencias con rol opcionales y 2 semillas por paso) y una Final corta
+  de estilo a 1280x512. Cada paso elige motor: klein 4B, klein 9B (± LoRA de consistencia), Qwen-Image-Edit 2511, LongCat
+  Edit y FLUX.3 klein, con su receta según [`investigacion-modelos-y-pasos.md`](plan-imagenes/investigacion-modelos-y-pasos.md).
+  Sale de la prueba por pasos de `plan-piezas-y-referencias.md`. Los prompts los afina la usuaria probando.
 
 ### Bloque B · Prototipo
 
