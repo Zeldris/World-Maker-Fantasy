@@ -135,6 +135,18 @@ A ojo, las seis son la misma imagen clara y lechosa: ni la luz naranja de la cho
 tiendas rojas del prompt, no las del campamento. La maza ya sale parecida sin referencia. Son dos semillas: es un indicio. La prueba
 tiene un límite: el prompt también describía lugar y luz, y pudo imponerse a las referencias. P1b queda parada.
 
+**Repetición con `r32`, sin lugar ni luz en el prompt (2026-11-07): el lugar y la luz sí llegan desde las referencias.**
+
+| Variante | EMD Y (42 / 1234) | EMD Cb | EMD Cr | Tiempo |
+|---|---|---|---|---|
+| Choza + maza | 16,1 / 16,3 | 8,5 / 6,4 | 7,7 / 6,5 | ~58 s |
+| Campamento + maza | 20,0 / 22,5 | 2,1 / 2,1 | 3,3 / 3,0 | ~58 s |
+
+A ojo, el cielo naranja y las agujas son de la choza, y el cielo tormentoso y las mesas, del campamento. Por eso la choza se aleja en
+color: acerca la imagen a su luz, no a la del banner. El orco no conserva sus proporciones: sale más grueso y menos realista, en algunas
+se le cortan los pies y en la de campamento 1234 aparece un segundo palo. **Falta un control:** `r32` sin referencias, porque esta tanda
+cambió el prompt y las referencias a la vez y no separa cuánto mejora cada cosa. P1b sigue sin lanzarse hasta verlo.
+
 Los tiempos parten de pocos datos: F0 ~37 s y ~48 s con una referencia; Final ~160 s con una y ~206 s con dos. Si siguiera
 igual, una Final con cuatro rondaría los 5 minutos, pero eso es una extrapolación y P3 lo comprueba.
 
