@@ -122,6 +122,19 @@ Después, las tres pruebas. Cada tanda lleva antes su pregunta de memoria y su s
 | **P2. La escena del ejemplo** | Rutas A y B, 2 semillas cada una | ¿Conserva la identidad? ¿Respeta «2 aulladores»? ¿Qué ruta manda? | ~30 min |
 | **P3. Coste por número de referencias** | Una F0 y una Final con 1, 2, 3 y 4 referencias (en la Final, boceto incluido) | Tiempo y memoria hasta el máximo de 4 | ~20 min |
 
+**Resultado de P1a (2026-11-07): las referencias no acercan al banner.** Prompt `r31` (el de `r20` con maza en vez de hacha, para
+no contradecir la pieza), semillas 42 y 1234, en `generated/raza/orcos-llanuras-macho/`:
+
+| Variante | EMD Y (42 / 1234) | EMD Cb | EMD Cr | Tiempo |
+|---|---|---|---|---|
+| Sin referencias | 43,6 / 40,9 | 1,2 / 1,7 | 2,9 / 2,9 | ~38 s |
+| Choza + maza | 45,4 / 41,3 | 1,3 / 1,9 | 3,1 / 3,6 | ~59 s |
+| Campamento + maza | 45,7 / 42,1 | 1,8 / 1,4 | 2,5 / 2,9 | ~58 s |
+
+A ojo, las seis son la misma imagen clara y lechosa: ni la luz naranja de la choza ni la tormentosa del campamento, y siguen las
+tiendas rojas del prompt, no las del campamento. La maza ya sale parecida sin referencia. Son dos semillas: es un indicio. La prueba
+tiene un límite: el prompt también describía lugar y luz, y pudo imponerse a las referencias. P1b queda parada.
+
 Los tiempos parten de pocos datos: F0 ~37 s y ~48 s con una referencia; Final ~160 s con una y ~206 s con dos. Si siguiera
 igual, una Final con cuatro rondaría los 5 minutos, pero eso es una extrapolación y P3 lo comprueba.
 
