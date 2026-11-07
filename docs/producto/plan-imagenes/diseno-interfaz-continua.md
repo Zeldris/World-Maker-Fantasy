@@ -411,6 +411,35 @@ Sustituye a `estado.json`: un archivo en `generated/<tipo>/<slug>/`, del que la 
 Una variante nueva guarda en `origen` la variante y la fase de la que parte. Cada imagen aceptada conserva su
 `receta.json` (§3.1). Migración: lo elegido en `elegidas.tsv` entra como imagen ★ sin camino.
 
+**Cómo se implementa (`IMG-40`, 2026-11-07):**
+
+- `scripts/camino.py`: leer y escribir `camino.json` (escritura atómica con bloqueo de archivo: el servidor y
+  `fase.py` lo tocan a la vez), el grafo de fases y las reglas. Grafo: F0 → F1 | F4; F1 → F2 | F4; F2 → F4;
+  F4 → F3 (no en `location`, que es fondo). F3 Recorte queda **no disponible** hasta `IMG-37`. Avanzar desde F4 no
+  existe: la Final se marca ★ (`IMG-42`) y sus intentos se quedan.
+- Cada fase guarda además `entrada` (la imagen aceptada de la que partió su primer intento) y `desfasada`: aceptar
+  otra imagen en una fase marca `desfasada` las que salieron de ella con otra entrada, en cadena (regla 3).
+- Intento: `{n, prompt, semilla, imagen, segundos, fecha, salida}`; la imagen es
+  `intentos/<variante>-<fase en minúscula>-<n>.png` (p. ej. `macho-f0-3.png`). Un fallo también se apunta, sin imagen.
+  `prompt` es el que escribe la usuaria; lo exacto enviado (con el prefijo de la Final) queda en `prompts/<nombre>.txt`.
+- Semilla por defecto: la del intento anterior de la fase si el prompt cambia; si no cambia, una no usada; el primer
+  intento de una fase, la aceptada de la fase de entrada; el de F0, 3.
+- `scripts/fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla]`: **una orden por fase**; toma la
+  imagen aceptada de la fase de entrada, traduce la receta con nombre a `generar.sh` y apunta el intento:
+  - `f0-boceto`: FLUX.2 en GPU, 480x192, 4 pasos (B1, D7).
+  - `f1-forma`: `PERFIL=fotorreal`, `BOCETO`=F0 aceptada a 0,88, 640x256, 8 pasos, lanczos (FZ2, D4).
+  - `f2-detalle`: `PERFIL=fotorreal`, `BOCETO`=F1 aceptada a 0,50, 960x384, 16 pasos, lanczos (D1, D4).
+  - `f4-final`: FLUX.2 en GPU, 1280x512, 4 pasos, `TOPE=1800`, `-r` el último boceto aceptado (F2, F1 o F0) con
+    `--ref-image-args vae_input_max_pixels=262144` y el prefijo de E1, con la cosa por tipo (`creature` en fauna,
+    `plant`, `object`, `building`, `place`, `figure`; `subject` si no).
+- Rutas: `GET /api/camino?tipo&slug`; `POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?}` (crea la
+  variante si no existe); `POST /api/fase/avanzar {tipo,slug,variante,fase,intento,siguiente}` (acepta, borra la
+  imagen de los no aceptados y lanza el primer intento de la siguiente; si hay otra generación, acepta y devuelve
+  `lanzado: false`); `POST /api/fase/atras {tipo,slug,variante}`. `GET /api/inicio` añade `fases` (id, nombre,
+  receta, siguientes, disponible). Las mismas en el simulador `?mock=1`. `planos.sh` se queda para el banco.
+- Queda fuera: la pantalla del elemento (`IMG-25`), variantes «desde aquí» y ★ (`IMG-42`), recorte (`IMG-37`),
+  `receta.json` (§3.1), borrar lo guardado con aviso (regla 4) y renombrar el elemento.
+
 ### 3.1 Qué guarda cada elemento: la receta reproducible
 
 Un `receta.json` por intento en `generated/<tipo>/<slug>/intentos/`, con el mismo nombre que el PNG, y el mismo JSON
