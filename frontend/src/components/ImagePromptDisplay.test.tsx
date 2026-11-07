@@ -104,3 +104,28 @@ describe('ImagePromptSlot — CFG-38 prompt usado', () => {
     expect(saveImagePromptUsado).toHaveBeenCalledWith('helek-sirik', 'clase', 'guardian', 'icono', null)
   })
 })
+
+/// IMG-50 — mientras el modelo local tiene el prompt en cola, el botón dice cómo va.
+describe('ImagePromptSlot — IMG-50 cola del modelo local', () => {
+  beforeEach(() => {
+    vi.mocked(requestImagePrompt).mockReset()
+  })
+  afterEach(() => cleanup())
+
+  it('enseña la posición en la cola y luego el prompt', async () => {
+    let terminar: (v: { prompt: string; provider: string; cached: boolean }) => void = () => {}
+    vi.mocked(requestImagePrompt).mockImplementation((_w, _t, _s, _p, _r, onEstado) => {
+      onEstado?.({ estado: 'en_cola', posicion: 2 })
+      return new Promise((r) => (terminar = r))
+    })
+    const { getByRole, findByRole, findByText } = render(
+      <HerramientasAdminContext.Provider value={true}>
+        <ImagePromptSlot {...props} />
+      </HerramientasAdminContext.Provider>,
+    )
+    fireEvent.click(getByRole('button', { name: 'Generar icono' }))
+    expect(await findByRole('button', { name: 'En cola (2)…' })).toBeTruthy()
+    await act(async () => terminar({ prompt: 'local prompt', provider: 'ollama:m', cached: false }))
+    expect(await findByText('local prompt')).toBeTruthy()
+  })
+})

@@ -31,7 +31,7 @@ async function empaquetar(empaquetado: boolean) {
 
 /// Los únicos scripts que el juego usa en runtime (catálogo y reparto de facciones); el resto son herramientas de
 /// curación y mantenimiento. `seed-catalog` no lo importa `server.ts`: se ejecuta aparte (`npm run seed-catalog`).
-const PROHIBIDOS = [/lib\/aiProviders\//, /services\/imagePromptGenerator/, /services\/liveTeacherCapture/, /src\/scripts\/(?!worldCatalog\.ts|repartoFacciones\.ts)/];
+const PROHIBIDOS = [/lib\/aiProviders\//, /services\/imagePromptGenerator/, /services\/imagePromptCola/, /services\/liveTeacherCapture/, /src\/scripts\/(?!worldCatalog\.ts|repartoFacciones\.ts)/];
 
 describe('build empaquetado (INS-34)', () => {
   it('con TARKOR_EMPAQUETADO no lleva curación, proveedores cloud ni scripts de curación', async () => {

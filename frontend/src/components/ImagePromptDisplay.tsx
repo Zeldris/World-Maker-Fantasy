@@ -195,6 +195,8 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
   const [prompt, setPrompt] = useState<string | null>(existingPrompt)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // IMG-50: mientras el modelo local tiene el prompt en su cola, cómo va (en cola con su posición, o generando).
+  const [progreso, setProgreso] = useState<string | null>(null)
   // CFG-38 (usuaria, 2026-10-24): el prompt base es solo el punto de partida; el que se usó de verdad para la
   // imagen se edita aquí y se guarda aparte. Regenerar solo cambia el base.
   const [usado, setUsado] = useState<{ texto: string; at: string | null } | null>(null)
@@ -221,7 +223,9 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
     setGenerating(true)
     setError(null)
     try {
-      const result = await requestImagePrompt(worldSlug, entityType, entitySlug, sizeProfile, regenerate)
+      const result = await requestImagePrompt(worldSlug, entityType, entitySlug, sizeProfile, regenerate, (e) =>
+        setProgreso(e.estado === 'en_cola' ? `En cola${e.posicion ? ` (${e.posicion})` : ''}…` : 'Generando con el modelo local…'),
+      )
       setPrompt(result.prompt)
     } catch (err) {
       // Bug real jugando en vivo (2026-09-06, "no está funcionando la generación de prompts"): el
@@ -232,6 +236,7 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
       setError(err instanceof Error ? err.message : 'No se pudo generar — inténtalo de nuevo.')
     } finally {
       setGenerating(false)
+      setProgreso(null)
     }
   }
 
@@ -253,7 +258,7 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
   if (prompt) {
     const regenerar = (
       <button type="button" disabled={generating} onClick={() => generate(true)} className={BOTON}>
-        {generating ? 'Regenerando…' : usado ? 'Regenerar base' : 'Regenerar'}
+        {generating ? (progreso ?? 'Regenerando…') : usado ? 'Regenerar base' : 'Regenerar'}
       </button>
     )
     return (
@@ -316,7 +321,7 @@ function ImagePromptSlotContenido({ label, existingPrompt, worldSlug, entityType
         onClick={() => generate(false)}
         className="tactile self-start rounded-lg border border-dashed border-iron-700/60 px-3 py-1.5 text-xs text-wood-400 transition-colors hover:border-accent-600/60 hover:text-accent-300 disabled:opacity-60"
       >
-        {generating ? 'Generando…' : `Generar ${label.toLowerCase()}`}
+        {generating ? (progreso ?? 'Generando…') : `Generar ${label.toLowerCase()}`}
       </button>
       {error && <p className="text-2xs text-red-400/80">{error}</p>}
     </div>

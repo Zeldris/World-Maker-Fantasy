@@ -45,6 +45,18 @@ vi.mock('../lib/prisma.js', () => ({
   },
 }));
 
+const encolarImagePrompt = vi.fn();
+const estadoImagePrompt = vi.fn();
+vi.mock('../services/imagePromptCola.js', () => ({
+  encolarImagePrompt: (...args: unknown[]) => encolarImagePrompt(...args),
+  estadoImagePrompt: (...args: unknown[]) => estadoImagePrompt(...args),
+}));
+const loreContextFor = vi.fn();
+vi.mock('../services/imagePromptContext.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/imagePromptContext.js')>()),
+  loreContextFor: (...args: unknown[]) => loreContextFor(...args),
+}));
+
 const { worldRoutes } = await import('./world.js');
 
 async function buildApp() {
@@ -839,5 +851,47 @@ describe('INS-34 — POST /world/:slug/image-prompt según TARKOR_EMPAQUETADO', 
     const get = await app.inject({ method: 'GET', url: '/world/berig/image-prompt', query: clave });
     expect(get.statusCode).toBe(200);
     expect(get.json().prompt).toBe('p');
+  });
+});
+
+describe('IMG-50 — el POST encola y el GET de estado dice cómo va', () => {
+  const clave = { entityType: 'fauna', entitySlug: 'murgol-macho', sizeProfile: 'banner' };
+  beforeEach(() => {
+    findUniqueWorld.mockReset().mockResolvedValue({ id: 'w1', slug: 'berig' });
+    findUniqueImagePrompt.mockReset().mockResolvedValue(null);
+    findManyImagePrompt.mockReset().mockResolvedValue([]);
+    loreContextFor.mockReset().mockResolvedValue({ name: 'Murgol', loreContext: 'Un lobo rojo.', region: 'Llanuras del Viento Rojo', conMomento: false });
+    encolarImagePrompt.mockReset().mockReturnValue({ estado: 'en_cola', posicion: 1 });
+    estadoImagePrompt.mockReset();
+  });
+
+  it('sin caché, encola el trabajo con el lore de la entidad y responde 202', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/world/berig/image-prompt', payload: clave });
+    expect(res.statusCode).toBe(202);
+    expect(res.json()).toEqual({ estado: 'en_cola', posicion: 1 });
+    expect(encolarImagePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ worldId: 'w1', entityType: 'fauna', entitySlug: 'murgol-macho', sizeProfile: 'banner', name: 'Murgol', loreContext: 'Un lobo rojo.', region: 'Llanuras del Viento Rojo' }),
+    );
+  });
+
+  it('con caché y sin regenerar, no encola nada', async () => {
+    findUniqueImagePrompt.mockResolvedValue({ prompt: 'p', provider: 'ollama:m' });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: '/world/berig/image-prompt', payload: clave });
+    expect(res.statusCode).toBe(200);
+    expect(encolarImagePrompt).not.toHaveBeenCalled();
+  });
+
+  it('el GET de estado devuelve el de la cola, o 404 si no está', async () => {
+    estadoImagePrompt.mockReturnValueOnce({ estado: 'listo', prompt: 'p', provider: 'ollama:m' });
+    const app = await buildApp();
+    const ok = await app.inject({ method: 'GET', url: '/world/berig/image-prompt/estado', query: clave });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toEqual({ estado: 'listo', prompt: 'p', provider: 'ollama:m' });
+    expect(estadoImagePrompt).toHaveBeenCalledWith({ worldId: 'w1', entityType: 'fauna', entitySlug: 'murgol-macho', sizeProfile: 'banner' });
+    const no = await app.inject({ method: 'GET', url: '/world/berig/image-prompt/estado', query: clave });
+    expect(no.statusCode).toBe(404);
+    expect(no.json().error).toMatch(/no está en la cola/);
   });
 });

@@ -2962,23 +2962,49 @@ export interface ImagePromptResult {
   cached: boolean
 }
 
+/// IMG-50: estado de un prompt en la cola del modelo local (`GET /world/:slug/image-prompt/estado`).
+export interface ImagePromptEstado {
+  estado: 'en_cola' | 'generando' | 'listo' | 'error'
+  posicion?: number
+  error?: string
+  prompt?: string
+  provider?: string
+}
+
+const SONDEO_COLA_MS = 3000
+
 /// Genera (o recupera de caché) el prompt de imagen de UNA entidad y UN perfil de talla concretos
 /// — bajo demanda, 1 a 1 (checklist 2026-07-21/22, punto 7: "no que genere todos los prompts a la
-/// vez"). Como mucho una llamada real a un proveedor cloud por invocación. `regenerate` (petición
-/// explícita de la usuaria, 2026-07-22): salta el caché y sobrescribe el prompt existente con la
-/// info actual de esa entrada — para cuando el lore cambió después de generarlo la primera vez.
+/// vez"). `regenerate` (petición explícita de la usuaria, 2026-07-22): salta el caché y sobrescribe
+/// el prompt existente con la info actual de esa entrada.
+/// IMG-50: sin caché, el backend lo encola para el modelo local (202) y aquí se pregunta por el estado cada 3 s
+/// hasta que sale `listo` o `error`; `onEstado` recibe cada paso (en cola, con su posición, o generando).
 export async function requestImagePrompt(
   worldSlug: string,
   entityType: ImagePromptEntityType,
   entitySlug: string,
   sizeProfile: ImagePromptSizeProfile,
   regenerate?: boolean,
+  onEstado?: (estado: ImagePromptEstado) => void,
+  sondeoMs = SONDEO_COLA_MS,
 ): Promise<ImagePromptResult> {
-  return fetchJson(`${apiBaseUrl()}/world/${worldSlug}/image-prompt`, {
+  const primera = await fetchJson<ImagePromptResult | ImagePromptEstado>(`${apiBaseUrl()}/world/${worldSlug}/image-prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ entityType, entitySlug, sizeProfile, regenerate }),
   })
+  if (!('estado' in primera)) return primera
+  const q = new URLSearchParams({ entityType, entitySlug, sizeProfile })
+  let estado: ImagePromptEstado = primera
+  while (estado.estado === 'en_cola' || estado.estado === 'generando') {
+    onEstado?.(estado)
+    await new Promise((r) => setTimeout(r, sondeoMs))
+    estado = await fetchJson<ImagePromptEstado>(`${apiBaseUrl()}/world/${worldSlug}/image-prompt/estado?${q}`)
+  }
+  if (estado.estado === 'error' || !estado.prompt) {
+    throw new Error(estado.error ?? 'El modelo local no devolvió el prompt.')
+  }
+  return { prompt: estado.prompt, provider: estado.provider ?? '', cached: false }
 }
 
 /// CFG-38 (usuaria, 2026-10-24): el prompt base (generado) y el usado (editado a mano, el exacto con el que se generó
