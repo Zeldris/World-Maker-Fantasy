@@ -213,6 +213,103 @@ class Fases(T.Base):
         el = [e for e in self.pedir('/api/elementos')[1]['elementos'] if e['slug'] == 'nievon']
         self.assertEqual(el[0]['intentos'], 3)
 
+    def llegar_a_la_final(self):
+        """macho: F0 (2 intentos, el 1 aceptado) -> F4 (2 intentos, desde F0), con sus imágenes."""
+        self.sembrar(n=2)
+        self.post_fase('avanzar', fase='F0', intento=1, siguiente='F4')
+        self.esperar()
+        d = self.dir()
+
+        def f(c):
+            for k in (1, 2):
+                nombre = C.nombre_intento('macho', 'F4', k) + '.png'
+                C.apuntar_intento(c, 'macho', 'F4', f'final {k}', k, nombre, 1.0, 0, ('F0', 'macho-f0-1.png'))
+                escribir(os.path.join(d, 'intentos', nombre), 'x')
+        C.actualizar(d, f)
+
+    def test_renombrar_guarda_el_nombre_y_lo_trae_elementos(self):
+        codigo, r = self.pedir('/api/camino/renombrar', {'tipo': 'fauna', 'slug': 'nievon', 'nombre': '  Oso de nieve '})
+        self.assertEqual((codigo, r['camino']['nombre']), (200, 'Oso de nieve'))
+        self.assertEqual(C.leer(self.dir())['nombre'], 'Oso de nieve')
+        el = [e for e in self.pedir('/api/elementos')[1]['elementos'] if e['slug'] == 'nievon'][0]
+        self.assertEqual((el['nombre'], el['marcadas']), ('Oso de nieve', 0))
+        for nombre, motivo in (('  ', 'El nombre está vacío'), ('x' * 121, 'demasiado largo')):
+            codigo, r = self.pedir('/api/camino/renombrar', {'tipo': 'fauna', 'slug': 'nievon', 'nombre': nombre})
+            self.assertEqual(codigo, 400)
+            self.assertIn(motivo, r['error'])
+        self.assertEqual(self.pedir('/api/camino/renombrar', {'tipo': 'fauna', 'slug': '../x', 'nombre': 'a'})[0], 400)
+
+    def test_elementos_sin_camino_json_sigue_igual(self):
+        self.sembrar(slug='otro', n=1)
+        os.remove(os.path.join(self.dir('fauna', 'otro'), 'camino.json'))
+        el = [e for e in self.pedir('/api/elementos')[1]['elementos'] if e['slug'] == 'otro'][0]
+        self.assertEqual((el['nombre'], el['marcadas']), ('', 0))
+
+    def test_marcar_y_quitar_la_estrella_y_elementos_las_cuenta(self):
+        self.llegar_a_la_final()
+        codigo, r = self.post_fase('marcar', intento=2, marcada=True)
+        self.assertEqual((codigo, r['camino']['marcadas']), (200, [{'imagen': 'macho-f4-2.png', 'variante': 'macho', 'pautasVersion': None}]))
+        self.assertEqual(r['camino']['variantes']['macho']['fases']['F4']['aceptada'], 'macho-f4-2.png')
+        self.post_fase('marcar', intento=1, marcada=True)
+        el = [e for e in self.pedir('/api/elementos')[1]['elementos'] if e['slug'] == 'nievon'][0]
+        self.assertEqual(el['marcadas'], 2)
+        codigo, r = self.post_fase('marcar', intento=2, marcada=False)
+        self.assertEqual([m['imagen'] for m in r['camino']['marcadas']], ['macho-f4-1.png'])
+        casos = ((dict(intento=1), 'marcada tiene que ser true o false'), (dict(intento=9, marcada=True), 'No existe el intento 9 de F4'),
+                 (dict(intento='x', marcada=True), 'el intento tiene que ser un número'),
+                 (dict(intento=1, marcada=True, variante='nadie'), 'La variante nadie no existe'))
+        for cuerpo, motivo in casos:
+            with self.subTest(cuerpo=cuerpo):
+                codigo, r = self.post_fase('marcar', **cuerpo)
+                self.assertEqual(codigo, 400)
+                self.assertIn(motivo, r['error'])
+
+    def test_marcar_una_final_de_un_boceto_que_ya_no_es_el_aceptado_dice_por_que(self):
+        self.llegar_a_la_final()
+        self.post_fase('atras')
+        d = self.dir()
+
+        def otro_boceto(c):
+            C.apuntar_intento(c, 'macho', 'F0', 'otro', 9, 'macho-f0-3.png', 1.0, 0, None, n=3)
+            escribir(os.path.join(d, 'intentos', 'macho-f0-3.png'), 'x')
+            C.avanzar(d, c, 'macho', 'F0', 3, 'F4', 'fauna')
+        C.actualizar(d, otro_boceto)
+        codigo, r = self.post_fase('marcar', intento=1, marcada=True)
+        self.assertEqual((codigo, r['error']), (400, 'Esta Final salió de un boceto que ya no es el aceptado: genera otra'))
+        self.assertEqual(C.leer(d)['marcadas'], [])
+
+    def test_dependientes_y_borrar_la_fase(self):
+        self.llegar_a_la_final()
+        self.post_fase('marcar', intento=1, marcada=True)
+        codigo, r = self.pedir('/api/fase/dependientes?tipo=fauna&slug=nievon&variante=macho&fase=F0')
+        self.assertEqual((codigo, r), (200, {'fases': ['F0', 'F4'], 'marcadas': ['macho-f4-1.png'], 'variantes': []}))
+        codigo, r = self.post_fase('borrar', fase='F0')
+        self.assertEqual(codigo, 200)
+        v = r['camino']['variantes']['macho']
+        self.assertEqual((v['faseActual'], v['fases']['F0']['aceptada'], r['camino']['marcadas']), ('F0', None, []))
+        self.assertEqual([i['prompt'] for i in v['fases']['F0']['intentos']], ['prompt 1', 'prompt 2'])
+        self.assertEqual(os.listdir(os.path.join(self.dir(), 'intentos')), [])
+        codigo, r = self.post_fase('borrar', fase='F1')  # esa fase no tiene intentos
+        self.assertEqual((codigo, r['error']), (400, 'No hay nada guardado en esta fase'))
+        self.assertEqual(self.post_fase('borrar', fase='F9')[0], 400)
+        codigo, r = self.pedir('/api/fase/dependientes?tipo=fauna&slug=nievon&variante=nadie&fase=F0')
+        self.assertEqual((codigo, r['error']), (400, 'La variante nadie no existe'))
+
+    def test_borrar_con_una_generacion_en_marcha_de_ese_elemento_da_400_y_el_motivo(self):
+        self.sembrar(n=1)
+        os.environ['FASE_ESPERA'] = '1.5'
+        self.addCleanup(os.environ.pop, 'FASE_ESPERA', None)
+        self.assertEqual(self.post_fase('generar', variante='hembra', fase='F0', prompt='x')[0], 202)
+        codigo, r = self.post_fase('borrar', fase='F0')
+        self.assertEqual(codigo, 400)
+        self.assertIn('hay una generación en marcha de este elemento', r['error'])
+        self.assertTrue(os.path.exists(os.path.join(self.dir(), 'intentos', 'macho-f0-1.png')))
+        # de otro elemento no estorba
+        self.sembrar(slug='otro', n=1)
+        self.assertEqual(self.pedir('/api/fase/borrar', {'tipo': 'fauna', 'slug': 'otro', 'variante': 'macho', 'fase': 'F0'})[0], 200)
+        self.esperar()
+        self.assertEqual(self.post_fase('borrar', fase='F0')[0], 200)
+
     def test_con_el_fase_py_real_el_intento_queda_en_camino_json(self):
         self.s.FASE = os.path.join(SCRIPTS, 'fase.py')
         generar = os.path.join(self.fake, 'generar.sh')

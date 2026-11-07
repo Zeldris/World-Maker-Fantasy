@@ -169,6 +169,209 @@ class TestCamino(unittest.TestCase):
         self.assertEqual(sorted(ns), list(range(1, 41)))
 
 
+class TestRenombrarBorrarMarcar(unittest.TestCase):
+    """IMG-25 (parte 2): renombrar, borrar lo guardado de una fase y marcar ★."""
+
+    def setUp(self):
+        self.d = carpeta()
+
+    def existe(self, nombre):
+        return os.path.exists(os.path.join(self.d, 'intentos', nombre))
+
+    def camino_completo(self, variante='m'):
+        """F0 (2 intentos, acepta el 1) -> F1 (1 intento, aceptado) -> F4 (2 intentos); F4 desde F1."""
+        c = C.vacio()
+        intento(c, variante, 'F0', 'p0a', 3)
+        intento(c, variante, 'F0', 'p0b', 4)
+        con_imagenes(self.d, c, variante, 'F0')
+        C.avanzar(self.d, c, variante, 'F0', 1, 'F1', 'fauna')
+        intento(c, variante, 'F1', 'p1', 3, entrada=('F0', f'{variante}-f0-1.png'))
+        con_imagenes(self.d, c, variante, 'F1')
+        C.avanzar(self.d, c, variante, 'F1', 1, 'F4', 'fauna')
+        intento(c, variante, 'F4', 'p4a', 3, entrada=('F1', f'{variante}-f1-1.png'))
+        intento(c, variante, 'F4', 'p4b', 4, entrada=('F1', f'{variante}-f1-1.png'))
+        con_imagenes(self.d, c, variante, 'F4')
+        return c
+
+    def test_renombrar_recorta_valida_y_no_toca_la_carpeta(self):
+        c = C.vacio()
+        self.assertEqual(C.renombrar(c, '  Oso de nieve  '), 'Oso de nieve')
+        self.assertEqual(c['nombre'], 'Oso de nieve')
+        for malo, motivo in (('   ', 'El nombre está vacío'), (None, 'El nombre está vacío'),
+                             ('x' * 121, 'demasiado largo: 120')):
+            with self.assertRaisesRegex(C.CaminoInvalido, motivo):
+                C.renombrar(c, malo)
+        self.assertEqual(c['nombre'], 'Oso de nieve', 'un nombre inválido no cambia el anterior')
+        C.renombrar(c, 'x' * 120)
+
+    def test_tramo_sigue_la_cadena_de_desde(self):
+        c = self.camino_completo()
+        v = c['variantes']['m']
+        self.assertEqual(C.tramo(v, 'F0'), ['F0', 'F1', 'F4'])
+        self.assertEqual(C.tramo(v, 'F1'), ['F1', 'F4'])
+        self.assertEqual(C.tramo(v, 'F4'), ['F4'])
+        with self.assertRaisesRegex(C.CaminoInvalido, 'Fase desconocida: F9'):
+            C.tramo(v, 'F9')
+
+    def test_borrar_f1_deja_f0_y_cuelga_la_final(self):
+        c = self.camino_completo()
+        C.marcar(c, 'm', 1, True)
+        self.assertEqual(C.dependientes(c, 'm', 'F1'), {'fases': ['F1', 'F4'], 'marcadas': ['m-f4-1.png'], 'variantes': []})
+        C.borrar_fase(self.d, c, 'm', 'F1')
+        v = c['variantes']['m']
+        self.assertEqual(v['fases']['F0']['aceptada'], 'm-f0-1.png', 'la fase de fuera del tramo se conserva')
+        self.assertTrue(self.existe('m-f0-1.png'))
+        for f in ('F1', 'F4'):
+            r = v['fases'][f]
+            self.assertEqual((r['aceptada'], r['prompt'], r['semilla'], r['desfasada']), (None, None, None, False))
+            self.assertTrue(all(i['imagen'] is None for i in r['intentos']))
+        self.assertEqual([(i['prompt'], i['semilla']) for i in v['fases']['F4']['intentos']], [('p4a', 3), ('p4b', 4)])
+        self.assertFalse(self.existe('m-f1-1.png') or self.existe('m-f4-1.png') or self.existe('m-f4-2.png'))
+        self.assertEqual(v['faseActual'], 'F0', 'faseActual estaba en F4, dentro del tramo: pasa a la fase desde de F1')
+        self.assertEqual(c['marcadas'], [], 'la ★ se va con la imagen')
+
+    def test_borrar_f0_arrastra_todo_y_vuelve_a_f0(self):
+        c = self.camino_completo()
+        C.borrar_fase(self.d, c, 'm', 'F0')
+        v = c['variantes']['m']
+        self.assertEqual(sorted(os.listdir(os.path.join(self.d, 'intentos'))), [])
+        self.assertEqual(v['faseActual'], 'F0')
+        self.assertTrue(all(r['aceptada'] is None for r in v['fases'].values()))
+        self.assertEqual(len(v['fases']['F0']['intentos']), 2, 'los intentos y sus prompts se quedan')
+        # el camino sigue funcionando: F1 ya no tiene fase de entrada aceptada
+        with self.assertRaisesRegex(C.CaminoInvalido, 'Falta una fase aceptada'):
+            C.fase_de_entrada({'fases': v['fases']}, 'F1')
+
+    def test_borrar_la_final_deja_las_anteriores_y_quita_solo_sus_estrellas(self):
+        c = self.camino_completo()
+        c['marcadas'].append({'imagen': 'viejo.png', 'variante': None, 'pautasVersion': None, 'migrada': True})
+        C.marcar(c, 'm', 1, True)
+        C.marcar(c, 'm', 2, True)
+        C.borrar_fase(self.d, c, 'm', 'F4')
+        v = c['variantes']['m']
+        self.assertEqual((v['faseActual'], v['fases']['F1']['aceptada']), ('F1', 'm-f1-1.png'))
+        self.assertEqual([m['imagen'] for m in c['marcadas']], ['viejo.png'], 'las migradas (variante None) se quedan')
+
+    def test_borrar_lo_ya_borrado_dice_que_no_hay_nada(self):
+        c = self.camino_completo()
+        C.borrar_fase(self.d, c, 'm', 'F0')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'No hay nada guardado en esta fase'):
+            C.borrar_fase(self.d, c, 'm', 'F0')
+        self.assertEqual(len(c['variantes']['m']['fases']['F0']['intentos']), 2)
+
+    def test_borrar_la_entrada_de_una_fase_sin_lanzar_no_deja_el_elemento_atascado(self):
+        c = self.camino_completo()
+        v = c['variantes']['m']
+        del v['fases']['F1'], v['fases']['F4']
+        v['faseActual'] = 'F1'  # aceptada F0, pero F1 no se llegó a lanzar (el generador estaba ocupado)
+        C.borrar_fase(self.d, c, 'm', 'F0')
+        self.assertEqual(v['faseActual'], 'F0', 'sin entrada aceptada, F1 ni se genera ni tiene fase a la que volver')
+
+    def test_borrar_otra_rama_no_mueve_una_fase_sin_lanzar_que_aun_tiene_entrada(self):
+        c = self.camino_completo()
+        v = c['variantes']['m']
+        v['faseActual'] = 'F2'  # aceptada F1, F2 sin lanzar; la Final que sale de F1 se borra aparte
+        C.borrar_fase(self.d, c, 'm', 'F4')
+        self.assertEqual(v['faseActual'], 'F2')
+
+    def test_borrar_sin_nada_guardado_dice_por_que(self):
+        c = C.vacio()
+        with self.assertRaisesRegex(C.CaminoInvalido, 'La variante m no existe'):
+            C.borrar_fase(self.d, c, 'm', 'F0')
+        intento(c, 'm', 'F0')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'No hay nada guardado en esta fase'):
+            C.borrar_fase(self.d, c, 'm', 'F1')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'Fase desconocida: F9'):
+            C.borrar_fase(self.d, c, 'm', 'F9')
+
+    def test_no_se_borra_la_imagen_que_usa_otra_fase_u_otra_variante(self):
+        c = self.camino_completo()
+        v = c['variantes']['m']
+        # una fase de fuera del tramo (F2, que no cuelga de F1 por desde) parte de la F1 aceptada
+        v['fases']['F2'] = {'aceptada': None, 'prompt': None, 'semilla': None, 'desde': None, 'entrada': 'm-f1-1.png',
+                            'desfasada': False, 'intentos': []}
+        # y otra variante parte de la F4 1
+        c['variantes']['o'] = {'origen': None, 'faseActual': 'F4', 'fases': {'F4': {
+            'aceptada': 'm-f4-1.png', 'prompt': 'x', 'semilla': 1, 'desde': None, 'entrada': None, 'desfasada': False, 'intentos': []}}}
+        C.marcar(c, 'm', 1, True)
+        self.assertEqual(C.dependientes(c, 'm', 'F1')['marcadas'], [], 'la ★ protegida no se pierde')
+        C.borrar_fase(self.d, c, 'm', 'F1')
+        self.assertTrue(self.existe('m-f1-1.png'), 'la usa la entrada de F2')
+        self.assertTrue(self.existe('m-f4-1.png'), 'la usa otra variante')
+        self.assertFalse(self.existe('m-f4-2.png'))
+        f1, f4 = v['fases']['F1']['intentos'][0], v['fases']['F4']['intentos']
+        self.assertEqual((f1['imagen'], f4[0]['imagen'], f4[1]['imagen']), ('m-f1-1.png', 'm-f4-1.png', None))
+        self.assertEqual([m['imagen'] for m in c['marcadas']], ['m-f4-1.png'])
+
+    def test_dependientes_cuenta_las_variantes_que_nacen_del_tramo(self):
+        c = self.camino_completo()
+        c['variantes']['hija'] = {'origen': {'variante': 'm', 'fase': 'F1'}, 'faseActual': 'F1', 'fases': {}}
+        c['variantes']['otra'] = {'origen': {'variante': 'm', 'fase': 'F0'}, 'faseActual': 'F0', 'fases': {}}
+        c['variantes']['suelta'] = {'origen': None, 'faseActual': 'F0', 'fases': {}}
+        self.assertEqual(C.dependientes(c, 'm', 'F1')['variantes'], ['hija'])
+        self.assertEqual(sorted(C.dependientes(c, 'm', 'F0')['variantes']), ['hija', 'otra'])
+        self.assertEqual(C.dependientes(c, 'm', 'F4')['variantes'], [])
+
+    def test_intento_desfasado(self):
+        c = self.camino_completo()
+        v = c['variantes']['m']
+        f4 = v['fases']['F4']['intentos']
+        self.assertFalse(C.intento_desfasado(v, 'F4', f4[0]))
+        self.assertFalse(C.intento_desfasado(v, 'F4', 2), 'también por número')
+        self.assertFalse(C.intento_desfasado(v, 'F0', v['fases']['F0']['intentos'][0]), 'sin desde no hay de qué desfasarse')
+        intento(c, 'm', 'F1', 'otra', 9, entrada=('F0', 'm-f0-1.png'))
+        con_imagenes(self.d, c, 'm', 'F1')
+        C.avanzar(self.d, c, 'm', 'F1', 2, 'F4', 'fauna')  # acepta otro boceto de F1
+        self.assertTrue(C.intento_desfasado(v, 'F4', f4[0]))
+
+    def test_marcar_dos_quitar_y_sin_duplicar(self):
+        c = self.camino_completo()
+        C.marcar(c, 'm', 1, True)
+        C.marcar(c, 'm', 1, True)
+        C.marcar(c, 'm', 2, True)
+        self.assertEqual(c['marcadas'], [{'imagen': 'm-f4-1.png', 'variante': 'm', 'pautasVersion': None},
+                                         {'imagen': 'm-f4-2.png', 'variante': 'm', 'pautasVersion': None}])
+        f4 = c['variantes']['m']['fases']['F4']
+        self.assertEqual((f4['aceptada'], f4['prompt'], f4['semilla']), ('m-f4-2.png', 'p4b', 4))
+        C.marcar(c, 'm', 1, False)
+        self.assertEqual([m['imagen'] for m in c['marcadas']], ['m-f4-2.png'])
+        self.assertEqual(f4['aceptada'], 'm-f4-2.png', 'quitar la ★ no cambia la aceptada')
+        C.marcar(c, 'm', 1, False)  # quitar la que no está no falla
+
+    def test_marcar_rechaza_con_su_motivo(self):
+        c = self.camino_completo()
+        intento(c, 'm', 'F4', 'fallo', 5, ok=False, entrada=('F1', 'm-f1-1.png'))
+        con_marca = {'imagen': 'a.png', 'variante': None, 'pautasVersion': None, 'migrada': True}
+        c['marcadas'].append(con_marca)
+        casos = (('m', 3, 'falló o ya no tiene imagen'), ('m', 9, 'No existe el intento 9 de F4 en m'),
+                 ('nadie', 1, 'La variante nadie no existe'))
+        for variante, n, motivo in casos:
+            with self.subTest(n=n):
+                with self.assertRaisesRegex(C.CaminoInvalido, motivo):
+                    C.marcar(c, variante, n, True)
+        c2 = C.vacio()
+        intento(c2, 'm', 'F0')
+        with self.assertRaisesRegex(C.CaminoInvalido, 'Solo se marca ★ en la Final'):
+            C.marcar(c2, 'm', 1, True)
+        self.assertEqual(c['marcadas'], [con_marca])
+
+    def test_marcar_una_final_desfasada_se_rechaza_con_el_mensaje(self):
+        c = self.camino_completo()
+        intento(c, 'm', 'F1', 'otra', 9, entrada=('F0', 'm-f0-1.png'))
+        con_imagenes(self.d, c, 'm', 'F1')
+        C.avanzar(self.d, c, 'm', 'F1', 2, 'F4', 'fauna')
+        with self.assertRaises(C.CaminoInvalido) as cm:
+            C.marcar(c, 'm', 1, True)
+        self.assertEqual(str(cm.exception), 'Esta Final salió de un boceto que ya no es el aceptado: genera otra')
+        self.assertEqual(c['marcadas'], [])
+        # quitarla sí se puede, y una Final nueva desde el boceto aceptado se marca
+        C.marcar(c, 'm', 1, False)
+        intento(c, 'm', 'F4', 'nueva', 7, entrada=('F1', 'm-f1-2.png'))
+        con_imagenes(self.d, c, 'm', 'F4')
+        C.marcar(c, 'm', 3, True)
+        self.assertEqual([m['imagen'] for m in c['marcadas']], ['m-f4-3.png'])
+
+
 class TestFasePy(unittest.TestCase):
     def setUp(self):
         self.raiz = carpeta()

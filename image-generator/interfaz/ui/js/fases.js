@@ -1,23 +1,28 @@
 /* Pantalla de fases del elemento (IMG-25, parte 1; diseño `diseno-interfaz-continua.md` §2.0 y la maqueta aprobada
    `docs/prototipos/img-39-pantalla-elemento.html`, que manda sobre el dibujo). Sobre las rutas de IMG-40:
    GET /api/camino y POST /api/fase/{generar,avanzar,atras}; igual con servidor.py que con el simulador (`?mock=1`).
+   Parte 2: renombrar el elemento (✎), «Cómo se hizo» (la cadena de pasos de una imagen), «Borrar esta fase» con aviso de
+   lo que arrastra (/api/fase/dependientes y /api/fase/borrar) y Marcar ★ en la Final (/api/fase/marcar, tecla M).
    Pasos F0 → F1 → F2 → F4 (F3 apagada hasta IMG-37), tres paneles (referencia, fase anterior, intento actual con su
    navegador), el prompt de la fase y Atrás / Regenerar / Avanzar. Sin innerHTML: todo con h() de dom.js.
    app.js la llama: `initFases` (una vez), `abrir` (al elegir otro elemento) y, desde su sondeo único, `progreso` y
-   `terminado`; `TECLAS` se suma a las de la pantalla. Queda para la parte 2: Marcar ★, variantes nuevas y borrar. */
+   `terminado`; `TECLAS` se suma a las de la pantalla. Queda: las variantes «desde aquí» (IMG-42). */
 
 import { h, el as $, when } from './dom.js';
 import { api, paths, describeError } from './api.js';
-import { toast } from './components/toast.js';
+import { toast, toastOk } from './components/toast.js';
+import { confirmAction } from './components/confirm.js';
 import * as cola from './queue-poll.js';
 
 const PERFILES_REF = ['banner', 'thumbnail', 'mapa', 'icono'];
 const MOTIVO_F3 = 'F3 Recorte llega con IMG-37';
 const S = { tipo: null, slug: null, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '',
-  clave: null, generando: false, token: 0, btn: {}, info: {}, orden: [] };
-let ctx = { ampliar: () => {}, seguir: () => {} };
+  clave: null, generando: false, token: 0, btn: {}, info: {}, orden: [], editando: false };
+let ctx = { ampliar: () => {}, seguir: () => {}, lista: async () => {} };
+let avisadaMarca = false;  // el aviso «marcar no es publicar» sale una vez por sesión
 
 const prompt = h('textarea', { id: 'fasesPrompt', spellcheck: 'false', 'aria-describedby': 'fasesPromptAyuda' });
+const campoNombre = h('input', { type: 'text', id: 'fasesNombre', maxlength: 120, 'aria-label': 'Nombre del elemento', autocomplete: 'off' });
 const barra = h('progress', { max: 100, value: 2 });
 const barraTexto = h('div.hint');
 const progreso_ = h('div.progreso-fase', { role: 'status' }, barra, barraTexto);
@@ -61,6 +66,10 @@ function promptPorDefecto(v, f) {
   if (p) return registro(v, p).prompt || '';
   return f === 'F0' ? S.promptEnc : '';
 }
+const marcadaImg = (imagen) => !!imagen && ((S.camino && S.camino.marcadas) || []).some((m) => m.variante === S.variante && m.imagen === imagen);
+// Solo para apagar el botón: la regla es la de camino.intento_desfasado y la aplica el servidor.
+const desfasado = (v, a) => !!a.desde && a.entrada !== ((v.fases[a.desde] || {}).aceptada || null);
+const MOTIVO_DESFASE = 'Esta Final salió de un boceto que ya no es el aceptado: genera otra';
 const meta = (i) => `s=${i.semilla} · ${i.segundos} s · ${when(i.fecha)}`;
 
 /* ---------- carga ---------- */
@@ -72,7 +81,7 @@ async function buscarReferencia(tipo, slug) {
 }
 export async function abrir(tipo, slug) {
   const token = ++S.token;
-  Object.assign(S, { tipo, slug, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '', clave: null });
+  Object.assign(S, { tipo, slug, camino: null, variante: null, lectura: null, idx: null, aviso: '', ref: null, promptEnc: '', clave: null, editando: false });
   $('fases').hidden = false;
   render();
   try {
@@ -133,6 +142,38 @@ const avanzar = (siguiente, n) => accion(async () => {
   if (r.lanzado) lanzado();
   else { render(); toast(`Aceptado, pero no se lanzó ${nombreFase(siguiente)}: ${r.motivo || 'sin motivo'}`); }
 });
+const guardarNombre = () => accion(async () => {
+  const r = await api.renombrar(S.tipo, S.slug, campoNombre.value);
+  S.camino = r.camino; S.editando = false; render();
+  await ctx.lista().catch(() => {});
+});
+function editarNombre() {
+  campoNombre.value = (S.camino && S.camino.nombre) || '';
+  S.editando = true; S.aviso = ''; render();
+}
+function cancelarNombre() { S.editando = false; render(); }
+campoNombre.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') { ev.preventDefault(); guardarNombre(); }
+  else if (ev.key === 'Escape') { ev.stopPropagation(); cancelarNombre(); }  // cierra solo la edición, no el resto de lo abierto
+});
+const borrar = (fase) => accion(async () => {
+  const dep = await api.faseDependientes(S.tipo, S.slug, S.variante, fase);
+  const partes = [`Se borran las imágenes de ${dep.fases.map(nombreFase).join(', ')}.`];
+  if (dep.marcadas.length) partes.push(`Arrastra ${dep.marcadas.length} ★ marcada${dep.marcadas.length === 1 ? '' : 's'}: ${dep.marcadas.join(', ')}.`);
+  if (dep.variantes.length) partes.push(`Las variantes que salen de ahí conservan su copia: ${dep.variantes.join(', ')}.`);
+  partes.push('Quedan prompts y semillas.');
+  const si = await confirmAction({ title: `Borrar ${nombreFase(fase)} y lo que sigue en ${S.variante}`, message: partes.join(' '), confirmLabel: 'Borrar', opener: () => S.btn.borrar });
+  if (!si) return;
+  const r = await api.faseBorrar(S.tipo, S.slug, S.variante, fase);
+  S.camino = r.camino; S.lectura = null; S.idx = null; render();
+  await ctx.lista().catch(() => {});
+});
+const marcar = (n, marcada) => accion(async () => {
+  const r = await api.faseMarcar(S.tipo, S.slug, S.variante, n, marcada);
+  S.camino = r.camino; render();
+  if (marcada && !avisadaMarca) { avisadaMarca = true; toastOk('★ Marcada: lista para combinar. Marcar no es publicar.'); }
+  await ctx.lista().catch(() => {});
+});
 function ver(d) {
   const v = variante(), lista = intentos(v, v.faseActual);
   if (S.lectura || !lista.length) return;
@@ -148,6 +189,7 @@ export const TECLAS = [
   { keys: ['A'], label: 'Atrás: reabrir la fase anterior', run: () => pulsar('atras') },
   { keys: ['Enter'], label: 'Avanzar por la primera opción', run: () => pulsar('avanzar', 0) },
   { keys: ['F'], label: 'Avanzar por la segunda opción', run: () => pulsar('avanzar', 1) },
+  { keys: ['M'], label: 'Marcar ★ (o quitarla) en la Final', run: () => pulsar('marcar') },
   { keys: ['ArrowLeft'], label: 'Intento anterior de la fase', run: () => ver(-1) },
   { keys: ['ArrowRight'], label: 'Intento siguiente de la fase', run: () => ver(1) },
 ];
@@ -173,6 +215,24 @@ function pasos(v) {
   return l;
 }
 
+/* La cadena que llevó a una imagen, de F0 a ella: por `desde`/`entrada` hacia atrás. `base` = lo de la imagen vista. */
+function comoSeHizo(v, f, base) {
+  const pasos = [{ fase: f, semilla: base.semilla, prompt: base.prompt, imagen: base.imagen, intentos: registro(v, f).intentos }];
+  let { desde, entrada } = base;
+  while (desde && pasos.length < 8) {
+    const r = registro(v, desde), it = entrada ? r.intentos.find((i) => i.imagen === entrada) : null;
+    if (!it) { pasos.push({ fase: desde, perdido: true }); break; }
+    pasos.push({ fase: desde, semilla: it.semilla, prompt: it.prompt, imagen: it.imagen, intentos: r.intentos });
+    ({ desde, entrada } = it);
+  }
+  pasos.reverse();
+  const lista = h('ol.como', {}, ...pasos.map((p) => h('li', {},
+    p.imagen ? h('img.mini.ampliable', { src: srcImagen(p.imagen, p.intentos), alt: `${nombreFase(p.fase)}`, onclick: () => ctx.ampliar(srcImagen(p.imagen, p.intentos), nombreFase(p.fase)) }) : null,
+    h('div', {}, h('strong', {}, nombreFase(p.fase)), p.perdido ? ' · ya no está guardada' : ` · s=${p.semilla}`),
+    p.perdido ? null : h('div.meta', {}, p.prompt))));
+  return h('details.como-se-hizo', { 'data-como': 'pasos' }, h('summary', {}, 'Cómo se hizo'), lista);
+}
+
 function panelReferencia() {
   if (!S.ref) return marco('Referencia', hueco('Sin referencia'));
   const src = paths.juego(S.ref.ruta);
@@ -196,21 +256,32 @@ function panelIntento(v, f) {
   if (!a) return h('div.marco.actual', {}, cab, hueco(`${f === 'F0' ? 'Elemento nuevo. ' : 'Esta fase aún no tiene imagen. '}«Generar» la pide.`));
   const r = registro(v, f), etiquetas = [];
   if (a.imagen && r.aceptada === a.imagen) etiquetas.push(h('span.ok', {}, 'aceptado'));
-  if (a.imagen) return h('div.marco.actual', {}, cab, imagen(srcImagen(a.imagen, lista), `Intento ${a.n} de ${nombreFase(f)}`), h('div.meta', {}, meta(a), ' ', ...etiquetas));
+  if (a.imagen && marcadaImg(a.imagen)) etiquetas.push(h('span.estrella', { title: 'Marcada: lista para combinar' }, '★'));
+  if (a.imagen) return h('div.marco.actual', {}, cab, imagen(srcImagen(a.imagen, lista), `Intento ${a.n} de ${nombreFase(f)}`), h('div.meta', {}, meta(a), ' ', ...etiquetas),
+    comoSeHizo(v, f, a));
   // sin imagen: fallido (salida distinta de 0) o borrado al avanzar
   const fallo = a.salida !== 0 && a.salida !== undefined && a.salida !== null;
   return h('div.marco.actual', {}, cab, hueco(
-    h('strong', {}, fallo ? `Falló (salida ${a.salida})` : 'Imagen borrada al avanzar'),
+    h('strong', {}, fallo ? `Falló (salida ${a.salida})` : 'Imagen borrada'),
     h('div', {}, `Prompt: ${a.prompt}`), h('div', {}, `Semilla: ${a.semilla}`),
     fallo && a.error ? h('pre', {}, a.error) : null), h('div.meta', {}, meta(a)));
+}
+function botonBorrar(v, f) {
+  const motivo = S.generando ? 'Hay una generación en curso: espera a que acabe' : !registro(v, f).intentos.some((i) => i.imagen) ? 'No hay nada guardado en esta fase' : null;
+  S.btn.borrar = h('button.btn', { type: 'button', 'data-accion': 'borrar', disabled: !!motivo, onclick: () => borrar(f),
+    title: motivo || `Borrar las imágenes de ${nombreFase(f)} y de lo que sigue (quedan prompts y semillas)` }, 'Borrar esta fase');
+  return S.btn.borrar;
 }
 function lecturaFase(v) {
   const f = S.lectura, r = registro(v, f);
   return h('div.lectura', {}, h('h3', {}, `${nombreFase(f)} · lo guardado`),
     r.aceptada ? imagen(srcImagen(r.aceptada, r.intentos), `${nombreFase(f)} aceptada`) : hueco('Esta fase no tiene imagen aceptada.'),
-    h('div.meta', {}, r.desfasada ? '⚠ desfasada: se aceptó otra imagen en la fase de la que sale. ' : '', r.semilla !== null && r.semilla !== undefined ? `s=${r.semilla}` : ''),
+    h('div.meta', {}, r.desfasada ? '⚠ desfasada: se aceptó otra imagen en la fase de la que sale. ' : '', r.semilla !== null && r.semilla !== undefined ? `s=${r.semilla}` : '',
+      marcadaImg(r.aceptada) ? h('span.estrella', { title: 'Marcada: lista para combinar' }, ' ★') : null),
     h('pre.prompt-leido', {}, r.prompt || '(sin prompt guardado)'),
-    h('div.acciones', {}, h('button.btn.btn-primary', { type: 'button', onclick: () => { S.lectura = null; render(); } }, `Volver a ${nombreFase(v.faseActual)}`)));
+    r.aceptada ? comoSeHizo(v, f, { semilla: r.semilla, prompt: r.prompt, imagen: r.aceptada, desde: r.desde, entrada: r.entrada }) : null,
+    h('div.acciones', {}, h('button.btn.btn-primary', { type: 'button', onclick: () => { S.lectura = null; render(); } }, `Volver a ${nombreFase(v.faseActual)}`),
+      botonBorrar(v, f)));
 }
 
 function acciones(v, f) {
@@ -222,7 +293,13 @@ function acciones(v, f) {
     lista.length ? 'Regenerar ' : 'Generar ', h('kbd.kbd', {}, 'R'));
   const der = h('div.acciones-der', {}, b.regenerar);
   if (f === 'F4') {
-    der.append(h('button.btn.btn-primary', { type: 'button', disabled: true, title: 'Marcar ★ llega con la parte 2' }, 'Marcar ★'));
+    const marcada = !!a && marcadaImg(a.imagen);
+    const no = ocupado || (!a ? 'Aún no hay intentos que marcar' : null) || (!a.imagen ? 'Un intento sin imagen no se puede marcar' : null)
+      || (!marcada && desfasado(v, a) ? MOTIVO_DESFASE : null);
+    b.marcar = h('button.btn.btn-primary', { type: 'button', 'data-accion': 'marcar', disabled: !!no, onclick: () => marcar(a.n, !marcada),
+      title: no || (marcada ? 'Quitar la ★ de esta Final (M)' : 'Marcar esta Final: queda lista para combinar, no se publica (M)') },
+    marcada ? 'Quitar ★ ' : 'Marcar ★ ', h('kbd.kbd', {}, 'M'));
+    der.append(b.marcar);
   } else {
     sigs.forEach((s, k) => {
       const no = ocupado || (!S.info[s] || !S.info[s].disponible ? `${nombreFase(s)} aún no está disponible` : null) || (!a ? 'Aún no hay intentos que aceptar' : null)
@@ -233,7 +310,17 @@ function acciones(v, f) {
       b.avanzar.push(bt); der.append(bt);
     });
   }
-  return h('div.acciones', {}, b.atras, der);
+  return h('div.acciones', {}, h('div.acciones-izq', {}, b.atras, botonBorrar(v, f)), der);
+}
+
+function nombreElemento() {
+  if (S.editando) {
+    return h('div.nombre-elemento', {}, campoNombre,
+      h('button.btn.btn-primary', { type: 'button', 'data-accion': 'guardar-nombre', onclick: guardarNombre }, 'Guardar'),
+      h('button.btn', { type: 'button', onclick: cancelarNombre }, 'Cancelar'));
+  }
+  return h('div.nombre-elemento', {}, h('strong', { 'data-nombre': 'actual' }, S.camino.nombre || S.slug),
+    h('button.btn.btn-icon', { type: 'button', 'data-accion': 'renombrar', 'aria-label': 'Renombrar el elemento', title: 'Renombrar el elemento', onclick: editarNombre }, '✎'));
 }
 
 function render() {
@@ -245,6 +332,7 @@ function render() {
     ...(vs.length ? vs : ['base']).map((x) => h('option', { value: x, selected: x === S.variante }, x)));
   const cab = h('div.row-between.cab-fases', {}, h('h2', {}, 'Camino por fases'), h('label.row', {}, h('span.muted', {}, 'Variante'), sel));
   const hijos = [cab];
+  if (S.camino) hijos.push(nombreElemento());
   if (S.aviso) hijos.push(h('div.notice.notice-bad', { role: 'alert' }, S.aviso));
   if (!S.camino) { hijos.push(h('p.muted', {}, S.aviso ? '' : 'Cargando…')); raiz.replaceChildren(...hijos); return; }
   hijos.push(pasos(v));
@@ -260,6 +348,7 @@ function render() {
     if (S.generando) hijos.push(progreso_);
   }
   raiz.replaceChildren(...hijos);
+  if (S.editando) { campoNombre.focus(); campoNombre.select(); }
 }
 prompt.addEventListener('input', () => {  // el motivo de «Regenerar» depende de que haya texto
   if (S.btn.regenerar) {

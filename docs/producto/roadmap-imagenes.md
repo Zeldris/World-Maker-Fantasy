@@ -396,7 +396,14 @@ desde el panel vive en tablas que siembran.
   fase anterior, intentos con ◀ ▶, prompt, Atrás/Regenerar/Avanzar, atajos), también en `?mock=1`, con la generación
   suelta de CFG-43 plegada debajo; **2**, rutas y botones de renombrar, borrar lo guardado con aviso (regla 4) y marcar
   ★ (una o varias; la biblioteca sigue en `IMG-42`); **3**, la medida junto al intento (`medir.sh`, SSIM con la fase
-  anterior, §1.4.3) y la prueba en la Deck con una F0 y una Final reales.
+  anterior, §1.4.3) y la prueba en la Deck con una F0 y una Final reales. Añadida (usuaria, 2026-11-07), antes de la 3:
+  casilla «usar la imagen del juego de referencia» por fase, desmarcada por defecto y solo si el elemento tiene imagen;
+  `usarReferencia` en `/api/fase/generar` y `fase.py`, apuntado en cada intento y visible en «Cómo se hizo». En la Final
+  van dos `-r` (`sd-cli` lo admite), el boceto primero, con el prefijo que diga cuál es cuál; falta probarlo con una real.
+  **Parte 2 hecha (2026-11-07):** `camino.py` (`renombrar`, `tramo`, `dependientes`, `borrar_fase`, `marcar`), rutas
+  `/api/camino/renombrar` y `/api/fase/{dependientes,borrar,marcar}`, igual en el simulador; en `fases.js`, nombre con ✎,
+  «Cómo se hizo», «Borrar esta fase» con aviso y Marcar/Quitar ★ (`M`); «★ n» en la lista. Pantalla probada solo con
+  `?mock=1`; falta con imágenes reales (parte 3).
   **Parte 1 hecha (2026-11-07):** `ui/js/fases.js` (pasos con ✓/⚠/actual, ver lo guardado de una fase hecha, los tres
   paneles, ◀ ▶, prompt por defecto: el del último intento, el aceptado de la entrada o el de la enciclopedia en F0;
   Atrás, Regenerar y un Avanzar por cada siguiente; atajos R, A, Intro, F, ← →), sobre el sondeo único de `app.js`; la

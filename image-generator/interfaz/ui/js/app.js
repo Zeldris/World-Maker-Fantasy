@@ -54,6 +54,7 @@ function pintarLista() {
     const marcas = h('div.marcas');
     if (e.intentos) marcas.append(h('span', {}, `${e.intentos} intento${e.intentos === 1 ? '' : 's'}`));
     if (e.elegidas.length) marcas.append(h('span.eleg', {}, '✓ elegida'));
+    if (e.marcadas > 0) marcas.append(h('span.estrella', { title: 'Finales marcadas ★' }, `★ ${e.marcadas}`));
     const miniatura = e.juego ? h('img.miniatura', { loading: 'lazy', alt: '', src: paths.juego(e.juego) }) : h('div.miniatura', { title: 'Sin imagen en el juego' });
     const abrir = () => elegirElemento(e.tipo, e.slug);
     l.append(h('div.elemento', {
@@ -273,7 +274,7 @@ async function iniciar() {
   initShortcuts({ toggleQueue, closeAll: cerrarTodo, isQueueOpen });
   initGamepad();
   const ini = await api.inicio();
-  fases.initFases({ ampliar, seguir }, ini.fases || []);
+  fases.initFases({ ampliar, seguir, lista: cargarElementos }, ini.fases || []);
   $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
   await cargarElementos();
   const e = await api.estado();

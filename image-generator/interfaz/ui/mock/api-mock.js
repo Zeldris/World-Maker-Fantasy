@@ -7,6 +7,7 @@
    - Fases (IMG-40, diseño §3.0): /api/camino y /api/fase/{generar,avanzar,atras} con las reglas de scripts/camino.py
      (grafo, fase de entrada aceptada, avanzar borra las imágenes no aceptadas salvo las que sirven de entrada, fases
      desfasadas, atrás, semilla por defecto); un intento de fase tarda 2 s por paso de su receta y con la semilla 13 falla.
+   - IMG-25 (parte 2): /api/camino/renombrar, /api/fase/{borrar,dependientes,marcar} con las mismas reglas y mensajes.
    - `&rapido=1` en la URL acorta cada paso a 50 ms (para los tests de navegador).
    No se carga en uso normal: app.js solo lo importa si la URL lleva `?mock=1`. */
 
@@ -131,6 +132,71 @@ function atrasCamino(c, variante) {
   if (!previa) throw new CaminoInvalido(`No hay fase anterior a ${v.faseActual} a la que volver`);
   v.faseActual = previa;
 }
+/* IMG-25 (parte 2): renombrar, borrar lo guardado y marcar ★, con las reglas y los mensajes de scripts/camino.py. */
+function renombrarCamino(c, nombre) {
+  const limpio = String(nombre === undefined || nombre === null ? '' : nombre).trim();
+  if (!limpio) throw new CaminoInvalido('El nombre está vacío');
+  if (limpio.length > 120) throw new CaminoInvalido('El nombre es demasiado largo: 120 caracteres como mucho');
+  c.nombre = limpio;
+}
+function varianteDe(c, variante) {
+  const v = c.variantes[variante];
+  if (!v) throw new CaminoInvalido(`La variante ${variante} no existe`);
+  return v;
+}
+function tramo(v, fase) {
+  if (!POR_ID[fase]) throw new CaminoInvalido(`Fase desconocida: ${fase}`);
+  const salida = [fase];
+  for (const f of salida) for (const [g, r] of Object.entries(v.fases)) if (r.desde === f && !salida.includes(g)) salida.push(g);
+  return salida;
+}
+function borrables(c, variante, fases) {
+  const v = c.variantes[variante], candidatas = new Set(), usadas = new Set();
+  for (const f of fases) if (v.fases[f]) v.fases[f].intentos.forEach((i) => { if (i.imagen) candidatas.add(i.imagen); });
+  for (const [w, vw] of Object.entries(c.variantes)) {
+    for (const [g, r] of Object.entries(vw.fases)) {
+      if (w === variante && fases.includes(g)) continue;
+      usadas.add(r.entrada); usadas.add(r.aceptada); r.intentos.forEach((i) => usadas.add(i.entrada));
+    }
+  }
+  return new Set([...candidatas].filter((x) => !usadas.has(x)));
+}
+function dependientesCamino(c, variante, fase) {
+  const v = varianteDe(c, variante), fases = tramo(v, fase), b = borrables(c, variante, fases);
+  return { fases, marcadas: c.marcadas.filter((m) => m.variante === variante && b.has(m.imagen)).map((m) => m.imagen),
+    variantes: Object.entries(c.variantes).filter(([w, vw]) => w !== variante && vw.origen && vw.origen.variante === variante && fases.includes(vw.origen.fase)).map(([w]) => w) };
+}
+function borrarFase(c, variante, fase) {
+  const v = varianteDe(c, variante);
+  if (!POR_ID[fase]) throw new CaminoInvalido(`Fase desconocida: ${fase}`);
+  if (!(v.fases[fase] && v.fases[fase].intentos.some((i) => i.imagen))) throw new CaminoInvalido('No hay nada guardado en esta fase');
+  const fases = tramo(v, fase), desde = v.fases[fase].desde, b = borrables(c, variante, fases);
+  for (const f of fases) {
+    const r = v.fases[f];
+    r.intentos.forEach((i) => { if (i.imagen && b.has(i.imagen)) i.imagen = null; });
+    Object.assign(r, { aceptada: null, prompt: null, semilla: null, desfasada: false });
+  }
+  c.marcadas = c.marcadas.filter((m) => !(m.variante === variante && b.has(m.imagen)));
+  const sinSalida = !v.fases[v.faseActual] && ENTRADA[v.faseActual].length && !ENTRADA[v.faseActual].some((x) => v.fases[x] && v.fases[x].aceptada);
+  if (fases.includes(v.faseActual) || sinSalida) v.faseActual = desde || 'F0';
+}
+function intentoDesfasado(v, it) {
+  return !!it.desde && it.entrada !== ((v.fases[it.desde] || {}).aceptada || null);
+}
+function marcarCamino(c, variante, n, marcada) {
+  const v = varianteDe(c, variante), f = v.fases.F4;
+  if (!f) throw new CaminoInvalido('Solo se marca ★ en la Final');
+  const it = f.intentos.find((i) => i.n === n);
+  if (!it) throw new CaminoInvalido(`No existe el intento ${n} de F4 en ${variante}`);
+  if (!marcada) { c.marcadas = c.marcadas.filter((m) => !(m.variante === variante && m.imagen === it.imagen)); return; }
+  if (!it.imagen) throw new CaminoInvalido(`El intento ${n} de F4 falló o ya no tiene imagen: no se puede marcar`);
+  if (intentoDesfasado(v, it)) throw new CaminoInvalido('Esta Final salió de un boceto que ya no es el aceptado: genera otra');
+  if (!c.marcadas.some((m) => m.variante === variante && m.imagen === it.imagen)) c.marcadas.push({ imagen: it.imagen, variante, pautasVersion: null });
+  Object.assign(f, { aceptada: it.imagen, prompt: it.prompt, semilla: it.semilla, desfasada: false });
+  if ('entrada' in it) Object.assign(f, { desde: it.desde, entrada: it.entrada });
+}
+const conCamino = (fn) => { try { return fn(); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; } };
+
 function apuntarIntento(c, variante, fase, p) {
   const v = c.variantes[variante] = c.variantes[variante] || { origen: null, faseActual: 'F0', fases: {} };
   const [desde, entrada] = p.entrada || [null, null];
@@ -265,6 +331,7 @@ export async function transport(method, url, body) {
   if (method === 'GET') {
     if (ruta === '/api/inicio') return ok({ perfiles: PERFILES, mundo: 'helek-sirik (simulador ?mock=1)', fases: JSON.parse(JSON.stringify(FASES)) });
     if (ruta === '/api/camino') return ok(vistaCamino(q.tipo, q.slug));
+    if (ruta === '/api/fase/dependientes') return conCamino(() => ok(dependientesCamino(camino(q.tipo, q.slug), q.variante, q.fase)));
     if (ruta === '/api/estado') return ok(verTrabajo());
     if (ruta === '/api/cola') {
       const t = verTrabajo();
@@ -277,7 +344,8 @@ export async function transport(method, url, body) {
       verTrabajo();
       return ok({ aviso: 'Simulador (?mock=1): datos de ejemplo, nada se guarda.', elementos: Object.entries(datos).map(([clave, e]) => {
         const [tipo, slug] = clave.split('/');
-        return { tipo, slug, nombre: e.nombre, juego: e.juego, intentos: e.intentos.length,
+        const cam = caminos[clave];
+        return { tipo, slug, nombre: (cam && cam.nombre) || e.nombre, marcadas: cam ? cam.marcadas.length : 0, juego: e.juego, intentos: e.intentos.length,
           perfiles: Object.entries(e.prompts).map(([perfil, p]) => ({ perfil, usado: !!p.usado })),
           elegidas: PERFILES.filter((p) => e.elegidas[p]) };
       }) });
@@ -311,6 +379,18 @@ export async function transport(method, url, body) {
       try { avanzarCamino(c, tipo, variante, fase, Number(body.intento), siguiente); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }
       const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt });
       return ok({ camino: vistaCamino(tipo, slug), ...(r.status === 202 ? { lanzado: true } : { lanzado: false, motivo: r.json.error }) });
+    }
+    if (ruta === '/api/camino/renombrar') {
+      return conCamino(() => { renombrarCamino(camino(body.tipo, body.slug), body.nombre); return ok({ camino: vistaCamino(body.tipo, body.slug) }); });
+    }
+    if (ruta === '/api/fase/borrar') {
+      verTrabajo();
+      if (trabajo.enMarcha && trabajo.tipo === body.tipo && trabajo.slug === body.slug) return mal(400, 'hay una generación en marcha de este elemento: espera a que acabe para borrar');
+      return conCamino(() => { borrarFase(camino(body.tipo, body.slug), body.variante, body.fase); return ok({ camino: vistaCamino(body.tipo, body.slug) }); });
+    }
+    if (ruta === '/api/fase/marcar') {
+      if (typeof body.marcada !== 'boolean') return mal(400, 'marcada tiene que ser true o false');
+      return conCamino(() => { marcarCamino(camino(body.tipo, body.slug), body.variante, Number(body.intento), body.marcada); return ok({ camino: vistaCamino(body.tipo, body.slug) }); });
     }
     if (ruta === '/api/fase/atras') {
       try { atrasCamino(camino(body.tipo, body.slug), body.variante); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }

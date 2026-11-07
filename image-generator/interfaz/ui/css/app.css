@@ -104,3 +104,16 @@ dialog.grande[open] { display: flex; flex-wrap: wrap; justify-content: center; g
 .acciones-der { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .acciones .kbd { margin-left: 4px; }
 .progreso-fase { display: grid; gap: 6px; }
+
+/* IMG-25 (parte 2): nombre del elemento, ★, «Cómo se hizo» y borrar */
+.nombre-elemento { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.nombre-elemento input { width: auto; flex: 1 1 220px; max-width: 420px; }
+.acciones-izq { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.estrella { color: var(--warn); font-weight: 700; }
+.como-se-hizo { font-size: 0.8125rem; }
+.como-se-hizo summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; }
+.como { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.como li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: start; }
+.como li:not(:has(img)) { grid-template-columns: minmax(0, 1fr); }
+.como .meta { white-space: pre-wrap; overflow-wrap: anywhere; }
+.marco img.mini, .lectura img.mini { width: 64px; height: auto; }

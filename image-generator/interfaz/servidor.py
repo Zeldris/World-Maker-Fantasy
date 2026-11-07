@@ -14,7 +14,8 @@ archivo, el generador (generated/, referencias, tiempos, progreso de sd-cli) y s
 
 API (JSON salvo las imágenes):
   GET  /api/inicio                          perfiles y mundo
-  GET  /api/elementos                       {elementos:[{tipo,slug,perfiles:[{perfil,usado}],juego,intentos,elegidas}], aviso}
+  GET  /api/elementos                       {elementos:[{tipo,slug,nombre,perfiles:[{perfil,usado}],juego,intentos,elegidas,
+                                            marcadas}], aviso}; `nombre` es el de camino.json si lo tiene; `marcadas`, las ★
                                             une la BD y generated/; sin BD devuelve los de generated/ y un aviso
   GET  /api/elemento?tipo&slug              intentos del elemento, el más reciente primero
   GET  /api/prompt?tipo&slug&perfil         prompt usado o base de la BD
@@ -41,6 +42,16 @@ API (JSON salvo las imágenes):
                                             aceptado → {camino, lanzado: true}; si no se pudo lanzar (ocupado…), la aceptación
                                             se queda: {camino, lanzado: false, motivo}; 400 si el camino no lo permite
   POST /api/fase/atras {tipo,slug,variante} → {camino}; 400 si no hay fase anterior
+  POST /api/fase/borrar {tipo,slug,variante,fase}
+                                            borra del disco las imágenes de esa fase y de las que cuelgan de ella (se quedan
+                                            los prompts y las semillas) → {camino}; 400 si no hay nada guardado o hay una
+                                            generación en marcha de ese elemento
+  GET  /api/fase/dependientes?tipo&slug&variante&fase
+                                            lo que arrastra borrarla: {fases, marcadas (★ de esa variante), variantes}
+  POST /api/fase/marcar {tipo,slug,variante,intento,marcada}
+                                            marca o quita la ★ de un intento de la Final (marcar no publica) → {camino};
+                                            400 si no es la Final, no tiene imagen o salió de un boceto que ya no es el aceptado
+  POST /api/camino/renombrar {tipo,slug,nombre} → {camino}; 400 si el nombre está vacío o pasa de 120 caracteres
   POST /api/nota {tipo,slug,nombre,texto};  POST /api/elegir {tipo,slug,nombre}
 
 Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.1.
@@ -234,6 +245,10 @@ def elementos():
         refs = juego.get((t, s_), {})
         primero = el['perfiles'][0]['perfil'] if el['perfiles'] else 'thumbnail'
         el.setdefault('nombre', '')
+        cam = camino.leer(d) if hay else None
+        if cam and cam.get('nombre'):
+            el['nombre'] = cam['nombre']
+        el['marcadas'] = len(cam['marcadas']) if cam else 0
         el.update(juego=refs.get(primero) or next((refs[p] for p in PERFILES if p in refs), None),
                   intentos=(len(filas_registro(d)) + intentos_camino(d)) if hay else 0,
                   elegidas=[p for p in PERFILES if hay and os.path.isfile(os.path.join(d, f'{s_}-{p}.png'))])
@@ -377,6 +392,12 @@ class Trabajo(nucleo.Trabajo):
                      ocupado=sd_cli_en_marcha, limpiar=(lambda: os.unlink(archivo)) if archivo else None,
                      motivo_ocupado='ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
 
+
+    def en_marcha_de(self, tipo, slug_):
+        """True si lo que corre ahora escribe en el elemento tipo/slug."""
+        with self.cerrojo:
+            e = self.estado
+            return bool(e['enMarcha'] and e.get('tipo') == tipo and e.get('slug') == slug_)
 
     def lanzar_fase(self, peticion):
         """IMG-40: una fase de un elemento con `scripts/fase.py` (que escribe en camino.json, también si falla)."""
@@ -545,6 +566,55 @@ def api_fase_atras(p):
     tipo, slug_, variante = slug(c.get('tipo'), 'tipo'), slug(c.get('slug'), 'slug'), slug(c.get('variante'), 'variante')
     try:
         camino.actualizar(elemento_dir(tipo, slug_), lambda cam: camino.atras(cam, variante))
+    except camino.CaminoInvalido as e:
+        raise Invalido(str(e))
+    return {'camino': camino_de(tipo, slug_)}
+
+
+@RUTAS.post('/api/camino/renombrar')
+def api_camino_renombrar(p):
+    c = p.cuerpo
+    tipo, slug_ = slug(c.get('tipo'), 'tipo'), slug(c.get('slug'), 'slug')
+    try:
+        camino.actualizar(elemento_dir(tipo, slug_), lambda cam: camino.renombrar(cam, c.get('nombre')))
+    except camino.CaminoInvalido as e:
+        raise Invalido(str(e))
+    return {'camino': camino_de(tipo, slug_)}
+
+
+@RUTAS.get('/api/fase/dependientes')
+def api_fase_dependientes(p):
+    tipo, slug_ = slug(p.q.get('tipo'), 'tipo'), slug(p.q.get('slug'), 'slug')
+    try:
+        return camino.dependientes(camino.leer(elemento_dir(tipo, slug_)), slug(p.q.get('variante'), 'variante'), p.q.get('fase'))
+    except camino.CaminoInvalido as e:
+        raise Invalido(str(e))
+
+
+@RUTAS.post('/api/fase/borrar')
+def api_fase_borrar(p):
+    c = p.cuerpo
+    tipo, slug_ = slug(c.get('tipo'), 'tipo'), slug(c.get('slug'), 'slug')
+    variante, fase = slug(c.get('variante'), 'variante'), c.get('fase')
+    if TRABAJO.en_marcha_de(tipo, slug_):
+        raise Invalido('hay una generación en marcha de este elemento: espera a que acabe para borrar')
+    d = elemento_dir(tipo, slug_)
+    try:
+        camino.actualizar(d, lambda cam: camino.borrar_fase(d, cam, variante, fase))
+    except camino.CaminoInvalido as e:
+        raise Invalido(str(e))
+    return {'camino': camino_de(tipo, slug_)}
+
+
+@RUTAS.post('/api/fase/marcar')
+def api_fase_marcar(p):
+    c = p.cuerpo
+    tipo, slug_ = slug(c.get('tipo'), 'tipo'), slug(c.get('slug'), 'slug')
+    variante, n = slug(c.get('variante'), 'variante'), entero(c.get('intento'), 'el intento', 1, 10 ** 6)
+    if not isinstance(c.get('marcada'), bool):
+        raise Invalido('marcada tiene que ser true o false')
+    try:
+        camino.actualizar(elemento_dir(tipo, slug_), lambda cam: camino.marcar(cam, variante, n, c['marcada']))
     except camino.CaminoInvalido as e:
         raise Invalido(str(e))
     return {'camino': camino_de(tipo, slug_)}

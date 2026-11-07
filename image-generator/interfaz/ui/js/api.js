@@ -82,6 +82,10 @@ export const paths = {
   faseGenerar: () => '/api/fase/generar',
   faseAvanzar: () => '/api/fase/avanzar',
   faseAtras: () => '/api/fase/atras',
+  renombrar: () => '/api/camino/renombrar',
+  faseBorrar: () => '/api/fase/borrar',
+  faseMarcar: () => '/api/fase/marcar',
+  faseDependientes: (tipo, slug, variante, fase) => `/api/fase/dependientes?${qs({ tipo, slug, variante, fase })}`,
   nota: () => '/api/nota',
   elegir: () => '/api/elegir',
   // imágenes: un intento (con `v` para no ver la de caché tras regenerar) y la del juego (`ruta` de /api/referencia)
@@ -103,6 +107,10 @@ export const api = {
   faseGenerar: (peticion) => post(paths.faseGenerar(), peticion),
   faseAvanzar: (peticion) => post(paths.faseAvanzar(), peticion),
   faseAtras: (tipo, slug, variante) => post(paths.faseAtras(), { tipo, slug, variante }),
+  renombrar: (tipo, slug, nombre) => post(paths.renombrar(), { tipo, slug, nombre }),
+  faseBorrar: (tipo, slug, variante, fase) => post(paths.faseBorrar(), { tipo, slug, variante, fase }),
+  faseMarcar: (tipo, slug, variante, intento, marcada) => post(paths.faseMarcar(), { tipo, slug, variante, intento, marcada }),
+  faseDependientes: (tipo, slug, variante, fase) => get(paths.faseDependientes(tipo, slug, variante, fase)),
   nota: (tipo, slug, nombre, texto) => post(paths.nota(), { tipo, slug, nombre, texto }),
   elegir: (tipo, slug, nombre) => post(paths.elegir(), { tipo, slug, nombre }),
 };

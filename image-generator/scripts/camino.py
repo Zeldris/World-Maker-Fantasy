@@ -137,6 +137,15 @@ def _en_uso(v):
     return usadas
 
 
+def _borrar_archivos(d, imagen):
+    """Borra del disco la imagen de un intento (`.png`) y su `.json`."""
+    for ext in ('.png', '.json'):
+        try:
+            os.remove(os.path.join(d, 'intentos', os.path.splitext(imagen)[0] + ext))
+        except FileNotFoundError:
+            pass
+
+
 def _desfasar(v, origen, nueva):
     """Marca desfasadas las fases que salieron de `origen` con otra entrada, y las que cuelgan de ellas."""
     cola = [f for f, r in v['fases'].items() if r.get('desde') == origen and r.get('entrada') != nueva]
@@ -172,11 +181,7 @@ def avanzar(d, camino, variante, fase, n, siguiente, tipo):
     usadas = _en_uso(v)
     for i in f['intentos']:
         if i['n'] != n and i['imagen'] and i['imagen'] not in usadas:
-            for ext in ('.png', '.json'):
-                try:
-                    os.remove(os.path.join(d, 'intentos', os.path.splitext(i['imagen'])[0] + ext))
-                except FileNotFoundError:
-                    pass
+            _borrar_archivos(d, i['imagen'])
             i['imagen'] = None
     f.update(aceptada=elegido['imagen'], prompt=elegido['prompt'], semilla=elegido['semilla'], desfasada=False)
     if 'entrada' in elegido:  # la fase pasa a partir de lo que usó el intento aceptado
@@ -198,3 +203,136 @@ def atras(camino, variante):
     if not previa:
         raise CaminoInvalido(f'No hay fase anterior a {actual} a la que volver')
     v['faseActual'] = previa
+
+
+# --- IMG-25 (parte 2): renombrar, borrar lo guardado de una fase y marcar ★ ---
+
+MAX_NOMBRE = 120
+
+
+def renombrar(camino, nombre):
+    """Nombre del elemento (recortado, de 1 a 120 caracteres). La carpeta y el slug no cambian."""
+    limpio = str(nombre if nombre is not None else '').strip()
+    if not limpio:
+        raise CaminoInvalido('El nombre está vacío')
+    if len(limpio) > MAX_NOMBRE:
+        raise CaminoInvalido(f'El nombre es demasiado largo: {MAX_NOMBRE} caracteres como mucho')
+    camino['nombre'] = limpio
+    return limpio
+
+
+def _variante(camino, variante):
+    v = camino.get('variantes', {}).get(variante)
+    if v is None:
+        raise CaminoInvalido(f'La variante {variante} no existe')
+    return v
+
+
+def tramo(v, fase):
+    """`fase` y las que cuelgan de ella por `desde`, en cadena (solo las que la variante tiene)."""
+    if fase not in POR_ID:
+        raise CaminoInvalido(f'Fase desconocida: {fase}')
+    fases = v.get('fases', {})
+    salida = [fase]
+    for f in salida:  # la lista crece mientras se recorre: es la cadena
+        salida += [g for g, r in fases.items() if r.get('desde') == f and g not in salida]
+    return salida
+
+
+def _borrables(camino, variante, fases):
+    """Imágenes de los intentos de `fases` que se pueden borrar: las que no usa (entrada o aceptada) otra fase de fuera
+    del tramo ni otra variante."""
+    v = camino['variantes'][variante]
+    candidatas = set()
+    for f in fases:
+        r = v['fases'].get(f)
+        if r:
+            candidatas.update(i['imagen'] for i in r['intentos'] if i.get('imagen'))
+    usadas = set()
+    for w, vw in camino['variantes'].items():
+        for g, r in vw.get('fases', {}).items():
+            if w == variante and g in fases:
+                continue
+            usadas.update((r.get('entrada'), r.get('aceptada')))
+            usadas.update(i.get('entrada') for i in r['intentos'])
+    return candidatas - usadas
+
+
+def dependientes(camino, variante, fase):
+    """Lo que arrastra borrar `fase`: {fases: el tramo, marcadas: las ★ de esta variante cuya imagen se borraría,
+    variantes: las otras que nacen (origen {variante, fase}) de una fase del tramo}."""
+    v = _variante(camino, variante)
+    fases = tramo(v, fase)
+    borrables = _borrables(camino, variante, fases)
+    return {'fases': fases,
+            'marcadas': [m['imagen'] for m in camino.get('marcadas', []) if m.get('variante') == variante and m['imagen'] in borrables],
+            'variantes': [w for w, vw in camino['variantes'].items() if w != variante
+                          and (vw.get('origen') or {}).get('variante') == variante and (vw.get('origen') or {}).get('fase') in fases]}
+
+
+def _sin_salida(v, fase):
+    """La fase aún no tiene intentos y ya no le queda entrada aceptada: ni se generaría ni se podría volver atrás."""
+    if fase in v['fases']:
+        return False
+    try:
+        fase_de_entrada(v, fase)
+    except CaminoInvalido:
+        return True
+    return False
+
+
+def borrar_fase(d, camino, variante, fase):
+    """Borra del disco las imágenes de `fase` y de lo que cuelga de ella, y deja esas fases sin aceptada: se conservan
+    los prompts y las semillas de cada intento. Lo que otra fase o variante sigue usando no se borra."""
+    v = _variante(camino, variante)
+    if fase not in POR_ID:
+        raise CaminoInvalido(f'Fase desconocida: {fase}')
+    if not any(i.get('imagen') for i in v['fases'].get(fase, {}).get('intentos', [])):
+        raise CaminoInvalido('No hay nada guardado en esta fase')
+    fases = tramo(v, fase)
+    desde = v['fases'][fase].get('desde')
+    borrables = _borrables(camino, variante, fases)
+    for f in fases:
+        r = v['fases'][f]
+        for i in r['intentos']:
+            if i.get('imagen') in borrables:
+                _borrar_archivos(d, i['imagen'])
+                i['imagen'] = None
+        r.update(aceptada=None, prompt=None, semilla=None, desfasada=False)
+    camino['marcadas'] = [m for m in camino.get('marcadas', []) if not (m.get('variante') == variante and m['imagen'] in borrables)]
+    if v['faseActual'] in fases or _sin_salida(v, v['faseActual']):
+        v['faseActual'] = desde or 'F0'
+
+
+def intento_desfasado(v, fase, intento):
+    """True si el intento (el dict o su número) parte de una fase cuya aceptada ya no es la imagen que usó."""
+    if not isinstance(intento, dict):
+        intento = next((i for i in v.get('fases', {}).get(fase, {}).get('intentos', []) if i['n'] == intento), None)
+        if intento is None:
+            return False
+    origen = intento.get('desde')
+    return bool(origen) and intento.get('entrada') != v.get('fases', {}).get(origen, {}).get('aceptada')
+
+
+def marcar(camino, variante, n, marcada):
+    """Marca (o quita) la ★ del intento n de la Final. Marcar no publica: solo deja la imagen lista para combinar."""
+    v = _variante(camino, variante)
+    f = v['fases'].get('F4')
+    if f is None:
+        raise CaminoInvalido('Solo se marca ★ en la Final')
+    it = next((i for i in f['intentos'] if i['n'] == n), None)
+    if it is None:
+        raise CaminoInvalido(f'No existe el intento {n} de F4 en {variante}')
+    marcadas = camino.setdefault('marcadas', [])
+    if not marcada:
+        marcadas[:] = [m for m in marcadas if not (m.get('variante') == variante and m['imagen'] == it['imagen'])]
+        return
+    if not it['imagen']:
+        raise CaminoInvalido(f'El intento {n} de F4 falló o ya no tiene imagen: no se puede marcar')
+    if intento_desfasado(v, 'F4', it):
+        raise CaminoInvalido('Esta Final salió de un boceto que ya no es el aceptado: genera otra')
+    if not any(m.get('variante') == variante and m['imagen'] == it['imagen'] for m in marcadas):
+        marcadas.append({'imagen': it['imagen'], 'variante': variante, 'pautasVersion': None})
+    f.update(aceptada=it['imagen'], prompt=it['prompt'], semilla=it['semilla'], desfasada=False)
+    if 'entrada' in it:
+        f.update(desde=it['desde'], entrada=it['entrada'])
