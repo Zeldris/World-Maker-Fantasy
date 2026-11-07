@@ -170,10 +170,6 @@ banner del orco, con las semillas 42 y 1234.
 | Rasgos, F0 | `r40` sobre la maza 42, solo cambio | — | — | — | — | 42 apenas cambia; 1234 pone colmillos y grietas, pero pierde la barba |
 | Rasgos y nariz, F0 | `r41` (`r40`, nariz chata y conservar la barba) | — | — | — | — | 42: nariz bulbosa, sin grietas; 1234: nariz chata, colmillos hacia arriba, grietas y algo de barba |
 | Final sobre rasgos | `r37` sin cambios, `r41` 1234 como `-r` | — | **9,8** | 3,0 | 4,3 | Conserva colmillos, grietas y nariz más ancha, con el color de `r37`; un colmillo sale blanco y deshilachado, como bigote |
-| Rasgos, F0 | `r40` sobre la maza 42 (colmillos y piel agrietada, solo cambio) | — | — | — | — | 1234: colmillos y grietas, pierde la barba; 42: casi no cambia y la nariz sale larga y puntiaguda |
-| Final con rasgos | `r39` (la corta más una frase de colmillos y grietas) | — | 11,3 | 2,9 | 4,8 | Grietas por todo el cuerpo, pero los colmillos salen de lado, como de morsa, y la nariz sigue puntiaguda; más render 3D |
-| Rasgos y nariz, F0 | `r41` = `r40` más nariz chata y ancha y «conserva la barba» (usuaria: los orcos no tienen la nariz puntiaguda) | — | — | — | — | 1234: nariz chata, colmillos hacia arriba, grietas y algo de barba; 42: nariz gorda y bulbosa, sin grietas |
-| Final sobre rasgos | `r37` sin cambios sobre `r41` 1234 | — | **9,8** | 3,0 | 4,3 | Conserva nariz ancha, grietas y colmillos hacia arriba, con el color de `r37`; los colmillos salen finos y blanquecinos, uno casi como bigote |
 
 Conclusiones (una semilla en la Final; se confirman con más elementos antes de reescribir el plan de fases):
 
