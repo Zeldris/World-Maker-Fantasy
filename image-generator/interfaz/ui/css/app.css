@@ -117,3 +117,15 @@ dialog.grande[open] { display: flex; flex-wrap: wrap; justify-content: center; g
 .como li:not(:has(img)) { grid-template-columns: minmax(0, 1fr); }
 .como .meta { white-space: pre-wrap; overflow-wrap: anywhere; }
 .marco img.mini, .lectura img.mini { width: 64px; height: auto; }
+
+/* IMG-53: motor, semillas y referencias con rol de los pasos y la Final */
+.motor-paso { display: grid; gap: 4px; }
+.fila-motor { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.fila-motor #fasesMotor { min-width: 260px; }
+.fila-motor #fasesSemillas { width: auto; min-width: 72px; }
+.referencias { display: grid; gap: 6px; }
+.lista-refs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lista-refs li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lista-refs select { width: auto; min-width: 110px; max-width: 100%; }
+.lista-refs select[data-campo="ref-imagen"] { flex: 1 1 260px; }
+.referencias > .btn { justify-self: start; }

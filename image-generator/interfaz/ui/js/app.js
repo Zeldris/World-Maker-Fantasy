@@ -274,7 +274,7 @@ async function iniciar() {
   initShortcuts({ toggleQueue, closeAll: cerrarTodo, isQueueOpen });
   initGamepad();
   const ini = await api.inicio();
-  fases.initFases({ ampliar, seguir, lista: cargarElementos }, ini.fases || []);
+  fases.initFases({ ampliar, seguir, lista: cargarElementos, motores: ini.motores || [], motorPorDefecto: ini.motorPorDefecto }, ini.fases || []);
   $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
   await cargarElementos();
   const e = await api.estado();

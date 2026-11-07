@@ -344,7 +344,7 @@ class Navegador(Base):
             pagina.evaluate('window.__fin = false')
             pagina.wait("window.__t('GET', '/api/estado').then((r) => { window.__fin = !r.json.enMarcha; }) && window.__fin === true",
                         timeout=40)
-        self.assertEqual(llamar('GET', '/api/inicio')[1]['fases'], json.loads(json.dumps(C.FASES)))
+        self.assertEqual([{k: v for k, v in f.items() if k != 'promptPorDefecto'} for f in llamar('GET', '/api/inicio')[1]['fases']], json.loads(json.dumps(C.FASES)))
         el = {'tipo': 'fauna', 'slug': 'aullador-rojo', 'variante': 'macho'}
         codigo, r = llamar('POST', '/api/fase/generar', {**el, 'fase': 'F4', 'prompt': 'x'})
         self.assertEqual(codigo, 400)

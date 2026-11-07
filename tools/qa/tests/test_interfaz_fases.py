@@ -81,7 +81,7 @@ class Fases(T.Base):
     def test_inicio_trae_las_fases_del_camino(self):
         codigo, r = self.pedir('/api/inicio')
         self.assertEqual(codigo, 200)
-        self.assertEqual(r['fases'], C.FASES)
+        self.assertEqual([{k: v for k, v in f.items() if k != 'promptPorDefecto'} for f in r['fases']], C.FASES)
 
     def test_generar_f0_lanza_fase_py_con_sus_argumentos_y_los_datos_de_la_cola(self):
         self.assertEqual(self.post_fase('generar', fase='F0', prompt='un oso de nieve', semilla=7), (202, {'ok': True}))
@@ -398,6 +398,20 @@ class Fases(T.Base):
         self.assertEqual((codigo, r['lanzado']), (200, True))
         self.assertEqual(r['camino']['variantes']['macho']['siguientes'], ['P3', 'F4'])
         self.esperar()
+
+    def test_la_final_trae_el_prompt_corto_de_estilo_y_avanzar_de_un_paso_a_la_final_lo_usa(self):
+        with open(os.path.join(RAIZ, 'docs', 'producto', 'plan-imagenes', 'banco', 'prompts', 'r37-final-corta.txt'), encoding='utf-8') as f:
+            corta = f.read().strip()
+        fases = {f['id']: f for f in self.pedir('/api/inicio')[1]['fases']}
+        self.assertEqual(fases['F4']['promptPorDefecto'], corta)
+        self.assertTrue(corta.startswith('The same figure'))
+        self.assertTrue(all('promptPorDefecto' not in f for i, f in fases.items() if i != 'F4'))
+        # de un paso a la Final, el prompt es el corto; de un paso a otro paso, el del paso
+        self.sembrar(fase='P1', n=1)
+        self.assertEqual(self.post_fase('avanzar', fase='P1', intento=1, siguiente='F4')[1]['lanzado'], True)
+        self.esperar()
+        (a,) = [x for x in self.args() if x['argv'][3] == 'F4']
+        self.assertEqual(a['prompt'].strip(), corta)
 
     def test_generar_pasa_motor_semillas_y_referencias_a_fase_py(self):
         self.modelos('diffusion/flux-2-klein-9b-Q4_0.gguf', 'text/Qwen3-8B-Q4_K_M.gguf', 'vae/full_encoder_small_decoder.safetensors')

@@ -9,6 +9,8 @@ from test_interfaz_imagenes import Base
 
 FASE = "document.querySelector('button.paso[data-fase=%s]')"
 CONTADOR = "(document.querySelector('[data-intento=contador]') || {}).textContent === '%s'"
+UNA = "(() => { const s = document.getElementById('fasesSemillas'); s.value = '1'; s.dispatchEvent(new Event('change', { bubbles: true })); })()"
+PONER = "(() => { const s = document.querySelector(%r); s.value = %r; s.dispatchEvent(new Event('change', { bubbles: true })); })()"
 IMAGEN = "(() => { const i = document.querySelector('.marco.actual img'); return !!i && i.complete && i.naturalWidth > 0; })()"
 
 
@@ -32,30 +34,35 @@ class PantallaFases(Base):
         self.nav = browser.Browser()
         self.addCleanup(self.nav.close)
 
-    def test_recorre_generar_regenerar_avanzar_a_la_final_y_atras(self):
+    def test_recorre_generar_regenerar_avanzar_por_pasos_a_la_final_y_atras(self):
         pagina = self.nav.new_page()
         self.nav.take_problems()
         pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1&rapido=1')
         pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
         pagina.evaluate("document.querySelector('#lista .elemento').click()")
-        # un elemento sin camino: pasos, tres paneles, el prompt de la enciclopedia y «Generar»
+        # un elemento sin camino empieza en P1 (no en F0): P1, la Final y el recorte apagado; el prompt de la enciclopedia
         pagina.wait("!document.getElementById('fases').hidden && document.getElementById('fasesPrompt').value.startsWith('a red howler')")
-        self.assertEqual(pagina.evaluate("document.querySelectorAll('button.paso').length"), 5)
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('button.paso')].map((b) => b.dataset.fase)"), ['P1', 'F4', 'F3'])
         self.assertEqual(pagina.evaluate(FASE % 'F3' + '.disabled'), True)
         self.assertIn('IMG-37', pagina.evaluate(FASE % 'F3' + '.textContent'))
-        self.assertEqual(pagina.evaluate(FASE % 'F0' + ".getAttribute('aria-current')"), 'step')
+        self.assertEqual(pagina.evaluate(FASE % 'P1' + ".getAttribute('aria-current')"), 'step')
         self.assertEqual(pagina.evaluate("document.querySelectorAll('#fases .tres .marco').length"), 3)
         self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=regenerar]').textContent.trim().startsWith('Generar')"), True)
         self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=atras]').disabled"), True)
-        self.assertEqual(pagina.evaluate("document.querySelector('[data-siguiente=F4]').disabled"), True)
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('[data-siguiente]')].map((b) => b.dataset.siguiente)"), ['P2', 'F4'])
         self.assertIn('Aún no hay intentos', pagina.evaluate("document.querySelector('[data-siguiente=F4]').title"))
-        # Generar F0: la barra de progreso y los botones apagados mientras corre; luego el intento 1 a la vista
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-siguiente=P2]').textContent.trim().startsWith('Añadir P2 Paso 2')"), True)
+        # el motor por defecto y 2 semillas; con una, para seguir los intentos de uno en uno
+        self.assertEqual(pagina.evaluate("document.getElementById('fasesMotor').value"), 'klein4b')
+        self.assertEqual(pagina.evaluate("document.getElementById('fasesSemillas').value"), '2')
+        pagina.evaluate(UNA)
+        # Generar P1: la barra de progreso y los botones apagados mientras corre; luego el intento 1 a la vista
         pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
         pagina.wait("!!document.querySelector('.progreso-fase') && document.querySelector('[data-accion=regenerar]').disabled")
         pagina.wait(CONTADOR % '1/1', timeout=20)
         pagina.wait(IMAGEN)
-        self.assertIn('s=3 ·', pagina.evaluate("document.querySelector('.marco.actual .meta').textContent"))
-        # la medida junto al intento: F0 no parte de nada, así que solo color (s=3: Cb 6 ✓, Cr 7 ✓, Y 13 ✓)
+        self.assertIn('s=3 · motor klein4b ·', pagina.evaluate("document.querySelector('.marco.actual .meta').textContent"))
+        # la medida junto al intento: P1 no parte de nada, así que solo color (s=3: Cb 6 ✓, Cr 7 ✓, Y 13 ✓)
         self.assertEqual(pagina.evaluate("document.querySelector('[data-medida]').textContent"), 'EMD Cb 6,0 ✓ · Cr 7,0 ✓ · Y 13,0 ✓')
         self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=regenerar]').textContent.trim().startsWith('Regenerar')"), True)
         # Regenerar con el prompt sin cambios: otra semilla, y el intento nuevo a la vista
@@ -72,29 +79,137 @@ class PantallaFases(Base):
         pagina.key('ArrowLeft')
         pagina.wait(CONTADOR % '1/3')
         self.assertIn('s=3 ·', pagina.evaluate("document.querySelector('.marco.actual .meta').textContent"))
-        # Avanzar a la Final con el primer intento: la Final se lanza y la F0 queda ✓
-        pagina.evaluate("document.querySelector('[data-siguiente=F4]').click()")
-        pagina.wait(FASE % 'F4' + ".getAttribute('aria-current') === 'step'")
-        self.assertIn('✓', pagina.evaluate(FASE % 'F0' + '.textContent'))
+        # Añadir el paso 2 con el primer intento: P2 se lanza y P1 queda ✓; la barra muestra P1 y P2
+        pagina.evaluate("document.querySelector('[data-siguiente=P2]').click()")
+        pagina.wait(FASE % 'P2' + ".getAttribute('aria-current') === 'step'")
+        self.assertIn('✓', pagina.evaluate(FASE % 'P1' + '.textContent'))
         pagina.wait(CONTADOR % '1/1', timeout=20)
         pagina.wait(IMAGEN)
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('button.paso')].map((b) => b.dataset.fase)"), ['P1', 'P2', 'F4', 'F3'])
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('[data-siguiente]')].map((b) => b.dataset.siguiente)"), ['P3', 'F4'])
+        self.assertIn('Aceptada en P1 Paso 1', pagina.evaluate("document.querySelector('#fases .tres .marco:nth-child(2) h3').textContent"))
+        # la Final trae el prompt corto de estilo (no el «cambia solo esto» del paso) y elige motor, pero sin semillas
+        pagina.evaluate("document.querySelector('[data-siguiente=F4]').click()")
+        pagina.wait(FASE % 'F4' + ".getAttribute('aria-current') === 'step'")
+        pagina.wait(CONTADOR % '1/1', timeout=20)
+        pagina.wait(IMAGEN)
+        self.assertTrue(pagina.evaluate("document.getElementById('fasesPrompt').value.startsWith('The same figure, in the same composition')"))
+        self.assertEqual(pagina.evaluate("document.querySelector('.marco.actual .meta').textContent.includes('motor klein4b')"), True)
+        self.assertEqual(pagina.evaluate("!!document.getElementById('fasesMotor') && !document.getElementById('fasesSemillas')"), True)
         self.assertEqual(pagina.evaluate("document.querySelectorAll('[data-siguiente]').length"), 0)
         self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=marcar]').disabled"), False)
-        self.assertIn('Aceptada en F0 Boceto', pagina.evaluate("document.querySelector('#fases .tres .marco:nth-child(2) h3').textContent"))
-        # pulsar la F0 ya hecha enseña lo guardado en modo lectura, y se vuelve a la fase actual
-        pagina.evaluate(FASE % 'F0' + '.click()')
+        self.assertIn('Aceptada en P2 Paso 2', pagina.evaluate("document.querySelector('#fases .tres .marco:nth-child(2) h3').textContent"))
+        # pulsar P1 ya hecho enseña lo guardado en modo lectura, y se vuelve a la fase actual
+        pagina.evaluate(FASE % 'P1' + '.click()')
         pagina.wait("!!document.querySelector('.lectura')")
         self.assertIn('s=3', pagina.evaluate("document.querySelector('.lectura .meta').textContent"))
         pagina.evaluate("document.querySelector('.lectura button').click()")
         pagina.wait("!document.querySelector('.lectura') && !!document.querySelector('.tres')")
-        # Atrás: la F0 vuelve a ser la actual
+        # Atrás: P2 vuelve a ser el actual
         pagina.evaluate("document.querySelector('[data-accion=atras]').click()")
-        pagina.wait(FASE % 'F0' + ".getAttribute('aria-current') === 'step'")
-        self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=atras]').disabled"), True)
+        pagina.wait(FASE % 'P2' + ".getAttribute('aria-current') === 'step'")
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=atras]').disabled"), False)
         self.assertEqual([p for p in self.pedidas if p.startswith('/api/')], [])
         self.assertEqual(self.nav.take_problems(), [])
         pagina.ws.close()
 
+    def test_motor_semillas_y_referencias_con_rol_van_en_la_peticion(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1&rapido=1')
+        pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        pagina.evaluate("window.__m = import('/ui/mock/api-mock.js').then((m) => { window.__t = m.transport; })")
+        abrir = "[...document.querySelectorAll('#lista .elemento')].find((e) => e.textContent.includes('%s')).click()"
+        pagina.evaluate(abrir % 'Aullador')
+        pagina.wait("!!document.getElementById('fasesMotor')")
+        # los motores del servidor: el que no está completo sale apagado con lo que le falta; las estimaciones, con «~»
+        motores = pagina.evaluate("[...document.querySelectorAll('#fasesMotor option')].map((o) => [o.value, o.textContent, o.disabled, o.title])")
+        por_id = {m[0]: m for m in motores}
+        self.assertEqual([m[0] for m in motores], ['klein4b', 'klein9b', 'klein9b-consistencia', 'qwen-edit', 'longcat', 'flux3'])
+        self.assertEqual(por_id['klein4b'][1:3], ['FLUX.2 klein 4B · 40 s', False])
+        self.assertIn('~80 s', por_id['klein9b'][1])
+        self.assertEqual(por_id['qwen-edit'][2], True)
+        self.assertIn('qwen-image-edit-2511-Q3_K_S.gguf', por_id['qwen-edit'][3])
+        self.assertIn('no disponible', por_id['qwen-edit'][1])
+        self.assertIn('falta modelos/diffusion/longcat', pagina.evaluate("document.getElementById('fasesMotorAyuda').textContent"))
+        # klein9b, 2 semillas por defecto, y una referencia «estilo» con la imagen del juego
+        pagina.evaluate(PONER % ('#fasesMotor', 'klein9b'))
+        self.assertIn('~160 s en total', pagina.evaluate("document.getElementById('fasesMotorAyuda').textContent"))
+        pagina.evaluate("document.querySelector('[data-accion=anadir-ref]').click()")
+        pagina.wait("!!document.querySelector('[data-ref=\"0\"]')")
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-campo=ref-imagen]').value"), 'fauna/aullador-rojo-banner.png')
+        pagina.evaluate(PONER % ('[data-campo=ref-rol]', 'estilo'))
+        pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
+        pagina.wait(CONTADOR % '2/2', timeout=20)
+        meta = pagina.evaluate("document.querySelector('.marco.actual .meta').textContent")
+        self.assertIn('s=4 · motor klein9b', meta)
+        self.assertIn('con 1 referencia', meta)
+        camino = pagina.evaluate("window.__t('GET', '/api/camino?tipo=fauna&slug=aullador-rojo').then((r) => r.json.variantes.base.fases.P1.intentos)")
+        self.assertEqual([(i['semilla'], i['motor'], i['referencias']) for i in camino],
+                         [(3, 'klein9b', [{'rol': 'estilo', 'imagen': 'fauna/aullador-rojo-banner.png'}]),
+                          (4, 'klein9b', [{'rol': 'estilo', 'imagen': 'fauna/aullador-rojo-banner.png'}])])
+        # el motor se recuerda en el elemento: otro elemento y vuelta
+        pagina.evaluate(abrir % 'Llanos')
+        pagina.wait("document.getElementById('fasesPrompt').value === 'ash plains at dusk' && document.getElementById('fasesMotor').value === 'klein4b'")
+        pagina.evaluate(abrir % 'Aullador')
+        pagina.wait("!!document.getElementById('fasesMotor') && document.getElementById('fasesMotor').value === 'klein9b'")
+        # Añadir el paso 2 lleva el motor, las 2 semillas y la referencia; y «fijar como ancla» añade el aceptado como «sujeto»
+        pagina.evaluate("document.querySelector('[data-siguiente=P2]').click()")
+        pagina.wait(FASE % 'P2' + ".getAttribute('aria-current') === 'step'")
+        pagina.wait(CONTADOR % '2/2', timeout=20)
+        meta = pagina.evaluate("document.querySelector('.marco.actual .meta').textContent")
+        self.assertIn('motor klein9b', meta)
+        self.assertIn('con 1 referencia', meta)
+        self.assertEqual(pagina.evaluate("document.querySelectorAll('[data-ref]').length"), 1)
+        pagina.evaluate("document.querySelector('#fases .tres .marco:nth-child(2) [data-accion=fijar-ancla]').click()")
+        pagina.wait("document.querySelectorAll('[data-ref]').length === 2")
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-ref=\"1\"] [data-campo=ref-rol]').value"), 'sujeto')
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-ref=\"1\"] [data-campo=ref-imagen]').value"), 'base-p1-2.png')
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=fijar-ancla]').disabled"), True)
+        # con imagen de entrada caben 3: a la tercera se apaga «Añadir»
+        pagina.evaluate("document.querySelector('[data-accion=anadir-ref]').click()")
+        pagina.wait("document.querySelectorAll('[data-ref]').length === 3")
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=anadir-ref]').disabled"), True)
+        self.assertIn('Como mucho 3', pagina.evaluate("document.querySelector('[data-accion=anadir-ref]').title"))
+        pagina.evaluate("document.querySelector('[data-ref=\"2\"] button').click()")
+        pagina.wait("document.querySelectorAll('[data-ref]').length === 2")
+        pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
+        pagina.wait(CONTADOR % '4/4', timeout=20)
+        camino = pagina.evaluate("window.__t('GET', '/api/camino?tipo=fauna&slug=aullador-rojo').then((r) => r.json.variantes.base.fases.P2.intentos)")
+        self.assertEqual([len(i['referencias']) for i in camino], [1, 1, 2, 2])
+        self.assertEqual(camino[3]['referencias'][1], {'rol': 'sujeto', 'imagen': 'base-p1-2.png'})
+        # lo que la API rechaza (400) sale con su mensaje en un aviso: aquí, otra generación en marcha
+        pagina.evaluate("window.__t('POST', '/api/fase/generar', { tipo: 'zona', slug: 'llanos-de-ceniza', variante: 'base', fase: 'P1', prompt: 'x' })")
+        pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
+        pagina.wait("document.getElementById('toasts').textContent.includes('ya hay una imagen generándose')")
+        self.assertEqual(pagina.evaluate("document.querySelector('#fases .notice-bad').textContent.includes('ya hay una imagen generándose')"), True)
+        pagina.wait("!document.querySelector('.progreso-fase')", timeout=30)
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
+    def test_una_variante_antigua_sigue_por_f0_f1_f2_sin_selector_de_motor(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1&rapido=1')
+        pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        pagina.evaluate("window.__m = import('/ui/mock/api-mock.js').then((m) => { window.__t = m.transport; })")
+        pagina.evaluate("window.__t('POST', '/api/fase/generar', { tipo: 'fauna', slug: 'aullador-rojo', variante: 'antigua', fase: 'F0', prompt: 'un aullador' })")
+        pagina.wait("window.__t('GET', '/api/estado').then((r) => { window.__fin = !r.json.enMarcha; }) && window.__fin === true", timeout=30)
+        pagina.evaluate("document.querySelector('#lista .elemento').click()")
+        pagina.wait("!!document.querySelector('button.paso[data-fase=F0]')")
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('button.paso')].map((b) => b.dataset.fase)"), ['F0', 'F1', 'F2', 'F4', 'F3'])
+        pagina.wait(CONTADOR % '1/1')
+        # F0 no tiene selector de motor, ni semillas, ni referencias con rol (la API solo admite klein4b ahí)
+        self.assertEqual(pagina.evaluate("!document.getElementById('fasesMotor') && !document.getElementById('fasesSemillas') && !document.querySelector('[data-campo=referencias]')"), True)
+        self.assertEqual(pagina.evaluate("[...document.querySelectorAll('[data-siguiente]')].map((b) => b.dataset.siguiente)"), ['F1', 'F4'])
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-siguiente=F1]').textContent.trim().startsWith('Avanzar por Forma')"), True)
+        pagina.evaluate("document.querySelector('[data-siguiente=F1]').click()")
+        pagina.wait(FASE % 'F1' + ".getAttribute('aria-current') === 'step'")
+        pagina.wait(CONTADOR % '1/1', timeout=30)
+        self.assertEqual(pagina.evaluate("!document.getElementById('fasesMotor')"), True)
+        self.assertNotIn('motor', pagina.evaluate("document.querySelector('.marco.actual .meta').textContent"))
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
 
     def test_el_prompt_propuesto_pierde_el_inicio_y_dice_de_donde_sale(self):
         pagina = self.nav.new_page()
@@ -140,6 +255,7 @@ class PantallaFases(Base):
         # con ella, sale desmarcada y el primer intento no la lleva
         pagina.evaluate(abrir % 'Aullador')
         pagina.wait(f"!!{casilla} && {casilla}.isConnected")
+        pagina.evaluate(UNA)
         self.assertEqual(pagina.evaluate(f'{casilla}.checked'), False)
         pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
         pagina.wait(CONTADOR % '1/1', timeout=20)
@@ -185,7 +301,8 @@ class PantallaFases(Base):
         pagina.key('Enter')
         pagina.wait(nombre + " === 'Aullador carmesí'")
         pagina.wait("document.querySelector('#lista .elemento .nombre').textContent.startsWith('Aullador carmesí')")
-        # F0, Avanzar a la Final: «Cómo se hizo» lleva un paso en F0 y dos en la Final
+        # P1, Avanzar a la Final: «Cómo se hizo» lleva un paso en P1 y dos en la Final
+        pagina.evaluate(UNA)
         pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
         pagina.wait(CONTADOR % '1/1', timeout=20)
         pagina.wait(IMAGEN)
@@ -197,7 +314,7 @@ class PantallaFases(Base):
         pagina.wait(IMAGEN)
         self.assertEqual(pagina.evaluate(COMO), 2)
         pasos = pagina.evaluate("[...document.querySelectorAll('.marco.actual details.como-se-hizo li strong')].map((e) => e.textContent)")
-        self.assertEqual(pasos, ['F0 Boceto', 'F4 Final'])
+        self.assertEqual(pasos, ['P1 Paso 1', 'F4 Final'])
         pagina.evaluate("document.querySelector('.como-se-hizo').open = true")
         pagina.wait("[...document.querySelectorAll('.como-se-hizo img')].every((i) => i.complete && i.naturalWidth > 0)")
         # marcar ★ con M: distintivo, botón «Quitar ★», un aviso, y la marca en la lista
@@ -207,9 +324,9 @@ class PantallaFases(Base):
         self.assertEqual(pagina.evaluate("document.querySelector('.marco.actual .estrella').textContent"), '★')
         self.assertIn('Marcar no es publicar', pagina.evaluate("document.getElementById('toasts').textContent"))
         pagina.wait("document.querySelector('#lista .elemento .marcas .estrella').textContent === '★ 1'")
-        # Atrás, otro boceto aceptado: la Final vieja (con ★) se puede quitar, pero no volver a marcar
+        # Atrás, otro paso aceptado: la Final vieja (con ★) se puede quitar, pero no volver a marcar
         pagina.evaluate("document.querySelector('[data-accion=atras]').click()")
-        pagina.wait(FASE % 'F0' + ".getAttribute('aria-current') === 'step'")
+        pagina.wait(FASE % 'P1' + ".getAttribute('aria-current') === 'step'")
         pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")
         pagina.wait(CONTADOR % '2/2', timeout=20)
         pagina.wait(IMAGEN)
@@ -233,7 +350,7 @@ class PantallaFases(Base):
         pagina.key('m')
         pagina.wait("document.querySelector('[data-accion=marcar]').textContent.trim().startsWith('Quitar')")
         pagina.wait("document.querySelector('#lista .elemento .marcas .estrella').textContent === '★ 1'")
-        # borrar la Final: el aviso nombra la ★ que arrastra; cancelar no borra; aceptar sí, y vuelve a F0
+        # borrar la Final: el aviso nombra la ★ que arrastra; cancelar no borra; aceptar sí, y vuelve a P1
         pagina.evaluate("document.querySelector('[data-accion=borrar]').click()")
         pagina.wait("!!document.querySelector('dialog.confirm[open]')")
         self.assertEqual(pagina.evaluate("document.getElementById('confirm-title').textContent"), 'Borrar F4 Final y lo que sigue en base')
@@ -247,9 +364,9 @@ class PantallaFases(Base):
         pagina.evaluate("document.querySelector('[data-accion=borrar]').click()")
         pagina.wait("!!document.querySelector('dialog.confirm[open]')")
         pagina.evaluate("document.querySelector('dialog.confirm .btn-danger').click()")
-        pagina.wait(FASE % 'F0' + ".getAttribute('aria-current') === 'step'")
+        pagina.wait(FASE % 'P1' + ".getAttribute('aria-current') === 'step'")
         pagina.wait("!document.querySelector('#lista .elemento .marcas .estrella')")
-        # la F0 sigue aceptada y se puede leer; la Final ya no tiene imagen aceptada
+        # P1 sigue aceptado y se puede leer; la Final ya no tiene imagen aceptada
         pagina.evaluate(FASE % 'F4' + '.click()')
         pagina.wait("!!document.querySelector('.lectura')")
         self.assertIn('no tiene imagen aceptada', pagina.evaluate("document.querySelector('.lectura').textContent"))

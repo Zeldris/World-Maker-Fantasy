@@ -80,9 +80,15 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   como primer `-r`, «Image 1 is the current image…» si hay `--ref`), `--motor <id>` y `--semillas N` (1-4); tabla única de motores en
   `scripts/motores.py` (klein4b, klein9b, klein9b-consistencia, qwen-edit, longcat, flux3) que lee también `generar.sh` (`MOTOR=<id>`);
   archivo ausente: código 3 con el nombre; el motor se guarda en cada intento de `camino.json`; `/api/fase/generar` acepta `motor`,
-  `semillas` y `referencias: [{rol, imagen}]`, `/api/inicio` trae `motores` y las fases nuevas; simulador al día. **Queda (parte 2):**
-  la interfaz (selector de motor, pasos P1…P9, 2 semillas, referencias con rol, variantes que empiezan en P1), probar cada motor con
-  generaciones reales (qwen-edit y longcat esperan sus modelos) y medir los tiempos (hoy solo klein4b está medido).
+  `semillas` y `referencias: [{rol, imagen}]`, `/api/inicio` trae `motores` y las fases nuevas; simulador al día.
+  **Parte 2 (interfaz) hecha** ✅ 2026-11-07: las variantes nuevas empiezan en P1 (las de F0/F1/F2 se ven y siguen igual); la barra
+  muestra los Pn que existen y la Final, y «Añadir Paso N» / «Avanzar a la Final» salen de `siguientes`; selector de motor en cada
+  paso y en la Final (los no disponibles apagados, con lo que `faltan` en el título; `~` en las estimaciones; se recuerda el último
+  por elemento); 1 o 2 semillas en los pasos (2 por defecto); referencias con rol (hasta 3, 4 en P1) entre la imagen del juego y los
+  intentos del elemento, con «Fijar como ancla» (rol `sujeto`) en la imagen aceptada; los 400 de la API salen en un aviso. La Final
+  trae el prompt corto r37: `/api/inicio` lo da como `promptPorDefecto` de la F4 y `/api/fase/avanzar` de un paso a la Final lo usa.
+  **Queda:** probar cada motor con generaciones reales (qwen-edit y longcat esperan sus modelos) y medir los tiempos (hoy solo
+  klein4b está medido).
 
 ### Bloque B · Prototipo
 

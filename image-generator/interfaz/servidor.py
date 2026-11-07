@@ -35,7 +35,8 @@ API (JSON salvo las imágenes):
                                             tipo, desde su faseActual)
   GET  /api/inicio                          además `motores`: [{id,nombre,disponible,faltan:[archivos],pasos,
                                             segundosEstimados:{paso,final},estimacion}] (scripts/motores.py; `estimacion`
-                                            true = aún no medido) y `motorPorDefecto` (klein4b); las fases incluyen P1…P9 (IMG-53)
+                                            true = aún no medido) y `motorPorDefecto` (klein4b); las fases incluyen P1…P9 (IMG-53); la F4 lleva `promptPorDefecto`
+                                            (el prompt corto de estilo r37, si está el archivo) y /api/fase/avanzar de un paso a la Final lo usa
   POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?,usarReferencia?,motor?,semillas?,referencias?}
                                             IMG-53: `fase` puede ser P1…P9 (cadena de pasos: Pn parte de la aceptada de P(n-1);
                                             la Final, del paso aceptado más alto); `motor`: id de /api/inicio (solo en pasos y
@@ -287,6 +288,18 @@ def estimado(perfil, con_referencia):
     if tiempos:
         return int(round(statistics.median(tiempos)))
     return int(round(ESTIMADO_BASE.get(perfil, 110) * (FACTOR_REFERENCIA if con_referencia else 1)))
+
+
+# IMG-53: el prompt corto de estilo de la Final (r37, banco de pruebas); sin el archivo, la Final no trae prompt propio
+PROMPT_FINAL = os.path.join(os.path.dirname(os.path.dirname(AQUI)), 'docs', 'producto', 'plan-imagenes', 'banco', 'prompts', 'r37-final-corta.txt')
+
+
+def prompt_final_corta():
+    try:
+        with open(PROMPT_FINAL, encoding='utf-8') as f:
+            return f.read().strip()
+    except OSError:
+        return ''
 
 
 ESTIMADO_FASE = {'F0': 36, 'F1': 300, 'F2': 300, 'F4': 160, **{p: 40 for p in camino.PASOS}}  # segundos, si aún no hay intentos de esa fase
@@ -563,7 +576,8 @@ def api_cola(p):
 
 @RUTAS.get('/api/inicio')
 def api_inicio(p):
-    return {'perfiles': PERFILES, 'mundo': ADAPTADOR.mundo, 'fases': [dict(f, siguientes=list(f['siguientes']))
+    corta = prompt_final_corta()  # IMG-53: la Final propone el prompt corto de estilo
+    return {'perfiles': PERFILES, 'mundo': ADAPTADOR.mundo, 'fases': [dict(f, siguientes=list(f['siguientes']), **({'promptPorDefecto': corta} if corta and f['id'] == 'F4' else {}))
                                                                      for f in camino.FASES],
             'motores': motores.lista(RAIZ), 'motorPorDefecto': motores.POR_DEFECTO}
 
@@ -652,6 +666,8 @@ def api_fase_avanzar(p):
         prompt, _ = camino.actualizar(elemento_dir(tipo, slug_), aceptar)
     except camino.CaminoInvalido as e:
         raise Invalido(str(e))
+    if siguiente == 'F4' and fase in camino.PASOS:  # la Final de una cadena de pasos es la pasada corta de estilo, no el «cambia solo esto» del paso
+        prompt = prompt_final_corta() or prompt
     try:
         TRABAJO.lanzar_fase({'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': siguiente, 'prompt': prompt,
                              'usarReferencia': c.get('usarReferencia'), 'motor': c.get('motor'), 'semillas': c.get('semillas', 1),

@@ -55,13 +55,15 @@ const elegirInicial = datos['fauna/aullador-rojo'];
 elegirInicial.elegidas.banner = elegirInicial.intentos[0].nombre;
 
 /* ---------- fases (reglas de scripts/camino.py; el test comprueba que FASES es igual que camino.FASES) ---------- */
+// IMG-53: el prompt corto de estilo de la Final (docs/producto/plan-imagenes/banco/prompts/r37-final-corta.txt; servidor.py lo lee de ahí)
+const PROMPT_FINAL = 'The same figure, in the same composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail. Change nothing in the figure, the weapon, the rock ledge, the valley, the tents, the mesas, the sky or the light. Style: photorealistic fantasy matte painting, cinematic concept art, high contrast, deep shadows. The image is completely textless.';
 const FASES = [
   { id: 'F0', nombre: 'Boceto', receta: 'f0-boceto', siguientes: ['F1', 'F4'], disponible: true },
   { id: 'F1', nombre: 'Forma', receta: 'f1-forma', siguientes: ['F2', 'F4'], disponible: true },
   { id: 'F2', nombre: 'Detalle', receta: 'f2-detalle', siguientes: ['F4'], disponible: true },
   // IMG-53: cadena de pasos P1…P9 (cada uno parte de la aceptada del anterior; la Final, del paso aceptado más alto)
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({ id: `P${n}`, nombre: `Paso ${n}`, receta: 'paso', siguientes: n < 9 ? [`P${n + 1}`, 'F4'] : ['F4'], disponible: true })),
-  { id: 'F4', nombre: 'Final', receta: 'f4-final', siguientes: ['F3'], disponible: true },
+  { id: 'F4', nombre: 'Final', receta: 'f4-final', siguientes: ['F3'], disponible: true, promptPorDefecto: PROMPT_FINAL },
   { id: 'F3', nombre: 'Recorte', receta: 'recorte', siguientes: [], disponible: false },
 ];
 const POR_ID = Object.fromEntries(FASES.map((f) => [f.id, f]));
@@ -423,7 +425,7 @@ export async function transport(method, url, body) {
       verTrabajo();
       const { tipo, slug, variante, fase, siguiente } = body, c = camino(tipo, slug);
       try { avanzarCamino(c, tipo, variante, fase, Number(body.intento), siguiente); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }
-      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt, usarReferencia: body.usarReferencia, motor: body.motor, semillas: body.semillas, referencias: body.referencias });
+      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: NOMBRES_PASO.includes(fase) && siguiente === 'F4' ? PROMPT_FINAL : c.variantes[variante].fases[fase].prompt, usarReferencia: body.usarReferencia, motor: body.motor, semillas: body.semillas, referencias: body.referencias });
       return ok({ camino: vistaCamino(tipo, slug), ...(r.status === 202 ? { lanzado: true } : { lanzado: false, motivo: r.json.error }) });
     }
     if (ruta === '/api/camino/renombrar') {
