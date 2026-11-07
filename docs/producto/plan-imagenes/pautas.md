@@ -273,7 +273,7 @@ dentro y en postura baja, con el entorno abierto a su derecha. [`r20-tipos.md`](
 | D5 | **La Final parte de F2 a 0,50 con 16 pasos: ~7,6 min a 1280x512 frente a 49 desde cero, así que puede salir de día.** A 0,70 tarda el doble y no mejora. | ✅ | r26d, r26f, r27: cuatro tipos, 453-466 s |
 | D6 | **El SSIM solo vigila la forma**: da por buena la imagen que pierde textura. Hace falta mirar el detalle de cerca. | ✅ | r26: la c pasa con 0,71 y es la peor en textura |
 | D7 | **La misma proporción en toda la cadena, 2,5**: 480x192, 640x256, 960x384, 1280x512, múltiplos de 16. | ✅ | r27: cuatro tipos, sin recortar la Final |
-| D8 | **Un `-r` limpio en F0 trae forma y encuadre que el prompt no da**, por ~12 s más (~48 s). Salto grande en el aullador, medio en choza y cuchillo, nulo en el cardo; no trae la textura. Solo vale con una referencia, y aquí era el propio banner: cota superior. | ⚠️ | r27: una semilla por tipo; referencia de otro elemento sin medir |. Superada por §15
+| D8 | **Un `-r` limpio en F0 trae forma y encuadre que el prompt no da**, por ~12 s más (~48 s). Salto grande en el aullador, medio en choza y cuchillo, nulo en el cardo; no trae la textura. Solo vale con una referencia, y aquí era el propio banner: cota superior. | ⚠️ | r27; superada por §15 (r28-r31) |
 | D9 | **Con referencia, F0 sin masas planas y sin F1 queda más cerca del banner**, y ahorra ~5 min. | 🔬 | r27: solo aullador |
 
 ## 15. Final directa desde el boceto (r28-r31)
