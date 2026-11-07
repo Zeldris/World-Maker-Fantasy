@@ -4,7 +4,9 @@
    - Las imágenes se pintan con <canvas> (data: URL, que la CSP permite) sustituyendo `paths.intento` y `paths.juego`.
    - Una generación tarda 2 s por paso; con la semilla 13 falla, para ver el aviso de error y el log.
    - /api/cola da lo que genera y lo terminado, y empieza con dos de ejemplo (una hecha y una fallida).
-   - El contrato de fases (`camino.json`, diseño §3.0) entra aquí cuando `IMG-40` fije sus rutas.
+   - Fases (IMG-40, diseño §3.0): /api/camino y /api/fase/{generar,avanzar,atras} con las reglas de scripts/camino.py
+     (grafo, fase de entrada aceptada, avanzar borra las imágenes no aceptadas salvo las que sirven de entrada, fases
+     desfasadas, atrás, semilla por defecto); un intento de fase tarda 2 s por paso de su receta y con la semilla 13 falla.
    No se carga en uso normal: app.js solo lo importa si la URL lleva `?mock=1`. */
 
 import { paths } from '../js/api.js';
@@ -48,6 +50,113 @@ for (const [clave, e] of Object.entries(datos)) {
 }
 const elegirInicial = datos['fauna/aullador-rojo'];
 elegirInicial.elegidas.banner = elegirInicial.intentos[0].nombre;
+
+/* ---------- fases (reglas de scripts/camino.py; el test comprueba que FASES es igual que camino.FASES) ---------- */
+const FASES = [
+  { id: 'F0', nombre: 'Boceto', receta: 'f0-boceto', siguientes: ['F1', 'F4'], disponible: true },
+  { id: 'F1', nombre: 'Forma', receta: 'f1-forma', siguientes: ['F2', 'F4'], disponible: true },
+  { id: 'F2', nombre: 'Detalle', receta: 'f2-detalle', siguientes: ['F4'], disponible: true },
+  { id: 'F4', nombre: 'Final', receta: 'f4-final', siguientes: ['F3'], disponible: true },
+  { id: 'F3', nombre: 'Recorte', receta: 'recorte', siguientes: [], disponible: false },
+];
+const POR_ID = Object.fromEntries(FASES.map((f) => [f.id, f]));
+const ENTRADA = { F0: [], F1: ['F0'], F2: ['F1'], F4: ['F2', 'F1', 'F0'], F3: ['F4'] };
+const PASOS_FASE = { F0: 4, F1: 8, F2: 16, F4: 4 };
+const ESTIMADO_FASE = { F0: 36, F1: 300, F2: 300, F4: 160 };
+const SEMILLA_F0 = 3;
+const caminos = {};
+const camino = (tipo, slug) => (caminos[`${tipo}/${slug}`] = caminos[`${tipo}/${slug}`] || { nombre: '', variantes: {}, marcadas: [] });
+const siguientesDe = (fase, tipo) => POR_ID[fase].siguientes.filter((s) => !(s === 'F3' && tipo === 'location'));
+const vistaCamino = (tipo, slug) => {
+  const c = JSON.parse(JSON.stringify(camino(tipo, slug)));
+  for (const v of Object.values(c.variantes)) v.siguientes = siguientesDe(v.faseActual, tipo);
+  return c;
+};
+class CaminoInvalido extends Error {}
+function faseDeEntrada(v, fase) {
+  if (!POR_ID[fase]) throw new CaminoInvalido(`Fase desconocida: ${fase}`);
+  if (!ENTRADA[fase].length) return null;
+  const c = ENTRADA[fase].find((x) => v && v.fases[x] && v.fases[x].aceptada);
+  if (c) return c;
+  throw new CaminoInvalido(`Falta una fase aceptada (${ENTRADA[fase].join(' o ')}) para generar ${fase} ${POR_ID[fase].nombre}`);
+}
+function semillaPorDefecto(v, fase, prompt) {
+  const f = v && v.fases[fase];
+  if (!f || !f.intentos.length) return fase === 'F0' ? SEMILLA_F0 : v.fases[faseDeEntrada(v, fase)].semilla;
+  const ultimo = f.intentos[f.intentos.length - 1];
+  return prompt === ultimo.prompt ? Math.max(...f.intentos.map((i) => i.semilla)) + 1 : ultimo.semilla;
+}
+const enUso = (v) => {
+  const usadas = new Set();
+  for (const r of Object.values(v.fases)) { usadas.add(r.entrada); r.intentos.forEach((i) => usadas.add(i.entrada)); }
+  return usadas;
+};
+function desfasar(v, origen, nueva) {
+  const cola = Object.entries(v.fases).filter(([, r]) => r.desde === origen && r.entrada !== nueva).map(([f]) => f);
+  const vistas = new Set();
+  while (cola.length) {
+    const f = cola.pop();
+    if (vistas.has(f)) continue;
+    vistas.add(f);
+    v.fases[f].desfasada = true;
+    cola.push(...Object.entries(v.fases).filter(([, r]) => r.desde === f).map(([g]) => g));
+  }
+}
+function avanzarCamino(c, tipo, variante, fase, n, siguiente) {
+  const v = c.variantes[variante], f = v && v.fases[fase];
+  if (!f) throw new CaminoInvalido(`La variante ${variante} no tiene la fase ${fase}`);
+  const elegido = f.intentos.find((i) => i.n === n);
+  if (!elegido) throw new CaminoInvalido(`No existe el intento ${n} de ${fase} en ${variante}`);
+  if (!elegido.imagen) throw new CaminoInvalido(`El intento ${n} de ${fase} falló y no tiene imagen: no se puede aceptar`);
+  if (fase === 'F4') throw new CaminoInvalido('Desde F4 Final no se avanza: la Final se marca (★)');
+  const permitidas = siguientesDe(fase, tipo);
+  if (!permitidas.includes(siguiente)) {
+    throw new CaminoInvalido(`Desde ${fase} no se puede avanzar a ${siguiente} en ${tipo} (permitidas: ${permitidas.join(', ') || 'ninguna'})`);
+  }
+  if (!POR_ID[siguiente].disponible) throw new CaminoInvalido(`${siguiente} ${POR_ID[siguiente].nombre} no está disponible todavía (llega con IMG-37)`);
+  const usadas = enUso(v);
+  for (const i of f.intentos) if (i.n !== n && i.imagen && !usadas.has(i.imagen)) i.imagen = null;
+  Object.assign(f, { aceptada: elegido.imagen, prompt: elegido.prompt, semilla: elegido.semilla, desfasada: false });
+  if ('entrada' in elegido) Object.assign(f, { desde: elegido.desde, entrada: elegido.entrada });
+  desfasar(v, fase, elegido.imagen);
+  v.faseActual = siguiente;
+}
+function atrasCamino(c, variante) {
+  const v = c.variantes[variante];
+  if (!v) throw new CaminoInvalido(`La variante ${variante} no existe`);
+  const f = v.fases[v.faseActual];
+  const previa = f ? f.desde : ENTRADA[v.faseActual].find((x) => v.fases[x] && v.fases[x].aceptada);
+  if (!previa) throw new CaminoInvalido(`No hay fase anterior a ${v.faseActual} a la que volver`);
+  v.faseActual = previa;
+}
+function apuntarIntento(c, variante, fase, p) {
+  const v = c.variantes[variante] = c.variantes[variante] || { origen: null, faseActual: 'F0', fases: {} };
+  const [desde, entrada] = p.entrada || [null, null];
+  const f = v.fases[fase] = v.fases[fase] || { aceptada: null, prompt: null, semilla: null, desde, entrada, desfasada: false, intentos: [] };
+  if (!f.aceptada) Object.assign(f, { desde, entrada });
+  const n = Math.max(0, ...f.intentos.map((i) => i.n)) + 1;
+  f.intentos.push({ n, prompt: p.prompt, semilla: p.semilla, imagen: p.falla ? null : `${variante}-${fase.toLowerCase()}-${n}.png`,
+    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
+  v.faseActual = fase;
+  return n;
+}
+/* Lanza una fase en el simulador; lanza CaminoInvalido o Error con el motivo (400) como servidor.py. */
+function lanzarFase(b) {
+  const { tipo, slug, variante, fase } = b;
+  if (!POR_ID[fase]) return mal(400, `fase desconocida: ${fase}`);
+  if (!POR_ID[fase].disponible) return mal(400, `${fase} ${POR_ID[fase].nombre} no está disponible todavía (llega con IMG-37)`);
+  const prompt = String(b.prompt || '').trim();
+  if (!prompt) return mal(400, 'el prompt está vacío');
+  const semilla = b.semilla === undefined || b.semilla === null ? null : Number(b.semilla);
+  if (semilla !== null && !(Number.isInteger(semilla) && semilla >= 0 && semilla <= 2 ** 31 - 1)) return mal(400, 'la semilla: de 0 a 2147483647');
+  const c = camino(tipo, slug), v = c.variantes[variante] || null;
+  try { faseDeEntrada(v, fase); } catch (e) { return mal(400, e.message); }
+  verTrabajo();
+  if (trabajo.enMarcha) return mal(400, 'ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe');
+  trabajo = { enMarcha: true, id: siguienteId++, tipo, slug, variante, fase, perfil: `${fase} ${POR_ID[fase].nombre}`, conReferencia: fase === 'F4',
+    inicio: Date.now(), salida: [], nombre: null, rc: null, pasos: PASOS_FASE[fase], semilla, estimado: ESTIMADO_FASE[fase], prompt };
+  return ok({ ok: true }, 202);
+}
 
 let trabajo = { enMarcha: false };
 /* La cola (GET /api/cola): lo terminado, el más reciente primero; empieza con los dos intentos de ejemplo del aullador. */
@@ -95,7 +204,23 @@ function verTrabajo() {
   if (e.enMarcha) { e.paso = Math.min(e.pasos, Math.floor(seg / 2)); e.progreso = e.paso ? 'difusión' : 'cargando el modelo'; }
   return e;
 }
+function terminarFase(seg) {
+  const t = trabajo, c = camino(t.tipo, t.slug), v = c.variantes[t.variante];
+  const semilla = t.semilla === null ? semillaPorDefecto(v, t.fase, t.prompt) : t.semilla;
+  const origen = faseDeEntrada(v, t.fase);
+  const falla = semilla === 13;
+  const n = apuntarIntento(c, t.variante, t.fase, { prompt: t.prompt, semilla, segundos: seg, falla,
+    entrada: origen ? [origen, v.fases[origen].aceptada] : null });
+  const nombre = `${t.variante}-${t.fase.toLowerCase()}-${n}`;
+  const error = 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)';
+  historial.unshift({ id: t.id, estado: falla ? 'fallido' : 'hecho', tipo: t.tipo, slug: t.slug, variante: t.variante, fase: t.fase, perfil: t.perfil,
+    semilla, pasos: t.pasos, conReferencia: t.conReferencia, intento: falla ? null : nombre, segundos: seg, estimado: t.estimado,
+    progreso: null, error: falla ? error : null });
+  trabajo = { ...t, semilla, enMarcha: false, fin: Date.now(), rc: falla ? 1 : 0, nombre: falla ? null : nombre,
+    salida: [...t.salida, falla ? error : `imagen: ${nombre}.png`], logFinal: falla ? 'ggml_vulkan: out of memory (simulado)\nsd-cli: fallo al decodificar' : undefined };
+}
 function terminar(seg) {
+  if (trabajo.fase) return terminarFase(seg);
   const t = trabajo, e = datos[`${t.tipo}/${t.slug}`];
   const falla = t.semilla === 13;
   const f = intento(t.perfil, t.semilla, t.pasos, ahora(), { prompt: t.desdeBase ? 'base' : 'pegado', textoPrompt: t.prompt,
@@ -132,11 +257,12 @@ export async function transport(method, url, body) {
   const q = Object.fromEntries(u.searchParams);
   const ruta = u.pathname;
   if (method === 'GET') {
-    if (ruta === '/api/inicio') return ok({ perfiles: PERFILES, mundo: 'helek-sirik (simulador ?mock=1)' });
+    if (ruta === '/api/inicio') return ok({ perfiles: PERFILES, mundo: 'helek-sirik (simulador ?mock=1)', fases: JSON.parse(JSON.stringify(FASES)) });
+    if (ruta === '/api/camino') return ok(vistaCamino(q.tipo, q.slug));
     if (ruta === '/api/estado') return ok(verTrabajo());
     if (ruta === '/api/cola') {
       const t = verTrabajo();
-      const ahoraMismo = t.enMarcha ? [{ id: t.id, estado: 'generando', tipo: t.tipo, slug: t.slug, perfil: t.perfil, semilla: t.semilla,
+      const ahoraMismo = t.enMarcha ? [{ id: t.id, estado: 'generando', tipo: t.tipo, slug: t.slug, ...(t.fase ? { variante: t.variante, fase: t.fase } : {}), perfil: t.perfil, semilla: t.semilla,
         pasos: t.pasos, conReferencia: t.conReferencia, intento: null, segundos: t.segundos, estimado: t.estimado,
         progreso: { texto: t.progreso, paso: t.paso || null, pasos: t.paso ? t.pasos : null }, error: null }] : [];
       return ok({ cola: [...ahoraMismo, ...historial] });
@@ -171,6 +297,18 @@ export async function transport(method, url, body) {
         inicio: Date.now(), salida: [], nombre: null, rc: null, pasos, semilla, estimado: pasos * 2 + 1, desdeBase: !!body.desdeBase,
         prompt: body.desdeBase && p ? (p.usado || p.base) : body.prompt };
       return ok({ ok: true }, 202);
+    }
+    if (ruta === '/api/fase/generar') { verTrabajo(); return lanzarFase(body); }
+    if (ruta === '/api/fase/avanzar') {
+      verTrabajo();
+      const { tipo, slug, variante, fase, siguiente } = body, c = camino(tipo, slug);
+      try { avanzarCamino(c, tipo, variante, fase, Number(body.intento), siguiente); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }
+      const r = lanzarFase({ tipo, slug, variante, fase: siguiente, prompt: c.variantes[variante].fases[fase].prompt });
+      return ok({ camino: vistaCamino(tipo, slug), ...(r.status === 202 ? { lanzado: true } : { lanzado: false, motivo: r.json.error }) });
+    }
+    if (ruta === '/api/fase/atras') {
+      try { atrasCamino(camino(body.tipo, body.slug), body.variante); } catch (e) { if (e instanceof CaminoInvalido) return mal(400, e.message); throw e; }
+      return ok({ camino: vistaCamino(body.tipo, body.slug) });
     }
     if (ruta === '/api/nota') {
       const f = elemento(body.tipo, body.slug).intentos.find((x) => x.nombre === body.nombre);

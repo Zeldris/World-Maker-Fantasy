@@ -75,10 +75,17 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 
 ### Bloque C · Motor e interfaz base
 
-- **IMG-40 · Motor por fases y registro del elemento** [A] (usuaria, 2026-11-06): una orden por fase que recibe el
+- ~~**IMG-40 · Motor por fases y registro del elemento**~~ [A] (usuaria, 2026-11-06): ✅ 2026-11-07. Una orden por fase que recibe el
   prompt y la imagen aceptada (hoy `planos.sh` corre la cadena de punta a punta), y `camino.json` por elemento con
   variantes, fases aceptadas, prompt, semilla y origen. Al avanzar se borra la imagen de los intentos no aceptados y
   quedan su prompt y su semilla. Sustituye a la entrega E1 y a `IMG-10`. **L**
+  **Hecho (2026-11-07):** `scripts/camino.py` (registro, grafo F0 → F1|F4 → F2 → F4, avanzar con borrado salvo lo
+  que otra fase usa de entrada, desfasadas en cadena, atrás, semilla por defecto, migración de `elegidas.tsv`) y
+  `scripts/fase.py` (recetas `f0-boceto`, `f1-forma`, `f2-detalle`, `f4-final`); rutas `/api/camino` y
+  `/api/fase/{generar,avanzar,atras}` y `fases` en `/api/inicio`, también en `/?mock=1`. Detalle en el diseño §3.0.
+  **Pendiente fuera de esta tarea:** la pantalla que las usa (`IMG-25`), F3 Recorte (`IMG-37`), ★ y variantes desde
+  aquí (`IMG-42`), `receta.json`. **Por probar en la Deck** (usuaria): una F0 y una F4 reales con `fase.py`, para
+  confirmar que las recetas dan los tiempos de `pautas.md` (36 s y ~160 s).
 - ~~**IMG-41 · Base de interfaz con lo rescatado de GVIG**~~ [A] (usuaria, 2026-11-06): ✅ 2026-11-07. Test de navegador sin Playwright,
   API con simulador `?mock=1`, cola, atajos, trampa de foco y chip de medida de `galivelop-image-generator`, adaptados a
   la hoja de estilos de Tarkor, sobre `servidor.py` e `index.html`. Se copia aquí y se conserva su licencia MIT; ese repo

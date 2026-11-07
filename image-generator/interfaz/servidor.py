@@ -28,13 +28,26 @@ API (JSON salvo las imágenes):
   GET  /ref/<tipo>/<slug>-<perfil>.<ext>    imagen del juego
   GET  /, /ui/<ruta>                        la página y su CSS/JS/fuentes (solo `interfaz/ui/`), con la CSP de GVIG (IMG-41)
   POST /api/generar {tipo,slug,perfil,semilla,pasos,prompt|desdeBase,usarReferencia}
+  Por fases (IMG-40, diseño §3.0; el registro es `generated/<tipo>/<slug>/camino.json`, ver scripts/camino.py):
+  GET  /api/inicio                          además `fases`: [{id,nombre,receta,siguientes,disponible}] (camino.FASES)
+  GET  /api/camino?tipo&slug                camino.json del elemento; cada variante lleva `siguientes` (calculado, según el
+                                            tipo, desde su faseActual)
+  POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?}
+                                            lanza `scripts/fase.py` (un trabajo a la vez, el mismo de /api/generar) → 202 {ok};
+                                            400 si la fase no existe o no está disponible, falta la fase de entrada aceptada,
+                                            el prompt está vacío o ya hay una generación
+  POST /api/fase/avanzar {tipo,slug,variante,fase,intento,siguiente}
+                                            acepta el intento (borra los demás) y lanza el primero de `siguiente` con el prompt
+                                            aceptado → {camino, lanzado: true}; si no se pudo lanzar (ocupado…), la aceptación
+                                            se queda: {camino, lanzado: false, motivo}; 400 si el camino no lo permite
+  POST /api/fase/atras {tipo,slug,variante} → {camino}; 400 si no hay fase anterior
   POST /api/nota {tipo,slug,nombre,texto};  POST /api/elegir {tipo,slug,nombre}
 
 Una sola generación a la vez (la Deck no aguanta dos). Solo escucha en 127.0.0.1.
 Variables (para los tests): IMG_RAIZ (image-generator/), IMG_REFERENCIAS (referencias/images/), IMG_PROBAR, IMG_PSQL, IMG_API (backend del juego, ''
 = sin catálogo), IMG_ESQUEMA (schema.prisma), IMG_PUERTO (7861).
 """
-import os, re, shlex, shutil, statistics, subprocess, sys, tempfile
+import json, os, re, shlex, shutil, statistics, subprocess, sys, tempfile
 from urllib.parse import unquote
 from http.server import ThreadingHTTPServer  # noqa: F401 (los tests montan el servidor con él)
 
@@ -43,11 +56,18 @@ if AQUI not in sys.path:
     sys.path.insert(0, AQUI)  # nucleo y el adaptador, también cuando los tests cargan este archivo por ruta
 
 import nucleo  # noqa: E402
+SCRIPTS = os.path.join(os.path.dirname(AQUI), 'scripts')  # el módulo sale del repo; los datos, de IMG_RAIZ
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+
 from nucleo import Invalido, SLUG, STATIC_CSP, slug, entero  # noqa: E402,F401 (STATIC_CSP: lo miran los tests)
 import adaptador_tarkor  # noqa: E402
+import camino  # noqa: E402
+import fase as fase_py  # noqa: E402
 
 RAIZ = os.environ.get('IMG_RAIZ', os.path.dirname(AQUI))
 PROBAR = os.environ.get('IMG_PROBAR', os.path.join(RAIZ, 'scripts', 'probar.sh'))
+FASE = os.environ.get('IMG_FASE', os.path.join(SCRIPTS, 'fase.py'))
 GENERADO = os.path.join(RAIZ, 'generated')
 # IMG-41: la página se compone de /ui/ (CSS, JS y fuentes propios, base de diseño de GVIG); solo se sirve lo de esa carpeta.
 UI_DIR = os.path.join(AQUI, 'ui')
@@ -170,6 +190,16 @@ def elegir(tipo, slug_, nombre):
     return rel
 
 
+def intentos_camino(d):
+    """Intentos apuntados en camino.json (IMG-40)."""
+    try:
+        with open(os.path.join(d, 'camino.json'), encoding='utf-8') as f:
+            c = json.load(f)
+    except (OSError, ValueError):
+        return 0
+    return sum(len(f['intentos']) for v in c.get('variantes', {}).values() for f in v.get('fases', {}).values())
+
+
 def elementos():
     """(lista, aviso): lo del adaptador (toda la enciclopedia y las entidades con prompt), lo que hay en generated/ y
     lo que tiene imagen en el juego."""
@@ -205,7 +235,7 @@ def elementos():
         primero = el['perfiles'][0]['perfil'] if el['perfiles'] else 'thumbnail'
         el.setdefault('nombre', '')
         el.update(juego=refs.get(primero) or next((refs[p] for p in PERFILES if p in refs), None),
-                  intentos=len(filas_registro(d)) if hay else 0,
+                  intentos=(len(filas_registro(d)) + intentos_camino(d)) if hay else 0,
                   elegidas=[p for p in PERFILES if hay and os.path.isfile(os.path.join(d, f'{s_}-{p}.png'))])
         lista.append(el)
     return lista, ' · '.join(avisos) or None
@@ -230,6 +260,31 @@ def estimado(perfil, con_referencia):
     if tiempos:
         return int(round(statistics.median(tiempos)))
     return int(round(ESTIMADO_BASE.get(perfil, 110) * (FACTOR_REFERENCIA if con_referencia else 1)))
+
+
+ESTIMADO_FASE = {'F0': 36, 'F1': 300, 'F2': 300, 'F4': 160}  # segundos, si aún no hay intentos de esa fase
+
+
+def estimado_fase(fase):
+    """Mediana de los segundos de los intentos con imagen de esa fase, de todos los camino.json (sin el banco)."""
+    tiempos = []
+    try:
+        for t in os.listdir(GENERADO):
+            if t == BANCO or not os.path.isdir(os.path.join(GENERADO, t)):
+                continue
+            for s_ in os.listdir(os.path.join(GENERADO, t)):
+                try:
+                    with open(os.path.join(GENERADO, t, s_, 'camino.json'), encoding='utf-8') as f:
+                        c = json.load(f)
+                except (OSError, ValueError):
+                    continue
+                for v in c.get('variantes', {}).values():
+                    for i in v.get('fases', {}).get(fase, {}).get('intentos', []):
+                        if i.get('imagen') and isinstance(i.get('segundos'), (int, float)):
+                            tiempos.append(i['segundos'])
+    except (FileNotFoundError, NotADirectoryError):
+        pass
+    return int(round(statistics.median(tiempos))) if tiempos else ESTIMADO_FASE.get(fase, 120)
 
 
 def referencia_de(tipo, slug_, perfil):
@@ -323,6 +378,38 @@ class Trabajo(nucleo.Trabajo):
                      motivo_ocupado='ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
 
 
+    def lanzar_fase(self, peticion):
+        """IMG-40: una fase de un elemento con `scripts/fase.py` (que escribe en camino.json, también si falla)."""
+        tipo = slug(peticion.get('tipo'), 'tipo')
+        slug_ = slug(peticion.get('slug'), 'slug')
+        variante = slug(peticion.get('variante'), 'variante')
+        fase = peticion.get('fase')
+        if fase not in camino.POR_ID:
+            raise Invalido(f'fase desconocida: {fase}')
+        if not camino.POR_ID[fase]['disponible']:
+            raise Invalido(f'{fase} {camino.POR_ID[fase]["nombre"]} no está disponible todavía (llega con IMG-37)')
+        semilla = peticion.get('semilla')
+        if semilla is not None:
+            semilla = entero(semilla, 'la semilla', 0, 2 ** 31 - 1)
+        texto = str(peticion.get('prompt') or '').strip()
+        if not texto:
+            raise Invalido('el prompt está vacío')
+        try:
+            camino.fase_de_entrada(camino.leer(elemento_dir(tipo, slug_))['variantes'].get(variante, {}), fase)
+        except camino.CaminoInvalido as e:
+            raise Invalido(str(e))
+        fd, archivo = tempfile.mkstemp(prefix='prompt-', suffix='.txt')
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(texto + '\n')
+        orden = [sys.executable, FASE, tipo, slug_, variante, fase, archivo] + ([] if semilla is None else [str(semilla)])
+        datos = {'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': fase,
+                 'perfil': f'{fase} {camino.POR_ID[fase]["nombre"]}', 'semilla': semilla,
+                 'pasos': fase_py.RECETAS[fase]['pasos'], 'conReferencia': fase == 'F4', 'estimado': estimado_fase(fase)}
+        self.empezar(orden, datos, env=dict(os.environ, IMG_RAIZ=RAIZ, **ADAPTADOR.entorno()), que='fase.py', ocupado=sd_cli_en_marcha,
+                     limpiar=lambda: os.unlink(archivo),
+                     motivo_ocupado='ya hay una imagen generándose (aquí o un sd-cli suelto); espera a que acabe')
+
+
 TRABAJO = Trabajo()
 
 
@@ -356,7 +443,8 @@ def api_cola(p):
 
 @RUTAS.get('/api/inicio')
 def api_inicio(p):
-    return {'perfiles': PERFILES, 'mundo': ADAPTADOR.mundo}
+    return {'perfiles': PERFILES, 'mundo': ADAPTADOR.mundo, 'fases': [dict(f, siguientes=list(f['siguientes']))
+                                                                     for f in camino.FASES]}
 
 
 @RUTAS.get('/api/elementos')
@@ -368,6 +456,19 @@ def api_elementos(p):
 @RUTAS.get('/api/elemento')
 def api_elemento(p):
     return leer_elemento(p.q.get('tipo'), p.q.get('slug'))
+
+
+def camino_de(tipo, slug_):
+    """camino.json con, por variante, las fases a las que se puede avanzar desde la actual (calculado, no guardado)."""
+    c = camino.leer(elemento_dir(tipo, slug_))
+    for v in c['variantes'].values():
+        v['siguientes'] = camino.siguientes(v['faseActual'], tipo)
+    return c
+
+
+@RUTAS.get('/api/camino')
+def api_camino(p):
+    return camino_de(p.q.get('tipo'), p.q.get('slug'))
 
 
 @RUTAS.get('/api/prompt')
@@ -408,6 +509,45 @@ def elegida(p):
 def api_generar(p):
     TRABAJO.lanzar(p.cuerpo)
     return 202, {'ok': True}
+
+
+@RUTAS.post('/api/fase/generar')
+def api_fase_generar(p):
+    TRABAJO.lanzar_fase(p.cuerpo)
+    return 202, {'ok': True}
+
+
+@RUTAS.post('/api/fase/avanzar')
+def api_fase_avanzar(p):
+    c = p.cuerpo
+    tipo, slug_ = slug(c.get('tipo'), 'tipo'), slug(c.get('slug'), 'slug')
+    variante, fase = slug(c.get('variante'), 'variante'), c.get('fase')
+    n, siguiente = entero(c.get('intento'), 'el intento', 1, 10 ** 6), c.get('siguiente')
+
+    def aceptar(cam):
+        camino.avanzar(elemento_dir(tipo, slug_), cam, variante, fase, n, siguiente, tipo)
+        return cam['variantes'][variante]['fases'][fase]['prompt']
+    try:
+        prompt, _ = camino.actualizar(elemento_dir(tipo, slug_), aceptar)
+    except camino.CaminoInvalido as e:
+        raise Invalido(str(e))
+    try:
+        TRABAJO.lanzar_fase({'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': siguiente, 'prompt': prompt})
+        lanzado = {'lanzado': True}
+    except Invalido as e:  # ocupado, sin entrada…: la aceptación se queda
+        lanzado = {'lanzado': False, 'motivo': str(e)}
+    return {'camino': camino_de(tipo, slug_), **lanzado}
+
+
+@RUTAS.post('/api/fase/atras')
+def api_fase_atras(p):
+    c = p.cuerpo
+    tipo, slug_, variante = slug(c.get('tipo'), 'tipo'), slug(c.get('slug'), 'slug'), slug(c.get('variante'), 'variante')
+    try:
+        camino.actualizar(elemento_dir(tipo, slug_), lambda cam: camino.atras(cam, variante))
+    except camino.CaminoInvalido as e:
+        raise Invalido(str(e))
+    return {'camino': camino_de(tipo, slug_)}
 
 
 @RUTAS.post('/api/nota')

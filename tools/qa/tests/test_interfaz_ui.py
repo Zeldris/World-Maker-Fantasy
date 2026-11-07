@@ -10,12 +10,16 @@ import shutil
 import socket
 import tempfile
 import threading
+import sys
 import unittest
 from pathlib import Path
 
 import browser
 from comun import RAIZ, escribir
 from test_interfaz_imagenes import Base
+
+sys.path.insert(0, os.path.join(RAIZ, 'image-generator', 'scripts'))
+import camino as C  # noqa: E402
 
 INTERFAZ = Path(RAIZ) / 'image-generator' / 'interfaz'
 UI = INTERFAZ / 'ui'
@@ -324,6 +328,46 @@ class Navegador(Base):
         pagina.wait("document.getElementById('resultado').textContent.startsWith('Falló')", timeout=20)
         self.assertIn('out of memory', pagina.evaluate("document.querySelector('#resultado pre').textContent"))
         self.assertEqual([p for p in self.pedidas if p.startswith('/api/')], [])
+        self.assertEqual(self.nav.take_problems(), [])
+        pagina.ws.close()
+
+    def test_el_simulador_tiene_las_fases_del_camino_y_recorre_f0_f4_atras(self):
+        pagina = self.nav.new_page()
+        self.nav.take_problems()
+        pagina.goto(f'http://127.0.0.1:{self.puerto}/?mock=1')
+        pagina.wait("document.querySelectorAll('#lista .elemento .nombre').length === 4")
+        # el mismo módulo que usa la página; cada llamada devuelve [status, json]
+        pagina.evaluate("window.__m = import('/ui/mock/api-mock.js').then((m) => { window.__t = m.transport; })")
+        llamar = lambda metodo, ruta, cuerpo=None: pagina.evaluate(  # noqa: E731
+            "window.__t(%s, %s, %s).then((r) => [r.status, r.json])" % (json.dumps(metodo), json.dumps(ruta), json.dumps(cuerpo)))
+        def esperar():  # el sondeo repite la expresión: cada vuelta pide el estado y mira lo que dijo la anterior
+            pagina.evaluate('window.__fin = false')
+            pagina.wait("window.__t('GET', '/api/estado').then((r) => { window.__fin = !r.json.enMarcha; }) && window.__fin === true",
+                        timeout=40)
+        self.assertEqual(llamar('GET', '/api/inicio')[1]['fases'], json.loads(json.dumps(C.FASES)))
+        el = {'tipo': 'fauna', 'slug': 'aullador-rojo', 'variante': 'macho'}
+        codigo, r = llamar('POST', '/api/fase/generar', {**el, 'fase': 'F4', 'prompt': 'x'})
+        self.assertEqual(codigo, 400)
+        self.assertIn('Falta una fase aceptada (F2 o F1 o F0) para generar F4 Final', r['error'])
+        self.assertIn('no está disponible', llamar('POST', '/api/fase/generar', {**el, 'fase': 'F3', 'prompt': 'x'})[1]['error'])
+        self.assertEqual(llamar('POST', '/api/fase/generar', {**el, 'fase': 'F0', 'prompt': 'un aullador'}), [202, {'ok': True}])
+        self.assertIn('ya hay una imagen generándose', llamar('POST', '/api/fase/generar', {**el, 'fase': 'F0', 'prompt': 'x'})[1]['error'])
+        cola = llamar('GET', '/api/cola')[1]['cola'][0]
+        self.assertEqual((cola['estado'], cola['fase'], cola['perfil'], cola['pasos'], cola['estimado']), ('generando', 'F0', 'F0 Boceto', 4, 36))
+        esperar()
+        f0 = llamar('GET', '/api/camino?tipo=fauna&slug=aullador-rojo')[1]['variantes']['macho']['fases']['F0']
+        self.assertEqual((len(f0['intentos']), f0['intentos'][0]['semilla'], f0['intentos'][0]['imagen']), (1, 3, 'macho-f0-1.png'))
+        # avanzar a F4 acepta y lanza la Final con la semilla del boceto
+        codigo, r = llamar('POST', '/api/fase/avanzar', {**el, 'fase': 'F0', 'intento': 1, 'siguiente': 'F4'})
+        self.assertEqual((codigo, r['lanzado'], r['camino']['variantes']['macho']['faseActual']), (200, True, 'F4'))
+        esperar()
+        v = llamar('GET', '/api/camino?tipo=fauna&slug=aullador-rojo')[1]['variantes']['macho']
+        self.assertEqual((v['fases']['F4']['intentos'][0]['semilla'], v['fases']['F4']['entrada'], v['siguientes']), (3, 'macho-f0-1.png', ['F3']))
+        self.assertIn('Desde F4 Final no se avanza', llamar('POST', '/api/fase/avanzar', {**el, 'fase': 'F4', 'intento': 1, 'siguiente': 'F3'})[1]['error'])
+        # atrás vuelve a F0; en F0 no hay más atrás
+        self.assertEqual(llamar('POST', '/api/fase/atras', el)[1]['camino']['variantes']['macho']['faseActual'], 'F0')
+        codigo, r = llamar('POST', '/api/fase/atras', el)
+        self.assertEqual((codigo, r['error']), (400, 'No hay fase anterior a F0 a la que volver'))
         self.assertEqual(self.nav.take_problems(), [])
         pagina.ws.close()
 

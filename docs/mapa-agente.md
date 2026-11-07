@@ -254,6 +254,10 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   progreso sin captura: `python3 image-generator/interfaz/resumen.py [--tipo <tipo>]`. Tests:
   `python3 -m unittest discover -s tools/qa/tests -p "test_interfaz_*.py"` (`test_interfaz_ui.py` lleva el de navegador,
   con `tools/qa/tests/browser.py`).
+- **Motor por fases (`IMG-40`):** `image-generator/scripts/camino.py` (el registro `camino.json` por elemento: `FASES`,
+  `avanzar`, `atras`, `semilla_por_defecto`, `actualizar` con bloqueo) y `scripts/fase.py` (una orden por fase: tabla
+  `RECETAS` sobre `generar.sh`). Rutas en `servidor.py`: `/api/camino`, `/api/fase/{generar,avanzar,atras}`
+  (`Trabajo.lanzar_fase`); las mismas en `ui/mock/api-mock.js`. Tests: `test_camino.py`, `test_interfaz_fases.py`.
 - **Bocetos por plan corporal (`IMG-24`):** `image-generator/bocetos/plantilla.py#componer` (el SVG desde un plan y
   sus números, escalado al lienzo 1280x512) y `#validar` (cada valor malo, con su motivo); los planes y sus parámetros,
   `python3 image-generator/bocetos/plantilla.py --planes`; `image-generator/bocetos/rasterizar.sh` (fichas con

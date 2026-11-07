@@ -78,6 +78,10 @@ export const paths = {
   prompt: (tipo, slug, perfil) => `/api/prompt?${qs({ tipo, slug, perfil })}`,
   referencia: (tipo, slug, perfil) => `/api/referencia?${qs({ tipo, slug, perfil })}`,
   generar: () => '/api/generar',
+  camino: (tipo, slug) => `/api/camino?${qs({ tipo, slug })}`,
+  faseGenerar: () => '/api/fase/generar',
+  faseAvanzar: () => '/api/fase/avanzar',
+  faseAtras: () => '/api/fase/atras',
   nota: () => '/api/nota',
   elegir: () => '/api/elegir',
   // imágenes: un intento (con `v` para no ver la de caché tras regenerar) y la del juego (`ruta` de /api/referencia)
@@ -95,6 +99,10 @@ export const api = {
   prompt: (tipo, slug, perfil) => get(paths.prompt(tipo, slug, perfil)),
   referencia: (tipo, slug, perfil) => get(paths.referencia(tipo, slug, perfil)),
   generar: (peticion) => post(paths.generar(), peticion),
+  camino: (tipo, slug) => get(paths.camino(tipo, slug)),
+  faseGenerar: (peticion) => post(paths.faseGenerar(), peticion),
+  faseAvanzar: (peticion) => post(paths.faseAvanzar(), peticion),
+  faseAtras: (tipo, slug, variante) => post(paths.faseAtras(), { tipo, slug, variante }),
   nota: (tipo, slug, nombre, texto) => post(paths.nota(), { tipo, slug, nombre, texto }),
   elegir: (tipo, slug, nombre) => post(paths.elegir(), { tipo, slug, nombre }),
 };
