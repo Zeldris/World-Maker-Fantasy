@@ -117,7 +117,8 @@ Después, las tres pruebas. Cada tanda lleva antes su pregunta de memoria y su s
 
 | Prueba | Qué se hace | Qué responde | Deck (estimado) |
 |---|---|---|---|
-| **P1. Goirnte por piezas** | Meseta → cuerpo → armadura → conjunto, y compararlo con su banner y con las F0 de hoy | ¿Las piezas acercan al banner? | ~15 min |
+| **P1a. Orco de las llanuras, con piezas ya hechas** (usuaria, 2026-11-07) | F0 sin referencias y con campamento o choza (`lugar`) y maza (`equipo`), a igual semilla, midiendo contra su banner, que nunca va de referencia | Con las mejores piezas posibles, ¿las referencias acercan al banner? | ~10 min |
+| **P1b. Goirnte por piezas** | Meseta → cuerpo → armadura → conjunto, y compararlo con su banner y con las F0 de hoy | ¿Y con piezas generadas aquí, el caso de un elemento nuevo? | ~15 min |
 | **P2. La escena del ejemplo** | Rutas A y B, 2 semillas cada una | ¿Conserva la identidad? ¿Respeta «2 aulladores»? ¿Qué ruta manda? | ~30 min |
 | **P3. Coste por número de referencias** | Una F0 y una Final con 1, 2, 3 y 4 referencias (en la Final, boceto incluido) | Tiempo y memoria hasta el máximo de 4 | ~20 min |
 
@@ -128,7 +129,7 @@ igual, una Final con cuatro rondaría los 5 minutos, pero eso es una extrapolaci
 
 - **Conserva la identidad:** sigue el plan tal como está, y `IMG-1` se reescribe.
 - **No la conserva:** las referencias quedan para luz, estilo y lugar, y las escenas pasan por la ruta C. T7 se reduce mucho.
-- **Las piezas tampoco acercan al banner (P1):** se para y se replantea antes de construir pantallas.
+- **Las piezas tampoco acercan al banner (P1):** se para y se replantea antes de construir pantallas. Si P1a ya falla, P1b no se lanza.
 
 ### Fase 2 · La luz sale del lugar
 
