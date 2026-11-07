@@ -419,9 +419,10 @@ class Trabajo(nucleo.Trabajo):
         texto = str(peticion.get('prompt') or '').strip()
         if not texto:
             raise Invalido('el prompt está vacío')
+        del_juego = referencia_de(tipo, slug_, 'banner')  # la medida de color la usa aunque no vaya al modelo
         juego = None
         if peticion.get('usarReferencia'):
-            juego = referencia_de(tipo, slug_, 'banner')
+            juego = del_juego
             if not juego:
                 raise Invalido(f'no hay imagen de {tipo}/{slug_} en image-generator/referencias/images/')
         try:
@@ -434,6 +435,8 @@ class Trabajo(nucleo.Trabajo):
         orden = [sys.executable, FASE, tipo, slug_, variante, fase, archivo] + ([] if semilla is None else [str(semilla)])
         if juego:
             orden += ['--referencia', os.path.join(REFERENCIAS, juego['ruta'])]
+        elif del_juego:
+            orden += ['--medir-con', os.path.join(REFERENCIAS, del_juego['ruta'])]
         datos = {'tipo': tipo, 'slug': slug_, 'variante': variante, 'fase': fase,
                  'perfil': f'{fase} {camino.POR_ID[fase]["nombre"]}', 'semilla': semilla,
                  'pasos': fase_py.RECETAS[fase]['pasos'], 'conReferencia': fase == 'F4' or bool(juego), 'estimado': estimado_fase(fase, bool(juego))}

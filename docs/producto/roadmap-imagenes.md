@@ -411,6 +411,12 @@ desde el panel vive en tablas que siembran.
   casilla «usar la imagen del juego de referencia» por fase, desmarcada por defecto y solo si el elemento tiene imagen;
   `usarReferencia` en `/api/fase/generar` y `fase.py`, apuntado en cada intento y visible en «Cómo se hizo». En la Final
   van dos `-r` (`sd-cli` lo admite), el boceto primero, con el prefijo que diga cuál es cuál; falta probarlo con una real.
+  **Parte 3, medida hecha (2026-11-07):** `scripts/medir/medida.py` (SSIM en gris con la imagen de entrada, ≳ 0,7; EMD Cb y
+  Cr con la imagen del juego, con los límites de `pautas.md` §5), que `fase.py` guarda en `medida` de cada intento
+  (medir nunca hace fallar uno) y `fases.js` enseña bajo el intento, con ✓/⚠/✗; `--medir-con` lleva la imagen del juego
+  aunque la casilla esté desmarcada. Sin `medir.sh`: pide un momento que los elementos no llevan, y una sola imagen
+  sustituye a su mediana de varias (YAVG/SATAVG, cuando haya momento). **Falta:** la prueba en la Deck con una F0 y una
+  Final reales (con dos `-r`), y ver si el 0,7 vale en F1 (fuerza 0,88) y en la Final (`-r`), que cambian más que F2.
   **Casilla hecha (2026-11-07):** `fase.py --referencia`, `usarReferencia` en generar y avanzar; misma semilla al cambiar
   la casilla, para comparar; tiempos estimados aparte. Probada con el simulador: falta una real con dos `-r` en la Final.
   **Parte 2 hecha (2026-11-07):** `camino.py` (`renombrar`, `tramo`, `dependientes`, `borrar_fase`, `marcar`), rutas

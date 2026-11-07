@@ -204,7 +204,7 @@ function apuntarIntento(c, variante, fase, p) {
   if (!f.aceptada) Object.assign(f, { desde, entrada });
   const n = Math.max(0, ...f.intentos.map((i) => i.n)) + 1;
   f.intentos.push({ n, prompt: p.prompt, semilla: p.semilla, imagen: p.falla ? null : `${variante}-${fase.toLowerCase()}-${n}.png`,
-    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.referencia ? { referencia: p.referencia } : {}), ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
+    desde, entrada, segundos: p.segundos, fecha: ahora(), salida: p.falla ? 1 : 0, ...(p.referencia ? { referencia: p.referencia } : {}), ...(p.medida ? { medida: p.medida } : {}), ...(p.falla ? { error: 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)' } : {}) });
   v.faseActual = fase;
   return n;
 }
@@ -279,13 +279,23 @@ function verTrabajo() {
   if (e.enMarcha) { e.paso = Math.min(e.pasos, Math.floor(ms / PASO_MS)); e.progreso = e.paso ? 'difusión' : 'cargando el modelo'; }
   return e;
 }
+/* Como scripts/medir/medida.py, con los valores sacados de la semilla para que salgan los tres estados. */
+function medidaSimulada(semilla, conAnterior, conJuego) {
+  const medida = {};
+  if (conAnterior) { const valor = 0.55 + (semilla % 40) / 100; medida.ssim = { valor, estado: valor >= 0.7 ? 'ok' : 'aviso' }; }
+  if (conJuego) {
+    const cb = 3 + semilla % 11, cr = 4 + semilla % 12;
+    medida.emd = { cb: { valor: cb, estado: cb <= 6 ? 'ok' : cb <= 11.4 ? 'aviso' : 'falla' }, cr: { valor: cr, estado: cr <= 7.5 ? 'ok' : cr <= 13.5 ? 'aviso' : 'falla' } };
+  }
+  return medida;
+}
 function terminarFase(seg) {
   const t = trabajo, c = camino(t.tipo, t.slug), v = c.variantes[t.variante];
   const semilla = t.semilla === null ? semillaPorDefecto(v, t.fase, t.prompt, t.referencia) : t.semilla;
   const origen = faseDeEntrada(v, t.fase);
   const falla = semilla === 13;
   const n = apuntarIntento(c, t.variante, t.fase, { prompt: t.prompt, semilla, segundos: seg, falla, referencia: t.referencia,
-    entrada: origen ? [origen, v.fases[origen].aceptada] : null });
+    entrada: origen ? [origen, v.fases[origen].aceptada] : null, medida: falla ? null : medidaSimulada(semilla, !!origen, !!(datos[`${t.tipo}/${t.slug}`] || {}).juego) });
   const nombre = `${t.variante}-${t.fase.toLowerCase()}-${n}`;
   const error = 'ERROR: sd-cli terminó con 1 (simulado: semilla 13)';
   historial.unshift({ id: t.id, estado: falla ? 'fallido' : 'hecho', tipo: t.tipo, slug: t.slug, variante: t.variante, fase: t.fase, perfil: t.perfil,

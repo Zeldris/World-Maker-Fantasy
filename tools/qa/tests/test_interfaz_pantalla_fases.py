@@ -55,6 +55,8 @@ class PantallaFases(Base):
         pagina.wait(CONTADOR % '1/1', timeout=20)
         pagina.wait(IMAGEN)
         self.assertIn('s=3 ·', pagina.evaluate("document.querySelector('.marco.actual .meta').textContent"))
+        # la medida junto al intento: F0 no parte de nada, así que solo color (s=3: Cb 6 ✓, Cr 7 ✓)
+        self.assertEqual(pagina.evaluate("document.querySelector('[data-medida]').textContent"), 'EMD Cb 6,0 ✓ · Cr 7,0 ✓')
         self.assertEqual(pagina.evaluate("document.querySelector('[data-accion=regenerar]').textContent.trim().startsWith('Regenerar')"), True)
         # Regenerar con el prompt sin cambios: otra semilla, y el intento nuevo a la vista
         pagina.evaluate("document.querySelector('[data-accion=regenerar]').click()")

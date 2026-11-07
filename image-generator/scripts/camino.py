@@ -110,7 +110,7 @@ def semilla_por_defecto(v, fase, prompt, referencia=None):
     return ultimo['semilla']
 
 
-def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None):
+def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, salida, entrada, n=None, error=None, referencia=None, medida=None):
     """Apunta un intento (imagen=None si falló). `entrada` = (fase, imagen) de la que parte, o None; `n`, el número que
     dio siguiente_n al nombrar la imagen (si no, el siguiente). Devuelve n."""
     v = camino.setdefault('variantes', {}).setdefault(variante, {'origen': None, 'faseActual': 'F0', 'fases': {}})
@@ -126,6 +126,8 @@ def apuntar_intento(camino, variante, fase, prompt, semilla, imagen, segundos, s
         intento['error'] = error
     if referencia:
         intento['referencia'] = referencia  # la imagen del juego que llevó (archivo, sin ruta)
+    if medida is not None:
+        intento['medida'] = medida  # la de scripts/medir/medida.py; sigue ahí aunque se borre la imagen
     f['intentos'].append(intento)
     v['faseActual'] = fase
     return n

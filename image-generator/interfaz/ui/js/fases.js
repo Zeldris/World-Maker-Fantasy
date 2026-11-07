@@ -72,6 +72,21 @@ const marcadaImg = (imagen) => !!imagen && ((S.camino && S.camino.marcadas) || [
 const desfasado = (v, a) => !!a.desde && a.entrada !== ((v.fases[a.desde] || {}).aceptada || null);
 const MOTIVO_DESFASE = 'Esta Final salió de un boceto que ya no es el aceptado: genera otra';
 const meta = (i) => `s=${i.semilla} · ${i.segundos} s · ${when(i.fecha)}${i.referencia ? ' · con referencia' : ''}`;
+const MARCA_MEDIDA = { ok: '✓', aviso: '⚠', falla: '✗' };
+const decimal = (x, n) => x.toFixed(n).replace('.', ',');
+const valorMedido = (nombre, m, n, titulo) => h('span', { title: titulo }, `${nombre} ${decimal(m.valor, n)} ${MARCA_MEDIDA[m.estado]}`);
+/* La medida del intento (scripts/medir/medida.py): los intentos anteriores a ella no la llevan. */
+function lineaMedida(a) {
+  const m = a.medida;
+  if (!m) return null;
+  const color = 'Distancia de color con la imagen del juego';
+  const partes = [];
+  if (m.ssim) partes.push(valorMedido('SSIM', m.ssim, 2, 'Parecido de forma con la imagen de la que parte: por debajo de 0,7 puede haberse perdido la forma. No mira el detalle.'));
+  if (m.emd) partes.push(valorMedido('EMD Cb', m.emd.cb, 1, `${color}: bien hasta 6, falla por encima de 11,4.`), valorMedido('Cr', m.emd.cr, 1, `${color}: bien hasta 7,5, falla por encima de 13,5.`));
+  else if (!m.error) partes.push('sin medida de color: no tiene imagen del juego');
+  if (m.error) partes.push(`no se pudo medir (${m.error})`);
+  return h('div.meta', { 'data-medida': '' }, ...partes.flatMap((p, i) => (i ? [' · ', p] : [p])));
+}
 /* Lo elegido en la casilla mientras se está en el elemento; si no, lo que llevó el último intento de la fase. */
 const claveRef = (f) => `${S.variante}/${f}`;
 function usaRef(v, f) {
@@ -271,7 +286,7 @@ function panelIntento(v, f) {
   if (a.imagen && r.aceptada === a.imagen) etiquetas.push(h('span.ok', {}, 'aceptado'));
   if (a.imagen && marcadaImg(a.imagen)) etiquetas.push(h('span.estrella', { title: 'Marcada: lista para combinar' }, '★'));
   if (a.imagen) return h('div.marco.actual', {}, cab, imagen(srcImagen(a.imagen, lista), `Intento ${a.n} de ${nombreFase(f)}`), h('div.meta', {}, meta(a), ' ', ...etiquetas),
-    comoSeHizo(v, f, a));
+    lineaMedida(a), comoSeHizo(v, f, a));
   // sin imagen: fallido (salida distinta de 0) o borrado al avanzar
   const fallo = a.salida !== 0 && a.salida !== undefined && a.salida !== null;
   return h('div.marco.actual', {}, cab, hueco(

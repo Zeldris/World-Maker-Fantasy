@@ -236,6 +236,14 @@ class Fases(T.Base):
         self.esperar()
         self.assertEqual(self.args()[0]['argv'][5:], ['--referencia', ruta])
 
+    def test_con_imagen_del_juego_y_sin_la_casilla_solo_se_mide_con_ella(self):
+        ruta = os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-banner.png')
+        escribir(ruta, 'IMG')
+        self.assertEqual(self.post_fase('generar', fase='F0', prompt='x')[0], 202)
+        self.assertFalse(self.pedir('/api/cola')[1]['cola'][0]['conReferencia'])
+        self.esperar()
+        self.assertEqual(self.args()[0]['argv'][5:], ['--medir-con', ruta])
+
     def test_avanzar_lleva_la_casilla_a_la_fase_siguiente(self):
         ruta = os.path.join(self.raiz, 'referencias', 'images', 'fauna', 'nievon-banner.png')
         escribir(ruta, 'IMG')

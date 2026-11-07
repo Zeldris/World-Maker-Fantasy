@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""IMG-40: una orden por fase del generador. Uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla] [--referencia <imagen>]
+"""IMG-40: una orden por fase del generador. Uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla] [--referencia <imagen>] [--medir-con <imagen>]
 --referencia añade la imagen del juego como -r en cualquier fase; en la Final va detrás del boceto y el prompt dice cuál es cuál.
+--medir-con es la imagen del juego contra la que medir el color aunque no se pase al modelo (si no, la de --referencia).
 Toma la imagen aceptada de la fase de entrada, traduce la receta de la fase a generar.sh y apunta el intento en
 camino.json (también si falla). IMG_RAIZ cambia la raíz image-generator/; IMG_GENERAR sustituye a generar.sh (tests).
 Salida: «imagen: <ruta>.png» si salió. Códigos: el de generar.sh; 2 argumentos o fase inválida; 3 falta entrada o prompt."""
@@ -12,7 +13,9 @@ import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'medir'))
 import camino as C  # noqa: E402
+import medida as M  # noqa: E402
 
 COSA = {'fauna': 'creature', 'flora': 'plant', 'item': 'object', 'construccion': 'building', 'location': 'place',
         'raza': 'figure', 'npc': 'figure'}
@@ -43,16 +46,21 @@ def aborto(msg, codigo):
     sys.exit(codigo)
 
 
+def opcion(argv, nombre):
+    """Saca `nombre <imagen>` de argv: (imagen o None, el resto de argv)."""
+    if nombre not in argv:
+        return None, argv
+    i = argv.index(nombre)
+    if i + 1 >= len(argv):
+        aborto(f'{nombre} pide la ruta de una imagen', 2)
+    return argv[i + 1], argv[:i] + argv[i + 2:]
+
+
 def main(argv):
-    referencia = None
-    if '--referencia' in argv:
-        i = argv.index('--referencia')
-        if i + 1 >= len(argv):
-            aborto('--referencia pide la ruta de una imagen', 2)
-        referencia = argv[i + 1]
-        argv = argv[:i] + argv[i + 2:]
+    referencia, argv = opcion(argv, '--referencia')
+    medir_con, argv = opcion(argv, '--medir-con')
     if len(argv) not in (5, 6):
-        aborto('uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla] [--referencia <imagen>]', 2)
+        aborto('uso: fase.py <tipo> <slug> <variante> <fase> <archivo-prompt> [semilla] [--referencia <imagen>] [--medir-con <imagen>]', 2)
     tipo, slug, variante, fase, archivo = argv[:5]
     for v in (tipo, slug, variante):
         if not VALIDO.match(v):
@@ -124,10 +132,16 @@ def main(argv):
     sys.stdout.write(r.stdout)
     png = os.path.join(d, 'intentos', nombre + '.png')
     hay = os.path.exists(png)
+    medida = None
+    if hay:
+        juego = medir_con or referencia
+        medida = M.medir(png, os.path.join(d, 'intentos', entrada[1]) if entrada else None,
+                         juego if juego and os.path.isfile(juego) else None)
     C.actualizar(d, lambda c: C.apuntar_intento(c, variante, fase, prompt, semilla, nombre + '.png' if hay else None,
                                                 seg, r.returncode, entrada, n=n,
                                                 error=None if hay else r.stdout[-2000:],
-                                                referencia=os.path.basename(referencia) if referencia else None))
+                                                referencia=os.path.basename(referencia) if referencia else None,
+                                                medida=medida))
     if hay:
         print('imagen: ' + os.path.abspath(png))
     return r.returncode

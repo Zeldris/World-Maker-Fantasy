@@ -2,6 +2,7 @@
 generar.sh falso (sin modelos ni GPU)."""
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -372,7 +373,7 @@ class TestRenombrarBorrarMarcar(unittest.TestCase):
         self.assertEqual([m['imagen'] for m in c['marcadas']], ['m-f4-3.png'])
 
 
-class TestFasePy(unittest.TestCase):
+class BaseFase(unittest.TestCase):
     def setUp(self):
         self.raiz = carpeta()
         self.gen = os.path.join(self.raiz, 'falso', 'generar.sh')
@@ -394,6 +395,8 @@ class TestFasePy(unittest.TestCase):
     def aceptar(self, fase, n, sig):
         C.actualizar(self.d, lambda c: C.avanzar(self.d, c, 'macho', fase, n, sig, 'fauna'))
 
+
+class TestFasePy(BaseFase):
     def test_f0(self):
         r = self.fase('F0')
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -539,6 +542,79 @@ class TestFasePy(unittest.TestCase):
         r = self.fase('F0')
         self.assertEqual(r.returncode, 3)
         self.assertIn('no se puede leer el archivo de prompt', r.stdout)
+
+    def test_una_imagen_que_no_se_puede_medir_no_hace_fallar_el_intento(self):
+        juego = self.juego()  # ni el «png» del generar falso ni este son imágenes de verdad
+        r = self.fase('F0', extra=['--medir-con', juego])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        i = C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]
+        self.assertEqual(i['imagen'], 'macho-f0-1.png')
+        self.assertIn('EMD:', i['medida']['error'])
+
+    def test_un_intento_fallido_no_se_mide(self):
+        r = self.fase('F0', extra_env={'FALLA': '1'})
+        self.assertEqual(r.returncode, 1)
+        self.assertNotIn('medida', C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0])
+
+
+def imagen(ruta, fuente):
+    subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i', fuente, '-frames:v', '1', ruta], check=True)
+    return ruta
+
+
+# generar.sh que deja una imagen de verdad: la misma que su entrada, si se le pasa un boceto
+GENERAR_IMAGEN = '''#!/bin/bash
+mkdir -p "$1/intentos"
+if [ -n "${BOCETO:-}" ]; then cp "$BOCETO" "$1/intentos/$2.png"
+else ffmpeg -y -v error -f lavfi -i "color=0x508030:s=$4x$5" -frames:v 1 "$1/intentos/$2.png"; fi
+'''
+
+
+@unittest.skipUnless(shutil.which('ffmpeg'), 'sin ffmpeg')
+class TestMedida(BaseFase):
+    def setUp(self):
+        super().setUp()
+        escribir(self.gen, GENERAR_IMAGEN)
+
+    def test_f0_mide_el_color_con_el_juego_y_f1_tambien_la_forma_con_lo_aceptado(self):
+        juego = imagen(os.path.join(self.raiz, 'juego.png'), 'color=0x508030:s=1280x512')
+        self.assertEqual(self.fase('F0', extra=['--medir-con', juego]).returncode, 0)
+        m = C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]['medida']
+        self.assertNotIn('ssim', m, 'F0 no parte de ninguna imagen')
+        self.assertEqual(m['emd']['cb']['estado'], 'ok')
+        self.assertEqual(m['emd']['cr']['estado'], 'ok')
+        self.assertLess(m['emd']['cb']['valor'], 1)
+        self.aceptar('F0', 1, 'F1')
+        self.assertEqual(self.fase('F1', extra=['--medir-con', juego]).returncode, 0)
+        i = C.leer(self.d)['variantes']['macho']['fases']['F1']['intentos'][0]
+        self.assertEqual(i['medida']['ssim'], {'valor': 1.0, 'estado': 'ok'})
+        self.assertNotIn('referencia', i, '--medir-con no se pasa al modelo')
+
+    def test_sin_imagen_del_juego_no_hay_color_ni_error(self):
+        self.assertEqual(self.fase('F0').returncode, 0)
+        self.assertEqual(C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]['medida'], {})
+
+    def test_el_color_de_referencia_tambien_sirve_para_medir(self):
+        juego = imagen(os.path.join(self.raiz, 'juego.png'), 'color=0x508030:s=1280x512')
+        self.assertEqual(self.fase('F0', extra=['--referencia', juego]).returncode, 0)
+        self.assertIn('emd', C.leer(self.d)['variantes']['macho']['fases']['F0']['intentos'][0]['medida'])
+
+    def test_otra_forma_avisa_y_otro_color_falla(self):
+        sys.path.insert(0, os.path.join(SCRIPTS, 'medir'))
+        import medida as M
+        a = imagen(os.path.join(self.raiz, 'a.png'), 'testsrc2=s=640x256')
+        b = imagen(os.path.join(self.raiz, 'b.png'), 'mandelbrot=s=640x256')
+        azul = imagen(os.path.join(self.raiz, 'azul.png'), 'color=blue:s=640x256')
+        rojo = imagen(os.path.join(self.raiz, 'rojo.png'), 'color=red:s=640x256')
+        self.assertEqual(M.medir(a, b)['ssim']['estado'], 'aviso')
+        m = M.medir(azul, juego=rojo)['emd']
+        self.assertEqual((m['cb']['estado'], m['cr']['estado']), ('falla', 'falla'))
+
+    def test_limites_del_color(self):
+        sys.path.insert(0, os.path.join(SCRIPTS, 'medir'))
+        import medida as M
+        self.assertEqual([M.estado_emd('cb', v) for v in (6, 6.1, 11.4, 11.5)], ['ok', 'aviso', 'aviso', 'falla'])
+        self.assertEqual([M.estado_emd('cr', v) for v in (7.5, 7.6, 13.5, 13.6)], ['ok', 'aviso', 'aviso', 'falla'])
 
 
 if __name__ == '__main__':
