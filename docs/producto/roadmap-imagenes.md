@@ -397,13 +397,23 @@ desde el panel vive en tablas que siembran.
   `abrir-enciclopedia.sh` levanta solo Postgres, Ollama en reposo, el backend con `TARKOR_SOLO_ENCICLOPEDIA=1` (sin
   ticks ni precalentamiento) y el frontend. Pendiente: probarlo en la Deck con el 9B real (calidad del cuerpo,
   tiempo por prompt), la usuaria.
-- **IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás** [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
+- ~~**IMG-25 · Pantalla del elemento: avanzar, regenerar, atrás**~~ ✅ 2026-11-07 [A] (usuaria, 2026-10-27; reescrita el 2026-11-06):
   se abre un elemento, se escribe o edita el prompt (la ficha lo propone si existe) y cada fase enseña su imagen junto
   a la referencia y a la fase anterior. **Avanzar** acepta y guarda; **Regenerar** repite la fase con el prompt editado
   (si no cambia, con otra semilla); **Atrás** reabre la fase anterior. Renombrar, ver los pasos de cada imagen, borrar
   lo guardado y marcar ★. Sustituye a las entregas E2 y E2b. Depende de `IMG-39`, `IMG-40` e `IMG-41`. **L** Diseño:
   [`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md). Se conservan Publicar/Despublicar (`IMG-45`).
-  🚧 en curso (2026-11-07), en tres partes: **1**, la pantalla de fases sobre las rutas de `IMG-40` (pasos, referencia,
+  **Prueba real (2026-11-07), `fauna/murgol-macho`, semilla 4021, prompt `prompts/murgol/v7-cfg39.txt`, lanzada con
+  `fase.py`:** F0 37,7 s, EMD Cb 14,5 ✗ y Cr 23,9 ✗. Final con dos `-r` 206,4 s (el log confirma las dos referencias y el
+  prefijo), SSIM 0,527 ⚠, EMD Cb 12,0 ✗ y Cr 20,2 ✗; memoria libre mínima 9240 MB. Con el servidor real, la línea de
+  medida sale bien en F4, en los dos temas, y a 600 px los paneles se apilan sin desbordar. **Lectura:** el EMD acierta
+  (banner naranja rojizo con cielo de tormenta, Final de cielo pálido) y la segunda `-r` mueve poco el color. El SSIM da
+  aviso aunque la Final conserva pose y composición: el 0,7 parece estricto ahí, pero es un solo dato y no se cambia.
+  El sujeto no se parece al banner: sale un carnero con un jersey rojo literal, por «resembling a worn wool sweater» del
+  prompt v7. **Pendiente fuera de esta tarea (decide la usuaria):** corregir ese prompt y revisar el umbral de SSIM con
+  más Finales y con F1. **Sin probar con imágenes reales:** Regenerar y Avanzar desde los botones (lanzar por el servidor
+  solo está probado con tests y simulador).
+  En tres partes: **1**, la pantalla de fases sobre las rutas de `IMG-40` (pasos, referencia,
   fase anterior, intentos con ◀ ▶, prompt, Atrás/Regenerar/Avanzar, atajos), también en `?mock=1`, con la generación
   suelta de CFG-43 plegada debajo; **2**, rutas y botones de renombrar, borrar lo guardado con aviso (regla 4) y marcar
   ★ (una o varias; la biblioteca sigue en `IMG-42`); **3**, la medida junto al intento (`medir.sh`, SSIM con la fase
@@ -415,20 +425,18 @@ desde el panel vive en tablas que siembran.
   Cr con la imagen del juego, con los límites de `pautas.md` §5), que `fase.py` guarda en `medida` de cada intento
   (medir nunca hace fallar uno) y `fases.js` enseña bajo el intento, con ✓/⚠/✗; `--medir-con` lleva la imagen del juego
   aunque la casilla esté desmarcada. Sin `medir.sh`: pide un momento que los elementos no llevan, y una sola imagen
-  sustituye a su mediana de varias (YAVG/SATAVG, cuando haya momento). **Falta:** la prueba en la Deck con una F0 y una
-  Final reales (con dos `-r`), y ver si el 0,7 vale en F1 (fuerza 0,88) y en la Final (`-r`), que cambian más que F2.
+  sustituye a su mediana de varias (YAVG/SATAVG, cuando haya momento).
   **Casilla hecha (2026-11-07):** `fase.py --referencia`, `usarReferencia` en generar y avanzar; misma semilla al cambiar
-  la casilla, para comparar; tiempos estimados aparte. Probada con el simulador: falta una real con dos `-r` en la Final.
+  la casilla, para comparar; tiempos estimados aparte.
   **Parte 2 hecha (2026-11-07):** `camino.py` (`renombrar`, `tramo`, `dependientes`, `borrar_fase`, `marcar`), rutas
   `/api/camino/renombrar` y `/api/fase/{dependientes,borrar,marcar}`, igual en el simulador; en `fases.js`, nombre con ✎,
-  «Cómo se hizo», «Borrar esta fase» con aviso y Marcar/Quitar ★ (`M`); «★ n» en la lista. Pantalla probada solo con
-  `?mock=1`; falta con imágenes reales (parte 3).
+  «Cómo se hizo», «Borrar esta fase» con aviso y Marcar/Quitar ★ (`M`); «★ n» en la lista. Botones probados solo con
+  `?mock=1`.
   **Parte 1 hecha (2026-11-07):** `ui/js/fases.js` (pasos con ✓/⚠/actual, ver lo guardado de una fase hecha, los tres
   paneles, ◀ ▶, prompt por defecto: el del último intento, el aceptado de la entrada o el de la enciclopedia en F0;
   Atrás, Regenerar y un Avanzar por cada siguiente; atajos R, A, Intro, F, ← →), sobre el sondeo único de `app.js`; la
   generación suelta, plegada en `<details>` (`G` solo con ella desplegada); `&rapido=1` en el simulador;
-  `test_interfaz_pantalla_fases.py`. Variante única `base` hasta `IMG-42`. **Por mirar:** los dos temas y el apilado a
-  ≤640 px en `/?mock=1` (sin captura), y la pantalla con el servidor real.
+  `test_interfaz_pantalla_fases.py`. Variante única `base` hasta `IMG-42`.
 - **IMG-26 · Conocimiento compartido con GVIG y variante para juegos** [A] (usuaria, 2026-10-27; reescrita el
   2026-11-06): WMF Tarkor y `galivelop-image-generator` son dos productos con procesos distintos (fases y bocetos
   frente a rondas y montaje) y no se migra uno al otro. Se intercambian diseño, interfaz, procesos y lo aprendido, sin
