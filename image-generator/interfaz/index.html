@@ -64,6 +64,11 @@
   </aside>
 
   <div class="derecha">
+    <section id="fases" class="card fases" aria-label="Camino por fases" hidden></section>
+
+    <details id="antigua" class="antigua" hidden>
+    <summary>Generación suelta (antigua, CFG-43)</summary>
+    <div class="derecha">
     <section id="ficha" class="card" hidden>
       <div class="cabecera">
         <div id="fichaImagen"></div>
@@ -91,8 +96,6 @@
       <div id="resultado" class="notice" hidden></div>
     </section>
 
-    <section id="vacio" class="card"><h2>Elige un elemento</h2><p class="muted">Escoge uno de la lista (o crea uno nuevo) para ver su ficha, generar y comparar sus imágenes.</p></section>
-
     <section id="galeriaSeccion" class="card" hidden>
       <div class="row barra-galeria"><h2>Imágenes del elemento</h2>
         <select id="filtroPerfil" class="select-inline" aria-label="Filtrar por perfil"></select>
@@ -100,6 +103,10 @@
       <div id="avisoGaleria" class="notice notice-ok" hidden></div>
       <div id="galeria" class="galeria"></div>
     </section>
+    </div>
+    </details>
+
+    <section id="vacio" class="card"><h2>Elige un elemento</h2><p class="muted">Escoge uno de la lista (o crea uno nuevo) para recorrer sus fases, generar y comparar sus imágenes.</p></section>
   </div>
 </main>
 

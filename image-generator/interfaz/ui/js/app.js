@@ -14,6 +14,7 @@ import * as cola from './queue-poll.js';
 import { initQueueBar, toggleQueue, isQueueOpen } from './components/queue-bar.js';
 import { initShortcuts, setScreenKeys } from './components/shortcuts.js';
 import { initGamepad } from './lib/gamepad.js';
+import * as fases from './fases.js';
 
 const TAMANOS = { banner: '1280×512', thumbnail: '768×768', mapa: '832×624', icono: '512×512' };
 let elementos = [], actual = null, perfil = null, cargado = null, referencia = null, sondeo = null, perfilesBD = {};
@@ -82,7 +83,8 @@ async function elegirElemento(tipo, slug, perfilInicial) {
   actual = { tipo, slug };
   const e = datosElemento();
   perfilesBD = Object.fromEntries(e.perfiles.map((p) => [p.perfil, p.usado]));
-  $('vacio').hidden = true; $('ficha').hidden = false; $('galeriaSeccion').hidden = false;
+  $('vacio').hidden = true; $('antigua').hidden = false; $('ficha').hidden = false; $('galeriaSeccion').hidden = false;
+  if (cambia) fases.abrir(tipo, slug);  // el camino por fases (fases.js); lo de abajo es la generación suelta de antes
   $('fichaNombre').textContent = slug;
   $('fichaDetalle').textContent = `${tipo} · ${e.intentos} intento${e.intentos === 1 ? '' : 's'}${e.elegidas.length ? ' · elegida: ' + e.elegidas.join(', ') : ''}`;
   const caja = $('fichaImagen'); caja.replaceChildren();
@@ -171,9 +173,10 @@ function seguir() {
   clearTimeout(sondeo);
   sondeo = setTimeout(async () => {
     let e;
-    try { e = await api.estado(); } catch (err) { mostrarResultado(describeError(err), false); $('generar').disabled = false; return; }
+    try { e = await api.estado(); } catch (err) { mostrarResultado(describeError(err), false); $('generar').disabled = false; fases.terminado(null); return; }
     if (e.enMarcha) {
       $('progreso').hidden = false;
+      fases.progreso(e);
       const resto = Math.max(0, e.estimado - e.segundos);
       $('relleno').value = Math.max(2, Math.min(97, 100 * e.segundos / e.estimado));
       const fase = e.paso ? `paso ${e.paso}/${e.pasos}` : e.progreso;
@@ -181,6 +184,7 @@ function seguir() {
       return seguir();
     }
     $('generar').disabled = false; $('progreso').hidden = true;
+    await fases.terminado(e);
     if (e.rc === 0) { mostrarResultado(`Lista en ${e.segundos} s: ${e.nombre}`, true); toastOk(`Imagen lista: ${e.nombre}`); }
     else if (e.rc !== null && e.rc !== undefined) { mostrarResultado(`Falló (salida ${e.rc}) tras ${e.segundos} s: ${e.salida.slice(-3).join(' · ')}`, false, e.logFinal || e.salida.join('\n')); toastError(`La generación falló (salida ${e.rc}).`); }
     await cargarElementos();
@@ -227,7 +231,7 @@ function tarjeta(f, juegoSrc) {
     cargado = null; marcarFuente(); guardar(); buscarReferencia(); $('ficha').scrollIntoView({ behavior: 'smooth' }); } }, 'Reutilizar prompt y semilla');
   return h('div.tarjeta', { class: f.elegida ? 'elegida' : '' },
     f.elegida ? h('span.distintivo', {}, '✓ Elegida') : null,
-    f.imagen ? h('img.ampliable', { src, loading: 'lazy', alt: '', onclick: () => ampliar(src, f.nombre, juegoSrc) }) : h('div.sin-imagen', {}, `Sin imagen (salida ${f.salida})`),
+    f.imagen ? h('img.ampliable', { src, alt: '', onclick: () => ampliar(src, f.nombre, juegoSrc) }) : h('div.sin-imagen', {}, `Sin imagen (salida ${f.salida})`),
     h('div.cuerpo', {}, h('div.titulo', {}, f.perfil, h('small.muted', {}, ' · ' + f.nombre)), h('div.datos', {}, datosIntento(f)),
       nota, h('div.botones', {}, elegir, reutilizar, ok),
       h('details', {}, h('summary', {}, 'Prompt'), h('pre', {}, f.textoPrompt))));
@@ -250,10 +254,10 @@ function cerrarTodo() {
   if ($('settings').matches(':popover-open')) $('settings').hidePopover();
   if (!algo) dismissLastToast();
 }
-// Las teclas de esta pantalla (la del elemento de CFG-43); la de fases (IMG-43) trae Avanzar, Regenerar, Atrás y ★.
+// Las teclas de esta pantalla: las de fases (fases.js: Regenerar, Atrás, Avanzar, intentos) y las de siempre.
 const TECLAS = [
   { keys: ['/'], label: 'Ir al filtro de elementos', run: () => $('filtro').focus() },
-  { keys: ['G'], label: 'Generar imagen (con la ficha abierta)', run: () => { if (!$('ficha').hidden && !$('generar').disabled) $('generar').click(); } },
+  { keys: ['G'], label: 'Generar imagen suelta (con la generación antigua desplegada)', run: () => { if ($('antigua').open && !$('ficha').hidden && !$('generar').disabled) $('generar').click(); } },
 ];
 async function iniciar() {
   if (new URLSearchParams(location.search).get('mock') === '1') setTransport((await import('../mock/api-mock.js')).transport);
@@ -265,10 +269,11 @@ async function iniciar() {
   // la cola (pastilla y cajón de GVIG): su enlace abre el elemento en el perfil de la entrada
   initQueueBar($('queue-pill'), $('queue-drawer'), (e) => elegirElemento(e.tipo, e.slug, e.perfil));
   cola.start();
-  setScreenKeys('En la pantalla del elemento', TECLAS);
+  setScreenKeys('En la pantalla del elemento', [...fases.TECLAS, ...TECLAS]);
   initShortcuts({ toggleQueue, closeAll: cerrarTodo, isQueueOpen });
   initGamepad();
   const ini = await api.inicio();
+  fases.initFases({ ampliar, seguir }, ini.fases || []);
   $('mundo').textContent = `mundo ${ini.mundo} · todo se guarda en image-generator/generated/`;
   await cargarElementos();
   const e = await api.estado();

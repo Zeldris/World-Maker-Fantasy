@@ -13,6 +13,7 @@ const GLOBAL = [
   [['Tab'], 'Siguiente control (Mayús+Tab, el anterior)'],
 ];
 
+const TECLA_VISTA = { ArrowLeft: '←', ArrowRight: '→', Enter: 'Intro' };
 const ONE_KEY = 'gvig.oneKey';
 
 /** Interruptor «atajos de una tecla» (WCAG 2.1.4): activado por defecto, se guarda en el navegador. */
@@ -48,6 +49,8 @@ export function initShortcuts({ toggleQueue, closeAll, isQueueOpen }) {
     if (e.key === '?') { e.preventDefault(); openHelp(); return; }
     if (e.key === 'q' || e.key === 'Q') { e.preventDefault(); toggleQueue(); return; }
     if (queueOpen() || document.querySelector('dialog[open]')) return;
+    // Intro sobre un botón, enlace o resumen es suyo (activarlo), no un atajo de la pantalla
+    if (e.key === 'Enter' && e.target instanceof Element && e.target.closest('button, a, summary, [role="button"]')) return;
     const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
     const hit = screen.keys.find((k) => k.keys.includes(key));
     if (hit) { e.preventDefault(); hit.run(); }
@@ -59,7 +62,7 @@ export function openHelp() {
   if (screen.keys.length) groups.push([screen.title, screen.keys.map((k) => [k.keys, k.label])]);
   replace(el('shortcuts-body'), groups.map(([group, items]) => h('section.shortcut-group', {},
     h('h3', {}, group),
-    h('dl', {}, items.map(([keys, label]) => [h('dt', {}, keys.map((k) => h('kbd.kbd', {}, k))), h('dd', {}, label)])))),
+    h('dl', {}, items.map(([keys, label]) => [h('dt', {}, keys.map((k) => h('kbd.kbd', {}, TECLA_VISTA[k] || k))), h('dd', {}, label)])))),
   h('label.check', {}, h('input', { type: 'checkbox', checked: oneKeyEnabled(), onchange: (ev) => setOneKey(ev.target.checked) }),
     h('span', {}, 'Atajos de una tecla (?, Q y las letras de la pantalla)')),
   h('p.hint', {}, 'Si te estorban con un lector de pantalla o un mando, desactívalos: el resto de la interfaz funciona igual con el ratón y el Tab.'),

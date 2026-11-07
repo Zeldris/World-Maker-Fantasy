@@ -7,6 +7,7 @@
    - Fases (IMG-40, diseño §3.0): /api/camino y /api/fase/{generar,avanzar,atras} con las reglas de scripts/camino.py
      (grafo, fase de entrada aceptada, avanzar borra las imágenes no aceptadas salvo las que sirven de entrada, fases
      desfasadas, atrás, semilla por defecto); un intento de fase tarda 2 s por paso de su receta y con la semilla 13 falla.
+   - `&rapido=1` en la URL acorta cada paso a 50 ms (para los tests de navegador).
    No se carga en uso normal: app.js solo lo importa si la URL lleva `?mock=1`. */
 
 import { paths } from '../js/api.js';
@@ -65,6 +66,7 @@ const PASOS_FASE = { F0: 4, F1: 8, F2: 16, F4: 4 };
 const ESTIMADO_FASE = { F0: 36, F1: 300, F2: 300, F4: 160 };
 const SEMILLA_F0 = 3;
 const caminos = {};
+const PASO_MS = new URLSearchParams(location.search).get('rapido') === '1' ? 50 : 2000;
 const camino = (tipo, slug) => (caminos[`${tipo}/${slug}`] = caminos[`${tipo}/${slug}`] || { nombre: '', variantes: {}, marcadas: [] });
 const siguientesDe = (fase, tipo) => POR_ID[fase].siguientes.filter((s) => !(s === 'F3' && tipo === 'location'));
 const vistaCamino = (tipo, slug) => {
@@ -187,6 +189,10 @@ function pintar(texto, perfil, semilla) {
   return url;
 }
 paths.intento = (tipo, slug, nombre) => {
+  // un intento de fase (IMG-40): `<variante>-f<n>-<intento>`; una Final con las proporciones del banner, las demás del boceto
+  const v = Object.values((caminos[`${tipo}/${slug}`] || { variantes: {} }).variantes);
+  const it = v.flatMap((x) => Object.entries(x.fases)).flatMap(([fase, r]) => r.intentos.map((i) => ({ ...i, fase }))).find((i) => i.imagen === `${nombre}.png`);
+  if (it) return pintar(`${slug} · ${nombre}`, 'banner', it.semilla);
   const f = (datos[`${tipo}/${slug}`] || { intentos: [] }).intentos.find((x) => x.nombre === nombre);
   return pintar(`${slug} · ${nombre}`, f ? f.perfil : 'thumbnail', f ? f.semilla : 0);
 };
@@ -198,10 +204,10 @@ paths.juego = (ruta) => {
 /* ---------- la generación avanza sola ---------- */
 function verTrabajo() {
   if (!trabajo.inicio) return { ...trabajo };
-  const seg = Math.floor(((trabajo.fin || Date.now()) - trabajo.inicio) / 1000);
-  if (trabajo.enMarcha && seg >= trabajo.pasos * 2) terminar(seg);
+  const ms = (trabajo.fin || Date.now()) - trabajo.inicio, seg = Math.floor(ms / 1000);
+  if (trabajo.enMarcha && ms >= trabajo.pasos * PASO_MS) terminar(seg);
   const e = { ...trabajo, salida: [...trabajo.salida], segundos: seg };
-  if (e.enMarcha) { e.paso = Math.min(e.pasos, Math.floor(seg / 2)); e.progreso = e.paso ? 'difusión' : 'cargando el modelo'; }
+  if (e.enMarcha) { e.paso = Math.min(e.pasos, Math.floor(ms / PASO_MS)); e.progreso = e.paso ? 'difusión' : 'cargando el modelo'; }
   return e;
 }
 function terminarFase(seg) {

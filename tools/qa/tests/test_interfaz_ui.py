@@ -454,6 +454,10 @@ class Navegador(Base):
         pagina.evaluate("document.querySelector('#lista .elemento').click()")
         pagina.wait("!document.getElementById('ficha').hidden")
         pagina.evaluate("(() => { document.getElementById('pasos').value = 1; document.getElementById('semilla').value = 5; document.activeElement.blur(); })()")
+        # con la generación suelta plegada (IMG-25), G no la lanza a ciegas; desplegada, sí
+        pagina.key('g')
+        self.assertEqual(pagina.evaluate("document.getElementById('progreso').hidden"), True)
+        pagina.evaluate("(() => { document.getElementById('antigua').open = true; document.activeElement.blur(); })()")
         pagina.key('g')
         pagina.wait("document.getElementById('resultado').textContent.startsWith('Lista en')", timeout=20)
         # con los atajos de una tecla apagados (casilla de la ayuda), Q ya no abre la cola

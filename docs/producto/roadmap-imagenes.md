@@ -392,6 +392,17 @@ desde el panel vive en tablas que siembran.
   (si no cambia, con otra semilla); **Atrás** reabre la fase anterior. Renombrar, ver los pasos de cada imagen, borrar
   lo guardado y marcar ★. Sustituye a las entregas E2 y E2b. Depende de `IMG-39`, `IMG-40` e `IMG-41`. **L** Diseño:
   [`diseno-interfaz-continua.md`](plan-imagenes/diseno-interfaz-continua.md). Se conservan Publicar/Despublicar (`IMG-45`).
+  🚧 en curso (2026-11-07), en tres partes: **1**, la pantalla de fases sobre las rutas de `IMG-40` (pasos, referencia,
+  fase anterior, intentos con ◀ ▶, prompt, Atrás/Regenerar/Avanzar, atajos), también en `?mock=1`, con la generación
+  suelta de CFG-43 plegada debajo; **2**, rutas y botones de renombrar, borrar lo guardado con aviso (regla 4) y marcar
+  ★ (una o varias; la biblioteca sigue en `IMG-42`); **3**, la medida junto al intento (`medir.sh`, SSIM con la fase
+  anterior, §1.4.3) y la prueba en la Deck con una F0 y una Final reales.
+  **Parte 1 hecha (2026-11-07):** `ui/js/fases.js` (pasos con ✓/⚠/actual, ver lo guardado de una fase hecha, los tres
+  paneles, ◀ ▶, prompt por defecto: el del último intento, el aceptado de la entrada o el de la enciclopedia en F0;
+  Atrás, Regenerar y un Avanzar por cada siguiente; atajos R, A, Intro, F, ← →), sobre el sondeo único de `app.js`; la
+  generación suelta, plegada en `<details>` (`G` solo con ella desplegada); `&rapido=1` en el simulador;
+  `test_interfaz_pantalla_fases.py`. Variante única `base` hasta `IMG-42`. **Por mirar:** los dos temas y el apilado a
+  ≤640 px en `/?mock=1` (sin captura), y la pantalla con el servidor real.
 - **IMG-26 · Conocimiento compartido con GVIG y variante para juegos** [A] (usuaria, 2026-10-27; reescrita el
   2026-11-06): WMF Tarkor y `galivelop-image-generator` son dos productos con procesos distintos (fases y bocetos
   frente a rondas y montaje) y no se migra uno al otro. Se intercambian diseño, interfaz, procesos y lo aprendido, sin
