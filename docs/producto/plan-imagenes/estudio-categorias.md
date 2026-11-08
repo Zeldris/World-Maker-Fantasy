@@ -55,3 +55,28 @@ Hoja `generated/banco/hojas/sueltas-d54-1.png`.
 
 10. **Los restos de construcción visibles** (puertas, ventanas, cornisas) convierten la roca en ruina; la proporción
     en números ayuda poco con klein 4B.
+
+## Fauna: múrgol macho (2026-11-08, klein 4B, semillas 3 y 4)
+
+Hojas: `generated/banco/hojas/sueltas-murgol54-1.png` (filas A, B, C, D) y `sueltas-murgol54ef-1.png` (E, F).
+
+| Prueba | Qué cambia | Resultado | Color (emd cb/cr/y) |
+|---|---|---|---|
+| A techo | el prompt de la ficha (escrito mirando el banner, 291 palabras) | Composición del banner (de frente, rebaño, mesetas, sol), pero **cuernos de toro lisos** y lana corta con rayas rojas como sangre | 4/8/22, 4/6/18 |
+| B base | — (247 palabras) | **Otro animal**: toro de perfil, pelo corto, volcanes y acacias | 1/2/16, 2/5/22 |
+| C | B de frente, cornamenta ramificada, sin volcanes, una sola luz | Cornamenta de ciervo bien; sin rebaño, sabana con acacias | 1/9/3, 1/10/9 |
+| D lore | solo desde el lore con las reglas del lugar (208 palabras) | De frente, rebaño a los lados, cornamenta clara algo ramificada, flequillo: **el mejor de los cuatro**; la lana no cae en cordones | 6/11/19, 5/10/20 |
+| E | D con lana «in heavy matted cords like dreadlocks… dull rusty brown-red in patches» y cornamenta «like weathered driftwood… long pointed tines like an old stag's» | **Muy cerca del banner**: rastas grises con óxido, cornamenta ramificada, rebaño | — |
+| F | E con «musk ox» en vez de «yak» | Casi igual que E | — |
+
+**Conclusiones (fauna):**
+
+11. **El color no mide la forma**: B tiene la mejor distancia de color y es otro animal. En fauna la medida solo
+    sirve entre prompts que ya dan el animal.
+12. **Las palabras arrastran a una especie**: «pale bone antlers… blunt tines» da cuernos de toro; «antlers… tines
+    like an old stag's» da cornamenta. Se nombra el parecido con un animal real para cada rasgo raro.
+13. **Las texturas, con un parecido concreto**: «corded wool» no da cordones; «matted cords like dreadlocks» sí.
+14. **«Streaked with rust red» se pinta como sangre**; el tinte va como «dull rusty brown-red in patches».
+15. **El ancla del cuerpo pesa poco** cuando el cuerpo está bien descrito (E ≈ F).
+16. Lo que la base hace mal en fauna es lo de las pautas y el mundo, no el lore: el perfil y los cuernos enroscados
+    salen de `sexDimorphism.ts` y de la pose genérica, y los volcanes y acacias del paisaje de la región (regla 6).
