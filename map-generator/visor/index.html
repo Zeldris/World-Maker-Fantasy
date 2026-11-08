@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visor de Helek Sirik</title>
-<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias. Sin red: nada externo; lo sirve servir.py. -->
+<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias; MAP-7: relieve y costa. Sin red: nada externo; lo sirve servir.py. -->
 <style>
   :root { --fondo:#1b1d22; --panel:#262a31; --texto:#e6e2d8; --tenue:#9a9890; --borde:#3a3f48; --acento:#e0b04c; --mal:#e2685b; --ok:#7cc48a; }
   * { box-sizing: border-box; }
@@ -48,16 +48,30 @@
       <button data-vista="c2">Vaelira</button>
       <button id="mas">+</button><button id="menos">−</button>
     </div>
-    <h2>Editar (MAP-6)</h2>
+    <h2>Editar (MAP-6, MAP-7)</h2>
     <div class="modos" id="modos">
       <label><input type="radio" name="modo" value="ver" checked>Ver</label>
       <label><input type="radio" name="modo" value="region">Región</label>
       <label><input type="radio" name="modo" value="provincia">Provincia</label>
+      <label><input type="radio" name="modo" value="relieve">Relieve</label>
     </div>
     <div id="edicion" class="oculto">
-      <select id="objetivo"></select>
-      <div class="botones" id="botones-prov">
-        <button id="nueva-prov">Nueva provincia</button><button id="renombrar">Renombrar</button>
+      <div id="ed-celdas">
+        <select id="objetivo"></select>
+        <div class="botones" id="botones-prov">
+          <button id="nueva-prov">Nueva provincia</button><button id="renombrar">Renombrar</button>
+        </div>
+      </div>
+      <div id="ed-relieve" class="oculto">
+        <div class="modos" id="herramientas">
+          <label><input type="radio" name="herr" value="subir" checked>Subir</label>
+          <label><input type="radio" name="herr" value="bajar">Bajar</label>
+          <label><input type="radio" name="herr" value="tierra">Tierra</label>
+          <label><input type="radio" name="herr" value="mar">Mar</label>
+        </div>
+        <label>Fuerza <input type="range" id="fuerza" min="1" max="10" value="3" style="flex:1"><span id="fuerza-n" class="n">3</span></label>
+        <div class="ayuda">Bloquear (no se pinta su tierra ni su agua de costa):</div>
+        <div id="bloqueo"></div>
       </div>
       <select id="pincel">
         <option value="0">Pincel: 1 celda</option><option value="1">Pincel: celda y vecinas</option><option value="2">Pincel: 2 anillos</option>
@@ -72,7 +86,10 @@
     <p class="ayuda">Rueda: zoom. Arrastrar: mover. Clic: regla de distancia (dos clics); Esc la borra.
       Pasa el ratón para ver las medidas de la celda, su región, provincia y continente.</p>
     <p class="ayuda">Al editar: arrastrar pinta celdas de tierra (Mayús o botón derecho + arrastrar mueve el mapa);
-      Ctrl+Z deshace el último trazo. Pintar una región quita la provincia de la celda; pintar una provincia le pone
+      Ctrl+Z deshace el último trazo. En «Relieve», Subir/Bajar cambian la altura (fuerza 1-10), Tierra pone tierra
+      baja (21) en el mar y Mar pone 10 en la tierra; cada celda cambia una vez por trazo. La región y la provincia de
+      la tierra nueva y los continentes los calcula el servidor al Comprobar o Guardar. Las celdas de un continente
+      bloqueado (sombreadas) no se pintan; desmarca su casilla para editarlo. Pintar una región quita la provincia de la celda; pintar una provincia le pone
       su región. Las celdas de las capitales no cambian de región. «Guardar» pasa el canon y el lore, y avisa de qué
       medidas cambian; si algo falla, pide confirmación.</p>
   </aside>
@@ -169,7 +186,6 @@ function preparar() {
   });
   porRegion = sumaGrupo(M.regiones); porProv = sumaGrupo(M.provincias); porCont = sumaGrupo(M.continentes); porBioma = sumaGrupo(M.biomas);
   ARISTAS = aristas();
-  M._costa = trazoFrontera(() => 1);
   fronteras();
   // Rejilla para encontrar la celda bajo el ratón (las celdas son de Voronoi: la del centro más cercano).
   const T = 20; rejilla = { T, cols: Math.ceil(M.fuente.ancho / T) + 1, cajas: new Map() };
@@ -180,6 +196,7 @@ function preparar() {
 }
 
 function fronteras() {
+  M._costa = trazoFrontera(() => 1);
   M._regiones = trazoFrontera((c) => c.region);
   M._provincias = trazoFrontera((c) => c.provincia);
 }
@@ -247,6 +264,10 @@ function dibujar() {
       ctx.lineWidth = 3 * px; ctx.strokeStyle = 'rgba(20,20,20,.75)'; ctx.strokeText(lu.nombre, lu.x + 6 * px, lu.y);
       ctx.fillStyle = '#f6efd9'; ctx.fillText(lu.nombre, lu.x + 6 * px, lu.y);
     }
+  }
+  if (ed.modo === 'relieve') {
+    ctx.fillStyle = 'rgba(224,176,76,.22)';
+    for (const i of zonaBloqueada().keys()) ctx.fill(celdas[i]);
   }
   if (raton?.celda) { ctx.strokeStyle = '#e0b04c'; ctx.lineWidth = 2 * px; ctx.stroke(celdas[raton.celda.i]); }
   if (regla.length) {
@@ -324,7 +345,7 @@ lienzo.addEventListener('wheel', (ev) => { ev.preventDefault(); const b = lienzo
 lienzo.addEventListener('contextmenu', (ev) => ev.preventDefault());
 lienzo.addEventListener('pointerdown', (ev) => {
   lienzo.setPointerCapture(ev.pointerId);
-  if (M && ed.modo !== 'ver' && ev.button === 0 && !ev.shiftKey) { ed.trazo = []; pintarEn(...aMundo(ev)); return; }
+  if (M && ed.modo !== 'ver' && ev.button === 0 && !ev.shiftKey) { ed.trazo = []; ed.trazoH = []; ed.tocadas = new Set(); pintarEn(...aMundo(ev)); return; }
   arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: ed.modo !== 'ver' };
 });
 lienzo.addEventListener('pointermove', (ev) => {
@@ -357,8 +378,9 @@ window.addEventListener('resize', dibujar);
 
 /* MAP-6: edición de regiones y provincias. Los cambios se guardan en M.celdas y M.provincias al momento (para
    dibujarlos) y se comparan con ORIG para mandar al servidor solo lo que cambió. */
-const ed = { modo: 'ver', objetivo: { region: 0, provincia: 0 }, historial: [], trazo: null, provs: new Map() };
-let BASE = null, ORIG = null;
+const ed = { modo: 'ver', objetivo: { region: 0, provincia: 0 }, historial: [], trazo: null, provs: new Map(),
+  herr: 'subir', trazoH: [], tocadas: new Set(), bloqueo: new Set(), zona: null };
+let BASE = null, ORIG = null, ORIGH = null;
 const PALETA = ['#c0703a', '#8a5bb0', '#3f8f7a', '#b84d6e', '#6f8a2f', '#c49a2c', '#4a78b8', '#9c4f3a'];
 
 function avisar(texto) {
@@ -383,6 +405,7 @@ function pintarEn(x, y) {
   if (!centro) return;
   const prov = ed.modo === 'provincia' && ed.objetivo.provincia ? porProv[ed.objetivo.provincia] : null;
   let cambio = false;
+  if (ed.modo === 'relieve') { pintarRelieve(centro); return; }
   for (const c of vecindad(centro, +$('pincel').value)) {
     if (c.h < 20) continue;
     let region = c.region, provincia = c.provincia;
@@ -398,15 +421,54 @@ function pintarEn(x, y) {
   if (cambio) { fronteras(); estadoEdicion(); dibujar(); }
 }
 
+/* MAP-7: relieve. Cada celda se cambia una sola vez por trazo; las del continente bloqueado no se tocan. */
+function zonaBloqueada() {
+  if (ed.zona) return ed.zona;
+  const zona = new Map();
+  for (const c of M.celdas) {
+    if (ORIGH[c.i] >= 20 && ed.bloqueo.has(c.continente)) {
+      zona.set(c.i, c.continente);
+      for (const j of c.c) if (ORIGH[j] < 20) zona.set(j, c.continente);
+    }
+  }
+  return (ed.zona = zona);
+}
+
+function nuevaAltura(h) {
+  const f = +$('fuerza').value;
+  switch (ed.herr) {
+    case 'subir': return Math.min(100, h + f);
+    case 'bajar': return Math.max(0, h - f);
+    case 'tierra': return h < 20 ? 21 : h;
+    default: return h >= 20 ? 10 : h;
+  }
+}
+
+function pintarRelieve(centro) {
+  let cambio = false;
+  for (const c of vecindad(centro, +$('pincel').value)) {
+    if (ed.tocadas.has(c.i)) continue;
+    ed.tocadas.add(c.i);
+    const zona = zonaBloqueada().get(c.i);
+    if (zona !== undefined) { avisar(`La celda ${c.i} es de ${porCont[zona].nombre} (bloqueado): desmarca «${porCont[zona].nombre}» en Bloquear para editarla`); continue; }
+    const h = nuevaAltura(c.h);
+    if (h === c.h) continue;
+    ed.trazoH.push([c.i, c.h]);
+    c.h = h; cambio = true;
+  }
+  if (cambio) { fronteras(); estadoEdicion(); dibujar(); }
+}
+
 function cerrarTrazo() {
-  if (ed.trazo.length) ed.historial.push({ celdas: ed.trazo });
-  ed.trazo = null; estadoEdicion();
+  if (ed.trazo.length || ed.trazoH.length) ed.historial.push({ celdas: ed.trazo, alturas: ed.trazoH });
+  ed.trazo = null; ed.trazoH = []; ed.tocadas = new Set(); estadoEdicion();
 }
 
 function deshacer() {
   const paso = ed.historial.pop();
   if (!paso) return;
   for (const [i, r, p] of [...(paso.celdas || [])].reverse()) { M.celdas[i].region = r; M.celdas[i].provincia = p; }
+  for (const [i, h] of [...(paso.alturas || [])].reverse()) M.celdas[i].h = h;
   if (paso.provs) { ed.provs = paso.provs; M.provincias = paso.lista; porProv = sumaGrupo(M.provincias); montarObjetivo(); }
   fronteras(); estadoEdicion(); dibujar();
 }
@@ -444,16 +506,29 @@ function cambiosCeldas() {
   return lista;
 }
 
+function cambiosAlturas() {
+  const lista = [];
+  M.celdas.forEach((c, i) => { if (c.h !== ORIGH[i]) lista.push([i, c.h]); });
+  return lista;
+}
+
 function estadoEdicion() {
-  const n = cambiosCeldas().length, p = ed.provs.size, hay = n + p > 0;
-  $('pendientes').textContent = hay ? `Sin guardar: ${n} celda(s)${p ? `, ${p} provincia(s) nuevas o renombradas` : ''}.` : 'Sin cambios.';
+  const n = cambiosCeldas().length, p = ed.provs.size, a = cambiosAlturas().length, hay = n + p + a > 0;
+  $('pendientes').textContent = hay ? `Sin guardar: ${n} celda(s)${a ? `, ${a} con otra altura` : ''}${p ? `, ${p} provincia(s) nuevas o renombradas` : ''}.` : 'Sin cambios.';
   $('deshacer').disabled = !ed.historial.length;
   for (const b of ['comprobar', 'guardar', 'descartar']) $(b).disabled = !hay;
 }
 
+function montarBloqueo() {
+  $('bloqueo').innerHTML = M.continentes.map((k) => `<label><input type="checkbox" data-cont="${k.i}" ${ed.bloqueo.has(k.i) ? 'checked' : ''}>${esc(k.nombre)}</label>`).join('');
+}
+
 function montarObjetivo() {
   const sel = $('objetivo');
-  if (ed.modo === 'region') {
+  $('ed-celdas').classList.toggle('oculto', ed.modo === 'relieve');
+  $('ed-relieve').classList.toggle('oculto', ed.modo !== 'relieve');
+  if (ed.modo === 'relieve') { /* sin objetivo: la herramienta lo dice todo */ }
+  else if (ed.modo === 'region') {
     sel.innerHTML = [`<option value="0">Sin región</option>`, ...M.regiones.map((r) => `<option value="${r.i}">${esc(r.nombre)}</option>`)].join('');
     sel.value = ed.objetivo.region;
   } else {
@@ -466,7 +541,7 @@ function montarObjetivo() {
 }
 
 function lote(forzar) {
-  return { base: BASE, celdas: cambiosCeldas(), provincias: [...ed.provs.values()], ...(forzar ? { forzar: true } : {}) };
+  return { base: BASE, celdas: cambiosCeldas(), provincias: [...ed.provs.values()], alturas: cambiosAlturas(), bloqueo: [...ed.bloqueo].sort((a, b) => a - b), ...(forzar ? { forzar: true } : {}) };
 }
 
 async function enviar(ruta, forzar = false) {
@@ -478,14 +553,15 @@ const delta = (a, d) => (a ? `${fmtKm2(a.area)} → ${fmtKm2(d.area)} (${d.area 
 
 function mostrarInforme(inf, titulo) {
   $('informe').classList.remove('oculto'); $('informe-titulo').textContent = titulo;
-  const cambian = inf.cambian.length ? `<table>${inf.cambian.map((e) => `<tr><td>${e.tipo === 'region' ? 'Región' : 'Prov.'}</td><td>${esc(e.nombre)}<br>
+  const cambian = inf.cambian.length ? `<table>${inf.cambian.map((e) => `<tr><td>${{ region: 'Región', provincia: 'Prov.', continente: 'Cont.' }[e.tipo]}</td><td>${esc(e.nombre)}<br>
     <span class="n">${delta(e.antes, e.despues)}<br>${e.antes ? `${e.antes.envolvente.map((v) => fmtNum(v)).join(' × ')} → ` : ''}${e.despues.envolvente.map((v) => fmtNum(v)).join(' × ')} km</span></td></tr>`).join('')}</table>`
     : '<p class="ayuda">Ninguna medida cambia.</p>';
   const fallan = inf.lore.filter((r) => !r.ok);
   const lore = `<p class="${fallan.length ? 'mal' : 'ok'}">Lore: ${inf.lore.length - fallan.length} de ${inf.lore.length} reglas se cumplen</p>`
     + fallan.map((r) => `<p class="ayuda"><span class="mal">MAL</span> ${esc(r.id)}: ${esc(r.detalle)}</p>`).join('');
   const canonMal = inf.canon.filter((e) => !e.dentro).length;
-  $('informe-cuerpo').innerHTML = cambian + lore + `<p class="${canonMal ? 'mal' : 'ok'}">Canon: ${canonMal ? `${canonMal} medida(s) fuera` : 'todo dentro'} (tabla de abajo)</p>`;
+  const rel = inf.relieve ? `<p class="ayuda">Relieve: ${inf.relieve.alturas} celda(s) con otra altura, ${inf.relieve.aTierra} pasan a tierra, ${inf.relieve.aMar} a mar.</p>` : '';
+  $('informe-cuerpo').innerHTML = rel + cambian + lore + `<p class="${canonMal ? 'mal' : 'ok'}">Canon: ${canonMal ? `${canonMal} medida(s) fuera` : 'todo dentro'} (tabla de abajo)</p>`;
   MED = { ...MED, canon: inf.canon }; panelCanon();
 }
 
@@ -514,15 +590,24 @@ async function guardarCambios() {
 async function cargar(primera = true) {
   const r = await fetch('helek.json'), mundo = await r.json(), medidas = await (await fetch('medidas.json')).json();
   M = mundo; MED = medidas; BASE = r.headers.get('X-Huella');
-  ORIG = M.celdas.map((c) => [c.region, c.provincia]);
-  ed.historial = []; ed.provs = new Map();
+  ORIG = M.celdas.map((c) => [c.region, c.provincia]); ORIGH = M.celdas.map((c) => c.h);
+  ed.historial = []; ed.provs = new Map(); ed.zona = null; ed.trazoH = []; ed.tocadas = new Set();
+  if (primera) ed.bloqueo = new Set(M.continentes.filter((k) => k.nombre === 'Berig').map((k) => k.i));
+  else ed.bloqueo = new Set([...ed.bloqueo].filter((i) => M.continentes.some((k) => k.i === i)));
   if (primera) ed.objetivo.region = M.regiones[0]?.i ?? 0;
-  preparar(); panelCanon(); montarObjetivo(); estadoEdicion();
+  preparar(); panelCanon(); montarObjetivo(); montarBloqueo(); estadoEdicion();
   $('fuente').textContent = `${M.fuente.ancho} × ${M.fuente.alto} km · ${M.celdas.length} celdas · FMG ${M.fuente.fmg}`;
   if (primera) { montarCapas(); $('estado').remove(); encuadrar(MED.continentes['3']?.caja); } else dibujar();
 }
 
-$('modos').addEventListener('change', (ev) => { ed.modo = ev.target.value; montarObjetivo(); lienzo.style.cursor = ed.modo === 'ver' ? 'crosshair' : 'cell'; });
+$('modos').addEventListener('change', (ev) => { ed.modo = ev.target.value; montarObjetivo(); lienzo.style.cursor = ed.modo === 'ver' ? 'crosshair' : 'cell'; dibujar(); });
+$('herramientas').addEventListener('change', (ev) => { ed.herr = ev.target.value; });
+$('fuerza').addEventListener('input', (ev) => { $('fuerza-n').textContent = ev.target.value; });
+$('bloqueo').addEventListener('change', (ev) => {
+  const i = +ev.target.dataset.cont;
+  if (ev.target.checked) ed.bloqueo.add(i); else ed.bloqueo.delete(i);
+  ed.zona = null; dibujar();
+});
 $('objetivo').addEventListener('change', (ev) => { ed.objetivo[ed.modo] = +ev.target.value; });
 $('nueva-prov').addEventListener('click', nuevaProvincia); $('renombrar').addEventListener('click', renombrar);
 $('deshacer').addEventListener('click', deshacer); $('comprobar').addEventListener('click', comprobarCambios);

@@ -7,7 +7,7 @@ python3 map-generator/importar.py      # MAP-1: docs/map/Helek_World.map → mun
 python3 map-generator/medir.py         # MAP-2: medidas del mapa contra canon.json (sale con 1 si algo se sale del ±3 %)
 python3 map-generator/comprobar.py     # MAP-3: reglas de lore.json sobre el mapa (orden, fronteras, corredor; sale con 1 si alguna falla)
 python3 map-generator/exportar.py      # MAP-4: fronteras para el juego → frontend/src/data/helekRegiones.ts (--comprobar: falla si está desfasado)
-bash map-generator/abrir.sh           # MAP-5, MAP-6: visor y editor local en http://127.0.0.1:8765/ (sin red; --puerto N)
+bash map-generator/abrir.sh           # MAP-5, MAP-6, MAP-7: visor y editor local en http://127.0.0.1:8765/ (sin red; --puerto N)
 python3 -m unittest discover -s map-generator/tests
 ```
 
@@ -32,11 +32,18 @@ python3 -m unittest discover -s map-generator/tests
 - `abrir.sh`, `servir.py` y `visor/index.html`: el visor. El servidor escucha solo en 127.0.0.1 y sirve solo `/`,
   `/helek.json` y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
   carga nada de fuera. Es la base del editor de `MAP-6`…`MAP-9`.
-- `editar.py` (MAP-6): el editor de regiones y provincias del visor (modos Región y Provincia, pincel, provincia
-  nueva, renombrar, deshacer, Comprobar y Guardar). Valida cada lote, dice qué medidas cambian y cómo quedan el
+- `editar.py` (MAP-6, MAP-7): el editor del visor (modos Región, Provincia y Relieve; pincel, provincia nueva,
+  renombrar, deshacer, Comprobar y Guardar). Relieve: Subir, Bajar, Tierra y Mar cambian la altura `h` y la costa
+  (mar ↔ tierra: bioma, región y provincia se heredan de las vecinas, los continentes se recalculan; una isla nueva es
+  `Isla nueva N`; unir continentes o vaciar uno se rechaza); **Berig está bloqueado por defecto** (su tierra y su agua de
+  costa; casillas «Bloquear» en el visor, `"bloqueo": []` en un lote). Las rutas sobre mar nuevo son de `MAP-8`. Valida cada lote, dice qué medidas cambian y cómo quedan el
   canon y el lore, y guarda `helek.json`, `helek.geojson` y el archivo del juego; el servidor solo acepta los POST
   en JSON desde la propia página y sobre la versión que se abrió. **Tras editar, el mapa ya no sale del `.map`:**
   `importar.py` se niega a reimportar sin `--sobrescribir`. `--sin-juego` en `servir.py` no toca el archivo del juego.
+- **Por consola, sin servidor ni navegador** (agentes): `python3 map-generator/editar.py lote.json` comprueba y muestra el
+  informe (`--json`: en JSON; sale con 1 si el lote no vale o canon/lore fallan); `--guardar` escribe (con canon o lore
+  en rojo, solo con `--forzar`); `--mundo RUTA` trabaja sobre una copia (y entonces no toca el archivo del juego) y `--sin-juego` tampoco lo toca. Ejemplo
+  de lote (`base` es opcional): `{"alturas": [[1234, 30], [1235, 5]], "bloqueo": [], "celdas": [[1234, 18, 0]]}`.
 
 ## Fuentes y licencias
 

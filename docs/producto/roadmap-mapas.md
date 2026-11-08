@@ -85,8 +85,16 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   `helek.geojson` y `helekRegiones.ts`; rechaza un lote hecho sobre otra versión (409) y los POST de otro origen.
   `importar.py` ya no pisa un helek.json editado sin `--sobrescribir`. Probado con Chromium sin interfaz sobre una
   copia. **Pendiente:** que la usuaria lo use; deshacer tras guardar es `MAP-9`.
-- **MAP-7 · Editar relieve y costa** [P] (usuaria, 2026-11-05): pinceles para subir y bajar terreno y para pasar
-  celdas de mar a tierra, con zonas bloqueables (Berig entero, por defecto). **M**
+- ~~**MAP-7 · Editar relieve y costa**~~ [P] (usuaria, 2026-11-05): pinceles para subir y bajar terreno y para pasar
+  celdas de mar a tierra, con zonas bloqueables (Berig entero, por defecto). **M** ✅ 2026-11-08: modo Relieve del
+  visor (Subir y Bajar con fuerza 1-10, Tierra, Mar; mismo pincel y deshacer) y lote con `alturas` y `bloqueo`
+  (por defecto Berig: su tierra y su agua de costa; el servidor lo impone). La tierra nueva hereda bioma, región y
+  provincia de sus vecinas; la que pasa a mar se limpia (nunca la de un lugar); los continentes se recalculan (unir
+  dos o vaciar uno se rechaza; un trozo suelto es `Isla nueva`), y el informe dice qué continentes cambian y cuántas
+  celdas cambian de altura, a tierra y a mar. Para agentes (`MAP-16`): `editar.py lote.json` hace lo mismo que el
+  visor por consola (`--json`, `--guardar`, `--forzar`, `--mundo` de una copia, que no toca el archivo del juego).
+  Probado con Chromium sin interfaz sobre una copia. **Pendiente:** que la usuaria lo use; las rutas que crucen
+  mar nuevo, en `MAP-8`.
 - **MAP-8 · Ríos, rutas y lugares** [P] (usuaria, 2026-11-05): dibujar y editar ríos y rutas, y colocar lugares
   enlazados a su ficha de la enciclopedia (slug), con su nombre de lore. **M**
 - **MAP-9 · Guardar con historial** [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
