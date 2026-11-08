@@ -21,7 +21,7 @@
      "texto": "La Meseta solo toca el Margen.",
      "fuente": "areas.md; 00-nucleo.md"},
     {"id": "margen-toda-la-cienaga", "tipo": "cierra-por", "region": "Ciénaga Troncal", "borde": "sur", "por": "El Margen Silencioso", "minimo": 0.9,
-     "texto": "El Margen linda con toda la Ciénaga por su borde meridional (al menos el 90 % de la frontera sur de la Ciénaga es Margen).",
+     "texto": "El Margen linda con toda la Ciénaga por su borde meridional (borde sur: la celda más al sur de la Ciénaga en cada columna de 10 km; al menos el 90 % de sus vecinas de tierra más al sur que al lado son Margen).",
      "fuente": "areas.md; 00-nucleo.md"},
     {"id": "margen-sur-de-llanuras", "tipo": "lindan", "a": "El Margen Silencioso", "b": "Llanuras del Viento Rojo",
      "texto": "El Margen linda con el extremo sur de las Llanuras.",

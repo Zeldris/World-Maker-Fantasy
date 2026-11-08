@@ -5,6 +5,7 @@ Plan y decisiones: [`roadmap-mapas.md`](../docs/producto/roadmap-mapas.md). Solo
 ```bash
 python3 map-generator/importar.py      # MAP-1: docs/map/Helek_World.map → mundo/helek.json, helek.geojson, revisar.json
 python3 map-generator/medir.py         # MAP-2: medidas del mapa contra canon.json (sale con 1 si algo se sale del ±3 %)
+python3 map-generator/comprobar.py     # MAP-3: reglas de lore.json sobre el mapa (orden, fronteras, corredor; sale con 1 si alguna falla)
 python3 -m unittest discover -s map-generator/tests
 ```
 
@@ -21,6 +22,9 @@ python3 -m unittest discover -s map-generator/tests
 - `canon.json`: las medidas del canon que el mapa tiene que respetar y las que están `sinDecidir`. **Las cambia solo
   la usuaria.**
 - `medir.py` y `geometria.py`: área (shoelace), envolvente E-O × N-S y distancias entre lugares.
+- `lore.json` y `comprobar.py`: las reglas del lore que el mapa tiene que cumplir (franjas N-S, Llanuras al oeste,
+  fronteras, corredor costero, Vaelira al oeste, sin Isla Cambiante) y quien las ejecuta, con la cifra medida de cada
+  una. Las de `sinDecidir` se muestran con `?` y no hacen fallar. **Las reglas las cambia solo la usuaria.**
 
 ## Fuentes y licencias
 

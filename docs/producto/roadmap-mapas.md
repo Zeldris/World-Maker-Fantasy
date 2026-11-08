@@ -47,10 +47,13 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   envolventes de las 5 regiones y de Berig y dos distancias; todo dentro. **Sin decidir (usuaria):** el área de
   Berig (canon 100.000-115.000 km², el mapa da ~91.200: salió del rectángulo) y la forma de Vaelira (el canon la
   quiere más ancha que alta; en el `.map` está dibujada, ~260 × 504 km).
-- **MAP-3 · El lore en datos y su comprobador** [P] (usuaria, 2026-11-05): `mundo/lore.json` con las reglas del
+- ~~**MAP-3 · El lore en datos y su comprobador**~~ [P] (usuaria, 2026-11-05): `mundo/lore.json` con las reglas del
   mapa (tres franjas norte-sur, Llanuras al oeste y Ciénaga al este, el Margen como cinturón que linda con toda la
   Ciénaga y se adelgaza hacia la costa oeste, el corredor costero, el muro de obsidiana al norte, la Isla Cambiante
-  fuera del mapa) y `comprobar.py`, que las ejecuta sobre `helek.json`. **M**
+  fuera del mapa) y `comprobar.py`, que las ejecuta sobre `helek.json`. **M** ✅ 2026-11-08: 13 reglas, todas se cumplen (el Margen
+  cierra el 96 % del borde sur de la Ciénaga, se adelgaza al oeste a 33 km frente a 48 en el centro y deja un corredor
+  costero de ~35 km). **Sin decidir (usuaria):** el muro de obsidiana: en el `.map` Berig tiene costa norte (y ≈ 23),
+  y 13-escala § 6 pide un borde norte cortado por el muro, sin costa visible.
 - **MAP-4 · El juego lee del mapa propio** [P] (usuaria, 2026-11-05): las fronteras de `InteractiveMap.tsx` y la
   imagen de fondo se generan desde `helek.json` en vez de pegarse a mano; el juego se ve igual (comparación de
   capturas antes y después). **El fondo sigue siendo la imagen exportada de Azgaar** hasta que `MAP-13` la iguale
