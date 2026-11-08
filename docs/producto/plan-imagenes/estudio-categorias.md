@@ -142,3 +142,26 @@ y `sueltas-ayunt54e-1.png` (E).
 26. **Los adornos añadidos salen como atrezo pegado**: sin banner, menos adornos y unidos a la estructura.
 27. **Sin banner, el lore no basta para la identidad**: sale un granero de piedra, sin nada orco. Falta una decisión de
     diseño (forma, tamaño, qué lo distingue de la choza) que no es del agente: propuesta para la usuaria y Álvaro.
+
+## NPC: Gistera Koh (2026-11-08, klein 4B, semillas 3 y 4)
+
+Sin banner, a propósito (usuaria: el suyo no casa con la raza ni con el diseño de hembra orca); se juzga contra la
+raza (`fichas/raza/orcos-llanuras.json`, hembra) y su ficha (`worldCatalog.ts`: fugitiva, cazadora, cuchillo corto y
+odre). Hojas `sueltas-gistera54-1.png` (D entera, D rodillas), `sueltas-gistera54ef-1.png` (E, F) y `sueltas-gistera54g-1.png` (G).
+
+| Prueba | Resultado |
+|---|---|
+| D entera | Ilustración, no foto; figura pequeña; **orejas de elfo** (no pedidas); colmillos finos como bigote; cicatrices como trazos blancos |
+| D rodillas | Lo mismo con la cara legible |
+| E | rodillas + «young woman's face… small ears close to her head», «tusks like a wild boar's», «raised lines of old scar tissue»: siguen las orejas; cicatrices rojas, mejor |
+| F | E + «a film still of an actress in realistic orc prosthetic makeup»: más foto y cara más orca |
+| G | F sin la palabra «orc»: cara más humana, orejas algo menos; los colmillos se curvan a los lados |
+
+**Conclusiones (NPC):**
+
+28. **«Orc» trae el orco de videojuego** (orejas de elfo, ilustración) por encima de lo que diga el prompt; «a film
+    still of an actress in realistic prosthetic makeup» lo acerca a foto.
+29. **La analogía trae su forma entera**: «like a wild boar's» curva los colmillos a los lados como los del jabalí.
+    Para la forma del canon hay que decir la dirección («short thick tusks pointing straight up»).
+30. **Las cicatrices** se piden como tejido («raised lines of old scar tissue»), no como marca (regla 7).
+31. **De las rodillas arriba** la cara se lee en P1; de cuerpo entero queda diminuta.
