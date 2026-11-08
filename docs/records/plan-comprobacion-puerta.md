@@ -139,3 +139,32 @@ Ollama real apagado o lento) y P306 (los demás verbos de amenaza, p. ej. «muer
 del propio arreglo).
 
 Cuenta: 7 + 6 + 5 + 5 + 5 + 5 + 7 + 4 + 2 + 3 (solo locales: P244, P268, P271) = 49 (4 tareas y 45 hallazgos, cada uno en un solo sitio).
+
+## Paso 3.4: el resto de pendientes (2026-11-08), tandas 89-91 y lotes A-E
+
+Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos así (cada id en un solo sitio):
+
+- **Fuera de tanda.** Locales (Ollama real, la Deck o arte, a «Para la sesión local»): P49 y P66 (arte), P251, P252, P262-P266, P272-P274 y P311.
+  A decidir por la usuaria: P248, P254, P259, P270 y P364. Ya pasado a Álvaro: P317. De herramientas
+  (`escenario.sh` y sus pasos, sin `QA-*` nuevo mientras nada bloquee): P370, P371, P374, P377, P382, P383 y P427.
+- **Tandas 89-91: la nota dice arreglado (o puede haberlo arreglado otro cambio) y falta jugarlo.** Se juega
+  **solo lo que falta** según la última nota de la fila; mismas reglas que las tandas de arriba.
+- **Lotes A-E: bugs de código vistos y sin arreglar.** Van a sesiones de arreglo (`diagnosing-bugs`, test en rojo
+  sin el arreglo), uno por sistema; cada lote, al cerrarse, tiene su tanda de comprobación.
+
+| Tanda | Sistema | Escenario | Hallazgos y qué falta | Estado |
+|---|---|---|---|---|
+| 89 | Encuentros al moverse por la zona | `mv-hondonada-hostiles` (P27, P116, P269); `reino-dia39-recursos` en El Pozo (P133, P177, P203) | P27: la tarjeta «te corta el paso» del Orco enfurecido avisa del riesgo como la de fauna, e Interactuar abre su tarjeta de decisión. P116: la fauna hostil no corta el paso junto a una salida ni entra por ella. P269: huir con éxito no deja «Te cortan el paso» ni la brújula bloqueada. P133: con dos encuentros seguidos y «Seguir mi camino» en cada tarjeta, Gorhorn llega a la salida del oeste (x76,y400) y abre su aviso. P177/P203: cruzando el Pozo hacia el oeste no se alternan los mismos NPC (Guchapo, Telda…) ni salen 4-6 tarjetas seguidas | pendiente |
+| 90 | Recursos, oficios y tarjetas | `t13a-colmillo` (P99, P309); `mv-colmillo-ganado` (P136, P173, P308); `reino-dia39-recursos` (P158, P169) | P99: las descripciones de Carpintero, Curtidor y Primeros auxilios no repiten la región. P309: la cabecera de la tarjeta de la Cazadora Serhu no pierde el artículo al pulsar INTERACTUAR. P136/P173: «Recoger» en el Recinto de múrgoles domados concede leche y baja el punto (no se queda ×20). P308: «Cazar» al grupo de Múrgoles no rompe la pantalla. P158: el modal de Recolectar, con varias fuentes, enseña qué se tiró y contra qué. P169: con la ficha Zona desplazada, «Mapa» abre con pestañas y título a la vista | pendiente |
+| 91 | Combate y fin de partida | `t58-guchapo-mata-2muertes` (P128: dos muertes más, la 4.ª acaba la partida); `reino-dia39-recursos` (P129, P299 si alcanza); `mv-hondonada-hostiles` (P327, P328); `t13a-colmillo` (P205: Pilares Rotos) | P128: la 4.ª muerte lleva al selector de partidas, no a «Elige un mundo». P129: contra el grupo de 6 Guchapos, como mucho 2 golpes extra por ronda y no pasa de Ileso a Muerto en una. P327: habilidad + ACTUAR en el combate con el Orco hace algo (no 14 rondas en blanco). P328: tras pelear con el Orco, su ficha del mapa ya tiene nombre (también cuando el combate lo abre el texto libre). P205: un grupo de nivel 5 no corta el paso a Gorhorn de nivel 2 sin aviso en la salida del noroeste. P299: con el territorio PERDIDO no sigue el aviso «x de 7 días» | pendiente |
+
+| Lote | Sistema | Hallazgos |
+|---|---|---|
+| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P366, P376, P394, P426 |
+| B | Capas y modales (Playwright, sin confirmar en local) | P188, P250, P267 |
+| C | Reino: ganado, edificios y avisos | P332, P333, P334, P335, P336, P337, P338, P339, P340, P372, P384, P428 |
+| D | Reino: vasallos, Leyendas, hambre y bebida | P342, P343, P368, P379, P381 |
+| E | Compañeros, Cronista y diario | P319, P358, P375, P380 |
+
+Cuenta: 6 + 7 + 6 en tandas (19) + 12 + 3 + 12 + 5 + 4 en lotes (36) + 13 locales + 5 a decidir + 1 de Álvaro
++ 7 de herramientas = 81.
