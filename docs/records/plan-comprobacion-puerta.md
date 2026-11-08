@@ -145,7 +145,7 @@ Cuenta: 7 + 6 + 5 + 5 + 5 + 5 + 7 + 4 + 2 + 3 (solo locales: P244, P268, P271) =
 Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos así (cada id en un solo sitio):
 
 - **Fuera de tanda.** Locales (Ollama real, la Deck o arte, a «Para la sesión local»): P49 y P66 (arte), P251, P252, P262-P266, P272-P274 y P311.
-  A decidir por la usuaria: P248, P254, P259, P270 y P364. Ya pasado a Álvaro: P317. De herramientas
+  A decidir por la usuaria: P254 (las cuatro de 2026-11-08, abajo, pasan a los lotes). Ya pasado a Álvaro: P317. De herramientas
   (`escenario.sh` y sus pasos, sin `QA-*` nuevo mientras nada bloquee): P370, P371, P374, P377, P382, P383 y P427.
 - **Tandas 89-91: la nota dice arreglado (o puede haberlo arreglado otro cambio) y falta jugarlo.** Se juega
   **solo lo que falta** según la última nota de la fila; mismas reglas que las tandas de arriba.
@@ -160,11 +160,15 @@ Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos as
 
 | Lote | Sistema | Hallazgos |
 |---|---|---|
-| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P366, P376, P394, P426 |
-| B | Capas y modales (Playwright, sin confirmar en local) | P188, P250, P267 |
+| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P364, P366, P376, P394, P426 |
+| B | Capas, modales y mapa de zona | P188, P250, P259, P267 (P188, P250 y P267 vistos con Playwright, sin confirmar en local) |
 | C | Reino: ganado, edificios y avisos | P332, P333, P334, P335, P336, P337, P338, P339, P340, P372, P384, P428 |
-| D | Reino: vasallos, Leyendas, hambre y bebida | P342, P343, P368, P379, P381 |
-| E | Compañeros, Cronista y diario | P319, P358, P375, P380 |
+| D | Reino: vasallos, Leyendas, hambre y bebida | P248, P342, P343, P368, P379, P381 |
+| E | Compañeros, Cronista, reputación y diario | P270, P319, P358, P375, P380 |
 
-Cuenta: 6 + 7 + 6 en tandas (19) + 12 + 3 + 12 + 5 + 4 en lotes (36) + 13 locales + 5 a decidir + 1 de Álvaro
+Decisiones de la usuaria (2026-11-08), que pasan a bugs: **P248**, lo del Reino propio se ve siempre en Leyendas (sin
+Conocimiento); **P259**, la salida enseña su tarjeta (destino y tiempo) antes de andar; **P270**, perdonar con
+Clemente no resta reputación; **P364**, las heridas restan Destreza también en la huida.
+
+Cuenta: 6 + 7 + 6 en tandas (19) + 13 + 4 + 12 + 6 + 5 en lotes (40) + 13 locales + 1 a decidir + 1 de Álvaro
 + 7 de herramientas = 81.
