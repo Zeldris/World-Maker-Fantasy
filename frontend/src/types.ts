@@ -353,6 +353,9 @@ export interface RollInfo {
   /// retirado por ser puramente cosmético) — opcional porque tiradas persistidas antes de este
   /// campo no lo tienen; el badge cae de vuelta a solo éxito/fallo en ese caso.
   gradoExito?: 'claro' | 'fallo'
+  /// P364: resta por heridas y valor ya rebajado (solo la huida los lleva).
+  malus?: number
+  valorEfectivo?: number
 }
 
 /// Un lado del intercambio de combate (revisión de partida 2026-08-08, petición explícita: "que

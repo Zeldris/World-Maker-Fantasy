@@ -160,7 +160,7 @@ Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos as
 
 | Lote | Sistema | Hallazgos |
 |---|---|---|
-| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P364, P366, P376, P394, P426. Reparto (2026-11-08): A1 textos y huida (P360, P361, P363, P364, P394, en curso); A2 estado tras el combate y capas (P359, P362, P366, P376, P426); A3 NPC ausente (P325, P331). P16 a «Para la sesión local» (solo con Ollama real) |
+| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P364, P366, P376, P394, P426. Reparto (2026-11-08): A1 textos y huida hecha (P364 arreglado; P360, P361 y P394 ya arreglados antes; P363 a reproducir jugando en la tanda del lote A); A2 estado tras el combate y capas (P359, P362, P366, P376, P426); A3 NPC ausente (P325, P331). P16 a «Para la sesión local» (solo con Ollama real) |
 | B | Capas, modales y mapa de zona | P169 (de la tanda 90), P188, P250, P254, P259, P267 (P188, P250 y P267 vistos con Playwright, sin confirmar en local) |
 | C | Reino: ganado, edificios y avisos | P332, P333, P334, P335, P336, P337, P338, P339, P340, P372, P384, P428 |
 | D | Reino: vasallos, Leyendas, hambre y bebida | P248, P342, P343, P368, P379, P381 |
