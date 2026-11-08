@@ -662,7 +662,16 @@ export async function detectNpcsInScene(params: {
   if (ocultoNombrado) matchedIds.add(ocultoNombrado);
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
-  const matchedNpcs = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
+  const matchedPorNombre = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
+  // P331: un NPC fijo con su punto en OTRA zona de esta partida no está aquí aunque sea PRINCIPAL o ya se le conozca.
+  const enOtraZona = await slugsConPuntoSoloEnOtraZona({
+    saveId: params.saveId,
+    currentLocationId: params.currentLocationId,
+    slugs: matchedPorNombre
+      .filter((npc) => !estaEnCombate(npc) && !questTargetIds.has(npc.id) && npc.id !== ocultoNombrado)
+      .map((npc) => npc.slug),
+  });
+  const matchedNpcs = matchedPorNombre.filter((npc) => !enOtraZona.has(npc.slug));
   if (matchedNpcs.length === 0) return [];
 
   // Sin filtrar por `scope` en la consulta (varía por NPC según su `kind`, no es un único valor
@@ -677,6 +686,23 @@ export async function detectNpcsInScene(params: {
     params.saveId,
     matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P331: de estos NPC, los que en esta partida tienen su punto activo de mapa en otra zona y ninguno en la actual, y no
+/// van de compañeros. «Ataco a Gistera Koh» desde El Pozo, con ella en la Hondonada, no tiene destinatario aquí. Sin
+/// puntos por partida (zona sin visitar) o sin zona actual, no se descarta a nadie.
+async function slugsConPuntoSoloEnOtraZona(params: { saveId: string; currentLocationId: string | null; slugs: string[] }): Promise<Set<string>> {
+  if (!params.currentLocationId || params.slugs.length === 0) return new Set();
+  const [puntos, companeros] = await Promise.all([
+    prisma.zonePoint.findMany({
+      where: { saveId: params.saveId, tipo: 'NPC', activo: true, targetSlug: { in: params.slugs } },
+      select: { targetSlug: true, locationId: true },
+    }),
+    prisma.companion.findMany({ where: { saveId: params.saveId, sourceSlug: { in: params.slugs } }, select: { sourceSlug: true } }),
+  ]);
+  const acompanan = new Set(companeros.map((c) => c.sourceSlug));
+  const aqui = new Set(puntos.filter((p) => p.locationId === params.currentLocationId).map((p) => p.targetSlug));
+  return new Set(puntos.filter((p) => !aqui.has(p.targetSlug) && !acompanan.has(p.targetSlug)).map((p) => p.targetSlug));
 }
 
 /// P327 (usuaria, 2026-10-26): ¿nombra el texto a alguien por el nombre con que la jugadora lo ve? «Orco desconocido»

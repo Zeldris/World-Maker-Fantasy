@@ -30,6 +30,8 @@ const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
+const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string; locationId: string }[]);
+const findManyCompanion = vi.fn(async (..._args: unknown[]) => [] as { sourceSlug: string }[]);
 const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
 
 vi.mock('../lib/prisma.js', () => ({
@@ -47,6 +49,9 @@ vi.mock('../lib/prisma.js', () => ({
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     // P327: `detectNpcsInScene` consulta qué NPC con nombre propio ya conoce la jugadora.
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscovered(...args) },
+    // P331: puntos de NPC por partida y compañeros.
+    zonePoint: { findMany: (...args: unknown[]) => findManyZonePoint(...args) },
+    companion: { findMany: (...args: unknown[]) => findManyCompanion(...args) },
   },
 }));
 
@@ -462,6 +467,31 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  // P331: «Ataco a Gistera Koh» desde El Pozo, con su punto en la Hondonada, sacaba combate y XP porque la PRINCIPAL
+  // cuenta como candidata en cualquier sitio y el guard de «existe pero no está aquí» no llegaba a verla ausente.
+  describe('P331 — NPC fijo con su punto en otra zona', () => {
+    const gistera = () => baseNpc({ id: 'gistera', slug: 'gistera-koh', name: 'Gistera Koh', aliases: ['gistera koh', 'gistera'], kind: 'PRINCIPAL', homeLocationSlug: 'hondonada-del-eco' });
+    const llamar = (loc: string) => detectNpcsInScene({ action: 'Ataco a Gistera Koh', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: loc, fictionalMinutes: 480 });
+    beforeEach(() => {
+      findManyNpc.mockResolvedValue([gistera()]);
+      findManyLocation.mockResolvedValue([HONDONADA]);
+      findUniqueLocation.mockResolvedValue({ slug: 'pozo-cauce-viejo', region: 'Otra' });
+      findManyZonePoint.mockReset().mockResolvedValue([{ targetSlug: 'gistera-koh', locationId: 'loc-hondonada' }]);
+      findManyCompanion.mockReset().mockResolvedValue([]);
+    });
+
+    it('en otra zona: no está en escena', async () => {
+      expect(await llamar('loc-pozo')).toEqual([]);
+    });
+    it('en su zona: sí', async () => {
+      expect((await llamar('loc-hondonada')).map((n) => n.id)).toEqual(['gistera']);
+    });
+    it('de compañera: sigue en escena aunque su punto esté en otra zona', async () => {
+      findManyCompanion.mockResolvedValue([{ sourceSlug: 'gistera-koh' }]);
+      expect((await llamar('loc-pozo')).map((n) => n.id)).toEqual(['gistera']);
+    });
   });
 
   it('un NPC PRINCIPAL es candidato en cualquier escena, sin importar la ubicación', async () => {
