@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~ |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~, `IMG-54` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -93,6 +93,16 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 
 ### Bloque B · Prototipo
 
+- **IMG-54 · Estudio de prompts por categoría** [M] 🚧 en curso (usuaria, 2026-11-08; se adelanta a las pruebas de juego):
+  un elemento por categoría hasta saber qué hace que se genere bien solo, antes de combinar. Elementos: acantilados-partidos
+  (lugar), múrgol (fauna), cardo-brujula (flora), amuleto-hueso (objeto), un edificio mayor tipo ayuntamiento (construcción),
+  Gistera Koh (NPC, **sin su banner**: no casa con la raza) y goirntes macho (raza). Por elemento, mismo motor y semilla y el
+  banner solo para medir (`--medir-con`), nunca como `-r`: (1) techo, prompt escrito mirando el banner; (2) el de la base;
+  (3) una pieza cada vez (luz, encuadre, paisaje de región, reglas de las pautas). klein 4B primero; FLUX.3 solo con lo que ya
+  funcione. Sale del diagnóstico del 2026-11-08: el bueno de pilares era una copia del banner (entró como `-r` a 1983x793 en la
+  Final); la Final usa para todo el prompt r37 del guerrero; la luz de «día» de `mundo.json` es la de atardecer; el encuadre
+  fotorreal fija «low camera angle» en todo lugar; la regla «pale healed streaks» de `imagePromptGenerator.ts` pinta rayas que
+  el lore no pide. Queda: el arreglo de la Final por tipo, las tandas y llevar lo aprendido a las pautas y a `mundo.json`.
 - **IMG-39 · Prototipo de la pantalla del elemento** [A] (usuaria, 2026-11-06): maqueta desechable con la skill
   `prototype`, con imágenes ya generadas y sin motor, para que la usuaria pruebe avanzar, regenerar, atrás, variantes y
   ★ antes de construirlo. **S** ✅ 2026-11-07: maqueta
