@@ -102,7 +102,10 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   funcione. Sale del diagnóstico del 2026-11-08: el bueno de pilares era una copia del banner (entró como `-r` a 1983x793 en la
   Final); la Final usa para todo el prompt r37 del guerrero; la luz de «día» de `mundo.json` es la de atardecer; el encuadre
   fotorreal fija «low camera angle» en todo lugar; la regla «pale healed streaks» de `imagePromptGenerator.ts` pinta rayas que
-  el lore no pide. Queda: el arreglo de la Final por tipo, las tandas y llevar lo aprendido a las pautas y a `mundo.json`.
+  el lore no pide. ✅ 2026-11-08, hecho: la Final por tipo (prompt corto de estilo, test) y las tandas de las siete
+  categorías con klein 4B, con 33 reglas en [`estudio-categorias.md`](plan-imagenes/estudio-categorias.md). Queda: probar
+  con FLUX.3 los mejores de cada categoría (tamaño y proporción) y llevar las reglas a las pautas de
+  `imagePromptGenerator.ts` y a `mundo.json`; el diseño del ayuntamiento sin banner, a decidir por la usuaria.
 - **IMG-39 · Prototipo de la pantalla del elemento** [A] (usuaria, 2026-11-06): maqueta desechable con la skill
   `prototype`, con imágenes ya generadas y sin motor, para que la usuaria pruebe avanzar, regenerar, atrás, variantes y
   ★ antes de construirlo. **S** ✅ 2026-11-07: maqueta

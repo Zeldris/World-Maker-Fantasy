@@ -165,3 +165,34 @@ odre). Hojas `sueltas-gistera54-1.png` (D entera, D rodillas), `sueltas-gistera5
     Para la forma del canon hay que decir la dirección («short thick tusks pointing straight up»).
 30. **Las cicatrices** se piden como tejido («raised lines of old scar tissue»), no como marca (regla 7).
 31. **De las rodillas arriba** la cara se lee en P1; de cuerpo entero queda diminuta.
+
+## Raza: goirntes de la Meseta, macho (2026-11-08, klein 4B, semillas 3 y 4)
+
+Hoja `sueltas-goirnte54-1.png` (filas A, B, D).
+
+| Prueba | Resultado |
+|---|---|
+| A techo | ficha (escrita desde el banner, 330 palabras): composición del banner (muralla, ciudad con grúas, capa óxido), pero **un enano de dibujo** con orejas de elfo (el ancla «a stocky, tuskless orc») |
+| B base | **Un gólem de piedra** sin cara: la base eligió «built like a golem of living iron», «three heads tall», y una meseta soleada |
+| D lore | «A film still of an actor in realistic prosthetic makeup as a huge… humanoid», de los muslos arriba, piel «grey like slate» con «seams like the joints of an insect's shell»: **el más cercano al banner**; añade barba («actor» trae rasgos humanos) |
+
+32. **El ancla de un pueblo no puede ser otra criatura**: «orc» trae orejas y dibujo, «golem» trae piedra sin vida.
+    Mejor «a huge humanoid» y los rasgos uno a uno, cada uno con su parecido real.
+33. Lo que se quiera quitar de lo humano se dice («beardless»).
+
+## Lo común a todas las categorías
+
+1. **El modelo puede**: en todas las categorías, un prompt escrito desde el lore con estas reglas se acerca al banner
+   con klein 4B. Lo que falla es el prompt de la base: cambia el sujeto (lugar → bloques, múrgol → toro, goirnte → gólem,
+   cardo → colgante), mete el paisaje de la región (volcanes, acacias) y la luz de atardecer en todo.
+2. **Cada rasgo raro, con el objeto real al que se parece y su forma** (reglas 12, 13, 18, 24, 29): la forma la decide la
+   analogía, no el adjetivo.
+3. **Solo lo que se ve**: ni usos (17), ni reglas de estilo como «pale healed streaks» (7), ni «red streaks» (14, 20).
+4. **El color de cada material, con su suciedad** (3, 19, 20).
+5. **Encuadre por tipo**: lugar como paisaje con izquierda/derecha; fauna de frente con el rebaño; personas de los
+   muslos o rodillas arriba; objeto en su sitio de uso con objetos vecinos (22, 31).
+6. **Tamaño y proporción en números no los sigue klein 4B** (9, 18, 23): queda probarlo con FLUX.3.
+7. **Sin banner, el lore puede no bastar** para la identidad visual (ayuntamiento, regla 27): decisión de diseño.
+
+**Siguiente:** probar con FLUX.3 los mejores de cada categoría (acantilados D, pilares F, múrgol E, cardo E, amuleto E,
+ayuntamiento E, Gistera F, goirnte D) y llevar las reglas a las pautas de `imagePromptGenerator.ts` y a `mundo.json`.
