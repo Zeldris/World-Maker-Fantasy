@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAP-6, MAP-7: editar regiones, provincias, relieve y costa de helek.json (lo usa el visor por servir.py).
+"""MAP-6, MAP-7, MAP-8: editar regiones, provincias, relieve, costa, lugares, rutas y ríos de helek.json (lo usa el visor por servir.py).
 
 Un lote de cambios es un dict:
 
@@ -8,7 +8,14 @@ Un lote de cambios es un dict:
      "provincias": [{"i": 1, "nombre": "Nuevo nombre"},    # renombrar
                     {"i": 5, "nombre": "Nueva", "region": 18, "color": "#aa5533"}],   # crear (i nuevo)
      "alturas": [[celda, h], ...],                          # MAP-7: h entero de 0 a 100; tierra si h >= 20
-     "bloqueo": [3]}                                        # MAP-7: continentes cuya tierra y agua de costa no se tocan
+     "bloqueo": [3],                                        # MAP-7: continentes cuya tierra y agua de costa no se tocan
+     "lugares": [{"i": 900, "slug": "agujas-iman", "x": 540, "y": 190},   # MAP-8: crear (nombre o slug; sin
+                 {"i": 612, "slug": "campamento-serhu"},                 #   nombre, el de la ficha), enlazar
+                 {"i": 615, "x": 571, "y": 398, "nombre": "Otro"},       #   (slug null lo quita), mover, renombrar
+                 {"i": 900, "borrar": true}],
+     "rutas": [{"i": 451, "grupo": "trails", "puntos": [[x, y], ...]},   # MAP-8: crear o redibujar (roads, trails,
+               {"i": 0, "borrar": true}],                               #   searoutes)
+     "rios": [{"i": 1, "nombre": "Río…", "puntos": [[x, y], ...]}]}     # MAP-8: crear, redibujar, renombrar, borrar
 
 `aplicar` lo valida y devuelve el mundo nuevo (sin tocar el de entrada); `informe` dice qué medidas cambian y cómo
 quedan el canon (`canon.json`) y el lore (`lore.json`); `guardar` escribe helek.json (orden estable), helek.geojson y
@@ -21,8 +28,16 @@ tierra y su región y provincia más comunes; una que pasa a mar se queda sin bi
 puede ser la de un lugar). Los continentes se recalculan con las componentes conexas de tierra: una isla nueva es un
 continente `Isla nueva <i>`, un continente partido deja el trozo menor como continente nuevo, y unir dos continentes o
 dejar uno sin celdas se rechaza. Sin `bloqueo`, Berig (su tierra y el agua de su costa) no se toca; `"bloqueo": []`
-lo desbloquea. El bloqueo solo afecta a `alturas`. Las rutas y los ríos que crucen mar nuevo o tierra nueva NO se
-tratan aquí: son de `MAP-8`.
+lo desbloquea. El bloqueo solo afecta a `alturas`.
+
+Lugares, rutas y ríos (MAP-8). Un punto cae en la celda de centro más cercano. Un lugar va en tierra; su `slug` es el de
+su ficha de la enciclopedia (`enciclopedia.py`, de `worldCatalog.ts`), uno por lugar, y los nombres no se repiten.
+Las capitales no se borran ni salen de su región, y los lugares que nombra canon.json no se renombran ni se borran (el
+canon los busca por nombre; su nombre de lore va en la ficha). Lo que el lote dibuja tiene que estar en su sitio: un
+camino o una senda por tierra y en un solo continente (entre continentes, ruta marítima), una ruta marítima por agua
+salvo sus extremos (puertos) y un río por tierra salvo su último punto (desembocadura). Lo que el lote no redibuja
+puede venir de Azgaar con algún punto fuera de sitio; solo se rechaza si el relieve del lote le añade puntos fuera de
+sitio, y entonces se redibuja o se borra en el mismo lote.
 
 También se usa desde la consola (agentes, sin servidor ni navegador), con lo mismo que POST /comprobar y /guardar:
 
@@ -45,6 +60,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import comprobar  # noqa: E402
+import enciclopedia  # noqa: E402
 import exportar  # noqa: E402
 import importar  # noqa: E402
 import medir  # noqa: E402
@@ -237,10 +253,244 @@ def _continentes(nuevo, mundo):
         k['celdas'] = cuenta[k['i']]
 
 
-def aplicar(mundo, cambios):
-    """El mundo con `cambios` aplicados (copia). Lanza ErrorDeEdicion si algo no cuadra."""
+def _localizador(mundo):
+    """celda_en(x, y): la celda cuyo centro está más cerca del punto (las celdas son el Voronoi de sus centros)."""
+    lado = 20
+    cubos = {}
+    for c in mundo['celdas']:
+        cubos.setdefault((int(c['p'][0] // lado), int(c['p'][1] // lado)), []).append(c)
+
+    def celda_en(x, y):
+        bx, by, r, mejor = int(x // lado), int(y // lado), 0, None
+        while True:
+            for dx in range(-r, r + 1):
+                for dy in range(-r, r + 1):
+                    if max(abs(dx), abs(dy)) != r:
+                        continue
+                    for c in cubos.get((bx + dx, by + dy), ()):
+                        d = ((c['p'][0] - x) ** 2 + (c['p'][1] - y) ** 2, c['i'])
+                        if mejor is None or d < mejor:
+                            mejor = d
+            # Lo que queda fuera del anillo r está a más de r * lado del punto.
+            if mejor is not None and mejor[0] <= (r * lado) ** 2:
+                return mejor[1]
+            r += 1
+    return celda_en
+
+
+def _numero(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _punto(mundo, x, y, que):
+    ancho, alto = mundo['fuente']['ancho'], mundo['fuente']['alto']
+    if not (_numero(x) and _numero(y) and 0 <= x <= ancho and 0 <= y <= alto):
+        raise ErrorDeEdicion(f'{que}: el punto {[x, y]!r} no está dentro del mapa (0-{ancho} × 0-{alto})')
+    return [round(float(x), 2), round(float(y), 2)]
+
+
+def _puntos(mundo, valor, que):
+    if not (isinstance(valor, list) and len(valor) >= 2 and all(isinstance(p, list) and len(p) == 2 for p in valor)):
+        raise ErrorDeEdicion(f'{que}: los puntos tienen que ser una lista de al menos dos [x, y]')
+    return [_punto(mundo, x, y, que) for x, y in valor]
+
+
+def _nombres_del_canon(canon):
+    return {n for e in canon.get('medidas', []) for n in e.get('lugares', [])}
+
+
+def _lugares_lote(nuevo, cambios, canon, catalogo, celda_en):
+    """`lugares` del lote: crear (i nuevo), mover (x, y), renombrar, enlazar a la enciclopedia (slug) o borrar."""
+    ops = cambios.get('lugares', [])
+    if not isinstance(ops, list):
+        raise ErrorDeEdicion(f'lugares mal formado: {ops!r} (se espera una lista)')
+    if not ops:
+        return
+    por = {lu['i']: lu for lu in nuevo['lugares']}
+    del_canon = _nombres_del_canon(canon())
+    for e in ops:
+        if not isinstance(e, dict) or not _entero(e.get('i')):
+            raise ErrorDeEdicion(f'lugar sin índice entero: {e!r}')
+        i, lu = e['i'], por.get(e['i'])
+        if e.get('borrar'):
+            if set(e) != {'i', 'borrar'} or e['borrar'] is not True:
+                raise ErrorDeEdicion(f'para borrar el lugar {i} se manda solo {{"i": {i}, "borrar": true}}')
+            if lu is None:
+                raise ErrorDeEdicion(f'no existe el lugar {i}')
+            if lu.get('capital'):
+                raise ErrorDeEdicion(f"{lu['nombre']} es la capital de su región: no se borra")
+            if lu['nombre'] in del_canon:
+                raise ErrorDeEdicion(f"{lu['nombre']} lo nombra canon.json (lo cambia solo la usuaria): no se borra")
+            del por[i]
+            continue
+        sobra = set(e) - {'i', 'nombre', 'slug', 'x', 'y'}
+        if sobra:
+            raise ErrorDeEdicion(f"el lugar {i} lleva campos que no se editan: {', '.join(sorted(sobra))}")
+        es_nuevo = lu is None
+        if es_nuevo:
+            if i <= 0:
+                raise ErrorDeEdicion(f'índice de lugar no válido: {i}')
+            if 'x' not in e or 'y' not in e:
+                raise ErrorDeEdicion(f'el lugar nuevo {i} necesita x e y')
+            lu = {'i': i, 'nombre': None, 'x': None, 'y': None, 'celda': None, 'region': 0, 'tipo': 'Generic',
+                  'capital': False}
+        else:
+            lu = dict(lu)
+        ficha = None
+        if 'slug' in e:
+            if e['slug'] is None:
+                lu.pop('slug', None)
+            else:
+                fichas = {f['slug']: f for f in catalogo()}
+                ficha = fichas.get(e['slug'])
+                if ficha is None:
+                    raise ErrorDeEdicion(f"no hay ningún lugar con slug «{e['slug']}» en la enciclopedia "
+                                         '(python3 map-generator/enciclopedia.py los lista)')
+                lu['slug'] = e['slug']
+                if es_nuevo:
+                    lu['tipo'] = ficha['tipo']
+        if 'nombre' in e:
+            nombre = e['nombre'].strip() if isinstance(e['nombre'], str) else ''
+            if not nombre:
+                raise ErrorDeEdicion(f'el lugar {i} necesita un nombre')
+            if not es_nuevo and nombre != lu['nombre'] and lu['nombre'] in del_canon:
+                raise ErrorDeEdicion(f"{lu['nombre']} lo nombra canon.json (lo cambia solo la usuaria): no se renombra; "
+                                     'su nombre de lore va en la ficha de la enciclopedia (slug)')
+            lu['nombre'] = nombre
+        elif es_nuevo:
+            if ficha is None:
+                raise ErrorDeEdicion(f'el lugar nuevo {i} necesita un nombre o un slug de la enciclopedia')
+            lu['nombre'] = ficha['nombre']
+        if 'x' in e or 'y' in e:
+            if 'x' not in e or 'y' not in e:
+                raise ErrorDeEdicion(f'para mover el lugar {i} se mandan x e y')
+            lu['x'], lu['y'] = _punto(nuevo, e['x'], e['y'], f"lugar {lu['nombre']}")
+            k = celda_en(lu['x'], lu['y'])
+            if nuevo['celdas'][k]['h'] < TIERRA:
+                raise ErrorDeEdicion(f"{lu['nombre']} caería en mar (celda {k}): los lugares van en tierra")
+            lu['celda'] = k
+        por[i] = lu
+    lista = [por[i] for i in sorted(por)]
+    for campo, que in (('nombre', 'nombre de lugar repetido'), ('slug', 'slug enlazado a dos lugares')):
+        valores = [lu[campo] for lu in lista if lu.get(campo)]
+        repetidos = sorted({v for v in valores if valores.count(v) > 1})
+        if repetidos:
+            raise ErrorDeEdicion(f"{que}: {', '.join(repetidos)}")
+    nuevo['lugares'] = lista
+
+
+GRUPOS = ('roads', 'trails', 'searoutes')
+NOMBRE_GRUPO = {'roads': 'camino', 'trails': 'senda', 'searoutes': 'ruta marítima'}
+
+
+def _malos(mundo, trazo, es_rio, celdas_de):
+    """Puntos de un trazo que no están donde deben: un camino o un río (salvo su desembocadura) sobre agua, una ruta
+    marítima (salvo sus dos extremos) sobre tierra."""
+    celdas = list(dict.fromkeys(celdas_de(trazo)))
+    if es_rio:
+        boca = celdas_de(trazo)[-1]
+        return [k for k in celdas if k != boca and mundo['celdas'][k]['h'] < TIERRA]
+    if trazo['grupo'] == 'searoutes':
+        extremos = {celdas_de(trazo)[0], celdas_de(trazo)[-1]}
+        return [k for k in celdas if k not in extremos and mundo['celdas'][k]['h'] >= TIERRA]
+    return [k for k in celdas if mundo['celdas'][k]['h'] < TIERRA]
+
+
+def _describe(trazo, es_rio):
+    if es_rio:
+        return f"el río {trazo['i']}" + (f" ({trazo['nombre']})" if trazo.get('nombre') else '')
+    return f"la ruta {trazo['i']} ({NOMBRE_GRUPO[trazo['grupo']]}" + (
+        f", {trazo['continente']})" if trazo.get('continente') else ')')
+
+
+def _trazos_lote(nuevo, mundo, cambios, celda_en):
+    """`rutas` y `rios` del lote (crear, redibujar, renombrar un río o borrar) y, si el relieve cambió la costa, que lo
+    que el lote no redibuja no quede con más puntos fuera de sitio que antes."""
+    cache = {}
+
+    def celdas_de(trazo):
+        return [cache.setdefault(tuple(p), celda_en(*p)) for p in trazo['puntos']]
+
+    nombres = {k['i']: k['nombre'] for k in nuevo['continentes']}
+    tocados = {'rutas': set(), 'rios': set()}
+    for clave in ('rutas', 'rios'):
+        es_rio = clave == 'rios'
+        ops = cambios.get(clave, [])
+        if not isinstance(ops, list):
+            raise ErrorDeEdicion(f'{clave} mal formado: {ops!r} (se espera una lista)')
+        if not ops:
+            continue
+        por = {x['i']: x for x in nuevo[clave]}
+        for e in ops:
+            if not isinstance(e, dict) or not _entero(e.get('i')) or e['i'] < 0:
+                raise ErrorDeEdicion(f'{clave[:-1]} sin índice entero: {e!r}')
+            i, x = e['i'], por.get(e['i'])
+            tocados[clave].add(i)
+            if e.get('borrar'):
+                if set(e) != {'i', 'borrar'} or e['borrar'] is not True or x is None:
+                    raise ErrorDeEdicion(f'para borrar se manda solo {{"i": {i}, "borrar": true}} de uno que exista')
+                del por[i]
+                continue
+            sobra = set(e) - ({'i', 'nombre', 'puntos'} if es_rio else {'i', 'grupo', 'puntos'})
+            if sobra:
+                raise ErrorDeEdicion(f"{clave[:-1]} {i}: campos que no se editan: {', '.join(sorted(sobra))}")
+            if x is None and 'puntos' not in e:
+                raise ErrorDeEdicion(f'{clave[:-1]} nuevo {i}: necesita puntos')
+            puntos = _puntos(nuevo, e['puntos'], f'{clave[:-1]} {i}') if 'puntos' in e else x['puntos']
+            if es_rio:
+                nombre = e.get('nombre', x and x.get('nombre'))
+                nombre = nombre.strip() if isinstance(nombre, str) and nombre.strip() else None
+                trazo = {'i': i, 'nombre': nombre, 'puntos': puntos}
+            else:
+                grupo = e.get('grupo', x and x['grupo'])
+                if grupo not in GRUPOS:
+                    raise ErrorDeEdicion(f"ruta {i}: grupo {grupo!r} no válido ({', '.join(GRUPOS)})")
+                trazo = {'i': i, 'grupo': grupo, 'continente': None, 'puntos': puntos}
+                if grupo != 'searoutes':
+                    conts = sorted({nuevo['celdas'][k]['continente'] for k in celdas_de(trazo)} - {0})
+                    if len(conts) > 1:
+                        raise ErrorDeEdicion(f"{_describe(trazo, False)} une {' y '.join(nombres[k] for k in conts)}: "
+                                             'entre continentes va una ruta marítima')
+                    trazo['continente'] = nombres[conts[0]] if conts else None
+            malos = _malos(nuevo, trazo, es_rio, celdas_de)
+            if malos:
+                donde = 'tierra' if not es_rio and trazo['grupo'] == 'searoutes' else 'agua'
+                raise ErrorDeEdicion(f'{_describe(trazo, es_rio)} pasa por {donde} (celdas {malos[:5]}): '
+                                     + ('un río va por tierra y solo su último punto puede caer en agua' if es_rio else
+                                        'una ruta marítima va por agua salvo sus extremos' if donde == 'tierra' else
+                                        'un camino o una senda van por tierra'))
+            por[i] = trazo
+        nuevo[clave] = [por[i] for i in sorted(por)]
+    if all((a['h'] < TIERRA) == (b['h'] < TIERRA) for a, b in zip(mundo['celdas'], nuevo['celdas'])):
+        return
+    for clave in ('rutas', 'rios'):
+        for trazo in nuevo[clave]:
+            if trazo['i'] in tocados[clave]:
+                continue
+            antes = _malos(mundo, trazo, clave == 'rios', celdas_de)
+            despues = _malos(nuevo, trazo, clave == 'rios', celdas_de)
+            if len(despues) > len(antes):
+                nuevas = sorted(set(despues) - set(antes))[:5]
+                raise ErrorDeEdicion(f'con la costa nueva, {_describe(trazo, clave == "rios")} queda fuera de sitio '
+                                     f'(celdas {nuevas}): redibújala o bórrala en el mismo lote')
+
+
+def aplicar(mundo, cambios, canon=None, catalogo=None):
+    """El mundo con `cambios` aplicados (copia). Lanza ErrorDeEdicion si algo no cuadra. `canon` (el dict de
+    canon.json) y `catalogo` (la lista de enciclopedia.py) se cargan de su archivo solo si el lote los necesita."""
+    cargado = {}
+
+    def canon_():
+        return canon if canon is not None else cargado.setdefault('canon', cargar_json(medir.CANON))
+
+    def catalogo_():
+        return catalogo if catalogo is not None else cargado.setdefault('catalogo', enciclopedia.lugares())
+
     nuevo = copy.deepcopy(mundo)
     _alturas(nuevo, mundo, cambios)
+    celda_en = _localizador(nuevo)
+    _lugares_lote(nuevo, cambios, canon_, catalogo_, celda_en)
+    _trazos_lote(nuevo, mundo, cambios, celda_en)
     nuevo['provincias'] = _provincias(nuevo, cambios)
     region_de_prov = {p['i']: p['region'] for p in nuevo['provincias']}
     regiones = {r['i'] for r in nuevo['regiones']} | {0}
@@ -294,6 +544,21 @@ def _lore(mundo, lore):
         return [{'id': 'lore', 'ok': False, 'detalle': f'el lore no se puede comprobar: {type(e).__name__} {e}'}]
 
 
+def _diferencias(antes, despues):
+    """Lugares, rutas y ríos nuevos, cambiados y borrados (MAP-8), con el nombre o la descripción de cada uno."""
+    salida = {}
+    for clave in ('lugares', 'rutas', 'rios'):
+        a = {x['i']: x for x in antes[clave]}
+        d = {x['i']: x for x in despues[clave]}
+        nombre = (lambda x: x['nombre']) if clave == 'lugares' else (lambda x, c=clave: _describe(x, c == 'rios'))
+        salida[clave] = {
+            'nuevos': [nombre(d[i]) for i in sorted(d.keys() - a.keys())],
+            'cambian': [nombre(d[i]) for i in sorted(d.keys() & a.keys()) if d[i] != a[i]],
+            'borrados': [nombre(a[i]) for i in sorted(a.keys() - d.keys())],
+        }
+    return salida
+
+
 def informe(antes, despues, canon, lore):
     """Qué medidas cambian (área y envolvente de regiones, provincias y continentes), el resumen del relieve
     y el canon y el lore tras el cambio."""
@@ -321,6 +586,7 @@ def informe(antes, despues, canon, lore):
     lore_d = _lore(despues, lore)
     return {
         'relieve': relieve,
+        'trazos': _diferencias(antes, despues),
         'cambian': cambian,
         'canon': md['canon'],
         'lore': lore_d,
@@ -364,6 +630,12 @@ def texto_informe(inf):
     env = lambda a: ' × '.join(f'{v:.0f}' for v in a['envolvente'])  # noqa: E731
     r = inf['relieve']
     lineas = [f"Relieve: {r['alturas']} celda(s) con otra altura, {r['aTierra']} pasan a tierra, {r['aMar']} pasan a mar."]
+    for clave, que in (('lugares', 'Lugares'), ('rutas', 'Rutas'), ('rios', 'Ríos')):
+        t = inf.get('trazos', {}).get(clave, {})
+        partes = [f"{len(t[k])} {k} ({'; '.join(t[k][:5])}{'…' if len(t[k]) > 5 else ''})"
+                  for k in ('nuevos', 'cambian', 'borrados') if t.get(k)]
+        if partes:
+            lineas.append(f"{que}: {', '.join(partes)}.")
     if inf['cambian']:
         lineas.append('Medidas que cambian:')
     for e in inf['cambian']:
@@ -413,11 +685,12 @@ def main(argv=None):
     if 'base' in cambios and cambios['base'] != huella(datos):
         return fallo(f'{args.mundo} ha cambiado desde que se calculó la base del lote: vuelve a prepararlo')
     antes = json.loads(datos)
+    canon = cargar_json(args.canon)
     try:
-        despues = aplicar(antes, cambios)
+        despues = aplicar(antes, cambios, canon=canon)
     except ErrorDeEdicion as e:
         return fallo(str(e))
-    inf = informe(antes, despues, cargar_json(args.canon), cargar_json(args.lore))
+    inf = informe(antes, despues, canon, cargar_json(args.lore))
     inf['guardado'] = False
     if args.guardar and (inf['ok'] or args.forzar):
         # Con una copia (--mundo), el archivo del juego no se toca: lo regenera solo el helek.json de verdad.

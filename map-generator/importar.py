@@ -186,8 +186,13 @@ def geojson(mundo, celdas, vertices):
     for r in mundo['rutas']:
         feats.append({'type': 'Feature', 'properties': {'capa': 'ruta', 'i': r['i'], 'grupo': r['grupo']},
                       'geometry': {'type': 'LineString', 'coordinates': r['puntos']}})
+    for r in mundo['rios']:
+        if r.get('puntos'):
+            feats.append({'type': 'Feature', 'properties': {'capa': 'rio', 'i': r['i'], 'nombre': r.get('nombre')},
+                          'geometry': {'type': 'LineString', 'coordinates': r['puntos']}})
     for lu in mundo['lugares']:
-        feats.append({'type': 'Feature', 'properties': {'capa': 'lugar', 'i': lu['i'], 'nombre': lu['nombre']},
+        feats.append({'type': 'Feature', 'properties': {'capa': 'lugar', 'i': lu['i'], 'nombre': lu['nombre'],
+                                                        **({'slug': lu['slug']} if lu.get('slug') else {})},
                       'geometry': {'type': 'Point', 'coordinates': [lu['x'], lu['y']]}})
     return {'type': 'FeatureCollection', 'features': feats}
 

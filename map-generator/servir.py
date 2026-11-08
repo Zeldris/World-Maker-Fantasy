@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAP-5, MAP-6: sirve el visor y editor local de helek.json (sin red: escucha solo en 127.0.0.1).
+"""MAP-5, MAP-6, MAP-8: sirve el visor y editor local de helek.json (sin red: escucha solo en 127.0.0.1).
 
     python3 map-generator/servir.py              # http://127.0.0.1:8765/
     python3 map-generator/servir.py --puerto 0   # un puerto libre
@@ -7,6 +7,7 @@
 Rutas (solo estas; nada más del disco se sirve):
     /               el visor (visor/index.html)
     /helek.json     el mapa (mundo/helek.json)
+    /enciclopedia.json  los lugares de la enciclopedia (enciclopedia.py) para enlazar un lugar del mapa a su ficha
     /medidas.json   área y envolvente de cada región, provincia y continente, y el canon con lo medido,
                     calculado con medir.py y geometria.py (las mismas cuentas que el test del canon)
     POST /comprobar un lote de cambios (editar.py): qué medidas cambian, canon y lore; no escribe nada
@@ -27,6 +28,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import editar  # noqa: E402
+import enciclopedia  # noqa: E402
 import medir  # noqa: E402
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -71,7 +73,13 @@ class Visor(BaseHTTPRequestHandler):
                 canon = json.load(f)
             cuerpo = json.dumps(medidas(medir.cargar(self.mundo_ruta), canon), ensure_ascii=False)
             return self._enviar(cuerpo.encode('utf-8'), 'application/json')
-        self.send_error(404, 'El visor solo sirve /, /helek.json y /medidas.json')
+        if ruta == '/enciclopedia.json':
+            try:
+                cuerpo = json.dumps(enciclopedia.lugares(), ensure_ascii=False)
+            except (OSError, ValueError) as e:
+                return self._json({'error': f'no se puede leer la enciclopedia: {e}'}, 500)
+            return self._enviar(cuerpo.encode('utf-8'), 'application/json')
+        self.send_error(404, 'El visor solo sirve /, /helek.json, /medidas.json y /enciclopedia.json')
 
     def _json(self, datos, codigo=200):
         self._enviar(json.dumps(datos, ensure_ascii=False).encode('utf-8'), 'application/json', codigo)
@@ -107,7 +115,7 @@ class Visor(BaseHTTPRequestHandler):
                                             '(se pierden los cambios sin guardar)'}, 409)
             antes = json.loads(datos)
             try:
-                despues = editar.aplicar(antes, cambios)
+                despues = editar.aplicar(antes, cambios, canon=editar.cargar_json(self.canon_ruta))
             except editar.ErrorDeEdicion as e:
                 return self._json({'error': str(e)}, 400)
             inf = editar.informe(antes, despues, editar.cargar_json(self.canon_ruta), editar.cargar_json(self.lore_ruta))
