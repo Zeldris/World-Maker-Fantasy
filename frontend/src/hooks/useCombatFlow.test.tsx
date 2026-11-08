@@ -816,6 +816,23 @@ describe('closeCombat / handleCombatHuir', () => {
     })
   })
 
+  // P366: huir con un intercambio de la ronda anterior aún animándose; al aterrizar los dados se aplicaba
+  // su `combate` y el HUD volvía a «En combate» con el backend sin combate.
+  it('P366: tras huir con éxito, un intercambio pendiente no resucita el combate', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    const murgoles = { npcs: [npc({ slug: 'murgol', name: 'Múrgol' })] }
+    mockNarrate.mockResolvedValue(baseNarrateResponse({ combatExchangeDisplay: { atacanteEsJugador: false } as never, combateIniciado: murgoles }) as never)
+    mockHuirEnCurso.mockResolvedValue({ escaped: true, condicionFisica: 'ILESO', logEntry: { id: 'h1', channel: 'character', text: 'Escapas.', timeLabel: 'Día 1', createdAt: '2026-01-01T00:00:00Z' } } as never)
+    const { result } = renderHook(() => useHarness(murgoles))
+    act(() => result.current.combat.openCombat())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    await act(() => result.current.combat.handleCombatHuir())
+    expect(result.current.combateIniciado).toBeNull()
+    act(() => result.current.combat.triggerExchangeApply())
+    expect(result.current.combateIniciado).toBeNull()
+    expect(result.current.combat.combatOpen).toBe(false)
+  })
+
   it('handleCombatHuir con fallo: el popup se queda abierto, condicionFisica refleja el golpe directo', async () => {
     mockHuirEnCurso.mockResolvedValue({ escaped: false, condicionFisica: 'HERIDO', logEntry: { id: 'entrada-guardada', channel: 'character', text: 'No consigues huir y recibes un golpe.', timeLabel: 'Día 1, 08:00', createdAt: '2026-01-01T00:00:00Z', roll: { attribute: 'destreza', value: 10, roll: 3, difficulty: 12, result: 8, success: false } } })
     const { result } = renderHook(() => useHarness())

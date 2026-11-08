@@ -10,7 +10,7 @@ import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
 import { etiquetaDeFase } from '../lib/gamePhase'
-import { abrirCombateAlCargar, combateTrasResync } from '../lib/combateResync'
+import { abrirCombateAlCargar, combateTrasResync, hayCombateEnCurso, mapaDeZonaDebeCerrarse } from '../lib/combateResync'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -522,7 +522,7 @@ export function useGameViewState() {
   const { fase, puede } = useGamePhase({
     terminada: !!endedAt,
     muertePendiente: pendingDeathResolution,
-    enCombate: !!combateIniciado || combat.combatOpen,
+    enCombate: hayCombateEnCurso(combateIniciado, combat.combatOpen, combat.combatEnded),
     modoDinamico: !!activeDynamicMode,
     narradorEscribiendo: characterThinking,
     eleccionAbierta: claseVisible || especializacionVisible || reinoVisible,
@@ -1338,8 +1338,8 @@ export function useGameViewState() {
   // ZON-5 (hito 0.2): el mapa de movimiento ya no se cierra al chocar con algo; si de ahí sale un
   // combate (cazar, un agresivo, o desde la conversación), el combate manda y el mapa se cierra.
   useEffect(() => {
-    if (combat.combatOpen) setZonaModalOpen(false)
-  }, [combat.combatOpen, setZonaModalOpen])
+    if (mapaDeZonaDebeCerrarse(combateIniciado, combat.combatOpen)) setZonaModalOpen(false)
+  }, [combateIniciado, combat.combatOpen, setZonaModalOpen])
 
   // Modo dinámico/Interactuar/menú de NPC (Fase 12) — ver hooks/useModoDinamico.ts. Va tras
   // useTurnFlow porque necesita `handleSubmit`; los usos anteriores son solo callbacks/JSX.

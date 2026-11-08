@@ -431,6 +431,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // "Defenderse". Ahora usa el endpoint dedicado `combat/huir-en-curso` (misma tirada determinista
   // que `handleFleeAttempt` pre-combate): si falla, aplica un golpe directo real sin tirada de
   // defensa, reflejado tanto en `condicionFisica` como en la narración.
+  function cancelarTiradasPendientes() {
+    cancelarTirada(exchangeApplyTimerRef.current)
+    cancelarTirada(awaitingDefenseTimerRef.current)
+    exchangeApplyTimerRef.current = null
+    applyExchangeResultRef.current = null
+    awaitingDefenseTimerRef.current = null
+  }
+
   async function handleCombatHuir() {
     if (!saveId || combatBusy) return
     setCombatBusy(true)
@@ -440,9 +448,15 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
       setCondicionFisica(newCondicion as CondicionFisica)
       if (escaped) {
+        // P366: un intercambio de la ronda anterior aún en su animación aplicaba después su
+        // `combate` y resucitaba el combate del que se acababa de huir (HUD «En combate»).
+        cancelarTiradasPendientes()
         setCombatOpen(false)
         setCombateIniciado(null)
         setCombatAwaitingDefense(false)
+        setCombatEnded(false)
+        setAwaitingNextInitiative(false)
+        setAwaitingExchangeApply(false)
       }
       // Si falla, el popup se queda abierto con el combate en curso — el golpe ya aplicado se ve
       // reflejado en el estado de condición física, sin necesidad de cerrar ni reabrir nada.
@@ -999,14 +1013,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   function closeCombat() {
     // Cierre real de combate — cualquier timer/callback de intercambio/iniciativa que siga vivo de
     // un turno ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
-    cancelarTirada(exchangeApplyTimerRef.current)
-    cancelarTirada(awaitingDefenseTimerRef.current)
-    exchangeApplyTimerRef.current = null
-    applyExchangeResultRef.current = null
-    awaitingDefenseTimerRef.current = null
+    cancelarTiradasPendientes()
     setCombatOpen(false)
     setCombateIniciado(null)
     setCombatAwaitingDefense(false)
+    // P426: `combatEnded` seguía en true tras «Salir» y el siguiente combate heredaba el estado.
+    setCombatEnded(false)
     if (saveId) requestCerrarCombate(saveId).catch(() => {})
   }
 
