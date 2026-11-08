@@ -66,9 +66,14 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
 
 ## Fase M-B · Editor local propio
 
-- **MAP-5 · Visor local por capas** [P] (usuaria, 2026-11-05): `map-generator/abrir.sh` sirve una página sin red
+- ~~**MAP-5 · Visor local por capas**~~ [P] (usuaria, 2026-11-05): `map-generator/abrir.sh` sirve una página sin red
   que pinta `helek.json` por capas (relieve, biomas, regiones, ríos, rutas, lugares), con zoom, escala en km y
-  medidas al pasar el ratón. **M**
+  medidas al pasar el ratón. **M** ✅ 2026-11-08: `servir.py` (solo 127.0.0.1 y tres rutas: el visor, `helek.json` y
+  `medidas.json`, calculadas con `medir.py`) y `visor/index.html` (canvas, sin nada externo): capas de relieve,
+  biomas, regiones, provincias, costa, ríos (el mapa no tiene), rutas y lugares; zoom con la rueda, arrastrar,
+  vistas Todo/Berig/Vaelira, escala en km, regla de distancia con dos clics y, bajo el ratón, celda, altura, bioma y
+  área y envolvente de su continente, región y provincia; al lado, el canon con lo medido. Probado con Chromium sin
+  interfaz en la Deck (sin errores de JS). **Pendiente:** que la usuaria lo abra y lo use (ver abajo).
 - **MAP-6 · Editar regiones y fronteras** [P] (usuaria, 2026-11-05): mover límites celda a celda, crear y renombrar
   provincias; al guardar se pasan `comprobar.py` y el test del canon, y se avisa de qué medidas cambian. **M**
 - **MAP-7 · Editar relieve y costa** [P] (usuaria, 2026-11-05): pinceles para subir y bajar terreno y para pasar
