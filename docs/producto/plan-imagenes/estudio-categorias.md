@@ -120,3 +120,25 @@ Sin ficha ni prompt en `ImagePrompt` (no hay B). Hojas: `sueltas-amuleto54-1.png
 22. **El entorno de uso hace el banner**: la losa, las herramientas y los amuletos colgados de A dan el taller; desde
     el lore solo, el fondo queda vacío. El generador debería poner al objeto en su sitio de uso con objetos vecinos.
 23. El tamaño de las piezas pequeñas tampoco se sigue (regla 18).
+
+## Construcción: ayuntamiento pequeño (2026-11-08, klein 4B, semillas 3 y 4)
+
+Sin banner ni prompt en `ImagePrompt`: se juzga contra el lore (`AYUNTAMIENTO_PEQUENO_RECIPE`, `construction.ts`:
+sala de consejo modesta, piedra apilada, vigas de leña trabada, un fuego central). Hojas `sueltas-ayunt54-1.png` (D, D2)
+y `sueltas-ayunt54e-1.png` (E).
+
+| Prueba | Resultado |
+|---|---|
+| D lore | Casa larga de **ladrillo ordenado** con techo de troncos; la hoguera pegada a la puerta, como chimenea |
+| D2 | D + el estilo de clan de la choza (tendón, pieles, postes de hueso con marca): los huesos salen blancos, de dibujo; las pieles, franjas rojas |
+| E | D2 con «like a dry-stone wall from irregular rough fieldstones of every size», «doorway is dark inside, with only a warm orange glow from a fire deep within», «tusks of old yellowed bone, cracked and dirty»: piedra más irregular y fuego dentro; los colmillos parecen pegados |
+
+**Conclusiones (construcción):**
+
+24. **«Stacked stones» da ladrillo**; la piedra irregular se pide con su parecido real («a dry-stone wall… fieldstones
+    of every size»).
+25. **Una luz que sale de dentro se pinta en la puerta** salvo que se diga que el interior está oscuro y la luz viene
+    del fondo.
+26. **Los adornos añadidos salen como atrezo pegado**: sin banner, menos adornos y unidos a la estructura.
+27. **Sin banner, el lore no basta para la identidad**: sale un granero de piedra, sin nada orco. Falta una decisión de
+    diseño (forma, tamaño, qué lo distingue de la choza) que no es del agente: propuesta para la usuaria y Álvaro.
