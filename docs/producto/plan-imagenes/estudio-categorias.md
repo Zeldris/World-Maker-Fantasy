@@ -46,3 +46,12 @@ Hoja `generated/banco/hojas/sueltas-d54-1.png`.
 
 9. **La escala se dice por la imagen**, no por comparación: «rising from the bottom edge to near the top of the
    image». Y la palabra del objeto cuenta: «pillar» da poste; «rock spire / ruined tower» da la mole.
+
+- Pilares E (escala por la imagen, «colossal ruined towers… craggy spires»): moles grandes, pero rechonchas.
+- Pilares F (E + «slender craggy spires each about four times as tall as it is wide» + «carved with the worn remains
+  of ancient doorways, windows and ledges»): torres en ruina con puertas y ventanas, más altas: **lo más cerca del
+  banner sin mirarlo**. Siguen algo rechonchas y cuadradas: klein 4B no sigue la proporción en números; queda
+  probarlo con FLUX.3. Hoja `generated/banco/hojas/sueltas-f54-1.png`.
+
+10. **Los restos de construcción visibles** (puertas, ventanas, cornisas) convierten la roca en ruina; la proporción
+    en números ayuda poco con klein 4B.
