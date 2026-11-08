@@ -101,3 +101,22 @@ el banner (agujas negras y piedras flotando): va como C, y el techo A se escribi
 18. **Los materiales comparados** («wrought iron», «bent wire») sí cambian la forma; «as big as a melon» no cambia el
     tamaño con klein 4B (como la proporción de los pilares): el tamaño grande, a probar con FLUX.3.
 19. «Faint violet tint» da lila pastel; el banner es gris metálico casi sin violeta.
+
+## Objeto: amuleto de hueso (2026-11-08, klein 4B, semillas 3 y 4)
+
+Sin ficha ni prompt en `ImagePrompt` (no hay B). Hojas: `sueltas-amuleto54-1.png` (A, D) y `sueltas-amuleto54e-1.png` (E).
+
+| Prueba | Resultado |
+|---|---|
+| A techo | Muy cerca del banner (losa, banco, toldo rojo, meseta, amuletos colgados); algo limpio, de render |
+| D lore | «Ivory-yellow» da **amarillo plástico**; colmillos enormes («the size of a thumb» no cuenta); el cordel «loop» se cierra como pulsera; fondo vacío |
+| E | D con «dirty off-white, stained brown in its carved grooves, chipped and worn», «sags in a wide open curve»: color y cordel bien; el «red dust» sale como manchas rojas y las piezas como garras grandes |
+
+**Conclusiones (objeto):**
+
+20. **El color del material, con su suciedad**: «ivory-yellow» satura; «dirty off-white, stained brown in the grooves»
+    acierta. El polvo rojo sobre algo claro se pinta como sangre (regla 14): mejor «dusty».
+21. **La forma del conjunto, con un verbo**: «a loop» cierra el cordel; «sags in a wide open curve» lo abre.
+22. **El entorno de uso hace el banner**: la losa, las herramientas y los amuletos colgados de A dan el taller; desde
+    el lore solo, el fondo queda vacío. El generador debería poner al objeto en su sitio de uso con objetos vecinos.
+23. El tamaño de las piezas pequeñas tampoco se sigue (regla 18).
