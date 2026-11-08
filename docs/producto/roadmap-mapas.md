@@ -54,10 +54,15 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   cierra el 96 % del borde sur de la Ciénaga, se adelgaza al oeste a 33 km frente a 48 en el centro y deja un corredor
   costero de ~35 km). **Sin decidir (usuaria):** el muro de obsidiana: en el `.map` Berig tiene costa norte (y ≈ 23),
   y 13-escala § 6 pide un borde norte cortado por el muro, sin costa visible.
-- **MAP-4 · El juego lee del mapa propio** [P] (usuaria, 2026-11-05): las fronteras de `InteractiveMap.tsx` y la
+- ~~**MAP-4 · El juego lee del mapa propio**~~ [P] (usuaria, 2026-11-05): las fronteras de `InteractiveMap.tsx` y la
   imagen de fondo se generan desde `helek.json` en vez de pegarse a mano; el juego se ve igual (comparación de
   capturas antes y después). **El fondo sigue siendo la imagen exportada de Azgaar** hasta que `MAP-13` la iguale
-  y la usuaria lo apruebe (usuaria, 2026-11-05). **S-M**
+  y la usuaria lo apruebe (usuaria, 2026-11-05). **S-M** ✅ 2026-11-08: `exportar.py` escribe
+  `frontend/src/data/helekRegiones.ts` (contorno y envolvente de las 5 regiones, por id) e `InteractiveMap.tsx` lo lee;
+  nombres y etiquetas siguen en el componente. Los contornos salen idénticos a los pegados a mano (0 píxeles
+  distintos rasterizando a ½ unidad) y las envolventes de Llanuras y Cristal Helado, también; el test falla si el
+  archivo se queda atrás del mapa. **Pendiente:** el fondo es aún la imagen de Azgaar (`MAP-13`), y el recorte de
+  Berig (`BERIG_VIEWBOX`) sigue fijo en el componente.
 
 ## Fase M-B · Editor local propio
 

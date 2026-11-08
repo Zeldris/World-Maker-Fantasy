@@ -6,6 +6,7 @@ Plan y decisiones: [`roadmap-mapas.md`](../docs/producto/roadmap-mapas.md). Solo
 python3 map-generator/importar.py      # MAP-1: docs/map/Helek_World.map → mundo/helek.json, helek.geojson, revisar.json
 python3 map-generator/medir.py         # MAP-2: medidas del mapa contra canon.json (sale con 1 si algo se sale del ±3 %)
 python3 map-generator/comprobar.py     # MAP-3: reglas de lore.json sobre el mapa (orden, fronteras, corredor; sale con 1 si alguna falla)
+python3 map-generator/exportar.py      # MAP-4: fronteras para el juego → frontend/src/data/helekRegiones.ts (--comprobar: falla si está desfasado)
 python3 -m unittest discover -s map-generator/tests
 ```
 
@@ -25,6 +26,8 @@ python3 -m unittest discover -s map-generator/tests
 - `lore.json` y `comprobar.py`: las reglas del lore que el mapa tiene que cumplir (franjas N-S, Llanuras al oeste,
   fronteras, corredor costero, Vaelira al oeste, sin Isla Cambiante) y quien las ejecuta, con la cifra medida de cada
   una. Las de `sinDecidir` se muestran con `?` y no hacen fallar. **Las reglas las cambia solo la usuaria.**
+- `exportar.py`: lo que lee el juego. Hoy el contorno y la envolvente de cada región, que dibuja
+  `InteractiveMap.tsx`; **tras cambiar `helek.json` se vuelve a exportar** (el test falla si no).
 
 ## Fuentes y licencias
 
