@@ -15,8 +15,7 @@ generated/
 bocetos/*.png
 # IMG-24: los SVG los genera bocetos/plantilla.py a partir de la ficha (bocetos/rasterizar.sh).
 bocetos/*.svg
-# IMG-30: binario nuevo de sd.cpp y LoRAs de prueba, descargados (no se suben).
+# IMG-30: binario nuevo de sd.cpp, descargado (no se sube).
 bin-nuevo/
-loras-prueba/
 lora/conjunto/
 loras/

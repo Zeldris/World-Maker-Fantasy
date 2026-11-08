@@ -11,7 +11,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 ## Qué no leer
 
-- `docs/archivo/`, `docs/borradores-opencode/`, `tools/playwright-e2e/historico/`: historia, no el estado actual.
+- `docs/archivo/`, `docs/borradores-opencode/`: historia, no el estado actual.
 - `docs/records/checklist-pruebas-juego.md` y los `retro-*.md`: registros cerrados; la matriz
   (`docs/records/matriz-pruebas.md`) dice qué falta probar.
 - `docs/rpgtarkor/`: lore; solo cuando la tarea es de lore, y nunca se edita a mano (`AGENTS.md`).

@@ -5,17 +5,13 @@ tocado nada en ese repo). Todo lo de esta carpeta es material de trabajo para la
 
 | Archivo | Qué es |
 |---|---|
-| `auditoria-datos.md` | Qué datos hay de cada elemento, dónde, cobertura y huecos; campos propuestos de ficha visual |
-| `auditoria-lore-admin.md` | Flujo actual de propuestas (OpenCode), almacén del lore, admin existente, backend |
-| `auditoria-generador.md` | Arquitectura del generador, roadmap IMG-*, puntos débiles, qué cambiar |
-| `investigacion-interfaces.md` | Leonardo, Midjourney, InvokeAI, ComfyUI, Fooocus: qué copiar y por qué; FLUX.2 Klein y referencias |
 | `borradores/` | Guía visual del mundo, 4 fichas piloto, plantilla de prompt y prompts piloto (**borradores sin aprobar**) |
 | `spike/` | Pruebas reales con `sd-cli`: prompt nuevo, `-r`, toque fantástico y zona como fondo (`spike/informe.md`) |
 | `prototipo/index.html` | Prototipo clicable del panel (Propuestas, Fichas, Generador), datos ficticios |
 
 **Copiado al repo el 2026-10-25** (rama `claude/plan-imagenes`) desde `Desarrollos/plan-imagenes-tarkor/`. Las PNG
 de `spike/intentos/` (`A`, `B`, `C`, `D`, `F`, `G`, `H.png`) no se suben: están en la Deck, en la ruta ignorada
-`image-generator/pruebas/plan-imagenes-spike/`. Las rutas absolutas de `spike/run*.sh` son las de la carpeta original.
+`image-generator/pruebas/plan-imagenes-spike/` (borrada el 2026-11-08). Las rutas absolutas de `spike/run*.sh` son las de la carpeta original.
 
 ## 1. Lo que hemos visto
 

@@ -1,6 +1,6 @@
 # Guía visual del mundo — Helek Sirik / Tarkor (`IMG-4`)
 
-**Estado:** sacada de [`borradores/guia-visual-mundo.md`](borradores/guia-visual-mundo.md) el 2026-10-25, con las
+**Estado:** sacada del borrador de `borradores/` (en el historial de git) el 2026-10-25, con las
 decisiones de la usuaria de ese día ([plan](plan.md#decidido-usuaria-2026-10-25)) aplicadas. `WMF/` = la raíz del repo.
 Cada hecho lleva su fuente entre paréntesis. **«[propuesta]» = inferido o inventado, no está en el repo: espera la
 aprobación de la usuaria.** Lo que entra en los prompts está en `image-generator/estilo/mundo.json` y se monta con la
@@ -123,7 +123,7 @@ reescrito en positivo («the whole subject fully inside the frame»).
 - Sin humanos; sin pólvora ni arcabuz (`00-nucleo.md`).
 - Faerus sin túnica ni sandalias (`00-nucleo.md`).
 - Sin objetos hechos con partes de razas sintientes (`00-nucleo.md`).
-- Sin texto, firmas ni marcas de agua en la imagen (`CIERRE` de `imagePromptGenerator.ts`); sin palabras en inglés ni rótulos (`auditoria-datos.md` §8; `00-nucleo.md` «Sin palabras en inglés» se refiere al lore).
+- Sin texto, firmas ni marcas de agua en la imagen (`CIERRE` de `imagePromptGenerator.ts`); sin palabras en inglés ni rótulos (`00-nucleo.md` «Sin palabras en inglés» se refiere al lore).
 - Sin niebla en el Margen (`margen-silencioso.md`).
 - Corredor de Cauce: no añadirle materiales (moratoria) ni vivir en el Margen (`00-nucleo.md`).
 - Lo RESERVADO no se muestra: muro de obsidiana, Ciudad Hundida, Archivo Cegado, Entidad Desconocida, etc. (`00-nucleo.md`).

@@ -32,5 +32,4 @@ EOF
 python3 "$G/scripts/prompt_ficha.py" "$G/fichas/location/pastos-de-la-deriva.json" banner --mundo "$T/mundo-cine.json" > "$PROMPT_ARCHIVO"
 prueba estilo-cine 6
 prueba estilo-cine-pasos12 12
-MODELO=flux-2-klein-base-4b-Q8_0.gguf CFG=3.5 TOPE=3000 prueba base-cfg 20   # modelo sin destilar, con cfg real
 echo "Hecho."

@@ -43,7 +43,7 @@ paso . "enlaces de los .md" python3 .claude/gw/scripts/md-links.py
 paso . "mapa del agente" python3 tools/qa/mapa-agente.py
 paso . "tests de las skills en el CI" python3 tools/qa/skills-con-tests.py
 paso . "sintaxis de las herramientas" "for f in \$(git ls-files '*.sh' .githooks); do bash -n \"\$f\" || exit 1; done
-  for f in \$(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check \"\$f\" || exit 1; done
+  for f in \$(git ls-files 'tools/**/*.mjs'); do node --check \"\$f\" || exit 1; done
   for f in tools/playwright-e2e/mcp/*.js; do node -e \"new Function('return (' + require('fs').readFileSync('\$f', 'utf8') + ')')\" || { echo \"\$f\"; exit 1; }; done
   python3 -m py_compile \$(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')"
 # QA-219: Playwright para el test de navegador de pulsar.js/mover.js (sin Chromium en la máquina, el test se salta).

@@ -49,11 +49,11 @@ jobs:
       # QA-236: los tests de las skills, al lado de sus scripts, tienen su paso aquí y en ci-local.sh.
       - run: python3 tools/qa/skills-con-tests.py
       # QA-107: las herramientas de pruebas no se rompen sin que nadie lo vea hasta la ronda (sintaxis de los
-      # .sh, los .mjs y las ayudas de mcp/; historico/ son scripts archivados que no se ejecutan).
+      # .sh, los .mjs y las ayudas de mcp/).
       - name: Sintaxis de las herramientas
         run: |
           for f in $(git ls-files '*.sh' .githooks); do bash -n "$f" || exit 1; done
-          for f in $(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check "$f" || exit 1; done
+          for f in $(git ls-files 'tools/**/*.mjs'); do node --check "$f" || exit 1; done
           for f in tools/playwright-e2e/mcp/*.js; do node -e "new Function('return (' + require('fs').readFileSync('$f', 'utf8') + ')')" || { echo "$f"; exit 1; }; done
           python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')
       # QA-219: Playwright y Chromium para el test de navegador de pulsar.js/mover.js (sin ellos se salta).

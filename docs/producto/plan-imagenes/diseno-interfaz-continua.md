@@ -17,7 +17,7 @@ Parte de lo que hay: la interfaz de `CFG-43` (`image-generator/abrir.sh` → `in
 `interfaz/index.html`), el almacén por elemento `generated/<tipo>/<slug>/` (`intentos/`, `prompts/`, `logs/`,
 `registro.tsv`, `notas.md`, `elegidas.tsv`), `scripts/prompt_ficha.py --json`, `gradar.sh`, `medir.sh`,
 `banco/montar.sh`, las decisiones D1-D10 de [`plan.md`](plan.md) y el marco de [`plan-fotorreal.md`](plan-fotorreal.md)
-(regla de memoria, costes, `IMG-23`). Lo que ya investigó [`investigacion-interfaces.md`](investigacion-interfaces.md)
+(regla de memoria, costes, `IMG-23`). Lo que ya investigó `investigacion-interfaces.md` (borrado el 2026-11-08; en el historial de git)
 (InvokeAI, Midjourney, Leonardo, ComfyUI, Fooocus) no se repite: §5 lo amplía con pipelines de estudio y gestores de
 assets. Ampliado el 2026-10-27 con lo que dejó la r15 ([`banco/resultados.md`](banco/resultados.md#r15--ocho-planes-corporales-con-prompts-de-un-agente-img-21-2026-10-27)):
 plan corporal en la ficha, ancla por silueta (F6b), avisos F7-F9, fondo y lienzo del sujeto (P6, P7), volteo (P8),
@@ -573,7 +573,7 @@ se hacen con esas piezas. Lo que cambie aquí en el diseño común se apunta par
 
 ## 5. Referencias
 
-Amplían [`investigacion-interfaces.md`](investigacion-interfaces.md) (que ya cubre InvokeAI, Midjourney, Leonardo,
+Amplían `investigacion-interfaces.md` (que ya cubre InvokeAI, Midjourney, Leonardo,
 ComfyUI y Fooocus como herramientas de generación). Lo que se tomó de cada una:
 
 | Fuente | Qué aporta a este diseño |

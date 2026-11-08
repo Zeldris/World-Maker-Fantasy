@@ -202,7 +202,7 @@ FLUX.3 Klein trae un `flow shift` por defecto de 6,93 (`--flow-shift` para cambi
 ## Demo del 2026-10-24 (medido en la Deck)
 
 Con `demo.sh` (retirado en `QA-271`; hoy `probar.sh`) y los prompts reales del juego (tabla
-`ImagePrompt`, sin LLM). Imágenes, logs y prompts en `image-generator/pruebas/demo/` (fuera de git).
+`ImagePrompt`, sin LLM). Imágenes, logs y prompts estaban en `image-generator/pruebas/demo/` (fuera de git; borrada el 2026-11-08).
 
 | Prompt | Tamaño | Total | Memoria libre mínima | Frente a la imagen actual del juego |
 |---|---|---|---|---|
@@ -228,7 +228,7 @@ Objetivo de la usuaria: igualar el banner actual del múrgol (`backend/uploads/i
 1983×793, hecho fuera). Mismo prompt afinado a mano
 ([`prompts/murgol/v5.txt`](../../../image-generator/prompts/murgol/v5.txt); v1-v4, el camino hasta él), semilla 7
 y 1280×512 salvo donde se dice; una prueba cada vez con
-[`generar.sh`](../../../image-generator/scripts/generar.sh). Imágenes y logs en `image-generator/pruebas/murgol/`.
+[`generar.sh`](../../../image-generator/scripts/generar.sh). Imágenes y logs estaban en `image-generator/pruebas/murgol/` (borrada el 2026-11-08).
 
 | Prueba | Total | Memoria libre mínima | Resultado |
 |---|---|---|---|

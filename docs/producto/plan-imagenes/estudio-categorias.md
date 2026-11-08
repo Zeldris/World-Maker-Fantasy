@@ -171,6 +171,13 @@ odre). Hojas `sueltas-gistera54-1.png` (D entera, D rodillas), `sueltas-gistera5
   cuenta, y los colmillos siguen curvados a los lados aunque se pida «point straight up». Hoja `sueltas-gistera54h-1.png`.
   En ChatGPT el truco son dos pasos (figura, luego edición); el equivalente aquí es una fase de edición sobre la imagen
   (P2 con la anterior como referencia: «give this warrior a woman's chest, keep everything else»): queda probarlo.
+- Gistera en dos pasos (variante `rec-gistera`, klein 4B: P1 = H, P2 = «Make this warrior a woman: a young woman's
+  face with no beard and no moustache, smooth skin, and a woman's chest… Keep everything else exactly the same»):
+  **funciona**: mujer musculosa, misma pose, ropa y fondo. Pero «young woman's face, smooth skin» le quita lo orco a la
+  cara y el colmillo se vuelve un palito. Hoja `sueltas-recgis-1.png`.
+
+34. **El truco de la usuaria vale en dos pasos**: P1 sin palabras femeninas (sale fuerte), P2 de edición que nombra
+    **solo** el cambio («add a woman's chest, remove the beard»); todo lo que se nombre en la edición se rehace.
 
 ## Raza: goirntes de la Meseta, macho (2026-11-08, klein 4B, semillas 3 y 4)
 

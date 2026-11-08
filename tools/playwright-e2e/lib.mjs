@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { existsSync, readdirSync } from 'node:fs';
 
 /// Librería común para jugar el frontend real (QA-30, retro del 2026-10-09). Viene de
-/// `historico/recorrido/lib.mjs`, con dos cambios para que sirva en cualquier máquina:
+/// `historico/recorrido/lib.mjs` (borrado el 2026-11-08, en el historial de git), con dos cambios para que sirva en cualquier máquina:
 /// - la partida sale de la variable `SAVE_ID` (antes, una fija de la base de la Steam Deck);
 /// - en la nube usa el Chromium de `/opt/pw-browsers` (no hay Chrome de sistema).
 export const SAVE_ID = process.env.SAVE_ID ?? '';

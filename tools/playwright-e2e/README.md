@@ -27,8 +27,7 @@ Importa `lib.mjs` y pasa la partida por entorno: `SAVE_ID=<id> node mi_script.mj
 - `actuar`, `atacarEnCombate`, `defenderseEnCombate`, `elegirOpcionDialogo`, `turnoDirecto`…:
   esperan a la condición real (el turno con LLM tarda de 30 s a varios minutos), no a un tiempo fijo.
 - Las capturas van a `screenshots/` (ignorada por git).
-- `historico/`: los scripts de sesiones pasadas, con ids de partida y rutas de la Deck fijos. Sirven de
-  ejemplo, no para volver a ejecutarlos tal cual.
+- Los scripts de sesiones pasadas (`historico/`) se borraron el 2026-11-08: están en el historial de git.
 
 ## Jugar paso a paso sin el MCP (`driver.mjs`)
 
