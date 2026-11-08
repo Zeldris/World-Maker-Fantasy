@@ -80,3 +80,24 @@ Hojas: `generated/banco/hojas/sueltas-murgol54-1.png` (filas A, B, C, D) y `suel
 15. **El ancla del cuerpo pesa poco** cuando el cuerpo está bien descrito (E ≈ F).
 16. Lo que la base hace mal en fauna es lo de las pautas y el mundo, no el lore: el perfil y los cuernos enroscados
     salen de `sexDimorphism.ts` y de la pose genérica, y los volcanes y acacias del paisaje de la región (regla 6).
+
+## Flora: cardo-brújula (2026-11-08, klein 4B, semillas 3 y 4)
+
+Hojas: `generated/banco/hojas/sueltas-cardo54-1.png` (A, B, C, D) y `sueltas-cardo54e-1.png` (E). La ficha no describe
+el banner (agujas negras y piedras flotando): va como C, y el techo A se escribió aparte mirando el banner.
+
+| Prueba | Resultado |
+|---|---|
+| A techo | Composición del banner (acantilado a la derecha, mesetas a la izquierda, filamento de alambre), pero cardos naturales y finos |
+| B base | Un cardo suelto con **un colgante de hilo** («colgada de un hilo» del lore, pintado), volcanes, sol de cara |
+| C ficha | Capullo de alcachofa violáceo grande, rocas negras y agujas: la ficha, no el banner |
+| D lore | Composición del banner, capullo violáceo, arena oscura; planta fina y pequeña |
+| E | D con «stem… twisted like wrought iron», «scales of hammered pewter», «fibre curls up like a bent wire»: filamento y tallo bien; **el capullo sigue pequeño** y lila pastel |
+
+**Conclusiones (flora):**
+
+17. **El uso no se describe, se pinta**: lo que la planta hace (colgada de un hilo, gira hacia un rumbo) sale como
+    objeto literal. Solo se describe lo que se ve en la planta viva.
+18. **Los materiales comparados** («wrought iron», «bent wire») sí cambian la forma; «as big as a melon» no cambia el
+    tamaño con klein 4B (como la proporción de los pilares): el tamaño grande, a probar con FLUX.3.
+19. «Faint violet tint» da lila pastel; el banner es gris metálico casi sin violeta.
