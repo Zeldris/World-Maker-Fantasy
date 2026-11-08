@@ -7,13 +7,13 @@ python3 map-generator/importar.py      # MAP-1: docs/map/Helek_World.map → mun
 python3 map-generator/medir.py         # MAP-2: medidas del mapa contra canon.json (sale con 1 si algo se sale del ±3 %)
 python3 map-generator/comprobar.py     # MAP-3: reglas de lore.json sobre el mapa (orden, fronteras, corredor; sale con 1 si alguna falla)
 python3 map-generator/exportar.py      # MAP-4: fronteras para el juego → frontend/src/data/helekRegiones.ts (--comprobar: falla si está desfasado)
-bash map-generator/abrir.sh           # MAP-5: visor local por capas en http://127.0.0.1:8765/ (sin red; --puerto N)
+bash map-generator/abrir.sh           # MAP-5, MAP-6: visor y editor local en http://127.0.0.1:8765/ (sin red; --puerto N)
 python3 -m unittest discover -s map-generator/tests
 ```
 
 ## Qué hay
 
-- `importar.py`: lee el `.map` de **FMG 1.137.6** una vez (falla con su motivo si es de otra versión) y **nunca lo
+- `importar.py`: lee el `.map` de **FMG 1.137.6** una vez (y no pisa un `helek.json` editado sin `--sobrescribir`) (falla con su motivo si es de otra versión) y **nunca lo
   escribe**. FMG no guarda las celdas del mapa (`pack`): las rehace al cargar con `reGraph()`. Aquí se rehacen igual
   (`fmg/grafo.py`, con un port de Delaunator en `fmg/delaunator.py`), índice a índice: si la suma de áreas de cada
   región o las celdas de cada continente no cuadran con lo que guardó FMG, no se escribe nada.
@@ -32,6 +32,11 @@ python3 -m unittest discover -s map-generator/tests
 - `abrir.sh`, `servir.py` y `visor/index.html`: el visor. El servidor escucha solo en 127.0.0.1 y sirve solo `/`,
   `/helek.json` y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
   carga nada de fuera. Es la base del editor de `MAP-6`…`MAP-9`.
+- `editar.py` (MAP-6): el editor de regiones y provincias del visor (modos Región y Provincia, pincel, provincia
+  nueva, renombrar, deshacer, Comprobar y Guardar). Valida cada lote, dice qué medidas cambian y cómo quedan el
+  canon y el lore, y guarda `helek.json`, `helek.geojson` y el archivo del juego; el servidor solo acepta los POST
+  en JSON desde la propia página y sobre la versión que se abrió. **Tras editar, el mapa ya no sale del `.map`:**
+  `importar.py` se niega a reimportar sin `--sobrescribir`. `--sin-juego` en `servir.py` no toca el archivo del juego.
 
 ## Fuentes y licencias
 

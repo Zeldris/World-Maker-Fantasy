@@ -216,15 +216,25 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--map', default=MAPA)
     ap.add_argument('--salida', default=SALIDA)
+    ap.add_argument('--sobrescribir', action='store_true',
+                    help='reimporta aunque helek.json tenga cambios del editor (MAP-6), que se pierden')
     args = ap.parse_args(argv)
     try:
         mundo, celdas, vertices, revisar = importar(args.map)
     except (A.ErrorDeMapa, Descuadre) as e:
         print(f'importar.py: {e}', file=sys.stderr)
         return 1
+    destino = os.path.join(args.salida, 'helek.json')
+    texto = volcar(mundo)
+    if os.path.exists(destino) and not args.sobrescribir:
+        with open(destino, encoding='utf-8') as f:
+            if f.read() != texto:
+                print(f'importar.py: {destino} no es lo que sale del .map: tiene cambios del editor (MAP-6) y '
+                      'reimportar los borraría. Con --sobrescribir se pierden.', file=sys.stderr)
+                return 1
     os.makedirs(args.salida, exist_ok=True)
-    with open(os.path.join(args.salida, 'helek.json'), 'w', encoding='utf-8') as f:
-        f.write(volcar(mundo))
+    with open(destino, 'w', encoding='utf-8') as f:
+        f.write(texto)
     geo = geojson(mundo, celdas, vertices)
     with open(os.path.join(args.salida, 'helek.geojson'), 'w', encoding='utf-8') as f:
         f.write(volcar({'type': geo['type'], 'features': geo['features']}))

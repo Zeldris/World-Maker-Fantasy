@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visor de Helek Sirik</title>
-<!-- MAP-5: visor local por capas de mundo/helek.json. Sin red: nada externo; lo sirve servir.py. -->
+<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias. Sin red: nada externo; lo sirve servir.py. -->
 <style>
   :root { --fondo:#1b1d22; --panel:#262a31; --texto:#e6e2d8; --tenue:#9a9890; --borde:#3a3f48; --acento:#e0b04c; --mal:#e2685b; --ok:#7cc48a; }
   * { box-sizing: border-box; }
@@ -27,6 +27,11 @@
   .muestra { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:middle; margin-right:4px; }
   table { border-collapse:collapse; width:100%; font-size:12px; } td { padding:2px 3px; border-top:1px solid var(--borde); vertical-align:top; }
   .ok { color:var(--ok); } .mal { color:var(--mal); } .ayuda { color:var(--tenue); font-size:12px; }
+  select { width:100%; background:#323741; color:var(--texto); border:1px solid var(--borde); border-radius:4px; padding:3px; font:inherit; margin:3px 0; }
+  .modos { display:flex; gap:8px; } .oculto { display:none !important; }
+  button:disabled { opacity:.45; cursor:default; border-color:var(--borde); }
+  #aviso { position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(40,30,28,.92); border:1px solid var(--mal); padding:5px 10px; border-radius:4px; display:none; }
+  #pendientes { margin:6px 0 4px; }
 </style>
 </head>
 <body>
@@ -43,19 +48,45 @@
       <button data-vista="c2">Vaelira</button>
       <button id="mas">+</button><button id="menos">−</button>
     </div>
+    <h2>Editar (MAP-6)</h2>
+    <div class="modos" id="modos">
+      <label><input type="radio" name="modo" value="ver" checked>Ver</label>
+      <label><input type="radio" name="modo" value="region">Región</label>
+      <label><input type="radio" name="modo" value="provincia">Provincia</label>
+    </div>
+    <div id="edicion" class="oculto">
+      <select id="objetivo"></select>
+      <div class="botones" id="botones-prov">
+        <button id="nueva-prov">Nueva provincia</button><button id="renombrar">Renombrar</button>
+      </div>
+      <select id="pincel">
+        <option value="0">Pincel: 1 celda</option><option value="1">Pincel: celda y vecinas</option><option value="2">Pincel: 2 anillos</option>
+      </select>
+    </div>
+    <div id="pendientes" class="ayuda">Sin cambios.</div>
+    <div class="botones">
+      <button id="deshacer" disabled>Deshacer</button><button id="comprobar" disabled>Comprobar</button>
+      <button id="guardar" disabled>Guardar</button><button id="descartar" disabled>Descartar</button>
+    </div>
     <h2>Uso</h2>
     <p class="ayuda">Rueda: zoom. Arrastrar: mover. Clic: regla de distancia (dos clics); Esc la borra.
       Pasa el ratón para ver las medidas de la celda, su región, provincia y continente.</p>
+    <p class="ayuda">Al editar: arrastrar pinta celdas de tierra (Mayús o botón derecho + arrastrar mueve el mapa);
+      Ctrl+Z deshace el último trazo. Pintar una región quita la provincia de la celda; pintar una provincia le pone
+      su región. Las celdas de las capitales no cambian de región. «Guardar» pasa el canon y el lore, y avisa de qué
+      medidas cambian; si algo falla, pide confirmación.</p>
   </aside>
   <main>
     <canvas id="lienzo"></canvas>
     <div id="estado">Cargando helek.json…</div>
     <div id="escala"><span id="escala-txt"></span><div id="escala-barra"></div></div>
     <div id="regla"></div>
+    <div id="aviso"></div>
   </main>
   <aside>
     <h2>Bajo el ratón</h2>
     <dl id="info"><dt>—</dt><dd>Pasa el ratón por el mapa.</dd></dl>
+    <div id="informe" class="oculto"><h2 id="informe-titulo">Cambios</h2><div id="informe-cuerpo"></div></div>
     <h2>Canon (±<span id="tol">3</span> %)</h2>
     <table id="canon"></table>
   </aside>
@@ -67,6 +98,7 @@ const lienzo = $('lienzo'), ctx = lienzo.getContext('2d');
 const fmtNum = (v, d = 0) => v.toLocaleString('es-ES', { maximumFractionDigits: d, minimumFractionDigits: d });
 const fmtKm = (v) => `${fmtNum(v)} km`;
 const fmtKm2 = (v) => `${fmtNum(v)} km²`;
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 
 const CAPAS = [
   { id: 'relieve', nombre: 'Relieve', on: true },
@@ -138,14 +170,18 @@ function preparar() {
   porRegion = sumaGrupo(M.regiones); porProv = sumaGrupo(M.provincias); porCont = sumaGrupo(M.continentes); porBioma = sumaGrupo(M.biomas);
   ARISTAS = aristas();
   M._costa = trazoFrontera(() => 1);
-  M._regiones = trazoFrontera((c) => c.region);
-  M._provincias = trazoFrontera((c) => c.provincia);
+  fronteras();
   // Rejilla para encontrar la celda bajo el ratón (las celdas son de Voronoi: la del centro más cercano).
   const T = 20; rejilla = { T, cols: Math.ceil(M.fuente.ancho / T) + 1, cajas: new Map() };
   for (const c of M.celdas) {
     const k = Math.floor(c.p[0] / T) + Math.floor(c.p[1] / T) * rejilla.cols;
     (rejilla.cajas.get(k) || rejilla.cajas.set(k, []).get(k)).push(c);
   }
+}
+
+function fronteras() {
+  M._regiones = trazoFrontera((c) => c.region);
+  M._provincias = trazoFrontera((c) => c.provincia);
 }
 
 function celdaEn(x, y) {
@@ -266,7 +302,7 @@ function info() {
     filas.push(`<dt>Bioma</dt><dd><span class="muestra" style="background:${b?.color}"></span>${b?.nombre ?? c.bioma}</dd>`);
     if (co) filas.push('<dt>Continente</dt>', filaMedida(co.nombre, '#b9b39c', MED.continentes[co.i]));
     if (re) filas.push('<dt>Región</dt>', filaMedida(re.nombre, re.color, MED.regiones[re.i]));
-    if (pr) filas.push('<dt>Provincia</dt>', filaMedida(pr.nombre, pr.color, MED.provincias[pr.i]));
+    if (pr) filas.push('<dt>Provincia</dt>', filaMedida(esc(pr.nombre), pr.color, MED.provincias[pr.i]));
   }
   $('info').innerHTML = filas.join('');
 }
@@ -285,10 +321,16 @@ function montarCapas() {
 }
 
 lienzo.addEventListener('wheel', (ev) => { ev.preventDefault(); const b = lienzo.getBoundingClientRect(); zoom(ev.deltaY < 0 ? 1.2 : 1 / 1.2, ev.clientX - b.left, ev.clientY - b.top); }, { passive: false });
-lienzo.addEventListener('pointerdown', (ev) => { arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: false }; lienzo.setPointerCapture(ev.pointerId); });
+lienzo.addEventListener('contextmenu', (ev) => ev.preventDefault());
+lienzo.addEventListener('pointerdown', (ev) => {
+  lienzo.setPointerCapture(ev.pointerId);
+  if (M && ed.modo !== 'ver' && ev.button === 0 && !ev.shiftKey) { ed.trazo = []; pintarEn(...aMundo(ev)); return; }
+  arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: ed.modo !== 'ver' };
+});
 lienzo.addEventListener('pointermove', (ev) => {
   if (!M) return;
-  if (arrastre) {
+  if (ed.trazo) pintarEn(...aMundo(ev));
+  else if (arrastre) {
     const dx = ev.clientX - arrastre.x, dy = ev.clientY - arrastre.y;
     if (Math.hypot(dx, dy) > 4) arrastre.movido = true;
     if (arrastre.movido) { vista.x = arrastre.vx + dx; vista.y = arrastre.vy + dy; }
@@ -298,24 +340,197 @@ lienzo.addEventListener('pointermove', (ev) => {
   info(); dibujar();
 });
 lienzo.addEventListener('pointerup', (ev) => {
+  if (ed.trazo) { cerrarTrazo(); return; }
   if (arrastre && !arrastre.movido && M) { regla = regla.length === 1 ? [...regla, aMundo(ev)] : [aMundo(ev)]; dibujar(); }
   arrastre = null;
 });
 lienzo.addEventListener('pointerleave', () => { raton = null; info(); dibujar(); });
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { regla = []; dibujar(); } });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') { regla = []; dibujar(); }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !ev.shiftKey) { ev.preventDefault(); deshacer(); }
+});
 document.querySelectorAll('[data-vista]').forEach((b) => b.addEventListener('click', () => {
   const v = b.dataset.vista; encuadrar(v === 'todo' ? null : MED.continentes[v.slice(1)]?.caja);
 }));
 $('mas').addEventListener('click', () => zoom(1.4)); $('menos').addEventListener('click', () => zoom(1 / 1.4));
 window.addEventListener('resize', dibujar);
 
-Promise.all([fetch('helek.json').then((r) => r.json()), fetch('medidas.json').then((r) => r.json())]).then(([mundo, medidas]) => {
-  M = mundo; MED = medidas;
-  preparar(); montarCapas(); panelCanon();
+/* MAP-6: edición de regiones y provincias. Los cambios se guardan en M.celdas y M.provincias al momento (para
+   dibujarlos) y se comparan con ORIG para mandar al servidor solo lo que cambió. */
+const ed = { modo: 'ver', objetivo: { region: 0, provincia: 0 }, historial: [], trazo: null, provs: new Map() };
+let BASE = null, ORIG = null;
+const PALETA = ['#c0703a', '#8a5bb0', '#3f8f7a', '#b84d6e', '#6f8a2f', '#c49a2c', '#4a78b8', '#9c4f3a'];
+
+function avisar(texto) {
+  const a = $('aviso'); a.textContent = texto; a.style.display = 'block';
+  clearTimeout(avisar.t); avisar.t = setTimeout(() => { a.style.display = 'none'; }, 2600);
+}
+
+const capitalEn = (i) => M.lugares.find((lu) => lu.celda === i && lu.region);
+
+function vecindad(c, anillos) {
+  const vistas = new Set([c.i]); let borde = [c];
+  for (let k = 0; k < anillos; k++) {
+    const sig = [];
+    for (const b of borde) for (const j of b.c) if (!vistas.has(j)) { vistas.add(j); sig.push(M.celdas[j]); }
+    borde = sig;
+  }
+  return [...vistas].map((i) => M.celdas[i]);
+}
+
+function pintarEn(x, y) {
+  const centro = celdaEn(x, y);
+  if (!centro) return;
+  const prov = ed.modo === 'provincia' && ed.objetivo.provincia ? porProv[ed.objetivo.provincia] : null;
+  let cambio = false;
+  for (const c of vecindad(centro, +$('pincel').value)) {
+    if (c.h < 20) continue;
+    let region = c.region, provincia = c.provincia;
+    if (ed.modo === 'region') { region = ed.objetivo.region; if (region !== c.region) provincia = 0; }
+    else if (prov) { region = prov.region; provincia = prov.i; }
+    else provincia = 0;
+    if (region === c.region && provincia === c.provincia) continue;
+    const cap = region !== c.region && capitalEn(c.i);
+    if (cap) { avisar(`${cap.nombre} es capital de ${porRegion[cap.region].nombre}: su celda no cambia de región`); continue; }
+    ed.trazo.push([c.i, c.region, c.provincia]);
+    c.region = region; c.provincia = provincia; cambio = true;
+  }
+  if (cambio) { fronteras(); estadoEdicion(); dibujar(); }
+}
+
+function cerrarTrazo() {
+  if (ed.trazo.length) ed.historial.push({ celdas: ed.trazo });
+  ed.trazo = null; estadoEdicion();
+}
+
+function deshacer() {
+  const paso = ed.historial.pop();
+  if (!paso) return;
+  for (const [i, r, p] of [...(paso.celdas || [])].reverse()) { M.celdas[i].region = r; M.celdas[i].provincia = p; }
+  if (paso.provs) { ed.provs = paso.provs; M.provincias = paso.lista; porProv = sumaGrupo(M.provincias); montarObjetivo(); }
+  fronteras(); estadoEdicion(); dibujar();
+}
+
+function guardarProvs() { ed.historial.push({ provs: new Map([...ed.provs].map(([k, v]) => [k, { ...v }])), lista: M.provincias.map((p) => ({ ...p })) }); }
+
+function nuevaProvincia() {
+  const region = ed.objetivo.provincia ? porProv[ed.objetivo.provincia].region : (raton?.celda?.region || 18);
+  const nombre = prompt(`Nombre de la provincia nueva (región: ${porRegion[region]?.nombre ?? region}):`)?.trim();
+  if (!nombre) return;
+  if (M.provincias.some((p) => p.nombre === nombre)) { avisar(`Ya hay una provincia «${nombre}»`); return; }
+  guardarProvs();
+  const i = Math.max(0, ...M.provincias.map((p) => p.i)) + 1, color = PALETA[i % PALETA.length];
+  const p = { i, nombre, region, color, centro: null };
+  M.provincias = [...M.provincias, p]; porProv = sumaGrupo(M.provincias);
+  ed.provs.set(i, { i, nombre, region, color });
+  ed.objetivo.provincia = i; montarObjetivo(); estadoEdicion();
+}
+
+function renombrar() {
+  const p = porProv[ed.objetivo.provincia];
+  if (!p) { avisar('Elige antes una provincia'); return; }
+  const nombre = prompt('Nuevo nombre:', p.nombre)?.trim();
+  if (!nombre || nombre === p.nombre) return;
+  if (M.provincias.some((q) => q.nombre === nombre)) { avisar(`Ya hay una provincia «${nombre}»`); return; }
+  guardarProvs();
+  M.provincias = M.provincias.map((q) => (q.i === p.i ? { ...q, nombre } : q)); porProv = sumaGrupo(M.provincias);
+  ed.provs.set(p.i, { ...(ed.provs.get(p.i) || { i: p.i }), nombre });
+  montarObjetivo(); estadoEdicion(); info();
+}
+
+function cambiosCeldas() {
+  const lista = [];
+  M.celdas.forEach((c, i) => { if (c.region !== ORIG[i][0] || c.provincia !== ORIG[i][1]) lista.push([i, c.region, c.provincia]); });
+  return lista;
+}
+
+function estadoEdicion() {
+  const n = cambiosCeldas().length, p = ed.provs.size, hay = n + p > 0;
+  $('pendientes').textContent = hay ? `Sin guardar: ${n} celda(s)${p ? `, ${p} provincia(s) nuevas o renombradas` : ''}.` : 'Sin cambios.';
+  $('deshacer').disabled = !ed.historial.length;
+  for (const b of ['comprobar', 'guardar', 'descartar']) $(b).disabled = !hay;
+}
+
+function montarObjetivo() {
+  const sel = $('objetivo');
+  if (ed.modo === 'region') {
+    sel.innerHTML = [`<option value="0">Sin región</option>`, ...M.regiones.map((r) => `<option value="${r.i}">${esc(r.nombre)}</option>`)].join('');
+    sel.value = ed.objetivo.region;
+  } else {
+    if (!porProv[ed.objetivo.provincia]) ed.objetivo.provincia = 0;
+    sel.innerHTML = [`<option value="0">Sin provincia (quitar)</option>`, ...M.provincias.map((p) => `<option value="${p.i}">${esc(p.nombre)} · ${esc(porRegion[p.region]?.nombre ?? p.region)}</option>`)].join('');
+    sel.value = ed.objetivo.provincia;
+  }
+  $('botones-prov').classList.toggle('oculto', ed.modo !== 'provincia');
+  $('edicion').classList.toggle('oculto', ed.modo === 'ver');
+}
+
+function lote(forzar) {
+  return { base: BASE, celdas: cambiosCeldas(), provincias: [...ed.provs.values()], ...(forzar ? { forzar: true } : {}) };
+}
+
+async function enviar(ruta, forzar = false) {
+  const r = await fetch(ruta, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lote(forzar)) });
+  return [r.status, await r.json()];
+}
+
+const delta = (a, d) => (a ? `${fmtKm2(a.area)} → ${fmtKm2(d.area)} (${d.area >= a.area ? '+' : ''}${fmtNum(a.area ? (d.area - a.area) / a.area * 100 : 0, 1)} %)` : `nueva · ${fmtKm2(d.area)}`);
+
+function mostrarInforme(inf, titulo) {
+  $('informe').classList.remove('oculto'); $('informe-titulo').textContent = titulo;
+  const cambian = inf.cambian.length ? `<table>${inf.cambian.map((e) => `<tr><td>${e.tipo === 'region' ? 'Región' : 'Prov.'}</td><td>${esc(e.nombre)}<br>
+    <span class="n">${delta(e.antes, e.despues)}<br>${e.antes ? `${e.antes.envolvente.map((v) => fmtNum(v)).join(' × ')} → ` : ''}${e.despues.envolvente.map((v) => fmtNum(v)).join(' × ')} km</span></td></tr>`).join('')}</table>`
+    : '<p class="ayuda">Ninguna medida cambia.</p>';
+  const fallan = inf.lore.filter((r) => !r.ok);
+  const lore = `<p class="${fallan.length ? 'mal' : 'ok'}">Lore: ${inf.lore.length - fallan.length} de ${inf.lore.length} reglas se cumplen</p>`
+    + fallan.map((r) => `<p class="ayuda"><span class="mal">MAL</span> ${esc(r.id)}: ${esc(r.detalle)}</p>`).join('');
+  const canonMal = inf.canon.filter((e) => !e.dentro).length;
+  $('informe-cuerpo').innerHTML = cambian + lore + `<p class="${canonMal ? 'mal' : 'ok'}">Canon: ${canonMal ? `${canonMal} medida(s) fuera` : 'todo dentro'} (tabla de abajo)</p>`;
+  MED = { ...MED, canon: inf.canon }; panelCanon();
+}
+
+async function comprobarCambios() {
+  try {
+    const [st, inf] = await enviar('comprobar');
+    if (st !== 200) { avisar(inf.error); return; }
+    mostrarInforme(inf, 'Cambios (sin guardar)');
+  } catch (e) { avisar(`No se pudo comprobar: ${e.message}`); }
+}
+
+async function guardarCambios() {
+  try {
+    let [st, inf] = await enviar('guardar');
+    if (st === 422) {
+      mostrarInforme(inf, 'Cambios (no guardados)');
+      if (!confirm('El canon o el lore no se cumplen con estos cambios (ver el panel de la derecha). ¿Guardar igualmente?')) return;
+      [st, inf] = await enviar('guardar', true);
+    }
+    if (st !== 200) { avisar(inf.error); return; }
+    await cargar(false);
+    mostrarInforme(inf, 'Guardado');
+  } catch (e) { avisar(`No se pudo guardar: ${e.message}`); }
+}
+
+async function cargar(primera = true) {
+  const r = await fetch('helek.json'), mundo = await r.json(), medidas = await (await fetch('medidas.json')).json();
+  M = mundo; MED = medidas; BASE = r.headers.get('X-Huella');
+  ORIG = M.celdas.map((c) => [c.region, c.provincia]);
+  ed.historial = []; ed.provs = new Map();
+  if (primera) ed.objetivo.region = M.regiones[0]?.i ?? 0;
+  preparar(); panelCanon(); montarObjetivo(); estadoEdicion();
   $('fuente').textContent = `${M.fuente.ancho} × ${M.fuente.alto} km · ${M.celdas.length} celdas · FMG ${M.fuente.fmg}`;
-  $('estado').remove();
-  encuadrar(MED.continentes['3']?.caja);
-}).catch((e) => { $('estado').textContent = `No se pudo cargar el mapa: ${e.message}`; });
+  if (primera) { montarCapas(); $('estado').remove(); encuadrar(MED.continentes['3']?.caja); } else dibujar();
+}
+
+$('modos').addEventListener('change', (ev) => { ed.modo = ev.target.value; montarObjetivo(); lienzo.style.cursor = ed.modo === 'ver' ? 'crosshair' : 'cell'; });
+$('objetivo').addEventListener('change', (ev) => { ed.objetivo[ed.modo] = +ev.target.value; });
+$('nueva-prov').addEventListener('click', nuevaProvincia); $('renombrar').addEventListener('click', renombrar);
+$('deshacer').addEventListener('click', deshacer); $('comprobar').addEventListener('click', comprobarCambios);
+$('guardar').addEventListener('click', guardarCambios);
+$('descartar').addEventListener('click', () => { if (confirm('¿Descartar los cambios sin guardar?')) cargar(false).then(() => $('informe').classList.add('oculto')); });
+window.addEventListener('beforeunload', (ev) => { if (M && !$('guardar').disabled) { ev.preventDefault(); ev.returnValue = ''; } });
+
+cargar().catch((e) => { $('estado').textContent = `No se pudo cargar el mapa: ${e.message}`; });
 </script>
 </body>
 </html>

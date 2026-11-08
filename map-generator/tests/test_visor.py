@@ -52,6 +52,9 @@ class Visor(unittest.TestCase):
         externos = re.findall(r'''(?:src|href)\s*=\s*["']?(?:https?:)?//|fetch\(\s*["'](?:https?:)?//|@import''', html)
         self.assertEqual(externos, [])
         self.assertEqual(sorted(set(re.findall(r'''fetch\(\s*'([^']+)'\)''', html))), ['helek.json', 'medidas.json'])
+        # MAP-6: los únicos POST, a las rutas del editor del propio servidor.
+        self.assertEqual(sorted(set(re.findall(r'''enviar\('([^']+)'[,)]''', html))), ['comprobar', 'guardar'])
+        self.assertEqual(re.findall(r'''fetch\(\s*([^'\s][^,)]*)''', html), ['ruta'])
 
     def test_las_medidas_son_las_del_canon(self):
         med = json.loads(self._get('/medidas.json'))

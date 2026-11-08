@@ -74,8 +74,17 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   vistas Todo/Berig/Vaelira, escala en km, regla de distancia con dos clics y, bajo el ratón, celda, altura, bioma y
   área y envolvente de su continente, región y provincia; al lado, el canon con lo medido. Probado con Chromium sin
   interfaz en la Deck (sin errores de JS). **Pendiente:** que la usuaria lo abra y lo use (ver abajo).
-- **MAP-6 · Editar regiones y fronteras** [P] (usuaria, 2026-11-05): mover límites celda a celda, crear y renombrar
+- ~~**MAP-6 · Editar regiones y fronteras**~~ [P] (usuaria, 2026-11-05): mover límites celda a celda, crear y renombrar
   provincias; al guardar se pasan `comprobar.py` y el test del canon, y se avisa de qué medidas cambian. **M**
+  ✅ 2026-11-08: en el visor, modos Región y Provincia con pincel de 1 celda, vecinas o 2 anillos (Mayús o botón
+  derecho para mover el mapa), provincia nueva y renombrar, deshacer por trazo (Ctrl+Z), Comprobar y Guardar.
+  `editar.py` valida el lote (solo tierra; provincia de la región de la celda; las capitales no cambian de región;
+  nombres únicos; las regiones no se crean ni se renombran, porque las nombran el canon, el lore y el juego) y
+  `servir.py` lo recibe en `POST /comprobar` y `/guardar`: dice qué regiones y provincias cambian de área y
+  envolvente, pasa canon y lore, y si algo falla solo guarda tras confirmarlo. Guarda helek.json (orden estable),
+  `helek.geojson` y `helekRegiones.ts`; rechaza un lote hecho sobre otra versión (409) y los POST de otro origen.
+  `importar.py` ya no pisa un helek.json editado sin `--sobrescribir`. Probado con Chromium sin interfaz sobre una
+  copia. **Pendiente:** que la usuaria lo use; deshacer tras guardar es `MAP-9`.
 - **MAP-7 · Editar relieve y costa** [P] (usuaria, 2026-11-05): pinceles para subir y bajar terreno y para pasar
   celdas de mar a tierra, con zonas bloqueables (Berig entero, por defecto). **M**
 - **MAP-8 · Ríos, rutas y lugares** [P] (usuaria, 2026-11-05): dibujar y editar ríos y rutas, y colocar lugares

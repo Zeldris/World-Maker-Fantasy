@@ -76,6 +76,28 @@ def comprobar(mundo, canon):
     return [(e, medir(mundo, e), _dentro(medir(mundo, e), e, tol)) for e in canon['medidas']]
 
 
+def _medida(mundo, filtro):
+    polis = _poligonos(mundo, filtro)
+    pts = [q for p in polis for q in p[0]]
+    caja = [min(q[0] for q in pts), min(q[1] for q in pts), max(q[0] for q in pts), max(q[1] for q in pts)] \
+        if pts else None
+    km = mundo['fuente']['kmPorUnidad']
+    ancho, alto = geometria.envolvente(polis)
+    return {'area': geometria.area(polis) * km * km, 'envolvente': [ancho * km, alto * km], 'caja': caja}
+
+
+def medidas(mundo, canon):
+    """Lo que el visor muestra al pasar el ratón, por id, y el canon con lo medido."""
+    def por(clave, lista):
+        return {str(e['i']): _medida(mundo, lambda c, i=e['i']: c[clave] == i) for e in lista}
+    return {
+        'regiones': por('region', mundo['regiones']),
+        'provincias': por('provincia', mundo['provincias']),
+        'continentes': por('continente', mundo['continentes']),
+        'canon': [{**e, 'medido': m, 'dentro': ok} for e, m, ok in comprobar(mundo, canon)],
+    }
+
+
 def _sujeto(e):
     return e.get('region') or e.get('continente') or ' ↔ '.join(e['lugares'])
 
