@@ -5,7 +5,7 @@ mundo de Helek Sirik: forma, continentes, regiones, relieve, ríos, rutas y luga
 que de Azgaar no se usa, y los exportes que pide el juego.
 **Orden y hito:** los fija el [mapa de roadmaps](21-roadmap.md#mapa-de-roadmaps).
 **No empieza hasta cerrar las pruebas de juego** (regla del 2026-10-13), salvo que la usuaria lo adelante como hizo
-con las voces.
+con las voces. **Adelantado por la usuaria el 2026-11-08** (rama `claude/generador-mapas`), empezando por la fase M-A.
 
 **Cómo se usa** (mismo convenio que [roadmap-front.md](roadmap-front.md)): al cerrar un punto se tacha con su
 commit; **[A]** pedido por Álvaro, **[P]** propuesta de Claude; esfuerzo **S** (horas) · **M** (1-2 días) ·
@@ -34,14 +34,19 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
 
 ## Fase M-A · Importar y proteger el canon
 
-- **MAP-1 · Importador de solo lectura del `.map`** [P] (usuaria, 2026-11-05): `map-generator/importar.py` lee el
+- ~~**MAP-1 · Importador de solo lectura del `.map`**~~ [P] (usuaria, 2026-11-05): `map-generator/importar.py` lee el
   `.map` de FMG 1.137.6 (falla con un mensaje claro si la versión es otra) y escribe `mundo/helek.json` y un
   GeoJSON: celdas con altura y bioma, costas, los dos continentes, regiones (`state17`–`state21`) y provincias,
   ríos, rutas y lugares con nombre. Los ~300 burgs con nombre automático no entran: van a una lista aparte para
-  revisar. **S-M**
-- **MAP-2 · Medidas automáticas y test del canon** [P] (usuaria, 2026-11-05): `medir.py` calcula área (shoelace),
+  revisar. **S-M** ✅ 2026-11-08: las celdas se rehacen como `reGraph()` de FMG (port de Delaunator) y cuadran
+  exactas con las áreas que guardó FMG (5120 celdas). El mapa **no tiene ríos**, y los burgs automáticos ya estaban
+  borrados en Azgaar (quedan las 5 capitales): `revisar.json` lleva los 40 marcadores automáticos.
+- ~~**MAP-2 · Medidas automáticas y test del canon**~~ [P] (usuaria, 2026-11-05): `medir.py` calcula área (shoelace),
   envolvente y distancias de `helek.json`; un test las compara con `13-escala-del-mundo.md` §3-4 y `areas.md`, con
-  tolerancia, y falla si algo se mueve. **S**
+  tolerancia, y falla si algo se mueve. **S** ✅ 2026-11-08: `canon.json` (±3 %) con el área de las Llanuras, las
+  envolventes de las 5 regiones y de Berig y dos distancias; todo dentro. **Sin decidir (usuaria):** el área de
+  Berig (canon 100.000-115.000 km², el mapa da ~91.200: salió del rectángulo) y la forma de Vaelira (el canon la
+  quiere más ancha que alta; en el `.map` está dibujada, ~260 × 504 km).
 - **MAP-3 · El lore en datos y su comprobador** [P] (usuaria, 2026-11-05): `mundo/lore.json` con las reglas del
   mapa (tres franjas norte-sur, Llanuras al oeste y Ciénaga al este, el Margen como cinturón que linda con toda la
   Ciénaga y se adelgaza hacia la costa oeste, el corredor costero, el muro de obsidiana al norte, la Isla Cambiante

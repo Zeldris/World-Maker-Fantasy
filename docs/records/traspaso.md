@@ -10,10 +10,11 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-11-05 |
+| **Actualizado** | 2026-11-08 |
 | **Ramas de trabajo** | Cada sesión, su rama con su fila «Tarea en curso» (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06), `claude/interfaz-imagenes` (desde el 2026-10-24, `CFG-43`), `claude/limpieza` (desde el 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0` (PR 84, falta borrarla), `claude/banco-narrador`, `claude/pruebas-local`, `claude/opt-ai-mejoras`. Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás ya están en `main` (historial: `git log --merges origin/main`). `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #86 de `claude/wonderful-volta-662qt8` (2026-11-05, `d5521065`, CI en verde): licencias MIT y CC BY-NC-SA 4.0 (`QA-297`) y roadmap de mapas (`MAP-1`…`MAP-15`). |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
+| **Tarea en curso · `claude/generador-mapas`** | Generador de mapas adelantado por la usuaria (2026-11-08). ~~`MAP-1`~~ ✅ importador (celdas rehechas como `reGraph`, cuadran con FMG) y ~~`MAP-2`~~ ✅ medidas y test del canon (`map-generator/`). Sin decidir (usuaria): área de Berig (~91.200 frente a 100.000-115.000 km²) y forma de Vaelira. **Siguiente:** `MAP-3` (lore en datos y comprobador). |
 | **Tarea en curso · `claude/limpieza`** | Fusionada en `main` sin PR, CI local (2026-11-02, `ab518ea8`, `QA-215`; confirmado por la usuaria): ~~`QA-271`~~ ✅ (código muerto fuera) y retro con `QA-278`, `QA-279` al roadmap. Rama terminada. |
 | **Tarea en curso · `claude/ins-34-backend-sin-curacion`** | Fusionada en `main` sin PR, CI local (2026-10-27, `QA-215`; retro aprobada por la usuaria): `INS-34` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md)), backend empaquetado sin curación ni cloud. Leves sin tarea: test del bundle en ESM y `esbuild` pinneado; `image-prompt` GET/PUT, variables cloud de `env.ts` y aviso de `LIVE_TEACHER_CAPTURE_ENABLED` siguen en el build. Siguiente: nada. |
 | **Tarea en curso · `claude/ins-33-frontend-sin-admin`** | Fusionada en `main` sin PR (2026-10-26, `47f6806`, `QA-215`; retro aprobada por la usuaria): `INS-33` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md), fase 3), frontend sin admin empaquetado, y retro `QA-262`…`QA-265`. Leve pendiente: rama `custom` de `CharacterSelect` inalcanzable a propósito. **Siguiente:** nada en esta rama; `INS-34`. |
@@ -183,6 +184,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-11-08** — `MAP-1` y `MAP-2` (adelantados por la usuaria): `map-generator/importar.py` lee el `.map` de Azgaar sin escribirlo y `medir.py` comprueba las medidas del canon.
 - **2026-11-05** — PR 86 fusionado (`d5521065`, CI en verde): licencias y roadmap de mapas en `main`.
 - **2026-11-05** — `QA-297`: licencias del proyecto, MIT para el código y CC BY-NC-SA 4.0 para el contenido (usuaria).
 - **2026-11-05** — Nuevo roadmap aparte [`roadmap-mapas.md`](../producto/roadmap-mapas.md) (`MAP-1`…`MAP-15`, hito `0.4`), valorado con Fable: el `.map` de Azgaar se importa una vez y no se vuelve a escribir; formato y editor propios en `map-generator/`, canon protegido por tests; el fondo de Azgaar se queda hasta que el dibujo propio lo iguale y la usuaria lo apruebe (`MAP-13`). Empieza al cerrar las pruebas de juego.

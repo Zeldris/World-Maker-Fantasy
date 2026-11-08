@@ -1,0 +1,19 @@
+{
+  "nota": "Medidas del canon que el mapa propio tiene que respetar (MAP-2). Las cambia solo la usuaria. Envolvente: [E-O, N-S] en km. Los lugares del mapa son los de Azgaar; 'lore' dice a qué lugar del canon corresponden.",
+  "tolerancia": 0.03,
+  "medidas": [
+    {"que": "area", "region": "Llanuras del Viento Rojo", "valor": 19900, "fuente": "docs/mecanicas/13-escala-del-mundo.md § 2.2 y § 7"},
+    {"que": "envolvente", "region": "Cristal Helado", "valor": [205, 120], "fuente": "13-escala-del-mundo.md § 3; areas.md"},
+    {"que": "envolvente", "region": "Ciénaga Troncal", "valor": [160, 178], "fuente": "13-escala-del-mundo.md § 3; areas.md"},
+    {"que": "envolvente", "region": "Llanuras del Viento Rojo", "valor": [126, 249], "fuente": "13-escala-del-mundo.md § 3; areas.md"},
+    {"que": "envolvente", "region": "La Meseta del Orden", "valor": [221, 167], "fuente": "13-escala-del-mundo.md § 3; areas.md"},
+    {"que": "envolvente", "region": "El Margen Silencioso", "valor": [215, 103], "fuente": "13-escala-del-mundo.md § 3; areas.md"},
+    {"que": "envolvente", "continente": "Berig", "valor": [250, 470], "fuente": "13-escala-del-mundo.md § 4; areas.md"},
+    {"que": "distancia", "lugares": ["Campamento del Clan Serhu", "Poblado Helsig de la Ladera"], "lore": "Karot Veku → Helske Tugh", "rango": [120, 170], "fuente": "areas.md, Distancias y rutas"},
+    {"que": "distancia", "lugares": ["Campamento del Clan Serhu", "Campamento Goshg de los Trepadores"], "lore": "Karot Veku → El Cerco de los Pilotes", "valor": 105, "fuente": "areas.md, Distancias y rutas"}
+  ],
+  "sinDecidir": [
+    {"que": "area", "continente": "Berig", "rango": [100000, 115000], "fuente": "13-escala-del-mundo.md § 4 y § 7; areas.md", "nota": "El mapa da ~91.200 km²: la cifra del canon salió del rectángulo envolvente (250 × 470), no del área real. Lo decide la usuaria."},
+    {"que": "forma", "continente": "Vaelira", "fuente": "13-escala-del-mundo.md § 5", "nota": "El canon la estima 'más ancha que alta' y sin datos duros; en el .map está dibujada (~260 × 504 km, ~98.200 km²), más alta que ancha. Lo decide la usuaria."}
+  ]
+}
