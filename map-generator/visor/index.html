@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visor de Helek Sirik</title>
-<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias; MAP-7: relieve y costa. Sin red: nada externo; lo sirve servir.py. -->
+<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias; MAP-7: relieve y costa; MAP-8: lugares, rutas y ríos. Sin red: nada externo; lo sirve servir.py. -->
 <style>
   :root { --fondo:#1b1d22; --panel:#262a31; --texto:#e6e2d8; --tenue:#9a9890; --borde:#3a3f48; --acento:#e0b04c; --mal:#e2685b; --ok:#7cc48a; }
   * { box-sizing: border-box; }
@@ -32,6 +32,8 @@
   button:disabled { opacity:.45; cursor:default; border-color:var(--borde); }
   #aviso { position:absolute; left:50%; top:12px; transform:translateX(-50%); background:rgba(40,30,28,.92); border:1px solid var(--mal); padding:5px 10px; border-radius:4px; display:none; }
   #pendientes { margin:6px 0 4px; }
+  input[type=text] { width:100%; background:#323741; color:var(--texto); border:1px solid var(--borde); border-radius:4px; padding:3px; font:inherit; margin:3px 0; }
+  .modos { flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -48,12 +50,15 @@
       <button data-vista="c2">Vaelira</button>
       <button id="mas">+</button><button id="menos">−</button>
     </div>
-    <h2>Editar (MAP-6, MAP-7)</h2>
+    <h2>Editar (MAP-6, 7, 8)</h2>
     <div class="modos" id="modos">
       <label><input type="radio" name="modo" value="ver" checked>Ver</label>
       <label><input type="radio" name="modo" value="region">Región</label>
       <label><input type="radio" name="modo" value="provincia">Provincia</label>
       <label><input type="radio" name="modo" value="relieve">Relieve</label>
+      <label><input type="radio" name="modo" value="lugares">Lugares</label>
+      <label><input type="radio" name="modo" value="rutas">Rutas</label>
+      <label><input type="radio" name="modo" value="rios">Ríos</label>
     </div>
     <div id="edicion" class="oculto">
       <div id="ed-celdas">
@@ -72,6 +77,26 @@
         <label>Fuerza <input type="range" id="fuerza" min="1" max="10" value="3" style="flex:1"><span id="fuerza-n" class="n">3</span></label>
         <div class="ayuda">Bloquear (no se pinta su tierra ni su agua de costa):</div>
         <div id="bloqueo"></div>
+      </div>
+      <div id="ed-lugares" class="oculto">
+        <div class="ayuda">Clic en un lugar: lo selecciona. Clic en otro sitio de tierra: crea uno (nombre, o ficha).</div>
+        <input type="text" id="ficha" list="fichas" placeholder="Ficha de la enciclopedia (slug o nombre)" autocomplete="off">
+        <datalist id="fichas"></datalist>
+        <div id="sel-lugar" class="ayuda">Ningún lugar seleccionado.</div>
+        <div class="botones">
+          <button id="lu-renombrar">Renombrar</button><button id="lu-ficha">Ficha</button><button id="lu-sinficha">Sin ficha</button>
+          <button id="lu-mover">Mover</button><button id="lu-borrar">Borrar</button>
+        </div>
+      </div>
+      <div id="ed-trazos" class="oculto">
+        <div class="ayuda">Clics: añaden puntos al trazo. Doble clic o Enter: terminar. Esc: cancelar el trazo. Clic junto a uno existente (sin trazo en curso): lo selecciona.</div>
+        <select id="grupo-ruta"><option value="roads">Camino</option><option value="trails">Senda</option><option value="searoutes">Ruta marítima</option></select>
+        <input type="text" id="nombre-rio" placeholder="Nombre del río (opcional)" autocomplete="off">
+        <div id="sel-trazo" class="ayuda">Nada seleccionado.</div>
+        <div class="botones">
+          <button id="tr-terminar">Terminar</button><button id="tr-cancelar">Cancelar trazo</button>
+          <button id="tr-redibujar">Redibujar</button><button id="tr-renombrar">Renombrar</button><button id="tr-borrar">Borrar</button>
+        </div>
       </div>
       <select id="pincel">
         <option value="0">Pincel: 1 celda</option><option value="1">Pincel: celda y vecinas</option><option value="2">Pincel: 2 anillos</option>
@@ -265,6 +290,7 @@ function dibujar() {
       ctx.fillStyle = '#f6efd9'; ctx.fillText(lu.nombre, lu.x + 6 * px, lu.y);
     }
   }
+  dibujarTrazos(px);
   if (ed.modo === 'relieve') {
     ctx.fillStyle = 'rgba(224,176,76,.22)';
     for (const i of zonaBloqueada().keys()) ctx.fill(celdas[i]);
@@ -337,7 +363,7 @@ function panelCanon() {
 
 function montarCapas() {
   const cuenta = { rios: M.rios.length, rutas: M.rutas.length, lugares: M.lugares.length, regiones: M.regiones.length, provincias: M.provincias.length };
-  $('capas').innerHTML = CAPAS.map((c) => `<label><input type="checkbox" data-capa="${c.id}" ${c.on ? 'checked' : ''}>${c.nombre}${c.id in cuenta ? `<span class="n">${cuenta[c.id]}</span>` : ''}</label>`).join('');
+  $('capas').innerHTML = CAPAS.map((c) => `<label><input type="checkbox" data-capa="${c.id}" ${c.on ? 'checked' : ''}>${c.nombre}${c.id in cuenta ? `<span class="n" id="n-${c.id}">${cuenta[c.id]}</span>` : ''}</label>`).join('');
   $('capas').addEventListener('change', (ev) => { CAPAS.find((c) => c.id === ev.target.dataset.capa).on = ev.target.checked; dibujar(); });
 }
 
@@ -345,6 +371,10 @@ lienzo.addEventListener('wheel', (ev) => { ev.preventDefault(); const b = lienzo
 lienzo.addEventListener('contextmenu', (ev) => ev.preventDefault());
 lienzo.addEventListener('pointerdown', (ev) => {
   lienzo.setPointerCapture(ev.pointerId);
+  if (M && MODOS_TRAZO.includes(ed.modo)) {
+    arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: ev.button !== 0 || ev.shiftKey, clic: true };
+    return;
+  }
   if (M && ed.modo !== 'ver' && ev.button === 0 && !ev.shiftKey) { ed.trazo = []; ed.trazoH = []; ed.tocadas = new Set(); pintarEn(...aMundo(ev)); return; }
   arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: ed.modo !== 'ver' };
 });
@@ -362,12 +392,16 @@ lienzo.addEventListener('pointermove', (ev) => {
 });
 lienzo.addEventListener('pointerup', (ev) => {
   if (ed.trazo) { cerrarTrazo(); return; }
+  if (arrastre?.clic && !arrastre.movido && M) { clicTrazos(...aMundo(ev)); arrastre = null; return; }
   if (arrastre && !arrastre.movido && M) { regla = regla.length === 1 ? [...regla, aMundo(ev)] : [aMundo(ev)]; dibujar(); }
   arrastre = null;
 });
+lienzo.addEventListener('dblclick', () => { if (ed.nuevo) terminarTrazo(); });
 lienzo.addEventListener('pointerleave', () => { raton = null; info(); dibujar(); });
 document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Escape') { regla = []; dibujar(); }
+  const enCampo = /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(ev.target.tagName);
+  if (ev.key === 'Escape') { regla = []; if (ed.nuevo) cancelarTrazo(); else if (ed.mover) { ed.mover = false; panelTrazos(); } dibujar(); }
+  if (ev.key === 'Enter' && ed.nuevo && !enCampo) { ev.preventDefault(); terminarTrazo(); }
   if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && !ev.shiftKey) { ev.preventDefault(); deshacer(); }
 });
 document.querySelectorAll('[data-vista]').forEach((b) => b.addEventListener('click', () => {
@@ -379,8 +413,12 @@ window.addEventListener('resize', dibujar);
 /* MAP-6: edición de regiones y provincias. Los cambios se guardan en M.celdas y M.provincias al momento (para
    dibujarlos) y se comparan con ORIG para mandar al servidor solo lo que cambió. */
 const ed = { modo: 'ver', objetivo: { region: 0, provincia: 0 }, historial: [], trazo: null, provs: new Map(),
-  herr: 'subir', trazoH: [], tocadas: new Set(), bloqueo: new Set(), zona: null };
-let BASE = null, ORIG = null, ORIGH = null;
+  herr: 'subir', trazoH: [], tocadas: new Set(), bloqueo: new Set(), zona: null,
+  sel: null, nuevo: null, mover: false, sig: {} };
+let BASE = null, ORIG = null, ORIGH = null, ORIGT = {}, ENC = [];
+const MODOS_TRAZO = ['lugares', 'rutas', 'rios'];
+const TRAZOS = { rutas: 'ruta', rios: 'río' };
+const NOMBRE_GRUPO = { roads: 'camino', trails: 'senda', searoutes: 'ruta marítima' };
 const PALETA = ['#c0703a', '#8a5bb0', '#3f8f7a', '#b84d6e', '#6f8a2f', '#c49a2c', '#4a78b8', '#9c4f3a'];
 
 function avisar(texto) {
@@ -470,6 +508,7 @@ function deshacer() {
   for (const [i, r, p] of [...(paso.celdas || [])].reverse()) { M.celdas[i].region = r; M.celdas[i].provincia = p; }
   for (const [i, h] of [...(paso.alturas || [])].reverse()) M.celdas[i].h = h;
   if (paso.provs) { ed.provs = paso.provs; M.provincias = paso.lista; porProv = sumaGrupo(M.provincias); montarObjetivo(); }
+  if (paso.trazos) { Object.assign(M, paso.trazos); ed.sel = null; ed.nuevo = null; ed.mover = false; panelTrazos(); }
   fronteras(); estadoEdicion(); dibujar();
 }
 
@@ -513,8 +552,12 @@ function cambiosAlturas() {
 }
 
 function estadoEdicion() {
-  const n = cambiosCeldas().length, p = ed.provs.size, a = cambiosAlturas().length, hay = n + p + a > 0;
-  $('pendientes').textContent = hay ? `Sin guardar: ${n} celda(s)${a ? `, ${a} con otra altura` : ''}${p ? `, ${p} provincia(s) nuevas o renombradas` : ''}.` : 'Sin cambios.';
+  const n = cambiosCeldas().length, p = ed.provs.size, a = cambiosAlturas().length;
+  const t = { lugares: cambiosLugares().length, rutas: cambiosTrazos('rutas').length, rios: cambiosTrazos('rios').length };
+  const hay = n + p + a + t.lugares + t.rutas + t.rios > 0;
+  const tr = [['lugares', 'lugar(es)'], ['rutas', 'ruta(s)'], ['rios', 'río(s)']].filter(([k]) => t[k]).map(([k, w]) => `, ${t[k]} ${w} tocados`).join('');
+  $('pendientes').textContent = hay ? `Sin guardar: ${n} celda(s)${a ? `, ${a} con otra altura` : ''}${p ? `, ${p} provincia(s) nuevas o renombradas` : ''}${tr}.` : 'Sin cambios.';
+  for (const k of ['rios', 'rutas', 'lugares']) if ($(`n-${k}`)) $(`n-${k}`).textContent = M[k].length;
   $('deshacer').disabled = !ed.historial.length;
   for (const b of ['comprobar', 'guardar', 'descartar']) $(b).disabled = !hay;
 }
@@ -525,9 +568,15 @@ function montarBloqueo() {
 
 function montarObjetivo() {
   const sel = $('objetivo');
-  $('ed-celdas').classList.toggle('oculto', ed.modo === 'relieve');
+  const trz = MODOS_TRAZO.includes(ed.modo);
+  $('ed-celdas').classList.toggle('oculto', ed.modo === 'relieve' || trz);
+  $('ed-lugares').classList.toggle('oculto', ed.modo !== 'lugares');
+  $('ed-trazos').classList.toggle('oculto', ed.modo !== 'rutas' && ed.modo !== 'rios');
+  $('grupo-ruta').classList.toggle('oculto', ed.modo !== 'rutas');
+  $('nombre-rio').classList.toggle('oculto', ed.modo !== 'rios');
+  $('pincel').classList.toggle('oculto', trz);
   $('ed-relieve').classList.toggle('oculto', ed.modo !== 'relieve');
-  if (ed.modo === 'relieve') { /* sin objetivo: la herramienta lo dice todo */ }
+  if (ed.modo === 'relieve' || trz) { /* sin objetivo: la herramienta lo dice todo */ }
   else if (ed.modo === 'region') {
     sel.innerHTML = [`<option value="0">Sin región</option>`, ...M.regiones.map((r) => `<option value="${r.i}">${esc(r.nombre)}</option>`)].join('');
     sel.value = ed.objetivo.region;
@@ -540,8 +589,189 @@ function montarObjetivo() {
   $('edicion').classList.toggle('oculto', ed.modo === 'ver');
 }
 
+/* MAP-8: lugares, rutas y ríos. Los objetos de M.lugares / M.rutas / M.rios no se modifican: se sustituyen, así que
+   «cambió» es «ya no es el mismo objeto que en ORIGT», y el historial guarda solo las listas. */
+function guardarTrazos() { ed.historial.push({ trazos: { lugares: [...M.lugares], rutas: [...M.rutas], rios: [...M.rios] } }); }
+
+const redondea = (v) => Math.round(v * 100) / 100;
+const fichaDe = (v) => { v = (v || '').trim(); return ENC.find((f) => f.slug === v) || ENC.find((f) => f.nombre === v); };
+const lugarSel = () => (ed.sel?.tipo === 'lugares' ? M.lugares.find((l) => l.i === ed.sel.i) : null);
+const trazoSel = () => (ed.sel && ed.sel.tipo !== 'lugares' ? M[ed.sel.tipo].find((t) => t.i === ed.sel.i) : null);
+
+function montarFichas() {
+  $('fichas').innerHTML = ENC.map((f) => `<option value="${esc(f.slug)}">${esc(f.nombre)} · ${esc(f.region || '')} · ${esc(f.tipo || '')}</option>`).join('');
+}
+
+function cambiosLugares() {
+  const lista = [], orig = ORIGT.lugares, hoy = new Map(M.lugares.map((l) => [l.i, l]));
+  for (const lu of M.lugares) {
+    const o = orig.get(lu.i);
+    if (o === lu) continue;
+    if (!o) { lista.push({ i: lu.i, x: lu.x, y: lu.y, nombre: lu.nombre, ...(lu.slug ? { slug: lu.slug } : {}) }); continue; }
+    const e = { i: lu.i };
+    if (lu.x !== o.x || lu.y !== o.y) { e.x = lu.x; e.y = lu.y; }
+    if (lu.nombre !== o.nombre) e.nombre = lu.nombre;
+    if ((lu.slug || null) !== (o.slug || null)) e.slug = lu.slug || null;
+    if (Object.keys(e).length > 1) lista.push(e);
+  }
+  for (const i of orig.keys()) if (!hoy.has(i)) lista.push({ i, borrar: true });
+  return lista;
+}
+
+function cambiosTrazos(clave) {
+  const lista = [], orig = ORIGT[clave], hoy = new Set(M[clave].map((t) => t.i));
+  for (const t of M[clave]) {
+    const o = orig.get(t.i);
+    if (o === t) continue;
+    const e = { i: t.i }, nuevo = !o;
+    if (nuevo || JSON.stringify(t.puntos) !== JSON.stringify(o.puntos)) e.puntos = t.puntos;
+    if (clave === 'rutas' && (nuevo || t.grupo !== o.grupo)) e.grupo = t.grupo;
+    if (clave === 'rios' && (nuevo ? t.nombre : (t.nombre || null) !== (o.nombre || null))) e.nombre = t.nombre || null;
+    if (nuevo || Object.keys(e).length > 1) lista.push(e);
+  }
+  for (const i of orig.keys()) if (!hoy.has(i)) lista.push({ i, borrar: true });
+  return lista;
+}
+
+function cambiaLugar(i, cambios) {
+  guardarTrazos();
+  M.lugares = M.lugares.map((l) => {
+    if (l.i !== i) return l;
+    const n = { ...l, ...cambios };
+    for (const k of Object.keys(cambios)) if (cambios[k] === null) delete n[k];
+    return n;
+  });
+  panelTrazos(); estadoEdicion(); dibujar();
+}
+
+function distSeg(px, py, [ax, ay], [bx, by]) {
+  const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
+  const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0;
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+
+function lugarCerca(x, y) {
+  let mejor = null, d = 8 / vista.s;
+  for (const lu of M.lugares) { const dd = Math.hypot(lu.x - x, lu.y - y); if (dd < d) { d = dd; mejor = lu; } }
+  return mejor;
+}
+
+function trazoCerca(clave, x, y) {
+  let mejor = null, d = 6 / vista.s;
+  for (const t of M[clave]) for (let k = 1; k < t.puntos.length; k++) {
+    const dd = distSeg(x, y, t.puntos[k - 1], t.puntos[k]);
+    if (dd < d) { d = dd; mejor = t; }
+  }
+  return mejor;
+}
+
+function clicTrazos(x, y) {
+  if (x < 0 || y < 0 || x > M.fuente.ancho || y > M.fuente.alto) return;
+  if (ed.modo === 'lugares') return clicLugares(x, y);
+  const clave = ed.modo;
+  if (ed.nuevo) {
+    const ult = ed.nuevo.puntos.at(-1);
+    if (ult && Math.hypot(ult[0] - x, ult[1] - y) * vista.s < 3) return; // el segundo clic de un doble clic
+    ed.nuevo.puntos.push([redondea(x), redondea(y)]); panelTrazos(); dibujar(); return;
+  }
+  const t = trazoCerca(clave, x, y);
+  if (t) {
+    ed.sel = { tipo: clave, i: t.i };
+    if (clave === 'rutas') $('grupo-ruta').value = t.grupo; else $('nombre-rio').value = t.nombre || '';
+    panelTrazos(); dibujar(); return;
+  }
+  ed.sel = null; ed.nuevo = { puntos: [[redondea(x), redondea(y)]], redibuja: null }; panelTrazos(); dibujar();
+}
+
+function clicLugares(x, y) {
+  const c = celdaEn(x, y), lu = lugarSel();
+  if (ed.mover && lu) {
+    if (!c || c.h < 20) { avisar('Los lugares van en tierra'); return; }
+    ed.mover = false; cambiaLugar(lu.i, { x: redondea(x), y: redondea(y), celda: c.i }); return;
+  }
+  const cerca = lugarCerca(x, y);
+  if (cerca) { ed.sel = { tipo: 'lugares', i: cerca.i }; $('ficha').value = cerca.slug || ''; panelTrazos(); dibujar(); return; }
+  if (!c || c.h < 20) { avisar('Los lugares van en tierra'); return; }
+  const f = fichaDe($('ficha').value);
+  const nombre = prompt(`Nombre del lugar nuevo${f ? ` (vacío: «${f.nombre}», de la ficha)` : ' (vacío: usar la ficha escrita en «Ficha»)'}:`)?.trim();
+  if (nombre === undefined || (!nombre && !f)) return;
+  const lugar = { i: ed.sig.lugares++, nombre: nombre || f.nombre, x: redondea(x), y: redondea(y), celda: c.i, region: c.region, tipo: f?.tipo || 'Generic', capital: false, ...(f ? { slug: f.slug } : {}) };
+  guardarTrazos(); M.lugares = [...M.lugares, lugar];
+  ed.sel = { tipo: 'lugares', i: lugar.i }; $('ficha').value = lugar.slug || ''; panelTrazos(); estadoEdicion(); dibujar();
+}
+
+function terminarTrazo() {
+  const n = ed.nuevo;
+  if (!n) return;
+  if (n.puntos.length < 2) { avisar('Un trazo necesita al menos 2 puntos'); return; }
+  const clave = ed.modo, viejo = n.redibuja !== null ? M[clave].find((t) => t.i === n.redibuja) : null;
+  const i = viejo ? viejo.i : ed.sig[clave]++;
+  const t = clave === 'rutas' ? { i, grupo: $('grupo-ruta').value, continente: viejo?.continente ?? null, puntos: n.puntos }
+    : { i, nombre: $('nombre-rio').value.trim() || viejo?.nombre || null, puntos: n.puntos };
+  guardarTrazos();
+  M[clave] = viejo ? M[clave].map((x) => (x.i === i ? t : x)) : [...M[clave], t];
+  ed.nuevo = null; ed.sel = { tipo: clave, i }; panelTrazos(); estadoEdicion(); dibujar();
+}
+
+function cancelarTrazo() { ed.nuevo = null; panelTrazos(); dibujar(); }
+
+function borrarSel() {
+  const lu = lugarSel(), t = trazoSel();
+  if (!lu && !t) { avisar('Elige antes algo'); return; }
+  guardarTrazos();
+  if (lu) M.lugares = M.lugares.filter((l) => l.i !== lu.i);
+  else M[ed.sel.tipo] = M[ed.sel.tipo].filter((x) => x.i !== t.i);
+  ed.sel = null; ed.mover = false; panelTrazos(); estadoEdicion(); dibujar();
+}
+
+function renombrarSel() {
+  const lu = lugarSel(), t = trazoSel();
+  if (lu) {
+    const nombre = prompt('Nuevo nombre del lugar:', lu.nombre)?.trim();
+    if (nombre && nombre !== lu.nombre) cambiaLugar(lu.i, { nombre });
+  } else if (t && ed.sel.tipo === 'rios') {
+    const nombre = prompt('Nombre del río (vacío: sin nombre):', t.nombre || '')?.trim();
+    if (nombre === undefined || nombre === (t.nombre || '')) return;
+    guardarTrazos(); M.rios = M.rios.map((x) => (x.i === t.i ? { ...x, nombre: nombre || null } : x));
+    panelTrazos(); estadoEdicion(); dibujar();
+  } else avisar('Elige antes algo que renombrar');
+}
+
+function panelTrazos() {
+  const lu = lugarSel(), t = trazoSel(), trz = ed.modo === 'rutas' || ed.modo === 'rios', rio = ed.modo === 'rios';
+  if (ed.modo === 'lugares') {
+    $('sel-lugar').innerHTML = lu ? `<b>${esc(lu.nombre)}</b>${lu.capital ? ' (capital)' : ''} · ${esc(lu.tipo || '')}<br>ficha: ${lu.slug ? esc(lu.slug) : 'sin ficha'}<br>${ORIGT.lugares.has(lu.i) ? '' : 'nuevo, sin guardar · '}${ed.mover ? '<span class="mal">Clic en el sitio nuevo (Esc cancela)</span>' : `x ${lu.x}, y ${lu.y}`}` : 'Ningún lugar seleccionado.';
+    for (const b of ['lu-renombrar', 'lu-ficha', 'lu-sinficha', 'lu-mover', 'lu-borrar']) $(b).disabled = !lu;
+    $('lu-mover').textContent = ed.mover ? 'Cancelar mover' : 'Mover';
+  }
+  if (trz) {
+    const nombreDe = (x) => (rio ? `río ${x.i}${x.nombre ? ` «${esc(x.nombre)}»` : ''}` : `${NOMBRE_GRUPO[x.grupo] || x.grupo} ${x.i}`);
+    $('sel-trazo').innerHTML = ed.nuevo ? `Trazo en curso: ${ed.nuevo.puntos.length} punto(s)${ed.nuevo.redibuja !== null ? ` (sustituye al ${nombreDe(M[ed.modo].find((x) => x.i === ed.nuevo.redibuja) || { i: ed.nuevo.redibuja })})` : ''}`
+      : t ? `Seleccionado: <b>${nombreDe(t)}</b> · ${t.puntos.length} puntos${ORIGT[ed.modo].has(t.i) ? '' : ' · nuevo, sin guardar'}` : 'Nada seleccionado.';
+    $('tr-terminar').disabled = $('tr-cancelar').disabled = !ed.nuevo;
+    $('tr-redibujar').disabled = $('tr-borrar').disabled = !t || !!ed.nuevo;
+    $('tr-renombrar').disabled = !t || !rio || !!ed.nuevo;
+    $('tr-renombrar').classList.toggle('oculto', !rio);
+  }
+}
+
+function dibujarTrazos(px) {
+  if (!M) return;
+  const sel = trazoSel(), lu = lugarSel();
+  const linea = (pts) => { ctx.beginPath(); pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); };
+  if (sel) { ctx.strokeStyle = 'rgba(224,176,76,.65)'; ctx.lineWidth = 5 * px; ctx.setLineDash([]); linea(sel.puntos); }
+  if (lu) { ctx.strokeStyle = '#e0b04c'; ctx.lineWidth = 2 * px; ctx.beginPath(); ctx.arc(lu.x, lu.y, 8 * px, 0, Math.PI * 2); ctx.stroke(); }
+  if (ed.nuevo) {
+    const pts = raton && ed.nuevo.puntos.length ? [...ed.nuevo.puntos, [raton.x, raton.y]] : ed.nuevo.puntos;
+    ctx.strokeStyle = '#e0b04c'; ctx.lineWidth = 2 * px; ctx.setLineDash([6 * px, 4 * px]); linea(pts); ctx.setLineDash([]);
+    ctx.fillStyle = '#e0b04c';
+    for (const [x, y] of ed.nuevo.puntos) { ctx.beginPath(); ctx.arc(x, y, 3 * px, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+
 function lote(forzar) {
-  return { base: BASE, celdas: cambiosCeldas(), provincias: [...ed.provs.values()], alturas: cambiosAlturas(), bloqueo: [...ed.bloqueo].sort((a, b) => a - b), ...(forzar ? { forzar: true } : {}) };
+  return { base: BASE, celdas: cambiosCeldas(), provincias: [...ed.provs.values()], alturas: cambiosAlturas(), bloqueo: [...ed.bloqueo].sort((a, b) => a - b),
+    lugares: cambiosLugares(), rutas: cambiosTrazos('rutas'), rios: cambiosTrazos('rios'), ...(forzar ? { forzar: true } : {}) };
 }
 
 async function enviar(ruta, forzar = false) {
@@ -561,7 +791,12 @@ function mostrarInforme(inf, titulo) {
     + fallan.map((r) => `<p class="ayuda"><span class="mal">MAL</span> ${esc(r.id)}: ${esc(r.detalle)}</p>`).join('');
   const canonMal = inf.canon.filter((e) => !e.dentro).length;
   const rel = inf.relieve ? `<p class="ayuda">Relieve: ${inf.relieve.alturas} celda(s) con otra altura, ${inf.relieve.aTierra} pasan a tierra, ${inf.relieve.aMar} a mar.</p>` : '';
-  $('informe-cuerpo').innerHTML = rel + cambian + lore + `<p class="${canonMal ? 'mal' : 'ok'}">Canon: ${canonMal ? `${canonMal} medida(s) fuera` : 'todo dentro'} (tabla de abajo)</p>`;
+  const NOM = { lugares: 'Lugares', rutas: 'Rutas', rios: 'Ríos' }, ETQ = { nuevos: 'nuevos', cambian: 'cambian', borrados: 'borrados' };
+  const tz = Object.entries(inf.trazos || {}).map(([k, d]) => {
+    const partes = Object.keys(ETQ).filter((e) => d?.[e]?.length).map((e) => `<br><span class="n">${ETQ[e]}:</span> ${d[e].map(esc).join('; ')}`);
+    return partes.length ? `<p class="ayuda"><b>${NOM[k] || esc(k)}</b>${partes.join('')}</p>` : '';
+  }).join('');
+  $('informe-cuerpo').innerHTML = rel + tz + cambian + lore + `<p class="${canonMal ? 'mal' : 'ok'}">Canon: ${canonMal ? `${canonMal} medida(s) fuera` : 'todo dentro'} (tabla de abajo)</p>`;
   MED = { ...MED, canon: inf.canon }; panelCanon();
 }
 
@@ -588,25 +823,53 @@ async function guardarCambios() {
 }
 
 async function cargar(primera = true) {
+  if (primera) ENC = await fetch('enciclopedia.json').then((x) => (x.ok ? x.json() : [])).catch(() => []);
   const r = await fetch('helek.json'), mundo = await r.json(), medidas = await (await fetch('medidas.json')).json();
   M = mundo; MED = medidas; BASE = r.headers.get('X-Huella');
   ORIG = M.celdas.map((c) => [c.region, c.provincia]); ORIGH = M.celdas.map((c) => c.h);
+  ORIGT = { lugares: new Map(M.lugares.map((x) => [x.i, x])), rutas: new Map(M.rutas.map((x) => [x.i, x])), rios: new Map(M.rios.map((x) => [x.i, x])) };
+  for (const k of ['lugares', 'rutas', 'rios']) ed.sig[k] = Math.max(-1, ...M[k].map((x) => x.i)) + 1;
+  ed.sel = null; ed.nuevo = null; ed.mover = false;
   ed.historial = []; ed.provs = new Map(); ed.zona = null; ed.trazoH = []; ed.tocadas = new Set();
   if (primera) ed.bloqueo = new Set(M.continentes.filter((k) => k.nombre === 'Berig').map((k) => k.i));
   else ed.bloqueo = new Set([...ed.bloqueo].filter((i) => M.continentes.some((k) => k.i === i)));
   if (primera) ed.objetivo.region = M.regiones[0]?.i ?? 0;
-  preparar(); panelCanon(); montarObjetivo(); montarBloqueo(); estadoEdicion();
+  preparar(); panelCanon(); montarObjetivo(); montarBloqueo(); montarFichas(); panelTrazos(); estadoEdicion();
   $('fuente').textContent = `${M.fuente.ancho} × ${M.fuente.alto} km · ${M.celdas.length} celdas · FMG ${M.fuente.fmg}`;
   if (primera) { montarCapas(); $('estado').remove(); encuadrar(MED.continentes['3']?.caja); } else dibujar();
 }
 
-$('modos').addEventListener('change', (ev) => { ed.modo = ev.target.value; montarObjetivo(); lienzo.style.cursor = ed.modo === 'ver' ? 'crosshair' : 'cell'; dibujar(); });
+$('modos').addEventListener('change', (ev) => {
+  if (ed.nuevo) cancelarTrazo();
+  ed.modo = ev.target.value; ed.sel = null; ed.mover = false;
+  if (MODOS_TRAZO.includes(ed.modo)) { // la capa del modo se enciende para ver lo que se edita
+    const capa = CAPAS.find((c) => c.id === ed.modo); capa.on = true;
+    const caja = document.querySelector(`[data-capa="${capa.id}"]`); if (caja) caja.checked = true;
+  }
+  montarObjetivo(); panelTrazos(); lienzo.style.cursor = ed.modo === 'ver' ? 'crosshair' : 'cell'; dibujar();
+});
 $('herramientas').addEventListener('change', (ev) => { ed.herr = ev.target.value; });
 $('fuerza').addEventListener('input', (ev) => { $('fuerza-n').textContent = ev.target.value; });
 $('bloqueo').addEventListener('change', (ev) => {
   const i = +ev.target.dataset.cont;
   if (ev.target.checked) ed.bloqueo.add(i); else ed.bloqueo.delete(i);
   ed.zona = null; dibujar();
+});
+$('lu-renombrar').addEventListener('click', renombrarSel); $('lu-borrar').addEventListener('click', borrarSel);
+$('lu-mover').addEventListener('click', () => { ed.mover = !ed.mover; panelTrazos(); });
+$('lu-ficha').addEventListener('click', () => {
+  const lu = lugarSel(), f = fichaDe($('ficha').value);
+  if (!lu) return;
+  if (!f) { avisar('Escribe o elige una ficha de la lista (slug o nombre)'); return; }
+  if (f.slug !== lu.slug) cambiaLugar(lu.i, { slug: f.slug });
+});
+$('lu-sinficha').addEventListener('click', () => { const lu = lugarSel(); if (lu?.slug) { $('ficha').value = ''; cambiaLugar(lu.i, { slug: null }); } });
+$('tr-terminar').addEventListener('click', terminarTrazo); $('tr-cancelar').addEventListener('click', cancelarTrazo);
+$('tr-borrar').addEventListener('click', borrarSel); $('tr-renombrar').addEventListener('click', renombrarSel);
+$('tr-redibujar').addEventListener('click', () => { if (trazoSel()) { ed.nuevo = { puntos: [], redibuja: ed.sel.i }; panelTrazos(); avisar('Haz clic para dibujar el trazo nuevo'); dibujar(); } });
+$('grupo-ruta').addEventListener('change', () => {
+  const t = ed.modo === 'rutas' && !ed.nuevo ? trazoSel() : null;
+  if (t && t.grupo !== $('grupo-ruta').value) { guardarTrazos(); M.rutas = M.rutas.map((x) => (x.i === t.i ? { ...x, grupo: $('grupo-ruta').value } : x)); panelTrazos(); estadoEdicion(); dibujar(); }
 });
 $('objetivo').addEventListener('change', (ev) => { ed.objetivo[ed.modo] = +ev.target.value; });
 $('nueva-prov').addEventListener('click', nuevaProvincia); $('renombrar').addEventListener('click', renombrar);

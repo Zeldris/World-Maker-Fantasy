@@ -95,8 +95,16 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   visor por consola (`--json`, `--guardar`, `--forzar`, `--mundo` de una copia, que no toca el archivo del juego).
   Probado con Chromium sin interfaz sobre una copia. **Pendiente:** que la usuaria lo use; las rutas que crucen
   mar nuevo, en `MAP-8`.
-- **MAP-8 · Ríos, rutas y lugares** [P] (usuaria, 2026-11-05): dibujar y editar ríos y rutas, y colocar lugares
-  enlazados a su ficha de la enciclopedia (slug), con su nombre de lore. **M**
+- ~~**MAP-8 · Ríos, rutas y lugares**~~ [P] (usuaria, 2026-11-05): dibujar y editar ríos y rutas, y colocar lugares
+  enlazados a su ficha de la enciclopedia (slug), con su nombre de lore. **M** ✅ 2026-11-08: modos Lugares, Rutas y
+  Ríos del visor y `lugares`/`rutas`/`rios` en el lote de `editar.py` (consola igual, `MAP-16`). Lugares: crear,
+  mover, renombrar, borrar y enlazar a su ficha (`enciclopedia.py` lee los 72 de `worldCatalog.ts`;
+  `/enciclopedia.json`); las capitales y los que nombra `canon.json` no se borran ni (estos) se renombran: su nombre
+  de lore va en la ficha. Rutas y ríos: dibujar, redibujar, borrar; caminos y ríos por tierra, marítimas por agua
+  salvo puertos. Lo pendiente de `MAP-7`: el relieve no deja fuera de sitio una ruta o un río sin redibujarlo. Azgaar
+  trae 14 rutas de tierra con algún punto en agua y 34 marítimas por tierra: no bloquean. Probado con Chromium sin
+  interfaz sobre una copia. **Pendiente:** que la usuaria lo use; sin probar en navegador: redibujar y guardar,
+  cambiar el grupo de una ruta y renombrar o cambiar la ficha de un lugar existente.
 - **MAP-9 · Guardar con historial** [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
   estable (diff legible en git) y se puede deshacer; nunca escribe en el `.map`. **S**
 
