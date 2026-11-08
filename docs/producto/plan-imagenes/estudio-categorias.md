@@ -166,6 +166,12 @@ odre). Hojas `sueltas-gistera54-1.png` (D entera, D rodillas), `sueltas-gistera5
 30. **Las cicatrices** se piden como tejido («raised lines of old scar tissue»), no como marca (regla 7).
 31. **De las rodillas arriba** la cara se lee en P1; de cuerpo entero queda diminuta.
 
+- Gistera H (truco de la usuaria en ChatGPT: no decir «hembra» ni nada femenino, pedirla musculosa y fuerte, y luego
+  añadir el pecho): con klein 4B en una sola pasada sale **un varón con barba y bigote**; «a full chest» al final no
+  cuenta, y los colmillos siguen curvados a los lados aunque se pida «point straight up». Hoja `sueltas-gistera54h-1.png`.
+  En ChatGPT el truco son dos pasos (figura, luego edición); el equivalente aquí es una fase de edición sobre la imagen
+  (P2 con la anterior como referencia: «give this warrior a woman's chest, keep everything else»): queda probarlo.
+
 ## Raza: goirntes de la Meseta, macho (2026-11-08, klein 4B, semillas 3 y 4)
 
 Hoja `sueltas-goirnte54-1.png` (filas A, B, D).
