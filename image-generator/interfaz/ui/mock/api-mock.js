@@ -56,7 +56,7 @@ elegirInicial.elegidas.banner = elegirInicial.intentos[0].nombre;
 
 /* ---------- fases (reglas de scripts/camino.py; el test comprueba que FASES es igual que camino.FASES) ---------- */
 // IMG-53: el prompt corto de estilo de la Final (docs/producto/plan-imagenes/banco/prompts/r37-final-corta.txt; servidor.py lo lee de ahí)
-const PROMPT_FINAL = 'The same figure, in the same composition, as the reference image, which is a rough study: keep its shapes and proportions and render it with full detail. Change nothing in the figure, the weapon, the rock ledge, the valley, the tents, the mesas, the sky or the light. Style: photorealistic fantasy matte painting, cinematic concept art, high contrast, deep shadows. The image is completely textless.';
+const PROMPT_FINAL = 'Render it with full detail, keeping its light and its colours. Style: photorealistic fantasy matte painting, cinematic concept art. The image is completely textless.';
 const FASES = [
   { id: 'F0', nombre: 'Boceto', receta: 'f0-boceto', siguientes: ['F1', 'F4'], disponible: true },
   { id: 'F1', nombre: 'Forma', receta: 'f1-forma', siguientes: ['F2', 'F4'], disponible: true },

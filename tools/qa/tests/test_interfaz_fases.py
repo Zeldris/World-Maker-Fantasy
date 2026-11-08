@@ -400,11 +400,12 @@ class Fases(T.Base):
         self.esperar()
 
     def test_la_final_trae_el_prompt_corto_de_estilo_y_avanzar_de_un_paso_a_la_final_lo_usa(self):
-        with open(os.path.join(RAIZ, 'docs', 'producto', 'plan-imagenes', 'banco', 'prompts', 'r37-final-corta.txt'), encoding='utf-8') as f:
-            corta = f.read().strip()
         fases = {f['id']: f for f in self.pedir('/api/inicio')[1]['fases']}
-        self.assertEqual(fases['F4']['promptPorDefecto'], corta)
-        self.assertTrue(corta.startswith('The same figure'))
+        corta = fases['F4']['promptPorDefecto']
+        # IMG-54: vale para cualquier tipo (nada del guerrero de r37) y sin el «The same…», que pone fase.py
+        self.assertIn('textless', corta)
+        for palabra in ('figure', 'weapon', 'tents', 'The same', 'reference'):
+            self.assertNotIn(palabra, corta)
         self.assertTrue(all('promptPorDefecto' not in f for i, f in fases.items() if i != 'F4'))
         # de un paso a la Final, el prompt es el corto; de un paso a otro paso, el del paso
         self.sembrar(fase='P1', n=1)

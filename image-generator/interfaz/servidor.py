@@ -290,16 +290,14 @@ def estimado(perfil, con_referencia):
     return int(round(ESTIMADO_BASE.get(perfil, 110) * (FACTOR_REFERENCIA if con_referencia else 1)))
 
 
-# IMG-53: el prompt corto de estilo de la Final (r37, banco de pruebas); sin el archivo, la Final no trae prompt propio
-PROMPT_FINAL = os.path.join(os.path.dirname(os.path.dirname(AQUI)), 'docs', 'producto', 'plan-imagenes', 'banco', 'prompts', 'r37-final-corta.txt')
+# IMG-53/IMG-54: el prompt corto de estilo de la Final. Vale para cualquier tipo: el «The same <cosa>… rough study» lo pone
+# fase.py según el tipo y las referencias, así que aquí no va (el r37 del guerrero lo repetía con «figure, weapon, tents…»).
+PROMPT_FINAL = ('Render it with full detail, keeping its light and its colours. '
+                'Style: photorealistic fantasy matte painting, cinematic concept art. The image is completely textless.')
 
 
 def prompt_final_corta():
-    try:
-        with open(PROMPT_FINAL, encoding='utf-8') as f:
-            return f.read().strip()
-    except OSError:
-        return ''
+    return PROMPT_FINAL
 
 
 ESTIMADO_FASE = {'F0': 36, 'F1': 300, 'F2': 300, 'F4': 160, **{p: 40 for p in camino.PASOS}}  # segundos, si aún no hay intentos de esa fase
