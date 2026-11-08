@@ -100,6 +100,13 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   Llanuras, zonas de peligro, territorio de cada clan y rutas con km y tiempos, como capas editables del visor y
   exportables al juego. **M**
 
+- **MAP-16 · El mapa lo gestionan agentes** [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
+  el mapa todo lo que el juego necesite, y valorar si lo puede llevar un agente local. Cada edición del visor tiene su
+  orden de consola con lotes JSON e informe legible (la primera, `editar.py lote.json`, con `MAP-7`), una guía corta
+  para agentes (qué leer, qué órdenes, qué no tocar: canon y lore) y una prueba con el modelo local de OpenCode/Ollama
+  sobre encargos tipo (mover una frontera, alargar una costa, poner un lugar), midiendo aciertos, errores y tiempo
+  frente a Claude. Se decide con la usuaria si el agente local entra. **M**
+
 ## Fase M-C · Generar donde aporta
 
 - **MAP-10 · Tierras nuevas por generación** [P] (usuaria, 2026-11-05): relieve, costa, ríos y biomas por
