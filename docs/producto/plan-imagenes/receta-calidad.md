@@ -206,6 +206,18 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    día en los siete. La foto se sostiene; se pierden identidad y encuadre. **Conclusión: con klein 4B, quien escribe
    la ficha pesa ~20 puntos de 70; qwen 9B no la escribe bien.** Para decidir con la usuaria: fichas visuales
    escritas una vez por Claude (o revisadas por Álvaro) y guardadas en la ficha, con qwen solo para lo nuevo.
+   **Decidido** (usuaria, 2026-11-09): las escribe Claude → `IMG-55`, guía [`ficha-visual.md`](ficha-visual.md).
+   **Ronda 9, piloto de `IMG-55`** (camino `capas8`, `--hibrida`, semilla 5, ~40 s cada una; seis elementos sin tocar
+   escritos por un subagente Sonnet con la guía; `sueltas-ronda9-1.png`, cada fila: piloto y banner). Sobre 10:
+   corredor de cauce 7 (galgo con placas en el lomo, pero cuatro patas y claro), cruzavientos 6 (un cóndor real:
+   el canon apenas dice nada), cuernahoja 8 pero **identidad 0** (una gacela real: sin cuernos de hoja ni cuello
+   largo), gargantúa 6 (rinoceronte con lunares blancos, aire de juguete), agujas-imán 7 (conos negros en filas
+   simétricas, rocas flotando), pastos de la deriva 8 (foto buena, hierba demasiado verde y luz lavada) →
+   **42/60 (≈49/70)**, como la ronda 7: la plantilla y quien escribe se sostienen fuera del estudio. Bien a la
+   primera: 3 de 6. Fallo nuevo: **el animal real del ancla se come el rasgo que lo distingue** (gacela, cóndor,
+   rinoceronte); el subagente dejó fuera los cuernos de hoja aunque el propio nombre los dice. Regla nueva en la
+   guía: el nombre del elemento es canon, y el rasgo dominante es lo que lo separa de su animal real. Luz: otra vez
+   más clara que el banner en cuatro de seis.
 
 ## 3. Motor por fase
 

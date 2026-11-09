@@ -58,7 +58,11 @@ palabras. Por qué es así cada regla: [`receta-calidad.md`](receta-calidad.md) 
 8. **Palabras vetadas** (las comprueba el script con su alternativa, en `estilo/capas.json`): orc, elf, dwarf, goblin,
    troll, golem; fat, belly, stocky; spires, gothic, castle; rows of windows; ink, cartoon, illustration; moon,
    moonlit, scar, wound, crystal dust; ivory-yellow; red dust o red streaks.
-9. **Un solo sujeto**: si hay más figuras, se dice cuántas y dónde, o se quedan en `repetir`.
+9. **El nombre del elemento es canon** y **el rasgo dominante es lo que lo separa de su animal o cosa real**: si se
+   llama «cuernahoja», sus cuernos son de hoja y van segundos en el `corto`, antes que el cuerpo. Si el ancla es una
+   gacela y el rasgo propio no va delante, sale una gacela (ronda 9). Lo que el canon no diga no se inventa; se dice
+   en `notas`.
+10. **Un solo sujeto**: si hay más figuras, se dice cuántas y dónde, o se quedan en `repetir`.
 
 ## Límites conocidos de klein 4B
 
