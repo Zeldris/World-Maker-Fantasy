@@ -180,6 +180,17 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    comadreja, patas cortas y cresta de placas) pero pierde identidad: colmillos de morsa en el orco (6→4), choza sin
    runas (8→6), manaderos verdes y lavados (7→5), cuchillo sin fondo (8→7). Lo corto delante fija la forma; el detalle
    largo da la identidad.
+   **Ronda 7, híbrida** (camino `capas6`, `capas.py --hibrida`: `corto` delante y detrás tamano, forma, viste,
+   entorno, color, repetir y paleta; `sueltas-ronda7-{1,2}.png`): **49/70, la mejor**. Aullador 8 (cuerpo bajo,
+   cresta de placas), Hulki 6 (cresta de hojas, ojos violeta), choza 8 con runas, cuchillo 8, manaderos 7, salvia 7;
+   orco 5 (cara de hombre con barba, un colmillo curvo). **Plantilla elegida: `--hibrida`**; la ficha lleva `corto`
+   (≤120 palabras, en el orden sujeto y encuadre → luz → rasgo dominante → cuerpo por partes de cosas reales →
+   color → entorno) además de los campos de detalle.
+   **Cierre del paso 4 bis (tres rondas):** límites de klein 4B que no salen por prompt: (1) la clave baja (escenas
+   oscuras salen claras; FLUX.3 en la Final, §3); (2) cara humana en las razas con colmillos (orco y goirnte: sale
+   un hombre con barba; colmillos curvos aunque se pidan rectos); (3) caras de animal no real (Hulki sale lémur).
+   Candidatos para el paso 6: edición de cara con qwen-edit/longcat (§3, sin datos) y FLUX.3 en la Final de escenas
+   oscuras.
 6. Paso al generador y a las pautas de OpenCode (`IMG-50`); con la usuaria, si hace falta una descripción visual
    aparte del lore.
 
