@@ -14,13 +14,18 @@ vi.mock('../../lib/api', async (orig) => ({
 afterEach(cleanup)
 
 describe('MapaPanel (P169)', () => {
-  it('al pasar de Zona a Mapa vuelve a las pestañas con el contenido nuevo ya puesto', () => {
-    const scroll = vi.fn()
-    Element.prototype.scrollIntoView = scroll
-    render(
-      <MapaPanel worldSlug={null} saveId="s1" currentLocation={null} destinations={[]} inventory={[]} quests={[]} buildings={[]} entorno={null} onViajar={() => {}} />,
+  it('al pasar de Zona a Mapa el contenedor con scroll vuelve a 0 (y se mantiene tras cargar)', async () => {
+    const { container } = render(
+      <div data-testid="scroll" style={{ overflowY: 'auto' }}>
+        <MapaPanel worldSlug={null} saveId="s1" currentLocation={null} destinations={[]} inventory={[]} quests={[]} buildings={[]} entorno={null} onViajar={() => {}} />
+      </div>,
     )
+    const caja = container.querySelector('[data-testid="scroll"]') as HTMLElement
+    caja.scrollTop = 307
     fireEvent.click(screen.getByRole('button', { name: 'Mapa' }))
-    expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+    expect(caja.scrollTop).toBe(0)
+    caja.scrollTop = 307 // contenido tardío que vuelve a desplazar
+    await new Promise((r) => setTimeout(r, 300))
+    expect(caja.scrollTop).toBe(0)
   })
 })
