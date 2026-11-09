@@ -33,5 +33,15 @@
     "se quitan del banner la calavera del poste y la caja de huesos amarillentos (sin restos a la vista; el núcleo prohíbe objetos de partes de razas sintientes)",
     "escarcha en el lomo y gotas de deshielo: lectura visual de «fría al tacto incluso lejos de la montaña», no canon"
   ],
-  "imagenJuego": "backend/uploads/images/item/cuchillo-hielo-silice-banner.png"
+  "imagenJuego": "backend/uploads/images/item/cuchillo-hielo-silice-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "Close-up of a single hand-made knife lying on a heavy, cracked wooden workbench, seen from a low three-quarter angle just above the table, the knife spanning about half the width of the image, almost horizontal and tilted slightly upward to the right, the point to the left and the handle to the right.",
+    "tamano": "The blade is 18 cm long and the handle 10 cm: the blade is nearly twice as long as the handle and about one fifth as wide as it is long.",
+    "forma": "The blade is a mineral blade like chipped crystal, widest near the handle and tapering in a straight line to a needle-fine point, with a rippled, hand-chipped surface, a web of fine fracture lines and rough, uneven edges; a thin bloom of frost clings to its spine. The handle is a straight cylinder of weathered bone, about four times as long as it is thick, carved along its length with angular runic marks and bound at each end with three wraps of twine.",
+    "entorno": "A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade. Behind the table, softly out of focus, wooden crates of ice chunks stand at the left, a worn burlap sack rests at the right, and hide walls frame an opening that shows a snow plain and distant mountains under an overcast sky.",
+    "color": "The blade is translucent bluish-white like clear glacier ice, brightest white along the fracture lines, so that the planks beneath show faintly through it. The handle is weathered bone-cream with black runic marks and tan twine. The table is dark brown-grey planks, stained black in patches; the ice in the crates is pale blue; the hide walls are dark oxblood; the snow plain and the far mountains are white under a grey sky.",
+    "paleta": "icy blue-white, bone cream and dark oxblood",
+    "luz": "Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer."
+  }
 }

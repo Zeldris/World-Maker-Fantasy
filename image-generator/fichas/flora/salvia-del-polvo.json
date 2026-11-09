@@ -1,0 +1,28 @@
+{
+  "tipo": "flora",
+  "slug": "salvia-del-polvo",
+  "nombre": "Salvia del Polvo",
+  "region": "Llanuras del Viento Rojo",
+  "zona": "hondonada-del-eco",
+  "momento": "dia",
+  "canon": "Mata baja de hojas grises y aroma amargo; crece en hondonadas y zonas de sombra. Machacada corta hemorragias y limpia heridas; los orcos de las Llanuras la conocen desde niños. Su manojo son hojas grises secas atadas con un cordel (15 cm).",
+  "fuentes": "docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:140-143 (mata baja de hojas grises, hondonadas y sombra); backend/src/scripts/worldCatalog.ts:6527-6539 (manojo: hojas grises secas atadas con cordel, 15 cm); backend/src/scripts/worldCatalog.ts:11373 (crece pegada al suelo en hondonadas; Hondonada del Eco)",
+  "propuestas": [
+    "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
+    "del banner y fuera del canon: hojas gris azulado con manchas pardas oscuras, tallos leñosos finos que se arrastran por el suelo, cañón de paredes rojas con cielo nublado y poca luz",
+    "tamaño (a la altura de la rodilla, hojas como un dedo de largo) y sin flores: el canon solo dice «mata baja»; hojas ovaladas, puntiagudas, arrugadas y algo vellosas, y la luz tenue de sombra: diseño de imagen, no canon",
+    "la ficha usa la Hondonada del Eco como lugar, por el catálogo (worldCatalog.ts:11373), no el cañón exacto del banner"
+  ],
+  "imagenJuego": "backend/uploads/images/flora/salvia-del-polvo-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "A low bushy plant growing in a shaded hollow between tall rock walls, seen from low on the ground. The nearest clump spreads across the right half of the image, rising from the bottom edge to about half its height.",
+    "tamano": "A low shrub no higher than a knee, a loose mat of thin woody stems spreading close to the ground, each leaf about as long as a finger.",
+    "forma": "Thin, tough, woody stems branch and sprawl low over the ground, crowded along their length with pairs of narrow pointed oval leaves that have a finely wrinkled, slightly fuzzy surface and are dotted with small spots. It carries no flowers.",
+    "entorno": "On the right, tall layered rock walls; the floor of the hollow is cracked dry ground with small stones and tufts of dry grass, and narrows into the distance between the walls, where a strip of sky with broken clouds shows far away. Smaller clumps of the same plant grow further along the floor, smaller with distance.",
+    "color": "The leaves are dull ash-grey with a faint blue cast, dotted with small dark brown spots; the stems are thin and grey-brown. The ground is red cracked earth with straw-yellow tufts and the rock walls are red; the sky is pale.",
+    "repetir": "Every clump has the same ash-grey spotted pointed leaves.",
+    "paleta": "ash grey and rust red under a pale sky",
+    "luz": "Dim, soft overcast light in the shade of the hollow, the rock walls in shadow and a pale glow from the sky far ahead, no hard shadows."
+  }
+}

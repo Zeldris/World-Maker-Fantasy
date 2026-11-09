@@ -41,5 +41,15 @@
     "las charcas «estacionales» del canon no dicen qué estación las llena: las condiciones de verano (charcas menguadas) e invierno (escarcha) son diseño de imagen",
     "el banner de primavera (manaderos-dia-primavera-banner.png) es igual al de verano"
   ],
-  "imagenJuego": "backend/uploads/images/location/manaderos-dia-verano-banner.png"
+  "imagenJuego": "backend/uploads/images/location/manaderos-dia-verano-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "A chain of shallow, still pools spread across a flat plain, their water mirroring the sky, seen at human eye height. The horizon lies a third of the way up the image; in the foreground a wide pool reaches almost to the camera, edged with cracked mud and filling the lower third of the image, and the far pools shrink to thin slivers along the horizon.",
+    "forma": "Dense clumps of tall reeds with seed heads like cattails stand along every bank and in the shallows, reaching twice the height of the low banks, and threads of algae float in the clear water at their feet. Small dragonflies hover over the water, and the mud between the pools is split into fine, curling plates.",
+    "pose": "The air is calm, the reeds stand almost still and their reflections are sharp in the water.",
+    "entorno": "On the far horizon, sandstone buttes and flat-topped mesas, about an eighth of the image tall, rise out of a warm haze under a wide, high sky with long thin bands of cloud; fine dust hangs in the far air, softening the distant shapes into layers.",
+    "color": "The reeds are reddish with dark seed heads; the algae bright green; the water clear, mirroring the sky; the mud red; the dragonflies red; the buttes and mesas red sandstone; the sky amber and orange over a golden haze.",
+    "paleta": "reddish reeds, bright algae green and amber sky",
+    "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow and laying bright streaks across the water."
+  }
 }

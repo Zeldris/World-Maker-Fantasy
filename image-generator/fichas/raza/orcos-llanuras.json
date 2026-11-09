@@ -50,5 +50,41 @@
     "medidas en cabezas (cuatro y media agachado, hombros de casi tres): diseño de imagen (banco r20-orcos-llanuras-macho), no canon",
     "el banner de la hembra está en backend/uploads/images/raza/orcos-llanuras-hembra-banner.png; `imagenJuego` solo admite uno y lleva el del macho"
   ],
-  "imagenJuego": "backend/uploads/images/raza/orcos-llanuras-macho-banner.png"
+  "imagenJuego": "backend/uploads/images/raza/orcos-llanuras-macho-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "A single tall tusked warrior of a steppe people, seen at full length from slightly below, three-quarters from the front, crouched on the edge of a rock cliff, filling the image from the bottom edge to near the top on the left side.",
+    "tamano": "The body is huge, broad and powerful but built for long runs: heavy shoulders, thick strong arms and thighs, long ropy muscles, all muscle and no fat. Crouched, the figure is about four and a half heads tall, with shoulders nearly three heads wide.",
+    "forma": "The face is broad and fierce, with a heavy brow, a jutting lower jaw, small rounded ears flat against the head and wide-set eyes; two long, thick, straight tusks point straight up from the lower jaw like blunt pegs, reaching as high as the cheekbones, marked along their length with painted tribal patterns. The skin is thick, dry and weathered like old leather.",
+    "viste": "Worn, dusty hunting clothes, with strips of rawhide bound around the feet and wrists.",
+    "pose": "The figure crouches at the edge of a rock cliff, the back foot flat on the rock and the front foot raised on a higher ledge, the weight leaning forward over the bent front knee, the head turned toward the valley below.",
+    "entorno": "Below the cliff a wide valley opens to the right, scattered with hide tents and thin smoke rising, and beyond it layered flat-topped mesas meet a hazy horizon at the height of the chest.",
+    "color": "The skin is warm clay-beige, sand-coloured where the light touches it and deeper brown in shade, dry and weathered; the tusks are off-white like old ivory, with thin red lines painted along them in tribal patterns; the rawhide strips are tan. The valley is red clay with dark red hide tents and thin grey smoke, the mesas are red, the sky pale and hazy.",
+    "paleta": "clay beige, rust red and hazy gold",
+    "luz": "Bright, hazy daylight falls from high on the right and throws warm gold rim light over the shoulders and the edges of the tusks.",
+    "variantes": {
+      "macho": {
+        "forma+": [
+          "This male wears his hair in long thick braids tied with raw leather cord, with a short beard flecked with the signs of age and raised lines of old ritual scar tissue across his chest and arms."
+        ],
+        "viste+": [
+          "He wears a loincloth of cured hide, an open sleeveless leather vest that leaves his chest uncovered and a cloak of feathers knotted at the waist, and both hands grip a heavy two-handed war axe held across his body, its shaft nearly as long as he is tall."
+        ],
+        "color+": [
+          "His braids are black, his short beard black streaked with grey; the vest is black leather, the cloak ash-grey feathers and the axe head black iron."
+        ]
+      },
+      "hembra": {
+        "forma+": [
+          "This female has broad, long tusks, wide-set eyes, her hair braided and threaded with small bone beads, and raised lines of old ritual scar tissue across her shoulders."
+        ],
+        "viste+": [
+          "She wears a leather bodice, a kilt of leather strips and a cloak of feathers knotted at the waist."
+        ],
+        "color+": [
+          "Her eyes are amber and her hair is black streaked with red; the bodice is dark leather, the cloak dark feathers and the beads off-white."
+        ]
+      }
+    }
+  }
 }

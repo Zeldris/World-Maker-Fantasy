@@ -71,7 +71,32 @@
   "propuestas": [
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
     "choca con el canon: cuerpo largo y patas cortas (el canon: patas desproporcionadamente largas), cresta de placas con púas rojas, colmillos de sable",
-    "IMG-16 (perfil fotorreal): proporcion y manada nuevas; «cabeza de zorro sobre el torso de una comadreja» y la escala del cuerpo (torso de cinco cabezas) son diseño de imagen, no canon"
+    "IMG-16 (perfil fotorreal): proporcion y manada nuevas; «cabeza de zorro sobre el torso de una comadreja» y la escala del cuerpo (torso de cinco cabezas) son diseño de imagen, no canon",
+  "IMG-54, paso 5: el bloque `capas` sigue el banner y el `prompt` de la ficha (cuerpo largo y bajo, patas cortas, cresta de placas con púas rojas, colmillos de sable), no el canon; lo que choca con el canon: patas desproporcionadamente largas y flaco (canon) frente a cuerpo de comadreja con patas cortas, púas oscuras erizadas (canon) frente a placas negras con púas rojas brillantes, colmillos curvos amarillentos (canon) frente a colmillos de sable pálidos; cola negra tupida y arena fosilizada con vetas rojas no se pintan"
   ],
-  "imagenJuego": "backend/uploads/images/fauna/aullador-rojo-macho-banner.png"
+  "imagenJuego": "backend/uploads/images/fauna/aullador-rojo-macho-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "A single long, low pack hunter, seen in full side profile from a low camera angle, stalking forward across a plain in the left part of the image, taking up about two thirds of its width with its feet near the bottom edge.",
+    "tamano": "A deep chest and a flexible spine, carried close to the ground on short, strong legs that end in curved claws. Its body is a ribbon: the torso is as long as five of its own heads laid end to end, and the legs are shorter than the chest is deep.",
+    "forma": "It has the narrow head of a fox on the long, supple torso of a weasel, with tall pointed ears and two long sabre fangs hanging below the lower jaw. The coat is short and dense, with faint stripes along the flanks. A crest of overlapping armoured plates runs unbroken from the nape along the whole spine and down the long banded tail to its spiny tip, edged with a row of sharp spikes. Tufts of long hair cling to its ankles, and its ribs show faintly under the coat.",
+    "pose": "It stalks forward with its weight on one foreleg and its head turned slightly toward the viewer.",
+    "entorno": "The ground is cracked earth with sparse dry tufts, and tall dust devils rise far off on the plain under a low sun.",
+    "color": "The coat is warm rust brown, paler in the stripes; the eye is amber; the fangs are pale; the plates of the crest are black and the spikes glow red; the tufts at the ankles are black. The ground is red earth with straw-yellow tufts, and the dust devils are dark.",
+    "repetir": "Behind it lopes a pack of six more of the same hunters, smaller and hazier with distance, each with the same long low body, the same black plate crest with red spikes and the same pale sabre fangs.",
+    "paleta": "rust brown and black with one accent of fiery orange light",
+    "luz": "The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike.",
+    "variantes": {
+      "macho": {
+        "forma+": [
+          "This male is heavier in the neck and shoulders, with longer fangs and a taller crest of spikes."
+        ]
+      },
+      "hembra": {
+        "forma+": [
+          "This female is visibly smaller and slighter, with a narrower head and a lower crest of spikes."
+        ]
+      }
+    }
+  }
 }

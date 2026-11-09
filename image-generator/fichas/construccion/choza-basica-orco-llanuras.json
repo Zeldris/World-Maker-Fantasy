@@ -33,5 +33,16 @@
     "la marca del clan, que el canon pone «a veces», va siempre en el prompt",
     "fuego dentro por la noche: diseño de imagen, no canon"
   ],
-  "imagenJuego": "backend/uploads/images/construccion/choza-basica-orco-llanuras-banner.png"
+  "imagenJuego": "backend/uploads/images/construccion/choza-basica-orco-llanuras-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "A single domed hut standing alone on a desert plain, seen from a low camera angle three-quarters from the front, filling the left half of the image.",
+    "tamano": "The dome is a little taller than a tall man standing and about twice as wide as it is tall, and its low entrance reaches only a third of its height.",
+    "forma": "Its frame is a ring of huge, long curved bones driven into the ground and bent together over the top, lashed at every crossing with thick cords of sinew. Sewn hides are stretched tight between the bones as walls and roof, their seams stitched with coarse cord, and weathered where the wind strikes them. A single low doorway opens at the front, framed by a thick upright bone post carved with a bold clan mark.",
+    "pose": "A dry wind tugs at the loose edge of a hide near the base and blows a thin streamer of dust past the doorway.",
+    "entorno": "The ground is cracked earth with sparse dry tufts and a low drift of fine sand along the windward side of the hut; to the left, tall jagged rock pinnacles rise in the middle distance, and flat-topped mesas fade into haze on the far horizon under a wide sky of broken clouds.",
+    "color": "The bones are pale, weathered and cracked; the cords dark brown; the hides patched in shades of red-brown and tan, faded where the wind strikes them; the clan mark is black and the doorway a hollow of deep shadow. The ground, the pinnacles and the far mesas are red, the sand drift red, the sky broken golden cloud.",
+    "paleta": "rust red, bone white and golden ochre",
+    "luz": "Warm, hazy daylight falls from high on the right, picking out the curve of the bones and the stitched seams, and laying a soft shadow to the left of the hut."
+  }
 }

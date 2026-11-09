@@ -41,5 +41,17 @@
     "cordón de fibra trenzada en cintura y muñecas: del banner, sin fuente en el canon",
     "medidas en cabezas (unas tres con la cresta, hombros de dos cabezas y media): diseño de imagen (banco r20-faerus-margen-hembra), no canon"
   ],
-  "imagenJuego": "backend/uploads/images/raza/faerus-margen-hembra-banner.png"
+  "imagenJuego": "backend/uploads/images/raza/faerus-margen-hembra-banner.png",
+  "capas": {
+    "notas": "IMG-54, paso 5, prueba a ciegas: escrito solo con las reglas de la plantilla",
+    "sujeto": "A single very old, lean female forest beast, seen at full length from slightly below, three-quarters from the front, crouched on bent hind legs at the edge of a wide wooden platform in the fork of a massive tree, filling the image from the bottom edge to near the top on the left side.",
+    "tamano": "Crouched she is about three of her own heads tall counting the crest, her shoulders two and a half heads wide and her long arms hanging to her knees: lean and hunched, yet with the broad, worn shoulders of someone who has carried prey all her life.",
+    "forma": "She looks like a bear standing on its hind legs, only leaner, longer in the arm and more hunched. Her muzzle is short and broad under a heavy brow, and dense fur covers her whole body. Thin overlapping leaves like a willow's grow straight out of her skin along the crown, nape and forearms and rise into a ragged crest above her head; along the forearms they are curled at the tips. Her knuckles are thick and calloused.",
+    "viste": "Her only gear is a plaited fibre cord wrapped around her waist and wrists. She wears no tunic and no sandals.",
+    "pose": "She squats on her heels with one long hand on the planks, her head turned toward the viewer with a calm, patient stare.",
+    "entorno": "Behind her rise huge trunks wrapped in moss and dotted with small mushrooms; deeper back, small platform huts joined by rope bridges hang among the branches, each with a few small windows, in clear, perfectly still air. The closed canopy overhead hides the sky.",
+    "color": "Her muzzle has gone silver-grey with age and her eyes glow a soft violet. The dense fur is in the ochre and olive tones of bark and moss; the leaves are olive with dry ochre edges, faded at the tips. The trunks are black, wrapped in green moss, with pale blue-green glowing mushrooms; the planks are weathered brown, and the hut windows glow amber.",
+    "paleta": "ochre, olive and moss green with accents of pale blue-green glow",
+    "luz": "Dim green light filters through the closed canopy, with a few thin shafts falling from the upper left onto her shoulders and the planks."
+  }
 }
