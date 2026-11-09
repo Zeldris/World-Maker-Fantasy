@@ -57,6 +57,15 @@ class TestCamino(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(os.path.join(self.d, 'intentos'))), ['macho-f0-2.png'])
         self.assertEqual(c['variantes']['macho']['faseActual'], 'F1')
 
+    def test_avanzar_conservar_mueve_los_no_aceptados_a_descartados(self):
+        c = C.vacio()
+        for s in (3, 4):
+            intento(c, 'macho', 'F0', f'prompt{s}', s)
+        con_imagenes(self.d, c, 'macho', 'F0')
+        C.avanzar(self.d, c, 'macho', 'F0', 2, 'F1', 'fauna', conservar=True)
+        self.assertEqual(sorted(os.listdir(os.path.join(self.d, 'intentos'))), ['descartados', 'macho-f0-2.png'])
+        self.assertEqual(os.listdir(os.path.join(self.d, 'intentos', 'descartados')), ['macho-f0-1.png'])
+
     def test_avanzar_no_permitido(self):
         c = C.vacio()
         intento(c, 'm', 'F0')

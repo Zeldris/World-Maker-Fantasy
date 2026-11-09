@@ -17,6 +17,9 @@ Lo general (cada sesión su rama, merge y nunca rebase, a `main` con confirmaci�
   ven los ganchos. Si `gh auth status` falla, se dice a la usuaria; nunca se busca la credencial de git. Una sesión
   sin URL de PR (sin `gh` ni herramienta de GitHub) escribe «PR listo», nunca «PR abierto» ni «en borrador»: esas
   palabras en la bitácora solo van con la URL del PR (`QA-262`), y el PR lo crea otra sesión que sí pueda.
+- **Una sesión paralela en un worktree hermano** (`../WMF-imagenes`; retro del 2026-11-09): se abre **con ese
+  worktree como carpeta** (VS Code en esa ruta). Abierta en la copia principal, el gancho de parada mira la rama de la
+  otra sesión y pide subir su trabajo a medias; eso no se obedece.
 - **Varios PR listos a la vez, de uno en uno** (usuaria, 2026-11-03, `QA-286`): todos tocan la bitácora, así que al
   fusionar uno el siguiente choca. Se abre y fusiona uno; el siguiente fusiona `main`, pone su marca y solo entonces
   se abre.

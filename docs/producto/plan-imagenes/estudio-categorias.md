@@ -207,5 +207,17 @@ Hoja `sueltas-goirnte54-1.png` (filas A, B, D).
 6. **Tamaño y proporción en números no los sigue klein 4B** (9, 18, 23): queda probarlo con FLUX.3.
 7. **Sin banner, el lore puede no bastar** para la identidad visual (ayuntamiento, regla 27): decisión de diseño.
 
-**Siguiente:** probar con FLUX.3 los mejores de cada categoría (acantilados D, pilares F, múrgol E, cardo E, amuleto E,
+**Hecho (2026-11-09):** la receta general, con la tanda de Finales, en [`receta-calidad.md`](receta-calidad.md).
+
+**Antes era el siguiente paso:** probar con FLUX.3 los mejores de cada categoría (acantilados D, pilares F, múrgol E, cardo E, amuleto E,
 ayuntamiento E, Gistera F, goirnte D) y llevar las reglas a las pautas de `imagePromptGenerator.ts` y a `mundo.json`.
+
+## Gistera, edición que nombra solo el cambio (2026-11-09)
+
+P2 «Give this warrior a woman's chest… remove the beard and moustache. Change nothing else: keep the same heavy face,
+the same tusks…» (klein 4B semillas 3 y 4, klein 9B): sale el pecho y el cuerpo se conserva, pero **el bigote se
+queda** en las tres: proteger «the same face» congela la cara entera. El colmillo ya sale diminuto en P1 (arreglarlo
+ahí). Hoja `sueltas-recgis2-1.png`.
+
+35. **Lo que se protege en una edición se congela entero**: el cambio se pide por su nombre y no se protege la parte
+    donde está (ni «keep the face» si hay que quitar el bigote).

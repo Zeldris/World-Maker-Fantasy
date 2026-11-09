@@ -165,11 +165,17 @@ def _en_uso(v):
     return usadas
 
 
-def _borrar_archivos(d, imagen):
-    """Borra del disco la imagen de un intento (`.png`) y su `.json`."""
+def _borrar_archivos(d, imagen, conservar=False):
+    """Borra del disco la imagen de un intento (`.png`) y su `.json`; con `conservar`, los mueve a
+    `intentos/descartados/` (estudios que comparan intentos, retro 2026-11-09)."""
     for ext in ('.png', '.json'):
+        origen = os.path.join(d, 'intentos', os.path.splitext(imagen)[0] + ext)
         try:
-            os.remove(os.path.join(d, 'intentos', os.path.splitext(imagen)[0] + ext))
+            if conservar:
+                os.makedirs(os.path.join(d, 'intentos', 'descartados'), exist_ok=True)
+                os.replace(origen, os.path.join(d, 'intentos', 'descartados', os.path.basename(origen)))
+            else:
+                os.remove(origen)
         except FileNotFoundError:
             pass
 
@@ -187,8 +193,12 @@ def _desfasar(v, origen, nueva):
         cola += [g for g, r in v['fases'].items() if r.get('desde') == f]
 
 
-def avanzar(d, camino, variante, fase, n, siguiente, tipo):
-    """Acepta el intento n de `fase`, borra del disco los demás y pasa a `siguiente`."""
+def avanzar(d, camino, variante, fase, n, siguiente, tipo, conservar=None):
+    """Acepta el intento n de `fase`, borra del disco los demás y pasa a `siguiente`.
+
+    Con `conservar` (o `CAMINO_CONSERVAR=1` en el entorno) los demás se mueven a `intentos/descartados/`."""
+    if conservar is None:
+        conservar = os.environ.get('CAMINO_CONSERVAR') == '1'
     f = _fase(camino, variante, fase)
     if f is None:
         raise CaminoInvalido(f'La variante {variante} no tiene la fase {fase}')
@@ -209,7 +219,7 @@ def avanzar(d, camino, variante, fase, n, siguiente, tipo):
     usadas = _en_uso(v)
     for i in f['intentos']:
         if i['n'] != n and i['imagen'] and i['imagen'] not in usadas:
-            _borrar_archivos(d, i['imagen'])
+            _borrar_archivos(d, i['imagen'], conservar)
             i['imagen'] = None
     f.update(aceptada=elegido['imagen'], prompt=elegido['prompt'], semilla=elegido['semilla'], desfasada=False)
     if 'entrada' in elegido:  # la fase pasa a partir de lo que usó el intento aceptado
