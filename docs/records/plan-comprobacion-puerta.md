@@ -123,13 +123,14 @@ paso 3.4 (el resto de pendientes).
 ## Para la sesión local
 
 Solo se ve con el Ollama real (GPU de la Deck u otra máquina), no con el simulado: se lanza con `tools/qa/bench-ia.sh` o
-una ronda local, y se anota en la tanda 34 o aquí. Estos tres ids van **solo aquí** y no se cuentan en ninguna tanda;
+una ronda local, y se anota en la tanda 34 o aquí. Estos ids van **solo aquí** y no se cuentan en ninguna tanda;
 las partes locales de otros ids (abajo) no se cuentan dos veces.
 
 | Id | Qué hay que ver con el Ollama real |
 |---|---|
 | P244 | Volver a Interactuar con Gistera ya descubierta (DESCUBIERTO) abre la escena de reencuentro sin presentación (`narrarReencuentroGistera` con su guion); el resto de NPC, por `dynamicModeNarracion.ts`. Ollama real: es texto del narrador |
 | P268 | «Le entrego raciones al orco» con el narrador real: los guards ya no lo toman por un viaje («raciones de viaje», `TRAVEL_INTENT_REGEX`) |
+| P435 | En la ronda en que ataca un NPC (p. ej. el Orco de `mv-hondonada-hostiles`), la narración bajo «… ATACA CON» va en tercera persona y cuenta su ataque, no el acercamiento. Con el simulado sale su texto fijo o el respaldo de combate (P94) |
 | P271 | Con el narrador real, tras dar Clemente a un rival, el rival no llama «Clemente» a Gorhorn: la memoria dice «Fama de la jugadora, por lo que ha hecho…» |
 
 Partes locales de ids que sí están en tandas (la tanda comprueba lo visible con el simulado; esto queda para la local, sin
@@ -164,7 +165,7 @@ Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos as
 
 | Lote | Sistema | Hallazgos |
 |---|---|---|
-| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P364, P366, P376, P394, P426. Reparto (2026-11-08): A1 textos y huida hecha (P364 arreglado; P360, P361 y P394 ya arreglados antes; P363 a reproducir jugando en la tanda del lote A); A2 estado tras el combate y capas hecha (P362, P366 y P426 arreglados; P359 no reproducido, a jugar; P376 por diseño, confirmado por la usuaria); A3 NPC ausente hecha (P331 arreglado; P325 por diseño, TERRITORIO_CORTO). P16 a «Para la sesión local» (solo con Ollama real). A4 (tandas 92-93): P363 y P431 arreglados (2026-11-09, con tests); P430 no se reproduce (tanda 95). A5 (tanda 95): P435, P436 (por diseño, usuaria 2026-11-09), P437 (arreglado 2026-11-09, con tests; a jugar) |
+| A | Combate: pantalla y textos | P16, P325, P331, P359, P360, P361, P362, P363, P364, P366, P376, P394, P426. Reparto (2026-11-08): A1 textos y huida hecha (P364 arreglado; P360, P361 y P394 ya arreglados antes; P363 a reproducir jugando en la tanda del lote A); A2 estado tras el combate y capas hecha (P362, P366 y P426 arreglados; P359 no reproducido, a jugar; P376 por diseño, confirmado por la usuaria); A3 NPC ausente hecha (P331 arreglado; P325 por diseño, TERRITORIO_CORTO). P16 a «Para la sesión local» (solo con Ollama real). A4 (tandas 92-93): P363 y P431 arreglados (2026-11-09, con tests); P430 no se reproduce (tanda 95). A5 (tanda 95) hecha: P437 arreglado (2026-11-09, con tests; a jugar); P436 por diseño (usuaria 2026-11-09); P435 diagnosticado (Ollama simulado + respaldo de combate, P94) a «Para la sesión local», con una decisión de la usuaria pendiente (¿el respaldo de combate deja de copiar la acción, como P245?) |
 | B | Capas, modales y mapa de zona | P169 (de la tanda 90), P188, P250, P254, P259, P267 (P188, P250 y P267 vistos con Playwright, sin confirmar en local) |
 | C | Reino: ganado, edificios y avisos | P332, P333, P334, P335, P336, P337, P338, P339, P340, P372, P384, P428 |
 | D | Reino: vasallos, Leyendas, hambre y bebida | P248, P342, P343, P368, P379, P381 |
