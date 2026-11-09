@@ -181,12 +181,17 @@ export function etapaDelAnimal(a: { especie: string; nacidoEn: number }, faunaCa
 
 // ── 55d: avance diario ───────────────────────────────────────────────────────────────────────
 
+/// Revisión C1 (leve 6): días entre dos avisos iguales de lo que se pierde por falta de hueco.
+const DIAS_ENTRE_AVISOS_DE_PERDIDA = 7;
+const PREFIJO_GRANERO_LLENO = 'El Granero está lleno (la comida y el forraje comparten su hueco): se pierden';
+const PREFIJO_ALMACEN_LLENO = 'El Almacén está lleno de materiales: se pierde';
+
 /// P336: el aviso del Reino cuando la producción del día no cabe (null si cupo todo).
 export function avisoDePerdido(p: { comida: number; materiales: Record<string, number> }): string | null {
   const partes: string[] = [];
-  if (p.comida > 0) partes.push(`El Granero está lleno (la comida y el forraje comparten su hueco): se pierden ${p.comida} de comida de lo que dan los corrales.`);
+  if (p.comida > 0) partes.push(`${PREFIJO_GRANERO_LLENO} ${p.comida} de comida de lo que dan los corrales.`);
   const mats = Object.entries(p.materiales);
-  if (mats.length > 0) partes.push(`El Almacén está lleno de materiales: se pierde ${mats.map(([nombre, n]) => `${n} ${nombre}`).join(', ')}.`);
+  if (mats.length > 0) partes.push(`${PREFIJO_ALMACEN_LLENO} ${mats.map(([nombre, n]) => `${n} ${nombre}`).join(', ')}.`);
   return partes.length > 0 ? partes.join(' ') : null;
 }
 
@@ -317,8 +322,15 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
   }
 
   await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje, comida, bebida, ganadoDiasSinComer: diasSinComer, ganadoDiasSinBeber: diasSinBeber } });
-  // P336: lo que no cupo no se pierde en silencio.
-  const aviso = avisoDePerdido(perdido);
+  // P336: lo que no cupo no se pierde en silencio. Revisión C1 (leve 6): con el Granero (o el Almacén) lleno días seguidos,
+  // un aviso por semana, no uno al día (un avance de N días dejaba N líneas iguales).
+  const desde = ahora - DIAS_ENTRE_AVISOS_DE_PERDIDA * 1440;
+  const yaAvisado = async (prefijo: string) =>
+    (await tx.logEntry.count({ where: { saveId, channel: 'KINGDOM', fictionalMinutes: { gt: desde, lte: ahora }, text: { startsWith: prefijo } } })) > 0;
+  const aviso = avisoDePerdido({
+    comida: perdido.comida > 0 && (await yaAvisado(PREFIJO_GRANERO_LLENO)) ? 0 : perdido.comida,
+    materiales: Object.keys(perdido.materiales).length > 0 && (await yaAvisado(PREFIJO_ALMACEN_LLENO)) ? {} : perdido.materiales,
+  });
   if (aviso) await avisarEnReino(tx, saveId, aviso, ahora);
   return { comido, bebido, producido, comidaDeLeche, perdido, crias, muertos: muertos.size };
 }

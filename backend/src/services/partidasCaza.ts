@@ -122,7 +122,7 @@ export function resumenDeCaza(d: { quien: string; nombre: string; lugar: string;
   return encuentros === 0
     ? `${quien} no encuentra ${nombre} en ${lugar} y vuelve de vacío.`
     : piezas === 0 && capturados === 0
-      ? `${quien} planta cara a ${nombre} en ${lugar} y no abate ninguno: ${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran${muertos > 0 ? `; caen ${muertos}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
+      ? `${quien} planta cara a ${nombre} en ${lugar} y no abate ninguno: ${heridos === 1 ? `1 de los suyos sale herido${caidos > 0 ? ' (fuera de combate)' : ''} y la partida se retira` : `${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran`}${muertos > 0 ? `; caen ${muertos}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
       : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar}${muertos > 0 ? `; caen ${muertos} de los suyos` : ''}.`;
 }
 

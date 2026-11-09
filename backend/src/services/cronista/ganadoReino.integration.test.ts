@@ -145,6 +145,24 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     expect(avisos.some((a) => /El Granero está lleno.*se pierden \d+ de comida/.test(a.text))).toBe(true);
   });
 
+  it('revisión C1 (leve 6): con el Granero lleno días seguidos, un aviso por semana y no uno al día', async () => {
+    for (let i = 0; i < 5; i++) await animal(i % 2 ? 'M' : 'F');
+    await ganadero();
+    const granero = () => prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { startsWith: 'El Granero está lleno' } } });
+    const diaLleno = async (d: number) => {
+      await prisma.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: 40, forraje: 20, bebida: 60 } });
+      expect((await avanzarGanadoReino(prisma, saveId, DIA + d, AHORA + d * 1440, () => 0.99))?.perdido.comida).toBeGreaterThan(0);
+    };
+    // Días sin cría (la semana nace una con DIA múltiplo de 7), para que el consumo no cambie.
+    await diaLleno(1);
+    expect(await granero()).toBe(1);
+    await diaLleno(2);
+    expect(await granero()).toBe(1);
+    // Una semana después del primero vuelve a avisar.
+    await diaLleno(8);
+    expect(await granero()).toBe(2);
+  });
+
   it('P336: si todo cabe no hay aviso', async () => {
     for (let i = 0; i < 5; i++) await animal(i % 2 ? 'M' : 'F');
     await ganadero();

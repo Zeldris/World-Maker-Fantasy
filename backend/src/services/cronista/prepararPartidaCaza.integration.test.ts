@@ -89,11 +89,11 @@ describe('prepararPartidaCaza (QA-298)', () => {
     expect(await prisma.viajero.count({ where: { saveId: { in: [sin, ok, nada] } } })).toBe(0);
   });
 
-  // QA-299 (P439): la partida vuelve sin piezas y con h heridos; el aviso es el del juego («h de los suyos salen heridos»).
-  it('heridos=1: el aviso del juego dice «1 de los suyos salen heridos», sin piezas', async () => {
+  // QA-299 (P439): la partida vuelve sin piezas y con h heridos; el aviso es el del juego (P439: «1 de los suyos sale herido», en singular).
+  it('heridos=1: el aviso del juego dice «1 de los suyos sale herido», sin piezas', async () => {
     const saveId = await partida('Caza heridos (QA-299)');
     expect(await prepararPartidaCaza(prisma, { saveId, especie: 'murgol', piezas: 0, heridos: 1 })).toMatchObject({ nueva: true, piezas: 0, heridos: 1 });
-    expect(await avisos(saveId)).toContain('La partida de caza planta cara a Múrgol en ' + (await prisma.location.findFirstOrThrow({ where: { id: (await prisma.viajero.findFirstOrThrow({ where: { saveId } })).destinoLocationId } })).name + ' y no abate ninguno: 1 de los suyos salen heridos y se retiran.');
+    expect(await avisos(saveId)).toContain('La partida de caza planta cara a Múrgol en ' + (await prisma.location.findFirstOrThrow({ where: { id: (await prisma.viajero.findFirstOrThrow({ where: { saveId } })).destinoLocationId } })).name + ' y no abate ninguno: 1 de los suyos sale herido y la partida se retira.');
     await dia(saveId, 21);
     expect(await prisma.almacenItem.count({ where: { saveId, catalogSlug: SLUG_PIEZA } })).toBe(0);
     expect(await prisma.viajero.findFirstOrThrow({ where: { saveId } })).toMatchObject({ estado: 'TERMINADO' });
@@ -107,7 +107,7 @@ describe('prepararPartidaCaza (QA-298)', () => {
     expect(await prisma.viajero.count({ where: { saveId } })).toBe(0);
     expect(await prepararPartidaCaza(prisma, { saveId, especie: 'murgol', piezas: 0, heridos: 1 })).toMatchObject({ heridos: 1 });
     expect((await prisma.companion.findUniqueOrThrow({ where: { id: compa.id } })).condicionFisica).toBe('HERIDO');
-    expect((await avisos(saveId)).some((t) => t.includes('1 de los suyos salen heridos'))).toBe(true);
+    expect((await avisos(saveId)).some((t) => t.includes('1 de los suyos sale herido y la partida se retira'))).toBe(true);
   });
 
   it('heridos con piezas se niega', async () => {

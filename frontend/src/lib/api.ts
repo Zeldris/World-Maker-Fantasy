@@ -1686,6 +1686,8 @@ export interface PartidaInfo {
 }
 export interface OpcionesPartida {
   origen: { id: string; name: string } | null
+  /// Sin origen porque los edificios desde los que se sale están dañados (hay que repararlos).
+  origenDanado?: boolean
   /// `sinArma`: sin arma no sale (Q3 de CR-63, como un soldado).
   cazadores: { id: string; name: string; sinArma?: boolean }[]
   /// Nombres de los cazadores que están fuera con una partida.

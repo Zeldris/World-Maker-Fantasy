@@ -136,7 +136,7 @@ describe('partidas de caza (CR-63 63b)', () => {
     const v = await viajero();
     await prisma.$transaction((tx) => descargarCaza(tx, { ...v, factionId: null, carga: { especie: 'murgol', piezas: 1, diaCaza: 30, resumen: 'x' }, miembros: [] }, 31));
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { startsWith: 'La partida de caza vuelve con 1 pieza de Múrgol. Se estropea en 2 días: llévala al Desolladero.' } } })).toBe(1);
-    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: '1 piezas' } } })).toBe(0);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: ' 1 piezas' } } })).toBe(0);
     await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
   });
 

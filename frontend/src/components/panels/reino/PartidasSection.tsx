@@ -5,7 +5,6 @@ import { SelectorJuego } from '../../SelectorJuego'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
 import { getPartidas, postAtacarCampamento, postLanzarPartida, postOrdenPartida, type CampamentoInfo, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
-import type { BuildingInfo } from '../../../types'
 import { CampamentosBandidos } from './CampamentosBandidos'
 
 const ESTADO: Record<PartidaInfo['estado'], string> = {
@@ -32,7 +31,7 @@ export function cargaDePartida(p: PartidaInfo): string | null {
 /// CR-63 (63d, Q3/Q7): Reino › Partidas — las partidas de caza y captura del Reino (por dónde van y
 /// qué traen, con sus órdenes) y el formulario para lanzar una nueva: tipo, lugar que conoces,
 /// especie que has visto allí, quién va (tus grupos 2+ y súbditos cazadores) y si repite.
-export function PartidasSection({ saveId, onRefreshSave, buildings = [] }: { saveId: string; onRefreshSave: () => Promise<void>; buildings?: BuildingInfo[] }) {
+export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onRefreshSave: () => Promise<void> }) {
   const [partidas, setPartidas] = useState<PartidaInfo[]>([])
   const [opciones, setOpciones] = useState<OpcionesPartida | null>(null)
   const [campamentos, setCampamentos] = useState<CampamentoInfo[]>([])
@@ -141,7 +140,7 @@ export function PartidasSection({ saveId, onRefreshSave, buildings = [] }: { sav
       <PanelSection title="Nueva partida">
         {!opciones.origen && (
           <p className="text-xs text-wood-500">
-            {buildings.some((b) => b.status === 'DANADO')
+            {opciones.origenDanado
               ? 'Tus edificios están dañados y de ahí no puede salir nadie: repáralos con «Reparar» en Reino › Edificios.'
               : 'Tu Reino necesita un edificio desde el que salir.'}
           </p>

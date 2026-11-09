@@ -8,7 +8,6 @@ vi.mock('../../../lib/api', () => ({
 }))
 
 import { getPartidas, postLanzarPartida, postOrdenPartida, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
-import type { BuildingInfo } from '../../../types'
 import { cargaDePartida, lineaDePartida, PartidasSection } from './PartidasSection'
 
 /// CR-63 (63d): Reino › Partidas.
@@ -103,10 +102,16 @@ describe('PartidasSection (CR-63 63d)', () => {
   })
   // P340: con los edificios dañados no se dice que falte uno: se dice que hay que repararlos.
   it('P340: sin origen y con edificios dañados remite a Reparar en Edificios', async () => {
-    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, origen: null } })
-    const danado = { id: 'b1', name: 'Desolladero', status: 'DANADO' } as unknown as BuildingInfo
-    const { findByText, queryByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} buildings={[danado]} />)
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, origen: null, origenDanado: true } })
+    const { findByText, queryByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
     expect(await findByText(/dañados.*Reparar.*Reino › Edificios/)).toBeTruthy()
     expect(queryByText(/necesita un edificio/)).toBeNull()
+  })
+  // Revisión C2 (leve 5): sin origen por otra causa no se habla de reparar.
+  it('sin origen y sin edificios dañados de los que salir pide un edificio', async () => {
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, origen: null, origenDanado: false } })
+    const { findByText, queryByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect(await findByText(/necesita un edificio/)).toBeTruthy()
+    expect(queryByText(/dañados/)).toBeNull()
   })
 })

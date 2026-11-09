@@ -74,7 +74,9 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
         }),
       };
     });
-  return { origen, cazadores, cazadoresFuera, grupos, destinos };
+  // Revisión C2 (leve 5): el aviso de «repara» solo si es un edificio dañado lo que falta para salir.
+  const origenDanado = !origen && (await tx.building.count({ where: { saveId, status: 'DANADO', locationId: { not: null } } })) > 0;
+  return { origen, origenDanado, cazadores, cazadoresFuera, grupos, destinos };
 }
 
 export interface PeticionPartida {
