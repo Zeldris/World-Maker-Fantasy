@@ -155,6 +155,17 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
 4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
    del modelo.
 5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.
+   **Hecha** ✅ (2026-11-09; fichas `capas` escritas por un subagente solo con las reglas, sin ver resultados;
+   `--directa`, klein 4B, semilla 5, ~40 s por elemento; `sueltas-ciegas-{1,2}.png`, cada fila: directa y banner):
+   **47/70** (estudio: 51/70), y **4 de 7 bien a la primera** (≥7/10: choza 8, cuchillo 8, manaderos 7, salvia 7).
+   Orcos 6, aullador 6, Hulki 5. La plantilla generaliza: foto, encuadre y tamaño se sostienen en los siete. Fallos:
+   - **Luz, el punto débil en los siete:** sale más clara, de día y nítida que el banner (noche, atardecer, sombra).
+     La regla de luz como exposición no basta; candidato a regla general de la plantilla.
+   - **Anatomía no humana:** Hulki sale un mono-lémur claro, y el aullador, con patas largas y cola anillada, aunque
+     la ficha pide cuerpo bajo y patas cortas: klein tira hacia el animal real más cercano.
+   - **Clichés que vuelven sin la palabra:** colmillos curvos de morsa en el orco, con «tusks» rectos en la ficha.
+   - Color: juncos verdes en manaderos y salvia plateada; el color de la ficha pesa menos que el del animal o la
+     planta real más cercanos.
 6. Paso al generador y a las pautas de OpenCode (`IMG-50`); con la usuaria, si hace falta una descripción visual
    aparte del lore.
 
