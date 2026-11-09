@@ -23,6 +23,7 @@
 //   nivel:<n>[:<atr>,<atr>…]        P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel. P386: con atributos (p. ej. `nivel:19:constitucion,fuerza`) reparte todos los puntos por turno entre ellos (`repartirPuntoDeAtributo`, la del botón), también con un combate abierto; sin ellos, quedan por repartir
 //   herido:<npc>[:grave|herido]     P370 (para P292): un NPC del combate en curso (un compañero) queda GRAVE (por defecto) o HERIDO con la escritura de un golpe recibido en el combate (`escribirCondicionYEnergia`): el capitán enemigo, que señala al más herido, lo elige en la ronda siguiente
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
+//   partida-caza:<presa>:<n>[:permanente]  QA-298 (P338, P339): una partida de caza del Reino (la que hay en marcha tras esa presa o una lanzada con `lanzarPartida`: pide un lugar conocido con la presa y un cazador libre con arma o un compañero de grupo 2+) queda en casa y a punto de volver con n piezas; al avanzar el día se resuelve por el camino normal (`descargarCaza`: aviso, piezas en el Almacén; con orden permanente, `antesDeRepetir`: el corte de P338 con el Desolladero dañado). `:permanente` pone la orden de repetir
 //   combate1v1:<npc>                QA-293 (P373): el combate 1v1 clásico contra ese NPC, donde esté, como un agresor que se lanza contra ella (`abrirCombate1v1`, el efecto `forzarCombate` del Cronista); el panel sale al cargar la partida; se niega con un combate en curso o sin el NPC
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -46,6 +47,7 @@ import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
 import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
+import { prepararPartidaCaza } from '../services/cronista/prepararPartidaCaza.js';
 import { abrirCombate1v1 } from '../services/cronista/prepararCombate1v1.js';
 import { dejarHeridoEnCombate } from '../services/cronista/prepararHerido.js';
 import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
@@ -57,7 +59,7 @@ import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc>`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>[:permanente]`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -152,6 +154,10 @@ for (const paso of pasos) {
     const r = await abrirCombate1v1(prisma, { saveId, npcSlug: paso.npcSlug });
     if ('error' in r) rechaza(r.error);
     else dice(`Combate 1v1: ${r.nombre} se lanza contra ti (${r.scope}); el panel de combate sale al cargar la partida`);
+  } else if (paso.tipo === 'partidaCaza') {
+    const r = await prepararPartidaCaza(prisma, { saveId, especie: paso.especie, piezas: paso.n, permanente: paso.permanente });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Partida de caza (${r.nueva ? 'lanzada' : 'la que había'}${r.permanente ? ', orden permanente' : ''}) a ${r.destino}: vuelve con ${r.piezas} pieza${r.piezas === 1 ? '' : 's'} de ${r.nombre} al avanzar el día`);
   } else if (paso.tipo === 'convaleciente' && paso.enCombate) {
     const r = await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: paso.npcSlug });
     if ('error' in r) rechaza(r.error);

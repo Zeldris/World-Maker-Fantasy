@@ -26,6 +26,13 @@ prepara con `escenario.sh preparar` y lo guarda, sin rehacer reglas a mano (`QA-
 `preparar … combate:<npc>,…` abre un combate de grupo; lo que solo pasa en el 1v1 clásico (la huida de la fauna por
 habilidad, P373) se prepara con `combate1v1:<npc>` (`QA-293`): el NPC, viva donde viva, se lanza contra la jugadora, y al
 recargar la página sale el panel de combate con él. Se niega si ya hay un combate en curso o el NPC no existe.
+Una caza que vuelve con piezas (P339 «1 pieza»/«N piezas», o la orden permanente cortada por el Desolladero dañado, P338) se
+prepara con `partida-caza:<presa>:<n>[:permanente]` (`QA-298`): la partida de caza del Reino (la que hay en marcha tras esa
+presa o una lanzada como desde el panel, que pide cazadores libres con arma y un lugar donde se haya visto la presa) queda en
+casa a punto de volver con `n` piezas, y al avanzar el día vuelve por el camino normal, con su aviso y el paso por el
+Desolladero. Con `:permanente` repite la orden: junto con `danar:desolladero` se juega el corte de P338. Ej.:
+`escenario.sh preparar <partida> partida-caza:kirelon-arenoso:2:permanente danar:desolladero` y `avanzar <partida> 1`.
+Se niega sin cazadores, con una presa que no existe o no vista, o con `n` menor que 1.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del

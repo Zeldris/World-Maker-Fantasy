@@ -32,6 +32,10 @@
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
+#                                               QA-298: partida-caza:<presa>:<n>[:permanente] (una partida de caza del Reino, la que hay en marcha tras esa presa o
+#                                               una lanzada con la función del panel, queda en casa y a punto de volver con n piezas: al avanzar el día vuelve por el
+#                                               camino normal, con el aviso «La partida de caza vuelve con…» y el paso por el Desolladero; con :permanente repite la
+#                                               orden, así que con danar:desolladero se juega el corte de P338; pide cazadores libres con arma y la presa vista; para P338 y P339),
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
 #                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]
