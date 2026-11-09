@@ -240,15 +240,37 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
   })
 
   // P337: pegado a las estacas del recinto pero fuera, el menú no ofrece «Interactuar» y dice por dónde se entra.
-  it('P337: un punto sobre las estacas, desde fuera, dice que se entra por la puerta y no ofrece Interactuar', async () => {
-    vi.mocked(getZona).mockResolvedValue({ ...zona, jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] } as never)
-    const { container, getByRole } = render(<ZonaPanel saveId="s1" />)
+  async function abrirMenuDelAullador(extra: Record<string, unknown>) {
+    vi.mocked(getZona).mockResolvedValue({ ...zona, puntos: [{ ...zona.puntos[0]!, droppedItemId: 'd1' }], ...extra } as never)
+    const r = render(<ZonaPanel saveId="s1" />)
     await act(async () => {})
-    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    const ficha = [...r.container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
     fireEvent.click(ficha)
-    const menu = getByRole('menu', { name: 'Aullador rojo' })
+    return { ...r, menu: r.getByRole('menu', { name: 'Aullador rojo' }) }
+  }
+  const items = (menu: HTMLElement) => [...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)
+
+
+  it('P337: un punto sobre las estacas, desde fuera, dice que se entra por la puerta y no ofrece Interactuar ni Ir, pero conserva el resto', async () => {
+    const { menu, getByRole, findByRole, queryByRole } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] })
     expect(menu.textContent).toContain('se entra por la puerta del poblado')
-    expect([...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).not.toContain('Interactuar')
+    expect(items(menu)).toEqual(['Recoger', 'Ver ficha completa'])
+    // La ficha completa tampoco ofrece Acercarte desde fuera.
+    fireEvent.click(getByRole('menuitem', { name: 'Ver ficha completa' }))
+    expect(await findByRole('dialog')).toBeTruthy()
+    expect(queryByRole('button', { name: /Acercarte|Ir hasta aquí/ })).toBeNull()
+  })
+
+  it('P337: con el jugador dentro del recinto, sale Interactuar y no el aviso', async () => {
+    const { menu } = await abrirMenuDelAullador({ jugador: { x: 225, y: 125 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] })
+    expect(menu.textContent).not.toContain('puerta del poblado')
+    expect(items(menu)).toContain('Interactuar')
+  })
+
+  it('P337: sin interior (zona sin empalizada), el punto sobre un muro se trata como siempre', async () => {
+    const { menu } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }] })
+    expect(menu.textContent).not.toContain('puerta del poblado')
+    expect(items(menu)).toContain('Interactuar')
   })
 
   // P147 (QA-27): la insignia «×N» de un grupo quedaba tapada por una ficha pegada o por el personaje.

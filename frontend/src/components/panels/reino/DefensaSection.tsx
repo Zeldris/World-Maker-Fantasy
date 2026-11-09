@@ -93,7 +93,7 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
               <button type="button" disabled={desactivado || !!v.sinMilicia} title={consulta ?? v.sinMilicia ?? undefined} onClick={() => void accion(() => postLlamarMilicia(saveId, v.asentamientoId), 'No se pudo llamar a la milicia.')} className="tactile text-2xs font-semibold text-accent-300 hover:underline disabled:opacity-50">
                 Llamar a la milicia
               </button>
-              <span className="text-2xs text-red-300/80">Arma a la milicia de {v.asentamiento}, contra todos los ejércitos avistados.</span>
+              {!v.sinMilicia && <span className="text-2xs text-red-300/80">Arma a la milicia de {v.asentamiento}, contra los ejércitos que van a {v.asentamiento}.</span>}
             </div>
           ))}
         </section>

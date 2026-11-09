@@ -80,7 +80,35 @@ describe('DefensaSection (CR-65 65f)', () => {
     expect(alerta.textContent).toContain('Nabieus')
     expect(alerta.textContent).toContain('Clan Helsig')
     expect(getAllByRole('button', { name: 'Llamar a la milicia' })).toHaveLength(1)
-    expect(getByRole('alert', { name: 'Asaltos a la vista' }).textContent).toContain('contra todos los ejércitos avistados')
+    expect(getByRole('alert', { name: 'Asaltos a la vista' }).textContent).toContain('contra los ejércitos que van a Karot Veku')
+  })
+
+  it('P384: con dos asentamientos, un botón por cada uno, con su id y su texto', async () => {
+    const cuartel: AsentamientoDefensa = { ...capital, id: 'cua', nombre: 'Cuartel del Paso', capital: false, region: 'Cristal', guarnicion: [], modulos: [] }
+    const av = { gente: 6, tramos: 1 }
+    vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital, cuartel], avistados: [{ ...av, asentamientoId: 'cap', asentamiento: 'Karot Veku', viajeroId: 'v1', quien: 'Nabieus' }, { ...av, asentamientoId: 'cua', asentamiento: 'Cuartel del Paso', viajeroId: 'v2', quien: 'Clan Helsig' }, { ...av, asentamientoId: 'cua', asentamiento: 'Cuartel del Paso', viajeroId: 'v3', quien: 'Bandidos' }] })
+    vi.mocked(postLlamarMilicia).mockResolvedValue({ ok: true, armados: 1 })
+    const { findByRole, getAllByRole } = render(<DefensaSection saveId="s" onRefreshSave={async () => {}} />)
+    const alerta = await findByRole('alert', { name: 'Asaltos a la vista' })
+    const botones = getAllByRole('button', { name: 'Llamar a la milicia' })
+    expect(botones).toHaveLength(2)
+    expect(alerta.textContent).toContain('contra los ejércitos que van a Karot Veku')
+    expect(alerta.textContent).toContain('contra los ejércitos que van a Cuartel del Paso')
+    await act(async () => {
+      fireEvent.click(botones[0]!)
+    })
+    expect(postLlamarMilicia).toHaveBeenLastCalledWith('s', 'cap')
+    await act(async () => {
+      fireEvent.click(botones[1]!)
+    })
+    expect(postLlamarMilicia).toHaveBeenLastCalledWith('s', 'cua')
+  })
+
+  it('P384: con el botón desactivado por sinMilicia, no sale el texto de que arma a la milicia', async () => {
+    vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital], avistados: [{ asentamientoId: 'cap', asentamiento: 'Karot Veku', viajeroId: 'v1', quien: 'Bandidos', gente: 6, tramos: 1, sinMilicia: 'No hay trabajadores adultos que armar.' }] })
+    const { findByRole } = render(<DefensaSection saveId="s" onRefreshSave={async () => {}} />)
+    const alerta = await findByRole('alert', { name: 'Asaltos a la vista' })
+    expect(alerta.textContent).not.toContain('Arma a la milicia')
   })
 
   it('fuera de la Capital no se compran equipos de milicia ni se cuenta su milicia', async () => {

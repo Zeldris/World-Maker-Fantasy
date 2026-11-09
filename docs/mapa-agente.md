@@ -95,7 +95,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `b/services/murosZona.ts#alcanzableDesde`). Movimiento: `b/services/zonaPosicion.ts#calcularCamino`,
   `moverJugadorA`, `quienIniciaEncuentro`; las fichas avanzan con `b/services/zonePoints.ts#avanzarZonePointsUnPaso`
   y `b/services/movementTemplates.ts#siguienteCeldaDeZonePoint`; muros con `b/services/murosZona.ts#murosDe` e
-  `interiorDe`. Qué fichas hay: `b/services/zonePoints.ts#asegurarZonePointsDePartida`, `recalcularZonePointsDeLocation`.
+  `interiorDe`; `GET /zona` manda `muros` e `interior` (`murosComoCeldas`, `interiorComoCeldas`) y `f/components/panels/ZonaPanel.tsx#sinAccesoDesdeFuera` repite la regla de `alcanzableDesde` (dos sitios, la misma regla: si cambia una, la otra). Qué fichas hay: `b/services/zonePoints.ts#asegurarZonePointsDePartida`, `recalcularZonePointsDeLocation`.
 - **Oferta (la tarjeta del encuentro):** nombre y frase en `b/services/dynamicMode.ts#decideOfertaModoDinamico`,
   `quienEnAviso`, `nombreVisibleDeNpc`, `conDefinido`, `conIndefinido`, `pluralDeEspecie` y
   `b/services/ofertaNombre.ts#nombrarOferta`. Responder:

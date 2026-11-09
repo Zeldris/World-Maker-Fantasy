@@ -393,8 +393,10 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     const acciones: AccionFicha[] = []
     const ir = irHastaPin(punto)
     // P337: pegado a las estacas pero fuera, «Interactuar» no serviría; el menú ya dice por dónde se entra.
-    if (ir && pegadoAPin(punto) && sinAccesoDesdeFuera(punto)) return [{ label: 'Ver ficha completa', onClick: () => setSelectedPoint(punto as ZonePointInfo) }]
-    if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
+    const sinAcceso = pegadoAPin(punto) && sinAccesoDesdeFuera(punto)
+    if (ir && sinAcceso) {
+      // sin Interactuar ni Ir: lo demás de la ficha sigue igual
+    } else if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
     else if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
     if ('droppedItemId' in punto && punto.droppedItemId) {
       const id = punto.droppedItemId
@@ -900,18 +902,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               saveId={saveId}
               point={selectedPoint}
               onClose={() => setSelectedPoint(null)}
-              onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
-              onIrHasta={irHastaPin(selectedPoint)}
+              onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) && !sinAccesoDesdeFuera(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
+              onIrHasta={pegadoAPin(selectedPoint) && sinAccesoDesdeFuera(selectedPoint) ? undefined : irHastaPin(selectedPoint)}
             />
           ) : (
-            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
+            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={pegadoAPin(selectedPoint) && sinAccesoDesdeFuera(selectedPoint) ? undefined : irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
           )
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}
             onClose={() => setSelectedPoint(null)}
             onRecoger={handleRecoger}
-            onIrHasta={irHastaPin(selectedPoint)}
+            onIrHasta={pegadoAPin(selectedPoint) && sinAccesoDesdeFuera(selectedPoint) ? undefined : irHastaPin(selectedPoint)}
             irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined}
             onSaquear={onSaquearCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onSaquearCadaver(npcSlug)) : undefined}
             onDesollar={onDesollarCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onDesollarCadaver(npcSlug)) : undefined}
