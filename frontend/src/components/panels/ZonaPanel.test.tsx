@@ -124,7 +124,7 @@ describe('ZonaPanel — UX-7', () => {
     expect(onViajarA).not.toHaveBeenCalled()
   })
 
-  it('con bloqueoMovimiento, ir hacia una salida lejana no llama a moverEnZona y enseña el motivo', async () => {
+  it('con bloqueoMovimiento, la salida lejana abre su tarjeta con «Viajar» deshabilitado y no llama a moverEnZona', async () => {
     const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: false, teaser: null, description: null, imageUrl: null }
     vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
     const utils = render(<ZonaPanel saveId="s1" bloqueoMovimiento="El narrador todavía está escribiendo." />)
@@ -134,7 +134,30 @@ describe('ZonaPanel — UX-7', () => {
       fireEvent.click(marcador)
     })
     expect(moverEnZona).not.toHaveBeenCalled()
-    expect(utils.getByText('El narrador todavía está escribiendo.')).toBeTruthy()
+    const boton = utils.getByRole('dialog').querySelector('button[title="El narrador todavía está escribiendo."]') as HTMLButtonElement
+    expect(boton.disabled).toBe(true)
+  })
+
+  // P259: pulsar una salida lejana enseña su tarjeta y NO camina; solo al confirmar «Viajar».
+  it('P259: pulsar una salida lejana abre su tarjeta sin caminar; al confirmar camina', async () => {
+    const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: false, minutos: 90, teaser: null, description: null, imageUrl: null }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
+    vi.mocked(moverEnZona).mockResolvedValue({ jugador: { x: 700, y: 500 }, caminoRestante: [], zonePointsMovidos: [] } as never)
+    const utils = render(<ZonaPanel saveId="s1" onViajarA={vi.fn()} />)
+    await act(async () => {})
+    const marcador = Array.from(utils.container.querySelectorAll('svg g > title')).find((t) => t.textContent === 'Vado')!.parentElement!
+    await act(async () => {
+      fireEvent.click(marcador)
+    })
+    expect(moverEnZona).not.toHaveBeenCalled()
+    const dialogo = utils.getByRole('dialog')
+    expect(dialogo.textContent).toContain('Vado')
+    expect(dialogo.textContent).toContain('de camino')
+    expect(utils.getByTestId('salida-lejos')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(Array.from(dialogo.querySelectorAll('button')).find((b) => b.textContent === 'Viajar')!)
+    })
+    expect(moverEnZona).toHaveBeenCalled()
   })
 })
 

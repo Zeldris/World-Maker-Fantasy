@@ -313,22 +313,29 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // abre directamente el modal de viaje. En la vista informativa (`soloConsulta`) no hay
   // movimiento, así que se mantiene el aviso.
   async function handleClickSalida(salida: ZonaSalidaInfo) {
-    if (salida.alcanzable) {
-      setSelectedSalida(salida)
-      return
-    }
-    if (soloConsulta) {
+    if (!salida.alcanzable && soloConsulta) {
       setMensajeMovimiento('Tienes que acercarte más a la salida para poder viajar.')
       return
     }
-    if (movimientoEnCurso) return
-    // P133: igual con una salida: el aviso de viaje se abre al llegar, también tras «Seguir mi camino».
+    if (!salida.alcanzable && movimientoEnCurso) return
+    // P259: pulsar la salida enseña primero su tarjeta (adónde lleva y cuánto se tarda); si está lejos,
+    // solo se camina hasta ella al confirmar en la tarjeta (`viajarPorSalida`).
+    setSelectedSalida(salida)
+  }
+
+  // P259: confirmar «Viajar» en la tarjeta. Lejos de la salida, camina hasta ella y, si llega sin encuentros
+  // por el camino (P133: también tras «Seguir mi camino»), viaja al llegar.
+  async function viajarPorSalida(salida: ZonaSalidaInfo, actionText: string) {
+    setSelectedSalida(null)
+    if (salida.alcanzable) {
+      onViajarA?.(actionText)
+      return
+    }
     await handleMoverA(
       { x: salida.x, y: salida.y },
       {
         alLlegar: (fresca) => {
-          const salidaFresca = fresca.salidas.find((s) => s.locationId === salida.locationId)
-          if (salidaFresca?.alcanzable) setSelectedSalida(salidaFresca)
+          if (fresca.salidas.find((s) => s.locationId === salida.locationId)?.alcanzable) onViajarA?.(actionText)
         },
       },
     )
@@ -910,10 +917,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           // P206/P326: con un agresivo cortando el paso (fase `encuentro`) el turno sí se acepta, pero irse
           // de la zona no: el mismo motivo que bloquea la brújula.
           bloqueoTurno={bloqueoTurno ?? bloqueoMovimiento}
-          onViajar={(actionText) => {
-            setSelectedSalida(null)
-            onViajarA?.(actionText)
-          }}
+          onViajar={(actionText) => void viajarPorSalida(selectedSalida, actionText)}
         />
       )}
       {selectedParcela && (
