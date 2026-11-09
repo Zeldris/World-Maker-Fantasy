@@ -39,6 +39,9 @@ Una caza que vuelve con heridos (P439, «1 de los suyos salen heridos») se prep
 Para dejar la mochila con hueco (P336: `dar` no pasa de la capacidad y, con el Almacén lleno, `mochila-libre` no deposita) está
 `mochila-descartar[:<n>]` (`QA-299`): tira lo suelto, lo más abultado primero, hasta dejar `n` libres (10 por defecto); lo
 equipado no se toca. Ej.: `escenario.sh preparar <partida> mochila-descartar:10` y `escenario.sh dar <partida> pasto-solar:3`.
+Para dejar hueco en el Granero (comparten tope la comida y el forraje), `dar-reino` también resta (`QA-300`): `comida=-2`
+(o `bebida`, `goirnos`, `tesoro`) quita lo pedido con suelo en 0 y avisa si se pedía más de lo que había; `0` se rechaza.
+P336 (Granero a 180/180, hueco 2): `escenario.sh dar-reino <partida> comida=-2`, `preparar <partida> mochila-descartar:10` y `dar <partida> pasto-solar:3`.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del

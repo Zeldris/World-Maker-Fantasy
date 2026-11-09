@@ -15,7 +15,9 @@
 #   escenario.sh dar-reino <partida> comida=N bebida=N goirnos=N tesoro=N almacen:<slug>:<n> edificio:<receta>…
 #                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
 #                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), edificio:<receta> ya terminado, objetos del
-#                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
+#                                               Almacén del Reino (AlmacenItem). Suma a lo que hay; QA-300: con signo negativo RESTA (comida=-2,
+#                                               también bebida, goirnos y tesoro), sin bajar de 0 y avisando si se pide más de lo que hay (para
+#                                               dejar hueco en el Granero, que comparten comida y forraje: P336, 180/180 -> 178/180 con comida=-2)
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] (P378: por defecto alterna macho y hembra),
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
