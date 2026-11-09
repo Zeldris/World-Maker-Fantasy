@@ -3,12 +3,13 @@ import { render, fireEvent, cleanup, act, waitFor } from '@testing-library/react
 
 vi.mock('../../../lib/api', () => ({
   depositarEnAlmacen: vi.fn(),
+  depositarTodoEnAlmacen: vi.fn(),
   retirarDeAlmacen: vi.fn(),
   getAlmacenLimites: vi.fn(),
   setAlmacenLimite: vi.fn(),
 }))
 
-import { retirarDeAlmacen, getAlmacenLimites, setAlmacenLimite } from '../../../lib/api'
+import { retirarDeAlmacen, getAlmacenLimites, setAlmacenLimite, depositarTodoEnAlmacen } from '../../../lib/api'
 import { AlmacenSection } from './AlmacenSection'
 
 /// REI-40/REI-41 (hito 0.1, roadmap-front-reino.md R9/R22) — una fila por recurso con su cantidad y
@@ -48,6 +49,21 @@ describe('AlmacenSection — REI-40, REI-41', () => {
       fireEvent.keyDown(tope, { key: 'Enter' })
     })
     expect(setAlmacenLimite).toHaveBeenCalledWith('s1', 'madera', 20)
+  })
+
+  // P428: una sola petición para todo lo suelto.
+  it('P428: «Depositar todo» hace una sola petición y cuenta lo depositado', async () => {
+    vi.mocked(depositarTodoEnAlmacen).mockResolvedValue({ ok: true, depositados: 2, noCaben: 0, autoEquipados: 0, comidaSumada: 0, motivoNoCaben: null })
+    const mochila = [{ id: 'a', name: 'Madera', catalogSlug: 'madera', slot: null }, { id: 'b', name: 'Piedra', catalogSlug: 'piedra', slot: null }] as never
+    const onRefreshSave = vi.fn().mockResolvedValue(undefined)
+    const { getByRole, findByText } = render(<AlmacenSection saveId="s1" inventory={mochila} almacenItems={[]} onRefreshSave={onRefreshSave} />)
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Depositar todo (2)' }))
+    })
+    expect(depositarTodoEnAlmacen).toHaveBeenCalledTimes(1)
+    expect(depositarTodoEnAlmacen).toHaveBeenCalledWith('s1')
+    expect(await findByText(/Depositados 2 objetos/)).toBeTruthy()
+    expect(onRefreshSave).toHaveBeenCalled()
   })
 
   it('un objeto sin catalogSlug no tiene tope (no se puede limitar)', async () => {

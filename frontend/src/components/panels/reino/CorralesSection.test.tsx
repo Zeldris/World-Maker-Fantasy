@@ -71,6 +71,31 @@ describe('CorralesSection (CR-55)', () => {
     await act(async () => fireEvent.click(boton))
     expect(postEntregarForraje).toHaveBeenCalledWith('s1', 'pasto-solar')
   })
+
+  // P336: el Granero lo comparten comida y forraje; con hueco 2 solo caben 1 pasto y se dice.
+  it('P336: limita la etiqueta de entregar al hueco y explica que el Granero es compartido', async () => {
+    vi.mocked(getCorrales).mockResolvedValue({ ...datos, huecoForraje: 2, comida: 160, topeComida: 180 })
+    const pastos = [1, 2, 3].map((n) => ({ id: `i${n}`, catalogSlug: 'pasto-solar', slot: null })) as unknown as InventoryItemInfo[]
+    const { findByRole, getByText } = render(<CorralesSection saveId="s1" inventory={pastos} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await findByRole('button', { name: /Entregar 1 Pasto Solar \(\+2\) · llevas 3/ })
+    expect(getByText(/lo comparten forraje y comida \(172\/180\)/)).toBeTruthy()
+  })
+
+  it('P336/P335: muestra el aviso que devuelve el backend al sacrificar', async () => {
+    vi.mocked(postSacrificar).mockResolvedValue({ comida: 3, almacen: {}, perdido: 0, aviso: 'Sacrificas un animal (Múrgol): +3 de comida, 2 Hueso ligero al Almacén.' })
+    const { findByText, getAllByRole } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await findByText('2/6')
+    await act(async () => fireEvent.click(getAllByRole('button', { name: 'Sacrificar' })[0]!))
+    expect(await findByText(/\+3 de comida, 2 Hueso ligero al Almacén/)).toBeTruthy()
+  })
+
+  // P333: con los Corrales construidos pero no en pie no se dice «aún no tienes corrales».
+  it('P333: con corrales dañados lo dice en vez de «Aún no tienes corrales»', async () => {
+    vi.mocked(getCorrales).mockResolvedValue({ ...datos, corrales: [], corralesFueraDeServicio: [{ id: 'b9', name: 'Corrales del Ganadero', status: 'DANADO' }] })
+    const { findByText, queryByText } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    expect(await findByText(/no están en pie \(dañados\)/)).toBeTruthy()
+    expect(queryByText(/Aún no tienes corrales/)).toBeNull()
+  })
 })
 
 describe('textos de los corrales', () => {

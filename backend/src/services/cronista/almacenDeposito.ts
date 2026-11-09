@@ -40,3 +40,27 @@ export async function depositarEnAlmacen(prisma: PrismaClient, saveId: string, i
   });
   return { ok: true, autoEquipados: result.equipados, ...('comida' in result ? { comidaSumada: result.comida } : {}) };
 }
+
+export type ResultadoDepositoTodo = { depositados: number; noCaben: number; autoEquipados: number; comidaSumada: number; motivoNoCaben: string | null };
+
+/// P428: «Depositar todo» — deposita de una vez todo lo suelto de la mochila (lo que la lista de Reino › Almacén ofrece
+/// objeto a objeto: sin equipar y sin dueño). Cada objeto sigue las reglas de `depositarEnAlmacen` (tope de materiales,
+/// comida que pasa a la Comida del Reino); los que no caben se quedan en la mochila y se cuentan en `noCaben`.
+export async function depositarTodoEnAlmacen(prisma: PrismaClient, saveId: string): Promise<ResultadoDepositoTodo | { ok: false; status: 404; error: string }> {
+  const save = await prisma.save.findUnique({ where: { id: saveId }, select: { id: true } });
+  if (!save) return { ok: false, status: 404, error: 'Partida no encontrada' };
+  const items = await prisma.inventoryItem.findMany({ where: { saveId, slot: null, companionId: null, subjectId: null }, select: { id: true }, orderBy: { createdAt: 'asc' } });
+  const r: ResultadoDepositoTodo = { depositados: 0, noCaben: 0, autoEquipados: 0, comidaSumada: 0, motivoNoCaben: null };
+  for (const it of items) {
+    const d = await depositarEnAlmacen(prisma, saveId, it.id);
+    if (d.ok) {
+      r.depositados++;
+      r.autoEquipados += d.autoEquipados;
+      r.comidaSumada += d.comidaSumada ?? 0;
+    } else if (d.status === 400) {
+      r.noCaben++;
+      r.motivoNoCaben = d.error;
+    }
+  }
+  return r;
+}

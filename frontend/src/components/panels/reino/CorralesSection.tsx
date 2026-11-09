@@ -12,6 +12,8 @@ const PASTOS: { slug: string; label: string }[] = [
   { slug: 'pasto-de-sangre', label: 'Pasto de Sangre' },
 ]
 
+const ESTADO_EDIFICIO: Record<string, string> = { DANADO: 'dañados', EN_CONSTRUCCION: 'en obras', ABANDONADO: 'abandonados' }
+
 /// CR-55 (Q10): Reino › Corrales — cada corral con su especie, plazas, animales (etapa y lo que les
 /// falta para la siguiente), ganaderos y producción del día; la reserva de forraje y la entrega de
 /// pastos. Los ganaderos se asignan como cualquier trabajador de un edificio (Producción).
@@ -52,6 +54,8 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
   if (!datos) return <ErrorBanner fallo={fallo} onCerrar={limpiar} />
   const aviso = avisoDeCarencia(datos.diasSinComer, datos.diasSinBeber)
   const pastosQueLlevo = PASTOS.map((p) => ({ ...p, n: inventory.filter((i) => i.catalogSlug === p.slug && !i.slot).length })).filter((p) => p.n > 0)
+  // P336: cada pasto pide 2 de hueco del Granero, que comparten la comida y el forraje.
+  const cabenPastos = Math.floor(datos.huecoForraje / 2)
 
   return (
     <div className="flex flex-col gap-5">
@@ -64,6 +68,9 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
       <PanelSection title="Forraje">
         <p className="text-xs text-wood-300">
           🌾 <span className="font-mono tabular-nums">{datos.forraje}</span> guardado · cabe <span className="font-mono tabular-nums">{datos.huecoForraje}</span> más
+          {datos.topeComida !== undefined && datos.comida !== undefined && (
+            <> · el Granero lo comparten forraje y comida ({datos.forraje + datos.comida}/{datos.topeComida})</>
+          )}
           {datos.forrajeDia > 0 && <> · las Fibrerías dan {datos.forrajeDia} al día</>}
         </p>
         {aviso && <p className="mt-1 text-2xs text-danger-300">{aviso}</p>}
@@ -78,7 +85,7 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
                 onClick={() => void accion(() => postEntregarForraje(saveId, p.slug), 'No se pudo entregar el pasto.')}
                 className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 hover:bg-accent-500/10 disabled:opacity-50"
               >
-                Entregar {p.n} {p.label} (+{p.n * 2})
+                Entregar {Math.min(p.n, cabenPastos)} {p.label} (+{Math.min(p.n, cabenPastos) * 2}){p.n > cabenPastos ? ` · llevas ${p.n}` : ''}
               </button>
             ))}
           </div>
@@ -107,7 +114,12 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
       )}
 
       <PanelSection title="Corrales">
-        {datos.corrales.length === 0 && <p className="text-xs text-wood-500">Aún no tienes corrales del Ganadero. Constrúyelos en Edificios y lleva allí los animales que domestiques.</p>}
+        {datos.corrales.length === 0 && (datos.corralesFueraDeServicio?.length ?? 0) > 0 && (
+          <p className="text-xs text-wood-500">
+            Tus corrales ({datos.corralesFueraDeServicio!.map((c) => c.name).join(', ')}) no están en pie ({datos.corralesFueraDeServicio!.map((c) => ESTADO_EDIFICIO[c.status] ?? c.status.toLowerCase()).join(', ')}): mira Edificios para repararlos o esperar a que acaben.
+          </p>
+        )}
+        {datos.corrales.length === 0 && (datos.corralesFueraDeServicio?.length ?? 0) === 0 && <p className="text-xs text-wood-500">Aún no tienes corrales del Ganadero. Constrúyelos en Edificios y lleva allí los animales que domestiques.</p>}
         <div className="flex flex-col gap-3">
           {datos.corrales.map((c) => (
             <div key={c.id} className="rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">

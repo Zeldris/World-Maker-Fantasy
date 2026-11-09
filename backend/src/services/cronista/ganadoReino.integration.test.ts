@@ -134,4 +134,22 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     expect(r?.comido).toBe(false);
     expect(r?.producido['leche-murgol']).toBe(3);
   });
+  it('P336: con el Granero lleno, la leche que no cabe se avisa en el diario del Reino en vez de perderse en silencio', async () => {
+    for (let i = 0; i < 5; i++) await animal(i % 2 ? 'M' : 'F');
+    await ganadero();
+    // Tope 60 sin Granero: comida 40 + forraje 20 = lleno.
+    await prisma.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: 40, forraje: 20 } });
+    const r = await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
+    expect(r?.perdido.comida).toBeGreaterThan(0);
+    const avisos = await prisma.logEntry.findMany({ where: { saveId, channel: 'KINGDOM' } });
+    expect(avisos.some((a) => /El Granero está lleno.*se pierden \d+ de comida/.test(a.text))).toBe(true);
+  });
+
+  it('P336: si todo cabe no hay aviso', async () => {
+    for (let i = 0; i < 5; i++) await animal(i % 2 ? 'M' : 'F');
+    await ganadero();
+    const r = await avanzarGanadoReino(prisma, saveId, DIA, AHORA, () => 0.99);
+    expect(r?.perdido.comida).toBe(0);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM' } })).toBe(0);
+  });
 });

@@ -1651,6 +1651,11 @@ export interface CorralInfo {
 export interface CorralesInfo {
   forraje: number
   huecoForraje: number
+  /// P336: el Granero lo comparten la comida y el forraje (comida guardada y tope).
+  comida?: number
+  topeComida?: number
+  /// P333: corrales que existen pero no están en pie.
+  corralesFueraDeServicio?: { id: string; name: string; status: string }[]
   forrajeDia: number
   diasSinComer: number
   diasSinBeber: number
@@ -1734,7 +1739,7 @@ export async function postComprarAViajero(saveId: string, viajeroId: string): Pr
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/corrales`)
 }
-export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number }> {
+export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/forraje/entregar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1747,7 +1752,7 @@ export async function postLlevarConsigo(saveId: string, ganadoId: string): Promi
 export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
-export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
+export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
 }
 
@@ -1771,6 +1776,10 @@ export async function setCompanionItemSlot(
 }
 
 /// Almacén de Reino (§7).
+/// P428: «Depositar todo» — todo lo suelto de la mochila al Almacén, en una petición.
+export async function depositarTodoEnAlmacen(saveId: string): Promise<{ ok: boolean; depositados: number; noCaben: number; autoEquipados: number; comidaSumada: number; motivoNoCaben: string | null }> {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar-todo`, { method: 'POST' })
+}
 export async function depositarEnAlmacen(saveId: string, itemId: string): Promise<{ ok: boolean; autoEquipados: number }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar/${itemId}`, { method: 'POST' })
 }
