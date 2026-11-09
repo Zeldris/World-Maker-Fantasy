@@ -135,6 +135,12 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    edición como sustitución (Gistera ya tiene cara de mujer, 2→4) y la armadura sin abdominales. **No funciona la
    fase de tono:** klein apenas quita el rayado y la foto sigue siendo ilustración en los siete. La piedra del
    ayuntamiento sale irregular a lápiz, pero el color la vuelve ladrillo; el fuego sigue cerca de la puerta.
+   **Ronda 2** (solo el paso a foto; hojas `sueltas-ronda2{a,b,c}-1.png`): **sin mejora**. (A) el banner de otro
+   elemento de la misma categoría como referencia de estilo y (B) img2img de klein 4B desde la foto de la ronda 1 a
+   fuerza 0,6, 0,8 y 0,9, con el sujeto en el prompt, dan la misma ilustración; a 0,9 además se pierden rasgos
+   (Gistera vuelve a cara de hombre). **Conclusión: klein no saca foto de una cadena que empezó en dibujo**, ni por
+   prompt, ni por referencia, ni por fuerza. Queda una ronda: un motor fotorrealista en la Final (FLUX.3, ~33 min
+   por elemento) o un P1 que ya sea foto.
 4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
    del modelo.
 5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.
