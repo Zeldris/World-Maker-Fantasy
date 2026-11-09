@@ -82,7 +82,7 @@ def capas_de(ficha, variante, bloque='capas'):
     return c
 
 
-def comprobar(c):
+def comprobar(c, lapiz=True):
     errores = []
     for campo, v in c.items():
         if campo in ('variantes', 'notas'):
@@ -95,7 +95,7 @@ def comprobar(c):
                 errores.append(f'{campo}: «{m.group(0)}» {motivo}; mejor: {alternativa}')
         if campo == 'corto' and len(t.split()) > CORTO_MAX:
             errores.append(f'corto: {len(t.split())} palabras; como mucho {CORTO_MAX} (klein se confunde con más)')
-        if campo in CAMPOS_LAPIZ:
+        if lapiz and campo in CAMPOS_LAPIZ:  # solo la plantilla a lápiz: --directa/--corta/--hibrida son foto desde P1
             limpio = re.sub(COLOR_PERMITIDO, '', t, flags=re.I)
             m = re.search(COLOR, limpio, re.I)
             if m:
@@ -216,7 +216,7 @@ def main(argv):
         aborto(__doc__, 2)
     ficha = json.load(open(argv[0], encoding='utf-8'))
     c = capas_de(ficha, variante, bloque)
-    errores = comprobar(c)
+    errores = comprobar(c, lapiz=not (directa or corta or hibrida))
     if errores:
         aborto('\n'.join(errores), 2)
     fases = (prompts_hibrida if hibrida else prompts_corta if corta else prompts_directa if directa else prompts)(ficha, c)

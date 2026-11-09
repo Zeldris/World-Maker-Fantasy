@@ -193,6 +193,19 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    oscuras.
 6. Paso al generador y a las pautas de OpenCode (`IMG-50`); con la usuaria, si hace falta una descripción visual
    aparte del lore.
+   **Hecho el paso al backend** (2026-11-09): reglas en `estilo/capas.json` (las leen `capas.py` y el backend); el
+   banner de `IMG-50` sale de `imagePromptCapas.ts`: qwen 9B escribe el bloque `capas` en JSON y el código lo valida
+   y monta `--hibrida` (`IMAGE_PROMPT_PLANTILLA=v53`, el párrafo de antes). CLI `capasDesdeFicha.ts` → `capasIA`.
+   Ollama iba por CPU (~3 min por llamada) sin `OLLAMA_IGPU_ENABLE=1`; con la iGPU, ~48 s, 50-115 s por ficha. Fuera
+   la regla de «color en capa de lápiz» en las plantillas que son foto desde P1 (con ella qwen no pasaba ninguna).
+   **Ronda 8, qwen escribe las fichas a ciegas** (camino `capas7`, `--hibrida --bloque capasIA`, misma semilla;
+   `sueltas-ronda8-1.png`, cada fila: ronda 7 con la ficha de Claude, qwen y banner): **~29/70, frente a 49/70.**
+   Salvia 5 (atada en manojo: escribe el uso), Hulki 3 (dos hombres en un tronco), orcos 3 (piernas sin cabeza; la
+   ronda 7 era la variante macho), aullador 6 (una hiena oscura con crin de púas), manaderos 5 (charcas sin juncos
+   dominantes), cuchillo 2 (un cono blanco en una roca: no es un cuchillo), choza 5 (arco de huesos sin pieles). Luz de
+   día en los siete. La foto se sostiene; se pierden identidad y encuadre. **Conclusión: con klein 4B, quien escribe
+   la ficha pesa ~20 puntos de 70; qwen 9B no la escribe bien.** Para decidir con la usuaria: fichas visuales
+   escritas una vez por Claude (o revisadas por Álvaro) y guardadas en la ficha, con qwen solo para lo nuevo.
 
 ## 3. Motor por fase
 
