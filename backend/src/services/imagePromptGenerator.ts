@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { ollamaGenerate } from '../lib/ollama.js';
+import { generarCapas, tipoCapas } from './imagePromptCapas.js';
 
 // ============================================================
 // TIPOS BASE
@@ -286,7 +287,7 @@ function pautaDe(entityType: ImagePromptEntityType, perfil: ImagePromptSizeProfi
 const SEXO_HEMBRA = /\b(hembra|mujer|femenin[oa])\b/i;
 const SEXO_MACHO = /\b(macho|hombre|masculin[oa])\b/i;
 
-function momentoDe(lore: string, contexto: ImagePromptContexto): MomentoPrompt {
+export function momentoDe(lore: string, contexto: ImagePromptContexto): MomentoPrompt {
   if (contexto.momento) return contexto.momento;
   if (!contexto.conMomento) return 'dia';
   if (/\bEs de noche\b|nocturn/i.test(lore)) return 'noche';
@@ -346,6 +347,12 @@ export async function generateImagePrompt(
   sizeProfile: ImagePromptSizeProfile,
   contexto: ImagePromptContexto = {},
 ): Promise<{ prompt: string; provider: string }> {
+  // IMG-54, paso 6: el banner de estos tipos sale de la plantilla por capas (el modelo escribe el bloque `capas`).
+  // `IMAGE_PROMPT_PLANTILLA=v53` vuelve al párrafo de las pautas v5.3.
+  if (sizeProfile === 'banner' && tipoCapas(entityType) && process.env.IMAGE_PROMPT_PLANTILLA !== 'v53') {
+    const { prompt, provider } = await generarCapas(entityType, name, loreContext, contexto);
+    return { prompt, provider };
+  }
   const mundo = cargarMundo();
   const momento = momentoDe(loreContext, contexto);
   const model = modeloImagePrompt();

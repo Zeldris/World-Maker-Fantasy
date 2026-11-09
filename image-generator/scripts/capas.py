@@ -8,10 +8,12 @@ líneas; paso a foto con el color, la paleta y la luz; F4 opcional (--final <mot
 Sin LLM: misma ficha y variante dan siempre el mismo texto.
 
 Uso: capas.py <ficha.json> [--variante macho] [--salida <dir>] [--generar] [--semilla N] [--motor klein4b]
-              [--camino capas] [--final flux3] [--directa]
+              [--camino capas] [--final flux3] [--directa] [--bloque capas]
 --directa: P1 ya es foto con forma, entorno, color y luz; la edición de la ficha, sobre la foto.
 --corta: como --directa, pero P1 es solo el campo `corto` de la ficha (≤120 palabras; ronda 6).
 --hibrida: `corto` primero (forma y luz) y detrás los campos de detalle de --directa (ronda 7).
+--bloque <clave>: lee los campos de esa clave de la ficha (por defecto `capas`; `capasIA` es lo que escribe el
+modelo local, IMG-54 paso 6, sin pisar lo escrito a mano).
 Sale con 2 y el motivo si un campo rompe una regla de la plantilla (palabra vetada, color en una capa de lápiz).
 """
 import json
@@ -34,57 +36,24 @@ DIBUJANTE = {
     'construccion': 'an architectural illustrator: accurate construction, true scale and real materials',
     'location': 'a landscape illustrator: true scale and depth, observed from life',
 }
-# Qué foto: con «Turn this pencil study into…» el render 3D baja; la película y el objetivo concretos ayudan.
-FOTO = {
-    'fauna': 'a wildlife photograph of a real animal taken with a long lens',
-    'flora': 'a close-up nature photograph of a real plant taken with a macro lens',
-    'raza': 'a film still shot on Kodak Vision3 film with a 35mm lens, natural grain, a real actor in realistic '
-            'prosthetic makeup on location',
-    'npc': 'a film still shot on Kodak Vision3 film with a 35mm lens, natural grain, a real actor in realistic '
-           'prosthetic makeup on location',
-    'item': 'a photograph of a real handmade object, shot on film with a macro lens, natural grain',
-    'construccion': 'a film still of a real building on location, shot on 35mm film, natural grain',
-    'location': 'a landscape photograph shot on large-format film, natural grain',
-}
 TONO = ('Repaint this pencil study as a soft monochrome tonal painting in smooth blended grey values, like a '
         'black-and-white photograph slightly out of focus: no lines, no outlines, no hatching, no paper texture. Keep '
         'every shape, pose, proportion and position exactly. The image is completely textless.')
-# Exposición por defecto de --directa: los banners del juego son de clave baja (noche, atardecer, sombra). Una ficha
-# de escena luminosa la cambia con `clave` (o la quita con "").
-CLAVE = ('Low-key exposure, as in a cinema still: deep natural shadows and dark corners, bright only where that light '
-         'falls.')
-CORTO_MAX = 120
 FINAL = ('Render this photograph with full photographic detail and real texture, keeping its composition, its light '
          'and its colours exactly. Style: a real photograph, natural film grain, not a 3D render. '
          'The image is completely textless.')
 
-# Reglas aprendidas (receta-calidad.md): cada palabra, con lo que hace y qué poner en su lugar.
-VETADAS = (
-    (r'\b(fat|barrel[- ]chested|belly|paunch|heavy-set|stocky|strongman|bull-like)\b',
-     'engorda la figura («no son gordos, son corpulentos»)', 'as wide as two men, all muscle and heavy bone'),
-    (r'\b(stomach|abs|abdomen|bare chest|shirtless)\b',
-     'nombrar el vientre pinta abdominales de superhéroe', 'armour that covers chest, stomach and arms, no skin below the neck'),
-    (r'\b(spires?|pointed roofs?|gothic|castles?)\b',
-     'da ciudad gótica o castillos', 'massive square towers with flat battlemented tops; o «No spires…» como negación'),
-    (r'\b(storeys|rows of windows|skyscrapers?)\b', 'da rascacielos', 'only a few narrow slit windows, no glass'),
-    (r'\b(\d{2}% (deep )?shadow|almost entirely dark)\b', 'oscurece tanto que se pierde el fondo',
-     'most of the frame in shadow, only the edges lit'),
-    (r'\b(ink|line art|cartoon|cel[- ]shaded|illustration style)\b', 'el estilo del boceto pasa a la foto: sale dibujo',
-     'graphite pencil (lo pone la plantilla)'),
-    (r'\b(orcs?|orcish|goblin|troll|dwarf|elf|golem)\b', 'el ancla de otra criatura arrastra su aspecto (orejas de elfo, dibujo, piedra)',
-     'a huge humanoid / a tusked warrior y los rasgos uno a uno con su parecido real'),
-    (r'\b(ivory-yellow|faint violet tint)\b', 'satura el color (amarillo plástico, lila pastel)',
-     'dirty off-white, stained brown in its grooves / dull metallic grey'),
-    (r'\bred (dust|streaks?)\b', 'sobre algo claro se pinta como sangre', 'dusty'),
-    (r'\bstacked stones?\b', 'da ladrillo', 'like a dry-stone wall from irregular rough fieldstones of every size'),
-    (r'\b(roughly squared|cut stone blocks?|blocks of (roughly )?(squared )?cut stone)\b', 'da ladrillo (ayuntamiento, pasada 1)',
-     'huge irregular blocks of rough stone, each as tall as a man, fitted like a megalithic wall'),
-    (r'\b(walrus|boar|curved tusks?)\b', 'curva los colmillos', 'short, thick, straight tusks pointing straight up like blunt pegs'),
-    (r'\b(in a loop|loops? of cord)\b', 'cierra el cordel como pulsera', 'sags in a wide open curve'),
-)
-COLOR = r'\b(grey|gray|black|white|red|orange|yellow|green|blue|brown|rust|golden|silver|ash|slate|pale|dark|glowing)\b'
-CAMPOS_LAPIZ = ('sujeto', 'tamano', 'forma', 'viste', 'pose', 'edicion', 'entorno')  # sin color: el lápiz lo ignora o lo convierte en dibujo
-COLOR_PERMITIDO = r'\b(black stone|cut black stone)\b'  # forma de la ciudad goirnte que sí ayudó a lápiz
+# Reglas de la plantilla (FOTO, CLAVE, CORTO_MAX, VETADAS, COLOR, CAMPOS_LAPIZ, COLOR_PERMITIDO): estilo/capas.json,
+# la misma fuente que el generador de prompts del backend (imagePromptCapas.ts).
+with open(os.path.join(AQUI, '..', 'estilo', 'capas.json'), encoding='utf-8') as _f:
+    _R = json.load(_f)
+FOTO = _R['FOTO']
+CLAVE = _R['CLAVE']
+CORTO_MAX = _R['CORTO_MAX']
+VETADAS = tuple((v['patron'], v['motivo'], v['alternativa']) for v in _R['VETADAS'])
+COLOR = _R['COLOR']
+CAMPOS_LAPIZ = tuple(_R['CAMPOS_LAPIZ'])
+COLOR_PERMITIDO = _R['COLOR_PERMITIDO']
 
 
 def aborto(msg, code):
@@ -100,10 +69,10 @@ def minuscula(t):
     return t[:1].lower() + t[1:]
 
 
-def capas_de(ficha, variante):
-    c = dict(ficha.get('capas') or {})
+def capas_de(ficha, variante, bloque='capas'):
+    c = dict(ficha.get(bloque) or {})
     if not c:
-        aborto('la ficha no tiene bloque «capas»', 3)
+        aborto(f'la ficha no tiene bloque «{bloque}»', 3)
     for k, v in ((c.get('variantes') or {}).get(variante) or {}).items():
         if k.endswith('+'):
             base = c.get(k[:-1]) or []
@@ -237,6 +206,7 @@ def main(argv):
     motor = opt('--motor', 'klein4b')
     camino = opt('--camino', 'capas')
     final = opt('--final')
+    bloque = opt('--bloque', 'capas')
     gen = '--generar' in argv
     directa = '--directa' in argv
     corta = '--corta' in argv
@@ -245,7 +215,7 @@ def main(argv):
     if len(argv) != 1:
         aborto(__doc__, 2)
     ficha = json.load(open(argv[0], encoding='utf-8'))
-    c = capas_de(ficha, variante)
+    c = capas_de(ficha, variante, bloque)
     errores = comprobar(c)
     if errores:
         aborto('\n'.join(errores), 2)

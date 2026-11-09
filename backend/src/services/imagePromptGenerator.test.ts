@@ -13,6 +13,8 @@ describe('IMG-50 — generateImagePrompt con el modelo local', () => {
   beforeEach(() => {
     ollamaGenerate.mockReset();
     delete process.env.IMAGE_PROMPT_MODEL;
+    // IMG-54, paso 6: estos tests son del camino del párrafo (pautas v5.3); la plantilla por capas se prueba en imagePromptCapas.test.ts.
+    process.env.IMAGE_PROMPT_PLANTILLA = 'v53';
   });
 
   it('al modelo le llega «animal», no el nombre interno «fauna»', async () => {
