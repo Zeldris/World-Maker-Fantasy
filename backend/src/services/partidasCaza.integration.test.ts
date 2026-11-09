@@ -135,7 +135,7 @@ describe('partidas de caza (CR-63 63b)', () => {
     await prisma.logEntry.deleteMany({ where: { saveId, channel: 'KINGDOM' } });
     const v = await viajero();
     await prisma.$transaction((tx) => descargarCaza(tx, { ...v, factionId: null, carga: { especie: 'murgol', piezas: 1, diaCaza: 30, resumen: 'x' }, miembros: [] }, 31));
-    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'vuelve con 1 pieza de Múrgol' } } })).toBe(1);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { startsWith: 'La partida de caza vuelve con 1 pieza de Múrgol. Se estropea en 2 días: llévala al Desolladero.' } } })).toBe(1);
     expect(await prisma.logEntry.count({ where: { saveId, text: { contains: '1 piezas' } } })).toBe(0);
     await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
   });
@@ -147,9 +147,15 @@ describe('partidas de caza (CR-63 63b)', () => {
     const v = { ...(await viajero()), factionId: null, miembros: [] };
     const antes = () => prisma.$transaction((tx) => TRABAJOS.CAZA!.antesDeRepetir!(tx, v, 30));
     await prisma.building.create({ data: { saveId, recipeKey: 'desolladero', name: 'Desolladero', kind: 'desolladero', description: 'x', status: 'DANADO' } });
-    expect(await antes()).toEqual({ ok: false, motivo: expect.stringContaining('está dañado') });
+    expect(await antes()).toEqual({ ok: false, motivo: expect.stringContaining('porque está dañado') });
     expect(await antes()).toEqual({ ok: false, motivo: expect.stringContaining('Reino › Edificios') });
+    // Con otro Desolladero activo que tampoco da abasto, el dañado también se dice.
+    await prisma.building.create({ data: { saveId, recipeKey: 'desolladero', name: 'Desolladero', kind: 'desolladero', description: 'x', status: 'ACTIVO' } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 20 }, () => ({ saveId, name: 'Pieza de Múrgol', description: 'x', catalogSlug: SLUG_PIEZA, especieSlug: 'murgol', caducaEnDia: 99 })) });
+    expect(await antes()).toEqual({ ok: false, motivo: expect.stringContaining('porque está dañado') });
     await prisma.building.deleteMany({ where: { saveId, recipeKey: 'desolladero' } });
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
+    await prisma.almacenItem.create({ data: { saveId, name: 'Pieza de Múrgol', description: 'x', catalogSlug: SLUG_PIEZA, especieSlug: 'murgol', caducaEnDia: 99 } });
     expect(await antes()).toEqual({ ok: false, motivo: 'el Desolladero no da abasto con las piezas que hay' }); // sin Desolladero: como antes
     await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
   });

@@ -64,7 +64,6 @@ export async function talleresDelReino(tx: Tx, saveId: string): Promise<Set<stri
   return new Set(edificios.map((b) => familiaDeTaller(b.recipeKey)));
 }
 
-/// Gasta `n` materiales (objetos de tipo RECURSO) del Almacén del Reino; devuelve si había bastantes.
 /// P372: cuántos materiales hay en el Almacén (para decir cuántos faltan).
 export async function materialesEnAlmacen(tx: Tx, saveId: string): Promise<number> {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
@@ -72,6 +71,7 @@ export async function materialesEnAlmacen(tx: Tx, saveId: string): Promise<numbe
   return tx.almacenItem.count({ where: { saveId, catalogSlug: { in: recursos } } });
 }
 
+/// Gasta `n` materiales (objetos de tipo RECURSO) del Almacén del Reino; devuelve si había bastantes.
 export async function gastarMateriales(tx: Tx, saveId: string, n: number): Promise<boolean> {
   if (n <= 0) return true;
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });

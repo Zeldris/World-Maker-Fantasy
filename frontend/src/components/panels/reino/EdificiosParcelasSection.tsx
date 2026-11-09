@@ -146,7 +146,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       await postObra(saveId, encargo)
       setVersionCola((n) => n + 1)
     } catch (e) {
-      setErrorReparar({ id: null, texto: e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.' })
+      setErrorReparar({ id: 'buildingId' in encargo ? encargo.buildingId : null, texto: e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.' })
     } finally {
       setEncargando(false)
     }

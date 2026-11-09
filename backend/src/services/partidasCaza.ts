@@ -200,7 +200,7 @@ export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promis
   await tx.almacenItem.createMany({
     data: Array.from({ length: carga.piezas }, () => ({ saveId: v.saveId, name: `Pieza de ${nombre}`, description: `${nombre} abatido por una partida de caza; se echa a perder si nadie lo desuella.`, catalogSlug: SLUG_PIEZA, especieSlug: carga.especie, caducaEnDia: caduca })),
   });
-  await avisoDelReino(tx, v.saveId, `La partida de caza vuelve con ${carga.piezas} pieza${carga.piezas === 1 ? '' : 's'} de ${nombre}. Se estropean en ${caduca - dia} día${caduca - dia === 1 ? '' : 's'}: llévalas al Desolladero.`);
+  await avisoDelReino(tx, v.saveId, `La partida de caza vuelve con ${carga.piezas} pieza${carga.piezas === 1 ? '' : 's'} de ${nombre}. Se estropea${carga.piezas === 1 ? '' : 'n'} en ${caduca - dia} día${caduca - dia === 1 ? '' : 's'}: llévala${carga.piezas === 1 ? '' : 's'} al Desolladero.`);
   return carga.piezas;
 }
 
@@ -250,9 +250,9 @@ TRABAJOS.CAZA = {
       return (await faccionPuedeCazar(tx, v.factionId)) ? { ok: true } : { ok: false, motivo: 'le falta comida de reserva' };
     }
     if (await desolladeroDaAbasto(tx, v.saveId)) return { ok: true };
-    // P338: un Desolladero dañado no cuenta (capacidad 0): se dice y se remite a repararlo, no a que «no da abasto».
-    const danado = (await capacidadDesolladero(tx, v.saveId)) === 0 && (await tx.building.count({ where: { saveId: v.saveId, recipeKey: 'desolladero', status: 'DANADO' } })) > 0;
-    return { ok: false, motivo: danado ? 'el Desolladero está dañado: repáralo en Reino › Edificios' : 'el Desolladero no da abasto con las piezas que hay' };
+    // P338: con algún Desolladero dañado se dice y se remite a repararlo (no solo «no da abasto»).
+    const danado = (await tx.building.count({ where: { saveId: v.saveId, recipeKey: 'desolladero', status: 'DANADO' } })) > 0;
+    return { ok: false, motivo: danado ? 'el Desolladero no da abasto porque está dañado, repáralo en Reino › Edificios' : 'el Desolladero no da abasto con las piezas que hay' };
   },
 };
 

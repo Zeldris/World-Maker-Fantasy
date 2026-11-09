@@ -66,4 +66,14 @@ describe('P284/P302 — reparar y doble clic', () => {
     expect(getAllByRole('alert')).toHaveLength(1)
     expect(aviso.closest('div.rounded-lg')?.textContent).toContain('Pozo')
   })
+  it('P372: el error de «Encargar reparación» sale también en la tarjeta del edificio', async () => {
+    vi.spyOn(api, 'postObra').mockRejectedValue(new Error('La cola de obras está llena.'))
+    const casa = edificio({ id: 'b9', name: 'Casa de obras', recipeKey: 'casa-de-obras' })
+    const { getByRole, findByRole } = render(
+      <EdificiosParcelasSection buildings={[casa, edificio({ status: 'DANADO', costeReparar: 9, name: 'Pozo' })]} saveId="s1" onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Encargar reparación' }))
+    const aviso = await findByRole('alert')
+    expect(aviso.closest('div.rounded-lg')?.textContent).toContain('Pozo')
+  })
 })
