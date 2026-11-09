@@ -194,7 +194,7 @@ GPT quedan como canon fijo para medir la deriva.
   ([`ficha-visual.md`](plan-imagenes/ficha-visual.md)); qwen solo para lo nuevo, y se repasa. Piloto: seis elementos
   sin tocar con banner (cuatro de fauna y dos lugares), a ciegas, una ronda, con la nota de `receta-calidad.md`. Si
   se sostiene (~49/70), el catálogo en tandas. **M** 🚧 2026-11-09: guía hecha; piloto (ronda 9 de `receta-calidad.md`) **42/60 ≈ 49/70**, se sostiene; 3 de 6 bien a
-  la primera; el ancla real se come el rasgo propio (regla nueva en la guía). Queda: rehacer cuernahoja y gargantúa
+  la primera; el ancla real se come el rasgo propio (regla nueva en la guía). **Nota de la usuaria: 4/60**; mi nota no mide lo que ella ve: parado, a rediseñar con ella. Queda: rehacer cuernahoja y gargantúa
   con la regla nueva y, si suben, el catálogo en tandas.
 
 ### Bloque F · Producción

@@ -218,6 +218,10 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    rinoceronte); el subagente dejó fuera los cuernos de hoja aunque el propio nombre los dice. Regla nueva en la
    guía: el nombre del elemento es canon, y el rasgo dominante es lo que lo separa de su animal real. Luz: otra vez
    más clara que el banner en cuatro de seis.
+   **Nota de la usuaria (2026-11-09), la que vale:** corredor 1, cruzavientos 1, cuernahoja 0, gargantúa 0,
+   agujas-imán 0, pastos 2 → **4/60**, frente a mis 42/60. Mi lista (identidad, tamaño, encuadre, foto, luz) no mide
+   lo que ella ve: puntúa que la imagen cumpla la ficha, no que se acerque al banner. **Las notas de las rondas 1-9
+   son mías y no valen como medida de calidad**; hay que parar y rediseñar con ella el criterio y el enfoque.
 
 ## 3. Motor por fase
 
