@@ -52,5 +52,16 @@
     "paleta": "reddish reeds, bright algae green and amber sky",
     "corto": "A chain of shallow, still pools across a flat plain, human eye height, the horizon a third of the way up. A wide foreground pool edged with cracked mud fills the lower third; far pools shrink to thin slivers. Low warm light rakes in from the right through a golden haze, setting the reed tips aglow. The water is perfectly still and mirrors the amber sky. Dense clumps of tall reeds with dark seed heads like cattails stand along every bank, twice the height of the banks, with bright green algae at their feet. Far away, red sandstone buttes in haze.",
     "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow."
+  },
+  "capasIA": {
+    "notas": "IMG-54 paso 6: escrito por qwen35-9b-32k, 2026-11-09",
+    "corto": "A vast clay steppe stretches under a low sun, dotted with tufts of dry grass tinged orange. Scattered scrub and low volcanic peaks stand in the distant haze. Fine dusty dust drifts across the wind. Water pools form in the clay where underground currents rise. Tall reddish reeds with woven thatch roofs line the edges. Aquatic green algae float in the shallow water. Emerald plants grow beside grey lichens and saucer-shaped bulbs.",
+    "sujeto": "A wide landscape of red clay and seasonal water pools sits in the center of the frame.",
+    "luz": "Low sun from the horizon casts a warm golden rim light on the grass and reeds, leaving deep shadows in the hollows and under the scrub.",
+    "tamano": "The scene fills the frame with the clay steppe extending far beyond the horizon.",
+    "forma": "The ground is flat and cracked with pools. Reeds rise in vertical stalks. Grass forms low tufts. Volcanic peaks are low and rounded.",
+    "entorno": "The ground is red clay and dry grass. In the middle distance, scattered scrub and seasonal water pools with algae and plants appear. The horizon holds low volcanic peaks in the haze.",
+    "color": "red clay, orange grass, green algae, emerald plants, grey lichen, saucer bulbs, dusty dust",
+    "paleta": "red, orange and straw-yellow with one accent of emerald green"
   }
 }

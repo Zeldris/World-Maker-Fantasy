@@ -54,5 +54,17 @@
     "paleta": "ochre, olive and moss green with accents of pale blue-green glow",
     "corto": "A single very old, lean female forest beast crouched on bent hind legs on a wooden platform, full length from slightly below, filling the left of the frame. Dim green light filters through the closed canopy, with thin shafts from the upper left on her shoulders. Thin overlapping willow leaves grow straight out of her skin along the crown, nape and forearms and rise into a ragged crest above her head. She looks like a bear standing on its hind legs, only leaner, with long arms hanging to her knees and a short broad muzzle. Fur ochre and olive, muzzle silver-grey, eyes soft violet.",
     "luz": "Dim green light filters through the closed canopy, with a few thin shafts falling from the upper left onto her shoulders and the planks."
+  },
+  "capasIA": {
+    "notas": "IMG-54 paso 6: escrito por qwen35-9b-32k, 2026-11-09",
+    "corto": "A thin figure with weathered shoulders sits on a massive forked branch of a black conifer in a temperate rainforest. Dim green light filters through the thick canopy, illuminating fine leaf skin that whispers as it moves. Dense fur in tones of bark and moss covers the body. The figure holds a decision, watching a path through the dense dark foliage.",
+    "sujeto": "A thin figure with weathered shoulders sits on a massive forked branch of a black conifer in the left part of the image.",
+    "luz": "Dim green light falls from above, piercing the canopy in sharp shafts that highlight the leaf skin and moss fur, while the rest of the marshy ground remains in deep shadow.",
+    "tamano": "The figure is larger than the surrounding ferns and smaller than the towering black conifers.",
+    "forma": "The figure has a thin build with broad shoulders, a weathered face, and a seated posture on a thick branch.",
+    "viste": "The figure wears fine leaf skin that whispers when moving, with dense fur in tones of bark and moss.",
+    "entorno": "The ground is marshy and dark, the middle distance is filled with dense dark foliage, and the horizon shows black-wooded conifers under a clear still air.",
+    "color": "[bark], [moss] and [green] with one accent of [black].",
+    "paleta": "[bark], [moss] and [green] with one accent of [black]"
   }
 }

@@ -7,8 +7,15 @@
   "momento": "atardecer",
   "encuadre": {
     "horizonte": 0.43,
-    "sujeto": {"lado": "izquierda", "ancho": 0.62, "pie": 0.94},
-    "manada": {"numero": 6, "distancia": "media"}
+    "sujeto": {
+      "lado": "izquierda",
+      "ancho": 0.62,
+      "pie": 0.94
+    },
+    "manada": {
+      "numero": 6,
+      "distancia": "media"
+    }
   },
   "canon": "Criatura flaca de cuatro patas, pelaje rojizo rasposo, mechones de pelo negro en los tobillos y patas desproporcionadamente largas; pelaje enredado con parches de arena fosilizada que brillan como vetas minerales rojas, hilera de púas oscuras erizadas en el lomo, colmillos curvos amarillentos exagerados, costillas marcadas, cola negra tupida que borra sus huellas.",
   "fuentes": "backend/src/scripts/worldCatalog.ts:1479 (bio); backend/src/services/sexDimorphism.ts:99-111 (dimorfismo); detalle campo a campo en docs/producto/plan-imagenes/borradores/fichas-piloto.json",
@@ -16,7 +23,7 @@
     "plan": "depredador",
     "fuerza": 0.97,
     "largo": 7,
-    "patas": 1.0,
+    "patas": 1,
     "grosorPatas": 0.4,
     "cuello": 0.5,
     "anguloCuello": 20,
@@ -72,7 +79,7 @@
     "diseño de la imagen del juego (usuaria, 2026-10-26: «todo lo que hay ahora en las imágenes es lo que me gustaría igualar»); donde choca con el canon, va como propuesta de lore",
     "choca con el canon: cuerpo largo y patas cortas (el canon: patas desproporcionadamente largas), cresta de placas con púas rojas, colmillos de sable",
     "IMG-16 (perfil fotorreal): proporcion y manada nuevas; «cabeza de zorro sobre el torso de una comadreja» y la escala del cuerpo (torso de cinco cabezas) son diseño de imagen, no canon",
-  "IMG-54, paso 5: el bloque `capas` sigue el banner y el `prompt` de la ficha (cuerpo largo y bajo, patas cortas, cresta de placas con púas rojas, colmillos de sable), no el canon; lo que choca con el canon: patas desproporcionadamente largas y flaco (canon) frente a cuerpo de comadreja con patas cortas, púas oscuras erizadas (canon) frente a placas negras con púas rojas brillantes, colmillos curvos amarillentos (canon) frente a colmillos de sable pálidos; cola negra tupida y arena fosilizada con vetas rojas no se pintan"
+    "IMG-54, paso 5: el bloque `capas` sigue el banner y el `prompt` de la ficha (cuerpo largo y bajo, patas cortas, cresta de placas con púas rojas, colmillos de sable), no el canon; lo que choca con el canon: patas desproporcionadamente largas y flaco (canon) frente a cuerpo de comadreja con patas cortas, púas oscuras erizadas (canon) frente a placas negras con púas rojas brillantes, colmillos curvos amarillentos (canon) frente a colmillos de sable pálidos; cola negra tupida y arena fosilizada con vetas rojas no se pintan"
   ],
   "imagenJuego": "backend/uploads/images/fauna/aullador-rojo-macho-banner.png",
   "capas": {
@@ -100,5 +107,16 @@
         ]
       }
     }
+  },
+  "capasIA": {
+    "notas": "IMG-54 paso 6: escrito por qwen35-9b-32k, 2026-11-09",
+    "corto": "A thin four-legged creature stands in profile on a vast red clay steppe. Low golden light glows from a low sun through dusty haze. Its dominant feature is a row of dark, bristly quills running along its back. The body has disproportionately long legs ending in black tufts of hair at the ankles. The coat is matted with thin glinting streaks of red mineral embedded in the coat. Its mouth shows exaggerated yellow curved fangs. Marked ribs show its thin frame. A thick black tail sweeps behind to erase its footprints in the dusty ground. Tufts of dry straw-yellow grass tinged with orange surround the scene, scattered with savanna scrub and low volcanic peaks in the haze.",
+    "sujeto": "A thin four-legged creature stands in profile on a vast red clay steppe.",
+    "luz": "Warm golden rim light falls from a low sun just above the horizon through dusty haze; deep shadows cover the clay steppe and the creature's thin ribs.",
+    "tamano": "The creature is large and fills the left side of the frame, appearing slightly taller than the scattered savanna scrub nearby.",
+    "forma": "A thin body with four legs, disproportionately long limbs, a row of dark bristly quills along the back, exaggerated yellow curved fangs, marked ribs, and a thick black tail.",
+    "entorno": "Ground is red clay steppe with tufts of dry straw-yellow grass tinged with orange. Middle distance shows scattered savanna scrub. Horizon holds low volcanic peaks far off in the haze.",
+    "color": "Red clay steppe, thin glinting streaks of red mineral embedded in the coat, dark bristly quills, black hair tufts, yellow curved fangs, straw-yellow grass, orange tint on grass, dusty haze.",
+    "paleta": "red clay, straw-yellow grass and orange tint with one accent of warm golden light"
   }
 }

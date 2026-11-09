@@ -46,7 +46,7 @@ run_in_new_window() {
 
 if ! curl -s -o /dev/null http://localhost:11434; then
   echo "Ollama, en reposo (sin modelo cargado)..."
-  run_in_new_window "Tarkor - Ollama" "OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve"
+  run_in_new_window "Tarkor - Ollama" "OLLAMA_IGPU_ENABLE=1 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve"
 fi
 run_in_new_window "Tarkor - Backend (enciclopedia)" "$NVM_INIT cd '$DIR/backend' && TARKOR_SOLO_ENCICLOPEDIA=1 npm run dev:nowatch"
 run_in_new_window "Tarkor - Frontend" "$NVM_INIT cd '$DIR/frontend' && npm run dev"

@@ -88,5 +88,17 @@
         ]
       }
     }
+  },
+  "capasIA": {
+    "notas": "IMG-54 paso 6: escrito por qwen35-9b-32k, 2026-11-09",
+    "corto": "A female figure from the thighs up stands at three-quarters in the left part of the image. The vast dusty clay steppe stretches behind her under a low sun just above the horizon through a haze of dusty air. Tufts of dry straw-yellow grass tinged with orange and scattered savanna scrub dot the landscape, with low volcanic peaks far off in the haze. Fine dusty particles drift on the wind. She wears a black leather vest with the chest bare and a waistcoat of leather, with a cape of ashen feathers tied at the waist. She is barefoot with strips of leather on her feet. Her skin is beige and clay-tanned by the sun and wind, darkening with age.",
+    "sujeto": "A female figure from the thighs up stands at three-quarters in the left part of the image.",
+    "luz": "A warm golden rim light comes from the low sun just above the horizon through a haze of dusty air, leaving the foreground in deep shadow.",
+    "tamano": "She is large and fills the left side of the frame, standing taller than the tufts of dry grass around her feet.",
+    "forma": "Her body is corpulent but with long and stylized muscle made for the running of ritual hunts. Her skin is smooth and tanned. Her hair is thick and braided. Her chest is bare under a vest. Her shoulders bear pale healed streaks. Her feet are bare with leather strips.",
+    "viste": "She wears a black leather vest with the chest bare, a cape of ashen feathers tied at the waist, and strips of leather on her feet.",
+    "entorno": "Ground: a vast dusty clay steppe with tufts of dry straw-yellow grass tinged with orange. Middle distance: scattered savanna scrub. Horizon: low volcanic peaks far off in the haze.",
+    "color": "beige skin, black leather, ashen feathers, dusty air, straw-yellow grass, amber eyes, bone beads.",
+    "paleta": "red clay, straw-yellow grass and black leather with one accent of ashen feathers"
   }
 }

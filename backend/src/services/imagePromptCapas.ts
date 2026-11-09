@@ -129,11 +129,8 @@ export function validarCapas(capas: unknown, opciones: { nombre: string; reglas?
     if (campo === 'corto' && palabras(t) > reglas.CORTO_MAX) {
       motivos.push(`"corto" has ${palabras(t)} words, more than the maximum of ${reglas.CORTO_MAX}; shorten it`);
     }
-    if (reglas.CAMPOS_LAPIZ.includes(campo)) {
-      const limpio = t.replace(new RegExp(reglas.COLOR_PERMITIDO, 'gi'), '');
-      const m = new RegExp(reglas.COLOR, 'i').exec(limpio);
-      if (m) motivos.push(`"${campo}" names the colour «${m[0]}»; colour goes only in "color" (and "corto", "paleta")`);
-    }
+    // Sin la regla de «color en capa de lápiz» de capas.py: la híbrida es foto desde P1 y el color en `entorno` o
+    // `forma` no arrastra a dibujo. Con ella, qwen 9B no pasaba ninguna ficha (2026-11-09: «yellow» en entorno).
   }
   const todo = Object.entries(c)
     .filter(([k]) => k !== 'variantes' && k !== 'notas')
@@ -195,6 +192,18 @@ function normalizar(c: Record<string, unknown>): BloqueCapas {
   return out;
 }
 
+/// Si `corto` se pasa del tope, se quitan frases del final mientras quede al menos una: el orden pone el entorno al
+/// final, lo que menos pesa. El 9B se pasaba por poco (123 y 130 palabras, orcos, 2026-11-09) aun con el reintento.
+export function recortarCorto(capas: BloqueCapas, max: number = cargarReglasCapas().CORTO_MAX): BloqueCapas {
+  let corto = capas.corto ?? '';
+  let frases: string[] = corto.match(/[^.!?]+[.!?]+/g) ?? [];
+  while (palabras(corto) > max && frases.length > 1) {
+    frases = frases.slice(0, -1);
+    corto = frases.join('').trim();
+  }
+  return corto === capas.corto ? capas : { ...capas, corto };
+}
+
 const SEXO_HEMBRA = /\b(hembra|mujer|femenin[oa])\b/i;
 const SEXO_MACHO = /\b(macho|hombre|masculin[oa])\b/i;
 
@@ -254,7 +263,7 @@ export async function generarCapas(
       peticion = `${base}\n\nYour previous reply was not valid JSON.\nPrevious reply:\n${text.slice(0, 1500)}\n\nReply again with ONLY the JSON object, with every key.`;
       continue;
     }
-    const capas = normalizar(crudo);
+    const capas = recortarCorto(normalizar(crudo));
     motivos = validarCapas(capas, { nombre: name });
     if (motivos.length === 0) return { capas, prompt: montarHibrida(tipo, capas), provider: `ollama:${model}` };
     peticion = `${base}\n\nYour previous JSON broke these rules:\n${motivos.map((m) => `- It ${m}.`).join('\n')}\nPrevious JSON:\n${JSON.stringify(capas)}\n\nReply again with the whole JSON object, fixing every point and keeping everything else.`;

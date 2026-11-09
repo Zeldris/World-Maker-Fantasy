@@ -25,5 +25,16 @@
     "paleta": "ash grey and rust red under a pale sky",
     "corto": "A low bushy plant in a shaded hollow between tall rock walls, seen from low on the ground, the nearest clump filling the right half of the image. Dim, soft overcast light, rock walls in shadow, a pale glow from the sky far ahead. Ash-grey pointed leaves with a faint blue cast and dark spots, finely wrinkled and slightly fuzzy like sage leaves. A loose mat of thin grey-brown woody stems sprawls close to the ground, knee high, crowded with pairs of narrow oval leaves as long as a finger. The floor is red cracked earth with small stones and straw-yellow tufts.",
     "luz": "Dim, soft overcast light in the shade of the hollow, the rock walls in shadow and a pale glow from the sky far ahead, no hard shadows."
+  },
+  "capasIA": {
+    "notas": "IMG-54 paso 6: escrito por qwen35-9b-32k, 2026-11-09",
+    "corto": "A low bush of dusty gray leaves stands in a vast red clay steppe. The sun is low and casts a warm golden rim light on the plant. The leaves look like small, dried sage sprigs. They are tied together in a bundle. Fine dusty drifts on the wind around the base. Tufts of dry straw-yellow grass tinged with orange surround the ground. Low volcanic peaks rise far off in the haze.",
+    "sujeto": "A single low bush of dusty gray leaves stands in the foreground on the left side of the frame.",
+    "luz": "Low sun just above the horizon through a haze of dusty light throws a warm golden rim light on the plant. The rest of the scene falls in deep shadow.",
+    "tamano": "The bush is large, taller than the surrounding tufts of dry grass.",
+    "forma": "The bush is low and spreading. The leaves are small and clustered.",
+    "entorno": "The ground is red clay. In the middle distance, tufts of dry straw-yellow grass tinged with orange and scattered savanna scrub appear. Far off in the haze, low volcanic peaks rise.",
+    "color": "dusty gray leaves, red clay, straw-yellow grass with orange tinge, dusty",
+    "paleta": "red, dusty gray and straw-yellow with one accent of orange"
   }
 }

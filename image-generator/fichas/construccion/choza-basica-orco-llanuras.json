@@ -45,5 +45,16 @@
     "paleta": "rust red, bone white and golden ochre",
     "corto": "A single domed hut alone on a desert plain, low angle, three-quarters from the front, filling the left half of the image. Warm hazy daylight from high on the right lays a soft shadow to the left. A ring of huge curved bones is driven into the ground, bent together over the top and lashed with sinew cord. Sewn hides stretched between the bones form walls and roof. The dome is a little taller than a man and twice as wide as tall, with one low doorway in deep shadow. Bones pale, hides tan. Cracked red earth, rock pinnacles and mesas behind.",
     "luz": "Warm, hazy daylight falls from high on the right, picking out the curve of the bones and the stitched seams, and laying a soft shadow to the left of the hut."
+  },
+  "capasIA": {
+    "notas": "IMG-54 paso 6: escrito por qwen35-9b-32k, 2026-11-09",
+    "corto": "A massive frame of giant long bones stands upright on the ground, bound together by thick tendon rope. The curved structure rises higher than a standing human, with skin stretched and stitched over the bones to form walls and a roof. A single low opening serves as the entrance. The scene is set on a vast dusty steppe with tufts of dry straw-yellow grass tinged with orange. Fine dusty particles drift on the wind, and low volcanic peaks appear far off in the haze.",
+    "sujeto": "A large hut stands alone in the landscape.",
+    "luz": "Low sun just above the horizon throws a warm golden rim light on the bone frame and the stretched skins, while the interior and the ground beneath remain in deep shadow.",
+    "tamano": "The hut is taller than a standing human and wider than the nearby tufts of grass.",
+    "forma": "The frame is a curved arch made of long bones, with thick tendon rope binding the joints. The walls are skin stretched tight over the bone ribs, and the roof slopes down from the highest bone to the ground.",
+    "entorno": "The ground is red clay dotted with dry straw-yellow grass. In the middle distance, scattered savanna scrub grows between tufts of grass. The horizon shows low volcanic peaks fading into the haze.",
+    "color": "red clay, straw-yellow grass with orange tinge, bone, stretched skin, tendon rope, dusty",
+    "paleta": "red clay, straw-yellow grass and orange dust with one accent of warm golden light"
   }
 }

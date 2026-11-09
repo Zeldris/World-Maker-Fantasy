@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const ollamaGenerate = vi.fn();
 vi.mock('../lib/ollama.js', () => ({ ollamaGenerate: (...args: unknown[]) => ollamaGenerate(...args) }));
 
-const { montarHibrida, validarCapas, generarCapas, parsearCapas, systemCapas } = await import('./imagePromptCapas.js');
+const { montarHibrida, validarCapas, generarCapas, parsearCapas, systemCapas, recortarCorto } = await import('./imagePromptCapas.js');
 const { generateImagePrompt } = await import('./imagePromptGenerator.js');
 
 const HULKI_CAPAS = {
@@ -78,8 +78,8 @@ describe('IMG-54 — validarCapas', () => {
     expect(validarCapas(con(120), { nombre })).toEqual([]);
   });
 
-  it('rechaza el color en «forma», pero no la negación ni el color en «color»', () => {
-    expect(validarCapas({ ...CAPAS_BUENAS, forma: 'A long grey body.' }, { nombre }).join(' ')).toMatch(/"forma" names the colour «grey»/);
+  it('admite el color fuera de «color» (la híbrida es foto desde P1) y la negación', () => {
+    expect(validarCapas({ ...CAPAS_BUENAS, entorno: 'Flat ground with yellow tufts.' }, { nombre })).toEqual([]);
     expect(validarCapas({ ...CAPAS_BUENAS, forma: 'A long body. No spires, no castles.' }, { nombre })).toEqual([]);
   });
 
@@ -152,5 +152,13 @@ describe('IMG-54 — generarCapas', () => {
     process.env.IMAGE_PROMPT_PLANTILLA = 'v53';
     await generateImagePrompt('crafteo', 'Cuerda', 'x', 'banner');
     expect(ollamaGenerate.mock.calls[0][0].system).toContain('descriptive body of a prompt');
+  });
+});
+
+describe('IMG-54 — recortarCorto', () => {
+  it('quita frases del final hasta caber en el tope, y no toca un corto que cabe', () => {
+    const largo = { ...CAPAS_BUENAS, corto: 'One two three. Four five. Six seven eight.' };
+    expect(recortarCorto(largo, 5).corto).toBe('One two three. Four five.');
+    expect(recortarCorto(CAPAS_BUENAS)).toBe(CAPAS_BUENAS);
   });
 });
