@@ -47,6 +47,10 @@ FOTO = {
 TONO = ('Repaint this pencil study as a soft monochrome tonal painting in smooth blended grey values, like a '
         'black-and-white photograph slightly out of focus: no lines, no outlines, no hatching, no paper texture. Keep '
         'every shape, pose, proportion and position exactly. The image is completely textless.')
+# Exposición por defecto de --directa: los banners del juego son de clave baja (noche, atardecer, sombra). Una ficha
+# de escena luminosa la cambia con `clave` (o la quita con "").
+CLAVE = ('Low-key exposure, as in a cinema still: deep natural shadows and dark corners, bright only where that light '
+         'falls.')
 FINAL = ('Render this photograph with full photographic detail and real texture, keeping its composition, its light '
          'and its colours exactly. Style: a real photograph, natural film grain, not a 3D render. '
          'The image is completely textless.')
@@ -130,11 +134,15 @@ def prompts_directa(ficha, c):
     dio foto en las rondas 1-3 (receta-calidad.md)."""
     tipo = ficha['tipo']
     foto = c.get('foto') or FOTO[tipo]
-    partes = [foto[:1].upper() + foto[1:] + '.'] + [texto(c.get(k)) for k in
-              ('sujeto', 'tamano', 'forma', 'viste', 'pose', 'entorno', 'color', 'repetir')]
+    # Ronda 5 (prueba a ciegas, 2026-11-09): con la luz al final de 270-480 palabras salía más clara que el banner en
+    # los siete. Guías de FLUX.2 klein (fal.ai, deapi.ai): la luz es lo que más pesa y el modelo atiende más a lo
+    # primero; orden sujeto → luz → resto, y la luz dicha como un fotógrafo (fuente, dirección, exposición).
+    partes = [foto[:1].upper() + foto[1:] + '.', texto(c.get('sujeto')), texto(c.get('luz')),
+              texto(c.get('clave', CLAVE))] + [texto(c.get(k)) for k in
+              ('tamano', 'forma', 'viste', 'pose', 'entorno', 'color', 'repetir')]
     if c.get('paleta'):
         partes.append(f'A limited, muted palette of {c["paleta"]}.')
-    partes += [texto(c.get('luz')), 'The image is completely textless.']
+    partes.append('The image is completely textless.')
     fases = [('P1', ' '.join(x for x in partes if x))]
     if c.get('edicion'):
         fases.append(('P2', f'Edit this photograph: {texto(c["edicion"])} The pose, the clothes, the background, the '

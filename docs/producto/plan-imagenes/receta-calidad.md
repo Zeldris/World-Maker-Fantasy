@@ -166,6 +166,14 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    - **Clichés que vuelven sin la palabra:** colmillos curvos de morsa en el orco, con «tusks» rectos en la ficha.
    - Color: juncos verdes en manaderos y salvia plateada; el color de la ficha pesa menos que el del animal o la
      planta real más cercanos.
+   **Ronda 5, luz** (2026-11-09; camino `capas4`, misma semilla; `sueltas-ronda5-{1,2}.png`, cada fila: ronda 4,
+   ronda 5 y banner). Guías de FLUX.2 klein ([fal.ai](https://fal.ai/learn/devs/flux-2-klein-prompt-guide),
+   [deapi.ai](https://deapi.ai/blog/prompting-flux-2-klein-what-works-what-doesnt-and-why)): la luz es lo que más
+   pesa, el modelo atiende más a lo primero y por encima de ~100-120 palabras se confunde; los prompts de `--directa`
+   tenían 270-480 palabras con la luz al final. Cambio en la plantilla: luz justo tras el sujeto y frase de exposición
+   en clave baja (`CLAVE`; la ficha la cambia con `clave`). **Casi sin efecto** (~48/70): misma composición, apenas
+   más oscuras salvia y aullador. Con klein 4B la clave baja no sale por orden ni por frase: límite del motor (ya lo
+   decía el §3, FLUX.3 para escenas oscuras). Se queda el orden (no empeora y es lo que piden las guías).
 6. Paso al generador y a las pautas de OpenCode (`IMG-50`); con la usuaria, si hace falta una descripción visual
    aparte del lore.
 
