@@ -130,6 +130,11 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    - **«Papel vacío» en objetos:** el amuleto acabó dibujado en un papel sobre la mesa.
    - **Clichés del modelo:** colmillos de morsa, orejas de elfo y cara de hombre en Gistera (la edición «hazla mujer»
      no cambió nada); la piedra tallada sale ladrillo y el fuego en la puerta; abdominales en la armadura goirnte.
+   **Ronda 1** (camino `capas2`; hojas `sueltas-ronda1{a,b}-1.png`, cada fila: entorno, tono, foto, foto de la
+   pasada 1): **30/70**. Funcionan y se quedan: fondo blanco sin «papel» (el amuleto ya va sobre su piedra, 2→4), la
+   edición como sustitución (Gistera ya tiene cara de mujer, 2→4) y la armadura sin abdominales. **No funciona la
+   fase de tono:** klein apenas quita el rayado y la foto sigue siendo ilustración en los siete. La piedra del
+   ayuntamiento sale irregular a lápiz, pero el color la vuelve ladrillo; el fuego sigue cerca de la puerta.
 4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
    del modelo.
 5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.
