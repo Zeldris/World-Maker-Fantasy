@@ -787,6 +787,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           convalecienteOffers: newlyConvalecientes.length > 0 ? newlyConvalecientes : undefined,
           factionRepChange: params.factionRepChange ?? undefined,
           professionXpGain: params.professionXpGains?.[0] ?? undefined,
+          // P363: el XP de la ronda (y el del hito), como lo guarda el backend y se ve tras recargar.
+          xpDelta: params.progression.xpDelta > 0 ? params.progression.xpDelta : undefined,
+          xpHitoDelta: params.progression.xpHito && params.progression.xpHito > 0 ? params.progression.xpHito : undefined,
+          xpHitoLabel: params.progression.xpHitoLabel ?? undefined,
         },
       ]
       // P55 (QA-27), P117/QA-70: lo que sigue a la narración (subida de nivel, desbloqueos, los demás

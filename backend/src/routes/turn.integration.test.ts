@@ -1116,6 +1116,44 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     expect(npcState?.condicionFisica).not.toBe('ILESO');
   }, 15_000);
 
+  // P431 (tanda 92, 2026-11-09): una habilidad de ATAQUE pulsada mientras el NPC ataca salía en la
+  // tarjeta como «Te defiendes con …» (el lado venía fijo a 'defensa').
+  it('P431: una habilidad de ataque usada contra el ataque del NPC sale con rol ataque', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = 'Grabo una runa de cólera en mi golpe.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpeRunaColeraId } });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: golpeRunaColeraId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const fin = lastNdjsonLine(narrateRes.payload) as { playerAbilityUsed?: { name: string; rol: string } | null };
+    expect(fin.playerAbilityUsed?.name).toBe('Golpe Runa de Cólera');
+    expect(fin.playerAbilityUsed?.rol).toBe('ataque');
+  }, 15_000);
+
   it('Grito de Guerra: si el NPC ataca con daño y la tirada propia tiene éxito, cancela el golpe entrante del todo y te deja la iniciativa', async () => {
     await prisma.npcState.deleteMany({ where: { saveId, npcId } });
     await prisma.save.update({

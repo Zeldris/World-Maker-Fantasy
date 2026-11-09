@@ -1195,7 +1195,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // nunca hay "quién gana" conjunto) — 0 de relleno, el frontend nunca lo lee para
         // `resultado: 'independiente'`.
         combatExchangeDisplay = { atacanteEsJugador: false, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente', margen: 0 };
-        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
+        // P431: el lado que jugó la habilidad (una de ataque usada al defenderse no es «Te defiendes con»).
+        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: defensorRol === 'ataque' ? 'ataque' : 'defensa' };
         exchangeHappened = true;
         npcNuevaEnergia = nextEnergia({
           current: npcEnergiaActual,
@@ -1315,7 +1316,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           resultado: effectiveExchangeOutcome(exchange.resultado, jugadorPuedeContragolpear),
           margen: exchange.margen,
         };
-        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
+        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: defensorRol === 'ataque' ? 'ataque' : 'defensa' };
         exchangeHappened = true;
         // El NPC atacó este intercambio con la habilidad ya elegida el turno anterior — su coste/
         // regen se descuentan/suman AHORA, cuando de verdad se resuelve (ver PendingNpcAttack.

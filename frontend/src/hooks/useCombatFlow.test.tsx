@@ -463,6 +463,22 @@ describe('submitCombatAction — camino feliz', () => {
     expect(result.current.condicionFisica).toBe('MUERTO')
   })
 
+  it('P363: la entrada en vivo lleva el XP de la ronda (y el del hito), como tras recargar', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        progression: { xpDelta: 35, newXp: 35, newLevel: 1, leveledUp: false, attributePointsGained: 0, xpHito: 10, xpHitoLabel: 'Hito' },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    await waitFor(() => {
+      expect(result.current.characterLog[0]?.xpDelta).toBe(35)
+      expect(result.current.characterLog[0]?.xpHitoDelta).toBe(10)
+      expect(result.current.characterLog[0]?.xpHitoLabel).toBe('Hito')
+    })
+  })
+
   it('en subida de nivel, suma pendingAttributePoints y actualiza level', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
