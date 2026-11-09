@@ -1,0 +1,19 @@
+{
+  "tipo": "item",
+  "slug": "amuleto-hueso",
+  "nombre": "Amuleto de hueso",
+  "momento": "dia",
+  "canon": "Colgante cosmético de cintura de los clanes de las Llanuras: cordel con piezas de hueso (colmillos de la primera cacería, vértebras de gargantúa).",
+  "fuentes": "backend/src/scripts/worldCatalog.ts:8146 (ítem); 3171, 4128, 4213 (notas de NPC)",
+  "imagenJuego": "backend/uploads/images/item/amuleto-hueso-banner.png",
+  "capas": {
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Del estudio: «ivory-yellow» da amarillo plástico; «a loop» cierra el cordel; el entorno de uso hace el banner; el tamaño de las piezas pequeñas no se sigue.",
+    "cosa": "amulet",
+    "sujeto": "Close-up of a hunting amulet lying on a flat stone, the amulet filling the middle of the image from left to right.",
+    "forma": "A long thick cord of braided leather sags across the stone in a wide open curve from the left side of the image to the right. Strung along the lowest part of the curve like beads hang a row of many small knobbly bone vertebrae and four curved fangs about as long as a finger, pointing down. The bone is old, chipped and worn, with carved grooves.",
+    "entorno": "The flat stone lies on a rough wooden workbench with a few bone-carving tools and more amulets hanging from a peg. Behind the workbench, out of focus, the posts and hide walls of a tent, and on the right an open view of a dry plain with grass tufts and a flat-topped mesa in the distance.",
+    "color": "The leather cord is dark brown. The bone is dirty off-white, stained brown in its carved grooves, and dusty. The tent hides are red-brown; the plain is red earth with straw-yellow grass tufts and a red mesa far away.",
+    "paleta": "bone off-white, leather brown and rust red",
+    "luz": "Warm clear daylight from the right, shallow depth of field, gritty weathered textures everywhere."
+  }
+}

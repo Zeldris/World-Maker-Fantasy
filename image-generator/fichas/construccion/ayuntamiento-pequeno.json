@@ -1,0 +1,22 @@
+{
+  "tipo": "construccion",
+  "slug": "ayuntamiento-pequeno",
+  "nombre": "Ayuntamiento pequeño",
+  "momento": "dia",
+  "canon": "Sala de consejo modesta de los clanes: piedra apilada, vigas de leña trabada y un fuego central.",
+  "fuentes": "backend/src/services/construction.ts (AYUNTAMIENTO_PEQUENO_RECIPE)",
+  "imagenJuego": null,
+  "propuestas": [
+    "sin banner: la forma (casa larga baja de piedra seca, techo de troncos atados y pieles, colmillos en la puerta) es la del estudio E, a falta de la decisión de diseño de la usuaria y Álvaro (regla 27)"
+  ],
+  "capas": {
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Del estudio: «stacked stones» da ladrillo; la luz de dentro se pinta en la puerta salvo que el interior esté oscuro; los adornos salen pegados (menos y unidos a la estructura).",
+    "sujeto": "A modest council hall of a tusked steppe people standing alone on a desert plain, seen from a little above the ground three-quarters from the front, filling the middle of the image from the bottom third to near the top.",
+    "tamano": "It is a long low building, about three times as wide as it is tall.",
+    "forma": "Thick walls built like a dry-stone wall from irregular rough fieldstones of every size, without mortar, uneven and weathered, and a low gabled roof of heavy split logs laid crosswise and lashed with thick tendon cords, partly covered with sewn hides. A single wide doorway opens in the front wall, framed by two great curved bone tusks set into the ground as tall as the door; the doorway is in deep shadow inside, with only a faint glow from a fire far at the back of the hall; a thin column of smoke rises from a hole in the roof ridge.",
+    "entorno": "Dust has piled in a low drift along the walls. The ground is cracked earth with sparse dry tufts; flat-topped mesas fade into haze on the far horizon.",
+    "color": "The fieldstones are red and ochre; the logs grey-brown and weathered; the hides patched red-brown and tan. The tusks are old yellowed bone, cracked and dirty. The glow deep inside is warm orange. The ground is red earth with straw-yellow tufts, the mesas red.",
+    "paleta": "rust red, ochre and weathered grey-brown",
+    "luz": "Clear warm daylight from high on the right, short shadows to the left."
+  }
+}

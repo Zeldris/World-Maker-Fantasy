@@ -2,7 +2,8 @@
 """IMG-54: plantilla por capas. Monta los prompts de cada fase desde el bloque `capas` de una ficha y, con --generar,
 encadena fase.py sin que nadie elija: una semilla por fase y se acepta el único intento.
 
-Fases (receta-calidad.md, «Boceto por capas»): P1 sujeto a lápiz, solo forma; P2 entorno a lápiz en el papel vacío
+Fases (receta-calidad.md, «Boceto por capas»): P1 sujeto a lápiz, solo forma; edición a lápiz que nombra solo el
+cambio (si la ficha trae `edicion`); entorno a lápiz en el papel vacío
 (si la ficha trae `entorno`); P3 paso a foto con el color, la paleta y la luz; F4 opcional (--final <motor>).
 Sin LLM: misma ficha y variante dan siempre el mismo texto.
 
@@ -59,11 +60,16 @@ VETADAS = (
      'most of the frame in shadow, only the edges lit'),
     (r'\b(ink|line art|cartoon|cel[- ]shaded|illustration style)\b', 'el estilo del boceto pasa a la foto: sale dibujo',
      'graphite pencil (lo pone la plantilla)'),
-    (r'\b(orc|goblin|troll|dwarf|elf)\b', 'el ancla de raza de fantasía arrastra su aspecto de juego',
-     'analogías de material y animal real'),
+    (r'\b(orcs?|orcish|goblin|troll|dwarf|elf|golem)\b', 'el ancla de otra criatura arrastra su aspecto (orejas de elfo, dibujo, piedra)',
+     'a huge humanoid / a tusked warrior y los rasgos uno a uno con su parecido real'),
+    (r'\b(ivory-yellow|faint violet tint)\b', 'satura el color (amarillo plástico, lila pastel)',
+     'dirty off-white, stained brown in its grooves / dull metallic grey'),
+    (r'\bred (dust|streaks?)\b', 'sobre algo claro se pinta como sangre', 'dusty'),
+    (r'\bstacked stones?\b', 'da ladrillo', 'like a dry-stone wall from irregular rough fieldstones of every size'),
+    (r'\b(in a loop|loops? of cord)\b', 'cierra el cordel como pulsera', 'sags in a wide open curve'),
 )
 COLOR = r'\b(grey|gray|black|white|red|orange|yellow|green|blue|brown|rust|golden|silver|ash|slate|pale|dark|glowing)\b'
-CAMPOS_LAPIZ = ('sujeto', 'tamano', 'forma', 'viste', 'pose', 'entorno')  # sin color: el lápiz lo ignora o lo convierte en dibujo
+CAMPOS_LAPIZ = ('sujeto', 'tamano', 'forma', 'viste', 'pose', 'edicion', 'entorno')  # sin color: el lápiz lo ignora o lo convierte en dibujo
 COLOR_PERMITIDO = r'\b(black stone|cut black stone)\b'  # forma de la ciudad goirnte que sí ayudó a lápiz
 
 
@@ -121,8 +127,11 @@ def prompts(ficha, c):
     if c.get('entorno') and tipo != 'location':
         p1 += ' The rest of the paper is empty.'
     fases = [('P1', p1)]
+    if c.get('edicion'):  # una edición a lápiz que nombra solo el cambio (Gistera: figura fuerte, luego mujer)
+        fases.append(('P2', f'Change only this in the pencil study, in the same realistic graphite style with no colour: '
+                            f'{texto(c["edicion"])} Keep everything else exactly as it is.'))
     if c.get('entorno') and tipo != 'location':
-        fases.append(('P2', f'Draw only on the empty white paper around the {cosa}, in the same realistic graphite style '
+        fases.append((f'P{len(fases) + 1}', f'Draw only on the empty white paper around the {cosa}, in the same realistic graphite style '
                             f'with no colour: {minuscula(texto(c["entorno"]))} The {cosa} stays the same size, in the same place, '
                             'drawn exactly as it is.'))
     foto = [f'Turn this pencil study into {c.get("foto") or FOTO[tipo]}, keeping every shape, pose and position exactly.',

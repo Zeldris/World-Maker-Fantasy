@@ -35,5 +35,15 @@
     "filamento que sale de la yema y señala el mismo rumbo en todas las plantas: lectura visual de la fibra central imantada (el canon la sitúa dentro, al colgarla de un hilo), no canon",
     "las rosetas lanosas verde plata del primer plano del banner se quitan: no hay planta así en Las Agujas Imán"
   ],
-  "imagenJuego": "backend/uploads/images/flora/cardo-brujula-banner.png"
+  "imagenJuego": "backend/uploads/images/flora/cardo-brujula-banner.png",
+  "capas": {
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Del estudio: el uso (colgada de un hilo) no se describe, se pinta; los materiales comparados (wrought iron, bent wire) sí cambian la forma; «faint violet tint» da lila pastel.",
+    "sujeto": "A patch of spiky thistles sheltered at the foot of tall rocks, seen from low on the ground. The nearest thistle stands in the right half, rising from the bottom edge to two thirds of the image height.",
+    "tamano": "Its stem is as thick as a wrist, and its single closed bud is as big as a melon, far bigger than any common thistle.",
+    "forma": "The stem is gnarled and twisted like wrought iron and bristles with long thorns. The bud is like a spiky artichoke made of overlapping pointed scales of hammered metal, their tips curling outward like blades. From the tip of the bud one long thin stiff fibre curls up like a bent wire and points to the left.",
+    "entorno": "Smaller thistles of the same kind grow on the left, smaller with distance, each with the same stiff fibre pointing the same way to the left. Drifts of fine sand gather against the rocks around their roots. Behind them, tall rock walls on the right, and on the left a wide plain with flat-topped mesas in the distance.",
+    "color": "The bud scales are a dull metallic grey like old pewter, the stem dark iron-grey, the fibre black. The sand around the roots is dark grey, almost black, and glints faintly. The rocks, the plain and the far mesas are red.",
+    "paleta": "pewter grey and rust red under a pale sky",
+    "luz": "Clear daylight from high on the right with a light warm haze, short shadows."
+  }
 }

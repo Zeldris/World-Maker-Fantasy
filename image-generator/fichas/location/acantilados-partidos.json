@@ -1,0 +1,19 @@
+{
+  "tipo": "location",
+  "slug": "acantilados-partidos",
+  "nombre": "Los Acantilados Partidos",
+  "region": "Llanuras del Viento Rojo",
+  "momento": "dia",
+  "canon": "Pared costera vertical partida por grietas profundas, con un oleaje violento rompiendo abajo y nidos de aves marinas en las cornisas más altas. Bello y letal.",
+  "fuentes": "docs/rpgtarkor/lore-mundo/regiones/llanuras-del-viento-rojo.md:903-908",
+  "imagenJuego": "backend/uploads/images/location/acantilados-partidos-dia-primavera-banner.png",
+  "capas": {
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Lugar: sin papel vacío; P1 es todo el paisaje y P2 el paso a foto. Del estudio: el «techo» y D (escrito desde el lore) salieron muy cerca del banner.",
+    "sujeto": "A rugged coastline seen from high above the cliff tops, looking along the coast.",
+    "forma": "Sheer layered cliffs drop straight into the sea, split by deep, narrow chasms into tall rock columns. Violent surf breaks at the foot of the cliffs and foams inside the chasms. Rough seabird nests of sticks and dry grass sit on top of the highest rock columns.",
+    "pose": "A flat plateau of tall dry grass runs along the cliff tops across the left half and fades to a distant flat horizon; the open sea fills the right side out to a flat horizon.",
+    "color": "The cliffs are rust-red layered sandstone, rich in iron; the sea is deep blue, the surf white. The grass on the plateau is straw-yellow tinged with orange, with fresh green shoots, on bare red earth. The sky is clear pale blue.",
+    "paleta": "rust red, straw yellow and deep sea blue",
+    "luz": "Bright, clear midday sunlight from high above, crisp short shadows, clear air."
+  }
+}

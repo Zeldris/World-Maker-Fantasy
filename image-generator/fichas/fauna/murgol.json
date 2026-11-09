@@ -50,5 +50,28 @@
     "muesca en la oreja: canon solo de los rebaños Serhu; aquí va siempre, a falta de una variante de clan",
     "«yak lanudo, más redondo» como ancla y las medidas en cabezas: diseño de imagen, no canon"
   ],
-  "imagenJuego": "backend/uploads/images/fauna/murgol-macho-banner.png"
+  "imagenJuego": "backend/uploads/images/fauna/murgol-macho-banner.png",
+  "capas": {
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Del estudio: lápiz por capas a tres cuartos (lapcap) fue lo mejor; la cornamenta del rebaño se pierde si no se repite en la foto.",
+    "sujeto": "A single huge four-legged beast like a woolly yak, seen in three-quarter view from a low point near the ground, standing on a flat plain, its body turned to the left and its head turned towards the viewer, filling the image from the bottom edge to near the top, slightly left of centre.",
+    "tamano": "Barrel body, short thick legs, a broad low head.",
+    "forma": "Long wool hangs from its whole body almost to the ground in heavy matted cords like dreadlocks, and a dense fringe falls over its eyes. Rough antlers like weathered driftwood spread wide from its head, wider than its body, each beam branching into several long pointed tines like an old stag's. Its muzzle is broad and blunt, and a small notch is cut into one ear.",
+    "entorno": "Far behind it, two much smaller woolly beasts of the same kind with the same wide branching antlers graze on the plain; a far flat horizon with low flat-topped mesas and long low clouds, and cracked dry ground with tufts of grass at its feet.",
+    "color": "Its long wool is ash-grey and dusty, darker and dirt-brown towards the ends of the cords; its eyes are black with a yellow glint; the antlers are rough pale grey-brown like weathered driftwood. The ground is red cracked earth with dry straw-yellow grass, and the far mesas are red.",
+    "repetir": "The two small beasts far behind have the same wide branching antlers and long wool cords as the big one.",
+    "paleta": "ash grey and rust red with one accent of orange light",
+    "luz": "The low sun behind it on the right rims the wool and antlers with warm light while its face and chest stay in shadow, and a red haze softens the far plain.",
+    "variantes": {
+      "macho": {
+        "forma+": [
+          "This male has a broad, heavy chest and the thickest, widest antlers of the herd."
+        ]
+      },
+      "hembra": {
+        "forma+": [
+          "This female is more compact, with shorter, slimmer antlers and a visible udder under her belly wool."
+        ]
+      }
+    }
+  }
 }
