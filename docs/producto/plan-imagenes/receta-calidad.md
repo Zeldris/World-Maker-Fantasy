@@ -122,6 +122,14 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    amuleto de hueso, ayuntamiento, Gistera Koh, goirnte macho.
 3. Pasada automática de los siete, juzgada contra el banner con una lista fija: rasgos de identidad, tamaño y
    proporción, encuadre, ni dibujo ni render, luz.
+   **Pasada 1 ✅** (2026-11-09, klein 4B, semilla 5, sin elegir; hojas `banco/hojas/sueltas-pasada1{a,b}-1.png`).
+   0-2 en identidad, tamaño, encuadre, foto y luz: goirnte 4, múrgol 5, cardo 4, amuleto 2, ayuntamiento grande 4,
+   Gistera 2, acantilados 5 → **26/70**. El lápiz sale bien (forma, escala, encuadre); fallan:
+   - **El paso a foto da ilustración en los siete.** Con klein 9B sale casi igual (`sueltas-motor-foto-1.png`): no es
+     el motor, es que el rayado del lápiz se conserva como trazo y arrastra a dibujo.
+   - **«Papel vacío» en objetos:** el amuleto acabó dibujado en un papel sobre la mesa.
+   - **Clichés del modelo:** colmillos de morsa, orejas de elfo y cara de hombre en Gistera (la edición «hazla mujer»
+     no cambió nada); la piedra tallada sale ladrillo y el fuego en la puerta; abdominales en la armadura goirnte.
 4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
    del modelo.
 5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.

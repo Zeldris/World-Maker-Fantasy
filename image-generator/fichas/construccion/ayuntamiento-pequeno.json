@@ -1,22 +1,23 @@
 {
   "tipo": "construccion",
-  "slug": "ayuntamiento-pequeno",
-  "nombre": "Ayuntamiento pequeño",
+  "slug": "ayuntamiento-grande",
+  "nombre": "Gran ayuntamiento",
   "momento": "dia",
-  "canon": "Sala de consejo modesta de los clanes: piedra apilada, vigas de leña trabada y un fuego central.",
-  "fuentes": "backend/src/services/construction.ts (AYUNTAMIENTO_PEQUENO_RECIPE)",
+  "canon": "La capital de verdad: piedra maciza, un salón de consejo lo bastante grande para reunir a súbditos y visitantes de varios asentamientos a la vez, y refuerzos de mena de hierro en los puntos de carga. Materiales: bloques de piedra tallada, lingotes de hierro, vigas de madera tallada, columnas de hueso, cordaje trenzado y resina. Construcción orca (constructor-orcos-llanuras).",
+  "fuentes": "backend/src/services/construction.ts:465-490 (AYUNTAMIENTO_GRANDE_RECIPE); pequeño y mediano en 397-463",
   "imagenJuego": null,
   "propuestas": [
-    "sin banner: la forma (casa larga baja de piedra seca, techo de troncos atados y pieles, colmillos en la puerta) es la del estudio E, a falta de la decisión de diseño de la usuaria y Álvaro (regla 27)"
+    "sin banner: sigue la temática de la choza básica de los orcos de las Llanuras (usuaria, 2026-11-09): huesos curvos de gargantúa atados, pieles cosidas, marca del clan; se empieza por el grande y se baja al mediano y al pequeño (usuaria: «de más a menos»)",
+    "costillar de huesos gigantes como techo y casas de hueso alrededor: diseño de imagen, no canon"
   ],
   "capas": {
-    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Del estudio: «stacked stones» da ladrillo; la luz de dentro se pinta en la puerta salvo que el interior esté oscuro; los adornos salen pegados (menos y unidos a la estructura).",
-    "sujeto": "A modest council hall of a tusked steppe people standing alone on a desert plain, seen from a little above the ground three-quarters from the front, filling the middle of the image from the bottom third to near the top.",
-    "tamano": "It is a long low building, about three times as wide as it is tall.",
-    "forma": "Thick walls built like a dry-stone wall from irregular rough fieldstones of every size, without mortar, uneven and weathered, and a low gabled roof of heavy split logs laid crosswise and lashed with thick tendon cords, partly covered with sewn hides. A single wide doorway opens in the front wall, framed by two great curved bone tusks set into the ground as tall as the door; the doorway is in deep shadow inside, with only a faint glow from a fire far at the back of the hall; a thin column of smoke rises from a hole in the roof ridge.",
-    "entorno": "Dust has piled in a low drift along the walls. The ground is cracked earth with sparse dry tufts; flat-topped mesas fade into haze on the far horizon.",
-    "color": "The fieldstones are red and ochre; the logs grey-brown and weathered; the hides patched red-brown and tan. The tusks are old yellowed bone, cracked and dirty. The glow deep inside is warm orange. The ground is red earth with straw-yellow tufts, the mesas red.",
-    "paleta": "rust red, ochre and weathered grey-brown",
-    "luz": "Clear warm daylight from high on the right, short shadows to the left."
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py): forma sin color en los campos de lápiz; color, paleta y luz solo en el paso a foto. Temática de la choza (choza-basica-orco-llanuras, banner); de más a menos: grande primero. Del estudio: «stacked stones» da ladrillo; la luz de dentro se pinta en la puerta salvo que el interior esté oscuro.",
+    "sujeto": "The great council hall of a tusked steppe people, the seat of their capital, standing on a low rise above a desert plain, seen from a low camera angle three-quarters from the front, filling the image from the bottom edge to near the top and most of its width.",
+    "tamano": "It is huge: a long massive hall as tall as ten men and about four times as wide as it is tall, with tiny figures of people at its entrance for scale.",
+    "forma": "Its walls are massive blocks of roughly squared cut stone, laid tight and heavy. Over them rises a great curved roof held on a row of huge arching bones of giant beasts, like the ribs of a whale, lashed at every crossing with thick braided cords and capped with plates of hammered iron where they rest on the stone. Sewn hides are stretched tight between the ribs as the roof. Thick columns of bound bones and carved timber beams frame a tall, wide entrance, one column carved with a bold clan mark; the entrance is in deep shadow inside, with only a faint glow from a great fire far at the back of the hall, and smoke rises from vents along the roof ridge.",
+    "entorno": "Around it, smaller domed huts of bone and hide and the tents of the settlement spread across the plain, with a wide beaten path leading up to the entrance; jagged rock pinnacles rise to the left and flat-topped mesas fade into haze on the far horizon under a wide sky of broken clouds.",
+    "color": "The cut stone is red ochre, weathered and dusty; the bones are pale and weathered, cracked and dirty; the braided cords dark brown; the iron plates dark and streaked with rust; the hides patched red-brown and tan. The clan mark is black. The glow deep inside is warm orange. The ground and the far mesas are red, the sky broken golden cloud.",
+    "paleta": "rust red, bone white and golden ochre",
+    "luz": "Warm, hazy golden light falls from high on the right, picking out the curve of the bones and the stitched seams, with a soft shadow to the left of the hall."
   }
 }
