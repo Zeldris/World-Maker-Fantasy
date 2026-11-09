@@ -89,6 +89,22 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
   salida (`--ref-image-args`, quizá la causa del sujeto encogido: `fase.py` la limita a 262144 píxeles), la P1 como
   segunda `-r` contra la deriva, cámara y película en el paso a foto («Kodak Portra 400, natural grain»), contraluz
   con palabras concretas, `--mask` para editar solo una zona, y fundir solo lo cambiado sobre el original.
+- **Goirnte, correcciones de la usuaria** (variantes `lapcap2`…`lapcap5`; hojas `sueltas-lapcap{2,3,4,5}-p*-1.png`):
+  el del banner es mucho más ancho y alto, está **delante** del parapeto (no metido en el muro) y su ciudad es de
+  **torres negras cuadradas y simétricas**, no de castillos con agujas. Lo aprendido:
+  - «corpulent», «barrel», «built like a bull», «strongman» → **gordo** con barriga. Nombrar el vientre («flat
+    stomach») → lo enseña (abdominales de superhéroe). Funciona: «as wide as two men, heavy and solid, all muscle and
+    heavy bone under his armour… armour covers his chest, stomach and arms completely, no skin showing below the neck».
+  - El muro: «a low stone parapet running behind him at the height of his waist; he is in front of the parapet, his
+    whole body visible and nothing of the wall over him».
+  - La ciudad: «towers and spires» → gótico; «many storeys, rows of windows» → **rascacielos modernos**. Funciona:
+    «an ancient fortress city of forges… massive square towers of huge cut black stone blocks… flat battlemented tops,
+    only a few narrow slit windows, no glass… symmetrical rows».
+  - La piel (lore: casi mineral y quitinosa, gris, brillo metálico, ojos de obsidiana): con analogías («matte ash-grey
+    like slate, fused with plates like a beetle's shell… sheen like pewter… eyes like polished obsidian») salen la
+    pizarra y los ojos negros (como agujeros, parece máscara), pero las placas no se leen a 480 px: la cara pide una
+    edición propia a más resolución (recorte o `--mask`).
+  - «90% of the frame in deep shadow» se pasa: la ciudad desaparece.
 - **Orden propuesto**: P1 la criatura a lápiz → P2 el entorno a lápiz → P3 la foto con color y luz → Final. Falta
   probarlo con los acantilados y el resto de categorías.
 
