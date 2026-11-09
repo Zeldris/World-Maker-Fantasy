@@ -3,8 +3,8 @@
 encadena fase.py sin que nadie elija: una semilla por fase y se acepta el único intento.
 
 Fases (receta-calidad.md, «Boceto por capas»): P1 sujeto a lápiz, solo forma; edición a lápiz que nombra solo el
-cambio (si la ficha trae `edicion`); entorno a lápiz en el papel vacío
-(si la ficha trae `entorno`); P3 paso a foto con el color, la paleta y la luz; F4 opcional (--final <motor>).
+cambio (si la ficha trae `edicion`); entorno a lápiz en el fondo blanco (si la ficha trae `entorno`); tono gris sin
+líneas; paso a foto con el color, la paleta y la luz; F4 opcional (--final <motor>).
 Sin LLM: misma ficha y variante dan siempre el mismo texto.
 
 Uso: capas.py <ficha.json> [--variante macho] [--salida <dir>] [--generar] [--semilla N] [--motor klein4b]
@@ -43,6 +43,9 @@ FOTO = {
     'construccion': 'a film still of a real building on location, shot on 35mm film, natural grain',
     'location': 'a landscape photograph shot on large-format film, natural grain',
 }
+TONO = ('Repaint this pencil study as a soft monochrome tonal painting in smooth blended grey values, like a '
+        'black-and-white photograph slightly out of focus: no lines, no outlines, no hatching, no paper texture. Keep '
+        'every shape, pose, proportion and position exactly. The image is completely textless.')
 FINAL = ('Render this photograph with full photographic detail and real texture, keeping its composition, its light '
          'and its colours exactly. Style: a real photograph, natural film grain, not a 3D render. '
          'The image is completely textless.')
@@ -66,6 +69,9 @@ VETADAS = (
      'dirty off-white, stained brown in its grooves / dull metallic grey'),
     (r'\bred (dust|streaks?)\b', 'sobre algo claro se pinta como sangre', 'dusty'),
     (r'\bstacked stones?\b', 'da ladrillo', 'like a dry-stone wall from irregular rough fieldstones of every size'),
+    (r'\b(roughly squared|cut stone blocks?|blocks of (roughly )?(squared )?cut stone)\b', 'da ladrillo (ayuntamiento, pasada 1)',
+     'huge irregular blocks of rough stone, each as tall as a man, fitted like a megalithic wall'),
+    (r'\b(walrus|boar|curved tusks?)\b', 'curva los colmillos', 'short, thick, straight tusks pointing straight up like blunt pegs'),
     (r'\b(in a loop|loops? of cord)\b', 'cierra el cordel como pulsera', 'sags in a wide open curve'),
 )
 COLOR = r'\b(grey|gray|black|white|red|orange|yellow|green|blue|brown|rust|golden|silver|ash|slate|pale|dark|glowing)\b'
@@ -125,16 +131,20 @@ def prompts(ficha, c):
              'texture, no colour. The drawing is completely textless. ')
     p1 = lapiz + ' '.join(texto(c.get(k)) for k in ('sujeto', 'tamano', 'forma', 'viste', 'pose') if c.get(k))
     if c.get('entorno') and tipo != 'location':
-        p1 += ' The rest of the paper is empty.'
+        p1 += ' The background is plain white.'  # «el resto del papel» hizo dibujar el objeto en un papel (amuleto)
     fases = [('P1', p1)]
     if c.get('edicion'):  # una edición a lápiz que nombra solo el cambio (Gistera: figura fuerte, luego mujer)
-        fases.append(('P2', f'Change only this in the pencil study, in the same realistic graphite style with no colour: '
-                            f'{texto(c["edicion"])} Keep everything else exactly as it is.'))
+        # «Change only this» apenas cambiaba nada (Gistera, pasada 1): la edición se da como orden que sustituye el rasgo.
+        fases.append(('P2', f'Edit this pencil study, in the same realistic graphite style with no colour: '
+                            f'{texto(c["edicion"])} The pose, the clothes and the background stay as they are.'))
     if c.get('entorno') and tipo != 'location':
-        fases.append((f'P{len(fases) + 1}', f'Draw only on the empty white paper around the {cosa}, in the same realistic graphite style '
-                            f'with no colour: {minuscula(texto(c["entorno"]))} The {cosa} stays the same size, in the same place, '
-                            'drawn exactly as it is.'))
-    foto = [f'Turn this pencil study into {c.get("foto") or FOTO[tipo]}, keeping every shape, pose and position exactly.',
+        fases.append((f'P{len(fases) + 1}', f'Fill the plain white background around the {cosa} with its surroundings, in the same realistic '
+                            f'graphite style with no colour: {minuscula(texto(c["entorno"]))} The {cosa} stays the same size, '
+                            'in the same place, drawn exactly as it is.'))
+    # El rayado del lápiz pasaba a la foto como trazo de ilustración, con klein 4B y 9B (pasada 1): antes, un estudio de
+    # tono sin líneas.
+    fases.append((f'P{len(fases) + 1}', TONO))
+    foto = [f'Turn this tonal study into {c.get("foto") or FOTO[tipo]}, keeping every shape, pose and position exactly.',
             texto(c.get('color')), texto(c.get('repetir'))]
     if c.get('paleta'):
         foto.append(f'A limited, muted palette of {c["paleta"]}.')
