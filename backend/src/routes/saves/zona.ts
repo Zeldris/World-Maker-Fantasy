@@ -8,7 +8,7 @@ import { Prisma, type MetodoObtencion } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { zoneMapImageUrl } from '../../lib/imageAssets.js';
 import { sourceDisplayNameFor, harvestSourcesThatAreFaunaWithoutNpc } from '../../scripts/worldCatalog.js';
-import { detectNpcsInScene, scopeFor, hasPendingLoot } from '../../services/npcScene.js';
+import { detectNpcsInScene, scopeFor, hasPendingLoot, slugsConPuntoSoloEnOtraZona } from '../../services/npcScene.js';
 import { loadSessionFacts } from '../../services/worldFacts.js';
 import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
 import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
@@ -419,7 +419,11 @@ export async function zonaRoutes(app: FastifyInstance) {
     // ahora» en cualquier zona: un Guchapo cazado en el Pozo aparecía en la Hondonada o en las Agujas.
     // En el mapa, quien no es un personaje único solo está en su lugar de origen (o si no tiene).
     const fueraDeSuSitio = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlug;
-    const dinamicosCandidatos = npcsInScene.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug) && !fueraDeSuSitio(n));
+    // P254: un NPC fijo con su punto en OTRA zona de la partida (Gistera Koh y el Orco Enfurecido en la Hondonada) se queda
+    // allí: ni la misión activa que lo apunta ni un hecho de sesión que lo nombra lo reparten por la zona a la que llega
+    // la jugadora (`detectNpcsInScene` los deja pasar por la misión; el mapa no).
+    const enOtraZonaMapa = await slugsConPuntoSoloEnOtraZona({ saveId: save.id, currentLocationId: locationId, slugs: npcsInScene.filter((n) => !zonePointSlugs.has(n.slug)).map((n) => n.slug), cualquierPunto: true });
+    const dinamicosCandidatos = npcsInScene.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointSlugs.has(n.slug) && !fueraDeSuSitio(n) && !enOtraZonaMapa.has(n.slug));
 
     // Punto del jugador en el mapa de Zona (2026-09-04) — `NpcState` de TODOS los NPC/fauna
     // implicados hoy en el mapa (dinámicos + los `ZonePoint` reales de tipo NPC/FAUNA), una sola
@@ -950,7 +954,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     const faunaHostilEnEntrada = (tipo: string, temperamento: string) => enEntradaSegura && tipo === 'FAUNA' && esTemperamentoHostil(temperamento);
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
     // P269/P329 (revisión): un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso, como el que tiene ficha.
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n));
+    // P254: mismo filtro que el mapa — quien tiene su punto en otra zona no corta el paso aquí.
+    const enOtraZonaColision = await slugsConPuntoSoloEnOtraZona({ saveId, currentLocationId: locationId, slugs: npcsInSceneColision.filter((n) => !zonePointSlugsColision.has(n.slug)).map((n) => n.slug), cualquierPunto: true });
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n) && !enOtraZonaColision.has(n.slug));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {

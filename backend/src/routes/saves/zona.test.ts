@@ -116,6 +116,8 @@ vi.mock('../../services/npcScene.js', () => ({
   // Punto del jugador en el mapa de Zona (2026-09-04) — `zona.ts` usa `scopeFor` real (pura, sin
   // Prisma) para las claves de `NpcState`; misma implementación real, no mockeada.
   scopeFor: (kind: string, currentLocationId: string | null) => (kind === 'PRINCIPAL' ? '' : (currentLocationId ?? 'itinerante')),
+  // P254: el filtro de NPC fijo en otra zona se prueba en `zonaNpcFijoOtraZona.integration.test.ts`.
+  slugsConPuntoSoloEnOtraZona: async () => new Set<string>(),
   // Cadáveres en el mapa (Fase 5, 2026-09-28) — misma implementación real (pura).
   hasPendingLoot: (st: { groupSize: number | null; groupDefeated: number; corpsesLooted: number; saqueado: boolean } | null | undefined) =>
     !!st && (st.groupSize ? st.corpsesLooted < st.groupDefeated : !st.saqueado),

@@ -691,11 +691,13 @@ export async function detectNpcsInScene(params: {
 /// P331: de estos NPC, los que en esta partida tienen su punto activo de mapa en otra zona y ninguno en la actual, y no
 /// van de compañeros. «Ataco a Gistera Koh» desde El Pozo, con ella en la Hondonada, no tiene destinatario aquí. Sin
 /// puntos por partida (zona sin visitar) o sin zona actual, no se descarta a nadie.
-async function slugsConPuntoSoloEnOtraZona(params: { saveId: string; currentLocationId: string | null; slugs: string[] }): Promise<Set<string>> {
+/// P254: `cualquierPunto` (mapa de Zona) cuenta también el punto desactivado o gateado por misión: el NPC sigue siendo de
+/// esa zona aunque su pin no se pinte, y no debe repartirse por la zona a la que llega la jugadora.
+export async function slugsConPuntoSoloEnOtraZona(params: { saveId: string; currentLocationId: string | null; slugs: string[]; cualquierPunto?: boolean }): Promise<Set<string>> {
   if (!params.currentLocationId || params.slugs.length === 0) return new Set();
   const [puntos, companeros] = await Promise.all([
     prisma.zonePoint.findMany({
-      where: { saveId: params.saveId, tipo: 'NPC', activo: true, targetSlug: { in: params.slugs } },
+      where: { saveId: params.saveId, tipo: 'NPC', ...(params.cualquierPunto ? {} : { activo: true }), targetSlug: { in: params.slugs } },
       select: { targetSlug: true, locationId: true },
     }),
     prisma.companion.findMany({ where: { saveId: params.saveId, sourceSlug: { in: params.slugs } }, select: { sourceSlug: true } }),
