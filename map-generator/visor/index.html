@@ -107,6 +107,8 @@
       <button id="deshacer" disabled>Deshacer</button><button id="comprobar" disabled>Comprobar</button>
       <button id="guardar" disabled>Guardar</button><button id="descartar" disabled>Descartar</button>
     </div>
+    <div class="botones"><button id="deshacer-guardado" disabled>Deshacer el último guardado</button></div>
+    <div id="hist" class="ayuda"></div>
     <h2>Uso</h2>
     <p class="ayuda">Rueda: zoom. Arrastrar: mover. Clic: regla de distancia (dos clics); Esc la borra.
       Pasa el ratón para ver las medidas de la celda, su región, provincia y continente.</p>
@@ -415,7 +417,7 @@ window.addEventListener('resize', dibujar);
 const ed = { modo: 'ver', objetivo: { region: 0, provincia: 0 }, historial: [], trazo: null, provs: new Map(),
   herr: 'subir', trazoH: [], tocadas: new Set(), bloqueo: new Set(), zona: null,
   sel: null, nuevo: null, mover: false, sig: {} };
-let BASE = null, ORIG = null, ORIGH = null, ORIGT = {}, ENC = [];
+let BASE = null, ORIG = null, ORIGH = null, ORIGT = {}, ENC = [], HIST = null;
 const MODOS_TRAZO = ['lugares', 'rutas', 'rios'];
 const TRAZOS = { rutas: 'ruta', rios: 'río' };
 const NOMBRE_GRUPO = { roads: 'camino', trails: 'senda', searoutes: 'ruta marítima' };
@@ -560,6 +562,11 @@ function estadoEdicion() {
   for (const k of ['rios', 'rutas', 'lugares']) if ($(`n-${k}`)) $(`n-${k}`).textContent = M[k].length;
   $('deshacer').disabled = !ed.historial.length;
   for (const b of ['comprobar', 'guardar', 'descartar']) $(b).disabled = !hay;
+  // MAP-9: deshacer un guardado recarga el mapa, así que solo sin cambios pendientes
+  $('deshacer-guardado').disabled = hay || !HIST?.deshacer;
+  $('hist').innerHTML = !HIST ? '' : HIST.deshacer
+    ? `Último guardado: ${esc(HIST.deshacer.fecha.replace('T', ' '))} · ${esc(HIST.deshacer.resumen)}${hay ? '<br>(guarda o descarta lo pendiente para deshacerlo)' : ''}`
+    : 'Sin guardados que deshacer (consola: <code>editar.py --historial</code>).';
 }
 
 function montarBloqueo() {
@@ -822,10 +829,22 @@ async function guardarCambios() {
   } catch (e) { avisar(`No se pudo guardar: ${e.message}`); }
 }
 
+async function deshacerGuardado() {
+  if (!HIST?.deshacer || !confirm(`¿Deshacer el guardado del ${HIST.deshacer.fecha.replace('T', ' ')}?\n${HIST.deshacer.resumen}\n\nSe reescriben helek.json, su GeoJSON y el archivo del juego con la versión de antes.`)) return;
+  try {
+    const r = await fetch('deshacer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base: BASE }) });
+    const res = await r.json();
+    if (r.status !== 200) { avisar(res.error); return; }
+    await cargar(false);
+    avisar(`Deshecho el guardado del ${res.deshecho.fecha.replace('T', ' ')}.`);
+  } catch (e) { avisar(`No se pudo deshacer: ${e.message}`); }
+}
+
 async function cargar(primera = true) {
   if (primera) ENC = await fetch('enciclopedia.json').then((x) => (x.ok ? x.json() : [])).catch(() => []);
   const r = await fetch('helek.json'), mundo = await r.json(), medidas = await (await fetch('medidas.json')).json();
   M = mundo; MED = medidas; BASE = r.headers.get('X-Huella');
+  HIST = await fetch('historial.json').then((x) => (x.ok ? x.json() : null)).catch(() => null);
   ORIG = M.celdas.map((c) => [c.region, c.provincia]); ORIGH = M.celdas.map((c) => c.h);
   ORIGT = { lugares: new Map(M.lugares.map((x) => [x.i, x])), rutas: new Map(M.rutas.map((x) => [x.i, x])), rios: new Map(M.rios.map((x) => [x.i, x])) };
   for (const k of ['lugares', 'rutas', 'rios']) ed.sig[k] = Math.max(-1, ...M[k].map((x) => x.i)) + 1;
@@ -875,6 +894,7 @@ $('objetivo').addEventListener('change', (ev) => { ed.objetivo[ed.modo] = +ev.ta
 $('nueva-prov').addEventListener('click', nuevaProvincia); $('renombrar').addEventListener('click', renombrar);
 $('deshacer').addEventListener('click', deshacer); $('comprobar').addEventListener('click', comprobarCambios);
 $('guardar').addEventListener('click', guardarCambios);
+$('deshacer-guardado').addEventListener('click', deshacerGuardado);
 $('descartar').addEventListener('click', () => { if (confirm('¿Descartar los cambios sin guardar?')) cargar(false).then(() => $('informe').classList.add('oculto')); });
 window.addEventListener('beforeunload', (ev) => { if (M && !$('guardar').disabled) { ev.preventDefault(); ev.returnValue = ''; } });
 

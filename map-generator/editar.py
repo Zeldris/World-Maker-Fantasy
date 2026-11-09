@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAP-6, MAP-7, MAP-8: editar regiones, provincias, relieve, costa, lugares, rutas y ríos de helek.json (lo usa el visor por servir.py).
+"""MAP-6, MAP-7, MAP-8, MAP-9: editar regiones, provincias, relieve, costa, lugares, rutas y ríos de helek.json (lo usa el visor por servir.py).
 
 Un lote de cambios es un dict:
 
@@ -43,6 +43,9 @@ También se usa desde la consola (agentes, sin servidor ni navegador), con lo mi
 
     python3 map-generator/editar.py lote.json              # comprueba y muestra el informe (--json: en JSON)
     python3 map-generator/editar.py lote.json --guardar    # escribe; si el canon o el lore fallan, solo con --forzar
+    python3 map-generator/editar.py --historial            # MAP-9: los últimos guardados (historial.py)
+    python3 map-generator/editar.py --deshacer             # vuelve a antes del último guardado (repetido, más atrás)
+    python3 map-generator/editar.py --restaurar 3fa9c1     # vuelve a una versión del historial (también rehace)
     opciones: --mundo RUTA (una copia; entonces no toca el archivo del juego), --sin-juego, --canon RUTA, --lore RUTA; `lote.json` puede ser `-` (entrada estándar)
 
 `base` es opcional por consola; si viene y no es la huella de helek.json, se rechaza como el 409 del servidor. Sale con 1
@@ -62,6 +65,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import comprobar  # noqa: E402
 import enciclopedia  # noqa: E402
 import exportar  # noqa: E402
+import historial  # noqa: E402
 import importar  # noqa: E402
 import medir  # noqa: E402
 
@@ -595,8 +599,14 @@ def informe(antes, despues, canon, lore):
     }
 
 
-def guardar(mundo, ruta_mundo=medir.MUNDO, ruta_geojson=None, ruta_juego=exportar.SALIDA):
-    """Escribe helek.json (orden estable, de forma atómica), su GeoJSON y el archivo del juego. Devuelve la huella."""
+def guardar(mundo, ruta_mundo=medir.MUNDO, ruta_geojson=None, ruta_juego=exportar.SALIDA, tipo='guardar', resumen='',
+            deshace=None):
+    """Escribe helek.json (orden estable, de forma atómica), su GeoJSON y el archivo del juego, y apunta el
+    movimiento en el historial (MAP-9) si el mapa cambia. Devuelve la huella."""
+    antes = None
+    if os.path.exists(ruta_mundo):
+        with open(ruta_mundo, 'rb') as f:
+            antes = f.read()
     texto = importar.volcar(mundo)
     _escribir(ruta_mundo, texto)
     ruta_geojson = ruta_geojson or os.path.join(os.path.dirname(ruta_mundo), 'helek.geojson')
@@ -604,7 +614,83 @@ def guardar(mundo, ruta_mundo=medir.MUNDO, ruta_geojson=None, ruta_juego=exporta
     _escribir(ruta_geojson, importar.volcar({'type': geo['type'], 'features': geo['features']}))
     if ruta_juego:
         _escribir(ruta_juego, exportar.generar(mundo))
-    return huella(texto)
+    datos = texto.encode('utf-8')
+    if antes != datos:
+        historial.apuntar(ruta_mundo, antes, datos, tipo=tipo, resumen=resumen, deshace=deshace)
+    return huella(datos)
+
+
+def resumen(inf):
+    """Una línea para el historial: qué cambió en un guardado."""
+    r = inf['relieve']
+    partes = [f"{r['alturas']} altura(s), {r['aTierra']} a tierra, {r['aMar']} a mar" if any(r.values()) else '']
+    for clave, que in (('lugares', 'lugares'), ('rutas', 'rutas'), ('rios', 'ríos')):
+        t = inf.get('trazos', {}).get(clave, {})
+        n = sum(len(t.get(k, [])) for k in ('nuevos', 'cambian', 'borrados'))
+        if n:
+            partes.append(f'{n} {que}')
+    nombres = [e['nombre'] for e in inf['cambian']]
+    if nombres:
+        partes.append('medidas de ' + ', '.join(nombres[:4]) + ('…' if len(nombres) > 4 else ''))
+    texto = '; '.join(p for p in partes if p) or 'sin cambios de medidas'
+    return texto + ('' if inf['ok'] else ' (canon o lore fuera, forzado)')
+
+
+def _restaurar(texto, ruta_mundo, ruta_juego, tipo, resumen_, deshace=None):
+    mundo = json.loads(texto)
+    if importar.volcar(mundo) != texto:
+        raise ErrorDeEdicion('la versión del historial no se reescribe igual (¿otro formato de helek.json?): no se restaura')
+    return guardar(mundo, ruta_mundo, ruta_juego=ruta_juego, tipo=tipo, resumen=resumen_, deshace=deshace)
+
+
+def deshacer(ruta_mundo=medir.MUNDO, ruta_juego=exportar.SALIDA):
+    """Vuelve a la versión de antes del último guardado que llevó al mapa actual. Devuelve la entrada deshecha y la
+    huella nueva; ErrorDeEdicion si no hay nada que deshacer o su versión ya no está en el historial."""
+    with open(ruta_mundo, 'rb') as f:
+        actual = huella(f.read())
+    hallado = historial.por_deshacer(ruta_mundo, actual)
+    if not hallado:
+        raise ErrorDeEdicion('no hay ningún guardado que deshacer en el historial de este mapa')
+    i, e = hallado
+    texto = historial.version(ruta_mundo, e['antes'])
+    if texto is None:
+        raise ErrorDeEdicion(f"la versión de antes del guardado del {e['fecha']} ya no está en el historial "
+                             '(solo se guardan los últimos movimientos): recupérala con git')
+    nueva = _restaurar(texto, ruta_mundo, ruta_juego, 'deshacer', f"deshace el guardado del {e['fecha']}: {e['resumen']}",
+                       deshace=i)
+    return e, nueva
+
+
+def restaurar(huella_, ruta_mundo=medir.MUNDO, ruta_juego=exportar.SALIDA):
+    """Vuelve a una versión del historial por su huella (o su principio, si no se repite). Devuelve la huella."""
+    candidatas = {h for e in historial.entradas(ruta_mundo) for h in (e['antes'], e['despues'])
+                  if h and h.startswith(huella_)}
+    if len(candidatas) != 1:
+        raise ErrorDeEdicion(f'ninguna versión del historial empieza por {huella_!r}' if not candidatas
+                             else f'{huella_!r} vale para {len(candidatas)} versiones: da más caracteres')
+    h = candidatas.pop()
+    texto = historial.version(ruta_mundo, h)
+    if texto is None:
+        raise ErrorDeEdicion(f'la versión {h[:12]} ya no está en el historial: recupérala con git')
+    return _restaurar(texto, ruta_mundo, ruta_juego, 'restaurar', f'vuelve a la versión {h[:12]}')
+
+
+def texto_historial(ruta_mundo, huella_actual, ultimas=15):
+    lista = historial.entradas(ruta_mundo)
+    if not lista:
+        return 'Sin historial: este mapa aún no se ha guardado con el editor.'
+    deshechas = {e['deshace'] for e in lista if e['tipo'] == 'deshacer'}
+    lineas = []
+    for i, e in list(enumerate(lista))[-ultimas:]:
+        marca = ' (deshecho)' if i in deshechas else ''
+        actual = '  ← actual' if e['despues'] == huella_actual and i == len(lista) - 1 else ''
+        vive = '' if historial.version(ruta_mundo, e['despues']) else ' [copia borrada]'
+        lineas.append(f"{i:>3} {e['fecha']} {e['tipo']:<9} {(e['antes'] or '-' * 12)[:12]} → {e['despues'][:12]}{vive}"
+                      f"{marca}{actual}\n      {e['resumen']}")
+    sig = historial.por_deshacer(ruta_mundo, huella_actual)
+    lineas.append(f"Deshacer volvería a {sig[1]['antes'][:12]} (antes del guardado {sig[0]})." if sig
+                  else 'No hay nada que deshacer desde la versión actual.')
+    return '\n'.join(lineas)
 
 
 def _escribir(ruta, texto):
@@ -659,7 +745,10 @@ def texto_informe(inf):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Comprueba (y guarda) un lote de cambios del mapa sin servidor ni navegador.')
-    ap.add_argument('lote', help='JSON con el lote de cambios, o - para la entrada estándar')
+    ap.add_argument('lote', nargs='?', help='JSON con el lote de cambios, o - para la entrada estándar')
+    ap.add_argument('--historial', action='store_true', help='MAP-9: lista los últimos guardados de este mapa')
+    ap.add_argument('--deshacer', action='store_true', help='MAP-9: vuelve a la versión de antes del último guardado')
+    ap.add_argument('--restaurar', metavar='HUELLA', help='MAP-9: vuelve a una versión del historial (huella o su principio)')
     ap.add_argument('--guardar', action='store_true', help='escribe helek.json, su GeoJSON y el archivo del juego')
     ap.add_argument('--forzar', action='store_true', help='guarda aunque el canon o el lore fallen')
     ap.add_argument('--json', action='store_true', help='el informe en JSON')
@@ -674,6 +763,29 @@ def main(argv=None):
               file=sys.stdout if args.json else sys.stderr)
         return 1
 
+    copia = os.path.abspath(args.mundo) != os.path.abspath(medir.MUNDO)
+    juego = None if args.sin_juego or copia else exportar.SALIDA
+    acciones = [a for a in (args.lote, args.historial, args.deshacer, args.restaurar) if a]
+    if len(acciones) != 1:
+        return fallo('da un lote, o bien --historial, --deshacer o --restaurar HUELLA (solo uno)')
+    if args.historial or args.deshacer or args.restaurar:
+        try:
+            if args.deshacer:
+                e, nueva = deshacer(args.mundo, juego)
+                res = {'deshecho': e, 'huella': nueva}
+                txt = f"Deshecho el guardado del {e['fecha']} ({e['resumen']}). Huella {nueva}."
+            elif args.restaurar:
+                nueva = restaurar(args.restaurar, args.mundo, juego)
+                res, txt = {'huella': nueva}, f'Restaurada la versión {nueva}.'
+            else:
+                with open(args.mundo, 'rb') as f:
+                    actual = huella(f.read())
+                res = {'huella': actual, 'entradas': historial.entradas(args.mundo)}
+                txt = texto_historial(args.mundo, actual)
+        except ErrorDeEdicion as e:
+            return fallo(str(e))
+        print(json.dumps(res, ensure_ascii=False) if args.json else txt)
+        return 0
     try:
         cambios = json.load(sys.stdin) if args.lote == '-' else cargar_json(args.lote)
     except (OSError, ValueError) as e:
@@ -694,8 +806,7 @@ def main(argv=None):
     inf['guardado'] = False
     if args.guardar and (inf['ok'] or args.forzar):
         # Con una copia (--mundo), el archivo del juego no se toca: lo regenera solo el helek.json de verdad.
-        copia = os.path.abspath(args.mundo) != os.path.abspath(medir.MUNDO)
-        inf['huella'] = guardar(despues, args.mundo, ruta_juego=None if args.sin_juego or copia else exportar.SALIDA)
+        inf['huella'] = guardar(despues, args.mundo, ruta_juego=juego, resumen=resumen(inf))
         inf['guardado'] = True
     if args.json:
         inf.pop('medidas', None)

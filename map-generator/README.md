@@ -31,7 +31,7 @@ python3 -m unittest discover -s map-generator/tests
 - `exportar.py`: lo que lee el juego. Hoy el contorno y la envolvente de cada región, que dibuja
   `InteractiveMap.tsx`; **tras cambiar `helek.json` se vuelve a exportar** (el test falla si no).
 - `abrir.sh`, `servir.py` y `visor/index.html`: el visor. El servidor escucha solo en 127.0.0.1 y sirve solo `/`,
-  `/helek.json`, `/enciclopedia.json` y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
+  `/helek.json`, `/enciclopedia.json`, `/historial.json` y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
   carga nada de fuera. Es la base del editor de `MAP-6`…`MAP-9`.
 - `editar.py` (MAP-6…MAP-8): el editor del visor (modos Región, Provincia, Relieve, Lugares, Rutas y Ríos; pincel, provincia nueva,
   renombrar, deshacer, Comprobar y Guardar). Relieve: Subir, Bajar, Tierra y Mar cambian la altura `h` y la costa
@@ -52,6 +52,12 @@ python3 -m unittest discover -s map-generator/tests
   de MAP-8: `{"lugares": [{"i": 900, "slug": "agujas-iman", "x": 540, "y": 190}], "rutas": [{"i": 451, "grupo":
   "trails", "puntos": [[534, 185], [560, 186]]}], "rios": [{"i": 1, "nombre": "…", "puntos": [[…], […]]}]}` (el
   formato completo, en el docstring de `editar.py`).
+- `historial.py` (MAP-9): cada guardado (visor o consola) deja en `mundo/historial/` (fuera de git) la versión de antes
+  y la de después, con una línea en `registro.jsonl` (fecha, huellas y un resumen). **Deshacer** vuelve a la versión
+  de antes del último guardado y, repetido, sigue hacia atrás; reescribe también el GeoJSON y el archivo del juego.
+  En el visor, «Deshacer el último guardado» (sin cambios pendientes); por consola, `editar.py --historial`,
+  `--deshacer` y `--restaurar HUELLA` (cualquier versión del historial, también para rehacer). Se guardan las copias de
+  los últimos 30 movimientos; lo más viejo, con git (helek.json lleva orden estable y su diff se lee).
 
 ## Fuentes y licencias
 

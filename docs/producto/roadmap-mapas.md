@@ -105,8 +105,15 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   trae 14 rutas de tierra con algún punto en agua y 34 marítimas por tierra: no bloquean. Probado con Chromium sin
   interfaz sobre una copia. **Pendiente:** que la usuaria lo use; sin probar en navegador: redibujar y guardar,
   cambiar el grupo de una ruta y renombrar o cambiar la ficha de un lugar existente.
-- **MAP-9 · Guardar con historial** [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
-  estable (diff legible en git) y se puede deshacer; nunca escribe en el `.map`. **S**
+- ~~**MAP-9 · Guardar con historial**~~ [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
+  estable (diff legible en git) y se puede deshacer; nunca escribe en el `.map`. **S** ✅ 2026-11-09: el orden
+  estable ya venía de `importar.volcar`; `historial.py` apunta cada guardado en `mundo/historial/` (fuera de git: la
+  versión de antes y la de después por huella y `registro.jsonl` con fecha y resumen; copias de los últimos 30).
+  Deshacer vuelve a antes del último guardado y, repetido, sigue hacia atrás, regenerando GeoJSON y archivo del
+  juego; restaurar vuelve a cualquier versión guardada (también rehace). Visor: botón «Deshacer el último guardado»
+  (`POST /deshacer`, `/historial.json`); consola: `editar.py --historial`, `--deshacer`, `--restaurar HUELLA`. Una
+  copia que no casa con su huella no se restaura. Probado con Chromium sin interfaz sobre una copia.
+  **Pendiente:** que la usuaria lo use.
 
 - **MAP-13 · Dibujo propio a la altura de Azgaar** [P] (usuaria, 2026-11-05): costas con trazo, iconos de
   relieve, texturas de bioma y colocación de etiquetas sin solapes, en un estilo propio de Helek. Se compara lado a

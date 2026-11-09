@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAP-5, MAP-6, MAP-8: sirve el visor y editor local de helek.json (sin red: escucha solo en 127.0.0.1).
+"""MAP-5, MAP-6, MAP-8, MAP-9: sirve el visor y editor local de helek.json (sin red: escucha solo en 127.0.0.1).
 
     python3 map-generator/servir.py              # http://127.0.0.1:8765/
     python3 map-generator/servir.py --puerto 0   # un puerto libre
@@ -13,6 +13,8 @@ Rutas (solo estas; nada más del disco se sirve):
     POST /comprobar un lote de cambios (editar.py): qué medidas cambian, canon y lore; no escribe nada
     POST /guardar   lo mismo y, si el lote parte del helek.json actual (`base`), lo escribe con su GeoJSON y el
                     archivo del juego. Si el canon o el lore fallan, solo con `"forzar": true`.
+    /historial.json los últimos guardados (historial.py) y qué devolvería deshacer
+    POST /deshacer  {"base": huella}: vuelve a la versión de antes del último guardado (editar.deshacer)
 
 Los POST solo se aceptan en JSON y desde la propia página (cabecera Origin), para que otra web abierta en el
 navegador no pueda escribir el mapa.
@@ -79,7 +81,13 @@ class Visor(BaseHTTPRequestHandler):
             except (OSError, ValueError) as e:
                 return self._json({'error': f'no se puede leer la enciclopedia: {e}'}, 500)
             return self._enviar(cuerpo.encode('utf-8'), 'application/json')
-        self.send_error(404, 'El visor solo sirve /, /helek.json, /medidas.json y /enciclopedia.json')
+        if ruta == '/historial.json':
+            with open(self.mundo_ruta, 'rb') as f:
+                actual = editar.huella(f.read())
+            sig = editar.historial.por_deshacer(self.mundo_ruta, actual)
+            return self._json({'huella': actual, 'entradas': editar.historial.entradas(self.mundo_ruta)[-15:],
+                               'deshacer': sig and sig[1]})
+        self.send_error(404, 'El visor solo sirve /, /helek.json, /medidas.json, /enciclopedia.json y /historial.json')
 
     def _json(self, datos, codigo=200):
         self._enviar(json.dumps(datos, ensure_ascii=False).encode('utf-8'), 'application/json', codigo)
@@ -93,8 +101,8 @@ class Visor(BaseHTTPRequestHandler):
 
     def do_POST(self):  # noqa: N802 (nombre de http.server)
         ruta = self.path.split('?', 1)[0]
-        if ruta not in ('/comprobar', '/guardar'):
-            return self.send_error(404, 'El editor solo acepta POST en /comprobar y /guardar')
+        if ruta not in ('/comprobar', '/guardar', '/deshacer'):
+            return self.send_error(404, 'El editor solo acepta POST en /comprobar, /guardar y /deshacer')
         tipo = (self.headers.get('Content-Type') or '').split(';')[0].strip()
         if tipo != 'application/json' or not self._origen_propio():
             return self._json({'error': 'solo se aceptan cambios en JSON desde el propio visor'}, 403)
@@ -113,6 +121,12 @@ class Visor(BaseHTTPRequestHandler):
             if cambios.get('base') != editar.huella(datos):
                 return self._json({'error': 'helek.json ha cambiado desde que se abrió el visor: recarga la página '
                                             '(se pierden los cambios sin guardar)'}, 409)
+            if ruta == '/deshacer':
+                try:
+                    e, nueva = editar.deshacer(self.mundo_ruta, self.juego_ruta)
+                except editar.ErrorDeEdicion as err:
+                    return self._json({'error': str(err)}, 409)
+                return self._json({'deshecho': e, 'huella': nueva})
             antes = json.loads(datos)
             try:
                 despues = editar.aplicar(antes, cambios, canon=editar.cargar_json(self.canon_ruta))
@@ -124,7 +138,8 @@ class Visor(BaseHTTPRequestHandler):
                 if not inf['ok'] and not cambios.get('forzar'):
                     inf['error'] = 'el canon o el lore no se cumplen: no se guarda sin confirmarlo'
                     return self._json(inf, 422)
-                inf['huella'] = editar.guardar(despues, self.mundo_ruta, ruta_juego=self.juego_ruta)
+                inf['huella'] = editar.guardar(despues, self.mundo_ruta, ruta_juego=self.juego_ruta,
+                                               resumen=editar.resumen(inf))
                 inf['guardado'] = True
         return self._json(inf)
 
