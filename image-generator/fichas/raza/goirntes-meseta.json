@@ -50,5 +50,32 @@
     "«orco robusto sin colmillos, más gris y anguloso» como ancla y las medidas en cabezas: diseño de imagen, no canon (los Goirntes no tienen ancla probada; R-Z5 solo se probó con el orco)",
     "el banner de la hembra está en backend/uploads/images/raza/goirntes-meseta-hembra-banner.png; `imagenJuego` solo admite uno y lleva el del macho"
   ],
-  "imagenJuego": "backend/uploads/images/raza/goirntes-meseta-macho-banner.png"
+  "imagenJuego": "backend/uploads/images/raza/goirntes-meseta-macho-banner.png",
+  "capas": {
+    "notas": "IMG-54, plantilla por capas (scripts/capas.py). Forma sin color en sujeto…entorno; el color, la paleta y la luz solo en el paso a foto. Reglas de la usuaria (2026-11-09): corpulentos, no gordos; delante del muro, no dentro; ciudad de torres negras cuadradas y simétricas; la piel casi mineral y quitinosa tiene que leerse.",
+    "sujeto": "A single giant humanoid warrior of a stern forging people, seen from the knees up in front three-quarter view from slightly below, his body filling the whole height of the image on the left.",
+    "tamano": "He is as wide as two men, heavy and solid, all muscle and heavy bone under his armour: enormous wide shoulders, a broad deep chest, a thick neck, arms as thick as tree trunks and huge fists at his sides.",
+    "forma": "His bald angular head has a heavy brow, sharp cheekbones and a very wide heavy chin; his skin is drawn tight over the bones and fused into hard plates like a beetle's shell, with fine seams over the cheekbones, brow and knuckles.",
+    "viste": "He wears thick, heavy, battered plate armour with rows of rivets that covers his chest and arms completely, from neck to knees, with no skin showing below the neck, and a long torn cloak hangs from his shoulders down to his knees.",
+    "pose": "He looks up and to the right with a cold face.",
+    "entorno": "He stands on the stone walkway of a high city wall, with a low stone parapet running behind him at the height of his waist; he is in front of the parapet, his whole body visible and nothing of the wall over him. Beyond the parapet, far below, an ancient fortress city of forges sprawls to the horizon: massive square towers of huge cut black stone blocks, solid and heavy like fortress keeps, with flat battlemented tops and only a few narrow slit windows, rising at different heights in symmetrical rows; some are unfinished inside rough timber scaffolding with wooden cranes, smoke pours from forge chimneys, and in the far centre stands one huge square keep taller than all the others, under heavy storm clouds. No spires, no pointed roofs, no glass.",
+    "color": "His skin is not human: matte ash-grey like slate, hard like a beetle's shell, with a faint dull sheen like pewter on the sharpest edges; his eyes are solid glossy black like polished obsidian. His armour is dark blackened iron with dull rivets, his cloak a dark torn rust-red. The city below is black stone under a black storm sky, with orange forge fires glowing among the towers and scaffolding.",
+    "paleta": "slate grey and soot black with one accent of orange firelight",
+    "luz": "Hard rim light from the fires behind him and cold grey light from the storm clouds above: his face and armour in shadow, their edges lit, the city still clearly visible below.",
+    "variantes": {
+      "macho": {
+        "forma+": [
+          "This male has a very broad, heavy jaw."
+        ]
+      },
+      "hembra": {
+        "forma+": [
+          "This female has a slightly narrower chin and her hair pulled back in a tight ponytail."
+        ],
+        "viste+": [
+          "She holds a heavy iron mace with a flanged, spiked head diagonally across her chest in both hands."
+        ]
+      }
+    }
+  }
 }

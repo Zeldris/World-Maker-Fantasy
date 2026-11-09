@@ -108,6 +108,26 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
 - **Orden propuesto**: P1 la criatura a lápiz → P2 el entorno a lápiz → P3 la foto con color y luz → Final. Falta
   probarlo con los acantilados y el resto de categorías.
 
+### Plantilla por capas y plan de estudio (usuaria, 2026-11-09)
+
+**Método, no elemento:** un elemento por categoría, lo mejor posible, y de ahí reglas que valgan para todos. Pasos:
+
+1. **Plantilla** ✅: bloque `capas` de la ficha (`fichas/<tipo>/<slug>.json`) y `scripts/capas.py`, que monta los
+   prompts (P1 sujeto a lápiz, P2 entorno a lápiz en el papel vacío, P3 paso a foto; F4 con `--final <motor>`) y con
+   `--generar` encadena `fase.py` con una semilla por fase, sin elegir a mano. Campos de forma (`sujeto`, `tamano`,
+   `forma`, `viste`, `pose`, `entorno`) sin color; `color`, `paleta`, `luz` y `repetir` solo en la foto. Las
+   palabras que ya fallaron (gordo, vientre, agujas, ventanas en filas, sombra al 90 %, tinta, ancla de raza de
+   fantasía) paran el script con el motivo y la alternativa. Ejemplo hecho: `raza/goirntes-meseta`.
+2. Fichas `capas` de los siete de estudio a mano desde el lore: acantilados-partidos, múrgol macho, cardo-brújula,
+   amuleto de hueso, ayuntamiento, Gistera Koh, goirnte macho.
+3. Pasada automática de los siete, juzgada contra el banner con una lista fija: rasgos de identidad, tamaño y
+   proporción, encuadre, ni dibujo ni render, luz.
+4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
+   del modelo.
+5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.
+6. Paso al generador y a las pautas de OpenCode (`IMG-50`); con la usuaria, si hace falta una descripción visual
+   aparte del lore.
+
 ## 3. Motor por fase
 
 | Fase | Motor | Por qué |
