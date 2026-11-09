@@ -8,7 +8,8 @@ líneas; paso a foto con el color, la paleta y la luz; F4 opcional (--final <mot
 Sin LLM: misma ficha y variante dan siempre el mismo texto.
 
 Uso: capas.py <ficha.json> [--variante macho] [--salida <dir>] [--generar] [--semilla N] [--motor klein4b]
-              [--camino capas] [--final flux3]
+              [--camino capas] [--final flux3] [--directa]
+--directa: P1 ya es foto con forma, entorno, color y luz; la edición de la ficha, sobre la foto.
 Sale con 2 y el motivo si un campo rompe una regla de la plantilla (palabra vetada, color en una capa de lápiz).
 """
 import json
@@ -124,6 +125,23 @@ def comprobar(c):
     return errores
 
 
+def prompts_directa(ficha, c):
+    """--directa (ronda 4): P1 ya es foto con todo; la edición, si la hay, sobre la foto. Ninguna fase desde dibujo
+    dio foto en las rondas 1-3 (receta-calidad.md)."""
+    tipo = ficha['tipo']
+    foto = c.get('foto') or FOTO[tipo]
+    partes = [foto[:1].upper() + foto[1:] + '.'] + [texto(c.get(k)) for k in
+              ('sujeto', 'tamano', 'forma', 'viste', 'pose', 'entorno', 'color', 'repetir')]
+    if c.get('paleta'):
+        partes.append(f'A limited, muted palette of {c["paleta"]}.')
+    partes += [texto(c.get('luz')), 'The image is completely textless.']
+    fases = [('P1', ' '.join(x for x in partes if x))]
+    if c.get('edicion'):
+        fases.append(('P2', f'Edit this photograph: {texto(c["edicion"])} The pose, the clothes, the background, the '
+                            'light and the colours stay as they are. It stays a real photograph.'))
+    return fases
+
+
 def prompts(ficha, c):
     tipo = ficha['tipo']
     cosa = c.get('cosa') or COSA[tipo]
@@ -188,7 +206,8 @@ def main(argv):
     camino = opt('--camino', 'capas')
     final = opt('--final')
     gen = '--generar' in argv
-    argv = [a for a in argv if a != '--generar']
+    directa = '--directa' in argv
+    argv = [a for a in argv if a not in ('--generar', '--directa')]
     if len(argv) != 1:
         aborto(__doc__, 2)
     ficha = json.load(open(argv[0], encoding='utf-8'))
@@ -196,7 +215,7 @@ def main(argv):
     errores = comprobar(c)
     if errores:
         aborto('\n'.join(errores), 2)
-    fases = prompts(ficha, c)
+    fases = (prompts_directa if directa else prompts)(ficha, c)
     tipo = ficha['tipo']
     slug = ficha['slug'] + (f'-{variante}' if variante else '')
     salida = salida or os.path.join(AQUI, '..', 'generated', tipo, slug, 'capas-prompts')
