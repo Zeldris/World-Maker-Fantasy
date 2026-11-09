@@ -16,11 +16,11 @@
     "rasgosSecundarios": "A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade.",
     "pose": "The table is dark brown-grey planks, deeply cracked and grained, stained black in patches.",
     "entorno": "Behind the table, softly out of focus, wooden crates of pale blue ice chunks stand at the left, a worn burlap sack rests at the right, and dark oxblood hide walls frame an opening that shows a pale snow plain and distant white mountains under an overcast sky.",
-    "luz": "Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer."
+    "luz": "Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the blade and casting a faint, soft shadow toward the viewer."
   },
   "condiciones": {
     "momento:atardecer": {
-      "luz": "Low, pale copper light comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a long, soft shadow toward the viewer."
+      "luz": "Low, pale copper light comes through the opening from behind and to the left, rim-lighting the blade and casting a long, soft shadow toward the viewer."
     },
     "momento:noche": {
       "luz": "Warm light from a small oil lamp just out of frame on the right falls across the table, glinting in the fractures of the blade, while the opening behind shows a dark blue snow plain."
@@ -42,6 +42,7 @@
     "entorno": "A few small iron tools lie at the right edge of the table, and tiny beads of melt water have gathered on the planks under the blade. Behind the table, softly out of focus, wooden crates of ice chunks stand at the left, a worn burlap sack rests at the right, and hide walls frame an opening that shows a snow plain and distant mountains under an overcast sky.",
     "color": "The blade is translucent bluish-white like clear glacier ice, brightest white along the fracture lines, so that the planks beneath show faintly through it. The handle is weathered bone-cream with black runic marks and tan twine. The table is dark brown-grey planks, stained black in patches; the ice in the crates is pale blue; the hide walls are dark oxblood; the snow plain and the far mountains are white under a grey sky.",
     "paleta": "icy blue-white, bone cream and dark oxblood",
-    "luz": "Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the fractures of the blade and casting a faint, soft shadow toward the viewer."
+    "corto": "Close-up of a single hand-made knife on a cracked wooden workbench, low three-quarter angle, spanning half the image width, point to the left, handle to the right. Soft cold daylight comes from behind and to the left, rim-lighting the blade. The blade is chipped crystal like clear glacier ice, translucent bluish-white, widest near the handle and tapering to a needle-fine point, with fine fracture lines and frost on its spine. It is nearly twice as long as the handle, a straight cylinder of weathered cream bone carved with black runes and bound with tan twine. The table is dark brown-grey planks. Behind, out of focus, hide walls.",
+    "luz": "Soft, cold daylight comes through the opening from behind and to the left, rim-lighting the blade and casting a faint, soft shadow toward the viewer."
   }
 }

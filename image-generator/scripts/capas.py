@@ -10,6 +10,8 @@ Sin LLM: misma ficha y variante dan siempre el mismo texto.
 Uso: capas.py <ficha.json> [--variante macho] [--salida <dir>] [--generar] [--semilla N] [--motor klein4b]
               [--camino capas] [--final flux3] [--directa]
 --directa: P1 ya es foto con forma, entorno, color y luz; la edición de la ficha, sobre la foto.
+--corta: como --directa, pero P1 es solo el campo `corto` de la ficha (≤120 palabras; ronda 6).
+--hibrida: `corto` primero (forma y luz) y detrás los campos de detalle de --directa (ronda 7).
 Sale con 2 y el motivo si un campo rompe una regla de la plantilla (palabra vetada, color en una capa de lápiz).
 """
 import json
@@ -51,6 +53,7 @@ TONO = ('Repaint this pencil study as a soft monochrome tonal painting in smooth
 # de escena luminosa la cambia con `clave` (o la quita con "").
 CLAVE = ('Low-key exposure, as in a cinema still: deep natural shadows and dark corners, bright only where that light '
          'falls.')
+CORTO_MAX = 120
 FINAL = ('Render this photograph with full photographic detail and real texture, keeping its composition, its light '
          'and its colours exactly. Style: a real photograph, natural film grain, not a 3D render. '
          'The image is completely textless.')
@@ -121,6 +124,8 @@ def comprobar(c):
             m = re.search(patron, t, re.I)
             if m:
                 errores.append(f'{campo}: «{m.group(0)}» {motivo}; mejor: {alternativa}')
+        if campo == 'corto' and len(t.split()) > CORTO_MAX:
+            errores.append(f'corto: {len(t.split())} palabras; como mucho {CORTO_MAX} (klein se confunde con más)')
         if campo in CAMPOS_LAPIZ:
             limpio = re.sub(COLOR_PERMITIDO, '', t, flags=re.I)
             m = re.search(COLOR, limpio, re.I)
@@ -148,6 +153,25 @@ def prompts_directa(ficha, c):
         fases.append(('P2', f'Edit this photograph: {texto(c["edicion"])} The pose, the clothes, the background, the '
                             'light and the colours stay as they are. It stays a real photograph.'))
     return fases
+
+
+def prompts_corta(ficha, c):
+    """--corta (ronda 6): P1 = tipo de foto + `corto` (sujeto y encuadre, luz, rasgo dominante, cuerpo por partes de
+    animales o cosas reales, color en una frase). Guías de klein: más de ~100-120 palabras lo confunden."""
+    if not c.get('corto'):
+        aborto('la ficha no tiene «corto» en su bloque «capas»', 3)
+    foto = c.get('foto') or FOTO[ficha['tipo']]
+    return [('P1', f'{foto[:1].upper() + foto[1:]}. {texto(c["corto"])} The image is completely textless.')]
+
+
+def prompts_hibrida(ficha, c):
+    """--hibrida (ronda 7): la ronda 6 dio la anatomía con `corto` (aullador 6→8) pero perdió identidad (runas,
+    color, colmillos rectos), que sí daba --directa: `corto` delante, luego el detalle sin repetir sujeto ni luz."""
+    p1 = prompts_corta(ficha, c)[0][1].replace(' The image is completely textless.', '')
+    resto = [texto(c.get(k)) for k in ('tamano', 'forma', 'viste', 'entorno', 'color', 'repetir')]
+    if c.get('paleta'):
+        resto.append(f'A limited, muted palette of {c["paleta"]}.')
+    return [('P1', ' '.join([p1] + [t for t in resto if t] + ['The image is completely textless.']))]
 
 
 def prompts(ficha, c):
@@ -215,7 +239,9 @@ def main(argv):
     final = opt('--final')
     gen = '--generar' in argv
     directa = '--directa' in argv
-    argv = [a for a in argv if a not in ('--generar', '--directa')]
+    corta = '--corta' in argv
+    hibrida = '--hibrida' in argv
+    argv = [a for a in argv if a not in ('--generar', '--directa', '--corta', '--hibrida')]
     if len(argv) != 1:
         aborto(__doc__, 2)
     ficha = json.load(open(argv[0], encoding='utf-8'))
@@ -223,7 +249,7 @@ def main(argv):
     errores = comprobar(c)
     if errores:
         aborto('\n'.join(errores), 2)
-    fases = (prompts_directa if directa else prompts)(ficha, c)
+    fases = (prompts_hibrida if hibrida else prompts_corta if corta else prompts_directa if directa else prompts)(ficha, c)
     tipo = ficha['tipo']
     slug = ficha['slug'] + (f'-{variante}' if variante else '')
     salida = salida or os.path.join(AQUI, '..', 'generated', tipo, slug, 'capas-prompts')

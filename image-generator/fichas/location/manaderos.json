@@ -17,7 +17,7 @@
     "rasgosSecundarios": "Small red dragonflies hover over the water, and the mud between the pools is split into fine, curling plates.",
     "pose": "The air is calm, and the reeds stand almost still, their reflections sharp in the water.",
     "entorno": "A wide, high sky arches over the pools with long thin bands of cloud, and fine red dust hangs in the far air, softening the distant shapes into layers.",
-    "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow and laying bright streaks across the water."
+    "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow."
   },
   "condiciones": {
     "momento:atardecer": {
@@ -50,6 +50,7 @@
     "entorno": "On the far horizon, sandstone buttes and flat-topped mesas, about an eighth of the image tall, rise out of a warm haze under a wide, high sky with long thin bands of cloud; fine dust hangs in the far air, softening the distant shapes into layers.",
     "color": "The reeds are reddish with dark seed heads; the algae bright green; the water clear, mirroring the sky; the mud red; the dragonflies red; the buttes and mesas red sandstone; the sky amber and orange over a golden haze.",
     "paleta": "reddish reeds, bright algae green and amber sky",
-    "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow and laying bright streaks across the water."
+    "corto": "A chain of shallow, still pools across a flat plain, human eye height, the horizon a third of the way up. A wide foreground pool edged with cracked mud fills the lower third; far pools shrink to thin slivers. Low warm light rakes in from the right through a golden haze, setting the reed tips aglow. The water is perfectly still and mirrors the amber sky. Dense clumps of tall reeds with dark seed heads like cattails stand along every bank, twice the height of the banks, with bright green algae at their feet. Far away, red sandstone buttes in haze.",
+    "luz": "Low warm light rakes in from the right through a golden haze, turning the sky amber and orange, setting the reed tips aglow."
   }
 }

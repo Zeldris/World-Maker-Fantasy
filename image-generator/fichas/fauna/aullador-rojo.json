@@ -85,6 +85,7 @@
     "color": "The coat is warm rust brown, paler in the stripes; the eye is amber; the fangs are pale; the plates of the crest are black and the spikes glow red; the tufts at the ankles are black. The ground is red earth with straw-yellow tufts, and the dust devils are dark.",
     "repetir": "Behind it lopes a pack of six more of the same hunters, smaller and hazier with distance, each with the same long low body, the same black plate crest with red spikes and the same pale sabre fangs.",
     "paleta": "rust brown and black with one accent of fiery orange light",
+    "corto": "A single long, low pack hunter in full side profile, stalking forward in the left part of a plain, two thirds of the image wide. The low sun behind it rims the coat and spikes with fiery orange light. A crest of overlapping black armoured plates with red spikes runs from the nape along the spine and down the banded tail. The long low body of a weasel, the narrow head of a fox, two long pale sabre fangs, legs shorter than the chest is deep. This male is heavy in neck and shoulders, with a tall crest. Coat rust brown. Behind it lope six smaller, hazier copies.",
     "luz": "The low sun sits behind the pack and rims every coat and spike with fiery orange light, while thick drifting dust glows in the backlight and a dense red-orange haze tints earth and sky alike.",
     "variantes": {
       "macho": {
@@ -93,6 +94,7 @@
         ]
       },
       "hembra": {
+        "corto": "A single long, low pack hunter in full side profile, stalking forward in the left part of a plain, two thirds of the image wide. The low sun behind it rims the coat and spikes with fiery orange light. A crest of overlapping black armoured plates with red spikes runs from the nape along the spine and down the banded tail. The long low body of a weasel, the narrow head of a fox, two long pale sabre fangs, legs shorter than the chest is deep. This female is smaller and slighter, with a lower crest. Coat rust brown. Behind her lope six smaller, hazier copies.",
         "forma+": [
           "This female is visibly smaller and slighter, with a narrower head and a lower crest of spikes."
         ]

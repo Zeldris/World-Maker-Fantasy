@@ -61,6 +61,7 @@
     "entorno": "Below the cliff a wide valley opens to the right, scattered with hide tents and thin smoke rising, and beyond it layered flat-topped mesas meet a hazy horizon at the height of the chest.",
     "color": "The skin is warm clay-beige, sand-coloured where the light touches it and deeper brown in shade, dry and weathered; the tusks are off-white like old ivory, with thin red lines painted along them in tribal patterns; the rawhide strips are tan. The valley is red clay with dark red hide tents and thin grey smoke, the mesas are red, the sky pale and hazy.",
     "paleta": "clay beige, rust red and hazy gold",
+    "corto": "A single tall tusked warrior crouched on a rock cliff edge, full length from slightly below, filling the left of the frame. Bright hazy daylight from high on the right throws warm gold rim light over his shoulders and tusks. Two long, thick, straight tusks point straight up from the lower jaw like blunt pegs, painted with red lines. Huge and lean, all muscle: heavy shoulders, thick arms, a broad fierce face under a heavy brow, skin like weathered leather, black braids, a leather vest, a feather cloak, a two-handed axe. Skin clay-beige, tusks off-white. Below, a red valley with hide tents.",
     "luz": "Bright, hazy daylight falls from high on the right and throws warm gold rim light over the shoulders and the edges of the tusks.",
     "variantes": {
       "macho": {
@@ -75,6 +76,7 @@
         ]
       },
       "hembra": {
+        "corto": "A single tall tusked warrior crouched on a rock cliff edge, full length from slightly below, filling the left of the frame. Bright hazy daylight from high on the right throws warm gold rim light over her shoulders and tusks. Two long, thick, straight tusks point straight up from the lower jaw like blunt pegs, painted with red lines. Huge and lean, all muscle: heavy shoulders, thick arms, a broad fierce face under a heavy brow, skin like weathered leather, amber eyes, black hair braided with bone beads, a leather bodice, a feather cloak. Skin clay-beige, tusks off-white. Below, a red valley with hide tents.",
         "forma+": [
           "This female has broad, long tusks, wide-set eyes, her hair braided and threaded with small bone beads, and raised lines of old ritual scar tissue across her shoulders."
         ],

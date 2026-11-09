@@ -174,6 +174,12 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    en clave baja (`CLAVE`; la ficha la cambia con `clave`). **Casi sin efecto** (~48/70): misma composición, apenas
    más oscuras salvia y aullador. Con klein 4B la clave baja no sale por orden ni por frase: límite del motor (ya lo
    decía el §3, FLUX.3 para escenas oscuras). Se queda el orden (no empeora y es lo que piden las guías).
+   **Ronda 6, prompt corto** (camino `capas5`, `capas.py --corta`, campo `corto` ≤120 palabras escrito a ciegas:
+   sujeto y encuadre, luz, un rasgo dominante, cuerpo por partes de animales reales, color; `sueltas-ronda6-{1,2}.png`,
+   cada fila: ronda 4, ronda 6 y banner): **42/70**, peor. Arregla la anatomía (aullador 6→8: por fin cuerpo de
+   comadreja, patas cortas y cresta de placas) pero pierde identidad: colmillos de morsa en el orco (6→4), choza sin
+   runas (8→6), manaderos verdes y lavados (7→5), cuchillo sin fondo (8→7). Lo corto delante fija la forma; el detalle
+   largo da la identidad.
 6. Paso al generador y a las pautas de OpenCode (`IMG-50`); con la usuaria, si hace falta una descripción visual
    aparte del lore.
 
