@@ -54,6 +54,24 @@ que añade el pecho. El cuerpo sale bien; la cara pide su propia edición o un e
 **El Final no es una fase de calidad**: hereda exactamente la composición y la luz de P1 en los tres motores. Esperar
 de él lo que no hizo P1 es pagar 33 minutos por nada.
 
+### Boceto por capas (idea de la usuaria, 2026-11-09)
+
+Dibujar primero y pintar después, como un dibujante: P1 **solo la criatura** en blanco y negro, P2 el entorno, P3 los
+detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (variantes `capas` y `lapiz`; hojas
+`sueltas-capas-p{1,2,3}-1.png`, `sueltas-capas-pint-1.png` y `sueltas-lapiz-p{1,2}-1.png`):
+
+- **Una cosa por paso funciona**: el entorno entra sin tocar la criatura (rebaño, ciudad con grúas) y una edición
+  arregla lo que falta (cuernos y rastas del rebaño). La identidad sale mejor que pidiéndolo todo junto: el goirnte,
+  gris y no humano. Cuesta 40 s por paso.
+- **El estilo del boceto pasa a la pintura.** «Black ink line drawing… concept artist's layout» lo dibuja como un
+  libro de colorear, y la pintura sale de dibujos animados: lana blanca, ojos de juguete, todo de frente.
+- **«A realistic graphite pencil study by a wildlife illustrator: accurate animal anatomy…»** da anatomía de animal,
+  y **«turn this pencil study into a wildlife photograph»** da una foto en clave baja: la cara en sombra, el borde
+  iluminado y las rastas grises. Es el más cercano al banner del múrgol hasta ahora. Le queda algo de figura de
+  juguete, y sale de frente donde el banner va a tres cuartos (lo pedía el prompt).
+- Falta probar: el boceto a lápiz con las capas de entorno; el goirnte y los acantilados a lápiz; y el Final con
+  FLUX.3 sobre la foto.
+
 ## 3. Motor por fase
 
 | Fase | Motor | Por qué |
