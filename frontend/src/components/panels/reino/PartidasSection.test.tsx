@@ -8,6 +8,7 @@ vi.mock('../../../lib/api', () => ({
 }))
 
 import { getPartidas, postLanzarPartida, postOrdenPartida, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
+import type { BuildingInfo } from '../../../types'
 import { cargaDePartida, lineaDePartida, PartidasSection } from './PartidasSection'
 
 /// CR-63 (63d): Reino › Partidas.
@@ -99,5 +100,13 @@ describe('PartidasSection (CR-63 63d)', () => {
     expect((await findByRole('status')).textContent).toMatch(/Múrgol: sin presas por ahora en La Hondonada/)
     fireEvent.click(getByLabelText('Ana'))
     expect((getByRole('button', { name: 'Lanzar partida (1)' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+  // P340: con los edificios dañados no se dice que falte uno: se dice que hay que repararlos.
+  it('P340: sin origen y con edificios dañados remite a Reparar en Edificios', async () => {
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [], opciones: { ...opciones, origen: null } })
+    const danado = { id: 'b1', name: 'Desolladero', status: 'DANADO' } as unknown as BuildingInfo
+    const { findByText, queryByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} buildings={[danado]} />)
+    expect(await findByText(/dañados.*Reparar.*Reino › Edificios/)).toBeTruthy()
+    expect(queryByText(/necesita un edificio/)).toBeNull()
   })
 })

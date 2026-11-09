@@ -161,7 +161,7 @@ export function ReinoPanel({
       )}
       {/* CR-55: ganado del Reino. */}
       {activeSubTab === 'corrales' && <CorralesSection saveId={saveId} inventory={inventory} onRefreshSave={onRefreshSave} />}
-      {activeSubTab === 'partidas' && <PartidasSection saveId={saveId} onRefreshSave={onRefreshSave} />}
+      {activeSubTab === 'partidas' && <PartidasSection saveId={saveId} onRefreshSave={onRefreshSave} buildings={buildings} />}
       {activeSubTab === 'defensa' && <DefensaSection saveId={saveId} onRefreshSave={onRefreshSave} />}
       {activeSubTab === 'subditos' && (
         <SubditosSection

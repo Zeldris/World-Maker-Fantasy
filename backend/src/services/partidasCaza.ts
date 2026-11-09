@@ -192,7 +192,7 @@ export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promis
   if (!carga?.especie || !carga.piezas || carga.piezas <= 0 || v.factionId) return 0;
   const caduca = carga.diaCaza + DIAS_PIEZA;
   if (caduca <= dia) {
-    await avisoDelReino(tx, v.saveId, `La partida de caza vuelve, pero sus ${carga.piezas} piezas ya se han echado a perder.`);
+    await avisoDelReino(tx, v.saveId, `La partida de caza vuelve, pero ${carga.piezas === 1 ? 'su única pieza ya se ha echado' : `sus ${carga.piezas} piezas ya se han echado`} a perder.`);
     return 0;
   }
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
@@ -200,7 +200,7 @@ export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promis
   await tx.almacenItem.createMany({
     data: Array.from({ length: carga.piezas }, () => ({ saveId: v.saveId, name: `Pieza de ${nombre}`, description: `${nombre} abatido por una partida de caza; se echa a perder si nadie lo desuella.`, catalogSlug: SLUG_PIEZA, especieSlug: carga.especie, caducaEnDia: caduca })),
   });
-  await avisoDelReino(tx, v.saveId, `La partida de caza vuelve con ${carga.piezas} piezas de ${nombre}. Se estropean en ${caduca - dia} día${caduca - dia === 1 ? '' : 's'}: llévalas al Desolladero.`);
+  await avisoDelReino(tx, v.saveId, `La partida de caza vuelve con ${carga.piezas} pieza${carga.piezas === 1 ? '' : 's'} de ${nombre}. Se estropean en ${caduca - dia} día${caduca - dia === 1 ? '' : 's'}: llévalas al Desolladero.`);
   return carga.piezas;
 }
 
@@ -248,7 +248,10 @@ TRABAJOS.CAZA = {
       if (v.miembros.reduce((s, m) => s + m.genericos, 0) < CAZADORES_POR_PARTIDA) return { ok: false, motivo: 'le faltan cazadores' };
       return (await faccionPuedeCazar(tx, v.factionId)) ? { ok: true } : { ok: false, motivo: 'le falta comida de reserva' };
     }
-    return (await desolladeroDaAbasto(tx, v.saveId)) ? { ok: true } : { ok: false, motivo: 'el Desolladero no da abasto con las piezas que hay' };
+    if (await desolladeroDaAbasto(tx, v.saveId)) return { ok: true };
+    // P338: un Desolladero dañado no cuenta (capacidad 0): se dice y se remite a repararlo, no a que «no da abasto».
+    const danado = (await capacidadDesolladero(tx, v.saveId)) === 0 && (await tx.building.count({ where: { saveId: v.saveId, recipeKey: 'desolladero', status: 'DANADO' } })) > 0;
+    return { ok: false, motivo: danado ? 'el Desolladero está dañado: repáralo en Reino › Edificios' : 'el Desolladero no da abasto con las piezas que hay' };
   },
 };
 

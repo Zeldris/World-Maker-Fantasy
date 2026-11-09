@@ -54,4 +54,16 @@ describe('P284/P302 — reparar y doble clic', () => {
     fireEvent.click(btn)
     expect(onBuild).toHaveBeenCalledTimes(1)
   })
+  // P372: el 400 del backend (faltan materiales) se ve en la tarjeta del edificio que se intentó reparar.
+  it('P372: si Reparar falla, el motivo sale en la tarjeta del edificio', async () => {
+    vi.spyOn(api, 'postRepararEdificio').mockRejectedValue(new Error('Hacen falta 9 materiales en el Almacén para reparar Pozo; tienes 4.'))
+    const { getByRole, findByRole, getAllByRole } = render(
+      <EdificiosParcelasSection buildings={[edificio({ status: 'DANADO', costeReparar: 9, name: 'Pozo' })]} saveId="s1" onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Reparar' }))
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('tienes 4')
+    expect(getAllByRole('alert')).toHaveLength(1)
+    expect(aviso.closest('div.rounded-lg')?.textContent).toContain('Pozo')
+  })
 })

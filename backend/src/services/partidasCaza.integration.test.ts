@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
-import { avanzarViajeros, crearViajero } from './viajeros.js';
+import { avanzarViajeros, crearViajero, TRABAJOS } from './viajeros.js';
+import { avisarEnReino } from './cronista/subditos.js';
 import { aplicarBajas, type Cazador, descargarCaza, desolladeroDaAbasto, DIAS_PIEZA, revisarPiezas, SLUG_PIEZA } from './partidasCaza.js';
 
 /// CR-63 (63b): la partida caza de fondo al llegar, trae piezas que se estropean y el Desolladero las
@@ -55,7 +56,7 @@ describe('partidas de caza (CR-63 63b)', () => {
     const piezas = await prisma.almacenItem.findMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
     expect(piezas).toHaveLength(carga.piezas);
     expect(piezas[0]).toMatchObject({ name: 'Pieza de Múrgol', especieSlug: 'murgol', caducaEnDia: carga.diaCaza + DIAS_PIEZA });
-    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'piezas de Múrgol' } } })).toBe(1);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: carga.piezas === 1 ? '1 pieza de Múrgol' : 'piezas de Múrgol' } } })).toBe(1);
   });
 
   it('sin Desolladero se echan a perder; con él, dan comida y materiales (4 al día por escalón)', async () => {
@@ -128,5 +129,34 @@ describe('partidas de caza (CR-63 63b)', () => {
     expect(fila).toMatchObject({ estado: 'MUERTO', hastaMinutes: 20 * 1440 });
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: 'Caído del camino ha muerto en combate.' } })).toBe(1);
     expect(await prisma.suceso.count({ where: { saveId, tipo: 'MUERTE_NPC' } })).toBeGreaterThan(0);
+  });
+  // P339: la concordancia de «pieza(s)» en el diario del Reino.
+  it('P339: la partida que vuelve con 1 pieza dice «1 pieza», no «1 piezas»', async () => {
+    await prisma.logEntry.deleteMany({ where: { saveId, channel: 'KINGDOM' } });
+    const v = await viajero();
+    await prisma.$transaction((tx) => descargarCaza(tx, { ...v, factionId: null, carga: { especie: 'murgol', piezas: 1, diaCaza: 30, resumen: 'x' }, miembros: [] }, 31));
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'vuelve con 1 pieza de Múrgol' } } })).toBe(1);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: '1 piezas' } } })).toBe(0);
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
+  });
+
+  // P338: con el Desolladero dañado la orden permanente se corta diciendo que está dañado, no que «no da abasto».
+  it('P338: el motivo de parar con el Desolladero dañado es que está dañado y hay que repararlo', async () => {
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
+    await prisma.almacenItem.create({ data: { saveId, name: 'Pieza de Múrgol', description: 'x', catalogSlug: SLUG_PIEZA, especieSlug: 'murgol', caducaEnDia: 99 } });
+    const v = { ...(await viajero()), factionId: null, miembros: [] };
+    const antes = () => prisma.$transaction((tx) => TRABAJOS.CAZA!.antesDeRepetir!(tx, v, 30));
+    await prisma.building.create({ data: { saveId, recipeKey: 'desolladero', name: 'Desolladero', kind: 'desolladero', description: 'x', status: 'DANADO' } });
+    expect(await antes()).toEqual({ ok: false, motivo: expect.stringContaining('está dañado') });
+    expect(await antes()).toEqual({ ok: false, motivo: expect.stringContaining('Reino › Edificios') });
+    await prisma.building.deleteMany({ where: { saveId, recipeKey: 'desolladero' } });
+    expect(await antes()).toEqual({ ok: false, motivo: 'el Desolladero no da abasto con las piezas que hay' }); // sin Desolladero: como antes
+    await prisma.almacenItem.deleteMany({ where: { saveId, catalogSlug: SLUG_PIEZA } });
+  });
+
+  // P332: el aviso empieza en mayúscula aunque el nombre del edificio lleve artículo.
+  it('P332: un aviso del Reino que empieza por «un pequeño ayuntamiento» sale con mayúscula', async () => {
+    await prisma.$transaction((tx) => avisarEnReino(tx, saveId, 'un pequeño ayuntamiento sufre daños por una tormenta.', 20 * 1440));
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: 'Un pequeño ayuntamiento sufre daños por una tormenta.' } })).toBe(1);
   });
 });

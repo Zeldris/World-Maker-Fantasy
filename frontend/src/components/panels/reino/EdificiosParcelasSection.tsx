@@ -132,7 +132,8 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
   const enVuelo = useRef(false)
   const [construyendo, setConstruyendo] = useState(false)
   const [reparando, setReparando] = useState<string | null>(null)
-  const [errorReparar, setErrorReparar] = useState<string | null>(null)
+  /// P372: el error de «Reparar» sale en la tarjeta del edificio (con 9 edificios, el de arriba quedaba fuera de pantalla).
+  const [errorReparar, setErrorReparar] = useState<{ id: string | null; texto: string } | null>(null)
   const [encargando, setEncargando] = useState(false)
   const [versionCola, setVersionCola] = useState(0)
   const hayCasaDeObras = buildings.some((b) => b.recipeKey === 'casa-de-obras' && b.status === 'ACTIVO')
@@ -145,7 +146,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       await postObra(saveId, encargo)
       setVersionCola((n) => n + 1)
     } catch (e) {
-      setErrorReparar(e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.')
+      setErrorReparar({ id: null, texto: e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.' })
     } finally {
       setEncargando(false)
     }
@@ -164,7 +165,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       await postRepararEdificio(saveId, id)
       await onRefreshSave?.()
     } catch (e) {
-      setErrorReparar(e instanceof Error ? e.message : 'No se pudo reparar el edificio.')
+      setErrorReparar({ id, texto: e instanceof Error ? e.message : 'No se pudo reparar el edificio.' })
     } finally {
       setReparando(null)
     }
@@ -238,7 +239,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           ))}
         </div>
       </details>
-      {errorReparar && <p role="alert" className="mb-2 text-2xs text-cost-400">{errorReparar}</p>}
+      {errorReparar && errorReparar.id === null && <p role="alert" className="mb-2 text-2xs text-cost-400">{errorReparar.texto}</p>}
       {resumen.length > 0 && <p className="mb-2 text-2xs text-wood-400">Repetidos: {resumen.join(' · ')}</p>}
       <div className="flex flex-col gap-2">
         {buildings.map((b) => (
@@ -291,6 +292,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
                 {b.costeReparar != null && <span className="text-wood-400">Coste: {b.costeReparar} materiales del Almacén</span>}
               </div>
             )}
+            {errorReparar?.id === b.id && <p role="alert" className="mt-1 text-2xs text-cost-400">{errorReparar.texto}</p>}
           </div>
         ))}
       </div>
