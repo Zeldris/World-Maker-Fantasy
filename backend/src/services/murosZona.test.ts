@@ -82,4 +82,10 @@ describe('interior de la empalizada (P193)', () => {
     expect(celdas).not.toContainEqual({ col: 7, row: 10 });
     expect(interiorComoCeldas('otra-zona')).toEqual([]);
   });
+
+  it('P337: la puerta del poblado sale de los datos de la empalizada (12,9); sin empalizada, ninguna', async () => {
+    const { puertasComoCeldas } = await import('./murosZona.js');
+    expect(puertasComoCeldas('campamento-serhu')).toEqual([{ col: 12, row: 9 }]);
+    expect(puertasComoCeldas('otra-zona')).toEqual([]);
+  });
 });

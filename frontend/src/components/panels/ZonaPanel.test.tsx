@@ -251,14 +251,25 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
   const items = (menu: HTMLElement) => [...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)
 
 
-  it('P337: un punto sobre las estacas, desde fuera, dice que se entra por la puerta y no ofrece Interactuar ni Ir, pero conserva el resto', async () => {
-    const { menu, getByRole, findByRole, queryByRole } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] })
+  it('P337: un punto sobre las estacas, desde fuera, ofrece ir a la puerta del poblado (no Interactuar) y conserva el resto', async () => {
+    const { menu, getByRole, findByRole } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }], puertas: [{ col: 12, row: 9 }] })
     expect(menu.textContent).toContain('se entra por la puerta del poblado')
-    expect(items(menu)).toEqual(['Recoger', 'Ver ficha completa'])
-    // La ficha completa tampoco ofrece Acercarte desde fuera.
+    expect(items(menu)).toEqual(['Ir a la puerta del poblado', 'Recoger', 'Ver ficha completa'])
+    // La ficha completa tampoco ofrece Acercarte ni Ir hasta aquí desde fuera: ofrece lo mismo, la puerta.
     fireEvent.click(getByRole('menuitem', { name: 'Ver ficha completa' }))
-    expect(await findByRole('dialog')).toBeTruthy()
-    expect(queryByRole('button', { name: /Acercarte|Ir hasta aquí/ })).toBeNull()
+    const dialogo = await findByRole('dialog')
+    expect(dialogo.textContent).toContain('Ir a la puerta del poblado')
+    expect(dialogo.textContent).not.toMatch(/Acercarte|Ir hasta aquí/)
+  })
+
+  it('P337: «Ir a la puerta del poblado» camina al centro de la puerta (12,9), no a la casilla de las estacas', async () => {
+    vi.mocked(moverEnZona).mockResolvedValue({ jugador: { x: 625, y: 475 }, caminoRestante: [], zonePointsMovidos: [] } as never)
+    const { getByRole } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }], puertas: [{ col: 12, row: 9 }] })
+    await act(async () => {
+      fireEvent.click(getByRole('menuitem', { name: 'Ir a la puerta del poblado' }))
+    })
+    expect(moverEnZona).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(moverEnZona).mock.calls[0]![1]).toEqual({ x: 625, y: 475 })
   })
 
   it('P337: con el jugador dentro del recinto, sale Interactuar y no el aviso', async () => {

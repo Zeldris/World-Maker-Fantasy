@@ -824,6 +824,8 @@ export interface BuildingInfo {
   caida?: boolean
   /// P284: materiales que cuesta repararlo; null si no hace falta.
   costeReparar?: number | null
+  /// P372: materiales que hay ahora en el Almacén (solo si hay algo que reparar), para avisar antes de pulsar «Reparar».
+  materialesAlmacen?: number | null
   description: string
   /// P346: quien está atado en esta Jaula (null si no es Jaula o está vacía).
   ocupante?: OcupanteJaula | null

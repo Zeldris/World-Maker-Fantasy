@@ -1320,6 +1320,8 @@ export interface ZonaResponse {
   muros?: { col: number; row: number }[]
   /// P337: casillas libres dentro de la empalizada (vacío si la zona no tiene).
   interior?: { col: number; row: number }[]
+  /// P337: puertas de la empalizada (la primera es el destino de «Ir hasta aquí» sobre las estacas desde fuera).
+  puertas?: { col: number; row: number }[]
   locationSlug?: string
   locationName?: string
   /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera

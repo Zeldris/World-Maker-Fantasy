@@ -37,6 +37,11 @@ export function murosComoCeldas(locationSlug: string | null | undefined): Celda[
   return (locationSlug ? (MUROS_POR_LOCATION[locationSlug] ?? []) : []).map(([col, row]) => ({ col, row }));
 }
 
+/// P337: las puertas de la empalizada como celdas, para el frontend (`GET /zona`): «Ir hasta aquí» desde fuera lleva a la primera.
+export function puertasComoCeldas(locationSlug: string | null | undefined): Celda[] {
+  return (locationSlug ? (PUERTAS_POR_LOCATION[locationSlug] ?? []) : []).map(([col, row]) => ({ col, row }));
+}
+
 /// P337: el interior como celdas, para el frontend (`GET /zona`).
 export function interiorComoCeldas(locationSlug: string | null | undefined): Celda[] {
   return [...interiorDe(locationSlug)].map((k) => {
