@@ -141,6 +141,11 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    (Gistera vuelve a cara de hombre). **Conclusión: klein no saca foto de una cadena que empezó en dibujo**, ni por
    prompt, ni por referencia, ni por fuerza. Queda una ronda: un motor fotorrealista en la Final (FLUX.3, ~33 min
    por elemento) o un P1 que ya sea foto.
+   **Ronda 3** (usuaria: FLUX.3 en la Final del múrgol y de Gistera, ~33 min cada uno; `sueltas-ronda3-1.png`):
+   **mejora poco**. Más textura y un cielo y una llanura más reales (foto 0→1: múrgol 6, Gistera 5), pero el volumen y
+   el acabado siguen siendo los de la ilustración, y Gistera se lee como mujer humana con un colmillo, no como orca.
+   **Límite de esta cadena:** el lápiz da forma, escala y encuadre fiables; el aspecto de foto no sale de ninguna fase
+   que parta de un dibujo, con klein ni con FLUX.3. Sin probar: P1 directamente en foto.
 4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
    del modelo.
 5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.
