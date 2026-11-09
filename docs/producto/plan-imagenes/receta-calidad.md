@@ -146,6 +146,12 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
    el acabado siguen siendo los de la ilustración, y Gistera se lee como mujer humana con un colmillo, no como orca.
    **Límite de esta cadena:** el lápiz da forma, escala y encuadre fiables; el aspecto de foto no sale de ninguna fase
    que parta de un dibujo, con klein ni con FLUX.3. Sin probar: P1 directamente en foto.
+   **Ronda 4, extra** (usuaria; `capas.py --directa`, camino `capas3`, klein 4B, ~1 min por elemento;
+   `sueltas-ronda4-1.png`, cada fila: mejor de antes, directa y banner): **51/70**. Goirnte 7, múrgol 8,
+   acantilados 6, cardo 7, amuleto 9, ayuntamiento 8 (el fuego por fin al fondo), Gistera 6. Es foto en los siete, y
+   la forma, la escala y el encuadre se sostienen sin el lápiz: los ponen las reglas del texto de la ficha.
+   **Plantilla elegida: `--directa`.** Lo que falta ya es identidad: piel mineral del goirnte (sale cara humana con
+   barba), Gistera poco orca (cara humana, colmillos pequeños), mar demasiado azul en los acantilados.
 4. Se corrige solo la plantilla (reglas generales), como mucho tres rondas; lo que no salga se apunta como límite
    del modelo.
 5. Prueba a ciegas con siete elementos no tocados (uno por categoría): porcentaje que sale bien a la primera.
