@@ -74,4 +74,12 @@ describe('interior de la empalizada (P193)', () => {
     expect(alcanzableDesde('campamento-serhu', { col: 2, row: 2 }, { col: 3, row: 3 })).toBe(true);
     expect(alcanzableDesde('otra-zona', { col: 7, row: 10 }, recinto)).toBe(true);
   });
+
+  it('P337: el interior sale como celdas para el mapa; sin empalizada, vacío', async () => {
+    const { interiorComoCeldas } = await import('./murosZona.js');
+    const celdas = interiorComoCeldas('campamento-serhu');
+    expect(celdas).toContainEqual({ col: 8, row: 8 });
+    expect(celdas).not.toContainEqual({ col: 7, row: 10 });
+    expect(interiorComoCeldas('otra-zona')).toEqual([]);
+  });
 });

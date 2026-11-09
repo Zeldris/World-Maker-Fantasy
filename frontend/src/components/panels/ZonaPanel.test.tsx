@@ -239,6 +239,18 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     expect(getByTestId('tarjeta-ficha').textContent).toBe(`Aullador rojoFauna · Enemigo · ×3 · a ${pasos} pasos`)
   })
 
+  // P337: pegado a las estacas del recinto pero fuera, el menú no ofrece «Interactuar» y dice por dónde se entra.
+  it('P337: un punto sobre las estacas, desde fuera, dice que se entra por la puerta y no ofrece Interactuar', async () => {
+    vi.mocked(getZona).mockResolvedValue({ ...zona, jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] } as never)
+    const { container, getByRole } = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const ficha = [...container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.click(ficha)
+    const menu = getByRole('menu', { name: 'Aullador rojo' })
+    expect(menu.textContent).toContain('se entra por la puerta del poblado')
+    expect([...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).not.toContain('Interactuar')
+  })
+
   // P147 (QA-27): la insignia «×N» de un grupo quedaba tapada por una ficha pegada o por el personaje.
   it('la insignia «×N» se pinta por encima de todas las fichas y del personaje', async () => {
     const { container, getAllByTestId } = render(<ZonaPanel saveId="s1" />)

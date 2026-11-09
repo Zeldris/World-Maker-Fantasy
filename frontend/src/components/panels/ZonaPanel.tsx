@@ -348,8 +348,15 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if (clave.startsWith('p:')) return data.puntos.find((p) => p.id === clave.slice(2)) ?? null
     return (data.dinamicos ?? []).find((d) => d.slug === clave.slice(2)) ?? null
   }
+  // P337: un punto sobre las estacas de una empalizada solo se toca desde dentro (como `alcanzableDesde` del backend).
+  function sinAccesoDesdeFuera(punto: { x: number; y: number }): boolean {
+    if (!data?.jugador || murosZona.size === 0 || !data.interior?.length) return false
+    if (!murosZona.has(claveCelda(celdaDePixel(punto)))) return false
+    return !data.interior.some((c) => c.col === celdaDePixel(data.jugador!).col && c.row === celdaDePixel(data.jugador!).row)
+  }
   function infoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): InfoFicha {
     const detalles = [TIPO_LABEL[punto.tipo], disposicionDe(punto)]
+    if (sinAccesoDesdeFuera(punto)) detalles.push('desde fuera no se llega: se entra por la puerta del poblado')
     if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
     if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
     // ZON-16/ZON-58: lo desconocido, agotado o con candado, también en la tarjeta.
@@ -385,6 +392,8 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
     const acciones: AccionFicha[] = []
     const ir = irHastaPin(punto)
+    // P337: pegado a las estacas pero fuera, «Interactuar» no serviría; el menú ya dice por dónde se entra.
+    if (ir && pegadoAPin(punto) && sinAccesoDesdeFuera(punto)) return [{ label: 'Ver ficha completa', onClick: () => setSelectedPoint(punto as ZonePointInfo) }]
     if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
     else if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
     if ('droppedItemId' in punto && punto.droppedItemId) {

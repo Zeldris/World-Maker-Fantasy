@@ -72,6 +72,17 @@ describe('DefensaSection (CR-65 65f)', () => {
     expect(getAllByText('No hay trabajadores adultos que armar.').length).toBeGreaterThan(0)
   })
 
+  it('P384: dos ejércitos sobre el mismo asentamiento dan un solo «Llamar a la milicia»', async () => {
+    const av = { asentamientoId: 'cap', asentamiento: 'Karot Veku', gente: 6, tramos: 1 }
+    vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital], avistados: [{ ...av, viajeroId: 'v1', quien: 'Nabieus' }, { ...av, viajeroId: 'v2', quien: 'Clan Helsig' }] })
+    const { findByRole, getAllByRole, getByRole } = render(<DefensaSection saveId="s" onRefreshSave={async () => {}} />)
+    const alerta = await findByRole('alert', { name: 'Asaltos a la vista' })
+    expect(alerta.textContent).toContain('Nabieus')
+    expect(alerta.textContent).toContain('Clan Helsig')
+    expect(getAllByRole('button', { name: 'Llamar a la milicia' })).toHaveLength(1)
+    expect(getByRole('alert', { name: 'Asaltos a la vista' }).textContent).toContain('contra todos los ejércitos avistados')
+  })
+
   it('fuera de la Capital no se compran equipos de milicia ni se cuenta su milicia', async () => {
     const cuartel: AsentamientoDefensa = { ...capital, id: 'cua', nombre: 'Cuartel del Paso', capital: false, region: 'Cristal', guarnicion: [], modulos: [{ id: 'arm2', modulo: 'armeria', nombre: 'otra armería', escalon: 1, golpes: 0, caida: false, equiposMilicia: 0 }] }
     vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital, cuartel], avistados: [] })

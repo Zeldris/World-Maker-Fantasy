@@ -15,7 +15,7 @@ import { sumarEnergiaPasiva } from '../../services/energiaPasiva.js';
 import { harvestAbilityForMetodo, matchesOficioPrefix, metodoPrincipalDeFuente } from '../../services/harvestAbilities.js';
 import { RECOLECCION_COOLDOWN_MS } from './recolectar.js';
 import { momentoDelDiaFor, estacionFor, advanceFictionalMinutes, formatFictionalDate } from '../../services/worldClock.js';
-import { alcanzableDesde, murosComoCeldas, murosDe } from '../../services/murosZona.js';
+import { alcanzableDesde, interiorComoCeldas, murosComoCeldas, murosDe } from '../../services/murosZona.js';
 
 /// B2 (2026-09-28) — minutos ficticios que cuesta cada paso real por la cuadrícula de la zona.
 const MINUTOS_POR_PASO_ZONA = 1;
@@ -689,6 +689,7 @@ export async function zonaRoutes(app: FastifyInstance) {
         parcelas,
         tablon,
         muros: murosComoCeldas(locationSlug),
+        interior: interiorComoCeldas(locationSlug),
       };
     }
 
@@ -791,6 +792,8 @@ export async function zonaRoutes(app: FastifyInstance) {
       tablon,
       // P185 (QA-27): las casillas por las que no se pasa, para que la ruta prevista las rodee igual.
       muros: murosComoCeldas(locationSlug),
+      // P337: el interior de la empalizada, para que el menú diga que un punto sobre las estacas se toca solo desde dentro.
+      interior: interiorComoCeldas(locationSlug),
     };
   });
 
