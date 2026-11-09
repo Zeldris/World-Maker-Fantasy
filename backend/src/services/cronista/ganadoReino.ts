@@ -329,7 +329,7 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
 /// Lo comestible va a la comida del Reino por su valor (Q15); lo demás, al Almacén hasta su tope. Sin
 /// Desolladero en el Reino, la piel, el hueso y el resto salen a la mitad.
 export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora: number): Promise<
-  { ok: true; comida: number; almacen: Record<string, number>; perdido: number; aviso: string } | { ok: false; motivo: string }
+  { ok: true; comida: number; comidaPerdida: number; almacen: Record<string, number>; perdido: number; aviso: string } | { ok: false; motivo: string }
 > {
   const animal = await tx.ganado.findFirst({ where: { id: ganadoId, saveId } });
   if (!animal) return { ok: false, motivo: 'Ese animal no está en tus corrales.' };
@@ -349,22 +349,24 @@ export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora
 }
 
 /// P335: «Sacrificas Múrgol: +3 de comida, 2 Hueso ligero al Almacén…».
-export function avisoDeSacrificio(especieNombre: string, dado: { comida: number; almacen: Record<string, number>; perdido: number }, nombres: Map<string, string>): string {
+export function avisoDeSacrificio(especieNombre: string, dado: { comida: number; comidaPerdida: number; almacen: Record<string, number>; perdido: number }, nombres: Map<string, string>): string {
   const partes: string[] = [];
   if (dado.comida > 0) partes.push(`+${dado.comida} de comida`);
   for (const [slug, n] of Object.entries(dado.almacen)) partes.push(`${n} ${nombres.get(slug) ?? slug} al Almacén`);
   let t = `Sacrificas un animal (${especieNombre}): ${partes.length > 0 ? partes.join(', ') : 'no da nada'}.`;
   if (dado.perdido > 0) t += ` Se pierden ${dado.perdido} por falta de hueco en el Almacén.`;
+  if (dado.comidaPerdida > 0) t += ` Se pierden ${dado.comidaPerdida} de comida: el Granero está lleno.`;
   return t;
 }
 
 /// Lo que da un animal muerto (sacrificado o una pieza de caza desollada, CR-63): lo comestible va a
 /// la comida del Reino (hasta el Granero); lo demás al Almacén hasta su tope. Sin Desolladero, lo no
 /// comestible sale a la mitad.
-export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, especie: string, factor = 1): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
+export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, especie: string, factor = 1): Promise<{ comida: number; comidaPerdida: number; almacen: Record<string, number>; perdido: number }> {
   const conDesolladero = (await tx.building.count({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' } })) > 0;
   const rendimientos = await tx.harvestYield.findMany({ where: { worldId, sourceSlug: especie }, select: { cantidad: true, item: { select: { slug: true, name: true, description: true, category: true, curaHambre: true } } } });
   let comida = 0;
+  let comidaEntra = 0;
   const almacen: Record<string, number> = {};
   let perdido = 0;
   let hueco = await huecoDeMateriales(tx, saveId);
@@ -390,10 +392,13 @@ export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, 
     if (stats) {
       // El Granero se comparte con el forraje (Q7).
       const { topeComida } = await suministrosDelReino(tx, saveId);
-      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: Math.max(stats.comida, Math.min(topeComida - stats.forraje, stats.comida + comida)) } });
+      const nueva = Math.max(stats.comida, Math.min(topeComida - stats.forraje, stats.comida + comida));
+      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: nueva } });
+      comidaEntra = nueva - stats.comida;
     }
   }
-  return { comida, almacen, perdido };
+  // `comida` es lo que entra de verdad; `comidaPerdida`, lo que el Granero (o la falta de Reino) no admitió.
+  return { comida: comidaEntra, comidaPerdida: comida - comidaEntra, almacen, perdido };
 }
 
 // ── CR-56 (56b): la Domadora saca animales del corral ────────────────────────────────────────

@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { companerosRoutes } from './companeros.js';
+import { depositarEnAlmacen } from '../../services/cronista/almacenDeposito.js';
 
 /// P428: Reino › Almacén › «Depositar todo» — una sola petición mueve toda la mochila suelta al Almacén.
 describe('POST /saves/:id/almacen/depositar-todo (P428)', () => {
@@ -45,6 +46,15 @@ describe('POST /saves/:id/almacen/depositar-todo (P428)', () => {
     expect(res.json()).toMatchObject({ ok: true, depositados: 12, noCaben: 0 });
     expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(12);
     expect(await prisma.inventoryItem.findMany({ where: { saveId }, select: { name: true } })).toEqual([{ name: 'Espada equipada' }]);
+  });
+
+  it('revisión C1: dos depósitos a la vez del mismo objeto → uno entra y el otro es 404, sin error', async () => {
+    const it1 = await prisma.inventoryItem.create({ data: { saveId, name: 'Carrera', description: 'x', catalogSlug: null } });
+    const [a, b] = await Promise.all([depositarEnAlmacen(prisma, saveId, it1.id), depositarEnAlmacen(prisma, saveId, it1.id)]);
+    expect([a.ok, b.ok].filter(Boolean)).toHaveLength(1);
+    const fallo = [a, b].find((x) => !x.ok);
+    expect(fallo).toMatchObject({ ok: false, status: 404 });
+    expect(await prisma.almacenItem.count({ where: { saveId, name: 'Carrera' } })).toBe(1);
   });
 
   it('partida inexistente → 404', async () => {

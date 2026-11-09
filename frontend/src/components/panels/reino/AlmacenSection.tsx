@@ -212,7 +212,7 @@ export function AlmacenSection({
               <button
                 type="button"
                 onClick={() => void handleDepositarTodo()}
-                disabled={busy === 'todo' || !!consulta}
+                disabled={busy !== null || !!consulta}
                 title={consulta ?? 'Deposita de una vez todo lo suelto de la mochila (lo equipado se queda).'}
                 className="tactile self-start rounded border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -228,7 +228,7 @@ export function AlmacenSection({
                   <button
                     type="button"
                     onClick={() => handleDepositar(item.id)}
-                    disabled={busy === item.id || !!consulta}
+                    disabled={busy !== null || !!consulta}
                     title={consulta ?? undefined}
                     className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >

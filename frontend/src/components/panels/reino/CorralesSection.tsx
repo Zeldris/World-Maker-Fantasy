@@ -5,7 +5,7 @@ import { ErrorBanner } from '../../ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
 import { getCorrales, postDevolverAlCorral, postEntregarForraje, postLlevarConsigo, postSacrificar, type CorralesInfo } from '../../../lib/api'
-import { avisoDeCarencia, ESCALON_LABEL, lineaDeAnimal, resumenDeCorral } from '../../../lib/corrales'
+import { avisoDeCarencia, ESCALON_LABEL, FORRAJE_POR_PASTO, lineaDeAnimal, resumenDeCorral } from '../../../lib/corrales'
 
 const PASTOS: { slug: string; label: string }[] = [
   { slug: 'pasto-solar', label: 'Pasto Solar' },
@@ -54,8 +54,8 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
   if (!datos) return <ErrorBanner fallo={fallo} onCerrar={limpiar} />
   const aviso = avisoDeCarencia(datos.diasSinComer, datos.diasSinBeber)
   const pastosQueLlevo = PASTOS.map((p) => ({ ...p, n: inventory.filter((i) => i.catalogSlug === p.slug && !i.slot).length })).filter((p) => p.n > 0)
-  // P336: cada pasto pide 2 de hueco del Granero, que comparten la comida y el forraje.
-  const cabenPastos = Math.floor(datos.huecoForraje / 2)
+  // P336: cada pasto pide FORRAJE_POR_PASTO de hueco del Granero, que comparten la comida y el forraje.
+  const cabenPastos = Math.floor(datos.huecoForraje / FORRAJE_POR_PASTO)
 
   return (
     <div className="flex flex-col gap-5">
@@ -80,12 +80,12 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
               <button
                 key={p.slug}
                 type="button"
-                disabled={busy || !!consulta}
-                title={consulta ?? undefined}
+                disabled={busy || !!consulta || cabenPastos < 1}
+                title={consulta ?? (cabenPastos < 1 ? 'El Granero no tiene hueco: el forraje comparte el espacio con la comida.' : undefined)}
                 onClick={() => void accion(() => postEntregarForraje(saveId, p.slug), 'No se pudo entregar el pasto.')}
                 className="tactile rounded-lg border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 hover:bg-accent-500/10 disabled:opacity-50"
               >
-                Entregar {Math.min(p.n, cabenPastos)} {p.label} (+{Math.min(p.n, cabenPastos) * 2}){p.n > cabenPastos ? ` · llevas ${p.n}` : ''}
+                Entregar {Math.min(p.n, cabenPastos)} {p.label} (+{Math.min(p.n, cabenPastos) * FORRAJE_POR_PASTO}){p.n > cabenPastos ? ` · llevas ${p.n}` : ''}
               </button>
             ))}
           </div>

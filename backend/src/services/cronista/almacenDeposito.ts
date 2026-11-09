@@ -8,6 +8,7 @@ import { esMaterial, huecoDeMateriales, motivoMaterialesLlenos } from './economi
 import { pasaAComidaDelReino } from '../crafting.js';
 import { autoEquiparDesdeAlmacen } from '../companionSupervivencia.js';
 import { ownerKeyFor } from '../reinoOwner.js';
+import { lockRowForUpdate } from '../../routes/saves/shared.js';
 
 export type ResultadoDeposito = { ok: true; autoEquipados: number; comidaSumada?: number } | { ok: false; status: 404 | 400; error: string };
 
@@ -17,12 +18,16 @@ export async function depositarEnAlmacen(prisma: PrismaClient, saveId: string, i
   const item = await prisma.inventoryItem.findFirst({ where: { id: itemId, saveId, slot: null, companionId: null, subjectId: null } });
   if (!item) return { ok: false, status: 404, error: 'Objeto no encontrado (o ya equipado)' };
 
-  // CR-53 (Q2): los materiales caben hasta el tope del Almacén (base y Leñeras).
-  if ((await esMaterial(prisma, saveId, item.catalogSlug)) && (await huecoDeMateriales(prisma, saveId)) <= 0) {
-    return { ok: false, status: 400, error: await motivoMaterialesLlenos(prisma, saveId) };
-  }
   const result = await prisma.$transaction(async (tx) => {
-    await tx.inventoryItem.delete({ where: { id: item.id } });
+    // Un depósito a la vez por partida (como ganado.ts): evita pasar el tope de materiales y borrar dos veces el mismo objeto.
+    await lockRowForUpdate(tx, 'Save', saveId, ['id']);
+    // CR-53 (Q2): los materiales caben hasta el tope del Almacén (base y Leñeras).
+    if ((await esMaterial(tx, saveId, item.catalogSlug)) && (await huecoDeMateriales(tx, saveId)) <= 0) {
+      return { llena: await motivoMaterialesLlenos(tx, saveId) } as const;
+    }
+    // Si otra petición ya lo depositó, ya no está: 404, no un error.
+    const { count: borrados } = await tx.inventoryItem.deleteMany({ where: { id: item.id, saveId, slot: null, companionId: null, subjectId: null } });
+    if (borrados === 0) return { yaNoEsta: true } as const;
     // P215 (2026-10-19): la comida depositada cuenta para la Comida del Reino, como el plato de
     // una Cocina (`dailyTick.ts`): se convierte en el acto (`curaHambre` 10 = 1 de comida, mínimo 1)
     // y NO queda fila en el Almacén, así Retirar no puede duplicar la comida. Sin Reino fundado
@@ -38,6 +43,8 @@ export async function depositarEnAlmacen(prisma: PrismaClient, saveId: string, i
     });
     return autoEquiparDesdeAlmacen(tx, saveId);
   });
+  if ('llena' in result) return { ok: false, status: 400, error: result.llena ?? 'El Almacén está lleno de materiales.' };
+  if ('yaNoEsta' in result) return { ok: false, status: 404, error: 'Objeto no encontrado (o ya equipado)' };
   return { ok: true, autoEquipados: result.equipados, ...('comida' in result ? { comidaSumada: result.comida } : {}) };
 }
 

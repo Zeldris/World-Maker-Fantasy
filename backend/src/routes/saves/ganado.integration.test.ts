@@ -162,6 +162,21 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     expect(await prisma.ganado.findUnique({ where: { id: animal.id } })).toBeNull();
   });
 
+  it('revisión C1: con el Granero lleno, el aviso no promete comida que no entra y dice que se pierde', async () => {
+    const owner = ownerKeyFor({ saveId });
+    // Tope 60 sin Granero: comida 40 + forraje 20 = lleno.
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 40, forraje: 20 } });
+    const app = await buildApp();
+    const animal = await prisma.ganado.create({ data: { saveId, buildingId: corralId, especie: 'murgol', sexo: 'M', nacidoEn: 10 * 1440 - 200 * 1440 } });
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${animal.id}/sacrificar` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().comida).toBe(0);
+    expect(res.json().comidaPerdida).toBe(3);
+    expect(res.json().aviso).not.toMatch(/\+\d+ de comida/);
+    expect(res.json().aviso).toMatch(/Se pierden 3 de comida: el Granero está lleno/);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: owner } })).comida).toBe(40);
+  });
+
   it('una cría no se puede sacrificar', async () => {
     const cria = await prisma.ganado.create({ data: { saveId, buildingId: corralId, especie: 'murgol', sexo: 'F', nacidoEn: 10 * 1440 - 5 * 1440 } });
     const app = await buildApp();

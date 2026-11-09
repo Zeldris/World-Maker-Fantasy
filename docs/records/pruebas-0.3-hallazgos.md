@@ -12,15 +12,15 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (54): P16, P49, P66, P128, P129, P136, P158, P169, P173, P188, P248, P250, P251,
+- **Pendientes** (53): P16, P49, P66, P128, P129, P136, P158, P169, P173, P188, P248, P250, P251,
   P252, P262, P263, P264, P265, P266, P267, P270, P272, P273, P274, P299, P311, P317, P319, P328,
-  P334, P337, P342, P343, P358, P368, P370, P371, P374, P375, P377, P379, P380, P381, P382, P383,
-  P384, P427, P429, P430, P432, P433, P434, P435, P436.
+  P337, P342, P343, P358, P368, P370, P371, P374, P375, P377, P379, P380, P381, P382, P383, P384,
+  P427, P429, P430, P432, P433, P434, P435, P436.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (17): P70, P107, P116, P131, P151, P180, P184, P243, P245, P253, P269,
   P288, P306, P307, P310, P324, P426.
-- **Arreglados, sin comprobar jugando** (15): P244, P268, P271, P332, P333, P335, P336, P338, P339,
-  P340, P372, P388, P404, P428, P437.
+- **Arreglados, sin comprobar jugando** (16): P244, P268, P271, P332, P333, P334, P335, P336, P338,
+  P339, P340, P372, P388, P404, P428, P437.
 - **Comprobados jugando** (304): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43,
   P45, P46, P47, P50, P51, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68,
@@ -389,7 +389,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P331 | Tanda 34 (2026-10-26, reino-dia39-recursos, Ollama simulado): con Gistera Koh en la Hondonada y Gorhorn en El Pozo (Día 39 10:40), «Ataco a Gistera Koh» saca tirada de Fuerza (Media 15) y +25 XP, y «Le pregunto a Gistera Koh por el orco…» se narra como si estuviera delante: el aviso de NPC ausente (absentSceneNpcNarrationFor) no salta. Hablarle ausente trajo además la tarjeta «MISIÓN PROPUESTA: ACABAR CON EL ORCO ENFURECIDO». Reproducir: cargar reino-dia39-recursos, viajar de la Hondonada al Pozo y escribir «Ataco a Gistera Koh». Por ver con Ollama real si es solo del simulado. | ✅ comprobado jugando (tanda 93, 2026-11-09, reino-dia39-recursos, Gistera en la Hondonada y Gorhorn en El Pozo: «Ataco a Gistera Koh» da «No hay ningún Gistera Koh al que dirigirse aquí…» y la pregunta, «…Aquí no hay nadie así»; sin tirada, XP, narración delante ni misión). Antes: arreglado (2026-11-08): detectNpcsInScene daba por presente a toda PRINCIPAL o conocida nombrada; ahora descarta al NPC con su punto activo solo en otra zona (salvo combate, misión, «desconocido» o compañero), y salta el aviso de ausente. A la tanda del lote A |
 | P332 | Tanda 30 (2026-10-26, t20-mundo, día 1513): el aviso de daño por tormenta del Reino sale con minúscula inicial, «un pequeño ayuntamiento sufre daños por una tormenta: no cuenta hasta repararlo (Reino › Edificios).», porque el nombre del edificio guarda el artículo («un pozo», «un mercado»). El Suceso («Un pequeño ayuntamiento sufre daños…») sí empieza con mayúscula. | arreglado 2026-11-09 (lote C2: avisos del Reino con mayúscula inicial, con tests; a jugar) |
 | P333 | Tanda 31 (2026-10-26, mv-ganado, día 55): con los Corrales construidos pero sin animales (murieron tras `avanzar 12` sin forraje), Reino › Corrales dice «Aún no tienes corrales del Ganadero. Constrúyelos en Edificios…» aunque el edificio «unos corrales del Ganadero» existe. Mensaje engañoso. | arreglado 2026-11-09 (lote C1: con Corrales construidos pero no en pie, el panel lo dice en vez de «Aún no tienes», con tests; a jugar) |
-| P334 | Tanda 31 (2026-10-26, mv-ganado, día 55): con el corral vacío, comida 109/180 y forraje 0, el panel de forraje dice «0 guardado · cabe 0 más»; con animales en el corral sí calculaba el hueco (cabe 2/3/6). Debería caber ~71 (forraje y comida comparten tope). | no reproducido 2026-11-09 (lote C1: huecoDeForraje es correcto; el panel ahora enseña comida/tope compartido y hay test de bloqueo; a jugar) |
+| P334 | Tanda 31 (2026-10-26, mv-ganado, día 55): con el corral vacío, comida 109/180 y forraje 0, el panel de forraje dice «0 guardado · cabe 0 más»; con animales en el corral sí calculaba el hueco (cabe 2/3/6). Debería caber ~71 (forraje y comida comparten tope). | arreglado 2026-11-09 (lote C1, no se reproduce: huecoDeForraje es correcto; el panel ahora enseña comida/tope compartido y hay test de bloqueo; a jugar) |
 | P335 | Tanda 31 (2026-10-26, mv-ganado): «Sacrificar» un animal no dice qué se obtiene (desaparece del corral, la comida sube 1, sin confirmación ni mensaje). | arreglado 2026-11-09 (lote C1: Sacrificar devuelve y muestra qué obtiene, con tests; a jugar) |
 | P336 | Tanda 31 (2026-10-26, mv-ganado, día 41): con el Granero al tope, los huevos de Corretolvas se pierden sin aviso (forraje y comida comparten tope, Q7); «Entregar pastos» dice «El Granero está lleno.» pero no explica que el forraje comparte hueco con la comida, y con hueco 2 entrega 1 pasto. | arreglado 2026-11-09 (lote C1: aviso de huevos/leche perdidos con el Granero lleno y explicación del hueco compartido, 2 de hueco = 1 pasto correcto, con tests; a jugar) |
 | P337 | Tanda 31 (2026-10-26, mv-colmillo-ganado, día 39): desde el sur de las estacas del recinto de Múrgoles, «Ir hasta aquí» lleva a Gorhorn a (8,10) y el menú no da «Interactuar» ni explica por qué; no sugiere entrar por la puerta del poblado. | Pendiente (leve) |

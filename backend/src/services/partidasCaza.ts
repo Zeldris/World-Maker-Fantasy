@@ -224,10 +224,11 @@ export async function revisarPiezas(tx: Tx, saveId: string, dia: number): Promis
     }
   }
   // Las de la misma especie se desuellan de una vez (el rendimiento es por animal).
-  for (const [especie, n] of porEspecie) await aprovecharAnimal(tx, saveId, worldId, especie, n);
+  let comidaPerdida = 0;
+  for (const [especie, n] of porEspecie) comidaPerdida += (await aprovecharAnimal(tx, saveId, worldId, especie, n)).comidaPerdida;
   if (borrar.length > 0) await tx.almacenItem.deleteMany({ where: { id: { in: borrar } } });
   const desolladas = borrar.length - perdidas;
-  if (desolladas > 0) await avisoDelReino(tx, saveId, `El Desolladero desuella ${desolladas} pieza${desolladas === 1 ? '' : 's'}: su carne va a la comida y lo demás al Almacén.`);
+  if (desolladas > 0) await avisoDelReino(tx, saveId, `El Desolladero desuella ${desolladas} pieza${desolladas === 1 ? '' : 's'}: su carne va a la comida y lo demás al Almacén.${comidaPerdida > 0 ? ` Se pierden ${comidaPerdida} de comida: el Granero está lleno.` : ''}`);
   if (perdidas > 0) await avisoDelReino(tx, saveId, `Se echan a perder ${perdidas} pieza${perdidas === 1 ? '' : 's'} de caza sin desollar.`);
   return { desolladas, perdidas };
 }

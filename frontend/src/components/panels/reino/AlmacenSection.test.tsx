@@ -66,6 +66,16 @@ describe('AlmacenSection — REI-40, REI-41', () => {
     expect(onRefreshSave).toHaveBeenCalled()
   })
 
+  it('revisión C1: mientras «Depositar todo» corre, los botones de depositar objeto a objeto están deshabilitados', async () => {
+    vi.mocked(depositarTodoEnAlmacen).mockReturnValue(new Promise(() => {}))
+    const mochila = [{ id: 'a', name: 'Madera', catalogSlug: 'madera', slot: null }] as never
+    const { getByRole } = render(<AlmacenSection saveId="s1" inventory={mochila} almacenItems={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Depositar todo (1)' }))
+    })
+    expect((getByRole('button', { name: 'Depositar' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('un objeto sin catalogSlug no tiene tope (no se puede limitar)', async () => {
     const { queryByLabelText, getByRole } = render(
       <AlmacenSection saveId="s1" inventory={[]} almacenItems={[item('x', 'Amuleto raro', null)]} onRefreshSave={async () => {}} />,

@@ -81,6 +81,14 @@ describe('CorralesSection (CR-55)', () => {
     expect(getByText(/lo comparten forraje y comida \(172\/180\)/)).toBeTruthy()
   })
 
+  it('revisión C1: sin hueco en el Granero el botón de entregar sale deshabilitado', async () => {
+    vi.mocked(getCorrales).mockResolvedValue({ ...datos, huecoForraje: 1, comida: 170, topeComida: 180 })
+    const pastos = [{ id: 'i1', catalogSlug: 'pasto-solar', slot: null }] as unknown as InventoryItemInfo[]
+    const { findByRole } = render(<CorralesSection saveId="s1" inventory={pastos} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    const boton = (await findByRole('button', { name: /Entregar 0 Pasto Solar/ })) as HTMLButtonElement
+    expect(boton.disabled).toBe(true)
+  })
+
   it('P336/P335: muestra el aviso que devuelve el backend al sacrificar', async () => {
     vi.mocked(postSacrificar).mockResolvedValue({ comida: 3, almacen: {}, perdido: 0, aviso: 'Sacrificas un animal (Múrgol): +3 de comida, 2 Hueso ligero al Almacén.' })
     const { findByText, getAllByRole } = render(<CorralesSection saveId="s1" inventory={[]} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
