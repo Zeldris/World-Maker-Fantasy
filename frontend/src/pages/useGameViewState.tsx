@@ -1373,6 +1373,7 @@ export function useGameViewState() {
     onNoticiasNuevas: () => void noticiasMundo.traer(),
     onReclutado: () => void refreshSave(),
     openCombat: combat.openCombat,
+    setCombatAwaitingDefense: combat.setCombatAwaitingDefense,
     handleSubmit,
     refetchEnciclopedia,
   })

@@ -4,7 +4,9 @@ import { baseAttackFor } from './baseAttack.js';
 import { classAbilityUnlocksForClase, type Clase, type Especializacion } from './classAbilities.js';
 import type { NpcHabilidadRacialInScene } from './npcScene.js';
 import { faunaCategoriaAbilitiesForLevel, type FaunaCategoria } from './faunaAbilities.js';
-import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO } from './energy.js';
+import { ENERGY_COST_BASICA, ENERGY_COST_ATAQUE_BASICO, energiaMaxFor } from './energy.js';
+import type { PendingNpcAttack } from './combatExchange.js';
+import type { NpcInScene } from './npcScene.js';
 
 /// Habilidades raciales de huida de la fauna (`CR-44`): con ellas el animal intenta escapar de
 /// verdad (`decidirHuidaPorHabilidad`, huidaNpc.ts). No dependen del nivel (usuaria, 2026-11-03,
@@ -296,4 +298,28 @@ export function chooseNpcAbility(
   const cualquierAtacante = usable.filter((a) => a.rol === 'ataque' || (a.rol === 'utilidad' && a.effects.includes('CONTROL')));
   const pool = cualquierAtacante.length > 0 ? cualquierAtacante : affordable;
   return pool[Math.floor(random() * pool.length)];
+}
+
+/// El ataque que el NPC deja pendiente cuando gana la iniciativa al abrir el combate (emboscada): el
+/// primer intercambio real es la defensa de la jugadora. Lo usan la apertura con texto libre
+/// (`turnResolution.ts`) y el 1v1 que se abre al elegir Combatir tras «te ha visto antes» (P437).
+export function ataquePendienteDeApertura(npc: NpcInScene, random: () => number = Math.random): PendingNpcAttack {
+  const npcWeaponNames = npc.items.filter((i) => i.category === 'arma').map((i) => i.name);
+  const npcAbilities = npcCombatAbilitiesFor(npc, npcWeaponNames);
+  const energia = npc.energia ?? energiaMaxFor(npc.attributes.constitucion);
+  const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', energia, random, npc.abilityUsesThisEncounter);
+  return {
+    npcId: npc.id,
+    attribute: npcAtaque.attribute,
+    attributeBonus: npcAtaque.attributeBonus ?? null,
+    effects: npcAtaque.effects,
+    rol: npcAtaque.rol,
+    abilityName: npcAtaque.name,
+    abilityDescription: npcAtaque.description,
+    energyCost: npcAtaque.energyCost,
+    energyRegen: npcAtaque.energyRegen,
+    maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
+    durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
+    durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
+  };
 }

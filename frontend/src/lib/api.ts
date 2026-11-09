@@ -2277,6 +2277,8 @@ export interface DynamicModeTurno {
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
   combate?: { npcs: NpcInSceneInfo[] } | null
+  /// P437: el rival vio antes a la jugadora y su ataque queda pendiente: el panel abre en Defensa.
+  esperandoDefensaJugador?: true
   /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,
   /// llega junto al combate que abre). La misma que se ve tras recargar.
   huidaLogEntry?: LogEntry

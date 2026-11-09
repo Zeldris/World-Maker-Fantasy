@@ -47,7 +47,7 @@ import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
 import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
-import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
+import { npcCombatAbilitiesFor, chooseNpcAbility, ataquePendienteDeApertura } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
 import { compassNarrationText, type CompassLinkInfo } from './compassNarration.js';
@@ -976,25 +976,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // facción de todas formas.
   const npcTemperamentoNoAgresivo = npcParaIntercambio?.temperamento === 'INOFENSIVO' || npcParaIntercambio?.temperamento === 'CAUTELOSO';
   if (!input.combateActivo && input.openingAmbush && input.rollGradoExito === 'fallo' && npcParaIntercambio && !npcTemperamentoNoAgresivo) {
-    const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
-    const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
-    const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
-    const npcEnergiaActualAmbush = npcParaIntercambio.energia ?? npcEnergiaMaxAmbush;
-    const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActualAmbush, undefined, npcParaIntercambio.abilityUsesThisEncounter);
-    nuevoPendingNpcAttack = {
-      npcId: npcParaIntercambio.id,
-      attribute: npcAtaque.attribute,
-      attributeBonus: npcAtaque.attributeBonus ?? null,
-      effects: npcAtaque.effects,
-      rol: npcAtaque.rol,
-      abilityName: npcAtaque.name,
-      abilityDescription: npcAtaque.description,
-      energyCost: npcAtaque.energyCost,
-      energyRegen: npcAtaque.energyRegen,
-      maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
-      durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
-      durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
-    };
+    nuevoPendingNpcAttack = ataquePendienteDeApertura(npcParaIntercambio);
     // Bug real jugando en vivo (2026-08-28, confirmado por la usuaria): el bloque de texto
     // "Iniciativa: tú X vs Y del enemigo" no salía en la ronda de apertura de combate — solo en
     // las siguientes. Causa: este camino sembraba `nuevoPendingNpcAttack` pero nunca calculaba
@@ -1033,25 +1015,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     );
     nextInitiativeRoll = initiativeCheck;
     if (initiativeCheck.ganador === 'npc') {
-      const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
-      const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
-      const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
-      const npcEnergiaActualAmbush = npcParaIntercambio.energia ?? npcEnergiaMaxAmbush;
-      const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActualAmbush, undefined, npcParaIntercambio.abilityUsesThisEncounter);
-      nuevoPendingNpcAttack = {
-        npcId: npcParaIntercambio.id,
-        attribute: npcAtaque.attribute,
-        attributeBonus: npcAtaque.attributeBonus ?? null,
-        effects: npcAtaque.effects,
-        rol: npcAtaque.rol,
-        abilityName: npcAtaque.name,
-        abilityDescription: npcAtaque.description,
-        energyCost: npcAtaque.energyCost,
-        energyRegen: npcAtaque.energyRegen,
-        maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
-        durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
-        durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
-      };
+      nuevoPendingNpcAttack = ataquePendienteDeApertura(npcParaIntercambio);
     }
   }
 
