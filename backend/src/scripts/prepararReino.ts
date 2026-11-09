@@ -19,11 +19,12 @@
 //   danar:<receta>                  P301: deja DANADO el edificio activo de esa receta (p. ej. danar:cocina) con el efecto `danarEdificio` de las tormentas (suceso y aviso en el diario del Reino incluidos)
 //   escasez:<facción>[:comida]      P180: la facción (origenSlug, p. ej. clan-serhu) queda con carencia de COMIDA: se dañan sus cocinas con el efecto `danarEdificio` de las tormentas hasta que `situacionDeFaccion` (la que lee el generador de misiones) la ve; su tablón y quien pide trabajo sacan entonces «le falta…» / «para el Clan…». Solo comida (la única carencia que cuelga encargos). Repara con `reparar`
 //   asalto:<facción>                P295: un ejército de esa facción (hasta 6 soldados, que dejan de estar en casa) sale contra la Capital (`crearViajero` ASALTO, como `lanzarEjercitosContraElReino`) desde su casa o, si la Torre de vigía no la alcanza, desde lo más lejano que ve, y corre la vigilancia del día (`vigilarDelReino`): aviso de la Torre en el diario del Reino. Queda EN MARCHA, sin resolver: «Llamar a la milicia» (Reino › Defensa) sigue pulsable hasta que se avance el día. Pide Torre de vigía en la Capital; la jugadora tiene que estar en la Capital (si no, la milicia se arma sola)
+//   mochila-descartar[:<n>]         QA-299 (P336): como mochila-libre, pero tirando los objetos sueltos (los más grandes primero) en vez de depositarlos, para cuando el Almacén está lleno (60/60) y `dar` se niega a pasar la capacidad; no toca lo equipado
 //   mochila-libre[:<n>]             P367: deja n unidades de hueco (10 por defecto) en la mochila depositando objetos sueltos en el Almacén del Reino con la función de «Depositar» (`depositarEnAlmacen`), las filas más grandes primero. Depositar no mira la capacidad de la mochila. Con el tope de materiales del Almacén lleno, ese objeto no se deposita y se sigue con el siguiente
 //   nivel:<n>[:<atr>,<atr>…]        P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel. P386: con atributos (p. ej. `nivel:19:constitucion,fuerza`) reparte todos los puntos por turno entre ellos (`repartirPuntoDeAtributo`, la del botón), también con un combate abierto; sin ellos, quedan por repartir
 //   herido:<npc>[:grave|herido]     P370 (para P292): un NPC del combate en curso (un compañero) queda GRAVE (por defecto) o HERIDO con la escritura de un golpe recibido en el combate (`escribirCondicionYEnergia`): el capitán enemigo, que señala al más herido, lo elige en la ronda siguiente
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
-//   partida-caza:<presa>:<n>[:permanente]  QA-298 (P338, P339): una partida de caza del Reino (la que hay en marcha tras esa presa o una lanzada con `lanzarPartida`: pide un lugar conocido con la presa y un cazador libre con arma o un compañero de grupo 2+) queda en casa y a punto de volver con n piezas; al avanzar el día se resuelve por el camino normal (`descargarCaza`: aviso, piezas en el Almacén; con orden permanente, `antesDeRepetir`: el corte de P338 con el Desolladero dañado). `:permanente` pone la orden de repetir
+//   partida-caza:<presa>:<n>[:permanente]  (QA-299, P439: también partida-caza:<presa>:heridos=<h>[:permanente], sin piezas y con h heridos, el aviso «h de los suyos salen heridos» del juego ya escrito) QA-298 (P338, P339): una partida de caza del Reino (la que hay en marcha tras esa presa o una lanzada con `lanzarPartida`: pide un lugar conocido con la presa y un cazador libre con arma o un compañero de grupo 2+) queda en casa y a punto de volver con n piezas; al avanzar el día se resuelve por el camino normal (`descargarCaza`: aviso, piezas en el Almacén; con orden permanente, `antesDeRepetir`: el corte de P338 con el Desolladero dañado). `:permanente` pone la orden de repetir
 //   combate1v1:<npc>                QA-293 (P373): el combate 1v1 clásico contra ese NPC, donde esté, como un agresor que se lanza contra ella (`abrirCombate1v1`, el efecto `forzarCombate` del Cronista); el panel sale al cargar la partida; se niega con un combate en curso o sin el NPC
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
 // Lo lanza `tools/qa/escenario.sh preparar`. Cada paso va en su transacción: si uno falla, los anteriores quedan.
@@ -53,13 +54,13 @@ import { dejarHeridoEnCombate } from '../services/cronista/prepararHerido.js';
 import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
 import { dejarEnEscasez } from '../services/cronista/prepararEscasez.js';
 import { lanzarAsaltoAlReino } from '../services/cronista/prepararAsalto.js';
-import { dejarMochilaLibre } from '../services/cronista/prepararMochila.js';
+import { dejarMochilaLibre, descartarDeMochila } from '../services/cronista/prepararMochila.js';
 import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>[:permanente]`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -155,9 +156,9 @@ for (const paso of pasos) {
     if ('error' in r) rechaza(r.error);
     else dice(`Combate 1v1: ${r.nombre} se lanza contra ti (${r.scope}); el panel de combate sale al cargar la partida`);
   } else if (paso.tipo === 'partidaCaza') {
-    const r = await prepararPartidaCaza(prisma, { saveId, especie: paso.especie, piezas: paso.n, permanente: paso.permanente });
+    const r = await prepararPartidaCaza(prisma, { saveId, especie: paso.especie, piezas: paso.n, permanente: paso.permanente, heridos: paso.heridos });
     if ('error' in r) rechaza(r.error);
-    else dice(`Partida de caza (${r.nueva ? 'lanzada' : 'la que había'}${r.permanente ? ', orden permanente' : ''}) a ${r.destino}: vuelve con ${r.piezas} pieza${r.piezas === 1 ? '' : 's'} de ${r.nombre} al avanzar el día`);
+    else dice(`Partida de caza (${r.nueva ? 'lanzada' : 'la que había'}${r.permanente ? ', orden permanente' : ''}) a ${r.destino}: ${r.heridos > 0 ? `volvió sin piezas y con ${r.heridos} herido${r.heridos === 1 ? '' : 's'} contra ${r.nombre} (aviso ya en Reino › Avisos)` : `vuelve con ${r.piezas} pieza${r.piezas === 1 ? '' : 's'} de ${r.nombre} al avanzar el día`}`);
   } else if (paso.tipo === 'convaleciente' && paso.enCombate) {
     const r = await dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: paso.npcSlug });
     if ('error' in r) rechaza(r.error);
@@ -217,6 +218,10 @@ for (const paso of pasos) {
       dice(r.milicia ? `  «Llamar a la milicia» no serviría ahora: ${r.milicia}` : '  «Llamar a la milicia» tiene adultos que armar');
       if (!r.jugadoraEnCapital) dice('  AVISO: la jugadora no está en la Capital: la milicia se arma sola y no hay botón que pulsar');
     }
+  } else if (paso.tipo === 'mochila-descartar') {
+    const r = await descartarDeMochila(prisma, { saveId, hueco: paso.n });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.descartados === 0 ? `Mochila descartar: ya había hueco (${r.despues}/${r.capacidad}, ${r.hueco} libres)` : `Mochila descartar: ${r.descartados} objeto(s) tirados, ${r.antes} -> ${r.despues}/${r.capacidad} (${r.hueco} libres)`);
   } else if (paso.tipo === 'mochila-libre') {
     const r = await dejarMochilaLibre(prisma, { saveId, hueco: paso.n });
     if ('error' in r) rechaza(r.error);

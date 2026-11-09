@@ -115,6 +115,17 @@ export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[],
   }
 }
 
+/// El aviso que deja una partida al volver de pelear (P280). Pura: la usa `cazarEnDestino` y `prepararPartidaCaza` (QA-299, que
+/// la llama con unos heridos fijos para poder ver el aviso sin depender del dado).
+export function resumenDeCaza(d: { quien: string; nombre: string; lugar: string; encuentros: number; piezas: number; capturados: number; heridos: number; caidos: number; muertos: number; desarmados: number }): string {
+  const { quien, nombre, lugar, encuentros, piezas, capturados, heridos, caidos, muertos, desarmados } = d;
+  return encuentros === 0
+    ? `${quien} no encuentra ${nombre} en ${lugar} y vuelve de vacío.`
+    : piezas === 0 && capturados === 0
+      ? `${quien} planta cara a ${nombre} en ${lugar} y no abate ninguno: ${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran${muertos > 0 ? `; caen ${muertos}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
+      : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar}${muertos > 0 ? `; caen ${muertos} de los suyos` : ''}.`;
+}
+
 /// Q4: lo que hace la partida en su destino.
 /// `cuerdas`: en una partida de captura, cuántos puede atar (uno por cuerda); los abatidos que no ata
 /// son piezas.
@@ -173,11 +184,7 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
   const caidos = cazadores.filter((h) => !enPie(condicion.get(h.c.id)!) || muertos.has(h.c.id)).length;
   const heridos = cazadores.filter((h) => condicion.get(h.c.id) !== 'ILESO').length;
   const desarmados = cazadores.filter((h) => h.c.attributeBonus === 0 && !h.companionId).length;
-  const resumen = encuentros === 0
-    ? `${quien} no encuentra ${nombre} en ${lugar.name} y vuelve de vacío.`
-    : piezas === 0 && capturados === 0
-      ? `${quien} planta cara a ${nombre} en ${lugar.name} y no abate ninguno: ${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran${muertos.size > 0 ? `; caen ${muertos.size}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
-      : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar.name}${muertos.size > 0 ? `; caen ${muertos.size} de los suyos` : ''}.`;
+  const resumen = resumenDeCaza({ quien, nombre, lugar: lugar.name, encuentros, piezas, capturados, heridos, caidos, muertos: muertos.size, desarmados });
   return { especie, piezas, diaCaza: dia, resumen, ...(cuerdas > 0 ? { cuerdas: cuerdas - capturados, capturados } : {}) };
 }
 

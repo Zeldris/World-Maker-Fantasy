@@ -36,6 +36,9 @@
 #                                               una lanzada con la función del panel, queda en casa y a punto de volver con n piezas: al avanzar el día vuelve por el
 #                                               camino normal, con el aviso «La partida de caza vuelve con…» y el paso por el Desolladero; con :permanente repite la
 #                                               orden, así que con danar:desolladero se juega el corte de P338; pide cazadores libres con arma y la presa vista; para P338 y P339),
+#                                               QA-299: partida-caza:<presa>:heridos=<h>[:permanente] (la partida vuelve sin piezas y con h heridos: el aviso «…no abate ninguno: 1 de los suyos salen heridos…»
+#                                               sale en Reino › Avisos al preparar, con el texto del juego; para P439) y mochila-descartar[:<n>] (tira lo suelto de la mochila hasta dejar n huecos libres,
+#                                               10 por defecto, sin tocar lo equipado; con el Almacén lleno `mochila-libre` no sirve y `dar` no pasa de la capacidad; para P336),
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
 #                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]

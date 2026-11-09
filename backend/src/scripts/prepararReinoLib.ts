@@ -10,7 +10,7 @@ export type PasoReino =
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
   | { tipo: 'combate'; npcSlugs: string[] }
   | { tipo: 'combate1v1'; npcSlug: string }
-  | { tipo: 'partidaCaza'; especie: string; n: number; permanente: boolean }
+  | { tipo: 'partidaCaza'; especie: string; n: number; heridos: number; permanente: boolean }
   | { tipo: 'ganado'; especie: string; n: number }
   | { tipo: 'convaleciente'; npcSlug: string; enCombate: boolean }
   | { tipo: 'lider-muere'; facSlug: string }
@@ -25,6 +25,7 @@ export type PasoReino =
   | { tipo: 'escasez'; facSlug: string; recurso: string | null }
   | { tipo: 'asalto'; facSlug: string }
   | { tipo: 'mochila-libre'; n: number | null }
+  | { tipo: 'mochila-descartar'; n: number | null }
   | { tipo: 'nivel'; nivel: number; atributos: Attribute[] }
   | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' };
 
@@ -84,9 +85,12 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       if (!r[0] || r.length > 1 || r[0].includes(',')) return { error: `«${arg}»: falta combate1v1:<slug del NPC> (uno solo).` };
       pasos.push({ tipo: 'combate1v1', npcSlug: r[0] });
     } else if (clave === 'partida-caza') {
-      const n = entero(r[1]);
-      if (!r[0] || n == null || r.length > 3 || (r[2] != null && r[2] !== 'permanente')) return { error: `«${arg}»: falta partida-caza:<presa>:<n>[:permanente] (n entero de 1 o más).` };
-      pasos.push({ tipo: 'partidaCaza', especie: r[0], n, permanente: r[2] === 'permanente' });
+      // QA-299 (P439): `partida-caza:<presa>:heridos=<h>[:permanente]` en vez de n: vuelve sin piezas y con h heridos.
+      const conHeridos = r[1]?.startsWith('heridos=') ?? false;
+      const n = conHeridos ? 0 : entero(r[1]);
+      const h = conHeridos ? entero(r[1]!.slice('heridos='.length)) : 0;
+      if (!r[0] || n == null || h == null || r.length > 3 || (r[2] != null && r[2] !== 'permanente')) return { error: `«${arg}»: falta partida-caza:<presa>:<n>[:permanente] (n entero de 1 o más) o partida-caza:<presa>:heridos=<h>[:permanente].` };
+      pasos.push({ tipo: 'partidaCaza', especie: r[0], n, heridos: h, permanente: r[2] === 'permanente' });
     } else if (clave === 'ganado') {
       const n = entero(r[1]);
       if (!r[0] || n == null) return { error: `«${arg}»: falta ganado:<especie>:<n>.` };
@@ -127,6 +131,11 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const n = r[0] === undefined ? null : entero(r[0]);
       if (r.length > 1 || (r[0] !== undefined && (n == null || n > 200))) return { error: `«${arg}»: falta mochila-libre[:<n>], con n de 1 a 200.` };
       pasos.push({ tipo: 'mochila-libre', n });
+    } else if (clave === 'mochila-descartar') {
+      // QA-299 (P336): como mochila-libre, pero descartando (sin pasar por el Almacén, que puede estar lleno).
+      const n = r[0] === undefined ? null : entero(r[0]);
+      if (r.length > 1 || (r[0] !== undefined && (n == null || n > 200))) return { error: `«${arg}»: falta mochila-descartar[:<n>], con n de 1 a 200.` };
+      pasos.push({ tipo: 'mochila-descartar', n });
     } else if (clave === 'nivel') {
       const nivel = entero(r[0]);
       const atributos = r[1] === undefined ? [] : r[1].split(',');

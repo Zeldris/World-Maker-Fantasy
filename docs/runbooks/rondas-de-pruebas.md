@@ -33,6 +33,12 @@ casa a punto de volver con `n` piezas, y al avanzar el día vuelve por el camino
 Desolladero. Con `:permanente` repite la orden: junto con `danar:desolladero` se juega el corte de P338. Ej.:
 `escenario.sh preparar <partida> partida-caza:kirelon-arenoso:2:permanente danar:desolladero` y `avanzar <partida> 1`.
 Se niega sin cazadores, con una presa que no existe o no vista, o con `n` menor que 1.
+Una caza que vuelve con heridos (P439, «1 de los suyos salen heridos») se prepara con `partida-caza:<presa>:heridos=<h>[:permanente]`
+(`QA-299`): la partida vuelve sin piezas y con `h` heridos (compañeros: condición `HERIDO`); el aviso, con el texto del juego
+(`resumenDeCaza`), queda en Reino › Avisos al preparar, no al avanzar el día. Se niega con más heridos que cazadores.
+Para dejar la mochila con hueco (P336: `dar` no pasa de la capacidad y, con el Almacén lleno, `mochila-libre` no deposita) está
+`mochila-descartar[:<n>]` (`QA-299`): tira lo suelto, lo más abultado primero, hasta dejar `n` libres (10 por defecto); lo
+equipado no se toca. Ej.: `escenario.sh preparar <partida> mochila-descartar:10` y `escenario.sh dar <partida> pasto-solar:3`.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
