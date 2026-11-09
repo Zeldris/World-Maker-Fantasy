@@ -69,8 +69,28 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
   y **«turn this pencil study into a wildlife photograph»** da una foto en clave baja: la cara en sombra, el borde
   iluminado y las rastas grises. Es el más cercano al banner del múrgol hasta ahora. Le queda algo de figura de
   juguete, y sale de frente donde el banner va a tres cuartos (lo pedía el prompt).
-- Falta probar: el boceto a lápiz con las capas de entorno; el goirnte y los acantilados a lápiz; y el Final con
-  FLUX.3 sobre la foto.
+- **Lápiz por capas a tres cuartos** (variante `lapcap`; hojas `sueltas-lapcap-{p1,p2,b,m}-1.png`) es **lo mejor
+  hasta ahora** en los dos:
+  - goirnte: de espaldas sobre la muralla, la ciudad en llamas abajo, la piel gris y la luz del fuego solo en los
+    bordes. Con «a film still… prosthetic makeup» tiene la composición y la clave del banner.
+  - múrgol: a contraluz, oscuro contra un cielo rojo, con el rebaño al fondo.
+  - Les queda algo de render 3D (rastas como tiras de goma).
+- **En una edición a lápiz, «keep X exactly» no basta**: klein redibujó el múrgol pequeño. Funciona «draw only on the
+  empty white paper around it… stays the same size, in the same place».
+- **Las ediciones de lápiz pierden lo que solo se dice del sujeto**: el rebaño sale sin cuernos aunque el prompt diga
+  «the same kind». Repetirlo en el paso a foto arregla («the two small beasts have the same antlers…»).
+- Prompts: el prefijo de P1 es «A realistic graphite pencil study on white paper by a wildlife illustrator (o a film
+  concept artist): accurate anatomy and true proportions, careful hatching for form and texture, no colour»; el paso a
+  foto, «Turn this pencil study into a wildlife photograph taken with a long lens at dusk (o a film still…), keeping
+  every shape, pose and position exactly», seguido de la paleta limitada y la luz como exposición (reglas 6 y 7).
+- **El Final con FLUX.3 sobre la foto** (hoja `sueltas-lapcap-final-1.png`, ~33 min cada uno) apenas cambia: más
+  nitidez, el mismo aire de render y el múrgol algo más claro. El aspecto de render se arregla antes del Final.
+- **Lo que dicen las búsquedas en la web y en repositorios** (2026-11-09, sin probar todavía): referencia a tamaño de
+  salida (`--ref-image-args`, quizá la causa del sujeto encogido: `fase.py` la limita a 262144 píxeles), la P1 como
+  segunda `-r` contra la deriva, cámara y película en el paso a foto («Kodak Portra 400, natural grain»), contraluz
+  con palabras concretas, `--mask` para editar solo una zona, y fundir solo lo cambiado sobre el original.
+- **Orden propuesto**: P1 la criatura a lápiz → P2 el entorno a lápiz → P3 la foto con color y luz → Final. Falta
+  probarlo con los acantilados y el resto de categorías.
 
 ## 3. Motor por fase
 
@@ -86,6 +106,17 @@ detalles, y al final la pintura. Probado con klein 4B en múrgol y goirnte (vari
   colours». Es el patrón más sólido de los números.
 - **La medida EMD sirve para la luz** (canal y), no para composición ni escala; el ssim a esta resolución es casi ruido.
   P1 se juzga a ojo con la hoja de contacto.
+
+## Dónde tiene que acabar todo esto (usuaria, 2026-11-09)
+
+Cuando la receta esté clara, lo aprendido se lleva a tres sitios:
+
+1. **El generador de prompts de OpenCode** (`IMG-50`): sus pautas escriben los prompts por fase con estas reglas
+   (lápiz por capas, paso a foto, luz como exposición, paleta limitada, encuadre por tipo).
+2. **El generador de imágenes**: fases, motor por paso y opciones de sd-cli que salgan de los experimentos.
+3. **El lore, si hace falta**: si la descripción de un elemento no basta para un buen prompt, se valora una
+   **descripción visual aparte**, solo para generar el prompt (rasgos con su analogía y su color, sin usos ni
+   historia). Se decide con la usuaria cuando la receta de prompts esté cerrada; el canon lo cambia solo Álvaro.
 
 ## 4. Experimentos siguientes (por valor)
 
