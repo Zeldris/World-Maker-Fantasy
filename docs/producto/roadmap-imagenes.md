@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~, `IMG-54` |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~, `IMG-54`, `IMG-55` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -108,7 +108,9 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
   fases y motor por fase; P1 decide la calidad, FLUX.3 en el Final de escenas oscuras, klein 9B fuera). Queda: los cinco
   experimentos de la receta (luz y paleta en P1, atrezo por edición, luz por edición, FLUX.3 en P1, cara con qwen-edit);
   llevar las reglas a las pautas de `imagePromptGenerator.ts` y a `mundo.json`; el diseño del ayuntamiento sin banner, a
-  decidir por la usuaria.
+  decidir por la usuaria. ✅ 2026-11-09, paso 6: el banner de `IMG-50` sale de la plantilla `--hibrida` (`imagePromptCapas.ts`, reglas en
+  `estilo/capas.json`); ronda 8: con fichas de qwen 9B, ~29/70 frente a 49/70 con las de Claude. Decisión (usuaria,
+  2026-11-09): las fichas visuales las escribe Claude (`IMG-55`).
 - **IMG-39 · Prototipo de la pantalla del elemento** [A] (usuaria, 2026-11-06): maqueta desechable con la skill
   `prototype`, con imágenes ya generadas y sin motor, para que la usuaria pruebe avanzar, regenerar, atrás, variantes y
   ★ antes de construirlo. **S** ✅ 2026-11-07: maqueta
@@ -186,6 +188,12 @@ GPT quedan como canon fijo para medir la deriva.
   `lora-kaggle.md`) y entrenarlo con lo ★ de `IMG-47`. **M**
 - **IMG-49 · Elemento nuevo sin GPT** [A] (usuaria, 2026-11-07): boceto propio + LoRA de `IMG-48` + Final directa;
   comparar con un elemento que no tenga banner. Lo ★ nuevo entra en la biblioteca y en el siguiente LoRA. **M**
+
+- **IMG-55 · Fichas visuales escritas por Claude** [A] (usuaria, 2026-11-09, de la ronda 8 de `IMG-54`): el bloque
+  `capas` (con `corto`) de cada elemento lo escribe un subagente Claude desde el canon, una vez, con una guía fija
+  ([`ficha-visual.md`](plan-imagenes/ficha-visual.md)); qwen solo para lo nuevo, y se repasa. Piloto: seis elementos
+  sin tocar con banner (cuatro de fauna y dos lugares), a ciegas, una ronda, con la nota de `receta-calidad.md`. Si
+  se sostiene (~49/70), el catálogo en tandas. **M**
 
 ### Bloque F · Producción
 
