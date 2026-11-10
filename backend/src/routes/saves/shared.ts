@@ -391,3 +391,7 @@ export async function restartSaveTransactionBody(
     });
   }
 }
+
+/// Los registros salen por fecha del mundo y, dentro del mismo minuto, por orden de creación: varias
+/// entradas escritas de golpe por un avance de días comparten `createdAt` y salían desordenadas (P379).
+export const ORDEN_LOG = [{ fictionalMinutes: 'asc' as const }, { createdAt: 'asc' as const }, { id: 'asc' as const }]

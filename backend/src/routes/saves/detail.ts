@@ -13,7 +13,7 @@ import { APP_VERSION } from '../../lib/version.js';
 import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
-import { toFrontendLogEntry } from './shared.js';
+import { toFrontendLogEntry, ORDEN_LOG } from './shared.js';
 import { edificiosParaCliente } from '../../services/edificiosParaCliente.js';
 import { comidaPct, aguaPct, avisoCarenciaPersonaje, carenciaPersonaje } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
@@ -30,9 +30,6 @@ import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js'
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
 
-/// Los registros salen por fecha del mundo y, dentro del mismo minuto, por orden de creación: varias
-/// entradas escritas de golpe por un avance de días comparten `createdAt` y salían desordenadas (P379).
-const ORDEN_LOG = [{ fictionalMinutes: 'asc' as const }, { createdAt: 'asc' as const }, { id: 'asc' as const }]
 
 export async function detailRoutes(app: FastifyInstance) {
   /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
