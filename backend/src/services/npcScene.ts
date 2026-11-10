@@ -660,6 +660,13 @@ export async function detectNpcsInScene(params: {
       .filter((slug): slug is string => slug !== null),
   });
   if (ocultoNombrado) matchedIds.add(ocultoNombrado);
+  // P441: a quien va de compañera se la llama por su nombre de pila («a Tirag»), no solo por el completo de sus alias.
+  const sinCasar = candidateNpcs.filter((npc) => !matchedIds.has(npc.id) && npc.kind === 'PRINCIPAL');
+  if (sinCasar.length > 0) {
+    const companeros = await prisma.companion.findMany({ where: { saveId: params.saveId, tipo: 'NPC', sourceSlug: { in: sinCasar.map((n) => n.slug) } }, select: { sourceSlug: true } });
+    const slugsCompaneros = new Set(companeros.map((c) => c.sourceSlug));
+    for (const npc of sinCasar) if (slugsCompaneros.has(npc.slug) && nombraPorPalabraDelNombre(params.action, npc.name)) matchedIds.add(npc.id);
+  }
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
   const matchedPorNombre = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
@@ -686,6 +693,15 @@ export async function detectNpcsInScene(params: {
     params.saveId,
     matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P441: ¿nombra el texto a alguien por una palabra de su nombre de 4 letras o más, como palabra entera («Le doy el
+/// tótem a Tirag» → Tirag Susig)? Solo para compañeros: a un desconocido no se le llama por el nombre de pila.
+export function nombraPorPalabraDelNombre(texto: string, nombre: string): boolean {
+  const palabras = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
+  return normalizeText(nombre)
+    .split(/\s+/)
+    .some((t) => t.length >= 4 && palabras.includes(` ${t} `));
 }
 
 /// P331: de estos NPC, los que en esta partida tienen su punto activo de mapa en otra zona y ninguno en la actual, y no

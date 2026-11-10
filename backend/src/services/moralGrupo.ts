@@ -9,6 +9,7 @@ import type { AttributeBlock } from './dice.js';
 import { EN_PIE, formaDeRetirada, quienTiraMoral, tieneMoral, tirarEscape, tirarMoral, vaClaramentePerdiendo } from './moralCombate.js';
 import { aplicarHuidaNpc } from './huidaNpc.js';
 import { elegirCapitan } from './combateMultiple.js';
+import { nombreEnFrase, nombresVisiblesDeNpcs } from './dynamicMode.js';
 
 /// Marca de «ya tiraron por la caída del capitán» en `CombatEncounter.moralMitadBandos`.
 const MARCA_CAPITAN = 'CAPITAN:ENEMIGO';
@@ -41,8 +42,14 @@ export async function revisarMoralDelCombate(
   const npcIds = [...new Set(p.combatientes.filter((c) => c.bando === 'ENEMIGO' && c.npcId).map((c) => c.npcId!))];
   if (npcIds.length === 0) return resultado;
   const npcs = new Map(
-    (await tx.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, name: true, kind: true, raza: true, faunaCategoria: true, level: true } })).map((n) => [n.id, n]),
+    (await tx.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, faunaCategoria: true, level: true } })).map((n) => [n.id, n]),
   );
+  // P443: los textos nombran a cada uno como lo ve la jugadora («el orco desconocido»), no por su nombre real.
+  const visibles = await nombresVisiblesDeNpcs(tx, p.saveId, [...npcs.values()]);
+  const nombreDe = (npcId: string, alInicio = false) => {
+    const npc = npcs.get(npcId)!;
+    return nombreEnFrase(visibles.get(npc.slug) ?? npc.name, alInicio);
+  };
   const conMoral = p.combatientes.filter((c) => {
     const npc = c.bando === 'ENEMIGO' && c.npcId ? npcs.get(c.npcId) : undefined;
     return !!npc && tieneMoral({ raza: npc.raza, faunaCategoria: npc.faunaCategoria });
@@ -62,7 +69,7 @@ export async function revisarMoralDelCombate(
   if (recienGraves.length === 0 && !aLaMitad && !capitanCaido) return resultado;
   if (capitanCaido) {
     await tx.combatEncounter.update({ where: { id: p.encounterId }, data: { moralMitadBandos: { push: MARCA_CAPITAN } } });
-    resultado.textos.push(`Cae ${npcs.get(capitan!.npcId!)!.name}: los suyos se quedan sin quien los mande.`);
+    resultado.textos.push(`Cae ${nombreDe(capitan!.npcId!)}: los suyos se quedan sin quien los mande.`);
   }
 
   if (recienGraves.length) await tx.combatParticipant.updateMany({ where: { id: { in: recienGraves.map((m) => m.participantId) } }, data: { moralTirada: true } });
@@ -72,7 +79,7 @@ export async function revisarMoralDelCombate(
   // Cuentan también sus caídos: perder a la mitad es ir claramente perdiendo.
   const desventaja = capitanCaido || vaClaramentePerdiendo(miembros.map((m) => m.condicion), contrarios);
   const nivelPerseguidor = (await tx.save.findUnique({ where: { id: p.saveId }, select: { level: true } }))?.level ?? 1;
-  const nombre = (m: CombatienteParaMoral) => npcs.get(m.npcId!)!.name;
+  const nombre = (m: CombatienteParaMoral, alInicio = false) => nombreDe(m.npcId!, alInicio);
   const voluntad = (m: CombatienteParaMoral) => m.attributes?.voluntad ?? 0;
   const lider = quienTiraMoral(
     enPie.map((m) => ({ ...m, id: m.participantId, voluntad: voluntad(m), enPie: true })),
@@ -88,13 +95,13 @@ export async function revisarMoralDelCombate(
     if (moral.aguanta) {
       // P399: cada motivo dice el suyo; si no, dos turnos seguidos dejaban la misma línea.
       const motivo = capitanCaido
-        ? `${nombre(lider)} toma el mando y sostiene a los suyos`
+        ? `${nombre(lider, true)} toma el mando y sostiene a los suyos`
         : aLaMitad
           ? `Con la mitad de los suyos fuera de combate, ${nombre(lider)} los sostiene`
           : (() => {
               // P402: si quien sostiene es uno de los malheridos, no se le nombra dos veces.
               const elMismo = recienGraves.some((m) => m.participantId === lider.participantId);
-              const graves = [...new Set(recienGraves.filter((m) => m.participantId !== lider.participantId).map(nombre))];
+              const graves = [...new Set(recienGraves.filter((m) => m.participantId !== lider.participantId).map((m) => nombre(m)))];
               if (graves.length === 0) return `Aun malherido, ${nombre(lider)} sostiene a los suyos`;
               const conGraves = `Con ${graves.join(' y ')} ${graves.length > 1 ? 'malheridos' : 'malherido'}`;
               return elMismo ? `${conGraves}, ${nombre(lider)}, también herido, sostiene a los suyos` : `${conGraves}, ${nombre(lider)} sostiene a los suyos`;
@@ -102,9 +109,9 @@ export async function revisarMoralDelCombate(
       resultado.textos.push(`${motivo}: siguen peleando.`);
     } else if (escapan(lider)) {
       quienesHuyen.push(...enPie);
-      resultado.textos.push(enPie.length > 1 ? `${nombre(lider)} ordena la retirada: los suyos se repliegan y escapan.` : `${nombre(lider)} pierde el valor y escapa del combate.`);
+      resultado.textos.push(enPie.length > 1 ? `${nombre(lider, true)} ordena la retirada: los suyos se repliegan y escapan.` : `${nombre(lider, true)} pierde el valor y escapa del combate.`);
     } else {
-      resultado.textos.push(`${nombre(lider)} intenta retirarse, pero no encuentra salida.`);
+      resultado.textos.push(`${nombre(lider, true)} intenta retirarse, pero no encuentra salida.`);
     }
   } else {
     // Desbandada: cada uno por su lado.
