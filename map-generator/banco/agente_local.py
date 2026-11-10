@@ -75,9 +75,14 @@ def ejecutar(orden, lote, copia):
     return f'[salida {r.returncode}]\n{salida}', r.returncode
 
 
-def chat(modelo, mensajes, contexto):
+SIGUE = ('Tu respuesta ha llegado vacía. Si aún no has acabado, llama a la herramienta `orden`; si ya acabaste, '
+         'responde con el resumen de lo hecho (o por qué no).')
+
+
+def chat(modelo, mensajes, contexto, pensar=False):
+    # pensar=False: con el razonamiento de Qwen3.5 un turno tardaba ~400 s y acababa con la respuesta vacía
     cuerpo = json.dumps({'model': modelo, 'messages': mensajes, 'tools': [HERRAMIENTA], 'stream': False,
-                         'options': {'num_ctx': contexto, 'temperature': 0.2}}).encode()
+                         'think': pensar, 'options': {'num_ctx': contexto, 'temperature': 0.2}}).encode()
     req = urllib.request.Request(OLLAMA + '/api/chat', data=cuerpo, headers={'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=900) as r:
         return json.load(r)
@@ -90,6 +95,7 @@ def main(argv=None):
     ap.add_argument('--modelo', default='qwen35-9b-32k')
     ap.add_argument('--turnos', type=int, default=20)
     ap.add_argument('--contexto', type=int, default=32768)
+    ap.add_argument('--pensar', action='store_true', help='deja razonar al modelo (mucho más lento)')
     a = ap.parse_args(argv)
 
     encargos = {e['id']: e for e in json.load(open(os.path.join(AQUI, 'encargos.json'), encoding='utf-8'))['encargos']}
@@ -107,7 +113,7 @@ def main(argv=None):
     for _ in range(a.turnos):
         t = time.time()
         try:
-            r = chat(a.modelo, mensajes, a.contexto)
+            r = chat(a.modelo, mensajes, a.contexto, a.pensar)
         except Exception as e:  # red, Ollama caído: se apunta y se para
             registro['error'] = f'{type(e).__name__}: {e}'
             break
@@ -119,8 +125,11 @@ def main(argv=None):
         turno = {'segundos': round(time.time() - t, 1), 'texto': (m.get('content') or '')[:800], 'ordenes': []}
         if not llamadas:
             registro['turnos'].append(turno)
-            final = m.get('content', '')
-            break
+            if (m.get('content') or '').strip():
+                final = m['content']
+                break
+            mensajes.append({'role': 'user', 'content': SIGUE})  # vacía: no es el final
+            continue
         for ll in llamadas:
             arg = ll['function'].get('arguments') or {}
             if isinstance(arg, str):
