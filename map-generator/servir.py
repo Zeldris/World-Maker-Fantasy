@@ -100,13 +100,24 @@ class Visor(BaseHTTPRequestHandler):
         return origen in (f'http://{HOST}:{puerto}', f'http://localhost:{puerto}')
 
     def do_POST(self):  # noqa: N802 (nombre de http.server)
+        try:
+            self._post()
+        except editar.ErrorDeEdicion as e:
+            self._json({'error': str(e)}, 400)
+        except Exception as e:  # noqa: BLE001 (el visor recibe el motivo en vez de una conexión cortada)
+            self._json({'error': f'error interno del editor: {type(e).__name__}: {e}'}, 500)
+
+    def _post(self):
         ruta = self.path.split('?', 1)[0]
         if ruta not in ('/comprobar', '/guardar', '/deshacer'):
             return self.send_error(404, 'El editor solo acepta POST en /comprobar, /guardar y /deshacer')
         tipo = (self.headers.get('Content-Type') or '').split(';')[0].strip()
         if tipo != 'application/json' or not self._origen_propio():
             return self._json({'error': 'solo se aceptan cambios en JSON desde el propio visor'}, 403)
-        largo = int(self.headers.get('Content-Length') or 0)
+        try:
+            largo = int(self.headers.get('Content-Length') or 0)
+        except ValueError:
+            return self._json({'error': 'Content-Length no es un número'}, 400)
         if largo <= 0 or largo > MAX_CUERPO:
             return self._json({'error': f'cuerpo vacío o de más de {MAX_CUERPO} bytes'}, 413)
         try:

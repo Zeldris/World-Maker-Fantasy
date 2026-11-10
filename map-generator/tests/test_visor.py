@@ -56,6 +56,13 @@ class Visor(unittest.TestCase):
         self.assertEqual(sorted(set(re.findall(r'''enviar\('([^']+)'[,)]''', html))), ['comprobar', 'guardar'])
         self.assertEqual(re.findall(r'''fetch\(\s*([^'\s][^,)]*)''', html), ['ruta'])
 
+    def test_el_visor_solo_bloquea_capitales_y_escapa_los_nombres(self):
+        # Sin navegador en el test: se comprueba el fuente (hallazgos de la revisión de MAP-16/MAP-17).
+        html = self._get('/').decode('utf-8')
+        self.assertIn('lu.celda === i && lu.capital)', html)  # los lugares que no son capital también llevan región
+        for nombre in ('co.nombre', 're.nombre', 'b?.nombre ?? c.bioma'):
+            self.assertIn(f'esc({nombre})', html)
+
     def test_las_medidas_son_las_del_canon(self):
         med = json.loads(self._get('/medidas.json'))
         for e in self.mundo['regiones']:

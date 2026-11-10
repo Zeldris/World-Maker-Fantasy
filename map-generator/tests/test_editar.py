@@ -193,6 +193,19 @@ class Aplicar(unittest.TestCase):
             with self.subTest(motivo=motivo):
                 self.assertIn(motivo, self._error(cambios))
 
+    def test_lotes_de_tipos_incorrectos_dan_error_de_edicion_con_motivo(self):
+        c = _celda_junto_a_provincia(self.mundo, 2)
+        casos = {
+            'celdas mal formado': {'celdas': 5},
+            'provincias mal formado': {'provincias': 5},
+            'tiene que ser texto': {'lugares': [{'i': self.mundo['lugares'][0]['i'], 'slug': [1]}]},
+            'cambio de celda mal formado': {'celdas': [[c['i'], True, 0]]},
+            'necesita un nombre': {'provincias': [{'i': 9, 'nombre': 5, 'region': 18, 'color': '#112233'}]},
+        }
+        for motivo, cambios in casos.items():
+            with self.subTest(motivo=motivo):
+                self.assertIn(motivo, self._error(cambios))
+
     def test_provincia_nueva_con_celdas_y_su_centro(self):
         c = _celda_junto_a_provincia(self.mundo, 2)
         nuevo = editar.aplicar(self.mundo, {
@@ -463,6 +476,23 @@ class Guardar(unittest.TestCase):
                 self.assertEqual(a.read(), b.read())
 
 
+class GuardarAtomico(unittest.TestCase):
+    def test_si_exportar_falla_no_se_escribe_nada_ni_se_apunta_historial(self):
+        mundo = medir.cargar()
+        celdas_de_18 = [c['i'] for c in mundo['celdas'] if c['region'] == 18]
+        for i in celdas_de_18:
+            mundo['celdas'][i]['region'] = 19
+        with tempfile.TemporaryDirectory() as d:
+            ruta = os.path.join(d, 'helek.json')
+            shutil.copy(medir.MUNDO, ruta)
+            antes = open(ruta, 'rb').read()
+            with self.assertRaises(editar.ErrorDeEdicion) as e:
+                editar.guardar(mundo, ruta, ruta_juego=os.path.join(d, 'juego.ts'))
+            self.assertIn('se queda sin celdas', str(e.exception))
+            self.assertEqual(open(ruta, 'rb').read(), antes)
+            self.assertEqual(sorted(os.listdir(d)), ['helek.json'])
+
+
 class Consola(unittest.TestCase):
     """`editar.py lote.json`: lo mismo que POST /comprobar y /guardar, sin servidor, sobre una copia del mapa."""
 
@@ -589,6 +619,39 @@ class Servidor(unittest.TestCase):
         with open(self.mundo, 'rb') as a, open(medir.MUNDO, 'rb') as b:
             self.assertEqual(a.read(), b.read())
         self.assertFalse(os.path.exists(self.juego))
+
+    def _post_crudo(self, cuerpo, largo):
+        req = urllib.request.Request(self.url + '/comprobar', data=cuerpo, method='POST',
+                                     headers={'Content-Type': 'application/json'})
+        req.add_unredirected_header('Content-Length', largo)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def test_lotes_mal_tipados_dan_400_con_motivo(self):
+        for cuerpo, motivo in (({'celdas': 5}, 'celdas mal formado'), ({'provincias': 5}, 'provincias mal formado'),
+                               ({'lugares': [{'i': medir.cargar()['lugares'][0]['i'], 'slug': [1]}]}, 'tiene que ser texto')):
+            with self.subTest(cuerpo=cuerpo):
+                st, inf = self._post('/comprobar', {'base': self.base, **cuerpo})
+                self.assertEqual(st, 400, inf)
+                self.assertIn(motivo, inf['error'])
+
+    def test_content_length_no_numerico_da_400(self):
+        st, inf = self._post_crudo(b'{}', 'abc')
+        self.assertEqual(st, 400)
+        self.assertIn('Content-Length', inf['error'])
+
+    def test_un_fallo_inesperado_da_500_con_mensaje(self):
+        original = editar.informe
+        editar.informe = lambda *a, **k: 1 / 0
+        try:
+            st, inf = self._post('/comprobar', {'base': self.base})
+        finally:
+            editar.informe = original
+        self.assertEqual(st, 500)
+        self.assertIn('ZeroDivisionError', inf['error'])
 
     def test_la_huella_del_mapa_va_en_su_cabecera(self):
         with urllib.request.urlopen(self.url + '/helek.json', timeout=30) as r:

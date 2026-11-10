@@ -44,6 +44,12 @@ class Ejecutar(unittest.TestCase):
         self.assertEqual(codigo, 2)
         self.assertIn('--mundo no se puede usar', salida)
 
+    def test_rechaza_abreviaturas_y_formas_con_igual(self):
+        for opcion in ('--canon=x', '--can', '--can=x', '--lo', '--lore=x', '--mun', '--mundo=mundo/helek.json'):
+            salida, codigo = agente_local.ejecutar(f'editar.py - {opcion}', '{}', self.dir)
+            self.assertEqual(codigo, 2, opcion)
+            self.assertIn('no se puede usar', salida)
+
     def test_guarda_en_la_copia(self):
         m = medir.cargar(self.mundo)
         berig = next(k['i'] for k in m['continentes'] if k['nombre'] == 'Berig')

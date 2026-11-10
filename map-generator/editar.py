@@ -86,10 +86,14 @@ def huella(texto_o_bytes):
 def _provincias(mundo, cambios):
     provs = {p['i']: p for p in mundo['provincias']}
     regiones = {r['i'] for r in mundo['regiones']}
-    for e in cambios.get('provincias', []):
-        if not isinstance(e, dict) or not isinstance(e.get('i'), int):
+    filas = cambios.get('provincias', [])
+    if not isinstance(filas, list):
+        raise ErrorDeEdicion(f'provincias mal formado: {filas!r} (se espera una lista)')
+    for e in filas:
+        if not _entero(e.get('i') if isinstance(e, dict) else None):
             raise ErrorDeEdicion(f'provincia sin índice entero: {e!r}')
-        nombre = (e.get('nombre') or '').strip()
+        nombre = e.get('nombre')
+        nombre = nombre.strip() if isinstance(nombre, str) else ''
         if not nombre:
             raise ErrorDeEdicion(f"la provincia {e['i']} necesita un nombre")
         if e['i'] in provs:
@@ -344,6 +348,8 @@ def _lugares_lote(nuevo, cambios, canon, catalogo, celda_en):
         if 'slug' in e:
             if e['slug'] is None:
                 lu.pop('slug', None)
+            elif not isinstance(e['slug'], str):
+                raise ErrorDeEdicion(f"el slug del lugar {i} tiene que ser texto, no {e['slug']!r}")
             else:
                 fichas = {f['slug']: f for f in catalogo()}
                 ficha = fichas.get(e['slug'])
@@ -499,8 +505,11 @@ def aplicar(mundo, cambios, canon=None, catalogo=None):
     region_de_prov = {p['i']: p['region'] for p in nuevo['provincias']}
     regiones = {r['i'] for r in nuevo['regiones']} | {0}
     n = len(nuevo['celdas'])
-    for fila in cambios.get('celdas', []):
-        if not (isinstance(fila, list) and len(fila) == 3 and all(isinstance(v, int) for v in fila)):
+    filas_celdas = cambios.get('celdas', [])
+    if not isinstance(filas_celdas, list):
+        raise ErrorDeEdicion(f'celdas mal formado: {filas_celdas!r} (se espera [[celda, región, provincia], ...])')
+    for fila in filas_celdas:
+        if not (isinstance(fila, list) and len(fila) == 3 and all(_entero(v) for v in fila)):
             raise ErrorDeEdicion(f'cambio de celda mal formado: {fila!r} (se espera [celda, región, provincia])')
         i, region, provincia = fila
         if not 0 <= i < n:
@@ -545,7 +554,7 @@ def _centros(mundo):
 def _lore(mundo, lore):
     try:
         return [{'id': r['id'], 'ok': ok, 'detalle': d} for r, ok, d in comprobar.comprobar(mundo, lore)]
-    except (KeyError, StopIteration, ValueError) as e:
+    except (KeyError, StopIteration, ValueError, ZeroDivisionError) as e:
         # Una regla que nombra algo que ya no existe (p. ej. una provincia renombrada) es un fallo, no un cuelgue.
         return [{'id': 'lore', 'ok': False, 'detalle': f'el lore no se puede comprobar: {type(e).__name__} {e}'}]
 
@@ -609,13 +618,19 @@ def guardar(mundo, ruta_mundo=medir.MUNDO, ruta_geojson=None, ruta_juego=exporta
     if os.path.exists(ruta_mundo):
         with open(ruta_mundo, 'rb') as f:
             antes = f.read()
+    # Todo se genera antes de escribir nada: si exportar falla, no queda ningún archivo a medias ni historial.
     texto = importar.volcar(mundo)
-    _escribir(ruta_mundo, texto)
     ruta_geojson = ruta_geojson or os.path.join(os.path.dirname(ruta_mundo), 'helek.geojson')
     geo = importar.geojson(mundo, {'v': [c['v'] for c in mundo['celdas']]}, mundo['vertices'])
-    _escribir(ruta_geojson, importar.volcar({'type': geo['type'], 'features': geo['features']}))
+    texto_geo = importar.volcar({'type': geo['type'], 'features': geo['features']})
+    try:
+        texto_juego = exportar.generar(mundo) if ruta_juego else None
+    except exportar.RegionSinCeldas as e:
+        raise ErrorDeEdicion(str(e)) from e
+    _escribir(ruta_mundo, texto)
+    _escribir(ruta_geojson, texto_geo)
     if ruta_juego:
-        _escribir(ruta_juego, exportar.generar(mundo))
+        _escribir(ruta_juego, texto_juego)
     datos = texto.encode('utf-8')
     if antes != datos:
         historial.apuntar(ruta_mundo, antes, datos, tipo=tipo, resumen=resumen, deshace=deshace)
@@ -746,7 +761,7 @@ def texto_informe(inf):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Comprueba (y guarda) un lote de cambios del mapa sin servidor ni navegador.')
+    ap = argparse.ArgumentParser(allow_abbrev=False, description='Comprueba (y guarda) un lote de cambios del mapa sin servidor ni navegador.')
     ap.add_argument('lote', nargs='?', help='JSON con el lote de cambios, o - para la entrada estándar')
     ap.add_argument('--historial', action='store_true', help='MAP-9: lista los últimos guardados de este mapa')
     ap.add_argument('--deshacer', action='store_true', help='MAP-9: vuelve a la versión de antes del último guardado')

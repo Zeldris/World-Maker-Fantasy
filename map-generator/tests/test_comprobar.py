@@ -108,6 +108,19 @@ class Lore(unittest.TestCase):
         self.assertEqual(set(nuevos), {'sin-isla-cambiante'})
         self.assertIn('1 lugares', nuevos['sin-isla-cambiante'])
 
+    def test_adelgaza_con_centro_sin_grosor_falla_sin_excepcion(self):
+        regla = next(r for r in self.lore['reglas'] if r['tipo'] == 'adelgaza')
+        mundo = copy.deepcopy(self.mundo)
+        region = comprobar._celdas_de(mundo, regla['region'])
+        puntos = [list(c['p']) for c in region]
+        # Cada celda de los dos lados se pone sobre un punto de la región: la distancia mínima es 0 en todas.
+        for n in regla['entre'] + regla['y']:
+            for k, c in enumerate(comprobar._celdas_de(mundo, n)):
+                c['p'] = list(puntos[k % len(puntos)])
+        ok, detalle = comprobar._adelgaza(mundo, regla)
+        self.assertFalse(ok)
+        self.assertIn('no tienen grosor', detalle)
+
     def test_nombre_inexistente_es_un_error_claro(self):
         lore = {'reglas': [{'id': 'x', 'tipo': 'oeste-de', 'a': 'Narnia', 'b': 'Ciénaga Troncal'}]}
         with self.assertRaisesRegex(ValueError, 'Narnia'):

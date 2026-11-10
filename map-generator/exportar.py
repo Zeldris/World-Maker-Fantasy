@@ -35,11 +35,17 @@ def _d(polis):
     return ' '.join(partes)
 
 
+class RegionSinCeldas(ValueError):
+    pass
+
+
 def regiones(mundo):
     salida = []
     for r in mundo['regiones']:
         polis = medir.poligonos_de(mundo, {'region': r['nombre']})
         pts = [q for p in polis for q in p[0]]
+        if not pts:
+            raise RegionSinCeldas(f"la región {r['nombre']} se queda sin celdas: no se puede exportar (devuélvele alguna)")
         xs, ys = [q[0] for q in pts], [q[1] for q in pts]
         salida.append({
             'id': r['i'],

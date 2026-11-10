@@ -178,6 +178,8 @@ def _adelgaza(mundo, r):
     medias = [sum(q) / len(q) for q in cuartos]
     centrales = cuartos[1] + cuartos[2]
     centro = sum(centrales) / len(centrales)
+    if not centro:
+        return False, 'los cuartos centrales no tienen grosor (0 km): no se puede medir oeste/centro'
     return medias[0] <= r['maximo'] * centro, (
         'grosor por cuartos O→E: ' + ', '.join(f'{m:.0f}' for m in medias)
         + f' km; oeste/centro = {medias[0] / centro:.2f} (máximo {r["maximo"]})')

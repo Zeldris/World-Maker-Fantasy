@@ -58,9 +58,12 @@ def ejecutar(orden, lote, copia):
     if script not in PERMITIDOS:
         return f'solo se permiten {sorted(PERMITIDOS)}; no "{partes[0]}"', 2
     args = [a for a in partes[1:]]
-    for prohibido in ('--mundo', '--canon', '--lore'):
-        if prohibido in args:
-            return f'{prohibido} no se puede usar: ya trabajas sobre la copia', 2
+    for a in args:
+        nombre = a.split('=', 1)[0]
+        for prohibido in ('--mundo', '--canon', '--lore'):
+            # argparse acepta abreviaturas (--can) y --canon=x: se rechaza todo lo que pueda resolverse a un prohibido
+            if len(nombre) > 2 and nombre.startswith('--') and prohibido.startswith(nombre):
+                return f'{prohibido} no se puede usar: ya trabajas sobre la copia', 2
     mundo = os.path.join(copia, 'helek.json')
     cmd = [sys.executable, os.path.join(MAPA, script)] + args + ['--mundo', mundo]
     if script == 'editar.py':

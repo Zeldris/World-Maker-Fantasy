@@ -485,7 +485,7 @@ def main(argv=None):
     comun.add_argument('--mundo', default=medir.MUNDO, help='helek.json (una copia, por ejemplo)')
     caja = argparse.ArgumentParser(add_help=False)
     caja.add_argument('--caja', nargs=4, type=float, metavar=('X0', 'Y0', 'X1', 'Y1'), help='solo lo que cae dentro')
-    ap = argparse.ArgumentParser(description='Consulta (solo lectura) las celdas, lugares y fichas del mapa de Helek.')
+    ap = argparse.ArgumentParser(allow_abbrev=False, description='Consulta (solo lectura) las celdas, lugares y fichas del mapa de Helek.')
     sub = ap.add_subparsers(dest='cmd', required=True)
     sub.add_parser('resumen', parents=[comun], help='tamaño, regiones, provincias, continentes e i libres')
     p = sub.add_parser('celda', parents=[comun], help='la celda de centro más cercano a X Y, o --i N')

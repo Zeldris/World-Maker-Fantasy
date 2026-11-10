@@ -348,9 +348,9 @@ function info() {
   ];
   if (tierra) {
     const b = porBioma[c.bioma], co = porCont[c.continente], re = porRegion[c.region], pr = porProv[c.provincia];
-    filas.push(`<dt>Bioma</dt><dd><span class="muestra" style="background:${b?.color}"></span>${b?.nombre ?? c.bioma}</dd>`);
-    if (co) filas.push('<dt>Continente</dt>', filaMedida(co.nombre, '#b9b39c', MED.continentes[co.i]));
-    if (re) filas.push('<dt>Región</dt>', filaMedida(re.nombre, re.color, MED.regiones[re.i]));
+    filas.push(`<dt>Bioma</dt><dd><span class="muestra" style="background:${b?.color}"></span>${esc(b?.nombre ?? c.bioma)}</dd>`);
+    if (co) filas.push('<dt>Continente</dt>', filaMedida(esc(co.nombre), '#b9b39c', MED.continentes[co.i]));
+    if (re) filas.push('<dt>Región</dt>', filaMedida(esc(re.nombre), re.color, MED.regiones[re.i]));
     if (pr) filas.push('<dt>Provincia</dt>', filaMedida(esc(pr.nombre), pr.color, MED.provincias[pr.i]));
   }
   $('info').innerHTML = filas.join('');
@@ -428,7 +428,7 @@ function avisar(texto) {
   clearTimeout(avisar.t); avisar.t = setTimeout(() => { a.style.display = 'none'; }, 2600);
 }
 
-const capitalEn = (i) => M.lugares.find((lu) => lu.celda === i && lu.region);
+const capitalEn = (i) => M.lugares.find((lu) => lu.celda === i && lu.capital);
 
 function vecindad(c, anillos) {
   const vistas = new Set([c.i]); let borde = [c];
