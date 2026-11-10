@@ -1932,10 +1932,17 @@ describe('deterministicFallbackNarration', () => {
     expect(r.narration).toMatch(/narrador no ha respondido/);
   });
 
-  it('P435: turno de aceptación previo al combate no copia la acción', () => {
-    const r = deterministicFallbackNarration({ action: 'Yo me ocupo de tu perseguidor.', combatNotYetResolved: true });
-    expect(r.narration).not.toContain('perseguidor');
+  it('P435: ataque de apertura a un NPC sin intercambio no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Ataco a Torgash con la maza.', npcSlugsInScene: ['torgash'], combatNotYetResolved: true });
+    expect(r.narration).not.toContain('Torgash');
+    expect(r.narration).toMatch(/Aún no se ha resuelto ningún intercambio/);
     expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: escena pacífica con un NPC (combatNotYetResolved) copia la acción y no habla de intercambio', () => {
+    const r = deterministicFallbackNarration({ action: 'Le compro una ración a Torgash.', npcSlugsInScene: ['torgash'], combatNotYetResolved: true });
+    expect(r.narration).toContain('Le compro una ración a Torgash.');
+    expect(r.narration).not.toMatch(/intercambio/);
   });
 
   it('P435: turno de combate sin intercambio resuelto no copia la acción', () => {

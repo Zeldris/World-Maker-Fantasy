@@ -1121,7 +1121,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // pillar esta narración concreta, pero la causa de raíz era esta instrucción contradictoria
   // dentro del mismo prompt — se reescribe para hablar de VENTAJA DE POSICIÓN/INICIATIVA, nunca
   // de un golpe ya conectado ni de la reacción física del objetivo a él.
-  const hostileEngagement = !ctx.enCombate && npcSlugs.length > 0 && (detectsAttackIntent(ctx.action) || detectsHostileSearchIntent(ctx.action));
+  const hostileEngagement = !ctx.enCombate && esAperturaHostilConNpc(ctx.action, npcSlugs);
   // Ver `hasWrongAggressorName` más abajo y el comentario de `nonHostileNpcNamesInScene` en
   // TurnContext — instrucción explícita con nombres reales, no solo el guard post-hoc, para que el
   // modelo tenga la información desde el principio en vez de que la corrección llegue solo vía
@@ -1721,12 +1721,20 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   return deterministicFallbackNarration(ctx);
 }
 
+/// Turno hostil de apertura: hay NPC en escena y la acción es un ataque o una búsqueda hostil. Criterio único
+/// de `hostileEngagement` (prompt) y del respaldo determinista (P435).
+function esAperturaHostilConNpc(action: string, npcSlugs: string[]): boolean {
+  return npcSlugs.length > 0 && (detectsAttackIntent(action) || detectsHostileSearchIntent(action));
+}
+
 export function deterministicFallbackNarration(ctx: {
   action: string;
+  npcSlugsInScene?: string[];
   roll?: RollResult;
   combatBothMissed?: boolean;
   combatRealHitLanded?: boolean;
   nonExchangeAttackHitLanded?: boolean;
+  /// Ignorado aquí a propósito (ver `enIntercambio`); queda en el tipo porque el call site pasa el TurnContext.
   combatNotYetResolved?: boolean;
   enCombate?: boolean;
 }): NarrationResult {
@@ -1736,8 +1744,14 @@ export function deterministicFallbackNarration(ctx: {
   // aquí qué lado conectó, se dice solo lo que es seguro y la tarjeta de la tirada cuenta el resto.
   // Ampliado (P435): cualquier turno con contexto de combate, resuelto o no (ataque a fauna/NPC pasivo
   // antes del combate formal, aceptación previa, turno de combate sin intercambio).
+  // `combatNotYetResolved` NO cuenta: es verdadero en cualquier escena con un NPC (comprar, hablar), no solo en
+  // combate. La apertura hostil se deduce de la acción y de `npcSlugsInScene` (el call site pasa el TurnContext).
   const enIntercambio = Boolean(
-    ctx.combatBothMissed || ctx.combatRealHitLanded || ctx.nonExchangeAttackHitLanded || ctx.combatNotYetResolved || ctx.enCombate,
+    ctx.combatBothMissed ||
+      ctx.combatRealHitLanded ||
+      ctx.nonExchangeAttackHitLanded ||
+      ctx.enCombate ||
+      esAperturaHostilConNpc(action, ctx.npcSlugsInScene ?? []),
   );
   const resultado = ctx.combatBothMissed
     ? 'Ningún golpe llega a conectar.'
