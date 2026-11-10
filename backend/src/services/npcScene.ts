@@ -11,7 +11,7 @@ import { effectiveTemperamento } from './reputation.js';
 import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { npcVivoEnPartida } from './mundoPartida.js';
-import { nombreOcultoPorRaza, nombreEnFrase } from './dynamicMode.js';
+import { nombreOcultoPorRaza, nombreEnFrase, slugsConocidos } from './dynamicMode.js';
 
 /// Detección determinista de "NPC en escena" (docs/mecanicas/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -755,11 +755,7 @@ async function ocultoNombradoPorSuVisible(params: {
     : [];
   const enContacto = [...new Map([...enCombate, ...enModo, ...enZona].map((n) => [n.id, n])).values()];
   if (enContacto.length === 0) return null;
-  const vistos = await prisma.discoveredEntity.findMany({
-    where: { saveId: params.saveId, entityType: 'npc', entitySlug: { in: enContacto.map((n) => n.slug) } },
-    select: { entitySlug: true },
-  });
-  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const conocidos = await slugsConocidos(prisma, params.saveId, enContacto.map((n) => n.slug));
   const casa = (n: (typeof principales)[number]) => !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero));
   for (const grupo of [enCombate, enModo, enZona]) {
     const nombrados = grupo.filter(casa);
@@ -773,17 +769,13 @@ async function ocultoNombradoPorSuVisible(params: {
 /// narración ni los textos deterministas del turno revelen su identidad («el orco desconocido»).
 /// Una sola consulta por escena; solo los `PRINCIPAL` pueden estar ocultos.
 export async function conNombreVisible(
-  db: Pick<typeof prisma, 'discoveredEntity'>,
+  db: Pick<typeof prisma, 'discoveredEntity' | 'companion'>,
   saveId: string,
   npcs: NpcInScene[],
 ): Promise<NpcInScene[]> {
   const principales = npcs.filter((n) => n.kind === 'PRINCIPAL');
   if (principales.length === 0) return npcs;
-  const vistos = await db.discoveredEntity.findMany({
-    where: { saveId, entityType: 'npc', entitySlug: { in: principales.map((n) => n.slug) } },
-    select: { entitySlug: true },
-  });
-  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const conocidos = await slugsConocidos(db, saveId, principales.map((n) => n.slug));
   return npcs.map((n) => {
     if (n.kind !== 'PRINCIPAL' || conocidos.has(n.slug)) return n;
     return { ...n, nombreVisible: nombreOcultoPorRaza(n.raza, n.genero) };
