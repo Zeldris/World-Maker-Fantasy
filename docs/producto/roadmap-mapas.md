@@ -103,8 +103,8 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   de lore va en la ficha. Rutas y ríos: dibujar, redibujar, borrar; caminos y ríos por tierra, marítimas por agua
   salvo puertos. Lo pendiente de `MAP-7`: el relieve no deja fuera de sitio una ruta o un río sin redibujarlo. Azgaar
   trae 14 rutas de tierra con algún punto en agua y 34 marítimas por tierra: no bloquean. Probado con Chromium sin
-  interfaz sobre una copia. **Probado por la usuaria en la Deck ✅ 2026-11-10.** Sin probar a mano: redibujar y guardar,
-  cambiar el grupo de una ruta y renombrar o cambiar la ficha de un lugar existente.
+  interfaz sobre una copia. **Probado por la usuaria en la Deck ✅ 2026-11-10.** Redibujar ruta y río y guardar, cambiar el grupo de una
+  ruta, renombrar un lugar y cambiar su ficha, y deshacer: probados con Playwright sobre una copia ✅ 2026-11-10.
 - ~~**MAP-9 · Guardar con historial**~~ [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
   estable (diff legible en git) y se puede deshacer; nunca escribe en el `.map`. **S** ✅ 2026-11-09: el orden
   estable ya venía de `importar.volcar`; `historial.py` apunta cada guardado en `mundo/historial/` (fuera de git: la
