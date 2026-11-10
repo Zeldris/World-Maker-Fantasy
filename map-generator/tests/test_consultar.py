@@ -3,17 +3,21 @@ import contextlib
 import hashlib
 import io
 import json
+import math
 import os
 import sys
+import tempfile
 import unittest
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 
 import consultar  # noqa: E402
+import editar  # noqa: E402
 import medir  # noqa: E402
 
 MUNDO = medir.cargar()
+math_dist = math.dist
 
 
 def _huella():
@@ -164,6 +168,109 @@ class TestConsultar(unittest.TestCase):
         self.assertEqual([x['i'] for x in js('lugares', '--caja', '500', '100', '700', '200')], [612, 613])
         _, out, _ = correr('lugares')
         self.assertIn('CAPITAL  CANON', out)
+
+    # ------------------------------------------------------------ MAP-17
+
+    def test_lugares_por_nombre(self):
+        self.assertEqual([x['i'] for x in js('lugares', '--nombre', 'ORDINUM')], [615])
+        self.assertEqual([x['i'] for x in js('lugares', '--nombre', 'puesto nabieus')], [614])
+        self.assertEqual(js('lugares', '--nombre', 'no-existe-este-lugar'), [])
+        todos = js('lugares', '--nombre', 'a')  # por fragmento y combinable con el resto de filtros
+        self.assertGreater(len(todos), 3)
+        self.assertEqual([x['i'] for x in js('lugares', '--nombre', 'ordin', '--region', 'Meseta')], [615])
+        self.assertEqual(js('lugares', '--nombre', 'ordin', '--region', 'Llanuras'), [])
+        self.assertEqual(js('lugares', '--nombre', 'ordinum', '--cerca', '540', '190', '--radio', '10'), [])
+        _, out, _ = correr('lugares', '--nombre', 'campamento')
+        self.assertIn('Campamento', out)
+
+    def _lote_valido(self, grupo, pts):
+        """El lote con la ruta pasa `editar.py` (sin guardar) sobre una copia del mapa."""
+        with tempfile.TemporaryDirectory() as d:
+            copia, lote = os.path.join(d, 'helek.json'), os.path.join(d, 'lote.json')
+            with open(copia, 'w', encoding='utf-8') as f:
+                json.dump(MUNDO, f)
+            with open(lote, 'w', encoding='utf-8') as f:
+                json.dump({'rutas': [{'i': len(MUNDO['rutas']), 'grupo': grupo, 'puntos': pts}]}, f)
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                codigo = editar.main([lote, '--mundo', copia, '--sin-juego'])
+            return codigo, out.getvalue() + err.getvalue()
+
+    def test_camino_recto_ordinum_nabieus(self):
+        r = js('camino', '570.94', '397.8', '581.38', '317.03')
+        self.assertEqual(r['tipo'], 'recta')
+        self.assertEqual(r['puntos'][0], [570.9, 397.8])
+        self.assertEqual(r['puntos'][-1], [581.4, 317.0])
+        self.assertTrue(all(len(p) == 2 and p == [round(p[0], 1), round(p[1], 1)] for p in r['puntos']))
+        self.assertTrue(all(math_dist(a, b) <= 8.0 for a, b in zip(r['puntos'], r['puntos'][1:])))
+        self.assertAlmostEqual(r['km'], 81.5, delta=0.5)
+        self.assertEqual(r['lote'], {'puntos': r['puntos']})
+        codigo, informe = self._lote_valido('roads', r['puntos'])
+        self.assertEqual(codigo, 0, informe)
+        _, out, _ = correr('camino', '570.94', '397.8', '581.38', '317.03')
+        self.assertIn('Recta: 81.5 km, 12 puntos', out)
+        self.assertIn('"puntos": [[570.9, 397.8]', out)
+        _, corto, _ = correr('camino', '570.94', '397.8', '581.38', '317.03', '--paso', '20')
+        self.assertIn('6 puntos', corto)
+
+    def test_camino_con_rodeo_si_la_recta_cruza_mar(self):
+        a, b = [107.9, 267.6], [88.4, 390.0]
+        recta = consultar._muestreo([a, b], 8.0)
+        self.assertTrue(any(MUNDO['celdas'][consultar.editar._localizador(MUNDO)(*p)]['h'] < 20 for p in recta))
+        r = js('camino', *map(str, a + b))
+        self.assertEqual(r['tipo'], 'rodeo')
+        self.assertGreater(r['km'], math_dist(a, b) * MUNDO['fuente']['kmPorUnidad'])
+        self.assertEqual((r['puntos'][0], r['puntos'][-1]), (a, b))
+        self.assertTrue(all(math_dist(p, q) <= 8.5 for p, q in zip(r['puntos'], r['puntos'][1:])))
+        codigo, informe = self._lote_valido('roads', r['puntos'])
+        self.assertEqual(codigo, 0, informe)
+        _, out, _ = correr('camino', *map(str, a + b))
+        self.assertIn('Rodeo por celdas de tierra', out)
+
+    def test_camino_por_mar(self):
+        a, b = [475.1, 193.4], [506.8, 85.4]
+        r = js('camino', *map(str, a + b), '--mar', '--paso', '10')
+        self.assertEqual(r['tipo'], 'rodeo')
+        self.assertEqual(r['medio'], 'agua')
+        codigo, informe = self._lote_valido('searoutes', r['puntos'])
+        self.assertEqual(codigo, 0, informe)
+        # por tierra, ese mismo trazado en mar no vale como camino
+        self.assertNotEqual(self._lote_valido('roads', r['puntos'])[0], 0)
+
+    def test_camino_sin_camino_explica_el_motivo(self):
+        codigo, _, err = correr('camino', '199.3', '473.5', '524.2', '429.2')
+        self.assertEqual(codigo, 1)
+        self.assertIn('no hay camino por tierra', err)
+        self.assertIn('--mar', err)
+        codigo, out, _ = correr('camino', '199.3', '473.5', '524.2', '429.2', '--json')
+        self.assertEqual(codigo, 1)
+        self.assertIn('no hay camino', json.loads(out)['error'])
+        codigo, _, err = correr('camino', '100', '100', '700', '500')  # el inicio cae en mar
+        self.assertEqual(codigo, 1)
+        self.assertIn('cae en mar', err)
+        self.assertEqual(correr('camino', '900', '10', '5', '5')[0], 1)
+        self.assertEqual(correr('camino', '5', '5', '10', '10', '--paso', '0')[0], 1)
+
+    def test_frontera_marca_lo_que_agranda_la_envolvente(self):
+        f = js('frontera', 'Ciénaga', 'Margen')
+        self.assertTrue(all('agranda' in c for c in f['deA'] + f['deB']))
+        antes = {i: medir._medida(MUNDO, lambda c, i=i: c['region'] == i)['caja'] for i in (19, 20)}
+        marcadas = 0
+        for lado, destino in (('deA', 20), ('deB', 19)):
+            for c in f[lado]:
+                copia = json.loads(json.dumps(MUNDO))
+                copia['celdas'][c['i']]['region'] = destino
+                d = medir._medida(copia, lambda x, i=destino: x['region'] == i)['caja']
+                a = antes[destino]
+                real = [e for e, crece in (('E-O', d[2] - d[0] > a[2] - a[0] + 1e-6), ('N-S', d[3] - d[1] > a[3] - a[1] + 1e-6)) if crece]
+                self.assertEqual(c['agranda'], real, c)
+                marcadas += bool(real)
+        self.assertTrue(0 < marcadas < len(f['deA'] + f['deB']))
+        self.assertEqual(next(c for c in f['deB'] if c['i'] == 3153)['agranda'], ['N-S'])
+        self.assertEqual(next(c for c in f['deB'] if c['i'] == 2981)['agranda'], [])
+        _, out, _ = correr('frontera', 'Ciénaga', 'Margen')
+        self.assertIn('3153 (622.6, 305.4) h 30 agranda N-S', out)
+        self.assertTrue(all(c['agranda'] == [] for c in js('frontera', 'Llanuras', 'mar')['deA']))
 
     def test_fichas(self):
         todas = js('fichas')

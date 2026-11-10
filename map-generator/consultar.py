@@ -7,8 +7,13 @@
     python3 map-generator/consultar.py frontera "Llanuras" "Meseta"   # celdas de A que lindan con B y de B con A, de norte a sur
     python3 map-generator/consultar.py frontera "Llanuras" mar        # B puede ser `mar`
     python3 map-generator/consultar.py costa Vaelira                  # tierra con vecina de mar y mar junto a tierra (candidata a tierra)
-    python3 map-generator/consultar.py lugares --cerca 540 190 --radio 50    # (o --region R)
+    python3 map-generator/consultar.py lugares --cerca 540 190 --radio 50    # (o --region R, o --nombre TEXTO)
+    python3 map-generator/consultar.py camino 571 398 581 317        # MAP-17: puntos de una ruta por tierra, listos para un lote
+    python3 map-generator/consultar.py camino X0 Y0 X1 Y1 --mar --paso 10   # lo mismo por agua (rutas marítimas)
     python3 map-generator/consultar.py fichas --sin-lugar             # slugs de la enciclopedia (o --region R)
+    `frontera` marca las celdas que, al pasar a la otra región, agrandan su envolvente E-O o N-S («agranda N-S»).
+    `camino`: la recta si cae toda en tierra (h >= 20; por agua con --mar); si no, un rodeo por celdas de tierra
+              (Dijkstra sobre vecinas), muestreado cada --paso km (8) con los extremos; sin camino, sale con 1.
     opciones: --json (salida en JSON), --mundo RUTA (una copia), --caja X0 Y0 X1 Y1 (frontera, costa y lugares: solo lo
               que cae dentro, por centro de celda o posición), --canon RUTA (lugares)
 
@@ -19,6 +24,7 @@ Si un nombre es ambiguo o no existe, sale con 1 y el error lista los candidatos.
 Berig, que `editar.py` no deja tocar sin `"bloqueo": []`. Nunca escribe nada. Todo sale en orden estable.
 """
 import argparse
+import heapq
 import json
 import math
 import os
@@ -187,9 +193,28 @@ def frontera(mundo, a, b, caja=None):
     def linda(en_x, en_y):
         return sorted((c for c in celdas if en_x(c) and any(en_y(celdas[j]) for j in c['c'])), key=_orden_ns)
 
-    def filas(cs):
-        return [{'i': c['i'], 'centro': c['p'], 'h': c['h']} for c in cs if dentro(caja, *c['p'])]
-    return {'a': ra['nombre'], 'b': rb['nombre'], 'deA': filas(linda(en_a, en_b)), 'deB': filas(linda(en_b, en_a))}
+    def envolvente_de(r):
+        return medir._medida(mundo, lambda c, i=r['i']: c['region'] == i)['caja'] if r['i'] is not None else None
+
+    def agranda(c, caja_receptora):
+        """MAP-17: ejes en que la celda `c`, al pasar a la región que tiene esa envolvente, la agranda."""
+        if caja_receptora is None:
+            return []
+        vs = [mundo['vertices'][v] for v in c['v']]
+        eps = 1e-6
+        ejes = []
+        if min(v[0] for v in vs) < caja_receptora[0] - eps or max(v[0] for v in vs) > caja_receptora[2] + eps:
+            ejes.append('E-O')
+        if min(v[1] for v in vs) < caja_receptora[1] - eps or max(v[1] for v in vs) > caja_receptora[3] + eps:
+            ejes.append('N-S')
+        return ejes
+
+    def filas(cs, receptora):
+        caja_r = envolvente_de(receptora)
+        return [{'i': c['i'], 'centro': c['p'], 'h': c['h'], 'agranda': agranda(c, caja_r)}
+                for c in cs if dentro(caja, *c['p'])]
+    return {'a': ra['nombre'], 'b': rb['nombre'], 'deA': filas(linda(en_a, en_b), rb),
+            'deB': filas(linda(en_b, en_a), ra)}
 
 
 def costa(mundo, ref, caja=None):
@@ -214,7 +239,7 @@ def costa(mundo, ref, caja=None):
             'bloqueadoPorDefecto': editar.BLOQUEO_DEFECTO}
 
 
-def lugares(mundo, canon, ref_region=None, cerca=None, radio=50.0, caja=None):
+def lugares(mundo, canon, ref_region=None, cerca=None, radio=50.0, caja=None, nombre=None):
     x = _ctx(mundo)
     r = resolver(mundo['regiones'], ref_region, 'región') if ref_region is not None else None
     protegidos = editar._nombres_del_canon(canon)
@@ -224,6 +249,8 @@ def lugares(mundo, canon, ref_region=None, cerca=None, radio=50.0, caja=None):
         if r is not None and lu['region'] != r['i']:
             continue
         if not dentro(caja, lu['x'], lu['y']):
+            continue
+        if nombre is not None and normaliza(nombre) not in normaliza(lu['nombre']):
             continue
         d = math.dist((lu['x'], lu['y']), cerca) if cerca else None
         if cerca and d > radio:
@@ -236,6 +263,96 @@ def lugares(mundo, canon, ref_region=None, cerca=None, radio=50.0, caja=None):
         salida.append(f)
     salida.sort(key=(lambda f: (f['km'], f['i'])) if cerca else (lambda f: f['i']))
     return salida
+
+
+def _muestreo(poli, paso):
+    """Puntos de la poligonal `poli` (unidades) cada `paso` como mucho, repartidos por igual, con sus extremos."""
+    tramos = [math.dist(a, b) for a, b in zip(poli, poli[1:])]
+    total = sum(tramos)
+    n = max(1, math.ceil(total / paso - 1e-9))
+    salida, k, acum = [list(poli[0])], 0, 0.0
+    for m in range(1, n):
+        objetivo = total * m / n
+        while k < len(tramos) - 1 and acum + tramos[k] < objetivo:
+            acum += tramos[k]
+            k += 1
+        t = (objetivo - acum) / tramos[k] if tramos[k] else 0.0
+        salida.append([poli[k][0] + (poli[k + 1][0] - poli[k][0]) * t, poli[k][1] + (poli[k + 1][1] - poli[k][1]) * t])
+    salida.append(list(poli[-1]))
+    return salida
+
+
+def camino(mundo, p0, p1, paso=8.0, mar=False):
+    """MAP-17: puntos de una ruta de `p0` a `p1`, la recta si todos caen en tierra (en agua con `mar`, salvo los
+    extremos) y si no un rodeo por celdas vecinas. Pasan la validación de `editar.py` para roads/trails (o searoutes)."""
+    ancho, alto = mundo['fuente']['ancho'], mundo['fuente']['alto']
+    km = mundo['fuente']['kmPorUnidad']
+    for p in (p0, p1):
+        if not (0 <= p[0] <= ancho and 0 <= p[1] <= alto):
+            raise ErrorDeConsulta(f'el punto {list(p)} no está dentro del mapa (0-{ancho} × 0-{alto})')
+    if paso <= 0:
+        raise ErrorDeConsulta('--paso tiene que ser mayor que 0')
+    celdas = mundo['celdas']
+    celda_en = editar._localizador(mundo)
+    c0, c1 = celda_en(*p0), celda_en(*p1)
+    medio = 'agua' if mar else 'tierra'
+
+    def ok(c, extremo=False):
+        if mar:
+            return extremo or celdas[c]['h'] < TIERRA
+        return celdas[c]['h'] >= TIERRA
+
+    def valido(pts):
+        cs = [celda_en(*p) for p in pts]
+        return all(ok(c, extremo=k in (0, len(cs) - 1)) for k, c in enumerate(cs))
+
+    def redondea(pts):
+        return [[round(p[0], 1), round(p[1], 1)] for p in pts]
+    if not mar:
+        for c, nom in ((c0, 'inicio'), (c1, 'final')):
+            if celdas[c]['h'] < TIERRA:
+                raise ErrorDeConsulta(f"el {nom} cae en mar (celda {c}, h {celdas[c]['h']}): no hay camino por tierra desde ahí; "
+                                      'elige un punto en tierra (celda X Y) o usa --mar')
+    paso_u = paso / km
+    recta = redondea(_muestreo([p0, p1], paso_u))
+    tipo = 'recta'
+    if valido(recta):
+        pts = recta
+    else:
+        tipo = 'rodeo'
+        # Dijkstra sobre celdas vecinas, coste = distancia entre centros.
+        dist, prev, cola = {c0: 0.0}, {}, [(0.0, c0)]
+        while cola:
+            d, c = heapq.heappop(cola)
+            if c == c1:
+                break
+            if d > dist.get(c, math.inf):
+                continue
+            for j in sorted(celdas[c]['c']):
+                if j != c1 and not ok(j):
+                    continue
+                nd = d + math.dist(celdas[c]['p'], celdas[j]['p'])
+                if nd < dist.get(j, math.inf):
+                    dist[j], prev[j] = nd, c
+                    heapq.heappush(cola, (nd, j))
+        if c1 not in dist:
+            raise ErrorDeConsulta(f'no hay camino por {medio} entre {list(p0)} (celda {c0}) y {list(p1)} (celda {c1}): '
+                                  f'no están unidas por {medio}'
+                                  + ('; para cruzar el mar usa --mar' if not mar else ''))
+        ruta, c = [c1], c1
+        while c != c0:
+            c = prev[c]
+            ruta.append(c)
+        ruta.reverse()
+        poli = [p0] + [celdas[c]['p'] for c in ruta[1:-1]] + [p1]
+        pts = redondea(_muestreo(poli, paso_u))
+        if not valido(pts):  # el muestreo cae a veces fuera de una celda de la ruta: se usan los centros de la ruta
+            pts = redondea([p0] + [celdas[c]['p'] for c in ruta[1:-1]] + [p1])
+        if not valido(pts):
+            raise ErrorDeConsulta(f'no he podido trazar un camino válido por {medio} entre {list(p0)} y {list(p1)}')
+    largo = sum(math.dist(a, b) for a, b in zip(pts, pts[1:])) * km
+    return {'tipo': tipo, 'medio': medio, 'km': round(largo, 1), 'paso': paso, 'celdas': [c0, c1],
+            'puntos': pts, 'lote': {'puntos': pts}}
 
 
 def fichas(mundo, catalogo, ref_region=None, sin_lugar=False):
@@ -301,12 +418,13 @@ def texto_region(r):
 def _lista(titulo, filas, marca=False):
     t = [f'{titulo} ({len(filas)}):']
     for f in filas:
-        t.append(f"  {f['i']:>5} {_pt(f['centro'])} h {f['h']}" + (' BERIG' if marca and f.get('berig') else ''))
+        t.append(f"  {f['i']:>5} {_pt(f['centro'])} h {f['h']}" + (' BERIG' if marca and f.get('berig') else '')
+                 + (f" agranda {' y '.join(f['agranda'])}" if f.get('agranda') else ''))
     return t
 
 
 def texto_frontera(r):
-    return '\n'.join([f"Frontera {r['a']} / {r['b']}"] + _lista(f"Celdas de {r['a']} que lindan con {r['b']}", r['deA'])
+    return '\n'.join([f"Frontera {r['a']} / {r['b']} («agranda» = al pasar a la otra región, esa celda agranda su envolvente)"] + _lista(f"Celdas de {r['a']} que lindan con {r['b']}", r['deA'])
                      + _lista(f"Celdas de {r['b']} que lindan con {r['a']}", r['deB']))
 
 
@@ -323,6 +441,13 @@ def texto_lugares(ls):
         t.append(f"  {f['i']:>4} {f['nombre']} · slug {f['slug'] or '-'} · {_pt([f['x'], f['y']])} · celda {f['celda']}"
                  f" · región {f['region']} {f['regionNombre']}{extra}")
     return '\n'.join(t)
+
+
+def texto_camino(r):
+    forma = 'Recta' if r['tipo'] == 'recta' else 'Rodeo por celdas de ' + r['medio']
+    return (f"{forma}: {r['km']:g} km, {len(r['puntos'])} puntos (un punto cada {r['paso']:g} km como mucho), "
+            f"celdas {r['celdas'][0]} → {r['celdas'][1]}.\n"
+            + json.dumps({'puntos': r['puntos']}, ensure_ascii=False)[1:-1])
 
 
 def texto_fichas(fs):
@@ -359,6 +484,11 @@ def main(argv=None):
     p.add_argument('--cerca', nargs=2, type=float, metavar=('X', 'Y'))
     p.add_argument('--radio', type=float, default=50.0, help='km, con --cerca (50)')
     p.add_argument('--canon', default=medir.CANON)
+    p.add_argument('--nombre', help='fragmento del nombre (sin mayúsculas ni tildes)')
+    p = sub.add_parser('camino', parents=[comun], help='puntos de una ruta de X0 Y0 a X1 Y1 (recta o rodeo)')
+    p.add_argument('xy', nargs=4, type=float, metavar=('X0', 'Y0', 'X1', 'Y1'))
+    p.add_argument('--paso', type=float, default=8.0, help='km entre puntos, como mucho (8)')
+    p.add_argument('--mar', action='store_true', help='por agua (rutas marítimas)')
     p = sub.add_parser('fichas', parents=[comun], help='fichas de la enciclopedia y si tienen lugar')
     p.add_argument('--region')
     p.add_argument('--sin-lugar', action='store_true')
@@ -395,7 +525,9 @@ def main(argv=None):
         elif args.cmd == 'costa':
             res, txt = costa(mundo, args.ref, caj), texto_costa
         elif args.cmd == 'lugares':
-            res, txt = lugares(mundo, editar.cargar_json(args.canon), args.region, args.cerca, args.radio, caj), texto_lugares
+            res, txt = lugares(mundo, editar.cargar_json(args.canon), args.region, args.cerca, args.radio, caj, args.nombre), texto_lugares
+        elif args.cmd == 'camino':
+            res, txt = camino(mundo, args.xy[:2], args.xy[2:], args.paso, args.mar), texto_camino
         else:
             res, txt = fichas(mundo, enciclopedia.lugares(), args.region, args.sin_lugar), texto_fichas
     except (ErrorDeConsulta, ValueError, OSError) as e:
