@@ -87,12 +87,16 @@ def generar(mundo):
     )
 
 
+# Qué significa el nivel de cada tipo de zona (MAP-14): el tipo de helekCapas.ts y los errores de editar.py.
+SENTIDO_NIVEL = {'tormenta': "0 Ghurmek, refugio; 1 Sek'tar; 2 Rokthar; 3 Rok'ithek",
+                 'peligro': '1 bajo, 2 medio, 3 alto', 'clan': '0'}
+
 def zonas(mundo):
-    salida = []
+    salida, v = [], medir.vertices_por_celda(mundo)
     for z in mundo.get('zonas', []):
         salida.append({
             'i': z['i'], 'tipo': z['tipo'], 'nombre': z['nombre'], 'nivel': z['nivel'], 'clan': z.get('clan'),
-            'canon': z['canon'], 'nota': z['nota'], 'd': _d(medir.poligonos_celdas(mundo, z['celdas'])),
+            'canon': z['canon'], 'nota': z['nota'], 'd': _d(medir.poligonos_celdas(mundo, z['celdas'], v)),
         })
     return salida
 
@@ -123,7 +127,7 @@ def generar_capas(mundo):
         '  i: number\n'
         "  tipo: 'tormenta' | 'peligro' | 'clan'\n"
         '  nombre: string\n'
-        '  /// Tormenta: intensidad máxima (0 Ghurmek, refugio; 1 Sek\'tar; 2 Rokthar; 3 Rok\'ithek). Peligro: 1 bajo, 2 medio, 3 alto. Clan: 0.\n'
+        f"  /// Tormenta: intensidad máxima ({SENTIDO_NIVEL['tormenta']}). Peligro: {SENTIDO_NIVEL['peligro']}. Clan: {SENTIDO_NIVEL['clan']}.\n"
         '  nivel: number\n'
         '  /// Nombre del clan (solo tipo clan).\n'
         '  clan: string | null\n'

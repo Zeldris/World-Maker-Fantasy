@@ -570,7 +570,7 @@ def _zonas_lote(nuevo, cambios):
                 lo, hi = NIVELES_ZONA[tipo]
                 if not _entero(e.get('nivel')) or not lo <= e['nivel'] <= hi:
                     raise ErrorDeEdicion(f"{que} necesita un nivel entero de {lo} a {hi} "
-                                         f"({'0 refugio, 1 Sek’tar, 2 Rokthar, 3 Rok’ithek' if tipo == 'tormenta' else '1 bajo, 2 medio, 3 alto'}), "
+                                         f"({exportar.SENTIDO_NIVEL[tipo]}), "
                                          f"no {e.get('nivel')!r}")
                 z['nivel'] = e['nivel']
         if 'canon' in e:
