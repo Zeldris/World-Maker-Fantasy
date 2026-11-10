@@ -11,7 +11,8 @@
     python3 map-generator/consultar.py camino 571 398 581 317        # MAP-17: puntos de una ruta por tierra, listos para un lote
     python3 map-generator/consultar.py camino X0 Y0 X1 Y1 --mar --paso 10   # lo mismo por agua (rutas marítimas)
     python3 map-generator/consultar.py fichas --sin-lugar             # slugs de la enciclopedia (o --region R)
-    `frontera` marca las celdas que, al pasar a la otra región, agrandan su envolvente E-O o N-S («agranda N-S»).
+    `frontera` marca las celdas que, al pasar a la otra región, agrandan su envolvente E-O o N-S («agranda N-S»);
+    `--pasar N` da además el lote que pasa a A N celdas de B (primero las que no agrandan).
     `camino`: la recta si cae toda en tierra (h >= 20; por agua con --mar); si no, un rodeo por celdas de tierra
               (Dijkstra sobre vecinas), muestreado cada --paso km (8) con los extremos; sin camino, sale con 1.
     opciones: --json (salida en JSON), --mundo RUTA (una copia), --caja X0 Y0 X1 Y1 (frontera, costa y lugares: solo lo
@@ -176,7 +177,7 @@ def region(mundo, ref):
             'tocaMar': any(celdas[j]['h'] < TIERRA for c in propias for j in c['c'])}
 
 
-def frontera(mundo, a, b, caja=None):
+def frontera(mundo, a, b, caja=None, pasar=None):
     celdas = mundo['celdas']
     x = _ctx(mundo)
 
@@ -213,8 +214,24 @@ def frontera(mundo, a, b, caja=None):
         caja_r = envolvente_de(receptora)
         return [{'i': c['i'], 'centro': c['p'], 'h': c['h'], 'agranda': agranda(c, caja_r)}
                 for c in cs if dentro(caja, *c['p'])]
-    return {'a': ra['nombre'], 'b': rb['nombre'], 'deA': filas(linda(en_a, en_b), rb),
-            'deB': filas(linda(en_b, en_a), ra)}
+    r = {'a': ra['nombre'], 'b': rb['nombre'], 'deA': filas(linda(en_a, en_b), rb),
+         'deB': filas(linda(en_b, en_a), ra)}
+    if pasar is not None:
+        r['lote'] = lote_pasar(r, ra, rb, pasar)
+    return r
+
+
+def lote_pasar(r, ra, rb, n):
+    """MAP-17: lote de editar.py que pasa a A `n` celdas de B que lindan con A; primero las que no agrandan su
+    envolvente (en su orden de norte a sur), luego las que sí."""
+    if ra['i'] is None or rb['i'] is None:
+        raise ErrorDeConsulta('--pasar solo vale entre dos regiones (no con «mar»)')
+    if n < 1:
+        raise ErrorDeConsulta('--pasar N necesita N ≥ 1')
+    if n > len(r['deB']):
+        raise ErrorDeConsulta(f"--pasar {n}: solo hay {len(r['deB'])} celdas de {r['b']} que lindan con {r['a']}")
+    elegidas = sorted(r['deB'], key=lambda f: bool(f['agranda']))[:n]
+    return {'celdas': [[f['i'], ra['i'], 0] for f in elegidas]}
 
 
 def costa(mundo, ref, caja=None):
@@ -425,7 +442,9 @@ def _lista(titulo, filas, marca=False):
 
 def texto_frontera(r):
     return '\n'.join([f"Frontera {r['a']} / {r['b']} («agranda» = al pasar a la otra región, esa celda agranda su envolvente)"] + _lista(f"Celdas de {r['a']} que lindan con {r['b']}", r['deA'])
-                     + _lista(f"Celdas de {r['b']} que lindan con {r['a']}", r['deB']))
+                     + _lista(f"Celdas de {r['b']} que lindan con {r['a']}", r['deB'])
+                     + ([f"Lote para pasar a {r['a']} {len(r['lote']['celdas'])} celdas de {r['b']} (primero las que no agrandan); "
+                         'compruébalo con editar.py:', json.dumps(r['lote'])] if 'lote' in r else []))
 
 
 def texto_costa(r):
@@ -477,6 +496,7 @@ def main(argv=None):
     p = sub.add_parser('frontera', parents=[comun, caja], help='celdas que lindan entre dos regiones (o con el mar)')
     p.add_argument('a')
     p.add_argument('b')
+    p.add_argument('--pasar', type=int, metavar='N', help='además, el lote que pasa a A N celdas de B (primero las que no agrandan)')
     p = sub.add_parser('costa', parents=[comun, caja], help='tierra con vecina de mar y mar junto a tierra')
     p.add_argument('ref', metavar='REGION|CONTINENTE')
     p = sub.add_parser('lugares', parents=[comun, caja], help='lugares del mapa')
@@ -521,7 +541,7 @@ def main(argv=None):
         elif args.cmd == 'region':
             res, txt = region(mundo, args.region), texto_region
         elif args.cmd == 'frontera':
-            res, txt = frontera(mundo, args.a, args.b, caj), texto_frontera
+            res, txt = frontera(mundo, args.a, args.b, caj, args.pasar), texto_frontera
         elif args.cmd == 'costa':
             res, txt = costa(mundo, args.ref, caj), texto_costa
         elif args.cmd == 'lugares':

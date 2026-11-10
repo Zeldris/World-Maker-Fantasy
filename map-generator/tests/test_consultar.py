@@ -272,6 +272,34 @@ class TestConsultar(unittest.TestCase):
         self.assertIn('3153 (622.6, 305.4) h 30 agranda N-S', out)
         self.assertTrue(all(c['agranda'] == [] for c in js('frontera', 'Llanuras', 'mar')['deA']))
 
+    def test_frontera_pasar_da_un_lote_que_vale(self):
+        """MAP-17: el local comprobaba celda a celda la lista de frontera hasta agotar los turnos; --pasar da el lote."""
+        f = js('frontera', 'Ciénaga', 'Margen', '--pasar', '7')
+        celdas = f['lote']['celdas']
+        sin_marca = [c['i'] for c in f['deB'] if not c['agranda']]
+        self.assertEqual([c[0] for c in celdas], sin_marca[:7])
+        self.assertTrue(all(c[1:] == [19, 0] for c in celdas))
+        self.assertEqual(len(js('frontera', 'Ciénaga', 'Margen', '--pasar', '15')['lote']['celdas']), 15)
+        _, out, _ = correr('frontera', 'Ciénaga', 'Margen', '--pasar', '7')
+        self.assertIn(json.dumps(f['lote']), out)
+        codigo, _, err = correr('frontera', 'Ciénaga', 'Margen', '--pasar', '30')
+        self.assertEqual(codigo, 1)
+        self.assertIn('solo hay 23 celdas', err)
+        codigo, _, err = correr('frontera', 'Llanuras', 'mar', '--pasar', '2')
+        self.assertEqual(codigo, 1)
+        self.assertIn('no con «mar»', err)
+        with tempfile.TemporaryDirectory() as d:
+            ruta = os.path.join(d, 'helek.json')
+            with open(ruta, 'w', encoding='utf-8') as fh:
+                json.dump(MUNDO, fh)
+            lote = os.path.join(d, 'lote.json')
+            with open(lote, 'w', encoding='utf-8') as fh:
+                json.dump(f['lote'], fh)
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                codigo = editar.main([lote, '--mundo', ruta, '--sin-juego'])
+            self.assertEqual(codigo, 0, out.getvalue())
+            self.assertIn('canon y lore se cumplen', out.getvalue())
+
     def test_fichas(self):
         todas = js('fichas')
         self.assertTrue(todas and all({'slug', 'nombre', 'tipo', 'lugar'} <= set(f) for f in todas))

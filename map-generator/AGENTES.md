@@ -25,6 +25,7 @@ consultar.py resumen                    # regiones, provincias, continentes e i 
 consultar.py region Meseta              # celdas, envolvente en km, capital, vecinas
 consultar.py frontera Ciénaga Margen    # celdas de A que lindan con B y de B que lindan con A (de norte a sur);
                                         # «agranda N-S» = al pasar a la otra región esa celda agranda su envolvente
+consultar.py frontera Ciénaga Margen --pasar 7   # además, el lote que pasa a Ciénaga 7 celdas del Margen
 consultar.py frontera Llanuras mar      # la costa de una región
 consultar.py costa Vaelira              # tierra junto al mar y mar junto a tierra (candidatas a pasar a tierra)
 consultar.py celda 540 190              # la celda de ese punto y sus vecinas  (o: celda --i 1715)
@@ -51,6 +52,8 @@ Un objeto JSON con solo las claves que uses:
   20 El Margen Silencioso, 21 La Meseta del Orden).
 - Un lugar o una ruta **nuevos** llevan el siguiente `i` libre que da `consultar.py resumen`.
 - Una ruta se traza con `camino`: pega sus `puntos` en el lote; no compruebes punto a punto.
+- Para pasar N celdas de una región a otra, `frontera A B --pasar N`: pega su lote. **Las celdas que da `frontera`
+  ya lindan y son tierra: no las compruebes una a una con `celda`.**
 
 ## Qué no se toca
 
@@ -74,8 +77,8 @@ Un objeto JSON con solo las claves que uses:
 ## Ejemplos resueltos
 
 **Frontera** — «pasa a la Ciénaga entre 5 y 10 celdas del Margen que lindan con ella».
-`frontera Ciénaga Margen` → de «Celdas de El Margen Silencioso que lindan con Ciénaga Troncal», toma primero las
-que **no** dicen «agranda» (no mueven la envolvente). Lote con 7 de ellas, canon y lore en verde → guardar:
+`frontera Ciénaga Margen --pasar 7` → da el lote (primero las celdas que no dicen «agranda»: no mueven la
+envolvente). `editar.py -` con él: canon y lore en verde → guardar. Lote:
 `{"celdas": [[2981, 19, 0], [2977, 19, 0], [2976, 19, 0], [2978, 19, 0], [2979, 19, 0], [2980, 19, 0], [3070, 19, 0]]}`.
 
 **Costa** — «pasa a tierra 8-20 celdas de mar de la costa de Vaelira, con x < 205, sin islas».
