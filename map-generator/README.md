@@ -8,6 +8,7 @@ python3 map-generator/medir.py         # MAP-2: medidas del mapa contra canon.js
 python3 map-generator/comprobar.py     # MAP-3: reglas de lore.json sobre el mapa (orden, fronteras, corredor; sale con 1 si alguna falla)
 python3 map-generator/exportar.py      # MAP-4: fronteras para el juego → frontend/src/data/helekRegiones.ts (--comprobar: falla si está desfasado)
 python3 map-generator/enciclopedia.py # MAP-8: los lugares de la enciclopedia (slug, nombre, región, tipo) que se pueden enlazar
+python3 map-generator/consultar.py resumen # MAP-16: consultas de solo lectura (celda, region, frontera, costa, lugares, fichas) para armar lotes de editar.py sin ver el mapa
 bash map-generator/abrir.sh           # MAP-5…MAP-8: visor y editor local en http://127.0.0.1:8765/ (sin red; --puerto N)
 python3 -m unittest discover -s map-generator/tests
 ```
@@ -52,6 +53,7 @@ python3 -m unittest discover -s map-generator/tests
   de MAP-8: `{"lugares": [{"i": 900, "slug": "agujas-iman", "x": 540, "y": 190}], "rutas": [{"i": 451, "grupo":
   "trails", "puntos": [[534, 185], [560, 186]]}], "rios": [{"i": 1, "nombre": "…", "puntos": [[…], […]]}]}` (el
   formato completo, en el docstring de `editar.py`).
+- `consultar.py` (MAP-16): consultas de **solo lectura** para un agente que no ve el mapa y quiere armar lotes de `editar.py`: `resumen` (regiones, provincias, continentes, i libres), `celda X Y`, `region`, `frontera A B` (o `mar`), `costa` (marca lo de Berig), `lugares` (`--cerca X Y --radio KM`) y `fichas --sin-lugar`; `--json`, `--mundo RUTA` y `--caja X0 Y0 X1 Y1`. Detalle en su docstring.
 - `historial.py` (MAP-9): cada guardado (visor o consola) deja en `mundo/historial/` (fuera de git) la versión de antes
   y la de después, con una línea en `registro.jsonl` (fecha, huellas y un resumen). **Deshacer** vuelve a la versión
   de antes del último guardado y, repetido, sigue hacia atrás; reescribe también el GeoJSON y el archivo del juego.
