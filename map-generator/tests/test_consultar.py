@@ -67,6 +67,16 @@ class TestConsultar(unittest.TestCase):
         mar = next(x for x in MUNDO['celdas'] if x['h'] < 20)
         self.assertEqual(js('celda', '--i', str(mar['i']))['tipo'], 'mar')
 
+    def test_nombres_con_espacios_sin_comillas_explican_las_comillas(self):
+        for args in (('frontera', 'Ciénaga', 'Troncal', 'Margen'), ('region', 'Ciénaga', 'Troncal')):
+            with self.subTest(args=args):
+                codigo, out, err = correr(*args)
+                self.assertEqual(codigo, 1)
+                self.assertIn('sobran palabras', err)
+                self.assertIn('entre comillas', err)
+        codigo, out, err = correr('region', 'Ciénaga', 'Troncal', '--json')
+        self.assertIn('entre comillas', json.loads(out)['error'])
+
     def test_celda_errores(self):
         for args, motivo in ((('celda', '--i', '99999'), 'no existe la celda'), (('celda', '900', '10'), 'no está dentro'),
                              (('celda',), 'da la posición'), (('celda', '1', '2', '--i', '3'), 'da la posición')):

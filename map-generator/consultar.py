@@ -362,12 +362,18 @@ def main(argv=None):
     p = sub.add_parser('fichas', parents=[comun], help='fichas de la enciclopedia y si tienen lugar')
     p.add_argument('--region')
     p.add_argument('--sin-lugar', action='store_true')
-    args = ap.parse_args(argv)
+    args, sobran = ap.parse_known_args(argv)
 
     def fallo(motivo):
         print(json.dumps({'error': motivo}, ensure_ascii=False) if args.json else f'error: {motivo}',
               file=sys.stdout if args.json else sys.stderr)
         return 1
+    if sobran:  # MAP-16: el agente local escribía «frontera Ciénaga Troncal Margen» y no entendía el error de argparse
+        if any(x.startswith('-') for x in sobran):
+            ap.error(f"opciones que no conozco: {' '.join(sobran)}")
+        return fallo(f"sobran palabras: {' '.join(sobran)}. Los nombres con espacios van entre comillas "
+                     '("Ciénaga Troncal") o con una sola palabra (Ciénaga): '
+                     f'p. ej. {args.cmd} Ciénaga Margen')
     try:
         mundo = medir.cargar(args.mundo)
     except (OSError, ValueError) as e:
