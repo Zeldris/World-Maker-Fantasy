@@ -6,8 +6,6 @@ import { scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEntry } from './shared.js';
-import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
-import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
@@ -521,14 +519,12 @@ export async function sessionRoutes(app: FastifyInstance) {
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
           await registrarPerdon(tx, created.id);
-          // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
-          // abajo, ver su comentario completo.
-          const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
+          // P270 (usuaria, 2026-11-08): perdonar con Clemente no resta reputación de facción.
           // Aviso de misión pendiente (2026-09-15) — solo lectura, no cierra nada (Clemente sigue
           // sin completar "derrotar a X" por diseño explícito de 2026-08-31). Ver
           // `activeQuestTitlesTargeting`.
           const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
-          return { logEntry: created, factionRepChange, misionesPendientes };
+          return { logEntry: created, factionRepChange: null, misionesPendientes };
         });
         if (!outcomeGrupo) {
           return reply.status(409).send({ error: 'Ya se dejó con vida a este combatiente.' });
@@ -567,16 +563,12 @@ export async function sessionRoutes(app: FastifyInstance) {
         // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
         await registrarPerdon(tx, created.id);
-        // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
-        // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de
-        // restarlo, en el turno final") — Clemente es una de las 3 decisiones finales posibles
-        // desde CONVALECIENTE (junto a Matar/Capturar), cada una con su propio coste asimétrico
-        // (ver FACTION_REP_MERCY_DELTA, reputation.ts) — la más barata, sigues sin matarlo.
-        const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
+        // P270 (usuaria, 2026-11-08): perdonar con Clemente no resta reputación de facción (Matar y
+        // Capturar sí, cada uno en su momento de decisión final).
         // Aviso de misión pendiente (2026-09-15) — ver comentario completo en el camino de grupo,
         // arriba, y en `activeQuestTitlesTargeting`.
         const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
-        return { kind: 'ok' as const, logEntry: created, factionRepChange, misionesPendientes };
+        return { kind: 'ok' as const, logEntry: created, factionRepChange: null, misionesPendientes };
       });
 
       if (outcome.kind === 'ya-resuelto') {
