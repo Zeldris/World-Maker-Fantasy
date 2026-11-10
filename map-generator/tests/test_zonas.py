@@ -329,6 +329,15 @@ class Guardado(unittest.TestCase):
         editar.restaurar(despues, self.mundo, self.juego)
         self.assertIn('Tormenta del oeste', self._leer(self.capas))
 
+    def test_reglas_de_viaje_rotas_dan_error_de_edicion_y_no_escriben_nada(self):
+        antes = self._leer(self.mundo)
+        with mock.patch.object(viaje, 'cargar', side_effect=viaje.ReglasDeViaje('viaje.json no da rodeo para X')):
+            with self.assertRaises(editar.ErrorDeEdicion) as e:
+                editar.guardar(self.v1, self.mundo, ruta_juego=self.juego)
+        self.assertIn('no se pudieron generar las capas del juego: viaje.json no da rodeo', str(e.exception))
+        self.assertEqual(self._leer(self.mundo), antes)
+        self.assertFalse(os.path.exists(self.capas))
+
     def test_sin_juego_no_toca_las_capas(self):
         editar.guardar(self.v1, self.mundo, ruta_juego=None)
         self.assertFalse(os.path.exists(self.capas))

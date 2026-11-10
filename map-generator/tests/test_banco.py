@@ -65,6 +65,22 @@ class Ejecutar(unittest.TestCase):
             self.assertEqual(codigo, 2, opcion)
             self.assertIn('--forzar no se puede usar', salida)
 
+    def test_rechaza_marcar_una_zona_canon(self):
+        lote = json.dumps({'zonas': [{'i': 30, 'tipo': 'peligro', 'nombre': 'X', 'nivel': 1, 'canon': True,
+                                      'celdas': [1]}]})
+        for orden in ('editar.py - --guardar', 'editar.py -'):
+            salida, codigo = agente_local.ejecutar(orden, lote, self.dir)
+            self.assertEqual(codigo, 2, orden)
+            self.assertIn('una zona no se marca canon', salida)
+
+    def test_para_guardar_el_lote_va_por_la_entrada(self):
+        ruta = os.path.join(self.dir, 'x.json')
+        with open(ruta, 'w', encoding='utf-8') as f:
+            f.write('{}')
+        salida, codigo = agente_local.ejecutar(f'editar.py {ruta} --guardar', None, self.dir)
+        self.assertEqual(codigo, 2)
+        self.assertIn('usa "-" como archivo', salida)
+
 
 def _llamada(orden, lote=None):
     arg = {'orden': orden}
@@ -117,6 +133,27 @@ class EncargoLibre(unittest.TestCase):
         self.assertIn('Subidas dos celdas.', informe)
         self.assertIn(f'editar.py {lote} --guardar', informe)
         self.assertFalse(os.path.exists(os.path.join(self.dir, 'comprobacion')))
+
+    def test_lotes_que_dependen_uno_de_otro_se_entregan_en_orden(self):
+        # el primero desbloquea Berig para subir una de sus celdas; el segundo lo vuelve a bloquear. Juntos, `bloqueo`
+        # se encadena y Berig queda bloqueado para las dos alturas: solo se reproducen en orden
+        m = medir.cargar(medir.MUNDO)
+        berig = next(k['i'] for k in m['continentes'] if k['nombre'] == 'Berig')
+        cb = next(c for c in m['celdas'] if c['h'] >= 30 and c['continente'] == berig)
+        l1 = json.dumps({'bloqueo': [], 'alturas': [[cb['i'], cb['h'] + 1]]})
+        l2 = json.dumps({'bloqueo': [berig], 'alturas': [[self.c1['i'], self.c1['h'] + 1]]})
+        reg, lote = self._correr([
+            _llamada('editar.py - --guardar', l1),
+            _llamada('editar.py - --guardar', l2),
+            {'message': {'role': 'assistant', 'content': 'Hecho.'}},
+        ])
+        informe = open(os.path.join(self.dir, 'informe.md'), encoding='utf-8').read()
+        self.assertEqual(len(reg['guardados']), 2, informe)
+        self.assertEqual(lote, os.path.join(self.dir, 'lote-1.json'), informe)
+        self.assertEqual(json.load(open(lote, encoding='utf-8')), json.loads(l1))
+        self.assertEqual(json.load(open(os.path.join(self.dir, 'lote-2.json'), encoding='utf-8')), json.loads(l2))
+        self.assertIn('se guardan uno tras otro', informe)
+        self.assertFalse(os.path.exists(os.path.join(self.dir, 'lote.json')))
 
     def test_sin_guardar_no_hay_lote(self):
         reg, lote = self._correr([{'message': {'role': 'assistant', 'content': 'No se puede: el canon no lo admite.'}}])

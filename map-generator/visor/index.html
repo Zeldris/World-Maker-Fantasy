@@ -881,7 +881,7 @@ function montarZona() {
   $('zona-clan').classList.toggle('oculto', tipo !== 'clan');
   const z = zonaSel();
   $('zona-nombre').value = z ? z.nombre : '';
-  if (niveles) $('zona-nivel').value = z ? z.nivel : (tipo === 'tormenta' ? 1 : 1);
+  if (niveles) $('zona-nivel').value = z ? z.nivel : 1;
   $('zona-clan').value = z?.clan || '';
   $('zona-canon').checked = !!z?.canon;
   $('zona-nota').value = z?.nota || '';
@@ -940,7 +940,7 @@ function pintarZona(centro) {
     if (otra) { avisar(`La celda ${c.i} ya está en «${otra.nombre}»: dentro de un tipo una celda solo va en una zona`); continue; }
     z.celdas.add(c.i); cambio = true;
   }
-  if (cambio) { ed.zcambio = true; ZDIRTY = true; ZCACHE.delete(z.i); $('zona-info').textContent = `${z.celdas.size} celdas`; estadoEdicion(); dibujar(); }
+  if (cambio) { ed.zcambio = true; ZCACHE.delete(z.i); $('zona-info').textContent = `${z.celdas.size} celdas`; estadoEdicion(); dibujar(); }
 }
 
 function cambiosZonas() {
@@ -1002,6 +1002,8 @@ async function comprobarCambios() {
 }
 
 async function guardarCambios() {
+  const vacia = M.zonas.find((z) => z.celdas.size === 0);
+  if (vacia) { avisar(`La zona «${vacia.nombre}» no tiene celdas: píntalas o bórrala antes de guardar`); return; }
   try {
     let [st, inf] = await enviar('guardar');
     if (st === 422) {

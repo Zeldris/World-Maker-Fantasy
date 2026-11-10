@@ -68,6 +68,7 @@ También se usa desde la consola (agentes, sin servidor ni navegador), con lo mi
 si el lote no vale o el canon o el lore fallan.
 """
 import argparse
+import collections
 import copy
 import hashlib
 import json
@@ -491,7 +492,7 @@ def _celdas_zona(valor, n, que, campo):
     for c in valor:
         if not _entero(c) or not 0 <= c < n:
             raise ErrorDeEdicion(f'{que}: {campo} lleva {c!r}, que no es una celda (0-{n - 1})')
-    repetidas = sorted({c for c in valor if valor.count(c) > 1})
+    repetidas = sorted(c for c, k in collections.Counter(valor).items() if k > 1)
     if repetidas:
         raise ErrorDeEdicion(f'{que}: {campo} repite celdas ({repetidas[:5]})')
     return set(valor)
@@ -520,12 +521,10 @@ def _zonas_lote(nuevo, cambios):
     por = {z['i']: dict(z) for z in nuevo.get('zonas', [])}
     celdas = nuevo['celdas']
     n = len(celdas)
-    tocadas = set()
     for e in ops:
         if not isinstance(e, dict) or not _entero(e.get('i')):
             raise ErrorDeEdicion(f'zona sin índice entero: {e!r}')
         i = e['i']
-        tocadas.add(i)
         if e.get('borrar'):
             if set(e) != {'i', 'borrar'} or e['borrar'] is not True:
                 raise ErrorDeEdicion(f'para borrar la zona {i} se manda solo {{"i": {i}, "borrar": true}}')
@@ -783,6 +782,8 @@ def guardar(mundo, ruta_mundo=medir.MUNDO, ruta_geojson=None, ruta_juego=exporta
         texto_capas = exportar.generar_capas(mundo) if ruta_juego else None  # MAP-14: zonas y tiempos de ruta
     except exportar.RegionSinCeldas as e:
         raise ErrorDeEdicion(str(e)) from e
+    except (ValueError, OSError) as e:  # viaje.json que falta, mal escrito o sin el rodeo de un bioma
+        raise ErrorDeEdicion(f'no se pudieron generar las capas del juego: {e}') from e
     _escribir(ruta_mundo, texto)
     _escribir(ruta_geojson, texto_geo)
     if ruta_juego:

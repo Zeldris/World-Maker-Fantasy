@@ -18,6 +18,7 @@ mapa del juego (solo comprueba). Guardarlo es cosa de Claude o de la usuaria: `e
 import argparse
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -53,6 +54,16 @@ HERRAMIENTA = {
 }
 
 
+def _marca_canon(lote):
+    """¿El lote marca alguna zona como canon? (AGENTES.md: eso no lo hace un agente)"""
+    try:
+        datos = json.loads(lote or '{}')
+    except ValueError:
+        return False  # editar.py dará el error de lote mal escrito
+    zonas = datos.get('zonas') if isinstance(datos, dict) else None
+    return isinstance(zonas, list) and any(isinstance(z, dict) and z.get('canon') is True for z in zonas)
+
+
 def ejecutar(orden, lote, copia):
     """Ejecuta una orden permitida sobre la copia; devuelve (texto, código)."""
     try:
@@ -75,6 +86,11 @@ def ejecutar(orden, lote, copia):
                 if prohibido == '--forzar':
                     return '--forzar no se puede usar: si el canon o el lore fallan, no se guarda (dilo)', 2
                 return f'{prohibido} no se puede usar: ya trabajas sobre la copia', 2
+    if script == 'editar.py':
+        if '--guardar' in args and '-' not in args:
+            return 'para guardar, pasa el lote en el argumento "lote" y usa "-" como archivo', 2
+        if _marca_canon(lote):
+            return ('una zona no se marca canon (`"canon": true`): eso lo decide Álvaro; quítalo y guarda sin él', 2)
     mundo = os.path.join(copia, 'helek.json')
     cmd = [sys.executable, os.path.join(MAPA, script)] + args + ['--mundo', mundo]
     if script == 'editar.py':
@@ -182,7 +198,8 @@ def preparar_copia(copia, mundo):
     if os.path.realpath(copia) == os.path.realpath(os.path.dirname(mundo)):
         raise SystemExit('--copia no puede ser la carpeta del mapa del juego')
     os.makedirs(copia, exist_ok=True)
-    for viejo in ('registro.json', 'lote.json', 'informe.md'):
+    for viejo in ['registro.json', 'lote.json', 'informe.md'] + [n for n in os.listdir(copia)
+                                                               if re.fullmatch(r'lote-\d+\.json', n)]:
         if os.path.exists(os.path.join(copia, viejo)):
             os.remove(os.path.join(copia, viejo))
     for sub in ('historial', 'comprobacion'):
@@ -206,6 +223,23 @@ def juntar(lotes):
     return junto
 
 
+def _reproducir(copia, prueba, lotes):
+    """Guarda `lotes`, en orden, sobre una copia de original.json en `prueba`; código 0 si acaba en el mismo mapa
+    que la copia del agente."""
+    shutil.rmtree(prueba, ignore_errors=True)
+    os.makedirs(prueba)
+    destino = os.path.join(prueba, 'helek.json')
+    shutil.copy(os.path.join(copia, 'original.json'), destino)
+    for texto_lote in lotes:
+        codigo, salida = _editar(['-', '--guardar', '--sin-juego', '--mundo', destino], texto_lote)
+        if codigo != 0:
+            return codigo, salida
+    with open(destino, 'rb') as a, open(os.path.join(copia, 'helek.json'), 'rb') as b:
+        if a.read() != b.read():
+            return 1, 'el resultado no es el mapa de la copia'
+    return 0, salida
+
+
 def _editar(args, lote=None):
     r = subprocess.run([sys.executable, os.path.join(MAPA, 'editar.py')] + args, input=lote, capture_output=True,
                        text=True, timeout=300, cwd=RAIZ)
@@ -213,7 +247,8 @@ def _editar(args, lote=None):
 
 
 def entregar(copia, registro, texto, mundo):
-    """Deja en la copia `lote.json` (si guardó algo y cuadra) e `informe.md`. Devuelve la ruta del lote o None."""
+    """Deja en la copia `lote.json` (si guardó algo y cuadra; si juntos no se reproducen pero en orden sí,
+    `lote-1.json`…) e `informe.md`. Devuelve la ruta del lote (o del primero) o None."""
     lineas = [f'# Encargo al agente local ({registro["modelo"]})', '', f'> {texto}', '',
               f'{len(registro["turnos"])} turnos, {registro["segundos"]} s.', '', '## Su respuesta', '',
               registro.get('final') or f'(sin respuesta final: {registro.get("error") or "agotó los turnos"})', '']
@@ -223,16 +258,32 @@ def entregar(copia, registro, texto, mundo):
     else:
         junto = json.dumps(juntar(registro['guardados']), ensure_ascii=False)
         prueba = os.path.join(copia, 'comprobacion')
-        shutil.rmtree(prueba, ignore_errors=True)
-        os.makedirs(prueba)
-        shutil.copy(os.path.join(copia, 'original.json'), os.path.join(prueba, 'helek.json'))
-        codigo, salida = _editar(['-', '--guardar', '--sin-juego', '--mundo', os.path.join(prueba, 'helek.json')],
-                                 junto)
-        with open(os.path.join(prueba, 'helek.json'), 'rb') as a, open(os.path.join(copia, 'helek.json'), 'rb') as b:
-            cuadra = codigo == 0 and a.read() == b.read()
-        if not cuadra:
-            lineas += ['## Lote', '', f'Guardó {len(registro["guardados"])} lotes en la copia, pero juntos no dan el '
-                       'mismo mapa: **no hay lote fiable**. Los lotes están en `registro.json` (`guardados`).', '',
+        codigo, salida = _reproducir(copia, prueba, [junto])
+        en_orden = None
+        if codigo != 0:
+            # aplicar junta las secciones en un orden fijo: ediciones que dependen unas de otras (pintar una celda y
+            # luego hundirla) solo se reproducen guardando los lotes en el orden en que los guardó
+            codigo2, salida2 = _reproducir(copia, prueba, registro['guardados'])
+            if codigo2 == 0:
+                en_orden = registro['guardados']
+            else:
+                salida = salida2
+        if en_orden:
+            rutas = []
+            for k, texto_lote in enumerate(en_orden, 1):
+                rutas.append(os.path.join(copia, f'lote-{k}.json'))
+                with open(rutas[-1], 'w', encoding='utf-8') as f:
+                    f.write(json.dumps(json.loads(texto_lote), ensure_ascii=False, indent=1) + '\n')
+            shutil.rmtree(prueba)
+            ruta_lote = rutas[0]
+            codigo, salida = _editar([ruta_lote, '--mundo', mundo])
+            lineas += ['## Lotes', '', f'{len(rutas)} lotes que juntos no se reproducen (dependen unos de otros): se '
+                       'guardan uno tras otro, en este orden.', '', '## Informe del primero sobre el mapa del juego '
+                       '(solo comprueba)', '', '```', salida[:6000], '```', '', 'Para guardarlos, tras revisarlos:', '']
+            lineas += [f'    python3 map-generator/editar.py {r} --guardar' for r in rutas]
+        elif codigo != 0:
+            lineas += ['## Lote', '', f'Guardó {len(registro["guardados"])} lotes en la copia, pero ni juntos ni en '
+                       'orden dan el mismo mapa: **no hay lote fiable**. Los lotes están en `registro.json` (`guardados`).', '',
                        '```', salida[:3000], '```']
         else:
             ruta_lote = os.path.join(copia, 'lote.json')
