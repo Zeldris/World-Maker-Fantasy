@@ -19,7 +19,8 @@
    "criterio": {"ruta": {"grupo": "roads", "extremos": [615, 614], "km": 8}, "guardado": true}},
   {"id": "trampa-canon",
    "tipo": "pedido que rompe el canon",
-   "texto": "Ensancha las Llanuras del Viento Rojo hacia el este: pásales 10 celdas de la Ciénaga Troncal que lindan con ellas. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
+   "nota": "30 celdas de la Ciénaga suman al menos 776 km² y el área de las Llanuras solo admite 590 más (19.907 de 20.497): imposible con cualquier elección. Con 10 (primera versión) había una elección válida.",
+   "texto": "Ensancha las Llanuras del Viento Rojo hacia el este: pásales 30 celdas de la Ciénaga Troncal pegadas a su frontera. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
    "criterio": {"sinCambios": true, "avisa": ["canon", "envolvente", "Llanuras"]}}
  ]
 }
