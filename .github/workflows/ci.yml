@@ -55,7 +55,7 @@ jobs:
           for f in $(git ls-files '*.sh' .githooks); do bash -n "$f" || exit 1; done
           for f in $(git ls-files 'tools/**/*.mjs' | grep -v /historico/); do node --check "$f" || exit 1; done
           for f in tools/playwright-e2e/mcp/*.js; do node -e "new Function('return (' + require('fs').readFileSync('$f', 'utf8') + ')')" || { echo "$f"; exit 1; }; done
-          python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py')
+          python3 -m py_compile $(git ls-files 'tools/**/*.py' '.claude/skills/**/*.py' '.claude/gw/scripts/*.py' 'map-generator/**/*.py')
       # QA-219: Playwright y Chromium para el test de navegador de pulsar.js/mover.js (sin ellos se salta).
       - run: cd tools/playwright-e2e && npm ci && npx playwright install --with-deps chromium
       # QA-74: tests de las herramientas de tools/qa y de la parte del gancho de push que mira las ramas.
@@ -68,6 +68,8 @@ jobs:
       - run: python3 -m unittest discover -s .claude/skills/gw-opt-tokens/scripts
       # QA-235: tests del comprobador de docs/media/ de la skill gw-media-content.
       - run: python3 -m unittest discover -s .claude/skills/gw-media-content/scripts
+      # MAP-1, MAP-2: importador del .map y test de las medidas del canon (map-generator/).
+      - run: python3 -m unittest discover -s map-generator/tests
       # QA-84: el resumen de la cabecera de cada registro de hallazgos de hito coincide con su tabla.
       - run: for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done
 

@@ -1,0 +1,13 @@
+agente                 encargo        nota      s turnos   tokens  fallos
+claude-haiku (subagente) costa          ✅      39.3      7    57585  
+claude-haiku (subagente) frontera       ✅      49.8      9    49514  
+claude-haiku (subagente) lugar          ✅      26.4      8    48956  
+claude-haiku (subagente) ruta           ✅      31.9      8    47823  
+claude-haiku (subagente) trampa-canon   ✅      30.0      7    47414  
+qwen35-9b-32k          costa          ✅     441.2     17   179099  
+qwen35-9b-32k          frontera       ❌     262.5     11    48916  pasan 2 celdas de 20 a 19; se pedían 5-10
+qwen35-9b-32k          lugar          ✅      88.6      6    16775  
+qwen35-9b-32k          ruta           ❌     224.3     20    94363  no guardó nada
+qwen35-9b-32k          trampa-canon   ✅     285.5     11    56781  
+claude-haiku (subagente): 5/5 aciertos, 35 s de media
+qwen35-9b-32k: 3/5 aciertos, 260 s de media

@@ -53,3 +53,6 @@ backend/ia/registro-*.jsonl
 .githooks/.pre-commit-base
 # galivelop-workflow: private, never committed
 .claude/gw.local.json
+
+# MAP-9: historial local de guardados del editor del mapa (git guarda lo permanente)
+map-generator/mundo/historial/
