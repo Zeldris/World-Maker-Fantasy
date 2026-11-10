@@ -96,6 +96,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    cuadra o es visual. Lo que vale la pena repetir se escribe como recorrido en
    `tools/playwright-e2e/recorridos/` (`QA-103`, su cabecera en `recorrer.mjs`) y se pasa con
    `bash tools/qa/recorrer.sh [filtro]`: una línea por recorrido.
+   Para leer un hallazgo, `python3 tools/qa/marca-hallazgo.py --ver P<n>…` (`QA-303`), no el registro ni el plan enteros.
 4. **Apuntar**: hallazgos con `marca-hallazgo.py` (abajo) y, en la matriz, cada tarea jugada como `jugado` con la
    fecha y el hallazgo o recorrido que lo prueba.
 5. **Cerrar**: arreglos, sus recorridos en verde y el bloque en `jugado` en la matriz. Entonces, el siguiente.
