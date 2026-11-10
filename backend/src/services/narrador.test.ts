@@ -1905,9 +1905,24 @@ describe('deterministicFallbackNarration', () => {
   it('en un intercambio de combate no contradice el resultado del intercambio con la tirada suelta (G7)', () => {
     const rollFallido = { attribute: 'fuerza' as const, value: 11, roll: 2, result: 7, difficulty: 15, success: false, gradoExito: 'fallo' as const };
     const conecta = deterministicFallbackNarration({ action: 'Lanzo un tajo.', roll: rollFallido, combatRealHitLanded: true });
-    expect(conecta.narration).toBe('Lanzo un tajo. El intercambio se salda con un golpe que conecta.');
+    expect(conecta.narration).toContain('El intercambio se salda con un golpe que conecta.');
     const nadie = deterministicFallbackNarration({ action: 'Lanzo un tajo.', roll: rollFallido, combatBothMissed: true });
-    expect(nadie.narration).toBe('Lanzo un tajo. Ningún golpe llega a conectar.');
+    expect(nadie.narration).toContain('Ningún golpe llega a conectar.');
+  });
+
+  it('P435: el respaldo de un intercambio de combate no copia la acción de la jugadora y dice el resultado', () => {
+    const accion = 'Ataco con un golpe directo al orco.';
+    const conecta = deterministicFallbackNarration({ action: accion, combatRealHitLanded: true });
+    const nadie = deterministicFallbackNarration({ action: accion, combatBothMissed: true });
+    for (const r of [conecta, nadie]) {
+      expect(r.narration).not.toContain('Ataco');
+      expect(r.narration).toMatch(/narrador no ha respondido/);
+      expect(r.fallbackDeterminista).toBe(true);
+    }
+    expect(conecta.narration).toMatch(/golpe que conecta/);
+    expect(nadie.narration).toMatch(/Ningún golpe llega a conectar/);
+    // fuera de combate no cambia (P94)
+    expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration).toContain('Miro el paisaje');
   });
 
   it('sin tirada, narra igualmente sin romper', () => {

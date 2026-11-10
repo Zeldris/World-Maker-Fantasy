@@ -1731,6 +1731,7 @@ export function deterministicFallbackNarration(ctx: {
   // En un intercambio de combate manda el intercambio, no `roll` (Fase G del 0.1, hallazgo G7):
   // «Gana Gorhorn · el golpe conecta» salía junto a «La acción no sale como se esperaba». Sin saber
   // aquí qué lado conectó, se dice solo lo que es seguro y la tarjeta de la tirada cuenta el resto.
+  const enIntercambio = Boolean(ctx.combatBothMissed || ctx.combatRealHitLanded);
   const resultado = ctx.combatBothMissed
     ? 'Ningún golpe llega a conectar.'
     : ctx.combatRealHitLanded
@@ -1742,7 +1743,12 @@ export function deterministicFallbackNarration(ctx: {
           : 'La acción no sale como se esperaba.';
   return {
     // P94 (QA-27): la acción se repite tal cual; sin las comillas con que el juego cita al rival.
-    narration: `${sinComillasSueltas(action)} ${resultado}`,
+    // P435 (decisión de la usuaria, 2026-11-10): en un intercambio de combate NO se copia (en primera
+    // persona de la jugadora salía bajo el ataque del rival; ya está en «TU ACCIÓN»): solo el resultado
+    // y el aviso, como en el diálogo (P245). Fuera de combate sigue como antes.
+    narration: enIntercambio
+      ? `${resultado} (El narrador no ha respondido a esta escena.)`
+      : `${sinComillasSueltas(action)} ${resultado}`,
     fallbackDeterminista: true,
     newFacts: [],
     newItem: null,
