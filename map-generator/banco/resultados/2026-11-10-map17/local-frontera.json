@@ -1,0 +1,64 @@
+{
+ "encargo": "frontera",
+ "modelo": "qwen35-9b-32k",
+ "turnos": [
+  {
+   "segundos": 4.9,
+   "texto": "",
+   "ordenes": [
+    {
+     "orden": "consultar.py frontera Ciénaga Troncal El Margen Silencioso --pasar 7",
+     "lote": "",
+     "codigo": 1,
+     "salida": "[salida 1]\nerror: sobran palabras: El Margen Silencioso. Los nombres con espacios van entre comillas (\"Ciénaga Troncal\") o con una sola palabra (Ciénaga): p. ej. frontera Ciénaga Margen"
+    }
+   ]
+  },
+  {
+   "segundos": 6.8,
+   "texto": "",
+   "ordenes": [
+    {
+     "orden": "consultar.py frontera \"Ciénaga Troncal\" \"El Margen Silencioso\" --pasar 7",
+     "lote": "",
+     "codigo": 0,
+     "salida": "[salida 0]\nFrontera Ciénaga Troncal / El Margen Silencioso («agranda» = al pasar a la otra región, esa celda agranda su envolvente)\nCeldas de Ciénaga Troncal que lindan con El Margen Silencioso (22):\n   2902 (593.5, 285) h 30 agranda N-S\n   2899 (572.6, 287.1) h 30 agranda N-S\n   2903 (599, 287.9) h 30 agranda N-S\n   2898 (567.6, 288.2) h 30 agranda N-S\n   2901 (583.2, 288.3) h 30 agranda N-S\n   2900 (577.6, 288.6) h 30 agranda N-S\n   2983 (614.9, 292.4) h 30 agranda N-S\n   2982 (604.1, 292.6) h 30 agranda N-S\n   2986 (635.2, 294.2) h 30 agranda N-S\n   2987 (639.4, 294.3) h 30 agranda N-S\n   2"
+    }
+   ]
+  },
+  {
+   "segundos": 39.0,
+   "texto": "El lote propuesto para pasar 7 celdas a la Ciénaga Troncal es:\n`{\"celdas\": [[2981, 19, 0], [2977, 19, 0], [2976, 19, 0], [2978, 19, 0], [2979, 19, 0], [2980, 19, 0], [3070, 19, 0]]}`.\n\nLo compruebo sin guardar:",
+   "ordenes": [
+    {
+     "orden": "editar.py -",
+     "lote": "{\"celdas\": [[2981, 19, 0], [2977, 19, 0], [2976, 19, 0], [2978, 19, 0], [2979, 19, 0], [2980, 19, 0], [3070, 19, 0]]}",
+     "codigo": 0,
+     "salida": "[salida 0]\nRelieve: 0 celda(s) con otra altura, 0 pasan a tierra, 0 pasan a mar.\nMedidas que cambian:\n  region Ciénaga Troncal: 21.178 km² (162 × 180 km) → 21.520 km² (162 × 180 km)\n  region El Margen Silencioso: 8.058 km² (217 × 104 km) → 7.716 km² (217 × 101 km)\nLore: 13 de 13 reglas se cumplen\nCanon: todo dentro\nResultado: canon y lore se cumplen"
+    }
+   ]
+  },
+  {
+   "segundos": 19.4,
+   "texto": "El lote se comprueba en verde: canon y lore cumplen. Lo guardo:",
+   "ordenes": [
+    {
+     "orden": "editar.py - --guardar",
+     "lote": "{\"celdas\": [[2981, 19, 0], [2977, 19, 0], [2976, 19, 0], [2978, 19, 0], [2979, 19, 0], [2980, 19, 0], [3070, 19, 0]]}",
+     "codigo": 0,
+     "salida": "[salida 0]\nRelieve: 0 celda(s) con otra altura, 0 pasan a tierra, 0 pasan a mar.\nMedidas que cambian:\n  region Ciénaga Troncal: 21.178 km² (162 × 180 km) → 21.520 km² (162 × 180 km)\n  region El Margen Silencioso: 8.058 km² (217 × 104 km) → 7.716 km² (217 × 101 km)\nLore: 13 de 13 reglas se cumplen\nCanon: todo dentro\nResultado: canon y lore se cumplen\nGuardado (huella 4b4ca0e424646d2e04002691c7965529009841e276da6f1b063fc05e6514bcc5)."
+    }
+   ]
+  },
+  {
+   "segundos": 15.3,
+   "texto": "He movido la frontera entre Ciénaga Troncal y El Margen Silencioso hacia el sur, pasando 7 celdas del Margen a la Ciénaga. El lote se comprobó en verde (canon y lore cumplen) y se guardó. La Ciénaga Troncal creció de 21.178 a 21.520 km² y El Margen Silencioso se redujo de 8.058 a 7.716 km².",
+   "ordenes": []
+  }
+ ],
+ "tokens_entrada": 20942,
+ "tokens_salida": 629,
+ "segundos": 86.8,
+ "final": "He movido la frontera entre Ciénaga Troncal y El Margen Silencioso hacia el sur, pasando 7 celdas del Margen a la Ciénaga. El lote se comprobó en verde (canon y lore cumplen) y se guardó. La Ciénaga Troncal creció de 21.178 a 21.520 km² y El Margen Silencioso se redujo de 8.058 a 7.716 km².",
+ "agotado": false
+}
