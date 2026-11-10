@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { advanceCorpseAndRecoveryTimeouts } from '../companionSupervivencia.js';
 import { registrarSuceso } from './sucesos.js';
-import { darNoticiaDeSuceso } from './difusion.js';
+import { darNoticiaDeSuceso, difundir } from './difusion.js';
 
 // CR-1 (hito 0.2, roadmap-cronista.md § 5.1): el esquema del Libro de Sucesos contra Postgres real —
 // un suceso con sus actores, una cadena causa → efecto, y todo se va con la partida.
@@ -207,6 +207,37 @@ describe('registrarSuceso (CR-2)', () => {
     await darNoticiaDeSuceso(prisma, saveId, repetido, { texto: 'otra frase', facciones: ['Q'], region: null, meta: null });
     const { noticia } = await prisma.suceso.findUniqueOrThrow({ where: { id: primero }, select: { noticia: true } });
     expect(noticia).toMatchObject({ texto: 'P y Q sellan una alianza.', meta: { categoria: 'REINO' } });
+  });
+
+  // P248/P342 (usuaria, 2026-11-08): lo del Reino propio se ve siempre en Leyendas, sin difusión ni importancia mínima.
+  it('lo que le pasa al Reino propio (pago de un vasallo; hambruna y rebelión por la difusión) tiene Conocimiento; lo de otras facciones, no', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    await prisma.worldState.upsert({ where: { saveId }, create: { saveId, fictionalMinutes: 90 * 1440 }, update: { fictionalMinutes: 90 * 1440 } });
+    const reino = await prisma.faction.create({ data: { worldId: world.id, saveId, slug: 'reino-propio-p248', name: 'Reino P248', raza: 'humano', description: 'x' } });
+    await prisma.faction.create({ data: { worldId: world.id, saveId, slug: 'clan-ajeno-p248', name: 'Clan Ajeno', raza: 'orco', description: 'x', origenSlug: 'clan-serhu' } });
+    const reg = (tipo: 'HAMBRUNA' | 'REBELION', slug: string) =>
+      registrarSuceso(prisma, { saveId, tipo, fictionalMinutes: 90 * 1440, origen: 'MUNDO', actores: [{ entidadTipo: 'FACCION', entidadId: slug, papel: 'AFECTADO' }], datos: { reino: slug } });
+    const patrulla = await registrarSuceso(prisma, {
+      saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: 90 * 1440, origen: 'MUNDO',
+      actores: [{ entidadTipo: 'FACCION', entidadId: 'clan-ajeno-p248', papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: reino.slug, papel: 'AFECTADO' }],
+      datos: { vasalloSlug: 'clan-ajeno-p248', vasallo: 'Clan Ajeno', senor: 'Reino P248', estado: 'pagada-con-deuda', porcentaje: 100, pendiente: 40 },
+    });
+    const ajena = await registrarSuceso(prisma, {
+      saveId, tipo: 'PATRULLA_VASALLO', fictionalMinutes: 90 * 1440, origen: 'MUNDO',
+      actores: [{ entidadTipo: 'FACCION', entidadId: 'clan-ajeno-p248', papel: 'AFECTADO' }, { entidadTipo: 'FACCION', entidadId: 'otro-clan', papel: 'AFECTADO' }],
+      datos: { vasalloSlug: 'clan-ajeno-p248', vasallo: 'Clan Ajeno', senor: 'Otro', estado: 'al-corriente', patrulla: true },
+    });
+    const c = await prisma.conocimiento.findUniqueOrThrow({ where: { saveId_sucesoId: { saveId, sucesoId: patrulla } } });
+    expect(c.confirmado).toBe(true);
+    expect(c.logEntryId).toBeNull(); // solo Leyendas: nada en «El mundo»
+    expect(await prisma.conocimiento.count({ where: { saveId, sucesoId: ajena } })).toBe(0);
+    // Lo grave del Reino (hambruna, rebelión) le llega por la difusión, al momento y como hecho (P316).
+    const hambre = await reg('HAMBRUNA', reino.slug);
+    const rebelion = await reg('REBELION', reino.slug);
+    await difundir(prisma, saveId, { ventanaDias: 30 });
+    for (const id of [hambre, rebelion]) {
+      expect(await prisma.conocimiento.findUnique({ where: { saveId_sucesoId: { saveId, sucesoId: id } } })).toMatchObject({ confirmado: true });
+    }
   });
 });
 
