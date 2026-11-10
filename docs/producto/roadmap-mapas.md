@@ -132,7 +132,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   la guía `map-generator/AGENTES.md` y el banco `map-generator/banco/` (5 encargos: frontera, costa, lugar, ruta y uno
   trampa que rompe el canon; `banco.py` prepara la copia y corrige, validado con soluciones de referencia;
   `agente_local.py` corre Ollama con solo esas dos órdenes). De paso: un lugar que no es capital toma la región de su
-  celda (`editar.py`). **Falta:** correr el banco con el modelo local y con Claude y que la usuaria decida.
+  celda (`editar.py`). Banco corrido (2026-11-10): Haiku 5/5, 35 s de media; local (`qwen35-9b-32k` en la iGPU, sin razonar, 20 turnos) 3/5, 260 s de media: lugar, costa y trampa bien; la ruta agota los turnos preguntando celda a celda y la frontera guarda 2 celdas en vez de 5-10 sin avisar. Con razonamiento, turnos de ~400 s. `consultar.py` explica las comillas cuando sobran palabras (fallo del local). **Falta:** que la usuaria decida si el agente local entra.
 
 ## Fase M-C · Generar donde aporta
 
