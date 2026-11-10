@@ -8,6 +8,15 @@ Rama `claude/wonderful-volta-662qt8`, 2026-11-10. Diez y ocho tandas de juego, t
 
 Decisión de la usuaria: sin decidir todavía.
 
+## Leves de la revisión, sin arreglar
+
+- `depositarTodoEnAlmacen` (`almacenDeposito.ts`): una transacción por objeto, no atómico, 404 callados.
+- `depositarEnAlmacen`: en una carrera responde «Almacén lleno» en vez de 404 (el hueco se mira antes del borrado).
+- `tiradaDeHuida.ts` reimplementa `rollCheck` para el malus; `value` es la Destreza en bruto.
+- `descartarDeMochila` (`prepararMochila.ts`) duplica la capacidad de `dejarMochilaLibre`.
+- `materialesEnAlmacen` (`facturaEquipo.ts`) carga el catálogo RECURSO entero por edificio.
+- C1 6: el aviso del Granero lleno, sin ver en pantalla.
+
 ## Qué fue bien
 
 - Cada lote tuvo su revisión y los arreglos de la revisión, y cada P se comprobó jugando antes de tacharlo.
