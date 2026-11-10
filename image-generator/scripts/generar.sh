@@ -24,6 +24,12 @@
 # Protecciones (2026-10-24, tras el bloqueo por memoria): memoria libre al empezar, Ollama vacío, vigilante de
 # MemAvailable, aborto si el driver dice 0 MB libres, timeout. Pesos leídos del disco con 2 GB de GPU: no subirlo.
 set -u
+# IMG-57: la Deck se suspendía por inactividad a mitad de una imagen larga (2026-11-10, a las ~02:30) y al despertar
+# sd-cli moría con «ErrorDeviceLost». Todo el script corre bajo systemd-inhibit (sin suspensión ni reposo por
+# inactividad); INHIBIR=0 lo quita, y donde no hay systemd-inhibit (el sandbox de VS Code) sigue igual que antes.
+if [ "${INHIBIR:-1}" != 0 ] && [ -z "${GENERAR_INHIBIDO:-}" ] && command -v systemd-inhibit >/dev/null 2>&1; then
+  GENERAR_INHIBIDO=1 exec systemd-inhibit --what=sleep:idle --who=generar.sh --why="generando una imagen" --mode=block bash "$0" "$@"
+fi
 G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
 D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")

@@ -706,3 +706,28 @@ Qwen-Image 2.1 Q4_K en `bin-nuevo/sd-cli`, texto en CPU (`--backend te=cpu`), cf
   quita la trama pero pule; 133 s.
 - **Pegatinas:** se añade a los prompts r36 restantes una frase de integración (pies que se hunden y levantan polvo,
   sombra larga del mismo sol, la misma bruma alrededor, rebote de color del suelo, los lejanos se funden).
+
+### IMG-57 · velocidad de Qwen-Image 2.1 (2026-11-10)
+
+Cribado a 960x384, 40 pasos, cuernahoja r36, semilla 5. SSIM contra la base de 40 pasos (1 = idéntica). La GPU ya va
+al máximo (1600 MHz, ~15 W): el ahorro sale de calcular menos pasos del modelo.
+
+| Variante | Tiempo | SSIM | Lectura |
+|---|---|---|---|
+| base, 40 pasos | 1525 s | — | referencia |
+| 30 pasos | 1149 s | 0.85 | |
+| 20 pasos | 794 s | 0.77 | más blanda |
+| CFG mixto (`guidance_schedule=6x20+1x20`) | 1179 s | 0.76 | cambia la composición |
+| **easycache 0.2** (`--cache-mode easycache`) | **663 s** | **0.955** | se salta 24/40; **la elegida** |
+| easycache 0.3 | 619 s | 0.944 | 25/40 |
+| easycache 0.4 | 583 s | 0.923 | 26/40 |
+| spectrum | 654 s | 0.898 | |
+| cache-dit (por defecto) | 888 s | 0.962 | 18/40 |
+| cache-dit 0.15, warmup 6 | 652 s | 0.924 | |
+| easycache + CFG mixto | 516 s | 0.770 | cambia la composición |
+
+- Las de easycache y cache-dit, vistas en hoja, son la misma imagen que la base: mismo animal, manada y fondo.
+- `guidance_schedule` separa los tramos con `+` (con `,` o `;` solo lee el primero).
+- **Pendiente:** la confirmación a 1920x768 no se terminó (la Deck se suspendió a las 02:30 y sd-cli murió con
+  `ErrorDeviceLost`); la hace la primera Final del usuario. Estimado ~1 h frente a 2 h 15 min.
+

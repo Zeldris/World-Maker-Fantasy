@@ -65,7 +65,7 @@ class Base(unittest.TestCase):
         escribir(self.prompt, 'un prompt de prueba\n')
         self.env = {k: v for k, v in os.environ.items() if k not in ('PERFIL', 'MOMENTO', 'BOCETO', 'GRADAR', 'REGION')}
         self.env.update(SDCLI=self.sd, GRADAR_SH=self.gr, ARGS_SD=self.args_sd, ARGS_GRADAR=self.args_gradar,
-                        PNG_BASE=self.png, MIN_INICIO_MB='0', LORAS=os.path.join(self.d, 'sin-loras'))
+                        PNG_BASE=self.png, MIN_INICIO_MB='0', LORAS=os.path.join(self.d, 'sin-loras'), INHIBIR='0')
 
     def correr(self, cmd, **env):
         return subprocess.run(cmd, capture_output=True, text=True, env={**self.env, **env}, cwd=self.d)
@@ -82,6 +82,17 @@ class Base(unittest.TestCase):
 
 
 class GenerarPerfil(Base):
+    def test_corre_bajo_systemd_inhibit_para_que_la_deck_no_se_suspenda(self):  # IMG-57
+        bin_ = os.path.join(self.d, 'bin-falso'); os.makedirs(bin_)
+        registro = os.path.join(self.d, 'inhibit.txt')
+        f = os.path.join(bin_, 'systemd-inhibit')
+        escribir(f, '#!/bin/bash\nprintf "%s\\n" "$@" > ' + registro + '\nwhile [[ $1 == --* ]]; do shift; done\nexec "$@"\n')
+        os.chmod(f, 0o755)
+        r = self.generar(INHIBIR='1', PATH=bin_ + os.pathsep + self.env['PATH'])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('--what=sleep:idle', leer(registro).split('\n'))
+        self.assertTrue(os.path.exists(self.args_sd), 'sd-cli no llegó a lanzarse bajo systemd-inhibit')
+
     def test_sin_perfil_son_los_args_de_siempre(self):
         r = self.generar()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -217,6 +228,7 @@ class MotorDeGenerar(Base):
         self.assertEqual((self.valor('--cfg-scale'), self.valor('--sampling-method'), self.valor('--backend')), ('6.0', 'euler', 'te=cpu'))
         self.assertEqual(self.valor('--flash-attn'), 'diffusion=on')
         self.assertEqual(self.valor('--model-args'), 'qwen_image_2_1_prefix_cache_type=q4_0')
+        self.assertEqual(self.valor('--cache-mode'), 'easycache')  # IMG-57
         self.assertIn('--vae-tiling', a)
         for ausente in ('--params-backend', '--max-vram', '--offload-to-cpu'):
             self.assertNotIn(ausente, a)

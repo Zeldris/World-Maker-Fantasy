@@ -941,7 +941,7 @@ class TestFasePasos(BaseFase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         a = self.llamada()
         self.assertEqual(a[3:7], ['512', '288', '3', '40'])
-        self.assertIn('MOTOR=qwen21', a); self.assertIn('TOPE=5400', a)
+        self.assertIn('MOTOR=qwen21', a); self.assertIn('TOPE=7200', a)
 
     def test_qwen21_ignora_entrada_y_referencias_y_el_prompt_va_tal_cual(self):  # IMG-56
         self._qwen21()
@@ -957,7 +957,7 @@ class TestFasePasos(BaseFase):
         i = C.leer(self.d)['variantes']['macho']['fases']['P2']['intentos'][0]
         self.assertEqual((i['motor'], i['desde'], i.get('referencias')), ('qwen21', 'P1', None))
 
-    def test_qwen21_en_la_final_usa_1024x576_sin_boceto_ni_referencia_del_juego(self):  # IMG-56
+    def test_qwen21_en_la_final_usa_1920x768_sin_boceto_ni_referencia_del_juego(self):  # IMG-56
         self._qwen21()
         self.paso1()
         self.assertEqual(self.fase('P2').returncode, 0)
@@ -967,10 +967,10 @@ class TestFasePasos(BaseFase):
         r = self.fase('F4', extra=['--motor', 'qwen21', '--referencia', juego])
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         a = self.llamada()
-        self.assertEqual(a[3:7], ['1024', '576', '3', '40'])
+        self.assertEqual(a[3:7], ['1920', '768', '3', '40'])
         self.assertNotIn('-r', a)
         self.assertTrue(next(l for l in a if l.startswith('PROMPT=')) == 'PROMPT=un mono rojo')
-        self.assertIn('TOPE=5400', a)
+        self.assertIn('TOPE=7200', a)
 
     def test_la_tabla_de_motores_exporta_base_y_umbral_solo_donde_los_define(self):  # IMG-56
         import io, contextlib, motores

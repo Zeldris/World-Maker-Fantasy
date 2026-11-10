@@ -211,6 +211,10 @@ GPT quedan como canon fijo para medir la deriva.
   sale de calcular menos. Cribado a 960x384 contra la base de 40 pasos (pasos, CFG mixto con `guidance_schedule`,
   `--cache-mode` easycache/spectrum/cache-dit), combinación de lo que no pierda y confirmación a 1920x768 con la
   cuernahoja r36 (9/10); la receta ganadora pasa al motor `qwen21`. Resultados en `banco/resultados.md`. **S**
+  🚧 2026-11-10: gana **easycache (umbral 0.2)**, 2,3 veces más rápido y casi igual (SSIM 0.955); ya está en `qwen21`
+  con la Final a 1920x768, y `generar.sh` corre bajo `systemd-inhibit` (la Deck se suspendió de noche y la GPU murió
+  con `ErrorDeviceLost`). **Falta:** confirmarlo a 1920x768 con la primera Final del usuario (~1 h estimada, sin medir)
+  y su nota frente a la 9/10.
 
 ### Bloque F · Producción
 

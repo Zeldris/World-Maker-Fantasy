@@ -45,12 +45,13 @@ MOTORES = {
     # pesos de difusión (4 GB) y VAE en Vulkan, texto (Qwen3-VL 8B, 4,3 GB) en CPU; sin --offload-to-cpu, --params-backend disk ni
     # --max-vram. 61 s/it a 1024x576 (~2540 s con 40 pasos). Pasos y Final en 16:9. `estimacion` es una sola marca: el paso (a 512x288) es estimado; la Final (2540 s) está medida.
     'qwen21': {'nombre': 'Qwen-Image 2.1 (Q4, texto a imagen)', 'modelo': 'qwen_image_2.1-Q4_K.gguf', 'llm': 'Qwen3VL-8B-Instruct-Q4_K_M.gguf',
-               'vae': 'qwen_image_2.1_vae_bf16.safetensors', 'cfg': '6.0', 'pasos': 40, 'tope': 5400, 'bin': 'bin-nuevo',
+               'vae': 'qwen_image_2.1_vae_bf16.safetensors', 'cfg': '6.0', 'pasos': 40, 'tope': 7200, 'bin': 'bin-nuevo',
                'base': ['--flash-attn', 'diffusion=on', '--vae-tiling', '--backend', 'te=cpu'],
-               'extra': ['--model-args', 'qwen_image_2_1_prefix_cache_type=q4_0'],
+               # IMG-57: easycache (umbral 0.2) se salta ~24 de 40 pasos: 2,3 veces más rápido y casi igual (SSIM 0.955)
+               'extra': ['--model-args', 'qwen_image_2_1_prefix_cache_type=q4_0', '--cache-mode', 'easycache'],
                'sampler': 'euler', 'lora': None, 'perfil': None, 'sin_refs': True, 'vigila_mb': 1200,
-               'tam_paso': (512, 288), 'tam_final': (1024, 576),
-               'segundos': {'paso': 700, 'final': 2540}, 'estimacion': True},
+               'tam_paso': (512, 288), 'tam_final': (1920, 768),
+               'segundos': {'paso': 350, 'final': 3600}, 'estimacion': True},
     # Lo que hoy hace PERFIL=fotorreal de generar.sh (que fija modelo, texto, VAE, bin-nuevo y LoRA de estilo): no se duplica.
     'flux3': {'nombre': 'FLUX.3 klein (fotorrealista)', 'modelo': None, 'llm': None, 'vae': None, 'cfg': None, 'pasos': 8,
               'tope': 10800, 'bin': None, 'extra': [], 'lora': None, 'perfil': 'fotorreal',

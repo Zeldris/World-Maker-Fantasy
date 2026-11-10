@@ -384,7 +384,7 @@ class Fases(T.Base):
         q = next(m for m in r['motores'] if m['id'] == 'qwen-edit')
         self.assertEqual((q['disponible'], q['pasos'], q['estimacion']), (False, 20, True))
         w = next(m for m in r['motores'] if m['id'] == 'qwen21')  # IMG-56
-        self.assertEqual((w['disponible'], w['pasos'], w['segundosEstimados'], w['sinReferencias']), (False, 40, {'paso': 700, 'final': 2540}, True))
+        self.assertEqual((w['disponible'], w['pasos'], w['segundosEstimados'], w['sinReferencias']), (False, 40, {'paso': 350, 'final': 3600}, True))
         self.assertIn('modelos/diffusion/qwen_image_2.1-Q4_K.gguf', w['faltan'])
         self.assertFalse(next(m for m in r['motores'] if m['id'] == 'klein9b')['sinReferencias'])
 
