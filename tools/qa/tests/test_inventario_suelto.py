@@ -61,6 +61,28 @@ class InventarioSuelto(unittest.TestCase):
         p = self.correr('const t = "tx.inventoryItem.count({ where: { slot: null } })";\n// prisma.inventoryItem.count({ where: { slot: null } })\n')
         self.assertEqual((p.returncode, p.stdout), (0, ''))
 
+    def test_companion_id_sin_null_literal_falla(self):
+        p = self.correr('await tx.inventoryItem.count({ where: { slot: null, companionId, subjectId: null } });\n')
+        self.assertEqual(p.returncode, 1)
+        self.assertIn('count con slot: null sin companionId', p.stdout)
+        self.assertNotIn('companionId|', p.stdout)
+
+    def test_where_anidado_antes_del_de_primer_nivel_no_lo_tapa(self):
+        p = self.correr('await prisma.inventoryItem.findMany({\n  include: { x: { where: { slot: null, companionId: null, subjectId: null } } },\n'
+                        '  where: { slot: null },\n});\n')
+        self.assertEqual(p.returncode, 1)
+        self.assertIn('findMany con slot: null sin companionId|subjectId', p.stdout)
+
+    def test_where_anidado_solo_no_cuenta_como_primer_nivel(self):
+        p = self.correr('await prisma.inventoryItem.findMany({ include: { x: { where: { slot: null } } }, where: { saveId } });\n')
+        self.assertEqual((p.returncode, p.stdout), (0, ''))
+
+    def test_los_spec_no_se_miran(self):
+        r = carpeta()
+        escribir(os.path.join(r, 'backend', 'src', 'a.spec.ts'), 'await tx.inventoryItem.count({ where: { slot: null } });\n')
+        p = subprocess.run(['python3', os.path.join(QA, 'inventario-suelto.py'), r], capture_output=True, text=True)
+        self.assertEqual((p.returncode, p.stdout), (0, ''))
+
 
 if __name__ == '__main__':
     unittest.main()

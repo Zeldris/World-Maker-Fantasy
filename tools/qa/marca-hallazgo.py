@@ -214,12 +214,15 @@ def ver(ruta: str, lineas: list[str], ps: list[str]) -> int:
     for p in ps:
         if not re.fullmatch(r'P\d+', p):
             sys.exit(f'--ver espera ids como P12, no «{p}»')
-        fila = next((l for l in lineas if re.match(rf'^\| {p} \|', l)), None)
-        if fila is None:
+        filas = [l for l in lineas if re.match(rf'^\| {p} \|', l)]
+        if not filas:
             print(f'{p}: no está en el registro {ruta}')
             falta = 1
             continue
-        print(recorta(fila, 400))
+        for fila in filas:
+            print(recorta(fila, 400))
+        if len(filas) > 1:
+            print(f'AVISO: {p} aparece {len(filas)} veces en el registro')
         patron = re.compile(rf'(?<![\w]){p}(?!\d)')
         for pl, tl in textos.items():
             for n, l in enumerate(tl, 1):

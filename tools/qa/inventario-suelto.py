@@ -8,7 +8,7 @@ contaba, entregaba o borraba objetos ajenos (REVIEW.md, QA-78: una regla se arre
 
 Regla: una consulta Prisma `<cliente>.item.<op>(` o `<cliente>.inventoryItem.<op>(` (el modelo real es
 `InventoryItem`; `item` se acepta por si se renombra), o una relación anidada `inventoryItems: { where: ... }`, en
-`backend/src/**/*.ts` (sin tests) cuyo `where` contenga `slot: null` debe llevar en ese mismo `where`
+`backend/src/**/*.ts` (sin `.test.ts` ni `.spec.ts`) cuyo `where` contenga `slot: null` debe llevar en ese mismo `where`
 `companionId` y `subjectId` (el esquema tiene los dos dueños, así que se exigen los dos), o un comentario
 `// inventario: todos` en la línea de la llamada o en la anterior, con el motivo, si de verdad debe incluir
 objetos de compañeros. Solo se mira el `where`: un `data: { slot: null }` desequipa, no consulta.
@@ -58,6 +58,26 @@ def sin_cadenas(t: str) -> str:
                   lambda m: ' ' * len(m.group(0)), t, flags=re.S)
 
 
+def where_de_primer_nivel(arg: str):
+    """El `{...}` del `where:` que cuelga directamente del objeto de argumentos, no uno anidado en include/select;
+    None si no hay. `arg` empieza en `(` (llamada; el objeto está a profundidad 2) o en `{` (relación; profundidad 1)."""
+    nivel = 2 if arg.startswith('(') else 1
+    prof = 0
+    for m in re.finditer(r'\bwhere\s*:\s*\{|[({\[]|[)}\]]', arg):
+        t = m.group(0)
+        if t[0] in ')}]':
+            prof -= 1
+        elif t[0] in '({[':
+            prof += 1
+        elif prof == nivel:
+            a = m.end() - 1
+            b = cerrar(arg, a)
+            return arg[a:b + 1] if b >= 0 else arg[a:]
+        else:
+            prof += 1  # la llave de un where anidado
+    return None
+
+
 def infracciones(texto: str):
     limpio = sin_cadenas(texto)
     lineas = texto.split('\n')
@@ -67,15 +87,12 @@ def infracciones(texto: str):
         if fin < 0:
             continue
         arg = limpio[ini:fin + 1]
-        w = re.search(r'\bwhere\s*:\s*\{', arg)
-        if not w:
+        donde = where_de_primer_nivel(arg)
+        if donde is None:
             continue
-        a = w.end() - 1
-        b = cerrar(arg, a)
-        donde = arg[a:b + 1] if b >= 0 else arg[a:]
         if not re.search(r'\bslot\s*:\s*null\b', donde):
             continue
-        faltan = [k for k in ('companionId', 'subjectId') if not re.search(rf'\b{k}\b', donde)]
+        faltan = [k for k in ('companionId', 'subjectId') if not re.search(rf'\b{k}\s*:\s*null\b', donde)]
         if not faltan:
             continue
         linea = limpio.count('\n', 0, m.start()) + 1
@@ -90,7 +107,7 @@ def main() -> int:
     for dirpath, dirs, archivos in os.walk(os.path.join(raiz, 'backend', 'src')):
         dirs[:] = [d for d in dirs if d not in ('__tests__', 'node_modules')]
         for nombre in sorted(archivos):
-            if not nombre.endswith('.ts') or nombre.endswith('.test.ts'):
+            if not nombre.endswith('.ts') or nombre.endswith(('.test.ts', '.spec.ts')):
                 continue
             ruta = os.path.join(dirpath, nombre)
             with open(ruta, encoding='utf-8') as f:

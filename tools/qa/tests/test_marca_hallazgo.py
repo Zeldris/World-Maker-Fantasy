@@ -88,6 +88,14 @@ class MarcaHallazgo(unittest.TestCase):
         self.assertNotIn('solo P330', r.stdout)
         self.assertNotIn('Otro', r.stdout)
 
+    def test_ver_con_fila_repetida_las_muestra_todas_y_avisa(self):
+        escribir(self.ruta, REGISTRO.replace('Notas.', '| P1 | Uno bis | otra |'))
+        r = self.marcar('--ver', 'P1')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('| P1 | Uno | pendiente |', r.stdout)
+        self.assertIn('| P1 | Uno bis | otra |', r.stdout)
+        self.assertIn('P1 aparece 2 veces en el registro', r.stdout)
+
 
 INICIO = '<!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->'
 CON_RESUMEN = f"""# Ronda
