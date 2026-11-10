@@ -162,6 +162,12 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
 - **Lore.** Nada editado en `docs/rpgtarkor/` (`AGENTS.md`); las propuestas, en
   `docs/borradores-opencode/propuestas-lore.md`. (check: `protectedPaths` para los borradores; `docs/rpgtarkor/`, criterio)
 
+## Agentes del mapa
+
+- Cada prohibición de `map-generator/AGENTES.md` que se pueda leer del lote o de la orden (`--forzar`, `--mundo`,
+  `canon: true`…) tiene su filtro en `agente_local.ejecutar` y su test en `map-generator/tests/test_banco.py`: una
+  regla que solo vive en la guía, el modelo local la rompe (revisión de MAP-14, 2026-11-10). (criterio)
+
 ## Ganchos y scripts del flujo
 
 Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flujo son los de `.githooks/` y

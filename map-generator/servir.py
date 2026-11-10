@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAP-5, MAP-6, MAP-8, MAP-9: sirve el visor y editor local de helek.json (sin red: escucha solo en 127.0.0.1).
+"""MAP-5, MAP-6, MAP-8, MAP-9, MAP-14: sirve el visor y editor local de helek.json (sin red: escucha solo en 127.0.0.1).
 
     python3 map-generator/servir.py              # http://127.0.0.1:8765/
     python3 map-generator/servir.py --puerto 0   # un puerto libre
@@ -10,6 +10,7 @@ Rutas (solo estas; nada más del disco se sirve):
     /enciclopedia.json  los lugares de la enciclopedia (enciclopedia.py) para enlazar un lugar del mapa a su ficha
     /medidas.json   área y envolvente de cada región, provincia y continente, y el canon con lo medido,
                     calculado con medir.py y geometria.py (las mismas cuentas que el test del canon)
+    /viaje.json     las reglas de viaje.json y, por ruta, km, rodeo, km a pie, horas y jornadas (viaje.py)
     POST /comprobar un lote de cambios (editar.py): qué medidas cambian, canon y lore; no escribe nada
     POST /guardar   lo mismo y, si el lote parte del helek.json actual (`base`), lo escribe con su GeoJSON y el
                     archivo del juego. Si el canon o el lore fallan, solo con `"forzar": true`.
@@ -32,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import editar  # noqa: E402
 import enciclopedia  # noqa: E402
 import medir  # noqa: E402
+import viaje  # noqa: E402
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 VISOR = os.path.join(AQUI, 'visor', 'index.html')
@@ -75,6 +77,13 @@ class Visor(BaseHTTPRequestHandler):
                 canon = json.load(f)
             cuerpo = json.dumps(medidas(medir.cargar(self.mundo_ruta), canon), ensure_ascii=False)
             return self._enviar(cuerpo.encode('utf-8'), 'application/json')
+        if ruta == '/viaje.json':
+            try:
+                cuerpo = json.dumps({'reglas': viaje.cargar(), 'rutas': viaje.tiempos(medir.cargar(self.mundo_ruta))},
+                                    ensure_ascii=False)
+            except (OSError, ValueError) as e:
+                return self._json({'error': f'no se pueden calcular los tiempos de viaje: {e}'}, 500)
+            return self._enviar(cuerpo.encode('utf-8'), 'application/json')
         if ruta == '/enciclopedia.json':
             try:
                 cuerpo = json.dumps(enciclopedia.lugares(), ensure_ascii=False)
@@ -87,7 +96,7 @@ class Visor(BaseHTTPRequestHandler):
             sig = editar.historial.por_deshacer(self.mundo_ruta, actual)
             return self._json({'huella': actual, 'entradas': editar.historial.entradas(self.mundo_ruta)[-15:],
                                'deshacer': sig and sig[1]})
-        self.send_error(404, 'El visor solo sirve /, /helek.json, /medidas.json, /enciclopedia.json y /historial.json')
+        self.send_error(404, 'El visor solo sirve /, /helek.json, /medidas.json, /viaje.json, /enciclopedia.json y /historial.json')
 
     def _json(self, datos, codigo=200):
         self._enviar(json.dumps(datos, ensure_ascii=False).encode('utf-8'), 'application/json', codigo)

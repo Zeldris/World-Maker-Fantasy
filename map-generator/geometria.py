@@ -94,3 +94,28 @@ def envolvente(polis):
     xs = [q[0] for q in pts]
     ys = [q[1] for q in pts]
     return max(xs) - min(xs), max(ys) - min(ys)
+
+
+def localizador(mundo):
+    """celda_en(x, y): la celda cuyo centro está más cerca del punto (las celdas son el Voronoi de sus centros)."""
+    lado = 20
+    cubos = {}
+    for c in mundo['celdas']:
+        cubos.setdefault((int(c['p'][0] // lado), int(c['p'][1] // lado)), []).append(c)
+
+    def celda_en(x, y):
+        bx, by, r, mejor = int(x // lado), int(y // lado), 0, None
+        while True:
+            for dx in range(-r, r + 1):
+                for dy in range(-r, r + 1):
+                    if max(abs(dx), abs(dy)) != r:
+                        continue
+                    for c in cubos.get((bx + dx, by + dy), ()):
+                        d = ((c['p'][0] - x) ** 2 + (c['p'][1] - y) ** 2, c['i'])
+                        if mejor is None or d < mejor:
+                            mejor = d
+            # Lo que queda fuera del anillo r está a más de r * lado del punto.
+            if mejor is not None and mejor[0] <= (r * lado) ** 2:
+                return mejor[1]
+            r += 1
+    return celda_en
