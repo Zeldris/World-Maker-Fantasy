@@ -45,6 +45,7 @@ const {
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
   detectsGiftToNpcClaim,
+  giftRecipientIndex,
   giftToNpcNarrationFor,
 } = await import('./playerActionValidation.js');
 
@@ -637,5 +638,18 @@ describe('detectsGiftToNpcClaim (P241)', () => {
     const sinBoton = giftToNpcNarrationFor(claim, 'Gistera Koh', false);
     expect(sinBoton).toContain('no acepta entregas');
     expect(sinBoton).not.toContain('botón');
+  });
+});
+
+describe('giftRecipientIndex (P441)', () => {
+  const npcs = [['Tótem de Guerra'], ['Tirag Susig']];
+  it('«Tirag» suelto elige a la compañera aunque el objeto se llame «Tótem Maktor»', () => {
+    expect(giftRecipientIndex('Le doy el Tótem Maktor a Tirag', npcs)).toBe(1);
+  });
+  it('con el nombre completo sigue funcionando', () => {
+    expect(giftRecipientIndex('Le doy el Tótem Maktor a Tirag Susig', npcs)).toBe(1);
+  });
+  it('sin destinatario nombrado devuelve -1', () => {
+    expect(giftRecipientIndex('Le doy el Tótem Maktor', npcs)).toBe(-1);
   });
 });
