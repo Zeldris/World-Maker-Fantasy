@@ -66,6 +66,30 @@ describe('pasos de prepararReino (3.2)', () => {
       expect(parsearPasosReino(mal)).toEqual({ error: expect.stringContaining('combate1v1:<slug del NPC>') });
     }
   });
+  it('QA-298 (P338, P339): partida-caza:<presa>:<n>[:permanente]', () => {
+    expect(parsearPasosReino(['partida-caza:kirelon-arenoso:2', 'partida-caza:murgol:1:permanente'])).toEqual([
+      { tipo: 'partidaCaza', especie: 'kirelon-arenoso', n: 2, heridos: 0, permanente: false },
+      { tipo: 'partidaCaza', especie: 'murgol', n: 1, heridos: 0, permanente: true },
+    ]);
+    for (const mal of [['partida-caza'], ['partida-caza:murgol'], ['partida-caza:murgol:0'], ['partida-caza:murgol:-1'], ['partida-caza:murgol:x'], ['partida-caza:murgol:1:siempre'], ['partida-caza::2'], ['partida-caza:murgol:1:permanente:x']]) {
+      expect(parsearPasosReino(mal)).toEqual({ error: expect.stringContaining('partida-caza:<presa>:<n>') });
+    }
+  });
+  it('QA-299 (P439): partida-caza:<presa>:heridos=<h>[:permanente]', () => {
+    expect(parsearPasosReino(['partida-caza:murgol:heridos=1', 'partida-caza:murgol:heridos=2:permanente'])).toEqual([
+      { tipo: 'partidaCaza', especie: 'murgol', n: 0, heridos: 1, permanente: false },
+      { tipo: 'partidaCaza', especie: 'murgol', n: 0, heridos: 2, permanente: true },
+    ]);
+    for (const mal of [['partida-caza:murgol:heridos='], ['partida-caza:murgol:heridos=0'], ['partida-caza:murgol:heridos=x'], ['partida-caza:murgol:heridos=1:siempre'], ['partida-caza:murgol:heridos=1:permanente:x']]) {
+      expect(parsearPasosReino(mal)).toEqual({ error: expect.stringContaining('heridos=<h>') });
+    }
+  });
+  it('QA-299 (P336): mochila-descartar[:<n>]', () => {
+    expect(parsearPasosReino(['mochila-descartar', 'mochila-descartar:10'])).toEqual([{ tipo: 'mochila-descartar', n: null }, { tipo: 'mochila-descartar', n: 10 }]);
+    for (const mal of [['mochila-descartar:0'], ['mochila-descartar:x'], ['mochila-descartar:201'], ['mochila-descartar:1:2']]) {
+      expect(parsearPasosReino(mal)).toEqual({ error: expect.stringContaining('mochila-descartar[:<n>]') });
+    }
+  });
   it('P378: el sexo alterna por defecto y se puede fijar', () => {
     expect([0, 1, 2, 3].map((i) => sexoDelSubdito('alterna', i))).toEqual(['M', 'F', 'M', 'F']);
     expect([0, 1, 2].map((i) => sexoDelSubdito('f', i))).toEqual(['F', 'F', 'F']);

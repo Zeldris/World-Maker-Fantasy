@@ -44,6 +44,8 @@ interface UseModoDinamicoParams {
   onReclutado?: () => void
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
   openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
+  /// P437: el panel abre en Defensa cuando el rival que te vio antes ataca primero.
+  setCombatAwaitingDefense: (esperando: boolean) => void
   handleSubmit: (actionText: string, extras?: { accionEnDiario?: string | null }) => void | Promise<void>
   /// Refresca la Enciclopedia al abrir el detalle de un RECURSO (el descubrimiento ya lo registró el
   /// backend al encontrarlo, pero la copia local puede ir por detrás).
@@ -78,6 +80,7 @@ export function useModoDinamico({
   onNoticiasNuevas,
   onReclutado,
   openCombat,
+  setCombatAwaitingDefense,
   handleSubmit,
   refetchEnciclopedia,
 }: UseModoDinamicoParams) {
@@ -324,6 +327,7 @@ export function useModoDinamico({
       if (turno.combate) {
         setActiveDynamicMode(null)
         setCombateIniciado(turno.combate)
+        setCombatAwaitingDefense(turno.esperandoDefensaJugador === true)
         openCombat(turno.combate)
         return
       }

@@ -23,7 +23,8 @@ export type PeticionReino = {
 
 const NUMERICOS = ['comida', 'bebida', 'goirnos', 'tesoro'] as const;
 
-/// `comida=60 goirnos=300 tesoro=200 almacen:cuerdas:10`. Los números son lo que se SUMA a lo que ya hay.
+/// `comida=60 goirnos=300 tesoro=200 almacen:cuerdas:10`. Los números son lo que se SUMA a lo que ya hay; QA-300: con signo
+/// negativo (`comida=-178`) se RESTA, con suelo en 0 (ver `ajustarATopes` y `recortarResta`). El 0 no vale (no hace nada).
 export function parsearPeticionReino(args: string[]): PeticionReino | { error: string } {
   const p: PeticionReino = { comida: 0, bebida: 0, goirnos: 0, tesoro: 0, almacen: [], edificios: [] };
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
@@ -43,7 +44,7 @@ export function parsearPeticionReino(args: string[]): PeticionReino | { error: s
     }
     const [clave, valor] = arg.split('=');
     const n = Number(valor);
-    if (!(NUMERICOS as readonly string[]).includes(clave ?? '') || !Number.isInteger(n) || n < 1) return { error: `«${arg}»: no es comida=N, bebida=N, goirnos=N, tesoro=N almacen:<slug>:<n> ni edificio:<receta>.` };
+    if (!(NUMERICOS as readonly string[]).includes(clave ?? '') || !Number.isInteger(n) || n === 0) return { error: `«${arg}»: no es comida=N, bebida=N, goirnos=N, tesoro=N (N entero distinto de 0; negativo resta) almacen:<slug>:<n> ni edificio:<receta>.` };
     p[clave as (typeof NUMERICOS)[number]] = n;
   }
   return p;
@@ -71,16 +72,27 @@ export function posicionJuntoAlAyuntamiento(ayto: { x: number | null; y: number 
   return null;
 }
 
+/// QA-300: una resta (pedido < 0) nunca deja el valor por debajo de 0: devuelve lo que se quita (negativo) y avisa si se pedía más.
+export function recortarResta(nombre: string, pedido: number, actual: number, avisos: string[]): number {
+  const quita = Math.max(pedido, -Math.max(0, actual)) || 0; // || 0: sin -0
+  if (quita > pedido) avisos.push(`${nombre}: se quitan ${-quita} de ${-pedido}: no hay más (hay ${actual}).`);
+  return quita;
+}
+
 /// P378: comida y bebida que pasan del tope dan lo que cabe (nunca negativo) y avisan, en vez de abortar todo.
+/// QA-300: un pedido negativo resta, sin bajar de 0 (si se pide más de lo que hay, quita lo que hay y avisa).
 export function ajustarATopes(
   pedido: { comida: number; bebida: number },
-  actual: { comida: number; bebida: number },
+  actual: { comida: number; bebida: number; forraje?: number },
   topes: { comida: number; bebida: number },
 ): { comida: number; bebida: number; avisos: string[] } {
   const avisos: string[] = [];
   const dar = (k: 'comida' | 'bebida') => {
-    const cabe = Math.max(0, Math.min(pedido[k], topes[k] - actual[k]));
-    if (cabe < pedido[k]) avisos.push(`${k}: se dan ${cabe} de ${pedido[k]}: tope ${topes[k]} (hay ${actual[k]}).`);
+    if (pedido[k] < 0) return recortarResta(k, pedido[k], actual[k], avisos);
+    // El Granero lo comparten la comida y el forraje (Q7, P336): el forraje ocupa hueco de la comida.
+    const ocupado = actual[k] + (k === 'comida' ? actual.forraje ?? 0 : 0);
+    const cabe = Math.max(0, Math.min(pedido[k], topes[k] - ocupado));
+    if (cabe < pedido[k]) avisos.push(`${k}: se dan ${cabe} de ${pedido[k]}: tope ${topes[k]} (hay ${ocupado}).`);
     return cabe;
   };
   return { comida: dar('comida'), bebida: dar('bebida'), avisos };

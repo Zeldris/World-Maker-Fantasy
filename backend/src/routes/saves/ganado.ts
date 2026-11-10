@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { ownerKeyFor } from '../../services/reinoOwner.js';
 import { corralesDelReino, entregarPastos, etapaDelAnimal, forrajeDeFibrerias, huecoDeForraje, sacrificar, llevarConsigo, devolverAlCorral } from '../../services/cronista/ganadoReino.js';
+import { suministrosDelReino } from '../../services/cronista/economiaReino.js';
 import { esGanado, etapasDe, produccionDelDia } from '../../services/cronista/ganaderia.js';
 import { esCompanero, esGuardia } from '../../services/cronista/usosFauna.js';
 import { esDomador, jaulasDelReino } from '../../services/companionSupervivencia.js';
@@ -23,11 +24,17 @@ export async function ganadoRoutes(app: FastifyInstance) {
       const porSlug = new Map(fauna.map((f) => [f.slug, f]));
       const productos = await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: ['leche-murgol', 'lana-murgol', 'huevo-corretolvas', 'plumas-rojizas'] } }, select: { slug: true, name: true } });
       const nombreProducto = new Map(productos.map((p) => [p.slug, p.name]));
-      const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { forraje: true, ganadoDiasSinComer: true, ganadoDiasSinBeber: true } });
+      const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId: save.id }) }, select: { forraje: true, comida: true, ganadoDiasSinComer: true, ganadoDiasSinBeber: true } });
       const hayAnimales = corrales.some((c) => c.animales.length > 0);
+      // P333: corrales que existen pero no están en pie (dañados, en obra, abandonados), para no decir «aún no tienes».
+      const corralesFueraDeServicio = await tx.building.findMany({ where: { saveId: save.id, recipeKey: 'corrales', status: { not: 'ACTIVO' } }, select: { id: true, name: true, status: true }, orderBy: { createdAt: 'asc' } });
       return {
         forraje: stats?.forraje ?? 0,
+        // P336: el Granero lo comparten la comida y el forraje.
+        comida: stats?.comida ?? 0,
+        topeComida: (await suministrosDelReino(tx, save.id)).topeComida,
         huecoForraje: await huecoDeForraje(tx, save.id),
+        corralesFueraDeServicio,
         forrajeDia: await forrajeDeFibrerias(tx, save.id),
         // P346: quien espera atado en cada Jaula del Reino.
         jaulas: await jaulasDelReino(tx, save.id),

@@ -170,6 +170,22 @@ describe('Entregar objeto a NPC: guards (2026-08-31)', () => {
     expect(res.json().error).toContain('Desequípalo');
   });
 
+  it('rechaza entregar un objeto sin equipar de un compañero (no es de la bolsa de la jugadora)', async () => {
+    const companion = await prisma.companion.findFirstOrThrow({ where: { saveId } });
+    const ajeno = await prisma.inventoryItem.create({
+      data: { saveId, name: 'Lanza del compañero', description: 'x', origin: 'inicial', slot: null, companionId: companion.id },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/entregar/${auladorSlug}`,
+      payload: { itemId: ajeno.id },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error).toContain('Objeto no encontrado en tu inventario');
+    expect(await prisma.inventoryItem.findUnique({ where: { id: ajeno.id } })).not.toBeNull();
+  });
+
   it('rechaza entregar a un NPC MUERTO — no es un destinatario válido', async () => {
     const app = await buildApp();
     const item = await prisma.inventoryItem.create({ data: { saveId, name: 'Objeto suelto', description: 'x' } });

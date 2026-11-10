@@ -1318,6 +1318,10 @@ export interface ZonaResponse {
   disponible: boolean
   /// P185 (QA-27): casillas por las que no se pasa (muros, empalizadas), para la ruta prevista.
   muros?: { col: number; row: number }[]
+  /// P337: casillas libres dentro de la empalizada (vacío si la zona no tiene).
+  interior?: { col: number; row: number }[]
+  /// P337: puertas de la empalizada (la primera es el destino de «Ir hasta aquí» sobre las estacas desde fuera).
+  puertas?: { col: number; row: number }[]
   locationSlug?: string
   locationName?: string
   /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera
@@ -1651,6 +1655,11 @@ export interface CorralInfo {
 export interface CorralesInfo {
   forraje: number
   huecoForraje: number
+  /// P336: el Granero lo comparten la comida y el forraje (comida guardada y tope).
+  comida?: number
+  topeComida?: number
+  /// P333: corrales que existen pero no están en pie.
+  corralesFueraDeServicio?: { id: string; name: string; status: string }[]
   forrajeDia: number
   diasSinComer: number
   diasSinBeber: number
@@ -1677,6 +1686,8 @@ export interface PartidaInfo {
 }
 export interface OpcionesPartida {
   origen: { id: string; name: string } | null
+  /// Sin origen porque los edificios desde los que se sale están dañados (hay que repararlos).
+  origenDanado?: boolean
   /// `sinArma`: sin arma no sale (Q3 de CR-63, como un soldado).
   cazadores: { id: string; name: string; sinArma?: boolean }[]
   /// Nombres de los cazadores que están fuera con una partida.
@@ -1734,7 +1745,7 @@ export async function postComprarAViajero(saveId: string, viajeroId: string): Pr
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/corrales`)
 }
-export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number }> {
+export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/forraje/entregar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1747,7 +1758,7 @@ export async function postLlevarConsigo(saveId: string, ganadoId: string): Promi
 export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
-export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
+export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
 }
 
@@ -1771,6 +1782,10 @@ export async function setCompanionItemSlot(
 }
 
 /// Almacén de Reino (§7).
+/// P428: «Depositar todo» — todo lo suelto de la mochila al Almacén, en una petición.
+export async function depositarTodoEnAlmacen(saveId: string): Promise<{ ok: boolean; depositados: number; noCaben: number; autoEquipados: number; comidaSumada: number; motivoNoCaben: string | null }> {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar-todo`, { method: 'POST' })
+}
 export async function depositarEnAlmacen(saveId: string, itemId: string): Promise<{ ok: boolean; autoEquipados: number }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar/${itemId}`, { method: 'POST' })
 }
@@ -2277,6 +2292,8 @@ export interface DynamicModeTurno {
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
   combate?: { npcs: NpcInSceneInfo[] } | null
+  /// P437: el rival vio antes a la jugadora y su ataque queda pendiente: el panel abre en Defensa.
+  esperandoDefensaJugador?: true
   /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,
   /// llega junto al combate que abre). La misma que se ve tras recargar.
   huidaLogEntry?: LogEntry

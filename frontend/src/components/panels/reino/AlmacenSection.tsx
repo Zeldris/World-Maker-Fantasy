@@ -4,7 +4,7 @@ import { PanelSection } from '../../PanelSection'
 import { NumeroGuardable } from '../../NumeroGuardable'
 import { ErrorBanner } from '../../ErrorBanner'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
-import { depositarEnAlmacen, retirarDeAlmacen, getAlmacenLimites, setAlmacenLimite, type AlmacenLimiteInfo } from '../../../lib/api'
+import { depositarEnAlmacen, depositarTodoEnAlmacen, retirarDeAlmacen, getAlmacenLimites, setAlmacenLimite, type AlmacenLimiteInfo } from '../../../lib/api'
 import { agruparAlmacen, proporcionTope } from '../../../lib/almacen'
 import { useModoConsulta } from '../../../context/useModoConsulta'
 
@@ -29,6 +29,7 @@ export function AlmacenSection({
   // UX-5 (hito 0.2) — modo consulta: lo que cambia datos se deshabilita con el motivo.
   const consulta = useModoConsulta()
   const [busy, setBusy] = useState<string | null>(null)
+  const [avisoTodo, setAvisoTodo] = useState<string | null>(null)
   const [limites, setLimites] = useState<AlmacenLimiteInfo[] | null>(null)
   const { fallo, informar, limpiar, limpiarSi } = useErrorConReintento()
   const depositable = inventory.filter((i) => !i.slot && !i.companionId && !i.subjectId)
@@ -61,6 +62,25 @@ export function AlmacenSection({
       await onRefreshSave()
     } catch (e) {
       informar('No se pudo depositar el objeto en el almacén.', e, () => void handleDepositar(itemId))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /// P428: todo lo suelto de la mochila, en una sola petición.
+  async function handleDepositarTodo() {
+    setBusy('todo')
+    setAvisoTodo(null)
+    try {
+      const r = await depositarTodoEnAlmacen(saveId)
+      setAvisoTodo(
+        `Depositados ${r.depositados} objetos.` +
+          (r.comidaSumada > 0 ? ` +${r.comidaSumada} de comida del Reino.` : '') +
+          (r.noCaben > 0 ? ` ${r.noCaben} no caben${r.motivoNoCaben ? `: ${r.motivoNoCaben}` : ''}` : ''),
+      )
+      await onRefreshSave()
+    } catch (e) {
+      informar('No se pudo depositar todo en el almacén.', e, () => void handleDepositarTodo())
     } finally {
       setBusy(null)
     }
@@ -180,10 +200,24 @@ export function AlmacenSection({
           </div>
         )}
 
+        {avisoTodo && (
+          <p role="status" className="text-2xs text-emerald-300">
+            {avisoTodo}
+          </p>
+        )}
         {depositable.length > 0 && (
           <details className="text-xs">
             <summary className="cursor-pointer text-wood-400 hover:text-accent-300">Depositar desde la mochila</summary>
             <div className="mt-2 flex flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => void handleDepositarTodo()}
+                disabled={busy !== null || !!consulta}
+                title={consulta ?? 'Deposita de una vez todo lo suelto de la mochila (lo equipado se queda).'}
+                className="tactile self-start rounded border border-accent-600/60 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy === 'todo' ? '...' : `Depositar todo (${depositable.length})`}
+              </button>
               {depositable.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-iron-700 bg-wood-950/40 px-3 py-2">
                   <span className="truncate text-xs text-wood-200">
@@ -194,7 +228,7 @@ export function AlmacenSection({
                   <button
                     type="button"
                     onClick={() => handleDepositar(item.id)}
-                    disabled={busy === item.id || !!consulta}
+                    disabled={busy !== null || !!consulta}
                     title={consulta ?? undefined}
                     className="tactile shrink-0 rounded border border-accent-600/60 px-2 py-1 text-2xs text-accent-300 hover:bg-accent-500/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >

@@ -463,6 +463,22 @@ describe('submitCombatAction — camino feliz', () => {
     expect(result.current.condicionFisica).toBe('MUERTO')
   })
 
+  it('P363: la entrada en vivo lleva el XP de la ronda (y el del hito), como tras recargar', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({
+        progression: { xpDelta: 35, newXp: 35, newLevel: 1, leveledUp: false, attributePointsGained: 0, xpHito: 10, xpHitoLabel: 'Hito' },
+      }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    await waitFor(() => {
+      expect(result.current.characterLog[0]?.xpDelta).toBe(35)
+      expect(result.current.characterLog[0]?.xpHitoDelta).toBe(10)
+      expect(result.current.characterLog[0]?.xpHitoLabel).toBe('Hito')
+    })
+  })
+
   it('en subida de nivel, suma pendingAttributePoints y actualiza level', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
@@ -814,6 +830,23 @@ describe('closeCombat / handleCombatHuir', () => {
       expect(result.current.condicionFisica).toBe('ILESO')
       expect(result.current.characterLog).toHaveLength(1)
     })
+  })
+
+  // P366: huir con un intercambio de la ronda anterior aún animándose; al aterrizar los dados se aplicaba
+  // su `combate` y el HUD volvía a «En combate» con el backend sin combate.
+  it('P366: tras huir con éxito, un intercambio pendiente no resucita el combate', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    const murgoles = { npcs: [npc({ slug: 'murgol', name: 'Múrgol' })] }
+    mockNarrate.mockResolvedValue(baseNarrateResponse({ combatExchangeDisplay: { atacanteEsJugador: false } as never, combateIniciado: murgoles }) as never)
+    mockHuirEnCurso.mockResolvedValue({ escaped: true, condicionFisica: 'ILESO', logEntry: { id: 'h1', channel: 'character', text: 'Escapas.', timeLabel: 'Día 1', createdAt: '2026-01-01T00:00:00Z' } } as never)
+    const { result } = renderHook(() => useHarness(murgoles))
+    act(() => result.current.combat.openCombat())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    await act(() => result.current.combat.handleCombatHuir())
+    expect(result.current.combateIniciado).toBeNull()
+    act(() => result.current.combat.triggerExchangeApply())
+    expect(result.current.combateIniciado).toBeNull()
+    expect(result.current.combat.combatOpen).toBe(false)
   })
 
   it('handleCombatHuir con fallo: el popup se queda abierto, condicionFisica refleja el golpe directo', async () => {

@@ -1,5 +1,7 @@
 // QA-143: mete recursos del REINO de una partida de la base de juego, lo que `darObjetos.ts` no alcanza (ese
 // llena el inventario del personaje, de donde salen los materiales de construir, pero no el Almacén ni el tesoro).
+//   QA-300: con N negativo (comida=-178) se RESTA, con suelo en 0 (avisa si se pide más de lo que hay); sirve para dejar hueco
+//                         en el Granero (la comida y el forraje comparten su tope), p. ej. 180/180 -> 178/180 con comida=-2. N=0 se rechaza.
 //   comida=N / bebida=N   suman a `KingdomStats.comida` / `bebida` (el tope base del Almacén es 60; un Granero lo sube; P378: si
 //                         se pasa del tope, se da lo que cabe y avisa «se dan N de M: tope T»; los materiales del Almacén sí se rechazan)
 //   goirnos=N             suma a `Save.goirnos` (la bolsa del personaje)
@@ -16,7 +18,7 @@
 import { prisma } from '../lib/prisma.js';
 import { CONSTRUCTION_RECIPES, buildingTierFor, computeBuildBlockedReason } from '../services/construction.js';
 import { materialesDelAlmacen, suministrosDelReino } from '../services/cronista/economiaReino.js';
-import { parsearPeticionReino, posicionJuntoAlAyuntamiento, ajustarATopes, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
+import { parsearPeticionReino, posicionJuntoAlAyuntamiento, ajustarATopes, recortarResta, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const peticion = parsearPeticionReino(args);
@@ -50,7 +52,7 @@ if (sinReceta || (peticion.edificios.length && !ayto?.location)) {
 }
 class Rechazo extends Error {}
 const avisos: string[] = [];
-const dado = { comida: 0, bebida: 0 };
+const dado = { comida: 0, bebida: 0, goirnos: 0, tesoro: 0 };
 // Todo en una transacción: un rechazo (condiciones, topes) la deshace entera. Los edificios se aplican uno a uno, para que
 // las condiciones y los topes vean los de la misma orden (`edificio:granero comida=120` vale).
 try {
@@ -73,16 +75,20 @@ try {
       });
     }
     // Topes del Almacén con los edificios ya puestos (el Granero sube comida, etc.).
-    const [sum, ks, recursos] = await Promise.all([suministrosDelReino(tx, saveId), tx.kingdomStats.findUniqueOrThrow({ where: { saveId }, select: { comida: true, bebida: true } }), materialesDelAlmacen(tx, saveId)]);
+    const [sum, ks, recursos] = await Promise.all([suministrosDelReino(tx, saveId), tx.kingdomStats.findUniqueOrThrow({ where: { saveId }, select: { comida: true, bebida: true, forraje: true, riqueza: true } }), materialesDelAlmacen(tx, saveId)]);
     const materiales = lote.filter(({ item }) => item.tipo === 'RECURSO').reduce((n, { cantidad }) => n + cantidad, 0);
     const exceso = primerExcesoDeTope({ materiales }, { materiales: recursos.guardados }, { materiales: sum.topeMateriales });
     if (exceso) throw new Rechazo(exceso);
-    const ajustado = ajustarATopes({ comida: peticion.comida, bebida: peticion.bebida }, { comida: ks.comida, bebida: ks.bebida }, { comida: sum.topeComida, bebida: sum.topeBebida });
+    const ajustado = ajustarATopes({ comida: peticion.comida, bebida: peticion.bebida }, { comida: ks.comida, bebida: ks.bebida, forraje: ks.forraje }, { comida: sum.topeComida, bebida: sum.topeBebida });
     avisos.push(...ajustado.avisos);
     dado.comida = ajustado.comida;
     dado.bebida = ajustado.bebida;
-    await tx.kingdomStats.update({ where: { saveId }, data: { comida: { increment: ajustado.comida }, bebida: { increment: ajustado.bebida }, riqueza: { increment: peticion.tesoro } } });
-    await tx.save.update({ where: { id: saveId }, data: { goirnos: { increment: peticion.goirnos } } });
+    // QA-300: tesoro y bolsa también admiten restar (suelo en 0).
+    const bolsa = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { goirnos: true } });
+    dado.tesoro = peticion.tesoro < 0 ? recortarResta('tesoro', peticion.tesoro, ks.riqueza, avisos) : peticion.tesoro;
+    dado.goirnos = peticion.goirnos < 0 ? recortarResta('goirnos', peticion.goirnos, bolsa.goirnos, avisos) : peticion.goirnos;
+    await tx.kingdomStats.update({ where: { saveId }, data: { comida: { increment: ajustado.comida }, bebida: { increment: ajustado.bebida }, riqueza: { increment: dado.tesoro } } });
+    await tx.save.update({ where: { id: saveId }, data: { goirnos: { increment: dado.goirnos } } });
     for (const { item, cantidad } of lote) {
       await tx.almacenItem.createMany({
         data: Array.from({ length: cantidad }, () => ({ saveId, name: item.name, description: item.description, catalogSlug: item.slug, statBonuses: item.statBonuses ?? undefined })),
@@ -96,7 +102,7 @@ try {
   process.exit(1);
 }
 for (const a of avisos) console.log(`AVISO ${a}`);
-console.log(`comida +${dado.comida}, bebida +${dado.bebida}, bolsa +${peticion.goirnos} Goirnos, tesoro +${peticion.tesoro} Goirnos`);
+console.log(`comida ${dado.comida >= 0 ? '+' : ''}${dado.comida}, bebida ${dado.bebida >= 0 ? '+' : ''}${dado.bebida}, bolsa ${dado.goirnos >= 0 ? '+' : ''}${dado.goirnos} Goirnos, tesoro ${dado.tesoro >= 0 ? '+' : ''}${dado.tesoro} Goirnos`);
 for (const { receta } of edificios) console.log(`Edificio: ${receta!.name}`);
 for (const { item, cantidad } of lote) console.log(`Almacén: ${cantidad} × ${item.name}`);
 await prisma.$disconnect();

@@ -115,6 +115,17 @@ export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[],
   }
 }
 
+/// El aviso que deja una partida al volver de pelear (P280). Pura: la usa `cazarEnDestino` y `prepararPartidaCaza` (QA-299, que
+/// la llama con unos heridos fijos para poder ver el aviso sin depender del dado).
+export function resumenDeCaza(d: { quien: string; nombre: string; lugar: string; encuentros: number; piezas: number; capturados: number; heridos: number; caidos: number; muertos: number; desarmados: number }): string {
+  const { quien, nombre, lugar, encuentros, piezas, capturados, heridos, caidos, muertos, desarmados } = d;
+  return encuentros === 0
+    ? `${quien} no encuentra ${nombre} en ${lugar} y vuelve de vacío.`
+    : piezas === 0 && capturados === 0
+      ? `${quien} planta cara a ${nombre} en ${lugar} y no abate ninguno: ${heridos === 1 ? `1 de los suyos sale herido${caidos > 0 ? ' (fuera de combate)' : ''} y la partida se retira` : `${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran`}${muertos > 0 ? `; caen ${muertos}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
+      : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar}${muertos > 0 ? `; caen ${muertos} de los suyos` : ''}.`;
+}
+
 /// Q4: lo que hace la partida en su destino.
 /// `cuerdas`: en una partida de captura, cuántos puede atar (uno por cuerda); los abatidos que no ata
 /// son piezas.
@@ -173,11 +184,7 @@ export async function cazarEnDestino(tx: Tx, v: ViajeroFila, dia: number, random
   const caidos = cazadores.filter((h) => !enPie(condicion.get(h.c.id)!) || muertos.has(h.c.id)).length;
   const heridos = cazadores.filter((h) => condicion.get(h.c.id) !== 'ILESO').length;
   const desarmados = cazadores.filter((h) => h.c.attributeBonus === 0 && !h.companionId).length;
-  const resumen = encuentros === 0
-    ? `${quien} no encuentra ${nombre} en ${lugar.name} y vuelve de vacío.`
-    : piezas === 0 && capturados === 0
-      ? `${quien} planta cara a ${nombre} en ${lugar.name} y no abate ninguno: ${heridos > 0 ? `${heridos} de los suyos salen heridos${caidos > 0 ? ` (${caidos} fuera de combate)` : ''} y` : 'los suyos'} se retiran${muertos.size > 0 ? `; caen ${muertos.size}` : ''}${desarmados > 0 ? `. ${desarmados} iban sin arma` : ''}.`
-      : `${quien} ${capturados > 0 ? `ata ${capturados} y ` : ''}abate ${piezas} ${nombre} en ${lugar.name}${muertos.size > 0 ? `; caen ${muertos.size} de los suyos` : ''}.`;
+  const resumen = resumenDeCaza({ quien, nombre, lugar: lugar.name, encuentros, piezas, capturados, heridos, caidos, muertos: muertos.size, desarmados });
   return { especie, piezas, diaCaza: dia, resumen, ...(cuerdas > 0 ? { cuerdas: cuerdas - capturados, capturados } : {}) };
 }
 
@@ -192,7 +199,7 @@ export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promis
   if (!carga?.especie || !carga.piezas || carga.piezas <= 0 || v.factionId) return 0;
   const caduca = carga.diaCaza + DIAS_PIEZA;
   if (caduca <= dia) {
-    await avisoDelReino(tx, v.saveId, `La partida de caza vuelve, pero sus ${carga.piezas} piezas ya se han echado a perder.`);
+    await avisoDelReino(tx, v.saveId, `La partida de caza vuelve, pero ${carga.piezas === 1 ? 'su única pieza ya se ha echado' : `sus ${carga.piezas} piezas ya se han echado`} a perder.`);
     return 0;
   }
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
@@ -200,7 +207,7 @@ export async function descargarCaza(tx: Tx, v: ViajeroFila, dia: number): Promis
   await tx.almacenItem.createMany({
     data: Array.from({ length: carga.piezas }, () => ({ saveId: v.saveId, name: `Pieza de ${nombre}`, description: `${nombre} abatido por una partida de caza; se echa a perder si nadie lo desuella.`, catalogSlug: SLUG_PIEZA, especieSlug: carga.especie, caducaEnDia: caduca })),
   });
-  await avisoDelReino(tx, v.saveId, `La partida de caza vuelve con ${carga.piezas} piezas de ${nombre}. Se estropean en ${caduca - dia} día${caduca - dia === 1 ? '' : 's'}: llévalas al Desolladero.`);
+  await avisoDelReino(tx, v.saveId, `La partida de caza vuelve con ${carga.piezas} pieza${carga.piezas === 1 ? '' : 's'} de ${nombre}. Se estropea${carga.piezas === 1 ? '' : 'n'} en ${caduca - dia} día${caduca - dia === 1 ? '' : 's'}: llévala${carga.piezas === 1 ? '' : 's'} al Desolladero.`);
   return carga.piezas;
 }
 
@@ -224,10 +231,11 @@ export async function revisarPiezas(tx: Tx, saveId: string, dia: number): Promis
     }
   }
   // Las de la misma especie se desuellan de una vez (el rendimiento es por animal).
-  for (const [especie, n] of porEspecie) await aprovecharAnimal(tx, saveId, worldId, especie, n);
+  let comidaPerdida = 0;
+  for (const [especie, n] of porEspecie) comidaPerdida += (await aprovecharAnimal(tx, saveId, worldId, especie, n)).comidaPerdida;
   if (borrar.length > 0) await tx.almacenItem.deleteMany({ where: { id: { in: borrar } } });
   const desolladas = borrar.length - perdidas;
-  if (desolladas > 0) await avisoDelReino(tx, saveId, `El Desolladero desuella ${desolladas} pieza${desolladas === 1 ? '' : 's'}: su carne va a la comida y lo demás al Almacén.`);
+  if (desolladas > 0) await avisoDelReino(tx, saveId, `El Desolladero desuella ${desolladas} pieza${desolladas === 1 ? '' : 's'}: su carne va a la comida y lo demás al Almacén.${comidaPerdida > 0 ? ` Se pierden ${comidaPerdida} de comida: el Granero está lleno.` : ''}`);
   if (perdidas > 0) await avisoDelReino(tx, saveId, `Se echan a perder ${perdidas} pieza${perdidas === 1 ? '' : 's'} de caza sin desollar.`);
   return { desolladas, perdidas };
 }
@@ -248,7 +256,10 @@ TRABAJOS.CAZA = {
       if (v.miembros.reduce((s, m) => s + m.genericos, 0) < CAZADORES_POR_PARTIDA) return { ok: false, motivo: 'le faltan cazadores' };
       return (await faccionPuedeCazar(tx, v.factionId)) ? { ok: true } : { ok: false, motivo: 'le falta comida de reserva' };
     }
-    return (await desolladeroDaAbasto(tx, v.saveId)) ? { ok: true } : { ok: false, motivo: 'el Desolladero no da abasto con las piezas que hay' };
+    if (await desolladeroDaAbasto(tx, v.saveId)) return { ok: true };
+    // P338: con algún Desolladero dañado se dice y se remite a repararlo (no solo «no da abasto»).
+    const danado = (await tx.building.count({ where: { saveId: v.saveId, recipeKey: 'desolladero', status: 'DANADO' } })) > 0;
+    return { ok: false, motivo: danado ? 'el Desolladero no da abasto porque está dañado, repáralo en Reino › Edificios' : 'el Desolladero no da abasto con las piezas que hay' };
   },
 };
 

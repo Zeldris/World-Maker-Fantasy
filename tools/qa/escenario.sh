@@ -15,7 +15,9 @@
 #   escenario.sh dar-reino <partida> comida=N bebida=N goirnos=N tesoro=N almacen:<slug>:<n> edificio:<receta>…
 #                                               recursos del Reino (QA-143): comida/bebida (KingdomStats), Goirnos de la
 #                                               bolsa (Save.goirnos) o del tesoro (KingdomStats.riqueza), edificio:<receta> ya terminado, objetos del
-#                                               Almacén del Reino (AlmacenItem). Suma a lo que hay
+#                                               Almacén del Reino (AlmacenItem). Suma a lo que hay; QA-300: con signo negativo RESTA (comida=-2,
+#                                               también bebida, goirnos y tesoro), sin bajar de 0 y avisando si se pide más de lo que hay (para
+#                                               dejar hueco en el Granero, que comparten comida y forraje: P336, 180/180 -> 178/180 con comida=-2)
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] (P378: por defecto alterna macho y hembra),
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
@@ -32,6 +34,13 @@
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
+#                                               QA-298: partida-caza:<presa>:<n>[:permanente] (una partida de caza del Reino, la que hay en marcha tras esa presa o
+#                                               una lanzada con la función del panel, queda en casa y a punto de volver con n piezas: al avanzar el día vuelve por el
+#                                               camino normal, con el aviso «La partida de caza vuelve con…» y el paso por el Desolladero; con :permanente repite la
+#                                               orden, así que con danar:desolladero se juega el corte de P338; pide cazadores libres con arma y la presa vista; para P338 y P339),
+#                                               QA-299: partida-caza:<presa>:heridos=<h>[:permanente] (la partida vuelve sin piezas y con h heridos: el aviso «…no abate ninguno: 1 de los suyos sale herido… y la partida se retira» (con h > 1: «h de los suyos salen heridos… y se retiran»)
+#                                               sale en Reino › Avisos al preparar, con el texto del juego; para P439) y mochila-descartar[:<n>] (tira lo suelto de la mochila hasta dejar n huecos libres,
+#                                               10 por defecto, sin tocar lo equipado; con el Almacén lleno `mochila-libre` no sirve y `dar` no pasa de la capacidad; para P336),
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
 #                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]

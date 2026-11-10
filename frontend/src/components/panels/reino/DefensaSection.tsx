@@ -84,10 +84,16 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
               <span>
                 ⚑ {v.quien}: {v.gente} a {v.tramos} tramo{v.tramos === 1 ? '' : 's'} de {v.asentamiento}
               </span>
+            </div>
+          ))}
+          {/* P384: la milicia es una por asentamiento, no una por ejército: un solo botón por asentamiento, aunque lleguen varios. */}
+          {[...new Map(avistados.map((v) => [v.asentamientoId, v])).values()].map((v) => (
+            <div key={v.asentamientoId} className="mt-1 flex flex-wrap items-center gap-3 text-xs text-red-200">
               {v.sinMilicia && <span className="text-2xs text-red-300/80">{v.sinMilicia}</span>}
               <button type="button" disabled={desactivado || !!v.sinMilicia} title={consulta ?? v.sinMilicia ?? undefined} onClick={() => void accion(() => postLlamarMilicia(saveId, v.asentamientoId), 'No se pudo llamar a la milicia.')} className="tactile text-2xs font-semibold text-accent-300 hover:underline disabled:opacity-50">
                 Llamar a la milicia
               </button>
+              {!v.sinMilicia && <span className="text-2xs text-red-300/80">Arma a la milicia de {v.asentamiento}, contra los ejércitos que van a {v.asentamiento}.</span>}
             </div>
           ))}
         </section>

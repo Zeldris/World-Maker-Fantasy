@@ -185,6 +185,8 @@ export async function avanzarSubditos(tx: Tx, saveId: string, dias: number, ahor
 /// `ahora`: el instante del suceso (el día simulado, no el reloj de la partida: con varios días de descanso
 /// seguidos cada aviso lleva su día).
 export async function avisarEnReino(tx: Tx, saveId: string, text: string, ahora: number): Promise<void> {
+  // P332: el nombre de un edificio lleva artículo en minúscula («un pozo»): el aviso siempre empieza en mayúscula.
+  text = text.charAt(0).toUpperCase() + text.slice(1);
   await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: formatFictionalDate(ahora), fictionalMinutes: ahora } });
 }
 

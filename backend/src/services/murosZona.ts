@@ -37,6 +37,19 @@ export function murosComoCeldas(locationSlug: string | null | undefined): Celda[
   return (locationSlug ? (MUROS_POR_LOCATION[locationSlug] ?? []) : []).map(([col, row]) => ({ col, row }));
 }
 
+/// P337: las puertas de la empalizada como celdas, para el frontend (`GET /zona`): «Ir hasta aquí» desde fuera lleva a la primera.
+export function puertasComoCeldas(locationSlug: string | null | undefined): Celda[] {
+  return (locationSlug ? (PUERTAS_POR_LOCATION[locationSlug] ?? []) : []).map(([col, row]) => ({ col, row }));
+}
+
+/// P337: el interior como celdas, para el frontend (`GET /zona`).
+export function interiorComoCeldas(locationSlug: string | null | undefined): Celda[] {
+  return [...interiorDe(locationSlug)].map((k) => {
+    const [col, row] = k.split(',').map(Number);
+    return { col: col!, row: row! };
+  });
+}
+
 /// P193 (QA-27): casillas libres dentro de la empalizada: a las que no se llega desde el borde del mapa sin
 /// cruzar un muro ni una puerta. Vacío si la zona no tiene empalizada con puertas.
 export function interiorDe(locationSlug: string | null | undefined): ReadonlySet<string> {
