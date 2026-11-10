@@ -7,7 +7,9 @@ Un camino o una senda se recorren a pie: km del trazo (1 unidad ≈ 1 km, las co
 pie; horas = km a pie / velocidad; jornadas = horas / horas de jornada. El rodeo de la ruta es la media de sus tramos
 ponderada por su longitud; el de un tramo es el de su bioma (`viaje.json`) o el de montaña (altura h >= 50) si es
 mayor, mirando la celda del punto medio del tramo (si cae en mar, la de su punto más cercano que sea tierra; sin
-tierra, 1). Una ruta marítima da solo km: el canon no fija velocidad por mar (tiempo null, con su motivo).
+tierra, 1). Por tierra se da también el tiempo de una caravana (`caravanaKmH`, sobre los mismos km a pie). Una ruta
+marítima va en bote costero (`mar.velocidadKmH`, sin rodeo ni caravana): horas = km / velocidad, con las mismas
+horas de jornada.
 Las reglas las cambia solo la usuaria; lo derivado se marca en el propio `viaje.json`.
 """
 import argparse
@@ -54,12 +56,13 @@ def _rodeo_celda(c, por_bioma, montana):
 
 
 def tiempos(mundo, reglas=None):
-    """Una fila por ruta: {i, grupo, km, rodeo, kmAPie, horas, jornadas, motivo}. En las rutas marítimas, rodeo, kmAPie,
-    horas y jornadas son None y `motivo` dice por qué; en las demás, `motivo` es None."""
+    """Una fila por ruta: {i, grupo, km, rodeo, kmAPie, horas, jornadas, horasCaravana, jornadasCaravana}. En las
+    rutas marítimas, horas y jornadas son en bote, y rodeo, kmAPie y los de caravana son None."""
     reglas = reglas or cargar()
     por_bioma = _bioma_rodeo(mundo, reglas)
     montana = reglas['rodeo']['montana']
     v, jornada = reglas['velocidadKmH']['valor'], reglas['jornadaHoras']['valor']
+    v_caravana, v_mar = reglas['caravanaKmH']['valor'], reglas['mar']['velocidadKmH']
     km_u = mundo['fuente']['kmPorUnidad']
     celda_en = geometria.localizador(mundo)
     celdas = mundo['celdas']
@@ -69,8 +72,11 @@ def tiempos(mundo, reglas=None):
         largos = [math.dist(a, b) * km_u for a, b in zip(pts, pts[1:])]
         km = sum(largos)
         fila = {'i': r['i'], 'grupo': r['grupo'], 'km': round(km, 1), 'rodeo': None, 'kmAPie': None, 'horas': None,
-                'jornadas': None, 'motivo': reglas['mar']['nota'] if r['grupo'] == 'searoutes' else None}
-        if r['grupo'] != 'searoutes':
+                'jornadas': None, 'horasCaravana': None, 'jornadasCaravana': None}
+        if r['grupo'] == 'searoutes':
+            horas = km / v_mar
+            fila.update(horas=round(horas, 1), jornadas=round(horas / jornada, 1))
+        else:
             suma = 0.0
             for (a, b), largo in zip(zip(pts, pts[1:]), largos):
                 medio = celdas[celda_en((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)]
@@ -81,8 +87,10 @@ def tiempos(mundo, reglas=None):
             rodeo = suma / km if km else 1.0
             a_pie = km * rodeo
             horas = a_pie / v
+            caravana = a_pie / v_caravana
             fila.update(rodeo=round(rodeo, 3), kmAPie=round(a_pie, 1), horas=round(horas, 1),
-                        jornadas=round(horas / jornada, 1))
+                        jornadas=round(horas / jornada, 1), horasCaravana=round(caravana, 1),
+                        jornadasCaravana=round(caravana / jornada, 1))
         salida.append(fila)
     return salida
 
@@ -99,7 +107,8 @@ def main(argv=None):
         return 0
     for f in filas:
         t = (f"rodeo {f['rodeo']:.2f} · {f['kmAPie']:g} km a pie · {f['horas']:g} h · {f['jornadas']:g} jornadas"
-             if f['horas'] is not None else 'sin tiempo (por mar)')
+             f" · caravana {f['horasCaravana']:g} h" if f['kmAPie'] is not None
+             else f"en bote {f['horas']:g} h · {f['jornadas']:g} jornadas")
         print(f"{f['i']:>4} {f['grupo']:<9} {f['km']:>7g} km · {t}")
     return 0
 

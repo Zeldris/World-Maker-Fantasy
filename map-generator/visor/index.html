@@ -824,8 +824,8 @@ function textoViaje(t) {
     const km = t.puntos.slice(1).reduce((s, p, k) => s + Math.hypot(p[0] - t.puntos[k][0], p[1] - t.puntos[k][1]), 0) * KM;
     return `${fmtNum(km, 1)} km del trazo (tiempos al guardar)`;
   }
-  if (f.horas === null) return `${fmtNum(f.km, 1)} km · sin tiempo (${esc(f.motivo || 'por mar')})`;
-  return `${fmtNum(f.km, 1)} km · rodeo ${fmtNum(f.rodeo, 2)} → ${fmtNum(f.kmAPie, 1)} km a pie · ${fmtNum(f.horas, 1)} h · ${fmtNum(f.jornadas, 1)} jornadas`;
+  if (f.kmAPie === null) return `${fmtNum(f.km, 1)} km · en bote ${fmtNum(f.horas, 1)} h · ${fmtNum(f.jornadas, 1)} jornadas`;
+  return `${fmtNum(f.km, 1)} km · rodeo ${fmtNum(f.rodeo, 2)} → ${fmtNum(f.kmAPie, 1)} km a pie · ${fmtNum(f.horas, 1)} h · ${fmtNum(f.jornadas, 1)} jornadas · caravana ${fmtNum(f.horasCaravana, 1)} h`;
 }
 
 function datosZonas() {

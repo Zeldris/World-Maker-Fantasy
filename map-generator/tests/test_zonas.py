@@ -209,10 +209,12 @@ class Viaje(unittest.TestCase):
         self.assertEqual(camino['kmAPie'], 50.5)
         self.assertAlmostEqual(camino['rodeo'], 50.5 / 35, places=3)
         self.assertEqual(camino['horas'], 10.1)       # 50.5 km a 5 km/h
-        self.assertEqual(camino['jornadas'], 1.3)     # 10.1 h / 8 h = 1.2625
-        self.assertIsNone(camino['motivo'])
-        self.assertEqual((mar['km'], mar['horas'], mar['kmAPie'], mar['jornadas'], mar['rodeo']), (30.0, None, None, None, None))
-        self.assertIn('no fija velocidad por mar', mar['motivo'])
+        self.assertEqual(camino['jornadas'], 1.7)     # 10.1 h / 6 h = 1.68
+        self.assertEqual(camino['horasCaravana'], 14.4)     # 50.5 km a 3,5 km/h
+        self.assertEqual(camino['jornadasCaravana'], 2.4)   # 14.43 h / 6 h
+        # por mar, en bote: 30 km a 6 km/h = 5 h; sin rodeo ni caravana
+        self.assertEqual((mar['km'], mar['horas'], mar['jornadas']), (30.0, 5.0, 0.8))
+        self.assertEqual((mar['kmAPie'], mar['rodeo'], mar['horasCaravana'], mar['jornadasCaravana']), (None,) * 4)
 
     def test_la_montana_solo_sube_el_rodeo(self):
         m = _mundo_de_juguete()
@@ -230,7 +232,8 @@ class Viaje(unittest.TestCase):
         r = viaje.cargar()
         self.assertEqual(r['fuente'], 'docs/mecanicas/13-escala-del-mundo.md § 1')
         self.assertEqual((r['velocidadKmH']['valor'], r['velocidadKmH']['derivado']), (5, False))
-        self.assertEqual((r['jornadaHoras']['valor'], r['jornadaHoras']['derivado']), (8, True))
+        self.assertEqual((r['jornadaHoras']['valor'], r['jornadaHoras']['derivado']), (6, False))
+        self.assertEqual((r['caravanaKmH']['valor'], r['mar']['velocidadKmH'], r['balsaKmH']['valor']), (3.5, 6, 4))
         self.assertTrue(r['rodeo']['derivado'])
         self.assertEqual(r['rodeo']['montana'], {'alturaMinima': 50, 'valor': 1.5})
 
@@ -239,7 +242,8 @@ class Viaje(unittest.TestCase):
         self.assertEqual(len(filas), len(MUNDO['rutas']))
         for f in filas:
             if f['grupo'] == 'searoutes':
-                self.assertIsNone(f['horas'])
+                self.assertIsNone(f['kmAPie'])
+                self.assertAlmostEqual(f['horas'], f['km'] / 6, delta=0.06)
             else:
                 self.assertGreaterEqual(f['kmAPie'], f['km'] - 0.05)
                 self.assertAlmostEqual(f['horas'], f['kmAPie'] / 5, delta=0.06)
@@ -263,7 +267,7 @@ class Capas(unittest.TestCase):
         texto = exportar.generar_capas(v1)
         self.assertTrue(texto.startswith('// Generado por map-generator/exportar.py'))
         for trozo in ('export interface ZonaHelek', 'export interface RutaHelek', 'export const ZONAS_HELEK: ZonaHelek[] = [',
-                      'export const RUTAS_HELEK: RutaHelek[] = [', 'export const VIAJE_HELEK = {"velocidadKmH": 5, "jornadaHoras": 8}'):
+                      'export const RUTAS_HELEK: RutaHelek[] = [', 'export const VIAJE_HELEK = {"velocidadKmH": 5, "jornadaHoras": 6, "caravanaKmH": 3.5, "boteKmH": 6, "balsaKmH": 4}'):
             self.assertIn(trozo, texto)
         zonas = exportar.zonas(v1)
         self.assertEqual([(z['i'], z['tipo'], z['nivel'], z['clan'], z['canon'], z['nota']) for z in zonas],
@@ -272,9 +276,9 @@ class Capas(unittest.TestCase):
             self.assertTrue(z['d'].startswith('M') and z['d'].endswith('Z'), z['nombre'])
             self.assertIn(json.dumps(z, ensure_ascii=False), texto)
         rutas = exportar.rutas(MUNDO)
-        self.assertEqual(set(rutas[0]), {'i', 'grupo', 'km', 'kmAPie', 'horas', 'jornadas'})
+        self.assertEqual(set(rutas[0]), {'i', 'grupo', 'km', 'kmAPie', 'horas', 'jornadas', 'horasCaravana', 'jornadasCaravana'})
         self.assertEqual(len(rutas), len(MUNDO['rutas']))
-        self.assertIn('"horas": null', texto)  # las marítimas
+        self.assertIn('"kmAPie": null', texto)  # las marítimas, en bote sin rodeo
 
     def test_comprobar_falla_si_las_zonas_dejan_las_capas_desfasadas(self):
         v1 = aplicar({'zonas': [tormenta()]})
@@ -385,10 +389,11 @@ class Consultar(unittest.TestCase):
         self.assertEqual(json.loads(out), viaje.tiempos(MUNDO)[0])
         _, texto = self._correr('ruta', '0')
         self.assertIn('km a pie', texto)
-        self.assertIn('jornadas', texto)
+        self.assertIn('en caravana', texto)
         mar = next(r['i'] for r in MUNDO['rutas'] if r['grupo'] == 'searoutes')
         _, texto = self._correr('ruta', str(mar))
-        self.assertIn('Sin tiempo: el canon no fija velocidad por mar', texto)
+        self.assertIn('en bote costero', texto)
+        self.assertIn('jornadas', texto)
 
     def test_ruta_que_no_existe(self):
         codigo, _ = self._correr('ruta', '99999')

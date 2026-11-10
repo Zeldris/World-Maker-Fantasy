@@ -99,7 +99,8 @@ def zonas(mundo):
 
 def rutas(mundo):
     return [{'i': f['i'], 'grupo': f['grupo'], 'km': f['km'], 'kmAPie': f['kmAPie'], 'horas': f['horas'],
-             'jornadas': f['jornadas']} for f in viaje.tiempos(mundo)]
+             'jornadas': f['jornadas'], 'horasCaravana': f['horasCaravana'], 'jornadasCaravana': f['jornadasCaravana']}
+            for f in viaje.tiempos(mundo)]
 
 
 def _filas(lista):
@@ -110,7 +111,9 @@ def _filas(lista):
 
 def generar_capas(mundo):
     reglas = viaje.cargar()
-    v = {'velocidadKmH': reglas['velocidadKmH']['valor'], 'jornadaHoras': reglas['jornadaHoras']['valor']}
+    v = {'velocidadKmH': reglas['velocidadKmH']['valor'], 'jornadaHoras': reglas['jornadaHoras']['valor'],
+         'caravanaKmH': reglas['caravanaKmH']['valor'], 'boteKmH': reglas['mar']['velocidadKmH'],
+         'balsaKmH': reglas['balsaKmH']['valor']}
     return (
         '// Generado por map-generator/exportar.py desde map-generator/mundo/helek.json y map-generator/viaje.json (MAP-14). No se edita a mano:\n'
         '// se cambia el mapa y se vuelve a exportar (`python3 map-generator/exportar.py`).\n'
@@ -137,13 +140,17 @@ def generar_capas(mundo):
         "  grupo: 'roads' | 'trails' | 'searoutes'\n"
         '  /// Longitud del trazo en km.\n'
         '  km: number\n'
-        '  /// km × rodeo del terreno (null por mar: el canon no fija velocidad por mar).\n'
+        '  /// km × rodeo del terreno (null por mar: en bote no hay rodeo).\n'
         '  kmAPie: number | null\n'
-        '  horas: number | null\n'
-        '  jornadas: number | null\n'
+        '  /// A pie por tierra; en bote costero por mar.\n'
+        '  horas: number\n'
+        '  jornadas: number\n'
+        '  /// En caravana con múrgoles de carga (null por mar).\n'
+        '  horasCaravana: number | null\n'
+        '  jornadasCaravana: number | null\n'
         '}\n'
         '\n'
-        '/// Reglas de viaje a pie (viaje.json): la jornada de 8 h es derivada, no canon literal.\n'
+        '/// Reglas de viaje (viaje.json): a pie, jornada, caravana, bote costero y balsa río abajo, en km/h y horas.\n'
         'export const VIAJE_HELEK = ' + json.dumps(v) + '\n'
         '\n'
         'export const ZONAS_HELEK: ZonaHelek[] = ' + _filas(zonas(mundo)) +

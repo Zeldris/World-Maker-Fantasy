@@ -515,10 +515,10 @@ def texto_zonas(r):
 
 def texto_ruta(f):
     cab = f"Ruta {f['i']} ({editar.NOMBRE_GRUPO[f['grupo']]}): {f['km']:g} km"
-    if f['horas'] is None:
-        return f"{cab}. Sin tiempo: {f['motivo']}."
-    return (f"{cab}, rodeo medio {f['rodeo']:.2f} → {f['kmAPie']:g} km a pie, {f['horas']:g} h, {f['jornadas']:g} jornadas "
-            '(reglas de viaje.json; la jornada es derivada).')
+    if f['kmAPie'] is None:
+        return f"{cab}, en bote costero {f['horas']:g} h, {f['jornadas']:g} jornadas (reglas de viaje.json)."
+    return (f"{cab}, rodeo medio {f['rodeo']:.2f} → {f['kmAPie']:g} km a pie, {f['horas']:g} h, {f['jornadas']:g} jornadas; "
+            f"en caravana {f['horasCaravana']:g} h, {f['jornadasCaravana']:g} jornadas (reglas de viaje.json).")
 
 
 # ---------------------------------------------------------------- consola

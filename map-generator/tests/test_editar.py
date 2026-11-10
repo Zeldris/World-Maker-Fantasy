@@ -473,8 +473,12 @@ class Guardar(unittest.TestCase):
                 self.assertTrue(f.read().endswith('\n '))
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(importar.main(['--salida', d, '--sobrescribir']), 0)
+            with tempfile.TemporaryDirectory() as limpio, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(importar.main(['--salida', limpio]), 0)  # lo que da importar sin nada delante
+                with open(os.path.join(limpio, 'helek.json'), encoding='utf-8') as f:
+                    importado = f.read()
             with open(destino, encoding='utf-8') as f:
-                self.assertEqual(f.read(), _sinzonas.texto())
+                self.assertEqual(f.read(), importado)
 
 
 class GuardarAtomico(unittest.TestCase):

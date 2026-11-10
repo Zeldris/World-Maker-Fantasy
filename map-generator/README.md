@@ -34,9 +34,9 @@ python3 -m unittest discover -s map-generator/tests
   `frontend/src/data/helekCapas.ts` (MAP-14): las zonas de tormenta, peligro y clan (`ZONAS_HELEK`), los km y tiempos
   de cada ruta (`RUTAS_HELEK`) y la regla de viaje (`VIAJE_HELEK`); `--comprobar` revisa los dos archivos y
   `--sin-juego`/`--mundo` no tocan ninguno.
-- `viaje.json` y `viaje.py` (MAP-14): la regla de viaje (5 km/h, jornada de 8 h, rodeo por bioma y por montaña,
+- `viaje.json` y `viaje.py` (MAP-14): la regla de viaje (5 km/h, jornada de 6 h, caravana 3,5 km/h, bote 6 km/h, balsa 4 km/h, rodeo por bioma y por montaña,
   fuente `docs/mecanicas/13-escala-del-mundo.md § 1`, con lo `derivado` marcado) y los tiempos de cada ruta;
-  las marítimas dan km sin tiempo. `consultar.py ruta I` los muestra.
+  las marítimas, en bote costero. `consultar.py ruta I` los muestra.
 - Zonas (MAP-14): `zonas` en `helek.json` (tormenta de nivel 0-3 solo en las Llanuras del Viento Rojo, peligro 1-3,
   clan con su clan), editables con el lote de `editar.py` y en el visor (capas Tormentas/Peligro/Clanes y modo
   «Zonas»); `consultar.py zonas` las lista. Las que tienen `canon: false` se dibujan con rayado: propuesta sin canon.

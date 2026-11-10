@@ -126,35 +126,30 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   como dice el canon), `peligro` (1-3) y `clan` en `helek.json`, con `canon` y `nota`; lote `zonas` de `editar.py`
   (crear, cambiar, `mas`/`menos`, borrar), modo Zonas y capas Tormentas, Peligro y Clanes del visor (rayado = sin
   canon), `consultar.py zonas|ruta`. Rutas con km, km a pie, horas y jornadas (`viaje.json`, `viaje.py`,
-  `/viaje.json`): 5 km/h del canon; rodeo por bioma y jornada de 8 h, derivados. Al juego, `frontend/src/data/helekCapas.ts`
+  `/viaje.json`): 5 km/h del canon; rodeo por bioma derivado; jornada, caravana y bote, abajo. Al juego, `frontend/src/data/helekCapas.ts`
   (aún no lo pinta: con `MAP-13`). **Propuesta sin canon guardada** (decisión del usuario, 2026-11-10;
   `map-generator/propuestas/map14-zonas.json`): tormenta Rok'ithek en toda la región con la Hondonada del Eco de
   refugio; peligro en Agujas Imán, Hondonada de noche, Cruce de las Cenizas y todo el Margen; clanes Serhu, Helsig,
   Goshg y la franja Faerus de Kegi. Probado en Chromium sin interfaz.
-  **Respuestas de Álvaro (2026-11-10) y segunda propuesta** (`map-generator/propuestas/map14-zonas-2.json`, guardada,
-  todo `canon: false` hasta que la revise):
-  1. Tormentas que rotan, más fuertes en invierno y más flojas en primavera → tres franjas desde El Vientre del
-     Engaño (≤ 30 km nivel 3, 30-70 km nivel 2, más lejos nivel 1; la Hondonada sigue de refugio) y ciclo en la nota:
-     +1 en invierno, −1 en primavera, entre 0 y 3. **Falta** llevar el ciclo al juego (`climaFor` es hoy igual todo
-     el año): tarea nueva si Álvaro la aprueba.
-  2. Las posiciones ya estaban en el grafo de viaje (`13-escala-del-mundo.md` § 2.2ter, `map.ts`), no en el mapa:
-     zonas de peligro en la Fosa Horadada, el Vientre, el Laberinto, el Filo de las Brasas, las Fumarolas Negras,
-     la Sabana Alta, los Manaderos y la Red Profunda Final.
-  3. Escala 1-3 aprobada. Nivel propuesto por la fauna más alta (≤ 6: 1; 7-10: 2; > 10: 3): Hondonada de noche y
-     Cruce de las Cenizas suben a 3.
-  4. Clanes, propuesta para que la revise: Serhu, 7 km alrededor de sus nodos del núcleo (sin Maktor); Goshg, 16 km
-     alrededor de Silh Makut; Helsig y Kegi como estaban; nuevas Selva de Hashma (Faerus Feg Tusha, Margen oeste) y
-     Margen oriental (Nabieus Keseg Sael).
-  5. Los Restos de Maktor: zona de clan «ninguno (antiguo Maktor)», conquistable y vacía, 9 km alrededor de los Restos
-     y El Campo Yermo.
-  6. Viaje, propuesta para valorar (sin aplicar a `viaje.json`): el lore da 21-37 km por jornada (Serhu-Helsig,
-     122 km, 4-6 jornadas; Serhu-Goshg, 104 km, 4-5) → jornada de **6 h de marcha ≈ 30 km**, no 8 h. No hay
-     monturas en el lore: caravana con múrgoles de carga a 3,5 km/h (≈ 20 km/jornada); bote costero de fondo plano
-     a 6 km/h solo de día; balsa río abajo a 4 km/h.
-  7. El lore no cuadra del todo: los Nabieus viven en la **mitad oriental** del Margen y los Faerus en la occidental;
-     el centro (Cruce de las Ausencias, Aguas Sordas) es tierra de nadie (`margen-silencioso.md`). Propuesta: este
-     nivel 1, oeste 2, centro 3 (corte por x 575/600). El Puesto Nabieus del Margen (x 581) cae en el centro: ¿se
-     mueve al este? La Proa Gris y el borde norte (Ferike) también serían alto, sin posición aún.
+  **Respuestas de Álvaro (2026-11-10), todo aprobado y en canon** (`propuestas/map14-zonas-2.json` y
+  `propuestas/map14-canon.json`; las 25 zonas con `canon: true`):
+  - Tormenta en tres franjas desde El Vientre del Engaño (≤ 30 km nivel 3, 30-70 km 2, más lejos 1; la Hondonada,
+    refugio) con ciclo +1 en invierno, −1 en primavera (entre 0 y 3) en la nota; al juego, `MAP-20`.
+  - Peligro 1-3 por la fauna más alta (≤ 6: 1; 7-10: 2; > 10: 3) en los nodos del grafo de viaje
+    (`13-escala-del-mundo.md` § 2.2ter): Fosa Horadada, Vientre, Laberinto, Filo de las Brasas, Fumarolas Negras,
+    Sabana Alta, Manaderos, Red Profunda Final; Hondonada de noche y Cruce de las Cenizas, 3.
+  - Margen según el lore (`margen-silencioso.md`): este Nabieus 1, oeste Faerus 2, centro (Cruce de las Ausencias) 3,
+    cortes en x 575/600. El Puesto Nabieus pasa al este (650,318) con su sendero (ruta 449) rehecho.
+  - Clanes: Serhu (7 km alrededor de su núcleo), Goshg (16 km alrededor de Silh Makut), Helsig, Kegi, Selva de Hashma
+    (Faerus Feg Tusha), Margen oriental (Nabieus Keseg Sael) y Los Restos de Maktor (conquistable, vacía).
+  - Viaje (`viaje.json`): jornada de **6 h ≈ 30 km** (el lore da 21-37 km por jornada), caravana con múrgoles a
+    3,5 km/h, bote costero de día a 6 km/h (las rutas por mar ya tienen horas) y balsa río abajo a 4 km/h (sin ríos
+    en el mapa aún). Rutas con horas y jornadas de caravana en `consultar.py ruta`, el visor y `helekCapas.ts`.
+  - Sin posición aún: la Proa Gris y el borde norte (Ferike).
+- **MAP-20 · Ciclo de tormentas por estaciones en el juego** [P] (Álvaro, 2026-11-10, de `MAP-14`): `climaFor`
+  (`backend/src/services/worldClock.ts`) es hoy igual todo el año; que el nivel de tormenta de cada zona de
+  `helekCapas.ts` suba 1 en invierno y baje 1 en primavera (entre 0 y 3), con la estación de `estacionFor`. Tras la
+  pausa de pruebas. **S**
 
 - ~~**MAP-16 · El mapa lo gestionan agentes**~~ [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
   el mapa todo lo que el juego necesite, y valorar si lo puede llevar un agente local. Cada edición del visor tiene su
