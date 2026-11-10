@@ -386,6 +386,18 @@ vuelva más tarde. Eso exige estas reglas de experiencia:
   enlace del lugar a su sitio en el mapa, filtro del canal por categoría, y categoría también para
   las noticias que no salen del narrador de fondo (expediciones, agenda Serhu). **S**
 
+### 4.8 Marca de Tarkor
+
+Diseño completo en [`diseno-interfaz-marca.md`](diseno-interfaz-marca.md) (de galivelop-image-generator,
+2026-11-10). Excepción a la pausa de pruebas (usuario, 2026-11-10).
+
+- **UX-40 · La marca en la interfaz, sin imágenes** — tokens de oro, piedra y noche en `index.css`; bordes de oro,
+  `.gold-hairline`, `.title-gold`, `.crystal-sky` a noche, `.gem` engastada, `.corner-bracket-gold`; tipografía de la
+  Home (titular en oro, eyebrow en hueso, peso 700 en titulares); `theme-color`, `og:title` y `og:description` en
+  `index.html` (secciones 2-5 y 7 «Ahora» del diseño). **S**
+- **UX-41 · La marca en la interfaz, con imágenes** — texturas, esquinas, ranura, pictogramas, favicon y logo,
+  `og:image`, hero, carga y barras, a medida que lleguen de galivelop-image-generator (secciones 6 y 8 del diseño). **M**
+
 ---
 
 ## 5. Matriz de permisos propuesta
@@ -456,6 +468,7 @@ del hook `useGamePhase`.
 | **UX-D · Entrada y salida** | UX-15, UX-17, UX-18, UX-19, UX-20 | Empezar más rápido, salir sin sustos, Atrás como en un juego. |
 | **UX-E · Pulido** | UX-6, UX-21, UX-22, UX-23, UX-25…28 | Foco, esperas, deshacer, primeros pasos. |
 | **UX-F · Mundo vivo** | UX-29…UX-36, UX-38, UX-39 | Llega con las fases 3-5 del Cronista (hitos `0.2`-`0.3`); `UX-29` y `UX-35` antes de que el Cronista use la IA. |
+| **UX-G · Marca** | UX-40, UX-41 | La interfaz con la marca de Tarkor; `UX-41` espera a las imágenes de galivelop-image-generator. |
 
 El hito exacto de cada fase lo fija el [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito).
 

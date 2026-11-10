@@ -22,16 +22,16 @@ export function Home() {
       <BotonAjustes className="absolute right-4 top-4" />
       <div className="flex flex-col items-center text-center">
         <div className="mb-3 flex w-56 items-center gap-3 sm:w-72">
-          <span className="accent-hairline flex-1" />
+          <span className="gold-hairline flex-1" />
           <span className="gem" />
-          <span className="accent-hairline flex-1" />
+          <span className="gold-hairline flex-1" />
         </div>
-        <p className="mb-2 text-xs tracking-[0.3em] text-accent-400 uppercase">Tarkor</p>
-        <h1 className="font-serif text-4xl text-wood-100 sm:text-5xl">¿Cómo quieres jugar?</h1>
+        <p className="mb-2 text-xs font-medium tracking-[0.3em] text-wood-200 uppercase">Tarkor</p>
+        <h1 className="title-gold text-4xl sm:text-5xl">¿Cómo quieres jugar?</h1>
         <div className="mt-4 flex w-56 items-center gap-3 sm:w-72">
-          <span className="accent-hairline flex-1" />
+          <span className="gold-hairline flex-1" />
           <span className="gem" />
-          <span className="accent-hairline flex-1" />
+          <span className="gold-hairline flex-1" />
         </div>
       </div>
 
