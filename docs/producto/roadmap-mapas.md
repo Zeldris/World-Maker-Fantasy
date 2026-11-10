@@ -123,7 +123,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   Llanuras, zonas de peligro, territorio de cada clan y rutas con km y tiempos, como capas editables del visor y
   exportables al juego. **M**
 
-- **MAP-16 · El mapa lo gestionan agentes** [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
+- ~~**MAP-16 · El mapa lo gestionan agentes**~~ [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
   el mapa todo lo que el juego necesite, y valorar si lo puede llevar un agente local. Cada edición del visor tiene su
   orden de consola con lotes JSON e informe legible (la primera, `editar.py lote.json`, con `MAP-7`), una guía corta
   para agentes (qué leer, qué órdenes, qué no tocar: canon y lore) y una prueba con el modelo local de OpenCode/Ollama
@@ -132,7 +132,8 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   la guía `map-generator/AGENTES.md` y el banco `map-generator/banco/` (5 encargos: frontera, costa, lugar, ruta y uno
   trampa que rompe el canon; `banco.py` prepara la copia y corrige, validado con soluciones de referencia;
   `agente_local.py` corre Ollama con solo esas dos órdenes). De paso: un lugar que no es capital toma la región de su
-  celda (`editar.py`). Banco corrido (2026-11-10): Haiku 5/5, 35 s de media; local (`qwen35-9b-32k` en la iGPU, sin razonar, 20 turnos) 3/5, 260 s de media: lugar, costa y trampa bien; la ruta agota los turnos preguntando celda a celda y la frontera guarda 2 celdas en vez de 5-10 sin avisar. Con razonamiento, turnos de ~400 s. `consultar.py` explica las comillas cuando sobran palabras (fallo del local). **Falta:** que la usuaria decida si el agente local entra.
+  celda (`editar.py`). Banco corrido (2026-11-10): Haiku 5/5, 35 s de media; local (`qwen35-9b-32k` en la iGPU, sin razonar, 20 turnos) 3/5, 260 s de media: lugar, costa y trampa bien; la ruta agota los turnos preguntando celda a celda y la frontera guarda 2 celdas en vez de 5-10 sin avisar. Con razonamiento, turnos de ~400 s. `consultar.py` explica las comillas cuando sobran palabras (fallo del local). ✅ 2026-11-10 **Decisión (usuaria):** por ahora el mapa lo llevan Claude y Haiku; el agente local no entra todavía, y se sigue mejorando con `MAP-17`. Resultados, soluciones de Haiku como lotes y registros del local en `map-generator/banco/resultados/2026-11-10/`.
+- **MAP-17 · Mejorar el agente local del mapa con lo que hace Haiku** [P] (usuaria, 2026-11-10): partir de las soluciones de Haiku del banco de `MAP-16` (`resultados/2026-11-10/haiku.json`: sus lotes; y los fallos del local en `local-*.json`) para ir entrenando el modelo local: ejemplos resueltos en la guía o el prompt, órdenes más gruesas donde se pierde (una ruta de A a B por tierra, N celdas de una frontera), que no guarde menos de lo pedido sin avisar y, si hace falta, ajuste fino del modelo. Se mide repitiendo el banco (`banco.py local` y `banco.py tabla`) hasta acercarse a Haiku (5/5). **M**
 
 ## Fase M-C · Generar donde aporta
 
