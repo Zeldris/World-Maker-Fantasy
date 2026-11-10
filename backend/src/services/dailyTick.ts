@@ -3,7 +3,8 @@ import { registrarSuceso } from './cronista/sucesos.js';
 import { comidaDelReinoDia, datosComidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
-import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, hambrunaNueva, avisoDeReserva, CONSUMO_POR_BOCA, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
+import { avisarEnReino } from './cronista/subditos.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { comidaDe } from './cronista/ganaderia.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
@@ -55,6 +56,16 @@ export async function advanceKingdomStatsDay(
     await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
     if (hambrunaNueva(diasHambre, ticked.diasHambre ?? 0, diasCruzados)) await registrarHambruna(tx, saveId, 'REINO_JUGADORA');
+    // P381: aviso previo «queda bebida/comida para N días», una vez por racha bajo 7 días.
+    const consumoDia = (ticked.poblacion + ticked.soldados + ticked.visitantes) * CONSUMO_POR_BOCA;
+    const bebidaAviso = avisoDeReserva(ticked.bebida, consumoDia, kingdomStats.avisoBebidaBajo);
+    const comidaAviso = avisoDeReserva(ticked.comida, consumoDia, kingdomStats.avisoComidaBajo);
+    if (bebidaAviso.yaAvisado !== kingdomStats.avisoBebidaBajo || comidaAviso.yaAvisado !== kingdomStats.avisoComidaBajo) {
+      await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { avisoBebidaBajo: bebidaAviso.yaAvisado, avisoComidaBajo: comidaAviso.yaAvisado } });
+    }
+    const diasTxt = (n: number) => (n === 1 ? 'un día' : n === 0 ? 'menos de un día' : `${n} días`);
+    if (bebidaAviso.avisar) await avisarEnReino(tx, saveId, `La bebida del Reino se acaba: quedan reservas para ${diasTxt(bebidaAviso.dias)}. Hay que reponerla antes de que la sed haga daño.`, hasta);
+    if (comidaAviso.avisar) await avisarEnReino(tx, saveId, `La comida del Reino escasea: quedan reservas para ${diasTxt(comidaAviso.dias)}. Hay que reponerla antes de que llegue el hambre.`, hasta);
 
     // Territory.control/population (2026-08-23, Grupo 3 — docs/mecanicas/10-niveles-xp-reino.md § 5.4,
     // nunca implementado hasta ahora) — misma cadencia que el tick de arriba, felicidad

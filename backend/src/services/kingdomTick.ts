@@ -36,6 +36,18 @@ export function hambrunaNueva(antes: number, despues: number, dias: number): boo
   return Math.floor(despues / DIAS_PARA_HAMBRUNA) > Math.floor(base / DIAS_PARA_HAMBRUNA);
 }
 
+/// P381: días de reserva por debajo de los cuales el Reino avisa («queda bebida/comida para N días»).
+export const DIAS_AVISO_RESERVA = 7;
+
+/// Puro: avisa una sola vez por racha. `yaAvisado` es el estado de la racha; devuelve si hay que avisar ahora, los
+/// días que quedan (entero hacia abajo) y el estado nuevo. Con consumo 0 no avisa y la racha se rearma.
+export function avisoDeReserva(reserva: number, consumoDia: number, yaAvisado: boolean): { avisar: boolean; dias: number; yaAvisado: boolean } {
+  if (consumoDia <= 0) return { avisar: false, dias: Infinity, yaAvisado: false };
+  const dias = Math.floor(reserva / consumoDia);
+  const bajo = reserva / consumoDia < DIAS_AVISO_RESERVA;
+  return { avisar: bajo && !yaAvisado, dias, yaAvisado: bajo };
+}
+
 export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
   poblacion: 0,
   felicidad: 50,
