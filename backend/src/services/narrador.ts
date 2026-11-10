@@ -1726,17 +1726,28 @@ export function deterministicFallbackNarration(ctx: {
   roll?: RollResult;
   combatBothMissed?: boolean;
   combatRealHitLanded?: boolean;
+  nonExchangeAttackHitLanded?: boolean;
+  combatNotYetResolved?: boolean;
+  enCombate?: boolean;
 }): NarrationResult {
   const { action, roll } = ctx;
   // En un intercambio de combate manda el intercambio, no `roll` (Fase G del 0.1, hallazgo G7):
   // «Gana Gorhorn · el golpe conecta» salía junto a «La acción no sale como se esperaba». Sin saber
   // aquí qué lado conectó, se dice solo lo que es seguro y la tarjeta de la tirada cuenta el resto.
-  const enIntercambio = Boolean(ctx.combatBothMissed || ctx.combatRealHitLanded);
+  // Ampliado (P435): cualquier turno con contexto de combate, resuelto o no (ataque a fauna/NPC pasivo
+  // antes del combate formal, aceptación previa, turno de combate sin intercambio).
+  const enIntercambio = Boolean(
+    ctx.combatBothMissed || ctx.combatRealHitLanded || ctx.nonExchangeAttackHitLanded || ctx.combatNotYetResolved || ctx.enCombate,
+  );
   const resultado = ctx.combatBothMissed
     ? 'Ningún golpe llega a conectar.'
     : ctx.combatRealHitLanded
       ? 'El intercambio se salda con un golpe que conecta.'
-      : !roll
+      : ctx.nonExchangeAttackHitLanded
+        ? 'El ataque da en el blanco.'
+        : enIntercambio && !roll
+          ? 'Aún no se ha resuelto ningún intercambio.'
+          : !roll
         ? 'La acción transcurre sin incidentes.'
         : roll.gradoExito === 'claro'
           ? 'La acción sale exactamente como se esperaba.'

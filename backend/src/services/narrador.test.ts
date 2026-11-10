@@ -1925,6 +1925,29 @@ describe('deterministicFallbackNarration', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration).toContain('Miro el paisaje');
   });
 
+  it('P435: ataque a fauna/NPC pasivo antes del combate formal no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Ataco al ciervo con la lanza.', nonExchangeAttackHitLanded: true });
+    expect(r.narration).not.toContain('Ataco');
+    expect(r.narration).toMatch(/El ataque da en el blanco/);
+    expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: turno de aceptación previo al combate no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Yo me ocupo de tu perseguidor.', combatNotYetResolved: true });
+    expect(r.narration).not.toContain('perseguidor');
+    expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: turno de combate sin intercambio resuelto no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Me preparo para el choque.', enCombate: true });
+    expect(r.narration).not.toContain('preparo');
+    expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: fuera de combate el respaldo sigue copiando la acción (P94)', () => {
+    expect(deterministicFallbackNarration({ action: 'Recojo la leña.' }).narration).toContain('Recojo la leña.');
+  });
+
   it('sin tirada, narra igualmente sin romper', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration.length).toBeGreaterThan(0);
   });
