@@ -10,6 +10,7 @@ export type PasoReino =
   | { tipo: 'relacion'; facSlug: string; evento: string; n: number }
   | { tipo: 'combate'; npcSlugs: string[] }
   | { tipo: 'combate1v1'; npcSlug: string }
+  | { tipo: 'partidaCaza'; especie: string; n: number; heridos: number; permanente: boolean }
   | { tipo: 'ganado'; especie: string; n: number }
   | { tipo: 'convaleciente'; npcSlug: string; enCombate: boolean }
   | { tipo: 'lider-muere'; facSlug: string }
@@ -24,6 +25,7 @@ export type PasoReino =
   | { tipo: 'escasez'; facSlug: string; recurso: string | null }
   | { tipo: 'asalto'; facSlug: string }
   | { tipo: 'mochila-libre'; n: number | null }
+  | { tipo: 'mochila-descartar'; n: number | null }
   | { tipo: 'nivel'; nivel: number; atributos: Attribute[] }
   | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' };
 
@@ -39,7 +41,7 @@ export function sexoDelSubdito(sexo: SexoSubditos, i: number): 'M' | 'F' {
 export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUERRA', 'SABOTAJE_DIPLOMATICO'] as const;
 
 /// `subditos:orcos:3[:soldado][:sexo=m|f|pareja]` (P378: sin `sexo=` alterna macho y hembra; `m`/`f` los fija), `reparar` (P369: repara todos los edificios DANADO con la función del botón «Reparar»), `danar:<receta>` (P301: deja DANADO el edificio activo de esa receta, como una tormenta), `reclutar:<npc>`, `guarnicion`, `milicia:<n>`, `relacion:<faccion>:<EVENTO>:<n>`
-/// (la facción presiona al Reino), `combate:<npc>,<npc>…` (combate de grupo, `CombatEncounter`), `combate1v1:<npc>` (QA-293, P373: el combate 1v1 clásico contra ese NPC, traído adonde está la jugadora como un agresor que se lanza contra ella, el efecto `forzarCombate` del Cronista; el panel de combate sale al cargar la partida; se niega con un combate en curso o un NPC que no existe), `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-270),
+/// (la facción presiona al Reino), `combate:<npc>,<npc>…` (combate de grupo, `CombatEncounter`), `combate1v1:<npc>` (QA-293, P373: el combate 1v1 clásico contra ese NPC, traído adonde está la jugadora como un agresor que se lanza contra ella, el efecto `forzarCombate` del Cronista; el panel de combate sale al cargar la partida; se niega con un combate en curso o un NPC que no existe), `partida-caza:<presa>:<n>[:permanente]` (QA-298, P338/P339: una partida de caza del Reino queda a punto de volver con n piezas de esa presa; al avanzar el día vuelve por el camino normal), `ganado:<especie>:<n>` (n animales adultos al corral, alternando macho y hembra), `convaleciente:<npc>[:combate]` (el NPC queda CONVALECIENTE en el lugar actual, como tras ganarle un combate; con `:combate`, además el combate sigue sin resolver y sale la tarjeta Matar/Capturar/Clemente, QA-270),
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-269, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
@@ -82,6 +84,13 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     } else if (clave === 'combate1v1') {
       if (!r[0] || r.length > 1 || r[0].includes(',')) return { error: `«${arg}»: falta combate1v1:<slug del NPC> (uno solo).` };
       pasos.push({ tipo: 'combate1v1', npcSlug: r[0] });
+    } else if (clave === 'partida-caza') {
+      // QA-299 (P439): `partida-caza:<presa>:heridos=<h>[:permanente]` en vez de n: vuelve sin piezas y con h heridos.
+      const conHeridos = r[1]?.startsWith('heridos=') ?? false;
+      const n = conHeridos ? 0 : entero(r[1]);
+      const h = conHeridos ? entero(r[1]!.slice('heridos='.length)) : 0;
+      if (!r[0] || n == null || h == null || r.length > 3 || (r[2] != null && r[2] !== 'permanente')) return { error: `«${arg}»: falta partida-caza:<presa>:<n>[:permanente] (n entero de 1 o más) o partida-caza:<presa>:heridos=<h>[:permanente].` };
+      pasos.push({ tipo: 'partidaCaza', especie: r[0], n, heridos: h, permanente: r[2] === 'permanente' });
     } else if (clave === 'ganado') {
       const n = entero(r[1]);
       if (!r[0] || n == null) return { error: `«${arg}»: falta ganado:<especie>:<n>.` };
@@ -122,6 +131,11 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const n = r[0] === undefined ? null : entero(r[0]);
       if (r.length > 1 || (r[0] !== undefined && (n == null || n > 200))) return { error: `«${arg}»: falta mochila-libre[:<n>], con n de 1 a 200.` };
       pasos.push({ tipo: 'mochila-libre', n });
+    } else if (clave === 'mochila-descartar') {
+      // QA-299 (P336): como mochila-libre, pero descartando (sin pasar por el Almacén, que puede estar lleno).
+      const n = r[0] === undefined ? null : entero(r[0]);
+      if (r.length > 1 || (r[0] !== undefined && (n == null || n > 200))) return { error: `«${arg}»: falta mochila-descartar[:<n>], con n de 1 a 200.` };
+      pasos.push({ tipo: 'mochila-descartar', n });
     } else if (clave === 'nivel') {
       const nivel = entero(r[0]);
       const atributos = r[1] === undefined ? [] : r[1].split(',');

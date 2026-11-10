@@ -4,6 +4,12 @@
 Uso: python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>" [--registro <ruta>]
      python3 tools/qa/marca-hallazgo.py --nuevo "<hallazgo>" "<estado>" [--registro <ruta>]
      python3 tools/qa/marca-hallazgo.py --resumen [--comprobar] [--registro <ruta>]
+     python3 tools/qa/marca-hallazgo.py --ver P<n> [P<m>...] [--registro <ruta>]
+
+QA-303: `--ver` (solo lectura, sin git fetch) imprime la fila de cada P en la tabla del registro (recortada a
+~400 caracteres) y, con `archivo:línea`, las líneas de `plan-comprobacion-puerta.md` y de
+`plan-comprobacion-puerta-archivo.md` (junto al registro) que citan ese P como palabra entera (P33 no casa P330),
+recortadas a ~300. Si un P no está en el registro, lo dice y sale con 1.
 
 La primera forma busca la fila `| P<n> | ...` cuyo estado (la última columna) contenga el texto viejo y
 lo sustituye solo ahí; falla si no hay exactamente una, para no tocar otra fila por error. La segunda (`QA-47`) añade una fila nueva
@@ -195,6 +201,36 @@ def guardar(ruta: str, lineas: list[str]) -> None:
     open(ruta, 'w', encoding='utf-8').write('\n'.join(con_resumen(lineas)))
 
 
+def recorta(texto: str, n: int) -> str:
+    return texto if len(texto) <= n else texto[:n - 1].rstrip() + '…'
+
+
+def ver(ruta: str, lineas: list[str], ps: list[str]) -> int:
+    """QA-303: fila del registro y citas en el plan de cada P, sin leer los archivos enteros a mano."""
+    carpeta = os.path.dirname(os.path.abspath(ruta))
+    planes = [os.path.join(carpeta, n) for n in ('plan-comprobacion-puerta.md', 'plan-comprobacion-puerta-archivo.md')]
+    textos = {pl: open(pl, encoding='utf-8').read().split('\n') for pl in planes if os.path.exists(pl)}
+    falta = 0
+    for p in ps:
+        if not re.fullmatch(r'P\d+', p):
+            sys.exit(f'--ver espera ids como P12, no «{p}»')
+        filas = [l for l in lineas if re.match(rf'^\| {p} \|', l)]
+        if not filas:
+            print(f'{p}: no está en el registro {ruta}')
+            falta = 1
+            continue
+        for fila in filas:
+            print(recorta(fila, 400))
+        if len(filas) > 1:
+            print(f'AVISO: {p} aparece {len(filas)} veces en el registro')
+        patron = re.compile(rf'(?<![\w]){p}(?!\d)')
+        for pl, tl in textos.items():
+            for n, l in enumerate(tl, 1):
+                if patron.search(l):
+                    print(f'  {os.path.relpath(pl)}:{n}: {recorta(l.strip(), 300)}')
+    return falta
+
+
 def main(args: list[str]) -> None:
     registro = None
     if '--registro' in args:
@@ -203,6 +239,10 @@ def main(args: list[str]) -> None:
         args = args[:i] + args[i + 2:]
     ruta = registro or registro_por_defecto()
     lineas = open(ruta, encoding='utf-8').read().split('\n')
+    if args[:1] == ['--ver']:
+        if len(args) < 2:
+            sys.exit('Uso: marca-hallazgo.py --ver P<n> [P<m>...] [--registro <ruta>]')
+        sys.exit(ver(ruta, lineas, args[1:]))
     if args[:1] == ['--resumen']:
         nuevas = con_resumen(lineas)
         if args[1:] == ['--comprobar']:

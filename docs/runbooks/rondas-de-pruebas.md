@@ -26,6 +26,22 @@ prepara con `escenario.sh preparar` y lo guarda, sin rehacer reglas a mano (`QA-
 `preparar … combate:<npc>,…` abre un combate de grupo; lo que solo pasa en el 1v1 clásico (la huida de la fauna por
 habilidad, P373) se prepara con `combate1v1:<npc>` (`QA-293`): el NPC, viva donde viva, se lanza contra la jugadora, y al
 recargar la página sale el panel de combate con él. Se niega si ya hay un combate en curso o el NPC no existe.
+Una caza que vuelve con piezas (P339 «1 pieza»/«N piezas», o la orden permanente cortada por el Desolladero dañado, P338) se
+prepara con `partida-caza:<presa>:<n>[:permanente]` (`QA-298`): la partida de caza del Reino (la que hay en marcha tras esa
+presa o una lanzada como desde el panel, que pide cazadores libres con arma y un lugar donde se haya visto la presa) queda en
+casa a punto de volver con `n` piezas, y al avanzar el día vuelve por el camino normal, con su aviso y el paso por el
+Desolladero. Con `:permanente` repite la orden: junto con `danar:desolladero` se juega el corte de P338. Ej.:
+`escenario.sh preparar <partida> partida-caza:kirelon-arenoso:2:permanente danar:desolladero` y `avanzar <partida> 1`.
+Se niega sin cazadores, con una presa que no existe o no vista, o con `n` menor que 1.
+Una caza que vuelve con heridos (P439, «1 de los suyos salen heridos») se prepara con `partida-caza:<presa>:heridos=<h>[:permanente]`
+(`QA-299`): la partida vuelve sin piezas y con `h` heridos (compañeros: condición `HERIDO`); el aviso, con el texto del juego
+(`resumenDeCaza`), queda en Reino › Avisos al preparar, no al avanzar el día. Se niega con más heridos que cazadores.
+Para dejar la mochila con hueco (P336: `dar` no pasa de la capacidad y, con el Almacén lleno, `mochila-libre` no deposita) está
+`mochila-descartar[:<n>]` (`QA-299`): tira lo suelto, lo más abultado primero, hasta dejar `n` libres (10 por defecto); lo
+equipado no se toca. Ej.: `escenario.sh preparar <partida> mochila-descartar:10` y `escenario.sh dar <partida> pasto-solar:3`.
+Para dejar hueco en el Granero (comparten tope la comida y el forraje), `dar-reino` también resta (`QA-300`): `comida=-2`
+(o `bebida`, `goirnos`, `tesoro`) quita lo pedido con suelo en 0 y avisa si se pedía más de lo que había; `0` se rechaza.
+P336 (Granero a 180/180, hueco 2): `escenario.sh dar-reino <partida> comida=-2`, `preparar <partida> mochila-descartar:10` y `dar <partida> pasto-solar:3`.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
@@ -80,6 +96,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    cuadra o es visual. Lo que vale la pena repetir se escribe como recorrido en
    `tools/playwright-e2e/recorridos/` (`QA-103`, su cabecera en `recorrer.mjs`) y se pasa con
    `bash tools/qa/recorrer.sh [filtro]`: una línea por recorrido.
+   Para leer un hallazgo, `python3 tools/qa/marca-hallazgo.py --ver P<n>…` (`QA-303`), no el registro ni el plan enteros.
 4. **Apuntar**: hallazgos con `marca-hallazgo.py` (abajo) y, en la matriz, cada tarea jugada como `jugado` con la
    fecha y el hallazgo o recorrido que lo prueba.
 5. **Cerrar**: arreglos, sus recorridos en verde y el bloque en `jugado` en la matriz. Entonces, el siguiente.

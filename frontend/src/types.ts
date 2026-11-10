@@ -353,6 +353,9 @@ export interface RollInfo {
   /// retirado por ser puramente cosmético) — opcional porque tiradas persistidas antes de este
   /// campo no lo tienen; el badge cae de vuelta a solo éxito/fallo en ese caso.
   gradoExito?: 'claro' | 'fallo'
+  /// P364: resta por heridas y valor ya rebajado (solo la huida los lleva).
+  malus?: number
+  valorEfectivo?: number
 }
 
 /// Un lado del intercambio de combate (revisión de partida 2026-08-08, petición explícita: "que
@@ -821,6 +824,8 @@ export interface BuildingInfo {
   caida?: boolean
   /// P284: materiales que cuesta repararlo; null si no hace falta.
   costeReparar?: number | null
+  /// P372: materiales que hay ahora en el Almacén (solo si hay algo que reparar), para avisar antes de pulsar «Reparar».
+  materialesAlmacen?: number | null
   description: string
   /// P346: quien está atado en esta Jaula (null si no es Jaula o está vacía).
   ocupante?: OcupanteJaula | null

@@ -54,4 +54,51 @@ describe('P284/P302 — reparar y doble clic', () => {
     fireEvent.click(btn)
     expect(onBuild).toHaveBeenCalledTimes(1)
   })
+  // P372: el 400 del backend (faltan materiales) se ve en la tarjeta del edificio que se intentó reparar.
+  it('P372: si Reparar falla, el motivo sale en la tarjeta del edificio', async () => {
+    vi.spyOn(api, 'postRepararEdificio').mockRejectedValue(new Error('Hacen falta 9 materiales en el Almacén para reparar Pozo; tienes 4.'))
+    const { getByRole, findByRole, getAllByRole } = render(
+      <EdificiosParcelasSection buildings={[edificio({ status: 'DANADO', costeReparar: 9, name: 'Pozo' })]} saveId="s1" onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Reparar' }))
+    const aviso = await findByRole('alert')
+    expect(aviso.textContent).toContain('tienes 4')
+    expect(getAllByRole('alert')).toHaveLength(1)
+    expect(aviso.closest('div.rounded-lg')?.textContent).toContain('Pozo')
+  })
+  it('P372: el error de «Encargar reparación» sale también en la tarjeta del edificio', async () => {
+    vi.spyOn(api, 'postObra').mockRejectedValue(new Error('La cola de obras está llena.'))
+    const casa = edificio({ id: 'b9', name: 'Casa de obras', recipeKey: 'casa-de-obras' })
+    const { getByRole, findByRole } = render(
+      <EdificiosParcelasSection buildings={[casa, edificio({ status: 'DANADO', costeReparar: 9, name: 'Pozo' })]} saveId="s1" onRefreshSave={async () => {}} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Encargar reparación' }))
+    const aviso = await findByRole('alert')
+    expect(aviso.closest('div.rounded-lg')?.textContent).toContain('Pozo')
+  })
+  // P372 (mejora 2026-11-09): lo que falta se dice antes de pulsar, no tras un 400.
+  it('P372: con menos materiales que el coste, Reparar sale deshabilitado, dice cuánto falta y no llama a la API', () => {
+    const spy = vi.spyOn(api, 'postRepararEdificio').mockResolvedValue({ ok: true, coste: 9 })
+    const { getByRole, getByText } = render(
+      <EdificiosParcelasSection buildings={[edificio({ status: 'DANADO', costeReparar: 9, materialesAlmacen: 4, name: 'Pozo' })]} saveId="s1" onRefreshSave={async () => {}} />,
+    )
+    const btn = getByRole('button', { name: 'Reparar' }) as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
+    expect(getByText('Hacen falta 9 materiales; tienes 4.')).toBeTruthy()
+    fireEvent.click(btn)
+    expect(spy).not.toHaveBeenCalled()
+  })
+  it('P372: con materiales bastantes, Reparar sigue activo y sin aviso; «Encargar reparación» no depende del Almacén', () => {
+    const casa = edificio({ id: 'b9', name: 'Casa de obras', recipeKey: 'casa-de-obras' })
+    const { getByRole, queryByText } = render(
+      <EdificiosParcelasSection buildings={[casa, edificio({ status: 'DANADO', costeReparar: 9, materialesAlmacen: 9 })]} saveId="s1" onRefreshSave={async () => {}} />,
+    )
+    expect((getByRole('button', { name: 'Reparar' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(queryByText(/Hacen falta/)).toBeNull()
+  })
+  it('P372: sin materiales, «Encargar reparación» sigue activo (la Casa de obras gasta según avanza)', () => {
+    const casa = edificio({ id: 'b9', name: 'Casa de obras', recipeKey: 'casa-de-obras' })
+    const { getByRole } = render(<EdificiosParcelasSection buildings={[casa, edificio({ id: 'b2', status: 'DANADO', costeReparar: 9, materialesAlmacen: 0 })]} saveId="s1" onRefreshSave={async () => {}} />)
+    expect((getByRole('button', { name: 'Encargar reparación' }) as HTMLButtonElement).disabled).toBe(false)
+  })
 })

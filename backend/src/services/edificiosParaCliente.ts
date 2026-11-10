@@ -1,6 +1,7 @@
 import type { Building, Prisma, PrismaClient } from '@prisma/client';
 import { fichaDeEdificioParaPanel } from './construction.js';
 import { costeDeReparar } from './asaltos.js';
+import { materialesEnAlmacen } from './cronista/facturaEquipo.js';
 import { dayForFictionalMinutes } from './worldClock.js';
 import { ocupantesDeJaulas, type OcupanteDeJaula } from './companionSupervivencia.js';
 
@@ -18,6 +19,9 @@ export interface EdificioParaCliente {
   status: Building['status'];
   caida: boolean;
   costeReparar: number | null;
+  /// P372: materiales que hay ahora en el Almacén, para decir antes de pulsar «Reparar» cuántos faltan (solo si hay
+  /// algo que reparar; null si no). Misma cuenta que el error de la ruta (`materialesEnAlmacen`).
+  materialesAlmacen: number | null;
   description: string;
   /// P346: quien está atado en esta Jaula (null si no es Jaula o está vacía).
   ocupante: OcupanteDeJaula | null;
@@ -47,6 +51,8 @@ async function danosDeEdificios(db: Prisma.TransactionClient | PrismaClient, sav
 export async function edificiosParaCliente(db: Prisma.TransactionClient | PrismaClient, saveId: string, filas: Building[]): Promise<EdificioParaCliente[]> {
   const ocupantes = await ocupantesDeJaulas(db, saveId);
   const danios = await danosDeEdificios(db, saveId, filas.filter((b) => b.status === 'DANADO').map((b) => b.id));
+  const hayQueReparar = filas.some((b) => b.status === 'DANADO' || b.caida);
+  const materiales = hayQueReparar ? await materialesEnAlmacen(db as Prisma.TransactionClient, saveId) : null;
   return filas.map((b) => fichaDeEdificioParaPanel({
     id: b.id,
     territoryId: b.territoryId,
@@ -58,6 +64,7 @@ export async function edificiosParaCliente(db: Prisma.TransactionClient | Prisma
     status: b.status,
     caida: b.caida,
     costeReparar: b.status === 'DANADO' || b.caida ? costeDeReparar(b.recipeKey, b.tier) : null,
+    materialesAlmacen: b.status === 'DANADO' || b.caida ? materiales : null,
     description: b.description,
     ocupante: ocupantes.get(b.id) ?? null,
     danio: b.status === 'DANADO' ? (danios.get(b.id) ?? null) : null,

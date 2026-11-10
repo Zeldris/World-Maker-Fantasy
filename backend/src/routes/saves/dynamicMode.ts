@@ -28,6 +28,7 @@ import { iniciarCaza, accionEnDiarioDeCaza, type CazaTarget, type TiradaGrupoInf
 import type { AttributeBlock, RollResult } from '../../services/dice.js';
 import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
+import { ataquePendienteDeApertura } from '../../services/npcCombatAbilities.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
@@ -152,7 +153,7 @@ async function abrirCombateForzadoDesdeInteractuar(
   cantidad?: number,
   /// P90: el grupo vio antes a la jugadora (`quienInicia: 'npc'`); ella no eligió atacar.
   emboscada = false,
-): Promise<{ combate: ReturnType<typeof combateNpcShape> } | { actionText: string; accionEnDiario?: string | null; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia } } | null> {
+): Promise<{ combate: ReturnType<typeof combateNpcShape>; esperandoDefensaJugador?: true } | { actionText: string; accionEnDiario?: string | null; tiradasGrupo?: TiradaGrupoInfo[]; combateGrupoLogEntry?: { id: string; text: string; timeLabel: string; createdAt: string; roll: CombateGrupoLogRoll | TiradaCazaLimpia } } | null> {
   // CR-49: una persona con banda o con los suyos cerca no pelea sola — combate de varios con todos,
   // y el turno siguiente (con `actionText`) lo lleva el motor de grupo, como la caza en grupo.
   const persona = await prisma.npc.findFirst({
@@ -229,7 +230,16 @@ async function abrirCombateForzadoDesdeInteractuar(
   // jugando en vivo con Playwright: antes solo se escribía `pendingCombatNpcSlugs` y la oferta se
   // quedaba en BD — tras recargar reaparecía la tarjeta aunque el combate ya hubiera empezado o
   // terminado, y mientras siguiera pendiente ningún encuentro nuevo podía ofrecerse en la zona).
-  await guardarSlugsDeCombate(prisma, save.id, [targetSlug], { extra: { pendingDynamicModeOffer: Prisma.JsonNull, pendingDynamicMode: Prisma.JsonNull } });
+  // P437: si el rival la vio antes (emboscada), su ataque queda pendiente y la primera ronda es la defensa
+  // de la jugadora, como en la apertura con texto libre (`ataquePendienteDeApertura`).
+  const ataquePendiente = emboscada ? ataquePendienteDeApertura(target) : null;
+  await guardarSlugsDeCombate(prisma, save.id, [targetSlug], {
+    extra: {
+      pendingDynamicModeOffer: Prisma.JsonNull,
+      pendingDynamicMode: Prisma.JsonNull,
+      ...(ataquePendiente ? { pendingNpcAttack: ataquePendiente as unknown as Prisma.InputJsonValue } : {}),
+    },
+  });
   // B9 (pruebas 2026-09-28): el encuentro decía "Alguien se abalanza..." pero la ficha de combate
   // mostraba al instante el nombre real y toda su historia. Al quedar cara a cara en combate se le
   // identifica: queda descubierto, así mapa, Enciclopedia y ficha cuentan lo mismo desde aquí.
@@ -239,7 +249,7 @@ async function abrirCombateForzadoDesdeInteractuar(
   // presentarse o descubrirse. Un rol o una especie (no PRINCIPAL) sigue descubriéndose como antes.
   const visible = await nombreVisibleDeNpc(prisma, save.id, target);
   if (!visible.oculto) await recordEntityDiscoveries({ saveId: save.id, worldId: save.worldId, mentionedText: target.name, npcSlugsInScene: [target.slug] });
-  return { combate: combateNpcShape({ ...target, name: visible.nombre }) };
+  return { combate: combateNpcShape({ ...target, name: visible.nombre }), ...(ataquePendiente ? { esperandoDefensaJugador: true as const } : {}) };
 }
 
 function combateNpcShape(target: { slug: string; name: string; condicionFisica: string; saqueado: boolean; lootedItemNames: string[]; analizado: boolean; capturable: boolean; activeEffects: unknown; targetedForKill: boolean }) {

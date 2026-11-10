@@ -99,4 +99,12 @@ describe('partidas de caza: arma y vuelta (P280, P281, P283)', () => {
     expect(op.cazadoresFuera).toEqual(['Armada']);
     expect(op.cazadores.map((c) => c.id)).toEqual([desarmado]);
   });
+
+  it('revisión C2 (leve 5): origenDanado solo si lo que falta para salir es un edificio dañado con lugar', async () => {
+    expect((await opcionesDePartida(prisma, saveId, HOY * 1440)).origenDanado).toBe(false);
+    await prisma.building.updateMany({ where: { saveId }, data: { status: 'DANADO' } });
+    expect(await opcionesDePartida(prisma, saveId, HOY * 1440)).toMatchObject({ origen: null, origenDanado: true });
+    await prisma.building.updateMany({ where: { saveId }, data: { locationId: null } });
+    expect(await opcionesDePartida(prisma, saveId, HOY * 1440)).toMatchObject({ origen: null, origenDanado: false });
+  });
 });

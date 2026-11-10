@@ -21,7 +21,7 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   matriz y la función de `docs/mapa-agente.md`. Antes de repartir una tanda, la principal comprueba que el escenario
   da el estado que pide cada id (montura, lugar visitado, animal, convaleciente…); si falta, el primer trozo lo
   prepara (`QA-216`). Una tanda de juego, 6-8 hallazgos y ~60 llamadas; una de arreglos, como mucho 5
-  hallazgos y ~90 llamadas, y la revisión con Opus junta dos tandas (`QA-257`). Al llegar la de juego,
+  hallazgos y ~90 llamadas, y la revisión con Opus junta dos tandas (`QA-257`). El encargo lleva «a las 50 llamadas, para, guarda el escenario y devuelve lo hecho y lo que falta» (`QA-304`). Al llegar la de juego,
   `tools/qa/escenario.sh guardar` y la siguiente lo carga (`QA-147`); si el encargo escribe en la partida, se prueba
   con `escenario.sh probar` (`QA-153`) y pasa por las funciones del juego que aplican esas reglas, sin rehacerlas a
   mano (`QA-151`). Los P-números de `FOUND` van al registro de la ronda y los de `TOOLS` a

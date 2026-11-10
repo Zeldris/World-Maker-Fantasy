@@ -51,7 +51,7 @@ export async function entregaRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>('/saves/:id/entregables', async (request, reply) => {
     const save = await prisma.save.findUnique({
       where: { id: request.params.id },
-      select: { id: true, worldId: true, currentLocationId: true, inventoryItems: { where: { slot: null }, select: { id: true, name: true, description: true } } },
+      select: { id: true, worldId: true, currentLocationId: true, inventoryItems: { where: { slot: null, companionId: null, subjectId: null }, select: { id: true, name: true, description: true } } },
     });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     if (!save.currentLocationId || save.inventoryItems.length === 0) return { items: [], npcs: [] };
@@ -97,7 +97,8 @@ export async function entregaRoutes(app: FastifyInstance) {
       if (!itemId) return reply.status(400).send({ error: 'Falta itemId' });
 
       const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
-      if (!item || item.saveId !== save.id) return reply.status(404).send({ error: 'Objeto no encontrado en tu inventario' });
+      // Mismo criterio que `/entregables`: solo la bolsa de la jugadora (sin dueño); lo de un compañero o súbdito no se entrega (QA-301).
+      if (!item || item.saveId !== save.id || item.companionId !== null || item.subjectId !== null) return reply.status(404).send({ error: 'Objeto no encontrado en tu inventario' });
       if (item.slot !== null) return reply.status(400).send({ error: 'Desequípalo antes de entregarlo' });
 
       const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });

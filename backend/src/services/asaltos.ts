@@ -28,7 +28,7 @@ import type { AttributeBlock } from './dice.js';
 import { ownerKeyFor } from './reinoOwner.js';
 import { avisoDeViajero, TRABAJOS, type ViajeroFila } from './viajeros.js';
 import { recetaDeEdificio } from './construction.js';
-import { gastarMateriales } from './cronista/facturaEquipo.js';
+import { gastarMateriales, materialesEnAlmacen } from './cronista/facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -268,7 +268,11 @@ export async function repararEdificio(
   if (!b) return { ok: false, motivo: 'No tienes ese edificio.', sinArreglo: true };
   if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.`, sinArreglo: true };
   const coste = costeDeReparar(b.recipeKey, b.tier);
-  if (!(await gastarMateriales(tx, saveId, coste))) return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén.` };
+  if (!(await gastarMateriales(tx, saveId, coste))) {
+    // P372: la jugadora ve el error en pantalla: que diga cuánto hay y cuánto falta.
+    const hay = await materialesEnAlmacen(tx, saveId);
+    return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén para reparar ${b.name}; tienes ${hay}.` };
+  }
   await tx.building.update({ where: { id: buildingId }, data: { status: 'ACTIVO', caida: false, golpesDefensa: 0 } });
   return { ok: true, coste };
 }

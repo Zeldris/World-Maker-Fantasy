@@ -431,6 +431,14 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // "Defenderse". Ahora usa el endpoint dedicado `combat/huir-en-curso` (misma tirada determinista
   // que `handleFleeAttempt` pre-combate): si falla, aplica un golpe directo real sin tirada de
   // defensa, reflejado tanto en `condicionFisica` como en la narración.
+  function cancelarTiradasPendientes() {
+    cancelarTirada(exchangeApplyTimerRef.current)
+    cancelarTirada(awaitingDefenseTimerRef.current)
+    exchangeApplyTimerRef.current = null
+    applyExchangeResultRef.current = null
+    awaitingDefenseTimerRef.current = null
+  }
+
   async function handleCombatHuir() {
     if (!saveId || combatBusy) return
     setCombatBusy(true)
@@ -440,9 +448,15 @@ export function useCombatFlow(params: UseCombatFlowParams) {
       setCharacterLog((prev) => [...prev, { ...logEntry, channel: 'character' }])
       setCondicionFisica(newCondicion as CondicionFisica)
       if (escaped) {
+        // P366: un intercambio de la ronda anterior aún en su animación aplicaba después su
+        // `combate` y resucitaba el combate del que se acababa de huir (HUD «En combate»).
+        cancelarTiradasPendientes()
         setCombatOpen(false)
         setCombateIniciado(null)
         setCombatAwaitingDefense(false)
+        setCombatEnded(false)
+        setAwaitingNextInitiative(false)
+        setAwaitingExchangeApply(false)
       }
       // Si falla, el popup se queda abierto con el combate en curso — el golpe ya aplicado se ve
       // reflejado en el estado de condición física, sin necesidad de cerrar ni reabrir nada.
@@ -773,6 +787,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
           convalecienteOffers: newlyConvalecientes.length > 0 ? newlyConvalecientes : undefined,
           factionRepChange: params.factionRepChange ?? undefined,
           professionXpGain: params.professionXpGains?.[0] ?? undefined,
+          // P363: el XP de la ronda (y el del hito), como lo guarda el backend y se ve tras recargar.
+          xpDelta: params.progression.xpDelta > 0 ? params.progression.xpDelta : undefined,
+          xpHitoDelta: params.progression.xpHito && params.progression.xpHito > 0 ? params.progression.xpHito : undefined,
+          xpHitoLabel: params.progression.xpHitoLabel ?? undefined,
         },
       ]
       // P55 (QA-27), P117/QA-70: lo que sigue a la narración (subida de nivel, desbloqueos, los demás
@@ -999,14 +1017,12 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   function closeCombat() {
     // Cierre real de combate — cualquier timer/callback de intercambio/iniciativa que siga vivo de
     // un turno ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
-    cancelarTirada(exchangeApplyTimerRef.current)
-    cancelarTirada(awaitingDefenseTimerRef.current)
-    exchangeApplyTimerRef.current = null
-    applyExchangeResultRef.current = null
-    awaitingDefenseTimerRef.current = null
+    cancelarTiradasPendientes()
     setCombatOpen(false)
     setCombateIniciado(null)
     setCombatAwaitingDefense(false)
+    // P426: `combatEnded` seguía en true tras «Salir» y el siguiente combate heredaba el estado.
+    setCombatEnded(false)
     if (saveId) requestCerrarCombate(saveId).catch(() => {})
   }
 

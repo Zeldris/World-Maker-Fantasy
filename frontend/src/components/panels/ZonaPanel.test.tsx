@@ -124,7 +124,7 @@ describe('ZonaPanel — UX-7', () => {
     expect(onViajarA).not.toHaveBeenCalled()
   })
 
-  it('con bloqueoMovimiento, ir hacia una salida lejana no llama a moverEnZona y enseña el motivo', async () => {
+  it('con bloqueoMovimiento, la salida lejana abre su tarjeta con «Viajar» deshabilitado y no llama a moverEnZona', async () => {
     const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: false, teaser: null, description: null, imageUrl: null }
     vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
     const utils = render(<ZonaPanel saveId="s1" bloqueoMovimiento="El narrador todavía está escribiendo." />)
@@ -134,7 +134,30 @@ describe('ZonaPanel — UX-7', () => {
       fireEvent.click(marcador)
     })
     expect(moverEnZona).not.toHaveBeenCalled()
-    expect(utils.getByText('El narrador todavía está escribiendo.')).toBeTruthy()
+    const boton = utils.getByRole('dialog').querySelector('button[title="El narrador todavía está escribiendo."]') as HTMLButtonElement
+    expect(boton.disabled).toBe(true)
+  })
+
+  // P259: pulsar una salida lejana enseña su tarjeta y NO camina; solo al confirmar «Viajar».
+  it('P259: pulsar una salida lejana abre su tarjeta sin caminar; al confirmar camina', async () => {
+    const salida = { locationId: 'l2', slug: 'vado', nombre: 'Vado', x: 700, y: 500, visitada: true, alcanzable: false, minutos: 90, teaser: null, description: null, imageUrl: null }
+    vi.mocked(getZona).mockResolvedValue({ ...zona, salidas: [salida] } as never)
+    vi.mocked(moverEnZona).mockResolvedValue({ jugador: { x: 700, y: 500 }, caminoRestante: [], zonePointsMovidos: [] } as never)
+    const utils = render(<ZonaPanel saveId="s1" onViajarA={vi.fn()} />)
+    await act(async () => {})
+    const marcador = Array.from(utils.container.querySelectorAll('svg g > title')).find((t) => t.textContent === 'Vado')!.parentElement!
+    await act(async () => {
+      fireEvent.click(marcador)
+    })
+    expect(moverEnZona).not.toHaveBeenCalled()
+    const dialogo = utils.getByRole('dialog')
+    expect(dialogo.textContent).toContain('Vado')
+    expect(dialogo.textContent).toContain('de camino')
+    expect(utils.getByTestId('salida-lejos')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(Array.from(dialogo.querySelectorAll('button')).find((b) => b.textContent === 'Viajar')!)
+    })
+    expect(moverEnZona).toHaveBeenCalled()
   })
 })
 
@@ -214,6 +237,51 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     const pasos = rutaPrevista(zona.jugador, { x: 175, y: 125 }, undefined, new Set(muros.map(claveCelda))).pasos
     expect(pasos).toBeGreaterThan(4)
     expect(getByTestId('tarjeta-ficha').textContent).toBe(`Aullador rojoFauna · Enemigo · ×3 · a ${pasos} pasos`)
+  })
+
+  // P337: pegado a las estacas del recinto pero fuera, el menú no ofrece «Interactuar» y dice por dónde se entra.
+  async function abrirMenuDelAullador(extra: Record<string, unknown>) {
+    vi.mocked(getZona).mockResolvedValue({ ...zona, puntos: [{ ...zona.puntos[0]!, droppedItemId: 'd1' }], ...extra } as never)
+    const r = render(<ZonaPanel saveId="s1" />)
+    await act(async () => {})
+    const ficha = [...r.container.querySelectorAll('g.cursor-pointer')].find((g) => g.querySelector('title')?.textContent?.startsWith('Aullador rojo'))!
+    fireEvent.click(ficha)
+    return { ...r, menu: r.getByRole('menu', { name: 'Aullador rojo' }) }
+  }
+  const items = (menu: HTMLElement) => [...menu.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)
+
+
+  it('P337: un punto sobre las estacas, desde fuera, ofrece ir a la puerta del poblado (no Interactuar) y conserva el resto', async () => {
+    const { menu, getByRole, findByRole } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }], puertas: [{ col: 12, row: 9 }] })
+    expect(menu.textContent).toContain('se entra por la puerta del poblado')
+    expect(items(menu)).toEqual(['Ir a la puerta del poblado', 'Recoger', 'Ver ficha completa'])
+    // La ficha completa tampoco ofrece Acercarte ni Ir hasta aquí desde fuera: ofrece lo mismo, la puerta.
+    fireEvent.click(getByRole('menuitem', { name: 'Ver ficha completa' }))
+    const dialogo = await findByRole('dialog')
+    expect(dialogo.textContent).toContain('Ir a la puerta del poblado')
+    expect(dialogo.textContent).not.toMatch(/Acercarte|Ir hasta aquí/)
+  })
+
+  it('P337: «Ir a la puerta del poblado» camina al centro de la puerta (12,9), no a la casilla de las estacas', async () => {
+    vi.mocked(moverEnZona).mockResolvedValue({ jugador: { x: 625, y: 475 }, caminoRestante: [], zonePointsMovidos: [] } as never)
+    const { getByRole } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }], puertas: [{ col: 12, row: 9 }] })
+    await act(async () => {
+      fireEvent.click(getByRole('menuitem', { name: 'Ir a la puerta del poblado' }))
+    })
+    expect(moverEnZona).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(moverEnZona).mock.calls[0]![1]).toEqual({ x: 625, y: 475 })
+  })
+
+  it('P337: con el jugador dentro del recinto, sale Interactuar y no el aviso', async () => {
+    const { menu } = await abrirMenuDelAullador({ jugador: { x: 225, y: 125 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] })
+    expect(menu.textContent).not.toContain('puerta del poblado')
+    expect(items(menu)).toContain('Interactuar')
+  })
+
+  it('P337: sin interior (zona sin empalizada), el punto sobre un muro se trata como siempre', async () => {
+    const { menu } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }] })
+    expect(menu.textContent).not.toContain('puerta del poblado')
+    expect(items(menu)).toContain('Interactuar')
   })
 
   // P147 (QA-27): la insignia «×N» de un grupo quedaba tapada por una ficha pegada o por el personaje.

@@ -155,8 +155,26 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     expect(res.statusCode).toBe(200);
     // 3 raciones de carne (10 de curaHambre cada una) = 3 de comida; 4 huesos → 2; la lana (1) → 0.
     expect(res.json()).toMatchObject({ comida: 3, almacen: { 'hueso-ligero': 2 } });
+    // P335: dice qué se obtiene, y lo deja en el diario del Reino.
+    expect(res.json().aviso).toMatch(/^Sacrificas un animal \(.+\): \+3 de comida, 2 .+ al Almacén\.$/);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: res.json().aviso } })).toBe(1);
     expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: ownerKeyFor({ saveId }) } })).comida).toBe(antes + 3);
     expect(await prisma.ganado.findUnique({ where: { id: animal.id } })).toBeNull();
+  });
+
+  it('revisión C1: con el Granero lleno, el aviso no promete comida que no entra y dice que se pierde', async () => {
+    const owner = ownerKeyFor({ saveId });
+    // Tope 60 sin Granero: comida 40 + forraje 20 = lleno.
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 40, forraje: 20 } });
+    const app = await buildApp();
+    const animal = await prisma.ganado.create({ data: { saveId, buildingId: corralId, especie: 'murgol', sexo: 'M', nacidoEn: 10 * 1440 - 200 * 1440 } });
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${animal.id}/sacrificar` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().comida).toBe(0);
+    expect(res.json().comidaPerdida).toBe(3);
+    expect(res.json().aviso).not.toMatch(/\+\d+ de comida/);
+    expect(res.json().aviso).toMatch(/Se pierden 3 de comida: el Granero está lleno/);
+    expect((await prisma.kingdomStats.findUniqueOrThrow({ where: { ownerKey: owner } })).comida).toBe(40);
   });
 
   it('una cría no se puede sacrificar', async () => {
@@ -164,6 +182,60 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     const app = await buildApp();
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/ganado/${cria.id}/sacrificar` });
     expect(res.statusCode).toBe(400);
+  });
+
+  it('P336: «Entregar pastos» explica el hueco compartido: con hueco 2 entrega 1 pasto (2 de forraje, sin redondeo erróneo) y dice cuántos quedan', async () => {
+    const owner = ownerKeyFor({ saveId });
+    // Tope 60 sin Granero: comida 56 + forraje 2 = hueco 2.
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 56, forraje: 2 } });
+    await prisma.inventoryItem.createMany({ data: Array.from({ length: 3 }, () => ({ saveId, name: 'Pasto Solar', description: 'x', catalogSlug: 'pasto-solar' })) });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/forraje/entregar`, payload: { catalogSlug: 'pasto-solar' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ entregados: 1, forraje: 4 });
+    expect(res.json().aviso).toMatch(/Te quedan 2 en la mochila.*comparte hueco con la comida/);
+    // Ya sin hueco: el motivo explica que forraje y comida comparten espacio.
+    const llena = await app.inject({ method: 'POST', url: `/saves/${saveId}/forraje/entregar`, payload: { catalogSlug: 'pasto-solar' } });
+    expect(llena.statusCode).toBe(400);
+    expect(llena.json().error).toMatch(/comparte el espacio con la comida/);
+    await prisma.inventoryItem.deleteMany({ where: { saveId, catalogSlug: 'pasto-solar' } });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 20, forraje: 0 } });
+  });
+
+  it('revisión: «Entregar pastos» no toca los pastos de compañeros ni de súbditos', async () => {
+    const owner = ownerKeyFor({ saveId });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 0, forraje: 0 } });
+    const comp = await prisma.companion.create({ data: { saveId, name: 'Porteador', role: 'aliado', notes: '', tipo: 'NPC' } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Pasto Solar', description: 'x', catalogSlug: 'pasto-solar', companionId: comp.id } });
+    const app = await buildApp();
+    const sin = await app.inject({ method: 'POST', url: `/saves/${saveId}/forraje/entregar`, payload: { catalogSlug: 'pasto-solar' } });
+    expect(sin.statusCode).toBe(400);
+    expect(await prisma.inventoryItem.count({ where: { saveId, catalogSlug: 'pasto-solar' } })).toBe(1);
+    await prisma.inventoryItem.deleteMany({ where: { saveId, catalogSlug: 'pasto-solar' } });
+    await prisma.companion.delete({ where: { id: comp.id } });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 20, forraje: 0 } });
+  });
+
+  it('P334: con el corral vacío el hueco de forraje es el del Granero menos la comida (no 0) y la ruta da comida y tope', async () => {
+    const owner = ownerKeyFor({ saveId });
+    const granero = await prisma.building.create({ data: { saveId, recipeKey: 'granero', name: 'un granero', kind: 'x', status: 'ACTIVO', description: 'x', tier: 1 } });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 109, forraje: 0 } });
+    const ganadoAntes = await prisma.ganado.findMany({ where: { saveId } });
+    await prisma.ganado.deleteMany({ where: { saveId } });
+    const app = await buildApp();
+    const r = (await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json();
+    expect(r).toMatchObject({ huecoForraje: 71, comida: 109, topeComida: 180 });
+    await prisma.building.delete({ where: { id: granero.id } });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 20 } });
+    await prisma.ganado.createMany({ data: ganadoAntes });
+  });
+
+  it('P333: con un Corral dañado la ruta lo lista en corralesFueraDeServicio (para no decir «aún no tienes corrales»)', async () => {
+    const otro = await prisma.building.create({ data: { saveId, recipeKey: 'corrales', name: 'unos corrales del Ganadero', kind: 'x', status: 'DANADO', description: 'x', tier: 1 } });
+    const app = await buildApp();
+    const r = (await app.inject({ method: 'GET', url: `/saves/${saveId}/corrales` })).json();
+    expect(r.corralesFueraDeServicio).toEqual([{ id: otro.id, name: 'unos corrales del Ganadero', status: 'DANADO' }]);
+    await prisma.building.delete({ where: { id: otro.id } });
   });
 
   it('P330: el aviso de carencia solo cuenta con animales en los corrales (sin ellos, 0 días)', async () => {

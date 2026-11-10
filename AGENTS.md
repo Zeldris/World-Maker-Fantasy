@@ -45,7 +45,7 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`): el cambio
   puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
-- **Al cerrar cada tarea o PR** (y cada fase), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
+- **Al cerrar cada tarea o PR** (y cada fase, y cada lote de una rama larga, `QA-305`), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
   en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida.** Uno que no arranca (sin cuota, sin runners) es
   rojo: se dice a la usuaria, y el check local del mismo commit (`pre-push`, o `tools/qa/ci-local.sh`, `QA-215`) vale

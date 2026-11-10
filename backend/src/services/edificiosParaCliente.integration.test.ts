@@ -144,3 +144,38 @@ describe('P350 — el daño de un edificio llega al cliente con su causa y su d�
     expect(fichas.find((f) => f.id === conCausaId)?.danio).toEqual({ causa: 'un asalto', dia: 1541 });
   });
 });
+
+/// P372: el panel del Reino sabe cuántos materiales hay en el Almacén antes de que se pulse «Reparar».
+describe('P372 — materialesAlmacen llega con los edificios por reparar', () => {
+  let saveId: string;
+  let danadoId: string;
+  let enPieId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    saveId = (await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Reparadora de prueba (P372)', characterArchetype: 'guerrero', characterOrigin: 'Clan Serhu', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'R',
+        worldState: { create: { fictionalMinutes: 10 * 1440, fictionalDateLabel: 'día 10' } },
+      },
+    })).id;
+    danadoId = (await prisma.building.create({ data: { saveId, recipeKey: 'pozo', name: 'Pozo', kind: 'pozo', status: 'DANADO', description: 'x' } })).id;
+    enPieId = (await prisma.building.create({ data: { saveId, recipeKey: 'pozo', name: 'Pozo', kind: 'pozo', status: 'ACTIVO', description: 'x' } })).id;
+    const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId: world.id, tipo: 'RECURSO' }, select: { slug: true } });
+    await prisma.almacenItem.createMany({ data: [1, 2, 3].map(() => ({ saveId, catalogSlug: recurso.slug, name: 'Material', description: 'x' })) });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el edificio dañado trae los materiales que hay (los mismos que cuenta el error de la ruta); el que está en pie, null', async () => {
+    const filas = await prisma.building.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' } });
+    const fichas = await edificiosParaCliente(prisma, saveId, filas);
+    expect(fichas.find((f) => f.id === danadoId)).toMatchObject({ costeReparar: expect.any(Number), materialesAlmacen: 3 });
+    expect(fichas.find((f) => f.id === enPieId)?.materialesAlmacen).toBeNull();
+  });
+});

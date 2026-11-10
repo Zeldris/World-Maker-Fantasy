@@ -927,7 +927,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       // antes se quedaba en BD y reaparecía tras recargar, bloqueando cualquier encuentro nuevo).
       await prisma.save.update({
         where: { id: saveId },
-        data: { pendingCombatNpcSlugs: [], pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true } },
+        data: { pendingCombatNpcSlugs: [], pendingNpcAttack: Prisma.JsonNull, pendingDynamicModeOffer: { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true } },
       });
       const app = await buildApp();
       const payload = { tipo: 'FAUNA', targetSlug: 'test-dynamicmode-agresivo', targetName: 'Agresor de Prueba (dynamicMode)', quienInicia: 'npc', combateForzado: true };
@@ -953,6 +953,9 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       expect(saveAfter.pendingDynamicMode).toBeNull();
       expect(saveAfter.pendingDynamicModeOffer).toBeNull();
       expect(saveAfter.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
+      // P437: te vio antes, así que el primer intercambio es su ataque: queda pendiente y el panel abre en Defensa.
+      expect(body.esperandoDefensaJugador).toBe(true);
+      expect(saveAfter.pendingNpcAttack).toMatchObject({ npcId });
     });
 
     // P27/P166 (revisión 2026-10-26): la tarjeta antes del combate no cambia el coste de huir. Si el rival te vio
@@ -1008,6 +1011,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       // entre tests — se compara el CONTEO antes/después en vez de "no se llamó nunca", para no
       // depender de qué otros tests corrieron antes de este.
       const llamadasAntes = narrarVueltaModoDinamico.mock.calls.length;
+      await prisma.save.update({ where: { id: saveId }, data: { pendingNpcAttack: Prisma.JsonNull } });
       const app = await buildApp();
       const res = await app.inject({
         method: 'POST',
@@ -1038,6 +1042,9 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       const saveTrasCombatir = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
       expect(saveTrasCombatir.pendingDynamicMode).toBeNull();
       expect(saveTrasCombatir.pendingCombatNpcSlugs).toEqual(['test-dynamicmode-agresivo']);
+      // P437: la viste tú antes: empiezas atacando, sin ataque suyo pendiente.
+      expect(combatirBody.esperandoDefensaJugador).toBeUndefined();
+      expect(saveTrasCombatir.pendingNpcAttack).toBeNull();
     });
 
     it('quienInicia: "jugador" — responder "Huir" cierra sin combate, gratis, deja LogEntry real', async () => {
