@@ -183,6 +183,7 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 ## Hecho recientemente
 
+- **2026-11-10** — ~~`QA-304`~~, ~~`QA-305`~~ (retro del paso 3.4): el encargo de tanda lleva el tope de 50 llamadas (`skills-wmf.md`); `/clear` también al cerrar cada lote de una rama larga (`AGENTS.md`).
 - **2026-11-09** — ~~`QA-300`~~: `escenario.sh dar-reino` resta con valores negativos (`comida=-2`; también bebida, goirnos y tesoro), suelo en 0 y aviso si se pide más de lo que hay; deja el Granero 178/180 para P336. Test en `darReinoLib.test.ts`.
 - **2026-11-09** — ~~`QA-299`~~: `escenario.sh preparar` con `partida-caza:<presa>:heridos=<h>` (la partida vuelve sin piezas y con h heridos; aviso del juego en Reino › Avisos al preparar, P439) y `mochila-descartar[:<n>]` (tira lo suelto hasta dejar hueco; P336: `dar` no pasa de la capacidad y el Almacén lleno impedía `mochila-libre`). Sin cambio de reglas; tests rojos sin el arreglo.
 - **2026-11-09** — ~~`QA-298`~~: `escenario.sh preparar <partida> partida-caza:<presa>:<n>[:permanente]` deja la partida de caza del Reino a punto de volver con n piezas (por el camino normal al avanzar el día), para jugar P339 y, con `danar:desolladero`, P338 en la tanda 103.
