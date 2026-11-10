@@ -1544,9 +1544,8 @@ export async function dejarVivir(
 ): Promise<{
   npcSlug: string
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
-  /// Reputación de facción (2026-09-04, decisión final desde CONVALECIENTE, ver
-  /// FACTION_REP_MERCY_DELTA en backend) — antes solo Matar/Clemente en combate 1v1 clásico
-  /// aplicaban esto de forma indirecta (y demasiado pronto, ver el bug real que motivó esta pieza).
+  /// Reputación de facción: siempre null desde P270 (usuaria, 2026-11-08), perdonar con Clemente
+  /// no resta reputación. Se mantiene el campo por compatibilidad del contrato.
   factionRepChange: { faction: string; delta: number; newValue: number } | null
   /// Títulos de misión ACTIVA que siguen apuntando a este NPC (2026-09-15, hallazgo real jugando
   /// en vivo: "Acabar con X" seguía ACTIVA sin ningún aviso tras perdonarle la vida) — Clemente NO
