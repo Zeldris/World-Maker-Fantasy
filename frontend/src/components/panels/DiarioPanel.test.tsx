@@ -11,7 +11,7 @@ afterEach(cleanup)
 // P380: el Diario abría en «Verano · Día 6» (día dentro de la estación) con la fecha del juego en el Día 36, y
 // en la fecha del último capítulo de la lista, no en la actual.
 describe('DiarioPanel (P380)', () => {
-  it('abre en la fecha más reciente y numera el día como el juego (Día 36)', async () => {
+  it('abre en la fecha más reciente y rotula el día con estación y año', async () => {
     const respuesta = {
       entries: [
         { kind: 'entry', id: 'e1', channel: 'player', text: 'Entrada de hoy', timeLabel: '08:00', createdAt: '2026-01-01', day: 36, year: 1, estacion: 'VERANO', diaRelativo: 6 },
@@ -23,7 +23,7 @@ describe('DiarioPanel (P380)', () => {
     const { findByText, queryByText } = render(<DiarioPanel saveId="s1" />)
     expect(await findByText('Entrada de hoy')).toBeTruthy()
     await waitFor(() => expect(queryByText('Capítulo viejo')).toBeNull())
-    expect(queryByText('Día 36')).toBeTruthy()
-    expect(queryByText('Día 6')).toBeNull()
+    expect(queryByText('Día 6 de Verano, año 1')).toBeTruthy()
+    expect(queryByText('Día 36')).toBeNull()
   })
 })

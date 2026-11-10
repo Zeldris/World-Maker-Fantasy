@@ -26,7 +26,10 @@ export async function testigosEnLugar(tx: Prisma.TransactionClient, saveId: stri
 /// lo suyo. NPC vivos de ese bando (cualquiera, también guardias y cazadores de plantilla) con su punto
 /// activo en el mismo lugar, como el robo visto de Medieval Dynasty o Bellwright.
 export async function testigosDelBando(tx: Prisma.TransactionClient, saveId: string, worldId: string, locationId: string, faccion: string): Promise<string[]> {
-  const puntos = await tx.zonePoint.findMany({ where: { saveId, locationId, activo: true, tipo: 'NPC' }, select: { targetSlug: true } });
+  const puntosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, activo: true, tipo: 'NPC' }, select: { targetSlug: true } });
+  // P375 (usuaria, 2026-11-10): como en testigosEnLugar, solo ve quien se ve en la zona (BG3: sin línea de visión no hay testigo).
+  const aceptadas = await questSlugsAceptadosPara(tx, saveId);
+  const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, aceptadas));
   if (puntos.length === 0) return [];
   const npcs = await tx.npc.findMany({
     where: {

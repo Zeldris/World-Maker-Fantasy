@@ -34,4 +34,5 @@ describe('testigosEnLugar (P375)', () => {
     await prisma.quest.create({ data: { saveId: save.id, questSlug: ORCO_ENFURECIDO_QUEST_SLUG, title: 'Acabar con el Orco Enfurecido', description: 'x' } });
     expect(await prisma.$transaction((tx) => testigosEnLugar(tx, save.id, worldId, hondonada.id, victima.id))).toEqual([]);
   });
+
 });

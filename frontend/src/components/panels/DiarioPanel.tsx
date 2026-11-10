@@ -5,7 +5,7 @@ import { ESTACION_ICON } from '../../lib/entorno'
 import { RollBadge } from '../RollBadge'
 import { ExtendedRollBadge } from '../ExtendedRollBadge'
 import { PanelEmptyState } from '../PanelEmptyState'
-import { diaAbsolutoDeFecha, fechaMasReciente } from '../../lib/diarioFecha'
+import { etiquetaDiaDiario, fechaMasReciente } from '../../lib/diarioFecha'
 import { EnciclopediaLinkedText } from '../EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { notaDeHito } from '../../lib/hitos'
@@ -185,7 +185,7 @@ export function DiarioPanel({ saveId }: DiarioPanelProps) {
           <div className="flex flex-wrap gap-1.5 border-b border-iron-800 pb-2">
             {dias.map((dia) => (
               <button type="button" key={dia} onClick={() => setSelectedDia(dia)} className={tabButtonClasses(selectedDia === dia)}>
-                Día {selectedYear !== null && selectedEstacion !== null ? diaAbsolutoDeFecha({ year: selectedYear, estacion: selectedEstacion, diaRelativo: dia }) : dia}
+                {selectedYear !== null && selectedEstacion !== null ? etiquetaDiaDiario({ year: selectedYear, estacion: selectedEstacion, diaRelativo: dia }) : `Día ${dia}`}
               </button>
             ))}
           </div>
