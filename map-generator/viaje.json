@@ -1,0 +1,26 @@
+{
+  "fuente": "docs/mecanicas/13-escala-del-mundo.md § 1",
+  "nota": "Reglas para pasar los km de una ruta a tiempo de viaje a pie. Lo que lleva derivado: true no es canon literal: es lo que cuadra con la tabla de distancias de la fuente y lo cambia solo la usuaria.",
+  "velocidadKmH": {"valor": 5, "derivado": false, "nota": "velocidad a pie, canon"},
+  "jornadaHoras": {"valor": 8, "derivado": true, "nota": "una jornada de marcha de 8 h son unos 40 km, lo que cuadra con la tabla de distancias"},
+  "rodeo": {
+    "derivado": true,
+    "nota": "el camino real es más largo que el trazo: km a pie = km × rodeo; el rodeo de un tramo es el de su bioma, o el de montaña si es mayor",
+    "porBioma": {
+      "Hot desert": 1.1,
+      "Cold desert": 1.1,
+      "Savanna": 1.1,
+      "Grassland": 1.1,
+      "Tundra": 1.1,
+      "Tropical seasonal forest": 1.3,
+      "Temperate deciduous forest": 1.3,
+      "Taiga": 1.3,
+      "Tropical rainforest": 1.5,
+      "Temperate rainforest": 1.5,
+      "Wetland": 1.6,
+      "Glacier": 1.6
+    },
+    "montana": {"alturaMinima": 50, "valor": 1.5}
+  },
+  "mar": {"nota": "el canon no fija velocidad por mar: las rutas marítimas dan km y no tiempo"}
+}

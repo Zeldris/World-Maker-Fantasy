@@ -30,9 +30,18 @@ python3 -m unittest discover -s map-generator/tests
   fronteras, corredor costero, Vaelira al oeste, sin Isla Cambiante) y quien las ejecuta, con la cifra medida de cada
   una. Las de `sinDecidir` se muestran con `?` y no hacen fallar. **Las reglas las cambia solo la usuaria.**
 - `exportar.py`: lo que lee el juego. Hoy el contorno y la envolvente de cada región, que dibuja
-  `InteractiveMap.tsx`; **tras cambiar `helek.json` se vuelve a exportar** (el test falla si no).
+  `InteractiveMap.tsx`; **tras cambiar `helek.json` se vuelve a exportar** (el test falla si no). Escribe también
+  `frontend/src/data/helekCapas.ts` (MAP-14): las zonas de tormenta, peligro y clan (`ZONAS_HELEK`), los km y tiempos
+  de cada ruta (`RUTAS_HELEK`) y la regla de viaje (`VIAJE_HELEK`); `--comprobar` revisa los dos archivos y
+  `--sin-juego`/`--mundo` no tocan ninguno.
+- `viaje.json` y `viaje.py` (MAP-14): la regla de viaje (5 km/h, jornada de 8 h, rodeo por bioma y por montaña,
+  fuente `docs/mecanicas/13-escala-del-mundo.md § 1`, con lo `derivado` marcado) y los tiempos de cada ruta;
+  las marítimas dan km sin tiempo. `consultar.py ruta I` los muestra.
+- Zonas (MAP-14): `zonas` en `helek.json` (tormenta de nivel 0-3 solo en las Llanuras del Viento Rojo, peligro 1-3,
+  clan con su clan), editables con el lote de `editar.py` y en el visor (capas Tormentas/Peligro/Clanes y modo
+  «Zonas»); `consultar.py zonas` las lista. Las que tienen `canon: false` se dibujan con rayado: propuesta sin canon.
 - `abrir.sh`, `servir.py` y `visor/index.html`: el visor. El servidor escucha solo en 127.0.0.1 y sirve solo `/`,
-  `/helek.json`, `/enciclopedia.json`, `/historial.json` y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
+  `/helek.json`, `/enciclopedia.json`, `/historial.json`, `/viaje.json` (regla y tiempos de ruta) y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
   carga nada de fuera. Es la base del editor de `MAP-6`…`MAP-9`.
 - `editar.py` (MAP-6…MAP-8): el editor del visor (modos Región, Provincia, Relieve, Lugares, Rutas y Ríos; pincel, provincia nueva,
   renombrar, deshacer, Comprobar y Guardar). Relieve: Subir, Bajar, Tierra y Mar cambian la altura `h` y la costa

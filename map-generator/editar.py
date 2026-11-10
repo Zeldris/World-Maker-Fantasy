@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAP-6, MAP-7, MAP-8, MAP-9: editar regiones, provincias, relieve, costa, lugares, rutas y ríos de helek.json (lo usa el visor por servir.py).
+"""MAP-6, MAP-7, MAP-8, MAP-9, MAP-14: editar regiones, provincias, relieve, costa, lugares, rutas, ríos y zonas de helek.json (lo usa el visor por servir.py).
 
 Un lote de cambios es un dict:
 
@@ -15,7 +15,12 @@ Un lote de cambios es un dict:
                  {"i": 900, "borrar": true}],
      "rutas": [{"i": 451, "grupo": "trails", "puntos": [[x, y], ...]},   # MAP-8: crear o redibujar (roads, trails,
                {"i": 0, "borrar": true}],                               #   searoutes)
-     "rios": [{"i": 1, "nombre": "Río…", "puntos": [[x, y], ...]}]}     # MAP-8: crear, redibujar, renombrar, borrar
+     "rios": [{"i": 1, "nombre": "Río…", "puntos": [[x, y], ...]}],     # MAP-8: crear, redibujar, renombrar, borrar
+     "zonas": [{"i": 1, "tipo": "tormenta", "nombre": "…", "nivel": 2, "canon": false, "nota": "…",   # MAP-14
+                "celdas": [1234, 1235]},                    #   crear (i nuevo) o cambiar campos (los que no vienen se conservan)
+               {"i": 2, "tipo": "clan", "nombre": "…", "clan": "Serhu", "celdas": [...]},
+               {"i": 1, "mas": [1236], "menos": [1234]},    #   añadir o quitar celdas sin reenviar todas
+               {"i": 3, "borrar": true}]}
 
 `aplicar` lo valida y devuelve el mundo nuevo (sin tocar el de entrada); `informe` dice qué medidas cambian y cómo
 quedan el canon (`canon.json`) y el lore (`lore.json`); `guardar` escribe helek.json (orden estable), helek.geojson y
@@ -39,6 +44,17 @@ salvo sus extremos (puertos) y un río por tierra salvo su último punto (desemb
 puede venir de Azgaar con algún punto fuera de sitio; solo se rechaza si el relieve del lote le añade puntos fuera de
 sitio, y entonces se redibuja o se borra en el mismo lote.
 
+Zonas (MAP-14, clave `zonas` de helek.json, una fila por zona; sin la clave se trata como lista vacía). `tipo`:
+`tormenta` (`nivel` 0-3: la intensidad máxima que alcanza, 0 Ghurmek refugio, 1 Sek'tar, 2 Rokthar, 3 Rok'ithek; todas
+sus celdas tienen que ser de «Llanuras del Viento Rojo», lo único donde el canon pone tormentas), `peligro` (`nivel`
+1-3: bajo, medio, alto) o `clan` (`clan` obligatorio, nivel 0). `canon` es false por defecto: una propuesta sin canon;
+un agente nunca lo pone a true (lo decide Álvaro). `nota` es opcional (fuente o motivo). Las celdas son de tierra, sin
+repetir; el nombre no se repite dentro del mismo tipo y una celda solo va en una zona de cada tipo (entre tipos
+distintos se solapan). `celdas` sustituye todas, `mas` y `menos` añaden o quitan (una celda que ya está o ya falta no
+da error); el tipo no cambia. Se valida con el relieve y las regiones del propio lote: un lote que deja una celda de
+zona en mar, o una de tormenta fuera de las Llanuras, se rechaza salvo que el mismo lote la quite de la zona.
+Una zona sin celdas se rechaza (se borra). `informe` cuenta las zonas nuevas, cambiadas y borradas con su nº de celdas y km².
+
 También se usa desde la consola (agentes, sin servidor ni navegador), con lo mismo que POST /comprobar y /guardar:
 
     python3 map-generator/editar.py lote.json              # comprueba y muestra el informe (--json: en JSON)
@@ -46,7 +62,7 @@ También se usa desde la consola (agentes, sin servidor ni navegador), con lo mi
     python3 map-generator/editar.py --historial            # MAP-9: los últimos guardados (historial.py)
     python3 map-generator/editar.py --deshacer             # vuelve a antes del último guardado (repetido, más atrás)
     python3 map-generator/editar.py --restaurar 3fa9c1     # vuelve a una versión del historial (también rehace)
-    opciones: --mundo RUTA (una copia; entonces no toca el archivo del juego), --sin-juego, --canon RUTA, --lore RUTA; `lote.json` puede ser `-` (entrada estándar)
+    opciones: --mundo RUTA (una copia; entonces no toca los archivos del juego, helekRegiones.ts y helekCapas.ts), --sin-juego, --canon RUTA, --lore RUTA; `lote.json` puede ser `-` (entrada estándar)
 
 `base` es opcional por consola; si viene y no es la huella de helek.json, se rechaza como el 409 del servidor. Sale con 1
 si el lote no vale o el canon o el lore fallan.
@@ -65,6 +81,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import comprobar  # noqa: E402
 import enciclopedia  # noqa: E402
 import exportar  # noqa: E402
+import geometria  # noqa: E402
 import historial  # noqa: E402
 import importar  # noqa: E402
 import medir  # noqa: E402
@@ -261,29 +278,7 @@ def _continentes(nuevo, mundo):
         k['celdas'] = cuenta[k['i']]
 
 
-def _localizador(mundo):
-    """celda_en(x, y): la celda cuyo centro está más cerca del punto (las celdas son el Voronoi de sus centros)."""
-    lado = 20
-    cubos = {}
-    for c in mundo['celdas']:
-        cubos.setdefault((int(c['p'][0] // lado), int(c['p'][1] // lado)), []).append(c)
-
-    def celda_en(x, y):
-        bx, by, r, mejor = int(x // lado), int(y // lado), 0, None
-        while True:
-            for dx in range(-r, r + 1):
-                for dy in range(-r, r + 1):
-                    if max(abs(dx), abs(dy)) != r:
-                        continue
-                    for c in cubos.get((bx + dx, by + dy), ()):
-                        d = ((c['p'][0] - x) ** 2 + (c['p'][1] - y) ** 2, c['i'])
-                        if mejor is None or d < mejor:
-                            mejor = d
-            # Lo que queda fuera del anillo r está a más de r * lado del punto.
-            if mejor is not None and mejor[0] <= (r * lado) ** 2:
-                return mejor[1]
-            r += 1
-    return celda_en
+_localizador = geometria.localizador  # el localizador vive en geometria.py (viaje.py también lo usa)
 
 
 def _numero(v):
@@ -484,6 +479,154 @@ def _trazos_lote(nuevo, mundo, cambios, celda_en):
                 raise ErrorDeEdicion(f'con la costa nueva, {_describe(trazo, clave == "rios")} queda fuera de sitio '
                                      f'(celdas {nuevas}): redibújala o bórrala en el mismo lote')
 
+TIPOS_ZONA = ('tormenta', 'peligro', 'clan')
+REGION_TORMENTAS = 'Llanuras del Viento Rojo'  # canon: solo hay tormentas en las Llanuras del Viento Rojo
+NIVELES_ZONA = {'tormenta': (0, 3), 'peligro': (1, 3), 'clan': (0, 0)}
+CAMPOS_ZONA = {'i', 'tipo', 'nombre', 'nivel', 'clan', 'canon', 'nota', 'celdas', 'mas', 'menos', 'borrar'}
+
+
+def _celdas_zona(valor, n, que, campo):
+    if not isinstance(valor, list):
+        raise ErrorDeEdicion(f'{que}: {campo} tiene que ser una lista de celdas')
+    for c in valor:
+        if not _entero(c) or not 0 <= c < n:
+            raise ErrorDeEdicion(f'{que}: {campo} lleva {c!r}, que no es una celda (0-{n - 1})')
+    repetidas = sorted({c for c in valor if valor.count(c) > 1})
+    if repetidas:
+        raise ErrorDeEdicion(f'{que}: {campo} repite celdas ({repetidas[:5]})')
+    return set(valor)
+
+
+def _describe_zona(z):
+    return f"la zona {z['i']} ({z['tipo']} «{z['nombre']}»)"
+
+
+def _zona_fila(z):
+    """La zona con sus claves en orden estable (clan solo en las de tipo clan, celdas ordenadas)."""
+    fila = {'i': z['i'], 'tipo': z['tipo'], 'nombre': z['nombre'], 'nivel': z['nivel']}
+    if z['tipo'] == 'clan':
+        fila['clan'] = z['clan']
+    fila.update(canon=z['canon'], nota=z['nota'], celdas=sorted(z['celdas']))
+    return fila
+
+
+def _zonas_lote(nuevo, cambios):
+    """`zonas` del lote (MAP-14): crear (i nuevo), cambiar campos de una existente (los que no vienen se conservan),
+    `mas` y `menos` para añadir o quitar celdas, o borrar. Se valida el resultado entero con el relieve y las regiones
+    ya cambiados: celdas de tierra, tormentas solo en las Llanuras, y una celda en una sola zona de cada tipo."""
+    ops = cambios.get('zonas', [])
+    if not isinstance(ops, list):
+        raise ErrorDeEdicion(f'zonas mal formado: {ops!r} (se espera una lista)')
+    por = {z['i']: dict(z) for z in nuevo.get('zonas', [])}
+    celdas = nuevo['celdas']
+    n = len(celdas)
+    tocadas = set()
+    for e in ops:
+        if not isinstance(e, dict) or not _entero(e.get('i')):
+            raise ErrorDeEdicion(f'zona sin índice entero: {e!r}')
+        i = e['i']
+        tocadas.add(i)
+        if e.get('borrar'):
+            if set(e) != {'i', 'borrar'} or e['borrar'] is not True:
+                raise ErrorDeEdicion(f'para borrar la zona {i} se manda solo {{"i": {i}, "borrar": true}}')
+            if i not in por:
+                raise ErrorDeEdicion(f'no existe la zona {i}')
+            del por[i]
+            continue
+        sobra = set(e) - CAMPOS_ZONA
+        if sobra:
+            raise ErrorDeEdicion(f"la zona {i} lleva campos que no se editan: {', '.join(sorted(sobra))}")
+        z = por.get(i)
+        es_nueva = z is None
+        que = f'la zona nueva {i}' if es_nueva else _describe_zona(z)
+        if es_nueva:
+            if i <= 0:
+                raise ErrorDeEdicion(f'índice de zona no válido: {i}')
+            if e.get('tipo') not in TIPOS_ZONA:
+                raise ErrorDeEdicion(f"{que} necesita un tipo ({', '.join(TIPOS_ZONA)}), no {e.get('tipo')!r}")
+            z = {'i': i, 'tipo': e['tipo'], 'nombre': None, 'nivel': 0, 'canon': False, 'nota': '', 'celdas': []}
+            if e['tipo'] == 'clan':
+                z['clan'] = None
+        elif 'tipo' in e and e['tipo'] != z['tipo']:
+            raise ErrorDeEdicion(f"{que} no cambia de tipo: bórrala y crea otra")
+        tipo = z['tipo']
+        if 'nombre' in e or es_nueva:
+            nombre = e.get('nombre')
+            nombre = nombre.strip() if isinstance(nombre, str) else ''
+            if not nombre:
+                raise ErrorDeEdicion(f'{que} necesita un nombre')
+            z['nombre'] = nombre
+        if tipo == 'clan':
+            if 'clan' in e or es_nueva:
+                clan = e.get('clan')
+                clan = clan.strip() if isinstance(clan, str) else ''
+                if not clan:
+                    raise ErrorDeEdicion(f'{que} es de clan: necesita el nombre del clan en "clan"')
+                z['clan'] = clan
+            z['nivel'] = 0
+        else:
+            if e.get('clan') not in (None, ''):
+                raise ErrorDeEdicion(f'{que} no es de clan: "clan" solo va en las zonas de tipo clan')
+            if 'nivel' in e or es_nueva:
+                lo, hi = NIVELES_ZONA[tipo]
+                if not _entero(e.get('nivel')) or not lo <= e['nivel'] <= hi:
+                    raise ErrorDeEdicion(f"{que} necesita un nivel entero de {lo} a {hi} "
+                                         f"({'0 refugio, 1 Sek’tar, 2 Rokthar, 3 Rok’ithek' if tipo == 'tormenta' else '1 bajo, 2 medio, 3 alto'}), "
+                                         f"no {e.get('nivel')!r}")
+                z['nivel'] = e['nivel']
+        if 'canon' in e:
+            if not isinstance(e['canon'], bool):
+                raise ErrorDeEdicion(f'{que}: canon tiene que ser true o false, no {e["canon"]!r}')
+            z['canon'] = e['canon']
+        if 'nota' in e:
+            if not isinstance(e['nota'], str):
+                raise ErrorDeEdicion(f'{que}: la nota tiene que ser texto, no {e["nota"]!r}')
+            z['nota'] = e['nota'].strip()
+        actuales = set(z['celdas'])
+        if 'celdas' in e:
+            actuales = _celdas_zona(e['celdas'], n, que, 'celdas')
+        if 'mas' in e:
+            actuales |= _celdas_zona(e['mas'], n, que, 'mas')
+        if 'menos' in e:
+            actuales -= _celdas_zona(e['menos'], n, que, 'menos')
+        if not actuales:
+            raise ErrorDeEdicion(f'{que} se quedaría sin celdas: dale celdas o bórrala ({{"i": {i}, "borrar": true}})')
+        z['celdas'] = sorted(actuales)
+        por[i] = z
+    lista = [por[i] for i in sorted(por)]
+    region_tormenta = next((r['i'] for r in nuevo['regiones'] if r['nombre'] == REGION_TORMENTAS), None)
+    duena = {}
+    for z in lista:
+        que = _describe_zona(z)
+        for c in z['celdas']:
+            if not 0 <= c < n:
+                raise ErrorDeEdicion(f'{que} lleva la celda {c}, que no existe')
+            if celdas[c]['h'] < TIERRA:
+                raise ErrorDeEdicion(f'{que} tiene la celda {c} en mar: las zonas son de tierra '
+                                     '(quítala de la zona en el mismo lote, con "menos")')
+            if z['tipo'] == 'tormenta' and celdas[c]['region'] != region_tormenta:
+                raise ErrorDeEdicion(f'{que} tiene la celda {c} fuera de {REGION_TORMENTAS}: '
+                                     f'en el canon solo hay tormentas en esa región')
+            previa = duena.setdefault((z['tipo'], c), z)
+            if previa is not z:
+                raise ErrorDeEdicion(f"la celda {c} está en {_describe_zona(previa)} y en {que}: dentro de un mismo "
+                                     'tipo una celda solo va en una zona')
+    nombres = {}
+    for z in lista:
+        otra = nombres.setdefault((z['tipo'], z['nombre'].casefold()), z)
+        if otra is not z:
+            raise ErrorDeEdicion(f"nombre de zona repetido en {z['tipo']}: {z['nombre']} (zonas {otra['i']} y {z['i']})")
+    if lista or 'zonas' in nuevo:
+        filas = [_zona_fila(z) for z in lista]
+        # `zonas` va entre `rios` y `vertices`, y solo existe si ya había zonas o el lote las toca.
+        orden = [k for k in nuevo if k != 'zonas']
+        pos = orden.index('vertices') if 'vertices' in orden else len(orden)
+        orden.insert(pos, 'zonas')
+        copia = dict(nuevo)
+        nuevo.clear()
+        for k in orden:
+            nuevo[k] = filas if k == 'zonas' else copia[k]
+
 
 def aplicar(mundo, cambios, canon=None, catalogo=None):
     """El mundo con `cambios` aplicados (copia). Lanza ErrorDeEdicion si algo no cuadra. `canon` (el dict de
@@ -529,6 +672,7 @@ def aplicar(mundo, cambios, canon=None, catalogo=None):
         elif lu.get('region') and c['region'] != lu['region']:
             nombre = next(r['nombre'] for r in nuevo['regiones'] if r['i'] == lu['region'])
             raise ErrorDeEdicion(f"la celda {c['i']} es de {lu['nombre']}, que es de {nombre}: no cambia de región")
+    _zonas_lote(nuevo, cambios)
     _centros(nuevo)
     return nuevo
 
@@ -559,17 +703,28 @@ def _lore(mundo, lore):
         return [{'id': 'lore', 'ok': False, 'detalle': f'el lore no se puede comprobar: {type(e).__name__} {e}'}]
 
 
+def _describe_zona_km(mundo, z):
+    return (f"{z['tipo']} «{z['nombre']}» ({len(z['celdas'])} celdas, "
+            f"{medir.area_celdas(mundo, z['celdas']):,.0f} km²)".replace(',', '.'))
+
+
 def _diferencias(antes, despues):
-    """Lugares, rutas y ríos nuevos, cambiados y borrados (MAP-8), con el nombre o la descripción de cada uno."""
+    """Lugares, rutas, ríos y zonas nuevos, cambiados y borrados (MAP-8, MAP-14), con el nombre o la descripción de cada uno."""
     salida = {}
-    for clave in ('lugares', 'rutas', 'rios'):
-        a = {x['i']: x for x in antes[clave]}
-        d = {x['i']: x for x in despues[clave]}
-        nombre = (lambda x: x['nombre']) if clave == 'lugares' else (lambda x, c=clave: _describe(x, c == 'rios'))
+    for clave in ('lugares', 'rutas', 'rios', 'zonas'):
+        a = {x['i']: x for x in antes.get(clave, [])}
+        d = {x['i']: x for x in despues.get(clave, [])}
+        if clave == 'zonas':
+            if not a and not d:
+                continue
+            nombre = lambda x, m=despues: _describe_zona_km(m, x)  # noqa: E731
+            nombre_a = lambda x, m=antes: _describe_zona_km(m, x)  # noqa: E731
+        else:
+            nombre = nombre_a = (lambda x: x['nombre']) if clave == 'lugares' else (lambda x, c=clave: _describe(x, c == 'rios'))
         salida[clave] = {
             'nuevos': [nombre(d[i]) for i in sorted(d.keys() - a.keys())],
             'cambian': [nombre(d[i]) for i in sorted(d.keys() & a.keys()) if d[i] != a[i]],
-            'borrados': [nombre(a[i]) for i in sorted(a.keys() - d.keys())],
+            'borrados': [nombre_a(a[i]) for i in sorted(a.keys() - d.keys())],
         }
     return salida
 
@@ -625,12 +780,14 @@ def guardar(mundo, ruta_mundo=medir.MUNDO, ruta_geojson=None, ruta_juego=exporta
     texto_geo = importar.volcar({'type': geo['type'], 'features': geo['features']})
     try:
         texto_juego = exportar.generar(mundo) if ruta_juego else None
+        texto_capas = exportar.generar_capas(mundo) if ruta_juego else None  # MAP-14: zonas y tiempos de ruta
     except exportar.RegionSinCeldas as e:
         raise ErrorDeEdicion(str(e)) from e
     _escribir(ruta_mundo, texto)
     _escribir(ruta_geojson, texto_geo)
     if ruta_juego:
         _escribir(ruta_juego, texto_juego)
+        _escribir(exportar.ruta_capas(ruta_juego), texto_capas)
     datos = texto.encode('utf-8')
     if antes != datos:
         historial.apuntar(ruta_mundo, antes, datos, tipo=tipo, resumen=resumen, deshace=deshace)
@@ -641,7 +798,7 @@ def resumen(inf):
     """Una línea para el historial: qué cambió en un guardado."""
     r = inf['relieve']
     partes = [f"{r['alturas']} altura(s), {r['aTierra']} a tierra, {r['aMar']} a mar" if any(r.values()) else '']
-    for clave, que in (('lugares', 'lugares'), ('rutas', 'rutas'), ('rios', 'ríos')):
+    for clave, que in (('lugares', 'lugares'), ('rutas', 'rutas'), ('rios', 'ríos'), ('zonas', 'zonas')):
         t = inf.get('trazos', {}).get(clave, {})
         n = sum(len(t.get(k, [])) for k in ('nuevos', 'cambian', 'borrados'))
         if n:
@@ -733,7 +890,7 @@ def texto_informe(inf):
     env = lambda a: ' × '.join(f'{v:.0f}' for v in a['envolvente'])  # noqa: E731
     r = inf['relieve']
     lineas = [f"Relieve: {r['alturas']} celda(s) con otra altura, {r['aTierra']} pasan a tierra, {r['aMar']} pasan a mar."]
-    for clave, que in (('lugares', 'Lugares'), ('rutas', 'Rutas'), ('rios', 'Ríos')):
+    for clave, que in (('lugares', 'Lugares'), ('rutas', 'Rutas'), ('rios', 'Ríos'), ('zonas', 'Zonas')):
         t = inf.get('trazos', {}).get(clave, {})
         partes = [f"{len(t[k])} {k} ({'; '.join(t[k][:5])}{'…' if len(t[k]) > 5 else ''})"
                   for k in ('nuevos', 'cambian', 'borrados') if t.get(k)]

@@ -11,6 +11,8 @@
     python3 map-generator/consultar.py camino 571 398 581 317        # MAP-17: puntos de una ruta por tierra, listos para un lote
     python3 map-generator/consultar.py camino X0 Y0 X1 Y1 --mar --paso 10   # lo mismo por agua (rutas marítimas)
     python3 map-generator/consultar.py fichas --sin-lugar             # slugs de la enciclopedia (o --region R)
+    python3 map-generator/consultar.py zonas --tipo tormenta          # MAP-14: zonas por tipo (i, nombre, nivel, clan, canon, celdas, km²)
+    python3 map-generator/consultar.py ruta 451                       # MAP-14: km, rodeo, km a pie, horas y jornadas de una ruta (viaje.json)
     `frontera` marca las celdas que, al pasar a la otra región, agrandan su envolvente E-O o N-S («agranda N-S»);
     `--pasar N` da además el lote que pasa a A N celdas de B (primero las que no agrandan).
     `camino`: la recta si cae toda en tierra (h >= 20; por agua con --mar); si no, un rodeo por celdas de tierra
@@ -37,6 +39,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import editar  # noqa: E402
 import enciclopedia  # noqa: E402
 import medir  # noqa: E402
+import viaje  # noqa: E402
 
 TIERRA = editar.TIERRA
 
@@ -477,6 +480,47 @@ def texto_fichas(fs):
     return '\n'.join(t)
 
 
+def zonas(mundo, tipo=None):
+    """Las zonas de helek.json (MAP-14), por tipo y número, con su número de celdas y su área en km²."""
+    if tipo is not None and tipo not in editar.TIPOS_ZONA:
+        raise ErrorDeConsulta(f"tipo de zona desconocido: {tipo} ({', '.join(editar.TIPOS_ZONA)})")
+    filas = []
+    for z in mundo.get('zonas', []):
+        if tipo and z['tipo'] != tipo:
+            continue
+        filas.append({'i': z['i'], 'tipo': z['tipo'], 'nombre': z['nombre'], 'nivel': z['nivel'],
+                      'clan': z.get('clan'), 'canon': z['canon'], 'nota': z['nota'], 'celdas': len(z['celdas']),
+                      'km2': round(medir.area_celdas(mundo, z['celdas']), 1)})
+    filas.sort(key=lambda f: (editar.TIPOS_ZONA.index(f['tipo']), f['i']))
+    return {'tipo': tipo, 'zonas': filas}
+
+
+def ruta(mundo, i):
+    """km, rodeo, km a pie, horas y jornadas de la ruta `i` (MAP-14, viaje.py)."""
+    if not any(r['i'] == i for r in mundo['rutas']):
+        raise ErrorDeConsulta(f'no existe la ruta {i} (hay {len(mundo["rutas"])}; resumen da los i libres)')
+    return next(f for f in viaje.tiempos(mundo) if f['i'] == i)
+
+
+def texto_zonas(r):
+    if not r['zonas']:
+        return 'Sin zonas' + (f" de tipo {r['tipo']}" if r['tipo'] else '') + '.'
+    t = [f"Zonas ({len(r['zonas'])}; canon no = propuesta sin canon):"]
+    for f in r['zonas']:
+        extra = f" · clan {f['clan']}" if f['clan'] else (f" · nivel {f['nivel']}" if f['tipo'] != 'clan' else '')
+        t.append(f"  {f['i']:>3} {f['tipo']:<8} {f['nombre']}{extra} · canon {'sí' if f['canon'] else 'no'}"
+                 f" · {f['celdas']} celdas · {f['km2']:,.0f} km²".replace(',', '.') + (f" · {f['nota']}" if f['nota'] else ''))
+    return '\n'.join(t)
+
+
+def texto_ruta(f):
+    cab = f"Ruta {f['i']} ({editar.NOMBRE_GRUPO[f['grupo']]}): {f['km']:g} km"
+    if f['horas'] is None:
+        return f"{cab}. Sin tiempo: {f['motivo']}."
+    return (f"{cab}, rodeo medio {f['rodeo']:.2f} → {f['kmAPie']:g} km a pie, {f['horas']:g} h, {f['jornadas']:g} jornadas "
+            '(reglas de viaje.json; la jornada es derivada).')
+
+
 # ---------------------------------------------------------------- consola
 
 def main(argv=None):
@@ -512,6 +556,10 @@ def main(argv=None):
     p = sub.add_parser('fichas', parents=[comun], help='fichas de la enciclopedia y si tienen lugar')
     p.add_argument('--region')
     p.add_argument('--sin-lugar', action='store_true')
+    p = sub.add_parser('zonas', parents=[comun], help='zonas de tormenta, peligro y clan (MAP-14)')
+    p.add_argument('--tipo', choices=editar.TIPOS_ZONA)
+    p = sub.add_parser('ruta', parents=[comun], help='km, rodeo, horas y jornadas de una ruta (MAP-14)')
+    p.add_argument('i', type=int, help='el i de la ruta')
     args, sobran = ap.parse_known_args(argv)
 
     def fallo(motivo):
@@ -548,6 +596,10 @@ def main(argv=None):
             res, txt = lugares(mundo, editar.cargar_json(args.canon), args.region, args.cerca, args.radio, caj, args.nombre), texto_lugares
         elif args.cmd == 'camino':
             res, txt = camino(mundo, args.xy[:2], args.xy[2:], args.paso, args.mar), texto_camino
+        elif args.cmd == 'zonas':
+            res, txt = zonas(mundo, args.tipo), texto_zonas
+        elif args.cmd == 'ruta':
+            res, txt = ruta(mundo, args.i), texto_ruta
         else:
             res, txt = fichas(mundo, enciclopedia.lugares(), args.region, args.sin_lugar), texto_fichas
     except (ErrorDeConsulta, ValueError, OSError) as e:

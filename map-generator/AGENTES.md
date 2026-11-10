@@ -37,6 +37,8 @@ consultar.py lugares --cerca 540 190 --radio 40
 consultar.py lugares --nombre ordinum   # por fragmento del nombre; se combina con --region, --cerca, --caja
 consultar.py camino 571 398 581 317     # puntos de una ruta por tierra listos para el lote (recta o rodeo);
                                         # --mar para rutas marítimas, --paso KM (8). Si no hay camino, dice por qué
+consultar.py zonas [--tipo tormenta]    # zonas de tormenta, peligro y clan con celdas y km²
+consultar.py ruta 12                    # km, km a pie, horas y jornadas de una ruta (las marítimas, sin tiempo)
 consultar.py fichas --sin-lugar         # slugs de la enciclopedia que aún no están en el mapa
 ```
 Nombres sin mayúsculas ni tildes y por fragmento («Margen»). `--caja X0 Y0 X1 Y1` recorta frontera, costa y lugares;
@@ -50,7 +52,8 @@ Un objeto JSON con solo las claves que uses:
  "alturas": [[celda, h], ...],                            # h de 0 a 100; pasar a tierra: h = 25; a mar: h = 5
  "lugares": [{"i": 616, "slug": "agujas-iman", "x": 545, "y": 200}],   # i nuevo (de resumen) = crear
  "rutas":   [{"i": 451, "grupo": "roads", "puntos": [[x, y], [x, y], ...]}],   # roads, trails o searoutes
- "rios":    [{"i": 0, "nombre": "Río …", "puntos": [[x, y], ...]}]}
+ "rios":    [{"i": 0, "nombre": "Río …", "puntos": [[x, y], ...]}],
+ "zonas":   [{"i": 1, "tipo": "tormenta", "nombre": "…", "nivel": 2, "celdas": [...], "nota": "…"}]}
 ```
 - Las regiones se cambian por su número `i` (17 Cristal Helado, 18 Llanuras del Viento Rojo, 19 Ciénaga Troncal,
   20 El Margen Silencioso, 21 La Meseta del Orden).
@@ -58,6 +61,20 @@ Un objeto JSON con solo las claves que uses:
 - Una ruta se traza con `camino`: pega sus `puntos` en el lote; no compruebes punto a punto.
 - Para pasar N celdas de una región a otra, `frontera A B --pasar N`: pega su lote. **Las celdas que da `frontera`
   ya lindan y son tierra: no las compruebes una a una con `celda`.**
+
+### Zonas (`zonas`)
+
+- Crear: `i` nuevo (el siguiente libre), `tipo` (`tormenta`, `peligro` o `clan`), `nombre`, `nivel`, `celdas`;
+  `clan` solo y obligatorio en las de clan (su nivel es 0); `nota` opcional. Tormenta: nivel 0-3 y solo celdas de
+  Llanuras del Viento Rojo (18). Peligro: nivel 1-3.
+- Cambiar: `{"i": 1, "nivel": 3}` cambia solo ese campo; `"celdas"` sustituye la lista; `"mas": [...]` y
+  `"menos": [...]` suman o quitan celdas; `{"i": 1, "borrar": true}` la borra (sin más campos). El tipo no cambia.
+- Celdas de tierra y sin repetir; dentro de un tipo, una celda solo va en una zona (entre tipos sí se solapan);
+  el nombre es único dentro del tipo. Si el relieve del lote deja una celda de zona en mar, o la región la saca de
+  las Llanuras siendo tormenta, el lote se rechaza salvo que el mismo lote la quite de la zona.
+- **Propuesta sin canon:** toda zona nueva lleva `canon: false` (es el valor por defecto) y el visor la dibuja rayada.
+  **Un agente nunca pone `canon: true`**: lo decide Álvaro. Lo que no esté en el canon se apunta en `nota`.
+- Los tiempos de ruta no se editan: salen de `viaje.json` y se regeneran al guardar.
 
 ## Qué no se toca
 
