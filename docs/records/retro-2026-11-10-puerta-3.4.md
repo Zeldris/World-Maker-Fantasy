@@ -4,9 +4,7 @@ Rama `claude/wonderful-volta-662qt8`, 2026-11-10. Diez y ocho tandas de juego, t
 `QA-298`…`QA-300` en `escenario.sh`, y la fase 1 de la revisión contra `origin/main`: 14 hallazgos, 9 a arreglar,
 7 reales (`9f2709a8`), 5 leves a la bitácora.
 
-**Estado:** presentada a la usuaria; su decisión, en el párrafo siguiente.
-
-Decisión de la usuaria: sin decidir todavía.
+**Estado:** aprobada entera por la usuaria (2026-11-10) y aplicada: candidata 1 en `QA-301` (✅) y `QA-302` (con hito); candidata 2, a Galivelop-workflow; candidata 3, sin cambio; gw-opt-tokens 1-3 en `QA-303`, `QA-304` y `QA-305` (✅).
 
 ## Leves de la revisión, sin arreglar
 
@@ -16,6 +14,16 @@ Decisión de la usuaria: sin decidir todavía.
 - `descartarDeMochila` (`prepararMochila.ts`) duplica la capacidad de `dejarMochilaLibre`.
 - `materialesEnAlmacen` (`facturaEquipo.ts`) carga el catálogo RECURSO entero por edificio.
 - C1 6: el aviso del Granero lleno, sin ver en pantalla.
+
+De la revisión de la fase 3 (commits de la retro), leves:
+
+- `inventario-suelto.py` no ve los filtros de relación `inventoryItems: { some|none|every: … }`, ni un `where` en
+  variable o con spread, ni un `//` dentro de un literal regex en la misma línea.
+- Falso positivo: `inventoryItems: { where: { slot: null } }` colgado de un compañero pide `companionId: null`; se
+  excusa con `// inventario: todos`.
+- El trío `slot: null, companionId: null, subjectId: null` va copiado en ~11 consultas; `LLEVADO`
+  (`misionesJugadora.ts:203`) podría exportarse como fragmento común (encaja con `QA-302`).
+- Las tres consultas arregladas de viajeros y recolectar no tienen test propio del backend: las guarda el script.
 
 ## Qué fue bien
 
