@@ -115,6 +115,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   copia que no casa con su huella no se restaura. Probado con Chromium sin interfaz sobre una copia.
   **Probado por la usuaria en la Deck ✅ 2026-11-10.**
 
+- **MAP-19 · Piezas del mapa pedidas a galivelop-image-generator** [P] (usuario, 2026-11-10): pedido en [`pedido-imagenes-mapa.md`](pedido-imagenes-mapa.md) (texturas de bioma, iconos de relieve y vegetación, fichas de lugares, rosa de los vientos, cartela, marco y capas de `MAP-14`), con la hoja de estilo de Tarkor de GVIG de referencia. 🚧 2026-11-10: pedido escrito; lo lleva el usuario a GVIG. Falta: que lleguen, componer la prueba de estilo (#1-#3) en el editor junto a Azgaar y la nota del usuario; el resto alimenta `MAP-13`. **S** (lado WMF)
 - **MAP-13 · Dibujo propio a la altura de Azgaar** [P] (usuaria, 2026-11-05): costas con trazo, iconos de
   relieve, texturas de bioma y colocación de etiquetas sin solapes, en un estilo propio de Helek. Se compara lado a
   lado con la imagen de Azgaar en las mismas vistas, y **solo con el visto bueno de la usuaria** pasa a ser el fondo
