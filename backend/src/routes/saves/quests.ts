@@ -27,7 +27,8 @@ import { npcVivoEnPartida } from '../../services/mundoPartida.js';
 /// reconocimiento y toda la lógica de aquí abajo usan `ORCO_ENFURECIDO_QUEST_SLUG`, guardado en
 /// `Quest.questSlug` — un cambio futuro de texto narrativo no rompería la mecánica.
 const ORCO_ENFURECIDO_QUEST_TITLE = 'Acabar con el Orco Enfurecido';
-export const ORCO_ENFURECIDO_QUEST_SLUG = 'orco-enfurecido-hondonada-gistera';
+import { ORCO_ENFURECIDO_QUEST_SLUG } from '../../services/questSlugs.js';
+export { ORCO_ENFURECIDO_QUEST_SLUG };
 
 /// Botones "Aceptar"/"Cancelar" cuando un NPC ofrece una misión (2026-08-26, petición explícita:
 /// "en vez de depender de que la jugadora escriba texto libre para aceptar... que 'Aceptar' genere
