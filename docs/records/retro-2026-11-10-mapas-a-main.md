@@ -4,7 +4,7 @@ Sesión: traer `main`, la decisión del agente local (`MAP-17` → `MAP-18`), la
 arreglados en `0d7e8608` por un subagente con Sonnet) y la medida de `/gw-opt-tokens` (32 llamadas, 73k de contexto
 medio, sin compactar; los subagentes, 3,8 M de entrada: la revisión con Opus, 2,4 M).
 
-**Estado:** aprobada por la usuaria (2026-11-10): P1 aplicada en `tools/qa/tests-vitest.sh`; P2 al workflow (abajo); P3 es una nota, sin cambio.
+**Estado:** aprobada por la usuaria (2026-11-10): P1 aplicada con `tools/qa/con-mock-ollama.sh` (lo llama `tests-vitest.sh integracion`; levanta el simulado solo para los tests y lo para al acabar, tras la revisión de la fase 3); P2 al workflow (abajo); P3 es una nota, sin cambio.
 
 ## Propuestas
 
