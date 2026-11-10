@@ -14,7 +14,7 @@ cada commit.**
 | **Ramas de trabajo** | Cada sesión, su rama con su fila «Tarea en curso» (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde el 2026-10-06), `claude/interfaz-imagenes` (desde el 2026-10-24, `CFG-43`), `claude/limpieza` (desde el 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0` (PR 84, falta borrarla), `claude/banco-narrador`, `claude/pruebas-local`, `claude/opt-ai-mejoras`. Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás ya están en `main` (historial: `git log --merges origin/main`). `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #87 de `claude/wonderful-volta-662qt8` (2026-11-05, `e9649fac`, CI en verde): roadmap de idiomas (`IDI-1`…`IDI-15`); Beta `0.7`, Personaje propio `1.1`. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
-| **Tarea en curso · `claude/generador-mapas`** | Generador de mapas adelantado por la usuaria (2026-11-08). ~~MAP-1~~…~~MAP-9~~, ~~MAP-16~~, ~~MAP-17~~ ✅. Decisión (usuaria, 2026-11-10): el agente local entra como opción; usable fuera del banco en `MAP-18` (pendiente). La usuaria pide **llevar la rama a main** (2026-11-10). **Siguiente:** fase 1, `/code-review --max-findings all` contra `origin/main`; luego fases 2 y 3 y PR con `gh`. |
+| **Tarea en curso · `claude/generador-mapas`** | ~~MAP-1~~…~~MAP-9~~, ~~MAP-16~~, ~~MAP-17~~ ✅; agente local como opción, `MAP-18` pendiente. La usuaria pide **llevar la rama a main** (2026-11-10). Fase 1 hecha: 7 arreglos (`0d7e8608`); leves en «Pendientes leves del mapa». **Siguiente:** fase 2 (`/gw-opt-tokens`, `/retro`) a la usuaria, fase 3 y PR con `gh`. |
 | **Tarea en curso · `claude/limpieza`** | Fusionada en `main` sin PR, CI local (2026-11-02, `ab518ea8`, `QA-215`; confirmado por la usuaria): ~~`QA-271`~~ ✅ (código muerto fuera) y retro con `QA-278`, `QA-279` al roadmap. Rama terminada. |
 | **Tarea en curso · `claude/ins-34-backend-sin-curacion`** | Fusionada en `main` sin PR, CI local (2026-10-27, `QA-215`; retro aprobada por la usuaria): `INS-34` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md)), backend empaquetado sin curación ni cloud. Leves sin tarea: test del bundle en ESM y `esbuild` pinneado; `image-prompt` GET/PUT, variables cloud de `env.ts` y aviso de `LIVE_TEACHER_CAPTURE_ENABLED` siguen en el build. Siguiente: nada. |
 | **Tarea en curso · `claude/ins-33-frontend-sin-admin`** | Fusionada en `main` sin PR (2026-10-26, `47f6806`, `QA-215`; retro aprobada por la usuaria): `INS-33` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md), fase 3), frontend sin admin empaquetado, y retro `QA-262`…`QA-265`. Leve pendiente: rama `custom` de `CharacterSelect` inalcanzable a propósito. **Siguiente:** nada en esta rama; `INS-34`. |
@@ -183,6 +183,13 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 # Postgres de desarrollo (si está caído): bash /home/user/devenv/up.sh y después bash /home/user/stop-be.sh
 # (ver reglas comunes en docs/producto/plan-roadmap-0.1.md)
 ```
+
+## Pendientes leves del mapa (revisión de la fase 1, 2026-11-10)
+
+- `editar.py`: ríos importados sin `puntos` rompen `_trazos_lote` y la costa (hoy 0 ríos); la costa compara cuántos puntos quedan mal, no cuáles, y no recalcula el `continente` de rutas no tocadas; `_alturas` mira los lugares de antes del lote.
+- `servir.py`: GET de `/historial.json` y `/helek.json` fuera del cerrojo; el CLI escribe sin cerrojo y con `base` opcional.
+- `InteractiveMap.tsx`: los bbox de Llanuras y Cristal Helado salen del `helekRegiones.ts` regenerado (repintar mueve LocationLink y la escala); ids 17-21 y región 18 por defecto en el visor, a mano.
+- `consultar.py lugares --radio` compara en unidades, no en km (hoy `kmPorUnidad` = 1); `_ficha_celda` con un `x` sin uso y `GEOJSON` sin uso en `banco.py`.
 
 ## Hecho recientemente
 
