@@ -56,6 +56,12 @@ for f in "$@"; do
 done
 [ ${#integracion[@]} -eq 0 ] && exit 0
 mapfile -t integracion < <(printf '%s\n' "${integracion[@]}" | sort -u)
+# Retro 2026-11-10 (mapas a main): sin nada en el 11434 todos caen en ECONNREFUSED; como ci-local.sh, se levanta
+# el Ollama simulado (en el host, que es donde corre vitest). Con el Ollama real en marcha contesta él.
+bash tools/qa/host.sh bash -c 'curl -s -o /dev/null localhost:11434 && exit 0
+  setsid nohup node tools/ci/mock-ollama.mjs >"${TMPDIR:-/tmp}/mock-ollama.log" 2>&1 </dev/null &
+  for _ in $(seq 1 20); do curl -s -o /dev/null localhost:11434 && { echo "pre-push: Ollama simulado levantado en el 11434"; exit 0; }; sleep 1; done
+  echo "pre-push: no se pudo levantar el Ollama simulado (log en ${TMPDIR:-/tmp}/mock-ollama.log)" >&2'
 echo "pre-push: tests de integración de lo que cambia (${#integracion[@]})…"
 correr_con_log integracion "FAIL|AssertionError|Error:|Test Files|Tests " "tests de integración en rojo" \
   bash tools/qa/host.sh bash -c 'cd backend && npx vitest run --project bd-real "$@"' _ "${integracion[@]}"

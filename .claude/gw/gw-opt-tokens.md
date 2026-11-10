@@ -72,6 +72,7 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   runbook `skills-y-modelos.md` manda escribir con un subagente `sonnet` cuando el plan está cerrado.
 - **Salida de subagentes no fiable** (retro de `QA-176`): `measure.py` la da como «—» cuando su registro no la guarda.
 - **Pre-push con tests de lo que cambia** (`QA-88`, `QA-98`): no hace falta pasar la suite entera tras cada cambio.
+- **El pre-push levanta el Ollama simulado** si el 11434 no contesta (`tools/qa/tests-vitest.sh integracion`, retro 2026-11-10): sin él, un push en la Deck perdía ~10 min en 20 rojos ECONNREFUSED.
 
 - **`/gw-update` con desvíos locales** (R3 de la retro del 2026-11-02; movida con `QA-296`, R1 de la del
   2026-11-04): la reconciliación por subagente, en `docs/runbooks/skills-wmf.md`; la fase 1 sin las copias
