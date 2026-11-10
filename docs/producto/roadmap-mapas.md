@@ -130,16 +130,31 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   (aún no lo pinta: con `MAP-13`). **Propuesta sin canon guardada** (decisión del usuario, 2026-11-10;
   `map-generator/propuestas/map14-zonas.json`): tormenta Rok'ithek en toda la región con la Hondonada del Eco de
   refugio; peligro en Agujas Imán, Hondonada de noche, Cruce de las Cenizas y todo el Margen; clanes Serhu, Helsig,
-  Goshg y la franja Faerus de Kegi. Probado en Chromium sin interfaz. **Preguntas para Álvaro** (cuando las
-  conteste, se ajustan las zonas y las que apruebe pasan a `canon: true`):
-  1. ¿Las tormentas tienen geografía (franjas, más fuertes cerca de El Vientre del Engaño) o son igual en toda la región?
-  2. ¿Dónde están El Vientre del Engaño, la Fosa Horadada, el Laberinto de Cañones, el Filo de las Brasas (Fercaneo)
-     y la Red Profunda Final? No tienen posición en el mapa, y sin ella no hay zona de peligro.
-  3. ¿La escala de peligro 1-3 vale? ¿De dónde sale el nivel: la fauna de la zona, el `riesgo` de las rutas u otra?
-  4. Límites de cada clan: ¿cuánto ocupan los pastos Serhu, Helsig, Goshg y la franja Faerus (¿hasta dónde llega)?
-  5. Maktor fue aniquilado: ¿su antigua zona se pinta (vacía, disputada) o nada?
-  6. ¿Cuántos km tiene una jornada? (se usan 8 h ≈ 40 km). ¿Velocidad de monturas, caravanas y por mar?
-  7. ¿Todo el Margen Silencioso es peligro alto, o solo cruzarlo de norte a sur?
+  Goshg y la franja Faerus de Kegi. Probado en Chromium sin interfaz.
+  **Respuestas de Álvaro (2026-11-10) y segunda propuesta** (`map-generator/propuestas/map14-zonas-2.json`, guardada,
+  todo `canon: false` hasta que la revise):
+  1. Tormentas que rotan, más fuertes en invierno y más flojas en primavera → tres franjas desde El Vientre del
+     Engaño (≤ 30 km nivel 3, 30-70 km nivel 2, más lejos nivel 1; la Hondonada sigue de refugio) y ciclo en la nota:
+     +1 en invierno, −1 en primavera, entre 0 y 3. **Falta** llevar el ciclo al juego (`climaFor` es hoy igual todo
+     el año): tarea nueva si Álvaro la aprueba.
+  2. Las posiciones ya estaban en el grafo de viaje (`13-escala-del-mundo.md` § 2.2ter, `map.ts`), no en el mapa:
+     zonas de peligro en la Fosa Horadada, el Vientre, el Laberinto, el Filo de las Brasas, las Fumarolas Negras,
+     la Sabana Alta, los Manaderos y la Red Profunda Final.
+  3. Escala 1-3 aprobada. Nivel propuesto por la fauna más alta (≤ 6: 1; 7-10: 2; > 10: 3): Hondonada de noche y
+     Cruce de las Cenizas suben a 3.
+  4. Clanes, propuesta para que la revise: Serhu, 7 km alrededor de sus nodos del núcleo (sin Maktor); Goshg, 16 km
+     alrededor de Silh Makut; Helsig y Kegi como estaban; nuevas Selva de Hashma (Faerus Feg Tusha, Margen oeste) y
+     Margen oriental (Nabieus Keseg Sael).
+  5. Los Restos de Maktor: zona de clan «ninguno (antiguo Maktor)», conquistable y vacía, 9 km alrededor de los Restos
+     y El Campo Yermo.
+  6. Viaje, propuesta para valorar (sin aplicar a `viaje.json`): el lore da 21-37 km por jornada (Serhu-Helsig,
+     122 km, 4-6 jornadas; Serhu-Goshg, 104 km, 4-5) → jornada de **6 h de marcha ≈ 30 km**, no 8 h. No hay
+     monturas en el lore: caravana con múrgoles de carga a 3,5 km/h (≈ 20 km/jornada); bote costero de fondo plano
+     a 6 km/h solo de día; balsa río abajo a 4 km/h.
+  7. El lore no cuadra del todo: los Nabieus viven en la **mitad oriental** del Margen y los Faerus en la occidental;
+     el centro (Cruce de las Ausencias, Aguas Sordas) es tierra de nadie (`margen-silencioso.md`). Propuesta: este
+     nivel 1, oeste 2, centro 3 (corte por x 575/600). El Puesto Nabieus del Margen (x 581) cae en el centro: ¿se
+     mueve al este? La Proa Gris y el borde norte (Ferike) también serían alto, sin posición aún.
 
 - ~~**MAP-16 · El mapa lo gestionan agentes**~~ [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
   el mapa todo lo que el juego necesite, y valorar si lo puede llevar un agente local. Cada edición del visor tiene su

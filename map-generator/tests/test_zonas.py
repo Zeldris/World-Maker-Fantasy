@@ -23,8 +23,9 @@ import importar  # noqa: E402
 import medir  # noqa: E402
 import servir  # noqa: E402
 import viaje  # noqa: E402
+import _sinzonas  # noqa: E402
 
-MUNDO = medir.cargar()
+MUNDO = _sinzonas.cargar()  # el mapa real puede llevar zonas propuestas: estos tests parten de cero
 CANON = editar.cargar_json(medir.CANON)
 LORE = editar.cargar_json(editar.comprobar.LORE)
 LLANURAS = next(r['i'] for r in MUNDO['regiones'] if r['nombre'] == 'Llanuras del Viento Rojo')
@@ -252,8 +253,7 @@ def _comprobar():
 
 
 class Capas(unittest.TestCase):
-    def test_el_archivo_de_capas_esta_al_dia_y_sin_zonas_en_el_mapa(self):
-        self.assertNotIn('zonas', MUNDO)  # las zonas las propone un lote, no esta tarea
+    def test_el_archivo_de_capas_esta_al_dia_con_el_mapa_real(self):
         codigo, err = _comprobar()
         self.assertEqual(codigo, 0, err)
 
@@ -297,7 +297,7 @@ class Guardado(unittest.TestCase):
         self.mundo = os.path.join(self.dir, 'helek.json')
         self.juego = os.path.join(self.dir, 'helekRegiones.ts')
         self.capas = os.path.join(self.dir, 'helekCapas.ts')
-        shutil.copy(medir.MUNDO, self.mundo)
+        _sinzonas.copiar(self.mundo)
         self.v1 = aplicar({'zonas': [tormenta(), tormenta(2, 'Segunda', CELDAS_LLANURAS[4:6])]})
 
     def tearDown(self):
@@ -347,7 +347,7 @@ class Consultar(unittest.TestCase):
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
         cls.mundo = os.path.join(cls.dir, 'helek.json')
-        shutil.copy(medir.MUNDO, cls.mundo)
+        _sinzonas.copiar(cls.mundo)
         v = aplicar({'zonas': [tormenta(), {'i': 2, 'tipo': 'clan', 'nombre': 'Tierras Serhu', 'clan': 'Serhu',
                                             'canon': True, 'nota': 'canon X', 'celdas': CELDAS_LLANURAS[:2]}]})
         editar.guardar(v, cls.mundo, ruta_juego=None)
