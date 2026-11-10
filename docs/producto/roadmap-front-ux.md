@@ -391,7 +391,7 @@ vuelva más tarde. Eso exige estas reglas de experiencia:
 Diseño completo en [`diseno-interfaz-marca.md`](diseno-interfaz-marca.md) (de galivelop-image-generator,
 2026-11-10). Excepción a la pausa de pruebas (usuario, 2026-11-10).
 
-- **UX-40 · La marca en la interfaz, sin imágenes** — tokens de oro, piedra y noche en `index.css`; bordes de oro,
+- ~~**UX-40 · La marca en la interfaz, sin imágenes**~~ ✅ 2026-11-10 (comprobado en pantalla: Home, ficha de Helek Sirik y hotbar; los separadores de la Home pasan a `.gold-hairline`; `.plank-panel` activo y `.corner-bracket-gold` quedan listos sin usar: el mundo elegido sigue con `card-selected`) — tokens de oro, piedra y noche en `index.css`; bordes de oro,
   `.gold-hairline`, `.title-gold`, `.crystal-sky` a noche, `.gem` engastada, `.corner-bracket-gold`; tipografía de la
   Home (titular en oro, eyebrow en hueso, peso 700 en titulares); `theme-color`, `og:title` y `og:description` en
   `index.html` (secciones 2-5 y 7 «Ahora» del diseño). **S**

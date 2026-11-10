@@ -70,6 +70,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-36` | Interfaz | Leyendas siempre a una tecla | jugado | Y abre Leyendas desde la partida |
 | `UX-37` | Interfaz | Responder escribiendo | jugado | P141 (Responder escribiendo) |
 | `UX-38` | Interfaz | Noticias del mundo que se pueden tocar | jugado | iconos de categoría, enlace de lugar abre su ficha, y con una oportunidad sembrada la etiqueta «📍 En Las Dunas Ahogadas · hasta el día 41» (también dentro del resumen) |
+| `UX-40` | Interfaz | La marca en la interfaz, sin imágenes | jugado | 2026-11-10, Playwright: Home, ficha de Helek Sirik y hotbar en una partida |
 | `ZON-10` | Mapa de zona | Fichas con placa oscura + pictograma + anillo de disposición (Foundry VTT). La placa conse | jugado | P123, P147 |
 | `ZON-11` | Mapa de zona | Tamaño mínimo garantizado : las fichas se dibujan a tamaño de pantalla fijo (~28 px de diá | jugado | P123 |
 | `ZON-13` | Mapa de zona | Grupos legibles : insignia "×3" en píldora clara fuera de la ficha; a partir de 3, fichas | jugado | P147 |
