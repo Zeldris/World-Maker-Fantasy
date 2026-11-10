@@ -58,5 +58,5 @@ done
 mapfile -t integracion < <(printf '%s\n' "${integracion[@]}" | sort -u)
 echo "pre-push: tests de integración de lo que cambia (${#integracion[@]})…"
 correr_con_log integracion "FAIL|AssertionError|Error:|Test Files|Tests " "tests de integración en rojo" \
-  bash tools/qa/host.sh bash -c 'cd backend && npx vitest run --project bd-real "$@"' _ "${integracion[@]}"
+  bash tools/qa/host.sh bash tools/qa/con-mock-ollama.sh bash -c 'cd backend && npx vitest run --project bd-real "$@"' _ "${integracion[@]}"
 exit 0

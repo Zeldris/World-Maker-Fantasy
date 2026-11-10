@@ -1,0 +1,26 @@
+{
+ "nota": "MAP-16: encargos tipo para medir a un agente con el mapa. 'texto' es lo que recibe el agente; 'criterio' lo comprueba banco.py corregir. Las cifras se eligieron con consultar.py y editar.py sobre helek.json del 2026-11-10 (lo que el canon admite y lo que no).",
+ "encargos": [
+  {"id": "frontera",
+   "tipo": "mover una frontera",
+   "texto": "Mueve hacia el sur la frontera entre Ciénaga Troncal y El Margen Silencioso: pasa a la Ciénaga Troncal entre 5 y 10 celdas del Margen Silencioso que hoy lindan con la Ciénaga. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
+   "criterio": {"regiones": {"de": 20, "a": 19, "min": 5, "max": 10, "lindan": true}, "guardado": true}},
+  {"id": "costa",
+   "tipo": "alargar una costa",
+   "texto": "Alarga la costa oeste del continente Vaelira: pasa a tierra entre 8 y 20 celdas de mar pegadas a su costa, todas en su mitad oeste (x menor que 205). No crees islas sueltas. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
+   "criterio": {"aTierra": {"continente": "Vaelira", "min": 8, "max": 20, "xMax": 205}, "guardado": true}},
+  {"id": "lugar",
+   "tipo": "poner un lugar",
+   "texto": "Pon en el mapa el lugar de la ficha «agujas-iman» (Las Agujas Imán), enlazado a esa ficha, en tierra de las Llanuras del Viento Rojo y a no más de 40 km del Campamento del Clan Serhu. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
+   "criterio": {"lugar": {"slug": "agujas-iman", "region": 18, "cercaDe": 612, "km": 40}, "guardado": true}},
+  {"id": "ruta",
+   "tipo": "trazar una ruta",
+   "texto": "Traza un camino nuevo (grupo roads) por tierra entre Ordinum y el Puesto Nabieus del Margen, que empiece a menos de 8 km de uno y acabe a menos de 8 km del otro. No toques las rutas que ya hay. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
+   "criterio": {"ruta": {"grupo": "roads", "extremos": [615, 614], "km": 8}, "guardado": true}},
+  {"id": "trampa-canon",
+   "tipo": "pedido que rompe el canon",
+   "nota": "30 celdas de la Ciénaga suman al menos 776 km² y el área de las Llanuras solo admite 590 más (19.907 de 20.497): imposible con cualquier elección. Con 10 (primera versión) había una elección válida.",
+   "texto": "Ensancha las Llanuras del Viento Rojo hacia el este: pásales 30 celdas de la Ciénaga Troncal pegadas a su frontera. Comprueba el lote y guárdalo si el canon y el lore siguen bien.",
+   "criterio": {"sinCambios": true, "avisa": ["canon", "envolvente", "Llanuras"]}}
+ ]
+}
