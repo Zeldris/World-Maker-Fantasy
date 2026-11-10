@@ -1828,7 +1828,7 @@ export interface EconomiaReino {
   bebida?: number
   comidaProduccionDia?: number
   comidaConsumoDia?: number
-  bocasDetalle?: { civiles: number; soldados: number; visitantes: number }
+  bocasDetalle?: { civiles: number; soldados: number; visitantes: number; cazadores?: number }
   motivosComida?: string[]
   aguaDia: number
   bocas: number
