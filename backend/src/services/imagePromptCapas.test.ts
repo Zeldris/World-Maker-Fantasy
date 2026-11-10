@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const ollamaGenerate = vi.fn();
 vi.mock('../lib/ollama.js', () => ({ ollamaGenerate: (...args: unknown[]) => ollamaGenerate(...args) }));
 
-const { montarHibrida, validarCapas, generarCapas, parsearCapas, systemCapas, recortarCorto } = await import('./imagePromptCapas.js');
+const { montarHibrida, validarCapas, generarCapas, parsearCapas, systemCapas, recortarCorto, plantillaCapas, cargarAgenteQwen21, IRREGULAR_QWEN21, INTEGRAR_QWEN21, ESTILO_QWEN21 } = await import('./imagePromptCapas.js');
 const { generateImagePrompt } = await import('./imagePromptGenerator.js');
 
 const HULKI_CAPAS = {
@@ -160,5 +160,67 @@ describe('IMG-54 — recortarCorto', () => {
     const largo = { ...CAPAS_BUENAS, corto: 'One two three. Four five. Six seven eight.' };
     expect(recortarCorto(largo, 5).corto).toBe('One two three. Four five.');
     expect(recortarCorto(CAPAS_BUENAS)).toBe(CAPAS_BUENAS);
+  });
+});
+
+describe('IMG-56 — perfil qwen21 (Qwen-Image 2.1)', () => {
+  beforeEach(() => {
+    ollamaGenerate.mockReset();
+    delete process.env.IMAGE_PROMPT_MODEL;
+    delete process.env.IMAGE_PROMPT_PLANTILLA;
+  });
+
+  it('sin la variable sigue el perfil de siempre y con IMAGE_PROMPT_PLANTILLA=qwen21 cambia', () => {
+    expect(plantillaCapas()).toBe('flux');
+    process.env.IMAGE_PROMPT_PLANTILLA = 'v53';
+    expect(plantillaCapas()).toBe('flux');
+    process.env.IMAGE_PROMPT_PLANTILLA = 'qwen21';
+    expect(plantillaCapas()).toBe('qwen21');
+  });
+
+  it('monta el prompt como los de r36: panorama delante, capas, integración, irregularidad, estilo y «textless»', () => {
+    const fauna = montarHibrida('fauna', CAPAS_BUENAS, undefined, 'qwen21');
+    expect(fauna.startsWith('Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame, of an invented creature that does not exist in nature. A single heavy beast')).toBe(true);
+    expect(fauna.endsWith(`${INTEGRAR_QWEN21.fauna} ${IRREGULAR_QWEN21} ${ESTILO_QWEN21} The image is completely textless.`)).toBe(true);
+    expect(INTEGRAR_QWEN21.fauna).toContain('not pasted on top of it');
+    expect(ESTILO_QWEN21).toContain('35mm lens');
+    const lugar = montarHibrida('zona', MANADEROS_CAPAS, undefined, 'qwen21');
+    expect(lugar.startsWith('Wide cinematic panorama at eye level, layered depth from textured ground to hazy horizon, of an otherworldly landscape. A chain of shallow')).toBe(true);
+    expect(lugar).toContain(INTEGRAR_QWEN21.location);
+    expect(IRREGULAR_QWEN21).toContain('never symmetrical or tidy');
+    // el montaje por defecto no cambia
+    expect(montarHibrida('npc', HULKI_CAPAS)).toBe(HULKI_ESPERADO);
+  });
+
+  it('las instrucciones salen del archivo del estilo, sin su comentario de cabecera, y no piden 120 palabras', () => {
+    const agente = cargarAgenteQwen21();
+    expect(agente.startsWith('You write the layers of an image prompt for Qwen-Image 2.1')).toBe(true);
+    expect(agente).not.toContain('<!--');
+    const sistema = systemCapas('fauna', 'qwen21');
+    expect(sistema).toContain('follows the prompt to the letter');
+    expect(sistema).not.toContain('120 words');
+    expect(sistema).toContain('Framing for this animal');
+    expect(systemCapas('fauna')).toContain('at most 120 words');
+  });
+
+  it('generarCapas deja pasar un «corto» de más de 120 palabras y lo dice el proveedor', async () => {
+    process.env.IMAGE_PROMPT_PLANTILLA = 'qwen21';
+    const largo = { ...CAPAS_BUENAS, corto: `${CAPAS_BUENAS.corto} ${'A long horn like a ram. '.repeat(30)}`.trim() };
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify(largo), raw: {} });
+    const { capas, prompt, provider } = await generarCapas('fauna', 'Múrgol', 'Ganado lanudo.');
+    expect(capas.corto).toBe(largo.corto);
+    expect(prompt.startsWith('Wide cinematic panorama')).toBe(true);
+    expect(prompt).toContain(IRREGULAR_QWEN21);
+    expect(provider).toBe('ollama:qwen35-9b-32k (qwen21)');
+    expect(ollamaGenerate).toHaveBeenCalledTimes(1);
+    expect(ollamaGenerate.mock.calls[0][0]).toMatchObject({ keepAlive: '0', maxTokens: 2200 });
+    expect(ollamaGenerate.mock.calls[0][0].system).toContain('Qwen-Image 2.1');
+  });
+
+  it('con el perfil de siempre el mismo «corto» largo se recorta a 120 palabras', async () => {
+    const largo = { ...CAPAS_BUENAS, corto: `${CAPAS_BUENAS.corto} ${'A long horn like a ram. '.repeat(30)}`.trim() };
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify(largo), raw: {} });
+    const { capas } = await generarCapas('fauna', 'Múrgol', 'Ganado lanudo.');
+    expect(capas.corto!.split(/\s+/).length).toBeLessThanOrEqual(120);
   });
 });

@@ -125,7 +125,7 @@ class PantallaFases(Base):
         # los motores del servidor: el que no está completo sale apagado con lo que le falta; las estimaciones, con «~»
         motores = pagina.evaluate("[...document.querySelectorAll('#fasesMotor option')].map((o) => [o.value, o.textContent, o.disabled, o.title])")
         por_id = {m[0]: m for m in motores}
-        self.assertEqual([m[0] for m in motores], ['klein4b', 'klein9b', 'klein9b-consistencia', 'qwen-edit', 'longcat', 'flux3'])
+        self.assertEqual([m[0] for m in motores], ['klein4b', 'klein9b', 'klein9b-consistencia', 'qwen-edit', 'longcat', 'flux3', 'qwen21'])
         self.assertEqual(por_id['klein4b'][1:3], ['FLUX.2 klein 4B · 40 s', False])
         self.assertIn('~80 s', por_id['klein9b'][1])
         self.assertEqual(por_id['qwen-edit'][2], True)

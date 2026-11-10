@@ -3,7 +3,14 @@
 La leen fase.py (pasos, tope, archivos que faltan, estimaciones, servidor) y generar.sh (`MOTOR=<id>`, con
 `motores.py shell <id> <image-generator/>`, que imprime asignaciones de shell y sale con 3 si falta un archivo).
 Las recetas salen de docs/producto/plan-imagenes/investigacion-modelos-y-pasos.md; `{M}` en los args es modelos/.
-Estimaciones de segundos (paso a 480x192, Final a 1280x512): klein4b medido; el resto, estimación (x2 la 9B, x10 los 20B/20 pasos)."""
+Estimaciones de segundos (paso a 480x192, Final a 1280x512): klein4b medido; el resto, estimación (x2 la 9B, x10 los 20B/20 pasos).
+IMG-56, claves opcionales que usa qwen21 (texto a imagen, grande):
+  'base'      args de sd-cli que sustituyen a los base de generar.sh (`--flash-attn off,diffusion=on --vae-tiling --params-backend
+              disk --max-vram vulkan0=2`); `shell` los exporta como BASE_MOTOR=(…). Sin la clave, generar.sh se queda como estaba.
+  'sin_refs'  el motor no admite imagen de entrada ni referencias: fase.py las ignora de forma explícita (sin -r, sin BOCETO, sin
+              frases de rol) y el prompt va tal cual; la entrada aceptada se sigue exigiendo y apuntando en camino.json.
+  'vigila_mb' umbral del vigilante de memoria de generar.sh (MemAvailable en MB; por defecto 1500); `MIN_VIGILA_MB=` lo manda.
+  'tam_paso' / 'tam_final'  (ancho, alto) que sustituyen a los de la receta de la fase en los pasos y en la Final."""
 import os
 import shlex
 import sys
@@ -34,6 +41,16 @@ MOTORES = {
                 'extra': ['--llm_vision', '{M}/text/' + _QWEN_VL['mmproj'], '--flow-shift', '3'],
                 'sampler': 'euler', 'lora': None, 'perfil': None, 'segundos': {'paso': 400, 'final': 1600}, 'estimacion': True,
                 'archivos_extra': [('text', _QWEN_VL['mmproj'])]},
+    # IMG-56: Qwen-Image 2.1 (Q4_K, ~8 B; licencia Qwen Research, no comercial), texto a imagen. Receta medida en la Deck (bin-nuevo):
+    # pesos de difusión (4 GB) y VAE en Vulkan, texto (Qwen3-VL 8B, 4,3 GB) en CPU; sin --offload-to-cpu, --params-backend disk ni
+    # --max-vram. 61 s/it a 1024x576 (~2540 s con 40 pasos). Pasos y Final en 16:9. `estimacion` es una sola marca: el paso (a 512x288) es estimado; la Final (2540 s) está medida.
+    'qwen21': {'nombre': 'Qwen-Image 2.1 (Q4, texto a imagen)', 'modelo': 'qwen_image_2.1-Q4_K.gguf', 'llm': 'Qwen3VL-8B-Instruct-Q4_K_M.gguf',
+               'vae': 'qwen_image_2.1_vae_bf16.safetensors', 'cfg': '6.0', 'pasos': 40, 'tope': 5400, 'bin': 'bin-nuevo',
+               'base': ['--flash-attn', 'diffusion=on', '--vae-tiling', '--backend', 'te=cpu'],
+               'extra': ['--model-args', 'qwen_image_2_1_prefix_cache_type=q4_0'],
+               'sampler': 'euler', 'lora': None, 'perfil': None, 'sin_refs': True, 'vigila_mb': 1200,
+               'tam_paso': (512, 288), 'tam_final': (1024, 576),
+               'segundos': {'paso': 700, 'final': 2540}, 'estimacion': True},
     # Lo que hoy hace PERFIL=fotorreal de generar.sh (que fija modelo, texto, VAE, bin-nuevo y LoRA de estilo): no se duplica.
     'flux3': {'nombre': 'FLUX.3 klein (fotorrealista)', 'modelo': None, 'llm': None, 'vae': None, 'cfg': None, 'pasos': 8,
               'tope': 10800, 'bin': None, 'extra': [], 'lora': None, 'perfil': 'fotorreal',
@@ -77,7 +94,8 @@ def mensaje_faltan(id_, perdidos):
 def lista(raiz):
     """Para /api/inicio: [{id, nombre, disponible, faltan, pasos, segundosEstimados: {paso, final}, estimacion}]."""
     return [{'id': i, 'nombre': m['nombre'], 'disponible': not (p := faltan(i, raiz)), 'faltan': p, 'pasos': m['pasos'],
-             'segundosEstimados': dict(m['segundos']), 'estimacion': m['estimacion']} for i, m in MOTORES.items()]
+             'segundosEstimados': dict(m['segundos']), 'estimacion': m['estimacion'],
+             'sinReferencias': bool(m.get('sin_refs'))} for i, m in MOTORES.items()]
 
 
 def shell(id_, g):
@@ -96,6 +114,10 @@ def shell(id_, g):
         sal.append(f'TOPE=${{TOPE:-{m["tope"]}}}')
         sal.append(f'SAMPLER=${{SAMPLER:-{m.get("sampler", "euler")}}}')
         sal.append(f'B=$G/{m["bin"]}')
+        if m.get('base'):  # IMG-56: sustituyen a los args base de generar.sh
+            sal.append('BASE_MOTOR=(' + ' '.join(shlex.quote(a) for a in m['base']) + ')')
+        if m.get('vigila_mb'):
+            sal.append(f'MIN_VIGILA_MB=${{MIN_VIGILA_MB:-{int(m["vigila_mb"])}}}')
         sal.append('EXTRA_MOTOR=(' + ' '.join(shlex.quote(a.replace('{M}', os.path.join(g, 'modelos'))) for a in m['extra']) + ')')
         if m['lora']:
             sal.append(f'LORA_MOTOR={shlex.quote(m["lora"][0] + ":" + m["lora"][1])}')

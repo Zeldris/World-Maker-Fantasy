@@ -13,8 +13,11 @@
 # MOMENTO=dia|atardecer|noche con PERFIL=fotorreal: al acabar gradar.sh deja intentos/<nombre>-<momento>.png
 # (GRADAR=0 lo omite; REGION=<región> la pasa a gradar.sh; GRADAR_SH=<ruta> lo sustituye en los tests).
 # IMG-53: MOTOR=<id> elige un motor de la tabla de scripts/motores.py (klein4b, klein9b, klein9b-consistencia, qwen-edit,
-# longcat, flux3): fija modelo, texto, VAE, cfg, tope, bin, args extra (--llm_vision, --flow-shift…) y LoRA (`<lora:…>` en el
+# longcat, flux3, qwen21): fija modelo, texto, VAE, cfg, tope, bin, args extra (--llm_vision, --flow-shift…) y LoRA (`<lora:…>` en el
 # prompt); lo explícito (MODELO=…) manda y los pasos siguen siendo el argumento 7. Si falta un archivo del motor: exit 3.
+# IMG-56: un motor con `base` en la tabla (qwen21) sustituye los args base de sd-cli (`--flash-attn off,diffusion=on --vae-tiling
+# --params-backend disk --max-vram vulkan0=2`) por los suyos (BASE_MOTOR); `vigila_mb` baja el umbral del vigilante (MIN_VIGILA_MB=…
+# lo manda a mano; por defecto 1500). Sin `base`, todo igual que antes.
 # Deja imagen, log y copia del prompt en <directorio-de-salida>/{intentos,logs,prompts}/<nombre>.* (probar.sh le pasa
 # generated/<tipo>/<slug>); a mano, p. ej.: generar.sh image-generator/generated/murgol/pruebas v5 prompt.txt 1280 512
 # LIBERAR_OLLAMA=1: descarga los modelos de Ollama en vez de abortar (CFG-43).
@@ -25,7 +28,7 @@ G=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # image-generator/
 B=$G/bin; M=$G/modelos
 D=$1; N=$2; PF=$3; W=$4; H=$5; SEED=${6:-42}; STEPS=${7:-6}; EXTRA=("${@:8}")
 PERFIL=${PERFIL:-}; MOMENTO=${MOMENTO:-}; BOCETO=${BOCETO:-}; LORA=${LORA:-1}; MOTOR=${MOTOR:-}; SAMPLER=${SAMPLER:-}
-EXTRA_MOTOR=(); LORA_MOTOR=
+EXTRA_MOTOR=(); LORA_MOTOR=; BASE_MOTOR=()
 if [ -n "$MOTOR" ]; then
   # la tabla está en un solo sitio (motores.py); imprime asignaciones, o «echo ABORTO…; exit 3|2» si falta algo
   eval "$(python3 "$G/scripts/motores.py" shell "$MOTOR" "$G")"
@@ -41,6 +44,9 @@ case $PERFIL in
   *) echo "ABORTO: PERFIL desconocido: $PERFIL (solo fotorreal)"; exit 2 ;;
 esac
 SDCLI=${SDCLI:-$B/sd-cli}
+# IMG-56: args base de sd-cli; un motor con `base` en la tabla los sustituye (qwen21: texto en CPU, sin tope de VRAM)
+BASE=(--flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2)
+[ "${#BASE_MOTOR[@]}" -gt 0 ] && BASE=("${BASE_MOTOR[@]}")
 case $MOMENTO in ""|dia|atardecer|noche) ;; *) echo "ABORTO: MOMENTO desconocido: $MOMENTO (dia, atardecer, noche)"; exit 2 ;; esac
 if [ -n "$BOCETO" ]; then
   [ -f "$BOCETO" ] || { echo "ABORTO: el boceto no existe: $BOCETO"; exit 3; }
@@ -48,7 +54,7 @@ if [ -n "$BOCETO" ]; then
 fi
 mkdir -p "$D/intentos" "$D/logs" "$D/prompts"
 # MIN_INICIO_MB: klein baja la memoria libre ~2,2 GB y Z-Image ~3,5 GB (IMG-15); el vigilante mata con menos de 1500.
-MIN_INICIO_MB=${MIN_INICIO_MB:-7000}; MIN_VIGILA_MB=1500
+MIN_INICIO_MB=${MIN_INICIO_MB:-7000}; MIN_VIGILA_MB=${MIN_VIGILA_MB:-1500}
 MODELO=${MODELO:-flux-2-klein-4b-Q8_0.gguf}; LLM=${LLM:-Qwen3-4B-Q4_K_M.gguf}; CFG=${CFG:-1.0}; TOPE=${TOPE:-900}
 VAE=${VAE:-full_encoder_small_decoder.safetensors}
 
@@ -90,7 +96,7 @@ t0=$(date +%s)
 LD_LIBRARY_PATH="$B" timeout "$TOPE" "$SDCLI" --diffusion-model "$M/diffusion/$MODELO" --llm "$M/text/$LLM" \
   --vae "$M/vae/$VAE" -p "$PROMPT" \
   --cfg-scale "$CFG" --steps "$STEPS" --sampling-method "${SAMPLER:-euler}" -W "$W" -H "$H" --seed "$SEED" \
-  --flash-attn off,diffusion=on --vae-tiling --params-backend disk --max-vram vulkan0=2 "${EXTRA[@]}" -o "$D/intentos/$N.png" -v > "$LOG" 2>&1 &
+  "${BASE[@]}" "${EXTRA[@]}" -o "$D/intentos/$N.png" -v > "$LOG" 2>&1 &
 PID=$!
 # $PID es el de `timeout`: un SIGKILL a él no llega a sd-cli, que seguiría con la memoria. Primero el hijo.
 matar() { pkill -9 -P $PID; kill -9 $PID; }

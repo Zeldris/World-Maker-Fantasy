@@ -17,7 +17,7 @@ viven las herramientas y sus salidas. No es parte del juego todavía; sus tareas
 | `bin/` | `sd-cli` y sus bibliotecas (release `master-1000-95ff762`, Linux Vulkan) | no |
 | `bin-nuevo/` | `sd-cli` del perfil fotorreal (release `master-1039-290148d`: LoRAs de FLUX.3) | no |
 | `loras/` | LoRA de estilo `wmf-estilo.safetensors` (`IMG-32`) | no |
-| `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf` y `flux-2-klein-9b-Q4_0.gguf`; `flux3-image-klein-Q8_0.gguf`, `qwen-image-edit-2511-Q3_K_S.gguf` y `longcat_edit_bfl_format-Q4_K_M.gguf` (motores de `scripts/motores.py`). Z-Image y klein base, borrados el 2026-11-08 (bancos cerrados) | no |
+| `modelos/diffusion/` | `flux-2-klein-4b-Q8_0.gguf` y `flux-2-klein-9b-Q4_0.gguf`; `flux3-image-klein-Q8_0.gguf`, `qwen-image-edit-2511-Q3_K_S.gguf` y `longcat_edit_bfl_format-Q4_K_M.gguf`; `qwen_image_2.1-Q4_K.gguf` (motor `qwen21`, IMG-56) (motores de `scripts/motores.py`). Z-Image y klein base, borrados el 2026-11-08 (bancos cerrados) | no |
 | `modelos/text/` | `Qwen3-4B-Q4_K_M.gguf` (codificador de texto); `Qwen3VL-4B-Instruct-Q4_K_M.gguf` (el de FLUX.3); `Qwen3-8B-Q4_K_M.gguf` (klein 9B); `Qwen2.5-VL-7B-Instruct` y su `mmproj` (qwen-edit) | no |
 | `modelos/upscale/` | `RealESRGAN_x4plus.pth` (ampliación, BSD-3) | no |
 | `referencias/` | imágenes de referencia (`-r`); `referencias/images/` es la copia de `backend/uploads/images/` que hace `abrir.sh` (solo las que falten) | no |

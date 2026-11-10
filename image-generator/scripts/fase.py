@@ -4,9 +4,11 @@ IMG-53, cadena de pasos: la fase puede ser P1…P9 (480x192, 4 pasos como F0): P
 primer -r (con --ref-image-args vae_input_max_pixels=262144) y su prompt (el «Keep… Change only…» de la usuaria) va tal cual; con más
 --ref se antepone «Image 1 is the current image…» y las frases de rol numeradas desde 2. La Final F4 parte del Pn aceptado más alto.
 --motor <id> (solo en Pn y F4; por defecto klein4b, y el explícito manda) elige la receta de scripts/motores.py (klein4b, klein9b,
-klein9b-consistencia, qwen-edit, longcat, flux3): sus pasos y tope sustituyen a los de la fase, y generar.sh recibe MOTOR=<id>
+klein9b-consistencia, qwen-edit, longcat, flux3, qwen21): sus pasos y tope sustituyen a los de la fase, y generar.sh recibe MOTOR=<id>
 (excepto con klein4b, que es lo que hace generar.sh solo); si falta un archivo del motor, aborto con código 3 antes de apuntar
-nada. El motor se guarda en cada intento de camino.json. --semillas N (1-4, por defecto 1) genera N intentos seguidos con
+nada. IMG-56: qwen21 (Qwen-Image 2.1) es solo texto a imagen (`sin_refs` en la tabla): ignora de forma explícita la imagen de entrada,
+--referencia y --ref (sin -r, sin BOCETO, sin frases de rol; el prompt va tal cual; la entrada aceptada se sigue exigiendo y se apunta) y
+usa su tamaño 16:9 (`tam_paso`, `tam_final`). El motor se guarda en cada intento de camino.json. --semillas N (1-4, por defecto 1) genera N intentos seguidos con
 semillas consecutivas (semilla, semilla+1…), cada uno apuntado en camino.json; si uno falla, no se lanzan los siguientes.
 --ref <rol>:<imagen> (repetible, IMG-52) añade una imagen con rol (sujeto, lugar, equipo, estilo) como -r, tras la de entrada de F4, y el
 prompt enviado dice qué es cada una por su número; máximo 4 en total (en F4 el boceto cuenta una). No se mezcla con --referencia.
@@ -203,8 +205,19 @@ def una(tipo, slug, variante, fase, prompt, semilla, d, generar, rec, entrada, r
             env['MOTOR'] = motor
     extra = list(rec['extra'])
     es_paso = fase in C.PASOS
-    if entrada:
-        ruta = os.path.join(d, 'intentos', entrada[1])
+    ancho, alto = rec['w'], rec['h']
+    sin_refs = paso and bool(MO.motor(motor).get('sin_refs'))
+    if sin_refs:  # IMG-56: texto a imagen; nada de entrada ni referencias, y el tamaño del motor
+        m = MO.motor(motor)
+        ancho, alto = m.get('tam_final' if fase == 'F4' else 'tam_paso', (ancho, alto))
+        extra = [a for a in extra if a not in LIMITE_REF]  # sin --ref-image-args
+        if entrada or lista or referencia:
+            print('AVISO: el motor ' + motor + ' es solo de texto a imagen: ignora la imagen de entrada y las referencias')
+        entrada_efectiva, refs, lista, referencia = None, [], None, None
+    else:
+        entrada_efectiva = entrada
+    if entrada_efectiva:
+        ruta = os.path.join(d, 'intentos', entrada_efectiva[1])
         if rec['entrada'] == 'BOCETO':
             env['BOCETO'] = ruta
         else:
@@ -235,7 +248,7 @@ def una(tipo, slug, variante, fase, prompt, semilla, d, generar, rec, entrada, r
     with os.fdopen(fd, 'w', encoding='utf-8') as f:
         f.write(enviado + '\n')
     t0 = time.time()
-    r = subprocess.run(['bash', generar, d, nombre, pf, str(rec['w']), str(rec['h']), str(semilla), str(pasos), *extra],
+    r = subprocess.run(['bash', generar, d, nombre, pf, str(ancho), str(alto), str(semilla), str(pasos), *extra],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     os.remove(pf)
     seg = round(time.time() - t0, 1)
@@ -245,7 +258,7 @@ def una(tipo, slug, variante, fase, prompt, semilla, d, generar, rec, entrada, r
     medida = None
     if hay:
         juego = medir_con or (None if refs else referencia)
-        medida = M.medir(png, os.path.join(d, 'intentos', entrada[1]) if entrada else None,
+        medida = M.medir(png, os.path.join(d, 'intentos', entrada_efectiva[1]) if entrada_efectiva else None,
                          juego if juego and os.path.isfile(juego) else None)
     C.actualizar(d, lambda c: C.apuntar_intento(c, variante, fase, prompt, semilla, nombre + '.png' if hay else None,
                                                 seg, r.returncode, entrada, n=n,

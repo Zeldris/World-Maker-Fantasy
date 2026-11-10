@@ -139,6 +139,7 @@ class MotorDeGenerar(Base):
                       'text/Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf', 'vae/qwen_image_vae.safetensors'],
         'longcat': ['diffusion/longcat_edit_bfl_format-Q4_K_M.gguf', 'text/Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf',
                     'text/Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf', 'vae/ae-flux1.safetensors'],
+        'qwen21': ['diffusion/qwen_image_2.1-Q4_K.gguf', 'text/Qwen3VL-8B-Instruct-Q4_K_M.gguf', 'vae/qwen_image_2.1_vae_bf16.safetensors'],
         'flux3': ['diffusion/flux3-image-klein-Q8_0.gguf', 'text/Qwen3VL-4B-Instruct-Q4_K_M.gguf', 'vae/flux2-vae.safetensors'],
     }
 
@@ -205,6 +206,27 @@ class MotorDeGenerar(Base):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(self.valor('--cfg-scale'), '4.5')
         self.assertTrue(self.valor('--vae').endswith('ae-flux1.safetensors'))
+
+    def test_qwen21_sustituye_los_args_base_y_pone_texto_en_cpu(self):  # IMG-56
+        self.con('qwen21')
+        r = self.lanzar(MOTOR='qwen21')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.args()
+        self.assertTrue(self.valor('--diffusion-model').endswith('qwen_image_2.1-Q4_K.gguf'))
+        self.assertTrue(self.valor('--llm').endswith('Qwen3VL-8B-Instruct-Q4_K_M.gguf'))
+        self.assertEqual((self.valor('--cfg-scale'), self.valor('--sampling-method'), self.valor('--backend')), ('6.0', 'euler', 'te=cpu'))
+        self.assertEqual(self.valor('--flash-attn'), 'diffusion=on')
+        self.assertEqual(self.valor('--model-args'), 'qwen_image_2_1_prefix_cache_type=q4_0')
+        self.assertIn('--vae-tiling', a)
+        for ausente in ('--params-backend', '--max-vram', '--offload-to-cpu'):
+            self.assertNotIn(ausente, a)
+
+    def test_sin_base_del_motor_siguen_los_args_base_de_siempre(self):  # IMG-56
+        self.con('klein9b')
+        self.lanzar(MOTOR='klein9b')
+        a = self.args()
+        self.assertEqual((self.valor('--flash-attn'), self.valor('--params-backend'), self.valor('--max-vram')), ('off,diffusion=on', 'disk', 'vulkan0=2'))
+        self.assertIn('--vae-tiling', a)
 
     def test_flux3_es_el_perfil_fotorreal(self):
         self.con('flux3')

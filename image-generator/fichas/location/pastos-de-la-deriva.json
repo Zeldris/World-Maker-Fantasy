@@ -50,16 +50,16 @@
   ],
   "imagenJuego": "backend/uploads/images/location/pastos-de-la-deriva-dia-verano-banner.png",
   "capas": {
-    "corto": "A vast flat grassland in daylight, seen at eye level, with no animals and no buildings. Low warm light from the left through a golden haze. In the foreground, large red-brown boulders and loose gravel with tufts of tall grass. In the middle distance, the plain is covered in tufts of grass shading from fresh green to straw gold, with patches of bare red earth and a few dark thorny shrubs. On the far right horizon, a long escarpment of flat-topped red sandstone mesas rises out of the haze. A wide sky with thin bands of cloud arches over everything.",
-    "sujeto": "A vast flat grassland plain seen at eye level, running out to a far horizon, empty and wild, with no single subject.",
-    "luz": "Low warm light from the left through a golden haze: the grass tips glow and the boulders are lit on their left side, with soft long shadows to the right.",
-    "tamano": "The boulders in the front are as big as a sitting man, the grass tufts reach his knee, and the mesas on the horizon look as thin as a finger held at arm's length.",
-    "forma": "A flat plain with gentle swells. On the left, a faint dirt track winds away between the tufts. On the right, a long escarpment of red sandstone with flat-topped mesas and lone buttes standing on the plain.",
+    "corto": "A vast open grassland plain at golden hour, seen at eye level, with a long red sandstone escarpment on the far right horizon. Low warm sun through a golden dusty haze. In the foreground, a few big dark rust-red boulders and loose red gravel among tall wild grass tufts. In the middle distance, the plain is covered in grass shading from fresh green to straw gold, with patches of bare red earth, dark bare thorny shrubs, and a faint dirt track winding in from the right. Thin wisps of dust drift across it. No animals and no buildings. A wide amber sky.",
+    "sujeto": "A vast open grassland plain seen at eye level, running out to a far flat horizon, empty and wild, with a long red sandstone escarpment on the right; no single subject.",
+    "luz": "Low warm golden light from the left through a dusty haze: the grass tips glow, the boulders are lit on their left side with long soft shadows to the right, and wisps of dust drifting over the plain catch the light.",
+    "tamano": "The boulders in the foreground are as big as a sitting man, the grass tufts and thorny shrubs reach his knee and waist, and the mesas on the horizon look as thin as a finger held at arm's length.",
+    "forma": "A flat plain with gentle swells. On the right, a faint dirt track curves away between the grass tufts. Low bare thorny shrubs like dead hawthorn bushes stand here and there. On the far right, a long escarpment of red sandstone cliffs with flat-topped mesas, and a few lone buttes stand out on the plain toward the centre.",
     "viste": "",
-    "entorno": "In the foreground, red-brown boulders and gravel among grass. In the middle distance, grass tufts, bare earth and dark thorny shrubs. On the horizon, the pale red mesas fading into haze under a wide sky with thin bands of cloud.",
-    "color": "Grass from fresh green to straw gold, dry and dusty at the tips; rust-red boulders with pale lichen-like dust; red-brown bare earth; dark grey-green thorny shrubs; amber and pale blue sky.",
+    "entorno": "In the foreground, rust-red boulders, red gravel and grass tufts. In the middle distance, fresh green and straw-gold grass, patches of bare red earth, dark thorny shrubs, and wisps of drifting dust. On the horizon, the far flat plain fading into golden haze, with the pale red mesas on the right, under a wide amber sky with thin bands of cloud.",
+    "color": "Grass from fresh green to straw gold, dusty at the tips; rust-red boulders with a rough pitted surface; red-brown bare earth and track; dark grey-brown bare shrubs; red-orange sandstone cliffs; amber and gold sky and haze.",
     "repetir": "",
-    "paleta": "straw gold, rust red and pale green with one accent of amber haze",
-    "notas": "IMG-55, escrita por Claude a ciegas desde el canon. Sin sujeto único (lugar). Estación no indicada: elegida hierba verde-dorada de la ficha. Los rebaños de Corredores y los múrgoles del canon no se ponen (un solo sujeto, nada pequeño). 'Sin asentamiento fijo' = sin edificios. Duda: 'núcleo del clan' queda fuera de la imagen."
+    "paleta": "straw gold, fresh green and rust red with one accent of amber haze",
+    "notas": "IMG-55, escrita mirando el banner. Sin sujeto único. Banner = verano/atardecer dorado. Diferencias con el canon: el canon no da hora ni luz; el banner es hora dorada con polvareda en estelas; sendero de tierra a la derecha (la ficha antigua lo ponía a la izquierda); mesas y escarpe de arenisca roja a la derecha; arbustos espinosos secos y rocas rojas grandes en primer plano; hierba verde y dorada (el canon dice 'Pasto Solar' amarilla, base de la llanura, y Gradias, arbusto verde intenso). No se ven rebaños de Corredores de Cauce ni múrgoles (el canon dice que siguen aquí); queda vacío."
   }
 }

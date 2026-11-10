@@ -28,7 +28,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 
 | Bloque | Objetivo | Tareas, en orden |
 |---|---|---|
-| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~, `IMG-54`, `IMG-55` |
+| **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~, `IMG-54`, `IMG-55`, `IMG-56`, `IMG-57` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
 | **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
@@ -196,6 +196,21 @@ GPT quedan como canon fijo para medir la deriva.
   se sostiene (~49/70), el catálogo en tandas. **M** 🚧 2026-11-09: guía hecha; piloto (ronda 9 de `receta-calidad.md`) **42/60 ≈ 49/70**, se sostiene; 3 de 6 bien a
   la primera; el ancla real se come el rasgo propio (regla nueva en la guía). **Nota de la usuaria: 4/60**; mi nota no mide lo que ella ve: parado, a rediseñar con ella. Queda: rehacer cuernahoja y gargantúa
   con la regla nueva y, si suben, el catálogo en tandas.
+  2026-11-09 (tarde): cambio de motor a **Qwen-Image 2.1** (grande, Q4_K, ~42 min/imagen en la Deck): cuernahoja
+  **12/10** y gargantúa **8/10** (nota de la usuaria; pega: mucha luz, simetría, «muy limpio»). Turbo descartado por
+  calidad. Ficha desde el banner cuando lo hay (`banner-vs-canon.md`); tanda de noche r35 con estilo de *concept art*.
+
+- **IMG-56 · Qwen-Image 2.1 y el agente de prompts en la interfaz** [A] (usuaria, 2026-11-09, de `IMG-55`): llevar el
+  método a la interfaz para que la usuaria pruebe sola: (1) motor `qwen21` en `scripts/motores.py` con la receta de la
+  Deck (texto en CPU, sin tope de VRAM de 2 GB, 16:9), Final con el grande y pasos a menor tamaño; (2) botón «pedir
+  prompt» que escribe la ficha con el modelo local de Ollama (desde el banner si lo hay, si no del canon) y monta el
+  prompt con lo aprendido (estilo pintado, nada simétrico ni limpio, luz con bruma); Ollama se descarga antes de
+  generar. Licencia de Qwen-Image 2.1: Qwen Research, no comercial (avisado a la usuaria). **M**
+- **IMG-57 · Qwen-Image 2.1 más rápido sin perder calidad** [A] (usuario, 2026-11-09, de `IMG-56`): la Final a
+  1920x768 tarda 2 h 15 min (198 s/paso, 40 pasos; texto 45 s y VAE 132 s). La GPU ya va a 1600 MHz y 15 W: el ahorro
+  sale de calcular menos. Cribado a 960x384 contra la base de 40 pasos (pasos, CFG mixto con `guidance_schedule`,
+  `--cache-mode` easycache/spectrum/cache-dit), combinación de lo que no pierda y confirmación a 1920x768 con la
+  cuernahoja r36 (9/10); la receta ganadora pasa al motor `qwen21`. Resultados en `banco/resultados.md`. **S**
 
 ### Bloque F · Producción
 

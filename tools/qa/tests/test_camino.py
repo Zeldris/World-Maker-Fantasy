@@ -930,6 +930,65 @@ class TestFasePasos(BaseFase):
         self.assertEqual(self.fase('P1', extra=['--motor', 'qwen-edit']).returncode, 0)
         self.assertEqual(self.llamada()[6], '20')
 
+    def _qwen21(self):
+        for m in ('modelos/diffusion/qwen_image_2.1-Q4_K.gguf', 'modelos/text/Qwen3VL-8B-Instruct-Q4_K_M.gguf',
+                  'modelos/vae/qwen_image_2.1_vae_bf16.safetensors'):
+            escribir(os.path.join(self.raiz, m), 'x')
+
+    def test_qwen21_p1_usa_su_receta_y_su_tamano_16_9(self):  # IMG-56
+        self._qwen21()
+        r = self.fase('P1', extra=['--motor', 'qwen21'])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertEqual(a[3:7], ['512', '288', '3', '40'])
+        self.assertIn('MOTOR=qwen21', a); self.assertIn('TOPE=5400', a)
+
+    def test_qwen21_ignora_entrada_y_referencias_y_el_prompt_va_tal_cual(self):  # IMG-56
+        self._qwen21()
+        self.paso1()
+        suj = self.ref('sujeto.png')
+        r = self.fase('P2', extra=['--motor', 'qwen21', '--ref', f'sujeto:{suj}'])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('ignora la imagen de entrada y las referencias', r.stdout)
+        a = self.llamada()
+        for ausente in ('-r', '--ref-image-args', suj):
+            self.assertNotIn(ausente, a)
+        self.assertIn('PROMPT=un mono rojo', a)
+        i = C.leer(self.d)['variantes']['macho']['fases']['P2']['intentos'][0]
+        self.assertEqual((i['motor'], i['desde'], i.get('referencias')), ('qwen21', 'P1', None))
+
+    def test_qwen21_en_la_final_usa_1024x576_sin_boceto_ni_referencia_del_juego(self):  # IMG-56
+        self._qwen21()
+        self.paso1()
+        self.assertEqual(self.fase('P2').returncode, 0)
+        C.actualizar(self.d, lambda c: C.avanzar(self.d, c, 'macho', 'P2', 1, 'F4', 'fauna'))
+        os.remove(self.args)
+        juego = self.ref('juego.png')
+        r = self.fase('F4', extra=['--motor', 'qwen21', '--referencia', juego])
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        a = self.llamada()
+        self.assertEqual(a[3:7], ['1024', '576', '3', '40'])
+        self.assertNotIn('-r', a)
+        self.assertTrue(next(l for l in a if l.startswith('PROMPT=')) == 'PROMPT=un mono rojo')
+        self.assertIn('TOPE=5400', a)
+
+    def test_la_tabla_de_motores_exporta_base_y_umbral_solo_donde_los_define(self):  # IMG-56
+        import io, contextlib, motores
+        def salida(id_):
+            b = io.StringIO()
+            with contextlib.redirect_stdout(b):
+                self.assertEqual(motores.shell(id_, self.raiz), 0)
+            return b.getvalue()
+        self._qwen21()
+        q = salida('qwen21')
+        self.assertIn('BASE_MOTOR=(--flash-attn diffusion=on --vae-tiling --backend te=cpu)', q)
+        self.assertIn('MIN_VIGILA_MB=${MIN_VIGILA_MB:-1200}', q)
+        for m in ('modelos/diffusion/flux-2-klein-9b-Q4_0.gguf', 'modelos/text/Qwen3-8B-Q4_K_M.gguf', 'modelos/vae/full_encoder_small_decoder.safetensors'):
+            escribir(os.path.join(self.raiz, m), 'x')
+        k = salida('klein9b')
+        self.assertNotIn('BASE_MOTOR', k); self.assertNotIn('MIN_VIGILA_MB', k)
+        self.assertGreaterEqual(motores.motor('qwen21')['tope'], 4800)
+
     def test_motor_con_archivo_ausente_aborta_con_3_y_dice_cual_y_no_apunta_nada(self):
         escribir(os.path.join(self.raiz, 'modelos', 'diffusion', 'longcat_edit_bfl_format-Q4_K_M.gguf.part'), 'x')
         r = self.fase('P1', extra=['--motor', 'longcat'])

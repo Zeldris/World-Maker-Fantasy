@@ -1,0 +1,17 @@
+# IMG-55 r32 (2026-11-09): klein 4B, 1280x512, 6 pasos, semilla 5. g- = prompt de la ronda 9 tal cual (solo cambia el tamaño, antes 480x192); e- = el mismo con prefijo de cine de fantasía épica en vez de «foto de un animal real»; b- = prompt del banco escrito mirando el banner (cota de texto)
+g-corredor-de-cauce	6	prompts/r32-g-corredor-de-cauce.txt	W=1280,H=512	-
+e-corredor-de-cauce	6	prompts/r32-e-corredor-de-cauce.txt	W=1280,H=512	-
+g-cruzavientos	6	prompts/r32-g-cruzavientos.txt	W=1280,H=512	-
+e-cruzavientos	6	prompts/r32-e-cruzavientos.txt	W=1280,H=512	-
+g-cuernahoja	6	prompts/r32-g-cuernahoja.txt	W=1280,H=512	-
+e-cuernahoja	6	prompts/r32-e-cuernahoja.txt	W=1280,H=512	-
+g-gargantua-de-ceniza	6	prompts/r32-g-gargantua-de-ceniza.txt	W=1280,H=512	-
+e-gargantua-de-ceniza	6	prompts/r32-e-gargantua-de-ceniza.txt	W=1280,H=512	-
+g-agujas-iman	6	prompts/r32-g-agujas-iman.txt	W=1280,H=512	-
+e-agujas-iman	6	prompts/r32-e-agujas-iman.txt	W=1280,H=512	-
+g-pastos-de-la-deriva	6	prompts/r32-g-pastos-de-la-deriva.txt	W=1280,H=512	-
+e-pastos-de-la-deriva	6	prompts/r32-e-pastos-de-la-deriva.txt	W=1280,H=512	-
+b-cuernahoja	6	prompts/r14-cuernahoja-fotorreal.txt	W=1280,H=512	-
+b-pastos-de-la-deriva	6	prompts/r14-pastos-fotorreal.txt	W=1280,H=512	-
+b-cruzavientos	6	prompts/r17-sujeto-cruzavientos.txt	W=1280,H=512	-
+b-gargantua-de-ceniza	6	prompts/r17-sujeto-gargantua-de-ceniza.txt	W=1280,H=512	-

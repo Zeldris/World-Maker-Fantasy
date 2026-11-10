@@ -6,7 +6,11 @@
 # descarga al acabar (keepAlive 0). Sin seeds ni migraciones: para eso, iniciar-tarkor.sh.
 # Cada proceso, en su propia ventana y en primer plano: en la Deck, `nohup` en segundo plano muere sola
 # (ver la cabecera de iniciar-tarkor.sh). Para pararlo, detener-tarkor.sh.
+# IMG-56: `./abrir-enciclopedia.sh qwen21` hace que los prompts de banner salgan para Qwen-Image 2.1 (concept art, sin tope de
+# 120 palabras, frase de irregularidad y luz; instrucciones en image-generator/estilo/agente-qwen21.md). Sin argumento, como siempre.
 set -e
+PLANTILLA_IMG=""
+case "${1:-}" in qwen21) PLANTILLA_IMG="IMAGE_PROMPT_PLANTILLA=qwen21" ;; "") ;; *) echo "Uso: abrir-enciclopedia.sh [qwen21]"; exit 2 ;; esac
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOGS="$DIR/logs"
@@ -48,7 +52,7 @@ if ! curl -s -o /dev/null http://localhost:11434; then
   echo "Ollama, en reposo (sin modelo cargado)..."
   run_in_new_window "Tarkor - Ollama" "OLLAMA_IGPU_ENABLE=1 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 ollama serve"
 fi
-run_in_new_window "Tarkor - Backend (enciclopedia)" "$NVM_INIT cd '$DIR/backend' && TARKOR_SOLO_ENCICLOPEDIA=1 npm run dev:nowatch"
+run_in_new_window "Tarkor - Backend (enciclopedia)" "$NVM_INIT cd '$DIR/backend' && TARKOR_SOLO_ENCICLOPEDIA=1 $PLANTILLA_IMG npm run dev:nowatch"
 run_in_new_window "Tarkor - Frontend" "$NVM_INIT cd '$DIR/frontend' && npm run dev"
 
 URL="http://localhost:5173/admin/enciclopedia"

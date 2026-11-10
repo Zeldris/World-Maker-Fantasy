@@ -682,3 +682,27 @@ Rejillas en `generated/banco/r30/` y `r31/`. Bocetos sin referencia: FLUX.2 480x
 - **Contra el banner:** la Final es tan buena como su boceto. Pelo, placas, huesos, cuero y hielo ya se leen como en el banner; lo que falta es la forma y el encuadre que el boceto no trae (cuerpo de cinta, choza retorcida, cardo oscuro) y una luz menos lavada.
 - **Pautas:** `pautas.md` §15.
 
+
+## Ronda 33-35 · Qwen-Image 2.1 (`IMG-55`, 2026-11-09)
+
+Qwen-Image 2.1 Q4_K en `bin-nuevo/sd-cli`, texto en CPU (`--backend te=cpu`), cfg 6, 40 pasos, euler, sin offload;
+1024x576 a ~61 s/it, ~2540 s por imagen. Notas del usuario frente al banner (las mías no cuentan).
+
+| Prueba | Prompt | Nota | Lectura del usuario |
+|---|---|---|---|
+| r33 cuernahoja, 1280x512 | r14 (banner, «photorealistic fantasy matte painting, cinematic concept art») | **12/10** | «mejor que la original casi», sobre todo en forma |
+| r34 gargantúa | r34 escena (r17 con desierto rojo y bruma) | **8/10** | mucha luz, todo demasiado simétrico, «muy limpio», le falta fantasía |
+| r34 agujas-imán | r32-e (ficha a ciegas, foto) | sin nota | conos repetidos en fila, sin núcleo ni cielo rojo |
+| r35 cuernahoja | ficha desde el banner + «Epic fantasy concept art…» + frase anti-simetría | **7/10** | pierde el toque; pelo mejor; cuernos como hojas planas raras, debería ser más tosco |
+
+- **Turbo** (8 pasos, ~5,5 min): descartado por el usuario por calidad («el salto es brutal»).
+- **El prefijo de concept art no gana al del 12/10**: más pintado pero más blando, más «3D de animación». La frase
+  anti-simetría no vence a un encuadre de animal centrado y de frente; eso va en la ficha (tres cuartos, a un lado).
+- **Trama fina al ampliar** (usuario): resolución (1024x576 frente a 1983x793 del banner) y cuadrícula de bloques del
+  modelo Q4. Pendiente: probar RealESRGAN x4 como último paso de la Final.
+| r36 cuernahoja, **1920x768** (nativa de Qwen, ~1,5 MP; 198 s/it, 8089 s) | r14 + ficha del banner + cuernos de cuerno tosco + tercio izquierdo a media zancada | **9/10** | sin simetría, luz de tarde con bruma; fallo: los animales parecen pegatinas, no se mezclan con el fondo |
+
+- **Resolución:** generar a la medida nativa (1920x768, proporción del banner) en vez de 1280x512 + escalado. RealESRGAN x4
+  quita la trama pero pule; 133 s.
+- **Pegatinas:** se añade a los prompts r36 restantes una frase de integración (pies que se hunden y levantan polvo,
+  sombra larga del mismo sol, la misma bruma alrededor, rebote de color del suelo, los lejanos se funden).

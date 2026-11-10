@@ -93,8 +93,58 @@ const ENCUADRE_CAPAS: Record<TipoCapas, string> = {
   construccion: 'Framing for this building: the whole building on its site, seen from human eye height, with the landscape around it.',
 };
 
-export function systemCapas(tipo: TipoCapas): string {
-  return `${REGLAS_CAPAS}\n\n${ENCUADRE_CAPAS[tipo]}${tipo === 'npc' || tipo === 'raza' ? '' : '\nThis is not a person: leave "viste" as "".'}`;
+// ============================================================
+// IMG-56: perfil Qwen-Image 2.1 (opt-in con IMAGE_PROMPT_PLANTILLA=qwen21; abrir-enciclopedia.sh qwen21). Mismo bloque `capas`,
+// otras instrucciones (image-generator/estilo/agente-qwen21.md), sin tope de 120 palabras en `corto` (era de FLUX klein) y otro
+// montaje: el arranque de panorama delante y, antes de «textless», la integración, la irregularidad y el estilo (ronda r36, 9/10).
+// Sin la variable, todo sigue igual que antes.
+// ============================================================
+
+export type PlantillaCapas = 'flux' | 'qwen21';
+export const plantillaCapas = (): PlantillaCapas => (process.env.IMAGE_PROMPT_PLANTILLA === 'qwen21' ? 'qwen21' : 'flux');
+
+const PANORAMA_QWEN21 = 'Wide cinematic panorama from a low camera angle, layered depth from textured ground to hazy horizon, subject fully in frame';
+/// La «foto» del perfil qwen21, por tipo: el arranque de los prompts r36 (cuernahoja 9/10 a 1920x768, nota del usuario).
+export const FOTO_QWEN21: Record<TipoCapas, string> = {
+  fauna: `${PANORAMA_QWEN21}, of an invented creature that does not exist in nature`,
+  flora: `${PANORAMA_QWEN21}, of an invented plant that does not exist in nature`,
+  raza: `${PANORAMA_QWEN21}, of an invented fantasy figure`,
+  npc: `${PANORAMA_QWEN21}, of an invented fantasy figure`,
+  item: `${PANORAMA_QWEN21}, of an invented handmade object`,
+  construccion: `${PANORAMA_QWEN21}, of an invented building in its landscape`,
+  location: 'Wide cinematic panorama at eye level, layered depth from textured ground to hazy horizon, of an otherworldly landscape',
+};
+/// Contra el efecto «pegatina» (nota del usuario a r36): el sujeto, dentro de la luz y el aire de la escena.
+export const INTEGRAR_QWEN21: Record<TipoCapas, string> = {
+  fauna:
+    "The creatures belong to the scene, not pasted on top of it: their feet press into the ground and kick up a little dust, each casts a long soft shadow that matches the sun, the same warm hazy light and drifting dust wrap around their bodies, the ground's colour bounces onto their undersides, and the farther ones fade softly into the haze like the land behind them.",
+  location:
+    'Every rock and spire sits in the same air and light as the land around it: soft contact shadows, drifting dust at their feet, and the farther ones fading softly into the haze.',
+  flora: 'The plant belongs to the scene, not pasted on top of it: it grows out of the ground with soft contact shadows, casts a shadow that matches the sun, and the same hazy light and drifting dust wrap around it.',
+  raza: "The figure belongs to the scene, not pasted on top of it: feet planted in the ground, a shadow that matches the sun, the same hazy light and drifting dust around the body, and the ground's colour bouncing onto it.",
+  npc: "The figure belongs to the scene, not pasted on top of it: feet planted in the ground, a shadow that matches the sun, the same hazy light and drifting dust around the body, and the ground's colour bouncing onto it.",
+  item: 'The object belongs to the scene, not pasted on top of it: it rests on the ground with soft contact shadows, its shadow matches the light, and the same hazy air wraps around it.',
+  construccion: 'The building belongs to the scene, not pasted on top of it: its base sits in the ground with dust and growth at its foot, its shadow matches the sun, and the same hazy light wraps around it.',
+};
+export const IRREGULAR_QWEN21 = 'Everything is rough, weathered, dusty and irregular, never symmetrical or tidy.';
+/// El cierre de estilo de r14/r36 (las notas más altas del usuario: 12/10 y 9/10).
+export const ESTILO_QWEN21 =
+  'Style: photorealistic fantasy matte painting, cinematic concept art, soft golden-hour rim light, warm atmospheric haze, rich natural colour. Mood: epic, hazy, grounded. Shot on a full-frame camera with a 35mm lens.';
+
+let agenteQwen21Cache: string | null = null;
+
+/// Las instrucciones del agente: `image-generator/estilo/agente-qwen21.md` sin su comentario HTML de cabecera
+/// (`IMAGE_AGENTE_QWEN21_MD` para otra ruta; vale desde `src/` y desde `dist/`).
+export function cargarAgenteQwen21(): string {
+  if (agenteQwen21Cache) return agenteQwen21Cache;
+  const ruta = process.env.IMAGE_AGENTE_QWEN21_MD || fileURLToPath(new URL('../../../image-generator/estilo/agente-qwen21.md', import.meta.url));
+  agenteQwen21Cache = readFileSync(ruta, 'utf8').replace(/^\s*<!--[\s\S]*?-->\s*/, '').trim();
+  return agenteQwen21Cache;
+}
+
+export function systemCapas(tipo: TipoCapas, plantilla: PlantillaCapas = 'flux'): string {
+  const reglas = plantilla === 'qwen21' ? cargarAgenteQwen21() : REGLAS_CAPAS;
+  return `${reglas}\n\n${ENCUADRE_CAPAS[tipo]}${tipo === 'npc' || tipo === 'raza' ? '' : '\nThis is not a person: leave "viste" as "".'}`;
 }
 
 // ============================================================
@@ -152,16 +202,22 @@ export function validarCapas(capas: unknown, opciones: { nombre: string; reglas?
 // ============================================================
 
 /// Prompt `--hibrida`: tipo de foto + `corto` + tamaño, forma, ropa, entorno, color y repetición + paleta + «textless».
-export function montarHibrida(tipo: string, capas: BloqueCapas & { foto?: string }, reglas: ReglasCapas = cargarReglasCapas()): string {
+export function montarHibrida(
+  tipo: string,
+  capas: BloqueCapas & { foto?: string },
+  reglas: ReglasCapas = cargarReglasCapas(),
+  plantilla: PlantillaCapas = 'flux',
+): string {
   const t = tipoCapas(tipo) ?? (tipo in reglas.FOTO ? (tipo as TipoCapas) : undefined);
   if (!t) throw new Error(`La plantilla por capas no tiene el tipo «${tipo}»`);
   const c = capas as Record<string, unknown>;
   if (!texto(c.corto)) throw new Error('El bloque «capas» no tiene «corto»');
-  const foto = texto(c.foto) || reglas.FOTO[t];
+  const foto = texto(c.foto) || (plantilla === 'qwen21' ? FOTO_QWEN21[t] : reglas.FOTO[t]);
   const primero = `${foto.slice(0, 1).toUpperCase()}${foto.slice(1)}. ${texto(c.corto)}`.replace(' The image is completely textless.', '');
   const resto = ['tamano', 'forma', 'viste', 'entorno', 'color', 'repetir'].map((k) => texto(c[k]));
   if (texto(c.paleta)) resto.push(`A limited, muted palette of ${texto(c.paleta)}.`);
-  return [primero, ...resto.filter(Boolean), 'The image is completely textless.'].join(' ');
+  const cierre = plantilla === 'qwen21' ? [INTEGRAR_QWEN21[t], IRREGULAR_QWEN21, ESTILO_QWEN21] : [];
+  return [primero, ...resto.filter(Boolean), ...cierre, 'The image is completely textless.'].join(' ');
 }
 
 // ============================================================
@@ -239,7 +295,10 @@ export async function generarCapas(
   const tipo = tipoCapas(entityType);
   if (!tipo) throw new Error(`La plantilla por capas no tiene el tipo «${entityType}»`);
   const model = modeloImagePrompt();
-  const system = systemCapas(tipo);
+  const plantilla = plantillaCapas();
+  const system = systemCapas(tipo, plantilla);
+  // qwen21: `corto` sin tope de palabras (el de 120 era de FLUX klein)
+  const reglas = plantilla === 'qwen21' ? { ...cargarReglasCapas(), CORTO_MAX: Number.POSITIVE_INFINITY } : undefined;
   const base = contenidoUsuario(entityType, name, lore, contexto, tipo);
   let peticion = base;
   let motivos: string[] = [];
@@ -252,7 +311,7 @@ export async function generarCapas(
       keepAlive: '0',
       numCtx: 32768,
       temperature: 0.6,
-      maxTokens: 1400,
+      maxTokens: plantilla === 'qwen21' ? 2200 : 1400,
       timeoutMs: 900_000,
       tarea: 'image-prompt',
       intento,
@@ -263,9 +322,9 @@ export async function generarCapas(
       peticion = `${base}\n\nYour previous reply was not valid JSON.\nPrevious reply:\n${text.slice(0, 1500)}\n\nReply again with ONLY the JSON object, with every key.`;
       continue;
     }
-    const capas = recortarCorto(normalizar(crudo));
-    motivos = validarCapas(capas, { nombre: name });
-    if (motivos.length === 0) return { capas, prompt: montarHibrida(tipo, capas), provider: `ollama:${model}` };
+    const capas = recortarCorto(normalizar(crudo), reglas?.CORTO_MAX);
+    motivos = validarCapas(capas, { nombre: name, reglas });
+    if (motivos.length === 0) return { capas, prompt: montarHibrida(tipo, capas, undefined, plantilla), provider: `ollama:${model}${plantilla === 'qwen21' ? ' (qwen21)' : ''}` };
     peticion = `${base}\n\nYour previous JSON broke these rules:\n${motivos.map((m) => `- It ${m}.`).join('\n')}\nPrevious JSON:\n${JSON.stringify(capas)}\n\nReply again with the whole JSON object, fixing every point and keeping everything else.`;
   }
   throw new Error(`Las capas no cumplen las reglas de capas.json: ${motivos.join('; ')}`);

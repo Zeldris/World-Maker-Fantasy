@@ -34,13 +34,14 @@ API (JSON salvo las imágenes):
   GET  /api/camino?tipo&slug                camino.json del elemento; cada variante lleva `siguientes` (calculado, según el
                                             tipo, desde su faseActual)
   GET  /api/inicio                          además `motores`: [{id,nombre,disponible,faltan:[archivos],pasos,
-                                            segundosEstimados:{paso,final},estimacion}] (scripts/motores.py; `estimacion`
+                                            segundosEstimados:{paso,final},estimacion,sinReferencias}] (scripts/motores.py; `estimacion`
                                             true = aún no medido) y `motorPorDefecto` (klein4b); las fases incluyen P1…P9 (IMG-53); la F4 lleva `promptPorDefecto`
                                             (el prompt corto de estilo r37, si está el archivo) y /api/fase/avanzar de un paso a la Final lo usa
   POST /api/fase/generar {tipo,slug,variante,fase,prompt,semilla?,usarReferencia?,motor?,semillas?,referencias?}
                                             IMG-53: `fase` puede ser P1…P9 (cadena de pasos: Pn parte de la aceptada de P(n-1);
                                             la Final, del paso aceptado más alto); `motor`: id de /api/inicio (solo en pasos y
-                                            Final; por defecto klein4b; 400 si falta un archivo suyo); `semillas` 1-4: intentos
+                                            Final; por defecto klein4b; 400 si falta un archivo suyo; klein4b, klein9b, klein9b-consistencia,
+                                            qwen-edit, longcat, flux3 y qwen21; IMG-56: qwen21 es solo texto a imagen e ignora entrada y referencias); `semillas` 1-4: intentos
                                             seguidos con semillas consecutivas; `referencias`: [{rol: sujeto|lugar|equipo|estilo,
                                             imagen}], imagen = archivo de image-generator/referencias/ o de
                                             generated/<tipo>/<slug>/intentos/ (400 si sale de ahí o no existe; máx. 3 con

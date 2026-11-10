@@ -374,7 +374,7 @@ class Fases(T.Base):
         r = self.pedir('/api/inicio')[1]
         self.assertEqual([f['id'] for f in r['fases']][3:12], [f'P{n}' for n in range(1, 10)])
         self.assertEqual(r['motorPorDefecto'], 'klein4b')
-        self.assertEqual([m['id'] for m in r['motores']], ['klein4b', 'klein9b', 'klein9b-consistencia', 'qwen-edit', 'longcat', 'flux3'])
+        self.assertEqual([m['id'] for m in r['motores']], ['klein4b', 'klein9b', 'klein9b-consistencia', 'qwen-edit', 'longcat', 'qwen21', 'flux3'])
         k = r['motores'][0]
         self.assertEqual((k['disponible'], k['pasos'], k['segundosEstimados'], k['estimacion']), (False, 4, {'paso': 40, 'final': 160}, False))
         self.assertIn('modelos/diffusion/flux-2-klein-4b-Q8_0.gguf', k['faltan'])
@@ -383,6 +383,10 @@ class Fases(T.Base):
         self.assertEqual((r['motores'][0]['disponible'], r['motores'][0]['faltan']), (True, []))
         q = next(m for m in r['motores'] if m['id'] == 'qwen-edit')
         self.assertEqual((q['disponible'], q['pasos'], q['estimacion']), (False, 20, True))
+        w = next(m for m in r['motores'] if m['id'] == 'qwen21')  # IMG-56
+        self.assertEqual((w['disponible'], w['pasos'], w['segundosEstimados'], w['sinReferencias']), (False, 40, {'paso': 700, 'final': 2540}, True))
+        self.assertIn('modelos/diffusion/qwen_image_2.1-Q4_K.gguf', w['faltan'])
+        self.assertFalse(next(m for m in r['motores'] if m['id'] == 'klein9b')['sinReferencias'])
 
     def test_generar_p1_y_avanzar_p2_encadena_los_pasos_por_la_api(self):
         self.assertEqual(self.post_fase('generar', fase='P1', prompt='un fondo', semilla=4)[0], 202)

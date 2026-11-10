@@ -81,6 +81,7 @@ const MOTORES = [
   { id: 'qwen-edit', nombre: 'Qwen-Image-Edit 2511 (Q3)', disponible: false, faltan: ['modelos/diffusion/qwen-image-edit-2511-Q3_K_S.gguf'], pasos: 20, segundosEstimados: { paso: 400, final: 1600 }, estimacion: true },
   { id: 'longcat', nombre: 'LongCat Image Edit (Q4)', disponible: false, faltan: ['modelos/diffusion/longcat_edit_bfl_format-Q4_K_M.gguf'], pasos: 20, segundosEstimados: { paso: 400, final: 1600 }, estimacion: true },
   { id: 'flux3', nombre: 'FLUX.3 klein (fotorrealista)', disponible: true, faltan: [], pasos: 8, segundosEstimados: { paso: 300, final: 900 }, estimacion: true },
+  { id: 'qwen21', nombre: 'Qwen-Image 2.1 (Q4, texto a imagen)', disponible: false, faltan: ['modelos/diffusion/qwen_image_2.1-Q4_K.gguf'], pasos: 40, segundosEstimados: { paso: 700, final: 2540 }, estimacion: true, sinReferencias: true },
 ];
 const SEMILLA_F0 = 3;
 const caminos = {};
