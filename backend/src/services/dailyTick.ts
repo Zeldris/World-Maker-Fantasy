@@ -3,7 +3,7 @@ import { registrarSuceso } from './cronista/sucesos.js';
 import { comidaDelReinoDia, datosComidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
-import { tickKingdom, daysCrossed, hambrunaNueva, avisoDeReserva, CONSUMO_POR_BOCA, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, hambrunaNueva, avisoDeReserva, balanceReservasDia, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
 import { avisarEnReino } from './cronista/subditos.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { comidaDe } from './cronista/ganaderia.js';
@@ -53,16 +53,14 @@ export async function advanceKingdomStatsDay(
       dia = tickKingdom(dia, 1, d, { ...suministros, comidaDia });
     }
     const ticked = { ...dia, trabajadores };
-    await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
+    // P381: aviso previo «queda bebida/comida para N días», una vez por racha bajo 7 días. El balance del día
+    // siguiente es el del propio tick (`balanceReservasDia`): agua de pozos/fuente y comida de las tareas.
+    const balance = balanceReservasDia(ticked, { ...suministros, comidaDia: comidaDelReinoDia(datosComida, (ultimoDia + 1) * 1440 + 720, ticked.comida, factor) });
+    const bebidaAviso = avisoDeReserva(ticked.bebida, balance.bebida, kingdomStats.avisoBebidaBajo);
+    const comidaAviso = avisoDeReserva(ticked.comida, balance.comida, kingdomStats.avisoComidaBajo);
+    await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { ...ticked, avisoBebidaBajo: bebidaAviso.yaAvisado, avisoComidaBajo: comidaAviso.yaAvisado } });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
     if (hambrunaNueva(diasHambre, ticked.diasHambre ?? 0, diasCruzados)) await registrarHambruna(tx, saveId, 'REINO_JUGADORA');
-    // P381: aviso previo «queda bebida/comida para N días», una vez por racha bajo 7 días.
-    const consumoDia = (ticked.poblacion + ticked.soldados + ticked.visitantes) * CONSUMO_POR_BOCA;
-    const bebidaAviso = avisoDeReserva(ticked.bebida, consumoDia, kingdomStats.avisoBebidaBajo);
-    const comidaAviso = avisoDeReserva(ticked.comida, consumoDia, kingdomStats.avisoComidaBajo);
-    if (bebidaAviso.yaAvisado !== kingdomStats.avisoBebidaBajo || comidaAviso.yaAvisado !== kingdomStats.avisoComidaBajo) {
-      await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { avisoBebidaBajo: bebidaAviso.yaAvisado, avisoComidaBajo: comidaAviso.yaAvisado } });
-    }
     const diasTxt = (n: number) => (n === 1 ? 'un día' : n === 0 ? 'menos de un día' : `${n} días`);
     if (bebidaAviso.avisar) await avisarEnReino(tx, saveId, `La bebida del Reino se acaba: quedan reservas para ${diasTxt(bebidaAviso.dias)}. Hay que reponerla antes de que la sed haga daño.`, hasta);
     if (comidaAviso.avisar) await avisarEnReino(tx, saveId, `La comida del Reino escasea: quedan reservas para ${diasTxt(comidaAviso.dias)}. Hay que reponerla antes de que llegue el hambre.`, hasta);

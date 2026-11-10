@@ -7,10 +7,13 @@ import { avisoDeReserva } from './kingdomTick.js';
 /// P381 (2026-11-10): aviso en el canal del Reino cuando queda bebida o comida para menos de 7 días, una vez por racha.
 describe('P381: aviso de reservas bajas', () => {
   it('avisoDeReserva: umbral, racha y consumo 0', () => {
-    expect(avisoDeReserva(35, 5, false)).toMatchObject({ avisar: false, yaAvisado: false });
-    expect(avisoDeReserva(34, 5, false)).toMatchObject({ avisar: true, dias: 6, yaAvisado: true });
-    expect(avisoDeReserva(30, 5, true)).toMatchObject({ avisar: false, yaAvisado: true });
+    // El segundo argumento es el balance diario (producción − consumo).
+    expect(avisoDeReserva(35, -5, false)).toMatchObject({ avisar: false, yaAvisado: false });
+    expect(avisoDeReserva(34, -5, false)).toMatchObject({ avisar: true, dias: 6, yaAvisado: true });
+    expect(avisoDeReserva(30, -5, true)).toMatchObject({ avisar: false, yaAvisado: true });
     expect(avisoDeReserva(0, 0, true)).toMatchObject({ avisar: false, yaAvisado: false });
+    expect(avisoDeReserva(10, 2, true)).toMatchObject({ avisar: false, yaAvisado: false });
+    expect(avisoDeReserva(0, -5, false)).toMatchObject({ avisar: false, yaAvisado: false });
   });
 
   const saves: string[] = [];
@@ -68,5 +71,22 @@ describe('P381: aviso de reservas bajas', () => {
     await dia(vacio, 11);
     await dia(vacio, 12);
     expect(await prisma.logEntry.count({ where: { saveId: vacio, channel: 'KINGDOM' } })).toBe(0);
+  });
+
+  it('con producción (pozo) y balance no negativo, reserva baja no avisa', async () => {
+    // 5 bocas beben 5 al día; un pozo da 12: el balance es +7 y los 20 de partida nunca se acaban.
+    const saveId = await reino('Pozo (P381)', { soldados: 5, comida: 5000, bebida: 20 });
+    const loc = await prisma.location.findFirstOrThrow({ where: { world: { slug: 'helek-sirik' } } });
+    await prisma.building.create({ data: { saveId, locationId: loc.id, recipeKey: 'pozo', name: 'Pozo', kind: 'pozo', description: 'x', status: 'ACTIVO' } });
+    await dia(saveId, 11);
+    await dia(saveId, 12);
+    expect(await avisos(saveId, 'bebida')).toHaveLength(0);
+  });
+
+  it('con la reserva a 0 no avisa (manda la hambruna)', async () => {
+    const saveId = await reino('Cero (P381)', { soldados: 5, comida: 0, bebida: 0 });
+    await dia(saveId, 11);
+    await dia(saveId, 12);
+    expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'reservas para' } } })).toBe(0);
   });
 });
