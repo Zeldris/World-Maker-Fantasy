@@ -15,8 +15,6 @@ export function diaAbsolutoDeFecha(f: FechaDiario): number {
   return (f.year - 1) * DIAS_POR_ESTACION * ESTACIONES_ORDEN.length + ESTACIONES_ORDEN.indexOf(f.estacion) * DIAS_POR_ESTACION + f.diaRelativo
 }
 
-/// P380: la fecha más reciente entre las entradas, por fecha y no por posición (los capítulos van detrás de las
-/// entradas en la respuesta, y el último de la lista no es el último en el tiempo).
 const ESTACION_NOMBRE: Record<EstacionKey, string> = { PRIMAVERA: 'Primavera', VERANO: 'Verano', OTONO: 'Otoño', INVIERNO: 'Invierno' }
 
 /// P380 (usuaria, 2026-11-10): la pestaña del día dice «Día 6 de Verano, año 1», no el día de partida.
@@ -24,6 +22,8 @@ export function etiquetaDiaDiario(f: FechaDiario): string {
   return `Día ${f.diaRelativo} de ${ESTACION_NOMBRE[f.estacion]}, año ${f.year}`
 }
 
+/// P380: la fecha más reciente entre las entradas, por fecha y no por posición (los capítulos van detrás de las
+/// entradas en la respuesta, y el último de la lista no es el último en el tiempo).
 export function fechaMasReciente<T extends FechaDiario>(items: readonly T[]): FechaDiario | null {
   let mejor: T | null = null
   for (const it of items) if (mejor === null || diaAbsolutoDeFecha(it) > diaAbsolutoDeFecha(mejor)) mejor = it

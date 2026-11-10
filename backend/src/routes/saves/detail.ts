@@ -30,7 +30,6 @@ import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js'
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
 
-
 export async function detailRoutes(app: FastifyInstance) {
   /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
   /// entera; mismo cálculo que los campos homónimos de GET /saves/:id.

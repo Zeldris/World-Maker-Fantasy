@@ -9,6 +9,8 @@ function txCon(questsAceptadas: string[]) {
   const pedidos: string[][] = [];
   const tx = {
     zonePoint: { findMany: () => Promise.resolve([{ targetSlug: 'gistera-koh' }, { targetSlug: 'guardia-1' }]) },
+    worldState: { findUnique: () => Promise.resolve({ fictionalMinutes: 720 }) },
+    npcState: { findMany: () => Promise.resolve([]) },
     quest: { findMany: () => Promise.resolve(questsAceptadas.map((questSlug) => ({ questSlug }))) },
     npc: {
       findMany: (args: { where: { slug: { in: string[] } } }) => {
