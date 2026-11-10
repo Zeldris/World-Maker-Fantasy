@@ -461,12 +461,12 @@
     {"type":"Feature","properties":{"capa":"ruta","i":446,"grupo":"searoutes"},"geometry":{"type":"LineString","coordinates":[[711.7,308.59],[717.4,305.2],[719.16,300.61],[717,296.3],[714.93,292],[714.46,289.49],[715.4,284.9],[716.31,280.33],[720.07,275.08],[719.3,270.7],[718.56,266.25],[715.45,262.11],[716.4,258.7],[717.36,255.25],[716.9,249.9],[716.41,244.64],[712.57,239.95],[711.3,235],[709.94,230.13],[707.55,224.8],[710.94,218.97],[710.2,215.4],[709.5,211.92],[711.04,205.32],[709.3,201.5],[707.56,197.66],[702.31,194.75],[703.52,188.32],[699.82,187.92],[696.2,187.1],[693.5,187.04],[691.04,188.71],[688.27,188.22]]}},
     {"type":"Feature","properties":{"capa":"ruta","i":447,"grupo":"searoutes"},"geometry":{"type":"LineString","coordinates":[[711.4,359.4],[708.45,358.07],[705.31,357.19],[702.41,355.75]]}},
     {"type":"Feature","properties":{"capa":"ruta","i":448,"grupo":"trails"},"geometry":{"type":"LineString","coordinates":[[638.52,186.83],[634.3,194.51]]}},
-    {"type":"Feature","properties":{"capa":"ruta","i":449,"grupo":"trails"},"geometry":{"type":"LineString","coordinates":[[581.38,317.03],[587.52,316.95],[592.53,316.99],[598.21,320.59]]}},
+    {"type":"Feature","properties":{"capa":"ruta","i":449,"grupo":"trails"},"geometry":{"type":"LineString","coordinates":[[650.0,318.0],[642.6,318.4],[635.2,318.7],[627.8,319.1],[620.4,319.5],[613.0,319.8],[605.6,320.2],[598.21,320.59]]}},
     {"type":"Feature","properties":{"capa":"ruta","i":450,"grupo":"trails"},"geometry":{"type":"LineString","coordinates":[[570.94,397.8],[581.57,396.42]]}},
     {"type":"Feature","properties":{"capa":"lugar","i":611,"nombre":"Poblado Helsig de la Ladera"},"geometry":{"type":"Point","coordinates":[591.25,77.05]}},
     {"type":"Feature","properties":{"capa":"lugar","i":612,"nombre":"Campamento del Clan Serhu"},"geometry":{"type":"Point","coordinates":[534.61,185.11]}},
     {"type":"Feature","properties":{"capa":"lugar","i":613,"nombre":"Campamento Goshg de los Trepadores"},"geometry":{"type":"Point","coordinates":[638.52,186.83]}},
-    {"type":"Feature","properties":{"capa":"lugar","i":614,"nombre":"Puesto Nabieus del Margen"},"geometry":{"type":"Point","coordinates":[581.38,317.03]}},
+    {"type":"Feature","properties":{"capa":"lugar","i":614,"nombre":"Puesto Nabieus del Margen"},"geometry":{"type":"Point","coordinates":[650.0,318.0]}},
     {"type":"Feature","properties":{"capa":"lugar","i":615,"nombre":"Ordinum"},"geometry":{"type":"Point","coordinates":[570.94,397.8]}}
   ]
 }

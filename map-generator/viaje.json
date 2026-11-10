@@ -1,0 +1,51 @@
+{
+  "fuente": "docs/mecanicas/13-escala-del-mundo.md § 1",
+  "nota": "Reglas para pasar los km de una ruta a tiempo de viaje. Lo que lleva derivado: true no es canon literal: es lo que cuadra con la tabla de distancias de la fuente; lo que lleva derivado: false lo fijó la usuaria (jornada, caravana, bote y balsa: Álvaro, 2026-11-10, MAP-14). Lo cambia solo la usuaria.",
+  "velocidadKmH": {
+    "valor": 5,
+    "derivado": false,
+    "nota": "velocidad a pie, canon"
+  },
+  "jornadaHoras": {
+    "valor": 6,
+    "derivado": false,
+    "nota": "6 h de marcha ≈ 30 km a pie (Álvaro, 2026-11-10): el lore da 21-37 km por jornada (Serhu-Helsig, 122 km, 4-6 jornadas; Serhu-Goshg, 104 km, 4-5)"
+  },
+  "caravanaKmH": {
+    "valor": 3.5,
+    "derivado": false,
+    "nota": "caravana con múrgoles de carga (≈ 20 km por jornada); en el lore no hay monturas"
+  },
+  "rodeo": {
+    "derivado": true,
+    "nota": "el camino real es más largo que el trazo: km a pie = km × rodeo; el rodeo de un tramo es el de su bioma, o el de montaña si es mayor",
+    "porBioma": {
+      "Hot desert": 1.1,
+      "Cold desert": 1.1,
+      "Savanna": 1.1,
+      "Grassland": 1.1,
+      "Tundra": 1.1,
+      "Tropical seasonal forest": 1.3,
+      "Temperate deciduous forest": 1.3,
+      "Taiga": 1.3,
+      "Tropical rainforest": 1.5,
+      "Temperate rainforest": 1.5,
+      "Wetland": 1.6,
+      "Glacier": 1.6
+    },
+    "montana": {
+      "alturaMinima": 50,
+      "valor": 1.5
+    }
+  },
+  "mar": {
+    "velocidadKmH": 6,
+    "derivado": false,
+    "nota": "bote costero de fondo plano, solo de día: las jornadas por mar son de las mismas horas que a pie"
+  },
+  "balsaKmH": {
+    "valor": 4,
+    "derivado": false,
+    "nota": "balsa río abajo; el mapa aún no tiene ríos, así que no se usa en ninguna ruta"
+  }
+}
