@@ -67,24 +67,6 @@ class MarcaHallazgo(unittest.TestCase):
         i = lineas.index('| P3 | Tres \\| con barra | pendiente |')
         self.assertTrue(lineas[i - 1].startswith('| P2 |'))
 
-
-INICIO = '<!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->'
-CON_RESUMEN = f"""# Ronda
-
-{INICIO}
-- viejo
-<!-- fin del resumen -->
-
-| P | Hallazgo | Estado |
-|---|---|---|
-| P1 | Uno | pendiente |
-| P2 | Dos | ✅ hecho; «queda pendiente: nada» citado |
-| P3 | Tres | ✅ hecho. Comprobado jugando el día 2 |
-| P4 | Cuatro | pendiente (decisión de la usuaria) |
-| P5 | Cinco | no aplica |
-| P6 | Seis | texto ✅; pendiente: la imagen |
-"""
-
     def test_ver_imprime_la_fila_y_las_citas_del_plan(self):
         escribir(os.path.join(self.repo, 'plan-comprobacion-puerta.md'), 'a\nTanda: P1 y P2 comprobados\n')
         r = self.marcar('--ver', 'P1')
@@ -105,6 +87,24 @@ CON_RESUMEN = f"""# Ronda
         self.assertIn('puerta.md:2: P33, sí', r.stdout)
         self.assertNotIn('solo P330', r.stdout)
         self.assertNotIn('Otro', r.stdout)
+
+
+INICIO = '<!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->'
+CON_RESUMEN = f"""# Ronda
+
+{INICIO}
+- viejo
+<!-- fin del resumen -->
+
+| P | Hallazgo | Estado |
+|---|---|---|
+| P1 | Uno | pendiente |
+| P2 | Dos | ✅ hecho; «queda pendiente: nada» citado |
+| P3 | Tres | ✅ hecho. Comprobado jugando el día 2 |
+| P4 | Cuatro | pendiente (decisión de la usuaria) |
+| P5 | Cinco | no aplica |
+| P6 | Seis | texto ✅; pendiente: la imagen |
+"""
 
 
 class Resumen(unittest.TestCase):
