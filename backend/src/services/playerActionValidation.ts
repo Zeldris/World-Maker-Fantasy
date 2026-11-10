@@ -719,6 +719,25 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
   return { itemEnInventario: enInventario ?? null, itemTexto };
 }
 
+/// Destinatario de «dar X a Y» (P441): se busca en lo que va tras el último «a/al» (Y), nunca en las palabras del
+/// objeto («Tótem» de «Tótem Maktor» no puede elegir al NPC «Tótem de Guerra»). Casa por el nombre completo o por
+/// una palabra suelta (≥4 letras) del nombre, p. ej. «Tirag» con «Tirag Susig». Sin cláusula «a Y» o sin acierto, -1.
+export function giftRecipientIndex(action: string, npcNames: string[][]): number {
+  const normalized = ` ${normalizeText(action)} `;
+  const partes = normalized.split(/\s(?:a|al)\s/);
+  if (partes.length < 2) return -1;
+  const destino = ` ${partes[partes.length - 1]} `;
+  const completo = npcNames.findIndex((ns) => ns.some((n) => normalizeText(n).length > 0 && destino.includes(normalizeText(n))));
+  if (completo >= 0) return completo;
+  return npcNames.findIndex((ns) =>
+    ns.some((n) =>
+      normalizeText(n)
+        .split(/\s+/)
+        .some((t) => t.length >= 4 && !GIFT_STOP_WORDS.has(t) && new RegExp(`\\b${t}\\b`).test(destino)),
+    ),
+  );
+}
+
 /// `nombreNpc` ya viene como lo ve la jugadora (con artículo, sin revelar un nombre que no conoce).
 /// `puedeEntregar`: el NPC es compañero o encargado de ENCARGO_MATERIALES (`entrega.ts#puedeRecibirEntregas`),
 /// los únicos con botón Entregar; si no, no se promete un botón que no sale.
