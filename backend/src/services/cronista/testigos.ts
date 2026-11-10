@@ -3,10 +3,14 @@
 import type { Prisma } from '@prisma/client';
 import { npcSinCaerEnPartida } from '../mundoPartida.js';
 import { bando } from './misiones.js';
+import { questSlugsAceptadosPara, zonePointVisiblePara } from '../zonePoints.js';
 import { applyFactionRepDelta, parseFactionsStatus, type FactionRepChangeInfo } from '../reputation.js';
 
 export async function testigosEnLugar(tx: Prisma.TransactionClient, saveId: string, worldId: string, locationId: string, victimaId: string): Promise<string[]> {
-  const puntos = await tx.zonePoint.findMany({ where: { saveId, locationId, activo: true, tipo: 'NPC' }, select: { targetSlug: true } });
+  const puntosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, activo: true, tipo: 'NPC' }, select: { targetSlug: true } });
+  // P375 (usuaria, 2026-11-10): solo ve quien se ve en la zona; mismo filtro que al pintar (`zonePointVisiblePara`).
+  const aceptadas = await questSlugsAceptadosPara(tx, saveId);
+  const puntos = puntosCrudos.filter((p) => zonePointVisiblePara(p.targetSlug, aceptadas));
   if (puntos.length === 0) return [];
   const npcs = await tx.npc.findMany({
     where: {
