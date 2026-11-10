@@ -128,7 +128,11 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   orden de consola con lotes JSON e informe legible (la primera, `editar.py lote.json`, con `MAP-7`), una guía corta
   para agentes (qué leer, qué órdenes, qué no tocar: canon y lore) y una prueba con el modelo local de OpenCode/Ollama
   sobre encargos tipo (mover una frontera, alargar una costa, poner un lugar), midiendo aciertos, errores y tiempo
-  frente a Claude. Se decide con la usuaria si el agente local entra. **M**
+  frente a Claude. Se decide con la usuaria si el agente local entra. **M** 🚧 2026-11-10: hechos `consultar.py` (preguntas de solo lectura: frontera, costa, celda, lugares, fichas, i libres),
+  la guía `map-generator/AGENTES.md` y el banco `map-generator/banco/` (5 encargos: frontera, costa, lugar, ruta y uno
+  trampa que rompe el canon; `banco.py` prepara la copia y corrige, validado con soluciones de referencia;
+  `agente_local.py` corre Ollama con solo esas dos órdenes). De paso: un lugar que no es capital toma la región de su
+  celda (`editar.py`). **Falta:** correr el banco con el modelo local y con Claude y que la usuaria decida.
 
 ## Fase M-C · Generar donde aporta
 

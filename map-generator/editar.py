@@ -515,7 +515,9 @@ def aplicar(mundo, cambios, canon=None, catalogo=None):
         c['region'], c['provincia'] = region, provincia
     for lu in nuevo['lugares']:
         c = nuevo['celdas'][lu['celda']]
-        if lu.get('region') and c['region'] != lu['region']:
+        if not lu.get('capital'):  # MAP-16: solo las capitales fijan su región; el resto toma la de su celda
+            lu['region'] = c['region']
+        elif lu.get('region') and c['region'] != lu['region']:
             nombre = next(r['nombre'] for r in nuevo['regiones'] if r['i'] == lu['region'])
             raise ErrorDeEdicion(f"la celda {c['i']} es de {lu['nombre']}, que es de {nombre}: no cambia de región")
     _centros(nuevo)

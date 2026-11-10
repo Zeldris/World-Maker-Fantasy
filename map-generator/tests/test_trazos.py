@@ -75,6 +75,15 @@ class Lugares(unittest.TestCase):
         self.assertEqual(len(self.mundo['lugares']) + 1, len(nuevo['lugares']))
         self.assertFalse(any(x['i'] == 900 for x in self.mundo['lugares']))
 
+    def test_un_lugar_que_no_es_capital_toma_la_region_de_su_celda(self):
+        # MAP-16: antes un lugar nuevo se quedaba con region 0 y el banco de agentes no sabía dónde estaba
+        c = next(x for x in self.mundo['celdas'] if x['region'] and x['h'] >= editar.TIERRA)
+        nuevo = self._aplicar({'lugares': [{'i': 900, 'slug': 'agujas-iman', 'x': c['p'][0], 'y': c['p'][1]}],
+                               'celdas': [[c['i'], 0, 0]]})
+        self.assertEqual(_lugar(nuevo, 'Las Agujas Imán')['region'], 0)
+        nuevo = self._aplicar({'lugares': [{'i': 900, 'slug': 'agujas-iman', 'x': c['p'][0], 'y': c['p'][1]}]})
+        self.assertEqual(_lugar(nuevo, 'Las Agujas Imán')['region'], c['region'])
+
     def test_enlaza_mueve_y_renombra(self):
         c = _tierra_de(self.mundo, 'Vaelira')
         lu = next(x for x in self.mundo['lugares'] if x['nombre'] == 'Ordinum')
