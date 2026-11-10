@@ -83,14 +83,16 @@ export function recortarResta(nombre: string, pedido: number, actual: number, av
 /// QA-300: un pedido negativo resta, sin bajar de 0 (si se pide más de lo que hay, quita lo que hay y avisa).
 export function ajustarATopes(
   pedido: { comida: number; bebida: number },
-  actual: { comida: number; bebida: number },
+  actual: { comida: number; bebida: number; forraje?: number },
   topes: { comida: number; bebida: number },
 ): { comida: number; bebida: number; avisos: string[] } {
   const avisos: string[] = [];
   const dar = (k: 'comida' | 'bebida') => {
     if (pedido[k] < 0) return recortarResta(k, pedido[k], actual[k], avisos);
-    const cabe = Math.max(0, Math.min(pedido[k], topes[k] - actual[k]));
-    if (cabe < pedido[k]) avisos.push(`${k}: se dan ${cabe} de ${pedido[k]}: tope ${topes[k]} (hay ${actual[k]}).`);
+    // El Granero lo comparten la comida y el forraje (Q7, P336): el forraje ocupa hueco de la comida.
+    const ocupado = actual[k] + (k === 'comida' ? actual.forraje ?? 0 : 0);
+    const cabe = Math.max(0, Math.min(pedido[k], topes[k] - ocupado));
+    if (cabe < pedido[k]) avisos.push(`${k}: se dan ${cabe} de ${pedido[k]}: tope ${topes[k]} (hay ${ocupado}).`);
     return cabe;
   };
   return { comida: dar('comida'), bebida: dar('bebida'), avisos };

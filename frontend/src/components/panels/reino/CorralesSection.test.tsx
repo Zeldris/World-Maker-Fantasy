@@ -72,6 +72,12 @@ describe('CorralesSection (CR-55)', () => {
     expect(postEntregarForraje).toHaveBeenCalledWith('s1', 'pasto-solar')
   })
 
+  it('revisión: no cuenta como llevados los pastos de compañeros ni de súbditos', async () => {
+    const pastos = [{ id: 'i1', catalogSlug: 'pasto-solar', slot: null, companionId: 'c1' }, { id: 'i2', catalogSlug: 'pasto-solar', slot: null, subjectId: 's9' }, { id: 'i3', catalogSlug: 'pasto-solar', slot: null }] as unknown as InventoryItemInfo[]
+    const { findByRole } = render(<CorralesSection saveId="s1" inventory={pastos} onRefreshSave={vi.fn().mockResolvedValue(undefined)} />)
+    await findByRole('button', { name: /Entregar 1 Pasto Solar \(\+2\)/ })
+  })
+
   // P336: el Granero lo comparten comida y forraje; con hueco 2 solo caben 1 pasto y se dice.
   it('P336: limita la etiqueta de entregar al hueco y explica que el Granero es compartido', async () => {
     vi.mocked(getCorrales).mockResolvedValue({ ...datos, huecoForraje: 2, comida: 160, topeComida: 180 })

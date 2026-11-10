@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -1237,5 +1237,18 @@ describe('nombraPorNombreVisible (P327, usuaria 2026-10-26)', () => {
 
   it('«Alguien» (sin raza conocida) nunca casa: sale en cualquier frase', () => {
     expect(nombraPorNombreVisible('Busco a alguien que me ayude', 'Alguien')).toBe(false);
+  });
+});
+
+describe('slugsConPuntoSoloEnOtraZona — cliente de la transacción', () => {
+  it('usa el `db` que se le pasa (la transacción de colisión de Zona), no el prisma global', async () => {
+    const db = {
+      zonePoint: { findMany: vi.fn().mockResolvedValue([{ targetSlug: 'orco', locationId: 'otra' }]) },
+      companion: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const r = await slugsConPuntoSoloEnOtraZona({ saveId: 's1', currentLocationId: 'aqui', slugs: ['orco'], cualquierPunto: true, db: db as never });
+    expect([...r]).toEqual(['orco']);
+    expect(db.zonePoint.findMany).toHaveBeenCalledTimes(1);
+    expect(db.companion.findMany).toHaveBeenCalledTimes(1);
   });
 });

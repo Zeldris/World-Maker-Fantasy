@@ -961,7 +961,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     const fueraDeSuSitioColision = (n: { kind: string; homeLocationSlug: string | null }) => n.kind !== 'PRINCIPAL' && !!n.homeLocationSlug && n.homeLocationSlug !== locationSlugColision;
     // P269/P329 (revisión): un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso, como el que tiene ficha.
     // P254: mismo filtro que el mapa — quien tiene su punto en otra zona no corta el paso aquí.
-    const enOtraZonaColision = await slugsConPuntoSoloEnOtraZona({ saveId, currentLocationId: locationId, slugs: npcsInSceneColision.filter((n) => !zonePointSlugsColision.has(n.slug)).map((n) => n.slug), cualquierPunto: true });
+    const enOtraZonaColision = await slugsConPuntoSoloEnOtraZona({ saveId, currentLocationId: locationId, slugs: npcsInSceneColision.filter((n) => !zonePointSlugsColision.has(n.slug)).map((n) => n.slug), cualquierPunto: true, db: tx });
     const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n) && !enOtraZonaColision.has(n.slug));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({

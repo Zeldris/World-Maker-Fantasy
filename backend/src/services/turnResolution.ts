@@ -45,7 +45,7 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, ataquePendienteDeApertura } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -3574,7 +3574,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           return { slug: c.slug, name: c.name, role: c.role, weight: row.poblacion };
         })
         .filter((c): c is { slug: string; name: string; role: string; weight: number } => c !== null);
-      const candidate = pickAmbientEncounterCandidate(weightedCandidates);
+      const candidate = pickAmbientEncounterCandidate(await sinPuntoEnOtraZona(saveId, currentLocationId, weightedCandidates));
       if (candidate) {
         // Auditoría "narrador vs. motor determinista" (2026-08-30, Hallazgo 3): antes esta
         // sugerencia no decía si el candidato es pacífico u hostil por catálogo — el modelo podía

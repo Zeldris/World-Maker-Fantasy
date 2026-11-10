@@ -75,11 +75,11 @@ try {
       });
     }
     // Topes del Almacén con los edificios ya puestos (el Granero sube comida, etc.).
-    const [sum, ks, recursos] = await Promise.all([suministrosDelReino(tx, saveId), tx.kingdomStats.findUniqueOrThrow({ where: { saveId }, select: { comida: true, bebida: true, riqueza: true } }), materialesDelAlmacen(tx, saveId)]);
+    const [sum, ks, recursos] = await Promise.all([suministrosDelReino(tx, saveId), tx.kingdomStats.findUniqueOrThrow({ where: { saveId }, select: { comida: true, bebida: true, forraje: true, riqueza: true } }), materialesDelAlmacen(tx, saveId)]);
     const materiales = lote.filter(({ item }) => item.tipo === 'RECURSO').reduce((n, { cantidad }) => n + cantidad, 0);
     const exceso = primerExcesoDeTope({ materiales }, { materiales: recursos.guardados }, { materiales: sum.topeMateriales });
     if (exceso) throw new Rechazo(exceso);
-    const ajustado = ajustarATopes({ comida: peticion.comida, bebida: peticion.bebida }, { comida: ks.comida, bebida: ks.bebida }, { comida: sum.topeComida, bebida: sum.topeBebida });
+    const ajustado = ajustarATopes({ comida: peticion.comida, bebida: peticion.bebida }, { comida: ks.comida, bebida: ks.bebida, forraje: ks.forraje }, { comida: sum.topeComida, bebida: sum.topeBebida });
     avisos.push(...ajustado.avisos);
     dado.comida = ajustado.comida;
     dado.bebida = ajustado.bebida;

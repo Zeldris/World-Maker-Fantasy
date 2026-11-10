@@ -21,6 +21,8 @@ describe('posición y topes (QA-143)', () => {
     expect(ajustarATopes({ comida: 5, bebida: 5 }, { comida: 0, bebida: 0 }, t)).toEqual({ comida: 5, bebida: 5, avisos: [] });
     // ya por encima del tope: no da nada (nunca negativo)
     expect(ajustarATopes({ comida: 5, bebida: 0 }, { comida: 70, bebida: 0 }, t)).toMatchObject({ comida: 0 });
+    // el forraje comparte el Granero con la comida: 20 de comida + 30 de forraje en tope 60 dejan hueco 10
+    expect(ajustarATopes({ comida: 40, bebida: 0 }, { comida: 20, bebida: 0, forraje: 30 }, t)).toEqual({ comida: 10, bebida: 0, avisos: ['comida: se dan 10 de 40: tope 60 (hay 50).'] });
   });
 });
 

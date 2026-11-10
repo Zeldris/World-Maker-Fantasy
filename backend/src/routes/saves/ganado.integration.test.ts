@@ -202,6 +202,20 @@ describe('Ganado del Reino: al corral y forraje (CR-55 55c)', () => {
     await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 20, forraje: 0 } });
   });
 
+  it('revisión: «Entregar pastos» no toca los pastos de compañeros ni de súbditos', async () => {
+    const owner = ownerKeyFor({ saveId });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 0, forraje: 0 } });
+    const comp = await prisma.companion.create({ data: { saveId, name: 'Porteador', role: 'aliado', notes: '', tipo: 'NPC' } });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Pasto Solar', description: 'x', catalogSlug: 'pasto-solar', companionId: comp.id } });
+    const app = await buildApp();
+    const sin = await app.inject({ method: 'POST', url: `/saves/${saveId}/forraje/entregar`, payload: { catalogSlug: 'pasto-solar' } });
+    expect(sin.statusCode).toBe(400);
+    expect(await prisma.inventoryItem.count({ where: { saveId, catalogSlug: 'pasto-solar' } })).toBe(1);
+    await prisma.inventoryItem.deleteMany({ where: { saveId, catalogSlug: 'pasto-solar' } });
+    await prisma.companion.delete({ where: { id: comp.id } });
+    await prisma.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: 20, forraje: 0 } });
+  });
+
   it('P334: con el corral vacío el hueco de forraje es el del Granero menos la comida (no 0) y la ruta da comida y tope', async () => {
     const owner = ownerKeyFor({ saveId });
     const granero = await prisma.building.create({ data: { saveId, recipeKey: 'granero', name: 'un granero', kind: 'x', status: 'ACTIVO', description: 'x', tier: 1 } });

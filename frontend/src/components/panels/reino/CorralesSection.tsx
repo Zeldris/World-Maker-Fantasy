@@ -53,7 +53,7 @@ export function CorralesSection({ saveId, inventory, onRefreshSave }: { saveId: 
 
   if (!datos) return <ErrorBanner fallo={fallo} onCerrar={limpiar} />
   const aviso = avisoDeCarencia(datos.diasSinComer, datos.diasSinBeber)
-  const pastosQueLlevo = PASTOS.map((p) => ({ ...p, n: inventory.filter((i) => i.catalogSlug === p.slug && !i.slot).length })).filter((p) => p.n > 0)
+  const pastosQueLlevo = PASTOS.map((p) => ({ ...p, n: inventory.filter((i) => i.catalogSlug === p.slug && !i.slot && !i.companionId && !i.subjectId).length })).filter((p) => p.n > 0)
   // P336: cada pasto pide FORRAJE_POR_PASTO de hueco del Granero, que comparten la comida y el forraje.
   const cabenPastos = Math.floor(datos.huecoForraje / FORRAJE_POR_PASTO)
 

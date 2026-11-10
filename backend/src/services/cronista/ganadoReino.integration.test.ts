@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { ownerKeyFor } from '../reinoOwner.js';
-import { avanzarGanadoReino, corralesDelReino } from './ganadoReino.js';
+import { aprovecharAnimal, avanzarGanadoReino, corralesDelReino } from './ganadoReino.js';
 
 /// CR-55 (55d): un día del ganado del Reino con las reglas de la ronda (Q4, Q6, Q7, Q12, Q15).
 const DIA = 14; // múltiplo de 7 (día de crías) y de 1, no de 3 (sin lana).
@@ -161,6 +161,32 @@ describe('Avance diario del ganado del Reino (CR-55 55d)', () => {
     // Una semana después del primero vuelve a avisar.
     await diaLleno(8);
     expect(await granero()).toBe(2);
+  });
+
+  it('revisión: si el aviso junta Granero y Almacén en una línea, el del Almacén tampoco se repite en la semana', async () => {
+    for (let i = 0; i < 5; i++) await animal(i % 2 ? 'M' : 'F');
+    await ganadero();
+    // Almacén lleno (tope 60 sin Leñera): la lana de los días múltiplos de 3 no cabe.
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 60 }, () => ({ saveId, name: 'Lana de Múrgol', description: 'x', catalogSlug: 'lana-murgol' })) });
+    const almacen = () => prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'El Almacén está lleno de materiales' } } });
+    const diaLleno = async (d: number) => {
+      await prisma.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { comida: 40, forraje: 20, bebida: 60 } });
+      const r = await avanzarGanadoReino(prisma, saveId, d, d * 1440 + 600, () => 0.99);
+      expect(r?.perdido.comida).toBeGreaterThan(0);
+      expect(Object.keys(r?.perdido.materiales ?? {}).length).toBeGreaterThan(0);
+    };
+    await diaLleno(15);
+    expect(await almacen()).toBe(1);
+    await diaLleno(18);
+    expect(await almacen()).toBe(1);
+  });
+
+  it('revisión: sin Reino (sin KingdomStats) no se dice que el Granero está lleno', async () => {
+    await prisma.kingdomStats.delete({ where: { ownerKey: ownerKeyFor({ saveId }) } });
+    const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
+    const dado = await prisma.$transaction((tx) => aprovecharAnimal(tx, saveId, worldId, 'murgol', 1));
+    expect(dado.comida).toBe(0);
+    expect(dado.comidaPerdida).toBe(0);
   });
 
   it('P336: si todo cabe no hay aviso', async () => {
