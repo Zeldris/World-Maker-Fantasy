@@ -174,7 +174,8 @@ class Validacion(unittest.TestCase):
         inf = editar.informe(MUNDO, v1, CANON, LORE)
         area = medir.area_celdas(v1, CELDAS_LLANURAS[:4])
         self.assertGreater(area, 0)
-        texto = f"tormenta «Tormenta del oeste» (4 celdas, {area:,.0f} km²)".replace(',', '.')
+        km2 = f"{area:,.0f}".replace(',', '.')
+        texto = f"tormenta «Tormenta del oeste» (4 celdas, {km2} km²)"
         self.assertEqual(inf['trazos']['zonas'], {'nuevos': [texto], 'cambian': [], 'borrados': []})
         self.assertIn(texto, editar.texto_informe(inf))
         self.assertIn('1 zonas', editar.resumen(inf))

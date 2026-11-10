@@ -120,9 +120,26 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   relieve, texturas de bioma y colocación de etiquetas sin solapes, en un estilo propio de Helek. Se compara lado a
   lado con la imagen de Azgaar en las mismas vistas, y **solo con el visto bueno de la usuaria** pasa a ser el fondo
   del juego. Es lo más caro del proyecto: hasta entonces la calidad visual no baja. **L**
-- **MAP-14 · Capas del juego** [P] (usuaria, 2026-11-05): lo que Azgaar no tiene: tormentas magnéticas de las
+- ~~**MAP-14 · Capas del juego**~~ [P] (usuaria, 2026-11-05): lo que Azgaar no tiene: tormentas magnéticas de las
   Llanuras, zonas de peligro, territorio de cada clan y rutas con km y tiempos, como capas editables del visor y
-  exportables al juego. **M**
+  exportables al juego. **M** ✅ 2026-11-10: zonas `tormenta` (nivel 0 refugio … 3 Rok'ithek; solo en las Llanuras,
+  como dice el canon), `peligro` (1-3) y `clan` en `helek.json`, con `canon` y `nota`; lote `zonas` de `editar.py`
+  (crear, cambiar, `mas`/`menos`, borrar), modo Zonas y capas Tormentas, Peligro y Clanes del visor (rayado = sin
+  canon), `consultar.py zonas|ruta`. Rutas con km, km a pie, horas y jornadas (`viaje.json`, `viaje.py`,
+  `/viaje.json`): 5 km/h del canon; rodeo por bioma y jornada de 8 h, derivados. Al juego, `frontend/src/data/helekCapas.ts`
+  (aún no lo pinta: con `MAP-13`). **Propuesta sin canon guardada** (decisión del usuario, 2026-11-10;
+  `map-generator/propuestas/map14-zonas.json`): tormenta Rok'ithek en toda la región con la Hondonada del Eco de
+  refugio; peligro en Agujas Imán, Hondonada de noche, Cruce de las Cenizas y todo el Margen; clanes Serhu, Helsig,
+  Goshg y la franja Faerus de Kegi. Probado en Chromium sin interfaz. **Preguntas para Álvaro** (cuando las
+  conteste, se ajustan las zonas y las que apruebe pasan a `canon: true`):
+  1. ¿Las tormentas tienen geografía (franjas, más fuertes cerca de El Vientre del Engaño) o son igual en toda la región?
+  2. ¿Dónde están El Vientre del Engaño, la Fosa Horadada, el Laberinto de Cañones, el Filo de las Brasas (Fercaneo)
+     y la Red Profunda Final? No tienen posición en el mapa, y sin ella no hay zona de peligro.
+  3. ¿La escala de peligro 1-3 vale? ¿De dónde sale el nivel: la fauna de la zona, el `riesgo` de las rutas u otra?
+  4. Límites de cada clan: ¿cuánto ocupan los pastos Serhu, Helsig, Goshg y la franja Faerus (¿hasta dónde llega)?
+  5. Maktor fue aniquilado: ¿su antigua zona se pinta (vacía, disputada) o nada?
+  6. ¿Cuántos km tiene una jornada? (se usan 8 h ≈ 40 km). ¿Velocidad de monturas, caravanas y por mar?
+  7. ¿Todo el Margen Silencioso es peligro alto, o solo cruzarlo de norte a sur?
 
 - ~~**MAP-16 · El mapa lo gestionan agentes**~~ [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
   el mapa todo lo que el juego necesite, y valorar si lo puede llevar un agente local. Cada edición del visor tiene su

@@ -704,8 +704,8 @@ def _lore(mundo, lore):
 
 
 def _describe_zona_km(mundo, z):
-    return (f"{z['tipo']} «{z['nombre']}» ({len(z['celdas'])} celdas, "
-            f"{medir.area_celdas(mundo, z['celdas']):,.0f} km²)".replace(',', '.'))
+    km2 = f"{medir.area_celdas(mundo, z['celdas']):,.0f}".replace(',', '.')
+    return f"{z['tipo']} «{z['nombre']}» ({len(z['celdas'])} celdas, {km2} km²)"
 
 
 def _diferencias(antes, despues):
