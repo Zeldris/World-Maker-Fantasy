@@ -9819,7 +9819,10 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
     // La derrota del primer combate, sin acción fuera de combate entre los dos…
     await suceso(saveId, 'COMBATE_PERDIDO', 425, perdidoContra(saveId, npcId));
     // …y la emboscada empieza el segundo justo después.
-    await prisma.save.update({ where: { id: saveId }, data: { combateDesde: new Date() } });
+    // Un milisegundo después de esa derrota, no `new Date()`: en el mismo milisegundo la frontera (`gte`) la
+    // contaría como de este combate y el test fallaba a veces en el CI.
+    const primera = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'COMBATE_PERDIDO' }, select: { createdAt: true } });
+    await prisma.save.update({ where: { id: saveId }, data: { combateDesde: new Date(primera.createdAt.getTime() + 1) } });
 
     await morir(saveId);
 
