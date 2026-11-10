@@ -73,7 +73,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   biomas, regiones, provincias, costa, ríos (el mapa no tiene), rutas y lugares; zoom con la rueda, arrastrar,
   vistas Todo/Berig/Vaelira, escala en km, regla de distancia con dos clics y, bajo el ratón, celda, altura, bioma y
   área y envolvente de su continente, región y provincia; al lado, el canon con lo medido. Probado con Chromium sin
-  interfaz en la Deck (sin errores de JS). **Pendiente:** que la usuaria lo abra y lo use (ver abajo).
+  interfaz en la Deck (sin errores de JS). **Probado por la usuaria en la Deck ✅ 2026-11-10.**
 - ~~**MAP-6 · Editar regiones y fronteras**~~ [P] (usuaria, 2026-11-05): mover límites celda a celda, crear y renombrar
   provincias; al guardar se pasan `comprobar.py` y el test del canon, y se avisa de qué medidas cambian. **M**
   ✅ 2026-11-08: en el visor, modos Región y Provincia con pincel de 1 celda, vecinas o 2 anillos (Mayús o botón
@@ -84,7 +84,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   envolvente, pasa canon y lore, y si algo falla solo guarda tras confirmarlo. Guarda helek.json (orden estable),
   `helek.geojson` y `helekRegiones.ts`; rechaza un lote hecho sobre otra versión (409) y los POST de otro origen.
   `importar.py` ya no pisa un helek.json editado sin `--sobrescribir`. Probado con Chromium sin interfaz sobre una
-  copia. **Pendiente:** que la usuaria lo use; deshacer tras guardar es `MAP-9`.
+  copia. **Probado por la usuaria en la Deck ✅ 2026-11-10.**
 - ~~**MAP-7 · Editar relieve y costa**~~ [P] (usuaria, 2026-11-05): pinceles para subir y bajar terreno y para pasar
   celdas de mar a tierra, con zonas bloqueables (Berig entero, por defecto). **M** ✅ 2026-11-08: modo Relieve del
   visor (Subir y Bajar con fuerza 1-10, Tierra, Mar; mismo pincel y deshacer) y lote con `alturas` y `bloqueo`
@@ -93,7 +93,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   dos o vaciar uno se rechaza; un trozo suelto es `Isla nueva`), y el informe dice qué continentes cambian y cuántas
   celdas cambian de altura, a tierra y a mar. Para agentes (`MAP-16`): `editar.py lote.json` hace lo mismo que el
   visor por consola (`--json`, `--guardar`, `--forzar`, `--mundo` de una copia, que no toca el archivo del juego).
-  Probado con Chromium sin interfaz sobre una copia. **Pendiente:** que la usuaria lo use; las rutas que crucen
+  Probado con Chromium sin interfaz sobre una copia. **Probado por la usuaria en la Deck ✅ 2026-11-10.** Las rutas que crucen
   mar nuevo, en `MAP-8`.
 - ~~**MAP-8 · Ríos, rutas y lugares**~~ [P] (usuaria, 2026-11-05): dibujar y editar ríos y rutas, y colocar lugares
   enlazados a su ficha de la enciclopedia (slug), con su nombre de lore. **M** ✅ 2026-11-08: modos Lugares, Rutas y
@@ -103,7 +103,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   de lore va en la ficha. Rutas y ríos: dibujar, redibujar, borrar; caminos y ríos por tierra, marítimas por agua
   salvo puertos. Lo pendiente de `MAP-7`: el relieve no deja fuera de sitio una ruta o un río sin redibujarlo. Azgaar
   trae 14 rutas de tierra con algún punto en agua y 34 marítimas por tierra: no bloquean. Probado con Chromium sin
-  interfaz sobre una copia. **Pendiente:** que la usuaria lo use; sin probar en navegador: redibujar y guardar,
+  interfaz sobre una copia. **Probado por la usuaria en la Deck ✅ 2026-11-10.** Sin probar a mano: redibujar y guardar,
   cambiar el grupo de una ruta y renombrar o cambiar la ficha de un lugar existente.
 - ~~**MAP-9 · Guardar con historial**~~ [P] (usuaria, 2026-11-05): cada guardado reescribe `helek.json` con orden
   estable (diff legible en git) y se puede deshacer; nunca escribe en el `.map`. **S** ✅ 2026-11-09: el orden
@@ -113,7 +113,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   juego; restaurar vuelve a cualquier versión guardada (también rehace). Visor: botón «Deshacer el último guardado»
   (`POST /deshacer`, `/historial.json`); consola: `editar.py --historial`, `--deshacer`, `--restaurar HUELLA`. Una
   copia que no casa con su huella no se restaura. Probado con Chromium sin interfaz sobre una copia.
-  **Pendiente:** que la usuaria lo use.
+  **Probado por la usuaria en la Deck ✅ 2026-11-10.**
 
 - **MAP-13 · Dibujo propio a la altura de Azgaar** [P] (usuaria, 2026-11-05): costas con trazo, iconos de
   relieve, texturas de bioma y colocación de etiquetas sin solapes, en un estilo propio de Helek. Se compara lado a
@@ -152,7 +152,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
 
 ## Pendiente de comprobar en la Deck
 
-- Que el editor (`abrir.sh`) abra y se use bien en la Deck sin red (lo comprueba la usuaria).
+- ~~Que el editor (`abrir.sh`) abra y se use bien en la Deck sin red~~ ✅ 2026-11-10, la usuaria: «funciona».
 
 ## Valoración (2026-11-05)
 
