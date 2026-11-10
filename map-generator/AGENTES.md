@@ -3,6 +3,10 @@
 Tienes el mapa en `map-generator/mundo/helek.json` y dos órdenes: `consultar.py` (preguntar, solo lee) y
 `editar.py` (comprobar y guardar un lote de cambios). No ves el mapa: todo lo sabes preguntando.
 
+*Para Claude (MAP-18):* un encargo sencillo (un lugar, una frontera, una ruta, un tramo de costa) puede ir al agente
+local: `banco/agente_local.py --texto "…"` (Ollama con la iGPU; 3-7 min). Trabaja en una copia y deja `lote.json` e
+`informe.md`: se revisan y se guardan con `editar.py lote.json --guardar`. Lo demás y lo urgente, Claude o Haiku.
+
 ## El mapa en dos líneas
 
 800 × 600, 1 unidad ≈ 1 km; **x crece al este y y crece al SUR** (norte = y pequeña). Está hecho de celdas: cada una

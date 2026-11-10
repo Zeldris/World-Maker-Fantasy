@@ -54,6 +54,12 @@ python3 -m unittest discover -s map-generator/tests
   "trails", "puntos": [[534, 185], [560, 186]]}], "rios": [{"i": 1, "nombre": "…", "puntos": [[…], […]]}]}` (el
   formato completo, en el docstring de `editar.py`).
 - `consultar.py` (MAP-16): consultas de **solo lectura** para un agente que no ve el mapa y quiere armar lotes de `editar.py`: `resumen` (regiones, provincias, continentes, i libres), `celda X Y`, `region`, `frontera A B` (o `mar`), `costa` (marca lo de Berig), `lugares` (`--cerca X Y --radio KM`, `--nombre TEXTO`), `camino X0 Y0 X1 Y1` (MAP-17: puntos de una ruta por tierra, o `--mar`, listos para un lote; recta o rodeo) y `fichas --sin-lugar`; `frontera` marca con «agranda N-S/E-O» las celdas que agrandan la envolvente de la región que las recibe; `--json`, `--mundo RUTA` y `--caja X0 Y0 X1 Y1`. Detalle en su docstring.
+- **Agente local** (MAP-18): `python3 map-generator/banco/agente_local.py --texto "encargo"` (o `--texto -` por la
+  entrada) pasa un encargo sencillo al modelo local (`qwen35-9b-32k` en Ollama, con la iGPU): trabaja en una copia
+  nueva del mapa (`--copia DIR`, o una carpeta temporal) y deja en ella `lote.json` (lo que guardó en la copia, en un
+  lote comprobado) e `informe.md` (su respuesta y el informe del lote sobre el mapa del juego). **Nunca guarda en el
+  mapa del juego**: se revisa y se guarda con `editar.py DIR/lote.json --guardar`. Para lugar, frontera, ruta o costa
+  (5/5 en el banco de MAP-17, ~3 min); lo demás, Claude o Haiku. El banco (`banco/banco.py`) usa el mismo agente.
 - `historial.py` (MAP-9): cada guardado (visor o consola) deja en `mundo/historial/` (fuera de git) la versión de antes
   y la de después, con una línea en `registro.jsonl` (fecha, huellas y un resumen). **Deshacer** vuelve a la versión
   de antes del último guardado y, repetido, sigue hacia atrás; reescribe también el GeoJSON y el archivo del juego.
