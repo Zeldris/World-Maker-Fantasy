@@ -30,6 +30,10 @@ import { PUNTOS_DE_AGUA, pasaAComidaDelReino } from '../../services/crafting.js'
 import { llevadoParaEntregar, motivoNoEntregable } from '../../services/cronista/misionesJugadora.js';
 import { conQuienVisibleEnLote } from '../../services/cronista/quienEncarga.js';
 
+/// Los registros salen por fecha del mundo y, dentro del mismo minuto, por orden de creación: varias
+/// entradas escritas de golpe por un avance de días comparten `createdAt` y salían desordenadas (P379).
+const ORDEN_LOG = [{ fictionalMinutes: 'asc' as const }, { createdAt: 'asc' as const }, { id: 'asc' as const }]
+
 export async function detailRoutes(app: FastifyInstance) {
   /// P219 (c): lo que el HUD vuelve a leer cada minuto (condición, Hambre, Sed) sin cargar la partida
   /// entera; mismo cálculo que los campos homónimos de GET /saves/:id.
@@ -64,7 +68,7 @@ export async function detailRoutes(app: FastifyInstance) {
       include: {
         world: true,
         worldState: true,
-        logEntries: { where: { fictionalMinutes: { gte: logWindowStart } }, orderBy: { createdAt: 'asc' } },
+        logEntries: { where: { fictionalMinutes: { gte: logWindowStart } }, orderBy: ORDEN_LOG },
         inventoryItems: { orderBy: { createdAt: 'asc' } },
         companions: { orderBy: { createdAt: 'asc' } },
         territories: { orderBy: { acquiredAt: 'asc' } },
@@ -160,7 +164,7 @@ export async function detailRoutes(app: FastifyInstance) {
     // seguir visibles como buildings/territories, no desaparecer del panel a las 24h de juego).
     const kingdomLogEntries = await prisma.logEntry.findMany({
       where: { saveId: save.id, channel: 'KINGDOM' },
-      orderBy: { createdAt: 'asc' },
+      orderBy: ORDEN_LOG,
     });
 
     // Tier/requisitos de equipar (sesión de diseño 2026-07-23) — viven en ItemCatalog, no en la
