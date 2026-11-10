@@ -1,4 +1,9 @@
-"""MAP-16: el agente del banco solo ejecuta consultar.py y editar.py, y siempre sobre su copia."""
+"""MAP-16: el agente del banco solo ejecuta consultar.py y editar.py, y siempre sobre su copia.
+
+Ediciones que siempre pasan el canon y el lore, para los tests que necesitan guardar algo: subir 1 una celda de tierra
+(h >= 25) fuera de Berig; dentro de Berig, la misma con `"bloqueo": []`. Fuera de Berig toda celda es de la región 0
+(cambiarle la región rompe el lore), y dos alturas a una misma celda no dependen una de otra (gana la última).
+"""
 import json
 import os
 import shutil

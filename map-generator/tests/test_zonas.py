@@ -15,6 +15,7 @@ from unittest import mock
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
+sys.path.insert(0, AQUI)  # _sinzonas, también con `python3 -m unittest tests.test_zonas` desde map-generator/
 
 import consultar  # noqa: E402
 import editar  # noqa: E402
