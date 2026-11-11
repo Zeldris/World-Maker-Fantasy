@@ -12,13 +12,13 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (31): P16, P49, P66, P128, P129, P136, P158, P188, P250, P251, P252, P262, P263,
+- **Pendientes** (30): P16, P49, P66, P128, P129, P136, P158, P188, P250, P251, P252, P262, P263,
   P264, P265, P266, P267, P272, P273, P274, P310, P311, P317, P324, P370, P447, P448, P450, P456,
-  P459, P460.
+  P460.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (22): P70, P107, P116, P131, P151, P180, P184, P243, P245, P253, P269,
   P288, P306, P307, P328, P337, P382, P426, P429, P443, P451, P457.
-- **Arreglados, sin comprobar jugando** (5): P388, P404, P449, P455, P458.
+- **Arreglados, sin comprobar jugando** (6): P388, P404, P449, P455, P458, P459.
 - **Comprobados jugando** (349): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43,
   P45, P46, P47, P50, P51, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68,
@@ -501,5 +501,5 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P456 | Tanda 119 (2026-11-11): con «Moverte por la zona» abierto desde Mapa › Zona, el botón «Reanudar» sale arriba a la izquierda, encima del mapa; sin saber si es lo previsto. Leve, dudoso | abierto (por confirmar) |
 | P457 | Tanda 120 (mv-hondonada-hostiles): el nombre del rival cambia en la misma partida: «Orco desconocido» en la ficha de combate y en la Victoria, «Orco enfurecido» en el diario tras Clemente. Leve. | arreglado 2026-11-11 (lote J2): el diario de Clemente (POST /combat/dejar-vivir, session.ts) usa `nombreVisibleDeNpc`, como la ficha de combate y la Victoria; test en session.dejarVivir.integration.test.ts; a jugar · Tanda 124 (2026-11-11): en parte ✅; tras Clemente, la ficha de combate, la Victoria («Orco desconocido Convaleciente») y la línea del diario «Gorhorn deja con vida al orco desconocido…» coinciden; pero las líneas «Se abre una historia de deuda: Orco enfurecido le debe algo a Gorhorn» y «Algo te dice que volverás a ver a Orco enfurecido» siguen con el otro nombre (P460) |
 | P458 | Tanda 121: el escenario t51-orco-convaleciente-matar carga con el Orco ya rematado (NpcState MUERTO, «Golpe de gracia»), no con el combate abierto que dice su descripción. Leve, herramientas. | arreglado 2026-11-11 (lote J3): escenario rehecho desde mv-hondonada-hostiles con `preparar convaleciente:orco-enfurecido-hondonada:combate`: combate abierto, Orco CONVALECIENTE sin rematar, misión aceptada con Gistera oculta, sin MUERTE_CAUSADA; a jugar (P184) |
-| P459 | Tanda 123 (2026-11-11, reino-dia39-recursos, caza de 6 Guchapo): tras una ronda de combate el HUD sigue en «Ileso 100» con `Save.condicionFisica` = GRAVE en la base; con F5 pasa a «Grave 50». El HUD no recoge en vivo la condición que deja la ronda (antes visto como parte de P129). Medio. Capturas shots/t123-p129-vivo.jpg y t123-p129-recarga.jpg. | pendiente: sin arreglar (lote J) |
+| P459 | Tanda 123 (2026-11-11, reino-dia39-recursos, caza de 6 Guchapo): tras una ronda de combate el HUD sigue en «Ileso 100» con `Save.condicionFisica` = GRAVE en la base; con F5 pasa a «Grave 50». El HUD no recoge en vivo la condición que deja la ronda (antes visto como parte de P129). Medio. Capturas shots/t123-p129-vivo.jpg y t123-p129-recarga.jpg. | arreglado 2026-11-11 (lote J): `closeCombat` (useCombatFlow.ts) aplica el resultado de la ronda pendiente antes de cancelar los temporizadores; antes, cerrar el combate antes de que aterrizasen los dados lo descartaba. Test P459 en useCombatFlow.test.tsx. Sin reproducir la partida: si el HUD también fallaba con el combate abierto, no lo cubre. A jugar |
 | P460 | Tanda 124 (mv-hondonada-hostiles, P457): tras Clemente al Orco, el diario sigue con dos nombres en la misma partida: «el orco desconocido» en la línea de Clemente y la huida, y «Orco enfurecido» en «Se abre una historia de deuda: Orco enfurecido le debe algo a Gorhorn» y «Algo te dice que volverás a ver a Orco enfurecido». Leve. | pendiente (tanda 124, shots/t124-victoria.jpg) |
