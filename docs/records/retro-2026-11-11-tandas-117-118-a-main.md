@@ -4,7 +4,8 @@ Rama `claude/wonderful-volta-662qt8`, 2026-11-11. Tandas 117 y 118 (P454, P377, 
 arreglo de P454 (`lineaDeCierreDelCombate`), fase 1 contra `origin/main` (un comentario recolocado, `c3345e4e`) y
 `/gw-opt-tokens` (`QA-322`, `QA-323`).
 
-**Estado:** sin decidir; la usuaria decide las candidatas.
+**Estado:** aprobada entera por la usuaria (2026-11-11) y aplicada: candidata 1 en `QA-324`, 2 en `QA-325`; la 3 queda
+abajo, para Galivelop-workflow.
 
 ## Qué fue bien
 
