@@ -22,6 +22,7 @@ export type PasoReino =
   | { tipo: 'domador'; nivel: number }
   | { tipo: 'punto-retirado'; especie: string; n: number | null }
   | { tipo: 'sin-aliados' }
+  | { tipo: 'sin-guarnicion' }
   | { tipo: 'fuera'; lugarSlug: string }
   | { tipo: 'reparar' }
   | { tipo: 'danar'; receta: string }
@@ -50,7 +51,7 @@ export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUER
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-269, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `fuera:<lugar>` (P427: la jugadora sale de la Capital al lugar de ese slug, con su punto de entrada; para probar un asalto con ella fuera). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). 
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `fuera:<lugar>` (P427: la jugadora sale de la Capital al lugar de ese slug, con su punto de entrada; para probar un asalto con ella fuera). `sin-guarnicion` (P427: soldados y vigías a trabajador, milicia licenciada y Armerías sin equipos: un asalto toma la Capital sin nadie que la defienda, salvo guardias de corral). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora).
 /// P180: `escasez:<facción>[:comida]` (la facción, por su origenSlug, queda con carencia de comida: sus cocinas se dañan con el efecto de las tormentas hasta que `situacionDeFaccion` la ve; pedir trabajo o mirar su tablón saca entonces «le falta…» / «para el Clan…»). P295: `asalto:<facción>` (un ejército de esa facción sale contra la Capital y la vigilancia del día lo avista desde la Torre; queda EN MARCHA, sin resolver, para «Llamar a la milicia»). P367: `mochila-libre[:<n>]` (deja n unidades de hueco en la mochila, 10 si no se dice: lo que sobra va al Almacén del Reino con «Depositar»). P370: `nivel:<n>[:<atributo>,<atributo>…]` (la jugadora, de cualquier clase, sube al nivel n, de 2 a 19, como al ganar XP; sin atributos, los puntos quedan por repartir; con ellos, P386, se reparten todos por turno entre esos, como el botón, también con un combate abierto). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
@@ -126,6 +127,8 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       pasos.push({ tipo: 'fuera', lugarSlug: r[0] });
     } else if (clave === 'sin-aliados' && r.length === 0) {
       pasos.push({ tipo: 'sin-aliados' });
+    } else if (clave === 'sin-guarnicion' && r.length === 0) {
+      pasos.push({ tipo: 'sin-guarnicion' });
     } else if (clave === 'punto-retirado') {
       const n = r[1] === undefined ? null : entero(r[1]);
       if (!r[0] || r.length > 2 || (r[1] !== undefined && (n == null || n > 20))) return { error: `«${arg}»: falta punto-retirado:<especie>[:<n>], con n de 1 a 20.` };

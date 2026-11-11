@@ -36,6 +36,7 @@
 #                                               QA-270: convaleciente:<npc>:combate (se niega, como convaleciente:<npc>, con el NPC muerto; además deja el combate sin resolver: la tarjeta
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario al cargar la partida: con el juego abierto,
 #                                               recarga la página antes de tocar nada, P382: el estado del combate solo se lee al cargar; el animal sigue ausente del mapa 6 h)
+#                                               P427: sin-guarnicion (soldados y vigías a trabajador, milicia licenciada, Armerías sin equipos: con fuera:<lugar> y asalto:<facción>, el asalto toma la Capital; avisa si quedan guardias de corral)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
 #                                               QA-298: partida-caza:<presa>:<n>[:permanente] (una partida de caza del Reino, la que hay en marcha tras esa presa o

@@ -14,6 +14,7 @@
 //   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
 //   fuera:<lugar>                   P427: la jugadora sale de la Capital al lugar de ese slug (`Location.slug` del mundo; `currentLocationId` y punto de entrada, como una llegada): para un asalto con ella fuera
+//   sin-guarnicion                  P427: el Reino sin defensores: cada soldado y vigía pasa a trabajador (`cambiarRolSubdito`, el cambio de rol del panel), la milicia se licencia y las Armerías se quedan sin equipos (la vigilancia no la arma sola); los guardias de corral no se tocan (se avisa). Con `fuera:` y `asalto:`, un asalto que toma la Capital con la jugadora fuera
 //   sin-aliados                     QA-266, P128: los compañeros del Grupo 1 pasan a otro grupo (`moverCompaneroDeGrupo`, la regla del arrastre del panel): un combate que se abra después solo lleva a la jugadora
 //   punto-retirado:<especie>[:<n>] QA-266, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0; estado sintético (el juego no lo produce hoy) para la defensa de `opcionesDePartida`, con los efectos `crearPuntoZona` y `retirarPuntoZona`
 //   reparar                         P369/P378: repara cada edificio DANADO (y Empalizada caída) con `repararEdificio`, la del botón «Reparar» de Reino › Edificios: cuesta la mitad de sus materiales del Almacén; si faltan, lo dice y sigue con los demás (sale con error, sin deshacer lo reparado)
@@ -41,6 +42,7 @@ import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePreparacion } from '../services/cronista/prepararCombate.js';
 import { danarEdificioDeReceta, repararDanados, textoSinReparar } from '../services/cronista/prepararEdificios.js';
 import { dejarSinAliados } from '../services/cronista/prepararSinAliados.js';
+import { dejarSinGuarnicion } from '../services/cronista/prepararSinGuarnicion.js';
 import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
@@ -61,7 +63,7 @@ import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados huida-rival[:<npc>] fuera:<lugar> combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados sin-guarnicion huida-rival[:<npc>] fuera:<lugar> combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -188,6 +190,13 @@ for (const paso of pasos) {
     const r = await sacarAJugadora(prisma, { saveId, lugarSlug: paso.lugarSlug });
     if ('error' in r) rechaza(r.error);
     else dice(r.yaEstaba ? `Fuera: la jugadora ya estaba en ${r.lugar}` : `Fuera: la jugadora sale de ${r.desde ?? 'ninguna parte'} a ${r.lugar} (punto de entrada ${r.x},${r.y})`);
+  } else if (paso.tipo === 'sin-guarnicion') {
+    const r = await dejarSinGuarnicion(prisma, { saveId });
+    if ('error' in r) rechaza(r.error);
+    else {
+      dice(`Sin guarnición: ${r.aTrabajador.length ? `${r.aTrabajador.join(', ')} a trabajador` : 'no había soldados ni vigías'}; ${r.licenciados} de milicia licenciados; ${r.equiposQuitados} Armería(s) sin equipos de milicia`);
+      if (r.guardias > 0) dice(`  AVISO: quedan ${r.guardias} guardia(s) de fauna en los corrales: también defienden`);
+    }
   } else if (paso.tipo === 'sin-aliados') {
     const r = await dejarSinAliados(prisma, { saveId });
     if ('error' in r) rechaza(r.error);
