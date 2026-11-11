@@ -1017,6 +1017,10 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   function closeCombat() {
     // Cierre real de combate — cualquier timer/callback de intercambio/iniciativa que siga vivo de
     // un turno ya obsoleto no debe disparar después (ver comentario junto a los refs, arriba).
+    // P459: pero el golpe de la última ronda NO es obsoleto: si «Salir/Continuar» se pulsa antes de que
+    // aterricen los dados, cancelarlo a secas dejaba el HUD en «Ileso» mientras la base ya decía «Grave»
+    // (hasta recargar). Se aplica el resultado pendiente ANTES de cancelar los temporizadores.
+    applyExchangeResultRef.current?.()
     cancelarTiradasPendientes()
     setCombatOpen(false)
     setCombateIniciado(null)
