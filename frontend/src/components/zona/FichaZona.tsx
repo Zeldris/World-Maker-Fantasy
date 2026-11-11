@@ -284,6 +284,12 @@ export function cajaMarca(clave: string, fx: number, fy: number, escala: number,
   return { clave, x: fx - r * escala, y: fy - r * escala, ancho: 2 * r * escala, alto: 2 * r * escala, fija: true }
 }
 
+/// P455: el estandarte de una salida (placa de radio 14 con borde discontinuo) es un obstáculo fijo para las
+/// etiquetas de las demás salidas: la de «Camino hacia el noroeste» no tapa el icono de la salida de debajo.
+export function cajaSalida(clave: string, fx: number, fy: number, escala: number) {
+  return cajaMarca(clave, fx, fy, escala, 16)
+}
+
 /// ZON-17 (hito 0.1) — salida de región como estandarte de camino: placa con una flecha grande hacia el
 /// borde (`angulo` en grados, 0 = este) y una etiqueta hacia el interior del mapa con el destino, para
 /// que no se salga del lienzo.

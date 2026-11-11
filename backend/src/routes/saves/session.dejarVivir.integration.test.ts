@@ -87,11 +87,27 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
     expect(state.condicionFisica).toBe('CONVALECIENTE');
 
     const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
-    expect(logEntry.text).toContain('deja con vida a Orco enfurecido');
+    // P457: sin descubrir, el diario lo llama como la ficha de combate («Orco desconocido»), no por su nombre real.
+    expect(logEntry.text).toContain('deja con vida al orco desconocido');
+    expect(logEntry.text).not.toContain('Orco enfurecido');
 
     // Libro de Sucesos (CR-3): el perdón queda registrado, enlazado a su entrada del diario.
     const perdon = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'PERDON_CONCEDIDO' } });
     expect(perdon.logEntryId).toBe(logEntry.id);
+  });
+
+  it('P457: ya descubierto, el diario lo llama por su nombre real', async () => {
+    await prisma.discoveredEntity.upsert({
+      where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: npcSlug } },
+      create: { saveId, entityType: 'npc', entitySlug: npcSlug, fase: 'DESCUBIERTO' },
+      update: { fase: 'DESCUBIERTO' },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-cualquiera'] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
+    expect(res.statusCode).toBe(200);
+    const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry.text).toContain('deja con vida a Orco enfurecido');
   });
 
   it('P270: perdonar con Clemente no resta reputación con su facción', async () => {
