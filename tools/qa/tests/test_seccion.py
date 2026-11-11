@@ -11,6 +11,9 @@ TEXTO = """# Runbook
 
 uno
 ### dentro
+```bash
+## un comentario de bash
+```
 dos
 
 ## Cómo se juega
@@ -30,7 +33,7 @@ class Seccion(unittest.TestCase):
         r = self.correr('Qué se prueba')
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('### dentro', r.stdout)
-        self.assertIn('dos', r.stdout)
+        self.assertIn('dos', r.stdout)  # el `## ` del bloque de código no corta la sección
         self.assertNotIn('Cómo se juega', r.stdout)
         self.assertNotIn('# Runbook', r.stdout)
 

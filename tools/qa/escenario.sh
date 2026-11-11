@@ -106,7 +106,8 @@ case "${1:-}" in
   lista)
     # QA-312: el índice entero son ~3,7k tokens; con un patrón, la cabecera y las filas que casan.
     if [ -n "${2:-}" ]; then
-      sed -n '/^| /p' "$INDICE" | awk -v pat="$2" 'NR<=2 || tolower($0) ~ tolower(pat)'
+      # Literal (index, no regex: «P289)» o «CR-15 (» no rompen mawk); la cabecera es la primera fila.
+      sed -n '/^| /p' "$INDICE" | awk -v pat="$2" 'NR==1 || index(tolower($0), tolower(pat))'
     else
       sed -n '/^| /p' "$INDICE"
     fi

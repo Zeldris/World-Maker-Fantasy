@@ -39,12 +39,16 @@ class Probar(unittest.TestCase):
         # QA-312: el índice entero arrastraba ~3,7k tokens para buscar una instantánea.
         d = self.repo()
         escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'README.md'),
-                 '# Escenarios\n\n| Escenario | Qué tiene |\n|---|---|\n| `uno` | Hondonada |\n| `dos` | Gistera |\n')
-        r = subprocess.run(['bash', 'tools/qa/escenario.sh', 'lista', 'hondonada'], cwd=d, capture_output=True, text=True)
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn('| Escenario |', r.stdout)
-        self.assertIn('`uno`', r.stdout)
-        self.assertNotIn('`dos`', r.stdout)
+                 '# Escenarios\n\n| Escenario | Qué tiene |\n|---|---|\n| `uno` | Gistera |\n| `dos` | Hondonada (P289) |\n')
+        def lista(patron):
+            r = subprocess.run(['bash', 'tools/qa/escenario.sh', 'lista', patron], cwd=d, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return r.stdout
+        salida = lista('hondonada (p289)')  # literal y sin mayúsculas
+        self.assertIn('| Escenario |', salida)
+        self.assertIn('`dos`', salida)
+        self.assertNotIn('`uno`', salida)
+        self.assertEqual(lista('árbol').strip().splitlines(), ['| Escenario | Qué tiene |'])
 
     def probar(self, d: str, *args: str):
         env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}

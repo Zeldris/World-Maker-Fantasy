@@ -10,7 +10,8 @@ set -euo pipefail
 archivo="${1:?falta el archivo}"; titulo="${2:?falta el título de la sección}"
 [ -f "$archivo" ] || { echo "No existe $archivo" >&2; exit 1; }
 salida=$(awk -v t="## $titulo" '
-  /^## / { if (dentro) exit; if (index($0, t) == 1) dentro = 1 }
+  /^[ \t]*```/ { codigo = !codigo }
+  !codigo && /^## / { if (dentro) exit; if (index($0, t) == 1) dentro = 1 }
   dentro { print }
 ' "$archivo")
 if [ -z "$salida" ]; then

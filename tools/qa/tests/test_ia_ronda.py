@@ -18,7 +18,7 @@ class IaRonda(unittest.TestCase):
         return d
 
     def correr(self, d: str, orden: str):
-        env = {**os.environ, 'PARAR_JUEGO': f'touch {d}/juego-parado'}
+        env = {**os.environ, 'PARAR_JUEGO': f'touch {d}/juego-parado', 'COMM_RONDA': 'bash'}
         return subprocess.run(['bash', os.path.join(d, 'tools', 'qa', 'deck', 'ia-ronda.sh'), orden],
                               env=env, capture_output=True, text=True, timeout=30)
 
@@ -40,6 +40,18 @@ class IaRonda(unittest.TestCase):
             os.kill(hijo, 0)
         self.assertFalse(os.path.exists(os.path.join(d, 'logs', 'ia-ronda.pid')))
         self.assertTrue(os.path.exists(os.path.join(d, 'juego-parado')))
+
+    def test_un_pid_viejo_de_otro_proceso_no_se_mata(self):
+        d = self.repo()
+        ajeno = subprocess.Popen(['sleep', '300'])  # `sleep`, no el Ollama de la ronda
+        try:
+            escribir(os.path.join(d, 'logs', 'ia-ronda.pid'), str(ajeno.pid))
+            r = self.correr(d, 'parar')
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn('ya no es el Ollama de la ronda', r.stdout)
+            self.assertIsNone(ajeno.poll())
+        finally:
+            ajeno.kill()
 
     def test_sin_orden_conocida_sale_con_el_uso(self):
         r = self.correr(self.repo(), 'otra')
