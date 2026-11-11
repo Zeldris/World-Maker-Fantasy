@@ -1733,6 +1733,8 @@ Retro y `/gw-opt-tokens` de los lotes F-I de la puerta (usuaria, 2026-11-11, [re
 - ~~**QA-318 · La revisión contrasta los P citados**~~ ✅ 2026-11-11: si el código cita un `P<n>`, el hallazgo que lo contradiga pasa antes por `marca-hallazgo.py --ver`. `REVIEW.md`, «Cómo se informa».
 - ~~**QA-319 · El subagente de arreglos no commitea sin la bitácora**~~ ✅ 2026-11-11: el encargo dice «deja el cambio sin commitear» o «actualiza tu fila con `handoff.py` y commitéala junto». `skills-wmf.md`; propuesto también a Galivelop-workflow (en la retro).
 - ~~**QA-320 · `tools/qa/plan.py`: el estado del plan de la puerta en una orden**~~ ✅ 2026-11-11: tanda siguiente, tandas sin hacer, lotes con sus P y lo último apuntado; `--tanda N` (también del archivo) y `--lote X`. Test en `tools/qa/tests/test_plan.py`; la línea, en `rondas-de-pruebas.md` y `gw-opt-tokens.md`.
+- ~~**QA-322 · `marca-hallazgo.py --lista <grupo>`**~~ ✅ 2026-11-11 (`/gw-opt-tokens` de `claude/wonderful-volta-662qt8`): una línea por hallazgo del grupo con el final de su estado, en vez de `grep`/Python sobre la tabla (480k arrastrados en las tandas 117-118). Tests en `test_marca_hallazgo.py`.
+- ~~**QA-323 · «Qué se prueba» una vez por sesión**~~ ✅ 2026-11-11 (mismo `/gw-opt-tokens`): la sesión que reparte lo lee una vez y, tras compactar, solo si necesita una regla (4 lecturas enteras, 344k arrastrados). `AGENTS.md`.
 - ~~**QA-321 · Notas de `/gw-opt-tokens` de los lotes F-I**~~ ✅ 2026-11-11: «Qué se prueba» con un `sed` de la sección (`QA-209`) y el diagnóstico de código en un subagente con el P y el `archivo:línea`. `gw-opt-tokens.md`.
 
 Licencias del proyecto (usuaria, 2026-11-05):

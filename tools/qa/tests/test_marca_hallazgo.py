@@ -139,6 +139,19 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Cerrados sin arreglo (no aplica, dato o roadmap)** (1): P5.', texto)
         self.assertIn('- **Arreglados en parte** (1): P6.', texto)
 
+    def test_lista_da_solo_los_del_grupo_con_el_final_del_estado(self):
+        r = self.correr('--lista', 'arreglado')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lineas = r.stdout.strip().split('\n')
+        self.assertEqual(len(lineas), 1, r.stdout)
+        self.assertTrue(lineas[0].startswith('P2: '), r.stdout)
+        self.assertNotIn('P1:', r.stdout)
+
+    def test_lista_con_un_grupo_que_no_existe_dice_los_validos(self):
+        r = self.correr('--lista', 'jugado')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('comprobado', r.stderr)
+
     def test_otras_formas_de_decir_comprobado_parte_y_decision(self):
         escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ comprobado |
 | P8 | Ocho | ✅ hecho. Comprobado en vivo. |

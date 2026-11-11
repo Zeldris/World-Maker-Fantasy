@@ -64,7 +64,9 @@ antes de darla por cerrada.
 **Al jugar** (ronda de pruebas, «sigue probando», «juega»): quien lanza `orden.sh` (en una ronda repartida, el
 subagente de cada tanda), antes de la primera acción, relee
 [`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md) (`QA-56`). La sesión que reparte lee solo
-«Qué se prueba» (`QA-209`), con `bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "Qué se prueba"` (`QA-311`).
+«Qué se prueba» (`QA-209`), con `bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "Qué se prueba"` (`QA-311`), una vez por sesión: tras
+compactar, solo si necesita una regla concreta (`QA-323`). Qué hallazgos hay en cada estado, con
+`python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`).
 
 ## Comprobar
 

@@ -66,6 +66,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
 - **La principal lee de `rondas-de-pruebas.md` solo «Qué se prueba»** (`QA-209`, recordado en `QA-321`):
   `sed -n '/^## Qué se prueba/,/^## /p' docs/runbooks/rondas-de-pruebas.md`. En los lotes F-I se leyó entero 2 veces
   y por trozos 9 (1,35M arrastrados).
+- **`marca-hallazgo.py --lista <grupo>`** (`QA-322`): los hallazgos de un estado (pendiente, parte, arreglado, cerrado…)
+  con el final de su estado, en vez de `grep`/Python sobre `pruebas-0.3-hallazgos.md` (480k arrastrados, tandas 117-118).
+- **«Qué se prueba» una vez por sesión** (`QA-323`, `AGENTS.md`): en las tandas 117-118 se leyó 4 veces entero (344k).
 - **Diagnóstico de código en un subagente** (`QA-321`): leer el mismo archivo una y otra vez para entender un fallo
   (`moralGrupo.ts` 15 lecturas y `prepararReino.ts` 10 en la principal, lotes F-I, ~0,5M) va a un subagente con el
   P y el `archivo:línea` en el encargo; la principal recibe el diagnóstico.
@@ -93,6 +96,12 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   `minimal_output` y `perPage` 3-5.
 
 ## Costes conocidos
+
+- **Tandas 117-118, arreglo de P454 y fase 1** (`claude/wonderful-volta-662qt8`, 2026-11-11): 129 llamadas, 14,2 M en la
+  principal (110k de media, techo 132k, 1 compactación) y un subagente `sonnet` (26 llamadas, 2,4 M, 70k de arranque).
+  Relecturas de registros ~950k (de ahí `QA-322` y `QA-323`). El arreglo de P454 leyó `combateMultipleOrquestacion.ts`
+  10 veces en la principal (~240k): para un arreglo de un archivo con el diagnóstico ya en contexto sale más barato
+  que un subagente (70k de arranque más redescubrirlo); `QA-321` es para el diagnóstico que aún no se tiene.
 
 - **Ronda local del narrador y `/gw-opt-ai`** (`claude/pedido-mapa`, 2026-11-11): 279 llamadas, 25,0 M de entrada (61 % en
   subagentes); principal 105k de media, techo 165k, 1 compactación. `rondas-de-pruebas.md` leído 7 veces por la
