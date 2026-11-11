@@ -39,6 +39,36 @@ function panel(npcs: CombatNpcDisplay[], lastInitiativeRoll: InitiativeRollInfo 
   )
 }
 
+// P452: la ficha del rival no enseña el nombre real, el cargo ni la bio mientras el NPC no se conoce.
+describe('CombatPanel: ficha de un rival desconocido (P452)', () => {
+  it('con nombre visible distinto del del catálogo, solo muestra el nombre visible', () => {
+    const enciclopedia = {
+      npcs: [{ slug: 'serhu', name: 'Herrero Serhu', role: 'Herrero del Clan Serhu', faction: null, level: 1, bio: 'Forja armas para el clan.', imageUrls: {}, attributes: null, raza: 'orco', clase: null }],
+      faunaFlora: [], razas: [], clases: [],
+    } as never
+    const noop = vi.fn()
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+    const npc: CombatNpcDisplay = { slug: 'serhu', name: 'Orco desconocido', condicion: 'CONVALECIENTE', yaSaqueado: false, lootedItemNames: [], analizado: false, activeEffects: [], targetedForKill: false }
+    render(
+      <CombatPanel
+        playerCondicion="HERIDO" playerActiveEffects={[]} playerAttributes={{ fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 } as never}
+        energia={70} npcs={[npc]} selectedNpcSlug="serhu" onSelectNpc={noop} combatAbilities={[ataqueBasico]} selectedAbilityId={null}
+        onSelectAbility={noop} combatItems={[]} selectedItemId={null} onSelectItem={noop} busy={false} ended={false} playerJustDied={false}
+        awaitingDefense={false} lastInitiativeRoll={null} onActuar={noop} onRegistrar={noop} onHuir={noop} onContinue={noop}
+        onSaquearSeleccion={noop} onAbilityDetail={noop} onItemDetail={noop} enciclopedia={enciclopedia}
+      />,
+    )
+    expect(screen.queryByText(/Herrero/)).toBeNull()
+    expect(screen.queryByText(/Forja armas/)).toBeNull()
+    expect(screen.getAllByText(/Orco desconocido/).length).toBeGreaterThan(0)
+  })
+})
+
 describe('CombatPanel: rematar (P65, QA-27)', () => {
   it('al marcar «Matar», lleva a la vista la lista de ataques', () => {
     // jsdom no tiene estos métodos: se ponen solo durante este test y se quitan al acabar.

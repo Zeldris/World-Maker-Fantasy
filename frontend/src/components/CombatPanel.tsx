@@ -121,11 +121,14 @@ function ActiveEffectChips({ effects }: { effects: ActiveEffect[] }) {
 /// `faunaFlora` (fauna) — mismo slug que usa el motor de escena para los dos, ver worldCatalog.ts.
 function EnemyFicha({
   slug,
+  nombreVisible,
   analizado,
   playerAttributes,
   enciclopedia,
 }: {
   slug: string
+  /// Nombre que el combate ya enseña (el backend da «Orco desconocido» si Gorhorn no conoce al NPC).
+  nombreVisible: string
   analizado: boolean
   playerAttributes: AttributeBlock
   enciclopedia: EnciclopediaResponse | null
@@ -142,6 +145,11 @@ function EnemyFicha({
     if (!enciclopedia) return null
     const npc = enciclopedia.npcs.find((n) => n.slug === slug)
     if (npc) {
+      // P452: si el nombre del combate no es el del catálogo, el NPC aún no se conoce: ni su nombre real,
+      // ni su cargo (lo delata), ni su bio, ni su retrato.
+      if (npc.name.trim().toLowerCase() !== nombreVisible.trim().toLowerCase()) {
+        return { name: nombreVisible, meta: '', bio: '', imageUrl: null, attributes: npc.attributes, abilities: resolveCombatAbilities({ level: npc.level, ataqueBase: npc.ataqueBase, raza: npc.raza, clase: npc.clase }, enciclopedia) }
+      }
       return {
         name: npc.name,
         meta: metaDeRival(npc),
@@ -180,7 +188,7 @@ function EnemyFicha({
       }
     }
     return null
-  }, [enciclopedia, slug])
+  }, [enciclopedia, slug, nombreVisible])
 
   if (!target) return null
 
@@ -239,7 +247,7 @@ function EnemyFicha({
                   ) : (
                     <MediaSlot icon="⚔️" variant="placeholder" />
                   )}
-                  <p className="text-2xs text-wood-500">{target.meta}</p>
+                  {target.meta && <p className="text-2xs text-wood-500">{target.meta}</p>}
                   {target.bio && <p className="text-xs leading-relaxed text-wood-300">{target.bio}</p>}
                 </>
               ) : atributoRecomendado ? (
@@ -1045,7 +1053,7 @@ export function CombatPanel({
           // mismo Npc — `EnemyFicha` necesita el `slug` de catálogo de verdad para consultarlo.
           const selected = npcs.find((n) => combatKeyFor(n) === selectedNpcSlug)
           if (!selected) return null
-          return <EnemyFicha slug={selected.slug} analizado={selected.analizado} playerAttributes={playerAttributes} enciclopedia={enciclopedia} />
+          return <EnemyFicha slug={selected.slug} nombreVisible={selected.name} analizado={selected.analizado} playerAttributes={playerAttributes} enciclopedia={enciclopedia} />
         })()}
           </>
         )}
