@@ -22,7 +22,7 @@
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] (P378: por defecto alterna macho y hembra),
 #                                               P433: con sexo=pareja además quedan emparejados de dos en dos (parejaId en los dos), como si el juego ya los hubiera juntado,
-#                                               P427: fuera:<lugar> (la jugadora sale de la Capital al lugar de ese slug, p. ej. fuera:hondonada-del-eco; slug desconocido lo rechaza y lista los del mundo; también las zonas interior o sin coordenadas y un combate abierto, así que va ANTES de combate:<npc>; entra por la salida de la zona hacia su primer vecino, como el viaje, y deja el lugar visitado; para un asalto con ella fuera; P427 (2026-11-11): sin-guarnicion no existe aún),
+#                                               P427: fuera:<lugar> (la jugadora sale de la Capital al lugar de ese slug, p. ej. fuera:pozo-cauce-viejo (en los escenarios del Reino hondonada-del-eco es la Capital); slug desconocido lo rechaza y lista los del mundo; también las zonas interior o sin coordenadas y un combate abierto, así que va ANTES de combate:<npc>; entra por la salida de la zona hacia su primer vecino, como el viaje, y deja el lugar visitado; para un asalto con ella fuera),
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
 #                                               el edificio activo de esa receta, como una tormenta), reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
@@ -50,7 +50,8 @@
 #                                               tirada: en la ronda siguiente el juego tira moral y escape y puede huir, con «orco desconocido», no el nombre real; puede aguantar: se repite con otro rival),
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
-#                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]
+#                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital; P451: el asalto se resuelve
+#                                               el día después de llegar, así que a 1 tramo hace falta `avanzar 2`; la salida lo dice), P367: mochila-libre[:<n>]
 #                                               (deposita en el Almacén, con Depositar, hasta dejar n huecos libres; 10 por defecto), P370: nivel:<n>[:<atr>,…] (sube de
 #                                               nivel como ganar XP, de 2 a 19; sin atributos, los puntos quedan sin repartir; P386: con ellos,
 #                                               p. ej. nivel:19:constitucion,fuerza, los reparte todos por turno, también con un combate abierto) y, en `dar`, el inventario no pasa de su capacidad

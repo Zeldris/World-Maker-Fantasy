@@ -4,8 +4,14 @@ PUERTO="${DRIVER_PORT:-9333}"
 # QA-57: `orden.sh --ayuda <archivo> '<tk en JSON>'` lanza una ayuda de mcp/ (las mismas que con el MCP),
 # con sus parámetros en window.tk. P. ej.: orden.sh --ayuda combate '{"ataque":"Estocada Veloz","rondas":3}'
 if [ "$1" = "--ayuda" ]; then
-  AYUDA="$(cd "$(dirname "$0")" && pwd)/mcp/${2%.js}.js"
-  [ -f "$AYUDA" ] || { echo "No existe $AYUDA"; exit 1; }
+  DIR_AYUDAS="$(cd "$(dirname "$0")" && pwd)/mcp"
+  # P451: sin archivo (o con uno que no existe) lista las ayudas en vez de «No existe …/mcp/.js».
+  AYUDA="$DIR_AYUDAS/${2%.js}.js"
+  if [ -z "$2" ] || [ ! -f "$AYUDA" ]; then
+    [ -n "$2" ] && echo "orden.sh: no hay ayuda «$2»."
+    echo "Uso: orden.sh --ayuda <ayuda> '<parámetros en JSON>'. Ayudas: $(cd "$DIR_AYUDAS" && ls *.js | sed 's/\.js$//' | tr '\n' ' ')(detalle en mcp/README.md)"
+    exit 1
+  fi
   # La ruta y los parámetros entran en el JS como literales de JSON (una comilla en la ruta no rompe la
   # orden) y los parámetros tienen que ser JSON válido: nada de código suelto.
   ORDEN="$(node -e '

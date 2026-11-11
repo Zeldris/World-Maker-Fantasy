@@ -224,6 +224,8 @@ for (const paso of pasos) {
     else {
       dice(`Asalto: ${r.quien} manda ${r.van} soldados contra la Capital, a ${r.tramos} tramo${r.tramos === 1 ? '' : 's'} (sale de ${r.origen}); ${r.avisado ? 'la Torre lo ha avistado (aviso en el diario del Reino)' : 'la Torre no lo avistó'}`);
       dice(r.milicia ? `  «Llamar a la milicia» no serviría ahora: ${r.milicia}` : '  «Llamar a la milicia» tiene adultos que armar');
+      // P451: un día de marcha por tramo (o más) y uno más para el asalto, que se resuelve el día después de llegar.
+      dice(`  Se resuelve al llegar: avanza al menos ${r.tramos + 1} días (escenario.sh avanzar <partida> ${r.tramos + 1}) y mira el Diario`);
       if (!r.jugadoraEnCapital) dice('  AVISO: la jugadora no está en la Capital: la milicia se arma sola y no hay botón que pulsar');
     }
   } else if (paso.tipo === 'mochila-descartar') {
