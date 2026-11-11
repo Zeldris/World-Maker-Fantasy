@@ -308,3 +308,13 @@ Cierra lo abierto en § 7; todas, como se recomendaron:
 3. **`AGUANTE`:** el efecto de habilidad rellena la capa de aguante; no se renombra nada.
 4. **Rueda de tipos:** multiplica solo la tirada de ataque (el defensor ya no tira).
 5. **Caza fácil más segura** (10 % de heridos frente a 26 %): se acepta tal cual.
+
+## 10. Notas para la implementación (P129, 2026-11-11)
+
+P129 (combate de grupo: la jugadora que empieza la ronda Convaleciente muere con 3-4 golpes de más) se
+cerró sin tocar código porque lo resuelve este diseño (§ 2.1, daño masivo). Al implementarlo:
+
+1. **Golpes de área o múltiples:** si alcanzan a la jugadora como objetivo extra, cuentan en el límite
+   de 2 ataques de más por turno (`esAtacanteDeMasPermitido`); hoy solo los capa la condición.
+2. **Prueba de regresión:** 4 rivales contra una jugadora a 1 PV en una ronda; sin daño masivo no
+   muere hasta el golpe de gracia.
