@@ -75,9 +75,13 @@ INDICE="$DIR/README.md"
 # `preparar`, `dar` y `dar-reino` no paran el juego pero cambian la partida: también recargan (no dentro de `probar`,
 # que va contra una base temporal que la página no ve).
 # QA-310: relanza el juego con el perfil de IA y el registro con que corría (los guarda arrancar-juego.sh); sin ellos,
-# la tanda con Ollama real dejaba de escribir en logs/ia/. Lo que venga en el entorno manda.
+# la tanda con Ollama real dejaba de escribir en logs/ia/. Lo que venga en el entorno manda. El archivo lleva el id de
+# arranque del sistema en su primera línea (perfil-ia.sh): el de una sesión anterior (reinicio sin `--parar`) se ignora.
 relanzar_juego() {
-  if [ -z "${IA_PERFIL:-}" ] && [ -f logs/juego-ia.env ]; then . logs/juego-ia.env; fi
+  if [ -z "${IA_PERFIL:-}" ] && [ -f logs/juego-ia.env ] &&
+    [ "$(head -n1 logs/juego-ia.env)" = "# boot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)" ]; then
+    . logs/juego-ia.env
+  fi
   bash tools/playwright-e2e/arrancar-juego.sh
 }
 

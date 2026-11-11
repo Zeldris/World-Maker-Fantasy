@@ -9993,7 +9993,12 @@ describe('Dos rondas de combate seguidas comparten el prefijo del prompt del nar
     }
     const [a, b] = prompts;
     let n = 0;
-    while (a[n] === b[n]) n++;
+    const tope = Math.min(a.length, b.length);
+    while (n < tope && a[n] === b[n]) n++;
+    // Dos prompts idénticos (o uno prefijo del otro) no dicen nada del orden: la ronda no cambió el intercambio.
+    if (n === tope) {
+      throw new Error(`los dos prompts de la ronda no difieren (longitudes ${a.length} y ${b.length}): el intercambio de cada ronda no llega al prompt`);
+    }
     // Lo de la ronda (sus dados) va al final de los hechos: lo estable de la escena (ubicación, NPC, inventario)
     // queda en el prefijo compartido.
     for (const estable of ['UBICACIÓN ACTUAL', 'PERSONAJE EN ESCENA', 'INVENTARIO ACTUAL']) {

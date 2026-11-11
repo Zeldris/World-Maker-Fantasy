@@ -1,12 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { env } from '../config/env.js';
 
 /// QA-308: keep_alive y num_ctx son del modelo cargado; todas las llamadas al Cronista usan el mismo valor (30m),
 /// o Ollama lo recarga tras 5 min sin uso (6-7 s por turno). `clasificar` y `narrar_respaldo` viven en narrador.ts.
 describe('keep_alive del Cronista (QA-308)', () => {
-  it('vale 30m por defecto', () => {
-    expect(env.ollamaKeepAliveCronista).toBe(process.env.OLLAMA_KEEP_ALIVE_CRONISTA ?? '30m');
+  it('vale 30m por defecto (sin OLLAMA_KEEP_ALIVE_CRONISTA) y respeta la variable si existe', async () => {
+    const previo = process.env.OLLAMA_KEEP_ALIVE_CRONISTA;
+    try {
+      delete process.env.OLLAMA_KEEP_ALIVE_CRONISTA;
+      vi.resetModules();
+      expect((await import('../config/env.js')).env.ollamaKeepAliveCronista).toBe('30m');
+      process.env.OLLAMA_KEEP_ALIVE_CRONISTA = '2h';
+      vi.resetModules();
+      expect((await import('../config/env.js')).env.ollamaKeepAliveCronista).toBe('2h');
+    } finally {
+      if (previo === undefined) delete process.env.OLLAMA_KEEP_ALIVE_CRONISTA;
+      else process.env.OLLAMA_KEEP_ALIVE_CRONISTA = previo;
+      vi.resetModules();
+    }
   });
 
   it('clasificar y narrar_respaldo mandan la constante del Cronista, no un literal', () => {

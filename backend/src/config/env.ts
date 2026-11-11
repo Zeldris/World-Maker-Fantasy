@@ -23,6 +23,9 @@ export const env = {
   /// (6-7 s, el 22 % de las llamadas en la ronda local). Todas sus llamadas (clasificar, respaldo, prompts de imagen)
   /// usan este valor: el `keep_alive` es del modelo cargado, y uno distinto lo recarga.
   ollamaKeepAliveCronista: process.env.OLLAMA_KEEP_ALIVE_CRONISTA ?? '30m',
+  /// QA-166/QA-168: `num_ctx` del Cronista en todas sus llamadas (clasificar, respaldo de narrar, prompts de imagen): uno
+  /// distinto obliga a Ollama a recargar el modelo.
+  ollamaNumCtxCronista: 8192,
 
   /// Registro por llamada de la skill opt-ai (docs/ia/opt-ai-registro.md): ruta de un archivo
   /// JSONL al que se añade una línea por llamada a Ollama/embeddings/RAG. Sin ella no se escribe

@@ -53,12 +53,9 @@ if [ "${1:-}" = "--parar" ] || [ "${1:-}" = "--parar-juego" ]; then
 fi
 
 # QA-310: se guarda con qué IA corre este arranque; `escenario.sh cargar|avanzar` relanza el juego y lo recupera.
-mkdir -p logs
-if [ -n "${IA_PERFIL:-}" ]; then
-  { printf 'export IA_PERFIL=%q\n' "$IA_PERFIL"; [ -z "${IA_REGISTRO:-}" ] || printf 'export IA_REGISTRO=%q\n' "$IA_REGISTRO"; } > logs/juego-ia.env
-else
-  rm -f logs/juego-ia.env
-fi
+# shellcheck source=tools/playwright-e2e/perfil-ia.sh
+. tools/playwright-e2e/perfil-ia.sh
+guardar_perfil_ia
 
 if [ "${1:-}" = "--rehacer" ]; then $PSQL -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)"; fi
 nueva=0

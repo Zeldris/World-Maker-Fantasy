@@ -8,6 +8,14 @@ import unittest
 from comun import ENV_GIT, QA, carpeta, escribir, git, leer
 
 
+def id_de_arranque() -> str:
+    try:
+        with open('/proc/sys/kernel/random/boot_id') as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
 class Probar(unittest.TestCase):
     def repo(self) -> str:
         d = carpeta()
@@ -89,7 +97,7 @@ class Cargar(unittest.TestCase):
     def repo(self) -> str:
         d = Probar.repo(self)
         os.makedirs(os.path.join(d, 'tools', 'playwright-e2e'))
-        for nombre in ('arrancar-juego.sh', 'ia-comprobaciones.sh'):
+        for nombre in ('arrancar-juego.sh', 'ia-comprobaciones.sh', 'perfil-ia.sh'):
             shutil.copy(os.path.join(QA, '..', 'playwright-e2e', nombre), os.path.join(d, 'tools', 'playwright-e2e', nombre))
         os.makedirs(os.path.join(d, 'logs'))
         ruta = os.path.join(d, 'bin', 'fuser')
@@ -146,7 +154,7 @@ class Cargar(unittest.TestCase):
         d = self.driver_falso()
         e2e = os.path.join(d, 'tools', 'playwright-e2e')
         escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar $1 perfil=${{IA_PERFIL:-}} registro=${{IA_REGISTRO:-}}" >> "{d}/llamadas.log"\n')
-        escribir(os.path.join(d, 'logs', 'juego-ia.env'), "export IA_PERFIL=deck\nexport IA_REGISTRO=/r/logs/ia/hoy.jsonl\n")
+        escribir(os.path.join(d, 'logs', 'juego-ia.env'), f"# boot={id_de_arranque()}\nexport IA_PERFIL=deck\nexport IA_REGISTRO=/r/logs/ia/hoy.jsonl\n")
         for orden in (('cargar', 'uno'), ('avanzar', 'p1', '3')):
             r = self.correr(d, *orden)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -162,9 +170,34 @@ class Cargar(unittest.TestCase):
         self.assertEqual(self.correr(d, 'cargar', 'uno').returncode, 0)
         self.assertIn('arrancar  perfil=', leer(os.path.join(d, 'llamadas.log')))
 
-    def test_arrancar_juego_guarda_y_olvida_el_perfil_de_ia(self):
-        texto = leer(os.path.join(QA, '..', 'playwright-e2e', 'arrancar-juego.sh'))
-        self.assertIn('logs/juego-ia.env', texto)
+    def test_un_perfil_de_otro_arranque_del_sistema_no_se_recupera(self):
+        """Un reinicio sin `--parar` deja logs/juego-ia.env de la sesión anterior: no se aplica a la de ahora."""
+        d = self.driver_falso()
+        e2e = os.path.join(d, 'tools', 'playwright-e2e')
+        escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar $1 perfil=${{IA_PERFIL:-}}" >> "{d}/llamadas.log"\n')
+        escribir(os.path.join(d, 'logs', 'juego-ia.env'), "# boot=otro-arranque-distinto\nexport IA_PERFIL=deck\n")
+        self.assertEqual(self.correr(d, 'cargar', 'uno').returncode, 0)
+        lineas = [l for l in leer(os.path.join(d, 'llamadas.log')).splitlines() if l.startswith('arrancar ') and '--parar' not in l]
+        self.assertEqual(lineas, ['arrancar  perfil='])
+
+    def test_guardar_perfil_ia_escribe_el_arranque_y_el_perfil_y_sin_perfil_lo_olvida(self):
+        """Ejecuta `guardar_perfil_ia` (el mismo código que corre arrancar-juego.sh), sin arrancar el juego."""
+        d = carpeta()
+        script = os.path.join(QA, '..', 'playwright-e2e', 'perfil-ia.sh')
+        def guardar(**entorno):
+            env = {**os.environ, **entorno}
+            for k in ('IA_PERFIL', 'IA_REGISTRO'):
+                if k not in entorno:
+                    env.pop(k, None)
+            r = subprocess.run(['bash', '-c', f'. "{script}"; guardar_perfil_ia'], cwd=d, env=env, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        archivo = os.path.join(d, 'logs', 'juego-ia.env')
+        guardar(IA_PERFIL='deck', IA_REGISTRO='/r/con espacio/hoy.jsonl')
+        self.assertEqual(leer(archivo).splitlines()[0], f'# boot={id_de_arranque()}')
+        leido = subprocess.run(['bash', '-c', f'. "{archivo}"; echo "$IA_PERFIL|$IA_REGISTRO"'], capture_output=True, text=True)
+        self.assertEqual(leido.stdout.strip(), 'deck|/r/con espacio/hoy.jsonl')
+        guardar()
+        self.assertFalse(os.path.exists(archivo))
 
     def test_la_recarga_reintenta_hasta_ver_la_partida_y_si_no_avisa(self):
         """P407 (tanda 82): el cliente de Vite recargaba con el backend caído; un solo goto lo enmascaraba."""

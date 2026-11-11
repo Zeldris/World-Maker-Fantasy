@@ -2,7 +2,7 @@ import 'dotenv/config';
 import '../lib/setupFetch.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { decidir, diferencias, parseCasos, type CasoClasificar } from './clasificarEval.js';
+import type { CasoClasificar } from './clasificarEval.js';
 
 /// Evalúa la clasificación de la acción de la jugadora (QA-309, skill opt-ai): cada caso de
 /// `backend/ia/clasificar-casos.jsonl` pasa por la cadena del turno (reglas de npcScene.ts + `classifyAction` con el
@@ -20,6 +20,10 @@ const rutaCasos = argumento('--casos') ?? fileURLToPath(new URL('../../ia/clasif
 const rutaRegistro = argumento('--registro');
 if (rutaRegistro) process.env.IA_REGISTRO = rutaRegistro;
 else delete process.env.IA_REGISTRO;
+
+// `env.ts` lee IA_REGISTRO al cargarse, y `clasificarEval.js` lo arrastra por npcScene → travel → env: todo se importa
+// dinámicamente DESPUÉS de decidir la variable (como rag-eval.ts); con un import estático `--registro` no hacía nada.
+const { decidir, diferencias, parseCasos, NIVEL_JUGADOR_EVAL } = await import('./clasificarEval.js');
 
 let casos: CasoClasificar[];
 try {
@@ -40,13 +44,13 @@ try {
   process.exit(2);
 }
 
-const resumenPersonaje = 'Gorhorn Maktor, orco Cazador, nivel 3. Fuerza 14, Destreza 10, Voluntad 9, Carisma 8. Condición física: SANO.';
+const resumenPersonaje = `Gorhorn Maktor, orco Cazador, nivel ${NIVEL_JUGADOR_EVAL}. Fuerza 14, Destreza 10, Voluntad 9, Carisma 8. Condición física: SANO.`;
 let aciertos = 0;
 console.log(`Clasificar eval — ${casos.length} casos, modelo ${env.ollamaModelCronista}, ${rutaCasos}\n`);
 for (const caso of casos) {
   let obtenido;
   try {
-    obtenido = await decidir(caso, (accion) => classifyAction({ characterSummary: resumenPersonaje, action: accion }));
+    obtenido = await decidir(caso, (accion, npcCalibration) => classifyAction({ characterSummary: resumenPersonaje, action: accion, npcCalibration }));
   } catch (err) {
     console.error(`${caso.id}: el modelo falló (${err instanceof Error ? err.message : err}); no se simula.`);
     process.exit(2);

@@ -54,6 +54,7 @@ export async function completeWithFallback(systemPrompt: string, userContent: st
     prompt: userContent,
     maxTokens,
     keepAlive: env.ollamaKeepAliveCronista,
+    numCtx: env.ollamaNumCtxCronista, // el mismo que clasificar/narrar: otro num_ctx recarga el modelo
     timeoutMs: 60_000,
     tarea: 'prompts_imagen',
   });
