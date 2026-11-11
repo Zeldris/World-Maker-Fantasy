@@ -83,3 +83,79 @@ Banner: `backend/uploads/images/location/pastos-de-la-deriva-dia-verano-banner.p
 - **Orcos:** valen todos menos el de **llanuras macho** (llanuras hembra, ciénaga troncal y cristal helado, los dos sexos).
 - **Gorntes:** casi; se retoca con ella antes de escribir la ficha.
 - **Faerus y Nabieus:** el banner no vale de referencia; se pregunta qué falla o se parte del canon.
+
+## Ronda r42: seis elementos más (2026-11-11)
+
+Mismo formato; los prompts son `banco/prompts/r42-final-<slug>.txt`, escritos desde el banner.
+
+### Rondador de Brasas
+
+Banner: `backend/uploads/images/fauna/rondador-de-brasas-macho-banner.png`.
+
+| Rasgo | Banner | Canon | Propuesta para el lore |
+|---|---|---|---|
+| Pelaje | Negro hollín con brillo rojo oscuro, largo y desgreñado | «Pelaje ceniciento» (`L:104`, `W:1775`) | Gris ceniza a negro hollín |
+| Púas del lomo | Hilera de nudos y púas de hueso pálido, como vértebras rotas, del cuello a la cadera | «Hilera de púas óseas asomando entre el pelo» | Sin choque; precisar «como vértebras» |
+| Cabeza | Cabeza ancha de felino, dos colmillos de sable y dos cuernecillos tras las orejas | «Mandíbula pesada», sin colmillos largos ni cuernos | Añadir colmillos de sable y cuernecillos |
+| Talla | Tamaño de oso pardo, cuerpo de hiena encorvado | Sin talla | Fijar «como un oso pardo» |
+| Escena | De noche, olfateando las brasas de una hoguera; buitres y remolinos de polvo | Nocturno, busca las brasas | Sin choque (el prompt lo pasa al anochecer, por luz) |
+
+### Salamandra de Escoria
+
+Banner: `backend/uploads/images/fauna/salamandra-de-escoria-macho-banner.png`.
+
+| Rasgo | Banner | Canon | Propuesta para el lore |
+|---|---|---|---|
+| Lomo | Un montículo entero de terrones de escoria con lava en las grietas, no una hilera | «Hilera de protuberancias rocosas en el lomo» (`L:704`, `W:1809`) | Cambiar «hilera» por «costra de terrones que cubre el lomo» |
+| Talla | Enorme: más larga que dos caballos | Sin talla («robusta y baja») | Fijar talla |
+| Garganta | No se ve hinchada | Avisa hinchando la garganta con silbido de vapor (`L:707`) | Sin choque; el prompt la pinta así |
+| Piel | Escamas gris carbón agrietadas como barro seco | «Escamas como escoria volcánica» | Escamas gris carbón; la escoria, solo en el lomo |
+| Entorno | Campo de lava negra con grietas incandescentes y fumarolas | El Filo de las Brasas, borde volcánico | Sin choque |
+
+### Espina del Viento
+
+Banner: `backend/uploads/images/fauna/espina-del-viento-macho-banner.png`.
+
+| Rasgo | Banner | Canon | Propuesta para el lore |
+|---|---|---|---|
+| Cuerpo | Como un escorpión gigante de caparazón segmentado pardo rojizo, ocho patas | Sin forma: «criaturas del desierto de apenas un metro de altura» (`L:66-73`) | Describir: escorpión acorazado |
+| Boca | Dos colmillos largos de marfil en hoz en vez de pinzas; racimo de ojos negros | Sin cabeza descrita | Añadir colmillos en hoz |
+| Cola | Arqueada, con púas, acabada en un bulbo ámbar translúcido con aguijones finos como látigos | «Veneno» sin órgano descrito | Añadir el bulbo ámbar (de ahí el veneno) |
+| Talla | Parece mayor de un metro | «Apenas un metro de altura» | El prompt fija la cola a la cintura de un hombre |
+| Escena | Muchas al aire libre, delante de una tormenta de arena | Enterradas; atacan con la tormenta; nidos en La Fosa Horadada | Sin choque; el prompt la hace salir de la arena |
+
+### Aullador Rojo
+
+Banner: `backend/uploads/images/fauna/aullador-rojo-macho-banner.png`.
+
+| Rasgo | Banner | Canon | Propuesta para el lore |
+|---|---|---|---|
+| Cuerpo y patas | Larguísimo y bajo, de comadreja, patas cortas | «Patas desproporcionadamente largas» (`W:1481`); «cuerpo flaco» (`L:86`) | Cambiar a cuerpo largo y bajo, patas cortas |
+| Lomo | Cresta de escamas oscuras de cocodrilo con púas de punta roja hasta la cola | «Hilera de púas oscuras erizadas» | Añadir la cresta escamosa y la punta roja |
+| Cabeza | De chacal, orejas grandes, dos colmillos de sable bajo la barbilla | «Colmillos curvos amarillentos exagerados» | Sin choque; precisar «de sable, hacia abajo» |
+| Cola | Larga, anillada claro y oscuro, con púas y mechón negro | «Cola negra tupida que arrastra» | Cola anillada con mechón negro |
+| Pelaje | Pardo rojizo con raya crema; no se ven mechones negros en los tobillos ni vetas de arena | Mechones negros en tobillos; parches de arena fosilizada (`W:1481`) | Decidir si se quedan (el prompt pide los mechones) |
+| Jauría | Unos ocho | Jaurías de 4-6 | El prompt pone seis |
+
+### El Filo de las Brasas
+
+Banner: `backend/uploads/images/location/filo-de-las-brasas-dia-primavera-banner.png`.
+
+| Rasgo | Banner | Canon | Propuesta para el lore |
+|---|---|---|---|
+| Volcanes | No se ven; horizonte de estepa llana | «Se distinguen los volcanes activos» (`L:693-697`, `W:121`) | Añadir volcanes lejanos o aceptar que no se ven |
+| Roca | Losas rojas agrietadas en meseta; cuchillas oscuras inclinadas a los lados | «Cresta de roca oscura» | Meseta de losas rojas con cuchillas oscuras |
+| Calor | Grieta honda con vapor; sin ceniza en el aire | «Calima de calor y ceniza» | Vapor de la grieta; ceniza, a decidir |
+| Composición | Simétrica (cuchillas a izquierda y derecha) | — | El prompt deja el grupo a la izquierda y una sola a la derecha |
+
+### El Osario de la Manada
+
+Banner: `backend/uploads/images/location/osario-de-la-manada-dia-primavera-banner.png`.
+
+| Rasgo | Banner | Canon | Propuesta para el lore |
+|---|---|---|---|
+| Esqueletos | Un costillar gigante y varios montones de huesos menores alrededor | Un solo esqueleto de Gargantúa (`L:523-527`, `W:167`) | Restos de otras bestias o un solo esqueleto |
+| Forma | Costillar en arco, como túnel, con espinazo de púas; sin cráneo, cuernos ni placas | Esqueleto de Gargantúa (placas, tres cuernos en su banner) | Añadir cráneo o placas caídas, o aceptar solo costillar |
+| Figuras | Siluetas diminutas caminando por el llano | «Fauna solo de paso» | Sin choque; dan la escala |
+| Composición | Costillar centrado y de frente | — | El prompt lo pasa al tercio derecho, en tres cuartos |
+| Horizonte | Agujas de roca roja y cielo rojo de fuego | Sin hábitat descrito | Sin choque |
