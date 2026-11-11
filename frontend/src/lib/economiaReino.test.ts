@@ -15,6 +15,9 @@ describe('avisos de la economía del Reino (CR-53)', () => {
       'Entra menos agua de la que se bebe: construye un Pozo.',
     ])
   })
+  it('P446: sin bocas nadie bebe ni come, y no avisa de sed ni de hambre', () => {
+    expect(avisosDeEconomia({ ...base, bocas: 0, aguaDia: 0, diasSed: 28, diasHambre: 28 })).toEqual([])
+  })
   it('equipo roto (CR-58)', () => {
     expect(avisosDeEconomia({ ...base, sinHerramienta: 1, sinArma: 3 })).toEqual([
       '1 trabajador sin herramienta: producen la mitad.',
