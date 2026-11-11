@@ -114,8 +114,9 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
    **Montura de pruebas** (solo para probar «Viajar» y las interrupciones de viaje, P46/P47/P321; nunca en producción): `bash tools/qa/host.sh env WMF_MONTURA_PRUEBAS=1 bash tools/qa/deck/juego.sh` (o `WMF_MONTURA_PRUEBAS=1` delante de `arrancar-juego.sh`); la jugadora cuenta como con montura hasta que CR-57 la dé de verdad.
    (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
-   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, `/gw-opt-ai` mide los tiempos,
-   contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/gw-opt-ai/SKILL.md)).
+   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, una línea en
+   [`pendiente-opt-ai.md`](../records/pendiente-opt-ai.md) (`QA-306`): cuando pasa el umbral, se recomienda a la usuaria
+   `/gw-opt-ai`, que mide los tiempos, contrasta el RAG con las incoherencias y propone ajustes ([skill](../../.claude/skills/gw-opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
    visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
    (usuaria, 2026-10-19), después se mejora `estado.js` o la ayuda que toque para que lo dé en texto la próxima vez
@@ -140,7 +141,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review`, `/gw-opt-ai` si hubo tandas con Ollama real ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`), luego `/gw-opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review`, recomendar `/gw-opt-ai` si `pendiente-opt-ai.md` pasa el umbral ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`, `QA-306`), luego `/gw-opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
 8. **Una tanda con Ollama real juega al menos 8 turnos** (`QA-200`, retro del 2026-10-22): con 3 turnos `/gw-opt-ai` no
    tiene medida comparable. Si la tanda no llega a 8, al cerrar se pasa `bash tools/qa/bench-ia.sh <etiqueta>

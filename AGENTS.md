@@ -109,7 +109,8 @@ cada bloque de ~10 tandas, solo del diff desde la última revisión (`QA-292`). 
 1. **Código:** `git fetch origin main` y `/code-review --max-findings all` del diff contra `origin/main`, con el
    criterio de `REVIEW.md`. Arreglos con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve
    se apunta como pendiente en la bitácora. Lo que casa con `content` de `.claude/gw.json` es contenido, no código.
-2. **Entorno:** `/gw-opt-ai` si hubo tandas con Ollama real (`QA-142`), `/gw-opt-tokens` y `/retro`, que revisa también
+2. **Entorno:** recomendar a la usuaria `/gw-opt-ai` si [`pendiente-opt-ai.md`](docs/records/pendiente-opt-ai.md)
+   pasa su umbral (`QA-306`; lo lanza ella), `/gw-opt-tokens` y `/retro`, que revisa también
    `gw-opt-tokens`. Sus propuestas se **presentan a la usuaria**; lo que confirme se aplica en la rama.
 3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de esos commits y sus arreglos; luego
    `bash .claude/gw/scripts/reviewed.sh --footer "Siguiente: <paso>"` (el `commit-msg` pide esa línea; escribe la
