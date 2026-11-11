@@ -5,7 +5,9 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { MINUTOS_POR_ANIO } from './edades.js';
 import { crearSubdito } from './subditos.js';
 import { posiblesParejas } from './familias.js';
-import { PUNTO_ENTRADA_INICIAL, sacarAJugadora } from './prepararFuera.js';
+import { celdasDeEntrada, enRadioSeguro } from '../entradasZona.js';
+import { celdaDePixel } from '../zonaPosicion.js';
+import { sacarAJugadora } from './prepararFuera.js';
 import { emparejarDeADos } from './prepararPareja.js';
 
 // P427 (`fuera:<lugar>`) y P433 (`sexo=pareja`) de `prepararReino.ts`.
@@ -14,7 +16,7 @@ describe('pasos fuera:<lugar> y sexo=pareja de preparar (P427, P433)', () => {
 
   async function partida(nombre: string, opciones: { endedAt?: Date } = {}) {
     const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
-    const lugares = await prisma.location.findMany({ where: { worldId: world.id }, orderBy: { slug: 'asc' }, take: 2 });
+    const lugares = await prisma.location.findMany({ where: { worldId: world.id, kind: { not: 'interior' }, x: { not: null }, y: { not: null } }, orderBy: { slug: 'asc' }, take: 2 });
     const save = await prisma.save.create({
       data: {
         userId: await getDefaultUserId(), worldId: world.id, characterName: nombre, characterArchetype: 'cazador', characterOrigin: 'x', characterMotivation: 'x',
@@ -35,9 +37,17 @@ describe('pasos fuera:<lugar> y sexo=pareja de preparar (P427, P433)', () => {
   it('fuera: mueve a la jugadora al lugar con su punto de entrada y es idempotente', async () => {
     const { saveId, otro, aqui } = await partida('Fuera (P427)');
     const r = await sacarAJugadora(prisma, { saveId, lugarSlug: otro.slug });
-    expect(r).toMatchObject({ lugar: otro.name, desde: aqui.name, yaEstaba: false, ...PUNTO_ENTRADA_INICIAL });
+    expect(r).toMatchObject({ lugar: otro.name, desde: aqui.name, yaEstaba: false });
     const s = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
-    expect(s).toMatchObject({ currentLocationId: otro.id, zonaPosX: 75, zonaPosY: 75, zonaPosEntradaX: 75, zonaPosEntradaY: 75 });
+    expect(s).toMatchObject({ currentLocationId: otro.id });
+    // Entra por una salida de la zona (donde el viaje deja a quien llega): dentro del radio seguro de las entradas, y guardada como entrada.
+    expect(s.zonaPosEntradaX).toBe(s.zonaPosX);
+    expect(s.zonaPosEntradaY).toBe(s.zonaPosY);
+    const entradas = await celdasDeEntrada(prisma, saveId, otro.id);
+    if (entradas.length > 0) expect(enRadioSeguro(celdaDePixel({ x: s.zonaPosX!, y: s.zonaPosY! }), entradas)).toBe(true);
+    else expect([s.zonaPosX, s.zonaPosY]).toEqual([400, 300]);
+    // Como el viaje real, el lugar queda visitado.
+    expect(await prisma.locationVisit.count({ where: { saveId, locationId: otro.id } })).toBe(1);
     expect(await sacarAJugadora(prisma, { saveId, lugarSlug: otro.slug })).toMatchObject({ yaEstaba: true });
   });
 
@@ -50,6 +60,24 @@ describe('pasos fuera:<lugar> y sexo=pareja de preparar (P427, P433)', () => {
     const r2 = await sacarAJugadora(prisma, { saveId: fin.saveId, lugarSlug: fin.otro.slug });
     expect('error' in r2 && r2.error).toMatch(/ha terminado/);
     expect(await sacarAJugadora(prisma, { saveId: 'no-hay', lugarSlug: 'x' })).toEqual({ error: 'fuera: no hay partida no-hay.' });
+  });
+
+  it('fuera: limpia lo pendiente (ofertas, encuentro, camino) y rechaza con un combate abierto o una zona interior (P427)', async () => {
+    const { saveId, otro, aqui } = await partida('Fuera pendientes (P427)');
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicMode: { x: 1 }, pendingNpcAttack: { y: 1 }, zonaUltimoEncuentro: { targetSlug: 'a', locationId: aqui.id }, zonaCaminoPendiente: [{ x: 1, y: 1 }] } });
+    await sacarAJugadora(prisma, { saveId, lugarSlug: otro.slug });
+    const s = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect([s.pendingDynamicMode, s.pendingNpcAttack, s.zonaUltimoEncuentro, s.zonaCaminoPendiente]).toEqual([null, null, null, null]);
+
+    const c = await partida('Fuera con combate (P427)');
+    await prisma.save.update({ where: { id: c.saveId }, data: { pendingCombatNpcSlugs: ['x'] } });
+    const r = await sacarAJugadora(prisma, { saveId: c.saveId, lugarSlug: c.otro.slug });
+    expect('error' in r && r.error).toBe('fuera: hay un combate en curso; usa fuera antes de combate:<npc>.');
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: c.saveId } })).currentLocationId).toBe(c.aqui.id);
+
+    const interior = await prisma.location.findFirstOrThrow({ where: { worldId: c.worldId, kind: 'interior' } });
+    const r2 = await sacarAJugadora(prisma, { saveId, lugarSlug: interior.slug });
+    expect('error' in r2 && r2.error).toMatch(/interior/);
   });
 
   it('pareja: empareja de dos en dos con parejaId en los dos sentidos, y la revisión de familias ya no los ve libres (P433)', async () => {
