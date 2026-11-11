@@ -9,7 +9,7 @@ import { separarEtiquetas } from '../../lib/separarEtiquetas'
 import { ZoneGroupDetailModal } from '../ZoneGroupDetailModal'
 import { ZonaSalidaModal } from '../ZonaSalidaModal'
 import { ParcelaDetailModal } from '../ParcelaDetailModal'
-import { DefsFichas, EtiquetaNombre, InsigniaGrupo, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
+import { DefsFichas, EtiquetaNombre, InsigniaGrupo, anclaEtiqueta, cajaEtiqueta, cajaFicha, cajaMarca, cajaSalida, etiquetaDeEstandarte, ANCHO_LIENZO_ZONA, ALTO_LIENZO_ZONA } from '../zona/FichaZona'
 import { COLOR_HEX, disposicionDe, distanciaEnCeldas, regionControlDisplay, TIPO_LABEL, useEscalaPantalla } from '../../lib/zonaFichas'
 import { AnilloInteraccion, GridOverlay, JugadorMarker, ParcelaMarker, SalidaMarker, ZonePointMarker } from '../zona/MarcadoresZona'
 import { MS_POR_VELOCIDAD, PasoZonaContext } from '../../lib/zonaMovimiento'
@@ -456,6 +456,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
         ...(data.jugador ? [cajaMarca('m:jugador', data.jugador.x, data.jugador.y, escala, 22)] : []),
         ...(data.viajeros ?? []).map((v) => cajaMarca(`m:v:${v.id}`, v.x, v.y, escala, 12)),
         ...data.parcelas.map((p) => cajaMarca(`m:pa:${p.id}`, p.x, p.y, escala, 12)),
+        ...data.salidas.map((s) => cajaSalida(`m:s:${s.locationId}`, s.x, s.y, escala)),
         ...data.salidas.map((s) => cajaEtiqueta(`s:${s.locationId}`, s.x, s.y, escala, etiquetaDeEstandarte(anguloSalida(s)), etiquetaSalida(s))),
         ...nombres
           .map((e) => cajaEtiqueta(e.clave, e.x, e.y, escala, { x: 0, y: 24, anchor: anclaEtiqueta(e.x, e.nombre, escala) }, e.nombre))

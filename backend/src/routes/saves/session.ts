@@ -10,6 +10,7 @@ import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 import { objetivosValidos } from '../../services/combateMultiple.js';
+import { nombreVisibleDeNpc, aNombre } from '../../services/dynamicMode.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -466,6 +467,8 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
+      // P457: el diario lo llama como la ficha de combate y la Victoria (un PRINCIPAL sin descubrir, «Orco desconocido»).
+      const aVisible = aNombre((await nombreVisibleDeNpc(prisma, save.id, npc)).nombre);
 
       // Combate múltiple real (2026-08-29, bug real jugando en vivo — ver comentario de
       // `CombatParticipant.dismissedGrupo` en schema.prisma): con `participantId`, la condición
@@ -505,7 +508,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         }
 
         const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-        const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+        const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
         // Condición de carrera real (auditoría 2026-09-01): sin releer, un doble clic simultáneo
         // pasaba los dos el guard de `condicionReal !== 'CONVALECIENTE'` de arriba (leído ANTES de
         // esta transacción) y creaba 2 LogEntry duplicados narrando la misma decisión dos veces.
@@ -545,7 +548,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       }
 
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-      const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
+      const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
 
       // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
       // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
