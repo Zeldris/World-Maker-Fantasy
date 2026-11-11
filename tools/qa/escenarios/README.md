@@ -63,3 +63,5 @@ estado útil lo guarda aquí (`QA-105`).
 | `t119-pozo-recursos` | `cmvex1v0300057d0pdjlbezcj` | reino-dia39-recursos con la jugadora en El Pozo de Cauce Viejo (fuera:), 3 recursos ??? sin probar para P158; escena de Escorantes abierta | 2026-11-11 |
 | `t120-guchapo-muerto` | `cmvex1v0300057d0pdjlbezcj` | Tanda 120: P129 reproducido, Gorhorn Muerto 2/4 tras combate de 6 Guchapos | 2026-11-11 |
 | `t120-orco-clemente` | `cmvex1v0300057d0pdjlbezcj` | Tanda 120: Hondonada 22:15, Orco enfurecido convaleciente con Clemente, victoria, mapa Zona abierto; para P328/P107 | 2026-11-11 |
+| `t121-orco-ficha` | `cmvex1v0300057d0pdjlbezcj` | Tanda 121: ficha del punto del Orco en el mapa sigue ??? (P328/P107) | 2026-11-11 |
+| `t121-colmillo-zona` | `cmvex1v0300057d0pdjlbezcj` | Tanda 121: Colmillo Ceniza 11:09 con montura y huida de pruebas, mapa Zona abierto | 2026-11-11 |
