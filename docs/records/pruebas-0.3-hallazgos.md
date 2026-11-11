@@ -12,14 +12,14 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (35): P16, P49, P66, P128, P129, P136, P158, P169, P173, P188, P250, P251, P252,
-  P262, P263, P264, P265, P266, P267, P272, P273, P274, P310, P311, P317, P324, P328, P370, P377,
-  P383, P433, P447, P448, P450, P453.
+- **Pendientes** (33): P16, P49, P66, P128, P129, P136, P158, P169, P173, P188, P250, P251, P252,
+  P262, P263, P264, P265, P266, P267, P272, P273, P274, P310, P311, P317, P324, P328, P370, P433,
+  P447, P448, P450, P453.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (20): P70, P107, P116, P131, P151, P180, P184, P243, P245, P253, P269,
   P288, P306, P307, P337, P382, P426, P429, P443, P451.
-- **Arreglados, sin comprobar jugando** (9): P342, P371, P374, P388, P404, P432, P434, P449, P454.
-- **Comprobados jugando** (339): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Arreglados, sin comprobar jugando** (7): P342, P374, P388, P404, P432, P434, P449.
+- **Comprobados jugando** (343): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43,
   P45, P46, P47, P50, P51, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68,
   P69, P72, P73, P74, P76, P77, P78, P79, P80, P81, P82, P83, P84, P85, P86, P87, P88, P90, P91,
@@ -36,10 +36,10 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P294, P295, P296, P297, P298, P299, P300, P301, P302, P303, P304, P305, P308, P309, P313, P314,
   P315, P316, P318, P319, P320, P323, P326, P327, P329, P330, P331, P332, P333, P334, P335, P336,
   P338, P339, P340, P341, P343, P344, P345, P346, P347, P348, P349, P350, P351, P352, P353, P354,
-  P355, P356, P357, P358, P359, P360, P361, P362, P363, P364, P365, P366, P367, P369, P372, P373,
-  P375, P378, P379, P380, P381, P384, P385, P386, P387, P389, P390, P391, P392, P393, P394, P395,
-  P396, P397, P398, P399, P400, P401, P402, P403, P405, P406, P407, P408, P409, P427, P428, P431,
-  P435, P437, P438, P439, P440, P441, P444, P445, P446, P452.
+  P355, P356, P357, P358, P359, P360, P361, P362, P363, P364, P365, P366, P367, P369, P371, P372,
+  P373, P375, P377, P378, P379, P380, P381, P383, P384, P385, P386, P387, P389, P390, P391, P392,
+  P393, P394, P395, P396, P397, P398, P399, P400, P401, P402, P403, P405, P406, P407, P408, P409,
+  P427, P428, P431, P435, P437, P438, P439, P440, P441, P444, P445, P446, P452, P454.
 - **Arreglados, no jugables (los cubre un test o la base)** (6): P25, P44, P52, P143, P174, P204.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (29): P5, P10, P22, P23, P30, P34, P40, P48,
   P59, P71, P75, P89, P146, P179, P222, P238, P239, P249, P256, P289, P312, P321, P322, P325, P368,
