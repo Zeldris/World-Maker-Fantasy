@@ -7,6 +7,7 @@ import type { Efecto } from './efectos.js';
 import type { CtxReaccion, Reaccion, SucesoEnCola } from './reacciones.js';
 import { registrarSuceso } from './sucesos.js';
 import { herederoDeVenganza } from './linajes.js';
+import { nombreVisibleDeNpc } from '../dynamicMode.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,8 +32,10 @@ const conPapel = (s: SucesoEnCola, entidadTipo: string, papel: string) =>
 const delPersonaje = (s: SucesoEnCola) => s.actores.some((a) => a.entidadTipo === 'PERSONAJE' && a.papel === 'AUTOR');
 const yo = (s: SucesoEnCola): ActorHilo => ({ entidadTipo: 'PERSONAJE', entidadId: s.saveId });
 
-async function nombreNpc(tx: Tx, id: string) {
-  return (await tx.npc.findUnique({ where: { id }, select: { name: true } }))?.name ?? 'alguien';
+/// P460: texto visible por la jugadora, así que un principal sin descubrir sale por su raza, no por su nombre.
+async function nombreNpc(tx: Tx, saveId: string, id: string) {
+  const npc = await tx.npc.findUnique({ where: { id }, select: { slug: true, name: true, kind: true, raza: true, genero: true } });
+  return npc ? (await nombreVisibleDeNpc(tx, saveId, npc)).nombre : 'alguien';
 }
 async function esConNombre(tx: Tx, id: string) {
   return (await tx.npc.count({ where: { id, kind: 'PRINCIPAL' } })) > 0;
@@ -106,10 +109,10 @@ const APERTURAS: { patron: Patron; escucha: string[]; abre: Apertura }[] = [
       if (!delPersonaje(suceso)) return null;
       const vengador = await vengadorDe(tx, suceso);
       if (!vengador || (await abierto(tx, suceso.saveId, `VENGANZA:${vengador}`))) return null;
-      const victima = await nombreNpc(tx, conPapel(suceso, 'NPC', 'VICTIMA')[0]!);
+      const victima = await nombreNpc(tx, suceso.saveId, conPapel(suceso, 'NPC', 'VICTIMA')[0]!);
       return {
         tipo: 'abrirHilo', patron: 'VENGANZA', clave: `VENGANZA:${vengador}`, actores: [{ entidadTipo: 'NPC', entidadId: vengador }, yo(suceso)],
-        tension: await tensionDe(tx, suceso.id, 2), resumen: `${await nombreNpc(tx, vengador)} quiere vengar a ${victima} de ${await personaje(tx, suceso.saveId)}.`,
+        tension: await tensionDe(tx, suceso.id, 2), resumen: `${await nombreNpc(tx, suceso.saveId, vengador)} quiere vengar a ${victima} de ${await personaje(tx, suceso.saveId)}.`,
       };
     },
   },
@@ -123,7 +126,7 @@ const APERTURAS: { patron: Patron; escucha: string[]; abre: Apertura }[] = [
       const f = faccion ? await tx.faction.findFirst({ where: { saveId: suceso.saveId, slug: faccion }, select: { name: true } }) : null;
       return {
         tipo: 'abrirHilo', patron: 'ASCENSO', clave: `ASCENSO:${npc}`, actores: [{ entidadTipo: 'NPC', entidadId: npc }, ...(faccion ? [{ entidadTipo: 'FACCION', entidadId: faccion }] : [])],
-        tension: await tensionDe(tx, suceso.id), resumen: `${await nombreNpc(tx, npc)} llega a mandar${f ? ` en ${f.name}` : ''}.`,
+        tension: await tensionDe(tx, suceso.id), resumen: `${await nombreNpc(tx, suceso.saveId, npc)} llega a mandar${f ? ` en ${f.name}` : ''}.`,
       };
     },
   },
@@ -155,7 +158,7 @@ const APERTURAS: { patron: Patron; escucha: string[]; abre: Apertura }[] = [
       if (!delPersonaje(suceso) || !npc || !(await esConNombre(tx, npc)) || (await abierto(tx, suceso.saveId, `DEUDA:${npc}`))) return null;
       return {
         tipo: 'abrirHilo', patron: 'DEUDA', clave: `DEUDA:${npc}`, actores: [{ entidadTipo: 'NPC', entidadId: npc }, yo(suceso)],
-        tension: await tensionDe(tx, suceso.id), resumen: `${await nombreNpc(tx, npc)} le debe algo a ${await personaje(tx, suceso.saveId)}.`,
+        tension: await tensionDe(tx, suceso.id), resumen: `${await nombreNpc(tx, suceso.saveId, npc)} le debe algo a ${await personaje(tx, suceso.saveId)}.`,
       };
     },
   },
@@ -171,7 +174,7 @@ const APERTURAS: { patron: Patron; escucha: string[]; abre: Apertura }[] = [
       if (veces < ENFRENTAMIENTOS_PARA_RIVALIDAD) return null;
       return {
         tipo: 'abrirHilo', patron: 'RIVALIDAD', clave: `RIVALIDAD:${npc}`, actores: [{ entidadTipo: 'NPC', entidadId: npc }, yo(suceso)],
-        tension: 6, resumen: `${await nombreNpc(tx, npc)} y ${await personaje(tx, suceso.saveId)} ya se han visto las caras demasiadas veces.`,
+        tension: 6, resumen: `${await nombreNpc(tx, suceso.saveId, npc)} y ${await personaje(tx, suceso.saveId)} ya se han visto las caras demasiadas veces.`,
       };
     },
   },
@@ -266,7 +269,7 @@ async function herenciaDeVenganza(ctx: CtxReaccion, actores: ActorHilo[], tensio
     tipo: 'abrirHilo', patron: 'VENGANZA', clave: `VENGANZA:${heredero.id}`,
     actores: [{ entidadTipo: 'NPC', entidadId: heredero.id }, ...actores.filter((a) => a.entidadTipo !== 'NPC')],
     tension: Math.min(10, tension + 1),
-    resumen: `${heredero.name} toma la venganza de ${await nombreNpc(ctx.tx, vengador)}: es cosa del linaje ${heredero.linaje}.`,
+    resumen: `${heredero.name} toma la venganza de ${await nombreNpc(ctx.tx, ctx.suceso.saveId, vengador)}: es cosa del linaje ${heredero.linaje}.`,
   };
 }
 

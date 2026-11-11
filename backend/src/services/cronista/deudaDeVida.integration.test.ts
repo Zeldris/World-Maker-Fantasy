@@ -5,6 +5,7 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { evaluarConsecuencias } from './consecuencias.js';
 import { procesarReacciones } from './reacciones.js';
 import { registrarSuceso } from './sucesos.js';
+import { nombreOcultoPorRaza } from '../dynamicMode.js';
 
 // CR-11 (hito 0.2) — deuda de vida de punta a punta: perdón → aviso → al llegar a OTRA región tras
 // 3+ días, el perdonado aparece junto a la jugadora → al cruzarse, regalo y se va. Si no se cruzan,
@@ -48,7 +49,8 @@ describe('deuda de vida (CR-11)', () => {
 
   it('perdón → aviso; en su región o antes de 3 días no pasa nada; en otra región aparece y al cruzarse regala', async () => {
     const { saveId, hondonada, otra, perdonado } = await perdonar('Deuda de vida (CR-11)');
-    expect(await prisma.logEntry.count({ where: { saveId, text: `Algo te dice que volverás a ver a ${perdonado.name}.` } })).toBe(1);
+    expect(await prisma.logEntry.count({ where: { saveId, text: `Algo te dice que volverás a ver a ${nombreOcultoPorRaza(perdonado.raza, perdonado.genero)}.` } })).toBe(1);
+    expect(await prisma.logEntry.count({ where: { saveId, text: { contains: perdonado.name } } })).toBe(0);
 
     await irA(saveId, 480 + 5 * DIA, hondonada.id, 200, 200);
     expect((await evaluarConsecuencias(prisma, saveId)).disparadas).toBe(0);
@@ -70,6 +72,36 @@ describe('deuda de vida (CR-11)', () => {
     const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, include: { inventoryItems: true } });
     expect(save.goirnos > 0 || save.inventoryItems.some((i) => i.origin === `regalo de ${perdonado.name}`)).toBe(true);
     expect((await prisma.zonePoint.findUniqueOrThrow({ where: { id: punto.id } })).activo).toBe(false);
+  });
+
+  it('P460: un principal sin descubrir sale por su raza en el aviso y en el hilo; descubierto, por su nombre', async () => {
+    const oculto = await perdonar('Perdón oculto (P460)');
+    const hilo = await prisma.hilo.findUniqueOrThrow({ where: { saveId_clave: { saveId: oculto.saveId, clave: `DEUDA:${oculto.perdonado.id}` } } });
+    expect(hilo.resumen).toContain(nombreOcultoPorRaza(oculto.perdonado.raza, oculto.perdonado.genero));
+    expect(hilo.resumen).not.toContain(oculto.perdonado.name);
+
+    // Descubierto antes del perdón: el nombre real.
+    const worldId = oculto.perdonado.worldId;
+    const save = await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Perdón visto (P460)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 }, portraitInitial: 'D',
+        currentLocationId: oculto.hondonada.id, zonaPosX: 200, zonaPosY: 200, goirnos: 0,
+        worldState: { create: { fictionalMinutes: 480 } },
+      },
+    });
+    saveIds.push(save.id);
+    await asegurarMundoDePartida(prisma, save.id);
+    await prisma.discoveredEntity.create({ data: { saveId: save.id, entityType: 'npc', entitySlug: oculto.perdonado.slug } });
+    await prisma.$transaction((tx) => registrarSuceso(tx, {
+      saveId: save.id, tipo: 'PERDON_CONCEDIDO', fictionalMinutes: 480, locationId: oculto.hondonada.id, origen: 'JUGADOR',
+      actores: [{ entidadTipo: 'PERSONAJE', entidadId: save.id, papel: 'AUTOR' }, { entidadTipo: 'NPC', entidadId: oculto.perdonado.id, papel: 'BENEFICIARIO' }],
+      datos: { personaje: 'Perdón visto (P460)', perdonado: oculto.perdonado.name },
+    }));
+    await procesarReacciones(prisma, save.id);
+    expect(await prisma.logEntry.count({ where: { saveId: save.id, text: `Algo te dice que volverás a ver a ${oculto.perdonado.name}.` } })).toBe(1);
+    const visto = await prisma.hilo.findUniqueOrThrow({ where: { saveId_clave: { saveId: save.id, clave: `DEUDA:${oculto.perdonado.id}` } } });
+    expect(visto.resumen).toContain(oculto.perdonado.name);
   });
 
   it('si no llegan a cruzarse, a los 2 días se va sin regalo', async () => {
