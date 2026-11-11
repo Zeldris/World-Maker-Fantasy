@@ -123,7 +123,16 @@ case "${1:-}" in
     rm -f "logs/catalogo-$BASE.huella"
     bash tools/playwright-e2e/arrancar-juego.sh
     recargar_pagina
-    grep "^| \`$nombre\` |" "$INDICE" || true
+    bash "$0" confirmar "$nombre"
+    ;;
+  confirmar)
+    # P371: `cargar` acababa listando el escenario sin decir si había cargado; ahora confirma cuál y en qué día.
+    nombre="${2:?falta el nombre}"
+    fila=$(grep "^| \`$nombre\` |" "$INDICE" || true)
+    partida=$(printf '%s' "$fila" | awk -F'|' '{gsub(/[ `]/, "", $3); print $3}')
+    dia=$(psql "$URL" -Atc "select \"fictionalDateLabel\" from \"WorldState\" where \"saveId\" = '${partida//\'/}' union all select \"fictionalDateLabel\" from \"WorldState\" limit 1" | head -1)
+    echo "Cargado «$nombre» en $BASE: partida ${partida:-?}, ${dia:-día desconocido}."
+    [ -z "$fila" ] || echo "$fila"
     ;;
   avanzar)
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"

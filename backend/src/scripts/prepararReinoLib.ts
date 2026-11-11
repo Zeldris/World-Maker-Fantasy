@@ -1,5 +1,7 @@
 // 3.2 (2026-10-21): interpreta los pasos de `prepararReino.ts` (puro, para probarlo sin base).
 import type { Attribute } from '../services/dice.js';
+import { ROLES_SUBDITO } from '../services/cronista/subditos.js';
+import { esTarea, TAREAS } from '../services/cronista/comidaOficios.js';
 
 const ATRIBUTOS: readonly Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'];
 export type PasoReino =
@@ -63,7 +65,13 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const roles = extra.filter((t) => !t.startsWith('sexo='));
       const sexo = tSexo.length ? SEXOS[tSexo[0]!.slice(5)] : 'alterna';
       if (tSexo.length > 1 || roles.length > 1 || !sexo || (roles[0] !== undefined && roles[0] === '')) return { error: `«${arg}»: subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja].` };
-      pasos.push({ tipo: 'subditos', pueblo: r[0], n, rol: roles[0] ?? null, sexo });
+      // P432: un rol que no existe se rechaza antes de escribir nada (y, si es un valor de `sexo=`, se sugiere esa sintaxis).
+      const rol = roles[0];
+      if (rol !== undefined && !(ROLES_SUBDITO as readonly string[]).includes(rol) && !esTarea(rol)) {
+        const pista = SEXOS[rol] ? ` ¿Querías «sexo=${rol}»? Ej.: subditos:${r[0]}:${n}:sexo=${rol}.` : '';
+        return { error: `«${arg}»: rol desconocido «${rol}» (roles: ${ROLES_SUBDITO.join(', ')}; tareas: ${TAREAS.join(', ')}).${pista}` };
+      }
+      pasos.push({ tipo: 'subditos', pueblo: r[0], n, rol: rol ?? null, sexo });
     } else if (clave === 'reclutar') {
       if (!r[0]) return { error: `«${arg}»: falta reclutar:<slug del NPC>.` };
       pasos.push({ tipo: 'reclutar', npcSlug: r[0] });

@@ -95,4 +95,14 @@ describe('pasos de prepararReino (3.2)', () => {
     expect([0, 1, 2].map((i) => sexoDelSubdito('f', i))).toEqual(['F', 'F', 'F']);
     expect([0, 1].map((i) => sexoDelSubdito('m', i))).toEqual(['M', 'M']);
   });
+
+  it('un rol de súbdito que no existe se rechaza al interpretar, con la pista de sexo= (P432)', () => {
+    const r = parsearPasosReino(['subditos:orcos:2:pareja']);
+    expect(r).toHaveProperty('error');
+    const msg = (r as { error: string }).error;
+    expect(msg).toContain('rol desconocido «pareja»');
+    expect(msg).toContain('sexo=pareja');
+    expect(parsearPasosReino(['subditos:orcos:2:inventado'])).toHaveProperty('error');
+    expect(parsearPasosReino(['subditos:orcos:2:ganadero'])).not.toHaveProperty('error');
+  });
 });

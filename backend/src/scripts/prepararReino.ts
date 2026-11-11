@@ -79,9 +79,11 @@ const rechaza = (t: string) => { console.error(t); fallo = true; };
 for (const paso of pasos) {
   if (fallo) break;
   if (paso.tipo === 'subditos') {
-    for (let i = 0; i < paso.n; i++) {
-      const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
-      const s = await prisma.$transaction(async (tx) => {
+    // P432: todo el paso en una sola transacción: si un súbdito falla, no queda ninguno a medias.
+    const creados = await prisma.$transaction(async (tx) => {
+      const hechos: { name: string }[] = [];
+      for (let i = 0; i < paso.n; i++) {
+        const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
         const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, genero: sexoDelSubdito(paso.sexo, i), random: Math.random });
         if (paso.rol && esTarea(paso.rol)) {
           // ganadero, recolector…: son tareas del trabajador, no roles.
@@ -89,13 +91,13 @@ for (const paso of pasos) {
           if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`);
         } else if (paso.rol) {
           const r = await cambiarRolSubdito(tx, saveId, nuevo.id, paso.rol, ahora);
-          if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`); // deshace también el súbdito recién creado
+          if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`);
         }
-        return nuevo;
-      }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return null; });
-      if (!s) break;
-      dice(`Súbdito: ${s.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
-    }
+        hechos.push(nuevo);
+      }
+      return hechos;
+    }, { timeout: 120_000 }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return [] as { name: string }[]; });
+    for (const s of creados) dice(`Súbdito: ${s.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
   } else if (paso.tipo === 'reclutar') {
     // random fijo alto: la tirada de Carisma se gana (el reclutamiento en sí lo decide la regla del juego: cama, líder, ya acompañante…).
     const r = await proponer(prisma, saveId, paso.npcSlug, 'RECLUTAR', () => 0.999);
