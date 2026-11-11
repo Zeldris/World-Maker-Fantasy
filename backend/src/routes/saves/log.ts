@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { calendarioFor } from '../../services/worldClock.js';
-import { toFrontendLogEntry, rechazarSiNoAdmiteAcciones } from './shared.js';
+import { toFrontendLogEntry, rechazarSiNoAdmiteAcciones, ORDEN_LOG } from './shared.js';
 import { responderPropuesta } from '../../services/cronista/decisionesFaccion.js';
 import { esperarSegundoPlano } from '../../services/avanceDiario.js';
 import { expedicionesVisibles } from '../../services/expedicionesMapa.js';
@@ -104,7 +104,7 @@ export async function logRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: 'Partida no encontrada' });
     }
     const [logEntries, summaries] = await Promise.all([
-      prisma.logEntry.findMany({ where: { saveId: save.id }, orderBy: { createdAt: 'asc' } }),
+      prisma.logEntry.findMany({ where: { saveId: save.id }, orderBy: ORDEN_LOG }),
       prisma.sessionSummary.findMany({ where: { saveId: save.id }, orderBy: { chapterNumber: 'asc' } }),
     ]);
     const entries = logEntries.map((e) => {

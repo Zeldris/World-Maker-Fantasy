@@ -7,7 +7,8 @@
 #   escenario.sh lista [patrón]                 las instantáneas y qué tienen (con patrón, solo las filas que casan,
 #                                               sin distinguir mayúsculas; QA-312)
 #   escenario.sh guardar <nombre> "<qué tiene>"  guarda la base de juego como tools/qa/escenarios/<nombre>.dump
-#   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego
+#   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego; confirma cuál y en qué día
+#   escenario.sh confirmar <nombre>              solo esa confirmación (la que cierra `cargar`): escenario, partida y día
 #   escenario.sh avanzar <partida> <días> [--reparar]  avanza N días con el avance diario de siempre (para el juego y lo
 #                                               vuelve a arrancar: el servidor no ve este avance en su cola). P369: con
 #                                               --reparar avanza día a día y repara tras cada día los edificios dañados con
@@ -21,18 +22,22 @@
 #                                               dejar hueco en el Granero, que comparten comida y forraje: P336, 180/180 -> 178/180 con comida=-2)
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] (P378: por defecto alterna macho y hembra),
+#                                               P433: con sexo=pareja además quedan emparejados de dos en dos (parejaId en los dos), como si el juego ya los hubiera juntado,
+#                                               P427: fuera:<lugar> (la jugadora sale de la Capital al lugar de ese slug, p. ej. fuera:pozo-cauce-viejo (en los escenarios del Reino hondonada-del-eco es la Capital); slug desconocido lo rechaza y lista los del mundo; también las zonas interior o sin coordenadas y un combate abierto, así que va ANTES de combate:<npc>; entra por la salida de la zona hacia su primer vecino, como el viaje, y deja el lugar visitado; para un asalto con ella fuera),
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
 #                                               el edificio activo de esa receta, como una tormenta), reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
-#                                               combate:<npc>,<npc>… (de grupo), QA-293: combate1v1:<npc> (el 1v1 clásico contra ese NPC, viva donde viva: se lanza
+#                                               combate:<npc>,<npc>… (de grupo; P374: se niega si alguno está muerto o convaleciente), QA-293: combate1v1:<npc> (el 1v1 clásico contra ese NPC, viva donde viva: se lanza
 #                                               contra la jugadora como un agresor; el panel sale al recargar; para P373, la huida por habilidad), P370: herido:<npc>[:grave|herido] (un compañero del combate en curso queda GRAVE o HERIDO:
 #                                               el capitán enemigo, que manda caer sobre el más herido, lo señala en la ronda siguiente; para P292); QA-268: lider-muere:<facción> (el líder muere de viejo con 2
 #                                               candidatos), alianza:<A>:<B> (alianza, ruptura y alianza nueva), vasallo-paga:<vasallo>
 #                                               (fondos para la cuota entera sin saldar la deuda); QA-269: domable:<especie>
 #                                               (un animal domable vencido y atado en una Jaula libre, para «Al corral»),
 #                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir);
-#                                               QA-270: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
-#                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
+#                                               QA-270: convaleciente:<npc>:combate (se niega, como convaleciente:<npc>, con el NPC muerto; además deja el combate sin resolver: la tarjeta
+#                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario al cargar la partida: con el juego abierto,
+#                                               recarga la página antes de tocar nada, P382: el estado del combate solo se lee al cargar; el animal sigue ausente del mapa 6 h)
+#                                               P427: sin-guarnicion (soldados y vigías a trabajador, milicia licenciada, Armerías sin equipos: con fuera:<lugar> y asalto:<facción>, el asalto toma la Capital; avisa si quedan guardias de corral)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
 #                                               QA-298: partida-caza:<presa>:<n>[:permanente] (una partida de caza del Reino, la que hay en marcha tras esa presa o
@@ -42,9 +47,12 @@
 #                                               QA-299: partida-caza:<presa>:heridos=<h>[:permanente] (la partida vuelve sin piezas y con h heridos: el aviso «…no abate ninguno: 1 de los suyos sale herido… y la partida se retira» (con h > 1: «h de los suyos salen heridos… y se retiran»)
 #                                               sale en Reino › Avisos al preparar, con el texto del juego; para P439) y mochila-descartar[:<n>] (tira lo suelto de la mochila hasta dejar n huecos libres,
 #                                               10 por defecto, sin tocar lo equipado; con el Almacén lleno `mochila-libre` no sirve y `dar` no pasa de la capacidad; para P336),
+#                                               P443: huida-rival[:<npc>] (con un combate en curso, un rival con moral —persona, no fauna—, el primero o el del slug, queda GRAVE sin moral
+#                                               tirada: en la ronda siguiente el juego tira moral y escape y puede huir, con «orco desconocido», no el nombre real; puede aguantar: se repite con otro rival; con el juego lanzado con WMF_HUIDA_PRUEBAS=1 la moral falla y el escape sale siempre),
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
-#                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital), P367: mochila-libre[:<n>]
+#                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital; P451: el asalto se resuelve
+#                                               el día después de llegar, así que a 1 tramo hace falta `avanzar 2`; la salida lo dice), P367: mochila-libre[:<n>]
 #                                               (deposita en el Almacén, con Depositar, hasta dejar n huecos libres; 10 por defecto), P370: nivel:<n>[:<atr>,…] (sube de
 #                                               nivel como ganar XP, de 2 a 19; sin atributos, los puntos quedan sin repartir; P386: con ellos,
 #                                               p. ej. nivel:19:constitucion,fuerza, los reparte todos por turno, también con un combate abierto) y, en `dar`, el inventario no pasa de su capacidad
@@ -66,7 +74,7 @@ BASE=tarkor_juego
 ADMIN="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/$BASE}"
 DIR=tools/qa/escenarios
-INDICE="$DIR/README.md"
+INDICE="${ESCENARIO_INDICE:-$DIR/README.md}"
 # P407: `cargar` y `avanzar` paran y relanzan el juego; la página que tiene abierta el driver de Playwright se quedaba
 # con lo de antes (otro nivel) o en «ERR_CONNECTION_REFUSED» si se recargó mientras el juego estaba parado. Con el
 # juego ya listo, se le pide que recargue (la misma URL si era del juego; si no, la portada). Sin driver no hace nada.
@@ -100,6 +108,21 @@ for (let i = 1; i <= 5; i++) {
 }
 return 'AVISO: la página del driver no carga la partida tras 5 intentos (' + page.url() + '): ' + visto;
 JS
+}
+
+# P371: `cargar` acababa listando el escenario sin decir si había cargado; ahora confirma cuál y en qué día.
+# Un fallo de psql no aborta `cargar` (el juego ya está cargado): se dice «día desconocido».
+confirmar_carga() {
+  local nombre="$1" fila partida dia base
+  fila=$(grep "^| \`$nombre\` |" "$INDICE" || true)
+  partida=$(printf '%s' "$fila" | awk -F'|' '{gsub(/[ `]/, "", $3); print $3}')
+  base="${URL##*/}"; base="${base%%\?*}"
+  dia=""
+  if [[ "$partida" =~ ^[A-Za-z0-9]+$ ]]; then
+    dia=$(psql "$URL" -Atc "select \"fictionalDateLabel\" from \"WorldState\" where \"saveId\" = '$partida'" 2> /dev/null | head -1) || dia=""
+  fi
+  echo "Cargado «$nombre» en $base: partida ${partida:-?}, ${dia:-día desconocido}."
+  [ -z "$fila" ] || echo "$fila"
 }
 
 case "${1:-}" in
@@ -141,7 +164,10 @@ case "${1:-}" in
     rm -f "logs/catalogo-$BASE.huella"
     relanzar_juego
     recargar_pagina
-    grep "^| \`$nombre\` |" "$INDICE" || true
+    confirmar_carga "$nombre"
+    ;;
+  confirmar)
+    confirmar_carga "${2:?falta el nombre}"
     ;;
   avanzar)
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"

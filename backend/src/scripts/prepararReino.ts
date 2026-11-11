@@ -1,18 +1,20 @@
 // 3.2 (2026-10-21): prepara estados del Reino que `darReino.ts` no alcanza, SOLO con las funciones del juego que aplican
 // sus reglas (QA-151: nada de UPDATE/INSERT a mano). Pasos, en el orden dado:
-//   subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja]   n súbditos adultos (`crearSubdito`; P378: por defecto alternan macho y hembra, así hay parejas posibles; `sexo=m` o `sexo=f` los fija todos) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
+//   subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja]   n súbditos adultos (`crearSubdito`; P433: `sexo=pareja` además los empareja de dos en dos, parejaId en los dos sentidos; P378: por defecto alternan macho y hembra, así hay parejas posibles; `sexo=m` o `sexo=f` los fija todos) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
 //                                   o su tarea de trabajador (`cambiarTareaSubdito`: ganadero, recolector, fibrero…)
 //   reclutar:<npc>                  un NPC con nombre se une como compañero real (`proponer` RECLUTAR, con la tirada ganada; pide cama libre)
 //   guarnicion                      cada soldado y vigía a la guarnición de la capital mientras haya plazas (`asignarGuarnicion`)
 //   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
-//   convaleciente:<npc>[:combate]   el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo); con `:combate` (QA-270, P95/P320) el combate sigue sin resolver en `pendingCombatNpcSlugs` (`dejarConvalecienteEnCombate`) y sale la tarjeta Matar/Capturar/Clemente (P406: con un combate abierto, el rival suelto que ya está en él); el animal sigue ausente del mapa, como tras la derrota real
+//   convaleciente:<npc>[:combate]   el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo); con `:combate` (QA-270, P95/P320) el combate sigue sin resolver en `pendingCombatNpcSlugs` (`dejarConvalecienteEnCombate`) y sale la tarjeta Matar/Capturar/Clemente (P406: con un combate abierto, el rival suelto que ya está en él); el animal sigue ausente del mapa, como tras la derrota real. Se niega con el NPC MUERTO aquí (no lo resucita)
 //   lider-muere:<facción>           CR-43: el líder muere de viejo por la vía del motor (`morirDeViejo`, la de `envejecerDia`) y, si hacen falta, destacan jóvenes (`crearNpc` DESTACA) hasta 2 candidatos; la cohesión queda en 20-50 tras la baja; la sucesión (y la escisión con nombre) sale al avanzar (`matarLiderDeFaccion`)
 //   alianza:<A>:<B>                 P247: alianza, ruptura y alianza nueva de la facción A con la B (`recordFactionEvent` NEGOCIACION_TREGUA y EXPANSION_TERRITORIAL_AGRESIVA: `aliarTrasRuptura`)
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
 //   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
+//   fuera:<lugar>                   P427: la jugadora sale de la Capital al lugar de ese slug (`Location.slug` del mundo; `currentLocationId` y punto de entrada, como una llegada): para un asalto con ella fuera
+//   sin-guarnicion                  P427: el Reino sin defensores: cada soldado y vigía pasa a trabajador (`cambiarRolSubdito`, el cambio de rol del panel), la milicia se licencia y las Armerías se quedan sin equipos (la vigilancia no la arma sola); los guardias de corral no se tocan (se avisa). Con `fuera:` y `asalto:`, un asalto que toma la Capital con la jugadora fuera
 //   sin-aliados                     QA-266, P128: los compañeros del Grupo 1 pasan a otro grupo (`moverCompaneroDeGrupo`, la regla del arrastre del panel): un combate que se abra después solo lleva a la jugadora
 //   punto-retirado:<especie>[:<n>] QA-266, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0; estado sintético (el juego no lo produce hoy) para la defensa de `opcionesDePartida`, con los efectos `crearPuntoZona` y `retirarPuntoZona`
 //   reparar                         P369/P378: repara cada edificio DANADO (y Empalizada caída) con `repararEdificio`, la del botón «Reparar» de Reino › Edificios: cuesta la mitad de sus materiales del Almacén; si faltan, lo dice y sigue con los demás (sale con error, sin deshacer lo reparado)
@@ -23,7 +25,8 @@
 //   mochila-libre[:<n>]             P367: deja n unidades de hueco (10 por defecto) en la mochila depositando objetos sueltos en el Almacén del Reino con la función de «Depositar» (`depositarEnAlmacen`), las filas más grandes primero. Depositar no mira la capacidad de la mochila. Con el tope de materiales del Almacén lleno, ese objeto no se deposita y se sigue con el siguiente
 //   nivel:<n>[:<atr>,<atr>…]        P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel. P386: con atributos (p. ej. `nivel:19:constitucion,fuerza`) reparte todos los puntos por turno entre ellos (`repartirPuntoDeAtributo`, la del botón), también con un combate abierto; sin ellos, quedan por repartir
 //   herido:<npc>[:grave|herido]     P370 (para P292): un NPC del combate en curso (un compañero) queda GRAVE (por defecto) o HERIDO con la escritura de un golpe recibido en el combate (`escribirCondicionYEnergia`): el capitán enemigo, que señala al más herido, lo elige en la ronda siguiente
-//   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
+//   huida-rival[:<npc>]             P443 (para ver su línea de huida): un rival con moral del combate en curso (el primero, o el del slug dado; solo personas, no fauna) queda GRAVE con la escritura de un golpe recibido y sin tirada de moral hecha (`dejarRivalAPuntoDeHuir`, sobre `dejarHeridoEnCombate`): en la ronda siguiente el juego tira moral y escape (`revisarMoralDelCombate`), así que puede aguantar (salvo con el juego lanzado con `WMF_HUIDA_PRUEBAS=1`: la moral falla y el escape sale); si no huye, se repite con otro rival. Dice el nombre que ve la jugadora (el de «orco desconocido»)
+//   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`); P374: se niega si alguno está muerto o convaleciente
 //   partida-caza:<presa>:<n>[:permanente]  (QA-299, P439: también partida-caza:<presa>:heridos=<h>[:permanente], sin piezas y con h heridos, el aviso «h de los suyos salen heridos» del juego ya escrito) QA-298 (P338, P339): una partida de caza del Reino (la que hay en marcha tras esa presa o una lanzada con `lanzarPartida`: pide un lugar conocido con la presa y un cazador libre con arma o un compañero de grupo 2+) queda en casa y a punto de volver con n piezas; al avanzar el día se resuelve por el camino normal (`descargarCaza`: aviso, piezas en el Almacén; con orden permanente, `antesDeRepetir`: el corte de P338 con el Desolladero dañado). `:permanente` pone la orden de repetir
 //   combate1v1:<npc>                QA-293 (P373): el combate 1v1 clásico contra ese NPC, donde esté, como un agresor que se lanza contra ella (`abrirCombate1v1`, el efecto `forzarCombate` del Cronista); el panel sale al cargar la partida; se niega con un combate en curso o sin el NPC
 // Uso: DATABASE_URL=… npx tsx src/scripts/prepararReino.ts <saveId> subditos:orcos:3 reclutar:tirag-susig …
@@ -36,31 +39,31 @@ import { proponer } from '../services/cronista/reclutamiento.js';
 import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia } from '../services/defensaReino.js';
 import { recordFactionEvent, type FactionEventType } from '../services/factionRelations.js';
 import { faccionDelReino } from '../services/guerraReino.js';
-import { abrirCombateDePersonas, type MiembroDeGrupo } from '../services/combatePersonas.js';
-import { scopeFor } from '../services/npcScene.js';
-import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
-import { danarEdificioDeReceta, repararDanados } from '../services/cronista/prepararEdificios.js';
+import { abrirCombateDePreparacion } from '../services/cronista/prepararCombate.js';
+import { danarEdificioDeReceta, repararDanados, textoSinReparar } from '../services/cronista/prepararEdificios.js';
 import { dejarSinAliados } from '../services/cronista/prepararSinAliados.js';
+import { dejarSinGuarnicion } from '../services/cronista/prepararSinGuarnicion.js';
 import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
-import { formatFictionalDate } from '../services/worldClock.js';
-import type { AttributeBlock } from '../services/dice.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
-import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
+import { dejarConvalecienteEnCombate, dejarConvalecienteSuelto } from '../services/cronista/prepararConvaleciente.js';
 import { prepararPartidaCaza } from '../services/cronista/prepararPartidaCaza.js';
 import { abrirCombate1v1 } from '../services/cronista/prepararCombate1v1.js';
 import { dejarHeridoEnCombate } from '../services/cronista/prepararHerido.js';
+import { dejarRivalAPuntoDeHuir } from '../services/cronista/prepararHuidaRival.js';
 import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
 import { dejarEnEscasez } from '../services/cronista/prepararEscasez.js';
 import { lanzarAsaltoAlReino } from '../services/cronista/prepararAsalto.js';
 import { dejarMochilaLibre, descartarDeMochila } from '../services/cronista/prepararMochila.js';
+import { emparejarDeADos } from '../services/cronista/prepararPareja.js';
+import { sacarAJugadora } from '../services/cronista/prepararFuera.js';
 import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados sin-guarnicion huida-rival[:<npc>] fuera:<lugar> combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -79,9 +82,12 @@ const rechaza = (t: string) => { console.error(t); fallo = true; };
 for (const paso of pasos) {
   if (fallo) break;
   if (paso.tipo === 'subditos') {
-    for (let i = 0; i < paso.n; i++) {
-      const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
-      const s = await prisma.$transaction(async (tx) => {
+    // P432: todo el paso en una sola transacción: si un súbdito falla, no queda ninguno a medias.
+    const creados = await prisma.$transaction(async (tx) => {
+      const hechos: { name: string }[] = [];
+      const ids: string[] = [];
+      for (let i = 0; i < paso.n; i++) {
+        const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
         const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, genero: sexoDelSubdito(paso.sexo, i), random: Math.random });
         if (paso.rol && esTarea(paso.rol)) {
           // ganadero, recolector…: son tareas del trabajador, no roles.
@@ -89,13 +95,17 @@ for (const paso of pasos) {
           if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`);
         } else if (paso.rol) {
           const r = await cambiarRolSubdito(tx, saveId, nuevo.id, paso.rol, ahora);
-          if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`); // deshace también el súbdito recién creado
+          if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`);
         }
-        return nuevo;
-      }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return null; });
-      if (!s) break;
-      dice(`Súbdito: ${s.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
-    }
+        hechos.push(nuevo);
+        ids.push(nuevo.id);
+      }
+      // P433: `sexo=pareja` deja a los súbditos emparejados de dos en dos (macho, hembra), como si `revisarFamilias` ya los hubiera juntado.
+      if (paso.sexo === 'pareja') await emparejarDeADos(tx, ids);
+      return hechos;
+    }, { timeout: 120_000 }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return [] as { name: string }[]; });
+    for (const s of creados) dice(`Súbdito: ${s.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
+    if (creados.length && paso.sexo === 'pareja') dice(`  ${Math.floor(creados.length / 2)} pareja(s) formada(s) (parejaId en los dos)`);
   } else if (paso.tipo === 'reclutar') {
     // random fijo alto: la tirada de Carisma se gana (el reclutamiento en sí lo decide la regla del juego: cama, líder, ya acompañante…).
     const r = await proponer(prisma, saveId, paso.npcSlug, 'RECLUTAR', () => 0.999);
@@ -136,21 +146,10 @@ for (const paso of pasos) {
     const rel = await prisma.factionRelation.findFirst({ where: { sourceFactionId: faccion.id, targetFactionId: reino.id }, select: { type: true, presion: true } });
     dice(`Relación ${faccion.name} → ${reino.name}: ${rel?.type} (presión ${rel?.presion})`);
   } else if (paso.tipo === 'combate') {
-    const npcs = await prisma.npc.findMany({ where: { worldId: save.worldId, saveId: null, slug: { in: paso.npcSlugs } } });
-    const faltan = paso.npcSlugs.filter((s) => !npcs.some((n) => n.slug === s));
-    if (faltan.length) { rechaza(`combate: no hay NPC ${faltan.join(', ')}.`); continue; }
-    const miembros: MiembroDeGrupo[] = paso.npcSlugs.map((slug) => {
-      const n = npcs.find((x) => x.slug === slug)!;
-      const a = n.attributes as AttributeBlock;
-      return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: a.destreza, inteligencia: a.inteligencia, esGrupo: false };
-    });
-    const abierto = await abrirCombateDePersonas(
-      prisma,
-      { id: saveId, characterName: save.characterName, attributes: save.attributes as AttributeBlock, fictionalMinutes: ahora, timeLabel: formatFictionalDate(ahora) },
-      miembros,
-    );
-    if (!abierto) rechaza('combate: ya hay un combate en curso.');
-    else dice(`Combate abierto contra ${miembros.map((m) => `${m.nombre} (Int ${m.inteligencia})`).join(', ')}`);
+    // P374: se niega con un rival muerto o convaleciente (`abrirCombateDePreparacion`).
+    const r = await abrirCombateDePreparacion(prisma, { saveId, npcSlugs: paso.npcSlugs });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Combate abierto contra ${r.rivales.map((m) => `${m.nombre} (Int ${m.inteligencia})`).join(', ')}`);
   } else if (paso.tipo === 'combate1v1') {
     const r = await abrirCombate1v1(prisma, { saveId, npcSlug: paso.npcSlug });
     if ('error' in r) rechaza(r.error);
@@ -164,11 +163,9 @@ for (const paso of pasos) {
     if ('error' in r) rechaza(r.error);
     else dice(`Convaleciente en combate: ${r.nombre} (${r.scope}); combate sin resolver con ${r.rivales.join(', ')}`);
   } else if (paso.tipo === 'convaleciente') {
-    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.npcSlug }, select: { id: true, slug: true, kind: true } });
-    if (!npc) { rechaza(`convaleciente: no hay NPC ${paso.npcSlug}.`); continue; }
-    // Lo escribe `dejarNpcConvaleciente` (`turnLootKill.ts`), la misma función de datos que usa la derrota real en combate: condición y reloj, ausencia de zona de 6 h y grupo.
-    const { scope } = await prisma.$transaction((tx) => dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora }));
-    dice(`Convaleciente: ${npc.slug} (${scope})`);
+    const r = await dejarConvalecienteSuelto(prisma, { saveId, npcSlug: paso.npcSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Convaleciente: ${r.slug} (${r.scope})`);
   } else if (paso.tipo === 'lider-muere') {
     const r = await matarLiderDeFaccion(prisma, { saveId, faccionSlug: paso.facSlug });
     if ('error' in r) rechaza(r.error);
@@ -189,6 +186,17 @@ for (const paso of pasos) {
     const r = await hacerDomador(prisma, { saveId, nivel: paso.nivel });
     if ('error' in r) rechaza(r.error);
     else dice(`Domador: nivel ${r.nivel}, ${r.especializacion}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
+  } else if (paso.tipo === 'fuera') {
+    const r = await sacarAJugadora(prisma, { saveId, lugarSlug: paso.lugarSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.yaEstaba ? `Fuera: la jugadora ya estaba en ${r.lugar}` : `Fuera: la jugadora sale de ${r.desde ?? 'ninguna parte'} a ${r.lugar} (punto de entrada ${r.x},${r.y})`);
+  } else if (paso.tipo === 'sin-guarnicion') {
+    const r = await dejarSinGuarnicion(prisma, { saveId });
+    if ('error' in r) rechaza(r.error);
+    else {
+      dice(`Sin guarnición: ${r.aTrabajador.length ? `${r.aTrabajador.join(', ')} a trabajador` : 'no había soldados ni vigías'}; ${r.licenciados} de milicia licenciados; ${r.equiposQuitados} Armería(s) sin equipos de milicia`);
+      if (r.guardias > 0) dice(`  AVISO: quedan ${r.guardias} guardia(s) de fauna en los corrales: también defienden`);
+    }
   } else if (paso.tipo === 'sin-aliados') {
     const r = await dejarSinAliados(prisma, { saveId });
     if ('error' in r) rechaza(r.error);
@@ -201,7 +209,7 @@ for (const paso of pasos) {
     const r = await repararDanados(prisma, saveId);
     for (const x of r.reparados) dice(`Reparado: ${x.nombre} (${x.coste} materiales)`);
     if (r.reparados.length === 0 && r.sinReparar.length === 0) dice('Reparar: no hay edificios dañados');
-    for (const x of r.sinReparar) rechaza(`reparar: ${x.nombre} sigue dañado: ${x.motivo}`);
+    for (const x of r.sinReparar) rechaza(`reparar: ${x.nombre} sigue dañado, ${textoSinReparar(x)}`);
   } else if (paso.tipo === 'danar') {
     const r = await danarEdificioDeReceta(prisma, { saveId, receta: paso.receta });
     if ('error' in r) rechaza(r.error);
@@ -216,6 +224,8 @@ for (const paso of pasos) {
     else {
       dice(`Asalto: ${r.quien} manda ${r.van} soldados contra la Capital, a ${r.tramos} tramo${r.tramos === 1 ? '' : 's'} (sale de ${r.origen}); ${r.avisado ? 'la Torre lo ha avistado (aviso en el diario del Reino)' : 'la Torre no lo avistó'}`);
       dice(r.milicia ? `  «Llamar a la milicia» no serviría ahora: ${r.milicia}` : '  «Llamar a la milicia» tiene adultos que armar');
+      // P451: un día de marcha por tramo (o más) y uno más para el asalto, que se resuelve el día después de llegar.
+      dice(`  Se resuelve al llegar: avanza al menos ${r.tramos + 1} días (escenario.sh avanzar <partida> ${r.tramos + 1}) y mira el Diario`);
       if (!r.jugadoraEnCapital) dice('  AVISO: la jugadora no está en la Capital: la milicia se arma sola y no hay botón que pulsar');
     }
   } else if (paso.tipo === 'mochila-descartar') {
@@ -239,6 +249,10 @@ for (const paso of pasos) {
     const r = await dejarHeridoEnCombate(prisma, { saveId, npcSlug: paso.npcSlug, condicion: paso.condicion });
     if ('error' in r) rechaza(r.error);
     else dice(`Herido en combate: ${r.nombre} (${r.bando === 'ENEMIGO' ? 'rival' : 'bando de la jugadora'}) queda ${r.condicion}${r.ordenaCaerSobre ? `; el capitán ordena ya caer sobre ${r.ordenaCaerSobre}` : r.bando === 'ENEMIGO' ? '' : '; el capitán no cambia de objetivo (no es el más herido o la ronda ya empezó)'}`);
+  } else if (paso.tipo === 'huida-rival') {
+    const r = await dejarRivalAPuntoDeHuir(prisma, { saveId, npcSlug: paso.npcSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Huida de rival: ${r.nombre} queda GRAVE sin moral tirada; en la ronda siguiente el bando enemigo tira moral (puede aguantar; con el juego lanzado con WMF_HUIDA_PRUEBAS=1 huye siempre). La línea de huida tiene que decir «${r.nombreVisible}», no el nombre real si es distinto`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

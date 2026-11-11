@@ -14,7 +14,7 @@ import {
   GRID_ROWS,
   type Celda,
 } from './zonaPosicion.js';
-import { ORCO_ENFURECIDO_QUEST_SLUG } from '../routes/saves/quests.js';
+import { ORCO_ENFURECIDO_QUEST_SLUG } from './questSlugs.js';
 import { siguienteCeldaDeZonePoint, enRangoDePersecucion } from './movementTemplates.js';
 import type { FaunaCategoria } from './faunaAbilities.js';
 import { effectiveTemperamento } from './reputation.js';

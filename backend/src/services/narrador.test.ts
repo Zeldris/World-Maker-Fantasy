@@ -1905,9 +1905,54 @@ describe('deterministicFallbackNarration', () => {
   it('en un intercambio de combate no contradice el resultado del intercambio con la tirada suelta (G7)', () => {
     const rollFallido = { attribute: 'fuerza' as const, value: 11, roll: 2, result: 7, difficulty: 15, success: false, gradoExito: 'fallo' as const };
     const conecta = deterministicFallbackNarration({ action: 'Lanzo un tajo.', roll: rollFallido, combatRealHitLanded: true });
-    expect(conecta.narration).toBe('Lanzo un tajo. El intercambio se salda con un golpe que conecta.');
+    expect(conecta.narration).toContain('El intercambio se salda con un golpe que conecta.');
     const nadie = deterministicFallbackNarration({ action: 'Lanzo un tajo.', roll: rollFallido, combatBothMissed: true });
-    expect(nadie.narration).toBe('Lanzo un tajo. Ningún golpe llega a conectar.');
+    expect(nadie.narration).toContain('Ningún golpe llega a conectar.');
+  });
+
+  it('P435: el respaldo de un intercambio de combate no copia la acción de la jugadora y dice el resultado', () => {
+    const accion = 'Ataco con un golpe directo al orco.';
+    const conecta = deterministicFallbackNarration({ action: accion, combatRealHitLanded: true });
+    const nadie = deterministicFallbackNarration({ action: accion, combatBothMissed: true });
+    for (const r of [conecta, nadie]) {
+      expect(r.narration).not.toContain('Ataco');
+      expect(r.narration).toMatch(/narrador no ha respondido/);
+      expect(r.fallbackDeterminista).toBe(true);
+    }
+    expect(conecta.narration).toMatch(/golpe que conecta/);
+    expect(nadie.narration).toMatch(/Ningún golpe llega a conectar/);
+    // fuera de combate no cambia (P94)
+    expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).narration).toContain('Miro el paisaje');
+  });
+
+  it('P435: ataque a fauna/NPC pasivo antes del combate formal no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Ataco al ciervo con la lanza.', nonExchangeAttackHitLanded: true });
+    expect(r.narration).not.toContain('Ataco');
+    expect(r.narration).toMatch(/El ataque da en el blanco/);
+    expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: ataque de apertura a un NPC sin intercambio no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Ataco a Torgash con la maza.', npcSlugsInScene: ['torgash'], combatNotYetResolved: true });
+    expect(r.narration).not.toContain('Torgash');
+    expect(r.narration).toMatch(/Aún no se ha resuelto ningún intercambio/);
+    expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: escena pacífica con un NPC (combatNotYetResolved) copia la acción y no habla de intercambio', () => {
+    const r = deterministicFallbackNarration({ action: 'Le compro una ración a Torgash.', npcSlugsInScene: ['torgash'], combatNotYetResolved: true });
+    expect(r.narration).toContain('Le compro una ración a Torgash.');
+    expect(r.narration).not.toMatch(/intercambio/);
+  });
+
+  it('P435: turno de combate sin intercambio resuelto no copia la acción', () => {
+    const r = deterministicFallbackNarration({ action: 'Me preparo para el choque.', enCombate: true });
+    expect(r.narration).not.toContain('preparo');
+    expect(r.narration).toMatch(/narrador no ha respondido/);
+  });
+
+  it('P435: fuera de combate el respaldo sigue copiando la acción (P94)', () => {
+    expect(deterministicFallbackNarration({ action: 'Recojo la leña.' }).narration).toContain('Recojo la leña.');
   });
 
   it('sin tirada, narra igualmente sin romper', () => {

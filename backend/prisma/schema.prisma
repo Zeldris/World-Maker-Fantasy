@@ -1833,6 +1833,9 @@ model KingdomStats {
   diasHambre             Int      @default(0)
   /// CR-53 53d: días seguidos sin agua (a los 2, la sed puede matar).
   diasSed                Int      @default(0)
+  /// P381: el aviso «quedan menos de 7 días de comida / bebida» ya salió en esta racha (se rearma al volver a 7 días o más).
+  avisoComidaBajo        Boolean  @default(false)
+  avisoBebidaBajo        Boolean  @default(false)
   /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
   ultimaLlegada          Int?
   /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.

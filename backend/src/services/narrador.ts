@@ -1121,7 +1121,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // pillar esta narración concreta, pero la causa de raíz era esta instrucción contradictoria
   // dentro del mismo prompt — se reescribe para hablar de VENTAJA DE POSICIÓN/INICIATIVA, nunca
   // de un golpe ya conectado ni de la reacción física del objetivo a él.
-  const hostileEngagement = !ctx.enCombate && npcSlugs.length > 0 && (detectsAttackIntent(ctx.action) || detectsHostileSearchIntent(ctx.action));
+  const hostileEngagement = !ctx.enCombate && esAperturaHostilConNpc(ctx.action, npcSlugs);
   // Ver `hasWrongAggressorName` más abajo y el comentario de `nonHostileNpcNamesInScene` en
   // TurnContext — instrucción explícita con nombres reales, no solo el guard post-hoc, para que el
   // modelo tenga la información desde el principio en vez de que la corrección llegue solo vía
@@ -1721,28 +1721,59 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   return deterministicFallbackNarration(ctx);
 }
 
+/// Turno hostil de apertura: hay NPC en escena y la acción es un ataque o una búsqueda hostil. Criterio único
+/// de `hostileEngagement` (prompt) y del respaldo determinista (P435).
+function esAperturaHostilConNpc(action: string, npcSlugs: string[]): boolean {
+  return npcSlugs.length > 0 && (detectsAttackIntent(action) || detectsHostileSearchIntent(action));
+}
+
 export function deterministicFallbackNarration(ctx: {
   action: string;
+  npcSlugsInScene?: string[];
   roll?: RollResult;
   combatBothMissed?: boolean;
   combatRealHitLanded?: boolean;
+  nonExchangeAttackHitLanded?: boolean;
+  /// Ignorado aquí a propósito (ver `enIntercambio`); queda en el tipo porque el call site pasa el TurnContext.
+  combatNotYetResolved?: boolean;
+  enCombate?: boolean;
 }): NarrationResult {
   const { action, roll } = ctx;
   // En un intercambio de combate manda el intercambio, no `roll` (Fase G del 0.1, hallazgo G7):
   // «Gana Gorhorn · el golpe conecta» salía junto a «La acción no sale como se esperaba». Sin saber
   // aquí qué lado conectó, se dice solo lo que es seguro y la tarjeta de la tirada cuenta el resto.
+  // Ampliado (P435): cualquier turno con contexto de combate, resuelto o no (ataque a fauna/NPC pasivo
+  // antes del combate formal, aceptación previa, turno de combate sin intercambio).
+  // `combatNotYetResolved` NO cuenta: es verdadero en cualquier escena con un NPC (comprar, hablar), no solo en
+  // combate. La apertura hostil se deduce de la acción y de `npcSlugsInScene` (el call site pasa el TurnContext).
+  const enIntercambio = Boolean(
+    ctx.combatBothMissed ||
+      ctx.combatRealHitLanded ||
+      ctx.nonExchangeAttackHitLanded ||
+      ctx.enCombate ||
+      esAperturaHostilConNpc(action, ctx.npcSlugsInScene ?? []),
+  );
   const resultado = ctx.combatBothMissed
     ? 'Ningún golpe llega a conectar.'
     : ctx.combatRealHitLanded
       ? 'El intercambio se salda con un golpe que conecta.'
-      : !roll
+      : ctx.nonExchangeAttackHitLanded
+        ? 'El ataque da en el blanco.'
+        : enIntercambio && !roll
+          ? 'Aún no se ha resuelto ningún intercambio.'
+          : !roll
         ? 'La acción transcurre sin incidentes.'
         : roll.gradoExito === 'claro'
           ? 'La acción sale exactamente como se esperaba.'
           : 'La acción no sale como se esperaba.';
   return {
     // P94 (QA-27): la acción se repite tal cual; sin las comillas con que el juego cita al rival.
-    narration: `${sinComillasSueltas(action)} ${resultado}`,
+    // P435 (decisión de la usuaria, 2026-11-10): en un intercambio de combate NO se copia (en primera
+    // persona de la jugadora salía bajo el ataque del rival; ya está en «TU ACCIÓN»): solo el resultado
+    // y el aviso, como en el diálogo (P245). Fuera de combate sigue como antes.
+    narration: enIntercambio
+      ? `${resultado} (El narrador no ha respondido a esta escena.)`
+      : `${sinComillasSueltas(action)} ${resultado}`,
     fallbackDeterminista: true,
     newFacts: [],
     newItem: null,

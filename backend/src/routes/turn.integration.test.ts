@@ -3093,12 +3093,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     const otraRegion = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
     const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
     const pozoLejano = await prisma.building.create({ data: { saveId, locationId: otraRegion.id, name: 'Pozo lejano', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
-    // El Ayuntamiento es del territorio perdido: cae con él, y con él los edificios sin territorio de su región.
+    // El Ayuntamiento es del territorio perdido: los edificios sin territorio de su región caen, él no (P444).
     const ayto = await prisma.building.create({ data: { saveId, territoryId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
-    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO'); // P444: sin él no se podría reconstruir nada
     // Otra región no se toca.
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozoLejano.id } })).status).toBe('ACTIVO');
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);

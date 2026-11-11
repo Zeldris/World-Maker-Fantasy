@@ -12,7 +12,7 @@ cada commit.**
 |---|---|
 | **Actualizado** | 2026-11-11 |
 | **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/interfaz-imagenes` (desde 2026-10-24, `CFG-43`), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0` (PR 84, falta borrarla), `claude/lore-enciclopedia`, `claude/plan-imagenes`, `claude/generador-mapas`, `claude/pedido-mapa`, `claude/banco-narrador`, `claude/pruebas-local`, `claude/opt-ai-mejoras`. Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main` (`git log --merges origin/main`). `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
-| **Último commit en `main`** | PR #90 de `claude/pedido-mapa` (2026-11-10, `fd58780e`, CI en verde): MAP-14 y MAP-18, zonas y tiempos de ruta del mapa; agente local con encargo libre. |
+| **Último commit en `main`** | PR #91 de `claude/pedido-mapa` (2026-11-11, `04e4fa98`, CI en verde): ronda local del narrador con Ollama real, `QA-306`…`QA-316`. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/pedido-mapa`** | Ronda local cerrada (P306, P310, P435 siguen; nuevos P447, P448). `/gw-opt-ai` aprobado: `QA-308`, `QA-309` (`clasificar-eval`, 2/5: P447 y amenaza de P306 en rojo) y `QA-310` hechos, y `QA-307` (prefijo estable en combate) en código; falta medirlo en la Deck. Presupuesto de compactaciones: 1. Fase 1 hecha (leves: caché de combate cortada por salud/memoria/NPC; `viaje.py`; `SENTIDO_NIVEL`). Fase 2: `QA-311`, `QA-312` hechos; retro aplicada (`QA-313`…`QA-316`); fase 3 hecha. **Siguiente:** PR a `main` y fusionar con el CI en verde. |
 | **Tarea en curso · `claude/generador-mapas`** | Fusionada en `main` (PR #89, 2026-11-10, CI en verde): ~~MAP-1~~…~~MAP-9~~, ~~MAP-16~~, ~~MAP-17~~; `MAP-18` cerrado en `claude/pedido-mapa` (PR #90). Rama terminada. |
@@ -20,7 +20,7 @@ cada commit.**
 | **Tarea en curso · `claude/ins-34-backend-sin-curacion`** | Fusionada en `main` sin PR, CI local (2026-10-27, `QA-215`; retro aprobada por la usuaria): `INS-34` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md)), backend empaquetado sin curación ni cloud. Leves sin tarea: test del bundle en ESM y `esbuild` pinneado; `image-prompt` GET/PUT, variables cloud de `env.ts` y aviso de `LIVE_TEACHER_CAPTURE_ENABLED` siguen en el build. Siguiente: nada. |
 | **Tarea en curso · `claude/ins-33-frontend-sin-admin`** | Fusionada en `main` sin PR (2026-10-26, `47f6806`, `QA-215`; retro aprobada por la usuaria): `INS-33` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md), fase 3), frontend sin admin empaquetado, y retro `QA-262`…`QA-265`. Leve pendiente: rama `custom` de `CharacterSelect` inalcanzable a propósito. **Siguiente:** nada en esta rama; `INS-34`. |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | A `main` confirmado por la usuaria (2026-11-10): tandas 89-106, lotes A-C, `QA-298`-`QA-305`. Fases 1-3 ✅ (marca `bafb7c7a`); [retro](retro-2026-11-10-puerta-3.4.md) aprobada entera. PR [#88](https://github.com/Zeldris/World-Maker-Fantasy/pull/88) fusionado en `main` (2026-11-10): `roadmap` corregido (estados P363/P430/P435/P436); el `backend` falló por el test de la emboscada P233 (frontera en el mismo milisegundo), ya robusto. **Siguiente:** elegir con la usuaria el siguiente lote de la puerta. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | **Hacia `main`** (usuaria, 2026-11-11): lotes F-I (P440-P453). Fases 1-3 hechas (marca `d9c4aeeb`), `origin/main` (#91) traído. PR [#92](https://github.com/Zeldris/World-Maker-Fantasy/pull/92) abierto. **Siguiente:** CI en verde del #92 y fusionar; luego `/clear`. |
 | **Tarea en curso · `claude/gw-update-0.5.0`** | Fusionada en `main` (PR #84, 2026-11-04, `5b1f6a2e`, CI en verde): flujo v0.4.3 → v0.5.0. Rama terminada; lo pendiente pasó a la fila de `claude/wonderful-volta-662qt8`. |
 | **Tarea en curso · `claude/pruebas-local`** | Rondas de pruebas en la Deck con Ollama real (2026-10-20; solo se apunta). Hecho: P238-P274 (graves: P240, P260); jugados UX-30, CR-21/22/23, CR-67; `/code-review`, `/opt-ai`, `/opt-tokens` y `/retro` pasados, sus propuestas aprobadas sin aplicar. Bloqueadas: CR-53/55/58/61/63/65 y CR-32/42. PR #68 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
 | **Tarea en curso · `claude/opt-ai-mejoras`** | ✅ `/opt-ai` (`QA-160`…`QA-168`): turno p50 61 → 29-35 s, primera palabra 45 → 17-19 s. `/code-review`, `/opt-tokens` y [retro](retro-2026-10-20-opt-ai-mejoras.md) hechos y aplicados (`QA-169`…`QA-175`; bench con `tools/qa/bench-ia.sh`). Tests: `tools/qa` 119 (2 de `test_host` fallan solo en el sandbox), `opt-ai` OK. PR #70 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
@@ -193,12 +193,42 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 - Ollama simulado: el arranque está copiado en `ci-local.sh`, `entorno-nube.sh` y `con-mock-ollama.sh` (unificar); `vitest --project bd-real` a mano sigue sin levantarlo (un `globalSetup` lo cubriría).
 - `consultar.py lugares --radio` compara en unidades, no en km (hoy `kmPorUnidad` = 1); `_ficha_celda` con un `x` sin uso y `GEOJSON` sin uso en `banco.py`.
 
-## Hecho recientemente
+## Pendientes leves de la revisión de las tandas 107-108 (fase 1, 2026-11-10)
 
+- `sucesos.ts` `esDelReinoPropio`: un suceso de importancia 4 con el Reino propio y una aliada como actores recibe el TESTIGO y ya no da la noticia ALIADA en «El mundo»; además hace un `faction.count` por suceso menor.
+- `dailyTick.ts`: el aviso P381 corre antes que las órdenes de cocina (lotes que no entran en el balance): puede avisar un día antes. `avisoDeReserva` repite el aviso si el balance oscila en torno a 0.
+- `narrador.ts` respaldo de combate (P435): en combate sin tirada dice «Aún no se ha resuelto ningún intercambio» también al huir u hablar.
+- `/mundo/nuevas` (`log.ts:67`) pagina por `createdAt` y el worldLog se ordena con `ORDEN_LOG` (ya apuntado en el lote D).
+- `diarioFecha.ts` duplica `DIAS_POR_ESTACION` del backend y recalcula `diaAbsoluto`; las pestañas de día del Diario repiten «de Verano, año 1».
+- Clemente devuelve siempre `factionRepChange: null` (P270): el campo y su rama del frontend ya no se usan.
+
+## Pendientes leves de la revisión del lote G4 (2026-11-11)
+
+- `prepararAvance.ts#reponerZonaActual` recalcula siempre; el juego, al abrir el mapa, solo con FAUNA sin `lastUpdated` o en zonas de inicio (`zona.ts:317`). Usa `currentLocation`, no el destino de un viaje en curso, y `avanzarDias` dice «Fauna de X repuesta» aunque no haya puntos.
+- `prepararEdificios.ts#textoSinReparar` repite cifras y podría decir «faltan 0» en una carrera.
+- `interactuar.js`: el `dialog` puede casar con el propio mapa de zona; los mensajes nuevos de `interactuar.js`/`mover.js` y que `avanzar` repone la fauna no están en `rondas-de-pruebas.md`.
+- P383: `t56-reino-dia75` sigue con 11 de 12 edificios dañados (documentado; para asaltos, `t68`).
+
+## Pendientes leves de la fase 3 de los lotes F-I (2026-11-11)
+
+- `tools/qa/plan.py` toma como tanda o lote cualquier fila de tabla del plan cuya primera celda sea un número o una sola mayúscula, sea de la tabla que sea.
+- `dailyTick.ts` (P444): con el Ayuntamiento de territoryId null, o con su territorio ya PERDIDO antes, los de su región no caen nunca en una rebelión (el comentario ya lo dice; decidir si es lo querido).
+
+## Hecho recientemente
+- **2026-11-11** — ~~`QA-317`…`QA-321`~~ (retro y `/gw-opt-tokens` de los lotes F-I): comentario P444 en `dailyTick.ts`, P citados en `REVIEW.md`, commit con bitácora en el encargo de arreglos, `tools/qa/plan.py` y notas de tokens.
 - **2026-11-11** — ~~`QA-306`~~ (usuario): `/gw-opt-ai` por umbral, no por PR: cada tanda local apunta una fila en `docs/records/pendiente-opt-ai.md` y Claude lo recomienda al pasar ~30 turnos o 4 tandas (`AGENTS.md`, `rondas-de-pruebas.md`, `skills-y-modelos.md`).
 - **2026-11-11** — ~~`QA-313`~~, ~~`QA-314`~~, ~~`QA-315`~~, ~~`QA-316`~~ (retro de `claude/pedido-mapa`): `deck/ia-ronda.sh` para Ollama de la ronda; evals que llaman al juego; encargo de código con rojo sin arreglo; estado por SQL antes de jugar.
 - **2026-11-11** — ~~`QA-311`~~, ~~`QA-312`~~ (`/gw-opt-tokens` del PR de `claude/pedido-mapa`): `tools/qa/seccion.sh` para leer solo «Qué se prueba»; `escenario.sh lista <patrón>`.
 - **2026-11-11** — ~~`QA-308`~~, ~~`QA-309`~~, ~~`QA-310`~~ (`/gw-opt-ai` aprobado): Cronista con keep_alive 30m; `npm run clasificar-eval` con 5 casos (2/5); `escenario.sh` relanza con el registro de IA (`logs/juego-ia.env`). ~~`QA-307`~~: lo que cambia en cada ronda de combate va al final de los hechos (falta medirlo en la Deck).
+- **2026-11-11** — Lote G de herramientas cerrado (G1-G4: P370-P434), revisado sin graves ni medios; todo sin ver jugando.
+- **2026-11-11** — Decisión de la usuaria sobre P440 (el cazador sin partida no aporta comida) y lote G de herramientas abierto.
+- **2026-11-10** — Tanda 110 (lote F, juego): P440 y P442 ✅; P441 reabierto; P443 nuevo (leve). Antes: regresión de P375 en turn.integration arreglada (slug a `services/questSlugs.ts`).
+- **2026-11-10** — Tanda 109 (repesca de lotes A y E): P426 y P437 ✅ comprobados jugando; P441 confirmado 2 de 2; P442 nuevo (leve, dudoso); P375 con NPC ausente sin reproducir.
+- **2026-11-10** — Fase 1 de las tandas 107-108: P375 también descarta testigos inactivos a esa hora o ausentes tras un combate (test de integración); leves apuntados.
+
+- **2026-11-10** — Tanda 108 (lote E, juego): P270, P319, P358, P375 y P380 ✅ comprobados jugando; P441 nueva (leve: «Tirag» suelto se toma por el Tótem de Guerra).
+- **2026-11-10** — Tanda 107 (lote D, juego): P248, P381, P343, P379 y P435 (simulado) ✅ comprobados jugando; P342 sin ver (vasallo ajeno); sin hallazgos nuevos.
+- **2026-11-10** — Lote D de la puerta cerrado y revisado (P248, P342, P343, P379, P381, P435 a jugar; P368 cerrada; P440 nueva pendiente), plan `plan-comprobacion-puerta.md` al día.
 - **2026-11-10** — ~~`QA-303`~~: `marca-hallazgo.py --ver P<n>` y las tandas cerradas del plan de la puerta, en `plan-comprobacion-puerta-archivo.md` (86 → 22 kB).
 - **2026-11-10** — ~~`QA-301`~~: `tools/qa/inventario-suelto.py` en el check (inventario sin lo de compañeros y súbditos); arregló 4 consultas más (viajeros, entregables, recolectar).
 - **2026-11-10** — ~~`QA-304`~~, ~~`QA-305`~~ (retro del paso 3.4): el encargo de tanda lleva el tope de 50 llamadas (`skills-wmf.md`); `/clear` también al cerrar cada lote de una rama larga (`AGENTS.md`).

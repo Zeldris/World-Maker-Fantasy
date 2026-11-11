@@ -6,6 +6,7 @@
 // (`Suceso.reaccionesPendientes`) y las procesa `procesarReacciones` (reacciones.ts).
 import { randomUUID } from 'node:crypto';
 import type { OrigenSuceso, Prisma, PrismaClient } from '@prisma/client';
+import { IMPORTANCIA_RUMOR_LEJANO } from './conocimiento.js';
 import { CATALOGO_SUCESOS, importanciaDeSuceso, textoDeSuceso, type DatosSuceso, type TipoSuceso } from './catalogoSucesos.js';
 
 export type EntidadTipo = 'PERSONAJE' | 'NPC' | 'COMPANERO' | 'FACCION' | 'REGION' | 'LOCATION' | 'TERRITORIO' | 'EDIFICIO' | 'LINAJE' | 'SUBDITO';
@@ -74,6 +75,13 @@ async function alianzaYaContada(db: Db, s: NuevoSuceso): Promise<string | null> 
   return enMedio.some(entreLasMismas) ? null : previo.id;
 }
 
+/// ¿Algún actor es la facción del Reino de la jugadora (la de la partida sin `origenSlug`)?
+async function esDelReinoPropio(db: Db, saveId: string, actores: ActorSuceso[]): Promise<boolean> {
+  const slugs = actores.filter((a) => a.entidadTipo === 'FACCION').map((a) => a.entidadId);
+  if (slugs.length === 0) return false;
+  return (await db.faction.count({ where: { saveId, origenSlug: null, disueltaEn: null, slug: { in: slugs } } })) > 0;
+}
+
 /// Registra un suceso en el Libro y devuelve su id. Llamar dentro de la transacción del turno o del
 /// día, para que el suceso exista si y solo si existe lo que lo causó. Una alianza que ya se contó
 /// (P247) devuelve el id de la primera.
@@ -93,6 +101,7 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
   // Mismo actor con el mismo papel dos veces = una sola fila (clave primaria compuesta).
   const actores = Array.from(new Map(s.actores.map((a) => [`${a.entidadTipo}|${a.entidadId}|${a.papel}`, a])).values());
 
+  const importancia = importanciaDeSuceso(s.tipo, { jugadorAutor, afectaNucleoJugable, tocaHilo: !!s.tocaHilo, victimaFaunaMenor });
   const suceso = await db.suceso.create({
     data: {
       saveId: s.saveId,
@@ -101,7 +110,7 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
       fictionalMinutes: s.fictionalMinutes,
       regionSlug: s.regionSlug ?? null,
       locationId: s.locationId ?? null,
-      importancia: importanciaDeSuceso(s.tipo, { jugadorAutor, afectaNucleoJugable, tocaHilo: !!s.tocaHilo, victimaFaunaMenor }),
+      importancia,
       origen: s.origen,
       datos: s.datos as unknown as Prisma.InputJsonValue,
       texto: textoDeSuceso(s.tipo, s.datos),
@@ -119,6 +128,11 @@ export async function registrarSuceso<T extends TipoSuceso>(db: Db, s: NuevoSuce
     const save = await db.save.findUnique({ where: { id: s.saveId }, select: { currentLocationId: true } });
     testigo = save?.currentLocationId === s.locationId;
   }
+  // P248/P342 (decisión de la usuaria 2026-11-08): lo del Reino propio (su facción es actor) se ve siempre en
+  // Leyendas › Tu Reino, también lo menor (el pago de un vasallo, importancia 2), que la difusión no recoge
+  // (`llegaSola` pide importancia ≥ 5). Lo grave (hambruna, rebelión) lo sigue sabiendo la difusión, que además
+  // lo escribe en «El mundo» (P316). Esto solo apunta el Conocimiento: no escribe noticia.
+  if (!testigo && importancia < IMPORTANCIA_RUMOR_LEJANO) testigo = await esDelReinoPropio(db, s.saveId, actores);
   if (testigo) {
     await db.conocimiento.create({
       data: { saveId: s.saveId, sucesoId: suceso.id, desde: s.fictionalMinutes, via: 'TESTIGO', confirmado: true, confirmadoEn: s.fictionalMinutes },

@@ -30,7 +30,10 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   con `escenario.sh probar` (`QA-153`) y pasa por las funciones del juego que aplican esas reglas, sin rehacerlas a
   mano (`QA-151`). Los P-números de `FOUND` van al registro de la ronda y los de `TOOLS` a
   [`fallos-herramientas.md`](../records/fallos-herramientas.md) (`QA-133`); con subagentes en paralelo, solo la
-  principal escribe la bitácora y `docs/records/pruebas-0.3-hallazgos.md` (`QA-132`).
+  principal escribe la bitácora y `docs/records/pruebas-0.3-hallazgos.md` (`QA-132`). El encargo de arreglos
+  dice «deja el cambio sin commitear» (la principal lo commitea con la bitácora) o, si trabaja en su propia rama,
+  «actualiza tu fila con `handoff.py` y commitéala en el mismo commit»: un commit sin `traspaso.md` lo pide el
+  gancho de parada y el `--amend` lo bloquea el modo automático (`QA-319`).
 - **`/gw-update`** (`QA-296`): la comparación entre la copia de WMF y la versión nueva (cada `.gw-new`, cada
   archivo del flujo con desvío local, que `--update` sobrescribe sin `.gw-new`, y los rellenados como `REVIEW.md`)
   la hace un subagente Sonnet que devuelve la tabla «archivo · desvío · arriba · decisión propuesta»; la sesión

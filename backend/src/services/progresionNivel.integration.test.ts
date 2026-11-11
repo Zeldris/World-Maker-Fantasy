@@ -32,6 +32,15 @@ describe('hacerNivel y dejarMochilaLibre (P370, P367)', () => {
     expect(await hacerNivel(prisma, { saveId, nivel: 20 })).toHaveProperty('error');
   });
 
+  it('nivel por debajo del actual se rechaza con un mensaje claro y no toca la partida (P434)', async () => {
+    const saveId = await partida('Nivel no baja (P434)');
+    const sube = await hacerNivel(prisma, { saveId, nivel: 19 });
+    expect(sube).toHaveProperty('hasta', 19);
+    const r = await hacerNivel(prisma, { saveId, nivel: 2 });
+    expect(r).toEqual({ error: 'nivel: La partida ya es de nivel 19: no se baja a 2.' });
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).level).toBe(19);
+  });
+
   it('nivel con atributos reparte todos los puntos por turno y salta el que llega al tope (P386)', async () => {
     const saveId = await partida('Nivel con atributos (P386)');
     const r = await hacerNivel(prisma, { saveId, nivel: 19, atributos: ['constitucion', 'fuerza'] });

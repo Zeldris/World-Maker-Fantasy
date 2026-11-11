@@ -8,10 +8,20 @@
 import type { PrismaClient } from '@prisma/client';
 import { dejarNpcConvaleciente } from '../turnLootKill.js';
 import { guardarSlugsDeCombate } from '../combateDesde.js';
+import { scopeFor } from '../npcScene.js';
+import type { Prisma } from '@prisma/client';
 
 export type ResultadoConvalecienteEnCombate = { nombre: string; scope: string; rivales: string[] };
 
 class Rechazo extends Error {}
+
+// Revisión de G3: `dejarNpcConvaleciente` (la escritura del juego, que solo llega con un rival vivo) sobrescribe la condición
+// sin mirarla; un paso que nombra al NPC a mano resucitaría a un MUERTO. Se niega antes de escribir, como `combate1v1`.
+async function rechazarSiMuerto(tx: Prisma.TransactionClient, saveId: string, npc: { id: string; name: string; kind: Parameters<typeof scopeFor>[0] }, currentLocationId: string | null) {
+  const scope = scopeFor(npc.kind, currentLocationId);
+  const estado = await tx.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } }, select: { condicionFisica: true } });
+  if (estado?.condicionFisica === 'MUERTO') throw new Rechazo(`convaleciente: ${npc.name} está MUERTO aquí; el paso no lo resucita.`);
+}
 
 export async function dejarConvalecienteEnCombate(
   prisma: PrismaClient,
@@ -28,6 +38,7 @@ export async function dejarConvalecienteEnCombate(
       if (!save.currentLocationId) throw new Rechazo('convaleciente: la partida no está en ningún lugar.');
       const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: npcSlug }, select: { id: true, name: true, slug: true, kind: true } });
       if (!npc) throw new Rechazo(`convaleciente: no hay NPC ${npcSlug}.`);
+      await rechazarSiMuerto(tx, saveId, npc, save.currentLocationId);
       // P406: con un combate de grupo abierto (p. ej. `reino-combate-capitan`), el NPC tiene que ser uno de sus rivales: queda
       // CONVALECIENTE en su `NpcState` (el que lee el combate para un rival suelto) y sale con Matar, Capturar y Clemente.
       const encuentro = await tx.combatEncounter.findFirst({
@@ -50,6 +61,30 @@ export async function dejarConvalecienteEnCombate(
       const rivales = [...new Set([...previos, npc.slug])];
       await guardarSlugsDeCombate(tx, saveId, rivales);
       return { nombre: npc.name, scope, rivales };
+    });
+  } catch (e) {
+    if (e instanceof Rechazo) return { error: e.message };
+    throw e;
+  }
+}
+
+export type ResultadoConvaleciente = { slug: string; scope: string };
+
+// El paso `convaleciente:<npc>` (sin `:combate`): el NPC queda CONVALECIENTE en el lugar actual con `dejarNpcConvaleciente`
+// (`turnLootKill.ts`), la misma escritura que la derrota real en combate: condición y reloj, ausencia de zona de 6 h y grupo.
+export async function dejarConvalecienteSuelto(
+  prisma: PrismaClient,
+  { saveId, npcSlug }: { saveId: string; npcSlug: string },
+): Promise<ResultadoConvaleciente | { error: string }> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const save = await tx.save.findUnique({ where: { id: saveId }, select: { worldId: true, currentLocationId: true, worldState: { select: { fictionalMinutes: true } } } });
+      if (!save) throw new Rechazo(`convaleciente: no hay partida ${saveId}.`);
+      const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: npcSlug }, select: { id: true, name: true, slug: true, kind: true } });
+      if (!npc) throw new Rechazo(`convaleciente: no hay NPC ${npcSlug}.`);
+      await rechazarSiMuerto(tx, saveId, npc, save.currentLocationId);
+      const { scope } = await dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora: save.worldState?.fictionalMinutes ?? 0 });
+      return { slug: npc.slug, scope };
     });
   } catch (e) {
     if (e instanceof Rechazo) return { error: e.message };

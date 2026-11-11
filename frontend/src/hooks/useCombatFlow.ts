@@ -12,7 +12,7 @@ import type {
   InitiativeRollInfo,
   InventoryItemInfo,
   LogEntry,
-  NpcInSceneInfo,
+  CombateIniciadoInfo,
   ProgressionResult,
   QuestInfo,
   SavedActionInfo,
@@ -33,8 +33,8 @@ interface UseCombatFlowParams {
   setInventory: Dispatch<SetStateAction<InventoryItemInfo[]>>
   enciclopediaData: EnciclopediaResponse | null
   buildEntityBanner: (narration: string, logEntryId: string) => LogEntry['entityBanner']
-  combateIniciado: { npcs: NpcInSceneInfo[] } | null
-  setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
+  combateIniciado: CombateIniciadoInfo | null
+  setCombateIniciado: Dispatch<SetStateAction<CombateIniciadoInfo | null>>
   setLastInitiativeRoll: Dispatch<SetStateAction<InitiativeRollInfo | null>>
   activePanel: PanelId | null
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
@@ -226,7 +226,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
   // había aplicado), que en ese flujo es siempre `null`. `openCombat` devolvía sin hacer nada.
   // P405: `conservarIniciativa` al reabrir tras una recarga, donde `syncFromSave` acaba de
   // rehidratar `lastInitiativeRoll` en este mismo lote de setState.
-  function openCombat(combatOverride?: { npcs: NpcInSceneInfo[] } | null, opts?: { conservarIniciativa?: boolean }) {
+  function openCombat(combatOverride?: CombateIniciadoInfo | null, opts?: { conservarIniciativa?: boolean }) {
     const combate = combatOverride ?? combateIniciado
     if (!combate) return
     setCombatNpcStates(combate.npcs.map(npcInSceneToCombatDisplay))
@@ -741,7 +741,7 @@ export function useCombatFlow(params: UseCombatFlowParams) {
     removedInventoryItemIds: string[]
     updatedInventoryItems: { id: string; name: string }[]
     logEntryId: string
-    combate?: { npcs: NpcInSceneInfo[] } | null
+    combate?: CombateIniciadoInfo | null
     esperandoDefensaJugador: boolean
     npcAbilityUsed: { npcName: string; abilityName: string; rol: 'ataque' | 'defensa' } | null
     playerAbilityUsed: { name: string; icon: string; description: string; rol: 'ataque' | 'defensa' } | null

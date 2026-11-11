@@ -1,6 +1,6 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { cazarEnZona } from '../lib/api'
-import type { CazaSigiloRoll, CombateGrupoLogRoll, LogEntry, NpcInSceneInfo } from '../types'
+import type { CazaSigiloRoll, CombateGrupoLogRoll, LogEntry, CombateIniciadoInfo } from '../types'
 
 // Bloque zona/caza/cadáveres extraído de GameView.tsx (Fase 7 del plan, refactor puro, mismo patrón
 // que useCombatFlow.ts): GameView sigue siendo dueño del log, del combate y de `handleSubmit`
@@ -8,8 +8,8 @@ import type { CazaSigiloRoll, CombateGrupoLogRoll, LogEntry, NpcInSceneInfo } fr
 interface UseZonaAccionesParams {
   saveId: string | null
   setCharacterLog: Dispatch<SetStateAction<LogEntry[]>>
-  setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
-  openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
+  setCombateIniciado: Dispatch<SetStateAction<CombateIniciadoInfo | null>>
+  openCombat: (npcs: CombateIniciadoInfo) => void
   handleSubmit: (actionText: string, extras?: { accionEnDiario?: string | null }) => void | Promise<void>
 }
 
@@ -40,7 +40,7 @@ export function useZonaAcciones({ saveId, setCharacterLog, setCombateIniciado, o
     result:
       | {
           resuelveSinCombate: true
-          combate: { npcs: NpcInSceneInfo[] }
+          combate: CombateIniciadoInfo
           logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }
         }
       | {

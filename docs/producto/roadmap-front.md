@@ -1728,6 +1728,13 @@ Retro y `/gw-opt-tokens` del paso 3.4 de la puerta (usuaria, 2026-11-10, [retro]
 - ~~**QA-316 · Estado comprobado con SQL antes de jugar**~~ ✅ 2026-11-11 (misma retro): la tanda de P306 perdió dos escenarios sin Torgash. `rondas-de-pruebas.md` paso 2 y `skills-wmf.md`.
 - ~~**QA-312 · `escenario.sh lista <patrón>`**~~ ✅ 2026-11-11 (misma pasada): el índice entero arrastró 197k para buscar una instantánea; con patrón, la cabecera y las filas que casan. Test en `test_escenario.py`; `rondas-de-pruebas.md` paso 2.
 
+Retro y `/gw-opt-tokens` de los lotes F-I de la puerta (usuaria, 2026-11-11, [retro](../records/retro-2026-11-11-lotes-f-i-a-main.md)):
+- ~~**QA-317 · El comentario de P299 en `dailyTick.ts` sigue a P444**~~ ✅ 2026-11-11: decía que con el Ayuntamiento en pie los de su región no caían «ni por su rebelión»; desde P444 el Ayuntamiento sigue en pie con su territorio perdido y los de su región caen. La revisión lo marcó (H1) y un subagente lo «arregló» rompiendo un test. Solo el comentario.
+- ~~**QA-318 · La revisión contrasta los P citados**~~ ✅ 2026-11-11: si el código cita un `P<n>`, el hallazgo que lo contradiga pasa antes por `marca-hallazgo.py --ver`. `REVIEW.md`, «Cómo se informa».
+- ~~**QA-319 · El subagente de arreglos no commitea sin la bitácora**~~ ✅ 2026-11-11: el encargo dice «deja el cambio sin commitear» o «actualiza tu fila con `handoff.py` y commitéala junto». `skills-wmf.md`; propuesto también a Galivelop-workflow (en la retro).
+- ~~**QA-320 · `tools/qa/plan.py`: el estado del plan de la puerta en una orden**~~ ✅ 2026-11-11: tanda siguiente, tandas sin hacer, lotes con sus P y lo último apuntado; `--tanda N` (también del archivo) y `--lote X`. Test en `tools/qa/tests/test_plan.py`; la línea, en `rondas-de-pruebas.md` y `gw-opt-tokens.md`.
+- ~~**QA-321 · Notas de `/gw-opt-tokens` de los lotes F-I**~~ ✅ 2026-11-11: «Qué se prueba» con un `sed` de la sección (`QA-209`) y el diagnóstico de código en un subagente con el P y el `archivo:línea`. `gw-opt-tokens.md`.
+
 Licencias del proyecto (usuaria, 2026-11-05):
 - ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
 

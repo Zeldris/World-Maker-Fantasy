@@ -263,7 +263,7 @@ export async function repararEdificio(
   tx: Tx,
   saveId: string,
   buildingId: string,
-): Promise<{ ok: true; coste: number } | { ok: false; motivo: string; sinArreglo?: boolean }> {
+): Promise<{ ok: true; coste: number } | { ok: false; motivo: string; sinArreglo?: boolean; coste?: number; falta?: number }> {
   const b = await tx.building.findFirst({ where: { id: buildingId, saveId, status: { in: ['ACTIVO', 'DANADO'] } }, select: { name: true, recipeKey: true, tier: true, caida: true, status: true } });
   if (!b) return { ok: false, motivo: 'No tienes ese edificio.', sinArreglo: true };
   if (b.status !== 'DANADO' && !b.caida) return { ok: false, motivo: `${b.name} está en pie.`, sinArreglo: true };
@@ -271,7 +271,7 @@ export async function repararEdificio(
   if (!(await gastarMateriales(tx, saveId, coste))) {
     // P372: la jugadora ve el error en pantalla: que diga cuánto hay y cuánto falta.
     const hay = await materialesEnAlmacen(tx, saveId);
-    return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén para reparar ${b.name}; tienes ${hay}.` };
+    return { ok: false, motivo: `Hacen falta ${coste} materiales en el Almacén para reparar ${b.name}; tienes ${hay}.`, coste, falta: Math.max(0, coste - hay) };
   }
   await tx.building.update({ where: { id: buildingId }, data: { status: 'ACTIVO', caida: false, golpesDefensa: 0 } });
   return { ok: true, coste };

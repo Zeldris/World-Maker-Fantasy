@@ -5,7 +5,7 @@
 import type { CondicionFisica, Prisma, PrismaClient } from '@prisma/client';
 import type { AttributeBlock } from './dice.js';
 import { disparadoresDeMoral, formaDeRetirada, tieneMoral, tirarEscape, tirarMoral, vaClaramentePerdiendo, type TiradaEscape, type TiradaMoral } from './moralCombate.js';
-import { scopeFor, type NpcInScene } from './npcScene.js';
+import { nombreNarrado, scopeFor, type NpcInScene } from './npcScene.js';
 import { HABILIDADES_DE_HUIDA } from './npcCombatAbilities.js';
 import { minutoDeReaparicion } from './zonaPosicion.js';
 import { registrarSuceso } from './cronista/sucesos.js';
@@ -63,11 +63,13 @@ export async function decidirHuidaPorHabilidad(
   if ((await db.quest.count({ where: { saveId: p.saveId, targetNpcId: npc.id, status: 'ACTIVA' } })) > 0) return null;
   const escape = tirarEscape(npc.attributes as AttributeBlock, npc.level, p.nivelJugador, p.random ?? Math.random);
   if (!escape.escapa) return null;
-  const nombre = npc.name;
+  // P443: con el nombre que la jugadora ve («el orco desconocido»), no el real si aún no lo conoce.
+  const nombre = nombreNarrado(npc);
+  const Nombre = nombreNarrado(npc, true);
   return {
     npcId: npc.id, npcSlug: npc.slug, npcNombre: nombre, moral: null, escape, huye: true, pierdeTurno: false,
     pista: `HUIDA — YA RESUELTO: ${nombre} aprovecha «${p.habilidadDefensa}» para escapar del combate. Narra la huida; el combate con ${nombre} ha terminado y no deja nada atrás.`,
-    texto: `${nombre} usa «${p.habilidadDefensa}» y escapa del combate.`,
+    texto: `${Nombre} usa «${p.habilidadDefensa}» y escapa del combate.`,
   };
 }
 
@@ -119,12 +121,14 @@ export async function decidirMoralTrasIntercambio(
   const desventaja = vaClaramentePerdiendo(propios, [p.condicionJugadorTras]);
   const atributos = npc.attributes as AttributeBlock;
   const moral = tirarMoral(atributos, desventaja, random);
-  const nombre = npc.name;
+  // P443: con el nombre que la jugadora ve («el orco desconocido»), no el real si aún no lo conoce.
+  const nombre = nombreNarrado(npc);
+  const Nombre = nombreNarrado(npc, true);
   if (moral.aguanta) {
     return {
       npcId: npc.id, npcSlug: npc.slug, npcNombre: nombre, moral, escape: null, huye: false, pierdeTurno: false,
       pista: `MORAL — YA RESUELTO: ${nombre} se rehace y sigue peleando.`,
-      texto: `${nombre} vacila, pero se rehace y sigue en pie.`,
+      texto: `${Nombre} vacila, pero se rehace y sigue en pie.`,
     };
   }
   const escape = tirarEscape(atributos, npc.level, p.nivelJugador, random);
@@ -133,13 +137,13 @@ export async function decidirMoralTrasIntercambio(
     return {
       npcId: npc.id, npcSlug: npc.slug, npcNombre: nombre, moral, escape, huye: true, pierdeTurno: false,
       pista: `MORAL — YA RESUELTO: ${nombre} pierde el valor y huye del combate${desbandada ? ', y los suyos se desbandan cada uno por su lado' : ''}. Narra la huida; el combate con ${nombre} ha terminado y no deja nada atrás.`,
-      texto: desbandada ? `${nombre} pierde el valor: los suyos se desbandan y escapan.` : `${nombre} pierde el valor y escapa del combate.`,
+      texto: desbandada ? `${Nombre} pierde el valor: los suyos se desbandan y escapan.` : `${Nombre} pierde el valor y escapa del combate.`,
     };
   }
   return {
     npcId: npc.id, npcSlug: npc.slug, npcNombre: nombre, moral, escape, huye: false, pierdeTurno: true,
     pista: `MORAL — YA RESUELTO: ${nombre} pierde el valor e intenta huir, pero no lo consigue y queda al descubierto: no golpeará en el próximo intercambio.`,
-    texto: `${nombre} intenta huir, pero no lo consigue y queda al descubierto.`,
+    texto: `${Nombre} intenta huir, pero no lo consigue y queda al descubierto.`,
   };
 }
 
