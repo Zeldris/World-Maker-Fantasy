@@ -2382,22 +2382,6 @@ async function avanzarSinAtacar({
   };
 }
 
-/// Avanza `turnoActual` y marca el encuentro RESUELTO en cuanto un bando se queda sin objetivos
-/// válidos. Objetivo individual real (2026-08-26) — YA NO re-empareja en cada turno (antes: "§2 se
-/// redecide en cada turno individual"); el enganche de una ronda es fijo una vez decidido. Solo al
-/// CRUZAR a una ronda nueva (`turnoActual` volviendo a 0) se recalcula el enganche entero
-/// (`calcularEnganchesRonda`) — si la jugadora sigue viva y queda sin reclamar, la ronda nueva
-/// arranca `esperandoEleccionJugadora: true` y nada de ella podrá resolverse hasta que el caller
-/// (turnResolution.ts, vía `fijarEleccionRondaJugador`) le fije el objetivo.
-/// INVOCACION real (Fase 3 § 3d, 2026-08-27) — `totemsQueAtacan`: IDs de `CombatParticipant` tipo
-/// INVOCACION cuyo turno de atacar toca en la ronda que ACABA de cruzarse (los que tenían
-/// `invocacionRondasRestantes > 0` justo antes del decremento de esta misma función, ver más
-/// abajo) — vacío si no cruzó de ronda o no hay ninguno vivo. Esta función NUNCA narra nada (sigue
-/// siendo parte de una transacción pura, igual que antes) — el CALLER, ya fuera de cualquier
-/// transacción en ese punto (`ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`/
-/// `invocarTotemYAvanzar`/`avanzarSinAtacar`, los únicos 4 call-sites), es quien de verdad resuelve
-/// y narra el golpe de cada tótem (`ejecutarAtaqueTotemYAvanzar`), con el mismo patrón de 2
-/// transacciones cortas + narración fuera que ya usa todo lo demás en este archivo.
 /// P454: deja en el diario (línea de sistema) cómo acabó el combate; turnResolution la recoge con las demás líneas
 /// del combate (`lineasDiarioDelCombate`). Solo los combates de la jugadora: los de fondo no pasan por aquí.
 async function escribirCierreDelCombate(
@@ -2420,6 +2404,22 @@ async function escribirCierreDelCombate(
   });
 }
 
+/// Avanza `turnoActual` y marca el encuentro RESUELTO en cuanto un bando se queda sin objetivos
+/// válidos. Objetivo individual real (2026-08-26) — YA NO re-empareja en cada turno (antes: "§2 se
+/// redecide en cada turno individual"); el enganche de una ronda es fijo una vez decidido. Solo al
+/// CRUZAR a una ronda nueva (`turnoActual` volviendo a 0) se recalcula el enganche entero
+/// (`calcularEnganchesRonda`) — si la jugadora sigue viva y queda sin reclamar, la ronda nueva
+/// arranca `esperandoEleccionJugadora: true` y nada de ella podrá resolverse hasta que el caller
+/// (turnResolution.ts, vía `fijarEleccionRondaJugador`) le fije el objetivo.
+/// INVOCACION real (Fase 3 § 3d, 2026-08-27) — `totemsQueAtacan`: IDs de `CombatParticipant` tipo
+/// INVOCACION cuyo turno de atacar toca en la ronda que ACABA de cruzarse (los que tenían
+/// `invocacionRondasRestantes > 0` justo antes del decremento de esta misma función, ver más
+/// abajo) — vacío si no cruzó de ronda o no hay ninguno vivo. Esta función NUNCA narra nada (sigue
+/// siendo parte de una transacción pura, igual que antes) — el CALLER, ya fuera de cualquier
+/// transacción en ese punto (`ejecutarIntercambioYAvanzar`/`ejecutarGolpeGratisYAvanzar`/
+/// `invocarTotemYAvanzar`/`avanzarSinAtacar`, los únicos 4 call-sites), es quien de verdad resuelve
+/// y narra el golpe de cada tótem (`ejecutarAtaqueTotemYAvanzar`), con el mismo patrón de 2
+/// transacciones cortas + narración fuera que ya usa todo lo demás en este archivo.
 interface AvanceResultado {
   terminado: boolean;
   totemsQueAtacan: string[];
