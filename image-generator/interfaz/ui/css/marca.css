@@ -1,0 +1,89 @@
+/* IMG-58: la marca de Tarkor en la interfaz del generador, la misma que el juego (UX-40,
+   docs/producto/diseno-interfaz-marca.md). Va después de app.css y no toca los CSS copiados de GVIG, que siguen siendo
+   genéricos: quitar este archivo de index.html deja la interfaz sin marca.
+   «La madera sostiene, el oro remata»: el oro solo en filos, separadores, titulares y la selección (≤10 % de la pantalla;
+   el brillo, gold-100/300, ≤5 %). El cristal (--accent) se queda en lo interactivo (botones, foco, progreso, pestañas):
+   es la respuesta del mundo, no la marca. Sin morado ni violeta (luz reservada del canon).
+   Contrastes WCAG en tools/qa/tests/test_interfaz_ui.py (Marca): --marca-texto >= 4,5:1 sobre fondo y superficies. */
+
+:root {
+  /* Oro tallado, piedra y noche de la marca (frontend/src/index.css, UX-40): no cambian con el tema */
+  --gold-100: #ffe9a8;
+  --gold-300: #f2c45a;
+  --gold-500: #b8862b;
+  --gold-700: #7a5a1e;
+  --gold-900: #5a3a14;
+  --stone-700: #3a342d;
+  --night-950: #0f1428;
+  --crystal-deep: #1f4a55;
+
+  /* tema oscuro: madera e hierro, como dentro del juego */
+  --marca-texto: #f2c45a;    /* gold-300: 11,1:1 sobre fondo, 10,0:1 sobre superficie, 8,4:1 sobre superficie-2 */
+  --marca-filo: #7a5a1e;     /* gold-700: pátina de las bandas y los separadores (decorativo) */
+  --marca-borde: #5a3a14;    /* gold-900: filo del panel activo y de los diálogos (decorativo) */
+  --marca-titulo: linear-gradient(180deg, #f2c45a, #b8862b);  /* gold-300 → gold-500 (5,6:1 sobre fondo) */
+  --marca-fondo: linear-gradient(160deg, #241a10, #1b130c 70%);              /* .wood-grain del juego */
+  --marca-tablon: linear-gradient(155deg, #332415, #241a10 65%);             /* .plank-panel del juego */
+  --marca-tablon-borde: #221c16;                                             /* iron-700 */
+  --marca-banda: linear-gradient(175deg, #221c16, #171310 55%, #0e0b08);     /* .iron-band del juego */
+  --marca-sombra: inset 0 1px 0 rgb(255 255 255 / .04), inset 0 0 0 1px rgb(0 0 0 / .35), 0 8px 24px -12px rgb(0 0 0 / .7);
+}
+
+/* tema claro (pergamino): el oro claro no se lee sobre hueso (gold-500 2,6:1); ahí, gold-900 y gold-700 */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --marca-texto: #5a3a14;    /* gold-900: 8,2:1 sobre fondo, 9,3:1 sobre superficie, 6,5:1 sobre superficie-2 */
+    --marca-filo: #b8862b;
+    --marca-borde: #7a5a1e;
+    --marca-titulo: linear-gradient(180deg, #7a5a1e, #5a3a14);
+    --marca-fondo: none;
+    --marca-tablon: none;
+    --marca-tablon-borde: #c9a877;
+    --marca-banda: none;
+    --marca-sombra: none;
+  }
+}
+
+:root[data-theme="light"] {
+  --marca-texto: #5a3a14;    /* gold-900: 8,2:1 sobre fondo, 9,3:1 sobre superficie, 6,5:1 sobre superficie-2 */
+  --marca-filo: #b8862b;
+  --marca-borde: #7a5a1e;
+  --marca-titulo: linear-gradient(180deg, #7a5a1e, #5a3a14);
+  --marca-fondo: none;
+  --marca-tablon: none;
+  --marca-tablon-borde: #c9a877;
+  --marca-banda: none;
+  --marca-sombra: none;
+}
+
+/* Fondo de madera y tablones: lo que el juego llama .wood-grain y .plank-panel */
+body { background: var(--marca-fondo), var(--bg); background-attachment: fixed; }
+.card { background: var(--marca-tablon), var(--surface); border-color: var(--marca-tablon-borde); box-shadow: var(--marca-sombra); }
+
+/* Cabecera: banda de hierro con filo de pátina abajo (.iron-band) y el nombre en oro (.title-gold, el único oro grande) */
+.app-header { background: var(--marca-banda), var(--surface); border-bottom: 1px solid var(--marca-filo); }
+.brand > span {
+  font-weight: 900; letter-spacing: 0.08em;
+  color: var(--marca-texto);
+  background: var(--marca-titulo); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* Titulares en Cinzel 700, hueso; Cinzel es de capitulares y pide aire, no el -0,02em de GVIG */
+h1, h2, h3 { letter-spacing: 0.02em; }
+h3 { font-weight: 700; }
+
+/* Separador de oro bajo el titular de cada tablón (.gold-hairline) */
+.card > h2:first-child, .barra-galeria {
+  padding-bottom: 8px;
+  background-image: linear-gradient(90deg, var(--marca-filo), color-mix(in srgb, var(--marca-filo) 40%, transparent) 60%, transparent);
+  background-size: 100% 1px; background-repeat: no-repeat; background-position: left bottom;
+}
+
+/* Selección y primer plano: filo de oro (panel activo del juego) */
+.elemento.activo { box-shadow: 3px 0 0 var(--gold-500) inset; }
+dialog:not(.lightbox), .settings-menu, .queue-drawer { border-color: var(--marca-borde); }
+.queue-drawer { border-left-color: var(--marca-filo); }
+.tarjeta:not(.elegida) { border-color: var(--marca-tablon-borde); }
+
+/* Gema de cristal engastada en oro: el distintivo neutro de la galería */
+.distintivo.neutro { box-shadow: 0 0 0 1px var(--gold-700); }

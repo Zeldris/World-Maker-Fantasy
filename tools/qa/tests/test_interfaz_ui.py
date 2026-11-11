@@ -183,6 +183,41 @@ class Tokens(unittest.TestCase):
                 self.assertGreaterEqual(contraste(t[texto], t['accent-soft']), 4.5, f'{nombre}: {texto} sobre accent-soft')
 
 
+class Marca(unittest.TestCase):
+    """IMG-58: la capa de marca de Tarkor (ui/css/marca.css) va tras app.css, su oro se lee en los dos temas y no trae morado."""
+
+    def setUp(self):
+        self.css = leer(UI / 'css' / 'marca.css')
+        base = leer(UI / 'css' / 'tokens.css')
+        self.temas = {
+            'oscuro': (tokens(re.search(r'^:root \{(.*?)^\}', base, re.S | re.M).group(1)),
+                       tokens(re.search(r'^:root \{(.*?)^\}', self.css, re.S | re.M).group(1))),
+            'claro': (tokens(re.search(r'^:root\[data-theme="light"\] \{(.*?)^\}', base, re.S | re.M).group(1)),
+                      tokens(re.search(r'^:root\[data-theme="light"\] \{(.*?)^\}', self.css, re.S | re.M).group(1))),
+        }
+
+    def test_va_despues_de_app_css(self):
+        html = leer(UI.parent / 'index.html')
+        self.assertIn('/ui/css/marca.css', html)
+        self.assertLess(html.index('/ui/css/app.css'), html.index('/ui/css/marca.css'))
+
+    def test_el_oro_se_lee_en_los_dos_temas(self):
+        for nombre, (t, m) in self.temas.items():
+            for fondo in ('bg', 'surface', 'surface-2'):
+                self.assertGreaterEqual(contraste(m['marca-texto'], t[fondo]), 4.5, f'{nombre}: marca-texto sobre {fondo}')
+
+    def test_el_tema_claro_por_sistema_y_por_selector_son_iguales(self):
+        sistema = re.search(r':root:not\(\[data-theme="dark"\]\) \{(.*?)\}', self.css, re.S).group(1)
+        self.assertEqual(tokens(sistema), self.temas['claro'][1])
+
+    def test_sin_morado(self):
+        import colorsys
+        for color in re.findall(r'#([0-9a-fA-F]{6})\b', self.css):
+            h, l, s = colorsys.rgb_to_hls(*(int(color[i:i + 2], 16) / 255 for i in (0, 2, 4)))
+            if s > 0.15:
+                self.assertFalse(250 <= h * 360 <= 330, f'#{color} es morado o violeta (luz reservada del canon)')
+
+
 class Estaticos(Base):
     def setUp(self):
         super().setUp()

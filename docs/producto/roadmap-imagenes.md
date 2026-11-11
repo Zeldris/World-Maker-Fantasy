@@ -30,7 +30,7 @@ Prioridad de tipos: los que tienen banner, para poder comparar.
 |---|---|---|
 | **A. Receta** | Saber qué hace cada fase y cuánto cuesta, antes de construir | `IMG-35`, `IMG-34`, `IMG-36`, `IMG-46`, `IMG-37`, `IMG-38`, ~~`IMG-51`~~, ~~`IMG-52`~~, ~~`IMG-53`~~, `IMG-54`, `IMG-55`, `IMG-56`, `IMG-57` |
 | **B. Prototipo** | Probar la pantalla antes de construirla | `IMG-39` |
-| **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, `IMG-3`, `IMG-11` |
+| **C. Motor e interfaz base** | Una orden por fase y lo guardado por elemento | `IMG-40`, `IMG-41`, ~~`IMG-58`~~, `IMG-3`, `IMG-11` |
 | **D. Pantalla del elemento** | El flujo completo, con variantes y ★ | `IMG-25`, `IMG-42`, `IMG-6` |
 | **E. Combinar** | Escenas con piezas ya aprobadas | `IMG-43`, `IMG-1`, `IMG-2` |
 | **F. Producción** | Crear el catálogo y llevarlo al juego | `IMG-9`, `IMG-44`, `IMG-45` |
@@ -165,6 +165,12 @@ Lo de lore (`IMG-7`, `IMG-8`) pasa a [`roadmap-lore.md`](roadmap-lore.md).
 
 ### Bloque D · Pantalla del elemento
 
+- ~~**IMG-58 · La marca de Tarkor en la interfaz del generador**~~ [C] (usuario, 2026-11-11, de `UX-40`): ✅ 2026-11-11.
+  Capa `ui/css/marca.css` tras `app.css` (los CSS de GVIG no se tocan): fondo de madera (`wood-950` y `.wood-grain`),
+  tablones como `.plank-panel`, cabecera como `.iron-band` con filo de pátina, nombre en oro (`.title-gold`), titulares
+  Cinzel 700 con separador de oro, selección y diálogos con filo de oro; el cristal se queda en lo interactivo. Tema claro
+  con `gold-900`. Test `Marca` (contraste, orden, sin morado); visto en pantalla en los dos temas. **Queda:** favicon y
+  emblema cuando lleguen los SVG de la marca (`UX-41`). **S**
 - **IMG-42 · Variantes y biblioteca ★** [A] (usuaria, 2026-11-06): «crear variante desde aquí» en cualquier fase
   guardada, con el prompt editable; varias imágenes ★ por elemento; biblioteca filtrable de todo lo marcado. Marcar es
   distinto de publicar. Depende de `IMG-25` e `IMG-38`. **M**

@@ -18,7 +18,7 @@
 
 :root {
   /* tema oscuro (por defecto): hierro y madera oscura */
-  --bg: #171310;             /* hierro-800 */
+  --bg: #1b130c;             /* madera-950: dentro del juego el fondo es madera (IMG-58, marca UX-40) */
   --surface: #241a10;        /* madera-900 */
   --surface-2: #332415;      /* madera-800 */
   --border: #46311d;         /* madera-700, decorativo (1,5:1 sobre fondo) */
