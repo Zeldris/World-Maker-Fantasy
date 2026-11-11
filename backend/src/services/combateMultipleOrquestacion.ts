@@ -1,5 +1,5 @@
 import { revisarMoralDelCombate } from './moralGrupo.js';
-import { elegirCapitan, objetivoConcentrado } from './combateMultiple.js';
+import { elegirCapitan, lineaDeCierreDelCombate, objetivoConcentrado } from './combateMultiple.js';
 import { restarVejez } from './cronista/edades.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
@@ -1648,6 +1648,7 @@ async function resolverTotemsPendientes({
   const terminado = !bandoSigueEnCombate(candidatosPorBando('JUGADOR')) || !bandoSigueEnCombate(candidatosPorBando('ENEMIGO'));
   if (terminado) {
     await prisma.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+    await escribirCierreDelCombate(prisma, saveId, datosPorParticipante.map(({ p, datos }) => ({ tipo: p.tipo, bando: p.bando, huido: p.huido, condicion: datos?.condicionFisica ?? 'MUERTO' })));
   }
   return { narraciones, caidos, encounterTerminado: terminado };
 }
@@ -2397,6 +2398,28 @@ async function avanzarSinAtacar({
 /// `invocarTotemYAvanzar`/`avanzarSinAtacar`, los únicos 4 call-sites), es quien de verdad resuelve
 /// y narra el golpe de cada tótem (`ejecutarAtaqueTotemYAvanzar`), con el mismo patrón de 2
 /// transacciones cortas + narración fuera que ya usa todo lo demás en este archivo.
+/// P454: deja en el diario (línea de sistema) cómo acabó el combate; turnResolution la recoge con las demás líneas
+/// del combate (`lineasDiarioDelCombate`). Solo los combates de la jugadora: los de fondo no pasan por aquí.
+async function escribirCierreDelCombate(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  participantes: { tipo: string; bando: string; huido: boolean; condicion: CondicionFisica }[],
+): Promise<void> {
+  const jugadora = participantes.find((p) => p.tipo === 'JUGADOR');
+  if (!jugadora) return;
+  const save = await tx.save.findUnique({ where: { id: saveId }, select: { characterName: true, worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } } } });
+  if (!save) return;
+  const text = lineaDeCierreDelCombate({
+    nombreJugadora: save.characterName,
+    condicionJugadora: jugadora.condicion,
+    enemigos: participantes.filter((p) => p.bando === 'ENEMIGO' && p.tipo === 'NPC'),
+  });
+  if (!text) return;
+  await tx.logEntry.create({
+    data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: save.worldState?.fictionalMinutes ?? 480 },
+  });
+}
+
 interface AvanceResultado {
   terminado: boolean;
   totemsQueAtacan: string[];
@@ -2477,6 +2500,11 @@ async function avanzarYComprobarFin({
 
   if (terminado) {
     await tx.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+    await escribirCierreDelCombate(
+      tx,
+      saveId,
+      condiciones.map(({ p, datos }) => ({ tipo: p.tipo, bando: p.bando, huido: p.huido || moral.huidos.includes(p.id), condicion: datos?.condicionFisica ?? 'MUERTO' })),
+    );
     return { terminado: true, totemsQueAtacan: [] };
   }
 
