@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { companerosDeCombate } from '../../services/combateCompaneros.js';
 import { renombrarHabilidadesDePartida } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
@@ -305,8 +306,11 @@ export async function detailRoutes(app: FastifyInstance) {
         return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
       }),
     );
+    const combatCompaneros = await companerosDeCombate(prisma, combatParticipantesReales);
     const combateIniciado = activeCombatEncounter
       ? {
+          // P445: los compañeros de la jugadora, como su bando en el panel.
+          companeros: combatCompaneros,
           npcs: combatEnemigosParaDisplay.map((p) => {
             const npcRow = combatNpcRowById.get(p.npcId!)!;
             const state = p.condicionFisicaGrupo === null ? combatSoloStateByNpcId.get(p.npcId!) : undefined;

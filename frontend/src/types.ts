@@ -1056,6 +1056,19 @@ export interface AgendaEntryInfo {
   maxStage: number
 }
 
+/// P445: un compañero de la jugadora dentro del combate (su bando en el panel).
+export interface CompaneroDeCombateInfo {
+  participantId: string
+  name: string
+  condicionFisica: CondicionFisica
+}
+
+/// Lo que manda el backend al abrir un combate: los rivales y, aparte, los compañeros de la jugadora.
+export interface CombateIniciadoInfo {
+  npcs: NpcInSceneInfo[]
+  companeros?: CompaneroDeCombateInfo[]
+}
+
 export interface NpcInSceneInfo {
   slug: string
   name: string

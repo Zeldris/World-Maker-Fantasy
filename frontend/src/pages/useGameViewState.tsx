@@ -86,7 +86,7 @@ import type {
   InitiativeRollInfo,
   InventoryItemInfo,
   LogEntry,
-  NpcInSceneInfo,
+  CombateIniciadoInfo,
   ProfessionProgressInfo,
   QuestInfo,
   SavedActionInfo,
@@ -401,7 +401,7 @@ export function useGameViewState() {
     handleAssignClase,
     handleAssignEspecializacion,
   } = useClaseEspecializacionState(saveId, syncFromSave)
-  const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
+  const [combateIniciado, setCombateIniciado] = useState<CombateIniciadoInfo | null>(null)
   // Fase G del 0.1 (hallazgo G8): al cerrar un combate 1v1 contra fauna, el cadáver ya estaba
   // en el backend pero «Hay presas caídas sin desollar» no salía hasta cambiar de escena (la
   // comprobación de arriba solo mira la ubicación). Se recomprueba al pasar de combate a sin combate.

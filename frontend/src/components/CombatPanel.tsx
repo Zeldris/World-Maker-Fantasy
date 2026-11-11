@@ -14,7 +14,7 @@ import { CombatSelectionModal } from './CombatSelectionModal'
 import { DiceRollVs } from './DiceRoll'
 import type { CombatNpcDisplay } from './CombatComposer'
 import { combatKeyFor, combatDisplayNameFor } from '../lib/gameViewHelpers'
-import type { ActiveEffect, AttributeBlock, CondicionFisica, InitiativeRollInfo, InventoryItemInfo, SavedActionInfo } from '../types'
+import type { ActiveEffect, AttributeBlock, CompaneroDeCombateInfo, CondicionFisica, InitiativeRollInfo, InventoryItemInfo, SavedActionInfo } from '../types'
 
 interface CombatPanelProps {
   playerCondicion: CondicionFisica
@@ -30,6 +30,8 @@ interface CombatPanelProps {
   /// Personaje > Estadísticas la sigue usando.
   energia: number
   npcs: CombatNpcDisplay[]
+  /// P445: los compañeros de la jugadora en este combate (su bando); sin ellos no se pinta la fila.
+  companeros?: CompaneroDeCombateInfo[]
   selectedNpcSlug: string | null
   onSelectNpc: (slug: string) => void
   combatAbilities: SavedActionInfo[]
@@ -355,6 +357,7 @@ export function CombatPanel({
   playerAttributes,
   energia,
   npcs,
+  companeros,
   selectedNpcSlug,
   onSelectNpc,
   combatAbilities,
@@ -532,6 +535,15 @@ export function CombatPanel({
             <ActiveEffectChips effects={playerActiveEffects} />
           </div>
         )}
+        {/* P445: el bando de la jugadora (compañeros que combaten a su lado). */}
+        {(companeros ?? []).map((c) => (
+          <div key={c.participantId} className="flex items-center gap-1.5" data-testid="combate-companero">
+            <span className="max-w-28 truncate text-2xs text-accent-300" title={`${c.name} (de tu bando)`}>
+              {c.name}
+            </span>
+            <HealthBar condicionFisica={c.condicionFisica} />
+          </div>
+        ))}
         {npcs.map((npc) => (
           <div key={combatKeyFor(npc)} className="flex items-center gap-1.5">
             {/* P354: el «#N» fuera del truncado; si no, tres «Orco desconoci…» iguales. */}
