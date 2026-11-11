@@ -19,7 +19,7 @@ import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import { ownerKeyFor } from '../services/reinoOwner.js';
 import type { NarrationResult } from '../services/narrador.js';
-import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration } from '../services/narrador.js';
+import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration, buildNarrationPrompt } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -9946,4 +9946,60 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     const equipado = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
     expect(equipado.blocked?.narration).toMatch(/desequípalo y usa el botón Entregar/);
   });
+});
+
+// QA-307 (`/gw-opt-ai`, 2026-11-10): en la Deck, el primer intento de cada turno de combate volvía a procesar el
+// prompt entero (~6.000 tokens, ~20 s de más por turno). Dos rondas seguidas tienen que compartir el prefijo
+// hasta pasados los hechos estables de la escena, para que Ollama reaproveche su caché.
+describe('Dos rondas de combate seguidas comparten el prefijo del prompt del narrador (QA-307)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba QA-307',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el primer carácter distinto va después de la ubicación y del NPC en escena, no al principio de los hechos', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    const prompts: string[] = [];
+    for (let ronda = 0; ronda < 2; ronda++) {
+      narrateAction.mockClear();
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      prompts.push(buildNarrationPrompt(narrateAction.mock.calls.at(-1)![0] as Parameters<typeof buildNarrationPrompt>[0]).prompt);
+    }
+    const [a, b] = prompts;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    // Lo de la ronda (sus dados) va al final de los hechos: lo estable de la escena (ubicación, NPC, inventario)
+    // queda en el prefijo compartido.
+    for (const estable of ['UBICACIÓN ACTUAL', 'PERSONAJE EN ESCENA', 'INVENTARIO ACTUAL']) {
+      expect(a.indexOf(estable)).toBeGreaterThan(-1);
+      expect(n).toBeGreaterThan(a.indexOf(estable));
+    }
+    expect(a.indexOf('RESULTADO DEL INTERCAMBIO')).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+  }, 30_000);
 });
