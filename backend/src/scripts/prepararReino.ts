@@ -7,7 +7,7 @@
 //   milicia:<n>                     compra n equipos de milicia en la Armería de la Capital (`comprarEquiposMilicia`)
 //   relacion:<facción>:<EVENTO>:<n> la facción (origenSlug) presiona al Reino n veces (`recordFactionEvent`; EXPANSION_TERRITORIAL_AGRESIVA sube 15)
 //   ganado:<especie>:<n>            n animales adultos al corral del Ganadero (`meterEnCorral`, como «Al corral»), alternando macho y hembra
-//   convaleciente:<npc>[:combate]   el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo); con `:combate` (QA-270, P95/P320) el combate sigue sin resolver en `pendingCombatNpcSlugs` (`dejarConvalecienteEnCombate`) y sale la tarjeta Matar/Capturar/Clemente (P406: con un combate abierto, el rival suelto que ya está en él); el animal sigue ausente del mapa, como tras la derrota real
+//   convaleciente:<npc>[:combate]   el NPC queda CONVALECIENTE en el lugar actual, con los datos de `NpcState` de la derrota real (`dejarNpcConvaleciente`: condición, reloj, ausencia de zona de 6 h y grupo); con `:combate` (QA-270, P95/P320) el combate sigue sin resolver en `pendingCombatNpcSlugs` (`dejarConvalecienteEnCombate`) y sale la tarjeta Matar/Capturar/Clemente (P406: con un combate abierto, el rival suelto que ya está en él); el animal sigue ausente del mapa, como tras la derrota real. Se niega con el NPC MUERTO aquí (no lo resucita)
 //   lider-muere:<facción>           CR-43: el líder muere de viejo por la vía del motor (`morirDeViejo`, la de `envejecerDia`) y, si hacen falta, destacan jóvenes (`crearNpc` DESTACA) hasta 2 candidatos; la cohesión queda en 20-50 tras la baja; la sucesión (y la escisión con nombre) sale al avanzar (`matarLiderDeFaccion`)
 //   alianza:<A>:<B>                 P247: alianza, ruptura y alianza nueva de la facción A con la B (`recordFactionEvent` NEGOCIACION_TREGUA y EXPANSION_TERRITORIAL_AGRESIVA: `aliarTrasRuptura`)
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
@@ -38,14 +38,13 @@ import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia } from 
 import { recordFactionEvent, type FactionEventType } from '../services/factionRelations.js';
 import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePreparacion } from '../services/cronista/prepararCombate.js';
-import { dejarNpcConvaleciente } from '../services/turnLootKill.js';
 import { danarEdificioDeReceta, repararDanados } from '../services/cronista/prepararEdificios.js';
 import { dejarSinAliados } from '../services/cronista/prepararSinAliados.js';
 import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
 import { aliarTrasRuptura, matarLiderDeFaccion, vasalloPagaConDeuda } from '../services/cronista/prepararSucesos.js';
 import { dejarDomableEnJaula } from '../services/cronista/prepararDoma.js';
-import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConvaleciente.js';
+import { dejarConvalecienteEnCombate, dejarConvalecienteSuelto } from '../services/cronista/prepararConvaleciente.js';
 import { prepararPartidaCaza } from '../services/cronista/prepararPartidaCaza.js';
 import { abrirCombate1v1 } from '../services/cronista/prepararCombate1v1.js';
 import { dejarHeridoEnCombate } from '../services/cronista/prepararHerido.js';
@@ -160,11 +159,9 @@ for (const paso of pasos) {
     if ('error' in r) rechaza(r.error);
     else dice(`Convaleciente en combate: ${r.nombre} (${r.scope}); combate sin resolver con ${r.rivales.join(', ')}`);
   } else if (paso.tipo === 'convaleciente') {
-    const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.npcSlug }, select: { id: true, slug: true, kind: true } });
-    if (!npc) { rechaza(`convaleciente: no hay NPC ${paso.npcSlug}.`); continue; }
-    // Lo escribe `dejarNpcConvaleciente` (`turnLootKill.ts`), la misma función de datos que usa la derrota real en combate: condición y reloj, ausencia de zona de 6 h y grupo.
-    const { scope } = await prisma.$transaction((tx) => dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora }));
-    dice(`Convaleciente: ${npc.slug} (${scope})`);
+    const r = await dejarConvalecienteSuelto(prisma, { saveId, npcSlug: paso.npcSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Convaleciente: ${r.slug} (${r.scope})`);
   } else if (paso.tipo === 'lider-muere') {
     const r = await matarLiderDeFaccion(prisma, { saveId, faccionSlug: paso.facSlug });
     if ('error' in r) rechaza(r.error);

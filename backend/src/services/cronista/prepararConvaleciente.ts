@@ -56,3 +56,26 @@ export async function dejarConvalecienteEnCombate(
     throw e;
   }
 }
+
+export type ResultadoConvaleciente = { slug: string; scope: string };
+
+// El paso `convaleciente:<npc>` (sin `:combate`): el NPC queda CONVALECIENTE en el lugar actual con `dejarNpcConvaleciente`
+// (`turnLootKill.ts`), la misma escritura que la derrota real en combate: condición y reloj, ausencia de zona de 6 h y grupo.
+export async function dejarConvalecienteSuelto(
+  prisma: PrismaClient,
+  { saveId, npcSlug }: { saveId: string; npcSlug: string },
+): Promise<ResultadoConvaleciente | { error: string }> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const save = await tx.save.findUnique({ where: { id: saveId }, select: { worldId: true, currentLocationId: true, worldState: { select: { fictionalMinutes: true } } } });
+      if (!save) throw new Rechazo(`convaleciente: no hay partida ${saveId}.`);
+      const npc = await tx.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: npcSlug }, select: { id: true, slug: true, kind: true } });
+      if (!npc) throw new Rechazo(`convaleciente: no hay NPC ${npcSlug}.`);
+      const { scope } = await dejarNpcConvaleciente(tx, { saveId, npc, currentLocationId: save.currentLocationId, ahora: save.worldState?.fictionalMinutes ?? 0 });
+      return { slug: npc.slug, scope };
+    });
+  } catch (e) {
+    if (e instanceof Rechazo) return { error: e.message };
+    throw e;
+  }
+}
