@@ -42,7 +42,9 @@ equipado no se toca. Ej.: `escenario.sh preparar <partida> mochila-descartar:10`
 Para ver la línea de huida de un rival (P443), con el combate ya abierto: `escenario.sh preparar <partida> huida-rival[:<npc>]`
 (`P443`) deja GRAVE, sin moral tirada, a un rival con moral (una persona, no fauna; el primero o el del slug): al jugar la ronda
 siguiente el juego tira moral y escape (`revisarMoralDelCombate`) y puede huir (el texto lleva el nombre visible, «orco
-desconocido») o aguantar; si aguanta, se repite con otro rival. Escenario de partida: `reino-combate-ganable` (`QA-153`).
+desconocido») o aguantar; si aguanta, se repite con otro rival. **Para que la huida salga siempre** (solo pruebas, nunca
+en producción, como la montura): lanza el juego con `WMF_HUIDA_PRUEBAS=1` (`bash tools/qa/host.sh env WMF_HUIDA_PRUEBAS=1 bash tools/qa/deck/juego.sh`,
+o delante de `arrancar-juego.sh`): la moral del bando enemigo falla y el escape sale. Escenario de partida: `reino-combate-ganable` (`QA-153`).
 Para dejar hueco en el Granero (comparten tope la comida y el forraje), `dar-reino` también resta (`QA-300`): `comida=-2`
 (o `bebida`, `goirnos`, `tesoro`) quita lo pedido con suelo en 0 y avisa si se pedía más de lo que había; `0` se rechaza.
 P336 (Granero a 180/180, hueco 2): `escenario.sh dar-reino <partida> comida=-2`, `preparar <partida> mochila-descartar:10` y `dar <partida> pasto-solar:3`.

@@ -32,12 +32,20 @@ export interface ResultadoMoralGrupo {
   textos: string[];
 }
 
+/// Solo para rondas de pruebas (P443): con `WMF_HUIDA_PRUEBAS=1` (y fuera de producción), cuando no se pasa `random`
+/// (los tests sí lo pasan), la moral del bando enemigo falla y el escape sale siempre, para ver jugando la línea
+/// «… pierde el valor y escapa del combate.» sin depender de las tiradas. Sin la variable, las reglas no cambian.
+export function huidaDePruebas(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.WMF_HUIDA_PRUEBAS === '1' && env.NODE_ENV !== 'production';
+}
+
 /// Revisa la moral del bando enemigo. No toca la fauna ni a quien ya huyó.
 export async function revisarMoralDelCombate(
   tx: Prisma.TransactionClient,
   p: { saveId: string; encounterId: string; combatientes: CombatienteParaMoral[]; random?: () => number },
 ): Promise<ResultadoMoralGrupo> {
   const random = p.random ?? Math.random;
+  const forzarHuida = !p.random && huidaDePruebas();
   const resultado: ResultadoMoralGrupo = { huidos: [], textos: [] };
   const npcIds = [...new Set(p.combatientes.filter((c) => c.bando === 'ENEMIGO' && c.npcId).map((c) => c.npcId!))];
   if (npcIds.length === 0) return resultado;
@@ -88,10 +96,14 @@ export async function revisarMoralDelCombate(
   )!;
   const forma = formaDeRetirada(lider.attributes?.inteligencia ?? 0);
 
-  const escapan = (m: CombatienteParaMoral) => tirarEscape(m.attributes ?? ({} as AttributeBlock), npcs.get(m.npcId!)!.level, nivelPerseguidor, random).escapa;
+  // Modo de pruebas: la moral sale con d20 = 1 y falla siempre; el escape se da por hecho (con d20 = 20 podría no bastar por la diferencia de nivel).
+  const tiraMoral = (m: CombatienteParaMoral) =>
+    forzarHuida ? { ...tirarMoral(m.attributes ?? ({} as AttributeBlock), desventaja, () => 0), aguanta: false } : tirarMoral(m.attributes ?? ({} as AttributeBlock), desventaja, random);
+  const escapan = (m: CombatienteParaMoral) =>
+    forzarHuida || tirarEscape(m.attributes ?? ({} as AttributeBlock), npcs.get(m.npcId!)!.level, nivelPerseguidor, random).escapa;
   const quienesHuyen: CombatienteParaMoral[] = [];
   if (forma === 'ORDENADA' || enPie.length === 1) {
-    const moral = tirarMoral(lider.attributes ?? ({} as AttributeBlock), desventaja, random);
+    const moral = tiraMoral(lider);
     if (moral.aguanta) {
       // P399: cada motivo dice el suyo; si no, dos turnos seguidos dejaban la misma línea.
       const motivo = capitanCaido
@@ -116,7 +128,7 @@ export async function revisarMoralDelCombate(
   } else {
     // Desbandada: cada uno por su lado.
     for (const m of enPie) {
-      if (tirarMoral(m.attributes ?? ({} as AttributeBlock), desventaja, random).aguanta) continue;
+      if (tiraMoral(m).aguanta) continue;
       if (escapan(m)) quienesHuyen.push(m);
     }
     resultado.textos.push(quienesHuyen.length ? `Los suyos se desbandan: ${quienesHuyen.length} escapan cada uno por su lado.` : 'Vacilan, pero ninguno logra escapar.');

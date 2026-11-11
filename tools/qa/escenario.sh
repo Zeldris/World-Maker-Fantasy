@@ -47,7 +47,7 @@
 #                                               sale en Reino › Avisos al preparar, con el texto del juego; para P439) y mochila-descartar[:<n>] (tira lo suelto de la mochila hasta dejar n huecos libres,
 #                                               10 por defecto, sin tocar lo equipado; con el Almacén lleno `mochila-libre` no sirve y `dar` no pasa de la capacidad; para P336),
 #                                               P443: huida-rival[:<npc>] (con un combate en curso, un rival con moral —persona, no fauna—, el primero o el del slug, queda GRAVE sin moral
-#                                               tirada: en la ronda siguiente el juego tira moral y escape y puede huir, con «orco desconocido», no el nombre real; puede aguantar: se repite con otro rival),
+#                                               tirada: en la ronda siguiente el juego tira moral y escape y puede huir, con «orco desconocido», no el nombre real; puede aguantar: se repite con otro rival; con el juego lanzado con WMF_HUIDA_PRUEBAS=1 la moral falla y el escape sale siempre),
 #                                               P180: escasez:<facción>[:comida] (daña las cocinas de la facción hasta dejarla con carencia de comida: pedir
 #                                               trabajo y los bandos dicen «le falta…»), P295: asalto:<facción> (un asalto viajero a la Capital con la Torre
 #                                               dándolo por avisado y la milicia sin armar; la jugadora ha de estar en la Capital; P451: el asalto se resuelve
