@@ -96,7 +96,9 @@ export async function advanceKingdomStatsDay(
             where: {
               saveId, status: 'ACTIVO',
               OR: [
-                { territoryId: { in: perdiendoIds } },
+                // P444 — el Ayuntamiento nunca se abandona (no hay forma de reconstruirlo ni reclamarlo, y sin él
+                // Reino › Edificios bloquea toda obra): el territorio se pierde, la Capital sigue en pie.
+                { territoryId: { in: perdiendoIds }, NOT: { recipeKey: 'ayuntamiento' } },
                 ...(regionesQueCaen.length > 0
                   ? [{ territoryId: null, NOT: { recipeKey: { in: ['campamento', 'ayuntamiento'] } }, location: { region: { in: regionesQueCaen } } }]
                   : []),
