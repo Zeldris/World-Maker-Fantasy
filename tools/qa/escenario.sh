@@ -21,6 +21,8 @@
 #                                               dejar hueco en el Granero, que comparten comida y forraje: P336, 180/180 -> 178/180 con comida=-2)
 #   escenario.sh preparar <partida> <paso…>      (3.2) estados que dar-reino no alcanza, solo con funciones del juego
 #                                               (prepararReino.ts): subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] (P378: por defecto alterna macho y hembra),
+#                                               P433: con sexo=pareja además quedan emparejados de dos en dos (parejaId en los dos), como si el juego ya los hubiera juntado,
+#                                               P427: fuera:<lugar> (la jugadora sale de la Capital al lugar de ese slug, p. ej. fuera:hondonada-del-eco; slug desconocido lo rechaza y lista los del mundo; para un asalto con ella fuera; sin-guarnicion no existe aún),
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
 #                                               el edificio activo de esa receta, como una tormenta), reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],

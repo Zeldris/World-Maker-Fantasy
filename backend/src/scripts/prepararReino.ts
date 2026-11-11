@@ -1,6 +1,6 @@
 // 3.2 (2026-10-21): prepara estados del Reino que `darReino.ts` no alcanza, SOLO con las funciones del juego que aplican
 // sus reglas (QA-151: nada de UPDATE/INSERT a mano). Pasos, en el orden dado:
-//   subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja]   n súbditos adultos (`crearSubdito`; P378: por defecto alternan macho y hembra, así hay parejas posibles; `sexo=m` o `sexo=f` los fija todos) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
+//   subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja]   n súbditos adultos (`crearSubdito`; P433: `sexo=pareja` además los empareja de dos en dos, parejaId en los dos sentidos; P378: por defecto alternan macho y hembra, así hay parejas posibles; `sexo=m` o `sexo=f` los fija todos) y, si se da, su rol (`cambiarRolSubdito`: soldado, vigia, cazador…)
 //                                   o su tarea de trabajador (`cambiarTareaSubdito`: ganadero, recolector, fibrero…)
 //   reclutar:<npc>                  un NPC con nombre se une como compañero real (`proponer` RECLUTAR, con la tirada ganada; pide cama libre)
 //   guarnicion                      cada soldado y vigía a la guarnición de la capital mientras haya plazas (`asignarGuarnicion`)
@@ -13,6 +13,7 @@
 //   vasallo-paga:<vasallo>          P314: el vasallo con una cuota de deuda (`asegurarVasallajes`) y fondos de cuota y media sin saldar la deuda (efecto `ajustarReino`): y la revisión de la semana (de mañana como mucho) corrida en el acto: `pagada-con-deuda` (`vasalloPagaConDeuda`)
 //   domable:<especie>               CR-55: un animal de ganado (murgol, corretolvas…) capturado y atado en una Jaula libre apta, como lo deja la partida de captura al volver (`dejarDomableEnJaula`, `atarEnJaula`): felicidad 0, a falta de ganar su confianza (`intentar`) y llevarlo «Al corral»
 //   domador:<nivel>                 CR-56: la jugadora (Cazador) sube al nivel dado (≥ 10, < 20) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de cada nivel) y elige la especialización Domador (`fijarEspecializacion`, la de `PATCH /saves/:id/especializacion`)
+//   fuera:<lugar>                   P427: la jugadora sale de la Capital al lugar de ese slug (`Location.slug` del mundo; `currentLocationId` y punto de entrada, como una llegada): para un asalto con ella fuera
 //   sin-aliados                     QA-266, P128: los compañeros del Grupo 1 pasan a otro grupo (`moverCompaneroDeGrupo`, la regla del arrastre del panel): un combate que se abra después solo lleva a la jugadora
 //   punto-retirado:<especie>[:<n>] QA-266, P313: un punto de fauna del lugar actual retirado con n presas (3 por defecto): `activo` false y `cantidad` > 0; estado sintético (el juego no lo produce hoy) para la defensa de `opcionesDePartida`, con los efectos `crearPuntoZona` y `retirarPuntoZona`
 //   reparar                         P369/P378: repara cada edificio DANADO (y Empalizada caída) con `repararEdificio`, la del botón «Reparar» de Reino › Edificios: cuesta la mitad de sus materiales del Almacén; si faltan, lo dice y sigue con los demás (sale con error, sin deshacer lo reparado)
@@ -55,12 +56,14 @@ import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
 import { dejarEnEscasez } from '../services/cronista/prepararEscasez.js';
 import { lanzarAsaltoAlReino } from '../services/cronista/prepararAsalto.js';
 import { dejarMochilaLibre, descartarDeMochila } from '../services/cronista/prepararMochila.js';
+import { emparejarDeADos } from '../services/cronista/prepararPareja.js';
+import { sacarAJugadora } from '../services/cronista/prepararFuera.js';
 import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados fuera:<lugar> combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -82,6 +85,7 @@ for (const paso of pasos) {
     // P432: todo el paso en una sola transacción: si un súbdito falla, no queda ninguno a medias.
     const creados = await prisma.$transaction(async (tx) => {
       const hechos: { name: string }[] = [];
+      const ids: string[] = [];
       for (let i = 0; i < paso.n; i++) {
         const edad = cicloVital(paso.pueblo).madurez + 3 + (i % 10);
         const nuevo = await crearSubdito(tx, { saveId, worldId: save.worldId, pueblo: paso.pueblo, nacidoEn: ahora - edad * MINUTOS_POR_ANIO, origen: 'LLEGADA', ahora, genero: sexoDelSubdito(paso.sexo, i), random: Math.random });
@@ -94,10 +98,14 @@ for (const paso of pasos) {
           if (!r.ok) throw new Error(`${nuevo.name}: ${r.motivo}`);
         }
         hechos.push(nuevo);
+        ids.push(nuevo.id);
       }
+      // P433: `sexo=pareja` deja a los súbditos emparejados de dos en dos (macho, hembra), como si `revisarFamilias` ya los hubiera juntado.
+      if (paso.sexo === 'pareja') await emparejarDeADos(tx, ids);
       return hechos;
     }, { timeout: 120_000 }).catch((e: unknown) => { rechaza(e instanceof Error ? e.message : String(e)); return [] as { name: string }[]; });
     for (const s of creados) dice(`Súbdito: ${s.name} (${paso.pueblo}, ${paso.rol ?? 'trabajador'})`);
+    if (creados.length && paso.sexo === 'pareja') dice(`  ${Math.floor(creados.length / 2)} pareja(s) formada(s) (parejaId en los dos)`);
   } else if (paso.tipo === 'reclutar') {
     // random fijo alto: la tirada de Carisma se gana (el reclutamiento en sí lo decide la regla del juego: cama, líder, ya acompañante…).
     const r = await proponer(prisma, saveId, paso.npcSlug, 'RECLUTAR', () => 0.999);
@@ -191,6 +199,10 @@ for (const paso of pasos) {
     const r = await hacerDomador(prisma, { saveId, nivel: paso.nivel });
     if ('error' in r) rechaza(r.error);
     else dice(`Domador: nivel ${r.nivel}, ${r.especializacion}${r.puntosDeAtributo ? ` (${r.puntosDeAtributo} puntos de atributo por repartir)` : ''}`);
+  } else if (paso.tipo === 'fuera') {
+    const r = await sacarAJugadora(prisma, { saveId, lugarSlug: paso.lugarSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(r.yaEstaba ? `Fuera: la jugadora ya estaba en ${r.lugar}` : `Fuera: la jugadora sale de ${r.desde ?? 'ninguna parte'} a ${r.lugar} (punto de entrada ${r.x},${r.y})`);
   } else if (paso.tipo === 'sin-aliados') {
     const r = await dejarSinAliados(prisma, { saveId });
     if ('error' in r) rechaza(r.error);

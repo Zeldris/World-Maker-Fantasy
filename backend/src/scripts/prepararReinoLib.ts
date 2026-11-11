@@ -22,6 +22,7 @@ export type PasoReino =
   | { tipo: 'domador'; nivel: number }
   | { tipo: 'punto-retirado'; especie: string; n: number | null }
   | { tipo: 'sin-aliados' }
+  | { tipo: 'fuera'; lugarSlug: string }
   | { tipo: 'reparar' }
   | { tipo: 'danar'; receta: string }
   | { tipo: 'escasez'; facSlug: string; recurso: string | null }
@@ -32,8 +33,9 @@ export type PasoReino =
   | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' };
 
 /// P378: `m`/`f` fija el sexo de todos; `alterna` (por defecto) da macho, hembra, macho… para que haya parejas posibles.
-export type SexoSubditos = 'm' | 'f' | 'alterna';
-const SEXOS: Record<string, SexoSubditos> = { m: 'm', f: 'f', pareja: 'alterna', alterna: 'alterna' };
+/// P433: `pareja` alterna igual (macho, hembra…) y además los empareja de dos en dos con `parejaId` en los dos sentidos, como `revisarFamilias`.
+export type SexoSubditos = 'm' | 'f' | 'alterna' | 'pareja';
+const SEXOS: Record<string, SexoSubditos> = { m: 'm', f: 'f', pareja: 'pareja', alterna: 'alterna' };
 
 /// Sexo del súbdito número `i` (desde 0) de un paso `subditos`.
 export function sexoDelSubdito(sexo: SexoSubditos, i: number): 'M' | 'F' {
@@ -47,7 +49,7 @@ export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUER
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-269, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). 
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `fuera:<lugar>` (P427: la jugadora sale de la Capital al lugar de ese slug, con su punto de entrada; para probar un asalto con ella fuera). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). 
 /// P180: `escasez:<facción>[:comida]` (la facción, por su origenSlug, queda con carencia de comida: sus cocinas se dañan con el efecto de las tormentas hasta que `situacionDeFaccion` la ve; pedir trabajo o mirar su tablón saca entonces «le falta…» / «para el Clan…»). P295: `asalto:<facción>` (un ejército de esa facción sale contra la Capital y la vigilancia del día lo avista desde la Torre; queda EN MARCHA, sin resolver, para «Llamar a la milicia»). P367: `mochila-libre[:<n>]` (deja n unidades de hueco en la mochila, 10 si no se dice: lo que sobra va al Almacén del Reino con «Depositar»). P370: `nivel:<n>[:<atributo>,<atributo>…]` (la jugadora, de cualquier clase, sube al nivel n, de 2 a 19, como al ganar XP; sin atributos, los puntos quedan por repartir; con ellos, P386, se reparten todos por turno entre esos, como el botón, también con un combate abierto). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
@@ -118,6 +120,9 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     } else if (clave === 'domable') {
       if (!r[0] || r.length > 1) return { error: `«${arg}»: falta domable:<especie de ganado>.` };
       pasos.push({ tipo: 'domable', especie: r[0] });
+    } else if (clave === 'fuera') {
+      if (!r[0] || r.length > 1 || !/^[a-z0-9-]+$/.test(r[0])) return { error: `«${arg}»: falta fuera:<slug del lugar> (p. ej. fuera:hondonada-del-eco).` };
+      pasos.push({ tipo: 'fuera', lugarSlug: r[0] });
     } else if (clave === 'sin-aliados' && r.length === 0) {
       pasos.push({ tipo: 'sin-aliados' });
     } else if (clave === 'punto-retirado') {
