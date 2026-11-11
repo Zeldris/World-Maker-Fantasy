@@ -29,7 +29,7 @@ describe('pasos de prepararReino (3.2)', () => {
     ]);
   });
   it('rechaza lo que no entiende', () => {
-    for (const mal of [['sin-aliados:1'], ['punto-retirado'], ['punto-retirado:murgol:0'], ['punto-retirado:murgol:21'], ['punto-retirado:murgol:2:3'], [], ['subditos:orcos'], ['subditos:orcos:0'], ['relacion:x:NADA:1'], ['guarnicion:2'], ['combate:'], ['ganado:murgol'], ['ganado:murgol:0'], ['convaleciente'], ['convaleciente:a:b'], ['convaleciente:a:combate:b'], ['herido'], ['herido:'], ['herido:a:leve'], ['herido:a:grave:b'], ['convaleciente:'], ['convaleciente::combate'], ['lider-muere'], ['lider-muere:a:b'], ['alianza:a'], ['alianza:a:b:c'], ['vasallo-paga'], ['vasallo-paga:a:b'], ['domable'], ['domable:a:b'], ['domador'], ['domador:9'], ['domador:20'], ['domador:diez'], ['domador:10:1'], ['otra'], ['reparar:1'], ['danar'], ['danar:a:b'], ['danar:Cocina'], ['subditos:orcos:2:sexo=x'], ['subditos:orcos:2:sexo=m:sexo=f'], ['subditos:orcos:2:a:b:sexo=m']]) {
+    for (const mal of [['sin-aliados:1'], ['punto-retirado'], ['punto-retirado:murgol:0'], ['punto-retirado:murgol:21'], ['punto-retirado:murgol:2:3'], [], ['subditos:orcos'], ['subditos:orcos:0'], ['relacion:x:NADA:1'], ['guarnicion:2'], ['combate:'], ['ganado:murgol'], ['ganado:murgol:0'], ['convaleciente'], ['convaleciente:a:b'], ['convaleciente:a:combate:b'], ['herido'], ['herido:'], ['herido:a:leve'], ['herido:a:grave:b'], ['huida-rival:'], ['huida-rival:a:b'], ['convaleciente:'], ['convaleciente::combate'], ['lider-muere'], ['lider-muere:a:b'], ['alianza:a'], ['alianza:a:b:c'], ['vasallo-paga'], ['vasallo-paga:a:b'], ['domable'], ['domable:a:b'], ['domador'], ['domador:9'], ['domador:20'], ['domador:diez'], ['domador:10:1'], ['otra'], ['reparar:1'], ['danar'], ['danar:a:b'], ['danar:Cocina'], ['subditos:orcos:2:sexo=x'], ['subditos:orcos:2:sexo=m:sexo=f'], ['subditos:orcos:2:a:b:sexo=m']]) {
       expect(parsearPasosReino(mal)).toHaveProperty('error');
     }
   });
@@ -37,6 +37,12 @@ describe('pasos de prepararReino (3.2)', () => {
     expect(parsearPasosReino(['nivel:19:constitucion,fuerza'])).toEqual([{ tipo: 'nivel', nivel: 19, atributos: ['constitucion', 'fuerza'] }]);
   });
 
+  it('P443: huida-rival[:<npc>] nombra al rival o toma el primero', () => {
+    expect(parsearPasosReino(['huida-rival', 'huida-rival:ulkha-ketg'])).toEqual([
+      { tipo: 'huida-rival', npcSlug: null },
+      { tipo: 'huida-rival', npcSlug: 'ulkha-ketg' },
+    ]);
+  });
   it('P370: herido deja GRAVE por defecto o HERIDO', () => {
     expect(parsearPasosReino(['herido:hagar-kiugh', 'herido:tirag-susig:herido', 'herido:ruka:grave'])).toEqual([
       { tipo: 'herido', npcSlug: 'hagar-kiugh', condicion: 'GRAVE' },

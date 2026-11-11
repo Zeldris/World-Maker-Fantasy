@@ -27,7 +27,8 @@ export type PasoReino =
   | { tipo: 'mochila-libre'; n: number | null }
   | { tipo: 'mochila-descartar'; n: number | null }
   | { tipo: 'nivel'; nivel: number; atributos: Attribute[] }
-  | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' };
+  | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' }
+  | { tipo: 'huida-rival'; npcSlug: string | null };
 
 /// P378: `m`/`f` fija el sexo de todos; `alterna` (por defecto) da macho, hembra, macho… para que haya parejas posibles.
 export type SexoSubditos = 'm' | 'f' | 'alterna';
@@ -147,6 +148,10 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       // P370: `herido:<npc>[:grave|herido]`, GRAVE por defecto (más herido que la jugadora tras la ronda 1).
       if (!r[0] || r.length > 2 || (r[1] !== undefined && r[1] !== 'grave' && r[1] !== 'herido')) return { error: `«${arg}»: falta herido:<slug del NPC>[:grave|herido].` };
       pasos.push({ tipo: 'herido', npcSlug: r[0], condicion: r[1] === 'herido' ? 'HERIDO' : 'GRAVE' });
+    } else if (clave === 'huida-rival') {
+      // P443: `huida-rival[:<npc>]`, un rival con moral del combate en curso queda GRAVE y sin moral tirada (el primero si no se nombra).
+      if (r.length > 1 || (r.length === 1 && !r[0])) return { error: `«${arg}»: falta huida-rival[:<slug del rival>].` };
+      pasos.push({ tipo: 'huida-rival', npcSlug: r[0] ?? null });
     } else if (clave === 'domador') {
       const nivel = entero(r[0]);
       if (nivel == null || r.length > 1 || nivel < 10 || nivel > 19) return { error: `«${arg}»: falta domador:<nivel>, de 10 a 19 (desde el 20 cambian las habilidades de arma).` };

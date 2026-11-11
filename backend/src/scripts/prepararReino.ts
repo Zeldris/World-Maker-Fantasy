@@ -23,6 +23,7 @@
 //   mochila-libre[:<n>]             P367: deja n unidades de hueco (10 por defecto) en la mochila depositando objetos sueltos en el Almacén del Reino con la función de «Depositar» (`depositarEnAlmacen`), las filas más grandes primero. Depositar no mira la capacidad de la mochila. Con el tope de materiales del Almacén lleno, ese objeto no se deposita y se sigue con el siguiente
 //   nivel:<n>[:<atr>,<atr>…]        P370: la jugadora, de cualquier clase, sube al nivel n (2-19) como al ganar XP (`subirDeNivel`: `applyXp`, puntos de atributo, habilidades de clase de cada nivel); sin especialización (para eso `domador`). No baja de nivel. P386: con atributos (p. ej. `nivel:19:constitucion,fuerza`) reparte todos los puntos por turno entre ellos (`repartirPuntoDeAtributo`, la del botón), también con un combate abierto; sin ellos, quedan por repartir
 //   herido:<npc>[:grave|herido]     P370 (para P292): un NPC del combate en curso (un compañero) queda GRAVE (por defecto) o HERIDO con la escritura de un golpe recibido en el combate (`escribirCondicionYEnergia`): el capitán enemigo, que señala al más herido, lo elige en la ronda siguiente
+//   huida-rival[:<npc>]             P443 (para ver su línea de huida): un rival con moral del combate en curso (el primero, o el del slug dado; solo personas, no fauna) queda GRAVE con la escritura de un golpe recibido y sin tirada de moral hecha (`dejarRivalAPuntoDeHuir`, sobre `dejarHeridoEnCombate`): en la ronda siguiente el juego tira moral y escape (`revisarMoralDelCombate`), así que puede aguantar; si no huye, se repite con otro rival. Dice el nombre que ve la jugadora (el de «orco desconocido»)
 //   combate:<npc>,<npc>…            abre un combate de la jugadora contra esos NPC, donde esté (`abrirCombateDePersonas`)
 //   partida-caza:<presa>:<n>[:permanente]  (QA-299, P439: también partida-caza:<presa>:heridos=<h>[:permanente], sin piezas y con h heridos, el aviso «h de los suyos salen heridos» del juego ya escrito) QA-298 (P338, P339): una partida de caza del Reino (la que hay en marcha tras esa presa o una lanzada con `lanzarPartida`: pide un lugar conocido con la presa y un cazador libre con arma o un compañero de grupo 2+) queda en casa y a punto de volver con n piezas; al avanzar el día se resuelve por el camino normal (`descargarCaza`: aviso, piezas en el Almacén; con orden permanente, `antesDeRepetir`: el corte de P338 con el Desolladero dañado). `:permanente` pone la orden de repetir
 //   combate1v1:<npc>                QA-293 (P373): el combate 1v1 clásico contra ese NPC, donde esté, como un agresor que se lanza contra ella (`abrirCombate1v1`, el efecto `forzarCombate` del Cronista); el panel sale al cargar la partida; se niega con un combate en curso o sin el NPC
@@ -51,6 +52,7 @@ import { dejarConvalecienteEnCombate } from '../services/cronista/prepararConval
 import { prepararPartidaCaza } from '../services/cronista/prepararPartidaCaza.js';
 import { abrirCombate1v1 } from '../services/cronista/prepararCombate1v1.js';
 import { dejarHeridoEnCombate } from '../services/cronista/prepararHerido.js';
+import { dejarRivalAPuntoDeHuir } from '../services/cronista/prepararHuidaRival.js';
 import { hacerDomador, hacerNivel } from '../services/progresionPersonaje.js';
 import { dejarEnEscasez } from '../services/cronista/prepararEscasez.js';
 import { lanzarAsaltoAlReino } from '../services/cronista/prepararAsalto.js';
@@ -60,7 +62,7 @@ import { parsearPasosReino, sexoDelSubdito } from './prepararReinoLib.js';
 const [saveId, ...args] = process.argv.slice(2);
 const pasos = parsearPasosReino(args);
 if (!saveId || 'error' in pasos) {
-  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
+  console.error(`${'error' in pasos ? pasos.error + ' ' : ''}Uso: prepararReino.ts <saveId> subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja] reparar danar:<receta> escasez:<facción>[:comida] asalto:<facción> mochila-libre[:<n>] mochila-descartar[:<n>] nivel:<n>[:<atributo>,…] herido:<npc>[:grave|herido] reclutar:<npc> guarnicion milicia:<n> relacion:<facción>:<EVENTO>:<n> ganado:<especie>:<n> convaleciente:<npc>[:combate] lider-muere:<facción> alianza:<A>:<B> vasallo-paga:<vasallo> domable:<especie> domador:<nivel> punto-retirado:<especie>[:<n>] sin-aliados huida-rival[:<npc>] combate:<npc>,<npc>… combate1v1:<npc> partida-caza:<presa>:<n>|heridos=<h>[:permanente]`);
   process.exit(2);
 }
 const save = await prisma.save.findUnique({
@@ -239,6 +241,10 @@ for (const paso of pasos) {
     const r = await dejarHeridoEnCombate(prisma, { saveId, npcSlug: paso.npcSlug, condicion: paso.condicion });
     if ('error' in r) rechaza(r.error);
     else dice(`Herido en combate: ${r.nombre} (${r.bando === 'ENEMIGO' ? 'rival' : 'bando de la jugadora'}) queda ${r.condicion}${r.ordenaCaerSobre ? `; el capitán ordena ya caer sobre ${r.ordenaCaerSobre}` : r.bando === 'ENEMIGO' ? '' : '; el capitán no cambia de objetivo (no es el más herido o la ronda ya empezó)'}`);
+  } else if (paso.tipo === 'huida-rival') {
+    const r = await dejarRivalAPuntoDeHuir(prisma, { saveId, npcSlug: paso.npcSlug });
+    if ('error' in r) rechaza(r.error);
+    else dice(`Huida de rival: ${r.nombre} queda GRAVE sin moral tirada; en la ronda siguiente el bando enemigo tira moral (puede aguantar). La línea de huida tiene que decir «${r.nombreVisible}», no el nombre real si es distinto`);
   } else if (paso.tipo === 'ganado') {
     const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, saveId: null, slug: paso.especie }, select: { slug: true, faunaCategoria: true } });
     if (!npc) { rechaza(`ganado: no hay fauna ${paso.especie}.`); continue; }

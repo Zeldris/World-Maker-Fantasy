@@ -3,7 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import { setFactorDados } from '../lib/duracionTirada'
 import { CombatPanel } from './CombatPanel'
 import type { CombatNpcDisplay } from './CombatComposer'
-import type { InitiativeRollInfo, SavedActionInfo } from '../types'
+import type { CompaneroDeCombateInfo, InitiativeRollInfo, SavedActionInfo } from '../types'
 import { createElement, useEffect, type ComponentProps } from 'react'
 
 // Cuenta los montajes de `DiceRollVs` sin cambiar lo que hace (P288: montaje con la tirada ya puesta).
@@ -26,12 +26,12 @@ function orco(targetedForKill: boolean): CombatNpcDisplay {
   return { slug: 'orco', name: 'Orco enfurecido', condicion: 'CONVALECIENTE', yaSaqueado: false, lootedItemNames: [], analizado: false, activeEffects: [], targetedForKill }
 }
 
-function panel(npcs: CombatNpcDisplay[], lastInitiativeRoll: InitiativeRollInfo | null = null, awaitingDefense = false) {
+function panel(npcs: CombatNpcDisplay[], lastInitiativeRoll: InitiativeRollInfo | null = null, awaitingDefense = false, companeros: CompaneroDeCombateInfo[] = []) {
   const noop = vi.fn()
   return (
     <CombatPanel
       playerCondicion="HERIDO" playerActiveEffects={[]} playerAttributes={{ fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 } as never}
-      energia={70} npcs={npcs} selectedNpcSlug={null} onSelectNpc={noop} combatAbilities={[ataqueBasico]} selectedAbilityId={null}
+      energia={70} npcs={npcs} companeros={companeros} selectedNpcSlug={null} onSelectNpc={noop} combatAbilities={[ataqueBasico]} selectedAbilityId={null}
       onSelectAbility={noop} combatItems={[]} selectedItemId={null} onSelectItem={noop} busy={false} ended={false} playerJustDied={false}
       awaitingDefense={awaitingDefense} lastInitiativeRoll={lastInitiativeRoll} onActuar={noop} onRegistrar={noop} onHuir={noop} onContinue={noop}
       onSaquearSeleccion={noop} onAbilityDetail={noop} onItemDetail={noop} enciclopedia={null}
@@ -127,6 +127,34 @@ describe('CombatPanel: con quién te enfrentas (P353/P356)', () => {
     render(panel([rival('orco', 'El Orco')]))
     expect(screen.queryByTestId('combate-frente-duelo')).toBeNull()
     expect(screen.queryByTestId('combate-frente-de-paso')).toBeNull()
+  })
+})
+
+// P445: los compañeros de la jugadora salen en el panel como su bando, con nombre y vida.
+describe('CombatPanel: compañeros de la jugadora (P445)', () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+  })
+  it('lista a cada compañero con su nombre, aparte de los rivales', () => {
+    const companeros = [
+      { participantId: 'c1', name: 'Tirag Susig', condicionFisica: 'ILESO' as const },
+      { participantId: 'c2', name: 'Hagar Kiugh', condicionFisica: 'HERIDO' as const },
+    ]
+    render(panel([orco(false)], null, false, companeros))
+    const filas = screen.getAllByTestId('combate-companero')
+    expect(filas).toHaveLength(2)
+    expect(filas[0].textContent).toContain('Tirag Susig')
+    expect(filas[1].textContent).toContain('Hagar Kiugh')
+  })
+
+  it('sin compañeros, no pinta la fila', () => {
+    render(panel([orco(false)]))
+    expect(screen.queryByTestId('combate-companero')).toBeNull()
   })
 })
 
