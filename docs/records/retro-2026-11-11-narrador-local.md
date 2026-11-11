@@ -1,6 +1,6 @@
 # Retro — ronda local del narrador y `/gw-opt-ai` (`claude/pedido-mapa`, 2026-11-11)
 
-**Estado:** sin decidir; lo decide el usuario.
+**Estado:** aprobada por el usuario y aplicada: R1 (`QA-313`), R2 (`QA-314`), R3 (`QA-315`) y R4 (`QA-316`); R5, R6 y lo de `measure.py`, para Galivelop-workflow.
 
 Fuentes: la sesión `1f1fef7e` y sus 6 subagentes (repaso de un subagente `sonnet`), `measure.py` y el
 `/code-review` de la fase 1. En la sesión no hubo correcciones del usuario ni errores de herramienta graves.

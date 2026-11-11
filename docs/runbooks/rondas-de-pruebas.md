@@ -90,7 +90,9 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 1. **Qué falta**: `python3 tools/qa/matriz-pruebas.py` (resumen por bloque) y `--bloque <Bloque>` (las tareas sin
    jugar de ese bloque). El bloque, el que tenga menos jugado o el que pida la usuaria.
 2. **Escenario**: `tools/qa/escenario.sh lista <patrón>` (zona, NPC o hallazgo; sin patrón, el índice entero, `QA-312`); si ninguno deja cerca lo que se va a probar, se llega jugando una
-   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Lo que tarda días, con
+   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Tras cargarlo y antes de la primera
+   acción, una consulta con `tools/qa/sql.sh` por hallazgo confirma el estado que pide (el NPC, su reputación, el
+   encuentro abierto); si no está, se prepara o la tanda devuelve «sin escenario» (`QA-316`). Lo que tarda días, con
    `escenario.sh avanzar <partida> <días>`.
 3. **Jugar**: cada comprobación se mira en texto (`orden.sh --ayuda estado`, `QA-104`); captura solo si algo no
    cuadra o es visual. Lo que vale la pena repetir se escribe como recorrido en
@@ -110,6 +112,8 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
+   En la Deck, Ollama con `bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh arrancar` (iGPU y sin suspensión),
+   y **al acabar la ronda, `ia-ronda.sh parar`**: baja el juego y Ollama, y dice si queda algo en pie (`QA-313`).
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
    Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
    QA-310: `arrancar-juego.sh` apunta el `IA_PERFIL` y el `IA_REGISTRO` del arranque en `logs/juego-ia.env`; `escenario.sh cargar` y `avanzar` relanzan con ellos (un `--parar` entero lo borra), así la tanda sigue escribiendo en `logs/ia/`.

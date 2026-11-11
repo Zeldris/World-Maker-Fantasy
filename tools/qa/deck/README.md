@@ -12,6 +12,7 @@ Uso y reglas: [rondas-de-pruebas.md](../../../docs/runbooks/rondas-de-pruebas.md
 | `juego.sh [--rehacer\|--parar]` | `arrancar-juego.sh` con `IA_PERFIL=deck` e `IA_REGISTRO` absoluto en `logs/ia/<fecha>.jsonl` si no vienen puestas |
 | `lanza.sh <partida>` / `relanza.sh <partida>` | Arranca el driver, espera a que responda (12-28 s, tope 60 s) y abre la partida; si ya hay un driver en el puerto, avisa y sale / mata solo el driver de este checkout, espera a que el puerto quede libre y llama a `lanza.sh`. Lentos (15-35 s): en segundo plano |
 | `j.sh '<js>'`, `o.sh <ayuda> '<json>'` | JS suelto o una ayuda de `orden.sh` en el driver vivo |
+| `ia-ronda.sh arrancar\|parar\|estado` | Ollama real de una ronda local con la iGPU y bajo `systemd-inhibit`; `parar` baja también el juego y dice qué queda en pie (`QA-313`) |
 | `ronda.sh` | Espera al narrador y juega una ronda de combate |
 | `r.sh`, `panel.sh`, `txt.sh` | Abren una pestaña o panel y vuelcan su texto (sin captura); sin panel abierto, `r.sh` y `panel.sh` dicen «no hay panel abierto» |
 | `est.sh <idPartida>` | Cifras del Reino y todos los súbditos por SQL (el id solo admite letras, cifras, `-` y `_`) |
