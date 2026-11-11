@@ -51,7 +51,7 @@ describe('abrirCombateDePreparacion (P374)', () => {
       create: { saveId, npcId: guchapo.id, scope, condicionFisica: condicion },
       update: { condicionFisica: condicion },
     });
-    expect(await abrirCombateDePreparacion(prisma, { saveId, npcSlugs: ['guchapo'] })).toEqual({ error: `combate: ${guchapo.name} está ${condicion} aquí.` });
+    expect(await abrirCombateDePreparacion(prisma, { saveId, npcSlugs: ['guchapo'] })).toEqual({ error: `combate: ${guchapo.name} está ${condicion} aquí; el paso no mete en combate a un NPC caído, aunque su grupo tenga otros en pie.` });
     expect(await prisma.combatEncounter.count({ where: { saveId, estado: 'EN_CURSO' } })).toBe(0);
   }, 30_000);
 });

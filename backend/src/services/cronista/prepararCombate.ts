@@ -36,7 +36,9 @@ export async function abrirCombateDePreparacion(
   const caidos = miembros
     .map((m) => ({ m, condicion: estados.find((e) => e.npcId === m.npcId)?.condicionFisica }))
     .filter(({ condicion }) => condicion === 'MUERTO' || condicion === 'CONVALECIENTE');
-  if (caidos.length) return { error: `combate: ${caidos.map(({ m, condicion }) => `${m.nombre} está ${condicion}`).join(', ')} aquí.` };
+  // El paso mira a cada NPC nombrado, también al de un grupo con otros miembros en pie (en el juego, `grupoDePersona` dejaría
+  // fuera solo al caído): el motivo lo dice.
+  if (caidos.length) return { error: `combate: ${caidos.map(({ m, condicion }) => `${m.nombre} está ${condicion}`).join(', ')} aquí; el paso no mete en combate a un NPC caído, aunque su grupo tenga otros en pie.` };
   const ahora = save.worldState?.fictionalMinutes ?? 0;
   const abierto = await abrirCombateDePersonas(
     prisma,

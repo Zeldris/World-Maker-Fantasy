@@ -33,7 +33,7 @@
 #                                               (fondos para la cuota entera sin saldar la deuda); QA-269: domable:<especie>
 #                                               (un animal domable vencido y atado en una Jaula libre, para «Al corral»),
 #                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir);
-#                                               QA-270: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
+#                                               QA-270: convaleciente:<npc>:combate (se niega, como convaleciente:<npc>, con el NPC muerto; además deja el combate sin resolver: la tarjeta
 #                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario al cargar la partida: con el juego abierto,
 #                                               recarga la página antes de tocar nada, P382: el estado del combate solo se lee al cargar; el animal sigue ausente del mapa 6 h)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
