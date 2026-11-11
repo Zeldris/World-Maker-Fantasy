@@ -90,8 +90,8 @@ ni los tests. Hasta que exista el script de `IMG-3`, se resume con `awk` sobre l
 
 ## Tiempos aceptables
 
-Se fijan con la primera medición en la Deck. Hasta entonces, el paso 4 no marca ninguna tarea como «demasiado
-lenta» por su cuenta: informa de las cifras y propone el umbral a la usuaria.
+Aprobados por el usuario el 2026-11-11 (perfil `deck`, tabla TURNOS de `medir-ia.py`): turno de exploración
+p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-307`). Lo que pase de ahí se marca lento.
 
 ## Ya en marcha
 
@@ -99,3 +99,5 @@ lenta» por su cuenta: informa de las cifras y propone el umbral a la usuaria.
 - **`arrancar-juego.sh` con `IA_PERFIL`** (`QA-141`): `IA_REGISTRO` absoluto, GPU en `deck` y `rag-eval` antes de jugar.
 - Registro por turno (`QA-162`): `app.turno`, `app.intento`, rechazos de guard y `num_ctx` efectivo de `/api/ps`.
 - `keep_alive` 1h en `resumen` y en el calentamiento (`QA-161`); captura remota apagada en las tandas (`QA-160`).
+- Aprobadas el 2026-11-11 (no se vuelven a proponer): prefijo estable entre rondas de combate (`QA-307`), `keep_alive`
+  30 min del Cronista (`QA-308`), casos fijos del clasificador (`QA-309`), registro tras `escenario.sh cargar` (`QA-310`).
