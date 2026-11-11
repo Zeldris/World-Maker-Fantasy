@@ -3232,10 +3232,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
   const contextBlocks: string[] = [];
-  if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
-  if (moralNpc) contextBlocks.push(moralNpc.pista);
-  if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
-  if (playerAbilityUsageBlockedHint) contextBlocks.push(playerAbilityUsageBlockedHint);
+  // QA-307 (`/gw-opt-ai`, 2026-11-10): lo que cambia en cada ronda de combate (intercambio con sus dados, moral,
+  // efecto de la habilidad) iba el primero de los hechos y cortaba la caché de prefijo de Ollama justo ahí: en la
+  // Deck, ~20 s de más por ronda. Se añade al final de `contextBlocks`, justo antes de montar el contexto del
+  // narrador, detrás de los hechos estables de la escena (sigue entre los críticos que conserva el intento 2).
+  const bloquesDeLaRonda = [exchangeNarrationBlock, moralNpc?.pista, abilityEffectHint, playerAbilityUsageBlockedHint].filter(
+    (b): b is string => !!b,
+  );
   // Ver `hasFalseTravelClaim` (narrador.ts) — nombres reales de los destinos ambiguos, rellenado
   // solo en el mismo `if` de más abajo que ya decide forzar la pregunta ("EL PERSONAJE QUIERE
   // SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE").
@@ -4491,6 +4494,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // crafteo) legitima que la prosa prometa recibir algo; sin ninguno de estos, una promesa de
   // obtención en prosa libre es pura alucinación.
   const harvestOrLootActiveThisTurn = !!harvestMatch || lootMode || buildMode || craftMode;
+  contextBlocks.push(...bloquesDeLaRonda);
   const narrationCtx = {
     worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en

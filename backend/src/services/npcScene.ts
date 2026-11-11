@@ -1124,11 +1124,11 @@ const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\
 
 /// P306 (revisión, 2026-10-26): amenazas de muerte y gestos violentos que `ATTACK_INTENT_REGEX` no recoge («¡Hola! Te
 /// mato», «desenvaino y le digo…», «le clavo la lanza»). Solo excluyen el saludo: no abren combate por sí solos.
-const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
+export const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
 
 const CAZA_SUSTANTIVO_REGEX = /\b(la|una|esta|esa|su|tu|mi|vuestra|nuestra)\s+caza\b/gi;
 /// Fase 1 hacia main: «la mata de bayas» es el arbusto, no «matar» (`VIOLENCE_INTENT_REGEX`).
-const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas|aquellas|las|cada)\s+matas?\b/g;
+export const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas|aquellas|las|cada)\s+matas?\b/g;
 
 /// P306 (decidido por la usuaria, 2026-10-26): un saludo o una pregunta a un NPC (texto libre o Responder) no pide
 /// tirada ni abre combate. Es diálogo (`detectsDialogueIntent`) sin verbo de ataque, sin búsqueda hostil (salvo

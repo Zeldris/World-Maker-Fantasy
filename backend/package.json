@@ -31,6 +31,7 @@
     "sync-professions": "tsx src/scripts/syncProfessions.ts",
     "lint": "oxlint",
     "rag-eval": "tsx src/scripts/rag-eval.ts",
+    "clasificar-eval": "tsx src/scripts/clasificar-eval.ts",
     "benchmark-avance": "tsx src/scripts/benchmark-avance.ts"
   },
   "dependencies": {

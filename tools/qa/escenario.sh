@@ -4,7 +4,8 @@
 # entera pesa menos de 1 MB) y cualquier cuenta la carga en segundos. Al cargar se aplican las migraciones y
 # el catálogo nuevos (`arrancar-juego.sh`), así que una instantánea vieja sigue valiendo.
 #
-#   escenario.sh lista                          las instantáneas y qué tienen
+#   escenario.sh lista [patrón]                 las instantáneas y qué tienen (con patrón, solo las filas que casan,
+#                                               sin distinguir mayúsculas; QA-312)
 #   escenario.sh guardar <nombre> "<qué tiene>"  guarda la base de juego como tools/qa/escenarios/<nombre>.dump
 #   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego; confirma cuál y en qué día
 #   escenario.sh confirmar <nombre>              solo esa confirmación (la que cierra `cargar`): escenario, partida y día
@@ -82,6 +83,17 @@ INDICE="${ESCENARIO_INDICE:-$DIR/README.md}"
 # que la página se queda en su URL sin ese error (5 intentos), y si no lo logra lo dice con un AVISO.
 # `preparar`, `dar` y `dar-reino` no paran el juego pero cambian la partida: también recargan (no dentro de `probar`,
 # que va contra una base temporal que la página no ve).
+# QA-310: relanza el juego con el perfil de IA y el registro con que corría (los guarda arrancar-juego.sh); sin ellos,
+# la tanda con Ollama real dejaba de escribir en logs/ia/. Lo que venga en el entorno manda. El archivo lleva el id de
+# arranque del sistema en su primera línea (perfil-ia.sh): el de una sesión anterior (reinicio sin `--parar`) se ignora.
+relanzar_juego() {
+  if [ -z "${IA_PERFIL:-}" ] && [ -f logs/juego-ia.env ] &&
+    [ "$(head -n1 logs/juego-ia.env)" = "# boot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)" ]; then
+    . logs/juego-ia.env
+  fi
+  bash tools/playwright-e2e/arrancar-juego.sh
+}
+
 recargar_pagina() {
   [ -s tools/playwright-e2e/driver.token ] || return 0
   [ -z "${ESCENARIO_URL:-}" ] || return 0
@@ -115,7 +127,13 @@ confirmar_carga() {
 
 case "${1:-}" in
   lista)
-    sed -n '/^| /p' "$INDICE"
+    # QA-312: el índice entero son ~3,7k tokens; con un patrón, la cabecera y las filas que casan.
+    if [ -n "${2:-}" ]; then
+      # Literal (index, no regex: «P289)» o «CR-15 (» no rompen mawk); la cabecera es la primera fila.
+      sed -n '/^| /p' "$INDICE" | awk -v pat="$2" 'NR==1 || index(tolower($0), tolower(pat))'
+    else
+      sed -n '/^| /p' "$INDICE"
+    fi
     ;;
   guardar)
     nombre="${2:?falta el nombre}"; que="${3:?falta qué tiene (partida, estado, día)}"
@@ -144,7 +162,7 @@ case "${1:-}" in
     pg_restore --no-owner -d "$URL" "$DIR/$nombre.dump" 2> logs/escenario-restore.log || { echo "pg_restore con avisos:"; grep -m5 -i error logs/escenario-restore.log || true; }
     # La huella del catálogo se borra: arrancar-juego.sh vuelve a sembrarlo si la instantánea es de antes.
     rm -f "logs/catalogo-$BASE.huella"
-    bash tools/playwright-e2e/arrancar-juego.sh
+    relanzar_juego
     recargar_pagina
     confirmar_carga "$nombre"
     ;;
@@ -155,8 +173,8 @@ case "${1:-}" in
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"
     [ -z "$extra" ] || [ "$extra" = "--reparar" ] || { echo "«$extra»: solo se admite --reparar"; exit 2; }
     bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
-    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { bash tools/playwright-e2e/arrancar-juego.sh; recargar_pagina; exit 1; }
-    bash tools/playwright-e2e/arrancar-juego.sh
+    (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { relanzar_juego; recargar_pagina; exit 1; }
+    relanzar_juego
     recargar_pagina
     ;;
   dar)
