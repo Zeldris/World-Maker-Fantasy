@@ -12,7 +12,7 @@ las filas analizadas pasan a «Analizadas» con la fecha y el informe.
 
 | Fecha | Modelo | Máquina y registro | Turnos / llamadas | Qué se probó | Incoherencias y hallazgos |
 |---|---|---|---|---|---|
-| (ninguna) | | | | | |
+| 2026-11-11 | narrador (`tarkor-narrador-llama31`) y respaldo qwen2.5 1.5B | Deck, iGPU, perfil deck, `logs/ia/2026-11-11-r2-combate.jsonl` | 6 turnos de combate (2 combates); 14 `narrar` + 4 `narrar_respaldo` | QA-307, P435, P262, P264, P273 (`mv-hondonada-hostiles`, ronda local 2, tanda 1) | Intento 1 en 63/63/27 s y 53/33/23 s (QA-307 no llega a ~10 s); 4 respaldos por rechazar «golpe de otro bando» (P459), con texto incoherente; P264 no sale |
 
 ## Analizadas
 
