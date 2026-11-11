@@ -4,7 +4,8 @@
 # entera pesa menos de 1 MB) y cualquier cuenta la carga en segundos. Al cargar se aplican las migraciones y
 # el catálogo nuevos (`arrancar-juego.sh`), así que una instantánea vieja sigue valiendo.
 #
-#   escenario.sh lista                          las instantáneas y qué tienen
+#   escenario.sh lista [patrón]                 las instantáneas y qué tienen (con patrón, solo las filas que casan,
+#                                               sin distinguir mayúsculas; QA-312)
 #   escenario.sh guardar <nombre> "<qué tiene>"  guarda la base de juego como tools/qa/escenarios/<nombre>.dump
 #   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego
 #   escenario.sh avanzar <partida> <días> [--reparar]  avanza N días con el avance diario de siempre (para el juego y lo
@@ -103,7 +104,12 @@ JS
 
 case "${1:-}" in
   lista)
-    sed -n '/^| /p' "$INDICE"
+    # QA-312: el índice entero son ~3,7k tokens; con un patrón, la cabecera y las filas que casan.
+    if [ -n "${2:-}" ]; then
+      sed -n '/^| /p' "$INDICE" | awk -v pat="$2" 'NR<=2 || tolower($0) ~ tolower(pat)'
+    else
+      sed -n '/^| /p' "$INDICE"
+    fi
     ;;
   guardar)
     nombre="${2:?falta el nombre}"; que="${3:?falta qué tiene (partida, estado, día)}"

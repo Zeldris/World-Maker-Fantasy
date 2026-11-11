@@ -35,6 +35,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   `QA-127`, medio y techo de cada uno de los últimos 8 tramos y el medio sin el primer tramo a medias.
 - **`measure.py --since <ISO|sha>`** (`QA-134`): mide solo desde una fecha o desde un commit (su fecha), con el primer tramo a medias descartado como en `--horas`.
 - **`tools/qa/fusionar.sh <rama> "<mensaje>"`** (`QA-135`): merge `--no-ff` de la rama de un subagente, resuelve solo los conflictos de `pruebas-0.3-hallazgos.md` (queda el estado no pendiente), pasa los tests del paquete tocado y avisa si falta la marca de revisión.
+- **`tools/qa/seccion.sh <archivo.md> "<título>"`** (`QA-311`): una sola sección `## …` de un runbook; la sesión que reparte lee así «Qué se prueba» (`AGENTS.md`).
+- **`escenario.sh lista <patrón>`** (`QA-312`): solo las filas del índice que casan (el índice entero, ~3,7k tokens).
 - **Rondas en un subagente `sonnet`** (`QA-124`): la principal reparte tandas y apunta; no lanza `orden.sh`.
 - **Ayudas del driver** (`QA-125`): `interactuar` también con el menú del NPC del mapa, `opcion` por número de
   `[data-opcion]` y `pelear` (acercarse, interactuar y combatir en una orden). `orden.sh` guarda cada respuesta
@@ -82,6 +84,12 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   `minimal_output` y `perPage` 3-5.
 
 ## Costes conocidos
+
+- **Ronda local del narrador y `/gw-opt-ai`** (`claude/pedido-mapa`, 2026-11-11): 279 llamadas, 25,0 M de entrada (61 % en
+  subagentes); principal 105k de media, techo 165k, 1 compactación. `rondas-de-pruebas.md` leído 7 veces por la
+  principal (430k arrastrados, pese a `QA-209`; de ahí `QA-311`) y `escenario.sh lista` entero (197k, `QA-312`). El
+  subagente de `QA-307` (prefijo estable del narrador en combate) fue con Opus: 44 llamadas, 4,5 M; era código con el
+  plan cerrado por `/gw-opt-ai`, que según `QA-117`/`QA-251` iba con `sonnet` y una revisión con Opus del diff.
 
 - **Revisión de una `/gw-update` entera** (`claude/gw-update-0.5.0`, 2026-11-04): 326 archivos, el 89 % de las líneas
   copias del flujo; el subagente de `/code-review` (Opus, 27 llamadas) metió 2,51 M de 4,24 M. De ahí `QA-294`.

@@ -35,6 +35,17 @@ class Probar(unittest.TestCase):
             os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
         return d
 
+    def test_lista_con_patron_da_la_cabecera_y_las_filas_que_casan(self):
+        # QA-312: el índice entero arrastraba ~3,7k tokens para buscar una instantánea.
+        d = self.repo()
+        escribir(os.path.join(d, 'tools', 'qa', 'escenarios', 'README.md'),
+                 '# Escenarios\n\n| Escenario | Qué tiene |\n|---|---|\n| `uno` | Hondonada |\n| `dos` | Gistera |\n')
+        r = subprocess.run(['bash', 'tools/qa/escenario.sh', 'lista', 'hondonada'], cwd=d, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('| Escenario |', r.stdout)
+        self.assertIn('`uno`', r.stdout)
+        self.assertNotIn('`dos`', r.stdout)
+
     def probar(self, d: str, *args: str):
         env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
         return subprocess.run(['bash', 'tools/qa/escenario.sh', 'probar', *args], cwd=d, env=env, capture_output=True, text=True)

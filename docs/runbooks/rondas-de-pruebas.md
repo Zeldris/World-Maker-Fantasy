@@ -89,7 +89,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 
 1. **Qué falta**: `python3 tools/qa/matriz-pruebas.py` (resumen por bloque) y `--bloque <Bloque>` (las tareas sin
    jugar de ese bloque). El bloque, el que tenga menos jugado o el que pida la usuaria.
-2. **Escenario**: `tools/qa/escenario.sh lista`; si ninguno deja cerca lo que se va a probar, se llega jugando una
+2. **Escenario**: `tools/qa/escenario.sh lista <patrón>` (zona, NPC o hallazgo; sin patrón, el índice entero, `QA-312`); si ninguno deja cerca lo que se va a probar, se llega jugando una
    vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Lo que tarda días, con
    `escenario.sh avanzar <partida> <días>`.
 3. **Jugar**: cada comprobación se mira en texto (`orden.sh --ayuda estado`, `QA-104`); captura solo si algo no

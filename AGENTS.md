@@ -64,7 +64,7 @@ antes de darla por cerrada.
 **Al jugar** (ronda de pruebas, «sigue probando», «juega»): quien lanza `orden.sh` (en una ronda repartida, el
 subagente de cada tanda), antes de la primera acción, relee
 [`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md) (`QA-56`). La sesión que reparte lee solo
-«Qué se prueba» (`QA-209`).
+«Qué se prueba» (`QA-209`), con `bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "Qué se prueba"` (`QA-311`).
 
 ## Comprobar
 
