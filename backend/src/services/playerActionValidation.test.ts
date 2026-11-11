@@ -652,4 +652,10 @@ describe('giftRecipientIndex (P441)', () => {
   it('sin destinatario nombrado devuelve -1', () => {
     expect(giftRecipientIndex('Le doy el Tótem Maktor', npcs)).toBe(-1);
   });
+  it('un alias con paréntesis no lanza y casa «Tirag»', () => {
+    expect(giftRecipientIndex('Le doy el tótem a Tirag', [['Tótem de Guerra'], ['Tirag Susig (la cazadora)']])).toBe(1);
+  });
+  it('un nombre con punto no casa de más (el «.» no es comodín)', () => {
+    expect(giftRecipientIndex('Le doy el pan a Maraxsol', [['Mara.Sol']])).toBe(-1);
+  });
 });

@@ -729,11 +729,15 @@ export function giftRecipientIndex(action: string, npcNames: string[][]): number
   const destino = ` ${partes[partes.length - 1]} `;
   const completo = npcNames.findIndex((ns) => ns.some((n) => normalizeText(n).length > 0 && destino.includes(normalizeText(n))));
   if (completo >= 0) return completo;
+  // Por palabras, sin RegExp: los nombres traen puntuación («(la cazadora)», «Dr.») que rompería un patrón.
+  const quitarPuntuacion = (t: string) => t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  const palabrasDestino = new Set(destino.split(/[^\p{L}\p{N}]+/u).filter((p) => p.length > 0));
   return npcNames.findIndex((ns) =>
     ns.some((n) =>
       normalizeText(n)
         .split(/\s+/)
-        .some((t) => t.length >= 4 && !GIFT_STOP_WORDS.has(t) && new RegExp(`\\b${t}\\b`).test(destino)),
+        .map(quitarPuntuacion)
+        .some((t) => t.length >= 4 && !GIFT_STOP_WORDS.has(t) && palabrasDestino.has(t)),
     ),
   );
 }
