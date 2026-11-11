@@ -488,7 +488,7 @@ Responde solo con el JSON pedido, nada más.`;
       prompt,
       format,
       numCtx: CTX_CRONISTA,
-      keepAlive: '5m',
+      keepAlive: env.ollamaKeepAliveCronista, // QA-308: 30m, igual en todas las llamadas al Cronista
       timeoutMs: 90_000,
       tarea: 'clasificar',
     });
@@ -1477,7 +1477,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
       timeoutMs: 90_000,
-      keepAlive: '5m',
+      keepAlive: env.ollamaKeepAliveCronista,
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
       intento: 3,

@@ -141,6 +141,31 @@ class Cargar(unittest.TestCase):
         env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
         return subprocess.run(['bash', 'tools/qa/escenario.sh', *args], cwd=d, env=env, capture_output=True, text=True)
 
+    def test_cargar_y_avanzar_relanzan_con_el_perfil_y_el_registro_del_ultimo_arranque(self):
+        """QA-310: sin IA_PERFIL/IA_REGISTRO el relanzamiento dejaba la tanda sin escribir en logs/ia/."""
+        d = self.driver_falso()
+        e2e = os.path.join(d, 'tools', 'playwright-e2e')
+        escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar $1 perfil=${{IA_PERFIL:-}} registro=${{IA_REGISTRO:-}}" >> "{d}/llamadas.log"\n')
+        escribir(os.path.join(d, 'logs', 'juego-ia.env'), "export IA_PERFIL=deck\nexport IA_REGISTRO=/r/logs/ia/hoy.jsonl\n")
+        for orden in (('cargar', 'uno'), ('avanzar', 'p1', '3')):
+            r = self.correr(d, *orden)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        lineas = [l for l in leer(os.path.join(d, 'llamadas.log')).splitlines() if l.startswith('arrancar ') and '--parar' not in l]
+        self.assertEqual(len(lineas), 2, lineas)
+        for l in lineas:
+            self.assertIn('perfil=deck registro=/r/logs/ia/hoy.jsonl', l)
+
+    def test_sin_arranque_con_ia_el_relanzamiento_no_inventa_perfil(self):
+        d = self.driver_falso()
+        e2e = os.path.join(d, 'tools', 'playwright-e2e')
+        escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar $1 perfil=${{IA_PERFIL:-}}" >> "{d}/llamadas.log"\n')
+        self.assertEqual(self.correr(d, 'cargar', 'uno').returncode, 0)
+        self.assertIn('arrancar  perfil=', leer(os.path.join(d, 'llamadas.log')))
+
+    def test_arrancar_juego_guarda_y_olvida_el_perfil_de_ia(self):
+        texto = leer(os.path.join(QA, '..', 'playwright-e2e', 'arrancar-juego.sh'))
+        self.assertIn('logs/juego-ia.env', texto)
+
     def test_la_recarga_reintenta_hasta_ver_la_partida_y_si_no_avisa(self):
         """P407 (tanda 82): el cliente de Vite recargaba con el backend caído; un solo goto lo enmascaraba."""
         d = self.driver_falso()

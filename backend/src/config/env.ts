@@ -19,6 +19,10 @@ export const env = {
   ollamaModelSugerencias: process.env.OLLAMA_MODEL_SUGERENCIAS ?? 'qwen3.5:4b',
   ollamaModelEmbeddings: process.env.OLLAMA_MODEL_EMBEDDINGS ?? 'nomic-embed-text',
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE ?? '5m',
+  /// QA-308 (`/gw-opt-ai` del 2026-11-11): el modelo del Cronista, con el 5m por defecto, se recargaba tras 5 min sin uso
+  /// (6-7 s, el 22 % de las llamadas en la ronda local). Todas sus llamadas (clasificar, respaldo, prompts de imagen)
+  /// usan este valor: el `keep_alive` es del modelo cargado, y uno distinto lo recarga.
+  ollamaKeepAliveCronista: process.env.OLLAMA_KEEP_ALIVE_CRONISTA ?? '30m',
 
   /// Registro por llamada de la skill opt-ai (docs/ia/opt-ai-registro.md): ruta de un archivo
   /// JSONL al que se añade una línea por llamada a Ollama/embeddings/RAG. Sin ella no se escribe

@@ -57,6 +57,7 @@ reindexa, juega 8 turnos de `npm run benchmark-turno` con `IA_PERFIL=deck`, mues
 
 - Reindexar el lore: `npm run reindex-lore`. Recuperación: `backend/src/services/retrieval.ts`.
 - Evaluación del RAG: `npm run rag-eval` sobre el juego fijo `backend/ia/rag-casos.jsonl` (recall@k y MRR).
+- Evaluación de la clasificación de la acción (QA-309): `npm run clasificar-eval` sobre `backend/ia/clasificar-casos.jsonl` (Ollama real; por caso, esperado/obtenido y qué capa decidió; sale ≠0 si falla alguno).
 - Las incoherencias: `docs/records/pruebas-*-hallazgos.md`; las P de IA son las que inventan, contradicen el lore
   o se equivocan de nombre. Cada una pasa a caso de `rag-casos.jsonl` con `origen` = su P.
 

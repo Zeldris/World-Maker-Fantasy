@@ -53,6 +53,7 @@ export async function completeWithFallback(systemPrompt: string, userContent: st
     system: systemPrompt,
     prompt: userContent,
     maxTokens,
+    keepAlive: env.ollamaKeepAliveCronista,
     timeoutMs: 60_000,
     tarea: 'prompts_imagen',
   });
