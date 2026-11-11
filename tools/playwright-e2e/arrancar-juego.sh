@@ -45,11 +45,17 @@ if [ "${1:-}" = "--parar" ] || [ "${1:-}" = "--parar-juego" ]; then
     fuser -k 3001/tcp 5173/tcp > /dev/null 2>&1 || true
     echo "Juego parado (backend :3001, frontend :5173); el driver sigue."
   else
+    rm -f logs/juego-ia.env  # QA-310: un `--parar` entero olvida el perfil de IA
     fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
     echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
   fi
   exit 0
 fi
+
+# QA-310: se guarda con qué IA corre este arranque; `escenario.sh cargar|avanzar` relanza el juego y lo recupera.
+# shellcheck source=tools/playwright-e2e/perfil-ia.sh
+. tools/playwright-e2e/perfil-ia.sh
+guardar_perfil_ia
 
 if [ "${1:-}" = "--rehacer" ]; then $PSQL -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)"; fi
 nueva=0

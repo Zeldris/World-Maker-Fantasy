@@ -83,6 +83,12 @@ describe('completeWithFallback', () => {
     expect(result.provider).toContain('ollama:');
   });
 
+  it('QA-308: la llamada a Ollama manda el keep_alive (30m) y el num_ctx (8192) del Cronista, no los de por defecto', async () => {
+    vi.mocked(ollamaGenerate).mockResolvedValue({ text: 'x', raw: {} } as never);
+    await completeWithFallback('system', 'user', 100);
+    expect(vi.mocked(ollamaGenerate).mock.calls[0][0]).toMatchObject({ keepAlive: '30m', numCtx: 8192 });
+  });
+
   it('cae a Ollama local si TODOS los proveedores disponibles fallan', async () => {
     reset(cerebrasClient as never, true);
     reset(mistralClient as never, true);

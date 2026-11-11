@@ -77,7 +77,8 @@ Skill (no basta con nombrarla); `/grill-with-docs` solo lo lanza la usuaria, con
       cubren `doctor.py`, `python3 -m unittest discover -s tools/qa/tests` y los de `.claude/skills/*/scripts` que
       corre `ci.yml` (v0.5.0: el 89 % de las líneas eran copias, y la
       revisión, 2,5 M de entrada, el 59 % de la tarea).
-   2. **Entorno:** si la rama trae tandas jugadas con Ollama real (registro de `IA_REGISTRO`), `/gw-opt-ai` (`QA-142`);
+   2. **Entorno:** si [`pendiente-opt-ai.md`](../records/pendiente-opt-ai.md) pasa su umbral, se recomienda a la usuaria
+      `/gw-opt-ai` (`QA-142`, `QA-306`; lo lanza ella);
       luego `/gw-opt-tokens` y `retro` (paso 7). Va tras el código porque la retro aprende de sus hallazgos. Lo que apruebe
       la usuaria se aplica en la rama.
    3. **Cierre:** si la fase 2 añadió código (herramientas, scripts, skills con tests), `/code-review --max-findings all`

@@ -358,7 +358,7 @@ interface ClassifyContext {
 
 /// QA-164: la narración anterior va en `worldFacts` (turnResolution.ts) pero el prompt la saca de los hechos de la escena.
 /// QA-166/QA-168: contexto del modelo pequeño en `clasificar` y en el respaldo de `narrar`, el mismo en los dos.
-const CTX_CRONISTA = 8192;
+const CTX_CRONISTA = env.ollamaNumCtxCronista;
 
 const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
 
@@ -470,9 +470,9 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['requiereTirada', 'atributo', 'dificultad', 'razon', 'banda', 'duracionEstimadaMinutos'],
   };
 
-  // keepAlive '5m' (QA-168, /opt-ai 2026-10-20): antes '0', para no tener los dos modelos a la vez; en la
-  // Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se descarga) y clasificar
-  // baja de 6,9 a 2,8 s p50 al no recargarse cada turno. Con el `num_ctx` del respaldo (`CTX_CRONISTA`): un
+  // keepAlive `env.ollamaKeepAliveCronista` (30m, QA-308; QA-168 lo subió de '0' a '5m'): antes '0', para no tener
+  // los dos modelos a la vez; en la Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se
+  // descarga) y clasificar baja de 6,9 a 2,8 s p50 al no recargarse cada turno. Con el `num_ctx` del respaldo (`CTX_CRONISTA`): un
   // `num_ctx` distinto obliga a Ollama a recargar el modelo, y un respaldo dejaba el siguiente clasificar en frío.
   // timeoutMs 90s: nunca ha tardado más de ~54s en pruebas reales, deja margen de sobra.
   // temperature 0 (roadmap 2026-07-20, Fable, segunda pasada): el `format` ya restringe la
@@ -488,7 +488,7 @@ Responde solo con el JSON pedido, nada más.`;
       prompt,
       format,
       numCtx: CTX_CRONISTA,
-      keepAlive: '5m',
+      keepAlive: env.ollamaKeepAliveCronista, // QA-308: 30m, igual en todas las llamadas al Cronista
       timeoutMs: 90_000,
       tarea: 'clasificar',
     });
@@ -1477,7 +1477,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
       timeoutMs: 90_000,
-      keepAlive: '5m',
+      keepAlive: env.ollamaKeepAliveCronista,
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
       intento: 3,

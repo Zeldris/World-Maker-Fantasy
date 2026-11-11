@@ -20,7 +20,11 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
 - **`gw-orchestrate-dealer`:** el encargo apunta a la fila de la bitácora, el P-número del registro, la fila de la
   matriz y la función de `docs/mapa-agente.md`. Antes de repartir una tanda, la principal comprueba que el escenario
   da el estado que pide cada id (montura, lugar visitado, animal, convaleciente…); si falta, el primer trozo lo
-  prepara (`QA-216`). Una tanda de juego, 6-8 hallazgos y ~60 llamadas; una de arreglos, como mucho 5
+  prepara (`QA-216`), con una consulta de `tools/qa/sql.sh` por id cuya salida va en el encargo (`QA-316`). La tanda local
+  acaba con `tools/qa/deck/ia-ronda.sh parar` (`QA-313`). El encargo de código pide importar la lógica que imite de
+  otro módulo (o decir por qué no se pudo, `QA-314`), correr los tests con
+  `bash tools/qa/tests-vitest.sh unidad|integracion <archivos>` y devolver la salida de `red-without-fix.sh` de cada
+  test nuevo (`QA-315`). Una tanda de juego, 6-8 hallazgos y ~60 llamadas; una de arreglos, como mucho 5
   hallazgos y ~90 llamadas, y la revisión con Opus junta dos tandas (`QA-257`). El encargo lleva «a las 50 llamadas, para, guarda el escenario y devuelve lo hecho y lo que falta» (`QA-304`). Al llegar la de juego,
   `tools/qa/escenario.sh guardar` y la siguiente lo carga (`QA-147`); si el encargo escribe en la partida, se prueba
   con `escenario.sh probar` (`QA-153`) y pasa por las funciones del juego que aplican esas reglas, sin rehacerlas a

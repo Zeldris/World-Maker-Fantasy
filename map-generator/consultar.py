@@ -484,13 +484,13 @@ def zonas(mundo, tipo=None):
     """Las zonas de helek.json (MAP-14), por tipo y número, con su número de celdas y su área en km²."""
     if tipo is not None and tipo not in editar.TIPOS_ZONA:
         raise ErrorDeConsulta(f"tipo de zona desconocido: {tipo} ({', '.join(editar.TIPOS_ZONA)})")
-    filas = []
+    filas, v = [], medir.vertices_por_celda(mundo)
     for z in mundo.get('zonas', []):
         if tipo and z['tipo'] != tipo:
             continue
         filas.append({'i': z['i'], 'tipo': z['tipo'], 'nombre': z['nombre'], 'nivel': z['nivel'],
                       'clan': z.get('clan'), 'canon': z['canon'], 'nota': z['nota'], 'celdas': len(z['celdas']),
-                      'km2': round(medir.area_celdas(mundo, z['celdas']), 1)})
+                      'km2': round(medir.area_celdas(mundo, z['celdas'], v), 1)})
     filas.sort(key=lambda f: (editar.TIPOS_ZONA.index(f['tipo']), f['i']))
     return {'tipo': tipo, 'zonas': filas}
 
@@ -499,7 +499,7 @@ def ruta(mundo, i):
     """km, rodeo, km a pie, horas y jornadas de la ruta `i` (MAP-14, viaje.py)."""
     if not any(r['i'] == i for r in mundo['rutas']):
         raise ErrorDeConsulta(f'no existe la ruta {i} (hay {len(mundo["rutas"])}; resumen da los i libres)')
-    return next(f for f in viaje.tiempos(mundo) if f['i'] == i)
+    return viaje.tiempos(mundo, solo={i})[0]
 
 
 def texto_zonas(r):

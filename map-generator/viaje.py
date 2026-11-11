@@ -6,8 +6,8 @@
 Un camino o una senda se recorren a pie: km del trazo (1 unidad ≈ 1 km, las coordenadas ya están en km) × rodeo = km a
 pie; horas = km a pie / velocidad; jornadas = horas / horas de jornada. El rodeo de la ruta es la media de sus tramos
 ponderada por su longitud; el de un tramo es el de su bioma (`viaje.json`) o el de montaña (altura h >= 50) si es
-mayor, mirando la celda del punto medio del tramo (si cae en mar, la de su punto más cercano que sea tierra; sin
-tierra, 1). Por tierra se da también el tiempo de una caravana (`caravanaKmH`, sobre los mismos km a pie). Una ruta
+mayor, mirando la celda del punto medio del tramo (si cae en mar, la del punto del tramo más cercano a él que caiga en
+tierra; sin tierra, 1). Por tierra se da también el tiempo de una caravana (`caravanaKmH`, sobre los mismos km a pie). Una ruta
 marítima va en bote costero (`mar.velocidadKmH`, sin rodeo ni caravana): horas = km / velocidad, con las mismas
 horas de jornada.
 Las reglas las cambia solo la usuaria; lo derivado se marca en el propio `viaje.json`.
@@ -55,9 +55,24 @@ def _rodeo_celda(c, por_bioma, montana):
     return max(r, montana['valor']) if c['h'] >= montana['alturaMinima'] else r
 
 
-def tiempos(mundo, reglas=None):
+MUESTRAS = 8  # puntos por mitad de tramo al buscar tierra desde el punto medio
+
+
+def _celda_tramo(a, b, celdas, celda_en):
+    """Celda del punto medio del tramo a-b; si cae en mar, la del punto del tramo más cercano al medio que caiga en
+    tierra (se recorre hacia los dos extremos a la vez); None si todo el tramo va por mar."""
+    for k in range(MUESTRAS + 1):
+        for t in ((0.5 - 0.5 * k / MUESTRAS), (0.5 + 0.5 * k / MUESTRAS)):
+            c = celdas[celda_en(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)]
+            if c['h'] >= TIERRA:
+                return c
+    return None
+
+
+def tiempos(mundo, reglas=None, solo=None):
     """Una fila por ruta: {i, grupo, km, rodeo, kmAPie, horas, jornadas, horasCaravana, jornadasCaravana}. En las
-    rutas marítimas, horas y jornadas son en bote, y rodeo, kmAPie y los de caravana son None."""
+    rutas marítimas, horas y jornadas son en bote, y rodeo, kmAPie y los de caravana son None. Con `solo` (conjunto de
+    i), solo esas rutas."""
     reglas = reglas or cargar()
     por_bioma = _bioma_rodeo(mundo, reglas)
     montana = reglas['rodeo']['montana']
@@ -68,6 +83,8 @@ def tiempos(mundo, reglas=None):
     celdas = mundo['celdas']
     salida = []
     for r in mundo['rutas']:
+        if solo is not None and r['i'] not in solo:
+            continue
         pts = r['puntos']
         largos = [math.dist(a, b) * km_u for a, b in zip(pts, pts[1:])]
         km = sum(largos)
@@ -79,11 +96,8 @@ def tiempos(mundo, reglas=None):
         else:
             suma = 0.0
             for (a, b), largo in zip(zip(pts, pts[1:]), largos):
-                medio = celdas[celda_en((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)]
-                if medio['h'] < TIERRA:
-                    cand = [celdas[celda_en(*p)] for p in (a, b)]
-                    medio = next((c for c in cand if c['h'] >= TIERRA), None)
-                suma += largo * (_rodeo_celda(medio, por_bioma, montana) if medio else 1.0)
+                c = _celda_tramo(a, b, celdas, celda_en)
+                suma += largo * (_rodeo_celda(c, por_bioma, montana) if c else 1.0)
             rodeo = suma / km if km else 1.0
             a_pie = km * rodeo
             horas = a_pie / v

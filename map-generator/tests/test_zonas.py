@@ -81,6 +81,7 @@ class Validacion(unittest.TestCase):
             ({**base, 'nivel': True}, 'nivel entero de 0 a 3'),
             ({k: v for k, v in base.items() if k != 'nivel'}, 'nivel entero de 0 a 3'),
             ({**base, 'tipo': 'peligro', 'nivel': 0}, 'nivel entero de 1 a 3'),
+            ({**base, 'nivel': 7}, exportar.SENTIDO_NIVEL['tormenta']),  # el sentido de los niveles, de un solo sitio
             ({**base, 'nombre': '  '}, 'necesita un nombre'),
             ({**base, 'clan': 'Serhu'}, '"clan" solo va en las zonas de tipo clan'),
             ({'i': 2, 'tipo': 'clan', 'nombre': 'X', 'celdas': CELDAS_OTRA[:1]}, 'necesita el nombre del clan'),
@@ -221,6 +222,23 @@ class Viaje(unittest.TestCase):
         m = _mundo_de_juguete()
         m['celdas'][2]['bioma'] = next(b['i'] for b in m['biomas'] if b['nombre'] == 'Wetland')  # 1.6 > 1.5
         self.assertEqual(viaje.tiempos(m)[0]['kmAPie'], 5.5 + 15 + 32)
+
+    def test_tramo_con_el_medio_en_mar_toma_la_tierra_mas_cercana_al_medio(self):
+        # medio (10, 0) en mar; la tierra más cercana a él en el tramo es la celda de humedal (14, 0), no el desierto
+        # de los extremos: 20 km × 1.6 = 32
+        m = _mundo_de_juguete()
+        por = {b['nombre']: b['i'] for b in m['biomas']}
+        m['celdas'] = [{'i': 0, 'p': [0, 0], 'h': 30, 'bioma': por['Hot desert']},
+                       {'i': 1, 'p': [10, 0], 'h': 5, 'bioma': por['Marine']},
+                       {'i': 2, 'p': [14, 0], 'h': 30, 'bioma': por['Wetland']},
+                       {'i': 3, 'p': [20, 0], 'h': 30, 'bioma': por['Hot desert']}]
+        m['rutas'] = [{'i': 0, 'grupo': 'roads', 'puntos': [[0, 0], [20, 0]]}]
+        self.assertEqual(viaje.tiempos(m)[0]['kmAPie'], 32.0)
+
+    def test_solo_calcula_las_rutas_pedidas(self):
+        m = _mundo_de_juguete()
+        self.assertEqual([f['i'] for f in viaje.tiempos(m, solo={1})], [1])
+        self.assertEqual(consultar.ruta(m, 1), viaje.tiempos(m)[1])
 
     def test_un_bioma_sin_regla_falla_con_su_nombre(self):
         reglas = viaje.cargar()

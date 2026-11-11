@@ -115,6 +115,10 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   dice qué función crea el dato, enumera a quién la llama y cubre cada camino con un test (o explica por
   qué un camino no lo necesita). Pasó con P32: se arregló camino a camino dos veces, y la revisión del
   segundo arreglo aún encontró cuatro caminos sin cubrir. (criterio)
+- **Un script de evaluación o de QA que reproduce una decisión del juego importa y llama a la función del
+  juego** (`QA-314`, retro del 2026-11-11); una copia a mano es un hallazgo medio, aunque hoy coincida. Pasó con
+  `clasificar-eval` (`QA-309`): copió la cadena de `turn.ts`/`turnResolution.ts` y salió con cuatro diferencias
+  (`verboAtaque`, `forcedCombatSlugs`, `amenaza`, `npcCalibration`). (criterio)
 - **Un campo que siempre hay que dar no lleva `@default`** (`QA-67`, retro del 2026-10-13). Sin valor por
   defecto, el compilador marca cada creación que lo olvida; un `?? undefined` sobre ese campo vuelve a
   caer al valor por defecto y es un hallazgo. Pasó con P87: `LogEntry.fictionalMinutes` valía 0 si no se
