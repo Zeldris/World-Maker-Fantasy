@@ -3,7 +3,9 @@
 Rama `claude/wonderful-volta-662qt8`, 2026-11-11. Lotes F-I (tandas 110-115), `WMF_HUIDA_PRUEBAS` para P443 y la
 fase 1 contra `origin/main`: 16 hallazgos; arreglado H12 (`ba5d55b5`); H1, H8-H10, H13 y H15 refutados; 9 leves.
 
-**Estado:** sin decidir; la usuaria decide cada candidata.
+**Estado:** aprobada entera por la usuaria (2026-11-11): candidatas 1-3 y gw-opt-tokens 1-4.
+
+Por aplicar en la sesión siguiente, tras un `/clear`: cada una como tarea `QA` con hito; la 3 va bajo «## For Galivelop-workflow».
 
 ## Leves de la revisión, sin arreglar
 
