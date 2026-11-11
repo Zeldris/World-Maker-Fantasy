@@ -8,6 +8,8 @@ import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEntry } from './shared.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
+import { descubrirNpc } from '../../services/entityDiscovery.js';
+import { descubrirNpcsDelCombate } from '../../services/combateMultipleOrquestacion.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 import { objetivosValidos } from '../../services/combateMultiple.js';
 import { nombreVisibleDeNpc, aNombre } from '../../services/dynamicMode.js';
@@ -166,7 +168,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (stillPending) {
       return reply.status(409).send({ error: 'Todavía queda algo por resolver en este combate' });
     }
-    await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [], combateDesde: null } });
+    await guardarSlugsDeCombate(prisma, save.id, []); // P328: cierra el combate, descubre a sus rivales
     return reply.status(204).send();
   });
 
@@ -242,6 +244,8 @@ export async function sessionRoutes(app: FastifyInstance) {
       // fija por índice de dado, nunca generado por el LLM.
       const entrada = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       if (roll.success) {
+        // P328/P107: huir también cierra el combate: sus rivales quedan descubiertos.
+        for (const slug of freshSlugs) await descubrirNpc(tx, save.id, slug);
         // Punto del jugador en el mapa de Zona (2026-09-04) — huir con éxito antes de entrar en
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
         await tx.save.update({
@@ -368,8 +372,12 @@ export async function sessionRoutes(app: FastifyInstance) {
       if (encuentro) {
         const sigue = await tx.combatEncounter.count({ where: { id: encuentro.id, estado: 'EN_CURSO' } });
         if (!sigue) return { kind: 'cambiado' as const };
-        if (roll.success) await tx.combatEncounter.update({ where: { id: encuentro.id }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+        if (roll.success) {
+          await tx.combatEncounter.update({ where: { id: encuentro.id }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+          await descubrirNpcsDelCombate(tx, save.id, encuentro.id); // P328/P107
+        }
       }
+      if (roll.success) for (const slug of freshSlugs) await descubrirNpc(tx, save.id, slug);
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
