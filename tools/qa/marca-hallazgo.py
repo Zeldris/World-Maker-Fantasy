@@ -255,8 +255,9 @@ def main(args: list[str]) -> None:
         for linea in lineas:
             m = re.match(r'^\| (P\d+) \|', linea)
             if m:
-                estado = partir(linea)[1].strip()
-                if grupo(estado) == args[1]:
+                estado = partir(linea)[1]
+                if grupo(estado) == args[1]:  # sin strip: el mismo grupo que el resumen
+                    estado = estado.strip()
                     print(f'{m.group(1)}: ' + (estado if len(estado) <= 160 else '…' + estado[-159:].lstrip()))
         sys.exit(0)
     if args[:1] == ['--resumen']:

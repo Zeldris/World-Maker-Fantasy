@@ -147,6 +147,15 @@ class Resumen(unittest.TestCase):
         self.assertTrue(lineas[0].startswith('P2: '), r.stdout)
         self.assertNotIn('P1:', r.stdout)
 
+    def test_lista_recorta_un_estado_largo_por_el_principio(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | arreglado ' + 'x' * 300 + ' FINAL |\n')
+        r = self.correr('--lista', 'arreglado')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        linea = [l for l in r.stdout.split('\n') if l.startswith('P7: ')][0]
+        self.assertTrue(linea.startswith('P7: …'), linea)
+        self.assertTrue(linea.endswith('FINAL'), linea)
+        self.assertLessEqual(len(linea), len('P7: ') + 160, linea)
+
     def test_lista_con_un_grupo_que_no_existe_dice_los_validos(self):
         r = self.correr('--lista', 'jugado')
         self.assertNotEqual(r.returncode, 0)
