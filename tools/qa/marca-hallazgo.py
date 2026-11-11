@@ -5,11 +5,16 @@ Uso: python3 tools/qa/marca-hallazgo.py P<n> "<texto viejo>" "<texto nuevo>" [--
      python3 tools/qa/marca-hallazgo.py --nuevo "<hallazgo>" "<estado>" [--registro <ruta>]
      python3 tools/qa/marca-hallazgo.py --resumen [--comprobar] [--registro <ruta>]
      python3 tools/qa/marca-hallazgo.py --ver P<n> [P<m>...] [--registro <ruta>]
+     python3 tools/qa/marca-hallazgo.py --lista <grupo> [--registro <ruta>]
 
 QA-303: `--ver` (solo lectura, sin git fetch) imprime la fila de cada P en la tabla del registro (recortada a
 ~400 caracteres) y, con `archivo:línea`, las líneas de `plan-comprobacion-puerta.md` y de
 `plan-comprobacion-puerta-archivo.md` (junto al registro) que citan ese P como palabra entera (P33 no casa P330),
 recortadas a ~300. Si un P no está en el registro, lo dice y sale con 1.
+
+QA-322 (gw-opt-tokens, 2026-11-11): `--lista <grupo>` (solo lectura) da una línea por hallazgo del grupo, con
+el P y el final de su estado (~160 caracteres), en vez de buscar con `grep`/Python en la tabla qué está cerrado o
+a jugar. Grupos: pendiente, decision, parte, arreglado, comprobado, nojugable, cerrado.
 
 La primera forma busca la fila `| P<n> | ...` cuyo estado (la última columna) contenga el texto viejo y
 lo sustituye solo ahí; falla si no hay exactamente una, para no tocar otra fila por error. La segunda (`QA-47`) añade una fila nueva
@@ -243,6 +248,18 @@ def main(args: list[str]) -> None:
         if len(args) < 2:
             sys.exit('Uso: marca-hallazgo.py --ver P<n> [P<m>...] [--registro <ruta>]')
         sys.exit(ver(ruta, lineas, args[1:]))
+    if args[:1] == ['--lista']:
+        claves = [g for g, _ in GRUPOS]
+        if len(args) != 2 or args[1] not in claves:
+            sys.exit(f'Uso: marca-hallazgo.py --lista <{"|".join(claves)}> [--registro <ruta>]')
+        for linea in lineas:
+            m = re.match(r'^\| (P\d+) \|', linea)
+            if m:
+                estado = partir(linea)[1]
+                if grupo(estado) == args[1]:  # sin strip: el mismo grupo que el resumen
+                    estado = estado.strip()
+                    print(f'{m.group(1)}: ' + (estado if len(estado) <= 160 else '…' + estado[-159:].lstrip()))
+        sys.exit(0)
     if args[:1] == ['--resumen']:
         nuevas = con_resumen(lineas)
         if args[1:] == ['--comprobar']:

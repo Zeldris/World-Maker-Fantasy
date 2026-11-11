@@ -121,7 +121,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 - **Código:** `b/services/combateMultipleOrquestacion.ts#iniciarCombatEncounter`, `resolverTurnoJugador`,
   `resolverTurnoAutonomo`, `resolverTurnosAutonomosHastaJugadora`, `esAtacanteDeMasPermitido` (máximo 2 atacantes
-  sobre uno), `topeDeRondaJugadora`; tiradas en `b/services/combatExchange.ts#resolveExchange`, `rollInitiative`;
+  sobre uno), `topeDeRondaJugadora`; fin del combate y tótems en `avanzarYComprobarFin`, y su línea en el diario
+  en `escribirCierreDelCombate` (P454); tiradas en `b/services/combatExchange.ts#resolveExchange`, `rollInitiative`;
   salud y muerte en `b/services/death.ts#resolveDeathOutcome`, `nextCondicionForAttack`. Rutas:
   `b/routes/saves/session.ts` (`/combat/flee`, `/combat/cerrar`, `/combat/matar/:npcSlug`), `combatGroups.ts`.
 - **Tests:** `b/services/combateMultiple*.test.ts`, `combatExchange.test.ts`, `combatePersonas*.test.ts`,

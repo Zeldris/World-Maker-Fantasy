@@ -117,6 +117,24 @@ export function bandoSigueEnCombate(candidatos: ObjetivoCandidato[]): boolean {
   return objetivosValidos(candidatos.filter((c) => !c.esJugadorReal)).length > 0;
 }
 
+/// P454 (tanda 116): la línea de cierre del combate de varios, para el diario (antes el final solo se veía en el
+/// panel). Sin línea si la jugadora murió (su muerte ya tiene la suya) o si no había rivales.
+export function lineaDeCierreDelCombate(p: { nombreJugadora: string; condicionJugadora: CondicionFisica | null; enemigos: { huido: boolean }[] }): string | null {
+  if (p.condicionJugadora === 'MUERTO' || p.enemigos.length === 0) return null;
+  const huidos = p.enemigos.filter((e) => e.huido).length;
+  const rivales =
+    huidos === 0
+      ? 'no queda ningún rival en pie'
+      : huidos < p.enemigos.length
+        ? 'los rivales han caído o huido'
+        : p.enemigos.length === 1
+          ? 'el rival ha huido'
+          : 'los rivales han huido';
+  return p.condicionJugadora === 'CONVALECIENTE'
+    ? `Fin del combate: ${rivales}, pero ${p.nombreJugadora} sale convaleciente de la pelea.`
+    : `Fin del combate: ${rivales}.`;
+}
+
 /// Bug real jugando en vivo (2026-08-29, cuarta causa encadenada del mismo hallazgo): con la
 /// JUGADORA REAL ya incluida como "viva" (`bandoSigueEnCombate`/el guard de `resolverTurnoJugador`,
 /// ambos ya fijados), un NPC enemigo que solo tenía a ella como candidato seguía sin poder elegirla
