@@ -80,9 +80,10 @@ export async function advanceKingdomStatsDay(
           await tx.territory.updateMany({ where: { id: { in: perdiendoIds } }, data: { control: 'PERDIDO', population: 0 } });
           // P299 — el territorio perdido ya no tiene Choza, Pozo ni camas propias: se abandonan sus edificios
           // y los sin territorio de su región, nunca el Campamento ni el Ayuntamiento. Los del asentamiento
-          // del Ayuntamiento heredan su territoryId (a menudo null): si el Ayuntamiento sigue en pie, los de
-          // su región no caen (la Casa de obras, la Herrería…; si no, la cola de obras se congelaría), ni por
-          // su rebelión ni por la de otra región. El Ayuntamiento es el mismo que la Capital de
+          // del Ayuntamiento heredan su territoryId (a menudo null): mientras su territorio no se pierda, los de
+          // su región no caen (la Casa de obras, la Herrería…; si no, la cola de obras se congelaría) por la
+          // rebelión de otra región. P444: si se pierde el territorio del Ayuntamiento (o no hay ninguno en pie),
+          // caen los de su región, pero él no (ver el OR de abajo). El Ayuntamiento es el mismo que la Capital de
           // `asentamientosDelReino` (con lugar, el más antiguo); uno DANADO sigue en pie y sigue siendo la Capital.
           const regionesPerdidas = territories.filter((t) => perdiendoIds.includes(t.id) && t.region).map((t) => t.region as string);
           const ayto = await tx.building.findFirst({

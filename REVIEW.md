@@ -11,6 +11,10 @@ mecánica marcada `(criterio)` pide su check.
 
 - Antes de dar un hallazgo, intenta refutarlo: busca el código, el test o el gancho que ya lo cubre. Solo se informa
   de lo que sobrevive, con la ruta y la línea. (criterio)
+- **Un `P<n>` citado en el código** (`QA-318`, retro de los lotes F-I): el hallazgo que contradiga lo que hace ese
+  código se contrasta antes con `python3 tools/qa/marca-hallazgo.py --ver P<n>`; si ese P ya se jugó con ese
+  comportamiento, no es hallazgo (como mucho, un comentario desfasado). 6 de 16 hallazgos salieron refutados y uno
+  contradecía P444, ya jugado.
 - Los hallazgos se escriben también en un archivo fuera del árbol (el scratchpad, o
   `"$(git rev-parse --git-dir)/review.md"`), no solo en la conversación: una compactación o un relevo se los lleva, y
   de ese archivo salen los encargos de los arreglos y los leves que se apuntan en la bitácora. (criterio)

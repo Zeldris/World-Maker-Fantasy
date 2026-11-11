@@ -58,6 +58,15 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   ronda en hojas de 6 (una lectura por hoja); la finalista, entera.
 - **`recover.py --state` con los worktrees** (`QA-250`): da también la fila de la rama de cada worktree; la sesión
   que trabaja en uno no relee `traspaso.md`.
+- **`python3 tools/qa/plan.py`** (`QA-320`): la tanda siguiente, las tandas sin hacer y cada lote con sus P y lo último
+  apuntado; `--tanda N` y `--lote X`, la fila entera. En los lotes F-I, `plan-comprobacion-puerta.md` se leyó 45 veces
+  (1,65M arrastrados) y `pruebas-0.3-hallazgos.md` 46 (0,88M), casi siempre para saber qué tocaba.
+- **La principal lee de `rondas-de-pruebas.md` solo «Qué se prueba»** (`QA-209`, recordado en `QA-321`):
+  `sed -n '/^## Qué se prueba/,/^## /p' docs/runbooks/rondas-de-pruebas.md`. En los lotes F-I se leyó entero 2 veces
+  y por trozos 9 (1,35M arrastrados).
+- **Diagnóstico de código en un subagente** (`QA-321`): leer el mismo archivo una y otra vez para entender un fallo
+  (`moralGrupo.ts` 15 lecturas y `prepararReino.ts` 10 en la principal, lotes F-I, ~0,5M) va a un subagente con el
+  P y el `archivo:línea` en el encargo; la principal recibe el diagnóstico.
 - **Hoja de contactos con archivos sueltos** (`QA-283`): `hoja.sh --archivos <nombre> <png>…` para comparar banners
   (de `backend/uploads/`, del banco), en vez de leerlos uno a uno (14 lecturas, ~890k arrastrados, 2026-11-03).
 - **Ir a la línea** (`QA-284`): `grep -n` a la tarea o a la clase de test, no releer (`roadmap-imagenes.md` 15 veces,

@@ -3,9 +3,8 @@
 Rama `claude/wonderful-volta-662qt8`, 2026-11-11. Lotes F-I (tandas 110-115), `WMF_HUIDA_PRUEBAS` para P443 y la
 fase 1 contra `origin/main`: 16 hallazgos; arreglado H12 (`ba5d55b5`); H1, H8-H10, H13 y H15 refutados; 9 leves.
 
-**Estado:** aprobada entera por la usuaria (2026-11-11): candidatas 1-3 y gw-opt-tokens 1-4.
-
-Por aplicar en la sesión siguiente, tras un `/clear`: cada una como tarea `QA` con hito; la 3 va bajo «## For Galivelop-workflow».
+**Estado:** aprobada entera por la usuaria (2026-11-11) y aplicada: candidatas 1-3 en `QA-317`, `QA-318` y `QA-319`
+(la 3 también abajo, para Galivelop-workflow); gw-opt-tokens 1 en `QA-320`, 2 y 3 en `QA-321`, 4 ya era `QA-305`.
 
 ## Leves de la revisión, sin arreglar
 
@@ -45,3 +44,9 @@ Por aplicar en la sesión siguiente, tras un `/clear`: cada una como tarea `QA` 
    lleva el P y el `archivo:línea`.
 4. **`/clear` al cerrar cada lote** (`QA-305`): 6 compactaciones en esta tarea, 45 en la sesión. Se pide al acabar
    esta fase.
+
+## For Galivelop-workflow
+
+- **El encargo de arreglos de `gw-orchestrate-dealer` dice qué hacer con el commit** (candidata 3, `QA-319` en WMF):
+  «deja el cambio sin commitear» o «actualiza tu fila con `handoff.py` y commitéala junto». Un subagente commiteó sin
+  `traspaso.md`, el gancho de parada lo pidió y el `--amend` lo bloquea el modo automático: hizo falta un segundo commit.
