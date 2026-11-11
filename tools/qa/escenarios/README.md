@@ -61,3 +61,5 @@ estado útil lo guarda aquí (`QA-105`).
 | `local-gistera-raciones` | `cmvex1v0300057d0pdjlbezcj` | Como reino-dia39-recursos (Hondonada, día 39, Gistera sin descubrir) con la mochila a 30/37 y 3 raciones de viaje: para P244, P268, P310 y P324 con Ollama real | 2026-11-11 |
 | `t119-recinto-poblado` | `cmvex1v0300057d0pdjlbezcj` | mv-colmillo-ganado tras P173/P337: en El Pozo de Cauce Viejo, recinto de múrgoles a 17 | 2026-11-11 |
 | `t119-pozo-recursos` | `cmvex1v0300057d0pdjlbezcj` | reino-dia39-recursos con la jugadora en El Pozo de Cauce Viejo (fuera:), 3 recursos ??? sin probar para P158; escena de Escorantes abierta | 2026-11-11 |
+| `t120-guchapo-muerto` | `cmvex1v0300057d0pdjlbezcj` | Tanda 120: P129 reproducido, Gorhorn Muerto 2/4 tras combate de 6 Guchapos | 2026-11-11 |
+| `t120-orco-clemente` | `cmvex1v0300057d0pdjlbezcj` | Tanda 120: Hondonada 22:15, Orco enfurecido convaleciente con Clemente, victoria, mapa Zona abierto; para P328/P107 | 2026-11-11 |
