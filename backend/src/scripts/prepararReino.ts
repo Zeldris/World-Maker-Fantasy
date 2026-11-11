@@ -38,7 +38,7 @@ import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia } from 
 import { recordFactionEvent, type FactionEventType } from '../services/factionRelations.js';
 import { faccionDelReino } from '../services/guerraReino.js';
 import { abrirCombateDePreparacion } from '../services/cronista/prepararCombate.js';
-import { danarEdificioDeReceta, repararDanados } from '../services/cronista/prepararEdificios.js';
+import { danarEdificioDeReceta, repararDanados, textoSinReparar } from '../services/cronista/prepararEdificios.js';
 import { dejarSinAliados } from '../services/cronista/prepararSinAliados.js';
 import { dejarPuntoRetirado } from '../services/cronista/prepararPuntoRetirado.js';
 import { meterEnCorral } from '../services/cronista/ganadoReino.js';
@@ -198,7 +198,7 @@ for (const paso of pasos) {
     const r = await repararDanados(prisma, saveId);
     for (const x of r.reparados) dice(`Reparado: ${x.nombre} (${x.coste} materiales)`);
     if (r.reparados.length === 0 && r.sinReparar.length === 0) dice('Reparar: no hay edificios dañados');
-    for (const x of r.sinReparar) rechaza(`reparar: ${x.nombre} sigue dañado: ${x.motivo}`);
+    for (const x of r.sinReparar) rechaza(`reparar: ${x.nombre} sigue dañado, ${textoSinReparar(x)}`);
   } else if (paso.tipo === 'danar') {
     const r = await danarEdificioDeReceta(prisma, { saveId, receta: paso.receta });
     if ('error' in r) rechaza(r.error);

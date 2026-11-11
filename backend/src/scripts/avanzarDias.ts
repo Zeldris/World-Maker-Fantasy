@@ -4,12 +4,14 @@
 // cola sus propios avances por partida (`enSegundoPlano`) y este proceso no la ve.
 // P369: con `--reparar` avanza día a día y, tras cada día, repara los edificios DANADO con la función del botón «Reparar»
 // (`repararDanados`, cuesta materiales del Almacén; si faltan lo dice y sigue): esquiva las tormentas sin cambiar el motor.
+// P377: al final repone los puntos de fauna del lugar actual con la función del juego (`reponerZonaActual`).
 // Uso: DATABASE_URL=… npx tsx src/scripts/avanzarDias.ts <saveId> <días> [--reparar]
 import { prisma } from '../lib/prisma.js';
 import { avanzarMundoHasta } from '../services/avanceDiario.js';
 import { avanzarRelojConTick } from '../services/dailyTick.js';
 import { formatFictionalDate } from '../services/worldClock.js';
-import { repararDanados } from '../services/cronista/prepararEdificios.js';
+import { reponerZonaActual } from '../services/cronista/prepararAvance.js';
+import { repararDanados, textoSinReparar } from '../services/cronista/prepararEdificios.js';
 
 const [saveId, diasTexto, ...resto] = process.argv.slice(2);
 const reparar = resto.includes('--reparar');
@@ -42,10 +44,13 @@ while (desde < hastaFinal) {
   if (reparar) {
     const r = await repararDanados(prisma, saveId);
     reparados.push(...r.reparados.map((x) => x.nombre));
-    for (const x of r.sinReparar) sinReparar.set(x.nombre, x.motivo);
+    for (const x of r.sinReparar) sinReparar.set(x.nombre, textoSinReparar(x));
   }
 }
 console.log(`${total} días simulados; ahora: ${formatFictionalDate(hastaFinal)}`);
+// P377: como el juego al abrir el mapa de zona, repone la fauna del lugar actual con el reloj ya avanzado.
+const repuesta = await reponerZonaActual(prisma, saveId);
+if (repuesta) console.log(`Fauna de ${repuesta.lugar} repuesta como al abrir el mapa de zona`);
 if (reparar) {
   console.log(`Reparados tras cada día: ${reparados.length}${reparados.length ? ` (${reparados.join(', ')})` : ''}`);
   for (const [nombre, motivo] of sinReparar) console.log(`AVISO ${nombre} sigue dañado: ${motivo}`);
