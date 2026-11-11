@@ -6,7 +6,8 @@
 #
 #   escenario.sh lista                          las instantáneas y qué tienen
 #   escenario.sh guardar <nombre> "<qué tiene>"  guarda la base de juego como tools/qa/escenarios/<nombre>.dump
-#   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego
+#   escenario.sh cargar <nombre>                 la sustituye por esa instantánea y arranca el juego; confirma cuál y en qué día
+#   escenario.sh confirmar <nombre>              solo esa confirmación (la que cierra `cargar`): escenario, partida y día
 #   escenario.sh avanzar <partida> <días> [--reparar]  avanza N días con el avance diario de siempre (para el juego y lo
 #                                               vuelve a arrancar: el servidor no ve este avance en su cola). P369: con
 #                                               --reparar avanza día a día y repara tras cada día los edificios dañados con
@@ -65,7 +66,7 @@ BASE=tarkor_juego
 ADMIN="postgresql://tarkor:tarkor@localhost:5432/tarkor"
 URL="${ESCENARIO_URL:-postgresql://tarkor:tarkor@localhost:5432/$BASE}"
 DIR=tools/qa/escenarios
-INDICE="$DIR/README.md"
+INDICE="${ESCENARIO_INDICE:-$DIR/README.md}"
 # P407: `cargar` y `avanzar` paran y relanzan el juego; la página que tiene abierta el driver de Playwright se quedaba
 # con lo de antes (otro nivel) o en «ERR_CONNECTION_REFUSED» si se recargó mientras el juego estaba parado. Con el
 # juego ya listo, se le pide que recargue (la misma URL si era del juego; si no, la portada). Sin driver no hace nada.
@@ -88,6 +89,21 @@ for (let i = 1; i <= 5; i++) {
 }
 return 'AVISO: la página del driver no carga la partida tras 5 intentos (' + page.url() + '): ' + visto;
 JS
+}
+
+# P371: `cargar` acababa listando el escenario sin decir si había cargado; ahora confirma cuál y en qué día.
+# Un fallo de psql no aborta `cargar` (el juego ya está cargado): se dice «día desconocido».
+confirmar_carga() {
+  local nombre="$1" fila partida dia base
+  fila=$(grep "^| \`$nombre\` |" "$INDICE" || true)
+  partida=$(printf '%s' "$fila" | awk -F'|' '{gsub(/[ `]/, "", $3); print $3}')
+  base="${URL##*/}"; base="${base%%\?*}"
+  dia=""
+  if [[ "$partida" =~ ^[A-Za-z0-9]+$ ]]; then
+    dia=$(psql "$URL" -Atc "select \"fictionalDateLabel\" from \"WorldState\" where \"saveId\" = '$partida'" 2> /dev/null | head -1) || dia=""
+  fi
+  echo "Cargado «$nombre» en $base: partida ${partida:-?}, ${dia:-día desconocido}."
+  [ -z "$fila" ] || echo "$fila"
 }
 
 case "${1:-}" in
@@ -123,16 +139,10 @@ case "${1:-}" in
     rm -f "logs/catalogo-$BASE.huella"
     bash tools/playwright-e2e/arrancar-juego.sh
     recargar_pagina
-    bash "$0" confirmar "$nombre"
+    confirmar_carga "$nombre"
     ;;
   confirmar)
-    # P371: `cargar` acababa listando el escenario sin decir si había cargado; ahora confirma cuál y en qué día.
-    nombre="${2:?falta el nombre}"
-    fila=$(grep "^| \`$nombre\` |" "$INDICE" || true)
-    partida=$(printf '%s' "$fila" | awk -F'|' '{gsub(/[ `]/, "", $3); print $3}')
-    dia=$(psql "$URL" -Atc "select \"fictionalDateLabel\" from \"WorldState\" where \"saveId\" = '${partida//\'/}' union all select \"fictionalDateLabel\" from \"WorldState\" limit 1" | head -1)
-    echo "Cargado «$nombre» en $BASE: partida ${partida:-?}, ${dia:-día desconocido}."
-    [ -z "$fila" ] || echo "$fila"
+    confirmar_carga "${2:?falta el nombre}"
     ;;
   avanzar)
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"
