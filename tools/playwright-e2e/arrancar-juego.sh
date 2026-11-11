@@ -10,6 +10,7 @@
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
 # WMF_MONTURA_PRUEBAS=1 (del entorno, solo pruebas): la jugadora cuenta como con montura y sale la lista «Viajar».
+# WMF_HUIDA_PRUEBAS=1 (del entorno, solo pruebas, P443): la moral del bando enemigo falla y el escape sale, para ver «pierde el valor y escapa» tras `escenario.sh preparar … huida-rival`.
 # Registros: logs/backend.log y logs/frontend.log. Narraciones: las del Ollama simulado, que meten
 # trozos del prompt en el texto (no es un fallo del juego; la calidad narrativa se prueba con
 # Ollama real).
