@@ -29,6 +29,14 @@ export async function abrirCombateDePreparacion(
     const a = n.attributes as AttributeBlock;
     return { npcId: n.id, nombre: n.name, scope: scopeFor(n.kind, save.currentLocationId), destreza: a.destreza, inteligencia: a.inteligencia, esGrupo: false };
   });
+  const estados = await prisma.npcState.findMany({
+    where: { saveId, OR: miembros.map((m) => ({ npcId: m.npcId, scope: m.scope })) },
+    select: { npcId: true, condicionFisica: true },
+  });
+  const caidos = miembros
+    .map((m) => ({ m, condicion: estados.find((e) => e.npcId === m.npcId)?.condicionFisica }))
+    .filter(({ condicion }) => condicion === 'MUERTO' || condicion === 'CONVALECIENTE');
+  if (caidos.length) return { error: `combate: ${caidos.map(({ m, condicion }) => `${m.nombre} está ${condicion}`).join(', ')} aquí.` };
   const ahora = save.worldState?.fictionalMinutes ?? 0;
   const abierto = await abrirCombateDePersonas(
     prisma,

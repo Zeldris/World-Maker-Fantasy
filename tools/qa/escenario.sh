@@ -26,7 +26,7 @@
 #                                               reparar (P369: repara todos los edificios dañados, como el botón «Reparar»), danar:<receta> (P301: deja dañado
 #                                               el edificio activo de esa receta, como una tormenta), reclutar:<npc>, guarnicion,
 #                                               milicia:<n>, relacion:<facción>:<EVENTO>:<n>, ganado:<especie>:<n>, convaleciente:<npc>[:combate],
-#                                               combate:<npc>,<npc>… (de grupo), QA-293: combate1v1:<npc> (el 1v1 clásico contra ese NPC, viva donde viva: se lanza
+#                                               combate:<npc>,<npc>… (de grupo; P374: se niega si alguno está muerto o convaleciente), QA-293: combate1v1:<npc> (el 1v1 clásico contra ese NPC, viva donde viva: se lanza
 #                                               contra la jugadora como un agresor; el panel sale al recargar; para P373, la huida por habilidad), P370: herido:<npc>[:grave|herido] (un compañero del combate en curso queda GRAVE o HERIDO:
 #                                               el capitán enemigo, que manda caer sobre el más herido, lo señala en la ronda siguiente; para P292); QA-268: lider-muere:<facción> (el líder muere de viejo con 2
 #                                               candidatos), alianza:<A>:<B> (alianza, ruptura y alianza nueva), vasallo-paga:<vasallo>
@@ -34,7 +34,8 @@
 #                                               (un animal domable vencido y atado en una Jaula libre, para «Al corral»),
 #                                               domador:<nivel> (Cazador Domador de ese nivel, mínimo 10, con sus puntos sin repartir);
 #                                               QA-270: convaleciente:<npc>:combate (además deja el combate sin resolver: la tarjeta
-#                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario; el animal sigue ausente del mapa 6 h)
+#                                               «convaleciente» con Matar/Capturar/Clemente sale en el diario al cargar la partida: con el juego abierto,
+#                                               recarga la página antes de tocar nada, P382: el estado del combate solo se lee al cargar; el animal sigue ausente del mapa 6 h)
 #                                               QA-266: sin-aliados (los compañeros salen del Grupo 1; el combate que se abra después lleva solo a la jugadora), punto-retirado:<especie>[:<n>] (un punto de fauna retirado con n presas, activo false, en el lugar actual;
 #                                               usa una especie que el lugar no tenga: abrir el mapa de zona recompone y borra el de una que sí)
 #                                               QA-298: partida-caza:<presa>:<n>[:permanente] (una partida de caza del Reino, la que hay en marcha tras esa presa o
