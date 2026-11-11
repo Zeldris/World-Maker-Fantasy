@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { nombreOcultoPorRaza, nombreVisibleDeNpc } from '../dynamicMode.js';
 
-type Db = Pick<PrismaClient, 'npc' | 'discoveredEntity'>;
+type Db = Pick<PrismaClient, 'npc' | 'discoveredEntity' | 'companion'>;
 
 /// P200 (QA-27): quién encarga una misión, con el nombre con que la jugadora lo ve. La descripción se
 /// guarda al crearla con el nombre real («Maestro Herrero Serhu: «…»»); si aún no lo ha descubierto, se

@@ -9,6 +9,7 @@ import type { AttributeBlock } from './dice.js';
 import { EN_PIE, formaDeRetirada, quienTiraMoral, tieneMoral, tirarEscape, tirarMoral, vaClaramentePerdiendo } from './moralCombate.js';
 import { aplicarHuidaNpc } from './huidaNpc.js';
 import { elegirCapitan } from './combateMultiple.js';
+import { nombreEnFrase, nombresVisiblesDeNpcs } from './dynamicMode.js';
 
 /// Marca de «ya tiraron por la caída del capitán» en `CombatEncounter.moralMitadBandos`.
 const MARCA_CAPITAN = 'CAPITAN:ENEMIGO';
@@ -31,18 +32,32 @@ export interface ResultadoMoralGrupo {
   textos: string[];
 }
 
+/// Solo para rondas de pruebas (P443): con `WMF_HUIDA_PRUEBAS=1` (y fuera de producción), cuando no se pasa `random`
+/// (los tests sí lo pasan), la moral del bando enemigo falla y el escape sale siempre, para ver jugando la línea
+/// «… pierde el valor y escapa del combate.» sin depender de las tiradas. Sin la variable, las reglas no cambian.
+export function huidaDePruebas(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.WMF_HUIDA_PRUEBAS === '1' && env.NODE_ENV !== 'production';
+}
+
 /// Revisa la moral del bando enemigo. No toca la fauna ni a quien ya huyó.
 export async function revisarMoralDelCombate(
   tx: Prisma.TransactionClient,
   p: { saveId: string; encounterId: string; combatientes: CombatienteParaMoral[]; random?: () => number },
 ): Promise<ResultadoMoralGrupo> {
   const random = p.random ?? Math.random;
+  const forzarHuida = !p.random && huidaDePruebas();
   const resultado: ResultadoMoralGrupo = { huidos: [], textos: [] };
   const npcIds = [...new Set(p.combatientes.filter((c) => c.bando === 'ENEMIGO' && c.npcId).map((c) => c.npcId!))];
   if (npcIds.length === 0) return resultado;
   const npcs = new Map(
-    (await tx.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, name: true, kind: true, raza: true, faunaCategoria: true, level: true } })).map((n) => [n.id, n]),
+    (await tx.npc.findMany({ where: { id: { in: npcIds } }, select: { id: true, slug: true, name: true, kind: true, raza: true, genero: true, faunaCategoria: true, level: true } })).map((n) => [n.id, n]),
   );
+  // P443: los textos nombran a cada uno como lo ve la jugadora («el orco desconocido»), no por su nombre real.
+  const visibles = await nombresVisiblesDeNpcs(tx, p.saveId, [...npcs.values()]);
+  const nombreDe = (npcId: string, alInicio = false) => {
+    const npc = npcs.get(npcId)!;
+    return nombreEnFrase(visibles.get(npc.slug) ?? npc.name, alInicio);
+  };
   const conMoral = p.combatientes.filter((c) => {
     const npc = c.bando === 'ENEMIGO' && c.npcId ? npcs.get(c.npcId) : undefined;
     return !!npc && tieneMoral({ raza: npc.raza, faunaCategoria: npc.faunaCategoria });
@@ -62,7 +77,7 @@ export async function revisarMoralDelCombate(
   if (recienGraves.length === 0 && !aLaMitad && !capitanCaido) return resultado;
   if (capitanCaido) {
     await tx.combatEncounter.update({ where: { id: p.encounterId }, data: { moralMitadBandos: { push: MARCA_CAPITAN } } });
-    resultado.textos.push(`Cae ${npcs.get(capitan!.npcId!)!.name}: los suyos se quedan sin quien los mande.`);
+    resultado.textos.push(`Cae ${nombreDe(capitan!.npcId!)}: los suyos se quedan sin quien los mande.`);
   }
 
   if (recienGraves.length) await tx.combatParticipant.updateMany({ where: { id: { in: recienGraves.map((m) => m.participantId) } }, data: { moralTirada: true } });
@@ -72,7 +87,7 @@ export async function revisarMoralDelCombate(
   // Cuentan también sus caídos: perder a la mitad es ir claramente perdiendo.
   const desventaja = capitanCaido || vaClaramentePerdiendo(miembros.map((m) => m.condicion), contrarios);
   const nivelPerseguidor = (await tx.save.findUnique({ where: { id: p.saveId }, select: { level: true } }))?.level ?? 1;
-  const nombre = (m: CombatienteParaMoral) => npcs.get(m.npcId!)!.name;
+  const nombre = (m: CombatienteParaMoral, alInicio = false) => nombreDe(m.npcId!, alInicio);
   const voluntad = (m: CombatienteParaMoral) => m.attributes?.voluntad ?? 0;
   const lider = quienTiraMoral(
     enPie.map((m) => ({ ...m, id: m.participantId, voluntad: voluntad(m), enPie: true })),
@@ -81,20 +96,24 @@ export async function revisarMoralDelCombate(
   )!;
   const forma = formaDeRetirada(lider.attributes?.inteligencia ?? 0);
 
-  const escapan = (m: CombatienteParaMoral) => tirarEscape(m.attributes ?? ({} as AttributeBlock), npcs.get(m.npcId!)!.level, nivelPerseguidor, random).escapa;
+  // Modo de pruebas: la moral sale con d20 = 1 y falla siempre; el escape se da por hecho (con d20 = 20 podría no bastar por la diferencia de nivel).
+  const tiraMoral = (m: CombatienteParaMoral) =>
+    forzarHuida ? { ...tirarMoral(m.attributes ?? ({} as AttributeBlock), desventaja, () => 0), aguanta: false } : tirarMoral(m.attributes ?? ({} as AttributeBlock), desventaja, random);
+  const escapan = (m: CombatienteParaMoral) =>
+    forzarHuida || tirarEscape(m.attributes ?? ({} as AttributeBlock), npcs.get(m.npcId!)!.level, nivelPerseguidor, random).escapa;
   const quienesHuyen: CombatienteParaMoral[] = [];
   if (forma === 'ORDENADA' || enPie.length === 1) {
-    const moral = tirarMoral(lider.attributes ?? ({} as AttributeBlock), desventaja, random);
+    const moral = tiraMoral(lider);
     if (moral.aguanta) {
       // P399: cada motivo dice el suyo; si no, dos turnos seguidos dejaban la misma línea.
       const motivo = capitanCaido
-        ? `${nombre(lider)} toma el mando y sostiene a los suyos`
+        ? `${nombre(lider, true)} toma el mando y sostiene a los suyos`
         : aLaMitad
           ? `Con la mitad de los suyos fuera de combate, ${nombre(lider)} los sostiene`
           : (() => {
               // P402: si quien sostiene es uno de los malheridos, no se le nombra dos veces.
               const elMismo = recienGraves.some((m) => m.participantId === lider.participantId);
-              const graves = [...new Set(recienGraves.filter((m) => m.participantId !== lider.participantId).map(nombre))];
+              const graves = [...new Set(recienGraves.filter((m) => m.participantId !== lider.participantId).map((m) => nombre(m)))];
               if (graves.length === 0) return `Aun malherido, ${nombre(lider)} sostiene a los suyos`;
               const conGraves = `Con ${graves.join(' y ')} ${graves.length > 1 ? 'malheridos' : 'malherido'}`;
               return elMismo ? `${conGraves}, ${nombre(lider)}, también herido, sostiene a los suyos` : `${conGraves}, ${nombre(lider)} sostiene a los suyos`;
@@ -102,14 +121,14 @@ export async function revisarMoralDelCombate(
       resultado.textos.push(`${motivo}: siguen peleando.`);
     } else if (escapan(lider)) {
       quienesHuyen.push(...enPie);
-      resultado.textos.push(enPie.length > 1 ? `${nombre(lider)} ordena la retirada: los suyos se repliegan y escapan.` : `${nombre(lider)} pierde el valor y escapa del combate.`);
+      resultado.textos.push(enPie.length > 1 ? `${nombre(lider, true)} ordena la retirada: los suyos se repliegan y escapan.` : `${nombre(lider, true)} pierde el valor y escapa del combate.`);
     } else {
-      resultado.textos.push(`${nombre(lider)} intenta retirarse, pero no encuentra salida.`);
+      resultado.textos.push(`${nombre(lider, true)} intenta retirarse, pero no encuentra salida.`);
     }
   } else {
     // Desbandada: cada uno por su lado.
     for (const m of enPie) {
-      if (tirarMoral(m.attributes ?? ({} as AttributeBlock), desventaja, random).aguanta) continue;
+      if (tiraMoral(m).aguanta) continue;
       if (escapan(m)) quienesHuyen.push(m);
     }
     resultado.textos.push(quienesHuyen.length ? `Los suyos se desbandan: ${quienesHuyen.length} escapan cada uno por su lado.` : 'Vacilan, pero ninguno logra escapar.');

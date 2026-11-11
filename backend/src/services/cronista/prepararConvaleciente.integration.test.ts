@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { detailRoutes } from '../../routes/saves/detail.js';
-import { dejarConvalecienteEnCombate } from './prepararConvaleciente.js';
+import { dejarConvalecienteEnCombate, dejarConvalecienteSuelto } from './prepararConvaleciente.js';
 import { scopeFor } from '../npcScene.js';
 
 // QA-270 (P95, P320): el paso `convaleciente:<npc>:combate` de `prepararReino.ts`, contra una partida real. Lo que se comprueba
@@ -102,5 +102,25 @@ describe('dejarConvalecienteEnCombate (QA-270, P95/P320)', () => {
     const estado = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: npc.id } });
     expect(estado.condicionFisica).toBe('ILESO');
     expect(estado.groupDefeated).toBe(0);
+  });
+
+  // Revisión de G3: `dejarNpcConvaleciente` sobrescribía un NpcState MUERTO con CONVALECIENTE y resucitaba al muerto. Los
+  // dos pasos se niegan antes de escribir; el muerto sigue MUERTO y no queda combate pendiente.
+  it.each([
+    ['convaleciente:<npc>', (saveId: string) => dejarConvalecienteSuelto(prisma, { saveId, npcSlug: 'guchapo' })],
+    ['convaleciente:<npc>:combate', (saveId: string) => dejarConvalecienteEnCombate(prisma, { saveId, npcSlug: 'guchapo' })],
+  ] as const)('%s no resucita al Guchapo MUERTO', async (_paso, preparar) => {
+    const saveId = await partida('Convaleciente sobre muerto (G3)');
+    const save = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { slug: 'guchapo', saveId: null } });
+    const scope = scopeFor(npc.kind, save.currentLocationId);
+    await prisma.npcState.upsert({
+      where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } },
+      create: { saveId, npcId: npc.id, scope, condicionFisica: 'MUERTO' },
+      update: { condicionFisica: 'MUERTO' },
+    });
+    expect(await preparar(saveId)).toEqual({ error: `convaleciente: ${npc.name} está MUERTO aquí; el paso no lo resucita.` });
+    expect((await prisma.npcState.findUniqueOrThrow({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope } } })).condicionFisica).toBe('MUERTO');
+    expect((await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).pendingCombatNpcSlugs ?? []).toEqual([]);
   });
 });

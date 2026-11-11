@@ -70,6 +70,7 @@ import {
   unresolvedDialogueTargetNarrationFor,
   detectsGiftToNpcClaim,
   giftToNpcNarrationFor,
+  giftRecipientIndex,
   GIFT_ANY_REGEX,
   sinNumeroDeCombatiente,
 } from '../services/playerActionValidation.js';
@@ -752,7 +753,9 @@ export async function turnRoutes(app: FastifyInstance) {
       const giftClaim = detectsGiftToNpcClaim(action, inventario.map((i) => i.name), visibles.flatMap(nombresDe));
       if (giftClaim) {
         const accionNorm = normalizeText(action);
+        const idxDestino = giftRecipientIndex(action, visibles.map(nombresDe));
         const destinatario =
+          (idxDestino >= 0 ? visibles[idxDestino] : undefined) ??
           visibles.find((n) => accionNorm.includes(normalizeText(n.name))) ??
           visibles.find((n) => n.nombreVisible && nombraPorNombreVisible(action, n.nombreVisible)) ??
           visibles[0];

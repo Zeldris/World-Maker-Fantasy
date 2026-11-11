@@ -11,7 +11,7 @@ import { effectiveTemperamento } from './reputation.js';
 import { momentoDelDiaFor } from './worldClock.js';
 import { faunaMomentoDelDia } from '../scripts/worldCatalog.js';
 import { npcVivoEnPartida } from './mundoPartida.js';
-import { nombreOcultoPorRaza, nombreEnFrase } from './dynamicMode.js';
+import { nombreOcultoPorRaza, nombreEnFrase, slugsConocidos } from './dynamicMode.js';
 
 /// Detección determinista de "NPC en escena" (docs/mecanicas/12-mundo-estructurado.md § 2.5) — sin llamada
 /// extra a Ollama: se busca Npc.aliases (normalizados) en el texto de la acción y en los hechos
@@ -660,6 +660,13 @@ export async function detectNpcsInScene(params: {
       .filter((slug): slug is string => slug !== null),
   });
   if (ocultoNombrado) matchedIds.add(ocultoNombrado);
+  // P441: a quien va de compañera se la llama por su nombre de pila («a Tirag»), no solo por el completo de sus alias.
+  const sinCasar = candidateNpcs.filter((npc) => !matchedIds.has(npc.id) && npc.kind === 'PRINCIPAL');
+  if (sinCasar.length > 0) {
+    const companeros = await prisma.companion.findMany({ where: { saveId: params.saveId, tipo: 'NPC', sourceSlug: { in: sinCasar.map((n) => n.slug) } }, select: { sourceSlug: true } });
+    const slugsCompaneros = new Set(companeros.map((c) => c.sourceSlug));
+    for (const npc of sinCasar) if (slugsCompaneros.has(npc.slug) && nombraPorPalabraDelNombre(params.action, npc.name)) matchedIds.add(npc.id);
+  }
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
   const matchedPorNombre = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
@@ -686,6 +693,15 @@ export async function detectNpcsInScene(params: {
     params.saveId,
     matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P441: ¿nombra el texto a alguien por una palabra de su nombre de 4 letras o más, como palabra entera («Le doy el
+/// tótem a Tirag» → Tirag Susig)? Solo para compañeros: a un desconocido no se le llama por el nombre de pila.
+export function nombraPorPalabraDelNombre(texto: string, nombre: string): boolean {
+  const palabras = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
+  return normalizeText(nombre)
+    .split(/\s+/)
+    .some((t) => t.length >= 4 && palabras.includes(` ${t} `));
 }
 
 /// P331: de estos NPC, los que en esta partida tienen su punto activo de mapa en otra zona y ninguno en la actual, y no
@@ -755,11 +771,7 @@ async function ocultoNombradoPorSuVisible(params: {
     : [];
   const enContacto = [...new Map([...enCombate, ...enModo, ...enZona].map((n) => [n.id, n])).values()];
   if (enContacto.length === 0) return null;
-  const vistos = await prisma.discoveredEntity.findMany({
-    where: { saveId: params.saveId, entityType: 'npc', entitySlug: { in: enContacto.map((n) => n.slug) } },
-    select: { entitySlug: true },
-  });
-  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const conocidos = await slugsConocidos(prisma, params.saveId, enContacto.map((n) => n.slug));
   const casa = (n: (typeof principales)[number]) => !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero));
   for (const grupo of [enCombate, enModo, enZona]) {
     const nombrados = grupo.filter(casa);
@@ -773,17 +785,13 @@ async function ocultoNombradoPorSuVisible(params: {
 /// narración ni los textos deterministas del turno revelen su identidad («el orco desconocido»).
 /// Una sola consulta por escena; solo los `PRINCIPAL` pueden estar ocultos.
 export async function conNombreVisible(
-  db: Pick<typeof prisma, 'discoveredEntity'>,
+  db: Pick<typeof prisma, 'discoveredEntity' | 'companion'>,
   saveId: string,
   npcs: NpcInScene[],
 ): Promise<NpcInScene[]> {
   const principales = npcs.filter((n) => n.kind === 'PRINCIPAL');
   if (principales.length === 0) return npcs;
-  const vistos = await db.discoveredEntity.findMany({
-    where: { saveId, entityType: 'npc', entitySlug: { in: principales.map((n) => n.slug) } },
-    select: { entitySlug: true },
-  });
-  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const conocidos = await slugsConocidos(db, saveId, principales.map((n) => n.slug));
   return npcs.map((n) => {
     if (n.kind !== 'PRINCIPAL' || conocidos.has(n.slug)) return n;
     return { ...n, nombreVisible: nombreOcultoPorRaza(n.raza, n.genero) };

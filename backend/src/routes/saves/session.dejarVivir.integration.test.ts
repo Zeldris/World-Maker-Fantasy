@@ -94,6 +94,19 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
     expect(perdon.logEntryId).toBe(logEntry.id);
   });
 
+  it('P270: perdonar con Clemente no resta reputación con su facción', async () => {
+    const npc = await prisma.npc.findUniqueOrThrow({ where: { id: npcId } });
+    expect(npc.faction).toBeTruthy();
+    await prisma.worldState.update({ where: { saveId }, data: { factionsStatus: { [npc.faction!]: 2500 } } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-cualquiera'] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().factionRepChange ?? null).toBeNull();
+    const ws = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect((ws.factionsStatus as Record<string, number>)[npc.faction!]).toBe(2500);
+  });
+
   it('BUG CERRADO (auditoría 2026-09-01, condición de carrera): dejar vivir dos veces al mismo NPC rechaza la segunda con 409 en vez de duplicar el LogEntry', async () => {
     // Antes de este fix, un segundo "dejar vivir" (doble clic, o replay) devolvía 200 igual que el
     // primero — sin comparar el slug ya ausente de pendingCombatNpcSlugs contra el estado fresco

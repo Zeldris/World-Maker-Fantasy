@@ -60,6 +60,20 @@ describe('aprobación (CR-15) — en una partida', () => {
     expect(await prisma.logEntry.count({ where: { saveId, text: 'Kaila asiente en silencio.' } })).toBe(1);
   });
 
+  it('matar a un rendido: la frase y el cambio guardado salen del mismo cálculo (P319)', async () => {
+    const tirag = await prisma.companion.create({ data: { saveId, name: 'Tirag', role: 'aliado', notes: '', tipo: 'NPC', valores: { piedad: -1, honor: 1 } } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, kind: 'PRINCIPAL', raza: { not: null } } });
+    const min = MIN + 10;
+    await prisma.$transaction((tx) => registrarSuceso(tx, { saveId, tipo: 'COMBATE_GANADO', fictionalMinutes: min, origen: 'JUGADOR', actores: [yo, { entidadTipo: 'NPC', entidadId: npc.id, papel: 'VICTIMA' }], datos: { personaje: 'x', rival: npc.name } }));
+    await procesarReacciones(prisma, saveId);
+    await prisma.$transaction((tx) => registrarSuceso(tx, { saveId, tipo: 'MUERTE_CAUSADA', fictionalMinutes: min + 5, origen: 'JUGADOR', actores: [yo, { entidadTipo: 'NPC', entidadId: npc.id, papel: 'VICTIMA' }], datos: { personaje: 'x', victima: npc.name } }));
+    await procesarReacciones(prisma, saveId);
+    const aprobacion = (await prisma.companion.findUniqueOrThrow({ where: { id: tirag.id } })).aprobacion;
+    const dijo = (await prisma.logEntry.count({ where: { saveId, text: { startsWith: 'Tirag ' } } })) > 0;
+    expect(dijo).toBe(aprobacion !== 50);
+    expect(aprobacion).toBe(51);
+  });
+
   it('con la aprobación por debajo de 10 tres días seguidos, se va', async () => {
     const harto = await prisma.companion.create({ data: { saveId, name: 'Harto', role: 'aliado', notes: '', tipo: 'NPC', aprobacion: 5 } });
     expect(await prisma.$transaction((tx) => revisarMarchas(tx, { saveId, fictionalMinutes: MIN }))).toEqual([]);

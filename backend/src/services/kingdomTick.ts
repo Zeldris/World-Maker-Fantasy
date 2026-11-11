@@ -36,6 +36,22 @@ export function hambrunaNueva(antes: number, despues: number, dias: number): boo
   return Math.floor(despues / DIAS_PARA_HAMBRUNA) > Math.floor(base / DIAS_PARA_HAMBRUNA);
 }
 
+/// P381: días de reserva por debajo de los cuales el Reino avisa («queda bebida/comida para N días»).
+export const DIAS_AVISO_RESERVA = 7;
+
+/// Puro: avisa una sola vez por racha. `balanceDia` es lo que cambia la reserva cada día (producción − consumo, de
+/// `balanceReservasDia`); devuelve si hay que avisar ahora, los días que quedan (entero hacia abajo) y el estado nuevo.
+export function avisoDeReserva(reserva: number, balanceDia: number, yaAvisado: boolean): { avisar: boolean; dias: number; yaAvisado: boolean } {
+  // Balance no negativo (la producción cubre el consumo): no hay cuenta atrás y la racha se rearma.
+  if (balanceDia >= 0) return { avisar: false, dias: Infinity, yaAvisado: false };
+  // Reserva ya a 0: manda la HAMBRUNA / la sed, no un aviso «previo»; la racha queda como estaba.
+  if (reserva <= 0) return { avisar: false, dias: 0, yaAvisado };
+  const consumoDia = -balanceDia;
+  const dias = Math.floor(reserva / consumoDia);
+  const bajo = reserva / consumoDia < DIAS_AVISO_RESERVA;
+  return { avisar: bajo && !yaAvisado, dias, yaAvisado: bajo };
+}
+
 export const DEFAULT_KINGDOM_STATS: KingdomStatsBlock = {
   poblacion: 0,
   felicidad: 50,
@@ -132,10 +148,18 @@ export interface SuministrosDia {
 /// Sin datos del Reino (tests de antes del 0.3): ni agua de fuera ni topes.
 export const SIN_SUMINISTROS: SuministrosDia = { agua: 0, topeComida: Infinity, topeBebida: Infinity };
 
+/// Puro: cuánto cambia cada reserva en un día antes del tope del almacén (producción − consumo). Lo usan
+/// `tickKingdomOneDay` y el aviso de reservas bajas (P381), para que cuenten igual.
+export function balanceReservasDia(stats: KingdomStatsBlock, s: SuministrosDia = SIN_SUMINISTROS): { comida: number; bebida: number } {
+  const consumo = (stats.poblacion + stats.soldados + stats.visitantes) * CONSUMO_POR_BOCA;
+  return { comida: (s.comidaDia ?? 0) - consumo, bebida: s.agua - consumo };
+}
+
 export function tickKingdomOneDay(stats: KingdomStatsBlock, s: SuministrosDia = SIN_SUMINISTROS): KingdomStatsBlock {
   const bocas = stats.poblacion + stats.soldados + stats.visitantes;
-  const comidaNeta = stats.comida + (s.comidaDia ?? 0) - bocas * CONSUMO_POR_BOCA;
-  const bebidaNeta = stats.bebida + s.agua - bocas * CONSUMO_POR_BOCA;
+  const balance = balanceReservasDia(stats, s);
+  const comidaNeta = stats.comida + balance.comida;
+  const bebidaNeta = stats.bebida + balance.bebida;
   const riquezaNeta = stats.riqueza + stats.trabajadores * RIQUEZA_POR_TRABAJADOR - (s.sueldosSemanales ? 0 : stats.soldados * MANTENIMIENTO_POR_SOLDADO);
 
   const hayDeficit = comidaNeta < 0 || bebidaNeta < 0;

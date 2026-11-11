@@ -212,7 +212,7 @@ describe('resumenModoDinamicoParaLog (P243)', () => {
 describe('nombresVisiblesDeNpcs (fase 1 hacia main)', () => {
   it('una sola consulta para todos los PRINCIPAL; oculta solo a los no descubiertos', async () => {
     const findMany = vi.fn().mockResolvedValue([{ entitySlug: 'gistera-koh' }]);
-    const db = { discoveredEntity: { findMany } } as never;
+    const db = { discoveredEntity: { findMany }, companion: { findMany: async () => [] } } as never;
     const nombres = await nombresVisiblesDeNpcs(db, 's1', [
       { slug: 'ugrak', name: 'Ugrak Tuerto', kind: 'PRINCIPAL', raza: 'ORCO', genero: 'M' },
       { slug: 'gistera-koh', name: 'Gistera Koh', kind: 'PRINCIPAL', raza: 'ORCO', genero: 'F' },
@@ -226,7 +226,7 @@ describe('nombresVisiblesDeNpcs (fase 1 hacia main)', () => {
 
   it('sin PRINCIPAL no consulta', async () => {
     const findMany = vi.fn();
-    const nombres = await nombresVisiblesDeNpcs({ discoveredEntity: { findMany } } as never, 's1', [{ slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' }]);
+    const nombres = await nombresVisiblesDeNpcs({ discoveredEntity: { findMany }, companion: { findMany: async () => [] } } as never, 's1', [{ slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' }]);
     expect(findMany).not.toHaveBeenCalled();
     expect(nombres.get('kirelon')).toBe('Kirelon');
   });

@@ -20,6 +20,7 @@
 //   XP del turno .............................................. const xpTurno
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
+import { companerosDeCombate } from './combateCompaneros.js';
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
 import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora, type GolpeGratisContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
@@ -2138,7 +2139,8 @@ export async function vistaCombateDeGrupo(
     };
   });
   await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
-  return { npcs };
+  // P445: los compañeros de la jugadora, como su bando en el panel.
+  return { npcs, companeros: await companerosDeCombate(prisma, participantesFinal) };
 }
 
 async function resolveCombatSlugsAndPersist(params: {

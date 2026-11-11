@@ -1147,7 +1147,7 @@ describe('P327 — nombre visible de un NPC aún no descubierto', () => {
     const principalOculto = npcFixture({ slug: 'gistera-koh', name: 'Gistera Koh', genero: 'F', raza: 'orcos', articulo: null });
     const principalConocido = npcFixture({ slug: 'orco-enfurecido' });
     const generico = npcFixture({ slug: 'guchapo', name: 'Guchapo', kind: 'GENERICO' as NpcInScene['kind'] });
-    const [a, b, c] = await conNombreVisible({ discoveredEntity: { findMany: findManyDiscovered } } as never, 'save-1', [principalOculto, principalConocido, generico]);
+    const [a, b, c] = await conNombreVisible({ discoveredEntity: { findMany: findManyDiscovered }, companion: { findMany: async () => [] } } as never, 'save-1', [principalOculto, principalConocido, generico]);
     expect(a!.nombreVisible).toBe('Orca desconocida');
     expect(a!.name).toBe('Gistera Koh');
     expect(b!.nombreVisible).toBeUndefined();

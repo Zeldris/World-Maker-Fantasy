@@ -27,6 +27,7 @@ import type {
   LogEntry,
   LogEntryRoll,
   NpcInSceneInfo,
+  CombateIniciadoInfo,
   SegundaTiradaInfo,
   TiradaGrupoInfo,
   CazaSigiloRoll,
@@ -258,7 +259,7 @@ export interface NarrateResponse {
   /// real del backend sí hubiera avanzado). Úsalo para refrescar `fictionalDate` Y para sellar la
   /// entrada de log de este mismo turno, nunca el valor local ya obsoleto.
   timeLabel: string
-  combateIniciado?: { npcs: NpcInSceneInfo[] } | null
+  combateIniciado?: CombateIniciadoInfo | null
   finDePartida: boolean
   /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — true cuando este turno mató al
   /// jugador pero no agotó las vidas: el susurro de la Entidad ya está en el log, pero ningún
@@ -678,7 +679,7 @@ export interface SaveDetail {
   /// sondeo de reconexión tenía que recuperar la partida vía `getSave` en vez de recibir esa
   /// respuesta, el aviso de "Combatir" se perdía sin dejar rastro pese a que el combate sí se
   /// había calculado bien en el backend.
-  combateIniciado: { npcs: NpcInSceneInfo[] } | null
+  combateIniciado: CombateIniciadoInfo | null
   /// "Modo dinámico" en curso, reconstruido tras cualquier resincronización (checklist frontend
   /// 2026-08-27, A.3 — mismo criterio que `combateIniciado` arriba): antes solo viajaba en la
   /// respuesta directa de `/modo-dinamico/interactuar`/`/responder` — recargar con una conversación
@@ -1544,9 +1545,8 @@ export async function dejarVivir(
 ): Promise<{
   npcSlug: string
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
-  /// Reputación de facción (2026-09-04, decisión final desde CONVALECIENTE, ver
-  /// FACTION_REP_MERCY_DELTA en backend) — antes solo Matar/Clemente en combate 1v1 clásico
-  /// aplicaban esto de forma indirecta (y demasiado pronto, ver el bug real que motivó esta pieza).
+  /// Reputación de facción: siempre null desde P270 (usuaria, 2026-11-08), perdonar con Clemente
+  /// no resta reputación. Se mantiene el campo por compatibilidad del contrato.
   factionRepChange: { faction: string; delta: number; newValue: number } | null
   /// Títulos de misión ACTIVA que siguen apuntando a este NPC (2026-09-15, hallazgo real jugando
   /// en vivo: "Acabar con X" seguía ACTIVA sin ningún aviso tras perdonarle la vida) — Clemente NO
@@ -1828,7 +1828,7 @@ export interface EconomiaReino {
   bebida?: number
   comidaProduccionDia?: number
   comidaConsumoDia?: number
-  bocasDetalle?: { civiles: number; soldados: number; visitantes: number }
+  bocasDetalle?: { civiles: number; soldados: number; visitantes: number; cazadores?: number }
   motivosComida?: string[]
   aguaDia: number
   bocas: number
@@ -2177,7 +2177,7 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
 /// quien lo abra — decisión explícita de la usuaria: "cazar sí que fuerza una narración cuando
 /// eliges objetivos y esa narración inicia el combate".
 export type ConfirmarCazaResultado =
-  | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
+  | { resuelveSinCombate: true; exito: true; combate: CombateIniciadoInfo; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
   | ({
       resuelveSinCombate: false
       exito: false | null
@@ -2291,7 +2291,7 @@ export interface DynamicModeTurno {
   /// combate directo (el NPC vio primero al jugador, o el jugador eligió "Combatir" tras verlo él
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
-  combate?: { npcs: NpcInSceneInfo[] } | null
+  combate?: CombateIniciadoInfo | null
   /// P437: el rival vio antes a la jugadora y su ataque queda pendiente: el panel abre en Defensa.
   esperandoDefensaJugador?: true
   /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,

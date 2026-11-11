@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   rollInitiativeMultiple,
+  lineaDeCierreDelCombate,
   elegirObjetivo,
   objetivosValidos,
   bandoSigueEnCombate,
@@ -1127,5 +1128,30 @@ describe('textoConQuienTeEnfrentas (P353/P356, opción A de la usuaria)', () => 
     expect(textoConQuienTeEnfrentas({ duelo: 'la Faerus', dueloFemenino: true, eligio: false, dePaso: ['el Orco', 'Hulki'] })).toBe(
       'La Faerus te ha elegido: te defiendes de ella; el Orco y Hulki te golpean de paso.',
     );
+  });
+});
+
+describe('lineaDeCierreDelCombate (P454)', () => {
+  const base = { nombreJugadora: 'Ileana', condicionJugadora: 'HERIDO' as const };
+  it('sin huidos: ningún rival en pie', () => {
+    expect(lineaDeCierreDelCombate({ ...base, enemigos: [{ huido: false }, { huido: false }] })).toBe('Fin del combate: no queda ningún rival en pie.');
+  });
+  it('mezcla de caídos y huidos', () => {
+    expect(lineaDeCierreDelCombate({ ...base, enemigos: [{ huido: true }, { huido: false }] })).toBe('Fin del combate: los rivales han caído o huido.');
+  });
+  it('un rival que huye', () => {
+    expect(lineaDeCierreDelCombate({ ...base, enemigos: [{ huido: true }] })).toBe('Fin del combate: el rival ha huido.');
+  });
+  it('varios rivales que huyen', () => {
+    expect(lineaDeCierreDelCombate({ ...base, enemigos: [{ huido: true }, { huido: true }] })).toBe('Fin del combate: los rivales han huido.');
+  });
+  it('jugadora convaleciente', () => {
+    expect(lineaDeCierreDelCombate({ ...base, condicionJugadora: 'CONVALECIENTE', enemigos: [{ huido: false }] })).toBe(
+      'Fin del combate: no queda ningún rival en pie, pero Ileana sale convaleciente de la pelea.',
+    );
+  });
+  it('sin línea si murió o no había rivales', () => {
+    expect(lineaDeCierreDelCombate({ ...base, condicionJugadora: 'MUERTO', enemigos: [{ huido: false }] })).toBeNull();
+    expect(lineaDeCierreDelCombate({ ...base, enemigos: [] })).toBeNull();
   });
 });

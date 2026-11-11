@@ -121,7 +121,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 - **Código:** `b/services/combateMultipleOrquestacion.ts#iniciarCombatEncounter`, `resolverTurnoJugador`,
   `resolverTurnoAutonomo`, `resolverTurnosAutonomosHastaJugadora`, `esAtacanteDeMasPermitido` (máximo 2 atacantes
-  sobre uno), `topeDeRondaJugadora`; tiradas en `b/services/combatExchange.ts#resolveExchange`, `rollInitiative`;
+  sobre uno), `topeDeRondaJugadora`; fin del combate y tótems en `avanzarYComprobarFin`, y su línea en el diario
+  en `escribirCierreDelCombate` (P454); tiradas en `b/services/combatExchange.ts#resolveExchange`, `rollInitiative`;
   salud y muerte en `b/services/death.ts#resolveDeathOutcome`, `nextCondicionForAttack`. Rutas:
   `b/routes/saves/session.ts` (`/combat/flee`, `/combat/cerrar`, `/combat/matar/:npcSlug`), `combatGroups.ts`.
 - **Tests:** `b/services/combateMultiple*.test.ts`, `combatExchange.test.ts`, `combatePersonas*.test.ts`,
@@ -201,7 +202,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Catálogo y siembra
 
 - **Código:** datos en `b/scripts/worldCatalog.ts`; siembra `b/scripts/seed-catalog.ts` con
-  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate, `combate1v1:<npc>` en `b/services/cronista/prepararCombate1v1.ts` (el 1v1 clásico, con el efecto `forzarCombate`), `convaleciente:<npc>:combate` en `b/services/cronista/prepararConvaleciente.ts` (el convaleciente con su tarjeta en el diario), `domable:<especie>` en `b/services/cronista/prepararDoma.ts`, `punto-retirado:<especie>` en `b/services/cronista/prepararPuntoRetirado.ts`, `sin-aliados` en `b/services/cronista/prepararSinAliados.ts` (sobre `moverCompaneroDeGrupo` de `b/services/combatGroups.ts`) y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
+  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, `combate:<npc>` en `b/services/cronista/prepararCombate.ts` (se niega con un rival muerto o convaleciente, P374), `combate1v1:<npc>` en `b/services/cronista/prepararCombate1v1.ts` (el 1v1 clásico, con el efecto `forzarCombate`), `convaleciente:<npc>:combate` en `b/services/cronista/prepararConvaleciente.ts` (el convaleciente con su tarjeta en el diario), `domable:<especie>` en `b/services/cronista/prepararDoma.ts`, `punto-retirado:<especie>` en `b/services/cronista/prepararPuntoRetirado.ts`, `fuera:<lugar>` (va antes de `combate:`; rechaza interiores) en `b/services/cronista/prepararFuera.ts`, `sexo=pareja` en `b/services/cronista/prepararPareja.ts`, `sin-guarnicion` en `b/services/cronista/prepararSinGuarnicion.ts`, `sin-aliados` en `b/services/cronista/prepararSinAliados.ts` (sobre `moverCompaneroDeGrupo` de `b/services/combatGroups.ts`) y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
 

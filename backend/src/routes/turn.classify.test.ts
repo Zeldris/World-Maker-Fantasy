@@ -46,6 +46,7 @@ vi.mock('../lib/prisma.js', () => ({
     },
     // P310: el aviso de NPC ausente mira si la jugadora ya conoce al NPC.
     discoveredEntity: { findFirst: () => Promise.resolve(null), findMany: () => Promise.resolve([]) },
+    companion: { findMany: () => Promise.resolve([]) },
     logEntry: { create: (...args: unknown[]) => logEntryCreate(...args) },
     combatEncounter: { findFirst: (...args: unknown[]) => findFirstCombatEncounter(...args) },
     // P344: los rivales del combate de varios en curso (`enCombateConDelTurno`); aquí no hay ninguno.

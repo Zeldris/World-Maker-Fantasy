@@ -53,7 +53,14 @@ async (page) => {
           return casa(propio) || casa(etiqueta);
         });
       };
-      const arriba = capas.pop();
+      // P451: la de arriba es la que se ve encima, no siempre la última del documento: el mapa de zona (modal z-50) puede
+      // ir antes en el DOM que el cajón Reino y taparlo. Se toma la última cuyo centro no tapa otra cosa.
+      const visibleEnCentro = (el) => {
+        const r = el.getBoundingClientRect();
+        const enPunto = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !!enPunto && el.contains(enPunto);
+      };
+      const arriba = [...capas].reverse().find(visibleEnCentro) ?? capas.pop();
       const todos = soloCapa ? (arriba ? buscar(arriba) : []) : buscar(document);
       if (!todos.length) return { vacio: true };
       // Varias coincidencias: la última del documento (la de más arriba, como siempre). Si está tapada por otro panel
