@@ -1,6 +1,7 @@
 import { revisarMoralDelCombate } from './moralGrupo.js';
 import { elegirCapitan, lineaDeCierreDelCombate, objetivoConcentrado } from './combateMultiple.js';
 import { restarVejez } from './cronista/edades.js';
+import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from './entityDiscovery.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { AttributeBlock, Attribute } from './dice.js';
@@ -1648,6 +1649,7 @@ async function resolverTotemsPendientes({
   const terminado = !bandoSigueEnCombate(candidatosPorBando('JUGADOR')) || !bandoSigueEnCombate(candidatosPorBando('ENEMIGO'));
   if (terminado) {
     await prisma.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+    await descubrirNpcsDelCombate(prisma, saveId, encounterId);
     await escribirCierreDelCombate(prisma, saveId, datosPorParticipante.map(({ p, datos }) => ({ tipo: p.tipo, bando: p.bando, huido: p.huido, condicion: datos?.condicionFisica ?? 'MUERTO' })));
   }
   return { narraciones, caidos, encounterTerminado: terminado };
@@ -2382,6 +2384,20 @@ async function avanzarSinAtacar({
   };
 }
 
+/// P328/P107: al acabar un combate (cualquier desenlace, también quien huye por moral) los NPC que han peleado
+/// quedan DESCUBIERTOS en la partida: su ficha del mapa de zona deja de ser «???». Empezar el combate no
+/// descubre (P327); el descubrimiento llega al cerrarlo. Mismo upsert que `marcarNpcConocidoRapido` (rutas).
+async function descubrirNpcsDelCombate(tx: Prisma.TransactionClient | PrismaClient, saveId: string, encounterId: string): Promise<void> {
+  const participantes = await tx.combatParticipant.findMany({ where: { encounterId, tipo: 'NPC', npcId: { not: null } }, select: { npc: { select: { slug: true } } } });
+  for (const slug of new Set(participantes.flatMap((p) => (p.npc ? [p.npc.slug] : [])))) {
+    await tx.discoveredEntity.upsert({
+      where: { saveId_entityType_entitySlug: { saveId, entityType: entityTypeDeSerVivo(slug, FUENTES_DE_CATALOGO), entitySlug: slug } },
+      create: { saveId, entityType: entityTypeDeSerVivo(slug, FUENTES_DE_CATALOGO), entitySlug: slug, fase: 'DESCUBIERTO' },
+      update: { fase: 'DESCUBIERTO' },
+    });
+  }
+}
+
 /// P454: deja en el diario (línea de sistema) cómo acabó el combate; turnResolution la recoge con las demás líneas
 /// del combate (`lineasDiarioDelCombate`). Solo los combates de la jugadora: los de fondo no pasan por aquí.
 async function escribirCierreDelCombate(
@@ -2500,6 +2516,7 @@ async function avanzarYComprobarFin({
 
   if (terminado) {
     await tx.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+    await descubrirNpcsDelCombate(tx, saveId, encounterId);
     await escribirCierreDelCombate(
       tx,
       saveId,
