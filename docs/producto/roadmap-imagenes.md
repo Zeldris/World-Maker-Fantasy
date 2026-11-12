@@ -226,6 +226,12 @@ GPT quedan como canon fijo para medir la deriva.
 
 - **IMG-44 · Tanda de noche** [A] (usuaria, 2026-11-06): `tanda.sh` con las Final en cola, regla de memoria con pregunta,
   tope de hora, gradar y medir al terminar y revisión por la mañana, para aceptar o volver a una fase. Entrega E3. **M**
+  `/gw-opt-ai` (2026-11-12, aprobado por el usuario): la noche del 2026-11-11 dio 1 de 11 Finales. Partir de la cola de
+  esa noche (`generated/noche-20261111/cola.sh`: `pendientes/`, `PARAR`, `resumen.log`) y añadir: reintento único de la
+  imagen que muera por el vigilante o por `ErrorDeviceLost`; `systemd-inhibit --what=sleep:idle:handle-power-key`;
+  temperatura máxima y s/paso por imagen en `resumen.log` (de `/var/log/jupiter-fan-control.log`). Tests con un sd-cli
+  falso que falle una vez. **Reserva** (solo si la Deck vuelve a apagarse por calor): tope de la APU a 10-12 W durante
+  la tanda (root; ~20-30 % más lento); la noche medida no frenó (195 s/paso fijos, 83-90 °C).
 - **IMG-45 · Publicar en el juego** [A] (usuaria, 2026-11-06): copia de las referencias de GPT a `referencias/images/`
   antes de nada, y Publicar/Despublicar con una imagen ★. Entrega E5. **S**
 
