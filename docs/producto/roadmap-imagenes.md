@@ -205,6 +205,8 @@ GPT quedan como canon fijo para medir la deriva.
   2026-11-09 (tarde): cambio de motor a **Qwen-Image 2.1** (grande, Q4_K, ~42 min/imagen en la Deck): cuernahoja
   **12/10** y gargantúa **8/10** (nota de la usuaria; pega: mucha luz, simetría, «muy limpio»). Turbo descartado por
   calidad. Ficha desde el banner cuando lo hay (`banner-vs-canon.md`); tanda de noche r35 con estilo de *concept art*.
+  2026-11-12: gargantúa r36 a 1920x768, **4/10 por la forma** (usuario): más multiforme, color y huesos nada lisos, cabeza
+  que no sea de rinoceronte. Queda: rehacer su ficha r36 con eso (por el generador local, revisada contra el banner).
 
 - **IMG-56 · Qwen-Image 2.1 y el agente de prompts en la interfaz** [A] (usuaria, 2026-11-09, de `IMG-55`): llevar el
   método a la interfaz para que la usuaria pruebe sola: (1) motor `qwen21` en `scripts/motores.py` con la receta de la
@@ -212,7 +214,7 @@ GPT quedan como canon fijo para medir la deriva.
   prompt» que escribe la ficha con el modelo local de Ollama (desde el banner si lo hay, si no del canon) y monta el
   prompt con lo aprendido (estilo pintado, nada simétrico ni limpio, luz con bruma); Ollama se descarga antes de
   generar. Licencia de Qwen-Image 2.1: Qwen Research, no comercial (avisado a la usuaria). **M**
-- **IMG-57 · Qwen-Image 2.1 más rápido sin perder calidad** [A] (usuario, 2026-11-09, de `IMG-56`): la Final a
+- ~~**IMG-57 · Qwen-Image 2.1 más rápido sin perder calidad**~~ ✅ 2026-11-12: Final de la gargantúa a 1920x768 en 3305 s (2,5× en el muestreo); nota del usuario 4/10 por la forma (cabeza de rinoceronte, color y huesos demasiado lisos, poco multiforme), no por la calidad: va a la ficha (`IMG-55`). [A] (usuario, 2026-11-09, de `IMG-56`): la Final a
   1920x768 tarda 2 h 15 min (198 s/paso, 40 pasos; texto 45 s y VAE 132 s). La GPU ya va a 1600 MHz y 15 W: el ahorro
   sale de calcular menos. Cribado a 960x384 contra la base de 40 pasos (pasos, CFG mixto con `guidance_schedule`,
   `--cache-mode` easycache/spectrum/cache-dit), combinación de lo que no pierda y confirmación a 1920x768 con la

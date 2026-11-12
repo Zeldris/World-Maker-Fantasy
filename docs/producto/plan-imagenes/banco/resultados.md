@@ -728,6 +728,10 @@ al máximo (1600 MHz, ~15 W): el ahorro sale de calcular menos pasos del modelo.
 
 - Las de easycache y cache-dit, vistas en hoja, son la misma imagen que la base: mismo animal, manada y fondo.
 - `guidance_schedule` separa los tramos con `+` (con `,` o `;` solo lee el primero).
+- **Confirmado (noche del 2026-11-11):** gargantúa r36 a 1920x768 con easycache, **3305 s** (muestreo 3123 s frente
+  a 7911 s sin easycache, 2,5×; 195 s/paso fijos sin frenazo térmico). **Nota del usuario: 4/10, por la forma, no por la
+  calidad** («no está mal»): su gargantúa es más multiforme, ni el color ni los huesos tan lisos, y la cabeza no es
+  de rinoceronte (la generada casi lo es). Es un fallo de la ficha del prompt, no de easycache.
 - **Pendiente:** la confirmación a 1920x768 no se terminó (la Deck se suspendió a las 02:30 y sd-cli murió con
   `ErrorDeviceLost`); la hace la primera Final del usuario. Estimado ~1 h frente a 2 h 15 min.
 
