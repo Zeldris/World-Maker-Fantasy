@@ -49,7 +49,8 @@ MOTORES = {
                'base': ['--flash-attn', 'diffusion=on', '--vae-tiling', '--backend', 'te=cpu'],
                # IMG-57: easycache (umbral 0.2) se salta ~24 de 40 pasos: 2,3 veces más rápido y casi igual (SSIM 0.955)
                'extra': ['--model-args', 'qwen_image_2_1_prefix_cache_type=q4_0', '--cache-mode', 'easycache'],
-               'sampler': 'euler', 'lora': None, 'perfil': None, 'sin_refs': True, 'vigila_mb': 1200,
+               # 2026-11-12: 1200 mataba la carga del modelo (pico de 1191 MB libres); la Final se queda en ~1400
+               'sampler': 'euler', 'lora': None, 'perfil': None, 'sin_refs': True, 'vigila_mb': 1000,
                'tam_paso': (512, 288), 'tam_final': (1920, 768),
                'segundos': {'paso': 350, 'final': 3600}, 'estimacion': True},
     # Lo que hoy hace PERFIL=fotorreal de generar.sh (que fija modelo, texto, VAE, bin-nuevo y LoRA de estilo): no se duplica.
