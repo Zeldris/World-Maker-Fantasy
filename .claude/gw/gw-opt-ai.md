@@ -102,3 +102,4 @@ p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-3
 - `keep_alive` 1h en `resumen` y en el calentamiento (`QA-161`); captura remota apagada en las tandas (`QA-160`).
 - Aprobadas el 2026-11-11 (no se vuelven a proponer): prefijo estable entre rondas de combate (`QA-307`), `keep_alive`
   30 min del Cronista (`QA-308`), casos fijos del clasificador (`QA-309`), registro tras `escenario.sh cargar` (`QA-310`).
+- Aprobadas el 2026-11-12: el hecho del golpe al final del prompt (`QA-326`) y la cola de noche robusta del generador (`IMG-44`: reintento, `handle-power-key`, temperatura por imagen). Ya hecho: vigilante de `qwen21` a 1000 MB y el botón de encendido de KDE sin acción. El tope de consumo de la APU (10-12 W) **no** se vuelve a proponer: solo si la Deck se apaga por calor.
