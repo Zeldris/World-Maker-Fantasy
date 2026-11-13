@@ -3,7 +3,7 @@ import '../lib/setupFetch.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
-import { puestoDelPrimerEsperado, resumirCasos, type CasoRag, type ResultadoCaso } from './ragEval.js';
+import { puestoDelPrimerEsperado, resumirCasos, validarCasos, type CasoRag, type ResultadoCaso } from './ragEval.js';
 
 /// Evalúa el RAG del lore (skill opt-ai): por cada caso de `backend/ia/rag-casos.jsonl` llama a
 /// `retrieveLore` y mira en qué puesto sale el primer trozo esperado.
@@ -49,6 +49,13 @@ const casos: CasoRag[] = readFileSync(rutaCasos, 'utf8')
       process.exit(2);
     }
   });
+
+const erroresDeCasos = validarCasos(casos);
+if (erroresDeCasos.length > 0) {
+  console.error(`${rutaCasos}: ${erroresDeCasos.length} casos mal formados (QA-328):`);
+  for (const e of erroresDeCasos) console.error(`  ${e}`);
+  process.exit(2);
+}
 
 const { prisma } = await import('../lib/prisma.js');
 const { retrieveLore } = await import('../services/retrieval.js');

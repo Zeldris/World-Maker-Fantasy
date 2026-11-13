@@ -1741,7 +1741,7 @@ Retro y `/gw-opt-tokens` de los lotes F-I de la puerta (usuaria, 2026-11-11, [re
 
 RAG medible para el Galivelop Evaluator (GVE), que mide el RAG de lore desde su propio repo sin tocar este (usuaria, 2026-11-13; excepción a la regla de las pruebas). Rama `claude/gve-rag`. Orden: `QA-327`, `QA-328`, `QA-329`, `QA-330`, `QA-331`. Las corridas reales (Ollama con `nomic-embed-text`) se hacen en la Deck: la nube solo tiene el Ollama simulado.
 - ~~**QA-327 · Desempate fijo en `retrieveLore`**~~ ✅ 2026-11-13: `ORDER BY distance, title` tras el `DISTINCT ON (title)`; test `retrievalOrden.test.ts` (rojo sin el arreglo). **Pendiente en la Deck:** dos corridas de `rag-eval --json` con el mismo orden de títulos.
-- **QA-328 · `causa` obligatoria en los casos del RAG** (T4 del GVE).
+- ~~**QA-328 · `causa` obligatoria en los casos del RAG**~~ ✅ 2026-11-13 (T4 del GVE): los 12 semilla ya traían `"causa": null`; `validarCasos` (`ragEval.ts`) la exige con un valor de la lista, más `pregunta`, `esperados` e id único, y `rag-eval` sale con 2 si algo falla. Tests en `ragEval.test.ts`, también sobre el archivo del repo.
 - **QA-329 · `npm run rag-eval -- --json` con salida completa** (T1 del GVE): configuración, casos con sus resultados y resumen.
 - **QA-330 · Mandos del RAG sin tocar código** (T2 del GVE): tamaño de trozo, solapamiento, prefijos y plantilla, iguales en `reindex-lore` y `rag-eval`, con la configuración del índice guardada y comparada.
 - **QA-331 · Generar casos del RAG** (T3 del GVE): casos B con un modelo local, borradores A, lote de reserva aparte y todos los casos en pares es/en.
