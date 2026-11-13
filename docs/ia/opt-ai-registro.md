@@ -51,6 +51,13 @@ stderr; los códigos de salida son los mismos (0, 1 si falla un `debe_pasar`, 2 
 `causa`, `debe_pasar`, `esperados`, `query`, `results` con `title` y `distance` en orden, `rank` y `passed`) y
 `summary` (`k`, `n`, `recall`, `mrr`, `failed_required`).
 
+Mandos del RAG (`QA-330`, `src/lib/ragConfig.ts`): `RAG_TAM_TROZO`, `RAG_SOLAPE`, `RAG_PREFIJO_CONSULTA`,
+`RAG_PREFIJO_DOCUMENTO` y `RAG_PLANTILLA`, o los argumentos `--tam-trozo`, `--solape`, `--prefijo-consulta`,
+`--prefijo-documento`, `--plantilla` y `--prefijos-nomic`, iguales en `reindex-lore` y `rag-eval`. `reindex-lore`
+guarda la configuración en `World.loreIndice`; `rag-eval` sale con 2 si la suya no casa (salvo `--ignorar-indice`) y la
+saca en `config.index` e `index_matches`. Para comparar: `npm run reindex-lore -- --tam-trozo 250 --prefijos-nomic` y
+`npm run rag-eval -- --json --tam-trozo 250 --prefijos-nomic`.
+
 ## Medidas por tanda
 
 ### 2026-10-20 · Deck (`deck`), primera pasada (sin anterior)

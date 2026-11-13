@@ -73,6 +73,9 @@ model World {
   lethality    Lethality
   /// Tema de color por mundo (accent300-600, accent2 300-600) — mismo shape que WorldTheme en el frontend.
   theme        Json
+  /// Con qué se construyó el índice del lore (`QA-330`): modelo, trozo, solapamiento, prefijos y plantilla.
+  /// Lo escribe `reindex-lore`; `rag-eval` lo compara con su corrida.
+  loreIndice   Json?
   createdAt    DateTime     @default(now())
 
   saves            Save[]

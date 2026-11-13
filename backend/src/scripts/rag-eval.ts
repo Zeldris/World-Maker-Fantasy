@@ -15,10 +15,16 @@ import {
   type CasoRag,
   type ResultadoCaso,
 } from './ragEval.js';
+import { aplicarArgumentosRag, configRag, diferenciasDeIndice, type ConfigIndice, type ConfigRag } from '../lib/ragConfig.js';
 
 /// Evalúa el RAG del lore (skill opt-ai): por cada caso de `backend/ia/rag-casos.jsonl` llama a
 /// `retrieveLore` y mira en qué puesto sale el primer trozo esperado.
-/// Uso: npm run rag-eval -- [--casos <ruta>] [--k 4] [--json] [--registro <ruta>]
+/// Uso: npm run rag-eval -- [--casos <ruta>] [--k 4] [--json] [--registro <ruta>] [--ignorar-indice]
+///        [mandos del RAG: --tam-trozo, --solape, --prefijo-consulta, --prefijo-documento, --plantilla, --prefijos-nomic]
+///
+/// Mandos (`QA-330`, también por variables RAG_*; ver `src/lib/ragConfig.ts`): los mismos que `reindex-lore`. Si no
+/// casan con los que guardó el último reindexado (`World.loreIndice`), sale con 2 diciendo cuáles, salvo con
+/// `--ignorar-indice` (p. ej. para probar otro prefijo de consulta sin reindexar). Sin índice guardado, solo avisa.
 ///
 /// Llama a `retrieveLore` como el juego (turnResolution.ts): k=4 por defecto, y si el caso trae el campo
 /// opcional `region` (p. ej. "La Cicatriz de Cristal"), la consulta lleva el sufijo ` — <región>` y se
@@ -45,6 +51,16 @@ if (!Number.isInteger(k) || k <= 0) {
   process.exit(2);
 }
 const comoJson = process.argv.includes('--json');
+const ignorarIndice = process.argv.includes('--ignorar-indice');
+
+let cfg: ConfigRag;
+try {
+  aplicarArgumentosRag(process.argv.slice(2));
+  cfg = configRag();
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(2);
+}
 
 // `env.ts` lee IA_REGISTRO al cargarse (import dinámico, más abajo): se decide antes de cargarlo.
 const rutaRegistro = argumento('--registro');
@@ -74,14 +90,26 @@ if (erroresDeCasos.length > 0) {
 const { prisma } = await import('../lib/prisma.js');
 const { retrieveLore } = await import('../services/retrieval.js');
 const { env } = await import('../config/env.js');
-const { configRag } = await import('../lib/ragConfig.js');
 
 const resultados: ResultadoCaso[] = [];
+let indice: Partial<ConfigIndice> | null = null;
+let diferencias: string[] = [];
 try {
   const world = await prisma.world.findFirst({ where: { slug: 'helek-sirik' } });
   if (!world) {
     console.error("No existe el mundo 'helek-sirik' en la base de datos: ¿falta el seed o apunta DATABASE_URL a otra base?");
     process.exit(2);
+  }
+  indice = (world.loreIndice as Partial<ConfigIndice> | null) ?? null;
+  if (!indice) {
+    console.error('Aviso: el índice del lore no guarda con qué se construyó (reindexado anterior a QA-330): no se comprueba.');
+  } else {
+    diferencias = diferenciasDeIndice(indice, { modelo: env.ollamaModelEmbeddings, ...cfg });
+    if (diferencias.length > 0) {
+      console.error(`Los mandos de esta corrida no casan con el índice (reindexa con los mismos o pasa --ignorar-indice):`);
+      for (const d of diferencias) console.error(`  ${d}`);
+      if (!ignorarIndice) process.exit(2);
+    }
   }
   for (const caso of casos) {
     const continente = caso.region ? continentForRegion(caso.region) : null;
@@ -111,7 +139,6 @@ informe(`\nrecall@${k}: ${resumen.recall.toFixed(3)}   MRR: ${resumen.mrr.toFixe
 for (const id of resumen.fallanObligatorios) informe(`  FALLA ${id}`);
 
 if (comoJson) {
-  const cfg = configRag();
   const raiz = git(['rev-parse', '--show-toplevel']);
   const salida = salidaJson(
     {
@@ -125,8 +152,8 @@ if (comoJson) {
       document_template: cfg.plantilla,
       query_template: { sin_region: '{pregunta}', con_region: '{pregunta} — {region}' },
       region_filter: 'si el caso trae región, se excluye el lore del continente contrario',
-      index: null,
-      index_matches: null,
+      index: indice,
+      index_matches: indice ? diferencias.length === 0 : null,
       commit: git(['rev-parse', 'HEAD']),
       commit_dirty: git(['status', '--porcelain']) === null ? null : git(['status', '--porcelain']) !== '',
       cases_file: raiz ? relative(raiz, rutaCasos) : rutaCasos,
