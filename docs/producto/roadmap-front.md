@@ -1739,6 +1739,13 @@ Retro y `/gw-opt-tokens` de los lotes F-I de la puerta (usuaria, 2026-11-11, [re
 - ~~**QA-324 · Sin el aviso fijo de P442**~~ ✅ 2026-11-11 (retro de las tandas 117-118): el estado de P442 ya no lleva ✅ junto a «no aplica», y `marca-hallazgo.py --resumen --comprobar` deja de avisar en cada push.
 - ~~**QA-325 · El fin del combate en el mapa del agente**~~ ✅ 2026-11-11 (retro de las tandas 117-118): «Combate» de `docs/mapa-agente.md` nombra `avanzarYComprobarFin` y `escribirCierreDelCombate`.
 
+RAG medible para el Galivelop Evaluator (GVE), que mide el RAG de lore desde su propio repo sin tocar este (usuaria, 2026-11-13; excepción a la regla de las pruebas). Rama `claude/gve-rag`. Orden: `QA-327`, `QA-328`, `QA-329`, `QA-330`, `QA-331`. Las corridas reales (Ollama con `nomic-embed-text`) se hacen en la Deck: la nube solo tiene el Ollama simulado.
+- ~~**QA-327 · Desempate fijo en `retrieveLore`**~~ ✅ 2026-11-13: `ORDER BY distance, title` tras el `DISTINCT ON (title)`; test `retrievalOrden.test.ts` (rojo sin el arreglo). **Pendiente en la Deck:** dos corridas de `rag-eval --json` con el mismo orden de títulos.
+- **QA-328 · `causa` obligatoria en los casos del RAG** (T4 del GVE).
+- **QA-329 · `npm run rag-eval -- --json` con salida completa** (T1 del GVE): configuración, casos con sus resultados y resumen.
+- **QA-330 · Mandos del RAG sin tocar código** (T2 del GVE): tamaño de trozo, solapamiento, prefijos y plantilla, iguales en `reindex-lore` y `rag-eval`, con la configuración del índice guardada y comparada.
+- **QA-331 · Generar casos del RAG** (T3 del GVE): casos B con un modelo local, borradores A, lote de reserva aparte y todos los casos en pares es/en.
+
 Licencias del proyecto (usuaria, 2026-11-05):
 - ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
 

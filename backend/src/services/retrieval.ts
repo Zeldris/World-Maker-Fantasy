@@ -39,6 +39,8 @@ const RELEVANCE_THRESHOLD = 0.75;
 /// QA-167: cada fragmento tiene varias filas (una por trozo, con el texto entero; ver loreTrozos.ts), así que se
 /// queda con la más cercana de cada título antes de cortar en `topK`. `LoreChunk` no tiene índice vectorial (255 filas
 /// en Tarkor, búsqueda de ~8 ms): si se le pone uno, el `DISTINCT ON` impide usarlo y habría que deduplicar fuera.
+/// QA-327: `title` desempata dos distancias iguales, para que dos corridas den el mismo orden (el GVE compara corridas).
+/// Dentro de un título, el `DISTINCT ON` ya es fijo: todas sus filas guardan el mismo texto.
 /// Bajado de 6 a 4 (2026-07-17): con 6 fragmentos, narrar pasaba de ~30-140s a 170-220s+ (y dos
 /// veces se colgó del todo) — el prefill de un prompt ~3x más largo cuesta caro en esta CPU.
 export async function retrieveLore(
@@ -65,7 +67,7 @@ export async function retrieveLore(
             AND NOT (tags && ${excludeTags}::text[])
           ORDER BY title, embedding <=> ${queryLiteral}::vector
         ) mejores
-        ORDER BY distance
+        ORDER BY distance, title
         LIMIT ${topK}
       `,
       15_000,
