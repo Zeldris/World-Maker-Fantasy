@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import '../lib/setupFetch.js';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,7 @@ import {
   resumirCasos,
   salidaJson,
   validarCasos,
+  validarParejas,
   type CasoRag,
   type ResultadoCaso,
 } from './ragEval.js';
@@ -19,7 +20,7 @@ import { aplicarArgumentosRag, configRag, diferenciasDeIndice, type ConfigIndice
 
 /// Evalúa el RAG del lore (skill opt-ai): por cada caso de `backend/ia/rag-casos.jsonl` llama a
 /// `retrieveLore` y mira en qué puesto sale el primer trozo esperado.
-/// Uso: npm run rag-eval -- [--casos <ruta>] [--k 4] [--json] [--registro <ruta>] [--ignorar-indice]
+/// Uso: npm run rag-eval -- [--casos <ruta>[,<ruta>…]] [--k 4] [--json] [--registro <ruta>] [--ignorar-indice]
 ///        [mandos del RAG: --tam-trozo, --solape, --prefijo-consulta, --prefijo-documento, --plantilla, --prefijos-nomic]
 ///
 /// Mandos (`QA-330`, también por variables RAG_*; ver `src/lib/ragConfig.ts`): los mismos que `reindex-lore`. Si no
@@ -44,7 +45,12 @@ function argumento(nombre: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
-const rutaCasos = argumento('--casos') ?? fileURLToPath(new URL('../../ia/rag-casos.jsonl', import.meta.url));
+// `--casos a.jsonl,b.jsonl` (`QA-331`); por defecto, los casos a mano y, si existen, los generados (origen B).
+const casosPorDefecto = ['../../ia/rag-casos.jsonl', '../../ia/rag-casos-b.jsonl']
+  .map((r) => fileURLToPath(new URL(r, import.meta.url)))
+  .filter((r, i) => i === 0 || existsSync(r));
+const rutasCasos = argumento('--casos')?.split(',').map((r) => r.trim()).filter(Boolean) ?? casosPorDefecto;
+const rutaCasos = rutasCasos.join(',');
 const k = Number(argumento('--k') ?? 4);
 if (!Number.isInteger(k) || k <= 0) {
   console.error(`--k debe ser un entero mayor que 0 (recibido: ${argumento('--k')})`);
@@ -67,22 +73,24 @@ const rutaRegistro = argumento('--registro');
 if (rutaRegistro) process.env.IA_REGISTRO = rutaRegistro;
 else delete process.env.IA_REGISTRO;
 
-const casos: CasoRag[] = readFileSync(rutaCasos, 'utf8')
-  .split('\n')
-  .map((texto, i) => ({ texto, linea: i + 1 }))
-  .filter(({ texto }) => texto.trim())
-  .map(({ texto, linea }) => {
-    try {
-      return JSON.parse(texto) as CasoRag;
-    } catch (err) {
-      console.error(`${rutaCasos}: línea ${linea} no es JSON válido (${err instanceof Error ? err.message : err})`);
-      process.exit(2);
-    }
-  });
+const casos: CasoRag[] = rutasCasos.flatMap((ruta) =>
+  readFileSync(ruta, 'utf8')
+    .split('\n')
+    .map((texto, i) => ({ texto, linea: i + 1 }))
+    .filter(({ texto }) => texto.trim())
+    .map(({ texto, linea }) => {
+      try {
+        return JSON.parse(texto) as CasoRag;
+      } catch (err) {
+        console.error(`${ruta}: línea ${linea} no es JSON válido (${err instanceof Error ? err.message : err})`);
+        process.exit(2);
+      }
+    }),
+);
 
-const erroresDeCasos = validarCasos(casos);
+const erroresDeCasos = [...validarCasos(casos), ...validarParejas(casos)];
 if (erroresDeCasos.length > 0) {
-  console.error(`${rutaCasos}: ${erroresDeCasos.length} casos mal formados (QA-328):`);
+  console.error(`${rutaCasos}: ${erroresDeCasos.length} errores en los casos (QA-328, QA-331):`);
   for (const e of erroresDeCasos) console.error(`  ${e}`);
   process.exit(2);
 }
@@ -156,7 +164,7 @@ if (comoJson) {
       index_matches: indice ? diferencias.length === 0 : null,
       commit: git(['rev-parse', 'HEAD']),
       commit_dirty: git(['status', '--porcelain']) === null ? null : git(['status', '--porcelain']) !== '',
-      cases_file: raiz ? relative(raiz, rutaCasos) : rutaCasos,
+      cases_file: rutasCasos.map((r) => (raiz ? relative(raiz, r) : r)).join(','),
     },
     resultados,
     k,

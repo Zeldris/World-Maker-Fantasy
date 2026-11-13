@@ -58,6 +58,15 @@ guarda la configuración en `World.loreIndice`; `rag-eval` sale con 2 si la suya
 saca en `config.index` e `index_matches`. Para comparar: `npm run reindex-lore -- --tam-trozo 250 --prefijos-nomic` y
 `npm run rag-eval -- --json --tam-trozo 250 --prefijos-nomic`.
 
+Casos generados (`QA-331`): `npm run rag-generar-casos -- --semilla 42 --borradores-a 12` (modelo por `--modelo`, por
+defecto `OLLAMA_MODEL_SUGERENCIAS`) pide 2-3 preguntas por fragmento de `loreChunks.ts`, en pareja es/en, y descarta las
+que copian 4 palabras seguidas del fragmento. Escribe en `backend/ia/`: `rag-casos-b.jsonl` (origen B, no
+obligatorios; `rag-eval` los suma por defecto), `rag-casos-reserva.jsonl` (~15 % aparte: no se mira al ajustar el
+RAG; se evalúa con `--casos ia/rag-casos-reserva.jsonl`), `rag-casos-a-borradores.jsonl` (para que la usuaria acepte
+los A y los pase a `rag-casos.jsonl`) y `rag-casos-generacion.json` (modelo, digest, semilla, temperatura, prompt,
+commit y recuentos, para reproducirlo). Todo caso lleva `lang` (`es`/`en`) y `pair_id`, y cada pareja, los mismos
+esperados; `rag-eval` sale con 2 si no. Solo sale del lore indexado, nunca de partidas reales.
+
 ## Medidas por tanda
 
 ### 2026-10-20 · Deck (`deck`), primera pasada (sin anterior)

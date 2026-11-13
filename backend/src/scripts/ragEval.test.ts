@@ -8,6 +8,7 @@ import {
   resumirCasos,
   salidaJson,
   validarCasos,
+  validarParejas,
   type CasoRag,
   type ConfigCorrida,
 } from './ragEval.js';
@@ -37,7 +38,7 @@ describe('rag-eval', () => {
 });
 
 describe('validarCasos (QA-328)', () => {
-  const bueno = { id: 'a', pregunta: 'q', esperados: ['T'], causa: null };
+  const bueno = { id: 'a', pregunta: 'q', esperados: ['T'], causa: null, lang: 'es' as const, pair_id: 'a' };
 
   it('un caso sin `causa` o con una causa desconocida es un error, con su id', () => {
     const { causa: _sin, ...sinCausa } = bueno;
@@ -54,10 +55,26 @@ describe('validarCasos (QA-328)', () => {
     ]);
   });
 
+  it('sin `lang` es/en o sin `pair_id` es un error (QA-331)', () => {
+    expect(validarCasos([{ ...bueno, lang: 'fr' }, { ...bueno, id: 'b', pair_id: '' }])).toEqual([
+      'a: `lang` tiene que ser es o en',
+      'b: falta `pair_id`',
+    ]);
+  });
+
+  it('cada pareja, un caso es y uno en con los mismos esperados (QA-331)', () => {
+    const en = { ...bueno, id: 'a-en', lang: 'en' as const };
+    expect(validarParejas([bueno, en])).toEqual([]);
+    expect(validarParejas([bueno, { ...en, esperados: ['t ', 'X'] }])).toEqual(['pareja a: a y a-en esperan títulos distintos']);
+    expect(validarParejas([bueno])).toEqual(['pareja a: tiene que tener un caso es y uno en (tiene es: a)']);
+    expect(validarParejas([bueno, { ...bueno, id: 'a2' }])[0]).toMatch(/^pareja a: tiene que tener un caso es y uno en \(tiene es,es/);
+  });
+
   it('los casos del repo pasan el validador', () => {
     const ruta = fileURLToPath(new URL('../../ia/rag-casos.jsonl', import.meta.url));
     const casos = readFileSync(ruta, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
     expect(validarCasos(casos)).toEqual([]);
+    expect(validarParejas(casos)).toEqual([]);
   });
 
   it('consulta como el juego: la región va de sufijo', () => {
