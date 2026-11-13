@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { puestoDelPrimerEsperado, resumirCasos, validarCasos, type CasoRag } from './ragEval.js';
+import {
+  consultaDelCaso,
+  digestDelModelo,
+  puestoDelPrimerEsperado,
+  resumirCasos,
+  salidaJson,
+  validarCasos,
+  type CasoRag,
+  type ConfigCorrida,
+} from './ragEval.js';
 
 const caso = (id: string, debe = false): CasoRag => ({ id, pregunta: 'q', esperados: ['A'], causa: null, debe_pasar: debe });
 
@@ -14,10 +23,10 @@ describe('rag-eval', () => {
   it('recall@k, MRR y los obligatorios que fallan', () => {
     const r = resumirCasos(
       [
-        { caso: caso('1', true), puesto: 1, devueltos: [] },
-        { caso: caso('2', true), puesto: null, devueltos: [] },
-        { caso: caso('3'), puesto: 2, devueltos: [] },
-        { caso: caso('4'), puesto: 9, devueltos: [] },
+        { caso: caso('1', true), puesto: 1, devueltos: [], consulta: '' },
+        { caso: caso('2', true), puesto: null, devueltos: [], consulta: '' },
+        { caso: caso('3'), puesto: 2, devueltos: [], consulta: '' },
+        { caso: caso('4'), puesto: 9, devueltos: [], consulta: '' },
       ],
       5,
     );
@@ -49,5 +58,50 @@ describe('validarCasos (QA-328)', () => {
     const ruta = fileURLToPath(new URL('../../ia/rag-casos.jsonl', import.meta.url));
     const casos = readFileSync(ruta, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
     expect(validarCasos(casos)).toEqual([]);
+  });
+
+  it('consulta como el juego: la región va de sufijo', () => {
+    expect(consultaDelCaso({ pregunta: '¿Quién?' })).toBe('¿Quién?');
+    expect(consultaDelCaso({ pregunta: '¿Quién?', region: 'Nahr' })).toBe('¿Quién? — Nahr');
+  });
+
+  it('digest del modelo en /api/tags, con o sin `:latest`; null si no está o no trae digest', () => {
+    const tags = { models: [{ name: 'nomic-embed-text:latest', digest: 'abc' }, { name: 'tarkor-narrador' }] };
+    expect(digestDelModelo(tags, 'nomic-embed-text')).toBe('abc');
+    expect(digestDelModelo(tags, 'nomic-embed-text:latest')).toBe('abc');
+    expect(digestDelModelo(tags, 'tarkor-narrador')).toBeNull();
+    expect(digestDelModelo(tags, 'otro')).toBeNull();
+    expect(digestDelModelo({}, 'nomic-embed-text')).toBeNull();
+  });
+
+  it('salida JSON (QA-329): config, cada caso con sus resultados en orden y el resumen', () => {
+    const config = { embedding_model: 'nomic-embed-text', top_k: 2, cases_file: 'c.jsonl' } as ConfigCorrida;
+    const a: CasoRag = { id: 'a', pregunta: 'q', esperados: ['T'], causa: null, debe_pasar: true, origen: 'A', lang: 'es', pair_id: 'a-en' };
+    const b: CasoRag = { id: 'b', pregunta: 'q2', esperados: ['T'], causa: 'ignorado', debe_pasar: true };
+    const salida = salidaJson(
+      config,
+      [
+        { caso: a, puesto: 2, consulta: 'q', devueltos: [{ title: 'X', distance: 0.1 }, { title: 'T', distance: 0.2 }] },
+        { caso: b, puesto: 3, consulta: 'q2 — R', devueltos: [{ title: 'X', distance: 0.1 }] },
+      ],
+      2,
+    );
+    expect(salida.config).toBe(config);
+    expect(salida.cases[0]).toEqual({
+      id: 'a',
+      lang: 'es',
+      pair_id: 'a-en',
+      origen: 'A',
+      causa: null,
+      debe_pasar: true,
+      esperados: ['T'],
+      query: 'q',
+      results: [{ title: 'X', distance: 0.1 }, { title: 'T', distance: 0.2 }],
+      rank: 2,
+      passed: true,
+    });
+    expect(salida.cases[1]).toMatchObject({ lang: null, pair_id: null, origen: null, causa: 'ignorado', rank: 3, passed: false });
+    expect(salida.summary).toEqual({ k: 2, n: 2, recall: 0.5, mrr: 0.25, failed_required: ['b'] });
+    expect(JSON.parse(JSON.stringify(salida))).toEqual(salida);
   });
 });

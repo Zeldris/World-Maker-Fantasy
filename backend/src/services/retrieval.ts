@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { registrarLlamada } from '../lib/iaRegistro.js';
+import { configRag, textoConsulta } from '../lib/ragConfig.js';
 
 export interface RetrievedLore {
   title: string;
@@ -53,7 +54,7 @@ export async function retrieveLore(
   let embedMs: number | undefined;
   let inicioBusqueda: number | undefined;
   try {
-    const vector = embed(query);
+    const vector = embed(textoConsulta(configRag(), query));
     const queryLiteral = toVectorLiteral(await vector);
     embedMs = Date.now() - inicio;
     inicioBusqueda = Date.now();

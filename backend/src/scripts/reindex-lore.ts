@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { loreChunks } from './loreChunks.js';
 import { trozosParaIndexar } from './loreTrozos.js';
+import { configRag, textoDocumento } from '../lib/ragConfig.js';
 
 /// Reindexa el lore de Helek Sirik para recuperación semántica (RAG). Correr cada vez que
 /// docs/rpgtarkor/*.md cambie y loreChunks.ts se actualice con los fragmentos afectados.
@@ -46,12 +47,13 @@ async function main() {
   // Reindexado completo: más simple y seguro que diffear cambio a cambio con un corpus de este tamaño.
   await prisma.loreChunk.deleteMany({ where: { worldId } });
 
+  const cfg = configRag();
   let done = 0;
   for (const chunk of loreChunks) {
     const t0 = Date.now();
     // QA-167: una fila por trozo, todas con el texto entero (ver loreTrozos.ts).
-    for (const trozo of trozosParaIndexar(chunk.text)) {
-      const vector = await embed(`${chunk.title}\n${trozo}`);
+    for (const trozo of trozosParaIndexar(chunk.text, cfg.tamTrozo)) {
+      const vector = await embed(textoDocumento(cfg, chunk.title, trozo));
       const id = crypto.randomUUID();
 
       await prisma.$executeRaw`

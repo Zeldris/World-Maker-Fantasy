@@ -43,6 +43,14 @@ Una línea por caso: `{"id": "…", "pregunta": "…", "esperados": ["<id o fuen
 semilla", "causa": "ausente|no_recuperado|ignorado|null", "debe_pasar": true}`. `causa` es obligatoria (`QA-328`): null si el caso no falló o es semilla; con un caso mal formado (sin `causa`, `pregunta` o `esperados`, o con el id repetido), `npm run rag-eval` sale con 2 y dice cuál. `region` (opcional): la región del jugador; la consulta sale como en el juego (`pregunta — región`, con el lore del otro continente excluido). `debe_pasar` (opcional): si el caso no sale en el top-k, `npm run rag-eval` termina con código 1. En Tarkor el id de trozo de `esperados` es su título en `loreChunks.ts` (los UUID de BD cambian en cada reindexado). El script de evaluación devuelve por caso el puesto del
 primer trozo esperado y, en total, recall@k y MRR.
 
+`npm run rag-eval -- --json` (`QA-329`, para el GVE) saca por stdout un solo objeto JSON y el informe de texto por
+stderr; los códigos de salida son los mismos (0, 1 si falla un `debe_pasar`, 2 si no puede evaluar). Forma
+(`salidaJson`, `ragEval.ts`): `config` (modelo de embeddings y su digest de `/api/tags`, null con el Ollama simulado;
+`top_k`, tamaño de trozo, solapamiento, prefijos, plantilla del texto embebido, forma de la consulta, filtro de región,
+`commit` y si el árbol tiene cambios, y el archivo de casos), `cases` (por caso: `id`, `lang`, `pair_id`, `origen`,
+`causa`, `debe_pasar`, `esperados`, `query`, `results` con `title` y `distance` en orden, `rank` y `passed`) y
+`summary` (`k`, `n`, `recall`, `mrr`, `failed_required`).
+
 ## Medidas por tanda
 
 ### 2026-10-20 · Deck (`deck`), primera pasada (sin anterior)
