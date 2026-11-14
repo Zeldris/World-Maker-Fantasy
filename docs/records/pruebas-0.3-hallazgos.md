@@ -12,14 +12,14 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (33): P16, P49, P66, P128, P129, P136, P158, P169, P173, P188, P250, P251, P252,
-  P262, P263, P264, P265, P266, P267, P272, P273, P274, P310, P311, P317, P324, P328, P370, P433,
-  P447, P448, P450, P459.
+- **Pendientes** (32): P16, P49, P66, P128, P129, P136, P158, P169, P173, P188, P250, P251, P252,
+  P262, P263, P264, P265, P266, P267, P272, P273, P310, P311, P317, P324, P328, P370, P433, P447,
+  P448, P450, P459.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (20): P70, P107, P116, P131, P151, P180, P184, P243, P245, P253, P269,
   P288, P306, P307, P337, P382, P426, P429, P443, P451.
 - **Arreglados, sin comprobar jugando** (3): P388, P404, P449.
-- **Comprobados jugando** (346): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
+- **Comprobados jugando** (347): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43,
   P45, P46, P47, P50, P51, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68,
   P69, P72, P73, P74, P76, P77, P78, P79, P80, P81, P82, P83, P84, P85, P86, P87, P88, P90, P91,
@@ -31,16 +31,16 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P190, P191, P192, P193, P194, P195, P196, P197, P198, P199, P200, P201, P202, P203, P205, P206,
   P207, P208, P209, P210, P211, P212, P213, P214, P215, P216, P217, P218, P219, P220, P221, P223,
   P224, P225, P226, P227, P228, P229, P230, P231, P232, P233, P234, P235, P236, P237, P240, P241,
-  P242, P244, P246, P247, P248, P254, P255, P257, P258, P259, P260, P261, P268, P270, P271, P275,
-  P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287, P290, P291, P292, P293,
-  P294, P295, P296, P297, P298, P299, P300, P301, P302, P303, P304, P305, P308, P309, P313, P314,
-  P315, P316, P318, P319, P320, P323, P326, P327, P329, P330, P331, P332, P333, P334, P335, P336,
-  P338, P339, P340, P341, P343, P344, P345, P346, P347, P348, P349, P350, P351, P352, P353, P354,
-  P355, P356, P357, P358, P359, P360, P361, P362, P363, P364, P365, P366, P367, P369, P371, P372,
-  P373, P374, P375, P377, P378, P379, P380, P381, P383, P384, P385, P386, P387, P389, P390, P391,
-  P392, P393, P394, P395, P396, P397, P398, P399, P400, P401, P402, P403, P405, P406, P407, P408,
-  P409, P427, P428, P431, P432, P434, P435, P437, P438, P439, P440, P441, P444, P445, P446, P452,
-  P454.
+  P242, P244, P246, P247, P248, P254, P255, P257, P258, P259, P260, P261, P268, P270, P271, P274,
+  P275, P276, P277, P278, P279, P280, P281, P282, P283, P284, P285, P286, P287, P290, P291, P292,
+  P293, P294, P295, P296, P297, P298, P299, P300, P301, P302, P303, P304, P305, P308, P309, P313,
+  P314, P315, P316, P318, P319, P320, P323, P326, P327, P329, P330, P331, P332, P333, P334, P335,
+  P336, P338, P339, P340, P341, P343, P344, P345, P346, P347, P348, P349, P350, P351, P352, P353,
+  P354, P355, P356, P357, P358, P359, P360, P361, P362, P363, P364, P365, P366, P367, P369, P371,
+  P372, P373, P374, P375, P377, P378, P379, P380, P381, P383, P384, P385, P386, P387, P389, P390,
+  P391, P392, P393, P394, P395, P396, P397, P398, P399, P400, P401, P402, P403, P405, P406, P407,
+  P408, P409, P427, P428, P431, P432, P434, P435, P437, P438, P439, P440, P441, P444, P445, P446,
+  P452, P454.
 - **Arreglados, no jugables (los cubre un test o la base)** (7): P25, P44, P52, P143, P174, P204,
   P342.
 - **Cerrados sin arreglo (no aplica, dato o roadmap)** (30): P5, P10, P22, P23, P30, P34, P40, P48,
@@ -332,7 +332,7 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P271 | Tanda IA con GPU (2026-10-20, partida «Pruebas · IA y diálogos», Día 1): tras dar Clemente a un rival, Ulkha dice «¿Qué noticias traes de los Maktor, Clemente?»: el botón se cuela como nombre de Gorhorn; también «cuerdas del gorhorn» en minúscula | arreglado (2026-10-25, sin comprobar jugando): la memoria del narrador (cronista/memoriaNarrador.ts, lineaDeEtiquetas) decía «A la jugadora la conocen como: Clemente»; ahora «Fama de la jugadora, por lo que ha hecho (rasgos que le atribuyen, no su nombre ni un apodo con el que dirigirse a ella)», con la primera letra en minúscula y el nombre propio de dentro intacto («amigo de los Maktor»); test memoriaNarrador.integration.test.ts. **Probar en local** (Ulkha ya no la llama Clemente). Comprobado jugando 2026-11-10 (Ollama real, iGPU, mv-hondonada-hostiles): tras Clemente al Orco, en 2 turnos de texto no lo llama Clemente («No sé qué decir… perdonarte la vida… ¿Es que estás loco?»); leve: el Orco habla como si él perdonara a Gorhorn. Poca muestra (el 2.º turno no lo atendió el orco). Antes: pendiente |
 | P272 | Tanda IA con GPU (2026-10-20, partida «Pruebas · IA y diálogos», Día 1): el narrador inventa lore: Ulkha atribuye lo de los Maktor a las «primeras escaramuzas de la Concordia de Hierro», y el canon dice que fue una incursión de los Goirntes | pendiente · **Probar en local** (2026-10-25): depende del narrador con Ollama real en la Deck; el simulador de la nube no lo reproduce. |
 | P273 | Tanda IA con GPU (2026-10-20, partida «Pruebas · IA y diálogos», Día 1): el narrador de respaldo (qwen2.5 1.5B) entra en turnos normales («Recuerdo lo que me pidió Gistera», que no cita la petición, y el regalo a Ulkha) tras intentos del modelo grande que acaban en «stop»; el registro de IA no dice por qué se rechazó el intento (validación, antirrepetición…) | pendiente · 2026-11-11, ronda local 2 (tanda 1): el motivo de cada rechazo ya va al registro (`app.evento: rechazo` con turno e intento); falta en la línea `narrar_respaldo` (ver P459) · **Probar en local** (2026-10-25): depende del narrador con Ollama real en la Deck; el simulador de la nube no lo reproduce. |
-| P274 | Ronda 2026-10-20 (entorno): los escenarios de tools/qa/escenarios/ guardados en la nube llevan los embeddings del lore del Ollama simulado: cargados contra el Ollama real, el RAG devuelve trozos al azar (score_1 0,008-0,019, «El cielo sin luna» para cualquier pregunta) hasta pasar «npm run reindex-lore» (luego 0,78). arrancar-juego.sh solo vuelve a sembrar el catálogo, no el lore. Toda la tanda solo CPU y las anteriores de hoy jugaron con el RAG roto | pendiente · **En local** (2026-10-25): rehacer los embeddings del lore de los escenarios contra el Ollama real; en la nube solo está el simulado. |
+| P274 | Ronda 2026-10-20 (entorno): los escenarios de tools/qa/escenarios/ guardados en la nube llevan los embeddings del lore del Ollama simulado: cargados contra el Ollama real, el RAG devuelve trozos al azar (score_1 0,008-0,019, «El cielo sin luna» para cualquier pregunta) hasta pasar «npm run reindex-lore» (luego 0,78). arrancar-juego.sh solo vuelve a sembrar el catálogo, no el lore. Toda la tanda solo CPU y las anteriores de hoy jugaron con el RAG roto | ✅ comprobado en la Deck (2026-11-14, ronda local 2): `arrancar-juego.sh` con IA real reindexa el lore si `rag-eval` falla casos obligatorios y vuelve a medir; `t13b2-ketg` (embeddings del simulado) pasa de FALLA p263 a recall@4 0,875 en ~20 s. Sin rehacer los dumps. |
 | P275 | Ronda 2026-10-21 (Mundo vivo, reino-dia39-recursos, Día 39-62, Reino › Visión general): el Almacén dice «comida 180 · agua 60 · materiales 30/60» y solo da el tope de materiales; el de comida y agua (CR-53: 60 + 120 por Granero/Cisterna) no se ve, aunque el Granero esté construido | ✅ 2026-10-22: el Almacén muestra comida, agua y materiales con su tope (textoAlmacen, de suministrosDelReino) Comprobado jugando 2026-10-22 (tanda 15): Visión general › Almacén «comida 180/180 · agua 60/60 · materiales 30/60». |
 | P276 | Ronda 2026-10-21 (Reino › Súbditos › Depositar desde la mochila, Leñera ya construida, materiales 175/180): al llegar al tope el aviso es «No caben más materiales en el Almacén: construye una Leñera» aunque ya hay una Leñera; el tope en sí funciona (admitió 5 y rechazó el resto con 400) | ✅ 2026-10-22: con Leñera el aviso dice que el Almacén está lleno incluso con ella (avisoMaterialesLlenos); sin ella, que se construya Comprobado jugando 2026-10-22 (tanda 15): sin Leñera, a 60/60 pide «construye una Leñera»; con Leñera, «El Almacén está lleno de materiales (180/180), incluso con tu Leñera…». |
 | P277 | Ronda 2026-10-21 (Reino › Edificios, Día 39): Cisterna y Granero piden Inteligencia 8 y Gorhorn Cazador tiene 7 («Falta: inteligencia 7/8»): la Cisterna no se puede construir jugando con el personaje de las rondas (el Granero solo está por el escenario); CR-53 queda sin jugar en Cisterna. Diseño aprobado: construcción por nivel de oficio y Casa de obras (bandeja de la bitácora) | Arreglado (2026-10-22, fusión Casa de obras): ninguna receta pide atributos; cada edificio tiene tier 1-9, el personaje levanta hasta T3 y de T4 en adelante la Casa de obras, que abre T1-3/T4-6/T7-9 según su nivel; los súbditos constructores trabajan su cola día a día, más rápido con más nivel Comprobado jugando 2026-10-22 (tanda 15): ninguna receta sale con «Falta: inteligencia»; se ve el tier y «encárgala a la Casa de obras» desde T4 (no se construyó la Cisterna). |
