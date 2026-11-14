@@ -166,8 +166,8 @@ Los pendientes leves de revisiones ya cerradas están en [`pendientes-leves.md`]
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-14 — QA-346: fila «Lint» (oxlint, nunca npx eslint) en docs/mapa-agente.md (misma retro)
-2. 2026-11-14 — QA-345: docs/metrics/ledger.jsonl con merge=union en .gitattributes (retro de narrador-tiempos)
-3. 2026-11-14 — QA-343: tools/roadmap/resolver-conflicto.py resuelve tachados y filas añadidas en conflictos de roadmap
-4. 2026-11-14 — QA-342: bitácora de 35,8k a 19,7k (filas cerradas y 2026-11-11 al archivo; propuestas aprobadas y leves a archivos propios)
-5. 2026-11-14 — QA-335 (retro de la v0.6.0): MCP de Playwright desactivado por defecto, se activa con /mcp en las rondas; P21-P23 al flujo
+1. 2026-11-14 — QA-288: ci-local.sh para el Ollama simulado al salir (2026-11-03)
+2. 2026-11-14 — QA-346: fila «Lint» (oxlint, nunca npx eslint) en docs/mapa-agente.md (misma retro)
+3. 2026-11-14 — QA-345: docs/metrics/ledger.jsonl con merge=union en .gitattributes (retro de narrador-tiempos)
+4. 2026-11-14 — QA-343: tools/roadmap/resolver-conflicto.py resuelve tachados y filas añadidas en conflictos de roadmap
+5. 2026-11-14 — QA-342: bitácora de 35,8k a 19,7k (filas cerradas y 2026-11-11 al archivo; propuestas aprobadas y leves a archivos propios)
