@@ -72,5 +72,6 @@
     "docs/borradores-opencode/*",
     "AGENTS.md",
     ".github/workflows/ci.yml"
-  ]
+  ],
+  "ciNodeDirs": ["backend", "frontend"]
 }

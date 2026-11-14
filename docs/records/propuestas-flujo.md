@@ -69,6 +69,11 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
   - P19 (v0.5.0) La skill `gw-update` debería mandar la comparación de cada `.gw-new` a un subagente barato que
     devuelva la tabla de desvíos, y su fase 1 dejar fuera las copias idénticas del flujo (retro del 2026-11-04, R2;
     ya en dos actualizaciones de WMF).
+  - P20 (v0.6.0) El aviso de nombres antiguos de `apply.py` (`plan_legacy_names`) cuenta como uso un nombre tras `/`
+    (`tools/qa/fusionar.sh`, `tools/qa/mapa-agente.py`, herramientas del proyecto): para no tener avisos fijos, WMF
+    deja `AGENTS.md` y `ci.yml` enteros en `legacyNamesSkip` y un nombre viejo que vuelva ahí no avisa. Pide que una
+    ruta que no sea `.claude/gw/scripts/` no case, o una lista de nombres propios del proyecto (revisión del
+    2026-11-14, rama `claude/gw-update-0.6`).
 
 ## Se queda en WMF
 
