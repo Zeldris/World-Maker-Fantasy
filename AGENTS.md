@@ -72,8 +72,9 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 
 - **El check del proyecto** es la lista `check` de `.claude/gw.json` (cada orden con npx pasa por `tools/qa/host.sh`,
   el sandbox Flatpak de la Deck, `QA-180`); `.githooks/pre-push` lo corre entero sobre el commit que se sube a `main` o que
-  cambia el entorno; a otra rama, solo los tests relacionados (`branchCheck`). El CI (`.github/workflows/ci.yml`) lo
-  corre entero en cada pull request y, salvo con `ciOnPush: false`, en cada push fuera de `main`.
+  cambia el entorno; a otra rama, solo los tests relacionados (`branchCheck`). El CI lo corre entero en cada pull
+  request (`.github/workflows/ci.yml` y `check.yml`) y, salvo con `ciOnPush: false`, en cada push fuera de `main`
+  (`check.yml`).
 - **Antes de subir a `main`, pásalo con `bash .claude/gw/scripts/check.sh`**: corre el check y, si sale en verde, lo apunta; el
   `pre-push` no lo repite sobre el mismo árbol (`GW_CHECK_CACHE=0` lo desactiva).
 - **Lo comprobable lo hace un script**, no un agente: si una regla se sigue rompiendo, se convierte en una comprobación.
@@ -96,7 +97,7 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 - Se trabaja en la rama que indique la bitácora (o la que asigne la sesión, que se apunta nada más empezar).
 - **Cada sesión, su propia rama** (`QA-136`): dos sesiones a la vez nunca suben a la misma. Si la de la bitácora ya la
   usa otra, crea `claude/<tema>` desde ella con su fila «Tarea en curso · `<rama>`» y escribe solo en esa fila; vuelve
-  por `git merge` antes del PR. Para tocar una fila compartida (`QA-145`), `BITACORA_COMPARTIDA=1 git push`.
+  por `git merge` antes del PR. Para tocar una fila compartida (`QA-145`), `GW_SHARED_LOG=1` en el commit y en el push.
 - Tu fila de la bitácora se reescribe con `python3 .claude/gw/scripts/handoff.py set-row "texto"` a mitad de tarea y se
   cierra con `python3 .claude/gw/scripts/handoff.py close-row <rama>` en el último commit antes de su PR; no edites a
   mano la de otra rama.

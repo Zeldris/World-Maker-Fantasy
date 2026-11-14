@@ -212,4 +212,6 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
 
 - Un componente que los tests sustituyen por un doble (fake, mock, stub) tiene también una prueba de humo contra el
   real: arrancarlo y hacer una llamada de punta a punta. Se omite en local si falta el real y falla en el CI.
-  (criterio)
+  En WMF, lo que solo existe en una máquina concreta (Ollama real, la Deck) no entra en el CI, que usa
+  `tools/ci/mock-ollama.mjs`: su prueba de humo se apunta como pendiente en el plan, con quién y dónde (`AGENTS.md`,
+  «Comprobar»). (criterio)
