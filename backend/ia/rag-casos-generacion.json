@@ -1,0 +1,228 @@
+{
+  "model": "qwen3.5:4b",
+  "model_digest": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+  "seed": 42,
+  "temperature": 0.7,
+  "prompt_version": 1,
+  "prompt_template": "Eres quien prepara un banco de pruebas para el buscador de lore de un juego de rol de fantasía.\nLee el fragmento y escribe 2 o 3 preguntas distintas que un jugador haría en la partida y que este fragmento responde.\nReglas:\n- Escribe como habla un jugador: corto, directo, a veces en primera persona («le pregunto al orco…», «busco…»).\n- NO copies frases del fragmento ni de su título: usa otras palabras. Nunca repitas 4 palabras seguidas del texto.\n- Puedes nombrar personas, lugares o clanes por su nombre propio.\n- Cada pregunta, en español (`es`) y su traducción natural al inglés (`en`), con los nombres propios sin traducir.\nDevuelve solo el JSON pedido.\n\nTítulo: {title}\nFragmento: {text}",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "preguntas": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 3,
+        "items": {
+          "type": "object",
+          "properties": {
+            "es": {
+              "type": "string"
+            },
+            "en": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "es",
+            "en"
+          ]
+        }
+      }
+    },
+    "required": [
+      "preguntas"
+    ]
+  },
+  "date": "2026-11-14T17:31:01.334Z",
+  "commit": "4b54dbe5a0c4d1176ebec3f350fcaab75588e17c",
+  "counts": {
+    "fragments": 92,
+    "failed_fragments": 0,
+    "discarded_questions": {
+      "copia": 35,
+      "repetida": 0,
+      "vacia": 0
+    },
+    "b_cases": 418,
+    "reserve_cases": 40,
+    "a_drafts": 24
+  },
+  "failed": [],
+  "discarded": [
+    {
+      "title": "Madre y el origen de Helek Sirik",
+      "pregunta": "Busco entender por qué Madre causó la caída de Tarkor sin nunca mostrar su rostro.",
+      "motivo": "copia"
+    },
+    {
+      "title": "El cielo sin luna — por qué no hay luna en Helek Sirik",
+      "pregunta": "Si el polvo está atrapado en una órbita estable, ¿cómo es posible que no se vea como un disco nítido de noche?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Por qué la arena de las Llanuras es magnética",
+      "pregunta": "Busco una explicación sobre por qué el Vientre del Engaño siempre tiene tormentas mientras otros lugares no.",
+      "motivo": "copia"
+    },
+    {
+      "title": "Por qué los orcos son Chamanes y no Magos",
+      "pregunta": "Escucho rumores de que el poder mágico de mi clan viene del Estallido sin Semilla, ¿es verdad?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Kektira — nombres orcos de estaciones y tormentas",
+      "pregunta": "¿Cuál es la diferencia entre el clima normal y la ira del viento?",
+      "motivo": "copia"
+    },
+    {
+      "title": "El Reino Nabierus y el origen del nombre de la región",
+      "pregunta": "¿Por qué llueve tanto polvo en Las Llanuras del Viento Rojo si hay una sequía eterna?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Ciénaga Troncal",
+      "pregunta": "Necesito madera urgente, ¿qué tipo de vegetación domina esa franja al este de las Llanuras?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Flora de Berig (incluye Llanuras del Viento Rojo)",
+      "pregunta": "¿Qué tipo de pasto usan los Goirntes para hacer sus armas en la Meseta del Orden?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Fauna de Berig y las Llanuras del Viento Rojo",
+      "pregunta": "¿Qué tipo de depredador nocturno habita La Hondonada del Eco y por qué no vale la pena intentar negociar con él?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Fauna de Berig y las Llanuras del Viento Rojo",
+      "pregunta": "Busco comida rápida en la Ciénaga Troncal; ¿qué recurso es el que más consumen los animales de aquí?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Fauna de Berig y las Llanuras del Viento Rojo",
+      "pregunta": "Si decido correr una carrera ritual en las Llanuras del Viento Rojo, ¿qué criaturas de seis patas me pueden llevarme la partida?",
+      "motivo": "copia"
+    },
+    {
+      "title": "El Signeran — el duelo de honor orco",
+      "pregunta": "¿Cómo se llama a ese combate exclusivo entre orcos sin armadura donde debe morir uno?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Clan Serhu y la casta de Ketg",
+      "pregunta": "¿Qué me cuenta ese clan vecino que vivió años atrás cuando Ketg traicionó a su esposa?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Clan Helsig y Clan Goshg",
+      "pregunta": "¿Cómo puedo conseguir una pieza de hielo sílico si vivo en el campamento minero junto a La Veta Helada?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Clan Helsig y Clan Goshg",
+      "pregunta": "Busco madera y noticias, pero los Nabieus de Keseg Prisilke dicen que el comercio está cortado por la guerra.",
+      "motivo": "copia"
+    },
+    {
+      "title": "Clan Helsig y Clan Goshg",
+      "pregunta": "Tengo un arma de hielo y necesito resina para repararla en la Senda del Sílice.",
+      "motivo": "copia"
+    },
+    {
+      "title": "El Cruce de las Cenizas (Llanuras del Viento Rojo)",
+      "pregunta": "¿Es común que los guardias de la Concordia de Hierro paseen por este camino?",
+      "motivo": "copia"
+    },
+    {
+      "title": "El Filo de las Brasas (Llanuras del Viento Rojo)",
+      "pregunta": "¿Qué tipo de tierra hay justo al noreste de Los Restos de Maktor?",
+      "motivo": "copia"
+    },
+    {
+      "title": "El Filo de las Brasas (Llanuras del Viento Rojo)",
+      "pregunta": "¿Quién es realmente dueño de este pedazo de Llanuras del Viento Rojo?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Los Ciclos históricos de Helek Sirik",
+      "pregunta": "Busco saber si los orcos que sufrieron el Yugo de Hierro lograron alguna libertad o si siguen bajo control estricto.",
+      "motivo": "copia"
+    },
+    {
+      "title": "Encontrarse una patrulla de la Concordia buscando desertores",
+      "pregunta": "¿Qué tipo de tribu orca podría estorbar mi camino si tomo el sendero hacia las Llanuras del Viento Rojo?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Toparse con jóvenes orcos cazando en una carrera ritual",
+      "pregunta": "¿Qué significa que Gorhorn no ha visto a los orcos vivos desde la guerra con el clan Maktor?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Tormenta de arena magnética durante un viaje",
+      "pregunta": "¿Qué pasa si las Llanuras del Viento Rojo hacen un alboroto magnético mientras estamos en el camino?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Un Kort'ikar de otro clan en apuros",
+      "pregunta": "¿Qué pasa si encuentro al jefe de guerra del clan Serhu en medio de un combate y decido ayudarle?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Kort'ikar Torgash Ketg, del Clan Serhu",
+      "pregunta": "Busco unirse a Torgash para evitar la Concordia de Hierro.",
+      "motivo": "copia"
+    },
+    {
+      "title": "Kort'ikar Torgash Ketg, del Clan Serhu",
+      "pregunta": "¿Qué clase de líder es el Kort'ikar Serhu?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Hagar Kiugh, del Clan Helsig (amigo de Gorhorn)",
+      "pregunta": "Busco saber quién es el minero de hielo sílice del Clan Helsig, leal pero muy ruidoso.",
+      "motivo": "copia"
+    },
+    {
+      "title": "Gistera Koh y Uhuld Koh (encuentro del primer turno)",
+      "pregunta": "¿Qué significa que el tótem de Gorhorn tenga ese símbolo que ella vio en las sombras?",
+      "motivo": "copia"
+    },
+    {
+      "title": "El Orco Enfurecido (encuentro de combate del primer turno)",
+      "pregunta": "¿Por qué le dio el golpe final al artesano Uhuld Koh en lugar de matarlo él primero?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Los del Obelisco (facción moderada Goirnte)",
+      "pregunta": "¿Cómo se llama la mujer que dirige a estos hombres desde El Baluarte de Goirme?",
+      "motivo": "copia"
+    },
+    {
+      "title": "La Mesa del Lazo y el Drogh'tugh (~2.855, provisional)",
+      "pregunta": "¿Qué significa exactamente ese ritual de tierra fresca en el surco de la piedra roja?",
+      "motivo": "copia"
+    },
+    {
+      "title": "La Mesa del Lazo y el Drogh'tugh (~2.855, provisional)",
+      "pregunta": "¿Es verdad que la mesa de piedra crece con cada generación de Maktor?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Fauna de la Ciénaga Troncal",
+      "pregunta": "¿Por qué los cazadores de Keseg Prisilke saben dónde están los peces sin verlos nada?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Objetos de la tanda de Kegi y las Llanuras: Ashi'krul, Desollador de sílice, Ungüento de Espina, Manto de Cornisa, Incisivos de Miruina",
+      "pregunta": "Necesito herramientas para limpiar pieles antes de curtirlas, ¿qué objeto sirve para eso y cuánto cuesta?",
+      "motivo": "copia"
+    },
+    {
+      "title": "Edificios de oficio: un taller por cada oficio",
+      "pregunta": "Me pregunto cómo se ve la cocina de Serhu en las Llanuras si los facciones del reino le queman la comida.",
+      "motivo": "copia"
+    }
+  ]
+}
