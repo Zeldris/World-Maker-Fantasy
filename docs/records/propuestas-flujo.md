@@ -74,6 +74,15 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
     deja `AGENTS.md` y `ci.yml` enteros en `legacyNamesSkip` y un nombre viejo que vuelva ahí no avisa. Pide que una
     ruta que no sea `.claude/gw/scripts/` no case, o una lista de nombres propios del proyecto (revisión del
     2026-11-14, rama `claude/gw-update-0.6`).
+  - P21 (v0.6.0) El `commit-msg` debería rechazar `Findings:` o `Retries:` a principio de línea fuera del último
+    párrafo: git solo lee trailers ahí, y `f68916df` (`Findings: 8` en un párrafo propio) no cuenta para
+    `change-size.py` (aviso falso de revisión pendiente) ni para `metrics.py quality` (retro del 2026-11-14, R1).
+  - P22 (v0.6.0) El ledger de métricas deja commits propios («ledger de la sesión», dos iguales en
+    `claude/gw-update-0.6`) y choca entre ramas: que `metrics.record` lo meta en el commit de trabajo o use un
+    archivo por rama que `metrics.py` junte al leer (retro del 2026-11-14, R3).
+  - P23 (v0.6.0) `apply.py --update` renombró nombres antiguos en el histórico (`roadmap-front.md`: `fusionar.sh` →
+    `merge-branch.sh`, que en WMF no existe): que no toque `recordsDir` ni los roadmaps y nunca renombre hacia un
+    archivo inexistente; va con P20 (retro del 2026-11-14, R4).
 
 ## Se queda en WMF
 

@@ -101,5 +101,8 @@
   },
   "worktree": {
     "baseRef": "head"
-  }
+  },
+  "disabledMcpjsonServers": [
+    "playwright"
+  ]
 }

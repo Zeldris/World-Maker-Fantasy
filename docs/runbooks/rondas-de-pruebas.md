@@ -116,7 +116,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `.claude/settings.json` (tope de 200k), los ganchos ni las skills del repo (`Unknown skill: opt-ai`).
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
-   de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
+   de Playwright, actívalo antes con `/mcp` (viene desactivado en `.claude/settings.json`, `QA-335`) y carga las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    En la Deck, Ollama con `bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh arrancar` (iGPU y sin suspensión),

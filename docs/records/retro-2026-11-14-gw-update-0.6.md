@@ -4,7 +4,8 @@ Sesión del 2026-11-14: `apply.py --update`, fase 1 (`f68916df`, 8 hallazgos), `
 (`/gw-opt-tokens`: `QA-332`…`QA-334`; `/gw-opt-ai` no hacía falta). Fuentes: los commits de la rama, la salida de
 `recover.py --state` y `change-size.py`.
 
-**Estado:** sin decidir; la decisión de la usuaria va aquí antes de `reviewed.sh`.
+**Estado:** aprobada entera por la usuaria (2026-11-14) y aplicada: R2 como `QA-335` (MCP de Playwright desactivado por
+defecto); R1, R3 y R4 propuestas al flujo como P21, P22 y P23 en `propuestas-flujo.md`.
 
 ## Propuestas, de más a menos grave
 
