@@ -960,6 +960,15 @@ const PRESENTA_EN_HECHO = /\b(se presenta|le dice su nombre|les dice su nombre|d
 /// Una cita que abre la frase con su coletilla detrás («¿Qué buscas?», pregunta finalmente.) se va con la frase entera:
 /// sola, la coletilla queda colgando (bench 21: «no dice nada. pregunta finalmente, su voz baja»).
 export function quitarCitas(texto: string): string {
+  // Los saltos de párrafo se conservan: cada párrafo se limpia por separado.
+  return texto
+    .split(/\n{2,}/)
+    .map(quitarCitasDeUnParrafo)
+    .filter((p) => p !== '')
+    .join('\n\n');
+}
+
+function quitarCitasDeUnParrafo(texto: string): string {
   return texto
     .replace(/(^|[.!?…]\s+)[«“"][^«»“”"]*[»”"](?:\s*,\s*|\s+(?=\p{Ll}))[^.!?…«“"]*[.!?…]?/gu, '$1')
     .replace(/\s*:?\s*[«“"][^«»“”"]*[»”"]/g, '')
@@ -1013,6 +1022,15 @@ const VERBO_DE_HABLA = String.raw`(?:dice|pregunta|responde|contesta|replica|exc
 /// - P423: una frase en que el NPC decide su respuesta («El orco acepta la oferta»), que la réplica luego contradice.
 /// La frase final sin acabar («y ella responde») se deja: `unirReplica` la usa para presentar la réplica.
 export function quitarRestosDeDialogo(narracion: string, characterName: string): string {
+  return porParrafos(narracion, (p) => quitarRestosDeDialogoDeUnParrafo(p, characterName));
+}
+
+/// Aplica `f` a cada párrafo (separados por línea en blanco) y los vuelve a unir con `\n\n`, para no perder los saltos.
+function porParrafos(texto: string, f: (parrafo: string) => string): string {
+  return texto.split(/\n{2,}/).map(f).filter((p) => p !== '').join('\n\n');
+}
+
+function quitarRestosDeDialogoDeUnParrafo(narracion: string, characterName: string): string {
   const todas = frases(narracion);
   return todas
     .filter((f, i) => {
@@ -1029,6 +1047,12 @@ export function quitarRestosDeDialogo(narracion: string, characterName: string):
 /// P425 (ronda 3): si ninguna nombra al jugador («Ulkha Ketg se vuelve hacia él…»), abre la primera que no es del NPC (el
 /// paisaje); si todas lo son, se deja. La frase final sin acabar sigue la última, porque presenta la réplica.
 export function empezarPorElJugador(narracion: string, npc: string, characterName: string, genero?: string | null): string {
+  const parrafos = narracion.split(/\n{2,}/);
+  // Solo el primer párrafo puede abrir con el NPC; el resto se deja tal cual.
+  return [empezarPorElJugadorEnUnParrafo(parrafos[0] ?? '', npc, characterName, genero), ...parrafos.slice(1)].join('\n\n');
+}
+
+function empezarPorElJugadorEnUnParrafo(narracion: string, npc: string, characterName: string, genero?: string | null): string {
   if (!abreConElNpc(narracion, npc, characterName, genero)) return narracion;
   const todas = frases(narracion);
   const cola = /[.!?…»”"]$/.test(todas.at(-1) ?? '') ? [] : todas.splice(-1);
@@ -1067,6 +1091,21 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
   if (` ${inicio} `.includes(` ${nombre.join(' ')} `)) return narracion;
   if (palabras(primera).join(' ').includes(palabras(limpia).join(' '))) return narracion;
   return `${characterName} ${limpia[0]!.toLowerCase()}${limpia.slice(1)}. ${narracion}`.trim();
+}
+
+/// Posproceso del camino bueno (frases repetidas, campo `loQueHace<Nombre>` y su acción delante). También se aplica al
+/// último resultado cuando todos los intentos se rechazan por motivos distintos (QA-289): sin él quedaba el campo crudo.
+export function posprocesarNarracion(parsed: NarrationResult, ctx: TurnContext): NarrationResult {
+  parsed.narration = quitarFrasesRepetidas(parsed.narration, ctx.lastNarrationText);
+  if (ctx.characterName && !ctx.enCombate) {
+    const clave = claveAccionDelJugador(ctx.characterName);
+    const accion = (parsed as unknown as Record<string, unknown>)[clave];
+    delete (parsed as unknown as Record<string, unknown>)[clave];
+    // P412 (ronda 5b): «Observo el cielo» siguió abriendo con Ulkha sin saber qué traía el campo; se registra para verlo.
+    console.warn(`[lint] campo-accion: ${JSON.stringify(typeof accion === 'string' ? accion : accion ?? null)} (acción: ${JSON.stringify(ctx.action)})`);
+    parsed.narration = conAccionDelanteDe(parsed.narration, typeof accion === 'string' ? accion : '', ctx.characterName, ctx.action);
+  }
+  return parsed;
 }
 
 /// P416: «No te importa, no te importa, no te importa…»: un trozo igual al anterior (entre comas o frases) se quita; el
@@ -1115,13 +1154,16 @@ export function ultimaReplica(narracion?: string): string | undefined {
 /// narración (ya sin citas) y la réplica: la réplica va entre «…» (bench 20: llegaba sin comillas); si la narración la
 /// presenta sin acabar la frase («y ella responde»), con dos puntos; si su última frase no nombra a quien contesta, con
 /// «El orco enfurecido responde:» delante.
+/// Réplica breve y neutra para cuando `generateNpcReply` no devuelve nada: el narrador ya no cita al NPC (`replicaAparte`).
+export const REPLICA_DE_RESPALDO = '«Mmm… Déjame pensarlo.»';
+
 export function unirReplica(
   narracion: string,
   reply: string,
   npc: { name: string; nombreVisible?: string; articulo: string | null; genero: string | null },
 ): string {
   // P425: «-La situación…»: un guion suelto al abrir no es la raya de diálogo.
-  const sinGuion = reply.replace(/^([«“"]?)\s*-+\s*/, '$1');
+  const sinGuion = (reply.trim() === '' ? REPLICA_DE_RESPALDO : reply).replace(/^([«“"]?)\s*-+\s*/, '$1');
   const cita = /^[«“"—]/.test(sinGuion) ? sinGuion : `«${sinGuion.replace(/^'+|'+$/g, '')}»`;
   if (narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
   const visible = npc.nombreVisible ?? npc.name;
@@ -2014,16 +2056,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         rejectionReasons.push(rejection.reason);
         continue;
       }
-      parsed.narration = quitarFrasesRepetidas(parsed.narration, ctx.lastNarrationText);
-      if (ctx.characterName && !ctx.enCombate) {
-        const clave = claveAccionDelJugador(ctx.characterName);
-        const accion = (parsed as unknown as Record<string, unknown>)[clave];
-        delete (parsed as unknown as Record<string, unknown>)[clave];
-        // P412 (ronda 5b): «Observo el cielo» siguió abriendo con Ulkha sin saber qué traía el campo; se registra para verlo.
-        console.warn(`[lint] campo-accion: ${JSON.stringify(typeof accion === 'string' ? accion : accion ?? null)} (acción: ${JSON.stringify(ctx.action)})`);
-        parsed.narration = conAccionDelanteDe(parsed.narration, typeof accion === 'string' ? accion : '', ctx.characterName, ctx.action);
-      }
-      return parsed;
+      return posprocesarNarracion(parsed, ctx);
     } catch (err) {
       // Roadmap de velocidad, 2026-07-20 (streaming): antes este catch tragaba el error en
       // silencio — sin esto, un fallo del intento 1 (el único que transmite en vivo) era
@@ -2042,7 +2075,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     console.warn(`[narrador] los 3 intentos violaron el mismo guard ("${rejectionReasons[0]}") — usando fallback determinista sin IA para: "${ctx.action}"`);
     return deterministicFallbackNarration(ctx);
   }
-  if (lastResult) return lastResult;
+  if (lastResult) return posprocesarNarracion(lastResult, ctx);
   // Fallback determinista (auditoría 2026-07-24, "revisa todo bien bien"): antes, si los 3
   // intentos fallaban de verdad (nunca produjeron ni un JSON parseable — timeout/cuelgue real),
   // esto lanzaba y `narrateAndPersistTurn` abortaba ANTES de su `$transaction` — la tirada ya

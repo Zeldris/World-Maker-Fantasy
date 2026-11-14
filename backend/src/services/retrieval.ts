@@ -93,6 +93,7 @@ export async function retrieveLore(
             SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
             FROM "LoreChunk"
             WHERE "worldId" = ${worldId} AND title = ANY(${directos}::text[])
+              AND NOT (tags && ${excludeTags}::text[])
             ORDER BY title, embedding <=> ${queryLiteral}::vector
           `,
           15_000,

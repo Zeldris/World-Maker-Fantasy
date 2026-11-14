@@ -201,6 +201,15 @@ describe('detectsAbsentSceneNpcClaim', () => {
     expect(result?.name).toBe('Torgash');
   });
 
+  it('QA-289: «por» sin verbo de preguntar o con otra acción coordinada no hace de la ausente un tema', async () => {
+    for (const accion of [
+      'Paso por la tienda y saludo a Torgash',
+      'Le pregunto al orco por su clan y luego hablo con Torgash',
+    ]) {
+      expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['orco-enfurecido-hondonada']))?.name).toBe('Torgash');
+    }
+  });
+
   it('sin la misión del Orco ACTIVA: el mismo texto SÍ se bloquea (el Orco no está disponible sin la quest)', async () => {
     findFirstQuest.mockResolvedValueOnce(null);
     const result = await detectsAbsentSceneNpcClaim(

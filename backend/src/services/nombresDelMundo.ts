@@ -2,17 +2,25 @@ import { prisma } from '../lib/prisma.js';
 
 /// P420 (ronda 2 de QA-289): Ulkha habló de «la traición de los Goirntes», un pueblo que no existe. Vocabulario de nombres
 /// propios del mundo: las palabras en mayúscula del lore indexado y los nombres de NPC (y sus alias), lugares y facciones.
-/// Se carga una vez por mundo (el lore solo cambia al reindexar, que reinicia el backend).
-const cache = new Map<string, Promise<Set<string>>>();
+/// Se carga por mundo y caduca (NPC, lugares y facciones cambian en ejecución: Cronista, campamentos).
+export const TTL_NOMBRES_MS = 5 * 60 * 1000;
+const cache = new Map<string, { nombres: Promise<Set<string>>; cargadoEn: number }>();
 
 export function nombresDelMundo(worldId: string): Promise<Set<string>> {
-  let nombres = cache.get(worldId);
-  if (!nombres) {
-    nombres = cargar(worldId);
-    cache.set(worldId, nombres);
-    nombres.catch(() => cache.delete(worldId));
-  }
+  const hit = cache.get(worldId);
+  if (hit && Date.now() - hit.cargadoEn < TTL_NOMBRES_MS) return hit.nombres;
+  const nombres = cargar(worldId);
+  cache.set(worldId, { nombres, cargadoEn: Date.now() });
+  nombres.catch(() => {
+    if (cache.get(worldId)?.nombres === nombres) cache.delete(worldId);
+  });
   return nombres;
+}
+
+/// Descarta lo cargado de un mundo (o de todos) para que la siguiente consulta lo recargue.
+export function invalidarNombresDelMundo(worldId?: string): void {
+  if (worldId) cache.delete(worldId);
+  else cache.clear();
 }
 
 async function cargar(worldId: string): Promise<Set<string>> {

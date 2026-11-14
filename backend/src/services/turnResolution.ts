@@ -2958,7 +2958,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // preferible a colgar la partida entera por un problema de red ajeno a la propia narración.
   const retrieved = enCombate
     ? []
-    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags, [action, ...npcsInScene.map((n) => n.name)]).catch((err) => {
+    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags, [action, ...npcsInScene.filter((n) => !n.nombreVisible).map((n) => n.name)]).catch((err) => {
         console.warn(`[retrieveLore] fallo o timeout, continuando sin lore RAG: ${err instanceof Error ? err.message : err}`);
         return [];
       });
@@ -5002,11 +5002,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
       }
-      if (npcReply) {
+      {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
         // P415-P417 (restos de habla sin cita) y P412 (abre con el NPC): el NPC habla solo en su réplica, al final.
         const nombreNpc = dialogueTarget.nombreVisible ?? dialogueTarget.name;
         const narracion = empezarPorElJugador(quitarRestosDeDialogo(quitarCitas(narration.narration), characterName), nombreNpc, characterName, dialogueTarget.genero);
+        // Sin réplica (salida vacía, timeout), unirReplica pone la de respaldo: la pregunta no queda sin respuesta.
         narration.narration = unirReplica(narracion, npcReply, dialogueTarget);
       }
     } catch (err) {

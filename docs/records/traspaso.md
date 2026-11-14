@@ -25,7 +25,7 @@ cada commit.**
 | **Tarea en curso · `claude/imagenes-local`** | A `main` **sin PR, CI local** (`QA-215`, cuota de Actions agotada; confirmado por la usuaria el 2026-10-24): ~~`CFG-38`~~…~~`CFG-40`~~, `probar.sh`, ~~`QA-222`~~…~~`QA-226`~~; descripción en `docs/records/pr/claude/imagenes-local.md`. Al fusionarse, rama terminada. **Siguiente:** la usuaria prueba prompts con `probar.sh` → `CFG-42` (en la Deck) → `CFG-41`. |
 | **Tarea en curso · `claude/interfaz-imagenes`** | ~~`CFG-43`~~ ✅: interfaz local del generador (`image-generator/abrir.sh`), todo por elemento en `generated/<tipo>/<slug>/`, con toda la enciclopedia y lo anidado (2.550). Tests 37/37, probada en la Deck. Roadmap `roadmap-imagenes.md` (`IMG-1`…`IMG-3`, `0.4`). Fases 1-3 hechas (retro `QA-228`…`QA-233`, leves `QA-234`). A `main` **sin PR, CI local** (`QA-215`, confirmado por la usuaria el 2026-10-25; [descripción](pr/claude/interfaz-imagenes.md)). **Siguiente:** `CFG-42` → `CFG-41`. |
 | **Tarea en curso · `claude/gh-en-la-deck`** | Fusionada en `main` (PR #82). Rama borrada el 2026-11-10, con `claude/fichas-banners` (ya entera en `claude/imagenes-por-fases`). |
-| **Tarea en curso · `claude/narrador-tiempos`** | `QA-289` 🚧 retomada (usuario, 2026-11-14): `main` traído (P419 con P331/P254). Rondas 5-5d: P412, P423, P417 ✅. Nuevos P469, P470. `/gw-opt-ai` hecho (2026-11-14): 3 propuestas aprobadas, registradas como `QA-339`…`QA-341` (roadmap-front); ronda cerrada. **Siguiente:** /clear y revisión de bloque (/code-review del diff contra origin/main, Findings:), fases 2-3 y PR con gh; luego QA-339…341. Presupuesto de compactaciones: 2. |
+| **Tarea en curso · `claude/narrador-tiempos`** | `QA-289` 🚧 (usuario, 2026-11-14): ronda cerrada (P412, P423, P417 ✅; nuevos P469, P470), `/gw-opt-ai` hecho (`QA-339`…`QA-341`). `main` traído (PR #96). Fase 1 hecha: 13 hallazgos, 8 arreglados con test (`Findings: 8`), leves en la sección de la bitácora. Presupuesto de compactaciones: 2. **Siguiente:** fase 2 (`/gw-opt-tokens` y `/retro`, propuestas a la usuaria), fase 3 y PR con gh; luego QA-339…341. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
 | **Tarea en curso · `claude/plan-imagenes`** | Fusionada en `main` (PR #80, 2026-11-03, `304872b9`, CI en verde): ~~`IMG-15`~~…~~`IMG-33`~~ ✅, ~~`IMG-4`~~ ✅, retro ~~`QA-280`~~…~~`QA-284`~~. Rama terminada. **Siguiente bloque:** `IMG-6`, los 5 pilotos con la cadena fotorreal en una tanda de noche (antes, preguntar a la usuaria qué cerrar por memoria); luego la noche (`IMG-16`, `IMG-17`) e `IMG-7` → `IMG-25`, en una rama nueva desde `main`. |
 | **Tarea en curso · `claude/ins-31-url-backend`** | Fusionada en `main` sin PR (2026-10-26, `b76c66b`, `QA-215`; retro aprobada por la usuaria): `INS-31` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor), fase 3), `apiBaseUrl()` en `api.ts` (`window.__TARKOR__.apiUrl` → `VITE_API_URL` → `localhost:3001`), y retro `QA-259`…`QA-261`. GitHub marcó el PR #78 como fusionado. **Siguiente:** nada en esta rama. |
@@ -214,6 +214,15 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 
 - `tools/qa/plan.py` toma como tanda o lote cualquier fila de tabla del plan cuya primera celda sea un número o una sola mayúscula, sea de la tabla que sea.
 - `dailyTick.ts` (P444): con el Ayuntamiento de territoryId null, o con su territorio ya PERDIDO antes, los de su región no caen nunca en una rebelión (el comentario ya lo dice; decidir si es lo querido).
+
+## Pendientes leves de la revisión de bloque de `QA-289` (2026-11-14)
+
+- La réplica anterior que ve el NPC (`ultimaReplica(lastNarration)`, `turnResolution.ts`) puede ser de otro NPC.
+- `retrieval.ts`: `SELECT DISTINCT title` y la consulta de filas directas, en serie en cada turno; cachear los títulos por mundo y lanzarlas en paralelo.
+- `narrador.ts`: `console.warn('[lint] campo-accion …')` en cada turno sin fallo.
+- Escapado de regex y normalización sin tildes repetidos (`escapar`, `contieneNombre`, `normalizar`…); usar `escapeForRegex` y `normalizeText`.
+- Altura: la «una voz por llamada» es una cadena de parches de regex sobre la narración; valorar el gesto del NPC como campo del JSON.
+- Si `generateNpcReply` lanza excepción, el `catch` sigue sin réplica de respaldo; `quitarFrasesRepetidas` une con espacio y pierde los párrafos si quita una frase.
 
 ## Hecho recientemente
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-10 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md).

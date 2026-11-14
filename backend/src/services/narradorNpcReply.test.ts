@@ -176,6 +176,28 @@ describe('narrateAction tras repetir el turno anterior (QA-289, P414)', () => {
   });
 });
 
+describe('narrateAction con todos los intentos rechazados por motivos distintos (QA-289)', () => {
+  it('el último resultado también pasa por el posproceso: sin el campo de la acción y con ella delante', async () => {
+    const anterior = 'Ulkha Ketg mira a Gorhorn con una expresión de sorpresa mientras él bebe del odre junto a la hoguera del paso.';
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: anterior, newFacts: [] }) })
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: anterior, newFacts: [] }) })
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'El viento trae un hechizo antiguo sobre el paso rocoso.', newFacts: [], loQueHaceGorhorn: 'afila el cuchillo contra la piedra' }) });
+    const { narrateAction } = await import('./narrador.js');
+    const res = await narrateAction({
+      worldFacts: [],
+      characterSummary: 'Gorhorn, orco del Clan Maktor.',
+      characterName: 'Gorhorn',
+      characterClase: 'GUERRERO',
+      action: 'Miro el paso',
+      lastNarrationText: anterior,
+    } as unknown as Parameters<typeof narrateAction>[0]);
+    expect(res.narration).toMatch(/^Gorhorn afila el cuchillo contra la piedra\./);
+    expect(res).not.toHaveProperty('loQueHaceGorhorn');
+  });
+});
+
 describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
   it('quita la frase que repite 6 palabras seguidas del turno anterior; si es la única, la deja', async () => {
     const { quitarFrasesRepetidas } = await import('./narrador.js');
@@ -195,6 +217,18 @@ describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
     expect(unirReplica('Gorhorn pregunta.', '«-La situación es inmutable.»', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. Ulkha Ketg responde: «La situación es inmutable.»');
     expect(unirReplica('Gorhorn pregunta.', '- La situación es inmutable.', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. Ulkha Ketg responde: «La situación es inmutable.»');
     expect(unirReplica('Gorhorn pregunta.', '«Aquí no.»', { name: 'Ulkha Ketg', nombreVisible: 'Orca desconocida', articulo: null, genero: 'F' })).toBe('Gorhorn pregunta. La orca desconocida responde: «Aquí no.»');
+  });
+
+  it('QA-289: sin réplica (vacía) se pone una de respaldo, para que el NPC conteste algo', async () => {
+    const { unirReplica, REPLICA_DE_RESPALDO } = await import('./narrador.js');
+    expect(unirReplica('Gorhorn pregunta.', '  ', { name: 'Ulkha Ketg', articulo: null, genero: 'F' })).toBe(`Gorhorn pregunta. Ulkha Ketg responde: ${REPLICA_DE_RESPALDO}`);
+  });
+
+  it('QA-289: quitarCitas, quitarRestosDeDialogo y empezarPorElJugador conservan los saltos de párrafo', async () => {
+    const { quitarCitas, quitarRestosDeDialogo, empezarPorElJugador } = await import('./narrador.js');
+    expect(quitarCitas('Gorhorn mira el paso.\n\nUlkha dice «Fuera» y calla.')).toBe('Gorhorn mira el paso.\n\nUlkha dice y calla.');
+    expect(quitarRestosDeDialogo('Gorhorn mira.\n\n¿Qué quieres?\n\nUlkha calla.', 'Gorhorn')).toBe('Gorhorn mira.\n\nUlkha calla.');
+    expect(empezarPorElJugador('Gorhorn mira.\n\nUlkha calla.', 'Ulkha Ketg', 'Gorhorn')).toBe('Gorhorn mira.\n\nUlkha calla.');
   });
 
   it('la réplica sin comillas va entre «…», y tras una frase sin acabar, con dos puntos (bench 20)', async () => {
