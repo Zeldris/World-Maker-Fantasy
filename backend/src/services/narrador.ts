@@ -2013,6 +2013,8 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         const clave = claveAccionDelJugador(ctx.characterName);
         const accion = (parsed as unknown as Record<string, unknown>)[clave];
         delete (parsed as unknown as Record<string, unknown>)[clave];
+        // P412 (ronda 5b): «Observo el cielo» siguió abriendo con Ulkha sin saber qué traía el campo; se registra para verlo.
+        console.warn(`[lint] campo-accion: ${JSON.stringify(typeof accion === 'string' ? accion : accion ?? null)} (acción: ${JSON.stringify(ctx.action)})`);
         parsed.narration = conAccionDelanteDe(parsed.narration, typeof accion === 'string' ? accion : '', ctx.characterName, ctx.action);
       }
       return parsed;
