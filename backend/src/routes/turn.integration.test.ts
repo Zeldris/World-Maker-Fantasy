@@ -5007,10 +5007,12 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('un turno cualquiera borra el NpcState del cadáver', async () => {
+  // P461 (2026-11-14): el NpcState de un PRINCIPAL muerto ya no se borra al desaparecer el cadáver,
+  // se conserva con `muerto: true` para que no reaparezca vivo.
+  it('un turno cualquiera hace desaparecer el cadáver y conserva el NpcState como muerto (P461)', async () => {
     await doTurn(saveId, 'Exploro la zona con cuidado.');
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
-    expect(state).toBeNull();
+    expect(state?.muerto).toBe(true);
   }, 20_000);
 });
 

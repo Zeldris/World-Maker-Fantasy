@@ -74,7 +74,7 @@ import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClai
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { detectsSearchIntent } from './discovery.js';
 import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
-import { nextCondicionFisica, resolveDeathOutcome, whisperText, isValidRestLocationKind, isCondicionDowngrade, nextCondicionForAttack, saludForCondicion, saludBandFor, healCeilingFor, applySequentialHeals, npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js';
+import { nextCondicionFisica, resolveDeathOutcome, whisperText, isValidRestLocationKind, isCondicionDowngrade, nextCondicionForAttack, saludForCondicion, saludBandFor, healCeilingFor, applySequentialHeals, npcRecoversFromConvaleciente, npcCorpseShouldDespawn, cadaverDespawnAccion } from './death.js';
 import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct, COMIDA_MINUTOS_POR_TRAMO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
 import { edificiosParaCliente } from './edificiosParaCliente.js';
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
@@ -2003,7 +2003,7 @@ async function writeKingdomLogForBuild(
 async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
   const affected = await tx.npcState.findMany({
     where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-    select: { id: true, npcId: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+    select: { id: true, npcId: true, scope: true, muertoEn: true, condicionFisica: true, condicionFisicaSinceMinutes: true, npc: { select: { kind: true } } },
   });
   for (const state of affected) {
     if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
@@ -2013,7 +2013,9 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
       });
       await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
     } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
-      await tx.npcState.delete({ where: { id: state.id } });
+      const accion = cadaverDespawnAccion(state.npc.kind, state.scope, nowMinutes, state.muertoEn);
+      if (accion.borrar) await tx.npcState.delete({ where: { id: state.id } });
+      else await tx.npcState.update({ where: { id: state.id }, data: accion.data });
       await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });
     }
   }

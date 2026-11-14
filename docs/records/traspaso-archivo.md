@@ -2,6 +2,36 @@
 
 Entradas antiguas de «Hecho recientemente» de [`traspaso.md`](traspaso.md), de la más nueva a la más antigua. Se buscan con `recover.py --search` o `grep`.
 
+## Archivado el 2026-11-14, segunda vez (hasta el 2026-11-10)
+
+- **2026-11-10** — Tanda 110 (lote F, juego): P440 y P442 ✅; P441 reabierto; P443 nuevo (leve). Antes: regresión de P375 en turn.integration arreglada (slug a `services/questSlugs.ts`).
+- **2026-11-10** — Tanda 109 (repesca de lotes A y E): P426 y P437 ✅ comprobados jugando; P441 confirmado 2 de 2; P442 nuevo (leve, dudoso); P375 con NPC ausente sin reproducir.
+- **2026-11-10** — Fase 1 de las tandas 107-108: P375 también descarta testigos inactivos a esa hora o ausentes tras un combate (test de integración); leves apuntados.
+- **2026-11-10** — Tanda 108 (lote E, juego): P270, P319, P358, P375 y P380 ✅ comprobados jugando; P441 nueva (leve: «Tirag» suelto se toma por el Tótem de Guerra).
+- **2026-11-10** — Tanda 107 (lote D, juego): P248, P381, P343, P379 y P435 (simulado) ✅ comprobados jugando; P342 sin ver (vasallo ajeno); sin hallazgos nuevos.
+- **2026-11-10** — Lote D de la puerta cerrado y revisado (P248, P342, P343, P379, P381, P435 a jugar; P368 cerrada; P440 nueva pendiente), plan `plan-comprobacion-puerta.md` al día.
+- **2026-11-10** — ~~`QA-303`~~: `marca-hallazgo.py --ver P<n>` y las tandas cerradas del plan de la puerta, en `plan-comprobacion-puerta-archivo.md` (86 → 22 kB).
+- **2026-11-10** — ~~`QA-301`~~: `tools/qa/inventario-suelto.py` en el check (inventario sin lo de compañeros y súbditos); arregló 4 consultas más (viajeros, entregables, recolectar).
+- **2026-11-10** — ~~`QA-304`~~, ~~`QA-305`~~ (retro del paso 3.4): el encargo de tanda lleva el tope de 50 llamadas (`skills-wmf.md`); `/clear` también al cerrar cada lote de una rama larga (`AGENTS.md`).
+- **2026-11-09** — ~~`QA-300`~~: `escenario.sh dar-reino` resta con valores negativos (`comida=-2`; también bebida, goirnos y tesoro), suelo en 0 y aviso si se pide más de lo que hay; deja el Granero 178/180 para P336. Test en `darReinoLib.test.ts`.
+- **2026-11-09** — ~~`QA-299`~~: `escenario.sh preparar` con `partida-caza:<presa>:heridos=<h>` (la partida vuelve sin piezas y con h heridos; aviso del juego en Reino › Avisos al preparar, P439) y `mochila-descartar[:<n>]` (tira lo suelto hasta dejar hueco; P336: `dar` no pasa de la capacidad y el Almacén lleno impedía `mochila-libre`). Sin cambio de reglas; tests rojos sin el arreglo.
+- **2026-11-09** — ~~`QA-298`~~: `escenario.sh preparar <partida> partida-caza:<presa>:<n>[:permanente]` deja la partida de caza del Reino a punto de volver con n piezas (por el camino normal al avanzar el día), para jugar P339 y, con `danar:desolladero`, P338 en la tanda 103.
+
+### Filas de ramas fusionadas y terminadas (de «Estado actual»)
+
+| | |
+|---|---|
+| **Tarea en curso · `claude/generador-mapas`** | Fusionada en `main` (PR #89, 2026-11-10, CI en verde): ~~MAP-1~~…~~MAP-9~~, ~~MAP-16~~, ~~MAP-17~~; `MAP-18` cerrado en `claude/pedido-mapa` (PR #90). Rama terminada. |
+| **Tarea en curso · `claude/limpieza`** | Fusionada en `main` sin PR, CI local (2026-11-02, `ab518ea8`, `QA-215`; confirmado por la usuaria): ~~`QA-271`~~ ✅ (código muerto fuera) y retro con `QA-278`, `QA-279` al roadmap. Rama terminada. |
+| **Tarea en curso · `claude/gw-update-0.5.0`** | Fusionada en `main` (PR #84, 2026-11-04, `5b1f6a2e`, CI en verde): flujo v0.4.3 → v0.5.0. Rama terminada; lo pendiente pasó a la fila de `claude/wonderful-volta-662qt8`. |
+| **Tarea en curso · `claude/puerta-pruebas`** | Fusionada en `main` (PR #74, 2026-10-21); rama cerrada. Las tandas 8-14 del 3.3 siguieron en `claude/pruebas-3.3`. |
+| **Tarea en curso · `claude/pruebas-3.3`** | Fusionada en `main` (PR #75, 2026-10-22); rama cerrada. Las tandas 15-21 siguieron en `claude/pruebas-reino`. |
+| **Tarea en curso · `claude/pruebas-reino`** | Fusionada en `main` sin PR (2026-10-22, cuota de Actions agotada; `tools/qa/ci-local.sh` en verde, `QA-215`): tandas 15-21 del [reparto](plan-comprobacion-reino.md), P312-P319, retro `QA-208`…`QA-214`. Rama cerrada. |
+| **Tarea en curso · `claude/piloto-galivelop-workflow`** | Fusionada en `main` sin PR (2026-10-23, cuota de Actions agotada; `tools/qa/ci-local.sh` en verde, `QA-215`): Galivelop-workflow v0.2.0 en WMF ([registro](piloto-galivelop-workflow.md), [retro](retro-2026-10-23-piloto-galivelop.md)); rama cerrada. **Pendiente:** la usuaria prueba `host.sh` en la Deck (push con el árbol sucio). |
+| **Tarea en curso · `claude/pruebas-mundo-vivo`** | Fusionada en `main` sin PR (2026-10-23, cuota de Actions agotada; `tools/qa/ci-local.sh` en verde, `QA-215`): tandas 22-27 y retro `QA-216`-`QA-221` ([PR preparado](pr/claude/pruebas-mundo-vivo.md)); rama cerrada. **Pendiente** de la ronda: P51, P95, P163, P193 y la cría de CR-55. Leves de la revisión de la fusión: quitar el `cleanup` local de ~70 tests (ya va en el setup) y un `--raiz` en `.githooks/pre-commit` para no copiarlo al repo (preguntar a la usuaria, es del flujo). |
+| **Tarea en curso · `claude/gh-en-la-deck`** | Fusionada en `main` (PR #82). Rama borrada el 2026-11-10, con `claude/fichas-banners` (ya entera en `claude/imagenes-por-fases`). |
+| **Tarea en curso · `claude/lore-enciclopedia`** | Fusionada en `main` (PR #81, 2026-11-03, `97190433`, CI en verde): ~~`QA-243`~~, ~~`QA-244`~~, ~~`QA-272`…`QA-277`~~ ✅. Rama terminada. |
+
 ## Archivado el 2026-11-14 (hasta el 2026-11-08)
 
 - **2026-11-08** — `MAP-1` y `MAP-2` (adelantados por la usuaria): `map-generator/importar.py` lee el `.map` de Azgaar sin escribirlo y `medir.py` comprueba las medidas del canon.
