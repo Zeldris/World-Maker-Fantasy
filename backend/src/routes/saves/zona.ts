@@ -746,7 +746,9 @@ export async function zonaRoutes(app: FastifyInstance) {
         // P152 (QA-27): la fauna se nombra por su especie, como en la tarjeta del encuentro; la etiqueta
         // del catálogo («Charca de Guchapos») describía el sitio y la misma especie salía con dos nombres.
         const nombreReal =
-          (p.tipo === 'FAUNA' ? npcNameBySlugZonePoint.get(p.targetSlug) : undefined) ??
+          // P462: igual para el NPC fijo — su nombre conocido gana a la etiqueta de escenario («Punto de vigilancia (Orco Enfurecido)»).
+          // (Un NPC muerto no se pinta: el filtro de `zonePoints` lo quita.) `'???'` sigue cubriendo al no descubierto.
+          (p.tipo === 'FAUNA' || p.tipo === 'NPC' ? npcNameBySlugZonePoint.get(p.targetSlug) : undefined) ??
           p.label ??
           (p.tipo === 'RECURSO'
             ? sourceDisplayNameFor(p.targetSlug)
@@ -771,7 +773,8 @@ export async function zonaRoutes(app: FastifyInstance) {
           // P176 (QA-27): de quién es un edificio; el color solo decía cómo te ve su bando («Neutro»).
           // P172/P187: y de quién es lo que tiene dueño (el recinto, el ganado del clan): cogerlo o cazarlo
           // delante de los suyos cuesta reputación, así que la ficha lo dice.
-          ...((p.tipo === 'EDIFICIO' || p.factionSlug) && faccionDelPunto ? { faccion: faccionDelPunto } : {}),
+          // P107: el NPC fijo ya descubierto, también (su facción es la del propio NPC): «Clan Serhu · Neutro».
+          ...((p.tipo === 'EDIFICIO' || p.factionSlug || (p.tipo === 'NPC' && yaDescubierto)) && faccionDelPunto ? { faccion: faccionDelPunto } : {}),
           descubierto: yaDescubierto,
           ...(objetivosDeMision.has(npcIdBySlugZonePoint.get(p.targetSlug) ?? '') ? { objetivoMision: true } : {}),
           // Compañero de fauna con nombre propio (C10, 2026-09-13) — presente solo si este NPC es
