@@ -96,8 +96,8 @@ p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-3
 
 ## Script de parada
 
-<!-- La orden que para lo que levantó una ronda (servidores, modelos locales, inhibidores de suspensión); es el paso
-     de cierre de cada ronda. -->
+`bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh parar` (`QA-313`): baja Ollama, el juego, el driver y el
+inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 
 ## Ya en marcha
 
@@ -107,3 +107,5 @@ p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-3
 - `keep_alive` 1h en `resumen` y en el calentamiento (`QA-161`); captura remota apagada en las tandas (`QA-160`).
 - Aprobadas el 2026-11-11 (no se vuelven a proponer): prefijo estable entre rondas de combate (`QA-307`), `keep_alive`
   30 min del Cronista (`QA-308`), casos fijos del clasificador (`QA-309`), registro tras `escenario.sh cargar` (`QA-310`).
+- Aprobadas el 2026-11-14 (no se vuelven a proponer): calentar con el prompt de la partida al abrirla (`QA-339`),
+  resultado del golpe como campo obligatorio en combate (`QA-340`), tokens de prompt reaprovechados en el registro (`QA-341`).

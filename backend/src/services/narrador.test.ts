@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
+  quitarCitas,
   reinoIntentDetected,
   stripLeakedJson,
   stripNonLatinScript,
   deterministicFallbackNarration,
   narracionDeRespaldoEnDialogo,
   isTooSimilarToLast,
+  hasRepeatedDialogueLine,
   sanitizeSuggestions,
   hasFalseCombatMiss,
   hasFalseCombatAttacker,
@@ -110,6 +112,18 @@ describe('stripNonLatinScript', () => {
   it('deja intacta una narración normal en español (con acentos/ñ) sin ningún alfabeto no latino', () => {
     const narration = 'El niño camina años después, mañana será mejor — ¿qué hará Gorhorn?';
     expect(stripNonLatinScript(narration)).toBe(narration);
+  });
+});
+
+describe('hasRepeatedDialogueLine (QA-289)', () => {
+  const anterior = 'Ulkha Ketg levanta la vista del fuego. «¿Qué busca aquí, forastero?», pregunta sin moverse.';
+  it('la misma réplica del turno anterior, aunque cambie el resto, se rechaza', () => {
+    expect(hasRepeatedDialogueLine('Gorhorn se acerca al claro. Ulkha frunce el ceño: "¿Que busca aqui, forastero?"', anterior)).toBe(true);
+  });
+  it('una réplica nueva o muy corta pasa', () => {
+    expect(hasRepeatedDialogueLine('Ulkha se encoge de hombros. «El agua está más abajo.»', anterior)).toBe(false);
+    expect(hasRepeatedDialogueLine('«¡Alto!», grita Ulkha.', '«¡Alto!», dijo Ulkha.')).toBe(false);
+    expect(hasRepeatedDialogueLine('«¿Qué busca aquí, forastero?»', undefined)).toBe(false);
   });
 });
 
@@ -548,6 +562,10 @@ describe('hasSecondPersonLeak', () => {
 
   it('no dispara con diálogo citado de un NPC dirigiéndose al jugador en 2ª persona (legítimo)', () => {
     expect(hasSecondPersonLeak('El orco se detiene y pregunta: "¿Has visto algo? Dime la verdad, o te arrepentirás."')).toBe(false);
+    // QA-289: las réplicas entre angulares o tipográficas también son diálogo citado.
+    expect(hasSecondPersonLeak('Ulkha alza la vista: «¿Qué te trae por aquí, con tu hacha al hombro?»')).toBe(false);
+    expect(hasSecondPersonLeak('Ulkha murmura: “Te esperaba.” Luego vuelve al fuego.')).toBe(false);
+    expect(hasSecondPersonLeak('«Siéntate», dice Ulkha. Tu hacha brilla junto al fuego.')).toBe(true);
   });
 
   it('SÍ dispara si hay 2ª persona TANTO en la prosa como en el diálogo — la de fuera de comillas sigue siendo un fallo', () => {
@@ -1555,6 +1573,15 @@ describe('hasFalseEquipmentChangeClaim', () => {
     expect(hasFalseEquipmentChangeClaim('Gorhorn se quita de en medio justo a tiempo.', ITEMS)).toBe(false);
   });
 
+  it('no dispara con palabras que solo empiezan como «ata»/«cin»: atacar, atardecer, cinturón (QA-289, bench 11-base)', () => {
+    const ARMAS = ['Hacha de piedra'];
+    expect(hasFalseEquipmentChangeClaim('Gorhorn revisa el filo de su hacha de piedra antes de atacar.', ARMAS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('Al atardecer, el hacha de piedra brilla con un tono rojizo.', ARMAS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('El hacha de piedra sigue colgada del cinturón, con cinco muescas nuevas.', ARMAS)).toBe(false);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn ató el hacha de piedra a su espalda.', ARMAS)).toBe(true);
+    expect(hasFalseEquipmentChangeClaim('Gorhorn se ciñó el hacha de piedra al costado.', ARMAS)).toBe(true);
+  });
+
   it('no dispara si el verbo y el objeto están en frases distintas', () => {
     expect(hasFalseEquipmentChangeClaim('Gorhorn ata su montura al poste. Lleva la capa de piel de gargantúa sobre los hombros.', ITEMS)).toBe(false);
   });
@@ -1961,8 +1988,9 @@ describe('deterministicFallbackNarration', () => {
 
   it('P245: se marca como respaldo, y el de un diálogo no copia la acción ni dice «sin incidentes»', () => {
     expect(deterministicFallbackNarration({ action: 'Miro el paisaje' }).fallbackDeterminista).toBe(true);
-    const texto = narracionDeRespaldoEnDialogo('El orco desconocido');
-    expect(texto).toBe('El orco desconocido te escucha en silencio. (El narrador no ha respondido a esta escena.)');
+    const texto = narracionDeRespaldoEnDialogo('El orco desconocido', 'Gorhorn');
+    expect(texto).toBe('El orco desconocido escucha a Gorhorn en silencio. (El narrador no ha respondido a esta escena.)');
+    expect(hasSecondPersonLeak(texto)).toBe(false);
     expect(texto).not.toMatch(/sin incidentes/);
   });
 });
@@ -2039,10 +2067,59 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
   it('el estado y la narración anterior van detrás de los hechos de la escena', () => {
     const p = buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).prompt;
     const pos = (t: string) => p.indexOf(t);
-    expect(pos('PERSONAJE EN ESCENA')).toBeLessThan(pos('ESTADO DE LA PARTIDA'));
+    expect(pos('PERSONAJE EN ESCENA:')).toBeLessThan(pos('ESTADO DE LA PARTIDA'));
     expect(pos('ESTADO DE LA PARTIDA')).toBeLessThan(pos('TU PROPIA NARRACIÓN'));
-    expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO'));
+    expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO DEL MUNDO'));
+  });
+
+  it('el esquema pide como mucho 3 hechos nuevos y cortos (QA-289)', () => {
+    const nf = (buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).format.properties as Record<string, { maxItems?: number; items?: { maxLength?: number } }>).newFacts;
+    expect(nf.maxItems).toBe(3);
+    expect(nf.items?.maxLength).toBe(160);
+  });
+
+  it('las reglas fijas de lore, diálogo y salud van en el prefijo, y junto a la acción solo su recordatorio (QA-289)', () => {
+    const p = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.' }).prompt;
+    const cola = p.slice(p.indexOf('PERSONAJE:\n'));
+    expect(p.indexOf('LORE Y PRESENCIA: No inventes fauna')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
+    expect(p.indexOf('DIÁLOGO (una sola voz)')).toBeLessThan(p.indexOf('PERSONAJE:\n'));
+    expect(cola).not.toMatch(/No inventes fauna|DIÁLOGO \(una sola voz|nunca empeores/);
+    expect(cola).toMatch(/Recuerda LORE Y PRESENCIA/);
+    expect(cola).toMatch(/DIÁLOGO: como mucho una frase corta de un NPC/);
     expect(p).toContain('PERSONAJE:\nGorhorn, Superviviente.\n\nHECHOS DEL MUNDO');
+  });
+
+  it('con réplica aparte, el recordatorio pide solo gestos, sin comillas (QA-289 fila 1)', () => {
+    const p = buildNarrationPrompt({ ...ctx('12:10', 'Gorhorn mira.'), npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.', replicaAparte: 'Ulkha Ketg' }).prompt;
+    const cola = p.slice(p.indexOf('PERSONAJE:\n'));
+    expect(cola).toContain('DIÁLOGO: lo que responde Ulkha Ketg lo escribe otra voz aparte');
+    expect(cola).not.toMatch(/como mucho una frase corta/);
+  });
+
+  it('tras la acción va el FOCO en el jugador, con réplica aparte y sin ella; en combate, no (QA-289, P412, bench 20)', () => {
+    const base = { ...ctx('12:10', 'Gorhorn mira.'), characterName: 'Gorhorn', npcSlugsInScene: ['ulkha-ketg'], action: 'Le pregunto a Ulkha por el camino.' };
+    const p = buildNarrationPrompt({ ...base, replicaAparte: 'Ulkha Ketg' }).prompt;
+    expect(p.slice(p.indexOf('ACCIÓN DEL JUGADOR:'))).toMatch(/FOCO: la narración cuenta lo que hace Gorhorn; empieza por Gorhorn.*Ulkha Ketg sale como mucho/);
+    const sinDialogo = buildNarrationPrompt({ ...base, action: 'Bebo del odre.' }).prompt;
+    expect(sinDialogo.slice(sinDialogo.indexOf('ACCIÓN DEL JUGADOR:'))).toMatch(/FOCO: la narración cuenta lo que hace Gorhorn;.*otros personajes, salen después/);
+    expect(buildNarrationPrompt({ ...base, enCombate: true }).prompt).not.toMatch(/FOCO:/);
+  });
+
+  it('quitarCitas quita la coletilla de una cita que abre la frase (QA-289, bench 21)', () => {
+    expect(quitarCitas('Ulkha Ketg se detiene y no dice nada. «¿Qué buscas aquí?», pregunta finalmente, su voz baja pero firme. El viento sopla.')).toBe(
+      'Ulkha Ketg se detiene y no dice nada. El viento sopla.',
+    );
+    expect(quitarCitas('«Vete», gruñe el orco.')).toBe('');
+  });
+
+  it('quitarCitas deja la narración sin réplicas, también con comillas mezcladas (QA-289 fila 1, bench 17)', () => {
+    expect(quitarCitas('Ulkha Ketg se detiene. Su voz es baja: «¿Qué buscas aquí, Gorhorn?". Se ajusta el cuchillo.')).toBe('Ulkha Ketg se detiene. Su voz es baja. Se ajusta el cuchillo.')
+    expect(quitarCitas('Ulkha frunce el ceño. "Soy Ulkha Ketg." Mira al norte.')).toBe('Ulkha frunce el ceño. Mira al norte.');
+    expect(quitarCitas('Gorhorn bebe del odre.')).toBe('Gorhorn bebe del odre.');
+    // Bench 19 (P412): comillas simples, también anidadas; los apóstrofos de «Terk'ikar» no son citas.
+    expect(quitarCitas("Ulkha Ketg mira a Gorhorn, firme cuando habla: '¿Qué regalo nos traes hoy, Gorhorn?'.")).toBe('Ulkha Ketg mira a Gorhorn, firme cuando habla.');
+    expect(quitarCitas("Gorhorn se acerca, decidido, y le dice: 'Le digo a Ulkha Ketg: 'Me llamo Gorhorn. ¿Y tú?'' Ulkha asiente.")).toBe('Gorhorn se acerca, decidido, y le dice. Ulkha asiente.');
+    expect(quitarCitas("La Terk'ikar Ulkha Ketg asiente.")).toBe("La Terk'ikar Ulkha Ketg asiente.");
   });
 
   it('hechosBlock es literal del prompt, para que el intento 2 pueda recortarlo', () => {
@@ -2067,6 +2144,20 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     while (a[n] === b[n]) n++;
     expect(n).toBeGreaterThan(a.indexOf('CONOCIMIENTO DE FONDO'));
     expect(b.indexOf('Narra en 1-2 frases muy breves')).toBeLessThan(b.indexOf('ACCIÓN DEL JUGADOR'));
+  });
+
+  it('una pista de este turno no corta la caché antes de la zona: lo estable sube delante (QA-289)', () => {
+    const turno = (pista: string) => ({
+      ...ctx('12:10', 'Gorhorn mira.'),
+      worldFacts: [pista, 'UBICACIÓN ACTUAL: Paso de los Pilares Rotos', 'PERSONAJE EN ESCENA: Ulkha Ketg', 'INVENTARIO ACTUAL: hacha, odre', 'FAUNA AQUÍ AHORA MISMO (animales, NO son personas): Aullador Rojo'],
+    });
+    const a = buildNarrationPrompt(turno('El golpe ya está resuelto: falla.')).prompt;
+    const b = buildNarrationPrompt(turno('Nadie responde todavía.')).prompt;
+    let n = 0;
+    while (a[n] === b[n]) n++;
+    expect(n).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+    // Lo que no es de la zona sigue en su orden, detrás.
+    expect(a.indexOf('El golpe ya está resuelto')).toBeLessThan(a.indexOf('PERSONAJE EN ESCENA:'));
   });
 });
 

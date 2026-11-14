@@ -19,6 +19,9 @@ export const ACCIONES_TIPICAS: readonly string[] = [
   'Observo el cielo para calcular cuánto falta para que anochezca.',
   'Camino despacio hacia el borde del claro.',
   'Bebo un trago de agua del odre.',
+  // QA-289 (fila 2, P266): diálogo con el NPC del escenario `ia-gorhorn-dia42`; con `--turnos 10`, sin cambiar los 8 de antes.
+  'Le pregunto a Ulkha Ketg qué la trae al paso.',
+  'Le digo a Ulkha Ketg: «Me llamo Gorhorn. ¿Y tú?»',
 ];
 
 export function parsearOpciones(argv: string[], env: Record<string, string | undefined> = {}): OpcionesBenchmark {
