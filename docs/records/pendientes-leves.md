@@ -39,3 +39,10 @@ Movido de [`traspaso.md`](traspaso.md) el 2026-11-14 (`QA-342`). Pendientes leve
 
 - `tools/qa/plan.py` toma como tanda o lote cualquier fila de tabla del plan cuya primera celda sea un número o una sola mayúscula, sea de la tabla que sea.
 - `dailyTick.ts` (P444): con el Ayuntamiento de territoryId null, o con su territorio ya PERDIDO antes, los de su región no caen nunca en una rebelión (el comentario ya lo dice; decidir si es lo querido).
+
+## Pendientes leves de la fase 3 de `claude/narrador-tiempos` (2026-11-14)
+
+- `tools/roadmap/resolver-conflicto.py`: busca los marcadores por texto exacto (no respeta `conflict-marker-size`, y un subrayado setext `=======` dentro de un trozo se toma por separador).
+- `resolver-conflicto.py` y `tools/qa/resolver_hallazgos.py`: dos parsers de marcadores con reglas distintas; unificar.
+- `resolver-conflicto.py` es manual (hay que acordarse tras `git merge origin/main`): valorar un driver `merge=roadmap` en `.gitattributes`, que además tendría la base.
+- `.gitattributes` `merge=union` del ledger no deduplica: un registro idéntico en los dos lados (cherry-pick) queda dos veces y `metrics.py` lo cuenta doble.
