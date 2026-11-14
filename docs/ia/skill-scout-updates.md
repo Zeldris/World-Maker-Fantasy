@@ -1,8 +1,8 @@
-# Diseño: skill `scout-updates` (🚧 en construcción, `QA-176`)
+# Diseño: skill `gw-scout-updates` (🚧 en construcción, `QA-176`)
 
 > **Desde el 2026-10-22** la skill es la de Galivelop-workflow (piloto): `inventario.py` y `contrastar.py` pasan a
 > `scripts/inventory.py` y `scripts/compare.py` de la skill, `banco.py` a `tools/qa/banco-calidad.py`, y lo propio de
-> Tarkor a [`.claude/gw/scout-updates.md`](../../.claude/gw/scout-updates.md). Este documento queda como historia del
+> Tarkor a [`.claude/gw/gw-scout-updates.md`](../../.claude/gw/gw-scout-updates.md). Este documento queda como historia del
 > diseño.
 
 Skill **bajo demanda** que hace inventario de un proyecto, lo ordena y busca actualizaciones, mejoras o candidatos
@@ -15,12 +15,12 @@ de mala calidad, y hacía falta una oferta de modelo con fundamento, no a ojo.
 |---|---|
 | Alcance | **Genérica y extrapolable a cualquier proyecto.** Mira lo que hay, lo ordena y luego busca. Nada de Tarkor en `SKILL.md`. |
 | Memoria | **Dos `.md` en el proyecto:** `arquitectura.md` (la arquitectura y la fecha en que se comprobó; la siguiente vez solo se contrasta si sigue igual) y `propuestas.md` (acumulativo, para no repetir lo establecido ni lo ya rechazado). |
-| Focos | Una skill genérica que lo mira todo, y «versiones» que miran una parte: `/scout-updates <sección>`, donde las secciones son las de `arquitectura.md`. |
+| Focos | Una skill genérica que lo mira todo, y «versiones» que miran una parte: `/gw-scout-updates <sección>`, donde las secciones son las de `arquitectura.md`. |
 | Lanzamiento | **Solo bajo demanda** (`disable-model-invocation: true`): gasta muchos tokens, decide la usuaria cuándo. Antes de buscar, estimación de coste y confirmación. |
 | Modelos | **Local siempre que se pueda**, con la opción de usar Claude. La usuaria elige los candidatos. La skill **no depende de nada local** (se comparte con otros usuarios): el juez es el propio agente que la ejecuta y los candidatos pueden correr en una API (usuaria, 2026-10-20). |
 | Hardware | En Tarkor, la **Steam Deck es el mínimo**; modelos mayores para equipos mayores son una fase final del roadmap. Va como restricción en `arquitectura.md`, no en la skill. |
 | Coste | **Primero lo gratuito o de bajo coste.** Una propuesta de pago lleva el coste desglosado (precio publicado, uso estimado y su cálculo, total al mes) y qué calidad compra frente a la mejor gratuita, para juzgar calidad/precio. |
-| Autonomía | Solo propone (como `opt-ai`). Lo que la usuaria apruebe se convierte en tareas con hito. |
+| Autonomía | Solo propone (como `gw-opt-ai`). Lo que la usuaria apruebe se convierte en tareas con hito. |
 
 ## Flujo de una pasada
 
@@ -56,18 +56,18 @@ de mala calidad, y hacía falta una oferta de modelo con fundamento, no a ojo.
 - Juez: el propio agente que ejecuta la skill (los pares se exportan y los juzga la sesión); un modelo local o de API
   como opción para ahorrar tokens, calibrado con unos pares del agente.
 - Rúbrica: coherencia, naturalidad del español, fidelidad al lore, ajuste de longitud, sin repeticiones.
-- Latencia se mide aparte (la de `opt-ai`), nunca mezclada con la calidad.
+- Latencia se mide aparte (la de `gw-opt-ai`), nunca mezclada con la calidad.
 - Sin motor local, el banco corre los candidatos en una API compatible con OpenAI (calidad); la memoria y la latencia
   en el hardware mínimo quedan para quien tenga la máquina.
 
 ## Diagnóstico del narrador de Tarkor (punto de partida de la primera pasada)
 
 Dos problemas distintos:
-- **Latencia:** prompt de ~6,3k tokens; el prefill son ~36 de 48 s. Turno p50 29-35 s tras `opt-ai`. Recortar el
-  prompt es de `opt-ai`, no de esta skill.
+- **Latencia:** prompt de ~6,3k tokens; el prefill son ~36 de 48 s. Turno p50 29-35 s tras `gw-opt-ai`. Recortar el
+  prompt es de `gw-opt-ai`, no de esta skill.
 - **Calidad:** modelo de 8B antiguo (`tarkor-narrador-llama31`, ajuste fino de Llama 3.1) escribiendo en español.
 
-Pieza que falta en Tarkor: el registro de `opt-ai` (`iaRegistro.ts`) no guarda los prompts, y el banco los necesita
+Pieza que falta en Tarkor: el registro de `gw-opt-ai` (`iaRegistro.ts`) no guarda los prompts, y el banco los necesita
 como casos. Hecho (2026-10-20): con `IA_CASOS=<ruta>` cada `/api/generate` que acaba bien añade su prompt completo y su salida en el formato de casos de `tools/qa/banco-calidad.py` (`registrarCaso`, `iaRegistro.ts`). Sin `system` en el caso, el narrador usó el SYSTEM de su Modelfile: para un candidato sin él, añadirlo desde `ollama show --system`.
 
 ## De dónde sale cada decisión

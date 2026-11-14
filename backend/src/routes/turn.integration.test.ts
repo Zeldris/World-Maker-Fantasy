@@ -19,7 +19,7 @@ import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import { ownerKeyFor } from '../services/reinoOwner.js';
 import type { NarrationResult } from '../services/narrador.js';
-import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration } from '../services/narrador.js';
+import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration, buildNarrationPrompt } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -1114,6 +1114,44 @@ describe('Rediseño de combate: habilidades de utilidad reactivas y consumibles 
     // Contraataque disparado: el NPC también acusa un golpe de vuelta.
     const npcState = await prisma.npcState.findFirst({ where: { saveId, npcId } });
     expect(npcState?.condicionFisica).not.toBe('ILESO');
+  }, 15_000);
+
+  // P431 (tanda 92, 2026-11-09): una habilidad de ATAQUE pulsada mientras el NPC ataca salía en la
+  // tarjeta como «Te defiendes con …» (el lado venía fijo a 'defensa').
+  it('P431: una habilidad de ataque usada contra el ataque del NPC sale con rol ataque', async () => {
+    await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+    await prisma.save.update({
+      where: { id: saveId },
+      data: {
+        condicionFisica: 'ILESO',
+        pendingCombatNpcSlugs: [npcSlug],
+        pendingNpcAttack: {
+          npcId,
+          attribute: 'fuerza',
+          effects: ['ATAQUE'],
+          rol: 'ataque',
+          abilityName: 'Ataque base',
+          abilityDescription: 'Golpe improvisado.',
+          energyCost: 5,
+          energyRegen: 0,
+        },
+      },
+    });
+
+    const app = await buildApp();
+    const action = 'Grabo una runa de cólera en mi golpe.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true, savedActionId: golpeRunaColeraId } });
+    expect(classifyRes.statusCode).toBe(200);
+    const { classification, roll } = classifyRes.json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification, roll, enCombate: true, savedActionId: golpeRunaColeraId },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const fin = lastNdjsonLine(narrateRes.payload) as { playerAbilityUsed?: { name: string; rol: string } | null };
+    expect(fin.playerAbilityUsed?.name).toBe('Golpe Runa de Cólera');
+    expect(fin.playerAbilityUsed?.rol).toBe('ataque');
   }, 15_000);
 
   it('Grito de Guerra: si el NPC ataca con daño y la tirada propia tiene éxito, cancela el golpe entrante del todo y te deja la iniciativa', async () => {
@@ -3055,12 +3093,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     const otraRegion = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
     const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
     const pozoLejano = await prisma.building.create({ data: { saveId, locationId: otraRegion.id, name: 'Pozo lejano', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
-    // El Ayuntamiento es del territorio perdido: cae con él, y con él los edificios sin territorio de su región.
+    // El Ayuntamiento es del territorio perdido: los edificios sin territorio de su región caen, él no (P444).
     const ayto = await prisma.building.create({ data: { saveId, territoryId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
-    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO'); // P444: sin él no se podría reconstruir nada
     // Otra región no se toca.
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozoLejano.id } })).status).toBe('ACTIVO');
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);
@@ -4340,7 +4378,7 @@ describe('Decapitar cierra una misión "derrotar a X" con rewardItems y entrega 
 });
 
 // Ciclo completo de "dar objeto a NPC" (2026-08-31, mecánica real — cierra el bug documentado en
-// docs/registros/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
+// docs/records/revisar-partida-hallazgos.md, 2026-08-28: el cuchillo "entregado" a Gistera Koh seguía en
 // el inventario y reapareció en 4 turnos posteriores). Este test cubre justo el escenario que
 // entrega.integration.test.ts NO puede probar aislado: que el objeto entregado sobrevive a la
 // MUERTE del NPC y sale de verdad en un saqueo real vía /turn/narrate, mismo pipeline
@@ -7898,7 +7936,7 @@ describe('Ataque de apertura fallido contra fauna no agresiva no abre combate (h
 // ataque en vez de defensa) y perdía el intercambio contra la Destreza real del NPC. Causa raíz:
 // `Save.pendingNpcAttack` ya persistía bien, pero `GET /saves/:id` nunca lo exponía, así que el
 // frontend no podía rehidratar `combatAwaitingDefense` tras una recarga. Ver
-// docs/registros/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
+// docs/records/checklist-pruebas-juego.md § 1 para el diagnóstico completo.
 describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga en defensa a ciegas, 2026-08-29)', () => {
   let saveId: string;
   let npcId: string;
@@ -7975,7 +8013,7 @@ describe('GET /saves/:id expone esperandoDefensaJugador (fix del bug de recarga 
 });
 
 // Combate "fantasma" tras huir/viajar (BUG REAL confirmado 2 veces en vivo, mitigado parcialmente
-// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/registros/checklist-pruebas-juego.md).
+// 2026-08-28, causa exacta sin aislar hasta ahora — ver docs/records/checklist-pruebas-juego.md).
 // Investigación 2026-08-29: `detectNpcsInScene` (npcScene.ts) trata a un NPC "ya establecido en
 // esta partida" (tiene `NpcState` propio) como candidato SIEMPRE, sin importar la región actual
 // (`encounteredIds.has(npc.id)` gana sobre el filtro geográfico) — comportamiento INTENCIONAL, ya
@@ -9781,7 +9819,10 @@ describe('P233 — morir en combate sin pasar por Convaleciente en ese combate c
     // La derrota del primer combate, sin acción fuera de combate entre los dos…
     await suceso(saveId, 'COMBATE_PERDIDO', 425, perdidoContra(saveId, npcId));
     // …y la emboscada empieza el segundo justo después.
-    await prisma.save.update({ where: { id: saveId }, data: { combateDesde: new Date() } });
+    // Un milisegundo después de esa derrota, no `new Date()`: en el mismo milisegundo la frontera (`gte`) la
+    // contaría como de este combate y el test fallaba a veces en el CI.
+    const primera = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'COMBATE_PERDIDO' }, select: { createdAt: true } });
+    await prisma.save.update({ where: { id: saveId }, data: { combateDesde: new Date(primera.createdAt.getTime() + 1) } });
 
     await morir(saveId);
 
@@ -9905,4 +9946,65 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     const equipado = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
     expect(equipado.blocked?.narration).toMatch(/desequípalo y usa el botón Entregar/);
   });
+});
+
+// QA-307 (`/gw-opt-ai`, 2026-11-10): en la Deck, el primer intento de cada turno de combate volvía a procesar el
+// prompt entero (~6.000 tokens, ~20 s de más por turno). Dos rondas seguidas tienen que compartir el prefijo
+// hasta pasados los hechos estables de la escena, para que Ollama reaproveche su caché.
+describe('Dos rondas de combate seguidas comparten el prefijo del prompt del narrador (QA-307)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba QA-307',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el primer carácter distinto va después de la ubicación y del NPC en escena, no al principio de los hechos', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    const prompts: string[] = [];
+    for (let ronda = 0; ronda < 2; ronda++) {
+      narrateAction.mockClear();
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      prompts.push(buildNarrationPrompt(narrateAction.mock.calls.at(-1)![0] as Parameters<typeof buildNarrationPrompt>[0]).prompt);
+    }
+    const [a, b] = prompts;
+    let n = 0;
+    const tope = Math.min(a.length, b.length);
+    while (n < tope && a[n] === b[n]) n++;
+    // Dos prompts idénticos (o uno prefijo del otro) no dicen nada del orden: la ronda no cambió el intercambio.
+    if (n === tope) {
+      throw new Error(`los dos prompts de la ronda no difieren (longitudes ${a.length} y ${b.length}): el intercambio de cada ronda no llega al prompt`);
+    }
+    // Lo de la ronda (sus dados) va al final de los hechos: lo estable de la escena (ubicación, NPC, inventario)
+    // queda en el prefijo compartido.
+    for (const estable of ['UBICACIÓN ACTUAL', 'PERSONAJE EN ESCENA', 'INVENTARIO ACTUAL']) {
+      expect(a.indexOf(estable)).toBeGreaterThan(-1);
+      expect(n).toBeGreaterThan(a.indexOf(estable));
+    }
+    expect(a.indexOf('RESULTADO DEL INTERCAMBIO')).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+  }, 30_000);
 });

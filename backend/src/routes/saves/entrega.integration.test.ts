@@ -85,7 +85,7 @@ describe('Entregar objeto a NPC (2026-08-31)', () => {
     expect(body.logEntry.text).toContain('Cuchillo de hielo sílice');
     expect(body.logEntry.text).toContain('Aullador Rojo');
 
-    // Bug real que este endpoint corrige (docs/registros/revisar-partida-hallazgos.md, 2026-08-28): el
+    // Bug real que este endpoint corrige (docs/records/revisar-partida-hallazgos.md, 2026-08-28): el
     // objeto reaparecía en el inventario en turnos posteriores porque nunca se retiraba de verdad.
     const remaining = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
     expect(remaining).toBeNull();
@@ -168,6 +168,22 @@ describe('Entregar objeto a NPC: guards (2026-08-31)', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toContain('Desequípalo');
+  });
+
+  it('rechaza entregar un objeto sin equipar de un compañero (no es de la bolsa de la jugadora)', async () => {
+    const companion = await prisma.companion.findFirstOrThrow({ where: { saveId } });
+    const ajeno = await prisma.inventoryItem.create({
+      data: { saveId, name: 'Lanza del compañero', description: 'x', origin: 'inicial', slot: null, companionId: companion.id },
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/saves/${saveId}/entregar/${auladorSlug}`,
+      payload: { itemId: ajeno.id },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error).toContain('Objeto no encontrado en tu inventario');
+    expect(await prisma.inventoryItem.findUnique({ where: { id: ajeno.id } })).not.toBeNull();
   });
 
   it('rechaza entregar a un NPC MUERTO — no es un destinatario válido', async () => {

@@ -2,7 +2,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { asegurarMundoDePartida } from '../mundoPartida.js';
-import { danarEdificioDeReceta, repararDanados } from './prepararEdificios.js';
+import { danarEdificioDeReceta, repararDanados, textoSinReparar } from './prepararEdificios.js';
 
 // P369/P301: `reparar` y `danar:<receta>` de `prepararReino.ts` (y `avanzar --reparar`) usan `repararEdificio` (el botón
 // «Reparar») y el efecto `danarEdificio` (el de las tormentas), no UPDATE a mano.
@@ -51,12 +51,16 @@ describe('prepararEdificios (P369, P301)', () => {
     expect(sin.reparados).toEqual([]);
     expect(sin.sinReparar.map((x) => x.nombre).sort()).toEqual(['cocina', 'pozo']);
     expect(sin.sinReparar[0]!.motivo).toMatch(/materiales/);
+    // P383: dice cuántos materiales faltan por edificio, no solo «sigue dañado».
+    expect(sin.sinReparar.every((x) => x.coste != null && x.falta === x.coste)).toBe(true);
+    expect(textoSinReparar(sin.sinReparar[0]!)).toMatch(/^faltan \d+ materiales \(cuesta \d+, en el Almacén hay 0\)/);
     // Materiales justos para uno (el primero: el pozo, el más antiguo).
     const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: 'RECURSO' } });
     await prisma.almacenItem.createMany({ data: Array.from({ length: 6 }, () => ({ saveId, name: recurso.name, description: '', catalogSlug: recurso.slug })) });
     const r = await repararDanados(prisma, saveId);
     expect(r.reparados.map((x) => x.nombre)).toEqual(['pozo']);
     expect(r.sinReparar.map((x) => x.nombre)).toEqual(['cocina']);
+    expect(r.sinReparar[0]!.falta).toBe(r.sinReparar[0]!.coste! - (6 - r.reparados[0]!.coste));
     expect((await prisma.building.findUniqueOrThrow({ where: { id: a.id } })).status).toBe('ACTIVO');
     expect((await prisma.building.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('DANADO');
     expect((await prisma.building.findUniqueOrThrow({ where: { id: sano.id } })).status).toBe('ACTIVO');

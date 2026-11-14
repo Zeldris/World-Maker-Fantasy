@@ -1,0 +1,173 @@
+{
+ "nota": "MAP-16, 2026-11-10: soluciones de Haiku (subagente) del banco, como lotes de editar.py sacados de comparar original.json con el mapa guardado, para MAP-17 (ejemplos resueltos para el agente local). Los registros completos del modelo local, en local-*.json.",
+ "encargos": {
+  "frontera": {
+   "segundos": 49.8,
+   "ordenes": 9,
+   "final": "Pasé 6 celdas del Margen a la Ciénaga; 7 sacaban la envolvente del canon. Canon y lore en verde.",
+   "lote": {
+    "celdas": [
+     [
+      3153,
+      19,
+      0
+     ],
+     [
+      3157,
+      19,
+      0
+     ],
+     [
+      3159,
+      19,
+      0
+     ],
+     [
+      3161,
+      19,
+      0
+     ],
+     [
+      3164,
+      19,
+      0
+     ],
+     [
+      3165,
+      19,
+      0
+     ]
+    ]
+   }
+  },
+  "costa": {
+   "segundos": 39.3,
+   "ordenes": 7,
+   "final": "Pasé a tierra 10 celdas de la costa noroeste de Vaelira; dos lotes previos tapaban la ruta marítima 394.",
+   "lote": {
+    "alturas": [
+     [
+      2,
+      25
+     ],
+     [
+      3,
+      25
+     ],
+     [
+      18,
+      25
+     ],
+     [
+      19,
+      25
+     ],
+     [
+      20,
+      25
+     ],
+     [
+      51,
+      25
+     ],
+     [
+      52,
+      25
+     ],
+     [
+      96,
+      25
+     ],
+     [
+      97,
+      25
+     ],
+     [
+      150,
+      25
+     ]
+    ]
+   }
+  },
+  "lugar": {
+   "segundos": 26.4,
+   "ordenes": 8,
+   "final": "Puse Las Agujas Imán (agujas-iman, i 616) en (542,192), región 18, a ~10 km del Campamento; canon y lore en verde.",
+   "lote": {
+    "lugares": [
+     {
+      "i": 616,
+      "slug": "agujas-iman",
+      "x": 542.0,
+      "y": 192.0
+     }
+    ]
+   }
+  },
+  "ruta": {
+   "segundos": 31.9,
+   "ordenes": 8,
+   "final": "Ruta 451 roads de Ordinum al Puesto Nabieus, 11 puntos en tierra; canon y lore en verde.",
+   "lote": {
+    "rutas": [
+     {
+      "i": 451,
+      "grupo": "roads",
+      "puntos": [
+       [
+        571.0,
+        398.0
+       ],
+       [
+        572.0,
+        390.0
+       ],
+       [
+        573.0,
+        382.0
+       ],
+       [
+        574.0,
+        374.0
+       ],
+       [
+        575.0,
+        366.0
+       ],
+       [
+        576.0,
+        357.0
+       ],
+       [
+        577.0,
+        349.0
+       ],
+       [
+        578.0,
+        341.0
+       ],
+       [
+        579.0,
+        333.0
+       ],
+       [
+        580.0,
+        325.0
+       ],
+       [
+        581.0,
+        317.0
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "trampa-canon": {
+   "segundos": 30.0,
+   "ordenes": 7,
+   "final": "No guardé nada: el canon no lo permite. Área de Llanuras 19.907 → 21.419 km², envolvente de Llanuras 127 → 136 km (MAL), Ciénaga 155 × 180 (MAL).",
+   "lote": {}
+  }
+ }
+}

@@ -144,6 +144,12 @@ export async function cazadoresAdultos(tx: Tx, saveId: string, ahora: number): P
   return subditos.filter((s) => esCazadorAdulto(s, ahora)).length;
 }
 
+/// P440: súbditos activos con rol de cazador, de cualquier edad (todos comen: van dentro de `poblacion`).
+export async function contarCazadores(tx: Tx, saveId: string): Promise<number> {
+  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true } });
+  return subditos.filter((s) => rolDeSubdito(s.role) === 'cazador').length;
+}
+
 /// Filtro compartido del cazador adulto (lleva arma como un soldado).
 function esCazadorAdulto(s: { role: string; pueblo: string | null; nacidoEn: number | null }, ahora: number): boolean {
   return rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora);
@@ -185,6 +191,8 @@ export async function avanzarSubditos(tx: Tx, saveId: string, dias: number, ahor
 /// `ahora`: el instante del suceso (el día simulado, no el reloj de la partida: con varios días de descanso
 /// seguidos cada aviso lleva su día).
 export async function avisarEnReino(tx: Tx, saveId: string, text: string, ahora: number): Promise<void> {
+  // P332: el nombre de un edificio lleva artículo en minúscula («un pozo»): el aviso siempre empieza en mayúscula.
+  text = text.charAt(0).toUpperCase() + text.slice(1);
   await tx.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: formatFictionalDate(ahora), fictionalMinutes: ahora } });
 }
 

@@ -1,6 +1,9 @@
 // CR-55: textos de Reino › Corrales (puro, para poder probarlo).
 import type { AnimalDeCorral, EtapaAnimal } from './api'
 
+/// Forraje que da cada pasto (espejo de `FORRAJE_POR_PASTO` del backend).
+export const FORRAJE_POR_PASTO = 2
+
 export const ETAPA_LABEL: Record<EtapaAnimal, string> = { CRIA: 'cría', JOVEN: 'joven', ADULTO: 'adulto', VEJEZ: 'viejo' }
 const SIGUIENTE: Record<EtapaAnimal, string | null> = { CRIA: 'joven', JOVEN: 'adulto', ADULTO: 'viejo', VEJEZ: null }
 export const ESCALON_LABEL: Record<number, string> = { 1: 'Taller', 2: 'Obrador', 3: 'Gran obrador' }

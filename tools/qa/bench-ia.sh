@@ -1,5 +1,5 @@
 #!/bin/bash
-# QA-173 (retro del 2026-10-20): el bench de la IA local de `opt-ai` en una sola orden. Restaura el escenario
+# QA-173 (retro del 2026-10-20): el bench de la IA local de `gw-opt-ai` en una sola orden. Restaura el escenario
 # `ia-gorhorn-dia42` (la partida de la ronda «IA y diálogos») en `tarkor_juego`, reindexa el lore (el índice del dump
 # puede ser de otro código, QA-167), arranca el juego con IA_PERFIL=deck e IA_REGISTRO, espera el calentamiento, juega
 # los turnos de `benchmark-turno` muestreando la RAM y `ollama ps`, y compara con `medir.py`.

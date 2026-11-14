@@ -1,7 +1,7 @@
 #!/bin/bash
 # QA-135: fusiona una rama de subagente en la actual y comprueba el resultado en una salida corta.
 # Uso: tools/qa/fusionar.sh <rama> "<mensaje del merge>" [--revisada]
-#  - `git merge --no-ff`; si el único conflicto es docs/registros/pruebas-0.3-hallazgos.md, lo resuelve
+#  - `git merge --no-ff`; si el único conflicto es docs/records/pruebas-0.3-hallazgos.md, lo resuelve
 #    quedándose, hallazgo a hallazgo, con el lado cuyo estado no es «pendiente» (resolver_hallazgos.py).
 #    Con otro conflicto, para y lo lista (el merge queda abierto).
 #  - pasa los tests del paquete tocado (vitest de los archivos cambiados y los que los importan; frontend, y `tsc -b`).
@@ -9,12 +9,12 @@
 #  - QA-152: tras fusionar bien una rama `worktree-agent-*` (o cualquiera con worktree en .claude/worktrees/), borra
 #    su worktree (`git worktree remove`, sin forzar: con cambios sin commitear avisa y lo deja) y la rama
 #    (`git branch -d`, solo borra lo fusionado; si falla avisa y sigue). Nunca borra la rama actual, main ni `claude/*`.
-#  - `--revisada` = la principal ya hizo revisar el diff (paso 3 de orchestrate-dealer); sin él, lo recuerda.
+#  - `--revisada` = la principal ya hizo revisar el diff (paso 3 de gw-orchestrate-dealer); sin él, lo recuerda.
 set -uo pipefail
 [ $# -ge 2 ] && [ $# -le 3 ] && { [ $# -eq 2 ] || [ "$3" = "--revisada" ]; } || { echo "Uso: $0 <rama> \"<mensaje>\" [--revisada]" >&2; exit 2; }
 rama="$1"; mensaje="$2"; revisada="${3:-}"
 raiz="$(git rev-parse --show-toplevel)"; cd "$raiz"
-HALLAZGOS="docs/registros/pruebas-0.3-hallazgos.md"
+HALLAZGOS="docs/records/pruebas-0.3-hallazgos.md"
 logs="$(mktemp -d)"
 
 git rev-parse --verify --quiet "$rama^{commit}" >/dev/null || { echo "No existe la rama $rama" >&2; exit 2; }
@@ -95,7 +95,7 @@ for paquete in backend frontend; do
   [ "$resultado" = OK ] || fallo=1
 done
 
-[ "$revisada" = "--revisada" ] || echo "Sin --revisada: confirma el /code-review del diff (paso 3 de orchestrate-dealer)."
+[ "$revisada" = "--revisada" ] || echo "Sin --revisada: confirma el /code-review del diff (paso 3 de gw-orchestrate-dealer)."
 if [ "$fallo" -ne 0 ]; then
   echo "TESTS EN ROJO: el merge YA está hecho en la rama actual. Para deshacerlo: git reset --hard HEAD^1"
   exit 1

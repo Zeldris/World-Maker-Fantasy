@@ -1,8 +1,8 @@
 # Arquitectura · Tarkor
 
-Mantenida por `scout-updates` ([skill](../../.claude/skills/scout-updates/SKILL.md)). Cada sección lleva su sello
-(`seal:`); para contrastar: `python3 .claude/skills/scout-updates/scripts/compare.py docs/scout/arquitectura.md`. Los
-títulos `Constraints` y la columna `Component` van en inglés porque el script los busca así ([notas](../../.claude/gw/scout-updates.md)).
+Mantenida por `gw-scout-updates` ([skill](../../.claude/skills/gw-scout-updates/SKILL.md)). Cada sección lleva su sello
+(`seal:`); para contrastar: `python3 .claude/skills/gw-scout-updates/scripts/compare.py docs/scout/arquitectura.md`. Los
+títulos `Constraints` y la columna `Component` van en inglés porque el script los busca así ([notas](../../.claude/gw/gw-scout-updates.md)).
 
 ## Constraints
 
@@ -46,14 +46,14 @@ Confirmadas por la usuaria el 2026-10-20.
 | propuestas de lore (OpenCode) | `qwen35-9b-32k` (base `qwen3.5:9b`, `num_ctx` 32768, temperatura 0,15, salida 4096), plugin `opencode-ollama-toolcall-proxy` (sin versión fijada) | agente `narrador-lore`: solo lee el canon (`docs/canon-opencode/`) y propone lore en `docs/borradores-opencode/`, fuera del juego | `opencode.json`, `modelfiles/qwen35-9b-32k.Modelfile`, `.opencode/prompts/narrador-lore.txt` |
 
 Diagnóstico de partida (2026-10-20, [diseño](../ia/skill-scout-updates.md)): el turno del narrador tarda unos 48 s,
-de los que unos 36 s son prefill de un prompt de unos 6.300 tokens. Recortar el prompt es de `opt-ai`; aquí se
+de los que unos 36 s son prefill de un prompt de unos 6.300 tokens. Recortar el prompt es de `gw-opt-ai`; aquí se
 busca **calidad**.
 
 banco · narrador: hecho el 2026-10-21 en la Deck ([informe](informes/2026-10-21.md)). Fueron 11 casos y 132 pares a
 ciegas en los dos órdenes, con un juez fiable (consistencia 0,939). **Gana el actual**, con una tasa de 0,727. Le
 siguen `gemma4:e2b` (0,500), `qwen3.5:4b` (0,394) y `gemma3:4b` (0,379). Ningún candidato gana al actual: la usuaria
 rechazó P-005, P-006 y P-007 el 2026-10-21. El fallo que más pesa en todos los modelos es del prompt: el
-orco de la misión activa aparece en escenas donde no está. Es de `opt-ai`, y tras arreglarlo conviene repetir el banco
+orco de la misión activa aparece en escenas donde no está. Es de `gw-opt-ai`, y tras arreglarlo conviene repetir el banco
 con P-007. Para repetirlo: casos con `IA_CASOS=<ruta fuera del repositorio>`, SYSTEM de `ollama show --system
 tarkor-narrador-llama31` y rúbrica en `docs/scout/banco/narrador-rubrica.md`.
 

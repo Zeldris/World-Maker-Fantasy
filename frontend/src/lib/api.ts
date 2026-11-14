@@ -27,6 +27,7 @@ import type {
   LogEntry,
   LogEntryRoll,
   NpcInSceneInfo,
+  CombateIniciadoInfo,
   SegundaTiradaInfo,
   TiradaGrupoInfo,
   CazaSigiloRoll,
@@ -258,7 +259,7 @@ export interface NarrateResponse {
   /// real del backend sí hubiera avanzado). Úsalo para refrescar `fictionalDate` Y para sellar la
   /// entrada de log de este mismo turno, nunca el valor local ya obsoleto.
   timeLabel: string
-  combateIniciado?: { npcs: NpcInSceneInfo[] } | null
+  combateIniciado?: CombateIniciadoInfo | null
   finDePartida: boolean
   /// Muerte permanente, botón Aceptar/Reintentar (2026-08-31) — true cuando este turno mató al
   /// jugador pero no agotó las vidas: el susurro de la Entidad ya está en el log, pero ningún
@@ -678,7 +679,7 @@ export interface SaveDetail {
   /// sondeo de reconexión tenía que recuperar la partida vía `getSave` en vez de recibir esa
   /// respuesta, el aviso de "Combatir" se perdía sin dejar rastro pese a que el combate sí se
   /// había calculado bien en el backend.
-  combateIniciado: { npcs: NpcInSceneInfo[] } | null
+  combateIniciado: CombateIniciadoInfo | null
   /// "Modo dinámico" en curso, reconstruido tras cualquier resincronización (checklist frontend
   /// 2026-08-27, A.3 — mismo criterio que `combateIniciado` arriba): antes solo viajaba en la
   /// respuesta directa de `/modo-dinamico/interactuar`/`/responder` — recargar con una conversación
@@ -1318,6 +1319,10 @@ export interface ZonaResponse {
   disponible: boolean
   /// P185 (QA-27): casillas por las que no se pasa (muros, empalizadas), para la ruta prevista.
   muros?: { col: number; row: number }[]
+  /// P337: casillas libres dentro de la empalizada (vacío si la zona no tiene).
+  interior?: { col: number; row: number }[]
+  /// P337: puertas de la empalizada (la primera es el destino de «Ir hasta aquí» sobre las estacas desde fuera).
+  puertas?: { col: number; row: number }[]
   locationSlug?: string
   locationName?: string
   /// Mapa pintado a mano de fondo (entityType 'zona'/sizeProfile 'mapa') — el botón que lo genera
@@ -1540,9 +1545,8 @@ export async function dejarVivir(
 ): Promise<{
   npcSlug: string
   logEntry: { id: string; text: string; timeLabel: string; createdAt: string }
-  /// Reputación de facción (2026-09-04, decisión final desde CONVALECIENTE, ver
-  /// FACTION_REP_MERCY_DELTA en backend) — antes solo Matar/Clemente en combate 1v1 clásico
-  /// aplicaban esto de forma indirecta (y demasiado pronto, ver el bug real que motivó esta pieza).
+  /// Reputación de facción: siempre null desde P270 (usuaria, 2026-11-08), perdonar con Clemente
+  /// no resta reputación. Se mantiene el campo por compatibilidad del contrato.
   factionRepChange: { faction: string; delta: number; newValue: number } | null
   /// Títulos de misión ACTIVA que siguen apuntando a este NPC (2026-09-15, hallazgo real jugando
   /// en vivo: "Acabar con X" seguía ACTIVA sin ningún aviso tras perdonarle la vida) — Clemente NO
@@ -1651,6 +1655,11 @@ export interface CorralInfo {
 export interface CorralesInfo {
   forraje: number
   huecoForraje: number
+  /// P336: el Granero lo comparten la comida y el forraje (comida guardada y tope).
+  comida?: number
+  topeComida?: number
+  /// P333: corrales que existen pero no están en pie.
+  corralesFueraDeServicio?: { id: string; name: string; status: string }[]
   forrajeDia: number
   diasSinComer: number
   diasSinBeber: number
@@ -1677,6 +1686,8 @@ export interface PartidaInfo {
 }
 export interface OpcionesPartida {
   origen: { id: string; name: string } | null
+  /// Sin origen porque los edificios desde los que se sale están dañados (hay que repararlos).
+  origenDanado?: boolean
   /// `sinArma`: sin arma no sale (Q3 de CR-63, como un soldado).
   cazadores: { id: string; name: string; sinArma?: boolean }[]
   /// Nombres de los cazadores que están fuera con una partida.
@@ -1734,7 +1745,7 @@ export async function postComprarAViajero(saveId: string, viajeroId: string): Pr
 export async function getCorrales(saveId: string): Promise<CorralesInfo> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/corrales`)
 }
-export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number }> {
+export async function postEntregarForraje(saveId: string, catalogSlug: string): Promise<{ entregados: number; forraje: number; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/forraje/entregar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1747,7 +1758,7 @@ export async function postLlevarConsigo(saveId: string, ganadoId: string): Promi
 export async function postDevolverAlCorral(saveId: string, companionId: string): Promise<{ buildingId: string; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/companeros/${companionId}/al-corral`, { method: 'POST' })
 }
-export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
+export async function postSacrificar(saveId: string, ganadoId: string): Promise<{ comida: number; almacen: Record<string, number>; perdido: number; aviso?: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/ganado/${ganadoId}/sacrificar`, { method: 'POST' })
 }
 
@@ -1771,6 +1782,10 @@ export async function setCompanionItemSlot(
 }
 
 /// Almacén de Reino (§7).
+/// P428: «Depositar todo» — todo lo suelto de la mochila al Almacén, en una petición.
+export async function depositarTodoEnAlmacen(saveId: string): Promise<{ ok: boolean; depositados: number; noCaben: number; autoEquipados: number; comidaSumada: number; motivoNoCaben: string | null }> {
+  return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar-todo`, { method: 'POST' })
+}
 export async function depositarEnAlmacen(saveId: string, itemId: string): Promise<{ ok: boolean; autoEquipados: number }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/almacen/depositar/${itemId}`, { method: 'POST' })
 }
@@ -1813,7 +1828,7 @@ export interface EconomiaReino {
   bebida?: number
   comidaProduccionDia?: number
   comidaConsumoDia?: number
-  bocasDetalle?: { civiles: number; soldados: number; visitantes: number }
+  bocasDetalle?: { civiles: number; soldados: number; visitantes: number; cazadores?: number }
   motivosComida?: string[]
   aguaDia: number
   bocas: number
@@ -2162,7 +2177,7 @@ export async function getFactionRelations(worldSlug: string, saveId?: string): P
 /// quien lo abra — decisión explícita de la usuaria: "cazar sí que fuerza una narración cuando
 /// eliges objetivos y esa narración inicia el combate".
 export type ConfirmarCazaResultado =
-  | { resuelveSinCombate: true; exito: true; combate: { npcs: NpcInSceneInfo[] }; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
+  | { resuelveSinCombate: true; exito: true; combate: CombateIniciadoInfo; logEntry: { id: string; text: string; timeLabel: string; createdAt: string; roll?: CazaSigiloRoll }; cazaLimpia?: CazaSigiloRoll }
   | ({
       resuelveSinCombate: false
       exito: false | null
@@ -2276,7 +2291,9 @@ export interface DynamicModeTurno {
   /// combate directo (el NPC vio primero al jugador, o el jugador eligió "Combatir" tras verlo él
   /// primero). Mismo shape que `TurnResult.combateIniciado`/`combateEnGrupo`; `cierra` siempre
   /// viene `true` cuando esto llega — no hay más vueltas de modo dinámico que jugar.
-  combate?: { npcs: NpcInSceneInfo[] } | null
+  combate?: CombateIniciadoInfo | null
+  /// P437: el rival vio antes a la jugadora y su ataque queda pendiente: el panel abre en Defensa.
+  esperandoDefensaJugador?: true
   /// P27/P166: la entrada del diario de Huir ante quien corta el paso (con la tirada si te vio antes; si falló,
   /// llega junto al combate que abre). La misma que se ve tras recargar.
   huidaLogEntry?: LogEntry

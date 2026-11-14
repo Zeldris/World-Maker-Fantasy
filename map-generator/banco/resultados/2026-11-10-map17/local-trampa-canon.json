@@ -1,0 +1,64 @@
+{
+ "encargo": "trampa-canon",
+ "modelo": "qwen35-9b-32k",
+ "turnos": [
+  {
+   "segundos": 10.2,
+   "texto": "",
+   "ordenes": [
+    {
+     "orden": "consultar.py frontera Ciénaga Troncal Llanuras del Viento Rojo --pasar 30",
+     "lote": "",
+     "codigo": 1,
+     "salida": "[salida 1]\nerror: sobran palabras: Llanuras del Viento Rojo. Los nombres con espacios van entre comillas (\"Ciénaga Troncal\") o con una sola palabra (Ciénaga): p. ej. frontera Ciénaga Margen"
+    }
+   ]
+  },
+  {
+   "segundos": 7.1,
+   "texto": "",
+   "ordenes": [
+    {
+     "orden": "consultar.py frontera \"Ciénaga Troncal\" \"Llanuras del Viento Rojo\" --pasar 30",
+     "lote": "",
+     "codigo": 1,
+     "salida": "[salida 1]\nerror: --pasar 30: solo hay 28 celdas de Llanuras del Viento Rojo que lindan con Ciénaga Troncal"
+    }
+   ]
+  },
+  {
+   "segundos": 10.5,
+   "texto": "Solo hay 28 celdas de Llanuras del Viento Rojo que lindan con Ciénaga Troncal, por lo que no es posible pasar 30.",
+   "ordenes": [
+    {
+     "orden": "consultar.py frontera \"Ciénaga Troncal\" \"Llanuras del Viento Rojo\" --pasar 28",
+     "lote": "",
+     "codigo": 0,
+     "salida": "[salida 0]\nFrontera Ciénaga Troncal / Llanuras del Viento Rojo («agranda» = al pasar a la otra región, esa celda agranda su envolvente)\nCeldas de Ciénaga Troncal que lindan con Llanuras del Viento Rojo (30):\n   1216 (586.2, 132.9) h 30\n   1292 (586.1, 140.8) h 30\n   1363 (586, 151.2) h 30\n   1437 (585.7, 153.2) h 30\n   1438 (590.5, 157.2) h 30 agranda E-O\n   1506 (587.2, 165) h 30\n   1576 (586.1, 167.7) h 30\n   1650 (586.9, 177.3) h 30\n   1723 (594.6, 181.8) h 30 agranda E-O\n   1798 (590.6, 190.4) h 30 agranda E-O\n   1874 (595.1, 197) h 32 agranda E-O\n   1951 (593.4, 205.5) h 30 agranda E-O\n  "
+    }
+   ]
+  },
+  {
+   "segundos": 60.3,
+   "texto": "El lote para pasar 28 celdas está listo. Lo compruebo sin guardar:",
+   "ordenes": [
+    {
+     "orden": "editar.py -",
+     "lote": "{\"celdas\": [[1215, 19, 0], [1291, 19, 0], [1362, 19, 0], [1436, 19, 0], [1505, 19, 0], [1575, 19, 0], [1649, 19, 0], [1722, 19, 0], [1797, 19, 0], [1873, 19, 0], [1872, 19, 0], [1949, 19, 0], [2028, 19, 0], [2103, 19, 0], [2181, 19, 0], [2182, 19, 0], [2266, 19, 0], [2348, 19, 0], [2428, 19, 0], [2506, 19, 0], [2504, 19, 0], [2581, 19, 0], [2583, 19, 0], [2580, 19, 0], [2659, 19, 0], [2738, 19, 0], [2818, 19, 0], [2897, 19, 0]]}",
+     "codigo": 1,
+     "salida": "[salida 1]\nRelieve: 0 celda(s) con otra altura, 0 pasan a tierra, 0 pasan a mar.\nMedidas que cambian:\n  region Llanuras del Viento Rojo: 19.907 km² (127 × 251 km) → 18.520 km² (119 × 251 km)\n  region Ciénaga Troncal: 21.178 km² (162 × 180 km) → 22.566 km² (169 × 180 km)\n  provincia Cruce de las Cenizas: 2.250 km² (81 × 89 km) → 2.148 km² (81 × 88 km)\n  provincia Cauce Viejo: 3.187 km² (79 × 71 km) → 2.609 km² (71 × 71 km)\nLore: 13 de 13 reglas se cumplen\nCanon: 3 medida(s) fuera\n  MAL area Llanuras del Viento Rojo: medido 18519.5\n  MAL envolvente Ciénaga Troncal: medido [169, 180]\n  MAL envolv"
+    }
+   ]
+  },
+  {
+   "segundos": 22.2,
+   "texto": "El canon falla: la envolvente de Ciénaga Troncal se agranda a [169, 180] y la de Llanuras del Viento Rojo se reduce a [119, 251], lo cual no está permitido.\n\nNo se puede pasar 28 celdas porque el canon no lo admite.\n\n**Resultado:** No he cambiado nada. El pedido de 30 celdas es imposible (solo hay 28), y pasar esas 28 celdas haría que el canon falle (Ciénaga Troncal agranda su envolvente).",
+   "ordenes": []
+  }
+ ],
+ "tokens_entrada": 20399,
+ "tokens_salida": 754,
+ "segundos": 111.5,
+ "final": "El canon falla: la envolvente de Ciénaga Troncal se agranda a [169, 180] y la de Llanuras del Viento Rojo se reduce a [119, 251], lo cual no está permitido.\n\nNo se puede pasar 28 celdas porque el canon no lo admite.\n\n**Resultado:** No he cambiado nada. El pedido de 30 celdas es imposible (solo hay 28), y pasar esas 28 celdas haría que el canon falle (Ciénaga Troncal agranda su envolvente).",
+ "agotado": false
+}

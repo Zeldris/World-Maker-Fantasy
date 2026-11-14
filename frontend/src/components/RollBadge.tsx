@@ -37,7 +37,7 @@ export function RollBadge({ roll }: { roll: RollInfo }) {
   // difficulty`, un número ya opaco (dado + mitad del atributo, sumados y ocultos). El bono
   // (mitad del atributo, ver dice.ts) es una regla constante que no cambia turno a turno, así que
   // no hace falta explicarla aquí cada vez — solo lo que sí cambia: el dado y el total.
-  const bono = Math.floor(roll.value / 2)
+  const bono = Math.floor((roll.valorEfectivo ?? roll.value) / 2)
   return (
     <div className={`mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border px-2.5 py-1 font-mono text-2xs ${BADGE_STYLES[grado]} ${BADGE_ANIMATION[grado]}`}>
       <span>{attributeLabels[roll.attribute]}</span>

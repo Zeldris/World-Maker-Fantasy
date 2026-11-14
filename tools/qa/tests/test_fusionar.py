@@ -6,7 +6,7 @@ import unittest
 
 from comun import ENV_GIT, QA, carpeta, escribir, git, leer
 
-H = 'docs/registros/pruebas-0.3-hallazgos.md'
+H = 'docs/records/pruebas-0.3-hallazgos.md'
 
 
 def tabla(*estados: str) -> str:

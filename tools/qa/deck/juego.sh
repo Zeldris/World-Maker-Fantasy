@@ -1,6 +1,6 @@
 #!/bin/bash
 # juego.sh [--rehacer|--parar]: arrancar-juego.sh con IA_PERFIL=deck e IA_REGISTRO=<raíz>/logs/ia/<fecha>.jsonl
-# (absoluto) salvo que ya vengan puestas, para que /opt-ai tenga el registro de la tanda (QA-141). Por host.sh:
+# (absoluto) salvo que ya vengan puestas, para que /gw-opt-ai tenga el registro de la tanda (QA-141). Por host.sh:
 #   bash tools/qa/host.sh bash tools/qa/deck/juego.sh
 . "$(dirname "$0")/_raiz.sh"
 . "$DECK/_path.sh"  # psql por podman en la Deck; arrancar-juego.sh también lo carga (QA-192)

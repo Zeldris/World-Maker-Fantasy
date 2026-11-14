@@ -10,7 +10,7 @@ import { estacionFor } from '../worldClock.js';
 import { locationTerrainTags } from '../../scripts/worldCatalog.js';
 import { ownerKeyFor } from '../reinoOwner.js';
 import { volverASuPueblo } from './salidas.js';
-import { avisarEnReino, cazadoresAdultos, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
+import { contarCazadores, avisarEnReino, cazadoresAdultos, recalcularPoblacion, rolDeSubdito, soltarPareja, tareasDelReino } from './subditos.js';
 import { costeDePiezas, desgasteSemanal, EQUIPO, equipoDeAlta, gastarMateriales, piezasEnCasa, roturaSinPagar, talleresDelReino } from './facturaEquipo.js';
 
 type Tx = Prisma.TransactionClient;
@@ -102,7 +102,7 @@ export function constructoresSinPlaza(constructores: number, plazas: number): nu
 /// P279/P300: por qué la comida del Reino sube, baja o se queda plana. Puro: frases cortas para Visión general.
 /// `plazasConstructor`: las de la Casa de obras (0 sin Casa); sin el dato, todos los constructores trabajan en ella.
 export function explicarComida(d: {
-  comida: number; tope: number; bocas: { civiles: number; soldados: number; visitantes: number }; produccion: number; consumo: number;
+  comida: number; tope: number; bocas: { civiles: number; soldados: number; visitantes: number; cazadores?: number }; produccion: number; consumo: number;
   tareas: Record<string, number>; hayAyuntamiento: boolean; hayAgua: boolean; escalonCocina: number | null; factor: number;
   plazasConstructor?: number;
 }): string[] {
@@ -112,7 +112,8 @@ export function explicarComida(d: {
   const sinPlaza = d.plazasConstructor == null ? 0 : constructoresSinPlaza(constructores, d.plazasConstructor);
   const enObras = constructores - sinPlaza;
   const trabajadores = (d.tareas.recolector ?? 0) + (d.tareas.pescador ?? 0) + (d.tareas.cocinero ?? 0) + sinPlaza;
-  const bocas = d.bocas.civiles + d.bocas.soldados + d.bocas.visitantes;
+  const cazadores = d.bocas.cazadores ?? 0;
+  const bocas = d.bocas.civiles + d.bocas.soldados + d.bocas.visitantes + cazadores;
   if (bocas === 0) m.push('Nadie come ahora mismo (sin súbditos, soldados ni visitantes): la comida no baja por consumo.');
   else if (trabajadores === 0) {
     const quien = enObras > 0
@@ -120,6 +121,8 @@ export function explicarComida(d: {
       : 'no hay trabajadores';
     m.push(`Nadie produce comida: ${quien}, y ${bocas === 1 ? 'la boca come' : `las ${bocas} bocas comen`} ${d.consumo} al día.`);
   }
+  // P440: el cazador come como un civil pero no produce comida en casa; la suya llega con las partidas de caza (piezas al Desolladero).
+  if (cazadores > 0) m.push(`${cazadores === 1 ? 'Un cazador come' : `${cazadores} cazadores comen`} del Reino pero no producen comida en casa: su caza solo llega con las partidas de caza (las piezas, al Desolladero).`);
   if (sinPlaza > 0) {
     const n = sinPlaza === 1 ? 'un constructor' : `${sinPlaza} constructores`;
     m.push(d.plazasConstructor === 0
@@ -286,15 +289,17 @@ export async function resumenEconomia(tx: Tx, saveId: string) {
   const comidaActual = k?.comida ?? 0;
   const produccion = k ? Math.round(comidaDelReinoDia(datos, Math.floor(minutos / 1440) * 1440 + 720, comidaActual, factor) * 10) / 10 : 0;
   const bocasCifra = k ? k.poblacion + k.soldados + k.visitantes : 0;
+  // P440: los cazadores van dentro de `poblacion` (comen como civiles); el panel los nombra aparte.
+  const cazadores = k ? await contarCazadores(tx, saveId) : 0;
   const { hayAyuntamiento } = datos;
   return {
     comida: comidaActual,
     bebida: k?.bebida ?? 0,
     comidaProduccionDia: produccion,
     comidaConsumoDia: bocasCifra * CONSUMO_POR_BOCA,
-    bocasDetalle: { civiles: k?.poblacion ?? 0, soldados: k?.soldados ?? 0, visitantes: k?.visitantes ?? 0 },
+    bocasDetalle: { civiles: Math.max(0, (k?.poblacion ?? 0) - cazadores), cazadores, soldados: k?.soldados ?? 0, visitantes: k?.visitantes ?? 0 },
     motivosComida: k ? explicarComida({
-      comida: comidaActual, tope: sum.topeComida, bocas: { civiles: k.poblacion, soldados: k.soldados, visitantes: k.visitantes },
+      comida: comidaActual, tope: sum.topeComida, bocas: { civiles: Math.max(0, k.poblacion - cazadores), soldados: k.soldados, visitantes: k.visitantes, cazadores },
       produccion, consumo: bocasCifra * CONSUMO_POR_BOCA, tareas: datos.tareas, hayAyuntamiento, hayAgua: datos.hayAgua, escalonCocina: datos.escalonCocina, factor,
       plazasConstructor: datos.plazasConstructor,
     }) : [],

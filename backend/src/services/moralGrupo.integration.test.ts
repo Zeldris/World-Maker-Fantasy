@@ -68,6 +68,59 @@ describe('CR-44 (44c) — moral en el combate de varios', () => {
     expect(otra.huidos).toEqual([]);
   });
 
+  it('P443: un rival con nombre propio que la jugadora aún no conoce huye como «el orco desconocido»', async () => {
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    const herrero = await prisma.npc.findFirstOrThrow({ where: { slug: 'herrero-serhu', saveId: null } });
+    const miembro: MiembroDeGrupo = { npcId: herrero.id, nombre: herrero.name, scope: '', destreza: 8, inteligencia: 8, esGrupo: false };
+    const { encounterId } = (await abrirCombateDePersonas(prisma, { id: saveId, characterName: 'Gorhorn', attributes: ATR, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro]))!;
+    const ps = await prisma.combatParticipant.findMany({ where: { encounterId }, orderBy: { createdAt: 'asc' } });
+    const cs: CombatienteParaMoral[] = ps.map((p) => ({
+      participantId: p.id, bando: p.bando, tipo: p.tipo, npcId: p.npcId, esGrupo: false, huido: false, moralTirada: false,
+      condicion: p.bando === 'ENEMIGO' ? 'GRAVE' : 'ILESO', attributes: p.tipo === 'NPC' ? { ...ATR, inteligencia: 14 } : ATR,
+    }));
+    const r = await prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs, random: d20(1, 1, 20) }));
+    expect(r.textos).toEqual(['El orco desconocido pierde el valor y escapa del combate.']);
+  });
+
+  /// P443: un rival solitario GRAVE, sin moral tirada.
+  async function rivalGrave() {
+    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    const herrero = await prisma.npc.findFirstOrThrow({ where: { slug: 'herrero-serhu', saveId: null } });
+    const miembro: MiembroDeGrupo = { npcId: herrero.id, nombre: herrero.name, scope: '', destreza: 8, inteligencia: 8, esGrupo: false };
+    const { encounterId } = (await abrirCombateDePersonas(prisma, { id: saveId, characterName: 'Gorhorn', attributes: ATR, fictionalMinutes: 600, timeLabel: 'Día 1' }, [miembro]))!;
+    const ps = await prisma.combatParticipant.findMany({ where: { encounterId }, orderBy: { createdAt: 'asc' } });
+    const cs: CombatienteParaMoral[] = ps.map((p) => ({
+      participantId: p.id, bando: p.bando, tipo: p.tipo, npcId: p.npcId, esGrupo: false, huido: false, moralTirada: false,
+      condicion: p.bando === 'ENEMIGO' ? 'GRAVE' : 'ILESO', attributes: p.tipo === 'NPC' ? { ...ATR, inteligencia: 14, voluntad: 30 } : ATR,
+    }));
+    return { encounterId, cs };
+  }
+  async function conVariables<T>(vars: Record<string, string | undefined>, fn: () => Promise<T>): Promise<T> {
+    const antes = Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]]));
+    for (const [k, v] of Object.entries(vars)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    try { return await fn(); } finally { for (const [k, v] of Object.entries(antes)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
+  }
+
+  it('P443: con WMF_HUIDA_PRUEBAS=1 y sin random, el rival pierde el valor y escapa aunque su Voluntad sea altísima', async () => {
+    const { encounterId, cs } = await rivalGrave();
+    const r = await conVariables({ WMF_HUIDA_PRUEBAS: '1', NODE_ENV: 'test' }, () => prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs })));
+    expect(r.textos).toEqual(['El orco desconocido pierde el valor y escapa del combate.']);
+    expect(r.huidos).toHaveLength(1);
+  });
+
+  it('P443: sin la variable, con NODE_ENV=production o con random, no se fuerza nada', async () => {
+    for (const vars of [{ WMF_HUIDA_PRUEBAS: undefined, NODE_ENV: 'test' }, { WMF_HUIDA_PRUEBAS: '1', NODE_ENV: 'production' }]) {
+      const { encounterId, cs } = await rivalGrave();
+      // Voluntad 30 (+15) y d20 de Math.random: la moral aguanta siempre.
+      const r = await conVariables(vars, () => prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs })));
+      expect(r.huidos).toEqual([]);
+      expect(r.textos[0]).toContain('siguen peleando');
+    }
+    const { encounterId, cs } = await rivalGrave();
+    const r = await conVariables({ WMF_HUIDA_PRUEBAS: '1', NODE_ENV: 'test' }, () => prisma.$transaction((tx) => revisarMoralDelCombate(tx, { saveId, encounterId, combatientes: cs, random: d20(20, 20) })));
+    expect(r.huidos).toEqual([]);
+  });
+
   it('caer a GRAVE por primera vez hace tirar; si aguanta, siguen peleando', async () => {
     const cs = await bandaDeTres();
     enemigos(cs)[0]!.condicion = 'GRAVE';

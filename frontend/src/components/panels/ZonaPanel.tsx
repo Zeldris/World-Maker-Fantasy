@@ -285,6 +285,9 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     // ir, ni cazar) — tras ignorar un encuentro no había forma de volver a él sin alejarse. Ahora
     // «Acercarte» pulsa la propia casilla, que en el backend vuelve a mirar los encuentros sin
     // silenciar el último (mismo camino que clicar tu casilla en el mapa).
+    // P337 (decisión 2026-11-09): un punto sobre las estacas, desde fuera, lleva a la puerta del poblado.
+    const puerta = destinoPuerta(pin)
+    if (puerta) return () => void handleMoverA(puerta)
     if (pegadoAPin(pin)) return () => void handleMoverA({ x: data!.jugador!.x, y: data!.jugador!.y })
     return () => void handleMoverA({ x: pin.x, y: pin.y })
   }
@@ -313,22 +316,29 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   // abre directamente el modal de viaje. En la vista informativa (`soloConsulta`) no hay
   // movimiento, así que se mantiene el aviso.
   async function handleClickSalida(salida: ZonaSalidaInfo) {
-    if (salida.alcanzable) {
-      setSelectedSalida(salida)
-      return
-    }
-    if (soloConsulta) {
+    if (!salida.alcanzable && soloConsulta) {
       setMensajeMovimiento('Tienes que acercarte más a la salida para poder viajar.')
       return
     }
-    if (movimientoEnCurso) return
-    // P133: igual con una salida: el aviso de viaje se abre al llegar, también tras «Seguir mi camino».
+    if (!salida.alcanzable && movimientoEnCurso) return
+    // P259: pulsar la salida enseña primero su tarjeta (adónde lleva y cuánto se tarda); si está lejos,
+    // solo se camina hasta ella al confirmar en la tarjeta (`viajarPorSalida`).
+    setSelectedSalida(salida)
+  }
+
+  // P259: confirmar «Viajar» en la tarjeta. Lejos de la salida, camina hasta ella y, si llega sin encuentros
+  // por el camino (P133: también tras «Seguir mi camino»), viaja al llegar.
+  async function viajarPorSalida(salida: ZonaSalidaInfo, actionText: string) {
+    setSelectedSalida(null)
+    if (salida.alcanzable) {
+      onViajarA?.(actionText)
+      return
+    }
     await handleMoverA(
       { x: salida.x, y: salida.y },
       {
         alLlegar: (fresca) => {
-          const salidaFresca = fresca.salidas.find((s) => s.locationId === salida.locationId)
-          if (salidaFresca?.alcanzable) setSelectedSalida(salidaFresca)
+          if (fresca.salidas.find((s) => s.locationId === salida.locationId)?.alcanzable) onViajarA?.(actionText)
         },
       },
     )
@@ -341,8 +351,25 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     if (clave.startsWith('p:')) return data.puntos.find((p) => p.id === clave.slice(2)) ?? null
     return (data.dinamicos ?? []).find((d) => d.slug === clave.slice(2)) ?? null
   }
+  // P337: un punto sobre las estacas de una empalizada solo se toca desde dentro (como `alcanzableDesde` del backend).
+  /// P337: centro de la puerta del poblado si «Ir hasta aquí» sobre `punto` ha de llevar allí (estacas, jugador fuera).
+  function destinoPuerta(punto: { x: number; y: number }): { x: number; y: number } | null {
+    const puerta = data?.puertas?.[0]
+    return puerta && sinAccesoDesdeFuera(punto) ? pixelDeCelda(puerta) : null
+  }
+  /// Texto del botón de ir: a la puerta (P337), «Acercarte» si ya estás pegado, o el de siempre.
+  function irHastaEtiqueta(punto: { x: number; y: number }): string | undefined {
+    if (destinoPuerta(punto)) return 'Ir a la puerta del poblado'
+    return pegadoAPin(punto) ? 'Acercarte' : undefined
+  }
+  function sinAccesoDesdeFuera(punto: { x: number; y: number }): boolean {
+    if (!data?.jugador || murosZona.size === 0 || !data.interior?.length) return false
+    if (!murosZona.has(claveCelda(celdaDePixel(punto)))) return false
+    return !data.interior.some((c) => c.col === celdaDePixel(data.jugador!).col && c.row === celdaDePixel(data.jugador!).row)
+  }
   function infoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): InfoFicha {
     const detalles = [TIPO_LABEL[punto.tipo], disposicionDe(punto)]
+    if (sinAccesoDesdeFuera(punto)) detalles.push('desde fuera no se llega: se entra por la puerta del poblado')
     if ('cantidad' in punto && punto.cantidad > 1) detalles.push(`×${punto.cantidad}`)
     if ('companion' in punto && punto.companion) detalles.push(`con ${punto.companion.nombre}`)
     // ZON-16/ZON-58: lo desconocido, agotado o con candado, también en la tarjeta.
@@ -378,7 +405,12 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
     const acciones: AccionFicha[] = []
     const ir = irHastaPin(punto)
-    if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
+    // P337: sobre las estacas y fuera, «Interactuar» no serviría: «Ir» lleva a la puerta del poblado.
+    const sinAcceso = sinAccesoDesdeFuera(punto)
+    const puerta = destinoPuerta(punto)
+    if (ir && sinAcceso) {
+      if (puerta) acciones.push({ label: 'Ir a la puerta del poblado', onClick: ir })
+    } else if (ir && esEdificio(punto) && pegadoAPin(punto)) acciones.push({ label: 'Interactuar', onClick: () => void handleInteractuarEdificio(punto) })
     else if (ir) acciones.push({ label: pegadoAPin(punto) ? 'Interactuar' : 'Ir hasta aquí', onClick: ir })
     if ('droppedItemId' in punto && punto.droppedItemId) {
       const id = punto.droppedItemId
@@ -884,19 +916,20 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               saveId={saveId}
               point={selectedPoint}
               onClose={() => setSelectedPoint(null)}
-              onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
-              onIrHasta={irHastaPin(selectedPoint)}
+              onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) && !sinAccesoDesdeFuera(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
+              onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint)}
+              irHastaLabel={destinoPuerta(selectedPoint) ? 'Ir a la puerta del poblado' : undefined}
             />
           ) : (
-            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={irHastaPin(selectedPoint)} irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined} />
+            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint)} irHastaLabel={irHastaEtiqueta(selectedPoint)} />
           )
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}
             onClose={() => setSelectedPoint(null)}
             onRecoger={handleRecoger}
-            onIrHasta={irHastaPin(selectedPoint)}
-            irHastaLabel={pegadoAPin(selectedPoint) ? 'Acercarte' : undefined}
+            onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint)}
+            irHastaLabel={irHastaEtiqueta(selectedPoint)}
             onSaquear={onSaquearCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onSaquearCadaver(npcSlug)) : undefined}
             onDesollar={onDesollarCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onDesollarCadaver(npcSlug)) : undefined}
           />
@@ -910,10 +943,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
           // P206/P326: con un agresivo cortando el paso (fase `encuentro`) el turno sí se acepta, pero irse
           // de la zona no: el mismo motivo que bloquea la brújula.
           bloqueoTurno={bloqueoTurno ?? bloqueoMovimiento}
-          onViajar={(actionText) => {
-            setSelectedSalida(null)
-            onViajarA?.(actionText)
-          }}
+          onViajar={(actionText) => void viajarPorSalida(selectedSalida, actionText)}
         />
       )}
       {selectedParcela && (

@@ -24,16 +24,17 @@ const encuentro: LogEntry = {
 function montar(inicial: LogEntry = encuentro) {
   const setActiveDynamicMode = vi.fn()
   const handleSubmit = vi.fn()
+  const setCombatAwaitingDefense = vi.fn()
   const hook = renderHook(() => {
     const [characterLog, setCharacterLog] = useState<LogEntry[]>([inicial])
     const md = useModoDinamico({
       saveId: 's1', characterLog, characterName: 'Gorhorn', fictionalDate: '', enciclopediaIndex: { bySlugKey: new Map() } as never,
       setCharacterLog, setFictionalDate: vi.fn(), setCombateIniciado: vi.fn(), setActiveDynamicMode, setInventory: vi.fn(), setXp: vi.fn(),
-      setQuests: vi.fn(), setAprenderOficioModalOpen: vi.fn(), setActivePanel: vi.fn(), openCombat: vi.fn(), handleSubmit,
+      setQuests: vi.fn(), setAprenderOficioModalOpen: vi.fn(), setActivePanel: vi.fn(), openCombat: vi.fn(), setCombatAwaitingDefense, handleSubmit,
     })
     return { characterLog, ...md }
   })
-  return { hook, setActiveDynamicMode }
+  return { hook, setActiveDynamicMode, setCombatAwaitingDefense }
 }
 
 /// P142: «Interactuar» con un NPC del mapa abre antes su menú fijo; «Charlar» abre la escena libre.
@@ -181,5 +182,22 @@ describe('P27 — Huir ante quien corta el paso deja su tirada en el diario', ()
     })
     expect(hook.result.current.characterLog.map((e) => e.id)).toEqual(['e1', 'h1'])
     expect(hook.result.current.characterLog[1]).toMatchObject({ roll: { roll: 3 } })
+  })
+})
+
+/// P437: si el rival te vio antes, el combate abre en Defensa (su ataque va primero); si no, en Ataque.
+describe('P437 — Combatir contra quien te vio antes abre el panel en Defensa', () => {
+  beforeEach(() => vi.mocked(responderModoDinamico).mockReset())
+
+  it.each([
+    [true, { esperandoDefensaJugador: true }],
+    [false, {}],
+  ])('esperando defensa: %s', async (esperado, extra) => {
+    vi.mocked(responderModoDinamico).mockResolvedValue({ narration: '', opciones: [], cierra: true, vuelta: 2, timeLabel: '', combate: { npcs: [] }, ...extra } as never)
+    const { hook, setCombatAwaitingDefense } = montar()
+    await act(async () => {
+      await hook.result.current.handleElegirDynamicMode('Combatir')
+    })
+    expect(setCombatAwaitingDefense).toHaveBeenCalledWith(esperado)
   })
 })

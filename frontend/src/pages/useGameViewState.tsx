@@ -10,7 +10,7 @@ import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
 import { etiquetaDeFase } from '../lib/gamePhase'
-import { abrirCombateAlCargar, combateTrasResync } from '../lib/combateResync'
+import { abrirCombateAlCargar, combateTrasResync, hayCombateEnCurso, mapaDeZonaDebeCerrarse } from '../lib/combateResync'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession } from '../context/useSession'
@@ -86,7 +86,7 @@ import type {
   InitiativeRollInfo,
   InventoryItemInfo,
   LogEntry,
-  NpcInSceneInfo,
+  CombateIniciadoInfo,
   ProfessionProgressInfo,
   QuestInfo,
   SavedActionInfo,
@@ -401,7 +401,7 @@ export function useGameViewState() {
     handleAssignClase,
     handleAssignEspecializacion,
   } = useClaseEspecializacionState(saveId, syncFromSave)
-  const [combateIniciado, setCombateIniciado] = useState<{ npcs: NpcInSceneInfo[] } | null>(null)
+  const [combateIniciado, setCombateIniciado] = useState<CombateIniciadoInfo | null>(null)
   // Fase G del 0.1 (hallazgo G8): al cerrar un combate 1v1 contra fauna, el cadáver ya estaba
   // en el backend pero «Hay presas caídas sin desollar» no salía hasta cambiar de escena (la
   // comprobación de arriba solo mira la ubicación). Se recomprueba al pasar de combate a sin combate.
@@ -522,7 +522,7 @@ export function useGameViewState() {
   const { fase, puede } = useGamePhase({
     terminada: !!endedAt,
     muertePendiente: pendingDeathResolution,
-    enCombate: !!combateIniciado || combat.combatOpen,
+    enCombate: hayCombateEnCurso(combateIniciado, combat.combatOpen, combat.combatEnded),
     modoDinamico: !!activeDynamicMode,
     narradorEscribiendo: characterThinking,
     eleccionAbierta: claseVisible || especializacionVisible || reinoVisible,
@@ -1338,8 +1338,8 @@ export function useGameViewState() {
   // ZON-5 (hito 0.2): el mapa de movimiento ya no se cierra al chocar con algo; si de ahí sale un
   // combate (cazar, un agresivo, o desde la conversación), el combate manda y el mapa se cierra.
   useEffect(() => {
-    if (combat.combatOpen) setZonaModalOpen(false)
-  }, [combat.combatOpen, setZonaModalOpen])
+    if (mapaDeZonaDebeCerrarse(combateIniciado, combat.combatOpen)) setZonaModalOpen(false)
+  }, [combateIniciado, combat.combatOpen, setZonaModalOpen])
 
   // Modo dinámico/Interactuar/menú de NPC (Fase 12) — ver hooks/useModoDinamico.ts. Va tras
   // useTurnFlow porque necesita `handleSubmit`; los usos anteriores son solo callbacks/JSX.
@@ -1373,6 +1373,7 @@ export function useGameViewState() {
     onNoticiasNuevas: () => void noticiasMundo.traer(),
     onReclutado: () => void refreshSave(),
     openCombat: combat.openCombat,
+    setCombatAwaitingDefense: combat.setCombatAwaitingDefense,
     handleSubmit,
     refetchEnciclopedia,
   })

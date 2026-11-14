@@ -58,7 +58,7 @@ peinaron ~200 archivos de memoria y los servicios/rutas más grandes del backend
   misión Orco Enfurecido saltándose botones (cerrada el mismo día), sub-partición de combate >4v4
   (cerrada horas después el mismo día en que se reabrió, commit `8535c85`, con test de integración
   real — quedó enterrada dentro de un commit de título ajeno "Renombra el atributo Arcano a Magia").
-  `docs/registros/checklist-pruebas-juego.md` y `docs/registros/revisar-partida-hallazgos.md` también actualizados en
+  `docs/records/checklist-pruebas-juego.md` y `docs/records/revisar-partida-hallazgos.md` también actualizados en
   los mismos puntos.
 
 ### Genuinamente pendiente a día de hoy (verificado DOS veces — auditoría inicial + reverificación
@@ -70,7 +70,7 @@ ver abajo):
 - **Balance del primer combate (Orco Enfurecido/misión Gistera)** — tras 8 turnos de intercambio en
   un combate real, ni asegura victoria ni se siente "asequible" para un tutorial de facto de nivel
   1. Sin tocar desde 2026-08-28 (`git log -G` sobre el bloque del NPC solo muestra el rebalanceo
-  original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/registros/checklist-pruebas-juego.md`
+  original de 2026-07-29 y el rename cosmético Arcano→Magia). Ver `docs/records/checklist-pruebas-juego.md`
   punto 1.5.
 - **`questSlug` estructurado en `Quest`** — `quests.ts:18 § ORCO_ENFURECIDO_QUEST_TITLE` sigue
   hardcodeado por título exacto, sin ningún campo `questSlug` en `schema.prisma` (decisión
@@ -123,7 +123,7 @@ cerrados**:
   síncrona, orden de turno fijado, scopes únicos) — puede que ya no sea reproducible, o que el
   patrón viva en otro punto no identificado. Reproducir en vivo si vuelve a aparecer.
 - Nombre de NPC "pegado" gramaticalmente como aposición de un lugar en la narración (sin verificar
-  en esta ronda — muestra de 1 turno, `docs/registros/checklist-pruebas-juego.md` § 1).
+  en esta ronda — muestra de 1 turno, `docs/records/checklist-pruebas-juego.md` § 1).
 
 **Aparcado a propósito por decisión de diseño (no bugs, no urgente)** — verificado, 12/14 exactos,
 2 con matiz menor encontrado:
@@ -329,8 +329,8 @@ reciente:
   necesita que se reinicie a mano para surtir efecto; el arranque/parada de backend/frontend/Postgres
   lo hace siempre la propia usuaria, nunca Claude.
 - Sesiones anteriores (2026-08-23/25) cerraron el grueso del "Grupo 3" de abajo — ver el resto del
-  documento para el detalle punto por punto, y `docs/registros/deuda-tecnica-hallazgos.md`/
-  `docs/registros/revisar-partida-hallazgos.md`/`docs/checklist-cierre-auditorias-2026-08-25.md` para las 3
+  documento para el detalle punto por punto, y `docs/records/deuda-tecnica-hallazgos.md`/
+  `docs/records/revisar-partida-hallazgos.md`/`docs/checklist-cierre-auditorias-2026-08-25.md` para las 3
   auditorías previas, ya cerradas del todo (22/22).
 
 ---

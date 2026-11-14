@@ -1,20 +1,27 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.4.3",
+  "version": "0.6.0",
+  "schemaVersion": 1,
   "language": "es",
   "visibleLanguages": [],
-  "log": "docs/registros/traspaso.md",
+  "log": "docs/records/traspaso.md",
   "logRows": true,
   "protectedBranch": "main",
   "pushToProtected": "pr",
   "install": [],
+  "ciInstall": [
+    "cd backend && npm ci",
+    "cd frontend && npm ci"
+  ],
   "check": [
     "bash tools/qa/host.sh bash -c 'cd backend && npx prisma generate > /dev/null && npx tsc --noEmit -p . && npm run --silent lint'",
     "bash tools/qa/host.sh bash -c 'cd frontend && npx tsc -b && npm run --silent lint'",
     "python3 tools/roadmap/cobertura.py > /dev/null",
     "python3 tools/qa/mapa-agente.py",
     "python3 tools/qa/matriz-pruebas.py --comprobar > /dev/null",
+    "for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro \"$r\" > /dev/null || exit 1; done",
     "python3 tools/qa/difusion.py",
+    "python3 tools/qa/inventario-suelto.py",
     "bash tools/qa/bitacora-check.sh",
     "python3 tools/qa/skills-con-tests.py",
     "cd tools/qa/tests && python3 -m unittest -q test_herramientas_con_test"
@@ -22,20 +29,49 @@
   "reviewMark": ".claude/revision-main.sha",
   "requireRetro": true,
   "content": [
-    "^docs/(rpgtarkor|registros|producto)/",
+    "^docs/(rpgtarkor|records|producto)/",
     "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$",
     "^\\.claude/skills/.*\\.md$"
   ],
   "roadmap": true,
-  "selector": {"cases": []},
+  "selector": {
+    "cases": []
+  },
   "logSections": [],
-  "designReferences": ["X4: Foundations", "D&D 5e", "Baldur's Gate 3", "Medieval Dynasty", "Bellwright", "Manor Lords"],
-  "protectedPaths": ["docs/borradores-opencode/"],
+  "designReferences": [
+    "X4: Foundations",
+    "D&D 5e",
+    "Baldur's Gate 3",
+    "Medieval Dynasty",
+    "Bellwright",
+    "Manor Lords"
+  ],
+  "protectedPaths": [
+    "docs/borradores-opencode/"
+  ],
   "staleRefs": [],
   "relatedTests": {
-    "fast": ["bash tools/qa/tests-vitest.sh unidad {files}"],
-    "slow": ["bash tools/qa/tests-vitest.sh integracion {files}"]
+    "fast": [
+      "bash tools/qa/tests-vitest.sh unidad {files}"
+    ],
+    "slow": [
+      "bash tools/qa/tests-vitest.sh integracion {files}"
+    ]
   },
-  "plan": ["docs/producto/"],
-  "taskId": "(?:CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR)-\\d+[a-z]?"
+  "plan": [
+    "docs/producto/"
+  ],
+  "taskId": "(?:CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR)-\\d+[a-z]?",
+  "commitNext": true,
+  "legacyNamesSkip": [
+    "CHANGELOG*",
+    "docs/producto/roadmap-front.md",
+    "tools/qa/*",
+    "docs/mapa-agente.md",
+    "docs/runbooks/ramas-y-main.md",
+    "docs/borradores-opencode/*",
+    "AGENTS.md",
+    ".github/workflows/ci.yml"
+  ],
+  "ciNodeDirs": ["backend", "frontend"]
 }

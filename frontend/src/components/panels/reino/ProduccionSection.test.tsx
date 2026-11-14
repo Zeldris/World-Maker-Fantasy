@@ -148,4 +148,12 @@ describe('ProduccionSection — carrera al cambiar de edificio', () => {
     expect(queryByText(/primera/i)).toBeNull()
     expect(queryByText(/segunda/i)).toBeTruthy()
   })
+  // P340: con el único edificio dañado no se dice «Sin edificios activos todavía» a secas.
+  it('P340: con edificios dañados dice que están dañados y remite a Reparar', () => {
+    const danado = { id: 'b2', name: 'Desolladero', status: 'DANADO' } as unknown as BuildingInfo
+    const { getByText, queryByText } = render(<ProduccionSection saveId="s1" buildings={[danado]} companions={[]} almacenItems={[]} professionRecipes={[]} onRefreshSave={async () => {}} />)
+    expect(getByText('Tu edificio está dañado')).toBeTruthy()
+    expect(getByText(/Reparar.*Reino › Edificios/)).toBeTruthy()
+    expect(queryByText('Sin edificios activos todavía')).toBeNull()
+  })
 })

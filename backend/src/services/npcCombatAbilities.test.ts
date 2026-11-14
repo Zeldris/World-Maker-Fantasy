@@ -32,6 +32,18 @@ describe('npcCombatAbilitiesFor', () => {
 
   // Tronco común por especialización (rediseño 2026-08-24, Grupo 3 § Sistema de clases) — a nivel
   // 1 exacto, Guerrero solo tiene "Firmeza Férrea" (Instinto Guerrero es nivel 4).
+  it('P373: las raciales de huida (CR-44) entran a cualquier nivel; el resto de raciales, solo a su nivel', () => {
+    const racial = (name: string, level: number) => ({ icon: '', name, description: '', categoria: 'utilidad' as const, preferredAttribute: 'destreza' as const, level, effects: ['AGUANTE' as const] });
+    const npc: NpcForCombatAbilities = {
+      level: 1, attributes: ATTRS, raza: null, clase: null, ataqueNatural: null,
+      habilidadesRaciales: [racial('Huida a la madriguera', 4), racial('Estampida instintiva', 20), racial('Posición defensiva', 4)],
+    };
+    const nombres = npcCombatAbilitiesFor(npc, []).map((a) => a.name);
+    expect(nombres).toContain('Huida a la madriguera');
+    expect(nombres).toContain('Estampida instintiva');
+    expect(nombres).not.toContain('Posición defensiva');
+  });
+
   it('a nivel 1 solo tiene la primera habilidad de su clase (Firmeza Férrea), nunca las de la otra clase ni las de nivel superior', () => {
     const npc: NpcForCombatAbilities = { level: 1, attributes: ATTRS, raza: null, clase: 'GUERRERO', ataqueNatural: null, habilidadesRaciales: [] };
     const abilities = npcCombatAbilitiesFor(npc, []);

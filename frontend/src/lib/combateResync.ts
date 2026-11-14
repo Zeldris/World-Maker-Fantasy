@@ -17,3 +17,17 @@ export function combateTrasResync<T extends { npcs: unknown[] }>(
 export function abrirCombateAlCargar(save: { combateIniciado?: { npcs: unknown[] } | null; pendingDeathResolution?: boolean }): boolean {
   return !!save.combateIniciado && save.combateIniciado.npcs.length > 0 && !save.pendingDeathResolution
 }
+
+/// P426: el HUD y la fase de juego dicen «En combate» solo mientras el combate sigue. Con todos los
+/// rivales resueltos (muertos, huidos, Clemente) el panel enseña el resumen, pero el combate ya está
+/// cerrado: antes el HUD seguía en «⚔️ En combate» hasta pulsar «Salir» o recargar.
+export function hayCombateEnCurso(combateIniciado: unknown, combatOpen: boolean, combatEnded: boolean): boolean {
+  return (!!combateIniciado || combatOpen) && !combatEnded
+}
+
+/// P362: el mapa de zona se cierra en cuanto hay combate, aunque el panel aún no esté abierto: tras un
+/// «Huir» fallido el combate queda con sus botones Combatir/Huir en el diario (`combateIniciado` sin
+/// `combatOpen`) y el mapa, encima, los tapaba.
+export function mapaDeZonaDebeCerrarse(combateIniciado: { npcs: unknown[] } | null | undefined, combatOpen: boolean): boolean {
+  return combatOpen || (!!combateIniciado && combateIniciado.npcs.length > 0)
+}

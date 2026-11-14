@@ -147,6 +147,15 @@ async function muertesTrasVictorias(prisma: PrismaClient, saveId: string, pagina
   return filas.flatMap((f) => f.actores.map((a) => ({ cuando: f.fictionalMinutes, victima: a.entidadId })));
 }
 
+/// Orden de la crónica: el día, y dentro del día el orden real de los sucesos (el del Libro: hora de creación e id),
+/// no el del Conocimiento (P343).
+const ORDEN_LEYENDAS: Prisma.ConocimientoOrderByWithRelationInput[] = [
+  { suceso: { fictionalMinutes: 'desc' } },
+  { suceso: { createdAt: 'desc' } },
+  { suceso: { id: 'desc' } },
+  { id: 'desc' },
+];
+
 /// La crónica que conoce el personaje, lo más reciente primero. `cursor` (el `siguiente` de la página
 /// anterior) pagina sin saltarse los sucesos que comparten minuto.
 export async function leyendasDePartida(
@@ -162,7 +171,7 @@ export async function leyendasDePartida(
   const filas = await prisma.conocimiento.findMany({
     where: { saveId, suceso: { ...(filtro.familia ? { familia: filtro.familia } : {}), ...(Object.keys(minutos).length ? { fictionalMinutes: minutos } : {}) } },
     select: { id: true, via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
-    orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
+    orderBy: ORDEN_LEYENDAS,
     ...(filtro.cursor ? { cursor: { id: filtro.cursor }, skip: 1 } : {}),
     take: take + 1,
   });
@@ -182,7 +191,7 @@ export async function leyendasDeEntidad(prisma: PrismaClient, saveId: string, ti
   const filas = await prisma.conocimiento.findMany({
     where: { saveId, OR: donde },
     select: { via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
-    orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
+    orderBy: ORDEN_LEYENDAS,
     take: LIMITE_LEYENDAS,
   });
   return aEntradas(prisma, saveId, filas);
@@ -212,7 +221,7 @@ export async function leyendasDeFicha(prisma: PrismaClient, saveId: string, fich
   const filas = await prisma.conocimiento.findMany({
     where: { saveId, confirmado: true, suceso: { OR: donde } },
     select: { via: true, confirmado: true, desde: true, suceso: { select: SELECT_SUCESO } },
-    orderBy: [{ suceso: { fictionalMinutes: 'desc' } }, { id: 'desc' }],
+    orderBy: ORDEN_LEYENDAS,
     take: LIMITE_LEYENDAS,
   });
   return aEntradas(prisma, saveId, filas);

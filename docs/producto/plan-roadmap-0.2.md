@@ -6,7 +6,7 @@ estado; el detalle de cada tarea está en su roadmap.
 
 **Forma de trabajo** (decisión de la usuaria, 2026-10-02): implementación continua. Cada tarea lleva
 sus tests y se sube con `tsc` + `vitest` + `oxlint` en verde. Sin pasadas de juego por tarea; las
-pruebas de juego van en la fase única antes de la beta (fila `0.8`). Al cerrar una tarea: tachada
+pruebas de juego van en la fase única antes de la beta (fila `0.7`). Al cerrar una tarea: tachada
 aquí y en su roadmap con `✅ fecha` y lo que quede, bitácora al día, commit + push.
 
 ## Fases (en orden)

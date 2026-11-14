@@ -1,0 +1,7 @@
+agente                 encargo        nota      s turnos   tokens  fallos
+qwen35-9b-32k          costa          ✅     432.4      8   120934  
+qwen35-9b-32k          frontera       ✅      86.8      5    21571  
+qwen35-9b-32k          lugar          ✅     110.2     10    39889  
+qwen35-9b-32k          ruta           ✅     128.7      6    24162  
+qwen35-9b-32k          trampa-canon   ✅     111.5      5    21153  
+qwen35-9b-32k: 5/5 aciertos, 174 s de media

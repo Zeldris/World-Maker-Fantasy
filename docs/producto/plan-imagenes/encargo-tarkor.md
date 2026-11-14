@@ -16,6 +16,6 @@ pruebas con `sd-cli`, borradores y prototipo) se hizo en solo lectura desde otra
    pendiente de aprobación; script que monta el prompt desde la ficha, con tests; los 4 pilotos con semilla fija
    para que la usuaria los apruebe. El preámbulo de estilo no puede nombrar la luna (aunque sea para negarla, el
    modelo la pinta: ver `spike/informe.md`).
-5. Las fases 2-6 se reparten con `orchestrate-dealer` según el plan, con su code review por fase.
+5. Las fases 2-6 se reparten con `gw-orchestrate-dealer` según el plan, con su code review por fase.
 
 Ojo: `seed-catalog` y `reindex-lore` borran y reinsertan; nada que edite el panel puede vivir en tablas que siembran.

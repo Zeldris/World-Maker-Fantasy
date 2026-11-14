@@ -1,6 +1,6 @@
-# Diseño: skill `opt-ai` (implementada, 2026-10-20)
+# Diseño: skill `gw-opt-ai` (implementada, 2026-10-20)
 
-Estado: **implementada** (2026-10-20) en [`.claude/skills/opt-ai/`](../../.claude/skills/opt-ai/SKILL.md)
+Estado: **implementada** (2026-10-20) en [`.claude/skills/gw-opt-ai/`](../../.claude/skills/gw-opt-ai/SKILL.md)
 (núcleo genérico, adaptador `proyecto.md`, `motores.md`, `medir.py`), con el registro por llamada del backend
 (`IA_REGISTRO`/`IA_PERFIL`, [formato](opt-ai-registro.md)) y `npm run rag-eval` sobre `backend/ia/rag-casos.jsonl`.
 Se lanza tras cada tanda de pruebas para buscar
@@ -12,12 +12,12 @@ mejoras en los modelos de IA local del juego: tiempos, RAG, configuración y pro
 |---|---|
 | Hardware | La **Steam Deck es el mínimo** del juego y siempre se mide. Además, perfiles de máquina con su configuración según lo que tenga cada sistema. |
 | Autonomía | **Solo propone.** Mide y redacta; no cambia configuración, índice ni modelos sin aprobación. |
-| Web | **Fuera de esta skill.** Irá en otra skill aparte, `scout-updates`, de búsqueda de actualizaciones de todos los elementos del juego (se valora en el futuro). |
+| Web | **Fuera de esta skill.** Irá en otra skill aparte, `gw-scout-updates`, de búsqueda de actualizaciones de todos los elementos del juego (se valora en el futuro). |
 | Proveedores | **Solo local**, pero sin atarse a Ollama (llama.cpp, LM Studio, vLLM…). La skill tiene que ser **genérica y reutilizable en otros proyectos**. |
 
 ## Forma: núcleo genérico + adaptador por proyecto
 
-Como `opt-tokens` (`SKILL.md` genérico + `proyecto.md`):
+Como `gw-opt-tokens` (`SKILL.md` genérico + `proyecto.md`):
 
 - **`SKILL.md` (genérico):** los pasos, el formato del registro y el del informe. No nombra Tarkor ni Ollama.
 - **`proyecto.md` (Tarkor):**
@@ -45,7 +45,7 @@ Hoy no se guarda. Cada llamada al modelo y al RAG añade una línea JSONL con:
 
 Se activa con una variable de entorno durante las rondas.
 
-## Pasos de la skill (con orchestrate-dealer; 1-3 en paralelo)
+## Pasos de la skill (con gw-orchestrate-dealer; 1-3 en paralelo)
 
 1. **Medir** (script, sin modelo).
    - Por perfil y tarea: p50, p95, tokens por segundo, cargas en frío y textos recortados.
@@ -69,11 +69,11 @@ Se activa con una variable de entorno durante las rondas.
 
 - Perfiles: `deck`, `cpu`, `gpu8` y `gpu12`, por la variable `IA_PERFIL` al arrancar; sin ella, `desconocido` (y `medir.py` avisa).
 - Tiempo aceptable por tarea: sale de la primera medición en la Deck; hasta entonces no se marcan problemas por tiempo.
-- La skill vive en `.claude/skills/opt-ai` (genérica: para otro proyecto se copia y se cambia `proyecto.md`).
+- La skill vive en `.claude/skills/gw-opt-ai` (genérica: para otro proyecto se copia y se cambia `proyecto.md`).
 - Se implementó ya, como mejora del entorno de trabajo (aprobada por la usuaria).
 - Sin juez LLM: el RAG se mide con recall@k sobre casos escritos a mano.
 
 ## Al terminar la implementación (usuaria, 2026-10-20)
 
-- **`retro` y `opt-tokens` miran también las skills propias** (`.claude/skills/` que no son de Matt Pocock: `opt-ai`, `opt-tokens`, `retro`, `orchestrate-dealer`, `selector`, `pr`…) y las tienen en cuenta en sus propuestas: si una skill falló, sobra o puede mejorar con lo visto en la sesión.
+- **`retro` y `gw-opt-tokens` miran también las skills propias** (`.claude/skills/` que no son de Matt Pocock: `gw-opt-ai`, `gw-opt-tokens`, `retro`, `gw-orchestrate-dealer`, `gw-selector`, `pr`…) y las tienen en cuenta en sus propuestas: si una skill falló, sobra o puede mejorar con lo visto en la sesión.
 - **Antes del diseño final:** ideas de herramientas parecidas en la web y de las skills de Matt Pocock (hecho: se copiaron `research` y `to-questionnaire`).

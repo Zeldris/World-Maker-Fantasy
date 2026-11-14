@@ -67,6 +67,35 @@ class MarcaHallazgo(unittest.TestCase):
         i = lineas.index('| P3 | Tres \\| con barra | pendiente |')
         self.assertTrue(lineas[i - 1].startswith('| P2 |'))
 
+    def test_ver_imprime_la_fila_y_las_citas_del_plan(self):
+        escribir(os.path.join(self.repo, 'plan-comprobacion-puerta.md'), 'a\nTanda: P1 y P2 comprobados\n')
+        r = self.marcar('--ver', 'P1')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('| P1 | Uno | pendiente |', r.stdout)
+        self.assertIn('plan-comprobacion-puerta.md:2: Tanda: P1 y P2 comprobados', r.stdout)
+
+    def test_ver_un_p_inexistente_lo_dice_y_sale_con_1(self):
+        r = self.marcar('--ver', 'P99')
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('P99: no está en el registro', r.stdout)
+
+    def test_ver_p33_no_casa_p330(self):
+        escribir(self.ruta, REGISTRO.replace('Notas.', '| P33 | Treinta y tres | x |\n| P330 | Otro | y |'))
+        escribir(os.path.join(self.repo, 'plan-comprobacion-puerta.md'), 'solo P330 aquí\nP33, sí\n')
+        r = self.marcar('--ver', 'P33')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('puerta.md:2: P33, sí', r.stdout)
+        self.assertNotIn('solo P330', r.stdout)
+        self.assertNotIn('Otro', r.stdout)
+
+    def test_ver_con_fila_repetida_las_muestra_todas_y_avisa(self):
+        escribir(self.ruta, REGISTRO.replace('Notas.', '| P1 | Uno bis | otra |'))
+        r = self.marcar('--ver', 'P1')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('| P1 | Uno | pendiente |', r.stdout)
+        self.assertIn('| P1 | Uno bis | otra |', r.stdout)
+        self.assertIn('P1 aparece 2 veces en el registro', r.stdout)
+
 
 INICIO = '<!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->'
 CON_RESUMEN = f"""# Ronda
@@ -109,6 +138,28 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Pendientes de una decisión de la usuaria** (1): P4.', texto)
         self.assertIn('- **Cerrados sin arreglo (no aplica, dato o roadmap)** (1): P5.', texto)
         self.assertIn('- **Arreglados en parte** (1): P6.', texto)
+
+    def test_lista_da_solo_los_del_grupo_con_el_final_del_estado(self):
+        r = self.correr('--lista', 'arreglado')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lineas = r.stdout.strip().split('\n')
+        self.assertEqual(len(lineas), 1, r.stdout)
+        self.assertTrue(lineas[0].startswith('P2: '), r.stdout)
+        self.assertNotIn('P1:', r.stdout)
+
+    def test_lista_recorta_un_estado_largo_por_el_principio(self):
+        escribir(self.ruta, CON_RESUMEN + '| P7 | Siete | arreglado ' + 'x' * 300 + ' FINAL |\n')
+        r = self.correr('--lista', 'arreglado')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        linea = [l for l in r.stdout.split('\n') if l.startswith('P7: ')][0]
+        self.assertTrue(linea.startswith('P7: …'), linea)
+        self.assertTrue(linea.endswith('FINAL'), linea)
+        self.assertLessEqual(len(linea), len('P7: ') + 160, linea)
+
+    def test_lista_con_un_grupo_que_no_existe_dice_los_validos(self):
+        r = self.correr('--lista', 'jugado')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('comprobado', r.stderr)
 
     def test_otras_formas_de_decir_comprobado_parte_y_decision(self):
         escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | ✅ comprobado |

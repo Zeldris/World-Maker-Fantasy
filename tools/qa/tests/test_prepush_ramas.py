@@ -1,4 +1,4 @@
-"""QA-74: el `prepush-ramas.sh` de Galivelop-workflow (antes tools/qa/prepush-ramas.sh, piloto 2026-10-22), la parte de
+"""QA-74: el `prepush-branches.sh` de Galivelop-workflow (antes tools/qa/prepush-ramas.sh, piloto 2026-10-22), la parte de
 .githooks/pre-push que mira cada rama (QA-35, QA-66, QA-69). El script saca la raíz de su propia ruta: cada prueba copia
 scripts, esquema y `gw.json` al repo de prueba."""
 import os
@@ -23,7 +23,7 @@ class PrepushRamas(unittest.TestCase):
         for ruta in ('.claude/gw/scripts', '.claude/gw/schema'):
             shutil.copytree(os.path.join(RAIZ, ruta), os.path.join(self.repo, ruta))
         shutil.copy(os.path.join(RAIZ, '.claude/gw.json'), os.path.join(self.repo, '.claude/gw.json'))
-        self.commit('docs/registros/traspaso.md', BITACORA_OK, 'base')
+        self.commit('docs/records/traspaso.md', BITACORA_OK, 'base')
         git(self.repo, 'push', '-q', 'origin', 'HEAD:main')
         git(self.repo, 'fetch', '-q', 'origin')
         git(self.repo, 'checkout', '-q', '-b', 'r')
@@ -37,7 +37,7 @@ class PrepushRamas(unittest.TestCase):
     def correr(self, sha_local: str, sha_remoto: str, extra_env: dict | None = None) -> tuple[int, str, str]:
         d = carpeta()
         cambiados, subidos = os.path.join(d, 'c'), os.path.join(d, 's')
-        r = subprocess.run(['bash', os.path.join(self.repo, '.claude/gw/scripts/prepush-ramas.sh'), cambiados, subidos],
+        r = subprocess.run(['bash', os.path.join(self.repo, '.claude/gw/scripts/prepush-branches.sh'), cambiados, subidos],
                            input=f'refs/heads/r {sha_local} refs/heads/r {sha_remoto}\n', cwd=self.repo,
                            env={**ENV_GIT, **(extra_env or {})}, capture_output=True, text=True)
         # Sin nada nuevo, el flujo no crea los archivos: vacío.
@@ -64,33 +64,33 @@ class PrepushRamas(unittest.TestCase):
         self.assertIn(sha, subidos)
 
     def test_bitacora_mala_en_el_commit_falla_aunque_en_disco_este_bien(self):
-        sha = self.commit('docs/registros/traspaso.md', AL_DIA + '| **Tarea en curso** | sin rama |\n', 'bitácora mala')
-        escribir(os.path.join(self.repo, 'docs/registros/traspaso.md'), BITACORA_OK)
+        sha = self.commit('docs/records/traspaso.md', AL_DIA + '| **Tarea en curso** | sin rama |\n', 'bitácora mala')
+        escribir(os.path.join(self.repo, 'docs/records/traspaso.md'), BITACORA_OK)
         codigo, _, _ = self.correr(sha, CERO)
         self.assertEqual(codigo, 1)
 
     def test_fila_de_otra_rama_o_compartida_falla_salvo_con_la_variable(self):
         """QA-145: cada rama escribe solo en su fila; `BITACORA_COMPARTIDA=1` lo permite."""
         base = '## Estado actual\n\n' + AL_DIA + '| **Hito** | 0.3 |\n| **Tarea en curso · `r`** | algo |\n| **Tarea en curso · `o`** | de otra |\n'
-        self.commit('docs/registros/traspaso.md', base, 'base con otra rama')
+        self.commit('docs/records/traspaso.md', base, 'base con otra rama')
         git(self.repo, 'push', '-q', 'origin', 'r')
         propia = base.replace('| algo |', '| mío |').replace('2999-12-31', '2999-12-30')
-        sha = self.commit('docs/registros/traspaso.md', propia + '| **Tests** | verde |\n', 'solo lo mío')
+        sha = self.commit('docs/records/traspaso.md', propia + '| **Tests** | verde |\n', 'solo lo mío')
         self.assertEqual(self.correr(sha, CERO)[0], 0)
         ajena = propia.replace('| de otra |', '| tocada |')
-        sha = self.commit('docs/registros/traspaso.md', ajena, 'toca la de otra')
+        sha = self.commit('docs/records/traspaso.md', ajena, 'toca la de otra')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
         self.assertEqual(self.correr(sha, CERO, {'BITACORA_COMPARTIDA': '1'})[0], 0)
-        sha = self.commit('docs/registros/traspaso.md', ajena.replace('0.3', '0.4'), 'toca el hito')
+        sha = self.commit('docs/records/traspaso.md', ajena.replace('0.3', '0.4'), 'toca el hito')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
 
     def test_commit_de_una_subrama_local_fusionada_de_vuelta_se_comprueba_contra_ella(self):
         """QA-136/QA-145: la fila de la subrama sin subir vale; sin la subrama, el mismo commit se rechaza."""
         base = '## Estado actual\n\n' + AL_DIA + '| **Tarea en curso · `r`** | algo |\n| **Tarea en curso · `s`** | sub |\n'
-        self.commit('docs/registros/traspaso.md', base, 'base con subrama')
+        self.commit('docs/records/traspaso.md', base, 'base con subrama')
         git(self.repo, 'push', '-q', 'origin', 'r')
         git(self.repo, 'checkout', '-q', '-b', 's')
-        self.commit('docs/registros/traspaso.md', base.replace('| sub |', '| nuevo |'), 'edita su fila')
+        self.commit('docs/records/traspaso.md', base.replace('| sub |', '| nuevo |'), 'edita su fila')
         git(self.repo, 'checkout', '-q', 'r')
         self.commit('docs/x.md', 'x', 'avanza r')
         git(self.repo, 'merge', '-q', '--no-ff', '-m', 'fusiona s', 's')
@@ -103,20 +103,20 @@ class PrepushRamas(unittest.TestCase):
         """Desde el flujo v0.4.3 se comprueba la bitácora de la punta que se sube: un commit posterior arregla la de
         uno intermedio. Mala en la punta, falla."""
         dos_filas = AL_DIA + '| **Tarea en curso · `r`** | a |\n| **Tarea en curso · `r`** | b |\n'
-        self.commit('docs/registros/traspaso.md', dos_filas, 'dos filas')
-        sha = self.commit('docs/registros/traspaso.md', BITACORA_OK, 'arreglada')
+        self.commit('docs/records/traspaso.md', dos_filas, 'dos filas')
+        sha = self.commit('docs/records/traspaso.md', BITACORA_OK, 'arreglada')
         self.assertEqual(self.correr(sha, CERO)[0], 0)
-        sha = self.commit('docs/registros/traspaso.md', dos_filas, 'otra vez dos filas')
+        sha = self.commit('docs/records/traspaso.md', dos_filas, 'otra vez dos filas')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
 
     def test_fecha_vieja_falla_solo_si_el_commit_cambia_la_bitacora(self):
         """QA-115: el commit de hoy que toca la bitácora la pone al día; uno que no la toca no cuenta."""
         vieja = BITACORA_OK.replace('2999-12-31', '2000-01-01')
-        sha = self.commit('docs/registros/traspaso.md', vieja, 'bitácora con fecha vieja')
+        sha = self.commit('docs/records/traspaso.md', vieja, 'bitácora con fecha vieja')
         self.assertEqual(self.correr(sha, CERO)[0], 1)
         hoy = git(self.repo, 'log', '-1', '--format=%as')
         git(self.repo, 'reset', '-q', '--hard', 'HEAD~1')
-        self.commit('docs/registros/traspaso.md', BITACORA_OK.replace('2999-12-31', hoy), 'al día')
+        self.commit('docs/records/traspaso.md', BITACORA_OK.replace('2999-12-31', hoy), 'al día')
         sha = self.commit('docs/x.md', 'otro cambio', 'sin bitácora')
         self.assertEqual(self.correr(sha, CERO)[0], 0)
 

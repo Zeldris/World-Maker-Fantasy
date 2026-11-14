@@ -15,7 +15,7 @@ import { matchesHarvestSourceHome } from '../services/harvest.js';
 import { stripRegionArticle } from '../services/population.js';
 
 /// Test de cobertura de mapa — Fase 3 del plan "lo que funciona por zona se hace desde la zona"
-/// (docs/registros/plan-mecanicas-por-zona-2026-09-28.md): con la caza/recolección pasando a
+/// (docs/records/plan-mecanicas-por-zona-2026-09-28.md): con la caza/recolección pasando a
 /// exigir colisión con un `ZonePoint` real, cualquier fuente con presencia en Las Llanuras del
 /// Viento Rojo que no tenga NINGÚN `ZonePoint` en una Location de la región (compatible con el
 /// mismo filtro de terreno/home que ya usa el motor) sería imposible de obtener. Test unitario

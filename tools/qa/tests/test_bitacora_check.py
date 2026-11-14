@@ -23,7 +23,7 @@ class BitacoraCheck(unittest.TestCase):
 
     def escribir(self, roadmap: str, hecho: str) -> None:
         escribir(os.path.join(self.repo, 'docs/producto/roadmap.md'), roadmap)
-        escribir(os.path.join(self.repo, 'docs/registros/traspaso.md'), FILA + hecho)
+        escribir(os.path.join(self.repo, 'docs/records/traspaso.md'), FILA + hecho)
 
     def correr(self):
         return subprocess.run(['bash', os.path.join(self.repo, 'tools', 'qa', 'bitacora-check.sh')], cwd='/',
@@ -47,7 +47,7 @@ class BitacoraCheck(unittest.TestCase):
         self.assertIn('QA-2 is closed in the plan', r.stdout)
 
     def test_tocar_la_fila_de_otra_rama_falla_salvo_compartida(self):
-        ruta = os.path.join(self.repo, 'docs/registros/traspaso.md')
+        ruta = os.path.join(self.repo, 'docs/records/traspaso.md')
         escribir(ruta, leer(ruta) + '| **Tarea en curso · `otra`** | x |\n')
         git(self.repo, 'commit', '-qam', 'fila de otra')
         git(self.repo, 'update-ref', 'refs/remotes/origin/main', 'HEAD')
@@ -59,9 +59,19 @@ class BitacoraCheck(unittest.TestCase):
                            env={**ENV_GIT, 'BITACORA_COMPARTIDA': '1'}, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_sin_identidad_de_git_pasa(self):
+        # El runner de check.yml no tiene user.name (2026-11-04, PR 84): la foto es un commit desechable.
+        self.escribir('- ~~**QA-1 · Una**~~ ✅\n', '## Hecho recientemente\n\n- ~~`QA-1`~~ hecho\n')
+        env = {k: v for k, v in ENV_GIT.items() if not k.startswith(('GIT_AUTHOR', 'GIT_COMMITTER')) and k != 'EMAIL'}
+        env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='user.useConfigOnly', GIT_CONFIG_VALUE_0='true')
+        r = subprocess.run(['bash', os.path.join(self.repo, 'tools', 'qa', 'bitacora-check.sh')], cwd='/',
+                           env=env, capture_output=True, text=True)
+        self.assertNotIn('no se pudo tomar la foto', r.stderr)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
     def test_una_fila_mal_formada_falla_aunque_la_rama_no_este_subida(self):
         git(self.repo, 'update-ref', '-d', 'refs/remotes/origin/main')
-        escribir(os.path.join(self.repo, 'docs/registros/traspaso.md'), '| **Tarea en curso** | algo |\n')
+        escribir(os.path.join(self.repo, 'docs/records/traspaso.md'), '| **Tarea en curso** | algo |\n')
         r = self.correr()
         self.assertEqual(r.returncode, 1)
         self.assertIn('there is no row', r.stdout)

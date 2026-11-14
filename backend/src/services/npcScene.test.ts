@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -30,9 +30,9 @@ const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
-const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
-const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string }[]);
+const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string; locationId: string }[]);
 const findManyCompanion = vi.fn(async (..._args: unknown[]) => [] as { sourceSlug: string }[]);
+const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
@@ -49,7 +49,7 @@ vi.mock('../lib/prisma.js', () => ({
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     // P327: `detectNpcsInScene` consulta qué NPC con nombre propio ya conoce la jugadora.
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscovered(...args) },
-    // P419: presencia de un PRINCIPAL por su punto activo en la zona o por ser compañero.
+    // P419: presencia de un PRINCIPAL por su punto activo en la zona o por ser compañero. P331: puntos de NPC por partida y compañeros.
     zonePoint: { findMany: (...args: unknown[]) => findManyZonePoint(...args) },
     companion: { findMany: (...args: unknown[]) => findManyCompanion(...args) },
   },
@@ -486,6 +486,31 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     expect(result.map((n) => n.id)).toEqual(['lurker']);
   });
 
+  // P331: «Ataco a Gistera Koh» desde El Pozo, con su punto en la Hondonada, sacaba combate y XP porque la PRINCIPAL
+  // cuenta como candidata en cualquier sitio y el guard de «existe pero no está aquí» no llegaba a verla ausente.
+  describe('P331 — NPC fijo con su punto en otra zona', () => {
+    const gistera = () => baseNpc({ id: 'gistera', slug: 'gistera-koh', name: 'Gistera Koh', aliases: ['gistera koh', 'gistera'], kind: 'PRINCIPAL', homeLocationSlug: 'hondonada-del-eco' });
+    const llamar = (loc: string) => detectNpcsInScene({ action: 'Ataco a Gistera Koh', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: loc, fictionalMinutes: 480 });
+    beforeEach(() => {
+      findManyNpc.mockResolvedValue([gistera()]);
+      findManyLocation.mockResolvedValue([HONDONADA]);
+      findUniqueLocation.mockResolvedValue({ slug: 'pozo-cauce-viejo', region: 'Otra' });
+      findManyZonePoint.mockReset().mockResolvedValue([{ targetSlug: 'gistera-koh', locationId: 'loc-hondonada' }]);
+      findManyCompanion.mockReset().mockResolvedValue([]);
+    });
+
+    it('en otra zona: no está en escena', async () => {
+      expect(await llamar('loc-pozo')).toEqual([]);
+    });
+    it('en su zona: sí', async () => {
+      expect((await llamar('loc-hondonada')).map((n) => n.id)).toEqual(['gistera']);
+    });
+    it('de compañera: sigue en escena aunque su punto esté en otra zona', async () => {
+      findManyCompanion.mockResolvedValue([{ sourceSlug: 'gistera-koh' }]);
+      expect((await llamar('loc-pozo')).map((n) => n.id)).toEqual(['gistera']);
+    });
+  });
+
   it('un NPC PRINCIPAL itinerante (sin casa) es candidato en cualquier escena', async () => {
     findManyNpc.mockResolvedValue([baseNpc({ kind: 'PRINCIPAL', homeLocationSlug: null })]);
     findUniqueLocation.mockResolvedValue(HONDONADA);
@@ -517,7 +542,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     });
 
     it('con su punto activo en esta zona, está', async () => {
-      findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg' }]);
+      findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada' }]);
       expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
     });
 
@@ -1178,7 +1203,7 @@ describe('P327 — nombre visible de un NPC aún no descubierto', () => {
     const principalOculto = npcFixture({ slug: 'gistera-koh', name: 'Gistera Koh', genero: 'F', raza: 'orcos', articulo: null });
     const principalConocido = npcFixture({ slug: 'orco-enfurecido' });
     const generico = npcFixture({ slug: 'guchapo', name: 'Guchapo', kind: 'GENERICO' as NpcInScene['kind'] });
-    const [a, b, c] = await conNombreVisible({ discoveredEntity: { findMany: findManyDiscovered } } as never, 'save-1', [principalOculto, principalConocido, generico]);
+    const [a, b, c] = await conNombreVisible({ discoveredEntity: { findMany: findManyDiscovered }, companion: { findMany: async () => [] } } as never, 'save-1', [principalOculto, principalConocido, generico]);
     expect(a!.nombreVisible).toBe('Orca desconocida');
     expect(a!.name).toBe('Gistera Koh');
     expect(b!.nombreVisible).toBeUndefined();
@@ -1298,5 +1323,18 @@ describe('corregirNombresCasi (QA-289, P410)', () => {
     expect(corregirNombresCasi('ulka ketg', ['Ulkha Ketg'])).toBe('ulka ketg');
     expect(corregirNombresCasi('Ugrak Ketg', ['Ulkha Ketg'])).toBe('Ugrak Ketg');
     expect(corregirNombresCasi('Gogorat ruge.', ['Gogorath'])).toBe('Gogorat ruge.');
+  });
+});
+
+describe('slugsConPuntoSoloEnOtraZona — cliente de la transacción', () => {
+  it('usa el `db` que se le pasa (la transacción de colisión de Zona), no el prisma global', async () => {
+    const db = {
+      zonePoint: { findMany: vi.fn().mockResolvedValue([{ targetSlug: 'orco', locationId: 'otra' }]) },
+      companion: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    const r = await slugsConPuntoSoloEnOtraZona({ saveId: 's1', currentLocationId: 'aqui', slugs: ['orco'], cualquierPunto: true, db: db as never });
+    expect([...r]).toEqual(['orco']);
+    expect(db.zonePoint.findMany).toHaveBeenCalledTimes(1);
+    expect(db.companion.findMany).toHaveBeenCalledTimes(1);
   });
 });

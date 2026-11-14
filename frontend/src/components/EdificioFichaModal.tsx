@@ -14,6 +14,7 @@ export function EdificioFichaModal({
   onClose,
   onInteractuar,
   onIrHasta,
+  irHastaLabel,
 }: {
   saveId: string
   point: ZonePointInfo
@@ -22,6 +23,8 @@ export function EdificioFichaModal({
   onInteractuar?: () => void
   /// Lejos: camina hasta él.
   onIrHasta?: () => void
+  /// P337: «Ir a la puerta del poblado» si el edificio está sobre las estacas y estás fuera.
+  irHastaLabel?: string
 }) {
   const [ficha, setFicha] = useState<FichaEdificio | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +52,7 @@ export function EdificioFichaModal({
           )}
           {!onInteractuar && onIrHasta && (
             <button type="button" onClick={() => { onIrHasta(); onClose() }} className={confirmButtonClasses('accent')}>
-              Ir hasta aquí
+              {irHastaLabel ?? 'Ir hasta aquí'}
             </button>
           )}
         </>

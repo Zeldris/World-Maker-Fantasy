@@ -163,6 +163,8 @@ describe('reparar edificios dañados (P284/P296/P301)', () => {
   it('un edificio en pie no se repara; uno dañado pide materiales y vuelve a ACTIVO', async () => {
     expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.pozo))).toMatchObject({ ok: false });
     expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toMatchObject({ ok: false, motivo: expect.stringContaining('10 materiales') });
+    // P372: el motivo dice cuántos materiales hay (se ve en pantalla).
+    expect(await prisma.$transaction((tx) => repararEdificio(tx, saveId, ids.choza))).toMatchObject({ ok: false, motivo: expect.stringMatching(/tienes \d+\./) });
     expect((await prisma.building.findUniqueOrThrow({ where: { id: ids.choza } })).status).toBe('DANADO');
     const { worldId } = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
     const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId, tipo: 'RECURSO' }, select: { slug: true } });

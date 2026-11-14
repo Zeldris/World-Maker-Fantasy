@@ -17,5 +17,8 @@ async (page) => {
     if (k >= 0) return t.slice(k, k + 700);
     if (/Combate —/.test(t)) return 'COMBATE abierto (te vieron primero): usa combate.js';
   }
+  // P429: un modal (ficha, edificio, menú de un NPC) no es una escena: se dice cuál se abrió en vez de «ninguna escena».
+  const modal = page.getByRole('dialog');
+  if (await modal.count()) return 'No se abrió una escena de vuelta, sino un MODAL: ' + (((await modal.first().innerText().catch(() => '')) || '').replace(/\s+/g, ' ').slice(0, 200)) + ' (ciérralo con «Cerrar» o mira estado.js)';
   return 'No se abrió ninguna escena: mira con estado.js o una captura';
 }

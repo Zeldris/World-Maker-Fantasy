@@ -20,6 +20,7 @@
 //   XP del turno .............................................. const xpTurno
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
+import { companerosDeCombate } from './combateCompaneros.js';
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
 import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora, type GolpeGratisContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
@@ -46,9 +47,9 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
-import { npcCombatAbilitiesFor, chooseNpcAbility } from './npcCombatAbilities.js';
+import { npcCombatAbilitiesFor, chooseNpcAbility, ataquePendienteDeApertura } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
 import { detectItemReference, detectMedicalItemUse, detectEnergyItemUse, detectsCompassUse, missingItemBlockFor } from './itemReference.js';
 import { compassNarrationText, type CompassLinkInfo } from './compassNarration.js';
@@ -977,25 +978,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
   // facción de todas formas.
   const npcTemperamentoNoAgresivo = npcParaIntercambio?.temperamento === 'INOFENSIVO' || npcParaIntercambio?.temperamento === 'CAUTELOSO';
   if (!input.combateActivo && input.openingAmbush && input.rollGradoExito === 'fallo' && npcParaIntercambio && !npcTemperamentoNoAgresivo) {
-    const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
-    const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
-    const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
-    const npcEnergiaActualAmbush = npcParaIntercambio.energia ?? npcEnergiaMaxAmbush;
-    const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActualAmbush, undefined, npcParaIntercambio.abilityUsesThisEncounter);
-    nuevoPendingNpcAttack = {
-      npcId: npcParaIntercambio.id,
-      attribute: npcAtaque.attribute,
-      attributeBonus: npcAtaque.attributeBonus ?? null,
-      effects: npcAtaque.effects,
-      rol: npcAtaque.rol,
-      abilityName: npcAtaque.name,
-      abilityDescription: npcAtaque.description,
-      energyCost: npcAtaque.energyCost,
-      energyRegen: npcAtaque.energyRegen,
-      maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
-      durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
-      durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
-    };
+    nuevoPendingNpcAttack = ataquePendienteDeApertura(npcParaIntercambio);
     // Bug real jugando en vivo (2026-08-28, confirmado por la usuaria): el bloque de texto
     // "Iniciativa: tú X vs Y del enemigo" no salía en la ronda de apertura de combate — solo en
     // las siguientes. Causa: este camino sembraba `nuevoPendingNpcAttack` pero nunca calculaba
@@ -1034,25 +1017,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
     );
     nextInitiativeRoll = initiativeCheck;
     if (initiativeCheck.ganador === 'npc') {
-      const npcWeaponNames = npcParaIntercambio.items.filter((i) => i.category === 'arma').map((i) => i.name);
-      const npcAbilities = npcCombatAbilitiesFor(npcParaIntercambio, npcWeaponNames);
-      const npcEnergiaMaxAmbush = energiaMaxFor(npcParaIntercambio.attributes.constitucion);
-      const npcEnergiaActualAmbush = npcParaIntercambio.energia ?? npcEnergiaMaxAmbush;
-      const npcAtaque = chooseNpcAbility(npcAbilities, 'ataque', npcEnergiaActualAmbush, undefined, npcParaIntercambio.abilityUsesThisEncounter);
-      nuevoPendingNpcAttack = {
-        npcId: npcParaIntercambio.id,
-        attribute: npcAtaque.attribute,
-        attributeBonus: npcAtaque.attributeBonus ?? null,
-        effects: npcAtaque.effects,
-        rol: npcAtaque.rol,
-        abilityName: npcAtaque.name,
-        abilityDescription: npcAtaque.description,
-        energyCost: npcAtaque.energyCost,
-        energyRegen: npcAtaque.energyRegen,
-        maxUsesPerCombat: npcAtaque.maxUsesPerCombat,
-        durationEffectMagnitude: npcAtaque.durationEffectMagnitude ?? null,
-        durationEffectTurns: npcAtaque.durationEffectTurns ?? null,
-      };
+      nuevoPendingNpcAttack = ataquePendienteDeApertura(npcParaIntercambio);
     }
   }
 
@@ -1196,7 +1161,8 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
         // nunca hay "quién gana" conjunto) — 0 de relleno, el frontend nunca lo lee para
         // `resultado: 'independiente'`.
         combatExchangeDisplay = { atacanteEsJugador: false, atacante: independent.atacante, defensor: independent.defensor, resultado: 'independiente', margen: 0 };
-        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
+        // P431: el lado que jugó la habilidad (una de ataque usada al defenderse no es «Te defiendes con»).
+        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: defensorRol === 'ataque' ? 'ataque' : 'defensa' };
         exchangeHappened = true;
         npcNuevaEnergia = nextEnergia({
           current: npcEnergiaActual,
@@ -1316,7 +1282,7 @@ function resolveCombatExchangePhase(input: CombatExchangePhaseInput): CombatExch
           resultado: effectiveExchangeOutcome(exchange.resultado, jugadorPuedeContragolpear),
           margen: exchange.margen,
         };
-        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: 'defensa' };
+        if (input.selectedAbility) playerAbilityUsed = { ...input.selectedAbility, rol: defensorRol === 'ataque' ? 'ataque' : 'defensa' };
         exchangeHappened = true;
         // El NPC atacó este intercambio con la habilidad ya elegida el turno anterior — su coste/
         // regen se descuentan/suman AHORA, cuando de verdad se resuelve (ver PendingNpcAttack.
@@ -2174,7 +2140,8 @@ export async function vistaCombateDeGrupo(
     };
   });
   await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
-  return { npcs };
+  // P445: los compañeros de la jugadora, como su bando en el panel.
+  return { npcs, companeros: await companerosDeCombate(prisma, participantesFinal) };
 }
 
 async function resolveCombatSlugsAndPersist(params: {
@@ -3266,10 +3233,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
   const contextBlocks: string[] = [];
-  if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
-  if (moralNpc) contextBlocks.push(moralNpc.pista);
-  if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
-  if (playerAbilityUsageBlockedHint) contextBlocks.push(playerAbilityUsageBlockedHint);
+  // QA-307 (`/gw-opt-ai`, 2026-11-10): lo que cambia en cada ronda de combate (intercambio con sus dados, moral,
+  // efecto de la habilidad) iba el primero de los hechos y cortaba la caché de prefijo de Ollama justo ahí: en la
+  // Deck, ~20 s de más por ronda. Se añade al final de `contextBlocks`, justo antes de montar el contexto del
+  // narrador, detrás de los hechos estables de la escena (sigue entre los críticos que conserva el intento 2).
+  const bloquesDeLaRonda = [exchangeNarrationBlock, moralNpc?.pista, abilityEffectHint, playerAbilityUsageBlockedHint].filter(
+    (b): b is string => !!b,
+  );
   // Ver `hasFalseTravelClaim` (narrador.ts) — nombres reales de los destinos ambiguos, rellenado
   // solo en el mismo `if` de más abajo que ya decide forzar la pregunta ("EL PERSONAJE QUIERE
   // SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE").
@@ -3471,7 +3441,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         : '(sin rutas conocidas desde aquí todavía)';
       contextBlocks.push(`UBICACIÓN ACTUAL: ${location.name} — ${location.description}\nDESDE AQUÍ SE PUEDE IR A: ${destinosTxt}.`);
 
-      // Bug real jugando (docs/registros/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
+      // Bug real jugando (docs/records/revisar-partida-hallazgos.md, 2026-08-01, "bucle" de ambientación
       // sin progreso): "avanzo"/"continúo por la cueva" sin nombrar destino, con 2+ salidas reales
       // desde aquí, no se puede resolver solo (`resolveTravel` ya solo auto-resuelve cuando hay
       // EXACTAMENTE una salida) — sin este aviso, el modelo solía narrar ambientación genérica
@@ -3614,7 +3584,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
           return { slug: c.slug, name: c.name, role: c.role, weight: row.poblacion };
         })
         .filter((c): c is { slug: string; name: string; role: string; weight: number } => c !== null);
-      const candidate = pickAmbientEncounterCandidate(weightedCandidates);
+      const candidate = pickAmbientEncounterCandidate(await sinPuntoEnOtraZona(saveId, currentLocationId, weightedCandidates));
       if (candidate) {
         // Auditoría "narrador vs. motor determinista" (2026-08-30, Hallazgo 3): antes esta
         // sugerencia no decía si el candidato es pacífico u hostil por catálogo — el modelo podía
@@ -4529,6 +4499,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // crafteo) legitima que la prosa prometa recibir algo; sin ninguno de estos, una promesa de
   // obtención en prosa libre es pura alucinación.
   const harvestOrLootActiveThisTurn = !!harvestMatch || lootMode || buildMode || craftMode;
+  contextBlocks.push(...bloquesDeLaRonda);
   const narrationCtx = {
     worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts, [...npcsInScene.map((n) => n.name), ...(zonaEscena ? [zonaEscena] : [])]))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en

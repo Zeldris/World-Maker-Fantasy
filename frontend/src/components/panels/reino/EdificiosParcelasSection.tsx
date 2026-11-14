@@ -67,6 +67,12 @@ interface EdificiosParcelasSectionProps {
 
 interface BuildOption { recipeKey: string; label: string; actionText: string; needsCuartel: boolean; status: RecipeStatusInfo | undefined; tier?: number }
 
+/// P372: cuántos materiales faltan en el Almacén para reparar (0 si bastan o el servidor no mandó el dato).
+function faltanMateriales(b: BuildingInfo): number {
+  if (b.costeReparar == null || b.materialesAlmacen == null) return 0
+  return Math.max(0, b.costeReparar - b.materialesAlmacen)
+}
+
 /// P278: cuántos hay de cada clase (por `recipeKey`) y el número de orden de cada uno, para distinguir dos Pozos o dos
 /// Chozas. Los narrados sin receta no se numeran.
 export function numerarEdificios(buildings: BuildingInfo[]): { numero: Map<string, { n: number; de: number }>; resumen: string[] } {
@@ -132,7 +138,8 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
   const enVuelo = useRef(false)
   const [construyendo, setConstruyendo] = useState(false)
   const [reparando, setReparando] = useState<string | null>(null)
-  const [errorReparar, setErrorReparar] = useState<string | null>(null)
+  /// P372: el error de «Reparar» sale en la tarjeta del edificio (con 9 edificios, el de arriba quedaba fuera de pantalla).
+  const [errorReparar, setErrorReparar] = useState<{ id: string | null; texto: string } | null>(null)
   const [encargando, setEncargando] = useState(false)
   const [versionCola, setVersionCola] = useState(0)
   const hayCasaDeObras = buildings.some((b) => b.recipeKey === 'casa-de-obras' && b.status === 'ACTIVO')
@@ -145,7 +152,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       await postObra(saveId, encargo)
       setVersionCola((n) => n + 1)
     } catch (e) {
-      setErrorReparar(e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.')
+      setErrorReparar({ id: 'buildingId' in encargo ? encargo.buildingId : null, texto: e instanceof Error ? e.message : 'No se pudo encargar a la Casa de obras.' })
     } finally {
       setEncargando(false)
     }
@@ -164,7 +171,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
       await postRepararEdificio(saveId, id)
       await onRefreshSave?.()
     } catch (e) {
-      setErrorReparar(e instanceof Error ? e.message : 'No se pudo reparar el edificio.')
+      setErrorReparar({ id, texto: e instanceof Error ? e.message : 'No se pudo reparar el edificio.' })
     } finally {
       setReparando(null)
     }
@@ -238,7 +245,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
           ))}
         </div>
       </details>
-      {errorReparar && <p role="alert" className="mb-2 text-2xs text-cost-400">{errorReparar}</p>}
+      {errorReparar && errorReparar.id === null && <p role="alert" className="mb-2 text-2xs text-cost-400">{errorReparar.texto}</p>}
       {resumen.length > 0 && <p className="mb-2 text-2xs text-wood-400">Repetidos: {resumen.join(' · ')}</p>}
       <div className="flex flex-col gap-2">
         {buildings.map((b) => (
@@ -272,7 +279,7 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
               <div className="mt-1.5 flex items-center gap-2 text-2xs">
                 <button
                   type="button"
-                  disabled={reparando !== null}
+                  disabled={reparando !== null || faltanMateriales(b) > 0}
                   onClick={() => void reparar(b.id)}
                   className="tactile rounded-md border border-accent2-600/40 px-2 py-0.5 font-semibold text-accent-300 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -291,6 +298,11 @@ export function EdificiosParcelasSection({ buildings, recipesStatus = [], onBuil
                 {b.costeReparar != null && <span className="text-wood-400">Coste: {b.costeReparar} materiales del Almacén</span>}
               </div>
             )}
+            {/* P372: lo que falta se dice antes de pulsar, no tras un 400. */}
+            {b.status === 'DANADO' && saveId && faltanMateriales(b) > 0 && (
+              <p className="mt-1 text-2xs text-cost-400">Hacen falta {b.costeReparar} materiales; tienes {b.materialesAlmacen}.</p>
+            )}
+            {errorReparar?.id === b.id && <p role="alert" className="mt-1 text-2xs text-cost-400">{errorReparar.texto}</p>}
           </div>
         ))}
       </div>

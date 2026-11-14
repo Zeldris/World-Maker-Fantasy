@@ -44,6 +44,17 @@ export function ProduccionSection({ saveId, buildings, companions, professionRec
   const companionesReino = companions.filter((c) => c.rolReino)
 
   if (edificiosDeReino.length === 0) {
+    // P340: con edificios dañados no es que falten: hay que repararlos.
+    const danados = buildings.filter((b) => b.status === 'DANADO').length
+    if (danados > 0) {
+      return (
+        <PanelEmptyState
+          icon="🛠️"
+          title={danados === 1 ? 'Tu edificio está dañado' : `Tus ${danados} edificios están dañados`}
+          hint="Un edificio dañado no produce: repáralo con «Reparar» en Reino › Edificios."
+        />
+      )
+    }
     return (
       <PanelEmptyState
         icon="⚙️"

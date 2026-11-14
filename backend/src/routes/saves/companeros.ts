@@ -35,7 +35,7 @@ import { bonoSocialDeEtiquetas, etiquetasActivas, INT_NO_SE_RINDE_A_CARNICERO } 
 import { valoresIniciales } from '../../services/cronista/aprobacion.js';
 import { preguntarCompanero } from '../../services/cronista/companeroTierra.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
-import { depositarEnAlmacen } from '../../services/cronista/almacenDeposito.js';
+import { depositarEnAlmacen, depositarTodoEnAlmacen } from '../../services/cronista/almacenDeposito.js';
 
 /// Grupo 3 § Compañeros y supervivencia (2026-08-25, diseño completo en
 /// docs/rpgtarkor/sistemas-reino/companeros-y-supervivencia.md) — captura+tameo/persuasión, equipo de
@@ -714,6 +714,17 @@ export async function companerosRoutes(app: FastifyInstance) {
     const r = await depositarEnAlmacen(prisma, request.params.id, request.params.itemId);
     if (!r.ok) return reply.status(r.status).send({ error: r.error });
     return { ok: true, autoEquipados: r.autoEquipados, ...(r.comidaSumada !== undefined ? { comidaSumada: r.comidaSumada } : {}) };
+  });
+
+  /// P428: depositar de una vez todo lo suelto de la mochila (una sola petición).
+  app.post<{ Params: { id: string } }>('/saves/:id/almacen/depositar-todo', async (request, reply) => {
+    const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: { endedAt: true, pendingDeathResolution: true } });
+    if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
+    if (rejectIfEnded(save, reply)) return;
+    if (rejectIfPendingDeath(save, reply)) return;
+    const r = await depositarTodoEnAlmacen(prisma, request.params.id);
+    if ('ok' in r) return reply.status(r.status).send({ error: r.error });
+    return { ok: true, ...r };
   });
 
   /// Retirar un objeto del Almacén de vuelta a la mochila personal, sin equiparlo.

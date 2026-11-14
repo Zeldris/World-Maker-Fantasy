@@ -185,7 +185,6 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
   const elegirPestana = (id: 'zona' | 'mapa') => {
     if (id === mapaTab) return
     setMapaTab(id)
-    pestanasRef.current?.scrollIntoView?.({ block: 'nearest' })
     haCambiadoPestana.current = true
   }
   // P169 (reabierto): el scroll de arriba se hacía antes de pintar la pestaña nueva, y con la ficha de
@@ -194,7 +193,27 @@ export function MapaPanel({ worldSlug, saveId, currentLocation, destinations, in
   useEffect(() => {
     if (!haCambiadoPestana.current) return
     haCambiadoPestana.current = false
-    pestanasRef.current?.scrollIntoView?.({ block: 'start' })
+    // P169 (3.ª vez): scrollIntoView dejaba el panel en el padding/offset de las pestañas y el contenido que
+    // carga después (mapa, ficha) lo volvía a mover. Se pone a 0 el scroll del contenedor propio (el
+    // ancestro con overflow, el cuerpo del cajón) ya y tras pintar, sin mover ningún otro ancestro.
+    const subir = () => {
+      let el = pestanasRef.current?.parentElement ?? null
+      while (el) {
+        const oy = getComputedStyle(el).overflowY
+        if (oy === 'auto' || oy === 'scroll' || el.scrollHeight > el.clientHeight + 1) {
+          el.scrollTop = 0
+          return
+        }
+        el = el.parentElement
+      }
+    }
+    subir()
+    const id = requestAnimationFrame(subir)
+    const t = window.setTimeout(subir, 250)
+    return () => {
+      cancelAnimationFrame(id)
+      window.clearTimeout(t)
+    }
   }, [mapaTab])
   // CR-46: expediciones visibles, al abrir el mapa de Berig (best-effort: sin ellas el mapa sigue igual).
   const [expediciones, setExpediciones] = useState<ExpedicionEnMapa[]>([])

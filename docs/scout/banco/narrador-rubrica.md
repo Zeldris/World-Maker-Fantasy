@@ -1,6 +1,6 @@
 # Rúbrica · narrador
 
-Para el juez del banco de `scout-updates`. Gana la narración que cumpla mejor, en este orden:
+Para el juez del banco de `gw-scout-updates`. Gana la narración que cumpla mejor, en este orden:
 
 1. **Fidelidad a la acción**: narra lo que la jugadora intentó y su resultado, sin decidir por ella.
 2. **Coherencia**: respeta lo ya contado, el lugar, la hora y quién está presente; no inventa PNJ ni objetos.

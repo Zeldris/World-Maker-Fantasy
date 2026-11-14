@@ -22,8 +22,8 @@ class BaseMatriz(unittest.TestCase):
         shutil.copy(os.path.join(QA, 'matriz-pruebas.py'), os.path.join(self.raiz, 'tools/qa'))
         escribir(os.path.join(self.raiz, 'tools/roadmap/cobertura.py'), COBERTURA)
         escribir(os.path.join(self.raiz, 'docs/producto/r.md'), ROADMAP)
-        os.makedirs(os.path.join(self.raiz, 'docs/registros'))
-        self.matriz = os.path.join(self.raiz, 'docs/registros/matriz-pruebas.md')
+        os.makedirs(os.path.join(self.raiz, 'docs/records'))
+        self.matriz = os.path.join(self.raiz, 'docs/records/matriz-pruebas.md')
 
     def correr(self, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(['python3', os.path.join(self.raiz, 'tools/qa/matriz-pruebas.py'), *args],
@@ -80,7 +80,7 @@ class EscenariosDelPlan(BaseMatriz):
             escribir(os.path.join(self.raiz, f'tools/qa/escenarios/{n}.dump'), 'x')
 
     def plan(self, filas: str, cabeza: str = '| Tanda | Sistema | Escenario | Estado |\n|---|---|---|---|\n', nombre='a') -> None:
-        escribir(os.path.join(self.raiz, f'docs/registros/plan-comprobacion-{nombre}.md'), '# Plan\n\n' + cabeza + filas)
+        escribir(os.path.join(self.raiz, f'docs/records/plan-comprobacion-{nombre}.md'), '# Plan\n\n' + cabeza + filas)
 
     def falla_con(self, *nombres: str) -> None:
         r = self.correr('--comprobar')

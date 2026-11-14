@@ -6,7 +6,7 @@ estado; el detalle de cada tarea está en su roadmap.
 
 **Forma de trabajo** (la del `0.2`, decisión de la usuaria del 2026-10-02): implementación continua.
 Cada tarea lleva sus tests y se sube con `tsc` + `vitest` + `oxlint` en verde. Sin pasadas de juego
-por tarea; las pruebas de juego van en la fase única antes de la beta (fila `0.8`). Al cerrar una
+por tarea; las pruebas de juego van en la fase única antes de la beta (fila `0.7`). Al cerrar una
 tarea: tachada aquí y en su roadmap con `✅ fecha` y lo que quede, bitácora al día, commit + push.
 Cada fase con diseño abierto empieza con su ronda de preguntas (`grilling` + `domain-modeling`,
 contrastada con D&D, BG3, X4, Bellwright y Medieval Dynasty).
@@ -259,7 +259,7 @@ mecánica; reporte de combate autónomo).
   intercepción de expediciones pasa a este motor.
 - **Tamaño de los sub-combates** (criterio de Claude, delegado por la usuaria): sin la jugadora, **8
   contra 8** (sin narración no hay espera y la melé es más realista); con ella, **4 contra 4** (sus
-  grupos de combate y la narración). Dos constantes; `CMB-9` (`0.8`) subirá el 4 a 6-8 cuando se
+  grupos de combate y la narración). Dos constantes; `CMB-9` (`0.7`) subirá el 4 a 6-8 cuando se
   pulan los tiempos de narración (la usuaria: el 4 nace de esos tiempos).
 - **Q2 Los otros grupos de la jugadora:** si pelea contra más de los que caben, su Grupo 1 juega en
   vivo y sus grupos 2, 3… luchan de fondo contra el resto; al acabar, un resumen de cada sub-combate

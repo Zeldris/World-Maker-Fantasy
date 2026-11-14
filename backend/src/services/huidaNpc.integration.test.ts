@@ -49,6 +49,15 @@ describe('CR-44 (44b) — moral del NPC en el combate 1v1', () => {
     expect(r!.moral!.modo).toBe('desventaja'); // grave contra una jugadora ilesa: va claramente perdiendo
   });
 
+  it('P443: a un rival que aún no conoce, la huida lo nombra como lo ve, no por su nombre real', async () => {
+    const oculto = { ...guerrero, nombreVisible: 'Orco desconocido' };
+    const huye = await decidirMoralTrasIntercambio(prisma, { ...base(), npc: oculto, random: d20(1, 1, 20) });
+    expect(huye!.texto).toBe('El orco desconocido pierde el valor y escapa del combate.');
+    expect(huye!.pista).not.toContain(guerrero.name);
+    const queda = await decidirMoralTrasIntercambio(prisma, { ...base(), npc: oculto, random: d20(1, 1, 1) });
+    expect(queda!.texto).toBe('El orco desconocido intenta huir, pero no lo consigue y queda al descubierto.');
+  });
+
   it('si falla la moral y no escapa, pierde su próximo golpe; si aguanta, sigue', async () => {
     expect(await decidirMoralTrasIntercambio(prisma, { ...base(), npc: guerrero, random: d20(1, 1, 1) })).toMatchObject({ huye: false, pierdeTurno: true });
     expect(await decidirMoralTrasIntercambio(prisma, { ...base(), npc: guerrero, random: d20(20, 20) })).toMatchObject({ huye: false, pierdeTurno: false });

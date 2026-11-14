@@ -161,7 +161,7 @@ export const ANTIDOTE_RECIPE: CraftingRecipe = {
 // Ampliación de lore 2026-08-21 — primer oficio nuevo desde el rediseño de profesiones
 // (2026-08-07): cocinero-orcos-llanuras. Su NPC-profesor (Maestro Cocinero Serhu, ver
 // docs/rpgtarkor/lore-mundo/areas.md § Campamento del Clan Serhu) todavía no tiene forma de enseñarlo de
-// verdad (mecanismo "aprender oficio de un NPC" sin construir, ver docs/registros/ampliar-lore-checklist.md)
+// verdad (mecanismo "aprender oficio de un NPC" sin construir, ver docs/records/ampliar-lore-checklist.md)
 // — igual que 'alquimista-orcos-llanuras', esta receta ya existe aunque el oficio en sí no esté
 // en el kit inicial de nadie todavía.
 export const BOUNGO_ROAST_RECIPE: CraftingRecipe = {

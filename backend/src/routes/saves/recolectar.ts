@@ -988,7 +988,7 @@ export async function resolverRecoleccion(
           // Pila ya existente de una recolección anterior (nunca una fila equipada — un objeto
           // RECURSO nunca se equipa, pero el filtro deja la intención explícita).
           const existingRow = await tx.inventoryItem.findFirst({
-            where: { saveId: save.id, catalogSlug: catalogItem.slug, slot: null },
+            where: { saveId: save.id, catalogSlug: catalogItem.slug, slot: null, companionId: null, subjectId: null },
           });
           if (existingRow) {
             touched.set(catalogItem.slug, {

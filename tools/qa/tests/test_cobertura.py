@@ -7,7 +7,7 @@ import unittest
 from comun import RAIZ, carpeta, escribir
 
 ROADMAPS = ['roadmap-front.md', 'roadmap-front-ux.md', 'roadmap-front-zona.md', 'roadmap-front-reino.md',
-            'roadmap-cronista.md', 'roadmap-imagenes.md', 'roadmap-voces.md']
+            'roadmap-cronista.md', 'roadmap-imagenes.md', 'roadmap-voces.md', 'roadmap-idiomas.md']
 MAPA = '''# Roadmap
 
 Mapa: `QA-2` sigue abierta. ''' + 'x' * 300 + '''

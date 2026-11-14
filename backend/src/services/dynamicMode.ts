@@ -151,27 +151,36 @@ export function nombreOcultoPorRaza(raza: string | null | undefined, genero: str
 /// descubrir va por su raza («Orco desconocido»), en todos los sitios que lo nombran: el mapa, la
 /// colisión, la oferta del turno y lo que cuenta. Un rol o especie no es spoiler: su nombre de catálogo.
 export async function nombreVisibleDeNpc(
-  db: Pick<PrismaClient, 'discoveredEntity'>,
+  db: DbNombres,
   saveId: string,
   npc: { slug: string; name: string; kind: string; raza?: string | null; genero?: string | null },
 ): Promise<{ nombre: string; oculto: boolean }> {
   if (npc.kind !== 'PRINCIPAL') return { nombre: npc.name, oculto: false };
-  const visto = await db.discoveredEntity.findFirst({ where: { saveId, entityType: 'npc', entitySlug: npc.slug }, select: { id: true } });
+  const visto = (await slugsConocidos(db, saveId, [npc.slug])).has(npc.slug);
   return visto ? { nombre: npc.name, oculto: false } : { nombre: nombreOcultoPorRaza(npc.raza, npc.genero), oculto: true };
+}
+
+type DbNombres = Pick<PrismaClient, 'discoveredEntity' | 'companion'>;
+
+/// P358: de estos slugs, los que la jugadora conoce por su nombre: los descubiertos y los que la acompañan (un
+/// compañero se nombra siempre por su nombre, como en el panel Compañeros, aunque nunca se le «descubriera»).
+export async function slugsConocidos(db: DbNombres, saveId: string, slugs: string[]): Promise<Set<string>> {
+  if (slugs.length === 0) return new Set();
+  const [vistos, companeros] = await Promise.all([
+    db.discoveredEntity.findMany({ where: { saveId, entityType: 'npc', entitySlug: { in: slugs } }, select: { entitySlug: true } }),
+    db.companion.findMany({ where: { saveId, sourceSlug: { in: slugs } }, select: { sourceSlug: true } }),
+  ]);
+  return new Set([...vistos.map((v) => v.entitySlug), ...companeros.map((c) => c.sourceSlug)].filter((s): s is string => s != null));
 }
 
 /// Fase 1 hacia main: lo mismo que `nombreVisibleDeNpc` para varios NPC con una sola consulta (combate, ficha
 /// de la partida), en vez de una por rival. Devuelve el nombre visible por slug.
 export async function nombresVisiblesDeNpcs(
-  db: Pick<PrismaClient, 'discoveredEntity'>,
+  db: DbNombres,
   saveId: string,
   npcs: { slug: string; name: string; kind: string; raza?: string | null; genero?: string | null }[],
 ): Promise<Map<string, string>> {
-  const principales = npcs.filter((n) => n.kind === 'PRINCIPAL').map((n) => n.slug);
-  const vistos = principales.length
-    ? await db.discoveredEntity.findMany({ where: { saveId, entityType: 'npc', entitySlug: { in: principales } }, select: { entitySlug: true } })
-    : [];
-  const conocidos = new Set(vistos.map((v) => v.entitySlug));
+  const conocidos = await slugsConocidos(db, saveId, npcs.filter((n) => n.kind === 'PRINCIPAL').map((n) => n.slug));
   return new Map(npcs.map((n) => [n.slug, n.kind !== 'PRINCIPAL' || conocidos.has(n.slug) ? n.name : nombreOcultoPorRaza(n.raza, n.genero)]));
 }
 

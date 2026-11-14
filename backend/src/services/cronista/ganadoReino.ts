@@ -143,19 +143,25 @@ export async function huecoDeForraje(tx: Tx, saveId: string): Promise<number> {
 }
 
 /// Entrega todos los pastos de un tipo que lleva el personaje: 2 de forraje cada uno, hasta el tope.
-export async function entregarPastos(tx: Tx, saveId: string, catalogSlug: string): Promise<{ ok: true; entregados: number; forraje: number } | { ok: false; motivo: string }> {
+export async function entregarPastos(tx: Tx, saveId: string, catalogSlug: string): Promise<{ ok: true; entregados: number; forraje: number; aviso: string } | { ok: false; motivo: string }> {
   if (!PASTOS.has(catalogSlug)) return { ok: false, motivo: 'Eso no sirve de forraje.' };
   const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: ownerKeyFor({ saveId }) }, select: { forraje: true } });
   if (!stats) return { ok: false, motivo: 'Aún no has fundado tu Reino.' };
   const hueco = await huecoDeForraje(tx, saveId);
   const caben = Math.floor(hueco / FORRAJE_POR_PASTO);
-  if (caben <= 0) return { ok: false, motivo: 'El Granero está lleno.' };
-  const pastos = await tx.inventoryItem.findMany({ where: { saveId, catalogSlug, slot: null }, select: { id: true }, take: caben });
+  // P336: el forraje comparte el hueco del Granero con la comida; cada pasto pide FORRAJE_POR_PASTO de hueco.
+  if (caben <= 0) return { ok: false, motivo: `El Granero no tiene hueco: el forraje comparte el espacio con la comida y cada pasto pide ${FORRAJE_POR_PASTO} (queda ${hueco}).` };
+  // Solo lo que lleva la jugadora (como el Almacén): ni lo de compañeros ni lo de súbditos.
+  const llevados = await tx.inventoryItem.count({ where: { saveId, catalogSlug, slot: null, companionId: null, subjectId: null } });
+  const pastos = await tx.inventoryItem.findMany({ where: { saveId, catalogSlug, slot: null, companionId: null, subjectId: null }, select: { id: true }, take: caben });
   if (pastos.length === 0) return { ok: false, motivo: 'No llevas ese pasto.' };
   await tx.inventoryItem.deleteMany({ where: { id: { in: pastos.map((p) => p.id) } } });
   const forraje = stats.forraje + pastos.length * FORRAJE_POR_PASTO;
   await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { forraje } });
-  return { ok: true, entregados: pastos.length, forraje };
+  const quedan = llevados - pastos.length;
+  const aviso = `Entregas ${pastos.length} ${pastos.length === 1 ? 'pasto' : 'pastos'} (+${pastos.length * FORRAJE_POR_PASTO} de forraje).` +
+    (quedan > 0 ? ` Te quedan ${quedan} en la mochila: el Granero no admite más (el forraje comparte hueco con la comida).` : '');
+  return { ok: true, entregados: pastos.length, forraje, aviso };
 }
 
 /// Forraje que dan hoy las Fibrerías: 10 por trabajador asignado.
@@ -176,11 +182,27 @@ export function etapaDelAnimal(a: { especie: string; nacidoEn: number }, faunaCa
 
 // ── 55d: avance diario ───────────────────────────────────────────────────────────────────────
 
+/// Revisión C1 (leve 6): días entre dos avisos iguales de lo que se pierde por falta de hueco.
+const DIAS_ENTRE_AVISOS_DE_PERDIDA = 7;
+const PREFIJO_GRANERO_LLENO = 'El Granero está lleno (la comida y el forraje comparten su hueco): se pierden';
+const PREFIJO_ALMACEN_LLENO = 'El Almacén está lleno de materiales: se pierde';
+
+/// P336: el aviso del Reino cuando la producción del día no cabe (null si cupo todo).
+export function avisoDePerdido(p: { comida: number; materiales: Record<string, number> }): string | null {
+  const partes: string[] = [];
+  if (p.comida > 0) partes.push(`${PREFIJO_GRANERO_LLENO} ${p.comida} de comida de lo que dan los corrales.`);
+  const mats = Object.entries(p.materiales);
+  if (mats.length > 0) partes.push(`${PREFIJO_ALMACEN_LLENO} ${mats.map(([nombre, n]) => `${n} ${nombre}`).join(', ')}.`);
+  return partes.length > 0 ? partes.join(' ') : null;
+}
+
 export interface ResumenGanadoDia {
   comido: boolean;
   bebido: boolean;
   producido: Record<string, number>;
   comidaDeLeche: number;
+  /// P336: lo producido que no cupo (comida sin hueco en el Granero, materiales sin hueco en el Almacén).
+  perdido: { comida: number; materiales: Record<string, number> };
   crias: number;
   muertos: number;
 }
@@ -202,7 +224,7 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
 
   // 1. Forraje de las Fibrerías.
   let forraje = Math.min(stats.forraje + (await forrajeDeFibrerias(tx, saveId)), Math.max(stats.forraje, sum.topeComida - stats.comida));
-  const vacio: ResumenGanadoDia = { comido: true, bebido: true, producido: {}, comidaDeLeche: 0, crias: 0, muertos: 0 };
+  const vacio: ResumenGanadoDia = { comido: true, bebido: true, producido: {}, comidaDeLeche: 0, perdido: { comida: 0, materiales: {} }, crias: 0, muertos: 0 };
   const animales = corrales.flatMap((c) => c.animales);
   if (animales.length === 0) {
     // P330: sin animales no hay nadie con hambre ni sed; los días sin comer o beber de los que ya murieron no se
@@ -251,6 +273,7 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
     for (const [slug, n] of Object.entries(r)) producido[slug] = (producido[slug] ?? 0) + n;
   }
   let comidaDeLeche = 0;
+  const perdido: ResumenGanadoDia['perdido'] = { comida: 0, materiales: {} };
   const slugs = Object.keys(producido);
   if (slugs.length > 0) {
     const catalogo = await tx.itemCatalog.findMany({ where: { worldId, slug: { in: slugs } }, select: { slug: true, name: true, description: true, category: true, curaHambre: true } });
@@ -264,10 +287,13 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
       }
       const cabe = Math.min(n, hueco);
       hueco -= cabe;
+      if (n > cabe) perdido.materiales[it.name] = n - cabe;
       if (cabe > 0) await tx.almacenItem.createMany({ data: Array.from({ length: cabe }, () => ({ saveId, name: it.name, description: it.description, catalogSlug: it.slug })) });
     }
     // El Granero se comparte con el forraje (Q7).
+    const antes = comida;
     comida = Math.max(comida, Math.min(sum.topeComida - forraje, comida + comidaDeLeche));
+    perdido.comida = Math.max(0, comidaDeLeche - (comida - antes));
   }
 
   // 4. Muertes: de hambre (solo los de la dieta que no ha comido, primero las crías), de sed (todos) y
@@ -297,7 +323,17 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
   }
 
   await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { forraje, comida, bebida, ganadoDiasSinComer: diasSinComer, ganadoDiasSinBeber: diasSinBeber } });
-  return { comido, bebido, producido, comidaDeLeche, crias, muertos: muertos.size };
+  // P336: lo que no cupo no se pierde en silencio. Revisión C1 (leve 6): con el Granero (o el Almacén) lleno días seguidos,
+  // un aviso por semana, no uno al día (un avance de N días dejaba N líneas iguales).
+  const desde = ahora - DIAS_ENTRE_AVISOS_DE_PERDIDA * 1440;
+  const yaAvisado = async (prefijo: string) =>
+    (await tx.logEntry.count({ where: { saveId, channel: 'KINGDOM', fictionalMinutes: { gt: desde, lte: ahora }, text: { contains: prefijo } } })) > 0;
+  const aviso = avisoDePerdido({
+    comida: perdido.comida > 0 && (await yaAvisado(PREFIJO_GRANERO_LLENO)) ? 0 : perdido.comida,
+    materiales: Object.keys(perdido.materiales).length > 0 && (await yaAvisado(PREFIJO_ALMACEN_LLENO)) ? {} : perdido.materiales,
+  });
+  if (aviso) await avisarEnReino(tx, saveId, aviso, ahora);
+  return { comido, bebido, producido, comidaDeLeche, perdido, crias, muertos: muertos.size };
 }
 
 // ── 55e: sacrificar ──────────────────────────────────────────────────────────────────────────
@@ -306,27 +342,45 @@ export async function avanzarGanadoReino(tx: Tx, saveId: string, dia: number, ah
 /// Lo comestible va a la comida del Reino por su valor (Q15); lo demás, al Almacén hasta su tope. Sin
 /// Desolladero en el Reino, la piel, el hueso y el resto salen a la mitad.
 export async function sacrificar(tx: Tx, saveId: string, ganadoId: string, ahora: number): Promise<
-  { ok: true; comida: number; almacen: Record<string, number>; perdido: number } | { ok: false; motivo: string }
+  { ok: true; comida: number; comidaPerdida: number; almacen: Record<string, number>; perdido: number; aviso: string } | { ok: false; motivo: string }
 > {
   const animal = await tx.ganado.findFirst({ where: { id: ganadoId, saveId } });
   if (!animal) return { ok: false, motivo: 'Ese animal no está en tus corrales.' };
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  const especie = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: animal.especie }, select: { faunaCategoria: true } });
+  const especie = await tx.npc.findFirst({ where: { worldId, saveId: null, slug: animal.especie }, select: { faunaCategoria: true, name: true } });
   const { etapa } = etapaDelAnimal(animal, especie?.faunaCategoria ?? null, ahora);
   const factor = factorSacrificio(etapa);
   if (factor === 0) return { ok: false, motivo: 'Es una cría: todavía no da nada.' };
 
   await tx.ganado.delete({ where: { id: animal.id } });
-  return { ok: true, ...(await aprovecharAnimal(tx, saveId, worldId, animal.especie, factor)) };
+  const dado = await aprovecharAnimal(tx, saveId, worldId, animal.especie, factor);
+  // P335: lo que se obtiene, dicho (y en el diario del Reino).
+  const nombres = new Map((await tx.itemCatalog.findMany({ where: { worldId, slug: { in: Object.keys(dado.almacen) } }, select: { slug: true, name: true } })).map((i) => [i.slug, i.name]));
+  const aviso = avisoDeSacrificio(especie?.name ?? animal.especie, dado, nombres);
+  await avisarEnReino(tx, saveId, aviso, ahora);
+  return { ok: true, ...dado, aviso };
+}
+
+/// P335: «Sacrificas Múrgol: +3 de comida, 2 Hueso ligero al Almacén…».
+export function avisoDeSacrificio(especieNombre: string, dado: { comida: number; comidaPerdida: number; almacen: Record<string, number>; perdido: number }, nombres: Map<string, string>): string {
+  const partes: string[] = [];
+  if (dado.comida > 0) partes.push(`+${dado.comida} de comida`);
+  for (const [slug, n] of Object.entries(dado.almacen)) partes.push(`${n} ${nombres.get(slug) ?? slug} al Almacén`);
+  let t = `Sacrificas un animal (${especieNombre}): ${partes.length > 0 ? partes.join(', ') : 'no da nada'}.`;
+  if (dado.perdido > 0) t += ` Se pierden ${dado.perdido} por falta de hueco en el Almacén.`;
+  if (dado.comidaPerdida > 0) t += ` Se pierden ${dado.comidaPerdida} de comida: el Granero está lleno.`;
+  return t;
 }
 
 /// Lo que da un animal muerto (sacrificado o una pieza de caza desollada, CR-63): lo comestible va a
 /// la comida del Reino (hasta el Granero); lo demás al Almacén hasta su tope. Sin Desolladero, lo no
 /// comestible sale a la mitad.
-export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, especie: string, factor = 1): Promise<{ comida: number; almacen: Record<string, number>; perdido: number }> {
+export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, especie: string, factor = 1): Promise<{ comida: number; comidaPerdida: number; almacen: Record<string, number>; perdido: number }> {
   const conDesolladero = (await tx.building.count({ where: { saveId, recipeKey: 'desolladero', status: 'ACTIVO' } })) > 0;
   const rendimientos = await tx.harvestYield.findMany({ where: { worldId, sourceSlug: especie }, select: { cantidad: true, item: { select: { slug: true, name: true, description: true, category: true, curaHambre: true } } } });
   let comida = 0;
+  let comidaEntra = 0;
+  let reino = false;
   const almacen: Record<string, number> = {};
   let perdido = 0;
   let hueco = await huecoDeMateriales(tx, saveId);
@@ -350,12 +404,17 @@ export async function aprovecharAnimal(tx: Tx, saveId: string, worldId: string, 
     const owner = ownerKeyFor({ saveId });
     const stats = await tx.kingdomStats.findUnique({ where: { ownerKey: owner }, select: { comida: true, forraje: true } });
     if (stats) {
+      reino = true;
       // El Granero se comparte con el forraje (Q7).
       const { topeComida } = await suministrosDelReino(tx, saveId);
-      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: Math.max(stats.comida, Math.min(topeComida - stats.forraje, stats.comida + comida)) } });
+      const nueva = Math.max(stats.comida, Math.min(topeComida - stats.forraje, stats.comida + comida));
+      await tx.kingdomStats.update({ where: { ownerKey: owner }, data: { comida: nueva } });
+      comidaEntra = nueva - stats.comida;
     }
   }
-  return { comida, almacen, perdido };
+  // `comida` es lo que entra de verdad; `comidaPerdida`, lo que el Granero no admitió. Sin Reino (sin KingdomStats) no hay
+  // Granero que se llene: no se avisa de «Granero lleno» (revisión).
+  return { comida: comidaEntra, comidaPerdida: reino ? comida - comidaEntra : 0, almacen, perdido };
 }
 
 // ── CR-56 (56b): la Domadora saca animales del corral ────────────────────────────────────────

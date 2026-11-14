@@ -7,7 +7,7 @@ InkOS) sirve también para el generador de lore? Solo análisis, sin código.
 «Propuestas sin revisar». Lo del agente de OpenCode va a Álvaro, que es quien usa esa herramienta.
 
 Fuentes: [RAG y RLM](investigacion-2026-10-30-rag-rlm.md),
-[Claude-Code-Game-Studios](../registros/investigacion-2026-10-30-claude-code-game-studios.md),
+[Claude-Code-Game-Studios](../records/investigacion-2026-10-30-claude-code-game-studios.md),
 [InkOS](investigacion-2026-10-30-inkos.md).
 
 ## Dos generadores distintos

@@ -5,7 +5,7 @@
 (2026-09-03) confirmó que casi todo su contenido ya está cerrado — en particular la tanda del
 2026-08-30 (línea ~3622 de este archivo), que estaba 15 de 16 hallazgos resueltos sin que el
 documento lo reflejara hasta esa auditoría. El registro activo a partir de aquí es
-[../revisar-partida-hallazgos.md](../registros/revisar-partida-hallazgos.md), que arranca limpio — nuevas
+[../revisar-partida-hallazgos.md](../records/revisar-partida-hallazgos.md), que arranca limpio — nuevas
 entradas de sesiones de juego futuras van ahí, no aquí. Se conserva sin tocar por valor de
 historial (causas raíz ya diagnosticadas, decisiones de diseño con su contexto completo) — antes de
 reportar algo como "nuevo", sigue mereciendo la pena mirar aquí si ya se vio, pero comprobar
@@ -161,7 +161,7 @@ Cada entrada: fecha, qué se detectó (cita textual si es narración), causa ra�
 - [FASE 3 (vocabulario/prosa): "lullaby", 3ª vez confirmada de la familia "palabra en inglés colada"](#2026-08-28-fase-3-vocabularioprosa--lullaby-3ª-vez-confirmada-de-la-familia-palabra-en-inglés-colada-en-narración-española)
 - [FASE 3 (vocabulario/prosa): el texto de la acción del jugador se filtra casi literal en la narración](#2026-08-28-fase-3-vocabularioprosa--el-texto-de-la-acción-del-jugador-se-filtra-casi-literal-en-la-narración-con-comillas-y-mayúsculas-de-énfasis-incluidas)
 - [FASE 4 (lore): "orcos del Clan Maktor" como amenaza externa — contradice que es el propio clan aniquilado de Gorhorn](#2026-08-28-fase-4-lore--orcos-del-clan-maktor-como-amenaza-externa--contradice-que-el-clan-maktor-es-el-propio-clan-aniquilado-de-gorhorn)
-- [hallazgos de diseño/mecánica encontrados jugando en vivo — ver checklist-pruebas-juego.md](#2026-08-28--hallazgos-de-diseñomecánica-encontrados-jugando-en-vivo-no-de-este-análisis-de-cierre-ya-registrados-en-docsregistroschecklist-pruebas-juegomd)
+- [hallazgos de diseño/mecánica encontrados jugando en vivo — ver checklist-pruebas-juego.md](#2026-08-28--hallazgos-de-diseñomecánica-encontrados-jugando-en-vivo-no-de-este-análisis-de-cierre-ya-registrados-en-docsrecordschecklist-pruebas-juegomd)
 
 ---
 
@@ -3512,7 +3512,7 @@ correctamente en el header de la UI ("1/4"). Sin hallazgos.
 
 Partida real de Gorhorn (`cmta6mev00001ri7qcfqrspc1`, nivel 3, `CONVALECIENTE`, La Hondonada del
 Eco), usada toda la sesión como partida de pruebas manuales del checklist vivo (ver
-`docs/registros/checklist-pruebas-juego.md`). Al cerrar la sesión de pruebas, análisis completo en 5 fases
+`docs/records/checklist-pruebas-juego.md`). Al cerrar la sesión de pruebas, análisis completo en 5 fases
 sobre las 129 entradas del log vía `auditSave.ts` — varios de los bugs de mecánica ya se habían
 encontrado y corregido EN VIVO durante la propia sesión de pruebas (ver el checklist para el detalle
 técnico completo de cada fix); aquí se registran formalmente y se añaden los hallazgos de
@@ -3618,7 +3618,7 @@ del modelo al intentar nombrar a la facción enemiga real de fondo.
 hallazgos de lore inventado (el LLM rellena con un nombre que "suena" del mundo cuando no tiene
 anclaje real suficiente en el contexto de ese turno concreto).
 
-### 2026-08-28 — hallazgos de diseño/mecánica encontrados jugando en vivo (no de este análisis de cierre), ya registrados en `docs/registros/checklist-pruebas-juego.md`
+### 2026-08-28 — hallazgos de diseño/mecánica encontrados jugando en vivo (no de este análisis de cierre), ya registrados en `docs/records/checklist-pruebas-juego.md`
 
 Para no duplicar contenido: la sesión de pruebas de hoy encontró y (en su mayoría) corrigió varios
 bugs reales de mecánica jugando en vivo, todos con su detalle técnico completo ya en el checklist —

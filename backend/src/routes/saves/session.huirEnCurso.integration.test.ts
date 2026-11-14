@@ -79,6 +79,19 @@ describe('/combat/huir-en-curso', () => {
     expect(saveAfter.condicionFisica).toBe('ILESO');
   });
 
+  it('P364: herido, la tirada de huida resta las heridas a Destreza y lo muestra (malus y valorEfectivo)', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { condicionFisica: 'HERIDO' } });
+    vi.spyOn(Math, 'random').mockReturnValue(0.5); // d20 = 11
+    const app = await buildApp();
+
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/huir-en-curso` });
+
+    expect(res.statusCode).toBe(200);
+    const roll = res.json().logEntry.roll;
+    // Destreza 18 − 2 (HERIDO) = 16 → bono 8; sin el arreglo sería 18 → bono 9.
+    expect(roll).toMatchObject({ value: 18, malus: 2, valorEfectivo: 16, roll: 11, result: 11 + 8 });
+  });
+
   it('roll fallido: no escapa, recibe un golpe directo (condicionFisica empeora un paso), combate sigue activo', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.01); // d20 bajo, fallo garantizado
     const app = await buildApp();

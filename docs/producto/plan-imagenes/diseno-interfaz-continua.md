@@ -440,7 +440,7 @@ vale para los dos porque todo lo que la pantalla necesita sale de `/api/*` de `s
    pauta que no toca su tipo, ni por una 🔬. Entra también en `rehacer` el intento con `origenes.colores` o
    `origenes.proporcion` en `texto` cuando al elemento le llega una referencia (F10).
 3. **Avisos de `prompt_ficha.py`**: una pauta de prompt (P2-P5, las F que se pueden comprobar en el texto) entra
-   como aviso con el mismo id y un test que falla sin la pauta (`rojo-sin-arreglo.sh`). La interfaz enseña los
+   como aviso con el mismo id y un test que falla sin la pauta (`red-without-fix.sh`). La interfaz enseña los
    avisos con el id y el enlace a la pauta; «Aceptar avisos» queda registrado con la versión. Los que trae la r15,
    todos comprobables en el texto: **F7** un rasgo con «like a/an <animal>» o «<animal>-like» fuera del bloque
    Sujeto; **F8** un material con «like the shell/armor/… of» o un nombre de objeto; **F9** un numeral (cifra o

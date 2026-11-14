@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Retro del 2026-11-02 (R1): comprueba cada pieza de `docs/difusion` con `comprobar.py` de gw-media-content.
+"""Retro del 2026-11-02 (R1): comprueba cada pieza de `docs/media` con `check.py` de gw-media-content.
 
-Desde v0.4.3, `comprobar.py` pide las piezas como argumento; esta orden las busca (`<dir>/AAAA-MM-DD/NN-<tema>`) y
-le pasa los prefijos de tarea (los de `taskId` de `.claude/gw.json`, más IMG, INS y P) y `--formato-propio web`. Las
+Desde v0.5.0, `check.py` pide las piezas como argumento; esta orden las busca (`<dir>/AAAA-MM-DD/NN-<tema>`) y
+le pasa los prefijos de tarea (los de `taskId` de `.claude/gw.json`, más IMG, INS y P) y `--web-languages es,gl,en`. Las
 normas de Reddit sin pegar («Normas leídas: pendiente», sin bloque de normas) no paran el check (las pega la
 usuaria, la nube no lee reddit.com): salen como aviso. Cualquier otro error, una carpeta con otro nombre o un fallo
-del propio script sí lo paran. Filtrar el texto de `comprobar.py` es frágil: P7 de `docs/registros/propuestas-flujo.md`.
+del propio script sí lo paran. Filtrar el texto de `check.py` es frágil: P7 de `docs/records/propuestas-flujo.md`.
 
-Uso: python3 tools/qa/difusion.py [--dir docs/difusion]
+Uso: python3 tools/qa/difusion.py [--dir docs/media]
 """
 import glob
 import os
@@ -16,11 +16,11 @@ import subprocess
 import sys
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-COMPROBAR = os.path.join(RAIZ, '.claude', 'skills', 'gw-media-content', 'scripts', 'comprobar.py')
+COMPROBAR = os.path.join(RAIZ, '.claude', 'skills', 'gw-media-content', 'scripts', 'check.py')
 CONFIG = os.path.join(RAIZ, '.claude', 'gw', 'scripts', 'config.py')
 EXTRA = ['IMG', 'INS', 'P']  # prefijos de WMF que `taskId` no lista
 # Los dos errores que dependen de que la usuaria pegue las normas del subreddit.
-NORMAS = re.compile(r'«Normas leídas:» «pendiente» has no valid AAAA-MM-DD date|no rules block for r/')
+NORMAS = re.compile(r'«Rules read:» «pendiente» has no valid YYYY-MM-DD date|no rules block for r/')
 FECHA = re.compile(r'\d{4}-\d{2}-\d{2}$')
 PIEZA = re.compile(r'\d{2}-.+$')
 
@@ -34,7 +34,7 @@ def prefijos() -> str:
 
 
 def main(argv: list[str]) -> int:
-    carpeta = 'docs/difusion'
+    carpeta = 'docs/media'
     if argv[:1] == ['--dir'] and len(argv) == 2:
         carpeta = argv[1]
     elif argv:
@@ -60,17 +60,17 @@ def main(argv: list[str]) -> int:
         return 1
     if not piezas:
         return 0
-    r = subprocess.run([sys.executable, COMPROBAR, '--prefijos-tarea', prefijos(), '--formato-propio', 'web', *piezas],
+    r = subprocess.run([sys.executable, COMPROBAR, '--task-prefixes', prefijos(), '--web-languages', 'es,gl,en', *piezas],
                        capture_output=True, text=True)
     lineas = [l for l in (r.stdout + r.stderr).splitlines() if l.strip()]
     errores = [l for l in lineas if not NORMAS.search(l)]
     avisos = len(lineas) - len(errores)
     if r.returncode not in (0, 1) or (r.returncode == 1 and errores):
-        print('\n'.join(errores) or f'difusion: comprobar.py salió con {r.returncode}', file=sys.stderr)
+        print('\n'.join(errores) or f'difusion: check.py salió con {r.returncode}', file=sys.stderr)
         print('difusion: arregla la pieza y repite: python3 tools/qa/difusion.py', file=sys.stderr)
         return 1
     if avisos:
-        print(f'difusion: AVISO: {avisos} avisos de normas de Reddit sin pegar (ficha.md, «## Reddit»); las pega la usuaria',
+        print(f'difusion: AVISO: {avisos} avisos de normas de Reddit sin pegar (sheet.md, «## Reddit»); las pega la usuaria',
               file=sys.stderr)
     return 0
 

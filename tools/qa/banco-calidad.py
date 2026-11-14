@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Banco de calidad por pares para `scout-updates` (docs/scout/banco/README.md). Solo biblioteca estándar.
+"""Banco de calidad por pares para `gw-scout-updates` (docs/scout/banco/README.md). Solo biblioteca estándar.
 
 Uso:
   banco-calidad.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--url U] [--api ollama|openai]

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsearPeticionReino, posicionJuntoAlAyuntamiento, ajustarATopes, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
+import { parsearPeticionReino, posicionJuntoAlAyuntamiento, ajustarATopes, recortarResta, primerExcesoDeTope, quienLevanta } from './darReinoLib.js';
 
 describe('posición y topes (QA-143)', () => {
   it('coloca junto al Ayuntamiento sin coincidir con otro edificio', () => {
@@ -21,6 +21,8 @@ describe('posición y topes (QA-143)', () => {
     expect(ajustarATopes({ comida: 5, bebida: 5 }, { comida: 0, bebida: 0 }, t)).toEqual({ comida: 5, bebida: 5, avisos: [] });
     // ya por encima del tope: no da nada (nunca negativo)
     expect(ajustarATopes({ comida: 5, bebida: 0 }, { comida: 70, bebida: 0 }, t)).toMatchObject({ comida: 0 });
+    // el forraje comparte el Granero con la comida: 20 de comida + 30 de forraje en tope 60 dejan hueco 10
+    expect(ajustarATopes({ comida: 40, bebida: 0 }, { comida: 20, bebida: 0, forraje: 30 }, t)).toEqual({ comida: 10, bebida: 0, avisos: ['comida: se dan 10 de 40: tope 60 (hay 50).'] });
   });
 });
 
@@ -37,8 +39,26 @@ describe('petición de recursos del Reino (QA-143)', () => {
   it('rechaza lo que no entiende sin dar nada', () => {
     expect(parsearPeticionReino([])).toHaveProperty('error');
     expect(parsearPeticionReino(['oro=5'])).toHaveProperty('error');
-    expect(parsearPeticionReino(['comida=-3'])).toHaveProperty('error');
+    expect(parsearPeticionReino(['comida=0'])).toHaveProperty('error');
+    expect(parsearPeticionReino(['comida=1.5'])).toHaveProperty('error');
     expect(parsearPeticionReino(['almacen:cuerdas:0'])).toHaveProperty('error');
+  });
+});
+
+describe('restar recursos (QA-300)', () => {
+  it('lee valores negativos en comida, bebida, goirnos y tesoro', () => {
+    expect(parsearPeticionReino(['comida=-178', 'bebida=-2', 'goirnos=-5', 'tesoro=-7'])).toMatchObject({ comida: -178, bebida: -2, goirnos: -5, tesoro: -7 });
+  });
+  it('resta con suelo en 0 y avisa si se pide más de lo que hay', () => {
+    const t = { comida: 180, bebida: 60 };
+    expect(ajustarATopes({ comida: -2, bebida: 0 }, { comida: 180, bebida: 0 }, t)).toEqual({ comida: -2, bebida: 0, avisos: [] });
+    expect(ajustarATopes({ comida: -50, bebida: -1 }, { comida: 30, bebida: 0 }, t)).toEqual({
+      comida: -30, bebida: 0, avisos: ['comida: se quitan 30 de 50: no hay más (hay 30).', 'bebida: se quitan 0 de 1: no hay más (hay 0).'],
+    });
+    const avisos: string[] = [];
+    expect(recortarResta('tesoro', -10, 4, avisos)).toBe(-4);
+    expect(recortarResta('goirnos', -3, 9, avisos)).toBe(-3);
+    expect(avisos).toEqual(['tesoro: se quitan 4 de 10: no hay más (hay 4).']);
   });
 });
 

@@ -33,7 +33,7 @@ class Cerrar(unittest.TestCase):
         self.raiz = carpeta()
         escribir(os.path.join(self.raiz, 'docs', 'producto', 'roadmap-front.md'), ROADMAP)
         escribir(os.path.join(self.raiz, 'docs', 'producto', '21-roadmap.md'), MAPA)
-        escribir(os.path.join(self.raiz, 'docs', 'registros', 'traspaso.md'), BITACORA)
+        escribir(os.path.join(self.raiz, 'docs', 'records', 'traspaso.md'), BITACORA)
 
     def cerrar(self, *args):
         return subprocess.run(['python3', CERRAR, *args, '--fecha', '2026-10-20'], capture_output=True, text=True,
@@ -51,7 +51,7 @@ class Cerrar(unittest.TestCase):
         self.assertIn('- **QA-4 · Otra**: queda abierta.', roadmap)
         mapa = self.doc('producto', '21-roadmap.md')
         self.assertIn('~~`QA-1`~~ · ~~`QA-2`…`QA-3`~~ · ~~`QA-3`~~ · `QA-4`', mapa)
-        hechos = self.doc('registros', 'traspaso.md').split('## Hecho recientemente\n\n')[1].split('\n\n')[0].split('\n')
+        hechos = self.doc('records', 'traspaso.md').split('## Hecho recientemente\n\n')[1].split('\n\n')[0].split('\n')
         self.assertEqual(hechos[0], '- **2026-10-20** — ~~`QA-1`~~, ~~`QA-2`~~ (retro): lo que se hizo.')
         self.assertEqual(len(hechos), 10)
         self.assertNotIn('X-0', hechos[-1])

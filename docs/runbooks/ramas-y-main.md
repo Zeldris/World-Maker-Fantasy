@@ -5,8 +5,8 @@ Lo general (cada sesión su rama, merge y nunca rebase, a `main` con confirmaci�
 [`AGENTS.md`](../../AGENTS.md#ramas-y-main). Aquí, los casos que solo tocan a algunas tareas.
 
 - **«Lleva a `main`» con la usuaria fuera** (usuaria, 2026-10-25, `QA-238`): se deja todo a un paso (retro escrita,
-  CI local en verde sobre la fusión con `main`, descripción en `docs/registros/pr/`) y se para antes de
-  `revisado.sh`; su decisión sobre la retro es la confirmación que lo lleva a `main`, sin más preguntas.
+  CI local en verde sobre la fusión con `main`, descripción en `docs/records/pr/`) y se para antes de
+  `reviewed.sh`; su decisión sobre la retro es la confirmación que lo lleva a `main`, sin más preguntas.
 - **Con la cuota de GitHub Actions agotada, a `main` sin PR** (usuaria, 2026-10-22, `QA-215`): las tres fases de
   [`AGENTS.md`](../../AGENTS.md#antes-de-ir-a-main-tres-fases) igual, pero en vez del PR, la nube fusiona la rama en `main` en un worktree, pasa
   `bash tools/qa/ci-local.sh <worktree>` (los tres jobs de `ci.yml`) hasta verde y sube con `git push origin HEAD:main`.

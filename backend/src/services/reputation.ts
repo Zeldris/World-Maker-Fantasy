@@ -23,11 +23,9 @@ export const FACTION_REP_PEACE_DELTA = 30;
 /// rematabas. Ahora `FACTION_REP_ATTACK_DELTA` solo se aplica cuando `nuevaCondicion === 'MUERTO'`
 /// (matar directo con LETAL, o rematar un CONVALECIENTE — ambos son la misma decisión final: quitar
 /// la vida), nunca al dejarlo solo CONVALECIENTE. Capturar/Clemente son las otras dos decisiones
-/// finales posibles desde CONVALECIENTE, cada una con su propio coste — asimétricos a propósito
-/// (petición explícita): Matar es lo más caro, Clemente lo más barato, Capturar en medio (sigue sin
-/// matarlo, pero lo priva de su libertad).
+/// finales posibles desde CONVALECIENTE: Capturar cuesta menos que Matar (lo priva de su libertad);
+/// Clemente no resta nada (usuaria, 2026-11-08, P270).
 export const FACTION_REP_CAPTURE_DELTA = -100;
-export const FACTION_REP_MERCY_DELTA = -50;
 
 /// Orden de menos a más hostil — mismo orden que el enum `Temperamento` en schema.prisma, el
 /// índice en este array es lo que desplaza `effectiveTemperamento` de abajo.

@@ -4,12 +4,14 @@
 async (page) => {
   const { x, y } = await page.evaluate(() => window.tk || {});
   if (!Number.isFinite(x) || !Number.isFinite(y)) return 'ERROR: faltan window.tk.x y window.tk.y (números: píxeles de pantalla, como los de puntos.js)';
+  let abrioMapa = false;
   // El título del mapa abierto es el único texto «Moverte por la zona» (la brújula solo lo lleva de aria-label).
   if (!(await page.getByText('Moverte por la zona').first().isVisible().catch(() => false))) {
     const brujula = page.getByRole('button', { name: 'Moverte por la zona' });
     if (!(await brujula.count())) return 'ERROR: no hay mapa de zona abierto ni botón «Moverte por la zona» (¿hay un modal, cajón o escena encima? ciérralo antes)';
     if (!(await brujula.first().isEnabled())) return 'ERROR: «Moverte por la zona» está deshabilitado (un encuentro hostil o un combate corta el paso: resuélvelo antes)';
     await brujula.first().click();
+    abrioMapa = true;
     await page.waitForTimeout(2000);
   }
   // Una tarjeta de encuentro abierta (con «Interactuar», «Ignorar»…) no deja andar hasta resolverla.
@@ -97,6 +99,8 @@ async (page) => {
   // Sin aviso y sin avance: nada ha pasado (casilla no transitable, ya estabas ahí, clic en una zona muerta del mapa).
   if (movido && !cambioPos && antes.pos && despues.pos) avisos.push('AVISO: solo cambió la hora, la posición del jugador no cambió (¿esperó en el sitio?)');
   if (!movido && !aviso) nota = 'SIN MOVIMIENTO: ni la posición ni la hora cambiaron (¿casilla no transitable, ya estabas ahí o un panel no dejó llegar el clic?)';
+  // P429: si este script abrió el mapa (la brújula) y no hubo movimiento, queda abierto: se avisa para no dejarlo tapando lo siguiente.
+  if (nota && abrioMapa) nota += '\nEl mapa de zona lo abrió este script y sigue abierto: ciérralo con «Cerrar» antes de otra herramienta (punto fuera de la zona o sin camino).';
   if (await page.getByRole('button', { name: 'Parar' }).count()) nota += (nota ? '\n' : '') + 'SIGUE ANDANDO: el personaje no ha llegado aún (ver estado.js)';
   return [
     ...(nota ? [nota] : []),

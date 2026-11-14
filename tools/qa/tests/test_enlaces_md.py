@@ -1,4 +1,4 @@
-"""QA-113: el `enlaces-md.py` de Galivelop-workflow (antes tools/qa/enlaces-md.py, QA-107; piloto 2026-10-22), sobre un
+"""QA-113: el `md-links.py` de Galivelop-workflow (antes tools/qa/enlaces-md.py, QA-107; piloto 2026-10-22), sobre un
 repo de prueba con su `gw.json`."""
 import os
 import shutil
@@ -22,7 +22,7 @@ class EnlacesMd(unittest.TestCase):
         for ruta in ('.claude/gw/scripts', '.claude/gw/schema'):
             shutil.copytree(os.path.join(RAIZ, ruta), os.path.join(repo, ruta))
         destino = os.path.join(repo, '.claude', 'gw', 'scripts')
-        return subprocess.run(['python3', os.path.join(destino, 'enlaces-md.py'), *args], cwd=repo,
+        return subprocess.run(['python3', os.path.join(destino, 'md-links.py'), *args], cwd=repo,
                               capture_output=True, text=True)
 
     def test_enlaces_y_anclas_buenos_pasan(self):
@@ -44,11 +44,11 @@ class EnlacesMd(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_descripcion_de_pr_enlaza_desde_su_carpeta(self):
-        """QA-184: el flujo no tiene la excepción de WMF para `docs/registros/pr/` (enlaces desde la raíz); las
+        """QA-184: el flujo no tiene la excepción de WMF para `docs/records/pr/` (enlaces desde la raíz); las
         descripciones enlazan como cualquier .md (fricción 14 del piloto)."""
-        r = self.comprobar('[a](../../../guia.md#cómo-se-usa)\n', archivo='docs/registros/pr/claude/rama.md')
+        r = self.comprobar('[a](../../../guia.md#cómo-se-usa)\n', archivo='docs/records/pr/claude/rama.md')
         self.assertEqual(r.returncode, 0, r.stdout)
-        r = self.comprobar('[a](docs/guia.md)\n', archivo='docs/registros/pr/claude/rama.md')
+        r = self.comprobar('[a](docs/guia.md)\n', archivo='docs/records/pr/claude/rama.md')
         self.assertIn('no such file docs/guia.md', r.stdout)
 
 

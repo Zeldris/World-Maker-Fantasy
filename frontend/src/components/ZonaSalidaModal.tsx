@@ -53,6 +53,11 @@ export function ZonaSalidaModal({ salida, onViajar, onCancel, bloqueoTurno }: Zo
           {salida.conocida && !salida.visitada ? `Lleva a ${salida.nombre} · ` : ''}{duracionDeCamino(salida.minutos)}
         </p>
       ) : null}
+      {!salida.alcanzable && (
+        <p className="text-xs text-wood-400" data-testid="salida-lejos">
+          Está lejos: al confirmar, caminarás hasta ella y viajarás al llegar.
+        </p>
+      )}
       <p className="text-xs text-wood-300">
         {salida.visitada ? (salida.description ?? 'Ya has estado aquí.') : (salida.teaser ? conPuntoFinal(salida.teaser) : 'Todavía no has explorado este lugar.')}
       </p>

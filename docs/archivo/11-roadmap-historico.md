@@ -1,7 +1,7 @@
 # Roadmap — Tarkor (auditoría, 2026-07-18)
 
 **ARCHIVADO (2026-08-13, auditoría de documentación):** este documento ya es, en su gran mayoría,
-puro historial — el detalle vivo de bugs/hallazgos vive en `docs/registros/revisar-partida-hallazgos.md`, y
+puro historial — el detalle vivo de bugs/hallazgos vive en `docs/records/revisar-partida-hallazgos.md`, y
 el diseño vigente de cada sistema vive en su propio doc numerado (05-19). Movido a `docs/archivo/`
 para que deje de leerse como "el roadmap activo" del proyecto. Se conserva sin tocar por valor de
 historial — no es fuente de verdad de nada a día de hoy.
@@ -57,7 +57,7 @@ abiertos: el benchmark de `llama3.2` (3B, punto 12), el catálogo de Profesiones
 `docs/mecanicas/09-panel-personaje.md` § 8), y las líneas explícitamente pausadas (Multijugador, lore de los
 otros 7 personajes, Reino). Todo lo demás de este documento ya está hecho — se deja tachado por
 historial, no como pendiente real. El detalle vivo de bugs encontrados jugando vive ahora en
-`docs/registros/revisar-partida-hallazgos.md`, no aquí.
+`docs/records/revisar-partida-hallazgos.md`, no aquí.
 
 **Actualización (2026-07-19): roadmap consolidado más reciente vive en memoria, no en este archivo.** Tras esta auditoría se hicieron 5 pasadas más con Fable (calibración de combate, NpcState/Salud, mecánicas de juego orientadas a "ponérselo fácil a la IA", y velocidad/latencia), fusionadas en un único orden de prioridad — ver la memoria `project-tarkor-roadmap-final` (o preguntar a Claude por "el roadmap final consolidado"). Alcance fijado ese día: **centrarse en 1h de partida jugable con exploración y combate; Reino/gobierno queda pausado.** Todo lo de abajo sigue siendo historial correcto de lo cerrado hasta el 2026-07-18.
 

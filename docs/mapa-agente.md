@@ -12,11 +12,11 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Qué no leer
 
 - `docs/archivo/`, `docs/borradores-opencode/`, `tools/playwright-e2e/historico/`: historia, no el estado actual.
-- `docs/registros/checklist-pruebas-juego.md` y los `retro-*.md`: registros cerrados; la matriz
-  (`docs/registros/matriz-pruebas.md`) dice qué falta probar.
+- `docs/records/checklist-pruebas-juego.md` y los `retro-*.md`: registros cerrados; la matriz
+  (`docs/records/matriz-pruebas.md`) dice qué falta probar.
 - `docs/rpgtarkor/`: lore; solo cuando la tarea es de lore, y nunca se edita a mano (`AGENTS.md`).
 - `b/services/turnResolution.ts` entero (7.400 líneas): busca la sección (abajo) con `grep -n`.
-- El registro `.jsonl` de la sesión: se mide con `.claude/skills/opt-tokens/scripts/medir.py`.
+- El registro `.jsonl` de la sesión: se mide con `.claude/skills/gw-opt-tokens/scripts/measure.py`.
 
 ## Comandos
 
@@ -28,7 +28,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 | Añadir contenido (objeto, NPC, fauna, flora, habilidad, ubicación) | [nuevo-elemento-catalogo.md](runbooks/nuevo-elemento-catalogo.md) y [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md) |
 | Skills y modelo de cada tarea, flujo de PR | [skills-y-modelos.md](runbooks/skills-y-modelos.md) |
 | Fusionar la rama de un subagente (merge, conflictos de hallazgos, tests del paquete) | `tools/qa/fusionar.sh <rama> "<mensaje>"` (`QA-135`) |
-| Medir la IA local de una tanda, evaluar el RAG | `/opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
+| Medir la IA local de una tanda, evaluar el RAG | `/gw-opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
 | Tests de un archivo | `cd backend && npx vitest run <ruta>` (filtra con `grep -E "Test Files\|Tests \|FAIL"`) |
 
 ## Datos que se confunden
@@ -95,7 +95,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `b/services/murosZona.ts#alcanzableDesde`). Movimiento: `b/services/zonaPosicion.ts#calcularCamino`,
   `moverJugadorA`, `quienIniciaEncuentro`; las fichas avanzan con `b/services/zonePoints.ts#avanzarZonePointsUnPaso`
   y `b/services/movementTemplates.ts#siguienteCeldaDeZonePoint`; muros con `b/services/murosZona.ts#murosDe` e
-  `interiorDe`. Qué fichas hay: `b/services/zonePoints.ts#asegurarZonePointsDePartida`, `recalcularZonePointsDeLocation`.
+  `interiorDe`; `GET /zona` manda `muros` e `interior` (`murosComoCeldas`, `interiorComoCeldas`) y `f/components/panels/ZonaPanel.tsx#sinAccesoDesdeFuera` repite la regla de `alcanzableDesde` (dos sitios, la misma regla: si cambia una, la otra). Qué fichas hay: `b/services/zonePoints.ts#asegurarZonePointsDePartida`, `recalcularZonePointsDeLocation`.
 - **Oferta (la tarjeta del encuentro):** nombre y frase en `b/services/dynamicMode.ts#decideOfertaModoDinamico`,
   `quienEnAviso`, `nombreVisibleDeNpc`, `conDefinido`, `conIndefinido`, `pluralDeEspecie` y
   `b/services/ofertaNombre.ts#nombrarOferta`. Responder:
@@ -121,7 +121,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 
 - **Código:** `b/services/combateMultipleOrquestacion.ts#iniciarCombatEncounter`, `resolverTurnoJugador`,
   `resolverTurnoAutonomo`, `resolverTurnosAutonomosHastaJugadora`, `esAtacanteDeMasPermitido` (máximo 2 atacantes
-  sobre uno), `topeDeRondaJugadora`; tiradas en `b/services/combatExchange.ts#resolveExchange`, `rollInitiative`;
+  sobre uno), `topeDeRondaJugadora`; fin del combate y tótems en `avanzarYComprobarFin`, y su línea en el diario
+  en `escribirCierreDelCombate` (P454); tiradas en `b/services/combatExchange.ts#resolveExchange`, `rollInitiative`;
   salud y muerte en `b/services/death.ts#resolveDeathOutcome`, `nextCondicionForAttack`. Rutas:
   `b/routes/saves/session.ts` (`/combat/flee`, `/combat/cerrar`, `/combat/matar/:npcSlug`), `combatGroups.ts`.
 - **Tests:** `b/services/combateMultiple*.test.ts`, `combatExchange.test.ts`, `combatePersonas*.test.ts`,
@@ -201,7 +202,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 ## Catálogo y siembra
 
 - **Código:** datos en `b/scripts/worldCatalog.ts`; siembra `b/scripts/seed-catalog.ts` con
-  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, combate, `convaleciente:<npc>:combate` en `b/services/cronista/prepararConvaleciente.ts` (el convaleciente con su tarjeta en el diario), `domable:<especie>` en `b/services/cronista/prepararDoma.ts`, `punto-retirado:<especie>` en `b/services/cronista/prepararPuntoRetirado.ts`, `sin-aliados` en `b/services/cronista/prepararSinAliados.ts` (sobre `moverCompaneroDeGrupo` de `b/services/combatGroups.ts`) y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
+  `b/scripts/plantillaZonePoint.ts#datosDePlantillaZonePoint`. Para pruebas: `b/scripts/darObjetos.ts`, `b/scripts/prepararReino.ts` (súbditos, compañero NPC, guarnición, milicia, relaciones, `combate:<npc>` en `b/services/cronista/prepararCombate.ts` (se niega con un rival muerto o convaleciente, P374), `combate1v1:<npc>` en `b/services/cronista/prepararCombate1v1.ts` (el 1v1 clásico, con el efecto `forzarCombate`), `convaleciente:<npc>:combate` en `b/services/cronista/prepararConvaleciente.ts` (el convaleciente con su tarjeta en el diario), `domable:<especie>` en `b/services/cronista/prepararDoma.ts`, `punto-retirado:<especie>` en `b/services/cronista/prepararPuntoRetirado.ts`, `fuera:<lugar>` (va antes de `combate:`; rechaza interiores) en `b/services/cronista/prepararFuera.ts`, `sexo=pareja` en `b/services/cronista/prepararPareja.ts`, `sin-guarnicion` en `b/services/cronista/prepararSinGuarnicion.ts`, `sin-aliados` en `b/services/cronista/prepararSinAliados.ts` (sobre `moverCompaneroDeGrupo` de `b/services/combatGroups.ts`) y `domador:<nivel>` en `b/services/progresionPersonaje.ts`; `escenario.sh preparar`), `b/scripts/darReino.ts` (comida, Goirnos, Almacén y edificios del Reino),
   `b/scripts/avanzarDias.ts` (los usa `tools/qa/escenario.sh`).
 - **Trampas:** añadir contenido sigue [puntos-de-codigo-nuevo-contenido.md](runbooks/puntos-de-codigo-nuevo-contenido.md).
 
@@ -223,7 +224,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   fuente. `b/services/crafting.test.ts` comprueba que cada receta está alineada con su ficha de catálogo.
 - **Interfaz:** `f/components/panels/EnciclopediaPanel.tsx`.
 - **Canon:** primero el resumen de `docs/canon-opencode/` (empieza por `00-nucleo.md`); `docs/rpgtarkor/` solo para
-  el detalle. Los hallazgos de cada auditoría van en `docs/registros/lore-hallazgos.md`.
+  el detalle. Los hallazgos de cada auditoría van en `docs/records/lore-hallazgos.md`.
 
 ## Imágenes (prompts y generación local)
 

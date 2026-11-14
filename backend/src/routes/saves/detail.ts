@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { companerosDeCombate } from '../../services/combateCompaneros.js';
 import { renombrarHabilidadesDePartida } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
@@ -13,7 +14,7 @@ import { APP_VERSION } from '../../lib/version.js';
 import { imageUrlsFor, iconoUrlFor } from '../../lib/imageAssets.js';
 import type { AttributeBlock } from '../../services/dice.js';
 import { normalizeSecondaryAttributes } from '../../services/secondaryAttributes.js';
-import { toFrontendLogEntry } from './shared.js';
+import { toFrontendLogEntry, ORDEN_LOG } from './shared.js';
 import { edificiosParaCliente } from '../../services/edificiosParaCliente.js';
 import { comidaPct, aguaPct, avisoCarenciaPersonaje, carenciaPersonaje } from '../../services/companionSupervivencia.js';
 import { parseActiveEffects } from '../../services/activeEffects.js';
@@ -64,7 +65,7 @@ export async function detailRoutes(app: FastifyInstance) {
       include: {
         world: true,
         worldState: true,
-        logEntries: { where: { fictionalMinutes: { gte: logWindowStart } }, orderBy: { createdAt: 'asc' } },
+        logEntries: { where: { fictionalMinutes: { gte: logWindowStart } }, orderBy: ORDEN_LOG },
         inventoryItems: { orderBy: { createdAt: 'asc' } },
         companions: { orderBy: { createdAt: 'asc' } },
         territories: { orderBy: { acquiredAt: 'asc' } },
@@ -160,7 +161,7 @@ export async function detailRoutes(app: FastifyInstance) {
     // seguir visibles como buildings/territories, no desaparecer del panel a las 24h de juego).
     const kingdomLogEntries = await prisma.logEntry.findMany({
       where: { saveId: save.id, channel: 'KINGDOM' },
-      orderBy: { createdAt: 'asc' },
+      orderBy: ORDEN_LOG,
     });
 
     // Tier/requisitos de equipar (sesión de diseño 2026-07-23) — viven en ItemCatalog, no en la
@@ -305,8 +306,11 @@ export async function detailRoutes(app: FastifyInstance) {
         return { participantId: p.id, npcId: p.npcId!, nombre: nombreVisiblePorSlug.get(row.slug) ?? row.name };
       }),
     );
+    const combatCompaneros = await companerosDeCombate(prisma, combatParticipantesReales);
     const combateIniciado = activeCombatEncounter
       ? {
+          // P445: los compañeros de la jugadora, como su bando en el panel.
+          companeros: combatCompaneros,
           npcs: combatEnemigosParaDisplay.map((p) => {
             const npcRow = combatNpcRowById.get(p.npcId!)!;
             const state = p.condicionFisicaGrupo === null ? combatSoloStateByNpcId.get(p.npcId!) : undefined;

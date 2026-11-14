@@ -7,12 +7,16 @@ import type { TravelResolution } from './travel.js';
 const npcFindMany = vi.fn();
 const worldPopulationFindMany = vi.fn();
 const locationFindMany = vi.fn();
+const zonePointFindMany = vi.fn();
+const companionFindMany = vi.fn();
 
 vi.mock('../lib/prisma.js', () => ({
   prisma: {
     npc: { findMany: (...args: unknown[]) => npcFindMany(...args) },
     worldPopulation: { findMany: (...args: unknown[]) => worldPopulationFindMany(...args) },
     location: { findMany: (...args: unknown[]) => locationFindMany(...args) },
+    zonePoint: { findMany: (...args: unknown[]) => zonePointFindMany(...args) },
+    companion: { findMany: (...args: unknown[]) => companionFindMany(...args) },
   },
 }));
 
@@ -101,6 +105,20 @@ describe('pickTravelInterruption', () => {
     // original (loc-d), y el viaje solo lleva el primer tramo.
     expect(result?.travel.toLocationId).toBe('loc-b');
     expect(result?.travel.segments).toHaveLength(1);
+  });
+
+  it('P254: con una partida, quien tiene su punto de mapa en otra zona no sale al paso en un nodo que no es suyo', async () => {
+    npcFindMany.mockResolvedValue([{ id: 'npc-1', slug: 'orco-fijo-otra-zona', name: 'Orco fijo', role: 'Guerrero' }]);
+    worldPopulationFindMany.mockResolvedValue([]);
+    locationFindMany.mockResolvedValue([{ id: 'loc-b', region: 'Las Llanuras del Viento Rojo' }, { id: 'loc-c', region: 'Las Llanuras del Viento Rojo' }]);
+    zonePointFindMany.mockResolvedValue([{ targetSlug: 'orco-fijo-otra-zona', locationId: 'loc-lejana' }]);
+    companionFindMany.mockResolvedValue([]);
+    const result = await pickTravelInterruption('world-1', TRAVEL, 1, ATTRS, () => 0, { saveId: 'save-1' });
+    expect(result).toBeNull();
+    // Si su punto está en el nodo del tramo, sí sale.
+    zonePointFindMany.mockResolvedValue([{ targetSlug: 'orco-fijo-otra-zona', locationId: 'loc-b' }]);
+    const aqui = await pickTravelInterruption('world-1', TRAVEL, 1, ATTRS, () => 0, { saveId: 'save-1' });
+    expect(aqui?.npcSlug).toBe('orco-fijo-otra-zona');
   });
 
   it('un candidato SIN fila de WorldPopulation (mercader, peregrino...) puede salir elegido con peso 1 por defecto', async () => {

@@ -362,7 +362,7 @@ interface ClassifyContext {
 
 /// QA-164: la narración anterior va en `worldFacts` (turnResolution.ts) pero el prompt la saca de los hechos de la escena.
 /// QA-166/QA-168: contexto del modelo pequeño en `clasificar` y en el respaldo de `narrar`, el mismo en los dos.
-const CTX_CRONISTA = 8192;
+const CTX_CRONISTA = env.ollamaNumCtxCronista;
 
 const esNarracionAnterior = (f: string) => f.startsWith('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
 const RECHAZO_REPITE = 'repetir casi verbatim el turno anterior';
@@ -500,9 +500,9 @@ Responde solo con el JSON pedido, nada más.`;
     required: ['requiereTirada', 'atributo', 'dificultad', 'razon', 'banda', 'duracionEstimadaMinutos'],
   };
 
-  // keepAlive '5m' (QA-168, /opt-ai 2026-10-20): antes '0', para no tener los dos modelos a la vez; en la
-  // Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se descarga) y clasificar
-  // baja de 6,9 a 2,8 s p50 al no recargarse cada turno. Con el `num_ctx` del respaldo (`CTX_CRONISTA`): un
+  // keepAlive `env.ollamaKeepAliveCronista` (30m, QA-308; QA-168 lo subió de '0' a '5m'): antes '0', para no tener
+  // los dos modelos a la vez; en la Deck caben (qwen 1,5b ~1 GB, quedan ≥1,8 GB libres y el narrador nunca se
+  // descarga) y clasificar baja de 6,9 a 2,8 s p50 al no recargarse cada turno. Con el `num_ctx` del respaldo (`CTX_CRONISTA`): un
   // `num_ctx` distinto obliga a Ollama a recargar el modelo, y un respaldo dejaba el siguiente clasificar en frío.
   // timeoutMs 90s: nunca ha tardado más de ~54s en pruebas reales, deja margen de sobra.
   // temperature 0 (roadmap 2026-07-20, Fable, segunda pasada): el `format` ya restringe la
@@ -518,7 +518,7 @@ Responde solo con el JSON pedido, nada más.`;
       prompt,
       format,
       numCtx: CTX_CRONISTA,
-      keepAlive: '5m',
+      keepAlive: env.ollamaKeepAliveCronista, // QA-308: 30m, igual en todas las llamadas al Cronista
       timeoutMs: 90_000,
       tarea: 'clasificar',
     });
@@ -1403,7 +1403,7 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   // pillar esta narración concreta, pero la causa de raíz era esta instrucción contradictoria
   // dentro del mismo prompt — se reescribe para hablar de VENTAJA DE POSICIÓN/INICIATIVA, nunca
   // de un golpe ya conectado ni de la reacción física del objetivo a él.
-  const hostileEngagement = !ctx.enCombate && npcSlugs.length > 0 && (detectsAttackIntent(ctx.action) || detectsHostileSearchIntent(ctx.action));
+  const hostileEngagement = !ctx.enCombate && esAperturaHostilConNpc(ctx.action, npcSlugs);
   // Ver `hasWrongAggressorName` más abajo y el comentario de `nonHostileNpcNamesInScene` en
   // TurnContext — instrucción explícita con nombres reales, no solo el guard post-hoc, para que el
   // modelo tenga la información desde el principio en vez de que la corrección llegue solo vía
@@ -1792,7 +1792,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
       timeoutMs: 90_000,
-      keepAlive: '5m',
+      keepAlive: env.ollamaKeepAliveCronista,
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
       intento: 3,
@@ -2043,28 +2043,59 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   return deterministicFallbackNarration(ctx);
 }
 
+/// Turno hostil de apertura: hay NPC en escena y la acción es un ataque o una búsqueda hostil. Criterio único
+/// de `hostileEngagement` (prompt) y del respaldo determinista (P435).
+function esAperturaHostilConNpc(action: string, npcSlugs: string[]): boolean {
+  return npcSlugs.length > 0 && (detectsAttackIntent(action) || detectsHostileSearchIntent(action));
+}
+
 export function deterministicFallbackNarration(ctx: {
   action: string;
+  npcSlugsInScene?: string[];
   roll?: RollResult;
   combatBothMissed?: boolean;
   combatRealHitLanded?: boolean;
+  nonExchangeAttackHitLanded?: boolean;
+  /// Ignorado aquí a propósito (ver `enIntercambio`); queda en el tipo porque el call site pasa el TurnContext.
+  combatNotYetResolved?: boolean;
+  enCombate?: boolean;
 }): NarrationResult {
   const { action, roll } = ctx;
   // En un intercambio de combate manda el intercambio, no `roll` (Fase G del 0.1, hallazgo G7):
   // «Gana Gorhorn · el golpe conecta» salía junto a «La acción no sale como se esperaba». Sin saber
   // aquí qué lado conectó, se dice solo lo que es seguro y la tarjeta de la tirada cuenta el resto.
+  // Ampliado (P435): cualquier turno con contexto de combate, resuelto o no (ataque a fauna/NPC pasivo
+  // antes del combate formal, aceptación previa, turno de combate sin intercambio).
+  // `combatNotYetResolved` NO cuenta: es verdadero en cualquier escena con un NPC (comprar, hablar), no solo en
+  // combate. La apertura hostil se deduce de la acción y de `npcSlugsInScene` (el call site pasa el TurnContext).
+  const enIntercambio = Boolean(
+    ctx.combatBothMissed ||
+      ctx.combatRealHitLanded ||
+      ctx.nonExchangeAttackHitLanded ||
+      ctx.enCombate ||
+      esAperturaHostilConNpc(action, ctx.npcSlugsInScene ?? []),
+  );
   const resultado = ctx.combatBothMissed
     ? 'Ningún golpe llega a conectar.'
     : ctx.combatRealHitLanded
       ? 'El intercambio se salda con un golpe que conecta.'
-      : !roll
+      : ctx.nonExchangeAttackHitLanded
+        ? 'El ataque da en el blanco.'
+        : enIntercambio && !roll
+          ? 'Aún no se ha resuelto ningún intercambio.'
+          : !roll
         ? 'La acción transcurre sin incidentes.'
         : roll.gradoExito === 'claro'
           ? 'La acción sale exactamente como se esperaba.'
           : 'La acción no sale como se esperaba.';
   return {
     // P94 (QA-27): la acción se repite tal cual; sin las comillas con que el juego cita al rival.
-    narration: `${sinComillasSueltas(action)} ${resultado}`,
+    // P435 (decisión de la usuaria, 2026-11-10): en un intercambio de combate NO se copia (en primera
+    // persona de la jugadora salía bajo el ataque del rival; ya está en «TU ACCIÓN»): solo el resultado
+    // y el aviso, como en el diálogo (P245). Fuera de combate sigue como antes.
+    narration: enIntercambio
+      ? `${resultado} (El narrador no ha respondido a esta escena.)`
+      : `${sinComillasSueltas(action)} ${resultado}`,
     fallbackDeterminista: true,
     newFacts: [],
     newItem: null,

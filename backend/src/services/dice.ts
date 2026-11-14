@@ -33,6 +33,10 @@ export interface RollResult {
   /// materialización de loot/despiece/producción...).
   success: boolean
   gradoExito: GradoExito
+  /// P364: resta por heridas (`condicionMalus`) y valor ya rebajado, solo si la tirada los lleva (la huida): el
+  /// frontend los pinta como en la defensa («10 −2 heridas = 8»). Ausentes = sin malus.
+  malus?: number
+  valorEfectivo?: number
 }
 
 export function gradoExitoFor(result: number, difficulty: number): GradoExito {

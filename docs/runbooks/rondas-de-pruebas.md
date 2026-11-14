@@ -4,7 +4,7 @@ Para cuando la usuaria pide «probar», «jugar como una jugadora» o una ronda 
 retro del 2026-10-09). Herramientas: [`tools/playwright-e2e/`](../../tools/playwright-e2e/README.md).
 
 **Quién juega** (`QA-124`): un subagente `sonnet` por tanda de 3-5 comprobaciones, con la forma de encargo de
-[`orchestrate-dealer`](../../.claude/skills/orchestrate-dealer/SKILL.md); la sesión principal no lanza `orden.sh`, solo
+[`gw-orchestrate-dealer`](../../.claude/skills/gw-orchestrate-dealer/SKILL.md); la sesión principal no lanza `orden.sh`, solo
 reparte y apunta. Para pelear, `orden.sh --ayuda pelear` (acercarse, interactuar y combatir en una orden, `QA-125`).
 
 ## Qué se prueba, en este orden
@@ -17,12 +17,37 @@ reparte y apunta. Para pelear, `orden.sh --ayuda pelear` (acercarse, interactuar
    se vuelve al roadmap). Las filas de
    [«Qué entra en cada hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dicen qué entra en cada
    uno; lo que ya está probado en vivo, en
-   [`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
+   [`checklist-pruebas-juego.md`](../records/checklist-pruebas-juego.md).
 3. Lo que el roadmap no tiene (p. ej. «Crear desde cero» en la creación de personaje) no se prueba.
 
 **Preparar antes de jugar** (`QA-216`, retro del 2026-10-23): la sesión que reparte comprueba que el escenario de
 cada id da el estado que pide (montura, lugar visitado, animal domable, convaleciente…); si no, la primera tanda lo
 prepara con `escenario.sh preparar` y lo guarda, sin rehacer reglas a mano (`QA-151`).
+`preparar … combate:<npc>,…` abre un combate de grupo; lo que solo pasa en el 1v1 clásico (la huida de la fauna por
+habilidad, P373) se prepara con `combate1v1:<npc>` (`QA-293`): el NPC, viva donde viva, se lanza contra la jugadora, y al
+recargar la página sale el panel de combate con él. Se niega si ya hay un combate en curso o el NPC no existe.
+Una caza que vuelve con piezas (P339 «1 pieza»/«N piezas», o la orden permanente cortada por el Desolladero dañado, P338) se
+prepara con `partida-caza:<presa>:<n>[:permanente]` (`QA-298`): la partida de caza del Reino (la que hay en marcha tras esa
+presa o una lanzada como desde el panel, que pide cazadores libres con arma y un lugar donde se haya visto la presa) queda en
+casa a punto de volver con `n` piezas, y al avanzar el día vuelve por el camino normal, con su aviso y el paso por el
+Desolladero. Con `:permanente` repite la orden: junto con `danar:desolladero` se juega el corte de P338. Ej.:
+`escenario.sh preparar <partida> partida-caza:kirelon-arenoso:2:permanente danar:desolladero` y `avanzar <partida> 1`.
+Se niega sin cazadores, con una presa que no existe o no vista, o con `n` menor que 1.
+Una caza que vuelve con heridos (P439, «1 de los suyos salen heridos») se prepara con `partida-caza:<presa>:heridos=<h>[:permanente]`
+(`QA-299`): la partida vuelve sin piezas y con `h` heridos (compañeros: condición `HERIDO`); el aviso, con el texto del juego
+(`resumenDeCaza`), queda en Reino › Avisos al preparar, no al avanzar el día. Se niega con más heridos que cazadores.
+Para dejar la mochila con hueco (P336: `dar` no pasa de la capacidad y, con el Almacén lleno, `mochila-libre` no deposita) está
+`mochila-descartar[:<n>]` (`QA-299`): tira lo suelto, lo más abultado primero, hasta dejar `n` libres (10 por defecto); lo
+equipado no se toca. Ej.: `escenario.sh preparar <partida> mochila-descartar:10` y `escenario.sh dar <partida> pasto-solar:3`.
+Para ver la línea de huida de un rival (P443), con el combate ya abierto: `escenario.sh preparar <partida> huida-rival[:<npc>]`
+(`P443`) deja GRAVE, sin moral tirada, a un rival con moral (una persona, no fauna; el primero o el del slug): al jugar la ronda
+siguiente el juego tira moral y escape (`revisarMoralDelCombate`) y puede huir (el texto lleva el nombre visible, «orco
+desconocido») o aguantar; si aguanta, se repite con otro rival. **Para que la huida salga siempre** (solo pruebas, nunca
+en producción, como la montura): lanza el juego con `WMF_HUIDA_PRUEBAS=1` (`bash tools/qa/host.sh env WMF_HUIDA_PRUEBAS=1 bash tools/qa/deck/juego.sh`,
+o delante de `arrancar-juego.sh`): la moral del bando enemigo falla y el escape sale. Escenario de partida: `reino-combate-ganable` (`QA-153`).
+Para dejar hueco en el Granero (comparten tope la comida y el forraje), `dar-reino` también resta (`QA-300`): `comida=-2`
+(o `bebida`, `goirnos`, `tesoro`) quita lo pedido con suelo en 0 y avisa si se pedía más de lo que había; `0` se rechaza.
+P336 (Granero a 180/180, hueco 2): `escenario.sh dar-reino <partida> comida=-2`, `preparar <partida> mochila-descartar:10` y `dar <partida> pasto-solar:3`.
 
 **Con qué se juega** (`QA-56`, usuaria, 2026-10-12): Gorhorn, el personaje preseleccionado, con la
 clase **Cazador** (la especialización, Domador, se elige a nivel 10). «Crear desde cero» es del final del
@@ -30,7 +55,7 @@ roadmap: no se abre.
 
 Cómo provocar cada cosa (los encuentros salen al moverse por el mapa de zona, no escribiendo
 «salgo a cazar») y qué está ya probado en vivo:
-[`checklist-pruebas-juego.md`](../registros/checklist-pruebas-juego.md).
+[`checklist-pruebas-juego.md`](../records/checklist-pruebas-juego.md).
 
 **Moverse** (`QA-87`, usuaria, 2026-10-14): dentro de una zona y de una a otra, por el mapa de zona y
 sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas (P164).
@@ -42,7 +67,7 @@ sus salidas, como una jugadora. El viaje directo a otra zona es de las monturas 
   **Por defecto, JPEG de calidad 50** (`.jpg`, unas 4-5 veces menos bytes que el PNG; `QA-149`). Para gastar aún menos,
   recorta: `shot('n', {selector: '.mapa'})` (a ese elemento) o `shot('n', {clip: {x:0, y:0, width:400, height:300}})`.
   **A tamaño completo** (PNG, página entera): `shot('n', {completo: true})`; `{png: true}` solo cambia el formato y
-  `{calidad: 80}` la calidad. `selector` no se combina con `clip` ni `completo` (error). `captura.js` (MCP) acepta lo mismo en `tk`: `nombre`, `selector`, `clip`, `calidad`, `png`, `completo`.
+  `{calidad: 80}` la calidad. `gw-selector` no se combina con `clip` ni `completo` (error). `captura.js` (MCP) acepta lo mismo en `tk`: `nombre`, `gw-selector`, `clip`, `calidad`, `png`, `completo`.
 - Para mirar la partida por dentro, SQL contra la base de juego con `tools/qa/sql.sh` (`QA-150`): la consulta por
   argumento o, si lleva comillas, por stdin (`bash tools/qa/sql.sh <<'SQL' … SQL`). Usa `psql` o, si no hay, `podman exec -i
   tarkor-postgres psql`, y en la Deck pasa solo por `host.sh`. Base: `TARKOR_DB_URL` (por defecto `tarkor_juego`). Tablas
@@ -70,13 +95,17 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 
 1. **Qué falta**: `python3 tools/qa/matriz-pruebas.py` (resumen por bloque) y `--bloque <Bloque>` (las tareas sin
    jugar de ese bloque). El bloque, el que tenga menos jugado o el que pida la usuaria.
-2. **Escenario**: `tools/qa/escenario.sh lista`; si ninguno deja cerca lo que se va a probar, se llega jugando una
-   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Lo que tarda días, con
+2. **Escenario**: `tools/qa/escenario.sh lista <patrón>` (zona, NPC o hallazgo; sin patrón, el índice entero, `QA-312`); si ninguno deja cerca lo que se va a probar, se llega jugando una
+   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Tras cargarlo y antes de la primera
+   acción, una consulta con `tools/qa/sql.sh` por hallazgo confirma el estado que pide (el NPC, su reputación, el
+   encuentro abierto); si no está, se prepara o la tanda devuelve «sin escenario» (`QA-316`). Lo que tarda días, con
    `escenario.sh avanzar <partida> <días>`.
 3. **Jugar**: cada comprobación se mira en texto (`orden.sh --ayuda estado`, `QA-104`); captura solo si algo no
    cuadra o es visual. Lo que vale la pena repetir se escribe como recorrido en
    `tools/playwright-e2e/recorridos/` (`QA-103`, su cabecera en `recorrer.mjs`) y se pasa con
    `bash tools/qa/recorrer.sh [filtro]`: una línea por recorrido.
+   Para leer un hallazgo, `python3 tools/qa/marca-hallazgo.py --ver P<n>…` (`QA-303`), no el registro ni el plan enteros;
+   para saber qué tanda o lote toca, `python3 tools/qa/plan.py` (`--tanda N`, `--lote X`; `QA-320`).
 4. **Apuntar**: hallazgos con `marca-hallazgo.py` (abajo) y, en la matriz, cada tarea jugada como `jugado` con la
    fecha y el hallazgo o recorrido que lo prueba.
 5. **Cerrar**: arreglos, sus recorridos en verde y el bloque en `jugado` en la matriz. Entonces, el siguiente.
@@ -87,21 +116,25 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `.claude/settings.json` (tope de 200k), los ganchos ni las skills del repo (`Unknown skill: opt-ai`).
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
-   de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
+   de Playwright, actívalo antes con `/mcp` (viene desactivado en `.claude/settings.json`, `QA-335`) y carga las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
+   En la Deck, Ollama con `bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh arrancar` (iGPU y sin suspensión),
+   y **al acabar la ronda, `ia-ronda.sh parar`**: baja el juego y Ollama, y dice si queda algo en pie (`QA-313`).
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
    Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
+   QA-310: `arrancar-juego.sh` apunta el `IA_PERFIL` y el `IA_REGISTRO` del arranque en `logs/juego-ia.env`; `escenario.sh cargar` y `avanzar` relanzan con ellos (un `--parar` entero lo borra), así la tanda sigue escribiendo en `logs/ia/`.
    **Montura de pruebas** (solo para probar «Viajar» y las interrupciones de viaje, P46/P47/P321; nunca en producción): `bash tools/qa/host.sh env WMF_MONTURA_PRUEBAS=1 bash tools/qa/deck/juego.sh` (o `WMF_MONTURA_PRUEBAS=1` delante de `arrancar-juego.sh`); la jugadora cuenta como con montura hasta que CR-57 la dé de verdad.
    (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
-   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, `/opt-ai` mide los tiempos,
-   contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/opt-ai/SKILL.md)).
+   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, una línea en
+   [`pendiente-opt-ai.md`](../records/pendiente-opt-ai.md) (`QA-306`): cuando pasa el umbral, se recomienda a la usuaria
+   `/gw-opt-ai`, que mide los tiempos, contrasta el RAG con las incoherencias y propone ajustes ([skill](../../.claude/skills/gw-opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
    visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
    (usuaria, 2026-10-19), después se mejora `estado.js` o la ayuda que toque para que lo dé en texto la próxima vez
    (así salieron los cajones, los tooltips y `pulsar.js`).
    Un bucle automático (combate, caminar) solo para repetir algo ya visto; lo nuevo se juega a mano.
-3. Apunta cada hallazgo en el registro de la ronda (`docs/registros/pruebas-<hito>-hallazgos.md`,
+3. Apunta cada hallazgo en el registro de la ronda (`docs/records/pruebas-<hito>-hallazgos.md`,
    tabla `| P<n> | Hallazgo | Estado |`): fallos, incoherencias de texto o de lore, y detalles de
    interfaz, con la causa si se ve. Con `tools/qa/marca-hallazgo.py` (`QA-42`, `QA-47`):
    `--nuevo "<hallazgo>" "<estado>"` añade la fila con el siguiente número, y
@@ -112,7 +145,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    Un fallo distinto hallado al comprobar un arreglo va en una fila nueva (`marca-hallazgo.py --nuevo`) y el estado del arreglado la enlaza; «Reabierto» es solo para cuando el arreglo no funciona (P293 se reabrió con otro fallo y hubo que partirlo, P319).
 4. **La ronda solo juega y apunta** (`QA-45`, usuaria, 2026-10-12; endurecido el 2026-10-20): no corrige código, ni
    del juego ni de las herramientas, tampoco un fallo bloqueante, ni analiza (medidas, causas en el código, casos del
-   RAG): eso lo hacen las skills (`/opt-ai`, `/code-review`, `/retro`) en el flujo del PR. Lo que la usuaria acepte va a
+   RAG): eso lo hacen las skills (`/gw-opt-ai`, `/code-review`, `/retro`) en el flujo del PR. Lo que la usuaria acepte va a
    «Propuestas aprobadas para el roadmap cuando acaben las pruebas» de la bitácora; los arreglos, en una sesión de
    arreglos aparte. Si el MCP de Playwright no conecta, `driver.mjs` de `tools/playwright-e2e/` (`QA-41`), con las
    mismas ayudas: `orden.sh --ayuda <archivo> '<tk>'` (`QA-57`).
@@ -120,9 +153,9 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review`, `/opt-ai` si hubo tandas con Ollama real ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`), luego `/opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review`, recomendar `/gw-opt-ai` si `pendiente-opt-ai.md` pasa el umbral ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`, `QA-306`), luego `/gw-opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
-8. **Una tanda con Ollama real juega al menos 8 turnos** (`QA-200`, retro del 2026-10-22): con 3 turnos `/opt-ai` no
+8. **Una tanda con Ollama real juega al menos 8 turnos** (`QA-200`, retro del 2026-10-22): con 3 turnos `/gw-opt-ai` no
    tiene medida comparable. Si la tanda no llega a 8, al cerrar se pasa `bash tools/qa/bench-ia.sh <etiqueta>
    --anterior <etiqueta>` (`QA-173`; 8 turnos de `npm run benchmark-turno`). **Ojo:** `bench-ia.sh` restaura su escenario en
    `tarkor_juego` y relanza el juego, y pisa la partida en curso: antes, `bash tools/qa/escenario.sh guardar <nombre>` de la
@@ -143,7 +176,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 
 ## Trucos de las herramientas
 
-Lo que sigue vigente del [registro de fallos](../registros/fallos-herramientas.md):
+Lo que sigue vigente del [registro de fallos](../records/fallos-herramientas.md):
 
 - En la Deck, todo lo que necesita el host (`node`, `psql`, `podman`, `escenario.sh`, `arrancar-juego.sh`) va por `bash tools/qa/host.sh …`.
 - `escenario.sh` (dar, cargar, guardar) se lanza en una orden Bash sola, sin encadenar; `j.sh`, `r.sh`, `o.sh` y `relanza.sh` tampoco con `sleep` ni `&`.
@@ -167,5 +200,5 @@ Lo que sigue vigente del [registro de fallos](../registros/fallos-herramientas.m
 - `orden.sh` por `host.sh` no ve el `/tmp` del sandbox: dejar el archivo dentro del repo.
 - `IA_REGISTRO` con ruta absoluta (el servidor corre en `backend/`); tras una migración, `npx prisma generate` en `backend/`.
 
-El historial completo está en el [registro](../registros/fallos-herramientas.md). Quien encuentre un fallo nuevo lo
+El historial completo está en el [registro](../records/fallos-herramientas.md). Quien encuentre un fallo nuevo lo
 devuelve en `HERRAMIENTAS`: la principal lo apunta allí y, si sigue vigente, en esta lista.

@@ -171,7 +171,7 @@ export async function venderAViajero(tx: Tx, saveId: string, id: string, itemId:
   const aqui = await viajeroAqui(tx, saveId, id);
   if (!aqui) return { ok: false, motivo: 'Ya no están aquí.' };
   if (!aqui.v.factionId) return { ok: false, motivo: 'Es tu partida: no se le vende.' };
-  const item = await tx.inventoryItem.findFirst({ where: { id: itemId, saveId, slot: null }, select: { id: true, name: true, catalogSlug: true } });
+  const item = await tx.inventoryItem.findFirst({ where: { id: itemId, saveId, slot: null, companionId: null, subjectId: null }, select: { id: true, name: true, catalogSlug: true } });
   if (!item?.catalogSlug) return { ok: false, motivo: 'Eso no lo llevas en la bolsa.' };
   const cat = await tx.itemCatalog.findFirst({ where: { worldId: aqui.save.worldId, slug: item.catalogSlug }, select: { category: true, curaHambre: true, valorGoirnos: true } });
   if (!cat || !(cat.category === 'alimento' || (cat.curaHambre ?? 0) > 0)) return { ok: false, motivo: 'Solo compran comida.' };
@@ -186,7 +186,7 @@ export async function venderAViajero(tx: Tx, saveId: string, id: string, itemId:
 /// Lo que puedes venderle a una partida: la comida de tu bolsa (sin equipar), con su precio.
 export async function comidaVendible(tx: Tx, saveId: string): Promise<{ id: string; name: string; precio: number }[]> {
   const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  const items = await tx.inventoryItem.findMany({ where: { saveId, slot: null, catalogSlug: { not: null } }, select: { id: true, name: true, catalogSlug: true }, orderBy: { name: 'asc' } });
+  const items = await tx.inventoryItem.findMany({ where: { saveId, slot: null, companionId: null, subjectId: null, catalogSlug: { not: null } }, select: { id: true, name: true, catalogSlug: true }, orderBy: { name: 'asc' } });
   const cat = new Map((await tx.itemCatalog.findMany({ where: { worldId: save.worldId, slug: { in: items.map((i) => i.catalogSlug!) } }, select: { slug: true, category: true, curaHambre: true, valorGoirnos: true } })).map((c) => [c.slug, c]));
   return items
     .filter((i) => { const c = cat.get(i.catalogSlug!); return !!c && (c.category === 'alimento' || (c.curaHambre ?? 0) > 0); })

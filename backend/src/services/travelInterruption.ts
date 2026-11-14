@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import type { AttributeBlock } from './dice.js';
 import { minutosConDestreza, bandaForMinutos, type TravelResolution } from './travel.js';
-import { pickAmbientEncounterCandidate, type AmbientEncounterCandidate } from './npcScene.js';
+import { pickAmbientEncounterCandidate, sinPuntoEnOtraZona, type AmbientEncounterCandidate } from './npcScene.js';
 import { stripRegionArticle } from './population.js';
 import { npcVivoEnPartida, poblacionDeCatalogo, type FiltroPoblacion } from './mundoPartida.js';
 import { FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
@@ -106,7 +106,9 @@ export async function pickTravelInterruption(
       })
       .filter((c): c is AmbientEncounterCandidate => c !== null);
 
-    const candidate = pickAmbientEncounterCandidate(weightedCandidates, random);
+    // P254: quien tiene su punto de mapa en otra zona de la partida no sale al paso en este nodo.
+    const enZona = 'saveId' in poblacion && poblacion.saveId ? await sinPuntoEnOtraZona(poblacion.saveId, travel.pathIds[i], weightedCandidates) : weightedCandidates;
+    const candidate = pickAmbientEncounterCandidate(enZona, random);
     if (!candidate) continue;
 
     const npc = itinerantNpcs.find((n) => n.slug === candidate.slug)!;

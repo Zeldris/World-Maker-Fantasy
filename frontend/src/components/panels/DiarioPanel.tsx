@@ -5,6 +5,7 @@ import { ESTACION_ICON } from '../../lib/entorno'
 import { RollBadge } from '../RollBadge'
 import { ExtendedRollBadge } from '../ExtendedRollBadge'
 import { PanelEmptyState } from '../PanelEmptyState'
+import { etiquetaDiaDiario, fechaMasReciente } from '../../lib/diarioFecha'
 import { EnciclopediaLinkedText } from '../EnciclopediaLinkedText'
 import { useEnciclopediaLink } from '../../context/useEnciclopediaLink'
 import { notaDeHito } from '../../lib/hitos'
@@ -73,7 +74,8 @@ export function DiarioPanel({ saveId }: DiarioPanelProps) {
         // probablemente quiere ver lo último que pasó, no forzar clic manual cada vez que abre
         // el panel.
         if (res.entries.length > 0) {
-          const last = res.entries[res.entries.length - 1]
+          // P380: la más reciente por fecha, no la última de la lista (los capítulos van detrás).
+          const last = fechaMasReciente(res.entries)!
           setSelectedYear(last.year)
           setSelectedEstacion(last.estacion)
           setSelectedDia(last.diaRelativo)
@@ -183,7 +185,7 @@ export function DiarioPanel({ saveId }: DiarioPanelProps) {
           <div className="flex flex-wrap gap-1.5 border-b border-iron-800 pb-2">
             {dias.map((dia) => (
               <button type="button" key={dia} onClick={() => setSelectedDia(dia)} className={tabButtonClasses(selectedDia === dia)}>
-                Día {dia}
+                {selectedYear !== null && selectedEstacion !== null ? etiquetaDiaDiario({ year: selectedYear, estacion: selectedEstacion, diaRelativo: dia }) : `Día ${dia}`}
               </button>
             ))}
           </div>

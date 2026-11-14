@@ -50,7 +50,7 @@ Rutas relativas a `backend/src/` salvo que se indique otra cosa.
 ## Tabla priorizada
 
 Calidad primero. «Tiempo» es ganancia de latencia esperada por turno; «medir» es la orden del repo con la que se
-comprueba. `R` = ronda de pruebas con el escenario que pide cada hallazgo (`docs/registros/pruebas-0.3-hallazgos.md`).
+comprueba. `R` = ronda de pruebas con el escenario que pide cada hallazgo (`docs/records/pruebas-0.3-hallazgos.md`).
 
 | # | Técnica | Fuente | Problema | Dónde en nuestro código | Calidad / tiempo | Coste | Riesgo | Cómo medirlo |
 |---|---|---|---|---|---|---|---|---|

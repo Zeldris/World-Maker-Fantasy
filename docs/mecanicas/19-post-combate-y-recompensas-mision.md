@@ -8,7 +8,7 @@ ahora" al preguntar por el alcance de la pieza 2). **Las 5 piezas implementadas 
 ## Contexto
 
 Surgió investigando el bug de resurrección del Orco Enfurecido (ver
-`docs/registros/revisar-partida-hallazgos.md` § "2026-08-12 — Orco Enfurecido (ya MUERTO) narrado atacando
+`docs/records/revisar-partida-hallazgos.md` § "2026-08-12 — Orco Enfurecido (ya MUERTO) narrado atacando
 a Gorhorn..."). La usuaria propuso 5 ideas relacionadas; una es un malentendido (ver abajo), cuatro
 son piezas de trabajo reales y distintas entre sí.
 

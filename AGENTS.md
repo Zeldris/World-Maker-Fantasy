@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.3 -->
+<!-- galivelop-workflow v0.6.0 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -8,8 +8,8 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 
 ## Al empezar cualquier sesión
 
-1. Lee la bitácora, [`docs/registros/traspaso.md`](docs/registros/traspaso.md): rama, tarea en curso, qué falta y
-   siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recuperar.py --estado`; el archivo
+1. Lee la bitácora, [`docs/records/traspaso.md`](docs/records/traspaso.md): rama, tarea en curso, qué falta y
+   siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recover.py --state`; el archivo
    entero, solo si falta algo (`QA-261`).
 2. `git fetch origin <rama>`: el último commit coincide con la bitácora, y el check está en verde antes de tocar nada
    (`python3 .claude/gw/scripts/config.py get check`).
@@ -17,7 +17,7 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 4. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día:
    `git fetch origin main` y, si trae commits, `git merge origin/main` (merge, nunca rebase: las ramas están subidas).
    Si el conflicto toca la misma lógica por los dos lados o dos migraciones, se para y se consulta a la usuaria.
-5. Al empezar cada tarea, aplica la skill `selector` y sigue el flujo de skills de una tarea (diseño, prototipo,
+5. Al empezar cada tarea, aplica la skill `gw-selector` y sigue el flujo de skills de una tarea (diseño, prototipo,
    bugs, PR, retro) de [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea).
 6. **La sesión se abre con el repo como carpeta de trabajo**; en otra no carga `.claude/settings.json` (ni sus
    ganchos): dilo a la usuaria, y mientras, `git config core.hooksPath .githooks` y la marca de revisión y el CI a mano.
@@ -45,7 +45,7 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`): el cambio
   puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
-- **Al cerrar cada tarea o PR** (y cada fase), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
+- **Al cerrar cada tarea o PR** (y cada fase, y cada lote de una rama larga, `QA-305`), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
   en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida.** Uno que no arranca (sin cuota, sin runners) es
   rojo: se dice a la usuaria, y el check local del mismo commit (`pre-push`, o `tools/qa/ci-local.sh`, `QA-215`) vale
@@ -64,17 +64,23 @@ antes de darla por cerrada.
 **Al jugar** (ronda de pruebas, «sigue probando», «juega»): quien lanza `orden.sh` (en una ronda repartida, el
 subagente de cada tanda), antes de la primera acción, relee
 [`docs/runbooks/rondas-de-pruebas.md`](docs/runbooks/rondas-de-pruebas.md) (`QA-56`). La sesión que reparte lee solo
-«Qué se prueba» (`QA-209`).
+«Qué se prueba» (`QA-209`), con `bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "Qué se prueba"`
+(`QA-311`), una vez por sesión: tras compactar, solo si necesita una regla concreta (`QA-323`). Qué hallazgos hay en
+cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`).
 
 ## Comprobar
 
 - **El check del proyecto** es la lista `check` de `.claude/gw.json` (cada orden con npx pasa por `tools/qa/host.sh`,
-  el sandbox Flatpak de la Deck, `QA-180`); `.githooks/pre-push` lo corre con los tests de lo que cambia, y el CI
-  (`.github/workflows/ci.yml`) añade los tests completos.
+  el sandbox Flatpak de la Deck, `QA-180`); `.githooks/pre-push` lo corre entero sobre el commit que se sube a `main` o que
+  cambia el entorno; a otra rama, solo los tests relacionados (`branchCheck`). El CI lo corre entero en cada pull
+  request (`.github/workflows/ci.yml` y `check.yml`) y, salvo con `ciOnPush: false`, en cada push fuera de `main`
+  (`check.yml`).
+- **Antes de subir a `main`, pásalo con `bash .claude/gw/scripts/check.sh`**: corre el check y, si sale en verde, lo apunta; el
+  `pre-push` no lo repite sobre el mismo árbol (`GW_CHECK_CACHE=0` lo desactiva).
 - **Lo comprobable lo hace un script**, no un agente: si una regla se sigue rompiendo, se convierte en una comprobación.
 - **Lo que depende de una máquina concreta no se da por probado con tests** (la Deck, Ollama real): se apunta como
   pendiente en el plan, con quién lo comprueba y dónde.
-- Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<orden del test>"
+- Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/red-without-fix.sh "<orden del test>"
   <archivo-del-arreglo>...`. Un test que espera un fallo comprueba **el motivo**, no solo el código de salida.
 - `python3 .claude/gw/scripts/doctor.py` dice si el flujo está bien montado, con la orden que arregla cada problema.
 
@@ -83,48 +89,60 @@ subagente de cada tanda), antes de la primera acción, relee
 - Primera línea en español: qué cambia, con los identificadores de las tareas tocadas.
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check y de los tests.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.
+- El commit con los arreglos de una revisión lleva `Findings: <n hallazgos aceptados>` y el de un trabajo que tuvo que
+  subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`).
 
 ## Ramas y `main`
 
 - Se trabaja en la rama que indique la bitácora (o la que asigne la sesión, que se apunta nada más empezar).
 - **Cada sesión, su propia rama** (`QA-136`): dos sesiones a la vez nunca suben a la misma. Si la de la bitácora ya la
   usa otra, crea `claude/<tema>` desde ella con su fila «Tarea en curso · `<rama>`» y escribe solo en esa fila; vuelve
-  por `git merge` antes del PR. Para tocar una fila compartida (`QA-145`), `BITACORA_COMPARTIDA=1 git push`.
+  por `git merge` antes del PR. Para tocar una fila compartida (`QA-145`), `GW_SHARED_LOG=1` en el commit y en el push.
+- Tu fila de la bitácora se reescribe con `python3 .claude/gw/scripts/handoff.py set-row "texto"` a mitad de tarea y se
+  cierra con `python3 .claude/gw/scripts/handoff.py close-row <rama>` en el último commit antes de su PR; no edites a
+  mano la de otra rama.
 - Merge, nunca rebase: las ramas están subidas.
 - **A `main` solo con confirmación de la usuaria**, apuntado en la bitácora, por pull request (`pushToProtected: pr`;
   los ganchos piden la marca de revisión), y **se fusiona solo con el CI en verde**, también con «fusiona
   directamente»: eso quita esperar revisiones, nunca el CI ni la retro presentada a la usuaria (`QA-95`).
 - **Casos especiales**, en [`ramas-y-main.md`](docs/runbooks/ramas-y-main.md): «lleva a `main`» con la usuaria fuera
-  (`QA-238`), cuota de Actions agotada (`QA-215`), PR de una sesión local (`QA-285`, con `gh`; «PR listo» sin él), tareas `INS-*`
+  (`QA-238`), cuota de Actions agotada (`QA-215`; para un PR, `python3 .claude/gw/scripts/ci-local.py --record`), PR de una sesión local (`QA-285`, con `gh`; «PR listo» sin él), tareas `INS-*`
   (`QA-259`) y la rama de un subagente (`tools/qa/fusionar.sh`).
 
 ## Antes de ir a `main`: tres fases
 
 Nunca sobre trabajo ya fusionado (`QA-77`). En una rama larga (rondas de pruebas), la fase 1 se adelanta al cerrar
-cada bloque de ~10 tandas, solo del diff desde la última revisión (`QA-292`). Detalle en el
+cada bloque de ~10 tandas, solo del diff desde la última revisión (`QA-292`): el último commit con el trailer
+`Findings:` marca la última revisión de bloque, y el `commit-msg` avisa cuando el bloque pasa de `changeSize.block`
+líneas. Detalle en el
 [paso 6 del runbook](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea) (usuaria, 2026-10-21, `QA-183`).
 
 1. **Código:** `git fetch origin main` y `/code-review --max-findings all` del diff contra `origin/main`, con el
    criterio de `REVIEW.md`. Arreglos con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve
-   se apunta como pendiente en la bitácora. Lo que casa con `content` de `.claude/gw.json` es contenido, no código.
-2. **Entorno:** `/opt-ai` si hubo tandas con Ollama real (`QA-142`), `/opt-tokens` y `/retro`, que revisa también
-   `opt-tokens`. Sus propuestas se **presentan a la usuaria**; lo que confirme se aplica en la rama.
+   se apunta como pendiente en la bitácora y no vuelve a revisarse en ese PR. Lo que casa con `content` de
+   `.claude/gw.json` es contenido, no código. Tampoco se revisa lo copiado tal cual del flujo (`vendored`;
+   `python3 .claude/gw/scripts/review-scope.py --workflow <repo del flujo>` lista lo que sí: uno editado en el proyecto
+   entra). Un diff trivial (`review-scope.py --trivial` sale en 0) se revisa en la sesión, sin subagente; los arreglos
+   de la revisión van a un subagente `sonnet`, salvo ganchos, guardas, seguridad y los scripts que llaman (`opus`).
+2. **Entorno:** recomendar a la usuaria `/gw-opt-ai` si [`pendiente-opt-ai.md`](docs/records/pendiente-opt-ai.md)
+   pasa su umbral (`QA-306`; lo lanza ella), `/gw-opt-tokens` y `/retro`, que revisa también
+   `gw-opt-tokens`. Sus propuestas se **presentan a la usuaria**; lo que confirme se aplica en la rama.
 3. **Cierre:** si la fase 2 trajo código, `/code-review --max-findings all` solo de esos commits y sus arreglos; luego
-   `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: <paso>"` (el `commit-msg` pide esa línea; escribe la
+   `bash .claude/gw/scripts/reviewed.sh --footer "Siguiente: <paso>"` (el `commit-msg` pide esa línea; escribe la
    marca, `.claude/revision-main.sha`, y hace su commit; sin retro decidida no hay marca, `requireRetro`) y
    `git push`; la descripción con la skill `pr`. Solo entonces se crea el PR. Sin la marca del mismo commit, los
    ganchos lo rechazan (`QA-50`).
 
-## La bitácora (`docs/registros/traspaso.md`)
+## La bitácora (`docs/records/traspaso.md`)
 
 Al día siempre: hito y fase, cada rama con su fila «Tarea en curso · `<rama>`» (la tarea, lo que falta y el siguiente
-paso; ≤600 caracteres, `bitacora.py`, `QA-69`), estado de los tests, decisiones de Álvaro que bloquean algo, y
+paso; ≤600 caracteres, `handoff.py`, `QA-69`), estado de los tests, decisiones de Álvaro que bloquean algo, y
 «Hecho recientemente» con las tareas cerradas.
 
 ## Subagentes
 
 **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes de contexto limpio con la
-skill `orchestrate-dealer` (y los modelos que elija la skill `selector`) sin preguntar cada vez; la sesión principal
+skill `gw-orchestrate-dealer` (y los modelos que elija la skill `gw-selector`) sin preguntar cada vez; la sesión principal
 planea, decide y revisa. Esta línea es la autorización que piden las instrucciones del propio agente.
 
 - Cada subagente recibe un encargo: objetivo, rutas, restricciones, el check que debe pasar y qué tiene que devolver.
@@ -133,7 +151,7 @@ planea, decide y revisa. Esta línea es la autorización que piden las instrucci
 ## Las skills del flujo en este repositorio
 
 Lo propio de WMF de cada skill (diseño contra `designReferences` con X4 de guía, `prototype`, `domain-modeling`,
-`pr`, el tamaño de las tandas de `orchestrate-dealer`, `opt-ai`…) está en
+`pr`, el tamaño de las tandas de `gw-orchestrate-dealer`, `gw-opt-ai`…) está en
 [`skills-wmf.md`](docs/runbooks/skills-wmf.md): léelo al aplicar cualquiera de ellas.
 
 ## Reglas del proyecto
