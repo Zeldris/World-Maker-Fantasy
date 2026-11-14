@@ -52,6 +52,17 @@ export function npcCorpseShouldDespawn(sinceMinutes: number | null, nowMinutes: 
   return nowMinutes - sinceMinutes >= DESPAWN_MUERTO_MINUTES;
 }
 
+/// P461 (decisión de la usuaria 2026-11-14: muerto es muerto): al desaparecer el cadáver de un NPC con nombre
+/// (`kind: 'PRINCIPAL'`, estado global de ámbito '' — mismo criterio que `zonePointNpcMuertoParaSiempre`) NO se
+/// borra su `NpcState`: sin fila volvía a contar como vivo y reaparecía en su punto. Queda con `muerto: true`
+/// (lo filtran `npcVivoEnPartida` y `GET /zona`) y sin plazo (`condicionFisicaSinceMinutes: null`, para que el
+/// barrido no vuelva a disparar el suceso). Fauna y plantillas (otro `kind` o ámbito por lugar) siguen borrando
+/// la fila: allí un encuentro concreto es desechable y la población se repone a propósito.
+export function cadaverDespawnAccion(kind: string, scope: string, nowMinutes: number): { borrar: true } | { borrar: false; data: { muerto: true; muertoEn: number; condicionFisicaSinceMinutes: null } } {
+  if (kind === 'PRINCIPAL' && scope === '') return { borrar: false, data: { muerto: true, muertoEn: nowMinutes, condicionFisicaSinceMinutes: null } };
+  return { borrar: true };
+}
+
 const CONDICION_MALUS: Record<CondicionFisica, number> = {
   ILESO: 0,
   HERIDO: 2,
