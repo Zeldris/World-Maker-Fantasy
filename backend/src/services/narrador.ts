@@ -1667,7 +1667,8 @@ Responde solo con el JSON pedido, nada más.`;
               },
             },
     },
-    required: ['narration', 'newFacts'],
+    // P412 (ronda 5c): sin estar en `required`, la gramática de Ollama dejaba saltarse el campo y llegaba vacío 3 de 3.
+    required: [...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
   };
 
   return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior };

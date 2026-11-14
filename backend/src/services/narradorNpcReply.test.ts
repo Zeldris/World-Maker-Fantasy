@@ -139,8 +139,10 @@ describe('acción del jugador delante (QA-289, P412, ronda 4)', () => {
     const res = await narrateAction({ worldFacts: [], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Observo el cielo' } as Parameters<typeof narrateAction>[0]);
     expect(res.narration).toBe('Gorhorn observa el cielo. Ulkha Ketg mira hacia el cielo.');
     expect(clave in res).toBe(false);
-    const opciones = ollamaGenerate.mock.calls[0]![0] as { prompt: string; format: { properties: Record<string, unknown> } };
+    const opciones = ollamaGenerate.mock.calls[0]![0] as { prompt: string; format: { properties: Record<string, unknown>; required: string[] } };
     expect(Object.keys(opciones.format.properties)[0]).toBe(clave);
+    // Ronda 5c: sin `required`, el modelo se lo saltaba siempre.
+    expect(opciones.format.required[0]).toBe(clave);
     expect(opciones.prompt).toContain(`En "${clave}"`);
   });
 });
