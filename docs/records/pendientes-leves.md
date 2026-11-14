@@ -1,0 +1,41 @@
+# Pendientes leves
+
+Movido de [`traspaso.md`](traspaso.md) el 2026-11-14 (`QA-342`). Pendientes leves de revisiones ya cerradas.
+
+## Pendientes leves del mapa (revisión de la fase 1, 2026-11-10)
+
+- `editar.py`: ríos importados sin `puntos` rompen `_trazos_lote` y la costa (hoy 0 ríos); la costa compara cuántos puntos quedan mal, no cuáles, y no recalcula el `continente` de rutas no tocadas; `_alturas` mira los lugares de antes del lote.
+- `servir.py`: GET de `/historial.json` y `/helek.json` fuera del cerrojo; el CLI escribe sin cerrojo y con `base` opcional.
+- `InteractiveMap.tsx`: los bbox de Llanuras y Cristal Helado salen del `helekRegiones.ts` regenerado (repintar mueve LocationLink y la escala); ids 17-21 y región 18 por defecto en el visor, a mano.
+- Ollama simulado: el arranque está copiado en `ci-local.sh`, `entorno-nube.sh` y `con-mock-ollama.sh` (unificar); `vitest --project bd-real` a mano sigue sin levantarlo (un `globalSetup` lo cubriría).
+- `consultar.py lugares --radio` compara en unidades, no en km (hoy `kmPorUnidad` = 1); `_ficha_celda` con un `x` sin uso y `GEOJSON` sin uso en `banco.py`.
+
+## Pendientes leves de la revisión de las tandas 107-108 (fase 1, 2026-11-10)
+
+- `sucesos.ts` `esDelReinoPropio`: un suceso de importancia 4 con el Reino propio y una aliada como actores recibe el TESTIGO y ya no da la noticia ALIADA en «El mundo»; además hace un `faction.count` por suceso menor.
+- `dailyTick.ts`: el aviso P381 corre antes que las órdenes de cocina (lotes que no entran en el balance): puede avisar un día antes. `avisoDeReserva` repite el aviso si el balance oscila en torno a 0.
+- `narrador.ts` respaldo de combate (P435): en combate sin tirada dice «Aún no se ha resuelto ningún intercambio» también al huir u hablar.
+- `/mundo/nuevas` (`log.ts:67`) pagina por `createdAt` y el worldLog se ordena con `ORDEN_LOG` (ya apuntado en el lote D).
+- `diarioFecha.ts` duplica `DIAS_POR_ESTACION` del backend y recalcula `diaAbsoluto`; las pestañas de día del Diario repiten «de Verano, año 1».
+- Clemente devuelve siempre `factionRepChange: null` (P270): el campo y su rama del frontend ya no se usan.
+
+## Pendientes leves de la revisión del lote G4 (2026-11-11)
+
+- `prepararAvance.ts#reponerZonaActual` recalcula siempre; el juego, al abrir el mapa, solo con FAUNA sin `lastUpdated` o en zonas de inicio (`zona.ts:317`). Usa `currentLocation`, no el destino de un viaje en curso, y `avanzarDias` dice «Fauna de X repuesta» aunque no haya puntos.
+- `prepararEdificios.ts#textoSinReparar` repite cifras y podría decir «faltan 0» en una carrera.
+- `interactuar.js`: el `dialog` puede casar con el propio mapa de zona; los mensajes nuevos de `interactuar.js`/`mover.js` y que `avanzar` repone la fauna no están en `rondas-de-pruebas.md`.
+- P383: `t56-reino-dia75` sigue con 11 de 12 edificios dañados (documentado; para asaltos, `t68`).
+
+## Pendientes leves de la revisión del bloque P461-P463 (2026-11-14)
+
+- `death.ts`: la acción de despawn se aplica copiada en `turnResolution.applyCondicionTimeouts` y `companionSupervivencia.advanceCorpseAndRecoveryTimeouts`; mejor un helper que la aplique entera.
+- Huida (`session.ts` ~247/372): `descubrirNpcsDelCombate` + `descubrirNpc` por `freshSlugs` repiten upserts; `descubrirSiConvaleciente` hace un `findUnique` extra por escritura y `combateDesde` descubre en serie.
+- `zona.ts` ~1038: el `sort` de `puntosVivos` recalcula `celdaDePixel`/`hypot` en cada comparación.
+- `useCombatFlow.ts` ~1023: `closeCombat` aplica el intercambio antes de `cancelarTiradasPendientes()` (posible doble aplicación, sin verificar).
+- `useMovimientoZona.ts` ~93: ternario sobrante alrededor de `moverEnZona`; `interactuar.js`: `todos.count()` dos veces.
+- `turn.integration.test.ts` «despiece SÍ da algo» (caza en grupo) en rojo también en `main` (`19d8c523`): sin mirar.
+
+## Pendientes leves de la fase 3 de los lotes F-I (2026-11-11)
+
+- `tools/qa/plan.py` toma como tanda o lote cualquier fila de tabla del plan cuya primera celda sea un número o una sola mayúscula, sea de la tabla que sea.
+- `dailyTick.ts` (P444): con el Ayuntamiento de territoryId null, o con su territorio ya PERDIDO antes, los de su región no caen nunca en una rebelión (el comentario ya lo dice; decidir si es lo querido).
