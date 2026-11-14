@@ -831,6 +831,9 @@ export async function zonaRoutes(app: FastifyInstance) {
     celdaDestino: { col: number; row: number } | null = null,
     // Celdas de las entradas ya calculadas en este paso (P116); si no, se calculan aquí.
     entradasConocidas?: Celda[],
+    // P463: slug de la ficha a la que el jugador pulsó «Interactuar»: solo ese objetivo cuenta, y sustituye
+    // una oferta pendiente de otro punto. Sin él, el paso normal no cambia.
+    objetivoSlug?: string,
   ): Promise<{
     /// Los de `silenciados` que siguen en el radio de `celda` — el caller olvida los demás (el jugador
     /// ya salió de su radio), salvo un ser vivo en su rato de P177.
@@ -913,7 +916,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // con Clemente) no actúa: no corta el paso ni abre combate (`zonePointNpcConvalecienteNoActua`). Su ficha sigue en el mapa; cuando se recupera
     // (`npcRecoversFromConvaleciente`) vuelve a la acción.
     const puntosVivos = puntos.filter(
-      (p) => !zonePointNpcConvalecienteNoActua(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica) && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+      (p) => (!objetivoSlug || p.targetSlug === objetivoSlug) && !zonePointNpcConvalecienteNoActua(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica) && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
     );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único
@@ -965,7 +968,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // P269/P329 (revisión): un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso, como el que tiene ficha.
     // P254: mismo filtro que el mapa — quien tiene su punto en otra zona no corta el paso aquí.
     const enOtraZonaColision = await slugsConPuntoSoloEnOtraZona({ saveId, currentLocationId: locationId, slugs: npcsInSceneColision.filter((n) => !zonePointSlugsColision.has(n.slug)).map((n) => n.slug), cualquierPunto: true, db: tx });
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n) && !enOtraZonaColision.has(n.slug));
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => (!objetivoSlug || n.slug === objetivoSlug) && n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n) && !enOtraZonaColision.has(n.slug));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {
@@ -1031,7 +1034,10 @@ export async function zonaRoutes(app: FastifyInstance) {
     // P190: el bando dueño del punto colisionado (un rebaño del clan), si lo tiene.
     let colisionDeBando: string | null = null;
     const silenciadosCerca = new Set<string>();
-    for (const punto of puntosVivos) {
+    // P463: sin objetivo explícito gana el más cercano, y a igual distancia el NPC sobre la fauna (no el orden de la lista).
+    const distanciaACelda = (p: { x: number; y: number }) => Math.hypot(celdaDePixel(p).col - celda.col, celdaDePixel(p).row - celda.row);
+    const puntosPorCercania = [...puntosVivos].sort((a, b) => distanciaACelda(a) - distanciaACelda(b) || Number(b.tipo === 'NPC') - Number(a.tipo === 'NPC'));
+    for (const punto of puntosPorCercania) {
       const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
       const npc = npcBySlug.get(punto.targetSlug);
       const nombreReal = npc?.name ?? sourceDisplayNameFor(punto.targetSlug);
@@ -1125,7 +1131,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     if (colision) {
       const combateForzado = esTemperamentoHostil(colision.temperamento);
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
-      if (!freshSave?.pendingDynamicMode && !freshSave?.pendingDynamicModeOffer) {
+      if (!freshSave?.pendingDynamicMode && (objetivoSlug || !freshSave?.pendingDynamicModeOffer)) {
         // "¿Quién ve a quién primero?" (2026-09-17, efecto MECÁNICO real desde 2026-09-20 para
         // AGRESIVO/ENEMIGO) — Destreza jugador vs Destreza NPC, mismo patrón que `rollInitiative` de
         // combate. Para el resto de temperamentos solo decide el FRAMING narrativo de la primera
@@ -1245,6 +1251,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       const recursosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: 'RECURSO', activo: true } });
       // P193: un recurso sobre las estacas (el recinto de múrgoles) solo se alcanza desde dentro.
       for (const punto of recursosCrudos) {
+        if (objetivoSlug && punto.targetSlug !== objetivoSlug) continue;
         const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
         if (!celdaAdyacenteOMisma(celda, celdaPunto) || !alcanzableDesde(locationSlugColision, celda, celdaPunto)) continue;
         if (silenciados?.has(punto.targetSlug)) {
@@ -1252,7 +1259,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           continue;
         }
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
-        if (freshSave?.pendingDynamicMode || freshSave?.pendingDynamicModeOffer) {
+        if (freshSave?.pendingDynamicMode || (!objetivoSlug && freshSave?.pendingDynamicModeOffer)) {
           busquedaCortada = true;
           break;
         }
@@ -1302,8 +1309,8 @@ export async function zonaRoutes(app: FastifyInstance) {
   /// frontend puede animar celda a celda y detenerse en cuanto haya colisión/aviso, sin resolver
   /// todo el trayecto de golpe. El resto del mundo (ZonePoint FAUNA/NPC) avanza su propio paso a la
   /// vez (`avanzarZonePointsUnPaso`) — cuando el jugador se mueve, el mundo se mueve.
-  app.post<{ Params: { id: string }; Body: { destino: { x: number; y: number } } }>('/saves/:id/zona/mover', async (request, reply) => {
-    const { destino } = request.body;
+  app.post<{ Params: { id: string }; Body: { destino: { x: number; y: number }; objetivoSlug?: string } }>('/saves/:id/zona/mover', async (request, reply) => {
+    const { destino, objetivoSlug } = request.body;
     if (typeof destino?.x !== 'number' || typeof destino?.y !== 'number') {
       return reply.status(400).send({ error: 'Falta el campo: destino {x,y}' });
     }
@@ -1328,7 +1335,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       return reply.status(409).send({ error: 'Ya hay un movimiento en curso para esta partida.' });
     }
     try {
-      return await resolverMovimientoEnZona(save, destino);
+      return await resolverMovimientoEnZona(save, destino, typeof objetivoSlug === 'string' && objetivoSlug ? objetivoSlug : undefined);
     } finally {
       zonaMoverClaims.release(save.id);
     }
@@ -1337,6 +1344,7 @@ export async function zonaRoutes(app: FastifyInstance) {
   async function resolverMovimientoEnZona(
     save: NonNullable<Prisma.SaveGetPayload<{ select: typeof SAVE_SELECT_PARA_MOVER }>>,
     destino: { x: number; y: number },
+    objetivoSlug?: string,
   ) {
     const factionsStatus = (save.worldState?.factionsStatus as Record<string, number> | null) ?? {};
     const posicionActual = save.zonaPosX != null && save.zonaPosY != null ? { x: save.zonaPosX, y: save.zonaPosY } : { x: 400, y: 300 };
@@ -1396,6 +1404,9 @@ export async function zonaRoutes(app: FastifyInstance) {
           // lado — nunca se silencia por el último encuentro.
           null,
           save.level,
+          null,
+          undefined,
+          objetivoSlug,
         );
         if (dynamicModeOffer) {
           await tx.save.update({
