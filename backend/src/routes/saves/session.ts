@@ -475,8 +475,12 @@ export async function sessionRoutes(app: FastifyInstance) {
 
       const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
-      // P457: el diario lo llama como la ficha de combate y la Victoria (un PRINCIPAL sin descubrir, «Orco desconocido»).
-      const aVisible = aNombre((await nombreVisibleDeNpc(prisma, save.id, npc)).nombre);
+
+      // P460: tras pelear, nombre real (descubrir antes de nombrar; sin esto el diario diría «orco desconocido» y la deuda el real).
+      const llamarAlNpc = async () => {
+        await descubrirNpc(prisma, save.id, npc.slug);
+        return aNombre((await nombreVisibleDeNpc(prisma, save.id, npc)).nombre);
+      };
 
       // Combate múltiple real (2026-08-29, bug real jugando en vivo — ver comentario de
       // `CombatParticipant.dismissedGrupo` en schema.prisma): con `participantId`, la condición
@@ -515,6 +519,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
         }
 
+        const aVisible = await llamarAlNpc();
         const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
         const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
         // Condición de carrera real (auditoría 2026-09-01): sin releer, un doble clic simultáneo
@@ -555,6 +560,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
       }
 
+      const aVisible = await llamarAlNpc();
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
       const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
 

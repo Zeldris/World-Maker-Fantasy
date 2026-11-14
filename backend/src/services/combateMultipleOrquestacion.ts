@@ -684,6 +684,14 @@ interface EscribirCondicionYEnergiaParams {
   activeEffectsNext: ActiveEffect[] | null;
 }
 
+/// P460: ganarle a un NPC (dejarlo CONVALECIENTE) lo descubre ya, no al cerrar el combate: así la tarjeta de
+/// convaleciente, Clemente y la deuda lo llaman igual, por su nombre real.
+async function descubrirSiConvaleciente(tx: Prisma.TransactionClient, saveId: string, participant: ParticipantRef, condicionFisica: CondicionFisica | null): Promise<void> {
+  if (condicionFisica !== 'CONVALECIENTE' || participant.tipo !== 'NPC' || !participant.npcId) return;
+  const npc = await tx.npc.findUnique({ where: { id: participant.npcId }, select: { slug: true } });
+  if (npc) await descubrirNpc(tx, saveId, npc.slug);
+}
+
 export async function escribirCondicionYEnergia({
   tx,
   saveId,
@@ -701,6 +709,7 @@ export async function escribirCondicionYEnergia({
     // Miembro de grupo — su condición vive en el propio CombatParticipant (energía/usageCounts/
     // activeEffects deliberadamente no persisten entre turnos, ver comentario de `esGrupo`).
     if (condicionFisica) await tx.combatParticipant.update({ where: { id: participant.id }, data: { condicionFisicaGrupo: condicionFisica } });
+    await descubrirSiConvaleciente(tx, saveId, participant, condicionFisica);
     return;
   }
   if (participant.tipo === 'JUGADOR') {
@@ -727,6 +736,7 @@ export async function escribirCondicionYEnergia({
     return;
   }
   if (participant.tipo === 'NPC' && participant.npcId) {
+    await descubrirSiConvaleciente(tx, saveId, participant, condicionFisica);
     await tx.npcState.upsert({
       where: { saveId_npcId_scope: { saveId, npcId: participant.npcId, scope: participant.npcScope } },
       create: {
