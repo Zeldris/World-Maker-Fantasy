@@ -38,6 +38,18 @@ export function entityTypeDeSerVivo(slug: string, faunaSlugs: ReadonlySet<string
 /// Slugs de las fuentes con `HarvestYield` del catálogo (la fauna cazable), para `entityTypeDeSerVivo`.
 export const FUENTES_DE_CATALOGO: ReadonlySet<string> = new Set(harvestYields.map((y) => y.sourceSlug));
 
+/// P328/P107: deja DESCUBIERTO a un NPC de la partida (ficha completa en el mapa y la Enciclopedia). Único upsert
+/// de «descubrir por haber peleado o hablado»: lo usan el cierre del combate de grupo y del 1v1 clásico
+/// (`guardarSlugsDeCombate`, `combateMultipleOrquestacion.ts`) y Interactuar (`dynamicMode.ts`). `REVIEW.md` § «Un dato, un sitio».
+export async function descubrirNpc(tx: Prisma.TransactionClient | typeof prisma, saveId: string, slug: string): Promise<void> {
+  const entityType = entityTypeDeSerVivo(slug, FUENTES_DE_CATALOGO);
+  await tx.discoveredEntity.upsert({
+    where: { saveId_entityType_entitySlug: { saveId, entityType, entitySlug: slug } },
+    create: { saveId, entityType, entitySlug: slug, fase: 'DESCUBIERTO' },
+    update: { fase: 'DESCUBIERTO' },
+  });
+}
+
 export async function recordEntityDiscoveries(
   params: {
     saveId: string;

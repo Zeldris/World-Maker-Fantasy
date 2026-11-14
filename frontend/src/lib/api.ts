@@ -1427,11 +1427,12 @@ export interface MoverZonaResultado {
   /// P161 (QA-27): energía tras el paso, si la recuperó (el HUD no la refrescaba al andar).
   energia?: number
 }
-export async function moverEnZona(saveId: string, destino: { x: number; y: number }): Promise<MoverZonaResultado> {
+/// P463: `objetivoSlug` = la ficha a la que se pulsó «Interactuar»; solo ese objetivo cuenta y sustituye una oferta pendiente.
+export async function moverEnZona(saveId: string, destino: { x: number; y: number }, objetivoSlug?: string): Promise<MoverZonaResultado> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/zona/mover`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ destino }),
+    body: JSON.stringify({ destino, ...(objetivoSlug ? { objetivoSlug } : {}) }),
   })
 }
 
