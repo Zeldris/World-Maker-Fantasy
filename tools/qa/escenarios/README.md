@@ -65,3 +65,4 @@ estado útil lo guarda aquí (`QA-105`).
 | `t121-orco-ficha` | `cmvex1v0300057d0pdjlbezcj` | Tanda 121: ficha del punto del Orco en el mapa sigue ??? (P328/P107) | 2026-11-11 |
 | `t121-colmillo-zona` | `cmvex1v0300057d0pdjlbezcj` | Tanda 121: Colmillo Ceniza 11:09 con montura y huida de pruebas, mapa Zona abierto | 2026-11-11 |
 | `t51-orco-convaleciente-matar` | `cmvex1v0300057d0pdjlbezcj` | Hondonada día 39 22:00, combate abierto contra el Orco enfurecido (orco desconocido) CONVALECIENTE sin rematar (hecho con preparar convaleciente:orco-enfurecido-hondonada:combate sobre mv-hondonada-hostiles; misión aceptada, Gistera oculta, sin ninguna muerte causada): para P184 (rematar sin testigos, avanzar 2, mirar el tablón) y P82 (T51) | 2026-11-11 |
+| `t128-hondonada-jorer-escena` | `cmvex1v0300057d0pdjlbezcj` | Hondonada día 39 22:17, en escena con Jorer Susig (cerca de la Pared), Orco enfurecido vivo y aún '???' (sin descubrir) en el mapa | 2026-11-14 |
