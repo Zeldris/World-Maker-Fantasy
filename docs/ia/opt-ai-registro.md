@@ -12,7 +12,7 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `gen_ai.request.model` | texto | Modelo pedido |
 | `gen_ai.request.max_tokens` | entero | `num_predict` o equivalente |
 | `gen_ai.request.temperature` | número | |
-| `gen_ai.usage.input_tokens` | entero | Tokens del prompt (Ollama: `prompt_eval_count`) |
+| `gen_ai.usage.input_tokens` | entero | Tokens del prompt (Ollama: `prompt_eval_count`; cuenta el prompt entero aunque salga de la caché de prefijo: lo reaprovechado lo estima `medir-ia.py`, columna `reaprov_pct`, `QA-341`) |
 | `gen_ai.usage.output_tokens` | entero | Tokens generados (Ollama: `eval_count`) |
 | `gen_ai.response.finish_reason` | texto | `stop`, `length`, `error`… |
 | `app.task` | texto | Tarea del proyecto (en Tarkor: `narrar`, `narrar_respaldo`, `clasificar`, `sugerir`, `dialogo_npc`, `combate`, `modo_dinamico`, `resumen`, `prompts_imagen`, `embedding`, `rag`; `calentar` es el calentamiento al arrancar y se excluye del análisis) |
