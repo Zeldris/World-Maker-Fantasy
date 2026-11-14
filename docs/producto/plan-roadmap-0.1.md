@@ -107,12 +107,17 @@ Script `backend/src/scripts/benchmark-turno.ts` que juega N turnos típicos cont
 Ollama reales y saca tiempos por fase (clasificar, resolver, narrar). Álvaro lo ejecuta en la
 Steam Deck; con los números se fija el objetivo de turno en el roadmap.
 
-🚧 **Script hecho** (2026-10-02): `npm run benchmark-turno -- [--turnos 5] [--url …] [--save <id>]
+**Script hecho** (2026-10-02): `npm run benchmark-turno -- [--turnos 5] [--url …] [--save <id>]
 [--conservar] [--salida informe.json]` con el backend arrancado. Crea una partida de Gorhorn (la
 borra al acabar), juega acciones cortas típicas y mide clasificar, resolver (hasta la primera línea
 del stream de narración) y narrar (hasta `done`); imprime mediana, p90 y máximo y guarda un JSON con
-máquina, modelos y versión. Probado en local contra el Ollama simulado. **Falta (Álvaro):**
-ejecutarlo en la Steam Deck con el Ollama real y pasar el JSON para fijar el objetivo de turno.
+máquina, modelos y versión. Probado en local contra el Ollama simulado.
+
+✅ **Medido en la Steam Deck** (2026-11-14, Ollama real con la iGPU, 10 turnos; JSON en
+`logs/benchmark/fase-f-2026-11-14.json`, carpeta ignorada). Mediana · p90 · máximo: clasificar 3,0 · 3,7 · 4,1 s;
+resolver 10,9 · 14,1 · 14,1 s; narrar 13,1 · 30,5 · 30,5 s; **total 29,0 · 44,7 · 44,7 s** (n=9: el turno 7,
+«Camino despacio hacia el borde del claro», salió bloqueado en 0,4 s y no cuenta). **Falta (Álvaro):** fijar con
+estas cifras el objetivo de turno en el roadmap (pregunta en la bitácora).
 
 ## Fase G — Pasada de juego completa (Opus, con el navegador)
 
