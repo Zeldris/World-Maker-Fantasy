@@ -96,8 +96,8 @@ p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-3
 
 ## Script de parada
 
-<!-- La orden que para lo que levantó una ronda (servidores, modelos locales, inhibidores de suspensión); es el paso
-     de cierre de cada ronda. -->
+`bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh parar` (`QA-313`): baja Ollama, el juego, el driver y el
+inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 
 ## Ya en marcha
 
