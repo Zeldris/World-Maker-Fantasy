@@ -278,6 +278,17 @@ describe('ZonaPanel — Z-B, tarjeta y menú de la ficha', () => {
     expect(items(menu)).toContain('Interactuar')
   })
 
+  it('P463: «Interactuar» de una ficha pegada manda su slug como objetivo del mover', async () => {
+    vi.mocked(moverEnZona).mockClear()
+    vi.mocked(moverEnZona).mockResolvedValue({ jugador: { x: 225, y: 125 }, caminoRestante: [], zonePointsMovidos: [] } as never)
+    const { getByRole } = await abrirMenuDelAullador({ jugador: { x: 225, y: 125 }, muros: [{ col: 3, row: 2 }], interior: [{ col: 4, row: 2 }] })
+    await act(async () => {
+      fireEvent.click(getByRole('menuitem', { name: 'Interactuar' }))
+    })
+    expect(moverEnZona).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(moverEnZona).mock.calls[0]![2]).toBe(zona.puntos[0]!.targetSlug)
+  })
+
   it('P337: sin interior (zona sin empalizada), el punto sobre un muro se trata como siempre', async () => {
     const { menu } = await abrirMenuDelAullador({ jugador: { x: 175, y: 175 }, muros: [{ col: 3, row: 2 }] })
     expect(menu.textContent).not.toContain('puerta del poblado')

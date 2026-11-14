@@ -279,7 +279,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
 
   // B3 (pruebas 2026-09-28) — "Ir hasta aquí" desde la ficha de un pin. Solo con movimiento real
   // (no en la vista informativa) y si el jugador no está ya pegado al pin.
-  function irHastaPin(pin: { x: number; y: number }): (() => void) | undefined {
+  function irHastaPin(pin: { x: number; y: number }, objetivoSlug?: string): (() => void) | undefined {
     if (soloConsulta) return undefined
     // Fase G del 0.1 (hallazgo G14): pegado ya al pin, la ficha se quedaba sin ninguna acción (ni
     // ir, ni cazar) — tras ignorar un encuentro no había forma de volver a él sin alejarse. Ahora
@@ -288,7 +288,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
     // P337 (decisión 2026-11-09): un punto sobre las estacas, desde fuera, lleva a la puerta del poblado.
     const puerta = destinoPuerta(pin)
     if (puerta) return () => void handleMoverA(puerta)
-    if (pegadoAPin(pin)) return () => void handleMoverA({ x: data!.jugador!.x, y: data!.jugador!.y })
+    if (pegadoAPin(pin)) return () => void handleMoverA({ x: data!.jugador!.x, y: data!.jugador!.y }, objetivoSlug ? { objetivoSlug } : undefined)
     return () => void handleMoverA({ x: pin.x, y: pin.y })
   }
 
@@ -404,7 +404,7 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   }
   function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
     const acciones: AccionFicha[] = []
-    const ir = irHastaPin(punto)
+    const ir = irHastaPin(punto, 'targetSlug' in punto ? punto.targetSlug : punto.slug)
     // P337: sobre las estacas y fuera, «Interactuar» no serviría: «Ir» lleva a la puerta del poblado.
     const sinAcceso = sinAccesoDesdeFuera(punto)
     const puerta = destinoPuerta(punto)
