@@ -1,6 +1,6 @@
 # Retro de `claude/narrador-tiempos` (`QA-289`, rondas 3-5d), 2026-11-14
 
-**Estado:** sin decidir.
+**Estado:** aprobada y aplicada (P1 → ~~`QA-345`~~, P2 → ~~`QA-346`~~, usuario 2026-11-14); G1 y G2, para el flujo.
 
 Fuentes: las sesiones de la rama del 2026-11-14 (`2f0a9763` rondas 3-5, `94e5ad6a` merge de `main` y revisión de
 bloque, `273a363a` `/gw-opt-tokens`). El gasto ya lo cubrió `/gw-opt-tokens` (~~`QA-342`~~, ~~`QA-343`~~) y la
