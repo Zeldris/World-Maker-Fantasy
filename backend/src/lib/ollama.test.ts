@@ -198,3 +198,16 @@ describe('timeout en ollamaGenerate', () => {
     expect(registrarLlamada.mock.calls[0][0].error).toMatch(/no respondió en 50ms/);
   });
 });
+
+// QA-289: el muestreo del narrador (min_p, repeat_penalty…) llega a `options` de Ollama.
+describe('muestreo extra en la petición', () => {
+  it('pasa `muestreo` dentro de options, junto a num_predict', async () => {
+    vi.resetModules();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ response: 'ok' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { ollamaGenerate: generar } = await import('./ollama.js');
+    await generar({ model: 'm', prompt: 'p', maxTokens: 300, muestreo: { min_p: 0.05, repeat_penalty: 1.05 } });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.options).toMatchObject({ num_predict: 300, min_p: 0.05, repeat_penalty: 1.05 });
+  });
+});

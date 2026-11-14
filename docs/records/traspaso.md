@@ -11,23 +11,13 @@ cada commit.**
 | | |
 |---|---|
 | **Actualizado** | 2026-11-14 |
-| **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/interfaz-imagenes` (desde 2026-10-24, `CFG-43`), `claude/limpieza` (desde 2026-10-27, `QA-271`), `claude/gw-update-0.6` (2026-11-14). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/plan-imagenes`, `claude/generador-mapas`, `claude/pedido-mapa`, `claude/banco-narrador`, `claude/pruebas-local`, `claude/opt-ai-mejoras`. Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
+| **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/generador-mapas`, `claude/banco-narrador`. Filas de ramas cerradas: [`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342). Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #92 de `claude/wonderful-volta-662qt8` (2026-11-11, `d8ef94ad`, CI en verde): puerta de pruebas, tandas 107-116, lotes F-I (P440-P453), `QA-317`…`QA-321`. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
-| **Tarea en curso · `claude/gw-update-0.6`** | 🚧 Flujo Galivelop-workflow v0.5.0 → v0.6.0 (gw-update, usuaria 2026-11-14). Hecho: fase 1 (f68916df, 8 arreglos), ciNodeDirs, fase 2: /gw-opt-tokens (QA-332…QA-334) y retro aprobada entera (QA-335: MCP de Playwright solo en rondas; P21-P23 al flujo). Pendiente leve: CI duplicado, ledger compartido, test_fusionar sin ganchos; la usuaria desactiva el conector Claude Docs. Siguiente: check.sh, fase 3 (reviewed.sh) y PR a main. |
-| **Tarea en curso · `claude/pedido-mapa`** | Ronda local cerrada (P306, P310, P435 siguen; nuevos P447, P448). `/gw-opt-ai` aprobado: `QA-308`, `QA-309` (`clasificar-eval`, 2/5: P447 y amenaza de P306 en rojo) y `QA-310` hechos, y `QA-307` (prefijo estable en combate) en código; falta medirlo en la Deck. Presupuesto de compactaciones: 1. Fase 1 hecha (leves: caché de combate cortada por salud/memoria/NPC; `viaje.py`; `SENTIDO_NIVEL`). Fase 2: `QA-311`, `QA-312` hechos; retro aplicada (`QA-313`…`QA-316`); fase 3 hecha. **Siguiente:** PR a `main` y fusionar con el CI en verde. |
-| **Tarea en curso · `claude/ins-34-backend-sin-curacion`** | Fusionada en `main` sin PR, CI local (2026-10-27, `QA-215`; retro aprobada por la usuaria): `INS-34` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md)), backend empaquetado sin curación ni cloud. Leves sin tarea: test del bundle en ESM y `esbuild` pinneado; `image-prompt` GET/PUT, variables cloud de `env.ts` y aviso de `LIVE_TEACHER_CAPTURE_ENABLED` siguen en el build. Siguiente: nada. |
-| **Tarea en curso · `claude/ins-33-frontend-sin-admin`** | Fusionada en `main` sin PR (2026-10-26, `47f6806`, `QA-215`; retro aprobada por la usuaria): `INS-33` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md), fase 3), frontend sin admin empaquetado, y retro `QA-262`…`QA-265`. Leve pendiente: rama `custom` de `CharacterSelect` inalcanzable a propósito. **Siguiente:** nada en esta rama; `INS-34`. |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
-| **Tarea en curso · `claude/pruebas-local`** | Rondas de pruebas en la Deck con Ollama real (2026-10-20; solo se apunta). Hecho: P238-P274 (graves: P240, P260); jugados UX-30, CR-21/22/23, CR-67; `/code-review`, `/opt-ai`, `/opt-tokens` y `/retro` pasados, sus propuestas aprobadas sin aplicar. Bloqueadas: CR-53/55/58/61/63/65 y CR-32/42. PR #68 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
-| **Tarea en curso · `claude/opt-ai-mejoras`** | ✅ `/opt-ai` (`QA-160`…`QA-168`): turno p50 61 → 29-35 s, primera palabra 45 → 17-19 s. `/code-review`, `/opt-tokens` y [retro](retro-2026-10-20-opt-ai-mejoras.md) hechos y aplicados (`QA-169`…`QA-175`; bench con `tools/qa/bench-ia.sh`). Tests: `tools/qa` 119 (2 de `test_host` fallan solo en el sandbox), `opt-ai` OK. PR #70 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
-| **Tarea en curso · `claude/imagenes-local`** | A `main` **sin PR, CI local** (`QA-215`, cuota de Actions agotada; confirmado por la usuaria el 2026-10-24): ~~`CFG-38`~~…~~`CFG-40`~~, `probar.sh`, ~~`QA-222`~~…~~`QA-226`~~; descripción en `docs/records/pr/claude/imagenes-local.md`. Al fusionarse, rama terminada. **Siguiente:** la usuaria prueba prompts con `probar.sh` → `CFG-42` (en la Deck) → `CFG-41`. |
-| **Tarea en curso · `claude/interfaz-imagenes`** | ~~`CFG-43`~~ ✅: interfaz local del generador (`image-generator/abrir.sh`), todo por elemento en `generated/<tipo>/<slug>/`, con toda la enciclopedia y lo anidado (2.550). Tests 37/37, probada en la Deck. Roadmap `roadmap-imagenes.md` (`IMG-1`…`IMG-3`, `0.4`). Fases 1-3 hechas (retro `QA-228`…`QA-233`, leves `QA-234`). A `main` **sin PR, CI local** (`QA-215`, confirmado por la usuaria el 2026-10-25; [descripción](pr/claude/interfaz-imagenes.md)). **Siguiente:** `CFG-42` → `CFG-41`. |
-| **Tarea en curso · `claude/narrador-tiempos`** | `QA-289` 🚧 parada desde el 2026-11-04 (32 commits fuera de `main`, 59 por detrás; usa aún `docs/registros/`): narrador con Ollama real, rondas 2-4, arreglos P410-P425, investigación en `docs/ia/investigacion-narrador-repos.md`. P412 arreglado sin comprobar jugando. **Siguiente:** cuando toque y con la memoria libre, `git merge origin/main`, jugar los 4 casos de la ronda 4 (escenario `ronda-qa289-4`), `/gw-opt-ai` y P423; luego PR. |
+| **Tarea en curso · `claude/narrador-tiempos`** | `QA-289` 🚧 (usuario, 2026-11-14): ronda cerrada (P412, P423, P417 ✅; nuevos P469, P470), `/gw-opt-ai` hecho (`QA-339`…`QA-341`). Fases 1 y 2 hechas (retro aprobada: ~~`QA-345`~~, ~~`QA-346`~~). Fase 3: arreglos del code-review de la fase 2 hechos (`Findings: 8`, resolver-conflicto.py con base y por id). **Siguiente:** `reviewed.sh`, push y PR con gh; luego QA-339…341. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
-| **Tarea en curso · `claude/plan-imagenes`** | Fusionada en `main` (PR #80, 2026-11-03, `304872b9`, CI en verde): ~~`IMG-15`~~…~~`IMG-33`~~ ✅, ~~`IMG-4`~~ ✅, retro ~~`QA-280`~~…~~`QA-284`~~. Rama terminada. **Siguiente bloque:** `IMG-6`, los 5 pilotos con la cadena fotorreal en una tanda de noche (antes, preguntar a la usuaria qué cerrar por memoria); luego la noche (`IMG-16`, `IMG-17`) e `IMG-7` → `IMG-25`, en una rama nueva desde `main`. |
-| **Tarea en curso · `claude/ins-31-url-backend`** | Fusionada en `main` sin PR (2026-10-26, `b76c66b`, `QA-215`; retro aprobada por la usuaria): `INS-31` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor), fase 3), `apiBaseUrl()` en `api.ts` (`window.__TARKOR__.apiUrl` → `VITE_API_URL` → `localhost:3001`), y retro `QA-259`…`QA-261`. GitHub marcó el PR #78 como fusionado. **Siguiente:** nada en esta rama. |
 | **Tests** | Rama `claude/wonderful-volta-662qt8` (2026-10-20, antes del PR de `opt-ai`): backend `tsc` 0, `vitest` 302 archivos / 3661 con 2 rojos que también fallan en `main` con la misma base (`mundoPartida` y `deudaDeVida`, integración: estado de la base tras la ronda con Ollama real, no del PR); frontend `tsc -b` 0; `tools/qa/tests` 68 y `opt-ai` 16 en verde. Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
 ## Dónde está todo (para saber qué sigue)
@@ -52,6 +42,8 @@ Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
    Cultura: fichas D-01…D-03, G-01…G-04 y O-01 en `propuestas-aprobadas.md`), ya está en `docs/rpgtarkor/` y `docs/canon-opencode/`, sin código.
 
 ## Siguientes pasos (en orden)
+
+**Pendiente de filas archivadas** ([`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342)): medir `QA-307` (prefijo estable en combate) en la Deck (está en `roadmap-front.md`); leves de `gw-update-0.6` (CI duplicado, ledger compartido, `test_fusionar` sin ganchos; ver [su retro](retro-2026-11-14-gw-update-0.6.md)); la usuaria desactiva el conector Claude Docs.
 
 **La línea (usuaria, 2026-10-21):** un solo frente cada vez. Detalle en
 [21-roadmap.md](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21).
@@ -109,26 +101,7 @@ el roadmap hasta que ella decida.
 
 ## Propuestas aprobadas para el roadmap cuando acaben las pruebas
 
-Aprobadas por la usuaria; entran como tareas (con su hito) al volver al roadmap, no antes.
-
-| Propuesta | Detalle | Origen |
-|---|---|---|
-| Paso `fuera:<lugar>` y `sin-guarnicion` en `escenario.sh preparar` | Cierra P427; deja ver P253 en pantalla sin SQL | [retro cierre 3.3](retro-2026-11-04-cierre-3.3.md) (2026-11-04) |
-| Lo preparado a mano se devuelve «sin ver» | Una línea en `rondas-de-pruebas.md`: sin seguir jugando sobre un estado hecho por SQL | [retro cierre 3.3](retro-2026-11-04-cierre-3.3.md) (2026-11-04) |
-| `marca-hallazgo.py --ver P<n>` | Estado y tandas de un hallazgo, recortados, sin releer el plan (~300k de entrada por sesión) | [retro cierre 3.3](retro-2026-11-04-cierre-3.3.md) (2026-11-04) |
-| Recuerdo propio del NPC que vence a la jugadora | Que el vencedor recuerde el combate, no solo la etiqueta | P233 (2026-10-19) |
-| No repetir «ha colgado nuevos avisos» | Si hace pocos días del último aviso del mismo tablón | P237 (2026-10-20) |
-| Skill `scout-updates` (búsqueda de actualizaciones) | En construcción como `QA-176` ([diseño](../ia/skill-scout-updates.md)) | 2026-10-20 |
-| Leyendas por categorías con filtros genéricos | Entra todo (también los avisos menores del Reino) y lo que se ve lo eligen filtros combinables: **origen** (Tú, Tu Reino, Aliados, Mundo), **familia** (varias a la vez), **importancia** (Todo / Notable / Grave, por marca, nunca número) y **vía** (lo viviste, te lo contaron, de oídas, tablón). Por defecto «Notable»; recuerda el último filtro; contador por categoría; avisos iguales del mismo día agrupados. Referencias: registro de X4 por pestañas (marca el camino), avisos del asentamiento aparte en Manor Lords y Bellwright, diario por pestañas de BG3, fuentes y rumores de D&D 5e. Hoy: `LeyendasPanel.tsx` filtra por una familia y los avisos del Reino no llegan por el umbral de importancia | 2026-10-20 |
-| Colisión de combate con la posición real del hostil | La puerta de colisión (`turnResolution.ts:6940`) usa la posición de `NpcState` cuando la tenga y el ZonePoint de catálogo si no; hoy un ataque por texto a un hostil que deambula no abre combate y el narrador narra el golpe igual | P238 (2026-10-20) |
-| Escape cierra primero el cajón | Con el Diario o Leyendas abierto, Escape cierra el cajón en vez de abrir la Pausa | P239 (2026-10-20) |
-| `arrancar-juego.sh` hace `prisma generate` | Tras una migración nueva el cliente quedaba viejo y el primer turno daba «Error narrando el turno» | Ronda P232 (2026-10-20) |
-| Retro del PR de `claude/pruebas-local` (7) | Lanzar Claude desde el repo (`Desarrollos/CLAUDE.md`); `arrancar-juego.sh` comprueba `IA_REGISTRO` absoluto, GPU y `rag-eval` con `IA_PERFIL`; `/opt-ai` en el flujo del PR; permiso de `escenario.sh` y escenario del Reino con recursos; gancho contra los borradores en commits; `bitacora.py` en el pre-push contra filas ajenas; mejoras de `opt-tokens`, `orchestrate-dealer` y `opt-ai`. Detalle en [`retro-2026-10-20-pruebas-local.md`](retro-2026-10-20-pruebas-local.md). Sin aplicar: la implementación la gestiona Álvaro | Retro 2026-10-20 |
-| `/opt-ai`, primera medida en la Deck (9) | Menos intentos 2 de `narrar`; recortar la parte variable del prompt; `keep_alive` 1h en `resumen`; contexto del respaldo; escalera del RAG con los casos de la ronda; registro y `medir.py`; `lengthGuidance` tras el bloque fijo; `keep_alive` de `clasificar` (experimento); desactivar la captura remota (privacidad). Umbral por turno incluido. Detalle en [`opt-ai-registro.md`](../ia/opt-ai-registro.md). Sin aplicar | `/opt-ai` 2026-10-20 |
-| `/opt-tokens` de la sesión de rondas (6) | Tandas de juego de ~60 llamadas con traspaso por escenario; capturas más pequeñas; comprobar la GPU antes de una tanda de IA; `tools/qa/host.sh` y `sql.sh` para el sandbox Flatpak; lanzar Claude Code desde `World-Maker-Fantasy`; `medir.py` con desglose por subagente. Sin aplicar | `/opt-tokens` 2026-10-20 |
-| Construcción por oficio y Casa de obras | Ningún edificio pide atributos: cada uno lleva tier 1-9 (T1-3 libres, T4-6 con Ayuntamiento mediano, T7-9 con el grande; nivel de constructor = tier máximo, como el resto de oficios). Casa de obras (Bellwright) con 3 escalones (tiers 1-3/4-6/7-9, plazas 1/2/3): sus trabajadores sacan una cola reordenable de obras y reparaciones; la obra se hace si un constructor asignado llega al tier (si no, 🔒N y aviso) y consume del almacén por días (X4). El PJ construye solo hasta T3 (Medieval Dynasty) y sube su nivel construyendo; los súbditos, el suyo. Lo ya construido no se respeta: la regla nueva vale para todo, y las partidas guardadas no necesitan compatibilidad porque solo las juegan las dos cuentas (usuaria, 2026-10-21). Tiers: T1 Campamento, Pozo, Leñera, Fibrería, Tablón, Jaula pequeña · T2 Choza, Tótem, Ayuntamiento pequeño, Granero, Cisterna, Empalizada, Mercado, talleres sencillos (Cocina, Curtiduría, Peletería, Sastrería, Herboristería, Casa de curas, Corrales, Desolladero, Embarcadero) · T3 Herrería, Carpintería, Taller de piedra, Boca de mina, Alquimia, Torre, Armería, Barracón, Cuartel avanzado, Puesto comercial, Jaula mediana · T4-5 obradores, T5 versiones de piedra, T6 Cuartel de guerra y Ayuntamiento mediano, Jaula grande · T7-8 grandes obradores, T8 Muralla, T9 Ayuntamiento grande | P277, P284 (2026-10-21) Pendiente del code-review (2026-10-22): constructores con plaza y sin obra posible recolectan; quitar una obra devuelve lo gastado; si la cuota del más rápido no cabe en el Almacén, probar con otro; un solo valor por defecto de plazasConstructor; comentario de CasaDeObrasCola y texto de «Constructor» en Súbditos; repartirObras solo en tests; vi.resetModules en su test. |
-
-Implementada (2026-10-20): skill `opt-ai` tras cada tanda de pruebas ([diseño](../ia/skill-opt-ai.md), [skill](../../.claude/skills/gw-opt-ai/SKILL.md)); se activa con `IA_REGISTRO`/`IA_PERFIL` al arrancar ([runbook](../runbooks/rondas-de-pruebas.md)).
+Aprobadas por la usuaria, a la espera del roadmap: ahora en [`propuestas-aprobadas.md`](propuestas-aprobadas.md) (`QA-342`).
 
 ## Decisiones de Álvaro que bloquean algo
 
@@ -176,58 +149,25 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 # (ver reglas comunes en docs/producto/plan-roadmap-0.1.md)
 ```
 
-## Pendientes leves del mapa (revisión de la fase 1, 2026-11-10)
+## Pendientes leves
 
-- `editar.py`: ríos importados sin `puntos` rompen `_trazos_lote` y la costa (hoy 0 ríos); la costa compara cuántos puntos quedan mal, no cuáles, y no recalcula el `continente` de rutas no tocadas; `_alturas` mira los lugares de antes del lote.
-- `servir.py`: GET de `/historial.json` y `/helek.json` fuera del cerrojo; el CLI escribe sin cerrojo y con `base` opcional.
-- `InteractiveMap.tsx`: los bbox de Llanuras y Cristal Helado salen del `helekRegiones.ts` regenerado (repintar mueve LocationLink y la escala); ids 17-21 y región 18 por defecto en el visor, a mano.
-- Ollama simulado: el arranque está copiado en `ci-local.sh`, `entorno-nube.sh` y `con-mock-ollama.sh` (unificar); `vitest --project bd-real` a mano sigue sin levantarlo (un `globalSetup` lo cubriría).
-- `consultar.py lugares --radio` compara en unidades, no en km (hoy `kmPorUnidad` = 1); `_ficha_celda` con un `x` sin uso y `GEOJSON` sin uso en `banco.py`.
+Los pendientes leves de revisiones ya cerradas están en [`pendientes-leves.md`](pendientes-leves.md) (`QA-342`); el del PR en curso (`QA-289`), abajo.
 
-## Pendientes leves de la revisión de las tandas 107-108 (fase 1, 2026-11-10)
+## Pendientes leves de la revisión de bloque de `QA-289` (2026-11-14)
 
-- `sucesos.ts` `esDelReinoPropio`: un suceso de importancia 4 con el Reino propio y una aliada como actores recibe el TESTIGO y ya no da la noticia ALIADA en «El mundo»; además hace un `faction.count` por suceso menor.
-- `dailyTick.ts`: el aviso P381 corre antes que las órdenes de cocina (lotes que no entran en el balance): puede avisar un día antes. `avisoDeReserva` repite el aviso si el balance oscila en torno a 0.
-- `narrador.ts` respaldo de combate (P435): en combate sin tirada dice «Aún no se ha resuelto ningún intercambio» también al huir u hablar.
-- `/mundo/nuevas` (`log.ts:67`) pagina por `createdAt` y el worldLog se ordena con `ORDEN_LOG` (ya apuntado en el lote D).
-- `diarioFecha.ts` duplica `DIAS_POR_ESTACION` del backend y recalcula `diaAbsoluto`; las pestañas de día del Diario repiten «de Verano, año 1».
-- Clemente devuelve siempre `factionRepChange: null` (P270): el campo y su rama del frontend ya no se usan.
-
-## Pendientes leves de la revisión del lote G4 (2026-11-11)
-
-- `prepararAvance.ts#reponerZonaActual` recalcula siempre; el juego, al abrir el mapa, solo con FAUNA sin `lastUpdated` o en zonas de inicio (`zona.ts:317`). Usa `currentLocation`, no el destino de un viaje en curso, y `avanzarDias` dice «Fauna de X repuesta» aunque no haya puntos.
-- `prepararEdificios.ts#textoSinReparar` repite cifras y podría decir «faltan 0» en una carrera.
-- `interactuar.js`: el `dialog` puede casar con el propio mapa de zona; los mensajes nuevos de `interactuar.js`/`mover.js` y que `avanzar` repone la fauna no están en `rondas-de-pruebas.md`.
-- P383: `t56-reino-dia75` sigue con 11 de 12 edificios dañados (documentado; para asaltos, `t68`).
-
-## Pendientes leves de la revisión del bloque P461-P463 (2026-11-14)
-
-- `death.ts`: la acción de despawn se aplica copiada en `turnResolution.applyCondicionTimeouts` y `companionSupervivencia.advanceCorpseAndRecoveryTimeouts`; mejor un helper que la aplique entera.
-- Huida (`session.ts` ~247/372): `descubrirNpcsDelCombate` + `descubrirNpc` por `freshSlugs` repiten upserts; `descubrirSiConvaleciente` hace un `findUnique` extra por escritura y `combateDesde` descubre en serie.
-- `zona.ts` ~1038: el `sort` de `puntosVivos` recalcula `celdaDePixel`/`hypot` en cada comparación.
-- `useCombatFlow.ts` ~1023: `closeCombat` aplica el intercambio antes de `cancelarTiradasPendientes()` (posible doble aplicación, sin verificar).
-- `useMovimientoZona.ts` ~93: ternario sobrante alrededor de `moverEnZona`; `interactuar.js`: `todos.count()` dos veces.
-- `turn.integration.test.ts` «despiece SÍ da algo» (caza en grupo) en rojo también en `main` (`19d8c523`): sin mirar.
-
-## Pendientes leves de la fase 3 de los lotes F-I (2026-11-11)
-
-- `tools/qa/plan.py` toma como tanda o lote cualquier fila de tabla del plan cuya primera celda sea un número o una sola mayúscula, sea de la tabla que sea.
-- `dailyTick.ts` (P444): con el Ayuntamiento de territoryId null, o con su territorio ya PERDIDO antes, los de su región no caen nunca en una rebelión (el comentario ya lo dice; decidir si es lo querido).
+- La réplica anterior que ve el NPC (`ultimaReplica(lastNarration)`, `turnResolution.ts`) puede ser de otro NPC.
+- `retrieval.ts`: `SELECT DISTINCT title` y la consulta de filas directas, en serie en cada turno; cachear los títulos por mundo y lanzarlas en paralelo.
+- `narrador.ts`: `console.warn('[lint] campo-accion …')` en cada turno sin fallo.
+- Escapado de regex y normalización sin tildes repetidos (`escapar`, `contieneNombre`, `normalizar`…); usar `escapeForRegex` y `normalizeText`.
+- Altura: la «una voz por llamada» es una cadena de parches de regex sobre la narración; valorar el gesto del NPC como campo del JSON.
+- Si `generateNpcReply` lanza excepción, el `catch` sigue sin réplica de respaldo; `quitarFrasesRepetidas` une con espacio y pierde los párrafos si quita una frase.
 
 ## Hecho recientemente
-- **Archivado (2026-11-14):** lo hecho hasta el 2026-11-10 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md).
-- **2026-11-11** — PR #92 fusionado en `main` (`d8ef94ad`, CI en verde): tandas 107-116, lotes F-I (P440-P453) y retro `QA-317`…`QA-321`.
-- **2026-11-11** — ~~`QA-317`…`QA-321`~~ (retro y `/gw-opt-tokens` de los lotes F-I): comentario P444 en `dailyTick.ts`, P citados en `REVIEW.md`, commit con bitácora en el encargo de arreglos, `tools/qa/plan.py` y notas de tokens.
-- **2026-11-11** — ~~`QA-306`~~ (usuario): `/gw-opt-ai` por umbral, no por PR: cada tanda local apunta una fila en `docs/records/pendiente-opt-ai.md` y Claude lo recomienda al pasar ~30 turnos o 4 tandas (`AGENTS.md`, `rondas-de-pruebas.md`, `skills-y-modelos.md`).
-- **2026-11-11** — ~~`QA-313`~~, ~~`QA-314`~~, ~~`QA-315`~~, ~~`QA-316`~~ (retro de `claude/pedido-mapa`): `deck/ia-ronda.sh` para Ollama de la ronda; evals que llaman al juego; encargo de código con rojo sin arreglo; estado por SQL antes de jugar.
-- **2026-11-11** — ~~`QA-311`~~, ~~`QA-312`~~ (`/gw-opt-tokens` del PR de `claude/pedido-mapa`): `tools/qa/seccion.sh` para leer solo «Qué se prueba»; `escenario.sh lista <patrón>`.
-- **2026-11-11** — ~~`QA-308`~~, ~~`QA-309`~~, ~~`QA-310`~~ (`/gw-opt-ai` aprobado): Cronista con keep_alive 30m; `npm run clasificar-eval` con 5 casos (2/5); `escenario.sh` relanza con el registro de IA (`logs/juego-ia.env`). ~~`QA-307`~~: lo que cambia en cada ronda de combate va al final de los hechos (falta medirlo en la Deck).
-- **2026-11-11** — Lote G de herramientas cerrado (G1-G4: P370-P434), revisado sin graves ni medios; todo sin ver jugando.
-- **2026-11-11** — Decisión de la usuaria sobre P440 (el cazador sin partida no aporta comida) y lote G de herramientas abierto.
+- **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-14 — QA-335 (retro de la v0.6.0): MCP de Playwright desactivado por defecto, se activa con /mcp en las rondas; P21-P23 al flujo
-2. 2026-11-14 — QA-332, QA-333, QA-334 (/gw-opt-tokens de la v0.6.0): subagentes gw-worker y sonnet para arreglos; «Hecho recientemente» antiguo en traspaso-archivo.md; roadmap.py show en las revisiones
-3. 2026-11-11 — ~~`QA-324`~~, ~~`QA-325`~~ (retro de las tandas 117-118): sin el aviso fijo de P442; el fin del combate en el mapa del agente. La candidata 3 (orden de arreglo en `handoff.py closed`) queda para Galivelop-workflow.
-4. 2026-11-11 — ~~`QA-322`~~, ~~`QA-323`~~ (`/gw-opt-tokens` de las tandas 117-118): `marca-hallazgo.py --lista <grupo>` da los hallazgos de un estado sin leer el registro; tras compactar, «Qué se prueba» solo si hace falta una regla.
-5. 2026-11-10 — `MAP-14` y `MAP-18` fusionadas en `main` (PR #90): zonas y tiempos de ruta en canon, agente local con encargo libre (claude/pedido-mapa)
+1. 2026-11-14 — QA-288: ci-local.sh para el Ollama simulado al salir (2026-11-03)
+2. 2026-11-14 — QA-346: fila «Lint» (oxlint, nunca npx eslint) en docs/mapa-agente.md (misma retro)
+3. 2026-11-14 — QA-345: docs/metrics/ledger.jsonl con merge=union en .gitattributes (retro de narrador-tiempos)
+4. 2026-11-14 — QA-343: tools/roadmap/resolver-conflicto.py resuelve tachados y filas añadidas en conflictos de roadmap
+5. 2026-11-14 — QA-342: bitácora de 35,8k a 19,7k (filas cerradas y 2026-11-11 al archivo; propuestas aprobadas y leves a archivos propios)

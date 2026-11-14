@@ -8237,6 +8237,8 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     // relación con los demás tests del archivo que también usan a Orco Enfurecido.
     await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'ILESO' } });
     await prisma.npcState.create({ data: { saveId, npcId: torgashId, scope: '', condicionFisica: 'ILESO' } });
+    // P419: un PRINCIPAL que vive en otra zona solo está aquí con su punto activo en la zona.
+    await prisma.zonePoint.create({ data: { locationId: hondonada.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     classifyAction.mockResolvedValue({
       requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -9384,6 +9386,9 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
   // el saludado (aunque el narrador proponga combate con él).
   it('caso mixto: saludar a Torgash Ketg con el orco AGRESIVO en escena abre combate solo con el orco', async () => {
     const saveId = await partida('Gorhorn de prueba (P306 mixto)');
+    // P419: un PRINCIPAL solo está en escena si vive aquí o tiene aquí su punto activo; Torgash vive en otra zona.
+    const hondonada = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId!;
+    await prisma.zonePoint.create({ data: { locationId: hondonada, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     const { classification, combateIniciado } = await saludar(
       saveId,
       "Saludo a 'Torgash Ketg' y le pregunto por el 'Orco enfurecido'.",
@@ -9877,7 +9882,7 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
     await doTurn(saveId, accion);
     const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
-    expect(texto).toMatch(/te escucha en silencio/);
+    expect(texto).toMatch(/escucha a Gorhorn P245 en silencio/);
     expect(texto).toMatch(/narrador no ha respondido/);
     expect(texto).not.toMatch(/sin incidentes/);
     expect(texto).not.toMatch(/sobre el camino/);

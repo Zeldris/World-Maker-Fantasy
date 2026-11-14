@@ -1673,6 +1673,62 @@ Retro y opt-tokens de `INS-33` (usuaria, 2026-10-26; [`retro-2026-10-26-ins-33.m
 - ~~**QA-264 · Entrada «Modo empaquetado» en el mapa del agente**~~ ✅ 2026-10-26: `docs/mapa-agente.md` (`empaquetado.ts`, usos y tests) para `INS-34…36` y `INS-41`.
 - ~~**QA-265 · Aviso de «PR abierto» sin URL en `bitacora.py`**~~ ✅ 2026-10-26 (solo apuntada): propuesta para Galivelop-workflow, en la retro («For Galivelop-workflow»); `.claude/gw/scripts/` no se toca.
 
+Narrador en la Deck (usuaria, 2026-11-03: «hacer pruebas con el juego para mejorar el narrador y sus tiempos», con el generador de imágenes en pausa):
+- **QA-289 · Tiempos y calidad del narrador, en bucle con Ollama real** 🚧 en curso: bucle medir → arreglar → medir con `bench-ia.sh` (tiempos, `opt-ai`) y tandas de juego que solo apuntan, con arreglos entre tandas (calidad). Cada mejora medida se presenta a la usuaria. Base: `11-base` contra `banco-actual` (2026-10-21).
+  Usuaria (2026-11-03): entra todo lo que mejore calidad y velocidad, con la calidad primero. Hecho: hechos estables
+  primero en el prompt (`ordenarHechosPorEstabilidad`; medido en `12-orden-hechos`, no gana: entre turnos la caché no
+  se reaprovecha), `app.rechazo_texto` en el registro, `hasRepeatedDialogueLine` (la misma réplica citada del turno
+  anterior). Guards sin falsos positivos: el de equipo cazaba «atacar», «atardecer» o «cinturón» (`ata\w*`, `ci[ñn]\w*`), y el de
+  segunda persona no quitaba las réplicas entre «…» ni “…”. Investigación de repos de rol
+  (`docs/ia/investigacion-narrador-repos.md`); orden de la usuaria: filas 3-8, luego 2 y 1. Hechas 3-8: caché cortada
+  en el primer hecho (6, con `IA_CASOS`) → ventana de hechos estable y búsqueda por escena (4, P252); reglas fijas al
+  prefijo y recordatorio corto al final (5); `min_p` (7; `repeat_penalty` quitado: penalizaba las palabras de la
+  acción); `newFacts` ≤3 (8); lore por entidad (3, P251/P272: rag-eval recall 0,938, MRR 0,906, NPC en puesto 1).
+  Bench `16-lore-entidad` contra `11-base`: turno p50 30,0 s (−4,7), p95 54,8 s (−7,3), sin intento 2 ni respaldo
+  (antes 14 %); la acción se narra en 5 de 7 turnos (en `15` se perdía con `repeat_penalty`). Fila 2 (P266): cada
+  hecho guarda sus testigos y la réplica del NPC ve solo lo suyo, sin el nombre del jugador hasta que se presenta. El
+  bench `17-npc-sabe` (con dos turnos de diálogo) sacó P422: contestaba otro NPC (el primero detectado) y había dos
+  voces → `elegirInterlocutor` y fila 1: con réplica aparte el narrador solo narra gestos y `quitarCitas` quita lo que
+  cite. Bench `18-una-voz` contra `11-base` (10 turnos): turno p50 27,5 s (−7,2), p95 51,9 s (−10,2), sin intento 2
+  ni respaldo; contesta Ulkha, una sola voz, y no dice «Gorhorn» hasta que él se presenta. Falta: jugar el diálogo
+  en una ronda; el narrador aún se centra en el NPC en vez de la acción en 2-3 de 8 turnos («Reviso mi hacha»,
+  «Observo el cielo») y copió el turno anterior en uno; P422 en parte (un hecho de huellas mete al NPC en escena).
+  Tras la ronda (2026-11-03): P263 (hechos con «(tú)», guard y reintento), P410 (`corregirNombresCasi`) y P412 (línea
+  FOCO + `[lint] foco`). Bench `19-foco` contra `18-una-voz` (10 turnos): turno p50 32,0 s (+4,4), p95 73,0 s (+21,1)
+  por un turno de diálogo en respaldo: en el 8 («Bebo agua») el narrador hizo hablar a Ulkha entre comillas simples y
+  en el 9 copió esa frase en los 3 intentos, sin hacer caso del FOCO (P414). En el 10 abre con Gorhorn; Ulkha se
+  presenta bien, sin «Ulka» ni hablar de sí como de otra. Arreglado: `quitarCitas` quita también las comillas simples
+  y el respaldo de diálogo va en tercera persona. P414: tras rechazar un intento por repetir el turno anterior, el
+  reintento va sin la narración anterior en el prompt. P411: se quita la frase que repite 6 palabras seguidas del turno
+  anterior, y la réplica lleva hablante si la narración acaba con otro. Bench `20-reintento` contra `19-foco`: turno p50
+  28,6 s (−3,3), p95 58,6 s (−14,4), sin respaldo (P414 resuelto); la réplica llegaba sin comillas (ahora va entre «…»)
+  y sin diálogo la narración abría con Ulkha en 5 de 7 turnos (FOCO en todos los turnos fuera de combate). Bench
+  `21-foco-todo` contra `20`: los 7 turnos sin diálogo abren con Gorhorn o el paisaje y nadie habla sin que le
+  pregunten; p50 28,2 s (−0,4), p95 70,3 s (+11,7, un reintento por repetir), sin respaldo. Los 2 de diálogo aún abren
+  con Ulkha. `quitarCitas` dejaba colgando la coletilla de una cita al abrir frase («pregunta finalmente…»): arreglado.
+  Ronda 2 con Ollama real (2026-11-03, 13 turnos, `logs/ia/ronda-qa289-2.jsonl`; turnos de 31-70 s): comprobados
+  jugando P410 y P263; P414 en parte (sin diálogo nadie habla). Siguen P411 (Ulkha copia una frase del turno anterior),
+  P412 (abre con el NPC en 6 de 11) y P311 (réplicas sin hablante); salen P415-P421 (verbo de habla suelto, texto fijo
+  de movimiento para «miro el camino», NPC fuera de escena que contesta, nombre inventado). Tras la ronda (2026-11-03):
+  arreglados sin comprobar P411 (todas las frases repetidas = reintento; réplica que empieza igual = otra), P412 (las
+  frases del NPC del principio pasan detrás, antes de la réplica), P415/P416 (restos de habla sin cita fuera; réplica
+  sin eco), P417 en parte, P418 (`TRAVEL_INTENT_REGEX` sin «el camino»), P420 (nombre inventado en la réplica = otra,
+  contra `nombresDelMundo`) y P421 (`lanza.sh` abre Reino solo con `LANZA_REINO=1`). P419 (usuaria: «exigir que
+  esté»): un `PRINCIPAL` nombrado solo está en escena si vive en esta zona, tiene su punto activo aquí o es compañero
+  (combate, misión y modo dinámico, como antes). Bench 22 (`logs/bench-22-ronda2.json`, Ollama real, contra el 21):
+  turno p50 24,7 s (−3,6), p95 42,3 s (−28,0), primera palabra p50 14,3 s (−1,5); 0 % reintentos (−11) y 0 % respaldo;
+  «Camino despacio hacia el borde del claro» sigue bloqueado como en el 21 (viaje sin destino conocido). Ronda 3 con
+  Ollama real (2026-11-03, 9 turnos de 25-47 s): comprobados jugando P411, P418, P419, P421 y P422; salen P423-P425.
+  Tras la ronda (2026-11-04), arreglados sin comprobar: P424 (preguntar a un NPC por una ausente no corta el turno),
+  P423 (el NPC no acepta en la narración lo que su réplica rechaza), P425 y P412 con Ulkha («Ella…» abre con la NPC;
+  sin frase del jugador abre el paisaje; fuera el guion suelto). Ronda 4 con Ollama real (2026-11-04, 9 turnos de
+  23-89 s, `logs/ia/ronda-qa289-4.jsonl`, viaje a `campamento-serhu` jugando): comprobados P415, P416, P420, P424 y
+  P425; P412 reabierto (abre con el NPC en 4 de 9, también sin diálogo: «Observo el cielo» abre con Ulkha); P423
+  sin provocar (el orco no dio réplica aparte). P412 arreglado (2026-11-04, sin comprobar jugando): el campo
+  `loQueHace<Jugador>` del esquema abre la narración; bench `23-accion-delante`, 7 de 7 con Gorhorn. Falta: jugar P412
+  con diálogo (escenario `ronda-qa289-4`), provocar P423, `/opt-ai` del registro de la ronda 4 y P417 en parte.
+- ~~**QA-288 · `ci-local.sh` deja vivo el Ollama simulado**~~ ✅ 2026-11-03: un `mock-ollama.mjs` de una pasada de hacía 27 h seguía en el 11434 (su carpeta ya borrada) y tapaba al Ollama real; ahora se guarda su pid y el `trap` de salida lo para. Test `test_ci_local_mock.py` (rojo sin el arreglo).
+
 Limpieza del repo (usuaria, 2026-10-27):
 - ~~**QA-271 · Fuera el código muerto**~~ ✅ 2026-11-02: nada lo usa; las menciones vivas, corregidas (la última, en `image-generator/README.md`, la cazó `/code-review`). Retirados `backend/src/scripts/test-retrieval.ts`, `test-worldtick.ts` y `migrate-arcano-a-magia-2026-09-01.sql` (de un solo uso contra la base local, según su cabecera; una base anterior al 2026-09-01 ya no tiene con qué migrar: puerta de un solo sentido, en la descripción), `debug/` (cargas y resultados de pruebas a mano de septiembre) e `image-generator/scripts/obsoleto/` (`demo.sh` y `lote.sh`; las tres menciones, como texto). Check y CI local en verde; retro decidida ([retro](../records/retro-2026-10-27-limpieza.md)).
 - **QA-278 · `ci-local.sh` mira Postgres antes del backend** (retro de `QA-271`, usuaria 2026-11-02): si `tarkor-postgres`
@@ -1742,7 +1798,14 @@ Retro y `/gw-opt-tokens` de los lotes F-I de la puerta (usuaria, 2026-11-11, [re
 - ~~**QA-333 · Bitácora archivada**~~ ✅ 2026-11-14 (mismo `/gw-opt-tokens`): «Hecho recientemente» hasta el 2026-11-08, en `docs/records/traspaso-archivo.md` (de 44k a 39k). Pendiente: bajar de 20k al cerrar las ramas con fila.
 - ~~**QA-334 · Roadmap por id en las revisiones**~~ ✅ 2026-11-14 (mismo `/gw-opt-tokens`): `roadmap.py show <id>` en vez del diff de `roadmap-front.md` (anotado en `.claude/gw/gw-opt-tokens.md`).
 - ~~**QA-335 · MCP de Playwright solo en las rondas**~~ ✅ 2026-11-14 (retro de la v0.6.0, R2): `disabledMcpjsonServers` en `.claude/settings.json`; la ronda que lo quiera lo activa con `/mcp` (runbook de rondas). Las herramientas del MCP ya no entran en el arranque de cada sesión. Pendiente de la usuaria: desactivar el conector Claude Docs en claude.ai.
+- **QA-339 · Calentar el narrador con el prompt de la partida al abrirla** (`/gw-opt-ai`, 2026-11-14, aprobada): el primer turno tras arrancar el juego tarda 38-67 s hasta el primer token frente a ~12 s después; el calentamiento de `server.ts` solo carga el prefijo fijo, no los ~6.600 tokens de la partida. Al abrir la partida, una llamada `calentar` con su prompt real (`num_predict` 1, `keep_alive` 1h). Riesgo: una llamada más en la Deck si se abre y no se juega. Se mide con `bench-ia.sh` antes y después (primer turno, tiempo hasta el primer token).
+- **QA-340 · Resultado del golpe como campo obligatorio en combate** (`/gw-opt-ai`, 2026-11-14, aprobada): en la ronda local 2 la mitad de los rechazos del guardia son un fallo narrado como golpe (×4) o un golpe invertido (×2), con reintentos de hasta minutos. Igual que `P412`: un campo obligatorio del esquema con el resultado (quién golpea, si acierta) antes de `narration`. Riesgo: texto más rígido; se comprueba jugando una ronda de combate y con `medir-ia.py` (rechazos e intentos por turno).
+- **QA-341 · Tokens de prompt reaprovechados en el registro de la IA** (`/gw-opt-ai`, 2026-11-14, aprobada): hoy no se sabe cuánto prefijo reaprovecha Ollama en cada turno. Apuntar en `logs/ia/*.jsonl` los tokens evaluados (`prompt_eval_count`) frente a los de entrada y sacarlos en `medir-ia.py`. Sin riesgo para el texto; se comprueba con una tanda corta y la columna nueva.
 - **QA-337 · Escenario con el Poste del Clan Serhu visitado** (retro del lote J, 2026-11-14): en la nube «Viajar» solo lista lo visitado y P184 no se puede comprobar; un escenario guardado (o un paso de `preparar`) con el Poste de cacería del Clan Serhu visitado, para leer el rumor de la muerte del Orco. Para la siguiente sesión de arreglos.
+- ~~**QA-342 · Bitácora por debajo de 20k**~~ ✅ 2026-11-14 (`/gw-opt-tokens` de `QA-289`, aprobada): de 35,8k a 19,7k. Hecho: 11 filas de ramas cerradas y lo del 2026-11-11 a `traspaso-archivo.md`; `propuestas-aprobadas.md` y `pendientes-leves.md` nuevos, con enlace. Motivo: `traspaso.md` ocupa 35k (`logSize` 20k) y se leyó 8 veces (242k arrastrados); al archivo, las filas de ramas fusionadas o borradas sin nada pendiente, y a archivos propios las «Propuestas aprobadas» y los pendientes leves de PR ya fusionados, con un enlace.
+- ~~**QA-343 · Conflictos de roadmap resueltos por script**~~ ✅ 2026-11-14 (mismo `/gw-opt-tokens`): `tools/roadmap/resolver-conflicto.py` (tests en `tools/qa/tests/test_resolver_conflicto.py`, línea en `ramas-y-main.md`) resuelve tachados y filas añadidas por cada lado. El conflicto real de este merge (la misma fila `0.3` de `21-roadmap.md` ampliada por los dos lados) no es seguro y queda a mano. Motivo: el conflicto de `21-roadmap.md` al traer `main` se resolvió con volcados a mano (~230k arrastrados); un script resuelve solo los trozos que difieren en tachados, `✅ fecha` o filas añadidas por cada lado y deja marcados los demás.
+- ~~**QA-345 · El ledger de métricas se une solo al traer `main`**~~ ✅ 2026-11-14 (retro de `claude/narrador-tiempos`, aprobada): `.gitattributes` con `docs/metrics/ledger.jsonl merge=union`. Motivo: al traer `main` el ledger quedó en conflicto y el commit del merge falló; es de solo añadir.
+- ~~**QA-346 · El lint es oxlint, en el mapa del agente**~~ ✅ 2026-11-14 (misma retro): fila «Lint» en `docs/mapa-agente.md`. Motivo: en la ronda 5 se lanzó `npx eslint`, que se instaló sin configuración y falló.
 
 Licencias del proyecto (usuaria, 2026-11-05):
 - ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.

@@ -64,7 +64,8 @@ try {
     const continente = caso.region ? continentForRegion(caso.region) : null;
     const excludeTags = continente ? [oppositeContinent(continente)] : [];
     const consulta = caso.region ? `${caso.pregunta} — ${caso.region}` : caso.pregunta;
-    const trozos = await retrieveLore(consulta, world.id, k, excludeTags);
+    // Como el juego (QA-289): la pregunta también se mira por entidades con nombre.
+    const trozos = await retrieveLore(consulta, world.id, k, excludeTags, [caso.pregunta]);
     const puesto = puestoDelPrimerEsperado(
       trozos.map((t) => t.title),
       caso.esperados,

@@ -873,6 +873,10 @@ model SessionFact {
   /// Mismo patrón que LoreChunk.embedding — habilitado a mano vía `CREATE EXTENSION vector`, no
   /// gestionado por Prisma (preview feature postgresqlExtensions), ver comentario del datasource.
   embedding Unsupported("vector(768)")?
+  /// QA-289 (P266): NPC presentes cuando se registró (por nombre); la réplica de un NPC solo ve estos y los públicos.
+  testigos  String[]                    @default([])
+  /// Sucesos del mundo (Cronista): los sabe cualquiera. Los hechos anteriores a QA-289 quedaron públicos.
+  publico   Boolean                     @default(false)
   createdAt DateTime                    @default(now())
 
   @@index([saveId, createdAt])
