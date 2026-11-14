@@ -18,7 +18,8 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   backend y frontend y el test que cubre cada cambio importante; una migración de BD o un cambio de partidas
   guardadas es puerta de un solo sentido.
 - **`gw-orchestrate-dealer`:** el encargo apunta a la fila de la bitácora, el P-número del registro, la fila de la
-  matriz y la función de `docs/mapa-agente.md`. Antes de repartir una tanda, la principal comprueba que el escenario
+  matriz y la función de `docs/mapa-agente.md`. El subagente es `gw-worker` (sin MCP; un `general-purpose` arranca con
+  ~71k), con `sonnet` para los arreglos de una revisión salvo ganchos, guardas, seguridad y los scripts que llaman (`QA-332`). Antes de repartir una tanda, la principal comprueba que el escenario
   da el estado que pide cada id (montura, lugar visitado, animal, convaleciente…); si falta, el primer trozo lo
   prepara (`QA-216`), con una consulta de `tools/qa/sql.sh` por id cuya salida va en el encargo (`QA-316`). La tanda local
   acaba con `tools/qa/deck/ia-ronda.sh parar` (`QA-313`). El encargo de código pide importar la lógica que imite de
