@@ -492,8 +492,19 @@ model Save {
   misionesOfrecidas MisionOfrecida[]
   ordenesComercio   OrdenComercio[]
   caravanas         Caravana[]
+  prefijoNarrador   PrefijoNarrador?
 
   @@index([userId])
+}
+
+/// QA-339 (`/gw-opt-ai`, 2026-11-14): el principio estable del último prompt del narrador de la partida
+/// (instrucciones, personaje y hechos de la zona). Al abrirla se manda a Ollama con `num_predict` 1, para que el
+/// primer turno encuentre su prefijo en la caché. En tabla aparte para no cargarlo con cada `Save`.
+model PrefijoNarrador {
+  saveId    String   @id
+  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  texto     String
+  updatedAt DateTime @updatedAt
 }
 
 /// Ubicación conocida del mundo (catálogo, no estado de partida). Se siembra desde

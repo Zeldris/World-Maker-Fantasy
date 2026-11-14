@@ -1425,6 +1425,8 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   hechosBlock: string;
   /// El bloque «TU PROPIA NARRACIÓN DEL TURNO ANTERIOR», para quitarlo del reintento tras repetirla (P414).
   narracionAnterior: string;
+  /// Principio de `prompt` hasta los hechos estables de la escena (QA-339): se guarda para calentar la caché al abrir.
+  prefijoEstable: string;
 } {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
@@ -1594,7 +1596,8 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
   const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
   const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
-  const hechosBlock = factsBlock(ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f))));
+  const hechosOrdenados = ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)));
+  const hechosBlock = factsBlock(hechosOrdenados);
 
   // P412: con réplica aparte, el NPC en una frase breve al final. Bench 20: sin diálogo, la narración abría con Ulkha en 5
   // de 7 turnos (y en uno hablaba sin que nadie le preguntara); fuera de combate, la línea va en todos los turnos.
@@ -1610,7 +1613,7 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
       ? ''
       : `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. Si hay otros personajes, salen después y en una frase breve.${campoAccion}\n`;
 
-  const prompt = `${GOOD_NARRATION_EXAMPLE}
+  const cabecera = `${GOOD_NARRATION_EXAMPLE}
 
 ${fixedInstructions}
 
@@ -1618,7 +1621,10 @@ PERSONAJE:
 ${identidad}
 
 HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
-${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
+`;
+  // QA-339: lo que el siguiente turno en la misma zona comparte con este, para calentarlo al abrir la partida.
+  const prefijoEstable = cabecera + hechosOrdenados.filter((f) => rangoEstable(f) < HECHOS_ESTABLES.length).map((f) => `- ${f}`).join('\n');
+  const prompt = `${cabecera}${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
 ${groundingBlock}
 
 ${rollBlock}
@@ -1718,7 +1724,7 @@ Responde solo con el JSON pedido, nada más.`;
     required: [...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
   };
 
-  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior };
+  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, prefijoEstable };
 }
 
 /// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce

@@ -30,7 +30,8 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { guardarPrefijoNarrador } from './calentarNarrador.js';
+import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -4830,6 +4831,12 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
   // final de la respuesta HTTP completa.
   if (!wasLlmNarrated) onNarrationChunk?.(narration.narration);
+  // QA-339: el principio estable de este prompt, para calentarlo al volver a abrir la partida.
+  if (wasLlmNarrated) {
+    void guardarPrefijoNarrador(saveId, buildNarrationPrompt(narrationCtx).prefijoEstable).catch((err) =>
+      console.warn(`[turno] no se guardó el prefijo del narrador (saveId=${saveId}): ${err instanceof Error ? err.message : err}`),
+    );
+  }
 
   // P245: el narrador no respondió y era un diálogo con un NPC: el respaldo no copia la acción ni dice
   // «sin incidentes»; réplica neutra con el nombre que la jugadora le conoce + aviso. Fuera de un
