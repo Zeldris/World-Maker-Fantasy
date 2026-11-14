@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.0 -->
+<!-- galivelop-workflow v0.6.0 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`) comprueba en cada diff, además de los fallos de siempre. Son los
@@ -189,8 +189,12 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
   (`log`, `reviewMark`, `recordsDir`, `proposalsDir`, `ciLocalLog`) son opcionales con defecto en inglés, así que una
   ausente no es un dato que falte. (criterio)
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos. (criterio)
+- Un comando lanzado dentro de un `while read … done < archivo` (o `<<<`) lleva la entrada redirigida (`< /dev/null`):
+  si la lee, se come los elementos que quedan del bucle. Su test usa al menos dos elementos. (criterio)
 - Una carpeta con nombre fijo en un directorio compartido (`$TMPDIR`, `/tmp`) es por usuario, se crea con permisos 700
   y se rechaza si ya existe como symlink o de otro usuario; los archivos sueltos, con `mktemp`. (criterio)
+- Un script que hace commits se prueba con los ganchos del proyecto instalados (`commit-msg` estricto incluido): un
+  commit con `--no-verify` en el test esconde el rechazo que tendrá de verdad. (criterio)
 - Un gancho que pregunta o bloquea se revisa **probando cómo saltárselo**: envoltorios con opciones que llevan valor
   (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), el destino de los copiadores (`cp`,
   `install`, `rsync`, `dd of=`, `-t DIR`), una carpeta antecesora de la protegida y una ruta relativa o con `..`; y
@@ -203,3 +207,9 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
 - Una orden con `npx` en `check` pasa por `tools/qa/host.sh` (sandbox Flatpak de la Deck, `QA-180`). (check: `tools/qa/tests/test_host.py`; ponerla en `check`, criterio)
 - Un cambio en `.claude/gw.json` (sobre todo `check`, `relatedTests`, `protectedPaths` o `reviewMark`) o en
   `.githooks/` lleva su caso en `tools/qa/tests/` (`test_pre_commit.py`, `test_prepush_ramas.py`). (criterio)
+
+## Tests
+
+- Un componente que los tests sustituyen por un doble (fake, mock, stub) tiene también una prueba de humo contra el
+  real: arrancarlo y hacer una llamada de punta a punta. Se omite en local si falta el real y falla en el CI.
+  (criterio)

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.0 -->
+<!-- galivelop-workflow v0.6.0 -->
 # opt-ai — notas del proyecto
 
 Las lee primero la skill `gw-opt-ai`; aquí vive todo lo propio de los modelos de IA local de Tarkor. El flujo las crea
@@ -93,6 +93,11 @@ ni los tests. Hasta que exista el script de `IMG-3`, se resume con `awk` sobre l
 
 Aprobados por el usuario el 2026-11-11 (perfil `deck`, tabla TURNOS de `medir-ia.py`): turno de exploración
 p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-307`). Lo que pase de ahí se marca lento.
+
+## Script de parada
+
+<!-- La orden que para lo que levantó una ronda (servidores, modelos locales, inhibidores de suspensión); es el paso
+     de cierre de cada ronda. -->
 
 ## Ya en marcha
 

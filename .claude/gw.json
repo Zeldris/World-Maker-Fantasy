@@ -1,6 +1,6 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "schemaVersion": 1,
   "language": "es",
   "visibleLanguages": [],
@@ -61,5 +61,16 @@
   "plan": [
     "docs/producto/"
   ],
-  "taskId": "(?:CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR)-\\d+[a-z]?"
+  "taskId": "(?:CFG|BAS|DAD|MOD|PAN|HUD|NAR|CMB|ATM|PRE|SON|QA|INT|UX|ZON|REI|CR)-\\d+[a-z]?",
+  "commitNext": true,
+  "legacyNamesSkip": [
+    "CHANGELOG*",
+    "docs/producto/roadmap-front.md",
+    "tools/qa/*",
+    "docs/mapa-agente.md",
+    "docs/runbooks/ramas-y-main.md",
+    "docs/borradores-opencode/*",
+    "AGENTS.md",
+    ".github/workflows/ci.yml"
+  ]
 }
