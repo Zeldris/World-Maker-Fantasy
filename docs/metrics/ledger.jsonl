@@ -24,3 +24,6 @@
 {"agent":"main","branch":"claude/gw-update-0.6","cacheRead":90011233,"cacheWrite":2136948,"date":"2026-11-11","input":1704,"model":"claude-opus-5-5","output":381251,"recorded":"2026-11-14T10:30:59Z","refs":[],"session":"f0ae840d"}
 {"agent":"main","branch":"claude/gw-update-0.6","cacheRead":9517800,"cacheWrite":279064,"date":"2026-11-13","input":158,"model":"claude-opus-5-5","output":72597,"recorded":"2026-11-14T10:30:59Z","refs":[],"session":"f0ae840d"}
 {"agent":"main","branch":"claude/gw-update-0.6","cacheRead":4377598,"cacheWrite":120812,"date":"2026-11-14","input":75,"model":"claude-opus-5-5","output":22148,"recorded":"2026-11-14T10:30:59Z","refs":[],"session":"f0ae840d"}
+{"agent":"general-purpose","branch":"claude/gw-update-0.6","cacheRead":1880710,"cacheWrite":122399,"date":"2026-11-14","input":37,"model":"claude-opus-5-5","output":10890,"recorded":"2026-11-14T10:45:43Z","refs":[],"session":"a1d00f1b"}
+{"agent":"main","branch":"claude/gw-update-0.6","cacheRead":4189813,"cacheWrite":66449,"date":"2026-11-14","input":70,"model":"claude-opus-5-5","output":17507,"recorded":"2026-11-14T10:45:43Z","refs":[],"session":"a1d00f1b"}
+{"agent":"main","branch":"claude/gw-update-0.6","cacheRead":529420,"cacheWrite":29571,"date":"2026-11-14","input":14,"model":"claude-opus-5-5","output":2835,"recorded":"2026-11-14T10:47:43Z","refs":[],"session":"7d033410"}
