@@ -1045,8 +1045,8 @@ export function claveAccionDelJugador(characterName: string): string {
 }
 
 /// P412 (ronda 4 de QA-289: «Ulkha Ketg mira hacia el cielo…» con «Observo el cielo»): si la primera frase no nombra al
-/// jugador, abre la narración «<Jugador> <su acción en tercera persona>.». Se deja como está si el campo llega vacío,
-/// copia la acción en primera persona o ya está en la primera frase.
+/// jugador al principio, abre la narración «<Jugador> <su acción en tercera persona>.». Se deja como está si el campo llega
+/// vacío, copia la acción en primera persona o ya está en la primera frase.
 export function conAccionDelanteDe(narracion: string, accion: string, characterName: string, actionDelJugador: string): string {
   const limpia = accion
     .trim()
@@ -1055,7 +1055,11 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
   if (palabras(limpia).length < 2) return narracion;
   if (palabras(limpia).join(' ') === palabras(actionDelJugador).join(' ')) return narracion;
   const primera = frases(narracion)[0] ?? '';
-  if (contieneNombre(primera, characterName)) return narracion;
+  // Ronda 5 (2026-11-14): «Ulkha Ketg se gira hacia Gorhorn…» nombra al jugador, pero abre con el NPC; vale solo si su
+  // nombre sale entre las tres primeras palabras («Gorhorn se…», «Mientras Gorhorn…»).
+  const nombre = palabras(characterName);
+  const inicio = palabras(primera).slice(0, 2 + nombre.length).join(' ');
+  if (` ${inicio} `.includes(` ${nombre.join(' ')} `)) return narracion;
   if (palabras(primera).join(' ').includes(palabras(limpia).join(' '))) return narracion;
   return `${characterName} ${limpia[0]!.toLowerCase()}${limpia.slice(1)}. ${narracion}`.trim();
 }

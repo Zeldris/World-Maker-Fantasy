@@ -111,6 +111,18 @@ describe('acción del jugador delante (QA-289, P412, ronda 4)', () => {
     );
   });
 
+  it('nombrar al jugador más adelante en la primera frase no basta (P412, ronda 5)', async () => {
+    const { conAccionDelanteDe } = await import('./narrador.js');
+    const cielo = "Ulkha Ketg se gira hacia Gorhorn, su mirada fría y calculadora. '¿Qué buscas en el cielo?'";
+    expect(conAccionDelanteDe(cielo, 'Observa el cielo', 'Gorhorn', 'Observo el cielo')).toBe(`Gorhorn observa el cielo. ${cielo}`);
+    const totem = 'Su mirada se desplaza hacia el tótem Maktor que Gorhorn lleva atado. Ulkha Ketg asiente.';
+    expect(conAccionDelanteDe(totem, 'Saluda a Ulkha con respeto', 'Gorhorn', 'Saludo a Ulkha con respeto')).toBe(
+      `Gorhorn saluda a Ulkha con respeto. ${totem}`,
+    );
+    const mientras = 'Mientras Gorhorn observa el cielo, el viento sopla.';
+    expect(conAccionDelanteDe(mientras, 'Observa el cielo', 'Gorhorn', 'Observo el cielo')).toBe(mientras);
+  });
+
   it('se deja si ya abre con el jugador, si el campo copia la acción o llega vacío', async () => {
     const { conAccionDelanteDe } = await import('./narrador.js');
     const deGorhorn = 'Gorhorn revisa el filo de su hacha. Brilla al sol.';
