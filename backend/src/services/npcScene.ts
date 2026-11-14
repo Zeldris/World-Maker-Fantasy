@@ -756,11 +756,15 @@ async function principalPresenteEnZona(params: {
   const enCasa = (npc: { homeLocationSlug: string | null }) => npc.homeLocationSlug === null || npc.homeLocationSlug === params.currentLocationSlug;
   if (!params.currentLocationId || !params.currentLocationSlug) return () => true;
   if (params.npcs.every((n) => n.kind !== 'PRINCIPAL' || enCasa(n))) return enCasa;
+  // Zona aún sin puntos propios en la partida (no se ha abierto su mapa: se clonan del catálogo al abrirla), valen las
+  // plantillas del catálogo (`saveId` nulo), como en P331 la zona sin visitar.
   const [puntos, companeros] = await Promise.all([
-    prisma.zonePoint.findMany({ where: { saveId: params.saveId, locationId: params.currentLocationId, tipo: 'NPC', activo: true }, select: { targetSlug: true } }),
+    prisma.zonePoint.findMany({ where: { OR: [{ saveId: params.saveId }, { saveId: null }], locationId: params.currentLocationId, tipo: 'NPC', activo: true }, select: { targetSlug: true, saveId: true } }),
     prisma.companion.findMany({ where: { saveId: params.saveId, sourceSlug: { not: null } }, select: { sourceSlug: true } }),
   ]);
-  const aqui = new Set([...puntos.map((p) => p.targetSlug), ...companeros.map((c) => c.sourceSlug!), ...params.slugsDelModoDinamico]);
+  const propios = puntos.filter((p) => p.saveId !== null);
+  const vigentes = propios.length > 0 ? propios : puntos;
+  const aqui = new Set([...vigentes.map((p) => p.targetSlug), ...companeros.map((c) => c.sourceSlug!), ...params.slugsDelModoDinamico]);
   return (npc) => enCasa(npc) || aqui.has(npc.slug);
 }
 

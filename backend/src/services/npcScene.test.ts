@@ -30,7 +30,7 @@ const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
-const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string; locationId: string }[]);
+const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string; locationId: string; saveId?: string | null }[]);
 const findManyCompanion = vi.fn(async (..._args: unknown[]) => [] as { sourceSlug: string }[]);
 const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
 
@@ -544,6 +544,19 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     it('con su punto activo en esta zona, está', async () => {
       findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada' }]);
       expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('con la zona aún sin puntos propios en la partida, vale el punto del catálogo', async () => {
+      findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada', saveId: null }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('con puntos propios en la zona, el del catálogo ya no cuenta (se fue)', async () => {
+      findManyZonePoint.mockResolvedValue([
+        { targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada', saveId: null },
+        { targetSlug: 'orco-enfurecido-hondonada', locationId: 'loc-hondonada', saveId: 's1' },
+      ]);
+      expect(await detectNpcsInScene(saludo)).toEqual([]);
     });
 
     it('si es compañera de la partida, está', async () => {

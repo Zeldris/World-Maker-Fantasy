@@ -8235,6 +8235,8 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     // relación con los demás tests del archivo que también usan a Orco Enfurecido.
     await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'ILESO' } });
     await prisma.npcState.create({ data: { saveId, npcId: torgashId, scope: '', condicionFisica: 'ILESO' } });
+    // P419: un PRINCIPAL que vive en otra zona solo está aquí con su punto activo en la zona.
+    await prisma.zonePoint.create({ data: { locationId: hondonada.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     classifyAction.mockResolvedValue({
       requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
