@@ -9382,6 +9382,9 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
   // el saludado (aunque el narrador proponga combate con él).
   it('caso mixto: saludar a Torgash Ketg con el orco AGRESIVO en escena abre combate solo con el orco', async () => {
     const saveId = await partida('Gorhorn de prueba (P306 mixto)');
+    // P419: un PRINCIPAL solo está en escena si vive aquí o tiene aquí su punto activo; Torgash vive en otra zona.
+    const hondonada = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId!;
+    await prisma.zonePoint.create({ data: { locationId: hondonada, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     const { classification, combateIniciado } = await saludar(
       saveId,
       "Saludo a 'Torgash Ketg' y le pregunto por el 'Orco enfurecido'.",
