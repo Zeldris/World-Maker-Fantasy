@@ -63,6 +63,9 @@ Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
 4. **Limpieza ligera del roadmap:** cerrar `0.1` y `0.2` (lo de Álvaro a sus preguntas), `cobertura.py` sin dobles ni
    sin definir, y meter las propuestas aprobadas con su hito.
 5. **Vuelta al `0.3`** (Fases D y E), un solo hito activo y una línea por cuenta.
+6. **`QA-338`, tanda 1 del GVE 0.2** (usuaria, 2026-11-14): seis JSON del RAG de lore (R10, R1, R2) en el commit
+   `d376ca7`. **La lanza la usuaria en la Deck**; ningún agente la corre ni toca código para esto. Órdenes y condiciones, en
+   [`roadmap-front.md`](../producto/roadmap-front.md) (`QA-338`).
 
 Lo nuevo que surja va a «Propuestas aprobadas…» (abajo) sin hito, como bandeja de ideas.
 
