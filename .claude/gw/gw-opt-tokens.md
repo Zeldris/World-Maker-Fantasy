@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.0 -->
+<!-- galivelop-workflow v0.6.0 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la usuaria aprueba un cambio. El flujo
@@ -94,6 +94,13 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   relecturas; la v0.5.0, dos compactaciones en 12 minutos.
 - **Salidas acotadas** (`QA-295`): barridos con `grep -l` o `| head`; `mcp__github__actions_list` con
   `minimal_output` y `perPage` 3-5.
+- **Subagentes `gw-worker`** (`QA-332`): sin MCP, arranque muy por debajo de los 71k de un `general-purpose`; los
+  arreglos de revisión con `sonnet` (regla en `docs/runbooks/skills-wmf.md`, `gw-orchestrate-dealer`).
+- **Bitácora archivada** (`QA-333`): «Hecho recientemente» antiguo, en `docs/records/traspaso-archivo.md`
+  (`handoff.py archive` va por versiones publicadas y WMF no las etiqueta). Quedan 39k de 20k (`logSize`): el resto
+  son filas de otras ramas y propuestas abiertas, que se encogen al cerrar esas ramas.
+- **Roadmap por id** (`QA-334`): en una revisión, `python3 .claude/gw/scripts/roadmap.py show <id>` para cada tarea
+  tocada, no el diff de `roadmap-front.md` (en la fase 1 de la v0.6.0, 6 lecturas y 83k arrastrados).
 
 ## Costes conocidos
 
