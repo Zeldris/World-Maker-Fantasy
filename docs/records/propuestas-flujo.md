@@ -83,6 +83,9 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
   - P23 (v0.6.0) `apply.py --update` renombró nombres antiguos en el histórico (`roadmap-front.md`: `fusionar.sh` →
     `merge-branch.sh`, que en WMF no existe): que no toque `recordsDir` ni los roadmaps y nunca renombre hacia un
     archivo inexistente; va con P20 (retro del 2026-11-14, R4).
+  - P24 (v0.6.0) `skills/gw-opt-tokens/scripts/test_measure.py` copia `scripts/config.py` y `schema/` de la raíz del
+    repo del flujo; en un proyecto instalado viven en `.claude/gw/` y 5 tests fallan en el CI de WMF (PR #95). Parche
+    local: probar las dos rutas. Que el test busque los archivos en las dos disposiciones.
 
 ## Se queda en WMF
 
