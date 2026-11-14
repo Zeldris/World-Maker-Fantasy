@@ -1774,6 +1774,34 @@ RAG medible para el Galivelop Evaluator (GVE), que mide el RAG de lore desde su 
     ```
 
   - **Se cierra** cuando los seis JSON están en el GVE y el `indice_hash` final ha vuelto al de la base (`sha256:1926ab18…`).
+- **QA-344 · Tanda del GVE 0.2: R10 (topK 10), R1 (prefijos) y R2 (solape 100) contra la base** (usuaria, 2026-11-14; sigue a `QA-338`). El GVE compara tres mejoras del RAG de lore, cada una sola contra la corrida base (nomic-embed-text, trozo 400, sin solape, sin prefijos, topK 4). **La lanza la usuaria en la Deck** (Ollama real; en la nube el Ollama es simulado y no vale): ningún agente cambia código ni casos para esto. Entregables, seis JSON en `logs/gve/0.2/<id>/` (`<id>` = `R10`, `R1`, `R2`): `rag-eval-trabajo.json` y `rag-eval-reserva.json`.
+  - **Condiciones:** las tres corridas en el mismo commit, el de la base (`d376ca7`), con el árbol limpio, y los mismos archivos de casos que la base; nada de ajustar casos ni código entre corridas. Los mandos van como argumentos (`--k`, `--prefijos-nomic`, `--solape`), no como `RAG_*`. Si un mando no se pudiera fijar sin tocar código, se para y se dice: sería una tarea de T2 (`QA-330`) sin cerrar. Con el `node_modules` de otra rama, `reindex-lore` vacía `LoreChunk` y falla (aviso de `QA-338`): `npm ci` en ese commit.
+  - **Comprobar en los JSON:** R1, `config.prefijo_documento` = `"search_document: "` y `config.prefijo_consulta` = `"search_query: "`; R2, `config.solapamiento` = 100 (trozo 400); R10, 10 devueltos por caso (el GVE saca recall@k y MRR para k = 1…10 de esa corrida).
+  - **Órdenes:**
+
+    ```bash
+    git checkout d376ca7 && git status --short   # árbol limpio
+    cd backend && npm ci && R=ia/rag-casos-reserva.jsonl; O=../logs/gve/0.2
+    mkdir -p $O/R10 $O/R1 $O/R2
+    # R10: sin reindexar (índice de la base), topK 10
+    npm run rag-eval -- --json --k 10 > $O/R10/rag-eval-trabajo.json
+    npm run rag-eval -- --json --k 10 --casos $R > $O/R10/rag-eval-reserva.json
+    # R1: prefijos de nomic-embed-text (documento y consulta), topK 4
+    npm run reindex-lore -- --prefijos-nomic
+    npm run rag-eval -- --json --prefijos-nomic > $O/R1/rag-eval-trabajo.json
+    npm run rag-eval -- --json --prefijos-nomic --casos $R > $O/R1/rag-eval-reserva.json
+    # R2: sin prefijos, solape 100 (trozo 400), topK 4
+    npm run reindex-lore -- --solape 100
+    npm run rag-eval -- --json --solape 100 > $O/R2/rag-eval-trabajo.json
+    npm run rag-eval -- --json --solape 100 --casos $R > $O/R2/rag-eval-reserva.json
+    # Volver a la base y comprobar el hash; si no coincide, se dice y no se sigue
+    npm run reindex-lore
+    npm run rag-eval -- --json | grep -o '"indice_hash": *"[^"]*"' | head -1
+    # tiene que salir sha256:1926ab18fccc6afc191ce2e3704235b0b1192f50a2285a7d02f1b193ef6f375e
+    ```
+
+  - **Se devuelve:** el commit y si el árbol estaba limpio, las órdenes exactas que se corrieron y, por corrida, el `indice_hash` y el recall@4 y el MRR que imprime `rag-eval`.
+  - **Se cierra** cuando los seis JSON están en `logs/gve/0.2/` y el `indice_hash` final es el de la base.
 
 Licencias del proyecto (usuaria, 2026-11-05):
 - ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
