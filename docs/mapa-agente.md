@@ -131,6 +131,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - **Datos:** `CombatEncounter`, `CombatParticipant`, `CombatGroup`.
 - **Interfaz:** `f/components/CombatPanel.tsx`, `f/hooks/useCombatFlow.ts#useCombatFlow`; test id `combate-usables`.
 - **Trampas:** `dueloYaResueltoPorElOtro` nunca da por resuelto el duelo de la JUGADORA (P192).
+- **Quién lee los cadáveres** (al cambiar `NpcState.muerto` o el despawn, P461): `saquear-zona`, «Cadáveres en el
+  mapa» de `GET /zona`, la búsqueda de Desollar, y el despawn en `turnResolution` y `companionSupervivencia`.
 
 ## Reino y construcción
 
