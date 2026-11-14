@@ -1054,6 +1054,11 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
     .replace(/^[«“"']+|[«»“”"'.!?…,;:\s]+$/gu, '');
   if (palabras(limpia).length < 2) return narracion;
   if (palabras(limpia).join(' ') === palabras(actionDelJugador).join(' ')) return narracion;
+  // Ronda 5d: el campo llega a veces en primera persona («Afilo el cuchillo…», misma primera palabra que la acción) o en
+  // infinitivo («preguntar a Ulkha…»); delante darían «Gorhorn afilo…» / «Gorhorn preguntar…».
+  const primerVerbo = (t: string) => palabras(t).find((p) => !/^(me|te|se|le|les|lo|la|los|las|nos|os)$/.test(p)) ?? '';
+  const verbo = primerVerbo(limpia);
+  if (verbo === primerVerbo(actionDelJugador) || /(ar|er|ir)$/.test(verbo)) return narracion;
   const primera = frases(narracion)[0] ?? '';
   // Ronda 5 (2026-11-14): «Ulkha Ketg se gira hacia Gorhorn…» nombra al jugador, pero abre con el NPC; vale solo si su
   // nombre sale entre las tres primeras palabras («Gorhorn se…», «Mientras Gorhorn…»).

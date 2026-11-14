@@ -129,6 +129,9 @@ describe('acción del jugador delante (QA-289, P412, ronda 4)', () => {
     expect(conAccionDelanteDe(deGorhorn, 'Revisa el filo de su hacha', 'Gorhorn', 'Reviso el filo de mi hacha')).toBe(deGorhorn);
     expect(conAccionDelanteDe('El orco calla.', 'Reviso el filo de mi hacha', 'Gorhorn', 'Reviso el filo de mi hacha')).toBe('El orco calla.');
     expect(conAccionDelanteDe('El orco calla.', '', 'Gorhorn', 'Reviso el filo de mi hacha')).toBe('El orco calla.');
+    // Ronda 5d: primera persona e infinitivo no se ponen delante.
+    expect(conAccionDelanteDe('Ulkha calla.', 'Afilo el cuchillo de hielo sílice', 'Gorhorn', 'Afilo mi cuchillo')).toBe('Ulkha calla.');
+    expect(conAccionDelanteDe('Ulkha calla.', 'preguntar a Ulkha Ketg por la zona', 'Gorhorn', 'Le pregunto a Ulkha Ketg por la zona')).toBe('Ulkha calla.');
   });
 
   it('narrateAction pide el campo fuera de combate, lo pone delante y no lo devuelve', async () => {
