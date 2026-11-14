@@ -1738,6 +1738,9 @@ Retro y `/gw-opt-tokens` de los lotes F-I de la puerta (usuaria, 2026-11-11, [re
 - ~~**QA-323 · «Qué se prueba» una vez por sesión**~~ ✅ 2026-11-11 (mismo `/gw-opt-tokens`): la sesión que reparte lo lee una vez y, tras compactar, solo si necesita una regla (4 lecturas enteras, 344k arrastrados). `AGENTS.md`.
 - ~~**QA-324 · Sin el aviso fijo de P442**~~ ✅ 2026-11-11 (retro de las tandas 117-118): el estado de P442 ya no lleva ✅ junto a «no aplica», y `marca-hallazgo.py --resumen --comprobar` deja de avisar en cada push.
 - ~~**QA-325 · El fin del combate en el mapa del agente**~~ ✅ 2026-11-11 (retro de las tandas 117-118): «Combate» de `docs/mapa-agente.md` nombra `avanzarYComprobarFin` y `escribirCierreDelCombate`.
+- ~~**QA-332 · Subagentes `gw-worker` y `sonnet` para arreglos**~~ ✅ 2026-11-14 (`/gw-opt-tokens` de la v0.6.0): regla en `skills-wmf.md` (`gw-orchestrate-dealer`); el subagente `general-purpose` de la fase 1 arrancó con 71k y gastó 2,0 M.
+- ~~**QA-333 · Bitácora archivada**~~ ✅ 2026-11-14 (mismo `/gw-opt-tokens`): «Hecho recientemente» hasta el 2026-11-08, en `docs/records/traspaso-archivo.md` (de 44k a 39k). Pendiente: bajar de 20k al cerrar las ramas con fila.
+- ~~**QA-334 · Roadmap por id en las revisiones**~~ ✅ 2026-11-14 (mismo `/gw-opt-tokens`): `roadmap.py show <id>` en vez del diff de `roadmap-front.md` (anotado en `.claude/gw/gw-opt-tokens.md`).
 
 Licencias del proyecto (usuaria, 2026-11-05):
 - ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
