@@ -25,3 +25,4 @@ Lo general (cada sesión su rama, merge y nunca rebase, a `main` con confirmaci�
   y no rompen la pausa de pruebas: las pide la usuaria. Aquí solo llevan su fila «Tarea en curso» con el enlace a su plan.
 - La rama de un subagente vuelve con `bash tools/qa/fusionar.sh <rama> "<mensaje>" --revisada` (no la de `.claude/gw/scripts/`): la de WMF
   resuelve sola los conflictos del registro de hallazgos (`resolver_hallazgos.py`) y pasa los tests del paquete tocado.
+- **Conflicto en los roadmaps al traer `main`:** `python3 tools/roadmap/resolver-conflicto.py` resuelve tachados y filas añadidas; lo que quede, a mano (`QA-343`).
