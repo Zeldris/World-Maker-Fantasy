@@ -1750,6 +1750,30 @@ RAG medible para el Galivelop Evaluator (GVE), que mide el RAG de lore desde su 
 - ~~**QA-330 · Mandos del RAG sin tocar código**~~ ✅ 2026-11-13 (T2 del GVE): `RAG_TAM_TROZO`, `RAG_SOLAPE` (nuevo: repite frases del trozo anterior), `RAG_PREFIJO_CONSULTA`, `RAG_PREFIJO_DOCUMENTO` y `RAG_PLANTILLA`, o sus argumentos (`--tam-trozo`… y `--prefijos-nomic`), iguales en `reindex-lore` y `rag-eval` (`src/lib/ragConfig.ts`); por defecto, lo de siempre. `reindex-lore` guarda la configuración en `World.loreIndice` (migración `20261113120000_lore_indice`) y `rag-eval` sale con 2 si no casa (salvo `--ignorar-indice`), la saca en `config.index` y `index_matches`. Probado con el Ollama simulado con dos juegos de mandos. Pendiente en la Deck: dos corridas reales con mandos distintos.
 - ~~**QA-331 · Generar casos del RAG**~~ ✅ 2026-11-13 (T3 del GVE): los 16 casos de `rag-casos.jsonl` llevan `lang` y `pair_id` y su pareja en inglés (escrita a mano, mismos esperados); `validarCasos` y `validarParejas` (`ragEval.ts`) exigen un caso es y uno en por pareja. `npm run rag-generar-casos` (`ragGenerar.ts`, con tests) pide al modelo local 2-3 preguntas es/en por fragmento de `loreChunks.ts`, descarta las que copian 4 palabras seguidas del fragmento o de su título y las repetidas, y escribe `ia/rag-casos-b.jsonl` (origen B), `ia/rag-casos-reserva.jsonl` (~15 %, al azar fijo por semilla), `ia/rag-casos-a-borradores.jsonl` (`--borradores-a N`, origen A, `debe_pasar: true`) y el manifiesto `ia/rag-casos-generacion.json` (modelo y digest, semilla, temperatura, prompt). `rag-eval --casos` acepta varios archivos separados por comas; por defecto suma `rag-casos-b.jsonl` si existe. Hecho en la Deck (2026-11-14): 418 B y 40 de reserva con `qwen3.5:4b`; de 12 borradores A, 10 parejas aceptadas (5 corregidas, 2 fuera) por Claude a criterio del usuario.
 - ~~**QA-336 · Forma del JSON del GVE e `indice_hash`**~~ ✅ 2026-11-14 (T6 y prompt de traslado del GVE): `rag-eval --json` sale con claves en español (`config.modelo/digest/topK/trozo/solapamiento/prefijo_*/texto_embebido/forma_consulta`, `indice_hash`, `casos[].idioma/par/pregunta/esperados/devueltos{titulo,distancia}/puesto`, `resumen`); `par` es el id del gemelo en el otro idioma, recíproco. `reindex-lore` guarda en `World.loreIndice` el `indice_hash` (`hashDelIndice`, `ragConfig.ts`): sha256 del modelo y de los pares (título, texto embebido) ordenados, sin UUID. Tests en `ragEval.test.ts` y `ragConfig.test.ts`. Comprobado en la Deck (2026-11-14): dos reindexados dan el mismo hash.
+- **QA-338 · Tanda 1 del GVE 0.2: seis JSON del RAG de lore (R10, R1, R2)** (usuaria, 2026-11-14; sigue a `QA-331` y `QA-336`). **La lanza la usuaria en la Deck**: ningún agente la corre ni cambia código para esto. Se entregan seis archivos en `logs/gve/tanda1/`, que se copian al GVE en `docs/evidence/tarkor/<fecha>-tanda1/`: `r10-trabajo.json`, `r10-reserva.json`, `r1-trabajo.json`, `r1-reserva.json`, `r2-trabajo.json`, `r2-reserva.json`.
+  - **Condiciones:** todo en el commit `d376ca7`, el de la corrida base, para que solo cambie el mando (con otro commit, antes una corrida base nueva en ese commit); los mandos van como argumentos, no como variables `RAG_*` (esas las lee el servidor del juego); cada `rag-eval` lleva los mismos mandos que el `reindex-lore` anterior, o sale con 2.
+  - **Órdenes:**
+
+    ```bash
+    git checkout d376ca7 && cd backend && mkdir -p ../logs/gve/tanda1
+    R=ia/rag-casos-reserva.jsonl; O=../logs/gve/tanda1
+    # R10: sin reindexar, con k 8 (da la curva k = 1…8)
+    npm run rag-eval -- --json --k 8 > $O/r10-trabajo.json
+    npm run rag-eval -- --json --k 8 --casos $R > $O/r10-reserva.json
+    # R1: prefijos de nomic-embed-text
+    npm run reindex-lore -- --prefijos-nomic
+    npm run rag-eval -- --json --prefijos-nomic > $O/r1-trabajo.json
+    npm run rag-eval -- --json --prefijos-nomic --casos $R > $O/r1-reserva.json
+    # R2: solape de 100
+    npm run reindex-lore -- --solape 100
+    npm run rag-eval -- --json --solape 100 > $O/r2-trabajo.json
+    npm run rag-eval -- --json --solape 100 --casos $R > $O/r2-reserva.json
+    # Dejar el índice como en la base y comprobarlo
+    npm run reindex-lore
+    npm run rag-eval -- --json | grep -o '"indice_hash": *"[^"]*"' | head -1   # tiene que salir sha256:1926ab18…
+    ```
+
+  - **Se cierra** cuando los seis JSON están en el GVE y el `indice_hash` final ha vuelto al de la base (`sha256:1926ab18…`).
 
 Licencias del proyecto (usuaria, 2026-11-05):
 - ~~**QA-297 · Licencias: MIT para el código y CC BY-NC-SA 4.0 para el contenido**~~ ✅ 2026-11-05: `LICENSE` con el MIT del Image Generator y `LICENSE-CONTENIDO` (lore, arte, mapas y voces, sin uso comercial); `"license": "MIT"` en los `package.json` y la sección «Licencias» en `docs/README.md`. Lo de terceros conserva su licencia.
