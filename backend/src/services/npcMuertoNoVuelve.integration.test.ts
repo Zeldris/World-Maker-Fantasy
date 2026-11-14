@@ -6,6 +6,8 @@ import { advanceCorpseAndRecoveryTimeouts } from './companionSupervivencia.js';
 import { npcVivoEnPartida } from './mundoPartida.js';
 import { zonePointNpcMuertoParaSiempre } from './zonePoints.js';
 import type { NpcInScene } from './npcScene.js';
+import Fastify from 'fastify';
+import { panelsRoutes } from '../routes/saves/panels.js';
 
 /// P461: un NPC con nombre (PRINCIPAL) rematado y con el cadáver ya desaparecido sigue muerto: conserva su
 /// NpcState (muerto) y no vuelve a contar como vivo ni a generar su punto hostil.
@@ -54,5 +56,20 @@ describe('P461: muerto es muerto para un NPC con nombre', () => {
     expect(await prisma.npc.count({ where: { id: npc.id, ...npcVivoEnPartida(saveId) } })).toBe(0);
     const sucesos = await prisma.sucesoActor.count({ where: { entidadId: npc.id, suceso: { saveId, tipo: 'CADAVER_DESAPARECE' } } });
     expect(sucesos).toBe(1);
+  });
+  it('con el cadaver ya desaparecido, ni saquear-zona ni la busqueda de cadaveres lo ofrecen', async () => {
+    const loc = await prisma.location.findFirstOrThrow({ where: { worldId } });
+    await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: loc.id } });
+    const estado = await prisma.npcState.findFirstOrThrow({ where: { saveId, npcId: npc.id, scope: '' } });
+    expect(estado.muerto).toBe(true);
+    expect(estado.saqueado).toBe(false);
+    const app = Fastify();
+    await app.register(panelsRoutes);
+    const res = await app.inject({ method: 'GET', url: `/saves/${saveId}/saquear-zona` });
+    expect(JSON.parse(res.body)).toEqual({ candidates: [] });
+    // Mientras el cadaver esta a la vista (antes de desaparecer) si se puede saquear.
+    await prisma.npcState.update({ where: { id: estado.id }, data: { muerto: false } });
+    const antes = await app.inject({ method: 'GET', url: `/saves/${saveId}/saquear-zona` });
+    expect(JSON.parse(antes.body).candidates.map((c: { slug: string }) => c.slug)).toEqual([slug]);
   });
 });

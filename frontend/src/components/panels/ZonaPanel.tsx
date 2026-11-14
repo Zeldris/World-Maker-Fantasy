@@ -402,9 +402,14 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
   function esEdificio(punto: ZonePointInfo | ZonaDinamicoInfo): punto is ZonePointInfo {
     return 'id' in punto && punto.tipo === 'EDIFICIO'
   }
+  /// P463: solo una ficha de NPC o fauna vivos es objetivo del movimiento; un cadáver, un objeto suelto o un edificio no casan con ningún punto del servidor.
+  function objetivoDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): string | undefined {
+    if (punto.tipo !== 'NPC' && punto.tipo !== 'FAUNA') return undefined
+    return 'targetSlug' in punto ? punto.targetSlug : punto.slug
+  }
   function accionesDeFicha(punto: ZonePointInfo | ZonaDinamicoInfo): AccionFicha[] {
     const acciones: AccionFicha[] = []
-    const ir = irHastaPin(punto, 'targetSlug' in punto ? punto.targetSlug : punto.slug)
+    const ir = irHastaPin(punto, objetivoDeFicha(punto))
     // P337: sobre las estacas y fuera, «Interactuar» no serviría: «Ir» lleva a la puerta del poblado.
     const sinAcceso = sinAccesoDesdeFuera(punto)
     const puerta = destinoPuerta(punto)
@@ -918,18 +923,18 @@ export function ZonaPanel({ saveId, onEncuentroZona, soloConsulta = false, colum
               point={selectedPoint}
               onClose={() => setSelectedPoint(null)}
               onInteractuar={!soloConsulta && pegadoAPin(selectedPoint) && !sinAccesoDesdeFuera(selectedPoint) ? () => void handleInteractuarEdificio(selectedPoint) : undefined}
-              onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint)}
+              onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint, objetivoDeFicha(selectedPoint))}
               irHastaLabel={destinoPuerta(selectedPoint) ? 'Ir a la puerta del poblado' : undefined}
             />
           ) : (
-            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint)} irHastaLabel={irHastaEtiqueta(selectedPoint)} />
+            <ZonePointDetailModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint, objetivoDeFicha(selectedPoint))} irHastaLabel={irHastaEtiqueta(selectedPoint)} />
           )
         ) : (
           <ZonePointDetailModal
             point={zonaDinamicoToDetailSource(selectedPoint)}
             onClose={() => setSelectedPoint(null)}
             onRecoger={handleRecoger}
-            onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint)}
+            onIrHasta={sinAccesoDesdeFuera(selectedPoint) && !destinoPuerta(selectedPoint) ? undefined : irHastaPin(selectedPoint, objetivoDeFicha(selectedPoint))}
             irHastaLabel={irHastaEtiqueta(selectedPoint)}
             onSaquear={onSaquearCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onSaquearCadaver(npcSlug)) : undefined}
             onDesollar={onDesollarCadaver ? (npcSlug) => void accionSobreCadaver(selectedPoint, () => onDesollarCadaver(npcSlug)) : undefined}

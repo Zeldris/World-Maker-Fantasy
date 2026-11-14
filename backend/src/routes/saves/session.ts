@@ -477,9 +477,10 @@ export async function sessionRoutes(app: FastifyInstance) {
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
 
       // P460: tras pelear, nombre real (descubrir antes de nombrar; sin esto el diario diría «orco desconocido» y la deuda el real).
-      const llamarAlNpc = async () => {
-        await descubrirNpc(prisma, save.id, npc.slug);
-        return aNombre((await nombreVisibleDeNpc(prisma, save.id, npc)).nombre);
+      // Dentro de la transacción y tras la guarda contra la carrera / el doble clic: un 409 no descubre a nadie.
+      const llamarAlNpc = async (tx: Prisma.TransactionClient) => {
+        await descubrirNpc(tx, save.id, npc.slug);
+        return aNombre((await nombreVisibleDeNpc(tx, save.id, npc)).nombre);
       };
 
       // Combate múltiple real (2026-08-29, bug real jugando en vivo — ver comentario de
@@ -519,9 +520,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
         }
 
-        const aVisible = await llamarAlNpc();
         const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-        const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
         // Condición de carrera real (auditoría 2026-09-01): sin releer, un doble clic simultáneo
         // pasaba los dos el guard de `condicionReal !== 'CONVALECIENTE'` de arriba (leído ANTES de
         // esta transacción) y creaba 2 LogEntry duplicados narrando la misma decisión dos veces.
@@ -531,6 +530,8 @@ export async function sessionRoutes(app: FastifyInstance) {
         const outcomeGrupo = await prisma.$transaction(async (tx) => {
           const locked = await lockRowForUpdate<{ dismissedGrupo: boolean | null }>(tx, 'CombatParticipant', participantId, ['dismissedGrupo']);
           if (locked.dismissedGrupo) return null;
+          const aVisible = await llamarAlNpc(tx);
+          const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
@@ -540,7 +541,7 @@ export async function sessionRoutes(app: FastifyInstance) {
           // sin completar "derrotar a X" por diseño explícito de 2026-08-31). Ver
           // `activeQuestTitlesTargeting`.
           const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
-          return { logEntry: created, factionRepChange: null, misionesPendientes };
+          return { logEntry: created, text, factionRepChange: null, misionesPendientes };
         });
         if (!outcomeGrupo) {
           return reply.status(409).send({ error: 'Ya se dejó con vida a este combatiente.' });
@@ -548,7 +549,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         return {
           npcSlug: npc.slug,
           participantId,
-          logEntry: { id: outcomeGrupo.logEntry.id, text, timeLabel, createdAt: outcomeGrupo.logEntry.createdAt.toISOString() },
+          logEntry: { id: outcomeGrupo.logEntry.id, text: outcomeGrupo.text, timeLabel, createdAt: outcomeGrupo.logEntry.createdAt.toISOString() },
           factionRepChange: outcomeGrupo.factionRepChange,
           misionesPendientes: outcomeGrupo.misionesPendientes,
         };
@@ -560,9 +561,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: 'Solo puedes dejar vivir a un enemigo CONVALECIENTE.' });
       }
 
-      const aVisible = await llamarAlNpc();
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-      const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
 
       // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
       // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
@@ -574,6 +573,8 @@ export async function sessionRoutes(app: FastifyInstance) {
         const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
         const freshBefore = locked.pendingCombatNpcSlugs ?? [];
         if (!freshBefore.includes(npc.slug)) return { kind: 'ya-resuelto' as const };
+        const aVisible = await llamarAlNpc(tx);
+        const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
 
         const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
         await guardarSlugsDeCombate(tx, save.id, freshSlugs);
@@ -585,7 +586,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         // Aviso de misión pendiente (2026-09-15) — ver comentario completo en el camino de grupo,
         // arriba, y en `activeQuestTitlesTargeting`.
         const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
-        return { kind: 'ok' as const, logEntry: created, factionRepChange: null, misionesPendientes };
+        return { kind: 'ok' as const, logEntry: created, text, factionRepChange: null, misionesPendientes };
       });
 
       if (outcome.kind === 'ya-resuelto') {
@@ -594,7 +595,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const logEntry = outcome.logEntry;
       return {
         npcSlug: npc.slug,
-        logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
+        logEntry: { id: logEntry.id, text: outcome.text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
         factionRepChange: outcome.factionRepChange,
         misionesPendientes: outcome.misionesPendientes,
       };

@@ -590,7 +590,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // se pide al abrir el mapa, antes de poder dar ningún paso.
     // Fase 9 (2026-09-29): también los caídos de un grupo (`groupDefeated`), cuyo `condicionFisica`
     // refleja al siguiente individuo vivo — mismo criterio que Desollar (`carcassCandidatesFor`).
-    const muertos = await prisma.npcState.findMany({ where: { saveId: save.id, OR: [{ condicionFisica: 'MUERTO' }, { groupDefeated: { gt: 0 } }] } });
+    const muertos = await prisma.npcState.findMany({ where: { saveId: save.id, muerto: false, OR: [{ condicionFisica: 'MUERTO' }, { groupDefeated: { gt: 0 } }] } });
     const muertosPendientes = (muertos ?? []).filter((st) => st.condicionFisica === 'MUERTO' || st.groupDefeated > 0).filter(hasPendingLoot).filter((st) => st.zonaLocationId == null || st.zonaLocationId === locationId);
     if (muertosPendientes.length > 0) {
       const npcsMuertos = await prisma.npc.findMany({
@@ -915,9 +915,6 @@ export async function zonaRoutes(app: FastifyInstance) {
     // P269/P329 (REVIEW.md, «muertos y caídos»): un NPC único convaleciente (derrotado, y más si se le perdonó
     // con Clemente) no actúa: no corta el paso ni abre combate (`zonePointNpcConvalecienteNoActua`). Su ficha sigue en el mapa; cuando se recupera
     // (`npcRecoversFromConvaleciente`) vuelve a la acción.
-    const puntosVivos = puntos.filter(
-      (p) => (!objetivoSlug || p.targetSlug === objetivoSlug) && !zonePointNpcConvalecienteNoActua(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica) && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
-    );
     // Nombre oculto genérico (2026-09-09, generalización pedida por Álvaro: "esta lógica se debe
     // aplicar a todos los que tienen nombre propio" — hasta ahora la colisión de Zona era el único
     // punto del motor que revelaba `Npc.name` sin mirar si la partida ya lo descubrió; `GET /zona`
@@ -952,6 +949,12 @@ export async function zonaRoutes(app: FastifyInstance) {
       currentLocationId: locationId,
       fictionalMinutes,
     });
+    // P463 (revisión): `objetivoSlug` solo elige entre lo no hostil: un AGRESIVO/ENEMIGO nunca se silencia por pulsar otra ficha,
+    // y un objetivo que no casa con ningún punto vivo (cadáver, objeto suelto) se trata como si no hubiera objetivo.
+    const objetivoEf = objetivoSlug && ((await tx.zonePoint.count({ where: { saveId, locationId, targetSlug: objetivoSlug, activo: true } })) > 0 || npcsInSceneColision.some((n) => n.slug === objetivoSlug)) ? objetivoSlug : undefined;
+    const puntosVivos = puntos.filter(
+      (p) => (!objetivoEf || p.targetSlug === objetivoEf || esTemperamentoHostil(npcBySlug.get(p.targetSlug)?.temperamento ?? '')) && !zonePointNpcConvalecienteNoActua(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica) && !npcBySlug.get(p.targetSlug)?.muertoEnMundo && !(npcBySlug.get(p.targetSlug)?.npcStates?.length ?? 0) && !zonePointNpcMuertoParaSiempre(npcBySlug.get(p.targetSlug)?.kind ?? '', npcStateBySlugColision.get(p.targetSlug)?.condicionFisica),
+    );
     // Mismo filtro de lugar que el mapa (P24/P51): quien no se pinta tampoco te corta el paso.
     const locationColision = await tx.location.findUnique({ where: { id: locationId }, select: { slug: true, kind: true } });
     const locationSlugColision = locationColision?.slug ?? null;
@@ -968,7 +971,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     // P269/P329 (revisión): un dinámico único (PRINCIPAL sin ZonePoint) convaleciente tampoco corta el paso, como el que tiene ficha.
     // P254: mismo filtro que el mapa — quien tiene su punto en otra zona no corta el paso aquí.
     const enOtraZonaColision = await slugsConPuntoSoloEnOtraZona({ saveId, currentLocationId: locationId, slugs: npcsInSceneColision.filter((n) => !zonePointSlugsColision.has(n.slug)).map((n) => n.slug), cualquierPunto: true, db: tx });
-    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => (!objetivoSlug || n.slug === objetivoSlug) && n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n) && !enOtraZonaColision.has(n.slug));
+    const dinamicosCandidatosColision = npcsInSceneColision.filter((n) => (!objetivoEf || n.slug === objetivoEf || esTemperamentoHostil(n.temperamento)) && n.condicionFisica !== 'MUERTO' && !zonePointNpcConvalecienteNoActua(n.kind, n.condicionFisica) && !zonePointSlugsColision.has(n.slug) && !fueraDeSuSitioColision(n) && !enOtraZonaColision.has(n.slug));
     const dinamicosStatesColision = dinamicosCandidatosColision.length
       ? await tx.npcState.findMany({
           where: {
@@ -1131,7 +1134,7 @@ export async function zonaRoutes(app: FastifyInstance) {
     if (colision) {
       const combateForzado = esTemperamentoHostil(colision.temperamento);
       const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
-      if (!freshSave?.pendingDynamicMode && (objetivoSlug || !freshSave?.pendingDynamicModeOffer)) {
+      if (!freshSave?.pendingDynamicMode && (!freshSave?.pendingDynamicModeOffer || (!!objetivoEf && !(freshSave.pendingDynamicModeOffer as { combateForzado?: boolean }).combateForzado))) {
         // "¿Quién ve a quién primero?" (2026-09-17, efecto MECÁNICO real desde 2026-09-20 para
         // AGRESIVO/ENEMIGO) — Destreza jugador vs Destreza NPC, mismo patrón que `rollInitiative` de
         // combate. Para el resto de temperamentos solo decide el FRAMING narrativo de la primera
@@ -1251,7 +1254,7 @@ export async function zonaRoutes(app: FastifyInstance) {
       const recursosCrudos = await tx.zonePoint.findMany({ where: { saveId, locationId, tipo: 'RECURSO', activo: true } });
       // P193: un recurso sobre las estacas (el recinto de múrgoles) solo se alcanza desde dentro.
       for (const punto of recursosCrudos) {
-        if (objetivoSlug && punto.targetSlug !== objetivoSlug) continue;
+        if (objetivoEf && punto.targetSlug !== objetivoEf) continue;
         const celdaPunto = celdaDePixel({ x: punto.x, y: punto.y });
         if (!celdaAdyacenteOMisma(celda, celdaPunto) || !alcanzableDesde(locationSlugColision, celda, celdaPunto)) continue;
         if (silenciados?.has(punto.targetSlug)) {
@@ -1259,7 +1262,7 @@ export async function zonaRoutes(app: FastifyInstance) {
           continue;
         }
         const freshSave = await tx.save.findUnique({ where: { id: saveId }, select: { pendingDynamicMode: true, pendingDynamicModeOffer: true } });
-        if (freshSave?.pendingDynamicMode || (!objetivoSlug && freshSave?.pendingDynamicModeOffer)) {
+        if (freshSave?.pendingDynamicMode || (!objetivoEf && freshSave?.pendingDynamicModeOffer)) {
           busquedaCortada = true;
           break;
         }

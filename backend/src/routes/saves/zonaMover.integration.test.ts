@@ -659,6 +659,25 @@ describe('POST /saves/:id/zona/mover', () => {
     expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
   });
 
+  // P463 (revisión): `objetivoSlug` elige entre lo no hostil; un AGRESIVO/ENEMIGO nunca se silencia pulsando otra ficha.
+  it('P463: con objetivoSlug de otra ficha, un AGRESIVO en el camino sigue cortando el paso con combate forzado', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] } });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 475, y: 475, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 475, y: 475 }] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 }, objetivoSlug: 'test-mover-pacifico' } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-agresivo', temperamento: 'AGRESIVO' });
+    expect(body.dynamicModeOffer).toMatchObject({ targetSlug: 'test-mover-agresivo', combateForzado: true });
+  });
+
+  it('P463: un objetivoSlug que no casa con ningun punto vivo (cadaver) se trata como si no hubiera objetivo', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 }, objetivoSlug: 'cadaver:orco-que-no-existe' } });
+    expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+  });
+
   it('P463: con objetivoSlug de un recurso, gana al ser vivo pegado; sin objetivo, el vivo gana al recurso', async () => {
     await prisma.zonePoint.create({ data: { locationId, saveId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] } });
     await prisma.zonePoint.create({ data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true } });

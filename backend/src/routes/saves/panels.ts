@@ -125,7 +125,7 @@ export async function panelsRoutes(app: FastifyInstance) {
     // CONVALECIENTE deja de ser saqueable (2026-08-26, decisión explícita junto con el rediseño
     // Matar/Capturar/Clemente) — solo MUERTO. Antes se podía saquear a alguien todavía vivo.
     const states = await prisma.npcState.findMany({
-      where: { saveId: save.id, condicionFisica: 'MUERTO' },
+      where: { saveId: save.id, condicionFisica: 'MUERTO', muerto: false },
     });
     const pendientes = states.filter(hasPendingLoot);
     if (pendientes.length === 0) return { candidates: [] };

@@ -269,7 +269,7 @@ async function herenciaDeVenganza(ctx: CtxReaccion, actores: ActorHilo[], tensio
     tipo: 'abrirHilo', patron: 'VENGANZA', clave: `VENGANZA:${heredero.id}`,
     actores: [{ entidadTipo: 'NPC', entidadId: heredero.id }, ...actores.filter((a) => a.entidadTipo !== 'NPC')],
     tension: Math.min(10, tension + 1),
-    resumen: `${heredero.name} toma la venganza de ${await nombreNpc(ctx.tx, ctx.suceso.saveId, vengador)}: es cosa del linaje ${heredero.linaje}.`,
+    resumen: `${await nombreNpc(ctx.tx, ctx.suceso.saveId, heredero.id)} toma la venganza de ${await nombreNpc(ctx.tx, ctx.suceso.saveId, vengador)}: es cosa del linaje ${heredero.linaje}.`,
   };
 }
 
