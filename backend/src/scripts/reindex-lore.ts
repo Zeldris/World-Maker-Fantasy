@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { loreChunks } from './loreChunks.js';
 import { trozosParaIndexar } from './loreTrozos.js';
-import { aplicarArgumentosRag, configRag, textoDocumento, type ConfigIndice } from '../lib/ragConfig.js';
+import { aplicarArgumentosRag, configRag, hashDelIndice, textoDocumento, type ConfigIndice } from '../lib/ragConfig.js';
 import { env } from '../config/env.js';
 
 /// Reindexa el lore de Helek Sirik para recuperación semántica (RAG). Correr cada vez que
@@ -13,7 +13,7 @@ import { env } from '../config/env.js';
 /// Uso: npm run reindex-lore -- [--tam-trozo <n>] [--solape <n>] [--prefijo-consulta <t>] [--prefijo-documento <t>]
 ///        [--plantilla <t>] [--prefijos-nomic]
 /// Los mandos (`QA-330`, también por variables RAG_*) están en `src/lib/ragConfig.ts`; la configuración usada se
-/// guarda en `World.loreIndice` para que `rag-eval` avise si no casa con la suya.
+/// guarda en `World.loreIndice` (con `indice_hash`, la huella del contenido) para que `rag-eval` avise si no casa con la suya.
 
 const WORLD_SLUG = 'helek-sirik';
 
@@ -58,11 +58,14 @@ async function main() {
   // Mientras se reindexa, el índice no tiene configuración conocida.
   await prisma.world.update({ where: { id: worldId }, data: { loreIndice: Prisma.DbNull } });
   let done = 0;
+  const filas: { titulo: string; texto: string }[] = [];
   for (const chunk of loreChunks) {
     const t0 = Date.now();
     // QA-167: una fila por trozo, todas con el texto entero (ver loreTrozos.ts).
     for (const trozo of trozosParaIndexar(chunk.text, cfg.tamTrozo, cfg.solape)) {
-      const vector = await embed(textoDocumento(cfg, chunk.title, trozo));
+      const embebido = textoDocumento(cfg, chunk.title, trozo);
+      filas.push({ titulo: chunk.title, texto: embebido });
+      const vector = await embed(embebido);
       const id = crypto.randomUUID();
 
       await prisma.$executeRaw`
@@ -85,7 +88,7 @@ async function main() {
     console.log(`  [${done}/${loreChunks.length}] ${chunk.title} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   }
 
-  const indice: ConfigIndice = { modelo: env.ollamaModelEmbeddings, ...cfg, fecha: new Date().toISOString() };
+  const indice: ConfigIndice = { modelo: env.ollamaModelEmbeddings, ...cfg, fecha: new Date().toISOString(), indice_hash: hashDelIndice(env.ollamaModelEmbeddings, filas) };
   await prisma.world.update({ where: { id: worldId }, data: { loreIndice: { ...indice } } });
   console.log('Reindexado completo.');
 }

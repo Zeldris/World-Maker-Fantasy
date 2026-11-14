@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 /// Configuración del RAG del lore (`QA-329`, `QA-330`): cómo se trocea, qué se embebe y cómo se consulta. La usan
 /// `reindex-lore`, `retrieveLore` y `rag-eval`, para que el índice y las consultas salgan de la misma.
 ///
@@ -83,6 +85,8 @@ export function configRag(entorno: NodeJS.ProcessEnv = process.env): ConfigRag {
 export interface ConfigIndice extends ConfigRag {
   modelo: string;
   fecha?: string;
+  /// Huella del contenido del índice (`indice_hash`, T6 del GVE): ver `hashDelIndice`. No es un mando: no se compara.
+  indice_hash?: string;
 }
 
 /// Mandos en los que el índice guardado no casa con la corrida (vacío si casan). Sin índice guardado, no hay qué comparar.
@@ -101,4 +105,14 @@ export function textoDocumento(cfg: ConfigRag, title: string, trozo: string): st
 /// Texto que se embebe para una consulta.
 export function textoConsulta(cfg: ConfigRag, consulta: string): string {
   return cfg.prefijoConsulta + consulta;
+}
+
+/// Huella del contenido del índice (T6 del GVE): sha256 del modelo y de los pares (título, texto embebido exacto) de
+/// cada fila indexada, sin los UUID (cambian en cada reindexado) y en orden estable (título, luego texto).
+/// Devuelve `sha256:<hex>`.
+export function hashDelIndice(modelo: string, filas: { titulo: string; texto: string }[]): string {
+  const orden = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  const ordenadas = [...filas].sort((a, b) => orden(a.titulo, b.titulo) || orden(a.texto, b.texto));
+  const canonico = JSON.stringify({ modelo, filas: ordenadas.map((f) => [f.titulo, f.texto]) });
+  return `sha256:${createHash('sha256').update(canonico).digest('hex')}`;
 }

@@ -118,47 +118,56 @@ export function digestDelModelo(tags: unknown, modelo: string): string | null {
   return typeof m?.digest === 'string' ? m.digest : null;
 }
 
-/// Configuración de la corrida que va en `config` de la salida JSON (`QA-329`).
+/// Configuración de la corrida que va en `config` de la salida JSON (`QA-329`, forma que lee el GVE).
 export interface ConfigCorrida {
-  embedding_model: string;
-  embedding_digest: string | null;
-  top_k: number;
-  chunk_size: number;
-  chunk_overlap: number;
-  query_prefix: string;
-  document_prefix: string;
+  modelo: string;
+  digest: string | null;
+  topK: number;
+  trozo: number;
+  solapamiento: number;
+  prefijo_consulta: string;
+  prefijo_documento: string;
   /// Plantilla del texto embebido de cada trozo, con `{title}` y `{trozo}`.
-  document_template: string;
-  /// Forma de la consulta, según traiga región el caso o no.
-  query_template: { sin_region: string; con_region: string };
+  texto_embebido: string;
+  /// Forma de la consulta enviada.
+  forma_consulta: string;
   /// Si el caso trae región, se excluye el lore del continente contrario.
-  region_filter: string;
+  region_filter?: string;
   /// Configuración con la que se construyó el índice (`QA-330`), o null si no consta.
-  index: Record<string, unknown> | null;
-  index_matches: boolean | null;
-  commit: string | null;
-  commit_dirty: boolean | null;
-  cases_file: string;
+  index?: Record<string, unknown> | null;
+  index_matches?: boolean | null;
+  commit?: string | null;
+  commit_dirty?: boolean | null;
+  cases_file?: string;
 }
 
-/// Salida de `rag-eval --json` (`QA-329`): un solo objeto con la configuración, cada caso y el resumen.
-export function salidaJson(config: ConfigCorrida, resultados: ResultadoCaso[], k: number) {
+export const FORMA_CONSULTA = '{pregunta} [— {region}]';
+
+/// Salida de `rag-eval --json` (`QA-329`, T6 del GVE): un solo objeto con la configuración, la huella del índice
+/// (`sha256:<hex>` o null si el índice no la guarda), cada caso y el resumen.
+export function salidaJson(config: ConfigCorrida, indiceHash: string | null, resultados: ResultadoCaso[], k: number) {
   const resumen = resumirCasos(resultados, k);
+  /// `par`: id del gemelo en el otro idioma (mismo `pair_id`), recíproco; null si no está en la corrida.
+  const gemelo = (c: CasoRag): string | null =>
+    (c.pair_id && c.lang && resultados.find((o) => o.caso.pair_id === c.pair_id && o.caso.lang && o.caso.lang !== c.lang)?.caso.id) || null;
   return {
     config,
-    cases: resultados.map((r) => ({
+    indice_hash: indiceHash,
+    casos: resultados.map((r) => ({
       id: r.caso.id,
-      lang: r.caso.lang ?? null,
+      idioma: r.caso.lang ?? null,
+      par: gemelo(r.caso),
       pair_id: r.caso.pair_id ?? null,
       origen: r.caso.origen ?? null,
       causa: r.caso.causa,
       debe_pasar: r.caso.debe_pasar ?? false,
+      pregunta: r.caso.pregunta,
+      consulta: r.consulta,
       esperados: r.caso.esperados,
-      query: r.consulta,
-      results: r.devueltos.map((d) => ({ title: d.title, distance: d.distance })),
-      rank: r.puesto,
-      passed: r.puesto !== null && r.puesto <= k,
+      devueltos: r.devueltos.map((d) => ({ titulo: d.title, distancia: d.distance })),
+      puesto: puestoDelPrimerEsperado(r.devueltos.map((d) => d.title), r.caso.esperados),
+      pasa: r.puesto !== null && r.puesto <= k,
     })),
-    summary: { k, n: resultados.length, recall: resumen.recall, mrr: resumen.mrr, failed_required: resumen.fallanObligatorios },
+    resumen: { k, n: resultados.length, recall: resumen.recall, mrr: resumen.mrr, fallan_obligatorios: resumen.fallanObligatorios },
   };
 }

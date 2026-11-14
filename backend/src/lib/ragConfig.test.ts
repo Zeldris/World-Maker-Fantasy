@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aplicarArgumentosRag, CONFIG_RAG_POR_DEFECTO, configRag, diferenciasDeIndice, textoConsulta, textoDocumento } from './ragConfig.js';
+import { aplicarArgumentosRag, CONFIG_RAG_POR_DEFECTO, configRag, diferenciasDeIndice, hashDelIndice, textoConsulta, textoDocumento } from './ragConfig.js';
 
 describe('mandos del RAG (QA-330)', () => {
   it('sin variables, la configuración de siempre', () => {
@@ -33,5 +33,29 @@ describe('mandos del RAG (QA-330)', () => {
     expect(diferenciasDeIndice({ ...actual, fecha: '2026-11-13' }, actual)).toEqual([]);
     expect(diferenciasDeIndice({ ...actual, tamTrozo: 250 }, actual)).toEqual(['tamTrozo: índice 250, corrida 400']);
     expect(diferenciasDeIndice({}, actual)).toHaveLength(6);
+  });
+});
+
+describe('hashDelIndice (T6 del GVE)', () => {
+  const filas = [
+    { titulo: 'B', texto: 'B\nuno' },
+    { titulo: 'A', texto: 'A\ndos' },
+    { titulo: 'A', texto: 'A\ntres' },
+  ];
+  it('mismo hash con las mismas filas en otro orden; formato sha256:<hex>', () => {
+    const h = hashDelIndice('m', filas);
+    expect(h).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(hashDelIndice('m', [...filas].reverse())).toBe(h);
+  });
+  it('cambia si cambia un texto, un título, una fila o el modelo', () => {
+    const h = hashDelIndice('m', filas);
+    expect(hashDelIndice('m', [{ ...filas[0], texto: 'B\nuno!' }, ...filas.slice(1)])).not.toBe(h);
+    expect(hashDelIndice('m', [{ ...filas[0], titulo: 'C' }, ...filas.slice(1)])).not.toBe(h);
+    expect(hashDelIndice('m', filas.slice(1))).not.toBe(h);
+    expect(hashDelIndice('otro', filas)).not.toBe(h);
+  });
+  it('no es un mando: diferenciasDeIndice lo ignora', () => {
+    const actual = { modelo: 'm', ...CONFIG_RAG_POR_DEFECTO };
+    expect(diferenciasDeIndice({ ...actual, indice_hash: 'sha256:x' }, actual)).toEqual([]);
   });
 });

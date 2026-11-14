@@ -45,11 +45,14 @@ primer trozo esperado y, en total, recall@k y MRR.
 
 `npm run rag-eval -- --json` (`QA-329`, para el GVE) saca por stdout un solo objeto JSON y el informe de texto por
 stderr; los códigos de salida son los mismos (0, 1 si falla un `debe_pasar`, 2 si no puede evaluar). Forma
-(`salidaJson`, `ragEval.ts`): `config` (modelo de embeddings y su digest de `/api/tags`, null con el Ollama simulado;
-`top_k`, tamaño de trozo, solapamiento, prefijos, plantilla del texto embebido, forma de la consulta, filtro de región,
-`commit` y si el árbol tiene cambios, y el archivo de casos), `cases` (por caso: `id`, `lang`, `pair_id`, `origen`,
-`causa`, `debe_pasar`, `esperados`, `query`, `results` con `title` y `distance` en orden, `rank` y `passed`) y
-`summary` (`k`, `n`, `recall`, `mrr`, `failed_required`).
+(`salidaJson`, `ragEval.ts`): `config` (`modelo` y su `digest` de `/api/tags`, null con el Ollama simulado;
+`topK`, `trozo`, `solapamiento`, `prefijo_consulta`, `prefijo_documento`, `texto_embebido` (plantilla),
+`forma_consulta`, y de extras el filtro de región, `index`, `index_matches`, `commit`, `commit_dirty` y
+`cases_file`), `indice_hash` (`sha256:<hex>` del contenido del índice, calculado por `reindex-lore`; null si el índice
+es anterior), `casos` (por caso: `id`, `idioma`, `par` (id del gemelo en el otro idioma, recíproco; null si no está en la corrida), `pair_id`, `origen`, `causa`, `debe_pasar`, `pregunta`, `consulta`
+(la enviada), `esperados`, `devueltos` con `titulo` y `distancia` en orden, `puesto` (1 = primero, null si no sale) y
+`pasa`) y `resumen` (`k`, `n`, `recall`, `mrr`, `fallan_obligatorios`). El hash cubre el modelo y, por fila indexada, el
+par (título, texto embebido exacto), ordenado; nunca los UUID.
 
 Mandos del RAG (`QA-330`, `src/lib/ragConfig.ts`): `RAG_TAM_TROZO`, `RAG_SOLAPE`, `RAG_PREFIJO_CONSULTA`,
 `RAG_PREFIJO_DOCUMENTO` y `RAG_PLANTILLA`, o los argumentos `--tam-trozo`, `--solape`, `--prefijo-consulta`,

@@ -91,34 +91,46 @@ describe('validarCasos (QA-328)', () => {
     expect(digestDelModelo({}, 'nomic-embed-text')).toBeNull();
   });
 
-  it('salida JSON (QA-329): config, cada caso con sus resultados en orden y el resumen', () => {
-    const config = { embedding_model: 'nomic-embed-text', top_k: 2, cases_file: 'c.jsonl' } as ConfigCorrida;
-    const a: CasoRag = { id: 'a', pregunta: 'q', esperados: ['T'], causa: null, debe_pasar: true, origen: 'A', lang: 'es', pair_id: 'a-en' };
-    const b: CasoRag = { id: 'b', pregunta: 'q2', esperados: ['T'], causa: 'ignorado', debe_pasar: true };
+  it('salida JSON (QA-329, GVE): forma con claves en español y `puesto` coherente', () => {
+    const config = { modelo: 'nomic-embed-text', topK: 2, cases_file: 'c.jsonl' } as ConfigCorrida;
+    const a: CasoRag = { id: 'a', pregunta: 'q', esperados: ['T'], causa: null, debe_pasar: true, origen: 'A', lang: 'es', pair_id: 'a' };
+    const b: CasoRag = { id: 'b', pregunta: 'q2', region: 'R', esperados: ['T'], causa: 'ignorado', debe_pasar: true };
+    const a2: CasoRag = { ...a, id: 'a-en', lang: 'en', pregunta: 'q-en' };
     const salida = salidaJson(
       config,
+      'sha256:abc',
       [
-        { caso: a, puesto: 2, consulta: 'q', devueltos: [{ title: 'X', distance: 0.1 }, { title: 'T', distance: 0.2 }] },
-        { caso: b, puesto: 3, consulta: 'q2 — R', devueltos: [{ title: 'X', distance: 0.1 }] },
+        { caso: a, puesto: 2, consulta: 'q', devueltos: [{ title: 'X', distance: 0.1 }, { title: 't', distance: 0.2 }] },
+        { caso: a2, puesto: 1, consulta: 'q-en', devueltos: [{ title: 'T', distance: 0.1 }] },
+        { caso: b, puesto: null, consulta: 'q2 — R', devueltos: [{ title: 'X', distance: 0.1 }] },
       ],
       2,
     );
+    expect(salida.casos.map((c) => [c.id, c.par])).toEqual([['a', 'a-en'], ['a-en', 'a'], ['b', null]]);
+    expect(Object.keys(salida)).toEqual(['config', 'indice_hash', 'casos', 'resumen']);
     expect(salida.config).toBe(config);
-    expect(salida.cases[0]).toEqual({
+    expect(salida.indice_hash).toBe('sha256:abc');
+    expect(salida.casos[0]).toEqual({
       id: 'a',
-      lang: 'es',
-      pair_id: 'a-en',
+      idioma: 'es',
+      par: 'a-en',
+      pair_id: 'a',
       origen: 'A',
       causa: null,
       debe_pasar: true,
+      pregunta: 'q',
+      consulta: 'q',
       esperados: ['T'],
-      query: 'q',
-      results: [{ title: 'X', distance: 0.1 }, { title: 'T', distance: 0.2 }],
-      rank: 2,
-      passed: true,
+      devueltos: [{ titulo: 'X', distancia: 0.1 }, { titulo: 't', distancia: 0.2 }],
+      puesto: 2,
+      pasa: true,
     });
-    expect(salida.cases[1]).toMatchObject({ lang: null, pair_id: null, origen: null, causa: 'ignorado', rank: 3, passed: false });
-    expect(salida.summary).toEqual({ k: 2, n: 2, recall: 0.5, mrr: 0.25, failed_required: ['b'] });
+    expect(salida.casos[2]).toMatchObject({ idioma: null, par: null, origen: null, causa: 'ignorado', pregunta: 'q2', consulta: 'q2 — R', puesto: null, pasa: false });
+    for (const c of salida.casos) {
+      expect(c.puesto).toBe(puestoDelPrimerEsperado(c.devueltos.map((d) => d.titulo), c.esperados));
+    }
+    expect(salida.resumen).toEqual({ k: 2, n: 3, recall: 2 / 3, mrr: 0.5, fallan_obligatorios: ['b'] });
+    expect(salidaJson(config, null, [], 2).indice_hash).toBeNull();
     expect(JSON.parse(JSON.stringify(salida))).toEqual(salida);
   });
 });

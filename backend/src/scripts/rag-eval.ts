@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
 import {
   consultaDelCaso,
+  FORMA_CONSULTA,
   digestDelModelo,
   puestoDelPrimerEsperado,
   resumirCasos,
@@ -37,8 +38,8 @@ import { aplicarArgumentosRag, configRag, diferenciasDeIndice, type ConfigIndice
 /// UUID nuevo en cada `reindex-lore`. `retrieveLore` devuelve `title`, `text` y `distance`.
 /// Sale con código 1 si algún caso con `"debe_pasar": true` no sale en el top-k, y con 2 si no puede evaluar.
 ///
-/// `--json` (`QA-329`, para el GVE): un solo objeto JSON por stdout (`config`, `cases`, `summary`; forma en
-/// `ragEval.ts`, `salidaJson`); cualquier otro texto va a stderr.
+/// `--json` (`QA-329`, para el GVE): un solo objeto JSON por stdout (`config`, `indice_hash`, `casos`, `resumen`;
+/// forma en `ragEval.ts`, `salidaJson`; `indice_hash` lo guarda `reindex-lore` en `World.loreIndice`); cualquier otro texto va a stderr.
 
 function argumento(nombre: string): string | undefined {
   const i = process.argv.indexOf(nombre);
@@ -150,15 +151,15 @@ if (comoJson) {
   const raiz = git(['rev-parse', '--show-toplevel']);
   const salida = salidaJson(
     {
-      embedding_model: env.ollamaModelEmbeddings,
-      embedding_digest: await digestDeOllama(env.ollamaBaseUrl, env.ollamaModelEmbeddings),
-      top_k: k,
-      chunk_size: cfg.tamTrozo,
-      chunk_overlap: cfg.solape,
-      query_prefix: cfg.prefijoConsulta,
-      document_prefix: cfg.prefijoDocumento,
-      document_template: cfg.plantilla,
-      query_template: { sin_region: '{pregunta}', con_region: '{pregunta} — {region}' },
+      modelo: env.ollamaModelEmbeddings,
+      digest: await digestDeOllama(env.ollamaBaseUrl, env.ollamaModelEmbeddings),
+      topK: k,
+      trozo: cfg.tamTrozo,
+      solapamiento: cfg.solape,
+      prefijo_consulta: cfg.prefijoConsulta,
+      prefijo_documento: cfg.prefijoDocumento,
+      texto_embebido: cfg.plantilla,
+      forma_consulta: FORMA_CONSULTA,
       region_filter: 'si el caso trae región, se excluye el lore del continente contrario',
       index: indice,
       index_matches: indice ? diferencias.length === 0 : null,
@@ -166,6 +167,7 @@ if (comoJson) {
       commit_dirty: git(['status', '--porcelain']) === null ? null : git(['status', '--porcelain']) !== '',
       cases_file: rutasCasos.map((r) => (raiz ? relative(raiz, r) : r)).join(','),
     },
+    indice?.indice_hash ?? null,
     resultados,
     k,
   );
