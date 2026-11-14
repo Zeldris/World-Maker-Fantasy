@@ -2002,7 +2002,7 @@ async function writeKingdomLogForBuild(
 async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
   const affected = await tx.npcState.findMany({
     where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-    select: { id: true, npcId: true, scope: true, condicionFisica: true, condicionFisicaSinceMinutes: true, npc: { select: { kind: true } } },
+    select: { id: true, npcId: true, scope: true, muertoEn: true, condicionFisica: true, condicionFisicaSinceMinutes: true, npc: { select: { kind: true } } },
   });
   for (const state of affected) {
     if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
@@ -2012,7 +2012,7 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
       });
       await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
     } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
-      const accion = cadaverDespawnAccion(state.npc.kind, state.scope, nowMinutes);
+      const accion = cadaverDespawnAccion(state.npc.kind, state.scope, nowMinutes, state.muertoEn);
       if (accion.borrar) await tx.npcState.delete({ where: { id: state.id } });
       else await tx.npcState.update({ where: { id: state.id }, data: accion.data });
       await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });

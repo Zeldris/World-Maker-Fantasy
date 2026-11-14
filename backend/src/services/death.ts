@@ -57,9 +57,9 @@ export function npcCorpseShouldDespawn(sinceMinutes: number | null, nowMinutes: 
 /// borra su `NpcState`: sin fila volvía a contar como vivo y reaparecía en su punto. Queda con `muerto: true`
 /// (lo filtran `npcVivoEnPartida` y `GET /zona`) y sin plazo (`condicionFisicaSinceMinutes: null`, para que el
 /// barrido no vuelva a disparar el suceso). Fauna y plantillas (otro `kind` o ámbito por lugar) siguen borrando
-/// la fila: allí un encuentro concreto es desechable y la población se repone a propósito.
-export function cadaverDespawnAccion(kind: string, scope: string, nowMinutes: number): { borrar: true } | { borrar: false; data: { muerto: true; muertoEn: number; condicionFisicaSinceMinutes: null } } {
-  if (kind === 'PRINCIPAL' && scope === '') return { borrar: false, data: { muerto: true, muertoEn: nowMinutes, condicionFisicaSinceMinutes: null } };
+/// la fila (`muertoEn` conserva el minuto de la muerte si ya lo había). Allí un encuentro concreto es desechable y la población se repone a propósito.
+export function cadaverDespawnAccion(kind: string, scope: string, nowMinutes: number, muertoEn: number | null = null): { borrar: true } | { borrar: false; data: { muerto: true; muertoEn: number; condicionFisicaSinceMinutes: null } } {
+  if (kind === 'PRINCIPAL' && scope === '') return { borrar: false, data: { muerto: true, muertoEn: muertoEn ?? nowMinutes, condicionFisicaSinceMinutes: null } };
   return { borrar: true };
 }
 

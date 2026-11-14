@@ -444,7 +444,7 @@ export async function advanceCorpseAndRecoveryTimeouts(prisma: PrismaClient): Pr
     if (nowMinutes == null) continue;
     const affected = await prisma.npcState.findMany({
       where: { saveId: s.id, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-      select: { id: true, npcId: true, scope: true, condicionFisica: true, condicionFisicaSinceMinutes: true, npc: { select: { kind: true } } },
+      select: { id: true, npcId: true, scope: true, muertoEn: true, condicionFisica: true, condicionFisicaSinceMinutes: true, npc: { select: { kind: true } } },
     });
     for (const state of affected) {
       if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
@@ -452,7 +452,7 @@ export async function advanceCorpseAndRecoveryTimeouts(prisma: PrismaClient): Pr
         await registrarSucesoDeNpc(prisma, { saveId: s.id, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
         recovered++;
       } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
-        const accion = cadaverDespawnAccion(state.npc.kind, state.scope, nowMinutes);
+        const accion = cadaverDespawnAccion(state.npc.kind, state.scope, nowMinutes, state.muertoEn);
         if (accion.borrar) await prisma.npcState.delete({ where: { id: state.id } });
         else await prisma.npcState.update({ where: { id: state.id }, data: accion.data });
         await registrarSucesoDeNpc(prisma, { saveId: s.id, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });
