@@ -173,7 +173,12 @@ export interface ConfigNarrador {
   digest: string | null;
   temperatura: number;
   semilla: number;
+  /// Tope de caracteres del lore en el prompt: el de `--max-lore-chars` o el de siempre (1400).
   max_lore_chars: number;
+  /// `QA-360`: true si se usó `--lore-trozo` / `--lore-al-final`, null si no; `umbral_anclado`, el de `--umbral-anclado` o null.
+  lore_trozo?: true | null;
+  lore_al_final?: true | null;
+  umbral_anclado?: number | null;
 }
 
 export const FORMA_CONSULTA = '{pregunta} [— {region}]';

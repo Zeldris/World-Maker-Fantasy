@@ -86,6 +86,14 @@ import {
 /// `narracion` por caso y `config.narrador`; sin `--narrar`, nada de eso. Necesita el texto de los trozos: sale con 2 con
 /// `--sin-red`.
 ///
+/// Mandos del narrador (`QA-360`, T11 del GVE; solo con `--narrar`, sin él salen con 2; sin ellos, el prompt es el de `QA-359`
+/// byte a byte): `--lore-trozo` pone en el bloque de lore el TROZO recuperado (el de la fila más cercana de ese título,
+/// reconstruido de `loreChunks.ts` y embebido aquí, sin plantilla ni prefijo) y no el fragmento entero (la recuperación
+/// no cambia); `--max-lore-chars <n>` cambia el tope de 1400 caracteres del lore; `--lore-al-final` quita el bloque
+/// de su sitio y lo pone justo antes de «ACCIÓN DEL JUGADOR:», con «Usa este lore si es pertinente.» detrás;
+/// `--umbral-anclado <x>` cambia el umbral de distancia (0,75) de `weaklyGrounded`. En `config.narrador`: `lore_trozo` y
+/// `lore_al_final` valen true o null (no usado), `umbral_anclado` el valor o null, y `max_lore_chars` el tope efectivo.
+///
 /// `--json` (`QA-329`, para el GVE): un solo objeto JSON por stdout (`config`, `indice_hash`, `casos`, `resumen`;
 /// forma en `ragEval.ts`, `salidaJson`; `indice_hash` lo guarda `reindex-lore` en `World.loreIndice`); cualquier otro texto va a stderr.
 
@@ -128,6 +136,25 @@ if (!Number.isInteger(semilla)) {
 if (!narrar && process.argv.includes('--semilla')) {
   console.error('--semilla solo vale con --narrar.');
   process.exit(2);
+}
+const loreTrozo = process.argv.includes('--lore-trozo');
+const loreAlFinal = process.argv.includes('--lore-al-final');
+const maxLoreChars = argumento('--max-lore-chars') === undefined ? undefined : Number(argumento('--max-lore-chars'));
+const umbralAnclado = argumento('--umbral-anclado') === undefined ? undefined : Number(argumento('--umbral-anclado'));
+if (maxLoreChars !== undefined && (!Number.isInteger(maxLoreChars) || maxLoreChars <= 0)) {
+  console.error(`--max-lore-chars debe ser un entero mayor que 0 (recibido: ${argumento('--max-lore-chars')})`);
+  process.exit(2);
+}
+if (umbralAnclado !== undefined && !(umbralAnclado >= 0 && umbralAnclado <= 2)) {
+  console.error(`--umbral-anclado debe ser un número entre 0 y 2 (recibido: ${argumento('--umbral-anclado')})`);
+  process.exit(2);
+}
+if (!narrar) {
+  const sueltos = ['--lore-trozo', '--lore-al-final', '--max-lore-chars', '--umbral-anclado'].filter((m) => process.argv.includes(m));
+  if (sueltos.length > 0) {
+    console.error(`${sueltos.join(', ')} solo valen con --narrar.`);
+    process.exit(2);
+  }
 }
 if (narrar && rutaSinRed) {
   console.error('--narrar no admite --sin-red: la caché no lleva el texto de los trozos.');
@@ -246,7 +273,9 @@ try {
     const resultado: ResultadoCaso = { caso, puesto, consulta, devueltos: trozos.map((t) => ({ title: t.title, distance: t.distance })) };
     if (banco && ollamaGenerate && env) {
       // Con red, `retrieveLore` devuelve el texto de cada trozo; se queda aparte, `devueltos` no lo lleva.
-      const armado = banco.armarPromptNarrador(trozos as RetrievedLore[], caso.pregunta);
+      let paraPrompt = trozos as RetrievedLore[];
+      if (loreTrozo) paraPrompt = await Promise.all(paraPrompt.map(async (t) => ({ ...t, text: await trozoDeLaFila(t.title, consulta, t.text) })));
+      const armado = banco.armarPromptNarrador(paraPrompt, caso.pregunta, { maxLoreChars, loreAlFinal, umbralAnclado });
       const inicio = Date.now();
       const { text } = await ollamaGenerate({
         model: env.ollamaModelNarrador,
@@ -314,7 +343,18 @@ if (comoJson) {
       indice: cacheCongelada ? 'congelado' : 'vivo',
       cache_hash: textoCache === null ? null : hashDeCache(textoCache),
       ...(narrar
-        ? { narrador: { modelo: env!.ollamaModelNarrador, digest: digestNarrador, temperatura: 0, semilla, max_lore_chars: banco!.MAX_LORE_CHARS } }
+        ? {
+            narrador: {
+              modelo: env!.ollamaModelNarrador,
+              digest: digestNarrador,
+              temperatura: 0,
+              semilla,
+              max_lore_chars: maxLoreChars ?? banco!.MAX_LORE_CHARS,
+              lore_trozo: loreTrozo || null,
+              lore_al_final: loreAlFinal || null,
+              umbral_anclado: umbralAnclado ?? null,
+            },
+          }
         : {}),
     },
     indice?.indice_hash ?? cacheCongelada?.cabecera.indice_hash ?? null,
@@ -323,6 +363,26 @@ if (comoJson) {
   );
   // Con `process.exit` justo después, una tubería podría quedarse con el JSON a medias: se espera a vaciarlo.
   await new Promise<void>((hecho) => process.stdout.write(`${JSON.stringify(salida, null, 2)}\n`, () => hecho()));
+}
+
+/// `--lore-trozo` (`QA-360`): el trozo del fragmento `titulo` más cercano a la consulta (como lo elegiría la base entre
+/// sus filas). La base no guarda el trozo, así que se reconstruye de `loreChunks.ts` y se embebe (una vez por título).
+const vectoresDeTrozos = new Map<string, Promise<{ trozo: string; vector: number[] }[]>>();
+const vectoresDeConsultas = new Map<string, Promise<number[]>>();
+async function trozoDeLaFila(titulo: string, consulta: string, textoEntero: string): Promise<string> {
+  const { embed } = await import('../lib/embeddings.js');
+  let candidatos = vectoresDeTrozos.get(titulo);
+  if (!candidatos) {
+    candidatos = Promise.all(banco!.trozosDelFragmento(cfg, titulo).map(async (t) => ({ trozo: t.trozo, vector: await embed(t.embebido, cfg.modelo) })));
+    vectoresDeTrozos.set(titulo, candidatos);
+  }
+  const clave = textoConsulta(cfg, consulta);
+  let vector = vectoresDeConsultas.get(clave);
+  if (!vector) {
+    vector = embed(clave, cfg.modelo);
+    vectoresDeConsultas.set(clave, vector);
+  }
+  return banco!.trozoMasCercano(await candidatos, await vector) ?? textoEntero;
 }
 
 function leerArchivoCache(ruta: string): string {
