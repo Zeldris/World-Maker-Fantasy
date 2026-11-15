@@ -112,3 +112,6 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
   resultado del golpe como campo obligatorio en combate (`QA-340`), tokens de prompt reaprovechados en el registro (`QA-341`).
 - Aprobadas el 2026-11-15 (no se vuelven a proponer): tope de 400 tokens del 1.er intento en combate (`QA-347`) y calentar
   con el prompt de combate al reabrir en combate (`QA-348`).
+- Aprobadas el 2026-11-15, grupo 3 (no se vuelven a proponer): Ollama en su scope y vigilante de memoria en la ronda (`QA-353`),
+  P475 como caso de `clasificar-eval` (`QA-354`), falso positivo del guard «jugador acertando» (`QA-355`), sin la apertura
+  entera como turno anterior (`QA-356`) y turnos de exploración y combate por separado en `medir-ia.py` (`QA-357`).
