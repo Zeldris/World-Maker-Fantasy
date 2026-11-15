@@ -1,6 +1,7 @@
 import { revisarMoralDelCombate } from './moralGrupo.js';
-import { elegirCapitan, objetivoConcentrado } from './combateMultiple.js';
+import { elegirCapitan, lineaDeCierreDelCombate, objetivoConcentrado } from './combateMultiple.js';
 import { restarVejez } from './cronista/edades.js';
+import { descubrirNpc } from './entityDiscovery.js';
 import type { PrismaClient, CondicionFisica, Npc, Clase, AbilityEffect } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { AttributeBlock, Attribute } from './dice.js';
@@ -683,6 +684,14 @@ interface EscribirCondicionYEnergiaParams {
   activeEffectsNext: ActiveEffect[] | null;
 }
 
+/// P460: ganarle a un NPC (dejarlo CONVALECIENTE) lo descubre ya, no al cerrar el combate: así la tarjeta de
+/// convaleciente, Clemente y la deuda lo llaman igual, por su nombre real.
+async function descubrirSiConvaleciente(tx: Prisma.TransactionClient, saveId: string, participant: ParticipantRef, condicionFisica: CondicionFisica | null): Promise<void> {
+  if (condicionFisica !== 'CONVALECIENTE' || participant.tipo !== 'NPC' || !participant.npcId) return;
+  const npc = await tx.npc.findUnique({ where: { id: participant.npcId }, select: { slug: true } });
+  if (npc) await descubrirNpc(tx, saveId, npc.slug);
+}
+
 export async function escribirCondicionYEnergia({
   tx,
   saveId,
@@ -700,6 +709,7 @@ export async function escribirCondicionYEnergia({
     // Miembro de grupo — su condición vive en el propio CombatParticipant (energía/usageCounts/
     // activeEffects deliberadamente no persisten entre turnos, ver comentario de `esGrupo`).
     if (condicionFisica) await tx.combatParticipant.update({ where: { id: participant.id }, data: { condicionFisicaGrupo: condicionFisica } });
+    await descubrirSiConvaleciente(tx, saveId, participant, condicionFisica);
     return;
   }
   if (participant.tipo === 'JUGADOR') {
@@ -726,6 +736,7 @@ export async function escribirCondicionYEnergia({
     return;
   }
   if (participant.tipo === 'NPC' && participant.npcId) {
+    await descubrirSiConvaleciente(tx, saveId, participant, condicionFisica);
     await tx.npcState.upsert({
       where: { saveId_npcId_scope: { saveId, npcId: participant.npcId, scope: participant.npcScope } },
       create: {
@@ -1648,6 +1659,8 @@ async function resolverTotemsPendientes({
   const terminado = !bandoSigueEnCombate(candidatosPorBando('JUGADOR')) || !bandoSigueEnCombate(candidatosPorBando('ENEMIGO'));
   if (terminado) {
     await prisma.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+    await descubrirNpcsDelCombate(prisma, saveId, encounterId);
+    await escribirCierreDelCombate(prisma, saveId, datosPorParticipante.map(({ p, datos }) => ({ tipo: p.tipo, bando: p.bando, huido: p.huido, condicion: datos?.condicionFisica ?? 'MUERTO' })));
   }
   return { narraciones, caidos, encounterTerminado: terminado };
 }
@@ -2381,6 +2394,36 @@ async function avanzarSinAtacar({
   };
 }
 
+/// P328/P107: al acabar un combate (cualquier desenlace, también quien huye por moral) los NPC que han peleado
+/// quedan DESCUBIERTOS en la partida: su ficha del mapa de zona deja de ser «???». Empezar el combate no
+/// descubre (P327); el descubrimiento llega al cerrarlo. Mismo helper que el 1v1 (`descubrirNpc`).
+export async function descubrirNpcsDelCombate(tx: Prisma.TransactionClient | PrismaClient, saveId: string, encounterId: string): Promise<void> {
+  const participantes = await tx.combatParticipant.findMany({ where: { encounterId, tipo: 'NPC', npcId: { not: null } }, select: { npc: { select: { slug: true } } } });
+  for (const slug of new Set(participantes.flatMap((p) => (p.npc ? [p.npc.slug] : [])))) await descubrirNpc(tx, saveId, slug);
+}
+
+/// P454: deja en el diario (línea de sistema) cómo acabó el combate; turnResolution la recoge con las demás líneas
+/// del combate (`lineasDiarioDelCombate`). Solo los combates de la jugadora: los de fondo no pasan por aquí.
+async function escribirCierreDelCombate(
+  tx: Prisma.TransactionClient,
+  saveId: string,
+  participantes: { tipo: string; bando: string; huido: boolean; condicion: CondicionFisica }[],
+): Promise<void> {
+  const jugadora = participantes.find((p) => p.tipo === 'JUGADOR');
+  if (!jugadora) return;
+  const save = await tx.save.findUnique({ where: { id: saveId }, select: { characterName: true, worldState: { select: { fictionalDateLabel: true, fictionalMinutes: true } } } });
+  if (!save) return;
+  const text = lineaDeCierreDelCombate({
+    nombreJugadora: save.characterName,
+    condicionJugadora: jugadora.condicion,
+    enemigos: participantes.filter((p) => p.bando === 'ENEMIGO' && p.tipo === 'NPC'),
+  });
+  if (!text) return;
+  await tx.logEntry.create({
+    data: { saveId, channel: 'CHARACTER', isSystemMessage: true, text, timeLabel: save.worldState?.fictionalDateLabel ?? '', fictionalMinutes: save.worldState?.fictionalMinutes ?? 480 },
+  });
+}
+
 /// Avanza `turnoActual` y marca el encuentro RESUELTO en cuanto un bando se queda sin objetivos
 /// válidos. Objetivo individual real (2026-08-26) — YA NO re-empareja en cada turno (antes: "§2 se
 /// redecide en cada turno individual"); el enganche de una ronda es fijo una vez decidido. Solo al
@@ -2477,6 +2520,12 @@ async function avanzarYComprobarFin({
 
   if (terminado) {
     await tx.combatEncounter.update({ where: { id: encounterId }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+    await descubrirNpcsDelCombate(tx, saveId, encounterId);
+    await escribirCierreDelCombate(
+      tx,
+      saveId,
+      condiciones.map(({ p, datos }) => ({ tipo: p.tipo, bando: p.bando, huido: p.huido || moral.huidos.includes(p.id), condicion: datos?.condicionFisica ?? 'MUERTO' })),
+    );
     return { terminado: true, totemsQueAtacan: [] };
   }
 

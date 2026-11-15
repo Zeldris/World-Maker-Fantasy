@@ -22,6 +22,7 @@ import geometria  # noqa: E402
 import importar  # noqa: E402
 import medir  # noqa: E402
 import servir  # noqa: E402
+import _sinzonas  # noqa: E402
 
 CANON = editar.cargar_json(medir.CANON)
 LORE = editar.cargar_json(editar.comprobar.LORE)
@@ -417,7 +418,7 @@ class Relieve(unittest.TestCase):
 class Informe(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.mundo = medir.cargar()
+        cls.mundo = _sinzonas.cargar()
 
     def test_sin_cambios_no_cambia_nada_y_todo_se_cumple(self):
         inf = editar.informe(self.mundo, editar.aplicar(self.mundo, {}), CANON, LORE)
@@ -460,7 +461,7 @@ class Guardar(unittest.TestCase):
     def test_importar_no_pisa_un_mapa_editado(self):
         with tempfile.TemporaryDirectory() as d:
             destino = os.path.join(d, 'helek.json')
-            shutil.copy(medir.MUNDO, destino)
+            _sinzonas.copiar(destino)
             with open(destino, 'a', encoding='utf-8') as f:
                 f.write(' ')
             err = io.StringIO()
@@ -472,8 +473,12 @@ class Guardar(unittest.TestCase):
                 self.assertTrue(f.read().endswith('\n '))
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(importar.main(['--salida', d, '--sobrescribir']), 0)
-            with open(destino, 'rb') as a, open(medir.MUNDO, 'rb') as b:
-                self.assertEqual(a.read(), b.read())
+            with tempfile.TemporaryDirectory() as limpio, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(importar.main(['--salida', limpio]), 0)  # lo que da importar sin nada delante
+                with open(os.path.join(limpio, 'helek.json'), encoding='utf-8') as f:
+                    importado = f.read()
+            with open(destino, encoding='utf-8') as f:
+                self.assertEqual(f.read(), importado)
 
 
 class GuardarAtomico(unittest.TestCase):

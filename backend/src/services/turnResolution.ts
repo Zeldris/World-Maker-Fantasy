@@ -20,6 +20,7 @@
 //   XP del turno .............................................. const xpTurno
 //   Oferta de Interactuar ambiental ........................... let dynamicModeOffer
 
+import { companerosDeCombate } from './combateCompaneros.js';
 import { registrarFinDeMision, registrarSucesoDeNpc } from './cronista/emisores.js';
 import { repartirIntercambios, lineasTrasElGolpe, marcasDeLinea, type IntercambioContraJugadora, type GolpeGratisContraJugadora } from './intercambiosContraJugadora.js';
 import { bajasDeCampamentoEnVivo } from './ataquesCampamento.js';
@@ -29,7 +30,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -38,14 +39,15 @@ import { runDailyTick } from './dailyTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
-import { appendSessionFacts, selectRelevantFacts } from './worldFacts.js';
+import { appendSessionFacts, loadFactsKnownBy, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
+import { nombresDelMundo } from './nombresDelMundo.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, ataquePendienteDeApertura } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -72,7 +74,7 @@ import { claimChapterIfDue, scheduleChapterSummaryGeneration, releaseChapterClai
 import { recordEntityDiscoveries } from './entityDiscovery.js';
 import { detectsSearchIntent } from './discovery.js';
 import { PURSUER_REFERENCE_REGEX, PURSUER_NAME_REFERENCE_REGEX } from './playerActionValidation.js';
-import { nextCondicionFisica, resolveDeathOutcome, whisperText, isValidRestLocationKind, isCondicionDowngrade, nextCondicionForAttack, saludForCondicion, saludBandFor, healCeilingFor, applySequentialHeals, npcRecoversFromConvaleciente, npcCorpseShouldDespawn } from './death.js';
+import { nextCondicionFisica, resolveDeathOutcome, whisperText, isValidRestLocationKind, isCondicionDowngrade, nextCondicionForAttack, saludForCondicion, saludBandFor, healCeilingFor, applySequentialHeals, npcRecoversFromConvaleciente, npcCorpseShouldDespawn, cadaverDespawnAccion } from './death.js';
 import { capturaEnInventarioExpiro, lastAtMinutesForGanancia, comidaPct, aguaPct, COMIDA_MINUTOS_POR_TRAMO, AGUA_MINUTOS_POR_TRAMO } from './companionSupervivencia.js';
 import { edificiosParaCliente } from './edificiosParaCliente.js';
 import { ownRacialAdvantageFor, rivalRacialDisadvantageAgainst } from './racialPassives.js';
@@ -2001,7 +2003,7 @@ async function writeKingdomLogForBuild(
 async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: string, nowMinutes: number): Promise<void> {
   const affected = await tx.npcState.findMany({
     where: { saveId, condicionFisica: { in: ['CONVALECIENTE', 'MUERTO'] } },
-    select: { id: true, npcId: true, condicionFisica: true, condicionFisicaSinceMinutes: true },
+    select: { id: true, npcId: true, scope: true, muertoEn: true, condicionFisica: true, condicionFisicaSinceMinutes: true, npc: { select: { kind: true } } },
   });
   for (const state of affected) {
     if (state.condicionFisica === 'CONVALECIENTE' && npcRecoversFromConvaleciente(state.condicionFisicaSinceMinutes, nowMinutes)) {
@@ -2011,7 +2013,9 @@ async function applyCondicionTimeouts(tx: Prisma.TransactionClient, saveId: stri
       });
       await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'RECUPERACION_NPC', fictionalMinutes: nowMinutes });
     } else if (state.condicionFisica === 'MUERTO' && npcCorpseShouldDespawn(state.condicionFisicaSinceMinutes, nowMinutes)) {
-      await tx.npcState.delete({ where: { id: state.id } });
+      const accion = cadaverDespawnAccion(state.npc.kind, state.scope, nowMinutes, state.muertoEn);
+      if (accion.borrar) await tx.npcState.delete({ where: { id: state.id } });
+      else await tx.npcState.update({ where: { id: state.id }, data: accion.data });
       await registrarSucesoDeNpc(tx, { saveId, npcId: state.npcId, tipo: 'CADAVER_DESAPARECE', fictionalMinutes: nowMinutes });
     }
   }
@@ -2138,7 +2142,8 @@ export async function vistaCombateDeGrupo(
     };
   });
   await guardarSlugsDeCombate(prisma, saveId, terminado ? [] : npcs.map((n) => n.slug));
-  return { npcs };
+  // P445: los compañeros de la jugadora, como su bando en el panel.
+  return { npcs, companeros: await companerosDeCombate(prisma, participantesFinal) };
 }
 
 async function resolveCombatSlugsAndPersist(params: {
@@ -2953,7 +2958,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // preferible a colgar la partida entera por un problema de red ajeno a la propia narración.
   const retrieved = enCombate
     ? []
-    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags).catch((err) => {
+    : await retrieveLore(regionLabel ? `${action} — ${regionLabel}` : action, worldId, 4, excludeTags, [action, ...npcsInScene.filter((n) => !n.nombreVisible).map((n) => n.name)]).catch((err) => {
         console.warn(`[retrieveLore] fallo o timeout, continuando sin lore RAG: ${err instanceof Error ? err.message : err}`);
         return [];
       });
@@ -3230,10 +3235,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // destino + la ruta recorrida; en cualquier otro turno, recibe siempre dónde está y hacia
   // dónde puede ir — reduce los casos "weaklyGrounded" al dar siempre algo concreto que describir.
   const contextBlocks: string[] = [];
-  if (exchangeNarrationBlock) contextBlocks.push(exchangeNarrationBlock);
-  if (moralNpc) contextBlocks.push(moralNpc.pista);
-  if (abilityEffectHint) contextBlocks.push(abilityEffectHint);
-  if (playerAbilityUsageBlockedHint) contextBlocks.push(playerAbilityUsageBlockedHint);
+  // QA-307 (`/gw-opt-ai`, 2026-11-10): lo que cambia en cada ronda de combate (intercambio con sus dados, moral,
+  // efecto de la habilidad) iba el primero de los hechos y cortaba la caché de prefijo de Ollama justo ahí: en la
+  // Deck, ~20 s de más por ronda. Se añade al final de `contextBlocks`, justo antes de montar el contexto del
+  // narrador, detrás de los hechos estables de la escena (sigue entre los críticos que conserva el intento 2).
+  const bloquesDeLaRonda = [exchangeNarrationBlock, moralNpc?.pista, abilityEffectHint, playerAbilityUsageBlockedHint].filter(
+    (b): b is string => !!b,
+  );
   // Ver `hasFalseTravelClaim` (narrador.ts) — nombres reales de los destinos ambiguos, rellenado
   // solo en el mismo `if` de más abajo que ya decide forzar la pregunta ("EL PERSONAJE QUIERE
   // SEGUIR ADELANTE PERO HAY MÁS DE UN CAMINO POSIBLE").
@@ -3357,6 +3365,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Región activa este turno (roadmap 2026-07-20, para el lint post-narración) — la del destino
   // si es un turno de viaje, si no la de la ubicación actual.
   let activeRegion: string | null = null;
+  // QA-289: zona de la escena, para buscar los hechos de sesión por escena (`selectRelevantFacts`).
+  let zonaEscena: string | undefined;
   // Punto del jugador en el mapa de Zona (2026-09-04) — al llegar a una Location nueva, aparece en
   // el borde del lienzo correspondiente a la dirección por la que se entra (nunca el centro). Se
   // calcula aquí (fuera de la transacción de escritura, con `destination` ya cargado para el
@@ -3417,6 +3427,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       zonasIntermedias.length > 0
         ? ` El trayecto pasa por ${zonasIntermedias.length === 1 ? 'una zona intermedia real' : `${zonasIntermedias.length} zonas intermedias reales`} (${zonasIntermedias.join(', ')}) — nómbra${zonasIntermedias.length === 1 ? 'la' : 'las'} de pasada en la narración, con algo breve y propio de cada una (terreno, un detalle sensorial), no como una simple lista.`
         : '';
+    zonaEscena = travel.toLocationName;
     contextBlocks.push(
       `LLEGADA A ${travel.toLocationName}: ${destination?.description ?? ''}\nRUTA RECORRIDA: ${ruta}\nLa narración de este turno tiene que TERMINAR con el personaje ya en ${travel.toLocationName}, mencionando algo concreto y propio de este lugar (no solo del paisaje del camino) — puedes describir brevemente el trayecto, pero nunca a costa de dejar la llegada implícita o sin situar.${tramoHint}`,
     );
@@ -3424,6 +3435,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     const location = await prisma.location.findUnique({ where: { id: currentLocationId } });
     if (location) {
       activeRegion = location.region;
+      zonaEscena = location.name;
       currentLocationRecord = { id: location.id, kind: location.kind, slug: location.slug };
       const destinations = await destinationsFrom(currentLocationId, attributes);
       const destinosTxt = destinations.length
@@ -3677,7 +3689,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // real (no fauna); si no hay cita explícita, cae al primero real como hasta ahora.
   const dialoguePartners = npcsInScene.filter((n) => !faunaSlugs.has(n.slug));
   const explicitDialogueTarget = explicitTarget && !faunaSlugs.has(explicitTarget.slug) ? explicitTarget : null;
-  const dialogueTarget = detectsDialogueIntent(action) ? (explicitDialogueTarget ?? dialoguePartners[0] ?? null) : null;
+  const dialogueTarget = detectsDialogueIntent(action) ? elegirInterlocutor(action, explicitDialogueTarget, dialoguePartners) : null;
 
   // Menú contextual de interacción con NPC (2026-09-06, "Aprender oficio" deja de depender de una
   // habilidad suelta) — solo para NPC con `interactionTypes` sembrado a mano en el catálogo (la
@@ -4489,8 +4501,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // crafteo) legitima que la prosa prometa recibir algo; sin ninguno de estos, una promesa de
   // obtención en prosa libre es pura alucinación.
   const harvestOrLootActiveThisTurn = !!harvestMatch || lootMode || buildMode || craftMode;
+  contextBlocks.push(...bloquesDeLaRonda);
   const narrationCtx = {
-    worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts))],
+    worldFacts: [...contextBlocks, ...(await selectRelevantFacts(action, saveId, worldId, sessionFacts, [...npcsInScene.map((n) => n.name), ...(zonaEscena ? [zonaEscena] : [])]))],
     // Separado de worldFacts (roadmap 2026-07-24, "revisar partida" — ver comentario en
     // TurnContext.backgroundLore, narrador.ts): el lore RAG es trasfondo del mundo, no hechos
     // de la escena actual — fusionarlos bajo el mismo "HECHOS DEL MUNDO" le daba al modelo
@@ -4521,6 +4534,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
     criticalFactsCount: contextBlocks.length,
     lastNarrationText: lastNarration?.text,
+    ...(dialogueTarget ? { replicaAparte: dialogueTarget.nombreVisible ?? dialogueTarget.name } : {}),
     combatBothMissed,
     combatRealHitLanded,
     nonExchangeAttackHitLanded,
@@ -4824,7 +4838,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   if (wasLlmNarrated && narration.fallbackDeterminista && dialogueTarget && !combatExchangeDisplayFinal) {
     const visible = await nombreVisibleDeNpc(prisma, saveId, dialogueTarget);
     const quien = visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, dialogueTarget.articulo);
-    narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1));
+    narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1), characterName);
   }
 
   // Narración mentirosa si el modelo agota los 3 reintentos (bug real jugando en vivo, 2026-08-06,
@@ -4972,20 +4986,36 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Nunca lanza si falla: perder la réplica de un turno es mucho mejor que perder el turno entero
   // por un timeout de esta llamada extra.
   if (dialogueTarget) {
+    // P266: si el jugador le dice su nombre, queda como hecho que presenció; su réplica ve solo lo que vio.
+    if (presentaNombreEnAccion(characterName, action)) {
+      narration.newFacts = [...narration.newFacts, `${characterName} le dice su nombre a ${dialogueTarget.name}.`];
+    }
     try {
       const npcReply = await generateNpcReply({
         npc: { name: dialogueTarget.name, personality: dialogueTarget.personality, bio: dialogueTarget.bio, role: dialogueTarget.role, ...(dialogueTarget.nombreVisible ? { nombreVisible: dialogueTarget.nombreVisible } : {}) },
         characterName,
         action,
-        sessionFacts,
+        sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
+        replicaAnterior: ultimaReplica(lastNarration?.text),
+        nombresConocidos: await nombresDelMundo(worldId),
       });
-      if (npcReply) {
-        narration.narration = `${narration.narration} ${npcReply}`;
+      if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
+        console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
+      }
+      {
+        // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
+        // P415-P417 (restos de habla sin cita) y P412 (abre con el NPC): el NPC habla solo en su réplica, al final.
+        const nombreNpc = dialogueTarget.nombreVisible ?? dialogueTarget.name;
+        const narracion = empezarPorElJugador(quitarRestosDeDialogo(quitarCitas(narration.narration), characterName), nombreNpc, characterName, dialogueTarget.genero);
+        // Sin réplica (salida vacía, timeout), unirReplica pone la de respaldo: la pregunta no queda sin respuesta.
+        narration.narration = unirReplica(narracion, npcReply, dialogueTarget);
       }
     } catch (err) {
       console.warn(`[turno] generateNpcReply falló, se omite la réplica de este turno (saveId=${saveId}):`, err);
     }
   }
+  // P410: un nombre conocido escrito casi bien («Ulka Ketg») se corrige al de la ficha.
+  narration.narration = corregirNombresCasi(narration.narration, npcsInScene.filter((n) => !n.nombreVisible).map((n) => n.name));
 
   // Lint post-narración determinista (roadmap 2026-07-20, P1.4 de Fable) — solo detecta y
   // registra, sin reintento (gastar otra llamada a Ollama por esto no compensa en este hardware).
@@ -6969,7 +6999,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // propósito — embebe cada hecho nuevo vía Ollama, mismo criterio que `narrateAction`/`retrieveLore`
   // de no bloquear una transacción de DB con una llamada externa lenta.
   if (narration.newFacts.length) {
-    await appendSessionFacts(saveId, sessionFacts, narration.newFacts);
+    await appendSessionFacts(saveId, sessionFacts, narration.newFacts, { testigos: npcsInScene.map((n) => n.name) });
   }
   // Saqueo/desuello de CombatEncounter (2026-08-25) — hecho de sesión determinista, mismo criterio
   // que la Pieza A de la Capa 3 (mundo-determinista.md): sin nombrar aquí a cada caído,
@@ -6980,6 +7010,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       saveId,
       sessionFacts,
       combatEncounterLootSummary.map((c) => `${c.name} ${c.cantidad > 1 ? `(${c.cantidad} caídos)` : 'cae derrotado'} tras el combate.`),
+      { testigos: npcsInScene.map((n) => n.name) },
     );
   }
 

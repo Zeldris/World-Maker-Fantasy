@@ -19,7 +19,7 @@ import { questsRoutes } from './saves/quests.js';
 import { minutosConDestreza, bandaForMinutos } from '../services/travel.js';
 import { ownerKeyFor } from '../services/reinoOwner.js';
 import type { NarrationResult } from '../services/narrador.js';
-import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration } from '../services/narrador.js';
+import { hasFalseTravelClaim, hasFalsePhantomTravel, deterministicFallbackNarration, buildNarrationPrompt } from '../services/narrador.js';
 import type { TravelResolution } from '../services/travel.js';
 import type { TravelInterruption } from '../services/travelInterruption.js';
 import type { AttributeBlock } from '../services/dice.js';
@@ -3093,12 +3093,12 @@ describe('Territory.control/population: felicidad sostenida consolida o rebela (
     const otraRegion = await prisma.location.findFirstOrThrow({ where: { slug: 'campamento-helsig' } });
     const pozo = await prisma.building.create({ data: { saveId, locationId: hondonada.id, name: 'Pozo', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
     const pozoLejano = await prisma.building.create({ data: { saveId, locationId: otraRegion.id, name: 'Pozo lejano', kind: 'pozo', recipeKey: 'pozo', description: 'x', status: 'ACTIVO' } });
-    // El Ayuntamiento es del territorio perdido: cae con él, y con él los edificios sin territorio de su región.
+    // El Ayuntamiento es del territorio perdido: los edificios sin territorio de su región caen, él no (P444).
     const ayto = await prisma.building.create({ data: { saveId, territoryId, locationId: hondonada.id, name: 'Ayuntamiento', kind: 'ayuntamiento', recipeKey: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     narrateAction.mockClear();
     await doPassiveTurn('Espero aquí varios días, dejando pasar el tiempo tranquilamente.');
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozo.id } })).status).toBe('ABANDONADO');
-    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ABANDONADO');
+    expect((await prisma.building.findUniqueOrThrow({ where: { id: ayto.id } })).status).toBe('ACTIVO'); // P444: sin él no se podría reconstruir nada
     // Otra región no se toca.
     expect((await prisma.building.findUniqueOrThrow({ where: { id: pozoLejano.id } })).status).toBe('ACTIVO');
     expect(await prisma.logEntry.count({ where: { saveId, channel: 'KINGDOM', text: { contains: 'se ha rebelado' } } })).toBe(1);
@@ -5007,10 +5007,12 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('un turno cualquiera borra el NpcState del cadáver', async () => {
+  // P461 (2026-11-14): el NpcState de un PRINCIPAL muerto ya no se borra al desaparecer el cadáver,
+  // se conserva con `muerto: true` para que no reaparezca vivo.
+  it('un turno cualquiera hace desaparecer el cadáver y conserva el NpcState como muerto (P461)', async () => {
     await doTurn(saveId, 'Exploro la zona con cuidado.');
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
-    expect(state).toBeNull();
+    expect(state?.muerto).toBe(true);
   }, 20_000);
 });
 
@@ -8235,6 +8237,8 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     // relación con los demás tests del archivo que también usan a Orco Enfurecido.
     await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'ILESO' } });
     await prisma.npcState.create({ data: { saveId, npcId: torgashId, scope: '', condicionFisica: 'ILESO' } });
+    // P419: un PRINCIPAL que vive en otra zona solo está aquí con su punto activo en la zona.
+    await prisma.zonePoint.create({ data: { locationId: hondonada.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     classifyAction.mockResolvedValue({
       requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -9382,6 +9386,9 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
   // el saludado (aunque el narrador proponga combate con él).
   it('caso mixto: saludar a Torgash Ketg con el orco AGRESIVO en escena abre combate solo con el orco', async () => {
     const saveId = await partida('Gorhorn de prueba (P306 mixto)');
+    // P419: un PRINCIPAL solo está en escena si vive aquí o tiene aquí su punto activo; Torgash vive en otra zona.
+    const hondonada = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId!;
+    await prisma.zonePoint.create({ data: { locationId: hondonada, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     const { classification, combateIniciado } = await saludar(
       saveId,
       "Saludo a 'Torgash Ketg' y le pregunto por el 'Orco enfurecido'.",
@@ -9875,7 +9882,7 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
     await doTurn(saveId, accion);
     const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
-    expect(texto).toMatch(/te escucha en silencio/);
+    expect(texto).toMatch(/escucha a Gorhorn P245 en silencio/);
     expect(texto).toMatch(/narrador no ha respondido/);
     expect(texto).not.toMatch(/sin incidentes/);
     expect(texto).not.toMatch(/sobre el camino/);
@@ -9946,4 +9953,65 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     const equipado = await clasificar(saveId, 'Le entrego mi cuchillo de pedernal al Orco enfurecido.');
     expect(equipado.blocked?.narration).toMatch(/desequípalo y usa el botón Entregar/);
   });
+});
+
+// QA-307 (`/gw-opt-ai`, 2026-11-10): en la Deck, el primer intento de cada turno de combate volvía a procesar el
+// prompt entero (~6.000 tokens, ~20 s de más por turno). Dos rondas seguidas tienen que compartir el prefijo
+// hasta pasados los hechos estables de la escena, para que Ollama reaproveche su caché.
+describe('Dos rondas de combate seguidas comparten el prefijo del prompt del narrador (QA-307)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba QA-307',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    vi.restoreAllMocks();
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('el primer carácter distinto va después de la ubicación y del NPC en escena, no al principio de los hechos', async () => {
+    const app = await buildApp();
+    const action = "Descargo un golpe directo con todo el peso de mi arma detrás 'Orco enfurecido'.";
+    const prompts: string[] = [];
+    for (let ronda = 0; ronda < 2; ronda++) {
+      narrateAction.mockClear();
+      const { classification, roll } = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+      await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+      prompts.push(buildNarrationPrompt(narrateAction.mock.calls.at(-1)![0] as Parameters<typeof buildNarrationPrompt>[0]).prompt);
+    }
+    const [a, b] = prompts;
+    let n = 0;
+    const tope = Math.min(a.length, b.length);
+    while (n < tope && a[n] === b[n]) n++;
+    // Dos prompts idénticos (o uno prefijo del otro) no dicen nada del orden: la ronda no cambió el intercambio.
+    if (n === tope) {
+      throw new Error(`los dos prompts de la ronda no difieren (longitudes ${a.length} y ${b.length}): el intercambio de cada ronda no llega al prompt`);
+    }
+    // Lo de la ronda (sus dados) va al final de los hechos: lo estable de la escena (ubicación, NPC, inventario)
+    // queda en el prefijo compartido.
+    for (const estable of ['UBICACIÓN ACTUAL', 'PERSONAJE EN ESCENA', 'INVENTARIO ACTUAL']) {
+      expect(a.indexOf(estable)).toBeGreaterThan(-1);
+      expect(n).toBeGreaterThan(a.indexOf(estable));
+    }
+    expect(a.indexOf('RESULTADO DEL INTERCAMBIO')).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+  }, 30_000);
 });

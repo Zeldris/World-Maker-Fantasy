@@ -4,6 +4,7 @@ import { prisma } from '../../lib/prisma.js';
 import { getDefaultUserId } from '../../lib/defaultUser.js';
 import { sessionRoutes } from './session.js';
 import { detailRoutes } from './detail.js';
+import { procesarReacciones } from '../../services/cronista/reacciones.js';
 import { iniciarCombatEncounter } from '../../services/combateMultipleOrquestacion.js';
 
 async function buildAppWithDetail() {
@@ -87,11 +88,40 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
     expect(state.condicionFisica).toBe('CONVALECIENTE');
 
     const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    // P460: tras pelear (aunque llegara convaleciente por otro camino) el diario usa el nombre real.
     expect(logEntry.text).toContain('deja con vida a Orco enfurecido');
+    expect(logEntry.text).not.toContain('desconocido');
 
     // Libro de Sucesos (CR-3): el perdón queda registrado, enlazado a su entrada del diario.
     const perdon = await prisma.suceso.findFirstOrThrow({ where: { saveId, tipo: 'PERDON_CONCEDIDO' } });
     expect(perdon.logEntryId).toBe(logEntry.id);
+  });
+
+  it('P457: ya descubierto, el diario lo llama por su nombre real', async () => {
+    await prisma.discoveredEntity.upsert({
+      where: { saveId_entityType_entitySlug: { saveId, entityType: 'npc', entitySlug: npcSlug } },
+      create: { saveId, entityType: 'npc', entitySlug: npcSlug, fase: 'DESCUBIERTO' },
+      update: { fase: 'DESCUBIERTO' },
+    });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-cualquiera'] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
+    expect(res.statusCode).toBe(200);
+    const logEntry = await prisma.logEntry.findFirstOrThrow({ where: { saveId }, orderBy: { createdAt: 'desc' } });
+    expect(logEntry.text).toContain('deja con vida a Orco enfurecido');
+  });
+
+  it('P270: perdonar con Clemente no resta reputación con su facción', async () => {
+    const npc = await prisma.npc.findUniqueOrThrow({ where: { id: npcId } });
+    expect(npc.faction).toBeTruthy();
+    await prisma.worldState.update({ where: { saveId }, data: { factionsStatus: { [npc.faction!]: 2500 } } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [npcSlug, 'otro-npc-cualquiera'] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().factionRepChange ?? null).toBeNull();
+    const ws = await prisma.worldState.findUniqueOrThrow({ where: { saveId } });
+    expect((ws.factionsStatus as Record<string, number>)[npc.faction!]).toBe(2500);
   });
 
   it('BUG CERRADO (auditoría 2026-09-01, condición de carrera): dejar vivir dos veces al mismo NPC rechaza la segunda con 409 en vez de duplicar el LogEntry', async () => {
@@ -357,5 +387,42 @@ describe('/combat/dejar-vivir y /combat/matar — guard de save.pendingDeathReso
     const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/matar/npc-inexistente` });
     expect(res.statusCode).toBe(409);
     expect(JSON.parse(res.body).pendingDeathResolution).toBe(true);
+  });
+});
+
+describe('P460: Clemente descubre al NPC; diario y aviso de deuda dicen el mismo nombre real', () => {
+  let saveId: string;
+  const npcSlug = 'orco-enfurecido-hondonada';
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug: npcSlug } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn de prueba (P460)', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor', characterMotivation: 'x',
+        attributes: { fuerza: 10, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 10 },
+        portraitInitial: 'G', currentLocationId: location.id, pendingCombatNpcSlugs: [npcSlug],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+    await prisma.npcState.create({ data: { saveId, npcId: npc.id, scope: '', condicionFisica: 'CONVALECIENTE' } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('sin descubrir de antemano: la línea de Clemente y el aviso de deuda usan «Orco enfurecido»', async () => {
+    expect(await prisma.discoveredEntity.count({ where: { saveId, entitySlug: npcSlug } })).toBe(0);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/combat/dejar-vivir/${npcSlug}` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().logEntry.text).toContain('deja con vida a Orco enfurecido');
+    await procesarReacciones(prisma, saveId);
+    const aviso = await prisma.logEntry.findFirstOrThrow({ where: { saveId, text: { contains: 'volverás a ver' } } });
+    expect(aviso.text).toBe('Algo te dice que volverás a ver a Orco enfurecido.');
   });
 });

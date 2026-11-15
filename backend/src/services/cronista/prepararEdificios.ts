@@ -6,7 +6,12 @@ import type { PrismaClient } from '@prisma/client';
 import { repararEdificio } from '../asaltos.js';
 import { aplicarEfecto } from './efectos.js';
 
-export type ResultadoReparar = { reparados: { nombre: string; coste: number }[]; sinReparar: { nombre: string; motivo: string }[] };
+export type ResultadoReparar = { reparados: { nombre: string; coste: number }[]; sinReparar: { nombre: string; motivo: string; coste?: number; falta?: number }[] };
+
+/// P383: lo que falta para reparar uno que se quedó sin materiales (el Almacén guarda un solo tipo de cuenta: «materiales»).
+export function textoSinReparar(x: ResultadoReparar['sinReparar'][number]): string {
+  return x.falta != null && x.coste != null ? `faltan ${x.falta} materiales (cuesta ${x.coste}, en el Almacén hay ${x.coste - x.falta}): ${x.motivo}` : x.motivo;
+}
 
 /// Repara cada edificio DANADO del Reino (y cada Empalizada caída) con `repararEdificio`, uno por transacción: si faltan
 /// materiales para uno, queda en `sinReparar` con el motivo y se sigue con los demás (lo ya reparado no se deshace).
@@ -20,7 +25,7 @@ export async function repararDanados(prisma: PrismaClient, saveId: string): Prom
   for (const b of danados) {
     const res = await prisma.$transaction((tx) => repararEdificio(tx, saveId, b.id));
     if (res.ok) r.reparados.push({ nombre: b.name, coste: res.coste });
-    else r.sinReparar.push({ nombre: b.name, motivo: res.motivo });
+    else r.sinReparar.push({ nombre: b.name, motivo: res.motivo, coste: res.coste, falta: res.falta });
   }
   return r;
 }

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.0 -->
+<!-- galivelop-workflow v0.6.0 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`) comprueba en cada diff, además de los fallos de siempre. Son los
@@ -11,6 +11,10 @@ mecánica marcada `(criterio)` pide su check.
 
 - Antes de dar un hallazgo, intenta refutarlo: busca el código, el test o el gancho que ya lo cubre. Solo se informa
   de lo que sobrevive, con la ruta y la línea. (criterio)
+- **Un `P<n>` citado en el código** (`QA-318`, retro de los lotes F-I): el hallazgo que contradiga lo que hace ese
+  código se contrasta antes con `python3 tools/qa/marca-hallazgo.py --ver P<n>`; si ese P ya se jugó con ese
+  comportamiento, no es hallazgo (como mucho, un comentario desfasado). 6 de 16 hallazgos salieron refutados y uno
+  contradecía P444, ya jugado.
 - Los hallazgos se escriben también en un archivo fuera del árbol (el scratchpad, o
   `"$(git rev-parse --git-dir)/review.md"`), no solo en la conversación: una compactación o un relevo se los lleva, y
   de ese archivo salen los encargos de los arreglos y los leves que se apuntan en la bitácora. (criterio)
@@ -115,6 +119,10 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   dice qué función crea el dato, enumera a quién la llama y cubre cada camino con un test (o explica por
   qué un camino no lo necesita). Pasó con P32: se arregló camino a camino dos veces, y la revisión del
   segundo arreglo aún encontró cuatro caminos sin cubrir. (criterio)
+- **Un script de evaluación o de QA que reproduce una decisión del juego importa y llama a la función del
+  juego** (`QA-314`, retro del 2026-11-11); una copia a mano es un hallazgo medio, aunque hoy coincida. Pasó con
+  `clasificar-eval` (`QA-309`): copió la cadena de `turn.ts`/`turnResolution.ts` y salió con cuatro diferencias
+  (`verboAtaque`, `forcedCombatSlugs`, `amenaza`, `npcCalibration`). (criterio)
 - **Un campo que siempre hay que dar no lleva `@default`** (`QA-67`, retro del 2026-10-13). Sin valor por
   defecto, el compilador marca cada creación que lo olvida; un `?? undefined` sobre ese campo vuelve a
   caer al valor por defecto y es un hallazgo. Pasó con P87: `LogEntry.fictionalMinutes` valía 0 si no se
@@ -162,6 +170,12 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
 - **Lore.** Nada editado en `docs/rpgtarkor/` (`AGENTS.md`); las propuestas, en
   `docs/borradores-opencode/propuestas-lore.md`. (check: `protectedPaths` para los borradores; `docs/rpgtarkor/`, criterio)
 
+## Agentes del mapa
+
+- Cada prohibición de `map-generator/AGENTES.md` que se pueda leer del lote o de la orden (`--forzar`, `--mundo`,
+  `canon: true`…) tiene su filtro en `agente_local.ejecutar` y su test en `map-generator/tests/test_banco.py`: una
+  regla que solo vive en la guía, el modelo local la rompe (revisión de MAP-14, 2026-11-10). (criterio)
+
 ## Ganchos y scripts del flujo
 
 Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flujo son los de `.githooks/` y
@@ -175,8 +189,12 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
   (`log`, `reviewMark`, `recordsDir`, `proposalsDir`, `ciLocalLog`) son opcionales con defecto en inglés, así que una
   ausente no es un dato que falte. (criterio)
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos. (criterio)
+- Un comando lanzado dentro de un `while read … done < archivo` (o `<<<`) lleva la entrada redirigida (`< /dev/null`):
+  si la lee, se come los elementos que quedan del bucle. Su test usa al menos dos elementos. (criterio)
 - Una carpeta con nombre fijo en un directorio compartido (`$TMPDIR`, `/tmp`) es por usuario, se crea con permisos 700
   y se rechaza si ya existe como symlink o de otro usuario; los archivos sueltos, con `mktemp`. (criterio)
+- Un script que hace commits se prueba con los ganchos del proyecto instalados (`commit-msg` estricto incluido): un
+  commit con `--no-verify` en el test esconde el rechazo que tendrá de verdad. (criterio)
 - Un gancho que pregunta o bloquea se revisa **probando cómo saltárselo**: envoltorios con opciones que llevan valor
   (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), el destino de los copiadores (`cp`,
   `install`, `rsync`, `dd of=`, `-t DIR`), una carpeta antecesora de la protegida y una ruta relativa o con `..`; y
@@ -189,3 +207,11 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
 - Una orden con `npx` en `check` pasa por `tools/qa/host.sh` (sandbox Flatpak de la Deck, `QA-180`). (check: `tools/qa/tests/test_host.py`; ponerla en `check`, criterio)
 - Un cambio en `.claude/gw.json` (sobre todo `check`, `relatedTests`, `protectedPaths` o `reviewMark`) o en
   `.githooks/` lleva su caso en `tools/qa/tests/` (`test_pre_commit.py`, `test_prepush_ramas.py`). (criterio)
+
+## Tests
+
+- Un componente que los tests sustituyen por un doble (fake, mock, stub) tiene también una prueba de humo contra el
+  real: arrancarlo y hacer una llamada de punta a punta. Se omite en local si falta el real y falla en el CI.
+  En WMF, lo que solo existe en una máquina concreta (Ollama real, la Deck) no entra en el CI, que usa
+  `tools/ci/mock-ollama.mjs`: su prueba de humo se apunta como pendiente en el plan, con quién y dónde (`AGENTS.md`,
+  «Comprobar»). (criterio)

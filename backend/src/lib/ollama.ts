@@ -49,6 +49,8 @@ export interface OllamaGenerateOptions {
   numCtx?: number;
   /// Intento de la cascada del narrador (1, 2 o 3), solo para el registro (`app.intento`, QA-162).
   intento?: number;
+  /// Muestreo extra de Ollama (`options`), p. ej. el del narrador (QA-289). Sin él, manda el Modelfile.
+  muestreo?: { min_p?: number; repeat_penalty?: number; repeat_last_n?: number };
 }
 
 export interface OllamaGenerateResult {
@@ -79,6 +81,7 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       ...(options.forceCpu ? { num_gpu: 0 } : {}),
       ...(options.numCtx ? { num_ctx: options.numCtx } : {}),
+      ...options.muestreo,
     },
   });
 }

@@ -14,7 +14,7 @@ import type { AvisoMisionInfo } from '../lib/api'
 import { applyInventoryDelta, questCompletedLogEntry } from '../lib/gameViewHelpers'
 import type { PanelId } from '../components/NavTabs'
 import type { EnciclopediaIndex } from '../lib/enciclopediaIndex'
-import type { InventoryItemInfo, LogEntry, MetodoObtencion, NpcInSceneInfo, QuestInfo } from '../types'
+import type { InventoryItemInfo, LogEntry, MetodoObtencion, CombateIniciadoInfo, QuestInfo } from '../types'
 import type { useActionModalsState } from './useActionModalsState'
 
 // Bloque "modo dinámico"/Interactuar/menú de NPC extraído de GameView.tsx (Fase 12 del plan,
@@ -30,7 +30,7 @@ interface UseModoDinamicoParams {
   setFictionalDate: Dispatch<SetStateAction<string>>
   /// P161 (QA-27): la energía que recupera el rato de recolectar, para el HUD.
   setEnergia?: Dispatch<SetStateAction<number>>
-  setCombateIniciado: Dispatch<SetStateAction<{ npcs: NpcInSceneInfo[] } | null>>
+  setCombateIniciado: Dispatch<SetStateAction<CombateIniciadoInfo | null>>
   setActiveDynamicMode: ReturnType<typeof useActionModalsState>['setActiveDynamicMode']
   setInventory: Dispatch<SetStateAction<InventoryItemInfo[]>>
   setXp: Dispatch<SetStateAction<number>>
@@ -43,7 +43,7 @@ interface UseModoDinamicoParams {
   /// CR-32: alguien se ha unido sin pelear (hay que traer los compañeros).
   onReclutado?: () => void
   setActivePanel: Dispatch<SetStateAction<PanelId | null>>
-  openCombat: (npcs: { npcs: NpcInSceneInfo[] }) => void
+  openCombat: (npcs: CombateIniciadoInfo) => void
   /// P437: el panel abre en Defensa cuando el rival que te vio antes ataca primero.
   setCombatAwaitingDefense: (esperando: boolean) => void
   handleSubmit: (actionText: string, extras?: { accionEnDiario?: string | null }) => void | Promise<void>

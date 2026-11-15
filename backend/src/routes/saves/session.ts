@@ -6,12 +6,13 @@ import { scopeFor, hasPendingLoot } from '../../services/npcScene.js';
 import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { oneStepWorseThan } from '../../services/death.js';
 import { rejectIfEnded, rejectIfPendingDeath, lockRowForUpdate, toFrontendLogEntry } from './shared.js';
-import { FACTION_REP_MERCY_DELTA } from '../../services/reputation.js';
-import { applyFactionRepDeltaForResolution } from '../../services/turnResolution.js';
 import { activeQuestTitlesTargeting } from '../../services/questResolution.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
+import { descubrirNpc } from '../../services/entityDiscovery.js';
+import { descubrirNpcsDelCombate } from '../../services/combateMultipleOrquestacion.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
 import { objetivosValidos } from '../../services/combateMultiple.js';
+import { nombreVisibleDeNpc, aNombre } from '../../services/dynamicMode.js';
 
 /// Control del estado de una partida EN CURSO (deuda técnica 2026-07-30, split de saves.ts):
 /// pausar/reanudar, cancelar una acción por tiempo, y huir antes de que un combate llegue a
@@ -167,7 +168,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     if (stillPending) {
       return reply.status(409).send({ error: 'Todavía queda algo por resolver en este combate' });
     }
-    await prisma.save.update({ where: { id: save.id }, data: { pendingCombatNpcSlugs: [], combateDesde: null } });
+    await guardarSlugsDeCombate(prisma, save.id, []); // P328: cierra el combate, descubre a sus rivales
     return reply.status(204).send();
   });
 
@@ -243,6 +244,8 @@ export async function sessionRoutes(app: FastifyInstance) {
       // fija por índice de dado, nunca generado por el LLM.
       const entrada = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, roll: roll as unknown as Prisma.InputJsonValue, isSystemMessage: true } });
       if (roll.success) {
+        // P328/P107: huir también cierra el combate: sus rivales quedan descubiertos.
+        for (const slug of freshSlugs) await descubrirNpc(tx, save.id, slug);
         // Punto del jugador en el mapa de Zona (2026-09-04) — huir con éxito antes de entrar en
         // combate vuelve al punto de ENTRADA de la zona, no al centro ni junto al enemigo.
         await tx.save.update({
@@ -369,8 +372,12 @@ export async function sessionRoutes(app: FastifyInstance) {
       if (encuentro) {
         const sigue = await tx.combatEncounter.count({ where: { id: encuentro.id, estado: 'EN_CURSO' } });
         if (!sigue) return { kind: 'cambiado' as const };
-        if (roll.success) await tx.combatEncounter.update({ where: { id: encuentro.id }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+        if (roll.success) {
+          await tx.combatEncounter.update({ where: { id: encuentro.id }, data: { estado: 'RESUELTO', resolvedAt: new Date() } });
+          await descubrirNpcsDelCombate(tx, save.id, encuentro.id); // P328/P107
+        }
       }
+      if (roll.success) for (const slug of freshSlugs) await descubrirNpc(tx, save.id, slug);
 
       // isSystemMessage (ver comentario completo en schema.prisma) — `text` viene de una lista
       // fija por índice de dado, nunca generado por el LLM.
@@ -469,6 +476,13 @@ export async function sessionRoutes(app: FastifyInstance) {
       const npc = await prisma.npc.findFirst({ where: { worldId: save.worldId, slug: request.params.npcSlug, saveId: null } });
       if (!npc) return reply.status(404).send({ error: 'NPC no encontrado' });
 
+      // P460: tras pelear, nombre real (descubrir antes de nombrar; sin esto el diario diría «orco desconocido» y la deuda el real).
+      // Dentro de la transacción y tras la guarda contra la carrera / el doble clic: un 409 no descubre a nadie.
+      const llamarAlNpc = async (tx: Prisma.TransactionClient) => {
+        await descubrirNpc(tx, save.id, npc.slug);
+        return aNombre((await nombreVisibleDeNpc(tx, save.id, npc)).nombre);
+      };
+
       // Combate múltiple real (2026-08-29, bug real jugando en vivo — ver comentario de
       // `CombatParticipant.dismissedGrupo` en schema.prisma): con `participantId`, la condición
       // real del individuo vive en `CombatParticipant.condicionFisicaGrupo` para un miembro de
@@ -507,7 +521,6 @@ export async function sessionRoutes(app: FastifyInstance) {
         }
 
         const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-        const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
         // Condición de carrera real (auditoría 2026-09-01): sin releer, un doble clic simultáneo
         // pasaba los dos el guard de `condicionReal !== 'CONVALECIENTE'` de arriba (leído ANTES de
         // esta transacción) y creaba 2 LogEntry duplicados narrando la misma decisión dos veces.
@@ -517,18 +530,18 @@ export async function sessionRoutes(app: FastifyInstance) {
         const outcomeGrupo = await prisma.$transaction(async (tx) => {
           const locked = await lockRowForUpdate<{ dismissedGrupo: boolean | null }>(tx, 'CombatParticipant', participantId, ['dismissedGrupo']);
           if (locked.dismissedGrupo) return null;
+          const aVisible = await llamarAlNpc(tx);
+          const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
           await tx.combatParticipant.update({ where: { id: participantId }, data: { dismissedGrupo: true } });
           // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
           const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
           await registrarPerdon(tx, created.id);
-          // Reputación de facción (2026-09-04) — mismo criterio que el camino 1v1 clásico de más
-          // abajo, ver su comentario completo.
-          const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
+          // P270 (usuaria, 2026-11-08): perdonar con Clemente no resta reputación de facción.
           // Aviso de misión pendiente (2026-09-15) — solo lectura, no cierra nada (Clemente sigue
           // sin completar "derrotar a X" por diseño explícito de 2026-08-31). Ver
           // `activeQuestTitlesTargeting`.
           const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
-          return { logEntry: created, factionRepChange, misionesPendientes };
+          return { logEntry: created, text, factionRepChange: null, misionesPendientes };
         });
         if (!outcomeGrupo) {
           return reply.status(409).send({ error: 'Ya se dejó con vida a este combatiente.' });
@@ -536,7 +549,7 @@ export async function sessionRoutes(app: FastifyInstance) {
         return {
           npcSlug: npc.slug,
           participantId,
-          logEntry: { id: outcomeGrupo.logEntry.id, text, timeLabel, createdAt: outcomeGrupo.logEntry.createdAt.toISOString() },
+          logEntry: { id: outcomeGrupo.logEntry.id, text: outcomeGrupo.text, timeLabel, createdAt: outcomeGrupo.logEntry.createdAt.toISOString() },
           factionRepChange: outcomeGrupo.factionRepChange,
           misionesPendientes: outcomeGrupo.misionesPendientes,
         };
@@ -549,7 +562,6 @@ export async function sessionRoutes(app: FastifyInstance) {
       }
 
       const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
-      const text = `${save.characterName} deja con vida a ${npc.name}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
 
       // Mismo candado que /combat/flee (auditoría de código 2026-08-25) — un turno real de
       // /turn/narrate en paralelo puede estar actualizando `pendingCombatNpcSlugs` justo ahora.
@@ -561,22 +573,20 @@ export async function sessionRoutes(app: FastifyInstance) {
         const locked = await lockRowForUpdate<{ pendingCombatNpcSlugs: string[] | null }>(tx, 'Save', save.id, ['pendingCombatNpcSlugs']);
         const freshBefore = locked.pendingCombatNpcSlugs ?? [];
         if (!freshBefore.includes(npc.slug)) return { kind: 'ya-resuelto' as const };
+        const aVisible = await llamarAlNpc(tx);
+        const text = `${save.characterName} deja con vida ${aVisible}, convaleciente en el suelo — se aparta sin darle el golpe final.`;
 
         const freshSlugs = freshBefore.filter((s) => s !== npc.slug);
         await guardarSlugsDeCombate(tx, save.id, freshSlugs);
         // isSystemMessage (ver comentario completo en schema.prisma) — texto fijo determinista.
         const created = await tx.logEntry.create({ data: { saveId: save.id, channel: 'CHARACTER', text, timeLabel, fictionalMinutes: save.worldState?.fictionalMinutes ?? 480, isSystemMessage: true } });
         await registrarPerdon(tx, created.id);
-        // Reputación de facción (2026-09-04, bug real jugando en vivo: "me resta la reputación
-        // antes de matarlo... si elijo matar tiene que esperar a que resuelva el combate antes de
-        // restarlo, en el turno final") — Clemente es una de las 3 decisiones finales posibles
-        // desde CONVALECIENTE (junto a Matar/Capturar), cada una con su propio coste asimétrico
-        // (ver FACTION_REP_MERCY_DELTA, reputation.ts) — la más barata, sigues sin matarlo.
-        const factionRepChange = await applyFactionRepDeltaForResolution(tx, save.id, npc.faction, FACTION_REP_MERCY_DELTA);
+        // P270 (usuaria, 2026-11-08): perdonar con Clemente no resta reputación de facción (Matar y
+        // Capturar sí, cada uno en su momento de decisión final).
         // Aviso de misión pendiente (2026-09-15) — ver comentario completo en el camino de grupo,
         // arriba, y en `activeQuestTitlesTargeting`.
         const misionesPendientes = await activeQuestTitlesTargeting(tx, save.id, npc.id);
-        return { kind: 'ok' as const, logEntry: created, factionRepChange, misionesPendientes };
+        return { kind: 'ok' as const, logEntry: created, text, factionRepChange: null, misionesPendientes };
       });
 
       if (outcome.kind === 'ya-resuelto') {
@@ -585,7 +595,7 @@ export async function sessionRoutes(app: FastifyInstance) {
       const logEntry = outcome.logEntry;
       return {
         npcSlug: npc.slug,
-        logEntry: { id: logEntry.id, text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
+        logEntry: { id: logEntry.id, text: outcome.text, timeLabel, createdAt: logEntry.createdAt.toISOString() },
         factionRepChange: outcome.factionRepChange,
         misionesPendientes: outcome.misionesPendientes,
       };

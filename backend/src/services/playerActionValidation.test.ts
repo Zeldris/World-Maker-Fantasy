@@ -45,6 +45,7 @@ const {
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
   detectsGiftToNpcClaim,
+  giftRecipientIndex,
   giftToNpcNarrationFor,
 } = await import('./playerActionValidation.js');
 
@@ -176,6 +177,37 @@ describe('detectsAbsentSceneNpcClaim', () => {
       [],
     );
     expect(result).toBeNull();
+  });
+
+  // P424 (ronda 3 de QA-289): preguntar al orco, presente, por Ulkha, ausente, cortaba el turno con
+  // «Gorhorn mira alrededor buscando a Ulkha…»: la ausente es el tema de la pregunta, no a quien se habla.
+  it('P424: no dispara si la ausente es el tema de la pregunta y hay alguien en escena a quien preguntar', async () => {
+    for (const accion of [
+      'Le pregunto si sabe dónde puedo encontrar a Torgash',
+      'Le pregunto por Torgash.',
+      'Le pregunto al orco qué sabe de Torgash.',
+    ]) {
+      expect(await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['orco-enfurecido-hondonada'])).toBeNull();
+    }
+  });
+
+  it('P424: sigue disparando si la ausente es a quien se habla, aunque haya alguien en escena', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto a Torgash por su clan.', 'world1', 'save1', ['orco-enfurecido-hondonada']);
+    expect(result?.name).toBe('Torgash');
+  });
+
+  it('P424: sin nadie en escena a quien preguntar, preguntar por la ausente sigue cortando', async () => {
+    const result = await detectsAbsentSceneNpcClaim('Le pregunto por Torgash.', 'world1', 'save1', []);
+    expect(result?.name).toBe('Torgash');
+  });
+
+  it('QA-289: «por» sin verbo de preguntar o con otra acción coordinada no hace de la ausente un tema', async () => {
+    for (const accion of [
+      'Paso por la tienda y saludo a Torgash',
+      'Le pregunto al orco por su clan y luego hablo con Torgash',
+    ]) {
+      expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['orco-enfurecido-hondonada']))?.name).toBe('Torgash');
+    }
   });
 
   it('sin la misión del Orco ACTIVA: el mismo texto SÍ se bloquea (el Orco no está disponible sin la quest)', async () => {
@@ -637,5 +669,24 @@ describe('detectsGiftToNpcClaim (P241)', () => {
     const sinBoton = giftToNpcNarrationFor(claim, 'Gistera Koh', false);
     expect(sinBoton).toContain('no acepta entregas');
     expect(sinBoton).not.toContain('botón');
+  });
+});
+
+describe('giftRecipientIndex (P441)', () => {
+  const npcs = [['Tótem de Guerra'], ['Tirag Susig']];
+  it('«Tirag» suelto elige a la compañera aunque el objeto se llame «Tótem Maktor»', () => {
+    expect(giftRecipientIndex('Le doy el Tótem Maktor a Tirag', npcs)).toBe(1);
+  });
+  it('con el nombre completo sigue funcionando', () => {
+    expect(giftRecipientIndex('Le doy el Tótem Maktor a Tirag Susig', npcs)).toBe(1);
+  });
+  it('sin destinatario nombrado devuelve -1', () => {
+    expect(giftRecipientIndex('Le doy el Tótem Maktor', npcs)).toBe(-1);
+  });
+  it('un alias con paréntesis no lanza y casa «Tirag»', () => {
+    expect(giftRecipientIndex('Le doy el tótem a Tirag', [['Tótem de Guerra'], ['Tirag Susig (la cazadora)']])).toBe(1);
+  });
+  it('un nombre con punto no casa de más (el «.» no es comodín)', () => {
+    expect(giftRecipientIndex('Le doy el pan a Maraxsol', [['Mara.Sol']])).toBe(-1);
   });
 });

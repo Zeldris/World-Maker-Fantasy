@@ -873,6 +873,10 @@ model SessionFact {
   /// Mismo patrón que LoreChunk.embedding — habilitado a mano vía `CREATE EXTENSION vector`, no
   /// gestionado por Prisma (preview feature postgresqlExtensions), ver comentario del datasource.
   embedding Unsupported("vector(768)")?
+  /// QA-289 (P266): NPC presentes cuando se registró (por nombre); la réplica de un NPC solo ve estos y los públicos.
+  testigos  String[]                    @default([])
+  /// Sucesos del mundo (Cronista): los sabe cualquiera. Los hechos anteriores a QA-289 quedaron públicos.
+  publico   Boolean                     @default(false)
   createdAt DateTime                    @default(now())
 
   @@index([saveId, createdAt])
@@ -1833,6 +1837,9 @@ model KingdomStats {
   diasHambre             Int      @default(0)
   /// CR-53 53d: días seguidos sin agua (a los 2, la sed puede matar).
   diasSed                Int      @default(0)
+  /// P381: el aviso «quedan menos de 7 días de comida / bebida» ya salió en esta racha (se rearma al volver a 7 días o más).
+  avisoComidaBajo        Boolean  @default(false)
+  avisoBebidaBajo        Boolean  @default(false)
   /// REI-119: minuto de ficción en que llegó el último candidato a súbdito (una llegada por semana).
   ultimaLlegada          Int?
   /// REI-120: última semana (minuto de ficción) en que se revisaron parejas y crías.

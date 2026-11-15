@@ -91,6 +91,21 @@ describe('detectsTravelIntent', () => {
     expect(detectsTravelIntent('Me voy de viaje al cruce')).toBe(true);
     expect(detectsTravelIntent('Me pongo de viaje otra vez')).toBe(true);
   });
+  it('P418: «el camino» (sustantivo) y «frutas» no son viajar; caminar y la ruta, sí', () => {
+    expect(detectsTravelIntent('Me ajusto el equipo y miro el camino')).toBe(false);
+    expect(detectsTravelIntent('Recojo unas frutas del arbusto')).toBe(false);
+    expect(detectsTravelIntent('Camino hacia el pozo')).toBe(true);
+    expect(detectsTravelIntent('Sigo caminando por la orilla')).toBe(true);
+    expect(detectsTravelIntent('Tomo la ruta del norte')).toBe(true);
+  });
+  it('QA-289: «el camino» tras un verbo de desplazarse es viajar, y caminar se conjuga entero', () => {
+    expect(detectsTravelIntent('Tomo el camino del norte')).toBe(true);
+    expect(detectsTravelIntent('Bajo por el camino al pueblo')).toBe(true);
+    expect(detectsTravelIntent('Caminaré hasta el pueblo')).toBe(true);
+    expect(detectsTravelIntent('Caminemos hacia el río')).toBe(true);
+    expect(detectsTravelIntent('Tú caminas muy rápido')).toBe(true);
+    expect(detectsTravelIntent('Me ajusto el equipo y miro el camino')).toBe(false);
+  });
 });
 
 // docs/records/revisar-partida-hallazgos.md (2026-08-01, "bucle" de ambientación sin progreso): "avanzo"/

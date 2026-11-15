@@ -42,7 +42,8 @@ export interface Asentamiento {
   efecto: EfectoDefensa;
 }
 
-const esGuarnicion = (role: string) => {
+/// Soldado o vigía (lo que cuenta como guarnición); null si no.
+export const esGuarnicion = (role: string) => {
   const r = rolDeSubdito(role);
   return r === 'soldado' || r === 'vigia' ? r : null;
 };

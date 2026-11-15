@@ -30,9 +30,18 @@ python3 -m unittest discover -s map-generator/tests
   fronteras, corredor costero, Vaelira al oeste, sin Isla Cambiante) y quien las ejecuta, con la cifra medida de cada
   una. Las de `sinDecidir` se muestran con `?` y no hacen fallar. **Las reglas las cambia solo la usuaria.**
 - `exportar.py`: lo que lee el juego. Hoy el contorno y la envolvente de cada región, que dibuja
-  `InteractiveMap.tsx`; **tras cambiar `helek.json` se vuelve a exportar** (el test falla si no).
+  `InteractiveMap.tsx`; **tras cambiar `helek.json` se vuelve a exportar** (el test falla si no). Escribe también
+  `frontend/src/data/helekCapas.ts` (MAP-14): las zonas de tormenta, peligro y clan (`ZONAS_HELEK`), los km y tiempos
+  de cada ruta (`RUTAS_HELEK`) y la regla de viaje (`VIAJE_HELEK`); `--comprobar` revisa los dos archivos y
+  `--sin-juego`/`--mundo` no tocan ninguno.
+- `viaje.json` y `viaje.py` (MAP-14): la regla de viaje (5 km/h, jornada de 6 h, caravana 3,5 km/h, bote 6 km/h, balsa 4 km/h, rodeo por bioma y por montaña,
+  fuente `docs/mecanicas/13-escala-del-mundo.md § 1`, con lo `derivado` marcado) y los tiempos de cada ruta;
+  las marítimas, en bote costero. `consultar.py ruta I` los muestra.
+- Zonas (MAP-14): `zonas` en `helek.json` (tormenta de nivel 0-3 solo en las Llanuras del Viento Rojo, peligro 1-3,
+  clan con su clan), editables con el lote de `editar.py` y en el visor (capas Tormentas/Peligro/Clanes y modo
+  «Zonas»); `consultar.py zonas` las lista. Las que tienen `canon: false` se dibujan con rayado: propuesta sin canon.
 - `abrir.sh`, `servir.py` y `visor/index.html`: el visor. El servidor escucha solo en 127.0.0.1 y sirve solo `/`,
-  `/helek.json`, `/enciclopedia.json`, `/historial.json` y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
+  `/helek.json`, `/enciclopedia.json`, `/historial.json`, `/viaje.json` (regla y tiempos de ruta) y `/medidas.json` (áreas y envolventes con `medir.py`, las mismas del test del canon); la página no
   carga nada de fuera. Es la base del editor de `MAP-6`…`MAP-9`.
 - `editar.py` (MAP-6…MAP-8): el editor del visor (modos Región, Provincia, Relieve, Lugares, Rutas y Ríos; pincel, provincia nueva,
   renombrar, deshacer, Comprobar y Guardar). Relieve: Subir, Bajar, Tierra y Mar cambian la altura `h` y la costa
@@ -54,6 +63,12 @@ python3 -m unittest discover -s map-generator/tests
   "trails", "puntos": [[534, 185], [560, 186]]}], "rios": [{"i": 1, "nombre": "…", "puntos": [[…], […]]}]}` (el
   formato completo, en el docstring de `editar.py`).
 - `consultar.py` (MAP-16): consultas de **solo lectura** para un agente que no ve el mapa y quiere armar lotes de `editar.py`: `resumen` (regiones, provincias, continentes, i libres), `celda X Y`, `region`, `frontera A B` (o `mar`), `costa` (marca lo de Berig), `lugares` (`--cerca X Y --radio KM`, `--nombre TEXTO`), `camino X0 Y0 X1 Y1` (MAP-17: puntos de una ruta por tierra, o `--mar`, listos para un lote; recta o rodeo) y `fichas --sin-lugar`; `frontera` marca con «agranda N-S/E-O» las celdas que agrandan la envolvente de la región que las recibe; `--json`, `--mundo RUTA` y `--caja X0 Y0 X1 Y1`. Detalle en su docstring.
+- **Agente local** (MAP-18): `python3 map-generator/banco/agente_local.py --texto "encargo"` (o `--texto -` por la
+  entrada) pasa un encargo sencillo al modelo local (`qwen35-9b-32k` en Ollama, con la iGPU): trabaja en una copia
+  nueva del mapa (`--copia DIR`, o una carpeta temporal) y deja en ella `lote.json` (lo que guardó en la copia, en un
+  lote comprobado) e `informe.md` (su respuesta y el informe del lote sobre el mapa del juego). **Nunca guarda en el
+  mapa del juego**: se revisa y se guarda con `editar.py DIR/lote.json --guardar`. Para lugar, frontera, ruta o costa
+  (5/5 en el banco de MAP-17, ~3 min); lo demás, Claude o Haiku. El banco (`banco/banco.py`) usa el mismo agente.
 - `historial.py` (MAP-9): cada guardado (visor o consola) deja en `mundo/historial/` (fuera de git) la versión de antes
   y la de después, con una línea en `registro.jsonl` (fecha, huellas y un resumen). **Deshacer** vuelve a la versión
   de antes del último guardado y, repetido, sigue hacia atrás; reescribe también el GeoJSON y el archivo del juego.

@@ -130,6 +130,6 @@ export async function avanzarCadena(prisma: PrismaClient, saveId: string, cadena
       await tx.logEntry.create({ data: { saveId, channel: 'WORLD', text, timeLabel: state.fictionalDateLabel, fictionalMinutes: state.fictionalMinutes } });
     }
   });
-  if (textos.length > 0) await appendSessionFacts(saveId, await loadSessionFacts(saveId), textos);
+  if (textos.length > 0) await appendSessionFacts(saveId, await loadSessionFacts(saveId), textos, { publico: true });
   return { advanced: true, stagesCrossed: cruzados.length };
 }

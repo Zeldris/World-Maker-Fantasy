@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { anchoInsignia, cajaFicha, cajaMarca } from './FichaZona'
+import { anchoInsignia, cajaEtiqueta, cajaFicha, cajaMarca, cajaSalida, etiquetaDeEstandarte, ALTO_LIENZO_ZONA } from './FichaZona'
+import { separarEtiquetas } from '../../lib/separarEtiquetas'
 
 /// P123 (QA-27) y /code-review del 2026-10-14: la caja de una ficha cubre todo lo que se dibuja.
 describe('cajaFicha', () => {
@@ -31,5 +32,21 @@ describe('cajaFicha', () => {
 
   it('cajaMarca: un círculo de radio r', () => {
     expect(cajaMarca('m', 50, 50, 1, 12)).toMatchObject({ x: 38, y: 38, ancho: 24, alto: 24, fija: true })
+  })
+})
+
+/// P455: en El Pozo, la etiqueta de la salida del borde izquierdo (crece hacia la derecha) tapaba el icono de la
+/// salida de justo debajo.
+describe('cajaSalida (P455)', () => {
+  it('la etiqueta larga de una salida no tapa el icono de otra salida', () => {
+    const texto = 'Camino hacia el noroeste'
+    const arriba = { x: 20, y: 300 }
+    const abajo = { x: 20, y: 322 }
+    const etiqueta = cajaEtiqueta('s:a', arriba.x, arriba.y, 1, etiquetaDeEstandarte(180), texto)
+    const iconoAbajo = cajaSalida('m:s:b', abajo.x, abajo.y, 1)
+    const dy = separarEtiquetas([cajaSalida('m:s:a', arriba.x, arriba.y, 1), iconoAbajo, etiqueta], ALTO_LIENZO_ZONA)
+    const y = etiqueta.y + (dy.get('s:a') ?? 0)
+    const pisa = etiqueta.x < iconoAbajo.x + iconoAbajo.ancho && iconoAbajo.x < etiqueta.x + etiqueta.ancho && y < iconoAbajo.y + iconoAbajo.alto && iconoAbajo.y < y + etiqueta.alto
+    expect(pisa).toBe(false)
   })
 })

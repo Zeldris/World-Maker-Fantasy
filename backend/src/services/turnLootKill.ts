@@ -22,6 +22,7 @@ import { posicionDeObjetivo, minutoDeReaparicion, moverJugadorA } from './zonaPo
 import { whisperText } from './death.js';
 
 import { prisma } from '../lib/prisma.js';
+import { descubrirNpc } from './entityDiscovery.js';
 import { type ActiveEffect } from './activeEffects.js';
 import type { RollResult } from './dice.js';
 
@@ -345,6 +346,8 @@ export async function applyCombatExchangeToNpcState(params: {
     create,
     update,
   });
+  // P460: ganarle (dejarlo CONVALECIENTE) lo descubre ya: tarjeta, Clemente y deuda con su nombre real.
+  if (npcAttackHits && npcTargetNewCondicion === 'CONVALECIENTE') await descubrirNpc(tx, saveId, npcAttackTarget.slug);
   // Punto del jugador (2026-09-04) — cualquier intercambio de combate real contra este objetivo
   // (golpe recibido, energía gastada, tope de habilidad, análisis) lo acerca al jugador: primero
   // se busca su `ZonePoint` real (catálogo curado), si no existe se cae a la posición ya asignada

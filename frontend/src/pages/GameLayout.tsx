@@ -185,6 +185,7 @@ export function GameLayout() {
               playerActiveEffects={playerActiveEffects}
               energia={energia}
               npcs={combat.combatNpcsDisplay}
+              companeros={combateIniciado?.companeros}
               selectedNpcSlug={combat.combatSelectedNpcSlug}
               onSelectNpc={combat.setCombatSelectedNpcSlug}
               // "Cinturón de combate" (2026-08-28) — solo las genéricas (siempre disponibles) +

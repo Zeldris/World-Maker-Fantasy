@@ -1,5 +1,7 @@
 // 3.2 (2026-10-21): interpreta los pasos de `prepararReino.ts` (puro, para probarlo sin base).
 import type { Attribute } from '../services/dice.js';
+import { ROLES_SUBDITO } from '../services/cronista/subditos.js';
+import { esTarea, TAREAS } from '../services/cronista/comidaOficios.js';
 
 const ATRIBUTOS: readonly Attribute[] = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'voluntad', 'carisma', 'magia'];
 export type PasoReino =
@@ -20,6 +22,8 @@ export type PasoReino =
   | { tipo: 'domador'; nivel: number }
   | { tipo: 'punto-retirado'; especie: string; n: number | null }
   | { tipo: 'sin-aliados' }
+  | { tipo: 'sin-guarnicion' }
+  | { tipo: 'fuera'; lugarSlug: string }
   | { tipo: 'reparar' }
   | { tipo: 'danar'; receta: string }
   | { tipo: 'escasez'; facSlug: string; recurso: string | null }
@@ -27,11 +31,13 @@ export type PasoReino =
   | { tipo: 'mochila-libre'; n: number | null }
   | { tipo: 'mochila-descartar'; n: number | null }
   | { tipo: 'nivel'; nivel: number; atributos: Attribute[] }
-  | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' };
+  | { tipo: 'herido'; npcSlug: string; condicion: 'HERIDO' | 'GRAVE' }
+  | { tipo: 'huida-rival'; npcSlug: string | null };
 
 /// P378: `m`/`f` fija el sexo de todos; `alterna` (por defecto) da macho, hembra, macho… para que haya parejas posibles.
-export type SexoSubditos = 'm' | 'f' | 'alterna';
-const SEXOS: Record<string, SexoSubditos> = { m: 'm', f: 'f', pareja: 'alterna', alterna: 'alterna' };
+/// P433: `pareja` alterna igual (macho, hembra…) y además los empareja de dos en dos con `parejaId` en los dos sentidos, como `revisarFamilias`.
+export type SexoSubditos = 'm' | 'f' | 'alterna' | 'pareja';
+const SEXOS: Record<string, SexoSubditos> = { m: 'm', f: 'f', pareja: 'pareja', alterna: 'alterna' };
 
 /// Sexo del súbdito número `i` (desde 0) de un paso `subditos`.
 export function sexoDelSubdito(sexo: SexoSubditos, i: number): 'M' | 'F' {
@@ -45,7 +51,7 @@ export const EVENTOS_RELACION = ['EXPANSION_TERRITORIAL_AGRESIVA', 'BAJA_DE_GUER
 /// `lider-muere:<facción>` (QA-268, CR-43: el líder muere de viejo y la facción queda con dos candidatos), `alianza:<A>:<B>`
 /// (P247: alianza, ruptura y alianza nueva de las dos facciones) y `vasallo-paga:<vasallo>` (P314: fondos para la cuota entera sin saldar la deuda).
 /// `domable:<especie>` (QA-269, CR-55: un animal de ganado atado en una Jaula libre, a falta de ganar su confianza y llevarlo «Al corral») y
-/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora). 
+/// `domador:<nivel>` (CR-56: la jugadora, Cazador, sube a ese nivel, de 10 a 19, y elige la especialización Domador). `punto-retirado:<especie>[:<n>]` (QA-266, P313: un punto de fauna retirado que aún tiene n presas, 3 si no se dice; estado sintético para la defensa de `opcionesDePartida`). `fuera:<lugar>` (P427: la jugadora sale de la Capital al lugar de ese slug, con su punto de entrada; para probar un asalto con ella fuera). `sin-guarnicion` (P427: soldados y vigías a trabajador, milicia licenciada y Armerías sin equipos: un asalto toma la Capital sin nadie que la defienda, salvo guardias de corral). `sin-aliados` (QA-266, P128: los compañeros salen del Grupo 1 a otro grupo, así el combate se abre solo con la jugadora).
 /// P180: `escasez:<facción>[:comida]` (la facción, por su origenSlug, queda con carencia de comida: sus cocinas se dañan con el efecto de las tormentas hasta que `situacionDeFaccion` la ve; pedir trabajo o mirar su tablón saca entonces «le falta…» / «para el Clan…»). P295: `asalto:<facción>` (un ejército de esa facción sale contra la Capital y la vigilancia del día lo avista desde la Torre; queda EN MARCHA, sin resolver, para «Llamar a la milicia»). P367: `mochila-libre[:<n>]` (deja n unidades de hueco en la mochila, 10 si no se dice: lo que sobra va al Almacén del Reino con «Depositar»). P370: `nivel:<n>[:<atributo>,<atributo>…]` (la jugadora, de cualquier clase, sube al nivel n, de 2 a 19, como al ganar XP; sin atributos, los puntos quedan por repartir; con ellos, P386, se reparten todos por turno entre esos, como el botón, también con un combate abierto). Se ejecutan en el orden dado.
 export function parsearPasosReino(args: string[]): PasoReino[] | { error: string } {
   if (args.length === 0) return { error: 'No se ha pedido nada.' };
@@ -63,7 +69,13 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       const roles = extra.filter((t) => !t.startsWith('sexo='));
       const sexo = tSexo.length ? SEXOS[tSexo[0]!.slice(5)] : 'alterna';
       if (tSexo.length > 1 || roles.length > 1 || !sexo || (roles[0] !== undefined && roles[0] === '')) return { error: `«${arg}»: subditos:<pueblo>:<n>[:<rol>][:sexo=m|f|pareja].` };
-      pasos.push({ tipo: 'subditos', pueblo: r[0], n, rol: roles[0] ?? null, sexo });
+      // P432: un rol que no existe se rechaza antes de escribir nada (y, si es un valor de `sexo=`, se sugiere esa sintaxis).
+      const rol = roles[0];
+      if (rol !== undefined && !(ROLES_SUBDITO as readonly string[]).includes(rol) && !esTarea(rol)) {
+        const pista = SEXOS[rol] ? ` ¿Querías «sexo=${rol}»? Ej.: subditos:${r[0]}:${n}:sexo=${rol}.` : '';
+        return { error: `«${arg}»: rol desconocido «${rol}» (roles: ${ROLES_SUBDITO.join(', ')}; tareas: ${TAREAS.join(', ')}).${pista}` };
+      }
+      pasos.push({ tipo: 'subditos', pueblo: r[0], n, rol: rol ?? null, sexo });
     } else if (clave === 'reclutar') {
       if (!r[0]) return { error: `«${arg}»: falta reclutar:<slug del NPC>.` };
       pasos.push({ tipo: 'reclutar', npcSlug: r[0] });
@@ -110,8 +122,13 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
     } else if (clave === 'domable') {
       if (!r[0] || r.length > 1) return { error: `«${arg}»: falta domable:<especie de ganado>.` };
       pasos.push({ tipo: 'domable', especie: r[0] });
+    } else if (clave === 'fuera') {
+      if (!r[0] || r.length > 1 || !/^[a-z0-9-]+$/.test(r[0])) return { error: `«${arg}»: falta fuera:<slug del lugar> (p. ej. fuera:hondonada-del-eco).` };
+      pasos.push({ tipo: 'fuera', lugarSlug: r[0] });
     } else if (clave === 'sin-aliados' && r.length === 0) {
       pasos.push({ tipo: 'sin-aliados' });
+    } else if (clave === 'sin-guarnicion' && r.length === 0) {
+      pasos.push({ tipo: 'sin-guarnicion' });
     } else if (clave === 'punto-retirado') {
       const n = r[1] === undefined ? null : entero(r[1]);
       if (!r[0] || r.length > 2 || (r[1] !== undefined && (n == null || n > 20))) return { error: `«${arg}»: falta punto-retirado:<especie>[:<n>], con n de 1 a 20.` };
@@ -147,6 +164,10 @@ export function parsearPasosReino(args: string[]): PasoReino[] | { error: string
       // P370: `herido:<npc>[:grave|herido]`, GRAVE por defecto (más herido que la jugadora tras la ronda 1).
       if (!r[0] || r.length > 2 || (r[1] !== undefined && r[1] !== 'grave' && r[1] !== 'herido')) return { error: `«${arg}»: falta herido:<slug del NPC>[:grave|herido].` };
       pasos.push({ tipo: 'herido', npcSlug: r[0], condicion: r[1] === 'herido' ? 'HERIDO' : 'GRAVE' });
+    } else if (clave === 'huida-rival') {
+      // P443: `huida-rival[:<npc>]`, un rival con moral del combate en curso queda GRAVE y sin moral tirada (el primero si no se nombra).
+      if (r.length > 1 || (r.length === 1 && !r[0])) return { error: `«${arg}»: falta huida-rival[:<slug del rival>].` };
+      pasos.push({ tipo: 'huida-rival', npcSlug: r[0] ?? null });
     } else if (clave === 'domador') {
       const nivel = entero(r[0]);
       if (nivel == null || r.length > 1 || nivel < 10 || nivel > 19) return { error: `«${arg}»: falta domador:<nivel>, de 10 a 19 (desde el 20 cambian las habilidades de arma).` };

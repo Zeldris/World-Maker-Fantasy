@@ -646,6 +646,49 @@ describe('POST /saves/:id/zona/mover', () => {
     });
   });
 
+  // P463: «Interactuar» sobre una ficha concreta manda su slug: gana a la oferta pendiente de otro punto y a lo demás cercano.
+  it('P463: con objetivoSlug, pulsar la propia casilla ofrece ese objetivo y sustituye la oferta pendiente de otro punto', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] } });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true } });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: { tipo: 'RECURSO', targetSlug: 'test-mover-recurso', targetName: 'Recurso viejo', quienInicia: 'jugador' } } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 }, objetivoSlug: 'test-mover-pacifico' } });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingDynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+  });
+
+  // P463 (revisión): `objetivoSlug` elige entre lo no hostil; un AGRESIVO/ENEMIGO nunca se silencia pulsando otra ficha.
+  it('P463: con objetivoSlug de otra ficha, un AGRESIVO en el camino sigue cortando el paso con combate forzado', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 75, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-agresivo', cantidad: 1, activo: true, ruta: [{ x: 75, y: 25 }] } });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 475, y: 475, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 475, y: 475 }] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 375, y: 25 }, objetivoSlug: 'test-mover-pacifico' } });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.colision).toMatchObject({ targetSlug: 'test-mover-agresivo', temperamento: 'AGRESIVO' });
+    expect(body.dynamicModeOffer).toMatchObject({ targetSlug: 'test-mover-agresivo', combateForzado: true });
+  });
+
+  it('P463: un objetivoSlug que no casa con ningun punto vivo (cadaver) se trata como si no hubiera objetivo', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] } });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 }, objetivoSlug: 'cadaver:orco-que-no-existe' } });
+    expect(JSON.parse(res.body).dynamicModeOffer).toMatchObject({ tipo: 'FAUNA', targetSlug: 'test-mover-pacifico' });
+  });
+
+  it('P463: con objetivoSlug de un recurso, gana al ser vivo pegado; sin objetivo, el vivo gana al recurso', async () => {
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 25, y: 25, tipo: 'FAUNA', targetSlug: 'test-mover-pacifico', cantidad: 1, activo: true, ruta: [{ x: 25, y: 25 }] } });
+    await prisma.zonePoint.create({ data: { locationId, saveId, x: 75, y: 25, tipo: 'RECURSO', targetSlug: 'test-mover-recurso', cantidad: 1, activo: true } });
+    const app = await buildApp();
+    const sin = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 } } });
+    expect(JSON.parse(sin.body).dynamicModeOffer).toMatchObject({ targetSlug: 'test-mover-pacifico' });
+    await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull } });
+    const con = await app.inject({ method: 'POST', url: `/saves/${saveId}/zona/mover`, payload: { destino: { x: 25, y: 25 }, objetivoSlug: 'test-mover-recurso' } });
+    expect(JSON.parse(con.body).dynamicModeOffer).toMatchObject({ tipo: 'RECURSO', targetSlug: 'test-mover-recurso' });
+  });
+
   // RECURSO (2026-09-20, hallazgo real jugando en vivo — Álvaro: "mira también si funciona lo de
   // descubrir al acercarnos a una flora" — confirmado que NO funcionaba: `detectarEncuentroEnCelda`
   // solo miraba FAUNA/NPC, caminar hasta un recurso nunca disparaba nada). RECURSO nunca tiene

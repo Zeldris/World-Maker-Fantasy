@@ -39,6 +39,12 @@ Una caza que vuelve con heridos (P439, «1 de los suyos salen heridos») se prep
 Para dejar la mochila con hueco (P336: `dar` no pasa de la capacidad y, con el Almacén lleno, `mochila-libre` no deposita) está
 `mochila-descartar[:<n>]` (`QA-299`): tira lo suelto, lo más abultado primero, hasta dejar `n` libres (10 por defecto); lo
 equipado no se toca. Ej.: `escenario.sh preparar <partida> mochila-descartar:10` y `escenario.sh dar <partida> pasto-solar:3`.
+Para ver la línea de huida de un rival (P443), con el combate ya abierto: `escenario.sh preparar <partida> huida-rival[:<npc>]`
+(`P443`) deja GRAVE, sin moral tirada, a un rival con moral (una persona, no fauna; el primero o el del slug): al jugar la ronda
+siguiente el juego tira moral y escape (`revisarMoralDelCombate`) y puede huir (el texto lleva el nombre visible, «orco
+desconocido») o aguantar; si aguanta, se repite con otro rival. **Para que la huida salga siempre** (solo pruebas, nunca
+en producción, como la montura): lanza el juego con `WMF_HUIDA_PRUEBAS=1` (`bash tools/qa/host.sh env WMF_HUIDA_PRUEBAS=1 bash tools/qa/deck/juego.sh`,
+o delante de `arrancar-juego.sh`): la moral del bando enemigo falla y el escape sale. Escenario de partida: `reino-combate-ganable` (`QA-153`).
 Para dejar hueco en el Granero (comparten tope la comida y el forraje), `dar-reino` también resta (`QA-300`): `comida=-2`
 (o `bebida`, `goirnos`, `tesoro`) quita lo pedido con suelo en 0 y avisa si se pedía más de lo que había; `0` se rechaza.
 P336 (Granero a 180/180, hueco 2): `escenario.sh dar-reino <partida> comida=-2`, `preparar <partida> mochila-descartar:10` y `dar <partida> pasto-solar:3`.
@@ -89,14 +95,17 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
 
 1. **Qué falta**: `python3 tools/qa/matriz-pruebas.py` (resumen por bloque) y `--bloque <Bloque>` (las tareas sin
    jugar de ese bloque). El bloque, el que tenga menos jugado o el que pida la usuaria.
-2. **Escenario**: `tools/qa/escenario.sh lista`; si ninguno deja cerca lo que se va a probar, se llega jugando una
-   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Lo que tarda días, con
+2. **Escenario**: `tools/qa/escenario.sh lista <patrón>` (zona, NPC o hallazgo; sin patrón, el índice entero, `QA-312`); si ninguno deja cerca lo que se va a probar, se llega jugando una
+   vez y se guarda (`escenario.sh guardar <nombre> "<qué tiene>"`, `QA-102`). Tras cargarlo y antes de la primera
+   acción, una consulta con `tools/qa/sql.sh` por hallazgo confirma el estado que pide (el NPC, su reputación, el
+   encuentro abierto); si no está, se prepara o la tanda devuelve «sin escenario» (`QA-316`). Lo que tarda días, con
    `escenario.sh avanzar <partida> <días>`.
 3. **Jugar**: cada comprobación se mira en texto (`orden.sh --ayuda estado`, `QA-104`); captura solo si algo no
    cuadra o es visual. Lo que vale la pena repetir se escribe como recorrido en
    `tools/playwright-e2e/recorridos/` (`QA-103`, su cabecera en `recorrer.mjs`) y se pasa con
    `bash tools/qa/recorrer.sh [filtro]`: una línea por recorrido.
-   Para leer un hallazgo, `python3 tools/qa/marca-hallazgo.py --ver P<n>…` (`QA-303`), no el registro ni el plan enteros.
+   Para leer un hallazgo, `python3 tools/qa/marca-hallazgo.py --ver P<n>…` (`QA-303`), no el registro ni el plan enteros;
+   para saber qué tanda o lote toca, `python3 tools/qa/plan.py` (`--tanda N`, `--lote X`; `QA-320`).
 4. **Apuntar**: hallazgos con `marca-hallazgo.py` (abajo) y, en la matriz, cada tarea jugada como `jugado` con la
    fecha y el hallazgo o recorrido que lo prueba.
 5. **Cerrar**: arreglos, sus recorridos en verde y el bloque en `jugado` en la matriz. Entonces, el siguiente.
@@ -107,15 +116,19 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `.claude/settings.json` (tope de 200k), los ganchos ni las skills del repo (`Unknown skill: opt-ai`).
 1. Arranca con `bash tools/playwright-e2e/arrancar-juego.sh` (base `tarkor_juego`, aparte de la de
    los tests). Partida nueva desde el menú, como una jugadora. Para manejar el navegador con el MCP
-   de Playwright, carga antes las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
+   de Playwright, actívalo antes con `/mcp` (viene desactivado en `.claude/settings.json`, `QA-335`) y carga las ayudas de `tools/playwright-e2e/mcp/` (`QA-46`, su README).
    **Con el modelo real** (en local), arranca con el registro de la IA para que la tanda se pueda analizar:
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
+   En la Deck, Ollama con `bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh arrancar` (iGPU y sin suspensión),
+   y **al acabar la ronda, `ia-ronda.sh parar`**: baja el juego y Ollama, y dice si queda algo en pie (`QA-313`).
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
    Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
+   QA-310: `arrancar-juego.sh` apunta el `IA_PERFIL` y el `IA_REGISTRO` del arranque en `logs/juego-ia.env`; `escenario.sh cargar` y `avanzar` relanzan con ellos (un `--parar` entero lo borra), así la tanda sigue escribiendo en `logs/ia/`.
    **Montura de pruebas** (solo para probar «Viajar» y las interrupciones de viaje, P46/P47/P321; nunca en producción): `bash tools/qa/host.sh env WMF_MONTURA_PRUEBAS=1 bash tools/qa/deck/juego.sh` (o `WMF_MONTURA_PRUEBAS=1` delante de `arrancar-juego.sh`); la jugadora cuenta como con montura hasta que CR-57 la dé de verdad.
    (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
-   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, `/gw-opt-ai` mide los tiempos,
-   contrasta el RAG con las incoherencias apuntadas y propone ajustes ([skill](../../.claude/skills/gw-opt-ai/SKILL.md)).
+   `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, una línea en
+   [`pendiente-opt-ai.md`](../records/pendiente-opt-ai.md) (`QA-306`): cuando pasa el umbral, se recomienda a la usuaria
+   `/gw-opt-ai`, que mide los tiempos, contrasta el RAG con las incoherencias y propone ajustes ([skill](../../.claude/skills/gw-opt-ai/SKILL.md)).
 2. Juega paso a paso y **mira cada paso**: en texto con `estado.js` (`QA-104`); captura si algo no cuadra o es
    visual (botones, textos, mapa, avisos). **Si hace falta una captura para entender algo que no es visual**
    (usuaria, 2026-10-19), después se mejora `estado.js` o la ayuda que toque para que lo dé en texto la próxima vez
@@ -140,7 +153,7 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    juego y el driver en marcha, la carga suma fallos por tiempo límite (`QA-65`).
 6. Commit y push tras cada tanda de hallazgos; la tarea de la ronda en su roadmap lleva qué está
    hecho y qué falta.
-7. **Al final, no por tanda:** `/code-review`, `/gw-opt-ai` si hubo tandas con Ollama real ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`), luego `/gw-opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
+7. **Al final, no por tanda:** `/code-review`, recomendar `/gw-opt-ai` si `pendiente-opt-ai.md` pasa el umbral ([paso 6](skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea), `QA-142`, `QA-306`), luego `/gw-opt-tokens`, luego `/retro` y lo aprobado de ellas, **antes de crear** el PR a `main` (usuaria, 2026-10-13; sustituye al `/code-review` cada 5-6 hallazgos de `QA-40`; `QA-77`).
 
 8. **Una tanda con Ollama real juega al menos 8 turnos** (`QA-200`, retro del 2026-10-22): con 3 turnos `/gw-opt-ai` no
    tiene medida comparable. Si la tanda no llega a 8, al cerrar se pasa `bash tools/qa/bench-ia.sh <etiqueta>

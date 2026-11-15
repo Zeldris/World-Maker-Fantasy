@@ -24,6 +24,7 @@ import { REACCIONES_APROBACION } from './aprobacion.js';
 import { REACCIONES_RECUERDOS } from './recuerdos.js';
 import { REACCIONES_HILOS } from './hilos.js';
 import { REACCIONES_LINAJES } from './linajes.js';
+import { nombreVisibleDeNpc } from '../dynamicMode.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -178,7 +179,8 @@ export const REACCIONES: Reaccion[] = [
     },
     efectos: async (ctx) => {
       const perdonado = actor(ctx.suceso, 'NPC', 'BENEFICIARIO')!;
-      const npc = await ctx.tx.npc.findUniqueOrThrow({ where: { id: perdonado }, select: { name: true } });
+      const npc = await ctx.tx.npc.findUniqueOrThrow({ where: { id: perdonado }, select: { slug: true, name: true, kind: true, raza: true, genero: true } });
+      const { nombre: nombrePerdonado } = await nombreVisibleDeNpc(ctx.tx, ctx.suceso.saveId, npc);
       const lugar = ctx.suceso.locationId
         ? await ctx.tx.location.findUnique({ where: { id: ctx.suceso.locationId }, select: { region: true } })
         : (await ctx.tx.save.findUnique({ where: { id: ctx.suceso.saveId }, select: { currentLocation: { select: { region: true } } } }))?.currentLocation;
@@ -187,7 +189,7 @@ export const REACCIONES: Reaccion[] = [
         tipo: 'programarConsecuencia', regla: 'DEUDA_DE_VIDA',
         disparo: { tipo: 'LLEGAR_REGION', regionSlug: CUALQUIERA_SALVO_ORIGEN, origenSlug: slugify(lugar.region), minDias: 3 },
         caducaDias: 20, npcId: perdonado, datos: { npcId: perdonado },
-        aviso: `Algo te dice que volverás a ver a ${npc.name}.`,
+        aviso: `Algo te dice que volverás a ver a ${nombrePerdonado}.`,
       }];
     },
   },

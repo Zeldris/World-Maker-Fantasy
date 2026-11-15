@@ -43,6 +43,24 @@ def poligonos_de(mundo, entrada):
     raise ValueError(f'no sé de qué medir: {entrada}')
 
 
+def vertices_por_celda(mundo):
+    """Vértices de cada celda; quien mide muchas zonas del mismo mundo lo calcula una vez y lo pasa."""
+    return [c['v'] for c in mundo['celdas']]
+
+
+def poligonos_celdas(mundo, celdas, v_por_celda=None):
+    """Polígonos del conjunto de celdas dado (solo cuentan las de tierra): para zonas (MAP-14) y cualquier otra capa."""
+    v_por_celda = v_por_celda if v_por_celda is not None else vertices_por_celda(mundo)
+    return geometria.poligonos(v_por_celda, mundo['vertices'],
+                               sorted(i for i in set(celdas) if mundo['celdas'][i]['h'] >= 20))
+
+
+def area_celdas(mundo, celdas, v_por_celda=None):
+    """Área en km² de un conjunto de celdas de tierra."""
+    km = mundo['fuente']['kmPorUnidad']
+    return geometria.area(poligonos_celdas(mundo, celdas, v_por_celda)) * km * km
+
+
 def distancia(mundo, a, b):
     lugares = {lu['nombre']: lu for lu in mundo['lugares']}
     pa, pb = lugares[a], lugares[b]

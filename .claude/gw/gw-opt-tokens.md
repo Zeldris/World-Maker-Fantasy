@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.0 -->
+<!-- galivelop-workflow v0.6.0 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la usuaria aprueba un cambio. El flujo
@@ -35,6 +35,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   `QA-127`, medio y techo de cada uno de los últimos 8 tramos y el medio sin el primer tramo a medias.
 - **`measure.py --since <ISO|sha>`** (`QA-134`): mide solo desde una fecha o desde un commit (su fecha), con el primer tramo a medias descartado como en `--horas`.
 - **`tools/qa/fusionar.sh <rama> "<mensaje>"`** (`QA-135`): merge `--no-ff` de la rama de un subagente, resuelve solo los conflictos de `pruebas-0.3-hallazgos.md` (queda el estado no pendiente), pasa los tests del paquete tocado y avisa si falta la marca de revisión.
+- **`tools/qa/seccion.sh <archivo.md> "<título>"`** (`QA-311`): una sola sección `## …` de un runbook; la sesión que reparte lee así «Qué se prueba» (`AGENTS.md`).
+- **`escenario.sh lista <patrón>`** (`QA-312`): solo las filas del índice que casan (el índice entero, ~3,7k tokens).
 - **Rondas en un subagente `sonnet`** (`QA-124`): la principal reparte tandas y apunta; no lanza `orden.sh`.
 - **Ayudas del driver** (`QA-125`): `interactuar` también con el menú del NPC del mapa, `opcion` por número de
   `[data-opcion]` y `pelear` (acercarse, interactuar y combatir en una orden). `orden.sh` guarda cada respuesta
@@ -58,6 +60,18 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   ronda en hojas de 6 (una lectura por hoja); la finalista, entera.
 - **`recover.py --state` con los worktrees** (`QA-250`): da también la fila de la rama de cada worktree; la sesión
   que trabaja en uno no relee `traspaso.md`.
+- **`python3 tools/qa/plan.py`** (`QA-320`): la tanda siguiente, las tandas sin hacer y cada lote con sus P y lo último
+  apuntado; `--tanda N` y `--lote X`, la fila entera. En los lotes F-I, `plan-comprobacion-puerta.md` se leyó 45 veces
+  (1,65M arrastrados) y `pruebas-0.3-hallazgos.md` 46 (0,88M), casi siempre para saber qué tocaba.
+- **La principal lee de `rondas-de-pruebas.md` solo «Qué se prueba»** (`QA-209`, recordado en `QA-321`):
+  `sed -n '/^## Qué se prueba/,/^## /p' docs/runbooks/rondas-de-pruebas.md`. En los lotes F-I se leyó entero 2 veces
+  y por trozos 9 (1,35M arrastrados).
+- **`marca-hallazgo.py --lista <grupo>`** (`QA-322`): los hallazgos de un estado (pendiente, parte, arreglado, cerrado…)
+  con el final de su estado, en vez de `grep`/Python sobre `pruebas-0.3-hallazgos.md` (480k arrastrados, tandas 117-118).
+- **«Qué se prueba» una vez por sesión** (`QA-323`, `AGENTS.md`): en las tandas 117-118 se leyó 4 veces entero (344k).
+- **Diagnóstico de código en un subagente** (`QA-321`): leer el mismo archivo una y otra vez para entender un fallo
+  (`moralGrupo.ts` 15 lecturas y `prepararReino.ts` 10 en la principal, lotes F-I, ~0,5M) va a un subagente con el
+  P y el `archivo:línea` en el encargo; la principal recibe el diagnóstico.
 - **Hoja de contactos con archivos sueltos** (`QA-283`): `hoja.sh --archivos <nombre> <png>…` para comparar banners
   (de `backend/uploads/`, del banco), en vez de leerlos uno a uno (14 lecturas, ~890k arrastrados, 2026-11-03).
 - **Ir a la línea** (`QA-284`): `grep -n` a la tarea o a la clase de test, no releer (`roadmap-imagenes.md` 15 veces,
@@ -80,8 +94,31 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   relecturas; la v0.5.0, dos compactaciones en 12 minutos.
 - **Salidas acotadas** (`QA-295`): barridos con `grep -l` o `| head`; `mcp__github__actions_list` con
   `minimal_output` y `perPage` 3-5.
+- **Subagentes `gw-worker`** (`QA-332`): sin MCP, arranque muy por debajo de los 71k de un `general-purpose`; los
+  arreglos de revisión con `sonnet` (regla en `docs/runbooks/skills-wmf.md`, `gw-orchestrate-dealer`).
+- **Bitácora archivada** (`QA-333`): «Hecho recientemente» antiguo, en `docs/records/traspaso-archivo.md`
+  (`handoff.py archive` va por versiones publicadas y WMF no las etiqueta). Quedan 39k de 20k (`logSize`): el resto
+  son filas de otras ramas y propuestas abiertas, que se encogen al cerrar esas ramas.
+- **Bitácora bajo 20k** (`QA-342`, 2026-11-14): filas de ramas cerradas a `traspaso-archivo.md`; «Propuestas aprobadas» en `docs/records/propuestas-aprobadas.md` y pendientes leves de PR fusionados en `docs/records/pendientes-leves.md`. Al cerrar un PR, su sección de leves pasa a ese archivo.
+- **`python3 tools/roadmap/resolver-conflicto.py`** (`QA-343`): al traer `main`, resuelve en los roadmaps los conflictos de tachados y filas añadidas; lo que queda (una misma fila cambiada por los dos lados), a mano y sin volcar el archivo.
+- **`set-row` que imprime la fila** (retro del lote J, 2026-11-14, propuesta al flujo): la tarea leyó `traspaso.md`
+  22 veces (759k arrastrados) para ver la propia fila; mientras llega, la fila se ve con `recover.py --state`.
+- **Roadmap por id** (`QA-334`): en una revisión, `python3 .claude/gw/scripts/roadmap.py show <id>` para cada tarea
+  tocada, no el diff de `roadmap-front.md` (en la fase 1 de la v0.6.0, 6 lecturas y 83k arrastrados).
 
 ## Costes conocidos
+
+- **Tandas 117-118, arreglo de P454 y fase 1** (`claude/wonderful-volta-662qt8`, 2026-11-11): 129 llamadas, 14,2 M en la
+  principal (110k de media, techo 132k, 1 compactación) y un subagente `sonnet` (26 llamadas, 2,4 M, 70k de arranque).
+  Relecturas de registros ~950k (de ahí `QA-322` y `QA-323`). El arreglo de P454 leyó `combateMultipleOrquestacion.ts`
+  10 veces en la principal (~240k): para un arreglo de un archivo con el diagnóstico ya en contexto sale más barato
+  que un subagente (70k de arranque más redescubrirlo); `QA-321` es para el diagnóstico que aún no se tiene.
+
+- **Ronda local del narrador y `/gw-opt-ai`** (`claude/pedido-mapa`, 2026-11-11): 279 llamadas, 25,0 M de entrada (61 % en
+  subagentes); principal 105k de media, techo 165k, 1 compactación. `rondas-de-pruebas.md` leído 7 veces por la
+  principal (430k arrastrados, pese a `QA-209`; de ahí `QA-311`) y `escenario.sh lista` entero (197k, `QA-312`). El
+  subagente de `QA-307` (prefijo estable del narrador en combate) fue con Opus: 44 llamadas, 4,5 M; era código con el
+  plan cerrado por `/gw-opt-ai`, que según `QA-117`/`QA-251` iba con `sonnet` y una revisión con Opus del diff.
 
 - **Revisión de una `/gw-update` entera** (`claude/gw-update-0.5.0`, 2026-11-04): 326 archivos, el 89 % de las líneas
   copias del flujo; el subagente de `/code-review` (Opus, 27 llamadas) metió 2,51 M de 4,24 M. De ahí `QA-294`.

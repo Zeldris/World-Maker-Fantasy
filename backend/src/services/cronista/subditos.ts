@@ -144,6 +144,12 @@ export async function cazadoresAdultos(tx: Tx, saveId: string, ahora: number): P
   return subditos.filter((s) => esCazadorAdulto(s, ahora)).length;
 }
 
+/// P440: súbditos activos con rol de cazador, de cualquier edad (todos comen: van dentro de `poblacion`).
+export async function contarCazadores(tx: Tx, saveId: string): Promise<number> {
+  const subditos = await tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { role: true } });
+  return subditos.filter((s) => rolDeSubdito(s.role) === 'cazador').length;
+}
+
 /// Filtro compartido del cazador adulto (lleva arma como un soldado).
 function esCazadorAdulto(s: { role: string; pueblo: string | null; nacidoEn: number | null }, ahora: number): boolean {
   return rolDeSubdito(s.role) === 'cazador' && esAdultoSubdito(s, ahora);

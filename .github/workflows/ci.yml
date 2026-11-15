@@ -32,8 +32,8 @@ jobs:
       - if: github.event_name == 'pull_request'
         run: python3 .claude/gw/scripts/handoff.py closed ${{ github.event.pull_request.base.sha }} HEAD
       # Piloto de Galivelop-workflow (2026-10-22): el pre-commit de la BASE sobre los commits del PR (secretos), para
-      # que un PR no pueda rebajar el gancho que lo revisa. Viene del comprobar.yml del flujo, que no se usa: su
-      # `check` ya lo repiten estos tres jobs.
+      # que un PR no pueda rebajar el gancho que lo revisa. Viene del check.yml del flujo, que también corre en
+      # cada PR (y en cada push fuera de `main`): el duplicado está pendiente en la bitácora.
       - if: github.event_name == 'pull_request'
         name: Pre-commit de la base sobre el PR
         run: |

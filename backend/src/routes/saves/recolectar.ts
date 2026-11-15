@@ -355,7 +355,7 @@ async function cadaveresDeFaunaPendientes(
   // cadáver (`GET /zona`): `NpcState` MUERTO o con caídos de grupo, botín pendiente, de ESTA
   // Location (scope + `zonaLocationId`).
   const estados = await prisma.npcState.findMany({
-    where: { saveId, OR: [{ condicionFisica: 'MUERTO' }, { groupDefeated: { gt: 0 } }] },
+    where: { saveId, muerto: false, OR: [{ condicionFisica: 'MUERTO' }, { groupDefeated: { gt: 0 } }] },
   });
   const pendientes = estados.filter(hasPendingLoot).filter((st) => st.zonaLocationId == null || st.zonaLocationId === currentLocationId);
   const npcsMuertos = pendientes.length

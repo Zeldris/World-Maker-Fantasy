@@ -1,19 +1,29 @@
 #!/usr/bin/env python3
-"""MAP-16: un agente mínimo con el modelo local (Ollama) para el banco de encargos del mapa.
+"""MAP-16/MAP-18: un agente mínimo con el modelo local (Ollama) para editar el mapa.
 
     python3 map-generator/banco/agente_local.py ENCARGO_ID --copia DIR [--modelo qwen35-9b-32k] [--turnos 20]
+    python3 map-generator/banco/agente_local.py --texto "pon la ficha … en …" [--copia DIR]   # MAP-18: encargo libre
 
 Trabaja sobre `DIR/helek.json` (una copia; nunca el mapa del juego). Su única herramienta es `orden`, que ejecuta
-`consultar.py …` o `editar.py …` con `--mundo DIR/helek.json` forzado (y `--sin-juego`); cualquier otra cosa se
-rechaza. El prompt de sistema es la guía `map-generator/AGENTES.md`, igual que la que lee Claude. Escribe en
-`DIR/registro.json` los turnos, las órdenes, el tiempo y los tokens; la nota la pone `corregir.py`.
+`consultar.py …` o `editar.py …` con `--mundo DIR/helek.json` forzado (y `--sin-juego`); cualquier otra cosa, y
+`--forzar`, se rechaza. El prompt de sistema es la guía `map-generator/AGENTES.md`, igual que la que lee Claude.
+Escribe en `DIR/registro.json` los turnos, las órdenes, el tiempo y los tokens; en el banco, la nota la pone
+`banco.py corregir`.
+
+Con `--texto` (encargo libre, MAP-18) copia antes el mapa del juego a DIR (por defecto, una carpeta temporal nueva)
+y, al acabar, junta en `DIR/lote.json` lo que guardó en la copia (comprobado: aplicado de una vez a otra copia del
+original da el mismo mapa) y en `DIR/informe.md` su respuesta y el informe de `editar.py DIR/lote.json` sobre el
+mapa del juego (solo comprueba). Guardarlo es cosa de Claude o de la usuaria: `editar.py DIR/lote.json --guardar`.
 """
 import argparse
 import json
 import os
+import re
 import shlex
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 
@@ -44,6 +54,16 @@ HERRAMIENTA = {
 }
 
 
+def _marca_canon(lote):
+    """¿El lote marca alguna zona como canon? (AGENTES.md: eso no lo hace un agente)"""
+    try:
+        datos = json.loads(lote or '{}')
+    except ValueError:
+        return False  # editar.py dará el error de lote mal escrito
+    zonas = datos.get('zonas') if isinstance(datos, dict) else None
+    return isinstance(zonas, list) and any(isinstance(z, dict) and z.get('canon') is True for z in zonas)
+
+
 def ejecutar(orden, lote, copia):
     """Ejecuta una orden permitida sobre la copia; devuelve (texto, código)."""
     try:
@@ -60,10 +80,17 @@ def ejecutar(orden, lote, copia):
     args = [a for a in partes[1:]]
     for a in args:
         nombre = a.split('=', 1)[0]
-        for prohibido in ('--mundo', '--canon', '--lore'):
+        for prohibido in ('--mundo', '--canon', '--lore', '--forzar'):
             # argparse acepta abreviaturas (--can) y --canon=x: se rechaza todo lo que pueda resolverse a un prohibido
             if len(nombre) > 2 and nombre.startswith('--') and prohibido.startswith(nombre):
+                if prohibido == '--forzar':
+                    return '--forzar no se puede usar: si el canon o el lore fallan, no se guarda (dilo)', 2
                 return f'{prohibido} no se puede usar: ya trabajas sobre la copia', 2
+    if script == 'editar.py':
+        if '--guardar' in args and '-' not in args:
+            return 'para guardar, pasa el lote en el argumento "lote" y usa "-" como archivo', 2
+        if _marca_canon(lote):
+            return ('una zona no se marca canon (`"canon": true`): eso lo decide Álvaro; quítalo y guarda sin él', 2)
     mundo = os.path.join(copia, 'helek.json')
     cmd = [sys.executable, os.path.join(MAPA, script)] + args + ['--mundo', mundo]
     if script == 'editar.py':
@@ -91,32 +118,36 @@ def chat(modelo, mensajes, contexto, pensar=False):
         return json.load(r)
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('encargo')
-    ap.add_argument('--copia', required=True)
-    ap.add_argument('--modelo', default='qwen35-9b-32k')
-    ap.add_argument('--turnos', type=int, default=20)
-    ap.add_argument('--contexto', type=int, default=32768)
-    ap.add_argument('--pensar', action='store_true', help='deja razonar al modelo (mucho más lento)')
-    a = ap.parse_args(argv)
+def _guarda(orden):
+    """¿Es `editar.py … --guardar`? (editar.py no acepta abreviaturas: --gu da error y no guarda)"""
+    try:
+        partes = shlex.split(orden)
+    except ValueError:
+        return False
+    if partes and partes[0] in ('python3', 'python'):
+        partes = partes[1:]
+    if not partes or partes[0].removeprefix('map-generator/') != 'editar.py':
+        return False
+    return '--guardar' in partes[1:]
 
-    encargos = {e['id']: e for e in json.load(open(os.path.join(AQUI, 'encargos.json'), encoding='utf-8'))['encargos']}
-    encargo = encargos[a.encargo]
+
+def correr(texto, copia, modelo='qwen35-9b-32k', turnos=20, contexto=32768, pensar=False, chat=chat):
+    """Bucle del agente sobre la copia. Devuelve el registro (también lo escribe en DIR/registro.json); en
+    `registro['guardados']` van los lotes que guardó en la copia, en orden."""
     guia = open(GUIA, encoding='utf-8').read()
     mensajes = [
         {'role': 'system', 'content': guia + '\n\nTrabajas con la herramienta `orden`. Cuando acabes (guardado o '
                                              'decidido no hacerlo), responde sin llamar a la herramienta con un '
                                              'resumen de lo hecho.'},
-        {'role': 'user', 'content': encargo['texto']},
+        {'role': 'user', 'content': texto},
     ]
-    registro = {'encargo': a.encargo, 'modelo': a.modelo, 'turnos': [], 'tokens_entrada': 0, 'tokens_salida': 0}
+    registro = {'modelo': modelo, 'turnos': [], 'guardados': [], 'tokens_entrada': 0, 'tokens_salida': 0}
     t0 = time.time()
     final = None
-    for _ in range(a.turnos):
+    for _ in range(turnos):
         t = time.time()
         try:
-            r = chat(a.modelo, mensajes, a.contexto, a.pensar)
+            r = chat(modelo, mensajes, contexto, pensar)
         except Exception as e:  # red, Ollama caído: se apunta y se para
             registro['error'] = f'{type(e).__name__}: {e}'
             break
@@ -143,7 +174,10 @@ def main(argv=None):
             lote = arg.get('lote')
             if lote is not None and not isinstance(lote, str):
                 lote = json.dumps(lote, ensure_ascii=False)
-            salida, codigo = ejecutar(str(arg.get('orden', '')), lote, a.copia)
+            orden = str(arg.get('orden', ''))
+            salida, codigo = ejecutar(orden, lote, copia)
+            if codigo == 0 and _guarda(orden):
+                registro['guardados'].append(lote)
             turno['ordenes'].append({'orden': arg.get('orden'), 'lote': (lote or '')[:2000], 'codigo': codigo,
                                      'salida': salida[:600]})
             mensajes.append({'role': 'tool', 'content': salida, 'tool_name': 'orden'})
@@ -153,9 +187,151 @@ def main(argv=None):
     registro['segundos'] = round(time.time() - t0, 1)
     registro['final'] = final
     registro['agotado'] = final is None and 'error' not in registro
-    with open(os.path.join(a.copia, 'registro.json'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(copia, 'registro.json'), 'w', encoding='utf-8') as f:
         json.dump(registro, f, ensure_ascii=False, indent=1)
     print(f"fin: {len(registro['turnos'])} turnos, {registro['segundos']} s; {final or registro.get('error') or 'sin acabar'}"[:600])
+    return registro
+
+
+def preparar_copia(copia, mundo):
+    """Copia el mapa del juego a `copia` (helek.json, original.json y su GeoJSON). Nunca sobre el propio mapa."""
+    if os.path.realpath(copia) == os.path.realpath(os.path.dirname(mundo)):
+        raise SystemExit('--copia no puede ser la carpeta del mapa del juego')
+    os.makedirs(copia, exist_ok=True)
+    for viejo in ['registro.json', 'lote.json', 'informe.md'] + [n for n in os.listdir(copia)
+                                                               if re.fullmatch(r'lote-\d+\.json', n)]:
+        if os.path.exists(os.path.join(copia, viejo)):
+            os.remove(os.path.join(copia, viejo))
+    for sub in ('historial', 'comprobacion'):
+        shutil.rmtree(os.path.join(copia, sub), ignore_errors=True)
+    shutil.copy(mundo, os.path.join(copia, 'helek.json'))
+    shutil.copy(mundo, os.path.join(copia, 'original.json'))
+    geo = os.path.join(os.path.dirname(mundo), 'helek.geojson')
+    if os.path.exists(geo):
+        shutil.copy(geo, os.path.join(copia, 'helek.geojson'))
+
+
+def juntar(lotes):
+    """Un lote con todos: las listas se encadenan en orden; lo demás, el último."""
+    junto = {}
+    for texto in lotes:
+        for k, v in json.loads(texto or '{}').items():
+            if isinstance(v, list):
+                junto.setdefault(k, []).extend(v)
+            else:
+                junto[k] = v
+    return junto
+
+
+def _reproducir(copia, prueba, lotes):
+    """Guarda `lotes`, en orden, sobre una copia de original.json en `prueba`; código 0 si acaba en el mismo mapa
+    que la copia del agente."""
+    shutil.rmtree(prueba, ignore_errors=True)
+    os.makedirs(prueba)
+    destino = os.path.join(prueba, 'helek.json')
+    shutil.copy(os.path.join(copia, 'original.json'), destino)
+    for texto_lote in lotes:
+        codigo, salida = _editar(['-', '--guardar', '--sin-juego', '--mundo', destino], texto_lote)
+        if codigo != 0:
+            return codigo, salida
+    with open(destino, 'rb') as a, open(os.path.join(copia, 'helek.json'), 'rb') as b:
+        if a.read() != b.read():
+            return 1, 'el resultado no es el mapa de la copia'
+    return 0, salida
+
+
+def _editar(args, lote=None):
+    r = subprocess.run([sys.executable, os.path.join(MAPA, 'editar.py')] + args, input=lote, capture_output=True,
+                       text=True, timeout=300, cwd=RAIZ)
+    return r.returncode, (r.stdout + ('\n' + r.stderr if r.stderr else '')).strip()
+
+
+def entregar(copia, registro, texto, mundo):
+    """Deja en la copia `lote.json` (si guardó algo y cuadra; si juntos no se reproducen pero en orden sí,
+    `lote-1.json`…) e `informe.md`. Devuelve la ruta del lote (o del primero) o None."""
+    lineas = [f'# Encargo al agente local ({registro["modelo"]})', '', f'> {texto}', '',
+              f'{len(registro["turnos"])} turnos, {registro["segundos"]} s.', '', '## Su respuesta', '',
+              registro.get('final') or f'(sin respuesta final: {registro.get("error") or "agotó los turnos"})', '']
+    ruta_lote = None
+    if not registro['guardados']:
+        lineas += ['## Lote', '', 'No guardó nada en la copia: no hay lote.']
+    else:
+        junto = json.dumps(juntar(registro['guardados']), ensure_ascii=False)
+        prueba = os.path.join(copia, 'comprobacion')
+        codigo, salida = _reproducir(copia, prueba, [junto])
+        en_orden = None
+        if codigo != 0:
+            # aplicar junta las secciones en un orden fijo: ediciones que dependen unas de otras (pintar una celda y
+            # luego hundirla) solo se reproducen guardando los lotes en el orden en que los guardó
+            codigo2, salida2 = _reproducir(copia, prueba, registro['guardados'])
+            if codigo2 == 0:
+                en_orden = registro['guardados']
+            else:
+                salida = salida2
+        if en_orden:
+            rutas = []
+            for k, texto_lote in enumerate(en_orden, 1):
+                rutas.append(os.path.join(copia, f'lote-{k}.json'))
+                with open(rutas[-1], 'w', encoding='utf-8') as f:
+                    f.write(json.dumps(json.loads(texto_lote), ensure_ascii=False, indent=1) + '\n')
+            shutil.rmtree(prueba)
+            ruta_lote = rutas[0]
+            codigo, salida = _editar([ruta_lote, '--mundo', mundo])
+            lineas += ['## Lotes', '', f'{len(rutas)} lotes que juntos no se reproducen (dependen unos de otros): se '
+                       'guardan uno tras otro, en este orden.', '', '## Informe del primero sobre el mapa del juego '
+                       '(solo comprueba)', '', '```', salida[:6000], '```', '', 'Para guardarlos, tras revisarlos:', '']
+            lineas += [f'    python3 map-generator/editar.py {r} --guardar' for r in rutas]
+        elif codigo != 0:
+            lineas += ['## Lote', '', f'Guardó {len(registro["guardados"])} lotes en la copia, pero ni juntos ni en '
+                       'orden dan el mismo mapa: **no hay lote fiable**. Los lotes están en `registro.json` (`guardados`).', '',
+                       '```', salida[:3000], '```']
+        else:
+            ruta_lote = os.path.join(copia, 'lote.json')
+            with open(ruta_lote, 'w', encoding='utf-8') as f:
+                f.write(json.dumps(json.loads(junto), ensure_ascii=False, indent=1) + '\n')
+            shutil.rmtree(prueba)
+            codigo, salida = _editar([ruta_lote, '--mundo', mundo])
+            lineas += ['## Lote', '', f'`{ruta_lote}` ({len(registro["guardados"])} guardado(s) en la copia, juntos).',
+                       '', '## Informe sobre el mapa del juego (solo comprueba)', '', '```', salida[:6000], '```', '',
+                       'Para guardarlo, tras revisarlo:', '',
+                       f'    python3 map-generator/editar.py {ruta_lote} --guardar']
+    with open(os.path.join(copia, 'informe.md'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lineas) + '\n')
+    return ruta_lote
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
+    ap.add_argument('encargo', nargs='?', help='id de encargos.json (banco)')
+    ap.add_argument('--texto', help='MAP-18: encargo libre ("-" = entrada estándar); copia antes el mapa del juego')
+    ap.add_argument('--copia', help='carpeta de trabajo (con --texto, por defecto una temporal nueva)')
+    ap.add_argument('--modelo', default='qwen35-9b-32k')
+    ap.add_argument('--turnos', type=int, default=20)
+    ap.add_argument('--contexto', type=int, default=32768)
+    ap.add_argument('--pensar', action='store_true', help='deja razonar al modelo (mucho más lento)')
+    a = ap.parse_args(argv)
+    if (a.encargo is None) == (a.texto is None):
+        ap.error('o un ENCARGO_ID del banco o --texto, uno de los dos')
+    if a.encargo is not None:
+        if not a.copia:
+            ap.error('con un encargo del banco, --copia DIR (la prepara banco.py preparar)')
+        encargos = {e['id']: e for e in json.load(open(os.path.join(AQUI, 'encargos.json'), encoding='utf-8'))['encargos']}
+        registro = correr(encargos[a.encargo]['texto'], a.copia, a.modelo, a.turnos, a.contexto, a.pensar)
+        registro['encargo'] = a.encargo
+        with open(os.path.join(a.copia, 'registro.json'), 'w', encoding='utf-8') as f:
+            json.dump(registro, f, ensure_ascii=False, indent=1)
+        return
+    texto = sys.stdin.read() if a.texto == '-' else a.texto
+    if not texto.strip():
+        ap.error('--texto vacío')
+    sys.path.insert(0, MAPA)
+    import medir
+    copia = a.copia or tempfile.mkdtemp(prefix='mapa-agente-')
+    preparar_copia(copia, medir.MUNDO)
+    print(f'copia: {copia}', flush=True)
+    registro = correr(texto, copia, a.modelo, a.turnos, a.contexto, a.pensar)
+    lote = entregar(copia, registro, texto, medir.MUNDO)
+    print(f'lote: {lote or "ninguno"}\ninforme: {os.path.join(copia, "informe.md")}')
 
 
 if __name__ == '__main__':

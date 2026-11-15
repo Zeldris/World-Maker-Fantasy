@@ -5,7 +5,7 @@ import { ownerKeyFor } from '../reinoOwner.js';
 import { avanzarViajeros } from '../viajeros.js';
 import { SLUG_PIEZA } from '../partidasCaza.js';
 import { prepararPartidaCaza } from './prepararPartidaCaza.js';
-import { descartarDeMochila } from './prepararMochila.js';
+import { descartarDeMochila, dejarMochilaLibre } from './prepararMochila.js';
 import { totalInventoryUnits } from '../inventoryCapacity.js';
 
 // QA-298 (P338, P339): el paso `partida-caza:<presa>:<n>[:permanente]` de `prepararReino.ts`. Se comprueba lo que ve la usuaria:
@@ -128,5 +128,17 @@ describe('prepararPartidaCaza (QA-298)', () => {
     expect(quedan.map((i) => i.name).sort()).toEqual(['Cuerda (5)', 'Espada equipada']);
     expect(await descartarDeMochila(prisma, { saveId, hueco: 12 })).toMatchObject({ descartados: 0, hueco: capacidad - 6 });
     expect(await descartarDeMochila(prisma, { saveId, hueco: capacidad + 1 })).toEqual({ error: expect.stringContaining('la capacidad es') });
+  });
+
+  // P429: con el Almacén lleno de materiales `mochila-libre` no puede dejar el hueco: lo dice con el motivo y qué hacer.
+  it('mochila-libre con el Almacén lleno dice el motivo y propone mochila-descartar', async () => {
+    const saveId = await partida('Mochila libre con Almacén lleno (P429)');
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const recurso = await prisma.itemCatalog.findFirstOrThrow({ where: { worldId: world.id, tipo: 'RECURSO' } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 200 }, () => ({ saveId, name: recurso.name, description: '', catalogSlug: recurso.slug })) });
+    await prisma.inventoryItem.create({ data: { saveId, name: 'Roca (400)', description: 'x', origin: 'x', catalogSlug: recurso.slug } });
+    const r = await dejarMochilaLibre(prisma, { saveId, hueco: 10 });
+    expect(r).toEqual({ error: expect.stringMatching(/solo se llegó a .*Almacén.*mochila-descartar:10/s) });
+    expect(await descartarDeMochila(prisma, { saveId, hueco: 10 })).toMatchObject({ hueco: expect.any(Number), descartados: 1 });
   });
 });

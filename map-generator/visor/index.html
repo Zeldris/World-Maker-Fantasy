@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Visor de Helek Sirik</title>
-<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias; MAP-7: relieve y costa; MAP-8: lugares, rutas y ríos. Sin red: nada externo; lo sirve servir.py. -->
+<!-- MAP-5: visor local por capas de mundo/helek.json; MAP-6: editor de regiones y provincias; MAP-7: relieve y costa; MAP-8: lugares, rutas y ríos; MAP-14: zonas de tormenta, peligro y clan y tiempos de ruta. Sin red: nada externo; lo sirve servir.py. -->
 <style>
   :root { --fondo:#1b1d22; --panel:#262a31; --texto:#e6e2d8; --tenue:#9a9890; --borde:#3a3f48; --acento:#e0b04c; --mal:#e2685b; --ok:#7cc48a; }
   * { box-sizing: border-box; }
@@ -34,6 +34,7 @@
   #pendientes { margin:6px 0 4px; }
   input[type=text] { width:100%; background:#323741; color:var(--texto); border:1px solid var(--borde); border-radius:4px; padding:3px; font:inherit; margin:3px 0; }
   .modos { flex-wrap:wrap; }
+  input[type=checkbox].zc { margin:0; }
 </style>
 </head>
 <body>
@@ -43,6 +44,7 @@
     <div class="ayuda" id="fuente"></div>
     <h2>Capas</h2>
     <div id="capas"></div>
+    <div class="ayuda" id="leyenda-zonas">Zonas: relleno por nivel o clan; rayado y borde discontinuo = propuesta sin canon.</div>
     <h2>Vista</h2>
     <div class="botones">
       <button data-vista="todo">Todo</button>
@@ -50,7 +52,7 @@
       <button data-vista="c2">Vaelira</button>
       <button id="mas">+</button><button id="menos">−</button>
     </div>
-    <h2>Editar (MAP-6, 7, 8)</h2>
+    <h2>Editar (MAP-6, 7, 8, 14)</h2>
     <div class="modos" id="modos">
       <label><input type="radio" name="modo" value="ver" checked>Ver</label>
       <label><input type="radio" name="modo" value="region">Región</label>
@@ -59,6 +61,7 @@
       <label><input type="radio" name="modo" value="lugares">Lugares</label>
       <label><input type="radio" name="modo" value="rutas">Rutas</label>
       <label><input type="radio" name="modo" value="rios">Ríos</label>
+      <label><input type="radio" name="modo" value="zonas">Zonas</label>
     </div>
     <div id="edicion" class="oculto">
       <div id="ed-celdas">
@@ -97,6 +100,20 @@
           <button id="tr-terminar">Terminar</button><button id="tr-cancelar">Cancelar trazo</button>
           <button id="tr-redibujar">Redibujar</button><button id="tr-renombrar">Renombrar</button><button id="tr-borrar">Borrar</button>
         </div>
+      </div>
+      <div id="ed-zonas" class="oculto">
+        <div class="ayuda">Elige el tipo y una zona (o «nueva»); el pincel añade o quita celdas de tierra. Una celda solo va en una zona de cada tipo; las tormentas, solo en las Llanuras del Viento Rojo.</div>
+        <select id="zona-tipo"><option value="tormenta">Tormenta</option><option value="peligro">Peligro</option><option value="clan">Clan</option></select>
+        <select id="zona-sel"></select>
+        <input type="text" id="zona-nombre" placeholder="Nombre de la zona" autocomplete="off">
+        <select id="zona-nivel"></select>
+        <input type="text" id="zona-clan" placeholder="Clan" autocomplete="off">
+        <label><input type="checkbox" class="zc" id="zona-canon">Canon (si no, propuesta sin canon)</label>
+        <input type="text" id="zona-nota" placeholder="Nota (fuente o motivo)" autocomplete="off">
+        <div class="modos"><label><input type="radio" name="zpincel" value="mas" checked>Añadir celdas</label>
+          <label><input type="radio" name="zpincel" value="menos">Quitar celdas</label></div>
+        <div id="zona-info" class="ayuda"></div>
+        <div class="botones"><button id="zona-crear">Crear zona</button><button id="zona-borrar">Borrar zona</button></div>
       </div>
       <select id="pincel">
         <option value="0">Pincel: 1 celda</option><option value="1">Pincel: celda y vecinas</option><option value="2">Pincel: 2 anillos</option>
@@ -153,10 +170,16 @@ const CAPAS = [
   { id: 'rios', nombre: 'Ríos', on: true },
   { id: 'rutas', nombre: 'Rutas', on: true },
   { id: 'lugares', nombre: 'Lugares', on: true },
+  { id: 'z-tormenta', nombre: 'Tormentas', on: false, zona: 'tormenta' },
+  { id: 'z-peligro', nombre: 'Peligro', on: false, zona: 'peligro' },
+  { id: 'z-clan', nombre: 'Clanes', on: false, zona: 'clan' },
 ];
+/* MAP-14: colores de las zonas (tormenta 0-3: refugio, Sek'tar, Rokthar, Rok'ithek; peligro 1-3). */
+const NIVEL_COLOR = { tormenta: ['#6fc3a0', '#e6d96a', '#e39a43', '#c9453b'], peligro: [null, '#d8c24a', '#d9822b', '#c0392b'] };
+const NIVEL_TXT = { tormenta: ['0 Ghurmek (refugio)', '1 Sek’tar', '2 Rokthar', '3 Rok’ithek'], peligro: [null, '1 bajo', '2 medio', '3 alto'] };
 const RUTAS = { roads: ['#e8d7a8', 1.6, []], trails: ['#c9a774', 0.9, [3, 2]], searoutes: ['#a9c4e0', 0.9, [1, 3]] };
 
-let M, MED, KM, celdas = [], porRegion = {}, porProv = {}, porCont = {}, porBioma = {};
+let VIAJE = null, M, MED, KM, celdas = [], porRegion = {}, porProv = {}, porCont = {}, porBioma = {};
 let vista = { s: 1, x: 0, y: 0 }, raton = null, regla = [], arrastre = null, rejilla;
 
 const sumaGrupo = (lista) => Object.fromEntries(lista.map((e) => [e.i, e]));
@@ -283,6 +306,7 @@ function dibujar() {
     }
     ctx.setLineDash([]);
   }
+  dibujarZonas(px);
   if (activa('lugares')) {
     ctx.font = `${12 * px}px system-ui, sans-serif`; ctx.textBaseline = 'middle';
     for (const lu of M.lugares) {
@@ -353,6 +377,10 @@ function info() {
     if (re) filas.push('<dt>Región</dt>', filaMedida(esc(re.nombre), re.color, MED.regiones[re.i]));
     if (pr) filas.push('<dt>Provincia</dt>', filaMedida(esc(pr.nombre), pr.color, MED.provincias[pr.i]));
   }
+  const ru = !ed.nuevo && ed.modo !== 'lugares' && ed.modo !== 'rios' ? trazoCerca('rutas', raton.x, raton.y) : null;
+  if (ru) filas.push(`<dt>Ruta</dt><dd>${NOMBRE_GRUPO[ru.grupo] || ru.grupo} ${ru.i}<br><span class="n">${textoViaje(ru)}</span></dd>`);
+  const zs = zonasEn(c.i);
+  if (zs.length) filas.push('<dt>Zonas</dt>', ...zs.map((z) => `<dd>${esc(z.nombre)} <span class="n">${esc(z.tipo)}${z.tipo === 'clan' ? ` · ${esc(z.clan)}` : ` · nivel ${z.nivel}`}${z.canon ? '' : ' · propuesta sin canon'}</span></dd>`));
   $('info').innerHTML = filas.join('');
 }
 
@@ -364,7 +392,7 @@ function panelCanon() {
 }
 
 function montarCapas() {
-  const cuenta = { rios: M.rios.length, rutas: M.rutas.length, lugares: M.lugares.length, regiones: M.regiones.length, provincias: M.provincias.length };
+  const cuenta = { rios: M.rios.length, rutas: M.rutas.length, lugares: M.lugares.length, regiones: M.regiones.length, provincias: M.provincias.length, 'z-tormenta': nZ('tormenta'), 'z-peligro': nZ('peligro'), 'z-clan': nZ('clan') };
   $('capas').innerHTML = CAPAS.map((c) => `<label><input type="checkbox" data-capa="${c.id}" ${c.on ? 'checked' : ''}>${c.nombre}${c.id in cuenta ? `<span class="n" id="n-${c.id}">${cuenta[c.id]}</span>` : ''}</label>`).join('');
   $('capas').addEventListener('change', (ev) => { CAPAS.find((c) => c.id === ev.target.dataset.capa).on = ev.target.checked; dibujar(); });
 }
@@ -377,7 +405,7 @@ lienzo.addEventListener('pointerdown', (ev) => {
     arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: ev.button !== 0 || ev.shiftKey, clic: true };
     return;
   }
-  if (M && ed.modo !== 'ver' && ev.button === 0 && !ev.shiftKey) { ed.trazo = []; ed.trazoH = []; ed.tocadas = new Set(); pintarEn(...aMundo(ev)); return; }
+  if (M && ed.modo !== 'ver' && ev.button === 0 && !ev.shiftKey) { if (ed.modo === 'zonas') { ed.zsnap = clonarZonas(); ed.zcambio = false; } ed.trazo = []; ed.trazoH = []; ed.tocadas = new Set(); pintarEn(...aMundo(ev)); return; }
   arrastre = { x: ev.clientX, y: ev.clientY, vx: vista.x, vy: vista.y, movido: ed.modo !== 'ver' };
 });
 lienzo.addEventListener('pointermove', (ev) => {
@@ -417,7 +445,7 @@ window.addEventListener('resize', dibujar);
 const ed = { modo: 'ver', objetivo: { region: 0, provincia: 0 }, historial: [], trazo: null, provs: new Map(),
   herr: 'subir', trazoH: [], tocadas: new Set(), bloqueo: new Set(), zona: null,
   sel: null, nuevo: null, mover: false, sig: {} };
-let BASE = null, ORIG = null, ORIGH = null, ORIGT = {}, ENC = [], HIST = null;
+let ZDIRTY = true, ZCACHE = new Map(), ORIGZ = new Map(), BASE = null, ORIG = null, ORIGH = null, ORIGT = {}, ENC = [], HIST = null;
 const MODOS_TRAZO = ['lugares', 'rutas', 'rios'];
 const TRAZOS = { rutas: 'ruta', rios: 'río' };
 const NOMBRE_GRUPO = { roads: 'camino', trails: 'senda', searoutes: 'ruta marítima' };
@@ -446,6 +474,7 @@ function pintarEn(x, y) {
   const prov = ed.modo === 'provincia' && ed.objetivo.provincia ? porProv[ed.objetivo.provincia] : null;
   let cambio = false;
   if (ed.modo === 'relieve') { pintarRelieve(centro); return; }
+  if (ed.modo === 'zonas') { pintarZona(centro); return; }
   for (const c of vecindad(centro, +$('pincel').value)) {
     if (c.h < 20) continue;
     let region = c.region, provincia = c.provincia;
@@ -500,6 +529,7 @@ function pintarRelieve(centro) {
 }
 
 function cerrarTrazo() {
+  if (ed.zsnap) { if (ed.zcambio) ed.historial.push({ zonas: ed.zsnap }); ed.zsnap = null; ed.zcambio = false; }
   if (ed.trazo.length || ed.trazoH.length) ed.historial.push({ celdas: ed.trazo, alturas: ed.trazoH });
   ed.trazo = null; ed.trazoH = []; ed.tocadas = new Set(); estadoEdicion();
 }
@@ -511,6 +541,7 @@ function deshacer() {
   for (const [i, h] of [...(paso.alturas || [])].reverse()) M.celdas[i].h = h;
   if (paso.provs) { ed.provs = paso.provs; M.provincias = paso.lista; porProv = sumaGrupo(M.provincias); montarObjetivo(); }
   if (paso.trazos) { Object.assign(M, paso.trazos); ed.sel = null; ed.nuevo = null; ed.mover = false; panelTrazos(); }
+  if (paso.zonas) { M.zonas = paso.zonas; ZDIRTY = true; montarZona(); }
   fronteras(); estadoEdicion(); dibujar();
 }
 
@@ -555,11 +586,12 @@ function cambiosAlturas() {
 
 function estadoEdicion() {
   const n = cambiosCeldas().length, p = ed.provs.size, a = cambiosAlturas().length;
-  const t = { lugares: cambiosLugares().length, rutas: cambiosTrazos('rutas').length, rios: cambiosTrazos('rios').length };
-  const hay = n + p + a + t.lugares + t.rutas + t.rios > 0;
-  const tr = [['lugares', 'lugar(es)'], ['rutas', 'ruta(s)'], ['rios', 'río(s)']].filter(([k]) => t[k]).map(([k, w]) => `, ${t[k]} ${w} tocados`).join('');
+  const t = { lugares: cambiosLugares().length, rutas: cambiosTrazos('rutas').length, rios: cambiosTrazos('rios').length, zonas: cambiosZonas().length };
+  const hay = n + p + a + t.lugares + t.rutas + t.rios + t.zonas > 0;
+  const tr = [['lugares', 'lugar(es)'], ['rutas', 'ruta(s)'], ['rios', 'río(s)'], ['zonas', 'zona(s)']].filter(([k]) => t[k]).map(([k, w]) => `, ${t[k]} ${w} tocados`).join('');
   $('pendientes').textContent = hay ? `Sin guardar: ${n} celda(s)${a ? `, ${a} con otra altura` : ''}${p ? `, ${p} provincia(s) nuevas o renombradas` : ''}${tr}.` : 'Sin cambios.';
   for (const k of ['rios', 'rutas', 'lugares']) if ($(`n-${k}`)) $(`n-${k}`).textContent = M[k].length;
+  for (const t of ['tormenta', 'peligro', 'clan']) if ($(`n-z-${t}`)) $(`n-z-${t}`).textContent = nZ(t);
   $('deshacer').disabled = !ed.historial.length;
   for (const b of ['comprobar', 'guardar', 'descartar']) $(b).disabled = !hay;
   // MAP-9: deshacer un guardado recarga el mapa, así que solo sin cambios pendientes
@@ -575,15 +607,16 @@ function montarBloqueo() {
 
 function montarObjetivo() {
   const sel = $('objetivo');
-  const trz = MODOS_TRAZO.includes(ed.modo);
-  $('ed-celdas').classList.toggle('oculto', ed.modo === 'relieve' || trz);
+  const trz = MODOS_TRAZO.includes(ed.modo), zon = ed.modo === 'zonas';
+  $('ed-celdas').classList.toggle('oculto', ed.modo === 'relieve' || trz || zon);
+  $('ed-zonas').classList.toggle('oculto', !zon);
   $('ed-lugares').classList.toggle('oculto', ed.modo !== 'lugares');
   $('ed-trazos').classList.toggle('oculto', ed.modo !== 'rutas' && ed.modo !== 'rios');
   $('grupo-ruta').classList.toggle('oculto', ed.modo !== 'rutas');
   $('nombre-rio').classList.toggle('oculto', ed.modo !== 'rios');
   $('pincel').classList.toggle('oculto', trz);
   $('ed-relieve').classList.toggle('oculto', ed.modo !== 'relieve');
-  if (ed.modo === 'relieve' || trz) { /* sin objetivo: la herramienta lo dice todo */ }
+  if (ed.modo === 'relieve' || trz || zon) { /* sin objetivo: la herramienta lo dice todo */ }
   else if (ed.modo === 'region') {
     sel.innerHTML = [`<option value="0">Sin región</option>`, ...M.regiones.map((r) => `<option value="${r.i}">${esc(r.nombre)}</option>`)].join('');
     sel.value = ed.objetivo.region;
@@ -754,7 +787,7 @@ function panelTrazos() {
   if (trz) {
     const nombreDe = (x) => (rio ? `río ${x.i}${x.nombre ? ` «${esc(x.nombre)}»` : ''}` : `${NOMBRE_GRUPO[x.grupo] || x.grupo} ${x.i}`);
     $('sel-trazo').innerHTML = ed.nuevo ? `Trazo en curso: ${ed.nuevo.puntos.length} punto(s)${ed.nuevo.redibuja !== null ? ` (sustituye al ${nombreDe(M[ed.modo].find((x) => x.i === ed.nuevo.redibuja) || { i: ed.nuevo.redibuja })})` : ''}`
-      : t ? `Seleccionado: <b>${nombreDe(t)}</b> · ${t.puntos.length} puntos${ORIGT[ed.modo].has(t.i) ? '' : ' · nuevo, sin guardar'}` : 'Nada seleccionado.';
+      : t ? `Seleccionado: <b>${nombreDe(t)}</b> · ${t.puntos.length} puntos${ORIGT[ed.modo].has(t.i) ? '' : ' · nuevo, sin guardar'}${rio ? '' : `<br>${textoViaje(t)}`}` : 'Nada seleccionado.';
     $('tr-terminar').disabled = $('tr-cancelar').disabled = !ed.nuevo;
     $('tr-redibujar').disabled = $('tr-borrar').disabled = !t || !!ed.nuevo;
     $('tr-renombrar').disabled = !t || !rio || !!ed.nuevo;
@@ -776,9 +809,162 @@ function dibujarTrazos(px) {
   }
 }
 
+/* MAP-14: zonas de tormenta, peligro y clan. M.zonas lleva las celdas de cada zona en un Set; ORIGZ, las del mapa
+   guardado, y el lote manda solo lo que cambió (campos, `mas` y `menos`, o `borrar`). */
+const nZ = (tipo) => (M?.zonas || []).filter((z) => z.tipo === tipo).length;
+const zonasEn = (i) => (M?.zonas || []).filter((z) => z.celdas.has(i));
+const clonarZonas = () => M.zonas.map((z) => ({ ...z, celdas: new Set(z.celdas) }));
+const zonaSel = () => M.zonas.find((z) => z.i === ed.zsel) || null;
+const colorClan = (nombre) => PALETA[[...String(nombre)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % PALETA.length];
+const colorZona = (z) => (z.tipo === 'clan' ? colorClan(z.clan) : NIVEL_COLOR[z.tipo][z.nivel]);
+
+function textoViaje(t) {
+  const f = VIAJE?.rutas.find((x) => x.i === t.i), orig = ORIGT.rutas.get(t.i);
+  if (!f || orig !== t) {
+    const km = t.puntos.slice(1).reduce((s, p, k) => s + Math.hypot(p[0] - t.puntos[k][0], p[1] - t.puntos[k][1]), 0) * KM;
+    return `${fmtNum(km, 1)} km del trazo (tiempos al guardar)`;
+  }
+  if (f.kmAPie === null) return `${fmtNum(f.km, 1)} km · en bote ${fmtNum(f.horas, 1)} h · ${fmtNum(f.jornadas, 1)} jornadas`;
+  return `${fmtNum(f.km, 1)} km · rodeo ${fmtNum(f.rodeo, 2)} → ${fmtNum(f.kmAPie, 1)} km a pie · ${fmtNum(f.horas, 1)} h · ${fmtNum(f.jornadas, 1)} jornadas · caravana ${fmtNum(f.horasCaravana, 1)} h`;
+}
+
+function datosZonas() {
+  // contorno y relleno por zona, solo de las capas encendidas; se rehace al cambiar las zonas
+  if (ZDIRTY) { ZCACHE = new Map(); ZDIRTY = false; }
+  for (const z of M.zonas) {
+    if (ZCACHE.has(z.i) || !CAPAS.find((c) => c.zona === z.tipo)?.on) continue;
+    const relleno = new Path2D(), borde = new Path2D();
+    for (const i of z.celdas) relleno.addPath(celdas[i]);
+    for (const [a, b, i, j] of ARISTAS) {
+      if (z.celdas.has(i) !== (j !== undefined && z.celdas.has(j))) { borde.moveTo(...M.vertices[a]); borde.lineTo(...M.vertices[b]); }
+    }
+    ZCACHE.set(z.i, { relleno, borde });
+  }
+}
+
+let RAYADO = null;
+function rayado() {
+  if (RAYADO) return RAYADO;
+  const c = document.createElement('canvas'); c.width = c.height = 8;
+  const g = c.getContext('2d'); g.strokeStyle = 'rgba(20,20,20,.7)'; g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(0, 8); g.lineTo(8, 0); g.moveTo(-2, 2); g.lineTo(2, -2); g.moveTo(6, 10); g.lineTo(10, 6); g.stroke();
+  return (RAYADO = ctx.createPattern(c, 'repeat'));
+}
+
+function dibujarZonas(px) {
+  if (!M.zonas?.length) return;
+  datosZonas();
+  for (const z of M.zonas) {
+    const d = ZCACHE.get(z.i);
+    if (!d) continue;
+    ctx.globalAlpha = 0.42; ctx.fillStyle = colorZona(z); ctx.fill(d.relleno); ctx.globalAlpha = 1;
+    if (!z.canon) { ctx.fillStyle = rayado(); ctx.fill(d.relleno); }
+    ctx.strokeStyle = colorZona(z); ctx.lineWidth = (z.i === ed.zsel && ed.modo === 'zonas' ? 3 : 1.6) * px;
+    ctx.setLineDash(z.canon ? [] : [5 * px, 3 * px]); ctx.stroke(d.borde); ctx.setLineDash([]);
+  }
+}
+
+function activarCapaZona() {
+  const capa = CAPAS.find((c) => c.zona === $('zona-tipo').value); capa.on = true;
+  const caja = document.querySelector(`[data-capa="${capa.id}"]`); if (caja) caja.checked = true;
+  ZDIRTY = true;
+}
+
+function montarZona() {
+  const tipo = $('zona-tipo').value, lista = M.zonas.filter((z) => z.tipo === tipo);
+  if (!lista.some((z) => z.i === ed.zsel)) ed.zsel = null;
+  $('zona-sel').innerHTML = [`<option value="">— zona nueva —</option>`, ...lista.map((z) => `<option value="${z.i}">${esc(z.nombre)} · ${z.celdas.size} celdas${z.canon ? '' : ' · sin canon'}</option>`)].join('');
+  $('zona-sel').value = ed.zsel ?? '';
+  const niveles = NIVEL_TXT[tipo];
+  $('zona-nivel').innerHTML = niveles ? niveles.map((t, n) => (t ? `<option value="${n}">Nivel ${esc(t)}</option>` : '')).join('') : '';
+  $('zona-nivel').classList.toggle('oculto', !niveles);
+  $('zona-clan').classList.toggle('oculto', tipo !== 'clan');
+  const z = zonaSel();
+  $('zona-nombre').value = z ? z.nombre : '';
+  if (niveles) $('zona-nivel').value = z ? z.nivel : 1;
+  $('zona-clan').value = z?.clan || '';
+  $('zona-canon').checked = !!z?.canon;
+  $('zona-nota').value = z?.nota || '';
+  $('zona-crear').classList.toggle('oculto', !!z);
+  $('zona-borrar').disabled = !z;
+  $('zona-info').textContent = z ? `${z.celdas.size} celdas${ORIGZ.has(z.i) ? '' : ' · nueva, sin guardar'}` : 'Rellena los datos y pulsa «Crear zona»; luego pinta sus celdas.';
+}
+
+function datosFormulario() {
+  const tipo = $('zona-tipo').value;
+  return { tipo, nombre: $('zona-nombre').value.trim(), nivel: tipo === 'clan' ? 0 : +$('zona-nivel').value, clan: tipo === 'clan' ? $('zona-clan').value.trim() : undefined,
+    canon: $('zona-canon').checked, nota: $('zona-nota').value.trim() };
+}
+
+function crearZona() {
+  const d = datosFormulario();
+  if (!d.nombre) { avisar('La zona necesita un nombre'); return; }
+  if (d.tipo === 'clan' && !d.clan) { avisar('Una zona de clan necesita el nombre del clan'); return; }
+  if (M.zonas.some((z) => z.tipo === d.tipo && z.nombre.toLowerCase() === d.nombre.toLowerCase())) { avisar(`Ya hay una zona de ${d.tipo} llamada «${d.nombre}»`); return; }
+  ed.historial.push({ zonas: clonarZonas() });
+  const z = { i: ed.sig.zonas++, ...d, celdas: new Set() };
+  if (d.tipo !== 'clan') delete z.clan;
+  M.zonas = [...M.zonas, z]; ed.zsel = z.i; ZDIRTY = true; montarZona(); estadoEdicion(); dibujar();
+}
+
+function cambiarCamposZona() {
+  const z = zonaSel();
+  if (!z) return;
+  const d = datosFormulario();
+  if (!d.nombre || (d.tipo === 'clan' && !d.clan)) { avisar('El nombre (y el clan) no pueden quedar vacíos'); montarZona(); return; }
+  if (M.zonas.some((o) => o.i !== z.i && o.tipo === z.tipo && o.nombre.toLowerCase() === d.nombre.toLowerCase())) { avisar(`Ya hay una zona de ${z.tipo} llamada «${d.nombre}»`); montarZona(); return; }
+  ed.historial.push({ zonas: clonarZonas() });
+  M.zonas = M.zonas.map((o) => (o.i === z.i ? { ...o, nombre: d.nombre, nivel: d.nivel, canon: d.canon, nota: d.nota, ...(z.tipo === 'clan' ? { clan: d.clan } : {}) } : o));
+  ZDIRTY = true; montarZona(); estadoEdicion(); dibujar();
+}
+
+function borrarZona() {
+  const z = zonaSel();
+  if (!z) return;
+  ed.historial.push({ zonas: clonarZonas() });
+  M.zonas = M.zonas.filter((o) => o.i !== z.i); ed.zsel = null; ZDIRTY = true; montarZona(); estadoEdicion(); dibujar();
+}
+
+function pintarZona(centro) {
+  const z = zonaSel();
+  if (!z) { avisar('Elige una zona o crea una antes de pintar'); return; }
+  const quitar = document.querySelector('input[name=zpincel]:checked').value === 'menos';
+  const llanuras = M.regiones.find((r) => r.nombre === 'Llanuras del Viento Rojo')?.i;
+  let cambio = false;
+  for (const c of vecindad(centro, +$('pincel').value)) {
+    if (c.h < 20) continue;
+    if (quitar) { if (z.celdas.delete(c.i)) cambio = true; continue; }
+    if (z.celdas.has(c.i)) continue;
+    if (z.tipo === 'tormenta' && c.region !== llanuras) { avisar('Las tormentas solo van en las Llanuras del Viento Rojo'); continue; }
+    const otra = M.zonas.find((o) => o.i !== z.i && o.tipo === z.tipo && o.celdas.has(c.i));
+    if (otra) { avisar(`La celda ${c.i} ya está en «${otra.nombre}»: dentro de un tipo una celda solo va en una zona`); continue; }
+    z.celdas.add(c.i); cambio = true;
+  }
+  if (cambio) { ed.zcambio = true; ZCACHE.delete(z.i); $('zona-info').textContent = `${z.celdas.size} celdas`; estadoEdicion(); dibujar(); }
+}
+
+function cambiosZonas() {
+  const lista = [], hoy = new Set(M.zonas.map((z) => z.i)), orden = (a) => [...a].sort((x, y) => x - y);
+  for (const z of M.zonas) {
+    const o = ORIGZ.get(z.i);
+    if (!o) {
+      lista.push({ i: z.i, tipo: z.tipo, nombre: z.nombre, nivel: z.nivel, ...(z.tipo === 'clan' ? { clan: z.clan } : {}), canon: z.canon, nota: z.nota, celdas: orden(z.celdas) });
+      continue;
+    }
+    const e = { i: z.i };
+    for (const k of ['nombre', 'nivel', 'clan', 'canon', 'nota']) if (z[k] !== o[k]) e[k] = z[k];
+    const mas = [...z.celdas].filter((c) => !o.celdas.has(c)), menos = [...o.celdas].filter((c) => !z.celdas.has(c));
+    if (mas.length) e.mas = orden(mas);
+    if (menos.length) e.menos = orden(menos);
+    if (Object.keys(e).length > 1) lista.push(e);
+  }
+  for (const i of ORIGZ.keys()) if (!hoy.has(i)) lista.push({ i, borrar: true });
+  return lista;
+}
+
 function lote(forzar) {
   return { base: BASE, celdas: cambiosCeldas(), provincias: [...ed.provs.values()], alturas: cambiosAlturas(), bloqueo: [...ed.bloqueo].sort((a, b) => a - b),
-    lugares: cambiosLugares(), rutas: cambiosTrazos('rutas'), rios: cambiosTrazos('rios'), ...(forzar ? { forzar: true } : {}) };
+    lugares: cambiosLugares(), rutas: cambiosTrazos('rutas'), rios: cambiosTrazos('rios'), zonas: cambiosZonas(), ...(forzar ? { forzar: true } : {}) };
 }
 
 async function enviar(ruta, forzar = false) {
@@ -798,7 +984,7 @@ function mostrarInforme(inf, titulo) {
     + fallan.map((r) => `<p class="ayuda"><span class="mal">MAL</span> ${esc(r.id)}: ${esc(r.detalle)}</p>`).join('');
   const canonMal = inf.canon.filter((e) => !e.dentro).length;
   const rel = inf.relieve ? `<p class="ayuda">Relieve: ${inf.relieve.alturas} celda(s) con otra altura, ${inf.relieve.aTierra} pasan a tierra, ${inf.relieve.aMar} a mar.</p>` : '';
-  const NOM = { lugares: 'Lugares', rutas: 'Rutas', rios: 'Ríos' }, ETQ = { nuevos: 'nuevos', cambian: 'cambian', borrados: 'borrados' };
+  const NOM = { lugares: 'Lugares', rutas: 'Rutas', rios: 'Ríos', zonas: 'Zonas' }, ETQ = { nuevos: 'nuevos', cambian: 'cambian', borrados: 'borrados' };
   const tz = Object.entries(inf.trazos || {}).map(([k, d]) => {
     const partes = Object.keys(ETQ).filter((e) => d?.[e]?.length).map((e) => `<br><span class="n">${ETQ[e]}:</span> ${d[e].map(esc).join('; ')}`);
     return partes.length ? `<p class="ayuda"><b>${NOM[k] || esc(k)}</b>${partes.join('')}</p>` : '';
@@ -816,6 +1002,8 @@ async function comprobarCambios() {
 }
 
 async function guardarCambios() {
+  const vacia = M.zonas.find((z) => z.celdas.size === 0);
+  if (vacia) { avisar(`La zona «${vacia.nombre}» no tiene celdas: píntalas o bórrala antes de guardar`); return; }
   try {
     let [st, inf] = await enviar('guardar');
     if (st === 422) {
@@ -842,9 +1030,13 @@ async function deshacerGuardado() {
 
 async function cargar(primera = true) {
   if (primera) ENC = await fetch('enciclopedia.json').then((x) => (x.ok ? x.json() : [])).catch(() => []);
+  VIAJE = await fetch('viaje.json').then((x) => (x.ok ? x.json() : null)).catch(() => null);
   const r = await fetch('helek.json'), mundo = await r.json(), medidas = await (await fetch('medidas.json')).json();
   M = mundo; MED = medidas; BASE = r.headers.get('X-Huella');
   HIST = await fetch('historial.json').then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  M.zonas = (M.zonas || []).map((z) => ({ ...z, celdas: new Set(z.celdas) }));
+  ORIGZ = new Map(M.zonas.map((z) => [z.i, { ...z, celdas: new Set(z.celdas) }]));
+  ed.sig.zonas = Math.max(0, ...M.zonas.map((z) => z.i)) + 1; ZDIRTY = true; ed.zsel = null;
   ORIG = M.celdas.map((c) => [c.region, c.provincia]); ORIGH = M.celdas.map((c) => c.h);
   ORIGT = { lugares: new Map(M.lugares.map((x) => [x.i, x])), rutas: new Map(M.rutas.map((x) => [x.i, x])), rios: new Map(M.rios.map((x) => [x.i, x])) };
   for (const k of ['lugares', 'rutas', 'rios']) ed.sig[k] = Math.max(-1, ...M[k].map((x) => x.i)) + 1;
@@ -853,7 +1045,7 @@ async function cargar(primera = true) {
   if (primera) ed.bloqueo = new Set(M.continentes.filter((k) => k.nombre === 'Berig').map((k) => k.i));
   else ed.bloqueo = new Set([...ed.bloqueo].filter((i) => M.continentes.some((k) => k.i === i)));
   if (primera) ed.objetivo.region = M.regiones[0]?.i ?? 0;
-  preparar(); panelCanon(); montarObjetivo(); montarBloqueo(); montarFichas(); panelTrazos(); estadoEdicion();
+  preparar(); panelCanon(); montarObjetivo(); montarZona(); montarBloqueo(); montarFichas(); panelTrazos(); estadoEdicion();
   $('fuente').textContent = `${M.fuente.ancho} × ${M.fuente.alto} km · ${M.celdas.length} celdas · FMG ${M.fuente.fmg}`;
   if (primera) { montarCapas(); $('estado').remove(); encuadrar(MED.continentes['3']?.caja); } else dibujar();
 }
@@ -865,6 +1057,7 @@ $('modos').addEventListener('change', (ev) => {
     const capa = CAPAS.find((c) => c.id === ed.modo); capa.on = true;
     const caja = document.querySelector(`[data-capa="${capa.id}"]`); if (caja) caja.checked = true;
   }
+  if (ed.modo === 'zonas') { activarCapaZona(); montarZona(); }
   montarObjetivo(); panelTrazos(); lienzo.style.cursor = ed.modo === 'ver' ? 'crosshair' : 'cell'; dibujar();
 });
 $('herramientas').addEventListener('change', (ev) => { ed.herr = ev.target.value; });
@@ -874,6 +1067,10 @@ $('bloqueo').addEventListener('change', (ev) => {
   if (ev.target.checked) ed.bloqueo.add(i); else ed.bloqueo.delete(i);
   ed.zona = null; dibujar();
 });
+$('zona-tipo').addEventListener('change', () => { ed.zsel = null; activarCapaZona(); montarZona(); dibujar(); });
+$('zona-sel').addEventListener('change', (ev) => { ed.zsel = ev.target.value ? +ev.target.value : null; montarZona(); dibujar(); });
+for (const id of ['zona-nombre', 'zona-nivel', 'zona-clan', 'zona-canon', 'zona-nota']) $(id).addEventListener('change', cambiarCamposZona);
+$('zona-crear').addEventListener('click', crearZona); $('zona-borrar').addEventListener('click', borrarZona);
 $('lu-renombrar').addEventListener('click', renombrarSel); $('lu-borrar').addEventListener('click', borrarSel);
 $('lu-mover').addEventListener('click', () => { ed.mover = !ed.mover; panelTrazos(); });
 $('lu-ficha').addEventListener('click', () => {

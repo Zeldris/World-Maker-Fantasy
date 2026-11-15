@@ -38,7 +38,7 @@ export async function dejarMochilaLibre(prisma: PrismaClient, { saveId, hueco }:
     if (r.ok) { depositados++; carga -= quantityOf(it.name); } else sinDepositar.push({ nombre: it.name, motivo: r.error });
   }
   const fin = await medir();
-  if (fin.carga > objetivo) return { error: `mochila-libre: solo se llegó a ${fin.carga}/${fin.capacidad} (hacían falta ${n} libres): ${sinDepositar.length ? `el Almacén no admite ${sinDepositar.length} objeto(s), p. ej. «${sinDepositar[0]!.nombre}»: ${sinDepositar[0]!.motivo}` : 'no hay más objetos sueltos que depositar'}.` };
+  if (fin.carga > objetivo) return { error: `mochila-libre: solo se llegó a ${fin.carga}/${fin.capacidad} (hacían falta ${n} libres): ${sinDepositar.length ? `el Almacén no admite ${sinDepositar.length} objeto(s), p. ej. «${sinDepositar[0]!.nombre}»: ${sinDepositar[0]!.motivo}` : 'no hay más objetos sueltos que depositar'}. Qué hacer: mochila-descartar:${n} tira los objetos sueltos (no necesita sitio en el Almacén).` };
   return { capacidad: fin.capacidad, antes: inicio.carga, despues: fin.carga, hueco: fin.capacidad - fin.carga, depositados, sinDepositar };
 }
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 # lanza.sh <partida>: arranca el driver en segundo plano, espera a que responda (el driver tarda 12-28 s; tope 60 s) y abre
-# la partida con el cajón Reino. En total ~15-35 s: en primer plano puede pasar de 30 s, mejor en segundo plano.
+# la partida; con LANZA_REINO=1, también el cajón Reino (P421: por defecto tapaba la partida al jugar). En total ~15-35 s:
+# en primer plano puede pasar de 30 s, mejor en segundo plano.
 # Si ya hay un driver escuchando en el puerto (DRIVER_PORT, 9333), avisa y sale: usa relanza.sh.
 [ -n "${1:-}" ] || { echo "uso: lanza.sh <idPartida>" >&2; exit 2; }
 case "$1" in *[!A-Za-z0-9_-]*) echo "lanza.sh: id de partida no válido" >&2; exit 2 ;; esac
@@ -20,4 +21,6 @@ for i in $(seq 1 60); do
     exit 1
   fi
 done
-"$DECK/j.sh" "await page.goto('http://127.0.0.1:5173/solitario/partida/$1'); await page.waitForTimeout(3000); await page.getByText('Reino',{exact:true}).first().click(); await page.waitForTimeout(1000); return 'ok'"
+REINO=""
+[ "${LANZA_REINO:-}" = 1 ] && REINO="await page.getByText('Reino',{exact:true}).first().click(); await page.waitForTimeout(1000);"
+"$DECK/j.sh" "await page.goto('http://127.0.0.1:5173/solitario/partida/$1'); await page.waitForTimeout(3000); $REINO return 'ok'"

@@ -364,6 +364,7 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
 
   it('con la jugadora en persona en un bando — resolverTurnoJugador ataca, resolverTurnoAutonomo cubre el resto', async () => {
     const enemigo = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: 'aullador-rojo' } });
+    const desde = new Date();
     // Destreza 1000 (mismo patrón que el test de `activeEffects` más abajo) — garantiza que la
     // jugadora actúe SIEMPRE primero en cada ronda, así el enemigo nunca llega a golpearla dos
     // veces antes de que ella lo remate con el bono de Fuerza.
@@ -432,6 +433,9 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
     // concreto de condición (depende de tiradas reales, sin mockear Math.random en este test).
     const saveFinal = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(['ILESO', 'HERIDO', 'GRAVE', 'CONVALECIENTE', 'MUERTO']).toContain(saveFinal.condicionFisica);
+    // P454: el final del combate queda en el diario, como línea de sistema (salvo si murió: su muerte ya tiene la suya).
+    const cierre = await prisma.logEntry.findMany({ where: { saveId, isSystemMessage: true, createdAt: { gte: desde }, text: { startsWith: 'Fin del combate' } } });
+    if (saveFinal.condicionFisica !== 'MUERTO') expect(cierre.map((e) => e.text)).toEqual([expect.stringMatching(/^Fin del combate: no queda ningún rival en pie/)]);
 
     await prisma.save.update({ where: { id: saveId }, data: { activeEffects: [], condicionFisica: 'ILESO', energia: 100 } });
   }, 30_000);

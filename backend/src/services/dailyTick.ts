@@ -3,7 +3,8 @@ import { registrarSuceso } from './cronista/sucesos.js';
 import { comidaDelReinoDia, datosComidaDelReino, huecoDeMateriales, slugsDeMateriales, suministrosDelReino } from './cronista/economiaReino.js';
 import { sucesosDeClima } from './cronista/clima.js';
 import type { Prisma } from '@prisma/client';
-import { tickKingdom, daysCrossed, hambrunaNueva, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
+import { tickKingdom, daysCrossed, hambrunaNueva, avisoDeReserva, balanceReservasDia, DIAS_PARA_CONSOLIDAR, DIAS_PARA_REBELION, type KingdomStatsBlock } from './kingdomTick.js';
+import { avisarEnReino } from './cronista/subditos.js';
 import { registrarHambruna } from './cronista/hambruna.js';
 import { comidaDe } from './cronista/ganaderia.js';
 import { tickOrdenesProduccion, companionesQueCuraCasaDeCuras, type TrabajadorReino, type OrdenProduccionInput } from './kingdomProduction.js';
@@ -52,9 +53,17 @@ export async function advanceKingdomStatsDay(
       dia = tickKingdom(dia, 1, d, { ...suministros, comidaDia });
     }
     const ticked = { ...dia, trabajadores };
-    await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: ticked });
+    // P381: aviso previo «queda bebida/comida para N días», una vez por racha bajo 7 días. El balance del día
+    // siguiente es el del propio tick (`balanceReservasDia`): agua de pozos/fuente y comida de las tareas.
+    const balance = balanceReservasDia(ticked, { ...suministros, comidaDia: comidaDelReinoDia(datosComida, (ultimoDia + 1) * 1440 + 720, ticked.comida, factor) });
+    const bebidaAviso = avisoDeReserva(ticked.bebida, balance.bebida, kingdomStats.avisoBebidaBajo);
+    const comidaAviso = avisoDeReserva(ticked.comida, balance.comida, kingdomStats.avisoComidaBajo);
+    await tx.kingdomStats.update({ where: { ownerKey: ownerKeyFor({ saveId }) }, data: { ...ticked, avisoBebidaBajo: bebidaAviso.yaAvisado, avisoComidaBajo: comidaAviso.yaAvisado } });
     // CR-12 (12c): 3 días seguidos de hambre → HAMBRUNA en el Libro (la reacción baja la cohesión).
     if (hambrunaNueva(diasHambre, ticked.diasHambre ?? 0, diasCruzados)) await registrarHambruna(tx, saveId, 'REINO_JUGADORA');
+    const diasTxt = (n: number) => (n === 1 ? 'un día' : n === 0 ? 'menos de un día' : `${n} días`);
+    if (bebidaAviso.avisar) await avisarEnReino(tx, saveId, `La bebida del Reino se acaba: quedan reservas para ${diasTxt(bebidaAviso.dias)}. Hay que reponerla antes de que la sed haga daño.`, hasta);
+    if (comidaAviso.avisar) await avisarEnReino(tx, saveId, `La comida del Reino escasea: quedan reservas para ${diasTxt(comidaAviso.dias)}. Hay que reponerla antes de que llegue el hambre.`, hasta);
 
     // Territory.control/population (2026-08-23, Grupo 3 — docs/mecanicas/10-niveles-xp-reino.md § 5.4,
     // nunca implementado hasta ahora) — misma cadencia que el tick de arriba, felicidad
@@ -71,9 +80,11 @@ export async function advanceKingdomStatsDay(
           await tx.territory.updateMany({ where: { id: { in: perdiendoIds } }, data: { control: 'PERDIDO', population: 0 } });
           // P299 — el territorio perdido ya no tiene Choza, Pozo ni camas propias: se abandonan sus edificios
           // y los sin territorio de su región, nunca el Campamento ni el Ayuntamiento. Los del asentamiento
-          // del Ayuntamiento heredan su territoryId (a menudo null): si el Ayuntamiento sigue en pie, los de
-          // su región no caen (la Casa de obras, la Herrería…; si no, la cola de obras se congelaría), ni por
-          // su rebelión ni por la de otra región. El Ayuntamiento es el mismo que la Capital de
+          // del Ayuntamiento heredan su territoryId (a menudo null), y los de su región no caen (la Casa de obras,
+          // la Herrería…; si no, la cola de obras se congelaría) salvo que su territoryId esté entre los que se
+          // pierden en esta rebelión (`aytoCae`): con territoryId null, o uno ya PERDIDO antes, no caen nunca.
+          // P444: si no hay Ayuntamiento en pie, o cae su territorio, caen los de su región, pero él no (ver el
+          // OR de abajo). El Ayuntamiento es el mismo que la Capital de
           // `asentamientosDelReino` (con lugar, el más antiguo); uno DANADO sigue en pie y sigue siendo la Capital.
           const regionesPerdidas = territories.filter((t) => perdiendoIds.includes(t.id) && t.region).map((t) => t.region as string);
           const ayto = await tx.building.findFirst({
@@ -87,7 +98,9 @@ export async function advanceKingdomStatsDay(
             where: {
               saveId, status: 'ACTIVO',
               OR: [
-                { territoryId: { in: perdiendoIds } },
+                // P444 — el Ayuntamiento nunca se abandona (no hay forma de reconstruirlo ni reclamarlo, y sin él
+                // Reino › Edificios bloquea toda obra): el territorio se pierde, la Capital sigue en pie.
+                { territoryId: { in: perdiendoIds }, NOT: { recipeKey: 'ayuntamiento' } },
                 ...(regionesQueCaen.length > 0
                   ? [{ territoryId: null, NOT: { recipeKey: { in: ['campamento', 'ayuntamiento'] } }, location: { region: { in: regionesQueCaen } } }]
                   : []),

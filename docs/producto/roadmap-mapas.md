@@ -115,13 +115,41 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   copia que no casa con su huella no se restaura. Probado con Chromium sin interfaz sobre una copia.
   **Probado por la usuaria en la Deck ✅ 2026-11-10.**
 
+- **MAP-19 · Piezas del mapa pedidas a galivelop-image-generator** [P] (usuario, 2026-11-10): pedido en [`pedido-imagenes-mapa.md`](pedido-imagenes-mapa.md) (texturas de bioma, iconos de relieve y vegetación, fichas de lugares, rosa de los vientos, cartela, marco y capas de `MAP-14`), con la hoja de estilo de Tarkor de GVIG de referencia. 🚧 2026-11-10: pedido escrito; lo lleva el usuario a GVIG. Falta: que lleguen, componer la prueba de estilo (#1-#3) en el editor junto a Azgaar y la nota del usuario; el resto alimenta `MAP-13`. **S** (lado WMF)
 - **MAP-13 · Dibujo propio a la altura de Azgaar** [P] (usuaria, 2026-11-05): costas con trazo, iconos de
   relieve, texturas de bioma y colocación de etiquetas sin solapes, en un estilo propio de Helek. Se compara lado a
   lado con la imagen de Azgaar en las mismas vistas, y **solo con el visto bueno de la usuaria** pasa a ser el fondo
   del juego. Es lo más caro del proyecto: hasta entonces la calidad visual no baja. **L**
-- **MAP-14 · Capas del juego** [P] (usuaria, 2026-11-05): lo que Azgaar no tiene: tormentas magnéticas de las
+- ~~**MAP-14 · Capas del juego**~~ [P] (usuaria, 2026-11-05): lo que Azgaar no tiene: tormentas magnéticas de las
   Llanuras, zonas de peligro, territorio de cada clan y rutas con km y tiempos, como capas editables del visor y
-  exportables al juego. **M**
+  exportables al juego. **M** ✅ 2026-11-10: zonas `tormenta` (nivel 0 refugio … 3 Rok'ithek; solo en las Llanuras,
+  como dice el canon), `peligro` (1-3) y `clan` en `helek.json`, con `canon` y `nota`; lote `zonas` de `editar.py`
+  (crear, cambiar, `mas`/`menos`, borrar), modo Zonas y capas Tormentas, Peligro y Clanes del visor (rayado = sin
+  canon), `consultar.py zonas|ruta`. Rutas con km, km a pie, horas y jornadas (`viaje.json`, `viaje.py`,
+  `/viaje.json`): 5 km/h del canon; rodeo por bioma derivado; jornada, caravana y bote, abajo. Al juego, `frontend/src/data/helekCapas.ts`
+  (aún no lo pinta: con `MAP-13`). **Propuesta sin canon guardada** (decisión del usuario, 2026-11-10;
+  `map-generator/propuestas/map14-zonas.json`): tormenta Rok'ithek en toda la región con la Hondonada del Eco de
+  refugio; peligro en Agujas Imán, Hondonada de noche, Cruce de las Cenizas y todo el Margen; clanes Serhu, Helsig,
+  Goshg y la franja Faerus de Kegi. Probado en Chromium sin interfaz.
+  **Respuestas de Álvaro (2026-11-10), todo aprobado y en canon** (`propuestas/map14-zonas-2.json` y
+  `propuestas/map14-canon.json`; las 25 zonas con `canon: true`):
+  - Tormenta en tres franjas desde El Vientre del Engaño (≤ 30 km nivel 3, 30-70 km 2, más lejos 1; la Hondonada,
+    refugio) con ciclo +1 en invierno, −1 en primavera (entre 0 y 3) en la nota; al juego, `MAP-20`.
+  - Peligro 1-3 por la fauna más alta (≤ 6: 1; 7-10: 2; > 10: 3) en los nodos del grafo de viaje
+    (`13-escala-del-mundo.md` § 2.2ter): Fosa Horadada, Vientre, Laberinto, Filo de las Brasas, Fumarolas Negras,
+    Sabana Alta, Manaderos, Red Profunda Final; Hondonada de noche y Cruce de las Cenizas, 3.
+  - Margen según el lore (`margen-silencioso.md`): este Nabieus 1, oeste Faerus 2, centro (Cruce de las Ausencias) 3,
+    cortes en x 575/600. El Puesto Nabieus pasa al este (650,318) con su sendero (ruta 449) rehecho.
+  - Clanes: Serhu (7 km alrededor de su núcleo), Goshg (16 km alrededor de Silh Makut), Helsig, Kegi, Selva de Hashma
+    (Faerus Feg Tusha), Margen oriental (Nabieus Keseg Sael) y Los Restos de Maktor (conquistable, vacía).
+  - Viaje (`viaje.json`): jornada de **6 h ≈ 30 km** (el lore da 21-37 km por jornada), caravana con múrgoles a
+    3,5 km/h, bote costero de día a 6 km/h (las rutas por mar ya tienen horas) y balsa río abajo a 4 km/h (sin ríos
+    en el mapa aún). Rutas con horas y jornadas de caravana en `consultar.py ruta`, el visor y `helekCapas.ts`.
+  - Sin posición aún: la Proa Gris y el borde norte (Ferike).
+- **MAP-20 · Ciclo de tormentas por estaciones en el juego** [P] (Álvaro, 2026-11-10, de `MAP-14`): `climaFor`
+  (`backend/src/services/worldClock.ts`) es hoy igual todo el año; que el nivel de tormenta de cada zona de
+  `helekCapas.ts` suba 1 en invierno y baje 1 en primavera (entre 0 y 3), con la estación de `estacionFor`. Tras la
+  pausa de pruebas. **S**
 
 - ~~**MAP-16 · El mapa lo gestionan agentes**~~ [P] (usuaria, 2026-11-08): la idea es que la usuaria y Claude generen con
   el mapa todo lo que el juego necesite, y valorar si lo puede llevar un agente local. Cada edición del visor tiene su
@@ -134,7 +162,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   `agente_local.py` corre Ollama con solo esas dos órdenes). De paso: un lugar que no es capital toma la región de su
   celda (`editar.py`). Banco corrido (2026-11-10): Haiku 5/5, 35 s de media; local (`qwen35-9b-32k` en la iGPU, sin razonar, 20 turnos) 3/5, 260 s de media: lugar, costa y trampa bien; la ruta agota los turnos preguntando celda a celda y la frontera guarda 2 celdas en vez de 5-10 sin avisar. Con razonamiento, turnos de ~400 s. `consultar.py` explica las comillas cuando sobran palabras (fallo del local). ✅ 2026-11-10 **Decisión (usuaria):** por ahora el mapa lo llevan Claude y Haiku; el agente local no entra todavía, y se sigue mejorando con `MAP-17`. Resultados, soluciones de Haiku como lotes y registros del local en `map-generator/banco/resultados/2026-11-10/`.
 - ~~**MAP-17 · Mejorar el agente local del mapa con lo que hace Haiku**~~ [P] (usuaria, 2026-11-10): partir de las soluciones de Haiku del banco de `MAP-16` (`resultados/2026-11-10/haiku.json`: sus lotes; y los fallos del local en `local-*.json`) para ir entrenando el modelo local: ejemplos resueltos en la guía o el prompt, órdenes más gruesas donde se pierde (una ruta de A a B por tierra, N celdas de una frontera), que no guarde menos de lo pedido sin avisar y, si hace falta, ajuste fino del modelo. Se mide repitiendo el banco (`banco.py local` y `banco.py tabla`) hasta acercarse a Haiku (5/5). **M** ✅ 2026-11-10: `consultar.py lugares --nombre`, `camino X0 Y0 X1 Y1` (recta o rodeo por tierra, `--mar`; puntos listos para el lote), en `frontera` la marca «agranda N-S/E-O» y `--pasar N` (el lote, primero las celdas que no agrandan la envolvente); `AGENTES.md` con no comprobar celda a celda, no guardar por debajo del mínimo sin decirlo y 5 ejemplos resueltos. Banco local (`qwen35-9b-32k`, iGPU, sin razonar): 3/5 → 4/5 → **5/5**, 174 s de media (Haiku 5/5 en 35 s); la costa sigue lenta (432 s, 8 turnos). Resultados en `map-generator/banco/resultados/2026-11-10-map17/`. Sin ajuste fino del modelo (no ha hecho falta). **Decisión (usuaria, 2026-11-10):** el agente local entra **como opción** para encargos sencillos (lugar, frontera, ruta, costa); Claude y Haiku siguen llevando el mapa. Hacerlo usable fuera del banco, en `MAP-18`.
-- **MAP-18 · El agente local, para encargos de verdad** [P] (usuaria, 2026-11-10, decisión de `MAP-17`): hoy `banco/agente_local.py` solo corre los encargos de `encargos.json` sobre una copia. Que acepte un encargo en texto libre, trabaje sobre una copia del mapa real y devuelva el lote y el informe para que Claude o la usuaria lo guarden con `editar.py` (nunca guarda él en el mapa del juego); y una línea en `AGENTES.md` y el `README` de cuándo usarlo. Se prueba con un encargo nuevo fuera del banco. **S**
+- ~~**MAP-18 · El agente local, para encargos de verdad**~~ [P] (usuaria, 2026-11-10, decisión de `MAP-17`): hoy `banco/agente_local.py` solo corre los encargos de `encargos.json` sobre una copia. Que acepte un encargo en texto libre, trabaje sobre una copia del mapa real y devuelva el lote y el informe para que Claude o la usuaria lo guarden con `editar.py` (nunca guarda él en el mapa del juego); y una línea en `AGENTES.md` y el `README` de cuándo usarlo. Se prueba con un encargo nuevo fuera del banco. **S** ✅ 2026-11-10: `agente_local.py --texto "…"` (o `-`) copia el mapa del juego a `--copia DIR` (o una carpeta temporal), corre el agente y deja `lote.json` (lo que guardó en la copia, juntado y comprobado: aplicado de una vez al original da el mismo mapa; si no cuadra, no hay lote) e `informe.md` (su respuesta y el informe del lote sobre el mapa del juego, solo comprobando); `--forzar` rechazado. Tests en `tests/test_banco.py` (modelo falso). Prueba real fuera del banco: «canteras-del-eje en la Meseta a < 30 km de Ordinum» → bien en 135 s, 10 turnos (celda 4214, a ~6,5 km). El lote **no** se ha guardado en el mapa del juego (dónde van las Canteras lo decide el usuario). Uso en `AGENTES.md` y `README`.
 
 ## Fase M-C · Generar donde aporta
 

@@ -10,6 +10,7 @@
 #
 # Viajes: TRAVEL_SEGUNDOS_PRIMER_TRAMO / _POR_TRAMO_EXTRA / _MAXIMOS (por defecto 5 / 3 / 20).
 # WMF_MONTURA_PRUEBAS=1 (del entorno, solo pruebas): la jugadora cuenta como con montura y sale la lista «Viajar».
+# WMF_HUIDA_PRUEBAS=1 (del entorno, solo pruebas, P443): la moral del bando enemigo falla y el escape sale, para ver «pierde el valor y escapa» tras `escenario.sh preparar … huida-rival`.
 # Registros: logs/backend.log y logs/frontend.log. Narraciones: las del Ollama simulado, que meten
 # trozos del prompt en el texto (no es un fallo del juego; la calidad narrativa se prueba con
 # Ollama real).
@@ -45,11 +46,17 @@ if [ "${1:-}" = "--parar" ] || [ "${1:-}" = "--parar-juego" ]; then
     fuser -k 3001/tcp 5173/tcp > /dev/null 2>&1 || true
     echo "Juego parado (backend :3001, frontend :5173); el driver sigue."
   else
+    rm -f logs/juego-ia.env  # QA-310: un `--parar` entero olvida el perfil de IA
     fuser -k 3001/tcp 5173/tcp "${DRIVER_PORT:-9333}/tcp" > /dev/null 2>&1 || true
     echo "Juego parado (backend :3001, frontend :5173, driver :${DRIVER_PORT:-9333})."
   fi
   exit 0
 fi
+
+# QA-310: se guarda con qué IA corre este arranque; `escenario.sh cargar|avanzar` relanza el juego y lo recupera.
+# shellcheck source=tools/playwright-e2e/perfil-ia.sh
+. tools/playwright-e2e/perfil-ia.sh
+guardar_perfil_ia
 
 if [ "${1:-}" = "--rehacer" ]; then $PSQL -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)"; fi
 nueva=0
