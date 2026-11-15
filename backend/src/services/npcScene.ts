@@ -801,15 +801,25 @@ export async function slugsConPuntoSoloEnOtraZona(params: { saveId: string; curr
 /// P327 (usuaria, 2026-10-26): ¿nombra el texto a alguien por el nombre con que la jugadora lo ve? «Orco desconocido»
 /// casa con «le regalo pan al orco desconocido» (y «la orca desconocida»); además, «el desconocido» / «la desconocida» a
 /// secas, con su género. «Alguien» (sin raza conocida) nunca: sale en cualquier frase.
-export function nombraPorNombreVisible(texto: string, nombreVisible: string): boolean {
+export function nombraPorNombreVisible(texto: string, nombreVisible: string, permiteRazaSuelta = true): boolean {
   const visible = normalizeText(nombreVisible);
   const m = /^(\S+) desconocid([oa])$/.exec(visible);
   if (!m) return false;
   const t = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
   if (t.includes(` ${visible} `)) return true;
   // P448: «saludo al orco» (la raza a secas, con artículo) también lo nombra como lo ve la jugadora.
-  if (new RegExp(` (?:el|al|del|la|a la|de la) ${m[1]} `).test(t)) return true;
+  // Solo si ningún otro NPC de la escena comparte esa raza («ataco al orco enfurecido» no es el oculto).
+  if (permiteRazaSuelta && new RegExp(` (?:el|al|del|la|a la|de la) ${m[1]} `).test(t)) return true;
   return m[2] === 'a' ? / la desconocida /.test(t) : / (?:el|al|del) desconocido /.test(t);
+}
+
+/// P448: la raza suelta («el orco») solo nombra al oculto si ningún otro NPC de la escena la lleva (en su raza o en su nombre).
+export function otroNpcComparteRaza(
+  n: { id: string; raza: string | null; genero: string | null },
+  candidatos: { id: string; raza: string | null; name?: string }[],
+): boolean {
+  const raza = normalizeText(nombreOcultoPorRaza(n.raza, n.genero)).split(' ')[0];
+  return candidatos.some((o) => o.id !== n.id && ((n.raza !== null && o.raza === n.raza) || normalizeText(o.name ?? '').split(' ').includes(raza)));
 }
 
 /// P327 (usuaria, 2026-10-26): la jugadora no sabe el nombre de un PRINCIPAL sin descubrir; lo nombra como lo ve («el
@@ -823,7 +833,7 @@ async function ocultoNombradoPorSuVisible(params: {
   action: string;
   saveId: string;
   currentLocationId: string | null;
-  candidatos: { id: string; slug: string; kind: NpcKind; raza: string | null; genero: string | null }[];
+  candidatos: { id: string; slug: string; kind: NpcKind; raza: string | null; genero: string | null; name?: string }[];
   estaEnCombate: (npc: { id: string; slug: string }) => boolean;
   slugsDelModoDinamico: string[];
 }): Promise<string | null> {
@@ -846,7 +856,8 @@ async function ocultoNombradoPorSuVisible(params: {
   const enContacto = [...new Map([...enCombate, ...enModo, ...enZona].map((n) => [n.id, n])).values()];
   if (enContacto.length === 0) return null;
   const conocidos = await slugsConocidos(prisma, params.saveId, enContacto.map((n) => n.slug));
-  const casa = (n: (typeof principales)[number]) => !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero));
+  const casa = (n: (typeof principales)[number]) =>
+    !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero), !otroNpcComparteRaza(n, params.candidatos));
   for (const grupo of [enCombate, enModo, enZona]) {
     const nombrados = grupo.filter(casa);
     if (nombrados.length === 1) return nombrados[0].id;
@@ -1006,8 +1017,8 @@ function isNegatedMatch(normalized: string, matchIndex: number): boolean {
 /// Verbo de ataque directo (roadmap 2026-07-19: "roadmap 2" de calibración de combate, y
 /// reutilizado por la clasificación tabulada en turn.ts) — mismo regex que la red de seguridad de
 /// `combateIniciado` en turnResolution.ts, vive aquí para no duplicarlo entre los dos módulos.
-const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer|\btajos?\b|mandoble|estocada|cuchillada|\bembist|\bembest|\bembisto\b|\bdescargo\b.*\bcontra\b/;
-// P471: «tajo»/«tajos» solo como palabra entera (nunca «atajo», «tajada»); «descargo … contra» pide ambos.
+const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer|\btajos?\b|mandoble|estocada|cuchillada|\bembist|\bembest|\bdescargo (?:\S+ ){0,3}?(?:golpe|golpes|hacha|espada|arma|hachazo|mandoble|tajo|ataque|furia|ira|rabia|fuerza)\b.*\bcontra\b/;
+// P471: «tajo»/«tajos» solo como palabra entera (nunca «atajo», «tajada»); «descargo <golpe/arma> contra» pide ambos (no «descargo el fardo … contra la roca»).
 
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;

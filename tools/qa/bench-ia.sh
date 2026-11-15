@@ -57,7 +57,8 @@ if [ "$abrir" = 1 ]; then
   curl -sf "localhost:3001/saves/$SAVE" > /dev/null
   t0=$(date +%s)
   # Espera la segunda llamada `calentar` del registro (la primera es la de server.ts), hasta 4 min.
-  until [ "$(grep -c '"app.task":"calentar"' "$reg" 2>/dev/null || echo 0)" -ge 2 ] || [ $(( $(date +%s) - t0 )) -gt 240 ]; do sleep 2; done
+  # `grep -c` ya imprime 0 sin coincidencias (y sale con 1): con `|| echo 0` salía «0\n0». Vacío si falta el archivo.
+  until [ "$(grep -c '"app.task":"calentar"' "$reg" 2>/dev/null || true)" != "" ] && [ "$(grep -c '"app.task":"calentar"' "$reg" 2>/dev/null || true)" -ge 2 ] || [ $(( $(date +%s) - t0 )) -gt 240 ]; do sleep 2; done
   echo "calentamiento de la partida: $(( $(date +%s) - t0 )) s ($(grep -c '"app.task":"calentar"' "$reg") llamadas calentar)"
 fi
 

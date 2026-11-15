@@ -1012,17 +1012,20 @@ export function repiteTodasLasFrases(narracion: string, anterior?: string): bool
   return !!anterior && todas.length > 0 && todas.every(repiteTramoDe(anterior));
 }
 
-/// P464: la narración copia un tramo de 6+ palabras de un texto fijo ya narrado (la escena de apertura/presentación).
+/// P464: la narración copia un tramo de 10+ palabras de un texto fijo ya narrado (la escena de apertura/presentación).
+/// Umbral más alto que el de turno a turno: con 6 se rechazaba una frase corriente que compartía una cola con el texto
+/// fijo («corre sin dejar de mirar hacia atrás»).
+const TRAMO_ESCENA_FIJA = 10;
 export function repiteEscenaFija(narracion: string, fijas?: string[]): boolean {
-  return !!fijas && fijas.some((f) => frases(narracion).some(repiteTramoDe(f)));
+  return !!fijas && fijas.some((f) => frases(narracion).some(repiteTramoDe(f, TRAMO_ESCENA_FIJA)));
 }
 
-function repiteTramoDe(anterior: string): (frase: string) => boolean {
+function repiteTramoDe(anterior: string, tramo = TRAMO_REPETIDO): (frase: string) => boolean {
   const previas = palabras(anterior);
-  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - TRAMO_REPETIDO + 1)).map((_, i) => previas.slice(i, i + TRAMO_REPETIDO).join(' ')));
+  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - tramo + 1)).map((_, i) => previas.slice(i, i + tramo).join(' ')));
   return (f) => {
     const p = palabras(f);
-    return p.some((_, i) => i + TRAMO_REPETIDO <= p.length && tramos.has(p.slice(i, i + TRAMO_REPETIDO).join(' ')));
+    return p.some((_, i) => i + tramo <= p.length && tramos.has(p.slice(i, i + tramo).join(' ')));
   };
 }
 
@@ -1112,12 +1115,14 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
 /// único valor posible (`enum`), así el modelo lo escribe tal cual antes de narrar. `null` sin intercambio resuelto.
 export const CLAVE_RESULTADO_GOLPE = 'resultadoDelGolpe';
 export function resultadoDelGolpe(
-  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRivalNarrado' | 'combatBothMissed' | 'jugadorConectaEsteTurno' | 'jugadorRecibeGolpeEsteTurno'>,
+  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRivalNarrado' | 'combatBothMissed' | 'playerActedAsDefenderThisExchange' | 'jugadorConectaEsteTurno' | 'jugadorRecibeGolpeEsteTurno'>,
 ): string | null {
   const jugador = ctx.characterName;
   const rival = ctx.combatRivalNarrado;
   if (!ctx.enCombate || !jugador || !rival) return null;
   const Rival = rival[0]!.toUpperCase() + rival.slice(1);
+  // Si el jugador solo se defendió, no «golpea y falla»: el rival no le alcanza.
+  if (ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange) return `${Rival} no logra alcanzar a ${jugador}, que se cubre.`;
   if (ctx.combatBothMissed) return `Nadie acierta: ni ${jugador} ni ${rival} conectan su golpe.`;
   if (ctx.jugadorConectaEsteTurno && ctx.jugadorRecibeGolpeEsteTurno) return `Los dos aciertan: ${jugador} golpea a ${rival} y ${rival} golpea a ${jugador}.`;
   if (ctx.jugadorConectaEsteTurno) return `${jugador} acierta y golpea a ${rival}; ${rival} no le acierta.`;
@@ -2557,7 +2562,7 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // su brazo de cuchillo" con `resultado: 'parada_en_seco'` (fallo total del jugador) — "derriba" sin
 // más describe un golpe conectado, vocabulario nuevo sin cubrir hasta ahora.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|(?<!sin\s)(?<!sin\s\w+\s)herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|(?<!sin\s)(?<!sin\s\w+\s)(?<!ni\suna\s)(?<!ninguna\s)(?<!no\sle\s(?:causa|hace|provoca|produce)\s(?:una\s)?)herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
@@ -3025,12 +3030,23 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 // verbo pegado DIRECTAMENTE a hacia/sobre/contra ("se lanza hacia") — "lanza un hachazo brutal
 // contra Gorhorn" (verbo + objeto + preposición) se colaba entero.
 const RESURRECTION_LEAK_REGEX =
-  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|(?<!no\s)se (mueve|tensa|yergue)|tensos?\s+(los\s+)?musculos|gesto brusco|al borde de la escena|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
+  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|tensos?\s+(los\s+)?musculos|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
 
 export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;
   const normalizedNames = possiblyResurrectedNpcNames.map(normalizeText);
-  return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames);
+  return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames) || haySujetoMuertoQueSeMueve(narration, normalizedNames);
+}
+
+/// «El Orco enfurecido se tensa»: el muerto o convaleciente es el SUJETO del verbo (su nombre, con pocas palabras en
+/// medio, justo antes). «Gorhorn se mueve con cautela hacia el cuerpo del Orco» o «apenas se mueve» no cuentan.
+function haySujetoMuertoQueSeMueve(narration: string, normalizedNames: string[]): boolean {
+  const escapar = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return normalizedNames.some((nombre) => {
+    if (!nombre) return false;
+    const re = new RegExp(`\\b${escapar(nombre)}(?:\\s+\\w+){0,4}?\\s+(?<!\\bno\\s)(?<!\\bapenas\\s)(?<!\\bnunca\\s)(?:se\\s+(?:mueve|tensa|yergue)|(?:hace|con)\\s+(?:un\\s+)?gesto\\s+brusco)\\b|\\b${escapar(nombre)}(?:\\s+\\w+){0,6}\\s+al\\s+borde\\s+de\\s+la\\s+escena\\b`);
+    return narration.split(SENTENCE_SPLIT_REGEX).some((frase) => re.test(normalizeText(frase)));
+  });
 }
 
 /// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25)

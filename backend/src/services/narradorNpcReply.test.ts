@@ -341,6 +341,7 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
   it('el valor sale de la mecánica: nadie, el jugador, el rival o los dos', async () => {
     const { resultadoDelGolpe } = await import('./narrador.js');
     expect(resultadoDelGolpe({ ...base, combatBothMissed: true })).toBe('Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.');
+    expect(resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true })).toBe('Orco enfurecido no logra alcanzar a Gorhorn, que se cubre.');
     expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true })).toBe('Gorhorn acierta y golpea a Orco enfurecido; Orco enfurecido no le acierta.');
     expect(resultadoDelGolpe({ ...base, jugadorRecibeGolpeEsteTurno: true })).toBe('Orco enfurecido acierta y golpea a Gorhorn; Gorhorn no le acierta.');
     expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true, jugadorRecibeGolpeEsteTurno: true })).toMatch(/^Los dos aciertan/);

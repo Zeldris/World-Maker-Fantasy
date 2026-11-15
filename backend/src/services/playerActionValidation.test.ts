@@ -689,6 +689,9 @@ describe('giftRecipientIndex (P441)', () => {
   it('con el nombre completo sigue funcionando', () => {
     expect(giftRecipientIndex('Le doy el Tótem Maktor a Tirag Susig', npcs)).toBe(1);
   });
+  it('P468: «para Ulkha» nombra al destinatario por su nombre de pila', () => {
+    expect(giftRecipientIndex('Le doy la piel para Ulkha', [['Tótem de Guerra'], ['Ulkha Ketg']])).toBe(1);
+  });
   it('sin destinatario nombrado devuelve -1', () => {
     expect(giftRecipientIndex('Le doy el Tótem Maktor', npcs)).toBe(-1);
   });

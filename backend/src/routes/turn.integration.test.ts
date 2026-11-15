@@ -10052,4 +10052,20 @@ describe('P471: el combate 1v1 sobrevive a un turno sin intercambio', () => {
     const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
     expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
   }, 30_000);
+
+  it('con posición en la cuadrícula y el rival sin ZonePoint en la casilla del jugador, sigue pendiente', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 220, zonaPosY: 220, pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'] } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockImplementationOnce(async () => ({ narration: 'El orco gruñe.', newFacts: [] }));
+    const app = await buildApp();
+    const action = 'Observo al orco y recupero el aliento.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+    expect(res.statusCode).toBe(200);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
 });

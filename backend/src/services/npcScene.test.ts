@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, otroNpcComparteRaza, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -322,6 +322,7 @@ describe('detectsAttackIntent', () => {
     expect(detectsAttackIntent('Intento embestir al orco')).toBe(true)
     expect(detectsAttackIntent('Descargo toda mi furia contra el orco')).toBe(true)
     expect(detectsAttackIntent('Tomo un atajo por el bosque')).toBe(false)
+    expect(detectsAttackIntent('Descargo el fardo y me apoyo contra la roca')).toBe(false)
     expect(detectsAttackIntent('Corto una tajada de pan')).toBe(false)
     expect(detectsAttackIntent('No lanzo ningún tajo')).toBe(false)
   });
@@ -1380,5 +1381,14 @@ describe('P447/P448', () => {
   it('P448: «el orco» a secas nombra al orco desconocido', () => {
     expect(nombraPorNombreVisible('Saludo al orco con la palma abierta', 'orco desconocido')).toBe(true);
     expect(nombraPorNombreVisible('Saludo a la orca con la palma abierta', 'orco desconocido')).toBe(false);
+  });
+  it('P448: la raza suelta no vale si otro NPC de la escena comparte raza («ataco al orco enfurecido»)', () => {
+    expect(nombraPorNombreVisible('Ataco al orco enfurecido', 'orco desconocido', false)).toBe(false);
+    expect(nombraPorNombreVisible('Registro el cadáver del orco', 'orco desconocido', false)).toBe(false);
+    expect(nombraPorNombreVisible('Saludo al orco desconocido', 'orco desconocido', false)).toBe(true);
+    const oculto = { id: 'a', raza: 'orcos', genero: 'M' };
+    expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'b', raza: null, name: 'Orco enfurecido' }])).toBe(true);
+    expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'd', raza: 'orcos' }])).toBe(true);
+    expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'c', raza: 'humanos', name: 'Gistera Koh' }])).toBe(false);
   });
 });

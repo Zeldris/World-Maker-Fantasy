@@ -764,9 +764,17 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
 /// una palabra suelta (≥4 letras) del nombre, p. ej. «Tirag» con «Tirag Susig». Sin cláusula «a Y» o sin acierto, -1.
 export function giftRecipientIndex(action: string, npcNames: string[][]): number {
   const normalized = ` ${normalizeText(action)} `;
-  const partes = normalized.split(/\s(?:a|al)\s/);
-  if (partes.length < 2) return -1;
-  const destino = ` ${partes[partes.length - 1]} `;
+  // P468: «para Ulkha» también nombra al destinatario («le doy la piel para Ulkha»). Se prueba la cláusula más a la
+  // derecha primero; la parte previa al primer «a/al/para» es el objeto y nunca se mira.
+  const partes = normalized.split(/\s(?:a|al|para)\s/);
+  for (let i = partes.length - 1; i >= 1; i--) {
+    const idx = indiceDestinatarioEn(` ${partes[i]} `, npcNames);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function indiceDestinatarioEn(destino: string, npcNames: string[][]): number {
   const completo = npcNames.findIndex((ns) => ns.some((n) => normalizeText(n).length > 0 && destino.includes(normalizeText(n))));
   if (completo >= 0) return completo;
   // Por palabras, sin RegExp: los nombres traen puntuación («(la cazadora)», «Dr.») que rompería un patrón.

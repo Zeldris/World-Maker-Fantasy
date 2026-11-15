@@ -2158,6 +2158,11 @@ async function resolveCombatSlugsAndPersist(params: {
   narration: NarrationResult;
   npcsInScene: NpcInScene[];
   npcsInSceneVivos: NpcInScene[];
+  /// P471: los vivos de la zona ANTES de quitar a los agresivos sin punto en la casilla del jugador
+  /// (`npcsInSceneVivosParaCombate`); con ellos se conserva al rival pendiente que está en otra casilla.
+  npcsInSceneVivosZona?: NpcInScene[];
+  /// Slugs pendientes al empezar el turno, ya leídos por el caller (turn.ts); si faltan, se lee la base.
+  pendingCombatNpcSlugs?: string[];
   factionsStatus: Record<string, number>;
   condicionFisicaJugador: CondicionFisica;
   explicitTarget: NpcInScene | null;
@@ -2455,13 +2460,14 @@ async function resolveCombatSlugsAndPersist(params: {
   // `guardarSlugsDeCombate` vaciaba `pendingCombatNpcSlugs`: el rival se perdía. Los que ya
   // estaban pendientes, siguen vivos en escena y son AGRESIVO/ENEMIGO se mantienen. `justDied`,
   // `npcHuidoSlug` y los MUERTO siguen fuera (los filtra `justDied` y `combatSlugsToPersist`).
-  const pendientesRaw = enCombate
-    ? (await prisma.save.findUnique({ where: { id: saveId }, select: { pendingCombatNpcSlugs: true } }))?.pendingCombatNpcSlugs
-    : null;
+  const pendientesRaw = !enCombate
+    ? null
+    : params.pendingCombatNpcSlugs ?? (await prisma.save.findUnique({ where: { id: saveId }, select: { pendingCombatNpcSlugs: true } }))?.pendingCombatNpcSlugs;
   const pendientesDelSave = Array.isArray(pendientesRaw) ? pendientesRaw.filter((x): x is string => typeof x === 'string') : [];
+  const vivosDeLaZona = params.npcsInSceneVivosZona ?? npcsInSceneVivos;
   const combatSlugsMantenidos = pendientesDelSave.filter((slug) =>
     slug !== params.npcHuidoSlug &&
-    npcsInSceneVivos.some((n) => {
+    vivosDeLaZona.some((n) => {
       if (n.slug !== slug) return false;
       const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
       return t === 'AGRESIVO' || t === 'ENEMIGO';
@@ -4570,7 +4576,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     jugadorRecibeGolpeEsteTurno,
     // QA-340: con los dos de arriba, el campo `resultadoDelGolpe` del esquema del narrador.
     jugadorConectaEsteTurno: exchangeHappened && npcAttackHits,
-    ...(exchangeHappened && npcAttackTarget ? { combatRivalNarrado: nombreNarrado(npcAttackTarget) } : {}),
+    ...(exchangeHappened && npcAttackTarget ? { combatRivalNarrado: npcAttackTarget.nombreVisible ? nombreNarrado(npcAttackTarget) : conDefinido(npcAttackTarget.name, npcAttackTarget.articulo) } : {}),
     combatNotYetResolved,
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,
@@ -7121,6 +7127,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         narration,
         npcsInScene,
         npcsInSceneVivos: npcsInSceneVivosParaCombate,
+        npcsInSceneVivosZona: npcsInSceneVivos,
+        ...(params.pendingCombatNpcSlugs ? { pendingCombatNpcSlugs: params.pendingCombatNpcSlugs } : {}),
         factionsStatus,
         condicionFisicaJugador: params.condicionFisica,
         explicitTarget,

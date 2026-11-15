@@ -907,6 +907,10 @@ describe('hasFalseCombatAttacker', () => {
   it('P473: "sin herida" no cuenta como golpe que conecta', () => {
     expect(hasFalseCombatHit('El orco ataca y Gorhorn lo esquiva, sin herida alguna.', true)).toBe(false);
     expect(hasFalseCombatHit('El orco ataca y deja una herida en Gorhorn.', true)).toBe(true);
+    expect(hasFalseCombatHit('El golpe no le causa herida alguna a Gorhorn.', true)).toBe(false);
+    expect(hasFalseCombatHit('El golpe no le hace una herida.', true)).toBe(false);
+    expect(hasFalseCombatHit('El orco ataca, ni una herida en Gorhorn.', true)).toBe(false);
+    expect(hasFalseCombatHit('Gorhorn queda sin ninguna herida.', true)).toBe(false);
   });
 
   it('no dispara sin characterName', () => {
@@ -1141,6 +1145,12 @@ describe('hasResurrectedDeadNpc', () => {
     expect(hasResurrectedDeadNpc('El Orco enfurecido, al borde de la escena, tensos los músculos, observa.', ['Orco enfurecido'])).toBe(true);
     expect(hasResurrectedDeadNpc('El Orco enfurecido rechaza la ofrenda con un gesto brusco.', ['Orco enfurecido'])).toBe(true);
     expect(hasResurrectedDeadNpc('El Orco enfurecido no se mueve del suelo.', ['Orco enfurecido'])).toBe(false);
+  });
+
+  it('QA-339: «se mueve» solo cuenta con el muerto de sujeto; «apenas/no se mueve» y otro sujeto no', () => {
+    expect(hasResurrectedDeadNpc('Gorhorn se mueve con cautela hacia el cuerpo del Orco enfurecido.', ['Orco enfurecido'])).toBe(false);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido apenas se mueve.', ['Orco enfurecido'])).toBe(false);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido se yergue de pronto.', ['Orco enfurecido'])).toBe(true);
   });
 
   it('bug real jugando en vivo (2026-08-01, "el orco que maté volvió a aparecer"): detecta un NPC muerto narrado como si siguiera activo', () => {
@@ -2212,5 +2222,7 @@ describe('repiteEscenaFija (P464)', () => {
     expect(repiteEscenaFija('Gorhorn pregunta. Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo.', [apertura])).toBe(true);
     expect(repiteEscenaFija('Gorhorn pregunta por el Clan Serhu y Gistera mira las rocas.', [apertura])).toBe(false);
     expect(repiteEscenaFija('Cualquier cosa', undefined)).toBe(false);
+    // QA-339: una cola de 6 palabras compartida con el texto fijo es una frase corriente, no un repaso de la escena.
+    expect(repiteEscenaFija('La orca corre sin dejar de mirar hacia atrás.', [apertura])).toBe(false);
   });
 });
