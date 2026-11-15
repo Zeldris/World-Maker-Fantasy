@@ -334,3 +334,32 @@ describe('empezarPorElJugador (QA-289, ronda 2: P412)', () => {
     expect(empezarPorElJugador('Gorhorn le tiende el odre. Ulkha Ketg sonríe.', 'Ulkha Ketg', 'Gorhorn')).toBe('Gorhorn le tiende el odre. Ulkha Ketg sonríe.');
   });
 });
+
+describe('resultado del golpe obligatorio en combate (QA-340)', () => {
+  const base = { worldFacts: [], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Ataco con el hacha', enCombate: true, combatRealTargetName: 'Orco enfurecido' };
+
+  it('el valor sale de la mecánica: nadie, el jugador, el rival o los dos', async () => {
+    const { resultadoDelGolpe } = await import('./narrador.js');
+    expect(resultadoDelGolpe({ ...base, combatBothMissed: true })).toBe('Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.');
+    expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true })).toBe('Gorhorn acierta y golpea a Orco enfurecido; Orco enfurecido no le acierta.');
+    expect(resultadoDelGolpe({ ...base, jugadorRecibeGolpeEsteTurno: true })).toBe('Orco enfurecido acierta y golpea a Gorhorn; Gorhorn no le acierta.');
+    expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true, jugadorRecibeGolpeEsteTurno: true })).toMatch(/^Los dos aciertan/);
+    // Sin intercambio resuelto, fuera de combate o sin rival, no hay campo.
+    expect(resultadoDelGolpe({ ...base })).toBeNull();
+    expect(resultadoDelGolpe({ ...base, enCombate: false, combatBothMissed: true })).toBeNull();
+    expect(resultadoDelGolpe({ ...base, combatRealTargetName: undefined, combatBothMissed: true })).toBeNull();
+  });
+
+  it('narrateAction lo pide primero, obligatorio y con un único valor, y no lo devuelve', async () => {
+    const { narrateAction, CLAVE_RESULTADO_GOLPE } = await import('./narrador.js');
+    const valor = 'Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.';
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ [CLAVE_RESULTADO_GOLPE]: valor, narration: 'Gorhorn lanza el hacha y el Orco enfurecido la esquiva.', newFacts: [] }) });
+    const res = await narrateAction({ ...base, combatBothMissed: true } as Parameters<typeof narrateAction>[0]);
+    expect(CLAVE_RESULTADO_GOLPE in res).toBe(false);
+    const { format } = ollamaGenerate.mock.calls[0]![0] as { format: { properties: Record<string, { enum?: string[] }>; required: string[] } };
+    expect(Object.keys(format.properties)[0]).toBe(CLAVE_RESULTADO_GOLPE);
+    expect(format.properties[CLAVE_RESULTADO_GOLPE]!.enum).toEqual([valor]);
+    expect(format.required[0]).toBe(CLAVE_RESULTADO_GOLPE);
+  });
+});

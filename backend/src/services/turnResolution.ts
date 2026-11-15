@@ -4549,6 +4549,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcFallsConvalecienteThisTurn,
     combatNoRealDeathThisTurn,
     jugadorRecibeGolpeEsteTurno,
+    // QA-340: con los dos de arriba, el campo `resultadoDelGolpe` del esquema del narrador.
+    jugadorConectaEsteTurno: exchangeHappened && npcAttackHits,
     combatNotYetResolved,
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,

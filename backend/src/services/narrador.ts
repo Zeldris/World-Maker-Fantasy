@@ -250,6 +250,9 @@ interface TurnContext {
   /// TAMBIÉN pasó algo real del otro lado). Mismo criterio que `npcFallsUnconsciousThisTurn`: un
   /// hecho mecánico ya resuelto que la narración tiene que reflejar, no una opción.
   jugadorRecibeGolpeEsteTurno?: boolean;
+  /// QA-340: true cuando en este intercambio el golpe del jugador conecta con el rival (`npcAttackHits`). Con
+  /// `jugadorRecibeGolpeEsteTurno` y `combatBothMissed` decide el valor de `resultadoDelGolpe`.
+  jugadorConectaEsteTurno?: boolean;
   /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
   /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
   /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
@@ -1093,10 +1096,28 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
   return `${characterName} ${limpia[0]!.toLowerCase()}${limpia.slice(1)}. ${narracion}`.trim();
 }
 
+/// QA-340 (`/gw-opt-ai`, ronda local 2): la mitad de los rechazos en combate eran un fallo narrado como golpe (×4) o un
+/// golpe invertido (×2). Como `P412`, el esquema pide antes de `narration` un campo con el resultado ya decidido; aquí con un
+/// único valor posible (`enum`), así el modelo lo escribe tal cual antes de narrar. `null` sin intercambio resuelto.
+export const CLAVE_RESULTADO_GOLPE = 'resultadoDelGolpe';
+export function resultadoDelGolpe(
+  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRealTargetName' | 'combatBothMissed' | 'jugadorConectaEsteTurno' | 'jugadorRecibeGolpeEsteTurno'>,
+): string | null {
+  const jugador = ctx.characterName;
+  const rival = ctx.combatRealTargetName;
+  if (!ctx.enCombate || !jugador || !rival) return null;
+  if (ctx.combatBothMissed) return `Nadie acierta: ni ${jugador} ni ${rival} conectan su golpe.`;
+  if (ctx.jugadorConectaEsteTurno && ctx.jugadorRecibeGolpeEsteTurno) return `Los dos aciertan: ${jugador} golpea a ${rival} y ${rival} golpea a ${jugador}.`;
+  if (ctx.jugadorConectaEsteTurno) return `${jugador} acierta y golpea a ${rival}; ${rival} no le acierta.`;
+  if (ctx.jugadorRecibeGolpeEsteTurno) return `${rival} acierta y golpea a ${jugador}; ${jugador} no le acierta.`;
+  return null;
+}
+
 /// Posproceso del camino bueno (frases repetidas, campo `loQueHace<Nombre>` y su acción delante). También se aplica al
 /// último resultado cuando todos los intentos se rechazan por motivos distintos (QA-289): sin él quedaba el campo crudo.
 export function posprocesarNarracion(parsed: NarrationResult, ctx: TurnContext): NarrationResult {
   parsed.narration = quitarFrasesRepetidas(parsed.narration, ctx.lastNarrationText);
+  delete (parsed as unknown as Record<string, unknown>)[CLAVE_RESULTADO_GOLPE];
   if (ctx.characterName && !ctx.enCombate) {
     const clave = claveAccionDelJugador(ctx.characterName);
     const accion = (parsed as unknown as Record<string, unknown>)[clave];
@@ -1638,9 +1659,12 @@ ACCIÓN DEL JUGADOR:
 ${focoBlock}
 Responde solo con el JSON pedido, nada más.`;
 
+  // QA-340: el resultado del golpe, ya decidido, va primero y es obligatorio (ver `resultadoDelGolpe`).
+  const golpe = resultadoDelGolpe(ctx);
   const format = {
     type: 'object',
     properties: {
+      ...(golpe ? { [CLAVE_RESULTADO_GOLPE]: { type: 'string', enum: [golpe] } } : {}),
       ...(claveAccion ? { [claveAccion]: { type: 'string', maxLength: 160 } } : {}),
       narration: { type: 'string' },
       // QA-289: como mucho 3 hechos y cortos; más era repetir la narración en otra lista (y tiempo de escritura).
@@ -1721,7 +1745,7 @@ Responde solo con el JSON pedido, nada más.`;
             },
     },
     // P412 (ronda 5c): sin estar en `required`, la gramática de Ollama dejaba saltarse el campo y llegaba vacío 3 de 3.
-    required: [...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
+    required: [...(golpe ? [CLAVE_RESULTADO_GOLPE] : []), ...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
   };
 
   return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, prefijoEstable };
