@@ -253,6 +253,9 @@ interface TurnContext {
   /// QA-340: true cuando en este intercambio el golpe del jugador conecta con el rival (`npcAttackHits`). Con
   /// `jugadorRecibeGolpeEsteTurno` y `combatBothMissed` decide el valor de `resultadoDelGolpe`.
   jugadorConectaEsteTurno?: boolean;
+  /// QA-340: el rival del intercambio como se le narra (`nombreNarrado`: «el orco desconocido» si Gorhorn aún no lo
+  /// conoce). En la Deck, con el nombre real en `resultadoDelGolpe`, la narración pasó a decir «Orco enfurecido».
+  combatRivalNarrado?: string;
   /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
   /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
   /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
@@ -1101,15 +1104,16 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
 /// único valor posible (`enum`), así el modelo lo escribe tal cual antes de narrar. `null` sin intercambio resuelto.
 export const CLAVE_RESULTADO_GOLPE = 'resultadoDelGolpe';
 export function resultadoDelGolpe(
-  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRealTargetName' | 'combatBothMissed' | 'jugadorConectaEsteTurno' | 'jugadorRecibeGolpeEsteTurno'>,
+  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRivalNarrado' | 'combatBothMissed' | 'jugadorConectaEsteTurno' | 'jugadorRecibeGolpeEsteTurno'>,
 ): string | null {
   const jugador = ctx.characterName;
-  const rival = ctx.combatRealTargetName;
+  const rival = ctx.combatRivalNarrado;
   if (!ctx.enCombate || !jugador || !rival) return null;
+  const Rival = rival[0]!.toUpperCase() + rival.slice(1);
   if (ctx.combatBothMissed) return `Nadie acierta: ni ${jugador} ni ${rival} conectan su golpe.`;
   if (ctx.jugadorConectaEsteTurno && ctx.jugadorRecibeGolpeEsteTurno) return `Los dos aciertan: ${jugador} golpea a ${rival} y ${rival} golpea a ${jugador}.`;
   if (ctx.jugadorConectaEsteTurno) return `${jugador} acierta y golpea a ${rival}; ${rival} no le acierta.`;
-  if (ctx.jugadorRecibeGolpeEsteTurno) return `${rival} acierta y golpea a ${jugador}; ${jugador} no le acierta.`;
+  if (ctx.jugadorRecibeGolpeEsteTurno) return `${Rival} acierta y golpea a ${jugador}; ${jugador} no le acierta.`;
   return null;
 }
 

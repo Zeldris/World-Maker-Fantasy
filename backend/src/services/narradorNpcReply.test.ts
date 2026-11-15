@@ -336,7 +336,7 @@ describe('empezarPorElJugador (QA-289, ronda 2: P412)', () => {
 });
 
 describe('resultado del golpe obligatorio en combate (QA-340)', () => {
-  const base = { worldFacts: [], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Ataco con el hacha', enCombate: true, combatRealTargetName: 'Orco enfurecido' };
+  const base = { worldFacts: [], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Ataco con el hacha', enCombate: true, combatRivalNarrado: 'Orco enfurecido' };
 
   it('el valor sale de la mecánica: nadie, el jugador, el rival o los dos', async () => {
     const { resultadoDelGolpe } = await import('./narrador.js');
@@ -347,7 +347,11 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
     // Sin intercambio resuelto, fuera de combate o sin rival, no hay campo.
     expect(resultadoDelGolpe({ ...base })).toBeNull();
     expect(resultadoDelGolpe({ ...base, enCombate: false, combatBothMissed: true })).toBeNull();
-    expect(resultadoDelGolpe({ ...base, combatRealTargetName: undefined, combatBothMissed: true })).toBeNull();
+    expect(resultadoDelGolpe({ ...base, combatRivalNarrado: undefined, combatBothMissed: true })).toBeNull();
+    // En la Deck, con el nombre real, la narración llamó «Orco enfurecido» al rival sin descubrir: va el narrado.
+    expect(resultadoDelGolpe({ ...base, combatRivalNarrado: 'el orco desconocido', jugadorRecibeGolpeEsteTurno: true })).toBe(
+      'El orco desconocido acierta y golpea a Gorhorn; Gorhorn no le acierta.',
+    );
   });
 
   it('narrateAction lo pide primero, obligatorio y con un único valor, y no lo devuelve', async () => {
