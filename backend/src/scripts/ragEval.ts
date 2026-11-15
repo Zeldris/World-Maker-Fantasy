@@ -38,6 +38,21 @@ export interface ResultadoCaso {
   devueltos: TrozoDevuelto[];
   /// Texto exacto que se consultó (pregunta, y ` — <región>` si el caso la trae).
   consulta: string;
+  /// Solo con `--narrar` (`QA-359`).
+  narracion?: NarracionCaso;
+}
+
+/// Lo que añade `rag-eval --narrar` a cada caso (`QA-359`).
+export interface NarracionCaso {
+  /// Fragmentos que entraron en el prompt, en su orden y ya recortados por el tope de caracteres.
+  lore: { titulo: string; texto: string }[];
+  poco_anclado: boolean;
+  texto: string;
+  /// false si la respuesta no era el JSON pedido: `texto` es entonces la respuesta cruda.
+  json_valido: boolean;
+  modelo: string;
+  digest: string | null;
+  ms: number;
 }
 
 const norm = (s: string) => s.trim().toLowerCase();
@@ -148,6 +163,17 @@ export interface ConfigCorrida {
   indice?: 'vivo' | 'congelado';
   /// `sha256:<hex>` del archivo de la caché con `--sin-red`; null con la base.
   cache_hash?: string | null;
+  /// Solo con `--narrar` (`QA-359`).
+  narrador?: ConfigNarrador;
+}
+
+/// Con qué se generaron las narraciones de `--narrar` (`QA-359`).
+export interface ConfigNarrador {
+  modelo: string;
+  digest: string | null;
+  temperatura: number;
+  semilla: number;
+  max_lore_chars: number;
 }
 
 export const FORMA_CONSULTA = '{pregunta} [— {region}]';
@@ -176,6 +202,7 @@ export function salidaJson(config: ConfigCorrida, indiceHash: string | null, res
       devueltos: r.devueltos.map((d) => ({ titulo: d.title, distancia: d.distance })),
       puesto: puestoDelPrimerEsperado(r.devueltos.map((d) => d.title), r.caso.esperados),
       pasa: r.puesto !== null && r.puesto <= k,
+      ...(r.narracion ? { narracion: r.narracion } : {}),
     })),
     resumen: { k, n: resultados.length, recall: resumen.recall, mrr: resumen.mrr, fallan_obligatorios: resumen.fallanObligatorios },
   };

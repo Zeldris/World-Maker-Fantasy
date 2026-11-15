@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { continentForRegion, oppositeContinent } from '../lib/continent.js';
+import type { RetrievedLore } from '../services/retrieval.js';
 import {
   consultaDelCaso,
   FORMA_CONSULTA,
@@ -77,6 +78,14 @@ import {
 /// `--hibrida` ni `--narrar` (la caché no lleva texto completo ni el texto de los trozos). `config.indice` es `vivo`
 /// (base) o `congelado` (caché), y `config.cache_hash` el sha256 del archivo de la caché (null con la base).
 ///
+/// Banco de narración (`QA-359`, T10 del GVE): `--narrar [--semilla <n>]` (semilla 42 por defecto), tras recuperar cada
+/// caso, arma el prompt del narrador como el juego (`buildNarrationPrompt`, con el lore recuperado como CONOCIMIENTO DE
+/// FONDO y, si el primer trozo está lejos, `weaklyGrounded`), SIN hechos de escena ni resumen del personaje (como el
+/// calentamiento `narratorWarmupPrompt`), y genera con `ollamaGenerate` como el intento 1 de `narrateAction` (modelo
+/// `OLLAMA_MODEL_NARRADOR`, JSON pedido, 300 tokens, `keepAlive` 1h) pero con temperatura 0 y esa semilla. El JSON añade
+/// `narracion` por caso y `config.narrador`; sin `--narrar`, nada de eso. Necesita el texto de los trozos: sale con 2 con
+/// `--sin-red`.
+///
 /// `--json` (`QA-329`, para el GVE): un solo objeto JSON por stdout (`config`, `indice_hash`, `casos`, `resumen`;
 /// forma en `ragEval.ts`, `salidaJson`; `indice_hash` lo guarda `reindex-lore` en `World.loreIndice`); cualquier otro texto va a stderr.
 
@@ -108,6 +117,20 @@ for (const mando of ['--grabar-cache', '--sin-red']) {
 }
 if (rutaSinRed && process.argv.includes('--hibrida')) {
   console.error('--sin-red no admite --hibrida: la caché no lleva texto completo.');
+  process.exit(2);
+}
+const narrar = process.argv.includes('--narrar');
+const semilla = Number(argumento('--semilla') ?? 42);
+if (!Number.isInteger(semilla)) {
+  console.error(`--semilla debe ser un entero (recibido: ${argumento('--semilla')})`);
+  process.exit(2);
+}
+if (!narrar && process.argv.includes('--semilla')) {
+  console.error('--semilla solo vale con --narrar.');
+  process.exit(2);
+}
+if (narrar && rutaSinRed) {
+  console.error('--narrar no admite --sin-red: la caché no lleva el texto de los trozos.');
   process.exit(2);
 }
 if (rutaSinRed && rutaGrabarCache) {
@@ -155,6 +178,9 @@ if (erroresDeCasos.length > 0) {
 const { prisma } = rutaSinRed ? { prisma: null } : await import('../lib/prisma.js');
 const { retrieveLore } = rutaSinRed ? { retrieveLore: null } : await import('../services/retrieval.js');
 const { env } = rutaSinRed ? { env: null } : await import('../config/env.js');
+const banco = narrar ? await import('./ragNarrar.js') : null;
+const { ollamaGenerate } = narrar ? await import('../lib/ollama.js') : { ollamaGenerate: null };
+const digestNarrador = narrar ? await digestDeOllama(env!.ollamaBaseUrl, env!.ollamaModelNarrador) : null;
 const { busqueda: _busqueda, ...cfgIndice } = cfg;
 
 const textoCache = rutaSinRed ? leerArchivoCache(rutaSinRed) : null;
@@ -202,7 +228,7 @@ try {
     const continente = caso.region ? continentForRegion(caso.region) : null;
     const excludeTags = continente ? [oppositeContinent(continente)] : [];
     const consulta = consultaDelCaso(caso);
-    let trozos: { title: string; distance: number | null }[];
+    let trozos: { title: string; text?: string; distance: number | null }[];
     if (cacheCongelada) {
       try {
         trozos = buscarEnMemoria(cacheCongelada, textoConsulta(cfg, consulta), k, excludeTags);
@@ -217,7 +243,35 @@ try {
       trozos.map((t) => t.title),
       caso.esperados,
     );
-    resultados.push({ caso, puesto, consulta, devueltos: trozos.map((t) => ({ title: t.title, distance: t.distance })) });
+    const resultado: ResultadoCaso = { caso, puesto, consulta, devueltos: trozos.map((t) => ({ title: t.title, distance: t.distance })) };
+    if (banco && ollamaGenerate && env) {
+      // Con red, `retrieveLore` devuelve el texto de cada trozo; se queda aparte, `devueltos` no lo lleva.
+      const armado = banco.armarPromptNarrador(trozos as RetrievedLore[], caso.pregunta);
+      const inicio = Date.now();
+      const { text } = await ollamaGenerate({
+        model: env.ollamaModelNarrador,
+        prompt: armado.prompt,
+        format: armado.format,
+        maxTokens: 300,
+        keepAlive: '1h',
+        temperature: 0,
+        seed: semilla,
+        timeoutMs: 240_000,
+        tarea: 'narrar',
+        intento: 1,
+      });
+      const ms = Date.now() - inicio;
+      console.error(`${caso.id}: narración en ${(ms / 1000).toFixed(1)} s`);
+      resultado.narracion = {
+        lore: armado.lore,
+        poco_anclado: armado.pocoAnclado,
+        ...banco.leerNarracion(text),
+        modelo: env.ollamaModelNarrador,
+        digest: digestNarrador,
+        ms,
+      };
+    }
+    resultados.push(resultado);
   }
   if (rutaGrabarCache && prisma) await grabarCache(rutaGrabarCache, prisma, worldId, indice);
 } finally {
@@ -259,6 +313,9 @@ if (comoJson) {
       cases_file: rutasCasos.map((r) => (raiz ? relative(raiz, r) : r)).join(','),
       indice: cacheCongelada ? 'congelado' : 'vivo',
       cache_hash: textoCache === null ? null : hashDeCache(textoCache),
+      ...(narrar
+        ? { narrador: { modelo: env!.ollamaModelNarrador, digest: digestNarrador, temperatura: 0, semilla, max_lore_chars: banco!.MAX_LORE_CHARS } }
+        : {}),
     },
     indice?.indice_hash ?? cacheCongelada?.cabecera.indice_hash ?? null,
     resultados,

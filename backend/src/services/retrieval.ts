@@ -164,22 +164,29 @@ async function busquedaHibrida(
 /// inventes" en ese turno — hipótesis de la usuaria, 2026-07-18: pedirle al modelo algo concreto
 /// y a la vez prohibirle inventar sin darle material real puede ser lo que provocaba el cuelgue
 /// reproducible visto en pruebas con esa acción exacta.
-export function isWeaklyGrounded(chunks: RetrievedLore[]): boolean {
-  return chunks.length === 0 || chunks[0].distance > RELEVANCE_THRESHOLD;
+/// `umbral` (`QA-360`, solo `rag-eval --narrar`): otro umbral de distancia; por defecto, el de siempre.
+export function isWeaklyGrounded(chunks: RetrievedLore[], umbral: number = RELEVANCE_THRESHOLD): boolean {
+  return chunks.length === 0 || chunks[0].distance > umbral;
 }
 
 /// Tope de caracteres total, independiente de topK — red de seguridad para que el prompt nunca
 /// crezca sin control aunque algún fragmento salga muy largo (p. ej. las biografías de personajes).
-const MAX_LORE_CHARS = 1400;
+export const MAX_LORE_CHARS = 1400;
 
-export function formatLoreForPrompt(chunks: RetrievedLore[]): string[] {
-  const result: string[] = [];
+/// Los fragmentos que entran en el prompt: los primeros que caben en `maxChars` (siempre entra el primero). `maxChars`
+/// (`QA-360`, solo `rag-eval --narrar`): otro tope; por defecto, `MAX_LORE_CHARS`.
+export function loreQueEntra(chunks: RetrievedLore[], maxChars: number = MAX_LORE_CHARS): RetrievedLore[] {
+  const result: RetrievedLore[] = [];
   let total = 0;
   for (const chunk of chunks) {
     const line = `${chunk.title}: ${chunk.text}`;
-    if (total + line.length > MAX_LORE_CHARS && result.length > 0) break;
-    result.push(line);
+    if (total + line.length > maxChars && result.length > 0) break;
+    result.push(chunk);
     total += line.length;
   }
   return result;
+}
+
+export function formatLoreForPrompt(chunks: RetrievedLore[], maxChars: number = MAX_LORE_CHARS): string[] {
+  return loreQueEntra(chunks, maxChars).map((chunk) => `${chunk.title}: ${chunk.text}`);
 }
