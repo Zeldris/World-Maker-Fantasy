@@ -138,6 +138,10 @@ if (!narrar && process.argv.includes('--semilla')) {
   process.exit(2);
 }
 const loreTrozo = process.argv.includes('--lore-trozo');
+// Memoria de `trozoDeLaFila` (al final del archivo): declarada aquí, antes del bucle de casos, que la usa (con `const`
+// más abajo, el bucle la tocaba antes de inicializarla).
+const vectoresDeTrozos = new Map<string, Promise<{ trozo: string; vector: number[] }[]>>();
+const vectoresDeConsultas = new Map<string, Promise<number[]>>();
 const loreAlFinal = process.argv.includes('--lore-al-final');
 const maxLoreChars = argumento('--max-lore-chars') === undefined ? undefined : Number(argumento('--max-lore-chars'));
 const umbralAnclado = argumento('--umbral-anclado') === undefined ? undefined : Number(argumento('--umbral-anclado'));
@@ -367,8 +371,6 @@ if (comoJson) {
 
 /// `--lore-trozo` (`QA-360`): el trozo del fragmento `titulo` más cercano a la consulta (como lo elegiría la base entre
 /// sus filas). La base no guarda el trozo, así que se reconstruye de `loreChunks.ts` y se embebe (una vez por título).
-const vectoresDeTrozos = new Map<string, Promise<{ trozo: string; vector: number[] }[]>>();
-const vectoresDeConsultas = new Map<string, Promise<number[]>>();
 async function trozoDeLaFila(titulo: string, consulta: string, textoEntero: string): Promise<string> {
   const { embed } = await import('../lib/embeddings.js');
   let candidatos = vectoresDeTrozos.get(titulo);
