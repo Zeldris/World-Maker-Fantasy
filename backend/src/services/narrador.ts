@@ -1648,7 +1648,12 @@ ${identidad}
 HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
 `;
   // QA-339: lo que el siguiente turno en la misma zona comparte con este, para calentarlo al abrir la partida.
-  const prefijoEstable = cabecera + hechosOrdenados.filter((f) => rangoEstable(f) < HECHOS_ESTABLES.length).map((f) => `- ${f}`).join('\n');
+  // QA-348 (`/gw-opt-ai`, 2026-11-15): en combate, todos los hechos. Dos rondas seguidas comparten también los no
+  // estables hasta el bloque de la ronda (al final de los hechos, QA-307); con solo los estables, el 1.er turno tras
+  // reabrir en combate procesaba 24-25 s de prompt, frente a 8-10 s los siguientes (Deck, tanda 131).
+  const prefijoEstable = ctx.enCombate
+    ? cabecera + hechosBlock
+    : cabecera + hechosOrdenados.filter((f) => rangoEstable(f) < HECHOS_ESTABLES.length).map((f) => `- ${f}`).join('\n');
   const prompt = `${cabecera}${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
 ${groundingBlock}
 

@@ -43,6 +43,15 @@ describe('QA-339: prefijo estable del narrador', () => {
     });
     expect(siguiente.prompt.startsWith(prefijoEstable)).toBe(true);
   });
+
+  it('QA-348: en combate llega hasta el último hecho de la escena, sin estado ni acción', () => {
+    const { prompt, prefijoEstable } = buildNarrationPrompt({ ...CTX, enCombate: true });
+    expect(prompt.startsWith(prefijoEstable)).toBe(true);
+    expect(prefijoEstable).toContain('- Un cuervo grazna encima.');
+    expect(prefijoEstable.endsWith('- Un cuervo grazna encima.')).toBe(true);
+    expect(prefijoEstable).not.toContain('ESTADO DE LA PARTIDA');
+    expect(prefijoEstable).not.toContain('Miro alrededor');
+  });
 });
 
 describe('QA-339: calentar el narrador al abrir la partida', () => {
