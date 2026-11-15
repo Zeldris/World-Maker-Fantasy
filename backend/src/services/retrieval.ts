@@ -1,12 +1,13 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { registrarLlamada } from '../lib/iaRegistro.js';
-import { configRag, textoConsulta } from '../lib/ragConfig.js';
+import { CONFIG_TEXTO_COMPLETO, configRag, fusionRrf, textoConsulta } from '../lib/ragConfig.js';
 
 export interface RetrievedLore {
   title: string;
   text: string;
-  /// Distancia coseno de pgvector (0 = idéntico, ~1 = sin relación, hasta 2 = opuesto).
+  /// Distancia coseno de pgvector (0 = idéntico, ~1 = sin relación, hasta 2 = opuesto). En la búsqueda híbrida, la del
+  /// mejor trozo del título por vector (el orden es el de la fusión, no el de la distancia).
   distance: number;
 }
 
@@ -54,12 +55,13 @@ export async function retrieveLore(
   let embedMs: number | undefined;
   let inicioBusqueda: number | undefined;
   try {
-    const vector = embed(textoConsulta(configRag(), query));
+    const cfg = configRag();
+    const vector = embed(textoConsulta(cfg, query), cfg.modelo);
     const queryLiteral = toVectorLiteral(await vector);
     embedMs = Date.now() - inicio;
     inicioBusqueda = Date.now();
 
-    const rows = await withQueryTimeout(
+    const rows = cfg.busqueda === 'hibrida' ? await busquedaHibrida(query, queryLiteral, worldId, topK, excludeTags) : await withQueryTimeout(
       prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
         SELECT title, text, distance FROM (
           SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
@@ -103,6 +105,57 @@ export async function retrieveLore(
     });
     throw err;
   }
+}
+
+/// Búsqueda híbrida (`QA-351`, R5): la lista por vector (todos los títulos, por su trozo más cercano) y la de texto
+/// completo (los títulos con algún trozo que comparte una palabra con la consulta, por su trozo de más `ts_rank`),
+/// fusionadas con RRF. La consulta de texto es la misma que se embebe, sin prefijo, y sus palabras se buscan con OR
+/// (con AND, una pregunta larga casi nunca casaría entera). Necesita `LoreChunk.busqueda`, que llena `reindex-lore`.
+async function busquedaHibrida(
+  query: string,
+  queryLiteral: string,
+  worldId: string,
+  topK: number,
+  excludeTags: string[],
+): Promise<RetrievedLore[]> {
+  const porVector = await withQueryTimeout(
+    prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
+      SELECT title, text, distance FROM (
+        SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
+        FROM "LoreChunk"
+        WHERE "worldId" = ${worldId}
+          AND NOT (tags && ${excludeTags}::text[])
+        ORDER BY title, embedding <=> ${queryLiteral}::vector
+      ) mejores
+      ORDER BY distance, title
+    `,
+    15_000,
+    'retrieveLore (vector)',
+  );
+  const porTexto = await withQueryTimeout(
+    prisma.$queryRaw<{ title: string }[]>`
+      WITH q AS (
+        SELECT NULLIF(replace(plainto_tsquery(${CONFIG_TEXTO_COMPLETO}::regconfig, ${query})::text, ' & ', ' | '), '') AS t
+      )
+      SELECT title FROM (
+        SELECT DISTINCT ON (title) title, ts_rank(busqueda, q.t::tsquery) AS rango
+        FROM "LoreChunk", q
+        WHERE "worldId" = ${worldId}
+          AND NOT (tags && ${excludeTags}::text[])
+          AND q.t IS NOT NULL
+          AND busqueda @@ q.t::tsquery
+        ORDER BY title, ts_rank(busqueda, q.t::tsquery) DESC
+      ) mejores
+      ORDER BY rango DESC, title
+    `,
+    15_000,
+    'retrieveLore (texto)',
+  );
+  const porTitulo = new Map(porVector.map((r) => [r.title, r]));
+  return fusionRrf([porVector.map((r) => r.title), porTexto.map((r) => r.title)], topK).flatMap(({ title }) => {
+    const fila = porTitulo.get(title);
+    return fila ? [fila] : [];
+  });
 }
 
 /// True si ninguno de los fragmentos recuperados es realmente relevante — la acción pregunta

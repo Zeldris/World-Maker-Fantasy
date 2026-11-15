@@ -17,16 +17,18 @@ import {
   type CasoRag,
   type ResultadoCaso,
 } from './ragEval.js';
-import { aplicarArgumentosRag, configRag, diferenciasDeIndice, type ConfigIndice, type ConfigRag } from '../lib/ragConfig.js';
+import { aplicarArgumentosRag, configRag, diferenciasDeIndice, RRF_K, type ConfigIndice, type ConfigRag } from '../lib/ragConfig.js';
 
 /// Evalúa el RAG del lore (skill opt-ai): por cada caso de `backend/ia/rag-casos.jsonl` llama a
 /// `retrieveLore` y mira en qué puesto sale el primer trozo esperado.
 /// Uso: npm run rag-eval -- [--casos <ruta>[,<ruta>…]] [--k 4] [--json] [--registro <ruta>] [--ignorar-indice]
-///        [mandos del RAG: --tam-trozo, --solape, --prefijo-consulta, --prefijo-documento, --plantilla, --prefijos-nomic]
+///        [mandos del RAG: --tam-trozo, --solape, --prefijo-consulta, --prefijo-documento, --plantilla, --prefijos-nomic,
+///         --modelo <nombre de Ollama>, --hibrida]
 ///
 /// Mandos (`QA-330`, también por variables RAG_*; ver `src/lib/ragConfig.ts`): los mismos que `reindex-lore`. Si no
 /// casan con los que guardó el último reindexado (`World.loreIndice`), sale con 2 diciendo cuáles, salvo con
 /// `--ignorar-indice` (p. ej. para probar otro prefijo de consulta sin reindexar). Sin índice guardado, solo avisa.
+/// `--hibrida` (`QA-351`) no es del índice: no se compara, pero pide que el índice tenga texto completo (sale con 2 si no).
 ///
 /// Llama a `retrieveLore` como el juego (turnResolution.ts): k=4 por defecto, y si el caso trae el campo
 /// opcional `region` (p. ej. "La Cicatriz de Cristal"), la consulta lleva el sufijo ` — <región>` y se
@@ -99,6 +101,7 @@ if (erroresDeCasos.length > 0) {
 const { prisma } = await import('../lib/prisma.js');
 const { retrieveLore } = await import('../services/retrieval.js');
 const { env } = await import('../config/env.js');
+const { busqueda: _busqueda, ...cfgIndice } = cfg;
 
 const resultados: ResultadoCaso[] = [];
 let indice: Partial<ConfigIndice> | null = null;
@@ -113,12 +116,16 @@ try {
   if (!indice) {
     console.error('Aviso: el índice del lore no guarda con qué se construyó (reindexado anterior a QA-330): no se comprueba.');
   } else {
-    diferencias = diferenciasDeIndice(indice, { modelo: env.ollamaModelEmbeddings, ...cfg });
+    diferencias = diferenciasDeIndice(indice, cfgIndice);
     if (diferencias.length > 0) {
       console.error(`Los mandos de esta corrida no casan con el índice (reindexa con los mismos o pasa --ignorar-indice):`);
       for (const d of diferencias) console.error(`  ${d}`);
       if (!ignorarIndice) process.exit(2);
     }
+  }
+  if (cfg.busqueda === 'hibrida' && !indice?.texto_completo) {
+    console.error('--hibrida necesita el texto completo de cada trozo, y este índice no lo tiene: reindexa (npm run reindex-lore).');
+    process.exit(2);
   }
   for (const caso of casos) {
     const continente = caso.region ? continentForRegion(caso.region) : null;
@@ -151,8 +158,10 @@ if (comoJson) {
   const raiz = git(['rev-parse', '--show-toplevel']);
   const salida = salidaJson(
     {
-      modelo: env.ollamaModelEmbeddings,
-      digest: await digestDeOllama(env.ollamaBaseUrl, env.ollamaModelEmbeddings),
+      modelo: cfg.modelo,
+      digest: await digestDeOllama(env.ollamaBaseUrl, cfg.modelo),
+      busqueda: cfg.busqueda,
+      fusion: cfg.busqueda === 'hibrida' ? `rrf-${RRF_K}` : null,
       topK: k,
       trozo: cfg.tamTrozo,
       solapamiento: cfg.solape,

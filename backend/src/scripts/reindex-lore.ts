@@ -5,13 +5,14 @@ import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { loreChunks } from './loreChunks.js';
 import { trozosParaIndexar } from './loreTrozos.js';
-import { aplicarArgumentosRag, configRag, hashDelIndice, textoDocumento, type ConfigIndice } from '../lib/ragConfig.js';
-import { env } from '../config/env.js';
+import { aplicarArgumentosRag, CONFIG_TEXTO_COMPLETO, configRag, hashDelIndice, textoDocumento, textoParaBusqueda, type ConfigIndice } from '../lib/ragConfig.js';
 
 /// Reindexa el lore de Helek Sirik para recuperación semántica (RAG). Correr cada vez que
 /// docs/rpgtarkor/*.md cambie y loreChunks.ts se actualice con los fragmentos afectados.
 /// Uso: npm run reindex-lore -- [--tam-trozo <n>] [--solape <n>] [--prefijo-consulta <t>] [--prefijo-documento <t>]
-///        [--plantilla <t>] [--prefijos-nomic]
+///        [--plantilla <t>] [--prefijos-nomic] [--modelo <nombre de Ollama>]
+/// Cada fila guarda también `busqueda`, el tsvector de título + trozo, para la búsqueda híbrida (`QA-351`): sale igual con
+/// cualquier mando, y no entra en `indice_hash`.
 /// Los mandos (`QA-330`, también por variables RAG_*) están en `src/lib/ragConfig.ts`; la configuración usada se
 /// guarda en `World.loreIndice` (con `indice_hash`, la huella del contenido) para que `rag-eval` avise si no casa con la suya.
 
@@ -48,7 +49,7 @@ async function main() {
   aplicarArgumentosRag(process.argv.slice(2));
   const cfg = configRag();
   console.log(`Reindexando ${loreChunks.length} fragmentos de lore...`);
-  console.log(`  modelo ${env.ollamaModelEmbeddings}, trozo ${cfg.tamTrozo}, solape ${cfg.solape}, plantilla ${JSON.stringify(cfg.plantilla)}`);
+  console.log(`  modelo ${cfg.modelo}, trozo ${cfg.tamTrozo}, solape ${cfg.solape}, plantilla ${JSON.stringify(cfg.plantilla)}`);
 
   const worldId = await ensureWorld();
 
@@ -65,11 +66,11 @@ async function main() {
     for (const trozo of trozosParaIndexar(chunk.text, cfg.tamTrozo, cfg.solape)) {
       const embebido = textoDocumento(cfg, chunk.title, trozo);
       filas.push({ titulo: chunk.title, texto: embebido });
-      const vector = await embed(embebido);
+      const vector = await embed(embebido, cfg.modelo);
       const id = crypto.randomUUID();
 
       await prisma.$executeRaw`
-        INSERT INTO "LoreChunk" (id, "worldId", type, title, text, tags, "sourceDoc", embedding, "createdAt")
+        INSERT INTO "LoreChunk" (id, "worldId", type, title, text, tags, "sourceDoc", embedding, busqueda, "createdAt")
         VALUES (
           ${id},
           ${worldId},
@@ -79,6 +80,7 @@ async function main() {
           ${chunk.tags},
           ${chunk.sourceDoc},
           ${toVectorLiteral(vector)}::vector,
+          to_tsvector(${CONFIG_TEXTO_COMPLETO}::regconfig, ${textoParaBusqueda(chunk.title, trozo)}),
           now()
         )
       `;
@@ -88,7 +90,13 @@ async function main() {
     console.log(`  [${done}/${loreChunks.length}] ${chunk.title} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   }
 
-  const indice: ConfigIndice = { modelo: env.ollamaModelEmbeddings, ...cfg, fecha: new Date().toISOString(), indice_hash: hashDelIndice(env.ollamaModelEmbeddings, filas) };
+  const { busqueda: _busqueda, ...deIndice } = cfg;
+  const indice: ConfigIndice = {
+    ...deIndice,
+    fecha: new Date().toISOString(),
+    texto_completo: CONFIG_TEXTO_COMPLETO,
+    indice_hash: hashDelIndice(cfg.modelo, filas),
+  };
   await prisma.world.update({ where: { id: worldId }, data: { loreIndice: { ...indice } } });
   console.log('Reindexado completo.');
 }

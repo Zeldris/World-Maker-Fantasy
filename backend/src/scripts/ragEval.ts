@@ -26,7 +26,8 @@ export type Idioma = (typeof IDIOMAS)[number];
 
 export interface TrozoDevuelto {
   title: string;
-  distance: number;
+  /// En la búsqueda híbrida puede ser null (el orden es el de la fusión).
+  distance: number | null;
 }
 
 export interface ResultadoCaso {
@@ -122,6 +123,10 @@ export function digestDelModelo(tags: unknown, modelo: string): string | null {
 export interface ConfigCorrida {
   modelo: string;
   digest: string | null;
+  /// `vector` o `hibrida` (`QA-351`).
+  busqueda: string;
+  /// Cómo se fusionan las listas en la híbrida (`rrf-60`); null en `vector`.
+  fusion: string | null;
   topK: number;
   trozo: number;
   solapamiento: number;

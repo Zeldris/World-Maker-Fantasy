@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aplicarArgumentosRag, CONFIG_RAG_POR_DEFECTO, configRag, diferenciasDeIndice, hashDelIndice, textoConsulta, textoDocumento } from './ragConfig.js';
+import { aplicarArgumentosRag, CONFIG_RAG_POR_DEFECTO, configRag, diferenciasDeIndice, fusionRrf, hashDelIndice, textoConsulta, textoDocumento } from './ragConfig.js';
 
 describe('mandos del RAG (QA-330)', () => {
   it('sin variables, la configuración de siempre', () => {
@@ -55,7 +55,50 @@ describe('hashDelIndice (T6 del GVE)', () => {
     expect(hashDelIndice('otro', filas)).not.toBe(h);
   });
   it('no es un mando: diferenciasDeIndice lo ignora', () => {
-    const actual = { modelo: 'm', ...CONFIG_RAG_POR_DEFECTO };
+    const actual = { ...CONFIG_RAG_POR_DEFECTO, modelo: 'm' };
     expect(diferenciasDeIndice({ ...actual, indice_hash: 'sha256:x' }, actual)).toEqual([]);
+  });
+});
+
+describe('mandos de modelo y búsqueda (QA-351)', () => {
+  it('por defecto, nomic-embed-text (o OLLAMA_MODEL_EMBEDDINGS) y búsqueda por vector', () => {
+    expect(configRag({})).toMatchObject({ modelo: 'nomic-embed-text', busqueda: 'vector' });
+    expect(configRag({ OLLAMA_MODEL_EMBEDDINGS: 'otro' }).modelo).toBe('otro');
+  });
+
+  it('--modelo y --hibrida pasan a RAG_MODELO y RAG_BUSQUEDA, y el argumento gana', () => {
+    const entorno: NodeJS.ProcessEnv = { OLLAMA_MODEL_EMBEDDINGS: 'nomic-embed-text', RAG_MODELO: 'x' };
+    aplicarArgumentosRag(['--json', '--modelo', 'bge-m3', '--hibrida'], entorno);
+    expect(configRag(entorno)).toMatchObject({ modelo: 'bge-m3', busqueda: 'hibrida' });
+    expect(() => aplicarArgumentosRag(['--modelo'], {})).toThrow('--modelo necesita un valor');
+  });
+
+  it('rechaza una búsqueda que no existe', () => {
+    expect(() => configRag({ RAG_BUSQUEDA: 'bm25' })).toThrow('RAG_BUSQUEDA tiene que ser vector o hibrida (recibida: bm25)');
+  });
+
+  it('el modelo es del índice y la búsqueda no', () => {
+    const { busqueda: _b, ...actual } = configRag({ RAG_MODELO: 'bge-m3', RAG_BUSQUEDA: 'hibrida' });
+    const { busqueda: _b2, ...base } = CONFIG_RAG_POR_DEFECTO;
+    expect(diferenciasDeIndice(base, actual)).toEqual(['modelo: índice "nomic-embed-text", corrida "bge-m3"']);
+    expect(diferenciasDeIndice({ ...base, modelo: 'bge-m3' }, actual)).toEqual([]);
+  });
+});
+
+describe('fusionRrf (QA-351)', () => {
+  it('suma 1/(60+puesto) de cada lista y ordena por la suma', () => {
+    const r = fusionRrf([['A', 'B', 'C'], ['C', 'D']], 10);
+    expect(r.map((x) => x.title)).toEqual(['C', 'A', 'B', 'D']);
+    expect(r[0].puntos).toBeCloseTo(1 / 63 + 1 / 61);
+    expect(r[1].puntos).toBeCloseTo(1 / 61);
+  });
+
+  it('a igual puntuación desempata por título, y corta en topK', () => {
+    expect(fusionRrf([['B', 'A'], ['A', 'B']], 10).map((x) => x.title)).toEqual(['A', 'B']);
+    expect(fusionRrf([['Z', 'Y', 'X']], 2).map((x) => x.title)).toEqual(['Z', 'Y']);
+  });
+
+  it('con una lista vacía, el orden es el de la otra', () => {
+    expect(fusionRrf([['B', 'A', 'C'], []], 4).map((x) => x.title)).toEqual(['B', 'A', 'C']);
   });
 });
