@@ -46,3 +46,8 @@ Movido de [`traspaso.md`](traspaso.md) el 2026-11-14 (`QA-342`). Pendientes leve
 - `resolver-conflicto.py` y `tools/qa/resolver_hallazgos.py`: dos parsers de marcadores con reglas distintas; unificar.
 - `resolver-conflicto.py` es manual (hay que acordarse tras `git merge origin/main`): valorar un driver `merge=roadmap` en `.gitattributes`, que además tendría la base.
 - `.gitattributes` `merge=union` del ledger no deduplica: un registro idéntico en los dos lados (cherry-pick) queda dos veces y `metrics.py` lo cuenta doble.
+
+## Pendientes leves de la fase 3 de `claude/wonderful-volta-662qt8` (2026-11-15)
+
+- GET `/defensa`: `asaltosRecientes` se lee fuera de la transacción del resto de la respuesta.
+- `tools/qa/aviso-lectura.py` (`QA-349`): no avisa de las lecturas enteras con Grep ni con `jq`, `wc` o `node`.

@@ -52,7 +52,8 @@
   "staleRefs": [],
   "relatedTests": {
     "fast": [
-      "bash tools/qa/tests-vitest.sh unidad {files}"
+      "bash tools/qa/tests-vitest.sh unidad {files}",
+      {"command": "out=$(python3 tools/qa/matriz-pruebas.py --comprobar) || { echo \"$out\"; exit 1; }", "paths": "^(docs/records/(plan-comprobacion-.*|matriz-pruebas|.*hallazgos|checklist-pruebas-juego)\\.md|docs/producto/.*roadmap.*\\.md|tools/qa/(escenarios/|matriz-pruebas\\.py)|tools/roadmap/cobertura\\.py)"}
     ],
     "slow": [
       "bash tools/qa/tests-vitest.sh integracion {files}"

@@ -82,6 +82,15 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/whole-read.py"
           }
         ]
+      },
+      {
+        "matcher": "^(Bash|Read)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/tools/qa/aviso-lectura.py"
+          }
+        ]
       }
     ],
     "Stop": [
