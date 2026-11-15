@@ -807,6 +807,8 @@ export function nombraPorNombreVisible(texto: string, nombreVisible: string): bo
   if (!m) return false;
   const t = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
   if (t.includes(` ${visible} `)) return true;
+  // P448: «saludo al orco» (la raza a secas, con artículo) también lo nombra como lo ve la jugadora.
+  if (new RegExp(` (?:el|al|del|la|a la|de la) ${m[1]} `).test(t)) return true;
   return m[2] === 'a' ? / la desconocida /.test(t) : / (?:el|al|del) desconocido /.test(t);
 }
 
@@ -825,7 +827,6 @@ async function ocultoNombradoPorSuVisible(params: {
   estaEnCombate: (npc: { id: string; slug: string }) => boolean;
   slugsDelModoDinamico: string[];
 }): Promise<string | null> {
-  if (!/desconocid[oa]/.test(normalizeText(params.action))) return null;
   const principales = params.candidatos.filter((n) => n.kind === 'PRINCIPAL');
   if (principales.length === 0) return null;
   const delModo = new Set(params.slugsDelModoDinamico);
@@ -1201,6 +1202,9 @@ const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\
 export const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
 
 const CAZA_SUSTANTIVO_REGEX = /\b(la|una|esta|esa|su|tu|mi|vuestra|nuestra)\s+caza\b/gi;
+/// P447: «sirve saber dónde cazar para alimentar al clan» habla de cazar en general, no de cazar a alguien: «cazar» tras
+/// «dónde/cómo/cuándo/para/de/saber…» y sin objeto directo («cazar a/al…») no es búsqueda hostil.
+const CAZAR_GENERAL_REGEX = /\b(?:d[oó]nde|c[oó]mo|cu[aá]ndo|para|de|sobre|saber|aprender|poder|ir a|salir a|que)\s+cazar\b(?!\s+(?:a|al)\b)/gi;
 /// Fase 1 hacia main: «la mata de bayas» es el arbusto, no «matar» (`VIOLENCE_INTENT_REGEX`).
 export const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas|aquellas|las|cada)\s+matas?\b/g;
 
@@ -1211,7 +1215,7 @@ export const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas
 export function detectsGreetingOrQuestion(action: string): boolean {
   // P306: «le pregunto cómo va la caza» (la frase del hallazgo): «caza» tras artículo o posesivo es el sustantivo,
   // no el verbo de `HOSTILE_SEARCH_REGEX`. Solo se quita para decidir si es saludo; el resto sigue leyendo el texto.
-  const sinCazaSustantivo = action.replace(CAZA_SUSTANTIVO_REGEX, ' ');
+  const sinCazaSustantivo = action.replace(CAZA_SUSTANTIVO_REGEX, ' ').replace(CAZAR_GENERAL_REGEX, ' ');
   return (
     detectsDialogueIntent(action) &&
     !detectsAttackIntent(action) &&

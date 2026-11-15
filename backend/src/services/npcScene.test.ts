@@ -1371,3 +1371,14 @@ describe('slugsConPuntoSoloEnOtraZona — cliente de la transacción', () => {
     expect(db.companion.findMany).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('P447/P448', () => {
+  it('P447: «saber dónde cazar» en una charla pacífica es un saludo/pregunta, no búsqueda hostil', () => {
+    expect(detectsGreetingOrQuestion('Le digo a Torgash que sirve saber dónde cazar para alimentar al clan')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le digo que voy a cazar al orco')).toBe(false);
+  });
+  it('P448: «el orco» a secas nombra al orco desconocido', () => {
+    expect(nombraPorNombreVisible('Saludo al orco con la palma abierta', 'orco desconocido')).toBe(true);
+    expect(nombraPorNombreVisible('Saludo a la orca con la palma abierta', 'orco desconocido')).toBe(false);
+  });
+});

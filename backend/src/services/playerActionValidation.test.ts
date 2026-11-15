@@ -45,6 +45,7 @@ const {
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
   detectsGiftToNpcClaim,
+  giftToAbsentNpcNarrationFor,
   giftRecipientIndex,
   giftToNpcNarrationFor,
 } = await import('./playerActionValidation.js');
@@ -629,12 +630,20 @@ describe('detectsGiftToNpcClaim (P241)', () => {
 
   it('«Le entrego mi pan a Gistera» sin pan en el inventario: dice qué no tiene', () => {
     const claim = detectsGiftToNpcClaim('Le entrego mi pan a Gistera Koh.', inventario, npcs);
-    expect(claim).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+    expect(claim).toMatchObject({ itemEnInventario: null, itemTexto: 'pan' });
     expect(giftToNpcNarrationFor(claim!, 'Gistera Koh', true)).toBe('No tienes pan en el inventario, así que no hay nada que entregar.');
   });
 
+  it('P468: el destinatario ausente no se cuela en el objeto y queda nombrado', () => {
+    const claim = detectsGiftToNpcClaim('Le regalo a Gistera una ración de viaje', inventario, ['Corredor de Cauce']);
+    expect(claim).toMatchObject({ itemEnInventario: null, itemTexto: 'racion de viaje', destinatarioNombrado: 'Gistera' });
+    expect(giftToNpcNarrationFor(claim!, 'el Corredor de Cauce', false)).toBe('No tienes racion de viaje en el inventario, así que no hay nada que entregar.');
+    expect(giftToAbsentNpcNarrationFor('Gistera')).toContain('Gistera no está aquí');
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera una ración de viaje', ['Ración de viaje'], ['Corredor de Cauce'])).toMatchObject({ itemEnInventario: 'Ración de viaje', destinatarioNombrado: 'Gistera' });
+  });
+
   it('con solo el nombre de pila del destinatario, «No tienes» no lo arrastra', () => {
-    expect(detectsGiftToNpcClaim('Le regalo a Gistera mi pan.', inventario, npcs)).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera mi pan.', inventario, npcs)).toMatchObject({ itemEnInventario: null, itemTexto: 'pan' });
   });
 
   it('«doy» solo cuenta si lo que se da está en el inventario (le doy un golpe / doy gracias no son regalos)', () => {
@@ -664,7 +673,7 @@ describe('detectsGiftToNpcClaim (P241)', () => {
   });
 
   it('la frase remite al botón Entregar solo si el NPC lo tiene; si no, dice que no acepta entregas', () => {
-    const claim = { itemEnInventario: 'Cuchillo de pedernal', itemTexto: 'cuchillo de pedernal' };
+    const claim = { itemEnInventario: 'Cuchillo de pedernal', itemTexto: 'cuchillo de pedernal', destinatarioNombrado: null };
     expect(giftToNpcNarrationFor(claim, 'la compañera', true)).toContain('botón Entregar');
     const sinBoton = giftToNpcNarrationFor(claim, 'Gistera Koh', false);
     expect(sinBoton).toContain('no acepta entregas');
@@ -688,5 +697,13 @@ describe('giftRecipientIndex (P441)', () => {
   });
   it('un nombre con punto no casa de más (el «.» no es comodín)', () => {
     expect(giftRecipientIndex('Le doy el pan a Maraxsol', [['Mara.Sol']])).toBe(-1);
+  });
+});
+
+describe('P448: levantar la mano no es construir', () => {
+  it('«Levanto la mano y le saludo» no es una construcción desconocida; «levanto una torre» sí', () => {
+    expect(detectsUnknownConstructionClaim('Levanto la mano y le saludo en son de paz')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Me levanto y saludo al orco')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Levanto una Torre de Cristal')).toBe(true);
   });
 });

@@ -487,7 +487,10 @@ const STRICT_BUILD_VERB_REGEX = /\b(constru|levant|erig)\w*\b/i;
 /// construction.ts) — "construyo una Torre de Cristal" cuando solo existen campamento/choza/
 /// ayuntamiento. Reutiliza el `nounRegex` de cada receta real, nunca una lista propia.
 export function detectsUnknownConstructionClaim(action: string): boolean {
-  const normalized = normalizeText(action);
+  // P448: «levanto la mano», «me levanto», «levanto la vista» no son construir.
+  const normalized = normalizeText(action)
+    .replace(/\bme levant\w*/g, ' ')
+    .replace(/\blevant\w*\s+(?:(?:la|el|las|los|mi|mis|una|un|su|sus)\s+)?(?:mano|manos|brazo|brazos|vista|mirada|voz|punos?|cabeza|escudo|arma|ceja|cejas|ojos|dedo|copa|hacha|lanza|espada|garrote|antorcha|palma)\b/g, ' ');
   if (!STRICT_BUILD_VERB_REGEX.test(normalized)) return false;
   return !CONSTRUCTION_RECIPES.some((recipe) => recipe.nounRegex.test(normalized));
 }
@@ -687,6 +690,9 @@ export interface GiftToNpcClaim {
   itemEnInventario: string | null;
   /// Lo que la jugadora dice que entrega («mi cuchillo» → «cuchillo»), para decir «No tienes …».
   itemTexto: string;
+  /// P468: el destinatario como lo escribió la jugadora tras «a/al» con mayúscula («Gistera»), esté o no en escena;
+  /// null si no nombra a nadie por su nombre propio.
+  destinatarioNombrado: string | null;
 }
 
 /// «entrego/regalo/doy/ofrezco X a Y» (P241, decisión de la usuaria 2026-10-26): en texto libre no
@@ -720,6 +726,15 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
       if (token.length >= 4) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
     }
   }
+  // P468: «le regalo a Gistera una ración»: el nombre propio tras «a/al» es el destinatario, nunca parte del objeto,
+  // aunque no esté en escena (si no, «No tienes gistera una racion…»).
+  const nombrado = action.slice(verbo.index).match(/\b(?:a|al|para)\s+(\p{Lu}[\p{L}'-]+(?:\s+\p{Lu}[\p{L}'-]+)*)/u);
+  const destinatarioNombrado = nombrado ? nombrado[1] : null;
+  if (destinatarioNombrado) {
+    for (const token of normalizeText(destinatarioNombrado).split(/\s+/)) {
+      if (token.length >= 2) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
+    }
+  }
   // Lo que se da: la primera cláusula tras el verbo, sin artículos ni preposiciones en los bordes.
   const palabras = restoSinNpc
     .split(/[,.;:!?¡¿«»"']|\s+(?:y|para|como|porque|pero|mientras)\s+/)[0]
@@ -741,7 +756,7 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
   if (weak && !enInventario) return null;
   const itemTexto = palabras.join(' ');
   if (!enInventario && itemTexto.length === 0) return null;
-  return { itemEnInventario: enInventario ?? null, itemTexto };
+  return { itemEnInventario: enInventario ?? null, itemTexto, destinatarioNombrado };
 }
 
 /// Destinatario de «dar X a Y» (P441): se busca en lo que va tras el último «a/al» (Y), nunca en las palabras del
@@ -771,6 +786,10 @@ export function giftRecipientIndex(action: string, npcNames: string[][]): number
 /// `puedeEntregar`: el NPC es compañero o encargado de ENCARGO_MATERIALES (`entrega.ts#puedeRecibirEntregas`),
 /// los únicos con botón Entregar; si no, no se promete un botón que no sale.
 /// `equipado`: el objeto solo está equipado (fase 1 hacia main); el botón Entregar pide desequiparlo antes.
+export function giftToAbsentNpcNarrationFor(nombre: string): string {
+  return `${nombre} no está aquí, así que no hay a quién entregarle nada: tendrás que ir a buscarlo donde esté.`;
+}
+
 export function giftToNpcNarrationFor(claim: GiftToNpcClaim, nombreNpc: string, puedeEntregar: boolean, equipado = false): string {
   if (!claim.itemEnInventario) {
     return claim.itemTexto
