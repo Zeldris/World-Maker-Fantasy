@@ -34,6 +34,12 @@ describe('DefensaSection (CR-65 65f)', () => {
     vi.clearAllMocks()
   })
 
+  it('P450: el aviso del asalto de otra facción a tu Reino sale también en Reino › Defensa', async () => {
+    vi.mocked(getDefensa).mockResolvedValue({ asentamientos: [capital], avistados: [], asaltosRecientes: [{ id: 'l1', texto: 'La partida de Maktor toma Karot Veku y se lleva 3 de comida.', cuando: 'Día 4' }] })
+    const { findByLabelText } = render(<DefensaSection saveId="s1" onRefreshSave={async () => {}} />)
+    expect((await findByLabelText('Últimos asaltos a tu Reino')).textContent).toContain('La partida de Maktor toma Karot Veku')
+  })
+
   it('cada módulo dice lo que da', () => {
     expect(efectoDeModulo(capital.modulos[0]!, capital)).toBe('caída: no cubre hasta repararla')
     expect(efectoDeModulo({ ...capital.modulos[0]!, caida: false }, { ...capital, efecto: { ...capital.efecto, cobertura: 2 } })).toBe('cobertura +2 · ha encajado 2 de 2 asaltos')

@@ -2,7 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../../lib/prisma.js';
 import { asentamientosDelReino, asignarGuarnicion, comprarEquiposMilicia, convocarMilicia, planMilicia, radarDelReino } from '../../services/defensaReino.js';
-import { repararEmpalizada } from '../../services/asaltos.js';
+import { esAvisoDeAsaltoDeFaccion, repararEmpalizada } from '../../services/asaltos.js';
 import { lockRowForUpdate, rejectIfEnded, rejectIfPendingDeath } from './shared.js';
 
 const selectSave = { id: true, endedAt: true, pendingDeathResolution: true, worldState: { select: { fictionalMinutes: true } } } as const;
@@ -13,7 +13,11 @@ export async function defensaRoutes(app: FastifyInstance) {
     const save = await prisma.save.findUnique({ where: { id: request.params.id }, select: selectSave });
     if (!save) return reply.status(404).send({ error: 'Partida no encontrada' });
     // P284: el Ayuntamiento o el Cuartel dañados no defienden; se dice cuál es para que se repare, no «construye uno».
+    // P450: los últimos avisos de asalto de otra facción a tu Reino (los mismos del Diario), también en El mundo › Reino.
+    const avisos = await prisma.logEntry.findMany({ where: { saveId: save.id, channel: 'KINGDOM', isSystemMessage: true, text: { contains: 'a partida de ' } }, orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, text: true, timeLabel: true } });
+    const asaltosRecientes = avisos.filter((a) => esAvisoDeAsaltoDeFaccion(a.text)).slice(0, 3).map((a) => ({ id: a.id, texto: a.text, cuando: a.timeLabel }));
     return prisma.$transaction(async (tx) => ({
+      asaltosRecientes,
       asentamientos: await asentamientosDelReino(tx, save.id),
       avistados: await radarDelReino(tx, save.id, save.worldState?.fictionalMinutes ?? 0),
       danados: (await tx.building.findMany({ where: { saveId: save.id, recipeKey: { in: ['ayuntamiento', 'cuartel-avanzado'] }, status: 'DANADO' }, select: { id: true, name: true }, orderBy: { createdAt: 'asc' } })),

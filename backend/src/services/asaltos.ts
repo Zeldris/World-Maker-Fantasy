@@ -230,6 +230,12 @@ export function textoDelAsalto(a: {
   return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${quienDefendia}${bajas}${tuyo}`;
 }
 
+/// P450: ¿esta línea del Reino es el aviso de un asalto de OTRA facción a tu Reino (`textoDelAsalto` con
+/// «La partida de X»)? Los bandidos («Los bandidos…») no cuentan.
+export function esAvisoDeAsaltoDeFaccion(texto: string): boolean {
+  return /\b[Ll]a partida de .+ (toma|se retira) |aguanta el asalto: la partida de /.test(texto);
+}
+
 /// Un asalto que llega a su destino: si allí hay un asentamiento del Reino, se resuelve de fondo
 /// (el combate en vivo, con el personaje allí, llega con `CR-50`); luego vuelve con lo que lleve.
 TRABAJOS.ASALTO = {

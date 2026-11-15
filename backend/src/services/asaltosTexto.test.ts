@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { textoDelAsalto } from './asaltos.js';
+import { esAvisoDeAsaltoDeFaccion, textoDelAsalto } from './asaltos.js';
 
 // P221: la línea del asalto de fondo concuerda, nombra el Reino y dice «nada» sin botín.
 const base = { quien: 'Los nabieus enloquecidos', plural: true, lugar: 'Tor Gorhorn', defendido: false, caidosAsaltantes: 0, botin: { comida: 0, goirnos: 0, objetos: 0 }, empalizadaCaida: false, caidosReino: [], estadoPersonaje: null, condicionAntes: 'HERIDO' as const };
@@ -34,5 +34,13 @@ describe('textoDelAsalto: quién defendía (P295)', () => {
     expect(textoDelAsalto({ ...base, defensores: { guarnicion: 0, milicianos: 0, guardias: 2 } })).toContain('Defendían 2 guardias de los corrales.');
     expect(textoDelAsalto({ ...base, defensores: { guarnicion: 1, milicianos: 0, guardias: 2 } })).toContain('Defendían 1 de guarnición y 2 guardias de los corrales.');
     expect(textoDelAsalto({ ...base, defensores: { guarnicion: 0, milicianos: 0, guardias: 0 } })).toContain('Nadie defendía');
+  });
+});
+
+describe('esAvisoDeAsaltoDeFaccion (P450)', () => {
+  it('reconoce el asalto de una facción (tomado o rechazado) y no el de bandidos', () => {
+    expect(esAvisoDeAsaltoDeFaccion(textoDelAsalto({ ...base, quien: 'La partida de Maktor', plural: false }))).toBe(true);
+    expect(esAvisoDeAsaltoDeFaccion(textoDelAsalto({ ...base, quien: 'La partida de Maktor', plural: false, defendido: true }))).toBe(true);
+    expect(esAvisoDeAsaltoDeFaccion(textoDelAsalto({ ...base, quien: 'Los bandidos' }))).toBe(false);
   });
 });

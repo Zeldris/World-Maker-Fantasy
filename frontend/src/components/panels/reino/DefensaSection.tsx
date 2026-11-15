@@ -38,6 +38,7 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
   const [asentamientos, setAsentamientos] = useState<AsentamientoDefensa[] | null>(null)
   const [avistados, setAvistados] = useState<AvistamientoInfo[]>([])
   const [danados, setDanados] = useState<{ id: string; nombre: string }[]>([])
+  const [asaltos, setAsaltos] = useState<{ id: string; texto: string; cuando: string }[]>([])
   const [aMover, setAMover] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const { fallo, informar, limpiar } = useErrorConReintento()
@@ -49,6 +50,7 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
       setAsentamientos(r.asentamientos)
       setAvistados(r.avistados)
       setDanados(r.danados ?? [])
+      setAsaltos(r.asaltosRecientes ?? [])
     } catch (e) {
       informar('No se pudo cargar la defensa del Reino.', e, () => void cargar())
     }
@@ -95,6 +97,17 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
               </button>
               {!v.sinMilicia && <span className="text-2xs text-red-300/80">Arma a la milicia de {v.asentamiento}, contra los ejércitos que van a {v.asentamiento}.</span>}
             </div>
+          ))}
+        </section>
+      )}
+      {/* P450: el aviso de un asalto de otra facción a tu Reino (el del Diario) también aquí. */}
+      {asaltos.length > 0 && (
+        <section aria-label="Últimos asaltos a tu Reino" className="rounded-lg border border-red-700/40 bg-red-950/20 px-3 py-2">
+          {asaltos.map((a) => (
+            <p key={a.id} className="text-xs text-red-200">
+              <span className="text-2xs text-red-300/70">{a.cuando} · </span>
+              {a.texto}
+            </p>
           ))}
         </section>
       )}
