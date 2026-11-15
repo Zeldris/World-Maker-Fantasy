@@ -127,22 +127,48 @@ export function fusionarConsultas(base: ConsultaCache[], nuevas: ConsultaCache[]
   return [...porTexto.values()];
 }
 
+/// Carriles de la suma: pgvector se compila con `-fassociative-math` y vectoriza el bucle, así que suma en paralelo por
+/// carriles y los junta al final. Medido en la Deck (pgvector 0.8.6, QA-358) contra 1.880 distancias de la base: con 1
+/// carril (suma en orden) la diferencia llega a 1,3e-6; con 8, a 1,5e-7 (2: 6,9e-7; 4: 3,2e-7; 16: 2,6e-7).
+const CARRILES = 8;
+
 /// Distancia coseno imitando a pgvector (`cosine_distance`): componentes en float32, producto y normas acumulados en
-/// float32, similitud en double recortada a [-1, 1].
+/// float32 por `CARRILES` carriles (juntados por mitades, y el resto al final), similitud en double recortada a [-1, 1].
 export function distanciaCoseno(a: number[], b: number[]): number {
   if (a.length !== b.length) throw new Error(`vectores de distinta dimensión (${a.length} y ${b.length})`);
   const f = Math.fround;
-  let dot = 0;
-  let na = 0;
-  let nb = 0;
-  for (let i = 0; i < a.length; i++) {
+  const dot = new Array<number>(CARRILES).fill(0);
+  const na = new Array<number>(CARRILES).fill(0);
+  const nb = new Array<number>(CARRILES).fill(0);
+  const enteros = a.length - (a.length % CARRILES);
+  for (let i = 0; i < enteros; i += CARRILES) {
+    for (let j = 0; j < CARRILES; j++) {
+      const x = f(a[i + j]);
+      const y = f(b[i + j]);
+      dot[j] = f(dot[j] + f(x * y));
+      na[j] = f(na[j] + f(x * x));
+      nb[j] = f(nb[j] + f(y * y));
+    }
+  }
+  const juntar = (v: number[]): number => {
+    let w = v;
+    while (w.length > 1) {
+      const mitad = w.length / 2;
+      w = w.slice(0, mitad).map((z, k) => f(z + w[k + mitad]));
+    }
+    return w[0];
+  };
+  let d = juntar(dot);
+  let x2 = juntar(na);
+  let y2 = juntar(nb);
+  for (let i = enteros; i < a.length; i++) {
     const x = f(a[i]);
     const y = f(b[i]);
-    dot = f(dot + f(x * y));
-    na = f(na + f(x * x));
-    nb = f(nb + f(y * y));
+    d = f(d + f(x * y));
+    x2 = f(x2 + f(x * x));
+    y2 = f(y2 + f(y * y));
   }
-  const similitud = Math.min(1, Math.max(-1, dot / Math.sqrt(na * nb)));
+  const similitud = Math.min(1, Math.max(-1, d / Math.sqrt(x2 * y2)));
   return 1 - similitud;
 }
 
