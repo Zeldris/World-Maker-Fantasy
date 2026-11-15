@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, nombresVisiblesDeNpcs, narrarAperturaCombateForzado, resumenModoDinamicoParaLog } from './dynamicMode.js';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, nombresVisiblesDeNpcs, narrarAperturaCombateForzado, resumenModoDinamicoParaLog, narrarVueltaGistera } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -229,5 +229,13 @@ describe('nombresVisiblesDeNpcs (fase 1 hacia main)', () => {
     const nombres = await nombresVisiblesDeNpcs({ discoveredEntity: { findMany }, companion: { findMany: async () => [] } } as never, 's1', [{ slug: 'kirelon', name: 'Kirelon', kind: 'FAUNA' }]);
     expect(findMany).not.toHaveBeenCalled();
     expect(nombres.get('kirelon')).toBe('Kirelon');
+  });
+});
+
+describe('líneas fijas de Gistera sin el nombre del jugador (P465)', () => {
+  it('aceptar, rechazar y «ya te lo conté» no llaman al jugador por su nombre: Gistera no lo conoce', () => {
+    expect(narrarVueltaGistera(2, 'aceptar').narration).not.toContain('Gorhorn');
+    expect(narrarVueltaGistera(2, 'rechazar').narration).not.toContain('Gorhorn');
+    expect(narrarVueltaGistera(2, 'preguntar', true).narration).not.toContain('Gorhorn');
   });
 });

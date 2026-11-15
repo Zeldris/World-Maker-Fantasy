@@ -6,7 +6,7 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerateStream: vi.fn(),
 }));
 
-const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc } = await import('./narrador.js');
+const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc, replicaDefectuosa } = await import('./narrador.js');
 
 describe('generateNpcReply (fase 1 hacia main, P327)', () => {
   beforeEach(() => {
@@ -378,5 +378,33 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
     expect(Object.keys(format.properties)[0]).toBe(CLAVE_RESULTADO_GOLPE);
     expect(format.properties[CLAVE_RESULTADO_GOLPE]!.enum).toEqual([valor]);
     expect(format.required[0]).toBe(CLAVE_RESULTADO_GOLPE);
+  });
+});
+
+describe('réplica defectuosa del NPC (P466, P467, P469)', () => {
+  const npc = { name: 'Ulkha Ketg', role: 'cazadora', personality: '', bio: '' };
+  beforeEach(() => ollamaGenerate.mockReset());
+
+  it('replicaDefectuosa: acotación, tercera persona propia, nombre del jugador sin conocerlo', () => {
+    expect(replicaDefectuosa('«Ulkha Ketg se inclina hacia Gorhorn, su mirada fija.»', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
+    expect(replicaDefectuosa('«Si quieres que Ulkha Ketg te escuche, ofrécele algo.»', npc, 'Gorhorn', false)).toBe('habla de sí en tercera persona');
+    expect(replicaDefectuosa('«¿Qué quieres, Gorhorn?»', npc, 'Gorhorn', false)).toBe('nombre del jugador sin conocerlo');
+    expect(replicaDefectuosa('«¿Qué quieres, Gorhorn?»', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«Yo, Ulkha Ketg, mando aquí.»', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«Me llamo Ulkha Ketg.»', npc, 'Gorhorn', true)).toBeNull();
+  });
+
+  it('una réplica que es solo acotación se pide otra vez; si repite, sin réplica', async () => {
+    const acotacion = JSON.stringify({ reply: 'Ulkha Ketg se inclina hacia el forastero, su voz baja y profunda resuena.' });
+    ollamaGenerate.mockResolvedValueOnce({ text: acotacion }).mockResolvedValueOnce({ text: JSON.stringify({ reply: '«Los Maktor cayeron en la guerra.»' }) });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Cuéntame qué pasó con los Maktor', sessionFacts: [] })).toBe('«Los Maktor cayeron en la guerra.»');
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: acotacion });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Cuéntame', sessionFacts: [] })).toBe('');
+  });
+
+  it('un NPC que no conoce al jugador no lo llama por su nombre', async () => {
+    ollamaGenerate.mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué quieres, Gorhorn?»' }) }).mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué quieres, forastero?»' }) });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Hola, ¿cazas por aquí?', sessionFacts: [] })).toBe('«¿Qué quieres, forastero?»');
   });
 });

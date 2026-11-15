@@ -84,7 +84,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS, GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION } from './dynamicMode.js';
 import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
@@ -4553,6 +4553,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
     criticalFactsCount: contextBlocks.length,
     lastNarrationText: lastNarration?.text,
+    ...(gisteraYaPresentada ? { escenasFijasYaContadas: [GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION] } : {}),
     ...(dialogueTarget ? { replicaAparte: dialogueTarget.nombreVisible ?? dialogueTarget.name } : {}),
     combatBothMissed,
     combatRealHitLanded,

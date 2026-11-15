@@ -1408,7 +1408,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
     const loot = npc.saqueado
       ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)'
       : `, todavía sin registrar. Si esta acción es saquearlo/registrarlo, esto es TODO lo que lleva encima, no existe ningún otro objeto: ${itemsLine(npc.items)}`;
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${nombreOcultoHintFor(npc)}${generoHintFor(npc)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${npc.condicionFisica === 'CONVALECIENTE' ? ' Sigue tendido en el suelo, sin fuerzas: no se mueve de su sitio, no gesticula ni rechaza nada.' : ''}${nombreOcultoHintFor(npc)}${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Zense Ceniza, fauna sin habla,
@@ -1436,7 +1436,7 @@ LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, l
 export function npcSceneLineFor(npc: NpcInScene, playerLevel: number): string {
   if (npcYaResuelto(npc)) {
     const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'convaleciente';
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ya está ${estado}. NO lo narres como amenaza activa.${generoHintFor(npc)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ya está ${estado}. NO lo narres como amenaza activa: sigue en el suelo, sin fuerzas, no se mueve ni gesticula.${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR.` : '';

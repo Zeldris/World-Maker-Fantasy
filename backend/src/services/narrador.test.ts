@@ -33,6 +33,7 @@ import {
   hasFalseItemUse,
   hasFalseInventoryReview,
   hasResurrectedDeadNpc,
+  repiteEscenaFija,
   hasFalseNpcAppearance,
   hasGisteraReencuentroSinNombrar,
   hasFalseGisteraNamedReturn,
@@ -1136,6 +1137,12 @@ describe('hasFalseInventoryReview', () => {
 });
 
 describe('hasResurrectedDeadNpc', () => {
+  it('P470: un convaleciente «al borde de la escena, tensos los músculos» o con «gesto brusco» cuenta como en pie', () => {
+    expect(hasResurrectedDeadNpc('El Orco enfurecido, al borde de la escena, tensos los músculos, observa.', ['Orco enfurecido'])).toBe(true);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido rechaza la ofrenda con un gesto brusco.', ['Orco enfurecido'])).toBe(true);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido no se mueve del suelo.', ['Orco enfurecido'])).toBe(false);
+  });
+
   it('bug real jugando en vivo (2026-08-01, "el orco que maté volvió a aparecer"): detecta un NPC muerto narrado como si siguiera activo', () => {
     const narration =
       'Gorhorn examina la zona. Una mirada al oeste revela un conjunto de huellas recientes en la arcilla. Se fija con atención y reconoce el paso de un orco — probablemente el Orco Enfurecido.';
@@ -2196,5 +2203,14 @@ describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a com
   it('fuera de un enfrentamiento hostil (sin NPC en escena), no añade ningún hint de emboscada', () => {
     const { prompt } = buildNarrationPrompt({ ...hostileCtx, npcSlugsInScene: [] });
     expect(prompt).not.toMatch(/SORPRENDE/);
+  });
+});
+
+describe('repiteEscenaFija (P464)', () => {
+  const apertura = 'Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo, con la respiración entrecortada y sin dejar de mirar hacia atrás.';
+  it('rechaza una narración que cuenta otra vez la apertura; deja pasar una que sigue', () => {
+    expect(repiteEscenaFija('Gorhorn pregunta. Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo.', [apertura])).toBe(true);
+    expect(repiteEscenaFija('Gorhorn pregunta por el Clan Serhu y Gistera mira las rocas.', [apertura])).toBe(false);
+    expect(repiteEscenaFija('Cualquier cosa', undefined)).toBe(false);
   });
 });

@@ -271,6 +271,9 @@ interface TurnContext {
   /// runbook del proyecto (docs/runbooks/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
   /// veces la ignora igual que ignoraba el resto de instrucciones "no hagas X" de esta lista.
   possiblyResurrectedNpcNames?: string[];
+  /// P464: textos fijos de una escena ya contada (la apertura de Gistera, del modo dinámico, que no se guarda como
+  /// narración anterior): una narración que los repite se rechaza.
+  escenasFijasYaContadas?: string[];
   /// Ver `hasFalseNpcAppearance` más abajo (Grupo 3 § Mundo determinista, Capa 3, 2026-08-25) —
   /// nombres reales de NPCs geográficamente plausibles aquí (`candidateNpcNamesNotInScene`,
   /// npcScene.ts) que NINGÚN mecanismo determinista puso en escena este turno concreto. Vacío = no
@@ -1009,6 +1012,11 @@ export function repiteTodasLasFrases(narracion: string, anterior?: string): bool
   return !!anterior && todas.length > 0 && todas.every(repiteTramoDe(anterior));
 }
 
+/// P464: la narración copia un tramo de 6+ palabras de un texto fijo ya narrado (la escena de apertura/presentación).
+export function repiteEscenaFija(narracion: string, fijas?: string[]): boolean {
+  return !!fijas && fijas.some((f) => frases(narracion).some(repiteTramoDe(f)));
+}
+
 function repiteTramoDe(anterior: string): (frase: string) => boolean {
   const previas = palabras(anterior);
   const tramos = new Set(previas.slice(0, Math.max(0, previas.length - TRAMO_REPETIDO + 1)).map((_, i) => previas.slice(i, i + TRAMO_REPETIDO).join(' ')));
@@ -1245,6 +1253,30 @@ export function hablaDeSiComoOtro(reply: string, nombre: string): boolean {
   return !!m && !/\b(nombre|llaman|llamo)\b/i.test(m[0]);
 }
 
+/// P466/P467/P469: una réplica de NPC que no sirve se pide otra vez (y si repite, sin réplica: sale la de respaldo).
+/// - Sin frase hablada (P466): empieza por el nombre del propio NPC, es una acotación («Ulkha Ketg se inclina…»).
+/// - Habla de sí en tercera persona (P469): su nombre (o el visible) aparece en su boca sin ser «me llamo / soy / mi nombre es».
+/// - Nombre del jugador en boca de quien no lo conoce (P467).
+export function replicaDefectuosa(
+  reply: string,
+  npc: { name: string; nombreVisible?: string },
+  characterName: string,
+  conoceAlJugador: boolean,
+): string | null {
+  const texto = reply.replace(/^[\s«»“”"—-]+/, '');
+  const nombres = [npc.name, npc.nombreVisible].filter((n): n is string => !!n);
+  if (nombres.some((n) => new RegExp(`^${escapar(n)}(?![\\p{L}])(?![,:;])`, 'iu').test(texto))) return 'acotación sin frase hablada';
+  for (const n of nombres) {
+    const re = new RegExp(`(^|[^\\p{L}])${escapar(n)}(?![\\p{L}])`, 'giu');
+    for (const m of reply.matchAll(re)) {
+      const antes = reply.slice(Math.max(0, m.index! - 24), m.index! + m[1]!.length);
+      if (npc.nombreVisible || !/(yo|me llamo|soy|mi nombre es|llámame|me llaman)\s*,?\s*$/i.test(antes)) return 'habla de sí en tercera persona';
+    }
+  }
+  if (!conoceAlJugador && contieneNombre(reply, characterName)) return 'nombre del jugador sin conocerlo';
+  return null;
+}
+
 function sinNombreDelJugador(texto: string, characterName: string): string {
   return texto.replace(new RegExp(`(^|[^\\p{L}])${characterName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^\\p{L}])`, 'giu'), `$1${FORASTERO}`);
 }
@@ -1302,6 +1334,7 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   for (let intento = 0; intento < 2; intento++) {
     const reply = sinEco(await pedirReplicaNpc(system, prompt));
     if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) continue;
+    if (reply !== '' && replicaDefectuosa(reply, ctx.npc, ctx.characterName, conoce)) continue;
     const inventado = ctx.nombresConocidos ? nombreInventado(reply, ctx.nombresConocidos, [ctx.characterName, ctx.action, ...ctx.sessionFacts]) : null;
     if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) continue;
     if (inventado) console.warn(`[lint] nombre inventado en la réplica de ${ctx.npc.name}: «${inventado}»`);
@@ -1931,6 +1964,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText) || repiteTodasLasFrases(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE },
         { check: () => hasRepeatedDialogueLine(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE_REPLICA },
+        { check: () => repiteEscenaFija(parsed.narration, ctx.escenasFijasYaContadas), reason: 'volver a contar una escena fija ya narrada (apertura/presentación)' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },
         { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
@@ -2991,7 +3025,7 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 // verbo pegado DIRECTAMENTE a hacia/sobre/contra ("se lanza hacia") — "lanza un hachazo brutal
 // contra Gorhorn" (verbo + objeto + preposición) se colaba entero.
 const RESURRECTION_LEAK_REGEX =
-  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
+  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|(?<!no\s)se (mueve|tensa|yergue)|tensos?\s+(los\s+)?musculos|gesto brusco|al borde de la escena|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
 
 export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;

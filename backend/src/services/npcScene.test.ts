@@ -951,6 +951,12 @@ describe('npcSceneBlockFor', () => {
     expect(block).not.toMatch(/no hay botín que ofrecer/);
   });
 
+  it('P470: un convaleciente sigue tendido: el bloque y la línea corta lo dicen', () => {
+    const npc = npcFixture({ condicionFisica: 'CONVALECIENTE' });
+    expect(npcSceneBlockFor(npc, 1)).toContain('Sigue tendido en el suelo');
+    expect(npcSceneLineFor(npc, 1)).toContain('sigue en el suelo');
+  });
+
   it('convaleciente Y YA saqueado: no lista ningún equipo, dice explícitamente que no queda botín', () => {
     const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'CONVALECIENTE', saqueado: true }), 1);
     expect(block).toContain('YA RESUELTO');
