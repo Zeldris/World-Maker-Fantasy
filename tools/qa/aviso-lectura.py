@@ -6,8 +6,9 @@ En la ronda de la nube (tandas 131-133) la sesión principal leyó `plan-comprob
 `pruebas-0.3-hallazgos.md` 13, `traspaso.md` 14 y `rondas-de-pruebas.md` 3 (1,7 M de tokens arrastrados de 13,2 M),
 aunque `plan.py`, `marca-hallazgo.py`, `recover.py --state` y `seccion.sh` dan la parte que hace falta.
 
-Nunca bloquea: si la orden de Bash lee uno de esos archivos (cat, sed, head, tail, awk, grep, less, nl, python) sin
-pasar por su herramienta, o un Read lo abre sin `offset`/`limit`, añade `additionalContext` con la orden que lee
+Nunca bloquea: si un tramo de la orden de Bash lee uno de esos archivos (cat, sed, head, tail, awk, grep, less, nl,
+python, bash) sin pasar por su herramienta, o un Read abre el runbook sin `offset`/`limit` (los registros ya los vigila
+`whole-read.py`), añade `additionalContext` con la orden que lee
 menos. En cualquier otro caso (y ante una entrada que no entiende) no escribe nada y sale con 0.
 """
 import json
@@ -28,29 +29,52 @@ ARCHIVOS = {
         'tools/qa/seccion.sh',
         '`bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "<sección>"`, una sección (QA-311, QA-323)'),
 }
-# El cuerpo de un heredoc (un mensaje de commit, un archivo que se escribe) es texto, no una lectura.
-HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
-LECTOR = re.compile(r'(^|[\s|;&(`])(cat|sed|head|tail|awk|grep|rg|less|more|nl|python3?)\b')
+# El cuerpo de un heredoc que escribe (un mensaje de commit, `cat > archivo`, `tee`) es texto, no una lectura; el de
+# uno que se ejecuta (`python3 - <<EOF`, `bash <<EOF`) sí se mira. Se quita solo el cuerpo: la línea que abre sigue.
+HEREDOC = re.compile(r"^([^\n]*)<<-?\s*(['\"]?)(\w+)\2([^\n]*)\n.*?^\s*\3\s*$", re.S | re.M)
+ESCRIBE = re.compile(r'git\s+(commit|tag)|>|\btee\b')
+LECTOR = re.compile(r'(^|[\s(`])(cat|sed|head|tail|awk|grep|rg|less|more|nl|python3?|bash|sh)\b')
+TRAMOS = re.compile(r'&&|\|\||[;|\n]')
+
+
+def heredocs_en_su_tramo(orden: str) -> str:
+    def quitar(m):
+        abre = m.group(1) + m.group(4)
+        if ESCRIBE.search(abre):
+            return abre
+        # El heredoc que se ejecuta va con su línea en un solo tramo: el lector (`python3 -`) está en la línea que abre.
+        return re.sub(r'&&|\|\||[;|\n]', ' ', m.group(0))
+    return HEREDOC.sub(quitar, orden)
 
 
 def avisos(evento: dict) -> list:
     herramienta = evento.get('tool_name')
-    entrada = evento.get('tool_input') or {}
+    entrada = evento.get('tool_input')
+    if not isinstance(entrada, dict):
+        return []
     salida = []
     if herramienta == 'Bash':
-        orden = HEREDOC.sub(' ', entrada.get('command') or '')
-        if not LECTOR.search(orden):
+        orden = entrada.get('command')
+        if not isinstance(orden, str):
             return []
-        for ruta, (atajo, uso) in ARCHIVOS.items():
-            if ruta in orden and atajo not in orden:
-                salida.append(f'{ruta}: {atajo} ({uso})')
+        # Por tramos (`;`, `&&`, `|`…): el tramo que lee y nombra el archivo, sin su herramienta en ese tramo. Por el
+        # nombre del archivo, no la ruta, para pillar también `cd docs/records && cat traspaso.md`.
+        for tramo in TRAMOS.split(heredocs_en_su_tramo(orden)):
+            if not LECTOR.search(tramo):
+                continue
+            for ruta, (atajo, uso) in ARCHIVOS.items():
+                aviso = f'{ruta}: {atajo} ({uso})'
+                if ruta.rsplit('/', 1)[1] in tramo and atajo not in tramo and aviso not in salida:
+                    salida.append(aviso)
     elif herramienta == 'Read':
+        # Los registros de docs/records ya los vigila whole-read.py del flujo; aquí, solo el runbook.
         if entrada.get('offset') or entrada.get('limit'):
             return []
-        ruta_leida = (entrada.get('file_path') or '').replace('\\', '/')
-        for ruta, (atajo, uso) in ARCHIVOS.items():
-            if ruta_leida.endswith('/' + ruta) or ruta_leida == ruta:
-                salida.append(f'{ruta}: {atajo} ({uso})')
+        ruta_leida = str(entrada.get('file_path') or '').replace('\\', '/')
+        ruta = 'docs/runbooks/rondas-de-pruebas.md'
+        if ruta_leida == ruta or ruta_leida.endswith('/' + ruta):
+            atajo, uso = ARCHIVOS[ruta]
+            salida.append(f'{ruta}: {atajo} ({uso})')
     return salida
 
 

@@ -49,6 +49,34 @@ class AvisoLectura(unittest.TestCase):
         orden = "cat > /tmp/x <<EOF\nhola\nEOF\ncat docs/records/traspaso.md"
         self.assertIn('recover.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
 
+    def test_python_en_heredoc_si_avisa(self):
+        orden = "python3 - <<'EOF'\nprint(open('docs/records/traspaso.md').read())\nEOF"
+        self.assertIn('recover.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
+
+    def test_lectura_en_la_linea_del_heredoc_avisa(self):
+        orden = "cat > /tmp/x <<EOF && cat docs/records/traspaso.md\nhola\nEOF"
+        self.assertIn('recover.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
+
+    def test_herramienta_en_otro_tramo_no_tapa_la_lectura(self):
+        orden = 'python3 tools/qa/plan.py; cat docs/records/plan-comprobacion-puerta.md'
+        self.assertIn('plan.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
+
+    def test_git_y_handoff_no_avisan(self):
+        for orden in ('git log --oneline -- docs/records/traspaso.md | head -3',
+                      'git add docs/records/traspaso.md && python3 .claude/gw/scripts/handoff.py set-row x'):
+            self.assertEqual(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}}), '', orden)
+
+    def test_ruta_relativa_tras_cd_avisa(self):
+        orden = 'cd docs/records && cat traspaso.md'
+        self.assertIn('recover.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
+
+    def test_tool_input_que_no_es_un_objeto(self):
+        self.assertEqual(correr({'tool_name': 'Bash', 'tool_input': 'x'}), '')
+
+    def test_read_de_un_registro_lo_deja_a_whole_read(self):
+        ruta = '/repo/docs/records/pruebas-0.3-hallazgos.md'
+        self.assertEqual(correr({'tool_name': 'Read', 'tool_input': {'file_path': ruta}}), '')
+
     def test_read_entero_avisa_y_por_trozos_no(self):
         ruta = '/repo/docs/runbooks/rondas-de-pruebas.md'
         self.assertIn('seccion.sh', contexto(correr({'tool_name': 'Read', 'tool_input': {'file_path': ruta}})))
