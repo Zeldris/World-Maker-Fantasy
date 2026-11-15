@@ -102,7 +102,8 @@ export function DefensaSection({ saveId, onRefreshSave }: { saveId: string; onRe
       )}
       {/* P450: el aviso de un asalto de otra facción a tu Reino (el del Diario) también aquí. */}
       {asaltos.length > 0 && (
-        <section aria-label="Últimos asaltos a tu Reino" className="rounded-lg border border-red-700/40 bg-red-950/20 px-3 py-2">
+        <section aria-label="Últimos asaltos de otras facciones" className="rounded-lg border border-red-700/40 bg-red-950/20 px-3 py-2">
+          <h3 className="mb-1 text-2xs font-semibold uppercase tracking-[0.14em] text-wood-400">Últimos asaltos de otras facciones</h3>
           {asaltos.map((a) => (
             <p key={a.id} className="text-xs text-red-200">
               <span className="text-2xs text-red-300/70">{a.cuando} · </span>

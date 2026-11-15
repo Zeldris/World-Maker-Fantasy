@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { esAvisoDeAsaltoDeFaccion, textoDelAsalto } from './asaltos.js';
+import { resumenDeCaza } from './partidasCaza.js';
 
 // P221: la línea del asalto de fondo concuerda, nombra el Reino y dice «nada» sin botín.
 const base = { quien: 'Los nabieus enloquecidos', plural: true, lugar: 'Tor Gorhorn', defendido: false, caidosAsaltantes: 0, botin: { comida: 0, goirnos: 0, objetos: 0 }, empalizadaCaida: false, caidosReino: [], estadoPersonaje: null, condicionAntes: 'HERIDO' as const };
@@ -42,5 +43,14 @@ describe('esAvisoDeAsaltoDeFaccion (P450)', () => {
     expect(esAvisoDeAsaltoDeFaccion(textoDelAsalto({ ...base, quien: 'La partida de Maktor', plural: false }))).toBe(true);
     expect(esAvisoDeAsaltoDeFaccion(textoDelAsalto({ ...base, quien: 'La partida de Maktor', plural: false, defendido: true }))).toBe(true);
     expect(esAvisoDeAsaltoDeFaccion(textoDelAsalto({ ...base, quien: 'Los bandidos' }))).toBe(false);
+  });
+
+  it('no reconoce las cacerías (resumenDeCaza)', () => {
+    const c = { quien: 'La partida de caza', nombre: 'Múrgol', lugar: 'Karot Veku', encuentros: 1, piezas: 0, capturados: 0, heridos: 1, caidos: 0, muertos: 0, desarmados: 0 };
+    expect(esAvisoDeAsaltoDeFaccion(resumenDeCaza(c))).toBe(false);
+    expect(esAvisoDeAsaltoDeFaccion(resumenDeCaza({ ...c, heridos: 3, caidos: 2 }))).toBe(false);
+    expect(esAvisoDeAsaltoDeFaccion(resumenDeCaza({ ...c, heridos: 0 }))).toBe(false);
+    expect(esAvisoDeAsaltoDeFaccion(resumenDeCaza({ ...c, encuentros: 0 }))).toBe(false);
+    expect(esAvisoDeAsaltoDeFaccion(resumenDeCaza({ ...c, piezas: 2 }))).toBe(false);
   });
 });
