@@ -397,6 +397,14 @@ Diseño completo en [`diseno-interfaz-marca.md`](diseno-interfaz-marca.md) (de g
   `index.html` (secciones 2-5 y 7 «Ahora» del diseño). **S**
 - **UX-41 · La marca en la interfaz, con imágenes** — texturas, esquinas, ranura, pictogramas, favicon y logo,
   `og:image`, hero, carga y barras, a medida que lleguen de galivelop-image-generator (secciones 6 y 8 del diseño). **M**
+  🚧 2026-11-15 en curso (rama `claude/marca-imagenes`): las imágenes de `frontend/src/assets/tarkor-final/` (fuente,
+  fuera de git) se preparan con `tools/interfaz/preparar-imagenes.py` en 49 WebP de `assets/interfaz/` (740 KB);
+  `imagenesInterfaz` + `Pictograma` (emoji de reserva). Aplicadas y vistas en pantalla: pestañas del rail, fases,
+  HUD (energía, sed), dado, 13 categorías de objeto, estados (aviso, error, hecho, en curso), sello de misión, cielo
+  de Home, pantalla de carga, ranura y esquinas de oro. **Queda:** sin sitio aún `plantilla-captura` (no hay
+  compartir), `insignia` (no hay logros), `marco-retrato`/`marco-redondo` (miniaturas de 32 px) y barras `e07` (las
+  de ahora miden h-1.5); sin imagen propia: pestaña Reputación, fase fin, 23 categorías y hambre; favicon, logo,
+  `og:image` y hero, sin imagen todavía.
 
 ---
 
