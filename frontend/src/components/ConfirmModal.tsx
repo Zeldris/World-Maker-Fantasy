@@ -1,3 +1,5 @@
+import { Pictograma } from './Pictograma'
+import { imagenEstado } from '../lib/imagenesInterfaz'
 import { SelectionModalShell, confirmButtonClasses } from './SelectionModalShell'
 
 interface ConfirmModalProps {
@@ -36,7 +38,7 @@ export function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel
       <p className="text-sm leading-relaxed text-wood-300">{message}</p>
       {error && (
         <p role="alert" className="mt-2 text-xs text-danger-300">
-          <span aria-hidden="true">⚠️ </span>
+          <Pictograma src={imagenEstado('aviso')} emoji="⚠️" className="h-5 w-5" />{' '}
           {error}
         </p>
       )}

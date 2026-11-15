@@ -5,6 +5,8 @@
 // ahora?" (composer, botones que lanzan un turno, tarjetas del registro, brújula, paneles) pregunta
 // aquí, así el motivo es el mismo venga de donde venga.
 
+import { imagenFase } from './imagenesInterfaz'
+
 export type FaseJuego = 'libre' | 'pensando' | 'ocupado' | 'encuentro' | 'combate' | 'dinamico' | 'eleccion' | 'muerte' | 'fin'
 
 export interface EstadoParaFase {
@@ -104,7 +106,14 @@ export function canDo(fase: FaseJuego, accion: AccionJuego): Permiso {
 
 /// UX-8 (hito 0.2) — indicador de la fase en la cabecera ("✒️ El narrador escribe"). En `libre` no
 /// se enseña nada: el indicador solo aparece cuando algo está bloqueado.
-const ETIQUETA_FASE: Record<Exclude<FaseJuego, 'libre'>, { icono: string; texto: string }> = {
+export interface EtiquetaFase {
+  icono: string
+  texto: string
+  /// UX-41 — pictograma de la marca (`fin` no tiene); el emoji queda de reserva.
+  imagen?: string
+}
+
+const ETIQUETA_FASE: Record<Exclude<FaseJuego, 'libre'>, EtiquetaFase> = {
   pensando: { icono: '✒️', texto: 'El narrador escribe' },
   ocupado: { icono: '🧭', texto: 'Ocupado' },
   encuentro: { icono: '⚠️', texto: 'Te cortan el paso' },
@@ -115,6 +124,8 @@ const ETIQUETA_FASE: Record<Exclude<FaseJuego, 'libre'>, { icono: string; texto:
   fin: { icono: '📜', texto: 'Partida terminada' },
 }
 
-export function etiquetaDeFase(fase: FaseJuego): { icono: string; texto: string } | null {
-  return fase === 'libre' ? null : ETIQUETA_FASE[fase]
+export function etiquetaDeFase(fase: FaseJuego): EtiquetaFase | null {
+  if (fase === 'libre') return null
+  const e = ETIQUETA_FASE[fase]
+  return { ...e, imagen: imagenFase(fase) }
 }

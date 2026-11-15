@@ -50,6 +50,8 @@ export type DetailTarget =
   | {
       kind: 'info'
       icon: string
+      /// UX-41: pictograma de la marca cuando el emoji sale de la categoría del objeto.
+      imagen?: string
       name: string
       meta?: string
       description: string

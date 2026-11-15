@@ -1,3 +1,5 @@
+import { Pictograma } from './Pictograma'
+import { imagenInterfaz } from '../lib/imagenesInterfaz'
 // Habilidad "Comer/Beber" (2026-09-04) — mismo cascarón que HungerBar.tsx, ver su comentario para
 // el criterio de color por umbral.
 function barColor(pct: number): string {
@@ -10,9 +12,7 @@ export function ThirstBar({ sed }: { sed: number }) {
   const pct = Math.max(0, Math.min(100, Math.round(sed)))
   return (
     <div className="flex items-center gap-1.5 rounded-md border border-iron-700 bg-wood-950/60 px-2.5 py-1">
-      <span aria-hidden="true" className="text-xs">
-        💧
-      </span>
+      <Pictograma src={imagenInterfaz('hud-sed')} emoji="💧" className="h-4 w-4" />
       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-iron-800 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
         <div className={`h-full rounded-full bg-gradient-to-r transition-[width] duration-500 ${barColor(pct)}`} style={{ width: `${pct}%` }} />
       </div>
