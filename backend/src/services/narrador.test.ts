@@ -897,6 +897,17 @@ describe('hasFalseCombatAttacker', () => {
     expect(hasFalseCombatAttacker(narration, 'Gorhorn', false)).toBe(false);
   });
 
+  it('P473: no dispara si el jugador también conecta (golpes mutuos): narrarlo acertando es correcto', () => {
+    const narration = 'Gorhorn clava su cuchillo en el costado del orco.';
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true, true)).toBe(false);
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true, false)).toBe(true);
+  });
+
+  it('P473: "sin herida" no cuenta como golpe que conecta', () => {
+    expect(hasFalseCombatHit('El orco ataca y Gorhorn lo esquiva, sin herida alguna.', true)).toBe(false);
+    expect(hasFalseCombatHit('El orco ataca y deja una herida en Gorhorn.', true)).toBe(true);
+  });
+
   it('no dispara sin characterName', () => {
     const narration = 'Gorhorn ataca de lleno al Orco enfurecido.';
     expect(hasFalseCombatAttacker(narration, undefined, true)).toBe(false);

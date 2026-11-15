@@ -1499,8 +1499,10 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           ? ' El NPC te SORPRENDE A TI — nota tu presencia y reacciona primero, con ventaja sobre ti. Pero NO describas ningún golpe ya recibido por tu personaje: eso se decide en el combate que empieza ahora, no en esta narración.'
           : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones, sin que el enfrentamiento en sí (quién golpea, quién sale herido) se resuelva todavía en esta narración.'
       : '';
+  // P473: quién golpea a quién en este intercambio, ya decidido, en una frase corta y sin ambigüedad (también en el reintento).
+  const golpe = resultadoDelGolpe(ctx);
   const combatBlock = ctx.enCombate
-    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
+    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): ${golpe ? `RESULTADO YA DECIDIDO, NO LO CAMBIES: ${golpe} Quien acierta es quien golpea; quien no acierta, no toca al otro. ` : ''}Narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
         ctx.npcFallsUnconsciousThisTurn
           ? ctx.npcFallsConvalecienteThisTurn
             ? // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): este mismo
@@ -1668,8 +1670,7 @@ ACCIÓN DEL JUGADOR:
 ${focoBlock}
 Responde solo con el JSON pedido, nada más.`;
 
-  // QA-340: el resultado del golpe, ya decidido, va primero y es obligatorio (ver `resultadoDelGolpe`).
-  const golpe = resultadoDelGolpe(ctx);
+  // QA-340: el resultado del golpe, ya decidido (`golpe`, arriba), va primero y es obligatorio (ver `resultadoDelGolpe`).
   const format = {
     type: 'object',
     properties: {
@@ -1845,8 +1846,9 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
   // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
   // reintento de emergencia — se omite entero, nunca se recorta a medias.
+  const golpeDecidido = resultadoDelGolpe(ctx);
   const retryPrompt = prompt
-    .replace(hechosBlock, factsBlock(retryFacts))
+    .replace(hechosBlock, factsBlock(golpeDecidido ? [`Resultado del intercambio (ya decidido): ${golpeDecidido}`, ...retryFacts] : retryFacts))
     .replace(backgroundLoreBlock, '');
   // P414 (bench 19, QA-289): con la narración anterior en el prompt, el modelo la copió en los 3 intentos y el turno cayó
   // al respaldo. Tras un rechazo por repetirla, el reintento va sin ella; el guard sigue comparando con `lastNarrationText`.
@@ -1938,7 +1940,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
           reason: 'narrar (en prosa o en newFacts) una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)',
         },
         {
-          check: () => hasFalseCombatAttacker(narrationAndFacts, ctx.characterName, ctx.jugadorRecibeGolpeEsteTurno),
+          check: () => hasFalseCombatAttacker(narrationAndFacts, ctx.characterName, ctx.jugadorRecibeGolpeEsteTurno, ctx.jugadorConectaEsteTurno),
           reason: 'narrar (en prosa o en newFacts) al jugador acertando un golpe cuando el golpe real de este intercambio lo dio el NPC contra el jugador',
         },
         {
@@ -2521,7 +2523,7 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // su brazo de cuchillo" con `resultado: 'parada_en_seco'` (fallo total del jugador) — "derriba" sin
 // más describe un golpe conectado, vocabulario nuevo sin cubrir hasta ahora.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|(?<!sin\s)(?<!sin\s\w+\s)herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
@@ -2596,8 +2598,9 @@ export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: bool
 /// otro sujeto distinto de Gorhorn (p. ej. un tercer NPC entrando en la escena), podría disparar de
 /// más — no observado en la práctica todavía, mismo criterio que otros guards de esta familia
 /// (mejor un reintento de más que dejar pasar la inversión de roles real).
-export function hasFalseCombatAttacker(narration: string, characterName?: string, jugadorRecibeGolpeEsteTurno?: boolean): boolean {
-  if (!characterName || !jugadorRecibeGolpeEsteTurno) return false;
+// P473: si el jugador TAMBIÉN conecta (golpes_mutuos/contragolpe) narrarlo acertando es lo correcto: el guard no aplica.
+export function hasFalseCombatAttacker(narration: string, characterName?: string, jugadorRecibeGolpeEsteTurno?: boolean, jugadorConectaEsteTurno?: boolean): boolean {
+  if (!characterName || !jugadorRecibeGolpeEsteTurno || jugadorConectaEsteTurno) return false;
   const normalizedName = normalizeText(characterName);
   const sentences = narration.split(SENTENCE_SPLIT_REGEX).map(normalizeText);
   return sentences.some((sentence, i) => {

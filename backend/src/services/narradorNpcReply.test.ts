@@ -354,6 +354,19 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
     );
   });
 
+  it('P473: el prompt dice quién golpea a quién y el reintento lleva ese hecho', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ narration: 'Gorhorn clava el hacha en el orco.', newFacts: [] }) });
+    await narrateAction({ ...base, jugadorRecibeGolpeEsteTurno: true } as Parameters<typeof narrateAction>[0]);
+    const frase = 'Orco enfurecido acierta y golpea a Gorhorn; Gorhorn no le acierta.';
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toContain(`RESULTADO YA DECIDIDO, NO LO CAMBIES: ${frase}`);
+    // Rechazado el 1.º (jugador acertando), el reintento lleva el hecho entre los HECHOS.
+    expect(prompts.length).toBeGreaterThan(1);
+    expect(prompts[1]).toContain(`Resultado del intercambio (ya decidido): ${frase}`);
+  });
+
   it('narrateAction lo pide primero, obligatorio y con un único valor, y no lo devuelve', async () => {
     const { narrateAction, CLAVE_RESULTADO_GOLPE } = await import('./narrador.js');
     const valor = 'Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.';
