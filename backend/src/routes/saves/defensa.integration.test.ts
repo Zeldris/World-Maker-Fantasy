@@ -48,4 +48,15 @@ describe('Reino › Defensa (CR-65 65b)', () => {
     await prisma.subject.create({ data: { saveId, name: 'Urk', role: 'trabajador', notes: '' } });
     expect((await app.inject({ method: 'POST', url: `/saves/${saveId}/defensa/${capitalId}/milicia` })).json()).toEqual({ ok: true, armados: 1 });
   });
+
+  it('P450: asaltosRecientes trae solo el asalto reciente de facción, sin la frase de reparar', async () => {
+    await prisma.worldState.upsert({ where: { saveId }, update: { fictionalMinutes: 20000 }, create: { saveId, fictionalMinutes: 20000 } });
+    const aviso = (text: string, fictionalMinutes: number) => prisma.logEntry.create({ data: { saveId, channel: 'KINGDOM', isSystemMessage: true, text, timeLabel: 'Día x', fictionalMinutes } });
+    await aviso('La partida de Maktor toma Karot Veku y se lleva 3 de comida. La Empalizada ha caído: hay que repararla.', 19900);
+    await aviso('La partida de caza planta cara a Múrgol en Karot Veku y no abate ninguno: 1 de los suyos sale herido y la partida se retira.', 19950);
+    await aviso('La partida de Antigua toma Karot Veku y no encuentra nada que llevarse.', 1000);
+    const r = await app.inject({ method: 'GET', url: `/saves/${saveId}/defensa` });
+    const textos = r.json().asaltosRecientes.map((a: { texto: string }) => a.texto);
+    expect(textos).toEqual(['La partida de Maktor toma Karot Veku y se lleva 3 de comida.']);
+  });
 });

@@ -230,6 +230,22 @@ export function textoDelAsalto(a: {
   return `${a.quien} ${v('toma', 'toman')} ${a.lugar} y ${saqueo}.${a.empalizadaCaida ? ' La Empalizada ha caído: hay que repararla.' : ''}${quienDefendia}${bajas}${tuyo}`;
 }
 
+/// P450: ¿esta línea del Reino es el aviso de un asalto de OTRA facción a tu Reino? Las dos formas exactas de
+/// `textoDelAsalto` con «La partida de X»: «La partida de X toma …» y «<Lugar> aguanta el asalto: la partida de X se retira…».
+/// Los bandidos («Los bandidos…») y las cacerías («La partida de caza … se retira», `resumenDeCaza`) no cuentan.
+/// El `where` de `avisosDeAsaltoDeFaccionWhere` hace lo mismo en Prisma.
+export function esAvisoDeAsaltoDeFaccion(texto: string): boolean {
+  return /^La partida de (?!caza )[^]+? toma /.test(texto) || /^[^]+? aguanta el asalto: la partida de (?!caza )[^]+? se retira/.test(texto);
+}
+
+/// El mismo reconocimiento, para el `where` de Prisma (así el `take` cuenta solo asaltos y las cacerías no los tapan).
+export const avisosDeAsaltoDeFaccionWhere = {
+  OR: [
+    { AND: [{ text: { startsWith: 'La partida de ' } }, { text: { contains: ' toma ' } }, { NOT: { text: { startsWith: 'La partida de caza ' } } }] },
+    { AND: [{ text: { contains: ' aguanta el asalto: la partida de ' } }, { NOT: { text: { contains: ' aguanta el asalto: la partida de caza ' } } }] },
+  ],
+};
+
 /// Un asalto que llega a su destino: si allí hay un asentamiento del Reino, se resuelve de fondo
 /// (el combate en vivo, con el personaje allí, llega con `CR-50`); luego vuelve con lo que lleve.
 TRABAJOS.ASALTO = {
